@@ -1,14 +1,20 @@
 import type { BuiltFileStore } from '../../types/sdk/file-store';
-import type { AgentDbMessage, ContentFile } from '../../types/sdk/message';
+import {
+	toolOutputFileParts,
+	type AgentDbMessage,
+	type ContentFile,
+} from '../../types/sdk/message';
 
 /** Only the newest file parts are hydrated; older ones stay reference-only. */
 export const MAX_HYDRATED_FILE_PARTS = 20;
-/** Cumulative cap on hydrated bytes per turn. */
+/** Cumulative cap on hydrated bytes in the live message list. */
 export const MAX_HYDRATED_FILE_BYTES = 50 * 1024 * 1024;
 
 /**
  * Fill `data` on reference-only file parts by loading bytes from the injected
- * file store. Mutates the blocks in place (persistence backends strip hydrated
+ * file store. This covers user files and file parts in resolved tool outputs,
+ * such as a file that a tool read for the model. Both kinds share the budgets
+ * below. Mutates the blocks in place (persistence backends strip hydrated
  * bytes on save via `stripHydratedFileData`).
  *
  * The whole thread history passes through here on every turn, so hydration is
@@ -29,28 +35,40 @@ export async function hydrateFileParts(
 	if (!fileStore) return;
 
 	const blocks: ContentFile[] = [];
+	const collect = (block: ContentFile, supported: boolean) => {
+		if (supported) blocks.push(block);
+		else delete block.data;
+	};
+	const isSupported = (mediaType: string | undefined) =>
+		fileStore.isMediaTypeSupported?.(mediaType) ?? true;
 	for (const message of messages) {
 		if (!('content' in message) || !Array.isArray(message.content)) continue;
 		for (const block of message.content) {
-			if (block.type !== 'file' || !block.fileRef || block.data !== undefined) continue;
-			if (fileStore.isMediaTypeSupported && !fileStore.isMediaTypeSupported(block.mediaType)) {
-				continue;
+			if (block.type === 'file' && block.fileRef) collect(block, isSupported(block.mediaType));
+			if (block.type === 'tool-call' && block.state === 'resolved') {
+				for (const part of toolOutputFileParts(block.output)) {
+					collect(part, isSupported(part.mediaType));
+				}
 			}
-			blocks.push(block);
 		}
 	}
 
+	for (const block of blocks.slice(0, -MAX_HYDRATED_FILE_PARTS)) delete block.data;
 	let budget = MAX_HYDRATED_FILE_BYTES;
 	const newestFirst = blocks.slice(-MAX_HYDRATED_FILE_PARTS).reverse();
 	for (const block of newestFirst) {
-		if (budget <= 0) break;
+		const existingData = block.data;
+		delete block.data;
+		if (budget <= 0) continue;
 		const declaredSize = block.fileRef!.sizeBytes;
-		if (declaredSize !== undefined && declaredSize > budget) continue;
+		if (existingData === undefined && declaredSize !== undefined && declaredSize > budget) continue;
 		try {
-			const data = await fileStore.load(block.fileRef!, scope);
-			if (!data || data.byteLength > budget) continue;
+			const data = existingData ?? (await fileStore.load(block.fileRef!, scope));
+			if (!data) continue;
+			const size = typeof data === 'string' ? Buffer.byteLength(data, 'base64') : data.byteLength;
+			if (size > budget) continue;
 			block.data = data;
-			budget -= data.byteLength;
+			budget -= size;
 		} catch {
 			// Leave the block reference-only; the model sees its text metadata.
 		}

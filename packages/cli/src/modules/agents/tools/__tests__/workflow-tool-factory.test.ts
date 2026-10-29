@@ -1,9 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import { N8N_CHAT_INTEGRATION_TYPE, type AgentToolSkippedFile } from '@n8n/api-types';
 import { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import type {
 	IExecuteResponsePromiseData,
@@ -16,10 +16,13 @@ import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionService } from '@/executions/execution.service';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
+import { AgentFileBridge } from '../../agent-file-bridge.service';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -55,6 +58,7 @@ const workflow = {
 function buildContext(run: ReturnType<typeof vi.fn>, extras: Partial<WorkflowToolContext> = {}) {
 	return {
 		workflowLoader: {} as never,
+		executor: mock<EphemeralNodeExecutor>(),
 		workflowRunner: { run } as unknown as WorkflowRunner,
 		subworkflowPolicyChecker: mock<SubworkflowPolicyChecker>(),
 		activeExecutions: { has: vi.fn().mockReturnValue(false) } as unknown as ActiveExecutions,
@@ -95,6 +99,96 @@ describe('executeWorkflow → execution classification', () => {
 			).toEqual({ value: 1 });
 		},
 	);
+
+	it('passes a foreground abort to workflow stopping and releases the wait', async () => {
+		const controller = new AbortController();
+		const started = createDeferredPromise<undefined>();
+		const finished = createDeferredPromise<IRun>();
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		const pending = executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			{
+				...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+					activeExecutions: mock<ActiveExecutions>({
+						has: () => true,
+						getPostExecutePromise: async () => {
+							started.resolve(undefined);
+							return await finished.promise;
+						},
+					}),
+				}),
+				abortSignal: controller.signal,
+			},
+		);
+		await started.promise;
+		controller.abort(new Error('Response stopped'));
+		await expect(pending).rejects.toThrow('Response stopped');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+		finished.resolve(mock<IRun>({ status: 'canceled' }));
+	});
+
+	it.each([false, true])(
+		'waits for workflow stopping when its callback rejects (stop fails: %s)',
+		async (stopFails) => {
+			const controller = new AbortController();
+			const started = createDeferredPromise<undefined>();
+			const finished = createDeferredPromise<IRun>();
+			const stopped = createDeferredPromise<undefined>();
+			const stop = vi.fn().mockReturnValue(stopped.promise);
+			Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+			let settled = false;
+			const outcome = executeWorkflow(
+				workflow,
+				triggerNode,
+				{},
+				{
+					...buildContext(vi.fn().mockResolvedValue('exec-1'), {
+						activeExecutions: mock<ActiveExecutions>({
+							has: () => true,
+							getPostExecutePromise: async () => {
+								started.resolve(undefined);
+								return await finished.promise;
+							},
+						}),
+					}),
+					abortSignal: controller.signal,
+				},
+			).catch((error: unknown) => {
+				settled = true;
+				return error;
+			});
+			await started.promise;
+			const reason = new Error('Response stopped');
+			controller.abort(reason);
+			finished.reject(reason);
+			await vi.dynamicImportSettled();
+			expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+			expect(settled).toBe(false);
+
+			const stopError = new Error('Workflow stop failed');
+			if (stopFails) stopped.reject(stopError);
+			else stopped.resolve(undefined);
+			expect(await outcome).toBe(stopFails ? stopError : reason);
+		},
+	);
+
+	it('does not cancel a workflow after the foreground tool has returned', async () => {
+		const controller = new AbortController();
+		const stop = vi.fn();
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		await executeWorkflow(
+			workflow,
+			triggerNode,
+			{},
+			{ ...buildContext(vi.fn().mockResolvedValue('exec-1')), abortSignal: controller.signal },
+		);
+		controller.abort();
+		await vi.dynamicImportSettled();
+		expect(stop).not.toHaveBeenCalled();
+	});
 
 	it('checks the caller policy before starting the workflow', async () => {
 		const run = vi.fn().mockResolvedValue('exec-1');
@@ -776,6 +870,22 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		expect(executionData?.parentAgentRun).toEqual(expect.objectContaining({ previewChat: true }));
 	});
 
+	it('stamps the production n8n Chat marker so the wake-up uses the published runtime', async () => {
+		const executionData = await runToolWith(
+			{
+				agentId: 'agent-1',
+				integrationType: N8N_CHAT_INTEGRATION_TYPE,
+				userId: 'user-1',
+				publishedN8nChat: true,
+			},
+			agentCtx,
+		);
+
+		expect(executionData?.parentAgentRun).toEqual(
+			expect.objectContaining({ publishedN8nChat: true, userId: 'user-1' }),
+		);
+	});
+
 	it('omits the preview marker for every other draft surface', async () => {
 		const executionData = await runToolWith(
 			{ agentId: 'agent-1', integrationType: N8N_CHAT_INTEGRATION_TYPE },
@@ -804,6 +914,80 @@ describe('workflow tool → parentAgentRun stamping', () => {
 		const executionData = await runToolWith(contextExtras, ctx);
 
 		expect(executionData?.parentAgentRun).toBeUndefined();
+	});
+});
+
+describe('workflow tool → binary output', () => {
+	const binaryItem = {
+		json: { revisedPrompt: 'a cat' },
+		binary: { data: { id: 'filesystem-v2:x', data: 'filesystem-v2', mimeType: 'image/png' } },
+	};
+	const file = { fileId: 'aid-1', fileName: 'data.png', mimeType: 'image/png', sizeBytes: 3 };
+
+	async function runTool(ctx: object, skippedFiles: AgentToolSkippedFile[] = []) {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { OpenAI: [{ data: { main: [[binaryItem]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: { revisedPrompt: 'a cat' }, binary: { data: 'aid-1' } }],
+			files: [file],
+			skippedFiles,
+		});
+		Container.set(AgentFileBridge, bridge);
+
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(vi.fn().mockResolvedValue('exec-1'), { workflowLoader, agentId: 'agent-1' }),
+		);
+		const output = await tool.handler?.({}, ctx as never);
+		return { output, bridge, tool };
+	}
+
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('adopts binary output as agent files and lists them as metadata', async () => {
+		const { output, bridge, tool } = await runTool({ persistence: { threadId: 't-1' } });
+
+		expect(bridge.adoptFromItems).toHaveBeenCalledWith(
+			[binaryItem],
+			{ agentId: 'agent-1', projectId: 'p1', threadId: 't-1' },
+			expect.any(Map),
+			expect.any(Set),
+		);
+		expect(output).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { OpenAI: [{ revisedPrompt: 'a cat', binary: { data: 'aid-1' } }] },
+			files: [file],
+		});
+		// The model sees the same JSON, with no file parts.
+		expect(tool.toModelOutput).toBeUndefined();
+	});
+
+	it('lists the files that are too large to store', async () => {
+		const skipped = { fileName: 'big.mp4', reason: 'larger than 50 MB' };
+		const { output } = await runTool({ persistence: { threadId: 't-1' } }, [skipped]);
+
+		expect(output).toMatchObject({ files: [file], skippedFiles: [skipped] });
+	});
+
+	it('drops the binary when the run has no thread', async () => {
+		const { output, bridge } = await runTool({});
+
+		expect(bridge.adoptFromItems).not.toHaveBeenCalled();
+		expect(output).toEqual({
+			executionId: 'exec-1',
+			status: 'success',
+			data: { OpenAI: [{ revisedPrompt: 'a cat' }] },
+		});
 	});
 });
 
@@ -940,6 +1124,35 @@ describe('workflow tool → background job handoff', () => {
 		expect(findSingleExecution).toHaveBeenCalledTimes(1);
 	});
 
+	it('stops the workflow when the foreground run is aborted during registration', async () => {
+		setPersistence({ status: 'canceled' });
+		const jobService = setJobService();
+		const controller = new AbortController();
+		const registering = createDeferredPromise<undefined>();
+		const registered = createDeferredPromise<{ status: 'started'; jobId: string }>();
+		jobService.registerWorkflowJob.mockImplementation(async () => {
+			registering.resolve(undefined);
+			return await registered.promise;
+		});
+		const stop = vi.fn().mockResolvedValue(undefined);
+		Container.set(ExecutionService, mock<ExecutionService>({ stop }));
+		const tool = await buildBackgroundTool();
+		const { ctx, suspend } = makeParentCtx();
+		const pending = tool.handler?.({}, {
+			...(ctx as object),
+			abortSignal: controller.signal,
+		} as never);
+		await registering.promise;
+
+		controller.abort(new Error('Response stopped'));
+		await expect(pending).rejects.toThrow('Response stopped');
+		expect(stop).toHaveBeenCalledExactlyOnceWith('exec-1', ['wf-1']);
+
+		registered.resolve({ status: 'started', jobId: 'job-1' });
+		await vi.dynamicImportSettled();
+		expect(suspend).not.toHaveBeenCalled();
+	});
+
 	it('polls a wait due soon to completion instead of backgrounding it', async () => {
 		setPersistence(settledInDb());
 		const jobService = setJobService();
@@ -977,6 +1190,27 @@ describe('workflow tool → background job handoff', () => {
 			data: { Result: [{ approved: true }] },
 		});
 		expect(suspend).not.toHaveBeenCalled();
+	});
+
+	it('keeps the input files when the workflow finished during registration', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const settled = settledInDb();
+		settled.data.resultData.runData.Result[0].data = { main: [[{ json: {}, binary }]] };
+		setPersistence(settled);
+		setJobService();
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map([['fs:x', inputFile]]) });
+		bridge.adoptFromItems.mockResolvedValue({ items: [], files: [], skippedFiles: [] });
+		Container.set(AgentFileBridge, bridge);
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx();
+
+		const result = await tool.handler?.({ files: { data: 'aid-1' } }, ctx);
+
+		expect(result).toMatchObject({ status: 'success', jobId: 'job-1' });
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
 	});
 
 	it('returns the inline result when marking it as delivered fails', async () => {
@@ -1144,5 +1378,149 @@ describe('workflow tool → background job handoff', () => {
 		});
 		// The settle hook recorded the actual outcome. Leave it pending for delivery.
 		expect(jobService.markMailConsumed).not.toHaveBeenCalled();
+	});
+});
+
+describe('workflow tool → file input', () => {
+	afterEach(() => {
+		Container.reset();
+	});
+
+	it('passes file IDs to the trigger item as binary', async () => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map() });
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		await tool.handler?.({ files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't-1' },
+		} as never);
+
+		expect(bridge.toBinary).toHaveBeenCalledWith(
+			{ data: 'aid-1' },
+			{ projectId: 'p1', threadId: 't-1' },
+		);
+		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const [triggerItems] = Object.values(pinData ?? {});
+		expect(triggerItems[0].binary).toEqual(binary);
+		expect(triggerItems[0].json).not.toHaveProperty('files');
+	});
+
+	it('passes the input files to adoptFromItems, so an unchanged file keeps its ID', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { Edit: [{ data: { main: [[{ json: {}, binary }]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.toBinary.mockResolvedValue({ binary, stored: new Map([['fs:x', inputFile]]) });
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: {}, binary: { data: 'aid-1' } }],
+			files: [],
+			skippedFiles: [],
+		});
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(vi.fn().mockResolvedValue('exec-1'), { workflowLoader }),
+		);
+
+		const output = await tool.handler?.({ files: { data: 'aid-1' } }, {
+			persistence: { threadId: 't-1' },
+		} as never);
+
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] }, files: [] });
+	});
+
+	it('keeps a workflow input named files in the JSON and does not resolve it as files', async () => {
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		Container.set(AgentFileBridge, bridge);
+		const fieldsTrigger = {
+			...triggerNode,
+			parameters: {
+				inputSource: 'workflowInputs',
+				workflowInputs: { values: [{ name: 'files', type: 'string' }] },
+			},
+		};
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue({
+			...workflow,
+			nodes: [fieldsTrigger],
+		} as unknown as WorkflowEntity);
+		const run = vi.fn().mockResolvedValue('exec-1');
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		await tool.handler?.({ files: 'a.txt' }, { persistence: { threadId: 't-1' } } as never);
+
+		expect(bridge.toBinary).not.toHaveBeenCalled();
+		const { pinData } = run.mock.calls[0][0] as IWorkflowExecutionDataProcess;
+		const [triggerItems] = Object.values(pinData ?? {});
+		expect(triggerItems[0].json).toEqual({ files: 'a.txt' });
+		expect(triggerItems[0].binary).toBeUndefined();
+	});
+
+	it('restores the input files on resume, so an unchanged file keeps its ID', async () => {
+		const binary = { data: { id: 'fs:x', data: 'fs', mimeType: 'image/png' } };
+		const inputFile = { fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		Container.set(ExecutionPersistence, {
+			findSingleExecution: vi.fn().mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: { Edit: [{ data: { main: [[{ json: {}, binary }]] } }] } } },
+			}),
+		} as unknown as ExecutionPersistence);
+		const bridge = mock<AgentFileBridge>();
+		bridge.adoptFromItems.mockResolvedValue({
+			items: [{ json: {}, binary: { data: 'aid-1' } }],
+			files: [],
+			skippedFiles: [],
+		});
+		Container.set(AgentFileBridge, bridge);
+		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
+		const run = vi.fn();
+		const tool = await resolveWorkflowTool(
+			{ type: 'workflow', workflow: 'Lookup workflow' },
+			buildContext(run, { workflowLoader }),
+		);
+
+		const output = await tool.handler?.({}, {
+			persistence: { threadId: 't-1' },
+			continuation: { executionId: 'exec-1', inputFiles: { 'fs:x': inputFile } },
+		} as never);
+
+		expect(run).not.toHaveBeenCalled();
+		expect(bridge.toBinary).not.toHaveBeenCalled();
+		const stored = bridge.adoptFromItems.mock.calls[0][2];
+		expect(stored?.get('fs:x')).toEqual(inputFile);
+		expect(output).toMatchObject({ data: { Edit: [{ binary: { data: 'aid-1' } }] } });
 	});
 });

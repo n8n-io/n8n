@@ -8,11 +8,11 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import * as create from './create.operation';
 import { updateDisplayOptions } from '../../../../../../utils/utilities';
-import { assertPathSegment } from '../../helpers/utils';
+import { assertPathSegment } from '../../../helpers/utils';
 import { resolveItemMapperValues, resolveMatchedItemIds, updateItemFields } from '../../item';
-import { listRLC, untilSiteSelected } from '../../list';
+import { listRLC, untilSiteSelected } from '../../../list';
 import { itemColumns } from '../../list/columns';
-import { resolveSiteId, siteRLC } from '../../site';
+import { resolveSiteId, siteRLC } from '../../../site';
 
 const properties: INodeProperties[] = [
 	{

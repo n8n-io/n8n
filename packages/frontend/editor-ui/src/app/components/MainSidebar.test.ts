@@ -1,4 +1,6 @@
 import { reactive } from 'vue';
+import { within } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -15,10 +17,12 @@ import type { Version } from '@n8n/rest-api-client/api/versions';
 import { ABOUT_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 
 const openTopUpMock = vi.hoisted(() => vi.fn());
+const routerPushMock = vi.hoisted(() => vi.fn());
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({
 		resolve: vi.fn(() => ({ meta: {} })),
+		push: routerPushMock,
 	}),
 	useRoute: () => reactive({ params: {} }),
 	RouterLink: vi.fn(),
@@ -52,6 +56,7 @@ const mockVersion: Version = {
 describe('MainSidebar', () => {
 	beforeEach(() => {
 		openTopUpMock.mockReset();
+		routerPushMock.mockReset();
 		renderComponent = createComponentRenderer(MainSidebar, {
 			pinia: createTestingPinia(),
 		});
@@ -247,11 +252,76 @@ describe('MainSidebar', () => {
 
 			const { getByText, findByText } = renderComponent();
 
-			getByText('Settings').click();
-			const creditsItem = await findByText('Gateway credits');
-			creditsItem.click();
+			await userEvent.click(getByText('Settings'));
+			await userEvent.click(await findByText('Gateway credits'));
 
 			expect(openTopUpMock).toHaveBeenCalledWith({ source: 'settings_page' });
+			expect(routerPushMock).not.toHaveBeenCalled();
+		});
+
+		it('should list the settings links under their section headings', async () => {
+			settingsStore.settings = {
+				...defaultSettings,
+				aiGateway: {
+					enabled: true,
+					budget: 0,
+					cloudUbbEnabled: true,
+				},
+			};
+
+			const { getByText, findByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			const list = await findByTestId('main-sidebar-settings-list');
+
+			const personalHeading = within(list).getByText('Personal');
+			const billingHeading = within(list).getByText('Billing');
+			expect(within(list).getByText('Gateway credits')).toBeInTheDocument();
+			expect(within(list).queryByText('General')).not.toBeInTheDocument();
+			// Headings keep the section order.
+			expect(
+				personalHeading.compareDocumentPosition(billingHeading) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		});
+
+		it('should follow the route of a selected settings link', async () => {
+			const { getByText, findByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			await userEvent.click(await findByTestId('settings-personal'));
+
+			expect(routerPushMock).toHaveBeenCalledWith({ name: 'PersonalSettings' });
+		});
+
+		it('should open the settings menu from the keyboard and give focus back on close', async () => {
+			const { getByTestId, findByTestId, queryByTestId } = renderComponent();
+			const trigger = getByTestId('main-sidebar-settings');
+
+			expect(trigger).toHaveAttribute('role', 'button');
+			expect(trigger).toHaveAttribute('aria-haspopup', 'menu');
+
+			trigger.focus();
+			await userEvent.keyboard('{Enter}');
+
+			expect(await findByTestId('main-sidebar-settings-list')).toBeInTheDocument();
+			expect(trigger).toHaveAttribute('aria-expanded', 'true');
+
+			await userEvent.keyboard('{Escape}');
+
+			expect(queryByTestId('main-sidebar-settings-list')).not.toBeInTheDocument();
+			expect(trigger).toHaveFocus();
+		});
+
+		it('should keep sign out in a footer below the settings list', async () => {
+			const { getByText, findByTestId, getByTestId } = renderComponent();
+
+			await userEvent.click(getByText('Settings'));
+			const signOut = await findByTestId('main-sidebar-log-out');
+
+			expect(getByTestId('main-sidebar-settings-footer')).toContainElement(signOut);
+			expect(
+				getByTestId('main-sidebar-settings-list').querySelector('[data-menu-items]'),
+			).not.toContainElement(signOut);
 		});
 	});
 });

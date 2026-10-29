@@ -1,9 +1,10 @@
 import { mock } from 'vitest-mock-extended';
 import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { dirname, resolve, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import simpleGit, { type SimpleGit } from 'simple-git';
+import { GitError, simpleGit, type SimpleGit } from 'simple-git';
 import { mkdir, rename, rm } from 'node:fs/promises';
 import { Container } from '@n8n/di';
 import { DeploymentConfig, SecurityConfig } from '@n8n/config';
@@ -37,9 +38,9 @@ const mockGit = {
 	env: vi.fn().mockReturnThis(),
 } as unknown as Mocked<SimpleGit>;
 
-vi.mock('simple-git', () => ({
-	__esModule: true,
-	default: vi.fn(() => mockGit),
+vi.mock('simple-git', async () => ({
+	GitError: (await vi.importActual<typeof import('simple-git')>('simple-git')).GitError,
+	simpleGit: vi.fn(() => mockGit),
 }));
 
 const mockSimpleGit = vi.mocked(simpleGit);
@@ -654,6 +655,35 @@ describe('Git Node', () => {
 
 			expect(mockGit.checkout).not.toHaveBeenCalled();
 			expect(mockGit.push).toHaveBeenCalled();
+		});
+
+		it('should not include git command arguments in the error when push fails', async () => {
+			mockExecuteFunctions.getNodeParameter
+				.mockReturnValueOnce('push')
+				.mockReturnValueOnce('/repo')
+				.mockReturnValueOnce({ branch: '' })
+				.mockReturnValueOnce('gitPassword');
+			mockExecuteFunctions.getCredentials.mockResolvedValue({
+				username: 'user',
+				password: 'secret-token',
+			});
+			mockGit.listConfig.mockResolvedValueOnce({
+				files: ['.git/config'],
+				values: { '.git/config': { 'remote.origin.url': 'https://github.com/test/repo.git' } },
+			} as any);
+			mockGit.push.mockRejectedValueOnce(
+				new GitError(
+					{ commands: ['push', 'https://user:secret-token@github.com/test/repo.git'] } as any,
+					'fatal: unable to access repository',
+				),
+			);
+
+			const error = await gitNode.execute.call(mockExecuteFunctions).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect(error).not.toBeInstanceOf(GitError);
+			expect((error as Error).message).toBe('fatal: unable to access repository');
+			expect(JSON.stringify(error)).not.toContain('secret-token');
 		});
 
 		it('should not push to a blocked config-derived target repository path', async () => {
@@ -2097,6 +2127,7 @@ invalid line without proper format`;
 			'remote.origin.receivepack',
 			'gpg.openpgp.program',
 			'gpg.ssh.defaultKeyCommand',
+			'credential.https://example.invalid.helper',
 		])("rejects repository Git config key '%s'", async (configKey) => {
 			mockExecuteFunctions.getNodeParameter
 				.mockReturnValueOnce('add')
@@ -2122,9 +2153,11 @@ invalid line without proper format`;
 			{ operation: 'add', params: ['add', '/repo', {}, 'file.txt'], guard: 'add' },
 			{ operation: 'commit', params: ['commit', '/repo', {}, 'repro commit'], guard: 'commit' },
 			{ operation: 'fetch', params: ['fetch', '/repo', {}], guard: 'fetch' },
+			{ operation: 'log', params: ['log', '/repo', {}], guard: 'log' },
 			{ operation: 'pull', params: ['pull', '/repo', {}], guard: 'pull' },
 			{ operation: 'push', params: ['push', '/repo', {}], guard: 'push' },
 			{ operation: 'pushTags', params: ['pushTags', '/repo', {}], guard: 'pushTags' },
+			{ operation: 'reflog', params: ['reflog', '/repo', {}], guard: 'raw' },
 			{ operation: 'status', params: ['status', '/repo', {}], guard: 'status' },
 			{
 				operation: 'switchBranch',
@@ -2148,7 +2181,12 @@ invalid line without proper format`;
 			await expect(gitNode.execute.call(mockExecuteFunctions)).rejects.toThrow(
 				"Repository Git config key 'filter.poc.clean' is not allowed",
 			);
-			expect((mockGit as any)[guard]).not.toHaveBeenCalled();
+			// `raw` also carries the repository-layout `rev-parse`, which runs before the guard.
+			if (guard === 'raw') {
+				expect(mockGit.raw).not.toHaveBeenCalledWith(['reflog', expect.anything()]);
+			} else {
+				expect((mockGit as any)[guard]).not.toHaveBeenCalled();
+			}
 		});
 
 		it('does not pin command config when enableGitNodeAllConfigKeys is true', async () => {
@@ -2163,7 +2201,9 @@ invalid line without proper format`;
 			for (const flag of expectedFlags) {
 				expect(unsafe?.[flag]).toBeUndefined();
 			}
-			expect(mockGit.listConfig).not.toHaveBeenCalled();
+			// The guard reads the merged config, then returns before the denylist check, so it
+			// never looks up the repository-local scope.
+			expect(mockGit.listConfig).not.toHaveBeenCalledWith('local');
 		});
 	});
 });

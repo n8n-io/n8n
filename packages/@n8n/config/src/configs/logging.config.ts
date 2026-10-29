@@ -54,10 +54,14 @@ export const LOG_SCOPES = [
 	'scheduler',
 	'system-tasks',
 	'enqueued-execution-recovery',
+	'memory-guard',
 	'engine-v2',
 	'policy',
 	'activity-log',
 	'instance-reporting',
+	'idempotency-key',
+	'inbound-auth',
+	'knowledge',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];

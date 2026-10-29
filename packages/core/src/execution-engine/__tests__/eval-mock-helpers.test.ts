@@ -8,6 +8,7 @@ import {
 	callEvalMockHandler,
 	isSecretCredentialProperty,
 	normalizeLegacyRequest,
+	resolveEvalMockRequestUrl,
 	serializeMockToHttpResponse,
 } from '../eval-mock-helpers';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from '../index';
@@ -340,7 +341,17 @@ describe('eval-mock-helpers', () => {
 
 			expect(result.headers).toEqual({ 'x-custom': 'value' });
 			expect(result.statusCode).toBe(201);
-			expect(result.statusMessage).toBe('OK');
+			expect(result.statusMessage).toBe('Created');
+		});
+
+		it('should carry the standard reason phrase of the status code', () => {
+			const result = serializeMockToHttpResponse({
+				body: { error: 'not found' },
+				headers: {},
+				statusCode: 404,
+			});
+
+			expect(result.statusMessage).toBe('Not Found');
 		});
 
 		it('should pass through a Buffer body without double-encoding', () => {
@@ -494,6 +505,30 @@ describe('eval-mock-helpers', () => {
 	// normalizeLegacyRequest
 	// -----------------------------------------------------------------------
 	describe('normalizeLegacyRequest', () => {
+		it('maps the legacy `simple: false` opt-out to ignoreHttpStatusErrors', () => {
+			const fromString = normalizeLegacyRequest('https://api.example.com/data', {
+				method: 'GET',
+				simple: false,
+			});
+			const fromObject = normalizeLegacyRequest({
+				uri: 'https://api.example.com/data',
+				method: 'GET',
+				simple: false,
+				resolveWithFullResponse: true,
+			});
+
+			expect(fromString.ignoreHttpStatusErrors).toBe(true);
+			expect(fromObject.ignoreHttpStatusErrors).toBe(true);
+		});
+
+		it('leaves ignoreHttpStatusErrors unset when the legacy request did not opt out', () => {
+			const defaulted = normalizeLegacyRequest({ uri: 'https://api.example.com', method: 'GET' });
+			const explicit = normalizeLegacyRequest('https://api.example.com', { simple: true });
+
+			expect('ignoreHttpStatusErrors' in defaulted).toBe(false);
+			expect('ignoreHttpStatusErrors' in explicit).toBe(false);
+		});
+
 		it('should convert string URI + options object into IHttpRequestOptions', () => {
 			const options: IRequestOptions = {
 				method: 'POST',
@@ -602,6 +637,98 @@ describe('eval-mock-helpers', () => {
 	});
 
 	// -----------------------------------------------------------------------
+	// resolveEvalMockRequestUrl
+	// -----------------------------------------------------------------------
+	describe('resolveEvalMockRequestUrl', () => {
+		it('should build a path-style S3 URL from service, path and query', () => {
+			const result = resolveEvalMockRequestUrl(
+				{
+					method: 'GET',
+					url: '',
+					qs: {
+						service: 's3',
+						path: '/my-bucket/',
+						query: { 'list-type': 2 },
+						_region: 'eu-west-1',
+					},
+				},
+				'aws',
+			);
+
+			expect(result.url).toBe('https://s3.eu-west-1.amazonaws.com/my-bucket/?list-type=2');
+			expect(result.qs).toBeUndefined();
+		});
+
+		it('should take the region from the request when qs has none', () => {
+			const result = resolveEvalMockRequestUrl(
+				{
+					method: 'POST',
+					url: '',
+					qs: { service: 'lambda', path: '/2015-03-31/functions/fn/invocations' },
+					region: 'ap-southeast-2',
+				} as IHttpRequestOptions,
+				'awsAssumeRole',
+			);
+
+			expect(result.url).toBe(
+				'https://lambda.ap-southeast-2.amazonaws.com/2015-03-31/functions/fn/invocations',
+			);
+		});
+
+		it('should use the China domain for cn- regions', () => {
+			const result = resolveEvalMockRequestUrl(
+				{ method: 'GET', url: '', qs: { service: 'sqs', path: '/', _region: 'cn-north-1' } },
+				'aws',
+			);
+
+			expect(result.url).toBe('https://sqs.cn-north-1.amazonaws.com.cn/');
+		});
+
+		it('should not mutate the original request', () => {
+			const original: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 'my-bucket.s3', path: '', query: { location: '' } },
+			};
+
+			resolveEvalMockRequestUrl(original, 'aws');
+
+			expect(original.url).toBe('');
+			expect(original.qs).toEqual({ service: 'my-bucket.s3', path: '', query: { location: '' } });
+		});
+
+		it('should return a request that already has a URL unchanged', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: 'https://custom.example.com/bucket',
+				qs: { service: 's3' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+
+		it('should return the request unchanged when the service makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 'my bucket.s3', path: '/', _region: 'eu-west-1' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+
+		it('should return the request unchanged when the region makes an invalid URL', () => {
+			const request: IHttpRequestOptions = {
+				method: 'GET',
+				url: '',
+				qs: { service: 's3', path: '/my-bucket/', _region: 'EU (Ireland)' },
+			};
+
+			expect(resolveEvalMockRequestUrl(request, 'aws')).toBe(request);
+		});
+	});
+
+	// -----------------------------------------------------------------------
 	// callEvalMockHandler
 	// -----------------------------------------------------------------------
 	describe('callEvalMockHandler', () => {
@@ -623,6 +750,73 @@ describe('eval-mock-helpers', () => {
 			const result = await callEvalMockHandler(handler, requestOptions, node);
 
 			expect(result).toEqual({ data: 'mocked' });
+		});
+
+		const notFoundResponse: EvalMockHttpResponse = {
+			body: { error: 'not found' },
+			headers: { 'content-type': 'application/json' },
+			statusCode: 404,
+		};
+
+		it('hands a 404 back as a full response when a legacy request set simple:false', async () => {
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+
+			const result = await callEvalMockHandler(
+				handler,
+				normalizeLegacyRequest({
+					uri: requestOptions.url,
+					method: 'GET',
+					simple: false,
+					resolveWithFullResponse: true,
+				}),
+				node,
+				true,
+				'legacy',
+			);
+
+			expect(result).toMatchObject({
+				statusCode: 404,
+				statusMessage: 'Not Found',
+				body: { error: 'not found' },
+			});
+		});
+
+		it('hands a 404 body back when ignoreHttpStatusErrors is set without a full response', async () => {
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+
+			const result = await callEvalMockHandler(
+				handler,
+				{ ...requestOptions, ignoreHttpStatusErrors: true },
+				node,
+			);
+
+			expect(result).toEqual({ error: 'not found' });
+		});
+
+		it('honours the except list of an ignoreHttpStatusErrors config', async () => {
+			const options: IHttpRequestOptions = {
+				...requestOptions,
+				ignoreHttpStatusErrors: { ignore: true, except: [404] },
+			};
+			const notFound: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+			const serverError: EvalLlmMockHandler = vi
+				.fn()
+				.mockResolvedValue({ ...notFoundResponse, statusCode: 500 });
+
+			await expect(callEvalMockHandler(notFound, options, node)).rejects.toThrow(
+				'Request failed with status code 404',
+			);
+			await expect(callEvalMockHandler(serverError, options, node, true)).resolves.toMatchObject({
+				statusCode: 500,
+			});
+		});
+
+		it('still throws for status >= 400 when ignoreHttpStatusErrors is false', async () => {
+			const handler: EvalLlmMockHandler = vi.fn().mockResolvedValue(notFoundResponse);
+
+			await expect(
+				callEvalMockHandler(handler, { ...requestOptions, ignoreHttpStatusErrors: false }, node),
+			).rejects.toThrow('Request failed with status code 404');
 		});
 
 		it('should return serialized response when returnFullResponse is true', async () => {

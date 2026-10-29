@@ -2,16 +2,18 @@
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useI18n } from '@n8n/i18n';
+import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useRunWorkflow } from '@/app/composables/useRunWorkflow';
 import { CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useWorkflowExecutionStateStore } from '@/app/stores/workflowExecutionState.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { useChatHubPanelStore } from '@/features/ai/chatHub/chatHubPanel.store';
+import { useUnusableWorkflowCredentials } from '@/features/credentials/composables/useUnusableWorkflowCredentials';
 import { computed, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 const {
 	name,
 	type,
@@ -31,6 +33,7 @@ const {
 }>();
 
 const style = useCssModule();
+const { isRestricted, restrictionScope } = useCanvasNode();
 const containerClass = computed(() => ({
 	[cls ?? '']: true,
 	[style.container]: true,
@@ -49,6 +52,10 @@ const logsStore = useLogsStore();
 const chatHubPanelStore = useChatHubPanelStore();
 const { runEntireWorkflow } = useRunWorkflow({ router });
 const { startChat } = useCanvasOperations();
+const { reason: unusableCredentialReason } = useUnusableWorkflowCredentials(
+	() => workflowDocumentStore.value.usedCredentials,
+	() => workflowDocumentStore.value.allNodes,
+);
 
 const chatTriggerNode = computed(() =>
 	(workflowDocumentStore.value?.allNodes ?? []).find(
@@ -63,6 +70,16 @@ const isChatHubAvailable = computed(
 const isChatHubOpen = computed(() => chatHubPanelStore.isOpen);
 const isChatOpen = computed(() =>
 	isChatHubAvailable.value ? isChatHubOpen.value : logsStore.isOpen,
+);
+const restrictionTitle = computed(() =>
+	i18n.baseText(
+		restrictionScope.value === 'project'
+			? 'node.restricted.project.title'
+			: 'node.restricted.instance.title',
+	),
+);
+const executeDisabledReason = computed(() =>
+	isRestricted.value ? restrictionTitle.value : unusableCredentialReason.value,
 );
 const isExecuting = computed(() => workflowExecutionStateStore.value.isWorkflowRunning);
 const testId = computed(() => `execute-workflow-button-${name}`);
@@ -94,13 +111,13 @@ async function handleClickExecute() {
 	<div :class="containerClass" @click.stop.prevent @mousedown.stop.prevent>
 		<div>
 			<div :class="$style.bolt">
-				<N8nIcon icon="bolt-filled" size="large" />
+				<N8nIcon icon="bolt-filled" size="large" :class="{ [$style.restricted]: isRestricted }" />
 			</div>
 
 			<template v-if="!readOnly">
 				<template v-if="type === CHAT_TRIGGER_NODE_TYPE">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						v-if="isChatOpen"
 						icon="message-circle"
 						size="large"
@@ -109,6 +126,16 @@ async function handleClickExecute() {
 						:label="i18n.baseText('chat.hide')"
 						@click.capture="closeChat"
 					/>
+					<N8nTooltip v-else-if="isRestricted" :content="restrictionTitle">
+						<N8nButton
+							variant="solid"
+							icon="message-circle"
+							size="large"
+							disabled
+							:data-test-id="testId"
+							:label="i18n.baseText('chat.open')"
+						/>
+					</N8nTooltip>
 					<KeyboardShortcutTooltip
 						v-else
 						:label="i18n.baseText('chat.open')"
@@ -125,16 +152,17 @@ async function handleClickExecute() {
 						/>
 					</KeyboardShortcutTooltip>
 				</template>
-				<N8nButton
-					variant="solid"
-					v-else
-					icon="flask-conical"
-					size="large"
-					:disabled="isExecuting"
-					:data-test-id="testId"
-					:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
-					@click.capture="handleClickExecute"
-				/>
+				<N8nTooltip v-else :disabled="!executeDisabledReason" :content="executeDisabledReason">
+					<N8nButton
+						variant="solid"
+						icon="flask-conical"
+						size="large"
+						:disabled="isExecuting || !!executeDisabledReason"
+						:data-test-id="testId"
+						:label="i18n.baseText('nodeView.runButtonText.executeWorkflow')"
+						@click.capture="handleClickExecute"
+					/>
+				</N8nTooltip>
 			</template>
 		</div>
 	</div>
@@ -180,9 +208,17 @@ async function handleClickExecute() {
 		pointer-events: all;
 	}
 
+	&.interactive.hovered button[disabled] {
+		opacity: 0.5;
+	}
+
 	&.isExperimentalNdvActive {
 		height: var(--spacing--2xl);
 	}
+}
+
+.restricted {
+	opacity: 0.5;
 }
 
 .bolt {

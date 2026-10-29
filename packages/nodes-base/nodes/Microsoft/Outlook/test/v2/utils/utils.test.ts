@@ -1,5 +1,5 @@
 import type { INode } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, UserError } from 'n8n-workflow';
 
 import {
 	createMessage,
@@ -92,6 +92,81 @@ describe('Test MicrosoftOutlookV2, prepareFilterString', () => {
 		const data = prepareFilterString(filters);
 
 		expect(data).toEqual(result);
+	});
+
+	it('should keep a quote in the sender inside its literal', () => {
+		const filters = { filterBy: 'filters', filters: { sender: "o'brien@mail.com" } };
+
+		expect(prepareFilterString(filters)).toEqual(
+			"(from/emailAddress/address eq 'o''brien@mail.com' or from/emailAddress/name eq 'o''brien@mail.com')",
+		);
+	});
+
+	it('should keep a quote in a folder id inside its literal', () => {
+		const filters = {
+			filterBy: 'filters',
+			filters: { foldersToInclude: ["a'b"], foldersToExclude: ["c'd"] },
+		};
+
+		expect(prepareFilterString(filters)).toEqual(
+			"(parentFolderId eq 'a''b') and parentFolderId ne 'c''d'",
+		);
+	});
+
+	it.each(['receivedAfter', 'receivedBefore'])('rejects a %s that is not a date', (field) => {
+		const filters = {
+			filterBy: 'filters',
+			filters: { [field]: "2023-07-31T21:00:00.000Z or contains(subject,'x')" },
+		};
+
+		expect(() => prepareFilterString(filters)).toThrow(UserError);
+	});
+
+	it('sends a received date in the exact form it was given', () => {
+		const filters = {
+			filterBy: 'filters',
+			filters: {
+				receivedAfter: '2023-07-31T21:00:00.000Z',
+				receivedBefore: '2023-08-14T21:00:00Z',
+			},
+		};
+
+		expect(prepareFilterString(filters)).toEqual(
+			'receivedDateTime ge 2023-07-31T21:00:00.000Z and receivedDateTime le 2023-08-14T21:00:00Z',
+		);
+	});
+
+	it('accepts a received date given as milliseconds since the epoch', () => {
+		const filters = { filterBy: 'filters', filters: { receivedAfter: 1690837200000 } };
+
+		expect(prepareFilterString(filters)).toEqual('receivedDateTime ge 2023-07-31T21:00:00.000Z');
+	});
+
+	it.each([
+		[true, 'hasAttachments eq true'],
+		['true', 'hasAttachments eq true'],
+		['True', 'hasAttachments eq true'],
+		['false', 'hasAttachments eq false'],
+		['False', 'hasAttachments eq false'],
+	])('reduces a hasAttachments of %j to %j', (hasAttachments, expected) => {
+		const filters = { filterBy: 'filters', filters: { hasAttachments } };
+
+		expect(prepareFilterString(filters)).toEqual(expected);
+	});
+
+	it.each([['no'], ['0'], [1], ['true and isRead eq false']])(
+		'rejects a hasAttachments of %j',
+		(hasAttachments) => {
+			const filters = { filterBy: 'filters', filters: { hasAttachments } };
+
+			expect(() => prepareFilterString(filters)).toThrow(UserError);
+		},
+	);
+
+	it('sends no clause when hasAttachments is not set', () => {
+		const filters = { filterBy: 'filters', filters: { hasAttachments: false } };
+
+		expect(prepareFilterString(filters)).toBeUndefined();
 	});
 
 	it('should wrap multiple folders to include in parentheses to ensure correct operator precedence', () => {

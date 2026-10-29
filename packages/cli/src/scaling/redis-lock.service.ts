@@ -11,7 +11,7 @@ import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { sleep } from '@n8n/utils/sleep';
 import { createHash, randomUUID } from 'node:crypto';
 
-import { RedisClientService } from '@/services/redis-client.service';
+import { RedisClientService } from '@n8n/backend-services';
 import { OnShutdown } from '@n8n/decorators';
 
 const COMMAND_TIMEOUT_MS = 5_000;

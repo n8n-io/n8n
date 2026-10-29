@@ -54,11 +54,13 @@ erDiagram
 "public.credentials_entity" {
   timestamp_3__with_time_zone createdAt
   text data
+  text description
   varchar_36_ id
   boolean isGlobal
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  timestamp_3__with_time_zone pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_128_ type
@@ -79,6 +81,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled

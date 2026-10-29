@@ -8,7 +8,7 @@
 	"resources": {
 		"primaryDocumentation": [
 			{
-				"url": "https://docs.n8n.io/integrations/builtin/app-nodes/n8n-nodes-base.savedTime/"
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.timesaved"
 			}
 		]
 	},

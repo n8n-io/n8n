@@ -162,6 +162,26 @@ describe('Telemetry — redaction wrapping', () => {
 		expect(integration.receivedEvents).toEqual([{ safe: 'ok' }]);
 	});
 
+	it('redacts experimental event hooks', async () => {
+		const onDecideEnd = vi.fn();
+		const integration = { experimental_onDecideEnd: onDecideEnd } as AiSdkTelemetry;
+		const built = await new Telemetry()
+			.redact((data) => {
+				const filtered = { ...data };
+				delete filtered.secret;
+				return filtered;
+			})
+			.integration(integration)
+			.build();
+
+		const wrapped = built.integrations[0] as {
+			experimental_onDecideEnd: (event: Record<string, unknown>) => void;
+		};
+		wrapped.experimental_onDecideEnd({ secret: 'hidden', safe: 'ok' });
+
+		expect(onDecideEnd).toHaveBeenCalledWith({ safe: 'ok' });
+	});
+
 	it('preserves executor control fields while redacting their event data', async () => {
 		let modelOptions: Record<string, unknown> | undefined;
 		let toolOptions: Record<string, unknown> | undefined;

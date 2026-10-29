@@ -3,7 +3,7 @@ import type { INode, INodeTypeDescription, IWorkflowBase } from 'n8n-workflow';
 import { NodeHelpers } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { NodeTypes } from '@/node-types';
 
 import type { PartialUpdateOperation } from './workflow-operations';

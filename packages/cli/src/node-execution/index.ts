@@ -13,3 +13,15 @@ export {
 	isUnsupportedEphemeralNodeOperation,
 	unsupportedEphemeralNodeOperationMessage,
 } from './node-tool-operation-support';
+export { resolveToolNodeType } from './resolve-tool-node-type';
+export type {
+	ExecuteNodeRequest,
+	ExecuteNodeOutputItem,
+	ExecuteNodeError,
+	ExecuteNodeResult,
+} from './execute-node.service';
+export {
+	ExecuteNodeService,
+	DEFAULT_EXECUTE_NODE_TIMEOUT_MS,
+	MAX_EXECUTE_NODE_TIMEOUT_MS,
+} from './execute-node.service';

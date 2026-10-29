@@ -1,9 +1,10 @@
 <script lang="ts" setup>
+import { ProjectSelfHealingSection } from '@n8n/frontend-module-self-healing';
 import type { Role } from '@n8n/permissions';
 import { computed, ref, watch, onBeforeMount, onMounted, nextTick } from 'vue';
-import { useRouter } from 'vue-router';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { deepCopy } from 'n8n-workflow';
-import { useDebounceFn } from '@vueuse/core';
+import { useDebounceFn, useEventListener } from '@vueuse/core';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useI18n } from '@n8n/i18n';
 import { type ResourceCounts, useProjectsStore } from '../projects.store';
@@ -11,12 +12,12 @@ import { DEFAULT_PROJECT_ICON } from '../projects.constants';
 import type { Project, ProjectRelation, ProjectMemberData } from '../projects.types';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
-import { DEBOUNCE_TIME, VIEWS } from '@/app/constants';
+import { DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useMessage } from '@/app/composables/useMessage';
 import ProjectDeleteDialog from '../components/ProjectDeleteDialog.vue';
 import ProjectRoleUpgradeDialog from '../components/ProjectRoleUpgradeDialog.vue';
 import ProjectMembersTable from '../components/ProjectMembersTable.vue';
 import { useRolesStore } from '@n8n/stores/roles.store';
-import { ROLE } from '@n8n/api-types';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -57,6 +58,7 @@ const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
 const settingsStore = useSettingsStore();
 const toast = useToast();
+const message = useMessage();
 const router = useRouter();
 const telemetry = useTelemetry();
 const documentTitle = useDocumentTitle();
@@ -112,11 +114,7 @@ const search = ref('');
 const membersTableState = ref<TableOptions>({
 	page: 0,
 	itemsPerPage: 10,
-	sortBy: [
-		{ id: 'firstName', desc: false },
-		{ id: 'lastName', desc: false },
-		{ id: 'email', desc: false },
-	],
+	sortBy: [],
 });
 
 const userSearchQuery = ref('');
@@ -127,11 +125,22 @@ const shouldFetchAllUsers = computed(
 	() => hasPermission(['rbac'], { rbac: { scope: 'user:list' } }) || canManageMembers.value,
 );
 
+// Instance owners and admins reach every team project through their global
+// role, so the backend lists them next to the real relations.
+const implicitMembersById = computed(
+	() =>
+		new Map(
+			(projectsStore.currentProject?.implicitMembers ?? []).map((member) => [member.id, member]),
+		),
+);
+
 const usersList = computed(() =>
 	userSearchResults.value.filter((user) => {
 		const isAlreadySharedWithUser = (formData.value.relations || []).find((r) => r.id === user.id);
 
-		return !isAlreadySharedWithUser;
+		// Adding them would create a relation that the member list gives no way to
+		// remove again, and it would buy them nothing: they already have access.
+		return !isAlreadySharedWithUser && !implicitMembersById.value.has(user.id);
 	}),
 );
 
@@ -160,19 +169,8 @@ const onAddMember = async (userId: string) => {
 	const user = usersStore.usersById[userId];
 	if (!user) return;
 
-	// Default to project admin for instance owners and admins
-	let role = firstLicensedRole.value;
+	const role = firstLicensedRole.value;
 	if (!role) return;
-
-	// If user is instance owner or admin, default to project admin
-	if (user.role === ROLE.Owner || user.role === ROLE.Admin) {
-		const projectAdminRole = rolesStore.processedProjectRoles.find(
-			(r) => r.slug === 'project:admin' && r.licensed,
-		);
-		if (projectAdminRole) {
-			role = 'project:admin';
-		}
-	}
 
 	// Optimistically update UI
 	if (!formData.value.relations.find((r) => r.id === userId)) {
@@ -437,6 +435,8 @@ const onConfirmDelete = async (transferId?: string) => {
 		if (projectsStore.currentProject) {
 			const projectName = projectsStore.currentProject?.name ?? '';
 			await projectsStore.deleteProject(projectsStore.currentProject.id, transferId);
+			// The project no longer exists, so its pending edits cannot be saved
+			isDirty.value = false;
 			await router.push({ name: VIEWS.HOMEPAGE });
 			toast.showMessage({
 				title: i18n.baseText('projects.settings.delete.successful.title', {
@@ -511,11 +511,15 @@ watch(
 
 // Add users property to the relation objects,
 // So that the table has access to the full user data
-const relationUsers = computed(() =>
-	formData.value.relations.map((relation) => {
+const relationUsers = computed<ProjectMemberData[]>(() => {
+	const implicitMembers = implicitMembersById.value;
+	const currentUserId = usersStore.currentUser?.id;
+
+	const rows: ProjectMemberData[] = formData.value.relations.map((relation) => {
 		const user = usersStore.usersById[relation.id];
 		// Ensure type safety for UI display while preserving original role in formData
 		const safeRole: Role['slug'] = isProjectRole(relation.role) ? relation.role : 'project:viewer';
+		const implicitMember = implicitMembers.get(relation.id);
 
 		return {
 			...user,
@@ -524,27 +528,86 @@ const relationUsers = computed(() =>
 			firstName: relation?.firstName ?? user?.firstName ?? null,
 			lastName: relation?.lastName ?? user?.lastName ?? null,
 			email: relation?.email ?? user?.email ?? null,
+			isCurrentUser: relation.id === currentUserId,
+			...(implicitMember && {
+				alwaysHasAccess: true,
+				instanceRole: implicitMember.globalRole,
+			}),
 		};
-	}),
-);
+	});
 
-const membersTableData = computed(() => ({
-	items: relationUsers.value,
-	count: relationUsers.value.length,
-}));
+	// Append the implicit members who hold no relation, so the existing rows keep
+	// their order.
+	const rowIds = new Set(rows.map((row) => row.id));
+	for (const member of implicitMembers.values()) {
+		if (rowIds.has(member.id)) continue;
+		rows.push({
+			id: member.id,
+			firstName: member.firstName ?? null,
+			lastName: member.lastName ?? null,
+			email: member.email ?? null,
+			role: member.globalRole.slug,
+			isPendingUser: usersStore.usersById[member.id]?.isPendingUser ?? false,
+			isCurrentUser: member.id === currentUserId,
+			alwaysHasAccess: true,
+			instanceRole: member.globalRole,
+		});
+	}
 
-const filteredMembersData = computed(() => {
-	if (!search.value.trim()) return membersTableData.value;
+	return rows;
+});
+
+const filteredMembers = computed(() => {
+	if (!search.value.trim()) return relationUsers.value;
 
 	const searchTerm = search.value.toLowerCase();
-	const filtered = relationUsers.value.filter((member) => {
+	return relationUsers.value.filter((member) => {
 		const fullName = `${member.firstName ?? ''} ${member.lastName ?? ''}`.toLowerCase();
 		const email = (member.email ?? '').toLowerCase();
 		return fullName.includes(searchTerm) || email.includes(searchTerm);
 	});
-
-	return { items: filtered, count: filtered.length };
 });
+
+const memberSortName = (member: ProjectMemberData) =>
+	`${member.firstName ?? ''} ${member.lastName ?? ''}`.trim() || (member.email ?? '');
+
+// The project creator comes first and the current user second, so both are
+// always on page one. Pending users have no name, so they sort by email.
+const sortedMembers = computed(() => {
+	const creatorId = projectsStore.currentProject?.creatorId;
+	const currentUserId = usersStore.currentUser?.id;
+	const rank = (member: ProjectMemberData) => {
+		if (creatorId && member.id === creatorId) return 0;
+		if (member.id === currentUserId) return 1;
+		return 2;
+	};
+
+	return [...filteredMembers.value].sort(
+		(a, b) =>
+			rank(a) - rank(b) ||
+			memberSortName(a).localeCompare(memberSortName(b), undefined, { sensitivity: 'base' }),
+	);
+});
+
+const membersPageData = computed(() => {
+	const { page, itemsPerPage } = membersTableState.value;
+	const start = page * itemsPerPage;
+	return {
+		items: sortedMembers.value.slice(start, start + itemsPerPage),
+		count: sortedMembers.value.length,
+	};
+});
+
+// Step back when a removal empties the last page.
+watch(
+	() => sortedMembers.value.length,
+	(count) => {
+		const { page, itemsPerPage } = membersTableState.value;
+		if (page > 0 && page * itemsPerPage >= count) {
+			membersTableState.value.page = Math.max(0, Math.ceil(count / itemsPerPage) - 1);
+		}
+	},
+);
 
 const SEARCH_THRESHOLD = 10;
 const shouldShowSearch = computed(() => relationUsers.value.length >= SEARCH_THRESHOLD);
@@ -616,6 +679,48 @@ onBeforeMount(async () => {
 
 const rolesManaged = computed(() => projectsStore.currentProject?.rolesManaged ?? false);
 
+// The icon saves on change, but the other fields need "Save". Warn before the user loses them.
+useEventListener(window, 'beforeunload', (event) => {
+	if (isDirty.value) {
+		event.preventDefault();
+	}
+});
+
+onBeforeRouteLeave(async (_to, _from, next) => {
+	if (!isDirty.value) {
+		next();
+		return;
+	}
+
+	const response = await message.confirm(
+		i18n.baseText('generic.unsavedWork.confirmMessage.message'),
+		{
+			title: i18n.baseText('generic.unsavedWork.confirmMessage.headline'),
+			type: 'warning',
+			confirmButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText'),
+			cancelButtonText: i18n.baseText('generic.unsavedWork.confirmMessage.cancelButtonText'),
+			showClose: true,
+		},
+	);
+
+	if (response === MODAL_CONFIRM) {
+		// An invalid form or a failed save stays dirty, so the user stays on the page
+		if (isValid.value) {
+			await onSubmit();
+		}
+		next(!isDirty.value);
+		return;
+	}
+
+	if (response === MODAL_CANCEL) {
+		onCancel();
+		next();
+		return;
+	}
+
+	next(false);
+});
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 
@@ -636,7 +741,7 @@ onMounted(async () => {
 				</N8nText>
 				<div :class="$style.headerButtons">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						native-type="button"
 						:disabled="!isDirty"
 						class="mr-2xs"
@@ -754,7 +859,7 @@ onMounted(async () => {
 						<ProjectMembersTable
 							v-model:table-options="membersTableState"
 							data-test-id="project-members-table"
-							:data="filteredMembersData"
+							:data="membersPageData"
 							:current-user-id="usersStore.currentUser?.id"
 							:project-roles="rolesStore.processedProjectRoles"
 							:actions="projectMembersActions"
@@ -792,13 +897,21 @@ onMounted(async () => {
 					"
 				/>
 
+				<ProjectSelfHealingSection
+					v-if="
+						settingsStore.moduleSettings['instance-ai']?.workflowSuggestionsEnabled &&
+						projectsStore.currentProject
+					"
+					:project-id="projectsStore.currentProject.id"
+				/>
+
 				<fieldset>
 					<h3 class="mb-m">{{ i18n.baseText('projects.settings.danger.title') }}</h3>
 					<small :class="$style.danger">{{
 						i18n.baseText('projects.settings.danger.message')
 					}}</small>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="large"
 						native-type="button"
 						data-test-id="project-settings-delete-button"
@@ -892,6 +1005,10 @@ onMounted(async () => {
 
 .membersTableContainer {
 	margin-top: var(--spacing--sm);
+
+	:global(.table-scroll) {
+		scrollbar-gutter: auto;
+	}
 }
 
 .search {
@@ -913,6 +1030,15 @@ onMounted(async () => {
 .userSelect {
 	max-width: var(--project-field--width);
 	width: 100%;
+}
+
+/* N8nSelect still resolves its sizes to the legacy element-plus heights (large = 42px),
+   so it never lines up with N8nInput. Pin the picker to the token N8nInput "large" uses,
+   which is the height of every other input on this page. */
+.userSelect :global(.el-select .el-input__inner) {
+	height: var(--height--lg);
+	min-height: var(--height--lg);
+	line-height: var(--height--lg);
 }
 
 /* Ensure textarea uses regular UI font, not monospace */

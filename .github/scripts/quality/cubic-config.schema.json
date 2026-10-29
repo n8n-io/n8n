@@ -5,7 +5,9 @@
 	"description": "JSON schema for cubic.yaml (and the legacy .cubic.yaml) so editors can validate and autocomplete repository settings.",
 	"type": "object",
 	"additionalProperties": true,
-	"required": ["version"],
+	"required": [
+		"version"
+	],
 	"properties": {
 		"version": {
 			"const": 1,
@@ -16,13 +18,26 @@
 			"description": "AI review behavior and optional YAML-defined custom agents.",
 			"additionalProperties": false,
 			"properties": {
+				"senior_reviewers": {
+					"type": "array",
+					"maxItems": 5,
+					"items": {
+						"type": "string",
+						"pattern": "^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,37}[a-zA-Z0-9])?$"
+					},
+					"description": "GitHub usernames to learn review patterns from. Overrides dashboard selections; an empty list disables senior reviewer learning."
+				},
 				"enabled": {
 					"type": "boolean",
 					"description": "Master toggle for AI reviews on this repository."
 				},
 				"sensitivity": {
 					"type": "string",
-					"enum": ["low", "medium", "high"],
+					"enum": [
+						"low",
+						"medium",
+						"high"
+					],
 					"description": "Controls how strictly Cubic flags issues."
 				},
 				"incremental_commits": {
@@ -63,12 +78,21 @@
 				},
 				"auto_approve_behavior": {
 					"type": "string",
-					"enum": ["disabled", "shadow", "live"],
+					"enum": [
+						"disabled",
+						"shadow",
+						"live"
+					],
 					"description": "Controls whether auto-approval is disabled, simulated in shadow mode, or submitted live to GitHub."
 				},
 				"auto_approve": {
 					"type": "string",
-					"enum": ["disabled", "always", "low_risk_only", "custom"],
+					"enum": [
+						"disabled",
+						"always",
+						"low_risk_only",
+						"custom"
+					],
 					"description": "Auto-approve mode: disabled, always approve clean runs, use low-risk heuristics, or use a custom prompt."
 				},
 				"auto_approve_custom_prompt": {
@@ -80,12 +104,20 @@
 				},
 				"ultrareview": {
 					"type": "string",
-					"enum": ["disabled", "manual", "automatic"],
+					"enum": [
+						"disabled",
+						"manual",
+						"automatic"
+					],
 					"description": "Master switch for ultrareviews. disabled blocks all ultrareviews (manual and automatic), manual allows only manual triggers (the default), automatic also enables the automatic triggers."
 				},
 				"auto_ultrareview": {
 					"type": "string",
-					"enum": ["disabled", "high_risk_only", "custom"],
+					"enum": [
+						"disabled",
+						"high_risk_only",
+						"custom"
+					],
 					"description": "Auto-trigger ultrareview mode: disabled, let cubic decide per PR using built-in high-risk criteria, or use a custom prompt."
 				},
 				"auto_ultrareview_custom_prompt": {
@@ -159,7 +191,10 @@
 				},
 				"coding_agent_provider": {
 					"type": "string",
-					"enum": ["cubic", "cursor_cloud_agent"],
+					"enum": [
+						"cubic",
+						"cursor_cloud_agent"
+					],
 					"description": "Which coding agent applies automatic fixes. 'cubic' uses cubic's built-in agent; 'cursor_cloud_agent' dispatches a Cursor cloud agent (requires Cursor configuration)."
 				}
 			}
@@ -222,8 +257,20 @@
 				},
 				"exclude_external_contributors": {
 					"type": "boolean",
-					"default": false,
-					"description": "If true, public-repository PRs from external contributors are reviewed but never auto-approved."
+					"default": true,
+					"description": "If true, public-repository PRs from external contributors, or from authors cubic cannot verify, are reviewed but never auto-approved."
+				},
+				"allow_open_issues": {
+					"type": "string",
+					"enum": [
+						"none",
+						"p3",
+						"p2_and_p3",
+						"p1_to_p3",
+						"all"
+					],
+					"default": "none",
+					"description": "Open cubic findings that don't block auto-approval, by priority. none blocks on any open finding; p3, p2_and_p3, and p1_to_p3 allow that range; all allows every open finding. A finding without a recorded priority blocks unless this is all. Every other auto-approval rule still applies."
 				},
 				"exclude_authors": {
 					"$ref": "#/$defs/globList",
@@ -271,13 +318,19 @@
 			"type": "object",
 			"description": "Definition of a YAML-managed custom agent.",
 			"additionalProperties": false,
-			"required": ["name"],
+			"required": [
+				"name"
+			],
 			"anyOf": [
 				{
-					"required": ["description"]
+					"required": [
+						"description"
+					]
 				},
 				{
-					"required": ["file_paths"]
+					"required": [
+						"file_paths"
+					]
 				}
 			],
 			"properties": {

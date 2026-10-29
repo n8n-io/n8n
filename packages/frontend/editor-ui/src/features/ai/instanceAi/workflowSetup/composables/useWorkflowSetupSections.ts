@@ -15,7 +15,7 @@ export function useWorkflowSetupSections(
 
 	const sections = computed<WorkflowSetupSection[]>(() => {
 		const result: WorkflowSetupSection[] = [];
-		const primaryByGroupKey = new Map<string, WorkflowSetupSection>();
+		const primaryByMergeKey = new Map<string, WorkflowSetupSection>();
 
 		for (const req of setupRequests.value) {
 			const parameterNames = (req.editableParameters ?? []).map((parameter) => parameter.name);
@@ -23,8 +23,8 @@ export function useWorkflowSetupSections(
 
 			const credentialType = req.credentialType;
 			const hasParams = parameterNames.length > 0;
-			const groupKey = buildGroupKey(req, credentialType);
-			const existingPrimary = groupKey ? primaryByGroupKey.get(groupKey) : undefined;
+			const mergeKey = buildCredentialMergeKey(req, credentialType);
+			const existingPrimary = mergeKey ? primaryByMergeKey.get(mergeKey) : undefined;
 
 			if (existingPrimary && !hasParams) {
 				existingPrimary.credentialTargetNodes.push({
@@ -66,7 +66,7 @@ export function useWorkflowSetupSections(
 			};
 
 			result.push(section);
-			if (groupKey && !existingPrimary) primaryByGroupKey.set(groupKey, section);
+			if (mergeKey && !existingPrimary) primaryByMergeKey.set(mergeKey, section);
 		}
 
 		return result;
@@ -116,28 +116,20 @@ function dropStaleResourceLocatorCache(
 }
 
 /**
- * Build a merge key for credential-only sections.
- *
- * When the request is a sub-node (has `subnodeRootNode`), the root node's name is
- * prepended so credential sections never merge across different root nodes —
- * sub-nodes of two different agents stay separate even when they share a
- * credential type. Standalone nodes (no subnode root) keep the original
- * credentialType+URL merging behaviour to preserve the existing UX
- * optimisation of configuring a shared credential once.
+ * Build a merge key for credential-only sections so a shared credential is
+ * configured once. HTTP Request nodes only merge when they target the same
+ * URL, since different hosts usually need different credentials.
  */
-function buildGroupKey(
+function buildCredentialMergeKey(
 	req: InstanceAiWorkflowSetupNode,
 	credentialType: string | undefined,
 ): string | null {
 	if (!credentialType) return null;
 
-	const rootPrefix = req.subnodeRootNode?.name ? `${req.subnodeRootNode.name}|` : '';
-	const baseKey = `${rootPrefix}${credentialType}`;
-
-	if (!isHttpRequestNodeType(req.node.type)) return baseKey;
+	if (!isHttpRequestNodeType(req.node.type)) return credentialType;
 
 	const url = req.node.parameters?.url;
-	if (typeof url !== 'string') return `${baseKey}|http|none`;
-	if (isExpression(url)) return `${baseKey}|http|expr|${req.node.name}`;
-	return `${baseKey}|http|${url}`;
+	if (typeof url !== 'string') return `${credentialType}|http|none`;
+	if (isExpression(url)) return `${credentialType}|http|expr|${req.node.name}`;
+	return `${credentialType}|http|${url}`;
 }

@@ -5,7 +5,7 @@ import {
 	fetchDiscordApplicationMetadata,
 	searchDiscordChannels,
 	settleDiscordActionMessage,
-} from '../platforms/discord-operations';
+} from '../platforms/discord/discord-operations';
 
 const API_URL = 'https://discord.com/api/v10';
 const BOT_TOKEN = 'test-bot-token';

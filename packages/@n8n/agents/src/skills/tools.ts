@@ -1,10 +1,12 @@
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import { posix } from 'path';
 import { z } from 'zod';
 
 import { Tool } from '../sdk/tool';
 import type { BuiltTool } from '../types';
 import {
 	RUNTIME_SKILL_FILE_NAME,
+	RUNTIME_SKILL_MAX_OUTPUT_BYTES,
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillLinkedFile,
 	type RuntimeSkillLinkedFiles,
@@ -13,10 +15,10 @@ import {
 	type RuntimeSkillSource,
 	type RuntimeSkillLoader,
 	type RuntimeSkillContent,
+	type RuntimeSkillLoadError,
 } from './types';
 
-const MAX_OUTPUT_BYTES = 64 * 1024;
-const TRUNCATION_FOOTER = '\n\n[... output truncated to 64 KB ...]';
+const TRUNCATION_FOOTER = `\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB ...]`;
 const LINKED_FILE_GROUPS: Array<keyof RuntimeSkillLinkedFiles> = [
 	'references',
 	'templates',
@@ -30,8 +32,8 @@ export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const linkedFileSchema: z.ZodType<RuntimeSkillLinkedFile> = z.object({
 	path: z.string(),
-	bytes: z.number(),
-	sha256: z.string(),
+	bytes: z.number().optional(),
+	sha256: z.string().optional(),
 });
 
 const linkedFilesSchema: z.ZodType<RuntimeSkillLinkedFiles> = z.object({
@@ -73,8 +75,6 @@ const skillLoadOutputSchema = z.object({
 	skillId: z.string().optional(),
 	name: z.string().optional(),
 	description: z.string().optional(),
-	path: z.string().optional(),
-	skillDir: z.string().optional(),
 	hash: z.string().optional(),
 	category: z.string().optional(),
 	content: z.string().optional(),
@@ -82,8 +82,10 @@ const skillLoadOutputSchema = z.object({
 	bytes: z.number().optional(),
 	sha256: z.string().optional(),
 	activation: z.string().optional(),
+	references: z.array(z.object({ skillId: z.string(), description: z.string() })).optional(),
 	linkedFiles: linkedFilesSchema.optional(),
 	error: z.string().optional(),
+	errorCode: z.enum(['temporarily_unavailable', 'unavailable', 'invalid_reference']).optional(),
 	availableSkills: z.array(z.string()).optional(),
 });
 
@@ -142,13 +144,24 @@ async function loadSkill(
 	},
 	activate?: RuntimeSkillLoader,
 ): Promise<SkillLoadOutput | SkillLoadContentOutput> {
-	const { skillId, name, filePath, loadFile } = input;
+	const { skillId, name, loadFile } = input;
 	await source.prepare?.();
-	const skillEntry = findSkillEntry(source.registry, { skillId, name });
+	const requestedEntry = findRuntimeSkillEntry(source.registry, { skillId, name });
+	// A path to a reference file activates the reference instead of returning raw text.
+	const referenceEntry =
+		requestedEntry && input.filePath !== undefined
+			? findReferenceByPath(source.registry, requestedEntry.id, input.filePath)
+			: undefined;
+	const skillEntry = referenceEntry ?? requestedEntry;
+	const filePath = referenceEntry ? undefined : input.filePath;
 	if (!skillEntry) {
 		return {
 			ok: false,
 			success: false,
+			errorCode:
+				skillId && source.getLoadError?.(skillId)?.retryable
+					? 'temporarily_unavailable'
+					: 'unavailable',
 			error: `Unknown skill: ${skillId ?? name ?? ''}`,
 			availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 		};
@@ -165,6 +178,7 @@ async function loadSkill(
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
+				errorCode: 'invalid_reference',
 				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}. To load the main skill instructions, retry without filePath.`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
@@ -177,20 +191,28 @@ async function loadSkill(
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
+				errorCode: 'invalid_reference',
 				error: 'This skill source does not support loading linked files.',
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
 
-		const file = await loadFile(skillEntry.id, linkedFile.path);
+		let readError: RuntimeSkillLoadError | undefined;
+		const file = await loadFile(skillEntry.id, linkedFile.path, (error) => {
+			readError = error;
+		});
 		if (!file) {
+			const loadError = readError ?? source.getLoadError?.(skillEntry.id);
 			return {
 				ok: false,
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
+				errorCode: loadError?.retryable ? 'temporarily_unavailable' : 'unavailable',
+				error:
+					loadError?.message ??
+					`File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -200,8 +222,6 @@ async function loadSkill(
 			success: true,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			path: skillEntry.directory ? `${skillEntry.directory}/${linkedFile.path}` : linkedFile.path,
-			skillDir: skillEntry.directory,
 			hash: skillEntry.hash,
 			category: skillEntry.category,
 			filePath: linkedFile.path,
@@ -213,42 +233,68 @@ async function loadSkill(
 
 	const skill = await (activate ?? source.loadSkill)(skillEntry.id);
 	if (!skill) {
+		const loadError = source.getLoadError?.(skillEntry.id);
 		return {
 			ok: false,
 			success: false,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			error: `Skill "${skillEntry.name}" is not attached to this agent.`,
+			errorCode: loadError?.retryable ? 'temporarily_unavailable' : 'unavailable',
+			error: loadError?.message ?? `Skill "${skillEntry.name}" is not attached to this agent.`,
 			availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 		};
 	}
 
 	if (activate) {
+		const { references, linkedFiles } = skillReferences(skillEntry, source.registry);
 		return {
 			success: true,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
-			content: 'The skill instructions are active. Follow them for this task.',
-			linkedFiles: skillEntry.linkedFiles,
+			content: source.shouldAppendSkillUpdates?.(skillEntry.id)
+				? formatActiveSkill(skill, skillEntry, source.registry)
+				: 'The skill instructions are active. Follow them for this task.',
+			...(references.length > 0
+				? {
+						references: references.map((entry) => ({
+							skillId: entry.id,
+							description: entry.description,
+						})),
+					}
+				: {}),
+			linkedFiles,
 		};
 	}
 	return {
 		type: 'content',
-		value: [{ type: 'text', text: formatActiveSkill(skill, skillEntry) }],
+		value: [{ type: 'text', text: formatActiveSkill(skill, skillEntry, source.registry) }],
 	};
 }
 
 export function formatActiveSkill(
 	skill: RuntimeSkillContent,
 	skillEntry: RuntimeSkillRegistryEntry,
+	registry?: RuntimeSkillRegistry,
 ): string {
 	const content = cap(skill.instructions);
-	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => skillEntry.linkedFiles[group]).map(
+	const { references, linkedFiles } = skillReferences(skillEntry, registry);
+	const linkedFilePaths = LINKED_FILE_GROUPS.flatMap((group) => linkedFiles[group]).map(
 		(file) => file.path,
 	);
 	const header = [
 		activationEnvelope(skillEntry),
+		...(references.length > 0
+			? [
+					[
+						'[References — load one via load_skill with { "skillId": "<id>" } only when its description matches the current step:',
+						...references.map(
+							(entry) => `- ${envelopeValue(entry.id)}: ${envelopeValue(entry.description)}`,
+						),
+						']',
+					].join('\n'),
+				]
+			: []),
 		...(linkedFilePaths.length > 0
 			? [
 					`[Linked files — load via load_skill with filePath: ${linkedFilePaths.map(envelopeValue).join(', ')}]`,
@@ -258,7 +304,44 @@ export function formatActiveSkill(
 	return `${header.join('\n')}\n\n${content}`;
 }
 
-function findSkillEntry(
+/** A skill's references, and its linked files without the files those references come from. */
+function skillReferences(
+	skillEntry: RuntimeSkillRegistryEntry,
+	registry: RuntimeSkillRegistry | undefined,
+): { references: RuntimeSkillRegistryEntry[]; linkedFiles: RuntimeSkillLinkedFiles } {
+	const references = (registry?.skills ?? []).filter((entry) =>
+		entry.parents?.includes(skillEntry.id),
+	);
+	const referencePaths = new Set(
+		references.flatMap((entry) =>
+			entry.reference?.owner === skillEntry.id ? [entry.reference.path] : [],
+		),
+	);
+	if (referencePaths.size === 0) return { references, linkedFiles: skillEntry.linkedFiles };
+	return {
+		references,
+		linkedFiles: {
+			...skillEntry.linkedFiles,
+			references: skillEntry.linkedFiles.references.filter(
+				(file) => !referencePaths.has(file.path),
+			),
+		},
+	};
+}
+
+/** The reference skill that a parent's linked file path points to, if any. */
+export function findReferenceByPath(
+	registry: RuntimeSkillRegistry,
+	ownerId: string,
+	filePath: string,
+): RuntimeSkillRegistryEntry | undefined {
+	const normalized = posix.normalize(filePath.trim());
+	return registry.skills.find(
+		(entry) => entry.reference?.owner === ownerId && entry.reference.path === normalized,
+	);
+}
+
+export function findRuntimeSkillEntry(
 	registry: RuntimeSkillRegistry,
 	input: { skillId?: string; name?: string },
 ): RuntimeSkillRegistryEntry | undefined {
@@ -277,11 +360,10 @@ function findSkillEntry(
 function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
 	return [
 		`[Skill: ${envelopeValue(skill.name)}]`,
-		...(skill.category ? [`[Skill category: ${envelopeValue(skill.category)}]`] : []),
-		...(skill.directory ? [`[Skill directory: ${envelopeValue(skill.directory)}]`] : []),
-		...((skill.path ?? skill.sourcePath)
-			? [`[Skill path: ${envelopeValue(skill.path ?? skill.sourcePath ?? '')}]`]
+		...(skill.parents?.length
+			? [`[Reference of: ${skill.parents.map(envelopeValue).join(', ')}]`]
 			: []),
+		...(skill.category ? [`[Skill category: ${envelopeValue(skill.category)}]`] : []),
 		`[Skill hash: ${envelopeValue(skill.hash)}]`,
 	].join('\n');
 }
@@ -297,7 +379,7 @@ function findRegisteredLinkedFile(
 	return undefined;
 }
 
-function isMainSkillFilePath(filePath?: string): boolean {
+export function isMainSkillFilePath(filePath?: string): boolean {
 	if (filePath === undefined) return true;
 	const normalized = filePath.trim();
 	return (
@@ -315,6 +397,6 @@ function envelopeValue(value: string): string {
 function cap(content: string): string {
 	const redacted = scrubSecretsInText(content);
 	const bytes = Buffer.from(redacted, 'utf8');
-	if (bytes.byteLength <= MAX_OUTPUT_BYTES) return redacted;
-	return `${bytes.subarray(0, MAX_OUTPUT_BYTES).toString('utf8')}${TRUNCATION_FOOTER}`;
+	if (bytes.byteLength <= RUNTIME_SKILL_MAX_OUTPUT_BYTES) return redacted;
+	return `${bytes.subarray(0, RUNTIME_SKILL_MAX_OUTPUT_BYTES).toString('utf8')}${TRUNCATION_FOOTER}`;
 }

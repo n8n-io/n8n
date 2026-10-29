@@ -1,5 +1,10 @@
 import type { WorkflowBuildOutcome } from '../../../../workflow-loop/workflow-loop-state';
-import { analyzeVerificationResult } from '../analyze-result';
+import {
+	analyzeVerificationResult,
+	buildEmptyOutputNote,
+	INJECTED_TRIGGER_SIMULATION_REASON,
+	WORKFLOW_PIN_SIMULATION_REASON,
+} from '../analyze-result';
 import type { ExecutionRunResult } from '../types';
 
 function makeBuildOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
@@ -62,7 +67,10 @@ describe('analyzeVerificationResult — halted wait gates', () => {
 		// covers time-based Wait and Form gates), and non-gate dead ends keep the
 		// seed-and-re-run guidance instead of being attributed to the gate.
 		expect(analysis.coverageNote).not.toContain('human decision');
-		expect(analysis.coverageNote).toContain('NOT behind the gate');
+		expect(analysis.coverageNote).toContain('Other unreached nodes remain unverified');
+		expect(analysis.coverageNote).toContain('not behind a wait gate');
+		expect(analysis.coverageNote).toContain('seed matching test data');
+		expect(analysis.coverageNote).toContain('only when the user has authorized that write');
 	});
 
 	it('keeps the generic partial-coverage guidance when no gate halted the run', () => {
@@ -103,7 +111,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 		expect(analysis.success).toBe(false);
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.shouldEdit).toBe(true);
-		expect(analysis.remediation?.guidance).toContain('explore-resources');
+		expect(analysis.remediation?.guidance).toContain('get_node_parameter_options');
 	});
 
 	it('includes precomputed replacement suggestions in recovery guidance', () => {
@@ -229,7 +237,7 @@ describe('analyzeVerificationResult — chat model failures', () => {
 
 		expect(analysis.remediation?.reason).toBe('chat_model_failure');
 		expect(analysis.remediation?.guidance).not.toContain('claude-x');
-		expect(analysis.remediation?.guidance).toContain('explore-resources');
+		expect(analysis.remediation?.guidance).toContain('get_node_parameter_options');
 	});
 
 	it('omits n8n credits when the gateway covers a different node than the failing one', () => {
@@ -326,6 +334,46 @@ describe('analyzeVerificationResult — workflow-pinned nodes', () => {
 	});
 });
 
+describe('analyzeVerificationResult — injected trigger output', () => {
+	const injectedRunResult = {
+		executionId: 'exec-1',
+		status: 'success',
+		executedNodeNames: ['Webhook', 'Format'],
+		lastNodeExecuted: 'Format',
+		data: { Webhook: [{}], Format: [{}] },
+		injectedTriggerNodeName: 'Webhook',
+	} as unknown as ExecutionRunResult;
+
+	it('counts the injected trigger as simulated so the run is not a live trigger test', () => {
+		const analysis = analyzeVerificationResult({
+			result: injectedRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: INJECTED_TRIGGER_SIMULATION_REASON },
+		]);
+		expect(analysis.simulationNote).toContain('Webhook');
+	});
+
+	it('does not duplicate a trigger that workflow pins already disclose', () => {
+		const analysis = analyzeVerificationResult({
+			result: { ...injectedRunResult, workflowPinnedNodeNames: ['Webhook'] },
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([
+			{ nodeName: 'Webhook', reason: WORKFLOW_PIN_SIMULATION_REASON },
+		]);
+	});
+});
+
 describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 	const twoBranchOutcome = makeBuildOutcome({
 		nodeSimulationPlan: [
@@ -366,6 +414,8 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 		expect(analysis.nodesNotReached).toEqual(['Post Summary']);
 		expect(analysis.coverageNote).toContain('Every Weekday 9am');
 		expect(analysis.coverageNote).toContain('triggerNodeName');
+		expect(analysis.coverageNote).toContain('union of those passes');
+		expect(analysis.coverageNote).toContain('For unreached main-flow nodes on this branch');
 		// The generic "a lookup returned nothing" cause would send the agent
 		// editing a workflow whose other branch is simply not on this path.
 		expect(analysis.coverageNote).not.toContain('lookup or query returned nothing');
@@ -416,7 +466,7 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 		expect(analysis.coverageNote).toContain('1st of Month');
 	});
 
-	it('keeps the generic zero-output guidance when no trigger was named', () => {
+	it('gives neutral coverage guidance when no trigger was named', () => {
 		const analysis = analyzeVerificationResult({
 			result: weekdayPass,
 			buildOutcome: twoBranchOutcome,
@@ -425,6 +475,233 @@ describe('analyzeVerificationResult — trigger-scoped coverage', () => {
 			runId: 'run-1',
 		});
 
-		expect(analysis.coverageNote).toContain('Seed matching test data');
+		expect(analysis.coverageNote).toContain('Agent tool calls');
+	});
+});
+
+describe('analyzeVerificationResult — uncalled tools', () => {
+	it('keeps an uncalled tool unverified without diagnosing an empty Agent result', () => {
+		const analysis = analyzeVerificationResult({
+			result: {
+				executionId: 'exec-agent',
+				status: 'success',
+				executedNodeNames: ['Agent'],
+				lastNodeExecuted: 'Agent',
+				data: { Agent: [{ output: 'No tool call needed' }] },
+			},
+			buildOutcome,
+			simulatedNodes: [{ nodeName: 'Publish', reason: 'Sends a message' }],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+		expect(analysis.reachedSimulatedNodes).toEqual([]);
+		expect(analysis.nodesNotReached).toContain('Publish');
+		expect(analysis.coverageNote).toContain(
+			'A tool can remain uncalled even when its Agent succeeds',
+		);
+		expect(analysis.coverageNote).not.toContain('because it produced no output items');
+		expect(analysis.coverageNote).toContain('if a simulated or pinned lookup returned no items');
+		expect(analysis.coverageNote).toContain('inspect its fixture');
+	});
+});
+
+describe('buildEmptyOutputNote', () => {
+	const connections = {
+		Trigger: { main: [[{ node: 'Tag Record', type: 'main' as const, index: 0 }]] },
+		'Tag Record': { main: [[{ node: 'Post', type: 'main' as const, index: 0 }]] },
+	};
+	const wrap = (value: unknown) =>
+		`<untrusted_data source="execution-output" label="node:test">\n${JSON.stringify(value, null, 2)}\n</untrusted_data>`;
+
+	it('names the first node of a chain that returns only empty items', () => {
+		const note = buildEmptyOutputNote(
+			{ Trigger: wrap([{}]), 'Tag Record': wrap([{}]), Post: wrap([{}]) },
+			connections,
+			new Set(),
+		);
+
+		expect(note).toContain('Node(s) Tag Record returned only empty items');
+		expect(note).toContain("check each node's parameters against its typeVersion");
+	});
+
+	it('names an empty node whose input had data', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': [{}], Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+			),
+		).toContain('Node(s) Tag Record returned');
+	});
+
+	it('ignores a simulated node, whose output is a fixture', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': [{}] },
+				connections,
+				new Set(['Tag Record']),
+			),
+		).toBeUndefined();
+	});
+
+	it('ignores a node whose items carry file data', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': [{}], Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+				['Tag Record'],
+			),
+		).toBeUndefined();
+	});
+
+	it.each([
+		['a size-capped output', { items: [{}], truncated: true, totalItems: 3, shownItems: 1 }],
+		['a collapsed output', { _itemCount: 2, _truncated: true, _firstItemPreview: {} }],
+		[
+			'an output with a collapsed branch',
+			{
+				outputs: [
+					{ index: 0, items: [{}] },
+					{ index: 1, items: { _itemCount: 2, _truncated: true, _firstItemPreview: {} } },
+				],
+				totalItems: 3,
+			},
+		],
+	])('ignores %s, whose hidden items can hold data', (_label, tagRecordOutput) => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{ name: 'Ada' }], 'Tag Record': wrap(tagRecordOutput), Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+			),
+		).toBeUndefined();
+	});
+
+	it('names a collapsed output whose only item is empty', () => {
+		expect(
+			buildEmptyOutputNote(
+				{
+					Trigger: [{ name: 'Ada' }],
+					'Tag Record': wrap({ _itemCount: 1, _truncated: true, _firstItemPreview: {} }),
+				},
+				connections,
+				new Set(),
+			),
+		).toContain('Node(s) Tag Record returned');
+	});
+
+	it('ignores an empty trigger when the nodes after it return data', () => {
+		expect(
+			buildEmptyOutputNote(
+				{ Trigger: [{}], 'Tag Record': [{ tag: 'vip' }], Post: [{ id: 1 }] },
+				connections,
+				new Set(),
+			),
+		).toBeUndefined();
+	});
+});
+
+describe('analyzeVerificationResult — redacted runs', () => {
+	const analyze = (runResult: Record<string, unknown>) =>
+		analyzeVerificationResult({
+			result: {
+				executionId: 'exec-1',
+				redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+				...runResult,
+			} as unknown as ExecutionRunResult,
+			buildOutcome: makeBuildOutcome(),
+			simulatedNodes: [],
+			stateBefore: undefined,
+			runId: 'run-1',
+		});
+
+	it('blocks a code repair for a failure whose details n8n hides', () => {
+		const analysis = analyze({
+			status: 'error',
+			error: 'NodeOperationError error (details hidden by n8n)',
+			nodeErrors: [
+				{ nodeName: 'Format', message: 'NodeOperationError error (details hidden by n8n)' },
+			],
+		});
+
+		expect(analysis.success).toBe(false);
+		expect(analysis.remediation).toMatchObject({
+			category: 'blocked',
+			shouldEdit: false,
+			reason: 'execution_redacted',
+		});
+		expect(analysis.remediation?.guidance).toContain('Format failed');
+		expect(analysis.redactionNote).toBeUndefined();
+	});
+
+	it.each([
+		{
+			redaction: { reason: 'workflow_redaction_policy', canReveal: true },
+			howToSee: 'They can reveal the details in the execution in the editor.',
+		},
+		{
+			redaction: { reason: 'workflow_redaction_policy', canReveal: false },
+			howToSee: 'They cannot reveal them from their account.',
+		},
+		{
+			redaction: { reason: 'credential_inaccessible', canReveal: false },
+			howToSee: 'Only someone who can use that credential, such as its owner, can see them.',
+		},
+		{
+			redaction: { reason: 'dynamic_credentials', canReveal: false },
+			howToSee: 'They cannot reveal them from their account.',
+		},
+	])('tells the user how to see hidden details for $redaction', ({ redaction, howToSee }) => {
+		const analysis = analyze({
+			redaction,
+			status: 'error',
+			error: 'NodeOperationError error (details hidden by n8n)',
+			nodeErrors: [
+				{ nodeName: 'Format', message: 'NodeOperationError error (details hidden by n8n)' },
+			],
+		});
+
+		expect(analysis.remediation?.guidance).toContain(howToSee);
+	});
+
+	it('keeps the routing that the error type and status code still carry', () => {
+		const analysis = analyze({
+			status: 'error',
+			error: 'NodeApiError error (401) (details hidden by n8n)',
+			nodeErrors: [
+				{ nodeName: 'HTTP Request', message: 'NodeApiError error (401) (details hidden by n8n)' },
+			],
+		});
+
+		expect(analysis.remediation).toMatchObject({
+			category: 'needs_setup',
+			shouldEdit: false,
+			reason: 'credential_or_setup_failure',
+		});
+	});
+
+	it('notes that the output of a passing run was not inspected', () => {
+		const analysis = analyze({
+			status: 'success',
+			executedNodeNames: ['Trigger', 'Format'],
+		});
+
+		expect(analysis.success).toBe(true);
+		expect(analysis.remediation).toBeUndefined();
+		expect(analysis.redactionNote).toContain('output was not inspected');
+	});
+
+	it('adds nothing for a run that n8n did not redact', () => {
+		const analysis = analyze({
+			redaction: undefined,
+			status: 'error',
+			error: 'Cannot read properties of undefined',
+			nodeErrors: [{ nodeName: 'Format', message: 'Cannot read properties of undefined' }],
+		});
+
+		expect(analysis.remediation).toMatchObject({ reason: 'runtime_failure', shouldEdit: true });
+		expect(analysis.redactionNote).toBeUndefined();
 	});
 });

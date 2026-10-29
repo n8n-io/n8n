@@ -45,7 +45,6 @@ describe('toolsAgentExecute', () => {
 		};
 		mockContext.getWorkflow.mockReturnValue({ name: 'Test Workflow' } as any);
 		mockContext.getExecutionId.mockReturnValue('exec-123');
-		mockContext.getExecuteData.mockReturnValue({} as any);
 	});
 
 	it('should process items sequentially when batchSize is not set', async () => {
@@ -371,6 +370,167 @@ describe('toolsAgentExecute', () => {
 				'ai.agent.execution.succeeded': false,
 			}),
 		});
+	});
+
+	it('flushes onItemFinished for every settled batch result before throwing when continueOnFail is false', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([
+			{ json: { text: 'test input 1' } },
+			{ json: { text: 'test input 2' } },
+		]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		const mockTools = [mock<Tool>()];
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue(mockTools);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.batching.batchSize') return 2;
+			if (param === 'options.batching.delayBetweenBatches') return 0;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(false);
+
+		const mockExecutor = {
+			invoke: vi
+				.fn()
+				.mockRejectedValueOnce(new Error('Test error'))
+				.mockResolvedValueOnce({ output: { text: 'success' } }),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		const onItemFinished = vi.fn().mockResolvedValue(undefined);
+
+		await expect(toolsAgentExecute.call(mockContext, { onItemFinished })).rejects.toThrow(
+			'Test error',
+		);
+
+		// Item 0 rejected and item 1 settled successfully; both are in the same
+		// batch, so the observer callback must still run for item 1 even though
+		// the batch as a whole throws because item 0 failed.
+		expect(onItemFinished).toHaveBeenCalledWith(0);
+		expect(onItemFinished).toHaveBeenCalledWith(1);
+	});
+
+	it('surfaces the first item error, not a later item processing error, when continueOnFail is false', async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([
+			{ json: { text: 'test input 1' } },
+			{ json: { text: 'test input 2' } },
+		]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+		// Memory + an output parser are what route a successful item's response
+		// through `jsonParse`, so item 1 here hits that path with a non-JSON output.
+		vi.spyOn(commonModule, 'getOptionalMemory').mockResolvedValue(mock() as any);
+		vi.spyOn(outputParserModule, 'getOptionalOutputParser').mockResolvedValue(
+			mock<outputParserModule.N8nStructuredOutputParser>(),
+		);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.batching.batchSize') return 2;
+			if (param === 'options.batching.delayBetweenBatches') return 0;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		mockContext.continueOnFail.mockReturnValue(false);
+
+		const mockExecutor = {
+			invoke: vi
+				.fn()
+				.mockRejectedValueOnce(new Error('Real agent failure'))
+				.mockResolvedValueOnce({ output: 'not valid json' }),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		// Item 0's rejection must win: the loop processes settled results in
+		// item order and throws as soon as it reaches the first rejection, before
+		// item 1's own (unrelated) jsonParse failure ever runs.
+		await expect(toolsAgentExecute.call(mockContext)).rejects.toThrow('Real agent failure');
+	});
+
+	it("does not let an observer hook's own error override the item's real result", async () => {
+		const mockNode = mock<INode>();
+		mockNode.typeVersion = 2;
+		mockContext.getNode.mockReturnValue(mockNode);
+		mockContext.getInputData.mockReturnValue([{ json: { text: 'test input' } }]);
+
+		const mockModel = mock<BaseChatModel>();
+		mockModel.bindTools = vi.fn();
+		mockModel.lc_namespace = ['chat_models'];
+		mockContext.getInputConnectionData.mockResolvedValue(mockModel);
+
+		vi.spyOn(helpers, 'getConnectedTools').mockResolvedValue([mock<Tool>()]);
+
+		mockContext.getNodeParameter.mockImplementation((param, _i, defaultValue) => {
+			if (param === 'options.batching.batchSize') return 1;
+			if (param === 'options.batching.delayBetweenBatches') return 0;
+			if (param === 'text') return 'test input';
+			if (param === 'needsFallback') return false;
+			if (param === 'options')
+				return {
+					systemMessage: 'You are a helpful assistant',
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					passthroughBinaryImages: true,
+				};
+			return defaultValue;
+		});
+
+		const mockExecutor = {
+			invoke: vi.fn().mockResolvedValue({ output: { text: 'success' } }),
+		};
+
+		vi.spyOn(AgentExecutor, 'fromAgentAndTools').mockReturnValue(
+			ensureWithConfig(mockExecutor) as any,
+		);
+
+		const onItemFinished = vi.fn().mockRejectedValue(new Error('observer boom'));
+
+		const result = await toolsAgentExecute.call(mockContext, { onItemFinished });
+
+		expect(result[0][0].json).toEqual({ output: { text: 'success' } });
+		expect(mockContext.logger.warn).toHaveBeenCalledWith(
+			'Agent execution observer hook failed',
+			expect.objectContaining({ itemIndex: 0 }),
+		);
 	});
 
 	it('should surface a useful message when a tool throws a plain Error("Error") with continueOnFail', async () => {
@@ -1184,6 +1344,13 @@ describe('toolsAgentExecute', () => {
 
 		// @ts-expect-error isStreaming is not supported by SupplyDataFunctions, but mock object still resolves it
 		mockSupplyDataContext.isStreaming = undefined;
+
+		// Sub-node contexts carry `cloneWith`; `isExecuteFunctions` discriminates on it.
+		Object.assign(mockSupplyDataContext, { cloneWith: vi.fn() });
+
+		// Sub-agents are traced too, so the context must answer the same calls as a top-level one.
+		mockSupplyDataContext.getWorkflow.mockReturnValue({ name: 'Test Workflow' } as any);
+		mockSupplyDataContext.getExecutionId.mockReturnValue('exec-123');
 
 		mockSupplyDataContext.logger = {
 			debug: vi.fn(),

@@ -25,6 +25,12 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import {
+	registerPendingActivationModal,
+	clearPendingActivationModal,
+} from '@/app/composables/workflowPublicationConfirmation';
+import { usePolicyViolationToast } from '@/app/composables/usePolicyViolationToast';
+import { getPolicyViolations } from '@n8n/frontend-module-type-availability-policies';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -46,6 +52,7 @@ export function useWorkflowActivate() {
 	const i18n = useI18n();
 	const collaborationStore = useCollaborationStore();
 	const { errorMessage: activationErrorMessage } = useActivationError(activationErrorNodeId);
+	const { showPolicyViolationToast, closePolicyViolationToast } = usePolicyViolationToast();
 
 	const parseWebhookConflictError = (error: ResponseError) => {
 		try {
@@ -216,6 +223,24 @@ export function useWorkflowActivate() {
 			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 		}
 
+		// With the publication service (and in multi-main setups on the legacy
+		// path), trigger registration completes asynchronously after the publish
+		// request: the real outcome arrives as a workflowActivated /
+		// workflowFailedToActivate push. Showing the success modal on the API
+		// response would contradict a failure push that arrives moments later
+		// (ADO-4969), so defer it until the confirming push.
+		const settingsStore = useSettingsStore();
+		const activationIsConfirmedByPush =
+			settingsStore.isWorkflowPublicationServiceEnabled || settingsStore.isMultiMain;
+		const shouldShowActivationModal =
+			!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true';
+
+		if (activationIsConfirmedByPush && shouldShowActivationModal) {
+			// Register before the request: on a fast local drain the confirming
+			// push can arrive before the response does.
+			registerPendingActivationModal(workflowId, versionId);
+		}
+
 		try {
 			// A hydrated document is open in an editor, routed or embedded (assistant artifact).
 			// The route id is empty on the assistant page and the publish modal is global, so
@@ -239,26 +264,40 @@ export function useWorkflowActivate() {
 				versionId: publishedWorkflow?.activeVersion?.versionId ?? versionId,
 			});
 
-			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+			if (shouldShowActivationModal && !activationIsConfirmedByPush) {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			}
+			closePolicyViolationToast('publish');
 			return { success: true };
 		} catch (error) {
+			clearPendingActivationModal(workflowId);
+
 			if (isWebhookConflictError(error)) {
 				await handleWebhookConflictError(error);
 				return { success: false, errorHandled: true };
 			} else {
-				activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
 				const title = i18n.baseText('workflowActivator.showError.title', {
 					interpolate: { newStateName: 'published' },
 				});
-				toast.showError(error, title, {
-					message: activationErrorMessage.value,
-					description: error.meta?.description as string | undefined,
-				});
+				const policyTitle = i18n.baseText('typeAvailabilityPolicies.violations.publishTitle');
+				const violations = getPolicyViolations(error);
 
-				// Only update workflow state to inactive if this is not a validation error
-				if (!error.meta?.validationError) {
+				if (violations) {
+					showPolicyViolationToast(
+						violations,
+						policyTitle,
+						'publish',
+						createWorkflowDocumentId(workflowId),
+					);
+				} else {
+					activationErrorNodeId.value = error.meta?.nodeId as string | undefined;
+					toast.showError(error, title, {
+						message: activationErrorMessage.value,
+						description: error.meta?.description as string | undefined,
+					});
+				}
+
+				if (!error.meta?.validationError && !violations) {
 					workflowsStore.setWorkflowInactive(workflowId);
 					workflowDocumentStore.setActiveState({
 						activeVersionId: null,

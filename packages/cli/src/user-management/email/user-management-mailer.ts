@@ -1,7 +1,8 @@
 import { inTest, Logger } from '@n8n/backend-common';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type { ApiKey, User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { PersonRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import { AssignableProjectRole } from '@n8n/permissions';
 import { existsSync } from 'fs';
@@ -19,10 +20,8 @@ import type {
 } from './interfaces';
 import { NodeMailer } from './node-mailer';
 
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { EventService } from '@/events/event.service';
+import { InternalServerError } from '@n8n/errors';
 import type { RelayEventMap } from '@/events/maps/relay.event-map';
-import { UrlService } from '@/services/url.service';
 import { toError } from '@/utils';
 
 const REVOKED_AT_FORMATTER = new Intl.DateTimeFormat('en-GB', {
@@ -56,7 +55,9 @@ type TemplateName =
 	| 'api-key-revoked'
 	| 'mcp-client-revoked'
 	| 'email-change-requested'
-	| 'email-change-completed';
+	| 'email-change-completed'
+	| 'agent-budget-alert'
+	| 'migration-findings';
 
 @Service()
 export class UserManagementMailer {
@@ -71,7 +72,7 @@ export class UserManagementMailer {
 	constructor(
 		globalConfig: GlobalConfig,
 		private readonly logger: Logger,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
 	) {
@@ -184,6 +185,61 @@ export class UserManagementMailer {
 		});
 	}
 
+	async agentBudgetAlert(data: {
+		email: string;
+		firstName?: string | null;
+		agentName: string;
+		agentUrl: string;
+		alertThresholdPercent: number;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const template = await this.getTemplate('agent-budget-alert');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: 'Your agent reached its monthly budget alert',
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				agentName: data.agentName,
+				agentUrl: data.agentUrl,
+				percent: data.alertThresholdPercent,
+			}),
+		});
+	}
+
+	/** Asks the owner of the listed workflows to resolve one migration finding on them. */
+	async migrationFindings(data: {
+		email: string;
+		firstName?: string | null;
+		notifierName: string;
+		ruleTitle: string;
+		targetVersion: string;
+		workflows: Array<{ id: string; name: string }>;
+		reportUrl: string;
+	}): Promise<SendEmailResult> {
+		if (!this.mailer) return { emailSent: false };
+
+		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const template = await this.getTemplate('migration-findings');
+		return await this.mailer.sendMail({
+			emailRecipients: data.email,
+			subject: `Your workflows need changes before the upgrade to n8n ${data.targetVersion}`,
+			body: template({
+				...this.basePayload,
+				firstName: data.firstName || 'there',
+				notifierName: data.notifierName,
+				ruleTitle: data.ruleTitle,
+				targetVersion: data.targetVersion,
+				workflows: data.workflows.map((workflow) => ({
+					name: workflow.name,
+					url: `${baseUrl}/workflow/${workflow.id}`,
+				})),
+				reportUrl: data.reportUrl,
+			}),
+		});
+	}
+
 	async workflowFailure(data: {
 		email: string;
 		firstName?: string;
@@ -275,12 +331,27 @@ export class UserManagementMailer {
 	async notifyWorkflowAutodeactivated({
 		recipient,
 		workflow,
+		reason = 'crashes',
 	}: {
 		recipient: User;
 		workflow: IWorkflowBase;
+		reason?: 'crashes' | 'memory-pressure';
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds([recipient.id]);
+		const recipients = await this.personRepository.getEmailsByIds([recipient.id]);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
+		const text = {
+			crashes: {
+				reason: 'its executions repeatedly crashed',
+				nextStep:
+					'Please review its recent executions and resolve any issues before reactivating it.',
+			},
+			'memory-pressure': {
+				reason:
+					'n8n repeatedly stopped its executions to keep the instance from running out of memory',
+				nextStep:
+					"Each time, this workflow's execution held the most data on the instance. Memory can also run high because of other work. Reactivate the workflow when ready.",
+			},
+		}[reason];
 
 		return await this.sendNotificationEmails({
 			mailerTemplate: 'workflow-deactivated',
@@ -289,6 +360,7 @@ export class UserManagementMailer {
 			getTemplateData: () => ({
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
+				...text,
 			}),
 			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
 			messageType: 'Workflow auto-deactivated',
@@ -304,7 +376,7 @@ export class UserManagementMailer {
 		newShareeIds: string[];
 		workflow: IWorkflowBase;
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.personRepository.getEmailsByIds(newShareeIds);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		return await this.sendNotificationEmails({
@@ -329,7 +401,7 @@ export class UserManagementMailer {
 		newShareeIds: string[];
 		credentialsName: string;
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newShareeIds);
+		const recipients = await this.personRepository.getEmailsByIds(newShareeIds);
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		return await this.sendNotificationEmails({
@@ -354,7 +426,7 @@ export class UserManagementMailer {
 		newSharees: Array<{ userId: string; role: AssignableProjectRole }>;
 		project: { id: string; name: string };
 	}): Promise<SendEmailResult> {
-		const recipients = await this.userRepository.getEmailsByIds(newSharees.map((s) => s.userId));
+		const recipients = await this.personRepository.getEmailsByIds(newSharees.map((s) => s.userId));
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 
 		// Merge recipient data with role

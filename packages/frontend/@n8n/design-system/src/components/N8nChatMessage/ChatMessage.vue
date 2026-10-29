@@ -33,6 +33,8 @@ useResizeObserver(message, shrinkWrapUserMessage);
 defineSlots<{
 	default(): unknown;
 	actions?(): unknown;
+	/** Content below the actions row, outside the area whose hover shows the actions. */
+	'after-actions'?(): unknown;
 }>();
 </script>
 
@@ -47,6 +49,7 @@ defineSlots<{
 		<div v-if="$slots.actions" :class="$style.actions">
 			<slot name="actions" />
 		</div>
+		<slot name="after-actions" />
 	</div>
 </template>
 

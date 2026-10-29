@@ -13,9 +13,12 @@ import {
 	MCP_REGISTRY_BASE_NODE_NAME,
 	MCP_REGISTRY_PACKAGE_NAME,
 } from '../node-description-transform';
+import { pairAiGatewayServers } from '../registry/mcp-registry-ai-gateway';
 import type { McpRegistryServer } from '../registry/mcp-registry.types';
 import {
 	databricksGenieTemplatedMockServer,
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
 	gmailDirectExtendMockServer,
 	githubUsesCredentialsMockServer,
 	notionMockServer,
@@ -380,6 +383,48 @@ describe('McpRegistryNodeLoader', () => {
 
 			expect(loader.types.nodes).toHaveLength(1);
 			expect(loader.types.nodes[0].name).toBe('deprecatedServer');
+		});
+
+		it.each([
+			{ status: 'active' as const, registersCredential: true },
+			{ status: 'deprecated' as const, registersCredential: false },
+		])(
+			'registers the Gateway credits credential type of an $status AI Gateway row: $registersCredential',
+			async ({ status, registersCredential }) => {
+				const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+				const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+				loader.setServers([{ ...firecrawlAiGatewayMockServer, status }]);
+
+				await loader.loadAll();
+
+				expect(loader.types.nodes.map(({ name }) => name)).toEqual(['n8nConnectFirecrawl']);
+				expect('n8nConnectFirecrawlMcpAiGatewayApi' in loader.known.credentials).toBe(
+					registersCredential,
+				);
+			},
+		);
+
+		it('keeps the Gateway credits binding of a paired server, with the AI Gateway endpoint', async () => {
+			const { loadNodesAndCredentials } = createLoadNodesAndCredentials();
+			const loader = new McpRegistryNodeLoader(loadNodesAndCredentials, logger);
+			loader.setServers(
+				pairAiGatewayServers([firecrawlMockServer, firecrawlAiGatewayMockServer], () => true),
+			);
+
+			await loader.loadAll();
+
+			expect(loader.getConnection('@n8n/mcp-registry.firecrawl')?.credentialBindings).toEqual([
+				{ credentialType: 'firecrawlMcpOAuth2Api', selector: 'oAuth2' },
+				{
+					credentialType: 'n8nConnectFirecrawlMcpAiGatewayApi',
+					selector: 'aiGateway',
+					endpoint: {
+						url: 'https://gateway.n8n.test/v1/gateway/mcp/firecrawl',
+						hostname: 'gateway.n8n.test',
+						transport: 'httpStreamable',
+					},
+				},
+			]);
 		});
 	});
 

@@ -2,11 +2,14 @@ import type { SsrfBridge } from '@n8n/backend-network';
 import type {
 	DataTableProxyProvider,
 	DynamicCredentialCheckProxyProvider,
+	IExecuteFunctions,
 	IExecutionContext,
 	IHttpRequestOptions,
 	INode,
+	INodeExecutionData,
 	IWorkflowSettings,
 	OauthJweProxyProvider,
+	TrustedSourceDirectory,
 } from 'n8n-workflow';
 
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
@@ -29,6 +32,14 @@ export type EvalLlmMockHandler = (
 	node: INode,
 ) => Promise<EvalMockHttpResponse | undefined>;
 
+/**
+ * Handler for nodes that the HTTP mock cannot reach during evaluation (SMTP, databases, queues).
+ * Return the node's output to use it in place of a real run, or `undefined` to run the node.
+ */
+export type EvalNodeMockHandler = (
+	context: IExecuteFunctions,
+) => Promise<INodeExecutionData[][] | undefined>;
+
 declare module 'n8n-workflow' {
 	interface IWorkflowExecuteAdditionalData {
 		hooks?: ExecutionLifecycleHooks;
@@ -48,9 +59,12 @@ declare module 'n8n-workflow' {
 		 * Only set by the eval execution service — never present in normal executions.
 		 */
 		evalLlmMockHandler?: EvalLlmMockHandler;
+		/** Eval only: answers for non-HTTP nodes at run time. Never present in normal executions. */
+		evalNodeMockHandler?: EvalNodeMockHandler;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };
+		'inbound-auth-core'?: { trustedSourceDirectory: TrustedSourceDirectory };
 		// Project ID is currently only added on the additionalData if the user
 		// has data table listing permission for that project. We should consider
 		// that only data tables belonging to their respective projects are shown.

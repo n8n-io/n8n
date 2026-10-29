@@ -44,7 +44,7 @@ const DEFAULT_DATA_TABLE: DataTableResource = {
 const renderComponent = createComponentRenderer(DataTableCard, {
 	props: {
 		dataTable: DEFAULT_DATA_TABLE,
-		readOnly: false,
+		schemaReadOnly: false,
 		showOwnershipBadge: false,
 	},
 	global: {
@@ -100,18 +100,13 @@ describe('DataTableCard', () => {
 		expect(getByTestId('data-table-card-created')).toHaveTextContent('Created');
 	});
 
-	it('should not render readonly badge when not readonly', () => {
-		const { queryByText } = renderComponent();
-		expect(queryByText('Read only')).not.toBeInTheDocument();
-	});
-
-	it('should render readonly badge when readonly', () => {
-		const { getByText } = renderComponent({
+	it('should not render a read-only badge when the table structure is locked', () => {
+		const { queryByText } = renderComponent({
 			props: {
-				readOnly: true,
+				schemaReadOnly: true,
 			},
 		});
-		expect(getByText('Read only')).toBeInTheDocument();
+		expect(queryByText('Read only')).not.toBeInTheDocument();
 	});
 
 	it('should render correct route to data table details', () => {
@@ -129,6 +124,41 @@ describe('DataTableCard', () => {
 		const columnCountElement = getByTestId('data-table-card-column-count');
 		expect(columnCountElement).toBeInTheDocument();
 		expect(columnCountElement).toHaveTextContent(`${DEFAULT_DATA_TABLE.columns.length + 1}`);
+	});
+
+	describe('card link styling', () => {
+		// Use the real N8nLink so the test sees the classes that it applies to the card content.
+		const renderWithRealLink = createComponentRenderer(DataTableCard, {
+			props: {
+				dataTable: DEFAULT_DATA_TABLE,
+				schemaReadOnly: false,
+				showOwnershipBadge: false,
+			},
+			global: {
+				stubs: {
+					N8nRoute: {
+						template: '<a><slot /></a>',
+						props: ['to'],
+					},
+					TimeAgo: {
+						template: '<span>just now</span>',
+					},
+					ProjectCardBadge: {
+						template: '<div data-test-id="project-card-badge" />',
+					},
+				},
+			},
+		});
+
+		it('should not underline the card content', () => {
+			const { getByTestId } = renderWithRealLink();
+			const name = getByTestId('data-table-card-name');
+			const link = getByTestId('data-table-card-link');
+
+			expect(link).toContainElement(name);
+			const underlined = link.querySelectorAll('[class*="-underline"]');
+			expect(underlined).toHaveLength(0);
+		});
 	});
 
 	describe('ownership badge', () => {

@@ -282,6 +282,20 @@ describe('createDelegateSubAgentTool', () => {
 		).toBe(false);
 	});
 
+	it('rejects background mode when no background runner is configured', async () => {
+		const runSubAgent = vi.fn<DelegateSubAgentRunner>();
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		if (!isZodSchema(tool.inputSchema)) throw new Error('Expected a Zod input schema');
+		const backgroundInput = { ...input, mode: 'background' };
+
+		expect(tool.inputSchema.safeParse(input).success).toBe(true);
+		expect(tool.inputSchema.safeParse(backgroundInput).success).toBe(false);
+		await expect(tool.handler?.(backgroundInput, {})).rejects.toThrow(
+			'Background delegation is unavailable',
+		);
+		expect(runSubAgent).not.toHaveBeenCalled();
+	});
+
 	it('preserves inlineSubAgentModelsByDifficulty in delegate tool metadata', () => {
 		const tool = createDelegateSubAgentTool({
 			inlineSubAgentModelsByDifficulty: {
@@ -739,6 +753,27 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentAbortSignal');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentExecutionCounter');
 		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentTelemetry');
+		expect(runSubAgent.mock.calls[0]?.[0]).not.toHaveProperty('parentOnGuardrailNotice');
+	});
+
+	it('forwards the guardrail notice sink from the tool context to the runner callback', async () => {
+		const runSubAgent = vi
+			.fn<DelegateSubAgentRunner>()
+			.mockResolvedValue({ status: 'completed', taskPath: '/root/research_api', answer: 'done' });
+		const tool = createDelegateSubAgentTool({ runSubAgent });
+		const parentOnGuardrailNotice = vi.fn();
+
+		await tool.handler?.(input, {
+			runId: 'parent-run-1',
+			onGuardrailNotice: parentOnGuardrailNotice,
+		});
+
+		expect(runSubAgent).toHaveBeenCalledWith(
+			expect.objectContaining({ parentOnGuardrailNotice }),
+			expect.objectContaining({
+				runInlineSubAgent: expect.any(Function),
+			}),
+		);
 	});
 
 	it('forwards the parent telemetry from the tool context to the runner callback', async () => {
@@ -1010,10 +1045,14 @@ describe('createDelegateSubAgentTool', () => {
 		expect(runSubAgent.mock.calls[2]?.[0]).toMatchObject({ taskPath: '/root/research_api_0' });
 	});
 
-	it('returns a failed output when the runner callback throws', async () => {
+	it.each([
+		{ error: new Error('Runner failed'), message: 'Runner failed' },
+		{ error: undefined, message: 'Unknown error' },
+		{ error: Symbol('failure'), message: 'Unknown error' },
+	])('reports the runner error: $error', async ({ error, message }) => {
 		const events: AgentEventData[] = [];
 		const tool = createDelegateSubAgentTool({
-			runSubAgent: async () => await Promise.reject(new Error('Runner failed')),
+			runSubAgent: vi.fn<DelegateSubAgentRunner>().mockRejectedValue(error),
 		});
 
 		await expect(
@@ -1025,12 +1064,12 @@ describe('createDelegateSubAgentTool', () => {
 			status: 'failed',
 			taskPath: '/root/research_api_0',
 			answer: '',
-			error: 'Runner failed',
+			error: message,
 		});
 		expect(events[events.length - 1]).toMatchObject({
 			type: AgentEvent.SubAgentCompleted,
 			status: 'failed',
-			error: 'Runner failed',
+			error: message,
 		});
 	});
 
@@ -1181,6 +1220,66 @@ describe('generateResultToDelegateSubAgentOutput', () => {
 		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
 			status: 'failed',
 			answer: '',
+			error: 'boom',
+		});
+	});
+
+	it('maps a guardrail stop to failed with the session cap reason', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-6',
+			messages: [],
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.session' },
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
+			finishReason: 'guardrail',
+			error: 'The sub-agent run was stopped: the session cost cap is spent.',
+		});
+	});
+
+	it('maps a monthly budget stop to failed with the monthly reason', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-7',
+			messages: [],
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.monthly' },
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
+			finishReason: 'guardrail',
+			error: 'The sub-agent run was stopped: the monthly budget is spent.',
+		});
+	});
+
+	it('keeps a recorded error over the guardrail stop reason', () => {
+		const result: GenerateResult = {
+			runId: 'child-run-8',
+			messages: [],
+			finishReason: 'guardrail',
+			guardrail: { code: 'budget.session' },
+			error: new Error('boom'),
+			getState: () => ({
+				status: 'failed',
+				messageList: { messages: [], historyIds: [], inputIds: [], responseIds: [] },
+				pendingToolCalls: {},
+			}),
+		};
+
+		expect(generateResultToDelegateSubAgentOutput('/root/x_0', result)).toMatchObject({
+			status: 'failed',
 			error: 'boom',
 		});
 	});

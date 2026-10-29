@@ -1,10 +1,13 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
+import { WORKFLOW_TOOL_NAME_BY_ACTION } from '@n8n/api-types';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
+import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
+import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -30,34 +33,35 @@ const loadExecutionsTool = lazyMod(
 	() => require('./executions.tool') as typeof import('./executions.tool'),
 );
 const loadNodesTool = lazyMod(() => require('./nodes.tool') as typeof import('./nodes.tool'));
+const loadSearchModelsTool = lazyMod(
+	() => require('./search-models.tool') as typeof import('./search-models.tool'),
+);
 const loadMcpServersTool = lazyMod(
 	() => require('./mcp-servers.tool') as typeof import('./mcp-servers.tool'),
 );
 const loadActivityTool = lazyMod(
 	() => require('./activity.tool') as typeof import('./activity.tool'),
 );
+const loadSaveUserPreferenceTool = lazyMod(
+	() => require('./save-user-preference.tool') as typeof import('./save-user-preference.tool'),
+);
+const loadSkillsTool = lazyMod(() => require('./skills.tool') as typeof import('./skills.tool'));
 const loadN8nDocsTool = lazyMod(
 	() => require('./n8n-docs.tool') as typeof import('./n8n-docs.tool'),
 );
-const loadAgentsTool = lazyMod(() => require('./agents.tool') as typeof import('./agents.tool'));
-const loadBuildAgentTool = lazyMod(
-	() =>
-		require('./orchestration/build-agent.tool') as typeof import('./orchestration/build-agent.tool'),
+const loadAgentContextTool = lazyMod(
+	() => require('./agent-context.tool') as typeof import('./agent-context.tool'),
 );
-const loadListAgentCapabilitiesTool = lazyMod(
+const loadSelectAgentTool = lazyMod(
 	() =>
-		require('./orchestration/list-agent-capabilities.tool') as typeof import('./orchestration/list-agent-capabilities.tool'),
+		require('./orchestration/select-agent.tool') as typeof import('./orchestration/select-agent.tool'),
+);
+const loadAgentBuilderTools = lazyMod(
+	() => require('./orchestration/builder-tools') as typeof import('./orchestration/builder-tools'),
 );
 const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
-);
-const loadCompleteCheckpointTool = lazyMod(
-	() =>
-		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
-);
-const loadPlanTool = lazyMod(
-	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
 );
 const loadReportVerificationVerdictTool = lazyMod(
 	() =>
@@ -72,6 +76,10 @@ const loadResearchTool = lazyMod(
 );
 const loadAskUserTool = lazyMod(
 	() => require('./shared/ask-user.tool') as typeof import('./shared/ask-user.tool'),
+);
+const loadLeaveOnboardingTool = lazyMod(
+	() =>
+		require('./shared/leave-onboarding.tool') as typeof import('./shared/leave-onboarding.tool'),
 );
 const loadTaskControlTool = lazyMod(
 	() => require('./task-control.tool') as typeof import('./task-control.tool'),
@@ -97,20 +105,68 @@ function getOrchestratorDomainToolFactories(
 	context: InstanceAiContext,
 ): Array<[string, DomainToolFactory]> {
 	const tools: Array<[string, DomainToolFactory]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, () => loadWorkflowsTool().createWorkflowsTool(context)],
+		...getSupportedWorkflowActions(context).map((action): [string, DomainToolFactory] => [
+			WORKFLOW_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkflowsTool().createWorkflowTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
-		[DOMAIN_TOOL_IDS.CREDENTIALS, () => loadCredentialsTool().createCredentialsTool(context)],
+		[
+			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+			() => loadCredentialsTool().createListCredentialsTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+			() => loadCredentialsTool().createSearchCredentialTypesTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+			() => loadCredentialsTool().createSetupCredentialsTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+			() => loadCredentialsTool().createTestCredentialTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
+			() => loadCredentialsTool().createDeleteCredentialTool(context),
+		],
 		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
 		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
-		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
+		[DOMAIN_TOOL_IDS.SEARCH_NODES, () => loadNodesTool().createSearchNodesTool(context)],
+		[DOMAIN_TOOL_IDS.GET_NODE_TYPES, () => loadNodesTool().createGetNodeTypesTool(context)],
+		[
+			DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+			() => loadNodesTool().createGetNodeParameterOptionsTool(context),
+		],
+		[DOMAIN_TOOL_IDS.EXECUTE_NODE, () => loadNodesTool().createExecuteNodeTool(context)],
+		[
+			DOMAIN_TOOL_IDS.SEARCH_MODELS,
+			() => loadSearchModelsTool().createSearchModelsTool(context.modelFetch ?? fetch),
+		],
 		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
 		],
 	];
+
+	if (context.credentialDescriptionsEnabled === true) {
+		tools.push([
+			DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION,
+			() => loadCredentialsTool().createUpdateCredentialDescriptionTool(context),
+		]);
+	}
+
+	// Onboarding threads only: the tool ends the flow the host seeded, and the frontend restores
+	// the chat chrome when it sees the call.
+	if (context.onboardingThread) {
+		tools.push([
+			DOMAIN_TOOL_IDS.LEAVE_ONBOARDING,
+			() => loadLeaveOnboardingTool().createLeaveOnboardingTool(),
+		]);
+	}
 
 	// eval-config is flag-gated: the adapter only wires evaluationConfigService
 	// when `088_config_evaluations` is on, so presence = expose the tool.
@@ -148,6 +204,31 @@ function getOrchestratorDomainToolFactories(
 		tools.push([DOMAIN_TOOL_IDS.ACTIVITY, () => loadActivityTool().createActivityTool(context)]);
 	}
 
+	if (context.agentContextService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.AGENT_CONTEXT,
+			() =>
+				loadAgentContextTool().createAgentContextTool({
+					reader: context.agentContextService!,
+					resolveDefaultAgentId: async () => (await resolveAgentBuilderTarget(context))?.agentId,
+					logger: context.logger,
+				}),
+		]);
+	}
+
+	// Presence is the gate, as with activity: the adapter wires `aiPreferenceService`
+	// only when saved preferences are enabled for this user.
+	if (context.aiPreferenceService) {
+		tools.push([
+			DOMAIN_TOOL_IDS.SAVE_USER_PREFERENCE,
+			() => loadSaveUserPreferenceTool().createSaveUserPreferenceTool(context),
+		]);
+	}
+
+	if (context.skillService) {
+		tools.push([DOMAIN_TOOL_IDS.SKILLS, () => loadSkillsTool().createSkillsTool(context)]);
+	}
+
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([
 			DOMAIN_TOOL_IDS.PARSE_FILE,
@@ -173,19 +254,15 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 }
 
 /**
- * Creates orchestration-only tools (task planning, task control).
+ * Creates orchestration-only tools (task control, verification).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [];
-	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
-	tools.push(
-		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
-			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
-		],
-	);
+	tools.push([
+		ORCHESTRATION_TOOL_IDS.TASK_CONTROL,
+		loadTaskControlTool().createTaskControlTool(context),
+	]);
 
 	if (context.workflowTaskService) {
 		tools.push([
@@ -205,16 +282,15 @@ export function createOrchestrationTools(context: OrchestrationContext): Instanc
 		]);
 	}
 
-	if (context.domainContext?.builderDelegate) {
+	const builderDelegate = context.domainContext?.builderDelegate;
+	if (builderDelegate) {
 		tools.push([
-			ORCHESTRATION_TOOL_IDS.BUILD_AGENT,
-			loadBuildAgentTool().createBuildAgentTool(context),
+			ORCHESTRATION_TOOL_IDS.SELECT_AGENT,
+			loadSelectAgentTool().createSelectAgentTool(context),
 		]);
-		tools.push([
-			ORCHESTRATION_TOOL_IDS.LIST_AGENT_CAPABILITIES,
-			loadListAgentCapabilitiesTool().createListAgentCapabilitiesTool(context),
-		]);
-		tools.push([DOMAIN_TOOL_IDS.AGENTS, loadAgentsTool().createAgentsTool(context)]);
+		for (const tool of loadAgentBuilderTools().createAgentBuilderTools(context, builderDelegate)) {
+			tools.push([tool.name, tool]);
+		}
 	}
 
 	if (context.domainContext?.agentPreviewSession && context.domainContext?.resolvePreviewSession) {

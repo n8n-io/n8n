@@ -1,5 +1,6 @@
 import { renderComponent } from '@/__tests__/render';
 import { createTestingPinia } from '@pinia/testing';
+import { ExpressionError } from 'n8n-workflow';
 import InlineExpressionEditorOutput from './InlineExpressionEditorOutput.vue';
 
 describe('InlineExpressionEditorOutput.vue', () => {
@@ -98,5 +99,31 @@ describe('InlineExpressionEditorOutput.vue', () => {
 		const body = await rendered.findByTestId('inline-expression-editor-output');
 
 		expect(body).toHaveTextContent('before> [Object: "2024-04-18T09:03:26.651-04:00"] <after');
+	});
+
+	test('should show the .first() tip when a referenced node is on another branch', async () => {
+		const rendered = renderComponent(InlineExpressionEditorOutput, {
+			pinia: createTestingPinia(),
+			props: {
+				visible: true,
+				segments: [
+					{
+						kind: 'resolvable',
+						from: 0,
+						to: 37,
+						resolvable: "{{ $('out2').item.json.output2 }}",
+						resolved: '[ERROR: ‘out2’ is on another branch]',
+						state: 'invalid',
+						error: new ExpressionError('Invalid expression', {
+							type: 'paired_item_not_on_branch',
+							functionality: 'pairedItem',
+							nodeCause: 'out2',
+						}),
+					},
+				],
+			},
+		});
+
+		expect(await rendered.findByText(/to read from a node on another branch/)).toBeInTheDocument();
 	});
 });

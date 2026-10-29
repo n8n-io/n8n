@@ -12,7 +12,7 @@ import {
 import type { RedisClientOptions } from 'redis';
 import { createClient } from 'redis';
 
-import { getSessionId } from '@utils/helpers';
+import { coerceSessionIdToString, getSessionId } from '@utils/helpers';
 import { logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
 
 import {
@@ -122,7 +122,11 @@ export class MemoryRedisChat implements INodeType {
 		if (nodeVersion >= 1.2) {
 			sessionId = getSessionId(this, itemIndex);
 		} else {
-			sessionId = this.getNodeParameter('sessionKey', itemIndex) as string;
+			sessionId = coerceSessionIdToString(
+				this,
+				this.getNodeParameter('sessionKey', itemIndex),
+				itemIndex,
+			);
 		}
 
 		const redisOptions: RedisClientOptions = {

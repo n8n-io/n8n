@@ -50,6 +50,8 @@ export interface WorkflowDataUpdate {
 	expectedChecksum?: string;
 	aiBuilderAssisted?: boolean;
 	autosaved?: boolean;
+	/** The history version this update restores. Its nodes keep their credentials. */
+	restoredFromVersionId?: string;
 }
 
 export interface WorkflowDataCreate extends WorkflowDataUpdate {

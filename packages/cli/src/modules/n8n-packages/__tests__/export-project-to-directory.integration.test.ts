@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -6,8 +7,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { createOwner } from '@test-integration/db/users';
-
-import { EventService } from '@/events/event.service';
 
 import { N8nPackagesService } from '../n8n-packages.service';
 import { FORMAT_VERSION } from '../spec/constants';
@@ -58,6 +57,7 @@ describe('exportPackageToDirectory', () => {
 
 		const manifest = await readJson('manifest.json');
 		expect(manifest).toMatchObject({ packageFormatVersion: FORMAT_VERSION });
+		expect(manifest).not.toHaveProperty('exportedAt');
 		expect(manifest.projects).toEqual([
 			{ id: project.id, name: 'Alpha Project', target: `projects/alpha-project-${project.id}` },
 		]);

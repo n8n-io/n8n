@@ -30,6 +30,31 @@ describe('components', () => {
 			expect(group?.className).toMatch(/vertical/);
 		});
 
+		it('should not apply toolbar style by default', () => {
+			const { container } = render(N8nButtonList, {
+				slots: {
+					default: '<button>One</button>',
+				},
+			});
+
+			const group = container.querySelector('[role="group"]');
+			expect(group?.className).not.toMatch(/toolbar/);
+		});
+
+		it('should apply toolbar variant', () => {
+			const { container } = render(N8nButtonList, {
+				props: {
+					variant: 'toolbar',
+				},
+				slots: {
+					default: '<button>One</button><button>Two</button>',
+				},
+			});
+
+			const group = container.querySelector('[role="group"]');
+			expect(group?.className).toMatch(/toolbar/);
+		});
+
 		it('should render slotted content', () => {
 			const { getByText } = render(N8nButtonList, {
 				slots: {

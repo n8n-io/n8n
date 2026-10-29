@@ -1,0 +1,113 @@
+operationId: installPackage
+tags:
+  - CommunityPackage
+summary: Install a community package
+description: Install a community package by npm name and optional version.
+x-required-scope: communityPackage:install
+parameters:
+  - $ref: ../../../../shared/spec/parameters/idempotencyKey.yml
+requestBody:
+  required: true
+  content:
+    application/json:
+      schema:
+        type: object
+        properties:
+          name:
+            type: string
+            description: npm package name. Unscoped names start with n8n-nodes-. Scoped names use the @[author]/n8n-nodes- form.
+          version:
+            type: string
+            description: Semver version or npm dist-tag, such as latest or beta. When unverified packages are disabled, only versions verified by n8n can be installed.
+        required:
+          - name
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            packageName:
+              type: string
+              description: npm package name
+            installedVersion:
+              type: string
+              description: Currently installed version
+            authorName:
+              type: string
+              description: Package author name
+            authorEmail:
+              type: string
+              description: Package author email
+            installedNodes:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  type:
+                    type: string
+                  latestVersion:
+                    type: number
+              description: Nodes included in this package
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            updateAvailable:
+              type: string
+              description: Version available for update, if any
+            failedLoading:
+              type: boolean
+              description: Whether the package failed to load
+            policyRestrictions:
+              type: object
+              properties:
+                nodeTypes:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      type:
+                        type: string
+                        description: Full node type name, such as n8n-nodes-example.exampleNode.
+                      blockedOn:
+                        type: string
+                        enum:
+                          - instance
+                          - projects
+                        description: 'instance: blocked on the instance by default. projects: allowed on the instance, but blocked in one or more projects.'
+                      optInAvailable:
+                        type: boolean
+                        description: Whether a project can allow this node type. True when an instance policy blocks the node type unless a project allows it.
+                    required:
+                      - type
+                      - blockedOn
+                      - optInAvailable
+                  description: Blocked node types from this package. Lists only the node types that are blocked.
+              required:
+                - nodeTypes
+              description: Node types from this package that a node type policy blocks. The install does not fail because of a policy. Absent when no policy was evaluated, for example when node type policies are not licensed. An empty nodeTypes list means that no policy blocks a node type from this package.
+          required:
+            - packageName
+            - installedVersion
+            - installedNodes
+            - createdAt
+            - updatedAt
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
+  '409':
+    $ref: ../../../../shared/spec/responses/conflict.yml
+  '415':
+    $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '422':
+    $ref: ../../../../shared/spec/responses/unprocessableEntity.yml

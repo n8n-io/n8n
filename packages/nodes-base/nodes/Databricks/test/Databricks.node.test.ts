@@ -1,6 +1,6 @@
 import { sleep } from '@n8n/utils/sleep';
 import { NodeTestHarness } from '@nodes-testing/node-test-harness';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeHelpers } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -13,9 +13,10 @@ import nock from 'nock';
 import { mockDeep } from 'vitest-mock-extended';
 
 import { execute as executeQuery } from '../actions/databricksSql/executeQuery.operation';
-import { makePermissionErrorLegible } from '../actions/helpers';
+import { makePermissionErrorLegible, permissionHintFor } from '../actions/helpers';
 import { execute as runJob } from '../actions/job/run.operation';
-import { getCatalogs, getJobs, getSchemas } from '../methods/listSearch';
+import { Databricks } from '../Databricks.node';
+import { getCatalogs, getJobs, getRuns, getSchemas } from '../methods/listSearch';
 import { jobParameters } from '../resources/job/parameters';
 
 // The operation is imported from source, so this mock replaces the real poll delay
@@ -55,6 +56,12 @@ const apiErrorFromBody = (status: number, data: unknown) =>
 			data,
 		}) as unknown as JsonObject,
 	);
+
+const createExecuteContext = () => {
+	const context = mockDeep<IExecuteFunctions>();
+	context.getInputData.mockReturnValue([]);
+	return context;
+};
 
 describe('Databricks', () => {
 	const credentials = {
@@ -173,11 +180,15 @@ describe('Databricks', () => {
 				.post('/api/2.0/genie/spaces/space123/start-conversation', {
 					content: 'Show me sales data for Q1 2024',
 				})
-				.reply(200, {
-					conversation_id: 'conv-456',
-					message_id: 'msg-789',
-					space_id: 'space123',
-				});
+				.reply(
+					200,
+					{
+						conversation_id: 'conv-456',
+						message_id: 'msg-789',
+						space_id: 'space123',
+					},
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 
 			databricksNock
 				.post('/api/2.0/genie/spaces/space123/conversations/conv-456/messages', {
@@ -192,18 +203,46 @@ describe('Databricks', () => {
 
 			databricksNock
 				.get('/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789')
-				.reply(200, {
-					id: 'msg-789',
-					conversation_id: 'conv-456',
-					content: 'Show me sales data for Q1 2024',
-					status: 'COMPLETED',
-				});
+				.reply(
+					200,
+					{
+						id: 'msg-789',
+						conversation_id: 'conv-456',
+						content: 'Show me sales data for Q1 2024',
+						status: 'COMPLETED',
+					},
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 
-			databricksNock.get('/api/2.0/genie/spaces/space123').reply(200, {
-				id: 'space123',
-				display_name: 'Sales Analytics',
-				description: 'AI-powered sales data assistant',
-			});
+			databricksNock.get('/api/2.0/genie/spaces/space123').reply(
+				200,
+				{
+					id: 'space123',
+					display_name: 'Sales Analytics',
+					description: 'AI-powered sales data assistant',
+				},
+				{ 'x-databricks-org-id': '1234567890' },
+			);
+
+			databricksNock
+				.get(
+					'/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789/attachments/att-001/query-result',
+				)
+				.reply(
+					200,
+					{ statement_response: { status: { state: 'SUCCEEDED' } } },
+					{ 'x-databricks-org-id': '1234567890' },
+				);
+
+			databricksNock
+				.post(
+					'/api/2.0/genie/spaces/space123/conversations/conv-456/messages/msg-789/attachments/att-001/execute-query',
+				)
+				.reply(
+					200,
+					{ statement_response: { status: { state: 'PENDING' } } },
+					{ 'x-databricks-org-id': '1234567890' },
+				);
 		});
 
 		afterAll(() => nock.cleanAll());
@@ -212,6 +251,62 @@ describe('Databricks', () => {
 			credentials,
 			workflowFiles: ['genie.workflow.json'],
 		});
+	});
+
+	describe('Genie -> toolAttribution', () => {
+		it.each([
+			['genie', 'getSpace', 'Powered by Databricks Genie'],
+			['job', 'run', undefined],
+		])(
+			'should resolve toolAttribution only for the genie resource (%s)',
+			(resource, operation, expected) => {
+				const { description } = new Databricks();
+
+				const result = NodeHelpers.getNodeParameters(
+					description.properties,
+					{ resource, operation },
+					true,
+					false,
+					node,
+					description,
+				);
+
+				expect(result?.toolAttribution).toBe(expected);
+			},
+		);
+	});
+
+	describe('Lakebase -> resource switch', () => {
+		it('should list Lakebase in the resource dropdown', () => {
+			const { description } = new Databricks();
+			const resource = description.properties.find((property) => property.name === 'resource');
+
+			expect(resource?.options).toContainEqual(
+				expect.objectContaining({ name: 'Lakebase', value: 'lakebase' }),
+			);
+		});
+
+		it.each([
+			['lakebase', 'getAll', true],
+			['job', 'run', false],
+		])(
+			'should scope the Lakebase operations and locators to the lakebase resource (%s)',
+			(resource, operation, expected) => {
+				const { description } = new Databricks();
+
+				const result = NodeHelpers.getNodeParameters(
+					description.properties,
+					{ resource },
+					true,
+					false,
+					node,
+					description,
+				);
+
+				expect(result?.operation).toBe(operation);
+				expect(Object.hasOwn(result ?? {}, 'lakebaseProject')).toBe(expected);
+			},
+		);
 	});
 
 	describe('Model Serving -> Query Endpoint', () => {
@@ -632,10 +727,128 @@ describe('Databricks', () => {
 		});
 	});
 
-	describe('Router -> PERMISSION_DENIED surfaces the Databricks message', () => {
-		// A 403 PERMISSION_DENIED body must surface its legible Databricks message
-		// instead of the generic "Forbidden - perhaps check your credentials?" —
-		// deleting the makePermissionErrorLegible call in the router must fail this
+	describe('Job -> Get Run', () => {
+		beforeAll(() => {
+			nock(HOST)
+				.get('/api/2.2/jobs/runs/get')
+				.query({ run_id: '41847992357943' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					run_id: 41847992357943,
+					run_name: 'Nightly ETL',
+					run_page_url: `${HOST}/?o=123#job/281874479417551/run/41847992357943`,
+					start_time: 1789430400000,
+					end_time: 1789430460000,
+					status: {
+						state: 'TERMINATED',
+						termination_details: {
+							code: 'SUCCESS',
+							type: 'SUCCESS',
+							message: 'The run was completed successfully.',
+						},
+					},
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get-run.workflow.json'],
+		});
+	});
+
+	describe('Job -> Get Run Output', () => {
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+			databricksNock
+				.get('/api/2.2/jobs/runs/get')
+				.query({ run_id: '41847992357943' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					run_id: 41847992357943,
+					tasks: [{ task_key: 'main', run_id: 41847992357944 }],
+				});
+			databricksNock
+				.get('/api/2.2/jobs/runs/get-output')
+				.query({ run_id: '41847992357944' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					metadata: {
+						run_id: 41847992357944,
+						task_key: 'main',
+						status: { state: 'TERMINATED', termination_details: { code: 'SUCCESS' } },
+					},
+					notebook_output: { result: 'done', truncated: false },
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get-run-output.workflow.json'],
+		});
+	});
+
+	describe('Job -> Get', () => {
+		beforeAll(() => {
+			const databricksNock = nock(HOST);
+			databricksNock
+				.get('/api/2.2/jobs/get')
+				.query({ job_id: '281874479417551', include_trigger_state: 'true' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					creator_user_name: 'owner@example.com',
+					run_as_user_name: 'owner@example.com',
+					created_time: 1757923200000,
+					settings: {
+						name: 'Nightly ETL',
+						tasks: [
+							{ task_key: 'extract', notebook_task: { notebook_path: '/Repos/etl/extract' } },
+						],
+						job_clusters: [
+							{
+								job_cluster_key: 'etl',
+								new_cluster: { spark_version: '15.4.x-scala2.12', num_workers: 2 },
+							},
+						],
+						schedule: {
+							quartz_cron_expression: '0 0 2 * * ?',
+							timezone_id: 'UTC',
+							pause_status: 'UNPAUSED',
+						},
+						max_concurrent_runs: 1,
+					},
+					trigger_state: { file_arrival: { using_file_events: false } },
+					has_more: true,
+					next_page_token: 'page-2',
+				});
+			databricksNock
+				.get('/api/2.2/jobs/get')
+				.query({ job_id: '281874479417551', include_trigger_state: 'true', page_token: 'page-2' })
+				.matchHeader('user-agent', 'n8n_DatabricksNode')
+				.reply(200, {
+					job_id: 281874479417551,
+					settings: {
+						tasks: [{ task_key: 'load', notebook_task: { notebook_path: '/Repos/etl/load' } }],
+					},
+					has_more: false,
+				});
+		});
+
+		afterAll(() => nock.cleanAll());
+
+		new NodeTestHarness().setupTests({
+			credentials,
+			workflowFiles: ['job-get.workflow.json'],
+		});
+	});
+
+	describe('Router -> PERMISSION_DENIED replaces the generic Forbidden message with the Databricks message', () => {
 		beforeAll(() => {
 			nock(HOST)
 				.get('/api/2.1/unity-catalog/catalogs')
@@ -667,6 +880,32 @@ describe('makePermissionErrorLegible', () => {
 		makePermissionErrorLegible(error);
 
 		expect(error.message).toBe(PERMISSION_MESSAGE);
+		expect(error.description).toBe(
+			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.',
+		);
+	});
+
+	it('should use the hint it is given', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: 'User does not have Can View on job 281874479417551.',
+		});
+
+		makePermissionErrorLegible(error, permissionHintFor('job', 'getRun'));
+
+		expect(error.description).toBe(
+			'Grant at least Can View on the job to the signed-in user or service principal in Databricks, then retry.',
+		);
+	});
+
+	it('should fall back to the generic hint for a resource without one', () => {
+		const error = apiErrorFromBody(403, {
+			error_code: 'PERMISSION_DENIED',
+			message: PERMISSION_MESSAGE,
+		});
+
+		makePermissionErrorLegible(error, permissionHintFor('unityCatalog', 'getCatalog'));
+
 		expect(error.description).toBe(
 			'Grant the named permission to the signed-in user or service principal in Databricks, then retry.',
 		);
@@ -730,10 +969,36 @@ describe('makePermissionErrorLegible', () => {
 	});
 });
 
+describe('permissionHintFor', () => {
+	// Starting a run needs Can Manage Run, so the read hint would leave the user
+	// stuck in the same error after granting only Can View
+	it.each([
+		['run', 'Can Manage Run on the job'],
+		['getRun', 'Can View on the job'],
+		['getRunOutput', 'Can View on the job'],
+	])('should name the grant the job %s operation needs', (operation, grant) => {
+		expect(permissionHintFor('job', operation)).toBe(
+			`Grant at least ${grant} to the signed-in user or service principal in Databricks, then retry.`,
+		);
+	});
+
+	it('should hint the read grant for a job dropdown, which has no operation', () => {
+		expect(permissionHintFor('job')).toBe(permissionHintFor('job', 'getRun'));
+	});
+
+	it.each([
+		['a resource without hints', 'unityCatalog', 'getCatalog'],
+		['an object prototype member', 'constructor', 'toString'],
+	])('should return no hint for %s', (_label, resource, operation) => {
+		expect(permissionHintFor(resource, operation)).toBeUndefined();
+	});
+});
+
 describe('listSearch -> PERMISSION_DENIED surfaces the Databricks message', () => {
 	it.each([
 		['getCatalogs', getCatalogs],
 		['getJobs', getJobs],
+		['getRuns', getRuns],
 	])('should reject with the legible message from %s', async (_name, method) => {
 		const context = mockDeep<ILoadOptionsFunctions>();
 		context.getNodeParameter.mockReturnValue('accessToken');
@@ -764,7 +1029,7 @@ describe('listSearch -> PERMISSION_DENIED surfaces the Databricks message', () =
 
 describe('Databricks SQL -> Execute Query (FAILED/CANCELED statement)', () => {
 	const setupContext = (status: unknown) => {
-		const context = mockDeep<IExecuteFunctions>();
+		const context = createExecuteContext();
 		context.getNode.mockReturnValue(node);
 		context.getNodeParameter.mockImplementation((name) => {
 			if (name === 'warehouseId') return 'warehouse123';
@@ -847,7 +1112,7 @@ describe('Databricks SQL -> Execute Query (async polling)', () => {
 	});
 
 	it('should poll until the statement reaches SUCCEEDED and map rows to items', async () => {
-		const context = mockDeep<IExecuteFunctions>();
+		const context = createExecuteContext();
 		context.getNode.mockReturnValue(node);
 		context.getNodeParameter.mockImplementation((name) => {
 			if (name === 'warehouseId') return 'warehouse123';
@@ -927,7 +1192,7 @@ describe('Job -> Run (wait for completion)', () => {
 			options: { timeout: 10 },
 			...overrides,
 		};
-		const context = mockDeep<IExecuteFunctions>();
+		const context = createExecuteContext();
 		context.getNode.mockReturnValue(node);
 		context.getExecutionCancelSignal.mockReturnValue(cancelSignal);
 		context.getNodeParameter.mockImplementation((name, index) =>
@@ -1294,5 +1559,39 @@ describe('listSearch -> getJobs', () => {
 
 		expect(apiMock(context)).toHaveBeenCalledTimes(10);
 		expect(result).toEqual({ results: [], paginationToken: 'more' });
+	});
+});
+
+describe('Lakebase -> Execute Function method wiring', () => {
+	const databricks = new Databricks();
+	const property = (name: string) => databricks.description.properties.find((p) => p.name === name);
+
+	// Lint validates loadOptionsMethod names only, so these two are pinned here
+	it('resolves the function picker to a listSearch method', () => {
+		const listMode = property('lakebaseFunction')?.modes?.find((mode) => mode.name === 'list');
+		const method = listMode?.typeOptions
+			?.searchListMethod as keyof typeof databricks.methods.listSearch;
+
+		expect(method).toBeDefined();
+		expect(typeof databricks.methods.listSearch[method]).toBe('function');
+	});
+
+	it('resolves the argument form to a resourceMapping method', () => {
+		const method = property('functionArguments')?.typeOptions?.resourceMapper
+			?.resourceMapperMethod as keyof typeof databricks.methods.resourceMapping;
+
+		expect(method).toBeDefined();
+		expect(typeof databricks.methods.resourceMapping[method]).toBe('function');
+	});
+
+	it('opens on the argument form', () => {
+		expect(property('specifyArguments')?.default).toBe('fields');
+	});
+
+	// The editor clears a locator only when a declared dependency changes
+	it('resets the function picker when a parent locator changes', () => {
+		expect(property('lakebaseFunction')?.typeOptions?.loadOptionsDependsOn).toEqual(
+			property('lakebaseTable')?.typeOptions?.loadOptionsDependsOn,
+		);
 	});
 });

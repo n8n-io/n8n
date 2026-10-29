@@ -311,4 +311,32 @@ describe('Test Summarize Node, aggregateAndSplitData', () => {
 			expect(flattenAggregationResultToArray(result)).toMatchSnapshot('array');
 		});
 	});
+
+	test('should return null, not NaN, for the average of a group with no numeric values', () => {
+		const data = [
+			{ Sku: 'A', Qty: 2, _itemIndex: 0 },
+			{ Sku: 'A', Qty: 4, _itemIndex: 1 },
+			{ Sku: 'B', Qty: 'n/a', _itemIndex: 2 },
+			{ Sku: 'B', Qty: '', _itemIndex: 3 },
+		];
+
+		const aggregations: Aggregations = [
+			{ aggregation: 'average', field: 'Qty' },
+			{ aggregation: 'sum', field: 'Qty' },
+		];
+
+		const result = aggregateAndSplitData({
+			splitKeys: ['Sku'],
+			inputItems: data,
+			fieldsToSummarize: aggregations,
+			options: { continueIfFieldNotFound: true },
+			getValue: fieldValueGetter(),
+		});
+
+		// Sum keeps returning 0, the identity for a sum, for a group with no numeric values.
+		expect(flattenAggregationResultToArray(result)).toEqual([
+			{ returnData: { Sku: 'A', average_Qty: 3, sum_Qty: 6 }, pairedItems: [0, 1] },
+			{ returnData: { Sku: 'B', average_Qty: null, sum_Qty: 0 }, pairedItems: [2, 3] },
+		]);
+	});
 });

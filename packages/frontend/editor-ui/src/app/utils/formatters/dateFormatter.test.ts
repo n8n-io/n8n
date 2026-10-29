@@ -59,6 +59,13 @@ describe('formatTimeAgo', () => {
 		expect(formatTimeAgo(yesterday)).toBe('Yesterday');
 	});
 
+	test('should count calendar days, not 24 hour windows', () => {
+		// 23 hours ago, but on the previous calendar day
+		expect(formatTimeAgo(new Date('2023-07-14T13:00:00Z'))).toBe('Yesterday');
+		// 47 hours ago, two calendar days back (Thursday)
+		expect(formatTimeAgo(new Date('2023-07-13T13:00:00Z'))).toBe('Thursday');
+	});
+
 	test('should handle edge cases at boundaries', () => {
 		// Exactly 7 days ago
 		const exactlySevenDaysAgo = new Date('2023-07-08T12:00:00Z');

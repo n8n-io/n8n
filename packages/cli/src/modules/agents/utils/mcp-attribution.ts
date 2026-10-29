@@ -29,6 +29,8 @@ export function createAttributionTracker(attributions: Map<string, string>) {
 			}
 			if (chunk.type !== 'finish') return [];
 			if (chunk.finishReason === 'error' || chunk.finishReason === 'tool-calls') return [];
+			// A reply with no text would show as the label alone, which reads as a glitch
+			if (text.trim() === '') return [];
 			// Skip an attribution the model already echoed into its reply
 			const lines = [...pending].filter((attribution) => !text.includes(attribution));
 			if (lines.length === 0) return [];
@@ -36,7 +38,7 @@ export function createAttributionTracker(attributions: Map<string, string>) {
 			return [
 				{ type: 'text-start', id },
 				// Consumers concatenate text-deltas as-is, so separate the label from the reply
-				{ type: 'text-delta', id, delta: `${text ? '\n\n' : ''}${lines.join('\n')}` },
+				{ type: 'text-delta', id, delta: `\n\n${lines.join('\n')}` },
 				{ type: 'text-end', id },
 			];
 		},

@@ -80,7 +80,11 @@ export function extractErrorDescription(rawError: SplunkError) {
 }
 
 export function toUnixEpoch(timestamp: string) {
-	return Date.parse(timestamp) / 1000;
+	// Splunk reads a bare number as epoch seconds; a four-digit one stays a year.
+	if (/^-?\d+(\.\d+)?$/.test(timestamp) && !/^\d{4}$/.test(timestamp)) return timestamp;
+	const parsed = Date.parse(timestamp);
+	// Relative specifiers such as -15m or now are passed through for Splunk to read.
+	return Number.isNaN(parsed) ? timestamp : parsed / 1000;
 }
 
 export function formatFeed(responseData: SplunkFeedResponse) {

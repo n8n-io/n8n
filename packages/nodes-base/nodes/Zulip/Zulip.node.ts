@@ -136,7 +136,7 @@ export class Zulip implements INodeType {
 		for (let i = 0; i < length; i++) {
 			try {
 				if (resource === 'message') {
-					//https://zulipchat.com/api/send-message
+					//https://zulip.com/api/send-message
 					if (operation === 'sendPrivate') {
 						const to = toMultiOptionsCsv(this.getNodeParameter('to', i));
 						const content = this.getNodeParameter('content', i) as string;
@@ -147,7 +147,7 @@ export class Zulip implements INodeType {
 						};
 						responseData = await zulipApiRequest.call(this, 'POST', '/messages', body);
 					}
-					//https://zulipchat.com/api/send-message
+					//https://zulip.com/api/send-message
 					if (operation === 'sendStream') {
 						const stream = this.getNodeParameter('stream', i) as string;
 						const topic = this.getNodeParameter('topic', i) as string;
@@ -160,7 +160,7 @@ export class Zulip implements INodeType {
 						};
 						responseData = await zulipApiRequest.call(this, 'POST', '/messages', body);
 					}
-					//https://zulipchat.com/api/update-message
+					//https://zulip.com/api/update-message
 					if (operation === 'update') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						const updateFields = this.getNodeParameter('updateFields', i);
@@ -181,17 +181,17 @@ export class Zulip implements INodeType {
 							body,
 						);
 					}
-					//https://zulipchat.com/api/get-raw-message
+					//https://zulip.com/api/get-message
 					if (operation === 'get') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						responseData = await zulipApiRequest.call(this, 'GET', `/messages/${messageId}`);
 					}
-					//https://zulipchat.com/api/delete-message
+					//https://zulip.com/api/delete-message
 					if (operation === 'delete') {
 						const messageId = this.getNodeParameter('messageId', i) as string;
 						responseData = await zulipApiRequest.call(this, 'DELETE', `/messages/${messageId}`);
 					}
-					//https://zulipchat.com/api/upload-file
+					//https://zulip.com/api/upload-file
 					if (operation === 'updateFile') {
 						const credentials = await this.getCredentials('zulipApi');
 						const dataBinaryProperty = this.getNodeParameter('dataBinaryProperty', i);

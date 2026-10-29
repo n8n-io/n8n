@@ -43,6 +43,7 @@ The draft input grows with typed text (`field-sizing: content`) so it wraps to t
 **Slots**
 
 - `input`: `{ id?, placeholder, autoFocus?, disabled?, class }` - Replace the default text input. Apply `class` so the field keeps TagsInput input styles. Re-exported `TagsInputInput` can be used when composing a custom input.
+- `trailing` - Content at the end of the field, outside the scrolling tags. The slot is unstyled. Position the content yourself. `--tag--height` is the chip height (`--input--height` minus twice `--tags-input--padding`). Set the content height to `calc(var(--input--height) - 2px)` to fill one row. That value is the field height minus the 1px padding on each side.
 - `tag`: `{ value, displayValue, index, disabled, ui }` - Replace tag content inside the item chrome. Keep using `TagsInputItemText` / `TagsInputItemDelete` (re-exported from `@n8n/design-system`) for label + remove a11y. Put `@mousedown.prevent` on `TagsInputItemDelete` so removing a tag does not steal focus. Prefer `as-child` with an explicit `aria-label` (e.g. “Remove {tag}”) and clear `aria-labelledby` — reka’s default names the delete control after the tag text alone. `ui.text` / `ui.delete` are the default class names
 
 

@@ -1,10 +1,14 @@
 import type { StoryFn } from '@storybook/vue3-vite';
 import { defineComponent } from 'vue';
 
+import './AiActivityStepGroup.stories.scss';
+
 import N8nAiActivityStep from '../N8nAiActivityStep';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
+import N8nChatInput from '../N8nChatInput';
+import N8nIcon from '../N8nIcon';
 import N8nAiActivityStepGroup from './AiActivityStepGroup.vue';
 
 export default {
@@ -27,7 +31,7 @@ const steps = [
 	{
 		id: 'nodes-search',
 		label: 'Search nodes',
-		toolName: 'nodes',
+		toolName: 'workflow_builder_nodes',
 		args: { action: 'search', query: 'Slack trigger', limit: 5 },
 		result: {
 			nodes: [
@@ -39,15 +43,15 @@ const steps = [
 	{
 		id: 'workflow-code',
 		label: 'Generated workflow code',
-		toolName: 'workflows',
-		args: { action: 'get-as-code' },
+		toolName: 'get_workflow_as_code',
+		args: {},
 		result: { code: 'const workflow = {\n  nodes: [scheduleTrigger, slackMessage],\n};' },
 	},
 	{
 		id: 'workflows-list',
 		label: 'Listed workflows',
-		toolName: 'workflows',
-		args: { action: 'list' },
+		toolName: 'list_workflows',
+		args: {},
 		result: {
 			workflows: [
 				{ name: 'Daily lead sync', active: true, updated: 'Today' },
@@ -113,8 +117,7 @@ const StoryToolResultRenderer = defineComponent({
 	computed: {
 		code(): string | undefined {
 			const result = this.result as { code?: unknown };
-			const toolArgs = this.toolArgs as { action?: unknown } | undefined;
-			return this.toolName === 'workflows' && toolArgs?.action === 'get-as-code'
+			return this.toolName === 'get_workflow_as_code'
 				? typeof result.code === 'string'
 					? result.code
 					: undefined
@@ -166,6 +169,53 @@ export const Default: StoryFn = () => ({
 	`,
 });
 
+export const BackgroundJobs: StoryFn = (args) => ({
+	components: { N8nAiActivityStepGroup, N8nChatInput, N8nIcon },
+	setup: () => ({ args }),
+	data: () => ({
+		message: '',
+		jobs: [
+			{ title: 'Sub-agent — Berlin weather, week 1', waiting: false },
+			{ title: 'Sub-agent — Berlin weather, week 2', waiting: false },
+			{ title: "Workflow (Wait node) — waiting for tomorrow's forecast refresh", waiting: true },
+		],
+	}),
+	template: `
+		<div style="width: 32rem; max-width: 100%">
+			<n8n-chat-input v-model="message" placeholder="Message Research Assistant..." @submit="message = ''">
+				<template #leading>
+					<div class="background-jobs-story">
+						<n8n-ai-activity-step-group v-bind="args">
+							<template #prefix><n8n-icon icon="loader-circle" spin size="small" aria-hidden="true" class="job-spinner" style="color: var(--color--primary)" /></template>
+							<template #header-trailing><span aria-live="off" style="font-variant-numeric: tabular-nums; color: var(--text-color--subtler)">0:42</span></template>
+							<div style="padding: var(--spacing--sm); border-bottom: var(--border); border-bottom-style: dashed;">
+								<ul style="list-style: none; padding: 0; margin: 0 0 var(--spacing--xs); max-height: 20vh; overflow-y: auto">
+									<li v-for="job in jobs" :key="job.title" style="display: flex; align-items: flex-start; gap: var(--spacing--2xs); padding-block: var(--spacing--3xs); font-size: var(--font-size--sm); line-height: var(--line-height--lg); color: var(--text-color--subtle); overflow-wrap: anywhere">
+										<n8n-icon :icon="job.waiting ? 'circle' : 'loader-circle'" :spin="!job.waiting" size="small" aria-hidden="true" :class="job.waiting ? 'waiting' : 'job-spinner'" :style="{ flexShrink: 0, color: job.waiting ? 'var(--text-color--subtler)' : 'var(--color--primary)' }" />
+										<span>{{ job.title }}</span>
+									</li>
+								</ul>
+								<a href="#session-trace" style="display: inline-flex; align-items: center; gap: var(--spacing--2xs); font-size: var(--font-size--sm); color: var(--text-color); text-decoration: underline"><n8n-icon icon="arrow-right" size="small" />View trace</a>
+							</div>
+						</n8n-ai-activity-step-group>
+					</div>
+				</template>
+			</n8n-chat-input>
+		</div>
+	`,
+});
+BackgroundJobs.args = {
+	label: 'Running 3 background tasks',
+	fullWidth: true,
+	contentPosition: 'above',
+};
+
+export const LongBackgroundJobHeader = BackgroundJobs.bind({});
+LongBackgroundJobHeader.args = {
+	...BackgroundJobs.args,
+	label: 'Running background tasks to check outstanding invoices and reply to requests',
+};
+
 const Template: StoryFn = (args) => ({
 	components: { N8nAiActivityStep, ...storyComponents },
 	setup: () => ({ args, jsonTextStyle }),
@@ -193,7 +243,7 @@ const Template: StoryFn = (args) => ({
 export const NodeSearch = Template.bind({});
 NodeSearch.args = {
 	label: 'Search nodes',
-	toolName: 'nodes',
+	toolName: 'workflow_builder_nodes',
 	toolArgs: { action: 'search', query: 'Slack trigger', limit: 5 },
 	result: {
 		nodes: [
@@ -214,8 +264,8 @@ Reasoning.args = {
 export const CodeResult = Template.bind({});
 CodeResult.args = {
 	label: 'Generated workflow code',
-	toolName: 'workflows',
-	toolArgs: { action: 'get-as-code' },
+	toolName: 'get_workflow_as_code',
+	toolArgs: {},
 	result: {
 		code: `const workflow = {
   nodes: [
@@ -229,8 +279,8 @@ CodeResult.args = {
 export const TableResult = Template.bind({});
 TableResult.args = {
 	label: 'Listed workflows',
-	toolName: 'workflows',
-	toolArgs: { action: 'list' },
+	toolName: 'list_workflows',
+	toolArgs: {},
 	result: {
 		workflows: [
 			{ name: 'Daily lead sync', active: true, updated: 'Today' },

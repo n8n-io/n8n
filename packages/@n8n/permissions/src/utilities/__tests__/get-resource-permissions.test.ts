@@ -6,14 +6,20 @@ import { getResourcePermissions } from '../get-resource-permissions.ee';
 describe('permissions', () => {
 	it('getResourcePermissions for empty scopes', () => {
 		expect(getResourcePermissions()).toEqual({
+			app: {},
 			agent: {},
 			aiAssistant: {},
+			aiPreference: {},
+			projectAiPreference: {},
+			skill: {},
+			projectSkill: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
 			community: {},
 			communityPackage: {},
 			credential: {},
+			credentialTypePolicy: {},
 			externalSecretsProvider: {},
 			externalSecret: {},
 			eventBusDestination: {},
@@ -31,7 +37,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
-			gitConnection: {},
+			promotions: {},
 			tag: {},
 			user: {},
 			variable: {},
@@ -54,10 +60,14 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
+			trustedSource: {},
 		});
 	});
 	it('getResourcePermissions', () => {
 		const scopes: Scope[] = [
+			'app:read',
+			'app:list',
 			'credential:create',
 			'credential:delete',
 			'credential:list',
@@ -93,8 +103,13 @@ describe('permissions', () => {
 		];
 
 		const permissionRecord: PermissionsRecord = {
+			app: { read: true, list: true },
 			agent: {},
 			aiAssistant: {},
+			aiPreference: {},
+			projectAiPreference: {},
+			skill: {},
+			projectSkill: {},
 			annotationTag: {},
 			auditLogs: {},
 			banner: {},
@@ -109,6 +124,7 @@ describe('permissions', () => {
 				share: true,
 				update: true,
 			},
+			credentialTypePolicy: {},
 			eventBusDestination: {
 				list: true,
 				test: true,
@@ -132,7 +148,7 @@ describe('permissions', () => {
 			securityAudit: {},
 			securitySettings: {},
 			sourceControl: {},
-			gitConnection: {},
+			promotions: {},
 			tag: {
 				create: true,
 				list: true,
@@ -185,6 +201,8 @@ describe('permissions', () => {
 			instanceAi: {},
 			roleMappingRule: {},
 			otel: {},
+			scim: {},
+			trustedSource: {},
 		};
 
 		expect(getResourcePermissions(scopes)).toEqual(permissionRecord);

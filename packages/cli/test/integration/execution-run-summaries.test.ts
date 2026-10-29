@@ -271,4 +271,76 @@ describe('ExecutionRepository.summariseRunsForProjects', () => {
 			}),
 		).toEqual([]);
 	});
+
+	const summarise = async (overrides: Record<string, unknown> = {}) =>
+		await repository.summariseRunsForProjects({
+			projectIds: 'all-projects',
+			stoppedAfter: windowStart(),
+			stoppedBefore: readTime(),
+			workflowLimit: 10,
+			...overrides,
+		});
+
+	/**
+	 * `'all-projects'` drops the shared join, and it is the branch every instance owner takes.
+	 * `mcpVisibleOnly` is the only thing narrowing it there, so both need their own cases.
+	 */
+	describe("the 'all-projects' scope", () => {
+		it('summarises a workflow whose project the list scope never mentions', async () => {
+			const workflow = await createWorkflow({ name: 'Elsewhere' }, otherProject);
+			await createExecution({ status: 'success', stoppedAt: recently() }, workflow);
+
+			const scoped = await repository.summariseRunsForProjects({
+				projectIds: [project.id],
+				stoppedAfter: windowStart(),
+				stoppedBefore: readTime(),
+				workflowLimit: 10,
+			});
+
+			expect(scoped).toEqual([]);
+			expect(await summarise()).toHaveLength(1);
+		});
+
+		it('counts a run once for a workflow shared into two projects', async () => {
+			const workflow = await createWorkflow({ name: 'Shared' }, project);
+			await shareWorkflowWithProjects(workflow, [{ project: otherProject }]);
+			await createExecution({ status: 'success', stoppedAt: recently() }, workflow);
+
+			const [summary] = await summarise();
+
+			expect(summary).toMatchObject({ total: 1 });
+		});
+
+		it('counts only workflows exposed to MCP when asked to', async () => {
+			const exposed = await createWorkflow(
+				{ name: 'Exposed', settings: { availableInMCP: true } },
+				project,
+			);
+			const withheld = await createWorkflow({ name: 'Withheld' }, project);
+			await createExecution({ status: 'success', stoppedAt: recently() }, exposed);
+			await createExecution({ status: 'error', stoppedAt: recently() }, withheld);
+
+			expect(await summarise()).toHaveLength(2);
+
+			const visible = await summarise({ mcpVisibleOnly: true });
+			expect(visible).toHaveLength(1);
+			expect(visible[0].workflowName).toBe('Exposed');
+		});
+
+		/**
+		 * `isArchived` is inside the `mcpVisibleOnly` branch on purpose: the conversation surface
+		 * has no MCP visibility rule and must keep seeing archived workflows' runs. Moving the
+		 * predicate out of that branch would change the conversation surface silently.
+		 */
+		it('excludes an archived workflow only under mcpVisibleOnly', async () => {
+			const workflow = await createWorkflow(
+				{ name: 'Archived but flagged', isArchived: true, settings: { availableInMCP: true } },
+				project,
+			);
+			await createExecution({ status: 'error', stoppedAt: recently() }, workflow);
+
+			expect(await summarise()).toHaveLength(1);
+			expect(await summarise({ mcpVisibleOnly: true })).toEqual([]);
+		});
+	});
 });

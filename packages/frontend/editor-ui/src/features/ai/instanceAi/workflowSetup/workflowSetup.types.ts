@@ -2,7 +2,7 @@ import type { InstanceAiCredentialSetupHint, InstanceAiWorkflowSetupNode } from 
 import type { INodeParameters } from 'n8n-workflow';
 
 /**
- * One form unit (per `node × credential-or-parameters`).
+ * One form unit (per `node × credential-or-parameters`) and one wizard step.
  * Backs all input/skip/payload state.
  */
 export interface WorkflowSetupSection {
@@ -18,27 +18,6 @@ export interface WorkflowSetupSection {
 	preferNewCredential?: boolean;
 }
 
-/**
- * Root node + its setup/sub-node sections grouped under a single wizard step.
- *
- * `rootSection` is optional because the root node may not have a setup
- * request of its own — its sub-nodes can carry all the configuration. When
- * the root node does have a setup request, credentials and parameters from
- * that request are bundled into a single section.
- */
-export interface WorkflowSetupGroup {
-	subnodeRootNode: { name: string; type: string; typeVersion: number; id: string };
-	rootSection?: WorkflowSetupSection;
-	subnodeSections: WorkflowSetupSection[];
-}
-
-/**
- * What the wizard navigates: either a single section or a grouped step.
- */
-export type WorkflowSetupStep =
-	| { kind: 'section'; section: WorkflowSetupSection }
-	| { kind: 'group'; group: WorkflowSetupGroup };
-
 export interface WorkflowSetupApplyPayload {
 	nodeCredentials?: Record<string, Record<string, string>>;
 	nodeParameters?: Record<string, INodeParameters>;
@@ -48,3 +27,13 @@ export interface WorkflowSetupApplyPayload {
 }
 
 export type TerminalState = 'applying' | 'applied' | 'partial' | 'deferred';
+
+/**
+ * How the parent settled the card's answer. `failed` opens the wizard again,
+ * with the user's selections. `result` is the setup tool result, when the
+ * parent has one.
+ */
+export interface WorkflowSetupOutcome {
+	state: TerminalState | 'failed';
+	result?: Record<string, unknown>;
+}

@@ -77,8 +77,8 @@ onBeforeUnmount(() => {
 		<N8nPopover
 			v-model:open="isPopoverVisible"
 			side="top"
+			align="center"
 			width="auto"
-			:content-class="$style.popover"
 			:enable-scrolling="false"
 			@before-enter="onMouseEnter"
 			@after-leave="onMouseLeave"
@@ -139,16 +139,12 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" module>
-.popover {
-	margin-bottom: calc(-1 * var(--spacing--2xs));
-	margin-left: calc(-1 * var(--spacing--5xs));
-}
-
 .content {
 	display: flex;
 	flex-direction: row;
 	width: fit-content;
 	gap: var(--spacing--2xs);
+	padding: var(--spacing--2xs);
 }
 
 .color {

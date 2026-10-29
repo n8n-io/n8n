@@ -16,6 +16,8 @@ export type IUser = {
 export interface UserAction<UserType extends IUser> {
 	label: string;
 	value: string;
+	/** Whether to show a separator above the item in the dropdown menu. */
+	divided?: boolean;
 	disabled?: boolean;
 	type?: 'external-link';
 	tooltip?: string;

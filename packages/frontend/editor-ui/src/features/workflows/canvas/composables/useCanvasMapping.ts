@@ -27,8 +27,13 @@ import {
 	parseCanvasConnectionHandleString,
 } from '../canvas.utils';
 import { AGENT_NODE_SIZE } from '@/features/agents/utils/agentNode';
-import type { IConnections, ITaskData, IWorkflowGroup } from 'n8n-workflow';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import {
+	isEmptyGroupAnchor,
+	NodeConnectionTypes,
+	type IConnections,
+	type ITaskData,
+	type IWorkflowGroup,
+} from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import { MarkerType } from '@vue-flow/core';
 import type { Connection } from '@vue-flow/core';
@@ -64,6 +69,12 @@ export function useCanvasMapping({
 	getAgentNodeHeight?: (id: string) => number | undefined;
 }) {
 	const i18n = useI18n();
+
+	function getCanvasNodeLabel(node: INodeUi): string {
+		const isEmptyGroupAnchorNode = isEmptyGroupAnchor(node);
+
+		return isEmptyGroupAnchorNode ? i18n.baseText('nodeView.replaceMe') : node.name;
+	}
 
 	function countNonCanceledIterations(tasks: ITaskData[] | null | undefined): number {
 		return tasks?.filter((task) => task.executionStatus !== 'canceled').length ?? 0;
@@ -186,7 +197,7 @@ export function useCanvasMapping({
 
 			return {
 				id: node.id,
-				label: node.name,
+				label: getCanvasNodeLabel(node),
 				type: 'canvas-node',
 				position: applyOffset(node.position, offset),
 				data,

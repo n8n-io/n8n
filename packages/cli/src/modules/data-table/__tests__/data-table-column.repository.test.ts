@@ -1,11 +1,12 @@
 import { testModules } from '@n8n/backend-test-utils';
+import type { TransactionRunner } from '@n8n/db';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
 import type { Mock, Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
-import type { DataTableDDLService } from '../data-table-ddl.service';
+import type { DataTableDDLService } from '../persistence/data-table-ddl';
 import { DataTable } from '../data-table.entity';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
@@ -39,7 +40,11 @@ describe('DataTableColumnRepository', () => {
 			manager: mockEntityManager,
 		});
 
-		repository = new DataTableColumnRepository(mockDataSource, mockDDLService);
+		repository = new DataTableColumnRepository(
+			mockDataSource,
+			mockDDLService,
+			mock<TransactionRunner>(),
+		);
 	});
 
 	describe('renameColumn', () => {

@@ -7,6 +7,7 @@ import type { Telemetry } from '@/telemetry';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../../mcp.types';
 import { columnNameSchema, dataTableColumnTypeSchema } from '../schemas';
+import { trackAndReturnToolError } from '../tool-error.utils';
 
 const columnSchema = z.object({
 	name: columnNameSchema,
@@ -94,19 +95,7 @@ export const createCreateDataTableTool = (
 				structuredContent: output,
 			};
 		} catch (error) {
-			const errorMessage = error instanceof Error ? error.message : String(error);
-			telemetryPayload.results = {
-				success: false,
-				error: errorMessage,
-			};
-			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
-
-			const output = { error: errorMessage };
-			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
-				structuredContent: output,
-				isError: true,
-			};
+			return trackAndReturnToolError(telemetry, telemetryPayload, error);
 		}
 	},
 });

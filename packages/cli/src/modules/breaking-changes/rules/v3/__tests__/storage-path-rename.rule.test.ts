@@ -59,4 +59,10 @@ describe('StoragePathRenameRule', () => {
 		expect(result.instanceIssues[0].level).toBe('error');
 		expect(result.recommendations[0].action).toBe('Resolve the directory conflict');
 	});
+
+	describe('getMetadata()', () => {
+		it('should report a behaviorChanges impact for the automatic rename', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
+		});
+	});
 });

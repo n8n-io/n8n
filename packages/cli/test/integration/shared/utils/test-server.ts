@@ -17,8 +17,9 @@ import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
+import { packagedModules } from '@/modules/modules.manifest';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
@@ -126,6 +127,7 @@ export const setupTestServer = ({
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
 	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagForInstance.mockResolvedValue(undefined);
 	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
 		featureFlags: {},
 		featureFlagPayloads: {},
@@ -148,7 +150,7 @@ export const setupTestServer = ({
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.loadModules(modules);
+		if (modules) await testModules.loadModules(modules, packagedModules);
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
@@ -230,6 +232,14 @@ export const setupTestServer = ({
 						await import('@/environments.ee/variables/variables.controller.ee.js');
 						break;
 
+					case 'ai-preferences':
+						await import('@/controllers/ai-preference.controller.js');
+						break;
+
+					case 'instance-ai':
+						await import('@/modules/instance-ai/instance-ai.controller.js');
+						break;
+
 					case 'license':
 						await import('@/license/license.controller.js');
 						break;
@@ -238,7 +248,7 @@ export const setupTestServer = ({
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service.js');
+						const { CacheService } = await import('@n8n/backend-services');
 						await Container.get(CacheService).init();
 						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);
@@ -259,6 +269,10 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'jwks':
+						await import('@/jwks/jwks.controller.js');
 						break;
 
 					case 'mfa':
@@ -384,7 +398,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'insights':
-						await import('@/modules/insights/insights.module.js');
+						await import('@n8n/backend-module-insights/module');
 						break;
 
 					case 'data-table':
@@ -407,12 +421,20 @@ export const setupTestServer = ({
 						await import('@/controllers/security-settings.controller.js');
 						break;
 
+					case 'public-api-rate-limit-settings':
+						await import('@/controllers/public-api-rate-limit-settings.controller.js');
+						break;
+
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller.js');
 						break;
 
 					case 'encryption-keys':
 						await import('@/modules/encryption-key-manager/encryption-key.controller.js');
+						break;
+
+					case 'trusted-sources':
+						await import('@/modules/inbound-auth-core/trusted-source.controller.js');
 						break;
 
 					case 'test-webhooks':

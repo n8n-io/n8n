@@ -30,7 +30,7 @@ function makeSeed(): ConversationSeed {
 					{
 						type: 'tool-call',
 						toolCallId: 'tc-1',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						state: 'resolved',
 						input: { workflowId: WF_ID },
 						output: { success: true, workflowId: WF_ID, url: `/workflow/${WF_ID}` },
@@ -42,13 +42,14 @@ function makeSeed(): ConversationSeed {
 		workflows: [{ id: WF_ID, name: 'Daily digest', nodes: [], connections: {} }],
 		dataTables: [],
 		agents: [],
+		folders: [],
 		projects: [],
 	};
 }
 
 const AGENT_ID = 'AgEnT12345678901';
 
-/** A seed whose history built an agent: the `build-agent` result carries the id,
+/** A seed whose history built an agent: the `agent_builder_build_agent` result carries the id,
  *  and a skill body carries the agent's name in prose. */
 function makeAgentSeed(): ConversationSeed {
 	return {
@@ -61,7 +62,7 @@ function makeAgentSeed(): ConversationSeed {
 					{
 						type: 'tool-call',
 						toolCallId: 'tc-agent',
-						toolName: 'build-agent',
+						toolName: 'agent_builder_build_agent',
 						state: 'resolved',
 						input: { name: 'Support Triage', message: 'Build a triage agent' },
 						output: { ok: true, agentId: AGENT_ID, agentRef: 'support-triage' },
@@ -72,6 +73,7 @@ function makeAgentSeed(): ConversationSeed {
 		],
 		workflows: [],
 		dataTables: [],
+		folders: [],
 		projects: [],
 		agents: [
 			{
@@ -167,7 +169,7 @@ describe('ConversationSeedSchema message envelope', () => {
 						{
 							type: 'tool-call',
 							toolCallId: 'tc-1',
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							state: 'resolved',
 							input: { name: 'Digest' },
 							output: { success: true, workflowId: 'AbCdEf1234567890' },
@@ -182,7 +184,7 @@ describe('ConversationSeedSchema message envelope', () => {
 		expect(only.messageGroupId).toBe('mg-1');
 		expect(only.content?.[0]).toMatchObject({
 			toolCallId: 'tc-1',
-			toolName: 'build-workflow',
+			toolName: 'workflow_builder_build_workflow',
 			state: 'resolved',
 			input: { name: 'Digest' },
 			output: { success: true, workflowId: 'AbCdEf1234567890' },
@@ -308,6 +310,7 @@ describe('remapSeedArtifactIds', () => {
 			workflows: [],
 			dataTables: [],
 			agents: [],
+			folders: [],
 			projects: [],
 		};
 		expect(remapSeedArtifactIds(seed)).toBe(seed);
@@ -451,10 +454,10 @@ describe('remapSeedArtifactIds', () => {
 		expect(() => remapSeedArtifactIds(seed)).toThrow(/too short to remap/);
 	});
 
-	it('rewrites the agent id everywhere it appears, including inside a build-agent result', () => {
+	it('rewrites the agent id everywhere it appears, including inside a agent_builder_build_agent result', () => {
 		// The seeded history is how the live turn knows which agent it already built.
 		// A missed reference leaves the history pointing at an agent that was never
-		// restored, and `build-agent` creates a second one instead of editing it.
+		// restored, and `agent_builder_build_agent` creates a second one instead of editing it.
 		const seed = makeAgentSeed();
 
 		const remapped = remapSeedArtifactIds(seed);
@@ -554,48 +557,56 @@ describe('transcriptPrefixFromSeed', () => {
 			{ kind: 'agent-text', text: 'Built it.' },
 			{
 				kind: 'tool-call',
-				toolName: 'build-workflow',
+				toolName: 'workflow_builder_build_workflow',
 				args: { workflowId: WF_ID },
 				result: { success: true, workflowId: WF_ID, url: `/workflow/${WF_ID}` },
 			},
 		]);
 	});
 
-	it('renders a seeded ask-user block as an ask-user step with the chosen answers', () => {
-		const turns = transcriptPrefixFromSeed([
-			{
-				id: 'a1',
-				type: 'llm',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'ask-user',
-						state: 'resolved',
-						input: {
-							introMessage: 'A couple of questions',
-							questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+	it.each(['ask_user', 'workflow_builder_ask_user', 'agent_builder_ask_questions'])(
+		'renders a seeded %s block as an ask_user step with the chosen answers',
+		(toolName) => {
+			const turns = transcriptPrefixFromSeed([
+				{
+					id: 'a1',
+					type: 'llm',
+					role: 'assistant',
+					content: [
+						{
+							type: 'tool-call',
+							toolName,
+							state: 'resolved',
+							input: {
+								introMessage: 'A couple of questions',
+								questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+							},
+							// Resume block carries the user's answers in its output.
+							output: {
+								answered: true,
+								answers: [{ questionId: 'q1', selectedOptions: ['#growth'], skipped: false }],
+							},
 						},
-						// Resume block carries the user's answers in its output.
-						output: {
-							answered: true,
-							answers: [{ questionId: 'q1', selectedOptions: ['#growth'], skipped: false }],
+					],
+					createdAt: '2026-01-01T00:00:00Z',
+				},
+			]);
+			expect(turns[0].steps).toEqual([
+				{
+					kind: 'ask-user',
+					questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
+					answers: [
+						{
+							questionId: 'q1',
+							selectedOptions: ['#growth'],
+							customText: undefined,
+							skipped: false,
 						},
-					},
-				],
-				createdAt: '2026-01-01T00:00:00Z',
-			},
-		]);
-		expect(turns[0].steps).toEqual([
-			{
-				kind: 'ask-user',
-				questions: [{ id: 'q1', question: 'Which channel?', options: ['#growth', '#ops'] }],
-				answers: [
-					{ questionId: 'q1', selectedOptions: ['#growth'], customText: undefined, skipped: false },
-				],
-			},
-		]);
-	});
+					],
+				},
+			]);
+		},
+	);
 
 	it('renders a seeded setup-card block as a setup-card step from output.payload.setupRequests', () => {
 		const turns = transcriptPrefixFromSeed([
@@ -638,7 +649,7 @@ describe('transcriptPrefixFromSeed', () => {
 				content: [
 					{
 						type: 'tool-call',
-						toolName: 'workflows',
+						toolName: 'workflow_builder_workflows',
 						state: 'resolved',
 						// Resume block re-states the request in input, decision in output.
 						input: { resumeReason: 'resource-decision', message: 'Which credential?' },
@@ -651,7 +662,7 @@ describe('transcriptPrefixFromSeed', () => {
 		expect(turns[0].steps).toEqual([
 			{
 				kind: 'confirmation',
-				toolName: 'workflows',
+				toolName: 'workflow_builder_workflows',
 				resumeReason: 'resource-decision',
 				approved: false,
 				message: 'Which credential?',
@@ -730,29 +741,6 @@ describe('transcriptPrefixFromSeed', () => {
 		]);
 	});
 
-	it('renders a seeded create-tasks block as a plan step', () => {
-		const turns = transcriptPrefixFromSeed([
-			{
-				id: 'a1',
-				type: 'llm',
-				role: 'assistant',
-				content: [
-					{
-						type: 'tool-call',
-						toolName: 'create-tasks',
-						state: 'resolved',
-						input: { tasks: [{ title: 'Add trigger', description: 'schedule' }] },
-						output: {},
-					},
-				],
-				createdAt: '2026-01-01T00:00:00Z',
-			},
-		]);
-		expect(turns[0].steps).toEqual([
-			{ kind: 'plan', tasks: [{ title: 'Add trigger', description: 'schedule' }] },
-		]);
-	});
-
 	it('skips custom messages and tolerates a history starting with an assistant turn', () => {
 		const turns = transcriptPrefixFromSeed([
 			{ id: 'c1', type: 'custom', data: { widget: 'card' }, createdAt: '2026-01-01T00:00:00Z' },
@@ -782,7 +770,7 @@ describe('activeSeedAgentId', () => {
 				{
 					type: 'tool-call',
 					toolCallId: `tc-${agentId}`,
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 					state: 'resolved',
 					output: { ok: true, agentId },
 				},
@@ -889,5 +877,89 @@ describe('seed project names', () => {
 		expect(
 			ConversationSeedSchema.safeParse({ messages: [], projects: [{ name: 'Foobar' }] }).success,
 		).toBe(true);
+	});
+});
+
+// A seeded folder is what gives a folder case its premise: a folder the agent
+// must FIND and list. Its id is server-generated, so like a data table it rides
+// outside the id-remap blob and could silently vanish.
+describe('seed folders', () => {
+	it('carries folders and workflow placement through the id remap', () => {
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+			workflows: [
+				{
+					id: WF_ID,
+					name: 'Daily digest',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'odwFolder0001',
+				},
+			],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.folders).toEqual([{ id: 'odwFolder0001', name: 'ODW' }]);
+		// The workflow id is fresh; the folder reference still names the seed folder,
+		// which is the id the server resolves.
+		expect(remapped.workflows[0].id).not.toBe(WF_ID);
+		expect(remapped.workflows[0].parentFolderId).toBe('odwFolder0001');
+	});
+
+	it('never rewrites a folder reference, even when a workflow id is a prefix of the folder id', () => {
+		// Folder ids are not in the remapped id space, so the whole-document replace
+		// of `oddsWatch` must not reach into `oddsWatchFold1`.
+		const seed: ConversationSeed = {
+			...makeSeed(),
+			messages: [],
+			folders: [{ id: 'oddsWatchFold1', name: 'ODW' }],
+			workflows: [
+				{
+					id: 'oddsWatch',
+					name: 'Daily digest',
+					nodes: [],
+					connections: {},
+					parentFolderId: 'oddsWatchFold1',
+				},
+			],
+		};
+
+		const remapped = remapSeedArtifactIds(seed);
+
+		expect(remapped.workflows[0].id).not.toBe('oddsWatch');
+		expect(remapped.workflows[0].parentFolderId).toBe('oddsWatchFold1');
+		expect(remapped.folders).toEqual([{ id: 'oddsWatchFold1', name: 'ODW' }]);
+	});
+
+	it('accepts a seed that carries only folders', () => {
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			folders: [{ id: 'odwFolder0001', name: 'ODW' }],
+		});
+
+		expect(parsed.success).toBe(true);
+	});
+
+	it('rejects more than 20 folders', () => {
+		const parsed = ConversationSeedSchema.safeParse({
+			messages: [],
+			folders: Array.from({ length: 21 }, (_, i) => ({
+				id: `folder${String(i).padStart(8, '0')}`,
+				name: `Folder ${String(i)}`,
+			})),
+		});
+
+		expect(parsed.success).toBe(false);
+	});
+
+	it('rejects a folder name that is not trimmed, like a project name', () => {
+		expect(
+			ConversationSeedSchema.safeParse({
+				messages: [],
+				folders: [{ id: 'odwFolder0001', name: 'ODW ' }],
+			}).success,
+		).toBe(false);
 	});
 });

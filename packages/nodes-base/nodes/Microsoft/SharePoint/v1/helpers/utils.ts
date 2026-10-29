@@ -9,10 +9,13 @@ import type {
 } from 'n8n-workflow';
 import { jsonParse, NodeApiError, NodeOperationError } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import type { IErrorResponse } from './interfaces';
+import { autoMapInputData } from '../../helpers/utils';
 import { microsoftSharePointApiRequest } from '../transport';
 
-export const escapeFilterValue = (value: string) => value.replaceAll("'", "''");
+export const escapeFilterValue = escapeODataValue;
 
 export async function simplifyItemPostReceive(
 	this: IExecuteSingleFunctions,
@@ -123,6 +126,15 @@ export async function itemColumnsPreSend(
 	const mapperValue = this.getNodeParameter('columns') as ResourceMapperValue;
 	const operation = this.getNodeParameter('operation') as string;
 
+	if (mapperValue.mappingMode === 'autoMapInputData') {
+		mapperValue.value = autoMapInputData(
+			this.getNode(),
+			mapperValue.schema,
+			this.getInputData().json,
+			this.getItemIndex(),
+		) as ResourceMapperValue['value'];
+	}
+
 	if (['upsert', 'update'].includes(operation) && mapperValue.matchingColumns?.length > 0) {
 		if (!mapperValue.matchingColumns.includes('id')) {
 			const site = this.getNodeParameter('site', undefined, { extractValue: true }) as string;
@@ -135,8 +147,8 @@ export async function itemColumnsPreSend(
 				{},
 				{
 					$filter: mapperValue.matchingColumns
-						.map((x) => `fields/${x} eq '${mapperValue.value![x]}'`)
-						.join(' and'),
+						.map((x) => `fields/${x} eq '${escapeFilterValue(mapperValue.value![x])}'`)
+						.join(' and '),
 				},
 				{
 					Prefer: 'HonorNonIndexedQueriesWarningMayFailRandomly',

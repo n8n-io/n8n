@@ -195,11 +195,12 @@ export const ChatModule = defineFrontendModule({
 	settingsPages: [
 		{
 			id: 'settings-chat-hub',
+			order: 70,
+			section: 'ai',
 			icon: 'message-circle',
 			label: i18n.baseText('settings.chatHub'),
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'chatHub:manage' } });
 			},

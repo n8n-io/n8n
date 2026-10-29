@@ -14,14 +14,19 @@ import type { ClientOptions } from 'openai';
 import { mergeCustomHeaders } from '@utils/helpers';
 
 import { assertOpenAiCredentialAllowsUrl } from '../../vendors/OpenAi/helpers/credentials';
-import { getProxyAgent, logWrapper, getConnectionHintNoticeField } from '@n8n/ai-utilities';
+import {
+	getProxyAgent,
+	aiClientFetch,
+	logWrapper,
+	getConnectionHintNoticeField,
+} from '@n8n/ai-utilities';
 
 const modelParameter: INodeProperties = {
 	displayName: 'Model',
 	name: 'model',
 	type: 'options',
 	description:
-		'The model which will generate the embeddings. <a href="https://platform.openai.com/docs/models/overview">Learn more</a>.',
+		'The model which will generate the embeddings. <a href="https://developers.openai.com/api/docs/models">Learn more</a>.',
 	typeOptions: {
 		loadOptions: {
 			routing: {
@@ -250,6 +255,7 @@ export class EmbeddingsOpenAi implements INodeType {
 		const { openAiDefaultHeaders: defaultHeaders } = Container.get(AiConfig);
 
 		const configuration: ClientOptions = {
+			fetch: aiClientFetch,
 			defaultHeaders,
 		};
 		if (options.baseURL) {
@@ -260,7 +266,11 @@ export class EmbeddingsOpenAi implements INodeType {
 		}
 
 		configuration.fetchOptions = {
-			dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1', {}),
+			dispatcher: getProxyAgent(
+				configuration.baseURL ?? 'https://api.openai.com/v1',
+				{},
+				this.helpers.getSecureEgressFilter(),
+			),
 		};
 
 		configuration.defaultHeaders = mergeCustomHeaders(

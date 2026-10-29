@@ -1,7 +1,11 @@
+import { readFile } from 'node:fs/promises';
+import * as path from 'node:path';
+
 import { DateTime, Duration, Interval } from 'luxon';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
+import { QuickJsBridge } from '../bridge/quickjs-bridge';
 import type { WorkflowData } from '../types';
 import { TimeoutError, MemoryLimitError } from '../types';
 import { createBridge, engineName, isQuickJS, newBridge } from './test-bridge';
@@ -260,6 +264,79 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			expect(setEntry).toEqual(expected);
 		});
 
+		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]) }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+			};
+
+			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${flagged}]]) }}`, data, caller);
+			const fromSet = evaluator.evaluate(`{{ new Set([${flagged}]) }}`, data, caller);
+
+			expect((fromMap as Map<string, unknown>).get('k')).toEqual(expected);
+			expect([...(fromSet as Set<unknown>)]).toEqual([expected]);
+		});
+
+		it('should return a user object with an __isError key as data', () => {
+			const data = { $json: { flag: { __isError: true, message: 'from data' } } };
+
+			expect(
+				evaluator.evaluate('{{ ({ __isError: true, message: "hi" }) }}', data, caller),
+			).toEqual({ __isError: true, message: 'hi' });
+			expect(evaluator.evaluate('{{ $json.flag }}', data, caller)).toEqual({
+				__isError: true,
+				message: 'from data',
+			});
+		});
+
+		it('should convert the values inside an object with an __isError key in an object or an array', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]), u: undefined }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+				u: undefined,
+			};
+
+			expect(evaluator.evaluate(`{{ ({ a: ${flagged} }) }}`, data, caller)).toStrictEqual({
+				a: expected,
+			});
+			expect(evaluator.evaluate(`{{ [${flagged}] }}`, data, caller)).toStrictEqual([expected]);
+		});
+
+		it('should give host-call data with an __isError key to the expression as data', () => {
+			const item = {
+				json: {
+					flag: { __isError: true, message: 'm', when: new Date('2024-01-15T00:00:00.000Z') },
+				},
+			};
+			const data = {
+				$input: {
+					first: () => item,
+					last: () => ({ __isError: true, message: 'root' }),
+					all: () => ({ __n8nEscaped: true, __value: 1 }),
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $input.first() }}', data, caller)).toEqual(item);
+			expect(
+				evaluator.evaluate('{{ $input.first().json.flag.when.getTime() }}', data, caller),
+			).toBe(item.json.flag.when.getTime());
+			expect(evaluator.evaluate('{{ $input.last().message }}', data, caller)).toBe('root');
+			expect(evaluator.evaluate('{{ $input.all() }}', data, caller)).toEqual({
+				__n8nEscaped: true,
+				__value: 1,
+			});
+		});
+
 		it('should preserve Date objects (structured-cloneable)', () => {
 			const data = { $json: {} };
 			const result = evaluator.evaluate('{{ new Date(2024, 0, 15) }}', data, caller);
@@ -452,10 +529,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		it('should keep a marker that an error flag guards inside a class instance as data', () => {
 			const data = { $json: {} };
 
-			// An object carrying `__isError` leaves the guest walk before the walk can
-			// escape it, so it reaches the host with its keys as they were written.
-			// It sits inside a class instance, which the host reads as data, so the
-			// key that names a type is the user's own and must stay a string.
+			// An object carrying `__isError` sits inside a class instance, which the
+			// host reads as data, so the key that names a type is the user's own and
+			// must stay a string.
 			const result = evaluator.evaluate(
 				'{{ (function(){ function Row(){ this.m = { __isError: true, __n8nType: "DateTime", __isoString: "2024-01-15T00:00:00.000Z" }; } return new Row(); })() }}',
 				data,
@@ -529,6 +605,17 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ new Map([["a", 1]]) }}', data, caller)).toBeInstanceOf(Map);
 		expect(evaluator.evaluate('{{ new Set([1, 2]) }}', data, caller)).toBeInstanceOf(Set);
 		expect(evaluator.evaluate('{{ 0/0 }}', data, caller)).toBeNaN();
+	});
+
+	it('should keep undefined Map values and Set values', () => {
+		const data = { $json: {} };
+
+		expect(evaluator.evaluate('{{ new Map([["a", undefined]]) }}', data, caller)).toStrictEqual(
+			new Map([['a', undefined]]),
+		);
+		expect(evaluator.evaluate('{{ new Set([undefined]) }}', data, caller)).toStrictEqual(
+			new Set([undefined]),
+		);
 	});
 
 	it('should honor locale and options in toLocaleString/toLocaleTimeString', () => {
@@ -681,12 +768,28 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ ({ __isNaN: true }) }}', data, caller)).toEqual({
 			__isNaN: true,
 		});
+		expect(evaluator.evaluate('{{ ({ __isUndefined: true }) }}', data, caller)).toEqual({
+			__isUndefined: true,
+		});
 		expect(
 			evaluator.evaluate('{{ ({ nested: { __isSet: true, __values: [1] } }) }}', data, caller),
 		).toEqual({ nested: { __isSet: true, __values: [1] } });
 		expect(evaluator.evaluate('{{ ({ __isEscaped: true, __value: 1 }) }}', data, caller)).toEqual({
 			__isEscaped: true,
 			__value: 1,
+		});
+	});
+
+	it('should keep an __isUndefined key on a class instance property that also has __isError', () => {
+		const data = { $json: {} };
+		const fromClass = (property: string) =>
+			`{{ (() => { class C { constructor() { this.x = ${property}; } } return new C(); })() }}`;
+
+		expect(
+			evaluator.evaluate(fromClass('{ __isError: true, __isUndefined: true }'), data, caller),
+		).toEqual({ x: { __isError: true, __isUndefined: true } });
+		expect(evaluator.evaluate(fromClass('undefined'), data, caller)).toStrictEqual({
+			x: undefined,
 		});
 	});
 
@@ -1002,6 +1105,77 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			'inner|OUTER_VALUE',
 		);
 	});
+
+	describe('host value reads', () => {
+		const rows = [
+			{ id: 1, tags: ['a', 'b'] },
+			{ id: 2, tags: ['c'] },
+		];
+
+		it('reads a host getter once when the guest copies its whole value', () => {
+			const read = vi.fn(() => ({ rows, count: rows.length }));
+			const data = {
+				get $json() {
+					return read();
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json }}', data, caller)).toEqual({ rows, count: 2 });
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+
+		it('recreates an evicted $item() result when copying a lazy value', () => {
+			const item = vi.fn((index: number) => ({ $json: { index, rows } }));
+			const node = vi.fn((name: string) => ({ json: { name, rows } }));
+			const data = { $item: item, $: node } as unknown as WorkflowData;
+
+			expect(
+				evaluator.evaluate(
+					'{{ [$item(0).$json.rows, $item(0).$json.index, $item(1).$json.index, $("A").json.rows, $("A").json.name] }}',
+					data,
+					caller,
+				),
+			).toEqual([rows, 0, 1, rows, 'A']);
+			// Copying the returned rows reads item 0 again after item 1.
+			expect(item.mock.calls).toEqual([[0], [1], [0]]);
+			expect(node.mock.calls).toEqual([['A']]);
+		});
+
+		it('reads the host data again in the next evaluation', () => {
+			let current = 'first';
+			const data = {
+				get $json() {
+					return { value: current };
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('first');
+			current = 'second';
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('second');
+		});
+
+		it('reads a getter again after it threw', () => {
+			let attempts = 0;
+			const data = {
+				$json: {
+					get flaky() {
+						attempts++;
+						if (attempts === 1) throw new Error('not ready');
+						return 'ready';
+					},
+				},
+			};
+
+			expect(
+				evaluator.evaluate(
+					'{{ (() => { try { return $json.flaky; } catch (e) { return $json.flaky; } })() }}',
+					data,
+					caller,
+				),
+			).toBe('ready');
+			expect(attempts).toBe(2);
+		});
+	});
 });
 
 describe(`Integration: ${engineName} error handling`, () => {
@@ -1238,5 +1412,61 @@ describe(`Integration: nested evaluation time budget (${engineName})`, () => {
 
 		expect(elapsed).toBeGreaterThanOrEqual(TIMEOUT_MS * 0.8);
 		expect(elapsed).toBeLessThan(TIMEOUT_MS * 2);
+	});
+});
+
+describe('QuickJsBridge runtimeBundle injection', () => {
+	it('should not cache a runtimeBundle that fails to load', async () => {
+		const withBadBundle = new QuickJsBridge({
+			timeout: 5000,
+			runtimeBundle: 'this is not javascript (((',
+		});
+
+		try {
+			await expect(withBadBundle.initialize()).rejects.toThrow('Failed to load runtime bundle');
+		} finally {
+			await withBadBundle.dispose();
+		}
+
+		const withDiskRead = new QuickJsBridge({ timeout: 5000 });
+
+		try {
+			await expect(withDiskRead.initialize()).resolves.toBeUndefined();
+		} finally {
+			await withDiskRead.dispose();
+		}
+	});
+
+	it('should initialize and evaluate when runtimeBundle is provided as a string', async () => {
+		let dir = __dirname;
+		let bundle: string | undefined;
+		while (dir !== path.dirname(dir)) {
+			try {
+				bundle = await readFile(path.join(dir, 'dist', 'bundle', 'runtime.iife.js'), 'utf-8');
+				break;
+			} catch {}
+			dir = path.dirname(dir);
+		}
+		if (!bundle) throw new Error('runtime bundle not found for test setup');
+
+		const capturedBundle = bundle;
+		const evaluator = new ExpressionEvaluator({
+			createBridge: () => new QuickJsBridge({ timeout: 5000, runtimeBundle: capturedBundle }),
+			maxCodeCacheSize: 1024,
+		});
+		await evaluator.initialize();
+		const caller = {};
+		await evaluator.acquire(caller);
+		try {
+			const result = evaluator.evaluate(
+				'{{ $json.name }}',
+				{ $json: { name: 'injected' } },
+				caller,
+			);
+			expect(result).toBe('injected');
+		} finally {
+			await evaluator.release(caller);
+			await evaluator.dispose();
+		}
 	});
 });
