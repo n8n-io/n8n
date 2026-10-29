@@ -47,8 +47,10 @@ erDiagram
   json integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  integer publicationRevision
   integer revision
   json schema
+  varchar_16_ scope
   timestamp_3__with_time_zone setupCompletedAt
   json skills
   json tools
@@ -58,11 +60,13 @@ erDiagram
 "public.credentials_entity" {
   timestamp_3__with_time_zone createdAt
   text data
+  text description
   varchar_36_ id
   boolean isGlobal
   boolean isManaged
   boolean isResolvable
   varchar_128_ name
+  timestamp_3__with_time_zone pendingAuthorizationExpiresAt
   boolean resolvableAllowFallback
   varchar_16_ resolverId FK
   varchar_128_ type

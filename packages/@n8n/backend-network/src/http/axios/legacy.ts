@@ -1,3 +1,4 @@
+// oxlint-disable typescript/no-deprecated
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
@@ -285,7 +286,7 @@ export async function buildAxiosConfigFromLegacyRequest(
 		agentOptions,
 		axiosConfig,
 		requestObject.proxy,
-		requestObject.sendCredentialsOnCrossOriginRedirect ?? true,
+		requestObject.sendCredentialsOnCrossOriginRedirect ?? false,
 		requestObject.allowedDomains,
 		ssrfBridge ?? 'disabled',
 	);

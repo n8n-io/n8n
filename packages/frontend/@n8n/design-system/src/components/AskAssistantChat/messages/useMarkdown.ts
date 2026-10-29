@@ -17,6 +17,15 @@ export function useMarkdown() {
 		},
 	});
 
+	// markdown-it ends fenced code with a newline. Triple-click copy would include it.
+	const renderFence = md.renderer.rules.fence;
+	md.renderer.rules.fence = (tokens, idx, options, env, self) => {
+		tokens[idx].content = tokens[idx].content.replace(/\n$/, '');
+		return renderFence
+			? renderFence(tokens, idx, options, env, self)
+			: self.renderToken(tokens, idx, options);
+	};
+
 	function renderMarkdown(content: string) {
 		try {
 			return md.render(content);

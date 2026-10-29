@@ -7,7 +7,7 @@ import { type INode, type IWorkflowBase, type WorkflowSettings } from 'n8n-workf
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { AccessService } from '@/services/access.service';
 import { OwnershipService } from '@/services/ownership.service';
-import { UrlService } from '@/services/url.service';
+import { UrlService } from '@n8n/backend-services';
 
 type Policy = WorkflowSettings.CallerPolicy;
 type DenialPolicy = Exclude<Policy, 'any'>;
@@ -36,20 +36,11 @@ export class SubworkflowPolicyChecker {
 
 		if (!subworkflowId) return; // e.g. when running a subworkflow loaded from a file
 
-		const policy = this.findPolicy(subworkflow);
+		const denial = await this.findDenial(subworkflow, parentWorkflowId);
 
-		if (policy === 'any') return;
+		if (!denial) return;
 
-		if (policy === 'workflowsFromAList' && this.isListed(subworkflow, parentWorkflowId)) return;
-
-		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
-			parentWorkflowId,
-			subworkflowId,
-		});
-
-		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
-
-		if (policy === 'workflowsFromSameOwner' && areOwnedBySameProject) return;
+		const { policy, subworkflowProject } = denial;
 
 		this.logDenial({ parentWorkflowId, subworkflowId, policy });
 
@@ -62,6 +53,39 @@ export class SubworkflowPolicyChecker {
 			instanceUrl: this.urlService.getInstanceBaseUrl(),
 			...errorDetails,
 		});
+	}
+
+	/**
+	 * Same decision as `check`, but returned instead of thrown and not logged, for advisory
+	 * callers that only preview a call.
+	 */
+	async isCallAllowed(subworkflow: WorkflowWithCallerPolicy, parentWorkflowId: string) {
+		if (!subworkflow.id) return true;
+
+		return (await this.findDenial(subworkflow, parentWorkflowId)) === null;
+	}
+
+	private async findDenial(
+		subworkflow: WorkflowWithCallerPolicy,
+		parentWorkflowId: string,
+	): Promise<{ policy: DenialPolicy; subworkflowProject: Project } | null> {
+		const policy = this.findPolicy(subworkflow);
+
+		if (policy === 'any') return null;
+
+		if (policy === 'workflowsFromAList' && this.isListed(subworkflow, parentWorkflowId))
+			return null;
+
+		const { parentWorkflowProject, subworkflowProject } = await this.findProjects({
+			parentWorkflowId,
+			subworkflowId: subworkflow.id,
+		});
+
+		const areOwnedBySameProject = parentWorkflowProject.id === subworkflowProject.id;
+
+		if (policy === 'workflowsFromSameOwner' && areOwnedBySameProject) return null;
+
+		return { policy, subworkflowProject };
 	}
 
 	/** Check whether a project-scoped caller, such as an Agent, may call the subworkflow. */

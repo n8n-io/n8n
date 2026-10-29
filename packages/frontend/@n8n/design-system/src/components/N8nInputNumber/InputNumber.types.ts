@@ -7,6 +7,8 @@ export type InputNumberProps = Omit<NumberFieldRootProps, 'formatOptions'> & {
 	size?: InputNumberSize;
 	/** Maps to Reka `formatOptions` fraction digits when set. */
 	precision?: number;
+	/** When true, format the value with locale-specific digit grouping (e.g. 1,433). Default: false. */
+	useGrouping?: boolean;
 	controls?: boolean;
 	controlsPosition?: InputNumberControlsPosition;
 	placeholder?: string;
@@ -28,6 +30,8 @@ export type InputNumberControlSlotProps = {
 };
 
 export type InputNumberSlots = {
+	/** Content shown inside the input, before the number (e.g. a currency symbol). */
+	prefix?: () => unknown;
 	/** Fully custom increment control. Default: button with plus/chevron icon. */
 	increment?: (props: InputNumberControlSlotProps) => unknown;
 	/** Fully custom decrement control. Default: button with minus/chevron icon. */

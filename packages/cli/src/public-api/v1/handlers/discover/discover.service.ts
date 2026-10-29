@@ -1,18 +1,13 @@
-import RefParser from '@apidevtools/json-schema-ref-parser';
+import type { DiscoverDataPublic } from '@n8n/api-types';
 import type { ApiKeyScopeRequirement } from '@n8n/decorators';
-import { isRecord } from '@n8n/utils/is-record';
-import path from 'path';
 
 import {
 	apiKeyScopesSatisfy,
-	HTTP_METHODS,
 	resolvePublicApiRoutes,
-	scopeRequirementFromString,
 	scopesInRequirement,
 	toOpenApiPathTemplate,
 } from '../../../public-api-route-resolver';
 import { buildRequestBodyJsonSchema } from '../../openapi-gen/decorator-routes';
-import { extractScopeFromEovHandlerChain } from '../../shared/public-api-scope-lookup';
 
 import '../../controllers';
 
@@ -37,129 +32,38 @@ interface ResourceInfo {
 	endpoints: EndpointEntry[];
 }
 
-interface FilterInfo {
-	description: string;
-	example?: string;
-	values?: string[];
-}
-
-export interface DiscoverResponse {
-	scopes: readonly string[];
-	resources: Record<string, ResourceInfo>;
-	filters: Record<string, FilterInfo>;
-	specUrl: string;
-}
-
 export interface DiscoverOptions {
 	includeSchemas?: boolean;
 	resource?: string;
 	operation?: string;
 }
 
-let cachedEndpointsPromise: Promise<EndpointInfo[]> | undefined;
+let cachedEndpoints: EndpointInfo[] | undefined;
 
-/**
- * Extract the request body schema from an operation.
- * The spec is already fully dereferenced by RefParser.dereference().
- */
-function extractRequestSchema(
-	operation: Record<string, unknown>,
-): Record<string, unknown> | undefined {
-	if (!isRecord(operation.requestBody)) return undefined;
-	const content = operation.requestBody.content;
-	if (!isRecord(content)) return undefined;
-	const json = content['application/json'];
-	if (!isRecord(json)) return undefined;
-	const schema = json.schema;
-	return isRecord(schema) ? schema : undefined;
-}
-
-async function parseEndpointsFromSpec(): Promise<EndpointInfo[]> {
-	cachedEndpointsPromise ??= buildAllEndpoints();
-	return await cachedEndpointsPromise;
-}
-
-async function buildAllEndpoints(): Promise<EndpointInfo[]> {
-	return [...(await buildEovEndpoints()), ...buildDecoratorEndpoints()];
-}
-
-async function buildEovEndpoints(): Promise<EndpointInfo[]> {
-	const specPath = path.join(__dirname, '..', '..', 'openapi.yml');
-	const publicApiRoot = path.join(__dirname, '..', '..', '..');
-
-	const spec = await RefParser.dereference(specPath);
-
-	if (!isRecord(spec) || !isRecord(spec.paths)) return [];
-
-	const endpoints: EndpointInfo[] = [];
-	const handlerCache = new Map<string, Record<string, unknown>>();
-
-	for (const [pathKey, pathValue] of Object.entries(spec.paths)) {
-		if (!isRecord(pathValue)) continue;
-
-		for (const method of HTTP_METHODS) {
-			const operation = pathValue[method];
-			if (!isRecord(operation)) continue;
-			if (operation['x-decorator-routed'] === true) continue;
-
-			const operationId = operation['x-eov-operation-id'];
-			const handlerPath = operation['x-eov-operation-handler'];
-			if (typeof operationId !== 'string' || typeof handlerPath !== 'string') continue;
-
-			const tags = Array.isArray(operation.tags) ? operation.tags : [];
-			const tag = typeof tags[0] === 'string' ? tags[0] : 'Other';
-
-			let handlerModule = handlerCache.get(handlerPath);
-			if (!handlerModule) {
-				try {
-					const fullHandlerPath = path.join(publicApiRoot, `${handlerPath}.js`);
-					const imported: unknown = await import(fullHandlerPath);
-					if (!isRecord(imported)) continue;
-					const loaded = isRecord(imported.default) ? imported.default : imported;
-					if (!isRecord(loaded)) continue;
-					handlerModule = loaded;
-					handlerCache.set(handlerPath, handlerModule);
-				} catch {
-					continue;
-				}
-			}
-
-			const middlewareChain = handlerModule[operationId];
-			const scope = Array.isArray(middlewareChain)
-				? extractScopeFromEovHandlerChain(middlewareChain)
-				: undefined;
-
-			endpoints.push({
-				method: method.toUpperCase(),
-				path: `/api/v1${pathKey}`,
-				operationId,
-				tag,
-				// eov middleware tags itself with a flat, possibly comma-joined scope string.
-				scope: scope ? scopeRequirementFromString(scope) : null,
-				requestSchema: extractRequestSchema(operation),
-			});
-		}
-	}
-
-	return endpoints;
-}
-
-function buildDecoratorEndpoints(): EndpointInfo[] {
+function buildEndpoints(): EndpointInfo[] {
 	return resolvePublicApiRoutes().map((route) => ({
 		method: route.method.toUpperCase(),
 		path: `/api/v1${toOpenApiPathTemplate(route.path)}`,
 		operationId: route.handlerName,
 		tag: route.tags?.[0] ?? 'Other',
 		scope: route.apiKeyScope ?? null,
-		requestSchema: buildRequestBodyJsonSchema(route),
+		// A non-JSON body shows no request schema (`discoverable: false` on its handler), so a
+		// client doesn't assume one.
+		requestSchema: route.requestBodyHandler?.discoverable
+			? buildRequestBodyJsonSchema(route)
+			: undefined,
 	}));
 }
 
 export async function buildDiscoverResponse(
 	callerScopes: readonly string[],
 	options?: DiscoverOptions,
-): Promise<DiscoverResponse> {
-	const allEndpoints = await parseEndpointsFromSpec();
+): Promise<DiscoverDataPublic> {
+	if (!cachedEndpoints) {
+		cachedEndpoints = buildEndpoints();
+	}
+
+	const allEndpoints = cachedEndpoints;
 	const includeSchemas = options?.includeSchemas === true;
 
 	// Same any/all matching the registry enforces, so /discover shows exactly what the caller may call.
@@ -239,7 +143,7 @@ export async function buildDiscoverResponse(
 	const allOperations = [...new Set(Object.values(resources).flatMap((r) => r.operations))];
 
 	return {
-		scopes: callerScopes,
+		scopes: [...callerScopes],
 		resources: filteredResources,
 		filters: {
 			resource: {
@@ -261,5 +165,5 @@ export async function buildDiscoverResponse(
 
 /** Exported for testing — resets the cached endpoints */
 export function _resetCache(): void {
-	cachedEndpointsPromise = undefined;
+	cachedEndpoints = undefined;
 }

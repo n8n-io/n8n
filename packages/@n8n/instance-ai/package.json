@@ -1,18 +1,18 @@
 {
   "name": "@n8n/instance-ai",
-  "version": "1.24.0",
+  "version": "1.31.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit && tsc -p evaluations/tsconfig.json",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
     "build:unchecked": "tsc -p ./tsconfig.build.json --noCheck && tsc-alias -p tsconfig.build.json",
-    "format": "biome format --write src",
-    "format:check": "biome ci src",
+    "format": "biome format --write src assets",
+    "format:check": "biome ci src assets",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
-    "lint": "eslint . --quiet",
-    "lint:fix": "eslint . --fix",
+    "lint": "oxlint --quiet",
+    "lint:fix": "oxlint --fix",
     "eval:instance-ai": "tsx evaluations/cli/index.ts",
     "eval:agents": "tsx evaluations/cli/index.ts --source langtracer --suite agents --tier agents",
     "eval:build-mcp-manifest": "tsx evaluations/cli/build-mcp-manifest.ts",
@@ -22,16 +22,19 @@
     "eval:pairwise:report": "tsx evaluations/cli/report.ts",
     "eval:pairwise:compare": "tsx evaluations/cli/compare-pairwise.ts",
     "eval:subagent": "tsx evaluations/subagent/cli.ts",
-    "eval:computer-use": "tsx evaluations/computer-use/cli.ts",
     "eval:discovery": "tsx evaluations/discovery/cli.ts",
-    "prompts:print": "tsx scripts/print-prompts.ts"
+    "eval:ab-bench": "tsx evaluations/ab-bench/cli.ts",
+    "prompts:print": "tsx scripts/print-prompts.ts",
+    "context:budget": "CONTEXT_BUDGET_OUT=.output/context-budget.md vitest run src/context-budget/__tests__/orchestrator-context-budget.test.ts && cat .output/context-budget.md"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",
   "types": "dist/index.d.ts",
   "files": [
+    "assets/workflow-diagnostics.mts",
     "dist/**/*",
     "knowledge-base/**/*",
+    "prompts/**/*",
     "skills/**/*"
   ],
   "exports": {
@@ -39,6 +42,11 @@
       "types": "./dist/index.d.ts",
       "require": "./dist/index.js",
       "import": "./dist/index.js"
+    },
+    "./errors": {
+      "types": "./dist/errors/index.d.ts",
+      "require": "./dist/errors/index.js",
+      "import": "./dist/errors/index.js"
     },
     "./parsers": {
       "require": "./dist/parsers/index.js",
@@ -54,6 +62,9 @@
   },
   "typesVersions": {
     "*": {
+      "errors": [
+        "dist/errors/index.d.ts"
+      ],
       "parsers": [
         "dist/parsers/index.d.ts"
       ],
@@ -91,6 +102,7 @@
   "devDependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
+    "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
     "@types/luxon": "catalog:",
@@ -100,6 +112,8 @@
     "fast-glob": "catalog:",
     "p-limit": "catalog:p-limit-v7",
     "playwright-core": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:typescript",
     "undici": "catalog:undici-v7",

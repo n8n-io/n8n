@@ -27,22 +27,20 @@ describe('import-manifest-bridge', () => {
 	};
 
 	const leftoverManifest = (overrides: Record<string, unknown> = {}) =>
-		JSON.stringify(
-			packageManifestSchema.parse({
-				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
-				sourceN8nVersion: '1.0.0',
-				sourceId: 'old',
-				...overrides,
-			}),
-		);
+		JSON.stringify({
+			packageFormatVersion: '1',
+			// Manifests written before the format dropped the timestamp still carry it.
+			exportedAt: '2026-01-01T00:00:00.000Z',
+			sourceN8nVersion: '1.0.0',
+			sourceId: 'old',
+			...overrides,
+		});
 
 	it('reads a leftover manifest and ignores a malformed file', async () => {
 		await writeTree({
 			'manifest.json': JSON.stringify(
 				packageManifestSchema.parse({
 					packageFormatVersion: '1',
-					exportedAt: '2026-01-01T00:00:00.000Z',
 					sourceN8nVersion: '1.0.0',
 					sourceId: 'inst-1',
 					workflows: [{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' }],
@@ -51,11 +49,61 @@ describe('import-manifest-bridge', () => {
 		});
 
 		expect((await readLeftoverManifest(exportFolder))?.workflows).toEqual([
-			{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' },
+			{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: false },
 		]);
 
 		await writeFile(path.join(exportFolder, 'manifest.json'), '{not-json');
 		expect(await readLeftoverManifest(exportFolder)).toBeUndefined();
+	});
+
+	it('carries the archive flag of each workflow file through the rebuild, selected or not', async () => {
+		await writeTree({
+			'manifest.json': leftoverManifest({
+				workflows: [
+					{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: false },
+				],
+			}),
+			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
+			'projects/alpha/workflows/w1/workflow.json': JSON.stringify({
+				id: 'w1',
+				name: 'W1',
+				isArchived: true,
+			}),
+			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({
+				id: 'w2',
+				name: 'W2',
+				isArchived: true,
+			}),
+			'projects/alpha/workflows/w3/workflow.json': JSON.stringify({ id: 'w3', name: 'W3' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				exportedAt: '2026-01-01T00:00:00.000Z',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+				workflows: [
+					{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2', isArchived: true },
+					{ id: 'w3', name: 'W3', target: 'projects/alpha/workflows/w3', isArchived: false },
+				],
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written = packageManifestSchema.parse(
+			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
+		);
+		expect(written.workflows).toHaveLength(3);
+		expect(written.workflows).toEqual(
+			expect.arrayContaining([
+				// w1 is not selected: the branch copy keeps its flag through the rebuild.
+				{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: true },
+				{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2', isArchived: true },
+				{ id: 'w3', name: 'W3', target: 'projects/alpha/workflows/w3', isArchived: false },
+			]),
+		);
 	});
 
 	it('writes an inventory of the files on disk, not only the staging selection', async () => {
@@ -75,7 +123,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				workflows: [{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' }],
@@ -91,8 +138,8 @@ describe('import-manifest-bridge', () => {
 		expect(written.projects).toEqual([{ id: 'p1', name: 'Alpha', target: 'projects/alpha' }]);
 		expect(written.workflows).toEqual(
 			expect.arrayContaining([
-				{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1' },
-				{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' },
+				{ id: 'w1', name: 'W1', target: 'projects/alpha/workflows/w1', isArchived: false },
+				{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2', isArchived: false },
 			]),
 		);
 		expect(written.credentials).toEqual([
@@ -103,13 +150,81 @@ describe('import-manifest-bridge', () => {
 		]);
 	});
 
-	it('unions usedByWorkflows when leftover and staging share a requirement key', async () => {
+	it('writes no exportedAt, even when the leftover manifest has one', async () => {
+		await writeTree({
+			'manifest.json': leftoverManifest(),
+			'projects/alpha/project.json': JSON.stringify({ id: 'p1', name: 'Alpha' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+			}),
+			sourceId: 'inst-test',
+		});
+
+		const written: unknown = JSON.parse(
+			await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8'),
+		);
+		expect(written).not.toHaveProperty('exportedAt');
+	});
+
+	it('keeps an unselected variable whose project directory a container move relocated', async () => {
+		// The leftover manifest still names the old project path; the file is at the new one.
+		await writeTree({
+			'manifest.json': leftoverManifest({
+				variables: [{ id: 'v-old', name: 'API_KEY', target: 'projects/alpha/variables/api-key' }],
+			}),
+			'projects/renamed/project.json': JSON.stringify({ id: 'p1', name: 'Renamed' }),
+			'projects/renamed/variables/api-key/variable.json': JSON.stringify({ name: 'API_KEY' }),
+		});
+
+		await writeImportManifest({
+			exportFolder,
+			staging: packageManifestSchema.parse({
+				packageFormatVersion: '1',
+				sourceN8nVersion: '1.0.0',
+				sourceId: 'inst-1',
+				projects: [{ id: 'p1', name: 'Renamed', target: 'projects/renamed' }],
+			}),
+			sourceId: 'inst-test',
+			containerMoves: [{ kind: 'projects', from: 'projects/alpha', to: 'projects/renamed' }],
+		});
+
+		const written = packageManifestSchema.parse(
+			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
+		);
+		expect(written.variables).toEqual([
+			{ id: 'v-old', name: 'API_KEY', target: 'projects/renamed/variables/api-key' },
+		]);
+	});
+
+	it('unions workflow consumers when leftover and staging share a requirement key', async () => {
 		await writeTree({
 			'manifest.json': leftoverManifest({
 				requirements: {
+					variables: [
+						{
+							name: 'REGION',
+							usedBy: [
+								{ kind: 'workflow', id: 'w1' },
+								{ kind: 'agent', id: 'w2' },
+							],
+						},
+					],
 					tags: [
-						{ id: 't-shared', name: 'prod', usedByWorkflows: ['w1', 'w2'] },
-						{ id: 't-w1-only', name: 'draft', usedByWorkflows: ['w1'] },
+						{
+							id: 't-shared',
+							name: 'prod',
+							usedBy: [
+								{ kind: 'workflow', id: 'w1' },
+								{ kind: 'workflow', id: 'w2' },
+							],
+						},
+						{ id: 't-w1-only', name: 'draft', usedBy: [{ kind: 'workflow', id: 'w1' }] },
 					],
 				},
 			}),
@@ -121,11 +236,19 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				requirements: {
-					tags: [{ id: 't-shared', name: 'production', usedByWorkflows: ['w2'] }],
+					tags: [{ id: 't-shared', name: 'production', usedBy: [{ kind: 'workflow', id: 'w2' }] }],
+					variables: [
+						{
+							name: 'REGION',
+							usedBy: [
+								{ kind: 'workflow', id: 'w2' },
+								{ kind: 'agent', id: 'w1' },
+							],
+						},
+					],
 				},
 			}),
 			sourceId: 'inst-test',
@@ -134,9 +257,25 @@ describe('import-manifest-bridge', () => {
 		const written = packageManifestSchema.parse(
 			JSON.parse(await readFile(path.join(exportFolder, 'manifest.json'), 'utf-8')),
 		);
+		expect(written.requirements?.variables).toEqual([
+			{
+				name: 'REGION',
+				usedBy: [
+					{ kind: 'workflow', id: 'w1' },
+					{ kind: 'workflow', id: 'w2' },
+				],
+			},
+		]);
 		expect(written.requirements?.tags).toEqual([
-			{ id: 't-shared', name: 'production', usedByWorkflows: ['w1', 'w2'] },
-			{ id: 't-w1-only', name: 'draft', usedByWorkflows: ['w1'] },
+			{
+				id: 't-shared',
+				name: 'production',
+				usedBy: [
+					{ kind: 'workflow', id: 'w1' },
+					{ kind: 'workflow', id: 'w2' },
+				],
+			},
+			{ id: 't-w1-only', name: 'draft', usedBy: [{ kind: 'workflow', id: 'w1' }] },
 		]);
 	});
 
@@ -144,7 +283,7 @@ describe('import-manifest-bridge', () => {
 		await writeTree({
 			'manifest.json': leftoverManifest({
 				requirements: {
-					tags: [{ id: 't-dropped', name: 'prod', usedByWorkflows: ['w2'] }],
+					tags: [{ id: 't-dropped', name: 'prod', usedBy: [{ kind: 'workflow', id: 'w2' }] }],
 				},
 			}),
 			'projects/alpha/workflows/w2/workflow.json': JSON.stringify({ id: 'w2', name: 'W2' }),
@@ -154,7 +293,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 				workflows: [{ id: 'w2', name: 'W2', target: 'projects/alpha/workflows/w2' }],
@@ -183,7 +321,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 			}),
@@ -213,7 +350,6 @@ describe('import-manifest-bridge', () => {
 			exportFolder,
 			staging: packageManifestSchema.parse({
 				packageFormatVersion: '1',
-				exportedAt: '2026-01-01T00:00:00.000Z',
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'inst-1',
 			}),

@@ -24,6 +24,9 @@ test('reloads Codespaces secrets before the worker starts', () => {
 		postStart,
 		/bash -lc "\. \/usr\/local\/lib\/codespaces-env\.sh; .*node \/workspaces\/n8n\/\.devcontainer\/codespaces\/agent-worker\.mjs/,
 	);
+	assert.match(postStart, /installAgentHarness\(\)/);
+	assert.match(postStart, /harness\.status === 'active' &&\s+tryRun\('worker start'/);
+	assert.match(postStart, /JSON\.stringify\(\{ installed, failed, harness, workerStarted \}/);
 });
 
 function slackRecorder() {
@@ -296,7 +299,7 @@ test('streams OpenCode CLI events and resumes an OpenCode session', async () => 
 		'ses_existing',
 	]);
 	assert.equal(invocation.options.detached, true);
-	assert.match(prompt, /# Request\nTest message/);
+	assert.equal(prompt, 'Test message');
 	assert.deepEqual(
 		events.map((event) => event.type),
 		['step_start', 'tool_use', 'text'],
@@ -345,6 +348,8 @@ test('keeps broker credentials out of the OpenCode process', () => {
 		ANTHROPIC_API_KEY: 'model',
 		OPENROUTER_API_KEY: 'openrouter',
 		GITHUB_TOKEN: 'github',
+		N8N_AGENT_RUNTIME: 'sandbox',
+		N8N_AGENT_PROFILE: 'slack',
 	});
 });
 

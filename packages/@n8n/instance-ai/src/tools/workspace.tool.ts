@@ -52,7 +52,9 @@ const cleanupTestExecutionsAction = z.object({
 	olderThanHours: z
 		.number()
 		.optional()
-		.describe('Only delete executions older than this many hours. Defaults to 1.'),
+		.describe(
+			'Only delete executions older than this many hours. Must be greater than 0. Defaults to 1.',
+		),
 });
 
 const listFoldersAction = z.object({
@@ -177,6 +179,7 @@ async function handleTagWorkflow(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Tag ${input.workflowName ?? input.workflowId} (ID: ${input.workflowId}) with [${input.tags.join(', ')}]`,
@@ -205,10 +208,20 @@ async function handleCleanupTestExecutions(
 		return { deletedCount: 0, denied: true, reason: 'Action blocked by admin' };
 	}
 
+	// Checked here, not in the schema: the flattened action schema would apply the bound to every
+	// action. OpenAI strict tool calls must fill this field, and 0 would delete every test execution.
+	if (input.olderThanHours !== undefined && !(input.olderThanHours > 0)) {
+		return {
+			error:
+				'Nothing was deleted: olderThanHours must be greater than 0. Pass 1 to delete executions older than 1 hour.',
+		};
+	}
+
 	const needsApproval = context.permissions?.cleanupTestExecutions !== 'always_allow';
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		const hours = input.olderThanHours ?? 1;
 		return await ctx.suspend({
 			requestId: nanoid(),
@@ -268,6 +281,7 @@ async function handleCreateFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'project', id: input.projectId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Create ${name} in project ${input.projectId}`,
@@ -310,6 +324,7 @@ async function handleDeleteFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'project', id: input.projectId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Delete ${input.folderName ?? input.folderId}`,
@@ -346,6 +361,7 @@ async function handleMoveWorkflowToFolder(
 
 	// State 1: First call — suspend for confirmation (unless always_allow)
 	if (needsApproval && (resumeData === undefined || resumeData === null)) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: input.workflowId });
 		return await ctx.suspend({
 			requestId: nanoid(),
 			message: `Move ${input.workflowName ?? input.workflowId} to folder ${input.folderName ?? input.folderId}`,

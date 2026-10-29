@@ -5,6 +5,7 @@ import {
 	CredentialsRepository,
 	Project,
 	ProjectRepository,
+	RoleRepository,
 	SharedCredentials,
 	SharedCredentialsRepository,
 	SharedWorkflow,
@@ -14,9 +15,8 @@ import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
+import { CredentialsFinderService, RoleService } from '@n8n/backend-services';
+import { NotFoundError } from '@n8n/errors';
 
 const INSTANCE_CREDENTIAL_MANAGEMENT_SCOPES = new Set<Scope>([
 	'credential:read',
@@ -114,6 +114,13 @@ export async function userHasScopes(
 	// Then find at least one of the above qualifying projects having one of
 	// those resource roles over the resource being checked.
 	const roleService = Container.get(RoleService);
+	const loadRoles = entityManager
+		? async () => await Container.get(RoleRepository).findAll(entityManager)
+		: undefined;
+	const rolesWithScope = async (namespace: 'credential' | 'workflow') =>
+		loadRoles
+			? await roleService.rolesWithScope(namespace, scopes, loadRoles)
+			: await roleService.rolesWithScope(namespace, scopes);
 
 	if (credentialId) {
 		const credentialRepo = entityManager
@@ -125,7 +132,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('credential', scopes, entityManager);
+		const validRoles = await rolesWithScope('credential');
 
 		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
@@ -150,7 +157,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('workflow', scopes, entityManager);
+		const validRoles = await rolesWithScope('workflow');
 
 		return workflows.some(
 			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),

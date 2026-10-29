@@ -13,19 +13,23 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 	const globalScopes = ref<Scope[]>([]);
 	const scopesByProjectId = ref<Record<string, Scope[]>>({});
 	const scopesByResourceId = ref<Record<Resource, Record<string, Scope[]>>>({
+		app: {},
 		agent: {},
 		aiAssistant: {},
 		aiPreference: {},
 		projectAiPreference: {},
+		skill: {},
+		projectSkill: {},
 		workflow: {},
 		tag: {},
 		annotationTag: {},
 		user: {},
 		credential: {},
+		credentialTypePolicy: {},
 		variable: {},
 		projectVariable: {},
 		sourceControl: {},
-		gitConnection: {},
+		promotions: {},
 		externalSecretsProvider: {},
 		externalSecret: {},
 		project: {},
@@ -63,6 +67,8 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		securitySettings: {},
 		roleMappingRule: {},
 		otel: {},
+		scim: {},
+		trustedSource: {},
 	});
 
 	function addGlobalRole(role: Role) {

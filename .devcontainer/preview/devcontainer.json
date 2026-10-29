@@ -33,5 +33,22 @@
 	// Codespaces regenerates the managed /etc/gitconfig on each start, and the ssh
 	// command shells `pnpm preview` uses are neither login nor interactive, so
 	// profile.d and bashrc never fire for them. Register the helper here instead.
-	"postStartCommand": "git config --global --get-all credential.helper 2>/dev/null | grep -qs gitcredential-refresh || git config --global --add credential.helper /usr/local/bin/gitcredential-refresh.sh"
+	"postStartCommand": "git config --global --get-all credential.helper 2>/dev/null | grep -qs gitcredential-refresh || git config --global --add credential.helper /usr/local/bin/gitcredential-refresh.sh",
+	// Declarations only. All of these are set at the repository level, so Codespaces
+	// injects them into every preview box whether or not they are listed here.
+	// scripts/codespace-preview/preview-serve.mjs reads them with codespaceSecret().
+	"secrets": {
+		"N8N_LICENSE_ACTIVATION_KEY": {
+			"description": "Sandbox licence key. The preview:enterprise label decides whether it reaches n8n."
+		},
+		"CODESPACE_ENV_URL": {
+			"description": "n8n webhook that returns extra environment for a preview, as a flat JSON object"
+		},
+		"CODESPACE_ENV_USER": {
+			"description": "Basic auth user for CODESPACE_ENV_URL. Defaults to `preview`."
+		},
+		"CODESPACE_ENV_PASSWORD": {
+			"description": "Basic auth password for CODESPACE_ENV_URL"
+		}
+	}
 }

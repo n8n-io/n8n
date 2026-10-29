@@ -51,7 +51,9 @@
 								"description": "Message to echo"
 							}
 						},
-						"required": ["message"]
+						"required": ["message"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
 					"strict": false
 				},
@@ -70,7 +72,9 @@
 								"description": "Second number"
 							}
 						},
-						"required": ["a", "b"]
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
 					"strict": false
 				},
@@ -85,7 +89,9 @@
 								"description": "Image caption"
 							}
 						},
-						"required": ["caption"]
+						"required": ["caption"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
 					"strict": false
 				}
@@ -208,7 +214,9 @@
 								"description": "Message to echo"
 							}
 						},
-						"required": ["message"]
+						"required": ["message"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
 					"strict": false
 				},
@@ -227,7 +235,9 @@
 								"description": "Second number"
 							}
 						},
-						"required": ["a", "b"]
+						"required": ["a", "b"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
 					"strict": false
 				},
@@ -242,7 +252,9 @@
 								"description": "Image caption"
 							}
 						},
-						"required": ["caption"]
+						"required": ["caption"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
 					},
 					"strict": false
 				}

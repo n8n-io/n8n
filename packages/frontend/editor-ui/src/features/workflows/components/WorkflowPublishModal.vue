@@ -63,9 +63,9 @@ const isReattempt = computed(
 		workflowDocumentStore.value.publicationStatus === 'failed',
 );
 
-const nodesWithValidationIssues = computed(
-	() => workflowDocumentStore.value.nodesWithValidationIssues,
-);
+// The nodes that actually block publishing, so this list and the Publish button
+// cannot disagree about what needs fixing.
+const nodesWithValidationIssues = computed(() => workflowDocumentStore.value.publishBlockingNodes);
 
 const hasNodeIssues = computed(() => workflowDocumentStore.value.hasPublishBlockingIssues);
 
@@ -137,7 +137,7 @@ function findManagedOpenAiCredentialId(
 ): string | undefined {
 	return Object.keys(usedCredentials).find((credentialId) => {
 		const credential = credentialsStore.state.credentials[credentialId];
-		return credential.isManaged && credential.type === OPEN_AI_API_CREDENTIAL_TYPE;
+		return credential?.isManaged && credential.type === OPEN_AI_API_CREDENTIAL_TYPE;
 	});
 }
 
@@ -336,7 +336,7 @@ async function handlePublish() {
 				/>
 				<div :class="$style.actions">
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						:disabled="publishing"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-publish-cancel-button"

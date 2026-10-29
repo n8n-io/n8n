@@ -1,9 +1,25 @@
 import type { LicenseState } from '@n8n/backend-common';
+import type { Scope } from '@n8n/permissions';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 
+import { plannedCredentialUpdates } from '../entities/credential/credential-conflict-policy';
+import type { CredentialImportPlan } from '../entities/credential/credential.types';
+import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
+import type { SkillImportPlan } from '../entities/skill/skill-import.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
+import type { CredentialConflictPolicy } from '../n8n-packages.types';
+import type { PackageManifest } from '../spec/manifest.schema';
+
+export function packageImportScopes(manifest: PackageManifest): Scope[] {
+	const scopes: Scope[] = [];
+	if (manifest.workflows?.length || (!manifest.agents?.length && !manifest.projects?.length)) {
+		scopes.push('workflow:import');
+	}
+	if (manifest.agents?.length) scopes.push('agent:import');
+	return scopes;
+}
 
 export function assertPackageImportApiKeyScopes(
 	apiKeyScopes: string[] | undefined,
@@ -40,10 +56,60 @@ export function assertVariableWritesAllowed(options: {
 }
 
 /**
- * Plan-derived, unlike the pre-plan data-table gate: a tag must
- * never block an import that would not write it (skipped consumers, disabled
- * tags, dropped conflicts), so the assert looks at what the plans actually
- * create, rename, or reconcile.
+ * Plan-derived: requires a scope only when a plan creates or changes a table. Project packages
+ * have no pre-plan create gate, so this gate also covers them.
+ */
+export function assertDataTableWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	dataTablePlans: DataTableImportPlan[],
+): void {
+	if (dataTablePlans.some((plan) => plan.creations.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:create']);
+	}
+	if (dataTablePlans.some((plan) => plan.updates.length + plan.columnAlignments.length > 0)) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:update']);
+	}
+}
+
+/**
+ * Plan-derived: a project or instance skill can change other Agents, so its write needs the
+ * matching API-key scope. The skills of one Agent need only the Agent scopes.
+ */
+export function assertSharedSkillWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
+): void {
+	assertPackageImportApiKeyScopes(apiKeyScopes, requiredSharedSkillScopes(skillPlans));
+}
+
+export function requiredSharedSkillScopes(
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
+): Scope[] {
+	const writes = skillPlans.flatMap((plan) => plan.shared);
+	const scopes: Scope[] = [];
+	if (writes.some(({ base }) => !base)) scopes.push('skill:create');
+	if (writes.some(({ base }) => base)) scopes.push('skill:update');
+	return scopes;
+}
+
+/**
+ * Plan-derived: requires the scope only when the import writes a matched credential. `fail`
+ * never writes, so it needs no scope.
+ */
+export function assertCredentialUpdatesAllowed(
+	apiKeyScopes: string[] | undefined,
+	policy: CredentialConflictPolicy,
+	credentialPlans: Array<Pick<CredentialImportPlan, 'updates'>>,
+): void {
+	if (plannedCredentialUpdates(policy, credentialPlans).size > 0) {
+		assertPackageImportApiKeyScopes(apiKeyScopes, ['credential:update']);
+	}
+}
+
+/**
+ * Plan-derived: a tag must never block an import that would not write it
+ * (skipped consumers, disabled tags, dropped conflicts), so the assert looks
+ * at what the plans actually create, rename, or reconcile.
  */
 export function assertTagWritesAllowed(
 	apiKeyScopes: string[] | undefined,

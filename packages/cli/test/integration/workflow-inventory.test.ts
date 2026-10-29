@@ -107,4 +107,60 @@ describe('WorkflowRepository.findRecentForProjects', () => {
 
 		expect(await repository.findRecentForProjects([], 10)).toEqual({ total: 0, workflows: [] });
 	});
+
+	/**
+	 * A whole-instance reader gets `'all-projects'` rather than a list, which drops the shared
+	 * join entirely. That is the branch every instance owner takes, so it needs its own cases.
+	 */
+	describe("the 'all-projects' scope", () => {
+		it('names a workflow whose project the list scope never mentions', async () => {
+			await createWorkflow({ name: 'Elsewhere' }, otherProject);
+
+			const scoped = await repository.findRecentForProjects([project.id], 10);
+			const all = await repository.findRecentForProjects('all-projects', 10);
+
+			expect(scoped.total).toBe(0);
+			expect(all.total).toBe(1);
+			expect(all.workflows.map((w) => w.name)).toEqual(['Elsewhere']);
+		});
+
+		/** Without the join there is no row multiplication left to guard against — prove it. */
+		it('counts a workflow shared into two projects once', async () => {
+			const workflow = await createWorkflow({ name: 'Shared' }, project);
+			await shareWorkflowWithProjects(workflow, [{ project: otherProject }]);
+
+			const all = await repository.findRecentForProjects('all-projects', 10);
+
+			expect(all.total).toBe(1);
+			expect(all.workflows).toHaveLength(1);
+		});
+
+		it('counts only what carries the MCP setting when asked to', async () => {
+			await createWorkflow({ name: 'Exposed', settings: { availableInMCP: true } }, project);
+			await createWorkflow({ name: 'Withheld' }, otherProject);
+
+			const unfiltered = await repository.findRecentForProjects('all-projects', 10);
+			const visible = await repository.findRecentForProjects('all-projects', 10, {
+				mcpVisibleOnly: true,
+			});
+
+			expect(unfiltered.total).toBe(2);
+			expect(visible.total).toBe(1);
+			expect(visible.workflows.map((w) => w.name)).toEqual(['Exposed']);
+		});
+
+		/** Archived counts as withheld, matching every other MCP read. */
+		it('excludes an archived workflow even when it carries the setting', async () => {
+			await createWorkflow(
+				{ name: 'Archived but flagged', isArchived: true, settings: { availableInMCP: true } },
+				project,
+			);
+
+			const visible = await repository.findRecentForProjects('all-projects', 10, {
+				mcpVisibleOnly: true,
+			});
+
+			expect(visible).toEqual({ total: 0, workflows: [] });
+		});
+	});
 });

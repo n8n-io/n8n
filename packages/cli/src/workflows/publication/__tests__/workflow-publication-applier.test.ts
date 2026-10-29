@@ -8,7 +8,9 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { Logger } from '@n8n/backend-common';
+import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
 import { mock } from 'vitest-mock-extended';
+import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INode, INodeType } from 'n8n-workflow';
 import { WebhookPathTakenError } from 'n8n-workflow';
 
@@ -23,7 +25,7 @@ import { WorkflowPublicationApplier } from '@/workflows/publication/workflow-pub
 import type { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import type { WorkflowScheduledJobOwner } from '@/scheduling/workflow-scheduled-job-owner';
 import type { WorkflowTriggerActivator } from '@/workflows/triggers/workflow-trigger-activator';
-import type { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import type { WorkflowPublishedDataService } from '@n8n/backend-services';
 import type { WorkflowService } from '@/workflows/workflow.service';
 
 describe('WorkflowPublicationApplier', () => {
@@ -124,11 +126,11 @@ describe('WorkflowPublicationApplier', () => {
 
 	const abort = { signal: new AbortController().signal, onDetached: vi.fn() };
 
-	/** Drives the trigger diff: first call returns old triggers, second returns new. */
+	/** Drives the trigger diff: `oldVersion` (or none) returns old triggers, any other version returns new. */
 	function setTriggerSets(oldTriggers: INode[], newTriggers: INode[]) {
-		workflowTriggerActivator.getEnabledTriggerNodes
-			.mockReturnValueOnce(oldTriggers)
-			.mockReturnValueOnce(newTriggers);
+		workflowTriggerActivator.getEnabledTriggerNodes.mockImplementation((version) =>
+			version === null || version === oldVersion ? oldTriggers : newTriggers,
+		);
 	}
 
 	beforeEach(() => {
@@ -300,14 +302,17 @@ describe('WorkflowPublicationApplier', () => {
 
 			await applier.apply(makeRecord(), abort);
 
-			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith({
-				workflow: {
-					id: 'wf-1',
-					name: 'My workflow',
-					nodes: versionWithNodes.nodes,
+			expect(policyEnforcementService.enforceWorkflowPublish).toHaveBeenCalledExactlyOnceWith(
+				{
+					workflow: {
+						id: 'wf-1',
+						name: 'My workflow',
+						nodes: versionWithNodes.nodes,
+					},
+					projectId: 'project-1',
 				},
-				projectId: 'project-1',
-			});
+				{ kind: 'system', reason: 'publication' },
+			);
 		});
 
 		// The no-change branch still advances the published version, which running
@@ -996,6 +1001,7 @@ describe('WorkflowPublicationApplier', () => {
 				},
 			],
 		});
+		expect((result as { error: Error }).error).toBe(error);
 		expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
 			'wf-1',
 			'v-2',
@@ -1139,6 +1145,217 @@ describe('WorkflowPublicationApplier', () => {
 			expect(workflowPublishedVersionRepository.removePublishedVersion).not.toHaveBeenCalled();
 		});
 	});
+	describe('unresolvable node types', () => {
+		const unknownNode: INode = {
+			id: 'x',
+			name: 'Execute Command',
+			type: 'n8n-nodes-base.executeCommand',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		};
+		const withNodes = (version: WorkflowHistory, nodes: INode[]): WorkflowHistory =>
+			({ ...version, nodes }) as WorkflowHistory;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type) => {
+				if (type === unknownNode.type) {
+					throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'executeCommand');
+				}
+				return mock<INodeType>();
+			});
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				withNodes(newVersion, [triggerNode('a'), unknownNode]),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([triggerNode('a')]);
+		});
+
+		afterEach(() => {
+			nodeTypes.getByNameAndVersion.mockReset();
+		});
+
+		test('fails with every trigger and the unknown node marked failed, without activating', async () => {
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error: expect.objectContaining({
+					message: expect.stringContaining('n8n-nodes-base.executeCommand'),
+				}),
+				triggerStatuses: [
+					{
+						nodeId: 'a',
+						nodeName: 'a',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: expect.stringContaining('n8n-nodes-base.executeCommand'),
+					},
+					{
+						nodeId: 'x',
+						nodeName: 'Execute Command',
+						status: 'failed',
+						triggerKind: 'persisted',
+						errorMessage: 'Unrecognized node type: n8n-nodes-base.executeCommand',
+					},
+				],
+			});
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+
+		test('tears down the published triggers and advances the version', async () => {
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a')])),
+			);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				expect.objectContaining({ nodes: [triggerNode('a')] }),
+				new Set(['a']),
+				abort,
+			);
+			expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+			);
+		});
+
+		test('hands the activator the published version without the unknown node, so teardown can build it', async () => {
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a'), unknownNode])),
+			);
+
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
+				expect.anything(),
+				{ nodes: [triggerNode('a')], connections: {} },
+				new Set(['a']),
+				abort,
+			);
+			for (const [version] of workflowTriggerActivator.getEnabledTriggerNodes.mock.calls) {
+				expect(version?.nodes).not.toContainEqual(unknownNode);
+			}
+			expect(workflowTriggerActivator.deregisterUnresolvableNodes).toHaveBeenCalledWith(
+				'wf-1',
+				[unknownNode],
+				abort,
+			);
+		});
+
+		test('writes a single failed row when the unknown node is the only trigger', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(withNodes(newVersion, [unknownNode]));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				triggerStatuses: [{ nodeId: 'x', status: 'failed', triggerKind: 'persisted' }],
+			});
+		});
+
+		test('recomputes the trigger count from the part of the new version it can build', async () => {
+			await applier.apply(makeRecord(), abort);
+
+			expect(workflowTriggerActivator.updateTriggerCount).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'wf-1' }),
+				{ nodes: [triggerNode('a')], connections: {} },
+			);
+		});
+
+		test('returns failed without rows when advancing the version throws, leaving the retry to reconciliation', async () => {
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a')])),
+			);
+			workflowPublishedVersionRepository.setPublishedVersion.mockRejectedValueOnce(
+				new Error('db down'),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({
+				type: 'failed',
+				error: expect.objectContaining({ message: 'db down' }),
+			});
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalled();
+		});
+
+		test('republishing a version without the unknown node tears the old one down and completes', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				withNodes(newVersion, [triggerNode('a')]),
+			);
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a'), unknownNode])),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+			);
+			expect(workflowTriggerActivator.deregisterUnresolvableNodes).toHaveBeenCalledWith(
+				'wf-1',
+				[unknownNode],
+				abort,
+			);
+			for (const [version] of workflowTriggerActivator.getEnabledTriggerNodes.mock.calls) {
+				expect(version?.nodes).not.toContainEqual(unknownNode);
+			}
+		});
+
+		test('unpublishing a workflow whose published version holds the unknown node tears down and removes the mapping', async () => {
+			workflowRepository.findOneBy.mockResolvedValue(makeWorkflow({ activeVersionId: null }));
+			workflowPublishedVersionRepository.findOne.mockResolvedValue(
+				makePublishedVersion(withNodes(oldVersion, [triggerNode('a'), unknownNode])),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toEqual({ type: 'unpublished' });
+			expect(workflowTriggerActivator.deactivate).toHaveBeenCalledWith(
+				expect.anything(),
+				{ nodes: [triggerNode('a')], connections: {} },
+				new Set(['a']),
+				abort,
+			);
+			expect(workflowTriggerActivator.deregisterUnresolvableNodes).toHaveBeenCalledWith(
+				'wf-1',
+				[unknownNode],
+				abort,
+			);
+			expect(workflowPublishedVersionRepository.removePublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+			);
+		});
+
+		test('fails even when the unknown node is disabled', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				withNodes(newVersion, [triggerNode('a'), { ...unknownNode, disabled: true }]),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('failed');
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+		});
+
+		test('an abort before teardown neither deactivates nor advances the version', async () => {
+			const controller = new AbortController();
+			controller.abort(new Error('deadline'));
+
+			await expect(
+				applier.apply(makeRecord(), { signal: controller.signal, onDetached: vi.fn() }),
+			).rejects.toThrow('deadline');
+
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('node id healing', () => {
 		const dupTriggerVersion = (): WorkflowHistory =>
 			({
@@ -1255,6 +1472,134 @@ describe('WorkflowPublicationApplier', () => {
 			const result = await applier.apply(makeRecord(), abort);
 
 			expect(result).toEqual({ type: 'skipped', reason: 'node-ids-healed' });
+		});
+	});
+
+	describe('trigger node ids longer than the column width', () => {
+		const longId = 'x'.repeat(NODE_ID_MAX_LENGTH + 1);
+		const fittingId = 'y'.repeat(NODE_ID_MAX_LENGTH);
+		const setNode = (id: string): INode =>
+			triggerNode(id, { name: 'Set', type: 'n8n-nodes-base.set' });
+		const versionWith = (nodes: INode[]): WorkflowHistory =>
+			({ ...makeVersion('v-2'), nodes }) as WorkflowHistory;
+
+		beforeEach(() => {
+			nodeTypes.getByNameAndVersion.mockImplementation((type: string) => {
+				if (type === 'n8n-nodes-base.executeCommand') {
+					throw new UnrecognizedNodeTypeError('n8n-nodes-base', 'executeCommand');
+				}
+				return type.toLowerCase().includes('trigger')
+					? ({ trigger: async () => ({}) } as unknown as INodeType)
+					: ({} as INodeType);
+			});
+		});
+
+		afterEach(() => {
+			nodeTypes.getByNameAndVersion.mockReset();
+		});
+
+		test('fails before touching triggers, and reports only the triggers whose id fits', async () => {
+			const longTrigger = triggerNode(longId, { name: 'Long' });
+			const fittingTrigger = triggerNode(fittingId, { name: 'Fitting' });
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				versionWith([longTrigger, fittingTrigger]),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([
+				longTrigger,
+				fittingTrigger,
+			]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			const message = `Cannot publish workflow: trigger "Long" has a node ID longer than ${NODE_ID_MAX_LENGTH} characters. Remove and re-add the affected nodes to give them new IDs.`;
+			expect(result).toEqual({
+				type: 'failed',
+				error: expect.objectContaining({
+					message,
+					affectedNodes: [{ id: longId, name: 'Long' }],
+				}),
+				triggerStatuses: [
+					{
+						nodeId: fittingId,
+						nodeName: 'Fitting',
+						status: 'failed',
+						triggerKind: 'in-memory',
+						errorMessage: message,
+					},
+				],
+			});
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.activate).not.toHaveBeenCalled();
+			expect(workflowTriggerActivator.deactivate).not.toHaveBeenCalled();
+			expect(policyEnforcementService.enforceWorkflowPublish).not.toHaveBeenCalled();
+		});
+
+		test('counts node id length in characters, not UTF-16 code units', async () => {
+			const astralId = '😀'.repeat(NODE_ID_MAX_LENGTH);
+			const longTrigger = triggerNode(longId, { name: 'Long' });
+			const astralTrigger = triggerNode(astralId, { name: 'Astral' });
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				versionWith([longTrigger, astralTrigger]),
+			);
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue([longTrigger, astralTrigger]);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error: { affectedNodes: [{ id: longId, name: 'Long' }] },
+				triggerStatuses: [{ nodeId: astralId, nodeName: 'Astral', status: 'failed' }],
+			});
+		});
+
+		test('names every trigger whose id is too long', async () => {
+			const triggers = [
+				triggerNode(longId, { name: 'First' }),
+				triggerNode(`${longId}z`, { name: 'Second' }),
+			];
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith(triggers));
+			workflowTriggerActivator.getEnabledTriggerNodes.mockReturnValue(triggers);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({
+				type: 'failed',
+				error: expect.objectContaining({
+					message: expect.stringContaining('triggers "First", "Second" have node IDs longer than'),
+					affectedNodes: [
+						{ id: longId, name: 'First' },
+						{ id: `${longId}z`, name: 'Second' },
+					],
+				}),
+			});
+		});
+
+		test('fails when a node whose type cannot load has a long id, since it gets its own row', async () => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(
+				versionWith([
+					triggerNode(longId, { name: 'Execute Command', type: 'n8n-nodes-base.executeCommand' }),
+				]),
+			);
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result).toMatchObject({ type: 'failed', triggerStatuses: [] });
+			expect(workflowPublishedVersionRepository.setPublishedVersion).not.toHaveBeenCalled();
+		});
+
+		test.each([
+			['a non-trigger node', setNode(longId)],
+			['a disabled trigger', triggerNode(longId, { disabled: true })],
+		])('publishes a version where only %s has a long id', async (_, node) => {
+			workflowHistoryRepository.findOneBy.mockResolvedValue(versionWith([node]));
+
+			const result = await applier.apply(makeRecord(), abort);
+
+			expect(result.type).toBe('completed');
+			expect(workflowPublishedVersionRepository.setPublishedVersion).toHaveBeenCalledWith(
+				'wf-1',
+				'v-2',
+			);
 		});
 	});
 });

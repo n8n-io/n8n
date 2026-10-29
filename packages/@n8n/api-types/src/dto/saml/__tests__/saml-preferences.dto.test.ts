@@ -60,6 +60,19 @@ describe('SAML preference DTOs', () => {
 						relayState: 'https://example.com/relay',
 					},
 				},
+				{
+					name: 'email verification settings',
+					request: {
+						mapping: {
+							email: 'user@example.com',
+							firstName: 'John',
+							lastName: 'Doe',
+							userPrincipalName: 'johndoe',
+							emailVerified: 'http://schemas.example.com/claims/emailverified',
+						},
+						emailVerifiedRequired: true,
+					},
+				},
 			])('should validate $name', ({ request }) => {
 				const result = SamlPreferences.safeParse(request);
 				expect(result.success).toBe(true);
@@ -119,6 +132,13 @@ describe('SAML preference DTOs', () => {
 					},
 					expectedErrorPath: ['mapping', 'email'],
 				},
+				{
+					name: 'invalid emailVerifiedRequired',
+					request: {
+						emailVerifiedRequired: 'yes',
+					},
+					expectedErrorPath: ['emailVerifiedRequired'],
+				},
 			])('should fail validation for $name', ({ request, expectedErrorPath }) => {
 				const result = SamlPreferences.safeParse(request);
 
@@ -153,6 +173,7 @@ describe('SAML preference DTOs', () => {
 					expect(result.data?.authnRequestsSigned).toBe(false);
 					expect(result.data?.wantAssertionsSigned).toBe(true);
 					expect(result.data?.wantMessageSigned).toBe(true);
+					expect(result.data?.emailVerifiedRequired).toBeUndefined();
 					expect(result.data?.acsBinding).toBe('post');
 					expect(result.data?.signatureConfig).toEqual({
 						prefix: 'ds',
@@ -174,6 +195,7 @@ describe('SAML preference DTOs', () => {
 				firstName: 'John',
 				lastName: 'Doe',
 				userPrincipalName: 'johndoe',
+				emailVerified: '',
 				n8nInstanceRole: '',
 				n8nProjectRoles: [] as string[],
 			},
@@ -186,6 +208,7 @@ describe('SAML preference DTOs', () => {
 			authnRequestsSigned: false,
 			wantAssertionsSigned: true,
 			wantMessageSigned: true,
+			emailVerifiedRequired: false,
 			signingPrivateKey: '',
 			signingCertificate: '',
 			acsBinding: 'post' as const,

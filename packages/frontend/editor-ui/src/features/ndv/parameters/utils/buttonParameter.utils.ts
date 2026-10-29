@@ -5,9 +5,7 @@ import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { generateCodeForPrompt } from '@/features/ai/assistant/assistant.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type AskAiRequest } from '@/features/ai/assistant/assistant.types';
-import { format } from 'prettier';
-import jsParser from 'prettier/plugins/babel';
-import * as estree from 'prettier/plugins/estree';
+import { loadPrettier } from '@/features/shared/editors/utils/loadPrettier';
 import {
 	useWorkflowDocumentStore,
 	type WorkflowDocumentId,
@@ -231,9 +229,10 @@ export async function generateCodeForAiTransform(
 
 	if (value === undefined) return;
 
+	const { format, plugins } = await loadPrettier();
 	const formattedCode = await format(String(value), {
 		parser: 'babel',
-		plugins: [jsParser, estree],
+		plugins: [plugins.babel, plugins.estree],
 	});
 
 	const updateInformation = {

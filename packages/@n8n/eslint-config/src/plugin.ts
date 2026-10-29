@@ -18,6 +18,9 @@ export const localRulesPlugin = {
 				'n8n-local-rules': plugin,
 			},
 			rules: {
+				// Seal entity content writes to the token-gated repository methods.
+				'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
+				'n8n-local-rules/no-unsealed-credentials-entity-write': 'error',
 				'n8n-local-rules/no-uncaught-json-parse': 'error',
 				'n8n-local-rules/no-json-parse-json-stringify': 'error',
 				'n8n-local-rules/no-unneeded-backticks': 'error',
@@ -28,11 +31,10 @@ export const localRulesPlugin = {
 				'n8n-local-rules/no-type-only-import-in-di': 'error',
 				'n8n-local-rules/no-aws-credential-discovery-imports': 'error',
 				'n8n-local-rules/no-application-error': 'error',
+				'n8n-local-rules/no-raw-enum': 'error',
 				'n8n-local-rules/no-dynamic-regexp': 'warn',
 				'n8n-local-rules/no-restricted-sleep-definition': 'error',
 				'n8n-local-rules/no-restricted-sleep-import': 'error',
-				// Seals WorkflowEntity node writes to the token-gated repository methods, in every package.
-				'n8n-local-rules/no-unsealed-workflow-entity-write': 'error',
 			},
 		},
 	},

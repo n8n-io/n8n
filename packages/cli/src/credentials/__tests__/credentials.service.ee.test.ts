@@ -9,14 +9,14 @@ import type {
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialConnectionStatusProxy } from '@/credentials/credential-connection-status-proxy';
-import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { type CredentialsFinderService, type RoleService } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import type { ExternalSecretsConfig } from '@/modules/external-secrets.ee/external-secrets.config';
 import type { SecretsProviderAccessCheckService } from '@/modules/external-secrets.ee/secret-provider-access-check.service.ee';
+import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
-import type { RoleService } from '@/services/role.service';
 
 describe('EnterpriseCredentialsService', () => {
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
@@ -29,6 +29,7 @@ describe('EnterpriseCredentialsService', () => {
 	const externalSecretsProviderAccessCheckService = mock<SecretsProviderAccessCheckService>();
 	const licenseState = mock<LicenseState>();
 	const connectionStatusProxy = mock<CredentialConnectionStatusProxy>();
+	const policyEnforcementService = mock<PolicyEnforcementService>();
 
 	const service = new EnterpriseCredentialsService(
 		sharedCredentialsRepository,
@@ -41,6 +42,7 @@ describe('EnterpriseCredentialsService', () => {
 		externalSecretsProviderAccessCheckService,
 		licenseState,
 		connectionStatusProxy,
+		policyEnforcementService,
 	);
 
 	beforeEach(() => {
@@ -123,6 +125,16 @@ describe('EnterpriseCredentialsService', () => {
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
 			externalSecretsConfig.externalSecretsForProjects = true;
 			licenseState.isExternalSecretsLicensed.mockReturnValue(true);
+		});
+
+		describe('policy', () => {
+			it('moves the credential without asking the transfer policy', async () => {
+				mockTransactionManager();
+
+				await service.transferOne(user, credentialId, destinationProjectId);
+
+				expect(policyEnforcementService.enforceCredentialTransfer).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('external secrets', () => {
@@ -211,6 +223,42 @@ describe('EnterpriseCredentialsService', () => {
 				expect(
 					externalSecretsProviderAccessCheckService.isProviderAvailableInProject,
 				).not.toHaveBeenCalled();
+			});
+		});
+
+		describe('previewTransfer', () => {
+			beforeEach(() => {
+				policyEnforcementService.evaluateCredentialTransfer.mockResolvedValue({ violations: [] });
+			});
+
+			it('refuses an end-user credential the user cannot manage in the destination', async () => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValue(
+					mock<CredentialsEntity>({
+						id: credentialId,
+						type: 'testApi',
+						shared: [ownerSharing],
+						isResolvable: true,
+					}),
+				);
+				const refusal = new Error('cannot manage end-user credentials');
+				credentialsService.ensureCanManageEndUserCredential.mockRejectedValue(refusal);
+
+				await expect(
+					service.previewTransfer(user, credentialId, destinationProjectId),
+				).rejects.toThrow(refusal);
+				expect(policyEnforcementService.evaluateCredentialTransfer).not.toHaveBeenCalled();
+			});
+
+			it('refuses when the destination cannot reach a referenced secret provider', async () => {
+				credentialsService.decrypt.mockResolvedValue({ apiKey: '={{ $secrets.vault.myApiKey }}' });
+				externalSecretsProviderAccessCheckService.isProviderAvailableInProject.mockResolvedValue(
+					false,
+				);
+
+				await expect(
+					service.previewTransfer(user, credentialId, destinationProjectId),
+				).rejects.toThrow('The secret provider "vault" used in "apiKey" does not exist');
+				expect(policyEnforcementService.evaluateCredentialTransfer).not.toHaveBeenCalled();
 			});
 		});
 

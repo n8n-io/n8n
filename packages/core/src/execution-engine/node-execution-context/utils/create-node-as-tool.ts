@@ -117,6 +117,7 @@ function createTool(options: CreateNodeAsToolOptions) {
 	const description = NodeHelpers.getToolDescriptionForNode(node, nodeType, resolveToolDescription);
 	const nodeName = nodeNameToToolName(node);
 	const name = nodeName || nodeType.description.name;
+	const attribution = node.parameters.toolAttribution;
 
 	return new DynamicStructuredTool({
 		name,
@@ -127,6 +128,8 @@ function createTool(options: CreateNodeAsToolOptions) {
 		// This is required for HITL tools to know which node to execute after approval
 		metadata: {
 			sourceNodeName: node.name,
+			// A node may declare a hidden `toolAttribution` parameter; the agent appends it to the reply when the tool was called
+			...(typeof attribution === 'string' && attribution && { attribution }),
 		},
 	});
 }

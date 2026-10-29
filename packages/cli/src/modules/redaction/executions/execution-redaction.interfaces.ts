@@ -1,6 +1,6 @@
 import type { User } from '@n8n/db';
 
-import type { RedactableExecution } from '@/executions/execution-redaction';
+import type { RedactableExecution } from '@n8n/backend-services';
 
 /**
  * Context passed to every redaction strategy by the orchestrator.
@@ -16,6 +16,18 @@ export interface RedactionContext {
 	 *  credentials AND the requesting user is not the one it ran as. Drives the
 	 *  `dynamic_credentials` redaction reason. */
 	readonly enforceDynCredRedaction: boolean;
+	/** True when redaction must be enforced because the requesting user cannot
+	 *  use a credential the execution's workflow references — independent of
+	 *  dynamic credentials. Drives the `credential_inaccessible` redaction
+	 *  reason. */
+	readonly enforceCredentialUsabilityRedaction: boolean;
+	/** The credentials behind `enforceCredentialUsabilityRedaction`: those the
+	 *  requesting user cannot use. Empty when that redaction does not apply. */
+	readonly inaccessibleCredentialIds: readonly string[];
+	/** True when the execution's own policy does not redact its mode, but the
+	 *  channels its sub-workflows reported do. Drives the
+	 *  `sub_workflow_redaction_policy` redaction reason. */
+	readonly redactedBySubWorkflow: boolean;
 	/** Generic memo store — strategies may cache intermediate results here
 	 *  to avoid redundant computation across requiresRedaction/apply calls.
 	 *  Keyed by strategy name. */

@@ -7,6 +7,7 @@ import {
 	isTransientProviderError,
 	MAX_EXEC_ATTEMPTS,
 	providerRetryBackoffMs,
+	throwIfFrameworkIssue,
 } from '../harness/transient-error';
 
 describe('transient-error', () => {
@@ -207,5 +208,20 @@ describe('transient-error', () => {
 			).toBeUndefined();
 			expect(findProviderOutage(mcpBuild('timeout'))).toBeUndefined();
 		});
+	});
+});
+
+describe('throwIfFrameworkIssue', () => {
+	it('throws the harness failure so the caller records framework_issue without a verifier', () => {
+		const message =
+			'FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: Eval model provider call failed (HTTP 401): invalid x-api-key';
+		expect(() => throwIfFrameworkIssue({ success: false, errors: [message] })).toThrow(message);
+	});
+
+	it('ignores a workflow that ran and failed on its own', () => {
+		expect(() =>
+			throwIfFrameworkIssue({ success: false, errors: ['Node "Slack": channel_not_found'] }),
+		).not.toThrow();
+		expect(() => throwIfFrameworkIssue({ success: true, errors: [] })).not.toThrow();
 	});
 });

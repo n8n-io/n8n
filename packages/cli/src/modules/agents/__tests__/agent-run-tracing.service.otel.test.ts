@@ -6,14 +6,15 @@ import { mock } from 'vitest-mock-extended';
 import { OtelTestProvider } from '@/modules/otel/__tests__/support/otel-test-provider';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type { OtelSettingsService } from '@/modules/otel/otel-settings.service';
+import { OtelCustomAttributesConfig } from '@/modules/otel/otel.config';
 
 import { AgentRunTracingService } from '../agent-run-tracing.service';
 
-// Deliberately does not mock '@opentelemetry/api': agent-run-tracing.service.test.ts
+// Deliberately uses a real tracer provider: agent-run-tracing.service.test.ts
 // already covers the built-metadata/branching logic against a stubbed tracer. This
-// file proves the real OTel path end-to-end — that a registered provider actually
+// file proves the real OTel path end-to-end — that the module's provider actually
 // records the span the service's tracer produces, and that a disabled OTel module
-// (no provider registered) or disabled agent tracing both emit nothing.
+// (no provider started) or disabled agent tracing both emit nothing.
 describe('AgentRunTracingService (real OTel provider)', () => {
 	const baseMetadata = {
 		agentId: 'agent-1',
@@ -59,6 +60,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 			const executionLevelTracer = new ExecutionLevelTracer(
 				mock<OtelSettingsService>({ getSettings: () => ({ injectOutbound: false }) as never }),
 				mock<Logger>(),
+				new OtelCustomAttributesConfig(),
 			);
 			const executionId = 'exec-1';
 			const node = { id: 'node-1', name: 'Message an Agent', type: 'test', typeVersion: 1 };
@@ -118,15 +120,15 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 		}
 	});
 
-	it('emits no spans when the OTel module has no provider registered', async () => {
+	it('emits no spans when the OTel module has not started a provider', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
 		const service = new AgentRunTracingService(agentsConfig);
 
 		const built = await service.build(baseMetadata);
 		expect(built).toBeDefined();
 
-		// No provider registered — the global tracer falls back to OTel's
-		// no-op implementation, so starting a span records nothing anywhere.
+		// No provider started — the module hands out OTel's no-op tracer, so
+		// starting a span records nothing anywhere.
 		(built?.tracer as Tracer).startActiveSpan('test-span', (span) => {
 			expect(span.isRecording()).toBe(false);
 			span.end();

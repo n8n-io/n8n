@@ -20,7 +20,9 @@ const headerId = useId();
 
 <template>
 	<section :class="[$style.panelContainer, props.containerClass]" :aria-labelledby="headerId">
+		<slot v-if="$slots.header" name="header" :header-id="headerId" />
 		<AgentPanelHeader
+			v-else
 			:header-id="headerId"
 			:title="props.header"
 			:header-visibility="props.headerVisibility"
@@ -43,7 +45,7 @@ const headerId = useId();
 	padding: var(--spacing--sm);
 	padding-block: var(--spacing--md);
 	background-color: var(--background--surface);
-	border-radius: var(--radius--lg);
+	border-radius: var(--radius);
 	border: var(--border);
 	box-shadow: var(--shadow--xs);
 }

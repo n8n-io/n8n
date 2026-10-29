@@ -38,7 +38,7 @@ jobs:
           app-id: ${{ secrets.N8N_ASSISTANT_APP_ID }}
           private-key: ${{ secrets.N8N_ASSISTANT_PRIVATE_KEY }}
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           token: ${{ steps.generate-token.outputs.token }}
 
@@ -130,7 +130,8 @@ jobs:
       fail-fast: false
       matrix:
         pr_number: ${{ fromJSON(needs.prepare-auto-merge.outputs.pr_numbers_json) }}
-    uses: ./.github/workflows/util-approve-and-set-automerge.yml
+    uses: n8n-io/github-actions/.github/workflows/approve-and-set-automerge.yml@8fe337080c0386a17ce3c857b61db606c9430f4b
     with:
       pull-request-number: ${{ matrix.pr_number }}
+      enable-automerge: true
     secrets: inherit

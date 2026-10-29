@@ -15,6 +15,8 @@ import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmpty
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useInstanceAiReady } from '@/features/ai/instanceAi/composables/useInstanceAiAvailability';
+import { useAgentsListEmptyStateTemplatesExperiment } from '@/experiments/agentsListEmptyStateTemplates/useAgentsListEmptyStateTemplatesExperiment';
 import {
 	duplicateAgent,
 	listAgentsPage,
@@ -24,11 +26,12 @@ import {
 import { upsertProjectAgentsListCache } from '../composables/useProjectAgentsList';
 import { useAgentPermissions } from '../composables/useAgentPermissions';
 import { useAgentTelemetry } from '../composables/useAgentTelemetry';
+import { useCreateAgent } from '../composables/useCreateAgent';
+import type { AgentTemplate } from '../agentTemplates';
 import type { AgentResource } from '../types';
 import { AGENT_BUILDER_VIEW, AGENT_DUPLICATE_MODAL_KEY, NEW_SESSION_PARAM } from '../constants';
-import { instanceAiCreateAgentRoute } from '@/features/ai/instanceAi/createAgentRoute';
-import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import AgentCard from '../components/AgentCard.vue';
+import AgentsListIntro from '../components/AgentsListIntro.vue';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 
 function isAgentResource(value: unknown): value is AgentResource {
@@ -54,7 +57,14 @@ const projectPages = useProjectPages();
 const uiStore = useUIStore();
 const toast = useToast();
 const agentTelemetry = useAgentTelemetry();
+const { createAgent } = useCreateAgent();
 const { callDebounced } = useDebounce();
+const { isFeatureEnabled: templatesExperimentEnabled } =
+	useAgentsListEmptyStateTemplatesExperiment();
+const instanceAiReady = useInstanceAiReady();
+const showTemplatesIntro = computed(
+	() => templatesExperimentEnabled.value && instanceAiReady.value,
+);
 
 const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
 
@@ -153,12 +163,8 @@ function onAgentDuplicate(agentId: string) {
 						agent.id,
 						newName,
 					);
-					// A duplicate is born configured, so the backend creation events
-					// never fire for it (its first edit reports a modification).
-					// Track the duplicate directly, mirroring "User duplicated
-					// workflow" — the source agent id distinguishes it from an
-					// organic creation. Routed through the safe wrapper so a
-					// telemetry failure can't misreport a successful duplicate.
+					// Keep the source Agent context alongside the backend creation event.
+					// The safe wrapper prevents telemetry errors from failing duplication.
 					agentTelemetry.trackDuplicatedAgent({
 						sourceAgentId: agent.id,
 						agentId: duplicated.id,
@@ -230,15 +236,34 @@ async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
 	}
 }
 
+function targetProjectIdForCreate() {
+	return projectId.value ?? projectsStore.personalProject?.id ?? '';
+}
+
 function onCreateAgentClick() {
-	const agentId = generateNanoId();
-	agentTelemetry.trackClickedNewAgent('button', agentId);
-	const targetProjectId = projectId.value ?? projectsStore.personalProject?.id ?? '';
-	void router.push(instanceAiCreateAgentRoute(targetProjectId, agentId));
+	createAgent('button', targetProjectIdForCreate());
+}
+
+function onCreateBlank() {
+	createAgent('empty_state_blank', targetProjectIdForCreate());
+}
+
+function onCreateFromPrompt(text: string) {
+	createAgent('empty_state_prompt', targetProjectIdForCreate(), { kind: 'prompt', text });
+}
+
+function onCreateFromTemplate(template: AgentTemplate) {
+	createAgent('empty_state_template', targetProjectIdForCreate(), {
+		kind: 'template',
+		templateId: template.id,
+	});
 }
 
 onMounted(async () => {
 	documentTitle.set(locale.baseText('agents.heading'));
+	if (projectPages.isOverviewSubPage && insightsStore.isSummaryEnabled) {
+		void insightsStore.weeklySummary.execute();
+	}
 });
 </script>
 
@@ -277,7 +302,15 @@ onMounted(async () => {
 		</template>
 
 		<template #empty>
+			<AgentsListIntro
+				v-if="showTemplatesIntro"
+				:disabled="!canCreateAgent"
+				@create-blank="onCreateBlank"
+				@submit="onCreateFromPrompt"
+				@select="onCreateFromTemplate"
+			/>
 			<ResourcesListEmptyState
+				v-else
 				resource-key="agents"
 				:button-disabled="!canCreateAgent"
 				@click:button="onCreateAgentClick"

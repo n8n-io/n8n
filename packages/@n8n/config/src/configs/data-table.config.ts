@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { Config, Env } from '../decorators';
+import { positiveIntSchema } from '../schemas';
 
 @Config
 export class DataTableConfig {
@@ -32,7 +33,7 @@ export class DataTableConfig {
 	uploadMaxFileSize?: number;
 
 	/** Interval in milliseconds between cleanup runs for orphaned upload files. Default: 1 minute. */
-	@Env('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS')
+	@Env('N8N_DATA_TABLES_CLEANUP_INTERVAL_MS', positiveIntSchema)
 	cleanupIntervalMs: number = 1 * Time.minutes.toMilliseconds;
 
 	/**

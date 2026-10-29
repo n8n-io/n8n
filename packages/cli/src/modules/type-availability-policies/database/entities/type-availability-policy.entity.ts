@@ -1,5 +1,5 @@
 import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
-import { Column, Entity } from '@n8n/typeorm';
+import { Column, Entity, Index } from '@n8n/typeorm';
 
 import type { PolicyRule } from '../../policy-rule.types';
 
@@ -11,6 +11,7 @@ import type { PolicyRule } from '../../policy-rule.types';
  * needs no migration. It has no CHECK constraint for that reason — callers validate it.
  */
 @Entity('type_availability_policy')
+@Index(['kind', 'createdAt', 'id'])
 export class TypeAvailabilityPolicy extends WithTimestampsAndStringId {
 	@Column({ type: 'varchar', length: 64 })
 	kind: string;

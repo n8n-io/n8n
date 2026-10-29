@@ -71,6 +71,8 @@ export async function execute(
 
 		let values: QueryValue[] = [];
 
+		const nodeVersion = nodeOptions.nodeVersion as number;
+
 		let queryReplacement = this.getNodeParameter('options.queryReplacement', index, '');
 
 		if (typeof queryReplacement === 'number') {
@@ -83,8 +85,6 @@ export async function execute(
 			const rawReplacements = (node.parameters.options as IDataObject)?.queryReplacement as string;
 
 			if (rawReplacements) {
-				const nodeVersion = nodeOptions.nodeVersion as number;
-
 				if (nodeVersion >= 2.5) {
 					const rawValues = rawReplacements.replace(/^=+/, '');
 					const resolvables = getResolvables(rawValues);
@@ -94,7 +94,11 @@ export async function execute(
 
 							if (Array.isArray(rawEvaluated)) {
 								for (const item of rawEvaluated) {
-									if (item === undefined) continue;
+									if (item === undefined) {
+										// From v2.8 a missing element becomes SQL NULL, so later values keep their position
+										if (nodeVersion >= 2.8) values.push(null);
+										continue;
+									}
 									values.push(
 										typeof item === 'object' && item !== null ? JSON.stringify(item) : item,
 									);
@@ -102,7 +106,19 @@ export async function execute(
 								continue;
 							}
 
+							// From v2.8 an expression gives one bind value, so commas in data do not split it.
+							// null and a missing field (undefined) become SQL NULL
+							if (nodeVersion >= 2.8) {
+								values.push(
+									rawEvaluated === null || rawEvaluated === undefined
+										? null
+										: evaluateExpression(rawEvaluated),
+								);
+								continue;
+							}
+
 							const evaluatedExpression = evaluateExpression(rawEvaluated);
+
 							const evaluatedValues = isJSON(evaluatedExpression)
 								? [evaluatedExpression]
 								: stringToArray(evaluatedExpression);
@@ -135,6 +151,12 @@ export async function execute(
 		} else {
 			if (Array.isArray(queryReplacement)) {
 				values = queryReplacement as IDataObject[];
+			} else if (
+				nodeVersion >= 2.8 &&
+				(queryReplacement === null || queryReplacement === undefined)
+			) {
+				// From v2.8 a single expression that gives null or a missing field becomes SQL NULL
+				values = [null];
 			} else {
 				throw new NodeOperationError(
 					this.getNode(),

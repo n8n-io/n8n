@@ -1,7 +1,10 @@
 import { Logger } from '@n8n/backend-common';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
+import type { IHttpRequestOptions } from 'n8n-workflow';
 
+import { EXTERNAL_SECRETS_MAX_BACKOFF } from '../../constants';
 import { ExternalSecretsConfig } from '../../external-secrets.config';
 import { VaultProvider } from '../vault';
 
@@ -73,12 +76,16 @@ describe('VaultProvider', () => {
 	logger.scoped.mockReturnValue(logger);
 
 	// Use preferGet so list requests are plain GETs with `?list=true`.
-	mockInstance(ExternalSecretsConfig, { preferGet: true });
+	mockInstance(ExternalSecretsConfig, { preferGet: true, connectTimeout: 20, refreshTimeout: 45 });
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
-		mockInstance(ExternalSecretsConfig, { preferGet: true });
+		mockInstance(ExternalSecretsConfig, {
+			preferGet: true,
+			connectTimeout: 20,
+			refreshTimeout: 45,
+		});
 	});
 
 	function createProvider(routes: Route[], settings = vaultSettings) {
@@ -104,6 +111,7 @@ describe('VaultProvider', () => {
 				baseURL: VAULT_URL,
 				headers: expect.any(Function),
 				useDefaultSsrfPolicy: 'unsafe',
+				timeout: 45_000,
 			});
 		});
 
@@ -287,6 +295,83 @@ describe('VaultProvider', () => {
 			expect(provider.getSecret('secret')).toEqual({ myapp: { password: 'hunter2' } });
 			expect(provider.hasSecret('secret')).toBe(true);
 			expect(provider.getSecretNames()).toContain('secret.myapp.password');
+		});
+
+		it('should fail the pull when a secret read breaks at the transport', async () => {
+			const { provider } = await initProvider([
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }),
+				},
+				{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['myapp'] } } },
+				{ method: 'GET', pathname: '/v1/secret/data/myapp', networkError: 'ECONNREFUSED' },
+			]);
+
+			await expect(provider.update()).rejects.toThrow();
+			expect(provider.hasSecret('secret')).toBe(false);
+		});
+
+		it('should drain every mount before a broken mount fails the pull', async () => {
+			let releaseSlowRead!: () => void;
+			const slowRead = new Promise<void>((resolve) => {
+				releaseSlowRead = resolve;
+			});
+			const request = vi.fn(async (options: IHttpRequestOptions) => {
+				if (options.url === 'sys/mounts') {
+					return mountsResponse({
+						'a/': { type: 'kv', options: { version: '2' } },
+						'b/': { type: 'kv', options: { version: '2' } },
+					});
+				}
+				if (options.url.includes('/metadata/')) return { data: { keys: ['x'] } };
+				if (options.url.startsWith('a/')) {
+					const error = new Error('connect ECONNREFUSED') as Error & { code: string };
+					error.code = 'ECONNREFUSED';
+					throw error;
+				}
+				await slowRead;
+				return kvV2SecretResponse({ password: 'hunter2' });
+			});
+			const outboundHttp = { requests: () => ({ request }) } as unknown as OutboundHttp;
+			const provider = new VaultProvider(logger, outboundHttp);
+			await provider.init(vaultSettings);
+
+			let settled = false;
+			const pull = provider.update();
+			pull.then(
+				() => (settled = true),
+				() => (settled = true),
+			);
+			await new Promise((resolve) => setImmediate(resolve));
+			expect(settled).toBe(false);
+
+			releaseSlowRead();
+			await expect(pull).rejects.toThrow('connect ECONNREFUSED');
+		});
+
+		it('should read at most 50 secrets at a time', async () => {
+			let inFlight = 0;
+			let maxInFlight = 0;
+			const request = vi.fn(async (options: IHttpRequestOptions) => {
+				if (options.url.includes('/metadata/')) {
+					return { data: { keys: Array.from({ length: 120 }, (_, i) => `s${i}`) } };
+				}
+				inFlight++;
+				maxInFlight = Math.max(maxInFlight, inFlight);
+				await new Promise((resolve) => setImmediate(resolve));
+				inFlight--;
+				return kvV2SecretResponse({ password: 'hunter2' });
+			});
+			const outboundHttp = { requests: () => ({ request }) } as unknown as OutboundHttp;
+			const settings = vaultSettingsWithKvPath('secret/', '2');
+			const provider = new VaultProvider(logger, outboundHttp);
+			await provider.init(settings);
+
+			await provider.update();
+
+			expect(maxInFlight).toBe(50);
+			expect(provider.getSecretNames()).toHaveLength(120);
 		});
 
 		it('should keep the existing key shape for nested folders', async () => {
@@ -646,12 +731,355 @@ describe('VaultProvider', () => {
 		});
 	});
 
+	describe('token refresh', () => {
+		const appRoleSettings = {
+			...vaultSettings,
+			settings: {
+				...vaultSettings.settings,
+				authMethod: 'appRole',
+				roleId: 'test-role',
+				secretId: 'test-secret',
+				kvMountPath: 'secret/',
+				kvVersion: '2',
+			},
+		};
+
+		function batchTokenLookupResponse(id: string, expireTime: string) {
+			return {
+				data: {
+					...tokenLookupResponse().data,
+					id,
+					path: 'auth/approle/login',
+					type: 'batch',
+					creation_ttl: 1800,
+					ttl: 1800,
+					expire_time: expireTime,
+				},
+			};
+		}
+
+		it('resumes token replacement after temporary lookup failures', async () => {
+			vi.useFakeTimers();
+			let unavailable = false;
+			let logins = 0;
+			let lookupIndexWithinConnect = 0;
+			const { provider, httpRequest } = await initProvider(
+				[
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						get body() {
+							lookupIndexWithinConnect = 0;
+							return { auth: { client_token: `token-${++logins}` } };
+						},
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/auth/token/lookup-self',
+						get status() {
+							const isSecondLookupOfConnect = ++lookupIndexWithinConnect === 2;
+							return unavailable && isSecondLookupOfConnect ? 503 : 200;
+						},
+						get body() {
+							return batchTokenLookupResponse(
+								`token-${logins}`,
+								new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+							);
+						},
+					},
+					{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: ['app'] } } },
+					{
+						method: 'GET',
+						pathname: '/v1/secret/data/app',
+						get body() {
+							return kvV2SecretResponse({ value: `value-${logins}` });
+						},
+					},
+				],
+				appRoleSettings,
+			);
+			try {
+				await provider.connect();
+				await provider.update();
+				unavailable = true;
+				await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+				expect(provider.state).toBe('error');
+				expect(provider.getSecret('secret')).toEqual({ app: { value: 'value-1' } });
+
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
+				expect(provider.state).toBe('error');
+				unavailable = false;
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
+				expect(provider.state).toBe('connected');
+
+				for (let cycle = 0; cycle < 3; cycle++) {
+					const previousLogins = logins;
+					await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+					await provider.update();
+					expect(logins).toBeGreaterThan(previousLogins);
+					expect(provider.getSecret('secret')).toEqual({ app: { value: `value-${logins}` } });
+					expect(httpRequest.mock.calls.at(-1)?.[0].headers).toMatchObject({
+						'X-Vault-Token': `token-${logins}`,
+					});
+				}
+			} finally {
+				await provider.disconnect();
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps the reconnect retry when a token lookup completes after the connect timeout', async () => {
+			vi.useFakeTimers();
+			const { provider, httpRequest } = await initProvider(
+				[
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						body: { auth: { client_token: 'batch-token' } },
+					},
+					{
+						method: 'GET',
+						pathname: '/v1/auth/token/lookup-self',
+						get body() {
+							return batchTokenLookupResponse(
+								'batch-token',
+								new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+							);
+						},
+					},
+					{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: [] } } },
+				],
+				appRoleSettings,
+			);
+			try {
+				await provider.connect();
+				const request = vi.mocked(httpRequest);
+				const respond = request.getMockImplementation()!;
+				let delayNextLookup = true;
+				request.mockImplementation(async (options) => {
+					if (delayNextLookup && options.url === `${VAULT_URL}auth/token/lookup-self`) {
+						delayNextLookup = false;
+						await new Promise((resolve) => setTimeout(resolve, 21_000));
+					}
+					return await respond(options);
+				});
+
+				await vi.advanceTimersByTimeAsync(15 * 60 * 1000 + 20_000);
+				expect(provider.state).toBe('error');
+				await vi.advanceTimersByTimeAsync(1_000);
+				expect(vi.getTimerCount()).toBe(2);
+				await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
+				expect(provider.state).toBe('connected');
+				expect(vi.getTimerCount()).toBe(1);
+			} finally {
+				await provider.disconnect();
+				vi.useRealTimers();
+			}
+		});
+
+		it.each(['renewal', 'lookup'] as const)(
+			'reconnects after a %s failure while renewing a login token',
+			async (failedOperation) => {
+				vi.useFakeTimers();
+				let unavailable = false;
+				const { provider } = await initProvider(
+					[
+						{
+							method: 'POST',
+							pathname: '/v1/auth/approle/login',
+							get status() {
+								return unavailable ? 503 : 200;
+							},
+							body: { auth: { client_token: 'renewable-token' } },
+						},
+						{
+							method: 'POST',
+							pathname: '/v1/auth/token/renew-self',
+							get status() {
+								return unavailable && failedOperation === 'renewal' ? 503 : 200;
+							},
+						},
+						{
+							method: 'GET',
+							pathname: '/v1/auth/token/lookup-self',
+							get status() {
+								return unavailable ? 503 : 200;
+							},
+							get body() {
+								return {
+									data: {
+										...tokenLookupResponse().data,
+										renewable: true,
+										expire_time: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+									},
+								};
+							},
+						},
+						{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: [] } } },
+					],
+					appRoleSettings,
+				);
+				try {
+					await provider.connect();
+					unavailable = true;
+					await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+					expect(provider.state).toBe('error');
+					unavailable = false;
+					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
+					expect(provider.state).toBe('connected');
+					expect(vi.getTimerCount()).toBe(1);
+				} finally {
+					await provider.disconnect();
+					vi.useRealTimers();
+				}
+			},
+		);
+
+		it.each(['before retry', 'during retry'])(
+			'cancels reauthentication when disconnected %s',
+			async (disconnectAt) => {
+				vi.useFakeTimers();
+				let logins = 0;
+				const token = batchTokenLookupResponse(
+					'batch-token',
+					new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+				);
+				const { provider } = await initProvider(
+					[
+						{
+							method: 'POST',
+							pathname: '/v1/auth/approle/login',
+							get status() {
+								logins++;
+								if (logins === 3 && disconnectAt === 'during retry') {
+									void provider.disconnect();
+								}
+								return logins === 1 ? 200 : 503;
+							},
+							body: { auth: { client_token: 'batch-token' } },
+						},
+						{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: token },
+						{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: [] } } },
+					],
+					appRoleSettings,
+				);
+				try {
+					await provider.connect();
+					await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+					expect(provider.state).toBe('error');
+					expect(vi.getTimerCount()).toBe(1);
+					if (disconnectAt === 'before retry') await provider.disconnect();
+					await vi.advanceTimersByTimeAsync(EXTERNAL_SECRETS_MAX_BACKOFF);
+					expect(logins).toBe(disconnectAt === 'before retry' ? 2 : 3);
+					expect(vi.getTimerCount()).toBe(0);
+				} finally {
+					await provider.disconnect();
+					vi.useRealTimers();
+				}
+			},
+		);
+
+		it('does not schedule another login when disconnected during reauthentication', async () => {
+			vi.useFakeTimers();
+			const firstToken = batchTokenLookupResponse(
+				'batch-token',
+				new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+			);
+			const nextToken = batchTokenLookupResponse(
+				'replacement-token',
+				new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+			);
+			let provider: VaultProvider;
+			const ctx = await initProvider(
+				[
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						body: { auth: { client_token: 'batch-token' } },
+					},
+					{
+						method: 'POST',
+						pathname: '/v1/auth/approle/login',
+						body: { auth: { client_token: 'replacement-token' } },
+					},
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: firstToken },
+					{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: nextToken },
+					{
+						method: 'GET',
+						pathname: '/v1/auth/token/lookup-self',
+						get body() {
+							void provider.disconnect();
+							return nextToken;
+						},
+					},
+					{ method: 'GET', pathname: '/v1/secret/metadata/', body: { data: { keys: [] } } },
+				],
+				appRoleSettings,
+			);
+			provider = ctx.provider;
+			try {
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				await vi.advanceTimersByTimeAsync(15 * 60 * 1000);
+
+				expect(
+					ctx.httpRequest.mock.calls.filter(([options]) => options.method === 'POST'),
+				).toHaveLength(2);
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				await provider.disconnect();
+				vi.useRealTimers();
+			}
+		});
+
+		it('keeps one renewal timer across reconnects and drops it once the token is not renewable', async () => {
+			const renewable = {
+				data: {
+					...tokenLookupResponse().data,
+					renewable: true,
+					expire_time: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+				},
+			};
+			const { provider } = await initProvider([
+				{ method: 'GET', pathname: '/v1/auth/token/lookup-self', body: renewable },
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'secret/': { type: 'kv', options: { version: '2' } } }),
+				},
+			]);
+
+			vi.useFakeTimers();
+			try {
+				await provider.connect();
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				renewable.data.renewable = false;
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(0);
+
+				renewable.data.renewable = true;
+				await provider.connect();
+				expect(vi.getTimerCount()).toBe(1);
+
+				await provider.disconnect();
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
 	describe('connection logging', () => {
 		it('logs token refresh failures before attempting to reconnect', async () => {
 			const { provider } = await initProvider([
 				{ method: 'POST', pathname: '/v1/auth/token/renew-self', networkError: 'ECONNREFUSED' },
 			]);
 			const connect = vi.spyOn(provider, 'connect').mockResolvedValue();
+			provider.setState('connected');
 
 			await (provider as unknown as { tokenRefresh: () => Promise<void> }).tokenRefresh();
 

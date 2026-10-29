@@ -134,7 +134,7 @@ describe('Microsoft Teams V2 — onlineMeeting:createOrGet', () => {
 		);
 	});
 
-	it('offers only the subject and the two times as options', () => {
+	it('offers only the attendees, the subject and the two times as options', () => {
 		const options = versionDescription.properties.find(
 			(property) =>
 				property.name === 'options' &&
@@ -143,6 +143,6 @@ describe('Microsoft Teams V2 — onlineMeeting:createOrGet', () => {
 		);
 		const names = (options?.options ?? []).map((option) => option.name);
 
-		expect(names).toEqual(['endDateTime', 'startDateTime', 'subject']);
+		expect(names).toEqual(['attendees', 'endDateTime', 'startDateTime', 'subject']);
 	});
 });

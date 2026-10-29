@@ -3,7 +3,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Patch, Post, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { AiPreferenceService } from '@/services/ai-preference.service';
+import { AiPreferenceService } from '@n8n/backend-services';
 
 /**
  * No feature-flag check: the flag gates the surfaces that read preferences, so a
@@ -34,7 +34,8 @@ export class AiPreferenceController {
 		_res: Response,
 		@Body payload: AiPreferenceRequestDto,
 	) {
-		return await this.aiPreferenceService.create(req.user, payload);
+		// This controller is the settings area. The assistant and MCP pass their own source.
+		return await this.aiPreferenceService.create(req.user, payload, 'ui');
 	}
 
 	@Patch('/:id')

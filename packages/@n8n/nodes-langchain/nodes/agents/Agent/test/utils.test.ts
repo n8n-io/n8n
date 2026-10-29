@@ -1,11 +1,12 @@
 import type { Tool } from '@langchain/classic/tools';
 import { DynamicStructuredTool } from '@langchain/classic/tools';
+import { ExecuteContext, SupplyDataContext } from 'n8n-core';
 import { NodeOperationError } from 'n8n-workflow';
-import type { INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode, ISupplyDataFunctions } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { ZodObjectAny } from '../../../../types/types';
-import { checkForStructuredTools } from '../agents/utils';
+import { checkForStructuredTools, isExecuteFunctions } from '../agents/utils';
 import { getInputs } from '../utils';
 
 describe('checkForStructuredTools', () => {
@@ -273,5 +274,24 @@ describe('getInputs', () => {
 				displayName: 'Tool',
 			},
 		]);
+	});
+});
+
+describe('isExecuteFunctions', () => {
+	// Asserted against the real context classes, not stand-ins: the predicate is duck-typed,
+	// so it silently inverts if `cloneWith` is ever hoisted onto a shared base class. These
+	// two cases fail if that happens. Constructing either class needs the whole execution
+	// engine, so only the prototype chain (all `in` looks at) is built.
+
+	it('should return false for a sub-node context', () => {
+		const context = Object.create(SupplyDataContext.prototype) as ISupplyDataFunctions;
+
+		expect(isExecuteFunctions(context)).toBe(false);
+	});
+
+	it('should return true for a top-level execute context', () => {
+		const context = Object.create(ExecuteContext.prototype) as IExecuteFunctions;
+
+		expect(isExecuteFunctions(context)).toBe(true);
 	});
 });

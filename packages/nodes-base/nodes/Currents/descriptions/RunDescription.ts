@@ -26,7 +26,7 @@ export const runOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/runs/{{$parameter["runId"]}}/cancel',
+						url: '=/runs/{{toPathSegment($parameter["runId"])}}/cancel',
 					},
 				},
 				action: 'Cancel a run',
@@ -50,7 +50,7 @@ export const runOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'DELETE',
-						url: '=/runs/{{$parameter["runId"]}}',
+						url: '=/runs/{{toPathSegment($parameter["runId"])}}',
 					},
 					output: {
 						postReceive: [
@@ -94,7 +94,7 @@ export const runOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/runs/{{$parameter["runId"]}}',
+						url: '=/runs/{{toPathSegment($parameter["runId"])}}',
 					},
 					output: {
 						postReceive: [
@@ -116,7 +116,7 @@ export const runOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'GET',
-						url: '=/projects/{{$parameter["projectId"]}}/runs',
+						url: '=/projects/{{toPathSegment($parameter["projectId"])}}/runs',
 					},
 					output: {
 						postReceive: [
@@ -138,7 +138,7 @@ export const runOperations: INodeProperties[] = [
 				routing: {
 					request: {
 						method: 'PUT',
-						url: '=/runs/{{$parameter["runId"]}}/reset',
+						url: '=/runs/{{toPathSegment($parameter["runId"])}}/reset',
 					},
 				},
 				action: 'Reset a run',

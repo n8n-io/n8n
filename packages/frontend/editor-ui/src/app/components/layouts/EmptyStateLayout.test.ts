@@ -94,9 +94,7 @@ describe('EmptyStateLayout', () => {
 
 		bannersStore.bannersHeight = 0;
 		readyToRunStore.userCanClaimOpenAiCredits = false;
-		vi.spyOn(useSettingsStore(), 'isModuleActive').mockImplementation((moduleName) => {
-			return moduleName === 'agents';
-		});
+		vi.spyOn(useSettingsStore(), 'isAgentsEnabled', 'get').mockReturnValue(true);
 		surfaceMcpEmptyState.showTile = false;
 	});
 

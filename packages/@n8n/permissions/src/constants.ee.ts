@@ -1,17 +1,34 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
 
 export const RESOURCES = {
-	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage'] as const,
+	agent: [
+		...DEFAULT_OPERATIONS,
+		'execute',
+		'publish',
+		'unpublish',
+		'manage',
+		'export',
+		'import',
+	] as const,
 	aiAssistant: ['manage'] as const,
 	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
 	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
 	aiPreference: [...DEFAULT_OPERATIONS] as const,
 	projectAiPreference: [...DEFAULT_OPERATIONS] as const,
+	// Skills. `skill`: instance skills. `projectSkill`: the skills of a project and of
+	// its agents.
+	skill: [...DEFAULT_OPERATIONS] as const,
+	projectSkill: [...DEFAULT_OPERATIONS] as const,
 	annotationTag: [...DEFAULT_OPERATIONS] as const,
+	app: [...DEFAULT_OPERATIONS] as const,
 	auditLogs: ['manage'] as const,
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
+	// `use` is global-only by construction: it means "may use any credential on the
+	// instance in a workflow, without being a member of its project". It is never a
+	// per-credential or per-project right, so it stays out of every PROJECT_* scope
+	// set and out of API_KEY_RESOURCES.
 	credential: [
 		'share',
 		'unshare',
@@ -20,8 +37,10 @@ export const RESOURCES = {
 		'connect',
 		'createEndUser',
 		'manageInstance',
+		'use',
 		...DEFAULT_OPERATIONS,
 	] as const,
+	credentialTypePolicy: ['manage'] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
@@ -39,7 +58,16 @@ export const RESOURCES = {
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
-	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
+	promotions: [
+		...DEFAULT_OPERATIONS,
+		'discover',
+		'connect',
+		'promote',
+		'manageProjects',
+		'apply',
+		'readReviews',
+		'approveReviews',
+	] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
 		'resetPassword',
@@ -71,6 +99,7 @@ export const RESOURCES = {
 	insights: ['list', 'read'] as const,
 	oidc: ['manage'] as const,
 	provisioning: ['manage'] as const,
+	scim: ['manage'] as const,
 	dataTable: [
 		...DEFAULT_OPERATIONS,
 		'readRow',
@@ -88,15 +117,18 @@ export const RESOURCES = {
 	chatHub: ['manage', 'message'] as const,
 	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
 	breakingChanges: ['list', 'migrate'] as const,
-	apiKey: ['manage', 'list', 'create', 'delete', 'update'] as const,
+	apiKey: ['manage', 'create', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
-	instanceAi: ['message', 'manage', 'gateway', 'eval'] as const,
+	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 	otel: ['manage'] as const,
+	trustedSource: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
+	agent: ['export', 'import', 'read', 'create', 'update', 'publish', 'unpublish'] as const,
+	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
@@ -113,7 +145,14 @@ export const API_KEY_RESOURCES = {
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
 	sourceControl: ['pull', 'push', 'read'] as const,
-	gitConnection: [...DEFAULT_OPERATIONS, 'clone', 'push', 'manageProjects', 'pull'] as const,
+	promotions: [
+		...DEFAULT_OPERATIONS,
+		'discover',
+		'connect',
+		'promote',
+		'manageProjects',
+		'apply',
+	] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list'] as const,
@@ -125,16 +164,23 @@ export const API_KEY_RESOURCES = {
 	role: ['manage', 'manageProject', 'list', 'read'] as const,
 	roleMappingRule: ['create', 'delete', 'list', 'update'] as const,
 	nodeTypePolicy: ['manage'] as const,
+	credentialTypePolicy: ['manage'] as const,
 } as const;
 
 export const GLOBAL_OWNER_ROLE_SLUG = 'global:owner';
 export const GLOBAL_ADMIN_ROLE_SLUG = 'global:admin';
+export const GLOBAL_MEMBER_ROLE_SLUG = 'global:member';
 export const GLOBAL_CHAT_USER_ROLE_SLUG = 'global:chatUser';
 export const PROJECT_OWNER_ROLE_SLUG = 'project:personalOwner';
 export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
+/** Global roles that make a user an implicit member of every team project. */
+export const IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS = [
+	GLOBAL_OWNER_ROLE_SLUG,
+	GLOBAL_ADMIN_ROLE_SLUG,
+];
 export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 	key: 'security.personalSpacePublishing',
 	scopes: ['workflow:publish', 'agent:publish'],

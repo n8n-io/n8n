@@ -10,3 +10,4 @@ export type * from './shortcut';
 export type * from './banner';
 export type * from './setup';
 export type * from './locale';
+export type * from './capability';

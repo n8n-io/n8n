@@ -6,6 +6,9 @@ import type {
 import type { INodeUi, LlmTokenUsageData } from '@/Interface';
 import type { IRunExecutionData, ITaskData, IWorkflowGroup } from 'n8n-workflow';
 
+/** Surface that hosts the logs panel. Telemetry property of `User toggled log view`. */
+export type LogsPanelContext = 'editor' | 'artifact';
+
 type BaseLogEntry = {
 	parent?: LogEntry;
 	id: string;

@@ -3,12 +3,17 @@ import type { ButtonListProps } from './ButtonList.types';
 
 withDefaults(defineProps<ButtonListProps>(), {
 	orientation: 'horizontal',
+	variant: 'default',
 });
 </script>
 
 <template>
 	<div
-		:class="[$style.root, orientation === 'vertical' ? $style.vertical : $style.horizontal]"
+		:class="[
+			$style.root,
+			orientation === 'vertical' ? $style.vertical : $style.horizontal,
+			{ [$style.toolbar]: variant === 'toolbar' },
+		]"
 		role="group"
 	>
 		<slot />
@@ -30,5 +35,13 @@ withDefaults(defineProps<ButtonListProps>(), {
 .vertical {
 	flex-direction: column;
 	align-items: stretch;
+}
+
+.toolbar {
+	gap: 0;
+	padding: var(--spacing--5xs);
+	border-radius: var(--radius--2xs);
+	background-color: var(--background--surface);
+	box-shadow: var(--shadow--xs);
 }
 </style>

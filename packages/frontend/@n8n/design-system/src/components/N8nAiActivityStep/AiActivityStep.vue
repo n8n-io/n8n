@@ -10,6 +10,7 @@ import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
 import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
 import N8nCallout from '../N8nCallout';
 import N8nIcon from '../N8nIcon';
+import type { IconName } from '../N8nIcon/icons';
 import N8nTooltip from '../N8nTooltip';
 
 const props = withDefaults(
@@ -23,6 +24,7 @@ const props = withDefaults(
 		wrapContent?: boolean;
 		/** Keep error icon/tooltip but skip the inner danger callout. */
 		hideErrorCallout?: boolean;
+		errorIcon?: IconName;
 	}>(),
 	{
 		loading: false,
@@ -30,8 +32,16 @@ const props = withDefaults(
 		hasContent: true,
 		wrapContent: false,
 		hideErrorCallout: false,
+		errorIcon: 'triangle-alert',
 	},
 );
+
+defineSlots<{
+	prefix?: () => unknown;
+	default?: () => unknown;
+	/** Replaces the callout text; the tooltip keeps showing `error`. */
+	errorCallout?: () => unknown;
+}>();
 
 const MAX_ERROR_TOOLTIP_LENGTH = 160;
 
@@ -43,13 +53,14 @@ const errorTooltip = computed(() =>
 </script>
 
 <template>
-	<div :class="{ [$style.nestedRow]: isNested }">
+	<div :class="{ [$style.nestedRow]: isNested, [$style.row]: !isNested }">
 		<span v-if="isNested" :class="$style.rail">
 			<span :class="$style.railDot" />
 		</span>
 		<CollapsibleRoot v-if="props.hasContent" v-slot="{ open: isOpen }">
 			<CollapsibleTrigger as-child>
 				<N8nAiActivityStepButton size="small" :loading="props.loading">
+					<template #prefix><slot name="prefix" /></template>
 					{{ props.label }}
 					<template #icon>
 						<N8nTooltip v-if="props.error" placement="top">
@@ -57,7 +68,7 @@ const errorTooltip = computed(() =>
 								<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
 							</template>
 							<N8nIcon
-								icon="triangle-alert"
+								:icon="props.errorIcon"
 								color="danger"
 								size="small"
 								:class="$style.activityErrorIcon"
@@ -79,11 +90,12 @@ const errorTooltip = computed(() =>
 					theme="danger"
 					:class="$style.errorCallout"
 				>
-					{{ props.error }}
+					<slot name="errorCallout">{{ props.error }}</slot>
 				</N8nCallout>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
 		<N8nAiActivityStepButton v-else size="small" :loading="props.loading" :interactive="false">
+			<template #prefix><slot name="prefix" /></template>
 			{{ props.label }}
 			<template #icon>
 				<N8nTooltip v-if="props.error" placement="top">
@@ -91,7 +103,7 @@ const errorTooltip = computed(() =>
 						<span :class="$style.errorTooltip">{{ errorTooltip }}</span>
 					</template>
 					<N8nIcon
-						icon="triangle-alert"
+						:icon="props.errorIcon"
 						color="danger"
 						size="small"
 						:class="$style.activityErrorIcon"
@@ -103,6 +115,10 @@ const errorTooltip = computed(() =>
 </template>
 
 <style lang="scss" module>
+.row {
+	display: flex;
+	flex-direction: column;
+}
 .nestedRow {
 	display: grid;
 	grid-template-columns: var(--spacing--md) minmax(0, 1fr);

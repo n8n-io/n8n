@@ -6,6 +6,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import { escapeODataValue } from '@utils/query-escaping';
+
 import { getExcelCredentialType, microsoftApiRequest } from '../transport';
 
 // listSearch context throughout this file: the transport's trailing `0` is its
@@ -49,6 +51,7 @@ export async function searchWorkbooks(
 	}
 	const trimmed = filter?.trim() ?? '';
 	const q = trimmed === '' ? WORKBOOK_EXTENSIONS.join(' OR ') : trimmed;
+	const encodedQuery = trimmed === '' ? q : encodeURIComponent(escapeODataValue(q));
 
 	const response: DriveSearchResponse = paginationToken
 		? await microsoftApiRequest.call(
@@ -64,7 +67,7 @@ export async function searchWorkbooks(
 		: await microsoftApiRequest.call(
 				this,
 				'GET',
-				`/drive/root/search(q='${q}')`,
+				`/drive/root/search(q='${encodedQuery}')`,
 				undefined,
 				{
 					select: 'id,name,webUrl,file',

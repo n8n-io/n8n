@@ -4,7 +4,7 @@ import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import type { SecuritySettingsService } from '@/services/security-settings.service';
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 

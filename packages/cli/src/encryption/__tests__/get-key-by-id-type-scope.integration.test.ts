@@ -1,9 +1,12 @@
 import { mockInstance, testDb } from '@n8n/backend-test-utils';
-import { DeploymentKeyRepository } from '@n8n/db';
+import { DeploymentKey } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 
 import { KeyManagerService } from '@/encryption/key-manager.service';
+
+let keyStore: Repository<DeploymentKey>;
 
 beforeAll(async () => {
 	mockInstance(InstanceSettings, {
@@ -13,6 +16,7 @@ beforeAll(async () => {
 		canSeedDeploymentState: true,
 	});
 	await testDb.init();
+	keyStore = Container.get(DataSource).getRepository(DeploymentKey);
 });
 
 afterAll(async () => {
@@ -23,9 +27,8 @@ afterAll(async () => {
 // lookup, even though `id` is the table's only primary key across all types.
 describe('getKeyById() type scoping (integration)', () => {
 	it('does not resolve a jwe.private-key row', async () => {
-		const repo = Container.get(DeploymentKeyRepository);
-		const jweRow = await repo.save(
-			repo.create({
+		const jweRow = await keyStore.save(
+			keyStore.create({
 				type: 'jwe.private-key',
 				value: 'jwe-secret',
 				algorithm: 'RSA-OAEP-256',
@@ -39,9 +42,8 @@ describe('getKeyById() type scoping (integration)', () => {
 	});
 
 	it('does not resolve a signing.hmac row', async () => {
-		const repo = Container.get(DeploymentKeyRepository);
-		const hmacRow = await repo.save(
-			repo.create({
+		const hmacRow = await keyStore.save(
+			keyStore.create({
 				type: 'signing.hmac',
 				value: 'hmac-secret',
 				algorithm: null,

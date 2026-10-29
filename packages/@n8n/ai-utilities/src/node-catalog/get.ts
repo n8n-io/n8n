@@ -38,6 +38,15 @@ export function isValidPathComponent(component: string): boolean {
 }
 
 /**
+ * Validate a normalized version segment (`v1`, `v31`).
+ * Generated definitions only ever use this shape, so anything else is rejected
+ * before it reaches a path join.
+ */
+export function isValidVersionSegment(segment: string): boolean {
+	return /^v\d+$/.test(segment);
+}
+
+/**
  * Validate that a resolved path is within the expected base directory.
  * Prevents path traversal even if components pass basic validation.
  */
@@ -462,6 +471,10 @@ function getNodeFilePath(
 		targetVersion = `v${targetVersion.slice(1).replace('.', '')}`;
 	}
 
+	if (!isValidVersionSegment(targetVersion)) {
+		return { error: `Version '${version}' not found for node '${nodeId}'` };
+	}
+
 	// Check if this is a split version structure
 	if (isSplitVersionStructure(nodeDir, targetVersion)) {
 		const available = getAvailableDiscriminators(nodeDir, targetVersion);
@@ -490,6 +503,10 @@ function getNodeFilePath(
 
 	// Flat file structure
 	const filePath = join(nodeDir, `${targetVersion}.ts`);
+
+	if (!validatePathWithinBase(filePath, nodeDir)) {
+		return { error: 'Error: Invalid path - path traversal detected' };
+	}
 
 	if (!existsSync(filePath)) {
 		return { error: `Version '${version}' not found for node '${nodeId}'` };

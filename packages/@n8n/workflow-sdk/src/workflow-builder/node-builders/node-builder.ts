@@ -1230,6 +1230,27 @@ class StickyNoteInstance
 	getConnections(): DeclaredConnection[] {
 		return [];
 	}
+
+	/** Copy under a new ID while preserving the sticky's remapped anchors. */
+	cloneStickyNoteWithIdAndAnchors(
+		newId: string,
+		remappedAnchorIds: readonly string[],
+	): StickyNoteInstance {
+		const content = this.config.parameters?.content;
+		const clone = new StickyNoteInstance(
+			typeof content === 'string' ? content : '',
+			[],
+			{ name: this.name },
+			remappedAnchorIds,
+			newId,
+		);
+
+		// Preserve the complete sticky config, including fields added in the future.
+		Object.assign(clone.config, this.config);
+		clone.config.parameters = this.config.parameters ? { ...this.config.parameters } : undefined;
+
+		return clone;
+	}
 }
 
 /**
@@ -1369,7 +1390,16 @@ export function newCredential(name: string, id?: string): NewCredentialValue {
 export function cloneNodeWithId(
 	instance: NodeInstance<string, string, unknown>,
 	newId: string,
+	newIdByOldId: ReadonlyMap<string, string> = new Map(),
 ): NodeInstance<string, string, unknown> {
+	// A sticky must stay a sticky, and its anchors must follow the nodes to their new IDs.
+	if (instance instanceof StickyNoteInstance) {
+		const remappedAnchorIds = instance.stickyAnchorIds.map(
+			(anchorId) => newIdByOldId.get(anchorId) ?? anchorId,
+		);
+		return instance.cloneStickyNoteWithIdAndAnchors(newId, remappedAnchorIds);
+	}
+
 	const connections =
 		typeof instance.getConnections === 'function' ? instance.getConnections() : [];
 	const isTrigger = 'isTrigger' in instance && instance.isTrigger === true;

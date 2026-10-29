@@ -18,9 +18,10 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTableResource } from '@/features/core/dataTable/types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { promotionEventBus } from '@/features/integrations/promotions.ee/promotions.eventBus';
 import type { BaseFilters, SortingAndPaginationUpdates } from '@/Interface';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
@@ -169,12 +170,23 @@ const onSearchUpdated = async (search: string) => {
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('dataTable.dataTables'));
+	promotionEventBus.on('applied', fetchDataTables);
 });
 
+onBeforeUnmount(() => {
+	promotionEventBus.off('applied', fetchDataTables);
+});
+
+// The /new route can be opened directly, so apply the same checks as the create button.
+// Permissions can change after the project loads, so watch the result, not only the route.
+const shouldOpenCreateModal = computed(
+	() => route.params.new === 'new' && !addDataTableDisabled.value,
+);
+
 watch(
-	() => route.params.new,
-	() => {
-		if (route.params.new === 'new') {
+	shouldOpenCreateModal,
+	(open) => {
+		if (open) {
 			uiStore.openModal(ADD_DATA_TABLE_MODAL_KEY);
 		} else {
 			uiStore.closeModal(ADD_DATA_TABLE_MODAL_KEY);
@@ -230,7 +242,7 @@ watch(
 				class="mb-2xs"
 				:data-table="data as DataTableResource"
 				:show-ownership-badge="projectPages.isOverviewSubPage"
-				:read-only="readOnlyEnv"
+				:schema-read-only="readOnlyEnv"
 			/>
 		</template>
 	</ResourcesListLayout>

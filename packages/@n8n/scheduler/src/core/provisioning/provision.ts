@@ -1,6 +1,16 @@
 import { sameSchedule } from './schedule-identity';
-import type { RunInProvisionTransaction, RunInDeprovisionTransaction } from './transaction';
+import type {
+	ProvisionTransaction,
+	RunInProvisionTransaction,
+	RunInDeprovisionTransaction,
+} from './transaction';
 import type { DesiredJob, ExistingJob, ProvisionedJob, ProvisionSummary } from './types';
+import {
+	DEFAULT_MATERIALIZER_OPTIONS,
+	materialize,
+	type MaterializerHooks,
+	type MaterializerOptions,
+} from '../materializer';
 
 /**
  * Provision a scope's jobs so the stored set matches `desired`, matched by name,
@@ -16,12 +26,18 @@ import type { DesiredJob, ExistingJob, ProvisionedJob, ProvisionSummary } from '
  *   tasks withdrawn (they belonged to the old definition).
  * - An existing job no longer desired is deleted (its tasks cascade).
  *
+ * Inserted and redefined jobs then get their first window of occurrences in the
+ * same transaction, planned with `options` as a materializer pass would. A first
+ * fire shorter than the gap to the next pass is then queued before it is due.
+ *
  * Passing an empty `desired` therefore clears the whole scope; {@link deprovision}
  * is the direct path for that.
  */
 export async function provision(
 	runInTransaction: RunInProvisionTransaction,
 	desired: DesiredJob[],
+	options: MaterializerOptions = DEFAULT_MATERIALIZER_OPTIONS,
+	hooks: MaterializerHooks = {},
 ): Promise<ProvisionSummary> {
 	return await runInTransaction(async (tx) => {
 		const existing = await tx.findExisting();
@@ -59,6 +75,14 @@ export async function provision(
 			(job, index): ProvisionedJob => ({ id: insertedIds[index], name: job.name }),
 		);
 
+		// After the redefined jobs' stale tasks are withdrawn, so the seeded ones are the last word.
+		await seedFirstOccurrences(
+			tx,
+			[...inserted, ...redefined].map((job) => job.id),
+			options,
+			hooks,
+		);
+
 		return { inserted, redefined, unchanged, removed };
 	});
 }
@@ -70,6 +94,36 @@ export async function deprovision(
 	runInTransaction: RunInDeprovisionTransaction,
 ): Promise<{ removed: number }> {
 	return await runInTransaction(async (tx) => ({ removed: await tx.deleteAll() }));
+}
+
+/**
+ * Record the first window of occurrences of the given jobs, and advance their clock.
+ * Only a job that is enabled and has a live clock gets occurrences.
+ */
+async function seedFirstOccurrences(
+	tx: ProvisionTransaction,
+	jobIds: number[],
+	options: MaterializerOptions,
+	hooks: MaterializerHooks,
+): Promise<void> {
+	if (jobIds.length > 0) {
+		await materialize(
+			async (work) =>
+				await work({
+					// Claims these jobs whether they are due or not, with the liveness filter of a pass.
+					claimDueJobs: async () => {
+						const { now, jobs } = await tx.readJobs(jobIds);
+						const live = jobs.filter((job) => job.enabled && job.nextRunAt !== null);
+						return live.length > 0 ? { now, jobs: live } : undefined;
+					},
+					recordOccurrences: async (occurrences) => await tx.recordOccurrences(occurrences),
+					retireSuperseded: async (superseded) => await tx.retireSuperseded(superseded),
+					advanceJobs: async (planned) => await tx.advanceJobs(planned),
+				}),
+			options,
+			hooks,
+		);
+	}
 }
 
 /**

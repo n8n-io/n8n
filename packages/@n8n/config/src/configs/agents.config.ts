@@ -34,6 +34,9 @@ class AgentsModuleArray extends CommaSeparatedStringArray<AgentsModuleName> {
 
 @Config
 export class AgentsConfig {
+	@Env('N8N_AGENTS_PLAN_TOOLS_ENABLED')
+	planToolsEnabled: boolean = false;
+
 	/** TTL in seconds for agent checkpoint records. Stale checkpoints older than this are pruned. */
 	@Env('N8N_AGENTS_CHECKPOINT_TTL')
 	checkpointTtlSeconds: number = 96 * Time.hours.toSeconds;
@@ -110,4 +113,12 @@ export class AgentsConfig {
 	 */
 	@Env('N8N_AGENTS_CHANNEL_RECONCILE_INTERVAL')
 	channelReconcileIntervalSeconds: number = 60;
+
+	/**
+	 * For testing only. Lets the WhatsApp setup accept a short-lived access token,
+	 * like the one on the API Setup page in Meta. A channel that uses one stops
+	 * working when the token expires, about a day later.
+	 */
+	@Env('N8N_AGENTS_WHATSAPP_ALLOW_TEMPORARY_TOKEN')
+	whatsAppAllowTemporaryToken: boolean = false;
 }

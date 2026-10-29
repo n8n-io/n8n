@@ -4,6 +4,7 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useToast } from '@n8n/composables/useToast';
 import { registerToastNotifier } from '@/app/init/toastNotifier';
+import { registerExperimentModals } from '@/app/modals.manifest';
 import { isDataWorkerEnabled } from '@/app/workers/isDataWorkerEnabled';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 
@@ -37,6 +38,13 @@ import { useRolesStore } from '@n8n/stores/roles.store';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
+import { initializeExpressionEngine } from '@/app/init/expressionEngine';
+import {
+	initializeQuickJsExpressionShadow,
+	notifyQuickJsShadowEditorReady,
+	stopQuickJsExpressionShadow,
+} from '@/experiments/quickjsExpressionShadow/init';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 export const state = {
 	initialized: false,
@@ -78,6 +86,14 @@ export async function initializeCore() {
 			type: 'error',
 			duration: 0,
 		});
+	}
+
+	// Must run before any view renders: expressions evaluate as soon as workflow
+	// data is displayed, and the engine has to be in place by then.
+	try {
+		await initializeExpressionEngine(settingsStore.settings.expressionEngine);
+	} catch (error) {
+		console.error('Failed to initialize the expression engine', error);
 	}
 
 	ssoStore.initialize({
@@ -131,6 +147,7 @@ export async function initializeAuthenticatedFeatures(
 	const dataTableStore = useDataTableStore();
 	const favoritesStore = useFavoritesStore();
 	const uiStore = useUIStore();
+	const credentialsStore = useCredentialsStore();
 
 	// Provide the modal-open actions to the stores that were decoupled from `ui.store`,
 	// so they can open modals without importing it.
@@ -224,11 +241,31 @@ export async function initializeAuthenticatedFeatures(
 		void versionsStore.checkForNewVersions();
 	}
 
+	const loadTypes = async () => {
+		// The node types store reads from the data worker, so the worker must be initialized first.
+		if (isDataWorkerEnabled()) {
+			const coordinator = await import('@/app/workers');
+			await coordinator.initialize({ version: settingsStore.settings.versionCli });
+			await coordinator.loadNodeTypes(rootStore.baseUrl);
+		}
+
+		const results = await Promise.allSettled([
+			nodeTypesStore.loadNodeTypesIfNotLoaded(),
+			credentialsStore.fetchCredentialTypes(false),
+		]);
+		results.forEach((result) => {
+			if (result.status === 'rejected') {
+				console.error('Failed to initialize n8n types', result.reason);
+			}
+		});
+	};
+
 	await Promise.all([
 		projectsStore.getMyProjects(),
 		projectsStore.getPersonalProject(),
 		projectsStore.getProjectsCount(),
 		rolesStore.fetchRoles(),
+		loadTypes(),
 	]);
 
 	await projectsStore.refreshCurrentProject();
@@ -239,19 +276,19 @@ export async function initializeAuthenticatedFeatures(
 	registerModuleResources();
 	registerModuleProjectTabs();
 	registerModuleModals();
+	registerExperimentModals();
 	registerModuleSettingsPages();
 	registerModulePushHandlers();
 	registerModuleCommands();
 	registerModuleParameterInputs();
 
-	// Initialize run data worker and load node types
-	if (isDataWorkerEnabled()) {
-		const coordinator = await import('@/app/workers');
-		await coordinator.initialize({ version: settingsStore.settings.versionCli });
-		await coordinator.loadNodeTypes(rootStore.baseUrl);
-	}
+	void credentialsStore.fetchAllCredentials().catch((error) => {
+		// fail silently: this is a pre-fetch, app will call this again later
+		console.error('Failed to fetch credentials', error);
+	});
 
 	authenticatedFeaturesInitialized = true;
+	notifyQuickJsShadowEditorReady();
 }
 
 function registerAuthenticationHooks() {
@@ -269,6 +306,16 @@ function registerAuthenticationHooks() {
 
 	usersStore.registerLoginHook(async (user) => {
 		await settingsStore.getSettings();
+
+		// Start the expression engine now if the app booted unauthenticated.
+		// Public settings omit the engine, so `initializeCore` left the legacy
+		// evaluator in place; this is the first point where the choice is known.
+		// Nothing evaluates an expression before login, so this is early enough.
+		try {
+			await initializeExpressionEngine(settingsStore.settings.expressionEngine);
+		} catch (error) {
+			console.error('Failed to initialize the expression engine', error);
+		}
 
 		// Re-initialize SSO store with authenticated settings.
 		// Before login, public settings omit callbackUrl, leaving it empty.
@@ -298,12 +345,16 @@ function registerAuthenticationHooks() {
 			// don't let posthog failing prevent further function calls
 			console.error(e);
 		}
+		// Not awaited: the shadow run waits for flags and loads WASM, and the editor must not wait for it.
+		void initializeQuickJsExpressionShadow().catch(() => {});
 		npsSurveyStore.setupNpsSurveyOnLogin(user.id, user.settings);
 		await settingsStore.getModuleSettings();
 		void bannersStore.loadDynamicBanners();
 	});
 
 	usersStore.registerLogoutHook(() => {
+		// Before telemetry.reset(), so the last shadow report keeps its user.
+		stopQuickJsExpressionShadow();
 		bannersStore.clearBannerStack();
 		npsSurveyStore.resetNpsSurveyOnLogOut();
 		postHogStore.reset();

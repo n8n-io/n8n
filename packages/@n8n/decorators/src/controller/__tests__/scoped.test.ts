@@ -2,6 +2,7 @@ import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
 import { ControllerRegistryMetadata } from '../controller-registry-metadata';
+import { Get } from '../route';
 import { GlobalScope, ProjectScope } from '../scoped';
 import type { Controller } from '../types';
 
@@ -145,18 +146,6 @@ describe('Scope Decorators', () => {
 	});
 
 	it('should work alongside other decorators', () => {
-		// Assuming we have a Get decorator imported
-		const Get = (path: string) => {
-			return (target: object, handlerName: string | symbol) => {
-				const routeMetadata = controllerRegistryMetadata.getRouteMetadata(
-					target.constructor as Controller,
-					String(handlerName),
-				);
-				routeMetadata.method = 'get';
-				routeMetadata.path = path;
-			};
-		};
-
 		class TestController {
 			@Get('/users')
 			@GlobalScope('user:read')

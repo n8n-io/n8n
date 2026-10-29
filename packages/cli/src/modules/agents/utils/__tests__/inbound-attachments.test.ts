@@ -1,7 +1,12 @@
-import type { Message } from '@n8n/agents';
+import type { AgentMessage, Message } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH } from '@n8n/api-types';
+import { UnexpectedError } from 'n8n-workflow';
 
-import { buildInboundUserMessage, resolveInboundMimeType } from '../inbound-attachments';
+import {
+	buildInboundUserMessage,
+	readInboundUserMessage,
+	resolveInboundMimeType,
+} from '../inbound-attachments';
 
 // Minimal real PNG header (magic bytes + IHDR chunk) so file-type can sniff it.
 const PNG_BYTES = Buffer.from([
@@ -33,6 +38,13 @@ describe('buildInboundUserMessage', () => {
 				fileRef: { id: 'att-2', fileName: 'voice.ogg', sizeBytes: 100 },
 			},
 		]);
+		expect(readInboundUserMessage(message)).toEqual({
+			message: 'look at these',
+			attachments: [
+				{ id: 'att-1', fileName: 'photo.png', mimeType: 'image/png', sizeBytes: 33 },
+				{ id: 'att-2', fileName: 'voice.ogg', mimeType: 'audio/ogg', sizeBytes: 100 },
+			],
+		});
 	});
 
 	it('omits the text part for attachment-only sends', () => {
@@ -42,6 +54,18 @@ describe('buildInboundUserMessage', () => {
 
 		expect(message.content).toHaveLength(1);
 		expect(message.content[0].type).toBe('file');
+	});
+});
+
+describe('readInboundUserMessage', () => {
+	it.each<AgentMessage>([
+		{ role: 'assistant', content: [] },
+		{ type: 'custom', data: { dummy: 'message' } },
+	])('rejects input without a user role: %j', (input) => {
+		const readInput = () => readInboundUserMessage(input);
+
+		expect(readInput).toThrow(UnexpectedError);
+		expect(readInput).toThrow('Queued input must be a user message');
 	});
 });
 

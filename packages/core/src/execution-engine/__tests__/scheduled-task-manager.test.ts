@@ -161,6 +161,18 @@ describe('ScheduledTaskManager', () => {
 		expect(scheduledTaskManager.getTargetIds(workflowGroup('unknown-workflow'))).toEqual([]);
 	});
 
+	it('reports the number of registered crons across group types', () => {
+		scheduledTaskManager.register(cronContext({ targetId: 'node-a' }), onTick);
+		scheduledTaskManager.register(cronContext({ targetId: 'node-b' }), onTick);
+		scheduledTaskManager.register(cronContext({ group: agentTaskGroup() }), onTick);
+
+		expect(scheduledTaskManager.getDiagnosticCounts()).toEqual({ crons: 3 });
+
+		scheduledTaskManager.deregisterGroup(workflowGroup());
+
+		expect(scheduledTaskManager.getDiagnosticCounts()).toEqual({ crons: 1 });
+	});
+
 	it('should deregister CronJobs for a single target, leaving other targets intact', () => {
 		const nodeA = 'node-a';
 		const nodeB = 'node-b';

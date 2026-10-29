@@ -33,8 +33,7 @@ graph TB
     subgraph Orchestrator ["Orchestrator Agent"]
         Service --> Factory[Agent Factory]
         Factory --> OrcAgent[Orchestrator]
-        OrcAgent --> CreateTasks[create-tasks]
-        OrcAgent --> BuildTool[build-workflow]
+        OrcAgent --> BuildTool[workflow_builder_build_workflow]
         OrcAgent --> DirectTools[Domain Tools]
         OrcAgent --> MCPTools[MCP Tools]
         OrcAgent --> Memory[Memory System]
@@ -46,9 +45,9 @@ graph TB
         DurableLog --> EventsTable[(instance_ai_events)]
     end
 
-    subgraph Filesystem ["Filesystem Access"]
-        Service --> Gateway[LocalGateway]
-        Gateway -->|SSE + HTTP POST| Daemon["@n8n/computer-use daemon"]
+    subgraph Browser ["Browser Use"]
+        Service --> BrowserServer[BrowserLocalMcpServer]
+        BrowserServer -->|WebSocket relay| Extension["n8n Browser Use extension"]
     end
 
     subgraph n8n ["n8n Services"]
@@ -81,79 +80,64 @@ graph TB
     end
 ```
 
+## Internal self-healing invocation
+
+`InstanceAiService.startSelfHealingRun` registers one internal run in the existing host lifecycle.
+The CLI `SelfHealingAgentService` prepares the captured workflow baseline and calls
+`createSelfHealingAgent` from this package. The dedicated factory selects its prompt, skill,
+restricted tools, and structured output schema together. It uses the shared SDK loop,
+storage, sandbox, tracing, and billing services.
+
+The producer uses `ia-self-healing:<actorId>` as its storage resource.
+The actor remains separate for authorization and billing.
+Existing resource ownership checks exclude the thread from public chat and conversation history.
+This factory is not a selectable chat profile. It requires a backend candidate verifier.
+See the [self-healing contract](../../../cli/src/modules/instance-ai/self-healing/README.md)
+for invocation input, output, cleanup, and result acceptance.
+
 ## Deep Agent Architecture
 
-The system implements the four pillars of the deep agent pattern:
+The system implements three pillars of the deep agent pattern:
 
-### 1. Explicit Planning
-
-The orchestrator loads the `planning` skill to externalize its execution
-strategy for work that needs dependency coordination: multiple workflows, shared
-artifacts, cross-workflow data contracts, or ambiguous business process design.
-After normal discovery, it calls `create-tasks` to persist the task graph for
-user approval. Clear single-workflow builds, including new and one-off
-workflows, go directly to the builder and do not create a plan merely to obtain
-verification.
-
-Plans are stored in thread-scoped storage.
-
-### 2. Orchestrator-Led Execution
+### 1. Orchestrator-Led Execution
 
 Work runs in the orchestrator itself: workflow building via the
-`workflow-builder` skill and `build-workflow`, data-table operations, web
-research, credential setup with Computer Use, config-based evaluations, and MCP tools.
+`workflow-builder` skill and `workflow_builder_build_workflow`, data-table operations, web
+research, credential setup with Browser Use, config-based evaluations, and MCP tools.
 
-### 3. Observational Memory
+### 2. Observational Memory
 
 `@n8n/agents` observational memory compresses old messages into observations
 through background Observer and Reflector agents. This limits the raw history
 that the orchestrator must send to the model during a long loop.
 
-### 4. Structured System Prompt
+### 3. Structured System Prompt
 
-The orchestrator's system prompt covers planning discipline, loop behavior, and
+The orchestrator's system prompt covers loop behavior and
 tool usage guidelines.
 
 ## Agent Hierarchy
 
 ```mermaid
 graph TD
-    O[Orchestrator Agent] -->|planning skill + load create-tasks| S3[Planned Tasks]
-    O -->|workflow-builder skill| T10[build-workflow]
+    O[Orchestrator Agent] -->|workflow-builder skill| T10[workflow_builder_build_workflow]
     O -->|direct| T1[workflows]
     O -->|direct| T2[executions]
     O -->|direct| T3[credentials]
-    O -->|direct| T5[data-tables]
-
-    S3 -->|kind: build-workflow| S4[Orchestrator Follow-Up]
-    S3 -->|kind: checkpoint| S6[Orchestrator Follow-Up]
-
-    S4 -->|tools| T8[nodes]
-    S4 -->|tools| T9[workspace files]
-    S4 -->|tools| T10
+    O -->|direct| T5[data_tables]
+    O -->|direct| T8[nodes]
+    O -->|direct| T9[workspace files]
 
     style O fill:#f9f,stroke:#333
-    style S3 fill:#ffa,stroke:#333
-    style S4 fill:#bbf,stroke:#333
-    style S6 fill:#bbf,stroke:#333
 ```
 
 **Orchestrator** handles directly:
-- Read-only queries (`workflows`, `executions`, `credentials` read actions)
-- Execution triggers (`executions(action="run")`)
-- Planning (`planning` skill + deferred `create-tasks`)
-- Workflow building (`workflow-builder` skill + workspace files + `build-workflow`)
-- Verification and credential application (verify-built-workflow, apply-workflow-credentials)
-- Data-table work (`data-table-manager` skill + `data-tables` / `parse-file`)
+- Read-only queries (`list_workflows`, `get_workflow`, `workflow_builder_executions`, `list_credentials`, `search_credential_types`)
+- Execution triggers (`workflow_builder_executions(action="run")`)
+- Workflow building (`workflow-builder` skill + workspace files + `workflow_builder_build_workflow`)
+- Verification and credential application (workflow_builder_verify_built_workflow, workflow_builder_apply_workflow_credentials)
+- Data-table work (`data-table-manager` skill + `data_tables` / `parse-file`)
 - Config-based evaluations (`config-evals` skill + `eval-config`)
-
-**Planned tasks** (`planning` skill + `create-tasks`):
-- Dependency-aware task graphs with parallel execution
-- `build-workflow` tasks run as orchestrator follow-ups with the workflow-builder skill
-- `checkpoint` tasks run as orchestrator follow-ups for semantic or cross-workflow validation
-- User approves the plan before execution starts
-- Workflow runtime verification is tracked separately as a workflow-loop
-  obligation, so routine "verify workflow" checkpoints are not required
 
 ## Package Responsibilities
 
@@ -163,17 +147,16 @@ The agent package — framework-agnostic business logic.
 
 - **Agent factory** (`agent/`) — creates orchestrator instances with tools, memory, MCP, and tool search
 - **Sub-agent support** (`agent/`) — shared protocol for embedded specialist agents
-- **Orchestration tools** (`tools/orchestration/`) — `create-tasks`, `task-control`, `complete-checkpoint`, `verify-built-workflow`, `report-verification-verdict`, `apply-workflow-credentials`, `build-agent`, `get-session`
+- **Orchestration tools** (`tools/orchestration/`) — `workflow_builder_task_control`, `workflow_builder_verify_built_workflow`, `workflow_builder_report_verification_verdict`, `workflow_builder_apply_workflow_credentials`, `agent_builder_build_agent`, `get-session`
 - **Domain tools** (`tools/`) — native tools across workflows, executions, credentials, nodes, data tables, workspace, and web research
 - **Knowledge base** (`knowledge-base/`, `workspace/`) — best-practices guides and curated templates materialized in the builder sandbox for workspace tools to read
 - **Runtime** (`runtime/`) — stream execution engine, resumable streams with HITL suspension, background task manager, run state registry
-- **Planned tasks** (`planned-tasks/`) — task graph coordination, dependency resolution, scheduled execution
 - **Workflow loop** (`workflow-loop/`) — deterministic build→verify→debug state
   machine for workflow builds
 - **Workflow builder** (`workflow-builder/`) — TypeScript SDK source files, parsing, validation, and prompt sections
 - **Workspace** (`workspace/`) — sandbox provisioning (n8n sandbox service / Daytona), filesystem abstraction, snapshot management
 - **Memory** (`memory/`) — title generation, memory configuration
-- **Storage** (`storage/`) — iteration logs, task storage, planned task storage, workflow loop storage
+- **Storage** (`storage/`) — task storage, workflow loop storage
 - **MCP client** (`mcp/`) — manages connections to external MCP servers, schema sanitization for Anthropic compatibility
 - **Domain access** (`domain-access/`) — domain gating and access tracking for external URL approval
 - **Stream mapping** (`stream/`) — agent chunk → canonical event translation, HITL consumption
@@ -191,19 +174,18 @@ implements. It still depends on shared n8n packages such as `n8n-workflow`.
 The n8n integration layer.
 
 - **Module** — lifecycle management, DI registration, settings exposure. Only runs on `main` instance type.
-- **Controller** — REST endpoints for messages, SSE events, confirmations, threads, credits, and gateway
-- **Service** — orchestrates agent creation, config parsing, storage setup, planned task scheduling, background task management
+- **Controller** — REST endpoints for messages, SSE events, confirmations, threads, credits, and Browser Use
+- **Service** — orchestrates agent creation, config parsing, storage setup, background task management
 - **Adapter** — bridges n8n services to agent interfaces, enforces RBAC permissions
 - **Memory service** — thread lifecycle, message persistence, expiration
 - **Settings service** — admin settings (model, MCP, sandbox), user preferences
 - **Event bus** — live fan-out only: in-process EventEmitter (single instance)
   plus a Redis Pub/Sub relay to sibling mains (queue mode). Persistence and
   replay belong to the durable event log, not the bus
-- **Filesystem** — `LocalGateway` (remote daemon via SSE protocol).
-  See `docs/filesystem-access.md`
+- **Browser Use** — `BrowserLocalMcpServer` (extension session via CDP relay).
 - **Persistence** — 12 TypeORM entity/repository pairs for threads, messages,
   resources, observations, observation cursors and locks, checkpoints,
-  event-log entries, pending confirmations, iteration logs, thread
+  event-log entries, pending confirmations, thread tabs, thread
   grants, and MCP registry connections
 
 ### `packages/@n8n/api-types` (Shared Types)
@@ -214,9 +196,9 @@ The contract between frontend and backend.
   `InstanceAiEventType` string-union type
 - **Agent types** — `InstanceAiAgentStatus`, `InstanceAiAgentKind`, `InstanceAiAgentNode`
 - **Task types** — `TaskItem`, `TaskList` for progress tracking
-- **Confirmation types** — approval, text input, questions, plan review payloads
+- **Confirmation types** — approval, text input, questions payloads
 - **DTOs** — request/response shapes for REST API
-- **Push types** — gateway state changes, credit metering events
+- **Push types** — Browser Use state changes, credit metering events
 - **Reducer** — `AgentRunState`, `InstanceAiMessage` for frontend state machine
 
 ### `packages/frontend/.../instanceAi/` (Frontend)
@@ -302,7 +284,7 @@ The generic background task manager enforces concurrency limits (default: 5 per
 thread). Features:
 
 - **Correction queueing** — users can steer running tasks mid-flight via
-  `task-control(action="correct-task")`
+  `workflow_builder_task_control(action="correct-task")`
 - **Cancellation** — three surfaces converge: stop button, "stop that" message,
   or `cancelRun` (global stop)
 - **Message enrichment** — running task context is injected into the orchestrator's
@@ -317,28 +299,7 @@ In-memory registry of active, suspended, and pending runs per thread. Manages:
 - Pending confirmation resolution
 - Timeout sweeping for stale suspensions
 
-## Planned Tasks & Workflow Loop
-
-### Planned Task System
-
-The `planning` skill guides discovery and `create-tasks` creates
-dependency-aware task graphs for multi-step work. Each task has a `kind` that
-determines its executor:
-
-| Kind | Executor | Tools |
-|------|----------|-------|
-| `build-workflow` | Orchestrator follow-up with workflow-builder skill | `nodes`, workspace file tools, `build-workflow`, etc. |
-| `checkpoint` | Orchestrator follow-up | Semantic or cross-workflow validation that standard runtime verification cannot cover |
-
-Standalone data-table work bypasses planned tasks: the orchestrator loads the
-`data-table-manager` skill and uses `data-tables` / `parse-file` directly. A
-single workflow with a workflow-local table can use the direct builder path;
-planning is reserved for shared schema work or real dependency coordination.
-
-Build-workflow tasks run as orchestrator follow-ups. Checkpoint tasks run
-as orchestrator follow-ups when the plan includes an exceptional semantic check.
-Dependencies are respected — a task only starts when all its `deps` have
-succeeded. The plan is shown to the user for approval before execution begins.
+## Workflow Loop
 
 ### Workflow Loop State Machine
 
@@ -354,16 +315,16 @@ build → submit → verify → (success | needs_patch | needs_rebuild | failed_
 ```
 
 Workflow-loop storage also derives a `WorkflowVerificationObligation` from each
-builder outcome. The service uses this obligation as the completion gate for both
-direct and planned workflow builds:
+builder outcome. The service uses this obligation as the completion gate for
+workflow builds:
 
 - `ready_to_verify` schedules an internal workflow-verification follow-up.
-- `verified` reuses structured `verify-built-workflow` evidence.
-- `needs_setup` routes to `workflows(action="setup")`.
+- `verified` reuses structured `workflow_builder_verify_built_workflow` evidence.
+- `needs_setup` routes to `setup_workflow`.
 - `not_verifiable` is a warning/manual-test completion state, not "verified".
 - `blocked` carries the build or verification blocker.
 
-The `report-verification-verdict` tool feeds results into the state machine,
+The `workflow_builder_report_verification_verdict` tool feeds results into the state machine,
 which returns guidance for the next action. Same failure signature twice triggers
 a terminal state to prevent infinite loops.
 
@@ -372,13 +333,13 @@ a terminal state to prevent infinite loops.
 To keep the orchestrator's context lean, tools are stratified into two tiers:
 
 - **Core tools** (always-loaded when registered, as selected by
-  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `ask-user`, `workflows`,
-  `executions`, `credentials`, `data-tables`, `nodes`, `build-workflow`,
-  `research`, and `n8n-docs`. `verify-built-workflow`, `parse-file`, `agents`,
-  `build-agent`, and `mcp-servers` are also direct when their required runtime
+  `ALWAYS_LOADED_TOOL_NAMES` in `tools/tool-ids.ts`): `workflow_builder_ask_user`, the workflow tools,
+  `workflow_builder_executions`, the credential tools, `data_tables`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node`, `workflow_builder_build_workflow`,
+  `workflow_builder_search_models`, `research`, and `n8n-docs`. `workflow_builder_verify_built_workflow`, `parse-file`, `agents`,
+  `agent_builder_build_agent`, and `mcp-servers` are also direct when their required runtime
   context or feature is available.
 - **Deferred tools** (behind ToolSearchProcessor): everything else, including
-  `create-tasks` and the rest of the orchestration surface — discovered
+  the rest of the orchestration surface — discovered
   on-demand via `search_tools` and activated via `load_tool`
 
 Two entries in the always-loaded set are pinned for reasons worth knowing before
@@ -402,7 +363,7 @@ The cli's `InstanceAiService` holds one manager instance and passes it to
 1. **Schema-sanitized** for Anthropic compatibility (ZodNull → optional,
    discriminated unions → flattened objects, array types → recursive element fix)
 2. **Name-checked** against reserved domain tool names (prevents malicious
-   shadowing of tools like `workflows` or `executions`)
+   shadowing of tools like `list_workflows` or `workflow_builder_executions`)
 3. **Separated** from domain tools in the orchestrator's tool set
 4. **Cached** by config hash inside the manager — the underlying `MCPClient`
    instances are tracked so `mcpManager.disconnect()` (called during service
@@ -412,9 +373,9 @@ The embedded Agent Builder receives the same per-run, approval-wrapped MCP tool
 registry as the orchestrator. Builder-native tool names remain reserved, so an
 MCP connector cannot shadow configuration or lifecycle tools.
 
-The local Computer Use server is separate from external MCP configuration. Its
+The local Browser Use server is separate from external MCP configuration. Its
 browser tools are available directly to the orchestrator and are guided by the
-`credential-setup-with-computer-use` skill when credential setup requires a
+`credential-setup-with-browser-use` skill when credential setup requires a
 browser.
 
 ## Tracing & Observability
@@ -452,11 +413,8 @@ allowing the user to approve or deny access to specific hosts.
 - **Sandbox isolation** — when enabled, code execution runs through the n8n
   sandbox service or Daytona, not on the n8n host. Workspace paths are scoped
   to the provider root. See `docs/sandboxing.md` for details.
-- **Computer Use safety** — the local gateway advertises only the capabilities
-  enabled by its permission configuration. Read access defaults to `allow`.
-  Write and browser access default to `ask`. Shell and computer control default
-  to `deny`. Resource rules and path scoping are enforced in the daemon. Gateway
-  calls have a 60-second server-side timeout. See `docs/filesystem-access.md`.
+- **Browser Use safety** — browser tool calls pass through the domain-access gate,
+  and credential creation follows the `createCredential` permission mode.
 - **Web research safety** — SSRF protection blocks private IPs, loopback, and non-HTTP(S) schemes.
   Post-redirect SSRF check prevents open-redirect attacks. Fetched content is treated as untrusted.
 - **Module gating** — `InstanceAiSettingsService.isInstanceAiEnabled()` gates

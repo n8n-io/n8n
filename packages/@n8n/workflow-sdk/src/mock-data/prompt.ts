@@ -1,3 +1,4 @@
+import { describeDataTableRead } from './data-table-read';
 import { describeAiRootShape, isAiRootNodeType } from './ai-root-shapes';
 import { collectDownstreamConsumers, resolveEnvelopeKey } from './context';
 import { workflowToMermaid } from './mermaid';
@@ -13,7 +14,7 @@ RULES:
 4. When no schema is provided, generate a realistic response based on the node type, resource, and operation.
 5. Use realistic but clearly fake values (e.g., "jane@example.com", "proj_abc123").
 6. Dates and timestamps MUST be derived from the "## Date anchors" block at the end of the prompt — never from training data. Workflows compare pinned data against the real execution clock ($now, Date.now()); values months in the past get silently filtered out, and HTTP mocks generated later use the same anchors, so stale years make "stored matches current" comparisons impossible. When the data description mentions a relative window ("last 24 hours", "past 2 weeks"), place timestamps safely INSIDE it, never on the boundary.
-7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's schema or "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or { "output": <parsed object> } like agent when a parser is attached; chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }; informationExtractor wraps the extracted fields in { "output": <object> }; textClassifier passes the input item through unchanged; sentimentAnalysis is the input item plus a "sentimentAnalysis" object.
+7. AI root nodes (Agent/Chain) have NODE-TYPE-SPECIFIC output shapes — follow each node's schema or "AI ROOT OUTPUT SHAPE" instruction exactly and never invent a different envelope key. Summary: agent wraps in { "output": ... } (a parsed object matching the parser schema when one is attached, otherwise a plain text string — never a JSON-encoded string); chainLlm uses { "text": "<string>" } without a parser, or { "output": <parsed object> } like agent when a parser is attached; chainRetrievalQa uses { "response": "<string>" }; chainSummarization uses { "output": { "output_text": "<summary>" } }; informationExtractor wraps the extracted fields in { "output": <object> }; textClassifier passes the input item through unchanged, unless its own AI ROOT OUTPUT SHAPE line says it adds a "classification" object; sentimentAnalysis is the input item plus a "sentimentAnalysis" object.
 8. CRITICAL: If a "Test Scenario" section is provided, it is the authoritative test state and OVERRIDES everything else, including the general data context and your own sense of realism. When it describes stored/previous records (e.g. "the store already holds a record with status X"), exact values, counts, literal substrings, or that stored data matches current data, reproduce those constraints EXACTLY — never substitute more "interesting" or more typical data. A boring no-change/empty/matching case is usually the point of the test.
 9. Return ONLY a valid JSON object, no explanation or markdown fencing.
 10. CRITICAL: You MUST generate data for EVERY node listed in "Nodes Requiring Mock Data". Never skip a node, even if the test scenario describes an empty or error response. An empty response is still valid data — represent it as an empty array [], never as [{}].`;
@@ -41,7 +42,11 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 		// covered by the schema section below; the prose is for shapes that can't
 		// be files (see `describeAiRootShape`) and the no-schema fallback.
 		if (!ctx.schema) {
-			lines.push(`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType)}`);
+			lines.push(
+				`- AI ROOT OUTPUT SHAPE: every item MUST be ${describeAiRootShape(ctx.nodeType, {
+					classifierReportsConfidence: ctx.classifierReportsConfidence,
+				})}`,
+			);
 		}
 		if (ctx.outputParser?.schemaText) {
 			const envelopeKey = resolveEnvelopeKey(ctx.nodeType, ctx.schema);
@@ -61,17 +66,12 @@ export function buildNodeSchemaSection(ctx: NodeSchemaContext): string[] {
 		}
 	}
 
-	// Real table columns are authoritative and supersede the static `__schema__`
-	// (which only knows the system columns).
-	if (ctx.dataTableColumns && ctx.dataTableColumns.length > 0) {
-		const columnList = ctx.dataTableColumns.map((c) => `${c.name} (${c.type})`).join(', ');
+	if (ctx.dataTableRead) {
 		lines.push(
-			'- REAL Data Table columns — every pinned row MUST contain exactly these keys plus ' +
-				'`id` (a NUMBER, auto-incremented: 1, 2, 3…), `createdAt`, `updatedAt` (ISO ' +
-				'timestamps), and no others (values may be empty/null when the scenario calls ' +
-				`for it): ${columnList}`,
+			`- This node OUTPUTS only the table rows its filter selects — ${describeDataTableRead(ctx.dataTableRead)}. ` +
+				'A value written as `={{ … }}` is an expression over the item this node receives: resolve it from the Test Scenario and the data description (for example the trigger payload) and keep only the rows that match. ' +
+				'Pin the rows the node RETURNS, never the whole table; an empty array is the right answer when nothing matches.',
 		);
-		return lines;
 	}
 
 	if (ctx.schema) {

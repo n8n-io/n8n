@@ -3,6 +3,7 @@ import type {
 	DependenciesBatchResponse,
 	DependencyCountsBatchResponse,
 	DependencyResourceType,
+	ResolvedDependency,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
@@ -29,5 +30,17 @@ export async function getResourceDependencies(
 		'POST',
 		'/workflow-dependencies/details',
 		{ resourceIds, resourceType },
+	);
+}
+
+export async function getFolderDependencies(
+	context: IRestApiContext,
+	projectId: string,
+	folderId: string,
+) {
+	return await makeRestApiRequest<ResolvedDependency[]>(
+		context,
+		'GET',
+		`/workflow-dependencies/projects/${projectId}/folders/${folderId}`,
 	);
 }
