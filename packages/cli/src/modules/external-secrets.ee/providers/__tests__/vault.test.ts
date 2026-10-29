@@ -475,6 +475,58 @@ describe('VaultProvider', () => {
 		});
 	});
 
+	describe.each(['1', '2'])('secret discovery with KV v%s', (version) => {
+		async function loadSecret(data: Record<string, unknown>) {
+			const { provider } = await initProvider([
+				{
+					method: 'GET',
+					pathname: '/v1/sys/mounts',
+					body: mountsResponse({ 'kv/': { type: 'kv', options: { version } } }),
+				},
+				{
+					method: 'GET',
+					pathname: version === '2' ? '/v1/kv/metadata/' : '/v1/kv/',
+					body: { data: { keys: ['testing'] } },
+				},
+				{
+					method: 'GET',
+					pathname: version === '2' ? '/v1/kv/data/testing' : '/v1/kv/testing',
+					body: version === '2' ? kvV2SecretResponse(data) : { data },
+				},
+			]);
+			await provider.update();
+			return provider;
+		}
+
+		it('should discover and retrieve a field without dots', async () => {
+			const provider = await loadSecret({ control: 'control-value' });
+
+			expect(provider.getSecret('kv')).toEqual({ testing: { control: 'control-value' } });
+			expect(provider.getSecretNames()).toEqual(['kv.testing.control']);
+		});
+
+		it('should distinguish literal dotted fields from nested fields during discovery', async () => {
+			const provider = await loadSecret({
+				'test.1': 'literal-value',
+				test: { '1': 'nested-value' },
+				control: 'control-value',
+			});
+
+			// LIGO-1070: Runtime keeps these fields distinct. Discovery must keep that distinction.
+			expect(provider.getSecret('kv')).toEqual({
+				testing: {
+					'test.1': 'literal-value',
+					test: { '1': 'nested-value' },
+					control: 'control-value',
+				},
+			});
+			const names = provider.getSecretNames();
+			expect(names).toContain('kv.testing.control');
+			expect(names).toHaveLength(3);
+			expect([...new Set(names)]).toHaveLength(3);
+		});
+	});
+
 	describe('update with manual KV path', () => {
 		it('should load secrets from a manually configured KV v2 path', async () => {
 			const { provider } = await initProvider(
