@@ -90,10 +90,10 @@ export type CrashedExecution = {
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
-/** A status from which n8n loads an execution into memory to resume or start it. */
+/** A status from which an execution can be resumed. */
 export type ResumableExecutionStatus = 'waiting' | 'new';
 
-/** Result of a claim to load an execution into memory, see `claimResumeAttempt`. */
+/** Result of `claimResumeAttempt`. */
 export type ResumeAttemptClaim =
 	| { outcome: 'claimed'; attempts: number; jsonSizeBytes: number }
 	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }
@@ -449,13 +449,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Set a parked (`waiting` or `new`) execution to `crashed` without loading it, for a
-	 * resume or a start that must not be attempted again. `markAsCrashed` deliberately
-	 * leaves parked rows alone, so the status to leave is named explicitly here. With
-	 * `expectedAttempts`, the row is left alone if its count changed since the caller read
-	 * it, because another process then resumed it in the meantime.
+	 * Set a `waiting` or `new` execution to `crashed` without resuming it. `markAsCrashed`
+	 * leaves those statuses alone on purpose, so the status to leave is named here. With
+	 * `expectedAttempts`, the row is left alone if its count changed since the caller read it.
 	 */
-	async markParkedAsCrashed(
+	async markAsCrashedFrom(
 		executionId: string,
 		status: ResumableExecutionStatus,
 		{
@@ -820,10 +818,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Claim one attempt to load this execution into memory, before the load. A load that
-	 * kills the process then stays counted, and the next start can refuse to repeat it.
-	 * Reports `exhausted` once the execution has used `maxAttempts`, and `conflict` when the
-	 * row is no longer in `status`, for example because another process claimed it first.
+	 * Claim one resume attempt, before the resume. An attempt that kills the process then
+	 * stays counted. Reports `exhausted` once `maxAttempts` are used, and `conflict` when the
+	 * row is no longer in `status`.
 	 */
 	async claimResumeAttempt(
 		executionId: string,
@@ -850,8 +847,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Give back a claimed attempt, for a load that ended without a resume. `attempts` is the
-	 * count the claim returned, so a later claim by another process is not undone.
+	 * Give back a claimed attempt. `attempts` is the count the claim returned, so a later
+	 * claim by another process is not undone.
 	 */
 	async releaseResumeAttempt(
 		executionId: string,

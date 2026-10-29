@@ -454,8 +454,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { EnqueuedExecutionRecoveryService } = await import(
 				'@/executions/enqueued-execution-recovery.service.js'
 			);
-			// Don't await: the recovery admits one execution at a time, so it can wait on
-			// concurrency capacity, and startup must not wait with it.
+			// Not awaited: the recovery may wait for concurrency capacity before each
+			// execution, and startup must not wait for that.
 			void Container.get(EnqueuedExecutionRecoveryService)
 				.recoverEnqueuedExecutions()
 				.catch((error) => {

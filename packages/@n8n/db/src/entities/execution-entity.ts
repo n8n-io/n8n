@@ -129,10 +129,9 @@ export class ExecutionEntity {
 	binaryDataSizeBytes: number;
 
 	/**
-	 * How many times n8n has loaded this execution into memory to resume it (from
-	 * `waiting`) or to start it (from `new`) since it last entered that status. The count
-	 * is written before each load, so a load that kills the process stays counted and the
-	 * next start can refuse to repeat it. Reset to 0 when the execution starts running.
+	 * Resume attempts since the execution last entered `waiting` or `new`. Written before
+	 * each attempt, so an attempt that kills the process stays counted. Reset to 0 once the
+	 * execution runs.
 	 */
 	@Column({ type: 'smallint', default: 0 })
 	resumeAttempts: number;

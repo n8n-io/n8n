@@ -220,7 +220,7 @@ describe('UserRepository', () => {
 		});
 	});
 
-	describe('markParkedAsCrashed', () => {
+	describe('markAsCrashedFrom', () => {
 		test('crashes a waiting execution and clears its wait time', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution(
@@ -228,7 +228,7 @@ describe('UserRepository', () => {
 				workflow,
 			);
 
-			const crashed = await executionRepository.markParkedAsCrashed(execution.id, 'waiting');
+			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
 
 			expect(crashed.map(({ id }) => id)).toEqual([execution.id]);
 			const row = await executionRepository.findOneBy({ id: execution.id });
@@ -240,7 +240,7 @@ describe('UserRepository', () => {
 			const workflow = await createWorkflow({}, owner);
 			const execution = await createExecution({ status: 'running' }, workflow);
 
-			const crashed = await executionRepository.markParkedAsCrashed(execution.id, 'waiting');
+			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting');
 
 			expect(crashed).toEqual([]);
 			const row = await executionRepository.findOneBy({ id: execution.id });
@@ -253,7 +253,7 @@ describe('UserRepository', () => {
 			// The caller read the count as 0, then a claim moved it to 1
 			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 2);
 
-			const crashed = await executionRepository.markParkedAsCrashed(execution.id, 'waiting', {
+			const crashed = await executionRepository.markAsCrashedFrom(execution.id, 'waiting', {
 				expectedAttempts: 0,
 			});
 

@@ -9,16 +9,14 @@ import { ExecutionCrashService } from '@/executions/execution-crash.service';
 
 export type ResumableStatus = 'waiting' | 'new';
 
-/** A granted claim carries the attempt number, which `release` needs to give it back. */
+/** A granted claim carries its attempt number, which `release` needs. */
 export type ResumeClaim = { granted: true; attempt: number } | { granted: false };
 
 /**
- * Bounds how many times a parked execution is loaded into memory. A resume of a `waiting`
- * execution and a start of a `new` one both load the full run data first, and the row keeps
- * its status until the load completes. If the load kills the process, nothing in the row
- * says so, and the next start loads it again, without limit. This service claims an attempt
- * in the database before each load and marks the execution as crashed once the attempts
- * are used up.
+ * Bounds how often an execution is resumed from `waiting` or `new`. A resume loads the full
+ * run data while the row keeps its status, so a resume that kills the process repeats on
+ * every start. This service claims an attempt in the database before each resume and marks
+ * the execution as crashed once the attempts are used up.
  */
 @Service()
 export class ResumeAttemptService {
@@ -30,10 +28,9 @@ export class ResumeAttemptService {
 	) {}
 
 	/**
-	 * Claims one attempt to load the execution. A refused claim means the attempts are used
-	 * up: the execution is then marked as crashed and the caller must not load it. Throws
-	 * `ExecutionAlreadyResumingError` when the row has left `status`, for example because
-	 * another process claimed it first.
+	 * Claims one resume attempt. A refused claim means the attempts are used up: the
+	 * execution is then marked as crashed and the caller must not resume it. Throws
+	 * `ExecutionAlreadyResumingError` when the row has left `status`.
 	 */
 	async claim(executionId: string, status: ResumableStatus): Promise<ResumeClaim> {
 		const limit = this.executionsConfig.recovery.maxResumeAttempts;
@@ -44,14 +41,14 @@ export class ResumeAttemptService {
 		if (claim.outcome === 'conflict') throw new ExecutionAlreadyResumingError(executionId);
 
 		if (claim.outcome === 'exhausted') {
-			this.logger.warn('Marking execution as crashed because its load attempts are used up', {
+			this.logger.warn('Marking execution as crashed because its resume attempts are used up', {
 				executionId,
 				status,
 				attempts: claim.attempts,
 				limit,
 				jsonSizeBytes: claim.jsonSizeBytes,
 			});
-			await this.executionCrashService.markParkedAsCrashed(
+			await this.executionCrashService.markAsCrashedFrom(
 				executionId,
 				status,
 				'resume-limit',
@@ -60,7 +57,7 @@ export class ResumeAttemptService {
 			return { granted: false };
 		}
 
-		this.logger.debug('Claimed an attempt to load execution', {
+		this.logger.debug('Claimed a resume attempt', {
 			executionId,
 			status,
 			attempts: claim.attempts,
@@ -69,17 +66,14 @@ export class ResumeAttemptService {
 		return { granted: true, attempt: claim.attempts };
 	}
 
-	/**
-	 * Gives back a claimed attempt, for a load that ended without a resume. A failed release
-	 * only leaves the count one higher, so it is logged and not thrown.
-	 */
+	/** Gives back a claimed attempt. A failed release is logged, not thrown. */
 	async release(executionId: string, status: ResumableStatus, attempt: number) {
 		if (attempt <= 0) return;
 
 		try {
 			await this.executionRepository.releaseResumeAttempt(executionId, status, attempt);
 		} catch (error) {
-			this.logger.warn('Failed to give back a load attempt', {
+			this.logger.warn('Failed to give back a resume attempt', {
 				executionId,
 				status,
 				attempt,

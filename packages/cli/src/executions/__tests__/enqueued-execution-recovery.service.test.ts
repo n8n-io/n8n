@@ -191,7 +191,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
 
-	test('skips an execution whose load attempts are used up and keeps going', async () => {
+	test('skips an execution whose resume attempts are used up and keeps going', async () => {
 		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 		resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
 

@@ -229,7 +229,7 @@ describe('WaitTracker', () => {
 			);
 		});
 
-		it('claims a load attempt before reading the execution', async () => {
+		it('claims a resume attempt before reading the execution', async () => {
 			await waitTracker.startExecution(execution.id);
 
 			expect(resumeAttemptService.claim).toHaveBeenCalledWith(execution.id, 'waiting');
@@ -238,7 +238,7 @@ describe('WaitTracker', () => {
 			expect(claimOrder).toBeLessThan(readOrder);
 		});
 
-		it('does not read or run the execution when its load attempts are used up', async () => {
+		it('does not read or run the execution when its resume attempts are used up', async () => {
 			resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
 
 			await waitTracker.startExecution(execution.id);
@@ -1073,7 +1073,7 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
-		it('does not load the parent when its load attempts are used up', async () => {
+		it('does not load the parent when its resume attempts are used up', async () => {
 			resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
 
 			await waitTracker.resumeParentsOfFinishedSubExecutions();

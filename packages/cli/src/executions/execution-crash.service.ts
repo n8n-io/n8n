@@ -32,17 +32,16 @@ export class ExecutionCrashService {
 	}
 
 	/**
-	 * Mark a parked (`waiting` or `new`) execution as crashed without loading its data, for
-	 * a resume or a start that must not be attempted again. With `expectedAttempts`, the
-	 * row is left alone if another process resumed it since the caller read that count.
+	 * Mark a `waiting` or `new` execution as crashed without resuming it. With
+	 * `expectedAttempts`, the row is left alone if another process resumed it in the meantime.
 	 */
-	async markParkedAsCrashed(
+	async markAsCrashedFrom(
 		executionId: string,
 		status: ResumableExecutionStatus,
 		detector: CrashDetector,
 		expectedAttempts?: number,
 	): Promise<CrashedExecution[]> {
-		return await this.executionRepository.markParkedAsCrashed(executionId, status, {
+		return await this.executionRepository.markAsCrashedFrom(executionId, status, {
 			expectedAttempts,
 			onTransitioned: (batch) => {
 				this.count(batch);

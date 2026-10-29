@@ -22,7 +22,7 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
-/** How often the recovery checks whether an execution still waiting for admission is still `new`. */
+/** How often the recovery checks that an execution not yet admitted is still `new`. */
 const ADMISSION_CHECK_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
 
 const ID_QUERY_ATTEMPTS = 3;
@@ -53,9 +53,8 @@ export class EnqueuedExecutionRecoveryService {
 
 	/**
 	 * During startup, we may find executions that had been enqueued at the time of
-	 * shutdown. If so, start them one at a time, oldest first: each one is loaded only
-	 * once the previous one has been admitted, so the data of executions that still wait
-	 * for concurrency capacity does not pile up in memory.
+	 * shutdown. If so, resume them one at a time, oldest first: the next one is loaded only
+	 * once the previous one is admitted, so queued run data does not pile up in memory.
 	 *
 	 * Regular mode only: in queue mode enqueued executions are picked up by workers,
 	 * and dangling ones are handled by `ScalingService.recoverFromQueue`.
@@ -81,10 +80,7 @@ export class EnqueuedExecutionRecoveryService {
 		}
 	}
 
-	/**
-	 * Nothing scans for `new` rows after startup, so a query that fails once would leave
-	 * them queued until the next restart. Hence a few attempts before giving up.
-	 */
+	/** Nothing scans for `new` rows after startup, so the query gets a few attempts. */
 	private async findEnqueuedExecutionIds() {
 		for (let attempt = 1; ; attempt++) {
 			try {
@@ -101,7 +97,7 @@ export class EnqueuedExecutionRecoveryService {
 	}
 
 	private async recoverEnqueuedExecution(executionId: string) {
-		// Claimed before the load, so a load that kills the process cannot repeat without limit
+		// Claimed before the resume, so a resume that kills the process cannot repeat without limit
 		const claim = await this.resumeAttemptService.claim(executionId, 'new');
 		if (!claim.granted) return;
 
@@ -135,9 +131,8 @@ export class EnqueuedExecutionRecoveryService {
 	}
 
 	/**
-	 * An execution cancelled while it waits for capacity is removed from the queue without
-	 * settling its admission. So the wait checks the row at an interval and ends once the row
-	 * has left `new`, while a row still queued for capacity keeps the next row from loading.
+	 * An execution cancelled while it waits for capacity leaves the queue without settling
+	 * its admission. So the wait polls the row and ends once the row has left `new`.
 	 */
 	private async waitForAdmission(executionId: string, admission: Promise<unknown>) {
 		while (!(await this.settlesWithin(admission, ADMISSION_CHECK_INTERVAL_MS))) {
@@ -149,10 +144,7 @@ export class EnqueuedExecutionRecoveryService {
 		}
 	}
 
-	/**
-	 * A failed read is only a missed poll. It must not reach the crash path of the loop, which
-	 * would crash a healthy execution whose admission is still pending.
-	 */
+	/** A failed poll must not reach the crash path, so it counts as still enqueued. */
 	private async isStillEnqueued(executionId: string) {
 		try {
 			const [row] = await this.executionRepository.findStatusesByIds([executionId]);
@@ -179,10 +171,9 @@ export class EnqueuedExecutionRecoveryService {
 	}
 
 	/**
-	 * Loads the execution, or returns `undefined` when it must not start now. An execution
-	 * whose data is gone for good can never run: left at `new` it sits at "Queued" forever
-	 * and is re-read on every restart, so it is crashed. A read that failed for a reason
-	 * that can pass leaves the row `new` for the next start, with its attempt given back.
+	 * Loads the execution, or returns `undefined` when it must not start now. Data that is
+	 * gone for good crashes the row, else it would sit at "Queued" forever. A read that fails
+	 * for a passing reason leaves the row `new` for the next start and gives the attempt back.
 	 */
 	private async loadEnqueuedExecution(executionId: string, attempt: number) {
 		let execution: IExecutionResponse | undefined;

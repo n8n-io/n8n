@@ -14,7 +14,7 @@ export class AddResumeAttemptsToExecutionEntity1793282162307 implements Reversib
 		// SQLite has no column comments, so annotate only on Postgres.
 		if (isPostgres) {
 			await runQuery(
-				`COMMENT ON COLUMN ${tableName}.${resumeAttempts} IS 'How many times n8n has loaded this execution into memory to resume it from waiting or to start it from new since it last entered that status. Reset to 0 when the execution starts running.'`,
+				`COMMENT ON COLUMN ${tableName}.${resumeAttempts} IS 'Resume attempts since the execution last entered waiting or new. Reset to 0 once the execution runs.'`,
 			);
 		}
 	}

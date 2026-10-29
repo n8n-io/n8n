@@ -151,8 +151,8 @@ export class WaitTracker {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
-		// A sweep can find the row still `waiting` while this process loads it. A second
-		// load would double the memory in use and use up a second load attempt.
+		// A sweep can find the row still `waiting` while this process resumes it. A second
+		// resume would double the memory in use and use up a second attempt.
 		if (this.resuming.has(executionId)) throw new ExecutionAlreadyResumingError(executionId);
 		this.resuming.add(executionId);
 		try {
@@ -163,15 +163,14 @@ export class WaitTracker {
 	}
 
 	private async resumeExecution(executionId: string) {
-		// Claimed before the load, so a load that kills the process cannot repeat without limit
+		// Claimed before the resume, so a resume that kills the process cannot repeat without limit
 		const claim = await this.resumeAttemptService.claim(executionId, 'waiting');
 		if (!claim.granted) return;
 
 		try {
 			await this.loadAndRun(executionId);
 		} catch (error) {
-			// The attempt is for a load that kills the process. A load that throws is retried
-			// by the next sweep, and must not count toward the limit.
+			// A resume that throws is retried by the next sweep, so it must not count toward the limit
 			await this.resumeAttemptService.release(executionId, 'waiting', claim.attempt);
 			throw error;
 		}
@@ -389,17 +388,15 @@ export class WaitTracker {
 	}
 
 	private async resumeParentIfChildFinished(parentId: string) {
-		// The child-completion callback may be resuming this parent right now. It holds the
-		// same guard as a resume, so the inspection must not claim an attempt on top of its own:
-		// that attempt could not be given back, and a later sweep would crash a healthy parent.
+		// The child-completion callback may be resuming this parent. It holds the same guard,
+		// so the inspection must not claim a second attempt on top of that resume's claim.
 		if (this.resuming.has(parentId)) return;
 		this.resuming.add(parentId);
 
 		let childExecution: RelatedExecution | undefined;
 		try {
-			// The inspection loads the parent's full run data, so it is claimed like a resume.
-			// The attempt goes back once the inspection ends, with or without a patch, and the
-			// resume that may follow claims its own.
+			// The inspection loads the parent's full run data, so it counts as a resume attempt
+			// until it ends. The resume that may follow claims its own.
 			const claim = await this.resumeAttemptService.claim(parentId, 'waiting');
 			if (!claim.granted) return;
 

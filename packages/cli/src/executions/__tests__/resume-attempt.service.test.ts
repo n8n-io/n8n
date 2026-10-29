@@ -24,17 +24,17 @@ describe('ResumeAttemptService', () => {
 	});
 
 	describe('claim', () => {
-		test('grants the load without touching the database when the limit is 0', async () => {
+		test('grants the resume without touching the database when the limit is 0', async () => {
 			await expect(createService(0).claim('1', 'waiting')).resolves.toEqual({
 				granted: true,
 				attempt: 0,
 			});
 
 			expect(executionRepository.claimResumeAttempt).not.toHaveBeenCalled();
-			expect(executionCrashService.markParkedAsCrashed).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashedFrom).not.toHaveBeenCalled();
 		});
 
-		test('grants the load with its attempt number when the claim succeeds', async () => {
+		test('grants the resume with its attempt number when the claim succeeds', async () => {
 			executionRepository.claimResumeAttempt.mockResolvedValue({
 				outcome: 'claimed',
 				attempts: 1,
@@ -47,10 +47,10 @@ describe('ResumeAttemptService', () => {
 			});
 
 			expect(executionRepository.claimResumeAttempt).toHaveBeenCalledWith('1', 'waiting', 2);
-			expect(executionCrashService.markParkedAsCrashed).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashedFrom).not.toHaveBeenCalled();
 		});
 
-		test('marks the execution as crashed and refuses the load when the attempts are used up', async () => {
+		test('marks the execution as crashed and refuses the resume when the attempts are used up', async () => {
 			executionRepository.claimResumeAttempt.mockResolvedValue({
 				outcome: 'exhausted',
 				attempts: 2,
@@ -59,7 +59,7 @@ describe('ResumeAttemptService', () => {
 
 			await expect(createService(2).claim('1', 'new')).resolves.toEqual({ granted: false });
 
-			expect(executionCrashService.markParkedAsCrashed).toHaveBeenCalledExactlyOnceWith(
+			expect(executionCrashService.markAsCrashedFrom).toHaveBeenCalledExactlyOnceWith(
 				'1',
 				'new',
 				'resume-limit',
@@ -74,7 +74,7 @@ describe('ResumeAttemptService', () => {
 				ExecutionAlreadyResumingError,
 			);
 
-			expect(executionCrashService.markParkedAsCrashed).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashedFrom).not.toHaveBeenCalled();
 		});
 	});
 
