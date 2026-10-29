@@ -1,9 +1,11 @@
-import { MAX_AGENT_TOOL_OUTPUT_FILE_BYTES } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import {
+	AgentFileLimitError,
+	type AgentChatAttachmentService,
+} from '../agent-chat-attachment.service';
 import { AgentFileBridge } from '../agent-file-bridge.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 
@@ -20,11 +22,15 @@ const pngBinary = {
 	fileName: 'cat.png',
 };
 
+const MAX_GENERATED_FILE_BYTES = 50 * 1024 * 1024;
+
 describe('AgentFileBridge', () => {
 	const scope = { agentId: 'agent-1', projectId: 'project-1', threadId: 'thread-1' };
 	const logger = mock<Logger>();
 	const binaryDataService = mock<BinaryDataService>();
-	const attachmentService = mock<AgentChatAttachmentService>();
+	const attachmentService = mock<AgentChatAttachmentService>({
+		maxGeneratedFileBytes: MAX_GENERATED_FILE_BYTES,
+	});
 	const bridge = new AgentFileBridge(logger, binaryDataService, attachmentService);
 
 	beforeEach(() => {
@@ -135,7 +141,7 @@ describe('AgentFileBridge', () => {
 	describe('size limit', () => {
 		it('reports a file over the limit as skipped and does not read it', async () => {
 			binaryDataService.getMetadata.mockResolvedValue({
-				fileSize: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES + 1,
+				fileSize: MAX_GENERATED_FILE_BYTES + 1,
 			});
 
 			const result = await bridge.adoptFromItems(
@@ -155,7 +161,7 @@ describe('AgentFileBridge', () => {
 
 		it('lists a too-large binary that many items and calls pass on one time', async () => {
 			binaryDataService.getMetadata.mockResolvedValue({
-				fileSize: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES + 1,
+				fileSize: MAX_GENERATED_FILE_BYTES + 1,
 			});
 			const items = [
 				{ json: {}, binary: { data: pngBinary } },
@@ -173,9 +179,25 @@ describe('AgentFileBridge', () => {
 			expect(logger.warn).toHaveBeenCalledTimes(1);
 		});
 
+		it('reports a file over a storage cap of the conversation as skipped', async () => {
+			attachmentService.storeInbound.mockRejectedValue(
+				new AgentFileLimitError('File "cat.png" was not stored: cap'),
+			);
+
+			const result = await bridge.adoptFromItems(
+				[{ json: {}, binary: { data: pngBinary } }],
+				scope,
+			);
+
+			expect(result.files).toEqual([]);
+			expect(result.skippedFiles).toEqual([
+				{ fileName: 'cat.png', reason: 'File "cat.png" was not stored: cap' },
+			]);
+		});
+
 		it('stores a file at the limit', async () => {
 			const result = await bridge.adoptFromItems(
-				[{ json: {}, binary: { data: { ...pngBinary, bytes: MAX_AGENT_TOOL_OUTPUT_FILE_BYTES } } }],
+				[{ json: {}, binary: { data: { ...pngBinary, bytes: MAX_GENERATED_FILE_BYTES } } }],
 				scope,
 			);
 

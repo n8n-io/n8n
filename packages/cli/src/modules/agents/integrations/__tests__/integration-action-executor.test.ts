@@ -2240,11 +2240,11 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 
-		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for a Slack file above the send cap', async () => {
+		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for a Slack file above the platform limit', async () => {
 			const { executor, descriptor, thread, attachmentService } = buildExecutor();
 			attachmentService.getReadable.mockResolvedValue({
 				...chartFile,
-				fileSizeBytes: 60 * 1024 * 1024,
+				fileSizeBytes: 1025 * 1024 * 1024,
 			} as never);
 
 			const result = await executor.execute({
@@ -2260,7 +2260,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 				ok: false,
 				error: {
 					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
-					message: 'File "chart.png" is 60 MB. The slack integration sends files up to 50 MB.',
+					message: 'File "chart.png" is 1025 MB. The slack integration sends files up to 1024 MB.',
 				},
 			});
 			expect(attachmentService.getBuffer).not.toHaveBeenCalled();

@@ -128,6 +128,31 @@ export class AgentChatAttachmentRepository {
 		});
 	}
 
+	/** File count and bytes of one delegation tree, in total and for the given sources. */
+	async sumUsageInThread(
+		scope: { projectId: string; threadId: string },
+		sources: string[],
+		ctx: OperationContext,
+	): Promise<{ totalBytes: number; sourceCount: number; sourceBytes: number }> {
+		const raw = await this.table
+			.managerFor(ctx)
+			.createQueryBuilder(AgentChatAttachment, 'file')
+			.select('COALESCE(SUM(file.fileSizeBytes), 0)', 'totalBytes')
+			.addSelect('COUNT(CASE WHEN file.source IN (:...sources) THEN 1 END)', 'sourceCount')
+			.addSelect(
+				'COALESCE(SUM(CASE WHEN file.source IN (:...sources) THEN file.fileSizeBytes END), 0)',
+				'sourceBytes',
+			)
+			.where('file.projectId = :projectId AND file.threadId = :threadId', scope)
+			.setParameter('sources', sources)
+			.getRawOne<{ totalBytes: unknown; sourceCount: unknown; sourceBytes: unknown }>();
+		return {
+			totalBytes: Number(raw?.totalBytes ?? 0),
+			sourceCount: Number(raw?.sourceCount ?? 0),
+			sourceBytes: Number(raw?.sourceBytes ?? 0),
+		};
+	}
+
 	async findByIds(ids: string[], ctx: OperationContext): Promise<AgentChatAttachment[]> {
 		return await this.table.managerFor(ctx).findBy(AgentChatAttachment, { id: In(ids) });
 	}

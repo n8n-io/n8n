@@ -7,7 +7,6 @@ import type { AgentChatAttachment } from '../entities/agent-chat-attachment.enti
 import {
 	type AgentChatIntegration,
 	ChatIntegrationRegistry,
-	MAX_CHANNEL_SEND_FILE_BYTES,
 	MAX_FILE_MESSAGES_PER_SEND,
 } from './agent-chat-integration';
 import { splitMessage } from './message-split';
@@ -130,7 +129,7 @@ export class AgentOutboundFiles {
 			);
 		}
 
-		const maxFileBytes = Math.min(limits.maxFileBytes, MAX_CHANNEL_SEND_FILE_BYTES);
+		const maxFileBytes = limits.maxFileBytes;
 		const attachments: AgentChatAttachment[] = [];
 		for (const fileId of fileIds) {
 			const attachment = await this.attachmentService.getReadable(fileId, scope);
@@ -174,7 +173,7 @@ export class AgentOutboundFiles {
 	groups(platform: string, attachments: AgentChatAttachment[]): OutboundFileGroup[] {
 		const integration = this.integrationRegistry.get(platform);
 		return this.group(platform, attachments).map((group) => async () => {
-			// Each file is loaded into memory. MAX_CHANNEL_SEND_FILE_BYTES caps the size.
+			// Each file is loaded into memory. The storage caps limit its size.
 			const loaded = await Promise.all(
 				group.map(async (attachment) => ({
 					attachment,

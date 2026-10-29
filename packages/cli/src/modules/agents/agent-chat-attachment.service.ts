@@ -1,5 +1,6 @@
 import { isAttachmentMediaTypeSupported, type AgentToolOutputFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { isEntityNotFoundError, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -25,6 +26,14 @@ import { threadBelongsTo } from './utils/agent-thread-access';
 const ATTACHMENT_SOURCE_TYPE: SourceType = 'agent_chat_attachment';
 
 const RETENTION_BATCH_SIZE = 500;
+
+/** Sources of files that agents make, as opposed to files that users upload. */
+const GENERATED_SOURCES = ['tool', 'sandbox'];
+
+const BYTES_PER_MB = 1024 * 1024;
+
+/** A file would go over a storage cap of its conversation. The message is for the model or the user. */
+export class AgentFileLimitError extends UserError {}
 
 export interface StoreInboundAttachmentParams {
 	/** Row ID for the file. A new ID is made when it is not set. */
@@ -80,11 +89,19 @@ export class AgentChatAttachmentService {
 		private readonly repository: AgentChatAttachmentRepository,
 		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly grantRepository: AgentFileGrantRepository,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
 
+	/** Largest file that a tool or the sandbox can store. */
+	get maxGeneratedFileBytes(): number {
+		return this.agentsConfig.maxGeneratedFileSizeMb * BYTES_PER_MB;
+	}
+
+	/** @throws {AgentFileLimitError} when the file would go over a cap. */
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
 		const attachmentId = params.id ?? generateNanoId();
 		const root = await this.findRootThread(params.threadId);
+		await this.checkLimits(params, root.id);
 		// The download route authorizes by the owning agent, so a file that a
 		// sub-agent makes takes the agent of the root thread.
 		const agentId = root.id === params.threadId ? params.agentId : (root.agentId ?? params.agentId);
@@ -250,6 +267,43 @@ export class AgentChatAttachmentService {
 			mimeType: file.mimeType,
 			sizeBytes: file.fileSizeBytes,
 		}));
+	}
+
+	/**
+	 * The caps count for the whole delegation tree.
+	 * ponytail: the sum and the insert are not atomic, so parallel stores can
+	 * go a little over a cap. Lock the tree if that matters.
+	 */
+	private async checkLimits(params: StoreInboundAttachmentParams, rootThreadId: string) {
+		const size = params.data.byteLength;
+		const generated = GENERATED_SOURCES.includes(params.source);
+		const config = this.agentsConfig;
+		if (generated && size > this.maxGeneratedFileBytes) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" is larger than ${config.maxGeneratedFileSizeMb} MB`,
+			);
+		}
+		const usage = await this.repository.sumUsageInThread(
+			{ projectId: params.projectId, threadId: rootThreadId },
+			GENERATED_SOURCES,
+			{},
+		);
+		if (usage.totalBytes + size > config.maxTotalMb * BYTES_PER_MB) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: a conversation can store up to ${config.maxTotalMb} MB of files`,
+			);
+		}
+		if (!generated) return;
+		if (usage.sourceCount + 1 > config.maxGeneratedFileCount) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: tools and the sandbox can store up to ${config.maxGeneratedFileCount} files in a conversation`,
+			);
+		}
+		if (usage.sourceBytes + size > config.maxGeneratedTotalMb * BYTES_PER_MB) {
+			throw new AgentFileLimitError(
+				`File "${params.fileName}" was not stored: tools and the sandbox can store up to ${config.maxGeneratedTotalMb} MB of files in a conversation`,
+			);
+		}
 	}
 
 	private async findRootThread(threadId: string) {
