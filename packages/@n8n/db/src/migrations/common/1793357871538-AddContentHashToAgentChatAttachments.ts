@@ -12,7 +12,7 @@ const CONTENT_HASH_COLUMN = 'contentHash';
  * No new index: the `(projectId, threadId)` index already limits a lookup to
  * the files of one conversation.
  */
-export class AddContentHashToAgentChatAttachments1793273898545 implements ReversibleMigration {
+export class AddContentHashToAgentChatAttachments1793357871538 implements ReversibleMigration {
 	async up({ escape, runQuery, isPostgres }: MigrationContext) {
 		const table = escape.tableName(ATTACHMENTS_TABLE);
 		const column = escape.columnName(CONTENT_HASH_COLUMN);
