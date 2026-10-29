@@ -58,6 +58,7 @@ export type SkillListFilter = {
 	usedBy?: { agentId: string; skillIds: string[] };
 	createdById?: string;
 	search?: string;
+	availableToMCP?: boolean;
 	/** Most recently changed first when absent. */
 	sort?: SkillListSort;
 	skip: number;
@@ -121,6 +122,11 @@ export class SkillRepository {
 		}
 		if (filter.createdById !== undefined) {
 			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
+		}
+		if (filter.availableToMCP !== undefined) {
+			query.andWhere('skill.availableToMCP = :availableToMCP', {
+				availableToMCP: filter.availableToMCP,
+			});
 		}
 		const sortByName = filter.sort?.by === 'name';
 		if (filter.search || sortByName) {
@@ -495,10 +501,18 @@ export class SkillRepository {
 			{
 				projectId: target.projectId,
 				agentId: target.agentId,
-				...(target.agentId !== null ? { availableToAssistant: false } : {}),
+				...(target.agentId !== null ? { availableToAssistant: false, availableToMCP: false } : {}),
 				updatedAt: new Date(),
 			},
 		);
+	}
+
+	async updateAvailableToMCP(
+		skillId: string,
+		availableToMCP: boolean,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.table.managerFor(ctx).update(Skill, { id: skillId }, { availableToMCP });
 	}
 
 	/** Name and type of each project, keyed by project id. A missing project is absent. */
