@@ -56,8 +56,10 @@ There are two ways to add the headers:
   helper is public, so a community node can use it too.
 
 `getTraceHeaders()` returns `traceparent`, also `tracestate` when the trace has one, and
-`baggage` when the execution has caller baggage. It returns an empty object when OpenTelemetry
-is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is off, or when no execution runs.
+`baggage` when the execution has caller baggage. Each header has its own setting, so the result
+holds only the ones that are on: `N8N_OTEL_TRACES_INJECT_OUTBOUND` for the trace context, and
+`N8N_OTEL_TRACES_PROPAGATE_BAGGAGE` for the baggage. It returns an empty object when both are
+off, and when no execution runs.
 
 Both ways obey these rules:
 
@@ -102,13 +104,15 @@ telemetry.
 | `N8N_OTEL_TRACES_PROPAGATE_BAGGAGE` | `false` | Read caller baggage on webhooks and send it on |
 
 - The variable is env-only for now. It is not on the OTel settings page or in the public API. Set it on all main, worker and webhook instances. A restart applies a change.
-- n8n sends the baggage only when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is also on. It uses the same
-  paths as `traceparent`: `httpRequest`, `request` and `getTraceHeaders()`.
+- The setting stands alone. `N8N_OTEL_TRACES_INJECT_OUTBOUND` holds back `traceparent` and
+  `tracestate` only, so an instance can send caller baggage without its own trace context, and
+  the other way round. The baggage takes the same paths as `traceparent`: `httpRequest`,
+  `request` and `getTraceHeaders()`.
 - When the node already sets a `baggage` header (in any case), `httpRequest` and `request` keep
   the node's header and do not add the caller baggage. The MCP path replaces it, because
   `withTraceHeaders` sets each header that `getTraceHeaders()` returns. A node sets `baggage`
   itself so rarely that the two paths have not been made to match.
-- **Inbound.** When OTel, outbound injection and this setting are on, the webhook reads
+- **Inbound.** When this setting is on, the webhook reads
   `baggage` next to `traceparent`, even when no `traceparent` is sent. The otel module reads it
   through its module context (`extractInboundBaggage`), so the webhook code does not load the
   module. n8n drops each entry with a key that starts with `n8n.` (case-insensitive), because n8n owns that prefix. n8n also drops entries that are not valid W3C baggage, and entries over the W3C

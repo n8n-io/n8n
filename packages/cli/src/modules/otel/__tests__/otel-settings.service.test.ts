@@ -9,13 +9,12 @@ import { mock } from 'vitest-mock-extended';
 
 import type { OtelConnectionParams } from '../otel-settings.service';
 import { OTEL_SETTINGS_KEY, OtelSettingsService, parseOtlpHeaders } from '../otel-settings.service';
-import { OtelBaggageConfig, OtelConfig } from '../otel.config';
+import { OtelConfig } from '../otel.config';
 
 describe('OtelSettingsService', () => {
 	const settingsRepository = mock<SettingsRepository>();
 	const logger = mock<Logger>();
 	const config = new OtelConfig(); // env-defaults (no env vars set in test runtime)
-	const baggageConfig = new OtelBaggageConfig();
 	let service: OtelSettingsService;
 
 	const originalEnv = process.env;
@@ -28,8 +27,7 @@ describe('OtelSettingsService', () => {
 		for (const key of Object.keys(process.env)) {
 			if (key.startsWith('N8N_OTEL_')) delete process.env[key];
 		}
-		baggageConfig.propagate = false;
-		service = new OtelSettingsService(config, settingsRepository, logger, baggageConfig);
+		service = new OtelSettingsService(config, settingsRepository, logger);
 	});
 
 	afterAll(() => {
@@ -131,12 +129,7 @@ describe('OtelSettingsService', () => {
 
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
-			const serviceWithEnv = new OtelSettingsService(
-				configWithEnv,
-				settingsRepository,
-				logger,
-				baggageConfig,
-			);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
@@ -177,12 +170,7 @@ describe('OtelSettingsService', () => {
 
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterProtocol = 'grpc';
-			const serviceWithEnv = new OtelSettingsService(
-				configWithEnv,
-				settingsRepository,
-				logger,
-				baggageConfig,
-			);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
@@ -201,12 +189,7 @@ describe('OtelSettingsService', () => {
 			const configWithEnv = new OtelConfig();
 			configWithEnv.enabled = true;
 			configWithEnv.exporterEndpoint = 'https://from-env';
-			const serviceWithEnv = new OtelSettingsService(
-				configWithEnv,
-				settingsRepository,
-				logger,
-				baggageConfig,
-			);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
@@ -223,12 +206,7 @@ describe('OtelSettingsService', () => {
 
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterHeaders = 'authorization=Bearer secret-token';
-			const serviceWithEnv = new OtelSettingsService(
-				configWithEnv,
-				settingsRepository,
-				logger,
-				baggageConfig,
-			);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			await serviceWithEnv.loadSettings();
 			const result = serviceWithEnv.getSettings();
@@ -284,12 +262,7 @@ describe('OtelSettingsService', () => {
 				const configFromFile = new OtelConfig();
 				configFromFile.exporterHeaders = 'authorization=Bearer file-secret';
 
-				const serviceFromFile = new OtelSettingsService(
-					configFromFile,
-					settingsRepository,
-					logger,
-					baggageConfig,
-				);
+				const serviceFromFile = new OtelSettingsService(configFromFile, settingsRepository, logger);
 				await serviceFromFile.loadSettings();
 				const result = serviceFromFile.getSettings();
 
@@ -335,37 +308,6 @@ describe('OtelSettingsService', () => {
 
 			expect(result.exporterHeaders).toBe(`auth=${CREDENTIAL_BLANKING_VALUE}`);
 			expect(logger.warn).not.toHaveBeenCalled();
-		});
-	});
-
-	describe('shouldPropagateBaggage', () => {
-		const load = async (persisted: Partial<OtelConfig>) => {
-			settingsRepository.findByKey.mockResolvedValue({
-				value: JSON.stringify(persisted),
-			} as Settings);
-			await service.loadSettings();
-		};
-
-		it('is false before the settings are loaded', () => {
-			expect(service.shouldPropagateBaggage()).toBe(false);
-		});
-
-		it('is true when OTel, outbound injection and baggage propagation are on', async () => {
-			baggageConfig.propagate = true;
-			await load({ enabled: true, injectOutbound: true });
-
-			expect(service.shouldPropagateBaggage()).toBe(true);
-		});
-
-		it.each([
-			{ propagate: true, enabled: false, injectOutbound: true },
-			{ propagate: true, enabled: true, injectOutbound: false },
-			{ propagate: false, enabled: true, injectOutbound: true },
-		])('is false for %o', async ({ propagate, ...persisted }) => {
-			baggageConfig.propagate = propagate;
-			await load(persisted);
-
-			expect(service.shouldPropagateBaggage()).toBe(false);
 		});
 	});
 
@@ -415,12 +357,7 @@ describe('OtelSettingsService', () => {
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
 			configWithEnv.exporterProtocol = 'grpc';
-			const serviceWithEnv = new OtelSettingsService(
-				configWithEnv,
-				settingsRepository,
-				logger,
-				baggageConfig,
-			);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 			settingsRepository.findByKey.mockResolvedValue(null);
 
 			const incoming: OtelConfig = {
@@ -503,12 +440,7 @@ describe('OtelSettingsService', () => {
 			process.env.N8N_OTEL_EXPORTER_OTLP_ENDPOINT = 'https://from-env';
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterEndpoint = 'https://from-env';
-			const serviceWithEnv = new OtelSettingsService(
-				configWithEnv,
-				settingsRepository,
-				logger,
-				baggageConfig,
-			);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			const result = serviceWithEnv.resolveTestConnection({
 				...incoming,
@@ -523,12 +455,7 @@ describe('OtelSettingsService', () => {
 			process.env.N8N_OTEL_EXPORTER_OTLP_PROTOCOL = 'grpc';
 			const configWithEnv = new OtelConfig();
 			configWithEnv.exporterProtocol = 'grpc';
-			const serviceWithEnv = new OtelSettingsService(
-				configWithEnv,
-				settingsRepository,
-				logger,
-				baggageConfig,
-			);
+			const serviceWithEnv = new OtelSettingsService(configWithEnv, settingsRepository, logger);
 
 			const result = serviceWithEnv.resolveTestConnection({
 				...incoming,

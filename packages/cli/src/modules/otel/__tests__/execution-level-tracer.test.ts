@@ -1083,7 +1083,7 @@ describe('ExecutionLevelTracer', () => {
 			expect(headers).not.toHaveProperty('baggage');
 		});
 
-		it('sends no headers when injectOutbound is false', () => {
+		it('sends the caller baggage, but no traceparent, when injectOutbound is false', () => {
 			const baggageTracer = makeTracer({
 				propagateBaggage: true,
 				settings: { injectOutbound: false },
@@ -1097,6 +1097,21 @@ describe('ExecutionLevelTracer', () => {
 			const headers: Record<string, string> = {};
 			baggageTracer.injectTraceHeaders('exec-bag-no-inject', undefined, headers);
 			end(baggageTracer, 'exec-bag-no-inject');
+
+			expect(headers).toEqual({ baggage: 'tenant=acme' });
+		});
+
+		it('sends no headers when injectOutbound is false and propagation is off', () => {
+			const plainTracer = makeTracer({ settings: { injectOutbound: false } });
+			plainTracer.startWorkflow({
+				executionId: 'exec-bag-neither',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+
+			const headers: Record<string, string> = {};
+			plainTracer.injectTraceHeaders('exec-bag-neither', undefined, headers);
+			end(plainTracer, 'exec-bag-neither');
 
 			expect(headers).toEqual({});
 		});

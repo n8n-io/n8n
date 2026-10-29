@@ -315,16 +315,15 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
+			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			if (baggage) headers.baggage = baggage;
+
 			if (!this.otelSettingsService.getSettings().injectOutbound) return;
 
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
 			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
-
-			// Sent as the caller sent it. Parsing and serializing again would re-encode the values.
-			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
-			if (baggage) headers.baggage = baggage;
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,

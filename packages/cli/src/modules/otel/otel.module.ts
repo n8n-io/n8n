@@ -31,16 +31,16 @@ export class OtelModule implements ModuleInterface {
 
 	async context(): Promise<ModuleContext> {
 		const { ExecutionLevelTracer } = await import('./execution-level-tracer.js');
-		const { OtelSettingsService } = await import('./otel-settings.service.js');
+		const { OtelBaggageConfig } = await import('./otel.config.js');
 		const { sanitizeInboundBaggage } = await import('./inbound-baggage.js');
 		const tracer = Container.get(ExecutionLevelTracer);
-		const settings = Container.get(OtelSettingsService);
+		const baggageConfig = Container.get(OtelBaggageConfig);
 		const logger = Container.get(Logger);
 
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
 			extractInboundBaggage: (header: unknown) =>
-				settings.shouldPropagateBaggage() ? sanitizeInboundBaggage(header, logger) : undefined,
+				baggageConfig.propagate ? sanitizeInboundBaggage(header, logger) : undefined,
 		};
 	}
 
