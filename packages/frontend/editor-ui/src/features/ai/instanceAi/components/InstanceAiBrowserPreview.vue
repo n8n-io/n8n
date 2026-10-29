@@ -85,11 +85,13 @@ const note = ref('');
 /** The user took over without the agent asking, so the agent does not know what they changed. */
 const isUserTakeover = computed(() => hasControl.value && !props.userAction);
 
-// After a reload, or when the tab mounts again, the user's take over is still in progress.
+// Follow the server each time the live view is fetched: after a reload, and when the user took over
+// or gave control back, also in another tab. While the view loads, keep the current state, so a
+// note the user is writing stays.
 watch(
-	() => liveView.value?.status === 'live' && liveView.value.userHasTakenOver === true,
-	(inControl) => {
-		if (inControl) hasControl.value = true;
+	() => (liveView.value?.status === 'live' ? liveView.value.userHasTakenOver === true : undefined),
+	(hasTakenOver) => {
+		if (hasTakenOver !== undefined) hasControl.value = hasTakenOver;
 	},
 	{ immediate: true },
 );

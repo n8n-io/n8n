@@ -401,6 +401,62 @@ describe('InstanceAiBrowserPreview', () => {
 			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
 		});
 
+		it('ends control when the live view says the user gave control back elsewhere', async () => {
+			const { getByTestId, queryByTestId, liveViews } = render({ ...live, userHasTakenOver: true });
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'You have control of the browser',
+			);
+
+			liveViews.set('task-1', live);
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
+		});
+
+		it('keeps control and the note being written while the live view loads', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, liveViews } = render({ ...live, userHasTakenOver: true });
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
+			const input = getByTestId('instance-ai-browser-preview-note-input');
+			const textarea = input.querySelector('textarea') ?? input;
+			await user.type(textarea, 'I signed in');
+
+			liveViews.set('task-1', { status: 'loading' });
+			await flushPromises();
+
+			expect(getByTestId('instance-ai-browser-preview-note-dialog')).toBeInTheDocument();
+			expect(textarea).toHaveValue('I signed in');
+		});
+
+		it('ends control when the live view says the user gave control back elsewhere', async () => {
+			const { getByTestId, queryByTestId, liveViews } = render({ ...live, userHasTakenOver: true });
+			expect(getByTestId('instance-ai-browser-preview-banner')).toHaveTextContent(
+				'You have control of the browser',
+			);
+
+			liveViews.set('task-1', live);
+			await flushPromises();
+
+			expect(queryByTestId('instance-ai-browser-preview-banner')).not.toBeInTheDocument();
+			expect(getByTestId('instance-ai-browser-preview-frame')).toHaveClass('viewOnly');
+		});
+
+		it('keeps control and the note being written while the live view loads', async () => {
+			const user = userEvent.setup();
+			const { getByTestId, liveViews } = render({ ...live, userHasTakenOver: true });
+			await fireEvent.click(getByTestId('instance-ai-browser-preview-done'));
+			const input = getByTestId('instance-ai-browser-preview-note-input');
+			const textarea = input.querySelector('textarea') ?? input;
+			await user.type(textarea, 'I signed in');
+
+			liveViews.set('task-1', { status: 'loading' });
+			await flushPromises();
+
+			expect(getByTestId('instance-ai-browser-preview-note-dialog')).toBeInTheDocument();
+			expect(textarea).toHaveValue('I signed in');
+		});
+
 		it('ends control when the browser disconnects', async () => {
 			const { getByTestId, queryByTestId, liveViews } = render({ ...live, userHasTakenOver: true });
 

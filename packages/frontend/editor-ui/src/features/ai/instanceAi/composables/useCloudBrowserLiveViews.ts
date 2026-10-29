@@ -116,6 +116,7 @@ export function useCloudBrowserLiveViews(
 	const views = reactive(new Map<string, CloudBrowserLiveView>());
 	const fetchedKeys = new Map<string, string>();
 	const retryTimers = new Map<string, ReturnType<typeof setTimeout>>();
+	const inFlightRefreshRequests = new Map<string, Promise<CloudBrowserLiveView>>();
 
 	function clearRetry(taskId: string) {
 		clearTimeout(retryTimers.get(taskId));
@@ -127,13 +128,15 @@ export function useCloudBrowserLiveViews(
 		const sessionKey = fetchedKeys.get(taskId);
 		if (!sessionKey) return;
 		clearRetry(taskId);
-		let next: CloudBrowserLiveView;
-		try {
-			next = await fetchCloudBrowserLiveView(rootStore.restApiContext, threadId(), taskId);
-		} catch {
+		const request = fetchCloudBrowserLiveView(rootStore.restApiContext, threadId(), taskId).catch(
 			// A failed request is retried like a browser that is still opening.
-			next = { status: 'starting' };
-		}
+			(): CloudBrowserLiveView => ({ status: 'starting' }),
+		);
+		inFlightRefreshRequests.set(taskId, request);
+		const next = await request;
+		// A newer request started while this one ran.
+		if (inFlightRefreshRequests.get(taskId) !== request) return;
+		inFlightRefreshRequests.delete(taskId);
 		// The task ended, or a new session started, while the request ran.
 		if (fetchedKeys.get(taskId) !== sessionKey) return;
 
@@ -158,6 +161,7 @@ export function useCloudBrowserLiveViews(
 				if (running.has(taskId)) continue;
 				clearRetry(taskId);
 				fetchedKeys.delete(taskId);
+				inFlightRefreshRequests.delete(taskId);
 				views.delete(taskId);
 			}
 			for (const task of current) {

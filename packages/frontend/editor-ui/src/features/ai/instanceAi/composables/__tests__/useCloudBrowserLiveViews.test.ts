@@ -285,6 +285,48 @@ describe('useCloudBrowserLiveViews', () => {
 			expect(views.get('task-1')).toEqual({ ...live, userHasTakenOver: true });
 		});
 
+		it('ignores an older answer that arrives after the answer of a newer request', async () => {
+			vi.mocked(fetchCloudBrowserLiveView).mockResolvedValueOnce(live);
+			const { views, refresh } = setup([makeTask()]);
+			await flushPromises();
+
+			// The take over's request answers last, after the request of "I'm done".
+			let resolveTakeOver!: (view: InstanceAiCloudBrowserLiveViewResponse) => void;
+			vi.mocked(fetchCloudBrowserLiveView)
+				.mockImplementationOnce(
+					async () => await new Promise((resolve) => (resolveTakeOver = resolve)),
+				)
+				.mockResolvedValueOnce(live);
+			refresh('task-1');
+			refresh('task-1');
+			await flushPromises();
+			resolveTakeOver({ ...live, userHasTakenOver: true });
+			await flushPromises();
+
+			expect(views.get('task-1')).toEqual(live);
+		});
+
+		it('ignores an older answer that arrives after the answer of a newer request', async () => {
+			vi.mocked(fetchCloudBrowserLiveView).mockResolvedValueOnce(live);
+			const { views, refresh } = setup([makeTask()]);
+			await flushPromises();
+
+			// The take over's request answers last, after the request of "I'm done".
+			let resolveTakeOver!: (view: InstanceAiCloudBrowserLiveViewResponse) => void;
+			vi.mocked(fetchCloudBrowserLiveView)
+				.mockImplementationOnce(
+					async () => await new Promise((resolve) => (resolveTakeOver = resolve)),
+				)
+				.mockResolvedValueOnce(live);
+			refresh('task-1');
+			refresh('task-1');
+			await flushPromises();
+			resolveTakeOver({ ...live, userHasTakenOver: true });
+			await flushPromises();
+
+			expect(views.get('task-1')).toEqual(live);
+		});
+
 		it('does nothing for a task that has no live view', async () => {
 			const { refresh } = setup([makeTask({ sessionKey: '' })]);
 
