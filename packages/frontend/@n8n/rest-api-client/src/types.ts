@@ -7,6 +7,5 @@ export interface IRestApiContext {
 
 export interface PublicApiContext {
 	baseUrl: string;
-	// Extra headers for every request made with this context.
 	headers?: RawAxiosRequestHeaders;
 }
