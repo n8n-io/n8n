@@ -147,6 +147,21 @@ describe('HostDataResolver', () => {
 		expect(resolver.resolve(['$json', 'name', '0'])).toBe('A');
 	});
 
+	it('reuses intermediate primitive values when reading their properties', () => {
+		const readName = vi.fn(() => 'Ada');
+		const resolver = new HostDataResolver({
+			$json: {
+				get name() {
+					return readName();
+				},
+			},
+		});
+
+		expect(resolver.resolve(['$json', 'name', 'length'])).toBe(3);
+		expect(resolver.resolve(['$json', 'name', '0'])).toBe('A');
+		expect(readName).toHaveBeenCalledTimes(1);
+	});
+
 	it('reads primitive leaves again', () => {
 		let current = 0;
 		const resolver = new HostDataResolver({
@@ -159,6 +174,21 @@ describe('HostDataResolver', () => {
 
 		expect(resolver.resolve(['$json', 'count'])).toBe(0);
 		expect(resolver.resolve(['$json', 'count'])).toBe(1);
+	});
+
+	it('reads null leaves again', () => {
+		const readValue = vi.fn(() => null);
+		const resolver = new HostDataResolver({
+			$json: {
+				get value() {
+					return readValue();
+				},
+			},
+		});
+
+		expect(resolver.resolve(['$json', 'value'])).toBeNull();
+		expect(resolver.resolve(['$json', 'value'])).toBeNull();
+		expect(readValue).toHaveBeenCalledTimes(2);
 	});
 
 	it('retries a getter after it throws', () => {

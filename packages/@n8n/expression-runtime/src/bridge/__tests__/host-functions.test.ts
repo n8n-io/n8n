@@ -67,6 +67,13 @@ describe('getArrayElement indices', () => {
 		},
 	);
 
+	it('returns undefined for a negative index with an own property', () => {
+		const items = Object.assign([42], { '-1': 'hidden' });
+		const resolver = new HostDataResolver({ $json: { items } });
+
+		expect(getArrayElement(resolver, ['$json', 'items'], -1)).toBeUndefined();
+	});
+
 	it('returns undefined for an index past the end of the array', () => {
 		const resolver = new HostDataResolver({ $json: { items: [42] } });
 
