@@ -6,13 +6,13 @@ import type {
 	IdentityService,
 	Reject,
 	TrustedSource,
+	TrustedSourceStore,
 	Verified,
 } from '@n8n/inbound-auth';
 import type { Principal, SecurityContext } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
 import { InboundAuthPipeline } from '../authentication-pipeline';
-import type { TrustedSourceDbStore } from '../trusted-source.store';
 
 const RESOURCE = 'https://n8n.example/mcp';
 const TOKEN = 'secret.bearer.token';
@@ -51,7 +51,7 @@ const context: SecurityContext = {
 const logger = mock<Logger>();
 const authentication = mock<AuthenticationService>();
 const identity = mock<IdentityService>();
-const store = mock<TrustedSourceDbStore>();
+const store = mock<TrustedSourceStore>();
 const eventService = mock<EventService>();
 
 let pipeline: InboundAuthPipeline;
@@ -180,7 +180,7 @@ describe('InboundAuthPipeline', () => {
 			expect(result).toEqual({ ok: true, value: context });
 			expect(eventService.emit).not.toHaveBeenCalled();
 			expect(logger.warn).toHaveBeenCalledWith(
-				expect.any(String),
+				'Could not record the first authentication of a trusted source',
 				expect.objectContaining({ sourceId: SOURCE_ID }),
 			);
 			expect(JSON.stringify(logger.warn.mock.calls)).not.toContain(TOKEN);

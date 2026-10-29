@@ -115,11 +115,13 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	/**
 	 * `true` for the one caller that stamps the row; the database decides between instances. A
 	 * snapshot that already carries the stamp skips the write, so the steady state costs no query.
+	 * A snapshot cached before the column existed has no stamp either way, hence the truthy check.
 	 */
 	async recordFirstAuthentication(source: TrustedSource): Promise<boolean> {
-		if (source.firstAuthenticatedAt !== null) return false;
+		if (source.firstAuthenticatedAt) return false;
 		const first = await this.trustedSourceRepository.markFirstAuthenticated(source.id, {});
-		if (first) await this.invalidateCache(source);
+		// Win or loss, the snapshot is stale: the next read must carry the stamp to short-circuit.
+		await this.invalidateCache(source);
 		return first;
 	}
 

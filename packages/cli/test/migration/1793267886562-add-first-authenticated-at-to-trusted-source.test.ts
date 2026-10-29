@@ -88,7 +88,7 @@ describe('AddFirstAuthenticatedAtToTrustedSource migration', () => {
 		column: string,
 		value: string,
 	) {
-		const rows = await runQuery<Array<{ c: number | string }>>(
+		const rows = await runQuery<{ c: number | string }[]>(
 			`SELECT COUNT(*) AS ${escape.columnName('c')} FROM ${escape.tableName(table)} WHERE ${escape.columnName(column)} = :value`,
 			{ value },
 		);
@@ -127,7 +127,7 @@ describe('AddFirstAuthenticatedAtToTrustedSource migration', () => {
 		await withContext(async (context) => {
 			expect(await getColumn(context)).toMatchObject({ isNullable: true });
 
-			const rows = await context.runQuery<Array<{ v: unknown }>>(
+			const rows = await context.runQuery<{ v: unknown }[]>(
 				`SELECT ${context.escape.columnName(COLUMN)} AS ${context.escape.columnName('v')} FROM ${context.escape.tableName(SOURCE_TABLE)} WHERE ${context.escape.columnName('id')} = :id`,
 				{ id: sourceId },
 			);

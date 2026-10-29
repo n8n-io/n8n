@@ -435,6 +435,29 @@ describe('TrustedSourceStore (integration)', () => {
 
 			expect((await rows.findOneByOrFail({ id: row.id })).firstAuthenticatedAt).toBeNull();
 		});
+
+		// A snapshot cached before another instance won stays null for up to the TTL; the loss must
+		// drop it, or every request on this instance keeps paying the conditional write.
+		it('refreshes the cache after a loss so a stale snapshot stops writing', async () => {
+			const row = await seedRow();
+			const stale = await loadSource(row.id);
+			await rows.update({ id: row.id }, { firstAuthenticatedAt: new Date() });
+
+			expect(await store.recordFirstAuthentication(stale)).toBe(false);
+
+			expect((await loadSource(row.id)).firstAuthenticatedAt).toEqual(expect.any(String));
+		});
+
+		it('treats a snapshot cached before the column existed as unstamped', async () => {
+			const row = await seedRow();
+			const { firstAuthenticatedAt: _, ...legacy } = await loadSource(row.id);
+
+			expect(await store.recordFirstAuthentication(legacy as TrustedSource)).toBe(true);
+
+			expect((await rows.findOneByOrFail({ id: row.id })).firstAuthenticatedAt).toBeInstanceOf(
+				Date,
+			);
+		});
 	});
 
 	describe('discovery lease', () => {
