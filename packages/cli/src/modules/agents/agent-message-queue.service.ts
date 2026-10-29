@@ -60,6 +60,9 @@ interface PendingMessageScope {
 	kind: QueuedUserChatMessage['kind'];
 }
 
+/** The longest time that a Stop report waits for captured work, so it cannot block the chat. */
+const STOP_REPORT_WAIT_MS = 5 * 60_000;
+
 @Service()
 export class AgentMessageQueueService {
 	/** The main consumer installs this callback. Webhook processes only enqueue. */
@@ -472,14 +475,18 @@ export class AgentMessageQueueService {
 					return null;
 				}
 
-				if (!stop.pause.requestsCompleted) return null;
+				const expired = Date.now() - Date.parse(stop.requestedAt) >= STOP_REPORT_WAIT_MS;
 
-				const outstanding = await this.threadRepository.findStopTargetsStillActive(stop, ctx);
+				if (!stop.pause.requestsCompleted && !expired) return null;
 
-				if (
-					outstanding.some((work) => !stop.failures.some((failure) => failure.jobId === work.jobId))
-				)
-					return null;
+				const waiting = (await this.threadRepository.findStopTargetsStillActive(stop, ctx)).filter(
+					(work) => !stop.failures.some((failure) => failure.jobId === work.jobId),
+				);
+
+				if (waiting.length && !expired) return null;
+
+				// After the deadline, work that did not stop counts as a failure. The user can retry Stop.
+				stop.failures.push(...waiting);
 
 				const jobs = await this.threadRepository.findJobsCapturedByStop(stop, ctx);
 				payload.message +=

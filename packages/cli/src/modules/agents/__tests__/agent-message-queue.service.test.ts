@@ -267,6 +267,24 @@ describe('AgentMessageQueueService', () => {
 			expect(claimed?.payload.message).toContain('failures');
 		});
 
+		it('runs the report after the deadline and records work that did not stop as failures', async () => {
+			const waiting = { jobId: 'job-1', title: 'Research' };
+			threadRepository.findTaskStop.mockResolvedValue({
+				...stop(),
+				requestedAt: new Date(Date.now() - 6 * 60_000).toISOString(),
+				pause: { id: 'stop-1' },
+			});
+			threadRepository.findStopTargetsStillActive.mockResolvedValue([waiting]);
+
+			const claimed = await service.claimNext('thread-1', async () => true);
+
+			expect(claimed?.payload.message).toContain('Research');
+			expect(threadRepository.saveStop).toHaveBeenCalledWith(
+				expect.objectContaining({ failures: [waiting] }),
+				expect.anything(),
+			);
+		});
+
 		it('requests a wake for held background results after the report settles', async () => {
 			const wake = mock<AgentWakeService>();
 			Container.set(AgentWakeService, wake);
