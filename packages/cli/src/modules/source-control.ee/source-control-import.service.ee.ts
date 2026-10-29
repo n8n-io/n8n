@@ -2259,6 +2259,8 @@ export class SourceControlImportService {
 
 		if (typeof owner === 'string' || owner.type === 'personal') {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
+			// A lookup with no email matches any person. The caller falls back to the puller.
+			if (!email) return null;
 			const user = await this.personRepository.findByEmail(email);
 
 			if (!user) {
