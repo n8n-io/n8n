@@ -175,6 +175,7 @@ erDiagram
   uuid userId FK
 }
 "public.app" {
+  json bindings
   timestamp_3__with_time_zone createdAt
   uuid draftVersionId FK
   uuid id
