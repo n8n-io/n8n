@@ -38,6 +38,9 @@ const evaluate = (expression, github, needs = {}) =>
 			github,
 			needs,
 			always: () => true,
+			success: () => Object.values(needs).every(({ result }) => result === 'success'),
+			failure: () => Object.values(needs).some(({ result }) => result === 'failure'),
+			cancelled: () => Object.values(needs).some(({ result }) => result === 'cancelled'),
 			contains: (values, value) => values.includes(value),
 			startsWith: (value, prefix) => value.startsWith(prefix),
 		},
@@ -62,6 +65,39 @@ const jobRuns = (job, github, results = {}) => {
 	}
 	return Boolean(evaluate(condition, github, needs));
 };
+
+describe('job condition status functions', () => {
+	const results = ['success', 'failure', 'cancelled', 'skipped'];
+
+	for (const [condition, expected] of [
+		['success()', [true, false, false, false]],
+		['failure()', [false, true, false, false]],
+		['cancelled()', [false, false, true, false]],
+		['!cancelled()', [true, true, false, true]],
+		['always()', [true, true, true, true]],
+		['true', [true, false, false, false]],
+	]) {
+		it(`evaluates ${condition} across dependency results`, () => {
+			for (const [index, result] of results.entries()) {
+				assert.equal(
+					jobRuns({ needs: ['build', 'test'], if: condition }, prContext(), {
+						build: 'success',
+						test: result,
+						unrelated: 'failure',
+					}),
+					expected[index],
+					result,
+				);
+			}
+		});
+	}
+
+	it('uses successful status when the job has no dependencies', () => {
+		assert.equal(jobRuns({ if: 'success()' }, prContext()), true);
+		assert.equal(jobRuns({ if: 'failure()' }, prContext()), false);
+		assert.equal(jobRuns({ if: 'cancelled()' }, prContext()), false);
+	});
+});
 
 describe('PR quality event routing', () => {
 	const workflow = workflowFile('ci-pr-quality.yml');
