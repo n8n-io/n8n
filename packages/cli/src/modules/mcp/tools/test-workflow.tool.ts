@@ -273,15 +273,18 @@ export async function testWorkflow(
 
 	const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 	const executionId = await workflowRunner.run(runData);
-	const data = await waitForExecutionResult(
-		executionId,
-		activeExecutions,
-		mcpService,
-		timeoutSeconds * Time.seconds.toMilliseconds,
-	);
-	const hasError = data.status === 'error' || data.data.resultData?.error;
-	if (!hasError) {
-		return { executionId, status: data.status, error: undefined };
+	const runIsActive = activeExecutions.has(executionId);
+	if (runIsActive) {
+		const data = await waitForExecutionResult(
+			executionId,
+			activeExecutions,
+			mcpService,
+			timeoutSeconds * Time.seconds.toMilliseconds,
+		);
+		const hasError = data.status === 'error' || data.data.resultData?.error;
+		if (!hasError) {
+			return { executionId, status: data.status, error: undefined };
+		}
 	}
 
 	return {
