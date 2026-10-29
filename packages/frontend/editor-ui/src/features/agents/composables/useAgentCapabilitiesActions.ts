@@ -416,14 +416,9 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 						skill: sanitizedSkill,
 						...(availableTo ? { availableTo } : {}),
 					});
+					if (restoredFrom === undefined || !flushSkillSave) return;
 					// A restore the server did not save keeps the editor on the older version.
-					if (
-						restoredFrom !== undefined &&
-						flushSkillSave &&
-						!isPersistedSave(await flushSkillSave())
-					) {
-						return { saved: false };
-					}
+					return isPersistedSave(await flushSkillSave()) ? undefined : { saved: false };
 				},
 			},
 		});
