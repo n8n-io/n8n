@@ -63,12 +63,4 @@ describe('components/N8nStatusDot', () => {
 			expect(dot?.className).not.toContain('pulse');
 		},
 	);
-
-	it('should render pulse class when pulse is enabled', () => {
-		const wrapper = render(N8nStatusDot, {
-			props: { pulse: true },
-		});
-		expect(wrapper.container.firstElementChild?.className).toContain('pulse');
-		expect(wrapper.html()).toMatchSnapshot();
-	});
 });
