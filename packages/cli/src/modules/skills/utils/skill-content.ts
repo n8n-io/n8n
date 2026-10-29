@@ -7,14 +7,11 @@ import type { SkillFile } from '../database/entities/skill-file.entity';
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
 
-/**
- * Where a skill lives: a project, one agent, or the instance (both null). An agent skill
- * has no projectId: its project is the agent's.
- */
-export type SkillTarget = { projectId: string | null; agentId: string | null };
+/** Where a skill lives: a project, or the instance (null). */
+export type SkillTarget = { projectId: string | null };
 
 export function isSameSkillTarget(a: SkillTarget, b: SkillTarget): boolean {
-	return a.projectId === b.projectId && a.agentId === b.agentId;
+	return a.projectId === b.projectId;
 }
 
 /** One skill with one of its version rows and that row's files, sorted by path. */
@@ -178,7 +175,7 @@ export function contentToAgentSkill(content: SkillContent): AgentSkill {
 export function toLatestSkill(row: ResolvedSkillRow): LatestSkill {
 	return {
 		id: row.skill.id,
-		target: { projectId: row.skill.projectId, agentId: row.skill.agentId },
+		target: { projectId: row.skill.projectId },
 		versionId: row.version.id,
 		skill: toAgentSkill(row),
 		frontmatter: row.version.frontmatter,
@@ -194,11 +191,9 @@ export function skillContentHashOf(
 	return skillContentHash(toSkillContent(skill, frontmatter));
 }
 
-/** Who owns a skill: one agent, one project, or the instance. */
-export function skillScopeOf(skill: Pick<Skill, 'projectId' | 'agentId'>): SkillScope {
-	if (skill.agentId) return 'agent';
-	if (skill.projectId) return 'project';
-	return 'instance';
+/** A skill with a project is a project skill. Any other skill belongs to the instance. */
+export function skillScopeOf(skill: Pick<Skill, 'projectId'>): SkillScope {
+	return skill.projectId ? 'project' : 'instance';
 }
 
 /**

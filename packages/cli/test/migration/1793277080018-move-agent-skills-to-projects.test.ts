@@ -9,9 +9,9 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-import { skillContentHash } from '@/modules/skills/skill-content-hash';
+import { skillContentHash } from '@/modules/skills/testing';
 
-const migrationName = 'MoveAgentSkillsToProjects1793116772027';
+const migrationName = 'MoveAgentSkillsToProjects1793277080018';
 
 type Row = Record<string, string | number | boolean | null>;
 type SkillRow = { id: string; projectId: string | null };

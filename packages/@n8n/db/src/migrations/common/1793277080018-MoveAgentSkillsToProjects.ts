@@ -41,7 +41,7 @@ const BATCH_SIZE = 100;
  * Then the migration drops `skill.agentId`. A skill no longer goes with its agent:
  * deleting an agent keeps the skills of its project.
  */
-export class MoveAgentSkillsToProjects1793116772027 implements IrreversibleMigration {
+export class MoveAgentSkillsToProjects1793277080018 implements IrreversibleMigration {
 	async up(context: MigrationContext) {
 		const { escape, runQuery, queryRunner, tablePrefix, schemaBuilder } = context;
 

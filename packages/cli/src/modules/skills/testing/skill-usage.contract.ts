@@ -60,24 +60,6 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 			});
 		});
 
-		describe('findAgentIdsInProjects', () => {
-			it('answers the agents of these projects only', async () => {
-				const { usage, seed } = subject();
-				const ids = await seed({
-					agents: [
-						{ key: 'a', name: 'A', project: 'p' },
-						{ key: 'b', name: 'B', project: 'p' },
-						{ key: 'c', name: 'C', project: 'q' },
-					],
-					skills: [],
-				});
-
-				const agentIds = await usage.findAgentIdsInProjects([ids.projectId('p')], ctx);
-
-				expect(agentIds.sort()).toEqual([ids.agentId('a'), ids.agentId('b')].sort());
-			});
-		});
-
 		describe('findUsingAgentIds and countUsingAgents', () => {
 			const world: SkillUsageWorld = {
 				agents: [

@@ -131,7 +131,7 @@ describe('McpSkillToolsService', () => {
 		});
 
 		it('returns no agent fields, because a skill belongs to a project or the instance', async () => {
-			skillsApi.list.mockResolvedValue({ count: 1, data: [listItem] });
+			skillService.list.mockResolvedValue({ count: 1, data: [listItem] });
 
 			const result = await callTool('search_n8n_skills', { limit: 50, skip: 0 });
 

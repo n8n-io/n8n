@@ -441,7 +441,7 @@ function onScopeChoice(value: string) {
 		scope.value = value;
 		return;
 	}
-	if (value === 'project' || value === 'agent' || value === 'instance') availableTo.value = value;
+	if (value === 'project' || value === 'instance') availableTo.value = value;
 }
 
 function scopeItems(testIdPrefix: string): Array<ActionDropdownItem<string>> {

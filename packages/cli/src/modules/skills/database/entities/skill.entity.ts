@@ -1,4 +1,4 @@
-import type { SkillScope, SkillSource } from '@n8n/api-types';
+import type { SkillSource } from '@n8n/api-types';
 import { WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
@@ -34,9 +34,4 @@ export class Skill extends WithTimestamps {
 
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
-}
-
-/** A skill with a project is a project skill. Any other skill belongs to the instance. */
-export function scopeOf(skill: Pick<Skill, 'projectId'>): SkillScope {
-	return skill.projectId ? 'project' : 'instance';
 }

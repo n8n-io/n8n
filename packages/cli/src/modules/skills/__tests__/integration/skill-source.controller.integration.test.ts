@@ -504,7 +504,7 @@ describe('SkillSourceController', () => {
 			]);
 			expect(created).toHaveBeenCalledWith(
 				ownerUser.id,
-				[{ id: data.imported[0].skillId, projectId: null, agentId: null }],
+				[{ id: data.imported[0].skillId, projectId: null }],
 				'github',
 				'sync',
 			);
