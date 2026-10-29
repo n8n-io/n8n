@@ -66,6 +66,7 @@ export function useAppVersions(
 		stopPolling();
 		const isLatest = latestFetch.next();
 		const id = toValue(appId);
+		failed.value = false;
 		if (!id) {
 			versions.value = [];
 			loading.value = false;
@@ -76,7 +77,6 @@ export function useAppVersions(
 			const result = await listAppVersions(rootStore.restApiContext, toValue(projectId), id);
 			if (!isLatest()) return;
 			versions.value = result;
-			failed.value = false;
 			if (head.value && building.value) poll(id, head.value.id);
 		} catch (error) {
 			if (!isLatest()) return;

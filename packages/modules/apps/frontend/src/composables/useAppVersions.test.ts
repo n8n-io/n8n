@@ -122,4 +122,16 @@ describe('useAppVersions', () => {
 		expect(versions.loading.value).toBe(false);
 		expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not load the app versions');
 	});
+
+	it('clears the failed state when the next refresh starts', async () => {
+		vi.mocked(listAppVersions).mockRejectedValueOnce(new Error('offline'));
+		renderComposable();
+		await vi.waitFor(() => expect(versions.failed.value).toBe(true));
+		vi.mocked(listAppVersions).mockReturnValueOnce(new Promise(() => {}));
+
+		void versions.refresh();
+
+		expect(versions.failed.value).toBe(false);
+		expect(versions.loading.value).toBe(true);
+	});
 });
