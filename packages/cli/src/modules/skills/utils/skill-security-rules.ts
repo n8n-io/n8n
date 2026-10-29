@@ -253,47 +253,97 @@ function permissionKeys(content: SkillContent): Map<string, unknown> {
  * Phrases that try to take over the model, hide actions from the user, or send data away. A
  * match is a hint for a reviewer, not proof: a skill about security can quote them.
  */
-const SUSPICIOUS_PHRASES: Array<{ label: string; pattern: RegExp }> = [
+const SUSPICIOUS_PHRASES: Array<{ label: string; find: (text: string) => string | undefined }> = [
 	{
 		label: 'an instruction override',
-		pattern:
+		find: firstMatch(
 			/\b(?:ignore|disregard|forget|override)\b[^.\n]{0,40}\b(?:previous|prior|above|earlier|preceding|system|all|any|other)\b[^.\n]{0,20}\b(?:instructions?|prompts?|rules|guidelines|messages)\b/i,
+		),
 	},
 	{
 		label: 'an action hidden from the user',
-		pattern:
+		find: firstMatch(
 			/\bwithout\s+(?:telling|informing|asking|notifying|alerting)\s+the\s+user\b|\b(?:do\s+not|don't|never)\s+(?:tell|inform|notify|alert)\s+the\s+user\s+(?:about|that|of)\b|\bkeep\s+(?:this|it)\s+(?:secret|hidden)\s+from\s+the\s+user\b/i,
+		),
 	},
 	{
 		label: 'a request for the system prompt',
-		pattern:
+		find: firstMatch(
 			/\b(?:reveal|print|output|show|repeat|dump|leak)\b[^.\n]{0,30}\b(?:system\s+prompt|hidden\s+instructions|initial\s+instructions|developer\s+message)\b/i,
+		),
 	},
 	{
 		label: 'a chat role tag',
-		pattern: /<\|\s*(?:im_start|im_end|system|endoftext)\s*\|>|\[\/?INST\]|<\/?\s*system\s*>/i,
+		find: firstMatch(
+			/<\|\s*(?:im_start|im_end|system|endoftext)\s*\|>|\[\/?INST\]|<\/?\s*system\s*>/i,
+		),
 	},
 	{
 		label: 'a jailbreak mode',
-		pattern:
+		find: firstMatch(
 			/\b(?:you\s+are\s+now|act\s+as|enter|switch\s+to)\b[^.\n]{0,20}\b(?:DAN|jailbreak|developer\s+mode|unrestricted|god\s+mode)\b/i,
+		),
 	},
 	{
 		label: 'a request to send secrets',
-		pattern:
+		find: firstMatch(
 			/\b(?:send|post|upload|forward|exfiltrate|transmit|leak|e-?mail)\b[^.\n]{0,60}(?:credentials?|api[ _-]?keys?|(?:access|auth|bearer|session|refresh|github|api)[ _-]?tokens?|secrets?|passwords?|private[ _-]?keys?|ssh[ _-]?keys?|~\/\.ssh|cookies|session[ _-]?ids?|env(?:ironment)?[ _-]?var(?:iable)?s|\.env\b)/i,
+		),
 	},
 	{
 		label: 'a secret in a network command',
-		pattern:
+		find: firstMatch(
 			/\b(?:curl|wget|Invoke-WebRequest|Invoke-RestMethod|nc|ncat)\b[^\n]{0,200}\$\{?[A-Za-z_]{0,40}(?:KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL)/,
+		),
 	},
-	{
-		label: 'an image link that carries data',
-		// Bounded windows, so a text full of "![" takes linear time, not quadratic.
-		pattern: /!\[[^\]]{0,500}\]\(\s*https?:\/\/[^)\s]{0,2048}(?:\{\{|\$\{|\{[a-z_]+\}|%7B)/i,
-	},
+	{ label: 'an image link that carries data', find: findDataImageLink },
 ];
+
+function firstMatch(pattern: RegExp): (text: string) => string | undefined {
+	return (text) => pattern.exec(text)?.[0];
+}
+
+/** A placeholder in a URL: `{{name}}`, `${name}`, `{name}` or `%7B`, which is an encoded "{". */
+const URL_PLACEHOLDER = /\{\{|\$\{|\{[a-z_]+\}|%7B/i;
+
+/**
+ * An image link with a placeholder in its URL, such as
+ * `![status](https://example.com/p.png?d={{conversation}})`. The model fills in the data, and
+ * the chat sends it away when it shows the image. The alt text goes to the first "]", and the
+ * URL goes to the first ")" or space. The scan reads each character at most a few times, so the
+ * time is linear in the length of the text, with no limit on the alt text or the URL.
+ */
+function findDataImageLink(text: string): string | undefined {
+	const tokens = /!\[|\]/g;
+	const linkStart = /\(\s*https?:\/\//iy;
+	const urlChars = /[^)\s]*/y;
+	let opener: number | undefined;
+	// The URLs read so far end before this offset and have no placeholder.
+	let readUntil = 0;
+	for (let token = tokens.exec(text); token; token = tokens.exec(text)) {
+		if (token[0] === '![') {
+			opener ??= token.index;
+			continue;
+		}
+		const start = opener;
+		opener = undefined;
+		if (start === undefined) continue;
+		linkStart.lastIndex = token.index + 1;
+		if (!linkStart.test(text)) continue;
+		const afterScheme = linkStart.lastIndex;
+		// A URL that starts inside a URL already read ends at the same place, so it has no
+		// placeholder either.
+		if (afterScheme < readUntil) continue;
+		urlChars.lastIndex = afterScheme;
+		urlChars.test(text);
+		readUntil = urlChars.lastIndex;
+		const placeholder = URL_PLACEHOLDER.exec(text.slice(afterScheme, readUntil));
+		if (placeholder) {
+			return text.slice(start, afterScheme + placeholder.index + placeholder[0].length);
+		}
+	}
+	return undefined;
+}
 
 /**
  * A match of each phrase kind needs review, once for each file. Markdown shows a line break
@@ -302,15 +352,15 @@ const SUSPICIOUS_PHRASES: Array<{ label: string; pattern: RegExp }> = [
 export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFinding[] {
 	return textsByFile(content).flatMap(({ file, texts }) => {
 		const joined = texts.map(joinSoftBreaks);
-		return SUSPICIOUS_PHRASES.flatMap(({ label, pattern }) => {
-			const match = joined.map((text) => pattern.exec(text)).find((found) => found !== null);
-			if (!match) return [];
+		return SUSPICIOUS_PHRASES.flatMap(({ label, find }) => {
+			const match = joined.map((text) => find(text)).find((found) => found !== undefined);
+			if (match === undefined) return [];
 			return [
 				{
 					rule: 'suspicious_phrase',
 					severity: 'needs_review',
 					file,
-					detail: `The text has ${label}: "${excerpt(match[0])}".`,
+					detail: `The text has ${label}: "${excerpt(match)}".`,
 				},
 			];
 		});
