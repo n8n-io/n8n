@@ -54,10 +54,6 @@ describe('PromotionPreviewBadges', () => {
 		invalidateInstancePromotionConnection();
 		const settingsStore = mockedStore(useSettingsStore);
 		settingsStore.isModuleActive.mockReturnValue(true);
-		settingsStore.settings = {
-			...settingsStore.settings,
-			envFeatureFlags: { N8N_ENV_FEAT_PROMOTIONS: 'true' },
-		};
 		mockedStore(useSourceControlStore).preferences.environmentsVersion = 'v2';
 		const projectsStore = mockedStore(useProjectsStore);
 		projectsStore.currentProject = createTestProject({ id: 'p1', scopes: ['project:export'] });
@@ -144,8 +140,7 @@ describe('PromotionPreviewBadges', () => {
 			const projects = mockedStore(useProjectsStore);
 			const users = mockedStore(useUsersStore);
 			if (requirement === 'feature') {
-				const settings = mockedStore(useSettingsStore);
-				settings.settings = { ...settings.settings, envFeatureFlags: {} };
+				mockedStore(useSettingsStore).isModuleActive.mockReturnValue(false);
 			} else if (requirement === 'export') {
 				projects.currentProject = createTestProject({ id: 'p1', scopes: [] });
 			} else if (requirement === 'personal') {
