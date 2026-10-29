@@ -228,10 +228,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 	});
 });
 
-/**
- * A sub-execution, written through the store: the route refuses to set a
- * parent, and the engine's own start path is what sets one.
- */
+/** Writes through the store, because the route drops `parent`. */
 async function startSubExecution(parent: ParentLink): Promise<string> {
 	const id = generateId();
 	await createStores(dataSource).executionStore.createExecution({
