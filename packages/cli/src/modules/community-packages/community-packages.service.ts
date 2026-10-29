@@ -16,7 +16,7 @@ import {
 	type PublicInstalledPackage,
 } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
@@ -331,7 +331,10 @@ export class CommunityPackagesService {
 	}
 
 	private getPackageInstallAttemptPath(packageName: string) {
-		return join(this.resolvePackageDirectory(packageName), '.n8n-install-attempt');
+		// Keep ownership metadata outside the extracted package tree. Otherwise a tarball
+		// entry with the same name could replace the token and suppress a valid rollback.
+		const packageKey = createHash('sha256').update(packageName).digest('hex');
+		return join(this.downloadFolder, `.n8n-install-attempt-${packageKey}`);
 	}
 
 	private async ownsPackageInstallAttempt(packageName: string, attemptToken: string) {

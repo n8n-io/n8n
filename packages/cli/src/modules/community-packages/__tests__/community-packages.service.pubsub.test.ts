@@ -3,6 +3,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import { execFile } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { access, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -51,9 +52,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	);
 	const installAttemptPath = path.join(
 		nodesDownloadDir,
-		'node_modules',
-		PACKAGE_NAME,
-		'.n8n-install-attempt',
+		`.n8n-install-attempt-${createHash('sha256').update(PACKAGE_NAME).digest('hex')}`,
 	);
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 	const logger = mock<Logger>();
@@ -604,6 +603,19 @@ describe('CommunityPackagesService pubsub handlers', () => {
 			'Skipped community package rollback because another install took ownership',
 			{ packageName: PACKAGE_NAME },
 		);
+	});
+
+	test('should keep the install ownership token outside the extracted package directory', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(writeFile).toHaveBeenCalledWith(installAttemptPath, expect.any(String), 'utf-8');
+		expect(installAttemptPath).not.toContain(path.join('node_modules', PACKAGE_NAME));
 	});
 
 	test('should preserve a matching package that is already loaded in memory', async () => {
