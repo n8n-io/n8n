@@ -37,6 +37,7 @@ export function approvalNode(
 			[credentialType]: { id: configuration.credentialId, name: configuration.channel },
 		},
 		parameters: {
+			agentApproval: true,
 			resource: 'message',
 			operation: 'sendAndWait',
 			responseType: 'approval',

@@ -536,10 +536,11 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 	const captureResponder =
 		context.getNodeParameter('captureResponder', 0, false) === true && responseType === 'approval';
 
-	// HMAC secret for the callback reference the CLI layer verifies to prove which execution and
-	// decision to resume (same helper/secret as Telegram). Only needed in capture-responder mode.
+	// Both native callback paths use the same signing key as Telegram.
+	const agentApproval = context.getNode().parameters.agentApproval === true;
 	const executionId = context.getExecutionId();
-	const hmacSecret = captureResponder ? Container.get(InstanceSettings).hmacSignatureSecret : '';
+	const hmacSecret =
+		captureResponder || agentApproval ? Container.get(InstanceSettings).hmacSignatureSecret : '';
 
 	const body: SendAndWaitMessageBody = {
 		channel: target,
@@ -575,18 +576,25 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 						text: option.label,
 						emoji: true,
 					},
-					// A button with a `url` is a plain link. In capture-responder mode we drop
-					// the url so Slack treats it as interactive and POSTs the click to us instead.
-					...(captureResponder
+					// Agent callbacks go to the channel bridge. Workflow callbacks use the fixed interaction route.
+					...(agentApproval
 						? {
-								action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
-								value: buildHitlCallbackReference(
+								action_id: buildHitlCallbackReference(
 									executionId,
 									option.approved ? 'a' : 'd',
 									hmacSecret,
 								),
 							}
-						: { url: option.url }),
+						: captureResponder
+							? {
+									action_id: option.approved ? HITL_APPROVE_ACTION_ID : HITL_DECLINE_ACTION_ID,
+									value: buildHitlCallbackReference(
+										executionId,
+										option.approved ? 'a' : 'd',
+										hmacSecret,
+									),
+								}
+							: { url: option.url }),
 				})),
 			},
 		],

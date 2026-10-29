@@ -1,4 +1,5 @@
-import type { Author } from 'chat';
+import type { ActionEvent, Author } from 'chat';
+import { mock } from 'vitest-mock-extended';
 
 import { AgentChatHitlResumeHandler } from '../agent-chat-hitl-resume-handler';
 
@@ -385,3 +386,30 @@ describe('notices that answer one click', () => {
 		);
 	});
 });
+
+it.each([true, false])(
+	'updates a routed approval card with its decision without a conversation resume: %s',
+	async (approved) => {
+		const editMessage = vi.fn().mockResolvedValue(undefined);
+		const deleteMessage = vi.fn();
+		const resumeForChat = vi.fn(() => (async function* () {})());
+		const handler = createHandler({
+			deleteActionMessageBeforeResume: true,
+			agentService: { resumeForChat },
+		});
+		const event = mock<ActionEvent>({
+			user: ALICE,
+			threadId: THREAD_ID,
+			messageId: 'message',
+			adapter: mock({ editMessage, deleteMessage }),
+		});
+		await handler.settleApprovalAction(event, approved);
+		expect(editMessage).toHaveBeenCalledWith(
+			THREAD_ID,
+			'message',
+			`${approved ? 'Approved' : 'Denied'} by Alice`,
+		);
+		expect(deleteMessage).not.toHaveBeenCalled();
+		expect(resumeForChat).not.toHaveBeenCalled();
+	},
+);

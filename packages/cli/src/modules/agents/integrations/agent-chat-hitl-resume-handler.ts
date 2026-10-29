@@ -123,6 +123,10 @@ export class AgentChatHitlResumeHandler {
 			await this.cleanUpBeforeResume(event, parsed.resumeData, callbackData);
 	}
 
+	async settleApprovalAction(event: ActionEvent, approved: boolean): Promise<void> {
+		await this.cleanUpBeforeResume(event, { approved }, {}, true);
+	}
+
 	/** Parsed result from an action ID. */
 	private parseActionId(
 		actionId: string,
@@ -196,8 +200,9 @@ export class AgentChatHitlResumeHandler {
 		event: ActionEvent,
 		resumeData: unknown,
 		callbackData: { label?: string },
+		preserveMessage = false,
 	): Promise<void> {
-		if (this.options.deleteActionMessageBeforeResume) {
+		if (this.options.deleteActionMessageBeforeResume && !preserveMessage) {
 			await this.deleteActionMessage(event);
 			return;
 		}
@@ -207,12 +212,16 @@ export class AgentChatHitlResumeHandler {
 			// value already carries `{ approved }` whenever the tool's resume schema
 			// declares it, so platforms without a CallbackStore get it too.
 			const approved = this.getApprovalDecision(resumeData);
-			const message = this.options.formatActionDecisionMessage?.({
-				...(approved !== undefined ? { approved } : {}),
-				...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
-				raw: event.raw,
-				user: event.user,
-			});
+			const message =
+				this.options.formatActionDecisionMessage?.({
+					...(approved !== undefined ? { approved } : {}),
+					...(callbackData.label !== undefined ? { selectedLabel: callbackData.label } : {}),
+					raw: event.raw,
+					user: event.user,
+				}) ??
+				(preserveMessage
+					? `${approved ? 'Approved' : 'Denied'} by ${event.user.fullName || event.user.userName || event.user.userId}`
+					: undefined);
 			if (!message) return;
 
 			if (this.options.settleActionMessage) {

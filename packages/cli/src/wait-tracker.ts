@@ -9,6 +9,7 @@ import {
 	isTerminalExecutionStatus,
 	UnexpectedError,
 	UserError,
+	type INodeExecutionData,
 	type IRun,
 	type IWorkflowBase,
 	type IWorkflowExecutionDataProcess,
@@ -23,6 +24,7 @@ import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service
 import { WorkflowRunner } from '@/workflow-runner';
 
 import {
+	preserveInputOverride,
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
 } from './workflow-helpers';
@@ -142,7 +144,10 @@ export class WaitTracker {
 		delete this.waitingExecutions[executionId];
 	}
 
-	async startExecution(executionId: string) {
+	async startExecution(
+		executionId: string,
+		nodeResponse?: { nodeId: string; data: INodeExecutionData[] },
+	) {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
@@ -155,6 +160,8 @@ export class WaitTracker {
 		if (!fullExecutionData) {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
+		if (nodeResponse && fullExecutionData.status !== 'waiting')
+			throw new ExecutionAlreadyResumingError(executionId);
 		// oxlint-disable-next-line typescript/no-deprecated
 		if (fullExecutionData.finished) {
 			throw new UnexpectedError('The execution did succeed and can so not be started again.');
@@ -174,6 +181,23 @@ export class WaitTracker {
 			if (this.activeExecutions.has(executionId)) {
 				await this.activeExecutions.getPostExecutePromise(executionId);
 			}
+		}
+
+		if (nodeResponse) {
+			const entry = fullExecutionData.data.executionData?.nodeExecutionStack[0];
+			if (
+				fullExecutionData.data.waitReason === 'suspended' ||
+				!entry ||
+				entry.node.id !== nodeResponse.nodeId
+			)
+				throw new UserError('This request is no longer waiting for a response');
+			const runData = fullExecutionData.data.resultData.runData[entry.node.name];
+			if (!runData?.length) throw new UnexpectedError('The waiting node has no execution data');
+			// Resume the same node with the response, as the waiting-webhook path does.
+			preserveInputOverride(runData);
+			entry.node.disabled = true;
+			entry.data.main = [nodeResponse.data];
+			fullExecutionData.data.waitTill = undefined;
 		}
 
 		const workflowId = fullExecutionData.workflowData.id;

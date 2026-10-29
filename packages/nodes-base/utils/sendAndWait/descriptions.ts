@@ -1,5 +1,13 @@
 import type { INodeProperties, IWebhookDescription } from 'n8n-workflow';
 
+// Keep the internal callback setting when workflow parameters are normalized.
+export const agentApprovalProperty: INodeProperties = {
+	displayName: 'Agent approval',
+	name: 'agentApproval',
+	type: 'hidden',
+	default: false,
+};
+
 export const sendAndWaitWebhooksDescription: IWebhookDescription[] = [
 	{
 		name: 'default',

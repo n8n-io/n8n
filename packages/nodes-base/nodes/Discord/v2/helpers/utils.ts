@@ -1,3 +1,5 @@
+import { Container } from '@n8n/di';
+import { buildHitlCallbackReference, InstanceSettings } from 'n8n-core';
 import FormData from 'form-data';
 import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
@@ -423,9 +425,17 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 				components: config.options.map((option) => {
 					return {
 						type: 2,
-						style: 5,
 						label: option.label,
-						url: option.url,
+						...(context.getNode()?.parameters.agentApproval === true
+							? {
+									style: option.approved ? 1 : 4,
+									custom_id: buildHitlCallbackReference(
+										context.getExecutionId(),
+										option.approved ? 'a' : 'd',
+										Container.get(InstanceSettings).hmacSignatureSecret,
+									),
+								}
+							: { style: 5, url: option.url }),
 					};
 				}),
 			},

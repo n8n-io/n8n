@@ -8,8 +8,19 @@ import { AGENT_DECISION_TRIGGER_NODE_TYPE } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError, type IWorkflowBase } from 'n8n-workflow';
+import { isResourceLocatorValue, UserError, type IWorkflowBase } from 'n8n-workflow';
 import { NotFoundError } from '@n8n/errors';
+import {
+	InstanceSettings,
+	parseHitlCallbackReference,
+	verifyHitlCallbackReference,
+} from 'n8n-core';
+import { isRecord } from '@n8n/utils/is-record';
+import type { ActionEvent } from 'chat';
+import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
+import { AgentBackgroundJobRepository } from '../repositories/agent-background-job.repository';
+import { hasApprovalExpired } from './approval-expiry';
 import { AgentHitlWorkflowRepository } from '../repositories/agent-hitl-workflow.repository';
 import { AgentRepository } from '../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../integrations/agent-chat-integration';
@@ -22,7 +33,98 @@ export class AgentChannelHitlService {
 		private readonly registry: ChatIntegrationRegistry,
 		private readonly credentials: AgentCredentialLookupService,
 		private readonly outboundHttp: OutboundHttp,
+		private readonly executions: ExecutionPersistence,
+		private readonly jobs: AgentBackgroundJobRepository,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
+
+	async respond(
+		agentId: string,
+		projectId: string,
+		integration: AgentIntegrationConfig,
+		event: ActionEvent,
+	): Promise<boolean | 'unavailable'> {
+		const reference = parseHitlCallbackReference(event.actionId);
+		if (
+			!reference ||
+			!verifyHitlCallbackReference(reference, this.instanceSettings.hmacSignatureSecret)
+		)
+			return 'unavailable';
+		const execution = await this.executions.findSingleExecution(reference.executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+		const node = execution?.data.executionData?.nodeExecutionStack[0]?.node;
+		const parent = execution?.data.parentAgentRun;
+		const platform = this.registry.get(integration.type);
+		if (
+			!execution ||
+			execution.status !== 'waiting' ||
+			execution.data.waitReason === 'suspended' ||
+			parent?.agentId !== agentId ||
+			parent.projectId !== projectId ||
+			!node ||
+			node.parameters.agentApproval !== true ||
+			node.type !== `n8n-nodes-base.${integration.type}` ||
+			!platform?.hitl.supported ||
+			!('credentialId' in integration) ||
+			node.credentials?.[platform.credentialTypes[0]]?.id !== integration.credentialId
+		)
+			return 'unavailable';
+		const job = await this.jobs.findWorkflowJobByExecutionId(reference.executionId);
+		if (
+			!job ||
+			job.kind !== 'approval' ||
+			job.parentAgentId !== agentId ||
+			job.status !== 'running' ||
+			hasApprovalExpired(job)
+		)
+			return 'unavailable';
+		const userDestination =
+			integration.type === 'telegram'
+				? node.parameters.chatId
+				: node.parameters.select === 'user'
+					? node.parameters.user
+					: node.parameters.sendTo === 'user'
+						? node.parameters.userId
+						: undefined;
+		const userId = isResourceLocatorValue(userDestination)
+			? userDestination.value
+			: userDestination;
+		if (userId !== undefined && userId !== event.user.userId) return 'unavailable';
+		if (userId === undefined) {
+			const destination = node.parameters.channelId;
+			const thread = event.adapter.decodeThreadId(event.threadId);
+			const channelId = isRecord(thread) ? (thread.channel ?? thread.channelId) : undefined;
+			if (!isResourceLocatorValue(destination) || destination.value !== channelId)
+				return 'unavailable';
+		}
+		const approved = reference.decision === 'a';
+		const { WaitTracker } = await import('@/wait-tracker.js');
+		try {
+			await Container.get(WaitTracker).startExecution(reference.executionId, {
+				nodeId: node.id,
+				data: [
+					{
+						json: {
+							data: {
+								approved,
+								respondedAt: new Date().toISOString(),
+								responder: {
+									id: event.user.userId,
+									source: integration.type,
+								},
+							},
+						},
+					},
+				],
+			});
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) return 'unavailable';
+			throw error;
+		}
+		return approved;
+	}
 
 	async listChannels(
 		user: User,

@@ -54,7 +54,10 @@ import { starFields, starOperations } from './StarDescription';
 import { userFields, userOperations } from './UserDescription';
 import { userGroupFields, userGroupOperations } from './UserGroupDescription';
 import { configureWaitTillDate } from '../../../utils/sendAndWait/configureWaitTillDate.util';
-import { sendAndWaitWebhooksDescription } from '../../../utils/sendAndWait/descriptions';
+import {
+	agentApprovalProperty,
+	sendAndWaitWebhooksDescription,
+} from '../../../utils/sendAndWait/descriptions';
 import {
 	getSendAndWaitProperties,
 	SEND_AND_WAIT_WAITING_TOOLTIP,
@@ -177,6 +180,7 @@ export class SlackV2 implements INodeType {
 					],
 					undefined,
 					[
+						agentApprovalProperty,
 						advancedInteractivityNotice,
 						captureResponderField,
 						approversField,

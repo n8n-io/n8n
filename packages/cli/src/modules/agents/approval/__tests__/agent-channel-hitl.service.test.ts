@@ -1,4 +1,7 @@
 import { Container } from '@n8n/di';
+import type { InstanceSettings } from 'n8n-core';
+import type { ExecutionPersistence } from '@/executions/execution-persistence';
+import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import { AgentHitlWorkflowRepository } from '../../repositories/agent-hitl-workflow.repository';
 import { mock } from 'vitest-mock-extended';
 import type { User } from '@n8n/db';
@@ -40,7 +43,15 @@ function setup(integrations: AgentIntegrationConfig[] = []) {
 	}
 	registry.register(mock<AgentChatIntegration>({ type: 'linear', hitl: { supported: false } }));
 	const outbound = mock<OutboundHttp>();
-	const service = new AgentChannelHitlService(agents, registry, credentials, outbound);
+	const service = new AgentChannelHitlService(
+		agents,
+		registry,
+		credentials,
+		outbound,
+		mock<ExecutionPersistence>(),
+		mock<AgentBackgroundJobRepository>(),
+		mock<InstanceSettings>(),
+	);
 	return { service, agents, credentials, registry, outbound };
 }
 const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'slack-credential' };

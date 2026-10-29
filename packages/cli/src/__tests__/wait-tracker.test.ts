@@ -225,6 +225,52 @@ describe('WaitTracker', () => {
 			);
 		});
 
+		it('passes a native response through the waiting node and preserves its Agent marker', async () => {
+			const node = mock<INode>({ id: 'approval', name: 'Request approval' });
+			const entry = mock<IExecuteData>({
+				node,
+				data: { main: [[{ json: { request: 'original' } }]] },
+			});
+			const data = createRunExecutionData({
+				executionData: { nodeExecutionStack: [entry] },
+				resultData: { runData: { [node.name]: [mock<ITaskData>({ inputOverride: undefined })] } },
+			});
+			data.parentAgentRun = {
+				agentId: 'agent',
+				projectId: 'project',
+				runId: 'run',
+				threadId: 'thread',
+				toolCallId: 'tool',
+			};
+			const pending = { ...execution, status: 'waiting' as const, data };
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(pending);
+			await waitTracker.startExecution(execution.id, {
+				nodeId: node.id,
+				data: [{ json: { data: { approved: false } } }],
+			});
+			expect(entry.node.disabled).toBe(true);
+			expect(entry.data.main).toEqual([[{ json: { data: { approved: false } } }]]);
+			expect(data.resultData.runData[node.name]).toEqual([]);
+			expect(data.parentAgentRun.runId).toBe('run');
+			expect(workflowRunner.run).toHaveBeenCalledWith(
+				expect.objectContaining({ executionData: data }),
+				false,
+				false,
+				{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
+			);
+		});
+
+		it('does not accept a response after another caller resumes the execution', async () => {
+			executionPersistence.findSingleExecution.mockResolvedValueOnce({
+				...execution,
+				status: 'running',
+			});
+			await expect(
+				waitTracker.startExecution(execution.id, { nodeId: 'approval', data: [] }),
+			).rejects.toThrow(ExecutionAlreadyResumingError);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
 		// The acting user is not a stored field, so a resume has to derive it again.
 		// Without it the run comes back unattributed and a credential only its
 		// publisher may use is refused halfway through.

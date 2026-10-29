@@ -3,6 +3,8 @@ import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
+import { buildHitlCallbackReference } from 'n8n-core';
+import { AgentChannelHitlService } from '../../approval/agent-channel-hitl.service';
 import type { Author } from 'chat';
 import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
 import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
@@ -2932,6 +2934,57 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus).toHaveBeenCalledTimes(3);
 			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
+
+		it.each([true, false, 'unavailable'] as const)(
+			'routes a native channel decision without resuming the approval conversation: %s',
+			async (decision) => {
+				const { bot, handlers } = makeBot();
+				const thread = makeThread();
+				const editMessage = vi.fn().mockResolvedValue(undefined);
+				const deleteMessage = vi.fn();
+				const agentExecutor = makeAgentExecutor([]);
+				const channelApprovals = mock<AgentChannelHitlService>();
+				channelApprovals.respond.mockResolvedValue(decision);
+				Container.set(AgentChannelHitlService, channelApprovals);
+				makeQueuedBridge(
+					bot as unknown as ChatBotLike,
+					'agent-1',
+					agentExecutor as never,
+					componentMapper,
+					logger,
+					'project-1',
+					slackIntegration,
+				);
+				const event = {
+					actionId: buildHitlCallbackReference('123', 'a', 'test-secret'),
+					messageId: 'card-message',
+					thread,
+					threadId: 'thread-1',
+					user: { userId: 'u2', userName: 'user2' },
+					adapter: { editMessage, deleteMessage },
+				};
+				await handlers.action!(event);
+				expect(channelApprovals.respond).toHaveBeenCalledWith(
+					'agent-1',
+					'project-1',
+					slackIntegration,
+					event,
+				);
+				expect(agentExecutor.resumeForChat).not.toHaveBeenCalled();
+				expect(deleteMessage).not.toHaveBeenCalled();
+				if (decision === 'unavailable') {
+					expect(editMessage).not.toHaveBeenCalled();
+					expect(thread.post).toHaveBeenCalledWith(
+						'This approval request is no longer available or has already been handled',
+					);
+				} else
+					expect(editMessage).toHaveBeenCalledWith(
+						'thread-1',
+						'card-message',
+						`${decision ? 'Approved' : 'Denied'} by user2`,
+					);
+			},
+		);
 
 		it('sets a thinking status and streams the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();

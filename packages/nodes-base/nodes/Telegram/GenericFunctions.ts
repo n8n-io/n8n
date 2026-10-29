@@ -302,7 +302,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions, chatApp
 		reply_markup: {
 			inline_keyboard: [
 				config.options.map((option) => {
-					if (chatApproval) {
+					if (chatApproval || context.getNode()?.parameters.agentApproval === true) {
 						const executionId = context.getExecutionId();
 						const hmacSecret = Container.get(InstanceSettings).hmacSignatureSecret;
 						return {

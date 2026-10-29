@@ -81,6 +81,12 @@ arguments. Child redaction and private credential markers pass back to the paren
   with active requests before release.
 
 Channel definitions own their fields, list lookup, and send-and-wait node.
+Generated channel nodes use native buttons with signed callback references.
+The Agent channel handles the click and validates the request, destination, and expiry.
+`WaitTracker` resumes the same waiting node with the decision. Its existing execution
+claim rejects concurrent responses. Workflow completion still resumes the Agent through
+`AgentWorkflowToolResumeService`. The channel message shows the decision without opening
+a browser page. References do not use the short-lived callback store.
 Linear explicitly disables this capability. The runtime checks that the selected
 connection belongs to the pinned Agent.
 
