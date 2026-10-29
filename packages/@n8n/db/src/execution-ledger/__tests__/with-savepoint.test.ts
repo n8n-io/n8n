@@ -48,6 +48,7 @@ describe('withSavepoint', () => {
 		expect(queries()).toEqual([
 			'SAVEPOINT fold_step_insights',
 			'ROLLBACK TO SAVEPOINT fold_step_insights',
+			'RELEASE SAVEPOINT fold_step_insights',
 		]);
 	});
 
@@ -63,7 +64,26 @@ describe('withSavepoint', () => {
 		expect(error).toMatchObject({
 			cause: stepError,
 			level: 'error',
-			extra: { savepoint: 'fold_step_insights', rollbackError: 'no such savepoint' },
+			message: 'The fold transaction is lost: ROLLBACK TO SAVEPOINT fold_step_insights failed',
+			extra: {
+				statement: 'ROLLBACK TO SAVEPOINT fold_step_insights',
+				statementError: 'no such savepoint',
+			},
+		});
+	});
+
+	it('names RELEASE when the release after a rollback fails', async () => {
+		const stepError = new Error('step failed');
+		failQueriesStartingWith('RELEASE', new Error('current transaction is aborted'));
+
+		const error = await withSavepoint(ctx, 'insights', async () => {
+			throw stepError;
+		}).catch((e: unknown) => e);
+
+		expect(error).toBeInstanceOf(FoldTransactionLostError);
+		expect(error).toMatchObject({
+			cause: stepError,
+			extra: { statement: 'RELEASE SAVEPOINT fold_step_insights' },
 		});
 	});
 
