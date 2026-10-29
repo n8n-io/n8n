@@ -17,8 +17,16 @@ import { DataSource, In, Not, type EntityManager } from '@n8n/typeorm';
 
 import { MigrationFinding, type MigrationFindingId } from '../entities/migration-finding.entity';
 
-/** A finding the scan detected. New findings always start as `open`. */
-export type NewMigrationFinding = Pick<MigrationFinding, 'targetVersion' | 'ruleId' | 'workflowId'>;
+/**
+ * A finding the scan detected. It starts as `open`, or as `fixed_unpublished`
+ * when only the published version has the issue.
+ */
+export type NewMigrationFinding = Pick<
+	MigrationFinding,
+	'targetVersion' | 'ruleId' | 'workflowId'
+> & {
+	status?: Extract<MigrationFindingStatus, 'open' | 'fixed_unpublished'>;
+};
 
 /** A finding the rule detail lists, with the workflow columns the report shows. */
 export type TriageableMigrationFinding = Pick<
@@ -251,7 +259,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 			.createQueryBuilder()
 			.insert()
 			.into(MigrationFinding)
-			.values(findings.map((finding) => ({ ...finding, status: 'open' as const, statusChangedAt })))
+			.values(findings.map((finding) => ({ status: 'open' as const, ...finding, statusChangedAt })))
 			.orIgnore()
 			.execute();
 	}

@@ -17,6 +17,7 @@ describe('MigrationFindingSyncListener', () => {
 		'workflow-created',
 		'workflow-saved',
 		'workflow-activated',
+		'workflow-deactivated',
 		'workflow-imported',
 	] as const;
 

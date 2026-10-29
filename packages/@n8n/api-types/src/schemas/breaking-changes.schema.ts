@@ -33,7 +33,7 @@ export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
  *
  * - `open`: the scan found the issue and nobody acted on it yet.
  * - `notified`: the owner received a notification about the finding.
- * - `fixed`: the scan no longer detects the issue in the published version.
+ * - `fixed`: the scan no longer detects the issue in the published version, or in the draft of a workflow with nothing published.
  * - `fixed_unpublished`: the scan no longer detects the issue in the draft, but the fix is not published.
  * - `wont_fix`: a user dismissed the finding.
  */
