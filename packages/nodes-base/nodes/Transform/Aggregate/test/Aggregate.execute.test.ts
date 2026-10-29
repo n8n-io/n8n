@@ -75,6 +75,48 @@ describe('Aggregate output field names', () => {
 		});
 	});
 
+	it.each([
+		['user', 'user.name'],
+		['user.name', 'user'],
+		['user[0]', 'user[0].name'],
+		['user[0].name', 'user[0]'],
+		['user.name', 'user["name"]'],
+	])('should reject overlapping output paths %s and %s', async (first, second) => {
+		await expect(
+			execute([
+				{ fieldToAggregate: 'customer.name', renameField: true, outputFieldName: first },
+				{ fieldToAggregate: 'supplier.name', renameField: true, outputFieldName: second },
+			]),
+		).rejects.toThrow('overlap');
+	});
+
+	it('should allow sibling output paths', async () => {
+		const result = await execute([
+			{ fieldToAggregate: 'customer.name', renameField: true, outputFieldName: 'user.name' },
+			{ fieldToAggregate: 'supplier.name', renameField: true, outputFieldName: 'user.supplier' },
+		]);
+		expect(result[0][0].json).toEqual({
+			user: { name: ['Alice', 'Bob'], supplier: ['Acme', 'Beta'] },
+		});
+	});
+
+	it.each([
+		['user', 'user.name'],
+		['user.name', 'user'],
+	])(
+		'should allow literal output names %s and %s when dot notation is disabled',
+		async (first, second) => {
+			const result = await execute(
+				[
+					{ fieldToAggregate: 'customer', renameField: true, outputFieldName: first },
+					{ fieldToAggregate: 'supplier', renameField: true, outputFieldName: second },
+				],
+				{ disableDotNotation: true, inputData: [{ customer: 'Alice', supplier: 'Acme' }] },
+			);
+			expect(result[0][0].json).toEqual({ [first]: ['Alice'], [second]: ['Acme'] });
+		},
+	);
+
 	it('should keep literal dotted names distinct when dot notation is disabled', async () => {
 		const result = await execute(
 			[{ fieldToAggregate: 'customer.name' }, { fieldToAggregate: 'supplier.name' }],
