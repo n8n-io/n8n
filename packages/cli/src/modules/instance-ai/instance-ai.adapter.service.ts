@@ -236,6 +236,7 @@ import {
 	exceedsMaxExecutionTimeout,
 } from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -1836,11 +1837,12 @@ export class InstanceAiAdapterService {
 				}
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
-				// the graph breadth-first. Generated code still wins if it sets its own.
-				const settings = {
+				// the graph breadth-first. Generated code still wins if it sets its own order
+				// or engine.
+				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
-				} as IWorkflowSettings;
+				} as IWorkflowSettings);
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —

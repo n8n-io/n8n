@@ -1,4 +1,6 @@
 import type { Logger, LicenseState } from '@n8n/backend-common';
+import { ModuleRegistry } from '@n8n/backend-common';
+import { EngineConfig } from '@n8n/config';
 import type {
 	EntityManager,
 	Folder,
@@ -30,6 +32,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { NodeGroupRulesFlagGate } from '@/workflows/node-group-rules-flag-gate';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import type { WorkflowValidationService } from '@/workflows/workflow-validation.service';
@@ -61,6 +64,8 @@ describe('WorkflowCreationService', () => {
 	let workflowRepositoryMock: MockProxy<WorkflowRepository>;
 	let nodeGroupRulesFlagGateMock: MockProxy<NodeGroupRulesFlagGate>;
 	let loggerMock: MockProxy<Logger>;
+	let engineConfig: EngineConfig;
+	let moduleRegistry: ModuleRegistry;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -103,6 +108,10 @@ describe('WorkflowCreationService', () => {
 		nodeGroupRulesFlagGateMock = mock<NodeGroupRulesFlagGate>();
 		nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(NO_RULES_RELAXED);
 
+		// Default: engine v1 for new workflows, and the engine-v2 module is not active.
+		engineConfig = new EngineConfig();
+		moduleRegistry = new ModuleRegistry(mock(), mock(), mock(), mock(), mock());
+
 		workflowCreationService = new WorkflowCreationService(
 			loggerMock,
 			mock(), // sharedWorkflowRepository
@@ -128,6 +137,7 @@ describe('WorkflowCreationService', () => {
 			workflowRepositoryMock,
 			nodeGroupRulesFlagGateMock,
 			mock(),
+			new WorkflowEngineDefaults(engineConfig, moduleRegistry),
 		);
 	});
 
@@ -1230,6 +1240,93 @@ describe('WorkflowCreationService', () => {
 				'Failed to resolve auto-expose setting for new workflow',
 				{ cause: 'cache down' },
 			);
+		});
+	});
+
+	describe('default engine', () => {
+		const user = mock<User>();
+
+		const activateEngineV2Module = () =>
+			vi.spyOn(moduleRegistry, 'isActive').mockImplementation((name) => name === 'engine-v2');
+
+		// A copy taken at save time, so a stamp applied after the save does not pass.
+		let savedSettings: WorkflowEntity['settings'];
+
+		const expectSavedSettings = (settings: WorkflowEntity['settings']) => {
+			expect(workflowRepositoryMock.createContent).toHaveBeenCalledTimes(1);
+			expect(savedSettings).toStrictEqual(settings);
+		};
+
+		beforeEach(() => {
+			projectServiceMock.getProjectWithScope.mockResolvedValue({ id: 'project-1' } as never);
+			licenseStateMock.isSharingLicensed.mockReturnValue(false);
+			licenseStateMock.isDataRedactionLicensed.mockReturnValue(false);
+			const { transactionManager } = setupTransactionMocks();
+			transactionManager.save.mockImplementation(async (entity: unknown) => entity);
+			savedSettings = undefined;
+			workflowRepositoryMock.createContent.mockImplementation(async (workflow) => {
+				savedSettings = structuredClone(workflow.settings);
+				return workflow;
+			});
+			workflowHistoryServiceMock.saveVersion.mockResolvedValue(undefined as never);
+			workflowFinderServiceMock.findWorkflowForUser.mockImplementation(
+				async () => new WorkflowEntity(),
+			);
+		});
+
+		it('saves a workflow without an engine on v2 when the default is v2 and the module is active', async () => {
+			engineConfig.defaultType = 'v2';
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1', engineType: 'v2' });
+		});
+
+		it.each([
+			{ engineType: 'v1' as const, defaultType: 'v2' as const },
+			{ engineType: 'v2' as const, defaultType: 'v1' as const },
+		])(
+			'keeps an explicit $engineType when the default is $defaultType',
+			async ({ engineType, defaultType }) => {
+				engineConfig.defaultType = defaultType;
+				activateEngineV2Module();
+				const workflow = makeWorkflow({ settings: { engineType } });
+
+				await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+				expectSavedSettings({ engineType });
+			},
+		);
+
+		it('writes no engine when the default is v2 but the module is not active', async () => {
+			engineConfig.defaultType = 'v2';
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1' });
+		});
+
+		it('writes no engine when the default is v1', async () => {
+			engineConfig.defaultType = 'v1';
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: { executionOrder: 'v1' } });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings({ executionOrder: 'v1' });
+		});
+
+		it('adds no settings when the workflow has none and the default is v1', async () => {
+			engineConfig.defaultType = 'v1';
+			activateEngineV2Module();
+			const workflow = makeWorkflow({ settings: undefined });
+
+			await workflowCreationService.createWorkflow(user, workflow, { projectId: 'project-1' });
+
+			expectSavedSettings(undefined);
 		});
 	});
 });
