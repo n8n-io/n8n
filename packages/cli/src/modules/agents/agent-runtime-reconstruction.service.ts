@@ -12,6 +12,7 @@ import {
 	BuiltTool,
 	CredentialProvider,
 	ModelConfig,
+	type Workspace,
 } from '@n8n/agents';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
@@ -114,6 +115,8 @@ import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolve
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
+import { AgentSandboxFilesService } from './agent-sandbox-files.service';
+import { createImportFilesTool, IMPORT_FILES_TOOL_NAME } from './tools/import-files.tool';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
  * row exists, so anything keyed on a real agent id (checkpoints, knowledge
@@ -339,6 +342,7 @@ export class AgentRuntimeReconstructionService {
 		private readonly credentialsService: CredentialsService,
 		private readonly knowledgeUsageTracker: AgentKnowledgeUsageTracker,
 		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	async reconstructFromAgentEntity(
@@ -1064,6 +1068,7 @@ export class AgentRuntimeReconstructionService {
 				DELEGATE_SUB_AGENT_TOOL_NAME,
 				WRITE_TODOS_TOOL_NAME,
 				READ_BINARY_DATA_TOOL_NAME,
+				IMPORT_FILES_TOOL_NAME,
 				GET_ENVIRONMENT_TOOL_NAME,
 				RECALL_MEMORY_TOOL_NAME,
 				FLAG_MEMORY_TOOL_NAME,
@@ -1126,15 +1131,20 @@ export class AgentRuntimeReconstructionService {
 		return parentWorkspaceHandle;
 	}
 
+	private attachWorkspaceTools({ agent, projectId }: RuntimeDependencies, workspace: Workspace) {
+		agent.workspace(workspace);
+		agent.tool(createImportFilesTool({ projectId, workspace, sandboxFiles: this.sandboxFiles }));
+	}
+
 	private async attachWorkspace(
 		params: RuntimeDependencies,
 	): Promise<AgentSandboxRuntime | undefined> {
-		const { agent, agentId, projectId, runtimeProfile, parentWorkspace, sandboxPrincipalHash } =
-			params;
+		const { agentId, projectId, runtimeProfile, parentWorkspace, sandboxPrincipalHash } = params;
 		if (runtimeProfile === 'sub-agent') {
 			// Delegated runs use the parent's sandbox only.
 			if (parentWorkspace) {
-				agent.workspace(
+				this.attachWorkspaceTools(
+					params,
 					this.agentWorkspaceService.getDelegatedAgentWorkspace(
 						parentWorkspace.handle,
 						parentWorkspace.delegationThreadId,
@@ -1155,7 +1165,7 @@ export class AgentRuntimeReconstructionService {
 				sandboxPrincipalHash,
 			);
 			throwIfAborted(params.abortSignal);
-			agent.workspace(workspace);
+			this.attachWorkspaceTools(params, workspace);
 			return handle;
 		} catch (error) {
 			throwIfAborted(params.abortSignal);

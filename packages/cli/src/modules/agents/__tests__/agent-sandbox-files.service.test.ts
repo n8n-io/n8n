@@ -1,5 +1,6 @@
 import type { Workspace, WorkspaceFilesystem, WorkspaceSandbox } from '@n8n/agents';
 import type { Logger } from '@n8n/backend-common';
+import type { AgentsConfig } from '@n8n/config';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -18,7 +19,8 @@ describe('AgentSandboxFilesService', () => {
 	const executeCommand = vi.fn<NonNullable<WorkspaceSandbox['executeCommand']>>();
 	const sandbox = mock<WorkspaceSandbox>({ executeCommand });
 	const workspace = mock<Workspace>({ filesystem, sandbox });
-	const service = new AgentSandboxFilesService(mock<Logger>(), attachmentService);
+	const agentsConfig = mock<AgentsConfig>({ maxImportMb: 1 });
+	const service = new AgentSandboxFilesService(mock<Logger>(), attachmentService, agentsConfig);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -200,6 +202,57 @@ describe('AgentSandboxFilesService', () => {
 			await expect(
 				service.resolveFileRefs(['sandbox:a.txt'], { projectId: 'p', threadId: 'thread-2' }),
 			).resolves.toHaveLength(1);
+		});
+	});
+
+	describe('importFiles', () => {
+		const readScope = { projectId: 'project-1', threadId: 'thread-1' };
+		const readable = (sizes: Record<string, number>) =>
+			attachmentService.getReadable.mockImplementation(async (fileId) =>
+				fileId in sizes
+					? mock<AgentChatAttachment>({ id: fileId, fileSizeBytes: sizes[fileId] })
+					: null,
+			);
+
+		it('writes each readable file to inputs/', async () => {
+			readable({ f1: 3 });
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('a,b'));
+
+			await expect(
+				service.importFiles(workspace, { 'data/./sales.csv': 'f1' }, readScope),
+			).resolves.toEqual([{ path: 'inputs/data/sales.csv', fileId: 'f1', sizeBytes: 3 }]);
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('f1', readScope);
+			expect(filesystem.writeFile).toHaveBeenCalledWith(
+				'inputs/data/sales.csv',
+				Buffer.from('a,b'),
+				{ recursive: true, overwrite: true },
+			);
+		});
+
+		it('writes nothing when a file is not readable', async () => {
+			readable({ f1: 3 });
+
+			await expect(
+				service.importFiles(workspace, { 'a.csv': 'f1', 'b.csv': 'other' }, readScope),
+			).rejects.toThrow('File "other" not found in this conversation');
+			expect(filesystem.writeFile).not.toHaveBeenCalled();
+		});
+
+		it('rejects a path outside inputs/', async () => {
+			readable({ f1: 3 });
+
+			await expect(service.importFiles(workspace, { '../x': 'f1' }, readScope)).rejects.toThrow(
+				'is not a path in inputs/',
+			);
+		});
+
+		it('rejects files over the import cap together', async () => {
+			readable({ f1: 600 * 1024, f2: 600 * 1024 });
+
+			await expect(
+				service.importFiles(workspace, { 'a.bin': 'f1', 'b.bin': 'f2' }, readScope),
+			).rejects.toThrow('One import copies up to 1 MB');
+			expect(filesystem.writeFile).not.toHaveBeenCalled();
 		});
 	});
 
