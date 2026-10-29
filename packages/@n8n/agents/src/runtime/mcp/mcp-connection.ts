@@ -128,8 +128,11 @@ export class McpConnection {
 		this.httpFetch = this.config.fetch;
 		if (this.config.url && !this.httpFetch) {
 			const { createRefreshingAuthFetch } = await import('@n8n/ai-utilities');
-			// Keep credential handling across redirects when no custom fetch is supplied.
-			this.httpFetch = createRefreshingAuthFetch({ baseFetch: globalThis.fetch });
+			// Let the default fetch scope configured auth headers to redirect origins.
+			this.httpFetch = createRefreshingAuthFetch({
+				baseFetch: globalThis.fetch,
+				initialHeaders: this.config.headers,
+			});
 		}
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 		await this.connectPreferredTransport(sdk);
@@ -326,9 +329,8 @@ export class McpConnection {
 			});
 		} else if (config.url) {
 			const url = new URL(config.url);
-			const requestInit: RequestInit | undefined = config.headers
-				? { headers: config.headers }
-				: undefined;
+			const requestInit: RequestInit | undefined =
+				config.fetch && config.headers ? { headers: config.headers } : undefined;
 
 			if (config.transport === 'sse') return this.createSseTransport(url, config, sdk);
 			return new sdk.StreamableHTTPClientTransport(url, {
@@ -342,7 +344,7 @@ export class McpConnection {
 
 	private createSseTransport(url: URL, config: McpServerConfig, sdk: McpSdkModule): McpTransport {
 		return new sdk.SSEClientTransport(url, {
-			requestInit: config.headers ? { headers: config.headers } : undefined,
+			requestInit: config.fetch && config.headers ? { headers: config.headers } : undefined,
 			fetch: this.httpFetch,
 			eventSourceInit: { fetch: this.httpFetch },
 			redirectPolicy: 'follow',

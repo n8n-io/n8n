@@ -23,7 +23,6 @@ describe.each(['httpStreamable', 'sse'] as const)('%s MCP redirects', (serverTra
 	let stream: ReadableStreamDefaultController<Uint8Array> | undefined;
 
 	afterEach(() => {
-		stream?.close();
 		stream = undefined;
 		vi.mocked(proxyFetch).mockReset();
 	});
