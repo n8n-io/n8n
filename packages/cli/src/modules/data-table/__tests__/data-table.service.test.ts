@@ -778,8 +778,18 @@ describe('DataTableService', () => {
 				readOnly: true,
 			});
 			expect(mockDataTableColumnRepository.getColumnsInContext).toHaveBeenCalledTimes(1);
+			expect(mockDataTableColumnRepository.getColumnsInContext).toHaveBeenCalledWith(
+				dataTableId,
+				enrichedCtx,
+			);
 			expect(mockDataTableColumnRepository.getColumnsInContext.mock.calls[0][1]).toBe(enrichedCtx);
 			expect(mockDataTableRowsRepository.getManyAndCount).toHaveBeenCalledTimes(1);
+			expect(mockDataTableRowsRepository.getManyAndCount).toHaveBeenCalledWith(
+				dataTableId,
+				{},
+				[],
+				enrichedCtx,
+			);
 			expect(mockDataTableRowsRepository.getManyAndCount.mock.calls[0][3]).toBe(enrichedCtx);
 		});
 	});
