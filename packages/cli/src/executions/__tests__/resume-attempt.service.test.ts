@@ -38,7 +38,6 @@ describe('ResumeAttemptService', () => {
 			executionRepository.claimResumeAttempt.mockResolvedValue({
 				outcome: 'claimed',
 				attempts: 1,
-				jsonSizeBytes: 100,
 			});
 
 			await expect(createService(2).claim('1', 'waiting')).resolves.toEqual({

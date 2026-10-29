@@ -95,7 +95,7 @@ export type ResumableExecutionStatus = 'waiting' | 'new';
 
 /** Result of `claimResumeAttempt`. */
 export type ResumeAttemptClaim =
-	| { outcome: 'claimed'; attempts: number; jsonSizeBytes: number }
+	| { outcome: 'claimed'; attempts: number }
 	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }
 	| { outcome: 'conflict' };
 
@@ -843,7 +843,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		);
 		if ((result.affected ?? 0) === 0) return { outcome: 'conflict' };
 
-		return { outcome: 'claimed', attempts: attempts + 1, jsonSizeBytes };
+		return { outcome: 'claimed', attempts: attempts + 1 };
 	}
 
 	/**
