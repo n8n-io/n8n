@@ -10,6 +10,7 @@ import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { resolveSandboxFileRefs } from '../agent-sandbox-files.service';
 
 export const READ_BINARY_DATA_TOOL_NAME = 'read_binary_data';
 
@@ -47,9 +48,10 @@ export function createReadBinaryDataTool({
 		.input(z.object({ fileId: z.string().trim().min(1) }))
 		.output(outputSchema)
 		.untrustedOutput()
-		.handler(async ({ fileId }, ctx) => {
+		.handler(async ({ fileId: ref }, ctx) => {
 			const threadId = ctx.persistence?.threadId;
 			if (!threadId) throw new UserError('Files can only be read in a conversation');
+			const [fileId] = await resolveSandboxFileRefs([ref], { projectId, threadId });
 			const file = await attachmentService.getReadable(fileId, { projectId, threadId });
 			if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
 			if (!(await attachmentService.hasStoredData(file))) {

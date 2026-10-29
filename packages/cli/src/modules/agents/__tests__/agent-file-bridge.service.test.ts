@@ -8,6 +8,7 @@ import {
 } from '../agent-chat-attachment.service';
 import { AgentFileBridge } from '../agent-file-bridge.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+import type { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 
 // A real 1x1 PNG, so the magic-byte check keeps the declared type.
 const PNG = Buffer.from(
@@ -31,10 +32,12 @@ describe('AgentFileBridge', () => {
 	const attachmentService = mock<AgentChatAttachmentService>({
 		maxGeneratedFileBytes: MAX_GENERATED_FILE_BYTES,
 	});
-	const bridge = new AgentFileBridge(logger, binaryDataService, attachmentService);
+	const sandboxFiles = mock<AgentSandboxFilesService>();
+	const bridge = new AgentFileBridge(logger, binaryDataService, attachmentService, sandboxFiles);
 
 	beforeEach(() => {
 		vi.resetAllMocks();
+		sandboxFiles.resolveFileRefs.mockImplementation(async (refs) => refs);
 		binaryDataService.getAsBuffer.mockResolvedValue(PNG);
 		attachmentService.storeInbound.mockResolvedValue(
 			mock<AgentChatAttachment>({ id: 'aid-1', fileSizeBytes: PNG.byteLength }),
@@ -294,6 +297,16 @@ describe('AgentFileBridge', () => {
 			});
 			expect(attachmentService.getReadable).toHaveBeenCalledWith('aid-1', readScope);
 			expect(binaryDataService.getAsBuffer).not.toHaveBeenCalled();
+		});
+
+		it('resolves sandbox paths before the read check', async () => {
+			readable();
+			sandboxFiles.resolveFileRefs.mockResolvedValue(['aid-1']);
+
+			await bridge.toBinary({ data: 'sandbox:cat.png' }, readScope);
+
+			expect(sandboxFiles.resolveFileRefs).toHaveBeenCalledWith(['sandbox:cat.png'], readScope);
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('aid-1', readScope);
 		});
 
 		it('gives a node the base name of a sandbox file and keeps the path for the model', async () => {

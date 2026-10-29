@@ -1,9 +1,10 @@
 import { Service } from '@n8n/di';
 import type { Attachment, PostableCard, PostableMarkdown, PostableRaw, Thread } from 'chat';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError, UserError } from 'n8n-workflow';
 import { posix } from 'node:path';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import {
 	type AgentChatIntegration,
@@ -103,6 +104,7 @@ export class AgentOutboundFiles {
 	constructor(
 		private readonly attachmentService: AgentChatAttachmentService,
 		private readonly integrationRegistry: ChatIntegrationRegistry,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	/**
@@ -131,8 +133,15 @@ export class AgentOutboundFiles {
 		}
 
 		const maxFileBytes = limits.maxFileBytes;
+		let resolvedIds: string[];
+		try {
+			resolvedIds = await this.sandboxFiles.resolveFileRefs(fileIds, scope);
+		} catch (error) {
+			if (!(error instanceof UserError)) throw error;
+			return integrationError(INTEGRATION_ERROR_CODES.FILE_NOT_FOUND, error.message);
+		}
 		const attachments: AgentChatAttachment[] = [];
-		for (const fileId of fileIds) {
+		for (const fileId of resolvedIds) {
 			const attachment = await this.attachmentService.getReadable(fileId, scope);
 			if (!attachment) {
 				return integrationError(

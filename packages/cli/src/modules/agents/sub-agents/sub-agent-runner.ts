@@ -43,7 +43,11 @@ import { v4 as uuid } from 'uuid';
 import type { AgentRunTelemetryType } from '@/interfaces';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
-import { AgentSandboxFilesService, usedWorkspace } from '../agent-sandbox-files.service';
+import {
+	type ActiveRun,
+	AgentSandboxFilesService,
+	usedWorkspace,
+} from '../agent-sandbox-files.service';
 import type { StartExecutionParams } from '../agent-execution.service';
 import {
 	AgentExecutionRepository,
@@ -345,6 +349,7 @@ export class SubAgentRunner {
 		let runId: string | undefined;
 		let agent: BuiltAgent | undefined;
 		let finish: FinishUsage | undefined;
+		let activeRun: ActiveRun | undefined;
 
 		try {
 			context.abortSignal?.throwIfAborted();
@@ -378,6 +383,11 @@ export class SubAgentRunner {
 			});
 
 			agent = reconstructed.agent;
+			activeRun = {
+				agentId: recording.agentId,
+				getWorkspace: () => reconstructed.agent.getWorkspace(),
+			};
+			this.sandboxFiles.trackRun(threadId, activeRun);
 			context.abortSignal?.throwIfAborted();
 			const forwardBudgetNotice = context.onBudgetNotice
 				? (notice: AgentBudgetNotice) =>
@@ -549,6 +559,7 @@ export class SubAgentRunner {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
+			if (activeRun) this.sandboxFiles.untrackRun(threadId, activeRun);
 			const usageStatus = delegatedRunStatus(
 				context.abortSignal?.aborted === true,
 				recorder.suspended,

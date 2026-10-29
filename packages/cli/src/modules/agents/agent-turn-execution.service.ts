@@ -154,6 +154,9 @@ export class AgentTurnExecutionService {
 			config.backgroundJobSignal,
 			config.admittedExecution?.startedAt,
 		);
+		const { agentId, threadId } = config.context;
+		const activeRun = { agentId, getWorkspace: () => config.agentInstance.getWorkspace() };
+		this.sandboxFiles.trackRun(threadId, activeRun);
 		try {
 			config.onRecorderCreated?.(recorder);
 			turn = await config.prepare();
@@ -196,6 +199,7 @@ export class AgentTurnExecutionService {
 			recorder.record({ type: 'finish', finishReason: 'error' });
 			throw error;
 		} finally {
+			this.sandboxFiles.untrackRun(threadId, activeRun);
 			chatControl?.dispose();
 			if (turn && state.executionId) {
 				try {

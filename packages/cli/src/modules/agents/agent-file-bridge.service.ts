@@ -15,6 +15,7 @@ import { posix } from 'node:path';
 import { z } from 'zod';
 
 import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
+import { AgentSandboxFilesService } from './agent-sandbox-files.service';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
 
 /** Optional tool input. The model passes file IDs from the chat or from other tool results. */
@@ -50,6 +51,7 @@ export class AgentFileBridge {
 		private readonly logger: Logger,
 		private readonly binaryDataService: BinaryDataService,
 		private readonly attachmentService: AgentChatAttachmentService,
+		private readonly sandboxFiles: AgentSandboxFilesService,
 	) {}
 
 	/**
@@ -69,7 +71,13 @@ export class AgentFileBridge {
 
 		const binary: IBinaryKeyData = {};
 		const stored = new Map<string, AgentToolOutputFile>();
-		for (const [key, fileId] of Object.entries(files)) {
+		const keys = Object.keys(files);
+		const fileIds = await this.sandboxFiles.resolveFileRefs(Object.values(files), {
+			projectId: scope.projectId,
+			threadId,
+		});
+		for (const [index, key] of keys.entries()) {
+			const fileId = fileIds[index];
 			const attachment = await this.attachmentService.getReadable(fileId, {
 				projectId: scope.projectId,
 				threadId,
