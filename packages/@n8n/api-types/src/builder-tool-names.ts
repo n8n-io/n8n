@@ -73,7 +73,17 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	TEST_CREDENTIAL: 'test_credential',
 	DELETE_CREDENTIAL: 'delete_credential',
 	UPDATE_CREDENTIAL_DESCRIPTION: 'update_credential_description',
-	DATA_TABLES: 'data_tables',
+	LIST_DATA_TABLES: 'list_data_tables',
+	GET_DATA_TABLE_SCHEMA: 'get_data_table_schema',
+	QUERY_DATA_TABLE: 'query_data_table',
+	CREATE_DATA_TABLE: 'create_data_table',
+	DELETE_DATA_TABLE: 'delete_data_table',
+	ADD_DATA_TABLE_COLUMN: 'add_data_table_column',
+	DELETE_DATA_TABLE_COLUMN: 'delete_data_table_column',
+	RENAME_DATA_TABLE_COLUMN: 'rename_data_table_column',
+	INSERT_DATA_TABLE_ROWS: 'insert_data_table_rows',
+	UPDATE_DATA_TABLE_ROWS: 'update_data_table_rows',
+	DELETE_DATA_TABLE_ROWS: 'delete_data_table_rows',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',
 	GET_NODE_PARAMETER_OPTIONS: 'get_node_parameter_options',
@@ -105,7 +115,6 @@ export const REMOVED_BUILDER_TOOL_NAMES = {
 export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	nodes: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
 	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
-	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
 	'ask-user': SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	workflow_builder_ask_user: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	searchModels: SHARED_BUILDER_TOOL_NAMES.SEARCH_MODELS,
@@ -186,12 +195,58 @@ export const WORKFLOW_TOOL_NAMES: readonly string[] = Object.values(WORKFLOW_TOO
 
 const SPLIT_WORKFLOWS_TOOL: SplitBuilderTool = { actions: WORKFLOW_TOOL_NAME_BY_ACTION };
 
+/** The tool that owns each action of the former multi-action data tables tool. */
+export const DATA_TABLE_TOOL_NAME_BY_ACTION = {
+	list: SHARED_BUILDER_TOOL_NAMES.LIST_DATA_TABLES,
+	schema: SHARED_BUILDER_TOOL_NAMES.GET_DATA_TABLE_SCHEMA,
+	query: SHARED_BUILDER_TOOL_NAMES.QUERY_DATA_TABLE,
+	create: SHARED_BUILDER_TOOL_NAMES.CREATE_DATA_TABLE,
+	delete: SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE,
+	'add-column': SHARED_BUILDER_TOOL_NAMES.ADD_DATA_TABLE_COLUMN,
+	'delete-column': SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE_COLUMN,
+	'rename-column': SHARED_BUILDER_TOOL_NAMES.RENAME_DATA_TABLE_COLUMN,
+	'insert-rows': SHARED_BUILDER_TOOL_NAMES.INSERT_DATA_TABLE_ROWS,
+	'update-rows': SHARED_BUILDER_TOOL_NAMES.UPDATE_DATA_TABLE_ROWS,
+	'delete-rows': SHARED_BUILDER_TOOL_NAMES.DELETE_DATA_TABLE_ROWS,
+} as const;
+
+export type DataTableToolAction = keyof typeof DATA_TABLE_TOOL_NAME_BY_ACTION;
+
+export const DATA_TABLE_TOOL_NAMES: readonly string[] = Object.values(
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+);
+
+export const DATA_TABLE_TOOL_ACTIONS = [
+	'list',
+	'schema',
+	'query',
+	'create',
+	'delete',
+	'add-column',
+	'delete-column',
+	'rename-column',
+	'insert-rows',
+	'update-rows',
+	'delete-rows',
+] as const satisfies readonly DataTableToolAction[];
+
+/** Returns the action that a data table tool performs. Session grant keys still use the action. */
+export function getDataTableToolAction(toolName: string): DataTableToolAction | undefined {
+	return DATA_TABLE_TOOL_ACTIONS.find(
+		(action) => DATA_TABLE_TOOL_NAME_BY_ACTION[action] === toolName,
+	);
+}
+
+const SPLIT_DATA_TABLES_TOOL: SplitBuilderTool = { actions: DATA_TABLE_TOOL_NAME_BY_ACTION };
+
 /** Former multi-action tools that became one tool for each action. Never remove an entry. */
 export const SPLIT_BUILDER_TOOLS: Readonly<Record<string, SplitBuilderTool>> = {
 	credentials: SPLIT_CREDENTIALS_TOOL,
 	workflow_builder_credentials: SPLIT_CREDENTIALS_TOOL,
 	workflows: SPLIT_WORKFLOWS_TOOL,
 	workflow_builder_workflows: SPLIT_WORKFLOWS_TOOL,
+	'data-tables': SPLIT_DATA_TABLES_TOOL,
+	data_tables: SPLIT_DATA_TABLES_TOOL,
 };
 
 const hasOwn = (record: object, key: string) => Object.prototype.hasOwnProperty.call(record, key);
@@ -204,6 +259,28 @@ export function isFormerWorkflowsTool(toolName: string): boolean {
 	return (
 		hasOwn(SPLIT_BUILDER_TOOLS, toolName) && SPLIT_BUILDER_TOOLS[toolName] === SPLIT_WORKFLOWS_TOOL
 	);
+}
+
+/** Whether a stored tool name is the former multi-action data tables tool. */
+export function isFormerDataTablesTool(toolName: string): boolean {
+	return (
+		hasOwn(SPLIT_BUILDER_TOOLS, toolName) &&
+		SPLIT_BUILDER_TOOLS[toolName] === SPLIT_DATA_TABLES_TOOL
+	);
+}
+
+/**
+ * Returns the data table action of a tool call, for a current data table tool or
+ * a stored call of the former multi-action tool. Returns `undefined` for other tools.
+ */
+export function getDataTableCallAction(
+	toolName: string,
+	action?: unknown,
+): DataTableToolAction | undefined {
+	if (isFormerDataTablesTool(toolName)) {
+		return DATA_TABLE_TOOL_ACTIONS.find((known) => known === action);
+	}
+	return getDataTableToolAction(toolName);
 }
 
 /**

@@ -7,6 +7,7 @@ import {
 	buildWorkflowActionSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
+	getDataTableCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 	REMOVED_BUILDER_TOOL_NAMES,
@@ -114,8 +115,10 @@ export function buildAlwaysAllowKey(
 	if (toolName === 'workspace') {
 		return buildWorkspaceSessionGrantKey(action);
 	}
-	if (toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES) {
-		return buildDataTablesSessionGrantKey(action);
+	// Data table grants keep the action key, for the split tools and the former tool.
+	const dataTableAction = getDataTableCallAction(rawToolName, action);
+	if (dataTableAction) {
+		return buildDataTablesSessionGrantKey(dataTableAction);
 	}
 	// Executing a node grants "always allow" per node type + resource + operation,
 	// mirroring the backend thread grant. Without a type, fail closed.

@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
-import { WORKFLOW_TOOL_NAME_BY_ACTION } from '@n8n/api-types';
+import {
+	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	WORKFLOW_TOOL_NAME_BY_ACTION,
+} from '@n8n/api-types';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
@@ -133,7 +137,10 @@ function getOrchestratorDomainToolFactories(
 			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
 			() => loadCredentialsTool().createDeleteCredentialTool(context),
 		],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
+		...DATA_TABLE_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
+			() => loadDataTablesTool().createDataTableTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],

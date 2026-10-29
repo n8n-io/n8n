@@ -3,6 +3,7 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	getDataTableCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -447,8 +448,7 @@ export function getLatestDeletedDataTableId(node: InstanceAiAgentNode): string |
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
 		if (
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
-			args?.action === 'delete' &&
+			getDataTableCallAction(tc.toolName, args?.action) === 'delete' &&
 			!tc.isLoading &&
 			tc.result &&
 			typeof tc.result === 'object'
@@ -470,9 +470,8 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
-		const action = typeof args?.action === 'string' ? args.action : '';
+		const action = getDataTableCallAction(tc.toolName, args?.action) ?? '';
 		if (
-			tc.toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES &&
 			DATA_TABLE_PREVIEW_ACTIONS.has(action) &&
 			!tc.isLoading &&
 			tc.result &&

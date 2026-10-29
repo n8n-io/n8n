@@ -257,7 +257,9 @@ describe('createSelfHealingAgent', () => {
 				DOMAIN_TOOL_IDS.GET_WORKFLOW,
 				DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
 				DOMAIN_TOOL_IDS.EXECUTIONS,
-				DOMAIN_TOOL_IDS.DATA_TABLES,
+				DOMAIN_TOOL_IDS.LIST_DATA_TABLES,
+				DOMAIN_TOOL_IDS.GET_DATA_TABLE_SCHEMA,
+				DOMAIN_TOOL_IDS.QUERY_DATA_TABLE,
 				DOMAIN_TOOL_IDS.SEARCH_NODES,
 				DOMAIN_TOOL_IDS.GET_NODE_TYPES,
 				DOMAIN_TOOL_IDS.N8N_DOCS,
@@ -285,8 +287,6 @@ describe('createSelfHealingAgent', () => {
 		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run', workflowId: 'workflow' }],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run-step', workflowId: 'workflow', nodeName: 'Read' }],
 		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'stop', executionId: 'execution' }],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'create', name: 'Table', columns: [] }],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, { action: 'insert-rows', dataTableId: 'table', rows: [{}] }],
 	])('rejects unavailable %s actions in the schema', async (name, input) => {
 		const agent = await createAgent();
 		const tool = findTool(agent.declaredTools, name);
@@ -295,6 +295,8 @@ describe('createSelfHealingAgent', () => {
 
 	it('does not declare workflow tools that change a workflow', async () => {
 		const names = (await createAgent()).declaredTools.map((tool) => tool.name);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.CREATE_DATA_TABLE);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.INSERT_DATA_TABLE_ROWS);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.SETUP_WORKFLOW);
 	});
@@ -369,13 +371,16 @@ describe('createSelfHealingAgent', () => {
 			count: 1,
 			data: [{ id: 1, status: 'ready' }],
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.DATA_TABLES);
-		await expect(executeTool(tool, { action: 'list' })).resolves.toEqual({ tables: [] });
+		const tools = (await createAgent(context)).declaredTools;
+		const tool = (name: string) => findTool(tools, name);
+		await expect(executeTool(tool(DOMAIN_TOOL_IDS.LIST_DATA_TABLES), {})).resolves.toEqual({
+			tables: [],
+		});
 		await expect(
-			executeTool(tool, { action: 'schema', dataTableId: 'table' }),
+			executeTool(tool(DOMAIN_TOOL_IDS.GET_DATA_TABLE_SCHEMA), { dataTableId: 'table' }),
 		).resolves.toMatchObject({ columns: [] });
 		await expect(
-			executeTool(tool, { action: 'query', dataTableId: 'table', limit: 1 }),
+			executeTool(tool(DOMAIN_TOOL_IDS.QUERY_DATA_TABLE), { dataTableId: 'table', limit: 1 }),
 		).resolves.toMatchObject({ count: 1, data: [{ id: 1, status: 'ready' }] });
 	});
 

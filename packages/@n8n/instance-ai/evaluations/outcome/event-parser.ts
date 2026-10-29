@@ -4,16 +4,14 @@
 
 import {
 	AGENT_BUILDER_TOOL_NAMES,
+	isFormerDataTablesTool,
 	REMOVED_BUILDER_TOOL_NAMES,
+	SHARED_BUILDER_TOOL_NAMES,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
-import {
-	DATA_TABLES_TOOL_ID,
-	DOMAIN_TOOL_IDS,
-	EVAL_CONFIG_TOOL_ID,
-} from '../../src/tools/tool-ids';
+import { DOMAIN_TOOL_IDS, EVAL_CONFIG_TOOL_ID } from '../../src/tools/tool-ids';
 import type {
 	AgentActivity,
 	ArtifactRef,
@@ -616,7 +614,10 @@ function extractResourceIds(
 
 	// create-only: other actions (e.g. schema) return ids of EXISTING tables,
 	// and tracking those would let cleanup delete tables the agent only inspected.
-	if (toolName === DATA_TABLES_TOOL_ID && action === 'create') {
+	if (
+		toolName === SHARED_BUILDER_TOOL_NAMES.CREATE_DATA_TABLE ||
+		(isFormerDataTablesTool(toolName) && action === 'create')
+	) {
 		const record = toResultRecord(result);
 		const table = record ? getRecord(record, 'table') : undefined;
 		const id = table ? extractIdFromRecord(table, ['id']) : undefined;

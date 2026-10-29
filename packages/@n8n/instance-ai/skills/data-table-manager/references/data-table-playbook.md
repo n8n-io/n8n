@@ -132,44 +132,44 @@ Imported 1,000 rows into Leads. The file has more rows; import stopped at the 10
 Create a designed table:
 
 ```text
-1. data_tables list
-2. data_tables create { name, projectId?, columns }
+1. list_data_tables
+2. create_data_table { name, projectId?, columns }
 ```
 
 Import a CSV into a new table:
 
 ```text
 1. parse-file { attachmentIndex: 0, maxRows: 20 }
-2. data_tables list
-3. data_tables create with chosen column names/types
-4. data_tables insert-rows, max 100 rows
+2. list_data_tables
+3. create_data_table with chosen column names/types
+4. insert_data_table_rows, max 100 rows
 5. parse-file next page with startRow=nextStartRow; repeat up to safety limit
 ```
 
 Import into an existing table:
 
 ```text
-1. data_tables list
-2. data_tables schema with dataTableId; projectId is optional when dataTableId is present
+1. list_data_tables
+2. get_data_table_schema with dataTableId; projectId is optional when dataTableId is present
 3. parse-file preview
 4. Map source columns to existing schema names
-5. insert-rows in batches of 100
+5. insert_data_table_rows in batches of 100
 ```
 
 Update rows:
 
 ```text
-1. data_tables schema
-2. data_tables query with precise filter and small limit
-3. If matches are right, data_tables update-rows with the same filter and data
+1. get_data_table_schema
+2. query_data_table with precise filter and small limit
+3. If matches are right, update_data_table_rows with the same filter and data
 ```
 
 Delete rows:
 
 ```text
-1. data_tables schema
-2. data_tables query with precise filter and small limit
-3. If matches are right, data_tables delete-rows with the same filter
+1. get_data_table_schema
+2. query_data_table with precise filter and small limit
+3. If matches are right, delete_data_table_rows with the same filter
 ```
 
 ## Recovery And Edge Cases

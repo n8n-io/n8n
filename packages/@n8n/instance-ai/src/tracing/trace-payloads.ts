@@ -4,6 +4,7 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import { DATA_TABLE_TOOL_NAMES } from '@n8n/api-types';
 import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
@@ -1120,7 +1121,7 @@ function unprefixedToolName(name: string): string {
 }
 
 function classifyToolCategory(name: string): string {
-	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
+	if (DATA_TABLE_TOOL_NAMES.includes(name)) return 'data-table';
 	if (
 		name === DOMAIN_TOOL_IDS.NODES ||
 		name === DOMAIN_TOOL_IDS.SEARCH_NODES ||
