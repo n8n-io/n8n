@@ -647,6 +647,24 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		},
 	);
 
+	test('records a run the host marks as seeded, and no model run', () => {
+		capturedOnMessage!(
+			makeSSEEvent({
+				type: 'run-start',
+				runId: 'run-seeded',
+				agentId: 'agent-root',
+				payload: { messageId: 'msg-1', messageGroupId: 'mg-seeded', hostSeeded: true },
+			}),
+		);
+		capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-model', 'agent-root')));
+
+		const runtime = activeRuntime(registry);
+		// The view reads the mark when the message appears, so it must exist with the run-start.
+		expect(runtime.isHostSeededRun('run-seeded')).toBe(true);
+		expect(runtime.isHostSeededRun('run-model')).toBe(false);
+		expect(runtime.isHostSeededRun(undefined)).toBe(false);
+	});
+
 	test('background-group run-sync does not overwrite activeRunId from orchestrator sync', () => {
 		// First, create two assistant messages via normal events
 		capturedOnMessage!(

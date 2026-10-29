@@ -8,6 +8,14 @@ export const INSTANCE_AI_PROJECT_ID_QUERY = 'projectId';
 /** Entry-point source carried into the empty view when a hand-off can't create a thread yet. */
 export const INSTANCE_AI_SOURCE_QUERY = 'source';
 
+/**
+ * The thinking beat the chat plays before each host-written onboarding step. Longer than the
+ * greeting's beat, so the next step does not land the moment the card closes.
+ */
+export const ONBOARDING_STEP_THINKING_MS = 1800;
+/** How long "Opening a blank canvas…" stays readable after its thinking beat. */
+export const ONBOARDING_CANVAS_READ_MS = 1200;
+
 /** Brand names, deliberately not translated; single source for dialogs and settings rows. */
 export const SANDBOX_PROVIDER_LABELS = {
 	daytona: 'Daytona',

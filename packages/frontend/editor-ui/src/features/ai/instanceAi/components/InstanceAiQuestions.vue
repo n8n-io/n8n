@@ -71,6 +71,9 @@ const filteredOptions = computed(() => {
 	return resolvedOptions.value.filter((opt) => !opt.toLowerCase().trim().startsWith('other'));
 });
 
+// A host-seeded card can hide the free-text row, so the user must pick an option.
+const showsFreeText = computed(() => currentQuestion.value?.freeText !== false);
+
 const currentAnswer = computed(() => {
 	const q = currentQuestion.value;
 	return q ? answers.value.get(q.id) : undefined;
@@ -316,7 +319,8 @@ function handleArrowNavigation(event: KeyboardEvent, type: string, optionCount: 
 	}
 	if (event.key === 'ArrowDown') {
 		event.preventDefault();
-		const maxIdx = type === 'text' ? 0 : optionCount;
+		// The free-text row is the last row, one past the options.
+		const maxIdx = type === 'text' ? 0 : showsFreeText.value ? optionCount : optionCount - 1;
 		highlightedIndex.value = Math.min(maxIdx, highlightedIndex.value + 1);
 		scrollHighlightedIntoView();
 		return true;
@@ -445,6 +449,7 @@ function onOptionMouseEnter(idx: number) {
 						</button>
 
 						<div
+							v-if="showsFreeText"
 							:class="[
 								$style.somethingElseRow,
 								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },
@@ -497,6 +502,7 @@ function onOptionMouseEnter(idx: number) {
 						</label>
 
 						<div
+							v-if="showsFreeText"
 							:class="[
 								$style.somethingElseRowMulti,
 								{ [$style.highlighted]: highlightedIndex === filteredOptions.length },

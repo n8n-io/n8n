@@ -55,7 +55,11 @@ import {
 	shouldTraceContextInjection,
 	type InstanceContextResult,
 } from '../instance-context.service';
-import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
+import {
+	InstanceAiSkillsService,
+	SKILLS,
+	type InstanceAiSkillScope,
+} from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
 	buildCurrentDateTimeBlock,
@@ -75,6 +79,7 @@ import {
 	WORKFLOW_SETUP_STATE_CLOSE_TAG,
 	WORKFLOW_SETUP_STATE_OPEN_TAG,
 } from '../internal-messages';
+import { preloadsSuggestAutomations } from '../onboarding';
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 import { type OrchestratorResumeReason } from '../tracing';
 
@@ -347,9 +352,7 @@ export class AssistantTurnInputBuilder {
 		const isOpeningTurn = Boolean(
 			thread && !thread.metadata?.[OPENED_METADATA_KEY] && (!thread.title || unopenedOnboarding),
 		);
-		const onboardingSkill = unopenedOnboarding
-			? (await this.skillsService.loadSkill(SKILLS.suggestAutomations, skillScope)).instructions
-			: undefined;
+		const onboardingSkill = await this.resolveOnboardingSkill(thread?.metadata, skillScope);
 
 		const handoffTitle = unopenedOnboarding
 			? ONBOARDING_OPENING.title
@@ -726,6 +729,19 @@ export class AssistantTurnInputBuilder {
 			if (block !== undefined) return { block, savedSinceLastBlock };
 		}
 		return { savedSinceLastBlock };
+	}
+
+	/**
+	 * The skill body the first real turn of an onboarding thread preloads, or `undefined`. Only the
+	 * idea route preloads `suggest-automations`; the build routes and free text start a normal turn.
+	 */
+	private async resolveOnboardingSkill(
+		metadata: Record<string, unknown> | undefined,
+		skillScope: InstanceAiSkillScope,
+	): Promise<string | undefined> {
+		const unopenedOnboarding = metadata?.source === 'onboarding' && !metadata.titleRefined;
+		if (!unopenedOnboarding || !preloadsSuggestAutomations(metadata)) return undefined;
+		return (await this.skillsService.loadSkill(SKILLS.suggestAutomations, skillScope)).instructions;
 	}
 
 	/**

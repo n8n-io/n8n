@@ -241,9 +241,10 @@ describe('InstanceAiConversation', () => {
 		// Past the greeting's lines and thinking beats.
 		await vi.advanceTimersByTimeAsync(5000);
 
+		vi.mocked(thread.isHostSeededRun).mockImplementation((runId) => runId === 'seeded-run');
 		thread.messages = [
 			...thread.messages,
-			{ id: 'follow-up', role: 'assistant', content: 'Got it.', createdAt },
+			{ id: 'follow-up', role: 'assistant', content: 'Got it.', createdAt, runId: 'seeded-run' },
 		] as InstanceAiMessage[];
 		await nextTick();
 		await nextTick();
@@ -251,6 +252,71 @@ describe('InstanceAiConversation', () => {
 		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(true);
 		expect(wrapper.text()).not.toContain('Got it.');
 		expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(true);
+	});
+
+	it('holds each later onboarding step and keeps its card out of the input slot', async () => {
+		vi.useFakeTimers();
+		store.isOnboardingChromeHidden.mockReturnValue(true);
+		const createdAt = '2026-04-01T00:00:00.000Z';
+		thread.messages = [
+			{ id: 'greeting', role: 'assistant', content: 'Hi there', createdAt },
+			{ id: 'intent-lead', role: 'assistant', content: 'First step.', createdAt },
+		] as InstanceAiMessage[];
+		const wrapper = mountConversation();
+		await vi.advanceTimersByTimeAsync(5000);
+
+		// The host answers the intent card: the build lead and the build card arrive together.
+		thread.pendingConfirmations = [
+			{ toolCall: { confirmation: { inputType: 'questions', questions: [] } } },
+		] as unknown as typeof thread.pendingConfirmations;
+		vi.mocked(thread.isHostSeededRun).mockImplementation((runId) => runId === 'seeded-run');
+		thread.messages = [
+			...thread.messages,
+			{
+				id: 'build-lead',
+				role: 'assistant',
+				content: "Great, let's build it.",
+				createdAt,
+				runId: 'seeded-run',
+			},
+		] as InstanceAiMessage[];
+		await nextTick();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(true);
+		expect(wrapper.text()).not.toContain("Great, let's build it.");
+		expect(wrapper.text()).toContain('First step.');
+		expect(wrapper.findComponent(InstanceAiInputStub).exists()).toBe(false);
+	});
+
+	it('does not hold a model reply that follows the idea card', async () => {
+		vi.useFakeTimers();
+		store.isOnboardingChromeHidden.mockReturnValue(true);
+		const createdAt = '2026-04-01T00:00:00.000Z';
+		thread.messages = [
+			{ id: 'greeting', role: 'assistant', content: 'Hi there', createdAt },
+			{ id: 'idea-lead', role: 'assistant', content: 'A few quick questions.', createdAt },
+		] as InstanceAiMessage[];
+		const wrapper = mountConversation();
+		await vi.advanceTimersByTimeAsync(5000);
+
+		// The idea answers start a real model run; it is not host-seeded.
+		thread.messages = [
+			...thread.messages,
+			{
+				id: 'model-reply',
+				role: 'assistant',
+				content: 'Here are three ideas.',
+				createdAt,
+				runId: 'model-run',
+				isStreaming: true,
+			},
+		] as InstanceAiMessage[];
+		await nextTick();
+		await nextTick();
+
+		expect(wrapper.find('[data-test-id="instance-ai-onboarding-thinking"]').exists()).toBe(false);
+		expect(wrapper.text()).toContain('Here are three ideas.');
 	});
 
 	it('emits thread-missing when the thread cannot be found', async () => {

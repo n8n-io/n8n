@@ -569,10 +569,10 @@ export class InstanceAiController {
 			throw new BadRequestError(parseResult.error.errors[0].message);
 		}
 
-		// The host-seeded onboarding card has no run to resume: settle it and post the follow-up
-		// question as a finished synthetic run. The user's next chat message starts the first turn.
-		// Free text in the card starts that turn now, with the answers as the message, so the model
-		// check of `chat` applies; it runs before the card is consumed.
+		// A host-seeded onboarding card has no run to resume: settle it and post the next step as a
+		// finished synthetic run. An idea-card answer or free text starts the first turn now, with
+		// the answers as the message, so the model check of `chat` applies; it runs before the card
+		// is consumed.
 		if (startsOnboardingFirstTurn(requestId, parseResult.data)) {
 			await this.requireModelConfigured();
 		}
@@ -582,7 +582,7 @@ export class InstanceAiController {
 				'firstMessage' in card
 					? this.instanceAiService.startRun(req.user, card.threadId, card.firstMessage)
 					: card.runId;
-			return { ok: true, runId };
+			return { ok: true, runId, navigateTo: 'navigateTo' in card ? card.navigateTo : undefined };
 		}
 
 		const resolved = await this.instanceAiService.resolveConfirmation(

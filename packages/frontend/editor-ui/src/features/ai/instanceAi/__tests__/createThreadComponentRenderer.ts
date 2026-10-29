@@ -61,6 +61,7 @@ export function makeThread(): ThreadRuntime {
 		cancelRun: vi.fn().mockResolvedValue(undefined),
 		resolveConfirmation: vi.fn(),
 		confirmAction: vi.fn().mockResolvedValue(true),
+		isHostSeededRun: vi.fn().mockReturnValue(false),
 		copyFullTrace: vi.fn(),
 		submitFeedback: vi.fn(),
 	});
