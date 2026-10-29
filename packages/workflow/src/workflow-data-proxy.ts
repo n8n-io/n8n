@@ -73,6 +73,11 @@ const readOwnKey = (source: unknown, key: string): unknown => {
 	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
 };
 
+// `$parameter` resolves a nested expression through a new proxy, so the
+// parameters being resolved are tracked here and not on the proxy. Resolution
+// is synchronous, so the set holds only the chain of the current read.
+const parametersBeingResolved = new Set<string>();
+
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
 
