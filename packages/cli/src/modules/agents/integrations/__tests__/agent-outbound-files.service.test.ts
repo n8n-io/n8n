@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { UrlService } from '@n8n/backend-services';
-import type { Thread } from 'chat';
+import type { SentMessage, Thread } from 'chat';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -238,7 +238,7 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		});
 		thread.post.mockImplementation(async () => {
 			events.push('post');
-			return mock();
+			return mock<SentMessage>();
 		});
 
 		await service.postReplyFiles(thread, 'telegram', {
