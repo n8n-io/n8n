@@ -1,6 +1,6 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In, LessThan } from '@n8n/typeorm';
+import { DataSource, In, LessThan, Not } from '@n8n/typeorm';
 
 import { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 
@@ -151,6 +151,18 @@ export class AgentChatAttachmentRepository {
 			sourceCount: Number(raw?.sourceCount ?? 0),
 			sourceBytes: Number(raw?.sourceBytes ?? 0),
 		};
+	}
+
+	/** Files of one delegation tree, newest first, without the given source. */
+	async findInThreadNewestFirst(
+		scope: { projectId: string; threadId: string },
+		excludeSource: string,
+		ctx: OperationContext,
+	): Promise<AgentChatAttachment[]> {
+		return await this.table.managerFor(ctx).find(AgentChatAttachment, {
+			where: { ...scope, source: Not(excludeSource) },
+			order: { createdAt: 'DESC' },
+		});
 	}
 
 	async findByIds(ids: string[], ctx: OperationContext): Promise<AgentChatAttachment[]> {

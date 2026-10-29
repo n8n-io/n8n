@@ -1,5 +1,5 @@
 import { TransactionRunner } from '@n8n/db';
-import { In, LessThan } from '@n8n/typeorm';
+import { In, LessThan, Not } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -60,6 +60,23 @@ describe('AgentChatAttachmentRepository', () => {
 				await repository.findByHashesInThread([], { projectId: 'p-1', threadId: 'root' }, {}),
 			).toEqual([]);
 			expect(entityManager.find).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('findInThreadNewestFirst', () => {
+		it('finds the files of the tree without the source, newest first', async () => {
+			const find = entityManager.find.mockResolvedValue([]);
+
+			await repository.findInThreadNewestFirst(
+				{ projectId: 'p-1', threadId: 'root' },
+				'n8n_chat_production',
+				{},
+			);
+
+			expect(find).toHaveBeenCalledWith(AgentChatAttachment, {
+				where: { projectId: 'p-1', threadId: 'root', source: Not('n8n_chat_production') },
+				order: { createdAt: 'DESC' },
+			});
 		});
 	});
 });

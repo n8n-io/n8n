@@ -321,6 +321,47 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('listForSession', () => {
+		it('keeps the newest file for each hash and every file without one', async () => {
+			const row = (id: string, contentHash: string | null, minute: number) =>
+				({
+					id,
+					contentHash,
+					fileName: `${id}.txt`,
+					mimeType: 'text/plain',
+					fileSizeBytes: 1,
+					source: 'sandbox',
+					createdAt: new Date(Date.UTC(2026, 9, 29, 10, minute)),
+				}) as AgentChatAttachment;
+			repository.findInThreadNewestFirst.mockResolvedValue([
+				row('new', 'h1', 3),
+				row('legacy-1', null, 2),
+				row('old', 'h1', 1),
+				row('legacy-2', null, 0),
+			]);
+
+			const files = await service.listForSession(
+				{ projectId: 'project-1', threadId: 'root' },
+				'n8n_chat_production',
+			);
+
+			expect(files.map((file) => file.fileId)).toEqual(['new', 'legacy-1', 'legacy-2']);
+			expect(files[0]).toEqual({
+				fileId: 'new',
+				fileName: 'new.txt',
+				mimeType: 'text/plain',
+				sizeBytes: 1,
+				source: 'sandbox',
+				createdAt: '2026-10-29T10:03:00.000Z',
+			});
+			expect(repository.findInThreadNewestFirst).toHaveBeenCalledWith(
+				{ projectId: 'project-1', threadId: 'root' },
+				'n8n_chat_production',
+				{},
+			);
+		});
+	});
+
 	describe('findReadableByHashes', () => {
 		const file = (id: string, contentHash: string, createdByThreadId: string) =>
 			({ id, contentHash, createdByThreadId, threadId: 'root' }) as AgentChatAttachment;

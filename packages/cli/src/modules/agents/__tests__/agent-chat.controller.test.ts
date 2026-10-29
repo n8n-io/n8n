@@ -216,6 +216,7 @@ describe('AgentChatController route access scopes', () => {
 		['reorderQueuedMessage', 'agent:execute'],
 		['steerQueuedMessage', 'agent:execute'],
 		['getBackgroundJobs', 'agent:read'],
+		['getSessionFiles', 'agent:read'],
 		['stopBackgroundJobs', 'agent:execute'],
 		['getProductionBackgroundJobs', 'agent:execute'],
 		['stopProductionBackgroundJobs', 'agent:execute'],
@@ -512,6 +513,59 @@ describe('AgentChatController background tasks', () => {
 		expect(backgroundJobService.listCurrentGroupForThread).not.toHaveBeenCalled();
 		agentsService.findById.mockResolvedValue(null);
 		await expect(controller.getBackgroundJobs(request as never)).rejects.toThrow(NotFoundError);
+	});
+});
+
+describe('AgentChatController session files', () => {
+	const thread = mock<AgentExecutionThread>({
+		id: 'thread-1',
+		projectId: 'project-1',
+		agentId: 'agent-1',
+		accessScope: 'user',
+		ownerId: 'user-1',
+	});
+	const request = {
+		params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		user: { id: 'user-1' },
+	};
+
+	beforeEach(() => vi.clearAllMocks());
+
+	it('lists the files of an owned session without production chat files', async () => {
+		const { controller, agentsService, agentExecutionService, agentChatAttachmentService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(true as never);
+		const files = [
+			{
+				fileId: 'f-1',
+				fileName: 'reports/q1.csv',
+				mimeType: 'text/csv',
+				sizeBytes: 3,
+				source: 'sandbox',
+				createdAt: '2026-10-29T10:00:00.000Z',
+			},
+		];
+		agentChatAttachmentService.listForSession.mockResolvedValue(files);
+
+		await expect(controller.getSessionFiles(request as never)).resolves.toEqual({ files });
+		expect(agentChatAttachmentService.listForSession).toHaveBeenCalledWith(
+			{ projectId: 'project-1', threadId: 'thread-1' },
+			'n8n_chat_production',
+		);
+	});
+
+	it('returns no files for a new session and rejects an unrelated thread', async () => {
+		const { controller, agentsService, agentExecutionService, agentChatAttachmentService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(null);
+		await expect(controller.getSessionFiles(request as never)).resolves.toEqual({ files: [] });
+
+		agentExecutionService.findThreadById.mockResolvedValue({ ...thread, ownerId: 'other-user' });
+		await expect(controller.getSessionFiles(request as never)).rejects.toThrow(NotFoundError);
+		expect(agentChatAttachmentService.listForSession).not.toHaveBeenCalled();
 	});
 });
 

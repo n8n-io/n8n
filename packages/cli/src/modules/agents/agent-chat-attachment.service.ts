@@ -1,4 +1,8 @@
-import { isAttachmentMediaTypeSupported, type AgentToolOutputFile } from '@n8n/api-types';
+import {
+	isAttachmentMediaTypeSupported,
+	type AgentSessionFile,
+	type AgentToolOutputFile,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { isEntityNotFoundError, type SourceType } from '@n8n/db';
@@ -164,6 +168,35 @@ export class AgentChatAttachmentService {
 	): Promise<AgentChatAttachment | null> {
 		const root = await this.findRootThread(scope.threadId);
 		return await this.findReadable(attachmentId, scope, root.id);
+	}
+
+	/**
+	 * The files of a session for the session files list, newest first. A
+	 * sandbox file can have many versions with the same bytes, so the list
+	 * keeps the newest file for each hash. Older files have no hash and all
+	 * stay. The caller checks access to the session.
+	 */
+	async listForSession(
+		scope: { projectId: string; threadId: string },
+		excludeSource: string,
+	): Promise<AgentSessionFile[]> {
+		const files = await this.repository.findInThreadNewestFirst(scope, excludeSource, {});
+		const seen = new Set<string>();
+		return files
+			.filter((file) => {
+				if (!file.contentHash) return true;
+				if (seen.has(file.contentHash)) return false;
+				seen.add(file.contentHash);
+				return true;
+			})
+			.map((file) => ({
+				fileId: file.id,
+				fileName: file.fileName,
+				mimeType: file.mimeType,
+				sizeBytes: file.fileSizeBytes,
+				source: file.source,
+				createdAt: file.createdAt.toISOString(),
+			}));
 	}
 
 	/**

@@ -1,6 +1,7 @@
 import {
 	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
+	type AgentSessionFilesResponse,
 	AgentChatMessageDto,
 	AgentChatCancelDto,
 	AgentTaskCancellationDto,
@@ -1013,6 +1014,31 @@ export class AgentChatController {
 			messagesToDto(messages),
 			ownCheckpoint(checkpoint, draftChatMemoryResourceId(req.user.id)),
 		);
+	}
+
+	@Get('/:agentId/chat/:threadId/files')
+	@ProjectScope('agent:read')
+	async getSessionFiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		const agent = await this.agentsService.findById(agentId, projectId);
+		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
+		const thread = await this.agentExecutionService.findThreadById(threadId);
+		// A new preview session has no thread until its first execution starts.
+		if (!thread) return { files: [] };
+		if (!threadBelongsTo(thread, projectId, agentId, req.user.id)) {
+			throw new NotFoundError(`Thread "${threadId}" not found`);
+		}
+		if (thread.accessScope === 'user') {
+			await this.requirePreviewThread(threadId, projectId, agentId, req.user.id);
+		}
+		// The download route does not serve production chat files, so the list leaves them out.
+		const files = await this.agentChatAttachmentService.listForSession(
+			{ projectId, threadId },
+			N8N_CHAT_PRODUCTION_SOURCE,
+		);
+		return { files };
 	}
 
 	@Get('/:agentId/chat/attachments/:attachmentId')
