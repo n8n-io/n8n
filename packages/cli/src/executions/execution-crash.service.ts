@@ -1,5 +1,5 @@
 import { EventService } from '@n8n/backend-services';
-import type { CrashedExecution } from '@n8n/db';
+import type { CrashedExecution, ResumableExecutionStatus } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -28,6 +28,26 @@ export class ExecutionCrashService {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
 			this.count(batch);
 			this.announce(batch, detector);
+		});
+	}
+
+	/**
+	 * Mark a parked (`waiting` or `new`) execution as crashed without loading its data, for
+	 * a resume or a start that must not be attempted again. With `expectedAttempts`, the
+	 * row is left alone if another process resumed it since the caller read that count.
+	 */
+	async markParkedAsCrashed(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		detector: CrashDetector,
+		expectedAttempts?: number,
+	): Promise<CrashedExecution[]> {
+		return await this.executionRepository.markParkedAsCrashed(executionId, status, {
+			expectedAttempts,
+			onTransitioned: (batch) => {
+				this.count(batch);
+				this.announce(batch, detector);
+			},
 		});
 	}
 

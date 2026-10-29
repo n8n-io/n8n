@@ -413,22 +413,6 @@ export class ExecutionPersistence {
 	}
 
 	/**
-	 * Like {@link findMultipleExecutions}, but also returns the ids of executions whose data
-	 * bundle could not be read. The plain read drops those silently; callers that must act on
-	 * them (rather than skip them) use this.
-	 */
-	async findMultipleExecutionsWithUnreadable(
-		queryParams: FindManyOptions<ExecutionEntity>,
-	): Promise<{ executions: IExecutionResponse[]; unreadableIds: string[] }> {
-		const { executions, unreadableIds } = await this.readMultiple(queryParams, {
-			includeData: true,
-			unflattenData: true,
-		});
-
-		return { executions: executions as IExecutionResponse[], unreadableIds };
-	}
-
-	/**
 	 * Read entities together with their data bundles, reporting which entities had no readable
 	 * bundle. An id lands in `unreadableIds` only on permanent loss - a missing bundle or a
 	 * corrupt one - since transient store failures propagate as throws instead.

@@ -90,6 +90,15 @@ export type CrashedExecution = {
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
+/** A status from which n8n loads an execution into memory to resume or start it. */
+export type ResumableExecutionStatus = 'waiting' | 'new';
+
+/** Result of a claim to load an execution into memory, see `claimResumeAttempt`. */
+export type ResumeAttemptClaim =
+	| { outcome: 'claimed'; attempts: number; jsonSizeBytes: number }
+	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }
+	| { outcome: 'conflict' };
+
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
 	requireNotFinished?: boolean;
@@ -439,11 +448,42 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
+	 * Set a parked (`waiting` or `new`) execution to `crashed` without loading it, for a
+	 * resume or a start that must not be attempted again. `markAsCrashed` deliberately
+	 * leaves parked rows alone, so the status to leave is named explicitly here. With
+	 * `expectedAttempts`, the row is left alone if its count changed since the caller read
+	 * it, because another process then resumed it in the meantime.
+	 */
+	async markParkedAsCrashed(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		{
+			expectedAttempts,
+			onTransitioned,
+		}: { expectedAttempts?: number; onTransitioned?: (batch: CrashedExecution[]) => void } = {},
+	): Promise<CrashedExecution[]> {
+		const where: FindOptionsWhere<ExecutionEntity> = { id: executionId };
+		if (expectedAttempts !== undefined) where.resumeAttempts = expectedAttempts;
+
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionToCrashed(where, [status]),
+		);
+
+		if (transitioned.length > 0) {
+			onTransitioned?.(transitioned);
+			this.logger.info('Marked executions as `crashed`', { executionIds: [executionId] });
+		}
+
+		return transitioned;
+	}
+
+	/**
 	 * Set the rows matching `where` to `crashed`. The caller's predicate selects the
 	 * candidates; the status guard and the identity of the written rows are added here.
 	 */
 	private async transitionToCrashed(
 		where: FindOptionsWhere<ExecutionEntity>,
+		fromStatuses: readonly ExecutionStatus[] = CRASHABLE_EXECUTION_STATUSES,
 	): Promise<CrashedExecution[]> {
 		// `stoppedAt` doubles as a claim token, so the read below can match the rows this
 		// UPDATE wrote without `SELECT ... FOR UPDATE`, which SQLite does not support. A
@@ -456,7 +496,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			// healthy execution as dangling, but only genuinely in-progress rows should be crashed
 			const updateResult = await tx.update(
 				ExecutionEntity,
-				{ ...where, status: In(CRASHABLE_EXECUTION_STATUSES) },
+				{ ...where, status: In(fromStatuses) },
 				{ status: 'crashed', stoppedAt, waitTill: null },
 			);
 
@@ -764,6 +804,64 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	async deleteByIds(executionIds: string[]) {
 		return await this.delete({ id: In(executionIds) });
+	}
+
+	/**
+	 * Claim one attempt to load this execution into memory, before the load. A load that
+	 * kills the process then stays counted, and the next start can refuse to repeat it.
+	 * Reports `exhausted` once the execution has used `maxAttempts`, and `conflict` when the
+	 * row is no longer in `status`, for example because another process claimed it first.
+	 */
+	async claimResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		maxAttempts: number,
+	): Promise<ResumeAttemptClaim> {
+		const execution = await this.findOne({
+			select: ['id', 'resumeAttempts', 'jsonSizeBytes'],
+			where: { id: executionId, status },
+		});
+		if (!execution) return { outcome: 'conflict' };
+
+		const { resumeAttempts: attempts, jsonSizeBytes } = execution;
+		if (attempts >= maxAttempts) return { outcome: 'exhausted', attempts, jsonSizeBytes };
+
+		// The current count is part of the predicate, so two processes cannot share one claim.
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts + 1 },
+		);
+		if ((result.affected ?? 0) === 0) return { outcome: 'conflict' };
+
+		return { outcome: 'claimed', attempts: attempts + 1, jsonSizeBytes };
+	}
+
+	/**
+	 * Give back a claimed attempt, for a load that ended without a resume. `attempts` is the
+	 * count the claim returned, so a later claim by another process is not undone.
+	 */
+	async releaseResumeAttempt(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		attempts: number,
+	): Promise<boolean> {
+		const result = await this.update(
+			{ id: executionId, status, resumeAttempts: attempts },
+			{ resumeAttempts: attempts - 1 },
+		);
+
+		return (result.affected ?? 0) > 0;
+	}
+
+	/** Ids of all executions still enqueued (`new`), oldest first. */
+	async findEnqueuedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: 'new' },
+			order: { id: 'ASC' },
+		});
+
+		return rows.map(({ id }) => id);
 	}
 
 	async getWaitingExecutions() {

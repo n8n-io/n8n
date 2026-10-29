@@ -158,6 +158,110 @@ describe('UserRepository', () => {
 		});
 	});
 
+	describe('claimResumeAttempt', () => {
+		test('counts each claim up to the limit, then reports the attempts as used up', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toMatchObject({ outcome: 'claimed', attempts: 1 });
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toMatchObject({ outcome: 'claimed', attempts: 2 });
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toMatchObject({ outcome: 'exhausted', attempts: 2 });
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(2);
+			expect(row?.status).toBe('waiting');
+		});
+
+		test('reports a conflict and counts nothing when the execution left the status', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'running' }, workflow);
+
+			await expect(
+				executionRepository.claimResumeAttempt(execution.id, 'waiting', 2),
+			).resolves.toEqual({ outcome: 'conflict' });
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(0);
+		});
+	});
+
+	describe('releaseResumeAttempt', () => {
+		test('gives back the attempt that the claim returned', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 2);
+
+			await expect(
+				executionRepository.releaseResumeAttempt(execution.id, 'waiting', 1),
+			).resolves.toBe(true);
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(0);
+		});
+
+		test('leaves the count alone when another claim changed it in the meantime', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 3);
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 3);
+
+			await expect(
+				executionRepository.releaseResumeAttempt(execution.id, 'waiting', 1),
+			).resolves.toBe(false);
+
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.resumeAttempts).toBe(2);
+		});
+	});
+
+	describe('markParkedAsCrashed', () => {
+		test('crashes a waiting execution and clears its wait time', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution(
+				{ status: 'waiting', waitTill: new Date() },
+				workflow,
+			);
+
+			const crashed = await executionRepository.markParkedAsCrashed(execution.id, 'waiting');
+
+			expect(crashed.map(({ id }) => id)).toEqual([execution.id]);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('crashed');
+			expect(row?.waitTill).toBeNull();
+		});
+
+		test('leaves an execution alone when it is not in the named status', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'running' }, workflow);
+
+			const crashed = await executionRepository.markParkedAsCrashed(execution.id, 'waiting');
+
+			expect(crashed).toEqual([]);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('running');
+		});
+
+		test('leaves an execution alone when its attempt count changed since it was read', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ status: 'waiting' }, workflow);
+			await executionRepository.claimResumeAttempt(execution.id, 'waiting', 2);
+
+			const crashed = await executionRepository.markParkedAsCrashed(execution.id, 'waiting', {
+				expectedAttempts: 2,
+			});
+
+			expect(crashed).toEqual([]);
+			const row = await executionRepository.findOneBy({ id: execution.id });
+			expect(row?.status).toBe('waiting');
+		});
+	});
+
 	describe('updateExistingExecution with conditions', () => {
 		test.each([
 			{

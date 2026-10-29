@@ -1,5 +1,4 @@
 import { Logger } from '@n8n/backend-common';
-import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -17,10 +16,9 @@ import {
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
-import { markResumeEnded, markResumeStarted, readInterruptedResumes } from '@/crash-journal';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
+import { ResumeAttemptService } from '@/executions/resume-attempt.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -52,10 +50,10 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	private resumingParkedParents = false;
+	/** Executions whose resume is in progress in this process. */
+	private readonly resuming = new Set<string>();
 
-	/** Resumes of this process that are between the journal write and its removal. */
-	private readonly journaledResumes = new Set<string>();
+	private resumingParkedParents = false;
 
 	constructor(
 		private readonly logger: Logger,
@@ -66,8 +64,7 @@ export class WaitTracker {
 		private readonly activeExecutions: ActiveExecutions,
 		private readonly workflowRunner: WorkflowRunner,
 		private readonly instanceSettings: InstanceSettings,
-		private readonly executionCrashService: ExecutionCrashService,
-		private readonly executionsConfig: ExecutionsConfig,
+		private readonly resumeAttemptService: ResumeAttemptService,
 	) {
 		this.logger = this.logger.scoped('waiting-executions');
 	}
@@ -81,35 +78,8 @@ export class WaitTracker {
 		return { waitingExecutions: Object.keys(this.waitingExecutions).length };
 	}
 
-	/** The resume journal is per process, so it applies only when one process owns all resumes. */
-	private get journalsResumes() {
-		return this.executionsConfig.mode === 'regular';
-	}
-
-	async init() {
-		if (this.journalsResumes) await this.crashInterruptedResumes();
+	init() {
 		if (this.instanceSettings.isLeader) this.startTracking();
-	}
-
-	/** A resume that was loading when the process died likely caused the crash, so do not repeat it. */
-	private async crashInterruptedResumes() {
-		for (const executionId of await readInterruptedResumes()) {
-			try {
-				const claimed = await this.executionPersistence.updateExistingExecution(
-					executionId,
-					{ status: 'running' },
-					{ requireStatus: 'waiting' },
-				);
-				if (claimed)
-					await this.executionCrashService.markAsCrashed(executionId, 'startup-recovery');
-				await markResumeEnded(executionId);
-			} catch (error) {
-				this.logger.error('Failed to mark an interrupted resume as crashed', {
-					executionId,
-					error: ensureError(error).message,
-				});
-			}
-		}
 	}
 
 	@OnLeaderTakeover()
@@ -178,37 +148,24 @@ export class WaitTracker {
 	}
 
 	async startExecution(executionId: string) {
+		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
-		if (!this.journalsResumes) return await this.resumeExecution(executionId);
 
-		// One attempt at a time, so that one attempt cannot remove the journal entry of another.
-		if (this.journaledResumes.has(executionId)) {
-			throw new ExecutionAlreadyResumingError(executionId);
-		}
-		this.journaledResumes.add(executionId);
-		await this.updateJournal(markResumeStarted, executionId);
+		// A sweep can find the row still `waiting` while this process loads it. A second
+		// load would double the memory in use and use up a second load attempt.
+		if (this.resuming.has(executionId)) throw new ExecutionAlreadyResumingError(executionId);
+		this.resuming.add(executionId);
 		try {
 			await this.resumeExecution(executionId);
 		} finally {
-			this.journaledResumes.delete(executionId);
-			await this.updateJournal(markResumeEnded, executionId);
-		}
-	}
-
-	/** The journal only breaks crash loops, so a failed write must not affect the resume. */
-	private async updateJournal(write: (executionId: string) => Promise<void>, executionId: string) {
-		try {
-			await write(executionId);
-		} catch (error) {
-			this.logger.warn('Failed to update the resume journal', {
-				executionId,
-				error: ensureError(error).message,
-			});
+			this.resuming.delete(executionId);
 		}
 	}
 
 	private async resumeExecution(executionId: string) {
-		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
+		// Claimed before the load, so a load that kills the process cannot repeat without limit
+		const claim = await this.resumeAttemptService.claim(executionId, 'waiting');
+		if (!claim.granted) return;
 
 		// Get the data to execute
 		const fullExecutionData = await this.executionPersistence.findSingleExecution(executionId, {
@@ -421,6 +378,36 @@ export class WaitTracker {
 	}
 
 	private async resumeParentIfChildFinished(parentId: string) {
+		// The child-completion callback may be resuming this parent right now. It holds the
+		// same guard as a resume, so the inspection must not claim an attempt on top of its own:
+		// that attempt could not be given back, and a later sweep would crash a healthy parent.
+		if (this.resuming.has(parentId)) return;
+		this.resuming.add(parentId);
+
+		let childExecution: RelatedExecution | undefined;
+		try {
+			// The inspection loads the parent's full run data, so it is claimed like a resume.
+			// The attempt goes back once the inspection ends, with or without a patch, and the
+			// resume that may follow claims its own.
+			const claim = await this.resumeAttemptService.claim(parentId, 'waiting');
+			if (!claim.granted) return;
+
+			try {
+				childExecution = await this.patchParentWithFinishedChild(parentId);
+			} finally {
+				await this.resumeAttemptService.release(parentId, 'waiting', claim.attempt);
+			}
+		} finally {
+			this.resuming.delete(parentId);
+		}
+
+		if (childExecution) await this.claimParent(parentId, childExecution);
+	}
+
+	/** Patch the parent with its finished child's result. Returns the child when patched. */
+	private async patchParentWithFinishedChild(
+		parentId: string,
+	): Promise<RelatedExecution | undefined> {
 		const parent = await this.executionPersistence.findSingleExecution(parentId, {
 			includeData: true,
 			unflattenData: true,
@@ -478,7 +465,7 @@ export class WaitTracker {
 			return;
 		}
 
-		await this.claimParent(parentId, childExecution);
+		return childExecution;
 	}
 
 	/**

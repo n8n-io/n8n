@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionsConfig } from '@n8n/config';
 import { mockLogger, mockInstance } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -24,22 +23,15 @@ import type { Mock, MockInstance } from 'vitest';
 import { mock, captor } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { markResumeEnded, markResumeStarted, readInterruptedResumes } from '@/crash-journal';
 import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
-import type { ExecutionCrashService } from '@/executions/execution-crash.service';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
+import type { ResumeAttemptService } from '@/executions/resume-attempt.service';
 import { NodeTypes } from '@/node-types';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WaitTracker } from '@/wait-tracker';
-
-vi.mock('@/crash-journal', () => ({
-	markResumeStarted: vi.fn(),
-	markResumeEnded: vi.fn(),
-	readInterruptedResumes: vi.fn().mockResolvedValue([]),
-}));
 import type { WorkflowRunner } from '@/workflow-runner';
 
 vi.useFakeTimers({ shouldAdvanceTime: true });
@@ -53,8 +45,7 @@ describe('WaitTracker', () => {
 	const executionPersistence = mock<ExecutionPersistence>();
 	const multiMainSetup = mock<MultiMainSetup>();
 	const instanceSettings = mock<InstanceSettings>({ isLeader: true, isMultiMain: false });
-	const executionCrashService = mock<ExecutionCrashService>();
-	const executionsConfig = mock<ExecutionsConfig>({ mode: 'regular' });
+	const resumeAttemptService = mock<ResumeAttemptService>();
 
 	const project = mock<Project>({ id: 'projectId' });
 	const execution = mock<IExecutionResponse>({
@@ -86,6 +77,7 @@ describe('WaitTracker', () => {
 		Container.set(ExecutionPersistence, executionPersistence);
 		mockInstance(CredentialsPermissionChecker).getCredentialIdsForNodes.mockReturnValue([]);
 		executionRepository.findParkedOnSubExecution.mockResolvedValue([]);
+		resumeAttemptService.claim.mockResolvedValue({ granted: true, attempt: 1 });
 		waitTracker = new WaitTracker(
 			logger,
 			executionRepository,
@@ -95,8 +87,7 @@ describe('WaitTracker', () => {
 			activeExecutions,
 			workflowRunner,
 			instanceSettings,
-			executionCrashService,
-			executionsConfig,
+			resumeAttemptService,
 		);
 		multiMainSetup.on.mockReturnThis();
 	});
@@ -117,77 +108,26 @@ describe('WaitTracker', () => {
 	});
 
 	describe('init()', () => {
-		it('should query DB for waiting executions if leader', async () => {
+		it('should query DB for waiting executions if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
-			await waitTracker.init();
+			waitTracker.init();
 
 			expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
 		});
 
-		it('if follower, should do nothing', async () => {
+		it('if follower, should do nothing', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-			await waitTracker.init();
+			waitTracker.init();
 
 			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 		});
 
-		it('marks a resume that was loading when the process died as crashed', async () => {
-			vi.mocked(readInterruptedResumes).mockResolvedValueOnce(['123']);
-			executionPersistence.updateExistingExecution.mockResolvedValueOnce(true);
+		it('if no executions to start, should do nothing', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-			await waitTracker.init();
-
-			expect(executionPersistence.updateExistingExecution).toHaveBeenCalledWith(
-				'123',
-				{ status: 'running' },
-				{ requireStatus: 'waiting' },
-			);
-			expect(executionCrashService.markAsCrashed).toHaveBeenCalledWith('123', 'startup-recovery');
-			const [crashOrder] = executionCrashService.markAsCrashed.mock.invocationCallOrder;
-			const [pollOrder] = executionRepository.getWaitingExecutions.mock.invocationCallOrder;
-			expect(crashOrder).toBeLessThan(pollOrder);
-		});
-
-		it('keeps the journal entry when it cannot mark the resume as crashed', async () => {
-			vi.mocked(readInterruptedResumes).mockResolvedValueOnce(['123']);
-			executionPersistence.updateExistingExecution.mockRejectedValueOnce(
-				new Error('database is locked'),
-			);
-			executionRepository.getWaitingExecutions.mockResolvedValue([]);
-
-			await waitTracker.init();
-
-			expect(markResumeEnded).not.toHaveBeenCalled();
-			expect(executionRepository.getWaitingExecutions).toHaveBeenCalled();
-		});
-
-		it('does not read the journal in queue mode', async () => {
-			executionsConfig.mode = 'queue';
-			executionRepository.getWaitingExecutions.mockResolvedValue([]);
-
-			await waitTracker.init();
-
-			expect(readInterruptedResumes).not.toHaveBeenCalled();
-			executionsConfig.mode = 'regular';
-		});
-
-		it('leaves an interrupted resume alone when it is no longer waiting', async () => {
-			vi.mocked(readInterruptedResumes).mockResolvedValueOnce(['123']);
-			executionPersistence.updateExistingExecution.mockResolvedValueOnce(false);
-			executionRepository.getWaitingExecutions.mockResolvedValue([]);
-
-			await waitTracker.init();
-
-			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
-		});
-
-		it('if no executions to start, should do nothing', async () => {
-			executionRepository.getWaitingExecutions.mockResolvedValue([]);
-
-			await waitTracker.init();
+			waitTracker.init();
 
 			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
 		});
@@ -195,7 +135,7 @@ describe('WaitTracker', () => {
 		describe('if execution to start', () => {
 			let startExecutionSpy: MockInstance<(...args: [executionId: string]) => Promise<void>>;
 
-			beforeEach(async () => {
+			beforeEach(() => {
 				executionPersistence.findSingleExecution
 					.calledWith(execution.id)
 					.mockResolvedValue(execution);
@@ -206,7 +146,7 @@ describe('WaitTracker', () => {
 					.spyOn(waitTracker, 'startExecution')
 					.mockImplementation(async () => {});
 
-				await waitTracker.init();
+				waitTracker.init();
 			});
 
 			it('if not enough time passed, should not start execution', async () => {
@@ -253,9 +193,9 @@ describe('WaitTracker', () => {
 	});
 
 	describe('startExecution()', () => {
-		beforeEach(async () => {
+		beforeEach(() => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
-			await waitTracker.init();
+			waitTracker.init();
 
 			executionPersistence.findSingleExecution
 				.calledWith(execution.id)
@@ -263,62 +203,6 @@ describe('WaitTracker', () => {
 			ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 
 			execution.data.parentExecution = undefined;
-		});
-
-		it('journals the resume while it loads and starts', async () => {
-			await waitTracker.startExecution(execution.id);
-
-			const [startedOrder] = vi.mocked(markResumeStarted).mock.invocationCallOrder;
-			const [readOrder] = executionPersistence.findSingleExecution.mock.invocationCallOrder;
-			const [runOrder] = workflowRunner.run.mock.invocationCallOrder;
-			const [endedOrder] = vi.mocked(markResumeEnded).mock.invocationCallOrder;
-			expect(markResumeStarted).toHaveBeenCalledWith(execution.id);
-			expect(startedOrder).toBeLessThan(readOrder);
-			expect(runOrder).toBeLessThan(endedOrder);
-		});
-
-		it('resumes even when the journal cannot be written', async () => {
-			vi.mocked(markResumeStarted).mockRejectedValueOnce(new Error('ENOSPC'));
-
-			await waitTracker.startExecution(execution.id);
-
-			expect(workflowRunner.run).toHaveBeenCalledOnce();
-		});
-
-		it('rejects a second attempt while the first one is still in progress', async () => {
-			const run = createDeferredPromise<string>();
-			workflowRunner.run.mockReturnValueOnce(run.promise);
-
-			const first = waitTracker.startExecution(execution.id);
-			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
-
-			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
-				ExecutionAlreadyResumingError,
-			);
-			expect(markResumeEnded).not.toHaveBeenCalled();
-
-			run.resolve(execution.id);
-			await first;
-		});
-
-		it('does not journal in queue mode', async () => {
-			executionsConfig.mode = 'queue';
-
-			await waitTracker.startExecution(execution.id);
-
-			expect(markResumeStarted).not.toHaveBeenCalled();
-			expect(workflowRunner.run).toHaveBeenCalledOnce();
-			executionsConfig.mode = 'regular';
-		});
-
-		it('ends the journal entry when the resume fails', async () => {
-			executionPersistence.findSingleExecution
-				.calledWith(execution.id)
-				.mockRejectedValueOnce(new Error('connection terminated unexpectedly'));
-
-			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow();
-
-			expect(markResumeEnded).toHaveBeenCalledWith(execution.id);
 		});
 
 		it('should query for execution to start', async () => {
@@ -343,6 +227,44 @@ describe('WaitTracker', () => {
 				false,
 				{ executionId: execution.id, expectedStatus: 'waiting', storedAt: 'fs' },
 			);
+		});
+
+		it('claims a load attempt before reading the execution', async () => {
+			await waitTracker.startExecution(execution.id);
+
+			expect(resumeAttemptService.claim).toHaveBeenCalledWith(execution.id, 'waiting');
+			const [claimOrder] = resumeAttemptService.claim.mock.invocationCallOrder;
+			const [readOrder] = executionPersistence.findSingleExecution.mock.invocationCallOrder;
+			expect(claimOrder).toBeLessThan(readOrder);
+		});
+
+		it('does not read or run the execution when its load attempts are used up', async () => {
+			resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
+
+			await waitTracker.startExecution(execution.id);
+
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		// A sweep that runs while the first load is in progress used to load the data a
+		// second time, because the row is still `waiting` until the load completes.
+		it('rejects a second resume while the first one is still loading', async () => {
+			const run = createDeferredPromise<string>();
+			workflowRunner.run.mockReturnValueOnce(run.promise);
+
+			const first = waitTracker.startExecution(execution.id);
+			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
+
+			await expect(waitTracker.startExecution(execution.id)).rejects.toThrow(
+				ExecutionAlreadyResumingError,
+			);
+			expect(resumeAttemptService.claim).toHaveBeenCalledTimes(1);
+			expect(executionPersistence.findSingleExecution).toHaveBeenCalledTimes(1);
+
+			run.resolve(execution.id);
+			await first;
+			await expect(waitTracker.startExecution(execution.id)).resolves.toBeUndefined();
 		});
 
 		// The acting user is not a stored field, so a resume has to derive it again.
@@ -1108,13 +1030,79 @@ describe('WaitTracker', () => {
 			workflowRunner.run.mockResolvedValue(parentId);
 		});
 
-		it('runs on the leader tick', async () => {
+		it('runs on the leader tick', () => {
 			executionRepository.findParkedOnSubExecution.mockResolvedValue([]);
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-			await waitTracker.init();
+			waitTracker.init();
 
 			expect(executionRepository.findParkedOnSubExecution).toHaveBeenCalledTimes(1);
+		});
+
+		// The inspection loads the parent's full run data, so a load that kills the process
+		// must count like a resume, or the sweep repeats it on every boot without limit.
+		it('claims an attempt before it loads the parent and gives it back after the inspection', async () => {
+			executionPersistence.findSingleExecution
+				.calledWith(parentId)
+				.mockResolvedValue(parkedParent([childId]));
+			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'running' }]);
+
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			expect(resumeAttemptService.claim).toHaveBeenCalledExactlyOnceWith(parentId, 'waiting');
+			const [claimOrder] = resumeAttemptService.claim.mock.invocationCallOrder;
+			const [readOrder] = executionPersistence.findSingleExecution.mock.invocationCallOrder;
+			expect(claimOrder).toBeLessThan(readOrder);
+			expect(resumeAttemptService.release).toHaveBeenCalledExactlyOnceWith(parentId, 'waiting', 1);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('does not load the parent when its load attempts are used up', async () => {
+			resumeAttemptService.claim.mockResolvedValueOnce({ granted: false });
+
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			expect(executionPersistence.findSingleExecution).not.toHaveBeenCalled();
+			expect(resumeAttemptService.release).not.toHaveBeenCalled();
+		});
+
+		it('gives the inspection attempt back before the resume claims its own', async () => {
+			executionPersistence.findSingleExecution
+				.calledWith(parentId)
+				.mockResolvedValue(parkedParent([childId]));
+			executionPersistence.findSingleExecution
+				.calledWith(childId)
+				.mockResolvedValue(finishedChild());
+			executionRepository.findStatusesByIds.mockResolvedValue([{ id: childId, status: 'success' }]);
+
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			const [releaseOrder] = resumeAttemptService.release.mock.invocationCallOrder;
+			const [, resumeClaimOrder] = resumeAttemptService.claim.mock.invocationCallOrder;
+			expect(releaseOrder).toBeLessThan(resumeClaimOrder);
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+		});
+
+		// The callback that resumes a parent after its child finishes may still be waiting for
+		// capacity when the sweep runs. An inspection claim on top of that resume's own claim
+		// could not be given back, and the next sweep would then crash the healthy parent.
+		it('does not inspect a parent that this process is already resuming', async () => {
+			const admission = createDeferredPromise<string>();
+			workflowRunner.run.mockReturnValueOnce(admission.promise);
+			executionPersistence.findSingleExecution
+				.calledWith(parentId)
+				.mockResolvedValue(parkedParent([childId]));
+
+			const resume = waitTracker.startExecution(parentId);
+			await vi.waitFor(() => expect(workflowRunner.run).toHaveBeenCalled());
+
+			await waitTracker.resumeParentsOfFinishedSubExecutions();
+
+			expect(resumeAttemptService.claim).toHaveBeenCalledExactlyOnceWith(parentId, 'waiting');
+			expect(executionRepository.findStatusesByIds).not.toHaveBeenCalled();
+
+			admission.resolve(parentId);
+			await resume;
 		});
 
 		it('skips a tick while the previous sweep is still running', async () => {
@@ -1360,10 +1348,10 @@ describe('WaitTracker', () => {
 	});
 
 	describe('single-main setup', () => {
-		it('should start tracking', async () => {
+		it('should start tracking', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-			await waitTracker.init();
+			waitTracker.init();
 
 			expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
 		});
@@ -1374,13 +1362,13 @@ describe('WaitTracker', () => {
 			const startExecutionSpy = vi.spyOn(waitTracker, 'startExecution').mockResolvedValue();
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
-			await waitTracker.init();
+			waitTracker.init();
 			await waitTracker.getWaitingExecutions();
 			expect(waitTracker.has(execution.id)).toBe(true);
 
 			waitTracker.stopTracking();
 
-			await waitTracker.init();
+			waitTracker.init();
 			await waitTracker.getWaitingExecutions();
 			await vi.advanceTimersByTimeAsync(2_000);
 
@@ -1388,15 +1376,15 @@ describe('WaitTracker', () => {
 			waitTracker.stopTracking();
 		});
 
-		it('should start tracking if leader', async () => {
+		it('should start tracking if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-			await waitTracker.init();
+			waitTracker.init();
 
 			expect(executionRepository.getWaitingExecutions).toHaveBeenCalledTimes(1);
 		});
 
-		it('should not start tracking if follower', async () => {
+		it('should not start tracking if follower', () => {
 			const waitTracker = new WaitTracker(
 				mockLogger(),
 				executionRepository,
@@ -1406,13 +1394,12 @@ describe('WaitTracker', () => {
 				activeExecutions,
 				workflowRunner,
 				mock<InstanceSettings>({ isLeader: false, isMultiMain: false }),
-				executionCrashService,
-				executionsConfig,
+				resumeAttemptService,
 			);
 
 			executionRepository.getWaitingExecutions.mockResolvedValue([]);
 
-			await waitTracker.init();
+			waitTracker.init();
 
 			expect(executionRepository.getWaitingExecutions).not.toHaveBeenCalled();
 		});

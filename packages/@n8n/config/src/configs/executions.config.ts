@@ -55,6 +55,15 @@ class RecoveryConfig {
 	 */
 	@Env('N8N_WORKFLOW_AUTODEACTIVATION_ENABLED')
 	workflowDeactivationEnabled: boolean = false;
+
+	/**
+	 * Maximum number of attempts to resume a paused execution or to start a queued execution
+	 * before n8n marks it as crashed, so that an execution whose data doesn't fit in memory
+	 * can't restart n8n in a loop. The count resets when the execution starts running. Set to
+	 * 0 to remove the limit.
+	 */
+	@Env('N8N_EXECUTIONS_MAX_RESUME_ATTEMPTS')
+	maxResumeAttempts: number = 2;
 }
 
 const nonNegativeIntSchema = z.coerce.number().int().nonnegative();

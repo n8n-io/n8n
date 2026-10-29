@@ -279,7 +279,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
-		await Container.get(WaitTracker).init();
+		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
 		await this.initMemoryGuard();
 		await Container.get(CredentialsOverwrites).init();
@@ -443,7 +443,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { EnqueuedExecutionRecoveryService } = await import(
 				'@/executions/enqueued-execution-recovery.service.js'
 			);
-			await Container.get(EnqueuedExecutionRecoveryService).recoverEnqueuedExecutions();
+			// Don't await: the recovery admits one execution at a time, so it can wait on
+			// concurrency capacity, and startup must not wait with it.
+			void Container.get(EnqueuedExecutionRecoveryService)
+				.recoverEnqueuedExecutions()
+				.catch((error) => {
+					this.errorReporter.error(error, { shouldBeLogged: true });
+				});
 		}
 
 		// Start to get active workflows and run their triggers
