@@ -10,6 +10,18 @@ export function isContainedWithin(parentPath: string, childPath: string): boolea
 	parentPath = path.resolve(parentPath);
 	childPath = path.resolve(childPath);
 
+	if (process.platform === 'win32') {
+		// Windows filesystems are case-insensitive, but env-var-derived parents
+		// (e.g. N8N_USER_FOLDER) can differ in casing from the realpath'ed
+		// child. A case-sensitive comparison would then report "not contained"
+		// and silently disable containment checks that guard restricted paths.
+		if (parentPath.toLowerCase() === childPath.toLowerCase()) {
+			return true;
+		}
+
+		return childPath.toLowerCase().startsWith(parentPath.toLowerCase() + path.sep);
+	}
+
 	if (parentPath === childPath) {
 		return true;
 	}
