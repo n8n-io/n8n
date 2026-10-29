@@ -3,6 +3,8 @@ import {
 	BaseSandbox,
 	CORE_WORKSPACE_TOOL_NAMES,
 	Workspace,
+	createEditFilesTool,
+	createReadFilesTool,
 	raceWithAbort,
 	type AbortableOptions,
 	type AppendOptions,
@@ -47,12 +49,6 @@ export interface LazyRuntimeWorkspaceOptions {
 	filesystemInstructions?: string;
 }
 
-export const ASSISTANT_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
-	...CORE_WORKSPACE_TOOL_NAMES,
-	'workspace_read_files',
-	'workspace_edit_files',
-]);
-
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
 type WorkspaceDestroyedListener = () => void;
 
@@ -65,16 +61,20 @@ export function createLazyRuntimeWorkspace({
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
+	const filesystem = new LazyRuntimeFilesystem(resolver, filesystemInstructions);
 	const workspace = new Workspace({
 		id,
 		name,
-		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
+		filesystem,
 		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
 	});
 
 	const baseGetTools = workspace.getTools.bind(workspace);
-	workspace.getTools = () =>
-		baseGetTools().filter((tool) => ASSISTANT_WORKSPACE_TOOL_NAMES.has(tool.name));
+	workspace.getTools = () => [
+		...baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name)),
+		createReadFilesTool(filesystem),
+		createEditFilesTool(filesystem),
+	];
 
 	return workspace;
 }

@@ -23,6 +23,9 @@ async function readLines(
 	{ path, startLine = 1, endLine }: z.infer<typeof fileSchema>,
 	abortSignal?: AbortSignal,
 ) {
+	if (endLine !== undefined && endLine < startLine) {
+		return { path, error: '`endLine` must not be less than `startLine`.' };
+	}
 	try {
 		const content = await filesystem.readFile(path, { encoding: 'utf-8', abortSignal });
 		const lines = content.toString().split('\n');

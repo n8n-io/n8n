@@ -240,6 +240,7 @@ const INTERNAL_ROUTE_PATTERNS: Array<{ pattern: RegExp; type: string }> = [
 	{ pattern: /^\/projects\/[^/]+\/credentials(?:\/|$)/, type: 'credential' },
 	{ pattern: /^\/projects\/[^/]+\/datatables(?:\/|$)/, type: 'data-table' },
 	{ pattern: /^\/projects\/[^/]+\/agents(?:\/|$)/, type: 'agent' },
+	{ pattern: /^\/projects\/[^/]+\/apps(?:\/|$)/, type: 'app' },
 ];
 const AGENT_ROUTE_PATTERN = /^\/projects\/[^/]+\/agents\/([^/]+)\/?$/;
 const ABSOLUTE_URL_PATTERN = /^[a-z][a-z\d+.-]*:/i;
@@ -341,7 +342,7 @@ function enhanceResourceLinks(): void {
 
 		// 1. Handle n8n-resource:// custom scheme links
 		const resourceMatch =
-			/^n8n-resource:\/\/(workflow|credential|data-table|agent|skill)\/(.+)$/.exec(href);
+			/^n8n-resource:\/\/(workflow|credential|data-table|agent|skill|app)\/(.+)$/.exec(href);
 		if (resourceMatch) {
 			const [, type, encodedId] = resourceMatch;
 			const id = decodeResourceId(encodedId);

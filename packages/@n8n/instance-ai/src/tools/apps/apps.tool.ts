@@ -84,8 +84,8 @@ async function createApp(
 	const app =
 		existing ??
 		(await apps.createApp({ name: input.name, namespace: input.namespace, id: pendingId }));
-	await reportChangedApp(context, app);
 	const { path } = await open(workspace, apps, app.id);
+	await reportChangedApp(context, app);
 	return existing ? { app, path, alreadyCreated: true } : { app, path };
 }
 

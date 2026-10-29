@@ -11,6 +11,8 @@ export { BaseFilesystem } from './filesystem/base-filesystem';
 export { BaseSandbox } from './sandbox/base-sandbox';
 
 export { CORE_WORKSPACE_TOOL_NAMES, createWorkspaceTools } from './tools/workspace-tools';
+export { createEditFilesTool } from './tools/edit-files';
+export { createReadFilesTool } from './tools/read-files';
 export { callLifecycle } from './lifecycle';
 
 export type { BaseFilesystemOptions, FilesystemLifecycleHook } from './filesystem/base-filesystem';

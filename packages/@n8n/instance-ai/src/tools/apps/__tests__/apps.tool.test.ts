@@ -115,6 +115,25 @@ describe('apps tool', () => {
 		});
 	});
 
+	it('keeps the pending id when the checkout of a new app fails', async () => {
+		const pendingTarget = { appId: PENDING_ID, projectId: 'project-1' };
+		const { tool, appService, thread, onArtifactChanged } = setup({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
+		});
+		appService.findApp.mockResolvedValue(undefined);
+		appService.createApp.mockResolvedValue(app(PENDING_ID));
+		vi.mocked(checkOutDraft).mockRejectedValue(new Error('Sandbox command failed'));
+
+		const result = await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
+
+		expect(result).toEqual({ error: 'Sandbox command failed' });
+
+		expect(thread.metadata).toEqual({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
+		});
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+	});
+
 	it('gives a second app a server id and keeps both targets', async () => {
 		const { tool, appService, thread } = setup({
 			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],

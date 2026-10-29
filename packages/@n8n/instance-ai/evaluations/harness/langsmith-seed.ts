@@ -536,7 +536,7 @@ function applyReplace(files: Map<string, string>, input: Record<string, unknown>
 		const newStr = asString(replacement.new_str);
 		if (!oldStr || newStr === undefined) continue;
 		if (!next.includes(oldStr)) return false;
-		next = next.replace(oldStr, newStr);
+		next = next.replace(oldStr, () => newStr);
 	}
 	files.set(path, next);
 	return true;

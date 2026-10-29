@@ -90,13 +90,16 @@ export class AppRepository extends BaseRepository<App> {
 		ctx: OperationContext = {},
 	): Promise<App> {
 		try {
-			return await this.managerFor(ctx).save(App, {
+			const manager = this.managerFor(ctx);
+			const app = manager.create(App, {
 				...dto,
 				id: dto.id ?? uuidv7(),
 				projectId,
 				draftVersionId: null,
 				publishedVersionId: null,
 			});
+			await manager.insert(App, app);
+			return app;
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('An app already uses this namespace. Choose another namespace.');
