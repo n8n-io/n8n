@@ -36,9 +36,14 @@ import type { Job } from '@/scaling/scaling.types';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import type { WaitTracker } from '@/wait-tracker';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 const V2_EXECUTION_ID = '01a038ae-c4a8-7799-8a3e-e3c2ca055cfa';
+
+vi.mock('@/permissions.ee/check-access', () => ({
+	userHasScopes: vi.fn().mockResolvedValue(true),
+}));
 
 describe('ExecutionService', () => {
 	const scalingService = mockInstance(ScalingService);
@@ -524,6 +529,21 @@ describe('ExecutionService', () => {
 				user: mockUser,
 				redactExecutionData: undefined,
 			});
+		});
+
+		it('should return undefined without loading data when the user cannot read the executions', async () => {
+			const workflowId = 'workflow-123';
+			const mockUser = mock<User>();
+			vi.mocked(userHasScopes).mockResolvedValueOnce(false);
+
+			const result = await executionService.getLastSuccessfulExecution(workflowId, mockUser);
+
+			expect(userHasScopes).toHaveBeenCalledWith(mockUser, ['execution:read'], false, {
+				workflowId,
+			});
+			expect(result).toBeUndefined();
+			expect(executionPersistence.findMultipleExecutions).not.toHaveBeenCalled();
+			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 		});
 
 		it('should return undefined when no successful execution exists', async () => {
