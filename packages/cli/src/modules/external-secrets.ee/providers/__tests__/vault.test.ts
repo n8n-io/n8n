@@ -2,6 +2,8 @@ import { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import { createFakeOutboundHttp, type Route } from '@n8n/backend-network/testing';
 import { mockInstance } from '@n8n/backend-test-utils';
+import get from 'lodash/get';
+import toPath from 'lodash/toPath';
 import type { IHttpRequestOptions } from 'n8n-workflow';
 
 import { EXTERNAL_SECRETS_MAX_BACKOFF } from '../../constants';
@@ -524,7 +526,26 @@ describe('VaultProvider', () => {
 			expect(names).toContain('kv.testing.control');
 			expect(names).toHaveLength(3);
 			expect([...new Set(names)]).toHaveLength(3);
+			expect(names).toContain("kv.testing['test.1']");
+			expect(get(provider.getSecret('kv'), toPath("kv.testing['test.1']").slice(1))).toBe(
+				'literal-value',
+			);
+			expect(get(provider.getSecret('kv'), toPath('kv.testing.test.1').slice(1))).toBe(
+				'nested-value',
+			);
 		});
+
+		it.each(['test.1', 'test[1]', "test.'1", 'test.\\1', 'test.\n1', ''])(
+			'should report a retrievable path for the literal field %j',
+			async (key) => {
+				const provider = await loadSecret({ [key]: 'literal-value' });
+
+				const [name] = provider.getSecretNames();
+				const path = toPath(name);
+				expect(path).toEqual(['kv', 'testing', key]);
+				expect(get(provider.getSecret(path[0]), path.slice(1))).toBe('literal-value');
+			},
+		);
 	});
 
 	describe('update with manual KV path', () => {
