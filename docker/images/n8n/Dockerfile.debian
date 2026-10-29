@@ -51,6 +51,20 @@ RUN version="$(node -p "require('./package.json').version")" && \
     mv /tmp/package/deps ./deps && \
     CKJS_LINKING=dynamic node "$NODE_GYP" rebuild --release
 
+# n8n-nodes-base depends on the musl Edit Image bindings directly, and the
+# deploy omits the optional glibc ones. Get the glibc bindings of the same
+# versions. Each package loads a binding file from its own directory first.
+FROM ${BUILDER_IMAGE} AS napi-glibc
+COPY ./compiled/node_modules/.pnpm/@napi-rs+canvas@*/node_modules/@napi-rs/canvas/package.json /build/canvas/
+COPY ./compiled/node_modules/.pnpm/@napi-rs+image@*/node_modules/@napi-rs/image/package.json /build/image/
+RUN set -e; \
+    arch="$(node -p process.arch)"; \
+    for pkg in canvas image; do \
+        version="$(node -p "require('/build/$pkg/package.json').version")"; \
+        npm pack --silent --pack-destination /tmp "@napi-rs/$pkg-linux-$arch-gnu@$version"; \
+        tar -xzf "/tmp/napi-rs-$pkg-linux-$arch-gnu-$version.tgz" -C "/build/$pkg" --strip-components=1 --wildcards 'package/*.node'; \
+    done
+
 # A separate workflow builds the base image. A new base reaches this image only
 # when you change RUNTIME_IMAGE above.
 FROM ${RUNTIME_IMAGE}
@@ -83,12 +97,16 @@ COPY --from=native-builder /build/isolated-vm/build/Release/isolated_vm.node \
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/Release/confluent-kafka-javascript.node /tmp/kafka/Release/
 COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/build/deps/librdkafka.so.1 \
      /build/node_modules/@confluentinc/kafka-javascript/build/deps/librdkafka++.so.1 /tmp/kafka/deps/
+COPY --from=napi-glibc /build/ /tmp/napi/
 
 RUN set -e; \
     N8N=/usr/local/lib/node_modules/n8n; \
     kafka=$(echo "$N8N"/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript); \
     mkdir -p "$kafka/build"; \
     cp -r /tmp/kafka/Release /tmp/kafka/deps "$kafka/build/"; \
+    for pkg in canvas image; do \
+        cp /tmp/napi/$pkg/*.node "$(echo "$N8N"/node_modules/.pnpm/@napi-rs+$pkg@*/node_modules/@napi-rs/$pkg)/"; \
+    done; \
     mkdir -p /usr/local/bin; \
     ln -s "$N8N/bin/n8n" /usr/local/bin/n8n; \
     mkdir -p /home/node/.n8n; \
