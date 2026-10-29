@@ -60,6 +60,7 @@ import { isBudgetStopCode, type BudgetNoticeCode } from '../utils/budget-config'
 import { isFailedDelegateOutput } from '../utils/delegate-tool';
 import { useAgentExecutionUpdates } from './useAgentExecutionUpdates';
 import type { AgentUsageUpdate } from '../types';
+import type { AgentChatTraceRecorder } from '../agentChatTrace';
 
 export interface FatalAgentError {
 	message: string;
@@ -98,6 +99,8 @@ export interface UseAgentChatStreamParams {
 	budgetCards?: boolean;
 	/** Card types of the chat host. The stream maps suspended tool calls with them. */
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
+	/** Records the stream events and the loaded history, for a debug export. */
+	traceRecorder?: AgentChatTraceRecorder;
 }
 
 type ResumePayload =
@@ -280,6 +283,11 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 				runningExecutionId = envelope.activeExecutionId;
 			}
 			if (!isCurrent()) return false;
+			params.traceRecorder?.recordHistory({
+				messages: dbMessages,
+				openSuspensions,
+				activeExecutionId: runningExecutionId,
+			});
 			if (continueId) acknowledgeSessionCreation(continueId);
 			retryCount = 0;
 			clearTimeout(retryTimer);
@@ -1461,6 +1469,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
+					params.traceRecorder?.recordEvent(event);
 					const result =
 						event.type === 'execution-started' && session.needsStartValidation
 							? await handleDelayedExecutionStart(event, session)

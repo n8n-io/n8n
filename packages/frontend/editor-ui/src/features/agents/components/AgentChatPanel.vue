@@ -48,6 +48,7 @@ import type {
 import AttachmentPreview from '@/features/ai/instanceAi/components/AttachmentPreview.vue';
 import InstanceAiResourceChip from '@/features/ai/instanceAi/components/InstanceAiResourceChip.vue';
 import { useAgentChatStream } from '../composables/useAgentChatStream';
+import type { AgentChatTraceRecorder } from '../agentChatTrace';
 import {
 	findTailOpenInteractive,
 	getMessageInteractives,
@@ -147,6 +148,8 @@ const props = withDefaults(
 		 * list is read once, when the panel is set up.
 		 */
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		/** Records what the chat receives, for a debug export. Read once, like the extensions. */
+		traceRecorder?: AgentChatTraceRecorder;
 	}>(),
 	{
 		visible: true,
@@ -276,6 +279,7 @@ const {
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
+	traceRecorder: props.traceRecorder,
 });
 
 provide(

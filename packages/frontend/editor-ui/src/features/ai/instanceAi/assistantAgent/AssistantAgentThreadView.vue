@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
+	N8nActionDropdown,
 	N8nIconButton,
 	N8nLink,
 	N8nResizeWrapper,
@@ -56,6 +57,7 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
+import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
@@ -113,6 +115,12 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 const interactionExtensions = [assistantConfirmationExtension];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+const trace = useAssistantAgentTrace({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+
 watch(panel, (current) => {
 	if (!current || !pendingMessage) return;
 	current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
@@ -271,6 +279,24 @@ function removeStagedNodes(chipId: string): void {
 							@click="startNewThread"
 						/>
 					</N8nTooltip>
+					<N8nActionDropdown
+						v-if="trace.isEnabled"
+						:items="trace.menuItems"
+						placement="bottom-end"
+						data-test-id="assistant-agent-trace-menu"
+						@select="trace.runAction"
+					>
+						<template #activator>
+							<N8nIconButton
+								icon="bug"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								:aria-label="i18n.baseText('instanceAi.debug.title')"
+								data-test-id="assistant-agent-trace-button"
+							/>
+						</template>
+					</N8nActionDropdown>
 					<N8nTooltip
 						v-if="canShowArtifactsPanel && !preview.isPreviewVisible.value"
 						:content="artifactsPanelToggleLabel"
@@ -325,6 +351,7 @@ function removeStagedNodes(chipId: string): void {
 						channel="system"
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
+						:trace-recorder="trace.recorder"
 						@session-created="onSessionCreated"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
