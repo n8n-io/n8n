@@ -1219,6 +1219,25 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
+	it('announces nothing when the step stopped waiting before the start failed', async () => {
+		const stepStore = makeStepStore({}, { failWaitingStep: vi.fn().mockResolvedValue(false) });
+		const queue = makeQueue();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{ v1StepExecutor: makeExecutor({ subExecution }) },
+			undefined,
+			undefined,
+			undefined,
+			{ start: vi.fn().mockRejectedValue(new Error('admittance rejected')) },
+		);
+
+		await handler.handle(event);
+
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
 	it('starts a detached sub-execution before the step completes, without awaiting it', async () => {
 		const order: string[] = [];
 		const stepStore = makeStepStore(
