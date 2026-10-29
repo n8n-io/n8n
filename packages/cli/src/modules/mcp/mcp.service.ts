@@ -573,7 +573,6 @@ export class McpService {
 			this,
 			this.workflowsConfig,
 			this.workflowPublishedDataService,
-			this.executionRedactionServiceProxy,
 		);
 		registerIfAllowed(executeWorkflowTool);
 
@@ -674,7 +673,6 @@ export class McpService {
 			this.nodeTypes,
 			this.telemetry,
 			this,
-			this.executionRedactionServiceProxy,
 			this.logger,
 		);
 		registerIfAllowed(testWorkflowTool);

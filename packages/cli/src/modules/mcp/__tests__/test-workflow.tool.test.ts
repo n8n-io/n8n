@@ -1,13 +1,11 @@
-import { ExecutionRedactionServiceProxy, type RedactableExecution } from '@n8n/backend-services';
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { User } from '@n8n/db';
+import { type IExecutionResponse, User } from '@n8n/db';
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IWorkflowExecutionDataProcess,
-	NodeOperationError,
 	UnexpectedError,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -16,8 +14,15 @@ vi.mock(
 	'@n8n/workflow-sdk',
 	async () => await vi.importActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk'),
 );
+vi.mock('@/executions/execution-viewer-reader', () => ({ loadExecutionForViewer: vi.fn() }));
+vi.mock('@/executions/pre-execution-checks', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@/executions/pre-execution-checks')>()),
+	findCredentialRefusal: vi.fn(),
+}));
 
 import { ActiveExecutions } from '@/active-executions';
+import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
+import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
@@ -26,7 +31,14 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import { createWorkflow } from './mock.utils';
+import { REDACTION_CHECK_FAILED_MESSAGE } from '../tools/execution-utils';
 import { createTestWorkflowTool, testWorkflow } from '../tools/test-workflow.tool';
+
+function mockViewedExecution(resultData: Record<string, unknown>) {
+	vi.mocked(loadExecutionForViewer).mockResolvedValue({
+		data: { resultData },
+	} as unknown as IExecutionResponse);
+}
 
 // Helper to create a mock NodeTypes that recognizes trigger vs non-trigger nodes
 const TRIGGER_NODE_TYPES = new Set([
@@ -63,17 +75,17 @@ describe('test-workflow MCP tool', () => {
 	let nodeTypes: ReturnType<typeof createMockNodeTypes>;
 	let telemetry: Telemetry;
 	let mcpService: McpService;
-	let executionRedactionServiceProxy: ExecutionRedactionServiceProxy;
 	let logger: Logger;
 
 	beforeEach(() => {
+		vi.mocked(findCredentialRefusal).mockResolvedValue(undefined);
+		vi.mocked(loadExecutionForViewer).mockReset();
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		activeExecutions = mockInstance(ActiveExecutions);
 		workflowRunner = mockInstance(WorkflowRunner);
 		nodeTypes = createMockNodeTypes();
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		mcpService = mockInstance(McpService, { isQueueMode: false });
-		executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);
 		logger = mockLogger();
 	});
 
@@ -87,7 +99,6 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 			);
 
@@ -112,7 +123,6 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
-					executionRedactionServiceProxy,
 					logger,
 					'missing-workflow',
 					{},
@@ -145,7 +155,6 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
-					executionRedactionServiceProxy,
 					logger,
 					'no-trigger-workflow',
 					{},
@@ -178,7 +187,6 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
-					executionRedactionServiceProxy,
 					logger,
 					'wf-1',
 					{},
@@ -212,7 +220,6 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
-					executionRedactionServiceProxy,
 					logger,
 					'wf-1',
 					{},
@@ -260,7 +267,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{},
@@ -309,7 +315,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{},
@@ -356,7 +361,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				pinData,
@@ -402,7 +406,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				pinData as any,
@@ -445,7 +448,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{},
@@ -484,7 +486,6 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
-					executionRedactionServiceProxy,
 					logger,
 					'wf-1',
 					{ Trigger: [{ json: {} }], NonExistentNode: [{ json: { x: 1 } }] },
@@ -529,7 +530,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
@@ -544,6 +544,7 @@ describe('test-workflow MCP tool', () => {
 
 		test('returns error status when execution status is error', async () => {
 			setupSuccessfulExecution();
+			mockViewedExecution({ error: { message: 'Something went wrong' } });
 			(workflowRunner.run as Mock).mockResolvedValue('exec-error');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 				status: 'error',
@@ -561,7 +562,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
@@ -576,6 +576,7 @@ describe('test-workflow MCP tool', () => {
 
 		test('returns error when resultData has error even with success status', async () => {
 			setupSuccessfulExecution();
+			mockViewedExecution({ error: { message: 'Node execution failed' } });
 			(workflowRunner.run as Mock).mockResolvedValue('exec-data-error');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 				status: 'success',
@@ -593,7 +594,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
@@ -605,6 +605,7 @@ describe('test-workflow MCP tool', () => {
 
 		test('returns generic error message when resultData.error.message is missing', async () => {
 			setupSuccessfulExecution();
+			mockViewedExecution({ error: {} });
 			(workflowRunner.run as Mock).mockResolvedValue('exec-no-msg');
 			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
 				status: 'error',
@@ -622,7 +623,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
@@ -630,6 +630,108 @@ describe('test-workflow MCP tool', () => {
 
 			expect(result.status).toBe('error');
 			expect(result.error).toBe('Execution completed with errors');
+		});
+
+		const runFailedExecution = async () => {
+			setupSuccessfulExecution();
+			(workflowRunner.run as Mock).mockResolvedValue('exec-failed');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status: 'error',
+				data: { resultData: { error: { message: 'token sk-secret-123' } } },
+			});
+			return await testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				logger,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+			);
+		};
+
+		test('returns the error as the user may see it', async () => {
+			mockViewedExecution({ redactedError: { type: 'NodeApiError', httpCode: '401' } });
+
+			const result = await runFailedExecution();
+
+			expect(loadExecutionForViewer).toHaveBeenCalledWith('exec-failed', user);
+			expect(result).toEqual({
+				executionId: 'exec-failed',
+				status: 'error',
+				error: 'NodeApiError error (401) (details hidden by n8n)',
+			});
+		});
+
+		test('hides the error when the execution cannot be loaded for the user', async () => {
+			vi.mocked(loadExecutionForViewer).mockResolvedValue(undefined);
+
+			const result = await runFailedExecution();
+
+			expect(result).toEqual({
+				executionId: 'exec-failed',
+				status: 'error',
+				error: REDACTION_CHECK_FAILED_MESSAGE,
+			});
+		});
+
+		test('hides and logs the error when the redaction check fails', async () => {
+			const lookupError = new Error('scope lookup failed');
+			vi.mocked(loadExecutionForViewer).mockRejectedValue(lookupError);
+
+			const result = await runFailedExecution();
+
+			expect(logger.error).toHaveBeenCalledWith(
+				'MCP test_workflow could not apply execution data redaction',
+				{ executionId: 'exec-failed', error: lookupError },
+			);
+
+			expect(result).toEqual({
+				executionId: 'exec-failed',
+				status: 'error',
+				error: REDACTION_CHECK_FAILED_MESSAGE,
+			});
+		});
+
+		test('returns the credential refusal reason when the run was refused', async () => {
+			vi.mocked(findCredentialRefusal).mockResolvedValue({
+				message: 'Node "HTTP" uses a credential you cannot use',
+				description: 'Ask the owner to share it',
+				nodeName: 'HTTP',
+			});
+
+			const result = await runFailedExecution();
+
+			expect(findCredentialRefusal).toHaveBeenCalledWith('wf-1', expect.any(Array), user.id);
+			expect(loadExecutionForViewer).not.toHaveBeenCalled();
+			expect(result.error).toBe(
+				'Node "HTTP" uses a credential you cannot use. Ask the owner to share it',
+			);
+		});
+
+		test('does not load the execution when the run succeeds', async () => {
+			setupSuccessfulExecution();
+			(workflowRunner.run as Mock).mockResolvedValue('exec-success');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			});
+
+			await testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				logger,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+			);
+
+			expect(loadExecutionForViewer).not.toHaveBeenCalled();
 		});
 
 		test('handles workflow returning undefined data', async () => {
@@ -645,248 +747,11 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
-					executionRedactionServiceProxy,
 					logger,
 					'wf-1',
 					{ Trigger: [{ json: {} }] },
 				),
 			).rejects.toThrow(UnexpectedError);
-		});
-	});
-
-	describe('execution redaction', () => {
-		const setupWorkflow = () => {
-			const workflow = createWorkflow({
-				settings: { availableInMCP: true, redactionPolicy: 'all' },
-				nodes: [
-					{
-						id: 'node-1',
-						name: 'Trigger',
-						type: WEBHOOK_NODE_TYPE,
-						typeVersion: 1,
-						position: [0, 0],
-						disabled: false,
-						parameters: {},
-					} as INode,
-				],
-			});
-			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
-			return workflow;
-		};
-
-		const redactAllErrors = () => {
-			(executionRedactionServiceProxy.processExecution as Mock).mockImplementation(
-				async (execution: RedactableExecution) => {
-					const { resultData } = execution.data;
-					for (const tasks of Object.values(resultData.runData)) {
-						for (const task of tasks) {
-							if (task.data) task.data = { main: [[{ json: {} }]] };
-						}
-					}
-					if (resultData.error) {
-						resultData.redactedError = { type: resultData.error.name, httpCode: '401' };
-						delete resultData.error;
-					}
-					return execution;
-				},
-			);
-		};
-
-		const runTestWorkflow = async () =>
-			await testWorkflow(
-				user,
-				workflowFinderService,
-				activeExecutions,
-				workflowRunner,
-				nodeTypes,
-				mcpService,
-				executionRedactionServiceProxy,
-				logger,
-				'wf-1',
-				{ Trigger: [{ json: {} }] },
-			);
-
-		test('returns the redacted error when redaction hides the execution data', async () => {
-			const workflow = setupWorkflow();
-			redactAllErrors();
-			const executionError = new NodeOperationError(workflow.nodes[0], 'token sk-secret-123');
-			(workflowRunner.run as Mock).mockResolvedValue('exec-redacted');
-			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
-				mode: 'manual',
-				status: 'error',
-				data: {
-					resultData: { runData: {}, error: executionError },
-					executionData: { runtimeData: { redaction: { version: 2, production: true } } },
-				},
-			});
-
-			const result = await runTestWorkflow();
-
-			expect(result).toEqual({
-				executionId: 'exec-redacted',
-				status: 'error',
-				error: 'Error details hidden by execution data redaction (NodeOperationError, HTTP 401)',
-			});
-			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: 'exec-redacted',
-					mode: 'manual',
-					workflowId: 'wf-1',
-					workflowData: expect.objectContaining({
-						settings: expect.objectContaining({ redactionPolicy: 'all' }),
-					}),
-					data: expect.objectContaining({
-						executionData: expect.objectContaining({
-							runtimeData: { redaction: { version: 2, production: true } },
-						}),
-					}),
-				}),
-				{ user },
-			);
-		});
-
-		test('returns the original error when redaction does not hide the execution data', async () => {
-			setupWorkflow();
-			(workflowRunner.run as Mock).mockResolvedValue('exec-visible');
-			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
-				mode: 'manual',
-				status: 'error',
-				data: { resultData: { runData: {}, error: { message: 'Visible failure' } } },
-			});
-
-			const result = await runTestWorkflow();
-
-			expect(result.error).toBe('Visible failure');
-			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledTimes(1);
-		});
-
-		test('does not change the run result during redaction', async () => {
-			setupWorkflow();
-			redactAllErrors();
-			const runResult = {
-				mode: 'manual',
-				status: 'error',
-				data: {
-					resultData: {
-						runData: {
-							Trigger: [{ data: { main: [[{ json: { apiKey: 'secret' } }]] } }],
-						},
-						error: { name: 'NodeApiError', message: 'Request failed with secret' },
-					},
-				},
-			};
-			(workflowRunner.run as Mock).mockResolvedValue('exec-unchanged');
-			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue(runResult);
-
-			await runTestWorkflow();
-
-			expect(runResult.data.resultData.error.message).toBe('Request failed with secret');
-			expect(runResult.data.resultData.runData.Trigger[0].data).toEqual({
-				main: [[{ json: { apiKey: 'secret' } }]],
-			});
-		});
-
-		test('skips redaction for a successful execution', async () => {
-			setupWorkflow();
-			(workflowRunner.run as Mock).mockResolvedValue('exec-ok');
-			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
-				mode: 'manual',
-				status: 'success',
-				data: { resultData: { runData: {} } },
-			});
-
-			const result = await runTestWorkflow();
-
-			expect(result.status).toBe('success');
-			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
-		});
-
-		test('keeps the execution ID and hides the error when the redaction check fails', async () => {
-			setupWorkflow();
-			(executionRedactionServiceProxy.processExecution as Mock).mockRejectedValue(
-				new Error('scope lookup failed'),
-			);
-			(workflowRunner.run as Mock).mockResolvedValue('exec-lookup-failed');
-			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
-				mode: 'manual',
-				status: 'error',
-				data: {
-					resultData: { runData: {}, error: { message: 'token sk-secret-123' } },
-				},
-			});
-
-			const tool = createTestWorkflowTool(
-				user,
-				workflowFinderService,
-				activeExecutions,
-				workflowRunner,
-				nodeTypes,
-				telemetry,
-				mcpService,
-				executionRedactionServiceProxy,
-				logger,
-			);
-
-			const result = await tool.handler(
-				{
-					workflowId: 'wf-1',
-					pinData: { Trigger: [{ json: {} }] },
-					triggerNodeName: undefined,
-					timeout: undefined,
-				},
-				{} as any,
-			);
-
-			expect(result.structuredContent).toEqual({
-				executionId: 'exec-lookup-failed',
-				status: 'error',
-				error: 'Error details hidden because the execution data redaction check failed',
-			});
-			expect(JSON.stringify(result)).not.toContain('sk-secret-123');
-			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('sk-secret-123');
-			expect(logger.error).toHaveBeenCalledWith(
-				'MCP test_workflow could not apply execution data redaction',
-				expect.objectContaining({
-					executionId: 'exec-lookup-failed',
-					workflowId: 'wf-1',
-					error: expect.objectContaining({ message: 'scope lookup failed' }),
-				}),
-			);
-		});
-
-		test('redacts an error that stops the execution from starting', async () => {
-			setupWorkflow();
-			redactAllErrors();
-			(workflowRunner.run as Mock).mockRejectedValue(new Error('start failed with sk-secret-123'));
-
-			const tool = createTestWorkflowTool(
-				user,
-				workflowFinderService,
-				activeExecutions,
-				workflowRunner,
-				nodeTypes,
-				telemetry,
-				mcpService,
-				executionRedactionServiceProxy,
-				logger,
-			);
-
-			const result = await tool.handler(
-				{
-					workflowId: 'wf-1',
-					pinData: { Trigger: [{ json: {} }] },
-					triggerNodeName: undefined,
-					timeout: undefined,
-				},
-				{} as any,
-			);
-
-			expect(result.structuredContent).toEqual({
-				executionId: null,
-				status: 'error',
-				error: 'Error details hidden by execution data redaction (Error, HTTP 401)',
-			});
-			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('sk-secret-123');
 		});
 	});
 
@@ -920,7 +785,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{ MyTrigger: [{ json: { key: 'val' } }] },
@@ -968,7 +832,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{},
@@ -1014,7 +877,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				queueMcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{},
@@ -1057,7 +919,6 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 			);
 
@@ -1108,7 +969,6 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 			);
 
@@ -1141,7 +1001,6 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 			);
 
@@ -1204,7 +1063,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
@@ -1244,7 +1102,6 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
@@ -1304,7 +1161,6 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 			);
 
@@ -1348,7 +1204,6 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 			);
 

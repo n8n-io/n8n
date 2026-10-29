@@ -1,5 +1,4 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -15,6 +14,7 @@ import {
 import z from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
+import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
@@ -26,16 +26,12 @@ import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { findEnabledEligibleTrigger } from '../mcp.utils';
 import {
-	getRedactedRunErrorMessage,
-	redactRunStartError,
+	getRunErrorForViewer,
 	waitForExecutionResult,
 	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
 	WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS,
 } from './execution-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
-
-const REDACTION_CHECK_FAILED_MESSAGE =
-	'Error details hidden because the execution data redaction check failed';
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to test'),
@@ -83,7 +79,6 @@ export const createTestWorkflowTool = (
 	nodeTypes: NodeTypes,
 	telemetry: Telemetry,
 	mcpService: McpService,
-	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	logger: Logger,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'test_workflow',
@@ -125,7 +120,6 @@ export const createTestWorkflowTool = (
 				workflowRunner,
 				nodeTypes,
 				mcpService,
-				executionRedactionServiceProxy,
 				logger,
 				workflowId,
 				pinData as IPinData,
@@ -185,7 +179,6 @@ export async function testWorkflow(
 	workflowRunner: WorkflowRunner,
 	nodeTypes: NodeTypes,
 	mcpService: McpService,
-	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	logger: Logger,
 	workflowId: string,
 	pinData: IPinData,
@@ -278,51 +271,24 @@ export async function testWorkflow(
 		}),
 	};
 
-	let executionId: string;
-	try {
-		executionId = await workflowRunner.run(runData);
-	} catch (error) {
-		throw await redactRunStartError(executionRedactionServiceProxy, user, runData, error);
-	}
-
+	const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
+	const executionId = await workflowRunner.run(runData);
 	const data = await waitForExecutionResult(
 		executionId,
 		activeExecutions,
 		mcpService,
 		timeoutSeconds * Time.seconds.toMilliseconds,
 	);
-	const executionError = data.data.resultData?.error;
-	const hasError = data.status === 'error' || executionError;
+	const hasError = data.status === 'error' || data.data.resultData?.error;
 	if (!hasError) {
 		return { executionId, status: data.status, error: undefined };
-	}
-
-	let redactedMessage: string | undefined;
-	if (executionError) {
-		try {
-			redactedMessage = await getRedactedRunErrorMessage(executionRedactionServiceProxy, user, {
-				executionId,
-				mode: data.mode,
-				workflowId,
-				workflowData: { settings: workflow.settings, nodes },
-				data: data.data,
-				error: executionError,
-			});
-		} catch (error) {
-			// The run is complete, so keep its ID. Hide the error, because the
-			// redaction check did not finish.
-			logger.error('MCP test_workflow could not apply execution data redaction', {
-				executionId,
-				workflowId,
-				error: ensureError(error),
-			});
-			redactedMessage = REDACTION_CHECK_FAILED_MESSAGE;
-		}
 	}
 
 	return {
 		executionId,
 		status: 'error',
-		error: redactedMessage ?? executionError?.message ?? 'Execution completed with errors',
+		error: credentialRefusal
+			? [credentialRefusal.message, credentialRefusal.description].filter(Boolean).join('. ')
+			: await getRunErrorForViewer(executionId, user, logger),
 	};
 }

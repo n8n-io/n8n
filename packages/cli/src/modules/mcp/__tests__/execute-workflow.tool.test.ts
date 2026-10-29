@@ -23,10 +23,7 @@ import { McpService } from '@/modules/mcp/mcp.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import {
-	ExecutionRedactionServiceProxy,
-	WorkflowPublishedDataService,
-} from '@n8n/backend-services';
+import { WorkflowPublishedDataService } from '@n8n/backend-services';
 
 describe('execute-workflow MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
@@ -36,7 +33,6 @@ describe('execute-workflow MCP tool', () => {
 	let mcpService: McpService;
 	let workflowsConfig: WorkflowsConfig;
 	let workflowPublishedDataService: MockProxy<WorkflowPublishedDataService>;
-	let executionRedactionServiceProxy: MockProxy<ExecutionRedactionServiceProxy>;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
@@ -48,7 +44,6 @@ describe('execute-workflow MCP tool', () => {
 			isQueueMode: false,
 		});
 		workflowPublishedDataService = mockInstance(WorkflowPublishedDataService);
-		executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);
 		workflowsConfig = Container.get(WorkflowsConfig);
 		workflowsConfig.useWorkflowPublicationService = false;
 	});
@@ -63,7 +58,6 @@ describe('execute-workflow MCP tool', () => {
 				mcpService,
 				workflowsConfig,
 				workflowPublishedDataService,
-				executionRedactionServiceProxy,
 			);
 
 			expect(tool.name).toBe('execute_workflow');
@@ -105,7 +99,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'any-workflow',
 						undefined,
 						'production',
@@ -128,7 +121,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'unpublished-workflow',
 						undefined,
 						'production',
@@ -164,7 +156,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'unpublished-workflow',
 					undefined,
 					'manual',
@@ -206,7 +197,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'manual-trigger-workflow',
 					undefined,
 					'manual',
@@ -253,7 +243,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'manual-workflow-with-pindata',
 					{ webhookData: { method: 'POST', body: { test: 'input' } } },
 					'manual',
@@ -300,7 +289,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'production-workflow-with-pindata',
 					{ webhookData: { method: 'POST', body: {} } },
 					'production',
@@ -341,7 +329,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'unsupported-trigger',
 						undefined,
 						'production',
@@ -356,7 +343,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'unsupported-trigger',
 						undefined,
 						'production',
@@ -391,7 +377,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'unsupported-trigger',
 						{ webhookData: { method: 'POST', body: { hello: 'world' } } },
 						'production',
@@ -428,7 +413,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'unsupported-trigger',
 						undefined,
 						'production',
@@ -463,7 +447,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'disabled-trigger',
 						undefined,
 						'production',
@@ -498,7 +481,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'webhook-workflow',
 					{
 						webhookData: {
@@ -559,7 +541,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'webhook-workflow',
 					{
 						webhookData: {
@@ -613,7 +594,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'chat-workflow',
 					{
 						chatInput: 'Hello, how can I help?',
@@ -670,7 +650,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'form-workflow',
 					{
 						formData: {
@@ -733,7 +712,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'success-workflow',
 					{ webhookData: { method: 'POST', body: {} } },
 					'production',
@@ -774,7 +752,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'no-inputs-workflow',
 						undefined,
 						'production',
@@ -811,7 +788,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'schedule-workflow',
 					undefined,
 					'production',
@@ -852,7 +828,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 				);
 
 				// Call through the tool handler to test telemetry
@@ -902,7 +877,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 				);
 
 				await tool.handler(
@@ -942,7 +916,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 				);
 
 				await tool.handler(
@@ -969,105 +942,6 @@ describe('execute-workflow MCP tool', () => {
 						},
 					}),
 				);
-			});
-		});
-
-		describe('execution redaction', () => {
-			const setupWorkflow = () => {
-				const workflow = createWorkflow({
-					activeVersionId: null,
-					settings: { availableInMCP: true, redactionPolicy: 'all' },
-					nodes: [
-						{
-							id: 'node-1',
-							name: 'Manual',
-							type: MANUAL_TRIGGER_NODE_TYPE,
-							typeVersion: 1,
-							position: [0, 0],
-							disabled: false,
-							parameters: {},
-						} as INode,
-					],
-				});
-				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
-			};
-
-			const callTool = async () => {
-				const tool = createExecuteWorkflowTool(
-					user,
-					workflowFinderService,
-					workflowRunner,
-					telemetry,
-					mcpService,
-					workflowsConfig,
-					workflowPublishedDataService,
-					executionRedactionServiceProxy,
-				);
-				return await tool.handler(
-					{ workflowId: 'wf-redaction', executionMode: 'manual', inputs: undefined },
-					{} as any,
-				);
-			};
-
-			test('returns the redacted error when redaction hides the execution data', async () => {
-				setupWorkflow();
-				(workflowRunner.run as Mock).mockRejectedValue(
-					new Error('start failed with sk-secret-123'),
-				);
-				executionRedactionServiceProxy.processExecution.mockImplementation(async (execution) => {
-					const { resultData } = execution.data;
-					if (resultData.error) {
-						resultData.redactedError = { type: resultData.error.name };
-						delete resultData.error;
-					}
-					return execution;
-				});
-
-				const result = await callTool();
-
-				expect(result.structuredContent).toEqual({
-					executionId: null,
-					status: 'error',
-					error: 'Error details hidden by execution data redaction (Error)',
-				});
-				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
-					expect.objectContaining({
-						mode: 'manual',
-						workflowData: expect.objectContaining({
-							settings: expect.objectContaining({ redactionPolicy: 'all' }),
-						}),
-					}),
-					{ user },
-				);
-				expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain(
-					'sk-secret-123',
-				);
-			});
-
-			test('returns the original error when redaction does not hide the execution data', async () => {
-				setupWorkflow();
-				(workflowRunner.run as Mock).mockRejectedValue(new Error('Queue is not available'));
-
-				const result = await callTool();
-
-				expect(result.structuredContent).toEqual({
-					executionId: null,
-					status: 'error',
-					error: 'Queue is not available',
-				});
-				expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledTimes(1);
-			});
-
-			test('does not redact workflow validation errors', async () => {
-				(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(null);
-
-				const result = await callTool();
-
-				expect(result.structuredContent).toMatchObject({
-					status: 'error',
-					error: "Workflow not found or you don't have permission to access it.",
-				});
-				expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 			});
 		});
 
@@ -1115,7 +989,6 @@ describe('execute-workflow MCP tool', () => {
 						mcpService,
 						workflowsConfig,
 						workflowPublishedDataService,
-						executionRedactionServiceProxy,
 						'multi-trigger-workflow',
 						undefined,
 						'production',
@@ -1161,7 +1034,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'multi-trigger-workflow',
 					{ chatInput: 'THIS SHOULD REACH THE CHAT TRIGGER' },
 					'production',
@@ -1218,7 +1090,6 @@ describe('execute-workflow MCP tool', () => {
 					queueModeMcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'mcp-meta-workflow',
 					{ webhookData: { method: 'POST', body: {} } },
 					'production',
@@ -1258,7 +1129,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'regular-workflow',
 					{ webhookData: { method: 'POST', body: {} } },
 					'production',
@@ -1311,7 +1181,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					{ chatInput: 'THIS SHOULD NOT BE DISCARDED' },
 					'production',
@@ -1338,7 +1207,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					{ chatInput: 'THIS SHOULD NOT BE DISCARDED' },
 					'production',
@@ -1376,7 +1244,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					undefined,
 					'production',
@@ -1413,7 +1280,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					{ webhookData: { method: 'POST', body: { x: 1 } } },
 					'production',
@@ -1440,7 +1306,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					{ chatInput: 'hi' },
 					'production',
@@ -1477,7 +1342,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					{ webhookData: { method: 'POST', body: { x: 1 } } },
 					'production',
@@ -1514,7 +1378,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					undefined,
 					'production',
@@ -1569,7 +1432,6 @@ describe('execute-workflow MCP tool', () => {
 				mcpService,
 				workflowsConfig,
 				workflowPublishedDataService,
-				executionRedactionServiceProxy,
 				'wf-1',
 				{ webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
 				'production',
@@ -1614,7 +1476,6 @@ describe('execute-workflow MCP tool', () => {
 				mcpService,
 				workflowsConfig,
 				workflowPublishedDataService,
-				executionRedactionServiceProxy,
 				'wf-1',
 				{ webhookData: { method: 'POST', headers: {}, query: {}, body: {} } },
 				'production',
@@ -1640,7 +1501,6 @@ describe('execute-workflow MCP tool', () => {
 					mcpService,
 					workflowsConfig,
 					workflowPublishedDataService,
-					executionRedactionServiceProxy,
 					'wf-1',
 					undefined,
 					'production',
