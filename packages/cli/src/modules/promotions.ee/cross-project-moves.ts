@@ -1,7 +1,7 @@
-import type { ApplyCheckResult } from '@n8n/api-types';
+import type { PromotionPreviewCheck } from '@n8n/api-types';
 import { UnexpectedError } from 'n8n-workflow';
 
-export type CrossProjectMove = ApplyCheckResult['movedWorkflows'][number];
+export type CrossProjectMove = PromotionPreviewCheck['movedWorkflows'][number];
 
 export type CrossProjectMoves = {
 	workflows: CrossProjectMove[];

@@ -458,6 +458,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
+	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
+		if (ids.length === 0) return [];
+		return await this.findBy({ id: In(ids) });
+	}
+
 	/**
 	 * Top-level private sessions of one user with any instance (system) agent,
 	 * in every project, oldest first. It does not check that a provider is

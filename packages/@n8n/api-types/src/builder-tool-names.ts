@@ -23,8 +23,6 @@ export const WORKFLOW_BUILDER_TOOL_NAMES = {
 	UPDATE_WORKFLOW_VERSION: 'update_workflow_version',
 	NODES: 'workflow_builder_nodes',
 	EXECUTIONS: 'workflow_builder_executions',
-	ASK_USER: 'workflow_builder_ask_user',
-	SEARCH_MODELS: 'workflow_builder_search_models',
 	BUILD_WORKFLOW: 'workflow_builder_build_workflow',
 	VERIFY_BUILT_WORKFLOW: 'workflow_builder_verify_built_workflow',
 	REPORT_VERIFICATION_VERDICT: 'workflow_builder_report_verification_verdict',
@@ -45,29 +43,36 @@ export const AGENT_BUILDER_TOOL_NAMES = {
 	CREATE_TASKS: 'agent_builder_create_tasks',
 	UPDATE_TASK: 'agent_builder_update_task',
 	FINISH_SETUP: 'agent_builder_finish_setup',
+	/** No longer registered. Builders use `get_node_parameter_options`. */
 	GET_RESOURCE_LOCATOR_OPTIONS: 'agent_builder_get_resource_locator_options',
 	CALL_AGENT: 'agent_builder_call_agent',
 	PUBLISH_AGENT: 'agent_builder_publish_agent',
 	UNPUBLISH_AGENT: 'agent_builder_unpublish_agent',
 	RESOLVE_LLM: 'agent_builder_resolve_llm',
 	VERIFY_MCP_SERVER: 'agent_builder_verify_mcp_server',
+	/** No longer registered. Builders use `search_nodes`. */
 	SEARCH_NODES: 'agent_builder_search_nodes',
+	/** No longer registered. Builders use `get_node_types`. */
 	GET_NODE_TYPES: 'agent_builder_get_node_types',
 	/** No longer registered. Builders use `setup_credentials` with target `agent`. */
 	ASK_CREDENTIAL: 'agent_builder_ask_credential',
 	/** No longer registered. Builders use `setup_credentials` with `allowManaged`. */
 	ASK_EMBEDDING_CREDENTIAL: 'agent_builder_ask_embedding_credential',
+	/** No longer registered. Builders use `ask_user`. */
 	ASK_QUESTIONS: 'agent_builder_ask_questions',
 	CONFIGURE_CHANNEL: 'agent_builder_configure_channel',
 } as const;
 
 /** Orchestrator tools that both builders use. These names have no builder prefix. */
 export const SHARED_BUILDER_TOOL_NAMES = {
+	ASK_USER: 'ask_user',
+	SEARCH_MODELS: 'search_models',
 	LIST_CREDENTIALS: 'list_credentials',
 	SEARCH_CREDENTIAL_TYPES: 'search_credential_types',
 	SETUP_CREDENTIALS: 'setup_credentials',
 	TEST_CREDENTIAL: 'test_credential',
 	DELETE_CREDENTIAL: 'delete_credential',
+	UPDATE_CREDENTIAL_DESCRIPTION: 'update_credential_description',
 	DATA_TABLES: 'data_tables',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',
@@ -101,8 +106,10 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	nodes: WORKFLOW_BUILDER_TOOL_NAMES.NODES,
 	executions: WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS,
 	'data-tables': SHARED_BUILDER_TOOL_NAMES.DATA_TABLES,
-	'ask-user': WORKFLOW_BUILDER_TOOL_NAMES.ASK_USER,
-	searchModels: WORKFLOW_BUILDER_TOOL_NAMES.SEARCH_MODELS,
+	'ask-user': SHARED_BUILDER_TOOL_NAMES.ASK_USER,
+	workflow_builder_ask_user: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
+	searchModels: SHARED_BUILDER_TOOL_NAMES.SEARCH_MODELS,
+	workflow_builder_search_models: SHARED_BUILDER_TOOL_NAMES.SEARCH_MODELS,
 	'build-workflow': WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW,
 	'verify-built-workflow': WORKFLOW_BUILDER_TOOL_NAMES.VERIFY_BUILT_WORKFLOW,
 	'report-verification-verdict': WORKFLOW_BUILDER_TOOL_NAMES.REPORT_VERIFICATION_VERDICT,
@@ -131,7 +138,8 @@ export const LEGACY_BUILDER_TOOL_NAMES: Readonly<Record<string, string>> = {
 	agent_builder_list_credentials: SHARED_BUILDER_TOOL_NAMES.LIST_CREDENTIALS,
 	ask_credential: AGENT_BUILDER_TOOL_NAMES.ASK_CREDENTIAL,
 	ask_embedding_credential: AGENT_BUILDER_TOOL_NAMES.ASK_EMBEDDING_CREDENTIAL,
-	ask_questions: AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS,
+	ask_questions: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
+	agent_builder_ask_questions: SHARED_BUILDER_TOOL_NAMES.ASK_USER,
 	configure_channel: AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL,
 };
 

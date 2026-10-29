@@ -2552,7 +2552,7 @@ describe('Promotions in Public API', () => {
 					status,
 					environmentId: selectionBody.expectedSource.environmentId,
 					git: { branchName: 'main', commitSha: selectionBody.expectedSource.commitSha },
-					preflight: {
+					check: {
 						missingProjects: [],
 						missingBindings: [
 							{
@@ -2739,7 +2739,7 @@ describe('Promotions in Public API', () => {
 					status,
 					environmentId: id,
 					git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
-					preflight: {
+					check: {
 						missingProjects: [],
 						missingBindings: [
 							{

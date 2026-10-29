@@ -16,6 +16,7 @@ import { z } from 'zod';
 import { resolveToolNodeType, type EphemeralNodeExecutor } from '@/node-execution';
 import { NodeTypes } from '@/node-types';
 
+import { AgentFileBridge } from '../agent-file-bridge.service';
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
 import { toPolicyRefusalResult } from './policy-refusal';
 
@@ -24,6 +25,8 @@ type NodeToolInputSchema = JSONSchema7 | z.ZodType;
 export interface NodeToolFactoryContext {
 	executor: EphemeralNodeExecutor;
 	projectId: string;
+	/** Owner of the files that the tool returns. Absent for inline agents. */
+	agentId?: string;
 	/** Eval-only additionalData decoration — absent on every production path. */
 	instrumentToolAdditionalData?: InstrumentToolAdditionalData;
 }
@@ -155,7 +158,7 @@ export async function resolveNodeTool(
 	const built = new Tool(sanitizedName)
 		.description(toolSchema.description ?? `Execute the ${nodeType} node`)
 		.input(await resolveInputSchema(toolSchema, ctx))
-		.handler(async (input: Record<string, unknown>) => {
+		.handler(async (input: Record<string, unknown>, toolCtx) => {
 			const result = await ctx.executor.executeInline({
 				nodeType,
 				nodeTypeVersion: toolSchema.node.nodeTypeVersion,
@@ -179,7 +182,21 @@ export async function resolveNodeTool(
 			if (result.status === 'error') {
 				throw new Error(result.error ?? `Node "${toolSchema.node.nodeType}" failed to execute`);
 			}
-			return result;
+			if (!result.data.some((item) => item.binary)) return result;
+			// Without a thread there is no scope for the files, so the binary is dropped.
+			const threadId = toolCtx.persistence?.threadId;
+			if (!threadId) return { ...result, data: result.data.map(({ json }) => ({ json })) };
+			const adopted = await Container.get(AgentFileBridge).adoptFromItems(result.data, {
+				agentId: ctx.agentId ?? null,
+				projectId: ctx.projectId,
+				threadId,
+			});
+			return {
+				...result,
+				data: adopted.items,
+				files: adopted.files,
+				...(adopted.skippedFiles.length > 0 && { skippedFiles: adopted.skippedFiles }),
+			};
 		})
 		.build();
 

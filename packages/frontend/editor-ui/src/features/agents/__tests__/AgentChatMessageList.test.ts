@@ -120,6 +120,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
+		name: 'InteractiveCardStub',
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
 		props: ['payload'],
@@ -1187,6 +1188,40 @@ describe('AgentChatMessageList', () => {
 		expect(
 			chunks[1].element.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('resumes an open card with the callback that the card passes for an accepted answer', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-open-card',
+						role: 'assistant',
+						content: '',
+						interactives: [
+							{
+								toolName: 'chat_action',
+								toolCallId: 'tc-open',
+								runId: 'run-open',
+								input: { card: { components: [{ type: 'section', text: 'Continue?' }] } },
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+		const onAccepted = vi.fn();
+
+		const card = wrapper.findComponent({ name: 'InteractiveCardStub' });
+		card.vm.$emit('submit', { answer: 'yes' }, onAccepted);
+		card.vm.$emit('submit', { answer: 'no' });
+
+		expect(wrapper.emitted('resume')).toEqual([
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'yes' } }, onAccepted],
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'no' } }, undefined],
+		]);
 	});
 
 	it('renders multiple n8n chat cards from one assistant message', () => {

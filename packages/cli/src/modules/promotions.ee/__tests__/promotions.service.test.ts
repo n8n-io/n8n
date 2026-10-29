@@ -1,4 +1,4 @@
-import type { PromotionBindingPreflightResult } from '@n8n/api-types';
+import type { PromotionApplyCheck } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
@@ -28,7 +28,6 @@ import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.sche
 import type { FolderService } from '@/services/folder.service';
 import type { ProjectService } from '@/services/project.service.ee';
 
-import type { PromotionBindingPreflightService } from '../promotion-binding-preflight.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionRun } from '../database/entities/promotion-run.entity';
@@ -79,7 +78,6 @@ describe('PromotionsService', () => {
 	const projectService = mock<ProjectService>();
 	const folderService = mock<FolderService>();
 	const n8nPackagesService = mock<N8nPackagesService>();
-	const bindingPreflight = mock<PromotionBindingPreflightService>();
 	const inventoryReader = mock<PackageDirectoryInventoryReader>();
 	const packageImportConfig = mock<PackageImportConfig>();
 	const runRepository = mock<PromotionRunRepository>();
@@ -179,7 +177,6 @@ describe('PromotionsService', () => {
 			projectService,
 			folderService,
 			n8nPackagesService,
-			bindingPreflight,
 			applyPreviewService,
 			inventoryReader,
 			packageImportConfig,
@@ -2015,8 +2012,8 @@ describe('PromotionsService', () => {
 			variables: [],
 			dataTables: [],
 		};
-		const checked = (preflight: PromotionBindingPreflightResult) => ({
-			preflight,
+		const checked = (applyCheck: PromotionApplyCheck) => ({
+			...applyCheck,
 			movedWorkflows: [],
 			movedFolders: [],
 		});
@@ -2082,7 +2079,7 @@ describe('PromotionsService', () => {
 				const result = await service.apply(ENVIRONMENT_ID, actor);
 				assert(result.status === 'blocked');
 				expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
-				return result.preflight.conflicts.filter(({ code }) => code === 'moved');
+				return result.check.conflicts.filter(({ code }) => code === 'moved');
 			};
 
 			it('blocks a workflow that the branch holds in another project, and names both projects', async () => {
@@ -2149,7 +2146,7 @@ describe('PromotionsService', () => {
 					projectConflictPolicy: 'overwrite',
 					conflictPolicy: 'new-version',
 					idPolicy: 'source',
-					publishingPolicy: 'match-source',
+					publishingPolicy: 'preserve-target-state',
 					missingNodeTypeMode: 'fail',
 					credentialMatchingMode: 'id-only',
 					credentialMissingMode: 'must-preexist',
@@ -2215,7 +2212,7 @@ describe('PromotionsService', () => {
 		const consumers = [
 			{ project: { id: 'p1', name: 'Orders' }, workflows: [{ id: 'w1', name: 'Process order' }] },
 		];
-		const unresolved: PromotionBindingPreflightResult = {
+		const unresolved: PromotionApplyCheck = {
 			missingProjects: [],
 			missingBindings: [
 				{
@@ -2277,7 +2274,7 @@ describe('PromotionsService', () => {
 		it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
 			'blocks on %s before import or reconciliation',
 			async (group) => {
-				const preflight = {
+				const applyCheck = {
 					missingProjects: [],
 					missingBindings: [],
 					accessRequirements: [],
@@ -2285,12 +2282,12 @@ describe('PromotionsService', () => {
 					warnings: [],
 					[group]: unresolved[group],
 				};
-				check.mockReturnValueOnce(checked(preflight));
+				check.mockReturnValueOnce(checked(applyCheck));
 				expect(await service.apply(ENVIRONMENT_ID, actor)).toEqual({
 					status: 'blocked',
 					environmentId: ENVIRONMENT_ID,
 					git: { commitSha: 'remotesha', branchName: 'dev' },
-					preflight,
+					check: applyCheck,
 				});
 				expect(check).toHaveBeenCalledWith(plan, packageInventory, undefined, noMoves);
 				expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
@@ -2306,13 +2303,13 @@ describe('PromotionsService', () => {
 			check.mockReturnValueOnce(checked(unresolved));
 			expect(await service.apply(ENVIRONMENT_ID, actor)).toMatchObject({
 				status: 'blocked',
-				preflight: unresolved,
+				check: unresolved,
 			});
 			const fresh = { ...unresolved, missingBindings: [] };
 			check.mockReturnValueOnce(checked(fresh));
 			expect(await service.continueApply(ENVIRONMENT_ID, actor, request)).toMatchObject({
 				status: 'blocked',
-				preflight: fresh,
+				check: fresh,
 			});
 			expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
 			check.mockReturnValueOnce(
@@ -2349,7 +2346,7 @@ describe('PromotionsService', () => {
 		});
 
 		it.each([{ commitSha: 'older' }, { branchName: 'older' }, { environmentId: 'older' }])(
-			'stops Continue before preflight when source differs: %j',
+			'stops Continue before the check when source differs: %j',
 			async (change) => {
 				expect(
 					await service.continueApply(ENVIRONMENT_ID, actor, {
@@ -2475,6 +2472,7 @@ describe('PromotionsService', () => {
 						dataTableSchemaConflictPolicy: 'overwrite-non-destructive',
 						tagConflictPolicy: 'rename',
 						credentialConflictPolicy: 'overwrite',
+						publishingPolicy: 'preserve-target-state',
 						layoutConflictPolicy: 'follow-package',
 						credentialPersonalRoute: 'exclude',
 					},
@@ -2522,7 +2520,7 @@ describe('PromotionsService', () => {
 				{ invalidIds: ['unknown'], label: 'unknown IDs' },
 				{ invalidIds: ['foreign'], label: 'foreign project IDs' },
 				{ invalidIds: ['unknown', 'foreign'], label: 'all invalid IDs together' },
-			])('rejects $label before preflight or import', async ({ invalidIds }) => {
+			])('rejects $label before the check or import', async ({ invalidIds }) => {
 				await expect(
 					service.applyProjectSelection('p1', actor, {
 						workflowIds: ['w1', 'deleted', ...invalidIds],
@@ -2551,7 +2549,7 @@ describe('PromotionsService', () => {
 					await service.applyProjectSelection('p1', actor, { workflowIds: ['moved-in'] }),
 				).toMatchObject({
 					status: 'blocked',
-					preflight: {
+					check: {
 						conflicts: [
 							expect.objectContaining({
 								kind: 'workflow',
@@ -2576,7 +2574,7 @@ describe('PromotionsService', () => {
 					await service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] }),
 				).toMatchObject({
 					status: 'blocked',
-					preflight: {
+					check: {
 						conflicts: [
 							expect.objectContaining({
 								kind: 'folder',
@@ -2631,7 +2629,7 @@ describe('PromotionsService', () => {
 					it.each(['missingBindings', 'accessRequirements', 'conflicts'] as const)(
 						'blocks on scoped %s before import',
 						async (group) => {
-							const preflight = {
+							const applyCheck = {
 								missingProjects: [],
 								missingBindings: [],
 								accessRequirements: [],
@@ -2639,7 +2637,7 @@ describe('PromotionsService', () => {
 								warnings: [],
 								[group]: unresolved[group],
 							};
-							check.mockReturnValueOnce(checked(preflight));
+							check.mockReturnValueOnce(checked(applyCheck));
 							expect(
 								await service[method]('p1', actor, {
 									workflowIds: ['w1', 'deleted'],
@@ -2649,7 +2647,7 @@ describe('PromotionsService', () => {
 								status: 'blocked',
 								environmentId: ENVIRONMENT_ID,
 								git: { branchName: 'dev', commitSha: 'remotesha' },
-								preflight,
+								check: applyCheck,
 							});
 							expect(check).toHaveBeenCalledWith(
 								plan,
@@ -2684,7 +2682,7 @@ describe('PromotionsService', () => {
 
 						expect(resolver.resolveForProject).toHaveBeenCalledWith('p1', 'apply');
 						expect(n8nPackagesService.planPackageSelection).toHaveBeenCalledExactlyOnceWith(
-							expect.anything(),
+							expect.objectContaining({ publishingPolicy: 'preserve-target-state' }),
 							expect.any(GitCommitPackageReader),
 							{
 								selectedProjectId: 'p1',
