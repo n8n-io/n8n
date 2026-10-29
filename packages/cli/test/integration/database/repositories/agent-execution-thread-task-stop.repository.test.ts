@@ -124,6 +124,54 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		expect(await repository.findStopTargetsStillActive(stop)).toEqual([]);
 	});
 
+	it('captures only unfinished executions and jobs', async () => {
+		const executions = db.getRepository(AgentExecution);
+		const running = await executions.save({
+			id: randomUUID(),
+			threadId: thread.id,
+			status: 'running',
+		});
+		const approval = await executions.save({
+			id: randomUUID(),
+			threadId: thread.id,
+			status: 'success',
+			hitlStatus: 'suspended',
+		});
+		await executions.save({ id: randomUUID(), threadId: thread.id, status: 'success' });
+		await executions.save({ id: randomUUID(), threadId: thread.id, status: 'error' });
+
+		const jobs = db.getRepository(AgentBackgroundJob);
+		const active = await job();
+		const suspended = await job();
+		const unreported = await job();
+		const reported = await job();
+		const reportedFailure = await job();
+		await jobs.update(suspended.id, { status: 'suspended', notifiedAt: new Date() });
+		await jobs.update(unreported.id, { status: 'completed' });
+		await jobs.update(reported.id, { status: 'completed', notifiedAt: new Date() });
+		await jobs.update(reportedFailure.id, { status: 'failed', notifiedAt: new Date() });
+
+		const stop = await request();
+
+		expect(stop.generation.executionIds.sort()).toEqual([running.id, approval.id].sort());
+		expect(stop.generation.jobIds.sort()).toEqual([active.id, suspended.id, unreported.id].sort());
+	});
+
+	it('handles a Stop request without unfinished work', async () => {
+		await db
+			.getRepository(AgentExecution)
+			.save({ id: randomUUID(), threadId: thread.id, status: 'success' });
+		const stop = await request();
+
+		expect(stop.generation).toEqual({ executionIds: [], jobIds: [], threadIds: [] });
+		expect(await repository.findJobsCapturedByStop(stop)).toEqual([]);
+		expect(await repository.findStopTargetsStillActive(stop)).toEqual([]);
+		await repository.finalizeStopReport(thread.id, stop.pause.id, randomUUID(), {});
+		expect((await repository.findTaskStop(thread.id))?.pause.reportedAt).toEqual(
+			expect.any(String),
+		);
+	});
+
 	it('keeps a captured foreground approval unfinished', async () => {
 		const execution = await db
 			.getRepository(AgentExecution)

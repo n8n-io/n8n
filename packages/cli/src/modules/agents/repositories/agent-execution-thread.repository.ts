@@ -782,7 +782,10 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return stop;
 	}
 
-	/** Collect existing work for the Stop request. */
+	/**
+	 * Collect unfinished work for the Stop request. A settled job without a
+	 * delivered result is unfinished, because the stop report delivers it.
+	 */
 	async captureStopTargets(threadId: string, ctx: OperationContext) {
 		const manager = this.managerFor(ctx);
 
@@ -801,8 +804,20 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 
 		const ids = [...threads];
 		const [executions, jobs] = await Promise.all([
-			manager.find(AgentExecution, { where: { threadId: In(ids) }, select: ['id'] }),
-			manager.find(AgentBackgroundJob, { where: { parentThreadId: In(ids) }, select: ['id'] }),
+			manager.find(AgentExecution, {
+				where: [
+					{ threadId: In(ids), status: 'running' },
+					{ threadId: In(ids), hitlStatus: 'suspended' },
+				],
+				select: ['id'],
+			}),
+			manager.find(AgentBackgroundJob, {
+				where: [
+					{ parentThreadId: In(ids), status: In(['running', 'suspended']) },
+					{ parentThreadId: In(ids), notifiedAt: IsNull() },
+				],
+				select: ['id'],
+			}),
 		]);
 
 		return {
