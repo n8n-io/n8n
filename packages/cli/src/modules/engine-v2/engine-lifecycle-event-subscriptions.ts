@@ -1,17 +1,17 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { LifecycleEventBatch, UnsubscribeFromExecutionChannel } from '@n8n/engine';
+import type { LifecycleEvent, UnsubscribeFromExecutionChannel } from '@n8n/engine';
 import { OperationalError, UnexpectedError } from 'n8n-workflow';
 
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 
 import { EngineLifecycleEventPushRelay } from './engine-lifecycle-event-push-relay';
 
-/** Receives the lifecycle events of one execution, one batch at a time. */
+/** Receives the lifecycle events of one execution, one event at a time. */
 export interface LifecycleEventReceiver {
 	receive(
 		executionId: string,
-		handler: (batch: LifecycleEventBatch) => void,
+		handler: (event: LifecycleEvent) => void,
 	): Promise<UnsubscribeFromExecutionChannel>;
 }
 
@@ -73,9 +73,7 @@ export class EngineV2LifecycleSubscriptions {
 		if (this.subscriptions.has(executionId) || this.pending.has(executionId)) return;
 
 		this.pending.add(executionId);
-		const subscription = receiver.receive(executionId, (batch) =>
-			this.pushRelay.relay(batch.events),
-		);
+		const subscription = receiver.receive(executionId, (event) => this.pushRelay.relay([event]));
 
 		let timer: NodeJS.Timeout | undefined;
 		const timedOut = new Promise<'timed-out'>((resolve) => {

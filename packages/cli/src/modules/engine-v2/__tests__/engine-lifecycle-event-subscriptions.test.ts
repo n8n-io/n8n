@@ -54,7 +54,7 @@ describe('EngineV2LifecycleSubscriptions', () => {
 		await subscriptions.subscribe('exec-1');
 		const [executionId, handler] = receiver.receive.mock.calls[0];
 
-		handler({ events: [completed] });
+		handler(completed);
 
 		expect(executionId).toBe('exec-1');
 		expect(relay.relay).toHaveBeenCalledExactlyOnceWith([completed]);
