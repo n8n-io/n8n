@@ -24,12 +24,17 @@ function definitionFixture(version: string): AgentDefinition {
 	);
 	const config = AgentJsonConfigSchema.parse(fixture.config);
 	config.instructions = `${version} instructions`;
-	fixture.skills['support_source_skill'].instructions = `${version} skill`;
 	fixture.tools.shared_tool.code = `throw new Error("${version} tool must not run");`;
 	fixture.tasks[taskId].objective = `${version} task`;
 	return {
 		schema: config,
-		skills: fixture.skills,
+		skills: {
+			support_source_skill: {
+				name: 'Support reference',
+				description: 'Use the support reference.',
+				instructions: `${version} skill`,
+			},
+		},
 		tools: fixture.tools,
 		tasks: new Map(Object.entries(fixture.tasks)),
 	};
@@ -96,7 +101,6 @@ describe('AgentExporter', () => {
 					name: 'Current name',
 					availableInMCP: true,
 					config: { ...selected.schema, integrations },
-					skills: selected.skills,
 					tools: selected.tools,
 					tasks: { [taskId]: selected.tasks.get(taskId) },
 				},
@@ -159,13 +163,6 @@ describe('AgentExporter', () => {
 
 	it.each([
 		{
-			kind: 'skill',
-			id: 'support_source_skill',
-			remove: (definition: AgentDefinition) => {
-				definition.skills = {};
-			},
-		},
-		{
 			kind: 'custom tool',
 			id: 'shared_tool',
 			remove: (definition: AgentDefinition) => {
@@ -189,11 +186,6 @@ describe('AgentExporter', () => {
 
 	it.each([
 		{
-			kind: 'skill',
-			corrupt: (definition: AgentDefinition) =>
-				Object.assign(definition.skills['support_source_skill'], { instructions: 42 }),
-		},
-		{
 			kind: 'tool descriptor',
 			corrupt: (definition: AgentDefinition) =>
 				Object.assign(definition.tools.shared_tool.descriptor, { hasResume: 'yes' }),
@@ -211,7 +203,6 @@ describe('AgentExporter', () => {
 
 	it('omits unused bodies and normalizes an omitted timezone', async () => {
 		const { agent, draft, exporter } = setup();
-		draft.skills.unused = { ...draft.skills['support_source_skill'] };
 		draft.tools.unused = { ...draft.tools.shared_tool };
 		const task = draft.tasks.get(taskId)!;
 		delete task.timezone;
@@ -220,9 +211,17 @@ describe('AgentExporter', () => {
 			['unused', { ...task }],
 		]);
 		const snapshot = await exporter.prepare(agent);
-		expect(Object.keys(snapshot!.content.skills)).toEqual(['support_source_skill']);
 		expect(Object.keys(snapshot!.content.tools)).toEqual(['shared_tool']);
 		expect(snapshot?.content.tasks).toEqual({ [taskId]: { ...task, timezone: null } });
+	});
+
+	it('exports skill refs without version pins', async () => {
+		const { agent, draft, exporter } = setup();
+		draft.schema!.skills = [{ type: 'skill', id: 'support_source_skill', versionId: 'pinned' }];
+		const snapshot = await exporter.prepare(agent);
+		expect(snapshot?.content.config?.skills).toEqual([
+			{ type: 'skill', id: 'support_source_skill' },
+		]);
 	});
 
 	it('exports empty body maps for a null configuration', async () => {
@@ -233,7 +232,6 @@ describe('AgentExporter', () => {
 			name: agent.name,
 			availableInMCP: true,
 			config: null,
-			skills: {},
 			tools: {},
 			tasks: {},
 		});
@@ -244,7 +242,6 @@ describe('AgentExporter', () => {
 		const snapshot = (await exporter.prepare(agent))!;
 		const expected = structuredClone(snapshot);
 		draft.schema!.instructions = 'Changed after preparation';
-		draft.skills['support_source_skill'].references![0].content = 'Changed reference';
 		Object.assign(draft.tools.shared_tool.descriptor.inputSchema!, { properties: {} });
 		Object.assign(draft.tools.shared_tool.descriptor.providerOptions!, {
 			provider: { cache: true },

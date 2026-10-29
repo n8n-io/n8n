@@ -57,6 +57,11 @@ instructions.
 - The request changes only a tool, integration, model, or memory setting and
   does not add or change how the target agent performs a function.
 
+## Name
+
+Each skill name must be unique in the project. Case, spaces, hyphens, and
+underscores do not count, so "Daily Report" and "daily-report" are the same name.
+
 ## Description (routing contract)
 
 ${SKILL_DESCRIPTION_RULE}

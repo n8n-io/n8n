@@ -486,6 +486,13 @@ export class ToolCallRunner {
 		} catch (error) {
 			return await this.toolError(params, error, builtTool);
 		}
+		// Trace output is host-only, so a failing hook must not fail the tool call.
+		let traceOutput: unknown;
+		try {
+			traceOutput = builtTool.toTraceOutput?.(toolResult);
+		} catch {
+			traceOutput = undefined;
+		}
 		const storage = this.getResultStorage(params);
 		const guardedResult = await guardToolResultForModel(
 			modelResult,
@@ -528,6 +535,7 @@ export class ToolCallRunner {
 			modelOutput: guardedResult.wireOutput,
 			customMessage: guardedCustomMessage,
 			...(builtTool.mcpServerName !== undefined ? { mcpServerName: builtTool.mcpServerName } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 		};
 	}
 

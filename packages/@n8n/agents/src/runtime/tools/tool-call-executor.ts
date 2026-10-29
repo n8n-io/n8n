@@ -342,6 +342,7 @@ export class ToolCallExecutor {
 		if (outcome.outcome === 'success') {
 			result.customMessage = outcome.customMessage;
 			if (outcome.mcpServerName !== undefined) result.mcpServerName = outcome.mcpServerName;
+			if (outcome.traceOutput !== undefined) result.traceOutput = outcome.traceOutput;
 		}
 		results.push(result);
 	}

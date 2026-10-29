@@ -1598,7 +1598,7 @@ export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSc
  * agent resolves contents with its tools. Cap matches the send-message field.
  */
 export const instanceAiThreadArtifactSchema = z.object({
-	type: z.enum(['workflow', 'agent', 'data-table']),
+	type: z.enum(['workflow', 'agent', 'data-table', 'skill']),
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
 	projectId: z.string().min(1).max(64).optional(),
@@ -2315,6 +2315,10 @@ export const DEFAULT_INSTANCE_AI_PERMISSIONS: InstanceAiPermissions = {
 
 /**
  * Permission keys that remain active when branchReadOnly is enabled.
+ *
+ * These overrides control assistant permissions, not backend authorization.
+ * Backend entry points must enforce instance protection separately. The instance
+ * MCP server permits only reads and production workflow executions on protected instances.
  *
  * This set mirrors n8n's own backend permission model for protected branches:
  * publish/unpublish, credential delete/update, and workflow update have no

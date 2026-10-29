@@ -6,6 +6,8 @@ import type {
 	AgentChatListItem,
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
+	SystemAgentThreadSummary,
+	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
@@ -44,6 +46,8 @@ import type {
 	SkillCreateMethod,
 	SkillNewNameQueryDto,
 	SkillNewNameResponse,
+	SkillVersionDetail,
+	SkillVersionSummary,
 	ListAgentMemoryEntriesQueryDto,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
@@ -444,6 +448,19 @@ export const deleteAgentMemoryEntry = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/memory-entries/${entryId}`,
+	);
+};
+
+export const deleteAgentMemoryCapture = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	captureId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-captures/${captureId}`,
 	);
 };
 
@@ -854,11 +871,36 @@ export const listAttachableSkills = async (
 	return data.sort(byTargetThenName);
 };
 
-export const getHubSkill = async (
+export const getSkillDetail = async (
 	context: IRestApiContext,
 	skillId: string,
 ): Promise<SkillDetail> => {
 	return await makeRestApiRequest<SkillDetail>(context, 'GET', `/skills/${skillId}`);
+};
+
+/** Every saved version of a skill, newest first. */
+export const listSkillVersions = async (
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillVersionSummary[]> => {
+	return await makeRestApiRequest<SkillVersionSummary[]>(
+		context,
+		'GET',
+		`/skills/${skillId}/versions`,
+	);
+};
+
+/** One saved version of a skill, with its content. */
+export const getSkillVersion = async (
+	context: IRestApiContext,
+	skillId: string,
+	version: number,
+): Promise<SkillVersionDetail> => {
+	return await makeRestApiRequest<SkillVersionDetail>(
+		context,
+		'GET',
+		`/skills/${skillId}/versions/${version}`,
+	);
 };
 
 /** A name like `name` that no skill in the scope has yet, such as "New skill 2". */
@@ -1010,6 +1052,48 @@ export const getChatMessages = async (
 		context,
 		'GET',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`,
+	);
+};
+
+/** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */
+export const getSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+): Promise<SystemAgentThreadSummary> =>
+	await makeRestApiRequest<SystemAgentThreadSummary>(
+		context,
+		'GET',
+		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
+	);
+
+/** One page of the user's own threads with a system agent, newest first. */
+export const listSystemAgentThreads = async (
+	context: IRestApiContext,
+	agentId: string,
+	options: { limit: number; cursor?: string; search?: string },
+): Promise<SystemAgentThreadsResponse> =>
+	await makeRestApiRequest<SystemAgentThreadsResponse>(
+		context,
+		'GET',
+		`/agents/system/${encodeURIComponent(agentId)}/threads`,
+		{
+			limit: options.limit,
+			...(options.cursor ? { cursor: options.cursor } : {}),
+			...(options.search ? { search: options.search } : {}),
+		},
+	);
+
+/** Deletes one of the user's own threads with a system agent. */
+export const deleteSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${agentChatPath('', agentId, 'system')}/${encodeURIComponent(threadId)}`,
 	);
 };
 

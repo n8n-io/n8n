@@ -19,7 +19,7 @@ type AgentPackageKeyHandling = {
 	schema: 'transform';
 	integrations: 'transform';
 	tools: 'transform';
-	skills: 'transform';
+	skills: 'exclude';
 	availableInMCP: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
@@ -61,15 +61,22 @@ export class AgentSerializer {
 		definition: AgentDefinition,
 		integrations: Agent['integrations'],
 	): SerializedAgent {
-		// The definition schema is already the document, with the skill refs.
-		const config = definition.schema ? { ...definition.schema, integrations } : null;
+		// Skills travel as their own package entries. An imported Agent follows the latest version.
+		const config = definition.schema
+			? {
+					...definition.schema,
+					integrations,
+					...(definition.schema.skills
+						? { skills: definition.schema.skills.map(({ type, id }) => ({ type, id })) }
+						: {}),
+				}
+			: null;
 		const content = serializedAgentSchema.parse(
 			serializePayload({
 				id: agent.id,
 				name: agent.name,
 				config,
 				availableInMCP: agent.availableInMCP,
-				skills: this.referencedBodies(agent.id, 'skill', config?.skills ?? [], definition.skills),
 				tools: this.referencedBodies(
 					agent.id,
 					'custom tool',

@@ -285,6 +285,10 @@ describe('AgentSchedulesRow', () => {
 		);
 
 		const modalData = openModalWithDataSpy.mock.calls[0][0].data;
+		await wrapper.setProps({ previewDisabledReason: 'Assistant is working' });
+		expect(modalData.getPreviewDisabledReason()).toBe('Assistant is working');
+		await wrapper.setProps({ previewDisabledReason: undefined });
+		expect(modalData.getPreviewDisabledReason()).toBeUndefined();
 		modalData.onPreview('Test these instructions');
 		expect(wrapper.emitted('preview-task')).toEqual([['Test these instructions']]);
 	});

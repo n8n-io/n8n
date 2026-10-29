@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
+import { flushPromises } from '@vue/test-utils';
 import { setActivePinia } from 'pinia';
 import type { InstanceAiThreadSummary } from '@n8n/api-types';
 import { nextTick } from 'vue';
@@ -10,6 +11,9 @@ import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadList from '../InstanceAiThreadList.vue';
 import { useAgentN8nChatThreadsStore } from '@/features/agents/n8nChatPage/n8nChatThreads.store';
 import { useInstanceAiStore } from '../../instanceAi.store';
+import { useAssistantAgentThreadsStore } from '../../assistantAgent/assistantAgentThreads.store';
+import { INSTANCE_AI_THREAD_VIEW, INSTANCE_AI_VIEW } from '../../constants';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const routerPush = vi.fn();
 vi.mock('vue-router', async (importOriginal) => ({
@@ -19,11 +23,13 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 const listN8nChatThreadsMock = vi.fn();
+const listSystemAgentThreadsMock = vi.fn();
 vi.mock('@/features/agents/composables/useAgentApi', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@/features/agents/composables/useAgentApi')>();
 	return {
 		...actual,
 		listN8nChatThreads: (...args: unknown[]) => listN8nChatThreadsMock(...args),
+		listSystemAgentThreads: (...args: unknown[]) => listSystemAgentThreadsMock(...args),
 	};
 });
 
@@ -95,6 +101,7 @@ describe('InstanceAiThreadList', () => {
 		showMessage.mockClear();
 		routerPush.mockClear();
 		listN8nChatThreadsMock.mockReset().mockResolvedValue({ data: [], nextCursor: null });
+		listSystemAgentThreadsMock.mockReset().mockResolvedValue({ data: [], nextCursor: null });
 		n8nChatFlag.value = false;
 		const pinia = createTestingPinia();
 		setActivePinia(pinia);
@@ -308,6 +315,126 @@ describe('InstanceAiThreadList', () => {
 		await userEvent.click(getAllByTestId('thread-actions')[0]);
 
 		expect(store.deleteThread).not.toHaveBeenCalled();
+	});
+
+	describe('with the Assistant agent on', () => {
+		const agentRuntimeThread = {
+			id: 'aa1',
+			title: 'Agent runtime chat',
+			updatedAt: '2026-01-02T00:00:00.000Z',
+			projectId: 'project-1',
+		};
+
+		beforeEach(() => {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': {
+					enabled: true,
+					mcpConnectionsAvailable: false,
+					browserUseEnabled: false,
+					proxyEnabled: false,
+					cloudManaged: false,
+					sandboxEnabled: true,
+					workflowBuilderAvailable: true,
+					sandboxUnavailableReason: null,
+					runDebugEnabled: false,
+					workflowSuggestionsEnabled: false,
+					assistantAgentEnabled: true,
+				},
+			};
+			listSystemAgentThreadsMock.mockResolvedValue({
+				data: [agentRuntimeThread],
+				nextCursor: null,
+			});
+		});
+
+		it('merges its threads in by updatedAt, with a delete-only action', async () => {
+			const { findAllByTestId } = await renderList();
+
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRow).toHaveTextContent('Agent runtime chat');
+			expect(
+				agentRow.querySelector('[data-test-id="thread-actions"]')?.getAttribute('data-action-ids'),
+			).toBe('delete');
+			const rowTestIds = [
+				...document.body.querySelectorAll(
+					'[data-test-id="instance-ai-assistant-agent-thread-item"], [data-test-id="instance-ai-thread-item"]',
+				),
+			].map((el) => el.getAttribute('data-test-id'));
+			expect(rowTestIds[0]).toBe('instance-ai-assistant-agent-thread-item');
+		});
+
+		it('deletes its thread through the Assistant agent threads store', async () => {
+			const agentStore = mockedStore(useAssistantAgentThreadsStore);
+			agentStore.deleteThread.mockResolvedValue(true);
+			const instanceAiStore = mockedStore(useInstanceAiStore);
+
+			const { findAllByTestId } = await renderList();
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+
+			expect(agentStore.deleteThread).toHaveBeenCalledWith(agentRuntimeThread);
+			expect(instanceAiStore.deleteThread).not.toHaveBeenCalled();
+		});
+
+		it('opens its thread at the Assistant thread route', async () => {
+			const { findByText } = await renderList();
+
+			await userEvent.click(await findByText('Agent runtime chat'));
+
+			await vi.waitFor(() => {
+				expect(routerPush).toHaveBeenCalledWith({
+					name: INSTANCE_AI_THREAD_VIEW,
+					params: { threadId: 'aa1' },
+				});
+			});
+		});
+
+		it('shows its recent threads from the store in the recent-only list, without a paged request', async () => {
+			n8nChatFlag.value = true;
+			mockedStore(useAssistantAgentThreadsStore).recentThreads = [agentRuntimeThread];
+
+			const { findAllByTestId } = await renderList();
+
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRow).toHaveTextContent('Agent runtime chat');
+			expect(listSystemAgentThreadsMock).not.toHaveBeenCalled();
+		});
+
+		it('leaves the open thread after deleting it, unless another thread opened meanwhile', async () => {
+			const agentStore = mockedStore(useAssistantAgentThreadsStore);
+			const finishDeletes: Array<(deleted: boolean) => void> = [];
+			agentStore.deleteThread.mockImplementation(
+				async () => await new Promise<boolean>((resolve) => finishDeletes.push(resolve)),
+			);
+
+			const { findAllByTestId, rerender } = await renderList({
+				props: { activeThreadId: 'aa1' },
+			});
+			const [agentRow] = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+			finishDeletes[0](true);
+			await vi.waitFor(() => {
+				expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+			});
+
+			routerPush.mockClear();
+			await userEvent.click(within(agentRow).getByTestId('thread-actions'));
+			await rerender({ activeThreadId: 'b' });
+			finishDeletes[1](true);
+			await flushPromises();
+
+			expect(routerPush).not.toHaveBeenCalled();
+		});
+
+		it('leaves its threads out for a host that scopes the list', async () => {
+			const { findAllByTestId, queryAllByTestId } = await renderList({
+				props: { navigate: false },
+			});
+
+			await findAllByTestId('instance-ai-thread-item');
+			expect(queryAllByTestId('instance-ai-assistant-agent-thread-item')).toHaveLength(0);
+			expect(listSystemAgentThreadsMock).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('with the n8n Chat flag on', () => {

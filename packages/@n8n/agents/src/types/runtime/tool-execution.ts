@@ -41,6 +41,8 @@ export type ToolCallOutcome =
 			modelOutput: unknown;
 			customMessage?: AgentMessage;
 			mcpServerName?: string;
+			/** Host-only trace data from the tool's `toTraceOutput`. */
+			traceOutput?: unknown;
 	  }
 	| {
 			outcome: 'suspended';
@@ -68,6 +70,8 @@ export interface ToolCallSuccess extends ToolCallIdentity {
 	customMessage?: AgentMessage;
 	/** Set when the tool belongs to an MCP server, so hosts can attribute the result to it. */
 	mcpServerName?: string;
+	/** Host-only trace data from the tool's `toTraceOutput`. */
+	traceOutput?: unknown;
 }
 
 /** Info about a tool call that suspended (before persistence — no runId yet). */

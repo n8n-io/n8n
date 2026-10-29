@@ -978,6 +978,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'user',
 					'agent',
 					'skill',
+					'memory',
 					'tool',
 					'node',
 					'workflow',
