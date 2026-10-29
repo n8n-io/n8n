@@ -298,7 +298,7 @@ Key points:
   keeps credentials off the command line.
 - `type` is `git` or `gitlab`. For `git`, `authType` is `ssh-key` or `token`, and
   `token` means an HTTP(S) username and password. For `gitlab`, `authType` is
-  `token` only: `password` is the GitLab access token (`read_api` and
+  `token` only: `password` is the GitLab access token (`api` and
   `write_repository`), `config.baseUrl` is required, and n8n ignores `username`.
   `publicKey` is `null` for a `token` provider.
 - `list-repositories` and `list-branches` work for `gitlab` providers only. A `git`
