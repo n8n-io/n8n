@@ -1,0 +1,26 @@
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-trace.ts
+  s_689aa937cfed26::t_a2e6f10f055c74 115-118,122-127,409-414,418,464-466,484,600,602,636-641
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-turn-trace.test.ts
+  s_689aa937cfed26::t_572dfe12841aea 432-437
+  s_689aa937cfed26::t_ff69428099165d 431,446-480
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_689aa937cfed26::t_ff69428099165d 203-231,233-240,243-245,247-254
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_689aa937cfed26::t_a2e6f10f055c74 258-269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "168d066848858b36ca90ad6d812e9b7416e71676",
+  "prompts": {},
+  "sessions": {
+    "s_689aa937cfed26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "532e1da7-fada-43a1-b581-d153e5dc6d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
