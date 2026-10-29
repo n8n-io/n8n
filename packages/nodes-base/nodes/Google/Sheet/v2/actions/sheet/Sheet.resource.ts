@@ -1,4 +1,4 @@
-import type { INodeProperties } from 'n8n-workflow';
+import { READ_ONLY_ANNOTATIONS, type INodeProperties } from 'n8n-workflow';
 
 import * as append from './append.operation';
 import * as appendOrUpdate from './appendOrUpdate.operation';
@@ -29,48 +29,56 @@ export const descriptions: INodeProperties[] = [
 				value: 'appendOrUpdate',
 				description: 'Append a new row or update an existing one (upsert)',
 				action: 'Append or update row in sheet',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'Append Row',
 				value: 'append',
 				description: 'Create a new row in a sheet',
 				action: 'Append row in sheet',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 			{
 				name: 'Clear',
 				value: 'clear',
 				description: 'Delete all the contents or a part of a sheet',
 				action: 'Clear sheet',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 			{
 				name: 'Create',
 				value: 'create',
 				description: 'Create a new sheet',
 				action: 'Create sheet',
+				annotations: { effect: 'write', destructive: false, idempotent: false },
 			},
 			{
 				name: 'Delete',
 				value: 'remove',
 				description: 'Permanently delete a sheet',
 				action: 'Delete sheet',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'Delete Rows or Columns',
 				value: 'delete',
 				description: 'Delete columns or rows from a sheet',
 				action: 'Delete rows or columns from sheet',
+				annotations: { effect: 'write', destructive: true, idempotent: false },
 			},
 			{
 				name: 'Get Row(s)',
 				value: 'read',
 				description: 'Retrieve one or more rows from a sheet',
 				action: 'Get row(s) in sheet',
+				annotations: READ_ONLY_ANNOTATIONS,
 			},
 			{
 				name: 'Update Row',
 				value: 'update',
 				description: 'Update an existing row in a sheet',
 				action: 'Update row in sheet',
+				annotations: { effect: 'write', destructive: true, idempotent: true },
 			},
 		],
 		default: 'read',

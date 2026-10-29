@@ -2365,6 +2365,13 @@ export interface INodePropertyOptions {
 	// When set, the option is hidden in the editor unless the matching
 	// `N8N_ENV_FEAT_<envFeatureFlag>` flag is enabled.
 	envFeatureFlag?: Uppercase<string>;
+	annotations?: Partial<NodeOperationAnnotations>;
+}
+
+export interface NodeOperationAnnotations {
+	effect: 'read' | 'write';
+	destructive: boolean;
+	idempotent: boolean;
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
@@ -3214,6 +3221,7 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	outputs: Array<NodeConnectionType | INodeOutputConfiguration> | ExpressionString;
 	outputNames?: string[];
 	properties: INodeProperties[];
+	annotations?: Partial<NodeOperationAnnotations>;
 	credentials?: INodeCredentialDescription[];
 	maxNodes?: number; // How many nodes of that type can be created in a workflow
 	polling?: true | undefined;
