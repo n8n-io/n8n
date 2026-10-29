@@ -1,6 +1,6 @@
 packages/@n8n/agents/src/runtime/model/messages.ts
   s_be7f812aa784b6::t_1cf1bacc083b25 200-203,212-221,223-224
-  s_bccf3616ba1e3f::t_74bcf840fe7227 292,302,304-311,316-321,323-327,340
+  s_bccf3616ba1e3f::t_74bcf840fe7227 292,302,304-311,316-321,317-321,323-327,340
 packages/@n8n/agents/src/runtime/__tests__/file-parts.test.ts
   s_be7f812aa784b6::t_bddf07f1e08200 194,199,201-211,215-225
   s_bccf3616ba1e3f::t_07c1cc3247d8ad 244-261,263-269
