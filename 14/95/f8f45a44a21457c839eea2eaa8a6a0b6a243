@@ -1,0 +1,64 @@
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  s_f1a804119197eb::t_2730a529aa1ded 875,883
+packages/cli/src/services/session-cookie-auth.strategy.ts
+  s_f1a804119197eb::t_a57a2194c880bd 14
+  s_f1a804119197eb::t_efbe36793ff072 23-24
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  s_f1a804119197eb::t_7a9d335e202a3c 11
+  s_f1a804119197eb::t_6e75c8db49f23a 22-23
+packages/@n8n/backend-services/src/services/auth-strategy.types.ts
+  s_f1a804119197eb::t_523fe928ed0867 10-14
+  s_f1a804119197eb::t_29790d1dd7d7ae 38-40
+  s_f1a804119197eb::t_2e503e6d5c00bf 9
+packages/cli/test/integration/public-api/public-api-invoked.test.ts
+  s_f1a804119197eb::t_c00bf79f60c24b 1-55
+packages/cli/src/modules/inbound-auth-core/public-api-oauth.strategy.ts
+  s_f1a804119197eb::t_d4fe219dabc1ce 18-22
+  s_f1a804119197eb::t_b0f5efa49b4191 38-39
+packages/cli/src/telemetry/__tests__/telemetry.test.ts
+  s_f1a804119197eb::t_809d31451e24a1 1080,1089,1098,1104-1109,1118,1123-1124,1133,1142,1148-1187,1199,1626,1633,1639-1675
+  s_f1a804119197eb::t_36b148d4977f3d 1676-1678
+packages/cli/src/services/api-key-auth.strategy.ts
+  s_f1a804119197eb::t_ef6ea088464425 14
+  s_f1a804119197eb::t_c4647ebe5677cd 24-25
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_f1a804119197eb::t_b90beabb13a906 1880,1891
+packages/@n8n/backend-services/src/auth.ts
+  s_f1a804119197eb::t_ddbbbb79a4a688 6
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_f1a804119197eb::t_30ce454b71d4b6 178
+packages/cli/src/telemetry/index.ts
+  s_f1a804119197eb::t_ba7c1b4853f2a1 280-291
+  s_f1a804119197eb::t_66bdff94bacd8d 4
+  s_f1a804119197eb::t_3addae8c764ce7 557,559-560,565
+  s_f1a804119197eb::t_cfbe58304e1b71 64,74-77,79
+packages/cli/src/events/maps/relay.event-map.ts
+  s_f1a804119197eb::t_ec75a175141253 51
+  s_f1a804119197eb::t_c3e529feebdf77 492-493
+packages/@n8n/backend-services/src/services/auth-strategy.registry.ts
+  s_f1a804119197eb::t_365e61ef5b8079 5
+  s_f1a804119197eb::t_0c0c2c2c23a962 8
+  s_f1a804119197eb::t_e57422e4f5a206 60-62
+packages/cli/src/public-api/public-api-controller.registry.ts
+  s_f1a804119197eb::t_c39a2bc076d98c 359
+packages/cli/src/public-api/__tests__/public-api-controller.registry.test.ts
+  s_f1a804119197eb::t_f21a0c9a6e1211 80,285-308,738,883
+packages/@n8n/backend-services/src/services/__tests__/auth-strategy.registry.test.ts
+  s_f1a804119197eb::t_78a18751f0743e 27,45-46,52-55,59-73,77,85,102-103,110-113,232-233,241-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1495f8f45a44a21457c839eea2eaa8a6a0b6a243",
+  "prompts": {},
+  "sessions": {
+    "s_f1a804119197eb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "df616428-5500-4fc2-8350-ef5e605e2487",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}

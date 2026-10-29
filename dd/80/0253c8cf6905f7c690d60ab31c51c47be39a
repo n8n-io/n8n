@@ -1,0 +1,27 @@
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_82789c69de1855::t_f70682e6918dde 10,56,74,88,94,96,160,175,178,180-182,184,186,193-195,376
+  s_82789c69de1855::t_d6d62a221d8ac3 183
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_bdb33832e20e3f 763,766,768-769,771
+  s_82789c69de1855::t_54d66b9cbc7730 1887,2117-2118
+  s_82789c69de1855::t_d6b616fdf44d36 1888-1899,1901-1915,1917-1918,1925
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_82789c69de1855::t_f70682e6918dde 85-88,93,104,106,122,177-181,183,185-187,614
+  s_82789c69de1855::t_d6d62a221d8ac3 182
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "dd800253c8cf6905f7c690d60ab31c51c47be39a",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}

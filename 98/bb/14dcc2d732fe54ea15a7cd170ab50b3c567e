@@ -1,0 +1,23 @@
+packages/quality/policy/code-health/src/single-instance/explain-duplicates.ts
+  s_d9689bc23bb5d3::t_7d98b5e7f8b947 215,258-264,344,382,388,409
+packages/quality/policy/code-health/src/single-instance/explain-duplicates.test.ts
+  s_d9689bc23bb5d3::t_7d98b5e7f8b947 284-295,297-298,301-303
+packages/quality/policy/code-health/src/single-instance/verify-npm-install.ts
+  s_d9689bc23bb5d3::t_7d98b5e7f8b947 41,516
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "98bb14dcc2d732fe54ea15a7cd170ab50b3c567e",
+  "prompts": {},
+  "sessions": {
+    "s_d9689bc23bb5d3": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e798a0faeffefr2i06C0cyL7gG",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}
