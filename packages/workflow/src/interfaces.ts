@@ -1188,6 +1188,14 @@ export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
 }
 
+export interface ExpressionIsolateFunctions {
+	/**
+	 * Runs `fn` with an expression isolate held, so it can resolve node parameters.
+	 * Reuses an isolate already held and releases only one it acquired.
+	 */
+	withExpressionIsolate<T>(fn: () => Promise<T>): Promise<T>;
+}
+
 export type NodeTypeAndVersion = {
 	name: string;
 	type: string;
@@ -1628,7 +1636,8 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions;
+		SchedulingFunctions &
+		ExpressionIsolateFunctions;
 }
 
 export interface IHookFunctions

@@ -57,6 +57,7 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 			...getRequestHelperFunctions(workflow, node, additionalData),
 			...getBinaryHelperFunctions(additionalData, workflow.id),
 			...schedulingFunctions,
+			withExpressionIsolate: async (fn) => await workflow.expression.withIsolate(fn),
 		};
 	}
 
