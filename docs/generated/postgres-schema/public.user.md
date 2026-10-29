@@ -437,6 +437,7 @@ erDiagram
   uuid enabledById FK
   integer id
   boolean includeAllProjectMembers
+  boolean includeSubWorkflows
   varchar_36_ projectId FK
   varchar_16_ scope
   timestamp_3__with_time_zone updatedAt

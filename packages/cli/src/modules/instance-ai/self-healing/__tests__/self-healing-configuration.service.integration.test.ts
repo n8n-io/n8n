@@ -1,4 +1,5 @@
 import {
+	createActiveWorkflow,
 	createTeamProject,
 	createWorkflow,
 	getPersonalProject,
@@ -26,6 +27,7 @@ import type { IWorkflowBase } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { AuthHandlerRegistry } from '@/auth/auth-handler.registry';
 import { ControllerRegistry } from '@/controller.registry';
 import { UserService } from '@/services/user.service';
@@ -90,6 +92,7 @@ async function fixture() {
 		workflowIds: [workflow.id],
 		reviewerIds: [user.id],
 		includeAllProjectMembers: false,
+		includeSubWorkflows: false,
 	};
 	return {
 		user,
@@ -360,6 +363,7 @@ it('requires existing project settings permission for every operation', async ()
 		workflowIds: [],
 		reviewerIds: [admin.id],
 		includeAllProjectMembers: false,
+		includeSubWorkflows: false,
 		enabled: false,
 	});
 	const agent = server.authAgentFor(editor);
@@ -371,6 +375,10 @@ it('requires existing project settings permission for every operation', async ()
 	await agent.patch(`${url}/${config.id}`).send(config).expect(403);
 	await agent.patch(`${url}/${config.id}/enabled`).send({ enabled: true }).expect(403);
 	await agent.delete(`${url}/${config.id}`).expect(403);
+	await agent
+		.post(`${url}/sub-workflows/preview`)
+		.send({ workflowIds: ['workflow'] })
+		.expect(403);
 });
 
 it('lets a personal project owner manage self-healing in their personal project', async () => {
@@ -393,6 +401,7 @@ it('lets a personal project owner manage self-healing in their personal project'
 			workflowIds: [workflow.id],
 			reviewerIds: [],
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			enabled: true,
 		})
 		.expect(200);
@@ -402,6 +411,7 @@ it('lets a personal project owner manage self-healing in their personal project'
 		enabledById: owner.id,
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 	});
 	expect(await repository.isReviewer(id, owner.id, {})).toBe(true);
 	await Container.get(DataSource)
@@ -415,6 +425,7 @@ it('lets a personal project owner manage self-healing in their personal project'
 			workflowIds: [workflow.id],
 			reviewerIds: [admin.id],
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 		})
 		.expect(400);
 	const configuration = await repository.findOneByOrFail({ id });
@@ -440,6 +451,7 @@ async function expectNoConfigurationAccess(user: User, projectId: string, id: nu
 		workflowIds: [],
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 		enabled: false,
 	};
 	await agent.get(url).expect(403);
@@ -449,6 +461,10 @@ async function expectNoConfigurationAccess(user: User, projectId: string, id: nu
 	await agent.patch(`${url}/${id}`).send(body).expect(403);
 	await agent.patch(`${url}/${id}/enabled`).send({ enabled: false }).expect(403);
 	await agent.delete(`${url}/${id}`).expect(403);
+	await agent
+		.post(`${url}/sub-workflows/preview`)
+		.send({ workflowIds: ['workflow'] })
+		.expect(403);
 	expect(await configurations.list(projectId)).toHaveLength(1);
 }
 
@@ -464,6 +480,7 @@ it.each([
 		workflowIds: [],
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 		enabled: false,
 	});
 
@@ -480,6 +497,7 @@ it('denies a chat user access to their personal project for every operation', as
 			projectId: project.id,
 			scope: 'all',
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			enabled: false,
 		}),
 	);
@@ -495,6 +513,7 @@ it('denies a user downgraded to chat user access to their personal project', asy
 		workflowIds: [],
 		reviewerIds: [],
 		includeAllProjectMembers: true,
+		includeSubWorkflows: false,
 		enabled: false,
 	});
 	await server
@@ -981,6 +1000,7 @@ it('disables the configuration after access loss and records a new explicit enab
 		workflowIds: [],
 		reviewerIds: [user.id, replacement.id],
 		includeAllProjectMembers: false,
+		includeSubWorkflows: false,
 		enabled: true,
 	});
 	await linkUserToProject(user, project, 'project:viewer');
@@ -996,20 +1016,30 @@ it('disables the configuration after access loss and records a new explicit enab
 	});
 });
 
+function findMigration(name: string) {
+	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
+	const migration = Container.get(DataSource).migrations.find(
+		({ constructor }) => constructor.name === name,
+	);
+	if (!migration) throw new Error(`${name} is not registered.`);
+	return migration;
+}
+
 it('reverts and reapplies the configuration schema', async () => {
 	const db = Container.get(DataSource);
-	[...postgresMigrations, ...sqliteMigrations].forEach(wrapMigration);
-	const findMigration = (name: string) => {
-		const migration = db.migrations.find(({ constructor }) => constructor.name === name);
-		if (!migration) throw new Error(`${name} is not registered.`);
-		return migration;
-	};
 	const migration = findMigration('CreateSelfHealingConfigurations1792742505678');
 	const projectMembers = findMigration(
 		'AddIncludeAllProjectMembersToSelfHealingConfiguration1793106080688',
 	);
+	const subWorkflows = findMigration(
+		'AddIncludeSubWorkflowsToSelfHealingConfiguration1793284579000',
+	);
 	const runner = db.createQueryRunner();
 	try {
+		await subWorkflows.down(runner);
+		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeSubWorkflows')).toBe(
+			false,
+		);
 		await projectMembers.down(runner);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeAllProjectMembers')).toBe(
 			false,
@@ -1020,16 +1050,103 @@ it('reverts and reapplies the configuration schema', async () => {
 		} finally {
 			await migration.up(runner);
 			await projectMembers.up(runner);
+			await subWorkflows.up(runner);
 		}
 		expect(await runner.hasTable(repository.metadata.tablePath)).toBe(true);
 		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeAllProjectMembers')).toBe(
 			true,
 		);
+		expect(await runner.hasColumn(repository.metadata.tablePath, 'includeSubWorkflows')).toBe(true);
 	} finally {
 		await runner.release();
 	}
 	const { user, project, input } = await fixture();
 	expect(await configurations.save(user, project.id, input)).toMatchObject(input);
+});
+
+describe('sub-workflows', () => {
+	it('saves the inclusion and keeps it off for existing and omitted values', async () => {
+		const { user, project, input, url } = await fixture();
+		const agent = server.authAgentFor(user);
+		const { scope, workflowIds, reviewerIds } = input;
+		const created = await agent
+			.post(url)
+			.send({ ...input, includeSubWorkflows: true })
+			.expect(200);
+		expect(created.body.data).toMatchObject({ includeSubWorkflows: true });
+
+		const edited = await agent
+			.patch(`${url}/${created.body.data.id}`)
+			.send({ scope, workflowIds, reviewerIds })
+			.expect(200);
+		expect(edited.body.data).toMatchObject({ includeSubWorkflows: false });
+
+		await agent
+			.patch(`${url}/${created.body.data.id}`)
+			.send({ ...input, includeSubWorkflows: true })
+			.expect(200);
+		const migration = findMigration(
+			'AddIncludeSubWorkflowsToSelfHealingConfiguration1793284579000',
+		);
+		const runner = Container.get(DataSource).createQueryRunner();
+		try {
+			await migration.down(runner);
+			await migration.up(runner);
+		} finally {
+			await runner.release();
+		}
+		expect(await configurations.get(project.id, created.body.data.id)).toMatchObject({
+			includeSubWorkflows: false,
+		});
+	});
+
+	it('previews the sub-workflows of the selected workflows', async () => {
+		const { user, project, url } = await fixture();
+		const index = Container.get(WorkflowIndexService);
+		const publish = async (name: string, calledWorkflowIds: string[] = []) => {
+			const nodes = calledWorkflowIds.map((workflowId) => ({
+				id: randomUUID(),
+				name: randomUUID(),
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: { workflowId: { __rl: true, mode: 'id', value: workflowId } },
+			}));
+			const workflow = await createActiveWorkflow({ name, nodes }, project);
+			await index.updateIndexForPublished(workflow, workflow.activeVersionId!, nodes);
+			return workflow;
+		};
+		const second = await publish('Second');
+		const first = await publish('First');
+		const root = await publish('Root', [second.id, first.id]);
+		const unpublished = await createWorkflow({ activeVersionId: null }, project);
+
+		const response = await server
+			.authAgentFor(user)
+			.post(`${url}/sub-workflows/preview`)
+			.send({ workflowIds: [root.id, unpublished.id] })
+			.expect(200);
+
+		expect(response.body.data).toEqual({
+			[root.id]: {
+				subWorkflows: [
+					{ id: first.id, name: 'First', otherProject: false },
+					{ id: second.id, name: 'Second', otherProject: false },
+				],
+				inaccessible: 0,
+			},
+			[unpublished.id]: { subWorkflows: [], inaccessible: 0 },
+		});
+	});
+
+	it('rejects a preview without workflows', async () => {
+		const { user, url } = await fixture();
+		await server
+			.authAgentFor(user)
+			.post(`${url}/sub-workflows/preview`)
+			.send({ workflowIds: [] })
+			.expect(400);
+	});
 });
 
 describe('project member reviewers', () => {
@@ -1092,6 +1209,7 @@ describe('project member reviewers', () => {
 		expect(created.body.data).toMatchObject({
 			reviewerIds: [user.id],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
 		});
 	});
 
@@ -1130,6 +1248,7 @@ describe('project member reviewers', () => {
 
 		expect(await configurations.save(admin, project.id, input)).toMatchObject({
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			reviewerIds: [],
 		});
 	});
@@ -1148,6 +1267,7 @@ describe('project member reviewers', () => {
 			...input,
 			reviewerIds: [admin.id, owner.id],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
 		});
 		expect([...saved.reviewerIds].sort()).toEqual([admin.id, owner.id].sort());
 		expect(await repository.isReviewer(saved.id, admin.id, {})).toBe(true);
@@ -1219,6 +1339,7 @@ describe('project member reviewers', () => {
 		expect(await configurations.get(project.id, configuration.id)).toMatchObject({
 			enabled: false,
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 		});
 		await expect(
 			configurations.setEnabled(user, project.id, configuration.id, true),
@@ -1248,6 +1369,7 @@ describe('project member reviewers', () => {
 		});
 		expect(await configurations.save(user, project.id, input, configuration.id)).toMatchObject({
 			includeAllProjectMembers: true,
+			includeSubWorkflows: false,
 			reviewerIds: [],
 		});
 	});
@@ -1261,6 +1383,7 @@ describe('project member reviewers', () => {
 			workflowIds: [selectedElsewhere.id],
 			reviewerIds: [user.id],
 			includeAllProjectMembers: false,
+			includeSubWorkflows: false,
 		});
 		await linkUserToProject(user, project, 'project:viewer');
 		const outsider = await createUser();

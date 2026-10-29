@@ -155,26 +155,10 @@ deduplicated. There is no retry cap for runs that finish without a result.
 
 ## Discover sub-workflows
 
-`SubWorkflowDiscoveryService.discover(user, projectId, workflowIds)` finds the
-sub-workflows that the given workflows call. Configuration preview and investigation preparation
-use it. Call it again for each investigation. The result is not stored.
-
-- It reads the `workflowCall` rows of the workflow dependency index for published versions.
-  It does not read drafts, workflow content, or the whole project. It does not run workflows.
-- The index holds static database references in Execute Sub-workflow, Workflow Tool, and
-  Workflow Retriever nodes. It includes disabled nodes. It skips expression references and
-  sources other than the database, so discovery does not report them.
-- It follows nested references. It loads all workflows of one depth in one batch.
-  A visited set lists each shared sub-workflow once and stops cycles.
-- The given workflows are never listed as sub-workflows.
-- The user must have `workflow:read`, `workflow:update`, and `execution:read` for each sub-workflow.
-  The sub-workflow must belong to `projectId`. Discovery stops at other workflows.
-- It returns only counts for excluded references. Inaccessible workflows return no ID or name.
-- Unpublished and archived sub-workflows are listed with `published: false`.
-  Discovery does not follow their references, also when old published index rows remain.
-
-Discovery does not decide if a sub-workflow can be repaired. Investigation preparation applies
-the baseline checks to each sub-workflow.
+`SubWorkflowDiscoveryService` finds the published sub-workflows that each given workflow calls,
+at every depth. It reads `workflowCall` rows of the dependency index for published versions only.
+It stops at workflows that the user cannot read, update, and see executions of, and at workflows
+in another project. The result is not stored. Investigation preparation still checks each target.
 
 ## Configure self-healing
 
@@ -194,6 +178,13 @@ configuration applies to later failures. Moving between folders in the same proj
 New configurations created in Project Settings start enabled.
 The form selects the creator as the initial reviewer when the creator can be selected.
 Enabling a configuration records the user whose access authorizes subsequent investigations.
+
+### Sub-workflows
+
+`includeSubWorkflows` lets investigations repair sub-workflows of covered workflows. It does not
+start investigations for sub-workflow failures. It defaults to `false`.
+`POST .../self-healing-configurations/sub-workflows/preview` returns the discovery result for
+each selected workflow, so the form can show it.
 
 ### Reviewers
 

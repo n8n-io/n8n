@@ -1,3 +1,4 @@
+import type { SelfHealingSubWorkflow, SelfHealingSubWorkflowPreview } from '@n8n/api-types';
 import {
 	SharedWorkflowRepository,
 	WorkflowDependencyRepository,
@@ -9,20 +10,6 @@ import { Service } from '@n8n/di';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ACTOR_SCOPES } from './self-healing-configuration.service';
-
-export type DiscoveredSubWorkflow = {
-	id: string;
-	name: string;
-	published: boolean;
-};
-
-export type SubWorkflowDiscovery = {
-	subWorkflows: DiscoveredSubWorkflow[];
-	excluded: {
-		inaccessible: number;
-		otherProject: number;
-	};
-};
 
 @Service()
 export class SubWorkflowDiscoveryService {
@@ -37,56 +24,68 @@ export class SubWorkflowDiscoveryService {
 		user: User,
 		projectId: string,
 		workflowIds: string[],
-	): Promise<SubWorkflowDiscovery> {
-		const rootIds = new Set(workflowIds);
-		const visited = new Set(rootIds);
-		const result: SubWorkflowDiscovery = {
-			subWorkflows: [],
-			excluded: { inaccessible: 0, otherProject: 0 },
-		};
+	): Promise<SelfHealingSubWorkflowPreview> {
+		const rootIds = [...new Set(workflowIds)];
+		const seen = new Set(rootIds);
+		const published = new Map<string, SelfHealingSubWorkflow>();
+		const inaccessibleIds = new Set<string>();
+		const calls = new Map<string, string[]>();
 
-		let level = [...rootIds];
+		let level = rootIds;
 		while (level.length > 0) {
 			const accessible = await this.workflowFinder.findWorkflowIdsWithScopeForUser(
 				level,
 				user,
 				ACTOR_SCOPES,
 			);
-			const owners = await this.ownership.findOwnerProjectsByWorkflowIds([...accessible]);
-			const inProject = level.filter((id) => owners.get(id)?.id === projectId);
-			const workflows = await this.workflows.findByIds(inProject, {
-				fields: ['name', 'activeVersionId'],
-			});
-			const publishedVersionIds = workflows.flatMap(({ activeVersionId }) =>
-				activeVersionId ? [activeVersionId] : [],
+			const [owners, workflows] = await Promise.all([
+				this.ownership.findOwnerProjectsByWorkflowIds([...accessible]),
+				this.workflows.findByIds([...accessible], { fields: ['name', 'activeVersionId'] }),
+			]);
+			const followedVersionIds = workflows.flatMap(({ id, activeVersionId }) =>
+				activeVersionId && owners.get(id)?.id === projectId ? [activeVersionId] : [],
 			);
-			const calls = await this.dependencies.findWorkflowCalls(publishedVersionIds);
+			const rows = await this.dependencies.findWorkflowCalls(followedVersionIds);
 
 			for (const workflowId of level) {
-				if (rootIds.has(workflowId)) continue;
-				if (!accessible.has(workflowId)) result.excluded.inaccessible++;
-				else if (owners.get(workflowId)?.id !== projectId) result.excluded.otherProject++;
+				if (!accessible.has(workflowId)) inaccessibleIds.add(workflowId);
 			}
-
-			for (const workflow of workflows) {
-				if (rootIds.has(workflow.id)) continue;
-				result.subWorkflows.push({
-					id: workflow.id,
-					name: workflow.name,
-					published: workflow.activeVersionId !== null,
-				});
+			for (const { id, name, activeVersionId } of workflows) {
+				if (!activeVersionId) continue;
+				published.set(id, { id, name, otherProject: owners.get(id)?.id !== projectId });
 			}
 
 			const next: string[] = [];
-			for (const { calledWorkflowId } of calls) {
-				if (visited.has(calledWorkflowId)) continue;
-				visited.add(calledWorkflowId);
+			for (const { workflowId, calledWorkflowId } of rows) {
+				const called = calls.get(workflowId) ?? [];
+				called.push(calledWorkflowId);
+				calls.set(workflowId, called);
+				if (seen.has(calledWorkflowId)) continue;
+				seen.add(calledWorkflowId);
 				next.push(calledWorkflowId);
 			}
-
 			level = next;
 		}
 
+		const result: SelfHealingSubWorkflowPreview = {};
+		for (const rootId of rootIds) {
+			const reached = new Set([rootId]);
+			const subWorkflows: SelfHealingSubWorkflow[] = [];
+			let inaccessible = 0;
+			const pending = [...(calls.get(rootId) ?? [])];
+			for (let index = 0; index < pending.length; index++) {
+				const workflowId = pending[index];
+				if (reached.has(workflowId)) continue;
+				reached.add(workflowId);
+				if (inaccessibleIds.has(workflowId)) inaccessible++;
+				const workflow = published.get(workflowId);
+				if (!workflow) continue;
+				subWorkflows.push(workflow);
+				pending.push(...(calls.get(workflowId) ?? []));
+			}
+			subWorkflows.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
+			result[rootId] = { subWorkflows, inaccessible };
+		}
 		return result;
 	}
 }

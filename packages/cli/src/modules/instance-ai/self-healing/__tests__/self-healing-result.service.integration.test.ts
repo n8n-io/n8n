@@ -576,6 +576,7 @@ describe('investigation eligibility after a result', () => {
 				workflowIds: [original.id],
 				reviewerIds: [user.id],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 			},
 			input.configurationId,
 		);
@@ -596,6 +597,7 @@ describe('investigation eligibility after a result', () => {
 				workflowIds: [otherWorkflow.id],
 				reviewerIds: [user.id],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 			},
 			input.configurationId,
 		);
@@ -1672,6 +1674,7 @@ describe('Inbox source reads', () => {
 				.delete({ configurationId });
 			await Container.get(SelfHealingConfigurationRepository).update(configurationId, {
 				includeAllProjectMembers: true,
+				includeSubWorkflows: false,
 			});
 		}
 
@@ -1803,6 +1806,7 @@ describe('Inbox source reads', () => {
 
 				await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
 					includeAllProjectMembers: false,
+					includeSubWorkflows: false,
 				});
 				await expectReviewer(admin, false);
 				await expect(
@@ -1864,6 +1868,7 @@ describe('Inbox source reads', () => {
 			await linkUserToProject(member, project, 'project:editor');
 			await Container.get(SelfHealingConfigurationRepository).update(result.configurationId, {
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 			});
 			await expectReviewer(member, false);
 			await expect(service.getDetail(member, project.id, original.id, result.id)).rejects.toThrow(
@@ -1980,6 +1985,7 @@ describe('configuration lifecycle', () => {
 				workflowIds: [],
 				reviewerIds: [reviewer.id],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 			},
 			result.configurationId,
 		);
@@ -2011,6 +2017,7 @@ describe('configuration lifecycle', () => {
 				workflowIds: [],
 				reviewerIds: [user.id],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 			},
 			result.configurationId,
 		);
@@ -2035,6 +2042,7 @@ describe('configuration lifecycle', () => {
 				workflowIds: [],
 				reviewerIds: [reviewer.id],
 				includeAllProjectMembers: false,
+				includeSubWorkflows: false,
 			},
 			input.configurationId,
 		);
@@ -2073,6 +2081,7 @@ describe('configuration lifecycle', () => {
 					workflowIds: [],
 					reviewerIds: [reviewer.id],
 					includeAllProjectMembers: false,
+					includeSubWorkflows: false,
 				},
 				investigation.configurationId,
 			);

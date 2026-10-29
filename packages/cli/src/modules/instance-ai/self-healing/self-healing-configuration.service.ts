@@ -119,6 +119,7 @@ export class SelfHealingConfigurationService {
 
 			configuration.scope = input.scope;
 			configuration.includeAllProjectMembers = input.includeAllProjectMembers;
+			configuration.includeSubWorkflows = input.includeSubWorkflows;
 
 			await this.configurations.saveConfiguration(configuration, ctx);
 			await this.configurations.replaceSelections(configuration, input, ctx);

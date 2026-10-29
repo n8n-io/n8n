@@ -57,29 +57,37 @@ const call = (workflowId: string, extra: Partial<INode> = {}) =>
 		extra,
 	);
 
-async function publish(nodes: INode[], owner = project, id = generateNanoId()) {
-	const workflow = await createActiveWorkflow({ id, name: `Workflow ${id}`, nodes }, owner);
+type PublishOptions = { owner?: Project; id?: string; name?: string };
+
+async function publish(
+	nodes: INode[],
+	{ owner = project, id = generateNanoId(), name = `Workflow ${id}` }: PublishOptions = {},
+) {
+	const workflow = await createActiveWorkflow({ id, name, nodes }, owner);
 	await index.updateIndexForPublished(workflow, workflow.activeVersionId!, nodes);
 	return workflow;
 }
 
-const ids = (result: Awaited<ReturnType<SubWorkflowDiscoveryService['discover']>>) =>
-	result.subWorkflows.map(({ id }) => id).sort();
+async function discover(rootId: string, actor = user) {
+	const result = await discovery.discover(actor, project.id, [rootId]);
+	return result[rootId];
+}
+
+const ids = ({ subWorkflows }: { subWorkflows: Array<{ id: string }> }) =>
+	subWorkflows.map(({ id }) => id).sort();
 
 describe('SubWorkflowDiscoveryService', () => {
-	it('includes nested sub-workflows, not only direct ones', async () => {
-		const grandchild = await publish([]);
-		const child = await publish([call(grandchild.id)]);
+	it('includes nested sub-workflows, not only direct ones, sorted by name', async () => {
+		const grandchild = await publish([], { name: 'A grandchild' });
+		const child = await publish([call(grandchild.id)], { name: 'B child' });
 		const root = await publish([call(child.id)]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(result).toEqual({
+		expect(await discover(root.id)).toEqual({
 			subWorkflows: [
-				{ id: child.id, name: child.name, published: true },
-				{ id: grandchild.id, name: grandchild.name, published: true },
+				{ id: grandchild.id, name: grandchild.name, otherProject: false },
+				{ id: child.id, name: child.name, otherProject: false },
 			],
-			excluded: { inaccessible: 0, otherProject: 0 },
+			inaccessible: 0,
 		});
 	});
 
@@ -87,22 +95,26 @@ describe('SubWorkflowDiscoveryService', () => {
 		const rootId = generateNanoId();
 		const firstId = generateNanoId();
 		const shared = await publish([call(firstId), call(rootId)]);
-		await publish([call(shared.id)], project, firstId);
+		await publish([call(shared.id)], { id: firstId });
 		const second = await publish([call(shared.id)]);
-		const root = await publish([call(firstId), call(second.id), call(rootId)], project, rootId);
+		const root = await publish([call(firstId), call(second.id), call(rootId)], { id: rootId });
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(ids(result)).toEqual([firstId, second.id, shared.id].sort());
+		expect(ids(await discover(root.id))).toEqual([firstId, second.id, shared.id].sort());
 	});
 
-	it('does not list a selected workflow as a sub-workflow of another selected workflow', async () => {
-		const child = await publish([]);
-		const root = await publish([call(child.id)]);
+	it('returns the sub-workflows of each selected workflow separately', async () => {
+		const shared = await publish([]);
+		const onlyFirst = await publish([]);
+		const second = await publish([call(shared.id)]);
+		const first = await publish([call(shared.id), call(onlyFirst.id), call(second.id)]);
+		const missing = generateNanoId();
 
-		const result = await discovery.discover(user, project.id, [root.id, child.id]);
+		const result = await discovery.discover(user, project.id, [first.id, second.id, missing]);
 
-		expect(result.subWorkflows).toEqual([]);
+		expect(Object.keys(result).sort()).toEqual([first.id, second.id, missing].sort());
+		expect(ids(result[first.id])).toEqual([shared.id, onlyFirst.id, second.id].sort());
+		expect(ids(result[second.id])).toEqual([shared.id]);
+		expect(result[missing]).toEqual({ subWorkflows: [], inaccessible: 0 });
 	});
 
 	it('follows Workflow Tool and Workflow Retriever references', async () => {
@@ -119,9 +131,7 @@ describe('SubWorkflowDiscoveryService', () => {
 			}),
 		]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(ids(result)).toEqual([tool.id, retriever.id].sort());
+		expect(ids(await discover(root.id))).toEqual([tool.id, retriever.id].sort());
 	});
 
 	it('ignores references that resolve only at runtime', async () => {
@@ -132,18 +142,14 @@ describe('SubWorkflowDiscoveryService', () => {
 			node('n8n-nodes-base.executeWorkflow', { source: 'parameter', workflowJson: '{}' }),
 		]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(result).toEqual({ subWorkflows: [], excluded: { inaccessible: 0, otherProject: 0 } });
+		expect(await discover(root.id)).toEqual({ subWorkflows: [], inaccessible: 0 });
 	});
 
 	it('follows references in disabled nodes', async () => {
 		const child = await publish([]);
 		const root = await publish([call(child.id, { disabled: true })]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(ids(result)).toEqual([child.id]);
+		expect(ids(await discover(root.id))).toEqual([child.id]);
 	});
 
 	it('follows published content and ignores unpublished draft changes', async () => {
@@ -154,12 +160,10 @@ describe('SubWorkflowDiscoveryService', () => {
 		await Container.get(WorkflowRepository).update(root.id, { nodes: draftNodes });
 		await index.updateIndexForDraft({ ...root, nodes: draftNodes });
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(ids(result)).toEqual([publishedChild.id]);
+		expect(ids(await discover(root.id))).toEqual([publishedChild.id]);
 	});
 
-	it('lists unpublished and archived sub-workflows without following their references', async () => {
+	it('skips unpublished and archived sub-workflows and their references', async () => {
 		const hidden = await publish([]);
 		const unpublished = await createWorkflow({ nodes: [call(hidden.id)] }, project);
 		await index.updateIndexForDraft(unpublished);
@@ -170,59 +174,53 @@ describe('SubWorkflowDiscoveryService', () => {
 		});
 		const root = await publish([call(unpublished.id), call(archived.id)]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
+		expect(await discover(root.id)).toEqual({ subWorkflows: [], inaccessible: 0 });
+	});
 
-		expect(result.subWorkflows).toEqual(
-			expect.arrayContaining([
-				{ id: unpublished.id, name: unpublished.name, published: false },
-				{ id: archived.id, name: archived.name, published: false },
-			]),
-		);
-		expect(ids(result)).not.toContain(hidden.id);
+	it('does not follow a selected workflow that is not published', async () => {
+		const child = await publish([]);
+		const unpublished = await createWorkflow({ nodes: [call(child.id)] }, project);
+		await index.updateIndexForDraft(unpublished);
+
+		expect(await discover(unpublished.id)).toEqual({ subWorkflows: [], inaccessible: 0 });
 	});
 
 	it('stops at inaccessible workflows and reports only their count', async () => {
 		const otherProject = await createTeamProject();
-		const behind = await publish([], otherProject);
-		const inaccessible = await publish([call(behind.id)], otherProject);
+		const behind = await publish([], { owner: otherProject });
+		const inaccessible = await publish([call(behind.id)], { owner: otherProject });
 		const root = await publish([call(inaccessible.id), call(generateNanoId())]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(result).toEqual({
-			subWorkflows: [],
-			excluded: { inaccessible: 2, otherProject: 0 },
-		});
+		expect(await discover(root.id)).toEqual({ subWorkflows: [], inaccessible: 2 });
 	});
 
-	it('stops at accessible workflows from another project', async () => {
+	it('names accessible workflows from another project without following them', async () => {
 		const accessibleProject = await createTeamProject(undefined, user);
-		const behind = await publish([], accessibleProject);
-		const elsewhere = await publish([call(behind.id)], accessibleProject);
-		const sharedIn = await publish([], await createTeamProject());
+		const behind = await publish([], { owner: accessibleProject });
+		const elsewhere = await publish([call(behind.id)], { owner: accessibleProject });
+		const sharedIn = await publish([], { owner: await createTeamProject() });
 		await shareWorkflowWithProjects(sharedIn, [{ project }]);
 		const root = await publish([call(elsewhere.id), call(sharedIn.id)]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
+		const result = await discover(root.id);
 
-		expect(result).toEqual({
-			subWorkflows: [],
-			excluded: { inaccessible: 0, otherProject: 2 },
-		});
+		expect(result.inaccessible).toBe(0);
+		expect(result.subWorkflows).toEqual(
+			expect.arrayContaining([
+				{ id: elsewhere.id, name: elsewhere.name, otherProject: true },
+				{ id: sharedIn.id, name: sharedIn.name, otherProject: true },
+			]),
+		);
+		expect(ids(result)).toEqual([elsewhere.id, sharedIn.id].sort());
 	});
 
 	it('treats a sub-workflow without edit access as inaccessible', async () => {
 		const viewedProject = await createTeamProject();
 		await linkUserToProject(user, viewedProject, 'project:viewer');
-		const child = await publish([], viewedProject);
+		const child = await publish([], { owner: viewedProject });
 		const root = await publish([call(child.id)]);
 
-		const result = await discovery.discover(user, project.id, [root.id]);
-
-		expect(result).toEqual({
-			subWorkflows: [],
-			excluded: { inaccessible: 1, otherProject: 0 },
-		});
+		expect(await discover(root.id)).toEqual({ subWorkflows: [], inaccessible: 1 });
 	});
 
 	it('uses global access for instance admins', async () => {
@@ -230,8 +228,6 @@ describe('SubWorkflowDiscoveryService', () => {
 		const child = await publish([]);
 		const root = await publish([call(child.id)]);
 
-		const result = await discovery.discover(admin, project.id, [root.id]);
-
-		expect(ids(result)).toEqual([child.id]);
+		expect(ids(await discover(root.id, admin))).toEqual([child.id]);
 	});
 });

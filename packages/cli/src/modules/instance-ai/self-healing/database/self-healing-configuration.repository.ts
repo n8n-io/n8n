@@ -198,6 +198,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 				scope: configuration.scope,
 				enabled: configuration.enabled,
 				includeAllProjectMembers: configuration.includeAllProjectMembers,
+				includeSubWorkflows: configuration.includeSubWorkflows,
 				enabledById: configuration.enabledById,
 				workflowIds: (workflowsByConfiguration[configuration.id] ?? []).map(
 					(row) => row.workflowId,
