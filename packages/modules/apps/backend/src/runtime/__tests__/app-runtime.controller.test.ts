@@ -19,6 +19,12 @@ const ORIGIN = 'https://crm.apps.example.com';
 
 const bindings: AppBinding[] = [
 	{ key: 'tasks', kind: 'dataTable', dataTableId: 'table-1', permissions: ['read'] },
+	{
+		key: 'notes',
+		kind: 'dataTable',
+		dataTableId: 'table-2',
+		permissions: ['read', 'insert', 'update', 'delete'],
+	},
 	{ key: 'submit', kind: 'workflow', workflowId: 'workflow-1' },
 	{ key: 'support', kind: 'agent', agentId: 'agent-1', permissions: ['chat'] },
 ];
@@ -223,6 +229,7 @@ describe('AppRuntimeController', () => {
 
 		expect(res.json).toHaveBeenCalledWith([
 			{ key: 'tasks', kind: 'dataTable', permissions: ['read'] },
+			{ key: 'notes', kind: 'dataTable', permissions: ['read', 'insert', 'update', 'delete'] },
 			{ key: 'submit', kind: 'workflow' },
 			{ key: 'support', kind: 'agent', permissions: ['chat'] },
 		]);
@@ -275,6 +282,99 @@ describe('AppRuntimeController', () => {
 			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'permission_denied' }));
 			expect(dataTables.insertRows).not.toHaveBeenCalled();
 		});
+
+		const filter = {
+			type: 'and',
+			filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
+		};
+
+		it('inserts rows and answers 201', async () => {
+			const { controller, dataTables } = setup();
+			dataTables.insertRows.mockResolvedValue([{ id: 1, title: 'x' }]);
+			const res = response();
+
+			await controller.insertRows(
+				request({ method: 'POST', params: { key: 'notes' }, body: { data: [{ title: 'x' }] } }),
+				res,
+			);
+
+			expect(dataTables.insertRows).toHaveBeenCalledWith(
+				expect.objectContaining({ bindingKey: 'notes' }),
+				'table-2',
+				[{ title: 'x' }],
+			);
+			expect(res.status).toHaveBeenCalledWith(201);
+			expect(res.json).toHaveBeenCalledWith({ data: [{ id: 1, title: 'x' }] });
+		});
+
+		it('updates the rows that match the filter', async () => {
+			const { controller, dataTables } = setup();
+			dataTables.updateRows.mockResolvedValue([{ id: 1, done: true }]);
+			const res = response();
+
+			await controller.updateRows(
+				request({
+					method: 'PATCH',
+					params: { key: 'notes' },
+					body: { filter, data: { done: true } },
+				}),
+				res,
+			);
+
+			expect(dataTables.updateRows).toHaveBeenCalledWith(
+				expect.anything(),
+				'table-2',
+				expect.objectContaining({ filters: filter.filters }),
+				{ done: true },
+			);
+			expect(res.json).toHaveBeenCalledWith({ data: [{ id: 1, done: true }] });
+		});
+
+		it('deletes the rows that match the filter', async () => {
+			const { controller, dataTables } = setup();
+			dataTables.deleteRows.mockResolvedValue([{ id: 1 }]);
+			const res = response();
+
+			await controller.deleteRows(
+				request({ method: 'POST', params: { key: 'notes' }, body: { filter } }),
+				res,
+			);
+
+			expect(dataTables.deleteRows).toHaveBeenCalledWith(
+				expect.anything(),
+				'table-2',
+				expect.objectContaining({ filters: filter.filters }),
+			);
+			expect(res.json).toHaveBeenCalledWith({ data: [{ id: 1 }] });
+		});
+
+		it.each([
+			['an update without a filter', 'updateRows', { data: { done: true } }],
+			['a delete without a filter', 'deleteRows', {}],
+		] as const)('rejects %s', async (_, route, body) => {
+			const { controller, dataTables } = setup();
+			const res = response();
+
+			await controller[route](request({ method: 'POST', params: { key: 'notes' }, body }), res);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'invalid_input' }));
+			expect(dataTables.updateRows).not.toHaveBeenCalled();
+			expect(dataTables.deleteRows).not.toHaveBeenCalled();
+		});
+
+		it('requires the update permission to update rows', async () => {
+			const { controller, dataTables } = setup();
+			const res = response();
+
+			await controller.updateRows(
+				request({ method: 'PATCH', params: { key: 'tasks' }, body: { filter, data: {} } }),
+				res,
+			);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(dataTables.updateRows).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('workflows', () => {
@@ -293,6 +393,33 @@ describe('AppRuntimeController', () => {
 			});
 			expect(res.status).toHaveBeenCalledWith(202);
 			expect(res.json).toHaveBeenCalledWith({ executionId: '7', status: 'running' });
+		});
+
+		it('answers a poll of an unfinished run with 202', async () => {
+			const { controller, workflows } = setup();
+			workflows.getRun.mockResolvedValue({ executionId: '7', status: 'running' });
+			const res = response();
+
+			await controller.getRun(request({ params: { key: 'submit', executionId: '7' } }), res);
+
+			expect(workflows.getRun).toHaveBeenCalledWith(
+				expect.objectContaining({ bindingKey: 'submit' }),
+				'workflow-1',
+				'7',
+			);
+			expect(res.status).toHaveBeenCalledWith(202);
+			expect(res.json).toHaveBeenCalledWith({ executionId: '7', status: 'running' });
+		});
+
+		it('answers a poll of a finished run with 200', async () => {
+			const { controller, workflows } = setup();
+			workflows.getRun.mockResolvedValue({ executionId: '7', status: 'success', output: [] });
+			const res = response();
+
+			await controller.getRun(request({ params: { key: 'submit', executionId: '7' } }), res);
+
+			expect(res.status).toHaveBeenCalledWith(200);
+			expect(res.json).toHaveBeenCalledWith({ executionId: '7', status: 'success', output: [] });
 		});
 
 		it('passes refusals from the port to the app', async () => {
@@ -379,6 +506,43 @@ describe('AppRuntimeController', () => {
 			expect(res.status).toHaveBeenCalledWith(400);
 			expect(res.flushHeaders).not.toHaveBeenCalled();
 			expect(agents.chat).not.toHaveBeenCalled();
+		});
+
+		it('streams a resumed turn', async () => {
+			const { controller, agents } = setup();
+			async function* events(): AsyncGenerator<AgentSseEvent> {
+				yield { type: 'done', sessionId };
+			}
+			agents.resume.mockResolvedValue({ events: events() });
+			const res = response();
+			const body = { sessionId, runId: 'r1', toolCallId: 't1', resumeData: { approved: true } };
+
+			await controller.resume(request({ method: 'POST', params: { key: 'support' }, body }), res);
+
+			expect(agents.resume).toHaveBeenCalledWith(
+				expect.objectContaining({ bindingKey: 'support' }),
+				'agent-1',
+				expect.objectContaining({ runId: 'r1', toolCallId: 't1' }),
+				expect.any(AbortSignal),
+			);
+			expect(res.write).toHaveBeenCalledWith(
+				`data: ${JSON.stringify({ type: 'done', sessionId })}\n\n`,
+			);
+			expect(res.end).toHaveBeenCalled();
+		});
+
+		it('refuses an invalid resume request before the stream opens', async () => {
+			const { controller, agents } = setup();
+			const res = response();
+
+			await controller.resume(
+				request({ method: 'POST', params: { key: 'support' }, body: { sessionId } }),
+				res,
+			);
+
+			expect(res.status).toHaveBeenCalledWith(400);
+			expect(res.flushHeaders).not.toHaveBeenCalled();
+			expect(agents.resume).not.toHaveBeenCalled();
 		});
 
 		it('requires the history permission to read messages', async () => {

@@ -2,6 +2,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { AppCallContext, AppsConfig } from '@n8n/backend-module-apps';
 import type { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -34,6 +36,7 @@ function execution(overrides: {
 	metadata?: Record<string, string>;
 	lastNodeExecuted?: string;
 	error?: string;
+	runData?: Record<string, unknown>;
 }) {
 	return {
 		workflowId: 'workflow-1',
@@ -41,7 +44,7 @@ function execution(overrides: {
 		workflowData: { nodes },
 		data: {
 			resultData: {
-				runData: {},
+				runData: overrides.runData ?? {},
 				lastNodeExecuted: overrides.lastNodeExecuted ?? 'Query',
 				error: overrides.error ? { message: overrides.error } : undefined,
 				metadata: overrides.metadata ?? {
@@ -58,20 +61,47 @@ function setup() {
 	const loader = mock<WorkflowToolWorkflowLoader>();
 	const executions = mock<ExecutionPersistence>();
 	const runner = mock<WorkflowRunner>();
+	const finder = mock<WorkflowFinderService>();
+	const activeExecutions = mock<ActiveExecutions>();
+	activeExecutions.has.mockReturnValue(false);
 	const adapter = new AppWorkflowAdapter(
 		loader,
-		mock<WorkflowFinderService>(),
+		finder,
 		mock<SubworkflowPolicyChecker>(),
 		runner,
-		mock<ActiveExecutions>(),
+		activeExecutions,
 		mock<WebhookResponseRelay>(),
 		executions,
 		mock<AppsConfig>({ apiMaxConcurrentRuns: 20, apiRunWaitMs: 60_000 }),
 		mock<GlobalConfig>(),
 		mock<Logger>(),
 	);
-	return { adapter, loader, executions, runner };
+	return { adapter, loader, executions, runner, finder };
 }
+
+const passthroughTrigger = {
+	name: 'Start',
+	type: 'n8n-nodes-base.executeWorkflowTrigger',
+	typeVersion: 1.1,
+	position: [0, 0],
+	parameters: { inputSource: 'passthrough' },
+};
+
+function workflow(overrides: Record<string, unknown> = {}) {
+	return {
+		id: 'workflow-1',
+		name: 'Flow',
+		nodes: [passthroughTrigger],
+		connections: {},
+		settings: {},
+		shared: [{ role: 'workflow:owner', projectId: 'project-1' }],
+		...overrides,
+	} as unknown as WorkflowEntity;
+}
+
+const queryRunData = {
+	Query: [{ data: { main: [[{ json: { id: 1, ok: true } }]] } }],
+};
 
 describe('AppWorkflowAdapter', () => {
 	describe('getRun', () => {
@@ -195,6 +225,164 @@ describe('AppWorkflowAdapter', () => {
 				saveDataSuccessExecution: 'all',
 				saveDataErrorExecution: 'all',
 			});
+		});
+
+		it('returns the items of the last node when the run succeeds', async () => {
+			const { adapter, loader, runner, executions } = setup();
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			runner.run.mockResolvedValue('12');
+			executions.findSingleExecution.mockResolvedValue(
+				execution({ status: 'success', runData: queryRunData }) as never,
+			);
+
+			expect(await adapter.run(ctx, 'workflow-1', { email: 'a@b.c' })).toEqual({
+				executionId: '12',
+				status: 'success',
+				output: [{ id: 1, ok: true }],
+			});
+			expect(runner.run.mock.calls[0][0].pinData).toEqual({
+				Start: [{ json: { email: 'a@b.c' } }],
+			});
+		});
+	});
+
+	describe('getRun success', () => {
+		it('returns the items of the last node', async () => {
+			const { adapter, executions } = setup();
+			executions.findSingleExecution.mockResolvedValue(
+				execution({ status: 'success', runData: queryRunData }) as never,
+			);
+
+			expect(await adapter.getRun(ctx, 'workflow-1', '12')).toEqual({
+				executionId: '12',
+				status: 'success',
+				output: [{ id: 1, ok: true }],
+			});
+		});
+
+		it('matches an anonymous visitor by the hash of the visitor ID', async () => {
+			const { adapter, executions } = setup();
+			const anonymous: AppCallContext = {
+				...ctx,
+				visitor: { type: 'anonymous', id: 'secret-cookie' },
+			};
+			const hash = createHash('sha256').update('secret-cookie').digest('hex');
+			const metadata = { appId: 'app-1', appBindingKey: 'submit' };
+
+			executions.findSingleExecution.mockResolvedValue(
+				execution({
+					status: 'success',
+					runData: queryRunData,
+					metadata: { ...metadata, appVisitor: `anonymous:${hash}` },
+				}) as never,
+			);
+			expect(await adapter.getRun(anonymous, 'workflow-1', '12')).toMatchObject({
+				status: 'success',
+			});
+
+			executions.findSingleExecution.mockResolvedValue(
+				execution({ metadata: { ...metadata, appVisitor: 'anonymous:secret-cookie' } }) as never,
+			);
+			await expect(adapter.getRun(anonymous, 'workflow-1', '12')).rejects.toMatchObject({
+				code: 'run_not_found',
+			});
+		});
+	});
+
+	describe('assertCanBind', () => {
+		const binding = { key: 'submit', kind: 'workflow' as const, workflowId: 'workflow-1' };
+
+		it('accepts a workflow of the app project that the user can run', async () => {
+			const { adapter, finder } = setup();
+			finder.findWorkflowForUser.mockResolvedValue(workflow());
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).resolves.toBeUndefined();
+			expect(finder.findWorkflowForUser).toHaveBeenCalledWith('workflow-1', expect.anything(), [
+				'workflow:execute',
+			]);
+		});
+
+		it('refuses a workflow that the user cannot run', async () => {
+			const { adapter, finder } = setup();
+			finder.findWorkflowForUser.mockResolvedValue(null);
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('refuses a workflow that another project owns', async () => {
+			const { adapter, finder } = setup();
+			finder.findWorkflowForUser.mockResolvedValue(
+				workflow({ shared: [{ role: 'workflow:owner', projectId: 'project-2' }] }),
+			);
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).rejects.toThrow(
+				BadRequestError,
+			);
+		});
+
+		it('refuses a workflow without a supported trigger', async () => {
+			const { adapter, finder } = setup();
+			finder.findWorkflowForUser.mockResolvedValue(workflow({ nodes: [] }));
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).rejects.toThrow(
+				BadRequestError,
+			);
+		});
+	});
+
+	describe('describe', () => {
+		const binding = { key: 'submit', kind: 'workflow' as const, workflowId: 'workflow-1' };
+
+		it('describes a published workflow with open input and unknown output', async () => {
+			const { adapter, loader, executions } = setup();
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			executions.findMultipleExecutions.mockResolvedValue([]);
+
+			expect(await adapter.describe('project-1', binding)).toEqual({
+				...binding,
+				name: 'Flow',
+				published: true,
+				input: { type: 'object', additionalProperties: true },
+				output: { type: 'array', items: { type: 'object', additionalProperties: true } },
+			});
+		});
+
+		it('infers the output from the last successful run', async () => {
+			const { adapter, loader, executions } = setup();
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			executions.findMultipleExecutions.mockResolvedValue([
+				{ data: { resultData: { lastNodeExecuted: 'Query', runData: queryRunData } } },
+			] as never);
+
+			expect((await adapter.describe('project-1', binding))?.output).toEqual({
+				type: 'array',
+				items: {
+					type: 'object',
+					properties: { id: { type: 'number' }, ok: { type: 'boolean' } },
+					required: ['id', 'ok'],
+				},
+			});
+		});
+
+		it('describes the draft of an unpublished workflow', async () => {
+			const { adapter, loader, executions } = setup();
+			loader.loadWorkflow
+				.mockRejectedValueOnce(new WorkflowToolUnavailableError('not_published', 'Not published'))
+				.mockResolvedValueOnce(workflow());
+			executions.findMultipleExecutions.mockResolvedValue([]);
+
+			expect(await adapter.describe('project-1', binding)).toMatchObject({ published: false });
+		});
+
+		it('describes a missing or incompatible workflow as null', async () => {
+			const { adapter, loader } = setup();
+			loader.loadWorkflow.mockResolvedValueOnce(null);
+			expect(await adapter.describe('project-1', binding)).toBeNull();
+
+			loader.loadWorkflow.mockResolvedValueOnce(workflow({ nodes: [] }));
+			expect(await adapter.describe('project-1', binding)).toBeNull();
 		});
 	});
 });

@@ -2,14 +2,17 @@ import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext } from '@n8n/backend-module-apps';
 import { Container } from '@n8n/di';
+import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import { AgentsService } from '@/modules/agents/agents.service';
 import { N8NCheckpointStorage } from '@/modules/agents/integrations/n8n-checkpoint-storage';
+import { userHasScopes } from '@/permissions.ee/check-access';
 
 import { AppAgentAdapter } from '../app-agent.adapter';
 
+vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@/modules/agents/agents.service', () => ({ AgentsService: class {} }));
 vi.mock('@/modules/agents/agent-execution-orchestrator.service', () => ({
 	AgentExecutionOrchestratorService: class {},
@@ -62,6 +65,118 @@ describe('AppAgentAdapter', () => {
 	}, 60_000);
 
 	afterEach(() => Container.reset());
+
+	describe('assertCanBind', () => {
+		const binding = {
+			key: 'support',
+			kind: 'agent' as const,
+			agentId: 'agent-1',
+			permissions: ['chat' as const],
+		};
+
+		it('accepts an agent of the project that the user can run', async () => {
+			const { adapter, agents } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(true);
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).resolves.toBeUndefined();
+			expect(agents.findById).toHaveBeenCalledWith('agent-1', 'project-1');
+			expect(userHasScopes).toHaveBeenCalledWith(expect.anything(), ['agent:execute'], false, {
+				projectId: 'project-1',
+			});
+		});
+
+		it('refuses when the agents module is off', async () => {
+			const { adapter, agents } = setup({ active: false });
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).rejects.toThrow(
+				BadRequestError,
+			);
+			expect(agents.findById).not.toHaveBeenCalled();
+		});
+
+		it('refuses an agent that is not in the project', async () => {
+			const { adapter, agents } = setup();
+			agents.findById.mockResolvedValue(null);
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('refuses a user without the agent:execute scope', async () => {
+			const { adapter } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(adapter.assertCanBind(mock(), 'project-1', binding)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('describe', () => {
+		const binding = {
+			key: 'support',
+			kind: 'agent' as const,
+			agentId: 'agent-1',
+			permissions: ['chat' as const],
+		};
+
+		it('describes the agent with its name and publish state', async () => {
+			const { adapter } = setup({ published: false });
+
+			expect(await adapter.describe('project-1', binding)).toEqual({
+				...binding,
+				name: 'Support',
+				published: false,
+			});
+		});
+
+		it('describes a missing agent or a disabled module as null', async () => {
+			const missing = setup();
+			missing.agents.findById.mockResolvedValue(null);
+			expect(await missing.adapter.describe('project-1', binding)).toBeNull();
+
+			const disabled = setup({ active: false });
+			expect(await disabled.adapter.describe('project-1', binding)).toBeNull();
+		});
+	});
+
+	describe('messages', () => {
+		it('returns the history of the visitor thread with its open suspensions', async () => {
+			const { adapter, orchestrator, checkpoints } = setup();
+			const message = { id: 'm1', role: 'user', content: [{ type: 'text', text: 'Hi' }] };
+			orchestrator.getConversationHistory.mockResolvedValue({ messages: [message] } as never);
+			checkpoints.findSuspendedForThread.mockResolvedValue({
+				pendingToolCalls: {
+					t1: { toolCallId: 't1', runId: 'r1', suspended: true, suspendPayload: { step: 1 } },
+				},
+				messageList: { messages: [] },
+			} as never);
+
+			const result = await adapter.messages(userCtx, 'agent-1', SESSION);
+
+			expect(orchestrator.getConversationHistory).toHaveBeenCalledWith({
+				threadId: `agent-1:app:app-1:user:user-1:${SESSION}`,
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				userId: 'app:app-1:user:user-1',
+			});
+			expect(result).toMatchObject({
+				messages: [message],
+				openSuspensions: [{ toolCallId: 't1', runId: 'r1', suspendPayload: { step: 1 } }],
+			});
+		});
+
+		it('returns an empty history for an unknown session', async () => {
+			const { adapter, orchestrator } = setup();
+			orchestrator.getConversationHistory.mockResolvedValue(null as never);
+
+			expect(await adapter.messages(userCtx, 'agent-1', SESSION)).toEqual({
+				messages: [],
+				openSuspensions: [],
+			});
+		});
+	});
 
 	it('scopes memory to the app and the visitor', async () => {
 		const { adapter, orchestrator } = setup();

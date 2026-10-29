@@ -19,6 +19,13 @@ const tableRead: AppBinding = {
 };
 const tableWrite: AppBinding = { ...tableRead, key: 'notes', permissions: ['read', 'insert'] };
 const workflow: AppBinding = { key: 'submit', kind: 'workflow', workflowId: 'w1' };
+const agentChat: AppBinding = {
+	key: 'support',
+	kind: 'agent',
+	agentId: 'a1',
+	permissions: ['chat', 'history'],
+};
+const agentHistory: AppBinding = { ...agentChat, key: 'archive', permissions: ['history'] };
 
 function setup(app: Partial<App> = {}) {
 	const apps = mock<AppRepository>();
@@ -47,8 +54,13 @@ function setup(app: Partial<App> = {}) {
 		output: {},
 	}));
 	const agents = mock<AppAgentPort>();
+	agents.describe.mockImplementation(async (_p, binding) => ({
+		...binding,
+		name: 'Support',
+		published: true,
+	}));
 	const service = new AppBindingsService(apps, dataTables, workflows, agents, mock<Logger>());
-	return { service, apps, dataTables, workflows };
+	return { service, apps, dataTables, workflows, agents };
 }
 
 describe('AppBindingsService', () => {
@@ -97,6 +109,28 @@ describe('AppBindingsService', () => {
 
 		expect(bindings).toEqual([{ ...tableRead, name: 'tasks', missing: true }]);
 		expect(warnings).toEqual([expect.objectContaining({ key: 'tasks', code: 'resource_missing' })]);
+	});
+
+	it('checks and describes an agent binding through the agent port', async () => {
+		const { service, agents, apps } = setup({ bindings: [agentChat] });
+
+		await service.setBindings(user, 'p1', APP_ID, [agentChat]);
+		expect(agents.assertCanBind).toHaveBeenCalledWith(user, 'p1', agentChat);
+		expect(apps.setBindings).toHaveBeenCalledWith('p1', APP_ID, [agentChat]);
+
+		const { bindings } = await service.getBindings('p1', APP_ID);
+		expect(agents.describe).toHaveBeenCalledWith('p1', agentChat);
+		expect(bindings).toEqual([expect.objectContaining({ key: 'support', name: 'Support' })]);
+	});
+
+	it('warns about agent chat on a public app, but not about history only', async () => {
+		const { service } = setup({ visibility: 'public', bindings: [agentChat, agentHistory] });
+
+		const { warnings } = await service.getBindings('p1', APP_ID);
+
+		expect(warnings.filter((w) => w.code === 'public_write_access').map((w) => w.key)).toEqual([
+			'support',
+		]);
 	});
 
 	it('warns about an unpublished workflow', async () => {

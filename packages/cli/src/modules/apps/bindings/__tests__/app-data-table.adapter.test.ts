@@ -1,6 +1,7 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext } from '@n8n/backend-module-apps';
 import type { User } from '@n8n/db';
+import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { DataTable } from '@/modules/data-table/data-table.entity';
@@ -19,10 +20,10 @@ const ctx: AppCallContext = {
 };
 const user = mock<User>();
 
-function setup() {
+function setup({ active = true } = {}) {
 	const service = mock<DataTableService>();
 	const moduleRegistry = mock<ModuleRegistry>();
-	moduleRegistry.isActive.mockReturnValue(true);
+	moduleRegistry.isActive.mockReturnValue(active);
 	return { adapter: new AppDataTableAdapter(service, moduleRegistry), service, moduleRegistry };
 }
 
@@ -107,6 +108,69 @@ describe('AppDataTableAdapter', () => {
 				filters: [{ columnName: 'id', condition: 'eq', value: 1 }],
 			}),
 		).rejects.toMatchObject({ status: 404, code: 'resource_missing' });
+	});
+
+	describe('when the data-table module is off', () => {
+		const filter = {
+			type: 'and' as const,
+			filters: [{ columnName: 'id', condition: 'eq' as const, value: 1 }],
+		};
+
+		it('refuses to bind a table', async () => {
+			const { adapter, service } = setup({ active: false });
+
+			await expect(
+				adapter.assertCanBind(user, 'project-1', {
+					key: 'tasks',
+					kind: 'dataTable',
+					dataTableId: 't1',
+					permissions: ['read'],
+				}),
+			).rejects.toThrow(BadRequestError);
+			expect(service.findDataTablesByIdsForUser).not.toHaveBeenCalled();
+		});
+
+		it.each([
+			[
+				'listRows',
+				async (adapter: AppDataTableAdapter) => await adapter.listRows(ctx, 't1', { take: 10 }),
+			],
+			[
+				'insertRows',
+				async (adapter: AppDataTableAdapter) => await adapter.insertRows(ctx, 't1', [{}]),
+			],
+			[
+				'updateRows',
+				async (adapter: AppDataTableAdapter) =>
+					await adapter.updateRows(ctx, 't1', filter, { done: true }),
+			],
+			[
+				'deleteRows',
+				async (adapter: AppDataTableAdapter) => await adapter.deleteRows(ctx, 't1', filter),
+			],
+		])('answers %s with resource_missing', async (_, call) => {
+			const { adapter, service } = setup({ active: false });
+
+			await expect(call(adapter)).rejects.toMatchObject({ status: 404, code: 'resource_missing' });
+			expect(service.getManyRowsAndCount).not.toHaveBeenCalled();
+			expect(service.insertRows).not.toHaveBeenCalled();
+			expect(service.updateRows).not.toHaveBeenCalled();
+			expect(service.deleteRows).not.toHaveBeenCalled();
+		});
+
+		it('describes a table as null', async () => {
+			const { adapter, service } = setup({ active: false });
+
+			expect(
+				await adapter.describe('project-1', {
+					key: 'tasks',
+					kind: 'dataTable',
+					dataTableId: 't1',
+					permissions: ['read'],
+				}),
+			).toBeNull();
+			expect(service.validateDataTableExists).not.toHaveBeenCalled();
+		});
 	});
 
 	it('describes a missing table as null', async () => {
