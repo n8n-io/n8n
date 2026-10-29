@@ -64,20 +64,21 @@ interface IApiInvocationProperties {
 	client: PublicApiClient;
 }
 
+/**
+ * `consumed_by` counts calls per client. `editor_ui` is a call that carried the editor UI
+ * marker header. `other` is any other call. A caller can fake the marker, so it is not an
+ * access control. The counts add up to `total_calls`.
+ */
 interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
 	endpoints: Record<string, number>;
 	user_agents: Record<string, number>;
+	consumed_by: Record<PublicApiClient, number>;
 }
 
-/**
- * One `Public API usage` event goes out for each user and client. `client` is `editor_ui` when
- * the editor UI sent its marker header, and `other` otherwise. A caller can fake the header,
- * so `client` is not an access control.
- */
 interface IApiInvocationsBuffer {
-	[userId: string]: Partial<Record<PublicApiClient, IApiInvocationsBufferEntry>>;
+	[userId: string]: IApiInvocationsBufferEntry;
 }
 
 interface IAgentExecutionCounts {
@@ -278,18 +279,17 @@ export class Telemetry {
 	}
 
 	private flushApiInvocations() {
-		for (const [userId, entriesByClient] of Object.entries(this.apiInvocationsBuffer)) {
-			for (const [client, entry] of Object.entries(entriesByClient)) {
-				if (entry && entry.total_calls > 0) {
-					this.track('Public API usage', {
-						user_id: userId,
-						client,
-						total_calls: entry.total_calls,
-						first: entry.first,
-						endpoints: JSON.stringify(entry.endpoints),
-						user_agents: JSON.stringify(entry.user_agents),
-					});
-				}
+		for (const userId of Object.keys(this.apiInvocationsBuffer)) {
+			const entry = this.apiInvocationsBuffer[userId];
+			if (entry.total_calls > 0) {
+				this.track('Public API usage', {
+					user_id: userId,
+					total_calls: entry.total_calls,
+					first: entry.first,
+					endpoints: JSON.stringify(entry.endpoints),
+					user_agents: JSON.stringify(entry.user_agents),
+					consumed_by: JSON.stringify(entry.consumed_by),
+				});
 			}
 		}
 		this.apiInvocationsBuffer = {};
@@ -557,14 +557,15 @@ export class Telemetry {
 
 		const { user_id, path, method, user_agent, client } = properties;
 
-		const entriesByClient = (this.apiInvocationsBuffer[user_id] ??= {});
-		const entry = (entriesByClient[client] ??= {
+		const entry = (this.apiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
 			user_agents: {},
+			consumed_by: { editor_ui: 0, other: 0 },
 		});
 		entry.total_calls++;
+		entry.consumed_by[client]++;
 
 		const endpointKey = `${method} ${path}`;
 		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
