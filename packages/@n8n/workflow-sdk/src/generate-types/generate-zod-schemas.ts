@@ -10,24 +10,19 @@
  * This allows them to be loaded at runtime via require() without compilation.
  */
 
-// oxlint-disable import/no-cycle -- TODO: Refactor shared types/utils to break cycle
-import type {
-	NodeProperty,
-	NodeTypeDescription,
-	DiscriminatorCombination,
-	DiscriminatorTree,
-	AIInputTypeInfo,
-} from './generate-types';
-// eslint-disable-next-line import-x/no-cycle -- TODO: Refactor shared types/utils to break cycle
 import {
+	type NodeProperty,
+	type NodeTypeDescription,
+	type DiscriminatorCombination,
+	type DiscriminatorTree,
+	type AIInputTypeInfo,
 	extractDiscriminatorCombinations,
 	getPropertiesForCombination,
 	filterPropertiesForVersion,
 	buildDiscriminatorTree,
 	extractAIInputTypesFromBuilderHint,
 	narrowDisplayOptionsByDisabled,
-} from './generate-types';
-// oxlint-enable import/no-cycle
+} from './node-type-description';
 import { checkConditions } from '../validation/display-options';
 
 // =============================================================================
