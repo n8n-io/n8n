@@ -12,6 +12,7 @@ import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowHistoryRepository,
 	WorkflowRepository,
 	WorkflowStatisticsRepository,
 	type WorkflowEntity,
@@ -69,6 +70,7 @@ export class MigrationFindingQueryService {
 		private readonly migrationRegistry: MigrationRegistry,
 		private readonly breakingChangeService: BreakingChangeService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 		private readonly workflowStatisticsRepository: WorkflowStatisticsRepository,
 		private readonly findingRepository: MigrationFindingRepository,
 		private readonly syncRepository: MigrationFindingSyncRepository,
@@ -82,7 +84,7 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * The overview: one entry per workflow rule with its unresolved (open or notified) and won't fix finding counts,
+	 * The overview: one entry per workflow rule with its unresolved (open, notified or fixed unpublished) and won't fix finding counts,
 	 * plus live instance results.
 	 */
 	async getLightReport(
@@ -179,7 +181,7 @@ export class MigrationFindingQueryService {
 		const issuesByWorkflow =
 			'collectWorkflowData' in rule
 				? await this.issuesFromScan(targetVersion, rule)
-				: await this.issuesFromRecheck(rule, workflows);
+				: await this.issuesFromRecheck(rule, await this.withPublishedNodes(workflows, findings));
 
 		const affectedWorkflows: BreakingChangeRuleDetailWorkflow[] = [];
 		for (const finding of findings) {
@@ -247,6 +249,37 @@ export class MigrationFindingQueryService {
 		return new Map(
 			(result?.affectedWorkflows ?? []).map((workflow) => [workflow.id, workflow.issues]),
 		);
+	}
+
+	/**
+	 * Swaps in the published nodes of each workflow with a `fixed_unpublished` finding:
+	 * only the published version still has the issue, so its issues come from there.
+	 */
+	private async withPublishedNodes(
+		workflows: WorkflowEntity[],
+		findings: Array<{ workflowId: string; status: string }>,
+	): Promise<WorkflowEntity[]> {
+		const fixedUnpublished = new Set(
+			findings
+				.filter((finding) => finding.status === 'fixed_unpublished')
+				.map((finding) => finding.workflowId),
+		);
+		const versionIds = workflows.flatMap((workflow) =>
+			fixedUnpublished.has(workflow.id) && workflow.activeVersionId
+				? [workflow.activeVersionId]
+				: [],
+		);
+		if (versionIds.length === 0) return workflows;
+
+		const versions = await this.workflowHistoryRepository.findNodesByVersionIds(versionIds);
+		const nodesByVersionId = new Map(versions.map(({ versionId, nodes }) => [versionId, nodes]));
+		return workflows.map((workflow) => {
+			const nodes =
+				fixedUnpublished.has(workflow.id) && workflow.activeVersionId
+					? nodesByVersionId.get(workflow.activeVersionId)
+					: undefined;
+			return nodes ? { ...workflow, nodes } : workflow;
+		});
 	}
 
 	/**

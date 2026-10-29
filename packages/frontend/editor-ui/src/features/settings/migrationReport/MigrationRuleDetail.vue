@@ -50,6 +50,7 @@ import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import {
 	DEFAULT_WORKFLOW_FILTERS,
+	isUnresolvedState,
 	matchesWorkflowFilters,
 	PERSONAL_PROJECTS,
 	type WorkflowFilters,
@@ -249,7 +250,7 @@ const tableHeaders = computed<Array<TableHeader<AffectedWorkflow>>>(() => {
 		{
 			title: i18n.baseText('settings.migrationReport.detail.table.state'),
 			key: 'status',
-			width: 140,
+			width: 150,
 		},
 	];
 
@@ -493,8 +494,11 @@ async function notifyOwners(
 		const notifiedAt = new Date();
 		state.value = {
 			...state.value,
+			// The server marks only an open or notified finding, so a fix that is not published keeps its state.
 			affectedWorkflows: state.value.affectedWorkflows.map((row) =>
-				notified.has(row.id) ? { ...row, status: 'notified', notifiedAt } : row,
+				notified.has(row.id) && row.status !== 'fixed_unpublished'
+					? { ...row, status: 'notified', notifiedAt }
+					: row,
 			),
 		};
 		return result;
@@ -691,10 +695,8 @@ function findingState(workflow: AffectedWorkflow): MigrationFindingListedStatus 
 	return migratedWorkflowIds.value.has(workflow.id) ? 'migrated' : workflow.status;
 }
 
-// A notified finding still needs a fix, so it counts as open.
 function isUnresolved(workflow: AffectedWorkflow): boolean {
-	const findingStatus = findingState(workflow);
-	return findingStatus === 'open' || findingStatus === 'notified';
+	return isUnresolvedState(findingState(workflow));
 }
 
 const wontFixCount = computed(

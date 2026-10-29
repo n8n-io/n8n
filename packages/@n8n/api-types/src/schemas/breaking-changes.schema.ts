@@ -55,11 +55,13 @@ export type MigrationFindingTriageStatus = z.infer<typeof migrationFindingTriage
 
 /**
  * The statuses the rule detail lists. A `notified` finding is still unresolved:
- * only the notification sets it apart from `open`.
+ * only the notification sets it apart from `open`. A `fixed_unpublished` finding
+ * is unresolved too, because the published version still has the issue.
  */
 export const migrationFindingListedStatusSchema = migrationFindingStatusSchema.extract([
 	'open',
 	'notified',
+	'fixed_unpublished',
 	'wont_fix',
 ]);
 export type MigrationFindingListedStatus = z.infer<typeof migrationFindingListedStatusSchema>;

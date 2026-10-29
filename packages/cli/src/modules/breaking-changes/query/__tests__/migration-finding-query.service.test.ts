@@ -12,6 +12,7 @@ import type {
 	User,
 	UserRepository,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowRepository,
 	WorkflowStatistics,
 	WorkflowStatisticsRepository,
@@ -137,6 +138,7 @@ describe('MigrationFindingQueryService', () => {
 	let migrationRegistry: MockProxy<MigrationRegistry>;
 	let breakingChangeService: MockProxy<BreakingChangeService>;
 	let workflowRepository: MockProxy<WorkflowRepository>;
+	let workflowHistoryRepository: MockProxy<WorkflowHistoryRepository>;
 	let workflowStatisticsRepository: MockProxy<WorkflowStatisticsRepository>;
 	let findingRepository: MockProxy<MigrationFindingRepository>;
 	let syncRepository: MockProxy<MigrationFindingSyncRepository>;
@@ -151,6 +153,7 @@ describe('MigrationFindingQueryService', () => {
 		migrationRegistry = mock<MigrationRegistry>();
 		breakingChangeService = mock<BreakingChangeService>();
 		workflowRepository = mock<WorkflowRepository>();
+		workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		findingRepository = mock<MigrationFindingRepository>();
 		syncRepository = mock<MigrationFindingSyncRepository>();
@@ -180,6 +183,7 @@ describe('MigrationFindingQueryService', () => {
 			migrationRegistry,
 			breakingChangeService,
 			workflowRepository,
+			workflowHistoryRepository,
 			workflowStatisticsRepository,
 			findingRepository,
 			syncRepository,
@@ -566,6 +570,42 @@ describe('MigrationFindingQueryService', () => {
 
 			expect(result.affectedWorkflows).toEqual([
 				expect.objectContaining({ id: 'wf-1', name: 'Already fixed', issues: [] }),
+			]);
+		});
+
+		it('takes the issues of a fixed unpublished finding from the published version', async () => {
+			findingRepository.listTriageableForRule.mockResolvedValue([
+				triageableFinding(
+					1,
+					'rule-a',
+					{ id: 'wf-1', name: 'Fixed in draft', activeVersionId: 'wf-1-v1', updatedAt: UPDATED_AT },
+					'fixed_unpublished',
+				),
+				triageableFinding(2, 'rule-a', {
+					id: 'wf-2',
+					name: 'Still open',
+					activeVersionId: 'wf-2-v1',
+					updatedAt: UPDATED_AT,
+				}),
+			]);
+			workflowRepository.findByIds.mockResolvedValue([
+				{ ...workflowWithNodes('wf-1', ['n8n-nodes-base.other']), activeVersionId: 'wf-1-v1' },
+				{ ...workflowWithNodes('wf-2', ['n8n-nodes-base.a']), activeVersionId: 'wf-2-v1' },
+			] as WorkflowEntity[]);
+			workflowHistoryRepository.findNodesByVersionIds.mockResolvedValue([
+				{ versionId: 'wf-1-v1', nodes: workflowWithNodes('wf-1', ['n8n-nodes-base.a']).nodes },
+			] as never);
+
+			const result = await service.getRuleFindings(TARGET_VERSION, 'rule-a', INSTANCE);
+
+			expect(workflowHistoryRepository.findNodesByVersionIds).toHaveBeenCalledWith(['wf-1-v1']);
+			expect(result.affectedWorkflows).toEqual([
+				expect.objectContaining({
+					id: 'wf-1',
+					status: 'fixed_unpublished',
+					issues: [expect.anything()],
+				}),
+				expect.objectContaining({ id: 'wf-2', status: 'open', issues: [expect.anything()] }),
 			]);
 		});
 

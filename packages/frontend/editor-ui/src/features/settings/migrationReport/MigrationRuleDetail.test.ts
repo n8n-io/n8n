@@ -1660,6 +1660,52 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 	});
+	describe('fixed, not published', () => {
+		const getRow = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return row;
+		};
+
+		beforeEach(() => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, status: 'fixed_unpublished' },
+						mockWorkflowWithMultipleNodes,
+					],
+				}),
+			);
+		});
+
+		it('should show the state and count the row as affected', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(
+				within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+			).toHaveTextContent('Fixed, unpublished');
+		});
+
+		it('should keep the state after the email went out', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: ['workflow-1'],
+				skipped: [],
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
+			);
+
+			await waitFor(() => expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalled());
+			expect(
+				within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+			).toHaveTextContent('Fixed, unpublished');
+		});
+	});
+
 	describe('notify owner', () => {
 		const getRow = (workflowName: string) => {
 			const row = screen.getByText(workflowName).closest('tr');
