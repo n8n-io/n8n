@@ -230,6 +230,7 @@ type EntityName =
 	| 'TypeAvailabilityPolicy'
 	| 'TypeAvailabilityPolicyScope'
 	| 'TypeAvailabilityPolicyAttachment'
+	| 'ProjectExecutionLimit'
 	| 'TokenExchangeJti'
 	| 'TrustedKeySourceEntity'
 	| 'TrustedKeyEntity'
