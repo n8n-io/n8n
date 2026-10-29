@@ -86,11 +86,6 @@ const renderDialog = createComponentRenderer(SkillSourceConnectDialog);
 
 const TOKEN: SkillSourceCredentialOption = { id: 'cred-1', name: 'Ada token', type: 'githubApi' };
 const APP: SkillSourceCredentialOption = { id: 'cred-2', name: 'Acme app', type: 'githubAppApi' };
-const OAUTH: SkillSourceCredentialOption = {
-	id: 'cred-3',
-	name: 'Ada OAuth',
-	type: 'githubOAuth2Api',
-};
 
 const REPOSITORIES: SkillSourceRepositoryList = {
 	repositories: [
@@ -632,8 +627,8 @@ describe('SkillSourceConnectDialog', () => {
 	});
 
 	describe('credentials', () => {
-		it('lists the token credentials of the scope and never an OAuth2 credential', async () => {
-			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP, OAUTH]);
+		it('lists the credentials that the server accepts for the scope', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP]);
 			const view = render();
 			await startLinkMode(view);
 
@@ -642,7 +637,6 @@ describe('SkillSourceConnectDialog', () => {
 			expect(await view.findByText('None, the repository is public')).toBeInTheDocument();
 			expect(view.getByText('Ada token')).toBeInTheDocument();
 			expect(view.getByText('Acme app')).toBeInTheDocument();
-			expect(view.queryByText('Ada OAuth')).not.toBeInTheDocument();
 			expect(view.getByText('+ Connect a new GitHub account')).toBeInTheDocument();
 			expect(view.getByTestId('skill-source-credential-hint')).toHaveTextContent(
 				'Global sources use a credential that admins own.',

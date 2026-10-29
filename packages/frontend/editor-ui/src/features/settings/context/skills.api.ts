@@ -14,6 +14,8 @@ import type {
 	SkillSourceDiscovery,
 	SkillSourceRepositoryList,
 	SkillUserDto,
+	ListSkillSourceCredentialsQueryDto,
+	ListSkillSourceRepositoriesQueryDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
@@ -104,12 +106,11 @@ export async function deleteSkill(context: IRestApiContext, id: string): Promise
 }
 
 /** The scope of a source, as the credential and repository lists take it. */
-export type SkillSourceScopeQuery = { scope: 'instance' | 'project'; projectId?: string };
 
 /** The credentials that a source in the scope accepts and that the user can use. */
 export async function getSkillSourceCredentials(
 	context: IRestApiContext,
-	query: SkillSourceScopeQuery,
+	query: ListSkillSourceCredentialsQueryDto,
 ): Promise<SkillSourceCredentialOption[]> {
 	return await makeRestApiRequest<SkillSourceCredentialOption[]>(
 		context,
@@ -122,7 +123,7 @@ export async function getSkillSourceCredentials(
 /** The repositories that a credential can read, for the owner and repository selects. */
 export async function getSkillSourceRepositories(
 	context: IRestApiContext,
-	query: SkillSourceScopeQuery & { credentialId: string },
+	query: ListSkillSourceRepositoriesQueryDto,
 ): Promise<SkillSourceRepositoryList> {
 	return await makeRestApiRequest<SkillSourceRepositoryList>(
 		context,

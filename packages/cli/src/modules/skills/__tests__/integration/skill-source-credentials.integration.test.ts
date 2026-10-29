@@ -74,6 +74,7 @@ describe('Skill Sync with credentials', () => {
 	let enterpriseAppCredential: CredentialsEntity;
 	let restrictedAppCredential: CredentialsEntity;
 	let sharedCredential: CredentialsEntity;
+	let globalCredential: CredentialsEntity;
 
 	const ghCredential = (name: string, accessToken: string, type = 'githubApi') => ({
 		name,
@@ -110,6 +111,11 @@ describe('Skill Sync with credentials', () => {
 			inProject(otherTeam),
 		);
 		await shareCredentialWithProjects(sharedCredential, [team]);
+		// Owned by another project and made global: every project accepts it, as in a workflow.
+		globalCredential = await saveCredential(
+			{ ...ghCredential('Global GitHub', TOKEN), isGlobal: true },
+			inProject(otherTeam),
+		);
 		ownerCredential = await saveCredential(ghCredential('Owner GitHub', TOKEN), {
 			user: ownerUser,
 			role: 'credential:owner',
@@ -123,15 +129,11 @@ describe('Skill Sync with credentials', () => {
 			privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
 			publicKeyEncoding: { type: 'spki', format: 'pem' },
 		});
+		const app = { appId: '1', installationId: '42', privateKey, accessToken: '' };
 		appCredential = await saveCredential(
-			{
-				name: 'Team GitHub App',
-				type: 'githubAppApi',
-				data: { appId: '1', installationId: '42', privateKey, accessToken: '' },
-			},
+			{ name: 'Team GitHub App', type: 'githubAppApi', data: app },
 			inProject(team),
 		);
-		const app = { appId: '1', installationId: '42', privateKey, accessToken: '' };
 		enterpriseAppCredential = await saveCredential(
 			{
 				name: 'Enterprise GitHub App',
@@ -183,6 +185,7 @@ describe('Skill Sync with credentials', () => {
 			expect(names(data)).toEqual([
 				'Enterprise GitHub App',
 				'Expired',
+				'Global GitHub',
 				'Restricted GitHub App',
 				'Shared GitHub',
 				'Team GitHub',
@@ -273,6 +276,16 @@ describe('Skill Sync with credentials', () => {
 			);
 
 			expect(meta).toEqual({ reason: 'credential_out_of_scope' });
+		});
+
+		it('accepts a global credential, as the workflow credential select does', async () => {
+			const { data } = await post<SkillSourceDiscovery>(editor, '/skill-sources/discover', {
+				url: PRIVATE,
+				...scope(),
+				credentialId: globalCredential.id,
+			});
+
+			expect(data.skills.map(({ name }) => name)).toEqual(['pdf']);
 		});
 
 		it('accepts a credential that another project shares with the project', async () => {
@@ -385,8 +398,6 @@ describe('Skill Sync with credentials', () => {
 		});
 
 		it('lets a member use their own credential in their personal project', async () => {
-			github.grant(TOKEN, ['acme/private']);
-
 			await post(
 				member,
 				'/skill-sources/discover',

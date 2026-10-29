@@ -8,6 +8,8 @@ import type {
 	SkillSaveResponse,
 	SkillSourceConnectResponse,
 	SkillSourceDiscovery,
+	ListSkillSourceCredentialsQueryDto,
+	ListSkillSourceRepositoriesQueryDto,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -15,7 +17,7 @@ import { ref } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import * as api from './skills.api';
-import type { SkillListQuery, SkillSourceScopeQuery } from './skills.api';
+import type { SkillListQuery } from './skills.api';
 
 /** The skills list in Settings > Context > Skills. */
 export const useSkillsStore = defineStore('contextSkills', () => {
@@ -80,12 +82,12 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	/** The credentials that can read a private source in the scope. */
-	async function fetchSourceCredentials(query: SkillSourceScopeQuery) {
+	async function fetchSourceCredentials(query: ListSkillSourceCredentialsQueryDto) {
 		return await api.getSkillSourceCredentials(rootStore.restApiContext, query);
 	}
 
 	/** The repositories that a credential can read, to pick one in place of a link. */
-	async function fetchSourceRepositories(query: SkillSourceScopeQuery & { credentialId: string }) {
+	async function fetchSourceRepositories(query: ListSkillSourceRepositoriesQueryDto) {
 		return await api.getSkillSourceRepositories(rootStore.restApiContext, query);
 	}
 

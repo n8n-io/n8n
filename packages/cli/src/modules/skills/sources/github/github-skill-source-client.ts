@@ -69,6 +69,7 @@ const CREDENTIAL_INVALID = 'GitHub refused the credential. Its token is wrong or
 const API = 'https://api.github.com';
 /** The repositories that the repository select lists at most: 10 pages of 100. */
 const MAX_REPOSITORY_PAGES = 10;
+const TOKEN_CREDENTIAL = 'githubApi';
 const APP_CREDENTIAL = 'githubAppApi';
 
 /**
@@ -86,7 +87,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	 * A personal access token, classic or fine-grained, and a GitHub App installation. Not
 	 * OAuth2: its fixed scope gives write access to every repository of the user.
 	 */
-	readonly credentialTypes = ['githubApi', APP_CREDENTIAL];
+	readonly credentialTypes = [TOKEN_CREDENTIAL, APP_CREDENTIAL];
 
 	readonly capabilities: SkillSourceCapabilities = {
 		discovery: 'listing',
@@ -251,6 +252,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	): Promise<{ repositories: SkillSourceRepository[]; truncated: boolean }> {
 		const app = auth.credentialType === APP_CREDENTIAL;
 		const repositories: SkillSourceRepository[] = [];
+		let truncated = false;
 		// One page more than the select lists, to tell a full last page from more to come.
 		for (let page = 1; page <= MAX_REPOSITORY_PAGES + 1; page++) {
 			const url = app
@@ -262,14 +264,13 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				throw new SkillSourceReadError('unreachable', 'GitHub sent an answer n8n cannot read.');
 			}
 			if (page > MAX_REPOSITORY_PAGES) {
-				return { repositories: sortRepositories(repositories), truncated: items.length > 0 };
+				truncated = items.length > 0;
+				break;
 			}
 			repositories.push(...items.flatMap(toRepository));
-			if (items.length < 100) {
-				return { repositories: sortRepositories(repositories), truncated: false };
-			}
+			if (items.length < 100) break;
 		}
-		return { repositories: sortRepositories(repositories), truncated: true };
+		return { repositories: sortRepositories(repositories), truncated };
 	}
 
 	// ---------------------------------------------------------------- GitHub
@@ -380,7 +381,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const target = auth
 			? {
 					url: `${API}/repos/${o}/${r}/tarball/${s}`,
-					headers: { Authorization: `Bearer ${auth.token}`, ...API_HEADERS },
+					headers: bearer(auth),
 				}
 			: { url: `https://codeload.${GITHUB_HOST}/${o}/${r}/tar.gz/${s}` };
 		const deadline = new AbortController();
@@ -420,11 +421,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 
 	/** One page of a REST answer as JSON. */
 	private async sendJson(url: string, auth: SkillSourceAuth): Promise<unknown> {
-		const body = await this.send(
-			{ url, method: 'GET', headers: { Authorization: `Bearer ${auth.token}`, ...API_HEADERS } },
-			auth,
-			{ bytes: MAX_REFS_BYTES, message: 'GitHub sent too much data.', reason: 'unreachable' },
-		);
+		const body = await this.send({ url, method: 'GET', headers: bearer(auth) }, auth, {
+			bytes: MAX_REFS_BYTES,
+			message: 'GitHub sent too much data.',
+			reason: 'unreachable',
+		});
 		try {
 			return jsonParse<unknown>(body.toString('utf8'));
 		} catch (error) {
@@ -495,6 +496,11 @@ function throwForStatus(
 }
 
 const API_HEADERS = { Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+
+/** The headers of a REST call with the token of the access. */
+function bearer(auth: SkillSourceAuth): Record<string, string> {
+	return { Authorization: `Bearer ${auth.token}`, ...API_HEADERS };
+}
 
 function basic(token: string): string {
 	return Buffer.from(`x-access-token:${token}`).toString('base64');

@@ -1,10 +1,11 @@
 import type { SkillSourceCredentialOption } from '@n8n/api-types';
 import { OutboundHttp } from '@n8n/backend-network';
+import { CredentialsFinderService } from '@n8n/backend-services';
 import {
 	CredentialsRepository,
-	ProjectRepository,
+	ProjectRelationRepository,
 	SharedCredentialsRepository,
-	UserRepository,
+	type CredentialsEntity,
 	type User,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -26,19 +27,20 @@ const TOKEN_TIMEOUT_MS = 30_000;
 
 /**
  * The credentials that a skill source may use, with the rules of the credential select of a
- * workflow. A project source accepts the credentials that its project can use. A Global source
- * accepts a credential whose owner may manage Global skills, so it does not depend on one
- * project. With a user, the user must also be able to use the credential.
+ * workflow. A project source accepts the credentials of its project and the global
+ * credentials. A Global source accepts a credential whose owner may manage Global skills, so it
+ * does not depend on one project. With a user, the user must also be able to read the
+ * credential. A resolvable credential is never accepted.
  */
 @Service()
 export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 	constructor(
 		private readonly credentialsService: CredentialsService,
+		private readonly credentialsFinder: CredentialsFinderService,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly projectRepository: ProjectRepository,
-		private readonly userRepository: UserRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly outboundHttp: OutboundHttp,
 	) {
 		super();
@@ -49,15 +51,25 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 		projectId: string | null,
 		types: readonly string[],
 	): Promise<SkillSourceCredentialOption[]> {
-		const usable = await this.usableBy(user, projectId);
-		const ofTypes = usable.filter((credential) => types.includes(credential.type));
-		const accepted = await this.acceptedIds(
-			ofTypes.map(({ id }) => id),
-			projectId,
-		);
-		return ofTypes
-			.filter(({ id }) => accepted.has(id))
-			.map(({ id, name, type }) => ({ id, name, type }));
+		const options = (credentials: Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>) =>
+			credentials
+				.filter(({ type }) => types.includes(type))
+				.map(({ id, name, type }) => ({ id, name, type }));
+		if (projectId) {
+			// The workflow select of the project: its credentials and the global ones.
+			return options(
+				await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId,
+					excludePersonalRoute: true,
+					excludeResolvable: true,
+				}),
+			);
+		}
+		const readable = (
+			await this.credentialsFinder.findCredentialsForUser(user, ['credential:read'])
+		).filter(({ type, isResolvable }) => types.includes(type) && !isResolvable);
+		const owners = await this.adminOwners(readable.map(({ id }) => id));
+		return options(readable.filter(({ id }) => owners.has(id)));
 	}
 
 	async resolve(
@@ -65,18 +77,16 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 		scope: SkillSourceCredentialScope,
 	): Promise<ResolvedSkillSourceCredential | null> {
 		const { projectId, user, types, check } = scope;
-		// The user check runs first, so a missing credential and one the user cannot see take the
-		// same path, and the response time does not tell that a credential exists.
-		if (user && !(await this.usableBy(user, projectId)).some(({ id }) => id === credentialId)) {
-			return null;
-		}
-		const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
-		if (!credential || !types.includes(credential.type)) return null;
-		if (!(await this.acceptedIds([credentialId], projectId)).has(credentialId)) return null;
+		// With a user, the read check runs first, so a missing credential and one the user cannot
+		// read take the same path, and the response time does not tell that a credential exists.
+		const credential = user
+			? await this.credentialsFinder.findCredentialForUser(credentialId, user, ['credential:read'])
+			: await this.credentialsRepository.findOneBy({ id: credentialId });
+		if (!credential || credential.isResolvable || !types.includes(credential.type)) return null;
 		// Decrypts in the project of the source, or for Global in the project that owns it.
-		const decryptIn =
-			projectId ??
-			(await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId))?.id;
+		const decryptIn = projectId
+			? (await this.acceptedInProject(credential, projectId)) && projectId
+			: (await this.adminOwners([credentialId])).get(credentialId);
 		if (!decryptIn) return null;
 		const data = await decryptAgentCredential(this.credentialsHelper, credential, {
 			projectId: decryptIn,
@@ -90,36 +100,34 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 		};
 	}
 
-	/** The credentials the user can use in the scope, as the workflow credential select lists them. */
-	private async usableBy(user: User, projectId: string | null) {
-		const inProject =
-			projectId ?? (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(user, {
-			projectId: inProject,
-			excludeResolvable: true,
-		});
+	/** A credential of the project, or a global one, as the workflow select of the project. */
+	private async acceptedInProject(credential: CredentialsEntity, projectId: string) {
+		if (credential.isGlobal) return true;
+		const inProject = await this.credentialsService.findAllCredentialIdsForProject(projectId);
+		return inProject.some(({ id }) => id === credential.id);
 	}
 
-	/** The credentials among `ids` that the scope accepts. */
-	private async acceptedIds(ids: string[], projectId: string | null): Promise<Set<string>> {
-		if (ids.length === 0) return new Set();
-		if (projectId) {
-			const inProject = await this.credentialsService.findAllCredentialIdsForProject(projectId);
-			return new Set(inProject.map(({ id }) => id).filter((id) => ids.includes(id)));
-		}
-		// One query for the owners of all credentials, then one per owning personal project.
-		const owners = (
-			await this.sharedCredentialsRepository.getAllRelationsForCredentials(ids)
-		).filter(({ role, project }) => role === 'credential:owner' && project.type === 'personal');
-		const adminProjects = new Set<string>();
-		for (const projectId of new Set(owners.map(({ projectId }) => projectId))) {
-			const owner = await this.userRepository.findPersonalOwnerForProject(projectId);
-			if (owner && hasGlobalScope(owner, 'skill:create')) adminProjects.add(projectId);
-		}
-		return new Set(
+	/**
+	 * The owning project of each credential among `ids` that a user with the global
+	 * `skill:create` scope owns in a personal project. Two queries for any number of ids.
+	 */
+	private async adminOwners(ids: string[]): Promise<Map<string, string>> {
+		if (ids.length === 0) return new Map();
+		const owningProjects =
+			await this.sharedCredentialsRepository.findOwnerProjectsByCredentialIds(ids);
+		const personal = [...owningProjects].filter(([, project]) => project.type === 'personal');
+		const owners = await this.projectRelationRepository.getPersonalProjectOwners(
+			personal.map(([, project]) => project.id),
+		);
+		const adminProjects = new Set(
 			owners
-				.filter(({ projectId }) => adminProjects.has(projectId))
-				.map(({ credentialsId }) => credentialsId),
+				.filter(({ user }) => hasGlobalScope(user, 'skill:create'))
+				.map(({ projectId }) => projectId),
+		);
+		return new Map(
+			personal
+				.filter(([, project]) => adminProjects.has(project.id))
+				.map(([credentialId, project]) => [credentialId, project.id]),
 		);
 	}
 

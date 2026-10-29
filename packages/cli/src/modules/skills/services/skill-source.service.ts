@@ -72,7 +72,6 @@ type ParsedSource = {
 	identityKey: string;
 	/** The access of the credential for a private source. Undefined for a public one. */
 	auth?: SkillSourceAuth;
-	credentialId: string | null;
 };
 
 /** The skills of a source at one revision. */
@@ -261,7 +260,7 @@ export class SkillSourceService {
 							locator: source.locator,
 							identityKey: source.identityKey,
 							projectId: target.projectId,
-							credentialId: source.credentialId,
+							credentialId: source.auth?.credentialId ?? null,
 							createdById: user.id,
 						},
 						ctx,
@@ -393,14 +392,16 @@ export class SkillSourceService {
 		user: User,
 		credentialId: string,
 		projectId: string | null,
+		client?: SkillSourceClient,
 	): Promise<ResolvedSkillSourceCredential> {
 		let credential: ResolvedSkillSourceCredential | null;
 		try {
+			// With the client of the link, only its credential types and its check apply.
 			credential = await this.credentials.resolve(credentialId, {
 				projectId,
 				user,
-				types: this.credentialTypes(),
-				check: (resolved) => this.clientFor(resolved.type)?.checkCredential?.(resolved),
+				types: client ? client.credentialTypes : this.credentialTypes(),
+				check: (resolved) => (client ?? this.clientFor(resolved.type))?.checkCredential?.(resolved),
 			});
 		} catch (error) {
 			// A failure without a reason comes from decrypting the credential or from minting
@@ -417,23 +418,24 @@ export class SkillSourceService {
 			throw new SkillSourceRequestError(
 				'credential_out_of_scope',
 				projectId
-					? 'This project cannot use that credential. Pick a GitHub credential that the project owns or that is shared with it.'
-					: 'A Global source needs a GitHub credential that an admin owns.',
+					? 'This project cannot use that credential. Pick a credential that the project owns, that is shared with it, or that is global.'
+					: 'A Global source needs a credential that an admin owns.',
 			);
 		}
 		return credential;
 	}
 
+	private allClients(): SkillSourceClient[] {
+		return this.clients.types().flatMap((type) => this.clients.get(type) ?? []);
+	}
+
 	/** The client that reads with credentials of this type. */
 	private clientFor(credentialType: string) {
-		return this.clients
-			.types()
-			.map((type) => this.clients.get(type))
-			.find((candidate) => candidate?.credentialTypes.includes(credentialType));
+		return this.allClients().find((client) => client.credentialTypes.includes(credentialType));
 	}
 
 	private credentialTypes(): string[] {
-		return this.clients.types().flatMap((type) => this.clients.get(type)?.credentialTypes ?? []);
+		return this.allClients().flatMap((client) => client.credentialTypes);
 	}
 
 	/** The client that handles the link, and the source it points to. */
@@ -443,10 +445,7 @@ export class SkillSourceService {
 		projectId: string | null,
 	): Promise<ParsedSource> {
 		const { url, credentialId } = payload;
-		const client = this.clients
-			.types()
-			.map((type) => this.clients.get(type))
-			.find((candidate) => candidate?.handles(url));
+		const client = this.allClients().find((candidate) => candidate.handles(url));
 		if (!client) {
 			if (isWebLink(url)) {
 				throw new SkillSourceRequestError(
@@ -460,7 +459,7 @@ export class SkillSourceService {
 			);
 		}
 		const credential = credentialId
-			? await this.resolveCredential(user, credentialId, projectId)
+			? await this.resolveCredential(user, credentialId, projectId, client)
 			: undefined;
 		try {
 			const auth = credential ? client.authFrom(credential) : undefined;
@@ -472,7 +471,6 @@ export class SkillSourceService {
 				locator,
 				identityKey: skillSourceIdentityKey(client.identity(locator)),
 				auth,
-				credentialId: credentialId ?? null,
 			};
 		} catch (error) {
 			throw toSkillSourceRequestError(error);

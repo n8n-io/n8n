@@ -224,10 +224,6 @@ const newCredentialOptions = computed(() =>
 		: [],
 );
 
-function isTokenCredential(credential: SkillSourceCredentialOption): boolean {
-	return TOKEN_CREDENTIAL_TYPES.some((type) => type === credential.type);
-}
-
 /** Reads the credentials of the scope; `select` picks one, such as a credential just made. */
 async function loadCredentials(select?: string) {
 	const requestedScope = scope.value;
@@ -236,7 +232,8 @@ async function loadCredentials(select?: string) {
 	try {
 		const list = await skillsStore.fetchSourceCredentials(parseScope(requestedScope));
 		if (run !== credentialsRun) return;
-		credentials.value = list.filter(isTokenCredential);
+		// The server lists only the credential types that its source clients read.
+		credentials.value = list;
 		const ids = credentials.value.map((credential) => credential.id);
 		if (select && ids.includes(select)) {
 			credentialId.value = select;
