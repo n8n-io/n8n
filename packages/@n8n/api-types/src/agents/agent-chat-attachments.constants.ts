@@ -11,3 +11,5 @@ export const MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE = 10;
 // Matches the agent_chat_attachments.fileName varchar(255) column.
 export const MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH = 255;
 export const MAX_AGENT_CHAT_ATTACHMENT_MIMETYPE_LENGTH = 100;
+// Files that a tool returns can be larger than user uploads, e.g. a generated PDF.
+export const MAX_AGENT_TOOL_OUTPUT_FILE_BYTES = 50 * 1024 * 1024;
