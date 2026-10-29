@@ -1730,6 +1730,7 @@ export class InstanceAiService {
 
 	async shutdown(): Promise<void> {
 		this.liveness.shutdown();
+		this.cloudBrowserTaskService.shutdown();
 
 		const { activeRuns, suspendedRuns, pendingThreadIds } = this.runState.shutdown();
 		const threadsWithPendingHitl = new Set(pendingThreadIds);

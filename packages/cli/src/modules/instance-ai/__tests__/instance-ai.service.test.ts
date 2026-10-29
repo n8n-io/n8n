@@ -542,6 +542,7 @@ type ShutdownServiceInternals = {
 		>;
 	};
 	backgroundTasks: { cancelAll: MockedFunction<() => ManagedBackgroundTask[]> };
+	cloudBrowserTaskService: { shutdown: Mock };
 	tracing: {
 		finalizeRunTracing: MockedFunction<
 			(
@@ -662,7 +663,7 @@ type TerminalGuardOrderServiceInternals = {
 	failedInternalFollowUpStreaks: Map<string, number>;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
-	cloudBrowserTaskService: { startTask: Mock; deliverPendingResults: Mock };
+	cloudBrowserTaskService: { startTask: Mock; deliverPendingResults: Mock; shutdown: Mock };
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
 	inFlightExecutions: Set<Promise<unknown>>;
@@ -788,7 +789,7 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 }
 
 function stubCloudBrowserTaskService() {
-	return { startTask: vi.fn(), deliverPendingResults: vi.fn(async () => {}) };
+	return { startTask: vi.fn(), deliverPendingResults: vi.fn(async () => {}), shutdown: vi.fn() };
 }
 
 function stubInitialRunSurface(
@@ -1483,7 +1484,8 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.inFlightExecutions.size).toBe(0);
 	});
 
-	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+	/** A service with only what `shutdown()` touches. */
+	function createShutdownService() {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
@@ -1510,13 +1512,18 @@ describe('InstanceAiService — shutdown', () => {
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
-		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
+		service.cloudBrowserTaskService = stubCloudBrowserTaskService();
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service.agentFactory = { disconnectMcpClients: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		return service;
+	}
+
+	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+		const service = createShutdownService();
 
 		await service.shutdown();
 
@@ -1539,6 +1546,20 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(shutdownProductTelemetryProviders).mock.invocationCallOrder[0],
 		);
+	});
+
+	it('stops cloud browser task delivery before it cancels the background tasks', async () => {
+		const service = createShutdownService();
+		const calls: string[] = [];
+		service.cloudBrowserTaskService.shutdown.mockImplementation(() => calls.push('taskService'));
+		service.backgroundTasks.cancelAll.mockImplementation(() => {
+			calls.push('cancelAll');
+			return [];
+		});
+
+		await service.shutdown();
+
+		expect(calls).toEqual(['taskService', 'cancelAll']);
 	});
 });
 
@@ -1619,6 +1640,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 					cancelThread: vi.fn(() => []),
 					listRunningTasks: vi.fn(() => []),
 				},
+				cloudBrowserTaskService: stubCloudBrowserTaskService(),
 				cancelAwaitingApprovalPlan: vi.fn(),
 				suspendedThreads: { dropPendingConfirmationsForThread: vi.fn() },
 				gatewayService: { disconnectAll: vi.fn() },

@@ -117,8 +117,14 @@ export interface CloudBrowserRunOptions {
 export class InstanceAiCloudBrowserTaskService {
 	private readonly taskStore: CloudBrowserTaskStorage;
 
+	private isShuttingDown = false;
+
 	constructor(private readonly options: InstanceAiCloudBrowserTaskServiceOptions) {
 		this.taskStore = new CloudBrowserTaskStorage(options.agentMemory);
+	}
+
+	shutdown(): void {
+		this.isShuttingDown = true;
 	}
 
 	async startTask(
@@ -469,6 +475,8 @@ export class InstanceAiCloudBrowserTaskService {
 	 * released for the next delivery when no run started.
 	 */
 	async deliverPendingResults(user: User, threadId: string): Promise<void> {
+		// Results shouldn't be delivered during a shutdown, the next restart reports them
+		if (this.isShuttingDown) return;
 		const undelivered = await this.taskStore.claimUndelivered(threadId);
 		if (undelivered.length === 0) return;
 
