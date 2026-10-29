@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import set from 'lodash/set';
+import toPath from 'lodash/toPath';
 import {
 	NodeOperationError,
 	type IDataObject,
@@ -308,9 +309,25 @@ export class Aggregate implements INodeType {
 						`The '${_outputFieldName}' output field is used more than once`,
 						{ description: 'Please make sure each output field name is unique' },
 					);
-				} else {
-					outputFields.push(_outputFieldName);
 				}
+				if (!disableDotNotation) {
+					const outputPath = toPath(_outputFieldName);
+					const overlappingField = outputFields.find((existingField) => {
+						const existingPath = toPath(existingField);
+						const commonLength = Math.min(outputPath.length, existingPath.length);
+						return outputPath
+							.slice(0, commonLength)
+							.every((part, index) => part === existingPath[index]);
+					});
+					if (overlappingField !== undefined) {
+						throw new NodeOperationError(
+							this.getNode(),
+							`The '${_outputFieldName}' and '${overlappingField}' output fields overlap`,
+							{ description: 'Please make sure output field paths do not contain one another' },
+						);
+					}
+				}
+				outputFields.push(_outputFieldName);
 
 				if (fieldToAggregate !== '') {
 					values[_outputFieldName] = [];
