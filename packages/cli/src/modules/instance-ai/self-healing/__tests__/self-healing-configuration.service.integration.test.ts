@@ -1152,6 +1152,19 @@ describe('project member reviewers', () => {
 		);
 	});
 
+	it('does not count a service account in the project group as a reviewer of a fix', async () => {
+		const { user, project, input } = await teamFixture();
+		const projectEditor = await createServiceAccountWithProject();
+		await linkUserToProject(projectEditor, project, 'project:editor');
+		// An instance admin is an implicit member of every team project.
+		const instanceAdmin = await createServiceAccountWithProject(GLOBAL_ADMIN_ROLE);
+		const saved = await configurations.save(user, project.id, input);
+
+		expect(await repository.isReviewer(saved.id, user.id, {})).toBe(true);
+		expect(await repository.isReviewer(saved.id, projectEditor.id, {})).toBe(false);
+		expect(await repository.isReviewer(saved.id, instanceAdmin.id, {})).toBe(false);
+	});
+
 	it('counts a global admin who is a project member through the project group', async () => {
 		const { user, project, input } = await teamFixture();
 		const admin = await createUser({ role: GLOBAL_ADMIN_ROLE });
