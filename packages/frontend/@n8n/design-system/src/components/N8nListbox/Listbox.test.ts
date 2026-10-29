@@ -336,7 +336,7 @@ describe('N8nListbox', () => {
 			await nextTick();
 			await nextTick();
 
-			expect(scrollIntoView).toHaveBeenCalled();
+			expect(focus).toHaveBeenCalled();
 			expect(scrolling.scrollTop).toBe(180);
 		} finally {
 			scrollIntoView.mockRestore();

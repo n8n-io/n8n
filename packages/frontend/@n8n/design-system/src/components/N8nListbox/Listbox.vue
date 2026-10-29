@@ -143,14 +143,14 @@ function onFocusOut(event: FocusEvent) {
 }
 
 type ScrollMark = {
-	node: Element | Window;
+	node: Element;
 	top: number;
 	left: number;
 };
 
-// Ancestors plus the document. Reka's mount highlight scrolls every one of them.
+// The document and each ancestor. Reka's mount highlight scrolls all of them.
 function scrollMarks(start: HTMLElement): ScrollMark[] {
-	const marks: ScrollMark[] = [{ node: window, top: window.scrollY, left: window.scrollX }];
+	const marks: ScrollMark[] = [];
 	const scrollingElement = document.scrollingElement;
 	if (scrollingElement) {
 		marks.push({
@@ -160,7 +160,7 @@ function scrollMarks(start: HTMLElement): ScrollMark[] {
 		});
 	}
 	let node: HTMLElement | null = start.parentElement;
-	while (node) {
+	while (node && node !== scrollingElement) {
 		marks.push({ node, top: node.scrollTop, left: node.scrollLeft });
 		node = node.parentElement;
 	}
@@ -169,12 +169,8 @@ function scrollMarks(start: HTMLElement): ScrollMark[] {
 
 function restoreScroll(marks: ScrollMark[]) {
 	for (const mark of marks) {
-		if (mark.node === window) {
-			window.scrollTo(mark.left, mark.top);
-			continue;
-		}
-		mark.node.scrollTop = mark.top;
-		mark.node.scrollLeft = mark.left;
+		if (mark.node.scrollTop !== mark.top) mark.node.scrollTop = mark.top;
+		if (mark.node.scrollLeft !== mark.left) mark.node.scrollLeft = mark.left;
 	}
 }
 
