@@ -215,6 +215,8 @@ export function useCloudBrowserLiveViews(
 
 	return {
 		views,
-		refresh: (taskId) => void refresh(taskId, { sameSession: true }),
+		refresh: (taskId) => {
+			void refresh(taskId, { sameSession: true });
+		},
 	};
 }
