@@ -1646,6 +1646,51 @@ describe('settleWorkflowJobByExecutionId', () => {
 			);
 		});
 
+		it('deletes the stored files when another writer settled the job first', async () => {
+			const { service, jobRepository, fileBridge } = setup();
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
+			jobRepository.settleIfActive.mockResolvedValue(false);
+			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file], skippedFiles: [] });
+
+			await service.settleWorkflowJobByExecutionId('exec-1', { status: 'completed' }, runData);
+
+			expect(fileBridge.deleteFiles).toHaveBeenCalledWith(['file-1']);
+		});
+
+		it('keeps the files that the caller stored when another writer settled the job first', async () => {
+			const { service, jobRepository, fileBridge } = setup();
+			jobRepository.findRunningWorkflowJobByExecutionId.mockResolvedValue(makeWorkflowJob());
+			jobRepository.settleIfActive.mockResolvedValue(false);
+
+			await service.settleWorkflowJobByExecutionId(
+				'exec-1',
+				{ status: 'completed', files: [file] },
+				runData,
+			);
+
+			expect(fileBridge.deleteFiles).not.toHaveBeenCalled();
+		});
+
+		it('deletes the stored files when reconciliation loses the settle', async () => {
+			const { service, jobRepository, executionPersistence, fileBridge } = setup();
+			jobRepository.findRunningJobs.mockImplementation(async (kind) =>
+				kind === 'workflow' ? [makeWorkflowJob()] : [],
+			);
+			jobRepository.settleIfActive.mockResolvedValue(false);
+			executionPersistence.findStatusesByIds.mockResolvedValue([
+				{ id: 'exec-1', status: 'success' },
+			]);
+			executionPersistence.findSingleExecution.mockResolvedValue({
+				status: 'success',
+				data: { resultData: { runData } },
+			} as never);
+			fileBridge.adoptFromItems.mockResolvedValue({ items: [], files: [file], skippedFiles: [] });
+
+			await service.reconcile();
+
+			expect(fileBridge.deleteFiles).toHaveBeenCalledWith(['file-1']);
+		});
+
 		it('stores the files when reconciliation settles a finished job', async () => {
 			const { service, jobRepository, executionPersistence, fileBridge } = setup();
 			jobRepository.findRunningJobs.mockImplementation(async (kind) =>

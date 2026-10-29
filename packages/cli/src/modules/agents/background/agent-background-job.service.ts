@@ -262,10 +262,15 @@ export class AgentBackgroundJobService {
 				result: serializeWorkflowJobResult(collectResultData(runData, true)),
 			};
 		}
+		let storedFiles: JobOutputFiles['files'] = null;
 		if (settlement.status === 'completed' && runData && settlement.files === undefined) {
-			settlement = { ...settlement, ...(await this.storeOutputFiles(job, runData)) };
+			const output = await this.storeOutputFiles(job, runData);
+			storedFiles = output.files;
+			settlement = { ...settlement, ...output };
 		}
-		return await this.settle(job.id, settlement);
+		const settled = await this.settle(job.id, settlement);
+		if (!settled) await this.deleteUnusedFiles(job.id, storedFiles);
+		return settled;
 	}
 
 	/**
@@ -297,6 +302,19 @@ export class AgentBackgroundJobService {
 		} catch (error) {
 			this.logger.warn('Failed to store background job output files', { jobId: job.id, error });
 			return NO_OUTPUT_FILES;
+		}
+	}
+
+	/**
+	 * Another writer settled the job first, so the job does not refer to these files.
+	 * The live callback and reconciliation can both store the same output.
+	 */
+	private async deleteUnusedFiles(jobId: string, files: JobOutputFiles['files']): Promise<void> {
+		if (!files) return;
+		try {
+			await this.fileBridge.deleteFiles(files.map(({ fileId }) => fileId));
+		} catch (error) {
+			this.logger.warn('Failed to delete unused background job output files', { jobId, error });
 		}
 	}
 
@@ -1389,11 +1407,13 @@ export class AgentBackgroundJobService {
 				status === 'completed' || job.pauseRequestId
 					? await this.loadExecutionOutput(job, executionId, status, Boolean(job.pauseRequestId))
 					: { result: null, ...NO_OUTPUT_FILES };
-			return await this.settle(job.id, {
+			const settled = await this.settle(job.id, {
 				status,
 				...output,
 				error: executionStatus === 'success' ? null : `Execution ${executionStatus}`,
 			});
+			if (!settled) await this.deleteUnusedFiles(job.id, output.files);
+			return settled;
 		} catch (error) {
 			this.logger.error('Failed to reconcile workflow background job', {
 				jobId: job.id,
