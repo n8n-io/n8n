@@ -131,10 +131,7 @@ describe('useAgentCapabilitiesActions', () => {
 
 		const modalData = openModalWithData.mock.calls[0][0] as {
 			data: {
-				onConfirm: (payload: {
-					tools?: AgentJsonToolConfig[];
-					mcpServers?: unknown[];
-				}) => void;
+				onConfirm: (payload: { tools?: AgentJsonToolConfig[]; mcpServers?: unknown[] }) => void;
 			};
 		};
 		const tools: AgentJsonToolConfig[] = [{ type: 'custom', id: 'tool-1' }];

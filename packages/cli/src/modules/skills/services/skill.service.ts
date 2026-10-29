@@ -59,6 +59,7 @@ import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
+import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillSyncedFromService } from './skill-synced-from.service';
 import {
 	blocksDelete,
@@ -143,6 +144,7 @@ export class SkillService {
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
 		private readonly linkRepository: SkillSourceLinkRepository,
+		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
@@ -788,15 +790,17 @@ export class SkillService {
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
-		const [latest, usage, projects, creators, canEdit, canDelete, synced] = await Promise.all([
-			this.skillRepository.findLatestSummaries(ids),
-			this.skillUsage.countUsingAgents(ids),
-			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
-			this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
-			this.skillAccess.accessCheck(user, 'update'),
-			this.skillAccess.accessCheck(user, 'delete'),
-			this.linkRepository.findLinkedSkillIds(ids),
-		]);
+		const [latest, usage, projects, creators, canEdit, canDelete, synced, skillSyncOn] =
+			await Promise.all([
+				this.skillRepository.findLatestSummaries(ids),
+				this.skillUsage.countUsingAgents(ids),
+				this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
+				this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
+				this.skillAccess.accessCheck(user, 'update'),
+				this.skillAccess.accessCheck(user, 'delete'),
+				this.linkRepository.findLinkedSkillIds(ids),
+				this.skillSyncFlagGate.isEnabled(user),
+			]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
 			const summary = latest.get(skill.id);
@@ -821,7 +825,8 @@ export class SkillService {
 				canEdit: canEdit(skill, projectId) && !synced.has(skill.id),
 				canDelete: canDelete(skill, projectId),
 				// Stop syncing needs the update permission of the scope that the skill shares with its source.
-				canStopSyncing: synced.has(skill.id) && canEdit(skill, projectId),
+				// The route answers 404 while the Skill Sync flag is off for the user.
+				canStopSyncing: skillSyncOn && synced.has(skill.id) && canEdit(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});

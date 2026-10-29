@@ -410,6 +410,9 @@ describe('SkillSourceController', () => {
 			await owner.patch(`/skills/${skillId}`).send(move).expect(400);
 			await stop(owner, skillId);
 			await owner.patch(`/skills/${skillId}`).send(move).expect(200);
+
+			const { body: moved } = await owner.get(`/skills/${skillId}`).expect(200);
+			expect(moved.data).toMatchObject({ scope: 'instance', projectId: null });
 		});
 
 		it('answers 404 for a skill that is not synced, also after a stop', async () => {
@@ -430,6 +433,13 @@ describe('SkillSourceController', () => {
 			await stop(member, skillId, 404);
 			postHog.getFeatureFlags.mockResolvedValue({});
 			await stop(editor, skillId, 404);
+			// With the flag off, no surface offers an action that the route refuses.
+			const { body: detail } = await editor.get(`/skills/${skillId}`).expect(200);
+			const { body: list } = await editor.get('/skills').expect(200);
+			expect(detail.data.syncedFrom).toMatchObject({ canStopSyncing: false });
+			expect(list.data.data.find((skill: { id: string }) => skill.id === skillId)).toMatchObject({
+				canStopSyncing: false,
+			});
 		});
 	});
 

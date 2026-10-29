@@ -8,6 +8,7 @@ import { SkillSourceLinkRepository } from '../database/repositories/skill-source
 import { SkillSourceRepository } from '../database/repositories/skill-source.repository';
 import { SkillSourceClientRegistry } from '../sources/skill-source-client-registry.service';
 import { SkillAccessService } from './skill-access.service';
+import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 
 /** Where a synced skill comes from, for the "Synced from" banner of the skill modal. */
 @Service()
@@ -18,6 +19,7 @@ export class SkillSyncedFromService {
 		private readonly sourceRepository: SkillSourceRepository,
 		private readonly clients: SkillSourceClientRegistry,
 		private readonly skillAccess: SkillAccessService,
+		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 	) {}
 
 	/** Null for a skill without a source, or a source whose type has no client on this build. */
@@ -31,7 +33,10 @@ export class SkillSyncedFromService {
 		const source = await this.sourceRepository.findById(link.sourceId, ctx);
 		const client = source && this.clients.get(source.type);
 		if (!source || !client) return null;
-		const canStopSyncing = await this.skillAccess.canOnSource(user, source, 'stopSyncing');
+		// The route answers 404 while the Skill Sync flag is off for the user.
+		const canStopSyncing =
+			(await this.skillSyncFlagGate.isEnabled(user)) &&
+			(await this.skillAccess.canOnSource(user, source, 'stopSyncing'));
 		try {
 			return {
 				sourceId: source.id,

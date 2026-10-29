@@ -1543,6 +1543,37 @@ describe('AgentSkillModal from Settings', () => {
 		expect(onStopSyncing).toHaveBeenCalledWith('s1');
 	});
 
+	it('disables Stop syncing while a stop runs, so it is sent once', async () => {
+		let finish: () => void = () => {};
+		const onStopSyncing = vi.fn(
+			async () => await new Promise<void>((resolve) => (finish = resolve)),
+		);
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills',
+					canStopSyncing: true,
+				},
+				onStopSyncing,
+			},
+		});
+
+		const button = getByTestId('agent-skill-stop-syncing');
+		await userEvent.click(button);
+		await userEvent.click(button);
+
+		expect(onStopSyncing).toHaveBeenCalledTimes(1);
+		expect(button).toBeDisabled();
+		finish();
+		await vi.waitFor(() => expect(button).not.toBeDisabled());
+	});
+
 	it('hides Stop syncing when the user may not stop syncing the skill', () => {
 		const { getByTestId, queryByTestId } = renderModal({
 			skillId: 's1',

@@ -334,9 +334,16 @@ const canStopSyncing = computed(
 	() => !!syncedFrom.value?.canStopSyncing && !!props.data.onStopSyncing && !!props.data.skillId,
 );
 
-function onStopSyncing() {
-	if (props.data.skillId && props.data.onStopSyncing) {
-		void props.data.onStopSyncing(props.data.skillId);
+/** True while a stop runs, so a second click cannot send it again. */
+const isStoppingSync = ref(false);
+
+async function onStopSyncing() {
+	if (!props.data.skillId || !props.data.onStopSyncing || isStoppingSync.value) return;
+	isStoppingSync.value = true;
+	try {
+		await props.data.onStopSyncing(props.data.skillId);
+	} finally {
+		isStoppingSync.value = false;
 	}
 }
 const isReadOnly = computed(
@@ -1380,7 +1387,7 @@ function onRemove() {
 			<N8nButton
 				v-if="canStopSyncing"
 				variant="ghost"
-				:disabled="isSaving"
+				:disabled="isSaving || isStoppingSync"
 				data-testid="agent-skill-stop-syncing"
 				@click="onStopSyncing"
 			>
