@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import type { AgentJsonConfig, InstanceAiAttachment } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { N8nLink, N8nResizeWrapper, N8nText } from '@n8n/design-system';
+import {
+	N8nIconButton,
+	N8nLink,
+	N8nResizeWrapper,
+	N8nText,
+	N8nTooltip,
+	TOOLTIP_DELAY_MS,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { useElementSize, useLocalStorage } from '@vueuse/core';
+import { useElementSize } from '@vueuse/core';
 import { TabsRoot } from 'reka-ui';
 import { computed, provide, ref, useTemplateRef, watch } from 'vue';
+import { useRouter } from 'vue-router';
 
-import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
 import AgentChatPanel from '@/features/agents/components/AgentChatPanel.vue';
 import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composables/useN8nAssistantIdentity';
 
@@ -17,7 +24,16 @@ import { provideArtifactThread } from '../artifactThread';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
+import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
+import {
+	MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
+	useArtifactsPanelToggle,
+	usePreviewPanelWidth,
+	usePreviewToggle,
+} from '../composables/useArtifactsLayout';
+import { INSTANCE_AI_VIEW } from '../constants';
+import { firstMessageTitle } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCanvasPreview } from '../useCanvasPreview';
 import { countAttachedNodes } from '../utils/buildNodesAttachment';
@@ -39,6 +55,7 @@ provide(ASSISTANT_AGENT_PROJECT_ID, props.projectId);
 
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const router = useRouter();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
@@ -132,99 +149,143 @@ const activeAgentHref = computed(() => {
 	return agentId ? `/projects/${projectId}/agents/${agentId}` : undefined;
 });
 
-const previewToggleLabel = computed(() =>
-	i18n.baseText(
-		preview.isPreviewVisible.value
-			? 'instanceAi.artifactsPanel.hidePreview'
-			: 'instanceAi.artifactsPanel.showPreview',
-	),
-);
+const { previewToggleLabel, togglePreview } = usePreviewToggle(preview);
 
-function togglePreview(): void {
-	if (preview.isPreviewVisible.value) {
-		preview.closePreview();
-		return;
-	}
-	const tab =
-		preview.openTabs.value.find(({ id }) => id === preview.activeTabId.value) ??
-		preview.openTabs.value[0];
-	if (tab) preview.selectTab(tab.id);
+// --- Header ---
+// The stored title, else the first user message, as in the Assistant runtime view.
+const threadTitle = computed(() => {
+	const title = threadsStore.threadsById.get(props.threadId)?.title;
+	if (title) return title;
+	const firstUserMessage = thread.messages.find((message) => message.role === 'user');
+	return firstUserMessage?.content ? firstMessageTitle(firstUserMessage.content) : undefined;
+});
+
+function startNewThread(): void {
+	void router.push({ name: INSTANCE_AI_VIEW });
 }
 
 // --- Layout ---
-// The same limits as the Assistant runtime view, so both split the space alike.
-const MIN_WIDTH_FOR_ARTIFACTS_PANEL = 900;
-const MIN_SPLIT_PANEL_WIDTH = 400;
-const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
-
 const threadArea = useTemplateRef<HTMLElement>('threadArea');
 const { width: threadAreaWidth } = useElementSize(threadArea);
-// Share of the thread area, so the split survives window and sidebar resizes. -1 = no preference yet.
-const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
-	writeDefaults: false,
-});
 const isPreviewExpanded = ref(false);
 
-const showArtifactsPanel = computed(
-	() =>
-		!preview.isPreviewVisible.value &&
-		threadAreaWidth.value >= MIN_WIDTH_FOR_ARTIFACTS_PANEL &&
-		(thread.producedArtifacts.size > 0 || thread.currentTasks !== null),
+const isArtifactsPanelInLayout = computed(
+	() => threadAreaWidth.value >= MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
-
-const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-const previewMinWidth = computed(() => Math.min(MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value));
-const previewMaxWidth = computed(() =>
-	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
+// A loading thread shows the panel too, so its loading state shows in place.
+const canShowArtifactsPanel = computed(
+	() => thread.messages.length > 0 || preview.openTabs.value.length > 0 || thread.isHydratingThread,
 );
-const previewPanelWidth = computed(() => {
-	const ratio = chatPanelWidthRatio.value;
-	const chatPanelWidth =
-		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
-	return Math.round(
-		Math.min(
-			Math.max(threadAreaWidth.value - chatPanelWidth, previewMinWidth.value),
-			previewMaxWidth.value,
-		),
-	);
-});
+const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
+	useArtifactsPanelToggle({
+		isInLayout: () => isArtifactsPanelInLayout.value,
+		canShow: () => canShowArtifactsPanel.value,
+		isPreviewVisible: () => preview.isPreviewVisible.value,
+		panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
+		toggleSelector: '[data-test-id="assistant-agent-artifacts-panel-toggle"]',
+	});
 
-function handlePreviewResize({ width }: { width: number }): void {
-	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
-	if (Math.round(width) === previewPanelWidth.value) return;
-	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
-}
+const {
+	previewMinWidth,
+	previewMaxWidth,
+	previewPanelWidth,
+	isPreviewResizeEnabled,
+	handlePreviewResize,
+} = usePreviewPanelWidth({ threadAreaWidth, isExpanded: () => isPreviewExpanded.value });
 </script>
 
 <template>
 	<div ref="threadArea" :class="$style.container" data-test-id="assistant-agent-thread-view">
-		<div :class="$style.chatColumn">
-			<AgentChatPanel
-				ref="panel"
-				:project-id="props.projectId"
-				:agent-id="ASSISTANT_AGENT_ID"
-				mode="inline"
-				:continue-session-id="props.threadId"
-				:new-session="isNewSession"
-				:agent-config="agentConfig"
-				:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
-				agent-status="production"
-				:connected-triggers="[]"
-				channel="system"
-				:client-context="clientContext"
-				:interaction-extensions="interactionExtensions"
-				@session-created="onSessionCreated"
-				@message-accepted="onMessageAccepted"
-				@update:streaming="onStreamingChange"
-			/>
-		</div>
+		<div :class="$style.chatArea">
+			<InstanceAiViewHeader :title="threadTitle" :thread-id="props.threadId">
+				<template #actions>
+					<N8nTooltip
+						:content="i18n.baseText('instanceAi.thread.new')"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<N8nIconButton
+							icon="message-circle-plus"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							:aria-label="i18n.baseText('instanceAi.thread.new')"
+							data-test-id="assistant-agent-new-thread"
+							@click="startNewThread"
+						/>
+					</N8nTooltip>
+					<N8nTooltip
+						v-if="canShowArtifactsPanel && !preview.isPreviewVisible.value"
+						:content="artifactsPanelToggleLabel"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<N8nIconButton
+							icon="list"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							data-test-id="assistant-agent-artifacts-panel-toggle"
+							:aria-label="artifactsPanelToggleLabel"
+							:aria-pressed="showArtifactsPanel"
+							@click="toggleArtifactsPanel"
+						/>
+					</N8nTooltip>
+					<N8nTooltip
+						v-if="!preview.isPreviewVisible.value"
+						:content="previewToggleLabel"
+						placement="bottom"
+						:show-after="TOOLTIP_DELAY_MS"
+					>
+						<N8nIconButton
+							icon="panel-right"
+							variant="ghost"
+							size="small"
+							icon-size="large"
+							data-test-id="assistant-agent-preview-toggle"
+							:aria-label="previewToggleLabel"
+							:aria-pressed="false"
+							:disabled="preview.openTabs.value.length === 0"
+							@click="togglePreview"
+						/>
+					</N8nTooltip>
+				</template>
+			</InstanceAiViewHeader>
 
-		<div
-			v-if="showArtifactsPanel"
-			:class="$style.artifactsPanelSlot"
-			data-test-id="assistant-agent-artifacts-panel"
-		>
-			<InstanceAiArtifactsPanel />
+			<div :class="$style.contentArea">
+				<div :class="$style.chatColumn">
+					<AgentChatPanel
+						ref="panel"
+						:project-id="props.projectId"
+						:agent-id="ASSISTANT_AGENT_ID"
+						mode="inline"
+						:continue-session-id="props.threadId"
+						:new-session="isNewSession"
+						:agent-config="agentConfig"
+						:attachment-capabilities="ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES"
+						agent-status="production"
+						:connected-triggers="[]"
+						channel="system"
+						:client-context="clientContext"
+						:interaction-extensions="interactionExtensions"
+						@session-created="onSessionCreated"
+						@message-accepted="onMessageAccepted"
+						@update:streaming="onStreamingChange"
+					/>
+				</div>
+
+				<div
+					v-if="showArtifactsPanel"
+					ref="artifactsPanelSlot"
+					:class="[
+						$style.artifactsPanelSlot,
+						{ [$style.artifactsPanelSlotOverlay]: !isArtifactsPanelInLayout },
+					]"
+					data-test-id="assistant-agent-artifacts-panel"
+				>
+					<InstanceAiArtifactsPanel />
+				</div>
+			</div>
 		</div>
 
 		<div
@@ -238,7 +299,7 @@ function handlePreviewResize({ width }: { width: number }): void {
 				:min-width="previewMinWidth"
 				:max-width="previewMaxWidth"
 				:supported-directions="['left']"
-				:is-resizing-enabled="!isPreviewExpanded && previewMinWidth < previewMaxWidth"
+				:is-resizing-enabled="isPreviewResizeEnabled"
 				:grid-size="8"
 				@resize="handlePreviewResize"
 			>
@@ -305,6 +366,21 @@ function handlePreviewResize({ width }: { width: number }): void {
 	height: 100%;
 }
 
+.chatArea {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	min-height: 0;
+}
+
+.contentArea {
+	position: relative;
+	display: flex;
+	flex: 1;
+	min-height: 0;
+}
+
 .chatColumn {
 	display: flex;
 	flex-direction: column;
@@ -316,8 +392,16 @@ function handlePreviewResize({ width }: { width: number }): void {
 .artifactsPanelSlot {
 	display: flex;
 	flex-shrink: 0;
-	padding-top: var(--spacing--sm);
 	overflow: hidden;
+}
+
+// A narrow view shows the panel over the chat.
+.artifactsPanelSlotOverlay {
+	position: absolute;
+	top: 0;
+	right: 0;
+	z-index: 4;
+	max-height: calc(100% - var(--spacing--sm));
 }
 
 .canvasArea {
