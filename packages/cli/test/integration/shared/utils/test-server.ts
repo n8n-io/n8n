@@ -450,6 +450,11 @@ export const setupTestServer = ({
 			}
 
 			await Container.get(ModuleRegistry).initModules('main');
+			// As `start` does: the skills module reads the credentials of its sources through cli.
+			const { registerSkillSourceCredentials } = await import(
+				'@/credentials/skill-source-credentials.js'
+			);
+			registerSkillSourceCredentials();
 			Container.get(ControllerRegistry).activate(app);
 
 			await Container.get(AuthHandlerRegistry).init();

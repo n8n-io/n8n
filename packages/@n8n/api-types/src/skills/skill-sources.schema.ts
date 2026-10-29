@@ -21,6 +21,10 @@ export const SKILL_SOURCE_REASONS = [
 	'review_required',
 	'name_taken',
 	'duplicate_source',
+	'credential_invalid',
+	'credential_missing',
+	'credential_out_of_scope',
+	'host_blocked',
 ] as const;
 
 export type SkillSourceReason = (typeof SKILL_SOURCE_REASONS)[number];
@@ -28,12 +32,21 @@ export type SkillSourceReason = (typeof SKILL_SOURCE_REASONS)[number];
 /** Where a source puts its skills: Global (`instance`), or a team or personal project. */
 export const skillSourceScopeSchema = z.enum(['instance', 'project']);
 
-const skillSourceTarget = {
-	/** A link to a repository, a folder, or one SKILL.md. */
-	url: z.string().trim().min(1).max(2048),
+const skillSourceScope = {
 	scope: skillSourceScopeSchema,
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
+};
+
+const skillSourceTarget = {
+	/** A link to a repository, a folder, or one SKILL.md. */
+	url: z.string().trim().min(1).max(2048),
+	...skillSourceScope,
+	/**
+	 * The n8n credential that reads a private source. Absent for a public source. The scope
+	 * must accept it, and the user must be able to use it.
+	 */
+	credentialId: z.string().min(1).max(36).optional(),
 };
 
 /** Reads a link and lists the skills in it, for the picker. Writes nothing. */
@@ -151,4 +164,31 @@ export type SkillSyncedFrom = {
 	webUrl: string;
 	/** Whether the user may stop syncing the skill, which makes it a normal skill. */
 	canStopSyncing: boolean;
+};
+
+/** The credentials that can read a private source in a scope, for the credential select. */
+export class ListSkillSourceCredentialsQueryDto extends Z.class(skillSourceScope) {}
+
+/** A credential that a source in the scope accepts and that the user can use. */
+export type SkillSourceCredentialOption = { id: string; name: string; type: string };
+
+/** The repositories that a credential can read, to pick one in place of a link. */
+export class ListSkillSourceRepositoriesQueryDto extends Z.class({
+	...skillSourceScope,
+	credentialId: z.string().min(1).max(36),
+}) {}
+
+/** One repository in the repository select. */
+export type SkillSourceRepositoryOption = {
+	owner: string;
+	name: string;
+	private: boolean;
+	/** The link to send as `url` to discover and connect. */
+	url: string;
+};
+
+export type SkillSourceRepositoryList = {
+	repositories: SkillSourceRepositoryOption[];
+	/** True when the credential can read more repositories than n8n lists. */
+	truncated: boolean;
 };

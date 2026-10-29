@@ -48,16 +48,19 @@ Other modules call the services that `index.ts` exports. A contract (an abstract
 
 `index.ts` exports:
 
-| Export                                  | Role                                                                                      |
-| --------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `SkillService`                          | User actions for every caller: REST, MCP tools, n8n Assistant tools and the agent builder |
-| `SkillAccessService`                    | Permission checks                                                                         |
-| `SkillRuntimeService`                   | What agents and n8n Assistant read to run skills                                          |
-| `SkillsGate`, `AssistantSkillsFlagGate` | Whether skills are on, and whether n8n Assistant skills are on                            |
-| `SkillUsage`, `SkillUsageProxy`         | The contract that the agents module implements                                            |
-| `SkillNameTakenError` and helpers       | Shared errors, name rules, hashes and types                                               |
+| Export                                                  | Role                                                                                      |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `SkillService`                                          | User actions for every caller: REST, MCP tools, n8n Assistant tools and the agent builder |
+| `SkillAccessService`                                    | Permission checks                                                                         |
+| `SkillRuntimeService`                                   | What agents and n8n Assistant read to run skills                                          |
+| `SkillsGate`, `AssistantSkillsFlagGate`                 | Whether skills are on, and whether n8n Assistant skills are on                            |
+| `SkillUsage`, `SkillUsageProxy`                         | The contract that the agents module implements                                            |
+| `SkillSourceCredentials`, `SkillSourceCredentialsProxy` | The contract for the credentials of skill sources, which cli implements                   |
+| `SkillNameTakenError` and helpers                       | Shared errors, name rules, hashes and types                                               |
 
 It does not export the controller (an import registers its routes), the module class, the repository or the entities. `__tests__/index.test.ts` checks the export list. If another module needs a new symbol, export it. Do not export symbols that no other module uses.
+
+The skills module also owns `SkillSourceCredentials`: which n8n credentials a skill source may use, decrypted, with a fresh token for a type that mints one, such as a GitHub App. It cannot import the credential services of cli, so cli implements it in `CliSkillSourceCredentials` (`src/credentials/skill-source-credentials.ts`), with the rules of the workflow credential select, and `registerSkillSourceCredentials` registers a factory on `SkillSourceCredentialsProxy` after the modules start, in the `start` command and in the integration test server. A project source accepts the credentials of its project and the global credentials. A Global source accepts a credential whose owner has the global `skill:create` scope. A route that takes a credential checks both the scope and that the user can use it. `resolve` runs the `checkCredential` of the client before it mints a token, so a credential for another host sends no request.
 
 The skills module cannot import the agents module, because the agents module imports skills. So the skills module owns `SkillUsage`: which agents use a skill, the projects of those agents, and the side effects of a save on them. The agents module implements it in `AgentSkillUsage` and registers it on `SkillUsageProxy` on init.
 
