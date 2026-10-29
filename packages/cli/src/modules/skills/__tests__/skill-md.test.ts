@@ -155,6 +155,14 @@ describe('readSkillFolder', () => {
 			expect(skippedFiles).toEqual([skipped]);
 		});
 
+		// Postgres cannot store NUL, so the file stays out instead of failing the write.
+		it('skips a path with a NUL character', () => {
+			const { content, skippedFiles } = readFile('references/a\0.md');
+
+			expect(content.files).toEqual([]);
+			expect(skippedFiles).toEqual(['references/a\0.md']);
+		});
+
 		it.each([
 			{ case: 'a ./ path', extra: ['references/a.md', './references/a.md'], at: 'references/a.md' },
 			{
