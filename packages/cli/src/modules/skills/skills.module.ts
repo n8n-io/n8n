@@ -1,5 +1,6 @@
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule } from '@n8n/decorators';
+import { Container } from '@n8n/di';
 
 /**
  * Skills with their saved versions, the REST API of the settings page, and the services
@@ -10,6 +11,15 @@ import { BackendModule } from '@n8n/decorators';
 export class SkillsModule implements ModuleInterface {
 	async init() {
 		await import('./controllers/skills.controller.js');
+		await import('./controllers/skill-source.controller.js');
+
+		const { SkillSourceClientRegistry } = await import(
+			'./sources/skill-source-client-registry.service.js'
+		);
+		const { GitHubSkillSourceClient } = await import(
+			'./sources/github/github-skill-source-client.js'
+		);
+		Container.get(SkillSourceClientRegistry).register(Container.get(GitHubSkillSourceClient));
 	}
 
 	async entities() {

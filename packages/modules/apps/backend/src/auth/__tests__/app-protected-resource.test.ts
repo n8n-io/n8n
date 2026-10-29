@@ -133,6 +133,19 @@ describe('AppProtectedResource', () => {
 		expect(await descriptor.authorize(user)).toBe(true);
 	});
 
+	it('requires read access regardless of visibility', async () => {
+		const { resource, app, projects } = setup();
+		const user = mock<ResourcePrincipal>({
+			id: 'user',
+			role: { slug: 'global:member', scopes: [] },
+		});
+		app.visibility = 'public';
+
+		expect(await resource.canRead(app, user)).toBe(true);
+		projects.getAccessibleProjectsByRoles.mockResolvedValue([]);
+		expect(await resource.canRead(app, user)).toBe(false);
+	});
+
 	it('grants global app read access without project membership', async () => {
 		const { resource, app, roles, projects } = setup();
 		const user = mock<ResourcePrincipal>({

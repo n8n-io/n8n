@@ -38,8 +38,10 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		latestVersion: 1,
 		availableToAssistant: false,
 		usedByAgents: 0,
+		availableToMCP: false,
 		canEdit: true,
 		canDelete: true,
+		canStopSyncing: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -48,9 +50,9 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 
 const renderTable = createComponentRenderer(SkillsTable);
 
-function render(skills: SkillListItem[]) {
+function render(skills: SkillListItem[], showMcpAvailability = false) {
 	return renderTable({
-		props: { skills, itemsLength: skills.length, loading: false },
+		props: { skills, itemsLength: skills.length, loading: false, showMcpAvailability },
 	});
 }
 
@@ -137,6 +139,21 @@ describe('SkillsTable', () => {
 		expect(queryByTestId('skill-created-by')).not.toBeInTheDocument();
 	});
 
+	it('marks a skill that is available to MCP clients', () => {
+		const { getAllByTestId } = render(
+			[skill({ id: 's1', availableToMCP: true }), skill({ id: 's2', availableToMCP: false })],
+			true,
+		);
+
+		expect(getAllByTestId('skill-available-to-mcp-icon')).toHaveLength(1);
+	});
+
+	it('does not mark skills while the MCP skills extension is off', () => {
+		const { queryByTestId } = render([skill({ availableToMCP: true })]);
+
+		expect(queryByTestId('skill-available-to-mcp-icon')).not.toBeInTheDocument();
+	});
+
 	it('shows a dash for a skill that no agent uses', () => {
 		const { getByTestId, queryByTestId } = render([skill({ usedByAgents: 0 })]);
 
@@ -161,7 +178,9 @@ describe('SkillsTable', () => {
 				hiddenAgents: 0,
 			},
 		} as SkillDetail);
-		const { getByTestId, findAllByText, findByTestId } = render([skill({ usedByAgents: 1 })]);
+		const { getByTestId, findAllByText, findByTestId, findByText } = render([
+			skill({ usedByAgents: 1 }),
+		]);
 
 		expect(getByTestId('skill-agents-trigger')).toHaveTextContent('1');
 		await userEvent.click(getByTestId('skill-agents-trigger'));
@@ -169,7 +188,30 @@ describe('SkillsTable', () => {
 		expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1');
 		// A draft and a published version of one agent show as one entry.
 		expect(await findAllByText('FirstClassDarwin')).toHaveLength(1);
-		expect(await findByTestId('skill-agents-version')).toHaveTextContent('Latest (v2)');
+		const badge = await findByTestId('skill-agents-version');
+		expect(badge).toHaveTextContent('Latest (v2)');
+		// The published agent still runs v1, so the badge warns and names that version on hover.
+		expect(badge).toHaveAttribute('data-variant', 'warning');
+		await userEvent.hover(badge);
+		expect(await findByText('Published agent uses v1')).toBeInTheDocument();
+	});
+
+	it('shows a green badge when the published agent runs the version the draft runs', async () => {
+		const skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSkill.mockResolvedValue({
+			usedBy: {
+				drafts: [
+					{ agentId: 'a1', agentName: 'Darwin', projectId: 'p1', version: 2, pinned: false },
+				],
+				pins: [{ agentId: 'a1', agentName: 'Darwin', projectId: 'p1', version: 2 }],
+				hiddenAgents: 0,
+			},
+		} as SkillDetail);
+		const { getByTestId, findByTestId } = render([skill({ usedByAgents: 1 })]);
+
+		await userEvent.click(getByTestId('skill-agents-trigger'));
+
+		expect(await findByTestId('skill-agents-version')).toHaveAttribute('data-variant', 'success');
 	});
 
 	it('shows the pinned version of an agent and opens the agent in a new tab', async () => {
@@ -187,7 +229,9 @@ describe('SkillsTable', () => {
 		const { getByTestId, findByTestId, findByText } = render([skill({ usedByAgents: 1 })]);
 
 		await userEvent.click(getByTestId('skill-agents-trigger'));
-		expect((await findByTestId('skill-agents-version')).textContent?.trim()).toBe('v3');
+		const pinnedBadge = await findByTestId('skill-agents-version');
+		expect(pinnedBadge.textContent?.trim()).toBe('v3');
+		expect(pinnedBadge).toHaveAttribute('data-variant', 'outline');
 		await userEvent.click(await findByText('Pinned bot'));
 
 		expect(open).toHaveBeenCalledWith('/projects/p1/agents/a1', '_blank', 'noopener');
@@ -263,6 +307,32 @@ describe('SkillsTable', () => {
 		await userEvent.click(document.querySelector('[data-test-id="action-delete"]')!);
 
 		expect(emitted('delete')).toEqual([[row]]);
+	});
+
+	it('offers Stop syncing only for a synced skill the user may stop syncing', async () => {
+		const { getByTestId } = render([skill({ source: 'github', canEdit: false })]);
+
+		await openActions(getByTestId('skills-table'));
+
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-download"]')).toBeInTheDocument(),
+		);
+		expect(document.querySelector('[data-test-id="action-stopSyncing"]')).not.toBeInTheDocument();
+	});
+
+	it('emits stopSyncing for a synced skill the user may stop syncing', async () => {
+		const row = skill({ source: 'github', canEdit: false, canStopSyncing: true });
+		const { getByTestId, emitted } = render([row]);
+
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-stopSyncing"]')).toHaveTextContent(
+				'Stop syncing',
+			),
+		);
+		await userEvent.click(document.querySelector('[data-test-id="action-stopSyncing"]')!);
+
+		expect(emitted('stopSyncing')).toEqual([[row]]);
 	});
 
 	it('emits download for any skill, also one the user cannot change', async () => {

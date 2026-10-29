@@ -2124,7 +2124,7 @@ describe('InstanceAiEmptyView', () => {
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-agent'));
 			await nextTick();
-			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('image/*');
+			expect(getByTestId('instance-ai-input-attach-only')).toHaveTextContent('image/png');
 
 			await fireEvent.click(getByTestId('n8n-chat-agent-picker-stub-select-assistant'));
 			await nextTick();

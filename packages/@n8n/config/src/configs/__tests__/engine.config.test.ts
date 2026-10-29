@@ -91,4 +91,23 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 		expect(consoleWarnMock).toHaveBeenCalledWith(expect.stringContaining('N8N_ENGINE_MODE'));
 	});
+
+	it('should default new workflows to engine v1', () => {
+		expect(Container.get(EngineConfig).defaultType).toBe('v1');
+	});
+
+	it('should read the default engine type', () => {
+		process.env.N8N_ENGINE_DEFAULT_TYPE = 'v2';
+
+		expect(Container.get(EngineConfig).defaultType).toBe('v2');
+	});
+
+	it('should reject an unknown default engine type and fall back to v1', () => {
+		process.env.N8N_ENGINE_DEFAULT_TYPE = 'v3';
+
+		expect(Container.get(EngineConfig).defaultType).toBe('v1');
+		expect(consoleWarnMock).toHaveBeenCalledWith(
+			expect.stringContaining('N8N_ENGINE_DEFAULT_TYPE'),
+		);
+	});
 });

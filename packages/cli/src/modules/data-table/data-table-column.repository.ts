@@ -9,7 +9,7 @@ import {
 } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { DataTableDDLService } from './data-table-ddl.service';
+import { DataTableDDLService } from './persistence/data-table-ddl';
 import { DataTable } from './data-table.entity';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';

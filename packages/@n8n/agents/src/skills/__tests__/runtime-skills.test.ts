@@ -875,7 +875,11 @@ Use the workflow SDK.`,
 			bytes: 15,
 			sha256: 'abc123',
 		});
-		expect(loadFile).toHaveBeenCalledWith('summarize_notes', 'references/guide.md');
+		expect(loadFile).toHaveBeenCalledWith(
+			'summarize_notes',
+			'references/guide.md',
+			expect.any(Function),
+		);
 	});
 
 	it('adds runtime skills to agents through one shared load path', () => {

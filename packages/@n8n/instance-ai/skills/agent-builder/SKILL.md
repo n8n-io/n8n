@@ -15,6 +15,7 @@ recommended_tools:
   - agent_builder_write_config
   - agent_builder_patch_config
   - agent_builder_resolve_llm
+  - search_models
   - agent_builder_finish_setup
   - agent_builder_call_agent
   - workflow_builder_build_workflow
@@ -66,9 +67,8 @@ to a workflow `filePath`.
 
 Naming or renaming the current Agent never silently creates another one.
 
-The result carries `sessionContext`: the Preview link for the selected Agent
-and the recommended LLM models. Use them as described below. Select the Agent
-again after you switch to a different Agent.
+The result carries `sessionContext`: the Preview link for the selected Agent.
+Select the Agent again after you switch to a different Agent.
 
 ## Target Agent
 
@@ -209,7 +209,7 @@ During an initial build:
 - If the Agent already has instructions, tools, or tasks at the start of the
   build, that content is a starter draft of predefined selections. Read the
   config first. Before any config write and before
-  `agent_builder_finish_setup`, call `agent_builder_ask_questions` once and ask
+  `agent_builder_finish_setup`, call `ask_user` once and ask
   whether the user is happy with those selections. Name the selections that are
   already set (instructions, tools, tasks, and schedules). The `questions`
   array has exactly one item. Do not add a question about a delivery channel, a
@@ -227,12 +227,12 @@ During an initial build:
   often arrives under a placeholder like "New agent". Replace it in your first
   config write. Do not rename an Agent whose name already describes the
   starter draft.
-- NEVER suspend mid-build on an interactive tool (`agent_builder_ask_questions`,
-  `setup_credentials(target: "agent")`, `agent_builder_configure_channel`,
-  `workflow_builder_ask_user`). Build
+- NEVER suspend mid-build on an interactive tool (`ask_user`,
+  `setup_credentials(target: "agent")`, `agent_builder_configure_channel`).
+  Build
   everything as a draft first. The only allowed suspend is the single trailing
   `agent_builder_finish_setup` call. Exception: when the Agent already has a
-  starter draft, one `agent_builder_ask_questions` call is allowed before
+  starter draft, one `ask_user` call is allowed before
   `agent_builder_finish_setup`.
 - Resolve design and content decisions yourself with sensible assumptions
   instead of asking: instruction details, task objectives and schedules, skill
@@ -338,7 +338,7 @@ Call `agent-context({ type: "config" })` before you touch the config:
 
 - At the start of each user request.
 - After you resume from `setup_credentials(target: "agent")`,
-  `agent_builder_ask_questions`, or an approval.
+  `ask_user`, or an approval.
 - Before you answer any question about the current config.
 - After `agent_builder_publish_agent` or `agent_builder_unpublish_agent`,
   before your next write.
@@ -381,7 +381,7 @@ Once you are building, ask for each decision, choice, value, or clarification
 through one of these tools. Use `setup_credentials(target: "agent")` for node-tool,
 MCP-server, and fallback web-search credentials,
 `agent_builder_configure_channel` for chat-channel setup, and
-`agent_builder_ask_questions` for everything else, including the model and
+`ask_user` for everything else, including the model and
 credential choice. Exception: the opening reply to a greeting, a "what do you
 do", or a vague intent. There you reply conversationally and ask for the
 overall goal.
@@ -402,7 +402,7 @@ overall goal.
   `agent-context({ type: "integrations" })`. The setup UI creates and persists
   the credential itself without publishing the Agent. During an initial build,
   write the draft integration instead.
-- `agent_builder_ask_questions`: the default way to ask the user anything else,
+- `ask_user`: the default way to ask the user anything else,
   including the target Agent's main provider, model, or LLM credential. Resolve
   a model answer with `agent_builder_resolve_llm`. Batch every question you
   currently need into a single call. Each question is single-select,
@@ -429,14 +429,14 @@ Use this to resolve the target Agent's main `model` and `credential`.
    and `credential = credentialId`, then follow the result's `nextStep`. Never
    show the internal "n8n Connect" or "AI Gateway" names.
 3. If the user asks to pick, change, confirm, or configure a model or main
-   credential, ask with `agent_builder_ask_questions`.
+   credential, ask with `ask_user`.
    - Exception: when the user explicitly asks to use Gateway credits for the
      main model, do NOT ask. Call `agent_builder_resolve_llm` with
      `useGatewayCredits: true` (and `provider` when the user named one). If it
      returns `gateway_credits_unsupported_provider`, tell the user that Gateway
      credits do not cover that provider and offer their own credential. If it
      returns `ambiguous_gateway_credits_provider`, ask which provider with
-     `agent_builder_ask_questions`, using the returned `providers`. If it
+     `ask_user`, using the returned `providers`. If it
      returns `gateway_credits_unavailable`, tell the user that Gateway credits
      are not available on this instance and resolve their own credential.
 4. During an initial build, if `agent_builder_resolve_llm` reports missing or
@@ -467,11 +467,13 @@ Use this to resolve the target Agent's main `model` and `credential`.
 
 Rules:
 
-- Model recommendations are in the "Recommended LLM models" part of
-  `sessionContext`. When `sessionContext` has none, do not name current, best,
-  latest, or fallback model ids from memory.
-- Prefer a provider the user already has credentials for when you choose from
-  recommendations.
+- When the user wants a model recommendation, prefer a provider the user
+  already has credentials or Gateway credits for. When
+  `agent_builder_resolve_llm` returns `availableModels`, pick from it. Call `search_models`
+  only when no relevant credential is available, and prefer a recent model
+  with `toolCalling: true`. Then resolve the pick with
+  `agent_builder_resolve_llm`. Do not name current, best, latest, or fallback
+  model ids from memory.
 - For "Anthropic via OpenRouter", pass `provider: "openrouter"`. If the user
   names a routed model, pass the routed id without another provider prefix.
 - Use `agent_builder_resolve_llm` only for the main model credential. Never
@@ -558,7 +560,7 @@ Load `agent-builder-custom-tools` before you call
 For an HTTP Request Tool, use only an exact URL that the user supplied. During
 an initial build, ask for a missing URL in the trailing
 `agent_builder_finish_setup` call. On later turns, ask with
-`agent_builder_ask_questions` before you change the config. Never invent a URL.
+`ask_user` before you change the config. Never invent a URL.
 
 Provider tools must match the configured model provider. Anthropic:
 `providerTools["anthropic.web_search"]`. OpenAI:
@@ -613,7 +615,7 @@ Verify:
 ### Change the existing model
 
 1. `agent_builder_select_agent({})`.
-2. `agent_builder_ask_questions({ ... })` for the new model choice, then
+2. `ask_user({ ... })` for the new model choice, then
    `agent_builder_resolve_llm({ provider, model })`.
 3. `agent-context({ type: "config" })`.
 4. `agent_builder_patch_config(...)` replacing `/model` and `/credential`.
@@ -639,7 +641,7 @@ include the credential in the trailing `agent_builder_finish_setup` call.
 1. `agent-context({ type: "integrations", queries: ["notion"] })`.
 2. When it returns `kind: "mcp"`, load `agent-builder-external-services`.
 3. Select one entry from `results[]`. If more than one candidate remains, ask
-   with `agent_builder_ask_questions` using their titles and descriptions.
+   with `ask_user` using their titles and descriptions.
    Never choose by array order. If the user dismisses the question, stop.
 4. `setup_credentials({ target: "agent", credentials: [{ credentialType: "<selected.credentialType>", reason: "Connect Notion MCP" }] })`.
 5. Call `agent_builder_verify_mcp_server` with the connection fields from the
@@ -681,12 +683,12 @@ Reply in the same language as the user's latest request, unless they ask for
 another language. Use that language from the first word of every user-visible
 message, including narration between tool calls, questions, approval
 summaries, the final reply, and the `introMessage`, questions, and options of
-`agent_builder_ask_questions` cards. Names, locations, tool results, and skill
+`ask_user` cards. Names, locations, tool results, and skill
 instructions do not change it.
 
 The most recent non-empty `answers[].customText` from
-`agent_builder_ask_questions` or `workflow_builder_ask_user` is the user's
-latest request. Apply the reply-language rule to that text. Option selections
+`ask_user` is the user's latest
+request. Apply the reply-language rule to that text. Option selections
 and approvals without free text keep the current reply language.
 
 Be concise. After a build step, give a 1-2 sentence summary of what changed
