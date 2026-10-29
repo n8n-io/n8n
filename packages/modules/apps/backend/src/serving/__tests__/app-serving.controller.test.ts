@@ -3,7 +3,9 @@ import { mock } from 'vitest-mock-extended';
 
 import { AppServingController } from '../app-serving.controller';
 import { AppBundleCache } from '../app-bundle-cache';
+import { AppHostService } from '../app-host.service';
 import { AppAuthService, type AppRequest } from '../../auth/app-auth.service';
+import { AppPreviewService } from '../../preview/app-preview.service';
 
 function setup(url = '/', navigation = true) {
 	const bundles = mock<AppBundleCache>();
@@ -17,16 +19,18 @@ function setup(url = '/', navigation = true) {
 		]),
 	);
 	const auth = mock<AppAuthService>({ isNavigation: () => navigation });
-	const controller = new AppServingController(bundles, auth);
+	const hosts = mock<AppHostService>();
+	const preview = mock<AppPreviewService>({ editorOrigin: 'https://n8n.example.net' });
+	const controller = new AppServingController(bundles, auth, hosts, preview);
 	const req = mock<AppRequest>({
 		method: 'GET',
 		path: url,
-		appContext: { app: { publishedVersionId: 'version' } },
+		appContext: { app: { publishedVersionId: 'version' }, versionId: 'version', preview: false },
 	});
 	const res = mock<Response>({ headersSent: false });
 	res.set.mockReturnValue(res);
 	res.status.mockReturnValue(res);
-	return { controller, req, res, bundles, auth };
+	return { controller, req, res, bundles, auth, hosts, preview };
 }
 
 describe('AppServingController', () => {
@@ -88,5 +92,41 @@ describe('AppServingController', () => {
 		await controller.serve(req, res);
 		expect(res.status).toHaveBeenCalledWith(404);
 		expect(bundles.get).not.toHaveBeenCalled();
+	});
+
+	it('authenticates preview hosts with the preview session', async () => {
+		const { controller, req, res, auth, hosts, preview } = setup();
+		hosts.previewNamespace.mockReturnValue('sales');
+		const next = vi.fn();
+
+		await controller.authenticate(req, res, next);
+
+		expect(preview.authenticate).toHaveBeenCalledExactlyOnceWith(req, res, next);
+		expect(auth.authenticate).not.toHaveBeenCalled();
+	});
+
+	it('serves the preview version and allows only the editor to frame it', async () => {
+		const { controller, req, res, bundles } = setup('/assets/main.js', false);
+		req.appContext = { app: mock(), versionId: 'draft', preview: true };
+
+		await controller.serve(req, res);
+
+		expect(bundles.get).toHaveBeenCalledWith('draft');
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({
+				'Content-Security-Policy':
+					"base-uri 'self'; object-src 'none'; frame-ancestors https://n8n.example.net",
+			}),
+		);
+	});
+
+	it('keeps the published CSP without frame-ancestors', async () => {
+		const { controller, req, res } = setup('/assets/main.js', false);
+
+		await controller.serve(req, res);
+
+		expect(res.set).toHaveBeenCalledWith(
+			expect.objectContaining({ 'Content-Security-Policy': "base-uri 'self'; object-src 'none'" }),
+		);
 	});
 });
