@@ -2880,10 +2880,7 @@ importers:
         version: link:../vitest-config
       '@sentry/node':
         specifier: catalog:sentry
-        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
-      '@vitest/coverage-v8':
-        specifier: 'catalog:'
-        version: 5.0.1(@vitest/browser@5.0.1)(vitest@5.0.1)
+        version: 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       oxlint:
         specifier: 'catalog:'
         version: 1.78.0(oxlint-tsgolint@0.21.1)
@@ -5030,7 +5027,7 @@ importers:
         version: 3.1.1(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
       '@sentry/node':
         specifier: catalog:sentry
-        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+        version: 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       '@supabase/supabase-js':
         specifier: 'catalog:'
         version: 2.112.3(@opentelemetry/api@1.9.1)
@@ -5523,13 +5520,13 @@ importers:
         version: 11.8.0
       '@sentry/node':
         specifier: catalog:sentry
-        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+        version: 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       '@sentry/node-native':
         specifier: catalog:sentry
-        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+        version: 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       '@sentry/profiling-node':
         specifier: catalog:sentry
-        version: 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+        version: 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -31120,7 +31117,7 @@ snapshots:
       - encoding
       - supports-color
 
-  '@sentry/bundler-plugins@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))':
+  '@sentry/bundler-plugins@11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)':
     dependencies:
       '@sentry/core': 11.8.0
       dotenv: 17.4.2
@@ -31130,7 +31127,8 @@ snapshots:
       sentry: 0.45.0
       supports-color: 8.1.1
     optionalDependencies:
-      '@babel/core': 7.29.7(supports-color@8.1.1)
+      '@babel/core': 7.29.0(supports-color@8.1.1)
+      rollup: 4.52.4
 
   '@sentry/cli-darwin@2.55.0':
     optional: true
@@ -31202,20 +31200,20 @@ snapshots:
       detect-libc: 2.1.2
       node-abi: 3.92.0
 
-  '@sentry/node-native@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))':
+  '@sentry/node-native@11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)':
     dependencies:
       '@sentry/core': 11.8.0
-      '@sentry/node': 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+      '@sentry/node': 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       '@sentry/node-native-stacktrace': 0.5.2
     transitivePeerDependencies:
       - '@babel/core'
       - rollup
       - webpack
 
-  '@sentry/node@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))':
+  '@sentry/node@11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)':
     dependencies:
       '@opentelemetry/api': 1.9.1
-      '@sentry/bundler-plugins': 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+      '@sentry/bundler-plugins': 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       '@sentry/conventions': 0.27.0
       '@sentry/core': 11.8.0
       '@sentry/opentelemetry': 11.8.0(@opentelemetry/api@1.9.1)
@@ -31232,10 +31230,10 @@ snapshots:
       '@sentry/conventions': 0.27.0
       '@sentry/core': 11.8.0
 
-  '@sentry/profiling-node@11.8.0(@babel/core@7.29.7(supports-color@8.1.1))':
+  '@sentry/profiling-node@11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)':
     dependencies:
       '@sentry/core': 11.8.0
-      '@sentry/node': 11.8.0(@babel/core@7.29.7(supports-color@8.1.1))
+      '@sentry/node': 11.8.0(@babel/core@7.29.0(supports-color@8.1.1))(rollup@4.52.4)
       '@sentry/node-cpu-profiler': 2.4.4
     transitivePeerDependencies:
       - '@babel/core'
