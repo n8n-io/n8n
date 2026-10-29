@@ -1,47 +1,43 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionResponse } from '@n8n/engine';
 
 import type {
+	ExecutionChannelCodec,
 	ExecutionChannelFrameHandler,
 	ExecutionChannelSubscriber,
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
 } from './execution-channel';
-import { deserializeExecutionResponse } from './execution-response-frame';
-import type {
-	ExecutionResponseReceiver,
-	UnsubscribeExecutionResponse,
-} from './execution-response-receiver';
 import type { InMemoryExecutionChannel } from './in-memory-execution-response-channel';
 
-/** Receives execution responses on the `responses` topic of the execution channel. */
-export class ExecutionResponseChannelReceiver implements ExecutionResponseReceiver {
+/** Receives messages on the topic of its codec. */
+export class ExecutionChannelReceiver<T> {
 	private stopped = false;
 
 	constructor(
 		private readonly subscriber: ExecutionChannelSubscriber,
+		private readonly codec: ExecutionChannelCodec<T>,
 		private readonly logger: Logger,
 	) {}
 
 	async receive(
 		executionId: string,
-		handler: (response: ExecutionResponse) => void,
-	): Promise<UnsubscribeExecutionResponse> {
+		handler: (message: T) => void,
+	): Promise<UnsubscribeFromExecutionChannel> {
 		if (this.stopped) return () => {};
 
-		return await this.subscriber.subscribe('responses', executionId, (frame) => {
+		const { topic } = this.codec;
+		return await this.subscriber.subscribe(topic, executionId, (frame) => {
 			if (this.stopped) return;
 
-			const responseResult = deserializeExecutionResponse(frame, this.logger);
-			if (!responseResult.ok) return;
-			const response = responseResult.result;
+			const messageResult = this.codec.deserialize(frame);
+			if (!messageResult.ok) return;
 
 			try {
-				handler(response);
+				handler(messageResult.result);
 			} catch (error) {
-				this.logger.error('An execution response handler failed', {
-					executionId: response.executionId,
-					type: response.type,
+				this.logger.error('An execution channel message handler failed', {
+					topic,
+					executionId,
 					error,
 				});
 			}

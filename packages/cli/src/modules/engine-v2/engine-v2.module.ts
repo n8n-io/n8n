@@ -49,9 +49,13 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineV2WebhookResponseRegistry } = await import(
 			'./webhook-response/webhook-response-registry.service.js'
 		);
-		const { ExecutionResponseChannelReceiver } = await import(
+		const { ExecutionChannelReceiver } = await import(
 			'./response-channel/in-memory-execution-response-receiver.js'
 		);
+		const { createExecutionResponseCodec } = await import(
+			'./response-channel/execution-response-frame.js'
+		);
+		const responseCodec = createExecutionResponseCodec(logger);
 
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
@@ -59,19 +63,19 @@ export class EngineV2Module implements ModuleInterface {
 			const { createInMemoryExecutionChannel } = await import(
 				'./response-channel/in-memory-execution-response-channel.js'
 			);
-			const { ExecutionResponseChannelSender } = await import(
+			const { ExecutionChannelSender } = await import(
 				'./response-channel/in-memory-execution-response-sender.js'
 			);
 			const { publisher, subscriber } = createInMemoryExecutionChannel();
 			this.channelPublisher = publisher;
 			this.channelSubscriber = subscriber;
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(
-				new ExecutionResponseChannelReceiver(subscriber, logger),
+				new ExecutionChannelReceiver(subscriber, responseCodec, logger),
 			);
 
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
 			await Container.get(EngineV2Runtime).init(
-				new ExecutionResponseChannelSender(publisher, logger),
+				new ExecutionChannelSender(publisher, responseCodec),
 			);
 		} else {
 			// The remote data plane publishes over Redis, so only the subscribing end
@@ -82,7 +86,7 @@ export class EngineV2Module implements ModuleInterface {
 			const subscriber = await startRedisExecutionChannelSubscriber(logger);
 			this.channelSubscriber = subscriber;
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(
-				new ExecutionResponseChannelReceiver(subscriber, logger),
+				new ExecutionChannelReceiver(subscriber, responseCodec, logger),
 			);
 		}
 

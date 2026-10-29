@@ -11,7 +11,7 @@ import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { ExecutionResponseChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
+import { ExecutionChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
 import type { RedisChannelSubscriber } from '../response-channel/redis-execution-response-receiver';
 
 describe('EngineV2Module', () => {
@@ -93,7 +93,7 @@ describe('EngineV2Module', () => {
 			await module.init();
 
 			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
-				expect.any(ExecutionResponseChannelReceiver),
+				expect.any(ExecutionChannelReceiver),
 			);
 			expect(runtime.init).toHaveBeenCalledWith(expect.anything());
 			expect(redisClientService.createClient).not.toHaveBeenCalled();
@@ -150,7 +150,7 @@ describe('EngineV2Module', () => {
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'subscriber(n8n)' });
 			expect(subscriber.on).toHaveBeenCalledWith('message', expect.any(Function));
 			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
-				expect.any(ExecutionResponseChannelReceiver),
+				expect.any(ExecutionChannelReceiver),
 			);
 		});
 
