@@ -106,10 +106,20 @@ describe('StartExecutionService', () => {
 		};
 
 		it.each([
-			{ name: 'a waiting step that awaits it', awaited: true, stepStatus: 'waiting' as const },
-			{ name: 'a running step that does not', awaited: false, stepStatus: 'running' as const },
-		])('stores the link to $name', async ({ awaited, stepStatus }) => {
-			const { store, stepStore } = parentRows('running', stepStatus);
+			{
+				name: 'a waiting step that awaits it',
+				awaited: true,
+				executionStatus: 'waiting' as const,
+				stepStatus: 'waiting' as const,
+			},
+			{
+				name: 'a running step that does not',
+				awaited: false,
+				executionStatus: 'running' as const,
+				stepStatus: 'running' as const,
+			},
+		])('stores the link to $name', async ({ awaited, executionStatus, stepStatus }) => {
+			const { store, stepStore } = parentRows(executionStatus, stepStatus);
 			const service = new StartExecutionService(admittance, store, stepStore, makeQueue());
 			const parent = { executionId: 'exec-parent', stepId: 'step-1', awaited };
 
