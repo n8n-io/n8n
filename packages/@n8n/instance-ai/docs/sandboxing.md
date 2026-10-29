@@ -33,13 +33,17 @@ is created only when the agent first uses a workspace capability. Instance AI
 exposes this core workspace tool set:
 
 - `workspace_read_file`
+- `workspace_read_files` (several files or line ranges in one call)
 - `workspace_read_tool_result`
 - `workspace_write_file`
 - `workspace_str_replace_file`
+- `workspace_edit_files` (several writes and replacements in one call)
 - `workspace_execute_command`
 
 The underlying `Workspace` supports more filesystem operations. The lazy
-runtime filters the model-facing set to `CORE_WORKSPACE_TOOL_NAMES`.
+runtime filters the model-facing set to `ASSISTANT_WORKSPACE_TOOL_NAMES`: the
+shared `CORE_WORKSPACE_TOOL_NAMES` plus the two batch tools. Standalone Agents
+use only the core set.
 
 ## Providers
 

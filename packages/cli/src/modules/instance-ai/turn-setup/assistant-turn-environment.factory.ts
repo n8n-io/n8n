@@ -441,11 +441,14 @@ export class AssistantTurnEnvironmentFactory {
 			setSchemaBaseDirs(nodeDefDirs);
 		}
 
+		const sandboxStatus = this.settingsService.getSandboxStatus();
 		const skillScope: InstanceAiSkillScope = {
 			profile: selectedPrompt.profile,
 			flags: { configEvalsEnabled, instanceContextEnabled },
 			// The agent-building skills need the build-agent tool, which needs a builder delegate.
 			agentBuildingEnabled: context.builderDelegate !== undefined,
+			appBuildingEnabled:
+				context.appService !== undefined && sandboxStatus.workflowBuilderAvailable,
 		};
 		const skills = await this.skillsService.loadSkills(skillScope, {
 			user,
@@ -456,7 +459,6 @@ export class AssistantTurnEnvironmentFactory {
 		let runtimeWorkspace: Workspace | undefined;
 		let workspaceRoot: string | undefined;
 
-		const sandboxStatus = this.settingsService.getSandboxStatus();
 		if (sandboxStatus.workflowBuilderAvailable) {
 			const sandboxConfig = await this.instanceAiErrorReporter.withBoundary(
 				'instance-ai-sandbox-setup',

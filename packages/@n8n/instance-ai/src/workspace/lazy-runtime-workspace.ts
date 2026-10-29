@@ -47,6 +47,12 @@ export interface LazyRuntimeWorkspaceOptions {
 	filesystemInstructions?: string;
 }
 
+export const ASSISTANT_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
+	...CORE_WORKSPACE_TOOL_NAMES,
+	'workspace_read_files',
+	'workspace_edit_files',
+]);
+
 type WorkspaceResolvedListener = (workspace: Workspace) => void;
 type WorkspaceDestroyedListener = () => void;
 
@@ -68,7 +74,7 @@ export function createLazyRuntimeWorkspace({
 
 	const baseGetTools = workspace.getTools.bind(workspace);
 	workspace.getTools = () =>
-		baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
+		baseGetTools().filter((tool) => ASSISTANT_WORKSPACE_TOOL_NAMES.has(tool.name));
 
 	return workspace;
 }

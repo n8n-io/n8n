@@ -84,11 +84,15 @@ export class AppRepository extends BaseRepository<App> {
 		return await this.managerFor(ctx).existsBy(Project, { id: projectId });
 	}
 
-	async createApp(projectId: string, dto: CreateAppDto, ctx: OperationContext = {}): Promise<App> {
+	async createApp(
+		projectId: string,
+		dto: CreateAppDto & { id?: string },
+		ctx: OperationContext = {},
+	): Promise<App> {
 		try {
 			return await this.managerFor(ctx).save(App, {
 				...dto,
-				id: uuidv7(),
+				id: dto.id ?? uuidv7(),
 				projectId,
 				draftVersionId: null,
 				publishedVersionId: null,

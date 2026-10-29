@@ -25,7 +25,7 @@ import { useToast } from '@n8n/composables/useToast';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { DEBOUNCE_TIME, HOVER_DELAY } from '@/app/constants/durations';
 import type { ArtifactTab } from '../useCanvasPreview';
-import { skillsHubHref } from '../canvasPreview.utils';
+import { appHref, skillsHubHref } from '../canvasPreview.utils';
 import { hasTabSummary, useArtifactTabSummaries } from '../useArtifactTabSummaries';
 import { useProjectResourceSearch } from '../composables/useProjectResourceSearch';
 import { TAB_DRAG_IGNORE_ATTRIBUTE, useTabDragReorder } from '../composables/useTabDragReorder';
@@ -131,6 +131,7 @@ function tabHref(tab: ArtifactTab): string | undefined {
 		return tab.projectId ? `/projects/${tab.projectId}/agents/${tab.id}` : '/home/agents';
 	}
 	if (tab.type === 'skill') return skillsHubHref(tab.id);
+	if (tab.type === 'app' && tab.projectId) return appHref(tab.projectId, tab.id);
 	return undefined;
 }
 

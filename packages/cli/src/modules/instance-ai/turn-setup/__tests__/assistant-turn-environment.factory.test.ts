@@ -172,6 +172,24 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
 		});
 
+		it.each([true, false])(
+			'enables app building only with the sandbox (sandbox available: %s)',
+			async (workflowBuilderAvailable) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.createContext.mockReturnValue(
+					mock<InstanceAiContext>({ appService: mock() }),
+				);
+				fields.settingsService.getSandboxStatus.mockReturnValue({ workflowBuilderAvailable });
+
+				await factory.create(params, createRuntime());
+
+				expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ appBuildingEnabled: workflowBuilderAvailable }),
+					expect.anything(),
+				);
+			},
+		);
+
 		it('uses the workflow task coordinator directly when the runtime does not sync tasks', async () => {
 			const { factory } = createSetupFactory();
 

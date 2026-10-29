@@ -63,9 +63,11 @@ describe('createWorkspaceTools', () => {
 
 		expect(names).toEqual([
 			'workspace_read_file',
+			'workspace_read_files',
 			'workspace_read_tool_result',
 			'workspace_str_replace_file',
 			'workspace_write_file',
+			'workspace_edit_files',
 			'workspace_list_files',
 			'workspace_file_stat',
 			'workspace_mkdir',
@@ -103,10 +105,114 @@ describe('createWorkspaceTools', () => {
 		expect(names).toContain('workspace_read_tool_result');
 		expect(names).toContain('workspace_str_replace_file');
 		expect(names).toContain('workspace_execute_command');
-		expect(names).toHaveLength(13);
+		expect(names).toHaveLength(15);
 		expect(tools.find((tool) => tool.name === 'workspace_read_tool_result')?.outputTrust).toBe(
 			'untrusted',
 		);
+	});
+
+	describe('batch file tools', () => {
+		function memoryFilesystem(files: Record<string, string>) {
+			return makeFakeFilesystem({
+				readFile: vi.fn(async (path: string) => {
+					if (!(path in files)) throw new Error(`File not found: ${path}`);
+					return files[path];
+				}),
+				writeFile: vi.fn(async (path: string, content: string | Buffer) => {
+					files[path] = content.toString();
+				}),
+			});
+		}
+
+		function tool(filesystem: WorkspaceFilesystem, name: string) {
+			return createWorkspaceTools({ filesystem }).find((t) => t.name === name)!;
+		}
+
+		it('edit_files runs every operation and reports each one', async () => {
+			const files = { 'a.vue': 'Hello', 'b.vue': 'World' };
+			const editTool = tool(memoryFilesystem(files), 'workspace_edit_files');
+
+			const result = await editTool.handler!(
+				{
+					operations: [
+						{ type: 'write', path: 'new.js', content: 'new' },
+						{
+							type: 'replace',
+							path: 'a.vue',
+							replacements: [{ old_str: 'Missing', new_str: 'x' }],
+						},
+						{
+							type: 'replace',
+							path: 'b.vue',
+							replacements: [{ old_str: 'World', new_str: 'There' }],
+						},
+					],
+				},
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				success: false,
+				results: [
+					{ path: 'new.js', type: 'write', success: true },
+					{ path: 'a.vue', type: 'replace', success: false },
+					{ path: 'b.vue', type: 'replace', success: true },
+				],
+			});
+			expect(files).toEqual({ 'a.vue': 'Hello', 'b.vue': 'There', 'new.js': 'new' });
+		});
+
+		it('edit_files reports a failed write and keeps going', async () => {
+			const fs = memoryFilesystem({});
+			vi.mocked(fs.writeFile).mockRejectedValueOnce(new Error('Disk full'));
+			const editTool = tool(fs, 'workspace_edit_files');
+
+			const result = await editTool.handler!(
+				{
+					operations: [
+						{ type: 'write', path: 'a.js', content: 'a' },
+						{ type: 'write', path: 'b.js', content: 'b' },
+					],
+				},
+				{} as never,
+			);
+
+			expect(result).toMatchObject({
+				results: [
+					{ path: 'a.js', success: false, error: 'Disk full' },
+					{ path: 'b.js', success: true },
+				],
+			});
+		});
+
+		it('read_files reads line ranges, caps long files and reports each failure', async () => {
+			const long = Array.from({ length: 1200 }, (_, index) => `line ${index + 1}`).join('\n');
+			const readTool = tool(
+				memoryFilesystem({ 'long.js': long, 'short.js': 'one\ntwo\nthree' }),
+				'workspace_read_files',
+			);
+
+			const result = await readTool.handler!(
+				{
+					files: [
+						{ path: 'short.js', startLine: 2 },
+						{ path: 'long.js' },
+						{ path: 'long.js', startLine: 1201 },
+						{ path: 'missing.js' },
+					],
+				},
+				{} as never,
+			);
+
+			expect(result).toEqual({
+				files: [
+					{ path: 'short.js', content: 'two\nthree', startLine: 2, endLine: 3, totalLines: 3 },
+					expect.objectContaining({ path: 'long.js', endLine: 500, truncated: true }),
+					{ path: 'long.js', error: 'The file has only 1200 lines.' },
+					{ path: 'missing.js', error: 'File not found: missing.js' },
+				],
+			});
+		});
 	});
 
 	describe('tool handlers', () => {

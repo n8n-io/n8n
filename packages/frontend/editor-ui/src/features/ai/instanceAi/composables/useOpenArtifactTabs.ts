@@ -22,6 +22,7 @@ export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	'data-table': 'table',
 	agent: 'robot',
 	skill: 'book-open',
+	app: 'layout-template',
 };
 
 type TabsLayout = Pick<InstanceAiThreadTabsState, 'tabs' | 'closedTabs'>;
