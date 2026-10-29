@@ -1,3 +1,5 @@
+import './data-table-events';
+
 import type {
 	AddDataTableColumnDto,
 	CreateDataTableDto,
