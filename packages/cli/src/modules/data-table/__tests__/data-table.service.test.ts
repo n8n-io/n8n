@@ -36,6 +36,7 @@ describe('DataTableService', () => {
 	let mockDataTableRepository: Mocked<DataTableRepository>;
 	let mockDataTableColumnRepository: Mocked<DataTableColumnRepository>;
 	let mockDataTableRowsRepository: Mocked<DataTableRowsRepository>;
+	let mockTransactionRunner: ReturnType<typeof mock<TransactionRunner>>;
 	let mockLogger: Mocked<Logger>;
 	let mockDataTableSizeValidator: Mocked<DataTableSizeValidator>;
 	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
@@ -63,6 +64,7 @@ describe('DataTableService', () => {
 		mockProjectRepository = mockInstance(ProjectRepository);
 		mockProjectScopeService = mockInstance(ProjectScopeService);
 		mockModuleRegistry = mockInstance(ModuleRegistry);
+		mockTransactionRunner = mock<TransactionRunner>();
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
@@ -80,7 +82,7 @@ describe('DataTableService', () => {
 			mockProjectRepository,
 			mockProjectScopeService,
 			mockModuleRegistry,
-			mock<TransactionRunner>(),
+			mockTransactionRunner,
 		);
 
 		vi.clearAllMocks();
@@ -750,6 +752,37 @@ describe('DataTableService', () => {
 			).rejects.toThrow();
 
 			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
+		});
+	});
+
+	describe('getManyRowsAndCount', () => {
+		const projectId = 'test-project-id';
+		const dataTableId = 'test-data-table-id';
+
+		it('reads columns and rows inside one read-only transaction', async () => {
+			mockDataTableRepository.findOneBy.mockResolvedValue({ id: dataTableId } as DataTable);
+			mockTransactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+			mockDataTableColumnRepository.getColumnsInContext.mockResolvedValue([]);
+			mockDataTableRowsRepository.getManyAndCount.mockResolvedValue({ count: 0, data: [] });
+
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, projectId, {});
+
+			expect(result).toEqual({ count: 0, data: [] });
+			expect(mockTransactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(mockTransactionRunner.run).toHaveBeenCalledWith({}, expect.any(Function), {
+				readOnly: true,
+			});
+			const ctx = mockTransactionRunner.run.mock.calls[0][0];
+			expect(mockDataTableColumnRepository.getColumnsInContext).toHaveBeenCalledWith(
+				dataTableId,
+				ctx,
+			);
+			expect(mockDataTableRowsRepository.getManyAndCount).toHaveBeenCalledWith(
+				dataTableId,
+				{},
+				[],
+				ctx,
+			);
 		});
 	});
 

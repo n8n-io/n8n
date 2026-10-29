@@ -393,7 +393,9 @@ export class DataTableService {
 	) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		// Read-only: columns and rows come from one snapshot without taking the write lock.
+		// Read-only, so the pooled SQLite driver serves it from the read pool instead of
+		// the single write connection. Under WAL that also pins columns and rows to one
+		// snapshot. Postgres runs at READ COMMITTED and gives no such guarantee.
 		return await this.transactionRunner.run(
 			{},
 			async (ctx) => {
@@ -1020,6 +1022,7 @@ export class DataTableService {
 				skip: 0,
 			},
 			columns,
+			{},
 		);
 
 		const csvContent = this.buildCsvContent(rows, columns, includeSystemColumns);

@@ -588,7 +588,7 @@ export class DataTableRowsRepository {
 		dataTableId: string,
 		dto: ListDataTableContentQueryDto,
 		columns: DataTableColumn[],
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	) {
 		const em = this.table.managerFor(ctx);
 

@@ -1,4 +1,5 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { sleep } from '@n8n/utils/sleep';
@@ -25,9 +26,10 @@ const timed = async <T>(fn: () => Promise<T>) => {
 
 /**
  * On the pooled SQLite driver a write transaction holds the single write
- * connection. A row read must not queue behind it. The cli test scripts run
- * on that driver (`DB_SQLITE_POOL_SIZE` > 0); on Postgres the read is never
- * blocked and the test passes trivially.
+ * connection. A row read must not queue behind it. The timing assertion is
+ * SQLite-only: the Postgres test pool has two connections, so the held write
+ * transaction and the read share the pool at exact capacity and any other
+ * query in the window makes the read wait.
  */
 describe('DataTableService.getManyRowsAndCount under a concurrent write transaction', () => {
 	let dataTableService: DataTableService;
@@ -49,10 +51,15 @@ describe('DataTableService.getManyRowsAndCount under a concurrent write transact
 
 	it('does not wait for the write connection', async () => {
 		const HOLD_MS = 1500;
+		let writeStarted: () => void = () => {};
+		const writeHasConnection = new Promise<void>((resolve) => {
+			writeStarted = resolve;
+		});
 		const writeHeld = manager.transaction(async () => {
+			writeStarted();
 			await sleep(HOLD_MS);
 		});
-		await sleep(50); // let the write transaction lease the write connection
+		await writeHasConnection;
 
 		const read = await timed(
 			async () => await dataTableService.getManyRowsAndCount(dataTableId, project.id, {}),
@@ -61,6 +68,8 @@ describe('DataTableService.getManyRowsAndCount under a concurrent write transact
 
 		expect(read.value.count).toBe(2);
 		expect(read.value.data.map((row) => row.name)).toEqual(['a', 'b']);
-		expect(read.ms).toBeLessThan(HOLD_MS / 2);
+		if (Container.get(GlobalConfig).database.type === 'sqlite') {
+			expect(read.ms).toBeLessThan(HOLD_MS / 2);
+		}
 	});
 });
