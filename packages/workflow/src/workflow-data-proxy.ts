@@ -69,27 +69,11 @@ const readOwnKey = (source: unknown, key: string): unknown => {
 	return Object.hasOwn(source, key) ? (source as Record<string, unknown>)[key] : undefined;
 };
 
-<<<<<<< HEAD
-=======
 // `$parameter` resolves a nested expression through a new proxy, so the
 // parameters being resolved are tracked here and not on the proxy. Resolution
 // is synchronous, so the set holds only the chain of the current read.
 const parametersBeingResolved = new Set<string>();
 
-const isCodeGenerationAllowed = (): boolean => {
-	if (codeGenerationAllowed === undefined) {
-		try {
-			// eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-			new Function('return 1');
-			codeGenerationAllowed = true;
-		} catch {
-			codeGenerationAllowed = false;
-		}
-	}
-	return codeGenerationAllowed;
-};
-
->>>>>>> 9f84b4b9f7b2744bb8df728c0caa6ed16a77fd2b
 export class WorkflowDataProxy {
 	private runExecutionData: IRunExecutionData | null;
 

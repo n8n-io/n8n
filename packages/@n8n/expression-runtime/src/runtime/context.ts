@@ -315,7 +315,6 @@ export function buildContext(
 		return callHost({ type: 'evaluateExpression', expression, itemIndex });
 	};
 
-<<<<<<< HEAD
 	// Globals removed in a major version. Bound to a thrower so a call fails
 	// with a message naming the replacement, instead of resolving to undefined
 	// and feeding that into the workflow's data. Thrown in-isolate: the message
@@ -324,25 +323,6 @@ export function buildContext(
 	for (const [name, thrower] of REMOVED_GLOBAL_THROWERS) {
 		target[name] = thrower;
 	}
-=======
-	// $getPairedItem — walks the paired-item ancestry chain back to the
-	// named upstream node. The host validates the structural shape of
-	// `incomingSourceData` and `initialPairedItem` via the typed-RPC
-	// schema; bad input surfaces as a schema-parse error sentinel rather
-	// than a host throw, keeping the protocol surface tight.
-	target.$getPairedItem = (
-		destinationNodeName: string,
-		incomingSourceData: unknown,
-		initialPairedItem: unknown,
-	) => {
-		return callHost({
-			type: 'getPairedItem',
-			destinationNodeName,
-			incomingSourceData,
-			initialPairedItem,
-		});
-	};
->>>>>>> 9f84b4b9f7b2744bb8df728c0caa6ed16a77fd2b
 
 	// -------------------------------------------------------------------------
 	// Resolve an unknown key from the host. Called by the proxy's has/get traps
