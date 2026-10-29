@@ -517,6 +517,8 @@ name, workflow selection, or channel configuration in a tooltip on hover and foc
 Use a searchable select for the decision workflow. Put Create workflow in its menu.
 Show platform icons in the connected channel select. Use `N8nSelect2` item icons
 so saved selections keep the icon and label in the same layout after loading.
+Use the large size of the current Design System selects throughout Approval settings.
+Keep single-row tool selections at this height. Let the field grow when pills wrap.
 Use the same form field style for searchable destinations. Mark channel results with a hash icon and
 user results with a user icon. Keep search and pagination in the destination menu.
 Size the list to its results, up to six rows. Skip empty provider pages during

@@ -9,8 +9,6 @@ import {
 	type ComboboxItem,
 	N8nInput,
 	N8nInputLabel,
-	N8nOption,
-	N8nSelect,
 	N8nSelect2,
 	type SelectOptionBase,
 	N8nText,
@@ -87,6 +85,16 @@ const channelItems = computed<SelectOptionBase[]>(() =>
 		icon: item.channel,
 	})),
 );
+function updateMethod(value: unknown) {
+	if (value === 'workflow' || value === 'channel') method.value = value;
+}
+function updateRecipientKind(value: unknown) {
+	if (value === 'channel' || value === 'user') recipientKind.value = value;
+}
+function updateExpiry(value: unknown) {
+	if (value === 'none' || value === 3600 || value === 86400 || value === 604800)
+		expirySeconds.value = value;
+}
 function updateChannel(value: unknown) {
 	channelKey.value = typeof value === 'string' ? value : '';
 }
@@ -167,6 +175,13 @@ function saveConfiguration(configuration: AgentHitlConfiguration) {
 }
 const recipientKinds = computed(
 	() => channel.value?.fields.find((field) => field.name === 'recipient')?.kinds ?? [],
+);
+const recipientItems = computed(() =>
+	recipientKinds.value.map<SelectOptionBase>((kind) => ({
+		value: kind,
+		label: i18n.baseText(kind === 'user' ? 'agents.hitl.user' : 'agents.hitl.channelRecipient'),
+		icon: kind === 'user' ? 'user' : 'hash',
+	})),
 );
 watch(channelKey, () => {
 	recipient.value = undefined;
@@ -317,30 +332,38 @@ function save() {
 	>
 		<div :class="$style.fields">
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.method')">
-				<N8nSelect
-					v-model="method"
-					:teleported="false"
-					:popper-class="$style.methodOptions"
+				<N8nSelect2
+					:model-value="method"
+					@update:model-value="updateMethod"
+					size="large"
+					:items="[
+						{ value: 'workflow', label: i18n.baseText('agents.hitl.workflowMethod') },
+						{
+							value: 'channel',
+							label: i18n.baseText('agents.hitl.channelMethod'),
+							disabled: !channels.length,
+						},
+					]"
+					:aria-label="i18n.baseText('agents.hitl.method')"
 					data-testid="agent-hitl-method"
 				>
-					<N8nOption value="workflow" :label="i18n.baseText('agents.hitl.workflowMethod')" />
-					<N8nOption
-						value="channel"
-						:label="i18n.baseText('agents.hitl.channelMethod')"
-						:disabled="!channels.length"
-						data-testid="agent-hitl-channel-method"
-					>
-						<div :class="$style.channelMethodLabel">
-							<span>{{ i18n.baseText('agents.hitl.channelMethod') }}</span>
-							<N8nText v-if="!loading && !channels.length" size="small" color="text-light">
+					<template #item-label="{ item }">
+						<span :class="$style.channelMethodLabel">
+							<span>{{ item.label }}</span>
+							<N8nText
+								v-if="item.value === 'channel' && !loading && !channels.length"
+								size="small"
+								color="text-light"
+							>
 								{{ i18n.baseText('agents.hitl.noChannels') }}
 							</N8nText>
-						</div>
-					</N8nOption>
-				</N8nSelect>
+						</span>
+					</template>
+				</N8nSelect2>
 			</N8nInputLabel>
 			<N8nInputLabel v-if="method === 'workflow'" :label="i18n.baseText('agents.hitl.workflow')">
 				<N8nCombobox2
+					size="large"
 					:model-value="workflowId || undefined"
 					v-model:open="workflowSelectOpen"
 					:items="workflowItems"
@@ -391,34 +414,14 @@ function save() {
 				</template>
 				<template v-else-if="channel && (channel.channel !== 'discord' || guild)">
 					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipientType')">
-						<N8nSelect
-							v-model="recipientKind"
-							:teleported="false"
+						<N8nSelect2
+							:model-value="recipientKind"
+							@update:model-value="updateRecipientKind"
+							size="large"
+							:items="recipientItems"
+							:aria-label="i18n.baseText('agents.hitl.recipientType')"
 							data-testid="agent-hitl-recipient-type"
-						>
-							<template #prefix
-								><N8nIcon :icon="recipientKind === 'user' ? 'user' : 'hash'" :size="16"
-							/></template>
-							<N8nOption
-								v-for="kind in recipientKinds"
-								:key="kind"
-								:value="kind"
-								:label="
-									i18n.baseText(
-										kind === 'user' ? 'agents.hitl.user' : 'agents.hitl.channelRecipient',
-									)
-								"
-							>
-								<span :class="$style.channelOption">
-									<N8nIcon :icon="kind === 'user' ? 'user' : 'hash'" :size="16" />
-									{{
-										i18n.baseText(
-											kind === 'user' ? 'agents.hitl.user' : 'agents.hitl.channelRecipient',
-										)
-									}}
-								</span>
-							</N8nOption>
-						</N8nSelect>
+						/>
 					</N8nInputLabel>
 					<N8nInputLabel :label="i18n.baseText('agents.hitl.recipient')">
 						<N8nText
@@ -453,12 +456,19 @@ function save() {
 				/>
 			</N8nInputLabel>
 			<N8nInputLabel :label="i18n.baseText('agents.hitl.expiry')">
-				<N8nSelect v-model="expirySeconds" :teleported="false" data-testid="agent-hitl-expiry">
-					<N8nOption value="none" :label="i18n.baseText('agents.hitl.expiry.none')" />
-					<N8nOption :value="3600" :label="i18n.baseText('agents.hitl.expiry.hour')" />
-					<N8nOption :value="86400" :label="i18n.baseText('agents.hitl.expiry.day')" />
-					<N8nOption :value="604800" :label="i18n.baseText('agents.hitl.expiry.week')" />
-				</N8nSelect>
+				<N8nSelect2
+					:model-value="expirySeconds"
+					@update:model-value="updateExpiry"
+					size="large"
+					:items="[
+						{ value: 'none', label: i18n.baseText('agents.hitl.expiry.none') },
+						{ value: 3600, label: i18n.baseText('agents.hitl.expiry.hour') },
+						{ value: 86400, label: i18n.baseText('agents.hitl.expiry.day') },
+						{ value: 604800, label: i18n.baseText('agents.hitl.expiry.week') },
+					]"
+					:aria-label="i18n.baseText('agents.hitl.expiry')"
+					data-testid="agent-hitl-expiry"
+				/>
 			</N8nInputLabel>
 			<N8nText size="small" color="text-light">{{
 				i18n.baseText('agents.hitl.expiryHelp')
@@ -515,23 +525,11 @@ function save() {
 		pointer-events: none;
 	}
 }
-.methodOptions {
-	:global(.el-select-dropdown__item) {
-		height: auto;
-		padding-block: var(--spacing--2xs);
-		line-height: var(--line-height--md);
-	}
-}
 .channelMethodLabel {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 	white-space: normal;
-}
-.channelOption {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 .selectorSubtitle {
 	margin-bottom: var(--spacing--2xs);

@@ -68,7 +68,6 @@ function update(value: unknown) {
 		size="large"
 		:aria-label="i18n.baseText('agents.hitl.tools')"
 		:placeholder="i18n.baseText('agents.hitl.toolsPlaceholder')"
-		:class="$style.select"
 		data-testid="agent-hitl-tools"
 		@update:model-value="update"
 	>
@@ -111,9 +110,6 @@ function update(value: unknown) {
 </template>
 
 <style module lang="scss">
-.select {
-	padding-block: var(--spacing--2xs);
-}
 .tags {
 	display: flex;
 	flex-wrap: wrap;
@@ -122,6 +118,7 @@ function update(value: unknown) {
 	padding: var(--spacing--5xs);
 }
 .tag {
+	height: var(--height--sm);
 	max-width: 100%;
 }
 .placeholder {

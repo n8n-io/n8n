@@ -37,28 +37,12 @@ vi.mock('vue-router', () => ({
 }));
 vi.mock('@n8n/design-system', async (importOriginal) => {
 	const actual = await importOriginal<typeof import('@n8n/design-system')>();
-	const { inject, provide } = await import('vue');
+
 	return {
 		...actual,
 		N8nRecycleScroller: defineComponent({
 			props: ['items'],
 			template: '<div><slot v-for="item in items" :item="item" /></div>',
-		}),
-		N8nSelect: defineComponent({
-			props: ['modelValue'],
-			emits: ['update:modelValue'],
-			setup(_props, { emit }) {
-				provide('select', (value: string) => emit('update:modelValue', value));
-			},
-			template: '<div><slot name="prefix" /><slot /></div>',
-		}),
-		N8nOption: defineComponent({
-			props: ['value', 'label', 'disabled'],
-			setup() {
-				return { select: inject<(value: string) => void>('select') };
-			},
-			template:
-				'<button type="button" :disabled="disabled" @click="select?.(value)"><slot>{{ label }}</slot></button>',
 		}),
 	};
 });
@@ -86,6 +70,13 @@ function render(configuration?: AgentHitlConfiguration, agentConfig = config) {
 			},
 		},
 	});
+}
+function getSelect(wrapper: ReturnType<typeof render>, testId: string) {
+	const select = wrapper
+		.findAllComponents(N8nSelect2)
+		.find((component) => component.find(`[data-testid="${testId}"]`).exists());
+	if (!select) throw new Error(`Select ${testId} was not found`);
+	return select;
 }
 async function saveHint(wrapper: ReturnType<typeof render>) {
 	await wrapper.get('[data-testid="agent-hitl-save-trigger"]').trigger('focus');
@@ -205,14 +196,12 @@ it('names a new workflow from the Agent and the next available number', async ()
 it('saves a Telegram destination and rejects a username', async () => {
 	const wrapper = render();
 	await flushPromises();
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Connected channel')
-		?.trigger('click');
+	getSelect(wrapper, 'agent-hitl-method').vm.$emit('update:modelValue', 'channel');
+	await wrapper.vm.$nextTick();
 	const save = wrapper.get('[data-testid="agent-hitl-save"]');
 	expect(save.attributes('disabled')).toBeDefined();
 	expect(await saveHint(wrapper)).toBe('Select a channel and complete its configuration');
-	wrapper.getComponent(N8nSelect2).vm.$emit('update:modelValue', 'telegram:bot');
+	getSelect(wrapper, 'agent-hitl-channel').vm.$emit('update:modelValue', 'telegram:bot');
 	await wrapper.vm.$nextTick();
 	await wrapper.find('[data-testid="agent-hitl-telegram-user"]').setValue('@reviewer');
 	expect(save.attributes('disabled')).toBeDefined();
@@ -245,10 +234,8 @@ it('requires a new recipient when the Slack destination type changes', async () 
 	await flushPromises();
 	const save = wrapper.get('[data-testid="agent-hitl-save"]');
 	expect(save.attributes('disabled')).toBeUndefined();
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Channel')
-		?.trigger('click');
+	getSelect(wrapper, 'agent-hitl-recipient-type').vm.$emit('update:modelValue', 'channel');
+	await wrapper.vm.$nextTick();
 	expect(save.attributes('disabled')).toBeDefined();
 	expect(await saveHint(wrapper)).toBe('Select a channel and complete its configuration');
 	wrapper
@@ -272,11 +259,9 @@ it('requires both a Discord server and a recipient before Save is enabled', asyn
 	]);
 	const wrapper = render();
 	await flushPromises();
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Connected channel')
-		?.trigger('click');
-	wrapper.getComponent(N8nSelect2).vm.$emit('update:modelValue', 'discord:bot');
+	getSelect(wrapper, 'agent-hitl-method').vm.$emit('update:modelValue', 'channel');
+	await wrapper.vm.$nextTick();
+	getSelect(wrapper, 'agent-hitl-channel').vm.$emit('update:modelValue', 'discord:bot');
 	await wrapper.vm.$nextTick();
 	const save = wrapper.get('[data-testid="agent-hitl-save"]');
 	expect(save.attributes('disabled')).toBeDefined();
@@ -351,30 +336,32 @@ it('disables channel approval with a separate explanation when no channels are a
 	mocks.channels.mockResolvedValue([]);
 	const wrapper = render();
 	await flushPromises();
-	const option = wrapper.get('[data-testid="agent-hitl-channel-method"]');
-	expect(option.attributes('disabled')).toBeDefined();
-	expect(option.findAll('span').map((span) => span.text())).toContain(
-		'No supported channels are attached to this Agent',
+	const method = getSelect(wrapper, 'agent-hitl-method');
+	expect(method.props('items')).toContainEqual(
+		expect.objectContaining({ value: 'channel', disabled: true }),
 	);
-	await option.trigger('click');
+	await wrapper.get('[data-testid="agent-hitl-method"]').trigger('keydown', { key: 'Enter' });
+	await flushPromises();
+	const option = document.querySelector('[role="option"][data-disabled]');
+	expect(option?.textContent).toContain('No supported channels are attached to this Agent');
 	expect(wrapper.find('[data-testid="agent-hitl-channel"]').exists()).toBe(false);
 });
 
 it('keeps channel approval disabled until the available connections load', async () => {
 	const wrapper = render();
-	expect(
-		wrapper.get('[data-testid="agent-hitl-channel-method"]').attributes('disabled'),
-	).toBeDefined();
+	expect(getSelect(wrapper, 'agent-hitl-method').props('items')).toContainEqual(
+		expect.objectContaining({ value: 'channel', disabled: true }),
+	);
 	await flushPromises();
-	expect(
-		wrapper.get('[data-testid="agent-hitl-channel-method"]').attributes('disabled'),
-	).toBeUndefined();
+	expect(getSelect(wrapper, 'agent-hitl-method').props('items')).toContainEqual(
+		expect.objectContaining({ value: 'channel', disabled: false }),
+	);
 });
 
 it.each(['none', 3600, 86400, 604800] as const)('saves the request expiry %s', async (expiry) => {
 	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
 	await flushPromises();
-	const selector = wrapper.findComponent('[data-testid="agent-hitl-expiry"]');
+	const selector = getSelect(wrapper, 'agent-hitl-expiry');
 	expect(selector.props('modelValue')).toBe('none');
 	selector.vm.$emit('update:modelValue', expiry);
 	await wrapper.vm.$nextTick();
@@ -396,7 +383,7 @@ it('opens a saved expiry and allows requests with no expiry again', async () => 
 		expirySeconds: 86400,
 	});
 	await flushPromises();
-	const selector = wrapper.findComponent('[data-testid="agent-hitl-expiry"]');
+	const selector = getSelect(wrapper, 'agent-hitl-expiry');
 	expect(selector.props('modelValue')).toBe(86400);
 	selector.vm.$emit('update:modelValue', 'none');
 	await wrapper.vm.$nextTick();
@@ -458,20 +445,21 @@ it('shows platform icons in the channel select and recipient icons for each dest
 	});
 	await flushPromises();
 	const platforms = wrapper.get('[data-testid="agent-hitl-channel"]');
-	expect(wrapper.getComponent(N8nSelect2).props('items')).toEqual([
+	expect(getSelect(wrapper, 'agent-hitl-channel').props('items')).toEqual([
 		{ value: 'telegram:bot', label: 'Telegram', icon: 'telegram' },
 		{ value: 'slack:slack', label: 'Slack', icon: 'slack' },
 	]);
 	expect(platforms.find('[data-icon="slack"]').exists()).toBe(true);
 	expect(platforms.text()).toContain('Slack');
 	const types = wrapper.get('[data-testid="agent-hitl-recipient-type"]');
-	expect(types.find('button [data-icon="hash"]').exists()).toBe(true);
-	expect(types.find('button [data-icon="user"]').exists()).toBe(true);
+	expect(getSelect(wrapper, 'agent-hitl-recipient-type').props('items')).toEqual([
+		expect.objectContaining({ value: 'channel', icon: 'hash' }),
+		expect.objectContaining({ value: 'user', icon: 'user' }),
+	]);
+	expect(types.find('[data-icon="user"]').exists()).toBe(true);
 	expect(wrapper.getComponent(AgentHitlDestinationPicker).props('icon')).toBe('user');
-	await types
-		.findAll('button')
-		.find((button) => button.text() === 'Channel')
-		?.trigger('click');
+	getSelect(wrapper, 'agent-hitl-recipient-type').vm.$emit('update:modelValue', 'channel');
+	await wrapper.vm.$nextTick();
 	expect(wrapper.getComponent(AgentHitlDestinationPicker).props('icon')).toBe('hash');
 });
 
@@ -510,10 +498,10 @@ it('renders a saved channel icon and label after loading without opening the sel
 	});
 	await flushPromises();
 	const select = wrapper.get('[data-testid="agent-hitl-channel"]');
-	expect(wrapper.getComponent(N8nSelect2).props('disabled')).toBe(true);
+	expect(getSelect(wrapper, 'agent-hitl-channel').props('disabled')).toBe(true);
 	resolveChannels([{ channel: 'slack', credentialId: 'slack', label: 'Slack', fields: [] }]);
 	await flushPromises();
-	expect(wrapper.getComponent(N8nSelect2).props('disabled')).toBe(false);
+	expect(getSelect(wrapper, 'agent-hitl-channel').props('disabled')).toBe(false);
 	expect(select.attributes('aria-expanded')).toBe('false');
 	expect(select.text()).toBe('Slack');
 	expect(select.get('[data-icon="slack"]').exists()).toBe(true);
