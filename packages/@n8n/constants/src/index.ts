@@ -14,6 +14,7 @@ export const LICENSE_FEATURES = {
 	LDAP: 'feat:ldap',
 	SCIM: 'feat:scim',
 	TYPE_AVAILABILITY_POLICIES: 'feat:typeAvailabilityPolicies',
+	EXECUTION_LIMITS: 'feat:executionLimits',
 	SAML: 'feat:saml',
 	OIDC: 'feat:oidc',
 	MFA_ENFORCEMENT: 'feat:mfaEnforcement',
