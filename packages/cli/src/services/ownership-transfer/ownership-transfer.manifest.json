@@ -133,6 +133,11 @@
 			"name": "SelfHealingConfigurationWorkflow",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration-workflow.entity.ts",
 			"reason": "Workflow selections belong to the original project configuration. A transfer to another project removes them. Deleting the configuration, project, or workflow also removes them through its foreign key."
+		},
+		{
+			"name": "ExecutionLedgerEntity",
+			"path": "packages/cli/src/modules/execution-ledger/database/entities/execution-ledger.entity.ts",
+			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
 		}
 	]
 }
