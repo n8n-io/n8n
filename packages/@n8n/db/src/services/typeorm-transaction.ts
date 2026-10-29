@@ -79,8 +79,10 @@ export class TypeOrmTransactionRunner extends TransactionRunner {
 
 	/**
 	 * `EntityManager.transaction` always creates a `'master'` query runner, so a
-	 * read-only transaction drives the runner directly in `'slave'` mode. Drivers
-	 * without replicas or a read pool fall back to their primary connection.
+	 * read-only transaction drives the runner directly in `'slave'` mode. The pooled
+	 * SQLite driver then leases a read-only connection. Postgres without replicas
+	 * falls back to the primary connection, so the transaction is marked read-only
+	 * there explicitly.
 	 */
 	private async runReadOnly<T>(
 		context: OperationContext,
@@ -92,6 +94,9 @@ export class TypeOrmTransactionRunner extends TransactionRunner {
 			await queryRunner.connect();
 			await queryRunner.startTransaction(isolationLevel);
 			try {
+				if (this.dataSource.options.type === 'postgres') {
+					await queryRunner.query('SET TRANSACTION READ ONLY');
+				}
 				const trx = new TypeOrmTransaction(queryRunner.manager, isolationLevel, true);
 				const result = await fn({ ...context, trx });
 				await queryRunner.commitTransaction();

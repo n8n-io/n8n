@@ -72,6 +72,23 @@ describe('transaction > transaction with sqlite-pooled', () => {
 			}),
 		));
 
+	it('should release an open slave transaction when the read pool closes', () =>
+		Promise.all(
+			connections.map(async (connection) => {
+				const queryRunner = connection.createQueryRunner('slave') as SqliteReadWriteQueryRunner;
+				await queryRunner.startTransaction();
+
+				const requestRelease = sinon.spy(queryRunner, 'requestRelease');
+				await connection.destroy();
+				try {
+					expect(requestRelease.calledOnce).to.be.true;
+					expect(queryRunner.isTransactionActive).to.be.false;
+				} finally {
+					await connection.initialize();
+				}
+			}),
+		));
+
 	it('should reject a write inside a slave (read-only) transaction', () =>
 		Promise.all(
 			connections.map(async (connection) => {

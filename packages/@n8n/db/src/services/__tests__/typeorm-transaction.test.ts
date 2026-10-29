@@ -162,6 +162,22 @@ describe('TypeOrmTransactionRunner', () => {
 			expect(queryRunner.release).toHaveBeenCalledTimes(1);
 		});
 
+		it('marks the transaction read-only on Postgres', async () => {
+			Object.assign(dataSource, { options: { type: 'postgres' } });
+
+			await runner.run({}, async () => undefined, { readOnly: true });
+
+			expect(queryRunner.query).toHaveBeenCalledWith('SET TRANSACTION READ ONLY');
+		});
+
+		it('sends no read-only statement on the pooled SQLite driver', async () => {
+			Object.assign(dataSource, { options: { type: 'sqlite-pooled' } });
+
+			await runner.run({}, async () => undefined, { readOnly: true });
+
+			expect(queryRunner.query).not.toHaveBeenCalled();
+		});
+
 		it('passes the isolation level to the runner', async () => {
 			await runner.run({}, async () => undefined, {
 				readOnly: true,

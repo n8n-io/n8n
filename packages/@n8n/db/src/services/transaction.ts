@@ -56,10 +56,10 @@ export interface OperationContext {
 export interface RunOptions {
 	isolationLevel?: IsolationLevel;
 	/**
-	 * Open the transaction on a read connection. On the pooled SQLite driver the
-	 * transaction then leases from the read pool instead of waiting for the single
-	 * write connection. Drivers without a separate read connection use their
-	 * primary one. A write statement inside a read-only transaction fails.
+	 * Open the transaction read-only. On the pooled SQLite driver the transaction
+	 * leases from the read pool instead of waiting for the single write connection.
+	 * On Postgres it runs on the primary connection with `SET TRANSACTION READ ONLY`.
+	 * A write statement inside a read-only transaction fails on both.
 	 */
 	readOnly?: boolean;
 }

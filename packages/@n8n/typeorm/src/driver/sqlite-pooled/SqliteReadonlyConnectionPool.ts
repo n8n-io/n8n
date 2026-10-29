@@ -87,8 +87,12 @@ export class SqliteReadonlyConnectionPool implements SqliteConnectionPool {
 		}
 
 		const dbConnection = await this.pool.acquire().promise;
+		const dbLease = new LeasedDbConnection(dbConnection, this, dbLeaseHolder);
 
-		return new LeasedDbConnection(dbConnection, this, dbLeaseHolder);
+		// Track the lease so `close()` can ask its holder to release it.
+		this.dbLeases.add(dbLease);
+
+		return dbLease;
 	}
 
 	public releaseConnection(leasedDbConnection: DbLease) {
