@@ -55,7 +55,7 @@ const OTHER_HOST_LINK = /^https?:\/\/(?!(www\.)?github\.com([/?#:]|$))[^\s/?#]+/
 const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
-const { reasonText } = useSkillSourceReasons();
+const { reasonText, findingsText } = useSkillSourceReasons();
 
 const step = ref<'link' | 'choose'>('link');
 const url = ref('');
@@ -65,6 +65,8 @@ const connecting = ref(false);
 const linkError = ref('');
 const discovery = ref<SkillSourceDiscovery | null>(null);
 const selected = ref<string[]>([]);
+/** "I reviewed the warnings", for the picked skills that need review. */
+const reviewed = ref(false);
 /** Counts the reads of a link, so the answer of a read from before a close is dropped. */
 let discoverRun = 0;
 
@@ -80,6 +82,7 @@ watch(
 		linkError.value = '';
 		discovery.value = null;
 		selected.value = [];
+		reviewed.value = false;
 	},
 	{ immediate: true },
 );
@@ -144,7 +147,28 @@ const canGoNext = computed(
 );
 
 function isSelectable(skill: DiscoveredSkill): boolean {
-	return !skill.nameTaken && !skill.error;
+	return !skill.nameTaken && !skill.error && skill.check?.verdict !== 'blocked';
+}
+
+const needsReview = computed(
+	() =>
+		discovery.value?.skills.some(
+			(skill) => selected.value.includes(skill.key) && skill.check?.verdict === 'needs_review',
+		) ?? false,
+);
+
+const canAdd = computed(() => selected.value.length > 0 && (!needsReview.value || reviewed.value));
+
+const CHECK_BADGES = {
+	pass: { variant: 'success', label: 'settings.context.skills.connect.check.pass' },
+	needs_review: { variant: 'warning', label: 'settings.context.skills.connect.check.needsReview' },
+	blocked: { variant: 'danger', label: 'settings.context.skills.connect.check.blocked' },
+} as const;
+
+/** The findings line of a skill that n8n could read. A read error has its own line. */
+function checkFindings(skill: DiscoveredSkill): string {
+	if (!skill.check || skill.nameTaken || skill.error) return '';
+	return findingsText(skill.check.findings);
 }
 
 async function onNext() {
@@ -167,6 +191,7 @@ async function onNext() {
 		discovery.value = result;
 		if (result.duplicate.kind === 'blocked') return;
 		selected.value = result.skills.filter(isSelectable).map((skill) => skill.key);
+		reviewed.value = false;
 		step.value = 'choose';
 	} catch (error) {
 		if (isCurrent()) linkError.value = discoverErrorText(error, link);
@@ -234,13 +259,14 @@ function withSkillName(
 
 async function onAdd() {
 	const source = discovery.value?.source;
-	if (!source || selected.value.length === 0) return;
+	if (!source || !canAdd.value) return;
 	connecting.value = true;
 	try {
 		const response = await skillsStore.connectSource({
 			url: url.value.trim(),
 			...parseScope(scope.value),
 			skillKeys: selected.value,
+			...(needsReview.value ? { reviewedWarnings: true } : {}),
 		});
 		emit('connected', {
 			response: { ...response, failed: response.failed.map(withSkillName) },
@@ -374,6 +400,14 @@ const title = computed(() =>
 							{{ skippedFilesText(item) }}
 						</N8nText>
 						<N8nText
+							v-if="checkFindings(item)"
+							size="small"
+							:color="item.check?.verdict === 'blocked' ? 'danger' : 'warning'"
+							data-test-id="skill-source-skill-findings"
+						>
+							{{ checkFindings(item) }}
+						</N8nText>
+						<N8nText
 							v-if="item.nameTaken"
 							size="small"
 							color="text-light"
@@ -396,6 +430,13 @@ const title = computed(() =>
 						data-test-id="skill-source-skill-name-taken"
 					>
 						{{ i18n.baseText('settings.context.skills.connect.nameTaken.tag') }}
+					</N8nBadge>
+					<N8nBadge
+						v-else-if="item.check"
+						:variant="CHECK_BADGES[item.check.verdict].variant"
+						data-test-id="skill-source-skill-check"
+					>
+						{{ i18n.baseText(CHECK_BADGES[item.check.verdict].label) }}
 					</N8nBadge>
 				</li>
 			</ul>
@@ -429,6 +470,12 @@ const title = computed(() =>
 					{{ i18n.baseText('settings.context.skills.connect.addTo.hint') }}
 				</N8nText>
 			</div>
+			<N8nCheckbox
+				v-if="needsReview"
+				v-model="reviewed"
+				:label="i18n.baseText('settings.context.skills.connect.check.reviewed')"
+				data-test-id="skill-source-reviewed-warnings"
+			/>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
@@ -459,7 +506,7 @@ const title = computed(() =>
 			<N8nButton
 				v-else
 				:label="addLabel"
-				:disabled="selected.length === 0"
+				:disabled="!canAdd"
 				:loading="connecting"
 				data-test-id="skill-source-add"
 				@click="onAdd"
