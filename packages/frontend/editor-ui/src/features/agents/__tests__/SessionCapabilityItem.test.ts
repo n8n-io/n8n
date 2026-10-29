@@ -132,13 +132,13 @@ describe('SessionCapabilityItem activity status', () => {
 });
 
 describe('SessionCapabilityItem output files', () => {
-	it('renders the files of a tool output with the session thread for the download URL', async () => {
+	it('shows the files of a tool output without expanding the step', async () => {
 		const file = { fileId: 'f-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
 		const wrapper = renderItem(
 			{ toolOutput: JSON.stringify({ status: 'success', files: [file] }) },
 			{ projectId: 'p1', agentId: 'a2', threadId: 'child' },
 		);
-		await wrapper.get('button').trigger('click');
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
 		const files = wrapper.get('[data-test-id="timeline-tool-output-files"]');
 		expect(files.text()).toBe('f-1');
 		expect(files.attributes('data-thread-id')).toBe('child');

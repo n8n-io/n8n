@@ -214,14 +214,6 @@ const { isOpen } = useTimelineItemExpansion({
 							language="json"
 							:class="$style.toolCode"
 						/>
-						<AgentChatMessageAttachments
-							v-if="outputFiles.length > 0 && projectId && agentId"
-							:attachments="outputFiles"
-							:project-id="projectId"
-							:agent-id="agentId"
-							:thread-id="threadId"
-							data-test-id="timeline-tool-output-files"
-						/>
 					</N8nAiActivityStepResultSection>
 					<N8nAiActivityStepResultSection v-if="fullExecutionHref" :class="$style.toolSection">
 						<div :class="$style.executionButton">
@@ -239,6 +231,15 @@ const { isOpen } = useTimelineItemExpansion({
 				</div>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>
+		<AgentChatMessageAttachments
+			v-if="outputFiles.length > 0 && projectId && agentId"
+			:class="$style.outputFiles"
+			:attachments="outputFiles"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:thread-id="threadId"
+			data-test-id="timeline-tool-output-files"
+		/>
 	</div>
 </template>
 
@@ -293,6 +294,10 @@ const { isOpen } = useTimelineItemExpansion({
 	> button:disabled {
 		pointer-events: none;
 	}
+}
+
+.outputFiles {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
 }
 
 .content {
