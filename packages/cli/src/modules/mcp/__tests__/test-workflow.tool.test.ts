@@ -781,6 +781,50 @@ describe('test-workflow MCP tool', () => {
 			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
 		});
 
+		test('keeps the execution ID and hides the error when the redaction check fails', async () => {
+			setupWorkflow();
+			(executionRedactionServiceProxy.processExecution as Mock).mockRejectedValue(
+				new Error('scope lookup failed'),
+			);
+			(workflowRunner.run as Mock).mockResolvedValue('exec-lookup-failed');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				mode: 'manual',
+				status: 'error',
+				data: {
+					resultData: { runData: {}, error: { message: 'token sk-secret-123' } },
+				},
+			});
+
+			const tool = createTestWorkflowTool(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				telemetry,
+				mcpService,
+				executionRedactionServiceProxy,
+			);
+
+			const result = await tool.handler(
+				{
+					workflowId: 'wf-1',
+					pinData: { Trigger: [{ json: {} }] },
+					triggerNodeName: undefined,
+					timeout: undefined,
+				},
+				{} as any,
+			);
+
+			expect(result.structuredContent).toEqual({
+				executionId: 'exec-lookup-failed',
+				status: 'error',
+				error: 'Error details hidden because the execution data redaction check failed',
+			});
+			expect(JSON.stringify(result)).not.toContain('sk-secret-123');
+			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('sk-secret-123');
+		});
+
 		test('redacts an error that stops the execution from starting', async () => {
 			setupWorkflow();
 			redactAllErrors();

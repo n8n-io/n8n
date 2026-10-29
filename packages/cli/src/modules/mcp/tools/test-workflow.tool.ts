@@ -33,6 +33,9 @@ import {
 } from './execution-utils';
 import { getMcpWorkflow } from './workflow-validation.utils';
 
+const REDACTION_CHECK_FAILED_MESSAGE =
+	'Error details hidden because the execution data redaction check failed';
+
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to test'),
 	pinData: z
@@ -290,16 +293,23 @@ export async function testWorkflow(
 		return { executionId, status: data.status, error: undefined };
 	}
 
-	const redactedMessage = executionError
-		? await getRedactedRunErrorMessage(executionRedactionServiceProxy, user, {
+	let redactedMessage: string | undefined;
+	if (executionError) {
+		try {
+			redactedMessage = await getRedactedRunErrorMessage(executionRedactionServiceProxy, user, {
 				executionId,
 				mode: data.mode,
 				workflowId,
 				workflowData: { settings: workflow.settings, nodes },
 				data: data.data,
 				error: executionError,
-			})
-		: undefined;
+			});
+		} catch {
+			// The run is complete, so keep its ID. Hide the error, because the
+			// redaction check did not finish.
+			redactedMessage = REDACTION_CHECK_FAILED_MESSAGE;
+		}
+	}
 
 	return {
 		executionId,
