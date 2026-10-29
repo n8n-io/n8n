@@ -36,6 +36,10 @@ const renderComponent = createComponentRenderer(AppView, {
 					<button data-test-id="configure" @click="$emit('update:tab', 'configure')" />
 				</div>`,
 			},
+			AppPreview: {
+				props: ['projectId', 'app'],
+				template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
+			},
 		},
 	},
 });

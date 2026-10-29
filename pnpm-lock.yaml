@@ -5033,6 +5033,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      mime-types:
+        specifier: 'catalog:'
+        version: 3.0.2
       moment-timezone:
         specifier: 'catalog:'
         version: 0.5.48
@@ -5229,6 +5232,9 @@ importers:
       '@types/luxon':
         specifier: 'catalog:'
         version: 3.2.0
+      '@types/mime-types':
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/ms':
         specifier: 'catalog:'
         version: 2.1.0
@@ -6709,9 +6715,6 @@ importers:
       '@types/markdown-it':
         specifier: 'catalog:'
         version: 13.0.9
-      '@types/sanitize-html':
-        specifier: 'catalog:'
-        version: 2.11.0
       '@types/semver':
         specifier: 'catalog:'
         version: 7.7.0
@@ -6889,9 +6892,6 @@ importers:
       reka-ui:
         specifier: ^2.5.0
         version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      sanitize-html:
-        specifier: 'catalog:'
-        version: 2.18.0
       sass-embedded:
         specifier: 'catalog:'
         version: 1.98.0

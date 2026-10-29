@@ -6,5 +6,6 @@
 		"workflowFiles": ["data-table-node.json"],
 		"dataTableFile": "data-table.json"
 	},
-	"scriptPath": "data-table-node.script.js"
+	"scriptPath": "data-table-node.script.js",
+	"supportedEngines": ["v1"]
 }

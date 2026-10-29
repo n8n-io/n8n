@@ -11,6 +11,7 @@ import { computed, ref, watch } from 'vue';
 import { getApp } from '../apps.api';
 import type { AppViewTab } from '../apps.constants';
 import AppHeader from './AppHeader.vue';
+import AppPreview from './AppPreview.vue';
 
 const props = defineProps<{ projectId: string; appId: string }>();
 
@@ -63,7 +64,7 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 			@deleted="emit('deleted', $event)"
 		/>
 
-		<main :class="$style.content">
+		<main :class="[$style.content, { [$style.flush]: app && activeTab === 'preview' }]">
 			<N8nLoading v-if="loading" :loading="true" :rows="3" data-test-id="app-view-loading" />
 
 			<N8nEmptyState
@@ -74,13 +75,7 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 			/>
 
 			<template v-else>
-				<N8nEmptyState
-					v-if="activeTab === 'preview'"
-					:icon="{ type: 'icon', value: 'eye' }"
-					:heading="i18n.baseText('apps.detail.preview.heading')"
-					:description="i18n.baseText('apps.detail.preview.description')"
-					data-test-id="app-view-preview"
-				/>
+				<AppPreview v-if="activeTab === 'preview'" :project-id="projectId" :app="app" />
 				<div v-else :class="$style.configure" data-test-id="app-view-configure">
 					<N8nEmptyState
 						:icon="{ type: 'icon', value: 'settings' }"
@@ -108,6 +103,11 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 	min-height: 0;
 	padding: var(--spacing--md);
 	overflow: auto;
+}
+
+.flush {
+	padding: 0;
+	overflow: hidden;
 }
 
 .configure {

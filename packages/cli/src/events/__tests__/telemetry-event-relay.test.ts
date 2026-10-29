@@ -2064,6 +2064,31 @@ describe('TelemetryEventRelay', () => {
 			}
 		});
 
+		it('omits unknown secret properties for a description-only update', () => {
+			eventService.emit('credentials-updated', {
+				user: { id: 'user123' },
+				credentialId: 'cred123',
+				credentialName: 'Reporting',
+				credentialType: 'postgres',
+				credentialDescriptionLength: 9,
+				isDynamic: false,
+				descriptionOnly: true,
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+				{
+					source: 'backend',
+					user_id: 'user123',
+					user_role: undefined,
+					credential_id: 'cred123',
+					credential_type: 'postgres',
+					has_description: true,
+					description_length: 9,
+					is_private: false,
+				},
+			);
+		});
+
 		it.each([
 			{ descriptionLength: 0, publicApi: false },
 			{ descriptionLength: 18, publicApi: false },
@@ -6001,6 +6026,17 @@ describe('TelemetryEventRelay', () => {
 				node_type: 'n8n-nodes-base.slack',
 				is_approved: true,
 				is_authorized: false,
+			});
+		});
+	});
+
+	describe('data table events', () => {
+		it('tracks the storage limit with the existing event name and properties', () => {
+			eventService.emit('data-table-storage-limit-reached', { totalBytes: 200, maxBytes: 100 });
+
+			expect(telemetry.track).toHaveBeenCalledWith('User hit data table storage limit', {
+				total_bytes: 200,
+				max_bytes: 100,
 			});
 		});
 	});

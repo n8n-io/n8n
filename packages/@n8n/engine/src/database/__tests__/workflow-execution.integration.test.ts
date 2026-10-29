@@ -4,6 +4,7 @@ import postgresVersions from 'n8n-containers/postgres-versions.json';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ExecutionNotFoundError } from '../../execution/execution-store';
+import type { NewExecutionRecord } from '../../execution/execution-store';
 import type { ExecutionStatus, StepStatus } from '../../execution/execution.types';
 import { createDataSource } from '../data-source';
 import { WorkflowExecution } from '../entities/workflow-execution.entity';
@@ -97,6 +98,7 @@ describe('workflow_execution table (integration)', () => {
 			hostMode: 'manual',
 			graph: { nodes: [], edges: [] },
 			workflow: sampleWorkflow,
+			parent: null,
 			createdAt: expect.any(Date) as Date,
 			updatedAt: expect.any(Date) as Date,
 			finishedAt,
@@ -131,6 +133,7 @@ describe('workflow_execution table (integration)', () => {
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
+			parent: null,
 			finishedAt: null,
 		});
 	});
@@ -370,6 +373,7 @@ describe('workflow_execution table (integration)', () => {
 			},
 			callerContext: { hostMode: 'manual' },
 			responseExpectation: { kind: 'none' },
+			parent: null,
 		});
 
 		// Only the keys asked for, and nothing for a key that was never seeded.
@@ -393,7 +397,73 @@ describe('workflow_execution table (integration)', () => {
 			.getCount();
 		expect(remaining).toBe(0);
 	});
+
+	it('TypeOrmExecutionStore.createExecution stores the parent link, and both stores read it back', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const store = new TypeOrmExecutionStore(repo);
+		const viewStore = new TypeOrmExecutionViewStore(
+			repo,
+			dataSource.getRepository(WorkflowStepExecution),
+		);
+		const parent = { executionId: generateId(), stepId: generateId(), awaited: true };
+		const id = generateId();
+
+		await store.createExecution({ ...newRecord(id), parent });
+
+		expect((await store.loadExecution(id)).parent).toEqual(parent);
+		expect((await viewStore.loadExecutionView(id)).parent).toEqual(parent);
+		expect((await viewStore.loadExecutionWithStepsView(id)).parent).toEqual(parent);
+	});
+
+	it('TypeOrmExecutionViewStore.listExecutionViews filters by parent execution id', async () => {
+		const repo = dataSource.getRepository(WorkflowExecution);
+		const store = new TypeOrmExecutionStore(repo);
+		const viewStore = new TypeOrmExecutionViewStore(
+			repo,
+			dataSource.getRepository(WorkflowStepExecution),
+		);
+		const parentId = generateId();
+		const awaited = { executionId: parentId, stepId: generateId(), awaited: true };
+		const detached = { executionId: parentId, stepId: generateId(), awaited: false };
+		const [awaitedId, detachedId, topLevelId] = [generateId(), generateId(), generateId()];
+		await store.createExecution({ ...newRecord(awaitedId), parent: awaited });
+		await store.createExecution({ ...newRecord(detachedId), parent: detached });
+		await store.createExecution(newRecord(topLevelId));
+
+		const subExecutions = await viewStore.listExecutionViews({
+			workflowIds: 'all',
+			parentExecutionId: parentId,
+			limit: 10,
+		});
+
+		expect(subExecutions.map((row) => [row.id, row.parent])).toEqual([
+			[detachedId, detached],
+			[awaitedId, awaited],
+		]);
+		expect(
+			await viewStore.countExecutionViews({
+				workflowIds: 'all',
+				parentExecutionId: parentId,
+				limit: 10,
+			}),
+		).toBe(2);
+	});
 });
+
+function newRecord(id: string): NewExecutionRecord {
+	return {
+		id,
+		workflowId: 'wf-8',
+		status: 'queued',
+		mode: 'production',
+		graph: { nodes: [], edges: [], seeded: [] },
+		workflow: sampleWorkflow,
+		triggerOutputs: null,
+		callerContext: { hostMode: 'integrated' },
+		responseExpectation: { kind: 'none' },
+		parent: null,
+	};
+}
 
 async function saveExecution(
 	repo: Repository<WorkflowExecution>,
