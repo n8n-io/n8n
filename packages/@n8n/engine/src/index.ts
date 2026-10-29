@@ -89,6 +89,7 @@ export type {
 	StepExecutionRequest,
 	StepExecutionResult,
 	SubExecutionDeclaration,
+	SubExecutionMode,
 } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
