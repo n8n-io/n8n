@@ -2064,6 +2064,31 @@ describe('TelemetryEventRelay', () => {
 			}
 		});
 
+		it('omits unknown secret properties for a description-only update', () => {
+			eventService.emit('credentials-updated', {
+				user: { id: 'user123' },
+				credentialId: 'cred123',
+				credentialName: 'Reporting',
+				credentialType: 'postgres',
+				credentialDescriptionLength: 9,
+				isDynamic: false,
+				descriptionOnly: true,
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+				{
+					source: 'backend',
+					user_id: 'user123',
+					user_role: undefined,
+					credential_id: 'cred123',
+					credential_type: 'postgres',
+					has_description: true,
+					description_length: 9,
+					is_private: false,
+				},
+			);
+		});
+
 		it.each([
 			{ descriptionLength: 0, publicApi: false },
 			{ descriptionLength: 18, publicApi: false },

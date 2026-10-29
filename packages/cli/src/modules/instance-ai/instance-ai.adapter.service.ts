@@ -41,6 +41,7 @@ import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig, IExecutionResponse } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
 	ExecutionRepository,
 	FolderRepository,
 	ProjectRepository,
@@ -172,6 +173,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
@@ -1136,13 +1138,22 @@ export class InstanceAiAdapterService {
 			}
 		};
 
-		const assertCredentialInBoundProject = async (credentialId: string) => {
+		const assertCredentialInBoundProject = async (
+			credentialId: string,
+			{ requireOwner = false }: { requireOwner?: boolean } = {},
+		) => {
 			if (boundProjectId === undefined) return;
 			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 				credentialId,
 			);
-			// A missing credential falls through to the caller's not-found path.
-			if (owner) assertInBoundProject(owner.id);
+			if (!owner && requireOwner) {
+				// An absent owner can mean a missing credential or an instance-wide credential.
+				const existingIds = await Container.get(CredentialsRepository).findExistingIds([
+					credentialId,
+				]);
+				if (existingIds.length === 0) throw new CredentialNotFoundError(credentialId);
+			}
+			if (owner || requireOwner) assertInBoundProject(owner?.id);
 		};
 
 		return {
@@ -3055,6 +3066,11 @@ export class InstanceAiAdapterService {
 					type: credential.type,
 					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
+			},
+
+			async updateDescription(credentialId, description) {
+				await assertCredentialInBoundProject(credentialId, { requireOwner: true });
+				await credentialsService.updateDescription(user, credentialId, description);
 			},
 
 			async delete(credentialId: string) {
