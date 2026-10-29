@@ -28,7 +28,7 @@ interface BaseExecutionRecord {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;
-	/** The execution that started this one, or `null` for a top-level one. */
+	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
 }
 
