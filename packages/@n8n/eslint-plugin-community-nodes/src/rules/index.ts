@@ -12,6 +12,7 @@ import { IconValidationRule } from './icon-validation.js';
 import { MissingPairedItemRule } from './missing-paired-item.js';
 import { N8nObjectValidationRule } from './n8n-object-validation.js';
 import { NoBuilderHintLeakageRule } from './no-builder-hint-leakage.js';
+import { NoConfirmationCheckboxRule } from './no-confirmation-checkbox.js';
 import { NoCredentialReuseRule } from './no-credential-reuse.js';
 import { NoDangerousFunctionsRule } from './no-dangerous-functions.js';
 import { NoDeadFilesRule } from './no-dead-files.js';
@@ -84,6 +85,7 @@ export const rules = {
 	'node-registration-complete': NodeRegistrationCompleteRule,
 	'missing-paired-item': MissingPairedItemRule,
 	'no-builder-hint-leakage': NoBuilderHintLeakageRule,
+	'no-confirmation-checkbox': NoConfirmationCheckboxRule,
 	'n8n-object-validation': N8nObjectValidationRule,
 	'require-files-array': RequireFilesArrayRule,
 	'require-homepage': RequireHomepageRule,

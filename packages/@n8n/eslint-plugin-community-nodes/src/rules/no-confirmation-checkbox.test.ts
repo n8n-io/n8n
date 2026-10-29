@@ -73,6 +73,25 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)('%s
 		);
 	});
 
+	it.each([
+		{
+			label: 'a class that does not implement INodeType',
+			filename: 'TestNode.node.ts',
+			code: createNodeCode(
+				"{ displayName: 'Confirm Write', name: 'confirmWrite', type: 'boolean', default: false }",
+			).replace('implements INodeType', ''),
+		},
+		{
+			label: 'an unrelated exported array',
+			filename: 'settings.ts',
+			code: `export const settings = [
+				{ displayName: 'Confirm Write', name: 'confirmWrite', type: 'boolean', default: false },
+			];`,
+		},
+	])('ignores $label', ({ filename, code }) => {
+		expect(lint(code, filename, config).filter((message) => message.ruleId === ruleId)).toEqual([]);
+	});
+
 	describe.each([
 		{ filename: 'TestNode.node.ts', createCode: createNodeCode },
 		{ filename: 'AlertDescription.ts', createCode: createDescriptionCode },
@@ -123,6 +142,10 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)('%s
 				label: 'a confirmation field that defaults to true',
 				property:
 					"{ displayName: 'Confirm Write Operation', name: 'confirmWrite', type: 'boolean', default: true }",
+			},
+			{
+				label: 'a confirmation field without a default',
+				property: "{ displayName: 'Confirm Write', name: 'confirmWrite', type: 'boolean' }",
 			},
 			{
 				label: 'a non-boolean field',
