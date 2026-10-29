@@ -32,7 +32,7 @@ describe('PostHog', () => {
 	const globalConfig = mock<GlobalConfig>({ logging: { level: 'debug' } });
 
 	beforeAll(() => {
-		globalConfig.diagnostics.posthogConfig = { apiKey, apiHost };
+		globalConfig.diagnostics.posthogConfig = { apiKey, apiHost, autocapture: false };
 	});
 
 	beforeEach(() => {

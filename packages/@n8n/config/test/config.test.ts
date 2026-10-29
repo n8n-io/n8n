@@ -613,6 +613,7 @@ describe('GlobalConfig', () => {
 			posthogConfig: {
 				apiKey: 'phc_kMstNfAgBcBkWSh6KdsgN09heqqNe5VNmalHP1Ni9Q4',
 				apiHost: 'https://ph.n8n.io',
+				autocapture: false,
 			},
 		},
 		aiAssistant: {
@@ -764,6 +765,15 @@ describe('GlobalConfig', () => {
 		expect(defaultConfig).toMatchObject(config);
 		expect(config).toMatchObject(defaultConfig);
 		expect(readFileSyncMock).not.toHaveBeenCalled();
+	});
+
+	it('should parse N8N_DIAGNOSTICS_POSTHOG_AUTOCAPTURE from env variables', () => {
+		process.env = {
+			N8N_DIAGNOSTICS_POSTHOG_AUTOCAPTURE: 'true',
+		};
+		const config = Container.get(GlobalConfig);
+
+		expect(config.diagnostics.posthogConfig.autocapture).toBe(true);
 	});
 
 	it('should parse N8N_AGENTS_TRACING_ENABLED from env variables', () => {
