@@ -1,4 +1,4 @@
-import type { AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
+import type { AgentConfigValidationIssue, AgentJsonTaskConfig, AgentTaskDto } from '@n8n/api-types';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import AgentSchedulesRow from '../components/AgentSchedulesRow.vue';
+import AgentChipButton from '../components/AgentChipButton.vue';
 
 enableAutoUnmount(afterEach);
 
@@ -80,6 +81,29 @@ describe('AgentSchedulesRow', () => {
 		vi.clearAllMocks();
 		getAgentTasksSpy.mockResolvedValue([]);
 	});
+
+	it.each([
+		['missing_required', 'missingRequired'],
+		['invalid_value', 'task.invalidValue'],
+		['missing_credential', 'missingCredential'],
+		['invalid_credential', 'invalidCredential'],
+		['incompatible_credential', 'incompatibleCredential'],
+		['missing_reference', 'missingReference'],
+		['incompatible_reference', 'incompatibleReference'],
+	] satisfies Array<[AgentConfigValidationIssue['code'], string]>)(
+		'keeps the schedule message for %s',
+		async (code, key) => {
+			getAgentTasksSpy.mockResolvedValue([makeTask()]);
+			const wrapper = mountRow([taskRef()], {
+				validationIssues: [{ code, path: 'tasks.0', capability: { kind: 'task', id: 'task-1' } }],
+			});
+			await flushPromises();
+
+			expect(wrapper.getComponent(AgentChipButton).props('invalidReasons')).toEqual([
+				`agents.builder.validation.issue.${key}`,
+			]);
+		},
+	);
 
 	it('renders fetched task bodies with their config state', async () => {
 		getAgentTasksSpy.mockResolvedValue([makeTask()]);

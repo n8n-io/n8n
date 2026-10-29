@@ -324,6 +324,46 @@ export interface AgentMemoryEntryDto {
 	otherSourceCount: number;
 }
 
+/** Current state of a memory entry that a run recalled. `replaced` means the agent dropped or superseded it. */
+export type AgentTraceRecalledMemoryStatus = 'active' | 'replaced' | 'deleted';
+
+/** Current state of a fact that a run flagged for capture. */
+export type AgentTraceFlaggedMemoryStatus =
+	| 'pending'
+	| 'stored'
+	| 'replaced'
+	| 'failed'
+	| 'deleted';
+
+/** The newest evidence for a recalled entry. */
+export interface AgentTraceMemoryOriginDto {
+	threadId: string;
+	/** The requesting user can open this session. */
+	canOpen: boolean;
+	evidence: string;
+	createdAt: string;
+}
+
+export interface AgentTraceRecalledMemoryDto {
+	entryId: string;
+	content: string;
+	status: AgentTraceRecalledMemoryStatus;
+	origin?: AgentTraceMemoryOriginDto;
+}
+
+export interface AgentTraceFlaggedMemoryDto {
+	captureId: string;
+	content: string;
+	evidence: string;
+	status: AgentTraceFlaggedMemoryStatus;
+}
+
+/** Memory activity of a session, keyed by the `toolCallId` of each recall_memory and flag_memory call. */
+export interface AgentThreadMemoryDto {
+	recalls: Record<string, AgentTraceRecalledMemoryDto[]>;
+	flags: Record<string, AgentTraceFlaggedMemoryDto>;
+}
+
 export interface AgentMemoryEntriesPageDto {
 	items: AgentMemoryEntryDto[];
 	/** Count of all active entries that match the filter, not just this page. */
@@ -463,6 +503,23 @@ export interface PersistedChildTrace {
 	text: string;
 	reasoningSegments: PersistedChildTraceSegment[];
 	steps: PersistedChildTraceStep[];
+}
+
+/**
+ * A file that a workflow or node tool returned. The tool output lists these
+ * in its `files` field. The model sees only this metadata, not the bytes.
+ */
+export interface AgentToolOutputFile {
+	fileId: string;
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+}
+
+/** A tool output file that was not stored. The model gets the reason in the tool result. */
+export interface AgentToolSkippedFile {
+	fileName: string;
+	reason: string;
 }
 
 export interface AgentPersistedMessageContentPart {

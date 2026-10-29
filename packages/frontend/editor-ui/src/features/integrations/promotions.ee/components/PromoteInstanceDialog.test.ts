@@ -39,6 +39,7 @@ const renderComponent = createComponentRenderer(PromoteInstanceDialog, {
 		open: true,
 		environmentId: 'environment-1',
 		baseBranchName: 'main',
+		environmentName: 'Production',
 		createBranchOnPromotion: false,
 		providerType: 'git',
 	},
@@ -65,7 +66,10 @@ describe('PromoteInstanceDialog', () => {
 
 	it('promotes with the trimmed message and shows the result in the dialog', async () => {
 		api.promotePackage.mockResolvedValue(promoteResult('main'));
-		const { findByTestId, getByTestId, queryByTestId, emitted } = renderComponent();
+		const { findByTestId, findByRole, getByTestId, queryByTestId, emitted } = renderComponent({
+			props: { environmentName: 'Staging' },
+		});
+		expect(await findByRole('heading', { name: 'Promote changes to Staging' })).toBeVisible();
 
 		await userEvent.type(await findByTestId('promote-commit-message'), '  Deploy today  ');
 		await userEvent.click(getByTestId('promote-confirm-button'));

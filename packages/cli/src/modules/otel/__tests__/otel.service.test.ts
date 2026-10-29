@@ -132,9 +132,12 @@ vi.mock('@opentelemetry/sdk-trace-base', () => ({
 vi.mock('@opentelemetry/resources', () => ({
 	resourceFromAttributes: vi.fn().mockReturnValue({ merge: () => ({}) }),
 	detectResources: vi.fn().mockReturnValue({}),
+	defaultResource: vi.fn().mockReturnValue({ merge: () => ({}) }),
 	envDetector: {},
 	processDetector: {},
 	hostDetector: {},
+	osDetector: {},
+	serviceInstanceIdDetector: {},
 }));
 
 vi.mock('@opentelemetry/sdk-trace-node', () => ({

@@ -116,6 +116,30 @@ describe('cleanupBuild', () => {
 		);
 	});
 
+	it('deletes a team build project last, after the thread', async () => {
+		const { client, mocks } = makeClient();
+		const build = { ...makeBuild(), buildProjectId: 'team-project' };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(true);
+
+		expect(mocks.deleteDataTable).toHaveBeenCalledWith('team-project', 'DT1');
+		expect(mocks.deleteProject).toHaveBeenCalledExactlyOnceWith('team-project');
+		expect(mocks.deleteProject.mock.invocationCallOrder[0]).toBeGreaterThan(
+			mocks.deleteThread.mock.invocationCallOrder[0],
+		);
+	});
+
+	it('keeps a team build project when another delete fails, so the retry still finds it', async () => {
+		const { client, mocks } = makeClient({
+			deleteDataTable: vi.fn().mockRejectedValue(new Error('HTTP 502')),
+		});
+		const build = { ...makeBuild(), buildProjectId: 'team-project' };
+
+		await expect(cleanupBuild(client, build, silentLogger)).resolves.toBe(false);
+
+		expect(mocks.deleteProject).not.toHaveBeenCalled();
+	});
+
 	it('keeps the build user when another delete fails, so the retry still finds its project', async () => {
 		const { client, mocks } = makeClient({
 			deleteDataTable: vi.fn().mockRejectedValue(new Error('HTTP 502')),

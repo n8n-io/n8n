@@ -70,6 +70,12 @@ export async function getWorkspaceRoot(workspace: SandboxWorkspace): Promise<str
 		return initializedLocalRoot;
 	}
 
+	// The Daytona image bakes the workspace at this path, so asking for $HOME only costs a round trip.
+	if (workspace.sandbox?.provider === 'daytona') {
+		workspaceRootCache.set(workspace, DAYTONA_WORKSPACE_ROOT);
+		return DAYTONA_WORKSPACE_ROOT;
+	}
+
 	const result = await runInSandbox(workspace, 'echo $HOME');
 	const home = result.stdout.trim() || getFallbackHome(workspace);
 	const root = `${home}/${WORKSPACE_DIR}`;

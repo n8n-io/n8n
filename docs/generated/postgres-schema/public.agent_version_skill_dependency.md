@@ -79,6 +79,7 @@ erDiagram
   text instructions
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_255_ sourceRevision
   timestamp_3__with_time_zone updatedAt
   integer version
 }

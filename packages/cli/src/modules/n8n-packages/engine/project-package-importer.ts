@@ -65,6 +65,7 @@ import type { ImportOutcome, PackageImportScope } from './import-telemetry';
 import { N8nPackageParser } from './n8n-package-parser';
 import { PackageImportPreflight } from './package-import-preflight';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
 /** Everything an import will do, read before its first write. */
 export interface PackageImportPlan {
@@ -155,6 +156,11 @@ export class ProjectPackageImporter {
 		)
 			? await this.packageParser.getCredentials(reader)
 			: undefined;
+		// Read once: Agents in any project can reference an instance skill.
+		const packageSkills =
+			!request.selection && manifest.agents?.length
+				? await this.packageParser.getSkills(reader)
+				: [];
 		// Projects match by id, so a package project id is also its destination project id.
 		const updateScope = credentialUpdateScope(selectedProjects.map(({ id }) => id));
 		// Projects the user is creating (vs matching an existing one). They will be admin of these,
@@ -175,7 +181,12 @@ export class ProjectPackageImporter {
 				manifest,
 				project,
 				pendingCreateIds.has(project.id),
-				{ bundledVariables, packageCredentials, credentialUpdateScope: updateScope },
+				{
+					bundledVariables,
+					packageCredentials,
+					packageSkills,
+					credentialUpdateScope: updateScope,
+				},
 				importSource,
 			);
 			inputs.push(input);
@@ -331,6 +342,7 @@ export class ProjectPackageImporter {
 		importWide: {
 			bundledVariables: Map<string, SerializedVariable> | undefined;
 			packageCredentials: Map<string, SerializedCredential> | undefined;
+			packageSkills: SerializedSkill[];
 			credentialUpdateScope: CredentialUpdateScope;
 		},
 		importSource: PackageImportSource,
@@ -407,6 +419,7 @@ export class ProjectPackageImporter {
 			folders,
 			workflows,
 			agents,
+			skills: importWide.packageSkills,
 			agentRequirements: identifyRequirements(manifest.requirements?.agents, workflows, agents),
 			credentialRequest,
 			dataTableRequest,

@@ -1,6 +1,8 @@
 import type { StreamChunk } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES, type AgentIntegrationConfig } from '@n8n/api-types';
 import type { Logger as BackendLogger } from '@n8n/backend-common';
+import type { CacheService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
 import type { WhatsAppAdapter } from '@chat-adapter/whatsapp';
 import { createHmac } from 'crypto';
 import type { InstanceSettings } from 'n8n-core';
@@ -19,6 +21,7 @@ import type {
 } from '../../../integration-tools';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import { WhatsAppIntegration } from '../../../platforms/whatsapp/whatsapp-integration';
+import { WhatsAppOptionPagesStore } from '../../../platforms/whatsapp/whatsapp-option-pages.store';
 import type { WhatsAppSetupTelemetryService } from '../../../platforms/whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../../../platforms/whatsapp/whatsapp-webhook-verification.store';
 import {
@@ -138,13 +141,30 @@ export function whatsAppThreadId(
 	return `whatsapp:${fixtures.phoneNumberId}:${fixtures.contact.wa_id}`;
 }
 
+/** A real option store on a map, so a test can open a later page of a list. */
+export function createOptionPagesStore(logger: BackendLogger): WhatsAppOptionPagesStore {
+	const entries = new Map<string, unknown>();
+	const cache = mock<CacheService>();
+	cache.set.mockImplementation(async (key: string, value: unknown) => {
+		entries.set(key, value);
+	});
+	cache.get.mockImplementation(async (key: string) => entries.get(key));
+	return new WhatsAppOptionPagesStore(
+		cache,
+		logger,
+		mock<AgentsConfig>({ checkpointTtlSeconds: 3600 }),
+	);
+}
+
 export function createWhatsAppIntegration(
 	channelRateLimitGuard = new ChannelRateLimitGuard(),
 	webhookVerification: WhatsAppWebhookVerificationStore = mock<WhatsAppWebhookVerificationStore>(),
+	logger: BackendLogger = mock<BackendLogger>(),
+	optionPages: WhatsAppOptionPagesStore = createOptionPagesStore(logger),
 	setupTelemetry: WhatsAppSetupTelemetryService = mock<WhatsAppSetupTelemetryService>(),
 ): WhatsAppIntegration {
 	return new WhatsAppIntegration(
-		mock<BackendLogger>(),
+		logger,
 		mock<AgentRepository>(),
 		mock<InstanceSettings>({
 			encryptionKey: 'test-encryption-key',
@@ -152,6 +172,7 @@ export function createWhatsAppIntegration(
 		}),
 		channelRateLimitGuard,
 		webhookVerification,
+		optionPages,
 		setupTelemetry,
 	);
 }
@@ -292,6 +313,7 @@ export async function createWhatsAppReplayContext(
 		failedApiTypes?: string[];
 		failureSequence?: WhatsAppFailureSequence;
 		webhookVerification?: WhatsAppWebhookVerificationStore;
+		logger?: BackendLogger;
 		setupTelemetry?: WhatsAppSetupTelemetryService;
 	} = {},
 ): Promise<WhatsAppReplayContext> {
@@ -305,6 +327,8 @@ export async function createWhatsAppReplayContext(
 	const integrationImpl = createWhatsAppIntegration(
 		channelRateLimitGuard,
 		options.webhookVerification,
+		options.logger,
+		undefined,
 		options.setupTelemetry,
 	);
 	const integration: AgentIntegrationConfig = options.integration ?? {
