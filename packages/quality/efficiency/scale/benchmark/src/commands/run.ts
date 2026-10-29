@@ -19,13 +19,9 @@ export default class RunCommand extends Command {
 			char: 'f',
 			description: 'Filter scenarios by name',
 		}),
-		scenarioExclude: Flags.string({
-			description: 'Comma separated scenario folder names to skip',
-			env: 'BENCHMARK_SCENARIO_EXCLUDE',
-		}),
 		engineType: Flags.string({
 			description:
-				'Execution engine of the imported workflows. When not set, the workflow settings are used',
+				'Execution engine of the imported workflows. Skips the scenarios that do not support it. When not set, the workflow settings are used',
 			options: [...WORKFLOW_ENGINE_TYPES],
 			env: 'BENCHMARK_ENGINE_TYPE',
 		}),
@@ -134,15 +130,7 @@ export default class RunCommand extends Command {
 			this.parseEngineType(flags.engineType),
 		);
 
-		const excludedScenarios = (flags.scenarioExclude ?? '')
-			.split(',')
-			.map((name) => name.trim())
-			.filter(Boolean);
-		const allScenarios = scenarioLoader.loadAll(
-			flags.testScenariosPath,
-			flags.scenarioFilter,
-			excludedScenarios,
-		);
+		const allScenarios = scenarioLoader.loadAll(flags.testScenariosPath, flags.scenarioFilter);
 
 		await scenarioRunner.runManyScenarios(allScenarios);
 	}

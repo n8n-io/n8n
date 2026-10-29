@@ -2,15 +2,14 @@ import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'path';
 
+import { WORKFLOW_ENGINE_TYPES } from '@/n8n-api-client/n8n-api-client.types';
 import type { Scenario, ScenarioManifest } from '@/types/scenario';
 
 export class ScenarioLoader {
 	/**
-	 * Loads all scenarios from the given path. Skips the scenarios whose folder
-	 * name is in `exclude`.
+	 * Loads all scenarios from the given path
 	 */
-	loadAll(pathToScenarios: string, filter?: string, exclude: string[] = []): Scenario[] {
-		const excluded = new Set(exclude.map((name) => name.toLowerCase()));
+	loadAll(pathToScenarios: string, filter?: string): Scenario[] {
 		pathToScenarios = path.resolve(pathToScenarios);
 		const scenarioFolders = fs
 			.readdirSync(pathToScenarios, { withFileTypes: true })
@@ -21,9 +20,6 @@ export class ScenarioLoader {
 
 		for (const folder of scenarioFolders) {
 			if (filter && folder.toLowerCase() !== filter.toLowerCase()) {
-				continue;
-			}
-			if (excluded.has(folder.toLowerCase())) {
 				continue;
 			}
 			const scenarioPath = path.join(pathToScenarios, folder);
@@ -69,6 +65,15 @@ export class ScenarioLoader {
 		}
 		if (!scenario.description) {
 			validationErrors.push(`Scenario at ${scenarioManifestPath} is missing a description`);
+		}
+		if (
+			!Array.isArray(scenario.supportedEngines) ||
+			scenario.supportedEngines.length === 0 ||
+			!scenario.supportedEngines.every((engine) => WORKFLOW_ENGINE_TYPES.includes(engine))
+		) {
+			validationErrors.push(
+				`Scenario at ${scenarioManifestPath} must list its supportedEngines (${WORKFLOW_ENGINE_TYPES.join(', ')})`,
+			);
 		}
 
 		return validationErrors.length === 0 ? [scenario, null] : [null, validationErrors];

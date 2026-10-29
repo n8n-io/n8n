@@ -45,6 +45,13 @@ export class ScenarioRunner {
 
 	private async runSingleTestScenario(testDataImporter: ScenarioDataImporter, scenario: Scenario) {
 		const scenarioRunName = this.formTestScenarioRunName(scenario);
+		if (this.engineType && !scenario.supportedEngines.includes(this.engineType)) {
+			console.log(
+				`Skipping scenario ${scenarioRunName}: it does not support engine ${this.engineType}`,
+			);
+			return;
+		}
+
 		console.log('Running scenario:', scenarioRunName);
 
 		console.log('Loading and importing data');

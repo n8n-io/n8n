@@ -174,8 +174,6 @@ services:
       - BENCHMARK_RESULT_WEBHOOK_URL=${BENCHMARK_RESULT_WEBHOOK_URL}
       - BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER=${BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER}
       - COLLECT_APP_METRICS=true
-      # Every imported workflow runs on engine v2
+      # Every imported workflow runs on engine v2. Scenarios without v2 in
+      # their supportedEngines are skipped
       - BENCHMARK_ENGINE_TYPE=v2
-      # Scenarios that engine v2 cannot run yet: it has no task runners (Code
-      # node) and no data tables
-      - BENCHMARK_SCENARIO_EXCLUDE=js-code-node,py-code-node,data-table-node

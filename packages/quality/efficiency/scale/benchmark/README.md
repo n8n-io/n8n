@@ -137,9 +137,11 @@ An n8n setup defines one n8n runtime configuration with Docker Compose. The setu
 | --- | --- |
 | `sqlite` | Single main with SQLite |
 | `postgres` | Single main with PostgreSQL |
-| `scaling-single-main` | Queue mode with one main, two workers and task runners |
-| `scaling-multi-main` | Queue mode with two mains behind a load balancer. Needs an n8n license |
-| `engine-v2` | One main (control plane) and two engine v2 data planes behind a load balancer |
+| `scaling-single-main` | Queue mode with one main and two workers |
+| `scaling-multi-main` | Queue mode with two mains behind a load balancer and two workers. Needs an n8n license |
+| `engine-v2` | One main (control plane) and two engine v2 data planes behind a load balancer. Does not run task runners |
+
+All setups except `engine-v2` run task runners in external mode.
 
 ### Engine v2 setup
 
@@ -148,8 +150,10 @@ The `engine-v2` setup runs the main in remote engine mode. The main sends the ex
 The setup tells the benchmark CLI to:
 
 - Set `settings.engineType` to `v2` on every imported workflow (`BENCHMARK_ENGINE_TYPE=v2`).
-- Skip the scenarios that engine v2 cannot run yet (`BENCHMARK_SCENARIO_EXCLUDE`):
+- Skip the scenarios that do not list `v2` in `supportedEngines` in their manifest. Engine v2 cannot run these scenarios yet:
   - `js-code-node` and `py-code-node`: the engine does not run task runners.
   - `data-table-node`: the Data table node is not available on the engine.
+
+Each scenario manifest must set `supportedEngines`. When you add a scenario, add `v2` only after you confirm that engine v2 runs all of its workflows. Otherwise, the workflows fall back to v1 and the engine v2 results are not correct.
 
 The `n8n engine` command must be in the n8n image that you test.
