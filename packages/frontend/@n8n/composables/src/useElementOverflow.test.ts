@@ -79,6 +79,7 @@ describe('useElementOverflow', () => {
 	it('re-checks on resize and stops observing on unmount', async () => {
 		const { getByTestId, unmount } = renderWith('y');
 		const el = getByTestId('target');
+		await nextTick();
 		expect(getByTestId('state').textContent).toBe('false');
 
 		setSizes(el, { scrollHeight: 120, clientHeight: 40 });
@@ -91,7 +92,7 @@ describe('useElementOverflow', () => {
 		expect(observer.disconnect).toHaveBeenCalled();
 	});
 
-	it('follows the element when it mounts later or is swapped', async () => {
+	it('follows the element when it mounts later and when it is removed', async () => {
 		const show = ref(false);
 		const TestComponent = defineComponent({
 			setup() {
@@ -108,15 +109,15 @@ describe('useElementOverflow', () => {
 
 		expect(queryByTestId('target')).toBeNull();
 		expect(getByTestId('state').textContent).toBe('false');
-		const observer = ResizeObserverStub.instances[0];
-		expect(observer).toBeUndefined();
+		expect(ResizeObserverStub.instances.every((o) => !o.observe.mock.calls.length)).toBe(true);
 
 		show.value = true;
 		await nextTick();
 		await nextTick();
 
-		const mounted = ResizeObserverStub.instances[0];
-		expect(mounted.observe).toHaveBeenCalledWith(getByTestId('target'));
+		const mounted = ResizeObserverStub.instances.find((o) => o.observe.mock.calls.length > 0);
+		if (!mounted) throw new Error('No observer attached to the element');
+		expect(mounted.observe.mock.calls[0][0]).toBe(getByTestId('target'));
 
 		setSizes(getByTestId('target'), { scrollWidth: 300, clientWidth: 100 });
 		mounted.onResize([], mounted as unknown as ResizeObserver);

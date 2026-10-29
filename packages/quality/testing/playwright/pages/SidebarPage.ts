@@ -191,10 +191,6 @@ export class SidebarPage extends BasePage {
 		return this.container.getByTestId('main-sidebar-source-control-connected');
 	}
 
-	async openSettings(): Promise<void> {
-		await this.getSettings().click();
-	}
-
 	async clickSignout(): Promise<void> {
 		await this.expand();
 		await this.openAccountMenu();

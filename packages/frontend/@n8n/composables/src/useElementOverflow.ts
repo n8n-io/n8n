@@ -1,4 +1,5 @@
-import { onBeforeUnmount, onMounted, ref, watch, type Ref, type WatchSource } from 'vue';
+import { useResizeObserver } from '@vueuse/core';
+import { ref, watch, type Ref, type WatchSource } from 'vue';
 
 export type OverflowAxis = 'x' | 'y';
 
@@ -13,8 +14,6 @@ export function useElementOverflow(
 ) {
 	const isOverflowing = ref(false);
 
-	let observer: ResizeObserver | null = null;
-
 	const update = () => {
 		const el = element.value;
 		if (!el) {
@@ -25,27 +24,9 @@ export function useElementOverflow(
 			axis === 'x' ? el.scrollWidth > el.clientWidth : el.scrollHeight > el.clientHeight;
 	};
 
-	const observe = (el: HTMLElement | null) => {
-		observer?.disconnect();
-		if (el && typeof ResizeObserver !== 'undefined') {
-			observer ??= new ResizeObserver(update);
-			observer.observe(el);
-		}
-		update();
-	};
-
-	onMounted(() => {
-		observe(element.value);
-		watch(element, observe, { flush: 'post' });
-	});
-
-	if (sources.length > 0) {
-		watch(sources, update, { flush: 'post' });
-	}
-
-	onBeforeUnmount(() => {
-		observer?.disconnect();
-	});
+	useResizeObserver(element, update);
+	// The observer only reports the element it watches: a swap or a removal is checked here.
+	watch([element, ...sources], update, { flush: 'post' });
 
 	return { isOverflowing, update };
 }

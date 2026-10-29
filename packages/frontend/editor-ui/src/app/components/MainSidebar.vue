@@ -6,7 +6,7 @@ import ClaudeEntryPoint from '@/experiments/surfaceMcpToClaudeTrialUsers/McpDisc
 import { computed, onBeforeUnmount, onMounted, ref, nextTick, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nScrollArea, N8nResizeWrapper, type IMenuItem } from '@n8n/design-system';
-import { ABOUT_MODAL_KEY, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useCloudPlanStore } from '@n8n/stores/cloudPlan.store';
@@ -75,9 +75,11 @@ let resizeObserver: ResizeObserver | null = null;
 
 const isResourceCenterEnabled = computed(() => resourceCenterStore.isFeatureEnabled());
 
-// The user's own pages open from the account menu; the row is for the pages about the instance.
-const hasInstanceSettings = computed(() =>
-	settingsItems.value.some((item) => item.section !== 'personal'),
+// The user's own pages open from the account menu; the row leads to the first page about the
+// instance. `/settings` itself is not used: it redirects to Personal settings when the usage
+// page is hidden.
+const instanceSettingsRoute = computed(
+	() => settingsItems.value.find((item) => item.section !== 'personal' && item.route)?.route,
 );
 
 const mainMenuItems = computed<IMenuItem[]>(() => [
@@ -133,18 +135,13 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.instanceSettings'),
 		icon: 'wrench',
 		position: 'bottom',
-		available: hasInstanceSettings.value,
-		route: { to: { name: VIEWS.SETTINGS } },
+		available: instanceSettingsRoute.value !== undefined,
+		route: instanceSettingsRoute.value,
 	},
 ]);
 
 const visibleMenuItems = computed<IMenuItem[]>(() =>
-	mainMenuItems.value
-		.filter((item) => item.available !== false)
-		.map((item) => ({
-			...item,
-			children: item.children?.filter((child) => child.available !== false),
-		})),
+	mainMenuItems.value.filter((item) => item.available !== false),
 );
 
 const checkOverflow = () => {
@@ -218,7 +215,6 @@ const handleSelect = (key: string) => {
 			break;
 		case 'settings':
 			telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK, {
-				source: 'side_menu',
 				sidebar_collapsed: isCollapsed.value,
 			});
 			break;
@@ -228,7 +224,6 @@ const handleSelect = (key: string) => {
 };
 
 useKeybindings({
-	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 	['bracketleft']: () => toggleCollapse(),
 });
 </script>

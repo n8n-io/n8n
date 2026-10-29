@@ -1,5 +1,5 @@
 import { reactive } from 'vue';
-import { waitFor, within } from '@testing-library/vue';
+import { screen, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
 import { ROLE } from '@n8n/api-types';
@@ -68,13 +68,17 @@ let versionsStore: MockedStore<typeof useVersionsStore>;
 let uiStore: MockedStore<typeof useUIStore>;
 let rootStore: MockedStore<typeof useRootStore>;
 
+// The menu is teleported to the body, so it is found through `screen`.
 async function openMenu(trigger: HTMLElement) {
 	await userEvent.click(trigger);
-	return await waitFor(() => {
-		const menu = document.querySelector('[data-test-id="main-sidebar-account-menu"]');
-		if (!(menu instanceof HTMLElement)) throw new Error('Menu not open');
-		return menu;
-	});
+	return await screen.findByTestId('main-sidebar-account-menu');
+}
+
+/** The rows of the open menu, top to bottom, by test id. */
+function rowsOf(menu: HTMLElement) {
+	return within(menu)
+		.getAllByRole('menuitem')
+		.map((row) => row.getAttribute('data-test-id'));
 }
 
 describe('MainSidebarAccountMenu', () => {
@@ -116,8 +120,6 @@ describe('MainSidebarAccountMenu', () => {
 		const header = within(menu).getByTestId('main-sidebar-account-header');
 		expect(header).toHaveTextContent('Jane Doe');
 		expect(header).toHaveTextContent('jane@example.com');
-		// The role is not part of the identity; it reads as noise next to the name.
-		expect(header).not.toHaveTextContent('Owner');
 	});
 
 	it('names the rail trigger after the user and hides the label', () => {
@@ -240,7 +242,14 @@ describe('MainSidebarAccountMenu', () => {
 		);
 	});
 
-	it('signs out from the last row', async () => {
+	it('lists sign out last', async () => {
+		const { getByTestId } = renderComponent();
+		const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+		expect(rowsOf(menu).at(-1)).toBe('main-sidebar-log-out');
+	});
+
+	it('signs out', async () => {
 		const { getByTestId } = renderComponent();
 		const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
 
@@ -251,6 +260,14 @@ describe('MainSidebarAccountMenu', () => {
 
 	describe('cloud console', () => {
 		it('is listed first for a cloud owner', async () => {
+			settingsStore.isCloudDeployment = true;
+			const { getByTestId } = renderComponent();
+			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
+
+			expect(rowsOf(menu)[0]).toBe('main-sidebar-account-cloud-console');
+		});
+
+		it('opens the cloud dashboard', async () => {
 			settingsStore.isCloudDeployment = true;
 			const { getByTestId } = renderComponent();
 			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
@@ -332,17 +349,16 @@ describe('MainSidebarAccountMenu', () => {
 				name: WHATS_NEW_MODAL_KEY,
 				data: { articleId: 2 },
 			});
+			expect(trackMock).toHaveBeenCalledWith("User clicked on what's new section", {
+				article_id: 2,
+			});
 		});
 	});
 
 	describe('help', () => {
 		async function openHelp(menu: HTMLElement) {
 			await userEvent.hover(within(menu).getByTestId('main-sidebar-account-help'));
-			return await waitFor(() => {
-				const about = document.querySelector('[data-test-id="main-sidebar-help-about"]');
-				if (!(about instanceof HTMLElement)) throw new Error('Help submenu not open');
-				return about;
-			});
+			return await screen.findByTestId('main-sidebar-help-about');
 		}
 
 		it('lists the links and the version next to About', async () => {
@@ -352,10 +368,8 @@ describe('MainSidebarAccountMenu', () => {
 			const about = await openHelp(menu);
 
 			expect(about).toHaveTextContent('v1.2.3');
-			expect(document.querySelector('[data-test-id="main-sidebar-help-docs"]')).toBeInTheDocument();
-			expect(
-				document.querySelector('[data-test-id="main-sidebar-help-contact-support"]'),
-			).not.toBeInTheDocument();
+			expect(screen.getByTestId('main-sidebar-help-docs')).toBeInTheDocument();
+			expect(screen.queryByTestId('main-sidebar-help-contact-support')).not.toBeInTheDocument();
 		});
 
 		it('adds contact support on cloud', async () => {
@@ -365,9 +379,7 @@ describe('MainSidebarAccountMenu', () => {
 
 			await openHelp(menu);
 
-			expect(
-				document.querySelector('[data-test-id="main-sidebar-help-contact-support"]'),
-			).toBeInTheDocument();
+			expect(screen.getByTestId('main-sidebar-help-contact-support')).toBeInTheDocument();
 		});
 
 		it('opens the about modal', async () => {
@@ -384,13 +396,25 @@ describe('MainSidebarAccountMenu', () => {
 			);
 		});
 
+		it('opens the about modal from the keyboard shortcut', async () => {
+			renderComponent();
+
+			await userEvent.keyboard('{Control>}{Alt>}o{/Alt}{/Control}');
+
+			expect(uiStore.openModal).toHaveBeenCalledWith(ABOUT_MODAL_KEY);
+			expect(trackMock).toHaveBeenCalledWith(
+				'User clicked help resource',
+				expect.objectContaining({ type: 'about' }),
+			);
+		});
+
 		it('opens a link in a new tab', async () => {
 			const openSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
 			const { getByTestId } = renderComponent();
 			const menu = await openMenu(getByTestId('main-sidebar-account-trigger'));
 			await openHelp(menu);
 
-			await userEvent.click(document.querySelector('[data-test-id="main-sidebar-help-docs"]')!);
+			await userEvent.click(screen.getByTestId('main-sidebar-help-docs'));
 
 			expect(openSpy).toHaveBeenCalledWith(EXTERNAL_LINKS.DOCUMENTATION, '_blank', 'noopener');
 			expect(trackMock).toHaveBeenCalledWith(

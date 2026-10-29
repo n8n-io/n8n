@@ -14,16 +14,15 @@ import {
 	N8nButton,
 	N8nDialog,
 	N8nDialogBody,
-	N8nDialogHeader,
-	N8nDialogTitle,
 	N8nIcon,
 	N8nSettingsRow,
 	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 
-const SOURCE_CODE_URL = 'https://github.com/n8n-io/n8n';
-const LICENSE_URL = 'https://github.com/n8n-io/n8n/blob/master/LICENSE.md';
+const SOURCE_CODE_HOST = 'github.com/n8n-io/n8n';
+const SOURCE_CODE_URL = `https://${SOURCE_CODE_HOST}`;
+const LICENSE_URL = `${SOURCE_CODE_URL}/blob/master/LICENSE.md`;
 
 const toast = useToast();
 const i18n = useI18n();
@@ -79,14 +78,11 @@ const copyDebugInfoToClipboard = async () => {
 	<N8nDialog
 		:open="true"
 		size="large"
+		:header="i18n.baseText('about.aboutN8n')"
 		:aria-description="i18n.baseText('about.ariaDescription')"
 		data-test-id="about-modal"
 		@update:open="onOpenChange"
 	>
-		<N8nDialogHeader>
-			<N8nDialogTitle>{{ i18n.baseText('about.aboutN8n') }}</N8nDialogTitle>
-		</N8nDialogHeader>
-
 		<N8nDialogBody>
 			<N8nSettingsRowGroup>
 				<N8nSettingsRow :title="i18n.baseText('about.n8nVersion')">
@@ -114,10 +110,7 @@ const copyDebugInfoToClipboard = async () => {
 					</template>
 				</N8nSettingsRow>
 
-				<N8nSettingsRow
-					:title="i18n.baseText('about.sourceCode')"
-					:description="SOURCE_CODE_URL.replace('https://', '')"
-				>
+				<N8nSettingsRow :title="i18n.baseText('about.sourceCode')" :description="SOURCE_CODE_HOST">
 					<template #action>
 						<N8nButton variant="outline" size="medium" :href="SOURCE_CODE_URL" target="_blank">
 							{{ i18n.baseText('generic.open') }}

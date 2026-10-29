@@ -34,9 +34,8 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 	USER_CLICKED_INSTANCE_SETTINGS_LINK: {
 		name: 'User clicked instance settings link',
 		description:
-			"User clicked the Instance settings link, which opens the settings area on its first instance page. Personal settings reached through the account menu report 'User clicked account menu item' instead.",
+			"User clicked the Instance settings link at the bottom of the main sidebar, which opens the settings area on its first instance page. Personal settings reached through the account menu report 'User clicked account menu item' instead.",
 		properties: z.object({
-			source: z.enum(['side_menu']).describe('Surface that held the link'),
 			sidebar_collapsed: z.boolean().describe('Whether the sidebar was the icon rail at the time'),
 		}),
 	},

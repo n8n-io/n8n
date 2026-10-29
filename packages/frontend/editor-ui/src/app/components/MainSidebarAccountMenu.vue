@@ -13,7 +13,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useElementOverflow } from '@n8n/composables/useElementOverflow';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { TELEMETRY_EVENT, type InferTelemetryProps } from '@n8n/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
@@ -21,6 +21,7 @@ import { useVersionsStore } from '@n8n/stores/versions.store';
 import { ABOUT_MODAL_KEY, VERSIONS_MODAL_KEY, VIEWS, WHATS_NEW_MODAL_KEY } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { useBugReporting } from '@/app/composables/useBugReporting';
+import { useKeybindings } from '@/app/composables/useKeybindings';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useUIStore } from '@/app/stores/ui.store';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
@@ -55,6 +56,8 @@ watch(isOpen, (open) => {
 });
 
 const user = computed(() => usersStore.currentUser);
+const fullName = computed(() => user.value?.fullName ?? '');
+const email = computed(() => user.value?.email ?? '');
 
 // A long name is cut with an ellipsis; the full text is then a tooltip. The row's name only
 // exists while the sidebar is expanded, and the header only while the menu is open, so the
@@ -62,15 +65,9 @@ const user = computed(() => usersStore.currentUser);
 const nameEl = ref<HTMLElement | null>(null);
 const headerNameEl = ref<HTMLElement | null>(null);
 const headerEmailEl = ref<HTMLElement | null>(null);
-const { isOverflowing: isNameTruncated } = useElementOverflow(nameEl, 'x', [
-	() => user.value?.fullName,
-]);
-const { isOverflowing: isHeaderNameTruncated } = useElementOverflow(headerNameEl, 'x', [
-	() => user.value?.fullName,
-]);
-const { isOverflowing: isHeaderEmailTruncated } = useElementOverflow(headerEmailEl, 'x', [
-	() => user.value?.email,
-]);
+const { isOverflowing: isNameTruncated } = useElementOverflow(nameEl, 'x', [fullName]);
+const { isOverflowing: isHeaderNameTruncated } = useElementOverflow(headerNameEl, 'x', [fullName]);
+const { isOverflowing: isHeaderEmailTruncated } = useElementOverflow(headerEmailEl, 'x', [email]);
 // The rail has no room for the name at all; the expanded row shows it when it fits.
 const showNameTooltip = computed(
 	() => !isOpen.value && (props.isCollapsed || isNameTruncated.value),
@@ -88,7 +85,7 @@ const firstUnreadArticle = computed(() =>
 const hasWhatsNew = computed(
 	() => whatsNewArticles.value.length > 0 || versionsStore.hasVersionUpdates,
 );
-// The dot on the avatar carries the signal the Help row used to show.
+// An unread article or a pending update. The dot sits on the avatar so the rail shows it too.
 const hasUnread = computed(
 	() => firstUnreadArticle.value !== undefined || versionsStore.hasVersionUpdates,
 );
@@ -154,7 +151,9 @@ const helpEntries = computed<HelpEntry[]>(() => [
 	},
 ]);
 
-type AccountMenuItem = 'cloud_console' | 'personal_settings' | 'whats_new' | 'sign_out';
+type AccountMenuItem = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.PLATFORM.USER_CLICKED_ACCOUNT_MENU_ITEM
+>['item'];
 
 function track(item: AccountMenuItem) {
 	telemetry.track(TELEMETRY_EVENT.PLATFORM.USER_CLICKED_ACCOUNT_MENU_ITEM, {
@@ -177,6 +176,8 @@ function onWhatsNew() {
 	track('whats_new');
 	const article = firstUnreadArticle.value ?? whatsNewArticles.value[0];
 	if (article) {
+		// The article event predates the row; it keeps the per-article reports intact.
+		telemetry.track("User clicked on what's new section", { article_id: article.id });
 		uiStore.openModalWithData({
 			name: WHATS_NEW_MODAL_KEY,
 			data: { articleId: article.id },
@@ -205,6 +206,9 @@ function onSignOut() {
 	track('sign_out');
 	void router.push({ name: VIEWS.SIGNOUT });
 }
+
+// The shortcut is the keyboard's route to About, so it counts as a help click too.
+useKeybindings({ ctrl_alt_o: () => onHelpSelect('about') });
 </script>
 
 <template>
@@ -215,7 +219,7 @@ function onSignOut() {
 		<!-- The full name as a tooltip: always on the rail, on the row only when it is cut. -->
 		<N8nTooltip
 			:disabled="!showNameTooltip"
-			:content="user?.fullName"
+			:content="fullName"
 			placement="right"
 			:show-after="500"
 		>
@@ -231,7 +235,7 @@ function onSignOut() {
 					<button
 						type="button"
 						:class="$style.trigger"
-						:aria-label="isCollapsed ? user?.fullName : undefined"
+						:aria-label="isCollapsed ? fullName : undefined"
 						data-test-id="main-sidebar-account-trigger"
 					>
 						<span :class="$style.avatar">
@@ -243,13 +247,13 @@ function onSignOut() {
 							/>
 							<span
 								v-if="hasUnread"
-								:class="$style.unreadDot"
+								:class="[$style.dot, $style.unreadDot]"
 								data-test-id="main-sidebar-account-unread"
 							/>
 						</span>
 						<template v-if="!isCollapsed">
 							<span ref="nameEl" :class="$style.name" data-test-id="main-sidebar-account-name">{{
-								user?.fullName
+								fullName
 							}}</span>
 							<N8nIcon icon="chevrons-up-down" size="large" :class="$style.chevron" />
 						</template>
@@ -263,7 +267,7 @@ function onSignOut() {
 							<!-- Name at the menu's item size; the email one step down, as a caption. -->
 							<N8nTooltip
 								:disabled="!isHeaderNameTruncated"
-								:content="user?.fullName"
+								:content="fullName"
 								placement="top-start"
 								:show-after="500"
 							>
@@ -272,12 +276,12 @@ function onSignOut() {
 									:class="$style.line"
 									data-test-id="main-sidebar-account-header-name"
 								>
-									<N8nText size="medium" bold color="text-dark">{{ user?.fullName }}</N8nText>
+									<N8nText size="medium" bold color="text-dark">{{ fullName }}</N8nText>
 								</span>
 							</N8nTooltip>
 							<N8nTooltip
 								:disabled="!isHeaderEmailTruncated"
-								:content="user?.email"
+								:content="email"
 								placement="top-start"
 								:show-after="500"
 							>
@@ -286,7 +290,7 @@ function onSignOut() {
 									:class="$style.line"
 									data-test-id="main-sidebar-account-header-email"
 								>
-									<N8nText size="small" color="text-light">{{ user?.email }}</N8nText>
+									<N8nText size="small" color="text-light">{{ email }}</N8nText>
 								</span>
 							</N8nTooltip>
 						</div>
@@ -324,7 +328,7 @@ function onSignOut() {
 							<template #item-trailing="{ ui }">
 								<span
 									v-if="hasUnread"
-									:class="[ui.class, $style.menuDot]"
+									:class="[ui.class, $style.dot]"
 									data-test-id="main-sidebar-account-whats-new-unread"
 								/>
 							</template>
@@ -372,6 +376,7 @@ function onSignOut() {
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/focus';
+@use '@n8n/design-system/css/mixins/utils';
 
 .account {
 	padding: var(--spacing--3xs);
@@ -471,15 +476,18 @@ function onSignOut() {
 	}
 }
 
+.dot {
+	width: var(--spacing--3xs);
+	height: var(--spacing--3xs);
+	border-radius: var(--radius--full);
+	background-color: var(--color--danger);
+}
+
 .unreadDot {
 	position: absolute;
 	// Clips the avatar's corner rather than the column's: the avatar sits 4px inside the box.
 	top: var(--spacing--5xs);
 	right: var(--spacing--5xs);
-	width: var(--spacing--3xs);
-	height: var(--spacing--3xs);
-	border-radius: var(--radius--full);
-	background-color: var(--color--danger);
 	// The ring lifts the dot off the avatar, like a badge on an app icon.
 	box-shadow: 0 0 0 2px var(--menu--color--background);
 
@@ -490,11 +498,9 @@ function onSignOut() {
 }
 
 .name {
+	@include utils.utils-ellipsis;
 	flex: 1;
 	min-width: 0;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 	font-size: var(--font-size--sm);
 	font-weight: var(--font-weight--regular);
 	line-height: var(--font-size--lg);
@@ -508,7 +514,8 @@ function onSignOut() {
 
 /*
  * One fixed width, so the panel does not grow or shrink with the user's name; the header
- * cuts the name instead. Doubled to outrank the menu's own fit-content rule.
+ * cuts the name instead. Doubled to outrank the menu's own fit-content rule. The `width`
+ * prop on the menu is the same value: it caps the Help submenu too.
  */
 .menu.menu {
 	width: var(--spacing--5xl);
@@ -537,10 +544,8 @@ function onSignOut() {
 }
 
 .line {
+	@include utils.utils-ellipsis;
 	display: block;
-	overflow: hidden;
-	white-space: nowrap;
-	text-overflow: ellipsis;
 }
 
 /* Same inset and rhythm as the menu's own item list. */
@@ -560,13 +565,6 @@ function onSignOut() {
 .caption {
 	padding-left: var(--spacing--lg);
 	font-variant-numeric: tabular-nums;
-}
-
-.menuDot {
-	width: var(--spacing--3xs);
-	height: var(--spacing--3xs);
-	border-radius: var(--radius--full);
-	background-color: var(--color--danger);
 }
 
 @media (prefers-reduced-motion: reduce) {

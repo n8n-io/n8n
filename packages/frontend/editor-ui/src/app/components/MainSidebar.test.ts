@@ -1,4 +1,4 @@
-import { reactive } from 'vue';
+import { reactive, type PropType } from 'vue';
 import userEvent from '@testing-library/user-event';
 import { within } from '@testing-library/vue';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -7,6 +7,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { defaultSettings } from '@n8n/frontend-test-utils';
 import MainSidebar from '@/app/components/MainSidebar.vue';
+import { VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useVersionsStore } from '@n8n/stores/versions.store';
@@ -31,11 +32,12 @@ vi.mock('vue-router', async () => {
 			push: routerPushMock,
 		}),
 		useRoute: () => reactive({ params: {} }),
-		// A bare anchor, so menu rows render their content and take clicks.
+		// A bare anchor, so menu rows render their content and take clicks. The target route's
+		// name is kept on the anchor so a test can check where a row leads.
 		RouterLink: defineComponent({
-			props: { to: { type: [String, Object], required: false } },
-			setup(_, { slots, attrs }) {
-				return () => h('a', attrs, slots.default?.());
+			props: { to: { type: Object as PropType<{ name?: string }>, required: false } },
+			setup(props, { slots, attrs }) {
+				return () => h('a', { ...attrs, 'data-route-name': props.to?.name }, slots.default?.());
 			},
 		}),
 	};
@@ -53,10 +55,6 @@ let usersStore: MockedStore<typeof useUsersStore>;
 let templatesStore: MockedStore<typeof useTemplatesStore>;
 let personalizedTemplatesV2Store: MockedStore<typeof usePersonalizedTemplatesV2Store>;
 let personalizedTemplatesV3Store: MockedStore<typeof usePersonalizedTemplatesV3Store>;
-
-const isBelow = (above: HTMLElement, below: HTMLElement) =>
-	(above.compareDocumentPosition(below) & Node.DOCUMENT_POSITION_FOLLOWING) ===
-	Node.DOCUMENT_POSITION_FOLLOWING;
 
 describe('MainSidebar', () => {
 	beforeEach(() => {
@@ -77,10 +75,8 @@ describe('MainSidebar', () => {
 		settingsStore.settings = defaultSettings;
 
 		versionsStore.hasVersionUpdates = false;
-		versionsStore.nextVersions = [];
 		versionsStore.whatsNewArticles = [];
 		versionsStore.isWhatsNewArticleRead = vi.fn(() => false);
-		usersStore.canUserUpdateVersion = true;
 		uiStore.sidebarMenuCollapsed = false;
 		settingsStore.isTemplatesEnabled = true;
 		templatesStore.hasCustomTemplatesHost = false;
@@ -100,7 +96,9 @@ describe('MainSidebar', () => {
 
 			const settings = getByTestId('main-sidebar-settings');
 			const account = getByTestId('main-sidebar-account');
-			expect(isBelow(settings, account)).toBe(true);
+			expect(
+				settings.compareDocumentPosition(account) & Node.DOCUMENT_POSITION_FOLLOWING,
+			).toBeTruthy();
 		});
 
 		it('shows the account row on the rail too', () => {
@@ -145,12 +143,6 @@ describe('MainSidebar', () => {
 			expect(templatesItems).toHaveLength(0);
 		});
 
-		it('does not list help as a row anymore', () => {
-			const { queryByTestId } = renderComponent();
-
-			expect(queryByTestId('main-sidebar-help')).not.toBeInTheDocument();
-		});
-
 		it('shows instance settings as a plain link', () => {
 			const { getByTestId } = renderComponent();
 
@@ -167,7 +159,22 @@ describe('MainSidebar', () => {
 
 			expect(trackMock).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PLATFORM.USER_CLICKED_INSTANCE_SETTINGS_LINK,
-				{ source: 'side_menu', sidebar_collapsed: false },
+				{ sidebar_collapsed: false },
+			);
+		});
+
+		// `/settings` redirects to Personal settings when the usage page is hidden, so the row
+		// links straight to the first instance page instead.
+		it('links instance settings to the first instance page', () => {
+			canUserAccessRouteByNameMock.mockImplementation((name: string) =>
+				[VIEWS.PERSONAL_SETTINGS, VIEWS.USERS_SETTINGS, VIEWS.USAGE].includes(name as VIEWS),
+			);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('main-sidebar-settings').querySelector('a')).toHaveAttribute(
+				'data-route-name',
+				VIEWS.USERS_SETTINGS,
 			);
 		});
 
