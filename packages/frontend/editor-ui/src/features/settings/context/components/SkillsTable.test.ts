@@ -12,7 +12,12 @@ import { useSkillsStore } from '../skills.store';
 const push = vi.fn();
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({ push }),
+	useRouter: () => ({
+		push,
+		resolve: ({ params }: { params: { projectId: string; agentId: string } }) => ({
+			href: `/projects/${params.projectId}/agents/${params.agentId}`,
+		}),
+	}),
 	useRoute: () => ({ params: {}, query: {} }),
 	RouterLink: vi.fn(),
 }));
@@ -54,6 +59,10 @@ async function openActions(row: HTMLElement) {
 }
 
 describe('SkillsTable', () => {
+	afterEach(() => {
+		vi.restoreAllMocks();
+	});
+
 	beforeEach(() => {
 		createTestingPinia({
 			initialState: {
@@ -139,12 +148,20 @@ describe('SkillsTable', () => {
 		const skillsStore = mockedStore(useSkillsStore);
 		skillsStore.fetchSkill.mockResolvedValue({
 			usedBy: {
-				drafts: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1' }],
+				drafts: [
+					{
+						agentId: 'a1',
+						agentName: 'FirstClassDarwin',
+						projectId: 'p1',
+						version: 2,
+						pinned: false,
+					},
+				],
 				pins: [{ agentId: 'a1', agentName: 'FirstClassDarwin', projectId: 'p1', version: 1 }],
 				hiddenAgents: 0,
 			},
 		} as SkillDetail);
-		const { getByTestId, findAllByText } = render([skill({ usedByAgents: 1 })]);
+		const { getByTestId, findAllByText, findByTestId } = render([skill({ usedByAgents: 1 })]);
 
 		expect(getByTestId('skill-agents-trigger')).toHaveTextContent('1');
 		await userEvent.click(getByTestId('skill-agents-trigger'));
@@ -152,6 +169,29 @@ describe('SkillsTable', () => {
 		expect(skillsStore.fetchSkill).toHaveBeenCalledWith('s1');
 		// A draft and a published version of one agent show as one entry.
 		expect(await findAllByText('FirstClassDarwin')).toHaveLength(1);
+		expect(await findByTestId('skill-agents-version')).toHaveTextContent('Latest (v2)');
+	});
+
+	it('shows the pinned version of an agent and opens the agent in a new tab', async () => {
+		const open = vi.spyOn(window, 'open').mockReturnValue(null);
+		const skillsStore = mockedStore(useSkillsStore);
+		skillsStore.fetchSkill.mockResolvedValue({
+			usedBy: {
+				drafts: [
+					{ agentId: 'a1', agentName: 'Pinned bot', projectId: 'p1', version: 3, pinned: true },
+				],
+				pins: [],
+				hiddenAgents: 0,
+			},
+		} as unknown as SkillDetail);
+		const { getByTestId, findByTestId, findByText } = render([skill({ usedByAgents: 1 })]);
+
+		await userEvent.click(getByTestId('skill-agents-trigger'));
+		expect((await findByTestId('skill-agents-version')).textContent?.trim()).toBe('v3');
+		await userEvent.click(await findByText('Pinned bot'));
+
+		expect(open).toHaveBeenCalledWith('/projects/p1/agents/a1', '_blank', 'noopener');
+		expect(push).not.toHaveBeenCalled();
 	});
 
 	it('sorts by name and by last update only', async () => {
@@ -236,5 +276,42 @@ describe('SkillsTable', () => {
 		await userEvent.click(document.querySelector('[data-test-id="action-download"]')!);
 
 		expect(emitted('download')).toEqual([[row]]);
+	});
+
+	it('emits timeline for any skill, also one the user cannot change', async () => {
+		const row = skill({ canEdit: false });
+		const { getByTestId, emitted } = render([row]);
+
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-timeline"]')).toBeInTheDocument(),
+		);
+		await userEvent.click(document.querySelector('[data-test-id="action-timeline"]')!);
+
+		expect(emitted('timeline')).toEqual([[row]]);
+	});
+
+	it('disables Compare versions for a skill with one version and emits it otherwise', async () => {
+		const single = skill({ id: 's1', latestVersion: 1 });
+		const { getByTestId, emitted, unmount } = render([single]);
+		await openActions(getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-compare"]')).toBeInTheDocument(),
+		);
+		expect(document.querySelector('[data-test-id="action-compare"]')).toHaveAttribute(
+			'data-disabled',
+		);
+		unmount();
+
+		const versioned = skill({ id: 's2', latestVersion: 3 });
+		const second = render([versioned]);
+		await openActions(second.getByTestId('skills-table'));
+		await waitFor(() =>
+			expect(document.querySelector('[data-test-id="action-compare"]')).toBeInTheDocument(),
+		);
+		await userEvent.click(document.querySelector('[data-test-id="action-compare"]')!);
+
+		expect(second.emitted('compare')).toEqual([[versioned]]);
+		expect(emitted('compare')).toBeUndefined();
 	});
 });

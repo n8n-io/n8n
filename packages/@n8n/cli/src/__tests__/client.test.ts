@@ -307,6 +307,59 @@ describe('N8nClient packages', () => {
 				'GET https://n8n.example.com/api/v1/promotions/environments?scope=instance&direction=promote&providerId=prov-1',
 			]);
 		});
+
+		describe('repository discovery', () => {
+			it('lists the repositories of a provider with search and limit', async () => {
+				const repository = {
+					id: '42',
+					name: 'flows',
+					fullPath: 'acme/flows',
+					remoteUrl: 'https://gitlab.example.com/acme/flows.git',
+					defaultBranch: 'main',
+				};
+				fetchMock.mockResolvedValue(jsonResponse(200, { data: [repository], nextCursor: null }));
+
+				await expect(
+					client.listPromotionProviderRepositories('prov-1', 'flows', 10),
+				).resolves.toEqual([repository]);
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/providers/prov-1/repositories?search=flows&limit=10',
+				]);
+			});
+
+			it('follows the cursor when a page holds fewer rows than the limit', async () => {
+				// GitLab can return a short page and still have more pages.
+				fetchMock
+					.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: '1' }], nextCursor: 'page-2' }))
+					.mockResolvedValueOnce(jsonResponse(200, { data: [{ id: '2' }], nextCursor: null }));
+
+				await expect(
+					client.listPromotionProviderRepositories('prov-1', undefined, 5),
+				).resolves.toEqual([{ id: '1' }, { id: '2' }]);
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/providers/prov-1/repositories?limit=5',
+					'GET https://n8n.example.com/api/v1/promotions/providers/prov-1/repositories?cursor=page-2&limit=4',
+				]);
+			});
+
+			it('encodes the full path of the repository as one path segment', async () => {
+				const branches = [
+					{ name: 'main', isDefault: true },
+					{ name: 'release', isDefault: false },
+				];
+				fetchMock.mockResolvedValue(jsonResponse(200, { data: branches, nextCursor: null }));
+
+				await expect(
+					client.listPromotionProviderBranches('prov-1', 'acme/platform/flows', 'rel'),
+				).resolves.toEqual(branches);
+
+				expect(requestLines(fetchMock)).toEqual([
+					'GET https://n8n.example.com/api/v1/promotions/providers/prov-1/repositories/acme%2Fplatform%2Fflows/branches?search=rel',
+				]);
+			});
+		});
 	});
 
 	describe('exportPackage', () => {

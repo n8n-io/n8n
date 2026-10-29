@@ -23,7 +23,7 @@ export function createAppScaffold(): AppFiles {
 			'index.html':
 				'<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><div id="app"></div><script type="module" src="/src/main.js"></script></body></html>\n',
 			'vite.config.js':
-				"import { defineConfig } from 'vite';\nimport vue from '@vitejs/plugin-vue';\nexport default defineConfig({ plugins: [vue()], base: './' });\n",
+				"import { defineConfig } from 'vite';\nimport vue from '@vitejs/plugin-vue';\nexport default defineConfig({ plugins: [vue()] });\n",
 			'src/main.js':
 				"import { createApp } from 'vue';\nimport App from './App.vue';\ncreateApp(App).mount('#app');\n",
 			'src/App.vue': '<template><main><h1>Your app</h1></main></template>\n',

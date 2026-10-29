@@ -58,6 +58,7 @@ const activeSkillStatesSchema = z.array(
 		agentName: z.string(),
 		resourceId: z.string(),
 		skillIds: z.array(z.string()),
+		versions: z.record(z.string().nullable()).optional(),
 	}),
 );
 
@@ -164,7 +165,6 @@ function workingMemoryKey(params: {
 
 const PATCH_ONLY_METADATA_KEYS = new Set([
 	'activeSkillStates',
-	'instanceAiIterationLog',
 	'instanceAiTasks',
 	'instanceAiTerminalOutcomes',
 	'instanceAiWorkflowLoop',
@@ -198,11 +198,14 @@ export class TypeORMAgentMemory
 	readonly skillState: RuntimeSkillStateStore = {
 		load: async ({ threadId, resourceId, agentName }) => {
 			const thread = await this.getThread(threadId);
-			return activeSkillStates(thread?.metadata).find(
+			const state = activeSkillStates(thread?.metadata).find(
 				(state) => state.resourceId === resourceId && state.agentName === agentName,
-			)?.skillIds;
+			);
+			return state
+				? { skillIds: state.skillIds, ...(state.versions ? { versions: state.versions } : {}) }
+				: undefined;
 		},
-		save: async ({ threadId, resourceId, agentName }, skillIds) => {
+		save: async ({ threadId, resourceId, agentName }, state) => {
 			const updated = await this.patchThread({
 				threadId,
 				update: (thread) => ({
@@ -212,7 +215,7 @@ export class TypeORMAgentMemory
 							...activeSkillStates(thread.metadata).filter(
 								(state) => state.resourceId !== resourceId || state.agentName !== agentName,
 							),
-							{ resourceId, agentName, skillIds },
+							{ resourceId, agentName, ...state },
 						],
 					},
 				}),
@@ -414,7 +417,7 @@ export class TypeORMAgentMemory
 	/**
 	 * Delete every thread owned by `resourceId` (a user), the sub-agent threads
 	 * spawned under those threads, and all of their working-memory resources.
-	 * Downstream rows (messages, checkpoints, event-log entries, iteration logs,
+	 * Downstream rows (messages, checkpoints, event-log entries, thread tabs,
 	 * grants, pending confirmations, observations) cascade via their `threadId`
 	 * FK; resources have no FK to threads and are removed explicitly. Returns the
 	 * number of owner threads deleted.

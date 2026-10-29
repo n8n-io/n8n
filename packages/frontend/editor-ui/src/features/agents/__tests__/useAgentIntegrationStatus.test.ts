@@ -91,6 +91,37 @@ describe('useAgentIntegrationStatus', () => {
 		expect(status.runtimeErrors.value.telegram).toBe('Credential cred-telegram not found');
 	});
 
+	it('offers the settings of a draft channel without marking it configured', async () => {
+		const settings = { accessMode: 'private' as const, allowedUsers: ['alice'] };
+		apiMocks.getIntegrationStatus.mockResolvedValue({
+			status: 'disconnected',
+			integrations: [],
+			drafts: [{ type: 'telegram', settings }],
+		});
+		const status = useAgentIntegrationStatus(projectId, agentId);
+
+		await status.fetchStatus(['telegram']);
+
+		expect(status.integrationSettings.value.telegram).toEqual(settings);
+		expect(status.isConfigured('telegram')).toBe(false);
+	});
+
+	it('offers draft settings from a configuration seed', () => {
+		const settings = { accessMode: 'private' as const, allowedUsers: ['alice'] };
+
+		syncAgentIntegrationStatusCache(
+			projectId,
+			agentId,
+			['telegram'],
+			[],
+			[{ type: 'telegram', settings }],
+		);
+		const status = useAgentIntegrationStatus(projectId, agentId);
+
+		expect(status.integrationSettings.value.telegram).toEqual(settings);
+		expect(status.isConfigured('telegram')).toBe(false);
+	});
+
 	it('drops a stale runtime error once the channel starts', async () => {
 		const status = useAgentIntegrationStatus(projectId, agentId);
 		apiMocks.getIntegrationStatus.mockResolvedValue({

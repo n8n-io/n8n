@@ -129,6 +129,42 @@ describe('AgentModal', () => {
 		expect(hiddenFooter.find('footer').exists()).toBe(false);
 	});
 
+	it('renders a title suffix and a custom Cancel label', () => {
+		const wrapper = mountModal(
+			{ cancelLabel: 'Close' },
+			{
+				titleSuffix: '<button data-test-id="title-menu">More</button>',
+				footerActions: '<button>Save</button>',
+			},
+		);
+
+		expect(wrapper.find('[data-test-id="title-menu"]').exists()).toBe(true);
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Close');
+		wrapper.unmount();
+	});
+
+	it('renders a side panel beside the body only when one is given', () => {
+		const withPanel = mountModal(
+			{},
+			{ default: '<p>Form</p>', sidePanel: '<p data-test-id="versions">Versions</p>' },
+		);
+		expect(
+			withPanel.find('[data-testid="agent-modal-side-panel"] [data-test-id="versions"]').exists(),
+		).toBe(true);
+		withPanel.unmount();
+
+		const withoutPanel = mountModal({}, { default: '<p>Form</p>' });
+		expect(withoutPanel.find('[data-testid="agent-modal-side-panel"]').exists()).toBe(false);
+		withoutPanel.unmount();
+	});
+
+	it('names the cancel button Cancel by default', () => {
+		const wrapper = mountModal({}, { footerActions: '<button>Save</button>' });
+
+		expect(wrapper.findAll('footer button').map((button) => button.text())).toContain('Cancel');
+		wrapper.unmount();
+	});
+
 	it('preserves inferred footer visibility through the multi-step shell', () => {
 		const wrapper = mount(AgentModalMultiStep, {
 			props: {

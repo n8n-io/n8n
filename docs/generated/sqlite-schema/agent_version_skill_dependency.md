@@ -58,6 +58,8 @@ erDiagram
   varchar_36_ agentId FK
   varchar_255_ author
   datetime_3_ createdAt
+  TEXT description
+  TEXT name
   varchar publishedById FK
   TEXT schema
   TEXT skills
@@ -86,6 +88,7 @@ erDiagram
   TEXT instructions
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_255_ sourceRevision
   datetime_3_ updatedAt
   INTEGER version
 }

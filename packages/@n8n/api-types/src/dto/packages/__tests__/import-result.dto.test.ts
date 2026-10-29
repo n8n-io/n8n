@@ -6,7 +6,6 @@ describe('ImportResultDto', () => {
 			package: {
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'source-1',
-				exportedAt: '2024-01-01T00:00:00.000Z',
 			},
 			agents: [
 				{
@@ -16,7 +15,16 @@ describe('ImportResultDto', () => {
 					projectId: 'proj-1',
 					activeVersionId: null,
 					status: 'created',
-					publishing: { state: 'failed', error: 'Not ready' },
+					publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+					channels: [
+						{ type: 'slack', status: 'reused' },
+						{
+							type: 'telegram',
+							status: 'setup-required',
+							reason: 'new-channel',
+							setupUrl: 'https://n8n.example.com/projects/proj-1/agents/agent-local',
+						},
+					],
 					schema: { instructions: 'Private instructions' },
 					skills: {},
 					tools: {},
@@ -92,7 +100,16 @@ describe('ImportResultDto', () => {
 				projectId: 'proj-1',
 				activeVersionId: null,
 				status: 'created',
-				publishing: { state: 'failed', error: 'Not ready' },
+				publishing: { state: 'blocked', blockedReason: 'channel-setup-required' },
+				channels: [
+					{ type: 'slack', status: 'reused' },
+					{
+						type: 'telegram',
+						status: 'setup-required',
+						reason: 'new-channel',
+						setupUrl: 'https://n8n.example.com/projects/proj-1/agents/agent-local',
+					},
+				],
 			});
 		}
 	});
@@ -102,7 +119,6 @@ describe('ImportResultDto', () => {
 			package: {
 				sourceN8nVersion: '1.0.0',
 				sourceId: 'source-1',
-				exportedAt: '2024-01-01T00:00:00.000Z',
 			},
 			agents: [],
 			counts: { agents: { created: 0, updated: 0, skipped: 0 } },

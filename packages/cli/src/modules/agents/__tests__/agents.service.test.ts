@@ -1,3 +1,4 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
 import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
@@ -161,6 +162,7 @@ function makeService() {
 		saveCompletion,
 		setupCompletion,
 		n8nChatFlag,
+		mock<AgentDefinitionService>(),
 	);
 
 	return {
@@ -525,7 +527,7 @@ describe('AgentsService', () => {
 			{ type: 'skill' as const, id: 'alpha' },
 			{ type: 'skill' as const, id: 'mid' },
 		];
-		// Refs to skills that are in the hub stay, also without a user.
+		// Refs to skills that are in the skills module stay, also without a user.
 		const skill = { name: 'Skill', description: 'A skill', instructions: 'Do it.' };
 		refsService.bodies = { zeta: skill, alpha: skill, mid: skill };
 

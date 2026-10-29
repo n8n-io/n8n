@@ -62,7 +62,7 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 		loading.value = false;
 	}
 
-	async function refreshDetail() {
+	async function refreshDetail(beforeShow?: (result: SelfHealingResultDetail) => Promise<void>) {
 		const target = selection.value;
 		if (!target) return;
 
@@ -72,6 +72,7 @@ export const useSelfHealingResultStore = defineStore('selfHealingResultDetail', 
 
 		try {
 			const result = await fetchSelfHealingResult(rootStore.restApiContext, target);
+			if (requestSequence === detailRequestSequence) await beforeShow?.(result);
 
 			if (requestSequence === detailRequestSequence) {
 				detail.value = result;

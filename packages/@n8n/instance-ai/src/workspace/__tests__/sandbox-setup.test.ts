@@ -2,7 +2,6 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 	() => ({
 		packWorkspaceSdkMockState: {
 			isEnabled: false,
-			packWorkspaceSdk: vi.fn(),
 			packSandboxLinkedWorkspacePackages: vi.fn(),
 		},
 		resolveMockWorkspaceRoot: async (workspace: {
@@ -34,7 +33,6 @@ const { packWorkspaceSdkMockState, resolveMockWorkspaceRoot, sandboxFsMockState 
 
 vi.mock('../pack-workspace-sdk', () => ({
 	isLinkWorkspaceSdkEnabled: () => packWorkspaceSdkMockState.isEnabled,
-	packWorkspaceSdk: packWorkspaceSdkMockState.packWorkspaceSdk,
 	packSandboxLinkedWorkspacePackages: packWorkspaceSdkMockState.packSandboxLinkedWorkspacePackages,
 }));
 
@@ -63,6 +61,10 @@ vi.mock('../sandbox-fs', () => ({
 }));
 
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { execFileSync } from 'node:child_process';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 
@@ -192,7 +194,6 @@ function loadSetupSandboxWorkspaceWithFsMocks(
 	readFileViaSandbox: ReadFileViaSandboxMock,
 ): SetupSandboxWorkspace {
 	packWorkspaceSdkMockState.isEnabled = false;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	sandboxFsMockState.runInSandbox = runInSandbox;
 	sandboxFsMockState.readFileViaSandbox = readFileViaSandbox;
 	return setupSandboxWorkspace;
@@ -233,7 +234,6 @@ async function loadSandboxPackageJson(linkSdk: boolean): Promise<{
 	// is re-evaluated. Using `await import` (rather than `vi.importActual`) keeps the
 	// module-cache interaction consistent with the doMock-based loaders above.
 	packWorkspaceSdkMockState.isEnabled = linkSdk;
-	packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	vi.doUnmock('../sandbox-fs');
 	vi.resetModules();
 	if (linkSdk) {
@@ -257,7 +257,6 @@ describe('PACKAGE_JSON', () => {
 	afterEach(() => {
 		vi.resetModules();
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		restoreLinkWorkspaceSdkEnv(originalLinkSdk);
 	});
 
@@ -277,6 +276,85 @@ describe('PACKAGE_JSON', () => {
 		expect(packageJson.dependencies.typescript).toBe('7.0.2');
 	});
 });
+describe('BUILD_MJS', () => {
+	let dir: string;
+
+	beforeEach(async () => {
+		dir = await mkdtemp(join(tmpdir(), 'instance-ai-build-mjs-'));
+		const sdkDir = join(dir, 'node_modules', '@n8n', 'workflow-sdk');
+		await mkdir(sdkDir, { recursive: true });
+		await writeFile(
+			join(sdkDir, 'package.json'),
+			JSON.stringify({ name: '@n8n/workflow-sdk', type: 'module', exports: './index.js' }),
+		);
+		await writeFile(join(dir, 'workflow.mjs'), WORKFLOW_STUB);
+	});
+
+	afterEach(async () => {
+		await rm(dir, { recursive: true, force: true });
+	});
+
+	const WORKFLOW_STUB = `export default {
+  validate: () => ({ errors: [], warnings: [{ code: 'GRAPH', message: 'graph warning', severity: 'warning' }] }),
+  toJSON: () => ({ name: 'wf', nodes: [], connections: {} }),
+};
+`;
+
+	async function runBuild(sdkSource: string): Promise<{ success: boolean; warnings: unknown[] }> {
+		await writeFile(join(dir, 'node_modules', '@n8n', 'workflow-sdk', 'index.js'), sdkSource);
+		vi.resetModules();
+		const { BUILD_MJS } = await import('../sandbox-setup.js');
+		await writeFile(join(dir, 'build.mjs'), BUILD_MJS);
+		const stdout = execFileSync(process.execPath, ['build.mjs', join(dir, 'workflow.mjs')], {
+			cwd: dir,
+			encoding: 'utf8',
+		});
+		return jsonParse<{ success: boolean; warnings: unknown[] }>(stdout);
+	}
+
+	it('should report SDK source lint findings with the build warnings', async () => {
+		const result = await runBuild(`export function validateWorkflowBuilder(wf, options) {
+  if (!options.lint || !options.source.includes('export default')) throw new Error('bad options');
+  return { lint: [
+    { code: 'JS_LINT', message: 'js finding', line: 3, nodeName: 'Code', parameterPath: 'jsCode', severity: 'informational', lintTarget: 'jsCode' },
+    { code: 'PY_LINT', message: 'py finding', nodeName: 'Py', severity: 'informational', lintTarget: 'pythonCode' },
+    { code: 'SDK_LINT', message: 'sdk finding', severity: 'informational' },
+  ] };
+}
+`);
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toEqual([
+			{ code: 'GRAPH', message: 'graph warning', severity: 'warning' },
+			{
+				code: 'JS_LINT',
+				message: 'line 3: js finding',
+				nodeName: 'Code',
+				parameterPath: 'jsCode',
+				severity: 'informational',
+			},
+			{
+				code: 'SDK_LINT',
+				message: 'sdk finding',
+				nodeName: null,
+				parameterPath: null,
+				severity: 'informational',
+			},
+		]);
+	});
+
+	it('should still succeed when the SDK source lint throws', async () => {
+		const result = await runBuild(
+			"export function validateWorkflowBuilder() { throw new Error('lint crashed'); }\n",
+		);
+
+		expect(result.success).toBe(true);
+		expect(result.warnings).toEqual([
+			{ code: 'GRAPH', message: 'graph warning', severity: 'warning' },
+		]);
+	});
+});
+
 /** npm install commands issued, ignoring how cwd/options were passed. */
 function installCommandsFrom(runInSandbox: RunInSandboxMock): string[] {
 	return runInSandbox.mock.calls
@@ -289,7 +367,6 @@ describe('setupSandboxWorkspace', () => {
 		vi.doUnmock('../sandbox-fs');
 		vi.resetModules();
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 	});
 
 	it('writes the initialized marker only after workspace files and npm install succeed', async () => {
@@ -1014,7 +1091,6 @@ describe('formatNodeCatalogLine', () => {
 	beforeAll(async () => {
 		vi.doUnmock('../sandbox-fs');
 		packWorkspaceSdkMockState.isEnabled = false;
-		packWorkspaceSdkMockState.packWorkspaceSdk.mockReset();
 		vi.resetModules();
 		({ formatNodeCatalogLine } = await import('../sandbox-setup.js'));
 	});
