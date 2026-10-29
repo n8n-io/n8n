@@ -14,8 +14,8 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
-import { RedisExecutionResponseSender } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
-import type { RedisResponsePublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
+import { ExecutionResponseChannelSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
+import type { RedisChannelPublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
 import { PostHogClient } from '@/posthog';
@@ -40,7 +40,7 @@ const objectStoreService = mockInstance(ObjectStoreService);
 // Mocked so the tests do not depend on the storage env of the machine.
 const objectStoreConfig = mockInstance(ObjectStoreConfig, { bucket: { name: '', region: '' } });
 const azureBlobConfig = mockInstance(AzureBlobConfig, { containerName: '' });
-const publisher = mock<RedisResponsePublisher>();
+const publisher = mock<RedisChannelPublisher>();
 const redisClientService = mockInstance(RedisClientService, {
 	toValidPrefix: (prefix: string) => prefix,
 	createClient: vi.fn(() => publisher) as unknown as RedisClientService['createClient'],
@@ -188,7 +188,7 @@ describe('Engine', () => {
 			await createEngine().init();
 
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
-			expect(runtime.init).toHaveBeenCalledWith(expect.any(RedisExecutionResponseSender));
+			expect(runtime.init).toHaveBeenCalledWith(expect.any(ExecutionResponseChannelSender));
 		});
 
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {

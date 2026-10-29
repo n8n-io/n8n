@@ -3,14 +3,15 @@ import type { ExecutionResponse, ExecutionResponseSender } from '@n8n/engine';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from 'n8n-workflow';
 
+import type { ExecutionChannelPublisher } from './execution-channel';
 import { serializeExecutionResponse } from './execution-response-frame';
-import type { InMemoryExecutionResponseChannel } from './in-memory-execution-response-channel';
 
-export class InMemoryExecutionResponseSender implements ExecutionResponseSender {
+/** Sends execution responses on the `responses` topic of the execution channel. */
+export class ExecutionResponseChannelSender implements ExecutionResponseSender {
 	private stopped = false;
 
 	constructor(
-		private readonly channel: InMemoryExecutionResponseChannel,
+		private readonly publisher: ExecutionChannelPublisher,
 		private readonly logger: Logger,
 		private readonly maxFrameBytes?: number,
 	) {}
@@ -21,11 +22,12 @@ export class InMemoryExecutionResponseSender implements ExecutionResponseSender 
 		}
 
 		const frameResult = serializeExecutionResponse(response, this.logger, this.maxFrameBytes);
-		this.channel.publish(response.executionId, frameResult.frame);
+		this.publisher.publish('responses', response.executionId, frameResult.frame);
 
 		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
 	}
 
+	/** Stops sending. The owner of the publisher releases its connection. */
 	async stop(): Promise<void> {
 		this.stopped = true;
 	}

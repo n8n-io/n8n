@@ -2,12 +2,12 @@ import { AzureBlobConfig, ObjectStoreConfig } from '@n8n/blob-storage';
 import { EngineConfig } from '@n8n/config';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { ExecutionResponseSender } from '@n8n/engine';
 import { BinaryDataConfig, BinaryDataService, ErrorReporter } from 'n8n-core';
 import { Expression, UserError } from 'n8n-workflow';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
+import type { ExecutionChannelPublisher } from '@/modules/engine-v2/response-channel/execution-channel';
 
 import { BaseCommand } from './base-command';
 
@@ -29,7 +29,7 @@ export class Engine extends BaseCommand {
 
 	private runtime?: EngineV2Runtime;
 
-	private responseSender?: ExecutionResponseSender;
+	private channelPublisher?: ExecutionChannelPublisher;
 
 	async init() {
 		// The guards below run before `super.init()` wires the reporter, and the
@@ -45,15 +45,19 @@ export class Engine extends BaseCommand {
 
 		await this.initBinaryDataStore();
 
-		// The control plane runs in another process, so responses travel over Redis.
-		const { createRedisExecutionResponseSender } = await import(
+		// The control plane runs in another process, so the execution channel uses Redis.
+		const logger = this.logger.scoped('engine-v2');
+		const { createRedisExecutionChannelPublisher } = await import(
 			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
 		);
-		this.responseSender = await createRedisExecutionResponseSender(this.logger.scoped('engine-v2'));
+		const { ExecutionResponseChannelSender } = await import(
+			'@/modules/engine-v2/response-channel/in-memory-execution-response-sender.js'
+		);
+		this.channelPublisher = await createRedisExecutionChannelPublisher(logger);
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
-		await this.runtime.init(this.responseSender);
+		await this.runtime.init(new ExecutionResponseChannelSender(this.channelPublisher, logger));
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
@@ -112,7 +116,7 @@ export class Engine extends BaseCommand {
 				await this.runtime?.shutdown();
 			} finally {
 				// After the engine, so a final response still has somewhere to go.
-				await this.responseSender?.stop();
+				await this.channelPublisher?.stop();
 			}
 			await Expression.disposeExpressionEngine();
 		} catch (error) {

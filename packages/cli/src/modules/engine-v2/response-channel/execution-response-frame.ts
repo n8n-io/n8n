@@ -7,7 +7,7 @@ import {
 import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from 'n8n-workflow';
 
-/** A response channel must be able to carry every frame this module produces. */
+/** An execution channel must be able to carry every frame this module produces. */
 const MAX_FRAME_BYTES = 5 * 1024 * 1024;
 
 export type FrameResult = { ok: true; frame: string } | { ok: false; frame: string; error: Error };
