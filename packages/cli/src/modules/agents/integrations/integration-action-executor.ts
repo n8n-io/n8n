@@ -447,9 +447,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		return await postWithFileGroups(
 			async (postable) => await target.post(postable),
 			await this.toPostable(params.descriptor, message, params),
-			files.length > 0
-				? await this.outboundFiles.load(params.descriptor.integration.type, files)
-				: [],
+			files.length > 0 ? this.outboundFiles.groups(params.descriptor.integration.type, files) : [],
 			captionLimits(this.integrationRegistry.get(params.descriptor.integration.type)),
 		);
 	}

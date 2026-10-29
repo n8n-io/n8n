@@ -34,6 +34,9 @@ export type OutboundPostable =
 	| PostableMarkdown
 	| (PostableCard & { attachments?: Attachment[] });
 
+/** Loads the files of one message. Only one group is in memory at a time. */
+export type OutboundFileGroup = () => Promise<OutboundFileFields>;
+
 /**
  * Post a message with its files, one message for each file group. The text
  * or card goes with the first group. Text longer than `maxCaptionLength` is
@@ -43,11 +46,11 @@ export type OutboundPostable =
 export async function postWithFileGroups<T>(
 	post: (message: OutboundPostable) => Promise<T>,
 	message: OutboundPostable,
-	groups: OutboundFileFields[],
+	groups: OutboundFileGroup[],
 	limits: { maxCaptionLength?: number; maxMessageLength?: number } = {},
 ): Promise<T> {
-	const [firstGroup, ...otherGroups] = groups;
-	if (!firstGroup) return await post(message);
+	const [loadFirstGroup, ...otherGroups] = groups;
+	if (!loadFirstGroup) return await post(message);
 	const text = postableText(message);
 	const { maxCaptionLength, maxMessageLength } = limits;
 	if (maxCaptionLength !== undefined && text !== undefined && text.length > maxCaptionLength) {
@@ -57,14 +60,15 @@ export async function postWithFileGroups<T>(
 			const sent = await post(withText(message, part));
 			first ??= sent;
 		}
-		const firstFiles = await post({ raw: '', ...firstGroup });
-		for (const group of otherGroups) await post({ raw: '', ...group });
+		const firstFiles = await post({ raw: '', ...(await loadFirstGroup()) });
+		for (const loadGroup of otherGroups) await post({ raw: '', ...(await loadGroup()) });
 		return first ?? firstFiles;
 	}
+	const firstGroup = await loadFirstGroup();
 	const first = await post(
 		typeof message === 'string' ? { raw: message, ...firstGroup } : { ...message, ...firstGroup },
 	);
-	for (const group of otherGroups) await post({ raw: '', ...group });
+	for (const loadGroup of otherGroups) await post({ raw: '', ...(await loadGroup()) });
 	return first;
 }
 
@@ -142,40 +146,50 @@ export class AgentOutboundFiles {
 			}
 			attachments.push(attachment);
 		}
+		const messages = this.group(platform, attachments).length;
+		if (messages > MAX_FILE_MESSAGES_PER_SEND) {
+			return integrationError(
+				INTEGRATION_ERROR_CODES.FILE_UPLOAD_LIMIT_EXCEEDED,
+				`The ${platform} integration needs ${messages} messages for these files, and one action sends files in up to ${MAX_FILE_MESSAGES_PER_SEND} messages. Send the other files with another action.`,
+			);
+		}
 		return attachments;
 	}
 
-	/**
-	 * Load checked files and split them into the groups that the platform can
-	 * send in one message. Each group has the post fields of the platform.
-	 */
-	async load(platform: string, attachments: AgentChatAttachment[]): Promise<OutboundFileFields[]> {
+	/** Split files into the groups that the platform can send in one message. */
+	private group(platform: string, attachments: AgentChatAttachment[]): AgentChatAttachment[][] {
 		const integration = this.integrationRegistry.get(platform);
 		const maxFiles = integration?.fileUploadLimits?.maxFiles ?? attachments.length;
-		const groups = (integration?.groupOutboundFiles?.(attachments) ?? [attachments]).flatMap(
-			(group) => chunk(group, maxFiles),
+		return (integration?.groupOutboundFiles?.(attachments) ?? [attachments]).flatMap((group) =>
+			chunk(group, maxFiles),
 		);
-		return await Promise.all(
-			groups.map(async (group) => {
-				// Each file is loaded into memory. MAX_CHANNEL_SEND_FILE_BYTES caps the size.
-				const files = await Promise.all(
-					group.map(async (attachment) => ({
-						data: await this.attachmentService.getBuffer(attachment),
-						filename: attachment.fileName,
-						mimeType: attachment.mimeType,
-					})),
-				);
-				if (!integration?.sendFilesAsAttachments) return { files };
-				return {
-					attachments: files.map((file) => ({
-						type: fileAttachmentType(file.mimeType),
-						data: file.data,
-						name: file.filename,
-						mimeType: file.mimeType,
-					})),
-				};
-			}),
-		);
+	}
+
+	/**
+	 * Split checked files into the groups that the platform can send in one
+	 * message. Each group loads its files only when it is posted.
+	 */
+	groups(platform: string, attachments: AgentChatAttachment[]): OutboundFileGroup[] {
+		const integration = this.integrationRegistry.get(platform);
+		return this.group(platform, attachments).map((group) => async () => {
+			// Each file is loaded into memory. MAX_CHANNEL_SEND_FILE_BYTES caps the size.
+			const files = await Promise.all(
+				group.map(async (attachment) => ({
+					data: await this.attachmentService.getBuffer(attachment),
+					filename: attachment.fileName,
+					mimeType: attachment.mimeType,
+				})),
+			);
+			if (!integration?.sendFilesAsAttachments) return { files };
+			return {
+				attachments: files.map((file) => ({
+					type: fileAttachmentType(file.mimeType),
+					data: file.data,
+					name: file.filename,
+					mimeType: file.mimeType,
+				})),
+			};
+		});
 	}
 
 	/**
@@ -189,12 +203,11 @@ export class AgentOutboundFiles {
 	): Promise<void> {
 		const checked = await this.check(platform, params.fileIds, params.scope);
 		if (!Array.isArray(checked)) throw new OperationalError(checked.error.message);
-		const groups = await this.load(platform, checked);
 		const caption: PostableMarkdown = { markdown: params.caption };
 		await postWithFileGroups(
 			async (message) => await thread.post(message),
 			caption,
-			groups,
+			this.groups(platform, checked),
 			captionLimits(this.integrationRegistry.get(platform)),
 		);
 	}

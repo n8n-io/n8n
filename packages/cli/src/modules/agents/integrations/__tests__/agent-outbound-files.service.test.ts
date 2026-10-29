@@ -200,4 +200,44 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 			],
 		});
 	});
+
+	it('loads the files of a group only when the group is posted', async () => {
+		const { service, attachmentService, thread } = createService();
+		const events: string[] = [];
+		attachmentService.getBuffer.mockImplementation(async (attachment) => {
+			events.push(`load ${attachment.fileName}`);
+			return Buffer.from('png');
+		});
+		thread.post.mockImplementation(async () => {
+			events.push('post');
+			return mock();
+		});
+
+		await service.postReplyFiles(thread, 'telegram', {
+			fileIds: ['file-1', 'doc-1'],
+			caption: 'Here are your files.',
+			scope,
+		});
+
+		expect(events).toEqual(['load chart.png', 'post', 'load doc-1.pdf', 'post']);
+	});
+});
+
+describe('AgentOutboundFiles.check', () => {
+	it('returns a limit error when the platform needs too many messages for the files', async () => {
+		const { service, attachmentService } = createService();
+		// 21 images need 3 Telegram media groups, and the PDF needs a 4th message.
+		const fileIds = [...Array.from({ length: 21 }, (_, index) => `img-${index}`), 'doc-1'];
+
+		const result = await service.check('telegram', fileIds, scope);
+
+		expect(result).toEqual({
+			ok: false,
+			error: expect.objectContaining({
+				code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+				message: expect.stringContaining('needs 4 messages'),
+			}),
+		});
+		expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+	});
 });
