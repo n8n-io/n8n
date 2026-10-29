@@ -6,9 +6,11 @@ import type { Scenario, ScenarioManifest } from '@/types/scenario';
 
 export class ScenarioLoader {
 	/**
-	 * Loads all scenarios from the given path
+	 * Loads all scenarios from the given path. Skips the scenarios whose folder
+	 * name is in `exclude`.
 	 */
-	loadAll(pathToScenarios: string, filter?: string): Scenario[] {
+	loadAll(pathToScenarios: string, filter?: string, exclude: string[] = []): Scenario[] {
+		const excluded = new Set(exclude.map((name) => name.toLowerCase()));
 		pathToScenarios = path.resolve(pathToScenarios);
 		const scenarioFolders = fs
 			.readdirSync(pathToScenarios, { withFileTypes: true })
@@ -19,6 +21,9 @@ export class ScenarioLoader {
 
 		for (const folder of scenarioFolders) {
 			if (filter && folder.toLowerCase() !== filter.toLowerCase()) {
+				continue;
+			}
+			if (excluded.has(folder.toLowerCase())) {
 				continue;
 			}
 			const scenarioPath = path.join(pathToScenarios, folder);

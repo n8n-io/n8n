@@ -2,6 +2,8 @@ import { Command, Flags } from '@oclif/core';
 
 import { testScenariosPath } from '@/config/common-flags';
 import { N8nApiClient } from '@/n8n-api-client/n8n-api-client';
+import type { WorkflowEngineType } from '@/n8n-api-client/n8n-api-client.types';
+import { WORKFLOW_ENGINE_TYPES } from '@/n8n-api-client/n8n-api-client.types';
 import { ScenarioDataFileLoader } from '@/scenario/scenario-data-loader';
 import { ScenarioLoader } from '@/scenario/scenario-loader';
 import type { K6Tag } from '@/test-execution/k6-executor';
@@ -16,6 +18,16 @@ export default class RunCommand extends Command {
 		scenarioFilter: Flags.string({
 			char: 'f',
 			description: 'Filter scenarios by name',
+		}),
+		scenarioExclude: Flags.string({
+			description: 'Comma separated list of scenario names to skip',
+			env: 'BENCHMARK_SCENARIO_EXCLUDE',
+		}),
+		engineType: Flags.string({
+			description:
+				'Execution engine of the imported workflows. When not set, the workflow settings are used',
+			options: [...WORKFLOW_ENGINE_TYPES],
+			env: 'BENCHMARK_ENGINE_TYPE',
 		}),
 		scenarioNamePrefix: Flags.string({
 			description: 'Prefix for the scenario name',
@@ -119,11 +131,24 @@ export default class RunCommand extends Command {
 				password: flags.n8nUserPassword,
 			},
 			flags.scenarioNamePrefix,
+			this.parseEngineType(flags.engineType),
 		);
 
-		const allScenarios = scenarioLoader.loadAll(flags.testScenariosPath, flags.scenarioFilter);
+		const excludedScenarios = (flags.scenarioExclude ?? '')
+			.split(',')
+			.map((name) => name.trim())
+			.filter(Boolean);
+		const allScenarios = scenarioLoader.loadAll(
+			flags.testScenariosPath,
+			flags.scenarioFilter,
+			excludedScenarios,
+		);
 
 		await scenarioRunner.runManyScenarios(allScenarios);
+	}
+
+	private parseEngineType(engineType: string | undefined): WorkflowEngineType | undefined {
+		return WORKFLOW_ENGINE_TYPES.find((type) => type === engineType);
 	}
 
 	private async parseTags(): Promise<K6Tag[]> {
