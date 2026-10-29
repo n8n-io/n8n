@@ -14,8 +14,7 @@ export const TOOL_CALL_PART_TYPES: readonly string[] = [
 const ASK_USER_TOOL_NAME = SHARED_BUILDER_TOOL_NAMES.ASK_USER;
 
 // Rows stored before the rename carry the former tool name.
-const LEGACY_ASK_USER_TOOL_NAMES: readonly string[] =
-	getLegacyBuilderToolNames(ASK_USER_TOOL_NAME);
+const LEGACY_ASK_USER_TOOL_NAMES: readonly string[] = getLegacyBuilderToolNames(ASK_USER_TOOL_NAME);
 
 export const ASK_USER_TOOL_NAMES: readonly string[] = [
 	ASK_USER_TOOL_NAME,
