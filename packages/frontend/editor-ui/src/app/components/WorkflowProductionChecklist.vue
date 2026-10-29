@@ -250,13 +250,7 @@ async function handleActionClick(actionId: string) {
 }
 
 function isValidAction(action: string): action is ActionType {
-	return [
-		'evaluations',
-		'errorWorkflow',
-		'timeSaved',
-		'workflow-mcp-access',
-		'instance-mcp-access',
-	].includes(action);
+	return actionTypes.some((type) => type === action);
 }
 
 async function handleIgnoreClick(actionId: string) {

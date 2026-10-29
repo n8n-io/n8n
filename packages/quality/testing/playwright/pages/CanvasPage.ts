@@ -489,6 +489,27 @@ export class CanvasPage extends BasePage {
 		await this.getProductionChecklistActionItem().nth(index).getByTitle('Ignore').click();
 	}
 
+	/** Records whether the checklist shows at any time from the next page load on, also if it closes again. */
+	async trackProductionChecklistOpens(): Promise<void> {
+		await this.page.addInitScript(() => {
+			const state = window as Window & { productionChecklistOpened?: boolean };
+			state.productionChecklistOpened = false;
+			new MutationObserver(() => {
+				if (document.querySelector('[data-test-id="suggested-action-item"]')) {
+					state.productionChecklistOpened = true;
+				}
+			}).observe(document, { childList: true, subtree: true });
+		});
+	}
+
+	async wasProductionChecklistOpened(): Promise<boolean> {
+		return await this.page.evaluate(
+			() =>
+				(window as Window & { productionChecklistOpened?: boolean }).productionChecklistOpened ===
+				true,
+		);
+	}
+
 	async waitForPublicationStatusResponse(): Promise<void> {
 		await this.page.waitForResponse(
 			(response) =>

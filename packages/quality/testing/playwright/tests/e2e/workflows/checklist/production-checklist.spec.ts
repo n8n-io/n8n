@@ -119,6 +119,7 @@ test.describe(
 			await n8n.canvas.closeProductionChecklist();
 			await expect(n8n.canvas.getProductionChecklistPopover()).toBeHidden();
 
+			await n8n.canvas.trackProductionChecklistOpens();
 			const publicationStatusLoaded = n8n.canvas.waitForPublicationStatusResponse();
 			await n8n.page.reload();
 			await publicationStatusLoaded;
@@ -127,7 +128,8 @@ test.describe(
 			// needs the cache too, so once it shows, the auto-open has made its decision.
 			await n8n.canvas.clickWorkflowMenu();
 			await expect(n8n.canvas.getProductionChecklistMenuItem()).toBeVisible();
-			await expect(n8n.canvas.getErrorActionItem()).toBeHidden();
+			// Opening the menu closes the checklist, so check whether it showed at any time
+			expect(await n8n.canvas.wasProductionChecklistOpened()).toBe(false);
 		});
 
 		test('should allow ignoring individual actions', async ({ n8n }) => {
