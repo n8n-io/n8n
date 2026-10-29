@@ -5,6 +5,7 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { bridgeMessageSchema, type BridgeMessage } from './bridge-messages';
+import { toTransferSafeItems, type TransferSafeValue } from './transfer-safe';
 
 // Lazy-loaded isolated-vm — avoids loading the native binary when the barrel
 // file is statically imported (e.g. for error classes). The native module is
@@ -98,6 +99,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private disposed = false;
 	private config: Required<BridgeConfig>;
 	private logger: Required<BridgeConfig>['logger'];
+	private transferSafeCache = { scope: '', items: new WeakMap<object, TransferSafeValue>() };
 
 	constructor(config: BridgeConfig = {}) {
 		this.config = {
@@ -342,10 +344,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					};
 				}
 
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
+				// Dates have no enumerable own keys; copy instead of marshaling as
+				// an empty object. Copying also covers vm2 Date proxies, which
+				// can't be transferred.
 				if (value instanceof Date) {
-					return value;
+					return new Date(value.getTime());
 				}
 
 				// Handle objects - return metadata with keys
@@ -419,10 +422,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 					return undefined;
 				}
 
-				// Dates have no enumerable own keys; pass through instead of
-				// marshaling as an empty object.
+				// Dates have no enumerable own keys; copy instead of marshaling as
+				// an empty object. Copying also covers vm2 Date proxies, which
+				// can't be transferred.
 				if (element instanceof Date) {
-					return element;
+					return new Date(element.getTime());
 				}
 
 				// If element is object/array, return metadata
@@ -475,8 +479,8 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * @param data - Current workflow data
 	 * @private
 	 */
-	private createCallHostRef(data: WorkflowData): ivm.Callback {
-		return new (getIvm().Callback)((rawMsg: unknown) => {
+	private createCallHost(data: WorkflowData): (rawMsg: unknown) => unknown {
+		return (rawMsg: unknown) => {
 			try {
 				const msg = bridgeMessageSchema.parse(rawMsg);
 				switch (msg.type) {
@@ -519,7 +523,38 @@ export class IsolatedVmBridge implements RuntimeBridge {
 			} catch (err) {
 				return serializeError(err);
 			}
-		});
+		};
+	}
+
+	/**
+	 * Fallback for item RPCs whose result structured clone rejects, for
+	 * example items from the legacy Code node (vm2 proxies). Runs the same
+	 * RPC again and rebuilds the result with `toTransferSafeItems`.
+	 *
+	 * Rebuilt items are cached for one node run, so that `$('Foo').all()`,
+	 * evaluated once per item, doesn't rebuild every item each time.
+	 *
+	 * @private
+	 */
+	private createCallHostTransferSafe(data: WorkflowData): (rawMsg: unknown) => unknown {
+		const callHost = this.createCallHost(data);
+		return (rawMsg: unknown) => {
+			const result = callHost(rawMsg);
+			if (isErrorSentinel(result)) return result;
+			try {
+				return toTransferSafeItems(result, this.getTransferSafeCache(data));
+			} catch (err) {
+				return serializeError(err);
+			}
+		};
+	}
+
+	private getTransferSafeCache(data: WorkflowData): WeakMap<object, TransferSafeValue> {
+		const scope = `${String(data.$nodeId)}:${String(data.$runIndex)}`;
+		if (this.transferSafeCache.scope !== scope) {
+			this.transferSafeCache = { scope, items: new WeakMap() };
+		}
+		return this.transferSafeCache.items;
 	}
 
 	/**
@@ -705,9 +740,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 * Execute JavaScript code in the isolated context.
 	 *
 	 * Flow:
-	 * 1. Create three ivm.Callback instances scoped to the current data:
-	 *    `getValueAtPath`, `getArrayElement`, `callHost`.
-	 * 2. Use evalClosureSync to run the code in a closure where `$0`/`$1`/`$2`
+	 * 1. Create four ivm.Callback instances scoped to the current data:
+	 *    `getValueAtPath`, `getArrayElement`, `callHost`, `callHostTransferSafe`.
+	 * 2. Use evalClosureSync to run the code in a closure where `$0`…`$3`
 	 *    are the callback references — no global mutable state.
 	 * 3. buildContext() inside the isolate creates a fresh evaluation context
 	 *    from the closure-scoped references.
@@ -731,7 +766,9 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// release() to call in `finally`.
 		const getValueAtPath = this.createGetValueAtPathRef(data);
 		const getArrayElement = this.createGetArrayElementRef(data);
-		const callHost = this.createCallHostRef(data);
+		const Callback = getIvm().Callback;
+		const callHost = new Callback(this.createCallHost(data));
+		const callHostTransferSafe = new Callback(this.createCallHostTransferSafe(data));
 
 		try {
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
@@ -752,6 +789,7 @@ var __ctx = buildContext({
   getValueAtPath: $0,
   getArrayElement: $1,
   callHost: $2,
+  callHostTransferSafe: $3,
 }, ${timezone});
 try {
   var __result = (function() {
@@ -776,7 +814,7 @@ try {
 
 			const result = this.context.evalClosureSync(
 				wrappedCode,
-				[getValueAtPath, getArrayElement, callHost],
+				[getValueAtPath, getArrayElement, callHost, callHostTransferSafe],
 				{ result: { copy: true }, timeout: this.config.timeout },
 			);
 

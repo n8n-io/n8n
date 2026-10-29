@@ -27,6 +27,7 @@ import type { UserInvitationResult } from '../../shared/utils/users';
 
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
+import { JwtService } from '@/services/jwt.service';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserManagementMailer } from '@/user-management/email';
 
@@ -56,19 +57,23 @@ describe('InvitationController', () => {
 		jest.restoreAllMocks();
 	});
 
-	describe('POST /invitations/:id/accept', () => {
+	function invitationToken(inviterId: string, inviteeId: string): string {
+		return Container.get(JwtService).sign({ inviterId, inviteeId }, { expiresIn: '90d' });
+	}
+
+	describe('POST /invitations/accept', () => {
 		test('should fill out a member shell', async () => {
 			const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
-
+			const token = invitationToken(instanceOwner.id, memberShell.id);
 			const memberProps = {
-				inviterId: instanceOwner.id,
+				token,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
 			};
 
 			const response = await testServer.authlessAgent
-				.post(`/invitations/${memberShell.id}/accept`)
+				.post('/invitations/accept')
 				.send(memberProps)
 				.expect(200);
 
@@ -90,16 +95,16 @@ describe('InvitationController', () => {
 
 		test('should fill out an admin shell', async () => {
 			const adminShell = await createUserShell(GLOBAL_ADMIN_ROLE);
-
+			const token = invitationToken(instanceOwner.id, adminShell.id);
 			const memberProps = {
-				inviterId: instanceOwner.id,
+				token,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
 			};
 
 			const response = await testServer.authlessAgent
-				.post(`/invitations/${adminShell.id}/accept`)
+				.post('/invitations/accept')
 				.send(memberProps)
 				.expect(200);
 
@@ -124,41 +129,34 @@ describe('InvitationController', () => {
 				email: randomEmail(),
 				role: { slug: 'global:member' },
 			});
+			const validToken = invitationToken(instanceOwner.id, memberShell.id);
 
-			const invalidPaylods = [
+			const invalidPayloads = [
 				{
 					firstName: randomName(),
 					lastName: randomName(),
 					password: randomValidPassword(),
 				},
 				{
-					inviterId: instanceOwner.id,
+					token: validToken,
 					firstName: randomName(),
 					password: randomValidPassword(),
 				},
 				{
-					inviterId: instanceOwner.id,
-					firstName: randomName(),
-					password: randomValidPassword(),
-				},
-				{
-					inviterId: instanceOwner.id,
+					token: validToken,
 					firstName: randomName(),
 					lastName: randomName(),
 				},
 				{
-					inviterId: instanceOwner.id,
+					token: validToken,
 					firstName: randomName(),
 					lastName: randomName(),
 					password: randomInvalidPassword(),
 				},
 			];
 
-			for (const payload of invalidPaylods) {
-				await testServer.authlessAgent
-					.post(`/invitations/${memberShell.id}/accept`)
-					.send(payload)
-					.expect(400);
+			for (const payload of invalidPayloads) {
+				await testServer.authlessAgent.post('/invitations/accept').send(payload).expect(400);
 
 				const storedMemberShell = await userRepository.findOneByOrFail({
 					email: memberShell.email,
@@ -170,20 +168,63 @@ describe('InvitationController', () => {
 			}
 		});
 
+		test('should reject a token the instance did not sign', async () => {
+			const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+			const valid = invitationToken(instanceOwner.id, memberShell.id);
+			const [header, payload, signature] = valid.split('.');
+
+			const forgedTokens = {
+				'not a JWT at all': 'garbage',
+				'a tampered signature': `${header}.${payload}.${signature.slice(0, -4)}AAAA`,
+				'a tampered payload': `${header}.${Buffer.from(
+					JSON.stringify({ inviterId: instanceOwner.id, inviteeId: memberShell.id }),
+				).toString('base64url')}.${signature}`,
+				'an expired token': Container.get(JwtService).sign(
+					{ inviterId: instanceOwner.id, inviteeId: memberShell.id },
+					{ expiresIn: '-1s' },
+				),
+			};
+
+			const outcomes = [];
+			for (const [description, token] of Object.entries(forgedTokens)) {
+				const response = await testServer.authlessAgent.post('/invitations/accept').send({
+					token,
+					firstName: randomName(),
+					lastName: randomName(),
+					password: randomValidPassword(),
+				});
+
+				outcomes.push({
+					description,
+					status: response.statusCode,
+					cookie: response.headers['set-cookie'],
+				});
+			}
+
+			expect(outcomes).toEqual(
+				Object.keys(forgedTokens).map((description) => ({
+					description,
+					status: 400,
+					cookie: undefined,
+				})),
+			);
+
+			const stored = await userRepository.findOneByOrFail({ email: memberShell.email });
+			expect(stored.password).toBeNull();
+			expect(stored.firstName).toBeNull();
+		});
+
 		test('should fail with already accepted invite', async () => {
 			const member = await createMember();
-
+			const token = invitationToken(instanceOwner.id, member.id);
 			const memberProps = {
-				inviterId: instanceOwner.id,
+				token,
 				firstName: randomName(),
 				lastName: randomName(),
 				password: randomValidPassword(),
 			};
 
-			await testServer.authlessAgent
-				.post(`/invitations/${member.id}/accept`)
-				.send(memberProps)
-				.expect(400);
+			await testServer.authlessAgent.post('/invitations/accept').send(memberProps).expect(400);
 
 			const storedMember = await userRepository.findOneByOrFail({
 				email: member.email,
@@ -255,8 +296,11 @@ describe('InvitationController', () => {
 
 			const inviteUrl = new URL(user.inviteAcceptUrl);
 
-			expect(inviteUrl.searchParams.get('inviterId')).toBe(instanceOwner.id);
-			expect(inviteUrl.searchParams.get('inviteeId')).toBe(user.id);
+			const token = inviteUrl.searchParams.get('token');
+			expect(typeof token).toBe('string');
+			expect(token!.length).toBeGreaterThan(0);
+			expect(inviteUrl.searchParams.get('inviterId')).toBeNull();
+			expect(inviteUrl.searchParams.get('inviteeId')).toBeNull();
 		});
 
 		test('should create member shell', async () => {

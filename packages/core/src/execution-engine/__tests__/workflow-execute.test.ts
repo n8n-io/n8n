@@ -509,7 +509,7 @@ describe('WorkflowExecute', () => {
 				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
 				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
 				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
-			});
+			}, 15_000);
 		}
 	});
 

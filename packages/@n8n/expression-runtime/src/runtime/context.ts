@@ -13,6 +13,7 @@ import {
 import { jmesPath } from './jmespath';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
+import type { TransferSafeValue } from '../bridge/transfer-safe';
 
 // Pre-create safe error subclass wrappers (reused across evaluations)
 const SafeTypeError = createSafeErrorSubclass(TypeError);
@@ -72,8 +73,11 @@ type BridgeCallback = (...args: unknown[]) => unknown;
  *     are new schemas in `bridge/bridge-messages.ts` + new cases in the
  *     dispatcher switch. The name reflects what this is: a synchronous
  *     host RPC, not a postMessage-style async send.
+ *   - `callHostTransferSafe`: same dispatcher, for item RPCs whose result
+ *     structured clone rejects. Returns the result rebuilt from JSON values,
+ *     Dates, Maps and Sets, plus the paths of values it couldn't rebuild.
  *
- * The bridge wires all three callbacks unconditionally before invoking
+ * The bridge wires all four callbacks unconditionally before invoking
  * `buildContext`, so the runtime treats them as present — no defensive
  * null/undefined checks at each call site.
  */
@@ -81,6 +85,57 @@ export interface BridgeCallbacks {
 	getValueAtPath: BridgeCallback;
 	getArrayElement: BridgeCallback;
 	callHost: BridgeCallback;
+	callHostTransferSafe: BridgeCallback;
+}
+
+const IDENTIFIER = /^[A-Za-z_$][\w$]*$/;
+
+function formatPath(path: Array<string | number>): string {
+	let formatted = '';
+	for (const key of path) {
+		if (typeof key === 'number') formatted += `[${key}]`;
+		else if (!IDENTIFIER.test(key)) formatted += `[${JSON.stringify(key)}]`;
+		else if (formatted === '') formatted += key;
+		else formatted += `.${key}`;
+	}
+	return formatted;
+}
+
+/**
+ * Send an item RPC (`$('Foo').first()`, `$input.all()`, `$items()`, ...).
+ *
+ * If structured clone rejects the result, ask the host again for a rebuilt
+ * copy. Each value the host couldn't rebuild becomes a non-enumerable getter
+ * that throws, so only reading that value fails.
+ */
+function callItemRpc(callbacks: BridgeCallbacks, msg: BridgeMessage, source: string): unknown {
+	try {
+		const result = callbacks.callHost(msg);
+		throwIfErrorSentinel(result);
+		return result;
+	} catch (error) {
+		if (!(error instanceof TypeError) || !error.message.includes('could not be cloned')) {
+			throw error;
+		}
+	}
+
+	const result = callbacks.callHostTransferSafe(msg);
+	throwIfErrorSentinel(result);
+	const { value, unusable } = result as TransferSafeValue;
+	for (const { path, kind } of unusable) {
+		const message = `Can't use ${formatPath(path)} from ${source} in an expression: it is ${kind}`;
+		if (path.length === 0) throw new ExpressionError(message);
+		let parent = value as Record<string | number, unknown>;
+		for (const key of path.slice(0, -1)) parent = parent[key] as Record<string | number, unknown>;
+		Object.defineProperty(parent, path[path.length - 1], {
+			get() {
+				throw new ExpressionError(message);
+			},
+			enumerable: false,
+			configurable: true,
+		});
+	}
+	return value;
 }
 
 /**
@@ -189,12 +244,10 @@ export function buildContext(
 	// the inner target is empty.
 	target.$ = function (nodeName: string) {
 		const lazyProxy = createDeepLazyProxy(['$', nodeName], undefined, callbacks);
+		const source = `node '${nodeName}'`;
 		const sendNodeMethod = (type: NodeRpcType) => {
-			return (branchIndex?: number, runIndex?: number) => {
-				const result = callbacks.callHost({ type, nodeName, branchIndex, runIndex });
-				throwIfErrorSentinel(result);
-				return result;
-			};
+			return (branchIndex?: number, runIndex?: number) =>
+				callItemRpc(callbacks, { type, nodeName, branchIndex, runIndex }, source);
 		};
 		// Paired-item cluster: `.pairedItem(idx?)`, `.itemMatching(idx)`,
 		// `.item`. Each surface form has its own typed-RPC discriminator
@@ -202,19 +255,9 @@ export function buildContext(
 		// because the host's resolver closes over the literal property
 		// name to pick error messages and getter-vs-method semantics.
 		// The bridge handler for each reads the matching property name.
-		const sendPairedRpc = (
-			type: 'getNodePairedItem' | 'getNodeItemMatching',
-			itemIndex?: number,
-		) => {
-			const result = callbacks.callHost({ type, nodeName, itemIndex });
-			throwIfErrorSentinel(result);
-			return result;
-		};
-		const sendGetNodeItem = () => {
-			const result = callbacks.callHost({ type: 'getNodeItem', nodeName });
-			throwIfErrorSentinel(result);
-			return result;
-		};
+		const sendPairedRpc = (type: 'getNodePairedItem' | 'getNodeItemMatching', itemIndex?: number) =>
+			callItemRpc(callbacks, { type, nodeName, itemIndex }, source);
+		const sendGetNodeItem = () => callItemRpc(callbacks, { type: 'getNodeItem', nodeName }, source);
 		return new Proxy({} as Record<string, unknown>, {
 			get(_emptyTarget, prop) {
 				if (isKeyOf(NODE_RPC_TYPES, prop)) {
@@ -253,11 +296,7 @@ export function buildContext(
 	// properties) to a lazy proxy on `$input`.
 	const lazyInputProxy = createDeepLazyProxy(['$input'], undefined, callbacks);
 	const sendInputMethod = (type: InputRpcType) => {
-		return () => {
-			const result = callbacks.callHost({ type });
-			throwIfErrorSentinel(result);
-			return result;
-		};
+		return () => callItemRpc(callbacks, { type }, 'the input node');
 	};
 	target.$input = new Proxy({} as Record<string, unknown>, {
 		get(_emptyTarget, prop) {
@@ -274,11 +313,12 @@ export function buildContext(
 	// the host enforces nothing structural here, the schema validates the
 	// args, and the host's `WorkflowDataProxy.$items` applies its own
 	// defaults when fields are undefined.
-	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) => {
-		const result = callbacks.callHost({ type: 'getItems', nodeName, outputIndex, runIndex });
-		throwIfErrorSentinel(result);
-		return result;
-	};
+	target.$items = (nodeName?: string, outputIndex?: number, runIndex?: number) =>
+		callItemRpc(
+			callbacks,
+			{ type: 'getItems', nodeName, outputIndex, runIndex },
+			nodeName === undefined ? 'the input node' : `node '${nodeName}'`,
+		);
 
 	// $fromAI / $fromAi / $fromai — AI-builder placeholder accessor.
 	// All three host aliases route to the same `handleFromAi` callback;

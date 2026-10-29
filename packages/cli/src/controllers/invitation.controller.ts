@@ -1,8 +1,8 @@
 import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { User } from '@n8n/db';
+import type { PublicUser, User } from '@n8n/db';
 import { UserRepository, AuthenticatedRequest } from '@n8n/db';
-import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
+import { Post, GlobalScope, RestController, Body } from '@n8n/decorators';
 import { Response } from 'express';
 
 import { AuthService } from '@/auth/auth.service';
@@ -87,26 +87,18 @@ export class InvitationController {
 		return usersInvited;
 	}
 
-	/**
-	 * Fill out user shell with first name, last name, and password.
-	 */
-	@Post('/:id/accept', { skipAuth: true })
-	async acceptInvitation(
+	private async processInvitationAcceptance(
+		invite: {
+			inviterId: string;
+			inviteeId: string;
+			firstName: string;
+			lastName: string;
+			password: string;
+		},
 		req: AuthlessRequest,
 		res: Response,
-		@Body payload: AcceptInvitationRequestDto,
-		@Param('id') inviteeId: string,
-	) {
-		if (isSsoCurrentAuthenticationMethod()) {
-			this.logger.debug(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-			throw new BadRequestError(
-				'Invite links are not supported on this system, please use single sign on instead.',
-			);
-		}
-
-		const { inviterId, firstName, lastName, password } = payload;
+	): Promise<PublicUser> {
+		const { inviterId, inviteeId, firstName, lastName, password } = invite;
 
 		const users = await this.userRepository.find({
 			where: [{ id: inviterId }, { id: inviteeId }],
@@ -157,5 +149,30 @@ export class InvitationController {
 			posthog: this.postHog,
 			withScopes: true,
 		});
+	}
+
+	@Post('/accept', { skipAuth: true, rateLimit: { limit: 100, windowMs: 60_000 } })
+	async acceptInvitationWithToken(
+		req: AuthlessRequest,
+		res: Response,
+		@Body payload: AcceptInvitationRequestDto,
+	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
+		const { firstName, lastName, password } = payload;
+		const { inviterId, inviteeId } = this.userService.getInvitationIdsFromToken(payload.token);
+
+		return await this.processInvitationAcceptance(
+			{ inviterId, inviteeId, firstName, lastName, password },
+			req,
+			res,
+		);
 	}
 }

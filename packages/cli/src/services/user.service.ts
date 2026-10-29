@@ -5,8 +5,8 @@ import { User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { EventService } from '@/events/event.service';
 import type { Invitation } from '@/interfaces';
@@ -18,6 +18,7 @@ import { UserManagementMailer } from '@/user-management/email';
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
 import { GlobalConfig } from '@n8n/config';
+import { JwtService } from './jwt.service';
 
 @Service()
 export class UserService {
@@ -30,6 +31,7 @@ export class UserService {
 		private readonly publicApiKeyService: PublicApiKeyService,
 		private readonly roleService: RoleService,
 		private readonly globalConfig: GlobalConfig,
+		private readonly jwtService: JwtService,
 	) {}
 
 	async update(userId: string, data: Partial<User>) {
@@ -61,8 +63,6 @@ export class UserService {
 	async toPublic(
 		user: User,
 		options?: {
-			withInviteUrl?: boolean;
-			inviterId?: string;
 			posthog?: PostHogClient;
 			withScopes?: boolean;
 			mfaAuthenticated?: boolean;
@@ -80,21 +80,6 @@ export class UserService {
 			isOwner: user.role.slug === 'global:owner',
 		};
 
-		if (options?.withInviteUrl && !options?.inviterId) {
-			throw new UnexpectedError('Inviter ID is required to generate invite URL');
-		}
-
-		const inviteLinksEmailOnly = this.globalConfig.userManagement.inviteLinksEmailOnly;
-
-		if (
-			!inviteLinksEmailOnly &&
-			options?.withInviteUrl &&
-			options?.inviterId &&
-			publicUser.isPending
-		) {
-			publicUser = this.addInviteUrl(options.inviterId, publicUser);
-		}
-
 		if (options?.posthog) {
 			publicUser = await this.addFeatureFlags(publicUser, options.posthog);
 		}
@@ -107,17 +92,6 @@ export class UserService {
 		publicUser.mfaAuthenticated = options?.mfaAuthenticated ?? false;
 
 		return publicUser;
-	}
-
-	private addInviteUrl(inviterId: string, invitee: PublicUser) {
-		const url = new URL(this.urlService.getInstanceBaseUrl());
-		url.pathname = '/signup';
-		url.searchParams.set('inviterId', inviterId);
-		url.searchParams.set('inviteeId', invitee.id);
-
-		invitee.inviteAcceptUrl = url.toString();
-
-		return invitee;
 	}
 
 	private async addFeatureFlags(publicUser: PublicUser, posthog: PostHogClient) {
@@ -148,7 +122,16 @@ export class UserService {
 
 		return await Promise.all(
 			Object.entries(toInviteUsers).map(async ([email, id]) => {
-				const inviteAcceptUrl = `${domain}/signup?inviterId=${owner.id}&inviteeId=${id}`;
+				const token = this.jwtService.sign(
+					{
+						inviterId: owner.id,
+						inviteeId: id,
+					},
+					{
+						expiresIn: '90d',
+					},
+				);
+				const inviteAcceptUrl = `${domain}/signup?token=${token}`;
 				const invitedUser: UserRequest.InviteResponse = {
 					user: {
 						id,
@@ -195,9 +178,9 @@ export class UserService {
 							messageType: 'New user invite',
 							publicApi: false,
 						});
+						// Do not log inviteAcceptUrl: it contains a live JWT that must not appear in logs
 						this.logger.error('Failed to send email', {
 							userId: owner.id,
-							inviteAcceptUrl,
 							email,
 						});
 						invitedUser.error = e.message;
@@ -283,5 +266,23 @@ export class UserService {
 				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
 			}
 		});
+	}
+
+	getInvitationIdsFromToken(token: string): { inviterId: string; inviteeId: string } {
+		let decoded: { inviterId?: string; inviteeId?: string };
+
+		try {
+			decoded = this.jwtService.verify<{ inviterId?: string; inviteeId?: string }>(token);
+		} catch (error) {
+			this.logger.debug('Failed to verify invite token', { error });
+			throw new BadRequestError('Invalid invite URL');
+		}
+
+		if (!decoded.inviterId || !decoded.inviteeId) {
+			this.logger.debug('Invite token is missing inviterId or inviteeId');
+			throw new BadRequestError('Invalid invite URL');
+		}
+
+		return { inviterId: decoded.inviterId, inviteeId: decoded.inviteeId };
 	}
 }

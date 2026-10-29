@@ -350,7 +350,7 @@ Runs on push to `master` or `1.x`:
 ```
 Push to master/1.x
 ├─ build-github (populate cache)
-├─ unit-test (matrix: Node 22.x, 24.22.1, 25.x)
+├─ unit-test (matrix: Node 22.x, 24.22.1)
 │   └─ Coverage only on 24.22.1
 ├─ lint
 └─ notify-on-failure (Slack #alerts-build)

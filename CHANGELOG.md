@@ -1,3 +1,16 @@
+## [1.123.90](https://github.com/n8n-io/n8n/compare/n8n@1.123.89...n8n@1.123.90) (2026-10-29)
+
+
+### Bug Fixes
+
+* **core:** Require a signed token to accept an invitation ([#42292](https://github.com/n8n-io/n8n/issues/42292)) ([4580f22](https://github.com/n8n-io/n8n/commit/4580f22dc87c9c18aeca70a8a8556c0148ff0621))
+
+
+### Performance Improvements
+
+* **Google Drive Trigger Node:** Read watched item instead of listing changes ([#42454](https://github.com/n8n-io/n8n/issues/42454)) ([caa8c82](https://github.com/n8n-io/n8n/commit/caa8c82fc5fbeeb43dd52a500443690bad9d92a9))
+
+
 ## [1.123.89](https://github.com/n8n-io/n8n/compare/n8n@1.123.88...n8n@1.123.89) (2026-10-28)
 
 
