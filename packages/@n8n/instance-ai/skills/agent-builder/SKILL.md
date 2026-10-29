@@ -190,7 +190,7 @@ approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
-The Advanced HITL spike adds workflow and connected-channel approval for saved
+The Approval settings spike adds workflow and connected-channel approval for saved
 Agents called from a workflow or conversation. Workflow calls require Message
 an Agent version 4. It does not yet support scheduled Agent tasks. Do not promise
 that path.

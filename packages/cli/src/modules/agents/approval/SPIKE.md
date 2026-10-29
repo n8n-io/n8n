@@ -1,11 +1,11 @@
-# Advanced HITL workflow spike
+# Approval settings workflow spike
 
 Run the database migrations. Use Message an Agent version 4.
 
 This branch implements workflow and connected-channel approval destinations.
 It includes the workflow caller and item continuation in the same spike.
 
-1. Open a saved Agent. Open Settings, then Advanced HITL.
+1. Open a saved Agent. Open Settings, then Approval settings.
 2. Create a configuration. Select a workflow or a connected Slack, Telegram, or
    Discord channel. The workflow picker includes search and Create workflow.
 3. For a workflow, add review steps between the Agent decision trigger and the response.

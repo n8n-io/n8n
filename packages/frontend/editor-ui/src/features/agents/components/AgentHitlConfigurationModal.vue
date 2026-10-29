@@ -11,6 +11,8 @@ import {
 	N8nInputLabel,
 	N8nOption,
 	N8nSelect,
+	N8nSelect2,
+	type SelectOptionBase,
 	N8nText,
 	N8nSwitch2,
 	N8nTooltip,
@@ -77,6 +79,16 @@ const channel = computed(() =>
 function channelLabel(item: AgentHitlChannelDescriptor) {
 	const connections = channels.value.filter((other) => other.channel === item.channel);
 	return connections.length > 1 ? `${item.label} ${connections.indexOf(item) + 1}` : item.label;
+}
+const channelItems = computed<SelectOptionBase[]>(() =>
+	channels.value.map((item) => ({
+		value: `${item.channel}:${item.credentialId}`,
+		label: channelLabel(item),
+		icon: item.channel,
+	})),
+);
+function updateChannel(value: unknown) {
+	channelKey.value = typeof value === 'string' ? value : '';
 }
 const recipientKind = ref<'channel' | 'user'>(
 	props.configuration?.method === 'channel' ? props.configuration.recipient.kind : 'channel',
@@ -344,27 +356,15 @@ function save() {
 			</N8nInputLabel>
 			<template v-if="method === 'channel'">
 				<N8nInputLabel :label="i18n.baseText('agents.hitl.channel')">
-					<N8nSelect
-						v-model="channelKey"
-						:loading="loading"
-						:teleported="false"
+					<N8nSelect2
+						:model-value="channelKey || undefined"
+						:items="channelItems"
+						:disabled="loading"
+						size="large"
+						:aria-label="i18n.baseText('agents.hitl.channel')"
 						data-testid="agent-hitl-channel"
-					>
-						<template v-if="channel" #prefix
-							><N8nIcon :icon="channel.channel" :size="16"
-						/></template>
-						<N8nOption
-							v-for="item in channels"
-							:key="`${item.channel}:${item.credentialId}`"
-							:value="`${item.channel}:${item.credentialId}`"
-							:label="channelLabel(item)"
-						>
-							<span :class="$style.channelOption">
-								<N8nIcon :icon="item.channel" :size="16" />
-								{{ channelLabel(item) }}
-							</span>
-						</N8nOption>
-					</N8nSelect>
+						@update:model-value="updateChannel"
+					/>
 				</N8nInputLabel>
 				<N8nInputLabel
 					v-if="channel?.fields.some((field) => field.name === 'guild')"

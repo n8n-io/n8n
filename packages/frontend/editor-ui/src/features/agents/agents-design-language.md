@@ -491,7 +491,7 @@ Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
 
-Advanced HITL settings use `AgentChipRow` and `AgentChipButton`, as the Build
+Approval settings use `AgentChipRow` and `AgentChipButton`, as the Build
 page does. Each pill opens its configuration. Put the add action after the pills.
 Use the item context menu for removal. Select a destination on each gated tool
 or MCP server. Do not show an Agent-wide default destination.
@@ -512,11 +512,12 @@ Disable the connected channel approval method when no supported channels are
 attached. Put the reason below the option label in smaller, muted text.
 Request expiry defaults to no expiry. Offer one hour, one day, and one week.
 Keep expiry local until Save, as the destination and approval policy do.
-Keep Save disabled until the HITL configuration is complete. Explain the missing
+Keep Save disabled until the approval configuration is complete. Explain the missing
 name, workflow selection, or channel configuration in a tooltip on hover and focus.
 Use a searchable select for the decision workflow. Put Create workflow in its menu.
-Show platform icons in the connected channel select. Use the same form field
-style for searchable destinations. Mark channel results with a hash icon and
+Show platform icons in the connected channel select. Use `N8nSelect2` item icons
+so saved selections keep the icon and label in the same layout after loading.
+Use the same form field style for searchable destinations. Mark channel results with a hash icon and
 user results with a user icon. Keep search and pagination in the destination menu.
 Size the list to its results, up to six rows. Skip empty provider pages during
 lookup. Show Load more only with results and a continuation cursor.

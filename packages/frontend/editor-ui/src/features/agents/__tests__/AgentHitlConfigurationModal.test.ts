@@ -1,10 +1,13 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import { N8nSwitch2, N8nTooltip, N8nCombobox2 } from '@n8n/design-system';
+import { N8nSwitch2, N8nTooltip, N8nCombobox2, N8nSelect2 } from '@n8n/design-system';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
+import { getAgentHitlChannels } from '../composables/useAgentApi';
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
 import AgentHitlToolsSelect from '../components/AgentHitlToolsSelect.vue';
 import AgentHitlDestinationPicker from '../components/AgentHitlDestinationPicker.vue';
+
+vi.unmock('reka-ui');
 
 const mocks = vi.hoisted(() => ({
 	search: vi.fn(),
@@ -95,7 +98,7 @@ beforeEach(() => {
 		{ id: 'review', name: 'Review expenses' },
 		{ id: 'other', name: 'Confirm deployment' },
 	]);
-	mocks.create.mockResolvedValue({ id: 'new', name: 'Support Agent HITL workflow 1' });
+	mocks.create.mockResolvedValue({ id: 'new', name: 'Support Agent approval workflow 1' });
 	mocks.channels.mockResolvedValue([
 		{
 			channel: 'telegram',
@@ -171,8 +174,8 @@ it('names a new workflow from the Agent and the next available number', async ()
 	await flushPromises();
 	await wrapper.find('[data-testid="title"]').setValue('Finance approvals');
 	mocks.search.mockResolvedValue([
-		{ name: 'Support Agent HITL workflow 1' },
-		{ name: 'Support Agent HITL workflow 3' },
+		{ name: 'Support Agent approval workflow 1' },
+		{ name: 'Support Agent approval workflow 3' },
 	]);
 	const create = wrapper
 		.getComponent(N8nCombobox2)
@@ -182,7 +185,7 @@ it('names a new workflow from the Agent and the next available number', async ()
 	await flushPromises();
 	expect(mocks.create).toHaveBeenCalledWith(
 		expect.objectContaining({
-			name: 'Support Agent HITL workflow 2',
+			name: 'Support Agent approval workflow 2',
 			projectId: 'project',
 			nodes: [
 				expect.objectContaining({ type: 'n8n-nodes-base.agentDecisionTrigger' }),
@@ -209,10 +212,8 @@ it('saves a Telegram destination and rejects a username', async () => {
 	const save = wrapper.get('[data-testid="agent-hitl-save"]');
 	expect(save.attributes('disabled')).toBeDefined();
 	expect(await saveHint(wrapper)).toBe('Select a channel and complete its configuration');
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Telegram')
-		?.trigger('click');
+	wrapper.getComponent(N8nSelect2).vm.$emit('update:modelValue', 'telegram:bot');
+	await wrapper.vm.$nextTick();
 	await wrapper.find('[data-testid="agent-hitl-telegram-user"]').setValue('@reviewer');
 	expect(save.attributes('disabled')).toBeDefined();
 	await save.trigger('click');
@@ -275,10 +276,8 @@ it('requires both a Discord server and a recipient before Save is enabled', asyn
 		.findAll('button')
 		.find((button) => button.text() === 'Connected channel')
 		?.trigger('click');
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Discord')
-		?.trigger('click');
+	wrapper.getComponent(N8nSelect2).vm.$emit('update:modelValue', 'discord:bot');
+	await wrapper.vm.$nextTick();
 	const save = wrapper.get('[data-testid="agent-hitl-save"]');
 	expect(save.attributes('disabled')).toBeDefined();
 	const server = wrapper.getComponent(AgentHitlDestinationPicker);
@@ -459,9 +458,12 @@ it('shows platform icons in the channel select and recipient icons for each dest
 	});
 	await flushPromises();
 	const platforms = wrapper.get('[data-testid="agent-hitl-channel"]');
-	expect(platforms.find('button [data-icon="slack"]').exists()).toBe(true);
-	expect(platforms.find('button [data-icon="telegram"]').exists()).toBe(true);
+	expect(wrapper.getComponent(N8nSelect2).props('items')).toEqual([
+		{ value: 'telegram:bot', label: 'Telegram', icon: 'telegram' },
+		{ value: 'slack:slack', label: 'Slack', icon: 'slack' },
+	]);
 	expect(platforms.find('[data-icon="slack"]').exists()).toBe(true);
+	expect(platforms.text()).toContain('Slack');
 	const types = wrapper.get('[data-testid="agent-hitl-recipient-type"]');
 	expect(types.find('button [data-icon="hash"]').exists()).toBe(true);
 	expect(types.find('button [data-icon="user"]').exists()).toBe(true);
@@ -471,4 +473,48 @@ it('shows platform icons in the channel select and recipient icons for each dest
 		.find((button) => button.text() === 'Channel')
 		?.trigger('click');
 	expect(wrapper.getComponent(AgentHitlDestinationPicker).props('icon')).toBe('hash');
+});
+
+it('uses Approval settings for new configurations and preserves saved names', async () => {
+	const wrapper = render();
+	await flushPromises();
+	expect(wrapper.get('[data-testid="title"]').element).toHaveProperty(
+		'value',
+		'Approval settings 8',
+	);
+	const saved = render({
+		id: 'existing',
+		name: 'HITL Settings 1',
+		method: 'workflow',
+		workflowId: 'wf',
+	});
+	await flushPromises();
+	expect(saved.get('[data-testid="title"]').element).toHaveProperty('value', 'HITL Settings 1');
+});
+
+it('renders a saved channel icon and label after loading without opening the select', async () => {
+	let resolveChannels: (channels: Awaited<ReturnType<typeof getAgentHitlChannels>>) => void =
+		() => {};
+	mocks.channels.mockReturnValueOnce(
+		new Promise((resolve) => {
+			resolveChannels = resolve;
+		}),
+	);
+	const wrapper = render({
+		id: 'review',
+		name: 'Review',
+		method: 'channel',
+		channel: 'slack',
+		credentialId: 'slack',
+		recipient: { kind: 'channel', id: 'C1' },
+	});
+	await flushPromises();
+	const select = wrapper.get('[data-testid="agent-hitl-channel"]');
+	expect(wrapper.getComponent(N8nSelect2).props('disabled')).toBe(true);
+	resolveChannels([{ channel: 'slack', credentialId: 'slack', label: 'Slack', fields: [] }]);
+	await flushPromises();
+	expect(wrapper.getComponent(N8nSelect2).props('disabled')).toBe(false);
+	expect(select.attributes('aria-expanded')).toBe('false');
+	expect(select.text()).toBe('Slack');
+	expect(select.get('[data-icon="slack"]').exists()).toBe(true);
 });

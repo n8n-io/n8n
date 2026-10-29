@@ -90,7 +90,7 @@ export class AgentDecisionWorkflowService {
 				) {
 					return await handler?.call(tool, input, ctx);
 				}
-				if (!configuration) throw new UserError('The selected HITL configuration is unavailable');
+				if (!configuration) throw new UserError('The selected approval settings are unavailable');
 				if (
 					!pending.success &&
 					identity.integrationType &&
