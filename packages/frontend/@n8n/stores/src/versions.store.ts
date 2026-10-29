@@ -1,15 +1,12 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import { useStorage } from '@n8n/composables/useStorage';
-import { useTelemetry } from '@n8n/composables/useTelemetry';
-import { useToast, type NotificationHandle } from '@n8n/composables/useToast';
+import { useToast } from '@n8n/composables/useToast';
 import {
-	LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT,
 	LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES,
 	VERSIONS_MODAL_KEY,
-	WHATS_NEW_MODAL_KEY,
 } from '@n8n/frontend-constants/versions';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
-import type { Version, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
+import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
 import { jsonParse } from 'n8n-workflow';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
@@ -47,10 +44,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		footer: '',
 		items: [],
 	});
-	const whatsNewCallout = ref<NotificationHandle | undefined>();
 
-	const telemetry = useTelemetry();
-	const { showToast, showMessage } = useToast();
+	const { showToast } = useToast();
 	const settingsStore = useSettingsStore();
 	const usersStore = useUsersStore();
 
@@ -72,7 +67,6 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		modalOpeners.value = openers;
 	};
 	const readWhatsNewArticlesStorage = useStorage(LOCAL_STORAGE_READ_WHATS_NEW_ARTICLES);
-	const lastDismissedWhatsNewCalloutStorage = useStorage(LOCAL_STORAGE_DISMISSED_WHATS_NEW_CALLOUT);
 
 	// ---------------------------------------------------------------------------
 	// #region Computed
@@ -123,14 +117,23 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 			: [];
 	});
 
-	const lastDismissedWhatsNewCallout = computed((): number[] => {
-		return lastDismissedWhatsNewCalloutStorage.value
-			? jsonParse(lastDismissedWhatsNewCalloutStorage.value, { fallbackValue: [] })
-			: [];
-	});
-
 	const whatsNewArticles = computed(() => {
 		return whatsNew.value.items;
+	});
+
+	/**
+	 * Unread articles the sidebar card shows, in feed order. An article that
+	 * predates the user's account is not news to them, so it is left out.
+	 */
+	const whatsNewCardArticles = computed((): WhatsNewArticle[] => {
+		const createdAt = usersStore.currentUser?.createdAt;
+		const userCreatedAt = createdAt ? new Date(createdAt).getTime() : 0;
+
+		return whatsNewArticles.value.filter((article) => {
+			if (readWhatsNewArticles.value.includes(article.id)) return false;
+			const articleTime = new Date(article.updatedAt ?? article.publishedAt).getTime();
+			return articleTime > userCreatedAt;
+		});
 	});
 
 	// #endregion
@@ -176,36 +179,6 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		return readWhatsNewArticles.value.includes(articleId);
 	};
 
-	const closeWhatsNewCallout = () => {
-		whatsNewCallout.value?.close();
-		whatsNewCallout.value = undefined;
-	};
-
-	const dismissWhatsNewCallout = () => {
-		lastDismissedWhatsNewCalloutStorage.value = JSON.stringify(
-			whatsNewArticles.value.map((item) => item.id),
-		);
-	};
-
-	const shouldShowWhatsNewCallout = (): boolean => {
-		const createdAt = usersStore.currentUser?.createdAt;
-		let hasNewArticle = false;
-		if (createdAt) {
-			const userCreatedAt = new Date(createdAt).getTime();
-			hasNewArticle = whatsNewArticles.value.some((item) => {
-				const updatedAt = item.updatedAt ? new Date(item.updatedAt).getTime() : 0;
-				return updatedAt > userCreatedAt;
-			});
-		} else {
-			hasNewArticle = true;
-		}
-		const allArticlesDismissed = whatsNewArticles.value.every((item) =>
-			lastDismissedWhatsNewCallout.value.includes(item.id),
-		);
-
-		return hasNewArticle && !allArticlesDismissed;
-	};
-
 	const fetchWhatsNew = async () => {
 		try {
 			const { enabled, whatsNewEnabled, whatsNewEndpoint } = versionNotificationSettings.value;
@@ -217,30 +190,6 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 				if (section.items?.length > 0) {
 					setWhatsNew(section);
-
-					if (shouldShowWhatsNewCallout()) {
-						whatsNewCallout.value = showMessage({
-							title: whatsNew.value.title,
-							message: whatsNew.value.calloutText,
-							duration: 0,
-							position: 'bottom-left',
-							customClass: 'clickable whats-new-notification',
-							onClick: () => {
-								const articleId = whatsNew.value.items[0]?.id ?? 0;
-								telemetry.track("User clicked on what's new notification", {
-									article_id: articleId,
-								});
-								modalOpeners.value.openModalWithData({
-									name: WHATS_NEW_MODAL_KEY,
-									data: { articleId },
-								});
-							},
-						});
-
-						// Mark the callout as dismissed as soon as it is shown, so it does not
-						// keep reappearing on subsequent loads for users who simply ignore it.
-						dismissWhatsNewCallout();
-					}
 				}
 			}
 		} catch (e) {
@@ -304,10 +253,8 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 		fetchWhatsNew,
 		whatsNew,
 		whatsNewArticles,
+		whatsNewCardArticles,
 		isWhatsNewArticleRead,
 		setWhatsNewArticleRead,
-		closeWhatsNewCallout,
-		shouldShowWhatsNewCallout,
-		dismissWhatsNewCallout,
 	};
 });

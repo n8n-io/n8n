@@ -12,6 +12,22 @@ export const PLATFORM_TELEMETRY = defineTelemetryEvents({
 			variant: z.union([z.string(), z.boolean()]).describe('Variant assigned to the user'),
 		}),
 	},
+	USER_DISMISSED_WHATS_NEW_CARD: {
+		name: "User dismissed what's new card",
+		description:
+			"User closed the what's new card in the main sidebar without opening the article. Fires once per dismissed article.",
+		properties: z.object({
+			article_id: z.number().describe('Article the user dismissed'),
+			method: z
+				.enum(['button', 'swipe', 'keyboard'])
+				.describe(
+					'How the user dismissed it: the close button, a sideways swipe or trackpad flick, or Delete on the focused card',
+				),
+			remaining_count: z
+				.number()
+				.describe('Articles still queued for the card after this dismissal'),
+		}),
+	},
 	USER_CLICKED_ACCOUNT_MENU_ITEM: {
 		name: 'User clicked account menu item',
 		description:

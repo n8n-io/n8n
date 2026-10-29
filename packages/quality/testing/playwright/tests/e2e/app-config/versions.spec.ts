@@ -92,7 +92,7 @@ test.describe(
 			await n8n.goHome();
 			await n8n.sideBar.expand();
 			await n8n.sideBar.clickWhatsNewMenuItem();
-			await expect(n8n.sideBar.getVersionUpdateItem()).toContainText('Update (2 versions behind)');
+			await expect(n8n.sideBar.getVersionUpdateItem()).toContainText('2 versions behind');
 		});
 	},
 );

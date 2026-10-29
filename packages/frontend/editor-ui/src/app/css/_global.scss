@@ -179,45 +179,6 @@
 	border: none;
 	margin-bottom: var(--toast--offset, 0);
 	margin-right: var(--toast--right, 0);
-
-	&.whats-new-notification {
-		bottom: var(--spacing--xs) !important;
-		left: var(--spacing--sm) !important;
-		margin-bottom: 0;
-		width: 300px;
-		padding: var(--spacing--xs);
-		border: var(--border);
-
-		.el-notification__group {
-			margin-left: 0;
-			margin-right: var(--spacing--lg);
-		}
-
-		.el-notification__title {
-			color: var(--callout--color--text--info);
-			font-family: var(--font-family);
-			font-size: var(--font-size--sm);
-			font-style: normal;
-			font-weight: var(--font-weight--medium);
-			line-height: 1.4;
-		}
-
-		.el-notification__content {
-			color: var(--callout--color--text--info);
-			font-family: var(--font-family);
-			font-size: var(--font-size--sm);
-			font-style: normal;
-			font-weight: var(--font-weight--regular);
-			line-height: 1.4;
-			margin-top: 0;
-		}
-
-		.el-notification__closeBtn {
-			height: 100%;
-			top: 0;
-			right: var(--spacing--xs);
-		}
-	}
 }
 
 .el-notification__content {

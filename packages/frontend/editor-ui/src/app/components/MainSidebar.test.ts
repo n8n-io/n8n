@@ -37,6 +37,15 @@ let templatesStore: MockedStore<typeof useTemplatesStore>;
 let personalizedTemplatesV2Store: MockedStore<typeof usePersonalizedTemplatesV2Store>;
 let personalizedTemplatesV3Store: MockedStore<typeof usePersonalizedTemplatesV3Store>;
 
+const article = {
+	id: 123,
+	title: 'Test Article',
+	content: 'Test content',
+	createdAt: '2025-01-01T00:00:00Z',
+	updatedAt: null,
+	publishedAt: '2025-01-01T00:00:00Z',
+};
+
 const isBelow = (above: HTMLElement, below: HTMLElement) =>
 	(above.compareDocumentPosition(below) & Node.DOCUMENT_POSITION_FOLLOWING) ===
 	Node.DOCUMENT_POSITION_FOLLOWING;
@@ -61,6 +70,7 @@ describe('MainSidebar', () => {
 		versionsStore.hasVersionUpdates = false;
 		versionsStore.nextVersions = [];
 		versionsStore.whatsNewArticles = [];
+		versionsStore.whatsNewCardArticles = [];
 		versionsStore.isWhatsNewArticleRead = vi.fn(() => false);
 		usersStore.canUserUpdateVersion = true;
 		uiStore.sidebarMenuCollapsed = false;
@@ -77,11 +87,15 @@ describe('MainSidebar', () => {
 	});
 
 	describe('bottom block', () => {
-		it('stacks the settings row above the account row', () => {
+		it('stacks the rows, the card and the account row in order', () => {
+			versionsStore.whatsNewCardArticles = [article];
+
 			const { getByTestId } = renderComponent();
 
+			const card = getByTestId('whats-new-card');
 			const settings = getByTestId('main-sidebar-settings');
 			const account = getByTestId('main-sidebar-account');
+			expect(isBelow(card, settings)).toBe(true);
 			expect(isBelow(settings, account)).toBe(true);
 		});
 
@@ -91,6 +105,35 @@ describe('MainSidebar', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('main-sidebar-account')).toBeInTheDocument();
+		});
+	});
+
+	describe("What's new card", () => {
+		it('shows the card above the bottom menu when there is an unread article', () => {
+			versionsStore.whatsNewCardArticles = [article];
+
+			const { getByTestId } = renderComponent();
+
+			const card = getByTestId('whats-new-card');
+			expect(card).toHaveTextContent('Test Article');
+			expect(isBelow(card, getByTestId('main-sidebar-account'))).toBe(true);
+		});
+
+		it('hides the card when there is nothing unread', () => {
+			versionsStore.whatsNewCardArticles = [];
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('whats-new-card')).not.toBeInTheDocument();
+		});
+
+		it('hides the card when the sidebar is collapsed', () => {
+			versionsStore.whatsNewCardArticles = [article];
+			uiStore.sidebarMenuCollapsed = true;
+
+			const { queryByTestId } = renderComponent();
+
+			expect(queryByTestId('whats-new-card')).not.toBeInTheDocument();
 		});
 	});
 

@@ -23,6 +23,7 @@ import {
 import { useSettingsItems } from '@/app/composables/useSettingsItems';
 import MainSidebarHeader from '@/app/components/MainSidebarHeader.vue';
 import BottomMenu from '@/app/components/BottomMenu.vue';
+import WhatsNewCard from '@/app/components/WhatsNewCard.vue';
 import MainSidebarAccountMenu from '@/app/components/MainSidebarAccountMenu.vue';
 import MainSidebarSourceControl from '@/app/components/MainSidebarSourceControl.vue';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
@@ -266,6 +267,8 @@ useKeybindings({
 		<!-- Experiment cleanup (123_surface_mcp_to_claude_trial_users) -->
 		<ClaudeEntryPoint placement="sidebar" :collapsed="isCollapsed" />
 		<!-- EOF Experiment cleanup -->
+		<!-- The rail has no room for the card; the dot on the avatar carries the unread state there. -->
+		<WhatsNewCard v-if="!isCollapsed" />
 		<BottomMenu :items="visibleMenuItems" :is-collapsed="isCollapsed" @select="handleSelect" />
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarAccountMenu :is-collapsed="isCollapsed" />

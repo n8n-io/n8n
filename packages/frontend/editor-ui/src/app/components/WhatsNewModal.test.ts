@@ -60,6 +60,8 @@ const currentVersion: Version = {
 
 describe('WhatsNewModal', () => {
 	beforeEach(() => {
+		// The dialog scrolls to an article as soon as it has focus; jsdom has no scrolling.
+		Element.prototype.scrollIntoView = vi.fn();
 		createTestingPinia();
 		uiStore = mockedStore(useUIStore);
 		uiStore.modalStateById = {
@@ -125,8 +127,19 @@ describe('WhatsNewModal', () => {
 					updatedAt: '2025-06-19T12:41:53.220Z',
 					publishedAt: '2025-06-19T12:41:53.216Z',
 				},
+				{
+					id: 2,
+					title: 'Gateway credits',
+					content:
+						'Try supported AI models without setting up credentials.\n\n' +
+						'[Learn more in the docs](https://docs.n8n.io/gateway-credits)',
+					createdAt: '2025-06-19T12:35:14.454Z',
+					updatedAt: null,
+					publishedAt: '2025-06-19T12:41:53.216Z',
+				},
 			],
 		};
+		versionsStore.whatsNewArticles = versionsStore.whatsNew.items;
 	});
 
 	afterEach(() => {
@@ -145,10 +158,109 @@ describe('WhatsNewModal', () => {
 		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
 		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 
-		expect(screen.getByText("What's New in n8n 1.100.0")).toBeInTheDocument();
+		expect(screen.getByRole('dialog', { name: 'What’s new' })).toBeInTheDocument();
+		expect(screen.getByRole('heading', { level: 2, name: 'What’s new' })).toBeInTheDocument();
+		const changelog = getByTestId('whats-new-modal-changelog-link');
+		expect(changelog).toHaveAttribute('href', 'https://docs.n8n.io/changelog');
+		expect(changelog).toHaveAttribute('target', '_blank');
+		// The secondary action lives in the footer, not in the title row.
+		expect(changelog.closest('[data-slot="dialog-footer"]')).not.toBeNull();
 		expect(getByTestId('whats-new-item-1')).toMatchSnapshot();
 		expect(queryByTestId('whats-new-modal-update-button')).not.toBeInTheDocument();
 		expect(queryByTestId('whats-new-modal-next-versions-link')).not.toBeInTheDocument();
+	});
+
+	it('renders a player without a fixed height so the stylesheet can keep it 16:9', async () => {
+		const { getByTestId } = renderComponent({ props: { data: { articleId: 1 } } });
+
+		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
+
+		const player = getByTestId('whats-new-item-1').querySelector('iframe');
+		expect(player).toHaveAttribute('src', expect.stringContaining('ZCuL2e4zC_4'));
+		expect(player).toHaveAttribute('width', '100%');
+		expect(player).not.toHaveAttribute('height');
+	});
+
+	it('renders a link that ends an article as a button and keeps it out of the body', async () => {
+		const { getByTestId } = renderComponent({ props: { data: { articleId: 2 } } });
+
+		await waitFor(() => expect(getByTestId('whats-new-item-2')).toBeInTheDocument());
+
+		const article = getByTestId('whats-new-item-2');
+		const cta = getByTestId('whats-new-item-cta');
+		expect(cta).toHaveTextContent('Learn more in the docs');
+		expect(cta).toHaveAttribute('href', 'https://docs.n8n.io/gateway-credits');
+		expect(cta).toHaveAttribute('target', '_blank');
+		expect(article.querySelectorAll('a')).toHaveLength(1);
+	});
+
+	describe('read tracking', () => {
+		it('marks only the requested article as read when opened', async () => {
+			const { getByTestId } = renderComponent({ props: { data: { articleId: 2 } } });
+
+			await waitFor(() => expect(getByTestId('whats-new-item-2')).toBeInTheDocument());
+			await waitFor(() => expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalled());
+
+			expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalledTimes(1);
+			expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalledWith(2);
+			expect(Element.prototype.scrollIntoView).toHaveBeenCalledTimes(1);
+		});
+
+		it('falls back to the first article when opened without one', async () => {
+			const { getByTestId } = renderComponent({ props: { data: {} } });
+
+			await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
+			await waitFor(() => expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalledWith(1));
+
+			expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalledTimes(1);
+		});
+
+		it('leaves the body at the top when opened at the first article', async () => {
+			const { getByTestId } = renderComponent({ props: { data: { articleId: 1 } } });
+
+			await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
+			await waitFor(() => expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalledWith(1));
+
+			// The update notice leads the first article; a scroll would hide it.
+			expect(Element.prototype.scrollIntoView).not.toHaveBeenCalled();
+		});
+
+		it('marks an article as read once the reader rests on it', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			try {
+				const { getByTestId, baseElement } = renderComponent({
+					props: { data: { articleId: 1 } },
+				});
+
+				await waitFor(() => expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalledWith(1));
+				// Let the opening settle before the reader starts to scroll.
+				await vi.advanceTimersByTimeAsync(200);
+				versionsStore.setWhatsNewArticleRead.mockClear();
+
+				// The dialog is portalled, so the scroll container is not under `container`.
+				const scroller = baseElement.querySelector('[data-slot="dialog-body"]');
+				if (!(scroller instanceof HTMLElement)) throw new Error('no scroll container');
+				const rect = (top: number, bottom: number) =>
+					({ top, bottom, height: bottom - top }) as DOMRect;
+				vi.spyOn(scroller, 'getBoundingClientRect').mockReturnValue(rect(0, 600));
+				vi.spyOn(getByTestId('whats-new-item-1'), 'getBoundingClientRect').mockReturnValue(
+					rect(-900, 100),
+				);
+				vi.spyOn(getByTestId('whats-new-item-2'), 'getBoundingClientRect').mockReturnValue(
+					rect(100, 400),
+				);
+
+				scroller.dispatchEvent(new Event('scroll'));
+				await vi.advanceTimersByTimeAsync(799);
+				expect(versionsStore.setWhatsNewArticleRead).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(1);
+				expect(versionsStore.setWhatsNewArticleRead).toHaveBeenCalledWith(2);
+				expect(versionsStore.setWhatsNewArticleRead).not.toHaveBeenCalledWith(1);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
 	});
 
 	it('should render a close button that dismisses the modal', async () => {
@@ -162,7 +274,7 @@ describe('WhatsNewModal', () => {
 
 		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
 
-		const closeButton = getByRole('button', { name: 'Close this dialog' });
+		const closeButton = getByRole('button', { name: 'Close dialog' });
 		expect(closeButton).toBeInTheDocument();
 
 		await userEvent.click(closeButton);
@@ -200,6 +312,27 @@ describe('WhatsNewModal', () => {
 		expect(getByTestId('whats-new-modal-update-button')).toBeEnabled();
 		expect(getByTestId('whats-new-modal-next-versions-link')).toBeInTheDocument();
 		expect(getByTestId('whats-new-modal-next-versions-link')).toHaveTextContent('1 version behind');
+	});
+
+	it('leads the first post with the update notice', async () => {
+		versionsStore.hasVersionUpdates = true;
+		versionsStore.hasSignificantUpdates = true;
+		versionsStore.latestVersion = { ...currentVersion, name: '1.101.0' };
+
+		const { getByTestId, queryByTestId } = renderComponent({ props: { data: { articleId: 1 } } });
+
+		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
+
+		const notice = getByTestId('whats-new-modal-update-notice');
+		expect(notice).toHaveTextContent('Update to 1.101.0');
+		// It scrolls with the posts and sits right before the first one.
+		expect(notice.closest('[data-slot="dialog-body"]')).not.toBeNull();
+		expect(notice.nextElementSibling).toBe(getByTestId('whats-new-item-1'));
+
+		versionsStore.hasSignificantUpdates = false;
+		await waitFor(() =>
+			expect(queryByTestId('whats-new-modal-update-notice')).not.toBeInTheDocument(),
+		);
 	});
 
 	it('should take user to update page when Update is clicked', async () => {

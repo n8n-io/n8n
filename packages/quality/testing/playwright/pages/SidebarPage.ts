@@ -174,7 +174,7 @@ export class SidebarPage extends BasePage {
 		return this.container.getByTestId('main-sidebar-templates').locator('a');
 	}
 
-	// The sidebar no longer lists updates; the nudge is the one in the What's new modal.
+	// The update nudge lives in the What's new modal footer now.
 	getVersionUpdateItem(): Locator {
 		return this.page.getByTestId('whats-new-modal-next-versions-link');
 	}

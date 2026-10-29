@@ -1,19 +1,29 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`WhatsNewModal > should not render update button when no version updates available 1`] = `
-<div
+<article
   class="article"
   data-test-id="whats-new-item-1"
 >
-  <h2
-    class="n8n-heading size-xlarge bold"
+  <time
+    class="n8n-text text-light size-small regular date date"
+    data-test-id="whats-new-item-date"
+    datetime="2025-06-19T12:41:53.216Z"
+  >
+    
+    19 June 2025
+    
+  </time>
+  <!-- The dialog title is the h2, so the articles nest under it. -->
+  <h3
+    class="n8n-heading size-xlarge bold title title"
   >
     
     Convert to sub-workflow
     
-  </h2>
+  </h3>
   <div
-    class="n8n-markdown markdown"
+    class="n8n-markdown body"
   >
     <!-- Needed to support YouTube player embeds. HTML rendered here is sanitized. -->
     <!-- eslint-disable vue/no-v-html -->
@@ -161,7 +171,6 @@ exports[`WhatsNewModal > should not render update button when no version updates
         <iframe
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share; fullscreen"
           frameborder="0"
-          height="315"
           referrerpolicy="strict-origin-when-cross-origin"
           src="https://www.youtube-nocookie.com/embed/ZCuL2e4zC_4"
           title="YouTube video player"
@@ -372,5 +381,6 @@ exports[`WhatsNewModal > should not render update button when no version updates
 
     </div>
   </div>
-</div>
+  <!--v-if-->
+</article>
 `;

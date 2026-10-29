@@ -1,6 +1,6 @@
 import type { IVersionNotificationSettings } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
-import { VERSIONS_MODAL_KEY, WHATS_NEW_MODAL_KEY } from '@n8n/frontend-constants/versions';
+import { VERSIONS_MODAL_KEY } from '@n8n/frontend-constants/versions';
 import type { IUser } from '@n8n/rest-api-client/api/users';
 import * as versionsApi from '@n8n/rest-api-client/api/versions';
 import type { Version, WhatsNewArticle, WhatsNewSection } from '@n8n/rest-api-client/api/versions';
@@ -30,7 +30,7 @@ vi.mock('./users.store');
 
 /**
  * Stub `useUsersStore` with just the `currentUser` this store reads —
- * `shouldShowWhatsNewCallout` only looks at `createdAt`.
+ * `whatsNewCardArticles` only looks at `createdAt`.
  */
 const mockCurrentUser = (currentUser: Partial<IUser> | null) => {
 	vi.mocked(useUsersStore).mockReturnValue(
@@ -163,7 +163,7 @@ describe('versions.store', () => {
 			expect(versionsStore.whatsNewArticles).toEqual([whatsNewArticle]);
 		});
 
-		it('should dismiss the callout as soon as it is shown', async () => {
+		it('should not show a toast for new articles; the sidebar card presents them', async () => {
 			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
 			mockCurrentUser(null);
 
@@ -177,34 +177,8 @@ describe('versions.store', () => {
 			versionsStore.registerModalOpeners({ openModal, openModalWithData });
 			await versionsStore.fetchWhatsNew();
 
-			// The callout has been shown ...
-			expect(toast.showMessage).toHaveBeenCalled();
-			// ... and is immediately marked as dismissed so it does not reappear on the
-			// next load, even though the user never explicitly closed it.
-			expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
-		});
-
-		it("should open the what's new modal via the registered opener when the callout is clicked", async () => {
-			vi.spyOn(versionsApi, 'getWhatsNewSection').mockResolvedValue(whatsNew);
-			mockCurrentUser(null);
-
-			const rootStore = useRootStore();
-			rootStore.setVersionCli(currentVersionName);
-			rootStore.setInstanceId(instanceId);
-
-			const versionsStore = useVersionsStore();
-			versionsStore.initialize(settings);
-
-			versionsStore.registerModalOpeners({ openModal, openModalWithData });
-			await versionsStore.fetchWhatsNew();
-
-			const onClick = vi.mocked(toast.showMessage).mock.calls[0][0].onClick;
-			onClick?.();
-
-			expect(openModalWithData).toHaveBeenCalledWith({
-				name: WHATS_NEW_MODAL_KEY,
-				data: { articleId: whatsNewArticle.id },
-			});
+			expect(toast.showMessage).not.toHaveBeenCalled();
+			expect(versionsStore.whatsNewCardArticles).toEqual([whatsNewArticle]);
 		});
 
 		it("should not fetch What's new articles if version notifications are disabled", async () => {
@@ -617,16 +591,17 @@ describe('versions.store', () => {
 	});
 });
 
-describe('shouldShowWhatsNewCallout', () => {
+describe('whatsNewCardArticles', () => {
 	let versionsStore: ReturnType<typeof useVersionsStore>;
 
+	const now = Date.now();
 	const makeArticle = (overrides: Partial<WhatsNewArticle> = {}): WhatsNewArticle => ({
 		id: 1,
 		title: 'Test',
 		content: 'Content',
-		createdAt: new Date().toISOString(),
-		updatedAt: new Date().toISOString(),
-		publishedAt: new Date().toISOString(),
+		createdAt: new Date(now).toISOString(),
+		updatedAt: new Date(now).toISOString(),
+		publishedAt: new Date(now).toISOString(),
 		...overrides,
 	});
 
@@ -635,55 +610,46 @@ describe('shouldShowWhatsNewCallout', () => {
 		setActivePinia(createPinia());
 	});
 
-	it('returns false if there are no articles', () => {
+	it('is empty when there are no articles', () => {
 		mockCurrentUser(null);
 		versionsStore = useVersionsStore();
-		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [];
-		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+		expect(versionsStore.whatsNewCardArticles).toEqual([]);
 	});
 
-	it('returns true if user has no createdAt and not all articles are dismissed', () => {
+	it('lists every unread article in feed order when the user has no createdAt', () => {
 		mockCurrentUser(null);
 		versionsStore = useVersionsStore();
-		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
-		versionsStore.whatsNew.items = [makeArticle()];
-		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(true);
+		const articles = [makeArticle({ id: 1 }), makeArticle({ id: 2 })];
+		versionsStore.whatsNew.items = articles;
+		expect(versionsStore.whatsNewCardArticles).toEqual(articles);
 	});
 
-	it('returns false if all articles are dismissed', () => {
+	it('leaves out articles the user has read', () => {
 		mockCurrentUser(null);
 		versionsStore = useVersionsStore();
-		versionsStore.whatsNew.items = [makeArticle()];
-		versionsStore.dismissWhatsNewCallout();
-		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+		versionsStore.whatsNew.items = [makeArticle({ id: 1 }), makeArticle({ id: 2 })];
+		versionsStore.setWhatsNewArticleRead(1);
+		expect(versionsStore.whatsNewCardArticles.map((article) => article.id)).toEqual([2]);
 	});
 
-	it('returns true if user createdAt is before article updatedAt', () => {
-		const now = Date.now();
-		mockCurrentUser({ createdAt: new Date(now - 10000).toISOString() });
-		versionsStore = useVersionsStore();
-		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
-		versionsStore.whatsNew.items = [makeArticle({ updatedAt: new Date(now).toISOString() })];
-		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(true);
-	});
-
-	it('returns false if user createdAt is after article updatedAt', () => {
-		const now = Date.now();
+	it('leaves out articles that predate the user account', () => {
 		mockCurrentUser({ createdAt: new Date(now).toISOString() });
 		versionsStore = useVersionsStore();
-		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
 		versionsStore.whatsNew.items = [
-			makeArticle({ updatedAt: new Date(now - 10000).toISOString() }),
+			makeArticle({ id: 1, updatedAt: new Date(now - 10000).toISOString() }),
+			makeArticle({ id: 2, updatedAt: new Date(now + 10000).toISOString() }),
 		];
-		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+		expect(versionsStore.whatsNewCardArticles.map((article) => article.id)).toEqual([2]);
 	});
 
-	it('handles missing updatedAt on article', () => {
-		mockCurrentUser({ createdAt: new Date().toISOString() });
+	it('falls back to publishedAt when an article has no updatedAt', () => {
+		mockCurrentUser({ createdAt: new Date(now).toISOString() });
 		versionsStore = useVersionsStore();
-		Object.defineProperty(versionsStore, 'lastDismissedWhatsNewCallout', { get: () => [] });
-		versionsStore.whatsNew.items = [makeArticle({ updatedAt: undefined })];
-		expect(versionsStore.shouldShowWhatsNewCallout()).toBe(false);
+		versionsStore.whatsNew.items = [
+			makeArticle({ id: 1, updatedAt: null, publishedAt: new Date(now - 10000).toISOString() }),
+			makeArticle({ id: 2, updatedAt: null, publishedAt: new Date(now + 10000).toISOString() }),
+		];
+		expect(versionsStore.whatsNewCardArticles.map((article) => article.id)).toEqual([2]);
 	});
 });
