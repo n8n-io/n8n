@@ -25,7 +25,8 @@ export default function () {
 
 	check(res, {
 		'is status 200': (r) => r.status === 200,
+		// n8n sends the MIME type of the file, without a charset
 		'has correct content type': (r) =>
-			r.headers['Content-Type'] === 'application/octet-stream; charset=utf-8',
+			r.headers['Content-Type']?.startsWith('application/octet-stream') ?? false,
 	});
 }
