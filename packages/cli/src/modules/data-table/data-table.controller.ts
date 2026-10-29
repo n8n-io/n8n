@@ -37,7 +37,6 @@ import {
 	NotFoundError,
 } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { ProjectService } from '@/services/project.service.ee';
 
 import {
 	assertRowReadAccessIfReturningRows,
@@ -55,7 +54,6 @@ import { DataTableValidationError } from './errors/data-table-validation.error';
 export class DataTableController {
 	constructor(
 		private readonly dataTableService: DataTableService,
-		private readonly projectService: ProjectService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {}
 
@@ -87,7 +85,7 @@ export class DataTableController {
 	) {
 		try {
 			const { projectId } = req.params;
-			await this.projectService.getProject(projectId);
+			await this.dataTableService.assertProjectExists(projectId);
 			next();
 		} catch (e) {
 			res.status(404).send('Project not found');

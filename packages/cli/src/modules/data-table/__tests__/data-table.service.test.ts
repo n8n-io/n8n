@@ -1,6 +1,11 @@
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import {
+	EventService,
+	ProjectNotFoundError,
+	ProjectScopeService,
+	RoleService,
+} from '@n8n/backend-services';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
 import { In } from '@n8n/typeorm';
@@ -20,8 +25,6 @@ import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-fo
 import { DataTableNotFoundError } from '../errors/data-table-not-found.error';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 
-import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
-
 describe('DataTableService', () => {
 	let dataTableService: DataTableService;
 	let mockDataTableRepository: Mocked<DataTableRepository>;
@@ -34,7 +37,7 @@ describe('DataTableService', () => {
 	let mockCsvImportService: Mocked<DataTableCsvImportService>;
 	let mockEventService: Mocked<EventService>;
 	let mockProjectRepository: Mocked<ProjectRepository>;
-	let mockProjectService: Mocked<ProjectService>;
+	let mockProjectScopeService: Mocked<ProjectScopeService>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -51,7 +54,7 @@ describe('DataTableService', () => {
 		mockCsvImportService = mockInstance(DataTableCsvImportService);
 		mockEventService = mockInstance(EventService);
 		mockProjectRepository = mockInstance(ProjectRepository);
-		mockProjectService = mockInstance(ProjectService);
+		mockProjectScopeService = mockInstance(ProjectScopeService);
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
@@ -67,7 +70,7 @@ describe('DataTableService', () => {
 			mockCsvImportService,
 			mockEventService,
 			mockProjectRepository,
-			mockProjectService,
+			mockProjectScopeService,
 		);
 
 		vi.clearAllMocks();
@@ -794,19 +797,35 @@ describe('DataTableService', () => {
 		});
 
 		it('should return the given project when the user has create scope', async () => {
-			mockProjectService.findProject.mockResolvedValue({ id: projectId } as never);
-			mockProjectService.getProjectWithScope.mockResolvedValue({ id: projectId } as never);
+			mockProjectRepository.findExistingIds.mockResolvedValue([projectId]);
+			mockProjectScopeService.getProjectRoleSlugs.mockResolvedValue(['project:admin']);
+			mockProjectRepository.findOneWithUserRoles.mockResolvedValue({ id: projectId } as never);
 
 			const result = await dataTableService.resolveOwningProjectId(user, projectId);
 
 			expect(result).toBe(projectId);
-			expect(mockProjectService.getProjectWithScope).toHaveBeenCalledWith(user, projectId, [
+			expect(mockProjectScopeService.getProjectRoleSlugs).toHaveBeenCalledWith(user, [
 				'dataTable:create',
 			]);
 		});
 
+		it('should allow a global scope without a project role', async () => {
+			mockProjectRepository.findExistingIds.mockResolvedValue([projectId]);
+			mockProjectScopeService.getProjectRoleSlugs.mockResolvedValue(null);
+			mockProjectRepository.findOneWithUserRoles.mockResolvedValue({ id: projectId } as never);
+
+			await expect(dataTableService.resolveOwningProjectId(user, projectId)).resolves.toBe(
+				projectId,
+			);
+			expect(mockProjectRepository.findOneWithUserRoles).toHaveBeenCalledWith(
+				projectId,
+				user.id,
+				undefined,
+			);
+		});
+
 		it('should throw ProjectNotFoundError when the project does not exist', async () => {
-			mockProjectService.findProject.mockResolvedValue(null);
+			mockProjectRepository.findExistingIds.mockResolvedValue([]);
 
 			await expect(dataTableService.resolveOwningProjectId(user, projectId)).rejects.toThrow(
 				ProjectNotFoundError,
@@ -814,8 +833,9 @@ describe('DataTableService', () => {
 		});
 
 		it('should throw DataTableAccessDeniedError when the user cannot create in the project', async () => {
-			mockProjectService.findProject.mockResolvedValue({ id: projectId } as never);
-			mockProjectService.getProjectWithScope.mockResolvedValue(null);
+			mockProjectRepository.findExistingIds.mockResolvedValue([projectId]);
+			mockProjectScopeService.getProjectRoleSlugs.mockResolvedValue([]);
+			mockProjectRepository.findOneWithUserRoles.mockResolvedValue(null);
 
 			await expect(dataTableService.resolveOwningProjectId(user, projectId)).rejects.toThrow(
 				DataTableAccessDeniedError,
