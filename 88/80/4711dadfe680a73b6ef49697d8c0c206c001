@@ -1,0 +1,37 @@
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_f6ecac1d27039d::t_b1754916882ed9 68,155
+packages/cli/src/modules/agents/tools/import-files.tool.ts
+  s_f6ecac1d27039d::t_0bfb2448159ae2 1-42
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-integration-tools.test.ts
+  s_f6ecac1d27039d::t_b1754916882ed9 162
+  s_f6ecac1d27039d::t_478e9fb37f4543 507
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_f6ecac1d27039d::t_b1754916882ed9 34,90
+  s_f6ecac1d27039d::t_41abc492f749ab 131,135,152-154
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_f6ecac1d27039d::t_b1754916882ed9 60,196
+packages/cli/src/modules/agents/agent-sandbox-files.service.ts
+  s_f6ecac1d27039d::t_0bfb2448159ae2 4,24-26,76-77,105,108-145
+packages/cli/src/modules/agents/__tests__/agent-sandbox-files.service.test.ts
+  s_f6ecac1d27039d::t_41abc492f749ab 184-234
+  s_f6ecac1d27039d::t_b1754916882ed9 3,22-23
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f6ecac1d27039d::t_aa5901e62beebb 117-118,339,1061,1122-1126,1130,1134-1135,1156
+  s_f6ecac1d27039d::t_b1754916882ed9 15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "88804711dadfe680a73b6ef49697d8c0c206c001",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
