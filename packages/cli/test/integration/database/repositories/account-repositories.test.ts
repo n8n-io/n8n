@@ -205,6 +205,23 @@ describe('UserRepository (both kinds)', () => {
 
 			expect(found.map(({ id }) => id)).toEqual([person.id]);
 		});
+
+		it('finds the people with an eligible role, but not a service account with it', async () => {
+			const personRepository = Container.get(PersonRepository);
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+			const query = {
+				projectId: 'no-project',
+				projectRoleSlugs: [],
+				globalRoleSlugs: [GLOBAL_MEMBER_ROLE.slug],
+			};
+
+			const accounts = await userRepository.findEligibleByProjectOrGlobalRoles(query);
+			const people = await personRepository.findEligibleByProjectOrGlobalRoles(query);
+
+			expect(accounts.map(({ id }) => id).sort()).toEqual([person.id, serviceAccount.id].sort());
+			expect(people.map(({ id }) => id)).toEqual([person.id]);
+		});
 	});
 
 	describe('relations', () => {

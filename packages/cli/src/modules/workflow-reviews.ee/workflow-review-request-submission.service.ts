@@ -9,9 +9,8 @@ import { EventService, RoleService } from '@n8n/backend-services';
 import {
 	DbLock,
 	DbLockService,
-	isPerson,
+	PersonRepository,
 	SharedWorkflowRepository,
-	UserRepository,
 	WorkflowHistoryRepository,
 	WorkflowReviewRequestAuthorRepository,
 	WorkflowReviewRequestRepository,
@@ -56,7 +55,7 @@ export class WorkflowReviewRequestSubmissionService {
 		private readonly workflowReviewRequestAuthorRepository: WorkflowReviewRequestAuthorRepository,
 		private readonly workflowReviewRequestReviewerRepository: WorkflowReviewRequestReviewerRepository,
 		private readonly activityRepository: WorkflowReviewActivityRepository,
-		private readonly userRepository: UserRepository,
+		private readonly personRepository: PersonRepository,
 		private readonly roleService: RoleService,
 		private readonly dbLockService: DbLockService,
 		private readonly eventService: EventService,
@@ -70,16 +69,15 @@ export class WorkflowReviewRequestSubmissionService {
 			this.roleService.rolesWithScope('global', ['workflow:read']),
 		]);
 
-		const users = await this.userRepository.findEligibleByProjectOrGlobalRoles({
+		// Only a person can review a workflow.
+		const people = await this.personRepository.findEligibleByProjectOrGlobalRoles({
 			projectId,
 			projectRoleSlugs,
 			globalRoleSlugs,
 		});
 
-		// Only a person can review a workflow.
-		return users
-			.filter(isPerson)
-			.filter((user) => !user.isPending && user.id !== excludeUserId)
+		return people
+			.filter((person) => !person.isPending && person.id !== excludeUserId)
 			.sort((a, b) => a.email.localeCompare(b.email));
 	}
 
