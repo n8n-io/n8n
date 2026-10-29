@@ -3,10 +3,10 @@ import { EventEmitter } from 'node:events';
 import type {
 	ExecutionChannelFrameHandler,
 	ExecutionChannelPublisher,
-	ExecutionChannelSubscriber,
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
 } from './execution-channel';
+import { InMemoryExecutionChannelSubscriber } from './in-memory-execution-response-receiver';
 
 /** Carries serialized frames between the endpoints of the channel in this process. */
 export class InMemoryExecutionChannel {
@@ -40,36 +40,6 @@ export class InMemoryExecutionChannelPublisher implements ExecutionChannelPublis
 
 	async stop(): Promise<void> {
 		this.stopped = true;
-	}
-}
-
-export class InMemoryExecutionChannelSubscriber implements ExecutionChannelSubscriber {
-	private readonly subscriptions = new Set<UnsubscribeFromExecutionChannel>();
-
-	private stopped = false;
-
-	constructor(private readonly channel: InMemoryExecutionChannel) {}
-
-	async subscribe(
-		topic: ExecutionChannelTopic,
-		executionId: string,
-		handler: ExecutionChannelFrameHandler,
-	): Promise<UnsubscribeFromExecutionChannel> {
-		if (this.stopped) return () => {};
-
-		const unsubscribeFromChannel = this.channel.subscribe(topic, executionId, handler);
-		const unsubscribe = () => {
-			unsubscribeFromChannel();
-			this.subscriptions.delete(unsubscribe);
-		};
-		this.subscriptions.add(unsubscribe);
-
-		return unsubscribe;
-	}
-
-	async stop(): Promise<void> {
-		this.stopped = true;
-		for (const unsubscribe of this.subscriptions) unsubscribe();
 	}
 }
 
