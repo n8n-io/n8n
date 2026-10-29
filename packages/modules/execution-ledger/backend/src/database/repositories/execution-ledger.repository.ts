@@ -29,25 +29,6 @@ export type NewExecutionLedgerRow = Omit<ExecutionLedgerRow, 'id'>;
 
 type RawLedgerRow = Record<keyof ExecutionLedgerRow, unknown>;
 
-const COLUMNS: ReadonlyArray<keyof ExecutionLedgerRow> = [
-	'id',
-	'executionId',
-	'occurredAt',
-	'entityType',
-	'entityName',
-	'entityId',
-	'projectId',
-	'mode',
-	'source',
-	'event',
-	'outcome',
-	'blockedBy',
-	'runtimeMs',
-	'timeSavedMin',
-	'origin',
-	'eventId',
-];
-
 /** The only reader and writer of `execution_ledger`. */
 @Service()
 export class ExecutionLedgerRepository {
@@ -87,19 +68,16 @@ export class ExecutionLedgerRepository {
 		}
 
 		const manager = this.table.managerFor(ctx);
-		const escape = (name: string) => manager.connection.driver.escape(name);
-		const table = escape(this.table.metadata.tableName);
-		const columns = COLUMNS.map(escape).join(', ');
-		const id = escape('id');
+		const table = manager.connection.driver.escape(this.table.metadata.tableName);
 
 		const rows = this.isPostgres
 			? await this.query(
 					manager,
 					// The CTE makes the driver return rows only: a bare DELETE ... RETURNING returns [rows, count].
-					`WITH batch AS (DELETE FROM ${table} WHERE ${id} IN (SELECT ${id} FROM ${table} ORDER BY ${id} LIMIT $1) RETURNING ${columns}) SELECT * FROM batch ORDER BY ${id}`,
+					`WITH batch AS (DELETE FROM ${table} WHERE "id" IN (SELECT "id" FROM ${table} ORDER BY "id" LIMIT $1) RETURNING *) SELECT * FROM batch ORDER BY "id"`,
 					[limit],
 				)
-			: await this.claimOnSqlite(manager, table, columns, id, limit);
+			: await this.claimOnSqlite(manager, table, limit);
 
 		return rows.map(toLedgerRow);
 	}
@@ -111,18 +89,14 @@ export class ExecutionLedgerRepository {
 	private async claimOnSqlite(
 		manager: EntityManager,
 		table: string,
-		columns: string,
-		id: string,
 		limit: number,
 	): Promise<RawLedgerRow[]> {
-		const rows = await this.query(
-			manager,
-			`SELECT ${columns} FROM ${table} ORDER BY ${id} LIMIT $1`,
-			[limit],
-		);
+		const rows = await this.query(manager, `SELECT * FROM ${table} ORDER BY "id" LIMIT $1`, [
+			limit,
+		]);
 		if (rows.length === 0) return rows;
 
-		await this.query(manager, `DELETE FROM ${table} WHERE ${id} <= $1`, [rows[rows.length - 1].id]);
+		await this.query(manager, `DELETE FROM ${table} WHERE "id" <= $1`, [rows[rows.length - 1].id]);
 		return rows;
 	}
 

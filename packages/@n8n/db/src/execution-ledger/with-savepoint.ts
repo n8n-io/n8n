@@ -6,10 +6,8 @@ import type { OperationContext } from '../services/transaction';
 import { entityManagerOf } from '../services/typeorm-transaction';
 
 /**
- * Runs one fold step in its own savepoint inside the transaction `ctx` carries. On failure it
- * undoes only that step and rethrows the step's error. `TransactionRunner.run` joins an outer
- * transaction and does not nest it, so it cannot do this.
- *
+ * Runs one fold step in its own savepoint, so a failure undoes only that step before it is
+ * rethrown. `TransactionRunner.run` joins an outer transaction and cannot do this.
  * @throws FoldTransactionLostError when `ROLLBACK TO SAVEPOINT` fails.
  */
 export async function withSavepoint<T>(
