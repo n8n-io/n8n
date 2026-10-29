@@ -685,6 +685,23 @@ describe('POST /api/workflow-executions/search/latest (integration)', () => {
 		});
 	});
 
+	it('returns the newest sub-execution of a parent execution', async () => {
+		const parentId = await start(generateId());
+		await startSubExecution({ executionId: parentId, stepId: generateId(), awaited: true });
+		const newest = await startSubExecution({
+			executionId: parentId,
+			stepId: generateId(),
+			awaited: false,
+		});
+		await start(generateId());
+
+		const response = await findLatest({ workflowIds: 'all', parentExecutionId: parentId }).expect(
+			200,
+		);
+
+		expect(response.body).toMatchObject({ id: newest });
+	});
+
 	it('returns 404 not_found when nothing matches', async () => {
 		const workflowId = generateId();
 		await start(workflowId);
