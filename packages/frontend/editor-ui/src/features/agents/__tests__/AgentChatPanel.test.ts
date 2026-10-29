@@ -118,6 +118,11 @@ vi.mock('../composables/useAgentBackgroundJobs', () => ({
 vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
+const getSessionFilesMock = vi.fn();
+vi.mock('../composables/useAgentApi', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../composables/useAgentApi')>()),
+	getSessionFiles: async (...args: unknown[]) => await getSessionFilesMock(...args),
+}));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 let onAgentUnavailable: (() => void) | undefined;
 let onStreamEvent: ((event: AgentSseEvent) => void) | undefined;
@@ -1363,6 +1368,61 @@ describe('AgentChatPanel', () => {
 			wrapper.findAll('[data-queue-id]').map((row) => row.attributes('data-queue-id')),
 		).toEqual(['2', '3']);
 		wrapper.unmount();
+	});
+
+	describe('session files', () => {
+		const toggle = '[data-test-id="agent-session-files-toggle"]';
+		const file = {
+			fileId: 'f-1',
+			fileName: 'reports/q1.csv',
+			mimeType: 'text/csv',
+			sizeBytes: 3,
+			source: 'sandbox',
+			createdAt: '2026-10-29T10:00:00.000Z',
+		};
+
+		// The icon button is stubbed here, so emit its click event.
+		const open = async (wrapper: ReturnType<typeof mountPanel>) => {
+			wrapper.findComponent(toggle).vm.$emit('click', new MouseEvent('click'));
+			await flushPromises();
+		};
+
+		beforeEach(() => {
+			getSessionFilesMock.mockReset();
+			getSessionFilesMock.mockResolvedValue({ files: [file] });
+		});
+
+		it('shows the toggle only for a preview chat session', () => {
+			expect(mountPanel({ continueSessionId: 't1' }).find(toggle).exists()).toBe(true);
+			expect(mountPanel().find(toggle).exists()).toBe(false);
+			expect(
+				mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' }).find(toggle).exists(),
+			).toBe(false);
+		});
+
+		it('lists the files with a download link when opened', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+
+			await open(wrapper);
+
+			expect(getSessionFilesMock).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'p1', 'a1', 't1');
+			const link = wrapper.find('[data-test-id="session-file-link"]');
+			expect(link.text()).toBe('reports/q1.csv');
+			expect(link.attributes('download')).toBe('q1.csv');
+			expect(link.attributes('href')).toContain('/attachments/f-1?threadId=t1');
+		});
+
+		it('reloads the open list when a turn ends', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+			await open(wrapper);
+
+			isStreamingMock.value = true;
+			await nextTick();
+			isStreamingMock.value = false;
+			await flushPromises();
+
+			expect(getSessionFilesMock).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	it('renders the attach button in the composer footer when the model accepts attachments', () => {
