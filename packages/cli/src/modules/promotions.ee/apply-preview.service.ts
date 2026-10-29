@@ -1,5 +1,5 @@
 import type {
-	PromotionApplyCheck,
+	PromotionPreviewCheck,
 	PromotionResource,
 	PromotionResourceDependency,
 } from '@n8n/api-types';
@@ -24,26 +24,24 @@ import {
 	LayoutConflictPolicy,
 	OverwriteDeletionPolicy,
 	TagConflictPolicy,
+	WorkflowPublishingPolicy,
 	type ImportSelection,
 	type ImportSelectionRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 
-import { plannedChanges, previewRevision, toApplyCheck } from './apply-preview';
+import { plannedChanges, previewRevision, toPreviewCheck } from './apply-preview';
 import { PACKAGE_SUBFOLDER } from './constants';
 import { crossProjectMoves, foldersInScope, type CrossProjectMoves } from './cross-project-moves';
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { LocalPackageEntities } from './local-package-entities.service';
 import type { InstancePackage } from './instance-package';
-import {
-	collectCredentialReferences,
-	collectVariableReferences,
-} from './promotion-binding-preflight.service';
+import { collectCredentialReferences, collectVariableReferences } from './package-references';
 import { buildPreview } from './promotion-preview';
 
 export type ApplyPreview = {
 	resources: PromotionResource[];
 	dependencies: PromotionResourceDependency[];
-	check: PromotionApplyCheck;
+	check: PromotionPreviewCheck;
 	revision: string;
 };
 
@@ -64,6 +62,8 @@ export function applySelectionRequest(
 			: DataTableSchemaConflictPolicy.OverwriteNonDestructive,
 		tagConflictPolicy: TagConflictPolicy.Rename,
 		credentialConflictPolicy: CredentialConflictPolicy.Overwrite,
+		// Promotion moves content only. Publish state stays with the target until autopublish exists.
+		publishingPolicy: WorkflowPublishingPolicy.PreserveTargetState,
 		// Apply moves and renames workflows and folders within their project to match the branch.
 		layoutConflictPolicy: LayoutConflictPolicy.FollowPackage,
 		// A credential must be usable by the project, not only by the user who applies.
@@ -195,7 +195,7 @@ export class ApplyPreviewService {
 		inventory: PackageDirectoryInventory,
 		selection: ImportSelection | undefined,
 		moves: CrossProjectMoves,
-	): PromotionApplyCheck {
+	): PromotionPreviewCheck {
 		const selected = selection && new Set(selection.selectedWorkflowIds);
 		const scoped = {
 			...inventory,
@@ -204,7 +204,7 @@ export class ApplyPreviewService {
 					!selection || (projectId === selection.selectedProjectId && selected?.has(id)),
 			),
 		};
-		return toApplyCheck({
+		return toPreviewCheck({
 			plan,
 			inventory,
 			credentials: collectCredentialReferences(scoped),
@@ -264,22 +264,20 @@ function classifyProjectWorkflows(
 	};
 }
 
-function projectNotOnBranch(projectId: string, instance: InstancePackage): PromotionApplyCheck {
+function projectNotOnBranch(projectId: string, instance: InstancePackage): PromotionPreviewCheck {
 	const name = instance.manifest.projects?.find(({ id }) => id === projectId)?.name ?? projectId;
 	return {
-		preflight: {
-			missingProjects: [],
-			missingBindings: [],
-			accessRequirements: [],
-			conflicts: [
-				{
-					kind: 'project',
-					code: 'project-not-on-branch',
-					project: { id: projectId, name },
-				},
-			],
-			warnings: [],
-		},
+		missingProjects: [],
+		missingBindings: [],
+		accessRequirements: [],
+		conflicts: [
+			{
+				kind: 'project',
+				code: 'project-not-on-branch',
+				project: { id: projectId, name },
+			},
+		],
+		warnings: [],
 		movedWorkflows: [],
 		movedFolders: [],
 	};

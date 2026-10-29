@@ -6,6 +6,7 @@ import {
 	agentSkillShape,
 	skillCreateMethodSchema,
 } from './agent-skill.schema';
+import type { SkillSyncedFrom } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
@@ -13,6 +14,8 @@ import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
 export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
+/** Per-user PostHog flag for Skill Sync. Force it on with `N8N_FEATURE_FLAG_OVERRIDES`. */
+export const SKILL_SYNC_FLAG = '136_skill_sync';
 
 /** Optional on purpose: without `take` the caller gets every visible skill. */
 const optionalTake = z
@@ -31,9 +34,10 @@ export type SkillScope = z.infer<typeof skillScopeSchema>;
 
 /**
  * How a skill was created: `ui` on the skills settings page, `agent` from the agent builder or the
- * migration, `mcp` from an MCP client, `assistant` from n8n Assistant.
+ * migration, `mcp` from an MCP client, `assistant` from n8n Assistant, `import` from an
+ * n8n package import, `github` by Skill Sync from a GitHub source. A synced skill is read-only.
  */
-export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant';
+export type SkillSource = 'ui' | 'agent' | 'mcp' | 'assistant' | 'import' | 'github';
 
 /** The user who created a skill, as the settings list names them. */
 export type SkillUserDto = {
@@ -67,6 +71,8 @@ export type SkillListItem = {
 	availableToAssistant: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
+	/** Whether the skill is synced and the user may stop syncing it. */
+	canStopSyncing: boolean;
 	createdAt: string;
 	updatedAt: string;
 };
@@ -106,6 +112,8 @@ export type SkillDetail = SkillListItem & {
 	/** Hash of `skill`. Send it back as `baseSkillHash` so a save cannot overwrite a newer version. */
 	skillHash: string;
 	usedBy: SkillUsedBy;
+	/** Set for a synced skill: its content is read-only and changes only in its source. */
+	syncedFrom: SkillSyncedFrom | null;
 };
 
 export type SkillSaveResponse = {

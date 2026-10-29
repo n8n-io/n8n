@@ -36,6 +36,24 @@ describe('ExecutionRecorder', () => {
 		},
 	);
 
+	it.each([true, false])('keeps tool trace output on the timeline (started: %s)', (started) => {
+		const recorder = new ExecutionRecorder();
+		if (started) recorder.record(makeToolCallChunk('recall_memory', {}, 'tc-recall'));
+		recorder.record({
+			type: 'tool-result',
+			toolCallId: 'tc-recall',
+			toolName: 'recall_memory',
+			output: { entries: [] },
+			traceOutput: { entryIds: ['entry-1'] },
+		});
+
+		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
+			type: 'tool-call',
+			toolCallId: 'tc-recall',
+			traceOutput: { entryIds: ['entry-1'] },
+		});
+	});
+
 	it.each([true, false])(
 		'keeps canceled tool state in saved chat messages (started: %s)',
 		(started) => {

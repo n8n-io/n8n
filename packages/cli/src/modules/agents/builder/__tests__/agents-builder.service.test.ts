@@ -1,6 +1,5 @@
 import type { CredentialProvider } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
-import type { OutboundHttp } from '@n8n/backend-network';
 import type { User } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import { UnexpectedError, UserError } from 'n8n-workflow';
@@ -47,7 +46,6 @@ function setup() {
 		settings,
 		validation,
 		skillRefs,
-		mock<OutboundHttp>(),
 	);
 	return {
 		service,

@@ -108,6 +108,26 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 		]);
 	});
 
+	it('finds the candidates of tool calls in one thread', async () => {
+		const otherThreadId = uuid();
+		await threadRepository.insert({ id: otherThreadId, resourceId, title: null, metadata: null });
+		const first = await enqueue('call-1');
+		const second = await enqueue('call-2');
+		await enqueue('call-3');
+		const otherThread = await enqueue('call-1', { threadId: otherThreadId, runId: 'run-2' });
+		expect(otherThread.id).not.toBe(first.id);
+
+		const found = await candidateRepository.findByToolCalls(agentId, threadId, [
+			'call-1',
+			'call-2',
+		]);
+
+		expect(found.map(({ id }) => id).sort()).toEqual([first.id, second.id].sort());
+		await expect(
+			candidateRepository.findByToolCalls(uuid(), threadId, ['call-1']),
+		).resolves.toEqual([]);
+	});
+
 	it('completes selected rows and stops retrying rows at the failure limit', async () => {
 		const completed = await enqueue('call-complete');
 		const failed = await enqueue('call-fail');

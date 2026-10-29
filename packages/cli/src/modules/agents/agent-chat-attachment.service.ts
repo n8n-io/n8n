@@ -26,6 +26,8 @@ const ATTACHMENT_SOURCE_TYPE: SourceType = 'agent_chat_attachment';
 const RETENTION_BATCH_SIZE = 500;
 
 export interface StoreInboundAttachmentParams {
+	/** Row ID for the file. A new ID is made when it is not set. */
+	id?: string;
 	/** Null for inline agents, which have no `agents` row. */
 	agentId: string | null;
 	projectId: string;
@@ -74,7 +76,7 @@ export class AgentChatAttachmentService {
 	) {}
 
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
-		const attachmentId = generateNanoId();
+		const attachmentId = params.id ?? generateNanoId();
 		const root = await this.findRootThread(params.threadId);
 		// The download route authorizes by the owning agent, so a file that a
 		// sub-agent makes takes the agent of the root thread.
