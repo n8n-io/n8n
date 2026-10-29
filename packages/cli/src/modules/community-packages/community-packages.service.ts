@@ -325,19 +325,30 @@ export class CommunityPackagesService {
 		return (await this.readInstalledPackageJson(packageName))?.version ?? null;
 	}
 
+	private getPackageInstallMarkerPath(packageName: string) {
+		return join(this.resolvePackageDirectory(packageName), '.n8n-install-complete');
+	}
+
+	private async readPackageInstallMarker(packageName: string): Promise<string | null> {
+		return await readFile(this.getPackageInstallMarkerPath(packageName), 'utf-8').catch(() => null);
+	}
+
 	/**
-	 * The package ledger is written only after extraction and npm installation finish. Requiring
-	 * both versions prevents another process from loading a directory that merely looks complete
-	 * because its package.json was extracted before the rest of the install finished.
+	 * The marker is atomically moved into place only after extraction, npm installation, and the
+	 * ledger update finish. The package and ledger versions alone are insufficient: during a
+	 * same-version repair the old ledger entry already matches while files are still being written.
 	 */
 	private async isPackageInstallationComplete(packageName: string, packageVersion: string) {
-		const [onDiskVersion, packageJson] = await Promise.all([
+		const [onDiskVersion, packageJson, installMarker] = await Promise.all([
 			this.readInstalledPackageVersion(packageName),
 			this.readPackageJson(),
+			this.readPackageInstallMarker(packageName),
 		]);
 
 		return (
-			onDiskVersion === packageVersion && packageJson?.dependencies[packageName] === packageVersion
+			onDiskVersion === packageVersion &&
+			packageJson?.dependencies[packageName] === packageVersion &&
+			installMarker === packageVersion
 		);
 	}
 
@@ -837,17 +848,29 @@ export class CommunityPackagesService {
 
 	private async installOrUpdateNpmPackageFiles(packageName: string, packageVersion: string) {
 		const authToken = this.getNpmAuthToken();
+		const previousVersion = (await this.readPackageJson())?.dependencies[packageName];
 		const backupDirectory = await this.backupPackageDirectory(packageName);
 
-		// Only the directory is rolled back here, never the ledger: on a follower its
-		// entry is justified by the leader's database record, not by this instance's disk.
 		try {
 			await this.downloadPackage(packageName, packageVersion, authToken);
 			// The command may come from a newer leader in a mixed fleet.
 			await this.assertPackageApiVersionSupported(packageName);
 		} catch (error) {
-			// No reload: the previous package was not unloaded before the download
+			// No reload: the previous package was not unloaded before the download.
+			// Restore the ledger too: downloadPackage updates it before the API guard runs.
 			await this.restorePackageDirectory(packageName, backupDirectory);
+			try {
+				if (previousVersion) {
+					await this.updatePackageJsonDependency(packageName, previousVersion);
+				} else {
+					await this.removePackageJsonDependency(packageName);
+				}
+			} catch (cleanupError) {
+				this.logger.warn('Failed to restore community package ledger after download failure', {
+					error: ensureError(cleanupError),
+					packageName,
+				});
+			}
 			throw error;
 		}
 
@@ -1113,6 +1136,17 @@ export class CommunityPackagesService {
 				{ cwd: packageDirectory, registry, authToken },
 			);
 			await this.updatePackageJsonDependency(packageName, packageJson.version);
+
+			// A rename on the same filesystem is atomic, so readers either see no marker or
+			// the complete version. Never expose a partially-written completion signal.
+			const markerPath = this.getPackageInstallMarkerPath(packageName);
+			const temporaryMarkerPath = `${markerPath}.${process.pid}.${Date.now()}`;
+			try {
+				await writeFile(temporaryMarkerPath, packageJson.version, 'utf-8');
+				await rename(temporaryMarkerPath, markerPath);
+			} finally {
+				await rm(temporaryMarkerPath, { force: true });
+			}
 		} finally {
 			// `npm pack` failing to print a filename would otherwise resolve this to
 			// `downloadFolder` itself, and the non-recursive `rm` would mask the real error.

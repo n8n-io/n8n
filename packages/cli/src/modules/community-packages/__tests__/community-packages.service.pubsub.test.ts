@@ -3,7 +3,7 @@ import type { HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { InstanceSettings, PackageDirectoryLoader } from 'n8n-core';
 import { execFile } from 'node:child_process';
-import { access, readFile, rm, writeFile } from 'node:fs/promises';
+import { access, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
 
@@ -43,6 +43,12 @@ describe('CommunityPackagesService pubsub handlers', () => {
 
 	const nodesDownloadDir = path.join('tmp', 'n8n-vi-pubsub-downloads');
 	const packageJsonPath = path.join(nodesDownloadDir, 'package.json');
+	const installMarkerPath = path.join(
+		nodesDownloadDir,
+		'node_modules',
+		PACKAGE_NAME,
+		'.n8n-install-complete',
+	);
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
@@ -82,6 +88,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 
 	let installedPackageJson: Record<string, unknown>;
 	let ledgerDependencies: Record<string, string>;
+	let installMarkerVersion: string | undefined;
 
 	const execMock = ((...args: Parameters<typeof execFile>) => {
 		const command = args[0];
@@ -107,14 +114,21 @@ describe('CommunityPackagesService pubsub handlers', () => {
 
 		installedPackageJson = { name: PACKAGE_NAME, version: PREVIOUS_PACKAGE_VERSION };
 		ledgerDependencies = {};
-		vi.mocked(readFile).mockImplementation(async (filePath) =>
-			JSON.stringify(
+		installMarkerVersion = undefined;
+		vi.mocked(readFile).mockImplementation(async (filePath) => {
+			if (filePath === installMarkerPath) {
+				if (!installMarkerVersion) throw new Error('ENOENT');
+				return installMarkerVersion;
+			}
+
+			return JSON.stringify(
 				filePath === packageJsonPath
 					? { name: 'installed-nodes', private: true, dependencies: ledgerDependencies }
 					: installedPackageJson,
-			),
-		);
+			);
+		});
 		vi.mocked(access).mockResolvedValue(undefined);
+		vi.mocked(rename).mockResolvedValue(undefined);
 		vi.mocked(writeFile).mockResolvedValue(undefined);
 		vi.mocked(rm).mockResolvedValue(undefined);
 
@@ -169,6 +183,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	const arrangeCompleteInstallation = (version: string) => {
 		arrangeOnDiskVersion(version);
 		ledgerDependencies[PACKAGE_NAME] = version;
+		installMarkerVersion = version;
 	};
 
 	test.each([PACKAGE_NAME, `@scope/${PACKAGE_NAME}`])(
@@ -471,6 +486,39 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		expectDownloadAndLoad(PACKAGE_NAME);
 	});
 
+	test('should repair same-version files when the atomic completion marker is missing', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		arrangeOnDiskVersion(PACKAGE_VERSION);
+		ledgerDependencies[PACKAGE_NAME] = PACKAGE_VERSION;
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expectDownloadAndLoad(PACKAGE_NAME);
+	});
+
+	test('should repair completed-looking files when loading them fails', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		arrangeCompleteInstallation(PACKAGE_VERSION);
+		loadNodesAndCredentials.loadPackage
+			.mockRejectedValueOnce(new Error('incomplete package'))
+			.mockResolvedValueOnce(mock<PackageDirectoryLoader>());
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(executeNpmCommand).toHaveBeenCalledWith(
+			['pack', `${PACKAGE_NAME}@${PACKAGE_VERSION}`, '--quiet'],
+			expect.objectContaining({ cwd: nodesDownloadDir }),
+		);
+	});
+
 	test('should not load matching shared files with an unsupported node API version', async () => {
 		const service = createService();
 		arrangeInstalledPackage();
@@ -483,6 +531,33 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		});
 
 		expect(executeNpmCommand).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+	});
+
+	test('should restore the ledger when a downloaded follower package is incompatible', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		ledgerDependencies[PACKAGE_NAME] = PREVIOUS_PACKAGE_VERSION;
+		installedPackageJson.n8n = { n8nNodesApiVersion: '99.0' };
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(writeFile).toHaveBeenCalledWith(
+			packageJsonPath,
+			JSON.stringify(
+				{
+					name: 'installed-nodes',
+					private: true,
+					dependencies: { [PACKAGE_NAME]: PREVIOUS_PACKAGE_VERSION },
+				},
+				null,
+				2,
+			),
+			'utf-8',
+		);
 		expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
 	});
 
