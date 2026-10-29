@@ -15,14 +15,9 @@ vi.mock(
 	async () => await vi.importActual<typeof import('@n8n/workflow-sdk')>('@n8n/workflow-sdk'),
 );
 vi.mock('@/executions/execution-viewer-reader', () => ({ loadExecutionForViewer: vi.fn() }));
-vi.mock('@/executions/pre-execution-checks', async (importOriginal) => ({
-	...(await importOriginal<typeof import('@/executions/pre-execution-checks')>()),
-	findCredentialRefusal: vi.fn(),
-}));
 
 import { ActiveExecutions } from '@/active-executions';
 import { loadExecutionForViewer } from '@/executions/execution-viewer-reader';
-import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import { McpService } from '@/modules/mcp/mcp.service';
 import { NodeTypes } from '@/node-types';
 import { Telemetry } from '@/telemetry';
@@ -78,7 +73,6 @@ describe('test-workflow MCP tool', () => {
 	let logger: Logger;
 
 	beforeEach(() => {
-		vi.mocked(findCredentialRefusal).mockResolvedValue(undefined);
 		vi.mocked(loadExecutionForViewer).mockReset();
 		workflowFinderService = mockInstance(WorkflowFinderService);
 		activeExecutions = mockInstance(ActiveExecutions);
@@ -693,22 +687,6 @@ describe('test-workflow MCP tool', () => {
 				status: 'error',
 				error: REDACTION_CHECK_FAILED_MESSAGE,
 			});
-		});
-
-		test('returns the credential refusal reason when the run was refused', async () => {
-			vi.mocked(findCredentialRefusal).mockResolvedValue({
-				message: 'Node "HTTP" uses a credential you cannot use',
-				description: 'Ask the owner to share it',
-				nodeName: 'HTTP',
-			});
-
-			const result = await runFailedExecution();
-
-			expect(findCredentialRefusal).toHaveBeenCalledWith('wf-1', expect.any(Array), user.id);
-			expect(loadExecutionForViewer).not.toHaveBeenCalled();
-			expect(result.error).toBe(
-				'Node "HTTP" uses a credential you cannot use. Ask the owner to share it',
-			);
 		});
 
 		test('does not load the execution when the run succeeds', async () => {

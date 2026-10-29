@@ -14,7 +14,6 @@ import {
 import z from 'zod';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { findCredentialRefusal } from '@/executions/pre-execution-checks';
 import type { McpService } from '@/modules/mcp/mcp.service';
 import type { NodeTypes } from '@/node-types';
 import type { Telemetry } from '@/telemetry';
@@ -271,7 +270,6 @@ export async function testWorkflow(
 		}),
 	};
 
-	const credentialRefusal = await findCredentialRefusal(workflowId, nodes, user.id);
 	const executionId = await workflowRunner.run(runData);
 	const data = await waitForExecutionResult(
 		executionId,
@@ -287,8 +285,6 @@ export async function testWorkflow(
 	return {
 		executionId,
 		status: 'error',
-		error: credentialRefusal
-			? [credentialRefusal.message, credentialRefusal.description].filter(Boolean).join('. ')
-			: await getRunErrorForViewer(executionId, user, logger),
+		error: await getRunErrorForViewer(executionId, user, logger),
 	};
 }
