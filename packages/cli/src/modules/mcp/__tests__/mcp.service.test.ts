@@ -1,4 +1,12 @@
-import { createMcpHandler, type McpServer } from '@modelcontextprotocol/server';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { mock } from 'vitest-mock-extended';
+import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import { createListTagsTool } from '../tools/list-tags.tool';
+// EOF Experiment cleanup
+
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore `type McpServer`; keep createMcpHandler.
+import { createMcpHandler, McpServer } from '@modelcontextprotocol/server';
 import {
 	MCP_APPS_FLAG,
 	MCP_APPS_VARIANT_CONTROL,
@@ -6,14 +14,28 @@ import {
 	CONTEXT_PREFERENCES_CONTROL_VARIANT,
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
-	MCP_INSTANCE_CONTEXT_FLAG,
+	INSTANCE_ACTIVITY_CONTEXT_FLAG,
 } from '@n8n/api-types';
 import { LicenseState, ModuleRegistry, type Logger } from '@n8n/backend-common';
+import {
+	EventService,
+	UrlService,
+	RoleService,
+	FolderFinderService,
+	InstanceWriteAccessService,
+	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
+	AiPreferenceService,
+} from '@n8n/backend-services';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
-import { ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
+import { EndpointsConfig, ExecutionsConfig, GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import {
 	ExecutionRepository,
 	GLOBAL_MEMBER_ROLE,
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+	GLOBAL_OWNER_ROLE,
+	type UserRepository,
+	// EOF Experiment cleanup
 	ProjectRepository,
 	SharedWorkflowRepository,
 	User,
@@ -28,36 +50,39 @@ import { McpPostSaveMetricsService } from '../mcp-post-save-metrics.service';
 import { ActiveExecutions } from '@/active-executions';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { EventService } from '@/events/event.service';
 import { ExecutionListService } from '@/executions/execution-list.service';
+
 import { ExecutionService } from '@/executions/execution.service';
-import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks/subworkflow-policy-checker';
 import { DataTableProxyService } from '@/modules/data-table/data-table-proxy.service';
 import { NodeCatalogService } from '@/node-catalog';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
-import { AiPreferenceService } from '@/services/ai-preference.service';
-import { FolderFinderService } from '@/services/folder-finder.service';
 import { FolderService } from '@/services/folder.service';
 import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
-import { RoleService } from '@/services/role.service';
+
 import { TagService } from '@/services/tag.service';
-import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowCreationService } from '@/workflows/workflow-creation.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
-import { WorkflowPublishedDataService } from '@/workflows/workflow-published-data.service';
+import { ErrorWorkflowValidationService } from '@/workflows/error-workflow-validation.service';
+
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { registerWorkflowPreviewApp, WORKFLOW_PREVIEW_APP_URI } from '@n8n/mcp-apps/server';
 
-import { MCP_DISCOVER_METHOD, MCP_PREVIEW_RENDER_REQUESTED_EVENT } from '../mcp.constants';
+import { McpConfig } from '../mcp.config';
+import {
+	MCP_DISCOVER_METHOD,
+	MCP_PREVIEW_RENDER_REQUESTED_EVENT,
+	MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
+	MCP_SKILLS_EXTENSION_FLAG,
+} from '../mcp.constants';
 import { McpService, type McpFeatureFlags } from '../mcp.service';
-import type { McpAuthContext, McpClientInfo } from '../mcp.types';
+import type { McpAuthContext, McpClientInfo, ToolDefinition } from '../mcp.types';
 
 // Keep the real mcpAppToolMeta and constants; only the preview-app
 // registration is spied on so its wiring options can be asserted.
@@ -86,9 +111,13 @@ describe('McpService', () => {
 	let instanceSettings: InstanceSettings;
 	let logger: Logger;
 	let eventService: EventService;
+	let instanceWriteAccess: Mocked<InstanceWriteAccessService>;
 
 	beforeEach(() => {
 		eventService = mockInstance(EventService);
+		instanceWriteAccess = mockInstance(InstanceWriteAccessService, {
+			isReadOnly: vi.fn().mockReturnValue(false),
+		});
 		activeExecutions = mockInstance(ActiveExecutions);
 		executionsConfig = mockInstance(ExecutionsConfig, {
 			mode: 'regular',
@@ -134,13 +163,16 @@ describe('McpService', () => {
 			mockInstance(WorkflowHistoryService),
 			mockInstance(WorkflowsConfig),
 			mockInstance(WorkflowPublishedDataService),
-			mockInstance(SubworkflowPolicyChecker),
+			mockInstance(ErrorWorkflowValidationService),
 			mockAiGatewayService(),
 			mockInstance(McpPostSaveMetricsService),
 			mockInstance(ModuleRegistry),
 			eventService,
 			mockInstance(FolderService),
 			aiPreferenceService,
+			mockInstance(McpConfig),
+			mockInstance(ExecutionRedactionServiceProxy),
+			instanceWriteAccess,
 		);
 	});
 
@@ -189,13 +221,16 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 			expect(queueMcpService.isQueueMode).toBe(true);
@@ -358,7 +393,6 @@ describe('McpService', () => {
 		const buildResolutionService = (opts: {
 			postHogClient: Mocked<PostHogClient>;
 			mcpAppsEnabled?: boolean;
-			mcpInstanceContextEnabled?: boolean;
 		}) =>
 			new McpService(
 				mockLogger(),
@@ -371,10 +405,10 @@ describe('McpService', () => {
 				activeExecutions,
 				mockInstance(GlobalConfig, {
 					endpoints: {
+						...new EndpointsConfig(),
 						webhook: '/webhook',
 						webhookTest: '/webhook-test',
 						mcpAppsEnabled: opts.mcpAppsEnabled ?? false,
-						mcpInstanceContextEnabled: opts.mcpInstanceContextEnabled ?? false,
 					},
 				}),
 				mockInstance(Telemetry),
@@ -399,18 +433,21 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 		const user = Object.assign(new User(), { id: 'user-1', role: GLOBAL_MEMBER_ROLE });
 
-		it('resolves every feature with a single PostHog lookup', async () => {
+		it('resolves user flags and the instance activity flag', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
@@ -418,12 +455,53 @@ describe('McpService', () => {
 			const service = buildResolutionService({ postHogClient });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'variant' },
 				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
+				skillsExtensionEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
+		});
+
+		it.each([true, false])(
+			'uses the same instance context answer for two users: %s',
+			async (enabled) => {
+				const postHogClient = mockInstance(PostHogClient);
+				postHogClient.getFeatureFlags
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: true })
+					.mockResolvedValueOnce({ [INSTANCE_ACTIVITY_CONTEXT_FLAG]: false });
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+				const service = buildResolutionService({ postHogClient });
+				const secondUser = Object.assign(new User(), { id: 'user-2', role: GLOBAL_MEMBER_ROLE });
+
+				const results = await Promise.all([
+					service.resolveFeatureFlags(user),
+					service.resolveFeatureFlags(secondUser),
+				]);
+
+				expect(results.map((result) => result.instanceContextEnabled)).toEqual([enabled, enabled]);
+				expect(postHogClient.getFeatureFlagForInstance.mock.calls).toEqual([
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+					[INSTANCE_ACTIVITY_CONTEXT_FLAG],
+				]);
+			},
+		);
+
+		it('keeps context off when its flag fails without disabling user features', async () => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({
+				[MCP_APPS_FLAG]: MCP_APPS_VARIANT_ENABLED,
+			});
+			postHogClient.getFeatureFlagForInstance.mockRejectedValue(new Error('Flag unavailable'));
+
+			await expect(
+				buildResolutionService({ postHogClient }).resolveFeatureFlags(user),
+			).resolves.toMatchObject({
+				instanceContextEnabled: false,
+				mcpApps: { enabled: true, variant: 'variant' },
+			});
 		});
 
 		describe('MCP Apps', () => {
@@ -473,9 +551,10 @@ describe('McpService', () => {
 		});
 
 		describe('instance context', () => {
-			it('enables the surface from the rollout flag with the env override off', async () => {
+			it('enables the surface from the shared instance flag alone', async () => {
 				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_INSTANCE_CONTEXT_FLAG]: true });
+				postHogClient.getFeatureFlags.mockResolvedValue({});
+				postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 				const service = buildResolutionService({ postHogClient });
 
 				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
@@ -483,18 +562,21 @@ describe('McpService', () => {
 				});
 			});
 
-			/** A wrong key or a variant-string value would otherwise never roll out, silently. */
-			it('leaves the surface off for any value that is not boolean true', async () => {
-				const postHogClient = mockInstance(PostHogClient);
-				postHogClient.getFeatureFlags.mockResolvedValue({
-					[MCP_INSTANCE_CONTEXT_FLAG]: 'variant',
-				});
-				const service = buildResolutionService({ postHogClient });
+			it.each([false, undefined, 'variant'])(
+				'keeps the surface off when the instance flag is %s',
+				async (value) => {
+					const postHogClient = mockInstance(PostHogClient);
+					postHogClient.getFeatureFlags.mockResolvedValue({
+						[INSTANCE_ACTIVITY_CONTEXT_FLAG]: true,
+					});
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(value);
+					const service = buildResolutionService({ postHogClient });
 
-				await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
-					instanceContextEnabled: false,
-				});
-			});
+					await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+						instanceContextEnabled: false,
+					});
+				},
+			);
 		});
 
 		describe('user preferences', () => {
@@ -544,35 +626,53 @@ describe('McpService', () => {
 			});
 		});
 
+		it.each([
+			[true, true],
+			['variant', false],
+			[undefined, false],
+		])('resolves the skills extension flag %j to %j', async (value, enabled) => {
+			const postHogClient = mockInstance(PostHogClient);
+			postHogClient.getFeatureFlags.mockResolvedValue({ [MCP_SKILLS_EXTENSION_FLAG]: value });
+			const service = buildResolutionService({ postHogClient });
+
+			await expect(service.resolveFeatureFlags(user)).resolves.toMatchObject({
+				skillsExtensionEnabled: enabled,
+			});
+		});
+
 		it('still queries PostHog when only some features are env-overridden', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({});
 			const service = buildResolutionService({ postHogClient, mcpAppsEnabled: true });
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: false,
 				aiPreferencesEnabled: false,
+				skillsExtensionEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
 		});
 
-		it('still queries PostHog for the AI preferences flag when every other feature is env-overridden', async () => {
+		it('resolves user preferences while the instance context flag and MCP Apps are on', async () => {
 			const postHogClient = mockInstance(PostHogClient);
 			postHogClient.getFeatureFlags.mockResolvedValue({
 				[CONTEXT_PREFERENCES_FLAG]: CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			});
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 			const service = buildResolutionService({
 				postHogClient,
 				mcpAppsEnabled: true,
-				mcpInstanceContextEnabled: true,
 			});
 
 			await expect(service.resolveFeatureFlags(user)).resolves.toEqual({
+				credentialDescriptionsEnabled: false,
 				mcpApps: { enabled: true, variant: 'env_override' },
 				instanceContextEnabled: true,
 				aiPreferencesEnabled: true,
+				skillsExtensionEnabled: false,
 			});
 
 			expect(postHogClient.getFeatureFlags).toHaveBeenCalledTimes(1);
@@ -631,6 +731,7 @@ describe('McpService', () => {
 							'content-type': 'application/json',
 							accept: 'application/json, text/event-stream',
 							'mcp-method': 'tools/list',
+							'mcp-protocol-version': '2026-07-28',
 						},
 						body: JSON.stringify({
 							jsonrpc: '2.0',
@@ -714,6 +815,7 @@ describe('McpService', () => {
 							'content-type': 'application/json',
 							accept: 'application/json, text/event-stream',
 							'mcp-method': MCP_DISCOVER_METHOD,
+							'mcp-protocol-version': '2026-07-28',
 						},
 						body: JSON.stringify({
 							jsonrpc: '2.0',
@@ -817,6 +919,23 @@ describe('McpService', () => {
 			});
 		});
 
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it.each([
+			{ authType: 'oauth', clientId: 'claude-client' },
+			{ authType: 'api_key', apiKeyId: 'claude-key' },
+			undefined,
+		] satisfies (McpAuthContext['caller'] | undefined)[])(
+			'emits discovery connection identity for %j',
+			(caller) => {
+				mcpService.recordDiscoveryConnection('user-1', 'Claude Code', caller);
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+					'experiment-mcp-client-connected',
+					{ userId: 'user-1', clientName: 'Claude Code', caller },
+				);
+			},
+		);
+		// EOF Experiment cleanup
+
 		const mcpUser = () =>
 			Object.assign(new User(), {
 				id: 'user-1',
@@ -845,6 +964,243 @@ describe('McpService', () => {
 			const invokeTool = registered.handler as (args: unknown, extra: unknown) => Promise<unknown>;
 			return await invokeTool(args, {});
 		};
+
+		describe('protected instance tool calls', () => {
+			const register = async (
+				name: string,
+				annotations?: ToolDefinition['config']['annotations'],
+			) => {
+				const user = mcpUser();
+				const server = new McpServer({ name: 'test', version: '1.0.0' });
+				const handler = vi.fn().mockResolvedValue({ content: [{ type: 'text', text: 'ok' }] });
+				const tool = mcpService.createToolRegistrar(
+					server,
+					user,
+					{ name: 'Test client' },
+					{
+						grantedScopes: undefined,
+						caller: { authType: 'api_key' },
+					},
+				)({ name, config: { annotations }, handler });
+				const invoke = tool.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+				return { handler, invoke };
+			};
+
+			it.each([undefined, {}, { readOnlyHint: false }])(
+				'rejects calls without an explicit read classification: %j',
+				async (annotations) => {
+					instanceWriteAccess.isReadOnly.mockReturnValue(true);
+					const { handler, invoke } = await register('new_tool', annotations);
+
+					await expect(invoke({ workflowId: 'wf-42' }, {})).resolves.toEqual({
+						isError: true,
+						content: [{ type: 'text', text: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE }],
+					});
+					expect(handler).not.toHaveBeenCalled();
+					expect(eventService.emit).toHaveBeenCalledWith('mcp-tool-called', {
+						user: mcpUser(),
+						toolName: 'new_tool',
+						workflowId: 'wf-42',
+						status: 'error',
+						errorMessage: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE,
+						authType: 'api_key',
+						clientName: 'Test client',
+					});
+				},
+			);
+
+			it.each([
+				['read_tool', true, { workflowId: 'wf-42' }],
+				['execute_workflow', false, { workflowId: 'wf-42', executionMode: 'production' }],
+			] as const)('allows %s on a protected instance', async (name, readOnlyHint, args) => {
+				instanceWriteAccess.isReadOnly.mockReturnValue(true);
+				const { handler, invoke } = await register(name, { readOnlyHint });
+
+				await expect(invoke(args, {})).resolves.toEqual({
+					content: [{ type: 'text', text: 'ok' }],
+				});
+				expect(handler).toHaveBeenCalledWith(args, {});
+			});
+
+			it.each([
+				['execute_workflow', { workflowId: 'wf-42', executionMode: 'manual' }],
+				['execute_workflow', { workflowId: 'wf-42' }],
+				['execute_workflow', undefined],
+				['test_workflow', { workflowId: 'wf-42', pinData: {} }],
+				['call_agent', { agentId: 'agent-42', request: { type: 'message', message: 'Hi' } }],
+				['test_workflow', { workflowId: 'wf-42', executionMode: 'production' }],
+				['call_agent', { agentId: 'agent-42', executionMode: 'production' }],
+			] as const)('rejects %s with %j on a protected instance', async (name, args) => {
+				instanceWriteAccess.isReadOnly.mockReturnValue(true);
+				const { handler, invoke } = await register(name, { readOnlyHint: false });
+
+				await expect(invoke(args, {})).resolves.toEqual({
+					isError: true,
+					content: [{ type: 'text', text: MCP_INSTANCE_READ_ONLY_ERROR_MESSAGE }],
+				});
+				expect(handler).not.toHaveBeenCalled();
+			});
+
+			it.each(['execute_workflow', 'test_workflow', 'call_agent'])(
+				'allows %s on an unprotected instance',
+				async (name) => {
+					instanceWriteAccess.isReadOnly.mockReturnValue(false);
+					const { handler, invoke } = await register(name, { readOnlyHint: false });
+					const args = { executionMode: 'manual' };
+
+					await expect(invoke(args, {})).resolves.toEqual({
+						content: [{ type: 'text', text: 'ok' }],
+					});
+					expect(handler).toHaveBeenCalledWith(args, {});
+				},
+			);
+
+			it('uses the current protection setting for each call', async () => {
+				const { handler, invoke } = await register('write_tool', { readOnlyHint: false });
+
+				await invoke({}, {});
+				expect(handler).toHaveBeenCalledTimes(1);
+
+				instanceWriteAccess.isReadOnly.mockReturnValue(true);
+				await expect(invoke({}, {})).resolves.toMatchObject({ isError: true });
+				expect(handler).toHaveBeenCalledTimes(1);
+
+				instanceWriteAccess.isReadOnly.mockReturnValue(false);
+				await invoke({}, {});
+				expect(handler).toHaveBeenCalledTimes(2);
+			});
+		});
+
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		it.each(['search_workflows', 'get_workflow_history', 'execute_workflow'])(
+			'skips discovery bookkeeping for %s',
+			async (toolName) => {
+				const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+				const result = { content: [], structuredContent: { workflowId: 'wf-42' } };
+				await expect(
+					registerAndInvoke(
+						server,
+						toolName,
+						async () => result,
+						{},
+						{
+							clientInfo: { name: 'Claude' },
+						},
+					),
+				).resolves.toEqual(result);
+				expect(eventService.emit).not.toHaveBeenCalledWith(
+					'experiment-mcp-workflow-write-completed',
+					expect.anything(),
+				);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'mcp-tool-called',
+					expect.objectContaining({ toolName, status: 'success' }),
+				);
+			},
+		);
+
+		it('records successful Claude workflow results through the production registrar', async () => {
+			const user = mcpUser();
+			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+			const caller = { authType: 'oauth' as const, clientId: 'claude-client' };
+			await registerAndInvoke(
+				server,
+				'update_workflow',
+				async () => ({
+					content: [],
+					structuredContent: { workflowId: 'wf-42', appliedOperations: 2 },
+				}),
+				{},
+				{ clientInfo: { name: 'Claude' }, auth: { grantedScopes: undefined, caller } },
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
+				userId: user.id,
+				toolName: 'update_workflow',
+				status: 'success',
+				workflowId: 'wf-42',
+				structuredContent: { workflowId: 'wf-42', appliedOperations: 2 },
+			});
+		});
+
+		it('records a workflow write when the client name is absent', async () => {
+			const user = mcpUser();
+			const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+			const caller = { authType: 'api_key', apiKeyId: 'claude-key' } as const;
+			await registerAndInvoke(
+				server,
+				'create_workflow_from_code',
+				async () => ({
+					content: [],
+					structuredContent: { workflowId: 'wf-42' },
+				}),
+				{},
+				{ auth: { grantedScopes: undefined, caller } },
+			);
+			expect(eventService.emit).toHaveBeenCalledWith('experiment-mcp-workflow-write-completed', {
+				userId: user.id,
+				toolName: 'create_workflow_from_code',
+				status: 'success',
+				workflowId: 'wf-42',
+				structuredContent: { workflowId: 'wf-42' },
+			});
+		});
+
+		it.each(['success', 'error'] as const)(
+			'keeps API-key identity out of telemetry and log streaming on %s',
+			async (status) => {
+				const relayEvents = new EventService();
+				const eventBus = mock<MessageEventBus>();
+				new LogStreamingEventRelay(
+					relayEvents,
+					eventBus,
+					mock<InstanceSettings>(),
+					mock<UserRepository>(),
+				).init();
+				vi.mocked(eventService.emit).mockImplementation(relayEvents.emit.bind(relayEvents));
+				const telemetry = mock<Telemetry>();
+				const tags = mock<TagService>();
+				if (status === 'error') tags.listWithUsageCount.mockRejectedValue(new Error('Unavailable'));
+				else tags.listWithUsageCount.mockResolvedValue({ data: [], totalCount: 0 });
+				const user = Object.assign(mcpUser(), { role: GLOBAL_OWNER_ROLE });
+				const server = new McpServer({ name: 'discovery-test', version: '1.0.0' });
+				const register = mcpService.createToolRegistrar(
+					server,
+					user,
+					{ name: 'Claude' },
+					{
+						grantedScopes: undefined,
+						caller: { authType: 'api_key', apiKeyId: 'claude-key' },
+					},
+				);
+				const tool = register(createListTagsTool(user, tags, telemetry));
+				const invoke = tool.handler as (args: unknown, extra: unknown) => Promise<unknown>;
+				if (status === 'error') await expect(invoke({}, {})).rejects.toThrow('Unavailable');
+				else await invoke({}, {});
+
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'mcp-tool-called',
+					expect.objectContaining({ authType: 'api_key', status }),
+				);
+				const call = vi
+					.mocked(eventService.emit)
+					.mock.calls.find(([name]) => name === 'mcp-tool-called');
+				expect(call?.[1]).not.toHaveProperty('apiKeyId');
+				expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+					'User called mcp tool',
+					expect.objectContaining({
+						tool_name: 'list_workflow_tags',
+						results: expect.objectContaining({ success: status === 'success' }),
+					}),
+				);
+				expect(telemetry.track.mock.calls[0]?.[1]).not.toHaveProperty('apiKeyId');
+				expect(eventBus.sendMcpEvent).toHaveBeenCalledExactlyOnceWith({
+					eventName: 'n8n.audit.mcp.tool.called',
+					payload: expect.objectContaining({ authType: 'api_key', status }),
+				});
+				expect(eventBus.sendMcpEvent.mock.calls[0]?.[0].payload).not.toHaveProperty('apiKeyId');
+			},
+		);
+		// EOF Experiment cleanup
 
 		it('should emit `mcp-tool-called` with the target workflow on tool success', async () => {
 			const user = mcpUser();
@@ -1154,13 +1510,16 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1211,13 +1570,16 @@ describe('McpService', () => {
 				mockInstance(WorkflowHistoryService),
 				mockInstance(WorkflowsConfig),
 				mockInstance(WorkflowPublishedDataService),
-				mockInstance(SubworkflowPolicyChecker),
+				mockInstance(ErrorWorkflowValidationService),
 				mockAiGatewayService(),
 				mockInstance(McpPostSaveMetricsService),
 				mockInstance(ModuleRegistry),
 				mockInstance(EventService),
 				mockInstance(FolderService),
 				mockInstance(AiPreferenceService),
+				mockInstance(McpConfig),
+				mockInstance(ExecutionRedactionServiceProxy),
+				mockInstance(InstanceWriteAccessService),
 			);
 
 			const server = await service.getServer(user, mcpFeatureFlags());
@@ -1293,13 +1655,16 @@ describe('McpService', () => {
 					mockInstance(WorkflowHistoryService),
 					mockInstance(WorkflowsConfig),
 					mockInstance(WorkflowPublishedDataService),
-					mockInstance(SubworkflowPolicyChecker),
+					mockInstance(ErrorWorkflowValidationService),
 					mockAiGatewayService(),
 					mockInstance(McpPostSaveMetricsService),
 					mockInstance(ModuleRegistry),
 					mockInstance(EventService),
 					mockInstance(FolderService),
 					mockInstance(AiPreferenceService),
+					mockInstance(McpConfig),
+					mockInstance(ExecutionRedactionServiceProxy),
+					mockInstance(InstanceWriteAccessService),
 				);
 			};
 

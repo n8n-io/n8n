@@ -4,8 +4,7 @@ import { ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ProjectService } from '@/services/project.service.ee';
 import { WEBHOOK_CONFLICT_MESSAGE } from '@/webhooks/constants';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -22,6 +21,7 @@ import {
 	type WorkflowPublishingOutcome,
 } from './workflow-publishing-policy.types';
 import type { PackageWorkflowRequirement } from '../../spec/requirements.schema';
+import { blockedPublishingOutcome } from '../publishing';
 
 export interface WorkflowPublishingResult {
 	workflow: WorkflowEntity;
@@ -177,21 +177,9 @@ export class WorkflowPublisher {
 		}
 
 		if (action === 'publish' && blockedReason) {
-			// A prior published version may still be active after an update; report
-			// that the live publish state is unchanged rather than "blocked".
-			if (workflow.activeVersionId) {
-				return {
-					workflow,
-					publishing: {
-						state: 'unchanged',
-						skippedPublishReason: blockedReason,
-					},
-				};
-			}
-
 			return {
 				workflow,
-				publishing: { state: 'blocked', blockedReason },
+				publishing: blockedPublishingOutcome(blockedReason, Boolean(workflow.activeVersionId)),
 			};
 		}
 

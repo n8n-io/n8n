@@ -264,6 +264,23 @@ describe('analyzePackage', () => {
 		expect(result.details).toContain('no-forbidden-lifecycle-scripts');
 	});
 
+	it('flags unsupported categories in node codex files', async () => {
+		fixtureDir = makeFixturePackage({
+			'package.json': {
+				name: 'n8n-nodes-fixture',
+				version: '1.0.0',
+				keywords: ['n8n-community-node-package'],
+				peerDependencies: { 'n8n-workflow': '*' },
+			},
+			'nodes/Foo/Foo.node.json': { categories: ['Bananas'] },
+		});
+
+		const result = await analyzePackage(fixtureDir, SOURCE_FILE_PATTERNS);
+
+		expect(result.passed).toBe(false);
+		expect(result.details).toContain('valid-node-categories');
+	});
+
 	// A well-formed node package's compiled sources must not trip the external
 	// node rules — those rules can't see enough in `.d.ts`/`.js` output to fire,
 	// so scanning must not produce false positives on legitimate packages.

@@ -6,8 +6,14 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useInjectWorkflowId } from '@/app/composables/useInjectWorkflowId';
 
-import { ElDropdown } from 'element-plus';
-import { N8nBadge, N8nButton, N8nHeading, N8nText } from '@n8n/design-system';
+import {
+	N8nBadge,
+	N8nButton,
+	N8nDropdownMenu,
+	N8nHeading,
+	N8nText,
+	type DropdownMenuExposed,
+} from '@n8n/design-system';
 const props = defineProps<{
 	execution: ExecutionSummary & {
 		customData?: Record<string, string>;
@@ -17,7 +23,7 @@ const props = defineProps<{
 const workflowsListStore = useWorkflowsListStore();
 const i18n = useI18n();
 
-const annotationDropdownRef = ref<InstanceType<typeof ElDropdown> | null>(null);
+const annotationDropdownRef = ref<DropdownMenuExposed | null>(null);
 const isDropdownVisible = ref(false);
 
 const workflowId = useInjectWorkflowId();
@@ -33,41 +39,41 @@ const customDataLength = computed(() => {
 function onEllipsisButtonBlur(event: FocusEvent) {
 	// Hide dropdown when clicking outside of current document
 	if (annotationDropdownRef.value && event.relatedTarget === null) {
-		annotationDropdownRef.value.handleClose();
+		annotationDropdownRef.value.close();
 	}
-}
-
-function onDropdownVisibleChange(visible: boolean) {
-	isDropdownVisible.value = visible;
 }
 </script>
 
 <template>
-	<ElDropdown
+	<N8nDropdownMenu
 		v-if="execution"
 		ref="annotationDropdownRef"
-		trigger="click"
-		@visible-change="onDropdownVisibleChange"
+		v-model="isDropdownVisible"
+		:items="[]"
+		placement="bottom-end"
+		width="250px"
+		:extra-popper-class="$style.menu"
 	>
-		<N8nButton
-			variant="subtle"
-			:title="i18n.baseText('executionDetails.additionalActions')"
-			:disabled="!workflowPermissions.update"
-			icon="list-checks"
-			:class="{
-				[$style.highlightDataButton]: true,
-				[$style.highlightDataButtonActive]: customDataLength > 0,
-				[$style.highlightDataButtonOpen]: isDropdownVisible,
-			}"
-			size="small"
-			data-test-id="execution-preview-ellipsis-button"
-			@blur="onEllipsisButtonBlur"
-		>
-			<N8nBadge v-if="customDataLength > 0" :class="$style.badge" theme="primary">
-				{{ customDataLength.toString() }}
-			</N8nBadge>
-		</N8nButton>
-		<template #dropdown>
+		<template #trigger>
+			<N8nButton
+				variant="outline"
+				:title="i18n.baseText('executionDetails.additionalActions')"
+				:disabled="!workflowPermissions.update"
+				icon="list-checks"
+				:icon-only="customDataLength === 0"
+				:class="{
+					[$style.highlightDataButtonOpen]: isDropdownVisible,
+				}"
+				size="small"
+				data-test-id="execution-preview-ellipsis-button"
+				@blur="onEllipsisButtonBlur"
+			>
+				<N8nBadge v-if="customDataLength > 0" :class="$style.badge" variant="primary">
+					{{ customDataLength.toString() }}
+				</N8nBadge>
+			</N8nButton>
+		</template>
+		<template #content>
 			<div
 				ref="container"
 				:class="['execution-annotation-panel', $style.container]"
@@ -108,19 +114,10 @@ function onDropdownVisibleChange(visible: boolean) {
 				</div>
 			</div>
 		</template>
-	</ElDropdown>
+	</N8nDropdownMenu>
 </template>
 
 <style module lang="scss">
-.highlightDataButton {
-	height: 30px;
-	width: 30px;
-}
-
-.highlightDataButtonActive {
-	width: auto;
-}
-
 .highlightDataButtonOpen {
 	color: var(--color--primary);
 	background-color: var(--button--color--background--secondary--hover);
@@ -131,18 +128,19 @@ function onDropdownVisibleChange(visible: boolean) {
 	border: 0;
 }
 
+.menu {
+	width: var(--n8n--dropdown-menu-width);
+	min-width: var(--n8n--dropdown-menu-width);
+}
+
 .container {
 	z-index: 1;
 	max-height: calc(100vh - 250px);
-	width: 250px;
+	width: 100%;
 
 	display: flex;
 	flex-direction: column;
 	overflow: auto;
-
-	background-color: var(--color--background--light-3);
-	border: var(--border);
-	border-radius: var(--radius);
 }
 
 .section {
@@ -188,7 +186,7 @@ function onDropdownVisibleChange(visible: boolean) {
 	}
 
 	.key {
-		font-weight: var(--font-weight--bold);
+		font-weight: var(--font-weight--medium);
 	}
 }
 

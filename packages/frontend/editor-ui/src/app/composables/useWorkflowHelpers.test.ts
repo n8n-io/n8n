@@ -61,6 +61,22 @@ describe('useWorkflowHelpers', () => {
 		workflowsStore.workflowId = '';
 	});
 
+	describe('updateNodePositions', () => {
+		it('places the bounding-box top-left at the requested position', () => {
+			const nodes = [
+				createTestNode({ name: 'Top', position: [400, 0] }),
+				createTestNode({ name: 'Left', position: [0, 200] }),
+			];
+
+			useWorkflowHelpers().updateNodePositions({ nodes, connections: {} }, [256, 352]);
+
+			expect(nodes.map((node) => node.position)).toEqual([
+				[656, 352],
+				[256, 552],
+			]);
+		});
+	});
+
 	describe('getNodeParametersWithResolvedExpressions', () => {
 		it('should correctly detect and resolve expressions in a regular node ', async () => {
 			const nodeParameters = {

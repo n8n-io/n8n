@@ -26,7 +26,7 @@ import path from 'node:path';
 import { agent as testAgent } from 'supertest';
 
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { TestWebhooks } from '@/webhooks/test-webhooks';
 import { WebhookServer } from '@/webhooks/webhook-server';

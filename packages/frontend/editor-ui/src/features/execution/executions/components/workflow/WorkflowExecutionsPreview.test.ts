@@ -211,6 +211,32 @@ describe('WorkflowExecutionsPreview.vue', () => {
 		expect(getByTestId('execution-preview-add-to-dataset-button')).toBeDisabled();
 	});
 
+	it('enables the delete button when the user can delete executions', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['execution:delete'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-delete-button')).toBeEnabled();
+	});
+
+	it('disables the delete button when the user can edit the workflow but not delete its executions', () => {
+		const workflowsListStore = mockedStore(useWorkflowsListStore);
+		workflowsListStore.getWorkflowById.mockReturnValue({
+			scopes: ['workflow:read', 'workflow:update', 'workflow:execute'],
+		} as IWorkflowDb);
+
+		const { getByTestId } = renderComponent({
+			props: { execution: { ...executionData, status: 'success', mode: 'manual' } },
+		});
+
+		expect(getByTestId('execution-preview-delete-button')).toBeDisabled();
+	});
+
 	it('hides the add-to-dataset button for evaluation-mode executions', () => {
 		const { queryByTestId } = renderComponent({
 			props: { execution: { ...executionData, status: 'success', mode: 'evaluation' } },

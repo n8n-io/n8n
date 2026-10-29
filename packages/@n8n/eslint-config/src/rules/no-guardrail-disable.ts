@@ -1,7 +1,7 @@
 import { ESLintUtils } from '@typescript-eslint/utils';
 
 /** Captures the directive kind, then an optional rule list and an optional `-- reason`. */
-const DISABLE_DIRECTIVE = /^eslint-disable(-next-line|-line)?(?![\w-])([\s\S]*)$/;
+const DISABLE_DIRECTIVE = /^(?:eslint|oxlint)-disable(-next-line|-line)?(?![\w-])([\s\S]*)$/;
 const PLUGIN_PREFIX = 'n8n-local-rules/';
 const SELF = 'no-guardrail-disable';
 
@@ -25,7 +25,7 @@ export const NoGuardrailDisableRule = ESLintUtils.RuleCreator.withoutDocs({
 	meta: {
 		type: 'problem',
 		docs: {
-			description: 'Disallow inline eslint-disable of the configured guardrail rules.',
+			description: 'Disallow inline disable directives for the configured guardrail rules.',
 		},
 		messages: {
 			noDisable: 'Do not disable `{{rule}}` inline. {{message}}',

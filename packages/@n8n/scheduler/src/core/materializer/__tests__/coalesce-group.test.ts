@@ -23,6 +23,8 @@ const makeJob = (overrides: Partial<ScheduledJob> = {}): ScheduledJob => ({
 	nextRunAt: NOW,
 	lastFiredAt: null,
 	maxAttempts: 1,
+	timeoutSeconds: 300,
+	concurrencyLimit: null,
 	misfirePolicy: ScheduledJobMisfirePolicy.CoalesceOwner,
 	misfireGraceSeconds: 60,
 	ownerKey: 'owner-a',

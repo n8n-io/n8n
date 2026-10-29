@@ -49,7 +49,7 @@ defineExpose({ validationError });
 		</N8nText>
 		<N8nButton
 			v-if="mode === 'setup'"
-			variant="subtle"
+			variant="outline"
 			size="medium"
 			:disabled="Boolean(validationError) || loading"
 			:loading="loading"

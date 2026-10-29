@@ -1,24 +1,31 @@
+import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
-import type { OperationContext } from '@n8n/db';
+import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
+import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
+import { TypeAvailabilityPolicySnapshot } from '@/modules/type-availability-policies/type-availability-policy-snapshot';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 /**
- * Pins how many SQL statements one policy decision costs, cold and warm.
+ * Pins how many SQL statements a policy decision and a snapshot reload cost.
  *
- * `workflowStart` gets 250 ms and blocks the execution when it overruns, so this is a
- * correctness budget rather than a performance nicety. The cold numbers are the ones quoted
- * in the IAM-1385 PR body.
+ * `workflowStart` gets 250 ms and blocks the execution when it overruns, so a loaded snapshot
+ * must answer with no query at all.
  */
 
 const KIND = 'node-types';
+const CREDENTIAL_KIND = 'credential-types';
 const ROOT: OperationContext = {};
 
 const DENY_SLACK: PolicyRule = {
@@ -51,7 +58,7 @@ describe('node type policy store reads', () => {
 			'TypeAvailabilityPolicyScope',
 			'TypeAvailabilityPolicy',
 		]);
-		await clearPolicyCache();
+		await reloadPolicySnapshot();
 	});
 
 	afterAll(async () => {
@@ -82,24 +89,26 @@ describe('node type policy store reads', () => {
 		return count;
 	}
 
-	const decide = async (projectId: string | null) =>
-		await service.evaluateComposedTypesFor(KIND, projectId, TYPES);
+	const decide = async (projectId: string | null, kind = KIND) =>
+		await service.evaluateComposedTypesFor(kind, projectId, TYPES);
 
-	async function configureScope(projectId: string | null, withAttachment: boolean) {
+	async function configureScope(projectId: string | null, withAttachment: boolean, kind = KIND) {
 		const { scope } = await scopeRepo.createScopeIfAbsent(
-			{ kind: KIND, projectId, defaultAction: 'allow', updatedBy: 'user-1' },
+			{ kind, projectId, defaultAction: 'allow', updatedBy: 'user-1' },
 			ROOT,
 		);
 
 		const policy = await policyRepo.createPolicy(
-			{ kind: KIND, rules: [DENY_SLACK], updatedBy: 'user-1' },
+			{ kind, rules: [DENY_SLACK], updatedBy: 'user-1' },
 			ROOT,
 		);
 
 		if (withAttachment) {
 			await service.replaceAttachments(
+				kind,
 				scope.id,
 				[{ policyId: policy.id, priority: 1, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 		}
@@ -107,90 +116,115 @@ describe('node type policy store reads', () => {
 		return { scope, policy };
 	}
 
-	describe('a cold decision', () => {
-		test('costs 1 query for an unconfigured instance scope', async () => {
-			expect(await countQueries(async () => await decide(null))).toBe(1);
-		});
-
-		test('costs 2 queries for an instance scope with no attachments', async () => {
-			await configureScope(null, false);
-			await clearPolicyCache();
-
-			expect(await countQueries(async () => await decide(null))).toBe(2);
-		});
-
-		test('costs 3 queries for an instance scope with an attachment', async () => {
-			await configureScope(null, true);
-			await clearPolicyCache();
-
-			expect(await countQueries(async () => await decide(null))).toBe(3);
-		});
-
-		test('costs 2 queries when neither scope is configured', async () => {
+	describe('a decision with the snapshot loaded', () => {
+		test('costs no queries when nothing is configured', async () => {
 			const project = await createTeamProject();
 
-			expect(await countQueries(async () => await decide(project.id))).toBe(2);
+			expect(await countQueries(async () => await decide(null))).toBe(0);
+			expect(await countQueries(async () => await decide(project.id))).toBe(0);
 		});
 
-		test('costs 6 queries when both scopes are configured with an attachment', async () => {
+		test('costs no queries when both scopes are configured with an attachment', async () => {
 			const project = await createTeamProject();
 			await configureScope(null, true);
 			await configureScope(project.id, true);
-			await clearPolicyCache();
-
-			expect(await countQueries(async () => await decide(project.id))).toBe(6);
-		});
-	});
-
-	describe('a warm decision', () => {
-		test('costs no queries at all', async () => {
-			const project = await createTeamProject();
-			await configureScope(null, true);
-			await configureScope(project.id, true);
-			await clearPolicyCache();
-
-			await decide(project.id);
 
 			expect(await countQueries(async () => await decide(project.id))).toBe(0);
 		});
 
-		test('costs no queries for a sub-execution in the same project', async () => {
+		test('costs no queries for both kinds, as two registered checks make', async () => {
+			const project = await createTeamProject();
+			for (const kind of [KIND, CREDENTIAL_KIND]) {
+				await configureScope(null, true, kind);
+				await configureScope(project.id, true, kind);
+			}
+
+			const count = await countQueries(
+				async () => await Promise.all([decide(project.id), decide(project.id, CREDENTIAL_KIND)]),
+			);
+
+			expect(count).toBe(0);
+		});
+
+		test('costs no queries for many types', async () => {
 			const project = await createTeamProject();
 			await configureScope(null, true);
 			await configureScope(project.id, true);
-			await clearPolicyCache();
+			const manyTypes = Array.from({ length: 1_400 }, (_, i) => `n8n-nodes-base.type${i}`);
+
+			const count = await countQueries(
+				async () => await service.evaluateComposedTypesFor(KIND, project.id, manyTypes),
+			);
+
+			expect(count).toBe(0);
+		});
+
+		// `credentialDecrypt` runs for each credential fetch, so a burst is the normal shape.
+		test('costs no queries for a burst, and gives every caller the same verdict', async () => {
+			await configureScope(null, true);
+			let results: Array<Awaited<ReturnType<typeof decide>>> = [];
 
 			const count = await countQueries(async () => {
-				for (let i = 0; i < 4; i++) await decide(project.id);
+				results = await Promise.all(Array.from({ length: 100 }, async () => await decide(null)));
 			});
 
-			// The first decision pays for both scopes; the three sub-executions pay nothing.
-			expect(count).toBe(6);
-		});
-
-		test('reuses the instance scope across projects, so a second project reads only its own', async () => {
-			const first = await createTeamProject();
-			const second = await createTeamProject();
-			await configureScope(null, true);
-			await clearPolicyCache();
-
-			await decide(first.id);
-
-			expect(await countQueries(async () => await decide(second.id))).toBe(1);
-		});
-
-		test('does not cache the unconfigured instance scope as a miss', async () => {
-			await decide(null);
-
-			expect(await countQueries(async () => await decide(null))).toBe(0);
+			expect(count).toBe(0);
+			expect(results.every(({ verdicts }) => verdicts[0].action === 'deny')).toBe(true);
 		});
 	});
 
-	/**
-	 * The cache is only safe because a write drops the entry it changed. Each of these warms
-	 * the cache first, so a missing invalidation shows up as the old verdict.
-	 */
-	describe('a write invalidates what it changed', () => {
+	describe('a snapshot reload', () => {
+		test('costs 2 queries when nothing is configured', async () => {
+			expect(await countQueries(async () => await reloadPolicySnapshot())).toBe(2);
+		});
+
+		test('costs the same 4 queries for one configured project or twenty', async () => {
+			await configureScope(null, true);
+			expect(await countQueries(async () => await reloadPolicySnapshot())).toBe(4);
+
+			for (let i = 0; i < 20; i++) {
+				await configureScope((await createTeamProject()).id, true);
+			}
+			expect(await countQueries(async () => await reloadPolicySnapshot())).toBe(4);
+		});
+	});
+
+	describe('before the snapshot loads', () => {
+		test('reads the database and reaches the same verdict', async () => {
+			const project = await createTeamProject();
+			await configureScope(null, true);
+			await configureScope(project.id, true);
+
+			const unloaded = new TypeAvailabilityPolicySnapshot(
+				scopeRepo,
+				Container.get(TypeAvailabilityPolicyAttachmentRepository),
+				Container.get(Publisher),
+				Container.get(Logger),
+			);
+			const coldService = new TypeAvailabilityPolicyService(
+				policyRepo,
+				scopeRepo,
+				Container.get(TypeAvailabilityPolicyAttachmentRepository),
+				Container.get(TransactionRunner),
+				Container.get(EventService),
+				unloaded,
+				Container.get(LoadNodesAndCredentials),
+				Container.get(NodeTypes),
+			);
+
+			let action: string | undefined;
+			const count = await countQueries(async () => {
+				const result = await coldService.evaluateComposedTypesFor(KIND, project.id, [SLACK]);
+				action = result.verdicts[0].action;
+			});
+
+			expect(count).toBe(6);
+			expect(action).toBe('deny');
+		});
+	});
+
+	/** Each warms the snapshot first, so a write that does not reload shows the old verdict. */
+	describe('a write reloads the snapshot', () => {
 		const slackVerdict = async (projectId: string | null) =>
 			(await service.evaluateComposedTypesFor(KIND, projectId, [SLACK])).verdicts[0].action;
 
@@ -221,8 +255,10 @@ describe('node type policy store reads', () => {
 			expect(await slackVerdict(null)).toBe('allow');
 
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 
@@ -234,8 +270,10 @@ describe('node type policy store reads', () => {
 			const { scope, policy } = await configureScope(null, true);
 			const { scope: projectScope } = await configureScope(project.id, false);
 			await service.replaceAttachments(
+				KIND,
 				projectScope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
+				projectScope.version,
 				'user-1',
 			);
 			expect(await slackVerdict(null)).toBe('deny');
@@ -247,20 +285,5 @@ describe('node type policy store reads', () => {
 			expect(await slackVerdict(project.id)).toBe('allow');
 			expect(scope.id).not.toBe(projectScope.id);
 		});
-	});
-
-	test('the number of types evaluated does not change the query count', async () => {
-		const project = await createTeamProject();
-		await configureScope(null, true);
-		await configureScope(project.id, true);
-		await clearPolicyCache();
-
-		const manyTypes = Array.from({ length: 1_400 }, (_, i) => `n8n-nodes-base.type${i}`);
-
-		const count = await countQueries(
-			async () => await service.evaluateComposedTypesFor(KIND, project.id, manyTypes),
-		);
-
-		expect(count).toBe(6);
 	});
 });

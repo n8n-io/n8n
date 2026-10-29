@@ -16,6 +16,7 @@ import {
 	fetchDatabricksPage,
 	getActiveCredentialType,
 	readIdParameter,
+	withGenieDeepLink,
 } from '../actions/helpers';
 
 vi.mock('@n8n/utils/sleep', () => ({
@@ -350,5 +351,35 @@ describe('readIdParameter', () => {
 
 		expect(thrown).toBeInstanceOf(NodeOperationError);
 		expect(thrown).toMatchObject({ message, description, context: { itemIndex: 3 } });
+	});
+});
+
+describe('withGenieDeepLink', () => {
+	const HOST = 'https://adb-1234567890.1.azuredatabricks.net';
+
+	it.each([
+		['1234567890', '?o=1234567890'],
+		[undefined, ''],
+		['abc', ''],
+		['123/x', ''],
+	])('appends ?o= only for a numeric workspace id header (%s)', (orgId, query) => {
+		const headers = orgId === undefined ? {} : { 'x-databricks-org-id': orgId };
+
+		const result = withGenieDeepLink({ body: { a: 1 }, headers }, HOST, 'space123', 'conv-456');
+
+		expect(result.a).toBe(1);
+		expect(result.deep_link).toBe(`${HOST}/genie/rooms/space123/chats/conv-456${query}`);
+	});
+
+	it('links to the space when there is no conversation id', () => {
+		const result = withGenieDeepLink({ body: {}, headers: {} }, HOST, 'space123');
+
+		expect(result.deep_link).toBe(`${HOST}/genie/rooms/space123`);
+	});
+
+	it('URL-encodes the space and conversation ids', () => {
+		const result = withGenieDeepLink({ body: {}, headers: {} }, HOST, 'a b', 'c/d');
+
+		expect(result.deep_link).toBe(`${HOST}/genie/rooms/a%20b/chats/c%2Fd`);
 	});
 });

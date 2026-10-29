@@ -7,11 +7,7 @@ import type {
 } from './tag.types';
 import { TagConflictPolicy, TagMissingMode } from '../../n8n-packages.types';
 
-/** A per-requirement failure; `TagImporter.plan` fills in `usedByWorkflows`. */
-export type TagDecisionFailure = Omit<
-	TagResolutionFailure,
-	'kind' | 'sourceId' | 'name' | 'usedByWorkflows'
-> & {
+export type TagDecisionFailure = Omit<TagResolutionFailure, 'kind' | 'sourceId' | 'name'> & {
 	kind: Exclude<TagResolutionFailureKind, 'permission-denied'>;
 	sourceId: string;
 	name: string;

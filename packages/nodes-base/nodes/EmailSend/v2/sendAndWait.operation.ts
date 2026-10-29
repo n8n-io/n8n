@@ -18,7 +18,7 @@ import {
 	getSendAndWaitConfig,
 	getSendAndWaitProperties,
 } from '../../../utils/sendAndWait/utils';
-import { toMailString } from '../utils';
+import { toMailAddressString } from '../utils';
 
 export const description: INodeProperties[] = getSendAndWaitProperties(
 	[fromEmailProperty, toEmailProperty],
@@ -26,8 +26,8 @@ export const description: INodeProperties[] = getSendAndWaitProperties(
 );
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
-	const fromEmail = toMailString(this.getNodeParameter('fromEmail', 0));
-	const toEmail = toMailString(this.getNodeParameter('toEmail', 0));
+	const fromEmail = toMailAddressString(this.getNodeParameter('fromEmail', 0));
+	const toEmail = toMailAddressString(this.getNodeParameter('toEmail', 0));
 
 	const config = getSendAndWaitConfig(this);
 	const buttons: string[] = [];

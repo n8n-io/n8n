@@ -1,4 +1,9 @@
-import { findSeedFolderIssues, instanceAiEvalSeedDataTableSchema } from '@n8n/api-types';
+import {
+	credentialDescriptionSchema,
+	findSeedFolderIssues,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	instanceAiEvalSeedDataTableSchema,
+} from '@n8n/api-types';
 import { z } from 'zod';
 
 import {
@@ -30,23 +35,25 @@ export const conversationTurnTextSchema = z
 			'unbalanced stage direction — text opens `[` but never closes it, so the proxy would send it as dialogue instead of treating it as a direction',
 	});
 
+const workflowTurnAttachmentSchema = z
+	.object({
+		workflow: z.string().min(1),
+		source: z.literal('setup-panel-execute').optional(),
+	})
+	.strict();
+
+const agentTurnAttachmentSchema = z.object({ agent: z.string().min(1) }).strict();
+
 export const ConversationTurnSchema = z.object({
 	role: z.enum(['user', 'assistant']),
 	text: conversationTurnTextSchema,
-	/** Hand the agent a seeded workflow with this turn, the way the editor does when
-	 *  a user opens the assistant with a workflow in front of them — without it the
-	 *  eval agent has to guess which workflow prose like "why is this failing?"
-	 *  means, and we score a clarification failure the real user never hit.
+	/** Hand the assistant a seeded resource with this turn, the way the editor does
+	 *  when a user opens the assistant with a workflow or Agent in front of them.
+	 *  Without it, the assistant has to guess which resource the user means.
 	 *
-	 *  `workflow` is the id as the seed declares it; the harness swaps in the
+	 *  The resource id is the id as the seed declares it. The harness swaps in the
 	 *  per-run remapped id. Opening turn only (refined below). */
-	attach: z
-		.object({
-			workflow: z.string().min(1),
-			source: z.literal('setup-panel-execute').optional(),
-		})
-		.strict()
-		.optional(),
+	attach: z.union([workflowTurnAttachmentSchema, agentTurnAttachmentSchema]).optional(),
 });
 
 const ExecutionScenarioSchema = z.object({
@@ -128,6 +135,21 @@ export const CaseSeedSchema = z.discriminatedUnion('mode', [
 					.strict(),
 			)
 			.optional(),
+		/**
+		 * Failed runs recorded on another instance (`/eval/export-execution`) and RESTORED
+		 * before the graded turn, in declared order and before `priorRuns`. Nothing runs, so
+		 * every eval sees the same failure. `workflow` is the seed workflow's id, as above.
+		 */
+		recordedRuns: z
+			.array(
+				z
+					.object({
+						workflow: z.string().min(1),
+						envelope: instanceAiEvalFailedExecutionEnvelopeSchema,
+					})
+					.strict(),
+			)
+			.optional(),
 	}).strict(),
 	/** Reproduce a real conversation from its LangSmith trace at run time (seed =
 	 *  before the live turn, live = that turn). Commits only the thread id;
@@ -168,6 +190,9 @@ const evalTestCaseObjectSchema = z
 		buildMode: z.enum(['progressive', 'default']).optional(),
 		promptVersion: z.string().trim().min(1).max(128).optional(),
 		allowUserExecution: z.boolean().optional(),
+		/** Harness lowers the observer threshold for this thread, and reports the case
+		 *  not judged if compaction never ran. */
+		requiresMemoryCompaction: z.boolean().optional(),
 		/** Optional NL assertions about the build CONVERSATION (process: clarifications, push-back,
 		 *  ordering). LLM-judged from the transcript, so skipped in prebuilt/MCP runs. Counted as units. */
 		processExpectations: z.array(z.string().min(1)).optional(),
@@ -204,7 +229,10 @@ const evalTestCaseObjectSchema = z
 							message: `unknown credential type — add a template to evaluations/credentials/seeder.ts (supported: ${[...SUPPORTED_CREDENTIAL_TYPES].join(', ')})`,
 						}),
 					name: z.string().min(1).optional(),
+					description: credentialDescriptionSchema.optional(),
+					// False lets the connection test fail for a credential that is already broken.
 					valid: z.boolean().optional(),
+					// True seeds no field values and disables the connection-test bypass.
 					blank: z.boolean().optional(),
 				}),
 			)
@@ -296,7 +324,8 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 	// as a builder failure. Only an inline seed declares workflows to point at.
 	.refine(
 		(c) => {
-			const attached = c.conversation?.[0]?.attach?.workflow;
+			const attachment = c.conversation?.[0]?.attach;
+			const attached = attachment && 'workflow' in attachment ? attachment.workflow : undefined;
 			if (attached === undefined) return true;
 			const declared = c.seed?.mode === 'inline' ? c.seed.workflows : [];
 			return declared.some((workflow) => workflow.id === attached);
@@ -304,6 +333,19 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		{
 			message:
 				'`attach.workflow` must be the id of a workflow the inline seed declares — otherwise the attachment points at nothing',
+		},
+	)
+	.refine(
+		(c) => {
+			const attachment = c.conversation?.[0]?.attach;
+			const attached = attachment && 'agent' in attachment ? attachment.agent : undefined;
+			if (attached === undefined) return true;
+			const declared = c.seed?.mode === 'inline' ? c.seed.agents : [];
+			return declared.some((agent) => agent.id === attached);
+		},
+		{
+			message:
+				'`attach.agent` must be the id of an Agent the inline seed declares — otherwise the attachment points at nothing',
 		},
 	)
 	// The chat API refuses a message that is empty with nothing attached, so catch it
@@ -333,15 +375,17 @@ export const EvalTestCaseSchema = evalTestCaseObjectSchema
 		//
 		// A prior run needs a workflow to run. Catching the typo at authoring time beats a
 		// mid-build failure, which reads like an infrastructure fault rather than a typo.
-		if (c.seed?.mode === 'inline' && c.seed.priorRuns?.length) {
+		if (c.seed?.mode === 'inline') {
 			const declared = new Set(c.seed.workflows.map((workflow) => workflow.id));
-			for (const [index, priorRun] of c.seed.priorRuns.entries()) {
-				if (!declared.has(priorRun.workflow)) {
-					ctx.addIssue({
-						code: z.ZodIssueCode.custom,
-						path: ['seed', 'priorRuns', index, 'workflow'],
-						message: `priorRuns names workflow id "${priorRun.workflow}", which this seed does not declare. Seeded workflow ids: ${[...declared].join(', ') || '(none)'}`,
-					});
+			for (const field of ['priorRuns', 'recordedRuns'] as const) {
+				for (const [index, run] of (c.seed[field] ?? []).entries()) {
+					if (!declared.has(run.workflow)) {
+						ctx.addIssue({
+							code: z.ZodIssueCode.custom,
+							path: ['seed', field, index, 'workflow'],
+							message: `${field} names workflow id "${run.workflow}", which this seed does not declare. Seeded workflow ids: ${[...declared].join(', ') || '(none)'}`,
+						});
+					}
 				}
 			}
 		}

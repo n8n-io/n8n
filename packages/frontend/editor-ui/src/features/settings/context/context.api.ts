@@ -12,9 +12,12 @@ const ENDPOINT = '/ai-preferences';
 
 export async function getPreferences(
 	context: IRestApiContext,
-	query: PreferenceListQuery = {},
+	{ ids, ...query }: PreferenceListQuery = {},
 ): Promise<AiPreferenceListDto> {
-	return await makeRestApiRequest<AiPreferenceListDto>(context, 'GET', ENDPOINT, query);
+	return await makeRestApiRequest<AiPreferenceListDto>(context, 'GET', ENDPOINT, {
+		...query,
+		...(ids ? { ids: ids.join(',') } : {}),
+	});
 }
 
 export async function getPreferenceCount(context: IRestApiContext): Promise<number> {

@@ -8,7 +8,7 @@ import { encodeIntegrationMessageContext } from '../integration-message-context'
 import { IntegrationMessageContextService } from '../integration-message-context.service';
 import type { IntegrationMessageContext } from '../integration-tools';
 
-describe('IntegrationMessageContextService — session binding', () => {
+describe('IntegrationMessageContextService', () => {
 	const context: IntegrationMessageContext = {
 		integrationConnectionId: 'slack:cred-a',
 		platform: 'slack',
@@ -26,7 +26,6 @@ describe('IntegrationMessageContextService — session binding', () => {
 		}
 		const threadRepository = mock<AgentThreadRepository>();
 		const resourceRepository = mock<AgentResourceRepository>();
-		resourceRepository.existsBy.mockResolvedValue(true);
 		threadRepository.findOneBy.mockImplementation(async ({ id }: { id: string }) =>
 			threads.has(id) ? (threads.get(id) as never) : (null as never),
 		);
@@ -132,6 +131,47 @@ describe('IntegrationMessageContextService — session binding', () => {
 		const { service } = setup({ 'agent-1:slack:D123:1001': {} });
 		const origin = await service.resolveSession('agent-1:slack:D123:1001');
 		expect(origin).toBeNull();
+	});
+
+	it('reads allow-listed Telegram message metadata', async () => {
+		const telegramContext: IntegrationMessageContext = {
+			integrationConnectionId: 'telegram:cred-a',
+			platform: 'telegram',
+			target: { type: 'thread', threadId: 'telegram:123' },
+			platformMessage: {
+				type: 'telegram',
+				chat_id: '123',
+				message_id: '42',
+				attachments: [{ type: 'image', file_id: 'photo-large' }],
+			},
+			updatedAt: '2026-09-17T10:00:00.000Z',
+		};
+		const { service } = setup({
+			'agent-1:telegram:123': { currentMessageContext: telegramContext },
+		});
+
+		await expect(service.getLatest('agent-1:telegram:123')).resolves.toEqual(telegramContext);
+	});
+
+	it('rejects malformed Telegram message metadata', async () => {
+		const { service } = setup({
+			'agent-1:telegram:123': {
+				currentMessageContext: {
+					integrationConnectionId: 'telegram:cred-a',
+					platform: 'telegram',
+					target: { type: 'thread', threadId: 'telegram:123' },
+					platformMessage: {
+						type: 'telegram',
+						chat_id: '123',
+						message_id: '42',
+						attachments: [{ type: 'image', file_id: null }],
+					},
+					updatedAt: '2026-09-17T10:00:00.000Z',
+				},
+			},
+		});
+
+		await expect(service.getLatest('agent-1:telegram:123')).resolves.toBeNull();
 	});
 
 	it('unbindSession removes the continueAs key but keeps other metadata', async () => {

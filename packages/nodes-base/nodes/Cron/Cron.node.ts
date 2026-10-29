@@ -56,7 +56,10 @@ export class Cron implements INodeType {
 		};
 
 		// Get all the trigger times
-		const expressions = (triggerTimes.item || []).map(toCronExpression);
+		const crons = (triggerTimes.item || []).map((triggerTime) => ({
+			expression: toCronExpression(triggerTime),
+			triggerTime,
+		}));
 
 		// The trigger function to execute when the cron-time got reached
 		// or when manually triggered
@@ -65,7 +68,7 @@ export class Cron implements INodeType {
 		};
 
 		// Register the cron-jobs
-		expressions.forEach((expression) => this.helpers.registerCron({ expression }, executeTrigger));
+		crons.forEach((cron) => this.helpers.registerCron(cron, executeTrigger));
 
 		return {
 			manualTriggerFunction: async () => executeTrigger(),

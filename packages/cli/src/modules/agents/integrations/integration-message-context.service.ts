@@ -130,7 +130,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			await this.threadRepository.save(existing);
 			return;
 		}
-		await this.ensureResource(origin.resourceId);
+		await this.resourceRepository.ensureExists(origin.resourceId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: derivedThreadId,
@@ -154,7 +154,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			await this.threadRepository.save(existing);
 			return;
 		}
-		await this.ensureResource(originThreadId);
+		await this.resourceRepository.ensureExists(originThreadId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: originThreadId,
@@ -182,7 +182,7 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 			return;
 		}
 
-		await this.ensureResource(resourceId ?? threadId);
+		await this.resourceRepository.ensureExists(resourceId ?? threadId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: threadId,
@@ -191,15 +191,6 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 				metadata: JSON.stringify(metadata),
 			}),
 		);
-	}
-
-	private async ensureResource(resourceId: string): Promise<void> {
-		const exists = await this.resourceRepository.existsBy({ id: resourceId });
-		if (!exists) {
-			await this.resourceRepository.save(
-				this.resourceRepository.create({ id: resourceId, metadata: null }),
-			);
-		}
 	}
 
 	private parseMetadata(value: string | null | undefined): Record<string, unknown> {

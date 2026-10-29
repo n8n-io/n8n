@@ -8,6 +8,7 @@ import { claimDocumentTitle, useDocumentTitle } from '@/app/composables/useDocum
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useInstanceAiStore } from './instanceAi.store';
@@ -25,6 +26,7 @@ const router = useRouter();
 const uiStore = useUIStore();
 const rootStore = useRootStore();
 const usersStore = useUsersStore();
+const nodeTypesStore = useNodeTypesStore();
 const telemetry = useTelemetry();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const setupCompletionState = computed(
@@ -106,45 +108,18 @@ onMounted(() => {
 
 	void store.loadThreads();
 	void store.fetchCredits();
+	void nodeTypesStore.loadNodeTypesIfNotLoaded();
 
-	// Subscribe to push + fetch backend gateway state. The backend keeps the
-	// pairing alive across reloads, so the client never contacts the daemon
-	// on mount — only in response to explicit user action in the setup modal.
+	// Subscribe to push + fetch backend Browser Use state.
 	void settingsStore
 		.refreshModuleSettings()
 		.catch(() => {})
-		.then(async () => await settingsStore.ensurePreferencesLoaded())
-		.catch(() => {})
 		.then(() => {
-			const browserUseEnabled = settingsStore.isBrowserUseEnabledByAdmin;
-			const computerUseEnabled = !settingsStore.isLocalGatewayDisabledByAdmin;
-			if (!browserUseEnabled && !computerUseEnabled) return;
-			settingsStore.startGatewayPushListener();
-			if (browserUseEnabled) void settingsStore.fetchBrowserStatus();
-			if (computerUseEnabled && !settingsStore.isLocalGatewayDisabled) {
-				void settingsStore.fetchGatewayStatus();
-			}
+			if (!settingsStore.isBrowserUseEnabledByAdmin) return;
+			settingsStore.startBrowserPushListener();
+			void settingsStore.fetchBrowserStatus();
 		});
 });
-
-// React to admin or user toggling local gateway
-watch(
-	() => settingsStore.isLocalGatewayDisabled,
-	(disabled) => {
-		if (disabled) {
-			if (
-				settingsStore.isLocalGatewayDisabledByAdmin &&
-				!settingsStore.isBrowserUseEnabledByAdmin
-			) {
-				settingsStore.stopGatewayPushListener();
-			}
-		} else {
-			settingsStore.startGatewayPushListener();
-			void settingsStore.fetchGatewayStatus();
-			void settingsStore.fetchBrowserStatus();
-		}
-	},
-);
 
 onUnmounted(() => {
 	// On a transient remount the new instance mounts before this one unmounts, so
@@ -152,7 +127,7 @@ onUnmounted(() => {
 	// Stopping the store-level push listeners on a remount would kill the ones the
 	// new instance relies on (its start calls no-op while the old one is registered).
 	if (!isInstanceAiChatRoute(route.name)) {
-		settingsStore.stopGatewayPushListener();
+		settingsStore.stopBrowserPushListener();
 	}
 });
 </script>
@@ -176,5 +151,8 @@ onUnmounted(() => {
 	width: 100%;
 	min-width: 0;
 	overflow: hidden;
+
+	/** Sets background to be the page background in InstanceAiHeader **/
+	--n8n-ia-header--background: transparent;
 }
 </style>

@@ -318,7 +318,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 					<template #trigger>
 						<N8nButton
 							class="n8n-button--highlightFill"
-							variant="subtle"
+							variant="outline"
 							size="small"
 							icon="plus"
 							:label="placeholder"
@@ -386,7 +386,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 					<template #trigger>
 						<N8nButton
 							class="n8n-button--highlightFill"
-							variant="subtle"
+							variant="outline"
 							size="small"
 							icon="plus"
 							:label="placeholder"

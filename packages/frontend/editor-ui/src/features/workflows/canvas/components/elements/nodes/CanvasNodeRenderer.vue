@@ -1,5 +1,8 @@
 <script lang="ts" setup>
 import { h, inject } from 'vue';
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+import { useMcpDiscovery } from '@/experiments/surfaceMcpToClaudeTrialUsers/useMcpDiscovery';
+// EOF Experiment cleanup
 import CanvasNodeDefault from './render-types/CanvasNodeDefault.vue';
 import CanvasNodeStickyNote from './render-types/CanvasNodeStickyNote.vue';
 import CanvasNodeAddNodes from './render-types/CanvasNodeAddNodes.vue';
@@ -8,6 +11,9 @@ import CanvasNodeAgent from './render-types/CanvasNodeAgent.vue';
 import { CanvasNodeKey } from '@/app/constants';
 import { CanvasNodeRenderType } from '../../../canvas.types';
 
+// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+const { showMcpDiscovery } = useMcpDiscovery();
+// EOF Experiment cleanup
 const node = inject(CanvasNodeKey);
 
 const Render = () => {
@@ -19,7 +25,8 @@ const Render = () => {
 			Component = CanvasNodeStickyNote;
 			break;
 		case CanvasNodeRenderType.AddNodes:
-			Component = CanvasNodeAddNodes;
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users): restore Component = CanvasNodeAddNodes.
+			Component = showMcpDiscovery.value ? CanvasNodeChoicePrompt : CanvasNodeAddNodes;
 			break;
 		case CanvasNodeRenderType.ChoicePrompt:
 			Component = CanvasNodeChoicePrompt;

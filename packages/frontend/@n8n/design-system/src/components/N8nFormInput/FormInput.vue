@@ -134,7 +134,8 @@ function onFocus() {
 	emit('focus');
 }
 
-function onEnter(event: Event) {
+function onEnter(event: KeyboardEvent) {
+	if (event.isComposing || event.keyCode === 229) return;
 	event.stopPropagation();
 	event.preventDefault();
 	emit('enter');

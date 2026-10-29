@@ -189,6 +189,76 @@ describe('web-fetch.utils', () => {
 			expect(result.truncated).toBe(false);
 		});
 
+		it('should preserve tables as GFM Markdown', async () => {
+			const html = `
+				<html>
+				<head><title>Pricing</title></head>
+				<body>
+					<article>
+						<h1>Pricing</h1>
+						<table>
+							<thead><tr><th>Plan</th><th>Price</th><th>Seats</th></tr></thead>
+							<tbody>
+								<tr><td>Starter</td><td>9 EUR</td><td>3</td></tr>
+								<tr><td>Pro</td><td>29 EUR</td><td>10</td></tr>
+							</tbody>
+						</table>
+					</article>
+				</body>
+				</html>
+			`;
+
+			const result = await extractReadableContent(html, 'https://example.com/pricing');
+
+			expect(result.content).toContain(
+				'| Plan | Price | Seats |\n| --- | --- | --- |\n| Starter | 9 EUR | 3   |\n| Pro | 29 EUR | 10  |',
+			);
+		});
+
+		it('should use the first row as the header when a table contains only td cells', async () => {
+			const html = `
+				<html>
+				<head><title>Regions</title></head>
+				<body>
+					<article>
+						<table>
+							<tr><td>Region</td><td>Status</td></tr>
+							<tr><td>Europe</td><td>Available</td></tr>
+						</table>
+					</article>
+				</body>
+				</html>
+			`;
+
+			const result = await extractReadableContent(html, 'https://example.com/regions');
+
+			expect(result.content).toContain(
+				'| Region | Status |\n| --- | --- |\n| Europe | Available |',
+			);
+			expect(result.content).not.toContain('|     |     |');
+		});
+
+		it('should fall back to plain text when a table expands beyond the cell limit', async () => {
+			const html = `
+				<html>
+				<head><title>Oversized Table</title></head>
+				<body>
+					<article>
+						<table>
+							<tr><th colspan="1001">Expanded header</th></tr>
+							<tr><td>Body value</td></tr>
+						</table>
+					</article>
+				</body>
+				</html>
+			`;
+
+			const result = await extractReadableContent(html, 'https://example.com/oversized-table');
+
+			expect(result.content).toContain('Expanded header Body value');
+			expect(result.content).not.toContain('|');
+		});
+
 		it('should truncate content exceeding max chars', async () => {
 			// Generate content longer than WEB_FETCH_MAX_CONTENT_CHARS (30000)
 			const longText = 'A'.repeat(40_000);

@@ -1,17 +1,20 @@
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { EventService } from '@/events/event.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { NodeTypes } from '@/node-types';
 import { TypeAvailabilityPolicyAttachmentRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-attachment.repository';
 import { TypeAvailabilityPolicyScopeRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy-scope.repository';
 import { TypeAvailabilityPolicyRepository } from '@/modules/type-availability-policies/database/repositories/type-availability-policy.repository';
 import type { PolicyRule } from '@/modules/type-availability-policies/policy-rule.types';
+import { TypeAvailabilityPolicySnapshot } from '@/modules/type-availability-policies/type-availability-policy-snapshot';
 import { TypeAvailabilityPolicyService } from '@/modules/type-availability-policies/type-availability-policy.service';
-import { CacheService } from '@/services/cache/cache.service';
+import { Publisher } from '@/scaling/pubsub/publisher.service';
 
-import { clearPolicyCache } from './shared/policy-cache';
+import { reloadPolicySnapshot } from './shared/policy-snapshot';
 
 /**
  * One policy document attached to several scopes, edited once.
@@ -50,7 +53,7 @@ describe('node type policy document fan-out', () => {
 			'TypeAvailabilityPolicyScope',
 			'TypeAvailabilityPolicy',
 		]);
-		await clearPolicyCache();
+		await reloadPolicySnapshot();
 	});
 
 	afterEach(() => {
@@ -77,8 +80,10 @@ describe('node type policy document fan-out', () => {
 				ROOT,
 			);
 			await service.replaceAttachments(
+				KIND,
 				scope.id,
 				[{ policyId: policy.id, priority: 0, isFloor: false }],
+				scope.version,
 				'user-1',
 			);
 			scopes.push(scope);
@@ -111,10 +116,14 @@ describe('node type policy document fan-out', () => {
 	it('leaves all three versions alone when the edit fails after the bumps', async () => {
 		const { policy, scopes, projectIds } = await attachToThreeScopes();
 
-		// The last read the transaction makes, so it throws with the bumps already written.
+		// Throws with the bumps already written, so only a rollback can undo them.
+		const bumpVersions = scopeRepo.bumpVersions.bind(scopeRepo);
 		const afterTheBumps = vi
-			.spyOn(scopeRepo, 'findScopeKeysByIds')
-			.mockRejectedValueOnce(new Error('fan-out interrupted'));
+			.spyOn(scopeRepo, 'bumpVersions')
+			.mockImplementationOnce(async (ids, ctx) => {
+				await bumpVersions(ids, ctx);
+				throw new Error('fan-out interrupted');
+			});
 
 		await expect(
 			service.updatePolicyDocument(KIND, policy.id, [], policy.version, 'user-1'),
@@ -125,21 +134,23 @@ describe('node type policy document fan-out', () => {
 		expect(await versionsOf(scopes)).toEqual([2, 2, 2]);
 		expect((await policyRepo.findByIdAndKind(policy.id, KIND, ROOT))?.rules).toEqual([DENY_SLACK]);
 
-		await clearPolicyCache();
+		await reloadPolicySnapshot();
 		for (const projectId of projectIds) {
 			expect(await slackVerdict(projectId)).toBe('deny');
 		}
 	});
 
-	/**
-	 * Multi-main needs queue mode, where `N8N_CACHE_BACKEND=auto` is Redis — so two mains share
-	 * one cache, and the entry one drops is the entry the other was reading. A second service
-	 * over that shared cache and database models this: a reader that memoized anything per
-	 * process would keep serving the old verdict. Two mains given unshared caches
-	 * (`N8N_CACHE_BACKEND=memory`) stay stale until the TTL instead, which is out of scope here.
-	 */
-	it('serves the committed edit to a second main that had already read the old one', async () => {
+	/** A second main holds its own snapshot and learns of the edit from the reload command. */
+	it('serves the committed edit to a second main once it gets the reload command', async () => {
 		const { policy, projectIds } = await attachToThreeScopes();
+
+		const secondSnapshot = new TypeAvailabilityPolicySnapshot(
+			Container.get(TypeAvailabilityPolicyScopeRepository),
+			Container.get(TypeAvailabilityPolicyAttachmentRepository),
+			Container.get(Publisher),
+			Container.get(Logger),
+		);
+		await secondSnapshot.reload();
 
 		const secondMain = new TypeAvailabilityPolicyService(
 			Container.get(TypeAvailabilityPolicyRepository),
@@ -147,19 +158,24 @@ describe('node type policy document fan-out', () => {
 			Container.get(TypeAvailabilityPolicyAttachmentRepository),
 			Container.get(TransactionRunner),
 			Container.get(EventService),
-			Container.get(CacheService),
-			Container.get(Logger),
+			secondSnapshot,
+			Container.get(LoadNodesAndCredentials),
+			Container.get(NodeTypes),
 		);
 
 		const verdictOnSecondMain = async (projectId: string | null) =>
 			(await secondMain.evaluateComposedTypesFor(KIND, projectId, [SLACK])).verdicts[0].action;
 
-		// Warm the second main first, so a missed invalidation reads as the old verdict.
 		for (const projectId of projectIds) {
 			expect(await verdictOnSecondMain(projectId)).toBe('deny');
 		}
 
 		await service.updatePolicyDocument(KIND, policy.id, [], policy.version, 'user-1');
+
+		// Proves the command is what moves the second main, not a read that reached the database.
+		expect(await verdictOnSecondMain(null)).toBe('deny');
+
+		await secondSnapshot.handleReloadRequest();
 
 		for (const projectId of projectIds) {
 			expect(await verdictOnSecondMain(projectId)).toBe('allow');

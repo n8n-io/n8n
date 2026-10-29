@@ -48,6 +48,21 @@ describe('SystemTaskTimer', () => {
 		expect(onFire).toHaveBeenCalledTimes(4);
 	});
 
+	it('fires on every occurrence of a sub-second interval schedule', () => {
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 0.5 });
+
+		timer.start(new Date());
+
+		vi.advanceTimersByTime(499);
+		expect(onFire).not.toHaveBeenCalled();
+
+		vi.advanceTimersByTime(1);
+		expect(onFire).toHaveBeenCalledTimes(1);
+
+		vi.advanceTimersByTime(2 * Time.seconds.toMilliseconds);
+		expect(onFire).toHaveBeenCalledTimes(5);
+	});
+
 	it('fires on every occurrence of a cron schedule', () => {
 		const timer = createTimer({ kind: 'cron', cronExpression: '0 0 * * * *', timezone: 'UTC' });
 
@@ -289,6 +304,16 @@ describe('SystemTaskTimer', () => {
 
 	it('reports a schedule it cannot plan and stays stopped', () => {
 		const timer = createTimer({ kind: 'cron', cronExpression: 'not-a-cron', timezone: 'UTC' });
+
+		timer.start(new Date());
+
+		expect(onPlanError).toHaveBeenCalledTimes(1);
+		vi.advanceTimersByTime(10 * Time.days.toMilliseconds);
+		expect(onFire).not.toHaveBeenCalled();
+	});
+
+	it('reports an interval that is not positive and stays stopped', () => {
+		const timer = createTimer({ kind: 'interval', intervalSeconds: 0 });
 
 		timer.start(new Date());
 

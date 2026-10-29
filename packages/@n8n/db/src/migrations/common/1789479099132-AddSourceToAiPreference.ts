@@ -5,9 +5,9 @@ const SOURCE_COLUMN = 'source';
 const SOURCE_VALUES = ['ui', 'aia', 'mcp'];
 
 /**
- * Records which surface wrote a preference. The assistant and the MCP server write rows
- * from CONTEXT-138 onwards, and the telemetry, the settings list and the rules around an
- * assistant write all need to tell those rows from a person's own.
+ * Records which surface wrote a preference. The assistant and the MCP server each write
+ * rows with their own `source`, and the telemetry, the settings list and the rules around
+ * an assistant write all need to tell those rows from a person's own.
  *
  * Added nullable, backfilled, then made NOT NULL, and deliberately without a default:
  * every write path names its surface or fails, so a forgotten path cannot quietly record

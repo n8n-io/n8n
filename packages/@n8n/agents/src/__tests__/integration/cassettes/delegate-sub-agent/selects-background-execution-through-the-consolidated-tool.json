@@ -1,0 +1,244 @@
+[
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer in foreground mode. Always set subAgentId. Use subAgentId: \"inline\" to run a one-off inline child that inherits your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools. The child cannot see this conversation or your memory, so everything it needs must be in the call.\nUse a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.\nDELEGATION PARALLELISM:\n- Up to 10 child sub-agent runs can execute at the same time.\n- This limits parallelism, not the total number of delegated tasks.\n- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.\nUse delegate_subagent with mode: \"foreground\" by default. Omit mode for the same behavior. Use mode: \"background\" when independent work benefits from parallel execution, when the task will clearly take substantial time, or when the user explicitly requests background work. Run independent research workstreams as separate background jobs, even when you need all their results for the final synthesis. A clearly long task can run in the background even if you have no other work. If duration is uncertain and no other background condition applies, use foreground mode. The parallelism limit above applies to foreground runs. Background jobs have separate limits. A background child can request tool approval through this conversation. Pass all context the child needs. After a successful launch, continue independent work or end your turn with a short progress message. Completion triggers a follow-up. A launch receipt does not mean the task is complete. Do not wait, sleep, or poll for completion. The final answer is the contract; do not expect the full trace. Ask children with large outputs to write them to the shared workspace and return a summary.\nWHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.\nWHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.\nHOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.\n</built_in_rules>\n\nDelegate the bounded research subtask once, then report the tool outcome. Choose the execution mode using the tool guidance and the user request."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "As one step in a larger API comparison, ask an inline child to research API authentication options in the background. Return once the job is launched; I will continue other work."
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delegate_subagent",
+					"description": "Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context and returns only a concise final result. Use it for reasoning-heavy subtasks, context-flooding investigations, or independent workstreams inside a larger deliverable. Do not use it for trivial work, single tool calls, mechanical steps, tasks that need hidden conversation context, or pass-through delegation of the entire user request. Foreground mode waits for the result and is the default. Background mode returns a job receipt immediately; the child continues after your turn ends.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"subAgentId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Required. Use \"inline\" for a one-off inline sub-agent. Use an exact configured sub-agent ID only when one is listed and fits the task."
+							},
+							"taskName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Short human-readable name for this delegated task, e.g. \"research_api\"."
+							},
+							"goal": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The concrete goal the sub-agent should accomplish."
+							},
+							"context": {
+								"type": "string",
+								"description": "All details the child needs, since it sees nothing else: constraints, paths, data, prior decisions, acceptance criteria, and what you have already tried or ruled out."
+							},
+							"expectedOutput": {
+								"type": "string",
+								"description": "The expected shape or contents of the answer."
+							},
+							"difficulty": {
+								"type": "string",
+								"enum": ["low", "medium", "high"],
+								"description": "Optional difficulty estimate for this delegated task. Use low for simple bounded work, medium for moderate analysis or implementation, and high for complex research, architecture, or multi-step reasoning."
+							},
+							"mode": {
+								"type": "string",
+								"enum": ["foreground", "background"],
+								"description": "Foreground waits for the child result (default). Background returns a job receipt and lets the child continue after this turn."
+							}
+						},
+						"required": ["subAgentId", "taskName", "goal"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_011CfpXtQ8WW2sGW4p41wwbZ\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_01R4GxsBN7XZrpWFhnKEYM6Y\",\"name\":\"delegate_subagent\",\"input\":{\"subAgentId\":\"inline\",\"taskName\":\"research_api_authentication\",\"goal\":\"Research and document common API authentication options, including their characteristics, use cases, security considerations, and trade-offs.\",\"context\":\"This is part of a larger API comparison project. Research the major API authentication methods used in modern web APIs, including but not limited to:\\n- API Keys\\n- OAuth 2.0\\n- JWT (JSON Web Tokens)\\n- Basic Authentication\\n- Bearer Tokens\\n- HMAC signatures\\n- mTLS (mutual TLS)\\n\\nFor each authentication method, document:\\n1. How it works (brief technical overview)\\n2. Common use cases and when it's appropriate\\n3. Security strengths and weaknesses\\n4. Implementation complexity\\n5. Any relevant standards or specifications\\n\\nProvide a comprehensive but concise summary that can be used as reference material for comparing different APIs.\",\"expectedOutput\":\"A structured summary of API authentication methods with their characteristics, use cases, security considerations, and implementation details that can serve as reference material for API comparison.\",\"mode\":\"background\",\"difficulty\":\"medium\"},\"caller\":{\"type\":\"direct\"}}],\"container\":null,\"stop_reason\":\"tool_use\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":1828,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":359,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22499000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-08T09:28:23Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-08T09:28:29Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-10-08T09:28:22Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "26999000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-08T09:28:23Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a4741d75baa11ef8-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Thu, 08 Oct 2026 09:28:29 GMT",
+			"request-id": "req_011CfpXtPv7hmbTnZUrAGXHy",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-70631c540c6690ed5963f03d9af36ff4-dce9412a165a9643-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	},
+	{
+		"scope": "https://api.anthropic.com:443",
+		"method": "POST",
+		"path": "/v1/messages",
+		"body": {
+			"model": "claude-sonnet-4-5",
+			"max_tokens": 64000,
+			"system": [
+				{
+					"type": "text",
+					"text": "<built_in_rules>\n- delegate_subagent runs a focused child agent in a fresh, isolated context and returns only its final answer in foreground mode. Always set subAgentId. Use subAgentId: \"inline\" to run a one-off inline child that inherits your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools. The child cannot see this conversation or your memory, so everything it needs must be in the call.\nUse a configured subagent ID only when one is listed and its name and useWhen guidance fit the subtask better than a generic inline child.\nDELEGATION PARALLELISM:\n- Up to 10 child sub-agent runs can execute at the same time.\n- This limits parallelism, not the total number of delegated tasks.\n- If more independent workstreams are useful, you may issue more delegate_subagent calls; the runtime will run them in batches.\nUse delegate_subagent with mode: \"foreground\" by default. Omit mode for the same behavior. Use mode: \"background\" when independent work benefits from parallel execution, when the task will clearly take substantial time, or when the user explicitly requests background work. Run independent research workstreams as separate background jobs, even when you need all their results for the final synthesis. A clearly long task can run in the background even if you have no other work. If duration is uncertain and no other background condition applies, use foreground mode. The parallelism limit above applies to foreground runs. Background jobs have separate limits. A background child can request tool approval through this conversation. Pass all context the child needs. After a successful launch, continue independent work or end your turn with a short progress message. Completion triggers a follow-up. A launch receipt does not mean the task is complete. Do not wait, sleep, or poll for completion. The final answer is the contract; do not expect the full trace. Ask children with large outputs to write them to the shared workspace and return a summary.\nWHEN TO USE delegate_subagent:\n- The request decomposes into 2+ independent workstreams that can be handled separately.\n- A workstream needs substantial research, review, comparison, or analysis.\n- Doing the work inline would flood your context with intermediate findings.\n- A fresh isolated perspective would materially improve a bounded subtask.\nWHEN NOT TO USE delegate_subagent:\n- Single-step mechanical work: do it directly.\n- Trivial tasks or one/two tool calls: do them yourself.\n- Tasks that need user interaction or hidden conversation context.\n- Your core synthesis, final judgment, or recommendation.\n- The entire user request as one delegated task; that is pass-through with no value added.\nHOW TO DELEGATE:\n- Delegate bounded workstreams, not the final answer.\n- Pass all required context, constraints, language/tone, and expected output.\n- Set difficulty (low, medium, or high) when you can estimate task complexity; omit it to keep the default inline model.\n- If multiple independent workstreams exist, delegate them separately.\n- Inline children inherit your local and deferred tools after safety filtering. Inline children do not inherit provider-defined tools.\n- Inspect results and synthesize the final response yourself.\n- Verify side-effect claims before presenting them as done.\n</built_in_rules>\n\nDelegate the bounded research subtask once, then report the tool outcome. Choose the execution mode using the tool guidance and the user request."
+				}
+			],
+			"messages": [
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "text",
+							"text": "As one step in a larger API comparison, ask an inline child to research API authentication options in the background. Return once the job is launched; I will continue other work."
+						}
+					]
+				},
+				{
+					"role": "assistant",
+					"content": [
+						{
+							"type": "tool_use",
+							"id": "toolu_01R4GxsBN7XZrpWFhnKEYM6Y",
+							"name": "delegate_subagent",
+							"input": {
+								"subAgentId": "inline",
+								"taskName": "research_api_authentication",
+								"goal": "Research and document common API authentication options, including their characteristics, use cases, security considerations, and trade-offs.",
+								"context": "This is part of a larger API comparison project. Research the major API authentication methods used in modern web APIs, including but not limited to:\n- API Keys\n- OAuth 2.0\n- JWT (JSON Web Tokens)\n- Basic Authentication\n- Bearer Tokens\n- HMAC signatures\n- mTLS (mutual TLS)\n\nFor each authentication method, document:\n1. How it works (brief technical overview)\n2. Common use cases and when it's appropriate\n3. Security strengths and weaknesses\n4. Implementation complexity\n5. Any relevant standards or specifications\n\nProvide a comprehensive but concise summary that can be used as reference material for comparing different APIs.",
+								"expectedOutput": "A structured summary of API authentication methods with their characteristics, use cases, security considerations, and implementation details that can serve as reference material for API comparison.",
+								"difficulty": "medium",
+								"mode": "background"
+							},
+							"caller": {
+								"type": "direct"
+							}
+						}
+					]
+				},
+				{
+					"role": "user",
+					"content": [
+						{
+							"type": "tool_result",
+							"tool_use_id": "toolu_01R4GxsBN7XZrpWFhnKEYM6Y",
+							"content": "{\"status\":\"started\",\"jobId\":\"background-job-1\"}"
+						}
+					]
+				}
+			],
+			"tools": [
+				{
+					"name": "delegate_subagent",
+					"description": "Delegate a bounded, self-contained subtask to a focused child agent that runs in an isolated context and returns only a concise final result. Use it for reasoning-heavy subtasks, context-flooding investigations, or independent workstreams inside a larger deliverable. Do not use it for trivial work, single tool calls, mechanical steps, tasks that need hidden conversation context, or pass-through delegation of the entire user request. Foreground mode waits for the result and is the default. Background mode returns a job receipt immediately; the child continues after your turn ends.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"subAgentId": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Required. Use \"inline\" for a one-off inline sub-agent. Use an exact configured sub-agent ID only when one is listed and fits the task."
+							},
+							"taskName": {
+								"type": "string",
+								"minLength": 1,
+								"description": "Short human-readable name for this delegated task, e.g. \"research_api\"."
+							},
+							"goal": {
+								"type": "string",
+								"minLength": 1,
+								"description": "The concrete goal the sub-agent should accomplish."
+							},
+							"context": {
+								"type": "string",
+								"description": "All details the child needs, since it sees nothing else: constraints, paths, data, prior decisions, acceptance criteria, and what you have already tried or ruled out."
+							},
+							"expectedOutput": {
+								"type": "string",
+								"description": "The expected shape or contents of the answer."
+							},
+							"difficulty": {
+								"type": "string",
+								"enum": ["low", "medium", "high"],
+								"description": "Optional difficulty estimate for this delegated task. Use low for simple bounded work, medium for moderate analysis or implementation, and high for complex research, architecture, or multi-step reasoning."
+							},
+							"mode": {
+								"type": "string",
+								"enum": ["foreground", "background"],
+								"description": "Foreground waits for the child result (default). Background returns a job receipt and lets the child continue after this turn."
+							}
+						},
+						"required": ["subAgentId", "taskName", "goal"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				}
+			],
+			"tool_choice": {
+				"type": "auto"
+			}
+		},
+		"status": 200,
+		"response": "{\"model\":\"claude-sonnet-4-5-20250929\",\"id\":\"msg_011CfpXtumDiHAtZv37Gzxnh\",\"type\":\"message\",\"role\":\"assistant\",\"content\":[{\"type\":\"text\",\"text\":\"Background research job launched successfully (job ID: `background-job-1`). The child agent is now researching API authentication options independently. You can continue with your other work, and I'll receive the results when the research is complete.\"}],\"container\":null,\"stop_reason\":\"end_turn\",\"stop_sequence\":null,\"stop_details\":null,\"usage\":{\"input_tokens\":2214,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"cache_creation\":{\"ephemeral_5m_input_tokens\":0,\"ephemeral_1h_input_tokens\":0},\"output_tokens\":52,\"service_tier\":\"standard\",\"inference_geo\":\"not_available\"},\"diagnostics\":null}",
+		"rawHeaders": {
+			"anthropic-ratelimit-input-tokens-limit": "22500000",
+			"anthropic-ratelimit-input-tokens-remaining": "22499000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-08T09:28:30Z",
+			"anthropic-ratelimit-output-tokens-limit": "4500000",
+			"anthropic-ratelimit-output-tokens-remaining": "4500000",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-08T09:28:31Z",
+			"anthropic-ratelimit-requests-limit": "20000",
+			"anthropic-ratelimit-requests-remaining": "19999",
+			"anthropic-ratelimit-requests-reset": "2026-10-08T09:28:29Z",
+			"anthropic-ratelimit-tokens-limit": "27000000",
+			"anthropic-ratelimit-tokens-remaining": "26999000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-08T09:28:30Z",
+			"cf-cache-status": "DYNAMIC",
+			"cf-ray": "a4741da03e9f1ef8-VIE",
+			"connection": "keep-alive",
+			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
+			"content-type": "application/json",
+			"date": "Thu, 08 Oct 2026 09:28:31 GMT",
+			"request-id": "req_011CfpXtu92R3H7evnAY5xVa",
+			"server": "cloudflare",
+			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
+			"traceresponse": "00-8899a209f872f2d9f144b03127f337aa-4ebb0f4c5386d933-01",
+			"vary": "Accept-Encoding",
+			"x-robots-tag": "none"
+		},
+		"responseIsBinary": false
+	}
+]

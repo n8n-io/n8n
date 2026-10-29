@@ -6,12 +6,10 @@ import { Time } from '@n8n/constants';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Agent } from '../../entities/agent.entity';
+import type { AgentChannelRef } from '../../utils/agent-channel';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentChannelStatus } from '../../entities/agent-channel-status.entity';
-import type {
-	AgentChannelRef,
-	AgentChannelStatusRepository,
-} from '../../repositories/agent-channel-status.repository';
+import type { AgentChannelStatusRepository } from '../../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChannelReconciler } from '../agent-channel-reconciler.service';
 import { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
@@ -39,6 +37,14 @@ class FakeIntegration extends AgentChatIntegration {
 		return this.leaderOnly;
 	}
 
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(): Promise<unknown> {
 		return {};
 	}
@@ -47,8 +53,8 @@ class FakeIntegration extends AgentChatIntegration {
 const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
 const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'cred-telegram' };
 
-function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): Agent {
-	return { id, projectId: 'project-1', integrations } as unknown as Agent;
+function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): ProjectAgent {
+	return { id, projectId: 'project-1', integrations } as unknown as ProjectAgent;
 }
 
 function refOf(integration: AgentIntegrationConfig, agentId = 'agent-1'): AgentChannelRef {

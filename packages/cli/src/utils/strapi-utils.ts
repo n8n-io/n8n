@@ -48,7 +48,7 @@ type PaginationRequestParams = {
 		pageSize: number;
 	};
 	maxAiNodeSdk?: number;
-	maxN8nNodesApiVersion?: number;
+	maxN8nNodesApiVersion?: string;
 	version?: number;
 };
 

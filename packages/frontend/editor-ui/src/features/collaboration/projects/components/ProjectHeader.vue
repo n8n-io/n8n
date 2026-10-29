@@ -1,18 +1,19 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
+import type { SlotProjectHeaderMainButton, SlotProjectHeaderProps } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
+import { canConfigureSelfHealing, selfHealingLocation } from '../projects.utils';
 import ProjectTabs from './ProjectTabs.vue';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
@@ -21,21 +22,15 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import {
+	PERSONAL_SELF_HEALING_VIEW,
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import { usePromotionsEnabled } from '@/features/shared/promotions/usePromotionsEnabled';
-import { PROMOTION_SELECT_MODAL_KEY } from '@/features/integrations/promotions.ee/promotions.constants';
-import { getPromotableChanges } from '@/features/integrations/promotions.ee/promotions.api';
+import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
 
-import {
-	N8nButton,
-	N8nHeading,
-	N8nIcon,
-	N8nIconButton,
-	N8nLink,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
@@ -53,39 +48,10 @@ const telemetry = useTelemetry();
 const { createAgent } = useCreateAgent();
 const usersStore = useUsersStore();
 const favoritesStore = useFavoritesStore();
-const { isEnabled: isPromotionsEnabled } = usePromotionsEnabled();
-const rootStore = useRootStore();
 
 const currentProjectId = computed(() => projectsStore.currentProject?.id);
 
 const isTeamProject = computed(() => projectsStore.currentProject?.type === ProjectTypes.Team);
-
-const promotableChangeCount = ref(0);
-const showPromoteButton = computed(
-	() =>
-		isTeamProject.value &&
-		isPromotionsEnabled.value &&
-		!!projectPermissions.value.export &&
-		!!getResourcePermissions(usersStore.currentUser?.globalScopes).gitConnection.push,
-);
-
-async function fetchPromotableChangeCount() {
-	// Capture the project this request is for, so a slow response for a project the
-	// user already navigated away from cannot overwrite the current count.
-	const requestedProjectId = currentProjectId.value;
-	promotableChangeCount.value = 0;
-	if (!showPromoteButton.value || !requestedProjectId) {
-		return;
-	}
-	try {
-		const { changes } = await getPromotableChanges(rootStore.restApiContext, requestedProjectId);
-		if (currentProjectId.value !== requestedProjectId) return;
-		promotableChangeCount.value = changes.length;
-	} catch {
-		if (currentProjectId.value !== requestedProjectId) return;
-		promotableChangeCount.value = 0;
-	}
-}
 
 const isProjectFavorited = computed(() =>
 	currentProjectId.value ? favoritesStore.isFavorite(currentProjectId.value, 'project') : false,
@@ -98,10 +64,7 @@ async function onToggleProjectFavorite() {
 
 const projectPages = useProjectPages();
 
-const props = defineProps<{
-	hasActiveCallouts?: boolean;
-	mainButton?: ActionTypes;
-}>();
+const props = defineProps<SlotProjectHeaderProps>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -176,21 +139,44 @@ const showFolders = computed(() => {
 	);
 });
 
-const customProjectTabs = computed((): Array<TabOptions<string>> => {
-	// Determine the type of tab based on the current project page
-	let tabType: 'shared' | 'overview' | 'project';
+const pageType = computed(() => {
 	if (projectPages.isSharedSubPage) {
-		tabType = 'shared';
+		return 'shared';
 	} else if (projectPages.isOverviewSubPage) {
-		tabType = 'overview';
+		return 'overview';
 	} else {
-		tabType = 'project';
+		return 'project';
 	}
+});
+
+const personalSelfHealingTab = computed((): TabOptions<string> | null => {
+	const project = projectsStore.currentProject;
+	if (
+		pageType.value !== 'project' ||
+		!project ||
+		project.id !== route?.params?.projectId ||
+		selfHealingLocation(project) !== 'personalTab' ||
+		!canConfigureSelfHealing(project)
+	) {
+		return null;
+	}
+	return {
+		label: i18n.baseText('selfHealing.config.heading'),
+		value: PERSONAL_SELF_HEALING_VIEW,
+		to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: project.id } },
+	};
+});
+
+const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
-	const activeModules = Object.keys(uiStore.moduleTabs[tabType]).filter(
-		settingsStore.isModuleActive,
+	const moduleTabs = uiStore.moduleTabs[pageType.value];
+	const activeModules = Object.keys(moduleTabs).filter(
+		(module) =>
+			settingsStore.isModuleActive(module) &&
+			(module !== 'agents' || settingsStore.isAgentsEnabled),
 	);
-	return activeModules.flatMap((module) => uiStore.moduleTabs[tabType][module]);
+	const tabs = activeModules.flatMap((module) => moduleTabs[module]);
+	return personalSelfHealingTab.value ? [...tabs, personalSelfHealingTab.value] : tabs;
 });
 
 const ACTION_TYPES = {
@@ -200,7 +186,8 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
-} as const;
+	SELF_HEALING: 'selfHealing',
+} as const satisfies Record<string, SlotProjectHeaderMainButton | 'folder'>;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
@@ -251,8 +238,16 @@ const createAgentButton = computed(() => ({
 	disabled: !canCreateAgent.value,
 }));
 
+const createSelfHealingButton = computed(() => ({
+	value: ACTION_TYPES.SELF_HEALING,
+	label: i18n.baseText('selfHealing.config.create'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled: sourceControlStore.preferences.branchReadOnly || !personalSelfHealingTab.value,
+}));
+
 const selectedMainButtonType = computed(() => {
-	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isModuleActive('agents')) {
+	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
 	}
 	return props.mainButton ?? ACTION_TYPES.WORKFLOW;
@@ -266,6 +261,8 @@ const mainButtonConfig = computed(() => {
 			return createDataTableButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
+		case ACTION_TYPES.SELF_HEALING:
+			return createSelfHealingButton.value;
 		case ACTION_TYPES.AGENT:
 			return createAgentButton.value;
 		case ACTION_TYPES.WORKFLOW:
@@ -336,10 +333,7 @@ const menu = computed(() => {
 		});
 	}
 
-	if (
-		settingsStore.isModuleActive('agents') &&
-		selectedMainButtonType.value !== ACTION_TYPES.AGENT
-	) {
+	if (settingsStore.isAgentsEnabled && selectedMainButtonType.value !== ACTION_TYPES.AGENT) {
 		items.push({
 			value: ACTION_TYPES.AGENT,
 			label: i18n.baseText('projects.header.create.agent'),
@@ -425,20 +419,16 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
 	},
+	[ACTION_TYPES.SELF_HEALING]: (projectId) => {
+		void router.push({
+			name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+			params: { projectId, configurationId: 'new' },
+		});
+	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		createAgent(source, projectId);
 	},
 } as const;
-
-const pageType = computed(() => {
-	if (projectPages.isSharedSubPage) {
-		return 'shared';
-	} else if (projectPages.isOverviewSubPage) {
-		return 'overview';
-	} else {
-		return 'project';
-	}
-});
 
 const sectionDescription = computed(() => {
 	if (projectPages.isSharedSubPage) {
@@ -503,25 +493,6 @@ const projectDescriptionTruncated = computed(() => {
 	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
 });
 
-const promotionBannerText = computed(() => {
-	if (promotableChangeCount.value === 1) {
-		return i18n.baseText('promotions.banner.singleChangeAvailable');
-	}
-	return i18n.baseText('promotions.banner.changesAvailable', {
-		interpolate: { count: String(promotableChangeCount.value) },
-	});
-});
-
-watch([currentProjectId, showPromoteButton], fetchPromotableChangeCount, { immediate: true });
-
-function onOpenPromotionModal() {
-	if (!currentProjectId.value) return;
-	uiStore.openModalWithData({
-		name: PROMOTION_SELECT_MODAL_KEY,
-		data: { projectId: currentProjectId.value },
-	});
-}
-
 const onSelect = (action: string, source: CreateSource) => {
 	const executableAction = actions[action as ActionTypes];
 	if (!homeProject.value) {
@@ -538,9 +509,17 @@ const onSelect = (action: string, source: CreateSource) => {
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
 				<div :class="$style.headerActions">
-					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
-						projectName
-					}}</N8nHeading>
+					<div :class="$style.titleRow">
+						<N8nHeading
+							v-if="projectName"
+							bold
+							tag="h2"
+							size="xlarge"
+							data-test-id="project-name"
+							>{{ projectName }}</N8nHeading
+						>
+						<PromotionPreviewBadges />
+					</div>
 					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
 						{{ sectionDescription }}
 					</N8nText>
@@ -580,6 +559,7 @@ const onSelect = (action: string, source: CreateSource) => {
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
 							:actions="menu"
+							variant="brand"
 							:disabled="sourceControlStore.preferences.branchReadOnly"
 							@action="(action: string) => onSelect(action, 'dropdown')"
 						>
@@ -587,6 +567,7 @@ const onSelect = (action: string, source: CreateSource) => {
 								:data-test-id="`add-resource-${selectedMainButtonType}`"
 								v-bind="mainButtonConfig"
 								size="medium"
+								variant="brand"
 								@click="onSelect(selectedMainButtonType, 'button')"
 							/>
 						</ProjectCreateResource>
@@ -602,19 +583,6 @@ const onSelect = (action: string, source: CreateSource) => {
 				:show-settings="showSettings"
 				:additional-tabs="customProjectTabs"
 			/>
-		</div>
-		<div
-			v-if="showPromoteButton && promotableChangeCount > 0"
-			:class="$style.promotionBanner"
-			data-test-id="promotion-banner"
-		>
-			<N8nIcon icon="upload" size="small" />
-			<N8nText size="small">
-				{{ promotionBannerText }}
-			</N8nText>
-			<N8nLink size="small" data-test-id="promotion-banner-link" @click="onOpenPromotionModal">
-				{{ i18n.baseText('promotions.banner.viewChanges') }}
-			</N8nLink>
 		</div>
 	</div>
 </template>
@@ -636,17 +604,6 @@ const onSelect = (action: string, source: CreateSource) => {
 
 .actions {
 	padding: var(--spacing--2xs) 0 var(--spacing--xs);
-}
-
-.promotionBanner {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	background-color: var(--background--hover);
-	border: var(--border);
-	border-radius: var(--radius--2xs);
-	margin-bottom: var(--spacing--xs);
 }
 
 .projectDescriptionWrapper {
@@ -681,6 +638,12 @@ const onSelect = (action: string, source: CreateSource) => {
 	&.favoriteBtnActive {
 		color: var(--color--yellow-500);
 	}
+}
+
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 .projectDetails:hover .favoriteBtn {

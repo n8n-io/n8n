@@ -1,10 +1,10 @@
-import type { AttributeValue, BuiltTelemetry } from '@n8n/agents';
+import type { AgentSnapshot, AttributeValue, BuiltTelemetry } from '@n8n/agents';
 import { Telemetry } from '@n8n/agents';
 import { AgentsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { trace } from '@opentelemetry/api';
 
-const AGENTS_TRACER_NAME = '@n8n/agents';
+import { AGENTS_TRACER_NAME } from '@/observability/tracer-names';
 
 interface AgentRunTracingMetadataBase {
 	agentId: string;
@@ -49,9 +49,9 @@ function isWorkflowTracingMetadata(
 }
 
 /**
- * Builds the per-run OTel telemetry handed to an agent run, riding along with
- * the workflow OTel module's already-registered global tracer provider — this
- * service never creates, registers, or shuts down a provider itself.
+ * Builds the per-run OTel telemetry handed to an agent run on the global tracer
+ * provider — this service never creates, registers, or shuts down a provider
+ * itself.
  */
 @Service()
 export class AgentRunTracingService {
@@ -66,10 +66,6 @@ export class AgentRunTracingService {
 	 * Returns undefined when agent tracing is disabled — callers omit
 	 * `ExecutionOptions.telemetry` entirely in that case, indistinguishable
 	 * from "OTel module off" to the SDK (both are no-ops).
-	 *
-	 * Fetches the tracer fresh on every call rather than caching it: a tracer
-	 * obtained before any provider is registered would otherwise go stale
-	 * across an OTel module restart. Fetching fresh sidesteps that entirely.
 	 */
 	async build(metadata: AgentRunTracingMetadata): Promise<BuiltTelemetry | undefined> {
 		if (!this.agentsConfig.tracingEnabled) return undefined;
@@ -81,14 +77,12 @@ export class AgentRunTracingService {
 			source: metadata.source,
 			...(metadata.userId ? { user_id: metadata.userId } : {}),
 			...(metadata.modelId ? { model_id: metadata.modelId } : {}),
-			...(isWorkflowTracingMetadata(metadata)
-				? {
-						...(metadata.executionId ? { execution_id: metadata.executionId } : {}),
-						...(metadata.workflowId ? { workflow_id: metadata.workflowId } : {}),
-						...(metadata.nodeId ? { node_id: metadata.nodeId } : {}),
-					}
-				: {}),
 		};
+		if (isWorkflowTracingMetadata(metadata)) {
+			if (metadata.executionId) attributes.execution_id = metadata.executionId;
+			if (metadata.workflowId) attributes.workflow_id = metadata.workflowId;
+			if (metadata.nodeId) attributes.node_id = metadata.nodeId;
+		}
 
 		const built = await new Telemetry()
 			.tracer(trace.getTracer(AGENTS_TRACER_NAME))
@@ -110,9 +104,6 @@ export class AgentRunTracingService {
 }
 
 /** Format an agent snapshot's model as `provider/name`, or undefined if either is missing. */
-export function modelIdFromSnapshot(model: {
-	provider: string | null;
-	name: string | null;
-}): string | undefined {
+export function modelIdFromSnapshot(model: AgentSnapshot['model']): string | undefined {
 	return model.provider && model.name ? `${model.provider}/${model.name}` : undefined;
 }

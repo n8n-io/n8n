@@ -1,17 +1,18 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
+import type {
+	EventService,
+	ExecutionRedactionOptions,
+	RedactableExecution,
+} from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
-import type { IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
+import type { INode, IRunExecutionData, ITaskData, WorkflowExecuteMode } from 'n8n-workflow';
 import { shouldRedactConsoleOutput } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { ScopeForbiddenError } from '@/errors/response-errors/scope-forbidden.error';
-import type { EventService } from '@/events/event.service';
-import type {
-	ExecutionRedactionOptions,
-	RedactableExecution,
-} from '@/executions/execution-redaction';
+import { ForbiddenError, ScopeForbiddenError } from '@n8n/errors';
+
+import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { ExecutionRedactionService } from '../execution-redaction.service';
@@ -23,6 +24,7 @@ describe('ExecutionRedactionService', () => {
 	const workflowFinderService = mockInstance(WorkflowFinderService);
 	const eventService = mock<EventService>();
 	const fullItemRedactionStrategy = mockInstance(FullItemRedactionStrategy);
+	const credentialsPermissionChecker = mockInstance(CredentialsPermissionChecker);
 
 	let service: ExecutionRedactionService;
 
@@ -43,10 +45,26 @@ describe('ExecutionRedactionService', () => {
 			workflowFinderService,
 			eventService,
 			fullItemRedactionStrategy,
+			credentialsPermissionChecker,
 		);
 		// Default: user lacks execution:reveal scope
 		workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(new Set());
 		fullItemRedactionStrategy.apply.mockResolvedValue(undefined);
+		// Default: viewer can use every credential
+		credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([]);
+		// Stand-in for the real extraction logic (covered by
+		// credentials-permission-checker.test.ts): the ids of enabled nodes'
+		// credentials, so fixtures built with `nodeWithCredential` behave as
+		// the real collaborator would for this orchestrator's own tests.
+		credentialsPermissionChecker.getCredentialIdsForNodes.mockImplementation((nodes: INode[]) => [
+			...new Set(
+				nodes
+					.filter((n) => !n.disabled && n.credentials)
+					.flatMap((n) => Object.values(n.credentials!))
+					.map((c) => c.id)
+					.filter((id): id is string => Boolean(id)),
+			),
+		]);
 	});
 
 	const makeExecution = (
@@ -60,6 +78,8 @@ describe('ExecutionRedactionService', () => {
 			withDynamicCredentials?: boolean;
 			usesDynamicCredentials?: boolean;
 			executedByUserId?: string | null;
+			subWorkflowRedaction?: { production: boolean; manual: boolean };
+			nodes?: INode[];
 		} = {},
 	): RedactableExecution => {
 		const {
@@ -72,6 +92,8 @@ describe('ExecutionRedactionService', () => {
 			withDynamicCredentials = false,
 			usesDynamicCredentials = false,
 			executedByUserId = null,
+			subWorkflowRedaction,
+			nodes = [],
 		} = overrides;
 
 		const executionData: IRunExecutionData['executionData'] = {
@@ -129,6 +151,18 @@ describe('ExecutionRedactionService', () => {
 			};
 		}
 
+		// Stamp the channels a sub-workflow reported, mirroring what
+		// `BaseExecuteContext.executeWorkflow` does when a sub-workflow returns.
+		if (subWorkflowRedaction) {
+			executionData.runtimeData = {
+				version: 1 as const,
+				establishedAt: Date.now(),
+				source: mode,
+				...executionData.runtimeData,
+				subWorkflowRedaction,
+			};
+		}
+
 		const runData = withDynamicCredentials
 			? {
 					SomeNode: [{ startTime: 0, executionTime: 0, usedDynamicCredentials: true } as ITaskData],
@@ -146,10 +180,22 @@ describe('ExecutionRedactionService', () => {
 			},
 			workflowData: {
 				settings: workflowSettingsPolicy ? { redactionPolicy: workflowSettingsPolicy } : {},
-				nodes: [],
+				nodes,
 			},
 		} as unknown as RedactableExecution;
 	};
+
+	const nodeWithCredential = (credentialId: string, overrides: Partial<INode> = {}): INode =>
+		({
+			id: 'node-1',
+			name: 'SomeNode',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			credentials: { someCredential: { id: credentialId, name: 'Some Credential' } },
+			...overrides,
+		}) as unknown as INode;
 
 	describe('processExecution (single-item wrapper)', () => {
 		it('delegates to processExecutions and returns the same execution', async () => {
@@ -962,6 +1008,187 @@ describe('ExecutionRedactionService', () => {
 		});
 	});
 
+	describe('sub-workflow redaction', () => {
+		const NO_CHANNELS = { production: false, manual: false };
+		const BOTH_CHANNELS = { production: true, manual: true };
+		const PRODUCTION_ONLY = { production: true, manual: false };
+
+		it('redacts an execution whose sub-workflow reported a channel that covers its mode', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(true);
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it('does not redact a manual execution when the sub-workflow reported production only', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: PRODUCTION_ONLY,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('redacts a production execution when the sub-workflow reported production only', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: PRODUCTION_ONLY,
+				mode: 'trigger',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(true);
+		});
+
+		it('attributes the redaction to the workflow when its own policy already redacts the mode', async () => {
+			const execution = makeExecution({
+				channels: BOTH_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(false);
+		});
+
+		it('combines the channels with a V1 snapshot', async () => {
+			const execution = makeExecution({
+				policy: 'non-manual',
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.redactedBySubWorkflow).toBe(true);
+		});
+
+		it('combines the channels with the workflow-setting fallback', async () => {
+			const execution = makeExecution({
+				withRuntimeData: false,
+				workflowSettingsPolicy: 'none',
+				subWorkflowRedaction: PRODUCTION_ONLY,
+				mode: 'webhook',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('ignores the channels when the data-redaction license is missing', async () => {
+			licenseState.isDataRedactionLicensed.mockReturnValue(false);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		// Escalated redaction follows the policy rule: `execution:reveal` on the calling
+		// workflow allows reveal.
+		it('lets a user with execution:reveal on the workflow reveal', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).resolves.toBe(execution);
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('advertises canReveal to a user with execution:reveal on the workflow', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.userCanReveal).toBe(true);
+		});
+
+		it('rejects reveal for a user without execution:reveal on the workflow', async () => {
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				mode: 'manual',
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toBeInstanceOf(ScopeForbiddenError);
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-data-reveal-failure',
+				expect.objectContaining({ redactionPolicy: 'all' }),
+			);
+		});
+
+		it('keeps the dynamic-credentials rule ahead of the sub-workflow redaction', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			const execution = makeExecution({
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: BOTH_CHANNELS,
+				withDynamicCredentials: true,
+				mode: 'manual',
+			});
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.enforceDynCredRedaction).toBe(true);
+			// The execution:reveal scope does not bypass the dynamic-credentials rule.
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it.each([
+			[PRODUCTION_ONLY, 'manual' as const],
+			[PRODUCTION_ONLY, 'trigger' as const],
+			[BOTH_CHANNELS, 'manual' as const],
+			[BOTH_CHANNELS, 'webhook' as const],
+		])('channels %j mode %s: console gate matches data pipeline', async (reported, mode) => {
+			const redaction = { version: 2 as const, ...NO_CHANNELS };
+			const execution = makeExecution({
+				mode,
+				channels: NO_CHANNELS,
+				subWorkflowRedaction: reported,
+			});
+
+			await service.processExecutions([execution], { user: mockUser });
+			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
+
+			expect(shouldRedactConsoleOutput(redaction, undefined, mode, reported)).toBe(
+				dataPipelineRedacts,
+			);
+		});
+	});
+
 	describe('console-gate equivalence', () => {
 		// The console gate (shouldRedactConsoleOutput) and the execution-data
 		// pipeline resolve the same snapshot independently; this pins them to
@@ -991,6 +1218,268 @@ describe('ExecutionRedactionService', () => {
 			const dataPipelineRedacts = fullItemRedactionStrategy.apply.mock.calls.length > 0;
 
 			expect(shouldRedactConsoleOutput(redaction, undefined, mode)).toBe(dataPipelineRedacts);
+		});
+	});
+
+	describe('credential usability redaction', () => {
+		it('force-redacts when the viewer cannot use a credential the workflow references', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1')],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.enforceCredentialUsabilityRedaction).toBe(true);
+			expect(context.userCanReveal).toBe(false);
+		});
+
+		it('passes on only the credentials of this execution that the viewer cannot use', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1'), nodeWithCredential('cred-2')],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(context.inaccessibleCredentialIds).toEqual(['cred-1']);
+		});
+
+		describe('a sub-workflow credential', () => {
+			// The parent's own nodes reference no credential; its Execute Workflow task
+			// carries the credentials the sub-workflow run reported.
+			const parentCallingSubWorkflow = () => {
+				const execution = makeExecution({ policy: 'none', mode: 'manual', nodes: [] });
+				execution.data.resultData.runData = {
+					'Execute Workflow': [
+						{ startTime: 0, executionTime: 0, usedCredentialIds: ['cred-1'] } as ITaskData,
+					],
+				};
+				return execution;
+			};
+
+			it('force-redacts the parent when the viewer cannot use it', async () => {
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+					'cred-1',
+				]);
+
+				await service.processExecution(parentCallingSubWorkflow(), { user: mockUser });
+
+				expect(
+					credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+				).toHaveBeenCalledWith(mockUser, ['cred-1'], { ignoreGlobalUseScope: true });
+				const [, context] = fullItemRedactionStrategy.apply.mock.calls[0];
+				expect(context.enforceCredentialUsabilityRedaction).toBe(true);
+				expect(context.userCanReveal).toBe(false);
+			});
+
+			it('does not redact the parent for a viewer who can use it', async () => {
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([]);
+
+				await service.processExecution(parentCallingSubWorkflow(), { user: mockUser });
+
+				expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+			});
+		});
+
+		it('does not force-redact when the viewer can use every referenced credential', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1')],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('throws ForbiddenError on the reveal path regardless of execution:reveal scope', async () => {
+			workflowFinderService.findWorkflowIdsWithScopeForUser.mockResolvedValue(
+				new Set(['workflow-123']),
+			);
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1')],
+			});
+
+			await expect(
+				service.processExecution(execution, { user: mockUser, redactExecutionData: false }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('emits execution-data-reveal-failure before the ForbiddenError on the reveal path', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1')],
+			});
+
+			await expect(
+				service.processExecution(execution, {
+					user: mockUser,
+					redactExecutionData: false,
+					ipAddress: '1.2.3.4',
+					userAgent: 'TestAgent/1.0',
+				}),
+			).rejects.toThrow(ForbiddenError);
+
+			expect(eventService.emit).toHaveBeenCalledWith('execution-data-reveal-failure', {
+				user: mockUser,
+				executionId: execution.id,
+				workflowId: execution.workflowId,
+				ipAddress: '1.2.3.4',
+				userAgent: 'TestAgent/1.0',
+				redactionPolicy: 'none',
+				rejectionReason: 'User cannot use a credential referenced by this execution',
+			});
+		});
+
+		it('does not call the DB when no execution references a credential', async () => {
+			const execution = makeExecution({ policy: 'none', mode: 'manual' });
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+			).not.toHaveBeenCalled();
+		});
+
+		it('skips a disabled node and a credential slot without an id', async () => {
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [
+					nodeWithCredential('cred-1', { disabled: true }),
+					{
+						id: 'node-2',
+						name: 'NoIdNode',
+						type: 'n8n-nodes-base.noOp',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+						credentials: { someCredential: { name: 'x' } },
+					} as unknown as INode,
+				],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+			).not.toHaveBeenCalled();
+			expect(fullItemRedactionStrategy.apply).not.toHaveBeenCalled();
+		});
+
+		it('batches the credential-usability check across executions into a single call', async () => {
+			const executions = [
+				makeExecution({
+					policy: 'none',
+					mode: 'manual',
+					workflowId: 'wf-1',
+					nodes: [nodeWithCredential('cred-1')],
+				}),
+				makeExecution({
+					policy: 'none',
+					mode: 'manual',
+					workflowId: 'wf-2',
+					nodes: [nodeWithCredential('cred-2')],
+				}),
+			];
+
+			await service.processExecutions(executions, { user: mockUser });
+
+			expect(
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+			).toHaveBeenCalledTimes(1);
+			const [, calledIds, options] =
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mock.calls[0];
+			expect(new Set(calledIds)).toEqual(new Set(['cred-1', 'cred-2']));
+			expect(options).toEqual({ ignoreGlobalUseScope: true });
+		});
+
+		it('asks for the viewer’s personal access, not an instance-wide scope, even for an owner', async () => {
+			// mockUser carries role: 'global:owner', which would normally hold a global
+			// `credential:use` scope. Redaction must still ask the real question — does
+			// this specific viewer have personal access to this specific credential —
+			// so an instance owner is redacted the same as anyone else without a grant.
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [nodeWithCredential('cred-1')],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(
+				credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser,
+			).toHaveBeenCalledWith(mockUser, ['cred-1'], { ignoreGlobalUseScope: true });
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+		});
+
+		it('only force-redacts the execution referencing the inaccessible credential', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-1',
+			]);
+			const executions = [
+				makeExecution({
+					policy: 'none',
+					mode: 'manual',
+					workflowId: 'wf-1',
+					nodes: [nodeWithCredential('cred-1')],
+				}),
+				makeExecution({
+					policy: 'none',
+					mode: 'manual',
+					workflowId: 'wf-2',
+					nodes: [nodeWithCredential('cred-2')],
+				}),
+			];
+
+			await service.processExecutions(executions, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
+			const [redactedExecution] = fullItemRedactionStrategy.apply.mock.calls[0];
+			expect(redactedExecution.workflowId).toBe('wf-1');
+		});
+
+		it('force-redacts an execution referencing one usable and one unusable credential', async () => {
+			credentialsPermissionChecker.resolveInaccessibleCredentialIdsForUser.mockResolvedValue([
+				'cred-2',
+			]);
+			const execution = makeExecution({
+				policy: 'none',
+				mode: 'manual',
+				nodes: [
+					nodeWithCredential('cred-1', { id: 'node-1', name: 'UsableNode' }),
+					nodeWithCredential('cred-2', { id: 'node-2', name: 'UnusableNode' }),
+				],
+			});
+
+			await service.processExecution(execution, { user: mockUser });
+
+			expect(fullItemRedactionStrategy.apply).toHaveBeenCalledTimes(1);
 		});
 	});
 });

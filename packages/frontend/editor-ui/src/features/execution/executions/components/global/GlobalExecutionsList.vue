@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -22,7 +21,7 @@ import ExecutionsFilter from '../ExecutionsFilter.vue';
 import ExecutionStopAllText from '../ExecutionStopAllText.vue';
 import GlobalExecutionsListItem from './GlobalExecutionsListItem.vue';
 
-import { N8nButton, N8nCheckbox, N8nTableBase } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nSelectedItemsInfo, N8nTableBase } from '@n8n/design-system';
 import { ElSkeletonItem } from 'element-plus';
 
 const props = withDefaults(
@@ -213,6 +212,12 @@ function getExecutionWorkflowPermissions(
 	return getResourcePermissions(execution.scopes).workflow;
 }
 
+function getExecutionPermissions(
+	execution: ExecutionSummaryWithScopes,
+): PermissionsRecord['execution'] {
+	return getResourcePermissions(execution.scopes).execution;
+}
+
 function getWorkflowName(workflowId: string): string | undefined {
 	return workflows.value.find((data: IWorkflowDb) => data.id === workflowId)?.name;
 }
@@ -365,6 +370,7 @@ const goToUpgrade = () => {
 			<div :class="$style.execHeaderRight">
 				<ExecutionStopAllText :executions="props.executions" />
 				<ExecutionsFilter
+					:initial-filters="props.filters"
 					:workflows="workflows"
 					class="execFilter"
 					@filter-changed="onFilterChanged"
@@ -428,6 +434,7 @@ const goToUpgrade = () => {
 							:execution="execution"
 							:workflow-name="getExecutionWorkflowName(execution)"
 							:workflow-permissions="getExecutionWorkflowPermissions(execution)"
+							:execution-permissions="getExecutionPermissions(execution)"
 							:selected="selectedItems[execution.id] || allExistingSelected"
 							:concurrency-cap="settingsStore.concurrency"
 							:is-cloud-deployment="settingsStore.isCloudDeployment"
@@ -472,7 +479,7 @@ const goToUpgrade = () => {
 					</tbody>
 				</N8nTableBase>
 			</div>
-			<SelectedItemsInfo
+			<N8nSelectedItemsInfo
 				:selected-count="selectedCount"
 				@delete-selected="handleDeleteSelected"
 				@clear-selection="handleClearSelection"

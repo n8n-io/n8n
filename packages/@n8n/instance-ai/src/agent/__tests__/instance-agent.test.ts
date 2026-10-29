@@ -13,17 +13,21 @@ const mockAgentInstances: Array<{
 	workspace: Mock;
 	thinking: Mock;
 	mcpConnectionFailures: Mock;
+	modelFetch: Mock;
 }> = [];
 
 const mockMemoryBuilder = {
 	storage: vi.fn(),
 	observationalMemory: vi.fn(),
+	titleGeneration: vi.fn(),
 	build: vi.fn(),
 };
 
 const mockLogger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
 
-vi.mock('@n8n/agents', () => ({
+vi.mock('@n8n/agents', async (importOriginal) => ({
+	extendRuntimeSkillSource: (await importOriginal<typeof import('@n8n/agents')>())
+		.extendRuntimeSkillSource,
 	Agent: vi.fn().mockImplementation(function Agent(this: (typeof mockAgentInstances)[number]) {
 		this.model = vi.fn().mockReturnThis();
 		this.instructions = vi.fn().mockReturnThis();
@@ -36,11 +40,22 @@ vi.mock('@n8n/agents', () => ({
 		this.workspace = vi.fn().mockReturnThis();
 		this.thinking = vi.fn().mockReturnThis();
 		this.mcpConnectionFailures = vi.fn().mockReturnThis();
+		this.modelFetch = vi.fn().mockReturnThis();
 		mockAgentInstances.push(this);
 	}),
 	Memory: vi.fn().mockImplementation(function Memory() {
 		return mockMemoryBuilder;
 	}),
+	createObservationLogObserveFn: vi.fn((model: unknown, options: unknown) => ({
+		task: 'observe',
+		model,
+		options,
+	})),
+	createObservationLogReflectFn: vi.fn((model: unknown, options: unknown) => ({
+		task: 'reflect',
+		model,
+		options,
+	})),
 }));
 
 const mockBuiltTool = (name: string, marker?: string) => ({
@@ -58,7 +73,17 @@ vi.mock('../../tools', () => ({
 			conversationHistoryService?: unknown;
 			currentUserAttachments?: unknown[];
 		}) => {
-			const names = ['workflows', 'research', 'n8n-docs', 'nodes', 'executions', 'build-workflow'];
+			const names = [
+				'list_workflows',
+				'research',
+				'n8n-docs',
+				'search_nodes',
+				'get_node_types',
+				'get_node_parameter_options',
+				'execute_node',
+				'workflow_builder_executions',
+				'workflow_builder_build_workflow',
+			];
 			if (context.evaluationConfigService) names.push('eval-config');
 			if (context.mcpService) names.push('mcp-servers');
 			if (context.conversationHistoryService) names.push('conversation-history');
@@ -69,25 +94,42 @@ vi.mock('../../tools', () => ({
 	createOrchestratorDomainTools: vi.fn(
 		(context: { runLabel?: string }) =>
 			new Map([
-				['workflows', mockBuiltTool(`workflows-${context.runLabel ?? 'unknown'}`)],
+				['list_workflows', mockBuiltTool(`list_workflows-${context.runLabel ?? 'unknown'}`)],
 				['research', mockBuiltTool(`research-${context.runLabel ?? 'unknown'}`)],
 				['n8n-docs', mockBuiltTool(`n8n-docs-${context.runLabel ?? 'unknown'}`)],
-				['nodes', mockBuiltTool(`nodes-${context.runLabel ?? 'unknown'}`)],
-				['executions', mockBuiltTool(`executions-${context.runLabel ?? 'unknown'}`)],
-				['build-workflow', mockBuiltTool(`build-workflow-${context.runLabel ?? 'unknown'}`)],
+				['search_nodes', mockBuiltTool(`search_nodes-${context.runLabel ?? 'unknown'}`)],
+				['get_node_types', mockBuiltTool(`get_node_types-${context.runLabel ?? 'unknown'}`)],
+				[
+					'get_node_parameter_options',
+					mockBuiltTool(`get_node_parameter_options-${context.runLabel ?? 'unknown'}`),
+				],
+				['execute_node', mockBuiltTool(`execute_node-${context.runLabel ?? 'unknown'}`)],
+				[
+					'workflow_builder_executions',
+					mockBuiltTool(`workflow_builder_executions-${context.runLabel ?? 'unknown'}`),
+				],
+				[
+					'workflow_builder_build_workflow',
+					mockBuiltTool(`workflow_builder_build_workflow-${context.runLabel ?? 'unknown'}`),
+				],
 			]),
 	),
 	createOrchestrationTools: vi.fn(
 		(context: { runId: string }) =>
 			new Map([
-				['create-tasks', mockBuiltTool(`create-tasks-${context.runId}`)],
-				['complete-checkpoint', mockBuiltTool(`complete-checkpoint-${context.runId}`)],
-				['verify-built-workflow', mockBuiltTool(`verify-built-workflow-${context.runId}`)],
+				[
+					'workflow_builder_task_control',
+					mockBuiltTool(`workflow_builder_task_control-${context.runId}`),
+				],
+				[
+					'workflow_builder_verify_built_workflow',
+					mockBuiltTool(`verify-built-workflow-${context.runId}`),
+				],
 			]),
 	),
 }));
 
-vi.mock('../../tools/filesystem/create-tools-from-mcp-server', () => ({
+vi.mock('../../tools/create-tools-from-mcp-server', () => ({
 	createToolsFromLocalMcpServer: vi.fn().mockReturnValue(new Map()),
 }));
 
@@ -102,12 +144,14 @@ vi.mock('../../tracing/langsmith-tracing', () => ({
 
 vi.mock('../system-prompt', () => ({
 	getSystemPrompt: vi.fn().mockReturnValue('system prompt'),
+	// `prompt-profiles` builds the other published system prompt versions with this.
+	createSystemPromptRenderer: vi.fn(() => vi.fn().mockReturnValue('system prompt')),
 }));
 
 import { Agent as AgentImport, Memory as MemoryImport } from '@n8n/agents';
 
 import { createOrchestratorDomainTools as createOrchestratorDomainToolsImport } from '../../tools';
-import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/filesystem/create-tools-from-mcp-server';
+import { createToolsFromLocalMcpServer as createToolsFromLocalMcpServerImport } from '../../tools/create-tools-from-mcp-server';
 import { setTraceModelId, setTracePromptVersion } from '../../tracing/langsmith-tracing';
 import { createInstanceAgent } from '../instance-agent';
 import { getSystemPrompt as getSystemPromptImport } from '../system-prompt';
@@ -158,6 +202,7 @@ describe('createInstanceAgent', () => {
 		Memory.mockClear();
 		mockMemoryBuilder.storage.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.observationalMemory.mockReset().mockReturnValue(mockMemoryBuilder);
+		mockMemoryBuilder.titleGeneration.mockReset().mockReturnValue(mockMemoryBuilder);
 		mockMemoryBuilder.build.mockReset().mockReturnValue({
 			memory: {},
 		});
@@ -177,7 +222,7 @@ describe('createInstanceAgent', () => {
 				modelId: 'test-model',
 				context: {
 					runLabel: runId,
-					computerUseState: undefined,
+					browserUseState: undefined,
 					licenseHints: undefined,
 					localMcpServer: undefined,
 				},
@@ -195,19 +240,27 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 		const secondRunAttachedTools = getAttachedTools(1);
-		expect(attachedTools['create-tasks-run-1']).toBeUndefined();
-		expect(deferredTools['create-tasks-run-1']).toMatchObject({ name: 'create-tasks-run-1' });
+		expect(attachedTools['workflow_builder_task_control-run-1']).toBeUndefined();
+		expect(deferredTools['workflow_builder_task_control-run-1']).toMatchObject({
+			name: 'workflow_builder_task_control-run-1',
+		});
 		expect(attachedTools['plan-run-1']).toBeUndefined();
 		expect(attachedTools['research-run-1']).toMatchObject({ name: 'research-run-1' });
-		expect(attachedTools['build-workflow-run-1']).toMatchObject({
-			name: 'build-workflow-run-1',
+		expect(attachedTools['workflow_builder_build_workflow-run-1']).toMatchObject({
+			name: 'workflow_builder_build_workflow-run-1',
 		});
-		expect(attachedTools['workflows-run-1']).toMatchObject({ name: 'workflows-run-1' });
+		expect(attachedTools['list_workflows-run-1']).toMatchObject({
+			name: 'list_workflows-run-1',
+		});
 		expect(attachedTools['verify-built-workflow-run-1']).toMatchObject({
 			name: 'verify-built-workflow-run-1',
 		});
-		expect(attachedTools['nodes-run-1']).toMatchObject({ name: 'nodes-run-1' });
-		expect(secondRunAttachedTools['nodes-run-2']).toMatchObject({ name: 'nodes-run-2' });
+		expect(attachedTools['search_nodes-run-1']).toMatchObject({
+			name: 'search_nodes-run-1',
+		});
+		expect(secondRunAttachedTools['search_nodes-run-2']).toMatchObject({
+			name: 'search_nodes-run-2',
+		});
 	});
 
 	it('shares one domain context between domain and orchestration tools', async () => {
@@ -233,77 +286,14 @@ describe('createInstanceAgent', () => {
 			context: { runLabel: 'profile' },
 			orchestrationContext: {
 				runId: 'profile',
-				disabledToolNames: new Set(['create-tasks', 'nodes']),
+				disabledToolNames: new Set(['workflow_builder_task_control', 'search_nodes']),
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
-		expect(getDeferredTools()).not.toHaveProperty('create-tasks-profile');
-		expect(getAttachedTools()).not.toHaveProperty('nodes-profile');
-		expect(getAttachedTools()).toHaveProperty('build-workflow-profile');
-	});
-
-	it('requires MCP tool approval unless the executeMcpTool permission is always_allow', async () => {
-		const baseOptions = (executeMcpTool?: string) =>
-			({
-				modelId: 'test-model',
-				context: {
-					runLabel: 'mcp-approval-run',
-					computerUseState: undefined,
-					licenseHints: undefined,
-					localMcpServer: undefined,
-					permissions: executeMcpTool ? { executeMcpTool } : undefined,
-				},
-				orchestrationContext: { runId: 'mcp-approval-run' },
-				memoryConfig: {},
-			}) as never;
-
-		const requireApprovalManager = createMcpManagerStub();
-		await createInstanceAgent({
-			...(baseOptions('require_approval') as object),
-			mcpManager: requireApprovalManager,
-		} as never);
-		expect(requireApprovalManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
-
-		const alwaysAllowManager = createMcpManagerStub();
-		await createInstanceAgent({
-			...(baseOptions('always_allow') as object),
-			mcpManager: alwaysAllowManager,
-		} as never);
-		expect(alwaysAllowManager.getRegularTools).toHaveBeenCalledWith([], undefined, false);
-
-		const noPermissionsManager = createMcpManagerStub();
-		await createInstanceAgent({
-			...(baseOptions() as object),
-			mcpManager: noPermissionsManager,
-		} as never);
-		expect(noPermissionsManager.getRegularTools).toHaveBeenCalledWith([], undefined, true);
-	});
-
-	it('eager-loads checkpoint settlement tools only for checkpoint follow-up runs', async () => {
-		await createInstanceAgent({
-			modelId: 'test-model',
-			context: {
-				runLabel: 'checkpoint-run',
-				computerUseState: undefined,
-				licenseHints: undefined,
-				localMcpServer: undefined,
-			},
-			orchestrationContext: {
-				runId: 'checkpoint-run',
-				isCheckpointFollowUp: true,
-			},
-			memoryConfig: {},
-			mcpManager: createMcpManagerStub(),
-		} as never);
-
-		const attachedTools = getAttachedTools();
-		const deferredTools = getDeferredTools();
-
-		expect(attachedTools['complete-checkpoint-checkpoint-run']).toMatchObject({
-			name: 'complete-checkpoint-checkpoint-run',
-		});
-		expect(deferredTools['complete-checkpoint-checkpoint-run']).toBeUndefined();
+		expect(getDeferredTools()).not.toHaveProperty('workflow_builder_task_control-profile');
+		expect(getAttachedTools()).not.toHaveProperty('search_nodes-profile');
+		expect(getAttachedTools()).toHaveProperty('workflow_builder_build_workflow-profile');
 	});
 
 	it('keeps workflow-builder skill tool names always loaded', async () => {
@@ -311,7 +301,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'builder-skill-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -325,7 +315,14 @@ describe('createInstanceAgent', () => {
 		const attachedTools = getAttachedTools();
 		const deferredTools = getDeferredTools();
 
-		for (const toolName of ['build-workflow', 'nodes', 'executions']) {
+		for (const toolName of [
+			'workflow_builder_build_workflow',
+			'search_nodes',
+			'get_node_types',
+			'get_node_parameter_options',
+			'execute_node',
+			'workflow_builder_executions',
+		]) {
 			const scopedName = `${toolName}-builder-skill-run`;
 			expect(attachedTools[scopedName]).toMatchObject({ name: scopedName });
 			expect(deferredTools[scopedName]).toBeUndefined();
@@ -341,7 +338,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'docs-parity-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -373,7 +370,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -394,7 +391,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'ws-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -408,6 +405,35 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.workspace).not.toHaveBeenCalled();
 	});
 
+	it('sends model calls through the given transport', async () => {
+		const modelFetch = vi.fn();
+		const context = {
+			runLabel: 'fetch-test',
+			browserUseState: undefined,
+			licenseHints: undefined,
+			localMcpServer: undefined,
+		};
+
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context,
+			orchestrationContext: { runId: 'fetch-test' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+			modelFetch,
+		} as never);
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context,
+			orchestrationContext: { runId: 'fetch-test' },
+			memoryConfig: {},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockAgentInstances[0]?.modelFetch).toHaveBeenCalledWith(modelFetch);
+		expect(mockAgentInstances[1]?.modelFetch).not.toHaveBeenCalled();
+	});
+
 	it('attaches native telemetry from the trace context when present', async () => {
 		const telemetry = { provider: 'langsmith' };
 		const tracing = {
@@ -419,7 +445,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'trace-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -443,8 +469,8 @@ describe('createInstanceAgent', () => {
 		});
 	});
 
-	it('attaches runtime skills to the orchestrator when provided by the context', async () => {
-		const runtimeSkills = {
+	it('attaches skills to the orchestrator when provided by the context', async () => {
+		const skills = {
 			registry: {
 				schemaVersion: 1,
 				skillsHash: 'skills-hash',
@@ -472,50 +498,64 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'skills-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
 			orchestrationContext: {
 				runId: 'skills-test',
-				runtimeSkills,
+				skills,
 			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(runtimeSkills);
-		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
-			expect.objectContaining({ runtimeSkillCatalog: runtimeSkills }),
-		);
+		expect(mockAgentInstances[0]?.skills).toHaveBeenCalledWith(skills);
 	});
 
-	it('passes the selected catalog to domain tools before workspace materialization', async () => {
-		const runtimeSkillCatalog = {
-			registry: { schemaVersion: 1, skillsHash: 'selected-skills', skills: [] },
-			loadSkill: vi.fn(),
-		};
-		const runtimeSkills = {
-			registry: { schemaVersion: 1, skillsHash: 'workspace-skills', skills: [] },
-			loadSkill: vi.fn(),
+	it('adds the builder delegate runtime skills to the orchestrator skills', async () => {
+		const { createRuntimeSkillSource } =
+			await vi.importActual<typeof import('@n8n/agents')>('@n8n/agents');
+		const baseSkills = createRuntimeSkillSource([
+			{ id: 'base_skill', name: 'Base skill', description: 'Base.', instructions: 'Base body.' },
+		]);
+		const builderSkill = {
+			id: 'builder_skill',
+			name: 'Builder skill',
+			description: 'Builder.',
+			instructions: 'Builder body.',
 		};
 
 		await createInstanceAgent({
 			modelId: 'test-model',
-			context: {},
-			orchestrationContext: { runId: 'skills-test', runtimeSkillCatalog, runtimeSkills },
+			context: {
+				runLabel: 'builder-skills-test',
+				browserUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+				builderDelegate: { getRuntimeSkills: () => [builderSkill] },
+			},
+			orchestrationContext: {
+				runId: 'builder-skills-test',
+				skills: baseSkills,
+			},
 			memoryConfig: {},
 			mcpManager: createMcpManagerStub(),
 		} as never);
 
-		expect(createOrchestratorDomainTools).toHaveBeenLastCalledWith(
-			expect.objectContaining({ runtimeSkillCatalog }),
-		);
+		const attached = mockAgentInstances[0]?.skills.mock.calls[0]?.[0] as typeof baseSkills;
+		expect(attached.registry.skills.map((skill) => skill.id)).toEqual([
+			'base_skill',
+			'builder_skill',
+		]);
+		await expect(attached.loadSkill('builder_skill')).resolves.toMatchObject({
+			instructions: 'Builder body.',
+		});
 	});
 
 	it('exposes browser_connect and browser_navigate from localMcpServer in the agent toolset', async () => {
 		createOrchestratorDomainTools.mockReturnValueOnce(
-			new Map([['workflows', { id: 'workflows' }]]),
+			new Map([['list_workflows', { id: 'list_workflows' }]]),
 		);
 		createToolsFromLocalMcpServer.mockReturnValue(
 			new Map([
@@ -535,7 +575,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'browser-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -557,7 +597,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-prompt',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -582,7 +622,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'project-scope-prompt',
 				projectId: 'project-1',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -659,7 +699,7 @@ describe('createInstanceAgent', () => {
 		});
 
 		it('reports no tools for a service whose only tool collides with a domain tool', async () => {
-			const orchestrationContext = await buildWith('workflows');
+			const orchestrationContext = await buildWith('list_workflows');
 
 			expect(lastDomainToolContext()).toEqual([
 				{ slug: 'linear', toolNames: [] },
@@ -674,7 +714,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'external-mcp-eager-prompt',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -694,7 +734,7 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('does not enable MCP-specific tool search guidance for local gateway tools alone', async () => {
+	it('does not enable MCP-specific tool search guidance for Browser Use tools alone', async () => {
 		const localMcpServer = {
 			getToolsByCategory: vi.fn().mockReturnValue([{ name: 'browser_navigate' }]),
 		};
@@ -706,7 +746,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-mcp-prompt',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 			},
@@ -723,7 +763,7 @@ describe('createInstanceAgent', () => {
 		);
 	});
 
-	it('prefers local gateway tools over external MCP tools when names collide', async () => {
+	it('prefers Browser Use tools over external MCP tools when names collide', async () => {
 		const memoryConfig = {} as never;
 		const localMcpServer = {
 			getToolsByCategory: vi.fn().mockReturnValue([]),
@@ -741,7 +781,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'local-priority',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -780,7 +820,7 @@ describe('createInstanceAgent', () => {
 			context: {
 				runLabel: 'reserved-names',
 				conversationHistoryService: {},
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer,
 				logger: mockLogger,
@@ -800,7 +840,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'inactive-native-tools',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -836,7 +876,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'active-native-tools',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 				logger: mockLogger,
@@ -869,7 +909,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'memory-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -895,12 +935,125 @@ describe('createInstanceAgent', () => {
 		expect(mockAgentInstances[0]?.memory).toHaveBeenCalledWith(mockMemoryBuilder);
 	});
 
+	it('runs the Observer and Reflector on the memory model when one is set', async () => {
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-5-5',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					model: 'anthropic/claude-haiku-4-5',
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith({
+			observerThresholdTokens: 30_000,
+			reflectorThresholdTokens: 40_000,
+			observe: {
+				task: 'observe',
+				model: 'anthropic/claude-haiku-4-5',
+				options: { onUsage: undefined },
+			},
+			reflect: {
+				task: 'reflect',
+				model: 'anthropic/claude-haiku-4-5',
+				options: { onUsage: undefined },
+			},
+		});
+	});
+
+	it('runs the Observer and Reflector on the agent model when only usage reporting is set', async () => {
+		const onTaskUsage = vi.fn();
+		await createInstanceAgent({
+			modelId: 'anthropic/claude-opus-5-5',
+			context: {
+				runLabel: 'memory-test',
+				localGatewayStatus: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: {
+				runId: 'memory-test',
+			},
+			memory: { id: 'memory-store' },
+			memoryConfig: {
+				observationalMemory: {
+					observerThresholdTokens: 30_000,
+					reflectorThresholdTokens: 40_000,
+					onTaskUsage,
+				},
+			},
+			mcpManager: createMcpManagerStub(),
+		} as never);
+
+		expect(mockMemoryBuilder.observationalMemory).toHaveBeenCalledWith(
+			expect.objectContaining({
+				observe: {
+					task: 'observe',
+					model: 'anthropic/claude-opus-5-5',
+					options: { onUsage: onTaskUsage },
+				},
+				reflect: {
+					task: 'reflect',
+					model: 'anthropic/claude-opus-5-5',
+					options: { onUsage: onTaskUsage },
+				},
+			}),
+		);
+	});
+
+	describe('title generation', () => {
+		async function createWithMemoryConfig(memoryConfig: Record<string, unknown>) {
+			await createInstanceAgent({
+				modelId: 'anthropic/claude-opus-5-5',
+				context: {
+					runLabel: 'memory-test',
+					licenseHints: undefined,
+					localMcpServer: undefined,
+				},
+				orchestrationContext: {
+					runId: 'memory-test',
+				},
+				memory: { id: 'memory-store' },
+				memoryConfig,
+				mcpManager: createMcpManagerStub(),
+			} as never);
+		}
+
+		it('does not generate titles unless the caller asks for it', async () => {
+			await createWithMemoryConfig({});
+
+			expect(mockMemoryBuilder.titleGeneration).not.toHaveBeenCalled();
+		});
+
+		it('passes the title model to the Memory builder', async () => {
+			await createWithMemoryConfig({
+				titleGeneration: { model: 'anthropic/claude-haiku-4-5' },
+			});
+
+			expect(mockMemoryBuilder.titleGeneration).toHaveBeenCalledWith({
+				model: 'anthropic/claude-haiku-4-5',
+			});
+		});
+	});
+
 	it('forwards midRunObservation to the Memory builder when provided', async () => {
 		await createInstanceAgent({
 			modelId: 'test-model',
 			context: {
 				runLabel: 'memory-test',
-				localGatewayStatus: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -930,7 +1083,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-test',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -952,7 +1105,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'anthropic/claude-opus-4-8',
 			context: {
 				runLabel: 'thinking-off',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -977,7 +1130,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'mcp-failure-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -997,7 +1150,7 @@ describe('createInstanceAgent', () => {
 			modelId: 'test-model',
 			context: {
 				runLabel: 'no-mcp-failure-run',
-				computerUseState: undefined,
+				browserUseState: undefined,
 				licenseHints: undefined,
 				localMcpServer: undefined,
 			},
@@ -1013,6 +1166,7 @@ describe('createInstanceAgent', () => {
 		// Embedded specialist agents reuse context.modelId / orchestration context.modelId,
 		// so mutating the sticky header here covers those paths too.
 		const modalModel = {
+			kind: 'endpoint' as const,
 			id: 'custom/moonshotai/Kimi-K3' as const,
 			url: 'https://n8ngmbh--ep-kimi-k3-server.us-west.modal.direct/v1',
 			apiKey: 'wk-test.ws-test',
@@ -1020,7 +1174,7 @@ describe('createInstanceAgent', () => {
 		const context = {
 			threadId: 'thread-sticky-1',
 			runLabel: 'modal-sticky-run',
-			computerUseState: undefined,
+			browserUseState: undefined,
 			licenseHints: undefined,
 			localMcpServer: undefined,
 			modelId: modalModel,

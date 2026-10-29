@@ -6,17 +6,29 @@ import type {
 } from '@n8n/engine';
 import { UnrecognizedNodeTypeError } from 'n8n-core';
 import type { INodeExecutionData } from 'n8n-workflow';
-import { Expression, isNodeClassInstance, UnexpectedError } from 'n8n-workflow';
+import {
+	CHAT_NODE_TYPE,
+	Expression,
+	isNodeClassInstance,
+	SEND_AND_WAIT_OPERATION,
+	UnexpectedError,
+	WAIT_FOR_SUB_EXECUTION,
+	WAIT_INDEFINITELY,
+} from 'n8n-workflow';
 
 import {
 	EngineRequestNotSupportedError,
+	InvalidWaitDateError,
 	MalformedStepConfigError,
 	UnsupportedNodeTypeError,
+	UnendingWaitError,
 	UnsupportedStepTypeError,
+	UnsupportedWaitError,
 	VmExpressionEngineRequiredError,
 } from './errors';
 import { isV1NodeStepConfig } from './guards';
 import { fromStepInputs, toStepOutputs } from './io';
+import { attachResponseHooks } from './v1-response-hooks';
 import type {
 	ExecutableNodeType,
 	NodeRunResult,
@@ -24,6 +36,7 @@ import type {
 	V1NodeStepConfig,
 	V1StepExecutorDeps,
 } from './types';
+import type { DurableWaitExecuteContext } from './v1-adapters';
 import {
 	toAdditionalDataContext,
 	toV1ExecuteContext,
@@ -32,6 +45,40 @@ import {
 	toV1Sources,
 	toV1Workflow,
 } from './v1-adapters';
+
+/**
+ * Turns what the node recorded in `putExecutionToWait` into a wait declaration.
+ * v1 resumes a timed wait by marking the node disabled before it re-enters it,
+ * and a disabled node does not run: it passes its first input through. So the
+ * step emits that input at the deadline, not what the node returned before it
+ * paused.
+ */
+function toStepResult(
+	context: DurableWaitExecuteContext,
+	nodeResult: INodeExecutionData[][],
+): StepExecutionResult {
+	const { waitTill } = context.runExecutionData;
+	if (waitTill === undefined) return { outputs: toStepOutputs(nodeResult) };
+	if (waitTill.getTime() === WAIT_INDEFINITELY.getTime()) {
+		if (!context.acceptsResumeRequest) throw new UnendingWaitError(context.getNode().name);
+		return { wait: { resumeBinding: 'execution' } };
+	}
+	if (waitTill.getTime() === WAIT_FOR_SUB_EXECUTION.getTime()) {
+		throw new UnsupportedWaitError(context.getNode().name, 'a sub-execution');
+	}
+	// `toISOString` throws a bare RangeError on an invalid date.
+	if (Number.isNaN(waitTill.getTime())) {
+		throw new InvalidWaitDateError(context.getNode().name);
+	}
+
+	return {
+		wait: {
+			resumeAt: waitTill.toISOString(),
+			outputsAtDeadline: toStepOutputs([context.getInputData()]),
+			...(context.acceptsResumeRequest ? { resumeBinding: 'execution' as const } : {}),
+		},
+	};
+}
 
 /**
  * Runs `v1-node` steps by adapting them to the v1 node runtime.
@@ -50,6 +97,13 @@ export class V1StepExecutor implements IStepExecutor {
 		const stepData = await this.deps.loadStepData(request.context);
 
 		const node = toV1Node(request.node, stepConfig);
+		// Send-and-wait needs a step-bound resume request, which engine v2 does not
+		// have yet. Fail before the node sends the message. The Chat node waits in
+		// every version and operation.
+		if (node.parameters.operation === SEND_AND_WAIT_OPERATION || node.type === CHAT_NODE_TYPE) {
+			throw new UnsupportedWaitError(node.name, 'an approval');
+		}
+
 		const execution = toV1Execution(
 			stepData.graph,
 			stepData.outputsByNode,
@@ -61,6 +115,7 @@ export class V1StepExecutor implements IStepExecutor {
 		const additionalData = await this.deps.additionalDataFactory(
 			toAdditionalDataContext(request.context),
 		);
+		attachResponseHooks(additionalData, request);
 
 		const context = toV1ExecuteContext({
 			node,
@@ -70,11 +125,12 @@ export class V1StepExecutor implements IStepExecutor {
 			additionalData,
 			stepContext: request.context,
 			itemsByConnection: fromStepInputs(request.inputs),
+			resumeToken: this.deps.resumeToken?.({ executionId: request.context.executionId }),
 		});
 
 		return await workflow.expression.withIsolate(async () => {
 			const nodeResult = await this.runNode({ nodeType, context });
-			return { outputs: toStepOutputs(nodeResult) };
+			return toStepResult(context, nodeResult);
 		});
 	}
 
@@ -145,6 +201,13 @@ export class V1StepExecutor implements IStepExecutor {
 		}
 
 		if (!result.ok) {
+			const description = this.describeNodeError(result.error);
+			try {
+				await context.sendChunk('error', 0, description);
+			} catch {
+				// The node's own error is the one to report. The response channel
+				// already tells the caller when it cannot carry the error chunk.
+			}
 			if (!context.continueOnFail()) throw result.error;
 			return [context.getInputData()];
 		}
@@ -154,5 +217,26 @@ export class V1StepExecutor implements IStepExecutor {
 		if (Array.isArray(result.value)) return result.value as INodeExecutionData[][];
 
 		throw new EngineRequestNotSupportedError(context.getNode().type);
+	}
+
+	/**
+	 * The text of the error chunk for a failed node. Only a node error's
+	 * `description` goes to the caller, as in v1. The `message` can hold
+	 * request details, so it stays in the logs and the execution data.
+	 * Without a description, the caller gets a generic text, so the chunk
+	 * always has content.
+	 */
+	private describeNodeError(error: unknown): string {
+		if (
+			typeof error === 'object' &&
+			error !== null &&
+			'description' in error &&
+			typeof error.description === 'string' &&
+			error.description !== ''
+		) {
+			return error.description;
+		}
+
+		return 'Node execution failed';
 	}
 }

@@ -12,7 +12,7 @@ import {
 	createDelegateSubAgentTool,
 } from '../../runtime/tools/delegate-sub-agent-tool';
 import { WRITE_TODOS_TOOL_NAME } from '../../runtime/tools/write-todos-tool';
-import type { BuiltProviderTool, BuiltTool } from '../../types';
+import type { BuiltProviderTool, BuiltTool, NativeToolDeferralConfig } from '../../types';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { Agent, filterInlineSubAgentTools } from '../agent';
 
@@ -147,6 +147,7 @@ type AgentWithInlineRunner = {
 };
 
 function createInlineRunner(options: {
+	nativeToolDeferral?: NativeToolDeferralConfig;
 	tools?: BuiltTool[];
 	telemetry?: BuiltTelemetry;
 	inlineSubAgentBlockedTools?: string[];
@@ -154,6 +155,7 @@ function createInlineRunner(options: {
 	resolveInlineSubAgentProviderTools?: InlineSubAgentProviderToolsResolver;
 }) {
 	const agent = new Agent('parent');
+	if (options.nativeToolDeferral) agent.nativeToolDeferral(options.nativeToolDeferral);
 	return (agent as unknown as AgentWithInlineRunner).createInlineSubAgentRunner({
 		deferredTools: [],
 		modelConfig: 'openai/gpt-4o-mini',
@@ -276,6 +278,7 @@ describe('inline sub-agent tool filtering', () => {
 
 		const runner = createInlineRunner({
 			inlineSubAgentModelsByDifficulty: { medium: 'anthropic/claude-sonnet-4-6' },
+			nativeToolDeferral: { eagerToolNames: ['lookup'] },
 			resolveInlineSubAgentProviderTools,
 		});
 
@@ -290,6 +293,7 @@ describe('inline sub-agent tool filtering', () => {
 
 		expect(runtimeConfigs).toHaveLength(1);
 		expect(runtimeConfigs[0]?.model).toBe('anthropic/claude-sonnet-4-6');
+		expect(runtimeConfigs[0]?.nativeToolDeferral).toEqual({ eagerToolNames: ['lookup'] });
 		expect(providerToolNames(runtimeConfigs[0])).toEqual(['anthropic.web_search_20250305']);
 		expect(resolveInlineSubAgentProviderTools).toHaveBeenCalledWith('anthropic/claude-sonnet-4-6');
 	});

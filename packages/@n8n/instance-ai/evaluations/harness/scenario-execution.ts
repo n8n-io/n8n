@@ -16,6 +16,7 @@ import { attributionForScenario } from './attribution';
 import type { EvalLogger } from './logger';
 import { reseedScenarioTables, type ScenarioSeedContext } from './seed-tables';
 import {
+	throwIfFrameworkIssue,
 	throwIfServerBudgetStop,
 	isTransientExecutionAbort,
 	MAX_EXEC_ATTEMPTS,
@@ -57,6 +58,8 @@ export async function writeScenarioVerificationSnapshot(input: {
 	result: ChecklistResult | undefined;
 	verificationResults: ChecklistResult[];
 	verifierAttempts: VerifierAttemptDebug[];
+	/** The verifier's exact input, for a replay on another judge model. */
+	verifierInput: { checklist: ChecklistItem[]; artifact: VerificationArtifact };
 	buildTrace?: BuildTrace;
 	logger: EvalLogger;
 	/** --output-dir; falls back to EVAL_DATA_DIR. Concurrent eval children share
@@ -82,6 +85,7 @@ export async function writeScenarioVerificationSnapshot(input: {
 					result: input.result ?? null,
 					verificationResults: input.verificationResults,
 					verifierAttempts: input.verifierAttempts,
+					verifierInput: input.verifierInput,
 					buildTrace: input.buildTrace ?? null,
 				},
 				null,
@@ -281,6 +285,10 @@ async function runScenario(
 			logger,
 		);
 	}
+	// The server keeps these rows; it fills every other table the workflow uses.
+	const seededDataTableIds = seedContext
+		? (scenario.seedDataTables ?? []).map((table) => seedContext.tableIdsByName[table.name])
+		: undefined;
 
 	const execStart = Date.now();
 	let evalResult = await client.executeWithLlmMock(
@@ -288,6 +296,7 @@ async function runScenario(
 		scenario.dataSetup,
 		timeoutMs,
 		pinNodes,
+		seededDataTableIds,
 	);
 	// DB write races abort the execution before any node runs and are reported
 	// in-band (success:false), bypassing the throw-based transient retry —
@@ -308,10 +317,12 @@ async function runScenario(
 			scenario.dataSetup,
 			timeoutMs,
 			pinNodes,
+			seededDataTableIds,
 		);
 	}
 	// Killed for time, not by the builder — throw so the timeout path classifies it.
 	throwIfServerBudgetStop(evalResult);
+	throwIfFrameworkIssue(evalResult);
 
 	const execMs = Date.now() - execStart;
 
@@ -352,6 +363,7 @@ async function runScenario(
 		result,
 		verificationResults,
 		verifierAttempts: verification.attempts,
+		verifierInput: { checklist: scenarioChecklist, artifact },
 		buildTrace,
 		logger,
 		outputDir,
@@ -601,6 +613,11 @@ function buildScenarioContextBlock(
 		`**Pinned nodes** (synthetic input): ${pinnedNodes.join(', ') || 'none'}`,
 		`**Real nodes** (executed with actual logic): ${realNodes.join(', ') || 'none'}`,
 		`**Did not run** (no execution data): ${didNotRun.join(', ') || 'none'}`,
+		// Verifiers read a sub-node's absence from the mocked/pinned lists as "the
+		// harness skipped mocking this model" and charged the root's own crash to
+		// the mock layer (TRUST-508/510).
+		'',
+		'> An AI sub-node (language model, memory, tool, embeddings) only produces execution data when its root node reaches it, and is served through that root — it never appears under mocked or pinned. Listed above it means the root was pinned or the root failed before invoking it, NOT that the harness declined to mock it. A vendor call the harness could not intercept is always a FRAMEWORK ISSUE flag in Pre-analysis.',
 		'',
 	);
 

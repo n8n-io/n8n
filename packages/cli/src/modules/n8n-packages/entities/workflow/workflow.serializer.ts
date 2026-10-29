@@ -1,15 +1,14 @@
+import {
+	type SerializedWorkflow,
+	type SerializedWorkflowMetadata,
+	serializedWorkflowMetadataSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { IConnections, INode } from 'n8n-workflow';
 
-import {
-	serializedWorkflowMetadataSchema,
-	type SerializedWorkflowMetadata,
-} from '../../spec/serialized/workflow-metadata.schema';
-import {
-	serializedWorkflowSchema,
-	type SerializedWorkflow,
-} from '../../spec/serialized/workflow.schema';
+import { visitWorkflowCredentials } from '../credential/workflow-credential-references';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 import { compareTagsByName } from '../tag/tag.types';
 
@@ -80,7 +79,7 @@ export class WorkflowSerializer {
 			serializePayload({
 				id: workflow.id,
 				name: workflow.name,
-				nodes: workflow.nodes,
+				nodes: this.stripCredentialNames(workflow.nodes),
 				connections: workflow.connections,
 				settings: workflow.settings ? { ...workflow.settings } : undefined,
 				parentFolderId: workflow.parentFolder?.id ?? null,
@@ -89,6 +88,23 @@ export class WorkflowSerializer {
 				...(tags ? { tagIds: tags.map((tag) => tag.id) } : {}),
 			}),
 		);
+	}
+
+	/**
+	 * Drops the display name from each credential reference, inline sub-workflows
+	 * included. A node resolves its credential by id and the target backfills the
+	 * name on import, so an exported name is only a copy that goes stale.
+	 */
+	private stripCredentialNames(nodes: INode[]): SerializedWorkflow['nodes'] {
+		// Clone so the live entity keeps its names for requirement extraction.
+		const copy = structuredClone(nodes);
+		visitWorkflowCredentials(copy, (_type, details) => {
+			if (details.name === undefined) return false;
+			const mutable: { name?: string } = details;
+			delete mutable.name;
+			return true;
+		});
+		return copy;
 	}
 
 	serializeMetadata(workflow: WorkflowEntity): SerializedWorkflowMetadata {

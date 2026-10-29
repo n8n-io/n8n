@@ -35,8 +35,10 @@ export type NewScheduledJob = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
+	| 'concurrencyLimit'
 >;
 
 /** A changed schedule definition, plus the fresh clock it restarts from. */
@@ -51,8 +53,10 @@ export type ScheduledJobDefinitionUpdate = Pick<
 	| 'fireAt'
 	| 'nextRunAt'
 	| 'maxAttempts'
+	| 'timeoutSeconds'
 	| 'misfirePolicy'
 	| 'misfireGraceSeconds'
+	| 'concurrencyLimit'
 >;
 
 @Service()
@@ -152,6 +156,24 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 		ownerType: string,
 	): Promise<Array<Pick<ScheduledJob, 'id' | 'ownerId' | 'payload'>>> {
 		return await this.find({ where: { ownerType }, select: ['id', 'ownerId', 'payload'] });
+	}
+
+	/**
+	 * The owner id and schedule state of every job owners of one kind hold.
+	 * A job is runnable when the scheduler will claim it: enabled and not quarantined.
+	 */
+	async findScheduleStatesByOwnerType(
+		ownerType: string,
+	): Promise<Array<Pick<ScheduledJob, 'ownerId' | 'nextRunAt'> & { runnable: boolean }>> {
+		const rows = await this.find({
+			where: { ownerType },
+			select: ['ownerId', 'enabled', 'nextRunAt', 'orphanedAt'],
+		});
+		return rows.map(({ ownerId, enabled, nextRunAt, orphanedAt }) => ({
+			ownerId,
+			nextRunAt,
+			runnable: enabled && orphanedAt === null,
+		}));
 	}
 
 	/**
@@ -268,7 +290,14 @@ export class ScheduledJobRepository extends Repository<ScheduledJob> {
 	async updateRunOptions(
 		manager: EntityManager,
 		ids: number[],
-		update: Pick<ScheduledJob, 'maxAttempts' | 'misfirePolicy' | 'misfireGraceSeconds'>,
+		update: Pick<
+			ScheduledJob,
+			| 'maxAttempts'
+			| 'timeoutSeconds'
+			| 'misfirePolicy'
+			| 'misfireGraceSeconds'
+			| 'concurrencyLimit'
+		>,
 	): Promise<void> {
 		if (ids.length === 0) return;
 		await manager.update(ScheduledJob, ids, update);

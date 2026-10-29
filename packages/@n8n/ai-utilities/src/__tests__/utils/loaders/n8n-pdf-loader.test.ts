@@ -73,6 +73,21 @@ describe('N8nPdfLoader', () => {
 		expect(docs[2].metadata.loc).toEqual({ pageNumber: 3 });
 	});
 
+	it('returns custom document info entries as a plain object', async () => {
+		mockGetText.mockResolvedValue({ pages: [{ num: 1, text: 'Body' }], text: 'Body', total: 1 });
+		mockGetInfo.mockResolvedValue({
+			info: { Title: 'Sample', Custom: new Map([['Department', 'Finance']]) },
+			metadata: undefined,
+		});
+
+		const docs = await new N8nPdfLoader(makeBlob()).load();
+
+		expect(docs[0].metadata.pdf.info).toEqual({
+			Title: 'Sample',
+			Custom: { Department: 'Finance' },
+		});
+	});
+
 	it('concatenates pages into a single Document when splitPages is false', async () => {
 		mockGetText.mockResolvedValue({
 			pages: [

@@ -26,7 +26,7 @@ export const backendNetworkBoundaryConfig = tseslint.config({
 				allow: [
 					// The factory itself: this is where the guarded client is built.
 					'packages/@n8n/backend-network/',
-					'packages/@n8n/benchmark/',
+					'packages/quality/efficiency/scale/benchmark/',
 				],
 			},
 		],

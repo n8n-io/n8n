@@ -13,4 +13,10 @@ export class CreateCredentialDto extends Z.class({
 	isGlobal: z.boolean().optional(),
 	isResolvable: z.boolean().optional(),
 	usageScope: z.enum(['project', 'instance']).optional(),
+	/**
+	 * The credential is created for an OAuth popup the user has not finished yet.
+	 * The server keeps it out of lists until a token is written and deletes it if
+	 * that never happens.
+	 */
+	pendingAuthorization: z.boolean().optional(),
 }) {}

@@ -62,7 +62,6 @@ const InstanceAiViewHeaderStub = defineComponent({
 	},
 	template: `<div data-test-id="header-stub" :data-disabled="String(Boolean(threadList?.disabled))">
 		<span data-test-id="list-count">{{ count }}</span>
-		<slot name="title" />
 		<slot name="actions" />
 		<button data-test-id="list-select" type="button" @click="$emit('select', 't-other')" />
 	</div>`,
@@ -70,19 +69,27 @@ const InstanceAiViewHeaderStub = defineComponent({
 
 // `handoff()` reaches the conversation through a template ref, not props/emits
 // — these two stand in for the real `defineExpose`d `isDirty`/`applyHandoff`.
+const focusMock = vi.hoisted(() => vi.fn());
 const isDirtyMock = vi.hoisted(() => vi.fn(() => false));
 const applyHandoffMock = vi.hoisted(() => vi.fn());
+const setPrefillMock = vi.hoisted(() => vi.fn());
+const submitSuggestionMock = vi.hoisted(() => vi.fn());
 
 const InstanceAiConversationStub = defineComponent({
 	name: 'InstanceAiConversation',
-	props: ['beforeSend'],
-	emits: ['thread-missing', 'agent-attachment-restored'],
+	props: ['beforeSend', 'placeholder'],
+	emits: ['thread-missing', 'agent-attachment-restored', 'message-sent'],
 	methods: {
+		focus: focusMock,
 		isDirty: isDirtyMock,
 		applyHandoff: applyHandoffMock,
+		setPrefill: setPrefillMock,
+		submitSuggestion: submitSuggestionMock,
 	},
 	template: `<div data-test-id="conversation-stub" :data-has-before-send="String(typeof beforeSend === 'function')">
+		<textarea data-test-id="conversation-input" class="ignore-key-press-canvas" />
 		<button data-test-id="conversation-thread-missing" type="button" @click="$emit('thread-missing')" />
+		<slot name="empty" /><slot name="composer-start" />
 	</div>`,
 });
 
@@ -102,6 +109,9 @@ function mountPanel(props: {
 	subject: InstanceAiEmbedSubject;
 	launch: typeof launch;
 	threadId?: string;
+	beforeSend?: () => Promise<void>;
+	visible?: boolean;
+	closable?: boolean;
 }) {
 	return mount(InstanceAiChatPanel, { props, global: { stubs: panelStubs } });
 }
@@ -133,10 +143,36 @@ describe('InstanceAiChatPanel', () => {
 		useAgentMutationRefreshMock.mockClear();
 		showError.mockClear();
 		showMessage.mockClear();
+		focusMock.mockClear();
 		isDirtyMock.mockReset().mockReturnValue(false);
 		applyHandoffMock.mockClear();
+		setPrefillMock.mockClear();
+		submitSuggestionMock.mockClear();
 		clearPendingHandoffContext('thread-2');
 		clearPendingComposerDraft('thread-2');
+	});
+
+	it('keeps the conversation runtime and draft when the host hides it', async () => {
+		const wrapper = mountPanel({
+			subject,
+			launch,
+			threadId: 't-match',
+			visible: true,
+			closable: false,
+		});
+		await flushPromises();
+		const conversation = wrapper.getComponent(InstanceAiConversationStub);
+		expect(focusMock).not.toHaveBeenCalled();
+		await conversation.get('textarea').setValue('Keep this draft');
+		await wrapper.setProps({ visible: false });
+		await wrapper.setProps({ visible: true });
+		await flushPromises();
+		expect(wrapper.getComponent(InstanceAiConversationStub).vm).toBe(conversation.vm);
+		expect(conversation.get<HTMLTextAreaElement>('textarea').element.value).toBe('Keep this draft');
+		expect(store.disposeRuntime).not.toHaveBeenCalled();
+		expect(focusMock).toHaveBeenCalled();
+		expect(wrapper.find('[data-test-id="instance-ai-embed-close"]').exists()).toBe(false);
+		wrapper.unmount();
 	});
 
 	it('mints a thread when none is given, calling beforeNewThread first', async () => {
@@ -210,6 +246,54 @@ describe('InstanceAiChatPanel', () => {
 		expect(emitted('update:threadId')?.[0]).toEqual(['thread-2']);
 
 		pending.resolve(true);
+	});
+
+	it('renders the host empty slot inside the conversation', async () => {
+		const { getByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+			slots: { empty: '<div data-test-id="host-empty" />' },
+		});
+		await vi.waitFor(() => expect(getByTestId('conversation-stub')).toBeInTheDocument());
+
+		expect(getByTestId('host-empty')).toBeInTheDocument();
+	});
+
+	it('forwards setPrefill to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.setPrefill({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+
+		expect(setPrefillMock).toHaveBeenCalledWith({
+			text: 'I started from the Research Assistant template.',
+			prefillType: 'template_adjustment',
+			prefillId: 'research-assistant',
+		});
+	});
+
+	it('forwards submitSuggestion to the mounted conversation', async () => {
+		const wrapper = mountPanel({ subject, launch, threadId: 't-match' });
+		await flushPromises();
+
+		wrapper.vm.submitSuggestion({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
+
+		expect(submitSuggestionMock).toHaveBeenCalledWith({
+			prompt: 'Build Morning news brief agent to send a daily summary.',
+			suggestionId: 'morning-news-brief',
+			suggestionKind: 'prompt',
+			position: 0,
+			prefillType: 'template_adjustment',
+		});
 	});
 
 	it('resumes the most recent thread for the subject instead of minting one', async () => {
@@ -433,7 +517,14 @@ describe('InstanceAiChatPanel', () => {
 		expect(emitted('update:threadId')).toBeFalsy();
 	});
 
-	it('mints a new thread when the list emits new', async () => {
+	it('uses the message-circle-plus icon for the new chat button', function () {
+		const { getByRole } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		const button = getByRole('button', { name: 'New chat' });
+
+		expect(button.querySelector('[data-icon="message-circle-plus"]')).toBeInTheDocument();
+	});
+
+	it('mints a new thread when the new chat button is clicked', async function () {
 		const { getByTestId, emitted } = renderPanel({
 			props: { subject, launch, threadId: 't-match' },
 		});
@@ -462,6 +553,27 @@ describe('InstanceAiChatPanel', () => {
 		await vi.waitFor(() =>
 			expect(getByTestId('conversation-stub').dataset.hasBeforeSend).toBe('true'),
 		);
+	});
+
+	it('hides the full Assistant link when the host disables it', () => {
+		const { queryByTestId } = renderPanel({
+			props: { subject, launch, threadId: 't-match', showOpenFullAssistant: false },
+		});
+		expect(queryByTestId('instance-ai-embed-open-full')).not.toBeInTheDocument();
+	});
+
+	it('reports Assistant activity before an artifact mutation starts', async () => {
+		const runtime = makeThread();
+		store.getOrCreateRuntime.mockReturnValue(runtime);
+		const { emitted } = renderPanel({ props: { subject, launch, threadId: 't-match' } });
+		await flushPromises();
+		runtime.isSendingMessage = true;
+		await flushPromises();
+		expect(emitted('update:working')).toContainEqual([true]);
+		expect(buildingIds.value.size).toBe(0);
+		runtime.isSendingMessage = false;
+		await flushPromises();
+		expect(emitted('update:working')?.at(-1)).toEqual([false]);
 	});
 
 	it('navigates to the full assistant thread view', async () => {
@@ -559,6 +671,87 @@ describe('InstanceAiChatPanel', () => {
 		await fireEvent.click(getByTestId('instance-ai-embed-close'));
 
 		expect(emitted('close')).toEqual([[]]);
+	});
+
+	it.each(['instance-ai-embed-new-thread', 'conversation-input'])(
+		'closes on Escape from focused %s',
+		async function (testId) {
+			const { findByTestId, emitted } = renderPanel({
+				props: { subject, launch, threadId: 't-match' },
+			});
+			const element = await findByTestId(testId);
+			element.focus();
+			expect(document.activeElement).toBe(element);
+
+			const event = new KeyboardEvent('keydown', {
+				key: 'Escape',
+				code: 'Escape',
+				bubbles: true,
+				cancelable: true,
+			});
+			await fireEvent(element, event);
+
+			expect(emitted('close')).toEqual([[]]);
+			expect(event.defaultPrevented).toBe(true);
+		},
+	);
+
+	it('does not close on Escape from outside the panel', async function () {
+		const { container, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const outside = document.createElement('button');
+		container.append(outside);
+		outside.focus();
+		expect(document.activeElement).toBe(outside);
+
+		await fireEvent.keyDown(outside, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it('leaves Escape to a nested dialog', async function () {
+		const { findByTestId, getByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		getByTestId('conversation-stub').setAttribute('role', 'dialog');
+		input.focus();
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it.each([
+		{ isComposing: true },
+		{ shiftKey: true },
+		{ altKey: true },
+		{ ctrlKey: true },
+		{ metaKey: true },
+	])('does not close on Escape with %j', async function (options) {
+		const { findByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		input.focus();
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape', ...options });
+
+		expect(emitted('close')).toBeUndefined();
+	});
+
+	it('does not close when a child handles Escape', async function () {
+		const { findByTestId, emitted } = renderPanel({
+			props: { subject, launch, threadId: 't-match' },
+		});
+		const input = await findByTestId('conversation-input');
+		input.focus();
+		input.addEventListener('keydown', (event) => event.preventDefault(), { once: true });
+
+		await fireEvent.keyDown(input, { key: 'Escape', code: 'Escape' });
+
+		expect(emitted('close')).toBeUndefined();
 	});
 
 	it('disposes the runtime on thread change and unmount', async () => {

@@ -122,6 +122,7 @@ describe('listJobRuns', () => {
 	it.each([
 		['an HTML body', '<html>sign in</html>'],
 		['a runs field that is not a list', { runs: 'none' }],
+		['a runs list with a null entry', { runs: [run(1), null] }],
 	])('rejects %s instead of returning an empty page', async (_label, response) => {
 		const context = createPollContext();
 		apiMock(context).mockResolvedValue(response);
@@ -308,6 +309,15 @@ describe('listPipelineEvents', () => {
 		expect(page).toEqual({ items: [event('e1')], nextPageToken: 'p2' });
 	});
 
+	it('never asks for more than 250 events per page, the limit Databricks enforces', async () => {
+		const context = createPollContext();
+		apiMock(context).mockResolvedValue({});
+
+		await listPipelineEvents(context, 'databricksApi', { pipelineId: PIPELINE_ID, pageSize: 1000 });
+
+		expect(requestQuery(context, 0)).toEqual({ max_results: 250, order_by: 'timestamp asc' });
+	});
+
 	const queryCases: Array<
 		[string, Omit<ListPipelineEventsParams, 'pipelineId'>, Record<string, unknown>]
 	> = [
@@ -381,6 +391,7 @@ describe('listPipelineEvents', () => {
 	it.each([
 		['an HTML body', '<html>sign in</html>'],
 		['an events field that is not a list', { events: 'none' }],
+		['an events list with a null entry', { events: [event('e1'), null] }],
 	])('rejects %s instead of returning an empty page', async (_label, response) => {
 		const context = createPollContext();
 		apiMock(context).mockResolvedValue(response);

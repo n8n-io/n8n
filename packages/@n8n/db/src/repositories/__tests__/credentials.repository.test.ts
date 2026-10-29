@@ -1,9 +1,11 @@
+import { credentialContentSubject, type PolicySubject } from '@n8n/decorators';
+import { mintPolicyCleared } from '@n8n/decorators/policy-internal';
 import { Container } from '@n8n/di';
 import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
-import { In, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import { ILike, In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { CredentialsEntity, SharedCredentials } from '../../entities';
+import { CredentialsEntity } from '../../entities';
 import { TypeOrmTransaction } from '../../services/typeorm-transaction';
 import { mockEntityManager } from '../../utils/test-utils/mock-entity-manager';
 import { CredentialsRepository } from '../credentials.repository';
@@ -47,57 +49,45 @@ describe('CredentialsRepository', () => {
 		expect(entityManager.find).not.toHaveBeenCalled();
 	});
 
-	it('loads only binding metadata and preserves credential and project pairs', async () => {
-		entityManager.find
-			.mockResolvedValueOnce([
-				{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: false },
-				{ id: 'cred-b', type: 'slackApi', usageScope: 'project', isGlobal: true },
-			])
-			.mockResolvedValueOnce([
-				{ credentialsId: 'cred-a', projectId: 'alpha' },
-				{ credentialsId: 'cred-b', projectId: 'beta' },
-			]);
-		expect(
-			await credentialsRepository.findPromotionBindingAccess(
-				['cred-a', 'cred-b'],
-				['alpha', 'beta'],
-			),
-		).toEqual([
-			{
-				id: 'cred-a',
-				type: 'githubApi',
-				usageScope: 'project',
-				isGlobal: false,
-				projectIds: ['alpha'],
-			},
-			{
-				id: 'cred-b',
-				type: 'slackApi',
-				usageScope: 'project',
-				isGlobal: true,
-				projectIds: ['beta'],
-			},
-		]);
-		expect(entityManager.find).toHaveBeenCalledTimes(2);
-		expect(entityManager.find).toHaveBeenNthCalledWith(1, CredentialsEntity, {
-			where: { id: In(['cred-a', 'cred-b']) },
-			select: ['id', 'type', 'usageScope', 'isGlobal'],
+	describe('findNamesByIds', () => {
+		it('returns the id and name for each matching credential', async () => {
+			const credentials = [mock<CredentialsEntity>({ id: 'cred-1', name: 'Cred One' })];
+			entityManager.find.mockResolvedValueOnce(credentials);
+
+			const result = await credentialsRepository.findNamesByIds(['cred-1', 'cred-2']);
+
+			expect(result).toEqual(credentials);
+			expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: In(['cred-1', 'cred-2']) },
+				select: ['id', 'name'],
+			});
 		});
-		expect(entityManager.find).toHaveBeenNthCalledWith(2, SharedCredentials, {
-			where: { credentialsId: In(['cred-a', 'cred-b']), projectId: In(['alpha', 'beta']) },
-			select: ['credentialsId', 'projectId'],
+
+		it('does not query for an empty id list', async () => {
+			await expect(credentialsRepository.findNamesByIds([])).resolves.toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
 		});
 	});
 
-	it('reads binding metadata without target projects and skips an empty credential list', async () => {
-		entityManager.find.mockResolvedValueOnce([
-			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true },
-		]);
-		expect(await credentialsRepository.findPromotionBindingAccess(['cred-a'], [])).toEqual([
-			{ id: 'cred-a', type: 'githubApi', usageScope: 'project', isGlobal: true, projectIds: [] },
-		]);
-		expect(await credentialsRepository.findPromotionBindingAccess([], ['alpha'])).toEqual([]);
-		expect(entityManager.find).toHaveBeenCalledTimes(1);
+	describe('findExistingIds', () => {
+		it('returns only the ids that still have a row', async () => {
+			entityManager.find.mockResolvedValueOnce([mock<CredentialsEntity>({ id: 'cred-1' })]);
+
+			const result = await credentialsRepository.findExistingIds(['cred-1', 'deleted-cred']);
+
+			expect(result).toEqual(['cred-1']);
+			expect(entityManager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { id: In(['cred-1', 'deleted-cred']) },
+				select: ['id'],
+			});
+		});
+
+		it('does not query for an empty id list', async () => {
+			await expect(credentialsRepository.findExistingIds([])).resolves.toEqual([]);
+
+			expect(entityManager.find).not.toHaveBeenCalled();
+		});
 	});
 
 	it('finds only dangling project credentials', async () => {
@@ -120,6 +110,7 @@ describe('CredentialsRepository', () => {
 		const ctx = { trx: new TypeOrmTransaction(transactionManager) };
 		const credential = mock<CredentialsEntity>({
 			id: 'credential-id',
+			type: 'openAiApi',
 			usageScope: 'instance',
 		});
 		transactionManager.save.mockResolvedValue(credential);
@@ -128,12 +119,17 @@ describe('CredentialsRepository', () => {
 		transactionManager.delete.mockRejectedValue(
 			new QueryFailedError('DELETE', [], new Error('foreign key constraint')),
 		);
+		const clearedFor = (subject: PolicySubject) =>
+			mintPolicyCleared({ point: 'credentialSave', subject, decision: { violations: [] } });
 
-		await credentialsRepository.saveInstanceCredential(credential, ctx);
+		await credentialsRepository.saveInstanceCredential(credential, {
+			...ctx,
+			policyCleared: clearedFor(credentialContentSubject(credential)),
+		});
 		await credentialsRepository.updateInstanceCredential(
 			credential.id,
 			{ ...credential, name: 'Updated', type: 'openAiApi', data: 'encrypted' },
-			ctx,
+			{ ...ctx, policyCleared: clearedFor({ type: 'credential', id: credential.id }) },
 		);
 		await expect(
 			credentialsRepository.deleteInstanceCredentialIfUnassigned(credential.id, ctx),
@@ -279,6 +275,18 @@ describe('CredentialsRepository', () => {
 		});
 	});
 
+	describe('findManyAndCount with a name filter', () => {
+		it('matches the name without case sensitivity', async () => {
+			entityManager.find.mockResolvedValueOnce([]);
+			entityManager.count.mockResolvedValueOnce(0);
+
+			await credentialsRepository.findManyAndCount({ filter: { name: 'github' } });
+
+			const callArg = entityManager.find.mock.calls[0]?.[1];
+			expect(callArg?.where).toMatchObject({ name: ILike('%github%') });
+		});
+	});
+
 	describe('findManyAndCount with includeGlobal', () => {
 		it('matches globals as an alternative to the sharing filter, keeping column filters', async () => {
 			entityManager.find.mockResolvedValueOnce([]);
@@ -291,8 +299,18 @@ describe('CredentialsRepository', () => {
 
 			const callArg = entityManager.find.mock.calls[0]?.[1];
 			expect(callArg?.where).toEqual([
-				{ type: Like('%githubApi%'), shared: { projectId: 'p1' }, usageScope: 'project' },
-				{ type: Like('%githubApi%'), usageScope: 'project', isGlobal: true },
+				{
+					type: Like('%githubApi%'),
+					shared: { projectId: 'p1' },
+					usageScope: 'project',
+					pendingAuthorizationExpiresAt: IsNull(),
+				},
+				{
+					type: Like('%githubApi%'),
+					usageScope: 'project',
+					isGlobal: true,
+					pendingAuthorizationExpiresAt: IsNull(),
+				},
 			]);
 			expect(entityManager.count).toHaveBeenCalledWith(CredentialsEntity, {
 				where: callArg?.where,

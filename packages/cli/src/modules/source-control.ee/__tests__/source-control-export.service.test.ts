@@ -98,7 +98,7 @@ describe('SourceControlExportService', () => {
 			id: 'cred1',
 			name: 'Test Credential',
 			type: 'oauth2',
-			data: cipher.encrypt(credentialData),
+			data: cipher.encryptWithInstanceKey(credentialData),
 		});
 
 		it('should export credentials to work folder', async () => {
@@ -208,7 +208,7 @@ describe('SourceControlExportService', () => {
 				id: 'global-cred1',
 				name: 'Global Test Credential',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: true,
 				isResolvable: false,
 				resolvableAllowFallback: false,
@@ -267,7 +267,7 @@ describe('SourceControlExportService', () => {
 				id: 'non-global-cred1',
 				name: 'Non-Global Test Credential',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: false,
 				isResolvable: false,
 				resolvableAllowFallback: false,
@@ -329,7 +329,7 @@ describe('SourceControlExportService', () => {
 				id: 'resolvable-cred1',
 				name: 'Resolvable Credential',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: false,
 				isResolvable: true,
 				resolvableAllowFallback: true,
@@ -367,7 +367,7 @@ describe('SourceControlExportService', () => {
 				id: 'cred-no-flag',
 				name: 'Credential Without Flag',
 				type: 'oauth2',
-				data: cipher.encrypt(credentialData),
+				data: cipher.encryptWithInstanceKey(credentialData),
 				isGlobal: undefined, // explicitly undefined to test the default
 			});
 
@@ -412,7 +412,7 @@ describe('SourceControlExportService', () => {
 					id: credentialsId,
 					name: `Credential ${credentialsId}`,
 					type: 'httpBasicAuth',
-					data: cipher.encrypt({ user: 'u', password: 'p' }),
+					data: cipher.encryptWithInstanceKey({ user: 'u', password: 'p' }),
 				}),
 			} as never) as SharedCredentials;
 
@@ -479,6 +479,12 @@ describe('SourceControlExportService', () => {
 	});
 
 	describe('exportTagsToWorkFolder', () => {
+		beforeEach(() => {
+			fsReadFile.mockResolvedValue(JSON.stringify({ tags: [], mappings: [] }));
+			workflowTagMappingRepository.find.mockResolvedValue([]);
+			workflowRepository.find.mockResolvedValue([]);
+		});
+
 		it('should export tags to work folder', async () => {
 			// Arrange
 			const mockTag = mock<TagEntity>({
@@ -549,6 +555,7 @@ describe('SourceControlExportService', () => {
 			});
 			const accessibleMapping = { tagId: 'tag1', workflowId: 'workflow1' } as WorkflowTagMapping;
 			const inaccessibleMapping = { tagId: 'tag2', workflowId: 'workflow2' };
+			const remoteTag = { id: 'tag2', name: 'Tag 2' };
 			tagRepository.find.mockResolvedValue([mockTag]);
 			workflowTagMappingRepository.find.mockResolvedValue([accessibleMapping]);
 			workflowRepository.find.mockResolvedValue([
@@ -556,7 +563,7 @@ describe('SourceControlExportService', () => {
 			]);
 			fsReadFile.mockResolvedValueOnce(
 				JSON.stringify({
-					tags: [],
+					tags: [remoteTag],
 					mappings: [{ tagId: 'stale', workflowId: 'workflow1' }, inaccessibleMapping],
 				}),
 			);
@@ -569,10 +576,56 @@ describe('SourceControlExportService', () => {
 			);
 			const dataCaptor = captor<string>();
 			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
-			expect(JSON.parse(dataCaptor.value).mappings).toEqual([
-				inaccessibleMapping,
-				accessibleMapping,
-			]);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [{ id: mockTag.id, name: mockTag.name }, remoteTag],
+				mappings: [inaccessibleMapping, accessibleMapping],
+			});
+		});
+
+		it('should keep a remote tag and its mappings when there are no local tags', async () => {
+			const remoteTag = { id: 'remote-tag', name: 'Remote tag' };
+			const remoteMappings = [
+				{ tagId: remoteTag.id, workflowId: 'workflow1' },
+				{ tagId: remoteTag.id, workflowId: 'workflow2' },
+			];
+			tagRepository.find.mockResolvedValue([]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [remoteTag, { id: 'unused-tag', name: 'Unused tag' }],
+					mappings: remoteMappings,
+				}),
+			);
+
+			const result = await service.exportTagsToWorkFolder(globalAdminContext);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [remoteTag],
+				mappings: remoteMappings,
+			});
+			expect(result.count).toBe(1);
+		});
+
+		it('should skip remote mappings whose tags are missing locally and remotely', async () => {
+			const localTag = mock<TagEntity>({ id: 'local-tag', name: 'Local tag' });
+			const validMapping = { tagId: localTag.id, workflowId: 'workflow1' };
+			tagRepository.find.mockResolvedValue([localTag]);
+			fsReadFile.mockResolvedValueOnce(
+				JSON.stringify({
+					tags: [],
+					mappings: [validMapping, { tagId: 'missing-tag', workflowId: 'workflow2' }],
+				}),
+			);
+
+			await service.exportTagsToWorkFolder(globalAdminContext);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith('/mock/n8n/git/tags.json', dataCaptor);
+			expect(JSON.parse(dataCaptor.value)).toEqual({
+				tags: [{ id: localTag.id, name: localTag.name }],
+				mappings: [validMapping],
+			});
 		});
 	});
 

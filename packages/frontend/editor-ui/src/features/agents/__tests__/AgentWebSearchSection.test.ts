@@ -3,11 +3,23 @@ import { beforeEach, describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import { nextTick } from 'vue';
 
+import { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+
 import AgentWebSearchSection from '../components/AgentWebSearchSection.vue';
 import AgentCredentialSelect from '../components/AgentCredentialSelect.vue';
 import type { AgentJsonConfig } from '../types';
 
 const openNewCredentialMock = vi.hoisted(() => vi.fn());
+const fetchUsableCredentialsMock = vi.hoisted(() => vi.fn().mockResolvedValue([]));
+const showErrorMock = vi.hoisted(() => vi.fn());
+
+// Mutable per test so the n8n Connect gating (enabled + served credential type)
+// can be exercised without touching the real gateway stores.
+const aiGatewayState = vi.hoisted(() => ({
+	isEnabled: false,
+	servedTypes: new Set<string>(),
+	balance: undefined as number | undefined,
+}));
 
 type MockProject = { id: string; scopes: string[] };
 const CREDENTIAL_CREATE_SCOPES = ['credential:create'];
@@ -16,6 +28,10 @@ const projectsStoreState = vi.hoisted(() => ({
 	currentProject: null as MockProject | null,
 	personalProject: null as MockProject | null,
 	myProjects: [] as MockProject[],
+}));
+
+vi.mock('@n8n/composables/useToast', () => ({
+	useToast: () => ({ showError: showErrorMock }),
 }));
 
 vi.mock('@n8n/i18n', () => ({
@@ -35,11 +51,14 @@ vi.mock('@n8n/i18n', () => ({
 
 vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: () => ({
-		allCredentials: [
-			{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
-			{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
-		],
+		getUsableCredentialByType: (type: string) =>
+			[
+				{ id: 'brave-1', name: 'Brave Key', type: 'braveSearchApi' },
+				{ id: 'searxng-1', name: 'SearXNG', type: 'searXngApi' },
+			].filter((credential) => credential.type === type),
 		getCredentialTypeByName: (type: string) => ({ displayName: type }),
+		fetchUsableCredentials: fetchUsableCredentialsMock,
+		refreshUsableCredentials: vi.fn().mockResolvedValue(undefined),
 	}),
 }));
 
@@ -49,6 +68,16 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 
 vi.mock('@/app/stores/ui.store', () => ({
 	useUIStore: () => ({ openNewCredential: openNewCredentialMock }),
+}));
+
+vi.mock('@/app/composables/useAiGateway', () => ({
+	useAiGateway: () => ({
+		isEnabled: { value: aiGatewayState.isEnabled },
+		balance: { value: aiGatewayState.balance },
+		fetchConfig: vi.fn().mockResolvedValue(undefined),
+		fetchWallet: vi.fn().mockResolvedValue(undefined),
+		canServeCredentialType: (type: string) => aiGatewayState.servedTypes.has(type),
+	}),
 }));
 
 vi.mock('@n8n/design-system', async (importOriginal) => {
@@ -179,9 +208,103 @@ function getCreateCredentialTooltip(wrapper: ReturnType<typeof mount>) {
 describe('AgentWebSearchSection', () => {
 	beforeEach(() => {
 		openNewCredentialMock.mockReset();
+		fetchUsableCredentialsMock.mockClear();
+		showErrorMock.mockClear();
 		projectsStoreState.currentProject = { id: 'project-1', scopes: CREDENTIAL_CREATE_SCOPES };
 		projectsStoreState.personalProject = null;
 		projectsStoreState.myProjects = [];
+		aiGatewayState.isEnabled = false;
+		aiGatewayState.servedTypes = new Set();
+		aiGatewayState.balance = undefined;
+	});
+
+	function getManagedOption(wrapper: ReturnType<typeof mount>) {
+		return wrapper.findComponent(AgentCredentialSelect).props('managedOption') as {
+			value: string;
+			label: string;
+			pill?: { text: string; type: string };
+		} | null;
+	}
+
+	it('offers the n8n Connect option when the gateway serves the Brave credential type', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)?.value).toBe(AI_GATEWAY_MANAGED_TAG);
+	});
+
+	it('offers no n8n Connect option while the gateway is disabled', () => {
+		aiGatewayState.isEnabled = false;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)).toBeNull();
+	});
+
+	it('shows a positive balance pill on the n8n Connect option', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+		aiGatewayState.balance = 4.92;
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)?.pill).toEqual({
+			text: 'aiGateway.wallet.balanceRemaining',
+			type: 'default',
+		});
+	});
+
+	it('shows a depleted balance pill when credits are exhausted', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+		aiGatewayState.balance = 0;
+
+		const wrapper = mountWithFallbackPicker();
+
+		expect(getManagedOption(wrapper)?.pill).toEqual({
+			text: 'aiGateway.wallet.noCredits',
+			type: 'danger',
+		});
+	});
+
+	it('hides the n8n Connect option for SearXNG, which the gateway does not serve', () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mount(AgentWebSearchSection, {
+			props: {
+				config: makeConfig({
+					model: 'deepseek/deepseek-chat',
+					config: { webSearch: { enabled: true, provider: 'searxng' } },
+				} as Partial<AgentJsonConfig>),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+
+		expect(getManagedOption(wrapper)).toBeNull();
+	});
+
+	it('emits the managed tag when the n8n Connect option is selected', async () => {
+		aiGatewayState.isEnabled = true;
+		aiGatewayState.servedTypes = new Set(['braveSearchApi']);
+
+		const wrapper = mountWithFallbackPicker();
+
+		wrapper
+			.findComponent(AgentCredentialSelect)
+			.vm.$emit('update:modelValue', AI_GATEWAY_MANAGED_TAG);
+		await nextTick();
+
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(getWebSearchConfig(last)).toEqual({
+			enabled: true,
+			provider: 'brave',
+			credential: AI_GATEWAY_MANAGED_TAG,
+		});
 	});
 
 	it('treats sparse native web search config as disabled', async () => {
@@ -355,8 +478,12 @@ describe('AgentWebSearchSection', () => {
 
 			const onCredentialCreated = openNewCredentialMock.mock.calls.at(-1)?.[7]?.onCredentialCreated;
 			expect(onCredentialCreated).toBeTypeOf('function');
-			onCredentialCreated?.({ id: 'new-cred' });
+			await onCredentialCreated?.({ id: 'new-cred' });
 
+			expect(fetchUsableCredentialsMock).toHaveBeenCalledWith({
+				projectId: 'project-1',
+				forAgent: true,
+			});
 			const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
 			expect(getWebSearchConfig(last)).toEqual({
 				enabled: true,
@@ -365,6 +492,34 @@ describe('AgentWebSearchSection', () => {
 			});
 		},
 	);
+
+	it('reports a failed usable credential refetch and still selects the created fallback credential', async () => {
+		const wrapper = mount(AgentWebSearchSection, {
+			props: {
+				config: makeConfig({
+					model: 'deepseek/deepseek-chat',
+					config: { webSearch: { enabled: true, provider: 'brave' } },
+				} as Partial<AgentJsonConfig>),
+				projectId: 'project-1',
+			},
+			global: { stubs: globalStubs },
+		});
+		const error = new Error('network');
+		fetchUsableCredentialsMock.mockRejectedValueOnce(error);
+
+		wrapper.findComponent(AgentCredentialSelect).vm.$emit('create');
+		const onCredentialCreated = openNewCredentialMock.mock.calls.at(-1)?.[7]?.onCredentialCreated;
+
+		await expect(onCredentialCreated?.({ id: 'new-cred' })).resolves.toBeUndefined();
+
+		expect(showErrorMock).toHaveBeenCalledWith(error, expect.any(String));
+		const last = wrapper.emitted('update:config')?.at(-1)?.[0] as Partial<AgentJsonConfig>;
+		expect(getWebSearchConfig(last)).toEqual({
+			enabled: true,
+			provider: 'brave',
+			credential: 'new-cred',
+		});
+	});
 
 	it('offers an enabled "Create new credential" action without the permission tooltip when the user can create credentials in the project', () => {
 		const wrapper = mountWithFallbackPicker();

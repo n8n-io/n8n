@@ -231,6 +231,11 @@ defineExpose({
 			line-height: initial;
 			border-bottom: 0 !important;
 			padding: 0;
+			&,
+			&:hover,
+			&:focus {
+				background-color: transparent;
+			}
 			:global(.el-sub-menu__icon-arrow) {
 				display: none;
 			}

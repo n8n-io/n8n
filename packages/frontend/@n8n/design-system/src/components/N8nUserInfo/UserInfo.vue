@@ -42,7 +42,7 @@ const classes = computed(
 
 		<div v-if="isPendingUser" :class="$style.pendingUser">
 			<N8nText :bold="true">{{ email }}</N8nText>
-			<span :class="$style.pendingBadge"><N8nBadge :bold="true">Pending</N8nBadge></span>
+			<span :class="$style.pendingBadge"><N8nBadge>Pending</N8nBadge></span>
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div>
@@ -51,7 +51,7 @@ const classes = computed(
 					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
 				</N8nText>
 				<span v-if="disabled" :class="$style.pendingBadge">
-					<N8nBadge :bold="true">Disabled</N8nBadge>
+					<N8nBadge>Disabled</N8nBadge>
 				</span>
 			</div>
 			<div>

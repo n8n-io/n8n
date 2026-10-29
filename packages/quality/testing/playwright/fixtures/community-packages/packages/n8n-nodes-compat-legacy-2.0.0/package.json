@@ -1,0 +1,12 @@
+{
+	"name": "n8n-nodes-compat-legacy",
+	"version": "2.0.0",
+	"description": "Compatibility fixture: the legacy package moves to node API level 3",
+	"license": "MIT",
+	"keywords": ["n8n-community-node-package"],
+	"files": ["dist"],
+	"n8n": {
+		"n8nNodesApiVersion": 3,
+		"nodes": ["dist/CompatProbe.node.js"]
+	}
+}

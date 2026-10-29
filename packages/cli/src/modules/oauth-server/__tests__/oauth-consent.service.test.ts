@@ -1,22 +1,22 @@
+import { InvalidGrantError } from '@modelcontextprotocol/sdk/server/auth/errors.js';
 import type { Mocked } from 'vitest';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { Logger } from '@n8n/backend-common';
 import type { OAuthClient } from '../database/entities/oauth-client.entity';
 import { mock } from 'vitest-mock-extended';
 
+import type { OAuthGrantRepository } from '../database/repositories/oauth-grant.repository';
+import { OAuthGrantService } from '../oauth-grant.service';
 import { OAuthAuthorizationCodeService } from '../oauth-authorization-code.service';
 import { OAuthConsentService } from '../oauth-consent.service';
 import { OAuthClientRepository } from '../database/repositories/oauth-client.repository';
 import { OAuthSessionService } from '../oauth-session.service';
 import type { UserConsent } from '../database/entities/oauth-user-consent.entity';
 import { UserConsentRepository } from '../database/repositories/oauth-user-consent.repository';
-import {
-	ProtectedResourceRegistry,
-	type ProtectedResource,
-} from '@/services/protected-resource.registry';
-import { UrlService } from '@/services/url.service';
-import type { User } from '@n8n/db';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { UrlService } from '@n8n/backend-services';
+import type { TransactionRunner, User, OperationContext } from '@n8n/db';
+import { ProtectedResourceRegistry, type ProtectedResource } from '@n8n/backend-services/auth';
+import { ForbiddenError } from '@n8n/errors';
 
 const issuer = 'https://n8n.example.com';
 
@@ -38,6 +38,19 @@ let protectedResourceRegistry: Mocked<ProtectedResourceRegistry>;
 let urlService: Mocked<UrlService>;
 let service: OAuthConsentService;
 
+const activeGrantUser = mock<User>({ disabled: false });
+const grantRepository = mock<OAuthGrantRepository>();
+const grantTransactionRunner = mock<TransactionRunner>();
+const grantService = new OAuthGrantService(grantTransactionRunner, grantRepository);
+
+beforeEach(() => {
+	grantRepository.lockUserForGrant.mockReset().mockResolvedValue(activeGrantUser);
+	grantTransactionRunner.run.mockImplementation(
+		async <T>(ctx: OperationContext, work: (ctx: OperationContext) => Promise<T>) =>
+			await work(ctx),
+	);
+});
+
 describe('OAuthConsentService', () => {
 	beforeAll(() => {
 		logger = mockInstance(Logger);
@@ -58,6 +71,7 @@ describe('OAuthConsentService', () => {
 			authorizationCodeService,
 			protectedResourceRegistry,
 			urlService,
+			grantService,
 		);
 	});
 
@@ -187,29 +201,38 @@ describe('OAuthConsentService', () => {
 			});
 		});
 
-		it('should include the resource scope-tools mapping when available', async () => {
-			const sessionToken = 'valid-session-token';
-			const sessionPayload = {
-				clientId: 'client-123',
-				redirectUri: 'https://example.com/callback',
-				codeChallenge: 'challenge',
-				state: null,
-			};
-			const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
-			const scopeTools = { 'workflow:read': ['search_workflows', 'get_workflow_details'] };
+		it.each([false, true])(
+			'awaits scope tools for a resource-aware session: %s',
+			async (hasResource) => {
+				const sessionToken = 'valid-session-token';
+				const sessionPayload = {
+					clientId: 'client-123',
+					redirectUri: 'https://example.com/callback',
+					codeChallenge: 'challenge',
+					state: null,
+					resource: hasResource ? 'https://example.com/mcp' : undefined,
+				};
+				const client = mock<OAuthClient>({ id: 'client-123', name: 'Test Client' });
+				const scopeTools = { 'workflow:read': ['search_workflows', 'get_workflow_details'] };
 
-			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			oauthClientRepository.findOne.mockResolvedValue(client);
-			protectedResourceRegistry.getDefaultResource.mockReturnValue({
-				scopes: INSTANCE_SCOPES,
-				authorize: async () => true,
-				getScopeTools: () => scopeTools,
-			} as unknown as ProtectedResource);
+				oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+				oauthClientRepository.findOne.mockResolvedValue(client);
+				const resource = mock<ProtectedResource>({
+					scopes: INSTANCE_SCOPES,
+					authorize: async () => true,
+					// Explicit: consent narrows per user through this when present, and
+					// the deep mock would otherwise auto-create one returning undefined.
+					getGrantableScopes: async () => [...INSTANCE_SCOPES],
+					getScopeTools: async () => scopeTools,
+				});
+				protectedResourceRegistry.getDefaultResource.mockReturnValue(resource);
+				protectedResourceRegistry.getByResourceUrl.mockResolvedValue(resource);
 
-			const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
+				const result = await service.getConsentDetails(sessionToken, mock<User>({ id: 'user-1' }));
 
-			expect(result).toMatchObject({ ok: true, scopeTools });
-		});
+				expect(result).toMatchObject({ ok: true, scopeTools });
+			},
+		);
 
 		it('should cap the grantable scopes at what the client requested', async () => {
 			const sessionToken = 'valid-session-token';
@@ -423,6 +446,26 @@ describe('OAuthConsentService', () => {
 	});
 
 	describe('handleConsentDecision', () => {
+		it.each([null, mock<User>({ disabled: true })])(
+			'requires an active user when consent is saved (%#)',
+			async (user) => {
+				oauthSessionService.verifySession.mockReturnValue({
+					clientId: 'client-123',
+					redirectUri: 'https://example.com/callback',
+					codeChallenge: 'challenge',
+					state: null,
+				});
+				grantRepository.lockUserForGrant.mockResolvedValueOnce(user);
+				await expect(
+					service.handleConsentDecision('session', mock<User>({ id: 'user-123' }), true, [
+						'workflow:read',
+					]),
+				).rejects.toMatchObject({ name: 'InvalidGrantError' });
+				expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
+				expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+			},
+		);
+
 		it('should handle user denial', async () => {
 			const sessionToken = 'valid-session-token';
 			const userId = 'user-123';
@@ -451,7 +494,7 @@ describe('OAuthConsentService', () => {
 				clientId: 'client-123',
 				userId: 'user-123',
 			});
-			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
 		});
 
 		it('should not mint a code for a resource-less request when the default resource is unavailable', async () => {
@@ -474,7 +517,7 @@ describe('OAuthConsentService', () => {
 			).rejects.toThrow(ForbiddenError);
 
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
-			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
 		});
 
 		it('should mint a code for a resource-less request when the default resource is available', async () => {
@@ -486,7 +529,7 @@ describe('OAuthConsentService', () => {
 			};
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.upsert.mockResolvedValue(mock());
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue('generated-auth-code');
 
 			const result = await service.handleConsentDecision(
@@ -513,7 +556,7 @@ describe('OAuthConsentService', () => {
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(instanceResource);
-			userConsentRepository.upsert.mockResolvedValue(mock());
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(
@@ -526,14 +569,11 @@ describe('OAuthConsentService', () => {
 			expect(result.redirectUrl).toContain('code=generated-auth-code');
 			expect(result.redirectUrl).toContain('state=state-xyz');
 			expect(new URL(result.redirectUrl).searchParams.get('iss')).toBe(issuer);
-			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
-				{
-					userId: 'user-123',
-					clientId: 'client-123',
-					grantedAt: expect.any(Number),
-					scope: ['workflow:read'],
-				},
-				['userId', 'clientId'],
+			expect(userConsentRepository.saveGrant).toHaveBeenCalledWith(
+				'user-123',
+				'client-123',
+				['workflow:read'],
+				{},
 			);
 			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
 				'client-123',
@@ -543,6 +583,7 @@ describe('OAuthConsentService', () => {
 				'state-xyz',
 				'https://n8n.example.com/mcp-server/http',
 				['workflow:read'],
+				{},
 			);
 			expect(logger.info).toHaveBeenCalledWith('Consent approved', {
 				clientId: 'client-123',
@@ -564,7 +605,7 @@ describe('OAuthConsentService', () => {
 			await expect(
 				service.handleConsentDecision('token', mock<User>({ id: 'user-123' }), true, []),
 			).rejects.toThrow('At least one scope must be granted');
-			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
 		});
 
 		it('should reject scopes the resource does not support', async () => {
@@ -581,7 +622,7 @@ describe('OAuthConsentService', () => {
 					'admin:all',
 				]),
 			).rejects.toThrow('Scopes cannot be granted: admin:all');
-			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
 		});
 
 		it('should reject scopes beyond what the client requested', async () => {
@@ -599,7 +640,7 @@ describe('OAuthConsentService', () => {
 					'workflow:write',
 				]),
 			).rejects.toThrow('Scopes cannot be granted: workflow:write');
-			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
 		});
 
 		it('should force an empty grant for resources without grantable scopes', async () => {
@@ -615,16 +656,18 @@ describe('OAuthConsentService', () => {
 				scopes: [],
 				authorize: async () => true,
 			} as unknown as ProtectedResource);
-			userConsentRepository.upsert.mockResolvedValue(mock());
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue('code');
 
 			await service.handleConsentDecision('token', mock<User>({ id: 'user-123' }), true, [
 				'workflow:read',
 			]);
 
-			expect(userConsentRepository.upsert).toHaveBeenCalledWith(
-				expect.objectContaining({ scope: [] }),
-				['userId', 'clientId'],
+			expect(userConsentRepository.saveGrant).toHaveBeenCalledWith(
+				'user-123',
+				'client-123',
+				[],
+				{},
 			);
 			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
 				'client-123',
@@ -634,6 +677,7 @@ describe('OAuthConsentService', () => {
 				null,
 				'https://n8n.example.com/mcp/wf-123',
 				[],
+				{},
 			);
 		});
 
@@ -656,7 +700,7 @@ describe('OAuthConsentService', () => {
 				service.handleConsentDecision(sessionToken, mock<User>({ id: 'user-123' }), true),
 			).rejects.toThrow(ForbiddenError);
 
-			expect(userConsentRepository.upsert).not.toHaveBeenCalled();
+			expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
 		});
 
@@ -672,7 +716,7 @@ describe('OAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.upsert.mockResolvedValue(mock());
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			const result = await service.handleConsentDecision(
@@ -692,6 +736,7 @@ describe('OAuthConsentService', () => {
 				null,
 				undefined,
 				['workflow:read'],
+				{},
 			);
 		});
 
@@ -707,7 +752,7 @@ describe('OAuthConsentService', () => {
 			const authCode = 'generated-auth-code';
 
 			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
-			userConsentRepository.upsert.mockResolvedValue(mock());
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue(authCode);
 
 			// First authorization
@@ -719,15 +764,12 @@ describe('OAuthConsentService', () => {
 				'workflow:write',
 			]);
 
-			expect(userConsentRepository.upsert).toHaveBeenCalledTimes(2);
-			expect(userConsentRepository.upsert).toHaveBeenLastCalledWith(
-				{
-					userId: 'user-123',
-					clientId: 'client-123',
-					grantedAt: expect.any(Number),
-					scope: ['workflow:write'],
-				},
-				['userId', 'clientId'],
+			expect(userConsentRepository.saveGrant).toHaveBeenCalledTimes(2);
+			expect(userConsentRepository.saveGrant).toHaveBeenLastCalledWith(
+				'user-123',
+				'client-123',
+				['workflow:write'],
+				{},
 			);
 		});
 
@@ -785,8 +827,8 @@ describe('OAuthConsentService', () => {
 
 		it('mints a code and redirects when a prior grant covers the request', async () => {
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(formResource);
-			userConsentRepository.findOne.mockResolvedValue({ scope: [] } as unknown as UserConsent);
-			userConsentRepository.upsert.mockResolvedValue(mock());
+			userConsentRepository.findGrant.mockResolvedValue({ scope: [] } as unknown as UserConsent);
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
 			authorizationCodeService.createAuthorizationCode.mockResolvedValue('reused-code');
 
 			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
@@ -801,12 +843,50 @@ describe('OAuthConsentService', () => {
 				sessionPayload.state,
 				sessionPayload.resource,
 				[],
+				{},
 			);
 		});
 
+		it.each([null, mock<User>({ disabled: true })])(
+			'requires an active user when consent is reused (%#)',
+			async (user) => {
+				protectedResourceRegistry.getByResourceUrl.mockResolvedValue(formResource);
+				userConsentRepository.findGrant.mockResolvedValue(
+					mock<UserConsent>({ id: 1, grantedAt: 100, scope: [] }),
+				);
+				grantRepository.lockUserForGrant.mockResolvedValueOnce(user);
+
+				await expect(
+					service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload),
+				).rejects.toBeInstanceOf(InvalidGrantError);
+				expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
+				expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each([
+			null,
+			mock<UserConsent>({ id: 2, grantedAt: 100, scope: [] }),
+			mock<UserConsent>({ id: 1, grantedAt: 200, scope: [] }),
+		])(
+			'requires fresh consent when the stored grant changes during resource checks (%#)',
+			async (currentConsent) => {
+				protectedResourceRegistry.getByResourceUrl.mockResolvedValue(formResource);
+				userConsentRepository.findGrant
+					.mockResolvedValueOnce(mock<UserConsent>({ id: 1, grantedAt: 100, scope: [] }))
+					.mockResolvedValueOnce(currentConsent);
+
+				await expect(
+					service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload),
+				).resolves.toBeNull();
+				expect(userConsentRepository.saveGrant).not.toHaveBeenCalled();
+				expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+			},
+		);
+
 		it('returns null when the user has no prior consent', async () => {
 			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(formResource);
-			userConsentRepository.findOne.mockResolvedValue(null);
+			userConsentRepository.findGrant.mockResolvedValue(null);
 
 			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
 
@@ -820,7 +900,7 @@ describe('OAuthConsentService', () => {
 				scopes: [],
 				authorize: async () => false,
 			} as unknown as ProtectedResource);
-			userConsentRepository.findOne.mockResolvedValue({ scope: [] } as unknown as UserConsent);
+			userConsentRepository.findGrant.mockResolvedValue({ scope: [] } as unknown as UserConsent);
 
 			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
 
@@ -838,7 +918,7 @@ describe('OAuthConsentService', () => {
 			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
 
 			expect(result).toBeNull();
-			expect(userConsentRepository.findOne).not.toHaveBeenCalled();
+			expect(userConsentRepository.findGrant).not.toHaveBeenCalled();
 		});
 
 		it('returns null when the request needs a scope the prior grant does not cover', async () => {
@@ -847,7 +927,7 @@ describe('OAuthConsentService', () => {
 				scopes: ['workflow:read', 'workflow:write'],
 				authorize: async () => true,
 			} as unknown as ProtectedResource);
-			userConsentRepository.findOne.mockResolvedValue({
+			userConsentRepository.findGrant.mockResolvedValue({
 				scope: ['workflow:read'],
 			} as unknown as UserConsent);
 
@@ -858,6 +938,140 @@ describe('OAuthConsentService', () => {
 
 			expect(result).toBeNull();
 			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+		});
+
+		it('reuses a consent that predates a newly supported scope, without granting it', async () => {
+			// An upgrade can widen the supported set (communityPackage:install). A
+			// stored consent must neither be invalidated by that — the picker
+			// preselects only the previously granted scopes, so re-approving would
+			// never converge and every authorization would re-prompt — nor have the
+			// new scope silently added to the grant.
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				isFirstParty: true,
+				scopes: ['workflow:read', 'workflow:write', 'communityPackage:install'],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+			userConsentRepository.findGrant.mockResolvedValue({
+				scope: ['workflow:read', 'workflow:write'],
+			} as unknown as UserConsent);
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('reused-code');
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result?.redirectUrl).toContain('code=reused-code');
+			expect(authorizationCodeService.createAuthorizationCode).toHaveBeenCalledWith(
+				sessionPayload.clientId,
+				'user-1',
+				sessionPayload.redirectUri,
+				sessionPayload.codeChallenge,
+				sessionPayload.state,
+				sessionPayload.resource,
+				['workflow:read', 'workflow:write'],
+				{},
+			);
+		});
+
+		it('returns null when nothing the user consented to is grantable anymore', async () => {
+			// A grant of zero scopes on a scoped resource would be useless; the
+			// normal consent flow takes over instead.
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue({
+				isFirstParty: true,
+				scopes: ['workflow:read'],
+				authorize: async () => true,
+			} as unknown as ProtectedResource);
+			userConsentRepository.findGrant.mockResolvedValue({
+				scope: ['execution:read'],
+			} as unknown as UserConsent);
+
+			const result = await service.tryReuseConsent(mock<User>({ id: 'user-1' }), sessionPayload);
+
+			expect(result).toBeNull();
+			expect(authorizationCodeService.createAuthorizationCode).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('per-user grantable scopes', () => {
+		// A resource may narrow its scopes to what the caller's role can exercise.
+		// Every consent path must respect that, not just the one that renders the
+		// screen.
+		const ADMIN_ONLY = 'communityPackage:install';
+		const narrowingResource = {
+			scopes: [...INSTANCE_SCOPES, ADMIN_ONLY],
+			authorize: async () => true,
+			isFirstParty: true,
+			getGrantableScopes: async (user: User) =>
+				user.id === 'admin' ? [...INSTANCE_SCOPES, ADMIN_ONLY] : [...INSTANCE_SCOPES],
+		} as unknown as ProtectedResource;
+
+		const sessionPayload = {
+			clientId: 'client-123',
+			redirectUri: 'https://example.com/callback',
+			codeChallenge: 'challenge',
+			state: 'state',
+		};
+
+		beforeEach(() => {
+			protectedResourceRegistry.getDefaultResource.mockReturnValue(narrowingResource);
+			oauthSessionService.verifySession.mockReturnValue(sessionPayload);
+			oauthClientRepository.findOne.mockResolvedValue(
+				mock<OAuthClient>({ id: 'client-123', name: 'Test Client', isFirstParty: false }),
+			);
+		});
+
+		it('offers the narrowed scope to a user who may grant it', async () => {
+			const result = await service.getConsentDetails('t', mock<User>({ id: 'admin' }));
+
+			expect(result).toMatchObject({ ok: true, scopes: [...INSTANCE_SCOPES, ADMIN_ONLY] });
+		});
+
+		it('hides the narrowed scope from a user who may not grant it', async () => {
+			const result = await service.getConsentDetails('t', mock<User>({ id: 'member' }));
+
+			expect(result).toMatchObject({ ok: true, scopes: INSTANCE_SCOPES });
+		});
+
+		it('rejects a hand-crafted approval for a scope the user may not grant', async () => {
+			// The display filter alone would leave this open: the approve request
+			// carries its own scope list.
+			await expect(
+				service.handleConsentDecision('t', mock<User>({ id: 'member' }), true, [
+					'workflow:read',
+					ADMIN_ONLY,
+				]),
+			).rejects.toThrow(`Scopes cannot be granted: ${ADMIN_ONLY}`);
+		});
+
+		it('accepts the same approval from a user who may grant it', async () => {
+			userConsentRepository.saveGrant.mockResolvedValue(undefined);
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('code-1');
+
+			const result = await service.handleConsentDecision('t', mock<User>({ id: 'admin' }), true, [
+				'workflow:read',
+				ADMIN_ONLY,
+			]);
+
+			expect(result.redirectUrl).toContain('code=code-1');
+		});
+
+		it('does not reuse a stale consent to re-grant a scope the user may no longer grant', async () => {
+			protectedResourceRegistry.getByResourceUrl.mockResolvedValue(narrowingResource);
+			userConsentRepository.findGrant.mockResolvedValue(
+				mock<UserConsent>({ scope: [...INSTANCE_SCOPES, ADMIN_ONLY] }),
+			);
+			authorizationCodeService.createAuthorizationCode.mockResolvedValue('code-2');
+
+			await service.tryReuseConsent(mock<User>({ id: 'member' }), {
+				...sessionPayload,
+				resource: 'https://n8n.example.com/mcp-server/http',
+			});
+
+			// `scopes` is the 7th argument of
+			// createAuthorizationCode(clientId, userId, redirectUri, codeChallenge, state, resource, scopes)
+			const grantedScopes =
+				authorizationCodeService.createAuthorizationCode.mock.calls[0]?.[6] ?? [];
+			expect(grantedScopes).toEqual(INSTANCE_SCOPES);
+			expect(grantedScopes).not.toContain(ADMIN_ONLY);
 		});
 	});
 });

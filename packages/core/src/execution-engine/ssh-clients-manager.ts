@@ -45,7 +45,7 @@ type Registration = {
 	 */
 	lastUsed: Date;
 
-	abortController: AbortController;
+	abortControllers: Set<AbortController>;
 
 	returnPromise: Promise<Client>;
 };
@@ -126,6 +126,8 @@ export class SSHClientsManager {
 		const existing = this.clients.get(clientHash);
 		if (existing) {
 			existing.lastUsed = new Date();
+			existing.abortControllers.add(abortController);
+			this.subscribeAbortController(clientHash, abortController);
 			return await existing.returnPromise;
 		}
 
@@ -142,7 +144,7 @@ export class SSHClientsManager {
 		this.clients.set(clientHash, {
 			client: sshClient,
 			lastUsed: new Date(),
-			abortController,
+			abortControllers: new Set([abortController]),
 			returnPromise,
 		});
 		this.clientsReversed.set(sshClient, clientHash);
@@ -167,12 +169,7 @@ export class SSHClientsManager {
 			this.logger.debug('socket was closed, calling abort signal', {});
 			this.cleanupClient(key);
 		});
-		abortController.signal.addEventListener('abort', () => {
-			this.logger.debug('Got abort signal, cleaning up ssh client.', {
-				reason: abortController.signal.reason,
-			});
-			this.cleanupClient(key);
-		});
+		this.subscribeAbortController(key, abortController);
 
 		return sshClient;
 	}
@@ -182,10 +179,28 @@ export class SSHClientsManager {
 		if (registration) {
 			this.clients.delete(key);
 			registration.client.end();
-			if (!registration.abortController.signal.aborted) {
-				registration.abortController.abort();
+			for (const controller of registration.abortControllers) {
+				if (!controller.signal.aborted) {
+					controller.abort();
+				}
 			}
 		}
+	}
+
+	private subscribeAbortController(clientHash: string, abortController: AbortController) {
+		abortController.signal.addEventListener('abort', () => {
+			this.logger.debug('Got abort signal, releasing ssh client.', {
+				reason: abortController.signal.reason,
+			});
+			const registration = this.clients.get(clientHash);
+
+			if (!registration) return;
+			registration.abortControllers.delete(abortController);
+			// Other callers may still be using this client.
+			if (registration.abortControllers.size === 0) {
+				this.cleanupClient(clientHash);
+			}
+		});
 	}
 
 	onShutdown() {

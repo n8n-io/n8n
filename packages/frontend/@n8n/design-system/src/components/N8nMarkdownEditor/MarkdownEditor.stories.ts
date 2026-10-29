@@ -4,65 +4,36 @@ import { computed, ref } from 'vue';
 
 import N8nMarkdownEditor from './MarkdownEditor.vue';
 
-const defaultMarkdown = `# Agent instructions
+/** Full agent instructions with bullets, a table, and links, as used in all stories. */
+const agentInstructionsMarkdown = `# Agent instructions
 
-Write clear, concise responses.
+You are a workflow assistant for an automation platform. Follow these rules in every response.
 
-- Use the available tools when needed
-- Ask for clarification when requirements are ambiguous
-- Keep answers grounded in the current workflow
+## General behavior
 
-> Prefer practical implementation details over abstract advice.
+- Answer with short sentences and the active voice.
+- Use the available tools before you guess an answer.
+- Ask for clarification when the user's request is ambiguous.
+- Ground every claim in the current workflow or linked documentation.
 
-Use **bold** for important labels and *italics* for nuance.`;
+## Node guidance
 
-const gfmMarkdown = `# GFM coverage
+Refer to the table below before you suggest a node.
 
-## Task list
+| Task | Node | Notes |
+| --- | --- | --- |
+| Call an HTTP endpoint | HTTP Request | Set the retry option for flaky APIs |
+| Transform data in place | Code | Keep the code under 50 lines |
+| Split items for parallel work | Loop Over Items | Use with a Merge node to rejoin |
+| Send a message on completion | Slack | Prefer credentials over tokens |
 
-- [x] Parse markdown strings
-- [x] Render rich text blocks
-- [ ] Add production toolbar controls
+## Useful references
 
-## Table
+- Read the [workflow docs](https://docs.n8n.io/workflows/) for editor basics.
+- Check the [HTTP Request node docs](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.httprequest/) for request options.
+- See the [coding guidelines](https://docs.n8n.io/code/) before you write expressions.
 
-| Feature | Status |
-| --- | --- |
-| Headings | Supported |
-| Tables | Supported |
-| Task lists | Supported |
-
-## Formatting
-
-This includes ~~strikethrough~~, [links](https://n8n.io), inline \`code\`, and fenced code blocks.
-
-\`\`\`ts
-const value = editor.getMarkdown();
-\`\`\``;
-
-const longInstructionsMarkdown = `# Customer support agent
-
-You are a customer support assistant for an automation platform.
-
-## Response style
-
-- Be direct and specific.
-- Explain assumptions before giving steps.
-- Use numbered steps for procedures.
-- Do not invent product capabilities.
-
-## Escalation rules
-
-Escalate to a human when:
-
-1. The user reports data loss.
-2. The user asks for billing changes.
-3. The user shares credentials or secrets.
-4. The answer depends on private account data.
-
-## Tooling
-
-When a workflow error is provided, identify the failing node, summarize the likely cause, and suggest the smallest next diagnostic step.`;
+> When a request needs a capability that no node covers, say so and propose the closest safe alternative.`;
 
 const meta: Meta<typeof N8nMarkdownEditor> = {
 	title: 'Core/MarkdownEditor',
@@ -80,6 +51,9 @@ const meta: Meta<typeof N8nMarkdownEditor> = {
 			control: 'text',
 		},
 		isCollapsible: {
+			control: 'boolean',
+		},
+		allowExpandedView: {
 			control: 'boolean',
 		},
 		disabled: {
@@ -144,38 +118,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
 	args: {
-		modelValue: defaultMarkdown,
+		modelValue: agentInstructionsMarkdown,
 		variant: 'contained',
 		placeholder: 'Write Markdown...',
 		showToolbar: 'always',
 		maxHeight: '480px',
 		isCollapsible: false,
+		allowExpandedView: false,
 		disabled: false,
 		readonly: false,
-	},
-};
-
-export const Variants: Story = {
-	render: () => ({
-		components: { N8nMarkdownEditor },
-		setup() {
-			const contained = ref(defaultMarkdown);
-			const ghost = ref(defaultMarkdown);
-			return { contained, ghost };
-		},
-		template: `
-			<div style="display: flex; flex-direction: column; gap: 24px; max-width: 760px;">
-				<n8n-markdown-editor v-model="contained" variant="contained" placeholder="Write Markdown..." show-toolbar="always" max-height="280px" />
-				<n8n-markdown-editor v-model="ghost" variant="ghost" placeholder="Write Markdown..." show-toolbar="always" max-height="280px" />
-			</div>
-		`,
-	}),
-};
-
-export const Contained: Story = {
-	args: {
-		...Default.args,
-		variant: 'contained',
 	},
 };
 
@@ -183,84 +134,101 @@ export const Ghost: Story = {
 	args: {
 		...Default.args,
 		variant: 'ghost',
-	},
-};
-
-export const WithoutToolbar: Story = {
-	args: {
-		...Default.args,
-		showToolbar: 'never',
-	},
-};
-
-export const AlwaysVisibleToolbar: Story = {
-	args: {
-		...Default.args,
-		showToolbar: 'always',
-	},
-};
-
-export const FloatingToolbar: Story = {
-	args: {
-		...Default.args,
 		showToolbar: 'floating',
+		maxHeight: '320px',
 	},
 	parameters: {
 		docs: {
 			description: {
-				story: 'Select text in the editor to show the floating toolbar.',
+				story:
+					'A more minimalist variant with a floating bubble menu toolbar. Select text to show the bubble menu.',
 			},
 		},
 	},
 };
 
-export const GfmContent: Story = {
-	args: {
-		...Default.args,
-		modelValue: gfmMarkdown,
-		variant: 'contained',
-	},
-};
-
-export const Disabled: Story = {
-	args: {
-		...Default.args,
-		disabled: true,
-		variant: 'contained',
-	},
-};
-
 export const Readonly: Story = {
+	render: (args) => ({
+		components: { N8nMarkdownEditor },
+		setup() {
+			const value = ref(args.modelValue);
+			const readonly = ref(true);
+			const editorArgs = computed(() => {
+				const { modelValue: _modelValue, readonly: _readonly, ...rest } = args;
+				return { ...rest, readonly: readonly.value };
+			});
+
+			function toggleReadonly() {
+				readonly.value = !readonly.value;
+			}
+
+			return {
+				value,
+				readonly,
+				editorArgs,
+				toggleReadonly,
+				onUpdateModelValue: action('update:modelValue'),
+				onInput: action('input'),
+				onFocus: action('focus'),
+				onBlur: action('blur'),
+				onReady: action('ready'),
+			};
+		},
+		template: `
+			<div style="max-width: 760px; display: flex; flex-direction: column; gap: 16px;">
+				<label style="display: flex; align-items: center; gap: 8px;">
+					<input type="checkbox" :checked="readonly" @change="toggleReadonly" />
+					<span>Read-only</span>
+				</label>
+				<n8n-markdown-editor
+					v-bind="editorArgs"
+					v-model="value"
+					@update:modelValue="onUpdateModelValue"
+					@input="onInput"
+					@focus="onFocus"
+					@blur="onBlur"
+					@ready="onReady"
+				/>
+			</div>
+		`,
+	}),
 	args: {
 		...Default.args,
 		readonly: true,
-		variant: 'contained',
 	},
 };
 
-export const LongInstructions: Story = {
+export const Expanded: Story = {
 	args: {
 		...Default.args,
-		modelValue: longInstructionsMarkdown,
-		variant: 'contained',
+		allowExpandedView: true,
+		maxHeight: '320px',
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Allow for editing in dialog mode. Open the expanded view from the toolbar, edit there, and close to return.',
+			},
+		},
 	},
 };
 
 export const Collapsible: Story = {
 	args: {
 		...Default.args,
-		modelValue: longInstructionsMarkdown,
-		isCollapsible: true,
 		variant: 'ghost',
-	},
-};
-
-export const Empty: Story = {
-	args: {
-		...Default.args,
-		modelValue: '',
 		showToolbar: 'never',
-		variant: 'contained',
-		placeholder: 'Write instructions...',
+		readonly: true,
+		isCollapsible: true,
+		maxHeight: '480px',
+	},
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Prefer use with the ghost and read-only options. The editor collapses when content exceeds the collapsed height.',
+			},
+		},
 	},
 };

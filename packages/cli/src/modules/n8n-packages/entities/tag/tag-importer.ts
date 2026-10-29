@@ -3,19 +3,12 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { ForbiddenError } from '@n8n/errors';
 import { TagService } from '@/services/tag.service';
 
 import { decideTagImportAction } from './tag-import-decision';
 import type { TagDecisionFailure } from './tag-import-decision';
-import { sortedUnique } from './tag.types';
-import type {
-	ReferencingWorkflow,
-	TagImportPlan,
-	TagImportRequest,
-	TagRef,
-	TagResolutionFailure,
-} from './tag.types';
+import type { ReferencingWorkflow, TagImportPlan, TagImportRequest, TagRef } from './tag.types';
 import type { ImportContext } from '../../n8n-packages.types';
 
 @Service()
@@ -63,20 +56,14 @@ export class TagImporter {
 			return requirement;
 		});
 
-		const targetsById = new Map(
-			(await this.tagService.getByIds(referencedTagIds)).map((tag) => [tag.id, toTagRef(tag)]),
-		);
-		const wantedNames = [...new Set(referencedRequirements.map(({ name }) => name.trim()))];
-		const holdersByName = new Map(
-			(await this.tagService.getByNames(wantedNames)).map((tag) => [tag.name, toTagRef(tag)]),
-		);
+		const local = await this.findLocalTags(referencedRequirements);
 
 		const decisionFailures: TagDecisionFailure[] = [];
 		for (const requirement of referencedRequirements) {
-			const holder = holdersByName.get(requirement.name.trim());
+			const holder = local.byName.get(requirement.name.trim());
 			const effect = decideTagImportAction(
 				requirement,
-				targetsById.get(requirement.id),
+				local.byId.get(requirement.id),
 				holder && holder.id !== requirement.id ? holder : undefined,
 				request.missingMode,
 				request.conflictPolicy,
@@ -91,35 +78,38 @@ export class TagImporter {
 
 		decisionFailures.push(...duplicateWrittenNameFailures(plan));
 
-		const sourceWorkflowIdsReferencing = (tagId: string) =>
-			appliedWorkflows
-				.filter(({ tagIds }) => tagIds?.includes(tagId))
-				.map(({ sourceWorkflowId }) => sourceWorkflowId);
-
-		plan.failures = decisionFailures.map((failure) => ({
-			...failure,
-			usedByWorkflows: sortedUnique(sourceWorkflowIdsReferencing(failure.sourceId)),
-		}));
+		plan.failures = decisionFailures;
 
 		// Tags are global entities, so gate on the user's global scopes: project-level
 		// workflow:import alone must not grant instance-wide tag writes.
 		if (plan.creations.length > 0 && !hasGlobalScope(context.user, 'tag:create')) {
-			plan.failures.push(
-				permissionFailure(
-					'tag:create',
-					plan.creations.map(({ id }) => id),
-					sourceWorkflowIdsReferencing,
-				),
-			);
+			plan.failures.push({ kind: 'permission-denied', missingScope: 'tag:create' });
 		}
-		const updatedTagIds = [...plan.renames, ...plan.reconciles].map(({ id }) => id);
-		if (updatedTagIds.length > 0 && !hasGlobalScope(context.user, 'tag:update')) {
-			plan.failures.push(
-				permissionFailure('tag:update', updatedTagIds, sourceWorkflowIdsReferencing),
-			);
+		if (
+			(plan.renames.length > 0 || plan.reconciles.length > 0) &&
+			!hasGlobalScope(context.user, 'tag:update')
+		) {
+			plan.failures.push({ kind: 'permission-denied', missingScope: 'tag:update' });
 		}
 
 		return plan;
+	}
+
+	/**
+	 * Finds the local tags that can match package tags: by ID, and by name. Names match
+	 * trimmed and case-sensitive. The promotions preview uses this too, so it matches as Apply does.
+	 */
+	async findLocalTags(
+		tags: ReadonlyArray<{ id: string; name: string }>,
+	): Promise<{ byId: Map<string, TagRef>; byName: Map<string, TagRef> }> {
+		const [byId, byName] = await Promise.all([
+			this.tagService.getByIds([...new Set(tags.map(({ id }) => id))]),
+			this.tagService.getByNames([...new Set(tags.map(({ name }) => name.trim()))]),
+		]);
+		return {
+			byId: new Map(byId.map((tag) => [tag.id, toTagRef(tag)])),
+			byName: new Map(byName.map((tag) => [tag.name, toTagRef(tag)])),
+		};
 	}
 
 	/**
@@ -206,16 +196,4 @@ function duplicateWrittenNameFailures(plan: TagImportPlan): TagDecisionFailure[]
 				({ id, to }): TagDecisionFailure => ({ kind: 'name-collision', sourceId: id, name: to }),
 			),
 	];
-}
-
-function permissionFailure(
-	missingScope: 'tag:create' | 'tag:update',
-	tagIds: string[],
-	sourceWorkflowIdsReferencing: (tagId: string) => string[],
-): TagResolutionFailure {
-	return {
-		kind: 'permission-denied',
-		missingScope,
-		usedByWorkflows: sortedUnique(tagIds.flatMap(sourceWorkflowIdsReferencing)),
-	};
 }

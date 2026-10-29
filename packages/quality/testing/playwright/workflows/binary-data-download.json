@@ -1,0 +1,59 @@
+{
+	"name": "Binary data download",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"assignments": {
+					"assignments": [
+						{
+							"id": "text",
+							"name": "text",
+							"value": "the editor downloads this file",
+							"type": "string"
+						}
+					]
+				},
+				"options": {}
+			},
+			"id": "edit-fields",
+			"name": "Edit Fields",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 3.4,
+			"position": [220, 0]
+		},
+		{
+			"parameters": {
+				"operation": "toText",
+				"sourceProperty": "text",
+				"binaryPropertyName": "data",
+				"options": {
+					"fileName": "download.txt"
+				}
+			},
+			"id": "convert-to-file",
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
+			"position": [440, 0]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [[{ "node": "Edit Fields", "type": "main", "index": 0 }]]
+		},
+		"Edit Fields": {
+			"main": [[{ "node": "Convert to File", "type": "main", "index": 0 }]]
+		}
+	},
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

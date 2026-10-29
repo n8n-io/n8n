@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'crypto';
 import type { Mock } from 'vitest';
 
-import { verifySignature } from '../SlackTriggerHelpers';
+import { downloadFile, verifySignature } from '../SlackTriggerHelpers';
 import type * as _importType0 from 'crypto';
 
 vi.mock('crypto', async () => ({
@@ -194,6 +194,47 @@ describe('SlackTriggerHelpers', () => {
 			// Should return true because timestamp is valid and signature secret is not required
 			expect(result).toBe(true);
 			expect(mockWebhookFunctions.getCredentials).toHaveBeenCalledWith('slackApi');
+		});
+	});
+
+	describe('downloadFile', () => {
+		let requestWithAuthentication: Mock;
+
+		beforeEach(() => {
+			requestWithAuthentication = vi.fn().mockResolvedValue(Buffer.from('file'));
+			mockWebhookFunctions.helpers = { requestWithAuthentication };
+		});
+
+		it.each([
+			'https://files.slack.com/files-pri/T1-F1/download/test.txt',
+			'https://files.slack-gov.com/files-pri/T1-F1/download/test.txt',
+		])(
+			'should download a file from a Slack host with the Slack host allowlist: %s',
+			async (url) => {
+				await downloadFile.call(mockWebhookFunctions, url);
+
+				expect(requestWithAuthentication).toHaveBeenCalledWith(
+					'slackApi',
+					expect.objectContaining({
+						url,
+						allowedDomains: '*.slack.com, *.slack-gov.com',
+						sendCredentialsOnCrossOriginRedirect: false,
+					}),
+				);
+			},
+		);
+
+		it.each([
+			'https://example.com/file',
+			'http://localhost:9111/file',
+			'http://files.slack.com/file',
+			'https://files.slack.com.example.com/file',
+			'https://example.com/?host=files.slack.com',
+		])('should reject a file URL outside the Slack hosts: %s', async (url) => {
+			await expect(downloadFile.call(mockWebhookFunctions, url)).rejects.toThrow(
+				'The file URL is not an HTTPS Slack file URL',
+			);
+			expect(requestWithAuthentication).not.toHaveBeenCalled();
 		});
 	});
 });

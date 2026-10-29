@@ -33,7 +33,7 @@ vi.mock('multer', () => {
 	return { __esModule: true, default: multerMock };
 });
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 
 import type { DataTableSizeValidator } from '../data-table-size-validator.service';
 import type { DataTableRepository } from '../data-table.repository';

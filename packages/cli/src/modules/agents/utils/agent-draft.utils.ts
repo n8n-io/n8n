@@ -1,22 +1,15 @@
+import type { OperationContext } from '@n8n/db';
 import { v4 as uuid } from 'uuid';
 
-import { ConflictError } from '@/errors/response-errors/conflict.error';
+import { ConflictError } from '@n8n/errors';
 
 import type { Agent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import type { AgentDefinitionMetadata } from './agent-definition';
 
-/** The repository's opaque transaction handle, without importing the ORM here. */
-type DraftSaveTransaction = Parameters<AgentRepository['saveDraftFenced']>[1];
-
-/**
- * Start a new draft if the agent is currently in sync with the published snapshot.
- * Any mutation that changes how the agent would run must call this so that
- * `hasUnpublishedChanges` stays accurate.
- */
+/** Each changed definition needs an ID that cannot refer to an older snapshot. */
 export function markAgentDraftDirty(agent: Agent): void {
-	if (agent.versionId !== null && agent.versionId === agent.activeVersionId) {
-		agent.versionId = uuid();
-	}
+	agent.versionId = uuid();
 }
 
 /**
@@ -28,9 +21,10 @@ export function markAgentDraftDirty(agent: Agent): void {
 export async function saveAgentDraftFenced(
 	agentRepository: AgentRepository,
 	agent: Agent,
-	trx?: DraftSaveTransaction,
+	ctx: OperationContext = {},
+	metadata?: AgentDefinitionMetadata,
 ): Promise<Agent> {
-	const won = await agentRepository.saveDraftFenced(agent, trx);
+	const won = await agentRepository.saveDraftFenced(agent, ctx, metadata);
 	if (!won) {
 		throw new ConflictError('Agent was modified concurrently; please retry');
 	}

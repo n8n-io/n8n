@@ -4,6 +4,7 @@ import { ProjectRelationRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
 
+import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
@@ -67,23 +68,22 @@ beforeEach(async () => {
 
 const ISO_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
 
-const testWithAPIKey =
-	(method: 'get' | 'post' | 'patch' | 'delete', url: string, apiKey: string | null) => async () => {
-		void authOwnerAgent.set({ 'X-N8N-API-KEY': apiKey });
-		const response = await authOwnerAgent[method](url);
-		expect(response.statusCode).toBe(401);
-	};
-
 describe('POST /projects/:projectId/folders', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('post', `/projects/${String('any-id')}/folders`, null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.post(`/projects/${String('any-id')}/folders`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('post', `/projects/${String('any-id')}/folders`, 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.post(`/projects/${String('any-id')}/folders`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 403 when feature is not licensed', async () => {
 		const response = await authOwnerAgent
@@ -131,6 +131,30 @@ describe('POST /projects/:projectId/folders', () => {
 			.send({});
 
 		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			message: "request/body must have required property 'name'",
+		});
+	});
+
+	test('should return 400 when folder name is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.send({ name: '' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toContain('Folder name cannot be empty');
+	});
+
+	test('should return 400 when the body carries an unknown key', async () => {
+		testServer.license.enable('feat:folders');
+
+		const response = await authOwnerAgent
+			.post(`/projects/${ownerPersonalProject.id}/folders`)
+			.send({ name: 'Folder', unknownKey: 'nope' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should return 404 when parentFolderId is invalid', async () => {
@@ -161,8 +185,13 @@ describe('POST /projects/:projectId/folders', () => {
 			.send({ name: 'My Folder' });
 
 		expect(response.statusCode).toBe(201);
-		expect(response.body).toHaveProperty('id');
-		expect(response.body).toHaveProperty('name', 'My Folder');
+		expect(response.body).toStrictEqual({
+			id: expect.any(String),
+			name: 'My Folder',
+			parentFolderId: null,
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
+		});
 	});
 
 	test('should create a folder with parentFolderId', async () => {
@@ -176,6 +205,7 @@ describe('POST /projects/:projectId/folders', () => {
 
 		expect(response.statusCode).toBe(201);
 		expect(response.body).toHaveProperty('name', 'Child');
+		expect(response.body).toHaveProperty('parentFolderId', parentFolder.id);
 	});
 
 	test('should return 500 when createFolder throws an unexpected error', async () => {
@@ -223,15 +253,21 @@ describe('POST /projects/:projectId/folders', () => {
 });
 
 describe('GET /projects/:projectId/folders', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('get', `/projects/${String('any-id')}/folders`, null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get(`/projects/${String('any-id')}/folders`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('get', `/projects/${String('any-id')}/folders`, 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get(`/projects/${String('any-id')}/folders`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 403 when feature is not licensed', async () => {
 		const response = await authOwnerAgent.get(`/projects/${ownerPersonalProject.id}/folders`);
@@ -483,19 +519,21 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		return { agent, personalProject };
 	};
 
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('delete', `/projects/${String('any-id')}/folders/${String('folder-id')}`, null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.delete(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey(
-			'delete',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			'abcXYZ',
-		),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.delete(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 403 when feature is not licensed', async () => {
 		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
@@ -560,6 +598,28 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should return 400 when transferToFolderId is empty', async () => {
+		testServer.license.enable('feat:folders');
+		const { agent, personalProject } = await createDeleteScopedAgent();
+
+		const folder = await createFolder(personalProject, { name: 'Folder' });
+
+		const response = await agent
+			.delete(`/projects/${personalProject.id}/folders/${folder.id}`)
+			.query({ transferToFolderId: '' });
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toEqual({
+			message: 'request/query/transferToFolderId must not be empty',
+		});
+
+		const stillThere = await Container.get(FolderService).findFolderInProjectOrFail(
+			folder.id,
+			personalProject.id,
+		);
+		expect(stillThere.id).toBe(folder.id);
+	});
+
 	test('should return 400 for invalid transferToFolderId query format', async () => {
 		testServer.license.enable('feat:folders');
 		const { agent, personalProject } = await createDeleteScopedAgent();
@@ -569,6 +629,19 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		const response = await agent
 			.delete(`/projects/${personalProject.id}/folders/${folder.id}`)
 			.query({ transferToFolderId: ['folder-a', 'folder-b'] });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for an undocumented query parameter', async () => {
+		testServer.license.enable('feat:folders');
+		const { agent, personalProject } = await createDeleteScopedAgent();
+
+		const folder = await createFolder(personalProject, { name: 'Folder' });
+
+		const response = await agent
+			.delete(`/projects/${personalProject.id}/folders/${folder.id}`)
+			.query({ unknownParam: 'x' });
 
 		expect(response.statusCode).toBe(400);
 	});
@@ -586,7 +659,7 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		expect(response.statusCode).toBe(400);
 	});
 
-	test('should delete a folder in personal project', async () => {
+	test('should delete a folder in personal project and send no response body', async () => {
 		testServer.license.enable('feat:folders');
 		const { agent, personalProject } = await createDeleteScopedAgent();
 
@@ -595,6 +668,12 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 		const response = await agent.delete(`/projects/${personalProject.id}/folders/${folder.id}`);
 
 		expect(response.statusCode).toBe(204);
+		expect(response.text).toBe('');
+		expect(response.body).toEqual({});
+
+		await expect(
+			Container.get(FolderService).findFolderInProjectOrFail(folder.id, personalProject.id),
+		).rejects.toThrow(FolderNotFoundError);
 	});
 
 	test('should delete folder and transfer child folders to transferToFolderId', async () => {
@@ -675,15 +754,21 @@ describe('DELETE /projects/:projectId/folders/:folderId', () => {
 });
 
 describe('GET /projects/:projectId/folders/:folderId', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('get', `/projects/${String('any-id')}/folders/${String('folder-id')}`, null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.get(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey('get', `/projects/${String('any-id')}/folders/${String('folder-id')}`, 'abcXYZ'),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.get(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 403 when feature is not licensed', async () => {
 		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
@@ -827,19 +912,21 @@ describe('GET /projects/:projectId/folders/:folderId', () => {
 });
 
 describe('PATCH /projects/:projectId/folders/:folderId', () => {
-	test(
-		'should fail due to missing API Key',
-		testWithAPIKey('patch', `/projects/${String('any-id')}/folders/${String('folder-id')}`, null),
-	);
+	test('should fail due to missing API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithoutApiKey()
+			.patch(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
 
-	test(
-		'should fail due to invalid API Key',
-		testWithAPIKey(
-			'patch',
-			`/projects/${String('any-id')}/folders/${String('folder-id')}`,
-			'abcXYZ',
-		),
-	);
+		expect(response.statusCode).toBe(401);
+	});
+
+	test('should fail due to invalid API Key', async () => {
+		const response = await testServer
+			.publicApiAgentWithApiKey('abcXYZ')
+			.patch(`/projects/${String('any-id')}/folders/${String('folder-id')}`);
+
+		expect(response.statusCode).toBe(401);
+	});
 
 	test('should return 403 when feature is not licensed', async () => {
 		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
@@ -890,7 +977,49 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			.send({ name: 'Renamed' });
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body).toHaveProperty('name', 'Renamed');
+		expect(response.body).toStrictEqual({
+			id: folder.id,
+			name: 'Renamed',
+			parentFolderId: null,
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
+		});
+	});
+
+	test('should return 400 when the body is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({});
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 for an unknown body property', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: 'Renamed', unknownProperty: true });
+
+		expect(response.statusCode).toBe(400);
+	});
+
+	test('should return 400 when the name is empty', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Original' });
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: '   ' });
+
+		expect(response.statusCode).toBe(400);
 	});
 
 	test('should update parent folder', async () => {
@@ -904,6 +1033,28 @@ describe('PATCH /projects/:projectId/folders/:folderId', () => {
 			.send({ parentFolderId: parentFolder.id });
 
 		expect(response.statusCode).toBe(200);
+		expect(response.body).toStrictEqual({
+			id: childFolder.id,
+			name: 'Child',
+			parentFolderId: parentFolder.id,
+			createdAt: expect.stringMatching(ISO_DATE_TIME),
+			updatedAt: expect.stringMatching(ISO_DATE_TIME),
+		});
+	});
+
+	test('should return 500 when updateFolder throws an unexpected error', async () => {
+		testServer.license.enable('feat:folders');
+
+		const folder = await createFolder(ownerPersonalProject, { name: 'Folder' });
+		vi.spyOn(Container.get(FolderService), 'updateFolder').mockRejectedValueOnce(
+			new Error('Unexpected update error'),
+		);
+
+		const response = await authOwnerAgent
+			.patch(`/projects/${ownerPersonalProject.id}/folders/${folder.id}`)
+			.send({ name: 'Renamed' });
+
+		expect(response.statusCode).toBe(500);
 	});
 
 	test('should return 404 when folder does not exist', async () => {

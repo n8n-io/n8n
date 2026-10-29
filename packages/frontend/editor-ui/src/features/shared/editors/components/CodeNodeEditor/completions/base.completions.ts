@@ -6,6 +6,7 @@ import type { INodeUi } from '@/Interface';
 import { injectWorkflowDocumentStore } from '@/app/stores/workflowDocument.store';
 import { escapeMappingString } from '@/app/utils/mappingUtils';
 import { useI18n } from '@n8n/i18n';
+import { matchBeforeCursor } from './utils';
 
 function getAutoCompletableNodeNames(nodes: INodeUi[]) {
 	return nodes
@@ -21,9 +22,8 @@ export function useBaseCompletions(
 	const workflowDocumentStore = injectWorkflowDocumentStore();
 
 	const itemCompletions = (context: CompletionContext): CompletionResult | null => {
-		const preCursor = context.matchBefore(/i\w*/);
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, /i\w*/);
+		if (!preCursor) return null;
 
 		const options: Completion[] = [];
 
@@ -52,9 +52,8 @@ export function useBaseCompletions(
 	 */
 	const baseCompletions = (context: CompletionContext): CompletionResult | null => {
 		const prefix = language === 'python' ? '_' : '$';
-		const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\w*`));
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, new RegExp(`\\${prefix}\\w*`));
+		if (!preCursor) return null;
 
 		const TOP_LEVEL_COMPLETIONS_IN_BOTH_MODES: Completion[] = [
 			{
@@ -140,9 +139,8 @@ export function useBaseCompletions(
 	 */
 	const nodeSelectorCompletions = (context: CompletionContext): CompletionResult | null => {
 		const prefix = language === 'python' ? '_' : '$';
-		const preCursor = context.matchBefore(new RegExp(`\\${prefix}\\(.*`));
-
-		if (!preCursor || (preCursor.from === preCursor.to && !context.explicit)) return null;
+		const preCursor = matchBeforeCursor(context, new RegExp(`\\${prefix}\\(.*`));
+		if (!preCursor) return null;
 
 		const options: Completion[] = getAutoCompletableNodeNames(
 			workflowDocumentStore?.value?.allNodes ?? [],
