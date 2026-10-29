@@ -1565,8 +1565,6 @@ export class WorkflowService {
 
 		await this._teardownActiveVersion(workflow, deactivatedVersionId, null);
 
-		// This path emits no `workflow-deactivated` event, so remove the published
-		// dependency rows here. The call logs failures and does not throw.
 		await this.workflowIndexService.removePublishedDependenciesForWorkflow(workflowId);
 	}
 

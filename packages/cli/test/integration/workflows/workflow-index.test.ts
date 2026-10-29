@@ -380,16 +380,12 @@ describe('WorkflowIndexService Integration', () => {
 				.sort();
 		};
 
-		// CONTEXT-399: unpublish leaves the published-lane rows behind, and a later draft
-		// save only prunes draft-lane rows, so the old credential keeps listing the workflow.
 		it('should stop listing the old credential after unpublish and a draft save with a new credential', async () => {
 			const owner = await createOwner();
 			const oldCredentialId = 'old-credential-x';
 			const newCredentialId = 'new-credential-y';
 
-			// 1. Create and index a workflow that uses credential X.
 			const workflow = await createWorkflow({ nodes: [nodeWithCredential(oldCredentialId)] });
-			// `createWorkflow` pre-seeds nodeType-only rows; drop them so the indexer writes real ones.
 			await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
 			eventService.emit('workflow-created', {
 				user: createUserPayload(owner),
@@ -402,7 +398,6 @@ describe('WorkflowIndexService Integration', () => {
 				expect(await credentialKeys(workflow.id)).toEqual([oldCredentialId]);
 			});
 
-			// 2. Publish it. Published-lane rows for X are written.
 			const publishedVersionId = uuid();
 			await createWorkflowHistory({ ...workflow, versionId: publishedVersionId });
 			await setActiveVersion(workflow.id, publishedVersionId);
@@ -420,7 +415,6 @@ describe('WorkflowIndexService Integration', () => {
 				expect(deps.some((d) => d.dependencyKey === oldCredentialId)).toBe(true);
 			});
 
-			// 3. Unpublish it.
 			await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
 			workflow.active = false;
 			workflow.activeVersionId = null;
@@ -432,7 +426,6 @@ describe('WorkflowIndexService Integration', () => {
 				deactivatedVersionId: publishedVersionId,
 			});
 
-			// 4. Switch the node to credential Y and save as a draft.
 			workflow.nodes = [nodeWithCredential(newCredentialId)];
 			workflow.versionCounter = workflow.versionCounter + 1;
 			const savedWorkflow = await workflowRepository.save(workflow);
@@ -442,7 +435,6 @@ describe('WorkflowIndexService Integration', () => {
 				publicApi: false,
 			});
 
-			// 5. Only credential Y should list the workflow. No version uses X any more.
 			await retryUntil(async () => {
 				expect(await credentialKeys(workflow.id)).toEqual([newCredentialId]);
 			});

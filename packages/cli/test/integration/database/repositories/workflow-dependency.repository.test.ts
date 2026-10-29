@@ -25,7 +25,6 @@ describe('WorkflowDependencyRepository', () => {
 	const isPostgres = process.env.DB_TYPE === 'postgresdb';
 
 	beforeAll(async () => {
-		// Use separate connections for concurrent transactions.
 		Container.get(GlobalConfig).database.postgresdb.poolSize = 4;
 		await testDb.init();
 		workflowDependencyRepository = Container.get(WorkflowDependencyRepository);
@@ -430,7 +429,6 @@ describe('WorkflowDependencyRepository', () => {
 			expect(remaining.filter((row) => row.publishedVersionId !== null)).toHaveLength(1);
 		});
 
-		// SQLite runs one write transaction at a time, so only Postgres can interleave them.
 		describe.runIf(isPostgres)('with a concurrent published index update', () => {
 			const PAUSE_WRITER = 42407001;
 
@@ -447,7 +445,6 @@ describe('WorkflowDependencyRepository', () => {
 				});
 				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, oldPublished);
 
-				// Pause the writer after it deletes the old published rows, before it inserts.
 				await dataSource.query(`CREATE FUNCTION pause_dependency_writer() RETURNS trigger LANGUAGE plpgsql AS $$
 						BEGIN
 							PERFORM pg_advisory_xact_lock(${PAUSE_WRITER});
@@ -493,7 +490,6 @@ describe('WorkflowDependencyRepository', () => {
 					cleanup = workflowDependencyRepository.removePublishedDependenciesForUnpublishedWorkflow(
 						workflow.id,
 					);
-					// The cleanup now waits for a row lock that the paused writer holds.
 					await waitForLockWaiters(
 						`SELECT count(*) FROM pg_stat_activity
 						  WHERE datname = current_database() AND wait_event_type = 'Lock' AND wait_event <> 'advisory'`,
@@ -512,7 +508,6 @@ describe('WorkflowDependencyRepository', () => {
 					await dataSource.query('DROP FUNCTION pause_dependency_writer()');
 				}
 
-				// The workflow is not published, so the cleanup removed the rows the writer added.
 				const remaining = await workflowDependencyRepository.find({
 					where: { workflowId: workflow.id },
 				});

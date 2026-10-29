@@ -147,7 +147,7 @@ describe('SourceControlImportService', () => {
 		workflowMutationHooks,
 		workflowFinderService,
 		deprecatedNodesValidationService,
-		mock(), // workflowIndexService
+		mock(),
 	);
 
 	const globMock = fastGlob.default as unknown as Mock<(...args: string[]) => Promise<string[]>>;

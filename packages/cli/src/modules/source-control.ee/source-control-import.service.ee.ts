@@ -962,8 +962,6 @@ export class SourceControlImportService {
 			await this.workflowMutationHooks.afterWorkflowArchived(id, null);
 		}
 
-		// The upsert bypasses `WorkflowService`, so no `workflow-saved` event updates the index.
-		// Read the stored row to index with the `versionCounter` the DB trigger assigned.
 		const storedWorkflow = await this.workflowRepository.findOneBy({ id });
 		if (storedWorkflow) {
 			await this.workflowIndexService.updateIndexForDraft(storedWorkflow);

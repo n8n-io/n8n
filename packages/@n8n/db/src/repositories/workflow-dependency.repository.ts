@@ -244,8 +244,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		// care about the specific previous published version id.
 		const publishedVersionCondition = dependencies.publishedVersionId ? Not(IsNull()) : IsNull();
 
-		// Lock the workflow row before any dependency row. Every index writer takes the
-		// locks in this order, so concurrent writers wait instead of deadlocking.
 		await this.lockWorkflowRow(workflowId, tx);
 
 		// Replace rows from an older workflow version, and rows an older indexer
@@ -281,9 +279,7 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 			return true;
 		}
 
-		// Nothing was deleted - either no existing data, or existing data is newer/same version.
-		// The workflow row lock stops two processes from inserting rows for the same workflow
-		// at the same time.
+		// Nothing was deleted - either no existing data, or existing data is newer/same version
 		const hasData = await tx.existsBy(WorkflowDependency, {
 			workflowId,
 			publishedVersionId: dependencies.publishedVersionId ?? IsNull(),
@@ -328,17 +324,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
-	/**
-	 * Remove the published dependencies of a workflow that is no longer published.
-	 *
-	 * Draft index writes only prune draft rows, so without this the rows of the last
-	 * published version stay after unpublish. The workflow row is locked and re-checked
-	 * inside the transaction, so a concurrent republish cannot write its rows between
-	 * the check and the delete.
-	 *
-	 * @param workflowId The ID of the workflow
-	 * @returns Whether any dependencies were removed
-	 */
 	async removePublishedDependenciesForUnpublishedWorkflow(workflowId: string): Promise<boolean> {
 		return await this.manager.transaction(async (tx) => {
 			await this.lockWorkflowRow(workflowId, tx);
@@ -378,7 +363,6 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 	 * and then waits for the workflow row can deadlock with one that does the reverse.
 	 */
 	private async lockWorkflowRow(workflowId: string, tx: EntityManager): Promise<void> {
-		// SQLite locks the entire database for writes, so no explicit row lock is needed.
 		if (this.databaseConfig.type === 'sqlite') return;
 
 		const placeholder = this.databaseConfig.type === 'postgresdb' ? '$1' : '?';

@@ -67,8 +67,6 @@ export class WorkflowIndexService {
 			await this.updateIndexForPublished(workflow, workflow.activeVersionId, workflow.nodes);
 		});
 		this.eventService.on('workflow-deactivated', async ({ workflow, workflowId }) => {
-			// A republish also emits this event, with the workflow still published.
-			// The following `workflow-activated` event replaces the published rows.
 			if (workflow.activeVersionId !== null) return;
 			await this.removePublishedDependenciesForWorkflow(workflowId);
 		});
