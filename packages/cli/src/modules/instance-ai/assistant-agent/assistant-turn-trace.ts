@@ -1,5 +1,12 @@
-import type { JSONObject } from '@n8n/agents';
-import type { AssistantTracePayload, InstanceAiEvent } from '@n8n/api-types';
+import { isCancellation, type JSONObject } from '@n8n/agents';
+import {
+	ASSISTANT_TRACE_EVENT,
+	type AssistantTracePayload,
+	type InstanceAiEvent,
+	type InstanceAiFileAttachment,
+	type InstanceAiResourceAttachment,
+	type InstanceAiThreadArtifactsContext,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import {
@@ -21,6 +28,8 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type {
 	AgentExecutionStreamChunk,
+	SystemAgentResumeTurn,
+	SystemAgentTurn,
 	SystemAgentTurnOutcome,
 } from '@/modules/agents/system-agents/system-agent.types';
 
@@ -34,9 +43,10 @@ import {
 	buildSuspensionTraceMetadata,
 	buildSuspensionTraceOutputs,
 } from '../tracing/suspension-trace';
+import { buildAssistantTurnTraceInput } from '../turn-setup/assistant-turn-trace-input';
 
 /** Checkpoint host metadata key that carries the trace of a turn to its resume. */
-export const ASSISTANT_TRACE_METADATA_KEY = 'assistantTrace';
+const ASSISTANT_TRACE_METADATA_KEY = 'assistantTrace';
 
 /** The first chunks that the user sees: answer text, visible reasoning or a tool call. */
 const RESPONSE_CHUNK_TYPES: ReadonlySet<string> = new Set([
@@ -51,7 +61,7 @@ const RESPONSE_CHUNK_TYPES: ReadonlySet<string> = new Set([
 const RUNTIME_TRACE_METADATA = { assistant_runtime: 'agents' };
 
 /** The ids of a turn's trace that its resume links to. */
-export interface AssistantTraceAnchor {
+interface AssistantTraceAnchor {
 	langsmithTraceId: string;
 	rootRunId: string;
 	actorRunId: string;
@@ -62,7 +72,7 @@ export interface AssistantTraceAnchor {
 }
 
 /** Read a stored trace anchor. Returns `undefined` when the value is not one. */
-export function readAssistantTraceAnchor(value: unknown): AssistantTraceAnchor | undefined {
+function readAssistantTraceAnchor(value: unknown): AssistantTraceAnchor | undefined {
 	if (!isRecord(value)) return undefined;
 	const { langsmithTraceId, rootRunId, actorRunId, otelTraceId, actorSpanId, messageGroupId } =
 		value;
@@ -102,12 +112,52 @@ function traceStatusOf(status: SystemAgentTurnOutcome['status']): TraceStatus {
 	return status === 'errored' ? 'error' : status;
 }
 
+/**
+ * The message of a resume that cancels the waiting tool call: the user typed
+ * a message instead of answering the card.
+ */
+function steeringMessageOf(turn: SystemAgentResumeTurn): string | undefined {
+	return isCancellation(turn.resumeData) ? turn.resumeData.message : undefined;
+}
+
+/** The resume input as the trace records it: the answer's shape, not its values. */
+function resumeTraceInput(turn: SystemAgentResumeTurn) {
+	const { resumeData } = turn;
+	return {
+		toolCallId: turn.toolCallId,
+		...(isRecord(resumeData)
+			? {
+					resumeFields: Object.keys(resumeData),
+					...(typeof resumeData.approved === 'boolean' ? { approved: resumeData.approved } : {}),
+				}
+			: {}),
+	};
+}
+
 interface AssistantTraceScope {
 	threadId: string;
 	runId: string;
 	messageGroupId: string;
 	userId: string;
 	proxyConfig?: ServiceProxyConfig;
+}
+
+/** What the trace of a turn records besides the turn itself. */
+export interface AssistantTraceTurnSetup {
+	runId: string;
+	/** The chat message group of the turn. */
+	messageGroupId: string;
+	proxyConfig?: ServiceProxyConfig;
+	fileAttachments: InstanceAiFileAttachment[];
+	contextAttachments: InstanceAiResourceAttachment[];
+	threadArtifacts?: InstanceAiThreadArtifactsContext;
+}
+
+/** The inputs of a trace root, and of the orchestrator span under it. */
+interface AssistantTraceInputs {
+	input: Record<string, unknown>;
+	orchestratorInputs: Record<string, unknown>;
+	metadata?: Record<string, unknown>;
 }
 
 /**
@@ -133,6 +183,8 @@ export class AssistantTurnTrace {
 		readonly context: InstanceAiTraceContext,
 		private readonly runId: string,
 		private readonly logger: Logger,
+		/** The inputs of the `agent: orchestrator` span of a new turn. */
+		private readonly orchestratorInputs: Record<string, unknown> = {},
 	) {}
 
 	/** The ids that the client and the feedback use to find the trace. */
@@ -145,8 +197,13 @@ export class AssistantTurnTrace {
 		};
 	}
 
-	/** The ids that a resume of this turn links to. Store them with the checkpoint. */
-	anchor(): JSONObject {
+	/** The checkpoint host metadata that links a resume of this turn to its trace. */
+	hostMetadata(): JSONObject {
+		return { [ASSISTANT_TRACE_METADATA_KEY]: this.anchor() };
+	}
+
+	/** The ids that a resume of this turn links to. */
+	private anchor(): JSONObject {
 		const { rootRun, actorRun } = this.context;
 		const messageGroupId = rootRun.metadata?.message_group_id;
 		return {
@@ -187,7 +244,7 @@ export class AssistantTurnTrace {
 	}
 
 	/** Starts the `agent: orchestrator` child of a new turn. A resume already has one. */
-	async startOrchestratorRun(inputs: Record<string, unknown>): Promise<void> {
+	async startOrchestratorRun(): Promise<void> {
 		const { context } = this;
 		if (context.actorRun.id !== context.rootRun.id) return;
 		const actorRun = await context.startChildRun(context.rootRun, {
@@ -200,7 +257,7 @@ export class AssistantTurnTrace {
 				execution_mode: 'foreground',
 				trace_kind: context.traceKind,
 			},
-			inputs,
+			inputs: this.orchestratorInputs,
 		});
 		context.actorRun = actorRun;
 		context.orchestratorRun = actorRun;
@@ -335,13 +392,92 @@ export class AssistantTurnTracer {
 		this.logger = logger.scoped('instance-ai');
 	}
 
-	/** The trace of a new turn: a `turn` root. */
-	async startTurn(
-		scope: AssistantTraceScope,
-		input: Record<string, unknown>,
-		metadata?: Record<string, unknown>,
+	/**
+	 * Starts the trace of a turn and sends its ids to the chat, so a debug
+	 * export of the thread can link to it. A new turn and a message that the
+	 * user types while a card waits start a `turn` root. A card answer
+	 * continues the trace of the turn that it resumes.
+	 */
+	async startForTurn(
+		turn: SystemAgentTurn,
+		setup: AssistantTraceTurnSetup,
 	): Promise<AssistantTurnTrace | undefined> {
-		return await this.create(scope, async () => {
+		const anchor =
+			turn.type === 'resume'
+				? readAssistantTraceAnchor(turn.checkpointHostMetadata[ASSISTANT_TRACE_METADATA_KEY])
+				: undefined;
+		const scope: AssistantTraceScope = {
+			threadId: turn.thread.id,
+			runId: setup.runId,
+			// A resume after a steering message continues the trace turn of that message.
+			messageGroupId: anchor?.messageGroupId ?? setup.messageGroupId,
+			userId: turn.user.id,
+			...(setup.proxyConfig ? { proxyConfig: setup.proxyConfig } : {}),
+		};
+		const trace = await this.createForTurn(turn, scope, anchor, setup);
+		if (!trace) return undefined;
+		try {
+			turn.emitHostEvent(ASSISTANT_TRACE_EVENT, trace.payload, { key: 'turn' });
+		} catch (error) {
+			this.logger.warn('Failed to send the Assistant trace ids to the chat', {
+				threadId: turn.thread.id,
+				error: getErrorMessage(error),
+			});
+		}
+		return trace;
+	}
+
+	private async createForTurn(
+		turn: SystemAgentTurn,
+		scope: AssistantTraceScope,
+		anchor: AssistantTraceAnchor | undefined,
+		setup: AssistantTraceTurnSetup,
+	): Promise<AssistantTurnTrace | undefined> {
+		if (turn.type === 'start') {
+			return await this.startTurn(scope, {
+				input: buildAssistantTurnTraceInput({
+					message: turn.message,
+					fileAttachments: setup.fileAttachments,
+					contextAttachments: setup.contextAttachments,
+					threadArtifacts: setup.threadArtifacts,
+					messageGroupId: scope.messageGroupId,
+				}),
+				orchestratorInputs: { message: turn.message },
+			});
+		}
+		const steeringMessage = steeringMessageOf(turn);
+		if (steeringMessage !== undefined) {
+			// The current runtime starts a new run for a message that the user sends
+			// while a card waits, so its trace shows a new turn. Do the same here,
+			// with a message group of its own, although the runtime resumes the run.
+			const messageGroupId = `mg_${nanoid()}`;
+			return await this.startTurn(
+				{ ...scope, messageGroupId },
+				{
+					input: buildAssistantTurnTraceInput({
+						message: steeringMessage,
+						fileAttachments: [],
+						contextAttachments: [],
+						messageGroupId,
+					}),
+					orchestratorInputs: { message: steeringMessage },
+					metadata: { cancelled_tool_call_id: turn.toolCallId },
+				},
+			);
+		}
+		return await this.resumeTurn(scope, anchor, {
+			input: resumeTraceInput(turn),
+			orchestratorInputs: { toolCallId: turn.toolCallId },
+			metadata: { pending_tool_call_id: turn.toolCallId },
+		});
+	}
+
+	/** The trace of a new turn: a `turn` root. */
+	private async startTurn(
+		scope: AssistantTraceScope,
+		{ input, orchestratorInputs, metadata }: AssistantTraceInputs,
+	): Promise<AssistantTurnTrace | undefined> {
+		return await this.create(scope, orchestratorInputs, async () => {
 			return await createInstanceAiTraceContext({
 				...this.commonOptions(scope),
 				input,
@@ -354,20 +490,20 @@ export class AssistantTurnTracer {
 	 * The trace of a resumed turn: a `resume: approval` root that links to the
 	 * beat it continues and keeps the turn's message group.
 	 */
-	async resumeTurn(
+	private async resumeTurn(
 		scope: AssistantTraceScope,
-		input: Record<string, unknown>,
-		options: { anchor?: AssistantTraceAnchor; metadata?: Record<string, unknown> },
+		anchor: AssistantTraceAnchor | undefined,
+		{ input, orchestratorInputs, metadata }: AssistantTraceInputs,
 	): Promise<AssistantTurnTrace | undefined> {
-		return await this.create(scope, async () => {
+		return await this.create(scope, orchestratorInputs, async () => {
 			return await continueInstanceAiTraceContext(undefined, {
 				...this.commonOptions(scope),
 				input,
 				metadata: {
 					resume_reason: 'approval',
 					agent_id: orchestratorAgentId(scope.runId),
-					...continuedFromMetadata(options.anchor),
-					...options.metadata,
+					...continuedFromMetadata(anchor),
+					...metadata,
 					...RUNTIME_TRACE_METADATA,
 				},
 			});
@@ -391,11 +527,14 @@ export class AssistantTurnTracer {
 
 	private async create(
 		scope: AssistantTraceScope,
+		orchestratorInputs: Record<string, unknown>,
 		createContext: () => Promise<InstanceAiTraceContext | undefined>,
 	): Promise<AssistantTurnTrace | undefined> {
 		try {
 			const context = await createContext();
-			return context ? new AssistantTurnTrace(context, scope.runId, this.logger) : undefined;
+			return context
+				? new AssistantTurnTrace(context, scope.runId, this.logger, orchestratorInputs)
+				: undefined;
 		} catch (error) {
 			this.logger.warn('Failed to create the Assistant agent turn trace', {
 				threadId: scope.threadId,

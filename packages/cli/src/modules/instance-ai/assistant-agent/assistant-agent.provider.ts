@@ -1,11 +1,5 @@
+import type { JSONObject, SideCallUsageReport, TokenUsage } from '@n8n/agents';
 import {
-	isCancellation,
-	type JSONObject,
-	type SideCallUsageReport,
-	type TokenUsage,
-} from '@n8n/agents';
-import {
-	ASSISTANT_TRACE_EVENT,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
 	InstanceAiConfirmRequestDto,
 	type InstanceAiAgentAttachment,
@@ -24,17 +18,14 @@ import {
 	modelConfigId,
 	tokenUsageToBuilderUsageItems,
 	type ModelConfig,
-	type ServiceProxyConfig,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
 import { hasGlobalScope } from '@n8n/permissions';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
-import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
 
 import type {
 	SystemAgentProvider,
-	SystemAgentResumeTurn,
 	SystemAgentStartTurn,
 	SystemAgentTurn,
 	SystemAgentTurnHandle,
@@ -63,15 +54,9 @@ import {
 	type AssistantTurnInput,
 } from '../turn-setup/assistant-turn-input.builder';
 import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
-import { buildAssistantTurnTraceInput } from '../turn-setup/assistant-turn-trace-input';
 import { AssistantEventSink } from './assistant-event-sink';
 import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
-import {
-	ASSISTANT_TRACE_METADATA_KEY,
-	AssistantTurnTracer,
-	readAssistantTraceAnchor,
-	type AssistantTurnTrace,
-} from './assistant-turn-trace';
+import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_NAME,
@@ -106,30 +91,6 @@ function contextAttachmentsOf(
 			attachment.type === 'agent' ||
 			(attachment.type === 'nodes' && nodeContextEnabled),
 	);
-}
-
-/**
- * The message of a resume that cancels the waiting tool call: the user typed
- * a message instead of answering the card.
- */
-function steeringMessageOf(turn: SystemAgentTurn<AssistantSandboxLease>): string | undefined {
-	return turn.type === 'resume' && isCancellation(turn.resumeData)
-		? turn.resumeData.message
-		: undefined;
-}
-
-/** The resume input as the trace records it: the answer's shape, not its values. */
-function resumeTraceInput(turn: SystemAgentResumeTurn<AssistantSandboxLease>) {
-	const { resumeData } = turn;
-	return {
-		toolCallId: turn.toolCallId,
-		...(isRecord(resumeData)
-			? {
-					resumeFields: Object.keys(resumeData),
-					...(typeof resumeData.approved === 'boolean' ? { approved: resumeData.approved } : {}),
-				}
-			: {}),
-	};
 }
 
 /**
@@ -208,10 +169,15 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		);
 		// One token manager backs the run and its trace.
 		const proxyRunConfig = await this.turnEnvironment.createProxyRunConfig(user);
-		const trace = await this.startTrace(turn, options, {
-			proxyConfig: proxyRunConfig.tracingProxyConfig,
+		const trace = await this.tracer.startForTurn(turn, {
+			runId: options.runId,
+			messageGroupId: options.messageGroupId,
+			...(proxyRunConfig.tracingProxyConfig
+				? { proxyConfig: proxyRunConfig.tracingProxyConfig }
+				: {}),
 			fileAttachments,
 			contextAttachments,
+			threadArtifacts: request.threadArtifacts,
 		});
 		try {
 			return await this.prepareTracedTurn(turn, options, {
@@ -290,14 +256,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				: await buildInput();
 		}
 
-		const steeringMessage = steeringMessageOf(turn);
-		await trace?.startOrchestratorRun(
-			turn.type === 'start'
-				? { message: turn.message }
-				: steeringMessage !== undefined
-					? { message: steeringMessage }
-					: { toolCallId: turn.toolCallId },
-		);
+		await trace?.startOrchestratorRun();
 		const agent = await this.agentFactory.createAgent(environment, runtime, {
 			user,
 			threadId: thread.id,
@@ -364,78 +323,6 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				await this.claimSideCallUsage(user, thread.id, runId, report),
 			formatError: async (error) => await this.formatTurnError(user, error),
 		};
-	}
-
-	/**
-	 * Starts the LangSmith trace of the turn and sends its ids to the chat, so a
-	 * debug export of the thread can link to it. A resume continues the trace
-	 * of the turn it resumes.
-	 */
-	private async startTrace(
-		turn: SystemAgentTurn<AssistantSandboxLease>,
-		options: AssistantTurnOptions,
-		setup: {
-			proxyConfig?: ServiceProxyConfig;
-			fileAttachments: InstanceAiFileAttachment[];
-			contextAttachments: InstanceAiResourceAttachment[];
-		},
-	): Promise<AssistantTurnTrace | undefined> {
-		const anchor =
-			turn.type === 'resume'
-				? readAssistantTraceAnchor(turn.checkpointHostMetadata[ASSISTANT_TRACE_METADATA_KEY])
-				: undefined;
-		const scope = {
-			threadId: turn.thread.id,
-			runId: options.runId,
-			// A resume after a steering message continues the trace turn of that message.
-			messageGroupId: anchor?.messageGroupId ?? options.messageGroupId,
-			userId: turn.user.id,
-			...(setup.proxyConfig ? { proxyConfig: setup.proxyConfig } : {}),
-		};
-		const steeringMessage = steeringMessageOf(turn);
-		let trace: AssistantTurnTrace | undefined;
-		if (turn.type === 'start') {
-			trace = await this.tracer.startTurn(
-				scope,
-				buildAssistantTurnTraceInput({
-					message: turn.message,
-					fileAttachments: setup.fileAttachments,
-					contextAttachments: setup.contextAttachments,
-					threadArtifacts: options.request.threadArtifacts,
-					messageGroupId: scope.messageGroupId,
-				}),
-			);
-		} else if (steeringMessage !== undefined) {
-			// The current runtime starts a new run for a message that the user sends
-			// while a card waits, so its trace shows a new turn. Do the same here,
-			// with a message group of its own, although the runtime resumes the run.
-			const messageGroupId = `mg_${nanoid()}`;
-			trace = await this.tracer.startTurn(
-				{ ...scope, messageGroupId },
-				buildAssistantTurnTraceInput({
-					message: steeringMessage,
-					fileAttachments: [],
-					contextAttachments: [],
-					messageGroupId,
-				}),
-				{ cancelled_tool_call_id: turn.toolCallId },
-			);
-		} else {
-			trace = await this.tracer.resumeTurn(scope, resumeTraceInput(turn), {
-				anchor,
-				metadata: { pending_tool_call_id: turn.toolCallId },
-			});
-		}
-		if (!trace) return undefined;
-		try {
-			turn.emitHostEvent(ASSISTANT_TRACE_EVENT, trace.payload, { key: 'turn' });
-		} catch (error) {
-			this.logger.warn('Failed to send the Assistant trace ids to the chat', {
-				threadId: turn.thread.id,
-				error: getErrorMessage(error),
-			});
-		}
-		return trace;
 	}
 
 	/** Binds the Agents runtime state of one turn for the shared turn setup. */
@@ -512,7 +399,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			[ASSISTANT_TURN_METADATA_KEY]: serializeAssistantTurnOptions(options),
 			buildMode: buildMode ?? null,
 			promptVersion: options.request.promptVersion ?? null,
-			...(trace ? { [ASSISTANT_TRACE_METADATA_KEY]: trace.anchor() } : {}),
+			...trace?.hostMetadata(),
 		};
 	}
 

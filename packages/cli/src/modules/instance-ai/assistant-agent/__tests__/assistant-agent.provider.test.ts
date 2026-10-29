@@ -79,8 +79,7 @@ function setup() {
 		agent as unknown as Awaited<ReturnType<AssistantAgentFactory['createAgent']>>,
 	);
 	const tracer = mock<AssistantTurnTracer>();
-	tracer.startTurn.mockResolvedValue(undefined);
-	tracer.resumeTurn.mockResolvedValue(undefined);
+	tracer.startForTurn.mockResolvedValue(undefined);
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -620,10 +619,12 @@ describe('AssistantAgentProvider', () => {
 						langsmithRunId: 'ls-run-1',
 					},
 				});
-				trace.anchor.mockReturnValue({
-					langsmithTraceId: 'ls-trace-1',
-					rootRunId: 'ls-run-1',
-					actorRunId: 'actor-1',
+				trace.hostMetadata.mockReturnValue({
+					assistantTrace: {
+						langsmithTraceId: 'ls-trace-1',
+						rootRunId: 'ls-run-1',
+						actorRunId: 'actor-1',
+					},
 				});
 				trace.tracePromptBuild.mockImplementation(async (_inputs, build) => await build());
 				trace.withContext.mockImplementation(async (run) => await run());
@@ -647,38 +648,30 @@ describe('AssistantAgentProvider', () => {
 				);
 			});
 
-			it('traces a start turn through the proxy and sends the trace ids to the chat', async () => {
+			it('traces a start turn through the proxy', async () => {
 				const { provider, tracer, turnEnvironment, agentFactory, environment } = setup();
 				const proxyConfig = { apiUrl: 'https://proxy/langsmith', getAuthHeaders: vi.fn() };
 				const proxyRunConfig = { tracingProxyConfig: proxyConfig };
 				turnEnvironment.createProxyRunConfig.mockResolvedValue(proxyRunConfig);
 				const { trace, context, onMemoryTaskEvent } = traceMock();
-				tracer.startTurn.mockResolvedValue(trace);
+				tracer.startForTurn.mockResolvedValue(trace);
 				const turn = startTurn();
 
 				const handle = await provider.prepareTurn(turn);
 
-				expect(tracer.startTurn).toHaveBeenCalledWith(
-					{
-						threadId: 'thread-1',
-						runId: 'run-1',
-						messageGroupId: 'mg-1',
-						userId: 'user-1',
-						proxyConfig,
-					},
-					{
-						message: 'Build a digest',
-						resourceAttachments: [{ type: 'workflow', id: 'wf-1' }],
-						messageGroupId: 'mg-1',
-					},
-				);
+				expect(tracer.startForTurn).toHaveBeenCalledWith(turn, {
+					runId: 'run-1',
+					messageGroupId: 'mg-1',
+					proxyConfig,
+					fileAttachments: [],
+					// The node attachment needs its gate, which is off.
+					contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+					threadArtifacts: undefined,
+				});
 				// The run and the trace share one proxy token manager.
 				expect(turnEnvironment.create.mock.calls[0][0].proxyRunConfig).toBe(proxyRunConfig);
-				expect(turn.emitHostEvent).toHaveBeenCalledWith(ASSISTANT_TRACE_EVENT, trace.payload, {
-					key: 'turn',
-				});
 				expect(trace.tracePromptBuild).toHaveBeenCalled();
-				expect(trace.startOrchestratorRun).toHaveBeenCalledWith({ message: 'Build a digest' });
+				expect(trace.startOrchestratorRun).toHaveBeenCalled();
 				expect(agentFactory.createAgent.mock.calls[0][2]).toMatchObject({ tracing: context });
 				const runtime = turnEnvironment.create.mock.calls[0][1];
 				expect(runtime.onMemoryTaskEvent).toBe(onMemoryTaskEvent);
@@ -702,7 +695,7 @@ describe('AssistantAgentProvider', () => {
 			it('collects the visible events of the Assistant tools', async () => {
 				const { provider, tracer, turnEnvironment } = setup();
 				const { trace } = traceMock();
-				tracer.startTurn.mockResolvedValue(trace);
+				tracer.startForTurn.mockResolvedValue(trace);
 
 				await provider.prepareTurn(startTurn());
 				const runtime = turnEnvironment.create.mock.calls[0][1];
@@ -720,7 +713,7 @@ describe('AssistantAgentProvider', () => {
 			it('finishes the trace when the turn setup fails', async () => {
 				const { provider, tracer, agentFactory } = setup();
 				const { trace } = traceMock();
-				tracer.startTurn.mockResolvedValue(trace);
+				tracer.startForTurn.mockResolvedValue(trace);
 				const error = new Error('No model');
 				agentFactory.createAgent.mockRejectedValue(error);
 
@@ -729,10 +722,10 @@ describe('AssistantAgentProvider', () => {
 				expect(trace.finish).toHaveBeenCalledWith({ status: 'errored', error });
 			});
 
-			it('continues the trace of the turn it resumes', async () => {
+			it('does not build the prompt of a resumed turn', async () => {
 				const { provider, tracer } = setup();
 				const { trace } = traceMock();
-				tracer.resumeTurn.mockResolvedValue(trace);
+				tracer.startForTurn.mockResolvedValue(trace);
 				const start = startTurn();
 				const turn: SystemAgentResumeTurn<AssistantSandboxLease> = {
 					type: 'resume',
@@ -746,129 +739,18 @@ describe('AssistantAgentProvider', () => {
 					sessionGrants: start.sessionGrants,
 					runId: 'agent-run-1',
 					toolCallId: 'tool-call-1',
-					checkpointHostMetadata: {
-						assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
-						assistantTrace: {
-							langsmithTraceId: 'ls-trace-0',
-							rootRunId: 'ls-run-0',
-							actorRunId: 'actor-0',
-						},
-					},
-					resumeData: { approved: true, userInput: 'secret text' },
+					checkpointHostMetadata: { assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' } },
+					resumeData: { approved: true },
 				};
 
 				await provider.prepareTurn(turn);
 
-				expect(tracer.resumeTurn).toHaveBeenCalledWith(
+				expect(tracer.startForTurn).toHaveBeenCalledWith(
+					turn,
 					expect.objectContaining({ runId: 'run-1', messageGroupId: 'mg-1' }),
-					// The answer's shape, not its values.
-					{ toolCallId: 'tool-call-1', resumeFields: ['approved', 'userInput'], approved: true },
-					{
-						anchor: {
-							langsmithTraceId: 'ls-trace-0',
-							rootRunId: 'ls-run-0',
-							actorRunId: 'actor-0',
-						},
-						metadata: { pending_tool_call_id: 'tool-call-1' },
-					},
 				);
 				expect(trace.tracePromptBuild).not.toHaveBeenCalled();
-				expect(trace.startOrchestratorRun).toHaveBeenCalledWith({ toolCallId: 'tool-call-1' });
-			});
-		});
-
-		describe('tracing a message sent while a card waits', () => {
-			function resumeTurn(
-				overrides: Partial<SystemAgentResumeTurn<AssistantSandboxLease>>,
-			): SystemAgentResumeTurn<AssistantSandboxLease> {
-				const start = startTurn();
-				return {
-					type: 'resume',
-					user,
-					thread,
-					resourceId: start.resourceId,
-					abortSignal: start.abortSignal,
-					emitHostEvent: start.emitHostEvent,
-					memory: start.memory,
-					checkpointStore: start.checkpointStore,
-					sessionGrants: start.sessionGrants,
-					runId: 'agent-run-1',
-					toolCallId: 'tool-call-1',
-					checkpointHostMetadata: {
-						assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
-						assistantTrace: {
-							langsmithTraceId: 'ls-trace-0',
-							rootRunId: 'ls-run-0',
-							actorRunId: 'actor-0',
-						},
-					},
-					resumeData: { approved: true },
-					...overrides,
-				};
-			}
-
-			function traceStub() {
-				const trace = mock<AssistantTurnTrace>({
-					context: {} as AssistantTurnTrace['context'],
-					payload: { langsmithTraceId: 'ls-trace-1', langsmithRunId: 'ls-run-1' },
-				});
-				trace.anchor.mockReturnValue({});
-				trace.finish.mockResolvedValue(undefined);
-				return trace;
-			}
-
-			it('traces the message as a new turn, like the current runtime', async () => {
-				const { provider, tracer } = setup();
-				const trace = traceStub();
-				tracer.startTurn.mockResolvedValue(trace);
-
-				await provider.prepareTurn(
-					resumeTurn({
-						resumeData: { _type: 'agent.cancellation', message: 'Use #general instead' },
-					}),
-				);
-
-				expect(tracer.resumeTurn).not.toHaveBeenCalled();
-				const [scope, input, metadata] = tracer.startTurn.mock.calls[0];
-				expect(scope).toMatchObject({ runId: 'run-1' });
-				// A message group of its own, so the trace shows a new user turn.
-				expect(scope.messageGroupId).toMatch(/^mg_/);
-				expect(scope.messageGroupId).not.toBe('mg-1');
-				expect(input).toEqual({
-					message: 'Use #general instead',
-					messageGroupId: scope.messageGroupId,
-				});
-				expect(metadata).toEqual({ cancelled_tool_call_id: 'tool-call-1' });
-				expect(trace.startOrchestratorRun).toHaveBeenCalledWith({
-					message: 'Use #general instead',
-				});
-			});
-
-			it('continues the trace turn of the message on a later resume of the run', async () => {
-				const { provider, tracer } = setup();
-				tracer.resumeTurn.mockResolvedValue(traceStub());
-
-				await provider.prepareTurn(
-					resumeTurn({
-						checkpointHostMetadata: {
-							assistantTurn: { runId: 'run-1', messageGroupId: 'mg-1' },
-							assistantTrace: {
-								langsmithTraceId: 'ls-trace-2',
-								rootRunId: 'ls-run-2',
-								actorRunId: 'actor-2',
-								messageGroupId: 'mg_steered',
-							},
-						},
-					}),
-				);
-
-				expect(tracer.resumeTurn).toHaveBeenCalledWith(
-					expect.objectContaining({ messageGroupId: 'mg_steered' }),
-					expect.anything(),
-					expect.objectContaining({
-						anchor: expect.objectContaining({ messageGroupId: 'mg_steered' }),
-					}),
-				);
+				expect(trace.startOrchestratorRun).toHaveBeenCalled();
 			});
 		});
 

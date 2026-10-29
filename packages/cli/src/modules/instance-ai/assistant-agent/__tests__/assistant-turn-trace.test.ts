@@ -1,3 +1,4 @@
+import { ASSISTANT_TRACE_EVENT } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
 	continueInstanceAiTraceContext,
@@ -9,12 +10,13 @@ import {
 } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
 
+import type {
+	SystemAgentResumeTurn,
+	SystemAgentStartTurn,
+} from '@/modules/agents/system-agents/system-agent.types';
+
 import type { InstanceAiBrowserSessionService } from '../../browser/instance-ai-browser-session.service';
-import {
-	AssistantTurnTrace,
-	AssistantTurnTracer,
-	readAssistantTraceAnchor,
-} from '../assistant-turn-trace';
+import { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 
 vi.mock('@n8n/instance-ai', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/instance-ai')>()),
@@ -77,15 +79,16 @@ function logger() {
 describe('AssistantTurnTrace', () => {
 	it('gives the trace ids for the chat and the anchor for a resume', async () => {
 		const { context, startChildRun } = traceContext();
-		const trace = new AssistantTurnTrace(context, 'run-1', logger());
+		const trace = new AssistantTurnTrace(context, 'run-1', logger(), { message: 'Hi' });
 
-		await trace.startOrchestratorRun({ message: 'Hi' });
+		await trace.startOrchestratorRun();
 
 		expect(startChildRun).toHaveBeenCalledWith(
 			context.rootRun,
 			expect.objectContaining({
 				name: 'agent: orchestrator',
 				metadata: expect.objectContaining({ agent_role: 'orchestrator' }),
+				inputs: { message: 'Hi' },
 			}),
 		);
 		expect(trace.payload).toEqual({
@@ -93,20 +96,22 @@ describe('AssistantTurnTrace', () => {
 			langsmithTraceId: 'ls-trace-1',
 			langsmithRunId: 'root-1',
 		});
-		expect(trace.anchor()).toEqual({
-			langsmithTraceId: 'ls-trace-1',
-			rootRunId: 'root-1',
-			actorRunId: 'actor-1',
-			otelTraceId: 'otel-1',
-			actorSpanId: 'span-1',
-			messageGroupId: 'mg-1',
+		expect(trace.hostMetadata()).toEqual({
+			assistantTrace: {
+				langsmithTraceId: 'ls-trace-1',
+				rootRunId: 'root-1',
+				actorRunId: 'actor-1',
+				otelTraceId: 'otel-1',
+				actorSpanId: 'span-1',
+				messageGroupId: 'mg-1',
+			},
 		});
 	});
 
 	it('runs the turn with the orchestrator span active', async () => {
 		const { context, actorRun, withActiveSpan } = traceContext();
 		const trace = new AssistantTurnTrace(context, 'run-1', logger());
-		await trace.startOrchestratorRun({});
+		await trace.startOrchestratorRun();
 
 		await expect(trace.withContext(async () => 'done')).resolves.toBe('done');
 
@@ -116,7 +121,7 @@ describe('AssistantTurnTrace', () => {
 	it('finishes a completed turn with its reply and the run metadata', async () => {
 		const { context, rootRun, actorRun, finishRun } = traceContext();
 		const trace = new AssistantTurnTrace(context, 'run-1', logger());
-		await trace.startOrchestratorRun({});
+		await trace.startOrchestratorRun();
 
 		trace.observeChunk({ type: 'tool-call', toolCallId: 'tc-1', toolName: 'workflows', input: {} });
 		trace.observeChunk({ type: 'text-delta', id: 't-1', delta: 'Here is ' });
@@ -144,7 +149,7 @@ describe('AssistantTurnTrace', () => {
 	it('finishes a suspended turn with the tool that waits for the user', async () => {
 		const { context, rootRun, finishRun } = traceContext();
 		const trace = new AssistantTurnTrace(context, 'run-1', logger());
-		await trace.startOrchestratorRun({});
+		await trace.startOrchestratorRun();
 
 		trace.observeChunk({
 			type: 'tool-call-suspended',
@@ -263,30 +268,21 @@ describe('AssistantTurnTrace', () => {
 	});
 });
 
-describe('readAssistantTraceAnchor', () => {
-	it('reads a stored anchor and refuses other values', () => {
-		expect(
-			readAssistantTraceAnchor({ langsmithTraceId: 'ls', rootRunId: 'root', actorRunId: 'actor' }),
-		).toEqual({ langsmithTraceId: 'ls', rootRunId: 'root', actorRunId: 'actor' });
-		expect(
-			readAssistantTraceAnchor({
-				langsmithTraceId: 'ls',
-				rootRunId: 'root',
-				actorRunId: 'actor',
-				messageGroupId: 'mg-2',
-			}),
-		).toMatchObject({ messageGroupId: 'mg-2' });
-		expect(readAssistantTraceAnchor({ langsmithTraceId: 'ls' })).toBeUndefined();
-		expect(readAssistantTraceAnchor(null)).toBeUndefined();
-	});
-});
-
 describe('AssistantTurnTracer', () => {
-	const scope = {
-		threadId: 'thread-1',
+	const user = { id: 'user-1' } as SystemAgentStartTurn['user'];
+	const thread = { id: 'thread-1' } as SystemAgentStartTurn['thread'];
+	const setup = {
 		runId: 'run-1',
 		messageGroupId: 'mg-1',
-		userId: 'user-1',
+		fileAttachments: [],
+		contextAttachments: [],
+	};
+	const storedAnchor = {
+		langsmithTraceId: 'ls-0',
+		rootRunId: 'root-0',
+		actorRunId: 'actor-0',
+		otelTraceId: 'otel-0',
+		actorSpanId: 'span-0',
 	};
 
 	function tracer() {
@@ -297,11 +293,40 @@ describe('AssistantTurnTracer', () => {
 		return new AssistantTurnTracer(logger(), browserSessionService);
 	}
 
-	it('starts a turn trace marked as an Assistant agent turn', async () => {
-		const { context } = traceContext();
-		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+	// Plain objects: a deep mock would add keys to the resume data that the tracer reads.
+	function startTurn(): SystemAgentStartTurn {
+		return {
+			type: 'start',
+			user,
+			thread,
+			message: 'Hi',
+			emitHostEvent: vi.fn(),
+		} as unknown as SystemAgentStartTurn;
+	}
 
-		const trace = await tracer().startTurn(scope, { message: 'Hi' });
+	function resumeTurn(overrides: Partial<SystemAgentResumeTurn> = {}): SystemAgentResumeTurn {
+		return {
+			type: 'resume',
+			user,
+			thread,
+			runId: 'agent-run-1',
+			toolCallId: 'tc-1',
+			checkpointHostMetadata: { assistantTrace: storedAnchor },
+			resumeData: { approved: true, userInput: 'secret text' },
+			emitHostEvent: vi.fn(),
+			...overrides,
+		} as unknown as SystemAgentResumeTurn;
+	}
+
+	it('starts a turn trace marked as an Assistant agent turn and sends its ids to the chat', async () => {
+		const { context, startChildRun } = traceContext();
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+		const turn = startTurn();
+
+		const trace = await tracer().startForTurn(turn, {
+			...setup,
+			contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
+		});
 
 		expect(trace?.context).toBe(context);
 		expect(createInstanceAiTraceContext).toHaveBeenCalledWith(
@@ -310,37 +335,37 @@ describe('AssistantTurnTracer', () => {
 				runId: 'run-1',
 				messageGroupId: 'mg-1',
 				userId: 'user-1',
-				input: { message: 'Hi' },
+				input: {
+					message: 'Hi',
+					resourceAttachments: [{ type: 'workflow', id: 'wf-1' }],
+					messageGroupId: 'mg-1',
+				},
 				metadata: { assistant_runtime: 'agents' },
 				browserExtension: { connectionState: 'disconnected' },
 			}),
 		);
+		expect(turn.emitHostEvent).toHaveBeenCalledWith(ASSISTANT_TRACE_EVENT, trace?.payload, {
+			key: 'turn',
+		});
+		await trace?.startOrchestratorRun();
+		expect(startChildRun).toHaveBeenCalledWith(
+			context.rootRun,
+			expect.objectContaining({ inputs: { message: 'Hi' } }),
+		);
 	});
 
-	it('links a resume to the beat it continues', async () => {
+	it('links a card answer to the beat it continues, without the answer values', async () => {
 		const { context } = traceContext();
 		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
 
-		await tracer().resumeTurn(
-			scope,
-			{ toolCallId: 'tc-1' },
-			{
-				anchor: {
-					langsmithTraceId: 'ls-0',
-					rootRunId: 'root-0',
-					actorRunId: 'actor-0',
-					otelTraceId: 'otel-0',
-					actorSpanId: 'span-0',
-				},
-				metadata: { pending_tool_call_id: 'tc-1' },
-			},
-		);
+		await tracer().startForTurn(resumeTurn(), setup);
 
+		expect(createInstanceAiTraceContext).not.toHaveBeenCalled();
 		expect(continueInstanceAiTraceContext).toHaveBeenCalledWith(
 			undefined,
 			expect.objectContaining({
 				messageGroupId: 'mg-1',
-				input: { toolCallId: 'tc-1' },
+				input: { toolCallId: 'tc-1', resumeFields: ['approved', 'userInput'], approved: true },
 				metadata: expect.objectContaining({
 					resume_reason: 'approval',
 					continued_from_trace_id: 'otel-0',
@@ -354,9 +379,84 @@ describe('AssistantTurnTracer', () => {
 		);
 	});
 
+	it('continues the message group of a stored anchor', async () => {
+		const { context } = traceContext();
+		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
+
+		await tracer().startForTurn(
+			resumeTurn({
+				checkpointHostMetadata: {
+					assistantTrace: { ...storedAnchor, messageGroupId: 'mg_steered' },
+				},
+			}),
+			setup,
+		);
+
+		expect(continueInstanceAiTraceContext).toHaveBeenCalledWith(
+			undefined,
+			expect.objectContaining({ messageGroupId: 'mg_steered' }),
+		);
+	});
+
+	it('does not link a resume to a stored value that is not an anchor', async () => {
+		const { context } = traceContext();
+		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
+
+		await tracer().startForTurn(
+			resumeTurn({ checkpointHostMetadata: { assistantTrace: { langsmithTraceId: 'ls' } } }),
+			setup,
+		);
+
+		const [, options] = vi.mocked(continueInstanceAiTraceContext).mock.calls[0];
+		expect(options.metadata).not.toHaveProperty('continued_from_run_id');
+	});
+
+	it('traces a message typed while a card waits as a new turn, like the current runtime', async () => {
+		const { context, startChildRun } = traceContext();
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+
+		const trace = await tracer().startForTurn(
+			resumeTurn({
+				resumeData: { _type: 'agent.cancellation', message: 'Use #general instead' },
+			}),
+			setup,
+		);
+
+		expect(continueInstanceAiTraceContext).not.toHaveBeenCalled();
+		const [options] = vi.mocked(createInstanceAiTraceContext).mock.calls[0];
+		// A message group of its own, so the trace shows a new user turn.
+		expect(options.messageGroupId).toMatch(/^mg_/);
+		expect(options.input).toEqual({
+			message: 'Use #general instead',
+			messageGroupId: options.messageGroupId,
+		});
+		expect(options.metadata).toEqual({
+			cancelled_tool_call_id: 'tc-1',
+			assistant_runtime: 'agents',
+		});
+		await trace?.startOrchestratorRun();
+		expect(startChildRun).toHaveBeenCalledWith(
+			context.rootRun,
+			expect.objectContaining({ inputs: { message: 'Use #general instead' } }),
+		);
+	});
+
 	it('runs the turn without a trace when creating it fails', async () => {
 		vi.mocked(createInstanceAiTraceContext).mockRejectedValue(new Error('No exporter'));
+		const turn = startTurn();
 
-		await expect(tracer().startTurn(scope, { message: 'Hi' })).resolves.toBeUndefined();
+		await expect(tracer().startForTurn(turn, setup)).resolves.toBeUndefined();
+		expect(turn.emitHostEvent).not.toHaveBeenCalled();
+	});
+
+	it('keeps the trace when the chat cannot take its ids', async () => {
+		const { context } = traceContext();
+		vi.mocked(createInstanceAiTraceContext).mockResolvedValue(context);
+		const turn = startTurn();
+		vi.mocked(turn.emitHostEvent).mockImplementation(() => {
+			throw new Error('Channel closed');
+		});
+
+		await expect(tracer().startForTurn(turn, setup)).resolves.toBeInstanceOf(AssistantTurnTrace);
 	});
 });
