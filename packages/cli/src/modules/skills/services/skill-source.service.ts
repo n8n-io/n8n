@@ -327,7 +327,7 @@ export class SkillSourceService {
 				}
 				if (imported.length === 0) {
 					const reason = failed[0]?.reason ?? 'no_skills_found';
-					throw new SkillSourceRequestError(reason, noImportMessage(reason));
+					throw new SkillSourceRequestError(reason, noImportMessage(failed, reason));
 				}
 			});
 		} catch (error) {
@@ -572,7 +572,14 @@ function refKey(ref: RemoteSkillRef): string {
 	return JSON.stringify(ref);
 }
 
-function noImportMessage(reason: SkillSourceReason): string {
+/** The message names a cause only when every picked skill failed for it. */
+function noImportMessage(
+	failed: SkillSourceConnectResponse['failed'],
+	reason: SkillSourceReason,
+): string {
+	if (failed.some((failure) => failure.reason !== reason)) {
+		return 'n8n could not import any of the picked skills.';
+	}
 	if (reason === 'name_taken') return 'Every picked skill has a name that this scope already has.';
 	if (reason === 'blocked_by_check') return 'The security check blocked every picked skill.';
 	if (reason === 'review_required') {

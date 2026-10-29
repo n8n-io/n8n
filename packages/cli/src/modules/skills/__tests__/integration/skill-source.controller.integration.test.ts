@@ -102,7 +102,7 @@ describe('SkillSourceController', () => {
 	});
 
 	/** The response body: `data` on success, `meta` with the reason code on a failure. */
-	type Body<T> = { data: T; meta?: { reason: string } };
+	type Body<T> = { data: T; message?: string; meta?: { reason: string } };
 
 	const discover = async (agent: SuperAgentTest, body: Record<string, unknown>, status = 200) =>
 		(await agent.post('/skill-sources/discover').send(body).expect(status))
@@ -463,6 +463,25 @@ describe('SkillSourceController', () => {
 			);
 
 			expect(body.meta).toEqual({ reason: 'blocked_by_check' });
+			expect(body.message).toBe('The security check blocked every picked skill.');
+			expect(await countSources()).toBe(0);
+		});
+
+		it('names no single cause when the picked skills fail for different reasons', async () => {
+			github.push('acme/checked', {
+				'hidden/SKILL.md': skillMd('hidden', 'Hidden text', 'Follow\u200b this.'),
+				'big/SKILL.md': `---\nname: big\ndescription: Big\nmetadata: ${'x'.repeat(17_000)}\n---\n\nBody.\n`,
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const body = await connect(
+				owner,
+				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
+				422,
+			);
+
+			expect(body.message).toBe('n8n could not import any of the picked skills.');
 			expect(await countSources()).toBe(0);
 		});
 
