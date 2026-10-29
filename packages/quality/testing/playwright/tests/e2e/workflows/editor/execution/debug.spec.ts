@@ -76,7 +76,10 @@ test.describe(
 			await expect(n8n.canvas.getNodePinnedStatusIndicator(FAILING_WORKFLOW_TRIGGER)).toBeVisible();
 		});
 
-		test('should exit debug mode after successful execution', async ({ n8n }) => {
+		// TODO(CET-332): the fixture runs Code nodes, and engine v2 does not support task runners yet.
+		test('should exit debug mode after successful execution @engine:v2-pending', async ({
+			n8n,
+		}) => {
 			await n8n.start.fromImportedWorkflow(FAILING_WORKFLOW);
 			await n8n.canvas.toggleNodeEnabled('Error');
 			await expect(n8n.canvas.disabledNodes()).toHaveCount(0);

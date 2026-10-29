@@ -57,6 +57,7 @@ describe('exportPackageToDirectory', () => {
 
 		const manifest = await readJson('manifest.json');
 		expect(manifest).toMatchObject({ packageFormatVersion: FORMAT_VERSION });
+		expect(manifest).not.toHaveProperty('exportedAt');
 		expect(manifest.projects).toEqual([
 			{ id: project.id, name: 'Alpha Project', target: `projects/alpha-project-${project.id}` },
 		]);

@@ -1,5 +1,6 @@
 import { MongoClient } from 'mongodb';
 import type { ILoadOptionsFunctions, ISupplyDataFunctions } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import {
@@ -143,6 +144,30 @@ describe('VectorStoreMongoDBAtlas', () => {
 			);
 			expect(mockClient.connect).toHaveBeenCalledTimes(1);
 			expect(client).toBe(mockClient);
+		});
+		it('should not include the connection string in the error when the client cannot be created', async () => {
+			MockMongoClient.mockImplementation(function () {
+				throw new Error(
+					'Protocol and host list are required in "mongodb://testuser:secret-pass@?x:27017"',
+				);
+			});
+			mockContext.getCredentials.mockResolvedValue({
+				configurationType: 'values',
+				host: '?x',
+				user: 'testuser',
+				password: 'secret-pass',
+				port: 27017,
+				database: 'testdb',
+			});
+
+			const error = await createMongoClient(mockContext, 1.1).catch((e: unknown) => e);
+
+			expect(error).toBeInstanceOf(NodeOperationError);
+			expect((error as Error).message).toBe(
+				'MongoDB connection error: Protocol and host list are required in "mongodb://[REDACTED]"',
+			);
+			expect(JSON.stringify(error)).not.toContain('secret-pass');
+			expect((error as Error).stack).not.toContain('secret-pass');
 		});
 	});
 

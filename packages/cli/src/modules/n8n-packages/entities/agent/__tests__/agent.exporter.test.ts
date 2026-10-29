@@ -11,7 +11,7 @@ import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 import { looseAgentsFixture } from '../../../__tests__/fixtures/agent-package-fixtures';
 import { CapturingWriter } from '../../../io/__tests__/utils/capturing-writer';
 import { HashingPackageWriter } from '../../../io/hashing-package-writer';
-import { WorkflowVersionPolicy } from '../../../n8n-packages.types';
+import { ExportVersionPolicy } from '../../../n8n-packages.types';
 import { serializedAgentSchema } from '../../../spec/serialized/agent.schema';
 import { AgentExporter } from '../agent.exporter';
 import { AgentSerializer } from '../agent.serializer';
@@ -24,12 +24,17 @@ function definitionFixture(version: string): AgentDefinition {
 	);
 	const config = AgentJsonConfigSchema.parse(fixture.config);
 	config.instructions = `${version} instructions`;
-	fixture.skills['shared-skill'].instructions = `${version} skill`;
 	fixture.tools.shared_tool.code = `throw new Error("${version} tool must not run");`;
 	fixture.tasks[taskId].objective = `${version} task`;
 	return {
 		schema: config,
-		skills: fixture.skills,
+		skills: {
+			support_source_skill: {
+				name: 'Support reference',
+				description: 'Use the support reference.',
+				instructions: `${version} skill`,
+			},
+		},
 		tools: fixture.tools,
 		tasks: new Map(Object.entries(fixture.tasks)),
 	};
@@ -73,11 +78,11 @@ function setup() {
 describe('AgentExporter', () => {
 	it.each([
 		{ policy: undefined, published: true, selected: 'draft' },
-		{ policy: WorkflowVersionPolicy.Latest, published: false, selected: 'draft' },
-		{ policy: WorkflowVersionPolicy.PublishedStrict, published: true, selected: 'published' },
-		{ policy: WorkflowVersionPolicy.PreferPublished, published: true, selected: 'published' },
-		{ policy: WorkflowVersionPolicy.PreferPublished, published: false, selected: 'draft' },
-		{ policy: WorkflowVersionPolicy.IgnoreUnpublished, published: true, selected: 'published' },
+		{ policy: ExportVersionPolicy.Latest, published: false, selected: 'draft' },
+		{ policy: ExportVersionPolicy.PublishedStrict, published: true, selected: 'published' },
+		{ policy: ExportVersionPolicy.PreferPublished, published: true, selected: 'published' },
+		{ policy: ExportVersionPolicy.PreferPublished, published: false, selected: 'draft' },
+		{ policy: ExportVersionPolicy.IgnoreUnpublished, published: true, selected: 'published' },
 	] as const)(
 		'prepares $selected for policy $policy with published=$published',
 		async (testCase) => {
@@ -96,7 +101,6 @@ describe('AgentExporter', () => {
 					name: 'Current name',
 					availableInMCP: true,
 					config: { ...selected.schema, integrations },
-					skills: selected.skills,
 					tools: selected.tools,
 					tasks: { [taskId]: selected.tasks.get(taskId) },
 				},
@@ -112,14 +116,14 @@ describe('AgentExporter', () => {
 		const { agent, exporter } = setup();
 		agent.activeVersionId = null;
 		await expect(
-			exporter.prepare(agent, WorkflowVersionPolicy.IgnoreUnpublished),
+			exporter.prepare(agent, ExportVersionPolicy.IgnoreUnpublished),
 		).resolves.toBeUndefined();
 	});
 
 	it('rejects an unpublished Agent under published-strict', async () => {
 		const { agent, exporter } = setup();
 		agent.activeVersionId = null;
-		await expect(exporter.prepare(agent, WorkflowVersionPolicy.PublishedStrict)).rejects.toThrow(
+		await expect(exporter.prepare(agent, ExportVersionPolicy.PublishedStrict)).rejects.toThrow(
 			'Agent "support_source" has no published version',
 		);
 	});
@@ -127,9 +131,17 @@ describe('AgentExporter', () => {
 	it('fails when the selected published snapshot is missing', async () => {
 		const { agent, exporter } = setup();
 		agent.activeVersion = null;
-		await expect(exporter.prepare(agent, WorkflowVersionPolicy.PreferPublished)).rejects.toThrow(
+		await expect(exporter.prepare(agent, ExportVersionPolicy.PreferPublished)).rejects.toThrow(
 			'Published version was not loaded for Agent',
 		);
+	});
+
+	it('rejects an instance agent', async () => {
+		const { agent, definitions, exporter } = setup();
+		Object.assign(agent, { scope: 'instance', projectId: null });
+		await expect(exporter.prepare(agent)).rejects.toThrow('Only project agents can be exported');
+		expect(definitions.readDraft).not.toHaveBeenCalled();
+		expect(definitions.readVersion).not.toHaveBeenCalled();
 	});
 
 	it('propagates draft revision conflicts', async () => {
@@ -143,20 +155,13 @@ describe('AgentExporter', () => {
 		const { agent, published, exporter } = setup();
 		agent.integrations.push({ type: 'n8n_chat', credentialId: '' });
 		published.schema!.integrations = [];
-		const snapshot = await exporter.prepare(agent, WorkflowVersionPolicy.PublishedStrict);
+		const snapshot = await exporter.prepare(agent, ExportVersionPolicy.PublishedStrict);
 		expect(snapshot?.content.config?.integrations).toEqual([
 			{ type: 'slack', credentialId: 'current-slack' },
 		]);
 	});
 
 	it.each([
-		{
-			kind: 'skill',
-			id: 'shared-skill',
-			remove: (definition: AgentDefinition) => {
-				definition.skills = {};
-			},
-		},
 		{
 			kind: 'custom tool',
 			id: 'shared_tool',
@@ -181,11 +186,6 @@ describe('AgentExporter', () => {
 
 	it.each([
 		{
-			kind: 'skill',
-			corrupt: (definition: AgentDefinition) =>
-				Object.assign(definition.skills['shared-skill'], { instructions: 42 }),
-		},
-		{
 			kind: 'tool descriptor',
 			corrupt: (definition: AgentDefinition) =>
 				Object.assign(definition.tools.shared_tool.descriptor, { hasResume: 'yes' }),
@@ -203,7 +203,6 @@ describe('AgentExporter', () => {
 
 	it('omits unused bodies and normalizes an omitted timezone', async () => {
 		const { agent, draft, exporter } = setup();
-		draft.skills.unused = { ...draft.skills['shared-skill'] };
 		draft.tools.unused = { ...draft.tools.shared_tool };
 		const task = draft.tasks.get(taskId)!;
 		delete task.timezone;
@@ -212,9 +211,17 @@ describe('AgentExporter', () => {
 			['unused', { ...task }],
 		]);
 		const snapshot = await exporter.prepare(agent);
-		expect(Object.keys(snapshot!.content.skills)).toEqual(['shared-skill']);
 		expect(Object.keys(snapshot!.content.tools)).toEqual(['shared_tool']);
 		expect(snapshot?.content.tasks).toEqual({ [taskId]: { ...task, timezone: null } });
+	});
+
+	it('exports skill refs without version pins', async () => {
+		const { agent, draft, exporter } = setup();
+		draft.schema!.skills = [{ type: 'skill', id: 'support_source_skill', versionId: 'pinned' }];
+		const snapshot = await exporter.prepare(agent);
+		expect(snapshot?.content.config?.skills).toEqual([
+			{ type: 'skill', id: 'support_source_skill' },
+		]);
 	});
 
 	it('exports empty body maps for a null configuration', async () => {
@@ -225,7 +232,6 @@ describe('AgentExporter', () => {
 			name: agent.name,
 			availableInMCP: true,
 			config: null,
-			skills: {},
 			tools: {},
 			tasks: {},
 		});
@@ -236,7 +242,6 @@ describe('AgentExporter', () => {
 		const snapshot = (await exporter.prepare(agent))!;
 		const expected = structuredClone(snapshot);
 		draft.schema!.instructions = 'Changed after preparation';
-		draft.skills['shared-skill'].references![0].content = 'Changed reference';
 		Object.assign(draft.tools.shared_tool.descriptor.inputSchema!, { properties: {} });
 		Object.assign(draft.tools.shared_tool.descriptor.providerOptions!, {
 			provider: { cache: true },
@@ -259,7 +264,7 @@ describe('AgentExporter', () => {
 		expect(JSON.parse(writer.files[1].content)).toEqual(expected.metadata);
 	});
 
-	it('keeps authored bytes and hashes stable when only publication metadata changes', async () => {
+	it('keeps authored bytes and hashes stable when publication metadata changes', async () => {
 		const { agent, exporter } = setup();
 		const before = (await exporter.prepare(agent))!;
 		agent.versionId = 'new-draft-version';

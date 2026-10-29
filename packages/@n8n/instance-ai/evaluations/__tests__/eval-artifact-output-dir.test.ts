@@ -1,4 +1,4 @@
-import { existsSync, mkdtempSync, readdirSync } from 'fs';
+import { existsSync, mkdtempSync, readFileSync, readdirSync } from 'fs';
 import { tmpdir } from 'os';
 import path from 'path';
 
@@ -123,6 +123,18 @@ describe('eval report artifacts — --output-dir contract', () => {
 			return { logger, warnings };
 		}
 
+		const VERIFIER_INPUT = {
+			checklist: [
+				{
+					id: 1,
+					description: 'posts once',
+					category: 'execution' as const,
+					strategy: 'llm' as const,
+				},
+			],
+			artifact: { workflowContext: 'wf', scenarioContext: 'scenario' },
+		};
+
 		async function writeSnapshot(testCaseName: string, outputDir?: string): Promise<string[]> {
 			const { logger, warnings } = collectingLogger();
 			await writeScenarioVerificationSnapshot({
@@ -133,6 +145,7 @@ describe('eval report artifacts — --output-dir contract', () => {
 				result: CHECKLIST_RESULT,
 				verificationResults: [CHECKLIST_RESULT],
 				verifierAttempts: [],
+				verifierInput: VERIFIER_INPUT,
 				logger,
 				outputDir,
 			});
@@ -148,6 +161,16 @@ describe('eval report artifacts — --output-dir contract', () => {
 			const names = readdirSync(outputDir);
 			expect(names).toHaveLength(1);
 			expect(names[0]).toMatch(/^daily-digest_happy-path_.*\.json$/);
+		});
+
+		it('stores the verifier input for a replay', async () => {
+			const outputDir = freshOutputDir();
+
+			await writeSnapshot('daily digest', outputDir);
+
+			const [name] = readdirSync(outputDir);
+			const snapshot = JSON.parse(readFileSync(path.join(outputDir, name), 'utf8'));
+			expect(snapshot.verifierInput).toEqual(VERIFIER_INPUT);
 		});
 
 		it('creates the outputDir when it does not exist yet', async () => {

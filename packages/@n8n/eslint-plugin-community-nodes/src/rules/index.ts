@@ -31,6 +31,9 @@ import { NodeClassDescriptionIconMissingRule } from './node-class-description-ic
 import { NodeConnectionTypeLiteralRule } from './node-connection-type-literal.js';
 import { NodeRegistrationCompleteRule } from './node-registration-complete.js';
 import { NodeUsableAsToolRule } from './node-usable-as-tool.js';
+import { OpenEndedNodeFieldsRule } from './open-ended-node-fields.js';
+import { OperationNameRepeatsResourceRule } from './operation-name-repeats-resource.js';
+import { OperationStandardActionRule } from './operation-standard-action.js';
 import { PackageNameConventionRule } from './package-name-convention.js';
 import { RequireFilesArrayRule } from './require-files-array.js';
 import { RequireHomepageRule } from './require-homepage.js';
@@ -54,6 +57,7 @@ export const rules = {
 	'no-deprecated-workflow-functions': NoDeprecatedWorkflowFunctionsRule,
 	'no-emoji-in-options': NoEmojiInOptionsRule,
 	'node-usable-as-tool': NodeUsableAsToolRule,
+	'open-ended-node-fields': OpenEndedNodeFieldsRule,
 	'package-name-convention': PackageNameConventionRule,
 	'credential-test-required': CredentialTestRequiredRule,
 	'credential-unnecessary-password': CredentialUnnecessaryPasswordRule,
@@ -92,4 +96,6 @@ export const rules = {
 	'valid-node-categories': ValidNodeCategoriesRule,
 	'valid-peer-dependencies': ValidPeerDependenciesRule,
 	'webhook-lifecycle-complete': WebhookLifecycleCompleteRule,
+	'operation-name-repeats-resource': OperationNameRepeatsResourceRule,
+	'operation-standard-action': OperationStandardActionRule,
 } satisfies Record<string, AnyRuleModule>;

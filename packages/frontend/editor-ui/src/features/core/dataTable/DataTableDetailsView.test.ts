@@ -8,6 +8,7 @@ import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import { waitFor } from '@testing-library/vue';
 import { flushPromises } from '@vue/test-utils';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
 vi.mock('@n8n/composables/useToast');
 vi.mock('vue-router');
@@ -165,6 +166,55 @@ describe('DataTableDetailsView', () => {
 
 			expect(container.querySelector('data-table-breadcrumbs-stub')).not.toBeInTheDocument();
 			expect(container.querySelector('data-table-table-stub')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('Protected instance', () => {
+		const lockStubs = {
+			DataTableBreadcrumbs: {
+				props: ['schemaReadOnly'],
+				template: '<div data-test-id="breadcrumbs-stub" :data-schema-read-only="schemaReadOnly" />',
+			},
+			DataTableTable: {
+				props: ['readOnly', 'schemaReadOnly'],
+				template:
+					'<div data-test-id="table-stub" :data-read-only="!!readOnly" :data-schema-read-only="schemaReadOnly" />',
+			},
+		};
+
+		it('should keep rows editable and lock the table structure', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+			useSourceControlStore().preferences.branchReadOnly = true;
+
+			const { findByTestId, getByTestId } = renderComponent({
+				pinia,
+				global: { stubs: lockStubs },
+			});
+
+			const table = await findByTestId('table-stub');
+			expect(table).toHaveAttribute('data-read-only', 'false');
+			expect(table).toHaveAttribute('data-schema-read-only', 'true');
+			expect(getByTestId('breadcrumbs-stub')).toHaveAttribute('data-schema-read-only', 'true');
+			expect(getByTestId('data-table-header-add-row-button')).toBeEnabled();
+			expect(getByTestId('data-table-add-column-trigger-button')).toBeDisabled();
+		});
+
+		it('should keep the table structure editable on a regular instance', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			const dataTableStore = useDataTableStore();
+			vi.spyOn(dataTableStore, 'fetchOrFindDataTable').mockResolvedValue(DEFAULT_DATA_TABLE);
+
+			const { findByTestId, getByTestId } = renderComponent({
+				pinia,
+				global: { stubs: lockStubs },
+			});
+
+			const table = await findByTestId('table-stub');
+			expect(table).toHaveAttribute('data-schema-read-only', 'false');
+			expect(getByTestId('data-table-header-add-row-button')).toBeEnabled();
+			expect(getByTestId('data-table-add-column-trigger-button')).toBeEnabled();
 		});
 	});
 

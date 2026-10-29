@@ -1,4 +1,4 @@
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder-session';
 
 import type { BuilderTrackFn } from '../builder-config-telemetry';
 
@@ -9,7 +9,7 @@ interface SetupToolDeps {
 }
 
 export interface CredentialSetupDeps extends SetupToolDeps {
-	credentialService: InstanceAiCredentialService;
+	credentialService: BuilderCredentialService;
 	isCredentialTypeKnown?: (credentialType: string) => boolean;
 	/** Returns configured channel credential IDs for credential reuse. */
 	listIntegrationCredentialIds?: () => Promise<string[]>;
@@ -18,5 +18,5 @@ export interface CredentialSetupDeps extends SetupToolDeps {
 export interface ChannelSetupDeps extends SetupToolDeps {
 	agentId: string;
 	/** Lists the channel types that setup can offer. */
-	listChatIntegrationTypes: () => string[];
+	listChatIntegrationTypes: () => Promise<string[]>;
 }

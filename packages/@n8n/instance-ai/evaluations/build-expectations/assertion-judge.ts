@@ -1,7 +1,7 @@
 import type { Message } from '@n8n/agents';
 import { z } from 'zod';
 
-import { SONNET_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
+import { JUDGE_MODEL, createEvalAgent } from '../../src/utils/eval-agents';
 import { BUILD_EXPECTATIONS_VERIFY_PROMPT } from '../system-prompts/build-expectations-verify';
 import type { BuildExpectationResult } from '../types';
 
@@ -17,13 +17,14 @@ export const expectationResultSchema = z.object({
 			// making every verdict come back empty. The integer check lives in the range
 			// guard below instead, where a bad index just drops out and triggers a retry.
 			index: z.number(),
-			pass: z.boolean(),
+			// `reason` before `pass`: the model writes keys in schema order, and a verdict
+			// written first can disagree with the reason that follows it.
 			reason: z.string(),
+			pass: z.boolean(),
 		}),
 	),
 });
 
-const JUDGE_MODEL = SONNET_MODEL;
 const MAX_VERIFY_ATTEMPTS = 2;
 const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
 
@@ -55,6 +56,7 @@ export async function judgeExpectations(
 			instructions: BUILD_EXPECTATIONS_VERIFY_PROMPT,
 			cache: true,
 			model: JUDGE_MODEL,
+			judge: true,
 		}).structuredOutput(expectationResultSchema);
 
 		const abortController = new AbortController();

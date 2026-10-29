@@ -485,7 +485,7 @@ describe('AgentEvalsController', () => {
 
 			await controller.getRun(runReq(), undefined, query);
 
-			expect(service.getRunDetail).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'run-1', {
+			expect(service.getRunDetail).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'run-1', {
 				take: 25,
 				skip: 50,
 			});
@@ -507,7 +507,7 @@ describe('AgentEvalsController', () => {
 		it('defaults the run-detail window wider than the shared list default', async () => {
 			await controller.getRun(runReq(), undefined, AgentEvalRunDetailQueryDto.parse({}));
 
-			expect(service.getRunDetail).toHaveBeenCalledWith(AGENT_ID, PROJECT_ID, 'run-1', {
+			expect(service.getRunDetail).toHaveBeenCalledWith(user, AGENT_ID, PROJECT_ID, 'run-1', {
 				take: AGENT_EVAL_RESULTS_DEFAULT_TAKE,
 				skip: 0,
 			});

@@ -460,6 +460,35 @@ describe('AgentEvalChecksPanel', () => {
 
 			expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
 		});
+
+		it('shows the filter as one segment control, with the chosen option checked', async () => {
+			const user = userEvent.setup();
+			const { getAllByRole, getByTestId } = renderFour();
+			const segment = (key: string) =>
+				getByTestId(`agent-eval-checks-filter-${key}`).closest('[role="radio"]');
+
+			expect(getAllByRole('radio')).toHaveLength(3);
+			expect(segment('all')).toHaveAttribute('aria-checked', 'true');
+
+			await user.click(getByTestId('agent-eval-checks-filter-pass'));
+
+			expect(segment('pass')).toHaveAttribute('aria-checked', 'true');
+			expect(segment('all')).toHaveAttribute('aria-checked', 'false');
+		});
+
+		it('shows a status avatar on each status option, and none on "All"', () => {
+			const { getByTestId } = renderFour();
+
+			expect(
+				within(getByTestId('agent-eval-checks-filter-needs-work')).getByRole('img'),
+			).toBeInTheDocument();
+			expect(
+				within(getByTestId('agent-eval-checks-filter-pass')).getByRole('img'),
+			).toBeInTheDocument();
+			expect(
+				within(getByTestId('agent-eval-checks-filter-all')).queryByRole('img'),
+			).not.toBeInTheDocument();
+		});
 	});
 
 	it('emits rerun when "Run all checks" is clicked', async () => {
@@ -1446,6 +1475,10 @@ describe('AgentEvalChecksPanel', () => {
 		// shows again — "all" is active, not a stale "needs-work" with no pill lit.
 		await vi.waitFor(() =>
 			expect(queryByTestId('agent-eval-checks-filter-needs-work')).not.toBeInTheDocument(),
+		);
+		expect(getByTestId('agent-eval-checks-filter-all').closest('[role="radio"]')).toHaveAttribute(
+			'aria-checked',
+			'true',
 		);
 		expect(getAllByTestId(/agent-eval-check-/)).toHaveLength(2);
 	});

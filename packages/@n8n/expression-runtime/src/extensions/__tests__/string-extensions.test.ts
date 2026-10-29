@@ -7,6 +7,8 @@ const extractUrlPath = stringExtensions.functions.extractUrlPath as (
 
 const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: string) => string;
 
+const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
+
 describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 	it.each([
 		['https://example.com/path', '/path'],
@@ -62,5 +64,19 @@ describe('toSentenceCase', () => {
 		['', ''],
 	])('should return letter-free input %p unchanged', (input, expected) => {
 		expect(toSentenceCase(input)).toBe(expected);
+	});
+});
+
+describe('toFloat', () => {
+	it.each([
+		['R$5.50', 5.5],
+		['$5.50', 5.5],
+		['5.50 €', 5.5],
+	])('should strip the currency symbol from %s', (input, expected) => {
+		expect(toFloat(input)).toBe(expected);
+	});
+
+	it('should not accept a symbol that is not in the list', () => {
+		expect(() => toFloat('Rb5')).toThrow();
 	});
 });

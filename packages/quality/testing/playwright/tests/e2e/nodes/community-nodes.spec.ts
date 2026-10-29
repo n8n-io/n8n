@@ -83,7 +83,7 @@ test.describe(
 
 			await n8n.ndv.clickCreateNewCredential();
 
-			await expect(n8n.canvas.credentialModal.getModal()).toContainText('Notion API');
+			await expect(n8n.canvas.credentialModal.container).toContainText('Notion API');
 		});
 
 		test('should render custom node with custom credential', async ({ n8n }) => {
@@ -97,7 +97,7 @@ test.describe(
 
 			await n8n.ndv.clickCreateNewCredential();
 
-			await expect(n8n.canvas.credentialModal.getModal()).toContainText('Custom E2E Credential');
+			await expect(n8n.canvas.credentialModal.container).toContainText('Custom E2E Credential');
 		});
 	},
 );

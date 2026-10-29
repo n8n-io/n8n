@@ -181,7 +181,7 @@ describe('folder package export', () => {
 		const { stream } = await service.exportPackage({
 			user: owner,
 			folderIds: [exportedFolder.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest, entries } = await readExport(stream);
 
@@ -279,7 +279,7 @@ describe('folder package export', () => {
 			user: owner,
 			folderIds: [exportedFolder.id],
 			workflowIds: [topLevelParent.id],
-			missingWorkflowDependencyPolicy: 'include-in-package',
+			dependencyPolicy: 'include-in-package',
 		});
 		const { manifest } = await readExport(stream);
 

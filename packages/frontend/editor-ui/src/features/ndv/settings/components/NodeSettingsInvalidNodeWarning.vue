@@ -129,7 +129,7 @@ watch(isNodeDefined, () => {
 					{{ i18n.baseText('nodeSettings.communityNodeUnknown.installButton.label') }}
 				</N8nButton>
 				<N8nButton
-					variant="subtle"
+					variant="outline"
 					icon="external-link"
 					@click="onViewDetailsClick"
 					data-test-id="view-details-button"

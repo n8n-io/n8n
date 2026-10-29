@@ -6,7 +6,7 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { BadRequestError } from '@n8n/errors';
 import { ProjectScopeService } from '@n8n/backend-services';
 
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectScoped } from './entities/agent.entity';
 import { AgentRepository, type AgentListResult } from './repositories/agent.repository';
 
 const BULK_CHUNK_SIZE = 500;
@@ -117,7 +117,7 @@ export class AgentMcpAccessService {
 	private async resolveCandidates(
 		dto: UpdateAgentsMcpAvailabilityDto,
 		projectIds: string[] | null,
-	): Promise<Array<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>> {
+	): Promise<Array<ProjectScoped<Pick<Agent, 'id' | 'projectId' | 'availableInMCP'>>>> {
 		if (dto.agentIds) {
 			return await this.agentRepository.findMcpAvailabilityCandidates({
 				ids: [...new Set(dto.agentIds)],

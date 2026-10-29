@@ -6,11 +6,11 @@ import { useI18n } from '@mcp-apps/i18n';
 withDefaults(
 	defineProps<{
 		label?: string;
-		variant?: 'solid' | 'subtle';
+		variant?: 'solid' | 'outline';
 		size?: 'small' | 'medium';
 	}>(),
 	{
-		variant: 'subtle',
+		variant: 'outline',
 		size: 'small',
 	},
 );

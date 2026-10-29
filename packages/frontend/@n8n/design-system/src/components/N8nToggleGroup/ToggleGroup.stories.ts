@@ -19,7 +19,7 @@ const meta = {
 		},
 		variant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+			options: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
 			control: 'select',
@@ -64,7 +64,7 @@ export const Default: Story = {
 	}),
 	args: {
 		type: 'single',
-		variant: 'subtle',
+		variant: 'outline',
 		size: 'medium',
 		orientation: 'horizontal',
 		disabled: false,
@@ -186,7 +186,7 @@ export const Playground: StoryObj<PlaygroundArgs> = {
 	args: {
 		itemCount: 3,
 		type: 'single',
-		variant: 'subtle',
+		variant: 'outline',
 		size: 'medium',
 		orientation: 'horizontal',
 		disabled: false,
@@ -208,7 +208,7 @@ export const Variants: Story = {
 		components: { N8nToggleGroup, N8nToggle },
 		setup() {
 			return {
-				variants: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+				variants: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 			};
 		},
 		template: `

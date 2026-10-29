@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { uninstallGlobalProxyAgent } from '@n8n/backend-network/testing';
-import type { EventService } from '@n8n/backend-services';
+import { type EventService, JwtService, RedisClientService } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
 import { GlobalConfig } from '@n8n/config';
@@ -22,19 +22,19 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
+import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { OtelService } from '@/modules/otel/otel.service';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
+import { JobProcessor } from '@/scaling/job-processor';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WorkerServer } from '@/scaling/worker-server';
 import { WorkerStatusService } from '@/scaling/worker-status.service.ee';
 import { SystemTaskRunner } from '@/scheduling/system-tasks/system-task-runner';
-import { JwtService } from '@/services/jwt.service';
-import { RedisClientService } from '@n8n/backend-services';
 import { ShutdownService } from '@/shutdown/shutdown.service';
 import { TaskRunnerModule } from '@/task-runners/task-runner-module';
 
@@ -62,6 +62,7 @@ mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);
 const mockSubscriber = mockInstance(Subscriber);
 mockInstance(WorkerStatusService);
+mockInstance(JobProcessor);
 const mockWorkerServer = mockInstance(WorkerServer);
 mockInstance(LoadNodesAndCredentials);
 const activeExecutions = mockInstance(ActiveExecutions);
@@ -244,6 +245,7 @@ describe('Worker', () => {
 				mock<EventService>(),
 				mock<ExecutionsConfig>({ mode: 'queue' }),
 				mock<InstanceSettings>({ instanceType: 'worker' }),
+				mock<UnsavedManualExecutionService>(),
 			);
 
 			const drainLoopInterval = 500;

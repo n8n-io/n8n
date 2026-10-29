@@ -5,6 +5,7 @@ import type { MockInstance } from 'vitest';
 import { fireEvent, waitFor, within } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { SYSTEM_RESOLVER_ID, type FrontendSettings } from '@n8n/api-types';
+import { i18n, i18nInstance } from '@n8n/i18n';
 import { createComponentRenderer } from '@/__tests__/render';
 import { createTestWorkflow } from '@/__tests__/mocks';
 import { getDropdownItems, mockedStore, type MockedStore } from '@/__tests__/utils';
@@ -20,6 +21,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import * as restApiClient from '@n8n/rest-api-client';
 import { mock } from 'vitest-mock-extended';
+import type { Scope } from '@n8n/permissions';
 import { BINARY_MODE_COMBINED } from 'n8n-workflow';
 import {
 	useWorkflowDocumentStore,
@@ -216,6 +218,28 @@ describe('WorkflowSettingsVue', () => {
 		const { getByTestId } = createComponent({ pinia });
 		await flushPromises();
 		expect(getByTestId('workflow-settings-dialog')).toBeVisible();
+	});
+
+	it.each([
+		['workflow-settings-execution-order', 'workflowSettings.executionLogic.placeholder'],
+		['workflow-settings-error-workflow', 'workflowSettings.errorWorkflow.placeholder'],
+		['workflow-settings-timezone', 'workflowSettings.timezone.placeholder'],
+	])('should localize the placeholder of %s', async (testId, key) => {
+		const originalLocale = i18nInstance.global.locale.value;
+		i18nInstance.global.setLocaleMessage('test-locale', { [key]: 'Translated placeholder' });
+		i18nInstance.global.locale.value = 'test-locale';
+		i18n.clearCache();
+
+		try {
+			settingsStore.settings.enterprise[EnterpriseEditionFeature.Sharing] = false;
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId(testId).outerHTML).toContain('Translated placeholder');
+		} finally {
+			i18nInstance.global.locale.value = originalLocale;
+			i18n.clearCache();
+		}
 	});
 
 	it('should not render workflow caller policy when sharing is not enabled', async () => {
@@ -442,18 +466,9 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the error workflow dropdown
-			const errorWorkflowRow = getByTestId('error-workflow');
-			const combobox = within(errorWorkflowRow).getByRole('combobox');
-			await userEvent.click(combobox);
-
-			// Wait for dropdown to appear and select "No Workflow"
-			await waitFor(async () => {
-				const option = within(document.body as HTMLElement).getAllByRole('option');
-				const noWorkflow = option.find((o) => o.textContent?.includes('No Workflow'));
-				expect(noWorkflow).toBeTruthy();
-				await userEvent.click(noWorkflow!);
-			});
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			expect(dropdownItems[0]).toHaveTextContent('No Workflow');
+			await userEvent.click(dropdownItems[0]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -474,17 +489,9 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the error workflow dropdown
-			const errorWorkflowRow = getByTestId('error-workflow');
-			await userEvent.click(within(errorWorkflowRow).getByRole('combobox'));
-
-			// Wait for dropdown and select the test workflow
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const testWorkflow = options.find((o) => o.textContent?.includes('Test Workflow'));
-				expect(testWorkflow).toBeTruthy();
-				await userEvent.click(testWorkflow!);
-			});
+			const dropdownItems = await getDropdownItems(getByTestId('error-workflow'));
+			expect(dropdownItems[1]).toHaveTextContent('Test Workflow');
+			await userEvent.click(dropdownItems[1]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -666,6 +673,175 @@ describe('WorkflowSettingsVue', () => {
 		)?.querySelector('input');
 
 		expect(timeSavedPerExecutionInput).toBeDisabled();
+	});
+
+	describe('Engine type', () => {
+		const deactivateEngineV2Module = () => {
+			vi.spyOn(settingsStore, 'isModuleActive').mockImplementation(
+				(name: string) => name !== 'engine-v2',
+			);
+		};
+
+		it('should render the engine type row as the first row, directly above Execution Logic', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const row = getByTestId('workflow-settings-engine-type');
+			expect(row.parentElement).toBe(getByTestId('workflow-settings-dialog'));
+			expect(row.previousElementSibling).toBeNull();
+			expect(
+				row.nextElementSibling?.querySelector('[data-test-id="workflow-settings-execution-order"]'),
+			).not.toBeNull();
+		});
+
+		it('should not render the engine type row when the engine-v2 module is inactive', async () => {
+			deactivateEngineV2Module();
+
+			const { queryByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(queryByTestId('workflow-settings-engine-type')).not.toBeInTheDocument();
+		});
+
+		it('should offer v1 and v2 (Beta) as engine type options', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+
+			expect(dropdownItems).toHaveLength(2);
+			expect(dropdownItems[0]).toHaveTextContent('v1');
+			expect(dropdownItems[1]).toHaveTextContent('v2 (Beta)');
+		});
+
+		it.each([
+			['v2', 'v2 (Beta)'],
+			['v1', 'v1'],
+			[undefined, 'v1'],
+		] as const)('should select the option for engineType %s', async (engineType, label) => {
+			workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-engine-type-select'),
+			);
+			const selectedItem = Array.from(dropdownItems).find((item) =>
+				item.classList.contains('selected'),
+			);
+			expect(selectedItem).toHaveTextContent(label);
+		});
+
+		it.each([
+			[undefined, 'v2'],
+			['v1', 'v2'],
+			['v2', 'v1'],
+		] as const)(
+			'should save engineType %s as %s after the option is selected',
+			async (engineType, expected) => {
+				workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				await userEvent.click(dropdownItems[expected === 'v2' ? 1 : 0]);
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({ engineType: expected }),
+					}),
+				);
+			},
+		);
+
+		it.each([
+			[undefined, 'v2'],
+			['v1', 'v2'],
+			['v2', 'v1'],
+		] as const)(
+			'should hold the new engineType in the document after a change from %s to %s',
+			async (engineType, expected) => {
+				workflowDocumentStore.setSettings(engineType ? { engineType } : {});
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				const dropdownItems = await getDropdownItems(
+					getByTestId('workflow-settings-engine-type-select'),
+				);
+				await userEvent.click(dropdownItems[expected === 'v2' ? 1 : 0]);
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+				await flushPromises();
+
+				// A later save before a run sends the document settings, so they must match the saved value.
+				expect(workflowDocumentStore.getSettingsSnapshot().engineType).toBe(expected);
+			},
+		);
+
+		it('should not add engineType to the saved settings when the select is untouched', async () => {
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledTimes(1);
+			const [, data] = workflowsStore.updateWorkflow.mock.calls[0];
+			expect(data.settings).not.toHaveProperty('engineType');
+		});
+
+		it('should keep a stored engineType v2 on save when the engine-v2 module is inactive', async () => {
+			deactivateEngineV2Module();
+			workflowDocumentStore.setSettings({ engineType: 'v2' });
+
+			const { getByRole } = createComponent({ pinia });
+			await flushPromises();
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({
+					settings: expect.objectContaining({ engineType: 'v2' }),
+				}),
+			);
+		});
+
+		it('should disable the select if env is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
+		});
+
+		it('should disable the select if user has no permission to update workflow', async () => {
+			const readOnlyWorkflow = createTestWorkflow({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				scopes: ['workflow:read'],
+			});
+			workflowsListStore.workflowsById = { '1': readOnlyWorkflow };
+			workflowsListStore.getWorkflowById.mockImplementation(() => readOnlyWorkflow);
+
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(
+				within(getByTestId('workflow-settings-engine-type-select')).getByRole('combobox'),
+			).toBeDisabled();
+		});
 	});
 
 	describe('Execution Order & Binary Mode', () => {
@@ -988,17 +1164,11 @@ describe('WorkflowSettingsVue', () => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			// Open the credential resolver dropdown
-			const resolverContainer = getByTestId('workflow-settings-credential-resolver');
-			await userEvent.click(within(resolverContainer).getByRole('combobox'));
-
-			// Wait for dropdown and select "Test Resolver 2"
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const resolver = options.find((o) => o.textContent?.includes('Test Resolver 2'));
-				expect(resolver).toBeTruthy();
-				await userEvent.click(resolver!);
-			});
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-credential-resolver'),
+			);
+			expect(dropdownItems[1]).toHaveTextContent('Test Resolver 2');
+			await userEvent.click(dropdownItems[1]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1063,16 +1233,11 @@ describe('WorkflowSettingsVue', () => {
 				expect(restApiClient.getCredentialResolvers).toHaveBeenCalled();
 			});
 
-			// Open the dropdown and pick the n8n system resolver
-			const resolverContainer = getByTestId('workflow-settings-credential-resolver');
-			await userEvent.click(within(resolverContainer).getByRole('combobox'));
-
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const systemResolver = options.find((o) => o.textContent?.includes('N8n Resolver'));
-				expect(systemResolver).toBeTruthy();
-				await userEvent.click(systemResolver!);
-			});
+			const dropdownItems = await getDropdownItems(
+				getByTestId('workflow-settings-credential-resolver'),
+			);
+			expect(dropdownItems[2]).toHaveTextContent('N8n Resolver');
+			await userEvent.click(dropdownItems[2]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1361,17 +1526,11 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the production redaction dropdown
-			const productionSelect = getByTestId('workflow-settings-redact-production-select');
-			await userEvent.click(within(productionSelect).getByRole('combobox'));
-
-			// Select "Redact"
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
-				expect(redactOption).toBeTruthy();
-				await userEvent.click(redactOption!);
-			});
+			const productionItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-production-select'),
+			);
+			expect(productionItems[1]).toHaveTextContent('Redact');
+			await userEvent.click(productionItems[1]);
 			await flushPromises();
 
 			toast.showError.mockClear();
@@ -1406,28 +1565,18 @@ describe('WorkflowSettingsVue', () => {
 			const { getByTestId, getByRole } = createComponent({ pinia });
 			await flushPromises();
 
-			// Open the production redaction dropdown and select "Redact"
-			const productionSelect = getByTestId('workflow-settings-redact-production-select');
-			await userEvent.click(within(productionSelect).getByRole('combobox'));
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const redactOption = options.find((o) => o.textContent?.trim() === 'Redact');
-				expect(redactOption).toBeTruthy();
-				await userEvent.click(redactOption!);
-			});
+			const productionItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-production-select'),
+			);
+			expect(productionItems[1]).toHaveTextContent('Redact');
+			await userEvent.click(productionItems[1]);
 			await flushPromises();
 
-			// Open the manual redaction dropdown and select "Redact"
-			const manualSelect = getByTestId('workflow-settings-redact-manual-select');
-			await userEvent.click(within(manualSelect).getByRole('combobox'));
-			await waitFor(async () => {
-				const options = within(document.body as HTMLElement).getAllByRole('option');
-				const redactOption = options.find(
-					(o) => o.textContent?.trim() === 'Redact' && !o.classList.contains('selected'),
-				);
-				expect(redactOption).toBeTruthy();
-				await userEvent.click(redactOption!);
-			});
+			const manualItems = await getDropdownItems(
+				getByTestId('workflow-settings-redact-manual-select'),
+			);
+			expect(manualItems[1]).toHaveTextContent('Redact');
+			await userEvent.click(manualItems[1]);
 			await flushPromises();
 
 			await userEvent.click(getByRole('button', { name: 'Save' }));
@@ -1604,17 +1753,11 @@ describe('WorkflowSettingsVue', () => {
 				) as HTMLInputElement;
 				expect(manualInput.value).toBe('Redact');
 
-				// Switch production to "Default - Do not redact"
-				const productionSelect = getByTestId('workflow-settings-redact-production-select');
-				await userEvent.click(within(productionSelect).getByRole('combobox'));
-				await waitFor(async () => {
-					const options = within(document.body as HTMLElement).getAllByRole('option');
-					const defaultOption = options.find(
-						(o) => o.textContent?.trim() === 'Default - Do not redact',
-					);
-					expect(defaultOption).toBeTruthy();
-					await userEvent.click(defaultOption!);
-				});
+				const productionItems = await getDropdownItems(
+					getByTestId('workflow-settings-redact-production-select'),
+				);
+				expect(productionItems[0]).toHaveTextContent('Default - Do not redact');
+				await userEvent.click(productionItems[0]);
 				await flushPromises();
 
 				// Manual select should have visibly reset to "Default - Do not redact"
@@ -1645,6 +1788,110 @@ describe('WorkflowSettingsVue', () => {
 					getByTestId('workflow-settings-redact-manual-select'),
 				).getByRole('combobox');
 				expect(manualCombobox).toBeDisabled();
+			});
+		});
+
+		describe('redact caller executions', () => {
+			const setUp = (params: {
+				redactionPolicy: 'none' | 'all';
+				redactCallerExecutions?: boolean;
+				scopes?: Scope[];
+				licensed?: boolean;
+			}) => {
+				const scopes = params.scopes ?? ['workflow:enableRedaction', 'workflow:disableRedaction'];
+				vi.spyOn(settingsStore, 'isModuleActive').mockReturnValue(true);
+				settingsStore.settings.enterprise[EnterpriseEditionFeature.DataRedaction] =
+					params.licensed ?? true;
+				projectsStore.personalProject = mock<Project>({ scopes });
+				const workflow = createTestWorkflow({
+					id: '1',
+					name: 'Test Workflow',
+					active: true,
+					scopes: ['workflow:update', ...scopes],
+				});
+				workflowsListStore.workflowsById = { '1': workflow };
+				workflowsListStore.getWorkflowById.mockImplementation(() => workflow);
+				workflowDocumentStore.setSettings({
+					redactionPolicy: params.redactionPolicy,
+					...(params.redactCallerExecutions !== undefined && {
+						redactCallerExecutions: params.redactCallerExecutions,
+					}),
+				});
+			};
+
+			it('is hidden when the workflow redacts no channel', async () => {
+				setUp({ redactionPolicy: 'none' });
+
+				const { queryByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(
+					queryByTestId('workflow-settings-redact-caller-executions-row'),
+				).not.toBeInTheDocument();
+			});
+
+			it('is on by default when the workflow redacts a channel', async () => {
+				setUp({ redactionPolicy: 'all' });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const toggle = getByTestId('workflow-settings-redact-caller-executions');
+				expect(toggle).toHaveAttribute('aria-checked', 'true');
+				expect(toggle).toBeEnabled();
+			});
+
+			it('saves redactCallerExecutions as false when the user turns it off', async () => {
+				setUp({ redactionPolicy: 'all' });
+
+				const { getByTestId, getByRole } = createComponent({ pinia });
+				await flushPromises();
+
+				await userEvent.click(getByTestId('workflow-settings-redact-caller-executions'));
+				await userEvent.click(getByRole('button', { name: 'Save' }));
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({
+						settings: expect.objectContaining({
+							redactionPolicy: 'all',
+							redactCallerExecutions: false,
+						}),
+					}),
+				);
+			});
+
+			it('is disabled when it is on and the user lacks the disableRedaction scope', async () => {
+				setUp({ redactionPolicy: 'all', scopes: ['workflow:enableRedaction'] });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getByTestId('workflow-settings-redact-caller-executions')).toBeDisabled();
+			});
+
+			it('is disabled when it is off and the user lacks the enableRedaction scope', async () => {
+				setUp({
+					redactionPolicy: 'all',
+					redactCallerExecutions: false,
+					scopes: ['workflow:disableRedaction'],
+				});
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				const toggle = getByTestId('workflow-settings-redact-caller-executions');
+				expect(toggle).toHaveAttribute('aria-checked', 'false');
+				expect(toggle).toBeDisabled();
+			});
+
+			it('is disabled without the data redaction license', async () => {
+				setUp({ redactionPolicy: 'all', licensed: false });
+
+				const { getByTestId } = createComponent({ pinia });
+				await flushPromises();
+
+				expect(getByTestId('workflow-settings-redact-caller-executions')).toBeDisabled();
 			});
 		});
 

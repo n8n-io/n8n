@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Alternate empty state for the evals tab, shown instead of the plain
- * "Generate test cases" card when `useTestAgentPreviewExperiment` is on.
+ * "Generate test cases" card when `useTestAgentPreviewFlag` is on.
  */
 import { ref } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';

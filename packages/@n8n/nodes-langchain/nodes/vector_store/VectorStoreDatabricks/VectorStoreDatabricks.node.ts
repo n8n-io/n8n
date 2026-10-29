@@ -114,7 +114,7 @@ const sharedFields: INodeProperties[] = [
 				default: '{}',
 				validateType: 'object',
 				description:
-					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json.',
+					'Restrict results to rows matching this metadata condition, for example {"source": "handbook"}. Sent as filters_json. Works on STANDARD endpoints only.',
 			},
 		],
 	},
@@ -309,7 +309,6 @@ export class VectorStoreDatabricks extends createVectorStoreNode<DatabricksVecto
 			},
 		],
 	},
-	hidden: true,
 	// The index decides between query_text and query_vector inside the class
 	searchByText: true,
 	methods: { listSearch: { searchIndexes }, loadOptions: { getIndexColumns } },

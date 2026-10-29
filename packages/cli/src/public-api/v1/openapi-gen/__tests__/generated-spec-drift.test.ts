@@ -1,6 +1,10 @@
 import '../../controllers';
 
-import { ApplyPackageResultDto } from '@n8n/api-types';
+import {
+	ApplyPackageResultDto,
+	PromotionBranchListPublicDto,
+	PromotionRepositoryListPublicDto,
+} from '@n8n/api-types';
 import { ControllerRegistryMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { OpenAPIV3 } from 'openapi-types';
@@ -36,9 +40,9 @@ describe('Apply response documentation', () => {
 				.getControllerMetadata(PromotionsPublicController as never)
 				.routes.get(handler);
 			expect(route?.responseDto).toBe(ApplyPackageResultDto);
-			expect(route?.accessScope).toEqual({ scope: 'gitConnection:pull', globalOnly: true });
-			expect(route?.apiKeyScope).toBe('gitConnection:pull');
-			expect(route?.licenseFeature).toBe('feat:gitConnections');
+			expect(route?.accessScope).toEqual({ scope: 'promotions:apply', globalOnly: true });
+			expect(route?.apiKeyScope).toBe('promotions:apply');
+			expect(route?.licenseFeature).toBe('feat:promotions');
 			const artifacts = getGeneratedArtifacts();
 			const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
 			const operation = parse(
@@ -56,21 +60,45 @@ describe('Apply response documentation', () => {
 				artifacts.find((artifact) => artifact.outputPath === schemaPath)!.content,
 			) as OpenAPIV3.SchemaObject;
 			const outcomes = result.oneOf as OpenAPIV3.SchemaObject[];
-			expect(outcomes).toHaveLength(3);
+			expect(outcomes).toHaveLength(4);
 			for (const [status, fields] of [
 				['applied', ['counts', 'warnings']],
-				['blocked', ['preflight']],
+				['blocked', ['check']],
 				['source-changed', []],
+				['preview-changed', []],
 			] as const) {
 				const outcome = outcomes.find(
 					(candidate) =>
 						(candidate.properties?.status as OpenAPIV3.SchemaObject).enum?.[0] === status,
 				);
 				expect(outcome?.required).toEqual(
-					expect.arrayContaining(['status', 'connectionId', 'configId', 'git', ...fields]),
+					expect.arrayContaining(['status', 'environmentId', 'git', ...fields]),
 				);
 				if (status !== 'applied') expect(outcome?.properties).not.toHaveProperty('counts');
 			}
 		},
 	);
+});
+
+describe('Discovery response documentation', () => {
+	it.each([
+		['getPromotionProviderRepositories', PromotionRepositoryListPublicDto],
+		['getPromotionProviderRepositoryBranches', PromotionBranchListPublicDto],
+	] as const)('%s declares its response and access gates', (handler, responseDto) => {
+		const route = Container.get(ControllerRegistryMetadata)
+			.getControllerMetadata(PromotionsPublicController as never)
+			.routes.get(handler);
+		expect(route?.responseDto).toBe(responseDto);
+		expect(route?.accessScope).toEqual({ scope: 'promotions:discover', globalOnly: true });
+		expect(route?.apiKeyScope).toBe('promotions:discover');
+		expect(route?.licenseFeature).toBe('feat:promotions');
+		const outputPath = `handlers/promotions/spec/paths/${handler}.generated.yml`;
+		const operation = parse(
+			getGeneratedArtifacts().find((artifact) => artifact.outputPath === outputPath)!.content,
+		) as OpenAPIV3.OperationObject;
+		expect(operation).toHaveProperty('x-required-scope', 'promotions:discover');
+		expect(operation.parameters).toContainEqual({
+			$ref: '../../../../shared/spec/parameters/limit.yml',
+		});
+	});
 });

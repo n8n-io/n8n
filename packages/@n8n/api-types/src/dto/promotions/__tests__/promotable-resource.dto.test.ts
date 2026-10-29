@@ -8,7 +8,7 @@ describe('PromotionChangesQueryDto', () => {
 });
 
 describe('PromotionChangesDto', () => {
-	const source = { configId: 'config-1', branchName: 'main' };
+	const source = { environmentId: 'env-1', branchName: 'main' };
 
 	it('carries the commit the rows were read from, or null before the first commit', () => {
 		expect(

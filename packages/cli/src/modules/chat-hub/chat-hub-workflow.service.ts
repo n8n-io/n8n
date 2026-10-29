@@ -5,6 +5,7 @@ import {
 	type ChatHubBaseLLMModel,
 	type ChatProviderSettingsDto,
 	type ChatHubAgentKnowledgeItem,
+	isChatHubToolTypeAllowed,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
@@ -1361,13 +1362,29 @@ Respond the title only:`,
 				credentials,
 				model,
 				systemMessage,
-				tools,
+				this.filterAllowedTools(user, tools),
 				timeZone,
 				vectorStoreSearch,
 				executionMetadata,
 				txCtx,
 				providerSettings,
 			);
+		});
+	}
+
+	/**
+	 * Stored tools can predate a tool type rule or a role change, so check them
+	 * again before each run.
+	 */
+	private filterAllowedTools(user: User, tools: INode[]): INode[] {
+		const isChatUser = user.role.slug === 'global:chatUser';
+		return tools.filter((tool) => {
+			if (isChatHubToolTypeAllowed(tool.type, { isChatUser })) return true;
+			this.logger.warn('Skipped a Chat Hub tool that the user is not allowed to run', {
+				userId: user.id,
+				toolType: tool.type,
+			});
+			return false;
 		});
 	}
 

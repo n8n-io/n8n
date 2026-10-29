@@ -411,6 +411,11 @@ export interface VersionGroup {
 export interface OutputSchema {
 	resource: string;
 	operation: string;
+	/**
+	 * `<param>-<value>` for a `<operation>.<param>-<value>.json` file: the shape
+	 * returned when the node parameter has that value. Absent for the plain file.
+	 */
+	variant?: string;
 	schema: JsonSchema;
 }
 
@@ -843,9 +848,11 @@ function collectSchemasFromVersionDir(
 			for (const opEntry of operations) {
 				if (!opEntry.isFile() || !opEntry.name.endsWith('.json')) continue;
 
-				const operationName = opEntry.name.replace('.json', '');
-				if (seen.has(`${entry.name}/${operationName}`)) continue;
+				const fileKey = opEntry.name.replace('.json', '');
+				if (seen.has(`${entry.name}/${fileKey}`)) continue;
 				const schemaPath = path.join(resourceDir, opEntry.name);
+				// `<operation>.<variant>.json` is a parameter-dependent shape of the operation.
+				const [operationName, variant] = splitOperationVariant(fileKey);
 
 				try {
 					const schemaContent = fs.readFileSync(schemaPath, 'utf-8');
@@ -853,9 +860,10 @@ function collectSchemasFromVersionDir(
 					schemas.push({
 						resource: entry.name,
 						operation: operationName,
+						...(variant ? { variant } : {}),
 						schema,
 					});
-					seen.add(`${entry.name}/${operationName}`);
+					seen.add(`${entry.name}/${fileKey}`);
 				} catch {
 					// Skip invalid JSON files
 				}
@@ -981,6 +989,19 @@ function orderedVersionDirectories(schemaDir: string, version: number): string[]
 }
 
 /**
+ * The type of an index signature that sits next to declared properties. It must
+ * accept the declared property types too, and `undefined` for optional ones.
+ */
+function indexSignatureType(
+	additionalType: string,
+	declaredTypes: string[],
+	hasOptional: boolean,
+): string {
+	const members = [additionalType, ...declaredTypes, ...(hasOptional ? ['undefined'] : [])];
+	return [...new Set(members)].join(' | ');
+}
+
+/**
  * Convert a JSON Schema to TypeScript type string
  *
  * @param schema The JSON Schema to convert
@@ -1049,12 +1070,21 @@ export function jsonSchemaToTypeScript(schema: JsonSchema, indent = 0): string {
 		case 'object':
 			if (schema.properties && Object.keys(schema.properties).length > 0) {
 				const required = new Set(schema.required ?? []);
+				const declaredTypes: string[] = [];
 				const props = Object.entries(schema.properties).map(([key, propSchema]) => {
 					const optional = required.has(key) ? '' : '?';
 					const quotedKey = needsQuoting(key) ? `'${key}'` : key;
 					const propType = jsonSchemaToTypeScript(propSchema, indent + 1);
+					declaredTypes.push(propType);
 					return `${nextIndent}${quotedKey}${optional}: ${propType};`;
 				});
+				if (typeof schema.additionalProperties === 'object') {
+					const additionalType = jsonSchemaToTypeScript(schema.additionalProperties, indent + 1);
+					const hasOptional = Object.keys(schema.properties).some((key) => !required.has(key));
+					props.push(
+						`${nextIndent}[key: string]: ${indexSignatureType(additionalType, declaredTypes, hasOptional)};`,
+					);
+				}
 				return `{\n${props.join('\n')}\n${indentStr}}`;
 			}
 			if (schema.additionalProperties) {
@@ -1083,7 +1113,31 @@ export function findSchemaForOperation(
 	operation: string,
 ): OutputSchema | undefined {
 	return schemas.find(
-		(s) => s.resource.toLowerCase() === resource.toLowerCase() && s.operation === operation,
+		(s) =>
+			!s.variant &&
+			s.resource.toLowerCase() === resource.toLowerCase() &&
+			s.operation === operation,
+	);
+}
+
+/** `get.simple-false` → `['get', 'simple-false']`; a name without a dot has no variant. */
+function splitOperationVariant(fileKey: string): [string, string | undefined] {
+	const dot = fileKey.indexOf('.');
+	if (dot <= 0) return [fileKey, undefined];
+	return [fileKey.slice(0, dot), fileKey.slice(dot + 1)];
+}
+
+/** The parameter-dependent shapes of one operation (`<operation>.<param>-<value>.json`). */
+export function findVariantSchemasForOperation(
+	schemas: OutputSchema[],
+	resource: string,
+	operation: string,
+): OutputSchema[] {
+	return schemas.filter(
+		(s) =>
+			s.variant !== undefined &&
+			s.resource.toLowerCase() === resource.toLowerCase() &&
+			s.operation === operation,
 	);
 }
 
@@ -2993,6 +3047,156 @@ export function generateSharedFile(
 }
 
 /**
+ * The parameter that selects between several output shapes of one operation,
+ * with the shape for each of its values.
+ */
+type ParameterValueType = 'boolean' | 'number' | 'string';
+
+interface ParameterVariants {
+	param: string;
+	/** Primitive type of the parameter values: it decides the literal and expression types. */
+	valueType: ParameterValueType;
+	/** The value used when the parameter is absent. The plain schema describes it. */
+	defaultValue: string;
+	others: Array<{ value: string; schema: JsonSchema }>;
+}
+
+/** `simple-false` → parameter `simple`, value `false`. */
+function parseParameterVariant(variant: string): { param: string; value: string } | undefined {
+	const separator = variant.indexOf('-');
+	if (separator <= 0) return undefined;
+	return { param: variant.slice(0, separator), value: variant.slice(separator + 1) };
+}
+
+/**
+ * Turn the variant schemas of an operation into one `ParameterVariants`, or
+ * undefined when they cannot be typed: no plain schema, several parameters,
+ * a parameter the node does not have, or no default to attach the plain schema to.
+ */
+function resolveParameterVariants(
+	props: NodeProperty[],
+	variantSchemas: OutputSchema[],
+): ParameterVariants | undefined {
+	const parsed = variantSchemas.map((s) => ({
+		...parseParameterVariant(s.variant ?? ''),
+		schema: s.schema,
+	}));
+	const param = parsed[0]?.param;
+	if (!param || parsed.some((entry) => entry.param !== param || entry.value === undefined)) {
+		return undefined;
+	}
+
+	const property = props.find((p) => p.name === param);
+	const valueType = property ? getParameterValueType(property) : undefined;
+	if (!property || !valueType) return undefined;
+
+	const defaultValue = String(property.default);
+	const others = parsed.map((entry) => ({ value: entry.value!, schema: entry.schema }));
+	if (
+		others.some((entry) => entry.value === defaultValue || !isTypeSafeValue(valueType, entry.value))
+	) {
+		return undefined;
+	}
+
+	const suffixes = [defaultValue, ...others.map((entry) => entry.value)].map((value) =>
+		parameterValueSuffix(valueType, value),
+	);
+	if (new Set(suffixes).size !== suffixes.length) return undefined;
+
+	return {
+		param,
+		valueType,
+		defaultValue,
+		others: others.sort((a, b) => a.value.localeCompare(b.value)),
+	};
+}
+
+/** The value type of a boolean parameter, or of an options parameter whose default is a string, number or boolean. */
+function getParameterValueType(property: NodeProperty): ParameterValueType | undefined {
+	if (property.type === 'boolean') {
+		return typeof property.default === 'boolean' ? 'boolean' : undefined;
+	}
+	if (property.type !== 'options') return undefined;
+	if (typeof property.default === 'number') return 'number';
+	if (typeof property.default === 'boolean') return 'boolean';
+	return typeof property.default === 'string' ? 'string' : undefined;
+}
+
+/**
+ * The part of a type name that stands for a parameter value. Signs and decimal
+ * points get words, because `toPascalCase` drops them and `-1` and `1` would
+ * share a name.
+ */
+function parameterValueSuffix(valueType: ParameterValueType, value: string): string {
+	if (valueType === 'number') return value.replace('-', 'Minus').replace('.', 'Point');
+	return toPascalCase(value);
+}
+
+/** A value comes from a file name, so it must be a valid literal of its type and safe to emit. */
+function isTypeSafeValue(valueType: ParameterValueType, value: string): boolean {
+	if (valueType === 'boolean') return value === 'true' || value === 'false';
+	if (valueType === 'number')
+		return Number.isFinite(Number(value)) && String(Number(value)) === value;
+	return /^[\w-]+$/.test(value);
+}
+
+/** `true` / `'raw'` — the TypeScript literal for a parameter value. */
+function parameterValueLiteral(variants: ParameterVariants, value: string): string {
+	return variants.valueType === 'string' ? `'${value}'` : value;
+}
+
+/**
+ * Emit the output types and node types of an operation whose output shape
+ * depends on one parameter: a node type for each value, plus one for an
+ * expression (which can be either), and a union of them under `nodeTypeName`.
+ */
+function generateParameterVariantTypes(
+	variants: ParameterVariants,
+	names: { base: string; output: string; node: string },
+	nodeBody: (typeName: string, paramsConstraint: string, outputType: string) => string[],
+): string[] {
+	const { param, defaultValue, others } = variants;
+	const suffixOf = (value: string) =>
+		`${toPascalCase(param)}${parameterValueSuffix(variants.valueType, value)}`;
+	const outputOf = (value: string) => `${names.base}${suffixOf(value)}Output`;
+	const nodeOf = (value: string) => `${names.base}${suffixOf(value)}Node`;
+	const lines: string[] = [];
+
+	for (const { value, schema: variantSchema } of others) {
+		lines.push(`export type ${outputOf(value)} = ${jsonSchemaToTypeScript(variantSchema)};`, '');
+	}
+
+	const members = [
+		{
+			node: nodeOf(defaultValue),
+			constraint: `${param}?: ${parameterValueLiteral(variants, defaultValue)}`,
+			output: names.output,
+		},
+		...others.map(({ value }) => ({
+			node: nodeOf(value),
+			constraint: `${param}: ${parameterValueLiteral(variants, value)}`,
+			output: outputOf(value),
+		})),
+	];
+	const allOutputs = members.map((member) => member.output).join(' | ');
+	members.push({
+		node: `${names.base}${toPascalCase(param)}ExpressionNode`,
+		constraint: `${param}: Expression<${variants.valueType}>`,
+		output: allOutputs,
+	});
+
+	for (const member of members) {
+		lines.push(...nodeBody(member.node, `{ ${member.constraint} }`, member.output), '');
+	}
+	lines.push(`export type ${names.node} =`);
+	members.forEach((member, index) => {
+		lines.push(`${INDENT}| ${member.node}${index === members.length - 1 ? ';' : ''}`);
+	});
+
+	return lines;
+}
+
+/**
  * Generate a discriminator file for a single resource/operation (or mode, etc.) combination
  *
  * @param node The node type description
@@ -3009,6 +3213,7 @@ export function generateDiscriminatorFile(
 	props: NodeProperty[],
 	schema?: JsonSchema,
 	_importDepth: number = 5,
+	variantSchemas: OutputSchema[] = [],
 ): string {
 	const prefix = getPackagePrefix(node.name);
 	const nodeName = prefix + toPascalCase(getNodeBaseName(node.name));
@@ -3156,26 +3361,44 @@ export function generateDiscriminatorFile(
 		}
 	}
 
-	lines.push(`export type ${nodeTypeName} = {`);
-	lines.push(`${INDENT}type: '${node.name}';`);
-	lines.push(`${INDENT}version: ${version};`);
-	if (isTrigger) {
-		lines.push(`${INDENT}isTrigger: true;`);
-	}
 	// Include subnodes in config if AI inputs exist
 	// subnodes field is required if any AI input type is required
 	const hasRequiredSubnodes = aiInputTypes.some((input) => input.required);
-	const configType = buildNodeConfigType(configName, {
-		credentialsTypeName:
-			node.credentials && node.credentials.length > 0 ? 'Credentials' : undefined,
-		subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
-		subnodesRequired: hasRequiredSubnodes,
-	});
-	lines.push(`${INDENT}config: ${configType};`);
-	if (schema) {
-		lines.push(`${INDENT}output?: Items<${outputTypeName}>;`);
+	const nodeBody = (typeName: string, paramsConstraint?: string, outputType?: string) => {
+		const paramsType = paramsConstraint ? `${configName} & ${paramsConstraint}` : configName;
+		const configType = buildNodeConfigType(paramsType, {
+			credentialsTypeName:
+				node.credentials && node.credentials.length > 0 ? 'Credentials' : undefined,
+			subnodeConfigTypeName: subnodeConfigTypeName ?? undefined,
+			subnodesRequired: hasRequiredSubnodes,
+		});
+		return [
+			`export type ${typeName} = {`,
+			`${INDENT}type: '${node.name}';`,
+			`${INDENT}version: ${version};`,
+			...(isTrigger ? [`${INDENT}isTrigger: true;`] : []),
+			`${INDENT}config: ${configType};`,
+			...(outputType ? [`${INDENT}output?: Items<${outputType}>;`] : []),
+			'};',
+		];
+	};
+
+	const variants = schema ? resolveParameterVariants(props, variantSchemas) : undefined;
+	if (variants) {
+		lines.push(
+			...generateParameterVariantTypes(
+				variants,
+				{
+					base: `${nodeName}${versionSuffix}${comboSuffix}`,
+					output: outputTypeName,
+					node: nodeTypeName,
+				},
+				nodeBody,
+			),
+		);
+	} else {
+		lines.push(...nodeBody(nodeTypeName, undefined, schema ? outputTypeName : undefined));
 	}
-	lines.push('};');
 
 	return lines.join('\n');
 }
@@ -3372,6 +3595,7 @@ export function planSplitVersionFiles(
 					props,
 					matchingSchema?.schema,
 					6,
+					findVariantSchemasForOperation(outputSchemas, resource, operation),
 				);
 				files.set(filePath, content);
 			}

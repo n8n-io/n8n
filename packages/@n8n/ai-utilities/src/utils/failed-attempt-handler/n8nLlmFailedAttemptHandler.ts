@@ -7,8 +7,8 @@ import { n8nDefaultFailedAttemptHandler } from './n8nDefaultFailedAttemptHandler
 /**
  * This function returns a custom failed attempt handler for using with LangChain models.
  * It first tries to use a custom handler passed as an argument, and if that doesn't throw an error, it uses the default handler.
- * It always wraps the error in a NodeApiError.
- * It throws an error ONLY if there are no retries left.
+ * It throws a NodeApiError only when a handler rejects the error.
+ * Otherwise it returns, and AsyncCaller retries with backoff.
  */
 export const makeN8nLlmFailedAttemptHandler = (
 	ctx: ISupplyDataFunctions,
@@ -29,18 +29,5 @@ export const makeN8nLlmFailedAttemptHandler = (
 
 			throw apiError;
 		}
-
-		// If no error was thrown, check if it is the last retry
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (error?.retriesLeft > 0) {
-			return;
-		}
-
-		// If there are no retries left, throw the error wrapped in a NodeApiError
-		const apiError = new NodeApiError(ctx.getNode(), error as JsonObject, {
-			functionality: 'configuration-node',
-		});
-
-		throw apiError;
 	};
 };

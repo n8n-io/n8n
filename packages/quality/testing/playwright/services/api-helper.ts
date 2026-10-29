@@ -34,6 +34,7 @@ import { SecuritySettingsApiHelper } from './security-settings-api-helper';
 import { SourceControlApiHelper } from './source-control-api-helper';
 import { TagApiHelper } from './tag-api-helper';
 import { TokenExchangeApiHelper } from './token-exchange-api-helper';
+import { TrustedSourceApiHelper } from './trusted-source-api-helper';
 import { TypePolicyApiHelper } from './type-policy-api-helper';
 import { UserApiHelper, type TestUser } from './user-api-helper';
 import { VariablesApiHelper } from './variables-api-helper';
@@ -99,6 +100,7 @@ export class ApiHelpers {
 	sourceControl: SourceControlApiHelper;
 	securitySettings: SecuritySettingsApiHelper;
 	tokenExchange: TokenExchangeApiHelper;
+	trustedSources: TrustedSourceApiHelper;
 	instanceAi: InstanceAiApiHelper;
 	nodeTypePolicies: TypePolicyApiHelper<'node'>;
 	credentialTypePolicies: TypePolicyApiHelper<'credential'>;
@@ -129,6 +131,7 @@ export class ApiHelpers {
 		this.sourceControl = new SourceControlApiHelper(this);
 		this.securitySettings = new SecuritySettingsApiHelper(this);
 		this.tokenExchange = new TokenExchangeApiHelper(this);
+		this.trustedSources = new TrustedSourceApiHelper(this);
 		this.instanceAi = new InstanceAiApiHelper(this);
 		this.nodeTypePolicies = new TypePolicyApiHelper(this, 'node');
 		this.credentialTypePolicies = new TypePolicyApiHelper(this, 'credential');

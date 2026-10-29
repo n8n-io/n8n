@@ -33,7 +33,6 @@ export class EmbeddingsDatabricks implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Embeddings Databricks',
 		name: 'embeddingsDatabricks',
-		hidden: true,
 		icon: {
 			light: 'file:../../shared/icons/databricks.svg',
 			dark: 'file:../../shared/icons/databricks.dark.svg',

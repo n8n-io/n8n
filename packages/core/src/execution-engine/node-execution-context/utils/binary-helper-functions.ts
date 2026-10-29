@@ -268,12 +268,16 @@ export async function prepareBinaryData(
 					const parsed = new URL(responseUrl);
 					parsed.username = '';
 					parsed.password = '';
+					parsed.search = '';
+					parsed.hash = '';
 					sanitizedUrl = parsed.toString();
 					urlPathname = parsed.pathname;
 				}
+				const requestPathname = binaryData.req?.path
+					? new URL(binaryData.req.path, 'http://localhost').pathname
+					: undefined;
 				filePath =
-					binaryData.contentDisposition?.filename ??
-					(urlPathname ?? binaryData.req?.path)?.slice(1);
+					binaryData.contentDisposition?.filename ?? (urlPathname ?? requestPathname)?.slice(1);
 				fullUrl = sanitizedUrl;
 			} catch {}
 		}

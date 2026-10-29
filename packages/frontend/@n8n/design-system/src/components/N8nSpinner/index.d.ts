@@ -1,9 +1,10 @@
-import { N8nComponent, N8nComponentSize } from '../component';
+import type { IconSize } from '../../types';
+import { N8nComponent } from '../component';
 
 /** Spinner Component */
 export declare class N8nSpinner extends N8nComponent {
 	/** Icon size */
-	size: N8nComponentSize;
+	size: IconSize;
 	/** Loading indicator shape */
 	type: 'dots' | 'ring' | 'grid';
 }

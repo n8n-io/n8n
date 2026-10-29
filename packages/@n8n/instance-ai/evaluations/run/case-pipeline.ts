@@ -22,12 +22,13 @@ import {
 	findAgentArtifactRef,
 	type AgentScenarioContext,
 } from '../harness/agent-execution';
-import { buildFailedOnInfra } from '../harness/build-workflow';
+import { buildFailedOnInfra, harnessFault } from '../harness/build-workflow';
 import { cleanupBuild, effectiveTimeoutMs } from '../harness/cleanup';
 import type { EvalLogger } from '../harness/logger';
 import { selectScenarioWorkflowId } from '../harness/scenario-execution';
 import {
 	scenariosRequireSerialSeeding,
+	workflowDataTableKeys,
 	workflowDeduplicates,
 	type ScenarioSeedContext,
 } from '../harness/seed-tables';
@@ -257,8 +258,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// grading against history the instance does not have. Checked BEFORE every other
 		// branch, and independently of `build.success`, because the biting case is a build
 		// that succeeded: `buildFailedOnInfra` returns false there, so the case would
-		// otherwise be scored as an agent failure on a premise that never existed.
-		if (build.priorRunFailed) {
+		// otherwise be scored as an agent failure on a premise that never existed. A read of
+		// another build's workflow takes the same route: the run did not start clean.
+		const fault = harnessFault(build);
+		if (fault) {
 			const capturedAgent = agentRef ? await agentContextByKey.get(cacheKey) : undefined;
 			return await attachExpectations({
 				buildSuccess: build.success,
@@ -266,15 +269,14 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 				...(capturedAgent ? { agentContext: capturedAgent.rendered } : {}),
 				...(capturedAgent?.artifact ? { agentArtifact: capturedAgent.artifact } : {}),
 				passed: false,
-				// Not graded rather than failed — the same treatment an ungraded expectation
-				// gets, so this stays out of the pass rate instead of landing in the
-				// builder's baseline as a red.
-				incomplete: true,
+				// A missing premise is not graded, so it stays out of the pass rate. A counted
+				// fault fails the run, but as framework_issue, not in the builder's baseline.
+				...(fault.counted ? {} : { incomplete: true }),
 				score: 0,
-				reasoning: `Prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+				reasoning: `${fault.counted ? 'Harness fault' : 'Not scored'}: ${fault.reason}`,
 				failureCategory: 'framework_issue',
 				attribution: 'framework_issue',
-				execErrors: [build.priorRunFailed],
+				execErrors: [fault.reason],
 				buildDurationMs,
 				...buildSpendFields,
 				execDurationMs: 0,
@@ -632,6 +634,8 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		// resets them around every run, so a deduping scenario queues on the backend
 		// and the workflow it will actually run: a sibling entry point, or a prebuilt
 		// id that several iterations share. With no workflow JSON to read, it queues.
+		// The server empties and refills the workflow's Data Tables before each run,
+		// so runs that bind one table on a lane queue on that table, across cases too.
 		const targetWorkflowId = selectScenarioWorkflowId(
 			scenario,
 			workflowId,
@@ -642,13 +646,22 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 		const dedupes = target
 			? workflowDeduplicates(target)
 			: build.workflowJsons.length === 0 || build.workflowJsons.some(workflowDeduplicates);
-		const runQueued = dedupes
-			? async () =>
-					await withSerialSeeding(
-						`${builtOnLane.runner.baseUrl}:${targetWorkflowId}`,
-						runWorkflowScenario,
-					)
-			: runWorkflowScenario;
+		const lane = builtOnLane.runner.baseUrl;
+		const tableKeys = target
+			? workflowDataTableKeys(target)
+			: build.workflowJsons.flatMap(workflowDataTableKeys);
+		// Unique, or a run would wait on itself; sorted, so two runs take shared keys
+		// in the same order.
+		const queueKeys = [
+			...new Set([
+				...(dedupes ? [`${lane}:workflow:${targetWorkflowId}`] : []),
+				...tableKeys.map((key) => `${lane}:data-table:${key}`),
+			]),
+		].sort();
+		const runQueued = queueKeys.reduceRight<() => Promise<TargetOutput>>(
+			(run, key) => async () => await withSerialSeeding(key, run),
+			runWorkflowScenario,
+		);
 		return scenariosRequireSerialSeeding(authoredScenarios)
 			? await withSerialSeeding(cacheKey, runQueued)
 			: await runQueued();

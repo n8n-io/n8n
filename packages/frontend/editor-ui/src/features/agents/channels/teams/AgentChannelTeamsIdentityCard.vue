@@ -1,30 +1,37 @@
 <script setup lang="ts">
 /** How the agent appears in Teams, with the package that carries it. */
 import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
-import type { AgentJsonConfig } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import AgentPersonalisationIcon from '../../components/AgentPersonalisationIcon.vue';
+import { injectAgentPersonalisation } from '../agentPersonalisation';
 
 withDefaults(
 	defineProps<{
 		name: string;
 		description: string;
-		personalisation?: AgentJsonConfig['personalisation'] | null;
 		tooltip?: string;
 		ready: boolean;
 		loading?: boolean;
+		/** Teams holds an older version of what this card shows. */
+		outdated?: boolean;
 	}>(),
-	{ personalisation: null, tooltip: '', loading: false },
+	{ tooltip: '', loading: false, outdated: false },
 );
 
 const emit = defineEmits<{ download: [] }>();
 
 const i18n = useI18n();
+
+const personalisation = injectAgentPersonalisation();
 </script>
 
 <template>
 	<div
-		:class="[$style.identity, ready ? $style.identityReady : $style.locked]"
+		:class="[
+			$style.identity,
+			ready ? $style.identityReady : $style.locked,
+			{ [$style.outdated]: outdated },
+		]"
 		data-testid="teams-identity"
 	>
 		<AgentPersonalisationIcon :personalisation="personalisation" :size="36" />
@@ -44,23 +51,28 @@ const i18n = useI18n();
 				{{ description }}
 			</N8nText>
 		</div>
-		<N8nButton
-			variant="outline"
-			size="medium"
-			:disabled="!ready || loading"
-			:loading="loading"
-			data-testid="teams-download-package"
-			@click="emit('download')"
-		>
-			{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
-			<N8nIcon icon="download" size="medium" />
-		</N8nButton>
+		<!-- The recommended setup offers a menu here instead of the download. -->
+		<slot name="action">
+			<N8nButton
+				variant="outline"
+				size="medium"
+				:disabled="!ready || loading"
+				:loading="loading"
+				data-testid="teams-download-package"
+				@click="emit('download')"
+			>
+				{{ i18n.baseText('agents.channels.teams.setup.install.button') }}
+				<N8nIcon icon="arrow-circle-down" size="medium" />
+			</N8nButton>
+		</slot>
 	</div>
 </template>
 
 <style module lang="scss">
 .identity {
 	display: flex;
+	/* Narrow containers, like the Assistant chat, move the action below the text. */
+	flex-wrap: wrap;
 	align-items: center;
 	gap: var(--spacing--xs);
 	width: 100%;
@@ -80,6 +92,11 @@ const i18n = useI18n();
 	border-color: light-dark(var(--border-color--subtle), var(--border-color));
 }
 
+.outdated.outdated {
+	background: var(--callout--color--background--warning);
+	border-color: var(--callout--border-color--warning);
+}
+
 .locked {
 	opacity: 0.45;
 	pointer-events: none;
@@ -89,7 +106,7 @@ const i18n = useI18n();
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--5xs);
-	flex: 1;
+	flex: 1 1 10rem;
 	min-width: 0;
 }
 

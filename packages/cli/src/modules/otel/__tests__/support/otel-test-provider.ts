@@ -6,9 +6,8 @@ import {
 	SimpleSpanProcessor,
 } from '@opentelemetry/sdk-trace-node';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { mock } from 'vitest-mock-extended';
 
-import type { OtelService } from '../../otel.service';
+import { ExecutionIdentitySpanProcessor } from '../../execution-identity';
 
 /**
  * Minimal stand-in for `@opentelemetry/context-async-hooks`'
@@ -55,7 +54,7 @@ class AsyncLocalStorageTestContextManager implements ContextManager {
  *
  * Usage:
  *   const otel = OtelTestProvider.create();
- *   const tracer = new ExecutionLevelTracer(otel.asOtelService(), ...);
+ *   const tracer = new ExecutionLevelTracer(...);
  *   // ... run code that creates spans ...
  *   expect(otel.getFinishedSpans()).toHaveLength(1);
  *   otel.reset(); // between tests
@@ -75,18 +74,13 @@ export class OtelTestProvider {
 	static create(options: { withContextManager?: boolean } = {}): OtelTestProvider {
 		const exporter = new InMemorySpanExporter();
 		const provider = new NodeTracerProvider({
-			spanProcessors: [new SimpleSpanProcessor(exporter)],
+			spanProcessors: [new ExecutionIdentitySpanProcessor(), new SimpleSpanProcessor(exporter)],
 		});
 		trace.setGlobalTracerProvider(provider);
 		if (options.withContextManager) {
 			context.setGlobalContextManager(new AsyncLocalStorageTestContextManager());
 		}
 		return new OtelTestProvider(provider, exporter, options.withContextManager ?? false);
-	}
-
-	/** An `OtelService` stand-in that hands out this provider's tracers. */
-	asOtelService(): OtelService {
-		return mock<OtelService>({ getTracer: (name: string) => this.provider.getTracer(name) });
 	}
 
 	getFinishedSpans() {

@@ -2,7 +2,6 @@ import { Service } from '@n8n/di';
 import type { z } from 'zod';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { composeJsonConfig } from '@/modules/agents/json-config/agent-config-composition';
 import type { AgentDefinition } from '@/modules/agents/utils/agent-definition';
 
 import {
@@ -20,16 +19,18 @@ type AgentPackageKeyHandling = {
 	schema: 'transform';
 	integrations: 'transform';
 	tools: 'transform';
-	skills: 'transform';
+	skills: 'exclude';
 	availableInMCP: 'copy';
 	project: 'exclude';
 	projectId: 'exclude';
+	scope: 'exclude';
 	createdAt: 'exclude';
 	updatedAt: 'exclude';
 	versionId: 'exclude';
 	activeVersionId: 'exclude';
 	activeVersion: 'exclude';
 	revision: 'exclude';
+	publicationRevision: 'exclude';
 	setupCompletedAt: 'exclude';
 };
 
@@ -60,14 +61,22 @@ export class AgentSerializer {
 		definition: AgentDefinition,
 		integrations: Agent['integrations'],
 	): SerializedAgent {
-		const config = composeJsonConfig({ schema: definition.schema, integrations });
+		// Skills travel as their own package entries. An imported Agent follows the latest version.
+		const config = definition.schema
+			? {
+					...definition.schema,
+					integrations,
+					...(definition.schema.skills
+						? { skills: definition.schema.skills.map(({ type, id }) => ({ type, id })) }
+						: {}),
+				}
+			: null;
 		const content = serializedAgentSchema.parse(
 			serializePayload({
 				id: agent.id,
 				name: agent.name,
 				config,
 				availableInMCP: agent.availableInMCP,
-				skills: this.referencedBodies(agent.id, 'skill', config?.skills ?? [], definition.skills),
 				tools: this.referencedBodies(
 					agent.id,
 					'custom tool',

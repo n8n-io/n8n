@@ -659,6 +659,7 @@ export class ChatHubExecutionService {
 
 			on: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
 			once: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
+			off: (_event: string, _handler: (...args: unknown[]) => void) => adapter,
 			emit: (_event: string, ..._args: unknown[]) => true,
 		};
 

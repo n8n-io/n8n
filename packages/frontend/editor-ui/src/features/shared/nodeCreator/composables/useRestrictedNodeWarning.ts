@@ -18,7 +18,7 @@ export function useRestrictedNodeWarning() {
 		toast.showMessage({
 			type: 'warning',
 			title: i18n.baseText('typeAvailabilityPolicies.restrictedNode.title'),
-			message: describeNodeTypeRestriction(displayName, restriction.scope),
+			message: describeNodeTypeRestriction(displayName, restriction),
 		});
 		return true;
 	}

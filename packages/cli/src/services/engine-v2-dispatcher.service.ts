@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
-import type { StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
+import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -7,7 +8,12 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { classifyTriggerIdentity, isTriggerNodeType, UserError } from 'n8n-workflow';
+import {
+	classifyTriggerIdentity,
+	isTriggerNodeType,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';
@@ -22,6 +28,10 @@ import {
 	EngineDataPlaneProxyService,
 	isStartRefusedBeforeSave,
 } from '@/services/engine-data-plane-proxy.service';
+import {
+	EngineV2ManualRunPlanner,
+	type ManualRunPlan,
+} from '@/services/engine-v2-manual-run-planner';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
 import { toResponseExpectation } from '@/webhooks/engine-v2-response-expectation';
@@ -51,11 +61,19 @@ const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
 const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecutionData[][] =>
 	main.map((slot) => slot ?? []);
 
+function toResumeRefusal(executionId: string, status: number, reason: string): Error {
+	// `locateResumeTarget` already verified this token, so a 401 means the step is gone.
+	if (status === 401) return new NotFoundError(`The execution "${executionId}" does not exist.`);
+	if (status === 409) return new ConflictError(`The execution "${executionId}" is not waiting.`);
+	return new UserError(`Engine v2 refused to resume the execution "${executionId}": ${reason}`);
+}
+
 /**
- * Routes a run to the engine v2 data plane and starts it there.
+ * Routes a run to the engine v2 data plane, and starts or resumes it there.
  *
  * The single dispatch point for the v2 path: {@link routesToEngineV2} decides,
- * {@link start} runs. A workflow that opts into engine v2 never falls back to
+ * {@link start} runs, and {@link resume} ends a wait that the waiting-webhook
+ * route located. A workflow that opts into engine v2 never falls back to
  * v1 — anything the v2 path cannot do fails with a user-facing reason instead,
  * because a silent fallback would run the workflow on an engine the user did
  * not pick.
@@ -71,6 +89,7 @@ export class EngineV2Dispatcher {
 		private readonly credentialsPermissionChecker: CredentialsPermissionChecker,
 		private readonly pushRegistry: EngineV2PushRegistry,
 		private readonly payloadFiles: EngineV2PayloadFiles,
+		private readonly manualRunPlanner: EngineV2ManualRunPlanner,
 	) {}
 
 	/**
@@ -97,6 +116,58 @@ export class EngineV2Dispatcher {
 	}
 
 	/**
+	 * Ends the wait of a data-plane execution with the items that the node's
+	 * `webhook()` produced. `prepareExecutionData` put them on the stack entry of
+	 * the resuming node, as v1 does. The engine emits them as the step's outputs
+	 * and runs no node code (ADR-20260902-steps-declare-waits, decision 3).
+	 *
+	 * Of the v1 pre-run gates, only the credential check applies. There is no
+	 * control-plane row to take over, and the trigger identity was set when the
+	 * run started.
+	 */
+	async resume(
+		existingExecution: ResumableExecution,
+		data: IWorkflowExecutionDataProcess,
+	): Promise<string> {
+		const { executionId, engineResume } = existingExecution;
+		assert(engineResume, 'A v2 resume needs the step and the token the route located');
+
+		const items = data.executionData?.executionData?.nodeExecutionStack[0]?.data.main;
+		if (!items) {
+			throw new UnexpectedError('The resume request carries no payload for the waiting node');
+		}
+
+		// The files the node stored belong to the run only once the data plane takes
+		// the outputs. A refusal deletes them. A failed call keeps them, because the
+		// data plane may have taken the outputs before the answer was lost. After a
+		// crash, the files stay until the execution is pruned.
+		const { workflowData } = data;
+		try {
+			await this.credentialsPermissionChecker.check(
+				workflowData.id,
+				workflowData.nodes,
+				data.userId,
+			);
+		} catch (error) {
+			await this.payloadFiles.discard(items);
+			throw error;
+		}
+
+		const { toStepOutputs } = await import('@n8n/node-engine-compatibility');
+		// End the wait: the data plane resumes the step with these outputs.
+		const outcome = await this.proxy.resolveStep(engineResume.stepId, {
+			token: engineResume.token,
+			outputs: toStepOutputs(withoutNullSlots(items)),
+		});
+		if (!outcome.ok) {
+			await this.payloadFiles.discard(items);
+			throw toResumeRefusal(executionId, outcome.status, outcome.error);
+		}
+
+		return executionId;
+	}
+
+	/**
 	 * Returns the execution id this run uses.
 	 *
 	 * A caller that has to wait for the run's answer mints the id itself, so it
@@ -105,16 +176,28 @@ export class EngineV2Dispatcher {
 	 * The files the trigger stored belong to the control plane until the data
 	 * plane accepts the run. A run that does not start leaves them to no one, so
 	 * a failure deletes them, but only when no run can exist: a run that uses
-	 * deleted files fails, while a kept file is deleted with its execution.
+	 * deleted files fails, while a kept file is deleted with its execution. Only
+	 * the fired trigger's payload is deleted: a planned run may root at reused
+	 * run data instead, whose files belong to the execution that produced them.
 	 */
 	async start(data: IWorkflowExecutionDataProcess): Promise<string> {
-		const trigger = this.resolveFiredTrigger(data);
+		const fired = this.resolveFiredTrigger(data);
 
 		let prepared: PreparedStart;
 		try {
-			prepared = await this.prepare(data, trigger);
+			this.assertAvailable();
+
+			// A partial run, or one with pinned data, is planned here: the data plane
+			// gets a graph trimmed to what runs, plus the steps it records as done.
+			const plan = this.manualRunPlanner.applies(data)
+				? this.manualRunPlanner.plan(data)
+				: undefined;
+			const trigger: FiredTrigger = plan
+				? { name: plan.triggerName, outputs: plan.triggerOutputs }
+				: fired;
+			prepared = await this.prepare(data, trigger, plan);
 		} catch (error) {
-			await this.payloadFiles.discard(trigger.outputs);
+			await this.payloadFiles.discard(fired.outputs);
 			throw error;
 		}
 
@@ -124,7 +207,7 @@ export class EngineV2Dispatcher {
 		} catch (error) {
 			// Assumes rejection: a dropped success response also releases a still-live session.
 			this.pushRegistry.release(executionId);
-			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(trigger.outputs);
+			if (isStartRefusedBeforeSave(error)) await this.payloadFiles.discard(fired.outputs);
 			throw error;
 		}
 
@@ -135,6 +218,7 @@ export class EngineV2Dispatcher {
 	private async prepare(
 		data: IWorkflowExecutionDataProcess,
 		trigger: FiredTrigger,
+		plan?: ManualRunPlan,
 	): Promise<PreparedStart> {
 		this.assertSupported(data, trigger);
 
@@ -146,7 +230,17 @@ export class EngineV2Dispatcher {
 		// its dependencies into every n8n process, including ones with the module off.
 		const { V1WorkflowConverter, toStepOutputs } = await import('@n8n/node-engine-compatibility');
 
-		const graph = new V1WorkflowConverter().convert(workflowData, trigger.name);
+		// A planned run may root at a non-trigger: v1 starts from the nearest node
+		// with run data when no trigger has any, and the plan supplies its outputs.
+		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
+			allowNonTriggerRoot: plan !== undefined,
+		});
+		// One pass per node: a planned run seeds nothing inside a loop yet.
+		const seededSteps: SeededSteps | undefined = plan
+			? Object.fromEntries(
+					plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
+				)
+			: undefined;
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();
 		// A caller that minted the id is waiting on that exact run.
@@ -167,6 +261,7 @@ export class EngineV2Dispatcher {
 				// workflow that ran even after the live one is edited.
 				workflow: toWorkflowDocument(workflowData),
 				triggerOutputs: this.toTriggerOutputs(trigger.outputs, toStepOutputs),
+				seededSteps,
 				// The engine keeps only a coarse manual/production distinction. The exact
 				// host mode is carried in callerContext for reads and lifecycle events.
 				mode: data.executionMode === 'manual' ? 'manual' : 'production',
@@ -205,41 +300,41 @@ export class EngineV2Dispatcher {
 		});
 	}
 
+	/** v1's `getExecutionStartNode`: the one case where it honours the editor's start nodes. */
+	private startsAtPinnedNode(data: IWorkflowExecutionDataProcess): boolean {
+		if (data.runData !== undefined || data.triggerToStartFrom?.data !== undefined) return false;
+		const [only, ...rest] = data.startNodes ?? [];
+		return (
+			only !== undefined && rest.length === 0 && Object.keys(data.pinData ?? {}).includes(only.name)
+		);
+	}
+
 	/**
-	 * Rejects what the v2 path cannot do yet, in the order the user should hear
-	 * about it: the module being off comes first, so a workflow that would also
-	 * fail conversion does not report the conversion problem and hide the real
-	 * cause.
+	 * Checked before anything else, so a run that would also fail planning or
+	 * conversion does not report that problem and hide the real cause.
 	 */
-	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
+	private assertAvailable(): void {
 		if (!this.proxy.isAvailable()) {
 			throw new UserError(
 				'Engine v2 is not available. Enable the `engine-v2` module with N8N_ENABLED_MODULES.',
 			);
 		}
+	}
 
-		if (data.runData !== undefined) {
-			throw new UserError(
-				'Engine v2 cannot run a workflow from existing data yet. Run the whole workflow instead.',
-			);
-		}
-
-		// The engine cannot stop at a node, so ignoring this would run nodes the
-		// user did not ask for, with their side effects.
-		if (data.destinationNode !== undefined) {
-			throw new UserError(
-				'Engine v2 cannot run a workflow up to a single node yet. Run the whole workflow instead.',
-			);
-		}
-
-		if (data.startNodes?.length) {
-			throw new UserError(
-				'Engine v2 cannot start from selected nodes yet. Run the whole workflow instead.',
+	/** Rejects what the v2 path cannot do yet. */
+	private assertSupported(data: IWorkflowExecutionDataProcess, trigger: FiredTrigger): void {
+		// The editor still sends the start nodes of partial executions v1. v1 ignores
+		// them once it has run data or a trigger payload, and the planner derives
+		// its own, so they only matter where v1 starts the run at one: a single
+		// pinned node in place of the trigger.
+		if (this.startsAtPinnedNode(data)) {
+			throw new NotImplementedError(
+				'Engine v2 cannot start a run at a pinned node yet. Run the workflow from the trigger instead.',
 			);
 		}
 
 		if (data.agentRequest !== undefined) {
-			throw new UserError('Engine v2 cannot run a workflow as an AI tool yet.');
+			throw new NotImplementedError('Engine v2 cannot run a workflow as an AI tool yet.');
 		}
 
 		// `WorkflowRunner.run` returns through the v2 branch before it establishes the
@@ -252,16 +347,8 @@ export class EngineV2Dispatcher {
 			firedNode !== undefined &&
 			classifyTriggerIdentity(firedNode.type, firedNode.parameters).providesExternalIdentity
 		) {
-			throw new UserError(
+			throw new NotImplementedError(
 				`Engine v2 cannot run the "${firedNode.name}" trigger yet, because it takes credentials from the request.`,
-			);
-		}
-
-		// The trigger's own pinned data is the payload, so only the other nodes count.
-		const pinnedNode = Object.keys(data.pinData ?? {}).find((name) => name !== trigger.name);
-		if (pinnedNode !== undefined) {
-			throw new UserError(
-				`Engine v2 does not support pinned data on "${pinnedNode}" yet. Unpin it to run this workflow.`,
 			);
 		}
 	}

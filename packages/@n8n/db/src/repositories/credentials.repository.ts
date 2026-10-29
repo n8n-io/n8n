@@ -26,7 +26,6 @@ import type { ICredentialsDb, ListQuery } from '../entities/types-db';
 import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
-import { chunkIds } from '../utils/chunk-ids';
 import { parseListQuerySortBy } from '../utils/list-query-sort';
 
 export class CredentialIdConflictError extends UserError {
@@ -159,51 +158,23 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 		return rows.map((row) => row.id);
 	}
 
-	/** Reads workflow eligibility and access for the package's credential and project IDs. */
-	async findPromotionBindingAccess(
-		ids: string[],
-		projectIds: string[],
-	): Promise<
-		Array<
-			Pick<CredentialsEntity, 'id' | 'type' | 'usageScope' | 'isGlobal'> & { projectIds: string[] }
-		>
-	> {
-		const found = [];
-		for (const batch of chunkIds(ids)) {
-			const credentials = await this.find({
-				where: { id: In(batch) },
-				select: ['id', 'type', 'usageScope', 'isGlobal'],
-			});
-			const projectsByCredential = new Map<string, string[]>();
-			for (const projectBatch of chunkIds(projectIds)) {
-				const relations = await this.manager.find(SharedCredentials, {
-					where: { credentialsId: In(batch), projectId: In(projectBatch) },
-					select: ['credentialsId', 'projectId'],
-				});
-				for (const relation of relations) {
-					const projects = projectsByCredential.get(relation.credentialsId) ?? [];
-					projects.push(relation.projectId);
-					projectsByCredential.set(relation.credentialsId, projects);
-				}
-			}
-			found.push(
-				...credentials.map(({ id, type, usageScope, isGlobal }) => ({
-					id,
-					type,
-					usageScope,
-					isGlobal,
-					projectIds: projectsByCredential.get(id) ?? [],
-				})),
-			);
-		}
-		return found;
-	}
-
 	/** True when any of the given credentials is a private (resolvable) credential. */
 	async hasResolvableCredential(ids: string[]): Promise<boolean> {
 		if (ids.length === 0) return false;
 		const count = await this.count({ where: { id: In(ids), isResolvable: true } });
 		return count > 0;
+	}
+
+	async existsById(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).existsBy(CredentialsEntity, { id });
+	}
+
+	/** The stored (encrypted) data only, or null when the credential does not exist. */
+	async findStoredData(id: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOne(CredentialsEntity, {
+			where: { id },
+			select: { data: true },
+		});
 	}
 
 	async findDanglingProjectCredentials(): Promise<CredentialsEntity[]> {
@@ -607,6 +578,27 @@ export class CredentialsRepository extends BaseRepository<CredentialsEntity> {
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({ usageScope: 'project', shared: { projectId } });
+	}
+
+	/** Read execution metadata for credentials shared with this project or all projects. */
+	async findCredentialsUsableInProject(
+		projectId: string,
+		credentialIds?: string[],
+	): Promise<Array<Pick<CredentialsEntity, 'id' | 'name' | 'type'>>> {
+		if (credentialIds?.length === 0) return [];
+
+		const filter = this.excludePendingAuthorization({
+			usageScope: 'project',
+			...(credentialIds ? { id: In(credentialIds) } : {}),
+		});
+
+		return await this.find({
+			where: [
+				{ ...filter, shared: { projectId } },
+				{ ...filter, isGlobal: true },
+			],
+			select: ['id', 'name', 'type'],
+		});
 	}
 
 	/**

@@ -74,7 +74,7 @@ onMounted(async () => {
 			:docs-leading-text="i18n.baseText('settings.agents.docsLeadingText')"
 		>
 			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
+				<N8nPreviewBadge size="xsmall" />
 			</template>
 		</N8nSettingsPageHeader>
 		<N8nLoading v-if="isLoading" :rows="1" :shrink-last="false" />

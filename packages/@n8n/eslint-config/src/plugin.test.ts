@@ -13,11 +13,12 @@ describe('localRulesPlugin recommended config', () => {
 });
 
 describe('frontendConfig', () => {
-	it('enables the reka-ui pagination import ban as an error', () => {
-		expect(
-			frontendConfig.find(
-				(config) => config.rules?.['n8n-local-rules/no-reka-ui-pagination'] !== undefined,
-			)?.rules?.['n8n-local-rules/no-reka-ui-pagination'],
-		).toBe('error');
+	it('enables the design-system direct component import ban for Vue and TypeScript files', () => {
+		const ruleName = '@n8n/design-system/no-direct-component-imports';
+		const enabledFiles = frontendConfig
+			.filter((config) => config.rules?.[ruleName] === 'error')
+			.flatMap((config) => config.files ?? []);
+
+		expect(enabledFiles).toEqual(expect.arrayContaining(['**/*.vue', '**/*.{ts,tsx}']));
 	});
 });

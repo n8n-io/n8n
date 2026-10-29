@@ -16,6 +16,12 @@ const props = withDefaults(
 		showBack?: boolean;
 		showFooter?: boolean;
 		showCancel?: boolean;
+		cancelLabel?: string;
+		headerDivider?: boolean;
+		headerDividerTone?: 'default' | 'warning';
+		bodyFlush?: boolean;
+		fixedSize?: boolean;
+		stableHeight?: boolean;
 		busy?: boolean;
 		size?: DialogSize;
 		stacked?: boolean;
@@ -30,6 +36,12 @@ const props = withDefaults(
 		showBack: false,
 		showFooter: undefined,
 		showCancel: true,
+		cancelLabel: undefined,
+		headerDivider: false,
+		headerDividerTone: 'default',
+		bodyFlush: false,
+		fixedSize: false,
+		stableHeight: false,
 		busy: false,
 		size: '2xlarge',
 		stacked: false,
@@ -68,7 +80,13 @@ watch(
 		:show-back="showBack"
 		:show-footer="showFooter"
 		:show-cancel="showCancel"
+		:cancel-label="cancelLabel"
+		:header-divider="headerDivider"
+		:header-divider-tone="headerDividerTone"
 		:body-scrollable="!isPickerStep"
+		:body-flush="bodyFlush"
+		:fixed-size="fixedSize"
+		:stable-height="stableHeight"
 		:busy="busy"
 		:size="size"
 		:stacked="stacked"
@@ -79,6 +97,15 @@ watch(
 		@update:title="emit('update:title', $event)"
 		@back="emit('back')"
 	>
+		<template v-if="$slots.titlePrefix" #titlePrefix>
+			<slot name="titlePrefix" />
+		</template>
+		<template v-if="$slots.sidePanel" #sidePanel>
+			<slot name="sidePanel" />
+		</template>
+		<template v-if="$slots.titleSuffix" #titleSuffix>
+			<slot name="titleSuffix" />
+		</template>
 		<template #headerActions>
 			<slot name="headerActions" />
 		</template>

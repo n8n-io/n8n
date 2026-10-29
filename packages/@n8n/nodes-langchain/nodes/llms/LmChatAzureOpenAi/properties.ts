@@ -54,7 +54,7 @@ export const properties: INodeProperties[] = [
 		name: 'project',
 		type: 'string',
 		description:
-			'The Microsoft Foundry project that owns the deployment. Required for a Microsoft Foundry resource; leave empty for a classic Azure OpenAI resource.',
+			'The Microsoft Foundry project that owns the deployment. Leave empty to use the project from the credential. A classic Azure OpenAI resource does not use it.',
 		default: '',
 	},
 	{

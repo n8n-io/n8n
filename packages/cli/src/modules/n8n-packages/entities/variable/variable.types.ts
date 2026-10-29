@@ -4,6 +4,9 @@ import type { PackageWriter } from '../../io/package-writer';
 import type { VariableConflictPolicy, VariableMissingMode } from '../../n8n-packages.types';
 import type { ManifestEntry } from '../../spec/manifest.schema';
 import type { PackageVariableRequirement } from '../../spec/requirements.schema';
+import type { RequirementSource } from '../requirement-source';
+
+export type VariableRequirement = RequirementSource & { variableName: string };
 
 export interface WorkflowVariableRequirement {
 	workflowId: string;
@@ -12,7 +15,7 @@ export interface WorkflowVariableRequirement {
 
 export interface VariableExportRequest {
 	user: User;
-	requirements: WorkflowVariableRequirement[];
+	requirements: VariableRequirement[];
 	writer: PackageWriter;
 	includeVariableValues: boolean;
 	projectTargetsById?: Map<string, string>;
@@ -101,8 +104,15 @@ export function computeVariableLimitFailure(
 	};
 }
 
+/** A requirement that the target resolves. */
+export interface VariableMatch {
+	name: string;
+	/** Scopes that hold a variable with this name for the target project. Runtime `$vars` reads the project one first. */
+	scopes: Array<'project' | 'global'>;
+}
+
 export interface VariableImportPlan {
-	matched: string[];
+	matched: VariableMatch[];
 	missing: VariableResolutionFailure[];
 	creations: VariableCreation[];
 	conflicts: VariableConflict[];

@@ -27,8 +27,8 @@ export class ExecutionsController {
 		private readonly executionListService: ExecutionListService,
 	) {}
 
-	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
-		return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
+	private async getAccessibleWorkflowIds(user: User, scopes: Scope[]) {
+		return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes });
 	}
 
 	@Get('/', { middlewares: [parseRangeQuery] })
@@ -60,7 +60,7 @@ export class ExecutionsController {
 
 	@Get('/versions/:workflowId')
 	async getVersions(req: ExecutionRequest.GetVersions) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, ['execution:read']);
 
 		if (!accessibleWorkflowIds.includes(req.params.workflowId)) {
 			return [];
@@ -73,7 +73,7 @@ export class ExecutionsController {
 	async getOne(req: ExecutionRequest.GetOne) {
 		this.assertKnownExecutionId(req.params.id);
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['execution:read']);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -85,7 +85,7 @@ export class ExecutionsController {
 
 	@Post('/:id/stop')
 	async stop(req: ExecutionRequest.Stop) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['workflow:execute']);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -101,7 +101,9 @@ export class ExecutionsController {
 	 */
 	@Post('/stopMany')
 	async stopMany(req: ExecutionRequest.StopMany) {
-		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, [
+			'workflow:execute',
+		]);
 
 		// Return early to avoid expensive db query
 		if (accessibleWorkflowIds.length === 0) return { stopped: 0 };
@@ -112,7 +114,7 @@ export class ExecutionsController {
 
 	@Post('/:id/retry')
 	async retry(req: ExecutionRequest.Retry) {
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:execute');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['workflow:execute']);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -133,7 +135,7 @@ export class ExecutionsController {
 	async delete(req: AuthenticatedRequest, _res: Response, @Body payload: DeleteExecutionsDto) {
 		// Deleting is its own permission: a role can run and view workflows without
 		// being able to remove their execution history.
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:delete');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['execution:delete']);
 
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
 
@@ -144,7 +146,7 @@ export class ExecutionsController {
 	async update(req: ExecutionRequest.Update) {
 		this.assertKnownExecutionId(req.params.id);
 
-		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'execution:read');
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, ['execution:read']);
 
 		// Fail fast if no workflows are accessible
 		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');

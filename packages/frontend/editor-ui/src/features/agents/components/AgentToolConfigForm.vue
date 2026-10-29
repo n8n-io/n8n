@@ -1,24 +1,35 @@
 <script setup lang="ts">
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import { N8nText } from '@n8n/design-system';
+import { N8nCallout, N8nText } from '@n8n/design-system';
 import {
 	RestrictedToolCallout,
 	useNodeTypeRestriction,
 } from '@n8n/frontend-module-type-availability-policies';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { extractFromAICalls, type INode } from 'n8n-workflow';
-import { computed, ref, watch } from 'vue';
+import {
+	computed,
+	effectScope,
+	onBeforeUnmount,
+	ref,
+	toValue,
+	watch,
+	type MaybeRefOrGetter,
+} from 'vue';
 
 import { HTTP_REQUEST_NODE_TYPE, HTTP_REQUEST_TOOL_NODE_TYPE } from '@/app/constants/nodeTypes';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { useUIStore } from '@/app/stores/ui.store';
-import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
+import {
+	listenForCredentialChanges,
+	useCredentialsStore,
+} from '@/features/credentials/credentials.store';
 import {
 	toolRefToNode,
 	updateToolRefFromNode,
 	updateWorkflowToolRef,
 } from '../composables/useAgentToolRefAdapter';
 import { nodeToMcpServer } from '../composables/useMcpServerAdapter';
+import { isRestrictedByInlineTool } from '../utils/validationIssues';
 import type {
 	AgentJsonMcpServerConfig,
 	AgentJsonToolRef,
@@ -37,7 +48,8 @@ interface ToolModalData {
 	existingToolNames?: string[];
 	projectId?: string;
 	agentId?: string;
-	validationIssues?: AgentConfigValidationIssue[];
+	/** A getter keeps the form current when the builder validates again while the modal is open. */
+	validationIssues?: MaybeRefOrGetter<AgentConfigValidationIssue[]>;
 	/** Inline agents pass false because approval needs suspend and resume. */
 	supportsToolApproval?: boolean;
 	onConfirm: (updatedRef: AgentJsonToolRef) => void;
@@ -66,20 +78,15 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'update:title': [title: string];
-	'update:credentialModalOpen': [open: boolean];
+	'credential-deleted': [];
 	'update:restricted': [restricted: boolean];
 }>();
 
 const i18n = useI18n();
-const uiStore = useUIStore();
+const credentialsStore = useCredentialsStore();
 const nodeTypesStore = useNodeTypesStore();
 const httpRequestUrlErrorKey =
 	'agents.builder.validation.issue.httpRequestUrlFromAi' as BaseTextKey;
-
-const credentialModalOpen = computed(
-	() => uiStore.modalsById[CREDENTIAL_EDIT_MODAL_KEY]?.open === true,
-);
-watch(credentialModalOpen, (open) => emit('update:credentialModalOpen', open), { immediate: true });
 
 function isMcpServerModalData(data: AgentToolConfigModalData): data is McpServerModalData {
 	return data.kind === 'mcpServer';
@@ -97,6 +104,7 @@ function containsFromAiCall(value: unknown): boolean {
 const isMcpTool = computed(() => isMcpServerModalData(props.data));
 const mcpModalData = computed(() => (isMcpServerModalData(props.data) ? props.data : null));
 const toolModalData = computed(() => (isMcpServerModalData(props.data) ? null : props.data));
+const toolValidationIssues = computed(() => toValue(toolModalData.value?.validationIssues) ?? []);
 const isWorkflowTool = computed(() => toolModalData.value?.toolRef.type === 'workflow');
 const isCustomTool = computed(() => toolModalData.value?.toolRef.type === 'custom');
 
@@ -106,7 +114,7 @@ const workflowContentRef = ref<InstanceType<typeof AgentToolConfigWorkflowConten
 const isValid = ref(false);
 const submitCount = ref(0);
 const approvalRequired = ref(false);
-const mcpApproval = ref<AgentJsonMcpServerConfig['approval']>();
+const mcpPermissions = ref<AgentJsonMcpServerConfig['toolPermissions']>();
 const mcpApprovalValid = ref(true);
 const draftNode = ref<INode | null>(null);
 
@@ -120,7 +128,7 @@ const initialNode = computed<INode | null>(() =>
 				: null,
 );
 
-const { isRestricted, restrictionScope } = useNodeTypeRestriction(() => initialNode.value?.type);
+const { isRestricted, restriction } = useNodeTypeRestriction(() => initialNode.value?.type);
 const restrictedToolName = computed(() =>
 	initialNode.value
 		? (nodeTypesStore.getNodeType(initialNode.value.type)?.displayName ?? initialNode.value.type)
@@ -175,9 +183,11 @@ watch(
 );
 
 watch(
-	() => mcpModalData.value?.mcpServer.approval,
-	(approval) => {
-		mcpApproval.value = approval;
+	() => mcpModalData.value?.mcpServer.toolPermissions,
+	(toolPermissions) => {
+		mcpPermissions.value = toolPermissions ?? {
+			categories: { read: 'always_allow', write: 'always_allow' },
+		};
 	},
 	{ immediate: true },
 );
@@ -193,11 +203,20 @@ watch(
 watch(title, (value) => emit('update:title', value), { immediate: true });
 
 const currentNode = computed(() => draftNode.value ?? initialNode.value);
+
+/**
+ * The tool itself is allowed but the agent it embeds holds a denied node type. The form stays
+ * editable on purpose: removing that embedded tool is the only fix, so locking it would strand
+ * the agent.
+ */
+const embedsRestrictedTool = computed(() =>
+	toolValidationIssues.value.some(isRestrictedByInlineTool),
+);
 const hasHttpRequestUrlIssue = computed(() => {
 	const data = toolModalData.value;
 	if (data?.toolRef.type !== 'node') return false;
 	if (
-		!data.validationIssues?.some(
+		!toolValidationIssues.value.some(
 			(issue) => issue.code === 'invalid_value' && issue.path.endsWith('.node.nodeParameters.url'),
 		)
 	) {
@@ -208,7 +227,9 @@ const hasHttpRequestUrlIssue = computed(() => {
 
 const canSave = computed(() => {
 	if (isCustomTool.value) return true;
-	if (isMcpTool.value) return isValid.value && mcpApprovalValid.value;
+	if (isMcpTool.value) {
+		return isValid.value && (!supportsApproval.value || mcpApprovalValid.value);
+	}
 	return isValid.value && !hasHttpRequestUrlIssue.value;
 });
 
@@ -243,13 +264,6 @@ function withApprovalRequirement(ref: AgentJsonToolRef): AgentJsonToolRef {
 	return updatedRef;
 }
 
-function withMcpApproval(server: AgentJsonMcpServerConfig): AgentJsonMcpServerConfig {
-	const updatedServer = { ...server };
-	if (supportsApproval.value && mcpApproval.value) updatedServer.approval = mcpApproval.value;
-	else delete updatedServer.approval;
-	return updatedServer;
-}
-
 function confirm(): boolean {
 	submitCount.value += 1;
 	if (!canSave.value) return false;
@@ -264,9 +278,19 @@ function confirm(): boolean {
 	if (isMcpTool.value) {
 		const currentMcpNode = mcpContentRef.value?.getNode();
 		const mcpData = mcpModalData.value;
-		if (!currentMcpNode || !mcpData) return false;
+		if (!currentMcpNode || !mcpData || !mcpPermissions.value) return false;
 		const updatedServer = nodeToMcpServer(currentMcpNode, mcpData.mcpServer);
-		mcpData.onConfirm(withMcpApproval(updatedServer));
+		mcpData.onConfirm({
+			...updatedServer,
+			toolPermissions: supportsApproval.value
+				? mcpPermissions.value
+				: {
+						categories: {
+							read: 'always_allow',
+							write: 'always_allow',
+						},
+					},
+		});
 		return true;
 	}
 
@@ -310,7 +334,21 @@ function handleNodeNameUpdate(name: string) {
 	nodeName.value = name;
 }
 
-defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title });
+const credentialListeners = effectScope(true);
+credentialListeners.run(() => {
+	listenForCredentialChanges({
+		store: credentialsStore,
+		onCredentialDeleted: (credentialId) => {
+			const data = mcpModalData.value;
+			if (!data || data.mcpServer.credential !== credentialId) return;
+			data.onRemove?.();
+			emit('credential-deleted');
+		},
+	});
+});
+onBeforeUnmount(() => credentialListeners.stop());
+
+defineExpose({ canSave, confirm, remove, changeTitle });
 </script>
 
 <template>
@@ -318,8 +356,15 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 		<RestrictedToolCallout
 			v-if="isRestricted"
 			:node-type-name="restrictedToolName"
-			:scope="restrictionScope"
+			:restriction="restriction"
 		/>
+		<N8nCallout
+			v-else-if="embedsRestrictedTool"
+			theme="warning"
+			data-test-id="inline-restricted-tool-callout"
+		>
+			{{ i18n.baseText('agents.toolConfig.restrictedInlineTool' as BaseTextKey) }}
+		</N8nCallout>
 		<N8nText
 			v-if="submitCount && !canSave"
 			size="small"
@@ -356,6 +401,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:initial-node="initialNode"
 				:existing-tool-names="data.existingToolNames"
 				:project-id="data.projectId"
+				:hidden-parameters="['include', 'includeTools', 'excludeTools']"
 				:read-only="isRestricted"
 				content-test-id="agent-tool-config-mcp-content"
 				@update:valid="isValid = $event"
@@ -382,8 +428,8 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 				:disabled="isRestricted"
 			/>
 			<AgentToolConfigMcpApprovalSetting
-				v-if="isMcpTool && currentNode && supportsApproval"
-				v-model="mcpApproval"
+				v-if="isMcpTool && mcpPermissions && supportsApproval && currentNode"
+				v-model="mcpPermissions"
 				:node="currentNode"
 				:disabled="isRestricted"
 				:project-id="data.projectId"
@@ -397,7 +443,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 .contentWrapper {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 	overflow-x: hidden;
 
 	:global(.ndv-connection-hint-notice) {
@@ -414,7 +460,7 @@ defineExpose({ canSave, confirm, remove, changeTitle, credentialModalOpen, title
 	display: flex;
 	min-height: 0;
 	flex-direction: column;
-	gap: var(--spacing--sm);
+	gap: var(--spacing--md);
 }
 
 .customToolViewer {

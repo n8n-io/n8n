@@ -5,6 +5,7 @@ import {
 	type DisplayCondition,
 	type INodeProperties,
 	type INodePropertyOptions,
+	isExpression,
 } from 'n8n-workflow';
 
 import type { CredentialsHelper } from '@/credentials-helper';
@@ -70,6 +71,13 @@ export function validateCredentialData(
 	if (options?.partialData) {
 		schema.required = [];
 		delete schema.allOf;
+	}
+
+	// An expression resolves at runtime, so validate it only as a string.
+	for (const [name, value] of Object.entries(data)) {
+		if (isExpression(value) && Object.hasOwn(schema.properties, name)) {
+			schema.properties[name] = { type: 'string' };
+		}
 	}
 
 	const { valid, errors } = validate(data, schema, { nestedErrors: true });

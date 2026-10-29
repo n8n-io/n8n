@@ -26,6 +26,7 @@ import {
 	waitForAllActivity,
 	runMultiTurnConversation,
 	recordUserTurn,
+	buildAutoApprovePayload,
 	type ConfirmationStrategy,
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
@@ -53,6 +54,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
+import { restoreRecordedRuns } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -71,6 +73,7 @@ import {
 	extractOutcomeFromEvents,
 	mergeSeededConversationMetrics,
 } from '../outcome/event-parser';
+import { findForeignWorkflowReads } from '../outcome/foreign-reads';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
@@ -78,6 +81,7 @@ import type {
 	BuildTimeout,
 	BuildTrace,
 	CapturedEvent,
+	CapturedToolCall,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenario,
@@ -93,6 +97,7 @@ import {
 	lastAgentText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
+import { getEventPayload } from '../utils/confirmation-payload';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
@@ -289,7 +294,8 @@ export interface BuildResult {
 	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
-	/** The build's own project; `cleanupBuild` deletes the user that owns it. */
+	/** The build's own project. `cleanupBuild` deletes the user that owns it, or the
+	 *  project itself when no user is set (a team project). */
 	buildProjectId?: string;
 	buildUserId?: string;
 	/** The ROOT folders a seed created in the thread's project (a folder delete
@@ -333,6 +339,8 @@ export interface BuildResult {
 	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
 	 *  otherwise be scored as an agent failure. */
 	priorRunFailed?: string;
+	/** Workflows the agent read that this build neither created nor seeded. Not scored. */
+	foreignWorkflowReads?: string[];
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
@@ -342,6 +350,24 @@ export interface BuildResult {
 	 *  ordinary case; present even on a failed build, so the deterministic checks
 	 *  can report WHY nothing was created. */
 	credentialSetup?: CredentialSetupRunFacts;
+}
+
+/** A harness fault that decides the iteration without grading. `counted` faults fail it as
+ *  `framework_issue`; the others keep it out of the pass rate. */
+export function harnessFault(build: BuildResult): { reason: string; counted: boolean } | undefined {
+	if (build.priorRunFailed) {
+		return {
+			reason: `prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+			counted: false,
+		};
+	}
+	if (build.foreignWorkflowReads?.length) {
+		return {
+			reason: `the agent read workflows another build made (${build.foreignWorkflowReads.join(', ')})`,
+			counted: true,
+		};
+	}
+	return undefined;
 }
 
 /**
@@ -505,8 +531,9 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
-	/** Gives the build a fresh project. Absent: the owner's personal project. */
-	buildProject?: () => Promise<{ userId: string; projectId: string }>;
+	/** Gives the build a fresh project: a team project the owner administers, or a
+	 *  member's personal project (`userId` set). Absent: the owner's personal project. */
+	buildProject?: () => Promise<{ userId?: string; projectId: string }>;
 	/** History restored before the live message — carried in the case
 	 *  (`mode: 'inline'`) or reconstructed from a trace (`mode: 'replay'`, which
 	 *  also supplies the live turn). */
@@ -593,12 +620,25 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
-	let buildProject: { userId: string; projectId: string } | undefined;
-	// On every return path, so cleanup deletes the build user even after a failure.
+	let buildProject: { userId?: string; projectId: string } | undefined;
+	// On every return path, so cleanup deletes the build project even after a failure.
 	const buildProjectFields = () =>
 		buildProject
-			? { buildProjectId: buildProject.projectId, buildUserId: buildProject.userId }
+			? {
+					buildProjectId: buildProject.projectId,
+					...(buildProject.userId ? { buildUserId: buildProject.userId } : {}),
+				}
 			: {};
+	let parsedToolCalls: CapturedToolCall[] | undefined;
+	const foreignReadFields = () => {
+		const toolCalls = parsedToolCalls ?? extractOutcomeFromEvents(events).toolCalls;
+		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, restoredWorkflowIds);
+		if (foreignWorkflowReads.length === 0) return {};
+		logger.warn(
+			`  The agent read workflows another build made: ${foreignWorkflowReads.join(', ')}`,
+		);
+		return { foreignWorkflowReads };
+	};
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
 	// Scenario seed tables are created empty before the build
@@ -773,7 +813,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
-		// default) before the first message, so every build-workflow call inside
+		// default) before the first message, so every workflow_builder_build_workflow call inside
 		// the build sees the same deterministic environment.
 		const declaredCredentials = config.credentials ?? [];
 		// Shared with UserProxyLlm's mid-run credential creation (if any) so a
@@ -839,12 +879,31 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
 				);
 			}
-			credentialSetupLane = await startCredentialSetupLane({
+			const lane = await startCredentialSetupLane({
 				client,
 				selection: config.credentialSetupSelection,
 				logger,
 				localCredentialType: config.credentialSetupType,
 			});
+			credentialSetupLane = lane;
+			// The agent tests the credential it saves. Without this, that test reaches
+			// the real provider and rejects every key the stand-in issued.
+			if (lane?.credentialType && lane.verifyBaseUrl && lane.credentialUrlField) {
+				try {
+					await client.setThreadCredentialTestTarget(threadId, {
+						credentialType: lane.credentialType,
+						baseUrl: lane.verifyBaseUrl,
+						urlField: lane.credentialUrlField,
+					});
+				} catch (error: unknown) {
+					// An older backend has no endpoint: the agent's own test then reaches the
+					// real provider, as before. Any other failure is a lane boot failure.
+					if (!(error instanceof N8nApiError && error.status === 404)) throw error;
+					logger.info(
+						`  Credential-test target endpoint unavailable, agent tests reach the real provider${config.laneTag ?? ''}`,
+					);
+				}
+			}
 			laneBootFailed = false;
 		}
 
@@ -967,6 +1026,25 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				throw new Error(
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
+			}
+			// Recorded runs replay exact history, so a failed restore is a harness fault:
+			// flag it like a seeding failure instead of grading the agent without its premise.
+			if (config.seed?.mode === 'inline' && config.seed.recordedRuns?.length) {
+				try {
+					await restoreRecordedRuns({
+						client,
+						threadId,
+						recordedRuns: config.seed.recordedRuns,
+						seedWorkflows: seedWorkflowsBySeedId,
+						logger,
+						laneTag: config.laneTag,
+					});
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw new Error(
+						`Seeding failed: recorded run restore: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
 			}
 			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
 			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
@@ -1211,6 +1289,12 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingHandoffContext,
 				observerThresholdTokens,
 			);
+			// An empty answer reads to the agent as "no preference", which steers it
+			// off the path a real user would pick, so questions still get the proxy.
+			const questionProxy = new UserProxyLlm({
+				conversation: [{ role: 'user', text: recordedOpeningMessage }],
+				logger,
+			});
 			try {
 				await waitForAllActivity({
 					client,
@@ -1224,6 +1308,13 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
 					logger,
 					proxyResponses,
+					confirmationStrategy: async (event) => {
+						if (getEventPayload(event).inputType !== 'questions') {
+							return buildAutoApprovePayload(event);
+						}
+						questionProxy.ingestEvents(events);
+						return await questionProxy.respondToConfirmation(event);
+					},
 				});
 			} catch (error: unknown) {
 				if (!(error instanceof RunTimeoutError)) throw error;
@@ -1263,13 +1354,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
+		parsedToolCalls = eventOutcome.toolCalls;
 		// Restored workflows keep a seeded build scoreable/cleanable even if the
 		// live turn touches no workflow tool; live ids stay first (primary artifact).
 		const threadWorkflowIds = [
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
 		// Same for a restored agent, without which a live turn that never calls
-		// `build-agent` would grade against no agent at all — so a seeded agent alone
+		// `agent_builder_build_agent` would grade against no agent at all — so a seeded agent alone
 		// marks the case agent-anchored.
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
@@ -1335,6 +1427,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
 					...buildProjectFields(),
+					...foreignReadFields(),
 					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
@@ -1362,6 +1455,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
 				...buildProjectFields(),
+				...foreignReadFields(),
 				createdFolderIds: restoredFolderIds,
 				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
@@ -1412,6 +1506,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
@@ -1437,6 +1532,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
 			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,

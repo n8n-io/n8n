@@ -1323,6 +1323,46 @@ describe('SourceControlImportService', () => {
 			return await workflowTagMappingRepository.findBy({ workflowId });
 		}
 
+		// LIGO-1113: One missing tag must not stop valid tag links in the same import.
+		it('should skip mappings for missing tags and import valid mappings for all workflows', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const [workflow1, workflow2] = await Promise.all([
+				createWorkflowWithHistory({ id: 'workflow-1', name: 'Workflow 1' }, teamProject),
+				createWorkflowWithHistory({ id: 'workflow-2', name: 'Workflow 2' }, teamProject),
+			]);
+
+			setupTagsFileMock([
+				{ tagId: 'tag-1', workflowId: workflow1.id },
+				{ tagId: 'missing-tag', workflowId: workflow1.id },
+				{ tagId: 'tag-2', workflowId: workflow2.id },
+			]);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const workflow1Mappings = await getMappingsForWorkflow(workflow1.id);
+			expect(workflow1Mappings.map((mapping) => mapping.tagId)).toEqual(['tag-1']);
+			const workflow2Mappings = await getMappingsForWorkflow(workflow2.id);
+			expect(workflow2Mappings.map((mapping) => mapping.tagId)).toEqual(['tag-2']);
+		});
+
+		it('should keep mappings for local tags that are absent from the imported tags list', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const workflow = await createWorkflowWithHistory(
+				{ id: 'workflow-1', name: 'Workflow 1' },
+				teamProject,
+			);
+			const localTag = await createTag({ id: 'local-tag', name: 'Local tag' }, workflow);
+
+			setupTagsFileMock([{ tagId: localTag.id, workflowId: workflow.id }]);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const finalMappings = await getMappingsForWorkflow(workflow.id);
+			expect(finalMappings.map((mapping) => mapping.tagId)).toEqual([localTag.id]);
+		});
+
 		it('should remove tags from workflows when they are removed in source control', async () => {
 			const user = await getGlobalOwner();
 			const teamProject = await createTeamProject('Team 1');
@@ -2247,6 +2287,61 @@ describe('SourceControlImportService', () => {
 				await expect(
 					workflowRepository.findOne({ where: { id: workflow.id } }),
 				).resolves.toBeNull();
+			});
+
+			describe('preview', () => {
+				const pullStatus = (id: string, file: string) =>
+					mock<SourceControlledFile>({ id, file, type: 'workflow', status: 'modified' });
+
+				beforeEach(() => {
+					mockPolicyEnforcementService.evaluateContentImport.mockReset();
+					mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({ violations: [] });
+				});
+
+				it("evaluates against the remote owner's project, and writes nothing", async () => {
+					const importingUser = await getGlobalOwner();
+					const team = await createTeamProject('Policy team');
+					const workflow: IWorkflowToImport = {
+						...makeWorkflowImport(),
+						owner: { type: 'team', teamId: team.id, teamName: team.name },
+					};
+					const status = pullStatus(workflow.id, putWorkflowFile(workflow.id, workflow));
+					const violation = { kind: 'node-type-unavailable', checkId: 'c', message: 'no' };
+					mockPolicyEnforcementService.evaluateContentImport.mockResolvedValue({
+						violations: [violation],
+					});
+
+					await service.previewContentImportPolicy([status], importingUser.id);
+
+					expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith(
+						expect.objectContaining({ projectId: team.id }),
+					);
+					expect(status.contentImportPolicy).toEqual({ violations: [violation], checkErrors: [] });
+					expect(mockPolicyEnforcementService.enforceContentImport).not.toHaveBeenCalled();
+					await expect(
+						workflowRepository.findOne({ where: { id: workflow.id } }),
+					).resolves.toBeNull();
+				});
+
+				it('does not create the team project a pull would create', async () => {
+					const importingUser = await getGlobalOwner();
+					const teamId = nanoid();
+					const workflow: IWorkflowToImport = {
+						...makeWorkflowImport(),
+						owner: { type: 'team', teamId, teamName: 'Not yet here' },
+					};
+					const file = putWorkflowFile(workflow.id, workflow);
+
+					await service.previewContentImportPolicy(
+						[pullStatus(workflow.id, file)],
+						importingUser.id,
+					);
+
+					expect(mockPolicyEnforcementService.evaluateContentImport).toHaveBeenCalledWith(
+						expect.objectContaining({ projectId: teamId }),
+					);
+					await expect(projectRepository.findOneBy({ id: teamId })).resolves.toBeNull();
+				});
 			});
 
 			// A check that cannot answer is an infrastructure fault, not a property of one workflow.

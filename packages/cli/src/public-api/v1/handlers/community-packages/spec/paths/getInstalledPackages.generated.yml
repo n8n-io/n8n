@@ -4,9 +4,6 @@ tags:
 summary: List installed community packages
 description: Retrieve all installed community packages with pending update info.
 x-required-scope: communityPackage:list
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.

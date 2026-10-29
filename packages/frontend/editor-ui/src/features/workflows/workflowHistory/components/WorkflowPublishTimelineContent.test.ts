@@ -249,6 +249,12 @@ describe('WorkflowPublishTimelineContent', () => {
 						});
 				},
 			}),
+			{
+				global: {
+					// Paging tests do not need to render a tooltip for every timeline entry.
+					stubs: { WorkflowHistoryPublishedTooltip: { template: '<slot />' } },
+				},
+			},
 		);
 
 		let scrollToEnd = () => {};

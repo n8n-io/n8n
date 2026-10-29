@@ -15,6 +15,7 @@ export { N8nBinaryLoader } from './utils/n8n-binary-loader';
 export { N8nJsonLoader } from './utils/n8n-json-loader';
 export { N8nPdfLoader } from './utils/loaders/n8n-pdf-loader';
 export { N8nLlmTracing, anthropicTokensUsageParser } from './utils/n8n-llm-tracing';
+export { extractRespondingModel, toRunDataGeneration } from './utils/extract-responding-model';
 export { redactHeaderValues } from './utils/redact-headers';
 export {
 	TextEditorDocument,

@@ -644,7 +644,7 @@ onUnmounted(clearTimers);
 
 .channelCardTitle {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--text-color, var(--color--text--base));
 }
 
@@ -760,12 +760,12 @@ onUnmounted(clearTimers);
 }
 
 .modelName {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--text-color, var(--color--text--base));
 }
 
 .modelCredential {
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--text-color--subtler, var(--color--text--light));
 }
 

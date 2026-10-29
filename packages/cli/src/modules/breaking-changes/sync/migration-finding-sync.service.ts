@@ -9,16 +9,23 @@ import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
 import { createHash } from 'node:crypto';
 
+import { N8N_VERSION } from '../../../constants';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { MigrationFindingSyncRepository } from '../database/repositories/migration-finding-sync.repository';
 import { MigrationFindingRepository } from '../database/repositories/migration-finding.repository';
+import { MigrationWorkflowOwnerRepository } from '../database/repositories/migration-workflow-owner.repository';
+import { MigrationOwnerSuggestionService } from '../owners/migration-owner-suggestion.service';
 import { diffMigrationFindings, type MigrationFindingHit } from './migration-finding-diff';
 
-/** Stable hash of a rule set. The order of `ruleIds` does not change the result. */
-export function computeRuleSetFingerprint(ruleIds: string[]): string {
+/**
+ * Stable hash of a rule set. The order of `ruleIds` does not change the result.
+ * The n8n version is part of the hash: a release can change how a rule detects
+ * issues without changing its id, so the first read after an upgrade re-syncs.
+ */
+export function computeRuleSetFingerprint(ruleIds: string[], n8nVersion = N8N_VERSION): string {
 	return createHash('sha256')
-		.update([...ruleIds].sort().join('\n'))
+		.update([n8nVersion, ...[...ruleIds].sort()].join('\n'))
 		.digest('hex');
 }
 
@@ -43,6 +50,8 @@ export class MigrationFindingSyncService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly findingRepository: MigrationFindingRepository,
 		private readonly syncRepository: MigrationFindingSyncRepository,
+		private readonly ownerSuggestionService: MigrationOwnerSuggestionService,
+		private readonly ownerRepository: MigrationWorkflowOwnerRepository,
 		private readonly txRunner: TransactionRunner,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -68,7 +77,7 @@ export class MigrationFindingSyncService {
 
 		this.logger.debug('Migration finding table is stale, syncing', {
 			targetVersion,
-			reason: record ? 'rule set changed' : 'never synced',
+			reason: record ? 'rule set or n8n version changed' : 'never synced',
 		});
 		await this.sync(targetVersion);
 	}
@@ -122,6 +131,7 @@ export class MigrationFindingSyncService {
 			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
 			try {
 				await this.syncBatch(targetVersion, workflowIds, hitsByWorkflow, unknownByWorkflow);
+				await this.refreshSuggestedOwners(targetVersion, workflowIds);
 			} catch (error) {
 				// One bad batch must not lose the rest. The sync record stays cleared
 				// below, so the next read syncs and visits this batch again.
@@ -201,12 +211,40 @@ export class MigrationFindingSyncService {
 				groupByWorkflow(hits),
 				groupByWorkflow([...failedChecks, ...batchRulePairs]),
 			);
+			await this.refreshSuggestedOwners(targetVersion, [workflowId]);
 		} catch (error) {
 			this.logger.warn('Migration finding sync for one workflow failed', {
 				targetVersion,
 				workflowId,
 			});
 			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
+		}
+	}
+
+	/**
+	 * Stores the heuristic's owner for each workflow in the batch that has an open
+	 * finding, and drops the suggestion of the others. An owner a person assigned
+	 * is kept. Owners are a hint, so a failure here does not fail the finding sync.
+	 */
+	private async refreshSuggestedOwners(
+		targetVersion: BreakingChangeVersion,
+		workflowIds: string[],
+	): Promise<void> {
+		try {
+			const affectedIds = await this.findingRepository.listWorkflowIdsWithUnresolvedFindings(
+				targetVersion,
+				workflowIds,
+				{},
+			);
+			const suggestions =
+				affectedIds.length > 0 ? await this.ownerSuggestionService.suggestOwners(affectedIds) : [];
+			await this.ownerRepository.replaceSuggestions(workflowIds, suggestions, {});
+		} catch (error) {
+			this.logger.warn('Refreshing the suggested owners failed, the findings are unaffected', {
+				targetVersion,
+				batchStart: workflowIds[0],
+			});
+			this.errorReporter.error(error, { extra: { targetVersion, batchStart: workflowIds[0] } });
 		}
 	}
 

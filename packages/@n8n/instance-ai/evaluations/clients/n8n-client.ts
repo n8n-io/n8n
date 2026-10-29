@@ -6,27 +6,30 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiSendMessageRequest,
-	AgentConfigResponse,
-	InstanceAiBuildMode,
-	InstanceAiConfirmRequest,
-	InstanceAiRichMessagesResponse,
-	InstanceAiEvalAgentExecutionResult,
-	InstanceAiEvalExecutionResult,
-	InstanceAiRunDebugResponse,
-	InstanceAiEvalThreadMemoryResponse,
-	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadStatusResponse,
-	InstanceAiEvalSeedAgent,
-	InstanceAiEvalSeedDataTable,
-	InstanceAiEvalSeedFolder,
-	InstanceAiEvalSeedWorkflow,
-	InstanceAiResourceAttachment,
-	AgentJsonConfig,
-	AgentSkill,
-	EvaluationConfigDto,
+import {
+	type InstanceAiHandoffContext,
+	type InstanceAiSendMessageRequest,
+	type AgentConfigResponse,
+	type InstanceAiBuildMode,
+	type InstanceAiConfirmRequest,
+	type InstanceAiRichMessagesResponse,
+	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalExecutionResult,
+	type InstanceAiRunDebugResponse,
+	type InstanceAiEvalThreadMemoryResponse,
+	type InstanceAiThreadDebugRunsResponse,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiEvalSeedAgent,
+	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedFolder,
+	type InstanceAiEvalSeedWorkflow,
+	type InstanceAiResourceAttachment,
+	type AgentJsonConfig,
+	type AgentSkill,
+	type EvaluationConfigDto,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type ProjectIcon,
 } from '@n8n/api-types';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
@@ -73,6 +76,14 @@ const InvitedUsersEnvelope = z.object({
 
 // -- Conversation seeding response shapes -------------------------------------
 
+const ExportExecutionEnvelope = z.object({
+	data: z.object({ envelope: instanceAiEvalFailedExecutionEnvelopeSchema }),
+});
+
+const RestoreExecutionEnvelope = z.object({
+	data: z.object({ ok: z.literal(true), executionId: z.string().min(1) }),
+});
+
 const RestoreThreadEnvelope = z.object({
 	data: z.object({
 		ok: z.literal(true),
@@ -86,32 +97,11 @@ const RestoreThreadEnvelope = z.object({
 });
 
 // ---------------------------------------------------------------------------
-// Computer-use gateway response shapes (Zod-validated to keep the client
-// honest about API drift instead of trusting `as` casts)
+// Browser-use relay response shapes (Zod-validated to keep the client honest
+// about API drift instead of trusting `as` casts). The server owns the CDP
+// relay and the extension dials in.
 // ---------------------------------------------------------------------------
 
-const GatewayLinkSchema = z.object({
-	token: z.string(),
-	command: z.string(),
-});
-const GatewayLinkEnvelope = z.object({ data: GatewayLinkSchema });
-export type GatewayLink = z.infer<typeof GatewayLinkSchema>;
-
-const GatewayStatusSchema = z.object({
-	connected: z.boolean(),
-	directory: z.string().nullable(),
-	toolCategories: z.array(
-		z.object({
-			name: z.string(),
-			enabled: z.boolean(),
-		}),
-	),
-});
-const GatewayStatusEnvelope = z.object({ data: GatewayStatusSchema });
-export type GatewayStatus = z.infer<typeof GatewayStatusSchema>;
-
-// Browser-use relay (a different channel from the computer-use gateway above:
-// the server owns the CDP relay and the extension dials in).
 const BrowserLinkSchema = z.object({
 	connectUrl: z.string(),
 	expiresAt: z.string().nullable(),
@@ -465,29 +455,6 @@ export class N8nClient {
 		return this.unwrapRestData<InstanceAiEvalThreadMemoryResponse>(
 			await this.fetch(`/rest/instance-ai/eval/threads/${threadId}/memory`, { timeoutMs }),
 		);
-	}
-
-	// -- Computer-use gateway (pairing + status) -----------------------------
-
-	/**
-	 * Generate a one-shot pairing token for the local computer-use daemon.
-	 * POST /rest/instance-ai/gateway/create-link
-	 */
-	async createGatewayLink(): Promise<GatewayLink> {
-		const result = await this.fetch('/rest/instance-ai/gateway/create-link', {
-			method: 'POST',
-		});
-		return GatewayLinkEnvelope.parse(result).data;
-	}
-
-	/**
-	 * Read the local gateway status. The daemon flips this to `connected: true`
-	 * once it has registered its capabilities.
-	 * GET /rest/instance-ai/gateway/status
-	 */
-	async getGatewayStatus(): Promise<GatewayStatus> {
-		const result = await this.fetch('/rest/instance-ai/gateway/status');
-		return GatewayStatusEnvelope.parse(result).data;
 	}
 
 	// -- Browser-use relay (extension pairing + status) ----------------------
@@ -1000,6 +967,17 @@ export class N8nClient {
 		});
 	}
 
+	/** Send the thread's connection tests for one credential type to a provider stand-in. */
+	async setThreadCredentialTestTarget(
+		threadId: string,
+		target: { credentialType: string; baseUrl: string; urlField: string },
+	): Promise<void> {
+		await this.fetch('/rest/instance-ai/eval/thread-credential-test-target', {
+			method: 'POST',
+			body: { threadId, ...target },
+		});
+	}
+
 	/**
 	 * Seed an existing thread with a previously exported conversation: the
 	 * referenced workflows are recreated (node credentials stripped server-side),
@@ -1066,6 +1044,31 @@ export class N8nClient {
 		return restored;
 	}
 
+	/** Export one failed execution of the thread's project as a portable envelope. */
+	async exportExecution(
+		threadId: string,
+		executionId: string,
+	): Promise<{ envelope: InstanceAiEvalFailedExecutionEnvelope }> {
+		const result = await this.fetch('/rest/instance-ai/eval/export-execution', {
+			method: 'POST',
+			body: { threadId, executionId },
+		});
+		return ExportExecutionEnvelope.parse(result).data;
+	}
+
+	/** Restore an exported failed execution onto a seeded workflow; returns the new execution id. */
+	async restoreExecution(
+		threadId: string,
+		workflowId: string,
+		envelope: InstanceAiEvalFailedExecutionEnvelope,
+	): Promise<{ executionId: string }> {
+		const result = await this.fetch('/rest/instance-ai/eval/restore-execution', {
+			method: 'POST',
+			body: { threadId, workflowId, envelope },
+		});
+		return RestoreExecutionEnvelope.parse(result).data;
+	}
+
 	/**
 	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
 	 * for the per-scenario row seeding of a case that pre-created its tables
@@ -1112,9 +1115,22 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a team project. Used to seed the extra projects a project-scope case
-	 * needs: a second project the eval user can see but whose writes are barred,
-	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 * Whether the license allows team projects (`quota:maxTeamProjects` is not 0).
+	 * GET /rest/settings
+	 */
+	async canCreateTeamProjects(): Promise<boolean> {
+		const result = (await this.fetch('/rest/settings')) as {
+			data?: { enterprise?: { projects?: { team?: { limit?: number } } } };
+		};
+		const limit = result.data?.enterprise?.projects?.team?.limit;
+		return limit !== undefined && limit !== 0;
+	}
+
+	/**
+	 * Create a team project. Used for a build's own project, and to seed the extra
+	 * projects a project-scope case needs: a second project the eval user can see
+	 * but whose writes are barred, so `isCurrentProject` has something to
+	 * distinguish the bound project from.
 	 *
 	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
 	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
@@ -1123,11 +1139,11 @@ export class N8nClient {
 	 * against a project list it never saw, and pass for the wrong reason.
 	 * POST /rest/projects
 	 */
-	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+	async createTeamProject(name: string, icon?: ProjectIcon): Promise<{ id: string; name: string }> {
 		try {
 			const result = (await this.fetch('/rest/projects', {
 				method: 'POST',
-				body: { name },
+				body: { name, ...(icon ? { icon } : {}) },
 			})) as { data?: { id?: string; name?: string } };
 			const id = result.data?.id;
 			if (!id) {
@@ -1137,7 +1153,7 @@ export class N8nClient {
 		} catch (error: unknown) {
 			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
 				throw new Error(
-					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+					`Could not create the team project "${name}" (${String(error.status)}): team projects are licensed ` +
 						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
 						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
 						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
@@ -1157,12 +1173,14 @@ export class N8nClient {
 	 * are filtered out — they're never seeded and must never be deleted.
 	 * GET /rest/projects
 	 */
-	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+	async listTeamProjects(): Promise<
+		Array<{ id: string; name: string; icon?: ProjectIcon | null }>
+	> {
 		const result = (await this.fetch('/rest/projects')) as {
-			data?: Array<{ id?: string; name?: string; type?: string }>;
+			data?: Array<{ id?: string; name?: string; type?: string; icon?: ProjectIcon | null }>;
 		};
-		return (result.data ?? []).flatMap(({ id, name, type }) =>
-			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		return (result.data ?? []).flatMap(({ id, name, type, icon }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name, icon }] : [],
 		);
 	}
 
@@ -1322,8 +1340,8 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag. Data Table reads of
-	 * `seededDataTableIds` run live instead of pinned.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. The server keeps the rows of
+	 * `seededDataTableIds` and fills every other Data Table the workflow uses.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,

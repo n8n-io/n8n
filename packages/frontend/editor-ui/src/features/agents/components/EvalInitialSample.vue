@@ -18,6 +18,8 @@ const props = defineProps<{
 	toolCalls?: ToolCall[];
 	projectId?: string;
 	hideBanner?: boolean;
+	/** Another element sits right below it, so the bottom corners are square to meet it. */
+	joinedBelow?: boolean;
 }>();
 
 const i18n = useI18n();
@@ -30,7 +32,7 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 </script>
 
 <template>
-	<div :class="$style.evalPreview">
+	<div :class="[$style.evalPreview, { [$style.joinedBelow]: joinedBelow }]">
 		<div :class="$style.evalPreviewUserMessage">
 			<ChatBubble :text="previewInput" :status="status" />
 		</div>
@@ -68,9 +70,10 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	background-color: var(--run-data--color--background);
+	// The text colour flips with the theme, so the stripes show on light and dark run data.
 	background-image: repeating-linear-gradient(
 		135deg,
-		oklch(0% 0 0 / 0.025) 0 5px,
+		color-mix(in srgb, var(--text-color) 3%, transparent) 0 5px,
 		transparent 5px 10px
 	);
 
@@ -79,6 +82,11 @@ const isFailing = computed(() => props.status === 'work' || props.status === 'fa
 		width: 100%;
 		align-self: flex-end;
 	}
+}
+
+.joinedBelow {
+	border-bottom-left-radius: 0;
+	border-bottom-right-radius: 0;
 }
 
 .tools {
