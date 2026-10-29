@@ -99,26 +99,46 @@ describe('RestrictedTypesDialog', () => {
 		expect(getByText(/Marketing doesn't allow these nodes and credentials/)).toBeInTheDocument();
 	});
 
-	it('words each row by subject type, named by the host label, the subject, then the message', () => {
+	it('groups rows under node and credential headings, unknown types last without one', () => {
 		const withoutSubject: PolicyViolation = {
 			kind: 'workflow-start-denied',
 			checkId: 'workflow-start',
 			message: 'Cannot start here',
 		};
+		const { getAllByTestId } = renderComponent({
+			props: { violations: [github, withoutSubject, slack, violation('somethingElse', 'thing-1')] },
+		});
+
+		expect(
+			getAllByTestId('restricted-types-section').map((section) => ({
+				heading: section
+					.querySelector('[data-test-id="restricted-types-section-heading"]')
+					?.textContent?.trim(),
+				rows: rowTexts(section),
+			})),
+		).toEqual([
+			{ heading: 'Nodes', rows: ['n8n-nodes-base.slack'] },
+			{ heading: 'Credentials', rows: ['githubApi'] },
+			{ heading: undefined, rows: ['Cannot start here', 'thing-1'] },
+		]);
+	});
+
+	it('names each row by the host label, then the subject, then the message', () => {
 		const { getByTestId } = renderComponent({
 			props: {
-				violations: [slack, github, violation('somethingElse', 'thing-1'), withoutSubject],
+				violations: [slack, github],
 				labelOf: ({ subject }: PolicyViolation) =>
 					subject === 'n8n-nodes-base.slack' ? 'Slack' : undefined,
 			},
 		});
 
-		expect(rowTexts(getByTestId('restricted-types-list'))).toEqual([
-			'Slack node',
-			'githubApi credential',
-			'thing-1',
-			'Cannot start here',
-		]);
+		expect(rowTexts(getByTestId('restricted-types-list'))).toEqual(['Slack', 'githubApi']);
+	});
+
+	it('omits a section with no rows', () => {
+		const { getAllByTestId } = renderComponent({ props: { violations: [slack] } });
+
+		expect(getAllByTestId('restricted-types-section')).toHaveLength(1);
 	});
 
 	it('renders the icon slot once for each violation', () => {

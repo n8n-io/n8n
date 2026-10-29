@@ -56,19 +56,8 @@ watch(
 );
 const destinationType = computed(() => destination.value?.type ?? null);
 
-const NAME_KEY_BY_SUBJECT_TYPE: Record<string, BaseTextKey | undefined> = {
-	[POLICY_VIOLATION_SUBJECT_TYPE.nodeType]: 'typeAvailabilityPolicies.violations.nodeType',
-	[POLICY_VIOLATION_SUBJECT_TYPE.credentialType]:
-		'typeAvailabilityPolicies.violations.credentialType',
-};
-
 function nameOf(violation: PolicyViolation): string {
 	return labelOf(violation) ?? violation.subject ?? violation.message;
-}
-
-function rowText(violation: PolicyViolation): string {
-	const key = violation.subjectType ? NAME_KEY_BY_SUBJECT_TYPE[violation.subjectType] : undefined;
-	return key ? i18n.baseText(key, { interpolate: { name: nameOf(violation) } }) : nameOf(violation);
 }
 
 function kindOf(violation: PolicyViolation): RestrictedTypeKind {
@@ -80,12 +69,40 @@ function kindOf(violation: PolicyViolation): RestrictedTypeKind {
 const rows = computed(() =>
 	violations.map((violation) => ({
 		key: `${violation.subjectType ?? ''}:${violation.subject ?? violation.message}`,
-		text: rowText(violation),
 		name: nameOf(violation),
 		kind: kindOf(violation),
 		verdict: getViolationVerdict(violation),
 		violation,
 	})),
+);
+
+/** Unknown subject types go last, under no heading, so a new policy kind still shows. */
+const SECTIONS: Array<{ id: string; subjectType?: string; heading?: BaseTextKey }> = [
+	{
+		id: 'nodes',
+		subjectType: POLICY_VIOLATION_SUBJECT_TYPE.nodeType,
+		heading: 'typeAvailabilityPolicies.transfer.dialog.nodes',
+	},
+	{
+		id: 'credentials',
+		subjectType: POLICY_VIOLATION_SUBJECT_TYPE.credentialType,
+		heading: 'typeAvailabilityPolicies.transfer.dialog.credentials',
+	},
+	{ id: 'other' },
+];
+
+const KNOWN_SUBJECT_TYPES = new Set(SECTIONS.flatMap(({ subjectType }) => subjectType ?? []));
+
+const sections = computed(() =>
+	SECTIONS.map(({ id, subjectType, heading }) => ({
+		id,
+		heading,
+		rows: rows.value.filter((row) =>
+			subjectType
+				? row.violation.subjectType === subjectType
+				: !KNOWN_SUBJECT_TYPES.has(row.violation.subjectType ?? ''),
+		),
+	})).filter((section) => section.rows.length > 0),
 );
 
 const rowElements = shallowReactive(new Map<string, HTMLElement>());
@@ -148,28 +165,47 @@ function contactForAll() {
 					})
 				}}
 			</N8nDialogDescription>
-			<ul :class="$style.list" data-test-id="restricted-types-list">
-				<li
-					v-for="row in rows"
-					:key="row.key"
-					:ref="(element) => setRowElement(row.key, element)"
-					:class="$style.row"
+			<div :class="$style.sections" data-test-id="restricted-types-list">
+				<section
+					v-for="section in sections"
+					:key="section.id"
+					data-test-id="restricted-types-section"
 				>
-					<span :class="$style.icon"><slot name="icon" :violation="row.violation" /></span>
-					<N8nText size="medium" color="text-dark" :class="$style.name">{{ row.text }}</N8nText>
-					<RestrictedNodePopover
-						:node-type-name="row.name"
-						:restriction="row.verdict"
-						:kind="row.kind"
-						:project-type="destinationType"
-						:anchor="rowElements.get(row.key)"
-						side="right"
-						@contact-admin="
-							(audience) => openContact({ audience, names: [row.name], kind: row.kind })
-						"
-					/>
-				</li>
-			</ul>
+					<N8nText
+						v-if="section.heading"
+						tag="p"
+						size="small"
+						color="text-light"
+						bold
+						:class="$style.heading"
+						data-test-id="restricted-types-section-heading"
+					>
+						{{ i18n.baseText(section.heading) }}
+					</N8nText>
+					<ul :class="$style.list">
+						<li
+							v-for="row in section.rows"
+							:key="row.key"
+							:ref="(element) => setRowElement(row.key, element)"
+							:class="$style.row"
+						>
+							<span :class="$style.icon"><slot name="icon" :violation="row.violation" /></span>
+							<N8nText size="medium" color="text-dark" :class="$style.name">{{ row.name }}</N8nText>
+							<RestrictedNodePopover
+								:node-type-name="row.name"
+								:restriction="row.verdict"
+								:kind="row.kind"
+								:project-type="destinationType"
+								:anchor="rowElements.get(row.key)"
+								side="right"
+								@contact-admin="
+									(audience) => openContact({ audience, names: [row.name], kind: row.kind })
+								"
+							/>
+						</li>
+					</ul>
+				</section>
+			</div>
 		</N8nDialogBody>
 		<N8nDialogFooter>
 			<N8nButton
@@ -197,6 +233,17 @@ function contactForAll() {
 <style lang="scss" module>
 .body {
 	max-height: 400px;
+}
+
+.sections {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.heading {
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
 }
 
 .list {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { PolicyViolation } from '@n8n/api-types';
+import { POLICY_VIOLATION_SUBJECT_TYPE, type PolicyViolation } from '@n8n/api-types';
 import { N8nCallout, N8nLink } from '@n8n/design-system';
-import { useI18n } from '@n8n/i18n';
+import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { computed, ref } from 'vue';
 
 import RestrictedTypesDialog from './RestrictedTypesDialog.vue';
@@ -29,8 +29,43 @@ const unpublishCount = computed(() => {
 });
 const canListRestricted = computed(() => hasRestricted.value && resourceType !== 'credential');
 
-/** The opening sentence names the main consequence; the follow-ups add the others. */
-const lead = computed(() => {
+/** Counts each type once: a folder preview can repeat a type across workflows. */
+function typesPhrase(violations: PolicyViolation[]): string {
+	const countOf = (subjectType: string) =>
+		new Set(violations.filter((v) => v.subjectType === subjectType).map((v) => v.subject)).size;
+	const phrase = (key: BaseTextKey, count: number) =>
+		i18n.baseText(key, { adjustToNumber: count, interpolate: { count } });
+
+	const nodes = countOf(POLICY_VIOLATION_SUBJECT_TYPE.nodeType);
+	const credentials = countOf(POLICY_VIOLATION_SUBJECT_TYPE.credentialType);
+	const nodesText = phrase('typeAvailabilityPolicies.transfer.count.nodes', nodes);
+	const credentialsText = phrase(
+		'typeAvailabilityPolicies.transfer.count.credentials',
+		credentials,
+	);
+
+	if (nodes > 0 && credentials > 0) {
+		return i18n.baseText('typeAvailabilityPolicies.transfer.count.nodesAndCredentials', {
+			interpolate: { nodes: nodesText, credentials: credentialsText },
+		});
+	}
+	if (nodes > 0) return nodesText;
+	if (credentials > 0) return credentialsText;
+	return phrase('typeAvailabilityPolicies.transfer.count.items', violations.length);
+}
+
+/** Unpublishing is the consequence users miss, so it gets the title. */
+const title = computed(() => {
+	if (unpublishCount.value === 0) return null;
+	return resourceType === 'folder'
+		? i18n.baseText('typeAvailabilityPolicies.transfer.title.folder', {
+				adjustToNumber: unpublishCount.value,
+				interpolate: { count: unpublishCount.value },
+			})
+		: i18n.baseText('typeAvailabilityPolicies.transfer.title.workflow');
+});
+
+const body = computed(() => {
 	if (hasRestricted.value) {
 		if (resourceType === 'credential') {
 			const [violation] = preview.restricted;
@@ -40,56 +75,43 @@ const lead = computed(() => {
 			});
 		}
 		return i18n.baseText(`typeAvailabilityPolicies.transfer.restricted.${resourceType}`, {
-			interpolate: { project: projectName },
+			interpolate: { types: typesPhrase(preview.restricted), project: projectName },
 		});
 	}
 
 	if (unpublishCount.value > 0) {
 		return resourceType === 'folder'
 			? i18n.baseText('typeAvailabilityPolicies.transfer.unpublish.folder', {
-					adjustToNumber: unpublishCount.value,
-					interpolate: { count: unpublishCount.value, project: projectName },
+					interpolate: { project: projectName },
 				})
 			: i18n.baseText('typeAvailabilityPolicies.transfer.unpublish.workflow', {
-					interpolate: { project: projectName },
+					interpolate: { types: typesPhrase(preview.unpublishReasons), project: projectName },
 				});
 	}
 
 	if (preview.checkFailed) {
 		return i18n.baseText('typeAvailabilityPolicies.transfer.checkFailed', {
-			interpolate: {
-				resource: i18n.baseText(`generic.${resourceType}`).toLowerCase(),
-				project: projectName,
-			},
+			interpolate: { project: projectName },
 		});
 	}
 
 	return null;
 });
 
-const followUps = computed(() => {
-	const sentences: string[] = [];
-	if (hasRestricted.value && unpublishCount.value > 0) {
-		sentences.push(
-			resourceType === 'folder'
-				? i18n.baseText('typeAvailabilityPolicies.transfer.unpublish.folder.also', {
-						adjustToNumber: unpublishCount.value,
-						interpolate: { count: unpublishCount.value },
-					})
-				: i18n.baseText('typeAvailabilityPolicies.transfer.unpublish.workflow.also'),
-		);
-	}
-	if (preview.checkFailed && (hasRestricted.value || unpublishCount.value > 0)) {
-		sentences.push(i18n.baseText('typeAvailabilityPolicies.transfer.checkFailed.also'));
-	}
-	return sentences;
-});
+const checkFailedNote = computed(() =>
+	preview.checkFailed && (hasRestricted.value || unpublishCount.value > 0)
+		? i18n.baseText('typeAvailabilityPolicies.transfer.checkFailed.also')
+		: null,
+);
 </script>
 
 <template>
-	<div v-if="lead">
+	<div v-if="body">
 		<N8nCallout theme="warning" data-test-id="transfer-policy-warning">
-			{{ [lead, ...followUps].join(' ') }}
+			<strong v-if="title" :class="$style.title" data-test-id="transfer-policy-warning-title">
+				{{ title }}
+			</strong>
+			{{ [body, checkFailedNote].filter(Boolean).join(' ') }}
 			<N8nLink
 				v-if="canListRestricted"
 				size="small"
@@ -113,3 +135,10 @@ const followUps = computed(() => {
 		</RestrictedTypesDialog>
 	</div>
 </template>
+
+<style lang="scss" module>
+.title {
+	display: block;
+	font-weight: var(--font-weight--bold);
+}
+</style>
