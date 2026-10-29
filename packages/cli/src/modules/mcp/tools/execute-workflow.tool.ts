@@ -28,6 +28,7 @@ import type {
 	UserCalledMCPToolEventPayload,
 } from '../mcp.types';
 import { findEnabledEligibleTriggers, isMcpSupportedTriggerType } from '../mcp.utils';
+import { redactRunStartError } from './execution-utils';
 import {
 	getExpectedInputsDescription,
 	triggerRequiresInputs,
@@ -40,7 +41,10 @@ import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowPublishedDataService } from '@n8n/backend-services';
+import type {
+	ExecutionRedactionServiceProxy,
+	WorkflowPublishedDataService,
+} from '@n8n/backend-services';
 
 export { type FoundWorkflow };
 
@@ -87,6 +91,7 @@ export const createExecuteWorkflowTool = (
 	mcpService: McpService,
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,
+	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
@@ -120,6 +125,7 @@ export const createExecuteWorkflowTool = (
 				mcpService,
 				workflowsConfig,
 				workflowPublishedDataService,
+				executionRedactionServiceProxy,
 				workflowId,
 				inputs,
 				executionMode,
@@ -188,6 +194,7 @@ export const executeWorkflow = async (
 	mcpService: McpService,
 	workflowsConfig: WorkflowsConfig,
 	workflowPublishedDataService: WorkflowPublishedDataService,
+	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	workflowId: string,
 	inputs: ExecuteWorkflowInput['inputs'],
 	executionMode: ExecutionMode,
@@ -212,7 +219,12 @@ export const executeWorkflow = async (
 		triggerNodeName,
 	);
 
-	const executionId = await workflowRunner.run(runData);
+	let executionId: string;
+	try {
+		executionId = await workflowRunner.run(runData);
+	} catch (error) {
+		throw await redactRunStartError(executionRedactionServiceProxy, user, runData, error);
+	}
 
 	return {
 		executionId,

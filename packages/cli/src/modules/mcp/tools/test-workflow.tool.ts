@@ -1,3 +1,4 @@
+import type { ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { normalizePinData } from '@n8n/workflow-sdk';
@@ -24,6 +25,8 @@ import { McpExecutionTimeoutError, WorkflowAccessError } from '../mcp.errors';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { findEnabledEligibleTrigger } from '../mcp.utils';
 import {
+	getRedactedRunErrorMessage,
+	redactRunStartError,
 	waitForExecutionResult,
 	WORKFLOW_EXECUTION_TIMEOUT_DEFAULT_SECONDS,
 	WORKFLOW_EXECUTION_TIMEOUT_MAX_SECONDS,
@@ -76,6 +79,7 @@ export const createTestWorkflowTool = (
 	nodeTypes: NodeTypes,
 	telemetry: Telemetry,
 	mcpService: McpService,
+	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'test_workflow',
 	config: {
@@ -116,6 +120,7 @@ export const createTestWorkflowTool = (
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				workflowId,
 				pinData as IPinData,
 				triggerNodeName,
@@ -174,6 +179,7 @@ export async function testWorkflow(
 	workflowRunner: WorkflowRunner,
 	nodeTypes: NodeTypes,
 	mcpService: McpService,
+	executionRedactionServiceProxy: ExecutionRedactionServiceProxy,
 	workflowId: string,
 	pinData: IPinData,
 	triggerNodeName?: string,
@@ -265,20 +271,39 @@ export async function testWorkflow(
 		}),
 	};
 
-	const executionId = await workflowRunner.run(runData);
+	let executionId: string;
+	try {
+		executionId = await workflowRunner.run(runData);
+	} catch (error) {
+		throw await redactRunStartError(executionRedactionServiceProxy, user, runData, error);
+	}
+
 	const data = await waitForExecutionResult(
 		executionId,
 		activeExecutions,
 		mcpService,
 		timeoutSeconds * Time.seconds.toMilliseconds,
 	);
-	const hasError = data.status === 'error' || data.data.resultData?.error;
+	const executionError = data.data.resultData?.error;
+	const hasError = data.status === 'error' || executionError;
+	if (!hasError) {
+		return { executionId, status: data.status, error: undefined };
+	}
+
+	const redactedMessage = executionError
+		? await getRedactedRunErrorMessage(executionRedactionServiceProxy, user, {
+				executionId,
+				mode: data.mode,
+				workflowId,
+				workflowData: { settings: workflow.settings, nodes },
+				data: data.data,
+				error: executionError,
+			})
+		: undefined;
 
 	return {
 		executionId,
-		status: hasError ? 'error' : data.status,
-		error: hasError
-			? (data.data.resultData?.error?.message ?? 'Execution completed with errors')
-			: undefined,
+		status: 'error',
+		error: redactedMessage ?? executionError?.message ?? 'Execution completed with errors',
 	};
 }

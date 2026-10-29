@@ -1,3 +1,4 @@
+import { ExecutionRedactionServiceProxy, type RedactableExecution } from '@n8n/backend-services';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
@@ -5,6 +6,7 @@ import {
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IWorkflowExecutionDataProcess,
+	NodeOperationError,
 	UnexpectedError,
 } from 'n8n-workflow';
 import type { Mock } from 'vitest';
@@ -60,6 +62,7 @@ describe('test-workflow MCP tool', () => {
 	let nodeTypes: ReturnType<typeof createMockNodeTypes>;
 	let telemetry: Telemetry;
 	let mcpService: McpService;
+	let executionRedactionServiceProxy: ExecutionRedactionServiceProxy;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
@@ -68,6 +71,7 @@ describe('test-workflow MCP tool', () => {
 		nodeTypes = createMockNodeTypes();
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		mcpService = mockInstance(McpService, { isQueueMode: false });
+		executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);
 	});
 
 	describe('smoke tests', () => {
@@ -80,6 +84,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				executionRedactionServiceProxy,
 			);
 
 			expect(tool.name).toBe('test_workflow');
@@ -103,6 +108,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					executionRedactionServiceProxy,
 					'missing-workflow',
 					{},
 				),
@@ -134,6 +140,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					executionRedactionServiceProxy,
 					'no-trigger-workflow',
 					{},
 				),
@@ -165,6 +172,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					executionRedactionServiceProxy,
 					'wf-1',
 					{},
 					'NonExistentTrigger',
@@ -197,6 +205,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					executionRedactionServiceProxy,
 					'wf-1',
 					{},
 				),
@@ -243,6 +252,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{},
 			);
@@ -290,6 +300,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{},
 				'WebhookB',
@@ -335,6 +346,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				pinData,
 			);
@@ -379,6 +391,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				pinData as any,
 			);
@@ -420,6 +433,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{},
 			);
@@ -457,6 +471,7 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					executionRedactionServiceProxy,
 					'wf-1',
 					{ Trigger: [{ json: {} }], NonExistentNode: [{ json: { x: 1 } }] },
 					'Trigger',
@@ -500,6 +515,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -530,6 +546,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -560,6 +577,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -587,6 +605,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -608,10 +627,192 @@ describe('test-workflow MCP tool', () => {
 					workflowRunner,
 					nodeTypes,
 					mcpService,
+					executionRedactionServiceProxy,
 					'wf-1',
 					{ Trigger: [{ json: {} }] },
 				),
 			).rejects.toThrow(UnexpectedError);
+		});
+	});
+
+	describe('execution redaction', () => {
+		const setupWorkflow = () => {
+			const workflow = createWorkflow({
+				settings: { availableInMCP: true, redactionPolicy: 'all' },
+				nodes: [
+					{
+						id: 'node-1',
+						name: 'Trigger',
+						type: WEBHOOK_NODE_TYPE,
+						typeVersion: 1,
+						position: [0, 0],
+						disabled: false,
+						parameters: {},
+					} as INode,
+				],
+			});
+			(workflowFinderService.findWorkflowForUser as Mock).mockResolvedValue(workflow);
+			return workflow;
+		};
+
+		const redactAllErrors = () => {
+			(executionRedactionServiceProxy.processExecution as Mock).mockImplementation(
+				async (execution: RedactableExecution) => {
+					const { resultData } = execution.data;
+					for (const tasks of Object.values(resultData.runData)) {
+						for (const task of tasks) {
+							if (task.data) task.data = { main: [[{ json: {} }]] };
+						}
+					}
+					if (resultData.error) {
+						resultData.redactedError = { type: resultData.error.name, httpCode: '401' };
+						delete resultData.error;
+					}
+					return execution;
+				},
+			);
+		};
+
+		const runTestWorkflow = async () =>
+			await testWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				mcpService,
+				executionRedactionServiceProxy,
+				'wf-1',
+				{ Trigger: [{ json: {} }] },
+			);
+
+		test('returns the redacted error when redaction hides the execution data', async () => {
+			const workflow = setupWorkflow();
+			redactAllErrors();
+			const executionError = new NodeOperationError(workflow.nodes[0], 'token sk-secret-123');
+			(workflowRunner.run as Mock).mockResolvedValue('exec-redacted');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				mode: 'manual',
+				status: 'error',
+				data: {
+					resultData: { runData: {}, error: executionError },
+					executionData: { runtimeData: { redaction: { version: 2, production: true } } },
+				},
+			});
+
+			const result = await runTestWorkflow();
+
+			expect(result).toEqual({
+				executionId: 'exec-redacted',
+				status: 'error',
+				error: 'Error details hidden by execution data redaction (NodeOperationError, HTTP 401)',
+			});
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'exec-redacted',
+					mode: 'manual',
+					workflowId: 'wf-1',
+					workflowData: expect.objectContaining({
+						settings: expect.objectContaining({ redactionPolicy: 'all' }),
+					}),
+					data: expect.objectContaining({
+						executionData: expect.objectContaining({
+							runtimeData: { redaction: { version: 2, production: true } },
+						}),
+					}),
+				}),
+				{ user },
+			);
+		});
+
+		test('returns the original error when redaction does not hide the execution data', async () => {
+			setupWorkflow();
+			(workflowRunner.run as Mock).mockResolvedValue('exec-visible');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				mode: 'manual',
+				status: 'error',
+				data: { resultData: { runData: {}, error: { message: 'Visible failure' } } },
+			});
+
+			const result = await runTestWorkflow();
+
+			expect(result.error).toBe('Visible failure');
+			expect(executionRedactionServiceProxy.processExecution).toHaveBeenCalledTimes(1);
+		});
+
+		test('does not change the run result during redaction', async () => {
+			setupWorkflow();
+			redactAllErrors();
+			const runResult = {
+				mode: 'manual',
+				status: 'error',
+				data: {
+					resultData: {
+						runData: {
+							Trigger: [{ data: { main: [[{ json: { apiKey: 'secret' } }]] } }],
+						},
+						error: { name: 'NodeApiError', message: 'Request failed with secret' },
+					},
+				},
+			};
+			(workflowRunner.run as Mock).mockResolvedValue('exec-unchanged');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue(runResult);
+
+			await runTestWorkflow();
+
+			expect(runResult.data.resultData.error.message).toBe('Request failed with secret');
+			expect(runResult.data.resultData.runData.Trigger[0].data).toEqual({
+				main: [[{ json: { apiKey: 'secret' } }]],
+			});
+		});
+
+		test('skips redaction for a successful execution', async () => {
+			setupWorkflow();
+			(workflowRunner.run as Mock).mockResolvedValue('exec-ok');
+			(activeExecutions.getPostExecutePromise as Mock).mockResolvedValue({
+				mode: 'manual',
+				status: 'success',
+				data: { resultData: { runData: {} } },
+			});
+
+			const result = await runTestWorkflow();
+
+			expect(result.status).toBe('success');
+			expect(executionRedactionServiceProxy.processExecution).not.toHaveBeenCalled();
+		});
+
+		test('redacts an error that stops the execution from starting', async () => {
+			setupWorkflow();
+			redactAllErrors();
+			(workflowRunner.run as Mock).mockRejectedValue(new Error('start failed with sk-secret-123'));
+
+			const tool = createTestWorkflowTool(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				nodeTypes,
+				telemetry,
+				mcpService,
+				executionRedactionServiceProxy,
+			);
+
+			const result = await tool.handler(
+				{
+					workflowId: 'wf-1',
+					pinData: { Trigger: [{ json: {} }] },
+					triggerNodeName: undefined,
+					timeout: undefined,
+				},
+				{} as any,
+			);
+
+			expect(result.structuredContent).toEqual({
+				executionId: null,
+				status: 'error',
+				error: 'Error details hidden by execution data redaction (Error, HTTP 401)',
+			});
+			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('sk-secret-123');
 		});
 	});
 
@@ -645,6 +846,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{ MyTrigger: [{ json: { key: 'val' } }] },
 			);
@@ -691,6 +893,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{},
 			);
@@ -735,6 +938,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				queueMcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{},
 			);
@@ -776,6 +980,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				executionRedactionServiceProxy,
 			);
 
 			const result = await tool.handler(
@@ -825,6 +1030,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				executionRedactionServiceProxy,
 			);
 
 			await tool.handler(
@@ -856,6 +1062,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				executionRedactionServiceProxy,
 			);
 
 			const result = await tool.handler(
@@ -917,6 +1124,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -955,6 +1163,7 @@ describe('test-workflow MCP tool', () => {
 				workflowRunner,
 				nodeTypes,
 				mcpService,
+				executionRedactionServiceProxy,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -1013,6 +1222,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				executionRedactionServiceProxy,
 			);
 
 			await tool.handler(
@@ -1055,6 +1265,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				telemetry,
 				mcpService,
+				executionRedactionServiceProxy,
 			);
 
 			await tool.handler(
