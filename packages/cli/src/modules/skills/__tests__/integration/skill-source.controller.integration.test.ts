@@ -261,7 +261,7 @@ describe('SkillSourceController', () => {
 
 			expect(discovery.skills).toEqual([
 				expect.objectContaining({
-					error: expect.objectContaining({ reason: 'parse_error' }),
+					error: null,
 					check: expect.objectContaining({ verdict: 'blocked' }),
 				}),
 			]);

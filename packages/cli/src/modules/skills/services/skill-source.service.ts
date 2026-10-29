@@ -13,6 +13,7 @@ import {
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
@@ -524,18 +525,14 @@ export class SkillSourceService {
 				...(error instanceof SkillParseError ? { check: this.scanner.scanUnreadable(error) } : {}),
 			};
 		}
+		// The security check alone decides whether a skill is valid. Its findings name the cause.
 		const check = this.scanner.scan(fetched);
+		if (check.verdict === 'blocked') return { key, ref, fetched, check };
 		const parsed = importableSkillSchema.safeParse(contentToAgentSkill(fetched.content));
 		if (!parsed.success) {
-			const issue = parsed.error.issues[0];
-			const field = issue?.path.join('.') || 'skill';
-			return {
-				key,
-				ref,
-				fetched,
-				error: { reason: 'parse_error', message: `${field}: ${issue?.message ?? 'invalid'}` },
-				check,
-			};
+			throw new UnexpectedError('The security check passed a skill that n8n cannot store', {
+				extra: { issues: parsed.error.issues },
+			});
 		}
 		return { key, ref, fetched, skill: parsed.data, check };
 	}
