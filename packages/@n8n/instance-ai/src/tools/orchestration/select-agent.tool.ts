@@ -73,10 +73,7 @@ const selectAgentOutputSchema = z.object({
 	agentName: z.string().optional().describe('Display name of the selected agent, when known.'),
 	projectId: z.string().optional(),
 	agentChange: agentChangeSchema.optional(),
-	sessionContext: z
-		.string()
-		.optional()
-		.describe('Preview link and model recommendations for the selected agent.'),
+	sessionContext: z.string().optional().describe('Preview link for the selected agent.'),
 });
 
 type SelectAgentOutput = z.infer<typeof selectAgentOutputSchema>;

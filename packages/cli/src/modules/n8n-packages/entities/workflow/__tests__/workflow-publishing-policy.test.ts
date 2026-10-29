@@ -64,6 +64,30 @@ describe('decideWorkflowPublishingAction', () => {
 		).toBe(testCase.expected);
 	});
 
+	it.each(
+		[true, false, undefined].flatMap((sourcePublished) =>
+			(['created', 'updated'] as const).flatMap((status) =>
+				[true, false].map((currentlyPublished) => ({
+					sourcePublished,
+					status,
+					currentlyPublished,
+				})),
+			),
+		),
+	)(
+		'PreserveTargetState leaves a $status workflow alone (source published: $sourcePublished, target published: $currentlyPublished)',
+		({ sourcePublished, status, currentlyPublished }) => {
+			expect(
+				decideWorkflowPublishingAction(WorkflowPublishingPolicy.PreserveTargetState, {
+					status,
+					sourcePublished,
+					currentlyPublished,
+					isArchived: false,
+				}),
+			).toBe('noop');
+		},
+	);
+
 	it('returns noop for skipped imports regardless of policy', () => {
 		expect(
 			decideWorkflowPublishingAction(WorkflowPublishingPolicy.PublishAll, {
@@ -80,6 +104,17 @@ describe('decideWorkflowPublishingAction', () => {
 			decideWorkflowPublishingAction(WorkflowPublishingPolicy.PublishAll, {
 				status: 'updated',
 				sourcePublished: true,
+				currentlyPublished: true,
+				isArchived: true,
+			}),
+		).toBe('unpublish');
+	});
+
+	it('still unpublishes archived workflows under PreserveTargetState', () => {
+		expect(
+			decideWorkflowPublishingAction(WorkflowPublishingPolicy.PreserveTargetState, {
+				status: 'updated',
+				sourcePublished: false,
 				currentlyPublished: true,
 				isArchived: true,
 			}),

@@ -1593,6 +1593,84 @@ describe('CredentialsOverwrites', () => {
 			});
 		});
 
+		describe('getManagedAppVersion', () => {
+			const rollout = {
+				notionOAuth2Api: baseApp,
+				__versions: { notionOAuth2Api: { version: 2, ...newApp } },
+			};
+
+			it('should return the version a new credential would use', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getManagedAppVersion('notionOAuth2Api', managed())).toBe(2);
+			});
+
+			it('should return the base version for a credential with tokens and no stored version', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(instance.getManagedAppVersion('notionOAuth2Api', managed(tokens))).toBe(1);
+			});
+
+			it('should return the stored version', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(
+					instance.getManagedAppVersion(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 2 }),
+					),
+				).toBe(2);
+			});
+
+			it('should return the base version when there is no rollout', async () => {
+				const instance = await createInstance({ notionOAuth2Api: baseApp });
+
+				expect(instance.getManagedAppVersion('notionOAuth2Api', managed())).toBe(1);
+			});
+
+			it('should return nothing for a user-owned app', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(
+					instance.getManagedAppVersion('notionOAuth2Api', {
+						clientId: 'own-id',
+						clientSecret: 'own-secret',
+						oauthTokenData: { ...tokens, [MANAGED_VERSION_KEY]: 2 },
+					}),
+				).toBeUndefined();
+			});
+
+			it('should return nothing for a type without an overwrite', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(
+					instance.getManagedAppVersion('notionApi', { oauthTokenData: tokens }),
+				).toBeUndefined();
+			});
+
+			it('should report a stored version that has no app in the config', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(
+					instance.getManagedAppVersion(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 9 }),
+					),
+				).toBe(9);
+			});
+
+			it('should return nothing, and not throw, when the stored version is not valid', async () => {
+				const instance = await createInstance(rollout);
+
+				expect(
+					instance.getManagedAppVersion(
+						'notionOAuth2Api',
+						managed({ ...tokens, [MANAGED_VERSION_KEY]: 'abc' }),
+					),
+				).toBeUndefined();
+			});
+		});
+
 		describe('a type without an overwrite', () => {
 			it('should leave the credential data unchanged', async () => {
 				const instance = await createInstance({

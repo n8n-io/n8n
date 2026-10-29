@@ -277,7 +277,7 @@ erDiagram
   text content
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
-  json embedding
+  bytea embedding
   varchar_128_ embeddingModel
   varchar_36_ id
   timestamp_3__with_time_zone lastSeenAt

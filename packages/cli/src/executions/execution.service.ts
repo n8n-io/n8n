@@ -683,14 +683,18 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		// Broadcast a stop to whichever worker is running this execution; it cancels the execution
-		// from its own ActiveExecutions, and workers not running it ignore the command. This is the
-		// only way to reach a subworkflow execution, which runs inline in the parent's worker process
-		// and has no Bull job to abort. For a top-level execution this is redundant with the
-		// abort-job triggered above via ActiveExecutions, but both paths are idempotent.
-		await this.executionStopService.requestStop(execution.id);
-
-		return await this.stopDuringRun(execution);
+		// Mark the execution as canceled before the broadcast. A worker that dequeues the job after
+		// the update reads the canceled status and skips the job. The broadcast also runs when the
+		// update fails, so a worker does not keep running the execution.
+		try {
+			return await this.stopDuringRun(execution);
+		} finally {
+			// Broadcast a stop to whichever worker runs this execution. Workers not running it ignore
+			// the command. The abort-job triggered above only works on the main that enqueued the
+			// job, so the broadcast is the only stop path for a subworkflow execution and for a
+			// top-level job enqueued by another process. Both paths are idempotent.
+			await this.executionStopService.requestStop(execution.id);
+		}
 	}
 
 	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {

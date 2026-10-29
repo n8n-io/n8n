@@ -14,6 +14,11 @@
       "types": "./dist/apps.module.d.ts",
       "import": "./dist/apps.module.js",
       "require": "./dist/apps.module.js"
+    },
+    "./hosting": {
+      "types": "./dist/serving/apps-hosting.service.d.ts",
+      "import": "./dist/serving/apps-hosting.service.js",
+      "require": "./dist/serving/apps-hosting.service.js"
     }
   },
   "files": [
@@ -45,8 +50,15 @@
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/inbound-auth": "workspace:*",
+    "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "workspace:*",
     "@n8n/utils": "workspace:*",
+    "compression": "catalog:",
+    "cookie-parser": "catalog:",
+    "express": "catalog:",
+    "lru-cache": "catalog:",
+    "mime-types": "catalog:",
     "n8n-core": "workspace:*",
     "tar": "catalog:",
     "uuid": "catalog:"
@@ -58,7 +70,10 @@
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/compression": "catalog:",
+    "@types/cookie-parser": "catalog:",
     "@types/express": "catalog:",
+    "@types/mime-types": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",

@@ -355,4 +355,47 @@ describe('UserRepository', () => {
 			expect(row?.status).toBe('canceled');
 		});
 	});
+
+	describe('unsaved manual executions', () => {
+		/** A finished manual run that n8n did not save, soft-deleted when it finished. */
+		const createUnsavedManualExecution = async () => {
+			const workflow = await createWorkflow({}, owner);
+			const execution = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			await executionRepository.softDelete(execution.id);
+			return { workflow, execution };
+		};
+
+		test('finds the execution inside the hard-delete buffer', async () => {
+			const { workflow, execution } = await createUnsavedManualExecution();
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toMatchObject({
+				id: execution.id,
+				workflowId: workflow.id,
+			});
+			expect(await executionRepository.findSingleExecution(execution.id)).toBeUndefined();
+		});
+
+		test('does not find the execution after the hard-delete buffer', async () => {
+			const { execution } = await createUnsavedManualExecution();
+			await executionRepository.update(
+				{ id: execution.id },
+				{ deletedAt: DateTime.utc().minus({ hours: 2 }).toJSDate() },
+			);
+
+			expect(await executionRepository.findUnsavedManualExecution(execution.id)).toBeNull();
+		});
+
+		test('does not find a kept, an unfinished or a non-manual execution', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const kept = await createExecution({ mode: 'manual', status: 'error' }, workflow);
+			const { execution: unfinished } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: unfinished.id }, { status: 'running' });
+			const { execution: webhook } = await createUnsavedManualExecution();
+			await executionRepository.update({ id: webhook.id }, { mode: 'webhook' });
+
+			expect(await executionRepository.findUnsavedManualExecution(kept.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(unfinished.id)).toBeNull();
+			expect(await executionRepository.findUnsavedManualExecution(webhook.id)).toBeNull();
+		});
+	});
 });

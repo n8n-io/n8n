@@ -1,10 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { isBillableExecution } from '@n8n/backend-services';
+import { isBillableExecution, sumNodeTimeSavedMinutes } from '@n8n/backend-services';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
-import { IRun, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
+import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { InsightsMetadata } from './insights-metadata.entity';
 import { InsightsRaw } from './insights-raw.entity';
@@ -357,32 +357,9 @@ export class InsightsCollectionService {
 			return workflowTimeSaved ?? 0;
 		}
 
-		const nodeTimeSaved = this.extractTimeSavedFromNodes(ctx.runData);
-
-		return nodeTimeSaved;
-	}
-
-	/**
-	 * Extract and sum time saved from all SavedTime nodes in the workflow execution.
-	 * Returns undefined if no SavedTime nodes were executed.
-	 */
-	private extractTimeSavedFromNodes(runData: IRun): number {
-		let totalMinutes = 0;
-
-		const resultData = runData.data.resultData?.runData ?? {};
-
-		// Iterate through all node metadata
-		for (const nodeName in resultData) {
-			const taskData = resultData[nodeName];
-
-			// Each node can have multiple run indexes
-			for (const taskDataEntry of taskData) {
-				if (taskDataEntry?.metadata?.timeSaved) {
-					totalMinutes += taskDataEntry?.metadata?.timeSaved.minutes;
-				}
-			}
-		}
-
-		return totalMinutes;
+		return (
+			ctx.runData.nodeTimeSavedMinutes ??
+			sumNodeTimeSavedMinutes(ctx.runData.data.resultData?.runData)
+		);
 	}
 }
