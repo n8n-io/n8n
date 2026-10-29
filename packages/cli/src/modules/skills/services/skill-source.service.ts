@@ -18,7 +18,6 @@ import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
 import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
-import { SkillSourceLinkRepository } from '../database/repositories/skill-source-link.repository';
 import {
 	DuplicateSkillSourceError,
 	SkillSourceRepository,
@@ -43,7 +42,7 @@ import { SkillAccessService } from './skill-access.service';
 import { isNameTaken } from './skill.policy';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
-import { SkillsTelemetry } from './skills-telemetry.service';
+import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
 
 /** Skills fetched at the same time from one source. */
 const FETCH_CONCURRENCY = 8;
@@ -67,7 +66,21 @@ type ParsedSource = {
 };
 
 /** The skills of a source at one revision. */
-type Discovered = { refs: RemoteSkillRef[]; truncated: boolean; revision?: string };
+type Discovered = {
+	refs: RemoteSkillRef[];
+	truncated: boolean;
+	/** Skills that the client did not list, as they are too deep in the source. */
+	tooDeep: number;
+	revision?: string;
+};
+
+/** The properties of `User connected skill source` that a request fills in as it goes. */
+type ConnectReport = {
+	provider: SkillSourceType;
+	access: 'public';
+	scope_type: ScopeType;
+	duplicate_result: SkillSourceDuplicate['kind'];
+};
 
 /** One skill of the source, read and checked against the rules of n8n skills. */
 type ReadSkill = {
@@ -91,39 +104,60 @@ export class SkillSourceService {
 		private readonly skillService: SkillService,
 		private readonly skillRepository: SkillRepository,
 		private readonly sourceRepository: SkillSourceRepository,
-		private readonly linkRepository: SkillSourceLinkRepository,
 		private readonly clients: SkillSourceClientRegistry,
 		private readonly txRunner: TransactionRunner,
 		private readonly skillsTelemetry: SkillsTelemetry,
 	) {}
 
-	/** Reads a link and lists its skills for the picker. Writes nothing. */
+	/**
+	 * Reads a link and lists its skills for the picker. Writes nothing. The connect funnel
+	 * stops here for a link that fails or a blocked duplicate, so telemetry reports those as
+	 * a failed connect. A discover that succeeds reports nothing: the connect reports it.
+	 */
 	async discover(user: User, payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
 		await this.flagGate.assertEnabled(user);
-		const { target } = await this.resolveScope(user, payload);
-		const source = await this.parse(payload.url);
-		const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
-		const discovered = await this.discoverAll(source);
-		const skills = await this.readAll(source, discovered);
-		const names = await this.skillRepository.findLatestNamesInTarget(target);
-		const { client, locator } = source;
-		return {
-			source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
-			duplicate,
-			skills: skills.map(
-				(read): DiscoveredSkill => ({
-					key: read.key,
-					location: client.location(read.ref),
-					name: read.skill?.name ?? read.fetched?.content.name ?? null,
-					description: read.skill?.description ?? read.fetched?.content.description ?? null,
-					skippedFiles: read.fetched?.skippedFiles ?? [],
-					nameTaken: read.skill !== undefined && isNameTaken(read.skill.name, names),
-					error: read.error ?? null,
-					webUrl: client.webUrl(locator, read.ref),
-				}),
-			),
-			truncated: discovered.truncated,
-		};
+		const { target, scopeType } = await this.resolveScope(user, payload);
+		const report = connectReport(scopeType);
+		try {
+			const source = await this.parse(payload.url);
+			report.provider = source.type;
+			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
+			report.duplicate_result = duplicate.kind;
+			const discovered = await this.discoverAll(source);
+			const skills = await this.readAll(source, discovered);
+			const names = await this.skillRepository.findLatestNamesInTarget(target);
+			const { client, locator } = source;
+			if (duplicate.kind === 'blocked') {
+				await this.skillsTelemetry.connectedSource(
+					{ ...report, status: 'failure', reason: 'duplicate_source' },
+					user.id,
+				);
+			}
+			return {
+				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
+				duplicate,
+				skills: skills.map(
+					(read): DiscoveredSkill => ({
+						key: read.key,
+						location: client.location(read.ref),
+						name: read.skill?.name ?? read.fetched?.content.name ?? null,
+						description: read.skill?.description ?? read.fetched?.content.description ?? null,
+						skippedFiles: read.fetched?.skippedFiles ?? [],
+						nameTaken: read.skill !== undefined && isNameTaken(read.skill.name, names),
+						error: read.error ?? null,
+						webUrl: client.webUrl(locator, read.ref),
+					}),
+				),
+				truncated: discovered.truncated,
+				tooDeep: discovered.tooDeep,
+			};
+		} catch (error) {
+			await this.skillsTelemetry.connectedSource(
+				{ ...report, status: 'failure', reason: telemetryReasonOf(error) },
+				user.id,
+			);
+			throw error;
+		}
 	}
 
 	/**
@@ -134,25 +168,28 @@ export class SkillSourceService {
 	async connect(user: User, payload: ConnectSkillSourceDto): Promise<SkillSourceConnectResponse> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = {
-			provider: 'github' as SkillSourceType,
-			access: 'public' as const,
-			scope_type: scopeType,
-			duplicate_result: 'none' as SkillSourceDuplicate['kind'],
-		};
+		const report = connectReport(scopeType);
 		try {
 			const source = await this.parse(payload.url);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
 			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
-			const result = await this.importSkills(user, source, target, payload.skillKeys, scopeType);
-			await this.skillsTelemetry.connectedSource({ ...report, status: 'success' }, user.id);
-			return result;
-		} catch (error) {
-			const reason = skillSourceReasonOf(error);
+			const { response, warning } = await this.importSkills(
+				user,
+				source,
+				target,
+				payload.skillKeys,
+				scopeType,
+			);
 			await this.skillsTelemetry.connectedSource(
-				{ ...report, status: 'failure', ...(reason ? { reason } : {}) },
+				{ ...report, status: 'success', ...(warning ? { reason: warning } : {}) },
+				user.id,
+			);
+			return response;
+		} catch (error) {
+			await this.skillsTelemetry.connectedSource(
+				{ ...report, status: 'failure', reason: telemetryReasonOf(error) },
 				user.id,
 			);
 			throw error;
@@ -167,12 +204,12 @@ export class SkillSourceService {
 		target: SkillTarget,
 		skillKeys: string[],
 		scopeType: ScopeType,
-	): Promise<SkillSourceConnectResponse> {
+	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
 		const failed: SkillSourceConnectResponse['failed'] = [];
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
-		const track = async (status: 'success' | 'failure', reason?: SkillSourceReason) =>
+		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
 			await this.skillsTelemetry.importedFromSource(
 				{
 					provider: source.type,
@@ -189,8 +226,9 @@ export class SkillSourceService {
 			);
 
 		const sourceId = uuidv7();
+		let discovered: Discovered;
 		try {
-			const discovered = await this.discoverAll(source);
+			discovered = await this.discoverAll(source);
 			const byKey = new Map(discovered.refs.map((ref) => [refKey(ref), ref]));
 			const picked: RemoteSkillRef[] = [];
 			for (const key of keys) {
@@ -243,7 +281,7 @@ export class SkillSourceService {
 						},
 						ctx,
 					);
-					await this.linkRepository.insertImported(
+					await this.sourceRepository.insertImported(
 						{
 							skillId,
 							sourceId,
@@ -272,7 +310,7 @@ export class SkillSourceService {
 			// The transaction rolled back, so nothing came in.
 			imported.length = 0;
 			skippedFiles = 0;
-			await track('failure', skillSourceReasonOf(error));
+			await track('failure', telemetryReasonOf(error));
 			throw error;
 		}
 
@@ -283,7 +321,7 @@ export class SkillSourceService {
 			source.type,
 			'sync',
 		);
-		return { sourceId, imported, failed };
+		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
 	}
 
 	/**
@@ -309,6 +347,12 @@ export class SkillSourceService {
 			.map((type) => this.clients.get(type))
 			.find((candidate) => candidate?.handles(url));
 		if (!client) {
+			if (isWebLink(url)) {
+				throw new SkillSourceRequestError(
+					'unsupported_provider',
+					'n8n reads skills only from GitHub. Use https://github.com/owner/repo.',
+				);
+			}
 			throw new SkillSourceRequestError(
 				'invalid_url',
 				'This is not a GitHub repository link. Use https://github.com/owner/repo.',
@@ -366,6 +410,7 @@ export class SkillSourceService {
 	private async discoverAll(source: ParsedSource): Promise<Discovered> {
 		const refs: RemoteSkillRef[] = [];
 		let truncated = false;
+		let tooDeep = 0;
 		let revision: string | undefined;
 		let cursor: string | undefined;
 		try {
@@ -373,6 +418,7 @@ export class SkillSourceService {
 				const page = await source.client.discover(source.locator, undefined, cursor);
 				refs.push(...page.items);
 				truncated ||= page.truncated === true;
+				tooDeep += page.tooDeep ?? 0;
 				revision ??= page.revision;
 				cursor = page.next;
 			} while (cursor !== undefined);
@@ -380,12 +426,18 @@ export class SkillSourceService {
 			throw toSkillSourceRequestError(error);
 		}
 		if (refs.length === 0) {
+			if (tooDeep > 0) {
+				throw new SkillSourceRequestError(
+					'too_deep',
+					'The SKILL.md files here are in folders too deep for n8n to read. Link to a folder nearer to the skills.',
+				);
+			}
 			throw new SkillSourceRequestError(
 				'no_skills_found',
 				'n8n found no skills here. A skill is a folder with a SKILL.md file.',
 			);
 		}
-		return { refs, truncated, revision };
+		return { refs, truncated, tooDeep, revision };
 	}
 
 	/**
@@ -433,6 +485,32 @@ export class SkillSourceService {
 			};
 		}
 		return { key, ref, fetched, skill: parsed.data };
+	}
+}
+
+function connectReport(scopeType: ScopeType): ConnectReport {
+	return { provider: 'github', access: 'public', scope_type: scopeType, duplicate_result: 'none' };
+}
+
+/** A failure always carries a reason, so a bug shows in telemetry as `unexpected`. */
+function telemetryReasonOf(error: unknown): SkillSourceTelemetryReason {
+	return skillSourceReasonOf(error) ?? 'unexpected';
+}
+
+/** Why a source that listed skills did not list all of them, for the telemetry of a success. */
+function warningOf(discovered: Discovered): SkillSourceReason | undefined {
+	if (discovered.truncated) return 'too_many_skills';
+	if (discovered.tooDeep > 0) return 'too_deep';
+	return undefined;
+}
+
+/** Whether the input is a web link, so a link to another site is told apart from a typo. */
+function isWebLink(input: string): boolean {
+	try {
+		const { protocol } = new URL(input.trim());
+		return protocol === 'https:' || protocol === 'http:';
+	} catch {
+		return false;
 	}
 }
 

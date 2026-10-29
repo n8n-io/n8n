@@ -9,9 +9,12 @@ import { SkillSourceUrlError } from './skill-source-url.error';
 
 const STATUS: Record<SkillSourceReason, number> = {
 	invalid_url: 400,
+	unsupported_provider: 400,
 	parse_error: 400,
 	not_found: 404,
 	no_skills_found: 422,
+	too_many_skills: 422,
+	too_deep: 422,
 	archive_too_large: 422,
 	name_taken: 409,
 	duplicate_source: 409,

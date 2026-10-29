@@ -26,6 +26,9 @@ type ImportedFromSourceProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.USER_IMPORTED_SKILLS_FROM_SOURCE
 >;
 
+/** A Skill Sync reason code, or `unexpected` for a failure with no known reason. */
+export type SkillSourceTelemetryReason = NonNullable<ConnectedSourceProps['reason']>;
+
 type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId' | 'agentId'>;
 
 /**
