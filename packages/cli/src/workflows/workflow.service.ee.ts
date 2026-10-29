@@ -36,6 +36,7 @@ import omit from 'lodash/omit';
 import pLimit from 'p-limit';
 import type { INode, INodeTypeDescription, IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import {
+	isExpression,
 	isNodeWithWorkflowSelector,
 	jsonParse,
 	NodeHelpers,
@@ -70,7 +71,7 @@ import { WorkflowFinderService } from './workflow-finder.service';
 
 /**
  * Database workflows use their own project permissions at runtime.
- * Parameter workflows contain JSON we can inspect before saving.
+ * Parameter workflows can be inspected before saving when their JSON is fixed text.
  */
 const INSPECTABLE_SUBWORKFLOW_SOURCES = new Set(['database', 'parameter']);
 
@@ -601,7 +602,15 @@ export class EnterpriseWorkflowService {
 	private hasUninspectableSubworkflowSource(node: INode): boolean {
 		const source = node.parameters?.source;
 		if (source === undefined) return false;
-		return !(typeof source === 'string' && INSPECTABLE_SUBWORKFLOW_SOURCES.has(source));
+		if (!(typeof source === 'string' && INSPECTABLE_SUBWORKFLOW_SOURCES.has(source))) return true;
+		if (source !== 'parameter') return false;
+
+		// A missing value falls back to the empty default. Runtime parsing turns an array into text.
+		const workflowJson = node.parameters?.workflowJson;
+		const isFixedText =
+			workflowJson === undefined ||
+			(typeof workflowJson === 'string' && !isExpression(workflowJson));
+		return !isFixedText;
 	}
 
 	/**
@@ -685,9 +694,8 @@ export class EnterpriseWorkflowService {
 
 	/**
 	 * Parse the nodes of an inline sub-workflow passed as the `workflowJson`
-	 * parameter of a workflow-selector node. Non-string or unparseable values
-	 * reference no resolvable credentials and yield no nodes (the node would fail
-	 * at run time).
+	 * parameter of a workflow-selector node. Unparseable text yields no nodes
+	 * because the node fails at run time. Other values are uninspectable sources.
 	 */
 	private getInlineWorkflowNodes(workflowJson: unknown): INode[] {
 		if (typeof workflowJson !== 'string') return [];

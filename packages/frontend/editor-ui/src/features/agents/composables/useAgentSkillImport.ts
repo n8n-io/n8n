@@ -23,7 +23,6 @@ export class AgentSkillImportError extends Error {
 type SkillFrontmatter = {
 	name?: unknown;
 	description?: unknown;
-	allowed_tools?: unknown;
 };
 
 type SkillFile = { file: File; path: string };
@@ -101,7 +100,6 @@ export function useAgentSkillImport() {
 
 		return {
 			...parsed,
-			allowedTools: parsed.allowedTools,
 			references: references.length > 0 ? references : undefined,
 		};
 	}
@@ -182,7 +180,6 @@ function parseSkillMarkdown(content: string): AgentSkill {
 		name,
 		description,
 		instructions,
-		...optionalStringArrayField('allowedTools', data.allowed_tools),
 	};
 }
 
@@ -195,24 +192,6 @@ function readRequiredString(value: unknown, field: 'name' | 'description'): stri
 		);
 	}
 	return value.trim();
-}
-
-function optionalStringArrayField(field: 'allowedTools', value: unknown) {
-	if (typeof value === 'string' && value.trim()) return { [field]: [value.trim()] };
-	return optionalStringArrayProperty(field, value);
-}
-
-function optionalStringArrayProperty<T extends string>(
-	field: T,
-	value: unknown,
-): Partial<Record<T, string[]>> {
-	if (!Array.isArray(value)) return {};
-	const strings = value.filter(
-		(item): item is string => typeof item === 'string' && Boolean(item.trim()),
-	);
-	return strings.length > 0
-		? ({ [field]: strings.map((item) => item.trim()) } as Partial<Record<T, string[]>>)
-		: {};
 }
 
 function normalizePath(path: string): string {

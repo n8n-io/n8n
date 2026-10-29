@@ -113,7 +113,7 @@ erDiagram
   TEXT content
   varchar_64_ contentHash
   datetime_3_ createdAt
-  TEXT embedding
+  BLOB embedding
   varchar_128_ embeddingModel
   varchar_36_ id PK
   datetime_3_ lastSeenAt

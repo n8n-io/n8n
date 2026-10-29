@@ -4,11 +4,13 @@ import {
 	type AgentProviderModelsResponse,
 	type ChatIntegrationDescriptor,
 } from '@n8n/api-types';
+import { OutboundHttp } from '@n8n/backend-network';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { Get, Param, ProjectScope, Query, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { BadRequestError } from '@n8n/errors';
+import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { AgentIntegrationPersistenceService } from './agent-integration-persistence.service';
 import { AgentModelCatalogService } from './agent-model-catalog.service';
@@ -19,13 +21,16 @@ export class AgentsCatalogController {
 	constructor(
 		private readonly agentIntegrationPersistenceService: AgentIntegrationPersistenceService,
 		private readonly agentModelCatalogService: AgentModelCatalogService,
+		private readonly outboundHttp: OutboundHttp,
 	) {}
 
 	@Get('/catalog/models')
 	@ProjectScope('agent:read')
 	async getModelCatalog() {
 		const { fetchProviderCatalog } = await import('@n8n/agents');
-		return filterOfferedAgentModelProviders(await fetchProviderCatalog());
+		return filterOfferedAgentModelProviders(
+			await fetchProviderCatalog({ fetch: createAiProxyFetch(this.outboundHttp) }),
+		);
 	}
 
 	@Get('/catalog/models/:provider')

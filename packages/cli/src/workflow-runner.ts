@@ -424,6 +424,11 @@ export class WorkflowRunner {
 			return await this.engineV2Dispatcher.start(data);
 		}
 
+		// A v2 resume has no control-plane row either.
+		if (existingExecution?.engineResume) {
+			return await this.engineV2Dispatcher.resume(existingExecution, data);
+		}
+
 		const establishContextError = await this.establishContextForPersistence(data);
 
 		if (!establishContextError) {
@@ -921,6 +926,7 @@ export class WorkflowRunner {
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,
+						nodeTimeSavedMinutes: jobResult?.nodeTimeSavedMinutes,
 					};
 				} else {
 					runData = {
@@ -940,6 +946,7 @@ export class WorkflowRunner {
 						}),
 						jobId: job.id.toString(),
 						storedAt: this.storageConfig.modeTag,
+						nodeTimeSavedMinutes: jobResult.nodeTimeSavedMinutes,
 					};
 				}
 

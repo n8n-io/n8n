@@ -4,25 +4,41 @@ import type { PackageWriter } from '../../io/package-writer';
 import type { ManifestEntry, PackageManifest } from '../../spec/manifest.schema';
 import type {
 	serializedAgentSchema,
-	SerializedAgentSkill,
 	SerializedAgentTool,
 } from '../../spec/serialized/agent.schema';
+import type { SerializedSkill } from '../../spec/serialized/skill.schema';
 
 export interface AgentPackageFixture {
-	manifest: PackageManifest & { agents: ManifestEntry[] };
+	manifest: PackageManifest & { agents: ManifestEntry[]; skills: ManifestEntry[] };
 	files: Record<string, unknown>;
 }
 
-function agentFiles(entry: ManifestEntry, availableInMCP: boolean): Record<string, unknown> {
-	const skill: SerializedAgentSkill = {
-		name: `${entry.name} reference`,
-		description: 'Use the support reference.',
-		instructions: 'Read references/guide.md.',
-		allowedTools: ['lookup'],
-		references: [
-			{ path: 'references/guide.md', content: `# ${entry.name}\nKeep this reference text.\n` },
-		],
+/** The skill of one Agent, in the `skills/` directory next to its `agents/` directory. */
+function agentSkillFile(entry: ManifestEntry): {
+	entry: ManifestEntry;
+	files: Record<string, unknown>;
+} {
+	const id = `${entry.id}_skill`;
+	const name = `${entry.name} reference`;
+	const target = entry.target.replace(/agents\/[^/]+$/, `skills/${id}`);
+	const skill: SerializedSkill = {
+		id,
+		scope: 'agent',
+		agentId: entry.id,
+		skill: {
+			name,
+			description: 'Use the support reference.',
+			instructions: 'Read references/guide.md.',
+			references: [
+				{ path: 'references/guide.md', content: `# ${entry.name}\nKeep this reference text.\n` },
+			],
+		},
+		frontmatter: { license: 'MIT' },
 	};
+	return { entry: { id, name, target }, files: { [`${target}/skill.json`]: skill } };
+}
+
+function agentFiles(entry: ManifestEntry, availableInMCP: boolean): Record<string, unknown> {
 	const tool: SerializedAgentTool = {
 		code: 'throw new Error("Package parsing must not run tool code");',
 		descriptor: {
@@ -62,11 +78,11 @@ function agentFiles(entry: ManifestEntry, availableInMCP: boolean): Record<strin
 			],
 		},
 		availableInMCP,
-		skills: { [skillId]: skill },
 		tools: { [toolId]: tool },
 		tasks: { [taskId]: task },
 	};
 	return {
+		...agentSkillFile(entry).files,
 		[`${entry.target}/agent.json`]: agent,
 		[`${entry.target}/agent-metadata.json`]: {
 			versionId: 'draft-version',
@@ -86,6 +102,7 @@ export function looseAgentsFixture(): AgentPackageFixture {
 			sourceN8nVersion: '2.0.0',
 			sourceId: 'source-instance',
 			agents,
+			skills: agents.map((entry) => agentSkillFile(entry).entry),
 			requirements: {
 				credentials: [
 					{ id: 'model-credential', usedBy: [{ kind: 'agent', id: 'support_source' }] },
@@ -108,6 +125,7 @@ export function projectAgentsFixture(): AgentPackageFixture {
 		manifest: {
 			...fixture.manifest,
 			agents,
+			skills: agents.map((entry) => agentSkillFile(entry).entry),
 			projects: [{ id: 'project_source', name: 'Operations', target: projectTarget }],
 			workflows: [
 				{
