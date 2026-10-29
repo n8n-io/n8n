@@ -20,6 +20,7 @@ import type {
 	RerunResultOptions,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
+import type { OnlineChecksReport } from './agentEvals.types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 // REST path helper, kept inline so callers can't build a URL that drifts from
@@ -319,5 +320,19 @@ export const cancelRun = async (
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/runs/${runId}/cancel`,
+	);
+};
+
+// Spike: generates checks from the agent's config and judges its recent sessions
+// with the agent's own model. Spends model credits and stores nothing.
+export const runOnlineChecks = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+) => {
+	return await makeRestApiRequest<OnlineChecksReport>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/online-checks`,
 	);
 };

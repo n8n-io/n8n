@@ -19,6 +19,7 @@ import AgentEvalCasesCard from './AgentEvalCasesCard.vue';
 import AgentEvalChecksPanel from './AgentEvalChecksPanel.vue';
 import AgentEvalResultsPanel from './AgentEvalResultsPanel.vue';
 import AgentEvalsEmptyStatePreview from './AgentEvalsEmptyStatePreview.vue';
+import AgentOnlineChecksPanel from './AgentOnlineChecksPanel.vue';
 
 const props = defineProps<{
 	projectId: string;
@@ -220,6 +221,14 @@ watch(() => props.agentId, load);
 
 <template>
 	<div :class="$style.section" data-testid="agent-evals-section">
+		<!-- Spike: checks made from the agent's definition, run on its real sessions. -->
+		<AgentOnlineChecksPanel
+			v-if="!agentUnsaved"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:disabled="disabled"
+		/>
+
 		<N8nLoading v-if="awaitingDatasets" :rows="4" data-testid="agent-evals-loading" />
 
 		<AgentEvalChecksPanel

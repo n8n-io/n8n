@@ -72,3 +72,50 @@ export type AgentEvalDataTableDataset = Omit<
 	datasetSource: 'data_table';
 	datasetRef: DataTableDatasetRef;
 };
+
+/**
+ * Spike: the report `POST …/evals/online-checks` returns. Mirrors
+ * `OnlineChecksReport` in `cli/src/modules/agent-evals/online-checks`; it moves to
+ * `@n8n/api-types` if the spike graduates.
+ */
+export type OnlineCheckStatus = 'pass' | 'fail' | 'not_applicable' | 'unsure' | 'not_run';
+
+export type OnlineCheckVerdict = {
+	checkId: string;
+	status: OnlineCheckStatus;
+	reason: string;
+	moment?: { turnIndex: number; toolCallId?: string };
+};
+
+export type OnlineCheck = {
+	id: string;
+	kind: 'tool' | 'promise' | 'base';
+	question: string;
+	reason: string;
+	appliesWhen?: string;
+	source: { field: 'instructions' | 'skills' | 'tools' | 'base'; quote?: string };
+};
+
+export type OnlineCheckToolProfile = {
+	name: string;
+	source: 'node' | 'workflow' | 'custom' | 'mcp';
+	action: 'reads' | 'acts';
+	basis: 'operation' | 'name' | 'default';
+	requireApproval: boolean;
+};
+
+export type OnlineChecksReport = {
+	agentId: string;
+	agentName: string;
+	stakes: 'no-tools' | 'reads-only' | 'acts-with-approval' | 'acts-on-its-own';
+	tools: OnlineCheckToolProfile[];
+	checks: OnlineCheck[];
+	dropped: Array<{ question?: string; quote?: string; why: string }>;
+	sessions: Array<{
+		threadId: string;
+		title: string;
+		origin: string | null;
+		turns: Array<{ userMessage: string; reply: string; toolCalls: number; runFailed: boolean }>;
+		verdicts: OnlineCheckVerdict[];
+	}>;
+};

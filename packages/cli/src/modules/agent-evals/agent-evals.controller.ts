@@ -43,6 +43,10 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { AgentEvalRatingService } from './agent-eval-rating.service';
 import { AgentEvalService } from './agent-eval.service';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
+import {
+	AgentOnlineChecksService,
+	type OnlineChecksReport,
+} from './online-checks/agent-online-checks.service';
 
 type AgentParam = { projectId: string; agentId: string };
 type DatasetParam = AgentParam & { datasetId: string };
@@ -72,6 +76,7 @@ export class AgentEvalsController {
 		private readonly ratingService: AgentEvalRatingService,
 		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly collaborationService: CollaborationService,
+		private readonly onlineChecksService: AgentOnlineChecksService,
 	) {}
 
 	// ---- datasets ----
@@ -391,5 +396,20 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, runId } = req.params;
 		return await this.ratingService.listLatestRatingsForRun(agentId, projectId, runId);
+	}
+
+	// ---- online checks (spike) ----
+
+	/**
+	 * Spike: generate checks from the agent's definition and judge its recent
+	 * sessions. Spends the builder's model credits, so `agent:update`. Nothing
+	 * is stored.
+	 */
+	@Post('/:agentId/evals/online-checks')
+	@ProjectScope('agent:update')
+	async runOnlineChecks(req: AuthenticatedRequest<AgentParam>): Promise<OnlineChecksReport> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.run(req.user, projectId, agentId);
 	}
 }

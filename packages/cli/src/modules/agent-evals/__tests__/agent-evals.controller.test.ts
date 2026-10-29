@@ -17,6 +17,7 @@ import type { AgentEvalRatingService } from '../agent-eval-rating.service';
 import type { AgentEvalService } from '../agent-eval.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 import { AgentEvalsController } from '../agent-evals.controller';
+import type { AgentOnlineChecksService } from '../online-checks/agent-online-checks.service';
 
 vi.mock('../agent-eval.service', () => ({ AgentEvalService: class AgentEvalService {} }));
 vi.mock('../agent-eval-rating.service', () => ({
@@ -26,6 +27,9 @@ vi.mock('@/collaboration/collaboration.service', () => ({
 	CollaborationService: class CollaborationService {},
 }));
 vi.mock('../agent-evals-flag-gate', () => ({ AgentEvalsFlagGate: class AgentEvalsFlagGate {} }));
+vi.mock('../online-checks/agent-online-checks.service', () => ({
+	AgentOnlineChecksService: class AgentOnlineChecksService {},
+}));
 
 const PROJECT_ID = 'proj-1';
 const AGENT_ID = 'agent-1';
@@ -41,6 +45,7 @@ describe('AgentEvalsController', () => {
 	let ratingService: MockProxy<AgentEvalRatingService>;
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
 	let collaborationService: MockProxy<CollaborationService>;
+	let onlineChecksService: MockProxy<AgentOnlineChecksService>;
 	let controller: AgentEvalsController;
 
 	function makeReq<P extends Record<string, unknown>>(
@@ -62,7 +67,14 @@ describe('AgentEvalsController', () => {
 		flagGate = mock<AgentEvalsFlagGate>();
 		flagGate.assertEnabled.mockResolvedValue(undefined);
 		collaborationService = mock<CollaborationService>();
-		controller = new AgentEvalsController(service, ratingService, flagGate, collaborationService);
+		onlineChecksService = mock<AgentOnlineChecksService>();
+		controller = new AgentEvalsController(
+			service,
+			ratingService,
+			flagGate,
+			collaborationService,
+			onlineChecksService,
+		);
 	});
 
 	/**
@@ -115,6 +127,7 @@ describe('AgentEvalsController', () => {
 			rerunResult: 'agent:execute',
 			applySuggestions: 'agent:update',
 			applyPreviewSuggestion: 'agent:update',
+			runOnlineChecks: 'agent:update',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -193,6 +206,7 @@ describe('AgentEvalsController', () => {
 			],
 			['listRatingsForResult', async () => await controller.listRatingsForResult(resultReq())],
 			['listLatestRatingsForRun', async () => await controller.listLatestRatingsForRun(runReq())],
+			['runOnlineChecks', async () => await controller.runOnlineChecks(agentReq())],
 		];
 
 		it.each(calls)('%s 404s when the flag is off for the user', async (_name, call) => {
@@ -209,6 +223,12 @@ describe('AgentEvalsController', () => {
 	});
 
 	describe('delegation', () => {
+		it('runs online checks for the path agent as the caller', async () => {
+			await controller.runOnlineChecks(agentReq());
+
+			expect(onlineChecksService.run).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID);
+		});
+
 		it('lists datasets for the path agent', async () => {
 			await controller.listDatasets(agentReq());
 
