@@ -7,6 +7,7 @@ import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
 import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
 import type { IBinaryData } from 'n8n-workflow';
 import { OperationalError, UserError } from '@n8n/errors';
+import { createHash } from 'node:crypto';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
@@ -44,6 +45,12 @@ export interface StoreInboundAttachmentParams {
 	fileName: string;
 	mimeType: string;
 	data: Buffer;
+	/** SHA-256 of `data`, hex, when the caller has it already. */
+	contentHash?: string;
+}
+
+export function hashFileContent(data: Buffer): string {
+	return createHash('sha256').update(data).digest('hex');
 }
 
 /**
@@ -128,6 +135,7 @@ export class AgentChatAttachmentService {
 						mimeType: params.mimeType,
 						fileSizeBytes: params.data.byteLength,
 						source: params.source,
+						contentHash: params.contentHash ?? hashFileContent(params.data),
 					},
 					ctx,
 				);
@@ -156,6 +164,40 @@ export class AgentChatAttachmentService {
 	): Promise<AgentChatAttachment | null> {
 		const root = await this.findRootThread(scope.threadId);
 		return await this.findReadable(attachmentId, scope, root.id);
+	}
+
+	/**
+	 * Files with the given content hashes that the thread can read, keyed by
+	 * hash. Each hash maps to its newest readable file.
+	 */
+	async findReadableByHashes(
+		hashes: string[],
+		scope: { projectId: string; threadId: string },
+	): Promise<Map<string, AgentChatAttachment>> {
+		const result = new Map<string, AgentChatAttachment>();
+		if (hashes.length === 0) return result;
+		const root = await this.findRootThread(scope.threadId);
+		const files = await this.repository.findByHashesInThread(
+			hashes,
+			{ projectId: scope.projectId, threadId: root.id },
+			{},
+		);
+		const granted =
+			scope.threadId === root.id
+				? new Set<string>()
+				: await this.grantRepository.findGrantedIds(
+						files.map((file) => file.id),
+						scope.threadId,
+					);
+		for (const file of files) {
+			if (!file.contentHash || result.has(file.contentHash)) continue;
+			const readable =
+				scope.threadId === root.id ||
+				file.createdByThreadId === scope.threadId ||
+				granted.has(file.id);
+			if (readable) result.set(file.contentHash, file);
+		}
+		return result;
 	}
 
 	/**

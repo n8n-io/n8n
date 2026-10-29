@@ -1,5 +1,5 @@
 import { TransactionRunner } from '@n8n/db';
-import { LessThan } from '@n8n/typeorm';
+import { In, LessThan } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
 import { mockEntityManager } from '@test/mocking';
@@ -40,6 +40,26 @@ describe('AgentChatAttachmentRepository', () => {
 				take: 50,
 			});
 			expect(result).toBe(attachments);
+		});
+	});
+
+	describe('findByHashesInThread', () => {
+		it('finds the files of the tree with the hashes, newest first', async () => {
+			const find = entityManager.find.mockResolvedValue([]);
+
+			await repository.findByHashesInThread(['h1'], { projectId: 'p-1', threadId: 'root' }, {});
+
+			expect(find).toHaveBeenCalledWith(AgentChatAttachment, {
+				where: { contentHash: In(['h1']), projectId: 'p-1', threadId: 'root' },
+				order: { createdAt: 'DESC' },
+			});
+		});
+
+		it('skips the query without hashes', async () => {
+			expect(
+				await repository.findByHashesInThread([], { projectId: 'p-1', threadId: 'root' }, {}),
+			).toEqual([]);
+			expect(entityManager.find).not.toHaveBeenCalled();
 		});
 	});
 });
