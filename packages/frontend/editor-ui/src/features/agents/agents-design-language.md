@@ -491,11 +491,15 @@ or MCP server. Do not show an Agent-wide default destination.
 Label the destination select `Approval settings`. For MCP servers, place it
 after tool permissions and use `Approval settings for Ask first tools`. Show it
 when at least one tool or category uses Ask first. Default the select to `Ask user`.
+Put `Create configuration` first in the searchable select, with a plus icon.
+Use each configuration's workflow or channel icon, as its settings pill does.
+Show `Only use {name}` when Disallow user approval is on. Otherwise, show
+`Ask user or {name}`. Keep this label in the selected field too.
 
-Keep requester approval enabled by default. The configuration's administrator
-approval switch routes conversations to the configured destination. Show a fixed
-waiting message with no approval actions in the requester's conversation. The
-configured workflow or channel owns approver access.
+Keep requester approval enabled by default. The configuration's
+`Disallow user approval` switch routes conversations to the configured destination.
+Show a fixed waiting message with no approval actions in the requester's
+conversation. The configured workflow or channel owns approver access.
 
 Disable the connected channel approval method when no supported channels are
 attached. Put the reason below the option label in smaller, muted text.

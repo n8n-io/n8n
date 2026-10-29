@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nCombobox2, N8nInputLabel, type ComboboxItem } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { AgentApprovalRoute, AgentHitlConfiguration } from '@n8n/api-types';
 import type { AgentHitlContext } from './agent-hitl.types';
@@ -17,15 +17,37 @@ const emit = defineEmits<{ 'update:modelValue': [value: AgentApprovalRoute | und
 const i18n = useI18n();
 const label = computed(() => props.label ?? i18n.baseText('agents.hitl.route'));
 const creating = ref(false);
+const open = ref(false);
 const configurations = computed(() => props.context.getConfig()?.hitlConfigurations ?? []);
+const items = computed<ComboboxItem[]>(() => [
+	{
+		value: 'create',
+		label: i18n.baseText('agents.hitl.create'),
+		icon: 'plus',
+		onSelect: (event: Event) => {
+			event.preventDefault();
+			open.value = false;
+			creating.value = true;
+		},
+	},
+	{ type: 'separator' },
+	{ value: 'default', label: i18n.baseText('agents.hitl.useDefault'), icon: 'user' },
+	...configurations.value.map((configuration) => ({
+		value: configuration.id,
+		label: i18n.baseText(
+			configuration.disallowRequesterApproval
+				? 'agents.hitl.route.only'
+				: 'agents.hitl.route.userOr',
+			{ interpolate: { name: configuration.name } },
+		),
+		icon: configuration.method === 'workflow' ? ('workflow' as const) : configuration.channel,
+	})),
+]);
 const selected = computed(() =>
 	props.modelValue?.type === 'configuration' ? props.modelValue.configurationId : 'default',
 );
-function select(value: string) {
-	if (value === 'create') {
-		creating.value = true;
-		return;
-	}
+function select(value: unknown) {
+	if (typeof value !== 'string') return;
 	emit(
 		'update:modelValue',
 		value === 'default' ? undefined : { type: 'configuration', configurationId: value },
@@ -41,23 +63,17 @@ function save(configuration: AgentHitlConfiguration, toolKeys?: string[]) {
 <template>
 	<div>
 		<N8nInputLabel :label="label">
-			<N8nSelect
+			<N8nCombobox2
+				v-model:open="open"
 				:model-value="selected"
+				:items="items"
 				:disabled="disabled"
 				:teleported="false"
+				size="large"
 				:aria-label="label"
 				data-testid="agent-approval-route"
 				@update:model-value="select"
-			>
-				<N8nOption value="default" :label="i18n.baseText('agents.hitl.useDefault')" />
-				<N8nOption
-					v-for="configuration in configurations"
-					:key="configuration.id"
-					:value="configuration.id"
-					:label="configuration.name"
-				/>
-				<N8nOption value="create" :label="i18n.baseText('agents.hitl.create')" />
-			</N8nSelect>
+			/>
 		</N8nInputLabel>
 		<AgentHitlConfigurationModal
 			v-if="creating"
