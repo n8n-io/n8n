@@ -12,6 +12,10 @@ import {
 	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 } from '../runtime/transfer';
+<<<<<<< HEAD
+=======
+import { HostDataResolver } from './host-data-resolver';
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 import {
 	dispatchHostCall,
 	escapeHostResult,
@@ -1140,12 +1144,17 @@ export class QuickJsBridge implements RuntimeBridge {
 	 * Callers must dispose the returned handles when the call completes.
 	 */
 	private createCallbackHandles(
+<<<<<<< HEAD
 		data: WorkflowData,
+=======
+		resolver: HostDataResolver,
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 	): Array<import('quickjs-emscripten').QuickJSHandle> {
 		if (!this.vm) throw new Error('Context not initialized');
 
 		const vm = this.vm;
 
+<<<<<<< HEAD
 		const getValueFn = vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
 			const pathArr = vm.dump(pathHandle) as string[];
 			try {
@@ -1153,6 +1162,53 @@ export class QuickJsBridge implements RuntimeBridge {
 				return this.hostValueToQuickJSHandle(result);
 			} catch (err) {
 				return this.hostValueToQuickJSHandle(serializeError(err));
+=======
+		try {
+			handles.push(
+				vm.newFunction('__getValueAtPathImpl', (pathHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					try {
+						const result = getValueAtPath(resolver, pathArr);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__getArrayElementImpl', (pathHandle, indexHandle) => {
+					const pathArr = vm.dump(pathHandle) as string[];
+					const index = vm.dump(indexHandle) as number;
+					try {
+						const result = getArrayElement(resolver, pathArr, index);
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+
+			handles.push(
+				vm.newFunction('__callHostImpl', (msgHandle) => {
+					const rawMsg = vm.dump(msgHandle);
+					try {
+						const result = escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
+						return this.hostValueToQuickJSHandle(result);
+					} catch (err) {
+						return this.hostValueToQuickJSHandle(serializeError(err));
+					}
+				}),
+			);
+		} catch (error) {
+			// A live handle keeps the data. It also makes JS_FreeRuntime abort.
+			for (const handle of handles) {
+				try {
+					handle.dispose();
+				} catch {
+					// Throw the build error, not a dispose error.
+				}
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 			}
 		});
 
@@ -1250,7 +1306,15 @@ export class QuickJsBridge implements RuntimeBridge {
 			if (timeout <= 0) throw this.timeoutError(true);
 		}
 
+<<<<<<< HEAD
 		const callbackHandles = this.createCallbackHandles(data);
+=======
+		// QuickJS frees a host function only when the guest function is collected,
+		// and its cycle collector runs late. So the callbacks read the data from a
+		// resolver that `finally` disposes, else a finished call's data stays in memory.
+		const resolver = new HostDataResolver(data);
+		const callbackHandles = this.createCallbackHandles(resolver);
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 		// Push this call's deadline; the interrupt handler (set in initialize)
 		// interrupts on the earliest in-flight deadline. Popped in finally so a
 		// nested call can't leave the outer budget extended.
@@ -1361,6 +1425,10 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
+<<<<<<< HEAD
+=======
+			resolver.dispose();
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 			this.deadlines.pop();
 			if (!this.broken) {
 				for (const handle of callbackHandles) {

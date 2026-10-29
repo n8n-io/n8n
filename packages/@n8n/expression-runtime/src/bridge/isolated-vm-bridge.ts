@@ -5,6 +5,10 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapLuxonValues } from '../runtime/luxon-transfer';
+<<<<<<< HEAD
+=======
+import { HostDataResolver } from './host-data-resolver';
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 import {
 	dispatchHostCall,
 	escapeHostResult,
@@ -316,10 +320,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * @private
 	 */
-	private createGetValueAtPathRef(holder: DataHolder): ivm.Callback {
+	private createGetValueAtPathRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
-				return getValueAtPath(heldData(holder), pathArr);
+				return getValueAtPath(resolver, pathArr);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -335,10 +339,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * @private
 	 */
-	private createGetArrayElementRef(holder: DataHolder): ivm.Callback {
+	private createGetArrayElementRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
-				return getArrayElement(heldData(holder), pathArr, index);
+				return getArrayElement(resolver, pathArr, index);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -361,10 +365,10 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	 *
 	 * @private
 	 */
-	private createCallHostRef(holder: DataHolder): ivm.Callback {
+	private createCallHostRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return escapeHostResult(dispatchHostCall(rawMsg, heldData(holder)));
+				return escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -417,6 +421,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// arrive as plain functions with structured-clone marshaling, so the
 		// runtime invokes them directly. isolated-vm frees a callback only at the
 		// next isolated-vm call in the process, even after the isolate is disposed.
+<<<<<<< HEAD
 		// So the callbacks read the data from a holder that `finally` clears.
 		const holder: DataHolder = { data };
 		const getValueAtPath = this.createGetValueAtPathRef(holder);
@@ -424,6 +429,15 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		const callHost = this.createCallHostRef(holder);
 
 		try {
+=======
+		// So the callbacks read the data from a resolver that `finally` disposes.
+		const resolver = new HostDataResolver(data);
+
+		try {
+			const getValueAtPath = this.createGetValueAtPathRef(resolver);
+			const getArrayElement = this.createGetArrayElementRef(resolver);
+			const callHost = this.createCallHostRef(resolver);
+>>>>>>> d50a4469 (fix(core): Resolve host data paths once per expression evaluation (#42571))
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.
@@ -503,7 +517,7 @@ try {
 			}
 			throw new Error(`Expression evaluation failed: ${errorMessage}`);
 		} finally {
-			holder.data = undefined;
+			resolver.dispose();
 		}
 	}
 
