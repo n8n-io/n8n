@@ -478,7 +478,9 @@ describe('Skill source checks', () => {
 
 				const [first, second] = await Promise.all([checkNow(editor, docx), checkNow(editor, xlsx)]);
 
-				expect([first.data.throttled, second.data.throttled].sort()).toEqual([false, true]);
+				// The second click either lost the claim (throttled) or joined the running check on this
+				// main (not throttled). Either way GitHub gets one request.
+				expect([first.data.throttled, second.data.throttled]).toContain(false);
 				expect(github.requests.refs).toBe(1);
 			});
 
