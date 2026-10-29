@@ -318,6 +318,16 @@ export class McpTrigger extends Node {
 		const mcpServer = McpServer.instance(context.logger);
 
 		if (webhookName === 'setup') {
+			// From version 2, SSE setup shares its path with the Streamable HTTP endpoint.
+			// A GET with a session ID is a Streamable HTTP client asking for its optional
+			// server-to-client stream, which this server does not offer, so answer 405 as
+			// the spec allows instead of opening a new SSE session.
+			if (node.typeVersion >= 2 && req.headers['mcp-session-id']) {
+				resp.setHeader('Allow', 'POST, DELETE');
+				resp.status(405).send('Method Not Allowed');
+				return { noWebhookResponse: true };
+			}
+
 			const postUrl =
 				node.typeVersion < 2
 					? req.path.replace(new RegExp(`/${MCP_SSE_SETUP_PATH}$`), `/${MCP_SSE_MESSAGES_PATH}`)

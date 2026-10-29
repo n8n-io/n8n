@@ -320,6 +320,31 @@ describe('McpTrigger', () => {
 				undefined,
 			);
 		});
+
+		it.each([2, 2.1])(
+			'should answer 405 to a Streamable HTTP GET with a session ID on version %s',
+			async (typeVersion) => {
+				const req = createMockRequest({
+					method: 'GET',
+					path: '/webhook',
+					headers: { 'mcp-session-id': 'streamable-session' },
+				});
+				const resp = createMockResponse();
+				mockContext.getWebhookName.mockReturnValue('setup');
+				mockContext.getRequestObject.mockReturnValue(req as never);
+				mockContext.getResponseObject.mockReturnValue(resp as never);
+				mockContext.getNode.mockReturnValue(
+					mock<INode>({ typeVersion, name: 'MCP Server Trigger' }),
+				);
+
+				const result = await mcpTrigger.webhook(mockContext);
+
+				expect(resp.status).toHaveBeenCalledWith(405);
+				expect(resp.setHeader).toHaveBeenCalledWith('Allow', 'POST, DELETE');
+				expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
+				expect(result).toEqual({ noWebhookResponse: true });
+			},
+		);
 	});
 
 	describe('webhook - default POST', () => {
