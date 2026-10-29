@@ -24,9 +24,9 @@ run side by side, and LangTracer must review the conversations of both.
 
 ## Decision
 
-The Assistant on agents runtime sends traces in the same shape as the current runtime. A turn, a resume,
-and the orchestrator span have the same names, nesting, and metadata in both runtimes. The
-roots carry `assistant_runtime: agents`, so a reader can tell the runtimes apart.
+The Assistant on agents runtime sends traces in the same shape as the current runtime. A turn,
+a resume, and the orchestrator span have the same names, nesting, and metadata in both
+runtimes. The roots carry `assistant_runtime: agents`, so a reader can tell the runtimes apart.
 
 The main reason is consistency: one trace shape lets LangTracer, its eval cases, and the people
 who read traces treat both runtimes the same, with no changes to LangTracer.
@@ -53,7 +53,8 @@ provider uses the hook to keep its orchestrator span active during the turn.
    span. Its name and place must fit the existing shape.
 4. Work that the Agents runtime starts outside the turn hook does not nest under the turn.
 5. When the current runtime is removed, a new record can choose a trace shape for the Agents
-   runtime alone, and we should probably take another look at supporting raw OTel traces at that point.
+   runtime alone, and we should probably take another look at supporting raw OTel traces at
+   that point.
 
 ## Links
 
