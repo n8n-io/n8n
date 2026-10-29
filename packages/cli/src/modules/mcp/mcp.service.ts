@@ -403,14 +403,10 @@ export class McpService {
 						tool.name === 'execute_workflow' &&
 						isRecord(handlerArgs[0]) &&
 						handlerArgs[0].executionMode === 'production';
-					// Source control protection permits credential edits on deployed instances.
-					const isCredentialDescriptionUpdate =
-						tool.name === SHARED_BUILDER_TOOL_NAMES.UPDATE_CREDENTIAL_DESCRIPTION;
 					const isBlocked =
 						this.instanceWriteAccess.isReadOnly() &&
 						tool.config.annotations?.readOnlyHint !== true &&
-						!isProductionExecution &&
-						!isCredentialDescriptionUpdate;
+						!isProductionExecution;
 					const result: ToolHandlerResult = isBlocked
 						? {
 								isError: true,
