@@ -5,7 +5,7 @@
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
-| pauseAfter | integer |  | false |  |  |  |
+| maxExecutions | integer |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) |  |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 
@@ -13,11 +13,11 @@
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| CHK_project_execution_limit_pause_positive | CHECK | CHECK (("pauseAfter" > 0)) |
+| CHK_project_execution_limit_max_executions_positive | CHECK | CHECK (("maxExecutions" > 0)) |
 | FK_project_execution_limit_projectId | FOREIGN KEY | FOREIGN KEY ("projectId") REFERENCES project(id) ON DELETE CASCADE |
 | PK_972bccb57c4e2dca3242a574cfe | PRIMARY KEY | PRIMARY KEY ("projectId") |
 | project_execution_limit_createdAt_not_null | n | NOT NULL "createdAt" |
-| project_execution_limit_pauseAfter_not_null | n | NOT NULL "pauseAfter" |
+| project_execution_limit_maxExecutions_not_null | n | NOT NULL "maxExecutions" |
 | project_execution_limit_projectId_not_null | n | NOT NULL "projectId" |
 | project_execution_limit_updatedAt_not_null | n | NOT NULL "updatedAt" |
 
@@ -36,7 +36,7 @@ erDiagram
 
 "public.project_execution_limit" {
   timestamp_3__with_time_zone createdAt
-  integer pauseAfter
+  integer maxExecutions
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }

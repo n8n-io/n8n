@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "project_execution_limit" ("projectId" varchar(36) PRIMARY KEY NOT NULL, "pauseAfter" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_project_execution_limit_pause_positive" CHECK ("pauseAfter" > 0), CONSTRAINT "FK_project_execution_limit_projectId" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
+CREATE TABLE "project_execution_limit" ("projectId" varchar(36) PRIMARY KEY NOT NULL, "maxExecutions" integer NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_project_execution_limit_max_executions_positive" CHECK ("maxExecutions" > 0), CONSTRAINT "FK_project_execution_limit_projectId" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE)
 ```
 
 </details>
@@ -16,7 +16,7 @@ CREATE TABLE "project_execution_limit" ("projectId" varchar(36) PRIMARY KEY NOT 
 | Name | Type | Default | Nullable | Children | Parents | Comment |
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
-| pauseAfter | INTEGER |  | false |  |  |  |
+| maxExecutions | INTEGER |  | false |  |  |  |
 | projectId | varchar(36) |  | false |  | [project](project.md) |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 
@@ -24,7 +24,7 @@ CREATE TABLE "project_execution_limit" ("projectId" varchar(36) PRIMARY KEY NOT 
 
 | Name | Type | Definition |
 | ---- | ---- | ---------- |
-| - | CHECK | CHECK ("pauseAfter" > 0) |
+| - | CHECK | CHECK ("maxExecutions" > 0) |
 | - (Foreign key ID: 0) | FOREIGN KEY | FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE |
 | projectId | PRIMARY KEY | PRIMARY KEY (projectId) |
 | sqlite_autoindex_project_execution_limit_1 | PRIMARY KEY | PRIMARY KEY (projectId) |
@@ -44,7 +44,7 @@ erDiagram
 
 "project_execution_limit" {
   datetime_3_ createdAt
-  INTEGER pauseAfter
+  INTEGER maxExecutions
   varchar_36_ projectId PK
   datetime_3_ updatedAt
 }
