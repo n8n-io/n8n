@@ -675,6 +675,7 @@ export class McpService {
 			this.telemetry,
 			this,
 			this.executionRedactionServiceProxy,
+			this.logger,
 		);
 		registerIfAllowed(testWorkflowTool);
 

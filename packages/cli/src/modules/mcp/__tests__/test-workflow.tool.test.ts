@@ -1,5 +1,6 @@
 import { ExecutionRedactionServiceProxy, type RedactableExecution } from '@n8n/backend-services';
-import { mockInstance } from '@n8n/backend-test-utils';
+import type { Logger } from '@n8n/backend-common';
+import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import {
 	MANUAL_TRIGGER_NODE_TYPE,
@@ -63,6 +64,7 @@ describe('test-workflow MCP tool', () => {
 	let telemetry: Telemetry;
 	let mcpService: McpService;
 	let executionRedactionServiceProxy: ExecutionRedactionServiceProxy;
+	let logger: Logger;
 
 	beforeEach(() => {
 		workflowFinderService = mockInstance(WorkflowFinderService);
@@ -72,6 +74,7 @@ describe('test-workflow MCP tool', () => {
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		mcpService = mockInstance(McpService, { isQueueMode: false });
 		executionRedactionServiceProxy = mockInstance(ExecutionRedactionServiceProxy);
+		logger = mockLogger();
 	});
 
 	describe('smoke tests', () => {
@@ -85,6 +88,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			expect(tool.name).toBe('test_workflow');
@@ -109,6 +113,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					executionRedactionServiceProxy,
+					logger,
 					'missing-workflow',
 					{},
 				),
@@ -141,6 +146,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					executionRedactionServiceProxy,
+					logger,
 					'no-trigger-workflow',
 					{},
 				),
@@ -173,6 +179,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					executionRedactionServiceProxy,
+					logger,
 					'wf-1',
 					{},
 					'NonExistentTrigger',
@@ -206,6 +213,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					executionRedactionServiceProxy,
+					logger,
 					'wf-1',
 					{},
 				),
@@ -253,6 +261,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -301,6 +310,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{},
 				'WebhookB',
@@ -347,6 +357,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				pinData,
 			);
@@ -392,6 +403,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				pinData as any,
 			);
@@ -434,6 +446,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -472,6 +485,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					executionRedactionServiceProxy,
+					logger,
 					'wf-1',
 					{ Trigger: [{ json: {} }], NonExistentNode: [{ json: { x: 1 } }] },
 					'Trigger',
@@ -516,6 +530,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -547,6 +562,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -578,6 +594,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -606,6 +623,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -628,6 +646,7 @@ describe('test-workflow MCP tool', () => {
 					nodeTypes,
 					mcpService,
 					executionRedactionServiceProxy,
+					logger,
 					'wf-1',
 					{ Trigger: [{ json: {} }] },
 				),
@@ -682,6 +701,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 			);
@@ -804,6 +824,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			const result = await tool.handler(
@@ -823,6 +844,14 @@ describe('test-workflow MCP tool', () => {
 			});
 			expect(JSON.stringify(result)).not.toContain('sk-secret-123');
 			expect(JSON.stringify(vi.mocked(telemetry.track).mock.calls)).not.toContain('sk-secret-123');
+			expect(logger.error).toHaveBeenCalledWith(
+				'MCP test_workflow could not apply execution data redaction',
+				expect.objectContaining({
+					executionId: 'exec-lookup-failed',
+					workflowId: 'wf-1',
+					error: expect.objectContaining({ message: 'scope lookup failed' }),
+				}),
+			);
 		});
 
 		test('redacts an error that stops the execution from starting', async () => {
@@ -839,6 +868,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			const result = await tool.handler(
@@ -891,6 +921,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ MyTrigger: [{ json: { key: 'val' } }] },
 			);
@@ -938,6 +969,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -983,6 +1015,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				queueMcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{},
 			);
@@ -1025,6 +1058,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			const result = await tool.handler(
@@ -1075,6 +1109,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			await tool.handler(
@@ -1107,6 +1142,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			const result = await tool.handler(
@@ -1169,6 +1205,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -1208,6 +1245,7 @@ describe('test-workflow MCP tool', () => {
 				nodeTypes,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 				'wf-1',
 				{ Trigger: [{ json: {} }] },
 				undefined,
@@ -1267,6 +1305,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			await tool.handler(
@@ -1310,6 +1349,7 @@ describe('test-workflow MCP tool', () => {
 				telemetry,
 				mcpService,
 				executionRedactionServiceProxy,
+				logger,
 			);
 
 			await tool.handler(
