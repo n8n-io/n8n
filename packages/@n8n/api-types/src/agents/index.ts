@@ -10,6 +10,7 @@ export * from './agent-personalisation';
 export * from './agent-test.constants';
 export * from './agent-skill.schema';
 export * from './skills.schema';
+export * from './skill-sources.schema';
 export * from './skill-names';
 export * from './child-trace';
 export type * from './background-job';

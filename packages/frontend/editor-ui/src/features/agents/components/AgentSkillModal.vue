@@ -13,6 +13,7 @@ import {
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillSyncedFrom,
 	type SkillUsedBy,
 } from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
@@ -111,6 +112,8 @@ export type AgentSkillModalData = {
 	usedBy?: SkillUsedBy;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
+	/** Set for a skill synced from a source: its content is read-only and changes in the source. */
+	syncedFrom?: SkillSyncedFrom;
 	/** The agent the modal was opened from, for "Add to <agent>" in the header menu. */
 	agentName?: string;
 	/**
@@ -317,6 +320,11 @@ const skillAccess = ref<SkillDetail | null>(null);
 const skillAccessLoading = ref(false);
 const skillAccessFailed = ref(false);
 const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
+/**
+ * Where a synced skill comes from, for the banner and the source link. The server already
+ * marks a synced skill `canEdit: false`, so it does not feed the read-only rule here.
+ */
+const syncedFrom = computed(() => props.data.syncedFrom ?? skillAccess.value?.syncedFrom ?? null);
 const isReadOnly = computed(
 	() =>
 		props.data.readOnly === true ||
@@ -1151,7 +1159,20 @@ function onRemove() {
 		</div>
 		<template v-else-if="step !== 'select'">
 			<N8nCallout
-				v-if="data.readOnly"
+				v-if="syncedFrom && step === 'edit'"
+				theme="info"
+				icon="git-branch"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
+				data-testid="agent-skill-synced-banner"
+			>
+				{{
+					i18n.baseText('settings.context.skills.synced.banner', {
+						interpolate: { repo: syncedFrom.label },
+					})
+				}}
+			</N8nCallout>
+			<N8nCallout
+				v-else-if="data.readOnly"
 				theme="info"
 				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-read-only-callout"
@@ -1330,6 +1351,17 @@ function onRemove() {
 					><N8nIcon :icon="data.skillRefsEnabled ? 'unlink' : 'trash-2'" :size="16"
 				/></template>
 				{{ removeLabel }}
+			</N8nButton>
+		</template>
+		<template v-else-if="syncedFrom && step === 'edit'" #footerLeft>
+			<N8nButton
+				variant="ghost"
+				:href="syncedFrom?.webUrl"
+				target="_blank"
+				data-testid="agent-skill-open-in-github"
+			>
+				<template #icon><N8nIcon icon="external-link" :size="16" /></template>
+				{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
 			</N8nButton>
 		</template>
 		<template v-else-if="step === 'select'" #footerLeft>

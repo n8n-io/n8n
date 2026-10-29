@@ -68,6 +68,13 @@ export abstract class SkillSourceClient {
 	abstract readonly capabilities: SkillSourceCapabilities;
 
 	/**
+	 * Whether the link is for this source type, such as a github.com link for GitHub. A cheap
+	 * check with no request. The service picks the client that handles a link, and that
+	 * client's `parseLocator` explains what is wrong with it.
+	 */
+	abstract handles(input: string): boolean;
+
+	/**
 	 * Parses a link that a user pasted. Async, because a branch name can contain "/" and needs
 	 * a lookup. Throws `SkillSourceUrlError` for a link that this client cannot read, and
 	 * `SkillSourceNotFoundError` for a source that is not there.
@@ -76,21 +83,43 @@ export abstract class SkillSourceClient {
 
 	abstract identity(locator: SkillSourceLocator): SkillSourceIdentity;
 
+	/**
+	 * How the picker names a source: a label such as `owner/repository`, the branch (null for
+	 * a source type without branches), and the folder that the link points to.
+	 */
+	abstract describe(locator: SkillSourceLocator): {
+		label: string;
+		ref: string | null;
+		path: string;
+	};
+
+	/** Where one skill is in the source, such as its folder, for the picker. */
+	abstract location(ref: RemoteSkillRef): string;
+
 	/** A page in the source that a user can open, for the source or for one skill. */
 	abstract webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string;
 
-	/** One page of the skills in the source. Call again with `next` until it is undefined. */
+	/**
+	 * One page of the skills in the source. Call again with `next` until it is undefined.
+	 * `truncated` is true when the source has more skills than the client lists. `revision`,
+	 * when the client has one, is the revision of the whole source that the page lists.
+	 */
 	abstract discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
 		cursor?: string,
-	): Promise<{ items: RemoteSkillRef[]; next?: string }>;
+	): Promise<{ items: RemoteSkillRef[]; next?: string; truncated?: boolean; revision?: string }>;
 
-	/** The current content of one skill. Throws `SkillSourceNotFoundError` when it is gone. */
+	/**
+	 * The current content of one skill. Throws `SkillSourceNotFoundError` when it is gone.
+	 * With `revision` from `discover`, the client may read the skill at that revision, so the
+	 * fetches of one import read the same state of the source without asking for it again.
+	 */
 	abstract fetchLatest(
 		locator: SkillSourceLocator,
 		ref: RemoteSkillRef,
 		auth?: SkillSourceAuth,
+		revision?: string,
 	): Promise<FetchedSkill>;
 }
 

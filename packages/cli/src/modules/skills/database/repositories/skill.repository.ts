@@ -405,7 +405,14 @@ export class SkillRepository {
 
 	/** Inserts the skill with its v1 and returns the id of that version. */
 	async createSkill(
-		skill: { id: string; target: SkillTarget; source: SkillSource; createdById: string | null },
+		skill: {
+			id: string;
+			target: SkillTarget;
+			source: SkillSource;
+			createdById: string | null;
+			/** The source revision of a synced skill, such as a commit SHA. */
+			sourceRevision?: string | null;
+		},
 		content: SkillContent,
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -417,7 +424,8 @@ export class SkillRepository {
 				source: skill.source,
 				createdById: skill.createdById,
 			});
-			return await insertVersion(manager, skill.id, 1, content, skill.createdById);
+			const { id, createdById, sourceRevision = null } = skill;
+			return await insertVersion(manager, id, 1, content, createdById, sourceRevision);
 		});
 	}
 
@@ -430,7 +438,7 @@ export class SkillRepository {
 		ctx: OperationContext = {},
 	): Promise<string> {
 		return await this.table.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById);
+			const id = await insertVersion(manager, skillId, version, content, createdById, null);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});
@@ -662,6 +670,7 @@ async function insertVersion(
 	version: number,
 	content: SkillContent,
 	createdById: string | null,
+	sourceRevision: string | null,
 ): Promise<string> {
 	const id = randomUUID();
 	// `save`, not `insert`: the partial-entity type of `insert` rejects free-form JSON.
@@ -676,6 +685,7 @@ async function insertVersion(
 			frontmatter: content.frontmatter,
 			contentHash: skillContentHash(content),
 			createdById,
+			sourceRevision,
 		}),
 	);
 	await insertFiles(manager, id, content.files);

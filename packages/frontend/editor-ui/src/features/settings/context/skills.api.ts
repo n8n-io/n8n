@@ -1,5 +1,7 @@
 import type {
+	ConnectSkillSourceDto,
 	CreateSkillDto,
+	DiscoverSkillSourceDto,
 	SaveSkillDto,
 	SkillAgentOption,
 	SkillDetail,
@@ -7,12 +9,15 @@ import type {
 	SkillNewNameResponse,
 	SkillSaveResponse,
 	SkillSortOption,
+	SkillSourceConnectResponse,
+	SkillSourceDiscovery,
 	SkillUserDto,
 } from '@n8n/api-types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 
 const ENDPOINT = '/skills';
+const SOURCES_ENDPOINT = '/skill-sources';
 
 /** The request side of `ListSkillsQueryDto`, with numbers as the client holds them. */
 export type SkillListQuery = {
@@ -94,4 +99,30 @@ export async function saveSkill(
 
 export async function deleteSkill(context: IRestApiContext, id: string): Promise<void> {
 	await makeRestApiRequest(context, 'DELETE', `${ENDPOINT}/${id}`);
+}
+
+/** Reads a public link and lists the skills in it. Writes nothing. */
+export async function discoverSkillSource(
+	context: IRestApiContext,
+	payload: DiscoverSkillSourceDto,
+): Promise<SkillSourceDiscovery> {
+	return await makeRestApiRequest<SkillSourceDiscovery>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/discover`,
+		payload,
+	);
+}
+
+/** Connects the source in the scope and imports the picked skills as synced skills. */
+export async function connectSkillSource(
+	context: IRestApiContext,
+	payload: ConnectSkillSourceDto,
+): Promise<SkillSourceConnectResponse> {
+	return await makeRestApiRequest<SkillSourceConnectResponse>(
+		context,
+		'POST',
+		SOURCES_ENDPOINT,
+		payload,
+	);
 }

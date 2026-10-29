@@ -133,6 +133,26 @@ export function describeSkillSourceClientContract(subject: () => SkillSourceClie
 			expect(await discoverAll(client, locator, auth)).toEqual([]);
 		});
 
+		it('handles the links that it publishes, and no other source type', async () => {
+			const { client, publish, missingLink } = subject();
+			const link = await publish([skill('Mine')]);
+
+			expect(client.handles(link)).toBe(true);
+			expect(client.handles(missingLink)).toBe(true);
+			expect(client.handles('https://example.com/acme/skills')).toBe(false);
+		});
+
+		it('fetches every skill at the revision that discover gave', async () => {
+			const { client, auth, publish } = subject();
+			const locator = await client.parseLocator(await publish([skill('Pinned')]), auth);
+			const page = await client.discover(locator, auth);
+
+			const fetched = await client.fetchLatest(locator, page.items[0], auth, page.revision);
+
+			expect(fetched.content).toEqual(skill('Pinned'));
+			if (page.revision !== undefined) expect(fetched.revision).toBe(page.revision);
+		});
+
 		it('refuses a link that it cannot read', async () => {
 			const { client, auth, invalidLinks } = subject();
 
@@ -208,6 +228,15 @@ export function describeSkillSourceClientContract(subject: () => SkillSourceClie
 			await expect(client.fetchLatest(locator, ref, auth)).rejects.toThrow(
 				SkillSourceNotFoundError,
 			);
+		});
+
+		it('names the source and gives each skill its own location', async () => {
+			const { client, auth, publish } = subject();
+			const locator = await client.parseLocator(await publish([skill('One'), skill('Two')]), auth);
+			const refs = await discoverAll(client, locator, auth);
+
+			expect(client.describe(locator).label).not.toBe('');
+			expect(new Set(refs.map((ref) => client.location(ref))).size).toBe(refs.length);
 		});
 
 		it('gives https links to the source and to each skill', async () => {

@@ -34,6 +34,7 @@ const detail: SkillDetail = {
 	},
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+	syncedFrom: null,
 };
 
 /** The reused Skills Hub components use `data-testid`, which `getByTestId` does not read. */

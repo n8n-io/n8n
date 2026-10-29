@@ -6,6 +6,7 @@ import {
 	agentSkillShape,
 	skillCreateMethodSchema,
 } from './agent-skill.schema';
+import type { SkillSyncedFrom } from './skill-sources.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
@@ -109,6 +110,8 @@ export type SkillDetail = SkillListItem & {
 	/** Hash of `skill`. Send it back as `baseSkillHash` so a save cannot overwrite a newer version. */
 	skillHash: string;
 	usedBy: SkillUsedBy;
+	/** Set for a synced skill: its content is read-only and changes only in its source. */
+	syncedFrom: SkillSyncedFrom | null;
 };
 
 export type SkillSaveResponse = {

@@ -5,6 +5,16 @@ import { useI18n } from '@n8n/i18n';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 
+export const PROJECT_SCOPE_PREFIX = 'project:';
+
+/** Settings creates and moves skills only to a project or the instance, never to one agent. */
+export function parseScope(value: string): { scope: 'project' | 'instance'; projectId?: string } {
+	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
+		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
+	}
+	return { scope: 'instance' };
+}
+
 export type SkillScopeDisplay = { icon: IconName; label: string };
 
 /** How the badge and the modal name the scope of a skill. */

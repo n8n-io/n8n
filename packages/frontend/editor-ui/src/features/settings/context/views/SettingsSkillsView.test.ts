@@ -4,6 +4,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import {
 	SKILL_NAME_TAKEN_MESSAGE,
+	SKILL_SYNC_FLAG,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillUserDto,
@@ -87,6 +88,7 @@ function detail(overrides: Partial<SkillDetail> = {}): SkillDetail {
 		},
 		skillHash: 'hash-1',
 		usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+		syncedFrom: null,
 		...overrides,
 	};
 }
@@ -946,6 +948,99 @@ describe('SettingsSkillsView', () => {
 
 			expect(lastModalData().skillId).toBeUndefined();
 			expect(lastModalData().scopeOptions).not.toHaveLength(0);
+		});
+	});
+
+	describe('Skill Sync', () => {
+		/** Stands in for the connect dialog, which has its own tests. */
+		const connected = {
+			response: {
+				sourceId: 'src-1',
+				imported: [
+					{ key: 'a', skillId: 'k1', name: 'brand-voice' },
+					{ key: 'b', skillId: 'k2', name: 'seo-check' },
+				],
+				failed: [{ key: 'c', name: 'web-scraper', reason: 'parse_error' }],
+			},
+			sourceLabel: 'acme/skills',
+			scopeLabel: 'Global',
+		};
+		const ConnectDialogStub = {
+			name: 'SkillSourceConnectDialog',
+			props: ['open', 'scopeOptions'],
+			emits: ['update:open', 'connected'],
+			setup: () => ({ connected }),
+			template: `
+				<div v-if="open" data-test-id="connect-dialog-stub" />
+				<button data-test-id="connect-dialog-done" @click="$emit('connected', connected)" />
+			`,
+		};
+
+		function enableSkillSync() {
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => String(flag) === SKILL_SYNC_FLAG,
+			);
+		}
+
+		function renderWithDialogStub() {
+			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
+		}
+
+		it('shows only "Create skill" when the flag is off', () => {
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(getByTestId('skills-create-button')).toBeInTheDocument();
+			expect(queryByTestId('skills-create-menu-button')).not.toBeInTheDocument();
+		});
+
+		it('offers "Connect to GitHub" in the "Create skills" menu when the flag is on', async () => {
+			enableSkillSync();
+			const { getByTestId, queryByTestId, findByTestId } = renderWithDialogStub();
+
+			expect(queryByTestId('skills-create-button')).not.toBeInTheDocument();
+			await userEvent.click(getByTestId('skills-create-menu-button'));
+			expect(await findByTestId('skills-create-manual')).toHaveTextContent('Create manually');
+			await userEvent.click(await findByTestId('skills-create-github'));
+
+			expect(await findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		it('reloads the list and names the imported and failed skills', async () => {
+			enableSkillSync();
+			const view = renderWithDialogStub();
+			await new Promise(process.nextTick);
+			skillsStore.fetchSkills.mockClear();
+
+			await userEvent.click(view.getByTestId('connect-dialog-done'));
+
+			await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+			expect(showMessageMock).toHaveBeenCalledWith({
+				title: 'Added 2 skills to Global from acme/skills',
+				message: 'Could not add web-scraper.',
+				type: 'warning',
+			});
+		});
+
+		it('opens a synced skill read-only with where it comes from', async () => {
+			const syncedFrom = {
+				sourceId: 'src-1',
+				type: 'github' as const,
+				label: 'acme/skills',
+				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
+			};
+			skillsStore.skills = [skill({ source: 'github', canEdit: false })];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(
+				detail({ source: 'github', canEdit: false, syncedFrom }),
+			);
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+
+			expect(lastModalData().readOnly).toBe(true);
+			expect(lastModalData().syncedFrom).toEqual(syncedFrom);
 		});
 	});
 

@@ -639,6 +639,7 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			skill,
 			skillHash: `hash-${id}`,
 			usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+			syncedFrom: null,
 		};
 	}
 

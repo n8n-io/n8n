@@ -58,6 +58,7 @@ import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
+import { SkillSyncedFromService } from './skill-synced-from.service';
 import {
 	blocksDelete,
 	deleteRefusalMessage,
@@ -139,6 +140,7 @@ export class SkillService {
 		private readonly skillRuntime: SkillRuntimeService,
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
+		private readonly syncedFrom: SkillSyncedFromService,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
@@ -402,6 +404,8 @@ export class SkillService {
 			createdById: string;
 			checkNameTaken?: boolean;
 			frontmatter?: SkillFrontmatter | null;
+			/** For a synced skill: the source revision of the content, such as a commit SHA. */
+			sourceRevision?: string | null;
 		},
 		ctx: OperationContext = {},
 	): Promise<string> {
@@ -412,7 +416,13 @@ export class SkillService {
 		}
 		const id = input.id ?? `skill_${generateNanoId()}`;
 		await this.skillRepository.createSkill(
-			{ id, target: input.target, source: input.source, createdById: input.createdById },
+			{
+				id,
+				target: input.target,
+				source: input.source,
+				createdById: input.createdById,
+				...(input.sourceRevision ? { sourceRevision: input.sourceRevision } : {}),
+			},
 			toSkillContent(skill, input.frontmatter ?? null),
 			ctx,
 		);
@@ -703,6 +713,10 @@ export class SkillService {
 		const content = toAgentSkill(latest);
 		// Any user can read an instance skill, so "used by" only names the agents they can read.
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
+		const [usedBy, syncedFrom] = await Promise.all([
+			this.skillUsage.findUsage(skill.id, agentProjectIds ?? 'all'),
+			syncedSourceLabel(skill.source) ? this.syncedFrom.of(skill.id) : null,
+		]);
 		return {
 			...item,
 			// Name, description and number from the same row as the content, so a save that
@@ -712,7 +726,8 @@ export class SkillService {
 			latestVersion: latest.version.version,
 			skill: content,
 			skillHash: getSkillHash(content),
-			usedBy: await this.skillUsage.findUsage(skill.id, agentProjectIds ?? 'all'),
+			usedBy,
+			syncedFrom,
 		};
 	}
 
@@ -791,7 +806,8 @@ export class SkillService {
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				availableToAssistant: skill.availableToAssistant,
-				canEdit: canEdit(skill, projectId),
+				// The source holds the content of a synced skill, so n8n cannot edit it.
+				canEdit: canEdit(skill, projectId) && !syncedSourceLabel(skill.source),
 				canDelete: canDelete(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
