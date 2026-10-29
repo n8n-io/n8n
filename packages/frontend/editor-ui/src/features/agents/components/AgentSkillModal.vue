@@ -13,6 +13,7 @@ import {
 	type SkillCreateMethod,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillSyncedFrom,
 	type SkillUsedBy,
 	type SkillVersionDetail,
 } from '@n8n/api-types';
@@ -113,6 +114,8 @@ export type AgentSkillModalData = {
 	usedBy?: SkillUsedBy;
 	/** Shows the skill without edit controls, for a user who can use but not change it. */
 	readOnly?: boolean;
+	/** Set for a skill synced from a source: its content is read-only and changes in the source. */
+	syncedFrom?: SkillSyncedFrom;
 	/** The agent the modal was opened from, for "Add to <agent>" in the header menu. */
 	agentName?: string;
 	/**
@@ -122,6 +125,11 @@ export type AgentSkillModalData = {
 	onDelete?: (id: string) => void | Promise<void>;
 	/** Why "Delete skill" is disabled, for example because agents use the skill. */
 	deleteDisabledReason?: string;
+	/**
+	 * Settings only: stops syncing a synced skill. The caller asks for confirmation and
+	 * closes the modal. Absent, or a skill the user may not stop syncing, hides the action.
+	 */
+	onStopSyncing?: (id: string) => void | Promise<void>;
 	/** The latest version of a saved hub skill. Set means the skill has versions to show. */
 	latestVersion?: number;
 	/** Opens the editor with the Versions panel shown ("View timeline" in Settings). */
@@ -333,6 +341,27 @@ const skillAccessFailed = ref(false);
 /** A pinned skill is read-only in the builder: the agent runs that version, not the latest. */
 const isPinned = computed(() => isEditing.value && !!props.data.agentVersions?.pinned);
 const isOutdated = computed(() => isEditing.value && !!props.data.outdated);
+/**
+ * Where a synced skill comes from, for the banner and the source link. The server already
+ * marks a synced skill `canEdit: false`, so it does not feed the read-only rule here.
+ */
+const syncedFrom = computed(() => props.data.syncedFrom ?? skillAccess.value?.syncedFrom ?? null);
+const canStopSyncing = computed(
+	() => !!syncedFrom.value?.canStopSyncing && !!props.data.onStopSyncing && !!props.data.skillId,
+);
+
+/** True while a stop runs, so a second click cannot send it again. */
+const isStoppingSync = ref(false);
+
+async function onStopSyncing() {
+	if (!props.data.skillId || !props.data.onStopSyncing || isStoppingSync.value) return;
+	isStoppingSync.value = true;
+	try {
+		await props.data.onStopSyncing(props.data.skillId);
+	} finally {
+		isStoppingSync.value = false;
+	}
+}
 const isReadOnly = computed(
 	() =>
 		props.data.readOnly === true ||
@@ -1270,7 +1299,20 @@ function onRemove() {
 		</div>
 		<template v-else-if="step !== 'select'">
 			<N8nCallout
-				v-if="data.readOnly"
+				v-if="syncedFrom && step === 'edit'"
+				theme="info"
+				icon="git-branch"
+				:class="[$style.callout, isFormStep && $style.calloutInset]"
+				data-testid="agent-skill-synced-banner"
+			>
+				{{
+					i18n.baseText('settings.context.skills.synced.banner', {
+						interpolate: { repo: syncedFrom.label },
+					})
+				}}
+			</N8nCallout>
+			<N8nCallout
+				v-else-if="data.readOnly"
 				theme="info"
 				:class="[$style.callout, isFormStep && $style.calloutInset]"
 				data-testid="agent-skill-read-only-callout"
@@ -1473,6 +1515,27 @@ function onRemove() {
 					><N8nIcon :icon="data.skillRefsEnabled ? 'unlink' : 'trash-2'" :size="16"
 				/></template>
 				{{ removeLabel }}
+			</N8nButton>
+		</template>
+		<template v-else-if="syncedFrom && step === 'edit'" #footerLeft>
+			<N8nButton
+				variant="ghost"
+				:href="syncedFrom?.webUrl"
+				target="_blank"
+				data-testid="agent-skill-open-in-github"
+			>
+				<template #icon><N8nIcon icon="external-link" :size="16" /></template>
+				{{ i18n.baseText('settings.context.skills.synced.openInGithub') }}
+			</N8nButton>
+			<N8nButton
+				v-if="canStopSyncing"
+				variant="ghost"
+				:disabled="isSaving || isStoppingSync"
+				data-testid="agent-skill-stop-syncing"
+				@click="onStopSyncing"
+			>
+				<template #icon><N8nIcon icon="unlink" :size="16" /></template>
+				{{ i18n.baseText('settings.context.skills.stopSyncing.action') }}
 			</N8nButton>
 		</template>
 		<template v-else-if="step === 'select'" #footerLeft>

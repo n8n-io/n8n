@@ -20,7 +20,7 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'stopSyncing' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -46,6 +46,7 @@ const emit = defineEmits<{
 	timeline: [skill: SkillListItem];
 	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
+	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
 }>();
@@ -86,6 +87,16 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
 		},
+		// Only a synced skill that the user may stop syncing.
+		...(skill.canStopSyncing
+			? [
+					{
+						value: 'stopSyncing' as const,
+						label: i18n.baseText('settings.context.skills.stopSyncing.action'),
+						icon: 'unlink' as const,
+					},
+				]
+			: []),
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
@@ -102,6 +113,7 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else if (action === 'timeline') emit('timeline', skill);
 	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
+	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
 }
 

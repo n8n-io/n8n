@@ -2117,6 +2117,35 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it.each(['credentials-created', 'credentials-updated'] as const)(
+			'reports the managed app version on `%s`',
+			(eventName) => {
+				eventService.emit(eventName, {
+					credentialName: 'My Notion account',
+					user: {
+						id: 'user123',
+						email: 'user@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						role: { slug: GLOBAL_OWNER_ROLE.slug },
+					},
+					credentialType: 'notionOAuth2Api',
+					credentialId: 'cred123',
+					publicApi: false,
+					supportsManagedAuth: true,
+					usesManagedAuth: true,
+					managedAppVersion: 2,
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					eventName === 'credentials-created'
+						? TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS
+						: TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+					expect.objectContaining({ credential_managed_app_version: 2 }),
+				);
+			},
+		);
+
 		it('should track on `credentials-shared` event', () => {
 			const event: RelayEventMap['credentials-shared'] = {
 				user: {

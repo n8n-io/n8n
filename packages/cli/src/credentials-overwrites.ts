@@ -292,6 +292,27 @@ export class CredentialsOverwrites {
 		return hasTokenData(data) ? IMPLICIT_MANAGED_VERSION : undefined;
 	}
 
+	/**
+	 * The managed app version of a credential: its stored version, or the one a new connection
+	 * would store. `undefined` for a user-owned app, a type without an overwrite, a non-OAuth type,
+	 * or a stored version that is not valid. A valid version with no app in the config is reported
+	 * as it is. For telemetry, so it never throws.
+	 */
+	getManagedAppVersion(type: string, data: Record<string, unknown>): number | undefined {
+		if (!this.supportsManagedAuth(type)) return undefined;
+
+		const credentialData = data as ICredentialDataDecryptedObject;
+		try {
+			return (
+				this.resolveBoundVersion(type, credentialData) ??
+				this.getNewConnectionVersion(type, credentialData)
+			);
+		} catch (error) {
+			if (error instanceof ManagedAppUnavailableError) return undefined;
+			throw error;
+		}
+	}
+
 	/** Client fields of an OAuth credential type. `undefined` for any other type. */
 	private getClientFields(type: string): readonly string[] | undefined {
 		if (!this.credentialTypes.recognizes(type)) return undefined;

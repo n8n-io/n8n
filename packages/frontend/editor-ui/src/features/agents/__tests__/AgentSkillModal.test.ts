@@ -163,6 +163,8 @@ function renderModal({
 	settings?: Pick<
 		AgentSkillModalData,
 		| 'readOnly'
+		| 'syncedFrom'
+		| 'onStopSyncing'
 		| 'scopeOptions'
 		| 'initialScope'
 		| 'scopeLockedReason'
@@ -1530,6 +1532,136 @@ describe('AgentSkillModal from Settings', () => {
 		expect(queryByTestId('agent-skill-add-reference')).not.toBeInTheDocument();
 	});
 
+	it('shows where a synced skill comes from and keeps its content read-only', () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
+					canStopSyncing: false,
+				},
+			},
+		});
+
+		expect(getByTestId('agent-skill-synced-banner')).toHaveTextContent(
+			'settings.context.skills.synced.banner acme/skills',
+		);
+		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-open-in-github')).toHaveAttribute(
+			'href',
+			'https://github.com/acme/skills/tree/main/brand-voice',
+		);
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+	});
+
+	it('offers Stop syncing on a synced skill the user may stop syncing', async () => {
+		const onStopSyncing = vi.fn();
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills',
+					canStopSyncing: true,
+				},
+				onStopSyncing,
+			},
+		});
+
+		const button = getByTestId('agent-skill-stop-syncing');
+		expect(button).toHaveTextContent('settings.context.skills.stopSyncing.action');
+		await userEvent.click(button);
+
+		expect(onStopSyncing).toHaveBeenCalledWith('s1');
+	});
+
+	it('disables Stop syncing while a stop runs, so it is sent once', async () => {
+		let finish: () => void = () => {};
+		const onStopSyncing = vi.fn(
+			async () => await new Promise<void>((resolve) => (finish = resolve)),
+		);
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills',
+					canStopSyncing: true,
+				},
+				onStopSyncing,
+			},
+		});
+
+		const button = getByTestId('agent-skill-stop-syncing');
+		await userEvent.click(button);
+		await userEvent.click(button);
+
+		expect(onStopSyncing).toHaveBeenCalledTimes(1);
+		expect(button).toBeDisabled();
+		finish();
+		await vi.waitFor(() => expect(button).not.toBeDisabled());
+	});
+
+	it('hides Stop syncing when the user may not stop syncing the skill', () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills',
+					canStopSyncing: false,
+				},
+				onStopSyncing: vi.fn(),
+			},
+		});
+
+		expect(getByTestId('agent-skill-open-in-github')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-stop-syncing')).not.toBeInTheDocument();
+	});
+
+	it('reads where a synced skill comes from in the agent builder, and the server keeps it read-only', async () => {
+		getSkillDetail.mockResolvedValue({
+			...makeDetail({ id: 's1', name: 'Brand voice', scope: 'project', canEdit: false }),
+			syncedFrom: {
+				sourceId: 'src-1',
+				type: 'github',
+				label: 'acme/skills',
+				webUrl: 'https://github.com/acme/skills',
+				canStopSyncing: true,
+			},
+		});
+		const { findByTestId, queryByTestId } = renderModal({
+			skillRefsEnabled: true,
+			skillId: 's1',
+			skill: SAVED_SKILL,
+		});
+
+		expect(await findByTestId('agent-skill-synced-banner')).toHaveTextContent(
+			'settings.context.skills.synced.banner acme/skills',
+		);
+		expect(queryByTestId('agent-skill-read-only-callout')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-name-input')).not.toBeInTheDocument();
+		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
+	});
+
 	it('returns the chosen scope with a new skill', async () => {
 		const onConfirm = vi.fn();
 		const { getByTestId } = renderModal({
@@ -1755,6 +1887,7 @@ function makeListItem(
 		usedByAgents: 0,
 		canEdit: true,
 		canDelete: true,
+		canStopSyncing: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -1770,6 +1903,7 @@ function makeDetail(
 		skill: { name: item.name, description: item.description, instructions: 'Instructions' },
 		skillHash: 'hash',
 		usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+		syncedFrom: null,
 	};
 }
 

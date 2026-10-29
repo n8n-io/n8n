@@ -2361,6 +2361,31 @@ describe('AgentChatPanel', () => {
 			]);
 			wrapper.unmount();
 		});
+
+		it('sends the client context of an outside message with that message only', async () => {
+			const clientContext = vi.fn(() => ({ timeZone: 'Europe/Helsinki' }));
+			sendMessageMock.mockResolvedValue('sent');
+			const wrapper = mountPanel({ clientContext });
+			const vm = wrapper.vm as unknown as {
+				sendMessageFromOutside: (
+					message: string,
+					files?: File[],
+					clientContext?: Record<string, unknown>,
+				) => void;
+			};
+
+			vm.sendMessageFromOutside('first', [], { context: { workflowId: 'wf-1' } });
+			await flushPromises();
+			sendMessageMock.mock.lastCall?.[2]?.();
+			vm.sendMessageFromOutside('second');
+			await flushPromises();
+
+			expect(sendMessageMock.mock.calls.map((call) => call[3])).toEqual([
+				{ timeZone: 'Europe/Helsinki', context: { workflowId: 'wf-1' } },
+				{ timeZone: 'Europe/Helsinki' },
+			]);
+			wrapper.unmount();
+		});
 	});
 
 	it('retains an outside prompt during initial loading and consumes it only after acceptance', async () => {
