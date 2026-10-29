@@ -1,0 +1,84 @@
+packages/cli/test/integration/inbound-auth-core/authentication.service.integration.test.ts
+  s_a073fa9d8a702c::t_41c6a97f1b63c3 2-7
+  s_a073fa9d8a702c::t_28088fe89e8568 119
+packages/cli/src/modules/inbound-auth-core/trusted-source.controller.ts
+  h_435b1d7d3e52c0 18,131,169
+packages/@n8n/inbound-auth/src/__tests__/trusted-source-facets.test.ts
+  s_a073fa9d8a702c::t_d58d048a915c66 1-42,44-120
+  s_a073fa9d8a702c::t_edae9a46909477 43
+packages/cli/src/modules/oauth-server/__tests__/oauth-flow.service.api.test.ts
+  s_a073fa9d8a702c::t_8554622326bc8c 307
+  s_a073fa9d8a702c::t_ce9ebc439cad87 4
+packages/cli/src/events/__tests__/log-streaming-event-relay.test.ts
+  s_a073fa9d8a702c::t_9b6628fea2423e 3684-3687,3699-3700
+  s_a073fa9d8a702c::t_42791d74b635f3 3688-3698,3701-3725
+packages/cli/src/events/__tests__/telemetry-event-relay.test.ts
+  s_a073fa9d8a702c::t_3e6f3752c1c54c 21
+  s_a073fa9d8a702c::t_f98478294efd8b 6008,6016
+  s_a073fa9d8a702c::t_4dca72d9260690 5998-6007,6009-6015,6017-6062,6065-6067
+  s_a073fa9d8a702c::t_0b465fc854db15 6063-6064
+packages/cli/src/events/relays/log-streaming.event-relay.ts
+  h_435b1d7d3e52c0 1623-1624,1628,1635-1636,1640,1647-1648,1652
+  h_435b1d7d3e52c0 1621-1622,1625,1633-1634,1637,1645-1646,1649
+packages/cli/src/modules/inbound-auth-core/trusted-source-discovery.service.ts
+  h_435b1d7d3e52c0 2,35,59,63-70,77-80
+  h_435b1d7d3e52c0 81-82
+packages/cli/test/integration/public-api/oauth-consent-scopes.test.ts
+  s_a073fa9d8a702c::t_6fef7cd849fbf1 4
+  s_a073fa9d8a702c::t_2bb2aa9d12e0de 65
+packages/@n8n/inbound-auth/src/trusted-source-facets.ts
+  h_435b1d7d3e52c0 1-53
+packages/cli/src/modules/inbound-auth-core/__tests__/trusted-source-discovery.service.test.ts
+  s_a073fa9d8a702c::t_667a5b2353d31c 2
+  s_a073fa9d8a702c::t_2015787719f91a 44
+  s_a073fa9d8a702c::t_d5c4592ca86ffb 333-353,360,366,368-374,376-382,384-395,397-400,402-405
+  s_a073fa9d8a702c::t_4653937d79ae7b 354-359,361-365,367,375,383,396,401
+  s_a073fa9d8a702c::t_972b961068c482 106
+packages/cli/src/modules/oauth-server/__tests__/oauth-local-authorization-server.api.test.ts
+  s_a073fa9d8a702c::t_9b075143275b89 124
+  s_a073fa9d8a702c::t_a6e50810d37e88 3
+packages/@n8n/inbound-auth/src/index.ts
+  h_435b1d7d3e52c0 6
+packages/@n8n/telemetry/src/telemetry-events.ts
+  s_a073fa9d8a702c::t_a7675e994cf5c5 32
+  s_a073fa9d8a702c::t_cb12241be61276 14
+packages/cli/test/integration/mcp/mcp-trusted-source-auth.test.ts
+  s_a073fa9d8a702c::t_558f66cb5451a5 2-7
+  s_a073fa9d8a702c::t_6d5f403357387d 175
+packages/@n8n/telemetry/src/events/trusted-sources.ts
+  s_a073fa9d8a702c::t_e62a04070f96d4 1-6,12-18,35-68,70-74
+  s_a073fa9d8a702c::t_408c5f13fbfdaa 9-11
+  s_a073fa9d8a702c::t_ff3358782098cd 69
+  s_a073fa9d8a702c::t_6f040fe0db0801 7-8,19-34
+packages/cli/test/integration/inbound-auth-core/trusted-source.api.test.ts
+  s_a073fa9d8a702c::t_bb5ebbbcfb5d2d 216-217,223-231
+  s_a073fa9d8a702c::t_0528eda7ebd623 363-371
+  s_a073fa9d8a702c::t_963850eb149162 375-388
+packages/cli/src/events/maps/relay.event-map.ts
+  h_435b1d7d3e52c0 55,1055,1062,1071-1072
+  h_435b1d7d3e52c0 1073-1074
+packages/cli/src/events/relays/telemetry.event-relay.ts
+  h_435b1d7d3e52c0 69,378-381,577-612
+  s_a073fa9d8a702c::t_c4622542f79893 613-617
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "90096dbdd19ce831f057934da8d6ea5d7665dd87",
+  "prompts": {},
+  "humans": {
+    "h_435b1d7d3e52c0": {
+      "author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_a073fa9d8a702c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "809324ae-b7ec-4c6e-a695-c965041caa84",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
