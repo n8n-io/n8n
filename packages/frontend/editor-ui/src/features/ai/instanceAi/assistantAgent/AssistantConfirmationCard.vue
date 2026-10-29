@@ -4,7 +4,8 @@
  * card emits the Assistant confirm body as the resume data, and the chat resumes
  * the suspended tool call with it.
  */
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiConfirmRequest } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	N8nApprovalCard,
 	N8nButton,
@@ -14,17 +15,31 @@ import {
 	type ApprovalOption,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
 import { buildAlwaysAllowKey } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
+import {
+	approvalInputs,
+	continueInputs,
+	getConfirmationType,
+	mcpConnectInputs,
+	questionsInputs,
+	skippedTextInputs,
+	testListenerInputs,
+	textInputs,
+	trackInputCompleted,
+	type ConfirmationInputs,
+} from '../confirmationTelemetry';
 import DomainAccessApproval from '../components/DomainAccessApproval.vue';
 import InstanceAiMcpConnectCard from '../components/InstanceAiMcpConnectCard.vue';
 import InstanceAiQuestions, { type QuestionAnswer } from '../components/InstanceAiQuestions.vue';
 import type { AssistantConfirmationInput } from './assistantConfirmation';
+import { ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 
 const props = defineProps<{
 	input: AssistantConfirmationInput;
@@ -32,11 +47,15 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	submit: [resumeData: InstanceAiConfirmRequest];
+	/** `onAccepted` runs once the server accepts the answer. */
+	submit: [resumeData: InstanceAiConfirmRequest, onAccepted?: () => void];
 }>();
 
 const i18n = useI18n();
 const approvalLabels = useApprovalCardLabels();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
+const threadId = inject(ASSISTANT_AGENT_THREAD_ID, '');
 const submitted = ref(false);
 // Bumped when the chat refuses an answer. The inner cards remount, so they drop
 // their own answered state too.
@@ -73,10 +92,31 @@ const variant = computed(() => {
 	return 'approval';
 });
 
-function submit(body: InstanceAiConfirmRequest) {
+/** The same event as `InstanceAiConfirmationPanel` sends, for an answer that the server accepted. */
+function trackAnswer(inputs: ConfirmationInputs) {
+	trackInputCompleted(
+		telemetry,
+		{
+			threadId,
+			inputThreadId: props.input.inputThreadId,
+			instanceId: rootStore.instanceId,
+			// Assistant agent threads keep no launch source yet.
+			actionSource: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+			type: getConfirmationType(props.input),
+			runtime: 'agents',
+		},
+		inputs,
+	);
+}
+
+/**
+ * `inputs` is the telemetry of the answer, sent once the server accepts it. A card
+ * that the backend settles has none.
+ */
+function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
 	if (isInactive.value) return;
 	submitted.value = true;
-	emit('submit', body);
+	emit('submit', body, inputs ? () => trackAnswer(inputs) : undefined);
 	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
 	// answer and keeps the card, so the card takes the answer back. After a failed
 	// send, the chat renders the card again as a new instance.
@@ -84,21 +124,35 @@ function submit(body: InstanceAiConfirmRequest) {
 }
 
 function onQuestionsSubmit(answers: QuestionAnswer[]) {
-	submit({
-		kind: 'questions',
-		answers: answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
-			questionId,
-			selectedOptions,
-			...(customText !== undefined ? { customText } : {}),
-			...(skipped !== undefined ? { skipped } : {}),
-		})),
-	});
+	submit(
+		{
+			kind: 'questions',
+			answers: answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
+				questionId,
+				selectedOptions,
+				...(customText !== undefined ? { customText } : {}),
+				...(skipped !== undefined ? { skipped } : {}),
+			})),
+		},
+		questionsInputs(props.input.questions ?? [], answers),
+	);
 }
 
 function onTextSubmit() {
 	const value = textValue.value.trim();
 	if (!value) return;
-	submit({ kind: 'approval', approved: true, userInput: value });
+	submit(
+		{ kind: 'approval', approved: true, userInput: value },
+		textInputs(props.input.message, value),
+	);
+}
+
+function onTextSkip() {
+	submit({ kind: 'approval', approved: false }, skippedTextInputs(props.input.message));
+}
+
+function onContinue() {
+	submit({ kind: 'approval', approved: true }, continueInputs(props.input.message));
 }
 
 function onMcpConnectResolve({
@@ -108,7 +162,10 @@ function onMcpConnectResolve({
 	approved: boolean;
 	connectedSlugs: string[];
 }) {
-	submit({ kind: 'mcpConnect', approved, connectedSlugs });
+	submit(
+		{ kind: 'mcpConnect', approved, connectedSlugs },
+		mcpConnectInputs(props.input.mcpConnectRequest?.servers ?? [], approved, connectedSlugs),
+	);
 }
 
 // --- Credential destination ---
@@ -151,17 +208,21 @@ const credentialDestinationOptions = computed<ApprovalOption[]>(() => [
 function onCredentialDestinationSelect(key: string) {
 	const destination = props.input.credentialDestination;
 	if (!destination || (key !== 'allow-once' && key !== 'deny')) return;
-	submit({
-		kind: 'credentialDestination',
-		approved: key === 'allow-once',
-		origin: destination.origin,
-	});
+	const approved = key === 'allow-once';
+	submit(
+		{ kind: 'credentialDestination', approved, origin: destination.origin },
+		approvalInputs(props.input.message, approved ? 'approve' : 'deny', false),
+	);
 }
 
 // --- Test listener ---
 
-function settleTestListener(approved: boolean, executionId?: string) {
-	submit({ kind: 'approval', approved, ...(executionId ? { userInput: executionId } : {}) });
+/** `fromPush`: a push event settles the card without a user choice, so it records no input. */
+function settleTestListener(approved: boolean, executionId?: string, fromPush = false) {
+	submit(
+		{ kind: 'approval', approved, ...(executionId ? { userInput: executionId } : {}) },
+		fromPush ? undefined : testListenerInputs(props.input.message, approved),
+	);
 }
 
 function formatDeadline(iso: string): string {
@@ -178,6 +239,7 @@ if (props.input.testListener) {
 		settleTestListener(
 			true,
 			event.type === 'testWebhookReceived' ? event.data.executionId : undefined,
+			true,
 		);
 	});
 	onBeforeUnmount(removePushListener);
@@ -212,13 +274,21 @@ const canAlwaysAllow = computed(() => {
 });
 
 function onApprovalSelect(key: string) {
+	const { message } = props.input;
 	if (key === 'always-allow' && canAlwaysAllow.value) {
 		// The tool stores a thread grant, so later matching calls skip the card.
-		submit({ kind: 'approval', approved: true, scope: 'session' });
+		submit(
+			{ kind: 'approval', approved: true, scope: 'session' },
+			approvalInputs(message, 'approve_always', true),
+		);
 		return;
 	}
 	if (key === 'allow-once' || key === 'deny') {
-		submit({ kind: 'approval', approved: key === 'allow-once' });
+		const approved = key === 'allow-once';
+		submit(
+			{ kind: 'approval', approved },
+			approvalInputs(message, approved ? 'approve' : 'deny', canAlwaysAllow.value),
+		);
 	}
 }
 </script>
@@ -322,7 +392,7 @@ function onApprovalSelect(key: string) {
 					size="medium"
 					variant="outline"
 					:disabled="isInactive"
-					@click="submit({ kind: 'approval', approved: false })"
+					@click="onTextSkip"
 				>
 					{{ i18n.baseText('instanceAi.askUser.skip') }}
 				</N8nButton>
@@ -345,7 +415,7 @@ function onApprovalSelect(key: string) {
 					variant="solid"
 					:disabled="isInactive"
 					data-test-id="assistant-agent-continue"
-					@click="submit({ kind: 'approval', approved: true })"
+					@click="onContinue"
 				>
 					{{ i18n.baseText('instanceAi.confirmation.continue') }}
 				</N8nButton>

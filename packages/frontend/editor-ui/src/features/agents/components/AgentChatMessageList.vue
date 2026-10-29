@@ -76,7 +76,11 @@ const props = defineProps<{
 const emit = defineEmits<{
 	openBuild: [];
 	retry: [messageId: string];
-	resume: [payload: { runId: string; toolCallId: string; resumeData: unknown }];
+	/** `onAccepted` comes from the card and runs once the server accepts the answer. */
+	resume: [
+		payload: { runId: string; toolCallId: string; resumeData: unknown },
+		onAccepted?: () => void,
+	];
 	sendToAssistant: [event?: AgentSendToAssistantEvent];
 	'increase-budget': [payload: { field: 'monthlyBudgetUsd' | 'sessionCostCapUsd'; amount: number }];
 }>();
@@ -99,11 +103,16 @@ function onFixWithAssistant(group: DisplayGroup, failures: AgentFixWithAssistant
 	emit('sendToAssistant', { executionId, failures });
 }
 
-function onInteractiveSubmit(payload: InteractivePayload, resumeData: unknown) {
+function onInteractiveSubmit(
+	payload: InteractivePayload,
+	resumeData: unknown,
+	onAccepted?: () => void,
+) {
 	// Cards without a runId are disabled at the card level (see InteractiveCard).
 	// This guard is a defensive belt-and-braces for the type narrowing.
 	if (!payload.runId) return;
-	emit('resume', { runId: payload.runId, toolCallId: payload.toolCallId, resumeData });
+	const resume = { runId: payload.runId, toolCallId: payload.toolCallId, resumeData };
+	emit('resume', resume, onAccepted);
 }
 
 function isIntegrationActionSuspend(value: unknown): value is { type: 'integration_action' } {
@@ -708,7 +717,9 @@ watch(
 							v-for="payload in group.interactives.filter(shouldRenderInteractive)"
 							:key="payload.toolCallId"
 							:payload="payload"
-							@submit="onInteractiveSubmit(payload, $event)"
+							@submit="
+								(resumeData, onAccepted) => onInteractiveSubmit(payload, resumeData, onAccepted)
+							"
 						/>
 					</div>
 					<AgentChatRetryError
@@ -887,7 +898,10 @@ watch(
 							<div v-else :class="$style.interactives">
 								<InteractiveCard
 									:payload="item.payload"
-									@submit="onInteractiveSubmit(item.payload, $event)"
+									@submit="
+										(resumeData, onAccepted) =>
+											onInteractiveSubmit(item.payload, resumeData, onAccepted)
+									"
 								/>
 							</div>
 						</template>

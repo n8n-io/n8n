@@ -5,7 +5,7 @@ import { UserError } from '@n8n/errors';
 import { skillContentHash, type SkillContent } from './skill-content-hash';
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
-import type { Skill } from '../database/entities/skill.entity';
+import type { Skill, SkillSource } from '../database/entities/skill.entity';
 
 /**
  * Where a skill lives: a project, one agent, or the instance (both null). An agent skill
@@ -35,6 +35,9 @@ export type SkillRef = { id: string; versionId?: string };
  * `frontmatter` keeps the frontmatter of the latest version. `baseSkillHash` leaves out
  * the frontmatter, so the type requires `baseVersionId` when `frontmatter` is set. With
  * `checkedTarget`, the save is refused if the skill left the scope the caller checked.
+ * Every field that the update leaves out keeps its stored value, so a caller that replaces
+ * the whole content, such as Skill Sync, sends every field: `references: []` removes all
+ * files, and `frontmatter: null` removes the frontmatter.
  */
 export type SkillUpdate = Partial<AgentSkill> & {
 	baseSkillHash: string;
@@ -125,14 +128,49 @@ export function toSkillContent(skill: AgentSkill, frontmatter: SkillFrontmatter 
 	return content;
 }
 
+/**
+ * The name of the source of each synced skill source, or null for a skill that n8n owns. A
+ * synced skill is read-only. A new source value must be added here, so the compiler forces
+ * the choice.
+ */
+const SYNCED_SOURCE_LABELS: Record<SkillSource, string | null> = {
+	ui: null,
+	agent: null,
+	mcp: null,
+	assistant: null,
+	import: null,
+	github: 'GitHub',
+};
+
+/** The name of the source of a synced skill. Undefined for a skill that n8n owns. */
+export function syncedSourceLabel(source: SkillSource): string | undefined {
+	return SYNCED_SOURCE_LABELS[source] ?? undefined;
+}
+
 /** The `AgentSkill` shape the runtime and the API use, from one version row. */
 export function toAgentSkill(row: ResolvedSkillRow): AgentSkill {
+	return contentToAgentSkill(rowContent(row));
+}
+
+/** The content of one version row. */
+export function rowContent(row: ResolvedSkillRow): SkillContent {
 	return {
 		name: row.version.name,
 		description: row.version.description,
 		instructions: row.version.instructions,
-		...(row.files.length
-			? { references: row.files.map(({ path, content }) => ({ path, content })) }
+		frontmatter: row.version.frontmatter,
+		files: row.files.map(({ path, content }) => ({ path, content })),
+	};
+}
+
+/** The `AgentSkill` shape of a content. It has no frontmatter. */
+export function contentToAgentSkill(content: SkillContent): AgentSkill {
+	return {
+		name: content.name,
+		description: content.description,
+		instructions: content.instructions,
+		...(content.files.length
+			? { references: content.files.map(({ path, content: text }) => ({ path, content: text })) }
 			: {}),
 	};
 }

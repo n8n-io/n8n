@@ -8548,7 +8548,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -8562,7 +8562,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-2',
 				content: 'Earlier session: user chose SQLite for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{
@@ -8610,7 +8610,7 @@ describe('AgentRuntime — observation log jobs', () => {
 			{
 				resourceId: 'resource-1',
 				content: 'Earlier session: user chose Postgres for memory storage.',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			},
 			[
 				{

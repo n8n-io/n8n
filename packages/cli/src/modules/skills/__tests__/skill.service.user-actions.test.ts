@@ -1,7 +1,5 @@
-/* eslint-disable @typescript-eslint/unbound-method -- mock-based tests reference unbound methods */
 import type { CreateSkillDto, ListSkillsQueryDto, SaveSkillDto } from '@n8n/api-types';
-import type { ProjectScopeService } from '@n8n/backend-services';
-import type { OperationContext, TransactionRunner, User, UserRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { MockInstance } from 'vitest';
@@ -9,18 +7,14 @@ import { mock } from 'vitest-mock-extended';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
 
-import type { SkillUsageProxy } from '../services/skill-usage-proxy.service';
+import { createSkillServices, resetSkillMocks, TX_CTX } from './test-utils/skill-services';
 import type { SkillFile } from '../database/entities/skill-file.entity';
 import { getSkillHash } from '../utils/skill-hash';
 import type { SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill } from '../database/entities/skill.entity';
-import type { SkillRepository } from '../database/repositories/skill.repository';
-import { SkillAccessService } from '../services/skill-access.service';
-import { SkillRuntimeService } from '../services/skill-runtime.service';
-import { SkillService } from '../services/skill.service';
+import type { SkillAccessService } from '../services/skill-access.service';
+import type { SkillService } from '../services/skill.service';
 import type { ResolvedSkillRow } from '../utils/skill-content';
-import type { SkillsTelemetry } from '../services/skills-telemetry.service';
-import type { AssistantSkillsFlagGate } from '../services/assistant-skills-flag-gate';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
 vi.mock('@n8n/permissions', async (importOriginal) => ({
@@ -79,26 +73,18 @@ const query = (overrides: Partial<ListSkillsQueryDto> = {}) =>
 	({ skip: 0, ...overrides }) as ListSkillsQueryDto;
 
 describe('SkillService user actions', () => {
-	const repository = mock<SkillRepository>();
-	const projectScopeService = mock<ProjectScopeService>();
-	const txRunner = mock<TransactionRunner>();
-	const userRepository = mock<UserRepository>();
-	const skillsTelemetry = mock<SkillsTelemetry>();
-	const skillUsage = mock<SkillUsageProxy>();
-	const rollout = mock<AssistantSkillsFlagGate>();
-	const access = new SkillAccessService(repository, projectScopeService, skillUsage);
-	const service = new SkillService(
-		mock(),
-		repository,
+	const {
+		skills: repository,
+		projectScope: projectScopeService,
 		txRunner,
-		projectScopeService,
-		userRepository,
+		users: userRepository,
+		telemetry: skillsTelemetry,
+		usage,
 		skillUsage,
+		assistantGate: rollout,
 		access,
-		new SkillRuntimeService(repository, projectScopeService, access),
-		skillsTelemetry,
-		rollout,
-	);
+		service,
+	} = createSkillServices();
 	let canAccess: MockInstance<SkillAccessService['canAccess']>;
 	let accessCheck: MockInstance<SkillAccessService['accessCheck']>;
 	let assertCanMove: MockInstance<SkillAccessService['assertCanMove']>;
@@ -107,13 +93,16 @@ describe('SkillService user actions', () => {
 	let moveTrusted: MockInstance<SkillService['moveTrusted']>;
 	let setAssistantAvailability: MockInstance<SkillService['setAssistantAvailability']>;
 	let refreshFollowingAgents: MockInstance<SkillService['refreshFollowingAgents']>;
-	const TX_CTX = { trx: {} } as OperationContext;
 	let visible: Skill[];
 
-	beforeEach(() => {
-		vi.resetAllMocks();
+	beforeEach(async () => {
+		await resetSkillMocks({ skills: repository, usage, txRunner });
+		// Support bot is the only agent, in project-1, and uses no skill.
+		await usage.seed({
+			agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-1' }],
+			skills: [],
+		});
 		rollout.isEnabled.mockResolvedValue(true);
-		txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 		visible = Object.keys(NAMES).map((id) => skill(id));
 		projectScopeService.getProjectIds.mockResolvedValue(['project-1']);
 		vi.mocked(hasGlobalScope).mockReturnValue(false);
@@ -139,21 +128,8 @@ describe('SkillService user actions', () => {
 			async (ids) =>
 				new Map(visible.filter((s) => ids.includes(s.id)).map((s) => [s.id, row(s, 2)] as const)),
 		);
-		skillUsage.countUsingAgents.mockResolvedValue(new Map());
-		skillUsage.findAgentIdsInProjects.mockImplementation(async (projectIds) =>
-			projectIds.includes('project-1') ? ['agent-1'] : [],
-		);
 		repository.findProjects.mockImplementation(
 			async (ids) => new Map(ids.map((id) => [id, { name: 'Team', type: 'team' as const }])),
-		);
-		skillUsage.findUsage.mockResolvedValue({ drafts: [], pins: [], hiddenAgents: 0 });
-		skillUsage.findAgents.mockImplementation(
-			async (ids) =>
-				new Map(
-					ids
-						.filter((id) => id === 'agent-1')
-						.map((id) => [id, { name: 'Support bot', projectId: 'project-1' }] as const),
-				),
 		);
 		canAccess = vi.spyOn(access, 'canAccess').mockResolvedValue(true);
 		accessCheck = vi.spyOn(access, 'accessCheck').mockResolvedValue(() => true);
@@ -251,11 +227,13 @@ describe('SkillService user actions', () => {
 		});
 
 		it('answers a project the user may not list with an empty page', async () => {
+			const findAgentIdsInProjects = vi.spyOn(skillUsage, 'findAgentIdsInProjects');
+
 			const result = await service.list(user, query({ projectId: 'project-hidden' }));
 
 			expect(result).toEqual({ count: 0, data: [] });
 			expect(repository.findVisiblePage).not.toHaveBeenCalled();
-			expect(skillUsage.findAgentIdsInProjects).not.toHaveBeenCalledWith(['project-hidden']);
+			expect(findAgentIdsInProjects).not.toHaveBeenCalledWith(['project-hidden']);
 		});
 
 		it('filters by any project for a user with global scopes', async () => {
@@ -270,7 +248,17 @@ describe('SkillService user actions', () => {
 		});
 
 		it('filters by the skills an agent uses, when the user may read the agent', async () => {
-			skillUsage.findSkillIdsUsedByAgent.mockResolvedValue(['skill_a', 'skill_b']);
+			await usage.seed({
+				agents: [{ key: 'agent-1', name: 'Support bot', project: 'project-1' }],
+				skills: [
+					{ key: 'skill_a', versions: ['Brand voice'] },
+					{ key: 'skill_b', versions: ['Cite sources'] },
+				],
+				drafts: [
+					{ agent: 'agent-1', skill: 'skill_a' },
+					{ agent: 'agent-1', skill: 'skill_b' },
+				],
+			});
 
 			await service.list(user, query({ agentId: 'agent-1', search: 'voice' }));
 
@@ -292,10 +280,12 @@ describe('SkillService user actions', () => {
 				scopes.includes('agent:read') ? readable : ['project-1'],
 			);
 
+			const findSkillIdsUsedByAgent = vi.spyOn(skillUsage, 'findSkillIdsUsedByAgent');
+
 			const result = await service.list(user, query({ agentId }));
 
 			expect(result).toEqual({ count: 0, data: [] });
-			expect(skillUsage.findSkillIdsUsedByAgent).not.toHaveBeenCalled();
+			expect(findSkillIdsUsedByAgent).not.toHaveBeenCalled();
 			expect(repository.findVisiblePage).not.toHaveBeenCalled();
 		});
 
@@ -354,6 +344,7 @@ describe('SkillService user actions', () => {
 
 		it('widens the list for a user with global scopes', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
+			const findAgentIdsInProjects = vi.spyOn(skillUsage, 'findAgentIdsInProjects');
 
 			await service.list(user, query());
 
@@ -361,12 +352,22 @@ describe('SkillService user actions', () => {
 				{ projectIds: 'all', agentIds: 'all' },
 				expect.anything(),
 			);
-			expect(skillUsage.findAgentIdsInProjects).not.toHaveBeenCalled();
+			expect(findAgentIdsInProjects).not.toHaveBeenCalled();
 		});
 
 		it('describes each skill', async () => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
-			skillUsage.countUsingAgents.mockResolvedValue(new Map([['skill_a', 2]]));
+			await usage.seed({
+				agents: [
+					{ key: 'agent-1', name: 'Support bot', project: 'project-1' },
+					{ key: 'agent-2', name: 'Sales bot', project: 'project-1' },
+				],
+				skills: [],
+				drafts: [
+					{ agent: 'agent-1', skill: 'skill_a' },
+					{ agent: 'agent-2', skill: 'skill_a' },
+				],
+			});
 			repository.findProjects.mockResolvedValue(
 				new Map([['project-1', { name: 'Team', type: 'team' as const }]]),
 			);
@@ -429,12 +430,12 @@ describe('SkillService user actions', () => {
 
 	describe('listAgents', () => {
 		it('searches the agents in the projects where the user may read agents', async () => {
-			skillUsage.findAgentSummaries.mockResolvedValue([{ id: 'agent-1', name: 'Support bot' }]);
+			const findAgentSummaries = vi.spyOn(skillUsage, 'findAgentSummaries');
 
 			const result = await service.listAgents(user, { search: 'bot', take: 50 });
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
-			expect(skillUsage.findAgentSummaries).toHaveBeenCalledWith(['project-1'], {
+			expect(findAgentSummaries).toHaveBeenCalledWith(['project-1'], {
 				search: 'bot',
 				limit: 50,
 			});
@@ -443,11 +444,11 @@ describe('SkillService user actions', () => {
 
 		it('searches every project for a user with the global agent scope', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
-			skillUsage.findAgentSummaries.mockResolvedValue([]);
+			const findAgentSummaries = vi.spyOn(skillUsage, 'findAgentSummaries');
 
 			await service.listAgents(user, { take: 10 });
 
-			expect(skillUsage.findAgentSummaries).toHaveBeenCalledWith(null, {
+			expect(findAgentSummaries).toHaveBeenCalledWith(null, {
 				search: undefined,
 				limit: 10,
 			});
@@ -488,20 +489,17 @@ describe('SkillService user actions', () => {
 
 	describe('get', () => {
 		it('returns the latest version, its hash and the usage', async () => {
-			const usage = {
-				drafts: [
-					{
-						agentId: 'agent-1',
-						agentName: 'Support',
-						projectId: 'project-1',
-						version: 3,
-						pinned: false,
-					},
+			await usage.seed({
+				agents: [
+					{ key: 'agent-1', name: 'Support bot', project: 'project-1' },
+					{ key: 'agent-9', name: 'Hidden bot', project: 'project-9' },
 				],
-				pins: [],
-				hiddenAgents: 1,
-			};
-			skillUsage.findUsage.mockResolvedValue(usage);
+				skills: [{ key: 'skill_a', versions: ['Brand voice', 'Brand voice', 'Brand voice'] }],
+				drafts: [
+					{ agent: 'agent-1', skill: 'skill_a' },
+					{ agent: 'agent-9', skill: 'skill_a' },
+				],
+			});
 			const latest = row(visible[0], 3, { instructions: 'saved' });
 			repository.findLatestSaved.mockResolvedValue(new Map([['skill_a', latest]]));
 			repository.findLatestSummaries.mockResolvedValue(
@@ -518,22 +516,38 @@ describe('SkillService user actions', () => {
 			expect(detail.skill.instructions).toBe('saved');
 			expect(detail.latestVersion).toBe(3);
 			expect(detail.skillHash).toBe(getSkillHash(detail.skill));
-			expect(detail.usedBy).toEqual(usage);
+			// The user may read the agents of project-1 only.
+			expect(detail.usedBy).toEqual({
+				drafts: [
+					{
+						agentId: 'agent-1',
+						agentName: 'Support bot',
+						projectId: 'project-1',
+						version: 3,
+						pinned: false,
+					},
+				],
+				pins: [],
+				hiddenAgents: 1,
+			});
 		});
 
 		it('limits the usage to the agents the user may read', async () => {
+			const findUsage = vi.spyOn(skillUsage, 'findUsage');
+
 			await service.get(user, 'skill_a');
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
-			expect(skillUsage.findUsage).toHaveBeenCalledWith('skill_a', ['project-1']);
+			expect(findUsage).toHaveBeenCalledWith('skill_a', ['project-1']);
 		});
 
 		it('shows the agents of every project to a user with the global agent scope', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
+			const findUsage = vi.spyOn(skillUsage, 'findUsage');
 
 			await service.get(user, 'skill_a');
 
-			expect(skillUsage.findUsage).toHaveBeenCalledWith('skill_a', 'all');
+			expect(findUsage).toHaveBeenCalledWith('skill_a', 'all');
 		});
 
 		it('answers a skill the user cannot see like a missing one', async () => {
@@ -914,10 +928,14 @@ describe('SkillService user actions', () => {
 
 	describe('delete', () => {
 		it('deletes for a user with the delete permission', async () => {
+			const findUsage = vi.spyOn(skillUsage, 'findUsage');
+
 			await service.delete(user, 'skill_a');
 
 			expect(canAccess).toHaveBeenCalledWith(user, visible[0], 'delete');
-			expect(skillUsage.findUsage).toHaveBeenCalledWith('skill_a', ['project-1'], TX_CTX);
+			// A conflict names only the agents of the projects the user may read.
+			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
+			expect(findUsage).toHaveBeenCalledWith('skill_a', ['project-1'], TX_CTX);
 			expect(repository.deleteSkill).toHaveBeenCalledWith('skill_a', TX_CTX);
 			expect(skillsTelemetry.deleted).toHaveBeenCalledWith(user.id, visible[0], 'ui');
 		});
@@ -928,18 +946,13 @@ describe('SkillService user actions', () => {
 			expect(skillsTelemetry.deleted).toHaveBeenCalledWith(user.id, visible[0], 'mcp');
 		});
 
-		it('names the agents of the projects the user may read in a conflict', async () => {
-			await service.delete(user, 'skill_a');
-
-			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:read']);
-		});
-
 		it('names every agent for a user with the global agent scope', async () => {
 			projectScopeService.getProjectIds.mockResolvedValue(null);
+			const findUsage = vi.spyOn(skillUsage, 'findUsage');
 
 			await service.delete(user, 'skill_a');
 
-			expect(skillUsage.findUsage).toHaveBeenCalledWith('skill_a', 'all', TX_CTX);
+			expect(findUsage).toHaveBeenCalledWith('skill_a', 'all', TX_CTX);
 		});
 
 		it('refuses a user without it', async () => {
