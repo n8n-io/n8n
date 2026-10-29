@@ -6,4 +6,10 @@ import { BackendModule } from '@n8n/decorators';
 	name: 'execution-limits',
 	licenseFlag: LICENSE_FEATURES.EXECUTION_LIMITS,
 })
-export class ExecutionLimitsModule implements ModuleInterface {}
+export class ExecutionLimitsModule implements ModuleInterface {
+	async entities() {
+		const { ProjectExecutionLimit } = await import('./project-execution-limit.entity.js');
+
+		return [ProjectExecutionLimit];
+	}
+}
