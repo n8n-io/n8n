@@ -960,6 +960,7 @@ async function restoreVersion(version: number) {
 	const restored = normalizeSkill({ ...detail.skill });
 	if (!(await submit(restored, { restoredFrom: version }))) return;
 	showSavedSkill(restored);
+	selectedPath.value = SKILL_FILE;
 	submitted.value = false;
 	serverNameError.value = '';
 	await reloadVersions();

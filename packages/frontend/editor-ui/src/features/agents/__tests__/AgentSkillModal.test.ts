@@ -2212,6 +2212,31 @@ describe('Versions panel', () => {
 		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
 	});
 
+	it('shows SKILL.md after a restore, even when the restored skill has the open file', async () => {
+		const guide = { path: 'references/guide.md', content: 'Read this.' };
+		getSkillVersion.mockResolvedValue({
+			id: 'v1',
+			version: 1,
+			createdBy: author,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: { ...old, references: [guide] },
+		});
+		const { findByTestId, queryByTestId } = renderModal({
+			skill: { ...latest, references: [guide] },
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		await userEvent.click(await findByTestId('agent-skill-reference-nav-item-references-guide-md'));
+		expect(await findByTestId('agent-skill-reference-text')).toBeInTheDocument();
+
+		await userEvent.click(await findByTestId('agent-skill-version-restore'));
+
+		expect(await findByTestId('agent-skill-instructions-editor')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-reference-editor')).not.toBeInTheDocument();
+	});
+
 	it('stays on the older version when the restore save fails', async () => {
 		const onConfirm = vi.fn().mockResolvedValue({ saved: false });
 		const { findByTestId } = renderModal({
