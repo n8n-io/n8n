@@ -176,6 +176,7 @@ import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.servi
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
+	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
@@ -2212,9 +2213,11 @@ export class InstanceAiAdapterService {
 			executionId: string,
 			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
-			const execution = await executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
+			// A manual execution that n8n did not save stays readable only for the user who
+			// started it, until pruning hard-deletes it.
+			const execution =
+				(await executionRepository.findSingleExecution(executionId, { includeData: false })) ??
+				(await findUnsavedManualExecutionForViewer(executionId, user));
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}

@@ -19,6 +19,15 @@ describe('createManifestEntry', () => {
 		},
 	);
 
+	it('accepts a skill id with hyphens and still blocks a path separator', () => {
+		expect(createManifestEntry('skills', 'skills', { id: 'release-notes', name: 'Notes' })).toEqual(
+			{ id: 'release-notes', name: 'Notes', target: 'skills/notes-release-notes' },
+		);
+		expect(() => createManifestEntry('skills', 'skills', { id: 'a/b', name: 'Notes' })).toThrow(
+			PackageExportBlockedError,
+		);
+	});
+
 	it('blocks an export when the path segment exceeds 255 characters', () => {
 		expect(() =>
 			createManifestEntry('projects', 'projects', {

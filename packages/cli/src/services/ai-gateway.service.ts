@@ -182,6 +182,7 @@ export class AiGatewayService {
 			/** Returns the error to throw for a response with a status that is not 2xx. */
 			mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
 			signal?: AbortSignal;
+			timeoutMs?: number;
 		},
 		errorMessage = 'Gateway credits request failed',
 	): Promise<T> {
@@ -196,6 +197,7 @@ export class AiGatewayService {
 				...(options.body !== undefined ? { body: options.body, json: true } : {}),
 				...(options.disableFollowRedirect ? { disableFollowRedirect: true } : {}),
 				...(options.signal ? { abortSignal: options.signal } : {}),
+				...(options.timeoutMs !== undefined ? { timeout: options.timeoutMs } : {}),
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true, // A non-2xx status is surfaced as an error below
 			});
@@ -354,6 +356,7 @@ export class AiGatewayService {
 		userId,
 		attribution,
 		mapErrorResponse,
+		timeoutMs,
 	}: {
 		/** The gateway provider name, for example `browserbaseBrowserUse`. */
 		provider: string;
@@ -365,13 +368,15 @@ export class AiGatewayService {
 		userId: string;
 		attribution: AiGatewayRequestAttribution;
 		mapErrorResponse?: (response: AiGatewayErrorResponse) => Error;
+		/** The request fails when no response arrives within this time. */
+		timeoutMs?: number;
 	}): Promise<T> {
 		if (!AiGatewayService.PROVIDER_NAME_PATTERN.test(provider)) {
 			throw new UnexpectedError('Invalid gateway provider name', { extra: { provider } });
 		}
 		this.assertEnabled();
 		const baseUrl = this.requireBaseUrl();
-		const token = await this.getOrFetchToken(userId);
+		const token = await this.getOrFetchToken(userId, timeoutMs);
 		const gatewayPath = `${AiGatewayService.GATEWAY_PATH_PREFIX}/${provider}`;
 		const url = this.buildGatewayUrl(baseUrl, gatewayPath, attribution);
 		return await this.gatewayRequest<T>({
@@ -381,6 +386,7 @@ export class AiGatewayService {
 			body,
 			disableFollowRedirect: true,
 			mapErrorResponse,
+			timeoutMs,
 		});
 	}
 
@@ -763,7 +769,7 @@ export class AiGatewayService {
 	 * if missing or past 90% of its lifetime. Deduplicates concurrent requests for the
 	 * same user so only one fetch is in-flight at a time.
 	 */
-	private async getOrFetchToken(userId: string): Promise<string> {
+	private async getOrFetchToken(userId: string, timeoutMs?: number): Promise<string> {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;
 		const cached = this.tokenCache.get(key);
 
@@ -774,7 +780,7 @@ export class AiGatewayService {
 		const pending = this.pendingTokenRequests.get(key);
 		if (pending) return await pending;
 
-		const promise = this.fetchAndCacheToken(userId, key);
+		const promise = this.fetchAndCacheToken(userId, key, timeoutMs);
 		this.pendingTokenRequests.set(key, promise);
 		try {
 			return await promise;
@@ -783,7 +789,11 @@ export class AiGatewayService {
 		}
 	}
 
-	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
+	private async fetchAndCacheToken(
+		userId: string,
+		key: string,
+		timeoutMs?: number,
+	): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
 		const [licenseCert, user] = await Promise.all([
 			this.license.loadCertStr(),
@@ -803,6 +813,7 @@ export class AiGatewayService {
 					}),
 					instanceUrl: this.urlService.getInstanceBaseUrl(),
 				},
+				timeoutMs,
 			},
 			'Failed to fetch AI Gateway token',
 		);

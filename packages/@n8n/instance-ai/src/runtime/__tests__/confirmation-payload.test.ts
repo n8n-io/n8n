@@ -69,7 +69,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 	const wizardSchemas: Array<[string, ZodType]> = [
 		['workflows (setup wizard)', workflowsResumeSchema],
 		['credentials', credentialsResumeSchema],
-		['workflow_builder_ask_user', askUserResumeSchema],
+		['ask_user', askUserResumeSchema],
 		['Browser Use MCP', gatewayConfirmationResumeSchema],
 		['domain gating', domainGatingResumeSchema],
 		['mcp-servers', mcpConnectResumeSchema],
@@ -105,7 +105,7 @@ describe('confirmation payload → tool resume schema contract', () => {
 					{ questionId: 'q3', selectedOptions: [], skipped: true },
 				],
 			},
-			targets: [['workflow_builder_ask_user', askUserResumeSchema]],
+			targets: [['ask_user', askUserResumeSchema]],
 		},
 		{
 			label: 'credential selection',
