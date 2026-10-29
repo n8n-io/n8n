@@ -131,7 +131,7 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 	const trigger = findTriggerNode(graph);
 	const reachable = new Set(trigger ? getDescendantNodeIds(graph, trigger.id) : []);
 	const loops = deriveLoops(graph);
-	const loopMemberIds = new Set(loops.flatMap((loop) => [...loop.memberIds]));
+	const loopMemberIds = union(loops.map((loop) => loop.memberIds));
 
 	for (const [nodeId, passes] of Object.entries(seededSteps)) {
 		if (nodeId === trigger?.id) {
@@ -157,12 +157,12 @@ function validateSeededSteps(graph: WorkflowGraph, seededSteps: SeededSteps): vo
 /** Checks that a loop is seeded whole or not at all. See `validateSeededSteps` for why. */
 function validateSeededLoop(loop: WorkflowLoop, seededSteps: SeededSteps): void {
 	const seeded = new Set(Object.keys(seededSteps));
-	const seededMemberIds = [...loop.memberIds].filter((id) => seeded.has(id));
-	if (seededMemberIds.length === 0) return;
+	const seededMemberId = find(loop.memberIds, (id) => seeded.has(id));
+	if (seededMemberId === undefined) return;
 
 	if (!seeded.has(loop.batchNodeId)) {
 		throw new GraphValidationError(
-			`Node ${seededMemberIds[0]} is seeded but ${loop.batchNodeId}, the batch node of its loop, is not; a loop is seeded whole or not at all`,
+			`Node ${seededMemberId} is seeded but ${loop.batchNodeId}, the batch node of its loop, is not; a loop is seeded whole or not at all`,
 		);
 	}
 
@@ -191,4 +191,15 @@ function validateSeededLoop(loop: WorkflowLoop, seededSteps: SeededSteps): void 
 			);
 		}
 	}
+}
+
+function find<T>(items: Iterable<T>, matches: (item: T) => boolean): T | undefined {
+	for (const item of items) if (matches(item)) return item;
+	return undefined;
+}
+
+function union<T>(sets: Array<Set<T>>): Set<T> {
+	const result = new Set<T>();
+	for (const set of sets) for (const item of set) result.add(item);
+	return result;
 }

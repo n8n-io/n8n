@@ -50,7 +50,7 @@ const DEFAULT_MAIN_OUTPUT: INodeExecutionData[][] = [[{ json: {} }]];
 /** The node that heads a loop engine v2 can run; the converter maps it to the batch step. */
 const SPLIT_IN_BATCHES_TYPE = 'n8n-nodes-base.splitInBatches';
 /** The output slot a Split In Batches node fills on every pass but its last. */
-const LOOP_SLOT = 1;
+const LOOP_OUTPUT_SLOT = 1;
 
 /** v1 uses `null` for a slot it has no data for; an empty slot says the same to the engine. */
 const withoutNullSlots = (main: Array<INodeExecutionData[] | null>): INodeExecutionData[][] =>
@@ -104,8 +104,8 @@ export class EngineV2ManualRunPlanner {
 		}
 
 		const candidates = graph.getChildren(root);
-		const loops = loopsIn(graph).filter((loop) => [...loop].every((node) => candidates.has(node)));
-		const inLoop = new Set(loops.flatMap((loop) => [...loop]));
+		const loops = loopsIn(graph).filter((loop) => isSubset(loop, candidates));
+		const inLoop = union(loops);
 
 		const seeded: SeededNode[] = [];
 		for (const node of candidates) {
@@ -113,7 +113,9 @@ export class EngineV2ManualRunPlanner {
 			const outputs = this.outputsOf(node, runData, pinData);
 			if (outputs) seeded.push({ nodeId: node.id, iteration: 0, outputs });
 		}
-		for (const loop of loops) seeded.push(...this.loopSeeds(loop, runData, pinData));
+		for (const loop of loops) {
+			for (const seed of this.loopSeeds(loop, runData, pinData)) seeded.push(seed);
+		}
 
 		return {
 			workflow: {
@@ -275,7 +277,7 @@ export class EngineV2ManualRunPlanner {
 		}
 
 		const passes = batchRuns.length - 1;
-		const fillsLoopSlot = (run: ITaskData) => Boolean(run.data?.main[LOOP_SLOT]?.length);
+		const fillsLoopSlot = (run: ITaskData) => Boolean(run.data?.main[LOOP_OUTPUT_SLOT]?.length);
 		if (batchRuns.some((run, index) => fillsLoopSlot(run) !== index < passes)) {
 			throw new UserError(
 				`The loop at "${batch.name}" did not finish, and engine v2 can only reuse a loop that finished. Run the workflow from the trigger instead.`,
@@ -291,7 +293,7 @@ export class EngineV2ManualRunPlanner {
 					`Node "${member.name}" ran ${runs.length} times in the loop at "${batch.name}", which ran ${passes} passes, so engine v2 cannot reuse the loop's results. Run the workflow from the trigger instead.`,
 				);
 			}
-			seeds.push(...runs.map((run, iteration) => this.loopSeed(member, iteration, run)));
+			runs.forEach((run, iteration) => seeds.push(this.loopSeed(member, iteration, run)));
 		}
 		return seeds;
 	}
@@ -333,13 +335,24 @@ function withPairedItems(items: INodeExecutionData[]): INodeExecutionData[] {
 /** Each cycle as its node set: a component of more than one node, or a node connected to itself. */
 function loopsIn(graph: DirectedGraph): Array<Set<INode>> {
 	const loops = graph.getStronglyConnectedComponents().filter((component) => component.size > 1);
-	const inLoop = new Set(loops.flatMap((loop) => [...loop]));
+	const inLoop = union(loops);
 	for (const connection of graph.getConnections()) {
 		if (connection.from === connection.to && !inLoop.has(connection.from)) {
 			loops.push(new Set([connection.from]));
 		}
 	}
 	return loops;
+}
+
+function isSubset<T>(subset: Set<T>, set: Set<T>): boolean {
+	for (const item of subset) if (!set.has(item)) return false;
+	return true;
+}
+
+function union<T>(sets: Array<Set<T>>): Set<T> {
+	const result = new Set<T>();
+	for (const set of sets) for (const item of set) result.add(item);
+	return result;
 }
 
 function toConnections(graph: DirectedGraph): IConnections {
