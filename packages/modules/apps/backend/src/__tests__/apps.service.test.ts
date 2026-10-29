@@ -163,7 +163,7 @@ describe('AppsService', () => {
 
 	it.each([
 		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 48 },
-		{ deploymentType: 'cloud', host: 'foo--bar.app.n8n.cloud', maxLength: 44 },
+		{ deploymentType: 'cloud', host: 'foo-bar1.app.n8n.cloud', maxLength: 44 },
 		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 54 },
 	])('accepts namespaces at the limit for $deploymentType host $host', async (config) => {
 		const { service, appRepository } = createService(config);
@@ -193,7 +193,7 @@ describe('AppsService', () => {
 
 	it.each([
 		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(49) },
-		{ host: 'foo--bar.app.n8n.cloud', namespace: 'a'.repeat(45) },
+		{ host: 'foo-bar1.app.n8n.cloud', namespace: 'a'.repeat(45) },
 	])(
 		'rejects namespace "$namespace" before writing for Cloud host $host',
 		async ({ host, namespace }) => {
