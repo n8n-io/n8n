@@ -214,10 +214,10 @@ export interface WorkspaceConfig {
 	sandbox?: WorkspaceSandbox;
 	/**
 	 * Starts preparing the workspace in the background. The runtime calls it
-	 * when the model begins a tool call that uses the workspace. It must not
-	 * throw and must be safe to call more than once.
+	 * when the model begins a tool call that uses the workspace. It must be safe
+	 * to call more than once. The runtime logs a thrown error and ignores a rejection.
 	 */
-	prewarm?: () => void;
+	prewarm?: () => void | Promise<void>;
 }
 
 export interface MountResult {

@@ -49,7 +49,7 @@ const MISSING_REASONS: Record<LatencyMetricName, string> = {
 };
 
 /** Tools that set up a cold sandbox on first use. Keep in step with the tools
- *  that call `.requiresWorkspace()`. */
+ *  that call `.requiresWorkspace()`; a test fails when a domain tool is missing. */
 const SANDBOX_TOOL_NAMES = new Set<string>([
 	...CORE_WORKSPACE_TOOL_NAMES,
 	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,

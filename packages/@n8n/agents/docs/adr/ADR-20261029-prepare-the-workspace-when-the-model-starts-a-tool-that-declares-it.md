@@ -26,8 +26,8 @@ of such a tool, the agent runtime asks the workspace to start its preparation in
 background. The tool call then joins the preparation that is in progress.
 
 Preparation is best effort. It does not throw, and the runtime can request it more than once.
-The tool call still owns the result: if preparation fails, the tool call creates the workspace
-again and reports the error.
+The tool call still owns the result: if preparation fails, the tool call makes its own attempt
+to create the workspace and reports the error of that attempt.
 
 The trigger is the start of the tool call that needs the workspace. It is the earliest signal
 that does not guess.

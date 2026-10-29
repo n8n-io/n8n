@@ -582,14 +582,14 @@ export class Agent implements BuiltAgent, AgentBuilder {
 		return this;
 	}
 
-	/**
-	 * Attach a workspace to this agent. Workspace tools and instructions
-	 * are injected at build time.
-	 */
 	private readonly prewarmWorkspace = (): void => {
 		this.workspaceInstance?.prewarm();
 	};
 
+	/**
+	 * Attach a workspace to this agent. Workspace tools and instructions
+	 * are injected at build time.
+	 */
 	workspace(ws: Workspace): this {
 		this.workspaceInstance = ws;
 		return this;

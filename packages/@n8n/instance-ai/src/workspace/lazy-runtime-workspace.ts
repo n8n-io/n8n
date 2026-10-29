@@ -76,6 +76,7 @@ export function createLazyRuntimeWorkspace({
 
 class LazyRuntimeWorkspaceResolver {
 	private workspacePromise: Promise<Workspace | undefined> | undefined;
+	private prewarmPromise: Promise<Workspace | undefined> | undefined;
 	private resolvedWorkspace: Workspace | undefined;
 	private workspaceDestroyPromise: Promise<void> | undefined;
 	private readonly resolvedListeners = new Set<WorkspaceResolvedListener>();
@@ -98,14 +99,27 @@ class LazyRuntimeWorkspaceResolver {
 
 	/**
 	 * Starts creating the workspace without waiting for it. The next tool call
-	 * joins the creation in progress. A failure clears it, so that call retries
-	 * and reports the error.
+	 * joins the creation in progress.
 	 */
 	prewarm(): void {
-		this.getWorkspace().catch(() => {});
+		if (this.workspacePromise) return;
+		this.resolveWorkspace().catch(() => {});
+		this.prewarmPromise = this.workspacePromise;
 	}
 
 	async getWorkspace(): Promise<Workspace> {
+		const joinsPrewarm =
+			this.workspacePromise !== undefined && this.workspacePromise === this.prewarmPromise;
+		try {
+			return await this.resolveWorkspace();
+		} catch (error) {
+			// A prewarm is speculative. A call that only joined it makes its own attempt.
+			if (!joinsPrewarm) throw error;
+			return await this.resolveWorkspace();
+		}
+	}
+
+	private async resolveWorkspace(): Promise<Workspace> {
 		this.workspacePromise ??= this.ensureWorkspace()
 			.then((workspace) => {
 				this.setResolvedWorkspace(workspace);
