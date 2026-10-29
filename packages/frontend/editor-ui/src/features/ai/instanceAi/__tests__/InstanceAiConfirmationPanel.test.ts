@@ -35,14 +35,12 @@ vi.mock('@n8n/i18n', async (importOriginal) => ({
 				'instanceAi.confirmation.details': 'Approval details',
 				'instanceAi.approval.deleteTable': 'Eliminar la tabla y todas sus filas',
 				'instanceAi.confirmation.resourcePrompt': 'Assistant wants to {action} {name}',
-				'instanceAi.tools.workflow_builder_workflows.delete.imperative': 'archive workflow',
-				'instanceAi.tools.workflow_builder_workflows.restore-version.imperativeWithResource':
-					'restore a version of',
-				'instanceAi.tools.workflow_builder_workflows.update-version.imperativeWithResource':
-					'update a version of',
-				'instanceAi.tools.workflow_builder_workflows.unpublish.imperativeWithResource': 'unpublish',
-				'instanceAi.tools.workflow_builder_workflows.unarchive.imperativeWithResource': 'restore',
-				'instanceAi.tools.workflow_builder_workflows.delete.imperativeWithResource': 'archive',
+				'instanceAi.tools.archive_workflow.imperative': 'archive workflow',
+				'instanceAi.tools.restore_workflow_version.imperativeWithResource': 'restore a version of',
+				'instanceAi.tools.update_workflow_version.imperativeWithResource': 'update a version of',
+				'instanceAi.tools.unpublish_workflow.imperativeWithResource': 'unpublish',
+				'instanceAi.tools.unarchive_workflow.imperativeWithResource': 'restore',
+				'instanceAi.tools.archive_workflow.imperativeWithResource': 'archive',
 				'instanceAi.tools.workflow_builder_build_workflow.imperative': 'edit workflow',
 				'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource': 'edit',
 				'instanceAi.tools.data_tables.add-column.imperative': 'add column',
@@ -107,8 +105,12 @@ vi.mock('../components/InstanceAiQuestions.vue', () => ({
 
 vi.mock('../components/DomainAccessApproval.vue', () => ({
 	default: {
-		template: '<div />',
-		props: ['requestId', 'url', 'host', 'query', 'severity'],
+		props: ['url', 'host', 'query', 'severity'],
+		emits: ['decide'],
+		template: `<div>
+			<button data-test-id="domain-access-allow-once" @click="$emit('decide', { kind: 'domainAccessApprove', domainAccessAction: 'allow_once' })" />
+			<button data-test-id="domain-access-deny" @click="$emit('decide', { kind: 'domainAccessDeny' })" />
+		</div>`,
 	},
 }));
 vi.mock('../components/GatewayResourceDecision.vue', () => ({
@@ -484,6 +486,7 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 				'User finished providing input',
 				expect.objectContaining({
 					type: 'credential-destination',
+					runtime: 'instance-ai',
 					provided_inputs: [
 						{
 							label: 'Review where this credential will be used',
@@ -966,6 +969,45 @@ describe('InstanceAiConfirmationPanel telemetry', () => {
 					],
 				}),
 			);
+		});
+	});
+
+	describe('domain access confirmation', () => {
+		it('sends the decision of the domain access card through the thread', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-domain',
+				severity: 'info',
+				message: 'Fetch https://example.com/a',
+				domainAccess: { url: 'https://example.com/a', host: 'example.com' },
+			});
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('domain-access-allow-once'));
+
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-domain', 'approved');
+			expect(confirmAction).toHaveBeenCalledWith('req-domain', {
+				kind: 'domainAccessApprove',
+				domainAccessAction: 'allow_once',
+			});
+		});
+
+		it('resolves a denied web search as denied', async () => {
+			injectPendingConfirmation(thread, {
+				requestId: 'req-search',
+				severity: 'info',
+				message: 'Search the web',
+				webSearch: { query: 'n8n release notes' },
+			});
+			const confirmAction = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+			const resolveConfirmation = vi.spyOn(thread, 'resolveConfirmation');
+
+			const { getByTestId } = renderComponent({ props: { kind: 'floating' } });
+			await userEvent.click(getByTestId('domain-access-deny'));
+
+			expect(resolveConfirmation).toHaveBeenCalledWith('req-search', 'denied');
+			expect(confirmAction).toHaveBeenCalledWith('req-search', { kind: 'domainAccessDeny' });
 		});
 	});
 

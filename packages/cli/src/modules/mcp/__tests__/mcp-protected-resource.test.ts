@@ -25,7 +25,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillAgentsProxy } from '@/modules/skills/skill-agents-proxy.service';
+import { SkillsGate } from '@/modules/skills';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -72,7 +72,7 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
-		Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>({ hasProvider: true }));
+		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
 	});
 
 	describe('getScopeTools', () => {
@@ -84,8 +84,8 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
-		it('withholds skill scopes and tools without an agents provider', async () => {
-			Container.set(SkillAgentsProxy, mock<SkillAgentsProxy>({ hasProvider: false }));
+		it('withholds skill scopes and tools while the skills gate is off', async () => {
+			Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: false }));
 
 			expect(resource.scopes).toContain('agent:read');
 			expect(resource.scopes).not.toContain('skill:read');

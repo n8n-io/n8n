@@ -131,7 +131,14 @@ function mockExecuteFunctions(typeVersion: number, operation: string) {
 	return executeFunctions;
 }
 
-function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find', options: IDataObject = {}) {
+function mockQueryOperation(
+	operation: 'aggregate' | 'delete' | 'find',
+	options: IDataObject = {},
+	queryParameters: unknown[] = ['Alice', 30],
+	query = operation === 'aggregate'
+		? '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]'
+		: '{ "name": "$1", "age": { "$gte": "$2" } }',
+) {
 	const executeFunctions = mockExecuteFunctions(1.3, operation);
 	executeFunctions.getInputData.mockReturnValue([inputItems[0]]);
 	executeFunctions.getNodeParameter.mockImplementation(
@@ -142,11 +149,9 @@ function mockQueryOperation(operation: 'aggregate' | 'delete' | 'find', options:
 				case 'collection':
 					return 'users';
 				case 'query':
-					return operation === 'aggregate'
-						? '[{ "$match": { "name": "$1", "age": { "$gte": "$2" } } }]'
-						: '{ "name": "$1", "age": { "$gte": "$2" } }';
+					return query;
 				case 'queryParameters':
-					return ['Alice', 30];
+					return queryParameters;
 				case 'options':
 					return options;
 				default:
@@ -509,6 +514,134 @@ describe('MongoDB CRUD Node', () => {
 				expect(aggregateSpy).toHaveBeenCalledWith([{ $match: expectedQuery }]);
 			});
 
+			it('keeps dollar-prefixed parameters literal in delete expressions', async () => {
+				const deleteManySpy = vi.spyOn(Collection.prototype, 'deleteMany').mockResolvedValue({
+					acknowledged: true,
+					deletedCount: 0,
+				});
+
+				await node.execute.call(
+					mockQueryOperation(
+						'delete',
+						{},
+						['$tenantId'],
+						'{ "$expr": { "$eq": ["$tenantId", "$1"] } }',
+					),
+				);
+
+				expect(deleteManySpy).toHaveBeenCalledWith({
+					$expr: { $eq: ['$tenantId', { $literal: '$tenantId' }] },
+				});
+			});
+
+			it('keeps dollar-prefixed parameters literal in find expressions', async () => {
+				const findSpy = vi.spyOn(Collection.prototype, 'find').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(
+					mockQueryOperation(
+						'find',
+						{},
+						['$tenantId'],
+						'{ "$expr": { "$eq": ["$tenantId", "$1"] } }',
+					),
+				);
+
+				expect(findSpy).toHaveBeenCalledWith({
+					$expr: { $eq: ['$tenantId', { $literal: '$tenantId' }] },
+				});
+			});
+
+			it('keeps dollar-prefixed parameters literal in aggregate expressions', async () => {
+				const aggregateSpy = vi.spyOn(Collection.prototype, 'aggregate').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(
+					mockQueryOperation(
+						'aggregate',
+						{},
+						['$tenantId'],
+						'[{ "$match": { "$expr": { "$eq": ["$tenantId", "$1"] } } }]',
+					),
+				);
+
+				expect(aggregateSpy).toHaveBeenCalledWith([
+					{
+						$match: {
+							$expr: { $eq: ['$tenantId', { $literal: '$tenantId' }] },
+						},
+					},
+				]);
+			});
+
+			it.each([
+				[
+					'$addFields',
+					'[{ "$addFields": { "label": "$1" } }]',
+					[{ $addFields: { label: { $literal: '$owner' } } }],
+				],
+				[
+					'$project',
+					'[{ "$project": { "label": "$1" } }]',
+					[{ $project: { label: { $literal: '$owner' } } }],
+				],
+				[
+					'$group',
+					'[{ "$group": { "_id": "$1", "count": { "$sum": 1 } } }]',
+					[{ $group: { _id: { $literal: '$owner' }, count: { $sum: 1 } } }],
+				],
+				['$set', '[{ "$set": { "label": "$1" } }]', [{ $set: { label: { $literal: '$owner' } } }]],
+				['$replaceWith', '[{ "$replaceWith": "$1" }]', [{ $replaceWith: { $literal: '$owner' } }]],
+				['$redact', '[{ "$redact": "$1" }]', [{ $redact: { $literal: '$owner' } }]],
+				['$sortByCount', '[{ "$sortByCount": "$1" }]', [{ $sortByCount: { $literal: '$owner' } }]],
+			])(
+				'keeps dollar-prefixed parameters literal in the %s stage',
+				async (_stage, query, expected) => {
+					const aggregateSpy = vi.spyOn(Collection.prototype, 'aggregate').mockReturnValue({
+						toArray: async () => [],
+					} as never);
+
+					await node.execute.call(mockQueryOperation('aggregate', {}, ['$owner'], query));
+
+					expect(aggregateSpy).toHaveBeenCalledWith(expected);
+				},
+			);
+
+			it('keeps dollar-prefixed parameters unchanged in regular find predicates', async () => {
+				const findSpy = vi.spyOn(Collection.prototype, 'find').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(mockQueryOperation('find', {}, ['$tenantId'], '{ "name": "$1" }'));
+
+				expect(findSpy).toHaveBeenCalledWith({ name: '$tenantId' });
+			});
+
+			it.each([
+				['a null parameter', [null, 30]],
+				['a null inside an array parameter', [['Alice', null], 30]],
+			])('rejects %s in delete without deleting', async (_label, parameters) => {
+				const deleteManySpy = vi.spyOn(Collection.prototype, 'deleteMany');
+
+				await expect(
+					node.execute.call(mockQueryOperation('delete', {}, parameters)),
+				).rejects.toThrow('must not be null');
+
+				expect(deleteManySpy).not.toHaveBeenCalled();
+			});
+
+			it('keeps null bound parameters working in find', async () => {
+				const findSpy = vi.spyOn(Collection.prototype, 'find').mockReturnValue({
+					toArray: async () => [],
+				} as never);
+
+				await node.execute.call(mockQueryOperation('find', {}, [null, 30]));
+
+				expect(findSpy).toHaveBeenCalledWith({ name: null, age: { $gte: 30 } });
+			});
+
 			it('resolves sort parameters into the sort field name', async () => {
 				const applied = mockFindCursor();
 
@@ -530,6 +663,47 @@ describe('MongoDB CRUD Node', () => {
 				);
 
 				expect(applied.project).toEqual({ _id: 0, name: 1 });
+			});
+
+			it('keeps a projection parameter that starts with $ as plain text', async () => {
+				const applied = mockFindCursor();
+
+				await node.execute.call(
+					mockQueryOperation('find', {
+						projection: '{ "_id": 0, "label": "$1" }',
+						projectionParameters: ['$owner'],
+					}),
+				);
+
+				expect(applied.project).toEqual({ _id: 0, label: { $literal: '$owner' } });
+			});
+
+			it('keeps an author-written projection field reference unchanged', async () => {
+				const applied = mockFindCursor();
+
+				await node.execute.call(
+					mockQueryOperation('find', {
+						projection: '{ "_id": 0, "label": "$email" }',
+						projectionParameters: [],
+					}),
+				);
+
+				expect(applied.project).toEqual({ _id: 0, label: '$email' });
+			});
+
+			it('keeps dollar-prefixed parameters literal in projection elemMatch queries', async () => {
+				const applied = mockFindCursor();
+
+				await node.execute.call(
+					mockQueryOperation('find', {
+						projection: '{ "items": { "$elemMatch": { "sku": "$1" } } }',
+						projectionParameters: ['$5-OFF'],
+					}),
+				);
+
+				expect(applied.project).toEqual({
+					items: { $elemMatch: { sku: '$5-OFF' } },
+				});
 			});
 
 			it.each([
@@ -869,6 +1043,121 @@ describe('MongoDB CRUD Node', () => {
 				});
 			},
 		);
+
+		describe.each([
+			['findOneAndReplace', 1.3],
+			['findOneAndUpdate', 1.3],
+			['update', 1.3],
+			['findOneAndReplace', 1.2],
+			['findOneAndUpdate', 1.2],
+			['update', 1.2],
+			['findOneAndUpdate', 1.5],
+			['update', 1.5],
+		] as const)(
+			'%s (v%s): update key that would match more than one document',
+			(operation, version) => {
+				function mockUnsafeKey(updateKey: string, json: IDataObject) {
+					const mock = mockExecuteFunctions(version, operation);
+					mock.getInputData.mockReturnValue([{ json }]);
+					mock.getNodeParameter.mockImplementation(
+						(parameterName: string, _itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+							switch (parameterName) {
+								case 'operation':
+									return operation;
+								case 'collection':
+									return 'col1';
+								case 'fields':
+									return 'value';
+								case 'updateKey':
+									return updateKey;
+								case 'upsert':
+									return true;
+								case 'options.useDotNotation':
+									return false;
+								case 'options.dateFields':
+									return '';
+								default:
+									return fallbackValue;
+							}
+						},
+					);
+					return mock;
+				}
+
+				function spyOnWrites() {
+					return [
+						vi.spyOn(Collection.prototype, 'findOneAndReplace').mockResolvedValue(null),
+						vi.spyOn(Collection.prototype, 'findOneAndUpdate').mockResolvedValue(null),
+						vi.spyOn(Collection.prototype, 'updateOne').mockResolvedValue({} as never),
+						vi.spyOn(Collection.prototype, 'bulkWrite').mockResolvedValue({} as never),
+					];
+				}
+
+				it.each([
+					['a null match value', 'id', { id: null, value: 'x' }],
+					['an empty update key', '', { value: 'x' }],
+					['an operator as the update key', '$expr', { $expr: true, value: 'x' }],
+				])('rejects %s without writing', async (_label, updateKey, json) => {
+					const writes = spyOnWrites();
+
+					await expect(node.execute.call(mockUnsafeKey(updateKey, json))).rejects.toThrow();
+
+					for (const write of writes) {
+						expect(write).not.toHaveBeenCalled();
+					}
+				});
+
+				it('rejects a null _id without writing', async () => {
+					const writes = spyOnWrites();
+
+					await expect(
+						node.execute.call(mockUnsafeKey('_id', { _id: null, value: 'x' })),
+					).rejects.toThrow();
+
+					for (const write of writes) {
+						expect(write).not.toHaveBeenCalled();
+					}
+				});
+			},
+		);
+
+		it('filters find-and-replace by the flat dotted update key when useDotNotation is on', async () => {
+			const findOneAndReplaceSpy = vi
+				.spyOn(Collection.prototype, 'findOneAndReplace')
+				.mockResolvedValue(null);
+			const mock = mockExecuteFunctions(1.3, 'findOneAndReplace');
+			mock.getInputData.mockReturnValue([{ json: { 'user.id': 'u-1', value: 'x' } }]);
+			mock.getNodeParameter.mockImplementation(
+				(parameterName: string, _itemIndex = 0, fallbackValue?: NodeParameterValueType) => {
+					switch (parameterName) {
+						case 'operation':
+							return 'findOneAndReplace';
+						case 'collection':
+							return 'col1';
+						case 'fields':
+							return 'value';
+						case 'updateKey':
+							return 'user.id';
+						case 'upsert':
+							return false;
+						case 'options.useDotNotation':
+							return true;
+						case 'options.dateFields':
+							return '';
+						default:
+							return fallbackValue;
+					}
+				},
+			);
+
+			await node.execute.call(mock);
+
+			expect(findOneAndReplaceSpy).toHaveBeenCalledWith(
+				{ 'user.id': 'u-1' },
+				{ user: { id: 'u-1' }, value: 'x' },
+				undefined,
+			);
+		});
 
 		describe.each(['findOneAndReplace', 'findOneAndUpdate', 'update'])(
 			'%s: item missing the updateKey field',

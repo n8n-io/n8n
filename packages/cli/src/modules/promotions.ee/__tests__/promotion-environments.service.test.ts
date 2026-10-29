@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { OperationContext, ProjectRepository, TransactionRunner, User } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mkdir, mkdtemp, rm, stat } from 'node:fs/promises';
@@ -40,6 +41,8 @@ describe('PromotionEnvironmentsService', () => {
 		run: async <T>(ctx: OperationContext, fn: (ctx: OperationContext) => Promise<T>) =>
 			await fn(ctx),
 	});
+	const eventService = mock<EventService>();
+	const actor = mock<User>({ id: 'user-1' });
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
 
@@ -85,6 +88,7 @@ describe('PromotionEnvironmentsService', () => {
 		userHasScopesMock.mockResolvedValue(true);
 		providersService.getEntity.mockResolvedValue(provider());
 		environmentRepository.findByIdWithProvider.mockResolvedValue(environment());
+		reviewRepository.closeOpenByEnvironmentId.mockResolvedValue(0);
 
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-environments-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
@@ -98,6 +102,7 @@ describe('PromotionEnvironmentsService', () => {
 			reviewRepository,
 			txRunner,
 			logger,
+			eventService,
 		);
 	});
 
@@ -108,9 +113,72 @@ describe('PromotionEnvironmentsService', () => {
 	it('removes the local checkout of the environment it deletes', async () => {
 		await mkdir(workingDirectory.paths(ENVIRONMENT_ID).repositoryFolder, { recursive: true });
 
-		await service.delete(ENVIRONMENT_ID);
+		await service.delete(ENVIRONMENT_ID, actor);
 
 		await expect(stat(workingDirectory.paths(ENVIRONMENT_ID).rootFolder)).rejects.toThrow();
+	});
+
+	it('emits an event with the direction and scope of the environment it deletes', async () => {
+		environmentRepository.deleteEnvironment.mockResolvedValue(true);
+
+		await service.delete(ENVIRONMENT_ID, actor);
+
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-deleted', {
+			user: actor,
+			environmentId: ENVIRONMENT_ID,
+			direction: 'promote',
+			environmentScope: 'projects',
+		});
+	});
+
+	it('emits no event when a concurrent request already deleted the environment', async () => {
+		environmentRepository.deleteEnvironment.mockResolvedValue(false);
+
+		await service.delete(ENVIRONMENT_ID, actor);
+
+		expect(eventService.emit).not.toHaveBeenCalled();
+	});
+
+	it.each(['update', 'delete'] as const)(
+		'emits no event when closing the reviews fails during an environment %s',
+		async (operation) => {
+			const error = new Error('Review close failed');
+			environmentRepository.updateEnvironment.mockResolvedValue(true);
+			reviewRepository.closeOpenByEnvironmentId.mockRejectedValueOnce(error);
+
+			const result =
+				operation === 'update'
+					? service.update(
+							ENVIRONMENT_ID,
+							{ remote: { schemaVersion: 1, remoteUrl: 'git@github.com:o/other.git' } },
+							actor,
+						)
+					: service.delete(ENVIRONMENT_ID, actor);
+
+			await expect(result).rejects.toThrow(error);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		},
+	);
+
+	it('emits no event for an update that changes nothing', async () => {
+		environmentRepository.updateEnvironment.mockResolvedValue(true);
+
+		await service.update(ENVIRONMENT_ID, { providerId: 'prov1' }, actor);
+
+		expect(eventService.emit).not.toHaveBeenCalled();
+	});
+
+	it('does not report the provider as changed when the request resends the current one', async () => {
+		environmentRepository.updateEnvironment.mockResolvedValue(true);
+
+		await service.update(ENVIRONMENT_ID, { name: 'Renamed', providerId: 'prov1' }, actor);
+
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-environment-updated', {
+			user: actor,
+			environmentId: ENVIRONMENT_ID,
+			direction: 'promote',
+			changedFields: ['name'],
+		});
 	});
 
 	describe('checkout state', () => {

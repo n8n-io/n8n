@@ -1,5 +1,10 @@
 <script lang="ts" setup>
-import type { AgentChatResumeDto, AgentJsonConfig, PushMessage } from '@n8n/api-types';
+import type {
+	AgentChatResumeDto,
+	AgentJsonConfig,
+	AgentThreadMemoryDto,
+	PushMessage,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
@@ -67,6 +72,7 @@ const documentVisibility = useDocumentVisibility();
 const projectId = computed(() => props.projectId);
 
 const executions = ref<AgentExecution[]>([]);
+const memory = ref<AgentThreadMemoryDto>();
 const loading = ref(true);
 const selectedIndex = ref<number | null>(null);
 const highlightedIndex = ref<number | null>(null);
@@ -194,6 +200,8 @@ function labelForKey(key: string): string {
 			return i18n.baseText('agentSessions.timeline.agent');
 		case 'skill':
 			return i18n.baseText('agentSessions.timeline.skill');
+		case 'memory':
+			return i18n.baseText('agentSessions.timeline.memory');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -298,6 +306,7 @@ function loadThreadDetail() {
 	resolvedBudgetStopExecutionId.value = null;
 	pendingApprovalRunIds.value = new Set();
 	executions.value = [];
+	memory.value = undefined;
 	selectedFilters.value = new Set();
 	searchQuery.value = '';
 	selectTimelineItem(null);
@@ -329,6 +338,7 @@ async function fetchThreadDetail(initial: boolean) {
 		}
 		const selectedKey = !initial && selectedItem.value ? timelineItemKey(selectedItem.value) : null;
 		executions.value = result.executions;
+		memory.value = result.memory;
 		if (selectedKey) {
 			const nextIndex = items.value.findIndex((item) => timelineItemKey(item) === selectedKey);
 			selectTimelineItem(nextIndex >= 0 ? nextIndex : null);
@@ -465,6 +475,8 @@ useKeybindings({
 				:notice-index="budgetStop?.index"
 				:respond-to-approval="respondToBackgroundApproval"
 				:pending-approval-run-ids="pendingApprovalRunIds"
+				:memory="memory"
+				:on-memory-deleted="refreshThreadDetail"
 				@select="onTimelineItemSelect"
 			>
 				<template v-if="budgetStop" #notice>

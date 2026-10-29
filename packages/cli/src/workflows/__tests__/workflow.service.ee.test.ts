@@ -585,6 +585,96 @@ describe('EnterpriseWorkflowService', () => {
 				hasUninspectableSource: true,
 			});
 		});
+
+		describe('workflow JSON of the "parameter" source', () => {
+			const WORKFLOW_JSON = JSON.stringify({ nodes: [], connections: {} });
+			const inlineNode = (workflowJson: unknown, overrides: Partial<INode> = {}) =>
+				subworkflowNode({ source: 'parameter', workflowJson }, overrides);
+
+			it.each([
+				['an expression', '={{ $json.wf }}'],
+				['an array holding workflow JSON', [WORKFLOW_JSON]],
+				['an array holding an expression', ['={{ $json.wf }}']],
+				['an object', { nodes: [], connections: {} }],
+			])('rejects a new node whose workflow JSON is %s', (_label, workflowJson) => {
+				expect(() => save([inlineNode(workflowJson)])).toThrow(/cannot be checked/);
+			});
+
+			it.each([
+				['absent', undefined],
+				['fixed JSON', WORKFLOW_JSON],
+				['fixed text that is not JSON', 'not json'],
+			])('accepts a new node whose workflow JSON is %s', (_label, workflowJson) => {
+				expect(() => save([inlineNode(workflowJson)])).not.toThrow();
+			});
+
+			it('accepts an expression left in the workflow JSON of a "database" source', () => {
+				// The node reads the workflow JSON only for the "parameter" source.
+				const node = subworkflowNode({
+					source: 'database',
+					workflowId: 'wf-1',
+					workflowJson: '={{ $json.wf }}',
+				});
+				expect(() => save([node])).not.toThrow();
+			});
+
+			it.each([
+				['Workflow Tool', '@n8n/n8n-nodes-langchain.toolWorkflow'],
+				['Workflow Retriever', '@n8n/n8n-nodes-langchain.retrieverWorkflow'],
+			])('rejects a %s node whose workflow JSON is an expression', (_label, type) => {
+				const node = inlineNode('={{ $json.wf }}', { type, typeVersion: 2 });
+				expect(() => save([node])).toThrow(/cannot be checked/);
+			});
+
+			it('rejects an expression in the workflow JSON of a nested inline sub-workflow', () => {
+				const inner = inlineNode('={{ $json.wf }}', { id: 'inner', name: 'Inner' });
+				const outer = inlineNode(JSON.stringify({ nodes: [inner], connections: {} }));
+				expect(() => save([outer])).toThrow(/cannot be checked/);
+			});
+
+			it('rejects a Workflow Tool inside an inline agent whose workflow JSON is an expression', () => {
+				const agent = {
+					id: 'agent-1',
+					name: 'Agent',
+					type: 'n8n-nodes-base.messageAnAgent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {
+						agentSource: 'inline',
+						inlineAgent: {
+							config: {
+								tools: [
+									{
+										nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+										nodeParameters: { source: 'parameter', workflowJson: "={{ $fromAI('wf') }}" },
+									},
+								],
+							},
+						},
+					},
+				} as unknown as INode;
+				expect(() => save([agent])).toThrow(/cannot be checked/);
+			});
+
+			it('rejects a change to the expression of a stored node', () => {
+				const previous = inlineNode('={{ $json.wf }}');
+				expect(() => save([inlineNode('={{ $json.other }}')], [previous])).toThrow(
+					/cannot be checked/,
+				);
+			});
+
+			it('keeps a stored node with an expression when it is only renamed', () => {
+				const previous = inlineNode('={{ $json.wf }}');
+				const renamed = { ...previous, name: 'Renamed' } as INode;
+
+				expect(save([renamed], [previous]).nodes[0]).toEqual(renamed);
+			});
+
+			it('accepts an expression when the caller allows uninspectable sources', () => {
+				const options = { allowUninspectableSource: true };
+				expect(() => save([inlineNode('={{ $json.wf }}')], [], options)).not.toThrow();
+			});
+		});
 	});
 
 	describe('validateWorkflowCredentialUsage() - credential added to an existing node', () => {

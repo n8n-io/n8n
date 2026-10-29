@@ -357,7 +357,7 @@ describe('AgentsController agent resource', () => {
 				isRunnable: true,
 			}),
 		);
-		// The skill bodies come from the skills hub, not from the agent row.
+		// The skill bodies come from the skills module, not from the agent row.
 		expect(result.skills).toEqual({ triage });
 		expect(result.skillHashes.triage).toMatch(/^[a-f0-9]{64}$/);
 		expect(agentValidationService.validateLoadedAgentConfiguration).toHaveBeenCalledWith(

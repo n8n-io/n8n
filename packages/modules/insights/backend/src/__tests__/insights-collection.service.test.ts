@@ -246,11 +246,31 @@ describe('calculateTimeSaved', () => {
 					},
 				},
 			},
+			nodeTimeSavedMinutes: undefined,
 		});
 
 		// @ts-expect-error private method under test
 		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
 		expect(timeSaved).toBe(20);
+	});
+
+	test('returns the node time saved minutes of the run when the time saved mode is dynamic', () => {
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		ctx.workflow.settings = {
+			timeSavedMode: 'dynamic',
+		};
+		ctx.runData = mock<IRun>({
+			mode: 'webhook',
+			status: 'success',
+			startedAt: DateTime.utc().toJSDate(),
+			stoppedAt: DateTime.utc().plus({ minutes: 10 }).toJSDate(),
+			data: { resultData: { runData: {} } },
+			nodeTimeSavedMinutes: 60,
+		});
+
+		// @ts-expect-error private method under test
+		const timeSaved = insightsCollectionService.calculateTimeSaved(ctx);
+		expect(timeSaved).toBe(60);
 	});
 });
 

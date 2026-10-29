@@ -28,6 +28,7 @@ import { captor, mock } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { EXECUTION_ENDED_WITHOUT_RESPONSE } from '@/webhooks/constants';
 import { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
+import type { UnsavedManualExecutionService } from '@/execution-lifecycle/unsaved-manual-execution.service';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { License } from '@/license';
 import { ProductionHold } from '@/memory-guard/production-hold';
@@ -43,6 +44,7 @@ const FAKE_SECOND_EXECUTION_ID = '20';
 const logger = mock<Logger>();
 const executionRepository = mock<ExecutionRepository>();
 const executionPersistence = mock<ExecutionPersistence>();
+const unsavedManualExecutionService = mock<UnsavedManualExecutionService>();
 
 const concurrencyControl = mockInstance(ConcurrencyControlService, {
 	// @ts-expect-error Private property
@@ -92,6 +94,7 @@ describe('ActiveExecutions', () => {
 			mock(),
 			executionsConfig,
 			mock(),
+			unsavedManualExecutionService,
 		);
 
 		executionRepository.cancelManyRunning.mockResolvedValue();
@@ -201,6 +204,24 @@ describe('ActiveExecutions', () => {
 		);
 	});
 
+	test('Should record the starter of a new execution', async () => {
+		await activeExecutions.add(executionData);
+
+		expect(unsavedManualExecutionService.recordStarter).toHaveBeenCalledWith(
+			FAKE_EXECUTION_ID,
+			executionData,
+		);
+	});
+
+	test('Should not record a starter when an execution resumes', async () => {
+		await activeExecutions.add(executionData, {
+			executionId: FAKE_SECOND_EXECUTION_ID,
+			expectedStatus: 'waiting',
+		});
+
+		expect(unsavedManualExecutionService.recordStarter).not.toHaveBeenCalled();
+	});
+
 	test('Should throw ExecutionAlreadyResumingError when another process is resuming execution', async () => {
 		// Mock updateExistingExecution to return false (status check failed)
 		executionPersistence.updateExistingExecution.mockResolvedValue(false);
@@ -307,6 +328,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				executionsConfig,
 				mock(),
+				unsavedManualExecutionService,
 			);
 
 			let resolvedId: string | undefined;
@@ -336,6 +358,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				executionsConfig,
 				mock(),
+				unsavedManualExecutionService,
 			);
 
 			await evalActiveExecutions.add(evalExecutionData);
@@ -492,6 +515,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				executionsConfig,
 				mock(),
+				unsavedManualExecutionService,
 			);
 
 			executionData.httpResponse = mock<Response>();
@@ -951,6 +975,7 @@ describe('ActiveExecutions', () => {
 				mock(),
 				queueExecutionsConfig,
 				instanceSettings,
+				unsavedManualExecutionService,
 			);
 		};
 

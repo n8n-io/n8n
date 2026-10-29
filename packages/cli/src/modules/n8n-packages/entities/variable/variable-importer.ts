@@ -21,6 +21,7 @@ import type {
 	VariableImportPlan,
 	VariableImportRequest,
 	VariableLimitFailure,
+	VariableMatch,
 	VariableOverwrite,
 	VariableResolutionFailure,
 } from './variable.types';
@@ -46,7 +47,7 @@ export class VariableImporter {
 			else variablesByKey.set(variable.key, [variable]);
 		}
 
-		const matched: string[] = [];
+		const matched: VariableMatch[] = [];
 		const missing: VariableResolutionFailure[] = [];
 		const creations: VariableCreation[] = [];
 		const conflicts: VariableConflict[] = [];
@@ -57,13 +58,15 @@ export class VariableImporter {
 		const overwritesConflicts = request.conflictPolicy === VariableConflictPolicy.Overwrite;
 
 		for (const requirement of requirements) {
-			const picked = pickVariableForProject(
-				variablesByKey.get(requirement.name) ?? [],
-				requirement.name,
-				context.projectId,
-			);
+			const candidates = variablesByKey.get(requirement.name) ?? [];
+			const picked = pickVariableForProject(candidates, requirement.name, context.projectId);
 			if (picked) {
-				matched.push(requirement.name);
+				const scopes: VariableMatch['scopes'] = [];
+				if (candidates.some(({ project }) => project?.id === context.projectId)) {
+					scopes.push('project');
+				}
+				if (candidates.some(({ project }) => !project)) scopes.push('global');
+				matched.push({ name: requirement.name, scopes });
 
 				const packageValue = requirement.packageValue;
 				// An empty bundled value is nothing to write, the same way a creation treats it as a stub.

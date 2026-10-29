@@ -13,7 +13,7 @@ import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentExecutionService } from './agent-execution.service';
 import { AgentMessageQueueService, type ClaimedAgentMessage } from './agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { emitChunkEvents, toChatErrorEvent } from './agent-sse-stream';
 import { AgentTestRunService } from './agent-test-run.service';
 import type { AgentExecutionThread } from './entities/agent-execution-thread.entity';
@@ -36,7 +36,7 @@ export class AgentMessageQueueConsumer {
 		private readonly queue: AgentMessageQueueService,
 		private readonly repository: AgentMessageQueueRepository,
 		private readonly executionService: AgentExecutionService,
-		private readonly previewStreams: AgentQueuedPreviewStreamService,
+		private readonly previewStreams: AgentQueuedTestStreamService,
 		private readonly testRunService: AgentTestRunService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsService: CredentialsService,

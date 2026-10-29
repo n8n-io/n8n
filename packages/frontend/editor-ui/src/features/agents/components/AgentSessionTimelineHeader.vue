@@ -33,6 +33,8 @@ const props = defineProps<{
 	hasSession?: boolean;
 	canDeleteSession?: boolean;
 	isDeletingSession?: boolean;
+	showStop?: boolean;
+	stopLoading?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -41,6 +43,7 @@ const emit = defineEmits<{
 	'langsmith-export': [];
 	'copy-link': [];
 	'delete-session': [];
+	stop: [];
 	close: [];
 }>();
 
@@ -186,6 +189,22 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 					</template>
 				</N8nDropdownMenu>
 			</N8nTooltip>
+			<N8nTooltip
+				v-if="props.showStop"
+				:content="i18n.baseText('agentSessions.stop')"
+				:disabled="props.stopLoading"
+			>
+				<N8nIconButton
+					variant="ghost"
+					size="medium"
+					icon="square"
+					:class="$style.stopButton"
+					:aria-label="i18n.baseText('agentSessions.stop')"
+					:loading="props.stopLoading"
+					data-testid="agent-session-stop"
+					@click="emit('stop')"
+				/>
+			</N8nTooltip>
 			<N8nTooltip :content="i18n.baseText('generic.close')">
 				<N8nIconButton
 					variant="ghost"
@@ -255,6 +274,10 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 	user-select: none;
 	color: var(--text-color--subtler);
 	margin-left: auto;
+}
+
+.stopButton {
+	color: var(--color--danger);
 }
 
 .crumbSeparator {
@@ -339,6 +362,7 @@ const costFormatter = new Intl.NumberFormat('en-US', {
 
 		:global(.n8n-text) {
 			flex: 1;
+			padding-top: var(--spacing--5xs);
 			@include utils.utils-ellipsis;
 		}
 	}

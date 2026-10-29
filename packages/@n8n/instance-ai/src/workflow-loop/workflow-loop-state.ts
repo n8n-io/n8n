@@ -272,8 +272,6 @@ export const triggerNodeDescriptorSchema = z.object({
 	nodeType: z.string(),
 });
 
-export type TriggerNodeDescriptor = z.infer<typeof triggerNodeDescriptorSchema>;
-
 /**
  * Per-node execute-vs-simulate verdict for verification runs. Nodes with
  * verdict `simulate` are mocked via per-execution pin data so verification
@@ -390,7 +388,7 @@ export const workflowBuildOutcomeSchema = z.object({
 	/**
 	 * Nodes that this build and earlier builds of the same work item or run added
 	 * or modified, each relative to the workflow saved before it. Setup routing and
-	 * `workflow_builder_workflows(action="setup")` requests are scoped to these nodes so
+	 * `setup_workflow` requests are scoped to these nodes so
 	 * editing one node never routes pre-existing, unrelated nodes into setup. Absent
 	 * when one of those builds created the workflow or the prior state was
 	 * unreadable — every node is then in scope.

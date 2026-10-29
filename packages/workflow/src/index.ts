@@ -63,6 +63,7 @@ export * from './type-validation';
 export * from './credential-domain-restrictions';
 export * from './credential-only-nodes';
 export * from './schemas';
+export * from './generate-schema-from-example';
 export * from './run-execution-data/run-execution-data';
 export { WorkflowExpression } from './workflow-expression';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };

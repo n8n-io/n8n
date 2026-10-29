@@ -96,11 +96,11 @@ export class PromotionsPublicController {
 	@ApiResponse(201, PromotionProviderCreatedPublicDto)
 	@ApiErrorResponse(503)
 	async createPromotionProvider(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body input: CreatePromotionProviderDto,
 	): Promise<PromotionProviderCreatedPublicDto> {
-		return await (await this.providersService()).create(input);
+		return await (await this.providersService()).create(input, req.user);
 	}
 
 	@Get('/providers')
@@ -161,13 +161,13 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionProvider(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionProviderId', promotionProviderIdParamSchema)
 		promotionProviderId: string,
 		@Body input: UpdatePromotionProviderDto,
 	): Promise<PromotionProviderPublicDto> {
-		return await (await this.providersService()).update(promotionProviderId, input);
+		return await (await this.providersService()).update(promotionProviderId, input, req.user);
 	}
 
 	@Delete('/providers/:promotionProviderId')
@@ -182,12 +182,12 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async deletePromotionProvider(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionProviderId', promotionProviderIdParamSchema)
 		promotionProviderId: string,
 	): Promise<void> {
-		await (await this.providersService()).delete(promotionProviderId);
+		await (await this.providersService()).delete(promotionProviderId, req.user);
 	}
 
 	@Get('/providers/:promotionProviderId/repositories')
@@ -270,11 +270,11 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async createPromotionEnvironment(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Body input: CreatePromotionEnvironmentDto,
 	): Promise<PromotionEnvironmentPublicDto> {
-		return await (await this.environmentsService()).create(input);
+		return await (await this.environmentsService()).create(input, req.user);
 	}
 
 	@Get('/environments')
@@ -341,13 +341,13 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(409)
 	@ApiErrorResponse(503)
 	async updatePromotionEnvironment(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 		@Body input: UpdatePromotionEnvironmentDto,
 	): Promise<PromotionEnvironmentPublicDto> {
-		return await (await this.environmentsService()).update(promotionEnvironmentId, input);
+		return await (await this.environmentsService()).update(promotionEnvironmentId, input, req.user);
 	}
 
 	@Delete('/environments/:promotionEnvironmentId')
@@ -363,12 +363,12 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async deletePromotionEnvironment(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 	): Promise<void> {
-		await (await this.environmentsService()).delete(promotionEnvironmentId);
+		await (await this.environmentsService()).delete(promotionEnvironmentId, req.user);
 	}
 
 	// -- Local checkouts -----------------------------------------------------
@@ -387,12 +387,12 @@ export class PromotionsPublicController {
 	@ApiErrorResponse(404)
 	@ApiErrorResponse(503)
 	async connectPromotionCheckout(
-		_req: AuthenticatedRequest,
+		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('promotionEnvironmentId', promotionEnvironmentIdParamSchema)
 		promotionEnvironmentId: string,
 	): Promise<PromotionCheckoutPublicDto> {
-		return await (await this.promotionsService()).clone(promotionEnvironmentId);
+		return await (await this.promotionsService()).clone(promotionEnvironmentId, req.user);
 	}
 
 	@Post('/environments/:promotionEnvironmentId/disconnect')
@@ -524,7 +524,7 @@ export class PromotionsPublicController {
 	@GlobalScope('promotions:apply')
 	@ApiSummary('Apply a package to the instance')
 	@ApiDescription(
-		'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch; a workflow or folder that the branch and the instance hold in different projects is refused with 409 before any write. Requires a connected Apply environment with instance scope. The API key needs the promotions:apply scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
+		'Checks the full package at the configured branch tip. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview; status `source-changed` means the branch moved since that review and nothing was imported. Returns status `blocked` before import writes if bindings need setup, if the import conflicts with this instance, or if the apply would delete team projects that the package does not hold. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values, including empty strings, are preserved. Workflows and folders move within their project to match the branch, and folders take the name on the branch. Apply cannot move a workflow or folder between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Requires a connected Apply environment with instance scope. The API key needs the promotions:apply scope. The importer checks user write permissions; granular API-key write scopes are not passed to it.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -553,7 +553,7 @@ export class PromotionsPublicController {
 	@GlobalScope('promotions:apply')
 	@ApiSummary('Continue Apply after binding setup')
 	@ApiDescription(
-		'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same connected instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
+		'Rechecks the configured source and current target bindings. Send expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes and delete the reported team projects. Status `source-changed` requires a new Apply review. Status `blocked` returns every blocker again, without import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Existing target variable values are preserved. Requires the same connected instance environment and permissions as Apply. The importer checks user write permissions; granular API-key write scopes are not passed to it. No server session or exactly-once guarantee is provided.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -648,7 +648,7 @@ export class PromotionsPublicController {
 	@GlobalScope('promotions:apply')
 	@ApiSummary("Apply a selection of a project's workflows")
 	@ApiDescription(
-		"Applies selected workflow changes from the project's Apply branch. Send the selected change-list IDs in workflowIds. The server imports IDs present on the branch for this project. It removes instance workflows owned by this project when their IDs are absent from the branch. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. A selected workflow moves within the project to match the branch, together with the folders that hold it, and those folders take the name on the branch; other folders stay as they are. A selected workflow, or a folder the branch holds in this project, that the branch and the instance hold in different projects is refused with 409 before any write. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Status `blocked` returns binding details before import writes when the selection needs binding setup. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a connected Apply environment for the project: its own Apply environment, otherwise the instance Apply environment. The API key needs the promotions:apply scope. The importer checks user write permissions.",
+		"Applies selected workflow changes from the project's Apply branch. Send the selected change-list IDs in workflowIds. The server imports IDs present on the branch for this project. It removes instance workflows owned by this project when their IDs are absent from the branch. Duplicate or invalid IDs reject the whole request. Unselected content stays unchanged. A selected workflow moves within the project to match the branch, together with the folders that hold it, and those folders take the name on the branch; other folders stay as they are. Optionally send expectedSource with the environmentId, branchName, and full commitSha from the reviewed change preview. Status `source-changed` means the source changed since that review and nothing was imported. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Status `preview-changed` means this instance changed since that review and nothing was imported. Status `blocked` returns the blockers before import writes: bindings that need setup and conflicts with this instance. Apply cannot move a selected workflow or a folder of this project between projects. It returns a `moved` conflict in `blocked` with both projects. For a personal project, the conflict gives only the ID. Retain environmentId and git for Continue. Status `applied` includes counts and warnings. Inspect status before reading counts. Requires a connected Apply environment for the project: its own Apply environment, otherwise the instance Apply environment. The API key needs the promotions:apply scope. The importer checks user write permissions.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)
@@ -672,7 +672,7 @@ export class PromotionsPublicController {
 	@GlobalScope('promotions:apply')
 	@ApiSummary('Continue applying a selection after binding setup')
 	@ApiDescription(
-		"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` requires a new Apply review. Status `blocked` returns fresh binding details before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the promotions:apply scope. The importer checks user write permissions.",
+		"Rechecks the project's Apply source and the current bindings for the selection. Resend the full selection in workflowIds. Send the required expectedSource with the environmentId, branchName, and full commitSha from the reviewed Apply result. Optionally send expectedPreviewRevision with the revision of the reviewed Apply preview. Send `confirmDestructiveChanges: true` to also apply destructive data table changes. The server does not keep a session. Status `source-changed` or `preview-changed` requires a new Apply review. Status `blocked` returns every blocker again, before import writes. Status `applied` includes counts and warnings. Inspect status before reading counts. Unselected content stays unchanged. Requires the same connected Apply environment and permissions as the initial selection apply. The API key needs the promotions:apply scope. The importer checks user write permissions.",
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, ApplyPackageResultDto)

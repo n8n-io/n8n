@@ -591,3 +591,45 @@ describe('AgentChatStreamConsumer — budget stop', () => {
 		);
 	});
 });
+
+describe('AgentChatStreamConsumer — stopped sessions', () => {
+	it.each([
+		{ disableStreaming: false, partial: '' },
+		{ disableStreaming: false, partial: 'Partial reply' },
+		{ disableStreaming: true, partial: '' },
+		{ disableStreaming: true, partial: 'Partial reply' },
+	])('posts one stop notice for %j', async ({ disableStreaming, partial }) => {
+		const { thread, discrete, streamedText } = makeStreamingThread();
+		const postErrorToThread = vi.fn();
+		const clearBeforeResponse = vi.fn();
+		const consumer = makeStreamingConsumer({ disableStreaming, postErrorToThread });
+		const chunks: StreamChunk[] = partial
+			? [{ type: 'text-delta', id: 'text', delta: partial }]
+			: [];
+		chunks.push(
+			{
+				type: 'tool-result',
+				toolName: 'work',
+				toolCallId: 'tc',
+				isError: true,
+				output: 'Incomplete',
+			},
+			{ type: 'finish', finishReason: 'cancelled' },
+			{ type: 'finish', finishReason: 'cancelled' },
+		);
+
+		await consumer.consume(makeStream(chunks), thread, { statusHandle: { clearBeforeResponse } });
+
+		expect(
+			discrete.filter(
+				(message) => (message as { markdown?: string }).markdown === 'Session stopped',
+			),
+		).toEqual([{ markdown: 'Session stopped' }]);
+		if (partial) {
+			if (disableStreaming) expect(discrete[0]).toEqual({ markdown: partial });
+			else expect(streamedText).toEqual([partial]);
+		}
+		expect(postErrorToThread).not.toHaveBeenCalled();
+		expect(clearBeforeResponse).toHaveBeenCalled();
+	});
+});

@@ -11,7 +11,7 @@ description: |-
 
   Credential and dependency references are resolved before writes. Request bindings support credential overrides only. Agent and workflow identities are matched automatically.
 
-  Agent packages require `agent:import` and `agent:read`. Workflow packages require `workflow:import`. Mixed packages require both import grants. Planned Agent actions also require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents do not require write grants. Destination-project permissions and dependency scopes still apply.
+  Agent packages require `agent:import` and `agent:read`. Workflow packages require `workflow:import`. Mixed packages require both import grants. Planned Agent actions also require `agent:create`, `agent:update`, `agent:publish`, or `agent:unpublish`. Skipped Agents do not require write grants. Creating a project or instance skill requires `skill:create`, and saving a new version of one requires `skill:update`. Destination-project permissions and dependency scopes still apply.
 
   The response contains Agent summaries in `agents`, source IDs in `bindings.agents`, and totals in `counts.agents`. Definition import and publication have separate outcomes. Check `agents[].publishing.state` and `workflows[].publishing.state` for publication results, including `failed`. A publication failure retains the imported definition and returns HTTP 200.
 
@@ -72,7 +72,7 @@ requestBody:
               - new-version
               - fail
               - skip
-            description: Applies to both Agents and workflows. `new-version` replaces matched definitions. `fail` rejects the import when a match exists. `skip` leaves matched definitions unchanged. All policies create entities that have no match. Matched workflows also follow the package archive state under `new-version`; this change needs `workflow:delete`. This required field replaces `workflowConflictPolicy`. The old field is rejected.
+            description: Applies to Agents, workflows and the skills of imported Agents. `new-version` replaces matched definitions and saves a changed skill as a new version. `fail` rejects the import when an Agent or workflow matches, or when a matched skill has other content. A matched skill with the same content is kept. `skip` leaves matched definitions and skills unchanged. All policies create entities and skills that have no match. A new version of a project or instance skill applies to all Agents on the instance that follow the skill, also Agents that are not in the package. A skill conflict under `fail` is an `agent-invalid` issue, so it returns 422. Matched workflows also follow the package archive state under `new-version`; this change needs `workflow:delete`. This required field replaces `workflowConflictPolicy`. The old field is rejected.
           publishingPolicy:
             type: string
             enum:
@@ -223,7 +223,7 @@ responses:
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
   '422':
-    description: Import blocked by non-conflict issues only — for example unresolved credentials or variables, invalid Agent definitions or dependencies, node types this instance does not have, a delete the caller may not perform, or variable stubs whose creation would exceed the instance variable quota.
+    description: 'Import blocked by non-conflict issues only — for example unresolved credentials or variables, invalid Agent definitions or dependencies, node types this instance does not have, a delete the caller may not perform, or variable stubs whose creation would exceed the instance variable quota. Exception: a skill conflict returns 422, also under `conflictPolicy=fail`. The import plans a skill as part of each Agent that uses it, so it reports every skill problem as an `agent-invalid` issue on that Agent, with the path `skills.<skillId>`.'
     content:
       application/json:
         schema:

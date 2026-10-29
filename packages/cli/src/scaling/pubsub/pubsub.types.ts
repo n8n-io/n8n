@@ -64,6 +64,7 @@ export namespace PubSub {
 		export type RelayAgentQueuedChat = ToCommand<'relay-agent-queued-chat'>;
 		export type CancelAgentChatExecution = ToCommand<'cancel-agent-chat-execution'>;
 		export type CancelAgentChatForeground = ToCommand<'cancel-agent-chat-foreground'>;
+		export type StopAgentSession = ToCommand<'stop-agent-session'>;
 		export type RelayAgentMessageQueueUpdate = ToCommand<'relay-agent-message-queue-update'>;
 		export type RelayAgentBackgroundJobsUpdate = ToCommand<'relay-agent-background-tasks-update'>;
 		export type RelayAgentUpdate = ToCommand<'relay-agent-update'>;
@@ -81,6 +82,8 @@ export namespace PubSub {
 		export type ReloadSourceControlConfiguration = ToCommand<'reload-source-control-config'>;
 		export type ReloadMcpRegistry = ToCommand<'reload-mcp-registry'>;
 		export type ReloadOtelConfig = ToCommand<'reload-otel-config'>;
+		export type ReloadPublicApiRateLimitSettings =
+			ToCommand<'reload-public-api-rate-limit-settings'>;
 		export type ReloadInstanceAiSettings = ToCommand<'reload-instance-ai-settings'>;
 		export type SelfHealingFailure = ToCommand<'self-healing-failure'>;
 		export type ReloadAgentsSettings = ToCommand<'reload-agents-settings'>;
@@ -119,6 +122,7 @@ export namespace PubSub {
 		| Commands.RelayAgentQueuedChat
 		| Commands.CancelAgentChatExecution
 		| Commands.CancelAgentChatForeground
+		| Commands.StopAgentSession
 		| Commands.RelayAgentMessageQueueUpdate
 		| Commands.RelayAgentBackgroundJobsUpdate
 		| Commands.RelayAgentUpdate
@@ -139,6 +143,7 @@ export namespace PubSub {
 		| Commands.ReloadSourceControlConfiguration
 		| Commands.ReloadMcpRegistry
 		| Commands.ReloadOtelConfig
+		| Commands.ReloadPublicApiRateLimitSettings
 		| Commands.ReloadInstanceAiSettings
 		| Commands.SelfHealingFailure
 		| Commands.ReloadAgentsSettings
