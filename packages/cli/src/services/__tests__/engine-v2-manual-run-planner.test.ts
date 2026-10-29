@@ -316,15 +316,37 @@ describe('EngineV2ManualRunPlanner', () => {
 			]);
 		});
 
-		it('prefers the fired trigger payload over pinned data on the trigger', () => {
+		it('prefers the payload the trigger produced over pinned data on the trigger', () => {
 			const plan = planner.plan(
 				runData({
-					triggerToStartFrom: { name: TRIGGER.name, data: taskData([item({ fired: true })]) },
+					triggerToStartFrom: { name: TRIGGER.name },
 					pinData: { [TRIGGER.name]: [item({ pinned: true })], [A.name]: [item({ a: 1 })] },
 				}),
+				{ triggerName: TRIGGER.name, outputs: [[item({ fired: true })]] },
 			);
 
 			expect(plan.triggerOutputs).toEqual([[item({ fired: true })]]);
+		});
+
+		it('takes the payload of a trigger that fired without being named', () => {
+			// A test webhook run: the payload is on the execution stack, not in
+			// `triggerToStartFrom`, and another node is pinned.
+			const plan = planner.plan(runData({ pinData: { [A.name]: [item({ a: 1 })] } }), {
+				triggerName: TRIGGER.name,
+				outputs: [[item({ body: 'hi' })]],
+			});
+
+			expect(plan.triggerName).toBe(TRIGGER.name);
+			expect(plan.triggerOutputs).toEqual([[item({ body: 'hi' })]]);
+		});
+
+		it('ignores a payload that another trigger produced', () => {
+			const plan = planner.plan(runData({ triggerToStartFrom: { name: TRIGGER.name } }), {
+				triggerName: 'Other Trigger',
+				outputs: [[item({ fired: true })]],
+			});
+
+			expect(plan.triggerOutputs).toEqual([[{ json: {} }]]);
 		});
 	});
 
