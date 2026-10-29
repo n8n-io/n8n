@@ -114,7 +114,10 @@ import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loade
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
-import { AgentSandboxFilesService } from './agent-sandbox-files.service';
+import {
+	AgentSandboxFilesService,
+	SANDBOX_FILES_INSTRUCTIONS,
+} from './agent-sandbox-files.service';
 import { createImportFilesTool, IMPORT_FILES_TOOL_NAME } from './tools/import-files.tool';
 /**
  * `inline` runs an agent defined in a workflow node's parameters: no entity
@@ -1122,6 +1125,9 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private attachWorkspaceTools({ agent, projectId }: RuntimeDependencies, workspace: Workspace) {
+		const getInstructions = workspace.getInstructions.bind(workspace);
+		workspace.getInstructions = () =>
+			[getInstructions(), SANDBOX_FILES_INSTRUCTIONS].filter(Boolean).join('\n\n');
 		agent.workspace(workspace);
 		agent.tool(createImportFilesTool({ projectId, workspace, sandboxFiles: this.sandboxFiles }));
 	}
