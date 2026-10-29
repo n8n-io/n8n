@@ -113,9 +113,18 @@ type TraceStatus = 'completed' | 'suspended' | 'error' | 'cancelled';
 interface TraceFinishOptions {
 	/** Why the turn stopped, for a turn that the host closes, such as at shutdown. */
 	reason?: string;
-	/** What closed the turn. Defaults to `orchestrator`, the end of the agent run. */
+	/**
+	 * What closed the turn. Defaults to `orchestrator`, the end of the agent run.
+	 * Set it only when the host closes the turn.
+	 */
 	completionSource?: string;
 }
+
+/** How the host closes the trace of a turn that still runs at shutdown. */
+const SHUTDOWN_FINISH: TraceFinishOptions = {
+	reason: 'service_shutdown',
+	completionSource: 'service_cleanup',
+};
 
 function traceStatusOf(status: SystemAgentTurnOutcome['status']): TraceStatus {
 	return status === 'errored' ? 'error' : status;
@@ -384,12 +393,16 @@ export class AssistantTurnTrace {
 				...(options.reason ? { reason: options.reason } : {}),
 			};
 			actorMetadata = { final_status: status, ...modelMetadata };
+			const runMetadata = buildRunTraceMetadata(this.signals, {
+				status: status === 'error' ? 'error' : status,
+			});
+			// The user did not cancel a turn that the host closes. The current runtime
+			// also leaves out the cancellation type then.
+			if (options.completionSource) delete runMetadata.cancellation_type;
 			rootMetadata = {
 				...actorMetadata,
 				completion_source: options.completionSource ?? 'orchestrator',
-				...buildRunTraceMetadata(this.signals, {
-					status: status === 'error' ? 'error' : status,
-				}),
+				...runMetadata,
 			};
 		}
 		if (this.steeredMessageCount > 0) {
@@ -435,6 +448,9 @@ export class AssistantTurnTracer {
 	/** Traces of turns that run in this process and have not finished yet. */
 	private readonly openTraces = new Set<AssistantTurnTrace>();
 
+	/** Set when shutdown starts. A turn that starts after it runs without a trace. */
+	private closing = false;
+
 	constructor(
 		logger: Logger,
 		private readonly browserSessionService: InstanceAiBrowserSessionService,
@@ -452,6 +468,7 @@ export class AssistantTurnTracer {
 		turn: SystemAgentTurn,
 		setup: AssistantTraceTurnSetup,
 	): Promise<AssistantTurnTrace | undefined> {
+		if (this.closing) return undefined;
 		const anchor =
 			turn.type === 'resume'
 				? readAssistantTraceAnchor(turn.checkpointHostMetadata[ASSISTANT_TRACE_METADATA_KEY])
@@ -572,11 +589,9 @@ export class AssistantTurnTracer {
 	 * Call it before the final flush of the trace providers.
 	 */
 	async finishOpenTraces(): Promise<void> {
+		this.closing = true;
 		for (const trace of [...this.openTraces]) {
-			await trace.finish({ status: 'cancelled' }, undefined, {
-				reason: 'service_shutdown',
-				completionSource: 'service_cleanup',
-			});
+			await trace.finish({ status: 'cancelled' }, undefined, SHUTDOWN_FINISH);
 		}
 	}
 
@@ -610,6 +625,12 @@ export class AssistantTurnTracer {
 				orchestratorInputs,
 				() => this.openTraces.delete(trace),
 			);
+			// Shutdown started while the trace was created, after the open traces were
+			// closed. Close this one too, and run the turn without a trace.
+			if (this.closing) {
+				await trace.finish({ status: 'cancelled' }, undefined, SHUTDOWN_FINISH);
+				return undefined;
+			}
 			this.openTraces.add(trace);
 			return trace;
 		} catch (error) {
