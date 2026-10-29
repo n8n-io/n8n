@@ -46,24 +46,24 @@ export class AgentMemoryEntryCandidateRepository {
 		});
 		if (existing) return existing;
 
-		try {
-			return await manager.save(
-				AgentMemoryEntryCandidateEntity,
-				manager.create(AgentMemoryEntryCandidateEntity, {
-					...input,
-					status: 'pending',
-					attemptCount: 0,
-				}),
-			);
-		} catch (error) {
-			const concurrentlyInserted = await manager.findOneBy(AgentMemoryEntryCandidateEntity, {
-				agentId: input.agentId,
-				runId: input.runId,
-				toolCallId: input.toolCallId,
-			});
-			if (concurrentlyInserted) return concurrentlyInserted;
-			throw error;
-		}
+		const candidate = manager.create(AgentMemoryEntryCandidateEntity, {
+			...input,
+			status: 'pending',
+			attemptCount: 0,
+		});
+		await manager
+			.createQueryBuilder()
+			.insert()
+			.into(AgentMemoryEntryCandidateEntity)
+			.values(candidate)
+			.orIgnore()
+			.execute();
+
+		return await manager.findOneByOrFail(AgentMemoryEntryCandidateEntity, {
+			agentId: input.agentId,
+			runId: input.runId,
+			toolCallId: input.toolCallId,
+		});
 	}
 
 	async findPendingForResource(

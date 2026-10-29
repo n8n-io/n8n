@@ -1,7 +1,7 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource, type Repository } from '@n8n/typeorm';
+import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
@@ -145,6 +145,34 @@ describe('AgentMemoryEntryCandidateRepository', () => {
 		await expect(
 			candidateRepository.findByToolCalls(uuid(), threadId, ['call-1'], {}),
 		).resolves.toEqual([]);
+	});
+
+	it('returns an existing candidate after an insert conflict and commits further changes', async () => {
+		const existing = await enqueue('call-1', {}, {});
+		await candidateRepository.recordCandidateFailure(agentId, [existing.id], 1, {});
+		const stored = await candidateTable.findOneByOrFail({ id: existing.id });
+
+		await Container.get(TransactionRunner).run({}, async (ctx) => {
+			// Model a lookup that ran before another transaction committed the same tool call.
+			const lookup = vi.spyOn(EntityManager.prototype, 'findOneBy').mockResolvedValueOnce(null);
+			try {
+				const replay = await enqueue('call-1', { sourceMessageId: uuid() }, ctx);
+				expect(replay).toEqual(stored);
+			} finally {
+				lookup.mockRestore();
+			}
+
+			const next = await enqueue('call-2', {}, ctx);
+			await candidateRepository.markCandidatesCompleted(agentId, [next.id], ctx);
+		});
+
+		await expect(candidateTable.findOneByOrFail({ id: existing.id })).resolves.toEqual(stored);
+		await expect(
+			candidateTable.findOneByOrFail({ agentId, toolCallId: 'call-2' }),
+		).resolves.toMatchObject({
+			status: 'completed',
+		});
+		await expect(candidateTable.count()).resolves.toBe(2);
 	});
 
 	it('completes selected rows and stops retrying rows at the failure limit', async () => {
