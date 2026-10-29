@@ -11,6 +11,7 @@ import type {
 import { MODAL_CANCEL, MODAL_CONFIRM } from '@/app/constants';
 
 import AgentRegistryMcpConfigForm from '../components/AgentRegistryMcpConfigForm.vue';
+import AgentApprovalRouteSelect from '../components/AgentApprovalRouteSelect.vue';
 import type { AgentRegistryMcpModalData } from '../composables/useAgentRegistryMcpConfig';
 
 const saveMock = vi.hoisted(() => vi.fn());
@@ -93,6 +94,7 @@ function mountForm({
 	isNew = false,
 	onRemove,
 	itemAvailable = true,
+	withApprovalContext = false,
 }: {
 	approvalRoute?: AgentApprovalRoute;
 	connectionTimeoutMs?: number;
@@ -100,6 +102,7 @@ function mountForm({
 	isNew?: boolean;
 	onRemove?: () => void;
 	itemAvailable?: boolean;
+	withApprovalContext?: boolean;
 } = {}) {
 	useAgentRegistryMcpConfigMock.mockReturnValue({
 		item: ref(itemAvailable ? makeItem(status, connectionTimeoutMs) : null),
@@ -114,6 +117,9 @@ function mountForm({
 	const data: AgentRegistryMcpModalData = {
 		kind: 'registryMcpServer',
 		projectId: 'project-1',
+		approvalContext: withApprovalContext
+			? { getConfig: () => null, saveConfiguration: vi.fn() }
+			: undefined,
 		mcpServer: {
 			approvalRoute,
 			name: 'github',
@@ -131,6 +137,10 @@ function mountForm({
 		props: { data },
 		global: {
 			stubs: {
+				AgentApprovalRouteSelect: {
+					props: ['label', 'modelValue'],
+					template: '<div data-testid="approval-setting">{{ label }}</div>',
+				},
 				McpConnectionStatusCallout: true,
 				McpDetailBody: true,
 				McpToolPermissionsEditor: {
@@ -185,6 +195,25 @@ describe('AgentRegistryMcpConfigForm', () => {
 			max: '120',
 			step: '1',
 		});
+	});
+
+	it('puts approval settings after permissions and hides them when no tools ask first', async () => {
+		const wrapper = mountForm({ withApprovalContext: true });
+		const fields = wrapper.findAll('[data-testid]').map((field) => field.attributes('data-testid'));
+		expect(fields.indexOf('approval-setting')).toBeGreaterThan(
+			fields.indexOf('permissions-editor'),
+		);
+		expect(fields.indexOf('approval-setting')).toBeLessThan(
+			fields.indexOf('agent-mcp-connection-timeout'),
+		);
+		const route = wrapper.getComponent(AgentApprovalRouteSelect);
+		expect(route.props('label')).toBe('agents.hitl.mcpRoute');
+		expect(route.props('modelValue')).toBeUndefined();
+		wrapper.getComponent('[data-testid="permissions-editor"]').vm.$emit('update:modelValue', {
+			categories: { read: 'always_allow', write: 'always_allow' },
+		});
+		await wrapper.vm.$nextTick();
+		expect(wrapper.findComponent(AgentApprovalRouteSelect).exists()).toBe(false);
 	});
 
 	it('converts an existing millisecond timeout to seconds', () => {

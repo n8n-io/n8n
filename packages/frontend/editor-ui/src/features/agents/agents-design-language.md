@@ -488,6 +488,9 @@ Advanced HITL settings use `AgentChipRow` and `AgentChipButton`, as the Build
 page does. Each pill opens its configuration. Put the add action after the pills.
 Use the item context menu for removal. Select a destination on each gated tool
 or MCP server. Do not show an Agent-wide default destination.
+Label the destination select `Approval settings`. For MCP servers, place it
+after tool permissions and use `Approval settings for Ask first tools`. Show it
+when at least one tool or category uses Ask first. Default the select to `Ask user`.
 
 Keep requester approval enabled by default. The configuration's administrator
 approval switch routes conversations to the configured destination. Show a fixed

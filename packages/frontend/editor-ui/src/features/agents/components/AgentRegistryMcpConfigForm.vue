@@ -174,6 +174,14 @@ defineExpose({
 			@retry="config.discover()"
 		/>
 		<div :class="$style.settings">
+			<McpToolPermissionsEditor
+				v-model="draftPermissions"
+				actor="agent"
+				:available-tools="item.availableTools"
+				:server-title="title"
+				:status="item.status"
+				:exclude-permissions="data.supportsToolApproval === false ? ['require_approval'] : []"
+			/>
 			<AgentApprovalRouteSelect
 				v-if="
 					data.approvalContext &&
@@ -183,16 +191,9 @@ defineExpose({
 						Object.values(draftPermissions.tools ?? {}).includes('require_approval'))
 				"
 				v-model="approvalRoute"
+				:label="i18n.baseText('agents.hitl.mcpRoute')"
 				:context="data.approvalContext"
 				:project-id="data.projectId"
-			/>
-			<McpToolPermissionsEditor
-				v-model="draftPermissions"
-				actor="agent"
-				:available-tools="item.availableTools"
-				:server-title="title"
-				:status="item.status"
-				:exclude-permissions="data.supportsToolApproval === false ? ['require_approval'] : []"
 			/>
 			<div :class="$style.timeoutSection">
 				<N8nText tag="label" for="agent-mcp-connection-timeout" size="medium" bold>

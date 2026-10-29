@@ -22,7 +22,7 @@ vi.mock('@n8n/design-system', async (importOriginal) => {
 });
 
 describe('Agent approval destination', () => {
-	it('offers saved configurations and the current approval behavior', async () => {
+	it('labels the approval settings and defaults to asking the user', async () => {
 		const config = ref<AgentJsonConfig>({
 			name: 'Agent',
 			model: 'anthropic/test',
@@ -42,6 +42,13 @@ describe('Agent approval destination', () => {
 			wrapper.findAll('[data-value]').map((option) => option.attributes('data-value')),
 		).toEqual(['default', 'review', 'create']);
 		const select = wrapper.findComponent('[data-testid="agent-approval-route"]');
+		expect(wrapper.get('label').text()).toBe('agents.hitl.route');
+		expect(select.attributes('aria-label')).toBe('agents.hitl.route');
+		expect(select.props('modelValue')).toBe('default');
+		expect(wrapper.get('[data-value="default"]').text()).toBe('agents.hitl.useDefault');
+		await wrapper.setProps({ label: 'Approval settings for Ask first tools' });
+		expect(wrapper.get('label').text()).toBe('Approval settings for Ask first tools');
+		expect(select.attributes('aria-label')).toBe('Approval settings for Ask first tools');
 		select.vm.$emit('update:modelValue', 'review');
 		await wrapper.vm.$nextTick();
 		expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([

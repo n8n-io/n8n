@@ -467,6 +467,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 							Object.values(mcpPermissions.tools ?? {}).includes('require_approval'))))
 			"
 			v-model="approvalRoute"
+			:label="isMcpTool ? i18n.baseText('agents.hitl.mcpRoute') : undefined"
 			:context="data.approvalContext"
 			:project-id="data.projectId"
 			:disabled="isRestricted"
