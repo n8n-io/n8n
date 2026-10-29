@@ -87,7 +87,9 @@ placeholder or "refine-it-later" task.
   run-specific details. Do not duplicate Agent Instructions or Skill bodies;
   name a configured capability only when it helps route the work.
 - Make sure the agent already has every capability the steps need (an
-  integration, node/workflow tool, or web search). Configured chat integrations
+  integration, node/workflow tool, or web search) before you call \`agent_builder_create_tasks\`.
+  Add a missing tool to the config first: a step that needs a missing tool
+  fails at runtime. Configured chat integrations
   automatically generate their context and action tools in scheduled runs too.
   If the task sends through a configured platform and the integration lists the
   needed action (for example \`send_dm\`), use that action; do not add a

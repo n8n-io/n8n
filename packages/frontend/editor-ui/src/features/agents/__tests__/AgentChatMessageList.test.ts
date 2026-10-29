@@ -1,3 +1,4 @@
+import { AGENT_BUILDER_STANDALONE_KEY } from '../components/agentBuilderInjectionKeys';
 import { flushPromises, mount } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
@@ -74,8 +75,10 @@ vi.mock('@n8n/design-system', () => ({
 
 vi.mock('@/features/agents/components/AgentMarkdownChunk.vue', () => ({
 	default: {
+		name: 'AgentMarkdownChunk',
 		template: '<div data-testid="markdown-chunk">{{ source }}</div>',
-		props: ['source'],
+		props: ['source', 'canOpenBuild'],
+		emits: ['open-build'],
 	},
 }));
 
@@ -117,6 +120,7 @@ vi.mock('@/features/agents/components/AgentChatToolSteps.vue', () => ({
 
 vi.mock('@/features/agents/components/interactive/InteractiveCard.vue', () => ({
 	default: {
+		name: 'InteractiveCardStub',
 		template:
 			'<div data-testid="interactive-card-stub" :data-tool-call-id="payload.toolCallId" :data-run-id="payload.runId || \'\'" />',
 		props: ['payload'],
@@ -430,6 +434,39 @@ describe('AgentChatMessageList', () => {
 			content: 'Please update your instructions to always answer in German',
 			status: 'success',
 		} satisfies ChatMessage;
+
+		it.each([true, false])('handles an Agent-authored Build link (edit: %s)', async (edit) => {
+			const wrapper = mount(AgentChatMessageList, {
+				global: { provide: { [AGENT_BUILDER_STANDALONE_KEY as symbol]: true } },
+				props: {
+					messages: [
+						changeRequest,
+						{
+							id: 'reply-1',
+							role: 'assistant',
+							content: '[Open Build](#agent-build)',
+							status: 'success',
+						},
+						{ id: 'user-2', role: 'user', content: 'A later request', status: 'success' },
+					],
+					messagingState: 'idle',
+					agentId: 'agent-1',
+					sessionId: 'thread-1',
+					canSendToAssistant: true,
+				},
+			});
+			const markdown = wrapper.getComponent({ name: 'AgentMarkdownChunk' });
+			expect(markdown.props('canOpenBuild')).toBe(true);
+			markdown.vm.$emit('open-build', edit);
+			if (edit)
+				expect(wrapper.emitted('sendToAssistant')).toEqual([
+					[{ changeRequest: changeRequest.content }],
+				]);
+			else expect(wrapper.emitted('openBuild')).toEqual([[]]);
+			await wrapper.setProps({ canSendToAssistant: false });
+			markdown.vm.$emit('open-build', edit);
+			expect(wrapper.emitted(edit ? 'sendToAssistant' : 'openBuild')).toHaveLength(1);
+		});
 
 		it('offers the assistant hand-off for a change request in the preview', async () => {
 			const wrapper = mount(AgentChatMessageList, {
@@ -1151,6 +1188,40 @@ describe('AgentChatMessageList', () => {
 		expect(
 			chunks[1].element.compareDocumentPosition(actions) & Node.DOCUMENT_POSITION_FOLLOWING,
 		).toBeTruthy();
+	});
+
+	it('resumes an open card with the callback that the card passes for an accepted answer', async () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'assistant-open-card',
+						role: 'assistant',
+						content: '',
+						interactives: [
+							{
+								toolName: 'chat_action',
+								toolCallId: 'tc-open',
+								runId: 'run-open',
+								input: { card: { components: [{ type: 'section', text: 'Continue?' }] } },
+							},
+						],
+						status: 'success',
+					} satisfies ChatMessage,
+				],
+				messagingState: 'idle',
+			},
+		});
+		const onAccepted = vi.fn();
+
+		const card = wrapper.findComponent({ name: 'InteractiveCardStub' });
+		card.vm.$emit('submit', { answer: 'yes' }, onAccepted);
+		card.vm.$emit('submit', { answer: 'no' });
+
+		expect(wrapper.emitted('resume')).toEqual([
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'yes' } }, onAccepted],
+			[{ runId: 'run-open', toolCallId: 'tc-open', resumeData: { answer: 'no' } }, undefined],
+		]);
 	});
 
 	it('renders multiple n8n chat cards from one assistant message', () => {

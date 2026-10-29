@@ -3,6 +3,7 @@ import {
 	BaseRepository,
 	isUniqueConstraintError,
 	parseDbTime,
+	Project,
 	ProjectRelation,
 	SharedWorkflow,
 	TransactionRunner,
@@ -12,6 +13,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS } from '@n8n/permissions';
 import { DataSource, In, type ObjectLiteral, type SelectQueryBuilder } from '@n8n/typeorm';
 import groupBy from 'lodash/groupBy';
 import keyBy from 'lodash/keyBy';
@@ -30,8 +32,9 @@ type ReviewerRoles = {
 	workflowRoleSlugs: string[];
 };
 
-// Edit-access conditions for member queries that alias the project relation as
-// `projectMember` and its user as `user`. Each returns null when no role grants access.
+// Edit-access conditions for member queries that alias the user as `user` and left-join
+// the project relation as `projectMember`. Implicit members have no relation, so only
+// their global role grants access. Each returns null when no role grants access.
 
 function editRoleCondition({ projectRoleSlugs, globalRoleSlugs }: ReviewerRoles) {
 	const conditions = [
@@ -62,22 +65,45 @@ function sharedWorkflowEditQuery<T extends ObjectLiteral>(
 }
 
 /**
+ * Match current project members. Instance owners and admins are implicit members of team
+ * projects, as Project settings shows. Personal projects have no implicit members.
+ */
+function projectMemberCondition<T extends ObjectLiteral>(
+	query: SelectQueryBuilder<T>,
+	projectIdExpression: string,
+	userIdExpression: string,
+) {
+	const explicit = query
+		.createQueryBuilder()
+		.select('explicitMember.userId', 'member_id')
+		.from(ProjectRelation, 'explicitMember')
+		.where(`explicitMember.projectId = ${projectIdExpression}`);
+	const implicit = query
+		.createQueryBuilder()
+		.select('implicitMember.id', 'member_id')
+		.from(User, 'implicitMember')
+		.innerJoin(Project, 'implicitProject', `implicitProject.id = ${projectIdExpression}`)
+		.where('implicitProject.type = :teamProjectType', { teamProjectType: 'team' })
+		.andWhere('implicitMember.role IN (:...implicitMemberRoles)', {
+			implicitMemberRoles: IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS,
+		});
+	query.setParameters(implicit.getParameters());
+	// One EXISTS over both sources lets PostgreSQL start from the members, not from every user.
+	return `EXISTS (SELECT 1 FROM (${explicit.getQuery()} UNION ALL ${implicit.getQuery()}) members WHERE members.member_id = ${userIdExpression})`;
+}
+
+/**
  * Keep only rows where the user is a current member of the configuration's project and
- * a reviewer, either listed or included with all project members. A global role alone
- * does not qualify. Workflow access is checked separately.
+ * a reviewer, either listed or included with all project members. Workflow access is
+ * checked separately.
  */
 export function whereReviewer<T extends ObjectLiteral>(
 	query: SelectQueryBuilder<T>,
 	configurationAlias: string,
 	userIdExpression: string,
+	projectIdExpression = `${configurationAlias}.projectId`,
 ) {
-	const member = query
-		.subQuery()
-		.select('1')
-		.from(ProjectRelation, 'reviewerMembership')
-		.where(`reviewerMembership.projectId = ${configurationAlias}.projectId`)
-		.andWhere(`reviewerMembership.userId = ${userIdExpression}`)
-		.getQuery();
+	const member = projectMemberCondition(query, projectIdExpression, userIdExpression);
 	const explicit = query
 		.subQuery()
 		.select('1')
@@ -86,7 +112,7 @@ export function whereReviewer<T extends ObjectLiteral>(
 		.andWhere(`explicitReviewer.userId = ${userIdExpression}`)
 		.getQuery();
 	return query.andWhere(
-		`(EXISTS ${member} AND (${configurationAlias}.includeAllProjectMembers = :includeAllProjectMembers OR EXISTS ${explicit}))`,
+		`(${member} AND (${configurationAlias}.includeAllProjectMembers = :includeAllProjectMembers OR EXISTS ${explicit}))`,
 		{ includeAllProjectMembers: true },
 	);
 }
@@ -228,10 +254,15 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 
 		const query = this.manager
 			.createQueryBuilder(User, 'user')
-			.innerJoin(ProjectRelation, 'projectMember', 'projectMember.userId = user.id')
+			.leftJoin(
+				ProjectRelation,
+				'projectMember',
+				'projectMember.userId = user.id AND projectMember.projectId = :projectId',
+				{ projectId },
+			)
 			.select(['user.id', 'user.email', 'user.firstName', 'user.lastName'])
-			.where('projectMember.projectId = :projectId', { projectId })
-			.andWhere('user.disabled = :disabled', { disabled: false });
+			.where('user.disabled = :disabled', { disabled: false });
+		query.andWhere(projectMemberCondition(query, ':projectId', 'user.id'));
 		const sharedWorkflowEdit = sharedWorkflowEditQuery(query, roles);
 		const editAccess = [
 			editRoleCondition(roles),
@@ -248,16 +279,19 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 
 	private reviewerMembers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
 		const query = this.managerFor(ctx)
-			.createQueryBuilder(ProjectRelation, 'projectMember')
-			.innerJoin('projectMember.user', 'user')
-			.innerJoin(
-				SelfHealingConfiguration,
-				'configuration',
-				'configuration.projectId = projectMember.projectId',
+			.createQueryBuilder(User, 'user')
+			.innerJoin(SelfHealingConfiguration, 'configuration', 'configuration.id = :configurationId', {
+				configurationId: configuration.id,
+			})
+			.leftJoin(
+				ProjectRelation,
+				'projectMember',
+				'projectMember.userId = user.id AND projectMember.projectId = :projectId',
+				{ projectId: configuration.projectId },
 			)
-			.where('configuration.id = :configurationId', { configurationId: configuration.id })
-			.andWhere('user.disabled = :disabled', { disabled: false });
-		return whereReviewer(query, 'configuration', 'projectMember.userId');
+			.where('user.disabled = :disabled', { disabled: false });
+		// A bound project keeps the member lookup independent of the user count on PostgreSQL.
+		return whereReviewer(query, 'configuration', 'user.id', ':projectId');
 	}
 
 	async hasReviewerWithEditRole(

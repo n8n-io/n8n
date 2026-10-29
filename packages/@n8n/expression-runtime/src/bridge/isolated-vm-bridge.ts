@@ -5,10 +5,13 @@ import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapLuxonValues } from '../runtime/luxon-transfer';
+import type { DataHolder } from './host-functions';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
+	heldData,
 	isErrorSentinel,
 	reconstructError,
 	serializeError,
@@ -109,16 +112,6 @@ function loadRuntimeBundle(): string {
 	throw new Error(
 		`Could not find runtime bundle (${BUNDLE_RELATIVE_PATH}) in any parent of ${__dirname}`,
 	);
-}
-
-/** Workflow data for one `execute()` call, cleared when the call ends. */
-interface DataHolder {
-	data?: WorkflowData;
-}
-
-function heldData(holder: DataHolder): WorkflowData {
-	if (!holder.data) throw new Error('Host callback called after its expression finished');
-	return holder.data;
 }
 
 /**
@@ -363,7 +356,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(holder: DataHolder): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return dispatchHostCall(rawMsg, heldData(holder));
+				return escapeHostResult(dispatchHostCall(rawMsg, heldData(holder)));
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -418,11 +411,11 @@ export class IsolatedVmBridge implements RuntimeBridge {
 		// next isolated-vm call in the process, even after the isolate is disposed.
 		// So the callbacks read the data from a holder that `finally` clears.
 		const holder: DataHolder = { data };
-		const getValueAtPath = this.createGetValueAtPathRef(holder);
-		const getArrayElement = this.createGetArrayElementRef(holder);
-		const callHost = this.createCallHostRef(holder);
 
 		try {
+			const getValueAtPath = this.createGetValueAtPathRef(holder);
+			const getArrayElement = this.createGetArrayElementRef(holder);
+			const callHost = this.createCallHostRef(holder);
 			const timezone = options?.timezone ? safeStringify(options.timezone) : 'undefined';
 
 			// Wrap transformed code so 'this' === the closure-scoped context.

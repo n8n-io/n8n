@@ -13,9 +13,9 @@ import { randomUUID } from 'node:crypto';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { SkillsGate } from '../../services/skills-gate';
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
+import { createSkill } from '../../testing';
 import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -34,6 +34,7 @@ describe('SkillsController', () => {
 	const postHog = mockInstance(PostHogClient);
 	let ownerUser: User;
 	let memberUser: User;
+	let editorUser: User;
 	let owner: SuperAgentTest;
 	let member: SuperAgentTest;
 	let editor: SuperAgentTest;
@@ -44,7 +45,7 @@ describe('SkillsController', () => {
 	beforeAll(async () => {
 		ownerUser = await createOwner();
 		memberUser = await createMember();
-		const editorUser = await createMember();
+		editorUser = await createMember();
 		const viewerUser = await createMember();
 		owner = server.authAgentFor(ownerUser);
 		member = server.authAgentFor(memberUser);
@@ -204,17 +205,6 @@ describe('SkillsController', () => {
 		expect(list.count).toBe(0);
 	});
 
-	it('hides the skills API while the agents module is off', async () => {
-		// As when the agents module never registered its provider.
-		vi.spyOn(Container.get(SkillsGate), 'isEnabled', 'get').mockReturnValue(false);
-
-		await owner.get('/skills').expect(404);
-		await owner.post('/skills').send({ scope: 'instance', skill: body }).expect(404);
-		// The gate is checked before the body, so a malformed request also answers 404.
-		await owner.post('/skills').send({ scope: 'nope' }).expect(404);
-		await owner.get('/skills?take=-1').expect(404);
-	});
-
 	afterEach(async () => {
 		await Container.get(AgentRepository).delete({});
 		await Container.get(SkillRepository).deleteAll();
@@ -331,7 +321,15 @@ describe('SkillsController', () => {
 
 			expect(asOutsider.body.data.usedBy).toEqual({ drafts: [], pins: [], hiddenAgents: 1 });
 			expect(asEditor.body.data.usedBy).toEqual({
-				drafts: [{ agentId: agent.id, agentName: 'Support bot', projectId: project.id }],
+				drafts: [
+					{
+						agentId: agent.id,
+						agentName: 'Support bot',
+						projectId: project.id,
+						version: 1,
+						pinned: false,
+					},
+				],
 				pins: [],
 				hiddenAgents: 0,
 			});
@@ -528,6 +526,83 @@ describe('SkillsController', () => {
 		});
 	});
 
+	describe('versions', () => {
+		it('lists every version newest first, with the user who saved it', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
+
+			const { body: list } = await viewer.get(`/skills/${id}/versions`).expect(200);
+
+			expect(list.data.map((version: { version: number }) => version.version)).toEqual([2, 1]);
+			expect(list.data[0]).toEqual({
+				id: expect.any(String),
+				version: 2,
+				createdBy: expect.objectContaining({ id: editorUser.id }),
+				createdAt: expect.any(String),
+				isLatest: true,
+			});
+			expect(list.data[1].isLatest).toBe(false);
+		});
+
+		it('returns the content of one version', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
+
+			const { body: first } = await viewer.get(`/skills/${id}/versions/1`).expect(200);
+
+			expect(first.data).toMatchObject({ version: 1, skill: { instructions: 'Be brief.' } });
+			await viewer.get(`/skills/${id}/versions/3`).expect(404);
+			await viewer.get(`/skills/${id}/versions/0`).expect(400);
+			await viewer.get(`/skills/${id}/versions/latest`).expect(400);
+		});
+
+		it('hides the versions of a skill the user cannot see', async () => {
+			const { id } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			await outsider.get(`/skills/${id}/versions`).expect(404);
+			await outsider.get(`/skills/${id}/versions/1`).expect(404);
+		});
+
+		it('saves the content of an old version as a new version', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(200);
+			const { body: old } = await editor.get(`/skills/${id}/versions/1`).expect(200);
+
+			const restored = await editor
+				.patch(`/skills/${id}`)
+				.send({ ...old.data.skill, baseSkillHash: saved.body.data.skillHash })
+				.expect(200);
+
+			expect(restored.body.data).toMatchObject({ version: 3, created: true });
+			expect(restored.body.data.skill.instructions).toBe('Be brief.');
+		});
+	});
+
 	describe('save', () => {
 		it('saves changed content as the next version and unchanged content as nothing', async () => {
 			const { id, skillHash } = await create(editor, {
@@ -569,6 +644,36 @@ describe('SkillsController', () => {
 				.patch(`/skills/${id}`)
 				.send({ instructions: 'Second.', baseSkillHash: skillHash })
 				.expect(409);
+		});
+
+		it('refuses a content change to a synced skill', async () => {
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			const { skillHash } = (await editor.get(`/skills/${id}`).expect(200)).body.data;
+
+			const refused = await editor
+				.patch(`/skills/${id}`)
+				.send({ instructions: 'Be very brief.', baseSkillHash: skillHash })
+				.expect(400);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(refused.body.message).toBe(
+				'"Brand voice" is synced from GitHub, so it is read-only in n8n. Change it in GitHub.',
+			);
+			expect(read.body.data).toMatchObject({ source: 'github', latestVersion: 1 });
+		});
+
+		it('moves a synced skill, because a move does not change its content', async () => {
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			const { skillHash } = (await owner.get(`/skills/${id}`).expect(200)).body.data;
+
+			const moved = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(200);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(moved.body.data).toMatchObject({ version: 1, created: false });
+			expect(read.body.data).toMatchObject({ scope: 'instance', projectId: null });
 		});
 
 		it('refuses a save without a base hash', async () => {

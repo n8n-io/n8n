@@ -654,6 +654,95 @@ describe('POST /workflow-dependencies/details', () => {
 	});
 });
 
+describe('Workflow and credential ID collisions', () => {
+	it('should report no dependents for an unused workflow that shares a credential ID', async () => {
+		const owner = await createOwner();
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const workflow = await createWorkflow({ id: credential.id, nodes: [] }, owner);
+		const credentialUser = await createWorkflow({ name: 'Credential user' }, owner);
+		await seedDep(credentialUser.id, 'credentialId', credential.id);
+
+		const counts = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/counts')
+			.send({ resourceIds: [workflow.id], resourceType: 'workflow' });
+		const details = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds: [workflow.id], resourceType: 'workflow' });
+
+		expect(counts.statusCode).toBe(200);
+		expect(details.statusCode).toBe(200);
+		expect.soft(counts.body.data).toEqual({});
+		expect.soft(details.body.data).toEqual({});
+	});
+
+	it.each([
+		{ scenario: 'a single workflow with distinct IDs', matchingIds: false, batch: false },
+		{ scenario: 'a single workflow with matching IDs', matchingIds: true, batch: false },
+		{ scenario: 'a batch with distinct IDs', matchingIds: false, batch: true },
+		{ scenario: 'a batch with matching IDs', matchingIds: true, batch: true },
+	])('should list only workflow callers for $scenario', async ({ matchingIds, batch }) => {
+		const owner = await createOwner();
+		const member = await createMember();
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+		const workflow = await createWorkflow(
+			{ id: matchingIds ? credential.id : randomUUID(), name: 'Target workflow' },
+			member,
+		);
+		const caller = await createWorkflow({ name: 'Workflow caller' }, member);
+		const privateCaller = await createWorkflow({ name: 'Private workflow caller' }, owner);
+		const credentialUser = await createWorkflow({ name: 'Credential user' }, member);
+		await seedDep(caller.id, 'workflowCall', workflow.id);
+		await seedDep(privateCaller.id, 'workflowCall', workflow.id);
+		await seedDep(credentialUser.id, 'credentialId', credential.id);
+
+		// A batch also loads the credential use through its source workflow.
+		const resourceIds = batch ? [workflow.id, credentialUser.id] : [workflow.id];
+		const counts = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/counts')
+			.send({ resourceIds, resourceType: 'workflow' });
+		const details = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds, resourceType: 'workflow' });
+
+		expect(counts.statusCode).toBe(200);
+		expect(details.statusCode).toBe(200);
+		expect.soft(counts.body.data[workflow.id]).toEqual({
+			agentUsage: 0,
+			credentialId: 0,
+			dataTableId: 0,
+			errorWorkflow: 0,
+			errorWorkflowParent: 0,
+			workflowCall: 0,
+			workflowParent: 2,
+		});
+		expect.soft(details.body.data[workflow.id]).toEqual({
+			dependencies: [{ id: caller.id, name: caller.name, type: 'workflowParent' }],
+			inaccessibleCount: 1,
+		});
+
+		if (batch) {
+			expect.soft(counts.body.data[credentialUser.id]).toMatchObject({
+				credentialId: 1,
+				workflowParent: 0,
+			});
+			expect.soft(details.body.data[credentialUser.id]).toEqual({
+				dependencies: [{ id: credential.id, name: credential.name, type: 'credentialId' }],
+				inaccessibleCount: 0,
+			});
+		}
+	});
+});
+
 describe('GET /workflow-dependencies/projects/:projectId/folders/:folderId', () => {
 	it('should return deduplicated dependencies for every workflow in the folder hierarchy', async () => {
 		const owner = await createOwner();

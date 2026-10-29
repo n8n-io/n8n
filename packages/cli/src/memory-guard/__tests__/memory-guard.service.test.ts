@@ -42,6 +42,7 @@ vi.mock('../memory-guard.utils', async (importOriginal) => ({
 
 vi.mock('../memory-usage', () => ({
 	getContainerLimit: () => 1_000,
+	getOldGenerationLimit: () => 1_000,
 	readMemoryUsage: vi.fn(),
 }));
 
