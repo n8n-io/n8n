@@ -12,7 +12,7 @@ const items: VersionHistoryItem[] = [
 		createdAt: 'Oct 28 at 09:14',
 		status: 'latest',
 		statusLabel: 'Latest version',
-		actions: [{ id: 'restore', label: 'Restore' }],
+		actions: [{ id: 'restore', label: 'Restore', icon: 'undo-2' }],
 	},
 	{
 		id: 'v1',
@@ -51,6 +51,27 @@ describe('N8nVersionHistory', () => {
 		await fireEvent.click(getByRole('menuitem', { name: /v2/ }));
 
 		expect(emitted('select')).toEqual([['v2']]);
+		expect(getByRole('menuitem', { name: /v1/ })).toHaveAttribute('aria-current', 'true');
+	});
+
+	it('keeps the selection when selectedId is omitted', async () => {
+		const { getByRole, emitted } = renderHistory();
+
+		await fireEvent.click(getByRole('menuitem', { name: /v2/ }));
+
+		expect(emitted('select')).toEqual([['v2']]);
+		expect(getByRole('menuitem', { name: /v2/ })).toHaveAttribute('aria-current', 'true');
+	});
+
+	it('does not select a disabled row', async () => {
+		const disabledItems = items.map((item) => ({ ...item, disabled: true }));
+		const { getByRole, emitted } = renderHistory({ items: disabledItems, selectedId: 'v1' });
+		const row = getByRole('menuitem', { name: /v2/ });
+
+		expect(row).toBeDisabled();
+		await fireEvent.click(row);
+
+		expect(emitted('select')).toBeUndefined();
 	});
 
 	it('emits compare without selecting the row', async () => {

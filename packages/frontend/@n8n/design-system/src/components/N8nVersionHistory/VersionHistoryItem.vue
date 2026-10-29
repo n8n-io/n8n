@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 
-import type { VersionHistoryItem, VersionHistoryStatus } from './VersionHistory.types';
+import type { VersionHistoryItem } from './VersionHistory.types';
 import VersionHistoryRail from './VersionHistoryRail.vue';
+import VersionHistoryStatusDot from './VersionHistoryStatusDot.vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
@@ -41,8 +42,7 @@ const compareButtonProps = {
 
 const { t } = useI18n();
 
-// Local mark until N8nStatusDot can draw a neutral outline.
-const status = computed<VersionHistoryStatus>(() => props.item.status ?? 'default');
+const status = computed(() => props.item.status ?? 'default');
 const actions = computed(() => props.item.actions ?? []);
 const compareLabel = computed(() => t('versionHistory.compare'));
 const accessibleName = computed(() =>
@@ -58,6 +58,7 @@ const accessibleName = computed(() =>
 );
 
 function onSelect() {
+	if (props.item.disabled) return;
 	emit('select', props.item.id);
 }
 
@@ -83,16 +84,13 @@ function onAction(action: string) {
 			:connect-below="connectBelow"
 			@click="onSelect"
 		>
-			<span
-				:class="[$style.status, $style[status]]"
-				data-test-id="version-history-status"
-				:data-status="status"
-			/>
+			<VersionHistoryStatusDot :status="status" />
 		</VersionHistoryRail>
 		<button
 			type="button"
 			:class="$style.select"
 			role="menuitem"
+			:disabled="item.disabled"
 			:aria-label="accessibleName"
 			:aria-current="selected ? 'true' : undefined"
 			data-test-id="version-history-select"
@@ -103,9 +101,12 @@ function onAction(action: string) {
 					<N8nText bold size="small" color="text-dark" :class="$style.label">
 						{{ item.label }}
 					</N8nText>
-					<N8nText v-if="item.detail" size="small" color="text-light" :class="$style.detail">
-						<span aria-hidden="true">· </span>{{ item.detail }}
-					</N8nText>
+					<template v-if="item.detail">
+						<span :class="$style.separator" aria-hidden="true">·</span>
+						<N8nText size="small" color="text-light" :class="$style.detail">
+							{{ item.detail }}
+						</N8nText>
+					</template>
 				</span>
 				<span v-if="item.author || item.createdAt" :class="$style.metaRow">
 					<N8nText v-if="item.author" size="small" color="text-base" :class="$style.author">
@@ -178,6 +179,10 @@ button.select {
 	&:focus-visible {
 		@include focus.focus-ring;
 	}
+
+	&:disabled {
+		cursor: not-allowed;
+	}
 }
 
 .content {
@@ -189,13 +194,20 @@ button.select {
 
 .mainRow {
 	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	align-items: baseline;
+	gap: var(--spacing--3xs);
 	min-width: 0;
 }
 
-.label {
+.label,
+.separator {
 	flex-shrink: 0;
+}
+
+.separator {
+	color: var(--text-color--subtler);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--lg);
 }
 
 .detail {
@@ -228,28 +240,5 @@ button.select {
 	display: flex;
 	align-items: center;
 	flex-shrink: 0;
-}
-
-// Same size as N8nStatusDot so the rail gap stays aligned.
-.status {
-	box-sizing: border-box;
-	flex: 0 0 auto;
-	width: var(--spacing--2xs);
-	height: var(--spacing--2xs);
-	border-radius: var(--radius--full);
-}
-
-.published {
-	background-color: var(--color--success);
-}
-
-.latest {
-	background-color: var(--color--warning);
-}
-
-.default {
-	background-color: transparent;
-	border: var(--border);
-	border-color: var(--color--text--tint-2);
 }
 </style>

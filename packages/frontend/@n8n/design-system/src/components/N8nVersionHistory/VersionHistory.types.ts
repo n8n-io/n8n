@@ -1,12 +1,6 @@
 import type { ActionToggleItem } from '../N8nActionToggle/ActionToggle.types';
 
-/** Dot on the timeline. `default` is a neutral ring. */
 export type VersionHistoryStatus = 'published' | 'latest' | 'default';
-
-/**
- * One version row.
- * The caller formats the time and chooses the actions.
- */
 export interface VersionHistoryItem {
 	/** Stable id for the version. Unique across versions and groups in the list. */
 	id: string;
@@ -25,21 +19,19 @@ export interface VersionHistoryItem {
 	/** Accessible name for the status dot. */
 	statusLabel?: string;
 	/**
-	 * Menu items for the row.
+	 * Menu items for the row. Each item is an `ActionToggleItem`, so `icon` draws an icon before the label.
 	 * The row hides the menu when this list is empty.
 	 * The compare control stays. Use the `actions` slot to replace both controls.
 	 */
 	actions?: Array<ActionToggleItem<string>>;
+	/** The user cannot select this row. Compare and the menu stay available. */
+	disabled?: boolean;
 	/** Disable the compare control for this row. */
 	compareDisabled?: boolean;
 	/** Disable the menu for this row. */
 	actionsDisabled?: boolean;
 }
 
-/**
- * Versions hidden behind a toggle.
- * The group starts collapsed. The caller writes the label, such as "4 versions".
- */
 export interface VersionHistoryGroup {
 	type: 'group';
 	/** Stable id for the toggle. Unique across versions and groups in the list. */
@@ -74,7 +66,11 @@ export interface VersionHistoryTogglePayload {
 export interface VersionHistoryProps {
 	/** Versions, newest first. A group hides its versions until the user opens it. */
 	items: VersionHistoryEntry[];
-	/** Id of the open version. A group that contains this id starts open. */
+	/**
+	 * Id of the open version.
+	 * Pass it to control the selection. Omit it and the list keeps the row the user selects.
+	 * A group that contains the open version starts open.
+	 */
 	selectedId?: string;
 	/** Accessible name for the list. */
 	label?: string;

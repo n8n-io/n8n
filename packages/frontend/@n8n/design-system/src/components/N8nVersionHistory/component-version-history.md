@@ -4,7 +4,7 @@ A scrollable list of versions. A line connects the mark on each row, like a time
 
 - **Component Name:** N8nVersionHistory
 - **Figma Component:** TBD
-- **Current Implementation:** Custom component. Rows use `N8nRecycleScroller`. The timeline mark is local until `N8nStatusDot` can draw a neutral outline.
+- **Current Implementation:** Custom component. Rows use `N8nRecycleScroller`. The timeline mark is `VersionHistoryStatusDot`, so a later status dot can replace that file.
 
 
 ## Public API Definition
@@ -12,7 +12,7 @@ A scrollable list of versions. A line connects the mark on each row, like a time
 **Props**
 
 - `items: VersionHistoryEntry[]` - Versions, newest first. A group hides its versions until the user opens the toggle.
-- `selectedId?: string` - Id of the open version. A group that contains this id starts open.
+- `selectedId?: string` - Id of the open version. Pass it to control the selection. Omit it and the list keeps the row the user selects. A group that contains the open version starts open.
 - `label?: string` - Accessible name for the list. Defaults to "Versions".
 - `loading?: boolean` - Shows skeleton rows. The list and the empty state stay hidden. | `default: false`
 - `loadingLabel?: string` - Accessible name for the loading state. Defaults to "Loading versions".
@@ -47,6 +47,7 @@ interface VersionHistoryItem {
   status?: VersionHistoryStatus;
   statusLabel?: string;
   actions?: Array<ActionToggleItem<string>>;
+  disabled?: boolean;
   compareDisabled?: boolean;
   actionsDisabled?: boolean;
 }
@@ -79,11 +80,15 @@ interface VersionHistoryTogglePayload {
 - A line runs through the rail and meets each mark. The first mark has no line above it. The last mark has no line below it.
 - `published` is a filled success dot. `latest` is a filled warning dot. `default`, and a missing status, is a neutral ring.
 - Each version row has a compare control and a menu. The menu is hidden when `actions` is empty. The compare control stays.
+- Each action is an `ActionToggleItem`. Set `icon` to an icon name to show an icon before the label.
+- `disabled` stops selection for that row. Compare and the menu stay available.
 - `compareDisabled` disables the compare control. `actionsDisabled` disables the menu.
+- A click on the row emits `select`. A click on compare emits `compare`. A menu choice emits `action`.
 - A click on compare or the menu does not select the version.
-- The `actions` slot replaces both controls for every version row.
+- The `actions` slot replaces the compare control and the menu for every version row.
+- Pass `selectedId` when the parent owns the open version. Omit it when the list should keep the row the user selects.
 - A group starts collapsed. The toggle shows the caller's label, such as "4 versions". Activating the toggle shows or hides that group's versions.
-- The group that contains `selectedId` starts open. The user can close it. It opens again when the selection moves into it.
+- The group that contains the open version starts open. The user can close it. It opens again when the selection moves into it.
 - Every version id and group id in the list must be unique.
 - The caller formats the time and writes the group label.
 - `loading` replaces the list with three skeleton rows.
@@ -124,7 +129,7 @@ const items: VersionHistoryEntry[] = [
     createdAtIso: '2026-10-28T09:14:00',
     status: 'latest',
     statusLabel: 'Latest version',
-    actions: [{ id: 'restore', label: 'Restore' }],
+    actions: [{ id: 'restore', label: 'Restore', icon: 'undo-2' }],
   },
   {
     type: 'group',

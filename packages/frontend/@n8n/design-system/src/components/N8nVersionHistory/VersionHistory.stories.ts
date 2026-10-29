@@ -1,9 +1,12 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
-import { ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import N8nButton from '../N8nButton';
 import N8nIcon from '../N8nIcon/Icon.vue';
+import N8nIconButton from '../N8nIconButton/IconButton.vue';
+import N8nInput from '../N8nInput/Input.vue';
+import N8nTabs from '../N8nTabs/Tabs.vue';
 import N8nText from '../N8nText/Text.vue';
 import {
 	isVersionHistoryGroup,
@@ -13,8 +16,8 @@ import {
 import N8nVersionHistory from './VersionHistory.vue';
 
 const rowActions = [
-	{ id: 'restore', label: 'Restore' },
-	{ id: 'publish', label: 'Publish' },
+	{ id: 'restore', label: 'Restore', icon: 'undo-2' as const },
+	{ id: 'publish', label: 'Publish', icon: 'circle-check' as const },
 ];
 
 const hiddenVersions: VersionHistoryItem[] = [
@@ -75,8 +78,8 @@ const versions: VersionHistoryEntry[] = [
 		status: 'published',
 		statusLabel: 'Published version',
 		actions: [
-			{ id: 'restore', label: 'Restore' },
-			{ id: 'unpublish', label: 'Unpublish' },
+			{ id: 'restore', label: 'Restore', icon: 'undo-2' as const },
+			{ id: 'unpublish', label: 'Unpublish', icon: 'eye-off' as const },
 		],
 	},
 ];
@@ -156,6 +159,58 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const frameStyle = ['width: 20rem', 'height: 28rem', 'max-width: 100%'].join('; ');
+
+const panelStyle = [
+	'display: flex',
+	'flex-direction: column',
+	'width: 22rem',
+	'height: 32rem',
+	'max-width: 100%',
+	'overflow: hidden',
+	'border: var(--border)',
+	'border-radius: var(--radius--lg)',
+	'background-color: var(--background--surface)',
+].join('; ');
+
+const panelHeaderStyle = [
+	'display: flex',
+	'align-items: center',
+	'justify-content: space-between',
+	'gap: var(--spacing--2xs)',
+	'flex-shrink: 0',
+	'padding: var(--spacing--xs)',
+	'border-bottom: var(--border)',
+].join('; ');
+
+const panelBodyStyle = ['display: flex', 'flex-direction: column', 'flex: 1', 'min-height: 0'].join(
+	'; ',
+);
+
+const LOAD_DELAY_MS = 2000;
+
+function filterVersions(entries: VersionHistoryEntry[], query: string): VersionHistoryEntry[] {
+	const needle = query.trim().toLowerCase();
+	if (!needle) return entries;
+
+	function matches(item: VersionHistoryItem) {
+		return [item.label, item.detail, item.author].some((part) =>
+			part?.toLowerCase().includes(needle),
+		);
+	}
+
+	const filtered: VersionHistoryEntry[] = [];
+	for (const entry of entries) {
+		if (isVersionHistoryGroup(entry)) {
+			const items = entry.items.filter(matches);
+			if (items.length === 0) continue;
+			const label = items.length === 1 ? '1 version' : `${items.length} versions`;
+			filtered.push({ ...entry, label, items });
+			continue;
+		}
+		if (matches(entry)) filtered.push(entry);
+	}
+	return filtered;
+}
 
 const emptyIconStyle = [
 	'display: flex',
@@ -237,6 +292,13 @@ export const Empty: Story = {
 };
 
 export const CustomActions: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story: 'The actions slot replaces the compare control and the menu on every row.',
+			},
+		},
+	},
 	render: (args) => ({
 		components: { N8nVersionHistory, N8nButton },
 		setup() {
@@ -272,6 +334,7 @@ const disabledVersions: VersionHistoryEntry[] = versions.map((entry) => {
 			...entry,
 			items: entry.items.map((item) => ({
 				...item,
+				disabled: true,
 				compareDisabled: true,
 				actionsDisabled: true,
 			})),
@@ -280,12 +343,21 @@ const disabledVersions: VersionHistoryEntry[] = versions.map((entry) => {
 
 	return {
 		...entry,
+		disabled: true,
 		compareDisabled: true,
 		actionsDisabled: true,
 	};
 });
 
 export const Disabled: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Each version sets disabled, so the row cannot be selected. Compare and the menu are disabled on their own.',
+			},
+		},
+	},
 	...Default,
 	args: {
 		items: disabledVersions,
@@ -325,19 +397,154 @@ export const ManyVersions: Story = {
 };
 
 export const Loading: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Skeleton rows show for two seconds, then the list appears. Reset starts the wait again.',
+			},
+		},
+	},
 	render: (args) => ({
-		components: { N8nVersionHistory },
+		components: { N8nVersionHistory, N8nButton },
 		setup() {
-			return { args };
+			const loading = ref(true);
+			let timer: ReturnType<typeof setTimeout> | undefined;
+
+			function reset() {
+				loading.value = true;
+				if (timer) clearTimeout(timer);
+				timer = setTimeout(() => {
+					loading.value = false;
+				}, LOAD_DELAY_MS);
+			}
+
+			onMounted(reset);
+			onUnmounted(() => {
+				if (timer) clearTimeout(timer);
+			});
+
+			return { args, loading, reset, ...useHistory() };
 		},
 		template: `
-			<div style="${frameStyle}">
-				<N8nVersionHistory v-bind="args" loading />
+			<div>
+				<div style="margin-bottom: var(--spacing--2xs)">
+					<N8nButton size="small" variant="outline" label="Reset" @click="reset" />
+				</div>
+				<div style="${frameStyle}">
+					<N8nVersionHistory
+						v-bind="args"
+						:loading="loading"
+						:selected-id="selectedId"
+						@select="onSelect"
+					/>
+				</div>
 			</div>
 		`,
 	}),
 	args: {
-		items: [],
-		loading: true,
+		items: versions,
+	},
+};
+
+export const InPanel: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The list fills a panel. The header switches between versions and a timeline, as the history demo does.',
+			},
+		},
+	},
+	render: (args) => ({
+		components: { N8nVersionHistory, N8nTabs, N8nIconButton, N8nText },
+		setup() {
+			const tab = ref('versions');
+			const tabOptions = [
+				{ label: 'Versions', value: 'versions' },
+				{ label: 'Timeline', value: 'timeline' },
+			];
+			return { args, tab, tabOptions, onClose: action('close'), ...useHistory() };
+		},
+		template: `
+			<div style="${panelStyle}">
+				<header style="${panelHeaderStyle}">
+					<N8nTabs v-model="tab" :options="tabOptions" size="small" />
+					<N8nIconButton
+						icon="x"
+						variant="ghost"
+						size="medium"
+						aria-label="Close"
+						@click="onClose"
+					/>
+				</header>
+				<div style="${panelBodyStyle}">
+					<N8nVersionHistory
+						v-if="tab === 'versions'"
+						v-bind="args"
+						:selected-id="selectedId"
+						@select="onSelect"
+						@compare="onCompare"
+						@action="onAction"
+						@toggle="onToggle"
+					/>
+					<div v-else style="padding: var(--spacing--sm)">
+						<N8nText size="small" color="text-light">Publish events appear here.</N8nText>
+					</div>
+				</div>
+			</div>
+		`,
+	}),
+	args: {
+		items: versions,
+	},
+};
+
+export const Search: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story: 'The parent filters the list. A group stays when one of its versions matches.',
+			},
+		},
+	},
+	render: (args) => ({
+		components: { N8nVersionHistory, N8nInput, N8nIcon, N8nText },
+		setup() {
+			const query = ref('');
+			const visibleItems = computed(() => filterVersions(versions, query.value));
+			return { args, query, visibleItems, ...useHistory() };
+		},
+		template: `
+			<div style="${panelStyle}">
+				<header style="${panelHeaderStyle}">
+					<N8nInput v-model="query" size="small" placeholder="Search versions" clearable>
+						<template #prefix>
+							<N8nIcon icon="search" size="small" />
+						</template>
+					</N8nInput>
+				</header>
+				<div style="${panelBodyStyle}">
+					<N8nVersionHistory
+						v-bind="args"
+						:items="visibleItems"
+						:selected-id="selectedId"
+						@select="onSelect"
+						@compare="onCompare"
+						@action="onAction"
+						@toggle="onToggle"
+					>
+						<template #empty>
+							<N8nText size="small" color="text-light" align="center">
+								No versions match this search.
+							</N8nText>
+						</template>
+					</N8nVersionHistory>
+				</div>
+			</div>
+		`,
+	}),
+	args: {
+		items: versions,
 	},
 };

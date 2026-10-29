@@ -47,15 +47,20 @@ const SKELETON_ROWS = [
 
 // The scroller measures each row and replaces this estimate.
 // The estimate covers the gap between marks and two lines of text.
-const ESTIMATED_ROW_HEIGHT = 72;
+const ESTIMATED_ROW_HEIGHT = 60;
 
 const { t } = useI18n();
 const expandedIds = ref<Set<string>>(new Set());
+// Used only when the parent omits selectedId.
+const uncontrolledSelectedId = ref<string | undefined>();
 
 const listLabel = computed(() => props.label ?? t('versionHistory.label'));
 const loadingLabel = computed(() => props.loadingLabel ?? t('versionHistory.loading'));
+const activeId = computed(() =>
+	props.selectedId !== undefined ? props.selectedId : uncontrolledSelectedId.value,
+);
 
-const selectedGroupId = computed(() => groupIdForVersion(props.items, props.selectedId));
+const selectedGroupId = computed(() => groupIdForVersion(props.items, activeId.value));
 
 // Open the group that contains the selected version. Closing it stays closed
 // until the selection moves.
@@ -71,6 +76,13 @@ watch(
 );
 
 const rows = computed(() => buildHistoryRows(props.items, expandedIds.value));
+
+function onSelect(id: string) {
+	if (props.selectedId === undefined) {
+		uncontrolledSelectedId.value = id;
+	}
+	emit('select', id);
+}
 
 function onAction(id: string, action: string) {
 	emit('action', { id, action });
@@ -146,10 +158,10 @@ function onToggle(id: string) {
 					<VersionHistoryItem
 						v-if="item.kind === 'version'"
 						:item="item.item"
-						:selected="item.item.id === selectedId"
+						:selected="item.item.id === activeId"
 						:connect-above="!item.isFirst"
 						:connect-below="!item.isLast"
-						@select="emit('select', $event)"
+						@select="onSelect"
 						@compare="emit('compare', $event)"
 						@action="onAction(item.item.id, $event)"
 					>
@@ -196,21 +208,24 @@ function onToggle(id: string) {
 	--version-history--rail-margin: var(--spacing--4xs);
 	--version-history--rail-size: var(--spacing--lg);
 
+	// The gap between rows. The timeline line in .gap uses the same length.
+	--version-history--row-gap: var(--spacing--xs);
+
 	position: relative;
 	display: block;
 	box-sizing: border-box;
 	width: 100%;
-	padding-top: var(--spacing--lg);
+	padding-top: var(--version-history--row-gap);
 	padding-inline: var(--spacing--2xs);
 	list-style: none;
 }
 
 .first {
-	padding-top: var(--spacing--sm);
+	padding-top: var(--spacing--2xs);
 }
 
 .last {
-	padding-bottom: var(--spacing--sm);
+	padding-bottom: var(--spacing--2xs);
 }
 
 .gap {
@@ -221,7 +236,7 @@ function onToggle(id: string) {
 			(var(--version-history--rail-size) / 2)
 	);
 	width: var(--border-width);
-	height: var(--spacing--lg);
+	height: var(--version-history--row-gap);
 	transform: translateX(-50%);
 	background-color: var(--color--foreground);
 	pointer-events: none;
