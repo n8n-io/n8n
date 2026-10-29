@@ -1,6 +1,7 @@
 import { CORE_WORKSPACE_TOOL_NAMES, type Workspace } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { Container, Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
@@ -19,6 +20,9 @@ import { resolveInboundMimeType } from './utils/inbound-attachments';
 
 /** Directory in the workspace root where an agent puts the files that it makes. */
 export const SANDBOX_OUTPUTS_DIR = 'outputs';
+
+/** Directory in the workspace root where `import_files` copies conversation files. */
+export const SANDBOX_INPUTS_DIR = 'inputs';
 
 export interface SandboxOutputFile {
 	/** Path relative to `outputs/`. */
@@ -76,8 +80,8 @@ export function usedWorkspace(timeline: TimelineEvent[]): boolean {
 }
 
 /**
- * Normalise a path relative to `outputs/`. Return undefined for a path that
- * leaves `outputs/`.
+ * Normalise a path relative to a workspace directory. Return undefined for a
+ * path that leaves the directory.
  */
 export function normalizeOutputPath(path: string): string | undefined {
 	const normalized = posix.normalize(path);
@@ -105,7 +109,47 @@ export class AgentSandboxFilesService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly attachmentService: AgentChatAttachmentService,
+		private readonly agentsConfig: AgentsConfig,
 	) {}
+
+	/**
+	 * Copy conversation files into `inputs/` of the workspace. Each key is a
+	 * path relative to `inputs/`, each value a fileId that the thread can read.
+	 * @throws {UserError} when a file is not readable, a path leaves `inputs/`,
+	 * or the files are larger than the import cap together.
+	 */
+	async importFiles(
+		workspace: Workspace,
+		files: Record<string, string>,
+		scope: { projectId: string; threadId: string },
+	): Promise<Array<{ path: string; fileId: string; sizeBytes: number }>> {
+		const filesystem = workspace.filesystem;
+		if (!filesystem) throw new UserError('This run has no workspace filesystem');
+		const entries = await Promise.all(
+			Object.entries(files).map(async ([path, fileId]) => {
+				const relativePath = normalizeOutputPath(path);
+				if (!relativePath) throw new UserError(`"${path}" is not a path in ${SANDBOX_INPUTS_DIR}/`);
+				const file = await this.attachmentService.getReadable(fileId, scope);
+				if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
+				return { path: posix.join(SANDBOX_INPUTS_DIR, relativePath), file };
+			}),
+		);
+		const maxMb = this.agentsConfig.maxImportMb;
+		const totalBytes = entries.reduce((sum, { file }) => sum + file.fileSizeBytes, 0);
+		if (totalBytes > maxMb * 1024 * 1024) {
+			throw new UserError(`One import copies up to ${maxMb} MB. Import fewer files at a time`);
+		}
+		const imported: Array<{ path: string; fileId: string; sizeBytes: number }> = [];
+		for (const { path, file } of entries) {
+			// ponytail: loads each file into memory, up to the import cap. Stream it if the cap grows.
+			await filesystem.writeFile(path, await this.attachmentService.getBuffer(file), {
+				recursive: true,
+				overwrite: true,
+			});
+			imported.push({ path, fileId: file.id, sizeBytes: file.fileSizeBytes });
+		}
+		return imported;
+	}
 
 	/** Register the workspace of a running thread. Call {@link untrackRun} when the run ends. */
 	trackRun(threadId: string, run: ActiveRun): void {
