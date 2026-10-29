@@ -7,5 +7,5 @@ export class ProjectExecutionLimit extends WithTimestamps {
 	projectId: string;
 
 	@Column({ type: 'int' })
-	pauseAfter: number;
+	maxExecutions: number;
 }

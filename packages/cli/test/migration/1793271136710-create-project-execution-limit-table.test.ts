@@ -45,13 +45,13 @@ describe('CreateProjectExecutionLimitTable migration', () => {
 	async function insertLimit(
 		context: TestMigrationContext,
 		projectId: string,
-		pauseAfter: number | null,
+		maxExecutions: number | null,
 	) {
 		const now = new Date();
 		await context.runQuery(
-			`INSERT INTO ${context.escape.tableName(TABLE)} ("projectId", "pauseAfter", "createdAt", "updatedAt")
-			 VALUES (:projectId, :pauseAfter, :createdAt, :updatedAt)`,
-			{ projectId, pauseAfter, createdAt: now, updatedAt: now },
+			`INSERT INTO ${context.escape.tableName(TABLE)} ("projectId", "maxExecutions", "createdAt", "updatedAt")
+			 VALUES (:projectId, :maxExecutions, :createdAt, :updatedAt)`,
+			{ projectId, maxExecutions, createdAt: now, updatedAt: now },
 		);
 	}
 
@@ -74,13 +74,13 @@ describe('CreateProjectExecutionLimitTable migration', () => {
 	});
 
 	it.each([
-		['a missing pause value', null],
-		['a zero pause value', 0],
-	])('rejects %s', async (_, pauseAfter) => {
+		['a missing max executions value', null],
+		['a zero max executions value', 0],
+	])('rejects %s', async (_, maxExecutions) => {
 		const context = createTestMigrationContext(dataSource);
 		const projectId = await insertProject(context);
 
-		await expect(insertLimit(context, projectId, pauseAfter)).rejects.toThrow();
+		await expect(insertLimit(context, projectId, maxExecutions)).rejects.toThrow();
 		await context.queryRunner.release();
 	});
 

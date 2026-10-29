@@ -225,7 +225,7 @@ erDiagram
 }
 "project_execution_limit" {
   datetime_3_ createdAt
-  INTEGER pauseAfter
+  INTEGER maxExecutions
   varchar_36_ projectId PK
   datetime_3_ updatedAt
 }

@@ -1609,7 +1609,7 @@ erDiagram
 }
 "public.project_execution_limit" {
   timestamp_3__with_time_zone createdAt
-  integer pauseAfter
+  integer maxExecutions
   varchar_36_ projectId FK
   timestamp_3__with_time_zone updatedAt
 }
