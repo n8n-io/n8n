@@ -1,8 +1,7 @@
 import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionsConfig } from '@n8n/config';
-import type { ExecutionRepository, IExecutionResponse, Project } from '@n8n/db';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { IExecutionResponse, Project } from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -31,7 +30,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	const logger = mockLogger();
 	vi.mocked(logger.scoped).mockReturnValue(logger);
 	const errorReporter = mock<ErrorReporter>();
-	const executionRepository = mock<ExecutionRepository>();
 	const executionService = mock<ExecutionService>();
 	const executionPersistence = mock<ExecutionPersistence>();
 	const executionCrashService = mock<ExecutionCrashService>();
@@ -46,7 +44,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			logger,
 			errorReporter,
 			mock<ExecutionsConfig>({ mode }),
-			executionRepository,
 			executionService,
 			executionPersistence,
 			executionCrashService,
@@ -72,10 +69,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
 		workflowRunner.run.mockResolvedValue('1');
 		resumeAttemptService.claim.mockResolvedValue({ granted: true, attempt: 1 });
-	});
-
-	afterEach(() => {
-		vi.useRealTimers();
 	});
 
 	test('refuses to touch anything in queue mode', async () => {
@@ -106,10 +99,9 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		]);
 	});
 
-	// The data of every enqueued execution used to be read in one query before any of
-	// them started, so a crash during that read repeated on every boot, and the data of
-	// executions still waiting for capacity sat in memory.
-	test('claims an attempt, then loads and admits one execution at a time', async () => {
+	// The data of every enqueued execution used to be read in one query before any attempt
+	// could be counted, so a crash during that read repeated on every boot.
+	test('claims a resume attempt before it loads each execution', async () => {
 		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 
 		await createService().recoverEnqueuedExecutions();
@@ -121,74 +113,8 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		const [firstClaim, secondClaim] = resumeAttemptService.claim.mock.invocationCallOrder;
 		const [firstRead, secondRead] =
 			executionPersistence.findSingleExecution.mock.invocationCallOrder;
-		const [firstRun] = workflowRunner.run.mock.invocationCallOrder;
 		expect(firstClaim).toBeLessThan(firstRead);
-		expect(firstRun).toBeLessThan(secondClaim);
 		expect(secondClaim).toBeLessThan(secondRead);
-	});
-
-	// A row cancelled while it waits for capacity is removed from the concurrency queue
-	// without settling its admission, so the recovery must not wait on it forever.
-	test('loads the next row once a row that is never admitted has left `new`', async () => {
-		vi.useFakeTimers();
-		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
-		workflowRunner.run.mockReturnValueOnce(new Promise<string>(() => {}));
-		executionRepository.findStatusesByIds.mockResolvedValue([{ id: '1', status: 'canceled' }]);
-
-		const recovery = createService().recoverEnqueuedExecutions();
-		await vi.advanceTimersByTimeAsync(59_000);
-		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-
-		await vi.advanceTimersByTimeAsync(1_000);
-		await recovery;
-
-		expect(executionRepository.findStatusesByIds).toHaveBeenCalledWith(['1']);
-		expect(workflowRunner.run.mock.calls.map((call) => call[3])).toEqual([
-			{ executionId: '1', expectedStatus: 'new', storedAt: 'fs' },
-			{ executionId: '2', expectedStatus: 'new', storedAt: 'fs' },
-		]);
-	});
-
-	// The data of a row loaded while the previous one still waits for capacity would sit in
-	// memory, so a row that is still `new` keeps the next row from loading.
-	test('keeps waiting while the row is still queued for capacity', async () => {
-		vi.useFakeTimers();
-		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
-		const admission = createDeferredPromise<string>();
-		workflowRunner.run.mockReturnValueOnce(admission.promise);
-		executionRepository.findStatusesByIds.mockResolvedValue([{ id: '1', status: 'new' }]);
-
-		const recovery = createService().recoverEnqueuedExecutions();
-		await vi.advanceTimersByTimeAsync(120_000);
-		expect(executionRepository.findStatusesByIds).toHaveBeenCalledTimes(2);
-		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-
-		admission.resolve('1');
-		await recovery;
-
-		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
-	});
-
-	// The status read is only a poll. A transient database error there used to reach the
-	// crash path of the loop and crash a healthy row whose admission was still pending.
-	test('keeps waiting when the status read fails', async () => {
-		vi.useFakeTimers();
-		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
-		const admission = createDeferredPromise<string>();
-		workflowRunner.run.mockReturnValueOnce(admission.promise);
-		executionRepository.findStatusesByIds.mockRejectedValueOnce(new Error('database is locked'));
-
-		const recovery = createService().recoverEnqueuedExecutions();
-		await vi.advanceTimersByTimeAsync(60_000);
-
-		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
-		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-
-		admission.resolve('1');
-		await recovery;
-
-		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
-		expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 	});
 
 	test('skips an execution whose resume attempts are used up and keeps going', async () => {
@@ -227,6 +153,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		workflowRunner.run.mockRejectedValueOnce(new Error('cannot start'));
 
 		await createService().recoverEnqueuedExecutions();
+		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
 		expect(executionCrashService.markAsCrashed).toHaveBeenCalledExactlyOnceWith(
 			'1',
@@ -241,6 +168,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		workflowRunner.run.mockRejectedValueOnce(new ExecutionAlreadyResumingError('1'));
 
 		await createService().recoverEnqueuedExecutions();
+		await new Promise(setImmediate); // `run` is not awaited, let the rejection settle
 
 		expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 		expect(errorReporter.error).not.toHaveBeenCalled();
@@ -282,7 +210,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 	});
 
 	// A read that fails for a reason that can pass must not take the execution out of the
-	// queue for good, and must not count as a load that killed the process.
+	// queue for good, and must not count as a resume that killed the process.
 	test('leaves an execution `new` and gives its attempt back when the load fails', async () => {
 		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 		executionPersistence.findSingleExecution.mockRejectedValueOnce(new Error('database is locked'));
@@ -297,23 +225,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			false,
 			{ executionId: '2', expectedStatus: 'new', storedAt: 'fs' },
 		);
-	});
-
-	// Nothing scans for `new` rows after startup, so one failed query would leave them
-	// queued until the next restart.
-	test('retries the query for enqueued executions', async () => {
-		vi.useFakeTimers();
-		mockEnqueued([enqueuedExecution('1')]);
-		executionService.findEnqueuedExecutionIds.mockRejectedValueOnce(
-			new Error('database is locked'),
-		);
-
-		const recovery = createService().recoverEnqueuedExecutions();
-		await vi.advanceTimersByTimeAsync(1_000);
-		await recovery;
-
-		expect(executionService.findEnqueuedExecutionIds).toHaveBeenCalledTimes(2);
-		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 	});
 
 	test('does not crash anything when every execution is readable', async () => {

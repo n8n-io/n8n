@@ -59,7 +59,6 @@ mockInstance(DurableScheduler);
 // static one - otherwise the mock would silently not apply and the real recovery
 // would query the test DB.
 const enqueuedExecutionRecovery = mockInstance(EnqueuedExecutionRecoveryService);
-enqueuedExecutionRecovery.recoverEnqueuedExecutions.mockResolvedValue();
 
 beforeAll(async () => {
 	await testDb.init();

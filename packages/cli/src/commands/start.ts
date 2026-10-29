@@ -454,13 +454,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			const { EnqueuedExecutionRecoveryService } = await import(
 				'@/executions/enqueued-execution-recovery.service.js'
 			);
-			// Not awaited: the recovery may wait for concurrency capacity before each
-			// execution, and startup must not wait for that.
-			void Container.get(EnqueuedExecutionRecoveryService)
-				.recoverEnqueuedExecutions()
-				.catch((error) => {
-					this.errorReporter.error(error, { shouldBeLogged: true });
-				});
+			await Container.get(EnqueuedExecutionRecoveryService).recoverEnqueuedExecutions();
 		}
 
 		// Start to get active workflows and run their triggers

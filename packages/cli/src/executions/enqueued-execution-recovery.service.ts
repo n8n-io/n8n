@@ -1,12 +1,9 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ExecutionsConfig } from '@n8n/config';
-import { Time } from '@n8n/constants';
 import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { sleep } from '@n8n/utils/sleep';
 import { ErrorReporter } from 'n8n-core';
 import type { IWorkflowExecutionDataProcess } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
@@ -22,12 +19,6 @@ import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowRunner } from '@/workflow-runner';
 
-/** How often the recovery checks that an execution not yet admitted is still `new`. */
-const ADMISSION_CHECK_INTERVAL_MS = 60 * Time.seconds.toMilliseconds;
-
-const ID_QUERY_ATTEMPTS = 3;
-const ID_QUERY_RETRY_DELAY_MS = 1 * Time.seconds.toMilliseconds;
-
 /**
  * Recovers executions left in the `new` (enqueued) status by a shutdown, so they do
  * not sit at "Queued" forever.
@@ -38,7 +29,6 @@ export class EnqueuedExecutionRecoveryService {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly executionsConfig: ExecutionsConfig,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly executionService: ExecutionService,
 		private readonly executionPersistence: ExecutionPersistence,
 		private readonly executionCrashService: ExecutionCrashService,
@@ -53,8 +43,9 @@ export class EnqueuedExecutionRecoveryService {
 
 	/**
 	 * During startup, we may find executions that had been enqueued at the time of
-	 * shutdown. If so, resume them one at a time, oldest first: the next one is loaded only
-	 * once the previous one is admitted, so queued run data does not pile up in memory.
+	 * shutdown. If so, start running any such executions concurrently up to the
+	 * concurrency limit, and enqueue any remaining ones until we have spare
+	 * concurrency capacity again.
 	 *
 	 * Regular mode only: in queue mode enqueued executions are picked up by workers,
 	 * and dangling ones are handled by `ScalingService.recoverFromQueue`.
@@ -65,7 +56,7 @@ export class EnqueuedExecutionRecoveryService {
 			'Enqueued execution recovery must not run in queue mode',
 		);
 
-		const executionIds = await this.findEnqueuedExecutionIds();
+		const executionIds = await this.executionService.findEnqueuedExecutionIds();
 
 		if (executionIds.length === 0) return;
 
@@ -76,22 +67,6 @@ export class EnqueuedExecutionRecoveryService {
 				await this.recoverEnqueuedExecution(executionId);
 			} catch (error) {
 				await this.crashUnstartableExecution(executionId, error);
-			}
-		}
-	}
-
-	/** Nothing scans for `new` rows after startup, so the query gets a few attempts. */
-	private async findEnqueuedExecutionIds() {
-		for (let attempt = 1; ; attempt++) {
-			try {
-				return await this.executionService.findEnqueuedExecutionIds();
-			} catch (error) {
-				if (attempt >= ID_QUERY_ATTEMPTS) throw error;
-				this.logger.warn('Failed to query enqueued executions, retrying', {
-					attempt,
-					error: ensureError(error).message,
-				});
-				await sleep(ID_QUERY_RETRY_DELAY_MS * attempt);
 			}
 		}
 	}
@@ -118,56 +93,14 @@ export class EnqueuedExecutionRecoveryService {
 
 		this.eventService.emit('execution-started-during-bootup', { executionId });
 
-		// Resolves once the execution is admitted, not once it finishes
-		const admission = this.workflowRunner
+		// do not block - each execution either runs concurrently or is queued
+		void this.workflowRunner
 			.run(data, undefined, false, {
 				executionId,
 				expectedStatus: 'new',
 				storedAt: execution.storedAt,
 			})
 			.catch(async (error) => await this.crashUnstartableExecution(executionId, error));
-
-		await this.waitForAdmission(executionId, admission);
-	}
-
-	/**
-	 * An execution cancelled while it waits for capacity leaves the queue without settling
-	 * its admission. So the wait polls the row and ends once the row has left `new`.
-	 */
-	private async waitForAdmission(executionId: string, admission: Promise<unknown>) {
-		while (!(await this.settlesWithin(admission, ADMISSION_CHECK_INTERVAL_MS))) {
-			if (!(await this.isStillEnqueued(executionId))) return;
-
-			this.logger.debug('Still waiting for the enqueued execution to be admitted', {
-				executionId,
-			});
-		}
-	}
-
-	/** A failed poll must not reach the crash path, so it counts as still enqueued. */
-	private async isStillEnqueued(executionId: string) {
-		try {
-			const [row] = await this.executionRepository.findStatusesByIds([executionId]);
-			return row?.status === 'new';
-		} catch (error) {
-			this.logger.warn('Failed to read the status of an enqueued execution, still waiting', {
-				executionId,
-				error: ensureError(error).message,
-			});
-			return true;
-		}
-	}
-
-	private async settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
-		let timer: NodeJS.Timeout | undefined;
-		const timeout = new Promise<false>((resolve) => {
-			timer = setTimeout(() => resolve(false), ms);
-		});
-		try {
-			return await Promise.race([promise.then(() => true), timeout]);
-		} finally {
-			clearTimeout(timer);
-		}
 	}
 
 	/**
