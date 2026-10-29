@@ -170,6 +170,14 @@ describe('ResumeRequestService.locate', () => {
 		await expect(service.locate(executionId, token)).resolves.toBeNull();
 	});
 
+	it('answers null for a wait on a sub-execution', async () => {
+		const { service } = setup({
+			waiting: [[{ ...accepting('sub'), waitDeclaration: { subExecutionId: 'exec-sub' } }]],
+		});
+
+		await expect(service.locate(executionId, token)).resolves.toBeNull();
+	});
+
 	it('refuses an execution that does not exist', async () => {
 		const { service } = setup({ status: 'missing' });
 
