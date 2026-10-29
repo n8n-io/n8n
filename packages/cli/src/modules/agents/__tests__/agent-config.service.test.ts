@@ -230,7 +230,6 @@ describe('AgentConfigService', () => {
 					...baseConfig,
 					tools: [enabledTool, { ...enabledTool, name: 'Disabled Slack', enabled: false }],
 				},
-				skills: {},
 				tools: {},
 				tasks: new Map(),
 			};
@@ -271,7 +270,6 @@ describe('AgentConfigService', () => {
 						},
 					],
 				},
-				skills: {},
 				tools: {},
 				tasks: new Map(),
 			};

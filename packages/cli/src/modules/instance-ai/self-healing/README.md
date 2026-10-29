@@ -160,6 +160,7 @@ Only the owner of a personal project can manage the configurations of that proje
 This check uses the current `project:personalOwner` relation. Chat users have only the viewer role on their personal project, so they cannot manage its configurations.
 Personal configurations use `includeAllProjectMembers` with no individual reviewers.
 The owner is the only member of a personal project. The shared reviewer rules require current membership and workflow edit access.
+Instance owners and admins do not review, list, or open results of another user's personal project. A saved reviewer row for another user has no effect there.
 This exception applies only to self-healing configurations. It does not grant `project:update`.
 Personal projects show the configurations on their own Self-healing tab, not in Project Settings.
 The same rollout flag controls settings, investigations, and reviews.
@@ -174,17 +175,21 @@ Enabling a configuration records the user whose access authorizes subsequent inv
 ### Reviewers
 
 Only current members of the configuration's project are reviewers.
-A global role does not make a user outside the project a reviewer.
+In team projects, instance owners and admins are implicit members, as Project Settings shows.
+They do not need a project relation. Other global roles do not make a user a member.
+Personal projects have no implicit members.
 A configuration can select individual members, the project members group, or both.
 The group stores the `includeAllProjectMembers` flag, not a list of users.
-Each check reads current project membership. A user who joins the project joins the group.
-A user who leaves the project stops being a reviewer, also when selected individually.
+Each check reads current project membership and global roles. A user who joins the project, or who
+becomes an instance owner or admin, joins the group. A reviewer who loses one membership source
+stays a member while the other source remains. A user with no explicit or implicit membership
+stops being a reviewer, also when selected individually.
 The individual picker offers enabled members who can edit a project workflow. The access can come
 from a project role, a global role, or a workflow share. Save accepts the same members, so a
 selected reviewer stays valid after a role change while a share still gives edit access.
 Existing permissions still apply. A reviewer reviews a result only with edit access to its
 workflow, from a project role, a global role, or a workflow share.
-Admins outside the project can manage and enable a configuration without being a reviewer.
+Admins can manage and enable a team configuration without being selected as a reviewer.
 The configuration must have at least one enabled reviewer with edit access to a covered workflow.
 Save and enable reject the configuration otherwise. When an access check finds no
 such reviewer, the configuration pauses.

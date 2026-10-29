@@ -30,6 +30,7 @@ const PUBLISHING_POLICIES: Record<
 	[WorkflowPublishingPolicy.PublishAll]: () => 'publish',
 	[WorkflowPublishingPolicy.UnpublishAll]: ({ status, currentlyPublished }) =>
 		status === 'updated' && currentlyPublished ? 'unpublish' : 'noop',
+	[WorkflowPublishingPolicy.PreserveTargetState]: () => 'noop',
 };
 
 export function decideWorkflowPublishingAction(

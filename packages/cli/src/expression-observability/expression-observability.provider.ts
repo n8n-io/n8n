@@ -10,22 +10,18 @@ import type {
 	TracesAPI,
 } from '@n8n/expression-runtime';
 import { EXPRESSION_METRICS, NoOpProvider } from '@n8n/expression-runtime';
-import { SpanStatusCode } from '@opentelemetry/api';
+import { SpanStatusCode, trace } from '@opentelemetry/api';
 import { UnexpectedError } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 
-import {
-	ATTRIBUTE,
-	DURATION_BUCKETS_SECONDS,
-	TRACER_NAME,
-} from './expression-observability.constants';
+import { ATTRIBUTE, DURATION_BUCKETS_SECONDS } from './expression-observability.constants';
 import {
 	normalizeAttributes,
 	normalizeAttributeValue,
 	toPromName,
 } from './expression-observability.formatters';
 
-import { OtelService } from '@/modules/otel/otel.service';
+import { EXPRESSION_TRACER_NAME } from '@/observability/tracer-names';
 
 type TailSampleDecision = 'drop' | 'keep';
 
@@ -49,7 +45,6 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 		private readonly config: ExpressionEngineConfig,
 		private readonly logger: Logger,
 		globalConfig: GlobalConfig,
-		private readonly otelService: OtelService,
 	) {
 		this.scopedLogger = this.logger.scoped('expression-engine');
 
@@ -167,7 +162,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 					? 'slow'
 					: 'healthy';
 
-		const tracer = this.otelService.getTracer(TRACER_NAME);
+		const tracer = trace.getTracer(EXPRESSION_TRACER_NAME);
 		const errorType = tags?.type && tags.type !== 'none' ? tags.type : undefined;
 		const span = tracer.startSpan('expression.evaluate', {
 			attributes: {
@@ -194,7 +189,7 @@ export class ExpressionObservabilityProvider implements ObservabilityProvider {
 	private startSpan(name: string, attributes?: Record<string, unknown>): Span {
 		if (!this.config.tracesEnabled) return NoOpProvider.traces.startSpan(name, attributes);
 
-		const tracer = this.otelService.getTracer(TRACER_NAME);
+		const tracer = trace.getTracer(EXPRESSION_TRACER_NAME);
 		const otelSpan = tracer.startSpan(name, {
 			attributes: normalizeAttributes(attributes),
 		});

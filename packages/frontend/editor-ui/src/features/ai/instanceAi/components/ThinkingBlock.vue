@@ -164,6 +164,8 @@ const durationSec = computed<number | undefined>(() => {
 
 <style lang="scss" module>
 .thought {
+	--n8n-markdown--base-font-size: var(--font-size--sm);
+
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--xl);
 	color: var(--color--text--tint-1);
