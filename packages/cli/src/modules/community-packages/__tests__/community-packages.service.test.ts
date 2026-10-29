@@ -528,7 +528,7 @@ describe('CommunityPackagesService', () => {
 			).rejects.toThrow('The specified package could not be loaded');
 
 			expect(rename).toHaveBeenNthCalledWith(1, testBlockPackageDir, backupDirectory);
-			expect(rename).toHaveBeenCalledWith(backupDirectory, testBlockPackageDir);
+			expect(rename).toHaveBeenNthCalledWith(3, backupDirectory, testBlockPackageDir);
 		});
 
 		test('should restore the previous package.json dependency version when an update fails', async () => {
@@ -587,7 +587,8 @@ describe('CommunityPackagesService', () => {
 				),
 			).rejects.toThrow('The specified package could not be loaded');
 
-			expect(writeFile).toHaveBeenCalledWith(
+			expect(writeFile).toHaveBeenNthCalledWith(
+				4,
 				path.join(nodesDownloadDir, 'package.json'),
 				JSON.stringify(
 					{

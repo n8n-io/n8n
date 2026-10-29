@@ -16,6 +16,7 @@ import {
 	type PublicInstalledPackage,
 } from 'n8n-workflow';
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { access, constants, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, relative, resolve, sep } from 'node:path';
 import { promisify } from 'node:util';
@@ -327,6 +328,24 @@ export class CommunityPackagesService {
 
 	private getPackageInstallMarkerPath(packageName: string) {
 		return join(this.resolvePackageDirectory(packageName), '.n8n-install-complete');
+	}
+
+	private getPackageInstallAttemptPath(packageName: string) {
+		return join(this.resolvePackageDirectory(packageName), '.n8n-install-attempt');
+	}
+
+	private async ownsPackageInstallAttempt(packageName: string, attemptToken: string) {
+		return (
+			(await readFile(this.getPackageInstallAttemptPath(packageName), 'utf-8').catch(
+				() => null,
+			)) === attemptToken
+		);
+	}
+
+	private async clearPackageInstallAttempt(packageName: string, attemptToken: string) {
+		if (await this.ownsPackageInstallAttempt(packageName, attemptToken)) {
+			await rm(this.getPackageInstallAttemptPath(packageName), { force: true });
+		}
 	}
 
 	private async readPackageInstallMarker(packageName: string): Promise<string | null> {
@@ -814,8 +833,9 @@ export class CommunityPackagesService {
 			}
 
 			if (await this.isPackageInstallationComplete(packageName, packageVersion)) {
-				const loadedVersion =
-					this.loadNodesAndCredentials.loaders[packageName]?.packageJson.version;
+				const loadedVersion = (
+					this.loadNodesAndCredentials.loaders[packageName] as PackageDirectoryLoader | undefined
+				)?.packageJson.version;
 				if (loadedVersion === packageVersion) {
 					this.logger.debug(
 						`Community package ${packageName} already loaded at ${packageVersion}, skipping`,
@@ -850,26 +870,25 @@ export class CommunityPackagesService {
 		const authToken = this.getNpmAuthToken();
 		const previousVersion = (await this.readPackageJson())?.dependencies[packageName];
 		const backupDirectory = await this.backupPackageDirectory(packageName);
+		const attemptToken = randomUUID();
 
 		try {
-			await this.downloadPackage(packageName, packageVersion, authToken);
+			await this.downloadPackage(packageName, packageVersion, authToken, attemptToken);
 			// The command may come from a newer leader in a mixed fleet.
 			await this.assertPackageApiVersionSupported(packageName);
 		} catch (error) {
 			// No reload: the previous package was not unloaded before the download.
 			// Restore the ledger too: downloadPackage updates it before the API guard runs.
-			await this.restorePackageDirectory(packageName, backupDirectory);
-			try {
-				if (previousVersion) {
-					await this.updatePackageJsonDependency(packageName, previousVersion);
-				} else {
-					await this.removePackageJsonDependency(packageName);
-				}
-			} catch (cleanupError) {
-				this.logger.warn('Failed to restore community package ledger after download failure', {
-					error: ensureError(cleanupError),
-					packageName,
-				});
+			if (await this.ownsPackageInstallAttempt(packageName, attemptToken)) {
+				await this.restorePackageFiles(packageName, { backupDirectory, previousVersion });
+			} else {
+				this.logger.warn(
+					'Skipped community package rollback because another install took ownership',
+					{
+						packageName,
+					},
+				);
+				await this.discardBackupDirectory(packageName, backupDirectory);
 			}
 			throw error;
 		}
@@ -880,6 +899,7 @@ export class CommunityPackagesService {
 			await this.reloadPackage(packageName);
 		} finally {
 			await this.discardBackupDirectory(packageName, backupDirectory);
+			await this.clearPackageInstallAttempt(packageName, attemptToken);
 		}
 
 		this.logger.info(`Community package installed: ${packageName}`);
@@ -1084,11 +1104,15 @@ export class CommunityPackagesService {
 		packageName: string,
 		packageVersion: string,
 		authToken?: string,
+		attemptToken?: string,
 	): Promise<string> {
 		const registry = this.getNpmRegistry();
 		const packageDirectory = this.resolvePackageDirectory(packageName);
 
 		await mkdir(packageDirectory, { recursive: true });
+		if (attemptToken) {
+			await writeFile(this.getPackageInstallAttemptPath(packageName), attemptToken, 'utf-8');
+		}
 
 		// TODO: make sure that this works for scoped packages as well
 		// if (packageName.startsWith('@') && packageName.includes('/')) {}

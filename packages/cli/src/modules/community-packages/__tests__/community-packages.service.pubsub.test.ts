@@ -49,6 +49,12 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		PACKAGE_NAME,
 		'.n8n-install-complete',
 	);
+	const installAttemptPath = path.join(
+		nodesDownloadDir,
+		'node_modules',
+		PACKAGE_NAME,
+		'.n8n-install-attempt',
+	);
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
@@ -89,6 +95,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	let installedPackageJson: Record<string, unknown>;
 	let ledgerDependencies: Record<string, string>;
 	let installMarkerVersion: string | undefined;
+	let installAttemptToken: string | undefined;
 
 	const execMock = ((...args: Parameters<typeof execFile>) => {
 		const command = args[0];
@@ -115,10 +122,15 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		installedPackageJson = { name: PACKAGE_NAME, version: PREVIOUS_PACKAGE_VERSION };
 		ledgerDependencies = {};
 		installMarkerVersion = undefined;
+		installAttemptToken = undefined;
 		vi.mocked(readFile).mockImplementation(async (filePath) => {
 			if (filePath === installMarkerPath) {
 				if (!installMarkerVersion) throw new Error('ENOENT');
 				return installMarkerVersion;
+			}
+			if (filePath === installAttemptPath) {
+				if (!installAttemptToken) throw new Error('ENOENT');
+				return installAttemptToken;
 			}
 
 			return JSON.stringify(
@@ -129,7 +141,9 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		});
 		vi.mocked(access).mockResolvedValue(undefined);
 		vi.mocked(rename).mockResolvedValue(undefined);
-		vi.mocked(writeFile).mockResolvedValue(undefined);
+		vi.mocked(writeFile).mockImplementation(async (filePath, content) => {
+			if (filePath === installAttemptPath) installAttemptToken = String(content);
+		});
 		vi.mocked(rm).mockResolvedValue(undefined);
 
 		request.mockResolvedValue({ status: NPM_PACKAGE_STATUS_GOOD });
@@ -559,6 +573,37 @@ describe('CommunityPackagesService pubsub handlers', () => {
 			'utf-8',
 		);
 		expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+	});
+
+	test('should not roll back files or the ledger after another process takes install ownership', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		ledgerDependencies[PACKAGE_NAME] = PREVIOUS_PACKAGE_VERSION;
+		installedPackageJson.n8n = { n8nNodesApiVersion: '99.0' };
+		vi.mocked(executeNpmCommand).mockImplementation(async (args: string[]) => {
+			if (args[0] === 'pack') return TARBALL_NAME;
+			installAttemptToken = 'newer-process-attempt';
+			return 'Done';
+		});
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(rename).not.toHaveBeenCalledWith(
+			expect.stringContaining('.backup-'),
+			expect.stringContaining(path.join('node_modules', PACKAGE_NAME)),
+		);
+		expect(writeFile).not.toHaveBeenCalledWith(
+			packageJsonPath,
+			expect.stringContaining(PREVIOUS_PACKAGE_VERSION),
+			'utf-8',
+		);
+		expect(logger.warn).toHaveBeenCalledWith(
+			'Skipped community package rollback because another install took ownership',
+			{ packageName: PACKAGE_NAME },
+		);
 	});
 
 	test('should preserve a matching package that is already loaded in memory', async () => {
