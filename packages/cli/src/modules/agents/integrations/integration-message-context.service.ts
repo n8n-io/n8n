@@ -8,6 +8,7 @@ import type {
 	IntegrationMessageContext,
 	IntegrationMessageContextStore,
 	SessionBinding,
+	SessionReplyScope,
 } from './integration-tool-types';
 import {
 	isIntegrationMessageContext,
@@ -19,6 +20,9 @@ import { AgentThreadRepository } from '../repositories/agent-thread.repository';
 const MESSAGE_CONTEXT_METADATA_KEY = 'currentMessageContext';
 const CONTINUE_AS_METADATA_KEY = 'continueAs';
 const BOUND_THREADS_METADATA_KEY = 'boundThreads';
+const OUTBOUND_METADATA_KEY = 'outboundMessages';
+const MAX_OUTBOUND_MESSAGES = 5;
+const MAX_OUTBOUND_TEXT_LENGTH = 2000;
 
 @Service()
 export class IntegrationMessageContextService implements IntegrationMessageContextStore {
@@ -82,12 +86,43 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		});
 	}
 
-	async bindSession(derivedThreadId: string, origin: SessionBinding): Promise<void> {
+	async bindSession(
+		derivedThreadId: string,
+		origin: SessionBinding,
+		outboundText?: string,
+	): Promise<void> {
 		if (derivedThreadId === origin.threadId) return;
-		if (await this.resolveSession(derivedThreadId)) return;
+		const existing = await this.resolveSession(derivedThreadId);
+		if (existing) {
+			// Same recipient again: keep the binding, remember what the task sent.
+			if (existing.threadId === origin.threadId && outboundText) {
+				await this.appendOutboundMessage(derivedThreadId, outboundText);
+			}
+			return;
+		}
 
 		await this.appendBoundThread(origin.threadId, derivedThreadId);
 		await this.writeContinueAsIfAbsent(derivedThreadId, origin);
+		if (outboundText) await this.appendOutboundMessage(derivedThreadId, outboundText);
+	}
+
+	async resolveSessionReplyScope(derivedThreadId: string): Promise<SessionReplyScope | null> {
+		const binding = await this.resolveSession(derivedThreadId);
+		if (!binding) return null;
+		const derived = await this.threadRepository.findOneBy({ id: derivedThreadId });
+		const origin = await this.threadRepository.findOneBy({ id: binding.threadId });
+		const bound = this.readStringArray(
+			this.parseMetadata(origin?.metadata)[BOUND_THREADS_METADATA_KEY],
+		);
+		return {
+			binding,
+			// The task messaged more than one recipient, so its memory holds other
+			// recipients' messages.
+			sharedWithOtherRecipients: bound.some((id) => id !== derivedThreadId),
+			outboundMessages: this.readStringArray(
+				this.parseMetadata(derived?.metadata)[OUTBOUND_METADATA_KEY],
+			),
+		};
 	}
 
 	async resolveSession(derivedThreadId: string): Promise<SessionBinding | null> {
@@ -104,65 +139,70 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 
 	async clearSessionBindings(originThreadId: string): Promise<void> {
 		const existing = await this.threadRepository.findOneBy({ id: originThreadId });
-		const metadata = this.parseMetadata(existing?.metadata);
-		const bound = Array.isArray(metadata[BOUND_THREADS_METADATA_KEY])
-			? (metadata[BOUND_THREADS_METADATA_KEY] as string[])
-			: [];
+		const bound = this.readStringArray(
+			this.parseMetadata(existing?.metadata)[BOUND_THREADS_METADATA_KEY],
+		);
 		if (bound.length === 0) return;
 		for (const id of bound) await this.unbindSession(id);
-		metadata[BOUND_THREADS_METADATA_KEY] = [];
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-		}
+		await this.threadRepository.patchThread(
+			originThreadId,
+			(row) => ({
+				metadata: JSON.stringify({
+					...this.parseMetadata(row.metadata),
+					[BOUND_THREADS_METADATA_KEY]: [],
+				}),
+			}),
+			{},
+		);
+	}
+
+	private async appendOutboundMessage(derivedThreadId: string, text: string): Promise<void> {
+		await this.threadRepository.patchThread(
+			derivedThreadId,
+			(row) => {
+				const metadata = this.parseMetadata(row.metadata);
+				const messages = [
+					...this.readStringArray(metadata[OUTBOUND_METADATA_KEY]),
+					text.slice(0, MAX_OUTBOUND_TEXT_LENGTH),
+				];
+				return {
+					metadata: JSON.stringify({
+						...metadata,
+						[OUTBOUND_METADATA_KEY]: messages.slice(-MAX_OUTBOUND_MESSAGES),
+					}),
+				};
+			},
+			{},
+		);
+	}
+
+	private readStringArray(value: unknown): string[] {
+		return Array.isArray(value)
+			? value.filter((item): item is string => typeof item === 'string')
+			: [];
 	}
 
 	private async writeContinueAsIfAbsent(
 		derivedThreadId: string,
 		origin: SessionBinding,
 	): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: derivedThreadId });
-		const metadata = this.parseMetadata(existing?.metadata);
-		if (isSessionBinding(metadata[CONTINUE_AS_METADATA_KEY])) return;
-		metadata[CONTINUE_AS_METADATA_KEY] = origin;
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-			return;
-		}
-		await this.resourceRepository.ensureExists(origin.resourceId);
-		await this.threadRepository.save(
-			this.threadRepository.create({
-				id: derivedThreadId,
-				resourceId: origin.resourceId,
-				title: null,
-				metadata: JSON.stringify(metadata),
-			}),
+		await this.updateMetadata(derivedThreadId, origin.resourceId, (metadata) =>
+			isSessionBinding(metadata[CONTINUE_AS_METADATA_KEY])
+				? null
+				: { ...metadata, [CONTINUE_AS_METADATA_KEY]: origin },
 		);
 	}
 
 	private async appendBoundThread(originThreadId: string, derivedThreadId: string): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: originThreadId });
-		const metadata = this.parseMetadata(existing?.metadata);
-		const bound = Array.isArray(metadata[BOUND_THREADS_METADATA_KEY])
-			? (metadata[BOUND_THREADS_METADATA_KEY] as string[]).filter((id) => id !== derivedThreadId)
-			: [];
-		bound.push(derivedThreadId);
-		metadata[BOUND_THREADS_METADATA_KEY] = bound;
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-			return;
-		}
-		await this.resourceRepository.ensureExists(originThreadId);
-		await this.threadRepository.save(
-			this.threadRepository.create({
-				id: originThreadId,
-				resourceId: originThreadId,
-				title: null,
-				metadata: JSON.stringify(metadata),
-			}),
-		);
+		await this.updateMetadata(originThreadId, originThreadId, (metadata) => ({
+			...metadata,
+			[BOUND_THREADS_METADATA_KEY]: [
+				...this.readStringArray(metadata[BOUND_THREADS_METADATA_KEY]).filter(
+					(id) => id !== derivedThreadId,
+				),
+				derivedThreadId,
+			],
+		}));
 	}
 
 	private async writeMetadata(
@@ -170,25 +210,42 @@ export class IntegrationMessageContextService implements IntegrationMessageConte
 		resourceId: string | undefined,
 		patch: Record<string, unknown>,
 	): Promise<void> {
-		const existing = await this.threadRepository.findOneBy({ id: threadId });
-		const metadata = {
-			...this.parseMetadata(existing?.metadata),
+		await this.updateMetadata(threadId, resourceId ?? threadId, (metadata) => ({
+			...metadata,
 			...patch,
-		};
+		}));
+	}
 
-		if (existing) {
-			existing.metadata = JSON.stringify(metadata);
-			await this.threadRepository.save(existing);
-			return;
-		}
+	/**
+	 * Read-modify-write on the thread metadata under the row lock of
+	 * `patchThread`, so overlapping writers do not drop each other's keys.
+	 * `update` returns `null` to leave the row as it is. A missing row is
+	 * created from `update({})`.
+	 */
+	private async updateMetadata(
+		threadId: string,
+		resourceId: string,
+		update: (metadata: Record<string, unknown>) => Record<string, unknown> | null,
+	): Promise<void> {
+		const row = await this.threadRepository.patchThread(
+			threadId,
+			(current) => {
+				const next = update(this.parseMetadata(current.metadata));
+				return next ? { metadata: JSON.stringify(next) } : null;
+			},
+			{},
+		);
+		if (row) return;
 
-		await this.resourceRepository.ensureExists(resourceId ?? threadId);
+		const created = update({});
+		if (!created) return;
+		await this.resourceRepository.ensureExists(resourceId);
 		await this.threadRepository.save(
 			this.threadRepository.create({
 				id: threadId,
-				resourceId: resourceId ?? threadId,
+				resourceId,
 				title: null,
-				metadata: JSON.stringify(metadata),
+				metadata: JSON.stringify(created),
 			}),
 		);
 	}

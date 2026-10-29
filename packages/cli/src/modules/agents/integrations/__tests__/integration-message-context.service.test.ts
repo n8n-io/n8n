@@ -36,6 +36,15 @@ describe('IntegrationMessageContextService', () => {
 				return undefined as never;
 			},
 		);
+		threadRepository.patchThread.mockImplementation(async (id, update) => {
+			const row = threads.get(id);
+			if (!row) return null as never;
+			const patch = update(row as never);
+			if (patch?.metadata !== undefined) {
+				await threadRepository.save({ ...row, metadata: patch.metadata } as never);
+			}
+			return row as never;
+		});
 		const service = new IntegrationMessageContextService(
 			threadRepository,
 			resourceRepository,
@@ -223,6 +232,48 @@ describe('IntegrationMessageContextService', () => {
 		expect(originSave).toBeDefined();
 		expect(JSON.parse((originSave![0] as { metadata: string }).metadata).boundThreads).toEqual([
 			'agent-1:slack:D123:1001',
+		]);
+	});
+
+	it('reports the stored task messages and whether other recipients share the task', async () => {
+		const { service } = setup({ task: {} });
+		const origin = { threadId: 'task', resourceId: 'task:task-1' };
+
+		await service.bindSession('agent-1:slack:D1:1', origin, 'Hi Alice');
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toEqual({
+			binding: origin,
+			sharedWithOtherRecipients: false,
+			outboundMessages: ['Hi Alice'],
+		});
+
+		await service.bindSession('agent-1:slack:D2:2', origin, 'Hi Bob');
+		await service.bindSession('agent-1:slack:D1:1', origin, 'Second note');
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D1:1')).resolves.toEqual({
+			binding: origin,
+			sharedWithOtherRecipients: true,
+			outboundMessages: ['Hi Alice', 'Second note'],
+		});
+		await expect(service.resolveSessionReplyScope('agent-1:slack:D2:2')).resolves.toMatchObject({
+			outboundMessages: ['Hi Bob'],
+		});
+	});
+
+	it('keeps only the latest 5 task messages and truncates long ones', async () => {
+		const { service } = setup({ task: {} });
+		const origin = { threadId: 'task', resourceId: 'task:task-1' };
+
+		for (let i = 1; i <= 7; i++) {
+			await service.bindSession('agent-1:slack:D1:1', origin, `message ${i}`);
+		}
+		await service.bindSession('agent-1:slack:D1:1', origin, 'x'.repeat(2500));
+
+		const scope = await service.resolveSessionReplyScope('agent-1:slack:D1:1');
+		expect(scope?.outboundMessages).toEqual([
+			'message 4',
+			'message 5',
+			'message 6',
+			'message 7',
+			'x'.repeat(2000),
 		]);
 	});
 

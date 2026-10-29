@@ -1443,10 +1443,88 @@ describe('integration tools', () => {
 				makeInterruptibleCtx({ persistence: taskPersistence }),
 			);
 
-			expect(messageContextStore.bindSession).toHaveBeenCalledWith('agent-1:slack:D2:2.2', {
-				threadId: 'task-1-uuid',
-				resourceId: 'task:task-1',
-			});
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:D2:2.2',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				'hi',
+			);
+		});
+
+		it('passes the card title and message as the outbound text when there is no text', async () => {
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_dm',
+					input: {
+						userId: 'U2',
+						message: {
+							card: {
+								title: 'Order 42',
+								message: 'Ships Friday',
+								components: [{ type: 'divider' }],
+							},
+						},
+					},
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:D2:2.2',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				'Order 42\nShips Friday',
+			);
+		});
+
+		it('renders card components into the outbound text for a card with no text', async () => {
+			const messageContextStore = mock<IntegrationMessageContextStore>();
+			const actionExecutor = mock<IntegrationActionExecutor>();
+			actionExecutor.execute.mockResolvedValue({ ok: true, messageContext: sentContext });
+
+			const tool = createIntegrationActionTool({
+				descriptor: getIntegrationToolConnectionDescriptors([slackA], 'agent-1')[0],
+				messageContextStore,
+				actionExecutor,
+			}).build();
+
+			await tool.handler!(
+				{
+					action: 'send_dm',
+					input: {
+						userId: 'U2',
+						message: {
+							card: {
+								components: [
+									{ type: 'section', text: 'Order #42 ships Friday' },
+									{ type: 'fields', fields: [{ label: 'Item', value: 'Desk' }] },
+									{ type: 'divider' },
+									{
+										type: 'select',
+										label: 'Reschedule',
+										options: [{ label: 'Monday', value: 'mon' }],
+									},
+								],
+							},
+						},
+					},
+				},
+				makeInterruptibleCtx({ persistence: taskPersistence }),
+			);
+
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:D2:2.2',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				'Order #42 ships Friday\nItem: Desk\nReschedule\n- Monday',
+			);
 		});
 
 		it('binds the outbound thread for send_channel_message too', async () => {
@@ -1472,10 +1550,11 @@ describe('integration tools', () => {
 				makeInterruptibleCtx({ persistence: taskPersistence }),
 			);
 
-			expect(messageContextStore.bindSession).toHaveBeenCalledWith('agent-1:slack:C1:1.1', {
-				threadId: 'task-1-uuid',
-				resourceId: 'task:task-1',
-			});
+			expect(messageContextStore.bindSession).toHaveBeenCalledWith(
+				'agent-1:slack:C1:1.1',
+				{ threadId: 'task-1-uuid', resourceId: 'task:task-1' },
+				'hi',
+			);
 		});
 
 		it('does not bind for respond (operates on an existing thread)', async () => {

@@ -301,6 +301,7 @@ export async function executeActionToolOperation(params: {
 			await messageContextStore.bindSession(
 				`${descriptor.agentId}:${messageContext.target.threadId}`,
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				getOutboundText(message),
 			);
 		}
 		actionResult = { ...result, messageContext };
@@ -342,6 +343,51 @@ function isCurrentContextQuery(query: IntegrationContextQuery): boolean {
 		query === 'get_current_user' ||
 		query === 'get_current_channel_info'
 	);
+}
+
+/**
+ * Plain-text copy of a sent message, stored so a split reply session can see
+ * what the recipient received. A card carries its content in `components`, so
+ * every component is rendered, not only the title and message.
+ */
+function getOutboundText(message: z.infer<typeof messageSchema> | undefined): string | undefined {
+	const card = message?.card;
+	const lines = [
+		message?.text,
+		card?.title,
+		card?.message,
+		...(card?.components.flatMap(describeCardComponent) ?? []),
+	].filter((line): line is string => typeof line === 'string' && line.length > 0);
+	return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+function describeCardComponent(component: IntegrationCardComponent): string[] {
+	switch (component.type) {
+		case 'section':
+			return [component.text, ...(component.button ? [describeButton(component.button)] : [])];
+		case 'fields':
+			return (component.fields ?? component.items ?? []).map(
+				({ label, value }) => `${label}: ${value}`,
+			);
+		case 'image':
+			return [component.alt ?? component.altText ?? ''];
+		case 'button':
+			return [describeButton(component)];
+		case 'select':
+		case 'radio_select':
+			return [
+				component.label ?? '',
+				...component.options.map((option) =>
+					option.description ? `- ${option.label}: ${option.description}` : `- ${option.label}`,
+				),
+			];
+		default:
+			return [];
+	}
+}
+
+function describeButton(button: { label?: string; text?: string; value: string }): string {
+	return `[${button.label ?? button.text ?? button.value}]`;
 }
 
 function parseMessage(value: unknown): z.infer<typeof messageSchema> | undefined {
