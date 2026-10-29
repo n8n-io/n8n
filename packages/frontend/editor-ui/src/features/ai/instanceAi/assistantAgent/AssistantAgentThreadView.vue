@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import type { AgentJsonConfig, InstanceAiAttachment } from '@n8n/api-types';
+import type {
+	AgentJsonConfig,
+	InstanceAiAttachment,
+	InstanceAiNodesAttachment,
+} from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	N8nIconButton,
@@ -26,6 +30,7 @@ import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
+import NodesAttachmentChips from '../components/NodesAttachmentChips.vue';
 import {
 	MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 	useArtifactsPanelToggle,
@@ -33,10 +38,10 @@ import {
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
 import { INSTANCE_AI_VIEW } from '../constants';
+import { useInstanceAiStore } from '../instanceAi.store';
 import { firstMessageTitle } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { useCanvasPreview } from '../useCanvasPreview';
-import { countAttachedNodes } from '../utils/buildNodesAttachment';
 import {
 	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
 	ASSISTANT_AGENT_ID,
@@ -46,6 +51,11 @@ import {
 } from './assistantAgentThreads';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
+import {
+	countSentNodes,
+	readNodesAttachment,
+	toNodesComposerAttachment,
+} from './assistantNodeAttachments';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
@@ -87,9 +97,10 @@ function clientContext(): Record<string, unknown> {
 }
 
 /** The references go with the first message, so a retry of a refused send keeps them. */
-function onMessageAccepted(): void {
+function onMessageAccepted({ clientContext }: { clientContext?: Record<string, unknown> }): void {
 	// Tracked on acceptance, like the current runtime, so refused sends don't inflate the count.
-	const nodeCount = countAttachedNodes(pendingReferences);
+	// The sent context has the references and the nodes that the composer chips added.
+	const nodeCount = countSentNodes(clientContext);
 	if (nodeCount > 0) {
 		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 			node_count: nodeCount,
@@ -192,6 +203,52 @@ const {
 	isPreviewResizeEnabled,
 	handlePreviewResize,
 } = usePreviewPanelWidth({ threadAreaWidth, isExpanded: () => isPreviewExpanded.value });
+
+// --- Canvas nodes ---
+// "Add to chat" on the preview canvas stages the nodes in the Assistant store. Move them to
+// the composer of this chat, one chip for each workflow, so they go with the next message.
+const instanceAiStore = useInstanceAiStore();
+watch(
+	[panel, () => instanceAiStore.pendingComposerAttachments],
+	([current, pending]) => {
+		if (!current || pending.length === 0) return;
+		for (const attachment of instanceAiStore.consumePendingAttachments()) {
+			if (attachment.type !== 'nodes') continue;
+			const { chip, clientContextPatch } = toNodesComposerAttachment(
+				attachment,
+				current.composerAttachments,
+			);
+			current.addComposerAttachment(chip, clientContextPatch);
+		}
+	},
+	{ immediate: true },
+);
+
+// The canvas asks for the composer after it stages nodes: show the chat and focus its input.
+watch(
+	() => instanceAiStore.composerFocusRequest,
+	() => {
+		isPreviewExpanded.value = false;
+		panel.value?.focusInput();
+	},
+);
+
+const stagedNodes = computed(() =>
+	(panel.value?.composerAttachments ?? []).flatMap((staged) => {
+		const attachment = readNodesAttachment(staged);
+		return attachment ? [{ id: staged.chip.id, attachment }] : [];
+	}),
+);
+
+/** The user removed some of the nodes from a chip. */
+function updateStagedNodes(attachment: InstanceAiNodesAttachment): void {
+	const { chip, clientContextPatch } = toNodesComposerAttachment(attachment, []);
+	panel.value?.addComposerAttachment(chip, clientContextPatch);
+}
+
+function removeStagedNodes(chipId: string): void {
+	panel.value?.removeComposerAttachment(chipId);
+}
 </script>
 
 <template>
@@ -271,7 +328,18 @@ const {
 						@session-created="onSessionCreated"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
-					/>
+					>
+						<template v-if="stagedNodes.length > 0" #composer-attachments>
+							<NodesAttachmentChips
+								v-for="{ id, attachment } in stagedNodes"
+								:key="id"
+								:attachment="attachment"
+								is-removable
+								@update:attachment="updateStagedNodes"
+								@remove-all="removeStagedNodes(id)"
+							/>
+						</template>
+					</AgentChatPanel>
 				</div>
 
 				<div
