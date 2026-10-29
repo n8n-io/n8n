@@ -2,11 +2,11 @@ import { EventEmitter } from 'node:events';
 
 import type {
 	ExecutionChannelFrameHandler,
-	ExecutionChannelPublisher,
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
 } from './execution-channel';
 import { InMemoryExecutionChannelSubscriber } from './in-memory-execution-response-receiver';
+import { InMemoryExecutionChannelPublisher } from './in-memory-execution-response-sender';
 
 /** Carries serialized frames between the endpoints of the channel in this process. */
 export class InMemoryExecutionChannel {
@@ -24,22 +24,6 @@ export class InMemoryExecutionChannel {
 		const event = eventName(topic, executionId);
 		this.emitter.on(event, handler);
 		return () => this.emitter.off(event, handler);
-	}
-}
-
-export class InMemoryExecutionChannelPublisher implements ExecutionChannelPublisher {
-	private stopped = false;
-
-	constructor(private readonly channel: InMemoryExecutionChannel) {}
-
-	publish(topic: ExecutionChannelTopic, executionId: string, frame: string): void {
-		if (this.stopped) return;
-
-		this.channel.publish(topic, executionId, frame);
-	}
-
-	async stop(): Promise<void> {
-		this.stopped = true;
 	}
 }
 
