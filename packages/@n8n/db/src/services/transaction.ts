@@ -26,11 +26,19 @@ export type IsolationLevel =
  * detect a nested `run` requesting a level that differs from the active transaction's.
  */
 export abstract class Transaction {
-	constructor(private readonly isolationLevel?: IsolationLevel) {}
+	constructor(
+		private readonly isolationLevel?: IsolationLevel,
+		private readonly readOnly = false,
+	) {}
 
 	/** The isolation level this transaction was opened with, if one was requested. */
 	getIsolationLevel(): IsolationLevel | undefined {
 		return this.isolationLevel;
+	}
+
+	/** Whether this transaction was opened read-only; a write inside it is a bug. */
+	isReadOnly(): boolean {
+		return this.readOnly;
 	}
 }
 
@@ -47,6 +55,13 @@ export interface OperationContext {
 
 export interface RunOptions {
 	isolationLevel?: IsolationLevel;
+	/**
+	 * Open the transaction on a read connection. On the pooled SQLite driver the
+	 * transaction then leases from the read pool instead of waiting for the single
+	 * write connection. Drivers without a separate read connection use their
+	 * primary one. A write statement inside a read-only transaction fails.
+	 */
+	readOnly?: boolean;
 }
 
 /**
