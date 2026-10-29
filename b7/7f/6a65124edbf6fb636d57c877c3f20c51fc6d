@@ -1,0 +1,63 @@
+docs/generated/postgres-schema/public.scheduled_task.md
+  ai_agent 105
+docs/generated/sqlite-schema/agent_background_job.md
+  ai_agent 133-134,146
+.agents/skills/create-instance-ai-eval/SKILL.md
+  ai_agent 641-643,646-657,687,689,862-864
+docs/generated/postgres-schema/public.workflow_publication_trigger_status.md
+  ai_agent 9,50
+docs/generated/postgres-schema/public.agent_message_queue.md
+  ai_agent 73-74,86
+docs/generated/postgres-schema/public.workflow_history.md
+  ai_agent 93
+docs/generated/postgres-schema/public.scheduled_job.md
+  ai_agent 23,98
+docs/generated/sqlite-schema/agent_execution.md
+  ai_agent 9,21-22,32,34,55,64,74,84-85,97
+docs/generated/postgres-schema/public.poller_state.md
+  ai_agent 11,46
+docs/generated/sqlite-schema/agent_execution_threads.md
+  ai_agent 118-119,131
+docs/generated/sqlite-schema/agent_message_queue.md
+  ai_agent 76-77,89
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 257,363
+packages/cli/src/modules/promotions.ee/__tests__/promotion-review-inbox.service.test.ts
+  s_a8967635a0a747::t_e235edd86d456b 1,23-25,32
+docs/generated/postgres-schema/public.agent_execution.md
+  ai_agent 10-11,21,23,44,60,70,80-81,93
+docs/generated/postgres-schema/public.agent_execution_message_links.md
+  ai_agent 54-55,67
+docs/generated/postgres-schema/public.agent_background_job.md
+  ai_agent 131-132,144
+docs/generated/sqlite-schema/README.md
+  ai_agent 24,205,609-610,622
+docs/generated/sqlite-schema/agent_execution_message_links.md
+  ai_agent 62-63,75
+packages/@n8n/permissions/src/__tests__/__snapshots__/scope-information.test.ts.snap
+  ai_agent 114
+packages/cli/src/modules/promotions.ee/promotion-review-inbox.service.ts
+  ai_agent 3,9,13-20,27-30,32,37,39,51-62,64-66,80-83,103-109,144,154-259,283-284,286,292,294,298-301,307-331,358-364,383,386-413
+docs/generated/postgres-schema/public.agent_execution_threads.md
+  ai_agent 118-119,131
+pnpm-lock.yaml
+  ai_agent 341-358,1084,7756-7758,7981-7998,11962-12041,29358,29366,29388-29435
+docs/generated/postgres-schema/README.md
+  ai_agent 24,222,623-624,636,1549,1684,2049
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b77f6a65124edbf6fb636d57c877c3f20c51fc6d",
+  "prompts": {},
+  "sessions": {
+    "s_a8967635a0a747": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8c351be2-e350-4182-9abe-9aa257c71186",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,64 @@
+.github/WORKFLOWS.md
+  h_52a137d26d774c 353-354,393
+.github/actions/setup-nodejs/action.yml
+  h_52a137d26d774c 10,12
+.github/workflows/ci-master.yml
+  h_52a137d26d774c 31,35
+.github/workflows/docker-build-push.yml
+  h_52a137d26d774c 10
+.github/workflows/release-push-to-channel.yml
+  h_52a137d26d774c 78
+.github/workflows/test-linting-reusable.yml
+  h_52a137d26d774c 15
+.github/workflows/test-unit-reusable.yml
+  h_52a137d26d774c 15
+.github/workflows/test-workflow-scripts-reusable.yml
+  h_52a137d26d774c 15
+CHANGELOG.md
+  h_52a137d26d774c 1-20
+docker/images/n8n/Dockerfile
+  h_52a137d26d774c 1,6-8,12,53,57,79
+docker/images/runners/Dockerfile
+  h_52a137d26d774c 1,8,107
+docker/images/runners/Dockerfile.distroless
+  h_52a137d26d774c 15
+package.json
+  h_52a137d26d774c 3,201-202
+packages/@n8n/backend-test-utils/package.json
+  h_52a137d26d774c 3
+packages/@n8n/benchmark/Dockerfile
+  h_52a137d26d774c 2
+packages/@n8n/benchmark/package.json
+  h_52a137d26d774c 3
+packages/@n8n/db/package.json
+  h_52a137d26d774c 3
+packages/@n8n/task-runner-python/pyproject.toml
+  h_52a137d26d774c 15-17
+packages/@n8n/task-runner-python/uv.lock
+  h_52a137d26d774c 5-7,74,76,78
+packages/@n8n/task-runner/package.json
+  h_52a137d26d774c 3
+packages/cli/package.json
+  h_52a137d26d774c 3
+packages/core/package.json
+  h_52a137d26d774c 3
+packages/core/src/execution-engine/node-execution-context/utils/__tests__/binary-helper-functions.test.ts
+  h_52a137d26d774c 12,36,38-39
+packages/node-dev/package.json
+  h_52a137d26d774c 3
+patches/@n8n__typeorm@0.3.20-15.patch
+  h_52a137d26d774c 1-35
+pnpm-lock.yaml
+  h_52a137d26d774c 297-299,598,761,1296,1662,22812
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6733464113bd78a8cc3da9a80006b1c89f2bf6e4",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,42 @@
+packages/cli/src/modules/instance-ai/__tests__/user-facing-errors.test.ts
+  s_ec79774a9352ba::t_1bbf4c365ccc4d 1
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.reclassifyMaskedStreamFailure.test.ts
+  ai_agent 1-85
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_87e2d8a4f6ce7c::t_3780045018eb05 1,131,186,206,280-281,345-355
+  s_d740321ee1c7f2::t_c697fe6231dd23 2-38,44-65,71-130,132-134,136-148,150-185,187-205,207-240,242-279,282-307,326-344
+  s_87e2d8a4f6ce7c::t_eb408803b11bed 135,149
+  s_ec79774a9352ba::t_c484ac8e8a2e8a 70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "eb2db08988c9803747e89cc26c9d20d1ac32bb4e",
+  "prompts": {},
+  "sessions": {
+    "s_87e2d8a4f6ce7c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78f19d83-aa1e-4d1f-bbd7-3c897bd1bd2e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    },
+    "s_d740321ee1c7f2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cd0bc4a5-d678-410d-b6c9-7a9cc5d6c9ef",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    },
+    "s_ec79774a9352ba": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a52c7a06-2cc8-4e0f-94da-51d19a42e63c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,11 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/views/PromotionsSettingsView.vue
+  ai_agent 31,53-58,230
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/composables/useInstanceProtection.ts
+  ai_agent 1-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7d39389d388962e1800a44255d67382467c1e04f",
+  "prompts": {}
+}

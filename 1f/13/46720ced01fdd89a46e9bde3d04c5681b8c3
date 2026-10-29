@@ -1,0 +1,25 @@
+packages/frontend/editor-ui/src/features/agents/channels/teams/useTeamsSetupRestart.ts
+  s_079a9571432da2::t_52fd1b65ccecfc 4,12,15-20
+packages/frontend/editor-ui/src/features/agents/views/AgentSessionsListView.vue
+  s_079a9571432da2::t_f72a54df1fb834 2,64,235-241
+packages/frontend/editor-ui/src/features/agents/components/AgentRegistryMcpConfigForm.vue
+  s_079a9571432da2::t_9d0fad54db04a8 8,33,127-131,134-139
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderSession.ts
+  s_079a9571432da2::t_bc4f9e41cb760d 14,243,259-265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1f1346720ced01fdd89a46e9bde3d04c5681b8c3",
+  "prompts": {},
+  "sessions": {
+    "s_079a9571432da2": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a167ec-3be5-72e1-906d-8816986cf04c",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

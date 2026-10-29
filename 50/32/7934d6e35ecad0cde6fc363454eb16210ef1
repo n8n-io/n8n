@@ -1,0 +1,29 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiTestAgentPreviewPanel.test.ts
+  s_ecd5a2a51dc11f::t_65faeef166c8dc 1330-1338
+packages/frontend/editor-ui/src/features/agents/components/AgentAvatar.vue
+  s_ecd5a2a51dc11f::t_65faeef166c8dc 16,22-24,34,45,57,69,75
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentExamplesPanel.vue
+  s_ecd5a2a51dc11f::t_65faeef166c8dc 256
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentEvalChecksPanel.test.ts
+  s_ecd5a2a51dc11f::t_65faeef166c8dc 405-421
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiTestAgentPreviewPanel.vue
+  s_ecd5a2a51dc11f::t_65faeef166c8dc 108-110,483-487
+packages/frontend/editor-ui/src/features/agents/components/AgentEvalChecksPanel.vue
+  s_ecd5a2a51dc11f::t_65faeef166c8dc 189-191
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50327934d6e35ecad0cde6fc363454eb16210ef1",
+  "prompts": {},
+  "sessions": {
+    "s_ecd5a2a51dc11f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9738c708-5dd8-4da5-bf2f-55c3de895e68",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}

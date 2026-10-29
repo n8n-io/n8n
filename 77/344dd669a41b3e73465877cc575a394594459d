@@ -1,0 +1,33 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryEntriesPanel.test.ts
+  s_a87ab30323b2bf::t_135d0b6d7a1c7d 316-317,319-337
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_a87ab30323b2bf::t_931d3f45e9a3bd 83-111
+packages/cli/src/modules/agents/agent-memory-query-embedder.ts
+  s_a87ab30323b2bf::t_f9647e38e8f636 3,7,10,32,43-44,46-49,51-52,54,58-88
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_a87ab30323b2bf::t_f644c5a3d90e23 130,134,138
+packages/cli/src/modules/agents/__tests__/agent-memory-query-embedder.test.ts
+  s_a87ab30323b2bf::t_795b517bb3ce29 58-60
+  s_a87ab30323b2bf::t_cf3705f723b6ec 1-16,19-57,61-101
+  s_a87ab30323b2bf::t_1fe4ef2d65a216 17-18
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_a87ab30323b2bf::t_795b517bb3ce29 176-203
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryEntriesPanel.vue
+  s_a87ab30323b2bf::t_ea882615f46ab7 13-17,91-100,105,111,119,290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77344dd669a41b3e73465877cc575a394594459d",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

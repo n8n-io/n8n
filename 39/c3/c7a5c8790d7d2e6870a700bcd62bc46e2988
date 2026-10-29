@@ -1,0 +1,9 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentChatToolSteps.vue
+  ai_agent 60-67,324,326,403,405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "39c3c7a5c8790d7d2e6870a700bcd62bc46e2988",
+  "prompts": {}
+}

@@ -1,0 +1,19 @@
+packages/cli/src/modules/agents/BUILT_IN_TOOLS.md
+  s_bccf3616ba1e3f::t_53c29727598102 57-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fc2363ca9748adf20dc10de15f5b71b1b6fbc665",
+  "prompts": {},
+  "sessions": {
+    "s_bccf3616ba1e3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b57198ee-528d-418e-810c-e4b7c30fb793",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

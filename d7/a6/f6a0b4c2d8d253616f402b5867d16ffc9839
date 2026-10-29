@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionTimelineTable.spec.ts
+  s_6fc1ff778f01f7::t_e78c24d79f7c58 637-639,641-644
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d7a6f6a0b4c2d8d253616f402b5867d16ffc9839",
+  "prompts": {},
+  "sessions": {
+    "s_6fc1ff778f01f7": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a1784f-a137-7272-85c0-c2ef06cb24cf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

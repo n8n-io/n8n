@@ -1,0 +1,19 @@
+packages/cli/src/public-api/__tests__/public-api-rate-limit.test.ts
+  s_925dcfedebf0c9::t_741c17ab604a1b 479-482,491-494,505-508,517-520,529-536
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c1fd1d318f6b9150e818813c2cde955c77d58c9b",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Uddish Verma <uddish.verma@n8n.io>"
+    }
+  }
+}

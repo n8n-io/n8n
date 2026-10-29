@@ -1,0 +1,27 @@
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 258,371
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 54-56
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ba2ae60894487d::t_dc59bc95d3a534 1629,4266-4267,4270,4284,4294
+docs/generated/postgres-schema/README.md
+  ai_agent 1561,1696,2081
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_ba2ae60894487d::t_dc59bc95d3a534 24-27,29-33,35-36,74-77,95-98,193-205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2e7b78dd9725f5719a6d79deccfd1d7ff67fba3a",
+  "prompts": {},
+  "sessions": {
+    "s_ba2ae60894487d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "04a467cb-e333-46a5-b84f-448b11db34b5",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Jan K. <jan.kalkan@n8n.io>"
+    }
+  }
+}

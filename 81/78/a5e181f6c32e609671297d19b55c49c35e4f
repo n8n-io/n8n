@@ -1,0 +1,36 @@
+packages/frontend/@n8n/storybook/.storybook/preview.ts
+  s_4f5398cd358f06::t_1a67699e9e0c78 11,100-106
+packages/frontend/editor-ui/src/app/App.vue
+  s_4f5398cd358f06::t_16d7092c608714 33,46-48,146-168
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.test.ts
+  s_4f5398cd358f06::t_e3a048b0ed4b77 3-5,41-53,68-76
+  s_96273ca926aa94::t_6a88df76b11c78 54-67
+packages/frontend/@n8n/design-system/src/components/N8nTooltip/Tooltip.vue
+  s_4f5398cd358f06::t_dff35ff875ce6b 23-27
+  s_96273ca926aa94::t_41679f6fe5b323 189-192
+  s_4f5398cd358f06::t_63f92e504bba55 3-5,28-30,36,91,137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8178a5e181f6c32e609671297d19b55c49c35e4f",
+  "prompts": {},
+  "sessions": {
+    "s_4f5398cd358f06": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179c2-c3f9-7039-830e-00605a19374d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    },
+    "s_96273ca926aa94": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a179d1-da56-7018-b64e-4335d16e551d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

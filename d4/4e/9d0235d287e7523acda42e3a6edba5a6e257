@@ -1,0 +1,31 @@
+packages/@n8n/agents/src/runtime/model/model-factory.ts
+  s_db23049c32d561::t_4a010e4615bf80 453,488-490
+packages/cli/src/modules/agents/json-config/__tests__/model-config.test.ts
+  s_db23049c32d561::t_265605c7a5d55e 3-5,180-220,226-231
+  s_db23049c32d561::t_434607148a6b31 221-225
+  s_db23049c32d561::t_65c15fd1dba3d5 232
+packages/@n8n/agents/src/runtime/__tests__/model-factory.test.ts
+  s_db23049c32d561::t_265605c7a5d55e 997,1005,1007-1013
+  s_db23049c32d561::t_f06082b5ad6730 998-999,1006,1030,1032,1041
+  s_db23049c32d561::t_434607148a6b31 1000-1004,1014-1029,1031,1033-1040
+packages/cli/src/modules/agents/json-config/model-config.ts
+  s_db23049c32d561::t_6bb3676bb9fb31 1,5-7,53-60
+packages/@n8n/agents/src/runtime/model/provider-credentials.ts
+  s_db23049c32d561::t_4a010e4615bf80 1,89-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d44e9d0235d287e7523acda42e3a6edba5a6e257",
+  "prompts": {},
+  "sessions": {
+    "s_db23049c32d561": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c9a3ce8b-c177-449e-974c-d77f50f50c5b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

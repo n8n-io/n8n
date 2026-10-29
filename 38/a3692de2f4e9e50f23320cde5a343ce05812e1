@@ -1,0 +1,30 @@
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/MicrosoftTeamTrigger.test.ts
+  s_ae8c4d27e8031a::t_2778e872969734 802,1146-1150
+  s_ae8c4d27e8031a::t_ac55f08ff06b44 326-328,338,343-348,450,458,777,782-785,790-801,803-810,815,819-822,1111,1128,1132-1136,1397-1398
+packages/nodes-base/nodes/Microsoft/Teams/MicrosoftTeamsTrigger.node.ts
+  s_ae8c4d27e8031a::t_7c7e4545df156a 370-373,380,440-446,448,511,513
+packages/nodes-base/nodes/Microsoft/Teams/test/trigger/utiles-trigger.test.ts
+  s_ae8c4d27e8031a::t_f549acd78bd035 243,829,843,849-851,858,885-886,892-914,1054-1056,1072-1075,1084-1111,1123-1125,1128-1130,1139-1141,1152-1154,1400-1410,1412-1415,1417-1425,1427-1438,1440-1442,1444-1452
+packages/nodes-base/nodes/Microsoft/Teams/v2/helpers/utils-trigger.ts
+  s_ae8c4d27e8031a::t_d725fa1c3611c1 207-210,237-240,242,251-264,267-274,282-284,318-321,326,344,349-350,353,355-362,486,488-490
+packages/nodes-base/nodes/Microsoft/Teams/v2/test/transport/index.test.ts
+  s_ae8c4d27e8031a::t_7bc6c8ede62d62 401,494,553-554,599-600,608
+packages/nodes-base/nodes/Microsoft/Teams/v2/transport/forbiddenHints.ts
+  s_ae8c4d27e8031a::t_88de9484718e33 34,101-106
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "38a3692de2f4e9e50f23320cde5a343ce05812e1",
+  "prompts": {},
+  "sessions": {
+    "s_ae8c4d27e8031a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d8a19bf9-672c-4086-93a2-90c89a896afc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Csaba Tuncsik <csaba.tuncsik@gmail.com>"
+    }
+  }
+}

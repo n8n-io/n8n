@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.test.ts
+  s_2247ae8ef74d15::t_44b7751276dad0 87,89,120,261,268-270
+  s_2247ae8ef74d15::t_2086c9b39342e4 119
+  s_2247ae8ef74d15::t_b296ef5990b827 4,79,88,94-99,102-118,121-125,130,197,216,219,230-234
+packages/frontend/editor-ui/src/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue
+  s_2247ae8ef74d15::t_c3da4a84c21195 107,112,115-117,129-131,133-134,144,166-171
+  s_2247ae8ef74d15::t_cc16699d6a8e55 118-120
+  s_2247ae8ef74d15::t_3a99bbdbfe7b81 172-173
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_2247ae8ef74d15::t_c3da4a84c21195 10022-10023
+  s_2247ae8ef74d15::t_a482b7cfd8898c 10038
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "39b9eb4dcc3e328356ac0f857ae9aa86c65c00a8",
+  "prompts": {},
+  "sessions": {
+    "s_2247ae8ef74d15": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a168a4-7de9-7fd2-af57-2486a83f3dd7",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

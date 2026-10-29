@@ -1,0 +1,23 @@
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_8056da22c66cb7::t_b454f0502a73f8 527,651
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyPackage.generated.yml
+  s_8056da22c66cb7::t_fd9ccac9784121 5
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/applyProjectSelection.generated.yml
+  s_8056da22c66cb7::t_134872dec061ee 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d5a9215a2d3a44958dfac16a87c73c31b09b45e1",
+  "prompts": {},
+  "sessions": {
+    "s_8056da22c66cb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3b1ea0a0-5534-410d-8325-1a2b74c81085",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

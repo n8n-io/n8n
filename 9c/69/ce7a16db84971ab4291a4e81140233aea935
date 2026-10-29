@@ -1,0 +1,19 @@
+packages/cli/test/integration/public-api/n8n-packages-import-agents.test.ts
+  s_fb780391c8e997::t_56f89d455af0ed 39,42-43,57-58,89,115,133-147,274-275,277,314,394,407,449,461,470,477,543,553,569,582,611,614,638
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "9c69ce7a16db84971ab4291a4e81140233aea935",
+  "prompts": {},
+  "sessions": {
+    "s_fb780391c8e997": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17942-0858-71a1-8300-c3c5dea8152b",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "James Gee <1285296+geemanjs@users.noreply.github.com>"
+    }
+  }
+}

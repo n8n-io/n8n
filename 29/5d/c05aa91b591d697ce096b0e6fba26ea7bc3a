@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/utils/memory-source-filter.ts
+  s_a87ab30323b2bf::t_cf5c3007bb7519 153
+  s_a87ab30323b2bf::t_1cc4b67b01f68d 53-65,104-106,111,173
+  s_a87ab30323b2bf::t_c84c2a9934f932 152,168-172
+  s_a87ab30323b2bf::t_2bda448116b03b 174
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_a87ab30323b2bf::t_1a1d8ca248d34f 172,205
+packages/cli/src/modules/agents/utils/__tests__/memory-source-filter.test.ts
+  s_a87ab30323b2bf::t_fe09ff72f4f57f 55,64-68
+  s_a87ab30323b2bf::t_1a1d8ca248d34f 23-26,34,38
+packages/cli/src/modules/agents/repositories/agent-memory-entry.repository.ts
+  s_a87ab30323b2bf::t_0b67c662024da0 23-26,211-220,224,227,229-247,254-256
+packages/cli/test/integration/database/repositories/agent-memory-entry.repository.test.ts
+  s_a87ab30323b2bf::t_1a1d8ca248d34f 205,214,216,222,228-229,235-238,243,250,257,261-267,285,297,302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "295dc05aa91b591d697ce096b0e6fba26ea7bc3a",
+  "prompts": {},
+  "sessions": {
+    "s_a87ab30323b2bf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b9f44e6d-79e1-4a2e-976f-3b0df0cd5b7f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

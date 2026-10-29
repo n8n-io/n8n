@@ -1,0 +1,31 @@
+packages/@n8n/oxlint-config/package.json
+  s_fdd6cf6d79ee0b::t_ad689df004a384 50
+scripts/lint-parity/oxlint-gap.json
+  s_fdd6cf6d79ee0b::t_ad689df004a384 31-58
+scripts/lint-parity/oxlint-parity.mjs
+  s_fdd6cf6d79ee0b::t_ad689df004a384 67
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_fdd6cf6d79ee0b::t_ad689df004a384 152,159,163,165-168,188
+packages/@n8n/oxlint-config/src/configs/nodes.ts
+  s_fdd6cf6d79ee0b::t_ad689df004a384 6,28-137
+packages/nodes-base/package.json
+  s_fdd6cf6d79ee0b::t_ad689df004a384 25-26,906,943-944
+pnpm-lock.yaml
+  s_fdd6cf6d79ee0b::t_9d8e431d29a4a3 4023-4025,8506-8508,8617-8622
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e0280627ce0753ae5b8380d12e2787ac56a582bb",
+  "prompts": {},
+  "sessions": {
+    "s_fdd6cf6d79ee0b": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_e79590a04ffeZvlC8mMYsLMXAC",
+        "model": "openai/gpt-5.6-sol"
+      },
+      "human_author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

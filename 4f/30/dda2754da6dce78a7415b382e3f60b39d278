@@ -1,0 +1,27 @@
+packages/modules/apps/frontend/src/views/AppsListView.test.ts
+  s_b6d332c56aa1c5::t_26928560bbdede 188,198-201,206-209,211-212,214-228
+  s_b6d332c56aa1c5::t_ea652aeca63e90 213
+packages/modules/apps/frontend/src/views/AppsListView.vue
+  s_b6d332c56aa1c5::t_a4d9dd60bb5702 71-77,87,100,104-105,107,110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f30dda2754da6dce78a7415b382e3f60b39d278",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

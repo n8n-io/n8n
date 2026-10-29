@@ -1,0 +1,23 @@
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/rateLimits.ts
+  s_925dcfedebf0c9::t_0f032e64729e22 102
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/ApiKeyRateLimitsSection.vue
+  s_925dcfedebf0c9::t_0f032e64729e22 26,152
+packages/frontend/editor-ui/src/features/settings/security/rateLimits/rateLimits.test.ts
+  s_925dcfedebf0c9::t_0f032e64729e22 6,103,131
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c180f7927a3c0d12a1dee8911d3435cc5f859f8f",
+  "prompts": {},
+  "sessions": {
+    "s_925dcfedebf0c9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e954afe-0aa2-4cb1-89bb-81545b98a90a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

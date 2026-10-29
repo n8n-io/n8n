@@ -1,0 +1,19 @@
+packages/core/src/errors/error-reporter.ts
+  s_00792efc4a7302::t_1260a26f59b5d3 317
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1bba730acc436d81c3f2e932d49c9fd9a87367f8",
+  "prompts": {},
+  "sessions": {
+    "s_00792efc4a7302": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8701b7cf-3e9e-4646-a497-cdd9a4c5b5b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

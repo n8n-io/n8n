@@ -1,0 +1,25 @@
+pnpm-workspace.yaml
+  s_90718ebcca3f60::t_16cc66bd242046 39-41
+  s_90718ebcca3f60::t_bf5aed4ffa08de 70
+packages/@n8n/agents/src/runtime/__tests__/tool-adapter.test.ts
+  s_90718ebcca3f60::t_c74fb3af0d4106 1,4,198-203,208-234
+  s_90718ebcca3f60::t_9d8064f2748289 204-207
+pnpm-lock.yaml
+  s_90718ebcca3f60::t_943343558358ef 207-208,1236,9292-9297,9314-9319,9328-9331,25248-25253,25280-25288,25297-25300
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4cb29f259249b3fc49dea2f1cf6cbedfc96dacf",
+  "prompts": {},
+  "sessions": {
+    "s_90718ebcca3f60": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a17da9-23d5-7dd2-b8dc-2678e3d14b83",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

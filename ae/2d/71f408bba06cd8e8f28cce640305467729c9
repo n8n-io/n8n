@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_dfaa6f73e8ee38::t_dea62ac3ebbbf0 171,181
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_dfaa6f73e8ee38::t_bfa6c9eeb4fb25 138
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae2d71f408bba06cd8e8f28cce640305467729c9",
+  "prompts": {},
+  "sessions": {
+    "s_dfaa6f73e8ee38": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a16965-fb6b-7ae3-9355-73ebf9402858",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

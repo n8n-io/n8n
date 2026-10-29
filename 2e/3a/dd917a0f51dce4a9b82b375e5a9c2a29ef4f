@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.ts
+  s_2674e1ea9a3661::t_3bff200c7c54b2 2170-2184
+  s_2674e1ea9a3661::t_c9055422e4f828 2052-2053
+packages/frontend/editor-ui/src/app/composables/useCanvasOperations.test.ts
+  s_2674e1ea9a3661::t_e1ad852c9ccfdd 279
+  s_2674e1ea9a3661::t_1a550e7b015fa8 306-308
+  s_2674e1ea9a3661::t_6977427c965290 9254-9305,9309,9311-9407,9414-9415,9417-9429,9431-9461,9468-9501,9503-9510
+  s_2674e1ea9a3661::t_bc1c94afa88a42 297-305,309-310
+  s_2674e1ea9a3661::t_2d74fc5214a18c 35,41,73,82,106,9408-9413,9462-9467
+  s_2674e1ea9a3661::t_62dee9d702afb4 6506,7407,8730,8795,8858,8925,8988,9067,9142,9219
+  s_2674e1ea9a3661::t_67884547ad5671 9306-9308,9310,9416,9430,9502
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e3add917a0f51dce4a9b82b375e5a9c2a29ef4f",
+  "prompts": {},
+  "sessions": {
+    "s_2674e1ea9a3661": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3336b0fb-67ba-4b3e-b346-32487c6ff8c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "alex <alex@n8n.io>"
+    }
+  }
+}

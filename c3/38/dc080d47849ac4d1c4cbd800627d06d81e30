@@ -1,0 +1,46 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentPreviewMoreMenu.test.ts
+  s_da21fc5a6ab2c0::t_33126287f0bef6 157,468,474,480-500,503-505
+  s_da21fc5a6ab2c0::t_2d2f7f08319972 506-507,510,513,516
+packages/frontend/editor-ui/src/features/agents/composables/useAgentSessionUsage.ts
+  s_da21fc5a6ab2c0::t_84cb80a98ba53a 1,19-20,33,35,38-40,44-49,52
+packages/cli/src/modules/agents/__tests__/agent-execution.service.test.ts
+  s_da21fc5a6ab2c0::t_06d64ae8e15cef 185,188,992-993
+packages/@n8n/api-types/src/push/agents.ts
+  s_da21fc5a6ab2c0::t_84cb80a98ba53a 12-14
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentSessionTimelineView.spec.ts
+  s_da21fc5a6ab2c0::t_33126287f0bef6 217,234,247,259,266,276-293,302
+  s_da21fc5a6ab2c0::t_12da783b80d653 303-304
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_da21fc5a6ab2c0::t_84cb80a98ba53a 300
+packages/frontend/editor-ui/src/features/agents/types.ts
+  s_da21fc5a6ab2c0::t_84cb80a98ba53a 23
+packages/cli/src/modules/agents/agent-execution.service.ts
+  s_da21fc5a6ab2c0::t_84cb80a98ba53a 386-390,396,454-455
+packages/frontend/editor-ui/src/features/agents/utils/agent-usage.ts
+  s_da21fc5a6ab2c0::t_84cb80a98ba53a 46,50-52,54-55,62-66,68
+  s_da21fc5a6ab2c0::t_799c0d5685cee1 69-71
+packages/cli/src/modules/agents/__tests__/agent-turn-execution.service.test.ts
+  s_da21fc5a6ab2c0::t_e3c5baf067c683 123-165
+packages/frontend/editor-ui/src/features/agents/__tests__/agent-usage.test.ts
+  s_da21fc5a6ab2c0::t_cf1d9e83ff4b0f 119,122-123,125-134,137-141,143,145,148-155,157,159-168,171-175,177,179,181-189
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_da21fc5a6ab2c0::t_6f4f18d64b7927 51-54
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_da21fc5a6ab2c0::t_565ddbf4ccde3e 610,1370,1375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c338dc080d47849ac4d1c4cbd800627d06d81e30",
+  "prompts": {},
+  "sessions": {
+    "s_da21fc5a6ab2c0": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163dc-9f55-7881-9591-96315959ae08",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,77 @@
+packages/@n8n/agents/src/types/index.ts
+  s_484fd5f0b32dff::t_50f126af0f0609 91
+packages/@n8n/agents/src/types/sdk/memory.ts
+  s_484fd5f0b32dff::t_f56319e6f2f127 326-333
+  s_484fd5f0b32dff::t_e7e26e04a173a3 349
+packages/@n8n/agents/src/runtime/loop/runtime-context.ts
+  s_484fd5f0b32dff::t_0f35920e1c5da9 366
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryGuidanceModal.test.ts
+  s_484fd5f0b32dff::t_02a9675b7b7e65 1-75
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  s_484fd5f0b32dff::t_ed5e2d5c2f13d8 106-111,113-120,122-124,127-129,131,134-135,141,147
+  s_484fd5f0b32dff::t_f68bd48ecd9361 132
+  s_484fd5f0b32dff::t_54ab59ddd72307 23
+  s_484fd5f0b32dff::t_544f5df75f087d 112
+  s_484fd5f0b32dff::t_5250b25c968131 121,125-126,130,133
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryGuidanceModal.vue
+  s_484fd5f0b32dff::t_fa5e52bfba6efc 95-99
+  s_484fd5f0b32dff::t_7565cbccaf85b9 1-94,100-118
+packages/@n8n/agents/src/sdk/memory.ts
+  s_484fd5f0b32dff::t_8358f550fd304c 80
+packages/cli/src/modules/agents/__tests__/agent-json-config.test.ts
+  s_484fd5f0b32dff::t_cb30dde97180c0 270-272
+  s_484fd5f0b32dff::t_561ae0aeb00175 248-269,273-274
+packages/cli/src/modules/agents/builder/skills/memory.skill.ts
+  s_484fd5f0b32dff::t_6a164782fb754a 53
+packages/@n8n/api-types/src/agents/agent-json-config.schema.ts
+  s_484fd5f0b32dff::t_b0437528facad0 55-66
+  s_484fd5f0b32dff::t_d383f6c1fb3c5c 77
+packages/cli/src/modules/agents/json-config/from-json-config.ts
+  s_484fd5f0b32dff::t_0a9e181fd87358 666
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_484fd5f0b32dff::t_279ce3bfaaa4e6 9030-9034
+packages/@n8n/agents/src/sdk/__tests__/memory-builder-episodic.test.ts
+  s_484fd5f0b32dff::t_7c8188be542551 105,117,127
+packages/@n8n/agents/src/index.ts
+  s_484fd5f0b32dff::t_50f126af0f0609 54
+packages/frontend/editor-ui/src/features/agents/components/AgentMemoryPanel.vue
+  s_484fd5f0b32dff::t_d070370d0cb04c 152-169,171-176
+  s_484fd5f0b32dff::t_7565cbccaf85b9 19
+  s_484fd5f0b32dff::t_af31f18c0ee10d 97,289-294
+  s_484fd5f0b32dff::t_9af5a6e795e367 9,36,41-44,87-94
+  s_f5af8c164cba73::t_c5d3fb38afbc7b 95-96,98
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  s_484fd5f0b32dff::t_5250b25c968131 40,7897
+  s_484fd5f0b32dff::t_22d79b92085598 7876-7896,7898-7905
+packages/cli/src/modules/agents/__tests__/from-json-config.test.ts
+  s_484fd5f0b32dff::t_7c8188be542551 1415,1434
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentMemoryPanel.test.ts
+  s_484fd5f0b32dff::t_9976f7228f8cbd 32-37,62-70,263-319
+  s_484fd5f0b32dff::t_49870a1677d953 320
+packages/cli/src/modules/agents/builder/prompts/config-rules.prompt.ts
+  s_484fd5f0b32dff::t_960167bab05500 37-42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "73c89dbc68dea39d4bfd13680cda84ae066f166d",
+  "prompts": {},
+  "sessions": {
+    "s_484fd5f0b32dff": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fa5af04d-5811-4cf4-beb7-7158f76d1662",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    },
+    "s_f5af8c164cba73": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fde0483a-208b-4943-9c5a-fddb6937e64b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Robin Braumann <robin.braumann@n8n.io>"
+    }
+  }
+}

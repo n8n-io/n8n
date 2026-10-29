@@ -1,0 +1,31 @@
+packages/cli/src/modules/agents/agent-chat-attachment.service.ts
+  s_992cf72605adc1::t_ace56b20acb30b 29-30,79
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_992cf72605adc1::t_3753fc79401b4f 6,98,100,102
+  s_992cf72605adc1::t_ace56b20acb30b 4,66,92-93,99,101,105
+packages/cli/package.json
+  s_992cf72605adc1::t_3753fc79401b4f 92,254
+pnpm-lock.yaml
+  ai_agent 4995-4997,5194-5196
+packages/cli/src/modules/agents/__tests__/agent-file-bridge.service.test.ts
+  s_992cf72605adc1::t_3753fc79401b4f 118,120,124-126,131
+  s_992cf72605adc1::t_3696c6d8561bdc 45
+  s_992cf72605adc1::t_ace56b20acb30b 119,127-129
+  s_992cf72605adc1::t_fe2357830ddd73 121-123,130
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ea1feafce445a25be6023d32980de618ddb34c12",
+  "prompts": {},
+  "sessions": {
+    "s_992cf72605adc1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8ccb64f8-7dc6-436c-a3f3-c951abbe7dd3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

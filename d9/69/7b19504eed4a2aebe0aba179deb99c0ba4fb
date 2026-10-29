@@ -1,0 +1,26 @@
+.github/workflows/backport.yml
+  h_52a137d26d774c 133,136
+.github/workflows/release-create-pr.yml
+  h_52a137d26d774c 178,182
+.github/workflows/release-recreate-failed-release.yml
+  h_52a137d26d774c 153,160
+.github/workflows/test-e2e-coverage-nightly.yml
+  h_52a137d26d774c 385,389
+.github/workflows/util-update-boundaries-baseline.yml
+  h_52a137d26d774c 108,112
+.github/workflows/util-update-credential-setupability.yml
+  h_52a137d26d774c 99,103
+.github/workflows/util-update-node-popularity.yml
+  h_52a137d26d774c 91,95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d9697b19504eed4a2aebe0aba179deb99c0ba4fb",
+  "prompts": {},
+  "humans": {
+    "h_52a137d26d774c": {
+      "author": "Matsuuu <matias.huhta@n8n.io>"
+    }
+  }
+}

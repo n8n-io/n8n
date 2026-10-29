@@ -1,0 +1,219 @@
+docs/generated/postgres-schema/public.self_healing_result.md
+  ai_agent 128
+packages/cli/src/modules/agents/builder/interactive/__tests__/finish-setup.tool.test.ts
+  ai_agent 40
+packages/cli/src/modules/otel/otel.config.ts
+  ai_agent 3,6-10,54-83
+packages/frontend/editor-ui/src/features/shared/toolsConnection/ToolCredentialPicker.vue
+  ai_agent 25
+packages/@n8n/api-types/src/dto/promotions/promotion-preview.dto.ts
+  ai_agent 72-79,83
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublishPublicDto.generated.yml
+  ai_agent 195-199
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/createWorkflow.generated.yml
+  ai_agent 187-191,776-780
+docs/generated/sqlite-schema/user.md
+  ai_agent 444
+docs/generated/sqlite-schema/README.md
+  ai_agent 1753
+packages/@n8n/agents/src/runtime/memory/episodic-memory-capture.ts
+  ai_agent 160,465
+packages/@n8n/nodes-langchain/nodes/vector_store/VectorStoreRedis/VectorStoreRedis.node.ts
+  ai_agent 3-14,34-35,71-113,169-182,195,212-213,348-349,351,364-384,390-391,396-472,519-547,553,566-570,572-584,586,589-591,601,603-604,608-637
+packages/cli/src/modules/skills/skill-agents-proxy.service.ts
+  ai_agent 1,32-43,110-120
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.adapter.service.test.ts
+  ai_agent 8370,8706-8781
+docs/generated/sqlite-schema/self_healing_result.md
+  ai_agent 127
+packages/cli/src/modules/agents/agent-modification-telemetry.service.ts
+  ai_agent 9,13,15,35,57,206,216-219,233-245,251-270,301,327
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  ai_agent 202-206,788-792
+packages/cli/src/modules/instance-ai/self-healing/self-healing-result.service.ts
+  ai_agent 11,24,52,55-57,109,112-116,123-130,136,167,199,387
+packages/@n8n/agents/src/sdk/telemetry.ts
+  ai_agent 17-20,74-78
+packages/cli/src/modules/instance-ai/eval/__tests__/failed-execution-portability.service.test.ts
+  ai_agent 1-112,115,117-131,135-142,144-160,164-177,180-184,187-188,191-192,194,196-202,204-209,212-221,224-229,231-256,259,261-267,269-273,275-283,285-288,291-303,305-306,308-311,314-318,320-324,326-376,379-383,386-388,390-392,395-399,401-404,407-409,411-414,417-421,423-426
+packages/cli/src/public-api/v1/handlers/executions/spec/paths/retryExecution.generated.yml
+  ai_agent 87,106,110,141
+packages/@n8n/instance-ai/skills/workflow-builder/references/compositional-workflows.md
+  ai_agent 12
+packages/@n8n/instance-ai/src/tools/workflows/__tests__/plan-verification-simulation.test.ts
+  ai_agent 68,73,88,91-93,95
+packages/cli/src/modules/agents/builder/interactive/configure-channel.tool.ts
+  ai_agent 30,57
+docs/generated/sqlite-schema/self_healing_investigation.md
+  ai_agent 9,25,75
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  ai_agent 16,36,61,63-65,88-92,96-101,117,244,274-279,288,295,307-308,317-322,327-328,344-345,378,391,411,418,453,494-496,505,513,559-560,593,971,1263-1282,1388
+packages/@n8n/instance-ai/evaluations/discovery/agent-builder.json
+  ai_agent 115,121,839
+packages/@n8n/cli/src/commands/package/import.ts
+  ai_agent 15,83-88,168
+packages/@n8n/instance-ai/skills/workflow-builder/SKILL.md
+  ai_agent 10,53,569
+packages/frontend/editor-ui/src/features/settings/migrationReport/MigrationRules.vue
+  ai_agent 54
+docs/generated/sqlite-schema/self_healing_configuration.md
+  ai_agent 99
+packages/cli/src/executions/__tests__/execution.service.test.ts
+  ai_agent 40,45-48,367,406-445
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promotePackage.generated.yml
+  ai_agent 26
+docs/generated/postgres-schema/public.user.md
+  ai_agent 440
+packages/quality/testing/playwright/pages/SidebarPage.ts
+  ai_agent 31-33,67
+packages/frontend/@n8n/design-system/src/components/N8nInputLabel/InputLabel.vue
+  ai_agent 76
+packages/@n8n/task-runner-python/uv.lock
+  ai_agent 7,77,79,81
+packages/cli/src/policy/__tests__/policed-agent-nodes.test.ts
+  ai_agent 3,8-12,151-229,246-256
+packages/cli/src/modules/token-exchange/services/scoped-jwt.strategy.ts
+  ai_agent 7-11,78,81,86-90,101
+packages/frontend/@n8n/design-system/src/components/N8nFormBox/__snapshots__/FormBox.test.ts.snap
+  ai_agent 55,141,227
+packages/frontend/editor-ui/src/features/workflows/workflowDiff/WorkflowDiffNodeItem.vue
+  ai_agent 2,5,7-9,22-23,27-30,32-33,35,37-41,45-46,49-50
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/updateCredential.generated.yml
+  ai_agent 38
+packages/cli/src/modules/apps/__tests__/sandbox-settings.test.ts
+  ai_agent 1-18,21-40,43,45-50,52-54,56-85,87-107,109-113,115-117,119-120,122-128,130-136,138,140-141,143-148,150-152,155-164,166-170,172-177
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderHeader.vue
+  ai_agent 18-19,238-268,379-396
+packages/@n8n/agents/src/runtime/__tests__/agent-runtime.test.ts
+  ai_agent 39,1078-1138,1620-1659,1819-1838,10269
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  ai_agent 36,179
+packages/modules/apps/backend/tsconfig.build.json
+  ai_agent 8
+packages/@n8n/db/src/repositories/ai-preference.repository.ts
+  ai_agent 3,9,29-30,48-53,55,120-129
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  ai_agent 390-399,524-526,549-577,836-840,982-1015,1116-1148,1360,1536,1576,1610,1891,2013
+packages/cli/templates/form-trigger.handlebars
+  ai_agent 176
+packages/@n8n/telemetry/src/events/agents.ts
+  ai_agent 44-55,125,155-160,170-190,228-231,237-248,251-265,336-340,344-379,428-452,459,487,514-515,525,544,572,592-601,664-673,772-784,991-1072,1186-1206
+packages/@n8n/instance-ai/src/utils/generate-validated-json.ts
+  ai_agent 11,34-35,60
+docs/generated/postgres-schema/public.project.md
+  ai_agent 269
+packages/frontend/editor-ui/src/features/settings/context/components/SkillsTable.test.ts
+  ai_agent 157-181
+packages/cli/src/modules/scim/scim.controller.ts
+  ai_agent 21,62-64,135-136
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflows.generated.yml
+  ai_agent 250-254
+packages/frontend/editor-ui/src/app/init/index.ts
+  ai_agent 243-261,267,284-287
+packages/frontend/editor-ui/src/features/ai/instanceAi/confirmationKinds.ts
+  ai_agent 8
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/promoteProjectSelection.generated.yml
+  ai_agent 33
+packages/@n8n/agents/src/runtime/telemetry/runtime-telemetry.ts
+  ai_agent 1,5,126-128,132-133
+packages/cli/src/public-api/v1/handlers/n8n-packages/spec/paths/importPackage.generated.yml
+  ai_agent 49-56
+packages/cli/src/executions/__tests__/sum-binary-data-bytes.test.ts
+  ai_agent 11,161-178
+packages/@n8n/engine/src/auth/resume-token.ts
+  ai_agent 1,3-7,10-14,16-37,41-42,44-46
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  ai_agent 216
+packages/@n8n/agents/src/runtime/memory/episodic-memory-defaults.ts
+  ai_agent 11,73,82-83
+packages/frontend/editor-ui/src/features/agents/channels/registry.test.ts
+  ai_agent 30,35,39
+packages/cli/src/modules/skills/__tests__/skills.controller.test.ts
+  ai_agent 9-10,13-22
+packages/cli/src/modules/agents/__tests__/agent-sse-stream.test.ts
+  ai_agent 68-92,312-316
+packages/frontend/editor-ui/src/features/agents/channels/teams/useTeamsSetupRestart.ts
+  ai_agent 4,12,15-20
+packages/quality/testing/playwright/pages/WorkflowSettingsModal.ts
+  ai_agent 54-62
+packages/@n8n/nodes-langchain/nodes/llms/LmChatAzureOpenAi/methods/searchModels.test.ts
+  ai_agent 33-35,243-244
+packages/cli/src/modules/agents/builder/prompts/config-mutation.prompt.ts
+  ai_agent 39-51
+packages/@n8n/engine/src/server/__tests__/workflow-executions.integration.test.ts
+  ai_agent 833
+packages/@n8n/eslint-plugin-community-nodes/src/utils/credential-fields.ts
+  ai_agent 12
+packages/@n8n/instance-ai/src/types.ts
+  ai_agent 8,1449-1450,1454,1607-1608,1776-1777,1871-1880,1883,1893,1897,2077-2078,2170-2171
+packages/frontend/editor-ui/src/features/agents/components/N8nChatHintPopover.vue
+  ai_agent 1-20,23-38,41-46,51-58,60-64,66,68-71,73-74,78,81,83,85-86
+packages/@n8n/agents/src/__tests__/integration/cassettes/native-tool-deferral/stream-preserves-discovery-approval-history-and-cache-store-false.json
+  ai_agent 43-44,64-65,85-86,216-217,237-238,258-259,370,403-404,424-425,445-446,557,643-644,664-665,685-686
+packages/cli/src/__tests__/workflow-execute-additional-data.test.ts
+  ai_agent 13,115-119,640-838,1391-1461
+packages/modules/apps/backend/src/scaffold/scaffold-package.json
+  ai_agent 2-19
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  ai_agent 77,174,269
+pnpm-lock.yaml
+  ai_agent 168-169,171-172,174-175,177-178,180-181,183-184,186-187,189-190,192-193,195-196,198-199,201-202,204-205,207-208,210-211,213-214,216-217,219-220,540-541,1194,1197,1200,1203,1206,1209,1212,1215,1218,1221,1224,1227,1230,1233,1236,1239,1242,1245,1266,1278,3141,4640,4643,4658,4661,4664,4667,4670,4673,4676,4871,4883,6947-6949,6980-6982,9084-9085,9090-9091,9096-9097,9102-9103,9108-9109,9114-9115,9120-9121,9126-9127,9132-9133,9138-9139,9144-9145,9150-9151,9156-9157,9162-9163,9168-9169,9174-9175,9178-9179,9184-9185,9190-9191,9194-9195,9198-9199,12089,12167-12168,16279-16280,25006,25008-25009,25012,25014-25017,25023,25025-25026,25029,25031-25034,25037,25039-25040,25043,25045-25046,25049,25051-25052,25056,25058-25062,25068,25070-25071,25074,25076-25077,25080,25082-25084,25087,25089-25090,25093,25095-25096,25099,25101-25102,25105,25107-25108,25111,25113,25115,25119,25121,25128,25130,25137,25141,25145,25147-25148,27274,27276-27277,27289,27291,27293,27301,27303,27310,27312,27315,27325,27327,27334,27336,27341,27349,27351-27352,27359,27361-27362,29581,29583,33908,33910-33912,34640,34650,38111,43530-43531
+packages/@n8n/instance-ai/src/tools/orchestration/select-agent.tool.ts
+  ai_agent 26,154,259-262,340-343
+packages/cli/test/integration/public-api/promotions.test.ts
+  ai_agent 1885-1907,2583,2769
+packages/@n8n/instance-ai/skills/data-table-manager/SKILL.md
+  ai_agent 26-27,29-31,49
+packages/cli/src/__tests__/workflow-runner.test.ts
+  ai_agent 21,25,38,243-246,355-358,1725-1738
+packages/cli/src/public-api/v1/shared/spec/schemas/applyPackageResultDto.generated.yml
+  ai_agent 119-121,125
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/deleteWorkflow.generated.yml
+  ai_agent 214-218
+packages/modules/insights/frontend/src/components/__snapshots__/InsightsSummary.test.ts.snap
+  ai_agent 65,162
+docs/generated/sqlite-schema/workflow_entity.md
+  ai_agent 281
+packages/@n8n/ai-utilities/src/utils/vector-store/createVectorStoreNode/__snapshots__/createVectorStoreNode.test.ts.snap
+  ai_agent 516
+packages/cli/src/modules/instance-ai/eval/eval-timings.ts
+  ai_agent 4-10,17
+packages/cli/src/modules/agents/__tests__/agent-knowledge.controller.test.ts
+  ai_agent 1-2,8-10,15-18,31,36,43,47,70-72,85,96,111,122-343,364-400
+docs/generated/postgres-schema/public.self_healing_configuration.md
+  ai_agent 95
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.test.ts
+  ai_agent 3,5,9-27,29-49,51-56,58-60,63,67-129
+packages/cli/src/public-api/v1/handlers/credentials/spec/paths/createCredential.generated.yml
+  ai_agent 38
+docs/generated/postgres-schema/README.md
+  ai_agent 1767
+docs/generated/sqlite-schema/project.md
+  ai_agent 275
+packages/frontend/editor-ui/src/features/agents/channels/slack/AgentChannelSlackEditView.vue
+  ai_agent 2-5,9,22-45,66,81-118,136-150
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/getWorkflow.generated.yml
+  ai_agent 223-227
+packages/core/src/execution-engine/eval-mock-fixtures.ts
+  ai_agent 2,4-8,22,31-32,35-36,244-248,332,490-491,496
+packages/cli/src/public-api/v1/shared/spec/schemas/workflowPublicDto.generated.yml
+  ai_agent 195-199
+packages/cli/src/modules/type-availability-policies/sub-workflow-policy-check.service.ts
+  ai_agent 1,3-5,7-8,10-13,15-19,21,24-30,33-44,46,48-49,52-61,64-75,78-84,86-87,90-109,111-112
+docs/generated/postgres-schema/public.workflow_entity.md
+  ai_agent 282
+packages/@n8n/nodes-langchain/nodes/memory/MemoryLakebaseChat/MemoryLakebaseChat.node.test.ts
+  ai_agent 129-135
+packages/cli/src/modules/agents/__tests__/agent-skill-usage.service.test.ts
+  ai_agent 344-366
+docs/generated/postgres-schema/public.self_healing_investigation.md
+  ai_agent 14,37,74
+packages/@n8n/agents/src/runtime/loop/runtime-helpers.ts
+  ai_agent 59
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2650c5bbaa5dffe3f9934a36c52b121bc903744a",
+  "prompts": {}
+}

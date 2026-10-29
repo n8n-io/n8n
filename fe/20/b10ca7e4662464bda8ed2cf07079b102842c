@@ -1,0 +1,82 @@
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.test.ts
+  s_c1b5e51e9dcd4c::t_1b94bad3a50a53 57-61,63-75
+  s_c1b5e51e9dcd4c::t_870244fc42531b 16,18,20,27,52,56,76,82,86,95,97,100,105-107,109,112-118,185,190,194,204,209,221,226,236,249,254,259,264
+  s_adbbcbbce7de10::t_3b5044a0413549 23-26,237-243,255
+  s_c1b5e51e9dcd4c::t_4f003b7e87843f 77,87-90,93-94,98-99,247,258
+  s_c1b5e51e9dcd4c::t_17038f44d3bc07 85
+  s_c1b5e51e9dcd4c::t_3d8e22d6e7a29b 14-15
+  s_c1b5e51e9dcd4c::t_9723adf519d073 17
+  s_c1b5e51e9dcd4c::t_f3aea82a515511 19
+  s_c1b5e51e9dcd4c::t_c99a83a15308e3 28-30,49-51
+  s_c1b5e51e9dcd4c::t_bc5aa36807b62f 53-55
+  s_c1b5e51e9dcd4c::t_64dd2856a69452 62
+  s_c1b5e51e9dcd4c::t_e7a69dd4c79a1a 91-92
+  s_c1b5e51e9dcd4c::t_f19bf1fcfaaec8 119
+  s_c1b5e51e9dcd4c::t_8173f08fb197b3 189
+  s_c1b5e51e9dcd4c::t_9ced5b3447a452 191
+  s_c1b5e51e9dcd4c::t_0213732acf21c9 205-208
+  s_c1b5e51e9dcd4c::t_b7bd8dddeb3e4d 210-212,218-220
+  s_c1b5e51e9dcd4c::t_c30e1632669f06 222-225
+  s_c1b5e51e9dcd4c::t_fac128557687a7 227-229,233-235
+  s_c1b5e51e9dcd4c::t_2feec4a7652b87 248
+  s_c1b5e51e9dcd4c::t_bae63ab44ce56e 250-253
+  s_c1b5e51e9dcd4c::t_d90f650de9f679 260-263
+  s_c1b5e51e9dcd4c::t_5074523e38b829 265-267
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.stories.ts
+  s_c1b5e51e9dcd4c::t_bbd038d9c7c734 19,22
+  s_c1b5e51e9dcd4c::t_745a2ab34939d2 9
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiConfirmationPanel.vue
+  s_c1b5e51e9dcd4c::t_61122111a1f09c 731-735
+  s_c1b5e51e9dcd4c::t_d2e02e0e7fc1ba 217
+packages/frontend/@n8n/design-system/src/components/N8nApprovalCard/ApprovalCard.vue
+  s_c1b5e51e9dcd4c::t_d654099ec7d777 162
+  s_c1b5e51e9dcd4c::t_3a57ce2e91c21c 233,249,307
+  s_adbbcbbce7de10::t_88d11a3ca62ccd 288
+  s_c1b5e51e9dcd4c::t_c69cce489dcd97 3,48,82,215,222-226,229-231,238-240,242,244,269
+  s_c1b5e51e9dcd4c::t_7674aceaf10532 2,203-207,217,227-228,250,309
+  s_c1b5e51e9dcd4c::t_209189f1619858 50-51,154,332,349
+  s_c1b5e51e9dcd4c::t_a6906bfc59a384 151-153
+  s_c1b5e51e9dcd4c::t_9228552411871a 155
+  s_c1b5e51e9dcd4c::t_feff3ba3908952 161
+  s_c1b5e51e9dcd4c::t_1a4b3fa539746a 208
+  s_c1b5e51e9dcd4c::t_3c1c3fd1f9fc7e 214
+  s_c1b5e51e9dcd4c::t_28eef8fe3bdc72 216
+  s_c1b5e51e9dcd4c::t_6c21320c7efb42 218
+  s_c1b5e51e9dcd4c::t_09a473e6117200 235-237
+  s_c1b5e51e9dcd4c::t_0e9f536531d0d6 241
+  s_c1b5e51e9dcd4c::t_587d1875fc5456 243
+  s_c1b5e51e9dcd4c::t_3b1e6b590ddecd 245-248
+  s_adbbcbbce7de10::t_f8b3a6202b4a1b 287
+  s_c1b5e51e9dcd4c::t_f0bb7137a11c1f 306
+  s_c1b5e51e9dcd4c::t_fc0d123adfd6f0 329-331
+  s_adbbcbbce7de10::t_6b96b7ea3480eb 76,127,141,143,149-150,165,177,183,191,196,262,266-267,272,276,278-279,296,320,324-328,377,394,412,438,446,449
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_c1b5e51e9dcd4c::t_838bdfbc480297 61
+  s_c1b5e51e9dcd4c::t_b180132a2dd8c9 62-63
+packages/frontend/@n8n/design-system/src/locale/lang/en.ts
+  s_c1b5e51e9dcd4c::t_5b9f4c4f97c292 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe20b10ca7e4662464bda8ed2cf07079b102842c",
+  "prompts": {},
+  "sessions": {
+    "s_adbbcbbce7de10": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a177d6-5257-7376-adb6-706b279f30a8",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    },
+    "s_c1b5e51e9dcd4c": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a177bb-bf09-75dd-870b-90ec5cb2d66d",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

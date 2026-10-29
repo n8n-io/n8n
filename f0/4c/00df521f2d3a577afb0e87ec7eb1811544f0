@@ -1,0 +1,61 @@
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_be7f812aa784b6::t_379d8bf771f568 388-429
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  s_be7f812aa784b6::t_50f5a7e0363eeb 1-135
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_be7f812aa784b6::t_a878a58f4a9636 71,1796
+  s_be7f812aa784b6::t_3ea6315060b1c8 157,211,258,309,346,387,462,530,576,617,669,738,794,845,916,980,1008,1065,1170,1242,1328,1428,1454,1479,1522,1569,1629,1676
+  s_be7f812aa784b6::t_5c0532d0b1e46f 1802,1814-1818,1820-1836,1901
+  s_be7f812aa784b6::t_c4cbc3dd18eb38 1880-1882
+  s_be7f812aa784b6::t_ef312c4fb2a667 1865-1879,1883-1888
+packages/cli/src/modules/agents/__tests__/agent-conversation-state.service.test.ts
+  s_be7f812aa784b6::t_379d8bf771f568 97-166
+packages/cli/src/modules/agents/integrations/platforms/__tests__/teams/synthetic-integration.test.ts
+  s_be7f812aa784b6::t_3ea6315060b1c8 39,909
+packages/cli/src/modules/agents/__tests__/agent-execution-orchestrator.service.test.ts
+  s_be7f812aa784b6::t_68a45cb81d35f7 3200,3205
+packages/cli/src/modules/agents/integrations/integration-tool-descriptions.ts
+  s_be7f812aa784b6::t_5c0532d0b1e46f 51
+packages/cli/src/modules/agents/integrations/integration-tool-execution.ts
+  s_be7f812aa784b6::t_efc2e3f543b47d 57-68
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_6ecf2337b07e97 7-9,80,99,250,265-273,283-288,304,314-319,379,390-395,416,451-452,454,456,476-479
+packages/cli/src/modules/agents/integrations/agent-chat-stream-consumer.ts
+  s_be7f812aa784b6::t_efc2e3f543b47d 10,44-55,73-79,102-105,121-122,283,314,362-363,456-500,580,602,654-659
+packages/cli/src/modules/agents/integrations/__tests__/helpers/replay-test-helpers.ts
+  s_be7f812aa784b6::t_078b4bd901bf34 9
+  s_be7f812aa784b6::t_3ea6315060b1c8 309
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-stream-consumer.test.ts
+  s_be7f812aa784b6::t_c4cbc3dd18eb38 532-741
+packages/cli/src/modules/agents/agent-conversation-state.service.ts
+  s_be7f812aa784b6::t_b83d0fbaeb4095 37-64
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_be7f812aa784b6::t_6a1d019a2476ae 13,25-29
+  s_be7f812aa784b6::t_73e31f48a6828b 247-264,333-334,351-356
+packages/cli/src/modules/agents/agent-execution-orchestrator.service.ts
+  s_be7f812aa784b6::t_6a1d019a2476ae 1049,1062,1080-1085
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_be7f812aa784b6::t_6a1d019a2476ae 58,61
+  s_be7f812aa784b6::t_73e31f48a6828b 171-176,282-287,395-397,594,604,1068
+packages/cli/src/modules/agents/integrations/__tests__/agent-outbound-files.service.test.ts
+  s_be7f812aa784b6::t_d92eddf906aa8b 1-41,47-87
+  s_be7f812aa784b6::t_95bc43c9ac71d4 42-46
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_be7f812aa784b6::t_3ea6315060b1c8 15,219,237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "f04c00df521f2d3a577afb0e87ec7eb1811544f0",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

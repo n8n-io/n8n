@@ -1,0 +1,22 @@
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_ad94a6759246ee::t_a3f4edcfb67a72 228-229,307-308
+packages/@n8n/cli/docs/commands/promotions.md
+  s_ad94a6759246ee::t_a3f4edcfb67a72 81,83-84,93-96,195-196
+  s_ad94a6759246ee::t_fba8a2e7de172d 197
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f64be242b1fa5d29ff83a94e11612daa7631cbb",
+  "prompts": {},
+  "sessions": {
+    "s_ad94a6759246ee": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "961019f9-4fec-4ea1-ab0d-dd9b5a7c668b",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}

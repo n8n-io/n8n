@@ -1,0 +1,74 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_482f48320b007f::t_b537f88c628ad1 564-577
+  s_482f48320b007f::t_08fe915f15b617 557-563
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/createThreadComponentRenderer.ts
+  s_482f48320b007f::t_3c19d78ac302ea 132,165
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_482f48320b007f::t_9cd2c64c3570cd 715,6591-6592
+  s_482f48320b007f::t_2e22b264b88d74 718,6546,6561-6566,6584-6590,6593-6602
+  s_482f48320b007f::t_eddfea06a44ca4 6603-6621
+  s_482f48320b007f::t_ef2da7f7f2fc8e 6567-6583
+  s_482f48320b007f::t_962d5e2ad93c54 6622
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAgentPreview.vue
+  s_482f48320b007f::t_25d279bea2cb88 148-152
+  s_482f48320b007f::t_f64e75f343cfc8 3,19,26,44-50,134,140-141
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderChatMode.vue
+  s_482f48320b007f::t_fb2a9bf1da6e69 7,27,43
+packages/quality/testing/playwright/services/instance-ai-api-helper.ts
+  s_482f48320b007f::t_bc480be699b00d 4,21-30,33-36,43,50-52
+  s_482f48320b007f::t_211a647d85464b 31-32,37-42,44-49
+  s_482f48320b007f::t_abaa60da3c0e46 53
+packages/frontend/editor-ui/src/features/agents/components/AgentPreviewDock.vue
+  s_482f48320b007f::t_25d279bea2cb88 234
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_482f48320b007f::t_fb2a9bf1da6e69 42,68,76,82,387,452-453,539
+packages/frontend/editor-ui/src/features/agents/composables/useAgentBuilderLayout.ts
+  s_482f48320b007f::t_dcdbf96cc5e067 18,27
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiThreadView.test.ts
+  s_482f48320b007f::t_3c19d78ac302ea 214-218,228-232,447,974-996
+  s_482f48320b007f::t_4a2bbd504b03b1 997,999,1014-1017
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_482f48320b007f::t_5d9089e2a7100e 49-50,55-56
+  s_482f48320b007f::t_89b0fdf8eed9cc 67,75-79
+  s_482f48320b007f::t_047872bdb984ee 48,80-84
+packages/quality/testing/playwright/pages/AgentBuilderPage.ts
+  s_482f48320b007f::t_bc480be699b00d 31,36-41,50-53
+  s_482f48320b007f::t_16f6ae9a0b06ba 42-49
+  s_482f48320b007f::t_211a647d85464b 32-35
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_482f48320b007f::t_16f6ae9a0b06ba 3747-3749
+  s_482f48320b007f::t_fb2a9bf1da6e69 201-203,228-229,369-374,412,414-415,418,501-504,1091-1101,1104,1108-1113,3525,3542,3550,3552
+  s_482f48320b007f::t_d1a00ef2341c1c 3685-3703,3705-3746,3750-3765
+  s_482f48320b007f::t_f64e75f343cfc8 3680,3682-3683,3766,3899-3908
+  s_482f48320b007f::t_9dd040dc75c3bb 3909-3910
+packages/quality/testing/playwright/tests/e2e/agents/agent-builder-chat-modes.spec.ts
+  s_482f48320b007f::t_211a647d85464b 194-197,215-218,220,236-238
+  s_482f48320b007f::t_bc480be699b00d 2,44,193,198-206,208,210-214,221-235,239-244
+  s_482f48320b007f::t_b537f88c628ad1 207,209,219
+  s_482f48320b007f::t_573d7e180424a7 245-268
+  s_482f48320b007f::t_d83f03962a3521 269
+packages/frontend/editor-ui/src/features/ai/instanceAi/InstanceAiThreadView.vue
+  s_482f48320b007f::t_dcdbf96cc5e067 62,1166
+  s_482f48320b007f::t_573d7e180424a7 542-545,949-951
+  s_482f48320b007f::t_08fe915f15b617 864,1226-1228
+  s_482f48320b007f::t_25d279bea2cb88 381,398-401,449,454,860,942,1076,1160-1165,1167-1172,1194
+  s_482f48320b007f::t_f64e75f343cfc8 60-61,89-99,872,974,976,982-994,1035-1040,1145,1156,1187-1189,1229,1264-1268
+  s_482f48320b007f::t_b5de294eb060fd 450-453
+  s_482f48320b007f::t_d2925977775cd9 1230,1269
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "02fba8d6b8899c8772e66bf9f791d80aa1170e30",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

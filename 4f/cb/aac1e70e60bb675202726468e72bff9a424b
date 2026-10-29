@@ -1,0 +1,34 @@
+packages/frontend/@n8n/design-system/src/components/N8nCodeBlock/CodeBlock.test.ts
+  h_f8b427917eda26 35,62-86
+packages/frontend/@n8n/design-system/src/components/N8nCodeBlock/CodeBlock.vue
+  h_f8b427917eda26 5,70,116-117
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.test.ts
+  h_f8b427917eda26 2,56-132,468-470
+packages/frontend/@n8n/design-system/src/components/N8nMarkdown/Markdown.vue
+  h_f8b427917eda26 7,96-97,119-129,138-146,148-155,158,186,196,217,441
+packages/frontend/@n8n/design-system/src/css/markdown.scss
+  h_f8b427917eda26 24-26,139,328
+packages/frontend/@n8n/design-system/src/css/markdownStyles.test.ts
+  h_f8b427917eda26 1-35
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMarkdownChunk.test.ts
+  h_f8b427917eda26 1-40
+packages/frontend/editor-ui/src/features/ai/chatHub/components/ChatMarkdownChunk.vue
+  h_f8b427917eda26 2,22,25-27,29
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiMarkdown.test.ts
+  h_f8b427917eda26 10-11,13-14,248-257
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiMarkdown.vue
+  h_f8b427917eda26 257-258
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatMarkdown/resourceLinks.test.ts
+  h_f8b427917eda26 9,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4fcbaac1e70e60bb675202726468e72bff9a424b",
+  "prompts": {},
+  "humans": {
+    "h_f8b427917eda26": {
+      "author": "heymynameisrob <robhough180@gmail.com>"
+    }
+  }
+}

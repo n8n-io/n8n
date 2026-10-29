@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82789c69de1855::t_047a1908772f52 160
+  s_82789c69de1855::t_542d305206a12d 1734
+  s_82789c69de1855::t_298508f89beedb 1756,1774-1794
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_89282135a0c4c0 691
+  s_82789c69de1855::t_047a1908772f52 766
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_82789c69de1855::t_047a1908772f52 8868
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPlan.vue
+  s_82789c69de1855::t_0689f2c58fad8b 103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5da341adc8b0ce401ba2e03cb8730b7b3fcd80f3",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
