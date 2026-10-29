@@ -61,7 +61,9 @@ function taskStateOf(node: InstanceAiAgentNode): CloudBrowserTask['state'] | und
  * tree: running ones, and finished ones whose result is still waiting to reach the orchestrator.
  * A task the user stopped is left out.
  */
-export function useCloudBrowserTasks(runtime?: ThreadRuntime): ComputedRef<CloudBrowserTask[]> {
+export function useCloudBrowserTasks(
+	runtime?: Pick<ThreadRuntime, 'messages'>,
+): ComputedRef<CloudBrowserTask[]> {
 	const thread = runtime ?? useThread();
 
 	return computed(() => {

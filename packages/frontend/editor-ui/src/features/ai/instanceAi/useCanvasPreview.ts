@@ -376,7 +376,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 
 	// The user opened the workflow, so it shows in their recent workflows, as from the editor.
 	function recordWorkflowOpen(workflowId: string) {
-		const tab = openTabs.value.find(({ id }) => id === workflowId);
+		const tab = openTabs.value.filter(isArtifactTab).find(({ id }) => id === workflowId);
 		recentWorkflowsStore.registerWorkflowOpen(workflowId, tab?.projectId ?? thread.projectId);
 	}
 
