@@ -474,6 +474,9 @@ describe('CredentialsService', () => {
 				});
 
 				expect(preparedData.oauthTokenData).toBeUndefined();
+				// The default merge does not add omitted fields back from the stored data.
+				expect(preparedData).not.toHaveProperty('clientId');
+				expect(preparedData).not.toHaveProperty('clientSecret');
 			});
 
 			it('keeps the stored token when only the client secret changes', async () => {
