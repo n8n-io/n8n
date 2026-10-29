@@ -20,6 +20,7 @@ const highestItemId = (items: IDataObject[], startingFrom: number) =>
 
 export class E2eTestPollingTrigger implements INodeType {
 	description: INodeTypeDescription = {
+		hidden: true,
 		displayName: 'E2E Test Polling Trigger',
 		name: 'e2eTestPollingTrigger',
 		icon: 'fa:play',

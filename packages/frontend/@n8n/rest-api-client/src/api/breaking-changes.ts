@@ -4,12 +4,13 @@ import type {
 	BreakingChangeVersion,
 	MigrationFindingTriageStatus,
 	MigrationNotifyResult,
+	MigrationOwnerCandidate,
 	MigrationWorkflowOwnerResponse,
 	WorkflowMigrationResult,
 } from '@n8n/api-types';
 
 import type { IRestApiContext } from '../types';
-import { makeRestApiRequest, get } from '../utils';
+import { makeRestApiRequest, get, requestResponse } from '../utils';
 
 type BreakingChangeQuery = {
 	version?: BreakingChangeVersion;
@@ -33,11 +34,51 @@ export async function refreshReport(
 	return await makeRestApiRequest(context, 'POST', refreshUrl);
 }
 
+export type MigrationReportExport = { blob: Blob; filename: string };
+
+const DEFAULT_EXPORT_FILENAME = 'migration-report.csv';
+
+/** The file name from a `Content-Disposition: attachment; filename="..."` header. */
+function attachmentFilename(header: unknown): string | undefined {
+	return typeof header === 'string' ? header.match(/filename="([^"]+)"/)?.[1] : undefined;
+}
+
+/** The overview as a CSV file, named by the server. */
+export async function exportReport(
+	context: IRestApiContext,
+	query?: BreakingChangeQuery,
+): Promise<MigrationReportExport> {
+	const response = await requestResponse<Blob>({
+		method: 'GET',
+		baseURL: context.baseUrl,
+		endpoint: '/breaking-changes/report/export',
+		headers: { 'push-ref': context.pushRef },
+		data: query,
+		responseType: 'blob',
+	});
+	return {
+		blob: response.data,
+		filename:
+			attachmentFilename(response.headers['content-disposition']) ?? DEFAULT_EXPORT_FILENAME,
+	};
+}
+
 export async function getReportForRule(
 	context: IRestApiContext,
 	ruleId: string,
 ): Promise<BreakingChangeRuleDetailResult> {
 	return (await get(context.baseUrl, `/breaking-changes/report/${ruleId}`)).data;
+}
+
+export async function getWorkflowOwnerCandidates(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<MigrationOwnerCandidate[]> {
+	return await makeRestApiRequest(
+		context,
+		'GET',
+		`/breaking-changes/workflows/${workflowId}/owner/candidates`,
+	);
 }
 
 export async function assignWorkflowOwner(

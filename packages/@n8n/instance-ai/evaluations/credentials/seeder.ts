@@ -127,6 +127,22 @@ const CREDENTIAL_TEMPLATES: Record<string, CredentialTemplate> = {
 		envVar: 'EVAL_OPENAI_API_KEY',
 		buildData: (key) => ({ apiKey: key }),
 	},
+	anthropicApi: {
+		defaultName: '[eval] Anthropic',
+		buildData: (key) => ({ apiKey: key, url: 'https://api.anthropic.com' }),
+	},
+	groqApi: {
+		defaultName: '[eval] Groq',
+		buildData: (key) => ({ apiKey: key }),
+	},
+	wordpressApi: {
+		defaultName: '[eval] WordPress',
+		buildData: (password) => ({
+			username: 'eval-user',
+			password,
+			url: 'https://blog.example.com',
+		}),
+	},
 };
 
 // ---------------------------------------------------------------------------

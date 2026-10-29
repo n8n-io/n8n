@@ -163,12 +163,6 @@ responses:
                                 required:
                                   - key
                                   - value
-                        createdAt:
-                          type: string
-                          format: date-time
-                        updatedAt:
-                          type: string
-                          format: date-time
                   connections:
                     type: object
                     description: Connections between nodes, keyed by source node name
@@ -253,6 +247,11 @@ responses:
                           - separate
                           - combined
                         description: Controls how binary data is resolved from a node's input. This is a derived, internal setting rather than something intended to be set programmatically. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
+                      engineType:
+                        type: string
+                        nullable: true
+                        example: v1
+                        description: The execution engine that runs this workflow. It is included in workflow responses for reference, but any value sent when creating or updating a workflow is ignored.
                       callerPolicy:
                         type: string
                         enum:
@@ -303,6 +302,10 @@ responses:
                           - `non-manual`: Redact production (non-manually triggered) executions only.
                           - `manual-only`: Redact manually triggered executions only.
                           - `all`: Redact all executions, manual and production.
+                      redactCallerExecutions:
+                        type: boolean
+                        example: true
+                        description: Controls whether a workflow that calls this workflow as a sub-workflow has its executions redacted on the same channels as this workflow. The calling execution keeps a copy of the output of this workflow. Defaults to true. Turn it off only when the output of this workflow is not sensitive. Redaction that this workflow received from its own sub-workflows always passes to the caller.
                       availableInMCP:
                         type: boolean
                         example: false
@@ -479,12 +482,6 @@ responses:
                                     required:
                                       - key
                                       - value
-                            createdAt:
-                              type: string
-                              format: date-time
-                            updatedAt:
-                              type: string
-                              format: date-time
                       connections:
                         type: object
                         description: Connections between nodes, keyed by source node name

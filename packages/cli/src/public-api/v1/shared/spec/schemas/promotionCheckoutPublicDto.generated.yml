@@ -1,10 +1,6 @@
 type: object
 properties:
-  connectionId:
-    type: string
-    minLength: 1
-    maxLength: 36
-  configId:
+  environmentId:
     type: string
     minLength: 1
     maxLength: 36
@@ -18,8 +14,7 @@ properties:
   hasCheckout:
     type: boolean
 required:
-  - connectionId
-  - configId
+  - environmentId
   - direction
   - branchName
   - hasCheckout

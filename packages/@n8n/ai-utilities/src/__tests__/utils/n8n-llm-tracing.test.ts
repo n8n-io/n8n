@@ -1101,6 +1101,108 @@ describe('N8nLlmTracing', () => {
 			const tracingArg = setMetadataMock.mock.calls[0][0].tracing as Record<string, unknown>;
 			expect(tracingArg).not.toHaveProperty('llm.cost.total');
 		});
+
+		describe('GenAI attributes on the chat model task', () => {
+			const runId = 'run-gen-ai';
+			const chatModelMetadata = { ls_model_type: 'chat', ls_model_name: 'gpt-4o-mini' };
+			const reportedUsageOutput: LLMResult = {
+				generations: [
+					[{ text: 'Response', generationInfo: { model_name: 'gpt-4o-mini-2024-07-18' } }],
+				],
+				llmOutput: { tokenUsage: { completionTokens: 10, promptTokens: 5, totalTokens: 15 } },
+			};
+
+			const runLlmCall = async (
+				nodeType: string,
+				startMetadata: Record<string, unknown> | undefined,
+				output: LLMResult,
+				tracerOptions?: ConstructorParameters<typeof N8nLlmTracing>[1],
+			) => {
+				mockNode.type = nodeType;
+				const tracer = new N8nLlmTracing(mockExecutionFunctions, tracerOptions);
+				const llm: Serialized = { lc: 1, type: 'constructor', id: ['langchain'], kwargs: {} };
+
+				await tracer.handleLLMStart(
+					llm,
+					['Hi'],
+					runId,
+					undefined,
+					undefined,
+					undefined,
+					startMetadata,
+				);
+				await tracer.handleLLMEnd(output, runId);
+
+				return mockExecutionFunctions.addOutputData.mock.calls[0][3];
+			};
+
+			it('writes the chat attributes with numeric usage to the chat model output', async () => {
+				const metadata = await runLlmCall(
+					'@n8n/n8n-nodes-langchain.lmChatOpenAi',
+					chatModelMetadata,
+					reportedUsageOutput,
+				);
+
+				expect(metadata).toEqual({
+					tracing: {
+						'gen_ai.operation.name': 'chat',
+						'gen_ai.provider.name': 'openai',
+						'gen_ai.request.model': 'gpt-4o-mini',
+						'gen_ai.response.model': 'gpt-4o-mini-2024-07-18',
+						'gen_ai.usage.input_tokens': 5,
+						'gen_ai.usage.output_tokens': 10,
+					},
+				});
+			});
+
+			it.each([
+				['@n8n/n8n-nodes-langchain.lmChatOllama', 'ollama', undefined],
+				['n8n-nodes-community.lmChatCustom', undefined, undefined],
+				[
+					'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+					'anthropic',
+					{ genAiProviderName: 'anthropic' },
+				],
+			] as const)(
+				'sets the provider name of %s to %s',
+				async (nodeType, providerName, tracerOptions) => {
+					const metadata = await runLlmCall(
+						nodeType,
+						chatModelMetadata,
+						reportedUsageOutput,
+						tracerOptions,
+					);
+
+					expect(metadata?.tracing?.['gen_ai.provider.name']).toBe(providerName);
+				},
+			);
+
+			it('marks usage as not reported instead of sending the estimate', async () => {
+				const metadata = await runLlmCall(
+					'@n8n/n8n-nodes-langchain.lmChatOllama',
+					{ ls_model_type: 'chat' },
+					{ generations: [[{ text: 'Response' }]], llmOutput: {} },
+				);
+
+				expect(metadata).toEqual({
+					tracing: {
+						'gen_ai.operation.name': 'chat',
+						'gen_ai.provider.name': 'ollama',
+						'n8n.llm.usage_reported': false,
+					},
+				});
+			});
+
+			it('writes no GenAI attributes for a text completion model', async () => {
+				const metadata = await runLlmCall(
+					'@n8n/n8n-nodes-langchain.lmOpenAi',
+					undefined,
+					reportedUsageOutput,
+				);
+
+				expect(metadata).toBeUndefined();
+			});
+		});
 	});
 
 	describe('runsMap management', () => {

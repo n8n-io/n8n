@@ -11,18 +11,12 @@ function messagePaths(messages: object, prefix = ''): string[] {
 }
 
 describe('en.json', () => {
-	it('compiles every message', () => {
-		const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } });
+	const i18n = createI18n({ legacy: false, locale: 'en', messages: { en } });
 
-		const failures = messagePaths(en).flatMap((path) => {
-			try {
-				i18n.global.t(path);
-				return [];
-			} catch (error) {
-				return [`${path}: ${(error as Error).message.split('\n')[0]}`];
-			}
-		});
+	afterAll(() => i18n.dispose());
 
-		expect(failures).toEqual([]);
+	// Keep the test timeout independent of the number of messages in the catalogue.
+	it.each(messagePaths(en))('compiles message "%s"', (path) => {
+		expect(() => i18n.global.t(path)).not.toThrow();
 	});
 });

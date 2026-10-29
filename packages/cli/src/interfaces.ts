@@ -38,6 +38,27 @@ export interface ICredentialsOverwrite {
 	[key: string]: ICredentialDataDecryptedObject;
 }
 
+/** Client fields of one managed OAuth app, with the version that identifies it. */
+export type ManagedVersionEntry = ICredentialDataDecryptedObject & { version: number };
+
+/**
+ * How a credential relates to the managed app of its type.
+ * - `managed`: the overwrite supplies the client of the credential.
+ * - `missing-app`: the credential is bound to a version that no app has any more. It needs a reconnect.
+ * - `not-managed`: no overwrite applies, because there is none or the credential has its own client.
+ */
+export type ManagedAuthState = 'managed' | 'missing-app' | 'not-managed';
+
+/** An overwrite payload after parsing: the base entries and the newer app of each type in a rollout. */
+export interface ParsedCredentialsOverwrites {
+	entries: ICredentialsOverwrite;
+	/** Version of the base entry, for types that state one. A missing type means version 1. */
+	entryVersions: Record<string, number>;
+	versions: Record<string, ManagedVersionEntry>;
+	/** Parts of the payload that the parser skipped, each with the reason. */
+	problems: string[];
+}
+
 // ----------------------------------
 //               tags
 // ----------------------------------
@@ -144,6 +165,19 @@ export interface ResumableExecution {
 	expectedStatus: Extract<ExecutionStatus, 'new' | 'waiting'>;
 	/** Store recorded on the row. A resume keeps writing there, whatever the configured mode. */
 	storedAt?: ExecutionStorageLocation;
+	/** Set for an engine v2 execution, which has no row to take over. */
+	engineResume?: EngineV2ResumeRequest;
+}
+
+/** What the control plane forwards to the data plane to end a wait. */
+export interface EngineV2ResumeRequest {
+	/** The waiting step that `locateResumeTarget` named. */
+	stepId: string;
+	/**
+	 * The resume token from the request. The control plane does not read it
+	 * (ADR-20260904-a-derived-token-authorizes-a-resume-request, decision 7).
+	 */
+	token: string;
 }
 
 export interface IExecutingWorkflowData {
@@ -151,6 +185,8 @@ export interface IExecutingWorkflowData {
 	startedAt: Date;
 	/** This promise rejects when the execution is stopped. When the execution finishes (successfully or not), the promise resolves. */
 	postExecutePromise: IDeferredPromise<IRun | undefined>;
+	/** True once `postExecutePromise` has settled, so the run has stopped writing execution data. */
+	postExecuteSettled?: boolean;
 	/** HTTPResponse needed for streaming responses */
 	httpResponse?: Response;
 	responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>;
@@ -273,6 +309,9 @@ export interface IAgentTurnFinishedTrackProperties extends ITelemetryTrackProper
 	 */
 	token_count: number;
 	tool_call_count: number;
+	/** Successful `load_skill` calls that activated a skill in this turn. */
+	skill_load_count?: number;
+	loaded_skill_ids?: string[];
 }
 
 // ----------------------------------

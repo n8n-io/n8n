@@ -9,6 +9,7 @@ export type AuthFailureReason =
 	| 'invalid_token'
 	| 'token_not_found_in_db'
 	| 'user_not_found'
+	| 'user_disabled'
 	| 'user_id_not_in_auth_info'
 	| 'unknown_error'
 	| 'verifier_not_registered'
@@ -32,7 +33,8 @@ export type McpResolvedAuthType = Exclude<Mcpauth_type, 'unknown'>;
  */
 export type McpCallerAuth =
 	| { authType: 'oauth'; clientId: string }
-	| { authType: 'api_key'; clientId?: never };
+	// Experiment cleanup (123_surface_mcp_to_claude_trial_users): remove only apiKeyId from the API-key branch; keep McpCallerAuth.
+	| { authType: 'api_key'; clientId?: never; apiKeyId?: string };
 
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;

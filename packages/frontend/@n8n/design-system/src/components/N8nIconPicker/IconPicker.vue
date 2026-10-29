@@ -72,6 +72,8 @@ type Props = {
 	buttonClass?: string | Record<string, boolean> | Array<string | Record<string, boolean>>;
 	/** The tab to show when there is no selected value. */
 	defaultTab?: TabType;
+	/** Icon the button draws when no icon set has the selected icon */
+	fallbackIcon?: IconName;
 };
 
 const { t } = useI18n();
@@ -84,6 +86,7 @@ const props = withDefaults(defineProps<Props>(), {
 	buttonVariant: 'outline',
 	buttonClass: undefined,
 	defaultTab: 'icons',
+	fallbackIcon: undefined,
 });
 
 const model = defineModel<IconOrEmoji>();
@@ -479,6 +482,7 @@ function handlePickerKeyup(event: KeyboardEvent) {
 						v-if="!model || model.type === 'icon'"
 						:class="[$style['icon-button'], buttonClass]"
 						:icon="buttonIconName"
+						:fallback-icon="fallbackIcon"
 						:size="buttonSize"
 						icon-only
 						:disabled="isReadOnly"

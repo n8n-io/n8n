@@ -4,8 +4,11 @@ import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import type { HttpRequestClient } from '@n8n/backend-network';
 import { Container } from '@n8n/di';
 import type { Author } from 'chat';
+import type { AgentExecutionOrchestratorService } from '../../agent-execution-orchestrator.service';
+import { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
 import { AgentMessageQueueService } from '../../agent-message-queue.service';
 import type { AgentMessageQueue } from '../../entities/agent-message-queue.entity';
+import { AgentMessageRepository } from '../../repositories/agent-message.repository';
 import type { QueuedIntegrationMessage } from '../../types/agent-queued-message';
 import { mock } from 'vitest-mock-extended';
 import { deepCopy, UserError, type Logger } from 'n8n-workflow';
@@ -241,6 +244,14 @@ class BufferingTestIntegration extends AgentChatIntegration {
 	readonly displayLabel = 'Test Buffered';
 	readonly displayIcon = 'circle';
 	readonly disableStreaming = true;
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -253,6 +264,14 @@ class StreamingTestIntegration extends AgentChatIntegration {
 	readonly description = '';
 	readonly displayLabel = 'Test Streaming';
 	readonly displayIcon = 'circle';
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -271,6 +290,14 @@ class FormattedBufferedTestIntegration extends AgentChatIntegration {
 			`chat:${thread.adapter?.botUserId ?? 'bot'}-${thread.id}`,
 		toSdk: (threadId: string) => threadId.split('-').slice(1).join('-'),
 	};
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -287,6 +314,14 @@ class RestrictedTestIntegration extends AgentChatIntegration {
 	isUserAllowed(author: Author): boolean {
 		return author.userId === 'allowed-user';
 	}
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}
@@ -2302,10 +2337,21 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Final answer');
 		});
 
-		it('posts an error message when the streaming post fails', async () => {
+		it.each([
+			{ name: 'reposts the reply', repostFails: false, posts: [{ markdown: 'Hello' }] },
+			{
+				name: 'posts a delivery error when the repost also fails',
+				repostFails: true,
+				posts: [
+					{ markdown: 'Hello' },
+					"⚠️ The agent's reply couldn't be posted here in full. Please try again.",
+				],
+			},
+		])('$name after the streaming post fails', async ({ repostFails, posts }) => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
-			thread.post.mockRejectedValueOnce(new Error('send failed')).mockResolvedValueOnce(undefined);
+			thread.post.mockRejectedValueOnce(new Error('send failed'));
+			if (repostFails) thread.post.mockRejectedValueOnce(new Error('send failed'));
 			const agentExecutor = makeAgentExecutor([
 				{ type: 'text-delta', id: 't1', delta: 'Hello' },
 				{ type: 'finish', finishReason: 'stop' },
@@ -2323,8 +2369,8 @@ describe('AgentChatBridge — consumeStream', () => {
 
 			await handlers.mention!(thread, { text: 'hi', author: { userId: 'u1', userName: 'user1' } });
 
-			expect(thread.post).toHaveBeenCalledTimes(2);
-			expect(thread.post).toHaveBeenNthCalledWith(2, GENERIC_ERROR_MESSAGE);
+			// The first post is the failed stream.
+			expect(thread.post.mock.calls.slice(1).map(([message]) => message)).toEqual(posts);
 		});
 
 		it('posts a generic error when an errored tool result ends without output', async () => {
@@ -2515,7 +2561,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(setAssistantStatus).toHaveBeenCalledWith('C123', '1779466577.518139', '');
 		});
 
-		it('clears assistant status before responding to top-level Slack channel mentions', async () => {
+		it('clears assistant status after finishing a top-level Slack channel reply', async () => {
 			const { bot, handlers } = makeBot();
 			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
@@ -2559,14 +2605,14 @@ describe('AgentChatBridge — consumeStream', () => {
 				'Thinking...',
 				['Thinking...'],
 			);
-			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'C123', '1779466577.518139', '');
-			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('C123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
 				thread.post.mock.invocationCallOrder[0],
 			);
-			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Hello');
 		});
 
-		it('clears assistant status before responding directly to top-level Slack DMs', async () => {
+		it('clears assistant status after finishing a top-level Slack DM reply', async () => {
 			const { bot, handlers } = makeBot();
 			const setAssistantStatus = vi.fn().mockResolvedValue(undefined);
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
@@ -2609,11 +2655,11 @@ describe('AgentChatBridge — consumeStream', () => {
 				'Thinking...',
 				['Thinking...'],
 			);
-			expect(setAssistantStatus).toHaveBeenNthCalledWith(2, 'D123', '1779466577.518139', '');
-			expect(setAssistantStatus.mock.invocationCallOrder[1]).toBeLessThan(
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
+			expect(setAssistantStatus.mock.invocationCallOrder.at(-1)).toBeGreaterThan(
 				thread.post.mock.invocationCallOrder[0],
 			);
-			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Hello' });
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Hello');
 		});
 
 		it('uses the user message as a ready thread root for Agent view DMs', async () => {
@@ -2712,7 +2758,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			await run;
 		});
 
-		it('does not re-set Slack DM status with a stale retry after it has been cleared', async () => {
+		it('cancels a sleeping Slack DM status retry when the turn finishes', async () => {
 			vi.useFakeTimers();
 			const { bot, handlers } = makeBot();
 			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
@@ -2725,9 +2771,59 @@ describe('AgentChatBridge — consumeStream', () => {
 			bot.getAdapter.mockReturnValue({ setAssistantStatus });
 			const thread = makeThread();
 			const agentExecutor = {
-				// Respond (which clears the status) while the initial "Thinking..."
-				// set is still waiting out its retry delay, then keep the stream open
-				// past that delay so the retry would otherwise fire after the clear.
+				executeForChatPublished: vi.fn(async function* () {
+					await new Promise((resolve) => setTimeout(resolve, 100));
+					yield { type: 'finish' as const, finishReason: 'stop' as const };
+				}),
+				resumeForChat: vi.fn(() => toStream([{ type: 'finish', finishReason: 'stop' }])),
+			};
+
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
+
+			const run = handlers.mention!(thread, {
+				text: 'hi',
+				raw: {
+					type: 'message',
+					channel: 'D123',
+					channel_type: 'im',
+					ts: '1779466577.518139',
+				},
+				author: { userId: 'u1', userName: 'user1' },
+			});
+			await vi.advanceTimersByTimeAsync(0);
+			expect(setAssistantStatus).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(100);
+			await run;
+			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
+
+			await vi.advanceTimersByTimeAsync(1000);
+			expect(setAssistantStatus.mock.calls.map((call) => call[2])).toEqual(['Thinking...', '']);
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('keeps Slack DM status active across progress and clears it at completion', async () => {
+			vi.useFakeTimers();
+			const { bot, handlers } = makeBot();
+			const invalidThreadError = Object.assign(new Error('invalid_thread_ts'), {
+				data: { error: 'invalid_thread_ts' },
+			});
+			const setAssistantStatus = vi
+				.fn()
+				.mockRejectedValueOnce(invalidThreadError)
+				.mockResolvedValue(undefined);
+			bot.getAdapter.mockReturnValue({ setAssistantStatus });
+			const thread = makeThread();
+			const agentExecutor = {
+				// Keep working after the progress message. The status retry must remain active.
 				executeForChatPublished: vi.fn(async function* (): AsyncGenerator<StreamChunk> {
 					yield { type: 'text-delta', id: 't1', delta: 'Hello' };
 					yield { type: 'message', message: { role: 'assistant', content: [] } };
@@ -2758,15 +2854,15 @@ describe('AgentChatBridge — consumeStream', () => {
 				author: { userId: 'u1', userName: 'user1' },
 			});
 
-			// Let the response flush and clear the status, then run past the retry
-			// delay and finish the stream.
-			await vi.advanceTimersByTimeAsync(2000);
+			await vi.advanceTimersByTimeAsync(750);
+			expect(setAssistantStatus.mock.calls.filter((c) => c[2] === 'Thinking...')).toHaveLength(2);
+			expect(setAssistantStatus.mock.calls.filter((c) => c[2] === '')).toHaveLength(0);
+			await vi.advanceTimersByTimeAsync(1250);
 			await run;
 
 			const thinkingCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === 'Thinking...');
 			const clearCalls = setAssistantStatus.mock.calls.filter((c) => c[2] === '');
-			// The cleared retry must not re-set "Thinking..." — only the initial set.
-			expect(thinkingCalls).toHaveLength(1);
+			expect(thinkingCalls).toHaveLength(2);
 			expect(clearCalls).toHaveLength(1);
 			// The last status written must be the clear, never a stale "Thinking...".
 			expect(setAssistantStatus.mock.calls.at(-1)?.[2]).toBe('');
@@ -2833,11 +2929,11 @@ describe('AgentChatBridge — consumeStream', () => {
 			resolveSet();
 			await run;
 
-			expect(setAssistantStatus).toHaveBeenCalledTimes(2);
+			expect(setAssistantStatus).toHaveBeenCalledTimes(3);
 			expect(setAssistantStatus).toHaveBeenLastCalledWith('D123', '1779466577.518139', '');
 		});
 
-		it('sets a thinking status and buffers the response when resuming a Slack action', async () => {
+		it('sets a thinking status and streams the response when resuming a Slack action', async () => {
 			const { bot, handlers } = makeBot();
 			const thread = makeThread();
 			const deleteMessage = vi.fn().mockResolvedValue(undefined);
@@ -2880,7 +2976,7 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.startTyping.mock.invocationCallOrder[0]).toBeLessThan(
 				thread.post.mock.invocationCallOrder[0],
 			);
-			expect(thread.post).toHaveBeenCalledWith({ markdown: 'Approved response' });
+			expect(await drainIterable(thread.post.mock.calls[0][0])).toBe('Approved response');
 			expect(agentExecutor.resumeForChat).toHaveBeenCalled();
 		});
 	});
@@ -3481,6 +3577,198 @@ describe('AgentChatBridge — consumeStream', () => {
 			expect(thread.startTyping).not.toHaveBeenCalled();
 			expect(thread.post).not.toHaveBeenCalled();
 		});
+
+		describe('typed platform context', () => {
+			const slackOrigin = {
+				type: 'slack',
+				workspaceId: 'T1',
+				conversationKind: 'channel',
+				channelId: 'C1',
+			};
+
+			function slackTurn(fetchMetadata: Mock, status: 'accepted' | 'duplicate' = 'accepted') {
+				const { bot, handlers } = makeBot();
+				const queue = mock<AgentMessageQueueService>();
+				queue.enqueue.mockResolvedValue(
+					status === 'accepted'
+						? { status, item: mock<AgentMessageQueue>({ messageId: 'message-1' }) }
+						: { status },
+				);
+				const messages = mock<AgentMessageRepository>();
+				Container.set(AgentMessageRepository, messages);
+				new AgentChatBridge(
+					bot as unknown as ChatBotLike,
+					'agent-1',
+					makeAgentExecutor([finishChunk]) as never,
+					componentMapper,
+					logger,
+					'project-1',
+					{ type: 'slack', credentialId: 'cred-1' } as unknown as AgentIntegrationConfig,
+					undefined,
+					undefined,
+					undefined,
+					queue,
+				);
+				const thread = {
+					...makeThread('slack:C1:1.2', {
+						decodeThreadId: vi.fn().mockReturnValue({ channel: 'C1', threadTs: '1.2' }),
+					} as unknown as FakeThread['adapter']),
+					isDM: false,
+					channel: { fetchMetadata },
+				};
+				const turn = handlers.subscribed!(thread, {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+					raw: { n8nWorkspaceId: 'T1', channel_type: 'channel' },
+				});
+				return { turn, queue, messages };
+			}
+
+			it('queues the origin IDs and stores the channel name after enqueue', async () => {
+				const { turn, queue, messages } = slackTurn(vi.fn().mockResolvedValue({ name: 'general' }));
+				await turn;
+
+				expect(queue.enqueue).toHaveBeenCalledWith(
+					expect.objectContaining({
+						payload: expect.objectContaining({ integrationOrigin: slackOrigin }),
+					}),
+				);
+				await vi.waitFor(() =>
+					expect(messages.updateIntegrationOrigin).toHaveBeenCalledWith('message-1', {
+						...slackOrigin,
+						channelName: 'general',
+					}),
+				);
+			});
+
+			it('starts the channel name lookup only after the turn is enqueued', async () => {
+				const fetchMetadata = vi.fn().mockReturnValue(new Promise(() => {}));
+				const { turn, queue, messages } = slackTurn(fetchMetadata);
+
+				await turn;
+
+				expect(fetchMetadata).toHaveBeenCalledTimes(1);
+				expect(queue.enqueue.mock.invocationCallOrder[0]).toBeLessThan(
+					fetchMetadata.mock.invocationCallOrder[0],
+				);
+				expect(messages.updateIntegrationOrigin).not.toHaveBeenCalled();
+			});
+
+			it('does not look up the channel name for a duplicate message', async () => {
+				const fetchMetadata = vi.fn().mockResolvedValue({ name: 'general' });
+				const { turn } = slackTurn(fetchMetadata, 'duplicate');
+
+				await turn;
+
+				expect(fetchMetadata).not.toHaveBeenCalled();
+			});
+		});
+	});
+
+	describe('episodic memory scope', () => {
+		const scope = { writeScopeId: 'test:channel-1', readScopeIds: ['test:channel-1'] };
+
+		async function queuedPayload(resolved: typeof scope | null) {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			new AgentChatBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				makeAgentExecutor([finishChunk]) as never,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+				undefined,
+				undefined,
+				undefined,
+				queue,
+			);
+			const resolveSpy = vi
+				.spyOn(registry.get('test-streaming')!, 'resolveEpisodicScope')
+				.mockReturnValue(resolved);
+			let calls: unknown[][] = [];
+			try {
+				await handlers.subscribed!(makeThread('thread-1'), {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+			} finally {
+				calls = [...resolveSpy.mock.calls];
+				resolveSpy.mockRestore();
+			}
+			return { payload: queue.enqueue.mock.calls[0][0].payload, calls };
+		}
+
+		it('queues the scope the channel resolves for the incoming turn', async () => {
+			const { payload, calls } = await queuedPayload(scope);
+
+			expect(payload).toMatchObject({ episodicScope: scope });
+			expect(calls).toEqual([
+				[
+					expect.objectContaining({
+						agentId: 'agent-1',
+						credentialId: 'cred-1',
+						threadId: 'thread-1',
+						author: expect.objectContaining({ id: 'u1' }),
+					}),
+				],
+			]);
+		});
+
+		it('queues a disabled decision when the channel resolves no scope', async () => {
+			const { payload } = await queuedPayload(null);
+
+			expect(payload).toMatchObject({ episodicScope: { disabled: true } });
+		});
+
+		it('hands the queued decision to the orchestrator through the production executor', async () => {
+			const { bot, handlers } = makeBot();
+			const queue = mock<AgentMessageQueueService>();
+			queue.enqueue.mockResolvedValue({ status: 'accepted', item: mock<AgentMessageQueue>() });
+			Container.set(AgentMessageQueueService, queue);
+			Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
+			Container.set(AgentChatAttachmentService, mock<AgentChatAttachmentService>());
+			const orchestrator = mock<AgentExecutionOrchestratorService>();
+			orchestrator.executeForChatPublished.mockImplementation(
+				() => toStream([finishChunk]) as never,
+			);
+			const bridge = AgentChatBridge.create(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				orchestrator,
+				componentMapper,
+				logger,
+				'project-1',
+				streamingIntegration,
+			);
+			const resolveSpy = vi
+				.spyOn(registry.get('test-streaming')!, 'resolveEpisodicScope')
+				.mockReturnValue(scope);
+			try {
+				await handlers.subscribed!(makeThread('thread-1'), {
+					text: 'hi',
+					author: { userId: 'u1', userName: 'user1' },
+				});
+			} finally {
+				resolveSpy.mockRestore();
+			}
+			const [{ payload, threadId }] = queue.enqueue.mock.calls[0];
+			if (payload.kind !== 'integration') throw new Error('Expected integration input');
+
+			await bridge.consumeQueuedMessage(
+				payload,
+				threadId,
+				{ executionId: 'execution-1', startedAt: new Date(), inputMessageIds: ['message-1'] },
+				new AbortController().signal,
+				streamingIntegration,
+			);
+
+			expect(orchestrator.executeForChatPublished).toHaveBeenCalledWith(
+				expect.objectContaining({ episodicScope: scope }),
+			);
+		});
 	});
 
 	describe('status handle cleanup', () => {
@@ -3496,6 +3784,14 @@ describe('AgentChatBridge — consumeStream', () => {
 				readonly displayLabel = 'Test Status Handle';
 				readonly displayIcon = 'circle';
 				readonly disableStreaming = true;
+				buildOriginDraft() {
+					return undefined;
+				}
+
+				resolveEpisodicScope() {
+					return null;
+				}
+
 				async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 					return {};
 				}
@@ -3681,6 +3977,119 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toBe('[alice (u1)]: thanks');
 	});
 
+	it.each(['mention', 'subscribed'] as const)(
+		'requires a mention in group DMs delivered through the %s handler',
+		async (route) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const thread = makeThread('thread-1');
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience: 'agent', onlyRespondWhenMentioned: true },
+				},
+			);
+			const author = { userId: 'u1', userName: 'alice' };
+			const raw = { channel: 'G_GROUP', channel_type: 'mpim' };
+
+			await handlers[route]!(thread, {
+				id: 'untagged',
+				text: 'hello',
+				isMention: false,
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(0);
+			expect(thread.startTyping).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+
+			await handlers[route]!(thread, {
+				id: 'tagged',
+				text: '<@U_BOT> hello',
+				isMention: true,
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(1);
+		},
+	);
+
+	it.each(['assistant', 'agent'] as const)(
+		'includes skipped thread messages when tagged again in mention-only mode with %s messaging',
+		async (messagingExperience) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
+			const author = { userId: 'u1', userName: 'alice' };
+			const thread = makeThread(
+				'thread-1',
+				undefined,
+				asyncIterableOf([
+					{ id: 'trigger', text: '<@U_BOT> When is the deadline?', author },
+					{ id: 'skipped', text: 'The deadline is Friday', author },
+					{
+						id: 'other-bot',
+						text: 'Updated the project calendar',
+						author: { userId: 'U_OTHER_BOT', userName: 'calendar-bot', isBot: true, isMe: false },
+					},
+					{
+						id: 'agent-reply',
+						text: 'The old deadline was Monday',
+						author: { userId: 'U_BOT', userName: 'agent-bot' },
+					},
+					{ id: 'answered-mention', text: '<@U_BOT> What was the old deadline?', author },
+				]),
+			);
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				{
+					type: 'slack',
+					credentialId: 'cred-1',
+					settings: { messagingExperience, onlyRespondWhenMentioned: true },
+				},
+			);
+			const raw = { channel: 'C123', channel_type: 'channel', thread_ts: '1779466577.518139' };
+
+			await handlers.subscribed!(thread, {
+				id: 'skipped',
+				text: 'The deadline is Friday',
+				author,
+				raw,
+			});
+			expect(agentExecutor.captured).toHaveLength(0);
+
+			await handlers.subscribed!(thread, {
+				id: 'trigger',
+				text: '<@U_BOT> When is the deadline?',
+				isMention: true,
+				author,
+				raw,
+			});
+
+			expect(agentExecutor.captured).toHaveLength(1);
+			expect(agentExecutor.captured[0].modelMessage).toContain('[alice]: The deadline is Friday');
+			expect(agentExecutor.captured[0].modelMessage).toContain(
+				'[calendar-bot]: Updated the project calendar',
+			);
+			expect(agentExecutor.captured[0].modelMessage).not.toContain('The old deadline was Monday');
+			expect(agentExecutor.captured[0].modelMessage).not.toContain('What was the old deadline?');
+			expect(agentExecutor.captured[0].message).toBe('When is the deadline?');
+		},
+	);
+
 	it('logs a warning and runs the agent with the plain message when history fetch throws', async () => {
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
@@ -3721,49 +4130,70 @@ describe('AgentChatBridge — Slack thread history', () => {
 		expect(call.modelMessage).toBe('[alice (u1)]: help');
 	});
 
-	it('labels the agent\'s own prior messages as "you (the agent)"', async () => {
-		const { bot, handlers } = makeBot();
-		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
-		const thread = makeThread('thread-1', undefined, {
-			[Symbol.asyncIterator]: () => {
-				return (async function* () {
-					yield { id: 'trigger', text: '@U_BOT help', author: { userId: 'u1', userName: 'alice' } };
-					yield {
-						id: 'prev-bot',
-						text: 'I can do that',
-						author: { userId: 'U_BOT', userName: 'agent-bot' },
-					};
-				})();
-			},
-		});
-		const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
+	it.each([
+		{
+			identity: 'bot user ID',
+			botUserId: 'U_BOT',
+			author: { userId: 'U_BOT', userName: 'agent-bot' },
+			text: 'I can do that',
+		},
+		{
+			identity: 'adapter self marker on an empty message',
+			botUserId: undefined,
+			author: { userId: 'U_BOT', userName: 'agent-bot', isMe: true },
+			text: '',
+		},
+	])(
+		'stops history at the agent message identified by $identity',
+		async ({ botUserId, author, text }) => {
+			const { bot, handlers } = makeBot();
+			bot.getAdapter.mockReturnValue({ botUserId });
+			const thread = makeThread('thread-1', undefined, {
+				[Symbol.asyncIterator]: () => {
+					return (async function* () {
+						yield {
+							id: 'trigger',
+							text: '@U_BOT help',
+							author: { userId: 'u1', userName: 'alice' },
+						};
+						yield {
+							id: 'prev-bot',
+							text,
+							author,
+						};
+						yield { id: 'older', text: 'Already answered', author: { userId: 'u1' } };
+					})();
+				},
+			});
+			const agentExecutor = makeAgentExecutor([{ type: 'finish', finishReason: 'stop' }]);
 
-		makeQueuedBridge(
-			bot as unknown as ChatBotLike,
-			'agent-1',
-			agentExecutor as never,
-			componentMapper,
-			logger,
-			'project-1',
-			slackIntegration,
-		);
+			makeQueuedBridge(
+				bot as unknown as ChatBotLike,
+				'agent-1',
+				agentExecutor as never,
+				componentMapper,
+				logger,
+				'project-1',
+				slackIntegration,
+			);
 
-		await handlers.mention!(thread, {
-			id: 'trigger',
-			text: '@U_BOT help',
-			author: { userId: 'u1', userName: 'alice' },
-			raw: {
-				channel: 'C123',
-				channel_type: 'channel',
-				thread_ts: '1779466577.518139',
-				ts: '1779466588.518139',
-			},
-		});
+			await handlers.mention!(thread, {
+				id: 'trigger',
+				text: '@U_BOT help',
+				author: { userId: 'u1', userName: 'alice' },
+				raw: {
+					channel: 'C123',
+					channel_type: 'channel',
+					thread_ts: '1779466577.518139',
+					ts: '1779466588.518139',
+				},
+			});
 
-		const call = agentExecutor.captured[0];
-		expect(call.modelMessage).toContain('[you (the agent)]: I can do that');
-		expect(call.modelMessage).not.toContain('[agent-bot]');
-	});
+			const call = agentExecutor.captured[0];
+			expect(call.modelMessage).not.toContain('<slack_thread_history>');
+			expect(call.modelMessage).not.toContain('Already answered');
+		},
+	);
 
 	it('neutralizes framing tags in prior messages so history cannot break out of the context block', async () => {
 		const { bot, handlers } = makeBot();
@@ -3845,7 +4275,7 @@ describe('AgentChatBridge — Slack thread history', () => {
 			.filter((line) => line.startsWith('['));
 	}
 
-	it('caps the number of prior messages at the message-count limit', async () => {
+	it('reads to the start of the thread when more than 30 messages have no agent reply', async () => {
 		const { bot, handlers } = makeBot();
 		bot.getAdapter.mockReturnValue({ botUserId: 'U_BOT' });
 		// thread.messages is newest-first: trigger, then hist-1 (newest prior) … hist-35.
@@ -3883,11 +4313,11 @@ describe('AgentChatBridge — Slack thread history', () => {
 
 		const call = agentExecutor.captured[0];
 		const lines = historyLines(call.modelMessage);
-		expect(lines).toHaveLength(30);
-		// The 30 newest priors are kept (hist-1..hist-30); the oldest 5 are dropped.
+		expect(lines).toHaveLength(35);
 		expect(call.modelMessage).toContain('[alice]: hist-1');
-		expect(call.modelMessage).toContain('[alice]: hist-30');
-		expect(call.modelMessage).not.toContain('hist-31');
+		expect(call.modelMessage).toContain('[alice]: hist-35');
+		expect(lines[0]).toBe('[alice]: hist-35');
+		expect(lines.at(-1)).toBe('[alice]: hist-1');
 	});
 
 	it('caps the total history size at the character limit', async () => {
@@ -3993,6 +4423,14 @@ class ListeningTestIntegration extends AgentChatIntegration {
 	getReplyExpectation({ message }: { message: { isMention?: boolean } }): 'required' | 'optional' {
 		return message.isMention ? 'required' : 'optional';
 	}
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
 	}

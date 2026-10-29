@@ -13,6 +13,7 @@ export type {
 	StepError,
 	StepKey,
 	StepKeyId,
+	ResumeBinding,
 	ResumeCause,
 	StepSlots,
 	StepStatus,
@@ -27,6 +28,7 @@ export type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	ExecutionListFilter,
 	StepView,
 } from './execution-view-store';
 export { StepNotFoundError } from './step-store';
@@ -43,3 +45,5 @@ export {
 	DEFAULT_WAIT_SWEEP_INTERVAL_MS,
 } from './wait-sweeper';
 export { ExecutionFileCleanup } from './execution-file-cleanup';
+export { ResumeRejectedError, ResumeRequestService } from './resume-request.service';
+export type { ResumeHold, ResumeRejection, ResumeTarget } from './resume-request.service';

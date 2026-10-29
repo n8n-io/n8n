@@ -1,8 +1,8 @@
 <script setup lang="ts">
+import type { AgentCreationResource } from '@/features/agents/types';
 import { computed, onBeforeUnmount } from 'vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import AgentBuilderView from '@/features/agents/views/AgentBuilderView.vue';
-import type { AgentResource } from '@/features/agents/types';
 import { persistPendingAgent } from '../instanceAi.memory.api';
 import { isAgentEditingAgent } from '../canvasPreview.utils';
 import {
@@ -14,7 +14,7 @@ import {
 	INSTANCE_AI_AGENT_BUILDER_TARGET_METADATA_KEY,
 	INSTANCE_AI_PENDING_AGENT_METADATA_KEY,
 } from '../constants';
-import type { AgentPreviewHandoffParams } from '../composables/useInstanceAiAgentPreviewHandoff';
+import type { AgentTestHandoffParams } from '../composables/useInstanceAiAgentTestHandoff';
 import AgentBuildingIndicator from './AgentBuildingIndicator.vue';
 
 const props = defineProps<{
@@ -22,13 +22,14 @@ const props = defineProps<{
 	agentId: string;
 	previewSessionId?: string;
 	previewOpen: boolean;
+	previewChatTarget?: HTMLElement | null;
 	/** No agent row exists yet — the builder renders a local draft and persists on first edit. */
 	pending?: boolean;
 }>();
 
 const emit = defineEmits<{
 	'preview-open-change': [open: boolean];
-	'assistant-handoff': [params: AgentPreviewHandoffParams];
+	'assistant-handoff': [params: AgentTestHandoffParams];
 }>();
 
 // === Editing lock ===
@@ -97,12 +98,13 @@ async function syncAgentTarget(name: string) {
  * pending marker with the bound target. The builder treats resolution as the
  * acknowledgement, so the binding is durable before it stops drafting.
  */
-async function persistAgent(name: string): Promise<AgentResource> {
-	const target = { projectId: props.projectId, agentId: props.agentId };
+async function persistAgent(
+	target: Parameters<typeof persistPendingAgent>[2],
+): Promise<AgentCreationResource> {
 	const { agent, thread: updatedThread } = await persistPendingAgent(
 		rootStore.restApiContext,
 		thread.id,
-		{ ...target, name },
+		target,
 	);
 	// Authoritative: the server dropped the pending key, which a merge would keep.
 	// Skipped once this preview has been torn down or moved on, so a slow response
@@ -126,6 +128,7 @@ async function persistAgent(name: string): Promise<AgentResource> {
 			:artifact-agent-id="props.agentId"
 			:artifact-preview-session-id="props.previewSessionId"
 			:artifact-preview-open="props.previewOpen"
+			:artifact-preview-chat-target="props.previewChatTarget"
 			:artifact-agent-pending="props.pending"
 			:artifact-editing-locked="isAgentBuilding"
 			:artifact-persist-agent="persistAgent"

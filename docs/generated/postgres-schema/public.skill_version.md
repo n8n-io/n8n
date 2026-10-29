@@ -13,6 +13,7 @@
 | instructions | text |  | false |  |  |  |
 | name | varchar(128) |  | false |  |  | Free-text skill name, as it was when this version was saved |
 | skillId | varchar(36) |  | false |  | [public.skill](public.skill.md) |  |
+| sourceRevision | varchar(255) |  | true |  |  | Source revision that this version came from, set by Skill Sync. NULL for a version made in n8n |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | version | integer |  | false |  |  | 1..n per skill. A Save that changes the content adds one; none ever changes |
 
@@ -63,6 +64,7 @@ erDiagram
   text instructions
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_255_ sourceRevision
   timestamp_3__with_time_zone updatedAt
   integer version
 }
@@ -72,6 +74,7 @@ erDiagram
   varchar_255_ email
   varchar_32_ firstName
   uuid id
+  varchar_16_ kind
   date lastActiveAt
   varchar_32_ lastName
   boolean mfaEnabled
@@ -104,6 +107,8 @@ erDiagram
 }
 "public.skill" {
   varchar_36_ agentId FK
+  boolean availableToAssistant
+  boolean availableToMCP
   timestamp_3__with_time_zone createdAt
   uuid createdById FK
   varchar_36_ id

@@ -11,6 +11,7 @@ import {
 	MAX_AGENT_CHAT_ATTACHMENTS_PER_MESSAGE,
 	type AgentIntegrationConfig,
 	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 } from '@n8n/api-types';
 import { LockNamespace, LockService } from '@n8n/backend-common';
 import { type HttpRequestClient, OutboundHttp } from '@n8n/backend-network';
@@ -35,6 +36,7 @@ import type {
 	ExecuteForChatPublishedConfig,
 } from '../agent-execution-orchestrator.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
+import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentResourceRepository } from '../repositories/agent-resource.repository';
 import {
 	integrationMemoryResourceId,
@@ -60,6 +62,7 @@ import { AgentChatHitlResumeHandler } from './agent-chat-hitl-resume-handler';
 import { AgentChatMessageContextBridge } from './agent-chat-message-context';
 import {
 	AgentChatStreamConsumer,
+	ReplyDeliveryError,
 	type SuspensionHandlingResult,
 } from './agent-chat-stream-consumer';
 import { buildSuspendCardPayload } from './agent-chat-suspension-cards';
@@ -67,12 +70,16 @@ import { CallbackStore, type CallbackMetadata } from './callback-store';
 import type { ComponentMapper, ShortenCallback } from './component-mapper';
 import { loadChatSdk } from './esm-loader';
 import { IntegrationMessageContextService } from './integration-message-context.service';
+import { resolveEpisodicScopeDecision } from './episodic-scope-resolver';
+import { buildIntegrationOrigin, recordIntegrationOriginNames } from './integration-origin';
+import type { OriginInput } from './integration-origin-support';
 import type {
 	IntegrationMessageContext,
 	IntegrationPlatformMessageContext,
 	SessionBinding,
 } from './integration-tools';
-import { downloadDiscordAttachment } from './platforms/discord-operations';
+import { downloadDiscordAttachment } from './platforms/discord/discord-operations';
+import { SLACK_STREAMING_OPTIONS } from './platforms/slack/slack-bridge-behavior';
 
 import { type InternalThread, toInternalThreadId } from './types';
 
@@ -192,6 +199,9 @@ function errorText(error: unknown): string {
 	if (error instanceof UserError) {
 		return `⚠️ This agent is misconfigured: ${error.message} An agent owner has to fix this in n8n.`;
 	}
+	if (error instanceof ReplyDeliveryError) {
+		return "⚠️ The agent's reply couldn't be posted here in full. Please try again.";
+	}
 	return '⚠️ Something went wrong while processing your request. Please try again.';
 }
 
@@ -269,6 +279,7 @@ export class AgentChatBridge {
 		this.streamConsumer = new AgentChatStreamConsumer({
 			disableStreaming,
 			singleStreamedRunPerTurn: this.integrationImpl?.singleStreamedRunPerTurn,
+			maxMessageLength: this.integrationImpl?.maxMessageLength,
 			logger: this.logger,
 			postErrorToThread: this.postErrorToThread.bind(this),
 			handleSuspension: this.handleSuspension.bind(this),
@@ -282,6 +293,7 @@ export class AgentChatBridge {
 			agentService,
 			logger,
 			callbackStore: this.callbackStore,
+			claimAction: this.integrationImpl?.claimAction?.bind(this.integrationImpl),
 			deleteActionMessageBeforeResume:
 				this.integrationImpl?.deleteActionMessageBeforeResume ?? true,
 			formatActionDecisionMessage: (params) =>
@@ -335,6 +347,7 @@ export class AgentChatBridge {
 				sandboxPrincipalHash,
 				messageContext,
 				contextConversation,
+				episodicScope,
 				sessionMode,
 				admittedExecution,
 				abortSignal,
@@ -357,6 +370,7 @@ export class AgentChatBridge {
 					sandboxPrincipalHash,
 					messageContext,
 					contextConversation,
+					episodicScope,
 					sessionMode,
 					admittedExecution,
 					abortSignal,
@@ -788,6 +802,14 @@ export class AgentChatBridge {
 		message: Message,
 		options: InboundOptions,
 	): Promise<void> {
+		if (
+			this.integrationImpl?.shouldHandleInboundMessage?.({
+				message,
+				integration: this.integration,
+			}) === false
+		) {
+			return;
+		}
 		const inbound = await this.readInboundMessage(thread, message);
 		if (!inbound) return;
 		if (isResetCommand(inbound)) {
@@ -985,13 +1007,24 @@ export class AgentChatBridge {
 			}) ?? 'required';
 		let accepted = false;
 		try {
-			const [context, subject] = await Promise.all([
+			const subjectPromise = this.messageContextBridge.resolveSubject(message);
+			const [context, subject, integrationOrigin] = await Promise.all([
 				this.resolveBridgeExecutionContext(thread, message, platformAgentContext, {
 					isNewMention,
 					inSubscribedThread,
 					replyExpectation,
 				}),
-				this.messageContextBridge.resolveSubject(message),
+				subjectPromise,
+				// The origin needs the subject. Names are looked up after enqueue.
+				subjectPromise.then(
+					async (subject) =>
+						this.integrationImpl &&
+						(await buildIntegrationOrigin(
+							this.integrationImpl,
+							{ thread, message, subject },
+							this.logger,
+						)),
+				),
 			]);
 			const messageContext = this.messageContextBridge.capture(thread, {
 				messageId: message.id,
@@ -1002,6 +1035,18 @@ export class AgentChatBridge {
 				replyExpectation,
 			});
 			const author = toMessageAuthor(message.author);
+			const episodicScope = await resolveEpisodicScopeDecision(
+				this.integrationImpl,
+				{
+					agentId: this.agentId,
+					credentialId: this.integration.credentialId,
+					integrationType: this.integration.type,
+					threadId: this.resolvePlatformThreadId(thread),
+					author,
+					origin: integrationOrigin,
+				},
+				this.logger,
+			);
 			const textWithNotes = [text, ...attachmentNotes].filter(Boolean).join('\n');
 			const { userId, userName, fullName, isBot, isMe } = message.author;
 			const result = await this.messageQueue.enqueue({
@@ -1018,6 +1063,8 @@ export class AgentChatBridge {
 						context,
 					),
 					author,
+					integrationOrigin,
+					episodicScope,
 					sender: { userId, userName, fullName, isBot, isMe },
 					attachments: attachments.length ? attachments : undefined,
 					resourceId: session.memory.resourceId,
@@ -1030,11 +1077,35 @@ export class AgentChatBridge {
 				},
 			});
 			accepted = result.status === 'accepted';
+			if (result.status === 'accepted' && integrationOrigin) {
+				this.recordOriginNames(
+					{ thread, message, subject },
+					integrationOrigin,
+					result.item.messageId,
+				);
+			}
 		} finally {
 			if (!accepted) {
 				await this.attachmentService?.deleteByIds(attachments.map((ref) => ref.id)).catch(() => {});
 			}
 		}
+	}
+
+	/** Runs in the background so a slow name lookup never delays the turn. */
+	private recordOriginNames(
+		input: OriginInput,
+		origin: AgentMessageIntegrationOrigin,
+		messageId: string,
+	): void {
+		if (!this.integrationImpl) return;
+		void recordIntegrationOriginNames(
+			this.integrationImpl,
+			input,
+			origin,
+			async (named) =>
+				await Container.get(AgentMessageRepository).updateIntegrationOrigin(messageId, named),
+			this.logger,
+		);
 	}
 
 	async consumeQueuedMessage(
@@ -1072,6 +1143,7 @@ export class AgentChatBridge {
 				attachments: payload.attachments,
 				messageContext: payload.messageContext,
 				contextConversation: payload.contextConversation,
+				episodicScope: payload.episodicScope,
 				memory: { threadId: toInternalThreadId(threadId), resourceId: payload.resourceId },
 				sessionMode: 'existing',
 				integrationType: this.integration.type,
@@ -1120,6 +1192,7 @@ export class AgentChatBridge {
 			isDM: thread.isDM,
 			adapter: thread.adapter,
 			stateAdapter: this.chat.getState(),
+			...SLACK_STREAMING_OPTIONS,
 			currentMessage: new Message({
 				id: payload.messageContext.messageId ?? '',
 				threadId: thread.id,

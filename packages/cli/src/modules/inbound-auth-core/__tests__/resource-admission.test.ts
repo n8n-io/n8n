@@ -30,7 +30,7 @@ const resource: ProtectedResource = {
 };
 
 const context: SecurityContext = {
-	subject: { id: 'user-1', type: 'human', email: 'alice@example.com' } as Principal,
+	subject: { id: 'user-1', type: 'person', email: 'alice@example.com' } as Principal,
 	authMethod: 'oauth-access-token',
 	subjectClaim: { sourceId: 'idp-1', issuer: 'https://idp.example', subject: 'idp-alice' },
 	tokenScopes: [],
@@ -200,12 +200,61 @@ describe('InboundResourceAdmission', () => {
 				authorizationServers: [],
 				challenges: [],
 			});
-			const refused = await admission.admitBearer(resource, REQUEST, '');
+			pipeline.run.mockResolvedValue({ ok: false, reason: 'source-not-accepted' });
+			const refused = await admission.admitBearer(resource, REQUEST, 'the-token');
 			if (refused.ok) throw new Error('expected a refusal');
 
 			expect(await admission.challenge(refused)).toBe(
-				'Bearer, error="invalid_token", error_description="no-credential"',
+				'Bearer, error="invalid_token", error_description="source-not-accepted"',
 			);
+		});
+
+		it('leaves out the error when the request had no credential (RFC 6750 §3.1)', async () => {
+			const refused = await admission.admitBearer(resource, REQUEST, '');
+			if (refused.ok) throw new Error('expected a refusal');
+
+			expect(await admission.challenge(refused)).toBe(CHALLENGE);
+		});
+
+		it('leaves out the error for a refusal without a reason', async () => {
+			const challenge = await admission.challenge({
+				advertised: {
+					surface: 'trigger',
+					resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
+				},
+			});
+
+			expect(challenge).toBe(CHALLENGE);
+		});
+	});
+
+	describe('refuse', () => {
+		it('writes one denial line with the context and returns the refusal', () => {
+			const inbound = {
+				surface: 'trigger' as const,
+				resource: { url: RESOURCE_URL, acceptedAudiences: [RESOURCE_URL] },
+				request: { ...REQUEST, headers: { authorization: 'Bearer the-token' } },
+				receivedAt: new Date(),
+			};
+
+			const refused = admission.refuse(inbound, 'unknown-subject', context);
+
+			expect(refused).toEqual({
+				ok: false,
+				reason: 'unknown-subject',
+				advertised: { surface: 'trigger', resource: inbound.resource },
+				context,
+			});
+			expect(logger.warn).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith('Inbound authentication denied', {
+				surface: 'trigger',
+				resource: RESOURCE_URL,
+				sourceId: 'idp-1',
+				authMethod: 'oauth-access-token',
+				userId: 'user-1',
+				reason: 'unknown-subject',
+			});
+			expect(JSON.stringify(refused)).not.toContain('the-token');
 		});
 	});
 });

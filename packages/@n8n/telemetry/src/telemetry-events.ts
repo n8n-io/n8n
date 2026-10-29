@@ -1,5 +1,6 @@
 import type { TelemetryEventRegistry } from './define';
 import { AGENTS_TELEMETRY } from './events/agents';
+import { AUTH_TELEMETRY } from './events/auth';
 import { CONTEXT_TELEMETRY } from './events/context';
 import { CREDENTIALS_TELEMETRY } from './events/credentials';
 import { EXPRESSIONS_TELEMETRY } from './events/expressions';
@@ -9,6 +10,7 @@ import { MCP_TELEMETRY } from './events/mcp';
 import { MIGRATION_REPORT_TELEMETRY } from './events/migration-report';
 import { PLATFORM_TELEMETRY } from './events/platform';
 import { POLICIES_TELEMETRY } from './events/policies';
+import { PROMOTIONS_TELEMETRY } from './events/promotions';
 import { TYPE_AVAILABILITY_POLICIES_TELEMETRY } from './events/type-availability-policies';
 import { WORKFLOW_TELEMETRY } from './events/workflow';
 import { WORKFLOW_REVIEWS_TELEMETRY } from './events/workflow-reviews';
@@ -16,7 +18,9 @@ import { WORKFLOW_REVIEWS_TELEMETRY } from './events/workflow-reviews';
 export const TELEMETRY_EVENT = {
 	PLATFORM: PLATFORM_TELEMETRY,
 	POLICIES: POLICIES_TELEMETRY,
+	PROMOTIONS: PROMOTIONS_TELEMETRY,
 	AGENTS: AGENTS_TELEMETRY,
+	AUTH: AUTH_TELEMETRY,
 	CREDENTIALS: CREDENTIALS_TELEMETRY,
 	CONTEXT: CONTEXT_TELEMETRY,
 	EXPRESSIONS: EXPRESSIONS_TELEMETRY,

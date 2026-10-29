@@ -132,7 +132,9 @@ export class OwnershipService {
 			ownerByProjectId.set(projectId, user);
 			ownersToCache[projectId] = this.copyUser(user);
 		}
-		void this.cacheService.setHash('project-owner', ownersToCache);
+		if (Object.keys(ownersToCache).length > 0) {
+			void this.cacheService.setHash('project-owner', ownersToCache);
+		}
 
 		return ownerByProjectId;
 	}

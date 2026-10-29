@@ -4,7 +4,7 @@ import { BaseCommand } from '../../base-command';
 
 export default class PromotionProviderUpdate extends BaseCommand {
 	static override description =
-		'Update a promotion provider from JSON. Sending `auth` replaces the credentials of every connection that uses the provider.';
+		'Update a promotion provider from JSON. Sending `auth` replaces the credentials of every environment that uses the provider.';
 
 	static override examples = [
 		'echo \'{"name":"GitHub (deploy)"}\' | <%= config.bin %> promotion-provider update prov-1 --stdin',

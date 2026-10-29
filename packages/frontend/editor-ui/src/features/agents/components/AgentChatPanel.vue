@@ -74,6 +74,7 @@ import {
 } from '../utils/composer-attachments';
 import type {
 	AgentContinueLoadedEvent,
+	AgentUsageUpdate,
 	AgentSendToAssistantEvent,
 	AgentJsonConfig,
 } from '../types';
@@ -109,7 +110,7 @@ const props = withDefaults(
 		beforeSend?: () => Promise<void> | void;
 		inputDraft?: string;
 		backgroundJobsActive?: boolean;
-		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel. */
+		/** `'chat'` (default) talks to the builder's draft/test chat; `'n8n-chat'` talks to the published n8n Chat channel; `'system'` talks to a system agent, such as the n8n Assistant. */
 		channel?: AgentChatChannel;
 		/**
 		 * The n8n Chat entry page: centers the empty state and the composer together until a
@@ -133,12 +134,14 @@ const props = withDefaults(
 		 * question card and for a non-empty queue still take priority.
 		 */
 		placeholder?: string;
+		composerHeight?: string;
 		/**
 		 * Shows the attach button of the composer. A host that opens the file
 		 * picker from its own `footer-start` menu sets this to false and calls
 		 * the exposed `openFilePicker`.
 		 */
 		showAttachButton?: boolean;
+		attachButtonIcon?: 'paperclip' | 'plus';
 		/**
 		 * Card types of the host agent. Only this chat maps and renders them. The
 		 * list is read once, when the panel is set up.
@@ -162,6 +165,7 @@ const props = withDefaults(
 		clientContext: undefined,
 		placeholder: undefined,
 		showAttachButton: true,
+		attachButtonIcon: 'paperclip',
 		interactionExtensions: () => [],
 	},
 );
@@ -170,6 +174,7 @@ const emit = defineEmits<{
 	'update:streaming': [streaming: boolean];
 	'update:inputDraft': [value: string];
 	'continue-loaded': [event: AgentContinueLoadedEvent];
+	'usage-updated': [event: AgentUsageUpdate];
 	'session-created': [sessionId: string];
 	'initial-consumed': [];
 	back: [];
@@ -207,6 +212,7 @@ defineSlots<{
 	}) => unknown;
 	/** Controls at the start of the composer footer. */
 	'footer-start'?: () => unknown;
+	'composer-start'?: () => unknown;
 	/** Controls at the end of the composer footer, next to the send button. */
 	'composer-actions'?: () => unknown;
 	/**
@@ -216,6 +222,8 @@ defineSlots<{
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
+	/** Content below the composer or an approval card. */
+	'composer-footer'?: () => unknown;
 }>();
 
 const locale = useI18n();
@@ -264,6 +272,7 @@ const {
 		}
 	},
 	onSessionCreated: (sessionId) => emit('session-created', sessionId),
+	onUsageUpdated: (update) => emit('usage-updated', update),
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
@@ -839,6 +848,8 @@ let handoffPreview: ChatMessage | undefined;
 // Files a hand-off staged into `attachedFiles`, tracked so an abandoned hand-off
 // can drop only its own files and leave the user's own picks alone.
 let externalAttachedFiles: File[] = [];
+// The client context a hand-off sends with its own message only, on top of the `clientContext` prop.
+let externalClientContext: Record<string, unknown> | undefined;
 
 type SubmitResult = 'sent' | 'busy' | 'rejected';
 
@@ -1077,6 +1088,7 @@ watch(
 	() => [props.projectId, props.agentId, props.continueSessionId],
 	() => {
 		queuedExternalMessage = undefined;
+		externalClientContext = undefined;
 		handoffPreview = undefined;
 		editingQueueId.value = undefined;
 		queueExpanded.value = false;
@@ -1096,6 +1108,7 @@ watch(
 function consumeQueuedExternalMessage(message: string) {
 	if (queuedExternalMessage !== message) return;
 	queuedExternalMessage = undefined;
+	externalClientContext = undefined;
 	emit('initial-consumed');
 }
 
@@ -1123,6 +1136,7 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 	// Taken before any await, so a user send made while this hand-off runs cannot claim it.
 	const ownedHandoffPreview = submittingQueuedExternalMessage ? handoffPreview : undefined;
 	if (ownedHandoffPreview) handoffPreview = undefined;
+	const ownedClientContext = submittingQueuedExternalMessage ? externalClientContext : undefined;
 	const hadNoMessagesBeforeSend = messages.value.length === 0;
 	const target = {
 		projectId: props.projectId,
@@ -1179,7 +1193,11 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 		// Build the client context after `beforeSend`, so it reflects the host state at
 		// send time. The staged chip patches go on top of it.
 		const sentAttachments = [...composerAttachments.value];
-		const clientContext = mergeClientContextPatches(sentAttachments, props.clientContext?.());
+		const hostClientContext = props.clientContext?.();
+		const clientContext = mergeClientContextPatches(
+			sentAttachments,
+			ownedClientContext ? { ...hostClientContext, ...ownedClientContext } : hostClientContext,
+		);
 		const sentFiles = files.length > 0 ? files : undefined;
 		const onAccepted = (queueId?: string) => {
 			accepted = true;
@@ -1255,9 +1273,14 @@ async function onIncreaseBudget(payload: { field: BudgetAmountField; amount: num
 	}
 }
 
-function sendMessageFromOutside(message: string, files?: File[]) {
+function sendMessageFromOutside(
+	message: string,
+	files?: File[],
+	clientContext?: Record<string, unknown>,
+) {
 	queuedExternalMessage = message;
 	externalAttachedFiles = files ?? [];
+	externalClientContext = clientContext;
 	// Staged as the composer's own attachments, with the same count and size checks
 	// as a picked file: `onSubmit` reads `attachedFiles`, so they ride along with
 	// every retry `submitQueuedExternalMessage` makes while blocked.
@@ -1286,6 +1309,8 @@ async function submitQueuedExternalMessage() {
 	// The chat does not retry a busy send either, so its text becomes the user's draft.
 	if ((result === 'rejected' || result === 'busy') && queuedExternalMessage === message) {
 		queuedExternalMessage = undefined;
+		// The draft is the user's now, so the hand-off's context does not go with it.
+		externalClientContext = undefined;
 		firstMessagePreview.value = undefined;
 		// The files stay in the composer as the user's draft now.
 		externalAttachedFiles = [];
@@ -1386,6 +1411,8 @@ defineExpose({
 	removeComposerAttachment,
 	// Read-only views of the chat state, for hosts that derive their own UI from it.
 	messages: readonly(messages),
+	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
+	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
 	isLoadingHistory: computed(() => isLoadingHistory.value),
 });
@@ -1487,6 +1514,7 @@ onBeforeUnmount(() => {
 			@retry="retryMessage"
 			@resume="resume"
 			@send-to-assistant="emit('send-to-assistant', $event)"
+			@open-build="emit('open-build')"
 			@increase-budget="onIncreaseBudget"
 		>
 			<template v-if="$slots['message-actions']" #message-actions="actionProps">
@@ -1597,6 +1625,8 @@ onBeforeUnmount(() => {
 					v-if="pendingApproval"
 					:key="pendingApproval.toolCallId"
 					:input="pendingApproval.input"
+					:agent-name="agentConfig?.name"
+					:tools="agentConfig?.tools"
 					@submit="
 						resume({
 							runId: pendingApproval.runId,
@@ -1617,10 +1647,13 @@ onBeforeUnmount(() => {
 					}}</N8nText>
 					<ApprovalCard
 						:input="backgroundApproval.input"
+						:agent-name="agentConfig?.name"
+						:tools="agentConfig?.tools"
 						:disabled="pendingBackgroundResponses.has(backgroundApproval.approval.toolCallId)"
 						@submit="respondToBackgroundApproval(backgroundApproval.approval, $event)"
 					/>
 				</div>
+				<slot name="composer-start" />
 			</div>
 			<div v-else :class="$style.composer">
 				<ChatInputBase
@@ -1628,6 +1661,7 @@ onBeforeUnmount(() => {
 					v-model="inputText"
 					:block-canvas-shortcuts="false"
 					:placeholder="chatPlaceholder"
+					:composer-height="composerHeight"
 					:is-streaming="false"
 					:show-stop-button="showStop"
 					show-voice
@@ -1642,16 +1676,6 @@ onBeforeUnmount(() => {
 					@files-selected="handleFilesSelected"
 					@keydown="onChatInputKeydown"
 				>
-					<template v-if="currentPlan" #header>
-						<AgentChatPlan
-							v-if="currentPlan"
-							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
-							:plan="currentPlan"
-							:trace-route="
-								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
-							"
-						/>
-					</template>
 					<template #above>
 						<ChatMessageQueue
 							v-if="displayedQueueRows.length"
@@ -1670,6 +1694,14 @@ onBeforeUnmount(() => {
 							@steer="steerQueuedMessage"
 							@edit="editQueuedMessage"
 							@remove="removeQueuedMessage"
+						/>
+						<AgentChatPlan
+							v-else-if="currentPlan"
+							:key="`${agentId}:${continueSessionId ?? ''}:${currentPlan.planId}`"
+							:plan="currentPlan"
+							:trace-route="
+								continueSessionId && capabilities.traceLinks ? backgroundTraceRoute : undefined
+							"
 						/>
 					</template>
 					<template
@@ -1712,6 +1744,7 @@ onBeforeUnmount(() => {
 						</div>
 					</template>
 					<template #footer-start>
+						<slot name="composer-start" />
 						<N8nTooltip
 							v-if="showAttach && showAttachButton"
 							:content="locale.baseText('chatInputBase.button.attach')"
@@ -1719,7 +1752,7 @@ onBeforeUnmount(() => {
 						>
 							<N8nIconButton
 								variant="ghost"
-								icon="paperclip"
+								:icon="attachButtonIcon"
 								icon-size="large"
 								:disabled="isPreparingToSend || !!editingQueueId"
 								:aria-label="locale.baseText('chatInputBase.button.attach')"
@@ -1735,6 +1768,7 @@ onBeforeUnmount(() => {
 				</ChatInputBase>
 				<slot name="input-footer" />
 			</div>
+			<slot name="composer-footer" />
 		</div>
 	</aside>
 </template>
@@ -1771,12 +1805,12 @@ onBeforeUnmount(() => {
 
 .inputArea {
 	flex-shrink: 0;
-	padding: var(--spacing--xs) var(--spacing--sm);
+	padding: var(--agent-chat-input-padding, var(--spacing--xs) var(--spacing--sm));
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
 	width: 100%;
-	max-width: 800px;
+	max-width: var(--agent-chat-max-width, 800px);
 	margin: 0 auto;
 }
 
@@ -1787,7 +1821,6 @@ onBeforeUnmount(() => {
 	--ai-activity-step--min-height: var(--height--xl);
 	--ai-activity-step--padding: var(--spacing--xs) var(--spacing--sm);
 	--ai-activity-step--color: var(--text-color);
-	display: none;
 	background: var(--background--surface);
 	box-shadow: var(--shadow--outline), var(--shadow--xs);
 	border-radius: var(--radius--xs);

@@ -26,7 +26,7 @@ import type {
 	GitHostDiscoveryQuery,
 	GitHostPage,
 } from './git-host.types';
-import { repositoryUrlFromPath } from './git-host-target';
+import { repositoryUrlFromPath } from './git-host-remote';
 
 const requestTimeoutMs = 15_000;
 const retryDelayMs = 200;

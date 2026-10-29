@@ -484,6 +484,7 @@ type ExecutionRunResult = {
 interface VerifyToolContext {
 	workflowTaskService: WorkflowTaskService;
 	domainContext: {
+		permissions?: Partial<Record<'runWorkflow', 'require_approval' | 'always_allow' | 'blocked'>>;
 		executionService: {
 			run: Mock<
 				(
@@ -685,6 +686,24 @@ async function runTool(
 }
 
 describe('workflow_builder_verify_built_workflow tool', () => {
+	it('finalizes verification when cancellation arrives after it starts', async () => {
+		const controller = new AbortController();
+		const ctx = createContext({ abortSignal: controller.signal });
+		vi.mocked(ctx.workflowTaskService!.startVerification).mockImplementationOnce(async () => {
+			controller.abort(new Error('Verification canceled.'));
+			return undefined;
+		});
+		const tool = createVerifyBuiltWorkflowTool(ctx);
+
+		await expect(executeTool(tool, { workItemId: 'wi_1', workflowId: 'wf_1' })).rejects.toThrow(
+			'Verification canceled.',
+		);
+		expect(ctx.domainContext?.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService!.updateBuildOutcome).toHaveBeenCalledWith('wi_1', {
+			verification: expect.objectContaining({ status: 'error', success: false, attempted: true }),
+		});
+	});
+
 	it('persists a success verification record onto the build outcome', async () => {
 		const { ctx, updateBuildOutcome } = makeContext(makeBuildOutcome(), {
 			executionId: 'exec-1',
@@ -1444,6 +1463,59 @@ describe('workflow_builder_verify_built_workflow tool — node simulation plan',
 		expect(ctx.logger.warn).toHaveBeenCalledWith(
 			expect.stringContaining('preflight blocked verification'),
 			expect.objectContaining({ workItemId: 'wi-1' }),
+		);
+	});
+
+	it.each([
+		{ path: 'standard run', scripted: false },
+		{ path: 'scripted gate run', scripted: true },
+	])('does not execute the $path when an admin blocks running workflows', async ({ scripted }) => {
+		const { ctx, updateBuildOutcome } = makeContext(
+			makeBuildOutcome(
+				scripted
+					? {
+							nodeSimulationPlan: [
+								{
+									nodeName: 'Gate',
+									verdict: 'simulate',
+									reason: 'Waits for approval',
+									confidence: 'high',
+									source: 'deterministic',
+									haltBranch: true,
+								},
+							],
+							waitGateScripts: [
+								{
+									nodeName: 'Gate',
+									cutEdge: { source: 'Revise', target: 'Format' },
+									decisions: [{ label: 'approve', items: [{ approved: true }] }],
+								},
+							],
+						}
+					: {},
+			),
+			{ executionId: 'exec-blocked', status: 'success', data: {} },
+		);
+		ctx.domainContext.permissions = { runWorkflow: 'blocked' };
+
+		const result = await runTool(ctx, { workItemId: 'wi-1', workflowId: 'wf-1' });
+
+		expect(result).toMatchObject({
+			success: false,
+			remediation: { category: 'blocked', shouldEdit: false, reason: 'permission_blocked' },
+		});
+		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
+		expect(ctx.workflowTaskService.startVerification).not.toHaveBeenCalled();
+		expect(updateBuildOutcome.mock.calls.at(-1)![1].verification).toMatchObject({
+			attempted: true,
+			success: false,
+			failureSignature: 'permission_blocked',
+		});
+		expect(ctx.workflowTaskService.reportVerificationVerdict).toHaveBeenCalledWith(
+			expect.objectContaining({
+				verdict: 'failed_terminal',
+				failureSignature: 'permission_blocked',
+			}),
 		);
 	});
 

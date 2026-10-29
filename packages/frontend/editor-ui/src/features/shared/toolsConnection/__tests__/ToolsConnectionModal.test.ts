@@ -93,6 +93,7 @@ function renderWith(
 		detailMode: 'detail' | 'settings';
 		showSuggestionFooter: boolean;
 		groupSearchResults: boolean;
+		hideEmptyCategories: boolean;
 		createAction: {
 			category?: ToolCategoryKey;
 			label: string;
@@ -109,6 +110,7 @@ function renderWith(
 			detailMode: props.detailMode,
 			showSuggestionFooter: props.showSuggestionFooter,
 			groupSearchResults: props.groupSearchResults,
+			hideEmptyCategories: props.hideEmptyCategories,
 			createAction: props.createAction,
 		},
 		slots: {
@@ -251,6 +253,37 @@ describe('ToolsConnectionModal', () => {
 			expect(titles).toHaveLength(2);
 			expect(titles[0]).toContain('Google Sheets');
 			expect(titles[1]).toContain('Gmail');
+		});
+	});
+
+	it('lists connectors on Gateway credits first on the Connectors tab, keeping their order', async () => {
+		const connector = (title: string, freeCredits = false): ToolConnectionItem => ({
+			id: `registry:${title}`,
+			kind: 'mcp-server',
+			title,
+			description: `${title} MCP`,
+			status: 'none',
+			availableTools: [],
+			freeCredits,
+		});
+		const { getAllByTestId } = renderWith({
+			items: [
+				connector('Notion'),
+				connector('Firecrawl', true),
+				connector('GitHub'),
+				connector('Brave', true),
+			],
+			categories: ['mcp'],
+		});
+
+		await waitFor(() => {
+			const titles = getAllByTestId('tools-connection-row').map((row) => row.textContent);
+			expect(titles.map((title) => title?.match(/Notion|Firecrawl|GitHub|Brave/)?.[0])).toEqual([
+				'Firecrawl',
+				'Brave',
+				'Notion',
+				'GitHub',
+			]);
 		});
 	});
 
@@ -430,6 +463,78 @@ describe('ToolsConnectionModal', () => {
 
 		const populated = renderWith({ categories });
 		expect(populated.queryByTestId('tab-community')).toBeTruthy();
+	});
+
+	describe('with hideEmptyCategories', () => {
+		const SKILL_CATEGORIES: ToolCategoryKey[] = ['all', 'project', 'this-agent', 'global'];
+
+		function skill(id: string, category: ToolCategoryKey, attached = false): ToolConnectionItem {
+			return {
+				id: `skill:${id}`,
+				kind: 'skill',
+				skillId: id,
+				title: id,
+				category,
+				status: 'none',
+				attached,
+			};
+		}
+
+		it('hides empty tabs but keeps the all tab', () => {
+			const { getByTestId, queryByTestId } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'this-agent')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			expect(getByTestId('tab-all').textContent).toContain('(2)');
+			expect(getByTestId('tab-project').textContent).toContain('(1)');
+			expect(getByTestId('tab-this-agent').textContent).toContain('(1)');
+			expect(queryByTestId('tab-global')).toBeNull();
+		});
+
+		it('hides the tab strip when only the all tab is left', () => {
+			const empty = renderWith({
+				items: [],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(empty.queryByTestId('tools-connection-tabs')).toBeNull();
+			empty.unmount();
+
+			const oneScope = renderWith({
+				items: [skill('tone', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+			expect(oneScope.getByTestId('tab-global')).toBeTruthy();
+		});
+
+		it('keeps every tab while a search matches nothing in it', async () => {
+			const { getByTestId, getByPlaceholderText } = renderWith({
+				items: [skill('tone', 'project'), skill('digest', 'global')],
+				categories: SKILL_CATEGORIES,
+				hideEmptyCategories: true,
+			});
+
+			await fireEvent.update(getByPlaceholderText('Search all tools...'), 'tone');
+
+			await waitFor(() => {
+				expect(getByTestId('tab-global').textContent).toContain('(0)');
+			});
+		});
+	});
+
+	it('opens on the first visible tab when the first declared one starts hidden', () => {
+		const withoutCommunity = realisticItems.filter((item) => item.category !== 'community');
+		const { getByTestId, queryByTestId } = renderWith({
+			items: withoutCommunity,
+			categories: ['community', 'mcp', 'workflows'],
+		});
+
+		expect(queryByTestId('tab-community')).toBeNull();
+		expect(getByTestId('tab-mcp')).toHaveAttribute('aria-selected', 'true');
+		expect(queryByTestId('tools-connection-empty')).toBeNull();
 	});
 
 	it('states a count on every tab, zero included', () => {
@@ -625,6 +730,23 @@ describe('ToolsConnectionModal', () => {
 		await waitFor(() => {
 			const rendered = getAllByTestId('tools-connection-row');
 			expect(rendered.length).toBe(300);
+		});
+	});
+
+	it('shows a loading screen instead of the list while loading', async () => {
+		const { getByTestId, getByPlaceholderText, queryByTestId, rerender } = renderModal({
+			props: { open: true, items: realisticItems, categories: ALL_CATEGORIES, loading: true },
+			pinia: createTestingPinia(),
+		});
+
+		expect(getByTestId('tools-connection-loading')).toBeInTheDocument();
+		expect(queryByTestId('tools-connection-search')).toBeNull();
+
+		await rerender({ loading: false });
+
+		expect(queryByTestId('tools-connection-loading')).toBeNull();
+		await waitFor(() => {
+			expect(document.activeElement).toBe(getByPlaceholderText('Search all tools...'));
 		});
 	});
 });

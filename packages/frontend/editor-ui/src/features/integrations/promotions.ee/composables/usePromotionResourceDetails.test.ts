@@ -1,0 +1,93 @@
+import type { PromotionPreview, PromotionResourceDetails } from '@n8n/api-types';
+import { waitAllPromises } from '@n8n/frontend-test-utils';
+import { computed, ref, shallowRef } from 'vue';
+
+import { billingPreview, billingResources, resource } from '../__tests__/preview.fixtures';
+import { buildSelectionGraph } from '../promotionPreview.selection';
+import { usePromotionResourceDetails } from './usePromotionResourceDetails';
+
+const fetchDetails = vi.fn<(keys: string[]) => Promise<PromotionResourceDetails>>();
+
+function setup(initial: PromotionPreview, openWorkflowKey?: string) {
+	const preview = shallowRef<PromotionPreview | null>(initial);
+	const graph = computed(() =>
+		preview.value ? buildSelectionGraph(preview.value, 'promote') : null,
+	);
+	return {
+		preview,
+		...usePromotionResourceDetails(fetchDetails, preview, graph, ref(openWorkflowKey)),
+	};
+}
+
+const tagDetail = (revision = { before: 'g1-before', after: 'g1-after' }) => ({
+	key: 'tag:g1',
+	type: 'tag' as const,
+	before: { id: 'g1', name: 'finance' },
+	after: { id: 'g1', name: 'finance' },
+	revision,
+});
+
+describe('usePromotionResourceDetails', () => {
+	beforeEach(() => {
+		fetchDetails.mockReset();
+	});
+
+	it('should load cards in batches the endpoint accepts and skip sub-workflows without a file', async () => {
+		fetchDetails.mockResolvedValue({ details: [], missingKeys: [] });
+		const workflows = Array.from({ length: 60 }, (_, index) =>
+			resource({
+				key: `workflow:many${index}`,
+				name: `Workflow ${index}`,
+				parentKey: 'project:p1',
+			}),
+		);
+		const { request } = setup(
+			billingPreview({ resources: [...billingPreview().resources, ...workflows] }),
+		);
+
+		await request([billingResources.sharedLogger.key, ...workflows.map((w) => w.key)]);
+
+		expect(fetchDetails.mock.calls.map(([keys]) => keys.length)).toEqual([50, 10]);
+	});
+
+	it('should mark cards whose resource disappeared after the preview loaded', async () => {
+		fetchDetails.mockResolvedValue({
+			details: [tagDetail()],
+			missingKeys: [billingResources.reminders.key],
+		});
+		const { request, entries } = setup(billingPreview());
+
+		await request(['tag:g1', billingResources.reminders.key]);
+
+		expect(entries.value.get('tag:g1')).toEqual({ status: 'loaded', detail: tagDetail() });
+		expect(entries.value.get(billingResources.reminders.key)).toEqual({ status: 'missing' });
+	});
+
+	it('should load the changed resources and the open workflow of a new preview and drop late answers', async () => {
+		let answer: (details: PromotionResourceDetails) => void = () => {};
+		fetchDetails
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					answer = resolve;
+				}),
+			)
+			.mockResolvedValue({ details: [], missingKeys: [] });
+		const { request, entries, preview } = setup(billingPreview(), 'workflow:w1');
+
+		const pending = request(['tag:g1']);
+		await waitAllPromises();
+		preview.value = billingPreview({ commitSha: 'd'.repeat(40) });
+		await waitAllPromises();
+		answer({ details: [tagDetail()], missingKeys: [] });
+		await pending;
+
+		// The new preview loaded its own changed resources and the open diff, but not the other
+		// changed workflow. The answer for the old preview is ignored.
+		expect([...entries.value.keys()]).toEqual([
+			'folder:f1',
+			'workflow:w1',
+			'dataTable:t1',
+			'variable:global:API_URL',
+		]);
+	});
+});

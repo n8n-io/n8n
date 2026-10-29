@@ -5,6 +5,7 @@ import type { InlineConfig } from 'vitest/node';
 import { changedFileCoverage } from './changed-file-coverage.js';
 import { coverageExcludes } from './coverage-excludes.js';
 import { profilingConfig, profilingReporters } from './profiling.js';
+import { retryConfig } from './retry.js';
 
 // Resolves to the empty component that stands in for `.svg` imports (see below).
 const svgStub = fileURLToPath(new URL('./svg-stub.js', import.meta.url));
@@ -13,6 +14,7 @@ export const createVitestConfig = (options: InlineConfig = {}) => {
 	const vitestConfig = defineConfig({
 		test: {
 			...profilingConfig(),
+			...retryConfig(),
 			// Redirect the node-icon `.svg` imports (the ~80 files under
 			// `N8nIcon/nodes/`) to an inert component. `node-icons.ts` is imported
 			// lazily (on the first `node:*` icon render), so its bulk async

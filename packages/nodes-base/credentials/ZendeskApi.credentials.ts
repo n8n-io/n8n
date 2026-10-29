@@ -15,6 +15,13 @@ export class ZendeskApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
+			displayName:
+				'Zendesk is retiring API token authentication. Use OAuth2 for new connections and migrate existing workflows to OAuth2. <a href="https://developer.zendesk.com/documentation/authentication/oauth-migration/#migration-timeline" target="_blank">Learn more about OAuth migration (Zendesk)</a>',
+			name: 'apiTokenRetirementNotice',
+			type: 'notice',
+			default: '',
+		},
+		{
 			displayName: 'Subdomain',
 			name: 'subdomain',
 			type: 'string',

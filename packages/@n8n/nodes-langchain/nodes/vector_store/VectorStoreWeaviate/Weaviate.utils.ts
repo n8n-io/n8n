@@ -1,11 +1,5 @@
-import { OperationalError } from 'n8n-workflow';
-import type {
-	FilterValue,
-	GeoRangeFilter,
-	ProxiesParams,
-	TimeoutParams,
-	WeaviateClient,
-} from 'weaviate-client';
+import { OperationalError, UserError } from 'n8n-workflow';
+import type { FilterValue, GeoRangeFilter, TimeoutParams, WeaviateClient } from 'weaviate-client';
 import weaviate, { Filters } from 'weaviate-client';
 
 export type WeaviateCredential = {
@@ -17,12 +11,36 @@ export type WeaviateCredential = {
 	custom_connection_grpc_host: string;
 	custom_connection_grpc_port: number;
 	custom_connection_grpc_secure: boolean;
+	custom_connection_grpc_proxy?: string;
 };
+
+function getGrpcProxy(credentials: WeaviateCredential, nodeOptionProxy?: string) {
+	const credentialProxy = credentials.custom_connection_grpc_proxy;
+	const proxy = credentialProxy || nodeOptionProxy;
+	if (!proxy) return undefined;
+
+	if (
+		!credentialProxy &&
+		credentials.weaviate_api_key &&
+		!credentials.custom_connection_grpc_secure
+	) {
+		throw new UserError('The gRPC proxy option needs a secure gRPC connection', {
+			description:
+				'Set the gRPC proxy in the Weaviate credential, or turn on "Custom Connection gRPC Secure" in the credential.',
+		});
+	}
+
+	if (!URL.canParse(proxy) || new URL(proxy).protocol !== 'http:') {
+		throw new UserError('The gRPC proxy must be an http:// URL');
+	}
+
+	return proxy;
+}
 
 export async function createWeaviateClient(
 	credentials: WeaviateCredential,
 	timeout?: TimeoutParams,
-	proxies?: ProxiesParams,
+	nodeOptionProxy?: string,
 	skipInitChecks: boolean = false,
 ): Promise<WeaviateClient> {
 	if (credentials.weaviate_cloud_endpoint) {
@@ -36,6 +54,7 @@ export async function createWeaviateClient(
 		);
 		return weaviateClient;
 	} else {
+		const grpcProxy = getGrpcProxy(credentials, nodeOptionProxy);
 		const weaviateClient: WeaviateClient = await weaviate.connectToCustom({
 			httpHost: credentials.custom_connection_http_host,
 			httpPort: credentials.custom_connection_http_port,
@@ -47,7 +66,7 @@ export async function createWeaviateClient(
 				? new weaviate.ApiKey(credentials.weaviate_api_key)
 				: undefined,
 			timeout,
-			proxies,
+			proxies: grpcProxy ? { grpc: grpcProxy } : undefined,
 			skipInitChecks,
 		});
 		return weaviateClient;

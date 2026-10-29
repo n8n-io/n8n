@@ -5,6 +5,7 @@ import type {
 	Project,
 	ProjectRepository,
 	Role,
+	Transaction,
 	User,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -166,6 +167,31 @@ describe('WorkflowCreationService', () => {
 			);
 			expect(context.allowedCredentialIds).toEqual(new Set(['target-credential']));
 		});
+
+		it.each([new Error('cache down'), 'cache down'])(
+			'disables auto-exposure and logs the cause when the setting lookup rejects with %s',
+			async (error) => {
+				const project = mock<Project>({ id: 'project-1' });
+				projectServiceMock.getProjectWithScope.mockResolvedValue(project);
+				folderServiceMock.getFoldersByIds.mockResolvedValue([]);
+				credentialsFinderServiceMock.findCredentialIdsWithScopeForUser.mockResolvedValue(new Set());
+				mcpSettingsService.getAutoExposeNewWorkflows.mockRejectedValue(error);
+
+				const context = await workflowCreationService.prepareBatchContext(
+					mock<User>(),
+					project.id,
+					[],
+					[],
+					new Map(),
+				);
+
+				expect(context.autoExposeNewWorkflows).toBe(false);
+				expect(loggerMock.warn).toHaveBeenCalledExactlyOnceWith(
+					'Failed to resolve auto-expose setting for new workflow',
+					{ cause: 'cache down' },
+				);
+			},
+		);
 	});
 
 	function makeWorkflow(overrides: Partial<WorkflowEntity> = {}): WorkflowEntity {
@@ -185,11 +211,13 @@ describe('WorkflowCreationService', () => {
 		const transactionManager = {
 			save: vi.fn().mockRejectedValue(new Error('Stopping for test')),
 		};
+		const transaction = mock<Transaction>();
 
 		// The create body still hands the manager to its co-writers; only the workflow row
 		// itself goes through the token-gated repository method.
 		workflowRepositoryMock.runInTransaction.mockImplementation(
-			async (ctx, fn) => await fn(transactionManager as unknown as EntityManager, ctx),
+			async (ctx, fn) =>
+				await fn(transactionManager as unknown as EntityManager, { ...ctx, trx: transaction }),
 		);
 		workflowRepositoryMock.createContent.mockRejectedValue(new Error('Stopping for test'));
 
@@ -199,7 +227,7 @@ describe('WorkflowCreationService', () => {
 			} as never);
 		}
 
-		return { transactionManager };
+		return { transactionManager, transaction };
 	}
 
 	/** A minimal workflow that carries one group, so the save path reads the flag. */
@@ -213,6 +241,35 @@ describe('WorkflowCreationService', () => {
 	}
 
 	describe('createWorkflow()', () => {
+		it.each([false, true])(
+			'rechecks project access in the workflow transaction with publicApi=%s',
+			async (publicApi) => {
+				const user = mock<User>();
+				const project = mock<Project>({ id: 'project-1' });
+				const { transaction } = setupTransactionMocks();
+				projectServiceMock.getProjectWithScope.mockImplementation(
+					async (_user, _id, _scopes, ctx) => (ctx?.trx === transaction ? null : project),
+				);
+
+				await expect(
+					workflowCreationService.createWorkflow(user, makeWorkflow(), {
+						projectId: project.id,
+						publicApi,
+					}),
+				).rejects.toThrow(publicApi ? ForbiddenError : BadRequestError);
+
+				expect(projectServiceMock.getProjectWithScope).toHaveBeenNthCalledWith(
+					2,
+					user,
+					project.id,
+					['workflow:create'],
+					expect.objectContaining({ trx: transaction }),
+				);
+				expect(workflowRepositoryMock.createContent).not.toHaveBeenCalled();
+				expect(workflowHistoryServiceMock.saveVersion).not.toHaveBeenCalled();
+			},
+		);
+
 		it('relaxes the group rules for a user inside the rollout', async () => {
 			nodeGroupRulesFlagGateMock.getEnabledRules.mockResolvedValue(ALL_RULES_RELAXED);
 			licenseStateMock.isSharingLicensed.mockReturnValue(false);

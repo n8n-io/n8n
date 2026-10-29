@@ -1,6 +1,6 @@
 {
   "name": "n8n-monorepo",
-  "version": "2.44.0",
+  "version": "2.46.0",
   "private": true,
   "engines": {
     "node": ">=24.0.0",
@@ -42,6 +42,8 @@
     "format": "turbo run format && node scripts/format.mjs",
     "grind": "node scripts/grind.mjs",
     "inspect:activity": "node scripts/instance-seeding/inspectActivity.mjs",
+    "telemetry:sink": "node scripts/telemetry/sink.mjs",
+    "dev:be:telemetry": "cross-env N8N_DIAGNOSTICS_ENABLED=true N8N_DIAGNOSTICS_CONFIG_BACKEND=\"local;http://127.0.0.1:9999\" N8N_DIAGNOSTICS_CONFIG_FRONTEND=\"local;http://127.0.0.1:9999\" N8N_DIAGNOSTICS_POSTHOG_API_HOST=http://127.0.0.1:9999 N8N_DIAGNOSTICS_POSTHOG_API_KEY=local dotenvx run -f .env.local -f .env --ignore=MISSING_ENV_FILE -- pnpm dev:be",
     "seed:account": "node scripts/instance-seeding/seedInstance.mjs",
     "seed:history": "node scripts/instance-seeding/seedHistory.mjs",
     "seed:preference": "cross-env PROFILE=preference pnpm seed:account && pnpm seed:history",
@@ -97,8 +99,6 @@
     "watch": "turbo run watch --concurrency=64",
     "webhook": "./packages/cli/bin/n8n webhook",
     "worker": "./packages/cli/bin/n8n worker",
-    "dev:computer-use": "pnpm --filter @n8n/computer-use build && node packages/@n8n/computer-use/dist/cli.js serve",
-    "stop:computer-use": "lsof -ti :7655 | xargs kill 2>/dev/null; echo 'computer-use stopped'",
     "install-workflow-scripts": "pnpm install --dir .github/scripts --lockfile-dir \"$PWD/.github/scripts\" --ignore-workspace"
   },
   "devDependencies": {

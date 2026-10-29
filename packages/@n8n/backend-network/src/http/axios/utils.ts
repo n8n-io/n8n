@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
+import { isRecord } from '@n8n/utils/is-record';
 import type { AxiosRequestConfig, AxiosResponse } from 'axios';
 import axios from 'axios';
 import crypto from 'crypto';
@@ -12,6 +13,7 @@ import {
 	type IgnoreStatusErrorConfig,
 } from 'n8n-workflow';
 import net from 'node:net';
+import { Readable } from 'node:stream';
 
 import { hasProxyEnvironmentVariables } from '../../proxy/proxy-resolution';
 import type { SsrfBridge } from '../../ssrf';
@@ -120,6 +122,35 @@ export function resolveProxyOption(customProxyUrl: string | null): ProxyOption {
 
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
 
+/** Matches the names of headers that carry credentials, in any case. */
+export const CREDENTIAL_HEADER_PATTERN = /^(?:authorization|proxy-authorization|cookie)$/i;
+
+/**
+ * Whether a redirect only upgrades `http` to `https` on the same host and default ports.
+ * @returns {boolean} `false` when either URL cannot be parsed.
+ */
+export function isSameHostHttpsUpgrade(fromUrl: string, toUrl: string): boolean {
+	const from = tryParseUrl(fromUrl);
+	const to = tryParseUrl(toUrl);
+	return (
+		from?.protocol === 'http:' &&
+		to?.protocol === 'https:' &&
+		from.hostname === to.hostname &&
+		from.port === '' &&
+		to.port === ''
+	);
+}
+
+/** Removes credential headers and request auth from a `follow-redirects` request. */
+function removeCredentials(redirectedRequest: Record<string, any>): void {
+	for (const name of Object.keys(redirectedRequest.headers ?? {})) {
+		if (CREDENTIAL_HEADER_PATTERN.test(name)) {
+			delete redirectedRequest.headers[name];
+		}
+	}
+	delete redirectedRequest.auth;
+}
+
 /** Returns an axios `beforeRedirect` callback that re-applies agents and auth headers. */
 export const getBeforeRedirectFn =
 	(
@@ -159,13 +190,20 @@ export const getBeforeRedirectFn =
 		const originalOrigin = originalUrl.origin;
 		const targetOrigin = new URL(targetUrl).origin;
 		// Copy auth headers
-		if (originalOrigin === targetOrigin || sendCredentialsOnCrossOriginRedirect) {
+		if (
+			originalOrigin === targetOrigin ||
+			isSameHostHttpsUpgrade(originalUrl.href, targetUrl) ||
+			sendCredentialsOnCrossOriginRedirect
+		) {
 			if (axiosConfig.headers?.Authorization) {
 				redirectedRequest.headers.Authorization = axiosConfig.headers.Authorization;
 			}
 			if (axiosConfig.auth) {
 				redirectedRequest.auth = `${axiosConfig.auth.username}:${axiosConfig.auth.password}`;
 			}
+		} else {
+			// follow-redirects keeps credential headers on subdomain and http-to-https hops.
+			removeCredentials(redirectedRequest);
 		}
 	};
 
@@ -229,6 +267,30 @@ const pushFormDataValue = (form: FormData, key: string, value: any) => {
 	}
 };
 /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access */
+
+const streamOfFormDataValue = (value: unknown) => {
+	if (value instanceof Readable) return value;
+	if (isRecord(value) && 'options' in value && value.value instanceof Readable) return value.value;
+	return undefined;
+};
+
+/**
+ * Destroys the streams in a request body: a stream, a `FormData`, or form fields that hold
+ * streams. A request that fails leaves an unread file stream open until garbage collection.
+ */
+export const destroyRequestBody = (body: unknown) => {
+	if (body instanceof Readable) {
+		body.destroy();
+	} else if (isFormDataInstance(body)) {
+		// `isFormDataInstance` matches on `getHeaders` and `append` only.
+		if (typeof body.destroy === 'function') body.destroy();
+	} else if (isRecord(body) && !ArrayBuffer.isView(body)) {
+		for (const field of Object.values(body)) {
+			const values: unknown[] = Array.isArray(field) ? field : [field];
+			values.forEach((value) => streamOfFormDataValue(value)?.destroy());
+		}
+	}
+};
 
 /** Converts a plain object into a `FormData` instance, handling arrays and option objects. */
 export const createFormDataObject = (data: Record<string, unknown>) => {

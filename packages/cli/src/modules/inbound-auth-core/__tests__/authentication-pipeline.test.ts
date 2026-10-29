@@ -41,7 +41,7 @@ const verified: Verified = {
 };
 
 const context: SecurityContext = {
-	subject: { id: 'user-1', type: 'human', email: 'alice@example.com' } as Principal,
+	subject: { id: 'user-1', type: 'person', email: 'alice@example.com' } as Principal,
 	authMethod: 'oauth-access-token',
 	subjectClaim: { sourceId: SOURCE_ID, issuer: 'https://idp.example', subject: 'alice' },
 };

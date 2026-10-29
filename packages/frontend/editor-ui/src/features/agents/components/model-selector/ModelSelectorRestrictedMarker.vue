@@ -1,14 +1,17 @@
 <script setup lang="ts">
-import type { CredentialTypeAvailabilityScope } from '@n8n/api-types';
-import { RestrictedNodePopover } from '@n8n/frontend-module-type-availability-policies';
+import type { CredentialTypeAvailability } from '@n8n/api-types';
+import {
+	RestrictedNodePopover,
+	type ContactAudience,
+} from '@n8n/frontend-module-type-availability-policies';
 import { computed, useTemplateRef } from 'vue';
 
 defineProps<{
 	name: string;
-	scope?: CredentialTypeAvailabilityScope;
+	restriction?: CredentialTypeAvailability;
 }>();
 
-const emit = defineEmits<{ contactAdmin: [] }>();
+const emit = defineEmits<{ contactAdmin: [audience: ContactAudience] }>();
 
 const rootRef = useTemplateRef<HTMLElement>('rootRef');
 // The popover opens on hover of the whole menu row, which the dropdown slot does not hand over.
@@ -22,9 +25,9 @@ const row = computed(() => rootRef.value?.closest<HTMLElement>('[role="menuitem"
 			side="right"
 			marker-size="xsmall"
 			:node-type-name="name"
-			:scope="scope"
+			:restriction="restriction"
 			:anchor="row"
-			@contact-admin="emit('contactAdmin')"
+			@contact-admin="(audience) => emit('contactAdmin', audience)"
 		/>
 	</span>
 </template>

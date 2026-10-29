@@ -1,9 +1,13 @@
 import type {
+	ConnectSkillSourceDto,
 	CreateSkillDto,
+	DiscoverSkillSourceDto,
 	SaveSkillDto,
 	SkillDetail,
 	SkillListItem,
 	SkillSaveResponse,
+	SkillSourceConnectResponse,
+	SkillSourceDiscovery,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -44,6 +48,16 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await fetchSkills({ take: 1 });
 	}
 
+	/** For the creator filter of the skills list. */
+	async function fetchCreators() {
+		return await api.getSkillCreators(rootStore.restApiContext);
+	}
+
+	/** For the agent filter of the skills list. */
+	async function fetchAgents(query: Parameters<typeof api.getSkillAgents>[1] = {}) {
+		return await api.getSkillAgents(rootStore.restApiContext, query);
+	}
+
 	/** A default name that no skill in the scope has yet. */
 	async function fetchNewSkillName(query: Parameters<typeof api.getNewSkillName>[1]) {
 		return await api.getNewSkillName(rootStore.restApiContext, query);
@@ -65,16 +79,38 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.deleteSkill(rootStore.restApiContext, id);
 	}
 
+	/** Lists the skills that a GitHub link holds, for the "Choose skills" picker. */
+	async function discoverSource(payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
+		return await api.discoverSkillSource(rootStore.restApiContext, payload);
+	}
+
+	/** Connects a GitHub link and imports the picked skills. The caller reloads the list. */
+	async function connectSource(
+		payload: ConnectSkillSourceDto,
+	): Promise<SkillSourceConnectResponse> {
+		return await api.connectSkillSource(rootStore.restApiContext, payload);
+	}
+
+	/** Stops syncing one skill, which makes it editable. The caller reloads the list. */
+	async function stopSyncingSkill(id: string): Promise<void> {
+		await api.stopSyncingSkill(rootStore.restApiContext, id);
+	}
+
 	return {
 		skills,
 		count,
 		loading,
 		fetchSkills,
 		fetchSkillCount,
+		fetchCreators,
+		fetchAgents,
 		fetchSkill,
 		fetchNewSkillName,
 		createSkill,
 		saveSkill,
 		deleteSkill,
+		discoverSource,
+		connectSource,
+		stopSyncingSkill,
 	};
 });

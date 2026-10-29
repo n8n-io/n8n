@@ -1,12 +1,10 @@
 import {
 	sanitizeToolName as sanitizeMcpToolName,
+	raceWithAbort,
+	throwIfAborted,
 	type Agent as RuntimeAgent,
 	type GenerateResult,
 } from '@n8n/agents';
-import {
-	hasNativeWebSearchProvider,
-	isNativeWebSearchRequested,
-} from '@n8n/ai-utilities/agent-config';
 import type {
 	AgentJsonConfig,
 	InstanceAiEvalAgentExecutionRequest,
@@ -22,26 +20,14 @@ import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { EvalLlmMockHandler } from 'n8n-core';
-import { nodeNameToToolName } from 'n8n-workflow';
 
-import { CredentialsService } from '@/credentials/credentials.service';
-// Static agents-module imports are safe here: the ModuleRegistry gate decides
-// availability at runtime.
-import { AgentRuntimeReconstructionService } from '@/modules/agents/agent-runtime-reconstruction.service';
-import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
-import { AgentsSettingsService } from '@/modules/agents/agents-settings.service';
-import type { Agent as AgentEntity } from '@/modules/agents/entities/agent.entity';
-import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service';
-import { sanitizeToolName } from '@/modules/agents/json-config/agent-config-composition';
-import { fromAgentDocument, toAgentDocument } from '@/modules/agents/json-config/agent-document';
-import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
+import type { AgentEvaluationPreparation } from '@/modules/agents/evaluation/agent-evaluation.contracts';
+import { AgentEvaluationService } from '@/modules/agents/evaluation/agent-evaluation.service';
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import { createAiProxyFetch } from '@/utils/ai-proxy-fetch';
 
 import { createAgentModelTurnRecorder } from './agent-model-turn-recorder';
-import { generateAgentScenarioSeed, type AgentSeedToolSummary } from './agent-scenario-seed';
+import { generateAgentScenarioSeed } from './agent-scenario-seed';
 import { EvalMockedCredentialsHelper } from './eval-mocked-credentials-helper';
 import { snapshotLedgerBody } from './ledger-snapshot';
 import {
@@ -84,6 +70,18 @@ const MAX_RECORDED_TOOL_VALUE_CHARS = 4_000;
 // a node tool's sanitized name) merges into one record — accepted, the
 // interceptedRequests still disambiguate.
 type ToolLedger = Map<string, InstanceAiEvalInterceptedRequest[]>;
+
+interface AgentRunEvidence {
+	recorder: ReturnType<typeof createAgentModelTurnRecorder>;
+	toolLedger: ToolLedger;
+	credentialHelpers: EvalMockedCredentialsHelper[];
+}
+
+interface AgentRunOutput {
+	result: GenerateResult;
+	segmentToolCalls: NonNullable<GenerateResult['toolCalls']>;
+	autoApprovedToolNames: Set<string>;
+}
 
 /**
  * One URL is the other or a path-boundary prefix of it — bare prefix overlap
@@ -147,6 +145,31 @@ export async function resolveCanonicalMcpCatalogs(
 	return Object.keys(result).length > 0 ? result : undefined;
 }
 
+function truncateRecordedValue(value: unknown): unknown {
+	if (value === undefined || value === null) return value;
+	let serialized: string;
+	try {
+		serialized = JSON.stringify(value);
+	} catch {
+		return '[unserializable value]';
+	}
+	if (serialized === undefined || serialized.length <= MAX_RECORDED_TOOL_VALUE_CHARS) return value;
+	return truncateForLlm(serialized, MAX_RECORDED_TOOL_VALUE_CHARS);
+}
+
+function extractFinalAssistantText(result: GenerateResult): string {
+	for (let messageIndex = result.messages.length - 1; messageIndex >= 0; messageIndex--) {
+		const message = result.messages[messageIndex];
+		if (!('role' in message) || message.role !== 'assistant') continue;
+		const texts = message.content
+			.filter((part): part is Extract<typeof part, { type: 'text' }> => part.type === 'text')
+			.map((part) => part.text)
+			.filter((text) => text.trim().length > 0);
+		if (texts.length > 0) return texts.join('\n');
+	}
+	return '';
+}
+
 @Service()
 export class EvalAgentExecutionService {
 	constructor(
@@ -154,7 +177,6 @@ export class EvalAgentExecutionService {
 		private readonly executionsConfig: ExecutionsConfig,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly outboundHttp: OutboundHttp,
-		private readonly credentialsService: CredentialsService,
 	) {}
 
 	async executeWithLlmMock(
@@ -179,47 +201,11 @@ export class EvalAgentExecutionService {
 		if (!this.moduleRegistry.isActive('agents')) {
 			return this.errorResult('Agent eval execution requires the agents module to be active.');
 		}
-		if (!(await Container.get(AgentsSettingsService).getEnabled())) {
-			return this.errorResult(
-				'Agents are disabled. Ask an instance admin to enable them in Settings > Agents.',
-			);
-		}
-
 		const { projectId } = options;
-		if (!(await userHasScopes(user, ['agent:execute'], false, { projectId }))) {
-			return this.errorResult(`Agent ${agentId} not found or not accessible`);
-		}
-
-		const agentEntity = await Container.get(AgentRepository).findByIdAndProjectId(
-			agentId,
-			projectId,
-		);
-		if (!agentEntity) {
-			return this.errorResult(`Agent ${agentId} not found or not accessible`);
-		}
-		if (!agentEntity.schema) {
-			return this.errorResult(`Agent ${agentId} has no JSON config to run.`);
-		}
-
-		const agentSkillRefs = Container.get(AgentSkillRefsService);
-		const skillRefs = await agentSkillRefs.refsForDraft(agentEntity, {});
-		const { config, skippedFeatures } = pruneConfigForEval(
-			toAgentDocument(agentEntity.schema, skillRefs),
-		);
-		const pruned = fromAgentDocument(config);
-		if ((agentEntity.integrations ?? []).length > 0) {
-			skippedFeatures.push({
-				feature: 'integrations',
-				reason:
-					'Chat integrations are not attached in eval runs — the harness drives the agent directly.',
-			});
-		}
-		// The entity is detached (never saved back); mutate the copy the
-		// runtime is built from so pruning applies to reconstruction too.
-		agentEntity.schema = pruned.config;
-		agentEntity.integrations = [];
-
-		const toolSummaries = summarizeTools(config, agentEntity.tools ?? {}, sanitizeToolName);
+		const prepared = await Container.get(AgentEvaluationService).prepare(user, projectId, agentId);
+		if (prepared.error !== undefined) return this.errorResult(prepared.error);
+		const preparation = prepared.preparation;
+		const { config, tools: toolSummaries } = preparation;
 
 		// The scenario signal steers seed + mock generation. A fixed case input
 		// doubles as that signal (bounded) so the generated context, per-tool
@@ -267,7 +253,30 @@ export class EvalAgentExecutionService {
 			createAiProxyFetch(this.outboundHttp),
 			this.logger,
 		);
+		const evidence = { recorder, toolLedger, credentialHelpers };
+		const instrumentation = await this.createRuntimeInstrumentation(
+			config,
+			seed,
+			scenarioSignal,
+			mockHandler,
+			evidence,
+		);
+		return await this.executePreparedRuntime(
+			preparation,
+			instrumentation,
+			seed,
+			evidence,
+			options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
+		);
+	}
 
+	private async createRuntimeInstrumentation(
+		config: AgentJsonConfig,
+		seed: InstanceAiEvalAgentScenarioSeed,
+		scenarioSignal: string | undefined,
+		mockHandler: EvalLlmMockHandler,
+		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
+	): Promise<Parameters<AgentEvaluationPreparation['buildRuntime']>[0]> {
 		const pendingMcpCalls = new Map<string, McpMockToolCall[]>();
 		const mcpCallIdentity = (serverName: string, toolName: string) =>
 			JSON.stringify([serverName, toolName]);
@@ -346,149 +355,156 @@ export class EvalAgentExecutionService {
 			},
 		});
 
-		const reconstruction = Container.get(AgentRuntimeReconstructionService);
-		const credentialProvider = createAgentCredentialProvider(
-			this.credentialsService,
-			projectId,
-			user,
-			agentId,
-		);
+		return {
+			modelFetch: recorder.fetch,
+			mcpFetch,
+			onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
+				recordSettledMcpCall(serverName, toolName, modelToolName);
+			},
+			webSearch: webSearchMock,
+			configureToolAdditionalData: (additionalData, toolContext) => {
+				const helper = new EvalMockedCredentialsHelper(
+					additionalData.credentialsHelper,
+					undefined,
+					this.logger,
+				);
+				credentialHelpers.push(helper);
+				additionalData.credentialsHelper = helper;
+				additionalData.evalLlmMockHandler = this.createRecordingMockHandler(
+					mockHandler,
+					toolContext.toolName,
+					toolLedger,
+				);
+			},
+		};
+	}
 
+	private async executePreparedRuntime(
+		preparation: AgentEvaluationPreparation,
+		instrumentation: Parameters<AgentEvaluationPreparation['buildRuntime']>[0],
+		seed: InstanceAiEvalAgentScenarioSeed,
+		evidence: AgentRunEvidence,
+		timeoutMs: number,
+	): Promise<InstanceAiEvalAgentExecutionResult> {
+		const { config, skippedFeatures } = preparation;
+		const { recorder, toolLedger, credentialHelpers } = evidence;
+		const budgetSignal = AbortSignal.timeout(timeoutMs);
 		let agent: RuntimeAgent;
 		try {
-			({ agent } = await reconstruction.reconstructFromAgentEntity(
-				{
-					agent: agentEntity,
-					skillRefs: pruned.skillRefs,
-					skills: await agentSkillRefs.skillsForRefs(agentEntity, pruned.skillRefs, {}),
-				},
-				credentialProvider,
-				'test',
-				undefined,
-				user,
-				{
-					modelFetch: recorder.fetch,
-					mcpFetch,
-					onMcpToolCallSettled: ({ serverName, toolName, modelToolName }) => {
-						recordSettledMcpCall(serverName, toolName, modelToolName);
-					},
-					webSearch: webSearchMock,
-					// Delegated (configured) sub-agents inherit every seam above; their
-					// configs get the same pruning, reported under the child's id.
-					transformDelegatedAgentConfig: (childConfig, delegationContext) => {
-						const pruned = pruneConfigForEval(childConfig);
-						skippedFeatures.push(
-							...pruned.skippedFeatures.map((skip) => ({
-								...skip,
-								feature: `subAgent ${delegationContext.subAgentId}: ${skip.feature}`,
-							})),
-						);
-						return pruned.config;
-					},
-					configureToolAdditionalData: (additionalData, toolContext) => {
-						const helper = new EvalMockedCredentialsHelper(
-							additionalData.credentialsHelper,
-							undefined,
-							this.logger,
-						);
-						credentialHelpers.push(helper);
-						additionalData.credentialsHelper = helper;
-						additionalData.evalLlmMockHandler = this.createRecordingMockHandler(
-							mockHandler,
-							toolContext.toolName,
-							toolLedger,
-						);
-					},
-				},
-				'manual',
-				hashAgentSandboxPrincipal({ type: 'n8n-user', userId: user.id }),
-			));
+			agent = await raceWithAbort(async () => {
+				const runtime = await preparation.buildRuntime(instrumentation, budgetSignal);
+				if (budgetSignal.aborted) await this.closeRuntime(runtime);
+				throwIfAborted(budgetSignal);
+				return runtime;
+			}, budgetSignal);
 		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			return this.errorResult(`Failed to build agent runtime: ${message}`, seed, skippedFeatures);
+			return this.errorResult(
+				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Failed to build agent runtime'),
+				seed,
+				skippedFeatures,
+			);
 		}
 
-		const errors: string[] = [];
-		// GenerateResult.toolCalls carry no toolCallId — approvals are attributed
-		// by tool name, enough to flag auto-approval for the judge.
-		const autoApprovedToolNames = new Set<string>();
-		const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
 		const maxIterations = Math.min(
 			config.config?.maxIterations ?? DEFAULT_MAX_ITERATIONS,
 			MAX_ITERATIONS_CAP,
 		);
+		let output: AgentRunOutput;
+		try {
+			output = await this.generateWithAutoApprovals(agent, seed.openingMessage, {
+				abortSignal: budgetSignal,
+				maxIterations,
+			});
+		} catch (error) {
+			// Flush so the failure result carries the recorded response bodies too.
+			await recorder.flush();
+			return this.errorResult(
+				this.runErrorMessage(error, budgetSignal, timeoutMs, 'Agent run failed'),
+				seed,
+				skippedFeatures,
+				{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
+			);
+		} finally {
+			await recorder.flush();
+			if (budgetSignal.aborted) void this.closeRuntime(agent);
+			else await this.closeRuntime(agent);
+		}
+		return this.executionResult(output, preparation, seed, evidence);
+	}
 
-		let result: GenerateResult;
-		// Each resume returns its own GenerateResult segment — collect tool
-		// calls across all of them so pre-suspension calls aren't lost.
+	private async closeRuntime(agent: RuntimeAgent) {
+		try {
+			await agent.close();
+		} catch (error) {
+			this.logger.warn('[EvalAgentMock] Agent runtime teardown failed', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	private runErrorMessage(
+		error: unknown,
+		budgetSignal: AbortSignal,
+		timeoutMs: number,
+		prefix: string,
+	) {
+		if (budgetSignal.aborted) {
+			const seconds = Math.round(timeoutMs / 1000);
+			return `Agent run exceeded its ${seconds}s eval budget and was stopped`;
+		}
+		const message = error instanceof Error ? error.message : String(error);
+		return `${prefix}: ${message}`;
+	}
+
+	private async generateWithAutoApprovals(
+		agent: RuntimeAgent,
+		openingMessage: string,
+		options: { abortSignal: AbortSignal; maxIterations: number },
+	): Promise<AgentRunOutput> {
+		const autoApprovedToolNames = new Set<string>();
 		const segmentToolCalls: NonNullable<GenerateResult['toolCalls']> = [];
 		const collectToolCalls = (segment: GenerateResult) => {
 			for (const entry of segment.toolCalls ?? []) {
 				if (!segmentToolCalls.includes(entry)) segmentToolCalls.push(entry);
 			}
 		};
-		const budgetSignal = AbortSignal.timeout(timeoutMs);
-		try {
-			result = await agent.generate(seed.openingMessage, {
-				abortSignal: budgetSignal,
-				maxIterations,
-			});
+		let result = await raceWithAbort(
+			async () => await agent.generate(openingMessage, options),
+			options.abortSignal,
+		);
+		collectToolCalls(result);
+		let approvals = 0;
+		while (approvals < MAX_AUTO_APPROVALS) {
+			const pending = result.pendingSuspend?.[0];
+			if (!pending) break;
+			autoApprovedToolNames.add(pending.toolName);
+			approvals++;
+			result = await raceWithAbort(
+				async () =>
+					await agent.approve('generate', {
+						runId: pending.runId,
+						toolCallId: pending.toolCallId,
+						...options,
+					}),
+				options.abortSignal,
+			);
 			collectToolCalls(result);
-
-			// Approval-gated tools suspend the run. In real usage the user
-			// approves in the UI; the eval happy-path stands in for them, and
-			// flags every call it approved.
-			let approvals = 0;
-			while (approvals < MAX_AUTO_APPROVALS) {
-				const pending = result.pendingSuspend?.[0];
-				if (!pending) break;
-				autoApprovedToolNames.add(pending.toolName);
-				approvals++;
-				result = await agent.approve('generate', {
-					runId: pending.runId,
-					toolCallId: pending.toolCallId,
-					abortSignal: budgetSignal,
-					maxIterations,
-				});
-				collectToolCalls(result);
-			}
-			if ((result.pendingSuspend?.length ?? 0) > 0) {
-				errors.push(`Run still suspended after ${MAX_AUTO_APPROVALS} auto-approvals`);
-			}
-		} catch (error) {
-			const message = error instanceof Error ? error.message : String(error);
-			// Flush so the failure result carries the recorded response bodies too.
-			await recorder.flush();
-			// A budget abort is the harness killing the run for time, NOT the builder
-			// failing. Say so in the words the WORKFLOW path already uses, so the one
-			// classifier (`isServerBudgetStop`) covers both — wrapping it as a plain
-			// `Agent run failed:` let a timed-out agent run score as a builder verdict,
-			// which is the misattribution this whole path exists to prevent.
-			if (budgetSignal.aborted) {
-				const seconds = Math.round(timeoutMs / 1000);
-				return this.errorResult(
-					`Agent run exceeded its ${seconds}s eval budget and was stopped`,
-					seed,
-					skippedFeatures,
-					{ modelTurns: recorder.turns, toolLedger, credentialHelpers },
-				);
-			}
-			return this.errorResult(`Agent run failed: ${message}`, seed, skippedFeatures, {
-				modelTurns: recorder.turns,
-				toolLedger,
-				credentialHelpers,
-			});
-		} finally {
-			await recorder.flush();
-			try {
-				await agent.close();
-			} catch (error) {
-				this.logger.warn('[EvalAgentMock] Agent runtime teardown failed', {
-					error: error instanceof Error ? error.message : String(error),
-				});
-			}
 		}
+		return { result, segmentToolCalls, autoApprovedToolNames };
+	}
 
+	private executionResult(
+		{ result, segmentToolCalls, autoApprovedToolNames }: AgentRunOutput,
+		preparation: AgentEvaluationPreparation,
+		seed: InstanceAiEvalAgentScenarioSeed,
+		{ recorder, toolLedger, credentialHelpers }: AgentRunEvidence,
+	): InstanceAiEvalAgentExecutionResult {
+		const { tools: toolSummaries, skippedFeatures, config } = preparation;
+		const mcpServers = config.mcpServers ?? [];
+		const errors: string[] = [];
+		if ((result.pendingSuspend?.length ?? 0) > 0) {
+			errors.push(`Run still suspended after ${MAX_AUTO_APPROVALS} auto-approvals`);
+		}
 		if (result.error !== undefined) {
 			errors.push(
 				`Model run error: ${result.error instanceof Error ? result.error.message : String(result.error)}`,
@@ -633,51 +649,6 @@ export class EvalAgentExecutionService {
  * is reported so the judge (and anyone debugging) can see the run diverged
  * from the authored config, and why.
  */
-export function pruneConfigForEval(original: AgentJsonConfig): {
-	config: AgentJsonConfig;
-	skippedFeatures: InstanceAiEvalAgentSkippedFeature[];
-} {
-	const skippedFeatures: InstanceAiEvalAgentSkippedFeature[] = [];
-	const config: AgentJsonConfig = { ...original };
-
-	if (config.memory?.enabled) {
-		skippedFeatures.push({
-			feature: 'memory',
-			reason:
-				'Observational/episodic memory worker models and embeddings are not mockable yet — memory is disabled for the run.',
-		});
-		config.memory = undefined;
-	}
-
-	if ((config.vectorStores?.length ?? 0) > 0) {
-		skippedFeatures.push({
-			feature: 'vectorStores',
-			reason: 'Vector stores use native DB clients the mock layer cannot intercept.',
-		});
-		config.vectorStores = undefined;
-	}
-
-	// Streamable-HTTP MCP servers are served by the mock MCP fetch; only the
-	// non-default SSE transport (stateful long-lived stream) stays unmockable.
-	const sseServers = (config.mcpServers ?? []).filter((server) => server.transport === 'sse');
-	if (sseServers.length > 0) {
-		skippedFeatures.push({
-			feature: 'mcpServers (sse transport)',
-			reason: `SSE-transport MCP servers are not mockable yet (streamable-HTTP ones are): ${sseServers.map((server) => server.name).join(', ')}.`,
-		});
-		const remaining = (config.mcpServers ?? []).filter((server) => server.transport !== 'sse');
-		config.mcpServers = remaining.length > 0 ? remaining : undefined;
-	}
-
-	// Configured sub-agents stay: the delegated child inherits the run's
-	// instrumentation and its config is pruned by the same rules via
-	// `transformDelegatedAgentConfig`. Web search stays too: the native
-	// variant runs inside the real model call and the fallback tool is served
-	// by the web-search mock.
-
-	return { config, skippedFeatures };
-}
-
 // ---------------------------------------------------------------------------
 // Tool summaries + result shaping
 // ---------------------------------------------------------------------------
@@ -702,85 +673,4 @@ function salvagedToolKind(
 	if (nodeType.startsWith('mcp:')) return 'mcp';
 	if (nodeType === 'web-search:fallback') return 'other';
 	return 'node';
-}
-
-export function summarizeTools(
-	config: AgentJsonConfig,
-	customTools: NonNullable<AgentEntity['tools']>,
-	sanitizeWorkflowToolName: (name: string) => string,
-): AgentSeedToolSummary[] {
-	const summaries: AgentSeedToolSummary[] = [];
-	for (const ref of config.tools ?? []) {
-		if (ref.type === 'node') {
-			summaries.push({
-				name: nodeNameToToolName(ref.name),
-				kind: 'node',
-				description: ref.description,
-				nodeType: ref.node.nodeType,
-			});
-		} else if (ref.type === 'workflow') {
-			summaries.push({
-				name: sanitizeWorkflowToolName(ref.name ?? ref.workflow),
-				kind: 'workflow',
-				description: ref.description,
-			});
-		} else {
-			const descriptor = customTools[ref.id]?.descriptor;
-			if (descriptor) {
-				summaries.push({
-					name: descriptor.name,
-					kind: 'custom',
-					description: descriptor.description,
-				});
-			}
-		}
-	}
-	// MCP servers are summarized by SERVER name — the seed's hint for that name
-	// steers both the generated tool catalog and every tool result it serves.
-	for (const server of config.mcpServers ?? []) {
-		summaries.push({
-			name: server.name,
-			kind: 'mcp',
-			description: server.description ?? `MCP tool server at ${server.url}`,
-		});
-	}
-	// The fallback web_search tool is served by the web-search mock; a hint
-	// keyed by its name steers the generated result sets. Native web search
-	// runs inside the real model call and needs no hint.
-	if (
-		config.config?.webSearch?.enabled &&
-		!(isNativeWebSearchRequested(config) && hasNativeWebSearchProvider(config.model))
-	) {
-		summaries.push({
-			name: 'web_search',
-			kind: 'other',
-			description: 'Web search returning {title, url, snippet} result lists',
-		});
-	}
-	return summaries;
-}
-
-function truncateRecordedValue(value: unknown): unknown {
-	if (value === undefined || value === null) return value;
-	let serialized: string;
-	try {
-		serialized = JSON.stringify(value);
-	} catch {
-		return '[unserializable value]';
-	}
-	if (serialized === undefined || serialized.length <= MAX_RECORDED_TOOL_VALUE_CHARS) return value;
-	return truncateForLlm(serialized, MAX_RECORDED_TOOL_VALUE_CHARS);
-}
-
-function extractFinalAssistantText(result: GenerateResult): string {
-	for (let i = result.messages.length - 1; i >= 0; i--) {
-		const message = result.messages[i];
-		if (!('role' in message) || message.role !== 'assistant') continue;
-		const texts = message.content
-			.filter((part): part is Extract<typeof part, { type: 'text' }> => part.type === 'text')
-			.map((part) => part.text)
-			.filter((text) => text.trim().length > 0);
-		if (texts.length > 0) return texts.join('\n');
-	}
-	return '';
 }

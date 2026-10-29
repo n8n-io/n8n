@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { type Response } from 'express';
+import express, { type Response } from 'express';
 import {
 	isFormHtmlSandboxingDisabled,
 	isWebhookHtmlSandboxingDisabled,
@@ -8,16 +8,26 @@ import {
 } from 'n8n-core';
 import { OperationalError, randomString } from 'n8n-workflow';
 import type { IHttpRequestMethods } from 'n8n-workflow';
+import type { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import { ResponseError } from '@n8n/errors';
 import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+import { createStreamResponse } from '@/webhooks/webhook-response';
 import type {
 	IWebhookManager,
 	IWebhookResponseCallbackData,
 	WebhookOptionsRequest,
 	WebhookRequest,
 } from '@/webhooks/webhook.types';
+import {
+	createLargeTempFile,
+	failingStream,
+	readFirstChunkAndDisconnect,
+	readWholeBody,
+	startServer,
+	waitForClose,
+} from '@test/file-stream-server';
 
 vi.mock('n8n-core', async () => ({
 	...(await vi.importActual<typeof import('n8n-core')>('n8n-core')),
@@ -43,7 +53,7 @@ describe('WebhookRequestHandler', () => {
 			path: '/',
 			method: 'CONNECT' as IHttpRequestMethods,
 		});
-		const res = mock<Response>();
+		const res = mock<Response>({ headersSent: false });
 		res.status.mockReturnValue(res);
 
 		await handler(req, res);
@@ -191,6 +201,31 @@ describe('WebhookRequestHandler', () => {
 			expect(res.json).toHaveBeenCalledWith(executeWebhookResponse.data);
 		});
 
+		it('should not look up the webhook methods for a non-preflight request', async () => {
+			const req = mock<WebhookRequest>({
+				path: '/',
+				method: 'GET',
+				headers: { origin: 'https://example.com' },
+				params: { path: 'test' },
+			});
+			const res = mock<Response>();
+			res.status.mockReturnValue(res);
+			webhookManager.executeWebhook.mockResolvedValueOnce({
+				responseCode: 200,
+				data: {},
+				headers: {},
+			});
+
+			await handler(req, res);
+
+			expect(webhookManager.getWebhookMethods).not.toHaveBeenCalled();
+			expect(res.header).not.toHaveBeenCalledWith(
+				'Access-Control-Allow-Methods',
+				expect.anything(),
+			);
+			expect(res.status).toHaveBeenCalledWith(200);
+		});
+
 		it('should send an error response if webhook execution throws', async () => {
 			class TestError extends ResponseError {}
 			const req = mock<WebhookRequest>({
@@ -199,7 +234,7 @@ describe('WebhookRequestHandler', () => {
 				params: { path: 'test' },
 			});
 
-			const res = mock<Response>();
+			const res = mock<Response>({ headersSent: false });
 			res.status.mockReturnValue(res);
 
 			webhookManager.executeWebhook.mockRejectedValueOnce(
@@ -385,7 +420,7 @@ describe('WebhookRequestHandler', () => {
 
 			it('should set the sandbox header before an error response is sent', async () => {
 				const req = mock<WebhookRequest>({ path: '/', method: 'GET', params: { path: 'test' } });
-				const res = mock<Response>();
+				const res = mock<Response>({ headersSent: false });
 				res.status.mockReturnValue(res);
 				webhookManager.executeWebhook.mockRejectedValueOnce(new OperationalError('Test error'));
 
@@ -415,7 +450,7 @@ describe('WebhookRequestHandler', () => {
 					path: '/',
 					method: 'CONNECT' as IHttpRequestMethods,
 				});
-				const res = mock<Response>();
+				const res = mock<Response>({ headersSent: false });
 				res.status.mockReturnValue(res);
 
 				await handler(req, res);
@@ -526,6 +561,79 @@ describe('WebhookRequestHandler', () => {
 					'Content-Security-Policy',
 					'sandbox allow-scripts',
 				);
+			});
+		});
+	});
+
+	describe('file stream responses', () => {
+		let file: Awaited<ReturnType<typeof createLargeTempFile>>;
+		let server: Awaited<ReturnType<typeof startServer>> | undefined;
+
+		beforeAll(async () => {
+			file = await createLargeTempFile();
+		});
+
+		beforeEach(() => {
+			vi.mocked(getHtmlSandboxCSP).mockReturnValue('sandbox');
+		});
+
+		afterEach(async () => {
+			await server?.close();
+			server = undefined;
+		});
+
+		afterAll(async () => {
+			await file.remove();
+		});
+
+		/** Serves `handler` through Express, and exposes the promise of the latest request. */
+		async function serveWebhook() {
+			const handled: Array<Promise<void>> = [];
+			const app = express();
+			app.use((req, res) => {
+				req.params = { path: 'test' };
+				handled.push(handler(req as WebhookRequest, res));
+			});
+			server = await startServer(app);
+			return { url: server.url, handled };
+		}
+
+		const responses = {
+			stream: (stream: Readable) => createStreamResponse(stream, 200, undefined),
+			legacy: (stream: Readable) => ({ data: stream }) as unknown as IWebhookResponseCallbackData,
+		};
+
+		describe.each(Object.entries(responses))('as a %s response', (_kind, toResponse) => {
+			it('should send the whole file', async () => {
+				const stream = await file.openStream();
+				webhookManager.executeWebhook.mockResolvedValueOnce(toResponse(stream));
+				const { url } = await serveWebhook();
+
+				expect(await readWholeBody(url)).toBe(file.sizeInBytes);
+				expect(await waitForClose(stream)).toBe(true);
+			});
+
+			it('should end the response when the file fails during the download', async () => {
+				const stream = failingStream(3);
+				webhookManager.executeWebhook.mockResolvedValueOnce(toResponse(stream));
+				const { url, handled } = await serveWebhook();
+
+				await expect(readWholeBody(url)).rejects.toThrow();
+				await handled[0];
+				expect(stream.destroyed).toBe(true);
+				expect(logger.error).toHaveBeenCalledTimes(1);
+			});
+
+			it('should close the file when the client disconnects during the download', async () => {
+				const stream = await file.openStream();
+				webhookManager.executeWebhook.mockResolvedValueOnce(toResponse(stream));
+				const { url, handled } = await serveWebhook();
+
+				await readFirstChunkAndDisconnect(url);
+
+				expect(await waitForClose(stream)).toBe(true);
+				await handled[0];
+				expect(logger.error).not.toHaveBeenCalled();
 			});
 		});
 	});

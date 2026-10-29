@@ -1,11 +1,11 @@
+import {
+	type SerializedCredential,
+	type SerializedCredentialData,
+	serializedCredentialSchema,
+} from '@n8n/api-types';
 import type { CredentialsEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-	type SerializedCredentialData,
-} from '../../spec/serialized/credential.schema';
 import { definePackageSerializationPayload } from '../package-serialization.types';
 
 type CredentialPackageKeyHandling = {

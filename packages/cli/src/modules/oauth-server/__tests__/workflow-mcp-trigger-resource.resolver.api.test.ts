@@ -14,7 +14,10 @@ import { OAuthTokenService } from '@/modules/oauth-server/oauth-token.service';
 import { CacheService, UrlService } from '@n8n/backend-services';
 import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
-const testServer = setupTestServer({ modules: ['oauth-server', 'mcp'], endpointGroups: ['mcp'] });
+const testServer = setupTestServer({
+	modules: ['oauth-server', 'mcp', 'inbound-auth-core'],
+	endpointGroups: ['mcp'],
+});
 
 let owner: User;
 let mcpEndpoint: string;
@@ -30,10 +33,12 @@ const mcpTriggerNode = ({
 	name = 'MCP Server Trigger',
 	authentication = 'n8nOAuth2',
 	disabled = false,
+	trustedSource,
 }: {
 	name?: string;
 	authentication?: string;
 	disabled?: boolean;
+	trustedSource?: string;
 } = {}): INode => ({
 	id: randomUUID(),
 	name,
@@ -41,7 +46,11 @@ const mcpTriggerNode = ({
 	typeVersion: 2,
 	position: [0, 0],
 	disabled,
-	parameters: { path: 'unused', authentication },
+	parameters: {
+		path: 'unused',
+		authentication,
+		...(trustedSource === undefined ? {} : { trustedSource }),
+	},
 });
 
 /** Mirrors what `ActiveWorkflowManager.addWebhooks` persists on activation. */
@@ -120,6 +129,21 @@ describe('protected resource metadata for workflow MCP triggers', () => {
 			bearer_methods_supported: ['header'],
 			authorization_servers: [expect.any(String)],
 		});
+	});
+
+	test.each([
+		['the internal source when the node stores none', undefined, ['n8n-internal']],
+		['the source the node selected', 'okta', ['okta']],
+	])('should accept only %s', async (_label, trustedSource, expected) => {
+		const webhookPath = randomUUID();
+		await createPublishedMcpWorkflow(webhookPath, mcpTriggerNode({ trustedSource }));
+
+		const resource = await Container.get(ProtectedResourceRegistry).getByResourcePath(
+			`/${mcpEndpoint}/${webhookPath}`,
+		);
+
+		expect(resource?.surface).toBe('trigger');
+		expect(resource?.getAcceptedSourceIds?.()).toEqual(expected);
 	});
 
 	test('should tolerate a trailing slash', async () => {

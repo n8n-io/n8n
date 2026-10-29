@@ -41,6 +41,24 @@ describe('McpToolSettingsContent', () => {
 		confirm.mockReset();
 	});
 
+	it('submits the body form from the footer Save button', async () => {
+		const { emitted, getByTestId } = renderComponent({ props: { item: item() } });
+
+		const button = getByTestId('tools-connection-settings-save');
+		const form = button instanceof HTMLButtonElement ? button.form : null;
+		expect(form).toHaveAttribute('id', 'mcp-tool-settings-form');
+		await fireEvent.submit(form!);
+
+		expect(emitted().save).toEqual([
+			[
+				{
+					categories: { read: 'always_allow', write: 'require_approval' },
+					tools: { search: 'blocked' },
+				},
+			],
+		]);
+	});
+
 	it('saves category permissions and preserves tool overrides', async () => {
 		const { emitted, getByTestId } = renderComponent({ props: { item: item() } });
 

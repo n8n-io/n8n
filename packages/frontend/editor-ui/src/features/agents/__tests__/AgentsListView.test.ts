@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
 	listAgentsPageGlobal: vi.fn(),
 	routerPush: vi.fn(),
 	setTitle: vi.fn(),
+	executeWeeklySummary: vi.fn(),
+	isSummaryEnabled: false,
 	trackClickedNewAgent: vi.fn(),
 	trackDuplicatedAgent: vi.fn(),
 	duplicateAgent: vi.fn(),
@@ -76,8 +78,8 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 vi.mock('@n8n/frontend-module-insights', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@n8n/frontend-module-insights')>()),
 	useInsightsStore: () => ({
-		isSummaryEnabled: false,
-		weeklySummary: { isLoading: false, state: null },
+		isSummaryEnabled: mocks.isSummaryEnabled,
+		weeklySummary: { isLoading: false, state: null, execute: mocks.executeWeeklySummary },
 	}),
 }));
 
@@ -202,12 +204,22 @@ describe('AgentsListView — project page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = 'project-1';
+		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
 		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('does not load the insights summary on a project page', async () => {
+		mocks.listAgentsPage.mockResolvedValueOnce({ count: 0, data: [] });
+		mocks.isSummaryEnabled = true;
+
+		await mountView();
+
+		expect(mocks.executeWeeklySummary).not.toHaveBeenCalled();
 	});
 
 	it('calls listAgentsPage with the route project ID', async () => {
@@ -316,11 +328,7 @@ describe('AgentsListView — project page', () => {
 		expect(mocks.toastShowMessage).toHaveBeenCalledWith(
 			expect.objectContaining({ title: 'agents.duplicate.modal.success', type: 'success' }),
 		);
-		// A duplicate is born configured, so the backend creation events never
-		// fire for it; the duplicate is tracked directly, mirroring
-		// "User duplicated workflow" — the source agent id distinguishes it.
-		// Routed through the safe wrapper so a telemetry failure can't
-		// misreport a successful duplicate.
+		// The frontend event keeps the source Agent context.
 		expect(mocks.trackDuplicatedAgent).toHaveBeenCalledWith({
 			sourceAgentId: 'agent-1',
 			agentId: 'agent-2',
@@ -408,12 +416,22 @@ describe('AgentsListView — overview page', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mocks.routeProjectId = undefined;
+		mocks.isSummaryEnabled = false;
 		templatesEnabled.value = false;
 		instanceAiReady.value = false;
 	});
 
 	afterEach(() => {
 		vi.useRealTimers();
+	});
+
+	it('loads the insights summary on mount when it is enabled', async () => {
+		mocks.listAgentsPageGlobal.mockResolvedValueOnce({ count: 0, data: [] });
+		mocks.isSummaryEnabled = true;
+
+		await mountView();
+
+		expect(mocks.executeWeeklySummary).toHaveBeenCalledTimes(1);
 	});
 
 	it('calls listAgentsPageGlobal when no project ID is in the route', async () => {

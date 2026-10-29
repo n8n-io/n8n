@@ -717,6 +717,62 @@ describe('InsightsByPeriodRepository', () => {
 				await expect(repository.getFirstBillableDay()).resolves.toBeNull();
 			});
 		});
+
+		describe.runIf(isPostgres)('Postgres session time zone other than UTC', () => {
+			const day = new Date('2026-03-20T00:00:00.000Z');
+
+			async function seedAroundUtcDay(type: InsightsByPeriod['type']) {
+				await seed(await newWorkflow(), [
+					[type, 1000, '2026-03-19T23:00:00'],
+					[type, 1, '2026-03-20T01:00:00'],
+					[type, 10, '2026-03-20T12:00:00'],
+					[type, 100, '2026-03-20T23:00:00'],
+					[type, 10000, '2026-03-21T00:00:00'],
+				]);
+			}
+
+			async function setSessionTimeZone(timeZone: string) {
+				expect(Container.get(GlobalConfig).database.postgresdb.poolSize).toBe(1);
+				await repository.query(`SET TIME ZONE '${timeZone}'`);
+				onTestFinished(async () => {
+					await repository.query('RESET TIME ZONE');
+				});
+			}
+
+			test.each(['Asia/Tokyo', 'America/New_York'])(
+				'getDailyBillableExecutions sums exactly the rows of the UTC day on %s',
+				async (timeZone) => {
+					await seedAroundUtcDay('billable');
+					await setSessionTimeZone(timeZone);
+
+					await expect(
+						repository.getDailyBillableExecutions({ startDate: day, endDate: day }),
+					).resolves.toEqual([{ day: '2026-03-20', billable: 111 }]);
+				},
+			);
+
+			test.each(['Asia/Tokyo', 'America/New_York'])(
+				'getInsightsByTime in UTC sums exactly the rows of the UTC day on %s',
+				async (timeZone) => {
+					await seedAroundUtcDay('success');
+					await setSessionTimeZone(timeZone);
+
+					const result = await repository.getInsightsByTime({
+						periodUnit: 'day',
+						insightTypes: ['success'],
+						startDate: day,
+						endDate: day,
+						timeZone: 'UTC',
+					});
+
+					expect(result).toHaveLength(1);
+					expect(result[0]?.succeeded).toBe(111);
+					expect(DateTime.fromISO(result[0].periodStart).toUTC().toISO()).toBe(
+						'2026-03-20T00:00:00.000Z',
+					);
+				},
+			);
+		});
 	});
 
 	describe('access filter', () => {

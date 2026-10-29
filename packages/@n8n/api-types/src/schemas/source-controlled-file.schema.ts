@@ -28,6 +28,11 @@ const FileStatusSchema = z.enum([
 ]);
 export const SOURCE_CONTROL_FILE_STATUS = FileStatusSchema.Values;
 
+/** The Environments version an instance shows: `v1` is source control, `v2` is promotions. */
+const EnvironmentsVersionSchema = z.enum(['v1', 'v2']);
+export const ENVIRONMENTS_VERSIONS = EnvironmentsVersionSchema.options;
+export type EnvironmentsVersion = z.infer<typeof EnvironmentsVersionSchema>;
+
 export type SourceControlledFileStatus = z.infer<typeof FileStatusSchema>;
 
 export function isSourceControlledFileStatus(value: unknown): value is SourceControlledFileStatus {

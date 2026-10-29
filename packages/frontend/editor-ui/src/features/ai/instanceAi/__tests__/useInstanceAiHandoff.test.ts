@@ -393,7 +393,7 @@ describe('useInstanceAiHandoff', () => {
 				return true;
 			});
 
-			await start();
+			await expect(start()).resolves.toBe('started');
 
 			expect(mocks.routerPush).toHaveBeenCalledWith({
 				name: 'InstanceAiThread',
@@ -407,7 +407,7 @@ describe('useInstanceAiHandoff', () => {
 			const failure = new Error('Navigation aborted');
 			mocks.routerPush.mockResolvedValueOnce(failure);
 
-			await start();
+			await expect(start()).resolves.toBe('failed');
 
 			expect(mocks.sendMessage).not.toHaveBeenCalled();
 			expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
@@ -425,6 +425,32 @@ describe('useInstanceAiHandoff', () => {
 			expect(mocks.deleteThread).toHaveBeenCalledWith('thread-1', { silent: true });
 			expect(mocks.showError).toHaveBeenCalledOnce();
 			expect(mocks.captureException).toHaveBeenCalledWith(error, expect.anything());
+		});
+
+		it('reports a failed start when the thread cannot be created', async () => {
+			mocks.syncThread.mockRejectedValueOnce(new Error('Offline'));
+
+			await expect(start()).resolves.toBe('failed');
+
+			expect(mocks.routerPush).not.toHaveBeenCalled();
+			expect(mocks.sendMessage).not.toHaveBeenCalled();
+			expect(mocks.showError).toHaveBeenCalledOnce();
+		});
+
+		it('reports a busy start without a thread while another hand-off is in flight', async () => {
+			let landNavigation: () => void = () => {};
+			mocks.routerPush.mockImplementationOnce(
+				async () => await new Promise<void>((resolve) => (landNavigation = resolve)),
+			);
+			const first = start();
+			await vi.waitFor(() => expect(mocks.routerPush).toHaveBeenCalledOnce());
+
+			await expect(start()).resolves.toBe('busy');
+			expect(mocks.syncThread).toHaveBeenCalledOnce();
+
+			landNavigation();
+			await expect(first).resolves.toBe('started');
+			expect(mocks.sendMessage).toHaveBeenCalledOnce();
 		});
 
 		it('accepts a new hand-off after a failed navigation', async () => {
@@ -603,6 +629,47 @@ describe('useInstanceAiHandoff', () => {
 		expect(mocks.showError).not.toHaveBeenCalled();
 	});
 
+	it('opens a thread with a composer draft without sending it', async () => {
+		const { openThreadWithDraft } = useInstanceAiHandoff();
+
+		const opened = await openThreadWithDraft(
+			'project-1',
+			{ text: 'Suggest my preferences', prefillType: 'preferences_suggestion' },
+			{ source: 'preferences_empty_state', origin: 'internal' },
+		);
+
+		expect(opened).toBe(true);
+		expect(mocks.syncThread).toHaveBeenCalledWith('thread-1', 'project-1', {
+			source: 'preferences_empty_state',
+			origin: 'internal',
+		});
+		expect(mocks.sendMessage).not.toHaveBeenCalled();
+		expect(mocks.routerPush).toHaveBeenCalledWith({
+			name: 'InstanceAiThread',
+			params: { threadId: 'thread-1' },
+		});
+		expect(getPendingComposerDraft('thread-1')).toEqual({
+			text: 'Suggest my preferences',
+			prefillType: 'preferences_suggestion',
+		});
+	});
+
+	it('stashes no draft when the draft thread cannot be created', async () => {
+		mocks.syncThread.mockRejectedValueOnce(new Error('offline'));
+		const { openThreadWithDraft } = useInstanceAiHandoff();
+
+		const opened = await openThreadWithDraft(
+			'project-1',
+			{ text: 'Suggest my preferences', prefillType: 'preferences_suggestion' },
+			{ source: 'preferences_empty_state', origin: 'internal' },
+		);
+
+		expect(opened).toBe(false);
+		expect(getPendingComposerDraft('thread-1')).toBeNull();
+		expect(mocks.routerPush).not.toHaveBeenCalled();
+		expect(mocks.showError).toHaveBeenCalledOnce();
+	});
+
 	describe('before setup is finished', () => {
 		beforeEach(() => {
 			mocks.instanceAiReady.value = false;
@@ -611,13 +678,14 @@ describe('useInstanceAiHandoff', () => {
 		it('routes startThread to the assistant instead of sending the opening turn', async () => {
 			const { startThread } = useInstanceAiHandoff();
 
-			await startThread(
+			const outcome = await startThread(
 				'project-1',
 				'Fix my workflow',
 				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
 				{ source: 'canvas_action_button', origin: 'internal' },
 			);
 
+			expect(outcome).toBe('setup');
 			expect(mocks.syncThread).not.toHaveBeenCalled();
 			expect(mocks.sendMessage).not.toHaveBeenCalled();
 			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
@@ -634,6 +702,20 @@ describe('useInstanceAiHandoff', () => {
 				}),
 				{ source: 'credential_edit', origin: 'internal' },
 				{ newTab: true },
+			);
+
+			expect(opened).toBe(false);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+
+		it('routes openThreadWithDraft to the assistant without minting a thread', async () => {
+			const { openThreadWithDraft } = useInstanceAiHandoff();
+
+			const opened = await openThreadWithDraft(
+				'project-1',
+				{ text: 'Suggest my preferences', prefillType: 'preferences_suggestion' },
+				{ source: 'preferences_empty_state', origin: 'internal' },
 			);
 
 			expect(opened).toBe(false);

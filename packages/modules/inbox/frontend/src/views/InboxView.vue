@@ -15,6 +15,7 @@ import { INBOX_VIEW, type InboxItemChange } from '../inbox.constants';
 import { inboxItemLocation, isInboxRoute, selectionFromRoute } from '../inbox.routes';
 import { useInboxStore } from '../inbox.store';
 import WorkflowReviewDetail from '../reviews/WorkflowReviewDetail.vue';
+import PromotionReviewDetail from '../promotions/PromotionReviewDetail.vue';
 import SelfHealingResultDetail from '../self-healing/SelfHealingResultDetail.vue';
 
 const store = useInboxStore();
@@ -53,6 +54,9 @@ const selectedListItem = computed(() =>
 const selectedReviewItem = computed(() =>
 	selectedListItem.value?.type === 'workflow_review' ? selectedListItem.value : undefined,
 );
+const selectedPromotionItem = computed(() =>
+	selectedListItem.value?.type === 'promotion_review' ? selectedListItem.value : undefined,
+);
 const detailTab = computed(() => (route.query.tab === 'changes' ? 'changes' : 'activity'));
 let isMounted = false;
 
@@ -67,6 +71,11 @@ function isActive() {
 function isSelectedReview(id: string) {
 	const selected = selectionFromRoute(router.currentRoute.value);
 	return selected?.type === 'workflow_review' && selected.id === id;
+}
+
+function isSelectedResult(id: string) {
+	const selected = selectionFromRoute(router.currentRoute.value);
+	return selected?.type === 'self_healing_result' && selected.id === id;
 }
 
 // Reset on entry. A layout-swap copy can unmount after the next view has mounted.
@@ -185,17 +194,26 @@ onBeforeUnmount(() => {
 				>
 					<InboxEmptyState />
 				</WorkflowReviewDetail>
+				<PromotionReviewDetail
+					v-else-if="selectedPromotionItem && !store.disabledSources.includes('promotion_review')"
+					:item="selectedPromotionItem"
+					:on-item-change="onItemChange"
+				/>
+				<SelfHealingResultDetail
+					v-else-if="
+						selection?.type === 'self_healing_result' &&
+						!store.disabledSources.includes(selection.type)
+					"
+					:selection="selection"
+					:tab="detailTab"
+					:on-item-change="onItemChange"
+					:is-selected="isSelectedResult"
+					@update:tab="onDetailTabChange"
+				/>
 				<template v-else>
 					<div :class="$style.columnTitle" />
 					<div :class="$style.mainBody">
-						<SelfHealingResultDetail
-							v-if="
-								selection?.type === 'self_healing_result' &&
-								!store.disabledSources.includes(selection.type)
-							"
-							:selection="selection"
-						/>
-						<InboxEmptyState v-else />
+						<InboxEmptyState />
 					</div>
 				</template>
 			</div>
@@ -218,10 +236,8 @@ onBeforeUnmount(() => {
 .content {
 	--review-callout--max-width: 34rem;
 	--review-activity--max-width: 45rem;
-	--review-tab-bar--height: var(--height--sm);
 	/* Keep the existing Reviews tab alignment at every root font size. */
 	--review-tab-bar--indicator-overhang: 15px;
-	--review-tab-bar--gap: calc(var(--spacing--sm) + var(--review-tab-bar--indicator-overhang));
 	display: flex;
 	width: 100%;
 	min-height: 0;

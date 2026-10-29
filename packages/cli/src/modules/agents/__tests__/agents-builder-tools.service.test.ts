@@ -31,19 +31,16 @@ import type { NodeTypes } from '@/node-types';
 import type { AiGatewayService } from '@/services/ai-gateway.service';
 import type { AiService } from '@/services/ai.service';
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import type { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import type { FreeAiCreditsService } from '@/services/free-ai-credits.service';
 import type { Telemetry } from '@/telemetry';
 
 import type { AgentConfigService } from '../agent-config.service';
 import type { AgentCustomToolsService } from '../agent-custom-tools.service';
 import type { AgentIntegrationPersistenceService } from '../agent-integration-persistence.service';
-import type { InstanceAiAgentContextAdapterService } from '../instance-ai-agent-context.adapter';
 import type { AgentPublishService } from '../agent-publish.service';
 import type { AgentSkillsService } from '../agent-skills.service';
 import type { AgentTaskService } from '../agent-task.service';
 import type { AgentTestRunService } from '../agent-test-run.service';
-import type { AgentsToolsService } from '../agents-tools.service';
 import type { AgentsService } from '../agents.service';
 import { AgentsBuilderToolsService } from '../builder/agents-builder-tools.service';
 import type { BuilderModelLiveLookupService } from '../builder/builder-model-live-lookup.service';
@@ -51,9 +48,9 @@ import { BUILDER_TOOLS } from '../builder/builder-tool-names';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { getAgentConfigHash } from '../utils/agent-config-hash';
-import { SkillNameTakenError } from '../skills/skill-name-taken.error';
+import { SkillNameTakenError } from '@/modules/skills';
 import * as checkAccess from '@/permissions.ee/check-access';
-import type { InstanceAiCredentialService } from '@n8n/instance-ai';
+import type { BuilderCredentialService } from '../builder/builder-session';
 import { createAgentSkillRefsService } from './test-utils/stored-agent-config';
 
 const ctx = {
@@ -67,7 +64,7 @@ const standardApprovalResumeSchema = zodToJsonSchema(APPROVAL_RESUME_SCHEMA)!;
 type BuilderPurposeServices = Pick<AgentsService, 'findById' | 'findByProjectId'> &
 	Pick<AgentConfigService, 'updateConfig'> &
 	Pick<AgentCustomToolsService, 'buildCustomTool'> &
-	Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'> &
+	Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'> &
 	Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>;
 
 function makeService() {
@@ -75,7 +72,7 @@ function makeService() {
 	const agentConfigService = mock<Pick<AgentConfigService, 'updateConfig'>>();
 	const agentCustomToolsService = mock<Pick<AgentCustomToolsService, 'buildCustomTool'>>();
 	const agentIntegrationPersistenceService =
-		mock<Pick<AgentIntegrationPersistenceService, 'listChatIntegrations'>>();
+		mock<Pick<AgentIntegrationPersistenceService, 'listBuilderChatIntegrations'>>();
 	const agentSkillsService =
 		mock<
 			Pick<AgentSkillsService, 'createAndAttachSkills' | 'getSkill' | 'listSkills' | 'updateSkill'>
@@ -85,7 +82,7 @@ function makeService() {
 		findByProjectId: agentsService.findByProjectId,
 		updateConfig: agentConfigService.updateConfig,
 		buildCustomTool: agentCustomToolsService.buildCustomTool,
-		listChatIntegrations: agentIntegrationPersistenceService.listChatIntegrations,
+		listBuilderChatIntegrations: agentIntegrationPersistenceService.listBuilderChatIntegrations,
 		createAndAttachSkills: agentSkillsService.createAndAttachSkills,
 		getSkill: agentSkillsService.getSkill,
 		listSkills: agentSkillsService.listSkills,
@@ -98,7 +95,6 @@ function makeService() {
 		versionId: 'v2',
 	}));
 	const secureRuntime = mock<AgentSecureRuntime>();
-	const agentsToolsService = mock<AgentsToolsService>();
 	const builderModelLiveLookupService = mock<BuilderModelLiveLookupService>();
 	const credentialTypes = mock<CredentialTypes>();
 	const mcpRegistryService = mock<McpRegistryService>();
@@ -106,15 +102,10 @@ function makeService() {
 	const agentPublishService = mock<AgentPublishService>();
 	const agentTestRunService = mock<AgentTestRunService>();
 	const telemetry = mock<Telemetry>();
-	const agentContextAdapter = mock<InstanceAiAgentContextAdapterService>();
-	agentContextAdapter.createReader.mockReturnValue({ lookup: vi.fn() });
 	const aiService = mock<AiService>();
 	aiService.isProxyEnabled.mockReturnValue(false);
-	const dynamicNodeParametersService = mock<DynamicNodeParametersService>();
 	const nodeTypes = mock<NodeTypes>();
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	credentialTypes.recognizes.mockReturnValue(true);
-	agentsToolsService.getSharedTools.mockReturnValue([]);
 	mcpRegistryService.getAll.mockResolvedValue([]);
 
 	const transport = mock<HttpTransport>();
@@ -124,14 +115,12 @@ function makeService() {
 	const collaborationService = mock<CollaborationService>();
 
 	const service = new AgentsBuilderToolsService(
-		mock(),
 		agentsService as unknown as AgentsService,
 		agentConfigService as unknown as AgentConfigService,
 		agentCustomToolsService as unknown as AgentCustomToolsService,
 		agentIntegrationPersistenceService as unknown as AgentIntegrationPersistenceService,
 		agentSkillsService as unknown as AgentSkillsService,
 		secureRuntime,
-		agentsToolsService,
 		builderModelLiveLookupService,
 		mcpRegistryService,
 		mock(),
@@ -142,11 +131,9 @@ function makeService() {
 		aiService,
 		mock<AiGatewayService>(),
 		outboundHttp,
-		dynamicNodeParametersService,
 		nodeTypes,
 		mock<FreeAiCreditsService>(),
 		telemetry,
-		agentContextAdapter,
 		collaborationService,
 		createAgentSkillRefsService(),
 	);
@@ -254,6 +241,18 @@ function makeAgent(config: AgentJsonConfig = baseConfig): ProjectAgent {
 	} as unknown as ProjectAgent;
 }
 
+/** An objective that fills every section of the task objective template. */
+function templatedObjective(goal: string): string {
+	return [
+		`## Objective\n${goal}`,
+		'## Context\nMessages since the previous run.',
+		'## Steps\n1. Read the messages.\n2. Write the recap.',
+		'## Output\nPost the recap to Slack #general.',
+		'## Constraints\nIf there are no new messages, do nothing.',
+		'## Success criteria\nOne recap is posted.',
+	].join('\n\n');
+}
+
 function makeTaskDto(overrides: Partial<AgentTaskDto> = {}): AgentTaskDto {
 	return {
 		id: 'task-1',
@@ -270,7 +269,7 @@ describe('AgentsBuilderToolsService', () => {
 	const agentId = 'agent-1';
 	const projectId = 'project-1';
 	const credentialProvider = mock<CredentialProvider>();
-	const credentialService = mock<InstanceAiCredentialService>();
+	const credentialService = mock<BuilderCredentialService>();
 	const user = mock<User>({ id: 'user-1' });
 
 	beforeEach(() => {
@@ -288,7 +287,67 @@ describe('AgentsBuilderToolsService', () => {
 				.json.find((tool) => tool.name === name)!;
 		}
 
-		it('uses Agent context instead of duplicate read tools', () => {
+		describe.each([BUILDER_TOOLS.WRITE_CONFIG, BUILDER_TOOLS.PATCH_CONFIG])(
+			'%s model output',
+			(toolName) => {
+				function modelView(result: Record<string, unknown>) {
+					const tool = getJsonTool(makeService().service, toolName);
+					return tool.toModelOutput!(result) as Record<string, unknown>;
+				}
+
+				it('adds no next step to a plain save', () => {
+					expect(modelView({ ok: true, configHash: 'h' })).not.toHaveProperty('nextStep');
+				});
+
+				it('tells the model to treat a returned config as the current state', () => {
+					const view = modelView({ ok: true, configHash: 'h', config: baseConfig });
+
+					expect(view.nextStep).toContain('current state');
+				});
+
+				it.each(['parse', 'patch', 'schema', undefined])(
+					'tells the model that nothing was saved after a %s failure',
+					(stage) => {
+						const view = modelView({ ok: false, stage, errors: [{ message: 'bad' }] });
+
+						expect(view.nextStep).toContain('Nothing was saved');
+						expect(view.nextStep).toContain('same baseConfigHash');
+					},
+				);
+
+				it('leaves stale and locked failures to their error messages', () => {
+					expect(modelView({ ok: false, stage: 'stale', errors: [] })).not.toHaveProperty(
+						'nextStep',
+					);
+					expect(modelView({ ok: false, stage: 'locked', errors: [] })).not.toHaveProperty(
+						'nextStep',
+					);
+				});
+
+				it('leaves a lock failure without a stage to its error message', async () => {
+					const { service, collaborationService } = makeService();
+					collaborationService.ensureAgentEditable.mockRejectedValue(new LockedError('locked'));
+					const tool = getJsonTool(service, toolName);
+
+					const result = await tool.handler!(
+						{ config: {}, operations: [], baseConfigHash: null },
+						ctx,
+					);
+
+					expect(tool.toModelOutput!(result)).not.toHaveProperty('nextStep');
+				});
+
+				it('names baseConfigHash and points to the agent-builder freshness rules', () => {
+					const tool = getJsonTool(makeService().service, toolName);
+
+					expect(tool.description).toContain('baseConfigHash');
+					expect(tool.description).toContain('Config freshness');
+					expect(tool.description).toContain('nextStep');
+				});
+			},
+		);
+
+		it('leaves context reads to host tools instead of duplicate read tools', () => {
 			const { service } = makeService();
 
 			const tools = service.getTools(
@@ -300,8 +359,8 @@ describe('AgentsBuilderToolsService', () => {
 			);
 			const toolNames = [...tools.json, ...tools.shared].map((tool) => tool.name);
 
-			expect(toolNames.filter((name) => name === 'agent-context')).toHaveLength(1);
 			for (const duplicate of [
+				'agent-context',
 				'read_config',
 				'read_skill',
 				'list_skills',
@@ -647,7 +706,7 @@ describe('AgentsBuilderToolsService', () => {
 				tools: [gmailTool('search_order_emails'), gmailTool('escalate', { sendTo: '' })],
 			};
 			let stored = currentConfig;
-			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
 			agentsService.findById.mockImplementation(async () => makeAgent(stored));
 			agentsService.updateConfig.mockImplementation(async (_agentId, _projectId, config) => {
 				stored = config as AgentJsonConfig;
@@ -725,7 +784,7 @@ describe('AgentsBuilderToolsService', () => {
 
 		it('agent_builder_finish_setup does not overwrite a config field that already has a value', async () => {
 			const { service, agentsService } = makeService();
-			agentsService.listChatIntegrations.mockReturnValue([]);
+			agentsService.listBuilderChatIntegrations.mockResolvedValue([]);
 			agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
 
 			const tool = getJsonTool(service, BUILDER_TOOLS.FINISH_SETUP);
@@ -896,7 +955,7 @@ describe('AgentsBuilderToolsService', () => {
 		});
 
 		it('agent_builder_patch_config can remove one integration while preserving siblings', async () => {
-			const { service, agentsService } = makeService();
+			const { service, agentsService, telemetry } = makeService();
 			const currentIntegrations = [
 				{ type: 'slack', credentialId: 'slack-1' },
 				{ type: 'linear', credentialId: 'linear-1' },
@@ -946,7 +1005,86 @@ describe('AgentsBuilderToolsService', () => {
 				}),
 			);
 			expect(result).toEqual(expect.objectContaining({ ok: true, configMutated: true, agentId }));
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				{
+					agent_id: agentId,
+					user_id: user.id,
+					trigger_type: 'linear',
+					triggers: ['slack', 'telegram'],
+				},
+			);
 		});
+
+		it('agent_builder_write_config reports n8n Chat as a removed trigger', async () => {
+			const { service, agentsService, telemetry } = makeService();
+			const currentIntegrations = [
+				{ type: 'n8n_chat', credentialId: '' },
+				{ type: 'slack', credentialId: 'slack-1' },
+			] as NonNullable<AgentJsonConfig['integrations']>;
+			const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+			const agent = makeAgent(baseConfig);
+			agent.integrations = currentIntegrations;
+			agentsService.findById.mockResolvedValue(agent);
+			agentsService.updateConfig.mockResolvedValue({
+				config: { ...currentConfig, integrations: [currentIntegrations[1]] },
+				configHash: 'config-hash',
+				updatedAt: '2026-01-02T00:00:00.000Z',
+				versionId: 'v2',
+			});
+
+			await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+				{
+					baseConfigHash: getAgentConfigHash(currentConfig),
+					config: { integrations: [currentIntegrations[1]] },
+				},
+				ctx,
+			);
+
+			expect(telemetry.track).toHaveBeenCalledExactlyOnceWith(
+				TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+				expect.objectContaining({ trigger_type: 'n8n_chat', triggers: ['slack'] }),
+			);
+		});
+
+		it.each([
+			['the removed channel was a draft', { type: 'slack', credentialId: '' }, true],
+			['the save fails', { type: 'slack', credentialId: 'slack-1' }, false],
+		])(
+			'agent_builder_patch_config reports no removed trigger when %s',
+			async (_case, integration, saves) => {
+				const { service, agentsService, telemetry } = makeService();
+				const currentIntegrations = [integration] as NonNullable<AgentJsonConfig['integrations']>;
+				const currentConfig = { ...baseConfig, integrations: currentIntegrations };
+				const agent = makeAgent(baseConfig);
+				agent.integrations = currentIntegrations;
+				agentsService.findById.mockResolvedValue(agent);
+				if (saves) {
+					agentsService.updateConfig.mockResolvedValue({
+						config: { ...currentConfig, integrations: [] },
+						configHash: 'config-hash',
+						updatedAt: '2026-01-02T00:00:00.000Z',
+						versionId: 'v2',
+					});
+				} else {
+					agentsService.updateConfig.mockRejectedValue(new Error('Save failed'));
+				}
+
+				await getJsonTool(service, BUILDER_TOOLS.PATCH_CONFIG).handler!(
+					{
+						baseConfigHash: getAgentConfigHash(currentConfig),
+						operations: [{ op: 'remove', path: '/integrations/0' }],
+					},
+					ctx,
+				);
+
+				expect(agentsService.updateConfig).toHaveBeenCalled();
+				expect(telemetry.track).not.toHaveBeenCalledWith(
+					TELEMETRY_EVENT.AGENTS.BUILDER_REMOVED_TRIGGER,
+					expect.anything(),
+				);
+			},
+		);
 
 		it('agent_builder_patch_config strips legacy schedule integrations from the current snapshot', async () => {
 			const { service, agentsService } = makeService();
@@ -1093,7 +1231,7 @@ describe('AgentsBuilderToolsService', () => {
 				errors: [
 					expect.objectContaining({
 						path: '/tools/0/node/nodeParameters/teamId',
-						message: expect.stringContaining('agent_builder_get_resource_locator_options'),
+						message: expect.stringContaining('get_node_parameter_options'),
 					}),
 				],
 			});
@@ -1605,10 +1743,68 @@ describe('AgentsBuilderToolsService', () => {
 			});
 		});
 
-		describe('prompt caching defaults', () => {
-			it('agent_builder_write_config defaults prompt caching to enabled for a supported provider when omitted', async () => {
+		// The default used to live in the agent-builder skill as text the model had to copy.
+		describe('memory defaults', () => {
+			const defaultMemory = {
+				enabled: true,
+				storage: 'n8n',
+				observationalMemory: { enabled: true },
+			};
+
+			async function writeConfig(
+				stored: AgentJsonConfig,
+				written: AgentJsonConfig,
+			): Promise<AgentJsonConfig> {
 				const { service, agentsService } = makeService();
-				const currentConfig = { ...baseConfig, integrations: [] };
+				agentsService.findById.mockResolvedValue(makeAgent(stored));
+				agentsService.updateConfig.mockImplementation(async (_id, _project, config) => ({
+					config: config as AgentJsonConfig,
+					configHash: 'config-hash',
+					updatedAt: '2026-01-02T00:00:00.000Z',
+					versionId: 'v2',
+				}));
+				await getJsonTool(service, BUILDER_TOOLS.WRITE_CONFIG).handler!(
+					{ baseConfigHash: getAgentConfigHash(stored), config: written },
+					ctx,
+				);
+				return agentsService.updateConfig.mock.calls[0][2] as AgentJsonConfig;
+			}
+
+			const fresh = { ...baseConfig, instructions: '', integrations: [] };
+
+			it('gives a fresh Agent the default n8n memory when the write omits memory', async () => {
+				const saved = await writeConfig(fresh, { ...fresh, instructions: 'Help the user.' });
+
+				expect(saved.memory).toEqual(defaultMemory);
+			});
+
+			it('keeps the memory that the write sets for a fresh Agent', async () => {
+				const memory = { enabled: false, storage: 'n8n' as const };
+				const saved = await writeConfig(fresh, {
+					...fresh,
+					instructions: 'Help the user.',
+					memory,
+				});
+
+				expect(saved.memory).toEqual(memory);
+			});
+
+			it('does not add memory to an existing Agent that has none', async () => {
+				const existing = { ...baseConfig, integrations: [] };
+				const saved = await writeConfig(existing, { ...existing, name: 'Renamed' });
+
+				expect(saved.memory).toBeUndefined();
+			});
+		});
+
+		describe('prompt caching defaults', () => {
+			it.each([
+				'anthropic/claude-sonnet-4-5',
+				'openrouter/anthropic/claude-sonnet-4.5',
+				'google-vertex/claude-sonnet-4-5',
+			])('agent_builder_write_config enables caching for %s when omitted', async (model) => {
+				const { service, agentsService } = makeService();
+				const currentConfig = { ...baseConfig, model, integrations: [] };
 				// Explicitly disable web search so its own write-path normalizer
 				// doesn't add unrelated config/providerTools keys to the expectation.
 				const updatedConfig: AgentJsonConfig = {
@@ -1619,7 +1815,7 @@ describe('AgentsBuilderToolsService', () => {
 					...currentConfig,
 					config: { webSearch: { enabled: false }, promptCaching: { enabled: true } },
 				};
-				agentsService.findById.mockResolvedValue(makeAgent(baseConfig));
+				agentsService.findById.mockResolvedValue(makeAgent(currentConfig));
 				agentsService.updateConfig.mockResolvedValue({
 					config: normalizedConfig,
 					configHash: 'config-hash',
@@ -1647,7 +1843,11 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('agent_builder_write_config strips prompt caching when switching to an unsupported provider', async () => {
+			it.each([
+				'google/gemini-2.5-flash',
+				'openrouter/openai/gpt-5',
+				'google-vertex/gemini-2.5-pro',
+			])('agent_builder_write_config strips caching when switching to %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
@@ -1657,7 +1857,7 @@ describe('AgentsBuilderToolsService', () => {
 				const currentConfig = { ...baseAgent };
 				const updatedConfig: AgentJsonConfig = {
 					...currentConfig,
-					model: 'google/gemini-2.5-flash',
+					model,
 					credential: 'Google Key',
 				};
 				const { config: _droppedConfig, ...normalizedConfig } = updatedConfig;
@@ -1739,10 +1939,15 @@ describe('AgentsBuilderToolsService', () => {
 				);
 			});
 
-			it('agent_builder_write_config preserves an explicit Anthropic ttl', async () => {
+			it.each([
+				'anthropic/claude-sonnet-4-5',
+				'openrouter/anthropic/claude-sonnet-4.5',
+				'google-vertex/claude-sonnet-4-5',
+			])('agent_builder_write_config preserves the cache TTL for %s', async (model) => {
 				const { service, agentsService } = makeService();
 				const baseAgent = {
 					...baseConfig,
+					model,
 					integrations: [],
 					config: { promptCaching: { enabled: true, anthropic: { ttl: '5m' as const } } },
 				};
@@ -1871,6 +2076,32 @@ describe('AgentsBuilderToolsService', () => {
 		});
 	});
 
+	// The tools are always loaded, so the templates live in the references loaded before them.
+	it('points the skill and task tools to the references that hold the templates', () => {
+		const { service } = makeService();
+		const { shared } = service.getTools(
+			agentId,
+			projectId,
+			credentialProvider,
+			credentialService,
+			user,
+		);
+		const toolNamed = (name: string) => shared.find((tool) => tool.name === name)!;
+		const schemaText = (name: string) =>
+			JSON.stringify(zodToJsonSchema(toolNamed(name).inputSchema));
+
+		for (const name of [BUILDER_TOOLS.CREATE_TASKS, BUILDER_TOOLS.UPDATE_TASK]) {
+			expect(schemaText(name)).not.toContain('## Success criteria');
+			expect(toolNamed(name).description).toContain('agent-builder-target-tasks');
+			expect(toolNamed(name).systemInstruction).toBeUndefined();
+		}
+		for (const name of [BUILDER_TOOLS.CREATE_SKILLS, BUILDER_TOOLS.UPDATE_SKILL]) {
+			expect(schemaText(name)).not.toContain('## Overview');
+			expect(toolNamed(name).description).toContain('agent-builder-target-skills');
+			expect(toolNamed(name).systemInstruction).toBeUndefined();
+		}
+	});
+
 	describe('agent_builder_create_skills tool', () => {
 		function getCreateSkillsTool(service: AgentsBuilderToolsService) {
 			return service
@@ -1885,62 +2116,6 @@ describe('AgentsBuilderToolsService', () => {
 				instructions: 'Extract decisions and action items.',
 			};
 		}
-
-		it('is available to the builder with batch and config attachment guidance', () => {
-			const { service } = makeService();
-
-			const tool = getCreateSkillsTool(service);
-
-			expect(tool).toBeDefined();
-			expect(tool.description).toContain('attaches a `{ type: "skill", id }` ref per skill');
-			expect(tool.description).toContain('do not patch them in yourself');
-			expect(tool.description).toContain('all-or-nothing');
-			expect(tool.description).toContain(
-				'Pass every skill you currently know how to write in one `skills` array',
-			);
-			expect(tool.description).toContain('configHash, skills:');
-			expect(tool.description).toContain('{ ok: false, errors }');
-		});
-
-		it('puts quality and batching guardrails in systemInstruction, not description', () => {
-			const { service } = makeService();
-
-			const tool = getCreateSkillsTool(service);
-
-			expect(tool.systemInstruction).toContain('vague or placeholder skill');
-			expect(tool.systemInstruction).toContain('ask the user clarifying');
-			expect(tool.systemInstruction).toContain('Gotchas');
-			expect(tool.systemInstruction).toContain('references are not automatically loaded');
-			expect(tool.systemInstruction).toContain(
-				'instructions must say exactly when to load each one',
-			);
-			expect(tool.systemInstruction).toContain('Do not invent tool names or reference paths');
-			expect(tool.systemInstruction).toContain('Batch every skill');
-			expect(tool.description).not.toContain('ask the user clarifying');
-			expect(tool.description).not.toContain('Gotchas');
-		});
-
-		it('puts the structured body template in each skill instructions parameter', () => {
-			const { service } = makeService();
-
-			const tool = getCreateSkillsTool(service);
-			const instructionsSchema = (
-				tool.inputSchema as unknown as {
-					shape: { skills: { element: { shape: { instructions: { description?: string } } } } };
-				}
-			).shape.skills.element.shape.instructions;
-
-			for (const heading of [
-				'## Overview',
-				'## Inputs',
-				'## Steps',
-				'## Rules',
-				'## Example',
-				'## Gotchas',
-			]) {
-				expect(instructionsSchema.description).toContain(heading);
-			}
-		});
 
 		it('creates multiple skills in one call and returns only ids and names, not the bodies, in order', async () => {
 			const { service, agentsService } = makeService();
@@ -2086,7 +2261,6 @@ describe('AgentsBuilderToolsService', () => {
 			const { service, agentsService } = makeService();
 			const updates = {
 				instructions: 'Create tickets with a concise reproduction and acceptance criteria.',
-				allowedTools: ['create_ticket'],
 			};
 			agentsService.updateSkill.mockResolvedValue({
 				id: 'skill_create_tickets',
@@ -2348,12 +2522,12 @@ describe('AgentsBuilderToolsService', () => {
 
 		const taskOneInput = {
 			name: 'Daily summary',
-			objective: 'Summarize the team Slack #general channel from the last 24h and post a recap.',
+			objective: templatedObjective('Post a recap of the last 24h of Slack #general.'),
 			cronExpression: '0 9 * * *',
 		};
 		const taskTwoInput = {
 			name: 'Weekly digest',
-			objective: 'Summarize the week across #general and email a digest to the team.',
+			objective: templatedObjective('Email the team a digest of the week in #general.'),
 			cronExpression: '0 9 * * 1',
 		};
 
@@ -2401,6 +2575,33 @@ describe('AgentsBuilderToolsService', () => {
 				TELEMETRY_EVENT.AGENTS.BUILDER_ADDED_TASKS,
 				expect.anything(),
 			);
+		});
+
+		it('asks for a fix when an objective misses template sections', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.createTasks.mockResolvedValue({
+				tasks: [makeTaskDto(), makeTaskDto({ id: 'task-2', ...taskTwoInput })],
+				configHash: 'config-hash-after-tasks',
+			});
+
+			const result = await getCreateTasksTool(service).handler!(
+				{
+					tasks: [
+						{ ...taskOneInput, objective: '## Objective\nPost a recap.\n\n## Steps\n1. Read.' },
+						taskTwoInput,
+					],
+				},
+				ctx,
+			);
+
+			expect(result).toMatchObject({ ok: true });
+			const { nextStep } = result as { nextStep?: string };
+			expect(nextStep).toContain('"Daily summary"');
+			expect(nextStep).toContain('Context');
+			expect(nextStep).toContain('Success criteria');
+			expect(nextStep).not.toContain('"Weekly digest"');
+			expect(nextStep).toContain('agent-builder-target-tasks');
+			expect(nextStep).toContain(BUILDER_TOOLS.UPDATE_TASK);
 		});
 
 		it('rejects an empty tasks array via the input schema', () => {
@@ -2505,6 +2706,30 @@ describe('AgentsBuilderToolsService', () => {
 				name: 'Daily summary',
 				changed: false,
 			});
+		});
+
+		it('asks for a fix when a replacement objective misses template sections', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.updateWithChange.mockResolvedValue({ task: makeTaskDto(), changed: true });
+
+			const result = await getUpdateTaskTool(service).handler!(
+				{ taskId: 'task-1', updates: { objective: 'Post a recap.' } },
+				ctx,
+			);
+
+			expect((result as { nextStep?: string }).nextStep).toContain('Success criteria');
+		});
+
+		it('adds no next step when the replacement objective follows the template', async () => {
+			const { service, agentTaskService } = makeService();
+			agentTaskService.updateWithChange.mockResolvedValue({ task: makeTaskDto(), changed: true });
+
+			const result = await getUpdateTaskTool(service).handler!(
+				{ taskId: 'task-1', updates: { objective: templatedObjective('Post a recap.') } },
+				ctx,
+			);
+
+			expect(result).not.toHaveProperty('nextStep');
 		});
 
 		it('rejects an update without changed fields', () => {
@@ -3270,11 +3495,11 @@ describe('AgentsBuilderToolsService', () => {
 			vi.spyOn(
 				(
 					service as unknown as {
-						agentIntegrationPersistenceService: { listChatIntegrations: () => unknown };
+						agentIntegrationPersistenceService: { listBuilderChatIntegrations: () => unknown };
 					}
 				).agentIntegrationPersistenceService,
-				'listChatIntegrations',
-			).mockReturnValue([{ type: 'telegram' }]);
+				'listBuilderChatIntegrations',
+			).mockResolvedValue([{ type: 'telegram' }]);
 			const tool = tools.json.find((t) => t.name === 'agent_builder_configure_channel')!;
 
 			const result = await tool.handler!({ integrationType: 'telegram' }, { ...ctx, suspend });
@@ -3310,15 +3535,10 @@ describe('AgentsBuilderToolsService', () => {
 		function getProbe(
 			service: AgentsBuilderToolsService,
 			resolve: (pinnedAgentId?: string) => Promise<string>,
+			providerFor = () => credentialProvider,
 		) {
 			return service
-				.getToolsForResolvedTarget(
-					resolve,
-					projectId,
-					() => credentialProvider,
-					credentialService,
-					user,
-				)
+				.getToolsForResolvedTarget(resolve, projectId, providerFor, credentialService, user)
 				.find((tool) => tool.name === 'probe')!;
 		}
 
@@ -3327,10 +3547,13 @@ describe('AgentsBuilderToolsService', () => {
 			makeTargetedTools(service);
 			let boundAgentId = 'agent-a';
 			const resolve = vi.fn(async (pinnedAgentId?: string) => pinnedAgentId ?? boundAgentId);
-			const probe = getProbe(service, resolve);
+			const providerFor = vi.fn(() => credentialProvider);
+			const probe = getProbe(service, resolve, providerFor);
 			const suspend = vi.fn().mockResolvedValue(undefined as never);
+			expect(providerFor).not.toHaveBeenCalled();
 
 			await probe.handler!({}, { ...ctx, suspend });
+			expect(providerFor).toHaveBeenCalledExactlyOnceWith('agent-a');
 
 			expect(suspend).toHaveBeenCalledWith(
 				{ ask: true },

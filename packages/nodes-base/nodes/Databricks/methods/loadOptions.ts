@@ -9,7 +9,7 @@ async function listColumns(context: ILoadOptionsFunctions): Promise<INodePropert
 		const target = await resolveSelectedLakebaseSchema(context);
 		if (!target) return [];
 
-		const columns = await fetchLakebaseColumns(context, target.schemaUrl, target.table);
+		const columns = await fetchLakebaseColumns(context, target.schemaUrl, target.name);
 		return columns.map((column) => ({ name: column.name, value: column.name }));
 	} catch (error) {
 		explainLakebaseSchemaError(

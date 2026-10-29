@@ -1,14 +1,9 @@
 <script setup lang="ts">
-import { ElSlider } from 'element-plus';
-
-/**
- * Local slider for the monthly budget alert. The design system has no slider.
- * Keep this next to the budget modal. Do not promote it.
- */
+import { N8nSlider, type SliderValue } from '@n8n/design-system';
 
 defineProps<{
 	modelValue: number;
-	/** Accessible name for the slider; forwarded to ElSlider's `label` prop, which sets `aria-label`. */
+	/** Names the slider for assistive technology. */
 	label: string;
 	disabled?: boolean;
 }>();
@@ -17,27 +12,21 @@ const emit = defineEmits<{
 	'update:modelValue': [value: number];
 }>();
 
-const brandColor = {
-	'--el-slider-main-bg-color': 'var(--background--brand)',
-} as const;
-
-function onUpdate(value: number | number[]) {
-	const next = Array.isArray(value) ? value[0] : value;
-	if (next === undefined) return;
-	emit('update:modelValue', next);
+function onUpdate([value]: SliderValue) {
+	emit('update:modelValue', value);
 }
 </script>
 
 <template>
-	<ElSlider
-		:model-value="modelValue"
-		:min="10"
+	<N8nSlider
+		:model-value="[modelValue]"
+		:min-value="10"
 		:step="10"
-		:show-stops="true"
-		:show-tooltip="false"
+		show-step-markers
+		hide-value
+		size="small"
 		:disabled="disabled"
-		:label="label"
-		:style="brandColor"
+		:aria-label="label"
 		:class="$style.slider"
 		data-testid="agent-budget-alert-slider"
 		@update:model-value="onUpdate"
@@ -45,25 +34,9 @@ function onUpdate(value: number | number[]) {
 </template>
 
 <style lang="scss" module>
-/* A bar at 100% grows this flex item past the dialog and the track wraps. */
 .slider {
-	box-sizing: border-box;
 	width: 100%;
 	min-width: 0;
 	max-width: 100%;
-	flex-wrap: nowrap;
-	/* The thumb's hit area (wrapper, not button) is centred on the value, so reserve half of it. */
-	padding-inline: calc(var(--el-slider-button-wrapper-size) / 2);
-
-	:global(.el-slider__runway) {
-		flex: 1 1 0%;
-		min-width: 0;
-		max-width: 100%;
-		margin: 0;
-	}
-
-	:global(.el-slider__bar) {
-		max-width: 100%;
-	}
 }
 </style>

@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { projectTypeSchema } from './project.schema';
+
 // Enums
 
 /**
@@ -7,11 +9,14 @@ import { z } from 'zod';
  *
  * - `upgradeBlocked`: the instance does not start, or the update cannot proceed.
  * - `executionsFail`: affected executions error.
+ * - `executionsMightFail`: a default changes, so affected executions can error, depending on the
+ *   workload. The admin can keep the current value through configuration.
  * - `behaviorChanges`: executions keep running, but with a different result.
  * - `capabilityRemoved`: no runtime impact, a removed capability is no longer available.
  */
 export const breakingChangeRuleImpactSchema = z.enum([
 	'executionsFail',
+	'executionsMightFail',
 	'behaviorChanges',
 	'capabilityRemoved',
 	'upgradeBlocked',
@@ -108,6 +113,9 @@ export type BreakingChangeWorkflowOwner = z.infer<typeof workflowOwnerSchema>;
 /** The owner of a workflow after a change to it. `null` when nobody owns it. */
 export type MigrationWorkflowOwnerResponse = { owner: BreakingChangeWorkflowOwner | null };
 
+/** A user who can read the workflow, so they can be its owner. */
+export type MigrationOwnerCandidate = Omit<BreakingChangeWorkflowOwner, 'source'>;
+
 const affectedWorkflowSchema = z.object({
 	id: z.string(),
 	name: z.string(),
@@ -120,6 +128,8 @@ const affectedWorkflowSchema = z.object({
 	owner: workflowOwnerSchema.optional(),
 	// The project that owns the workflow, so an owner picker can list its members.
 	homeProjectId: z.string().optional(),
+	homeProjectName: z.string().optional(),
+	homeProjectType: projectTypeSchema.optional(),
 });
 export type BreakingChangeAffectedWorkflow = z.infer<typeof affectedWorkflowSchema>;
 
@@ -225,9 +235,15 @@ export type WorkflowMigrationResult = z.infer<typeof workflowMigrationResultSche
 
 /**
  * Why a workflow was left out of a notification: it has no owner with an email,
- * its finding is no longer open, or the email could not be sent.
+ * its finding is no longer open, the email could not be sent, or its owner was
+ * notified less than a minute ago.
  */
-export const migrationNotifySkipReasonSchema = z.enum(['no_owner', 'no_finding', 'send_failed']);
+export const migrationNotifySkipReasonSchema = z.enum([
+	'no_owner',
+	'no_finding',
+	'send_failed',
+	'recently_notified',
+]);
 export type MigrationNotifySkipReason = z.infer<typeof migrationNotifySkipReasonSchema>;
 
 /** The outcome of notifying the owners of the findings of one rule. */

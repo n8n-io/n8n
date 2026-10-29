@@ -1,3 +1,5 @@
+import { isModelDiscoveryProvider } from '@n8n/ai-utilities/model-discovery';
+
 /**
  * Canonical "if you have one of THIS credential type, this is the LLM provider
  * + model the builder may select when auto-resolving." Used by the agent_builder_resolve_llm
@@ -6,9 +8,12 @@
  * Provider strings match the provider IDs used by `@n8n/agents`'s
  * `.model(provider, model)` call.
  *
- * Keep this list narrow — when the canonical default is unclear (e.g. Bedrock,
- * Azure variants), omit the entry so the tool falls through to suspending and
- * lets the user pick explicitly.
+ * Keep this list narrow — when the canonical default is unclear (e.g. Bedrock),
+ * omit the entry so the tool falls through to suspending and lets the user
+ * pick explicitly. A provider whose models are user-named (Microsoft Foundry
+ * deployments) has an entry without `defaultModel`: the tool resolves its
+ * model from the credential's live list, and it never becomes a default for a
+ * new agent.
  *
  * These are hints, not guarantees. For providers supported by
  * `@n8n/ai-utilities/model-discovery`, `agent_builder_resolve_llm` verifies the model it is
@@ -16,9 +21,14 @@
  * list, so a default the provider stops serving degrades to a prompt to pick
  * rather than shipping into an agent config.
  */
+/** Whether the provider has a live model list: a discovery provider, or Foundry's deployments. */
+export function hasLiveModelList(provider: string): boolean {
+	return provider === 'azure-openai' || isModelDiscoveryProvider(provider);
+}
+
 export interface LlmProviderDefault {
 	provider: string;
-	defaultModel: string;
+	defaultModel?: string;
 }
 
 export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
@@ -84,6 +94,8 @@ export const LLM_PROVIDER_DEFAULTS: Record<string, LlmProviderDefault> = {
 		provider: 'minimax',
 		defaultModel: 'MiniMax-M3',
 	},
+	azureOpenAiApi: { provider: 'azure-openai' },
+	azureEntraCognitiveServicesOAuth2Api: { provider: 'azure-openai' },
 };
 
 /** Order in which agent_builder_resolve_llm auto-picks a provider when credentials span multiple providers. */

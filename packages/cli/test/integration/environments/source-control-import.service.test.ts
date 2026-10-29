@@ -1323,6 +1323,46 @@ describe('SourceControlImportService', () => {
 			return await workflowTagMappingRepository.findBy({ workflowId });
 		}
 
+		// LIGO-1113: One missing tag must not stop valid tag links in the same import.
+		it('should skip mappings for missing tags and import valid mappings for all workflows', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const [workflow1, workflow2] = await Promise.all([
+				createWorkflowWithHistory({ id: 'workflow-1', name: 'Workflow 1' }, teamProject),
+				createWorkflowWithHistory({ id: 'workflow-2', name: 'Workflow 2' }, teamProject),
+			]);
+
+			setupTagsFileMock([
+				{ tagId: 'tag-1', workflowId: workflow1.id },
+				{ tagId: 'missing-tag', workflowId: workflow1.id },
+				{ tagId: 'tag-2', workflowId: workflow2.id },
+			]);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const workflow1Mappings = await getMappingsForWorkflow(workflow1.id);
+			expect(workflow1Mappings.map((mapping) => mapping.tagId)).toEqual(['tag-1']);
+			const workflow2Mappings = await getMappingsForWorkflow(workflow2.id);
+			expect(workflow2Mappings.map((mapping) => mapping.tagId)).toEqual(['tag-2']);
+		});
+
+		it('should keep mappings for local tags that are absent from the imported tags list', async () => {
+			const user = await getGlobalOwner();
+			const teamProject = await createTeamProject('Team 1');
+			const workflow = await createWorkflowWithHistory(
+				{ id: 'workflow-1', name: 'Workflow 1' },
+				teamProject,
+			);
+			const localTag = await createTag({ id: 'local-tag', name: 'Local tag' }, workflow);
+
+			setupTagsFileMock([{ tagId: localTag.id, workflowId: workflow.id }]);
+
+			await service.importTagsFromWorkFolder(createTagsCandidate(), user);
+
+			const finalMappings = await getMappingsForWorkflow(workflow.id);
+			expect(finalMappings.map((mapping) => mapping.tagId)).toEqual([localTag.id]);
+		});
+
 		it('should remove tags from workflows when they are removed in source control', async () => {
 			const user = await getGlobalOwner();
 			const teamProject = await createTeamProject('Team 1');

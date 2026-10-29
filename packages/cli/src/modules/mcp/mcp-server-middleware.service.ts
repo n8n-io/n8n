@@ -1,18 +1,24 @@
-import { AuthenticatedRequest } from '@n8n/db';
+import { Logger } from '@n8n/backend-common';
+import { UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NextFunction, Response, Request } from 'express';
-import { ensureError } from '@n8n/utils/errors/ensure-error';
-
-import { AuthError } from '@n8n/errors';
-import { JwtService } from '@n8n/backend-services';
 import {
-	OAuthTokenVerifierProxy,
-	type TelemetryAuthContext,
-	type UserWithContext,
-} from '@n8n/backend-services/auth';
+	extractBearer,
+	inboundFrom,
+	inboundRequestOf,
+	isUrlIssuer,
+	ResourceAdmission,
+	type Inbound,
+	type Refusal,
+	type RefusalReason,
+} from '@n8n/inbound-auth';
+import type { SecurityContext } from '@n8n/permissions';
+import { NextFunction, Response, Request } from 'express';
+
+import { JwtService } from '@n8n/backend-services';
+import type { AuthFailureReason, TelemetryAuthContext } from '@n8n/backend-services/auth';
 import { Telemetry } from '@/telemetry';
 
-import { McpServerApiKeyService } from './mcp-api-key.service';
+import { McpServerApiKeyService, type McpApiKeyResult } from './mcp-api-key.service';
 import { McpProtectedResource } from './mcp-protected-resource';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
@@ -22,47 +28,61 @@ import {
 import type { McpAuthenticatedRequest } from './mcp.types';
 import { getClientInfo, getProtocolVersion, isConnectionHandshake } from './mcp.utils';
 
+/** Pipeline reasons that have their own value in the MCP connection telemetry. */
+const TELEMETRY_REASONS: Partial<Record<RefusalReason, AuthFailureReason>> = {
+	'no-credential': 'missing_authorization_header',
+	'malformed-credential': 'invalid_bearer_format',
+	'unknown-subject': 'user_not_found',
+	insufficient_scope: 'insufficient_scope',
+	revoked: 'token_not_found_in_db',
+};
+
+/** The pipeline reason goes into `error_details`, so dashboards keep the detail. */
+const telemetryOf = (reason: RefusalReason, urlIssuer: boolean): TelemetryAuthContext => ({
+	reason: TELEMETRY_REASONS[reason] ?? 'invalid_token',
+	auth_type: urlIssuer ? 'oauth' : 'unknown',
+	error_details: reason,
+});
+
+/**
+ * The telemetry for a request whose header carries no bearer, as it was before the pipeline.
+ * `extractBearer` reports a missing header as `no-credential` and any other header as malformed.
+ */
+function headerDenial(header: string | undefined): TelemetryAuthContext {
+	if (header === undefined) {
+		return {
+			reason: 'missing_authorization_header',
+			auth_type: 'unknown',
+			error_details: 'Authorization header not sent',
+		};
+	}
+	const problem = /^bearer(\s|$)/i.test(header)
+		? 'Malformed Bearer token'
+		: 'Missing Bearer prefix';
+	return {
+		reason: 'invalid_bearer_format',
+		auth_type: 'unknown',
+		error_details: `Invalid authorization header format - ${problem}`,
+	};
+}
+
 /**
  * MCP Server Middleware Service
- * Centralizes authentication for MCP server endpoints
- * Supports both API key and OAuth token validation
+ * Centralizes authentication for MCP server endpoints. An MCP API key or a token-exchange JWT
+ * goes through `McpServerApiKeyService`. An OAuth2 access token from any trusted source that
+ * accepts the `instance-mcp` surface goes through the inbound-auth pipeline.
  */
 @Service()
 export class McpServerMiddlewareService {
 	constructor(
 		private readonly mcpServerApiKeyService: McpServerApiKeyService,
-		private readonly oauthTokenVerifier: OAuthTokenVerifierProxy,
 		private readonly mcpProtectedResource: McpProtectedResource,
+		private readonly admission: ResourceAdmission,
+		private readonly userRepository: UserRepository,
 		private readonly jwtService: JwtService,
 		private readonly telemetry: Telemetry,
+		private readonly logger: Logger,
 	) {}
-
-	/**
-	 * Get user for a given token (API key or OAuth access token)
-	 * Uses JWT metadata to determine token type and route to correct validation
-	 */
-	async getUserForToken(token: string): Promise<UserWithContext> {
-		let decoded: { meta?: { isOAuth?: boolean } };
-		try {
-			decoded = this.jwtService.decodeUnverified<{ meta?: { isOAuth?: boolean } }>(token);
-		} catch (error) {
-			return {
-				user: null,
-				context: {
-					reason: 'jwt_decode_failed',
-					auth_type: 'unknown',
-					error_details: ensureError(error).message,
-				},
-			};
-		}
-
-		if (decoded?.meta?.isOAuth === true) {
-			const expectedAudience = this.mcpProtectedResource.getResourceUrl();
-			return await this.oauthTokenVerifier.verifyOAuthAccessToken(token, expectedAudience);
-		}
-
-		return await this.mcpServerApiKeyService.verifyApiKey(token);
-	}
 
 	/**
 	 * Express middleware hiding the MCP server while instance MCP access is off.
@@ -87,75 +107,135 @@ export class McpServerMiddlewareService {
 	}
 
 	/**
-	 * Express middleware for MCP server authentication
-	 * Validates Bearer token (OAuth or API key) and attaches user to request
+	 * Express middleware for MCP server authentication. Routes the bearer on its `iss`: an
+	 * http(s) issuer goes to the pipeline, anything else to the API-key path first.
 	 */
 	getAuthMiddleware() {
 		return async (req: Request, res: Response, next: NextFunction) => {
-			const authorizationHeader = req.header('authorization');
-
-			if (!authorizationHeader) {
-				this.responseWithUnauthorized(res, req, {
-					reason: 'missing_authorization_header',
-					auth_type: 'unknown',
-					error_details: 'Authorization header not sent',
-				});
+			const inbound = inboundFrom(this.mcpProtectedResource, inboundRequestOf(req));
+			const extracted = extractBearer(inbound);
+			if (!extracted.ok) {
+				const refused = this.admission.refuse(inbound, extracted.reason);
+				await this.deny(req, res, refused, headerDenial(req.header('authorization')));
 				return;
 			}
 
-			let token: string;
-			try {
-				token = this.extractBearerToken(authorizationHeader);
-			} catch (er) {
-				const error = ensureError(er);
-				this.responseWithUnauthorized(res, req, {
-					reason: 'invalid_bearer_format',
-					auth_type: 'unknown',
-					error_details: error.message,
-				});
-				return;
+			const { token } = extracted.value.credential;
+			const urlIssuer = isUrlIssuer(this.issuerOf(token));
+			if (!urlIssuer) {
+				const result = await this.mcpServerApiKeyService.verifyApiKey(token);
+				if (result !== null) {
+					await this.settleApiKey(req, res, next, inbound, result);
+					return;
+				}
+				// No API-key strategy knows the token. The pipeline refuses it with its own reason.
 			}
 
-			const result = await this.getUserForToken(token);
-			const user = result.user;
-
-			if (!user) {
-				this.responseWithUnauthorized(res, req, result.context);
+			const admitted = await this.admission.admit(this.mcpProtectedResource, extracted.value);
+			if (!admitted.ok) {
+				await this.deny(req, res, admitted, telemetryOf(admitted.reason, urlIssuer));
 				return;
 			}
-
-			(req as AuthenticatedRequest).user = user;
-			const mcpReq = req as McpAuthenticatedRequest;
-			mcpReq.mcpCaller = result.caller;
-			// undefined for API keys = not scope-bearing → full tool access
-			mcpReq.mcpScopes = result.scopes;
-
-			next();
+			await this.settleSecurityContext(req, res, next, inbound, admitted.context);
 		};
 	}
 
-	private extractBearerToken(headerValue: string): string {
-		if (!headerValue.startsWith('Bearer')) {
-			throw new AuthError('Invalid authorization header format - Missing Bearer prefix');
+	/** Routing only, never a decision: the token is not verified yet. */
+	private issuerOf(token: string): unknown {
+		try {
+			return this.jwtService.decodeUnverified<{ iss?: unknown } | null>(token)?.iss;
+		} catch {
+			// `jwt.decode` throws on a JWT-typed token whose payload is not JSON.
+			return undefined;
 		}
-
-		const tokenMatch = headerValue.match(/^Bearer\s+(.+)$/i);
-		if (tokenMatch) {
-			return tokenMatch[1];
-		}
-
-		throw new AuthError('Invalid authorization header format - Malformed Bearer token');
 	}
 
-	private responseWithUnauthorized(res: Response, req: Request, context?: TelemetryAuthContext) {
-		this.trackFailedConnection(req, UNAUTHORIZED_ERROR_MESSAGE, 401, context);
-		// RFC 6750 Section 3 / RFC 9728 Section 5.1: include the WWW-Authenticate
-		// header on 401s, advertising the protected-resource metadata URL so
-		// clients discover it directly instead of guessing the well-known path.
-		const prmUrl = this.mcpProtectedResource.getProtectedResourceMetadataUrl();
-		res.header('WWW-Authenticate', `Bearer realm="n8n MCP Server", resource_metadata="${prmUrl}"`);
+	private async settleSecurityContext(
+		req: Request,
+		res: Response,
+		next: NextFunction,
+		inbound: Inbound,
+		context: SecurityContext,
+	) {
+		// RFC 9068 §2.2 requires `client_id`, and MCP attributes every OAuth call to a client.
+		if (context.clientId === undefined) {
+			await this.refuseAdmitted(req, res, inbound, context, 'not-an-access-token');
+			return;
+		}
+
+		// The context names a Principal. The tools need the User entity with its role.
+		const user = await this.userRepository.findByIdWithRole(context.subject.id);
+		if (!user) {
+			await this.refuseAdmitted(req, res, inbound, context, 'unknown-subject');
+			return;
+		}
+
+		const mcpReq = req as McpAuthenticatedRequest;
+		mcpReq.user = user;
+		mcpReq.mcpCaller = { authType: 'oauth', clientId: context.clientId };
+		// An OAuth caller is always scope-bearing: `undefined` would mean full tool access.
+		mcpReq.mcpScopes = context.tokenScopes ?? [];
+		// Keep what earlier middleware put on the operation context.
+		mcpReq.ctx = { ...mcpReq.ctx, security: context };
+		next();
+	}
+
+	private async refuseAdmitted(
+		req: Request,
+		res: Response,
+		inbound: Inbound,
+		context: SecurityContext,
+		reason: RefusalReason,
+	) {
+		const refused = this.admission.refuse(inbound, reason, context);
+		await this.deny(req, res, refused, telemetryOf(reason, true));
+	}
+
+	/** The API-key path is outside the pipeline's vocabulary, so it writes its own line. */
+	private async settleApiKey(
+		req: Request,
+		res: Response,
+		next: NextFunction,
+		inbound: Inbound,
+		result: McpApiKeyResult,
+	) {
+		const where = { surface: inbound.surface, resource: inbound.resource.url };
+		if (!result.user) {
+			const telemetry: TelemetryAuthContext = result.context ?? {
+				reason: 'invalid_token',
+				auth_type: 'api_key',
+			};
+			this.logger.warn('Inbound authentication denied', { ...where, reason: telemetry.reason });
+			// No reason: the challenge carries no error, as before.
+			const advertised = { surface: inbound.surface, resource: inbound.resource };
+			await this.deny(req, res, { advertised }, telemetry);
+			return;
+		}
+
+		this.logger.info('Inbound authentication accepted', {
+			...where,
+			authMethod: result.authMethod,
+			userId: result.user.id,
+		});
+		const mcpReq = req as McpAuthenticatedRequest;
+		mcpReq.user = result.user;
+		mcpReq.mcpCaller = result.caller;
+		// undefined for API keys = not scope-bearing → full tool access
+		mcpReq.mcpScopes = result.scopes;
+		next();
+	}
+
+	private async deny(
+		req: Request,
+		res: Response,
+		refusal: Refusal,
+		telemetry: TelemetryAuthContext,
+	) {
+		this.trackFailedConnection(req, UNAUTHORIZED_ERROR_MESSAGE, 401, telemetry);
+		// RFC 6750 §3 / RFC 9728 §5.1: the challenge names the protected-resource metadata.
+		res.header('WWW-Authenticate', await this.admission.challenge(refusal));
 		res.status(401).send({
-			message: `${UNAUTHORIZED_ERROR_MESSAGE}${context?.error_details ? ': ' + context.error_details : ''}`,
+			message: `${UNAUTHORIZED_ERROR_MESSAGE}${telemetry.error_details ? ': ' + telemetry.error_details : ''}`,
 		});
 	}
 

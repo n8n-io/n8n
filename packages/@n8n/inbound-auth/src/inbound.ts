@@ -41,3 +41,11 @@ export function extractBearer(inbound: Inbound): Result<Extracted> {
 
 	return { ok: true, value: { ...inbound, credential: { kind: 'bearer', token } } };
 }
+
+/**
+ * Routing, not verification: a token from an OAuth2 trusted source names its issuer with an
+ * http(s) URL. The instance's own issuer is its base URL, which is http on a local instance.
+ */
+export function isUrlIssuer(iss: unknown): iss is string {
+	return typeof iss === 'string' && URL.canParse(iss) && /^https?:$/.test(new URL(iss).protocol);
+}

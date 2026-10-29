@@ -2,6 +2,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { isContainedWithin, Logger, safeJoinPath } from '@n8n/backend-common';
 import type { TagEntity, WorkflowTagMapping } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { containsExpression } from '@n8n/utils/string/contains-expression';
 import { accessSync, constants as fsConstants, mkdirSync } from 'fs';
 import chunk from 'lodash/chunk';
 import isEqual from 'lodash/isEqual';
@@ -19,7 +20,6 @@ import path from 'path';
 import { mergeCredentialData } from '@/credentials/credential-data-merge';
 import { License } from '@/license';
 import { generateSshKeyPair as generateGitSshKeyPair } from '@/modules/promotions.ee/promotions-git.utils';
-import { containsExpression } from '@/utils';
 
 import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
@@ -214,7 +214,8 @@ export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair>
 	return await generateGitSshKeyPair(keyType, SOURCE_CONTROL_GIT_KEY_COMMENT);
 }
 
-export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
+export function getRepoType(repoUrl?: string): 'github' | 'gitlab' | 'other' {
+	if (!repoUrl) return 'other';
 	if (repoUrl.includes('github.com')) {
 		return 'github';
 	} else if (repoUrl.includes('gitlab.com')) {

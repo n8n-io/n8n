@@ -87,6 +87,18 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 		return rows.map((r) => this.toEvent(r));
 	}
 
+	async getRunFinish(threadId: string, runId: string) {
+		const row = await this.findOne({
+			where: { threadId, runId, type: 'run-finish' },
+			order: { seq: 'DESC' },
+		});
+		if (!row) return null;
+		const event = this.toEvent(row);
+		return event.type === 'run-finish'
+			? { status: event.payload.status, reason: event.payload.reason }
+			: null;
+	}
+
 	/** Read terminal facts before a writer admits more activity for these runs. */
 	async getActivityTerminalEvents(threadId: string, runIds: string[]): Promise<InstanceAiEvent[]> {
 		if (runIds.length === 0) return [];
@@ -222,18 +234,6 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 			latest.set(event.payload.workflowId, items);
 		}
 		return [...latest.entries()].map(([workflowId, items]) => ({ workflowId, items }));
-	}
-
-	/**
-	 * The run that sent the ai-preferences block the conversation still carries, from the
-	 * thread's latest `preferences-applied` fact: an injecting turn names itself, a carrying
-	 * turn names the run it carried from. `undefined` when no turn has reported preferences
-	 * (which includes a block injected before the event existed).
-	 */
-	async getLastPreferencesInjectionRunId(threadId: string): Promise<string | undefined> {
-		const event = await this.findLastPreferencesApplied(threadId);
-		if (!event) return undefined;
-		return event.payload.injectedThisTurn ? event.runId : event.payload.carriedFromRunId;
 	}
 
 	/**

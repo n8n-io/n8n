@@ -3,9 +3,11 @@ import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
+import type { SlotProjectHeaderMainButton, SlotProjectHeaderProps } from '@n8n/frontend-module-sdk';
 import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
+import { canConfigureSelfHealing, selfHealingLocation } from '../projects.utils';
 import ProjectTabs from './ProjectTabs.vue';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -20,9 +22,13 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
+import {
+	PERSONAL_SELF_HEALING_VIEW,
+	PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+} from '@n8n/frontend-constants/self-healing';
 import { useAgentPermissions } from '@/features/agents/composables/useAgentPermissions';
 import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
-import PromotionBanners from '@/features/integrations/promotions.ee/components/PromotionBanners.vue';
+import PromotionPreviewBadges from '@/features/integrations/promotions.ee/components/PromotionPreviewBadges.vue';
 
 import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -58,10 +64,7 @@ async function onToggleProjectFavorite() {
 
 const projectPages = useProjectPages();
 
-const props = defineProps<{
-	hasActiveCallouts?: boolean;
-	mainButton?: ActionTypes;
-}>();
+const props = defineProps<SlotProjectHeaderProps>();
 
 const emit = defineEmits<{
 	createFolder: [];
@@ -146,6 +149,24 @@ const pageType = computed(() => {
 	}
 });
 
+const personalSelfHealingTab = computed((): TabOptions<string> | null => {
+	const project = projectsStore.currentProject;
+	if (
+		pageType.value !== 'project' ||
+		!project ||
+		project.id !== route?.params?.projectId ||
+		selfHealingLocation(project) !== 'personalTab' ||
+		!canConfigureSelfHealing(project)
+	) {
+		return null;
+	}
+	return {
+		label: i18n.baseText('selfHealing.config.heading'),
+		value: PERSONAL_SELF_HEALING_VIEW,
+		to: { name: PERSONAL_SELF_HEALING_VIEW, params: { projectId: project.id } },
+	};
+});
+
 const customProjectTabs = computed((): Array<TabOptions<string>> => {
 	// Only pick up tabs from active modules
 	const moduleTabs = uiStore.moduleTabs[pageType.value];
@@ -154,7 +175,8 @@ const customProjectTabs = computed((): Array<TabOptions<string>> => {
 			settingsStore.isModuleActive(module) &&
 			(module !== 'agents' || settingsStore.isAgentsEnabled),
 	);
-	return activeModules.flatMap((module) => moduleTabs[module]);
+	const tabs = activeModules.flatMap((module) => moduleTabs[module]);
+	return personalSelfHealingTab.value ? [...tabs, personalSelfHealingTab.value] : tabs;
 });
 
 const ACTION_TYPES = {
@@ -164,7 +186,8 @@ const ACTION_TYPES = {
 	DATA_TABLE: 'dataTable',
 	VARIABLE: 'variable',
 	AGENT: 'agent',
-} as const;
+	SELF_HEALING: 'selfHealing',
+} as const satisfies Record<string, SlotProjectHeaderMainButton | 'folder'>;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
@@ -215,6 +238,14 @@ const createAgentButton = computed(() => ({
 	disabled: !canCreateAgent.value,
 }));
 
+const createSelfHealingButton = computed(() => ({
+	value: ACTION_TYPES.SELF_HEALING,
+	label: i18n.baseText('selfHealing.config.create'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled: sourceControlStore.preferences.branchReadOnly || !personalSelfHealingTab.value,
+}));
+
 const selectedMainButtonType = computed(() => {
 	if (props.mainButton === ACTION_TYPES.AGENT && !settingsStore.isAgentsEnabled) {
 		return ACTION_TYPES.WORKFLOW;
@@ -230,6 +261,8 @@ const mainButtonConfig = computed(() => {
 			return createDataTableButton.value;
 		case ACTION_TYPES.VARIABLE:
 			return createVariableButton.value;
+		case ACTION_TYPES.SELF_HEALING:
+			return createSelfHealingButton.value;
 		case ACTION_TYPES.AGENT:
 			return createAgentButton.value;
 		case ACTION_TYPES.WORKFLOW:
@@ -386,6 +419,12 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
 		telemetry.track('User clicked header add variable button');
 	},
+	[ACTION_TYPES.SELF_HEALING]: (projectId) => {
+		void router.push({
+			name: PERSONAL_SELF_HEALING_CONFIGURATION_VIEW,
+			params: { projectId, configurationId: 'new' },
+		});
+	},
 	[ACTION_TYPES.AGENT]: (projectId, source) => {
 		createAgent(source, projectId);
 	},
@@ -422,10 +461,8 @@ const projectDescription = computed(() => {
 const favoriteIcon = computed(() => (isProjectFavorited.value ? 'star-filled' : 'star'));
 
 const projectHeaderRef = ref<HTMLElement | null>(null);
-const { width: projectHeaderWidth } = useElementSize(projectHeaderRef);
-
-const headerActionsRef = ref<HTMLElement | null>(null);
-const { width: headerActionsWidth } = useElementSize(headerActionsRef);
+const projectInfoRef = ref<HTMLElement | null>(null);
+const { width: projectInfoWidth } = useElementSize(projectInfoRef);
 
 const projectSubtitleFontSizeInPxs = ref<number | null>(null);
 
@@ -448,10 +485,9 @@ const projectDescriptionTruncated = computed(() => {
 		return '';
 	}
 
-	const availableTextWidth = projectHeaderWidth.value - headerActionsWidth.value;
 	// Fallback to N8nText component default font-size, small
 	const fontSizeInPixels = projectSubtitleFontSizeInPxs.value ?? 14;
-	return truncateTextToFitWidth(projectDescription.value, availableTextWidth, fontSizeInPixels);
+	return truncateTextToFitWidth(projectDescription.value, projectInfoWidth.value, fontSizeInPixels);
 });
 
 const onSelect = (action: string, source: CreateSource) => {
@@ -469,16 +505,40 @@ const onSelect = (action: string, source: CreateSource) => {
 		<div ref="projectHeaderRef" :class="$style.projectHeader">
 			<div :class="$style.projectDetails">
 				<ProjectIcon v-if="showProjectIcon" :icon="headerIcon" :border-less="true" size="medium" />
-				<div :class="$style.headerActions">
-					<N8nHeading v-if="projectName" bold tag="h2" size="xlarge" data-test-id="project-name">{{
-						projectName
-					}}</N8nHeading>
+				<div ref="projectInfoRef" :class="$style.projectInfo">
+					<div :class="$style.titleRow">
+						<N8nHeading
+							v-if="projectName"
+							:class="$style.projectName"
+							:title="projectName"
+							bold
+							tag="h2"
+							size="xlarge"
+							data-test-id="project-name"
+							>{{ projectName }}</N8nHeading
+						>
+						<N8nIconButton
+							v-if="isTeamProject"
+							:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
+							:icon="favoriteIcon"
+							:aria-label="i18n.baseText(isProjectFavorited ? 'favorites.remove' : 'favorites.add')"
+							variant="ghost"
+							size="medium"
+							data-test-id="project-favorite-btn"
+							@click.stop="onToggleProjectFavorite"
+						/>
+						<PromotionPreviewBadges :class="$style.promotionBadges" />
+					</div>
 					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
 						{{ sectionDescription }}
 					</N8nText>
 					<template v-else-if="projectDescription">
 						<div :class="$style.projectDescriptionWrapper">
-							<N8nText color="text-light" data-test-id="project-subtitle">
+							<N8nText
+								:class="$style.descriptionText"
+								color="text-light"
+								data-test-id="project-subtitle"
+							>
 								{{ projectDescriptionTruncated || projectDescription }}
 							</N8nText>
 							<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
@@ -487,22 +547,8 @@ const onSelect = (action: string, source: CreateSource) => {
 						</div>
 					</template>
 				</div>
-				<N8nIconButton
-					v-if="isTeamProject"
-					:class="[$style.favoriteBtn, isProjectFavorited && $style.favoriteBtnActive]"
-					:icon="favoriteIcon"
-					:aria-label="i18n.baseText(isProjectFavorited ? 'favorites.remove' : 'favorites.add')"
-					variant="ghost"
-					size="medium"
-					data-test-id="project-favorite-btn"
-					@click.stop="onToggleProjectFavorite"
-				/>
 			</div>
-			<div
-				v-if="route.name !== VIEWS.PROJECT_SETTINGS"
-				ref="headerActionsRef"
-				:class="[$style.headerActions]"
-			>
+			<div v-if="route.name !== VIEWS.PROJECT_SETTINGS" :class="[$style.headerActions]">
 				<N8nTooltip
 					:disabled="!sourceControlStore.preferences.branchReadOnly"
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
@@ -537,7 +583,6 @@ const onSelect = (action: string, source: CreateSource) => {
 				:additional-tabs="customProjectTabs"
 			/>
 		</div>
-		<PromotionBanners />
 	</div>
 </template>
 
@@ -548,25 +593,53 @@ const onSelect = (action: string, source: CreateSource) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
+	gap: var(--spacing--sm);
 	min-height: var(--spacing--3xl);
 }
 
 .projectDetails {
 	display: flex;
-	align-items: center;
+	align-items: flex-start;
+	flex: 1;
+	min-width: 0;
+}
+
+.projectInfo {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+	gap: var(--spacing--4xs);
+}
+
+.projectName {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.promotionBadges {
+	flex-shrink: 0;
 }
 
 .actions {
-	padding: var(--spacing--2xs) 0 var(--spacing--xs);
+	padding: var(--spacing--xs) 0 var(--spacing--xs);
 }
 
 .projectDescriptionWrapper {
 	position: relative;
-	display: inline-block;
 
 	&:hover .tooltip {
 		display: block;
 	}
+}
+
+.descriptionText {
+	display: block;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .tooltip {
@@ -583,15 +656,21 @@ const onSelect = (action: string, source: CreateSource) => {
 }
 
 .favoriteBtn {
+	flex-shrink: 0;
 	cursor: pointer;
 	color: var(--color--text--tint-2);
-	margin-top: var(--spacing--5xs);
-	margin-left: var(--spacing--3xs);
 	opacity: 0.8;
 
 	&.favoriteBtnActive {
 		color: var(--color--yellow-500);
 	}
+}
+
+.titleRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-height: var(--height--md);
 }
 
 .projectDetails:hover .favoriteBtn {
@@ -603,6 +682,10 @@ const onSelect = (action: string, source: CreateSource) => {
 		flex-direction: column;
 		align-items: flex-start;
 		gap: var(--spacing--xs);
+	}
+
+	.projectDetails {
+		width: 100%;
 	}
 
 	.headerActions {
