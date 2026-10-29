@@ -370,7 +370,6 @@ function save() {
 			<N8nInputLabel v-if="method === 'workflow'" :label="i18n.baseText('agents.hitl.workflow')">
 				<div :class="$style.workflowRow">
 					<N8nCombobox2
-						:class="$style.workflowSelect"
 						size="large"
 						:model-value="workflowId || undefined"
 						v-model:open="workflowSelectOpen"
@@ -540,13 +539,14 @@ function save() {
 	gap: var(--spacing--md);
 }
 .workflowRow {
-	display: flex;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
 	align-items: center;
 	gap: var(--spacing--2xs);
-}
-.workflowSelect {
-	flex: 1;
-	min-width: 0;
+
+	> :first-child {
+		min-width: 0;
+	}
 }
 .saveTrigger {
 	display: inline-flex;
