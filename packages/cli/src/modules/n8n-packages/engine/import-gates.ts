@@ -6,6 +6,7 @@ import { ForbiddenError } from '@n8n/errors';
 import { plannedCredentialUpdates } from '../entities/credential/credential-conflict-policy';
 import type { CredentialImportPlan } from '../entities/credential/credential.types';
 import type { DataTableImportPlan } from '../entities/data-table/data-table.types';
+import type { SkillImportPlan } from '../entities/skill/skill-import.types';
 import type { TagImportPlan } from '../entities/tag/tag.types';
 import type { WorkflowImportPlan } from '../entities/workflow/workflow-import.types';
 import type { CredentialConflictPolicy } from '../n8n-packages.types';
@@ -68,6 +69,27 @@ export function assertDataTableWritesAllowed(
 	if (dataTablePlans.some((plan) => plan.updates.length + plan.columnAlignments.length > 0)) {
 		assertPackageImportApiKeyScopes(apiKeyScopes, ['dataTable:update']);
 	}
+}
+
+/**
+ * Plan-derived: a project or instance skill can change other Agents, so its write needs the
+ * matching API-key scope. The skills of one Agent need only the Agent scopes.
+ */
+export function assertSharedSkillWritesAllowed(
+	apiKeyScopes: string[] | undefined,
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
+): void {
+	assertPackageImportApiKeyScopes(apiKeyScopes, requiredSharedSkillScopes(skillPlans));
+}
+
+export function requiredSharedSkillScopes(
+	skillPlans: Array<Pick<SkillImportPlan, 'shared'>>,
+): Scope[] {
+	const writes = skillPlans.flatMap((plan) => plan.shared);
+	const scopes: Scope[] = [];
+	if (writes.some(({ base }) => !base)) scopes.push('skill:create');
+	if (writes.some(({ base }) => base)) scopes.push('skill:update');
+	return scopes;
 }
 
 /**

@@ -121,6 +121,17 @@ describe('ResourcesListLayout', () => {
 		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
 	});
 
+	it('should render the list chrome while refreshing an empty list without an empty state', () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				resourcesRefreshing: true,
+				hasEmptyState: false,
+			},
+		});
+
+		expect(getByTestId('resources-list-search')).toBeInTheDocument();
+	});
+
 	it('should render the list chrome while refreshing when resources are already known', () => {
 		const { getByTestId } = renderComponent({
 			props: {

@@ -364,6 +364,10 @@ export class WorkflowExecutionService {
 		workflowData.active = false;
 		workflowData.activeVersionId = null;
 
+		// The pinData column is nullable, but the engine expects `undefined` for
+		// "no pinned data". A NULL fails the partial execution when it looks up pinned data.
+		workflowData.pinData ??= undefined;
+
 		// The UI can send runData alongside triggerToStartFrom, but a trigger
 		// means a full run, so stale runData must not demote it to a partial
 		// execution. ManualRunDto already strips it for endpoint traffic; this

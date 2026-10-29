@@ -20,6 +20,7 @@ import { mockInstance } from 'n8n-core/test/utils';
 import {
 	type IPinData,
 	type IRun,
+	type IRunData,
 	type ISupplyDataFunctions,
 	type ITaskData,
 	type IDataObject,
@@ -2753,6 +2754,39 @@ describe('JobProcessor', () => {
 			});
 			run.waitTill = undefined;
 			expect(jobProcessor['deriveJobFinishedProps'](run, new Date()).waitTill).toBeNull();
+		});
+	});
+
+	describe('node time saved propagation', () => {
+		it('sums time saved minutes of all node runs on JobFinishedProps', () => {
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				mock(),
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+			const runData = {
+				'Track Time Saved': [{ metadata: { timeSaved: { minutes: 20 } } }],
+				'Track Time Saved 2': [{ metadata: { timeSaved: { minutes: 40 } } }],
+			} as unknown as IRunData;
+			const run = mock<IRun>({
+				status: 'success',
+				stoppedAt: new Date(),
+				data: mock<IRunExecutionData>({
+					resultData: { runData, error: undefined },
+					executionData: undefined,
+				}),
+			});
+
+			const props = jobProcessor['deriveJobFinishedProps'](run, new Date());
+
+			expect(props.nodeTimeSavedMinutes).toBe(60);
 		});
 	});
 

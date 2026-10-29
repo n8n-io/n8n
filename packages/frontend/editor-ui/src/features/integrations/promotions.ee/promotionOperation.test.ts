@@ -1,4 +1,4 @@
-import type { ApplyCheckResult } from '@n8n/api-types';
+import type { ApplyCheckResult } from './promotions.types';
 
 import { credential, destructiveChange, variable } from './__tests__/bindings.fixtures';
 import { billingPreview, billingResources } from './__tests__/preview.fixtures';
@@ -19,19 +19,17 @@ const consumer = (...ids: string[]) => [
 	},
 ];
 
-const check = (preflight: Partial<ApplyCheckResult['preflight']> = {}): ApplyCheckResult => ({
+const check = (fields: Partial<ApplyCheckResult> = {}): ApplyCheckResult => ({
 	environmentId: 'environment-1',
 	git: { branchName: 'main', commitSha: 'c'.repeat(40) },
-	preflight: {
-		missingProjects: [],
-		missingBindings: [],
-		accessRequirements: [],
-		conflicts: [],
-		warnings: [],
-		...preflight,
-	},
+	missingProjects: [],
+	missingBindings: [],
+	accessRequirements: [],
+	conflicts: [],
+	warnings: [],
 	movedWorkflows: [],
 	movedFolders: [],
+	...fields,
 });
 
 describe('promotion operation', () => {
@@ -47,31 +45,34 @@ describe('promotion operation', () => {
 
 	it('should block only the workflows that need a missing binding or moved to another project', () => {
 		const index = indexBlockers(
-			listBlockers({
-				...check({
-					missingBindings: [{ ...credential, sourceId: 'c1', consumers: consumer('w1') }],
-					conflicts: [{ ...destructiveChange, id: 't1', consumers: consumer('w2') }],
-					warnings: [
+			listBlockers(
+				{
+					...check({
+						missingBindings: [{ ...credential, sourceId: 'c1', consumers: consumer('w1') }],
+						conflicts: [{ ...destructiveChange, id: 't1', consumers: consumer('w2') }],
+						warnings: [
+							{
+								kind: 'variable',
+								code: 'variable-shadowed',
+								name: 'API_URL',
+								scope: { kind: 'global' },
+								consumers: consumer('w3'),
+							},
+						],
+					}),
+					movedWorkflows: [
 						{
-							kind: 'variable',
-							code: 'variable-shadowed',
-							name: 'API_URL',
-							scope: { kind: 'global' },
-							consumers: consumer('w3'),
+							id: 'w4',
+							name: 'Format currency',
+							project: { id: 'p2', name: 'Ops' },
+							projectExists: true,
+							instanceProject: { id: 'p1', name: 'Billing' },
 						},
 					],
-				}),
-				movedWorkflows: [
-					{
-						id: 'w4',
-						name: 'Format currency',
-						project: { id: 'p2', name: 'Ops' },
-						projectExists: true,
-						instanceProject: { id: 'p1', name: 'Billing' },
-					},
-				],
-				movedFolders: [],
-			}),
+					movedFolders: [],
+				},
+				[],
+			),
 		);
 
 		expect([...index.blocked]).toEqual(['workflow:w1', 'workflow:w4']);
@@ -88,18 +89,21 @@ describe('promotion operation', () => {
 
 	it('should mark a moved folder row as blocking without blocking a workflow', () => {
 		const index = indexBlockers(
-			listBlockers({
-				...check(),
-				movedFolders: [
-					{
-						id: 'f1',
-						name: 'Payments',
-						project: { id: 'p2', name: 'Ops' },
-						projectExists: true,
-						instanceProject: { id: 'p1', name: 'Billing' },
-					},
-				],
-			}),
+			listBlockers(
+				{
+					...check(),
+					movedFolders: [
+						{
+							id: 'f1',
+							name: 'Payments',
+							project: { id: 'p2', name: 'Ops' },
+							projectExists: true,
+							instanceProject: { id: 'p1', name: 'Billing' },
+						},
+					],
+				},
+				[],
+			),
 		);
 
 		expect(index.byResource.get('folder:f1')?.[0]).toMatchObject({
@@ -133,6 +137,28 @@ describe('promotion operation', () => {
 		]);
 	});
 
+	it('should block every listed workflow for a project-wide conflict', () => {
+		const listed = ['workflow:w1', 'workflow:w2', 'workflow:w3'];
+		const project = { id: 'p1', name: 'Billing' };
+		const blockersOf = (conflicts: ApplyCheckResult['conflicts']) =>
+			indexBlockers(listBlockers(check({ conflicts }), listed));
+
+		const tagConflict = blockersOf([
+			{
+				kind: 'tag',
+				code: 'tag-conflict',
+				id: 't1',
+				reason: 'name-collision',
+				consumers: consumer('w3'),
+			},
+		]);
+		expect([...tagConflict.byResource.keys()]).toEqual(['tag:t1']);
+		const checkNotRun = blockersOf([
+			{ kind: 'project', code: 'check-not-run', project, reason: 'contentImport' },
+		]);
+		expect([...checkNotRun.blocked]).toEqual(listed);
+	});
+
 	it('should ignore the blockers of workflows that the preview does not list', () => {
 		const graph = buildSelectionGraph(billingPreview(), 'apply');
 		// "w99" is unchanged, so the preview does not list it. The check covers it anyway.
@@ -146,9 +172,7 @@ describe('promotion operation', () => {
 			graph,
 		);
 
-		expect(scoped.preflight.accessRequirements).toEqual([]);
-		expect(scoped.preflight.missingBindings[0].consumers[0].workflows).toEqual([
-			{ id: 'w1', name: 'w1' },
-		]);
+		expect(scoped.accessRequirements).toEqual([]);
+		expect(scoped.missingBindings[0].consumers[0].workflows).toEqual([{ id: 'w1', name: 'w1' }]);
 	});
 });

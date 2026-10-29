@@ -13,7 +13,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
-| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 12 |  | BASE TABLE |
+| [public.agent_chat_attachments](public.agent_chat_attachments.md) | 13 |  | BASE TABLE |
 | [public.agent_chat_subscriptions](public.agent_chat_subscriptions.md) | 6 |  | BASE TABLE |
 | [public.agent_checkpoints](public.agent_checkpoints.md) | 7 |  | BASE TABLE |
 | [public.agent_credential_dependency](public.agent_credential_dependency.md) | 3 |  | BASE TABLE |
@@ -24,6 +24,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.agent_execution](public.agent_execution.md) | 28 |  | BASE TABLE |
 | [public.agent_execution_message_links](public.agent_execution_message_links.md) | 5 |  | BASE TABLE |
 | [public.agent_execution_threads](public.agent_execution_threads.md) | 20 |  | BASE TABLE |
+| [public.agent_file_grants](public.agent_file_grants.md) | 4 |  | BASE TABLE |
 | [public.agent_files](public.agent_files.md) | 10 |  | BASE TABLE |
 | [public.agent_history](public.agent_history.md) | 11 |  | BASE TABLE |
 | [public.agent_message_queue](public.agent_message_queue.md) | 10 |  | BASE TABLE |
@@ -89,7 +90,6 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.installed_packages](public.installed_packages.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_checkpoints](public.instance_ai_checkpoints.md) | 9 |  | BASE TABLE |
 | [public.instance_ai_events](public.instance_ai_events.md) | 7 |  | BASE TABLE |
-| [public.instance_ai_iteration_logs](public.instance_ai_iteration_logs.md) | 6 |  | BASE TABLE |
 | [public.instance_ai_mcp_registry_connections](public.instance_ai_mcp_registry_connections.md) | 7 |  | BASE TABLE |
 | [public.instance_ai_messages](public.instance_ai_messages.md) | 8 |  | BASE TABLE |
 | [public.instance_ai_observation_cursors](public.instance_ai_observation_cursors.md) | 5 |  | BASE TABLE |
@@ -145,7 +145,9 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 9 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_version](public.skill_version.md) | 11 |  | BASE TABLE |
+| [public.skill_source](public.skill_source.md) | 13 |  | BASE TABLE |
+| [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
+| [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
 | [public.test_case_execution](public.test_case_execution.md) | 14 |  | BASE TABLE |
 | [public.test_run](public.test_run.md) | 16 |  | BASE TABLE |
@@ -232,6 +234,7 @@ erDiagram
 "public.agent_execution_threads" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_execution_threads" }o--o| "public.agent_history" : "FOREIGN KEY (#quot;taskVersionId#quot;) REFERENCES agent_history(#quot;versionId#quot;) ON DELETE SET NULL"
+"public.agent_file_grants" }o--|| "public.agent_chat_attachments" : "FOREIGN KEY (#quot;attachmentId#quot;) REFERENCES agent_chat_attachments(id) ON DELETE CASCADE"
 "public.agent_files" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.agent_history" }o--o| "public.user" : "FOREIGN KEY (#quot;publishedById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.agent_history" }o--|| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
@@ -342,7 +345,6 @@ erDiagram
 "public.installed_nodes" }o--|| "public.installed_packages" : "FOREIGN KEY (package) REFERENCES installed_packages(#quot;packageName#quot;) ON UPDATE CASCADE ON DELETE CASCADE"
 "public.instance_ai_checkpoints" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_events" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
-"public.instance_ai_iteration_logs" }o--|| "public.instance_ai_threads" : "FOREIGN KEY (#quot;threadId#quot;) REFERENCES instance_ai_threads(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.user" : "FOREIGN KEY (#quot;userId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE CASCADE"
 "public.instance_ai_mcp_registry_connections" }o--|| "public.mcp_registry_server" : "FOREIGN KEY (#quot;serverSlug#quot;) REFERENCES mcp_registry_server(slug) ON DELETE CASCADE"
@@ -425,6 +427,11 @@ erDiagram
 "public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.skill_file" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id) ON DELETE CASCADE"
+"public.skill_source" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
+"public.skill_source" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
+"public.skill_source" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
+"public.skill_source_link" |o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
+"public.skill_source_link" }o--|| "public.skill_source" : "FOREIGN KEY (#quot;sourceId#quot;) REFERENCES skill_source(id) ON DELETE CASCADE"
 "public.skill_version" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.skill_version" }o--|| "public.skill" : "FOREIGN KEY (#quot;skillId#quot;) REFERENCES skill(id) ON DELETE CASCADE"
 "public.test_case_execution" }o--o| "public.execution_entity" : "FOREIGN KEY (#quot;executionId#quot;) REFERENCES execution_entity(id) ON DELETE SET NULL"
@@ -546,6 +553,7 @@ erDiagram
   varchar_36_ agentId FK
   text binaryDataId
   timestamp_3__with_time_zone createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id
@@ -691,6 +699,12 @@ erDiagram
   double_precision totalCost
   integer totalDuration
   integer totalPromptTokens
+  timestamp_3__with_time_zone updatedAt
+}
+"public.agent_file_grants" {
+  varchar_16_ attachmentId FK
+  timestamp_3__with_time_zone createdAt
+  varchar_128_ threadId
   timestamp_3__with_time_zone updatedAt
 }
 "public.agent_files" {
@@ -1318,14 +1332,6 @@ erDiagram
   varchar_64_ type
   timestamp_3__with_time_zone updatedAt
 }
-"public.instance_ai_iteration_logs" {
-  timestamp_3__with_time_zone createdAt
-  text entry
-  varchar_36_ id
-  varchar taskKey
-  uuid threadId FK
-  timestamp_3__with_time_zone updatedAt
-}
 "public.instance_ai_mcp_registry_connections" {
   timestamp_3__with_time_zone createdAt
   varchar_36_ credentialId FK
@@ -1852,6 +1858,37 @@ erDiagram
   uuid skillVersionId FK
   timestamp_3__with_time_zone updatedAt
 }
+"public.skill_source" {
+  timestamp_3__with_time_zone createdAt
+  uuid createdById FK
+  varchar_36_ credentialId FK
+  uuid id
+  varchar_255_ identityKey
+  timestamp_3__with_time_zone lastCheckedAt
+  varchar_32_ lastErrorReason
+  json locator
+  text probeCursor
+  varchar_36_ projectId FK
+  varchar_32_ status
+  varchar_16_ type
+  timestamp_3__with_time_zone updatedAt
+}
+"public.skill_source_link" {
+  varchar_64_ baseContentHash
+  varchar_255_ baseRevision
+  timestamp_3__with_time_zone createdAt
+  json pendingContent
+  varchar_64_ pendingContentHash
+  varchar_255_ pendingRevision
+  json pendingScan
+  json remoteRef
+  varchar_36_ skillId FK
+  varchar_64_ skippedContentHash
+  json skippedFiles
+  uuid sourceId FK
+  varchar_32_ state
+  timestamp_3__with_time_zone updatedAt
+}
 "public.skill_version" {
   varchar_64_ contentHash
   timestamp_3__with_time_zone createdAt
@@ -1862,6 +1899,7 @@ erDiagram
   text instructions
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_255_ sourceRevision
   timestamp_3__with_time_zone updatedAt
   integer version
 }

@@ -9,6 +9,7 @@ import {
 	isStructuredCloneBuiltin,
 	isTransferSentinel,
 	transferTypeOf,
+	ERROR_SENTINEL_KEY,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_FRAMING_KEYS,
 	TRANSFER_OPAQUE_KEY,
@@ -63,7 +64,7 @@ describe('transfer framing', () => {
 
 		it('should name every key that makes an object look like framing', () => {
 			expect([...TRANSFER_FRAMING_KEYS].sort()).toEqual(
-				[TRANSFER_TYPE_KEY, TRANSFER_ESCAPED_KEY, TRANSFER_OPAQUE_KEY].sort(),
+				[TRANSFER_TYPE_KEY, TRANSFER_ESCAPED_KEY, TRANSFER_OPAQUE_KEY, ERROR_SENTINEL_KEY].sort(),
 			);
 		});
 	});

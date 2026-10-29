@@ -294,7 +294,8 @@ export interface BuildResult {
 	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
-	/** The build's own project; `cleanupBuild` deletes the user that owns it. */
+	/** The build's own project. `cleanupBuild` deletes the user that owns it, or the
+	 *  project itself when no user is set (a team project). */
 	buildProjectId?: string;
 	buildUserId?: string;
 	/** The ROOT folders a seed created in the thread's project (a folder delete
@@ -530,8 +531,9 @@ export interface BuildWorkflowConfig {
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
-	/** Gives the build a fresh project. Absent: the owner's personal project. */
-	buildProject?: () => Promise<{ userId: string; projectId: string }>;
+	/** Gives the build a fresh project: a team project the owner administers, or a
+	 *  member's personal project (`userId` set). Absent: the owner's personal project. */
+	buildProject?: () => Promise<{ userId?: string; projectId: string }>;
 	/** History restored before the live message — carried in the case
 	 *  (`mode: 'inline'`) or reconstructed from a trace (`mode: 'replay'`, which
 	 *  also supplies the live turn). */
@@ -618,11 +620,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
-	let buildProject: { userId: string; projectId: string } | undefined;
-	// On every return path, so cleanup deletes the build user even after a failure.
+	let buildProject: { userId?: string; projectId: string } | undefined;
+	// On every return path, so cleanup deletes the build project even after a failure.
 	const buildProjectFields = () =>
 		buildProject
-			? { buildProjectId: buildProject.projectId, buildUserId: buildProject.userId }
+			? {
+					buildProjectId: buildProject.projectId,
+					...(buildProject.userId ? { buildUserId: buildProject.userId } : {}),
+				}
 			: {};
 	let parsedToolCalls: CapturedToolCall[] | undefined;
 	const foreignReadFields = () => {
