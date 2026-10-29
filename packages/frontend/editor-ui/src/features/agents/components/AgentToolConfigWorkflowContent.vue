@@ -75,6 +75,7 @@ defineExpose({
 				:model-value="props.approvalRequired ?? false"
 				@update:model-value="emit('update:approvalRequired', $event)"
 			/>
+			<slot name="approvalSettings" />
 		</template>
 	</WorkflowToolConfigContent>
 </template>

@@ -440,7 +440,7 @@ defineExpose({
 
 		<slot name="commonSettings" />
 
-		<div :class="$style.field">
+		<div :class="$style.advanced">
 			<button
 				type="button"
 				:class="$style.advancedTrigger"
@@ -574,13 +574,20 @@ defineExpose({
 	text-overflow: ellipsis;
 }
 
+.advanced {
+	display: flex;
+	flex-direction: column;
+	border: var(--border);
+	border-radius: var(--radius);
+}
+
 .advancedTrigger {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
 	padding: var(--spacing--3xs) var(--spacing--2xs);
-	border: var(--border);
-	border-radius: var(--radius);
+	border: none;
+	border-radius: inherit;
 	background: transparent;
 	color: inherit;
 	cursor: pointer;
@@ -595,6 +602,8 @@ defineExpose({
 }
 
 .advancedContent {
+	padding: var(--spacing--xs);
+	border-top: var(--border);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);

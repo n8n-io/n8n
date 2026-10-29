@@ -12,6 +12,7 @@ import WorkflowToolConfigContent from '../components/WorkflowToolConfigContent.v
 import WorkflowToolInputs from '../components/WorkflowToolInputs.vue';
 import AgentToolConfigForm from '../components/AgentToolConfigForm.vue';
 import type { WorkflowToolRef } from '../types';
+import type { AgentHitlContext } from '../components/agent-hitl.types';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = (await importOriginal()) as Record<string, unknown>;
@@ -92,14 +93,21 @@ function workflow(
 
 const renderComponent = createComponentRenderer(WorkflowToolConfigContent);
 
-function renderForm(initialRef: WorkflowToolRef) {
+function renderForm(initialRef: WorkflowToolRef, approvalContext?: AgentHitlContext) {
 	const form = ref<InstanceType<typeof AgentToolConfigForm>>();
 	const onConfirm = vi.fn();
 	const render = createComponentRenderer(
 		defineComponent({
 			setup: () => () =>
 				h('div', [
-					h(AgentToolConfigForm, { ref: form, data: { toolRef: initialRef, onConfirm } }),
+					h(AgentToolConfigForm, {
+						ref: form,
+						data: {
+							toolRef: initialRef,
+							onConfirm,
+							...(approvalContext ? { projectId: 'project-1', approvalContext } : {}),
+						},
+					}),
 					h('button', { onClick: () => form.value?.confirm() }, 'Save'),
 				]),
 		}),
@@ -136,6 +144,33 @@ describe('WorkflowToolConfigContent', () => {
 		vi.clearAllMocks();
 		createTestingPinia({ stubActions: false });
 		setProjectWorkflows([workflow('Notify Sales'), workflow('Invoice Sender')]);
+	});
+
+	it('keeps approval controls together before Advanced', async () => {
+		const { getByTestId, getByRole, queryByRole } = renderForm(
+			createRef({ requireApproval: true }),
+			{
+				getConfig: () => null,
+				saveConfiguration: vi.fn(),
+			},
+		);
+		const toggle = getByTestId('agent-tool-approval-toggle');
+		const destination = getByRole('combobox', { name: 'agents.hitl.route' });
+		const advanced = getByTestId('agent-workflow-tool-advanced');
+
+		expect(
+			toggle.compareDocumentPosition(destination) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(
+			destination.compareDocumentPosition(advanced) & Node.DOCUMENT_POSITION_FOLLOWING,
+		).toBeTruthy();
+		expect(advanced).toHaveAttribute('aria-expanded', 'false');
+		await fireEvent.click(advanced);
+		expect(getByTestId('agent-workflow-tool-all-outputs')).toBeVisible();
+
+		await fireEvent.click(toggle);
+		expect(queryByRole('combobox', { name: 'agents.hitl.route' })).not.toBeInTheDocument();
+		expect(advanced).toHaveAttribute('aria-expanded', 'true');
 	});
 
 	it('emits valid=true when target, name and description are set', () => {

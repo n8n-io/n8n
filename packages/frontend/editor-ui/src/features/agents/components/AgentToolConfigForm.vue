@@ -412,7 +412,17 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 				@update:valid="isValid = $event"
 				@update:node-name="handleNodeNameUpdate"
 				@update:approval-required="approvalRequired = $event"
-			/>
+			>
+				<template #approvalSettings>
+					<AgentApprovalRouteSelect
+						v-if="data.approvalContext && data.projectId && supportsApproval && approvalRequired"
+						v-model="approvalRoute"
+						:context="data.approvalContext"
+						:project-id="data.projectId"
+						:disabled="isRestricted"
+					/>
+				</template>
+			</AgentToolConfigWorkflowContent>
 			<AgentToolConfigNodeContent
 				v-else-if="isMcpTool && initialNode"
 				ref="mcpContentRef"
@@ -456,6 +466,7 @@ defineExpose({ canSave, confirm, remove, changeTitle });
 		</div>
 		<AgentApprovalRouteSelect
 			v-if="
+				!isWorkflowTool &&
 				data.approvalContext &&
 				data.projectId &&
 				supportsApproval &&
