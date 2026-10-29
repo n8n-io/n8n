@@ -1,3 +1,4 @@
+import { agentSkillReferencePathSchema } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { parse as parseYaml, stringify as stringifyYaml } from 'yaml';
 
@@ -69,7 +70,8 @@ export function writeSkillFolder(content: SkillContent): SkillFolderFile[] {
 
 /** The frontmatter keys of a SKILL.md and its trimmed body. */
 function parseSkillMd(text: string): { data: Record<string, unknown>; instructions: string } {
-	const match = /^---\n([\s\S]*?)\n---(?:\n([\s\S]*))?$/.exec(normalizeText(text));
+	// A delimiter line can end in spaces, as some editors leave them.
+	const match = /^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n([\s\S]*))?$/.exec(normalizeText(text));
 	if (!match) {
 		throw new SkillParseError('SKILL.md must start with frontmatter between two --- lines.');
 	}
@@ -112,12 +114,7 @@ function normalizePath(path: string): string {
 	return path.replaceAll('\\', '/').replace(/^(\.\/)+/, '');
 }
 
-/** The rule of `agentSkillReferenceSchema`: a markdown file under `references/`. */
+/** A markdown file under `references/`, by the rule of `agentSkillReferencePathSchema`. */
 function isReferencePath(path: string): boolean {
-	const segments = path.split('/');
-	return (
-		segments[0] === 'references' &&
-		/\.(md|markdown)$/.test(path) &&
-		segments.every((segment) => segment !== '' && segment !== '.' && segment !== '..')
-	);
+	return agentSkillReferencePathSchema.safeParse(path).success;
 }

@@ -371,15 +371,15 @@ none.
 |--------|-----------|---------------|
 | `applied` | `0` | The package was imported. JSON output includes `counts` and `warnings`. |
 | `source-changed` | `3` | The environment, branch, or commit is not the one you reviewed. Nothing was imported. Review the changes again. |
-| `blocked` | `4` | Preflight found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
+| `blocked` | `4` | The Apply check found missing bindings, access requirements, or conflicts. A conflict can be a destructive data table change or a project deletion. Nothing was imported. The output shows the `apply-continue` command to run after you resolve them. |
 
 With `--json`, the output is the full result for each status. For `blocked`, the
-`preflight` object lists each missing project, missing binding, access
+`check` object lists each missing project, missing binding, access
 requirement, and conflict. Existing variable values on this instance are kept.
 
 Apply makes the team projects on this instance match the package. It deletes
 each team project that the package does not hold, with all its workflows,
-credentials, and data tables. Preflight reports each such project as a
+credentials, and data tables. The Apply check reports each such project as a
 `project-deletion` conflict.
 
 Workflows and folders move within their project to match the branch, and folders
@@ -403,7 +403,7 @@ n8n-cli promotion-environment apply-continue env-2 \
 
 The three `--expected-*` flags are required. Use the `environmentId`,
 `git.branchName`, and `git.commitSha` that the blocked Apply reported. The
-command runs the preflight again. The results and exit codes are the same as
+command runs the Apply check again. The results and exit codes are the same as
 for `apply`: `blocked` again means that something still blocks, and
 `source-changed` means that you must review again. The server keeps no session,
 so run the command again when it exits `4`.
@@ -490,7 +490,7 @@ n8n-cli promotion-environment apply-selection-continue proj-abc -w wf-1 -w wf-2 
 
 Resend the same workflow ids. The three `--expected-*` flags are required: use
 the `environmentId`, `git.branchName`, and `git.commitSha` that the blocked Apply
-reported. The command runs the preflight again. The results and exit codes are
+reported. The command runs the Apply check again. The results and exit codes are
 the same as for `apply-selection`. The server keeps no session, so run the
 command again when it exits `4`.
 

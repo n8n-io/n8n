@@ -14,8 +14,6 @@ import isEqual from 'lodash/isEqual';
 import { UserError } from 'n8n-workflow';
 
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
-import { hasGlobalScope } from '@n8n/permissions';
-import { userHasScopes } from '@/permissions.ee/check-access';
 import {
 	findIntroducedNameClashes,
 	findNameClashGroups,
@@ -24,7 +22,6 @@ import {
 	SkillService,
 	type SkillTelemetryMethod,
 	type SkillTelemetrySource,
-	toSkillUpdate,
 	withTrimmedName,
 } from '@/modules/skills';
 
@@ -308,15 +305,13 @@ export class AgentSkillsService {
 			}
 			return await this.skillService.saveTrusted(
 				skillId,
-				toSkillUpdate(
-					{
-						name: updated.name,
-						description: updated.description,
-						instructions: updated.instructions,
-						references: updated.references ?? [],
-					},
-					getAgentSkillHash(existing),
-				),
+				{
+					name: updated.name,
+					description: updated.description,
+					instructions: updated.instructions,
+					references: updated.references ?? [],
+					baseSkillHash: getAgentSkillHash(existing),
+				},
 				context.user.id,
 				ctx,
 			);
@@ -410,11 +405,6 @@ export class AgentSkillsService {
 		return current === availableTo ? undefined : availableTo;
 	}
 
-	validateSkills(skills: AgentSkill[], existing: Record<string, AgentSkill> = {}): void {
-		const validated = skills.map((skill) => this.validateSkill(skill));
-		this.assertNoNameClashes(existing, validated);
-	}
-
 	private validateSkill(skill: AgentSkill): AgentSkill {
 		const result = agentSkillSchema.safeParse(skill);
 		if (!result.success) {
@@ -433,12 +423,12 @@ export class AgentSkillsService {
 		// A skill of one agent is part of that agent: the agent permission is enough.
 		if (availableTo === 'agent') return;
 		if (availableTo === 'instance') {
-			if (!hasGlobalScope(user, 'skill:create')) {
+			if (!(await this.skillAccess.canCreate(user, null))) {
 				throw new ForbiddenError('You are not allowed to create skills for the whole instance.');
 			}
 			return;
 		}
-		if (!(await userHasScopes(user, ['projectSkill:create'], false, { projectId }))) {
+		if (!(await this.skillAccess.canCreate(user, projectId))) {
 			throw new ForbiddenError('You are not allowed to create skills for this project.');
 		}
 	}

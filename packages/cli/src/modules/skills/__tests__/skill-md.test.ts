@@ -113,6 +113,10 @@ describe('readSkillFolder', () => {
 		{ case: 'CRLF', text: '---\r\nname: n\r\ndescription: d\r\n---\r\nLine 1\r\nLine 2\r\n' },
 		{ case: 'CR', text: '---\rname: n\rdescription: d\r---\rLine 1\rLine 2\r' },
 		{ case: 'a BOM', text: '\uFEFF---\nname: n\ndescription: d\n---\nLine 1\nLine 2\n' },
+		{
+			case: 'spaces after the --- lines',
+			text: '--- \nname: n\ndescription: d\n---\t \nLine 1\nLine 2\n',
+		},
 	])('reads $case like LF', ({ text }) => {
 		const read = (content: string) =>
 			readSkillFolder('brand-voice', [{ path: 'SKILL.md', content }]).content;

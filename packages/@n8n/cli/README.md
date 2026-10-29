@@ -74,7 +74,8 @@ Use `package export --agent-id=<id>` to export Agents. Repeat `--agent-id` to
 select several Agents, or combine it with `--workflow-id` and `--folder-id`.
 Import the archive with `package import --file=<file.n8np>`. The shared
 `--conflict-policy`, `--id-policy`, and `--publishing-policy` settings apply to
-both Agents and workflows. Only `source` is supported for `--id-policy`.
+both Agents and workflows. `--conflict-policy` also applies to the skills of
+imported Agents. Only `source` is supported for `--id-policy`.
 See [package commands](docs/commands/package.md)
 for scopes, defaults, and examples. Agent packages use the ordinary import command.
 

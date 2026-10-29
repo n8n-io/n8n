@@ -9,7 +9,7 @@ const SKILL_VERSION_TABLE = 'skill_version';
  * link makes one skill a synced skill of that source. A pending update waits on the link, so
  * the editor, MCP and the runtime never read content that nobody reviewed.
  */
-export class AddSkillSyncTables1793092784587 implements ReversibleMigration {
+export class AddSkillSyncTables1793183326821 implements ReversibleMigration {
 	async up(context: MigrationContext) {
 		await this.createSourceTable(context);
 		await this.createLinkTable(context);

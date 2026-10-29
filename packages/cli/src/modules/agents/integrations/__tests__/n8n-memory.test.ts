@@ -61,15 +61,8 @@ describe('N8nMemory', () => {
 	let transactionObservationFind: Mock;
 	let transactionObservationSave: Mock;
 	let transactionObservationUpdate: Mock;
-	let memoryEntryRunInTransaction: Mock;
-	let transactionMemoryEntryCreate: Mock;
-	let transactionMemoryEntryFind: Mock;
-	let transactionMemoryEntryFindOneBy: Mock;
-	let transactionMemoryEntrySave: Mock;
 	let transactionMemoryEntryUpdate: Mock;
-	let transactionMemoryEntrySourceCreate: Mock;
 	let transactionMemoryEntrySourceFind: Mock;
-	let transactionMemoryEntrySourceSave: Mock;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -122,30 +115,8 @@ describe('N8nMemory', () => {
 			value: { transaction: observationRunInTransaction },
 		});
 
-		transactionMemoryEntryCreate = vi.fn((input) => ({ ...input }) as AgentMemoryEntryEntity);
-		transactionMemoryEntryFind = vi.fn().mockResolvedValue([]);
-		transactionMemoryEntryFindOneBy = vi.fn().mockResolvedValue(null);
-		transactionMemoryEntrySave = vi.fn(async (input: AgentMemoryEntryEntity[]) =>
-			input.map((entity, index) => ({
-				...entity,
-				id: `merged-memory-${index + 1}`,
-				createdAt: entity.createdAt ?? new Date('2026-05-12T10:00:00Z'),
-				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
-			})),
-		);
 		transactionMemoryEntryUpdate = vi.fn().mockResolvedValue({ affected: 1, raw: {} });
-		transactionMemoryEntrySourceCreate = vi.fn(
-			(input) => ({ ...input }) as AgentMemoryEntrySourceEntity,
-		);
 		transactionMemoryEntrySourceFind = vi.fn().mockResolvedValue([]);
-		transactionMemoryEntrySourceSave = vi.fn(async (input: AgentMemoryEntrySourceEntity[]) =>
-			input.map((entity, index) => ({
-				...entity,
-				id: `merged-source-${index + 1}`,
-				createdAt: entity.createdAt ?? new Date('2026-05-12T10:00:00Z'),
-				updatedAt: entity.updatedAt ?? new Date('2026-05-12T10:00:00Z'),
-			})),
-		);
 		runInTransaction = vi.fn(
 			async (
 				callback: (trx: {
@@ -174,31 +145,6 @@ describe('N8nMemory', () => {
 						await callback(trx as never, ctx),
 				),
 		);
-		memoryEntryRunInTransaction = vi.fn(
-			async (callback: (trx: { getRepository: Mock }) => Promise<unknown>) =>
-				await callback({
-					getRepository: vi.fn((entity) => {
-						if (entity === AgentMemoryEntryEntity) {
-							return {
-								create: transactionMemoryEntryCreate,
-								find: transactionMemoryEntryFind,
-								findOneBy: transactionMemoryEntryFindOneBy,
-								save: transactionMemoryEntrySave,
-								update: transactionMemoryEntryUpdate,
-							};
-						}
-						return {
-							create: transactionMemoryEntrySourceCreate,
-							find: transactionMemoryEntrySourceFind,
-							save: transactionMemoryEntrySourceSave,
-						};
-					}),
-				}),
-		);
-		Object.defineProperty(memoryEntryRepository, 'manager', {
-			value: { transaction: memoryEntryRunInTransaction },
-		});
-
 		memoryService = new N8nMemory(
 			threadRepository,
 			messageRepository,
@@ -1656,178 +1602,44 @@ describe('N8nMemory', () => {
 			expect(sources[2]).not.toHaveProperty('origin');
 		});
 
-		it('applies episodic reflection inside the thread scope and copies source links to replacements', async () => {
-			// The lookup is scoped to the thread, so an id recalled from another thread is not active here.
-			transactionMemoryEntryFind.mockResolvedValue([
-				makeMemoryEntryEntity({ id: 'memory-1', content: 'User planned SQLite.' }),
-				makeMemoryEntryEntity({ id: 'memory-2', content: 'User switched to Postgres.' }),
-				makeMemoryEntryEntity({ id: 'noise', content: 'Agent queried memory and found nothing.' }),
-			]);
-			transactionMemoryEntrySourceFind
-				.mockResolvedValueOnce([
-					makeMemoryEntrySourceEntity({
-						id: 'source-1',
-						memoryEntryId: 'memory-1',
-						observationId: 'obs-1',
-						evidenceText: 'User planned SQLite',
-					}),
-					makeMemoryEntrySourceEntity({
-						id: 'source-2',
-						memoryEntryId: 'memory-2',
-						observationId: 'obs-2',
-						evidenceText: 'User switched to Postgres',
-					}),
-				])
-				.mockResolvedValueOnce([]);
+		it('applies episodic reflection in the write scope and returns the replacements as entries', async () => {
+			const replacement = makeMemoryEntryEntity({
+				id: 'merged-memory-1',
+				resourceId: 'thread:thread-1',
+				content: 'User switched memory store from SQLite to Postgres.',
+			});
+			memoryEntryRepository.applyReflection.mockResolvedValue({
+				droppedIds: ['noise'],
+				supersededIds: ['memory-1'],
+				inserted: [replacement],
+			});
+			const reflection = {
+				drop: ['noise'],
+				merge: [
+					{
+						supersedes: ['memory-1'],
+						entry: { resourceId: 'integration:slack:U_ALICE', content: replacement.content },
+					},
+				],
+			};
 
 			const result = await memory.episodic.applyReflection(
 				{ resourceId: 'integration:slack:U_ALICE', threadId: 'thread-1', episodic: threadEpisodic },
-				{
-					drop: ['noise', 'other-thread-entry'],
-					merge: [
-						{
-							supersedes: ['memory-1', 'memory-2'],
-							entry: {
-								resourceId: 'integration:slack:U_ALICE',
-								content: 'User switched memory store from SQLite to Postgres.',
-								embedding: [1, 0],
-								embeddingModel: 'openai/text-embedding-3-small',
-							},
-						},
-					],
-				},
+				reflection,
 			);
 
-			expect(memoryEntryRunInTransaction).toHaveBeenCalledWith(expect.any(Function));
-			expect(transactionMemoryEntryFind).toHaveBeenCalledWith({
-				where: expect.objectContaining({ resourceId: 'thread:thread-1' }),
-			});
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', resourceId: 'thread:thread-1', id: In(['noise']), status: 'active' },
-				{ status: 'dropped', supersededBy: null },
-			);
-			expect(transactionMemoryEntrySave).toHaveBeenCalledWith([
-				expect.objectContaining({
-					resourceId: 'thread:thread-1',
-					content: 'User switched memory store from SQLite to Postgres.',
-					status: 'active',
-					supersededBy: null,
-				}),
-			]);
-			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
-				expect.objectContaining({
-					agentId: 'agent-1',
-					memoryEntryId: 'merged-memory-1',
-					observationId: 'obs-1',
-					evidenceHash: hashEpisodicMemoryEvidence('User planned SQLite'),
-					evidenceText: 'User planned SQLite',
-				}),
-				expect.objectContaining({
-					agentId: 'agent-1',
-					memoryEntryId: 'merged-memory-1',
-					observationId: 'obs-2',
-					evidenceHash: hashEpisodicMemoryEvidence('User switched to Postgres'),
-					evidenceText: 'User switched to Postgres',
-				}),
-			]);
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{
-					agentId: 'agent-1',
-					resourceId: 'thread:thread-1',
-					id: In(['memory-1', 'memory-2']),
-					status: 'active',
-				},
-				{ status: 'superseded', supersededBy: 'merged-memory-1' },
+			expect(memoryEntryRepository.applyReflection).toHaveBeenCalledWith(
+				'agent-1',
+				'thread:thread-1',
+				reflection,
+				{},
 			);
 			expect(result).toEqual({
 				droppedIds: ['noise'],
-				supersededIds: ['memory-1', 'memory-2'],
-				inserted: [expect.objectContaining({ id: 'merged-memory-1' })],
-			});
-		});
-
-		it('reuses an existing replacement entry when reflection content already exists', async () => {
-			const replacementContent = 'User switched memory store from SQLite to Postgres.';
-			const replacementHash = 'replacement-hash';
-			transactionMemoryEntryFind
-				.mockResolvedValueOnce([
-					makeMemoryEntryEntity({ id: 'memory-1', content: 'User planned SQLite.' }),
-					makeMemoryEntryEntity({ id: 'memory-2', content: 'User switched to Postgres.' }),
-				])
-				.mockResolvedValueOnce([
-					makeMemoryEntryEntity({
-						id: 'existing-replacement',
-						content: replacementContent,
-						contentHash: replacementHash,
-						status: 'superseded',
-					}),
-				]);
-			transactionMemoryEntrySourceFind
-				.mockResolvedValueOnce([
-					makeMemoryEntrySourceEntity({
-						id: 'source-1',
-						memoryEntryId: 'memory-1',
-						observationId: 'obs-1',
-						evidenceText: 'User planned SQLite',
-					}),
-					makeMemoryEntrySourceEntity({
-						id: 'source-2',
-						memoryEntryId: 'memory-2',
-						observationId: 'obs-2',
-						evidenceText: 'User switched to Postgres',
-					}),
-				])
-				.mockResolvedValueOnce([]);
-
-			const result = await memory.episodic.applyReflection(
-				{ resourceId: 'resource-1', threadId: 'thread-1' },
-				{
-					drop: [],
-					merge: [
-						{
-							supersedes: ['memory-1', 'memory-2'],
-							entry: {
-								resourceId: 'resource-1',
-								content: replacementContent,
-								contentHash: replacementHash,
-								embedding: [1, 0],
-								embeddingModel: 'openai/text-embedding-3-small',
-							},
-						},
-					],
-				},
-			);
-
-			expect(transactionMemoryEntrySave).not.toHaveBeenCalled();
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{ agentId: 'agent-1', resourceId: 'resource-1', id: 'existing-replacement' },
-				expect.objectContaining({ status: 'active', supersededBy: null }),
-			);
-			expect(transactionMemoryEntrySourceSave).toHaveBeenCalledWith([
-				expect.objectContaining({
-					agentId: 'agent-1',
-					memoryEntryId: 'existing-replacement',
-					observationId: 'obs-1',
-				}),
-				expect.objectContaining({
-					agentId: 'agent-1',
-					memoryEntryId: 'existing-replacement',
-					observationId: 'obs-2',
-				}),
-			]);
-			expect(transactionMemoryEntryUpdate).toHaveBeenCalledWith(
-				{
-					agentId: 'agent-1',
-					resourceId: 'resource-1',
-					id: In(['memory-1', 'memory-2']),
-					status: 'active',
-				},
-				{ status: 'superseded', supersededBy: 'existing-replacement' },
-			);
-			expect(result).toEqual({
-				droppedIds: [],
-				supersededIds: ['memory-1', 'memory-2'],
-				inserted: [expect.objectContaining({ id: 'existing-replacement' })],
+				supersededIds: ['memory-1'],
+				inserted: [
+					expect.objectContaining({ id: 'merged-memory-1', resourceId: 'thread:thread-1' }),
+				],
 			});
 		});
 	});

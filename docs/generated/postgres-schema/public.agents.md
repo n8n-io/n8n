@@ -154,6 +154,7 @@ erDiagram
   varchar_36_ agentId FK
   text binaryDataId
   timestamp_3__with_time_zone createdAt
+  varchar_128_ createdByThreadId
   varchar_255_ fileName
   integer fileSizeBytes
   varchar_16_ id

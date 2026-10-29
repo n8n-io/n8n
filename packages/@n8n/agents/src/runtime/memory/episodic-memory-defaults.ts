@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 import type {
-	EpisodicMemoryEntrySource,
-	EpisodicMemoryReflectResult,
-	EpisodicMemoryReflectorInput,
-	EpisodicMemoryReflectFn,
+	EpisodicMemoryConsolidateFn,
+	EpisodicMemoryConsolidateResult,
+	EpisodicMemoryConsolidationFact,
+	EpisodicMemoryConsolidationNeighbour,
+	EpisodicMemoryConsolidatorInput,
 	ModelConfig,
-	RetrievedEpisodicMemoryEntry,
 } from '../../types';
 import { getCatalogModelId } from '../../utils/model';
 import { incrementTokenCountFromUsage } from '../loop/execution-counter';
@@ -23,61 +23,61 @@ export const DEFAULT_EPISODIC_MEMORY_RECALL_TOOL_INSTRUCTION =
 export const DEFAULT_EPISODIC_MEMORY_CAPTURE_TOOL_INSTRUCTION =
 	'Episodic memory capture is enabled. flag_memory is the only way a detail carries over to future conversations; telling the user that something is noted or on file does not save it. Call flag_memory when the user asks you to remember something, and for preferences, decisions, facts, corrections, case resolutions, and requests that a future conversation with this user or about this account would need: account or system identifiers and corrections to them, named contacts and their roles, the root cause and the fix that resolved a case, and requests or decisions that take effect later. Call it once per distinct item, in the same turn you acknowledge it. When unsure whether an item will matter later, flag it. Do not call it for ordinary chatter, unconfirmed inferences, secrets, raw tool output, or assistant proposals the user has not adopted. Set content to a concise durable statement that names the person, company, or account it is about. Set evidence to one short, contiguous exact quote from a user or assistant text message in this conversation that supports the statement. Copy its whitespace and punctuation without changes. Do not wrap it in quotation marks. A successful call only notes the candidate for later processing, so do not claim that a final memory entry was created. The runtime determines the memory scope for this turn. Source authors and outbound message destinations do not change that scope.';
 
-export const DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT = `You maintain source-backed episodic memory for cross-session recall.
+export const DEFAULT_EPISODIC_MEMORY_CONSOLIDATION_PROMPT = `An AI agent is storing new memories. Similar memories are already stored.
+For each new memory, decide how it relates to each stored memory listed under it. For each stored memory, first write one short reason, then the relation.
 
-Return JSON only:
-{
-  "drop": ["memory_entry_id"],
-  "merge": [
-    {
-      "supersedes": ["memory_entry_id_1", "memory_entry_id_2"],
-      "content": "Merged replacement entry in 1-3 sentences"
-    }
-  ]
-}
+- duplicate: the new memory makes the same claim as the stored one, in other words. Every name, ID, number, date, version, region and value matches, and neither memory states something the other does not. If one memory adds, drops or changes any detail, it is not a duplicate.
+- update: both memories describe the same attribute of the same subject (the same person, account, ID, service or setting), and the new memory gives a different value for it. The stored value is now outdated. Related events, causes, consequences or other attributes of the same subject are not updates.
+- different: anything else. Facts about another subject, another attribute, a related event, or a detail the stored memory does not cover are different. When unsure, answer different.
 
-Drop only obvious noise, unsupported claims, failed-recall diagnostics, or low-value duplicates. Merge only entries about the same case, entity, decision, or open thread when one replacement preserves their useful evidence more clearly. When a newer entry corrects or replaces an older one, drop the older entry; a merge whose content only restates the newer entry is a duplicate. Every merged entry must contain only information supported by the source entries it supersedes. Do not invent content, causation, dates, identifiers, commitments, or outcomes. Preserve exact identifiers and uncertainty. Never merge merely related cases. Never drop durable user decisions, preferences, identities, commitments, or confirmed outcomes unless a newer active entry replaces them. An ID can appear in drop or merge, never both. Use only active entry IDs from the input.
+When a relation of a new memory is update, write mergedContent: the stored memory rewritten with the new value. Keep every other detail of both memories that is still valid. Never invent details. Keep names, IDs, numbers and other exact identifiers unchanged. When the new memory updates more than one stored memory, write one mergedContent that covers all of them. When no relation is update, set mergedContent to null.
 
-Most batches need no action. Return {"drop": [], "merge": []} when no clear lifecycle change is needed.`;
+Answer for every new memory and for every stored memory listed under it. Use only the IDs from the input.`;
 
-const EpisodicMemoryReflectionSchema = z.object({
-	drop: z.array(z.string()),
-	merge: z.array(
+const EpisodicMemoryConsolidationSchema = z.object({
+	facts: z.array(
 		z.object({
-			supersedes: z.array(z.string()).min(1),
-			content: z.string(),
+			candidateId: z.string(),
+			relations: z.array(
+				z.object({
+					entryId: z.string(),
+					reason: z.string(),
+					relation: z.enum(['duplicate', 'update', 'different']),
+				}),
+			),
+			mergedContent: z.string().nullable(),
 		}),
 	),
 });
 
-export interface CreateEpisodicMemoryReflectFnOptions {
-	reflectionPrompt?: string;
+export interface CreateEpisodicMemoryConsolidateFnOptions {
+	consolidationPrompt?: string;
 }
 
-export function buildEpisodicMemoryReflectorPrompt(input: EpisodicMemoryReflectorInput): string {
+export function buildEpisodicMemoryConsolidatorPrompt(
+	input: EpisodicMemoryConsolidatorInput,
+): string {
 	return [
 		`Current timestamp: ${input.now.toISOString()}`,
-		`Scope: resource:${input.scope.resourceId}`,
-		`Seed entry IDs: ${input.seedEntryIds.length ? input.seedEntryIds.join(', ') : '(none)'}`,
-		`Active episodic entries:\n${renderEntriesWithSources(input.entries, input.sources)}`,
+		...input.facts.map(renderConsolidationFact),
 	].join('\n\n');
 }
 
-export function createEpisodicMemoryReflectFn(
+export function createEpisodicMemoryConsolidateFn(
 	model: ModelConfig,
-	options: CreateEpisodicMemoryReflectFnOptions = {},
-): EpisodicMemoryReflectFn {
-	return async (input): Promise<EpisodicMemoryReflectResult> => {
+	options: CreateEpisodicMemoryConsolidateFnOptions = {},
+): EpisodicMemoryConsolidateFn {
+	return async (input): Promise<EpisodicMemoryConsolidateResult> => {
 		const { generateText, Output } = await import('ai');
 		const response = await generateText({
 			model: createModel(model, input.modelFetch),
-			instructions: options.reflectionPrompt ?? DEFAULT_EPISODIC_MEMORY_REFLECTION_PROMPT,
-			prompt: buildEpisodicMemoryReflectorPrompt(input),
-			output: Output.object({ schema: EpisodicMemoryReflectionSchema }),
+			instructions: options.consolidationPrompt ?? DEFAULT_EPISODIC_MEMORY_CONSOLIDATION_PROMPT,
+			prompt: buildEpisodicMemoryConsolidatorPrompt(input),
+			output: Output.object({ schema: EpisodicMemoryConsolidationSchema }),
 		});
 		incrementTokenCountFromUsage(input.executionCounter, response.usage);
 		return {
-			reflection: response.output,
+			consolidation: response.output,
 			usage: toTokenUsage(response.usage, response.finalStep.providerMetadata),
 			// The host prices side calls by this id, so report the model a deployment serves.
 			model: getCatalogModelId(model),
@@ -85,32 +85,23 @@ export function createEpisodicMemoryReflectFn(
 	};
 }
 
-function renderEntriesWithSources(
-	entries: RetrievedEpisodicMemoryEntry[],
-	sources: EpisodicMemoryEntrySource[],
-): string {
-	if (entries.length === 0) return '(none)';
-	const sourcesByEntryId = new Map<string, EpisodicMemoryEntrySource[]>();
-	for (const source of sources) {
-		const bucket = sourcesByEntryId.get(source.memoryEntryId) ?? [];
-		bucket.push(source);
-		sourcesByEntryId.set(source.memoryEntryId, bucket);
-	}
+function renderConsolidationFact(fact: EpisodicMemoryConsolidationFact): string {
+	return [
+		`New memory [${fact.candidateId}] (stored ${toDay(fact.createdAt)}): ${fact.content}`,
+		`  Evidence: ${fact.evidenceText}`,
+		'Stored memories:',
+		...fact.neighbours.map(renderConsolidationNeighbour),
+	].join('\n');
+}
 
-	return entries
-		.map((entry) => {
-			const sourceLines = (sourcesByEntryId.get(entry.id) ?? []).map((source) => {
-				const origin = source.observationId
-					? `observation ${source.observationId}`
-					: `candidate ${source.candidateId}`;
-				return `  - source ${origin} in thread ${source.threadId}: ${source.evidenceText}`;
-			});
-			return [
-				`[${entry.id}] ${entry.content}`,
-				`createdAt: ${entry.createdAt.toISOString()}`,
-				`lastSeenAt: ${entry.lastSeenAt.toISOString()}`,
-				...sourceLines,
-			].join('\n');
-		})
-		.join('\n\n');
+function renderConsolidationNeighbour(neighbour: EpisodicMemoryConsolidationNeighbour): string {
+	const lines = [
+		`- [${neighbour.id}] (stored ${toDay(neighbour.createdAt)}, last seen ${toDay(neighbour.lastSeenAt)}): ${neighbour.content}`,
+	];
+	if (neighbour.evidenceText) lines.push(`  Evidence: ${neighbour.evidenceText}`);
+	return lines.join('\n');
+}
+
+function toDay(date: Date): string {
+	return date.toISOString().slice(0, 10);
 }

@@ -213,7 +213,7 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 				],
 				skills: [{ key: 'voice', versions: ['Voice', 'Voice', 'Voice'] }],
 				drafts: [
-					{ agent: 'drafted', skill: 'voice' },
+					{ agent: 'drafted', skill: 'voice', version: 1 },
 					{ agent: 'current', skill: 'voice' },
 					{ agent: 'hidden', skill: 'voice' },
 				],
@@ -226,7 +226,7 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 				],
 			};
 
-			it('lists the draft refs and, per published agent, the version its active publish pins', async () => {
+			it('lists the version each draft runs and, per published agent, the version its active publish pins', async () => {
 				const { usage, seed } = subject();
 				const ids = await seed(world);
 				const agent = (key: string, agentName: string, project = 'p') => ({
@@ -238,9 +238,9 @@ export function describeSkillUsageContract(subject: () => SkillUsageSubject) {
 				const usedBy = await usage.findUsage(ids.skillId('voice'), 'all', ctx);
 
 				expect(byAgentName(usedBy.drafts)).toEqual([
-					agent('current', 'Current'),
-					agent('drafted', 'Drafted'),
-					agent('hidden', 'Hidden', 'q'),
+					{ ...agent('current', 'Current'), version: 3, pinned: false },
+					{ ...agent('drafted', 'Drafted'), version: 1, pinned: true },
+					{ ...agent('hidden', 'Hidden', 'q'), version: 3, pinned: false },
 				]);
 				expect(byAgentName(usedBy.pins)).toEqual([
 					{ ...agent('current', 'Current'), version: 2 },
