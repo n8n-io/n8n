@@ -1,6 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
 import type { StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import { CancelExecutionService } from '../cancel-execution.service';
@@ -23,6 +26,7 @@ const execution: ExecutionRecord = {
 	callerContext: { hostMode: 'trigger' },
 	responseExpectation: { kind: 'none' },
 	parent: null,
+	lifecycleEvents: { kind: 'all' },
 	finishedAt: null,
 };
 
@@ -63,7 +67,7 @@ function makeService(executionStore: ExecutionStore) {
 	const service = new CancelExecutionService(
 		executionStore,
 		stepStore,
-		publisher,
+		new LifecycleEventPublisherFactory(publisher),
 		responseSender,
 		stepQueue,
 	);
@@ -114,6 +118,30 @@ describe('CancelExecutionService', () => {
 		// The run still ends: only the response is left out.
 		expect(publisher.publish).toHaveBeenCalledTimes(1);
 		expect(responseSender.send).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		['is missing', { lifecycleEvents: undefined }],
+		['is null', { lifecycleEvents: null }],
+		['is none', { lifecycleEvents: { kind: 'none' as const } }],
+	])('announces nothing when the subscription %s', async (_name, overrides) => {
+		const executionStore = makeExecutionStore({
+			loadExecution: vi.fn().mockResolvedValue({
+				...execution,
+				...overrides,
+				status: 'cancelled',
+				finishedAt: new Date(),
+				responseExpectation: { kind: 'runEnd' },
+			}),
+		});
+		const { service, stepStore, publisher, responseSender } = makeService(executionStore);
+
+		await service.cancel('exec-1');
+
+		expect(publisher.publish).not.toHaveBeenCalled();
+		// The run still ends, and the response channel is not affected.
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledOnce();
+		expect(responseSender.send).toHaveBeenCalledOnce();
 	});
 
 	it.each<ExecutionStatus>(['completed', 'failed', 'cancelled'])(

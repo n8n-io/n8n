@@ -1,4 +1,5 @@
 import type { StoredWorkflowGraph } from '../graph';
+import type { LifecycleEventSubscription } from '../lifecycle-events';
 import type { ResponseExpectation } from '../response-channel';
 import type {
 	CallerContext,
@@ -30,6 +31,8 @@ interface BaseExecutionRecord {
 	responseExpectation: ResponseExpectation;
 	/** The parent link, or `null` for a top-level execution. */
 	parent: ParentLink | null;
+	/** Which lifecycle events the caller subscribes to. Missing or `null` means none. */
+	lifecycleEvents?: LifecycleEventSubscription | null;
 }
 
 /**

@@ -15,6 +15,7 @@ import type {
 	WorkflowDocument,
 } from '../../execution/execution.types';
 import type { StoredWorkflowGraph } from '../../graph';
+import type { LifecycleEventSubscription } from '../../lifecycle-events';
 import type { ResponseExpectation } from '../../response-channel';
 
 @Entity('workflow_execution')
@@ -66,6 +67,10 @@ export class WorkflowExecution {
 
 	@Column('boolean', { name: 'parent_awaited', nullable: true })
 	parentAwaited!: boolean | null;
+
+	/** Which lifecycle events (if any) the caller subscribes to. `null` means none. */
+	@Column('jsonb', { name: 'lifecycle_events', nullable: true })
+	lifecycleEvents!: LifecycleEventSubscription | null;
 
 	@CreateDateColumn({ name: 'created_at', type: 'timestamptz', precision: 3 })
 	createdAt!: Date;

@@ -117,6 +117,7 @@ describe('workflow_execution table (integration)', () => {
 			triggerOutputs: [{ foo: 'bar' }],
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
+			lifecycleEvents: { kind: 'all' },
 			finishedAt: null,
 		});
 		await repo.save(created);
@@ -134,9 +135,38 @@ describe('workflow_execution table (integration)', () => {
 			callerContext: { hostMode: 'trigger' },
 			responseExpectation: { kind: 'runEnd' },
 			parent: null,
+			lifecycleEvents: { kind: 'all' },
 			finishedAt: null,
 		});
 	});
+
+	it.each([
+		['the subscription it was given', { kind: 'all' as const }, { kind: 'all' }],
+		['null when it was given none', undefined, null],
+	])(
+		'TypeOrmExecutionStore round-trips the lifecycle event subscription: %s',
+		async (_name, lifecycleEvents, expected) => {
+			const store = new TypeOrmExecutionStore(dataSource.getRepository(WorkflowExecution));
+			const id = generateId();
+			await store.createExecution({
+				id,
+				workflowId: 'wf-6',
+				status: 'queued',
+				mode: 'manual',
+				graph: { nodes: [], edges: [], seeded: [] },
+				workflow: sampleWorkflow,
+				triggerOutputs: null,
+				callerContext: { hostMode: 'manual' },
+				responseExpectation: { kind: 'none' },
+				parent: null,
+				lifecycleEvents,
+			});
+
+			const record = await store.loadExecution(id);
+
+			expect(record.lifecycleEvents).toEqual(expected);
+		},
+	);
 
 	it.each(['loadExecutionView', 'loadExecutionWithStepsView'] as const)(
 		'TypeOrmExecutionViewStore.%s throws for an unknown id',
