@@ -1,6 +1,10 @@
 import type { ListDataTableQueryDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import { CacheService } from '@n8n/backend-services';
+import {
+	CacheService,
+	type InstanceWriteAccessService,
+	WorkflowProjectService,
+} from '@n8n/backend-services';
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -16,9 +20,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import type { InstanceWriteAccessService } from '@n8n/backend-services';
 import * as checkAccess from '@/permissions.ee/check-access';
-import { OwnershipService } from '@/services/ownership.service';
 
 import type { DataTableAggregateService } from '../data-table-aggregate.service';
 import { DataTableProxyService } from '../data-table-proxy.service';
@@ -33,7 +35,7 @@ beforeAll(async () => {
 describe('DataTableProxyService', () => {
 	let dataTableServiceMock = mock<DataTableService>();
 	let dataTableAggregateServiceMock = mock<DataTableAggregateService>();
-	let ownershipServiceMock = mock<OwnershipService>();
+	let workflowProjectServiceMock = mock<WorkflowProjectService>();
 	let loggerMock = mock<Logger>();
 	let instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 	let dataTableProxyService: DataTableProxyService;
@@ -45,7 +47,7 @@ describe('DataTableProxyService', () => {
 	beforeEach(() => {
 		dataTableServiceMock = mock<DataTableService>();
 		dataTableAggregateServiceMock = mock<DataTableAggregateService>();
-		ownershipServiceMock = mock<OwnershipService>();
+		workflowProjectServiceMock = mock<WorkflowProjectService>();
 		loggerMock = mock<Logger>();
 		instanceWriteAccessMock = mock<InstanceWriteAccessService>();
 		instanceWriteAccessMock.isReadOnly.mockReturnValue(false);
@@ -53,7 +55,7 @@ describe('DataTableProxyService', () => {
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
-			ownershipServiceMock,
+			workflowProjectServiceMock,
 			loggerMock,
 			instanceWriteAccessMock,
 		);
@@ -68,7 +70,7 @@ describe('DataTableProxyService', () => {
 			type: 'n8n-nodes-base.dataTable',
 		});
 
-		ownershipServiceMock.getWorkflowProjectCached.mockResolvedValueOnce(project);
+		workflowProjectServiceMock.getWorkflowProjectCached.mockResolvedValueOnce(project);
 	});
 
 	describe('makeAggregateOperations', () => {
@@ -352,7 +354,7 @@ describe('DataTableProxyService (with database)', () => {
 		await createWorkflow({ id: '__proto__' }, workflowProject);
 		// The ownership cache must already exist, as it does on any instance that ran a workflow
 		await Container.get(CacheService).setHash('workflow-project', {
-			'other-workflow': Container.get(OwnershipService).copyProject(workflowProject),
+			'other-workflow': { ...workflowProject },
 		});
 
 		const promise = Container.get(DataTableProxyService).getDataTableProxy(
@@ -386,7 +388,7 @@ describe('makeDataTableOperationsForUser', () => {
 		dataTableProxyService = new DataTableProxyService(
 			dataTableServiceMock,
 			dataTableAggregateServiceMock,
-			mock<OwnershipService>(),
+			mock<WorkflowProjectService>(),
 			loggerMock,
 			instanceWriteAccessMock,
 		);

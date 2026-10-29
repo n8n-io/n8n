@@ -1,5 +1,6 @@
 import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { InstanceWriteAccessService, WorkflowProjectService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
@@ -26,8 +27,6 @@ import {
 } from 'n8n-workflow';
 
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { OwnershipService } from '@/services/ownership.service';
 
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { assertSchemaWriteAccess } from './data-table-permissions';
@@ -52,7 +51,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
-		private readonly ownershipService: OwnershipService,
+		private readonly workflowProjectService: WorkflowProjectService,
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
 	) {
@@ -66,7 +65,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async getProjectId(workflow: Workflow) {
-		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+		const homeProject = await this.workflowProjectService.getWorkflowProjectCached(workflow.id);
 		return homeProject.id;
 	}
 
