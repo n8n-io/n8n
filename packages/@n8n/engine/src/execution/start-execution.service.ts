@@ -58,11 +58,22 @@ export interface StartExecutionResult {
  * in the caller, not a request to refuse politely.
  */
 export class InvalidParentLinkError extends Error {
-	constructor(reason: string) {
-		super(`Invalid parent link: ${reason}`);
+	constructor(
+		readonly reason: InvalidParentLinkReason,
+		detail: string,
+	) {
+		super(`Invalid parent link (${reason}): ${detail}`);
 		this.name = 'InvalidParentLinkError';
 	}
 }
+
+export type InvalidParentLinkReason =
+	| 'execution-not-found'
+	| 'execution-ended'
+	| 'step-not-found'
+	| 'step-of-another-execution'
+	| 'step-not-waiting'
+	| 'step-not-running';
 
 export class StartExecutionService {
 	constructor(
@@ -129,18 +140,26 @@ export class StartExecutionService {
 		]);
 		if (!isLiveExecutionStatus(execution.status)) {
 			throw new InvalidParentLinkError(
-				`execution ${parent.executionId} is ${execution.status}, and only a live execution starts a sub-execution`,
+				'execution-ended',
+				`execution ${parent.executionId} is ${execution.status}`,
 			);
 		}
 		if (step.executionId !== parent.executionId) {
 			throw new InvalidParentLinkError(
+				'step-of-another-execution',
 				`step ${parent.stepId} belongs to execution ${step.executionId}, not ${parent.executionId}`,
 			);
 		}
-		const expected = parent.awaited ? 'waiting' : 'running';
-		if (step.status !== expected) {
+		if (parent.awaited && step.status !== 'waiting') {
 			throw new InvalidParentLinkError(
-				`step ${parent.stepId} is ${step.status}, and a step that ${parent.awaited ? 'awaits' : 'does not await'} a sub-execution is ${expected} when it starts one`,
+				'step-not-waiting',
+				`step ${parent.stepId} is ${step.status}`,
+			);
+		}
+		if (!parent.awaited && step.status !== 'running') {
+			throw new InvalidParentLinkError(
+				'step-not-running',
+				`step ${parent.stepId} is ${step.status}`,
 			);
 		}
 	}
@@ -148,8 +167,11 @@ export class StartExecutionService {
 
 /** A missing parent row is an invalid link, not a lookup failure of its own. */
 function absentAsInvalid(error: unknown): never {
-	if (error instanceof ExecutionNotFoundError || error instanceof StepNotFoundError) {
-		throw new InvalidParentLinkError(error.message);
+	if (error instanceof ExecutionNotFoundError) {
+		throw new InvalidParentLinkError('execution-not-found', error.message);
+	}
+	if (error instanceof StepNotFoundError) {
+		throw new InvalidParentLinkError('step-not-found', error.message);
 	}
 	throw error;
 }
