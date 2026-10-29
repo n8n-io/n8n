@@ -68,6 +68,7 @@ export function resolveIdentifier(
 
 	if (definition.type !== TSESLint.Scope.DefinitionType.Variable) return null;
 	if (definition.parent.kind !== 'const') return null;
+	if (definition.node.id.type !== AST_NODE_TYPES.Identifier) return null;
 
 	return definition.node.init;
 }

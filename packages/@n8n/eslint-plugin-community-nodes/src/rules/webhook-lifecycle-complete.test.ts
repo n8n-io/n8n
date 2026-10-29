@@ -44,6 +44,19 @@ const completeWebhookMethods = `{
 
 ruleTester.run('webhook-lifecycle-complete', WebhookLifecycleCompleteRule, {
 	valid: [
+		...[
+			'const { description } = { webhooks: [{}], description: {} };',
+			'const { nested: { description } } = { webhooks: [{}], nested: { description: {} } };',
+			'const [description] = [{ webhooks: [] }];',
+		].map((declaration) => ({
+			name: `destructured description is unresolved: ${declaration}`,
+			code: `
+${declaration}
+export class TestTrigger implements INodeType {
+	description = description;
+}`,
+		})),
+
 		{
 			name: 'trigger node with all three webhook lifecycle methods',
 			code: createTriggerNode({ webhookMethods: completeWebhookMethods }),
