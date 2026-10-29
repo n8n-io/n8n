@@ -23,7 +23,7 @@ Try n8n instantly with our install script (requires [Docker](https://www.docker.
 curl -fsSL https://get.n8n.io | sh
 ```
 
-Or deploy manually with [Docker](https://docs.n8n.io/hosting/installation/docker/):
+Or deploy manually with [Docker](https://docs.n8n.io/deploy/host-n8n/install-options/install-using-docker-compose):
 
 ```
 docker volume create n8n_data
