@@ -17,8 +17,14 @@ export const SKILL_SOURCE_REASONS = [
 	'too_deep',
 	'archive_too_large',
 	'parse_error',
+	'blocked_by_check',
+	'review_required',
 	'name_taken',
 	'duplicate_source',
+	'credential_invalid',
+	'credential_missing',
+	'credential_out_of_scope',
+	'host_blocked',
 ] as const;
 
 export type SkillSourceReason = (typeof SKILL_SOURCE_REASONS)[number];
@@ -26,12 +32,21 @@ export type SkillSourceReason = (typeof SKILL_SOURCE_REASONS)[number];
 /** Where a source puts its skills: Global (`instance`), or a team or personal project. */
 export const skillSourceScopeSchema = z.enum(['instance', 'project']);
 
-const skillSourceTarget = {
-	/** A link to a repository, a folder, or one SKILL.md. */
-	url: z.string().trim().min(1).max(2048),
+const skillSourceScope = {
 	scope: skillSourceScopeSchema,
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
+};
+
+const skillSourceTarget = {
+	/** A link to a repository, a folder, or one SKILL.md. */
+	url: z.string().trim().min(1).max(2048),
+	...skillSourceScope,
+	/**
+	 * The n8n credential that reads a private source. Absent for a public source. The scope
+	 * must accept it, and the user must be able to use it.
+	 */
+	credentialId: z.string().min(1).max(36).optional(),
 };
 
 /** Reads a link and lists the skills in it, for the picker. Writes nothing. */
@@ -44,6 +59,12 @@ export class ConnectSkillSourceDto extends Z.class({
 	...skillSourceTarget,
 	/** The `key` of each picked skill, as discover answered it. */
 	skillKeys: z.array(z.string().min(1).max(2048)).min(1).max(SKILL_SOURCE_MAX_SKILLS),
+	/**
+	 * The `key` of each picked skill that the picker showed as needing review, when the user
+	 * ticked "I reviewed the warnings". Connect imports a skill that needs review only when its
+	 * key is in this list.
+	 */
+	reviewedSkillKeys: z.array(z.string().min(1).max(2048)).max(SKILL_SOURCE_MAX_SKILLS).optional(),
 }) {}
 
 /** The source that a link points to. */
@@ -68,6 +89,39 @@ export type SkillSourceDuplicate =
 	| { kind: 'blocked'; where: 'global' | 'scope'; sourceId: string | null }
 	| { kind: 'warning'; projects: Array<{ id: string; name: string }> };
 
+/** The rules of the security check. The build spec lists them in Appendix B. */
+export const SKILL_SCAN_RULES = [
+	'invalid_skill',
+	'over_limit',
+	'file_skipped',
+	'hidden_unicode',
+	'new_url',
+	'permission_change',
+	'suspicious_phrase',
+	'lossy_conversion',
+] as const;
+
+export type SkillScanRule = (typeof SKILL_SCAN_RULES)[number];
+
+/** `info` only tells the user something. It does not change the verdict. */
+export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
+
+export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
+
+export type SkillScanFinding = {
+	rule: SkillScanRule;
+	severity: SkillScanSeverity;
+	/** `SKILL.md`, or the path of a file in the skill folder. */
+	file?: string;
+	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
+	detail: string;
+	/** The linked domain of a `new_url` finding. */
+	domain?: string;
+};
+
+/** The most severe finding gives the verdict. No one can override `blocked`. */
+export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFinding[] };
+
 /** One skill in the picker. */
 export type DiscoveredSkill = {
 	/** Opaque. Send it back in `skillKeys`. */
@@ -82,6 +136,8 @@ export type DiscoveredSkill = {
 	/** The chosen scope already has a skill with this name. */
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;
+	/** The security check. Null when the skill is gone from the source. */
+	check: SkillScanResult | null;
 	webUrl: string;
 };
 
@@ -112,4 +168,31 @@ export type SkillSyncedFrom = {
 	webUrl: string;
 	/** Whether the user may stop syncing the skill, which makes it a normal skill. */
 	canStopSyncing: boolean;
+};
+
+/** The credentials that can read a private source in a scope, for the credential select. */
+export class ListSkillSourceCredentialsQueryDto extends Z.class(skillSourceScope) {}
+
+/** A credential that a source in the scope accepts and that the user can use. */
+export type SkillSourceCredentialOption = { id: string; name: string; type: string };
+
+/** The repositories that a credential can read, to pick one in place of a link. */
+export class ListSkillSourceRepositoriesQueryDto extends Z.class({
+	...skillSourceScope,
+	credentialId: z.string().min(1).max(36),
+}) {}
+
+/** One repository in the repository select. */
+export type SkillSourceRepositoryOption = {
+	owner: string;
+	name: string;
+	private: boolean;
+	/** The link to send as `url` to discover and connect. */
+	url: string;
+};
+
+export type SkillSourceRepositoryList = {
+	repositories: SkillSourceRepositoryOption[];
+	/** True when the credential can read more repositories than n8n lists. */
+	truncated: boolean;
 };
