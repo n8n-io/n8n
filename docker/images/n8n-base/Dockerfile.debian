@@ -1,9 +1,9 @@
+# check=skip=InvalidDefaultArgInFrom
 # glibc variant of ./Dockerfile. Users add vendor libraries that need glibc
 # (Oracle Instant Client, IBM Db2) in a derived image; see the n8n image README.
 #
-# CI passes the DHI reference (see build-base-image.yml). The default keeps
-# plain `docker build` working.
-ARG DHI_REF=dhi.io/node:26.12.1-debian13-dev@sha256:c8939885965365c675a024d062bcb761bda4b47e95ce0323aa998ac9bc312fd6
+# docker/docker-bake.hcl sets the DHI reference (DEBIAN_DHI_REF).
+ARG DHI_REF
 
 # The DHI Debian mirror has no msttcorefonts installer, so take the same fonts
 # as the Alpine base from Alpine. They are data files: any platform will do.
@@ -53,6 +53,4 @@ WORKDIR /home/node
 # `npm install -g` modules resolve through the same NODE_PATH.
 ENV NPM_CONFIG_PREFIX=/usr/local
 ENV NODE_PATH=/usr/local/lib/node_modules
-# glibc malloc arenas add idle RSS over musl. Two arenas recover about a third.
-ENV MALLOC_ARENA_MAX=2
 EXPOSE 5678/tcp

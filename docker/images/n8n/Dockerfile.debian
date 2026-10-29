@@ -1,10 +1,12 @@
+# check=skip=InvalidDefaultArgInFrom
 ARG N8N_VERSION=snapshot
 
 # glibc variant of ./Dockerfile. See the README for the use case. The builder
-# is Debian 13, the same release and glibc as the base. Change the tag and the
-# digest together.
-ARG BUILDER_IMAGE=node:26.12.1-trixie-slim@sha256:94816674c62774da0d099a947bf4613b9e1972a2733abd0d0cd80e795f8411d0
-ARG RUNTIME_IMAGE=n8nio/base:26.12.1-debian@sha256:9c6631767d1f3a0c5040757d2ff26ac6109988e0630bad1a764310d6571b4f6d
+# is Debian 13, the same release and glibc as the base.
+# docker/docker-bake.hcl sets these. Build with `pnpm build:docker` or
+# `docker buildx bake`, not plain `docker build`.
+ARG BUILDER_IMAGE
+ARG RUNTIME_IMAGE
 
 # The runtime base has no compiler, so this stage supplies one. Everything
 # after g++ is for the librdkafka build below.
@@ -66,7 +68,7 @@ RUN set -e; \
     done
 
 # A separate workflow builds the base image. A new base reaches this image only
-# when you change RUNTIME_IMAGE above.
+# when you change its pin in docker/docker-bake.hcl.
 FROM ${RUNTIME_IMAGE}
 
 ARG N8N_VERSION

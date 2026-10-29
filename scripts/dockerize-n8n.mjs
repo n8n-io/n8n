@@ -179,31 +179,53 @@ async function buildWithBake(targets) {
 }
 
 /**
+ * Podman has no bake, so read a pin from the default of its bake variable. An
+ * environment variable overrides the default, as it does for bake.
+ */
+async function bakeVariable(name) {
+	if (process.env[name]) return process.env[name];
+	const hcl = await fs.readFile(BAKE_FILE, 'utf8');
+	const match = hcl.match(new RegExp(`^variable "${name}" \\{\\s*default = "([^"]+)"`, 'm'));
+	if (!match) throw new Error(`${BAKE_FILE} has no plain string default for ${name}`);
+	return match[1];
+}
+
+/**
  * Podman has no bake. A podman-only host also has no buildx to resolve the bake
- * plan, so this list repeats the targets. It sends no build args, because this
- * path has always used the Dockerfile defaults.
+ * plan, so this list repeats the targets and their pins.
  */
 async function buildWithPodman(platform) {
+	const nodeVersion = ['NODE_VERSION', await bakeVariable('NODE_VERSION')];
 	const podmanTargets = [
-		{ dockerfile: 'docker/images/n8n/Dockerfile', tag: `${imageBaseName}:${imageTag}` },
+		{
+			dockerfile: 'docker/images/n8n/Dockerfile',
+			tag: `${imageBaseName}:${imageTag}`,
+			args: [
+				['BUILDER_IMAGE', await bakeVariable('BUILDER_IMAGE')],
+				['RUNTIME_IMAGE', await bakeVariable('RUNTIME_IMAGE')],
+			],
+		},
 		{
 			dockerfile: 'docker/images/runners/Dockerfile',
 			tag: `${runnersImageBaseName}:${imageTag}`,
+			args: [nodeVersion],
 		},
 	];
 	if (withDistroless) {
 		podmanTargets.push({
 			dockerfile: 'docker/images/runners/Dockerfile.distroless',
 			tag: `${runnersImageBaseName}:${imageTag}-distroless`,
+			args: [nodeVersion],
 		});
 	}
 
 	echo(chalk.yellow('INFO: docker buildx bake unavailable - building with podman...'));
 
-	for (const { dockerfile, tag } of podmanTargets) {
+	for (const { dockerfile, tag, args } of podmanTargets) {
+		const buildArgs = args.flatMap(([name, value]) => ['--build-arg', `${name}=${value}`]);
 		await $({
 			verbose: true,
-		})`podman build --platform ${platform} --build-arg TARGETPLATFORM=${platform} ${noCache ? ['--no-cache'] : []} -t ${tag} -f ${path.join(rootDir, dockerfile)} ${rootDir}`;
+		})`podman build --platform ${platform} --build-arg TARGETPLATFORM=${platform} ${buildArgs} ${noCache ? ['--no-cache'] : []} -t ${tag} -f ${path.join(rootDir, dockerfile)} ${rootDir}`;
 	}
 
 	return podmanTargets.map(({ tag }) => tag);
