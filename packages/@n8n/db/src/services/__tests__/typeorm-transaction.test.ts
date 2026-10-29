@@ -141,9 +141,10 @@ describe('TypeOrmTransactionRunner', () => {
 			expect(queryRunner.commitTransaction).toHaveBeenCalledTimes(1);
 			expect(queryRunner.rollbackTransaction).not.toHaveBeenCalled();
 			expect(queryRunner.release).toHaveBeenCalledTimes(1);
-			expect(received?.trx).toBeInstanceOf(TypeOrmTransaction);
-			expect(received?.trx?.isReadOnly()).toBe(true);
-			expect((received?.trx as TypeOrmTransaction).getEntityManager()).toBe(queryRunner.manager);
+			const trx = received?.trx;
+			expect(trx).toBeInstanceOf(TypeOrmTransaction);
+			expect(trx?.isReadOnly()).toBe(true);
+			expect(trx instanceof TypeOrmTransaction && trx.getEntityManager()).toBe(queryRunner.manager);
 		});
 
 		it('rolls back and releases the runner when the callback throws', async () => {

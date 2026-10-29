@@ -58,8 +58,9 @@ export interface RunOptions {
 	/**
 	 * Open the transaction read-only. On the pooled SQLite driver the transaction
 	 * leases from the read pool instead of waiting for the single write connection.
-	 * On Postgres it runs on the primary connection with `SET TRANSACTION READ ONLY`.
-	 * A write statement inside a read-only transaction fails on both.
+	 * On Postgres it runs on a configured read replica, or on the primary when none
+	 * is configured, and is marked with `SET TRANSACTION READ ONLY`. A write
+	 * statement inside a read-only transaction fails on both drivers.
 	 */
 	readOnly?: boolean;
 }
