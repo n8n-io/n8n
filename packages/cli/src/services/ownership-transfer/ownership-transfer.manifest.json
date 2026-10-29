@@ -136,7 +136,7 @@
 		},
 		{
 			"name": "ExecutionLedgerEntity",
-			"path": "packages/cli/src/modules/execution-ledger/database/entities/execution-ledger.entity.ts",
+			"path": "packages/modules/execution-ledger/backend/src/database/entities/execution-ledger.entity.ts",
 			"reason": "Event record of runs in the project at the time they happened; re-homing rows would misstate where they ran. Rows live only seconds before the fold deletes them, and no foreign key ties them to the project."
 		}
 	]

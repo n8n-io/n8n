@@ -15,4 +15,5 @@ export const packagedModules: PackagedModules = {
 		Container.set(AppSandboxSettings, { resolve: resolveAppSandboxConfig });
 		return await import('@n8n/backend-module-apps/module');
 	},
+	'execution-ledger': async () => await import('@n8n/backend-module-execution-ledger/module'),
 };
