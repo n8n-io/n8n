@@ -11,7 +11,6 @@ const props = withDefaults(defineProps<StatusDotProps>(), {
 	pulse: false,
 });
 
-// An outline ring stays still. The pulse is for a solid dot.
 const showPulse = computed(() => props.pulse && props.appearance === 'fill');
 </script>
 
@@ -32,7 +31,6 @@ const showPulse = computed(() => props.pulse && props.appearance === 'fill');
 .dot {
 	--status-dot--color: var(--color--success);
 	display: inline-block;
-	box-sizing: border-box;
 	flex: 0 0 auto;
 	width: var(--spacing--2xs);
 	height: var(--spacing--2xs);
@@ -59,7 +57,6 @@ const showPulse = computed(() => props.pulse && props.appearance === 'fill');
 	--status-dot--color: var(--color--text--tint-2);
 }
 
-// The border stays inside the dot, so an outline ring matches the size of a fill.
 .outline {
 	background-color: transparent;
 	border: var(--border);
