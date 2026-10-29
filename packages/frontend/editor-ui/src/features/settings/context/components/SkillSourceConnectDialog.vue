@@ -367,7 +367,6 @@ function onCredentialSelect(value: string) {
 	credentialId.value = value;
 	createdCredential.value = null;
 }
-}
 
 const duplicate = computed(() => discovery.value?.duplicate ?? { kind: 'none' as const });
 
@@ -522,10 +521,10 @@ async function onAdd() {
 		});
 		emit('update:open', false);
 	} catch (error) {
-		const reason = error instanceof ResponseError ? reasonOf(error) : undefined;
-		const text = reason && REASON_TEXTS[reason];
+		// A known reason gets its own text, as on discover. Other errors keep their message.
+		const hasReason = error instanceof ResponseError && error.meta?.reason !== undefined;
 		showError(
-			text ? new Error(i18n.baseText(text)) : error,
+			hasReason ? new Error(discoverErrorText(error)) : error,
 			i18n.baseText('settings.context.skills.connect.error.connect'),
 		);
 	} finally {

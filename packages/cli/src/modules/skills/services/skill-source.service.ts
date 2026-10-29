@@ -87,7 +87,7 @@ type Discovered = {
 /** The properties of `User connected skill source` that a request fills in as it goes. */
 type ConnectReport = {
 	provider: SkillSourceType;
-	access: 'public';
+	access: 'public' | 'credential';
 	scope_type: ScopeType;
 	duplicate_result: SkillSourceDuplicate['kind'];
 };

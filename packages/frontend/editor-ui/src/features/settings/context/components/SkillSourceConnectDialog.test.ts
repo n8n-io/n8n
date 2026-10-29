@@ -119,6 +119,8 @@ async function pick(view: ReturnType<typeof render>, testId: string, text: strin
 }
 
 async function selectScope(view: ReturnType<typeof render>, label: string) {
+	// The scope select is on the link and repository steps, after the start screen.
+	if (view.queryByTestId('skill-source-mode-url')) await startLinkMode(view);
 	await userEvent.click(view.getByTestId('skill-source-scope-select'));
 	await userEvent.click(await view.findByText(label));
 }
