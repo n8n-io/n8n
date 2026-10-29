@@ -1,4 +1,5 @@
 import {
+	AGENT_SKILL_NAME_MAX_LENGTH,
 	agentSkillSchema,
 	type AgentSkill,
 	type ConnectSkillSourceDto,
@@ -14,6 +15,7 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
+import { z } from 'zod';
 
 import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
 import { SkillSourceLinkRepository } from '../database/repositories/skill-source-link.repository';
@@ -46,8 +48,13 @@ import { SkillsTelemetry } from './skills-telemetry.service';
 /** Skills fetched at the same time from one source. */
 const FETCH_CONCURRENCY = 8;
 
-/** What an imported skill must be. Skills ignore `allowedTools`, as a create does. */
-const importableSkillSchema = agentSkillSchema.omit({ allowedTools: true });
+/**
+ * What an imported skill must be. Skills ignore `allowedTools`, as a create does. The name is
+ * trimmed as a create stores it, so the name checks and the baseline hash match the stored skill.
+ */
+const importableSkillSchema = agentSkillSchema
+	.omit({ allowedTools: true })
+	.extend({ name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH) });
 
 type ScopeType = 'global' | 'team' | 'personal';
 
@@ -161,103 +168,115 @@ export class SkillSourceService {
 		skillKeys: string[],
 		scopeType: ScopeType,
 	): Promise<SkillSourceConnectResponse> {
-		const discovered = await this.discoverAll(source);
-		const byKey = new Map(discovered.refs.map((ref) => [refKey(ref), ref]));
 		const keys = [...new Set(skillKeys)];
 		const failed: SkillSourceConnectResponse['failed'] = [];
-		const picked: RemoteSkillRef[] = [];
-		for (const key of keys) {
-			const ref = byKey.get(key);
-			if (ref) picked.push(ref);
-			else failed.push({ key, name: null, reason: 'not_found' });
-		}
-		const reads = await this.readAll(source, { ...discovered, refs: picked });
-		for (const read of reads) {
-			if (read.error) failed.push({ key: read.key, name: null, reason: read.error.reason });
-		}
-
-		const sourceId = uuidv7();
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
-		await this.txRunner.run({}, async (ctx) => {
-			try {
-				await this.sourceRepository.insertConnected(
-					{
-						id: sourceId,
-						type: source.type,
-						locator: source.locator,
-						identityKey: source.identityKey,
-						projectId: target.projectId,
-						createdById: user.id,
-					},
-					ctx,
-				);
-			} catch (error) {
-				if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
-				throw error;
-			}
-			// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
-			// adds its name, so two picked skills with one name do not both come in.
-			const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
-			for (const read of reads) {
-				const { skill, fetched } = read;
-				if (!skill || !fetched) continue;
-				if (isNameTaken(skill.name, names)) {
-					failed.push({ key: read.key, name: skill.name, reason: 'name_taken' });
-					continue;
-				}
-				const { frontmatter } = fetched.content;
-				const skillId = await this.skillService.createTrusted(
-					{
-						id: `skill_${generateNanoId()}`,
-						target,
-						skill,
-						source: source.type,
-						createdById: user.id,
-						frontmatter,
-						sourceRevision: fetched.revision,
-					},
-					ctx,
-				);
-				await this.linkRepository.insertImported(
-					{
-						skillId,
-						sourceId,
-						remoteRef: read.ref,
-						baseRevision: fetched.revision,
-						baseContentHash: skillContentHash(toSkillContent(skill, frontmatter)),
-						skippedFiles: fetched.skippedFiles,
-					},
-					ctx,
-				);
-				names.push({ skillId, name: skill.name });
-				imported.push({ key: read.key, skillId, name: skill.name });
-				skippedFiles += fetched.skippedFiles.length;
-			}
-			if (imported.length === 0) {
-				const reason = failed[0]?.reason ?? 'no_skills_found';
-				throw new SkillSourceRequestError(
-					reason,
-					reason === 'name_taken'
-						? 'Every picked skill has a name that this scope already has.'
-						: 'n8n could not import any of the picked skills.',
-				);
-			}
-		});
+		const track = async (status: 'success' | 'failure', reason?: SkillSourceReason) =>
+			await this.skillsTelemetry.importedFromSource(
+				{
+					provider: source.type,
+					scope_type: scopeType,
+					first_or_more: 'first',
+					selected: keys.length,
+					imported: imported.length,
+					name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
+					skipped_files: skippedFiles,
+					status,
+					...(reason ? { reason } : {}),
+				},
+				user.id,
+			);
 
-		await this.skillsTelemetry.importedFromSource(
-			{
-				provider: source.type,
-				scope_type: scopeType,
-				first_or_more: 'first',
-				selected: keys.length,
-				imported: imported.length,
-				name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
-				skipped_files: skippedFiles,
-				status: 'success',
-			},
-			user.id,
-		);
+		const sourceId = uuidv7();
+		try {
+			const discovered = await this.discoverAll(source);
+			const byKey = new Map(discovered.refs.map((ref) => [refKey(ref), ref]));
+			const picked: RemoteSkillRef[] = [];
+			for (const key of keys) {
+				const ref = byKey.get(key);
+				if (ref) picked.push(ref);
+				else failed.push({ key, name: null, reason: 'not_found' });
+			}
+			const reads = await this.readAll(source, { ...discovered, refs: picked });
+			for (const read of reads) {
+				if (read.error) failed.push({ key: read.key, name: null, reason: read.error.reason });
+			}
+
+			await this.txRunner.run({}, async (ctx) => {
+				try {
+					await this.sourceRepository.insertConnected(
+						{
+							id: sourceId,
+							type: source.type,
+							locator: source.locator,
+							identityKey: source.identityKey,
+							projectId: target.projectId,
+							createdById: user.id,
+						},
+						ctx,
+					);
+				} catch (error) {
+					if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
+					throw error;
+				}
+				// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
+				// adds its name, so two picked skills with one name do not both come in.
+				const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
+				for (const read of reads) {
+					const { skill, fetched } = read;
+					if (!skill || !fetched) continue;
+					if (isNameTaken(skill.name, names)) {
+						failed.push({ key: read.key, name: skill.name, reason: 'name_taken' });
+						continue;
+					}
+					const { frontmatter } = fetched.content;
+					const skillId = await this.skillService.createTrusted(
+						{
+							id: `skill_${generateNanoId()}`,
+							target,
+							skill,
+							source: source.type,
+							createdById: user.id,
+							frontmatter,
+							sourceRevision: fetched.revision,
+						},
+						ctx,
+					);
+					await this.linkRepository.insertImported(
+						{
+							skillId,
+							sourceId,
+							remoteRef: read.ref,
+							baseRevision: fetched.revision,
+							baseContentHash: skillContentHash(toSkillContent(skill, frontmatter)),
+							skippedFiles: fetched.skippedFiles,
+						},
+						ctx,
+					);
+					names.push({ skillId, name: skill.name });
+					imported.push({ key: read.key, skillId, name: skill.name });
+					skippedFiles += fetched.skippedFiles.length;
+				}
+				if (imported.length === 0) {
+					const reason = failed[0]?.reason ?? 'no_skills_found';
+					throw new SkillSourceRequestError(
+						reason,
+						reason === 'name_taken'
+							? 'Every picked skill has a name that this scope already has.'
+							: 'n8n could not import any of the picked skills.',
+					);
+				}
+			});
+		} catch (error) {
+			// The transaction rolled back, so nothing came in.
+			imported.length = 0;
+			skippedFiles = 0;
+			await track('failure', skillSourceReasonOf(error));
+			throw error;
+		}
+
+		await track('success');
 		await this.skillsTelemetry.created(
 			user.id,
 			imported.map(({ skillId }) => ({ id: skillId, ...target })),

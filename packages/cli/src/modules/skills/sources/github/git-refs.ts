@@ -51,13 +51,17 @@ export function pktLine(data: string): string {
 function readPktLines(body: Buffer): string[] {
 	const lines: string[] = [];
 	let offset = 0;
-	while (offset + 4 <= body.length) {
-		const length = Number.parseInt(body.subarray(offset, offset + 4).toString('ascii'), 16);
-		if (Number.isNaN(length)) throw new Error('Not a git pkt-line answer');
-		// 0000 flush, 0001 delimiter, 0002 response end: no data.
-		if (length < 4) {
+	while (offset < body.length) {
+		const header = body.subarray(offset, offset + 4).toString('ascii');
+		if (!/^[0-9a-f]{4}$/i.test(header)) throw new Error('Not a git pkt-line answer');
+		const length = Number.parseInt(header, 16);
+		// 0000 flush, 0001 delimiter, 0002 response end: no data. 0003 is not a valid length.
+		if (length < 3) {
 			offset += 4;
 			continue;
+		}
+		if (length === 3 || offset + length > body.length) {
+			throw new Error('Not a git pkt-line answer');
 		}
 		lines.push(body.subarray(offset + 4, offset + length).toString('utf8'));
 		offset += length;

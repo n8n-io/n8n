@@ -61,7 +61,7 @@ const skillSource = z
 const skillMethod = z
 	.enum(['manual', 'upload', 'ai', 'sync'])
 	.describe(
-		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. `sync` is a skill that Skill Sync imported from a source. Filter out `ai` to count the skills people write by hand',
+		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. `sync` is a skill that Skill Sync imported from a source. Count only `manual` and `upload` for the skills people write by hand',
 	);
 
 /** The type of a Skill Sync source. */

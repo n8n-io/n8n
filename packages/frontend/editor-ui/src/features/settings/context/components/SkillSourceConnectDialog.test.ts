@@ -1,7 +1,11 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
-import type { DiscoveredSkill, SkillSourceDiscovery } from '@n8n/api-types';
+import type {
+	DiscoveredSkill,
+	SkillSourceConnectResponse,
+	SkillSourceDiscovery,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
@@ -227,7 +231,7 @@ describe('SkillSourceConnectDialog', () => {
 
 		await pasteLink(view, 'https://github.com/acme/skills');
 
-		expect(await view.findByTestId('skill-source-duplicate')).toHaveTextContent(text);
+		expect((await view.findByTestId('skill-source-duplicate')).textContent?.trim()).toBe(text);
 		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
 		expect(view.getByTestId('skill-source-next')).toBeDisabled();
 	});
@@ -312,6 +316,44 @@ describe('SkillSourceConnectDialog', () => {
 		);
 		const none = view.getByTestId('skill-source-skill-skills/plain');
 		expect(within(none).queryByTestId('skill-source-skill-skipped')).not.toBeInTheDocument();
+	});
+
+	it('drops a discover answer when the user changed the scope while n8n read the link', async () => {
+		let answer: (value: SkillSourceDiscovery) => void = () => {};
+		skillsStore.discoverSource.mockReturnValue(
+			new Promise<SkillSourceDiscovery>((resolve) => {
+				answer = resolve;
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+		await userEvent.click(view.getByTestId('skill-source-scope-select'));
+		await userEvent.click(await view.findByText('Marketing'));
+		answer(discovery({ duplicate: { kind: 'blocked', where: 'scope', sourceId: null } }));
+		await new Promise(process.nextTick);
+
+		expect(view.queryByTestId('skill-source-duplicate')).not.toBeInTheDocument();
+		expect(view.getByTestId('dialog-title')).toHaveTextContent('Paste a GitHub link');
+	});
+
+	it('stays open until the import answers', async () => {
+		skillsStore.discoverSource.mockResolvedValue(discovery());
+		let answer: (value: SkillSourceConnectResponse) => void = () => {};
+		skillsStore.connectSource.mockReturnValue(
+			new Promise<SkillSourceConnectResponse>((resolve) => {
+				answer = resolve;
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+		await userEvent.click(await view.findByTestId('skill-source-add'));
+
+		expect(view.getByTestId('skill-source-cancel')).toBeDisabled();
+		expect(view.emitted('update:open')).toBeUndefined();
+		answer({ sourceId: 'src-1', imported: [], failed: [] });
+		await waitFor(() => expect(view.emitted('update:open')).toEqual([[false]]));
 	});
 
 	it('keeps the dialog open and shows a toast when the import fails', async () => {

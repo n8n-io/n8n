@@ -155,6 +155,34 @@ describe('GitHubSkillSourceClient', () => {
 		});
 	});
 
+	it('skips a reference over the size limit instead of importing it empty', async () => {
+		github.push('acme/skills', {
+			'pdf/SKILL.md': skillMd('pdf'),
+			'pdf/references/small.md': '# Small\n',
+			'pdf/references/huge.md': 'x'.repeat(1024 * 1024 + 1),
+		});
+		const locator = await client.parseLocator('https://github.com/acme/skills');
+
+		const fetched = await client.fetchLatest(locator, { path: 'pdf' });
+
+		expect(fetched.content.files).toEqual([{ path: 'references/small.md', content: '# Small\n' }]);
+		expect(fetched.skippedFiles).toEqual(['references/huge.md']);
+	});
+
+	it('reads branches whose names differ only in case as two branches', async () => {
+		github.push('acme/skills', { 'a/SKILL.md': skillMd('a') }, 'main');
+		github.push('acme/skills', { 'a/SKILL.md': skillMd('a', 'Upper.') }, 'Main');
+		const [lower, upper] = await Promise.all(
+			['main', 'Main'].map(async (branch) => {
+				const locator = { owner: 'acme', repository: 'skills', branch, path: '' };
+				return await client.fetchLatest(locator, { path: 'a' });
+			}),
+		);
+
+		expect(lower.content.instructions).toBe('Follow a.');
+		expect(upper.content.instructions).toBe('Upper.');
+	});
+
 	describe('requests', () => {
 		it('reads one archive and asks for the branch twice for a discover and its fetches', async () => {
 			github.push('acme/skills', {

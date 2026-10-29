@@ -29,8 +29,9 @@ export class SkillSourceRequestError extends ResponseError {
 	constructor(
 		readonly reason: SkillSourceReason,
 		message: string,
+		options: { cause?: unknown } = {},
 	) {
-		super(message, STATUS[reason]);
+		super(message, STATUS[reason], STATUS[reason], undefined, options.cause);
 		this.meta = { reason };
 	}
 }
@@ -49,5 +50,5 @@ export function skillSourceReasonOf(error: unknown): SkillSourceReason | undefin
 export function toSkillSourceRequestError(error: unknown): unknown {
 	const reason = skillSourceReasonOf(error);
 	if (!reason || error instanceof SkillSourceRequestError) return error;
-	return new SkillSourceRequestError(reason, getErrorMessage(error));
+	return new SkillSourceRequestError(reason, getErrorMessage(error), { cause: error });
 }

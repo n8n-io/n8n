@@ -17,6 +17,7 @@ import nock from 'nock';
 
 import { createSkill, deleteAllSkills, findLatestSkillVersion, findSkill } from '../../testing';
 import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
+import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { FakeGitHub } from '../test-utils/fake-github';
 import { PostHogClient } from '@/posthog';
 
@@ -188,6 +189,23 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('connect', () => {
+		it('refuses a skill whose name is only spaces as a parse error', async () => {
+			github.push('acme/blank', { '  /SKILL.md': '---\ndescription: Blank\n---\n\nBody.\n' });
+			const url = 'https://github.com/acme/blank';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+
+			const body = await connect(
+				owner,
+				{ url, scope: 'instance', skillKeys: discovery.skills.map((skill) => skill.key) },
+				400,
+			);
+
+			expect(discovery.skills).toEqual([
+				expect.objectContaining({ error: expect.objectContaining({ reason: 'parse_error' }) }),
+			]);
+			expect(body.meta).toEqual({ reason: 'parse_error' });
+		});
+
 		it('imports the picked skills as read-only synced skills of a new source', async () => {
 			const { data: discovery } = await discover(owner, { url: REPO, scope: 'instance' });
 
@@ -249,7 +267,8 @@ describe('SkillSourceController', () => {
 			]);
 		});
 
-		it('stores nothing when no picked skill can come in', async () => {
+		it('stores nothing when no picked skill can come in, and reports the failed import', async () => {
+			const importedFromSource = vi.spyOn(Container.get(SkillsTelemetry), 'importedFromSource');
 			await createSkill({ projectId: team.id, content: { name: 'pdf' } });
 			const { data: discovery } = await discover(editor, {
 				url: REPO,
@@ -264,6 +283,17 @@ describe('SkillSourceController', () => {
 			);
 
 			expect(body.meta).toEqual({ reason: 'name_taken' });
+			expect(importedFromSource).toHaveBeenCalledWith(
+				expect.objectContaining({
+					selected: 1,
+					imported: 0,
+					name_taken: 1,
+					status: 'failure',
+					reason: 'name_taken',
+				}),
+				expect.any(String),
+			);
+			importedFromSource.mockRestore();
 			const { data: again } = await discover(editor, {
 				url: REPO,
 				scope: 'project',

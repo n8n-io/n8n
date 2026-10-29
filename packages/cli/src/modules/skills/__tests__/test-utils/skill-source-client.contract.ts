@@ -143,14 +143,19 @@ export function describeSkillSourceClientContract(subject: () => SkillSourceClie
 		});
 
 		it('fetches every skill at the revision that discover gave', async () => {
-			const { client, auth, publish } = subject();
-			const locator = await client.parseLocator(await publish([skill('Pinned')]), auth);
+			const { client, auth, publish, edit } = subject();
+			const link = await publish([skill('Pinned')]);
+			const locator = await client.parseLocator(link, auth);
 			const page = await client.discover(locator, auth);
+			await edit(link, 'Pinned', skill('Pinned', { instructions: 'Edited after discover.' }));
 
 			const fetched = await client.fetchLatest(locator, page.items[0], auth, page.revision);
 
-			expect(fetched.content).toEqual(skill('Pinned'));
-			if (page.revision !== undefined) expect(fetched.revision).toBe(page.revision);
+			// A source without a revision reads its current content.
+			if (page.revision !== undefined) {
+				expect(fetched.content).toEqual(skill('Pinned'));
+				expect(fetched.revision).toBe(page.revision);
+			}
 		});
 
 		it('refuses a link that it cannot read', async () => {

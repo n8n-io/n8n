@@ -1016,7 +1016,7 @@ describe('SettingsSkillsView', () => {
 			await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
 			expect(showMessageMock).toHaveBeenCalledWith({
 				title: 'Added 2 skills to Global from acme/skills',
-				message: 'Could not add web-scraper.',
+				message: 'Could not add web-scraper (n8n cannot read its SKILL.md).',
 				type: 'warning',
 			});
 		});

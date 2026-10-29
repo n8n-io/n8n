@@ -15,6 +15,8 @@ const MAX_TEXT_FILE_BYTES = 1024 * 1024;
 export type RepositoryArchive = {
 	paths: string[];
 	text: Map<string, string>;
+	/** Files that could be skill content but are over the size limit, so they have no text. */
+	oversized: Set<string>;
 };
 
 export const ARCHIVE_TOO_LARGE =
@@ -28,6 +30,7 @@ export const ARCHIVE_TOO_LARGE =
 export async function readRepositoryArchive(archive: Buffer): Promise<RepositoryArchive> {
 	const paths: string[] = [];
 	const text = new Map<string, string>();
+	const oversized = new Set<string>();
 	let entries = 0;
 	let bytes = 0;
 
@@ -55,6 +58,7 @@ export async function readRepositoryArchive(archive: Buffer): Promise<Repository
 			}
 			paths.push(path);
 			if (!keepsText(path) || entry.size > MAX_TEXT_FILE_BYTES) {
+				if (keepsText(path)) oversized.add(path);
 				entry.resume();
 				return;
 			}
@@ -70,7 +74,7 @@ export async function readRepositoryArchive(archive: Buffer): Promise<Repository
 			),
 		);
 		parser.on('end', () => {
-			if (!failed) resolve({ paths, text });
+			if (!failed) resolve({ paths, text, oversized });
 		});
 		parser.end(archive);
 	});

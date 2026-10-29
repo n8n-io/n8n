@@ -16,6 +16,7 @@ import {
 } from './github-link';
 import { lsRefsRequestBody, parseLsRefsResponse, type GitRefs } from './git-refs';
 import { SKILL_FILE, filesOfSkill, findSkillFolders, isInside } from './skill-discovery';
+import { SkillParseError } from '../../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillSourceUrlError } from '../../errors/skill-source-url.error';
@@ -148,17 +149,23 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const { path } = readRef(ref);
 		const sha = revision ?? (await this.head(parsed));
 		const archive = await this.archiveAt(parsed, sha);
-		const skillFile = path ? `${path}/${SKILL_FILE}` : SKILL_FILE;
+		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
+		const skillFile = inRepository(SKILL_FILE);
+		if (archive.oversized.has(skillFile)) {
+			throw new SkillParseError(`The SKILL.md of ${path || '/'} is larger than 1 MB.`);
+		}
 		if (!archive.text.has(skillFile)) {
 			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`);
 		}
-		const files = filesOfSkill(archive.paths, path).map((file) => ({
-			path: file,
-			content: archive.text.get(path ? `${path}/${file}` : file) ?? '',
-		}));
+		// A reference over the size limit has no text, so it is skipped, not imported empty.
+		const all = filesOfSkill(archive.paths, path);
+		const oversized = all.filter((file) => archive.oversized.has(inRepository(file)));
+		const files = all
+			.filter((file) => !archive.oversized.has(inRepository(file)))
+			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
 		const { content, skippedFiles } = readSkillFolder(folderName, files);
-		return { content, revision: sha, fidelity: [], skippedFiles };
+		return { content, revision: sha, fidelity: [], skippedFiles: [...skippedFiles, ...oversized] };
 	}
 
 	// ---------------------------------------------------------------- GitHub
@@ -175,7 +182,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 					'Git-Protocol': 'version=2',
 				},
 			},
-			MAX_REFS_BYTES,
+			{
+				bytes: MAX_REFS_BYTES,
+				message: 'The repository has more branches than n8n can read.',
+				reason: 'unreachable',
+			},
 		);
 		try {
 			return parseLsRefsResponse(response);
@@ -192,7 +203,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	 * seen at once. The archive is cached by commit, so it downloads once.
 	 */
 	private async head(locator: GitHubLocator): Promise<string> {
-		const key = `${locator.owner}/${locator.repository}@${locator.branch}`.toLowerCase();
+		// GitHub ignores the case of owner and repository, but not of a branch.
+		const key = `${locator.owner}/${locator.repository}`.toLowerCase() + `@${locator.branch}`;
 		const pending = this.heads.get(key);
 		if (pending) return await pending;
 		const sha = this.refs(locator.owner, locator.repository)
@@ -216,7 +228,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const path = [owner, repository, 'tar.gz', sha].map(encodeURIComponent).join('/');
 		const archive = this.send(
 			{ url: `https://codeload.${GITHUB_HOST}/${path}`, method: 'GET' },
-			MAX_ARCHIVE_BYTES,
+			{ bytes: MAX_ARCHIVE_BYTES, message: ARCHIVE_TOO_LARGE, reason: 'archive_too_large' },
 		).then(readRepositoryArchive);
 		this.archives.set(key, archive);
 		archive.catch(() => this.archives.delete(key));
@@ -230,7 +242,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 			body?: Buffer;
 			headers?: Record<string, string>;
 		},
-		maxBytes: number,
+		limit: { bytes: number; message: string; reason: SkillSourceReadError['reason'] },
 	): Promise<Buffer> {
 		let response;
 		try {
@@ -240,11 +252,11 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				json: false,
 				returnFullResponse: true,
 				ignoreHttpStatusErrors: true,
-				maxResponseBodyBytes: maxBytes,
+				maxResponseBodyBytes: limit.bytes,
 			});
 		} catch (error) {
 			if (error instanceof HttpResponseSizeLimitError) {
-				throw new SkillSourceReadError('archive_too_large', ARCHIVE_TOO_LARGE, { cause: error });
+				throw new SkillSourceReadError(limit.reason, limit.message, { cause: error });
 			}
 			throw new SkillSourceReadError('unreachable', 'n8n could not reach GitHub.', {
 				cause: error,

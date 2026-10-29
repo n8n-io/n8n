@@ -107,6 +107,44 @@ describe('SkillsTelemetry', () => {
 		});
 	});
 
+	it('reports a Skill Sync connect with its reason code', async () => {
+		const props = {
+			provider: 'github' as const,
+			access: 'public' as const,
+			scope_type: 'team' as const,
+			duplicate_result: 'blocked' as const,
+			status: 'failure' as const,
+			reason: 'duplicate_source',
+		};
+
+		await service.connectedSource(props, 'user-1');
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_CONNECTED_SKILL_SOURCE,
+			{ user_id: 'user-1', ...props },
+		);
+	});
+
+	it('reports a Skill Sync import with its counts', async () => {
+		const props = {
+			provider: 'github' as const,
+			scope_type: 'global' as const,
+			first_or_more: 'first' as const,
+			selected: 3,
+			imported: 2,
+			name_taken: 1,
+			skipped_files: 4,
+			status: 'success' as const,
+		};
+
+		await service.importedFromSource(props, 'user-1');
+
+		expect(telemetry.track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.CONTEXT.USER_IMPORTED_SKILLS_FROM_SOURCE,
+			{ user_id: 'user-1', ...props },
+		);
+	});
+
 	it('never fails the write it reports', async () => {
 		repository.findByIds.mockRejectedValue(new Error('connection lost'));
 

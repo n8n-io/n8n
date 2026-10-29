@@ -167,17 +167,19 @@ async function onNext() {
 		linkError.value = i18n.baseText('settings.context.skills.connect.error.invalidUrl');
 		return;
 	}
+	const requestedScope = scope.value;
+	// The user may have changed the link or the scope while n8n was reading it.
+	const isCurrent = () => link === url.value.trim() && requestedScope === scope.value;
 	discovering.value = true;
 	try {
-		const result = await skillsStore.discoverSource({ url: link, ...parseScope(scope.value) });
-		// The user may have changed the link or the scope while n8n was reading it.
-		if (link !== url.value.trim()) return;
+		const result = await skillsStore.discoverSource({ url: link, ...parseScope(requestedScope) });
+		if (!isCurrent()) return;
 		discovery.value = result;
 		if (result.duplicate.kind === 'blocked') return;
 		selected.value = result.skills.filter(isSelectable).map((skill) => skill.key);
 		step.value = 'choose';
 	} catch (error) {
-		if (link === url.value.trim()) linkError.value = discoverErrorText(error);
+		if (isCurrent()) linkError.value = discoverErrorText(error);
 	} finally {
 		discovering.value = false;
 	}
@@ -254,6 +256,12 @@ async function onAdd() {
 	}
 }
 
+/** The import runs on the server until it answers, so the dialog stays open until then. */
+function onOpenChange(open: boolean) {
+	if (!open && connecting.value) return;
+	emit('update:open', open);
+}
+
 const title = computed(() =>
 	step.value === 'link'
 		? i18n.baseText('settings.context.skills.connect.link.title')
@@ -268,7 +276,7 @@ const title = computed(() =>
 		size="large"
 		:disable-outside-pointer-events="true"
 		data-test-id="skill-source-connect-dialog"
-		@update:open="emit('update:open', $event)"
+		@update:open="onOpenChange"
 	>
 		<N8nDialogBody v-if="step === 'link'" :class="$style.body">
 			<div :class="$style.field">
@@ -423,8 +431,9 @@ const title = computed(() =>
 			<N8nButton
 				variant="outline"
 				:label="i18n.baseText('generic.cancel')"
+				:disabled="connecting"
 				data-test-id="skill-source-cancel"
-				@click="emit('update:open', false)"
+				@click="onOpenChange(false)"
 			/>
 			<N8nButton
 				v-if="step === 'link'"

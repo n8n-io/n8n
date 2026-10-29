@@ -169,6 +169,15 @@ describe('ls-refs', () => {
 		});
 	});
 
+	it.each([
+		{ name: 'a header that is not hex', body: 'zzzz' },
+		{ name: 'a reserved length', body: '0003' },
+		{ name: 'a line longer than the body', body: `0040${sha('a')} refs/heads/main` },
+		{ name: 'trailing bytes', body: '000' },
+	])('refuses $name', ({ body }) => {
+		expect(() => parseLsRefsResponse(Buffer.from(body))).toThrow('Not a git pkt-line answer');
+	});
+
 	it('asks for HEAD and the branches with protocol v2', () => {
 		expect(lsRefsRequestBody().toString()).toBe(
 			'0014command=ls-refs\n0001000csymrefs\n001bref-prefix refs/heads/\n0014ref-prefix HEAD\n0000',
