@@ -1042,7 +1042,6 @@ export {
 } from './schemas/scim-config.schema';
 export {
 	EXECUTION_LIMIT_PERIOD_UNITS,
-	executionLimitPeriodUnitSchema,
 	executionLimitSettingsSchema,
 	type ExecutionLimitPeriodUnit,
 	type ExecutionLimitSettings,

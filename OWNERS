@@ -405,6 +405,7 @@ packages/@n8n/api-types/src/node-type-availability.ts   @n8n-io/governance-and-o
 packages/@n8n/api-types/src/credential-type-availability.ts @n8n-io/governance-and-observability
 packages/@n8n/api-types/src/schemas/policy-check-failure.schema.ts @n8n-io/governance-and-observability
 packages/@n8n/api-types/src/schemas/policy-violation.schema.ts @n8n-io/governance-and-observability
+packages/@n8n/api-types/src/schemas/execution-limit-settings.schema.ts @n8n-io/governance-and-observability
 packages/@n8n/telemetry/src/events/policies.ts          @n8n-io/governance-and-observability
 packages/@n8n/telemetry/src/events/type-availability-policies.ts @n8n-io/governance-and-observability
 packages/workflow/src/errors/policy-refusal.ts          @n8n-io/governance-and-observability
