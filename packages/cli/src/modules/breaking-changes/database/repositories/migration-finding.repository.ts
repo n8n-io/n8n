@@ -38,8 +38,11 @@ export type TriageableMigrationFinding = Pick<
 };
 
 const LISTED_STATUSES = migrationFindingListedStatusSchema.options;
-/** The statuses that still need a fix. A notification does not resolve a finding. */
-const UNRESOLVED_STATUSES: MigrationFindingStatus[] = ['open', 'notified'];
+/**
+ * The statuses that still need a fix. A notification does not resolve a finding,
+ * and a fix that is not published does not either.
+ */
+const UNRESOLVED_STATUSES: MigrationFindingStatus[] = ['open', 'notified', 'fixed_unpublished'];
 
 function hasListedStatus(
 	finding: MigrationFinding,
@@ -90,7 +93,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/**
-	 * Number of open or notified findings per rule for the version. Rules without
+	 * Number of unresolved findings per rule for the version. Rules without
 	 * them are absent. `workflowIds` limits the count to those workflows; `undefined` counts all.
 	 */
 	async countUnresolvedByRule(
@@ -114,7 +117,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/**
-	 * Number of distinct workflows with at least one open or notified finding for
+	 * Number of distinct workflows with at least one unresolved finding for
 	 * the version. `workflowIds` limits the count to those workflows; `undefined` counts all.
 	 */
 	async countDistinctUnresolvedWorkflows(
@@ -139,7 +142,7 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		return total;
 	}
 
-	/** The given workflows that have at least one open or notified finding for the version. */
+	/** The given workflows that have at least one unresolved finding for the version. */
 	async listWorkflowIdsWithUnresolvedFindings(
 		targetVersion: BreakingChangeVersion,
 		workflowIds: string[],
