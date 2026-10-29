@@ -152,7 +152,6 @@ describe('createFrontend', () => {
 
 			expect(manifest.scripts.lint).toBe('oxlint src --quiet && eslint src --quiet');
 			for (const dependency of [
-				'@n8n/eslint-plugin-design-system',
 				'@n8n/oxlint-config',
 				'oxlint',
 				'oxlint-tsgolint',

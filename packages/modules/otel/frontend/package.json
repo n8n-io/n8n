@@ -34,7 +34,6 @@
   "devDependencies": {
     "@iconify/json": "catalog:",
     "@n8n/eslint-config": "workspace:*",
-    "@n8n/eslint-plugin-design-system": "workspace:*",
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/frontend-test-utils": "workspace:*",
     "@n8n/frontend-vite-config": "workspace:*",

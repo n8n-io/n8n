@@ -14,15 +14,19 @@ const isResidualRule = (rule: string) =>
 	rule === '@n8n/design-system/require-teleported-tooltip-in-dropdown' ||
 	residualScriptRules.has(rule);
 
-export const frontendOxlintResidualConfig = frontendConfig.map((config) => ({
-	...config,
-	rules: Object.fromEntries(
-		Object.entries(config.rules ?? {}).map(([rule, value]) => [
-			rule,
-			isResidualRule(rule) ? value : 'off',
-		]),
-	),
-}));
+export const frontendOxlintResidualConfig = frontendConfig.map((config) => {
+	if (!config.rules) return config;
+
+	return {
+		...config,
+		rules: Object.fromEntries(
+			Object.entries(config.rules).map(([rule, value]) => [
+				rule,
+				isResidualRule(rule) ? value : 'off',
+			]),
+		),
+	};
+});
 
 frontendOxlintResidualConfig.push({
 	files: ['**/*.vue'],

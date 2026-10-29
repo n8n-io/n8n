@@ -1,10 +1,18 @@
+import { createRequire } from 'node:module';
 import { defineConfig } from 'oxlint';
 import { baseConfig } from './base.js';
+
+const require = createRequire(import.meta.url);
 
 export const frontendConfig = defineConfig({
 	extends: [baseConfig],
 	plugins: ['vue'],
-	jsPlugins: [{ name: '@n8n/design-system', specifier: '@n8n/eslint-plugin-design-system' }],
+	jsPlugins: [
+		{
+			name: '@n8n/design-system',
+			specifier: require.resolve('@n8n/eslint-plugin-design-system'),
+		},
+	],
 	env: { browser: true, node: true },
 	rules: {
 		'@stylistic/member-delimiter-style': 'off',

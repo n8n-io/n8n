@@ -6057,9 +6057,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../eslint-plugin-design-system
       '@n8n/oxlint-config':
         specifier: workspace:*
         version: link:../../../@n8n/oxlint-config
@@ -7170,9 +7167,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7294,9 +7288,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7530,9 +7521,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7633,9 +7621,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-vite-config':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-vite-config
@@ -7751,9 +7736,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -7872,9 +7854,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -8054,9 +8033,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
@@ -8169,9 +8145,6 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../../@n8n/eslint-config
-      '@n8n/eslint-plugin-design-system':
-        specifier: workspace:*
-        version: link:../../../frontend/@n8n/eslint-plugin-design-system
       '@n8n/frontend-test-utils':
         specifier: workspace:*
         version: link:../../../frontend/@n8n/frontend-test-utils
