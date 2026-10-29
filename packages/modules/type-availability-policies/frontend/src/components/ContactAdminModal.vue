@@ -121,8 +121,8 @@ watch(
 	{ immediate: true },
 );
 
-// The hosts (node creator, Element Plus modals) close on a document Escape listener, which runs
-// before the dialog's own window listener. Only a window capture listener runs before them.
+// An Element Plus modal under the dialog closes on a document Escape listener, which runs before
+// the dialog's own window listener. Only a window capture listener runs before it.
 useEventListener(
 	() => (open.value ? window : null),
 	'keydown',
