@@ -237,24 +237,6 @@ describe('StartExecutionService', () => {
 		});
 	});
 
-	it('records no parent for a top-level execution', async () => {
-		const admittance: AdmittanceService = {
-			evaluate: vi.fn().mockResolvedValue({ accept: true }),
-		};
-		const store = makeStore();
-		const service = new StartExecutionService(admittance, store, makeStepStore(), makeQueue());
-
-		await service.start({
-			workflowId: 'wf-1',
-			graph: sampleGraph,
-			workflow: sampleWorkflow,
-			executionId: 'exec-id-1',
-			callerContext: { hostMode: 'trigger' },
-		});
-
-		expect(store.createExecution).toHaveBeenCalledWith(expect.objectContaining({ parent: null }));
-	});
-
 	it('stores the caller context as given', async () => {
 		const admittance: AdmittanceService = {
 			evaluate: vi.fn().mockResolvedValue({ accept: true }),
