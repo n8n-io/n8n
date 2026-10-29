@@ -46,7 +46,8 @@ type PreparedStart = { executionId: ExecutionIdV2; request: StartExecutionReques
 
 /** One entry per node, its passes in iteration order; the planner numbers them from 0 without gaps. */
 function toSeededSteps(seeded: SeededNode[], toStepOutputs: ToStepOutputs): SeededSteps {
-	const byNode: SeededSteps = {};
+	// A null prototype: a node id such as `constructor` must land on its own key.
+	const byNode: SeededSteps = Object.create(null);
 	for (const { nodeId, iteration, outputs } of seeded) {
 		(byNode[nodeId] ??= [])[iteration] = toStepOutputs(outputs);
 	}

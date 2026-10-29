@@ -649,6 +649,43 @@ describe('EngineV2Dispatcher', () => {
 				});
 			});
 
+			it('sends every pass of a seeded node in iteration order', async () => {
+				manualRunPlanner.plan.mockReturnValue({
+					...plan,
+					seeded: [
+						{ nodeId: SET_NODE.id, iteration: 1, outputs: [[{ json: { pass: 1 } }]] },
+						{ nodeId: SET_NODE.id, iteration: 0, outputs: [[{ json: { pass: 0 } }]] },
+					],
+				});
+
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				expect(proxy.startExecution.mock.calls[0][0].seededSteps).toEqual({
+					[SET_NODE.id]: [[[{ json: { pass: 0 } }]], [[{ json: { pass: 1 } }]]],
+				});
+			});
+
+			it('keeps a seeded node whose id is an object property name', async () => {
+				const ownKeyNode = { ...SET_NODE, id: 'constructor' };
+				manualRunPlanner.plan.mockReturnValue({
+					...plan,
+					workflow: workflow({ nodes: [MANUAL_TRIGGER, ownKeyNode] }),
+					seeded: [
+						{ nodeId: ownKeyNode.id, iteration: 0, outputs: [[{ json: { reused: true } }]] },
+					],
+				});
+
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				expect(proxy.startExecution.mock.calls[0][0].seededSteps).toEqual({
+					constructor: [[[{ json: { reused: true } }]]],
+				});
+			});
+
 			it('still reports the whole workflow beside the trimmed graph', async () => {
 				manualRunPlanner.plan.mockReturnValue({
 					...plan,
