@@ -13,8 +13,9 @@ import { mock } from 'vitest-mock-extended';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 
-import { ExecutionResponseChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import { ExecutionResponseChannelSender } from '../response-channel/in-memory-execution-response-sender';
+import { createExecutionResponseCodec } from '../response-channel/execution-response-frame';
+import { ExecutionChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
+import { ExecutionChannelSender } from '../response-channel/in-memory-execution-response-sender';
 import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
 
 /**
@@ -28,8 +29,15 @@ describe('a Buffer webhook response through the response channel', () => {
 
 	const buildPath = async (expectation: ResponseExpectation = { kind: 'stepResponse' }) => {
 		const { publisher, subscriber } = createInMemoryExecutionChannel();
-		const sender = new ExecutionResponseChannelSender(publisher, mockLogger());
-		const receiver = new ExecutionResponseChannelReceiver(subscriber, mockLogger());
+		const sender = new ExecutionChannelSender(
+			publisher,
+			createExecutionResponseCodec(mockLogger()),
+		);
+		const receiver = new ExecutionChannelReceiver(
+			subscriber,
+			createExecutionResponseCodec(mockLogger()),
+			mockLogger(),
+		);
 
 		const registry = new EngineV2WebhookResponseRegistry(
 			mock<EngineConfig>({ webhookResponseTimeout: 50_000 }),

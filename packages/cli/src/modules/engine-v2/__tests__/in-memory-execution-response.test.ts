@@ -2,8 +2,9 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionResponse } from '@n8n/engine';
 import { ENCODED_BUFFER_KEY } from 'n8n-core';
 
-import { ExecutionResponseChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import { ExecutionResponseChannelSender } from '../response-channel/in-memory-execution-response-sender';
+import { createExecutionResponseCodec } from '../response-channel/execution-response-frame';
+import { ExecutionChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
+import { ExecutionChannelSender } from '../response-channel/in-memory-execution-response-sender';
 import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
 
 const ended = (executionId = 'exec-1', outputs: unknown = null): ExecutionResponse => ({
@@ -22,12 +23,19 @@ const setup = (maxFrameBytes?: number) => {
 		publisher,
 		subscriber,
 		publish,
-		sender: new ExecutionResponseChannelSender(publisher, mockLogger(), maxFrameBytes),
-		receiver: new ExecutionResponseChannelReceiver(subscriber, mockLogger()),
+		sender: new ExecutionChannelSender(
+			publisher,
+			createExecutionResponseCodec(mockLogger(), maxFrameBytes),
+		),
+		receiver: new ExecutionChannelReceiver(
+			subscriber,
+			createExecutionResponseCodec(mockLogger()),
+			mockLogger(),
+		),
 	};
 };
 
-describe('ExecutionResponseChannelSender', () => {
+describe('ExecutionChannelSender', () => {
 	it('serializes a response and publishes it on the responses topic', () => {
 		const { sender, publish } = setup();
 
@@ -94,7 +102,7 @@ describe('ExecutionResponseChannelSender', () => {
 	});
 });
 
-describe('ExecutionResponseChannelReceiver', () => {
+describe('ExecutionChannelReceiver', () => {
 	it('delivers a base64 Buffer envelope unchanged', async () => {
 		const { sender, receiver } = setup();
 		const seen: ExecutionResponse[] = [];

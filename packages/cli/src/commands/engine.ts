@@ -50,14 +50,19 @@ export class Engine extends BaseCommand {
 		const { createRedisExecutionChannelPublisher } = await import(
 			'@/modules/engine-v2/response-channel/redis-execution-response-channel.js'
 		);
-		const { ExecutionResponseChannelSender } = await import(
+		const { ExecutionChannelSender } = await import(
 			'@/modules/engine-v2/response-channel/in-memory-execution-response-sender.js'
+		);
+		const { createExecutionResponseCodec } = await import(
+			'@/modules/engine-v2/response-channel/execution-response-frame.js'
 		);
 		this.channelPublisher = await createRedisExecutionChannelPublisher(logger);
 
 		const { EngineV2Runtime } = await import('@/modules/engine-v2/engine-v2.runtime.js');
 		this.runtime = Container.get(EngineV2Runtime);
-		await this.runtime.init(new ExecutionResponseChannelSender(this.channelPublisher, logger));
+		await this.runtime.init(
+			new ExecutionChannelSender(this.channelPublisher, createExecutionResponseCodec(logger)),
+		);
 
 		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}

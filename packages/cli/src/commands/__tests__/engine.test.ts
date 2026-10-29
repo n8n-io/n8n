@@ -14,7 +14,7 @@ import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { WorkflowFailureNotificationEventRelay } from '@/events/relays/workflow-failure-notification.event-relay';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { EngineV2Runtime } from '@/modules/engine-v2/engine-v2.runtime';
-import { ExecutionResponseChannelSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
+import { ExecutionChannelSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
 import type { RedisChannelPublisher } from '@/modules/engine-v2/response-channel/redis-execution-response-sender';
 import { NodeTypes } from '@/node-types';
 import { OtelService } from '@/modules/otel/otel.service';
@@ -188,7 +188,7 @@ describe('Engine', () => {
 			await createEngine().init();
 
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'publisher(n8n)' });
-			expect(runtime.init).toHaveBeenCalledWith(expect.any(ExecutionResponseChannelSender));
+			expect(runtime.init).toHaveBeenCalledWith(expect.any(ExecutionChannelSender));
 		});
 
 		it('starts the data plane after the base init and finishes loading the nodes', async () => {
