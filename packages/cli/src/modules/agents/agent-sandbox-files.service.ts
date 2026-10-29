@@ -2,7 +2,7 @@ import { CORE_WORKSPACE_TOOL_NAMES, type Workspace } from '@n8n/agents';
 import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { extension, lookup } from 'mime-types';
 import { OperationalError, UserError } from 'n8n-workflow';
@@ -27,6 +27,14 @@ export interface SandboxOutputFile {
 	hash: string;
 }
 
+/** Prefix of a file reference that names a file in `outputs/` instead of a fileId. */
+export const SANDBOX_FILE_REF_PREFIX = 'sandbox:';
+
+export interface ActiveRun {
+	agentId: string | null;
+	getWorkspace: () => Workspace | undefined;
+}
+
 export interface SandboxFileScope {
 	agentId: string | null;
 	projectId: string;
@@ -47,6 +55,18 @@ const SHA256SUM_LINE = /^([0-9a-f]{64}) {2}(.+)$/;
 
 /** The end-of-turn sync stops after this time. The next turn stores the rest. */
 const SYNC_BUDGET_MS = 30 * Time.seconds.toMilliseconds;
+
+/**
+ * {@link AgentSandboxFilesService.resolveFileRefs} for tools that are built
+ * outside the container. Plain fileIds need no service.
+ */
+export async function resolveSandboxFileRefs(
+	refs: string[],
+	scope: { projectId: string; threadId: string },
+): Promise<string[]> {
+	if (!refs.some((ref) => ref.startsWith(SANDBOX_FILE_REF_PREFIX))) return refs;
+	return await Container.get(AgentSandboxFilesService).resolveFileRefs(refs, scope);
+}
 
 /** Only a turn that used the workspace can have changed `outputs/`. Other turns leave the sandbox asleep. */
 export function usedWorkspace(timeline: TimelineEvent[]): boolean {
@@ -73,10 +93,64 @@ export function normalizeOutputPath(path: string): string | undefined {
  */
 @Service()
 export class AgentSandboxFilesService {
+	/**
+	 * The runs of this process, by thread, so that a tool can resolve a
+	 * `sandbox:` reference of its thread.
+	 * ponytail: in-process, for the duration of a run. A tool always runs in
+	 * the process of its turn. Pass the workspace in the tool context if that
+	 * changes.
+	 */
+	private readonly activeRuns = new Map<string, ActiveRun>();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly attachmentService: AgentChatAttachmentService,
 	) {}
+
+	/** Register the workspace of a running thread. Call {@link untrackRun} when the run ends. */
+	trackRun(threadId: string, run: ActiveRun): void {
+		this.activeRuns.set(threadId, run);
+	}
+
+	untrackRun(threadId: string, run: ActiveRun): void {
+		if (this.activeRuns.get(threadId) === run) this.activeRuns.delete(threadId);
+	}
+
+	/**
+	 * Replace each `sandbox:<path>` reference with the fileId of that file of
+	 * `outputs/`, stored on demand. Other values are fileIds and stay as they
+	 * are: a fileId never contains ":".
+	 * @throws {UserError} when a referenced file cannot be stored.
+	 */
+	async resolveFileRefs(
+		refs: string[],
+		scope: { projectId: string; threadId: string },
+	): Promise<string[]> {
+		// One at a time, so a path given twice is stored once.
+		const fileIds: string[] = [];
+		for (const ref of refs) fileIds.push(await this.resolveFileRef(ref, scope));
+		return fileIds;
+	}
+
+	private async resolveFileRef(
+		ref: string,
+		scope: { projectId: string; threadId: string },
+	): Promise<string> {
+		if (!ref.startsWith(SANDBOX_FILE_REF_PREFIX)) return ref;
+		const run = this.activeRuns.get(scope.threadId);
+		const workspace = run?.getWorkspace();
+		if (!run || !workspace) {
+			throw new UserError(`"${ref}" can't be used here: this run has no sandbox`);
+		}
+		const path = ref.slice(SANDBOX_FILE_REF_PREFIX.length);
+		try {
+			const file = await this.store(workspace, path, { ...scope, agentId: run.agentId });
+			return file.id;
+		} catch (error) {
+			if (error instanceof UserError) throw error;
+			throw new UserError(`"${ref}" could not be read from ${SANDBOX_OUTPUTS_DIR}/`);
+		}
+	}
 
 	/**
 	 * Store the new files of `outputs/` at the end of a turn. A file is new

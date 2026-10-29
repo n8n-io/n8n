@@ -147,6 +147,62 @@ describe('AgentSandboxFilesService', () => {
 		});
 	});
 
+	describe('resolveFileRefs', () => {
+		const readScope = { projectId: 'project-1', threadId: 'thread-1' };
+
+		beforeEach(() => {
+			filesystem.stat.mockResolvedValue({
+				name: 'x',
+				path: 'x',
+				type: 'file',
+				size: 1,
+				createdAt: new Date(),
+				modifiedAt: new Date(),
+			});
+			filesystem.readFile.mockResolvedValue(Buffer.from('x'));
+		});
+
+		it('stores a sandbox path of a running thread and keeps fileIds', async () => {
+			const run = { agentId: 'agent-1', getWorkspace: () => workspace };
+			service.trackRun('thread-1', run);
+
+			const ids = await service.resolveFileRefs(['abc123', 'sandbox:out.txt'], readScope);
+			service.untrackRun('thread-1', run);
+
+			expect(ids[0]).toBe('abc123');
+			expect(ids[1]).toEqual(expect.any(String));
+			expect(attachmentService.storeInbound).toHaveBeenCalledWith(
+				expect.objectContaining({ ...scope, source: 'sandbox', fileName: 'out.txt' }),
+			);
+			await expect(service.resolveFileRefs(['sandbox:out.txt'], readScope)).rejects.toThrow(
+				'this run has no sandbox',
+			);
+		});
+
+		it('reports a file that the sandbox cannot read in words the model can act on', async () => {
+			const run = { agentId: 'agent-1', getWorkspace: () => workspace };
+			service.trackRun('thread-1', run);
+			filesystem.stat.mockRejectedValue(new Error('ENOENT'));
+
+			await expect(service.resolveFileRefs(['sandbox:gone.txt'], readScope)).rejects.toThrow(
+				'"sandbox:gone.txt" could not be read from outputs/',
+			);
+			service.untrackRun('thread-1', run);
+		});
+
+		it('keeps the newer run when an older one ends', async () => {
+			const first = { agentId: null, getWorkspace: () => undefined };
+			service.trackRun('thread-2', first);
+			service.trackRun('thread-2', { agentId: null, getWorkspace: () => workspace });
+
+			service.untrackRun('thread-2', first);
+
+			await expect(
+				service.resolveFileRefs(['sandbox:a.txt'], { projectId: 'p', threadId: 'thread-2' }),
+			).resolves.toHaveLength(1);
+		});
+	});
+
 	describe('store', () => {
 		const fileOf = (content: string) => {
 			filesystem.stat.mockResolvedValue({
