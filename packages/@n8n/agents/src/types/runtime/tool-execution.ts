@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 
 import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { TokenCounter } from '../../runtime/model/model-token-counter';
+import type { DynamicToolRegistry } from '../../runtime/tools/dynamic-tools';
 import type { AgentEventBus } from '../../runtime/state/event-bus';
 import type { RuntimeTelemetry } from '../../runtime/telemetry/runtime-telemetry';
 import type { RuntimeSkillLoader } from '../../skills/types';
@@ -99,6 +100,8 @@ export interface ToolCallInput {
 	toolName: string;
 	input: unknown;
 	providerExecuted?: boolean;
+	/** The call came through `call_tool` and was resolved to this tool. */
+	dynamicCall?: boolean;
 }
 
 /** Shared input for the tool-call batch iterators. */
@@ -141,6 +144,8 @@ export interface ProcessToolCallParams extends ToolCallIdentity {
 	continuation?: JSONValue;
 	/** Checkpointed resume schema of the tool call being resumed. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	/** The call came through `call_tool`. Input errors then include the tool's schema. */
+	dynamicCall?: boolean;
 }
 
 export interface ToolCallExecutorDeps {
@@ -153,4 +158,6 @@ export interface ToolCallExecutorDeps {
 	onCancelled: () => void;
 	tokenCounter: TokenCounter;
 	workspaceFilesystem?: WorkspaceFilesystem;
+	/** Resolves `call_tool` calls to the real dynamic tool. */
+	dynamicTools?: DynamicToolRegistry;
 }

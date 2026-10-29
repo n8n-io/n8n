@@ -364,6 +364,20 @@ export class ToolCallRunner {
 			const reason = result.schemaInvalid
 				? `Tool ${params.toolName} has an input schema that could not be compiled: ${result.error}`
 				: `Invalid tool input: ${result.error}`;
+			// Dynamic tools are not in the model's tool list, so give the schema
+			// back and let the model fix its arguments.
+			const schema = params.dynamicCall
+				? this.deps.dynamicTools?.describeInputSchema(builtTool.name)
+				: undefined;
+			if (schema && !result.schemaInvalid) {
+				return {
+					ok: false,
+					outcome: await this.toolError(
+						params,
+						new Error(`${reason}\nInput schema for ${builtTool.name}: ${schema}`),
+					),
+				};
+			}
 			return { ok: false, outcome: await this.toolError(params, new Error(reason)) };
 		}
 		return { ok: true, input: result.data as JSONValue };

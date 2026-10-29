@@ -83,6 +83,14 @@ export class InstanceAiModule implements ModuleInterface {
 			await this.registerAssistantAgent();
 		}
 
+		Container.get(Logger)
+			.scoped('instance-ai')
+			.info(
+				Container.get(InstanceAiConfig).dynamicToolsEnabled
+					? 'Dynamic tools are active: the assistant uses get_tools and call_tool'
+					: 'Dynamic tools are off: the assistant uses provider tool search',
+			);
+
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');

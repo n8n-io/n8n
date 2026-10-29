@@ -7,6 +7,7 @@ import {
 	aiPreferencesAppliedPayloadSchema,
 	instanceAiEventSchema,
 	isSafeObjectKey,
+	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	type InstanceAiConfirmation,

@@ -14,6 +14,7 @@ import type { FinishReason, SerializableAgentState, TokenUsage } from '../index'
 import type { GuardrailStop } from '../sdk/guardrail';
 import type { ExecutionOptions, RunOptions } from '../sdk/agent';
 import type { AgentDbMessage, AgentMessage } from '../sdk/message';
+import type { JSONObject } from '../utils/json';
 import type { AgentMessageList } from '../../runtime/model/message-list';
 import type { ToolCallBatchResult, ToolCallInput, ToolCallSuspension } from './tool-execution';
 
@@ -108,6 +109,11 @@ export interface RunServices {
 	updateState(patch: Partial<SerializableAgentState>): void;
 	emitAgentEnd(messages: AgentMessage[]): void;
 	getState(): SerializableAgentState;
+	/**
+	 * Map a `call_tool` call to the real tool name and arguments, so stream
+	 * consumers show the real tool. Returns `undefined` when the call does not resolve.
+	 */
+	resolveDynamicToolCall?(input: unknown): { toolName: string; input: JSONObject } | undefined;
 }
 
 /**

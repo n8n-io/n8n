@@ -6,6 +6,7 @@ const mockAgentInstances: Array<{
 	instructions: Mock;
 	tool: Mock;
 	deferredTool: Mock;
+	dynamicTools: Mock;
 	skills: Mock;
 	checkpoint: Mock;
 	memory: Mock;
@@ -33,6 +34,7 @@ vi.mock('@n8n/agents', async (importOriginal) => ({
 		this.instructions = vi.fn().mockReturnThis();
 		this.tool = vi.fn().mockReturnThis();
 		this.deferredTool = vi.fn().mockReturnThis();
+		this.dynamicTools = vi.fn().mockReturnThis();
 		this.skills = vi.fn().mockReturnThis();
 		this.checkpoint = vi.fn().mockReturnThis();
 		this.memory = vi.fn().mockReturnThis();
@@ -613,6 +615,56 @@ describe('createInstanceAgent', () => {
 				toolSearchEnabled: true,
 				mcpToolSearchEnabled: true,
 			}),
+		);
+	});
+
+	it('puts deferred tools in namespaces instead of tool search when dynamic tools are enabled', async () => {
+		await createInstanceAgent({
+			modelId: 'test-model',
+			context: {
+				runLabel: 'dynamic',
+				browserUseState: undefined,
+				licenseHints: undefined,
+				localMcpServer: undefined,
+			},
+			orchestrationContext: { runId: 'dynamic' },
+			memoryConfig: {},
+			dynamicToolsEnabled: true,
+			mcpManager: createMcpManagerStub(
+				new Map([
+					['notion_search', { ...mockBuiltTool('notion_search'), mcpServerName: 'Notion' }],
+				]),
+			),
+		} as never);
+
+		const instance = mockAgentInstances[0];
+		expect(instance.deferredTool).not.toHaveBeenCalled();
+		const [config] = instance.dynamicTools.mock.calls[0] as [
+			{ namespaces: Array<{ name: string; tools: Array<{ name: string }> }> },
+		];
+		const byName = Object.fromEntries(
+			config.namespaces.map((ns) => [ns.name, ns.tools.map((tool) => tool.name)]),
+		);
+		expect(byName).toEqual({
+			workflow_builder: [
+				'list_workflows-dynamic',
+				'search_nodes-dynamic',
+				'get_node_types-dynamic',
+				'get_node_parameter_options-dynamic',
+				'execute_node-dynamic',
+				'workflow_builder_build_workflow-dynamic',
+				'workflow_builder_task_control-dynamic',
+				'verify-built-workflow-dynamic',
+			],
+			executions: ['workflow_builder_executions-dynamic'],
+			mcp_notion: ['notion_search'],
+		});
+		const attached = getAttachedTools();
+		expect(attached['research-dynamic']).toBeDefined();
+		expect(attached['search_nodes-dynamic']).toBeUndefined();
+		expect(attached['list_workflows-dynamic']).toBeUndefined();
+		expect(getSystemPrompt).toHaveBeenCalledWith(
+			expect.objectContaining({ toolSearchEnabled: false, dynamicToolsEnabled: true }),
 		);
 	});
 

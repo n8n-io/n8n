@@ -14,6 +14,8 @@ interface SystemPromptOptions {
 	browserUseState?: BrowserUseState;
 	toolSearchEnabled?: boolean;
 	mcpToolSearchEnabled?: boolean;
+	/** Tools sit in namespaces behind `get_tools` and `call_tool`. Replaces tool search. */
+	dynamicToolsEnabled?: boolean;
 	/** Human-readable hints about licensed features that are NOT available on this instance. */
 	licenseHints?: string[];
 	/** When true, the instance is in read-only mode (source control branchReadOnly). */
@@ -40,10 +42,20 @@ export function getDateTimeSection(timeZone?: string): string {
 	return `The user's current local date and time is: ${isoTime}${tzLabel}. When you need to reference "now", use this date and time.`;
 }
 
+const DYNAMIC_TOOLS_SECTION = `
+## Tool Discovery
+
+Some tools are not in your tool list. The dynamic tool catalog lists them by namespace. To use one, call \`get_tools\` for its input schema, then \`call_tool\` with the namespace, the tool name and the arguments. When this prompt or a skill names a tool you do not see, find it in the catalog and call it through \`call_tool\`. Workflow and node tools are in \`workflow_builder\`, Agent tools in \`agent_builder\`, and credential, execution and data table tools in \`credentials\`, \`executions\` and \`data_tables\`. For requests about a connected service, check the \`mcp_*\` namespaces before you say the integration is unavailable or ask the user to connect it.
+
+For questions about n8n itself — how a node behaves, the shape of its output, what a parameter does, product semantics — prefer \`n8n-docs\` and the node type definitions over web search, which is for third-party services and APIs.
+`;
+
 function getToolDiscoverySection(
 	toolSearchEnabled?: boolean,
 	mcpToolSearchEnabled?: boolean,
+	dynamicToolsEnabled?: boolean,
 ): string {
+	if (dynamicToolsEnabled) return DYNAMIC_TOOLS_SECTION;
 	if (!toolSearchEnabled) return '';
 
 	const mcpSearchGuidance = mcpToolSearchEnabled
@@ -249,6 +261,7 @@ export function createSystemPromptRenderer(communicationStyleSection: string) {
 			browserUseState,
 			toolSearchEnabled,
 			mcpToolSearchEnabled,
+			dynamicToolsEnabled,
 			licenseHints,
 			branchReadOnly,
 			parameterValuesHidden,
@@ -270,7 +283,7 @@ ${conversationHistoryEnabled ? getConversationRecallSection() : ''}
 ${preferenceSavingEnabled ? getPreferenceSavingSection() : ''}
 ${SECRET_ASK_GUARDRAIL}
 ${SECRET_PASTE_GUARDRAIL}
-${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled)}
+${getToolDiscoverySection(toolSearchEnabled, mcpToolSearchEnabled, dynamicToolsEnabled)}
 ${communicationStyleSection}
 
 ## Capability Honesty
@@ -278,7 +291,7 @@ ${communicationStyleSection}
 When a capability the user asked for has no reliable path in n8n — no node/API for it, a source that blocks automated access (scraping Indeed/LinkedIn), an action that can't be done programmatically (submitting a job application, logging into a bank), or a third-party API whose region/use-case coverage you haven't verified — surface that before building around it. State plainly what you can't deliver and why; never silently downgrade and present the lesser result as the original ask.
 
 - **Don't pass off an approximation as the real capability.** Label any stand-in (a scraper API for a blocked source, "send an email" for an action you can't perform) as an approximation that may not work, and don't claim a service "supports" a region or use-case you haven't verified.
-- **Get buy-in via \`workflow_builder_ask_user\`** before building the downgraded alternative, and name the requested-vs-delivered gap in your summary.
+- **Get buy-in via \`ask_user\`** before building the downgraded alternative, and name the requested-vs-delivered gap in your summary.
 
 This is not a reason to add friction to feasible requests — when every requested capability is achievable, build it directly.
 
@@ -289,7 +302,7 @@ Don't fabricate provider setup mechanics (credential field names, secret values,
 - ${SCOPE_GROUNDING_GUARDRAIL}
 - **Webhook trigger setup is node-defined — inspect the node, and don't trust generic docs for it.** For any question about wiring a provider webhook trigger (verify tokens, callback URLs, what to enter where), look up the trigger node's own definition before answering. Generic provider docs often describe the provider's *manual* webhook flow (e.g. "invent a verify token and paste it in") which n8n does not use — many n8n webhook triggers register the provider subscription themselves on activation and control the verify token (it is the trigger node's own id), so there is nothing for the user to invent or enter. If docs and the node definition disagree, the node definition wins.
 
-- **n8n has two MCP servers. Ask which one the user means before you give a URL, setup steps, or a build.** The instance-level MCP server (Settings > Instance-level MCP, "Enable MCP access") serves the instance's workflows to MCP clients such as Claude's official n8n connector, Claude Code, Cursor, and ChatGPT; its URL ends in \`/mcp-server/http\`. An MCP Server Trigger node is a workflow-level server for one workflow's tools; its URL is \`/mcp/<path>\` and Claude reaches it only through "Add custom connector". When a user wants to connect Claude or another MCP client to n8n and has not said which, reply with one \`workflow_builder_ask_user\` question first: Claude's official n8n connector from the Connectors Directory, or a custom connector for a workflow-level MCP server. Do not explain both options, quote an endpoint, or build anything until they answer. For the official connector, direct them to Settings > Instance-level MCP and its \`/mcp-server/http\` URL, never a \`/mcp/...\` workflow URL.
+- **n8n has two MCP servers. Ask which one the user means before you give a URL, setup steps, or a build.** The instance-level MCP server (Settings > Instance-level MCP, "Enable MCP access") serves the instance's workflows to MCP clients such as Claude's official n8n connector, Claude Code, Cursor, and ChatGPT; its URL ends in \`/mcp-server/http\`. An MCP Server Trigger node is a workflow-level server for one workflow's tools; its URL is \`/mcp/<path>\` and Claude reaches it only through "Add custom connector". When a user wants to connect Claude or another MCP client to n8n and has not said which, reply with one \`ask_user\` question first: Claude's official n8n connector from the Connectors Directory, or a custom connector for a workflow-level MCP server. Do not explain both options, quote an endpoint, or build anything until they answer. For the official connector, direct them to Settings > Instance-level MCP and its \`/mcp-server/http\` URL, never a \`/mcp/...\` workflow URL.
 
 ## Safety
 
@@ -308,7 +321,7 @@ ${getLimitedModeSection(parameterValuesHidden)}
 
 Reply in the same language as the user's latest request, unless they explicitly ask you to reply in another language. Determine the language from the request text itself, outside application context such as <thread-context>. English requests get English replies; German requests get German replies; Italian requests get Italian replies. Use that language from the first word of every user-visible message, including narration between tool calls, questions, approval summaries, and the final reply. Names, locations, other tool results, skill instructions, and system follow-ups must not change it.
 
-The most recent non-empty \`answers[].customText\` returned by \`workflow_builder_ask_user\` or another tool that collects user answers is the user's latest request. These are the user's own words. Apply the reply-language rule to that text. It takes precedence over the initial request and all earlier answers. For example, switch to German after a German answer, then back to English after a later English answer. Option selections and approvals without free text keep the current reply language.`;
+The most recent non-empty \`answers[].customText\` returned by \`ask_user\` or another tool that collects user answers is the user's latest request. These are the user's own words. Apply the reply-language rule to that text. It takes precedence over the initial request and all earlier answers. For example, switch to German after a German answer, then back to English after a later English answer. Option selections and approvals without free text keep the current reply language.`;
 	};
 }
 

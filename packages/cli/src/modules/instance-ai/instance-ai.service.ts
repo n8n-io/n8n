@@ -1703,7 +1703,7 @@ export class InstanceAiService {
 			if (run.abortController.signal.aborted) continue;
 
 			// Runs holding an inline HITL confirmation (for example
-			// `workflow_builder_ask_user`) sit in `activeRuns` because the orchestrator
+			// `ask_user`) sit in `activeRuns` because the orchestrator
 			// is alive — it's just awaiting the in-process Promise. Their
 			// `instance_ai_pending_confirmations` row survives the restart and
 			// `handleOrphanedConfirmation` will issue the user-visible

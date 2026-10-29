@@ -398,6 +398,9 @@ export function reduceEvent(state: AgentRunState, event: InstanceAiEvent): Agent
 					event.payload.toolName,
 					event.payload.args.action,
 				);
+				// The announced name can differ (e.g. `call_tool` resolves to the
+				// real tool), so pick the card for the final name.
+				announced.renderHint = getRenderHint(event.payload.toolName);
 				break;
 			}
 			const agent = ensureAgent(state, event.agentId);

@@ -142,6 +142,7 @@ export class AssistantAgentFactory {
 			checkpointStore: runtime.checkpointStore,
 			onMemoryTaskEvent: runtime.onMemoryTaskEvent,
 			thinkingEnabled: this.instanceAiConfig.thinkingEnabled,
+			dynamicToolsEnabled: this.instanceAiConfig.dynamicToolsEnabled,
 			modelFetch: this.modelService.getModelFetch(),
 		});
 		// Surface MCP connection failures as a non-fatal status event. Publishing

@@ -30,6 +30,7 @@ import type {
 	NativeToolDeferralConfig,
 	PromptCachingConfig,
 } from '../sdk/agent';
+import type { DynamicToolsConfig } from '../sdk/dynamic-tools';
 
 export interface VolatileInstructionsContext {
 	persistence?: AgentPersistenceOptions;
@@ -55,6 +56,11 @@ export interface AgentRuntimeConfig {
 	deferredTools?: BuiltTool[];
 	workspaceFilesystem?: WorkspaceFilesystem;
 	nativeToolDeferral?: NativeToolDeferralConfig;
+	/**
+	 * Tools that the model reaches through the fixed `get_tools` and `call_tool`
+	 * tools. Works with any model. Do not combine with `nativeToolDeferral`.
+	 */
+	dynamicTools?: DynamicToolsConfig;
 	toolSearch?: {
 		topK?: number;
 	};
