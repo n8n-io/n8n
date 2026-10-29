@@ -201,7 +201,7 @@ export class SkillSourceService {
 			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
 			const { response, warning } = await this.importSkills(user, source, target, scopeType, {
 				skillKeys: payload.skillKeys,
-				reviewedWarnings: payload.reviewedWarnings === true,
+				reviewedSkillKeys: payload.reviewedSkillKeys ?? [],
 			});
 			await this.skillsTelemetry.connectedSource(
 				{ ...report, status: 'success', ...(warning ? { reason: warning } : {}) },
@@ -224,9 +224,10 @@ export class SkillSourceService {
 		source: ParsedSource,
 		target: SkillTarget,
 		scopeType: ScopeType,
-		{ skillKeys, reviewedWarnings }: { skillKeys: string[]; reviewedWarnings: boolean },
+		{ skillKeys, reviewedSkillKeys }: { skillKeys: string[]; reviewedSkillKeys: string[] },
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
+		const reviewed = new Set(reviewedSkillKeys);
 		const failed: SkillSourceConnectResponse['failed'] = [];
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
@@ -273,7 +274,9 @@ export class SkillSourceService {
 					});
 				} else if (read.error) {
 					failed.push({ key: read.key, name: null, reason: read.error.reason });
-				} else if (read.check?.verdict === 'needs_review' && !reviewedWarnings) {
+				} else if (read.check?.verdict === 'needs_review' && !reviewed.has(read.key)) {
+					// The user reviewed the warnings of the skills that the picker showed, so a skill
+					// that needs review only since discover did not get that review.
 					failed.push({ key: read.key, name: read.skill?.name ?? null, reason: 'review_required' });
 				} else {
 					importable.push(read);

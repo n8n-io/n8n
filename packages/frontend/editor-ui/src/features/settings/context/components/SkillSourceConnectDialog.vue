@@ -405,12 +405,17 @@ function isSelectable(skill: DiscoveredSkill): boolean {
 	return !skill.nameTaken && !skill.error && skill.check?.verdict !== 'blocked';
 }
 
-const needsReview = computed(
+// The picked skills that the picker shows as needing review. A tick covers only these.
+const needsReviewKeys = computed(
 	() =>
-		discovery.value?.skills.some(
-			(skill) => selected.value.includes(skill.key) && skill.check?.verdict === 'needs_review',
-		) ?? false,
+		discovery.value?.skills
+			.filter(
+				(skill) => selected.value.includes(skill.key) && skill.check?.verdict === 'needs_review',
+			)
+			.map((skill) => skill.key) ?? [],
 );
+
+const needsReview = computed(() => needsReviewKeys.value.length > 0);
 
 // A tick covers the warnings that the user saw, so it goes when no picked skill needs review.
 watch(needsReview, (needed) => {
@@ -549,7 +554,7 @@ async function onAdd() {
 			...target,
 			...parseScope(scope.value),
 			skillKeys: selected.value,
-			...(needsReview.value ? { reviewedWarnings: true } : {}),
+			...(needsReview.value ? { reviewedSkillKeys: needsReviewKeys.value } : {}),
 		});
 		emit('connected', {
 			response: { ...response, failed: response.failed.map(withSkillName) },

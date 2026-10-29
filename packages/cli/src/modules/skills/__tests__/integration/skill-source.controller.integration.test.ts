@@ -345,7 +345,7 @@ describe('SkillSourceController', () => {
 				url,
 				scope: 'instance',
 				skillKeys: keysOf(discovery, ['clean', 'hidden', 'big']),
-				reviewedWarnings: true,
+				reviewedSkillKeys: keysOf(discovery, ['hidden']),
 			});
 
 			expect(importedFromSource).toHaveBeenCalledWith(
@@ -447,6 +447,31 @@ describe('SkillSourceController', () => {
 				]),
 			);
 			expect(data.failed).toHaveLength(2);
+		});
+
+		it('imports a skill that needs review only when the user reviewed the warnings of that skill', async () => {
+			github.push('acme/checked', {
+				'flagged/SKILL.md': skillMd('flagged', 'Hidden text', 'Follow​ this.'),
+				'changed/SKILL.md': skillMd('changed'),
+			});
+			const url = 'https://github.com/acme/checked';
+			const { data: discovery } = await discover(owner, { url, scope: 'instance' });
+			github.push('acme/checked', {
+				'flagged/SKILL.md': skillMd('flagged', 'Hidden text', 'Follow​ this.'),
+				'changed/SKILL.md': skillMd('changed', 'Hidden text', 'Follow​ this.'),
+			});
+
+			const { data } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['flagged', 'changed']),
+				reviewedSkillKeys: keysOf(discovery, ['flagged']),
+			});
+
+			expect(data.imported.map((skill) => skill.name)).toEqual(['flagged']);
+			expect(data.failed).toEqual([
+				{ key: keysOf(discovery, ['changed'])[0], name: 'changed', reason: 'review_required' },
+			]);
 		});
 
 		it('stores nothing when every picked skill is blocked by the security check', async () => {
