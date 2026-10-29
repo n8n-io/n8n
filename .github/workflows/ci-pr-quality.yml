@@ -13,6 +13,15 @@ on:
     types:
       - created
 
+concurrency:
+  # Runs that skip the checks must not cancel an active PR check run.
+  group: >-
+    pr-quality-${{ github.event_name == 'issue_comment' && github.run_id ||
+      ((github.event.action == 'labeled' || github.event.action == 'unlabeled') &&
+        github.event.label.name != 'Do Not Merge') && github.run_id ||
+      github.event.pull_request.number || github.event.merge_group.head_sha || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   handle-size-override:
     name: Handle /size-limit-override
@@ -43,6 +52,7 @@ jobs:
 
   check-pr-size:
     name: PR Size Limit
+    needs: changes
     # Checks that the PR size doesn't exceed the limit (currently 1000 lines)
     # Allows for override via '/size-limit-override' comment.
     # Skipped for bot-authored PRs — dep bumps from Dependabot/Aikido
@@ -50,8 +60,6 @@ jobs:
     if: |
       github.repository == 'n8n-io/n8n' &&
       github.event_name == 'pull_request' &&
-      github.event.action != 'labeled' &&
-      github.event.action != 'unlabeled' &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'automation:backport') &&
       !contains(github.event.pull_request.title, '(backport to') &&
@@ -76,10 +84,11 @@ jobs:
 
   changes:
     name: Detect Changes
+    # A relevant label change runs all checks so the summary cannot hide a failure.
     if: |
       (github.event_name == 'pull_request' &&
-       github.event.action != 'labeled' &&
-       github.event.action != 'unlabeled') ||
+       ((github.event.action != 'labeled' && github.event.action != 'unlabeled') ||
+        github.event.label.name == 'Do Not Merge')) ||
       github.event_name == 'merge_group'
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -130,6 +139,7 @@ jobs:
 
   check-knip:
     name: Unused Dependencies
+    needs: changes
     # Runs on every PR, not only on manifest changes: a PR that deletes the last
     # import of a dependency also makes that dependency unused.
     if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
@@ -154,6 +164,7 @@ jobs:
 
   check-do-not-merge:
     name: Do Not Merge
+    needs: changes
     # Read current labels because concurrent PR events can have stale labels.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -174,8 +185,8 @@ jobs:
 
   required-pr-quality-checks:
     name: Required PR Quality Checks
-    needs: [check-pr-size, check-static-analysis, check-knip, check-do-not-merge]
-    if: always()
+    needs: [changes, check-pr-size, check-static-analysis, check-knip, check-do-not-merge]
+    if: always() && needs.changes.result != 'skipped'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
