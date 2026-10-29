@@ -151,6 +151,9 @@ jobs:
               cubic.yaml
               .agents/review-rules/**
             sbom:
+              package.json
+              pnpm-lock.yaml
+              pnpm-workspace.yaml
               .github/scripts/package.json
               .github/scripts/pnpm-lock.yaml
               scripts/licenses/**

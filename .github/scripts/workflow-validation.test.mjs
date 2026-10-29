@@ -161,6 +161,14 @@ describe('release SBOM validation in PR CI', () => {
 		}
 	});
 
+	for (const file of ['package.json', 'pnpm-lock.yaml', 'pnpm-workspace.yaml']) {
+		it(`runs live generation when ${file} changes`, () => {
+			const patterns = filters.get('sbom');
+			assert.ok(patterns, 'PR CI has no SBOM path filter');
+			assert.equal(evaluateFilter([file], patterns), true, file);
+		});
+	}
+
 	it('requires the SBOM check for the same merged commit as the other checks', () => {
 		const job = workflow.jobs['validate-sbom'];
 		assert.ok(job, 'PR CI has no live SBOM validation job');
