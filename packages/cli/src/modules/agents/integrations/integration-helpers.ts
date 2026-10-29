@@ -40,9 +40,11 @@ export function unsupportedAction(platform: string, action: string): Integration
 
 /** The chat SDK attachment type for a MIME type. */
 export function fileAttachmentType(mimeType: string): 'image' | 'video' | 'audio' | 'file' {
-	if (mimeType.startsWith('image/')) return 'image';
-	if (mimeType.startsWith('video/')) return 'video';
-	if (mimeType.startsWith('audio/')) return 'audio';
+	// MIME types are case-insensitive, and stored values can have spaces.
+	const type = mimeType.trim().toLowerCase();
+	if (type.startsWith('image/')) return 'image';
+	if (type.startsWith('video/')) return 'video';
+	if (type.startsWith('audio/')) return 'audio';
 	return 'file';
 }
 
