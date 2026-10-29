@@ -64,6 +64,7 @@ const JS_PLUGIN_NAMESPACES = new Set([
 	'lodash',
 	'unused-imports',
 	'n8n-local-rules',
+	'n8n-nodes-base',
 	'playwright',
 	'@n8n/community-nodes',
 ]);
