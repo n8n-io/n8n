@@ -209,6 +209,28 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		expect(await repository.hasTaskStopWithId(stop.pause.id)).toBe(true);
 	});
 
+	it('finds a pending Stop report on the thread or an ancestor until the report runs', async () => {
+		const child = await db.getRepository(AgentExecutionThread).save({
+			id: randomUUID(),
+			agentId,
+			agentName: 'Child',
+			projectId,
+			parentThreadId: thread.id,
+		});
+		const stop = await request();
+
+		expect(
+			(await repository.findPendingStopReports(child.id)).map(({ pause }) => pause.id),
+		).toEqual([stop.pause.id]);
+
+		await repository.saveStop(
+			{ ...stop, pause: { ...stop.pause, reportedAt: new Date().toISOString() } },
+			{},
+		);
+
+		expect(await repository.findPendingStopReports(child.id)).toEqual([]);
+	});
+
 	it('keeps late plan writes and dispatch available', async () => {
 		await request();
 		await expect(

@@ -1,4 +1,5 @@
 import type { TransactionRunner } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -9,6 +10,7 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionService } from '../agent-execution.service';
+import { AgentWakeService } from '../background/agent-wake.service';
 import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -263,6 +265,28 @@ describe('AgentMessageQueueService', () => {
 
 			expect(claimed?.payload.message).toContain('Research');
 			expect(claimed?.payload.message).toContain('failures');
+		});
+
+		it('requests a wake for held background results after the report settles', async () => {
+			const wake = mock<AgentWakeService>();
+			Container.set(AgentWakeService, wake);
+			repository.findActive.mockResolvedValue(
+				mock<AgentMessageQueue>({
+					threadId: 'thread-1',
+					executionId: 'report-1',
+					payload: { kind: 'preview', stopReportId: 'stop-1' },
+				}),
+			);
+
+			await service.settle('thread-1', 'report-1');
+
+			expect(threadRepository.finalizeStopReport).toHaveBeenCalledWith(
+				'thread-1',
+				'stop-1',
+				'report-1',
+				expect.anything(),
+			);
+			expect(wake.requestWake).toHaveBeenCalledWith('thread-1');
 		});
 
 		it('stores the report as hidden internal input in the caller transaction', async () => {

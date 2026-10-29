@@ -71,7 +71,7 @@ export class AgentWakeService {
 	}
 
 	async requestWake(threadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		if (this.instanceSettings.isWorker) {
 			await this.publisher.publishCommand({
@@ -85,15 +85,15 @@ export class AgentWakeService {
 
 	@OnPubSubEvent('wake-agent-background-job', { instanceType: 'main' })
 	handleWakeRelay({ threadId }: { threadId: string }): void {
-		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		this.scheduleLocal(threadId);
 	}
 
 	async drainUnconsumed(): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
-		const threadIds = new Set([...(await this.jobRepository.findThreadsWithUnconsumedMail())]);
+		const threadIds = await this.jobRepository.findThreadsWithUnconsumedMail();
 
 		for (const threadId of threadIds) this.scheduleLocal(threadId);
 	}
@@ -157,7 +157,7 @@ export class AgentWakeService {
 	}
 
 	async attemptWake(threadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled) return;
 
 		try {
 			await this.lockService.withLease(
@@ -172,16 +172,14 @@ export class AgentWakeService {
 	}
 
 	private async deliverInsideLease(threadId: string, signal: AbortSignal): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		const pendingStops = await this.threadRepository.findPendingStopReports(threadId);
 
+		// The Stop report describes the state that Stop left. Wakes on its thread run after it.
+		if (pendingStops.some((stop) => stop.threadId === threadId)) return;
+
+		// The report delivers the results of captured jobs. Late results wake as usual.
+		const owned = new Set(pendingStops.map((stop) => stop.pause.id));
 		let pending = await this.jobRepository.findWakeableUnconsumed(threadId);
-		const owned = new Set<string>();
-
-		for (const id of new Set(
-			pending.flatMap((job) => (job.pauseRequestId ? [job.pauseRequestId] : [])),
-		)) {
-			if (await this.threadRepository.hasTaskStopWithId(id)) owned.add(id);
-		}
 
 		pending = pending.filter((job) => !job.pauseRequestId || !owned.has(job.pauseRequestId));
 		const stopped = pending.filter((job) => job.pauseRequestId);
@@ -363,7 +361,6 @@ export class AgentWakeService {
 				agentId: agent.id,
 				projectId: agent.projectId,
 				message: formatWakeMessage(jobs),
-				wakeJobIds: jobs.map((job) => job.id),
 				pauseReport: Boolean(jobs[0]?.pauseRequestId),
 				backgroundJobSignal: {
 					tasks: jobs.flatMap(({ id, title, kind, status }) =>

@@ -1,7 +1,7 @@
 import type { Message } from '@n8n/agents';
 import type { AgentChatQueueResponse, AgentMessageAuthor } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
 import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
@@ -435,6 +435,7 @@ export class AgentMessageQueueService {
 		) => Promise<boolean>,
 	): Promise<ClaimedAgentMessage | null> {
 		let steeringChanged = false;
+		let reported = false;
 		const claimed = await this.txRunner.run({}, async (ctx) => {
 			// Read the setting before the thread lock. Disabling Agents locks the setting
 			// and then the threads, so the opposite order can deadlock on PostgreSQL.
@@ -452,7 +453,7 @@ export class AgentMessageQueueService {
 			const active = await this.repository.findActive(threadId, ctx);
 
 			if (active?.executionId) {
-				await this.finishStopReport(active, ctx);
+				reported = await this.finishStopReport(active, ctx);
 				await this.repository.removeActive(threadId, active.executionId, ctx);
 			}
 
@@ -515,6 +516,8 @@ export class AgentMessageQueueService {
 
 		if (steeringChanged) this.updates.notifyQueueUpdated(threadId);
 
+		if (reported) await this.wakeAfterStopReport(threadId);
+
 		if (!claimed) return null;
 
 		this.executionService.activateExecution(claimed.reservation, claimed.recording);
@@ -540,6 +543,8 @@ export class AgentMessageQueueService {
 	 * Ignore callbacks for an execution that no longer owns the item.
 	 */
 	async settle(threadId: string, executionId: string): Promise<void> {
+		let reported = false;
+
 		await this.txRunner.run({}, async (ctx) => {
 			const thread = await this.threadRepository.lockById(threadId, ctx);
 
@@ -550,9 +555,11 @@ export class AgentMessageQueueService {
 
 			if (active?.executionId !== executionId || (await this.isBlocked(thread, ctx))) return;
 
-			await this.finishStopReport(active, ctx);
+			reported = await this.finishStopReport(active, ctx);
 			await this.repository.removeActive(threadId, executionId, ctx);
 		});
+
+		if (reported) await this.wakeAfterStopReport(threadId);
 
 		this.updates.notifyQueueUpdated(threadId);
 
@@ -564,13 +571,27 @@ export class AgentMessageQueueService {
 	}
 
 	private async finishStopReport(item: AgentMessageQueue, ctx: OperationContext) {
-		if (item.executionId && item.payload.kind !== 'integration' && item.payload.stopReportId) {
-			await this.threadRepository.finalizeStopReport(
-				item.threadId,
-				item.payload.stopReportId,
-				item.executionId,
-				ctx,
-			);
+		if (!item.executionId || item.payload.kind === 'integration' || !item.payload.stopReportId)
+			return false;
+
+		await this.threadRepository.finalizeStopReport(
+			item.threadId,
+			item.payload.stopReportId,
+			item.executionId,
+			ctx,
+		);
+
+		return true;
+	}
+
+	/** Background results wait while a Stop report is pending. Deliver them after it. */
+	private async wakeAfterStopReport(threadId: string) {
+		try {
+			// Lazy import: the wake service depends on the execution stack that uses this queue.
+			const { AgentWakeService } = await import('./background/agent-wake.service.js');
+			await Container.get(AgentWakeService).requestWake(threadId);
+		} catch {
+			// The startup drain delivers the results if this request fails.
 		}
 	}
 

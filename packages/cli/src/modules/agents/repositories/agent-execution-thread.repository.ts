@@ -866,6 +866,25 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			.getExists();
 	}
 
+	/** Stops on this thread and its ancestors whose report has not run yet. */
+	async findPendingStopReports(threadId: string): Promise<TaskStopScope[]> {
+		const stops: TaskStopScope[] = [];
+		const seen = new Set<string>();
+		let id: string | null = threadId;
+
+		while (id && !seen.has(id)) {
+			seen.add(id);
+			const thread: AgentExecutionThread | null = await this.findOneBy({ id });
+			const stop = this.readStop(thread);
+
+			if (stop && !stop.pause.reportedAt) stops.push(stop);
+
+			id = thread?.parentThreadId ?? null;
+		}
+
+		return stops;
+	}
+
 	async markChatResumedAfterStop(threadId: string, userInitiated: boolean, ctx: OperationContext) {
 		if (!userInitiated) return;
 

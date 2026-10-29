@@ -886,7 +886,7 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentPlanRepository>(),
 			);
 			const wakeService = new AgentWakeService(
-				mock<AgentExecutionThreadRepository>(),
+				Container.get(AgentExecutionThreadRepository),
 				repository,
 				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,

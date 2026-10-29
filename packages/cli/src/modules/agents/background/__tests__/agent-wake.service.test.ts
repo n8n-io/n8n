@@ -102,6 +102,7 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 	});
 
 	const cancellations = mock<AgentExecutionThreadRepository>();
+	cancellations.findPendingStopReports.mockResolvedValue([]);
 	const service = new AgentWakeService(
 		cancellations,
 		jobRepository,
@@ -136,15 +137,42 @@ function setup(options: { worker?: boolean; enabled?: boolean } = {}) {
 }
 
 describe('AgentWakeService', () => {
-	it('leaves a queued stop report to the message queue', async () => {
+	const pendingStop = (threadId: string) =>
+		({ threadId, pause: { id: 'stop-1' } }) as Awaited<
+			ReturnType<AgentExecutionThreadRepository['findPendingStopReports']>
+		>[number];
+
+	it('holds wakes on a thread while its Stop report is pending', async () => {
+		const { service, cancellations, jobRepository, orchestrator } = setup();
+		cancellations.findPendingStopReports.mockResolvedValue([pendingStop('thread-1')]);
+
+		await service.attemptWake('thread-1');
+
+		expect(jobRepository.findWakeableUnconsumed).not.toHaveBeenCalled();
+		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
+	it('leaves jobs captured by a pending ancestor Stop to its report', async () => {
 		const { service, cancellations, jobRepository, orchestrator } = setup();
 		jobRepository.findWakeableUnconsumed.mockResolvedValue([
 			makeJob({ pauseRequestId: 'stop-1', status: 'paused' }),
 		]);
-		cancellations.hasTaskStopWithId.mockResolvedValue(true);
+		cancellations.findPendingStopReports.mockResolvedValue([pendingStop('root-thread')]);
+
 		await service.attemptWake('thread-1');
 
 		expect(orchestrator.executeForWake).not.toHaveBeenCalled();
+	});
+
+	it('delivers a captured job that finishes after the Stop report', async () => {
+		const { service, jobRepository, orchestrator } = setup();
+		jobRepository.findWakeableUnconsumed.mockResolvedValue([
+			makeJob({ pauseRequestId: 'stop-1', status: 'completed' }),
+		]);
+
+		await service.attemptWake('thread-1');
+
+		expect(orchestrator.executeForWake).toHaveBeenCalledOnce();
 	});
 
 	it('delivers a stopped group once and marks it only after the report finishes', async () => {
