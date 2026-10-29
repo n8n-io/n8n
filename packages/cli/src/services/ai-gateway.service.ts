@@ -376,7 +376,7 @@ export class AiGatewayService {
 		}
 		this.assertEnabled();
 		const baseUrl = this.requireBaseUrl();
-		const token = await this.getOrFetchToken(userId);
+		const token = await this.getOrFetchToken(userId, timeoutMs);
 		const gatewayPath = `${AiGatewayService.GATEWAY_PATH_PREFIX}/${provider}`;
 		const url = this.buildGatewayUrl(baseUrl, gatewayPath, attribution);
 		return await this.gatewayRequest<T>({
@@ -769,7 +769,7 @@ export class AiGatewayService {
 	 * if missing or past 90% of its lifetime. Deduplicates concurrent requests for the
 	 * same user so only one fetch is in-flight at a time.
 	 */
-	private async getOrFetchToken(userId: string): Promise<string> {
+	private async getOrFetchToken(userId: string, timeoutMs?: number): Promise<string> {
 		const key = `${this.instanceSettings.instanceId}:${userId}`;
 		const cached = this.tokenCache.get(key);
 
@@ -780,7 +780,7 @@ export class AiGatewayService {
 		const pending = this.pendingTokenRequests.get(key);
 		if (pending) return await pending;
 
-		const promise = this.fetchAndCacheToken(userId, key);
+		const promise = this.fetchAndCacheToken(userId, key, timeoutMs);
 		this.pendingTokenRequests.set(key, promise);
 		try {
 			return await promise;
@@ -789,7 +789,11 @@ export class AiGatewayService {
 		}
 	}
 
-	private async fetchAndCacheToken(userId: string, key: string): Promise<string> {
+	private async fetchAndCacheToken(
+		userId: string,
+		key: string,
+		timeoutMs?: number,
+	): Promise<string> {
 		const baseUrl = this.requireBaseUrl();
 		const [licenseCert, user] = await Promise.all([
 			this.license.loadCertStr(),
@@ -809,6 +813,7 @@ export class AiGatewayService {
 					}),
 					instanceUrl: this.urlService.getInstanceBaseUrl(),
 				},
+				timeoutMs,
 			},
 			'Failed to fetch AI Gateway token',
 		);
