@@ -5,6 +5,7 @@ import {
 	availabilityInProjects,
 	findAvailability,
 	manualRunOutcome,
+	POLICY_PROPAGATION,
 	prepareTypePolicyInstance,
 	publishOutcome,
 	saveMovedNodes,
@@ -106,10 +107,9 @@ test.describe(
 			test('should fail a run of the workflow with the violation on the execution', async ({
 				api,
 			}) => {
-				expect(await manualRunOutcome(api, workflow)).toEqual({
-					status: 'error',
-					violations: [expect.objectContaining(BLOCKED_NO_OP)],
-				});
+				await expect
+					.poll(async () => await manualRunOutcome(api, workflow), POLICY_PROPAGATION)
+					.toEqual({ status: 'error', violations: [expect.objectContaining(BLOCKED_NO_OP)] });
 			});
 
 			test('should show the blocked node as restricted and keep the workflow editable', async ({

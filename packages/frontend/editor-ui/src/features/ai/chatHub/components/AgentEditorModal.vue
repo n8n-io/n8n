@@ -473,7 +473,7 @@ watch(documentVisibility, (visibility) => {
 				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
 				<N8nButton
 					v-if="isEditMode"
-					variant="subtle"
+					variant="outline"
 					icon="trash-2"
 					:class="$style.deleteButton"
 					:disabled="isDeleting"
@@ -668,7 +668,7 @@ watch(documentVisibility, (visibility) => {
 						</div>
 						<N8nButton
 							icon="plus"
-							variant="subtle"
+							variant="outline"
 							:class="$style.addFileButton"
 							:disabled="!canUploadFiles"
 							@click="handleClickUploadArea"
@@ -682,7 +682,7 @@ watch(documentVisibility, (visibility) => {
 
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" @click="closeDialog">
+				<N8nButton variant="outline" @click="closeDialog">
 					{{ i18n.baseText('chatHub.tools.editor.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" :disabled="!isValid || isSaving" @click="onSave">

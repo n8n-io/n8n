@@ -162,6 +162,65 @@ describe('MigrationWorkflowOwnerRepository', () => {
 		});
 	});
 
+	describe('assign', () => {
+		test('replaces a suggestion with the chosen owner and records who assigned it', async () => {
+			const workflow = await createWorkflow();
+			await repository.replaceSuggestions(
+				[workflow.id],
+				[{ workflowId: workflow.id, userId: alice.id }],
+				ctx,
+			);
+
+			await repository.assign(workflow.id, bob.id, alice.id, ctx);
+
+			const rows = await repository.findByWorkflowIds([workflow.id], ctx);
+			expect(rows).toHaveLength(1);
+			expect(rows[0]).toMatchObject({ userId: bob.id, source: 'assigned', assignedById: alice.id });
+			expect(rows[0].assignedAt).toBeInstanceOf(Date);
+		});
+
+		test('replaces an earlier assignment', async () => {
+			const workflow = await createWorkflow();
+			await repository.assign(workflow.id, alice.id, alice.id, ctx);
+
+			await repository.assign(workflow.id, bob.id, alice.id, ctx);
+
+			const rows = await repository.findByWorkflowIds([workflow.id], ctx);
+			expect(rows.map((row) => row.userId)).toEqual([bob.id]);
+		});
+	});
+
+	describe('resetToSuggestion', () => {
+		test('replaces an assignment with the suggested user, for that workflow only', async () => {
+			const [first, second] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await repository.assign(first.id, alice.id, alice.id, ctx);
+			await repository.assign(second.id, alice.id, alice.id, ctx);
+
+			await repository.resetToSuggestion(first.id, bob.id, ctx);
+
+			const rows = await repository.findByWorkflowIds([first.id, second.id], ctx);
+			expect(rows.find((row) => row.workflowId === first.id)).toMatchObject({
+				userId: bob.id,
+				source: 'suggested',
+				assignedById: null,
+				assignedAt: null,
+			});
+			expect(rows.find((row) => row.workflowId === second.id)).toMatchObject({
+				userId: alice.id,
+				source: 'assigned',
+			});
+		});
+
+		test('leaves the workflow without an owner when there is no suggestion', async () => {
+			const workflow = await createWorkflow();
+			await repository.assign(workflow.id, alice.id, alice.id, ctx);
+
+			await repository.resetToSuggestion(workflow.id, undefined, ctx);
+
+			expect(await repository.findByWorkflowIds([workflow.id], ctx)).toEqual([]);
+		});
+	});
+
 	describe('findByWorkflowIds', () => {
 		test('returns an empty list for an empty id array', async () => {
 			expect(await repository.findByWorkflowIds([], ctx)).toEqual([]);

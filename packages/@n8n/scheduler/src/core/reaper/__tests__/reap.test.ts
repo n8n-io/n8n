@@ -24,6 +24,7 @@ const expiredTask = (overrides: Partial<ExpiredLeaseRow> = {}): ExpiredLeaseRow 
 	status: 'running',
 	attempts: 0,
 	maxAttempts: 3,
+	timeoutSeconds: 300,
 	leaseEpoch: 1,
 	// Pre-dispatch by default; post-dispatch tests set a concrete `dispatchedAt`.
 	dispatchedAt: null,

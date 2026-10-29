@@ -26,6 +26,8 @@ import {
 } from './fixtures/agent-package-fixtures';
 import { importPackageRequest } from './fixtures/import-request';
 import { streamToBuffer } from './utils/tar-support';
+import { AgentSelectionExporter } from '../entities/agent/agent-selection.exporter';
+import { CapturingWriter } from '../io/__tests__/utils/capturing-writer';
 import { DirectoryPackageWriter } from '../io/directory/directory-package-writer';
 import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { N8nPackagesService } from '../n8n-packages.service';
@@ -86,8 +88,8 @@ describe('Agent package import boundary', () => {
 			user: owner,
 			packageBuffer: await streamToBuffer(writer.finalize()),
 			projectConflictPolicy: 'overwrite',
-			workflowConflictPolicy: 'new-version',
-			workflowIdPolicy: 'source',
+			conflictPolicy: 'new-version',
+			idPolicy: 'source',
 			overwriteDeletionPolicy: 'hard-delete',
 		});
 		switch (entryPoint) {
@@ -138,7 +140,9 @@ describe('Agent package import boundary', () => {
 
 			await expect(result).rejects.toThrow(BadRequestError);
 			await expect(result).rejects.toThrow(
-				'Importing packages that contain Agents is not supported yet.',
+				entryPoint === 'archive'
+					? 'The Agents module is not enabled.'
+					: 'Agent packages require the ordinary archive import endpoint.',
 			);
 			expect(await destinationRecords()).toEqual(before);
 		},
@@ -152,9 +156,37 @@ describe('Agent package import boundary', () => {
 					selectedProjectId: 'unused',
 					selectedWorkflowIds: [],
 				}),
-			).rejects.toThrow('Importing packages that contain Agents is not supported yet.');
+			).rejects.toThrow('Agent packages require the ordinary archive import endpoint.');
 		},
 	);
+
+	it('guards Agent selection before loading Agent tables when the module is disabled', async () => {
+		expect(Container.get(ModuleRegistry).isActive('agents')).toBe(false);
+		const exporter = Container.get(AgentSelectionExporter);
+		await expect(
+			exporter.export({ user: owner, writer: new CapturingWriter(), agentIds: ['selected-agent'] }),
+		).rejects.toThrow('agents module is disabled');
+		const project = await createTeamProject('Available project', owner);
+		const workflow = await createWorkflow({ name: 'Available workflow', nodes: [] }, project);
+		for (const selection of [
+			{},
+			{ projectIds: [project.id] },
+			{ projectIds: [project.id], projectWorkflowIds: [] },
+		]) {
+			const result = await exporter.export({
+				user: owner,
+				writer: new CapturingWriter(),
+				...selection,
+			});
+			expect(result.agentEntries).toEqual([]);
+		}
+		const result = await service.exportPackageToWriter(
+			{ user: owner, projectIds: [project.id] },
+			new CapturingWriter(),
+		);
+		expect(result.manifest.workflows?.map(({ id }) => id)).toEqual([workflow.id]);
+		expect(result.manifest.agents).toBeUndefined();
+	});
 
 	it('imports a workflow package with an empty Agent collection while Agents are disabled', async () => {
 		const fixture = projectAgentsFixture();
@@ -173,6 +205,9 @@ describe('Agent package import boundary', () => {
 		expect(result.workflows).toMatchObject([
 			{ sourceWorkflowId: 'workflow_source', name: 'Lookup', status: 'created' },
 		]);
+		expect(result.agents).toEqual([]);
+		expect(result.bindings.agents).toEqual({});
+		expect(result.counts.agents).toEqual({ created: 0, updated: 0, skipped: 0 });
 		expect(
 			await Container.get(WorkflowRepository).findOneBy({ id: 'workflow_source' }),
 		).toMatchObject({ name: 'Lookup' });

@@ -16,6 +16,8 @@ import { isFileAcceptedByAccept } from '@/features/ai/shared/utils/fileAccept';
 
 const props = withDefaults(
 	defineProps<{
+		/** Blocks workflow canvas shortcuts while the textarea has focus. Defaults to true. */
+		blockCanvasShortcuts?: boolean;
 		modelValue: string;
 		placeholder?: string;
 		isStreaming: boolean;
@@ -25,6 +27,11 @@ const props = withDefaults(
 		disabled?: boolean;
 		showVoice?: boolean;
 		showAttach?: boolean;
+		/**
+		 * Shows the built-in attach button. A host that renders its own attach
+		 * button sets this to false. Files can still be dropped or pasted.
+		 */
+		showAttachButton?: boolean;
 		/** Also shows the attach button. Without it, files can still be dropped or pasted. */
 		acceptedMimeTypes?: string;
 		/**
@@ -38,14 +45,18 @@ const props = withDefaults(
 		 */
 		attachedEncodedBytes?: number;
 		autosize?: boolean | { minRows: number; maxRows: number };
+		/** Keeps the composer at this CSS height, including its attachment row. */
+		composerHeight?: string;
 		buttonLabel?: string;
 		// Send button turns active only while focused with text (default: follows canSubmit).
 		activeRequiresFocus?: boolean;
 		maxLength?: number;
 	}>(),
 	{
+		blockCanvasShortcuts: true,
 		placeholder: undefined,
 		showStopButton: undefined,
+		showAttachButton: true,
 		acceptedMimeTypes: undefined,
 		attachedEncodedBytes: 0,
 		autosize: () => ({ minRows: 2, maxRows: 6 }),
@@ -267,6 +278,10 @@ defineExpose({
 
 		<N8nChatInput
 			ref="inputRef"
+			:class="{ [$style.fixedHeightInput]: composerHeight }"
+			:style="composerHeight ? { '--chat-input-height': composerHeight } : undefined"
+			data-test-id="chat-input-composer"
+			:block-canvas-shortcuts="blockCanvasShortcuts"
 			:model-value="modelValue"
 			:placeholder="placeholder"
 			:streaming="showStopButton ?? isStreaming"
@@ -275,8 +290,8 @@ defineExpose({
 			:button-label="props.buttonLabel"
 			send-button-test-id="instance-ai-send-button"
 			stop-button-test-id="instance-ai-stop-button"
-			:autosize="autosize"
-			:layout="autosize === false ? 'single-line' : 'multiline'"
+			:autosize="composerHeight ? false : autosize"
+			:layout="composerHeight || autosize !== false ? 'multiline' : 'single-line'"
 			:max-length="maxLength"
 			@update:model-value="emit('update:modelValue', $event)"
 			@submit="handleSubmit"
@@ -285,8 +300,14 @@ defineExpose({
 			@blur="isFocused = false"
 		>
 			<template #leading>
-				<slot name="header" />
-				<slot name="attachments" />
+				<div v-if="composerHeight" :class="$style.attachmentRow">
+					<slot name="header" />
+					<slot name="attachments" />
+				</div>
+				<template v-else>
+					<slot name="header" />
+					<slot name="attachments" />
+				</template>
 			</template>
 			<template #left-actions>
 				<slot name="footer-start" />
@@ -294,7 +315,7 @@ defineExpose({
 			<template #right-actions>
 				<slot name="right-actions" />
 				<N8nTooltip
-					v-if="showAttach && acceptedMimeTypes !== undefined"
+					v-if="showAttach && showAttachButton && acceptedMimeTypes !== undefined"
 					:content="i18n.baseText('chatInputBase.button.attach')"
 					placement="top"
 				>
@@ -339,6 +360,34 @@ defineExpose({
 .inputWrapper {
 	position: relative;
 	width: 100%;
+}
+
+.fixedHeightInput > div:has(> textarea) {
+	height: var(--chat-input-height);
+
+	> textarea {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
+
+	> textarea + div {
+		flex-shrink: 0;
+	}
+}
+
+.attachmentRow {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+	flex-shrink: 0;
+	min-height: var(--height--xs);
+	max-height: var(--height--3xl);
+	overflow-y: auto;
+
+	&:empty {
+		display: none;
+	}
 }
 
 .dropOverlay {

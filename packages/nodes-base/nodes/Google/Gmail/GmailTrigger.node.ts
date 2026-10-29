@@ -17,7 +17,7 @@ import {
 	prepareQuery,
 	simplifyOutput,
 } from './GenericFunctions';
-import { simplifyMemoryNotice } from './utils/descriptions';
+import { simplifyMemoryNotice, simplifyOutputShapeHint } from './utils/descriptions';
 import type {
 	GmailTriggerFilters,
 	GmailTriggerOptions,
@@ -63,7 +63,7 @@ export class GmailTrigger implements INodeType {
 		},
 		builderHint: {
 			searchHint:
-				'When downstream nodes create records (tasks, rows, tickets) per email, guarantee each email is processed exactly once: filter to unread AND mark each email read/labelled after its record is created, or track handled message ids in a Data Table. Otherwise the same email can be reprocessed into duplicates.',
+				"When downstream nodes create records (tasks, rows, tickets) per email, make sure each email creates its record once. Poll cursors are best-effort, so the same email can arrive again. Either filter to unread AND mark each email read, or apply a label only if the trigger's search query excludes that label (a label does not mark an email read); or track handled message ids in a Data Table: look the id up before creating the record, skip ids already seen, and insert the id after the record is created. An unread filter alone is not enough: if no step marks the email read, it excludes nothing. Wire the mark-as-handled step after the record-creating node, so a failed run never consumes an email without its record. This is at-least-once processing: a failure between creating the record and marking the email can still create a duplicate, so key the record by the message id when the target supports it.",
 			relatedNodes: [
 				{
 					nodeType: 'n8n-nodes-base.gmail',
@@ -155,8 +155,7 @@ When this trigger feeds an action that creates records (tasks, rows, tickets, me
 				description:
 					'Whether to return a simplified version of the response instead of the raw data',
 				builderHint: {
-					propertyHint:
-						'Keep true by default. When true, returns lightweight metadata (id, threadId, labels, subject, from, to, snippet). When false, fetches and parses the full raw email (adds html, text, textAsHtml, headers, attachments), which uses much more memory and is a common cause of out-of-memory crashes. Only set false when the email body is actually required.',
+					propertyHint: simplifyOutputShapeHint,
 				},
 			},
 			simplifyMemoryNotice({ displayOptions: { show: { simple: [false] } } }),

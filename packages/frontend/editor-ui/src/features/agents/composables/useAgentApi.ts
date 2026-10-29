@@ -6,6 +6,8 @@ import type {
 	AgentChatListItem,
 	AgentChatListResponse,
 	AgentChatMessagesResponse,
+	SystemAgentThreadSummary,
+	SystemAgentThreadsResponse,
 	AgentChatQueueResponse,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
@@ -16,6 +18,8 @@ import type {
 	AgentConfigValidationResponse,
 	AgentDisconnectIntegrationResponse,
 	AgentFileDto,
+	AgentMemoryEntriesPageDto,
+	AgentMemorySourceFacetsDto,
 	AgentIntegrationConnectResponse,
 	AgentIntegrationStatusResponse,
 	AgentWhatsAppVerifyTokenResponse,
@@ -24,6 +28,7 @@ import type {
 	AgentN8nChatThreadSummary,
 	AgentN8nChatThreadsResponse,
 	AgentSkill,
+	AgentSkillAvailability,
 	AgentsSettingsDto,
 	AgentSkillMutationResponse,
 	AgentTaskConfig,
@@ -32,14 +37,30 @@ import type {
 	AgentCatalogModel,
 	AgentProviderModelsResponse,
 	AgentVersionListItemDto,
+	UpdateAgentVersionDto,
+	AgentPublishHistoryItemDto,
 	ChatIntegrationDescriptor,
+	SkillDetail,
+	SkillListItem,
+	SkillListResponse,
+	SkillCreateMethod,
+	SkillNewNameQueryDto,
+	SkillNewNameResponse,
+	SkillVersionDetail,
+	SkillVersionSummary,
+	ListAgentMemoryEntriesQueryDto,
 	VectorStoreTestResult,
 } from '@n8n/api-types';
 import { getFullApiResponse, makeRestApiRequest, request } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { isRecord } from '@n8n/utils/is-record';
 import { UnexpectedError } from 'n8n-workflow';
-import type { AgentResource, AgentJsonConfig, CustomToolEntry } from '../types';
+import type {
+	AgentCreationResource,
+	AgentResource,
+	AgentJsonConfig,
+	CustomToolEntry,
+} from '../types';
 
 export async function getAgentsSettings(context: IRestApiContext): Promise<AgentsSettingsDto> {
 	return await makeRestApiRequest(context, 'GET', '/agents/settings');
@@ -53,15 +74,18 @@ export async function updateAgentsSettings(
 }
 
 /**
- * Which chat backend a request targets — the value is the URL segment
- * itself. `'chat'` (default) is the agent builder's draft/test chat;
- * `'n8n-chat'` is the published n8n Chat channel (see `useAgentChatStream`'s
- * `capabilities` for the differences between channels).
+ * Which chat backend a request targets. `'chat'` (default) is the agent
+ * builder's draft/test chat; `'n8n-chat'` is the published n8n Chat channel;
+ * `'system'` is the chat of a code-defined system agent, such as the n8n
+ * Assistant (see `useAgentChatStream`'s `capabilities` for the differences
+ * between channels).
  */
-export type AgentChatChannel = 'chat' | 'n8n-chat';
+export type AgentChatChannel = 'chat' | 'n8n-chat' | 'system';
 
 /**
- * Relative path for a chat route on either channel: `/projects/<projectId>/agents/v2/<agentId>/<channel>`.
+ * Relative path for a chat route: `/projects/<projectId>/agents/v2/<agentId>/<channel>`,
+ * or `/agents/system/<agentId>/chat` on the system channel. A system thread keeps
+ * its own project, so the system path has no project.
  * Use this for every `makeRestApiRequest` call — it prepends `context.baseUrl` itself,
  * so passing an already-absolute URL there doubles it (e.g. `/rest/rest/...`).
  */
@@ -70,7 +94,9 @@ export const agentChatPath = (
 	agentId: string,
 	channel: AgentChatChannel = 'chat',
 ): string =>
-	`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/${channel}`;
+	channel === 'system'
+		? `/agents/system/${encodeURIComponent(agentId)}/chat`
+		: `/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/${channel}`;
 
 /**
  * Absolute URL for a chat route on either channel. Only for callers that need a full
@@ -281,17 +307,19 @@ export const createAgent = async (
 	 *  `skills` to seed a full agent in a duplicate operation). */
 	options: {
 		id?: string;
+		config?: AgentJsonConfig;
 		schema?: AgentJsonConfig;
 		tools?: Record<string, CustomToolEntry>;
 		skills?: Record<string, AgentSkill>;
 	} = {},
-): Promise<AgentResource> => {
-	return await makeRestApiRequest<AgentResource>(
+): Promise<AgentCreationResource> => {
+	return await makeRestApiRequest<AgentCreationResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2`,
 		{
 			name,
+			...(options.config ? { config: options.config } : {}),
 			...(options.id ? { id: options.id } : {}),
 			...(options.schema ? { schema: options.schema } : {}),
 			...(options.tools ? { tools: options.tools } : {}),
@@ -376,6 +404,63 @@ export const deleteAgentFile = async (
 		context,
 		'DELETE',
 		`/projects/${projectId}/agents/v2/${agentId}/files/${fileId}`,
+	);
+};
+
+export type AgentMemorySourceSelection = Pick<
+	ListAgentMemoryEntriesQueryDto,
+	'source' | 'sourceFacet' | 'sourceFacetId'
+>;
+
+export const listAgentMemoryEntries = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	options: { limit: number; cursor?: string } & AgentMemorySourceSelection,
+): Promise<AgentMemoryEntriesPageDto> => {
+	return await makeRestApiRequest<AgentMemoryEntriesPageDto>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries`,
+		options,
+	);
+};
+
+export const getAgentMemorySourceFacets = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+): Promise<AgentMemorySourceFacetsDto> => {
+	return await makeRestApiRequest<AgentMemorySourceFacetsDto>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries/facets`,
+	);
+};
+
+export const deleteAgentMemoryEntry = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	entryId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-entries/${entryId}`,
+	);
+};
+
+export const deleteAgentMemoryCapture = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	captureId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/projects/${projectId}/agents/v2/${agentId}/memory-captures/${captureId}`,
 	);
 };
 
@@ -568,12 +653,13 @@ export const publishAgent = async (
 	projectId: string,
 	agentId: string,
 	versionId?: string,
+	metadata?: UpdateAgentVersionDto,
 ): Promise<AgentResource> => {
 	return await makeRestApiRequest<AgentResource>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/publish`,
-		versionId ? { versionId } : undefined,
+		{ versionId, ...metadata },
 	);
 };
 
@@ -615,6 +701,33 @@ export const revertAgentToVersion = async (
 	);
 };
 
+export const getAgentVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+): Promise<AgentVersionListItemDto> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/versions/${versionId}`,
+	);
+
+export const updateAgentVersion = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	versionId: string,
+	metadata: UpdateAgentVersionDto,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/projects/${projectId}/agents/v2/${agentId}/versions/${versionId}`,
+		metadata,
+	);
+};
+
 export const listAgentVersions = async (
 	context: IRestApiContext,
 	projectId: string,
@@ -628,6 +741,19 @@ export const listAgentVersions = async (
 		params,
 	);
 };
+
+export const listAgentPublishHistory = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	params: { take: number; skip: number },
+): Promise<AgentPublishHistoryItemDto[]> =>
+	await makeRestApiRequest<AgentPublishHistoryItemDto[]>(
+		context,
+		'GET',
+		`/projects/${projectId}/agents/v2/${agentId}/publish-history`,
+		params,
+	);
 
 export const getAgentBudgetSpend = async (
 	context: IRestApiContext,
@@ -703,12 +829,14 @@ export const createAgentSkill = async (
 	projectId: string,
 	agentId: string,
 	skill: AgentSkill,
+	availableTo?: AgentSkillAvailability,
+	method?: SkillCreateMethod,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'POST',
 		`/projects/${projectId}/agents/v2/${agentId}/skills`,
-		skill,
+		{ ...skill, ...(availableTo ? { availableTo } : {}), ...(method ? { method } : {}) },
 	);
 };
 
@@ -719,13 +847,74 @@ export const updateAgentSkill = async (
 	skillId: string,
 	updates: Partial<AgentSkill>,
 	baseSkillHash?: string,
+	availableTo?: AgentSkillAvailability,
 ): Promise<AgentSkillMutationResponse> => {
 	return await makeRestApiRequest<AgentSkillMutationResponse>(
 		context,
 		'PATCH',
 		`/projects/${projectId}/agents/v2/${agentId}/skills/${skillId}`,
-		{ ...updates, baseSkillHash },
+		{ ...updates, baseSkillHash, ...(availableTo ? { availableTo } : {}) },
 	);
+};
+
+export const listAttachableSkills = async (
+	context: IRestApiContext,
+	agentId: string,
+): Promise<SkillListItem[]> => {
+	const { data } = await makeRestApiRequest<SkillListResponse>(context, 'GET', '/skills', {
+		attachableTo: agentId,
+	});
+	const targetRank = (skill: SkillListItem) =>
+		skill.scope === 'instance' ? 2 : skill.agentId ? 1 : 0;
+	const byTargetThenName = (left: SkillListItem, right: SkillListItem) =>
+		targetRank(left) - targetRank(right) || left.name.localeCompare(right.name);
+	return data.sort(byTargetThenName);
+};
+
+export const getSkillDetail = async (
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillDetail> => {
+	return await makeRestApiRequest<SkillDetail>(context, 'GET', `/skills/${skillId}`);
+};
+
+/** Every saved version of a skill, newest first. */
+export const listSkillVersions = async (
+	context: IRestApiContext,
+	skillId: string,
+): Promise<SkillVersionSummary[]> => {
+	return await makeRestApiRequest<SkillVersionSummary[]>(
+		context,
+		'GET',
+		`/skills/${skillId}/versions`,
+	);
+};
+
+/** One saved version of a skill, with its content. */
+export const getSkillVersion = async (
+	context: IRestApiContext,
+	skillId: string,
+	version: number,
+): Promise<SkillVersionDetail> => {
+	return await makeRestApiRequest<SkillVersionDetail>(
+		context,
+		'GET',
+		`/skills/${skillId}/versions/${version}`,
+	);
+};
+
+/** A name like `name` that no skill in the scope has yet, such as "New skill 2". */
+export const getNewSkillName = async (
+	context: IRestApiContext,
+	query: SkillNewNameQueryDto,
+): Promise<string> => {
+	const { name } = await makeRestApiRequest<SkillNewNameResponse>(
+		context,
+		'GET',
+		'/skills/new-name',
+		query,
+	);
+	return name;
 };
 
 export const getAgentBackgroundJobs = async (
@@ -863,6 +1052,48 @@ export const getChatMessages = async (
 		context,
 		'GET',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/messages`,
+	);
+};
+
+/** One of the user's own threads with a system agent. Rejects with a 404 for any other thread. */
+export const getSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+): Promise<SystemAgentThreadSummary> =>
+	await makeRestApiRequest<SystemAgentThreadSummary>(
+		context,
+		'GET',
+		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
+	);
+
+/** One page of the user's own threads with a system agent, newest first. */
+export const listSystemAgentThreads = async (
+	context: IRestApiContext,
+	agentId: string,
+	options: { limit: number; cursor?: string; search?: string },
+): Promise<SystemAgentThreadsResponse> =>
+	await makeRestApiRequest<SystemAgentThreadsResponse>(
+		context,
+		'GET',
+		`/agents/system/${encodeURIComponent(agentId)}/threads`,
+		{
+			limit: options.limit,
+			...(options.cursor ? { cursor: options.cursor } : {}),
+			...(options.search ? { search: options.search } : {}),
+		},
+	);
+
+/** Deletes one of the user's own threads with a system agent. */
+export const deleteSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${agentChatPath('', agentId, 'system')}/${encodeURIComponent(threadId)}`,
 	);
 };
 

@@ -47,6 +47,10 @@ export class LogsPanel {
 		return this.root.getByTestId('logs-overview-body').getByRole('treeitem');
 	}
 
+	getNodeName(name: string): Locator {
+		return this.getLogEntries().getByText(name, { exact: true });
+	}
+
 	getSelectedLogEntry(): Locator {
 		return this.root.getByTestId('logs-overview-body').getByRole('treeitem', { selected: true });
 	}

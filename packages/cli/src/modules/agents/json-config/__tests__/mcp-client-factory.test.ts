@@ -1,15 +1,21 @@
 import type { CredentialProvider } from '@n8n/agents';
-import type { AgentJsonMcpServerConfig } from '@n8n/api-types';
+import { AI_GATEWAY_MANAGED_TAG, type AgentJsonMcpServerConfig } from '@n8n/api-types';
 import type { CustomFetch } from '@n8n/backend-network';
 import { mock } from 'vitest-mock-extended';
 import { OperationalError, UserError } from 'n8n-workflow';
 
+import { resolveMcpRegistryConnection } from '@/modules/mcp-registry/mcp-registry-connection';
+import { pairAiGatewayServers } from '@/modules/mcp-registry/registry/mcp-registry-ai-gateway';
+import {
+	firecrawlAiGatewayMockServer,
+	firecrawlMockServer,
+} from '@/modules/mcp-registry/registry/mock-servers';
 import type { OauthService } from '@/oauth/oauth.service';
 
 import {
 	buildMcpClientForServer,
 	listMcpServerTools,
-	mapApprovalToSdk,
+	type AiGatewayMcpCredentialResolver,
 } from '../mcp-client-factory';
 
 // ---------------------------------------------------------------------------
@@ -67,24 +73,6 @@ function makeOk(): Response {
 function make401(): Response {
 	return new Response('unauthorized', { status: 401 });
 }
-
-// ---------------------------------------------------------------------------
-// mapApprovalToSdk
-// ---------------------------------------------------------------------------
-
-describe('mapApprovalToSdk', () => {
-	it('returns undefined when approval is absent', () => {
-		expect(mapApprovalToSdk(undefined)).toBeUndefined();
-	});
-
-	it('maps mode "global" to literal true (all tools require approval)', () => {
-		expect(mapApprovalToSdk({ mode: 'global' })).toBe(true);
-	});
-
-	it('maps mode "selected" to the literal tools list', () => {
-		expect(mapApprovalToSdk({ mode: 'selected', tools: ['a', 'b'] })).toEqual(['a', 'b']);
-	});
-});
 
 // ---------------------------------------------------------------------------
 // buildMcpClientForServer — header derivation per auth type
@@ -314,8 +302,10 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 		await buildMcpClientForServer(
 			makeServer({
 				transport: 'sse',
-				toolFilter: { mode: 'allow', tools: ['echo'] },
-				approval: { mode: 'selected', tools: ['create'] },
+				toolPermissions: {
+					categories: { read: 'blocked', write: 'blocked' },
+					tools: { echo: 'always_allow', create: 'require_approval' },
+				},
 				connectionTimeoutMs: 5_000,
 			}),
 			{
@@ -333,12 +323,54 @@ describe('buildMcpClientForServer — SDK config mapping', () => {
 			name: 'srv',
 			url: 'https://example.test/mcp',
 			transport: 'sse',
-			toolFilter: { mode: 'allow', tools: ['echo'] },
-			requireApproval: ['create'],
 			connectionTimeoutMs: 5_000,
 			onToolCallSettled,
 		});
 		expect(typeof configs[0].fetch).toBe('function');
+		const configureTools = configs[0].configureTools;
+		expect(configureTools).toBeTypeOf('function');
+		expect(
+			(configureTools as (tools: Array<{ name: string }>) => unknown)([
+				{ name: 'echo' },
+				{ name: 'create' },
+				{ name: 'other' },
+			]),
+		).toEqual({
+			toolFilter: { mode: 'exclude', tools: ['other'] },
+			requireApproval: ['create'],
+		});
+	});
+
+	it('omits configureTools from the SDK config when tool permissions are not provided', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+
+		await buildMcpClientForServer(makeServer(), {
+			credentialProvider,
+			oauthService,
+			projectId: 'proj-1',
+			proxyFetch,
+		});
+
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		expect(configs[0]).not.toHaveProperty('configureTools');
+	});
+
+	it('marks tool configuration as non-interrupting only when the runtime cannot suspend', async () => {
+		const credentialProvider = mock<CredentialProvider>();
+		const oauthService = mock<OauthService>();
+		const server = makeServer({
+			toolPermissions: { categories: { read: 'always_allow', write: 'always_allow' } },
+		});
+		const deps = { credentialProvider, oauthService, projectId: 'proj-1', proxyFetch };
+
+		await buildMcpClientForServer(server, { ...deps, nonInterrupting: true });
+		await buildMcpClientForServer(server, deps);
+
+		const [inlineConfigs] = mcpClientCtor.mock.calls[0] as [Array<Record<string, unknown>>];
+		const [defaultConfigs] = mcpClientCtor.mock.calls[1] as [Array<Record<string, unknown>>];
+		expect(inlineConfigs[0]).toMatchObject({ configureToolsNonInterrupting: true });
+		expect(defaultConfigs[0]).not.toHaveProperty('configureToolsNonInterrupting');
 	});
 
 	it('omits connectionTimeoutMs from the SDK config when not provided', async () => {
@@ -594,11 +626,10 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});
 
-	it('falls back to the MCP hostname for native OAuth2 credentials in none mode', async () => {
+	it('falls back to the MCP hostname for native OAuth2 credentials with no domain mode', async () => {
 		const credentialProvider = mock<CredentialProvider>();
 		credentialProvider.resolve.mockResolvedValue({
 			oauthTokenData: { access_token: 'github-token' },
-			allowedHttpRequestDomains: 'none',
 		} as never);
 		const oauthService = mock<OauthService>();
 
@@ -613,6 +644,8 @@ describe('buildMcpClientForServer — credential domain restrictions', () => {
 
 		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ fetch: typeof fetch }>];
 		await expect(configs[0].fetch('https://api.githubcopilot.com/mcp/')).resolves.toBeDefined();
+		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
+		await expect(configs[0].fetch('https://other.example.test/mcp/')).rejects.toThrow(UserError);
 		expect(proxyFetchMock).toHaveBeenCalledTimes(1);
 	});
 
@@ -785,6 +818,87 @@ describe('buildMcpClientForServer — unresolvable credential', () => {
 		await expect(configs[0].fetch(configs[0].url)).rejects.toThrow(
 			'does not contain an OAuth2 access token',
 		);
+		expect(proxyFetchMock).not.toHaveBeenCalled();
+	});
+});
+
+// ---------------------------------------------------------------------------
+// buildMcpClientForServer — Gateway credits
+// ---------------------------------------------------------------------------
+
+describe('buildMcpClientForServer — Gateway credits', () => {
+	const aiGatewayEntry = { authentication: 'none' as const, credential: AI_GATEWAY_MANAGED_TAG };
+	const [pairedServer] = pairAiGatewayServers(
+		[firecrawlMockServer, firecrawlAiGatewayMockServer],
+		() => true,
+	);
+	const connection = resolveMcpRegistryConnection(pairedServer);
+
+	async function build(server: Partial<AgentJsonMcpServerConfig>) {
+		const credentialProvider = mock<CredentialProvider & AiGatewayMcpCredentialResolver>();
+		credentialProvider.resolveAiGatewayMcpCredential.mockResolvedValue({ token: 'minted' });
+		await buildMcpClientForServer(
+			makeServer({ metadata: { nodeTypeName: '@n8n/mcp-registry.firecrawl' }, ...server }),
+			{
+				credentialProvider,
+				oauthService: mock<OauthService>(),
+				projectId: 'proj-1',
+				proxyFetch,
+				resolveRegistryConnection: async () => connection ?? undefined,
+			},
+		);
+		const [configs] = mcpClientCtor.mock.calls[0] as [Array<{ url: string; fetch: typeof fetch }>];
+		return { config: configs[0], credentialProvider };
+	}
+
+	beforeEach(() => {
+		mcpClientCtor.mockReset();
+		proxyFetchMock.mockReset();
+		proxyFetchMock.mockResolvedValue(makeOk());
+	});
+
+	it('mints Gateway credits for a registry entry with the Gateway credits marker, and connects to the AI Gateway', async () => {
+		const { config, credentialProvider } = await build(aiGatewayEntry);
+
+		await config.fetch(config.url);
+
+		expect(credentialProvider.resolveAiGatewayMcpCredential).toHaveBeenCalledWith(
+			'n8nConnectFirecrawlMcpAiGatewayApi',
+		);
+		expect(config.url).toBe('https://gateway.n8n.test/v1/gateway/mcp/firecrawl');
+		const [, init] = proxyFetchMock.mock.calls[0] as [string, RequestInit];
+		expect(headersToCaseInsensitiveRecord(init.headers).Authorization).toBe('Bearer minted');
+	});
+
+	it('mints Gateway credits again after a 401, and retries with the new token', async () => {
+		const { config, credentialProvider } = await build(aiGatewayEntry);
+		credentialProvider.resolveAiGatewayMcpCredential.mockResolvedValue({ token: 'fresh' });
+		proxyFetchMock.mockResolvedValueOnce(make401());
+
+		const response = await config.fetch(config.url);
+
+		expect(response.status).toBe(200);
+		expect(credentialProvider.resolveAiGatewayMcpCredential).toHaveBeenCalledTimes(2);
+		const [, retryInit] = proxyFetchMock.mock.calls[1] as [string, RequestInit];
+		expect(headersToCaseInsensitiveRecord(retryInit.headers).Authorization).toBe('Bearer fresh');
+	});
+
+	it.each<{ case: string; entry: Partial<AgentJsonMcpServerConfig> }>([
+		{
+			case: 'an OAuth2 entry without a credential',
+			entry: { authentication: 'firecrawlMcpOAuth2Api' as never },
+		},
+		{
+			case: "an entry with authentication 'none' but no marker",
+			entry: { authentication: 'none' },
+		},
+	])('does not mint Gateway credits for $case', async ({ entry }) => {
+		const { config, credentialProvider } = await build(entry);
+
+		await expect(config.fetch(config.url)).rejects.toThrow(
+			'MCP registry connection could not be resolved',
+		);
+		expect(credentialProvider.resolveAiGatewayMcpCredential).not.toHaveBeenCalled();
 		expect(proxyFetchMock).not.toHaveBeenCalled();
 	});
 });

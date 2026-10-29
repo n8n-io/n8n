@@ -9,9 +9,11 @@ import {
 	DataTableListPublicDto,
 	DataTablePublicDto,
 	DataTableRowListPublicDto,
+	DependencyListPublicDto,
 	DeleteDataTableRowsPublicQueryDto,
 	DeleteDataTableRowsResponsePublicDto,
 	InsertDataTableRowsResponsePublicDto,
+	ListDependenciesQueryDto,
 	PublicApiListDataTableQueryDto,
 	PublicApiListDataTableRowsQueryDto,
 	UpdateDataTableColumnPublicDto,
@@ -56,6 +58,8 @@ import { DataTableNameConflictError } from '@/modules/data-table/errors/data-tab
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableSystemColumnNameConflictError } from '@/modules/data-table/errors/data-table-system-column-name-conflict.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
+import { WorkflowDependencyQueryService } from '@/modules/workflow-index/workflow-dependency-query.service';
+import { toDependencyListPublicDto } from '@/public-api/v1/shared/dependency.mapper';
 import {
 	encodeNextCursor,
 	resolveOffsetPagination,
@@ -64,7 +68,7 @@ import { ProjectNotFoundError } from '@/services/project.service.ee';
 
 const tags = ['DataTable'];
 
-/** The domain errors the data table service raises, mapped to the public statuses the eov handler sent. */
+/** The domain errors the data table service raises, mapped to public statuses. */
 function handleError(error: unknown): never {
 	if (error instanceof DataTableValidationError) {
 		throw new BadRequestError(error.message);
@@ -166,6 +170,7 @@ export class DataTablesPublicController {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
+		private readonly workflowDependencyQueryService: WorkflowDependencyQueryService,
 	) {}
 
 	@Get('/')
@@ -260,6 +265,36 @@ export class DataTablesPublicController {
 		} catch (error) {
 			return handleError(error);
 		}
+	}
+
+	@Get('/:dataTableId/dependencies')
+	@ApiKeyScope('dataTable:read')
+	@ProjectScope('dataTable:read')
+	@ApiSummary('List data table dependencies')
+	@ApiDescription('List the workflows that use the data table.')
+	@ApiTags(tags)
+	@ApiResponse(200, DependencyListPublicDto)
+	@ApiErrorResponse(404)
+	async getDataTableDependencies(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('dataTableId', dataTableIdParamSchema) dataTableId: string,
+		@Query query: ListDependenciesQueryDto,
+	): Promise<DependencyListPublicDto> {
+		const pagination = resolveOffsetPagination(query);
+		try {
+			await this.dataTableService.getProjectIdForDataTable(dataTableId);
+		} catch (error) {
+			return handleError(error);
+		}
+
+		const result = await this.workflowDependencyQueryService.getResourceDependencies(
+			[dataTableId],
+			'dataTable',
+			req.user,
+		);
+
+		return toDependencyListPublicDto(result[dataTableId], pagination);
 	}
 
 	@Patch('/:dataTableId')

@@ -9,7 +9,7 @@ const meta = {
 	argTypes: {
 		variant: {
 			control: 'select',
-			options: ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'],
+			options: ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'],
 		},
 		size: {
 			control: 'select',
@@ -58,7 +58,7 @@ export const Variants: Story = {
 	render: () => ({
 		components: { N8nToggle },
 		setup() {
-			const variants = ['solid', 'subtle', 'ghost', 'outline', 'destructive', 'success'];
+			const variants = ['solid', 'brand', 'ghost', 'outline', 'destructive', 'success'];
 			return { variants };
 		},
 		template: `

@@ -4,9 +4,6 @@ tags:
 summary: Delete a project
 description: Delete a project from your instance.
 x-required-scope: project:delete
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

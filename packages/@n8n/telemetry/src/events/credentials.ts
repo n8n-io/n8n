@@ -12,6 +12,15 @@ const descriptionProperties = {
 		.describe('Length of the trimmed, saved description in UTF-16 code units. Zero when absent.'),
 };
 
+const managedAppVersion = z
+	.number()
+	.int()
+	.positive()
+	.optional()
+	.describe(
+		'Version of the managed app that the credential uses, or that a new connection would use. Absent for a user-owned app or a type with no managed app. Use it to follow a managed app rollout. Reported when the credential is saved, so it does not show that the OAuth flow finished.',
+	);
+
 export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 	USER_VIEWED_GATEWAY_CREDITS_CREDENTIAL_ERROR_NUDGE: {
 		name: 'User viewed Gateway credits credential error nudge',
@@ -48,6 +57,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			jwe_enabled: z.boolean().optional(),
 			credential_supports_managed_auth: z.boolean().optional(),
 			credential_uses_managed_auth: z.boolean().optional(),
+			credential_managed_app_version: managedAppVersion,
 		}),
 	},
 	USER_UPDATED_CREDENTIALS: {
@@ -67,6 +77,7 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 			jwe_enabled: z.boolean(),
 			credential_supports_managed_auth: z.boolean(),
 			credential_uses_managed_auth: z.boolean(),
+			credential_managed_app_version: managedAppVersion,
 		}),
 	},
 	USER_STARTED_CREDENTIAL_CONNECTION: {
@@ -109,6 +120,16 @@ export const CREDENTIALS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					"'accepted' = the service took the credential (2xx, or a service-declared accepted status code); 'rejected' = explicit 401/403 auth rejection; 'unverified' = anything else (wrong test URL, unreachable service) — proves nothing about the credential",
 				),
+		}),
+	},
+	USER_OPENED_CREDENTIAL_SHARING_FROM_REDACTED_DATA: {
+		name: 'User opened credential sharing from redacted data',
+		description:
+			'A user who can share a credential but cannot use it clicked the link on redacted execution data that opens its sharing tab. Fires once per click.',
+		properties: z.object({
+			credential_id: z.string(),
+			workflow_id: z.string(),
+			execution_id: z.string().optional(),
 		}),
 	},
 });

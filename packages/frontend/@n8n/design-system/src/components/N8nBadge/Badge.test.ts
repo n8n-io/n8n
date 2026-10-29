@@ -17,6 +17,13 @@ describe('components', function describeComponents() {
 				expect(wrapper.html()).toMatchSnapshot();
 			});
 
+			it('should not render an empty label without a slot', function testNoLabel() {
+				const wrapper = render(N8nBadge, { props: { leadingIcon: 'arrow-up' } });
+
+				expect(wrapper.container.querySelector('.n8n-badge')).toBeInTheDocument();
+				expect(wrapper.container.querySelector('.n8n-text')).toBeNull();
+			});
+
 			it('should render the selected variant and size', function testVariantAndSize() {
 				const wrapper = render(N8nBadge, {
 					props: {
@@ -48,6 +55,20 @@ describe('components', function describeComponents() {
 				);
 				expect(screen.getByRole('button', { name: 'Clickable badge' })).toHaveClass('n8n-badge');
 				expect(wrapper.html()).toMatchSnapshot();
+			});
+
+			it('should apply the icon class when leading and trailing icons are present', function testIconClass() {
+				render(N8nBadge, {
+					props: {
+						leadingIcon: 'check',
+						trailingIcon: 'x',
+					},
+					slots: {
+						default: 'Badge with icons',
+					},
+				});
+
+				expect(screen.getByText('Badge with icons')).toHaveClass('hasIcon');
 			});
 		});
 	});

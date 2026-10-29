@@ -79,7 +79,7 @@ function dismiss() {
 		<template #aside>
 			<N8nButton
 				size="small"
-				variant="subtle"
+				variant="outline"
 				:label="i18n.baseText('insights.dashboard.dataRangeAlert.dismiss')"
 				data-test-id="insights-date-range-alert-dismiss"
 				@click="dismiss"

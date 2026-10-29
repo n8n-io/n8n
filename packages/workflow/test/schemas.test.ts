@@ -1,4 +1,4 @@
-import { INodeCredentialsDetailsSchema, normalizeNodeShape } from '../src/schemas';
+import { INodeCredentialsDetailsSchema, INodeSchema, normalizeNodeShape } from '../src/schemas';
 
 describe('INodeCredentialsDetailsSchema', () => {
 	it('accepts AI Gateway-managed credential entries', () => {
@@ -107,5 +107,34 @@ describe('normalizeNodeShape', () => {
 		expect(result).toEqual({ id: '1', parameters: {} });
 		expect(result).not.toHaveProperty('name');
 		expect(result).not.toHaveProperty('notInSchema');
+	});
+});
+
+describe('INodeSchema', () => {
+	it('preserves node telemetry tags', () => {
+		const node = {
+			id: 'node',
+			name: 'Step',
+			type: 'n8n-nodes-base.noOp',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+			customTelemetryTags: { tag: [{ key: 'department', value: 'operations' }] },
+		};
+		expect(INodeSchema.parse(node)).toEqual(node);
+	});
+
+	it('rejects malformed node telemetry tags', () => {
+		expect(
+			INodeSchema.safeParse({
+				id: 'node',
+				name: 'Step',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+				customTelemetryTags: { tag: [{ key: 'department', value: 42 }] },
+			}).success,
+		).toBe(false);
 	});
 });

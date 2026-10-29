@@ -112,7 +112,7 @@ export function useDataTableNavigationCommands(options: {
 				icon: {
 					component: N8nIcon,
 					props: {
-						icon: 'table',
+						icon: 'plus',
 						color: 'text-light',
 					},
 				},

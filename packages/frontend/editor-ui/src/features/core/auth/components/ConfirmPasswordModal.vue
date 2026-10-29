@@ -11,6 +11,8 @@ import { confirmPasswordEventBus, type ConfirmPasswordClosedEventPayload } from 
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
+	N8nDialogDescription,
 	N8nDialogFooter,
 	N8nInput,
 	N8nInputLabel,
@@ -105,7 +107,6 @@ const onSubmit = async () => {
 	<N8nDialog
 		:open="true"
 		:header="i18n.baseText('auth.confirmPassword.changeEmail.title')"
-		:description="i18n.baseText('auth.confirmPassword.changeEmail.description')"
 		size="medium"
 		@update:open="onOpenChange"
 		@open-auto-focus="onOpenAutoFocus"
@@ -121,35 +122,40 @@ const onSubmit = async () => {
 				readonly
 			/>
 
-			<div :class="[$style.field, { [$style.fieldInvalid]: error }]">
-				<N8nInputLabel
-					input-name="confirm-password"
-					:label="i18n.baseText('auth.confirmPassword.changeEmail.input.label')"
-				>
-					<N8nInput
-						id="confirm-password"
-						ref="passwordInput"
-						v-model="password"
-						type="password"
-						name="current-password"
-						autocomplete="current-password"
-						size="medium"
-						:aria-invalid="Boolean(error)"
-						:aria-describedby="error ? 'confirm-password-error' : undefined"
-						data-test-id="confirm-password-input"
-					/>
-				</N8nInputLabel>
-				<N8nText
-					v-if="error"
-					id="confirm-password-error"
-					size="small"
-					color="danger"
-					role="alert"
-					data-test-id="confirm-password-error"
-				>
-					{{ error }}
-				</N8nText>
-			</div>
+			<N8nDialogBody>
+				<N8nDialogDescription>
+					{{ i18n.baseText('auth.confirmPassword.changeEmail.description') }}
+				</N8nDialogDescription>
+				<div :class="[$style.field, { [$style.fieldInvalid]: error }]">
+					<N8nInputLabel
+						input-name="confirm-password"
+						:label="i18n.baseText('auth.confirmPassword.changeEmail.input.label')"
+					>
+						<N8nInput
+							id="confirm-password"
+							ref="passwordInput"
+							v-model="password"
+							type="password"
+							name="current-password"
+							autocomplete="current-password"
+							size="medium"
+							:aria-invalid="Boolean(error)"
+							:aria-describedby="error ? 'confirm-password-error' : undefined"
+							data-test-id="confirm-password-input"
+						/>
+					</N8nInputLabel>
+					<N8nText
+						v-if="error"
+						id="confirm-password-error"
+						size="small"
+						color="danger"
+						role="alert"
+						data-test-id="confirm-password-error"
+					>
+						{{ error }}
+					</N8nText>
+				</div>
+			</N8nDialogBody>
 
 			<N8nDialogFooter>
 				<N8nButton

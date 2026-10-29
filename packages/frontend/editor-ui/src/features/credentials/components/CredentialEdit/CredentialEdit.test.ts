@@ -2,12 +2,14 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from './CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
+import { getActivePinia, setActivePinia } from 'pinia';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createWorkflowDocumentId,
@@ -27,6 +29,12 @@ import { useAiGatewayStore } from '@/app/stores/aiGateway.store';
 import { reactive } from 'vue';
 import { CREDENTIAL_DESCRIPTION_MAX_LENGTH } from '@n8n/api-types';
 import { TEMPLATED_CUSTOM_AUTH_CREDENTIAL_TYPE } from '../../templatedAuth.utils';
+import { getCredentialOptions } from '../../credentials.api';
+
+vi.mock('../../credentials.api', async (importOriginal) => ({
+	...(await importOriginal<object>()),
+	getCredentialOptions: vi.fn(),
+}));
 
 const { isAgentUi, getAgentCredentialHelp } = vi.hoisted(() => ({
 	isAgentUi: { value: false },
@@ -477,6 +485,56 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByText('Details')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Connection')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Sharing')).toBeInTheDocument());
+	});
+
+	test('opens on the tab the modal state asks for', async () => {
+		// createTestingPinia makes its pinia the active one; the tests after this one
+		// read stores from the renderer's pinia, so hand it back afterwards.
+		const rendererPinia = getActivePinia();
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, initialTab: 'sharing' },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: { sharing: true, externalSecrets: false },
+						templates: { host: '' },
+					},
+				},
+			},
+		});
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.state.credentialTypes = {
+			testApi: { name: 'testApi', displayName: 'Test API', properties: [] } as ICredentialType,
+		};
+		credentialsStore.getCredentialData.mockResolvedValueOnce({
+			id: '123',
+			name: 'Test API account',
+			type: 'testApi',
+			data: {},
+			isManaged: false,
+			sharedWithProjects: [],
+			scopes: ['credential:share'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		const { findByTestId } = renderComponent({
+			props: { activeId: '123', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+			global: {
+				stubs: { CredentialSharing: { template: '<div data-test-id="credential-sharing-tab" />' } },
+			},
+		});
+
+		try {
+			expect(await findByTestId('credential-sharing-tab')).toBeInTheDocument();
+		} finally {
+			if (rendererPinia) setActivePinia(rendererPinia);
+		}
 	});
 
 	test('shows Connection and Details for a managed credential', async () => {
@@ -1582,6 +1640,38 @@ describe('CredentialEdit', () => {
 			expect(createCredential).toHaveBeenCalledTimes(1);
 		});
 
+		test('lets the bindings flow save a new credential on a protected instance', async () => {
+			const credentialType: ICredentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			};
+			const createCredential = vi.fn().mockResolvedValue('source-id');
+			const { credentialsStore, pinia } = setupNewCredential(credentialType, {
+				createCredential,
+				destination: {
+					kind: 'pending',
+					id: 'source-project',
+					name: 'Source project',
+					permissions: { create: true },
+				},
+			});
+			mockedStore(useSourceControlStore).preferences.branchReadOnly = true;
+			credentialsStore.getCredentialData.mockResolvedValue(
+				createCredentialResponse({ id: 'source-id', type: 'testApi' }),
+			);
+			const { findByRole } = renderComponent({
+				props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				pinia,
+			});
+			const save = await findByRole('button', { name: 'Save' });
+			expect(save).toBeEnabled();
+			await userEvent.click(save);
+			await waitFor(() =>
+				expect(createCredential).toHaveBeenCalledWith(expect.anything(), 'source-project'),
+			);
+		});
+
 		describe('descriptions', () => {
 			const credentialType: ICredentialType = {
 				name: 'testApi',
@@ -1793,6 +1883,109 @@ describe('CredentialEdit', () => {
 				},
 			);
 		});
+
+		test.each(['custom', 'listed'])(
+			'saves a %s project without a credential test',
+			async (mode) => {
+				const credentialType: ICredentialType = {
+					name: 'googleVertexAiApi',
+					displayName: 'Google Vertex AI',
+					properties: [
+						{
+							name: 'email',
+							displayName: 'Service Account Email',
+							type: 'string',
+							default: '',
+							required: true,
+						},
+						{
+							name: 'privateKey',
+							displayName: 'Private Key',
+							type: 'string',
+							default: '',
+							required: true,
+							typeOptions: { password: true },
+						},
+						{
+							name: 'project',
+							displayName: 'Project',
+							type: 'options',
+							options: [{ name: 'Custom', value: '__custom__' }],
+							default: '__custom__',
+							typeOptions: {
+								loadOptionsMethod: 'projects',
+								loadOptionsDependsOn: ['email', 'privateKey'],
+							},
+						},
+						{
+							name: 'projectId',
+							displayName: 'Project ID',
+							type: 'string',
+							required: true,
+							default: '',
+							displayOptions: { show: { project: ['__custom__'] } },
+						},
+					],
+				};
+				const { credentialsStore, pinia, uiStore } = setupNewCredential(credentialType, {
+					initialData: { email: 'service@example.com', privateKey: 'draft-key' },
+					closeOnSave: true,
+				});
+				if (mode === 'custom') {
+					vi.mocked(getCredentialOptions).mockRejectedValue(new Error('Permission denied'));
+				} else {
+					vi.mocked(getCredentialOptions).mockResolvedValue({
+						results: [{ name: 'Target project', value: 'target-project' }],
+					});
+				}
+				const view = renderComponent({
+					props: {
+						activeId: credentialType.name,
+						modalName: CREDENTIAL_EDIT_MODAL_KEY,
+						mode: 'new',
+					},
+					pinia,
+				});
+				const saveButton = await view.findByRole('button', { name: 'Save' });
+				const projectSelect = await view.findByLabelText('Project');
+				const projectIdForm = view.getByText('Project ID').closest('form')!;
+				const projectIdInput = within(projectIdForm).getByRole('textbox');
+				expect(projectSelect).toHaveValue('Custom');
+				expect(projectIdInput).toBeVisible();
+				expect(saveButton).toBeDisabled();
+				expect(credentialsStore.createNewCredential).not.toHaveBeenCalled();
+				if (mode === 'custom') {
+					await userEvent.click(projectIdInput);
+					await userEvent.paste('target-project');
+				} else {
+					await waitFor(() => expect(projectSelect).toBeEnabled());
+					await userEvent.click(projectSelect);
+					await userEvent.click(await view.findByText('Target project'));
+					expect(view.queryByText('Project ID')).toBeNull();
+					expect(projectIdInput).not.toBeInTheDocument();
+				}
+				await waitFor(() => expect(saveButton).toBeEnabled());
+				await userEvent.click(saveButton);
+				await waitFor(() =>
+					expect(credentialsStore.createNewCredential).toHaveBeenCalledWith(
+						expect.objectContaining({
+							type: 'googleVertexAiApi',
+							data: {
+								email: 'service@example.com',
+								privateKey: 'draft-key',
+								...(mode === 'custom'
+									? { projectId: 'target-project' }
+									: { project: 'target-project' }),
+							},
+						}),
+						'personal-project',
+						undefined,
+					),
+				);
+				expect(credentialsStore.testCredential).not.toHaveBeenCalled();
+				expect(uiStore.closeModal).toHaveBeenCalledWith(CREDENTIAL_EDIT_MODAL_KEY);
+			},
+		);
 
 		test('closes the modal after saving credentials that cannot be tested when closeOnSave is enabled', async () => {
 			const credentialType = {

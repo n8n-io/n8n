@@ -17,7 +17,7 @@ import {
 	GROUP_PADDING_X as SDK_GROUP_PADDING_X,
 	GROUP_PADDING_Y_TOP as SDK_GROUP_PADDING_Y_TOP,
 } from './constants';
-import { node, sticky, trigger } from './node-builders/node-builder';
+import { ifElse, node, sticky, trigger } from './node-builders/node-builder';
 import { languageModel, tool } from './node-builders/subnode-builders';
 
 // Written out rather than imported on purpose: these are the canvas's numbers, from
@@ -538,6 +538,32 @@ describe('collapsed node group layout after tidyUp', () => {
 		expect(secondX).toBeGreaterThan(firstX);
 		expect(secondY).toBe(firstY);
 	});
+
+	it('keeps the true branch above the false branch when both branches are groups', () => {
+		const start = trigger({
+			type: 'n8n-nodes-base.manualTrigger',
+			version: 1,
+			config: { name: 'Start' },
+		});
+		const check = ifElse({ version: 2.2, config: { name: 'Check' } });
+		const onTrue = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'On True' } });
+		const onFalse = node({ type: 'n8n-nodes-base.code', version: 2, config: { name: 'On False' } });
+
+		// The false group comes first, so the group order must not decide the rows.
+		const visible = visibleBoxes(
+			workflow('wf', 'Branch order')
+				.add(start)
+				.to(check)
+				.onTrue(onTrue)
+				.onFalse(onFalse)
+				.group('False Group', [onFalse])
+				.group('True Group', [onTrue])
+				.toJSON({ tidyUp: true }),
+		);
+
+		expect(visible.get('True Group')!.y).toBeLessThan(visible.get('False Group')!.y);
+	});
+
 	it('keeps the SDK constants in step with the canvas', () => {
 		// If this fails, the SDK and the canvas disagree and every geometry
 		// assertion below is measuring the wrong frame.

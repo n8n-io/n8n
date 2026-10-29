@@ -2,8 +2,10 @@ import {
 	Agent,
 	createObservationLogObserveFn,
 	createObservationLogReflectFn,
+	extendRuntimeSkillSource,
 	Memory,
 } from '@n8n/agents';
+import { SPLIT_BUILDER_TOOLS } from '@n8n/api-types';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
@@ -11,18 +13,16 @@ import {
 	createClaimedToolNames,
 	type McpToolNameValidationError,
 } from './mcp-tool-name-validation';
-import { attachRuntimeWorkspaceCapabilities } from './runtime-workspace';
 import { listConnectedMcpServices } from '../mcp/connected-mcp-services';
 import { getVersionedSystemPrompt, resolvePromptProfile } from '../prompts/prompt-profiles';
-import { hasRuntimeSkills, warmRuntimeSkills } from '../skills/runtime-skills';
 import { createToolRegistry, mergeToolRegistries, toolRegistryValues } from '../tool-registry';
 import {
 	createOrchestratorDomainTools,
 	createOrchestrationTools,
 	getActiveOrchestratorDomainToolNames,
 } from '../tools';
-import { createToolsFromLocalMcpServer } from '../tools/filesystem/create-tools-from-mcp-server';
-import { ALWAYS_LOADED_TOOL_NAMES, CHECKPOINT_FOLLOW_UP_TOOL_NAMES } from '../tools/tool-ids';
+import { createToolsFromLocalMcpServer } from '../tools/create-tools-from-mcp-server';
+import { ALWAYS_LOADED_TOOL_NAMES } from '../tools/tool-ids';
 import { isSetupPanelEnabled } from '../tools/workflows/setup-items';
 import {
 	buildAgentTraceInputs,
@@ -58,18 +58,12 @@ function resolveModalSessionModelId(
 
 // ── Agent factory ───────────────────────────────────────────────────────────
 
-function splitDeferredTools(
-	tools: InstanceAiToolRegistry,
-	options: { isCheckpointFollowUp?: boolean } = {},
-) {
+function splitDeferredTools(tools: InstanceAiToolRegistry) {
 	const coreTools = createToolRegistry();
 	const deferredTools = createToolRegistry();
 
 	for (const [name, tool] of tools) {
-		if (
-			ALWAYS_LOADED_TOOL_NAMES.has(name) ||
-			(options.isCheckpointFollowUp && CHECKPOINT_FOLLOW_UP_TOOL_NAMES.has(name))
-		) {
+		if (ALWAYS_LOADED_TOOL_NAMES.has(name)) {
 			coreTools.set(name, tool);
 		} else {
 			deferredTools.set(name, tool);
@@ -96,16 +90,12 @@ export async function createInstanceAgent(
 		orchestrationContext.modelId = modelId;
 	}
 
-	// Thread the trace handle in so domain tools (e.g. build-workflow) can emit
+	// Thread the trace handle in so domain tools (e.g. workflow_builder_build_workflow) can emit
 	// explicit child runs that land on the active trace — orchestration tools
 	// (e.g. verify) already get it via OrchestrationContext.
 	const domainContext: InstanceAiContext = {
 		...context,
 		tracing: orchestrationContext?.tracing,
-		runtimeSkillCatalog:
-			orchestrationContext?.runtimeSkillCatalog ??
-			context.runtimeSkillCatalog ??
-			orchestrationContext?.runtimeSkills,
 	};
 	if (orchestrationContext) {
 		orchestrationContext.domainContext = domainContext;
@@ -152,16 +142,18 @@ export async function createInstanceAgent(
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools.
+	// Keep MCP tools from shadowing domain or orchestration tools. Former split tool
+	// names stay reserved so persisted calls still resolve through their legacy actions.
 	const reservedToolNames = new Set<string>([
 		...getActiveOrchestratorDomainToolNames(domainContext),
 		...orchestrationTools.keys(),
+		...Object.keys(SPLIT_BUILDER_TOOLS),
 	]);
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
 	const safeLocalMcpTools = createToolRegistry();
 	addSafeMcpTools(safeLocalMcpTools, rawLocalMcpTools, {
-		source: 'local gateway MCP',
+		source: 'Browser Use MCP',
 		claimedToolNames: claimedOrchestratorToolNames,
 		warn: warnSkippedMcpTool,
 	});
@@ -192,18 +184,16 @@ export async function createInstanceAgent(
 			agentRole: 'orchestrator',
 			tags: ['orchestrator'],
 		}) ?? allOrchestratorTools;
-	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools, {
-		isCheckpointFollowUp: orchestrationContext?.isCheckpointFollowUp,
-	});
+	const { coreTools, deferredTools } = splitDeferredTools(tracedOrchestratorTools);
 	const hasDeferrableTools = !options.disableDeferredTools && deferredTools.size > 0;
 	const hasDeferredExternalMcpTools =
 		hasDeferrableTools && Array.from(safeMcpTools.keys()).some((name) => deferredTools.has(name));
 	const runtimeTools = hasDeferrableTools ? coreTools : tracedOrchestratorTools;
-	const systemPrompt = getVersionedSystemPrompt(
+	const baseSystemPrompt = getVersionedSystemPrompt(
 		orchestrationContext?.promptConfiguration?.systemPromptVersion ??
 			resolvePromptProfile({}).profile.systemPromptVersion,
 		{
-			computerUseState: context.computerUseState,
+			browserUseState: context.browserUseState,
 			toolSearchEnabled: hasDeferrableTools,
 			mcpToolSearchEnabled: hasDeferredExternalMcpTools,
 			licenseHints: context.licenseHints,
@@ -214,6 +204,7 @@ export async function createInstanceAgent(
 			// for flagged-in users on project-bound runs.
 			conversationHistoryEnabled: Boolean(context.conversationHistoryService),
 			preferenceSavingEnabled: Boolean(context.aiPreferenceService),
+			skillManagementEnabled: Boolean(context.skillService),
 			setupPanelEnabled: isSetupPanelEnabled(context),
 			workspaceRoot:
 				orchestrationContext?.workspace && orchestrationContext.workspaceRoot
@@ -221,6 +212,10 @@ export async function createInstanceAgent(
 					: undefined,
 		},
 	);
+
+	const systemPrompt = orchestrationContext?.skillAvailabilityNotice
+		? `${baseSystemPrompt}\n\n${orchestrationContext.skillAvailabilityNotice}`
+		: baseSystemPrompt;
 
 	setTracePromptVersion(
 		orchestrationContext?.tracing,
@@ -245,45 +240,53 @@ export async function createInstanceAgent(
 	if (mcpConnectionFailures.length > 0) {
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
+	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}
 	if (hasDeferrableTools) {
 		agent.deferredTool(toolRegistryValues(deferredTools), { search: { topK: 5 } });
 	}
-	const runtimeSkills = orchestrationContext?.runtimeSkills;
-	if (hasRuntimeSkills(runtimeSkills)) {
-		agent.skills(runtimeSkills);
-		warmRuntimeSkills(runtimeSkills, {
-			logger: orchestrationContext?.logger,
-			tracing: orchestrationContext?.tracing,
-		});
-	}
+	// The agents module owns the builder skills that are generated from its config schema.
+	const builderSkills = context.builderDelegate?.getRuntimeSkills() ?? [];
+	const baseSkills = orchestrationContext?.skills;
+	const skills =
+		baseSkills && builderSkills.length > 0
+			? extendRuntimeSkillSource(baseSkills, builderSkills)
+			: baseSkills;
 	if (telemetry) {
 		agent.telemetry(telemetry);
 	}
-	attachRuntimeWorkspaceCapabilities(agent, {
-		workspace: orchestrationContext?.workspace,
-		runtimeSkills: orchestrationContext?.runtimeSkills,
-	});
+	if (orchestrationContext?.workspace) agent.workspace(orchestrationContext.workspace);
+	if (skills) agent.skills(skills);
 
 	if (options.memory) {
 		const mem = new Memory().storage(options.memory);
 
 		if (memoryConfig.observationalMemory) {
-			const { observerThresholdTokens, reflectorThresholdTokens, midRunObservation, onTaskUsage } =
-				memoryConfig.observationalMemory;
+			const {
+				observerThresholdTokens,
+				reflectorThresholdTokens,
+				midRunObservation,
+				onTaskUsage,
+				model: memoryModel,
+			} = memoryConfig.observationalMemory;
+			const taskModel = memoryModel ?? modelId;
 			mem.observationalMemory({
 				observerThresholdTokens,
 				reflectorThresholdTokens,
 				...(midRunObservation !== undefined ? { midRunObservation } : {}),
-				...(onTaskUsage
+				...(onTaskUsage || memoryModel
 					? {
-							observe: createObservationLogObserveFn(modelId, { onUsage: onTaskUsage }),
-							reflect: createObservationLogReflectFn(modelId, { onUsage: onTaskUsage }),
+							observe: createObservationLogObserveFn(taskModel, { onUsage: onTaskUsage }),
+							reflect: createObservationLogReflectFn(taskModel, { onUsage: onTaskUsage }),
 						}
 					: {}),
 			});
+		}
+
+		if (memoryConfig.titleGeneration) {
+			mem.titleGeneration({ ...memoryConfig.titleGeneration });
 		}
 
 		agent.memory(mem);
@@ -316,7 +319,7 @@ export async function createInstanceAgent(
 				: undefined,
 			toolSearchEnabled: hasDeferrableTools,
 			inputProcessors: hasDeferrableTools ? ['NativeToolSearch'] : undefined,
-			runtimeSkills: runtimeSkills?.registry,
+			skills: skills?.registry,
 		}),
 	);
 

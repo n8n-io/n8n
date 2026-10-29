@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // In-memory runtime workspace for in-process eval harnesses.
 //
-// Without a workspace, `build-workflow` fails its source read with a
+// Without a workspace, `workflow_builder_build_workflow` fails its source read with a
 // `code_fixable` remediation telling the agent to write the file with
 // `workspace_write_file` — a tool that only exists when a workspace is attached.
 //

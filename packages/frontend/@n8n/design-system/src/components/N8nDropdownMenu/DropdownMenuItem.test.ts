@@ -371,7 +371,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				const chevron = document.querySelector('[data-icon="chevron-right"]');
+				const chevron = document.querySelector('[data-icon="chevron-right-12"]');
 				expect(chevron).toBeInTheDocument();
 			});
 		});
@@ -384,7 +384,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				const chevron = document.querySelector('[data-icon="chevron-right"]');
+				const chevron = document.querySelector('[data-icon="chevron-right-12"]');
 				expect(chevron).toBeInTheDocument();
 			});
 		});
@@ -400,7 +400,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;
@@ -421,7 +421,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;
@@ -442,7 +442,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;
@@ -472,7 +472,7 @@ describe('N8nDropdownMenuItem', () => {
 			});
 
 			await waitFor(() => {
-				expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+				expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			});
 
 			const trigger = document.querySelector('[role="menuitem"]')!;

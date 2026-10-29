@@ -48,6 +48,12 @@ export const destructiveChange: Extract<PromotionBindingConflict, { code: 'destr
 		changes: [{ kind: 'remove-column', column: 'total', type: 'number', destructive: true }],
 	};
 
+export const projectDeletion: Extract<PromotionBindingConflict, { code: 'project-deletion' }> = {
+	kind: 'project',
+	code: 'project-deletion',
+	project: { id: 'team-b', name: 'Sales' },
+};
+
 export const savedCredential: Extract<CreatedPromotionBinding, { kind: 'credential' }> = {
 	kind: 'credential',
 	sourceId: credential.sourceId,
@@ -57,42 +63,39 @@ export const savedCredential: Extract<CreatedPromotionBinding, { kind: 'credenti
 	projectId: credential.ownerProject.id,
 };
 
-export function blocked(
-	preflight: Partial<BlockedApplyResult['preflight']> = {},
-): BlockedApplyResult {
+export function blocked(check: Partial<BlockedApplyResult['check']> = {}): BlockedApplyResult {
 	return {
 		status: 'blocked',
-		connectionId: 'connection-id',
-		configId: 'config-id',
+		environmentId: 'environment-id',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
-		preflight: {
+		check: {
 			missingProjects: [],
 			missingBindings: [credential],
 			accessRequirements: [],
 			conflicts: [],
 			warnings: [],
-			...preflight,
+			...check,
 		},
 	};
 }
 
 export const applied: AppliedResult = {
 	status: 'applied',
-	connectionId: 'connection-id',
-	configId: 'config-id',
+	environmentId: 'environment-id',
 	git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	counts: {
 		projects: { created: 0, updated: 1, skipped: 1, deleted: 0 },
-		folders: { created: 0, skipped: 0, removed: 0 },
+		folders: { created: 0, updated: 0, skipped: 0, moved: 0, renamed: 0, removed: 0 },
 		workflows: {
 			created: 1,
 			updated: 2,
 			skipped: 1,
+			moved: 0,
 			archived: 0,
 			deleted: 0,
 			publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 1, failed: 1 },
 		},
-		credentials: { matched: 1, stubbed: 0 },
+		credentials: { matched: 1, stubbed: 0, updated: 0 },
 		dataTables: { matched: 0, created: 0, updated: 0 },
 		variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 		tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },

@@ -25,6 +25,7 @@ import { createDataTable } from '../shared/db/data-tables';
 import { createFolder } from '../shared/db/folders';
 import { createMember, createOwner } from '../shared/db/users';
 import * as utils from '../shared/utils';
+import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
 
 let testServer: ReturnType<typeof utils.setupTestServer>;
 let depRepo: WorkflowDependencyRepository;
@@ -85,16 +86,15 @@ async function seedIndexedAgent(
 	const agent = agentRepo.create({
 		name,
 		projectId: project.id,
-		schema: {
+		schema: storedAgentConfig({
 			name,
 			model: 'openai/gpt-4.1-mini',
 			instructions: 'Help the user',
 			skills: [],
 			...schema,
-		},
+		}),
 		integrations: [],
 		tools: {},
-		skills: {},
 		versionId: 'draft-version-1',
 	});
 	await agentRepo.save(agent);
@@ -105,7 +105,6 @@ async function seedIndexedAgent(
 		agentId: agent.id,
 		schema: agent.schema,
 		tools: agent.tools,
-		skills: agent.skills,
 		publishedBy: user,
 	});
 	agent.activeVersionId = publishedVersionId;
@@ -530,7 +529,7 @@ describe('POST /workflow-dependencies/details', () => {
 			role: 'credential:owner',
 		});
 
-		// One accessible credential, one existing but inaccessible credential,
+		// One usable credential, one existing credential the member cannot use,
 		// and one index entry left behind by a deleted credential
 		await seedDep(memberWorkflow.id, 'credentialId', memberCred.id);
 		await seedDep(memberWorkflow.id, 'credentialId', ownerCred.id);
@@ -546,9 +545,14 @@ describe('POST /workflow-dependencies/details', () => {
 
 		expect(resp.statusCode).toBe(200);
 		const result = resp.body.data[memberWorkflow.id];
-		expect(result.dependencies).toHaveLength(1);
-		expect(result.dependencies[0]).toMatchObject({ id: memberCred.id, type: 'credentialId' });
-		expect(result.inaccessibleCount).toBe(1);
+		expect(result.dependencies).toHaveLength(2);
+		expect(result.dependencies).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ id: memberCred.id, type: 'credentialId' }),
+				expect.objectContaining({ id: ownerCred.id, type: 'credentialId', unavailable: true }),
+			]),
+		);
+		expect(result.inaccessibleCount).toBe(0);
 	});
 
 	it('should drop workflow call dependencies referencing deleted workflows', async () => {
@@ -604,9 +608,11 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.statusCode).toBe(200);
 		expect(resp.body.data).toHaveProperty(sharedWorkflow.id);
 		// Member can access the shared workflow but not the owner's credential,
-		// so the credential shows up as inaccessible rather than a resolved dependency
-		expect(resp.body.data[sharedWorkflow.id].dependencies).toHaveLength(0);
-		expect(resp.body.data[sharedWorkflow.id].inaccessibleCount).toBe(1);
+		// so the credential is listed by name as unavailable, not hidden in the count
+		expect(resp.body.data[sharedWorkflow.id].dependencies).toEqual([
+			{ id: cred.id, name: cred.name, type: 'credentialId', unavailable: true },
+		]);
+		expect(resp.body.data[sharedWorkflow.id].inaccessibleCount).toBe(0);
 	});
 
 	it('should require resourceType in the request body', async () => {
@@ -645,6 +651,95 @@ describe('POST /workflow-dependencies/details', () => {
 		});
 
 		expect(resp.statusCode).toBe(400);
+	});
+});
+
+describe('Workflow and credential ID collisions', () => {
+	it('should report no dependents for an unused workflow that shares a credential ID', async () => {
+		const owner = await createOwner();
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+		const workflow = await createWorkflow({ id: credential.id, nodes: [] }, owner);
+		const credentialUser = await createWorkflow({ name: 'Credential user' }, owner);
+		await seedDep(credentialUser.id, 'credentialId', credential.id);
+
+		const counts = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/counts')
+			.send({ resourceIds: [workflow.id], resourceType: 'workflow' });
+		const details = await testServer
+			.authAgentFor(owner)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds: [workflow.id], resourceType: 'workflow' });
+
+		expect(counts.statusCode).toBe(200);
+		expect(details.statusCode).toBe(200);
+		expect.soft(counts.body.data).toEqual({});
+		expect.soft(details.body.data).toEqual({});
+	});
+
+	it.each([
+		{ scenario: 'a single workflow with distinct IDs', matchingIds: false, batch: false },
+		{ scenario: 'a single workflow with matching IDs', matchingIds: true, batch: false },
+		{ scenario: 'a batch with distinct IDs', matchingIds: false, batch: true },
+		{ scenario: 'a batch with matching IDs', matchingIds: true, batch: true },
+	])('should list only workflow callers for $scenario', async ({ matchingIds, batch }) => {
+		const owner = await createOwner();
+		const member = await createMember();
+		const credential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+		const workflow = await createWorkflow(
+			{ id: matchingIds ? credential.id : randomUUID(), name: 'Target workflow' },
+			member,
+		);
+		const caller = await createWorkflow({ name: 'Workflow caller' }, member);
+		const privateCaller = await createWorkflow({ name: 'Private workflow caller' }, owner);
+		const credentialUser = await createWorkflow({ name: 'Credential user' }, member);
+		await seedDep(caller.id, 'workflowCall', workflow.id);
+		await seedDep(privateCaller.id, 'workflowCall', workflow.id);
+		await seedDep(credentialUser.id, 'credentialId', credential.id);
+
+		// A batch also loads the credential use through its source workflow.
+		const resourceIds = batch ? [workflow.id, credentialUser.id] : [workflow.id];
+		const counts = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/counts')
+			.send({ resourceIds, resourceType: 'workflow' });
+		const details = await testServer
+			.authAgentFor(member)
+			.post('/workflow-dependencies/details')
+			.send({ resourceIds, resourceType: 'workflow' });
+
+		expect(counts.statusCode).toBe(200);
+		expect(details.statusCode).toBe(200);
+		expect.soft(counts.body.data[workflow.id]).toEqual({
+			agentUsage: 0,
+			credentialId: 0,
+			dataTableId: 0,
+			errorWorkflow: 0,
+			errorWorkflowParent: 0,
+			workflowCall: 0,
+			workflowParent: 2,
+		});
+		expect.soft(details.body.data[workflow.id]).toEqual({
+			dependencies: [{ id: caller.id, name: caller.name, type: 'workflowParent' }],
+			inaccessibleCount: 1,
+		});
+
+		if (batch) {
+			expect.soft(counts.body.data[credentialUser.id]).toMatchObject({
+				credentialId: 1,
+				workflowParent: 0,
+			});
+			expect.soft(details.body.data[credentialUser.id]).toEqual({
+				dependencies: [{ id: credential.id, name: credential.name, type: 'credentialId' }],
+				inaccessibleCount: 0,
+			});
+		}
 	});
 });
 

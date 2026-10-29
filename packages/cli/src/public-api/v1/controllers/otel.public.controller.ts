@@ -5,7 +5,6 @@ import {
 	OtelTestTraceResultPublicDto,
 	UpdateOtelSettingsPublicDto,
 } from '@n8n/api-types';
-import { ModuleRegistry } from '@n8n/backend-common';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
 	ApiDescription,
@@ -27,7 +26,6 @@ import type { Response } from 'express';
 import { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OtelService } from '@/modules/otel/otel.service';
 import { toOtelSettingsResponse } from '@/public-api/v1/shared/otel.mapper';
-import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 const tags = ['SettingsOtel'];
 
@@ -36,8 +34,6 @@ export class OtelPublicController {
 	constructor(
 		private readonly settingsService: OtelSettingsService,
 		private readonly otelService: OtelService,
-		private readonly moduleRegistry: ModuleRegistry,
-		private readonly publisher: Publisher,
 	) {}
 
 	@Get('/')
@@ -63,7 +59,7 @@ export class OtelPublicController {
 	@ApiKeyScope('otel:manage')
 	@ApiSummary('Set the OpenTelemetry configuration')
 	@ApiDescription(
-		'Set the OpenTelemetry configuration. This is a full replacement: every field must be provided, and a partial body is rejected. The one exception is `exporterProtocol`, which defaults to `http/protobuf` when omitted. The update takes effect exactly as it would from the UI, using the same validation, and is applied to the running instance immediately. Fields managed declaratively via environment variables are read-only: attempting to change one is rejected with 409, while re-submitting its current value (as returned by GET) is accepted. Requires the `otel:manage` scope.',
+		'Set the OpenTelemetry configuration. This is a full replacement: every field must be provided, and a partial body is rejected. The exceptions are `exporterProtocol`, which defaults to `http/protobuf` when omitted, and `emitWorkflowStartSpan` and `emitNodeStartSpan`, which default to `false` when omitted. The update takes effect exactly as it would from the UI, using the same validation, and is applied to the running instance immediately. Fields managed declaratively via environment variables are read-only: attempting to change one is rejected with 409, while re-submitting its current value (as returned by GET) is accepted. Requires the `otel:manage` scope.',
 	)
 	@ApiTags(tags)
 	@ApiResponse(200, OtelSettingsPublicDto)
@@ -84,9 +80,7 @@ export class OtelPublicController {
 		}
 
 		await this.settingsService.saveSettings(body);
-		await this.otelService.restart();
-		await this.moduleRegistry.refreshModuleSettings('otel');
-		void this.publisher.publishCommand({ command: 'reload-otel-config' });
+		await this.otelService.applyAfterSave();
 
 		const updated = this.settingsService.getSettings();
 

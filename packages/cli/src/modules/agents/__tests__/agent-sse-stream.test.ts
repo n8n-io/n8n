@@ -65,6 +65,31 @@ async function collectSerializedEvents(chunks: StreamChunk[]): Promise<AgentSseE
 	return events;
 }
 
+describe('agent-sse-stream — usage', () => {
+	it('sends turn totals without internal usage metadata', async () => {
+		const usage = { promptTokens: 100, completionTokens: 20, totalTokens: 120, cost: 0.01 };
+		const events = await collectSerializedEvents([
+			{
+				type: 'usage',
+				model: 'openai/test',
+				usage: { ...usage, additionalMetadata: { internal: true } },
+			},
+			{ type: 'finish', finishReason: 'stop', usage },
+		]);
+		expect(events).toEqual([
+			{ type: 'usage', usage },
+			{ type: 'finish', finishReason: 'stop', usage },
+		]);
+	});
+
+	it('keeps an unavailable price absent from the event', async () => {
+		const usage = { promptTokens: 100, completionTokens: 20, totalTokens: 120 };
+		expect(await collectSerializedEvents([{ type: 'usage', model: 'openai/test', usage }])).toEqual(
+			[{ type: 'usage', usage }],
+		);
+	});
+});
+
 describe('agent-sse-stream — connection setup', () => {
 	afterEach(() => {
 		vi.useRealTimers();
@@ -270,13 +295,13 @@ describe('agent-sse-stream — stream completion', () => {
 		]);
 	});
 
-	it('forwards the finish reason and leaves completion delivery to the caller', async () => {
+	it.each(['stop', 'cancelled'] as const)('forwards the %s finish reason', async (finishReason) => {
 		const events = await collectEvents([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
 			{
 				type: 'finish',
-				finishReason: 'stop',
+				finishReason,
 				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
 			},
 		]);
@@ -284,7 +309,11 @@ describe('agent-sse-stream — stream completion', () => {
 		expect(events).toEqual([
 			{ type: 'text-delta', id: 't-1', delta: 'hello' },
 			{ type: 'text-end', id: 't-1' },
-			{ type: 'finish', finishReason: 'stop' },
+			{
+				type: 'finish',
+				finishReason,
+				usage: { promptTokens: 1, completionTokens: 1, totalTokens: 2 },
+			},
 		]);
 	});
 
@@ -304,14 +333,14 @@ describe('agent-sse-stream — stream completion', () => {
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-1',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				suspendPayload: { question: 'First question' },
 			},
 			{
 				type: 'tool-call-suspended',
 				runId: 'run-1',
 				toolCallId: 'tc-2',
-				toolName: 'ask_questions',
+				toolName: 'agent_builder_ask_questions',
 				suspendPayload: { question: 'Second question' },
 			},
 			{ type: 'finish', finishReason: 'other' },
@@ -324,7 +353,7 @@ describe('agent-sse-stream — stream completion', () => {
 				payload: {
 					toolCallId: 'tc-1',
 					runId: 'run-1',
-					toolName: 'ask_questions',
+					toolName: 'agent_builder_ask_questions',
 					input: { question: 'First question' },
 				},
 			},
@@ -333,7 +362,7 @@ describe('agent-sse-stream — stream completion', () => {
 				payload: {
 					toolCallId: 'tc-2',
 					runId: 'run-1',
-					toolName: 'ask_questions',
+					toolName: 'agent_builder_ask_questions',
 					input: { question: 'Second question' },
 				},
 			},

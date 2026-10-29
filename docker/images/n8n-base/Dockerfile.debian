@@ -3,7 +3,7 @@
 #
 # CI passes the DHI reference (see build-base-image.yml). The default keeps
 # plain `docker build` working.
-ARG DHI_REF=dhi.io/node:26.10.0-debian13-dev@sha256:ddb48790becd5f08bb5bb0d21292c098e64ca9108215cce589263abb10e0dcaa
+ARG DHI_REF=dhi.io/node:26.12.1-debian13-dev@sha256:c8939885965365c675a024d062bcb761bda4b47e95ce0323aa998ac9bc312fd6
 
 # The DHI Debian mirror has no msttcorefonts installer, so take the same fonts
 # as the Alpine base from Alpine. They are data files: any platform will do.

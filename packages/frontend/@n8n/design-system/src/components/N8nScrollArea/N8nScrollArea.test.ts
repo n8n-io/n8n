@@ -145,4 +145,41 @@ describe('N8nScrollArea', () => {
 		// as the scrollHideDelay is an internal prop that affects behavior
 		expect(wrapper.container).toMatchSnapshot();
 	});
+
+	describe('edgeFade', () => {
+		const fadeClasses = ['fadeTop', 'fadeBottom', 'fadeLeft', 'fadeRight', 'fadeY', 'fadeX'];
+
+		function getViewport(container: Element) {
+			return container.querySelector<HTMLElement>('[data-reka-scroll-area-viewport]')!;
+		}
+
+		it('masks no edge by default', () => {
+			const wrapper = render(N8nScrollArea, { slots: { default: '<div>Test content</div>' } });
+
+			const viewport = getViewport(wrapper.container);
+			for (const fadeClass of fadeClasses) {
+				expect(viewport).not.toHaveClass(fadeClass);
+			}
+		});
+
+		it.each([
+			['top', 'fadeTop'],
+			['bottom', 'fadeBottom'],
+			['left', 'fadeLeft'],
+			['right', 'fadeRight'],
+			['y', 'fadeY'],
+			['x', 'fadeX'],
+		] as const)('masks the %s edge on the viewport', (edgeFade, fadeClass) => {
+			const wrapper = render(N8nScrollArea, {
+				props: { edgeFade },
+				slots: { default: '<div>Test content</div>' },
+			});
+
+			const viewport = getViewport(wrapper.container);
+			expect(viewport).toHaveClass(fadeClass);
+			for (const otherClass of fadeClasses.filter((name) => name !== fadeClass)) {
+				expect(viewport).not.toHaveClass(otherClass);
+			}
+		});
+	});
 });

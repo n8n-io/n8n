@@ -1,11 +1,81 @@
 import { describe, expect, it } from 'vitest';
+import { resolve } from 'node:path';
 
 import {
+	buildNpmInstallOverrides,
 	closureOf,
+	expectedNpmDuplicateReason,
+	findWorkspacePackageJsonFiles,
 	filesTriggerFullRun,
 	matchChangedFiles,
 	resolveTargets,
 } from './verify-npm-install.js';
+
+function attributedCopy(requiredBy: string | null, range: string | null) {
+	return {
+		version: '1.0.0',
+		path: 'node_modules/example',
+		requiredBy,
+		range,
+		section: requiredBy ? ('dependencies' as const) : null,
+		isWorkspace: false,
+		inPnpmStore: false,
+	};
+}
+
+describe('expectedNpmDuplicateReason', () => {
+	it('allows the exact known form-data origins', () => {
+		expect(
+			expectedNpmDuplicateReason({
+				name: 'form-data',
+				copies: [
+					attributedCopy(null, null),
+					attributedCopy('@getzep/zep-cloud', '4.0.0'),
+					attributedCopy('@getzep/zep-js', '4.0.0'),
+				],
+			}),
+		).toContain('Legacy Zep SDKs');
+	});
+
+	it('rejects an additional origin', () => {
+		expect(
+			expectedNpmDuplicateReason({
+				name: 'form-data',
+				copies: [
+					attributedCopy(null, null),
+					attributedCopy('@getzep/zep-cloud', '4.0.0'),
+					attributedCopy('@getzep/zep-js', '4.0.0'),
+					attributedCopy('new-package', '^4.0.0'),
+				],
+			}),
+		).toBeUndefined();
+	});
+
+	it('rejects a changed dependency range', () => {
+		expect(
+			expectedNpmDuplicateReason({
+				name: '@langchain/core',
+				copies: [
+					attributedCopy(null, null),
+					attributedCopy('langchain', '^0.1.60'),
+					attributedCopy('@langchain/textsplitters', '>0.2.0 <0.3.0'),
+				],
+			}),
+		).toBeUndefined();
+	});
+});
+
+describe('buildNpmInstallOverrides', () => {
+	it('uses local tarballs and excludes Docker-only native bindings', () => {
+		expect(buildNpmInstallOverrides(['a'], { a: '/tmp/a.tgz' })).toMatchObject({
+			a: 'file:/tmp/a.tgz',
+			'@napi-rs/canvas-linux-arm64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/canvas-linux-x64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/image-linux-arm64-musl': 'npm:empty-npm-package@1.0.0',
+			'@napi-rs/image-linux-x64-musl': 'npm:empty-npm-package@1.0.0',
+		});
+	});
+});
 
 /** Build a WorkspacePkg fixture from `[depName, section]` pairs (only names + sections matter). */
 function ws(name: string, deps: Array<[string, string]>) {
@@ -40,6 +110,21 @@ const byName = new Map([
 	['solo', ws('solo', [['ext', 'dependencies']])],
 	['dev-only', ws('dev-only', [['a', 'devDependencies']])],
 ]) as unknown as Parameters<typeof closureOf>[1];
+
+describe('findWorkspacePackageJsonFiles', () => {
+	it('excludes package fixtures that are not part of the pnpm workspace', () => {
+		const rootDir = resolve(process.cwd(), '../../../..');
+		const files = findWorkspacePackageJsonFiles(rootDir);
+
+		expect(files).toContain(resolve(rootDir, 'packages/quality/policy/code-health/package.json'));
+		expect(files).not.toContain(
+			resolve(
+				rootDir,
+				'packages/quality/testing/playwright/fixtures/community-packages/packages/n8n-nodes-compat-v1-1.0.0/package.json',
+			),
+		);
+	});
+});
 
 describe('closureOf', () => {
 	it('follows dependencies, peerDependencies and optionalDependencies transitively', () => {

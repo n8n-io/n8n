@@ -327,6 +327,7 @@ describe('SAML Login Flow', () => {
 	test('Should name the account and the reason when the login is denied for an unverified email', async () => {
 		const req = mock<AuthlessRequest>({ browserId: 'test-browser-id' });
 		const res = mock<Response>({
+			headersSent: false,
 			status: vi.fn().mockReturnThis(),
 			json: vi.fn().mockReturnThis(),
 		});

@@ -300,6 +300,17 @@ describe('spawn', () => {
 		});
 	});
 
+	it('forwards the parent execution id to the run and omits it when none is supplied', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn({ ...request, parentExecutionId: 'turn-1' }, context);
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(runner.run.mock.calls[0][0]).toMatchObject({ parentExecutionId: 'turn-1' });
+		expect(runner.run.mock.calls[1][0]).not.toHaveProperty('parentExecutionId');
+	});
+
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {
 		const { backgroundRunner, runner, context } = setup();
 
@@ -433,6 +444,34 @@ describe('spawn', () => {
 		expect(jobService.settle).toHaveBeenCalledWith(
 			expect.any(String),
 			{ status: 'failed', error: 'model exploded' },
+			{ status: 'running', timeoutAt: expect.any(Date) },
+		);
+	});
+
+	it('settles a guardrail-stopped run as failed with the stop reason', async () => {
+		const { backgroundRunner, runner, jobService, context } = setup();
+		runner.run.mockResolvedValue(
+			completedRunResult({
+				status: 'failed',
+				result: {
+					runId: 'run-1',
+					messages: [],
+					finishReason: 'guardrail',
+					guardrail: { code: 'budget.session' },
+					getState: () => ({}),
+				},
+			} as unknown as Partial<SubAgentRunResult>),
+		);
+
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(jobService.settle).toHaveBeenCalledWith(
+			expect.any(String),
+			{
+				status: 'failed',
+				error: 'The sub-agent run was stopped: the session cost cap is spent.',
+			},
 			{ status: 'running', timeoutAt: expect.any(Date) },
 		);
 	});

@@ -27,6 +27,7 @@ jobs:
       frontend_declarations: ${{ fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
+      sbom: ${{ fromJSON(steps.ci-filter.outputs.results).sbom == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
@@ -80,6 +81,7 @@ jobs:
               !**/*.test.ts
               !**/*.spec.ts
               !packages/quality/testing/playwright/**
+              !packages/quality/efficiency/**
               !packages/frontend/@n8n/storybook/**
               !.devcontainer/**
               !scripts/agent-setup.mjs
@@ -135,6 +137,8 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .github/workflows/ci-pull-requests.yml
+              .github/workflows/sbom-validation-callable.yml
               .devcontainer/codespaces/*.mjs
               OWNERS
               scripts/*.test.mjs
@@ -143,13 +147,32 @@ jobs:
               scripts/codespace-preview/**
               scripts/licenses/**
               scripts/mutation-health/**
+              scripts/telemetry/**
               cubic.yaml
               .agents/review-rules/**
+            sbom:
+              package.json
+              pnpm-lock.yaml
+              pnpm-workspace.yaml
+              .github/scripts/package.json
+              .github/scripts/pnpm-lock.yaml
+              scripts/licenses/**
+              scripts/build-n8n.mjs
+              .github/actions/setup-nodejs/**
+              .github/workflows/ci-pull-requests.yml
+              .github/workflows/sbom-validation-callable.yml
             e2e-performance:
+              packages/quality/efficiency/memory/idle/**
+              packages/quality/efficiency/playwright.config.ts
+              packages/quality/efficiency/package.json
+              packages/quality/testing/playwright/package.json
+              packages/quality/testing/playwright/quality-*.ts
+              packages/quality/testing/playwright/fixtures/**
               packages/quality/testing/playwright/tests/performance/**
               packages/quality/testing/playwright/utils/performance-helper.ts
               packages/quality/environments/containers/**
               .github/workflows/test-e2e-performance-reusable.yml
+              .github/workflows/test-e2e-reusable.yml
             # Whole directories, not the `engine-*` files alone. Engine v2
             # routing lives in ordinary control plane code: `workflow-runner.ts`
             # and the webhook and trigger paths decide whether a run reaches the
@@ -190,6 +213,7 @@ jobs:
               packages/@n8n/db/**
               packages/@n8n/backend-test-utils/**
               packages/@n8n/scheduler/src/**
+              packages/cli/src/scheduling/**
               packages/cli/src/**/*.integration.test.ts
               packages/cli/src/modules/instance-registry/**
               packages/cli/vitest.*
@@ -282,6 +306,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
+      testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
     secrets: inherit
@@ -510,7 +535,17 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
-  # In-process discovery eval — asserts the orchestrator reaches for browser/computer-use
+  validate-sbom:
+    name: Release SBOM
+    needs: [install-and-build, format-check]
+    if: needs.install-and-build.outputs.sbom == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sbom-validation-callable.yml
+    with:
+      sha: ${{ needs.install-and-build.outputs.commit_sha }}
+
+  # In-process discovery eval — asserts the orchestrator reaches for Browser Use
   # tools at OAuth/screenshot moments. Lightweight (no Docker), runs in parallel with the
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
   instance-ai-discovery-evals:
@@ -549,6 +584,7 @@ jobs:
         db-tests,
         security-checks,
         workflow-scripts,
+        validate-sbom,
       ]
     if: always()
     runs-on: ubuntu-slim

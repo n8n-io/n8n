@@ -4,7 +4,7 @@ import { N8nIcon, N8nIconButton, N8nNodeIcon, N8nText } from '@n8n/design-system
 import { useI18n } from '@n8n/i18n';
 import DefaultDetailBody from './DefaultDetailBody.vue';
 import ToolCredentialPicker from './ToolCredentialPicker.vue';
-import { resolveToolItemIcon } from './toolItemIcon';
+import { resolveToolItemNodeIcon } from './toolItemIcon';
 import type { ToolConnectionItem } from './types';
 
 const props = defineProps<{
@@ -40,7 +40,7 @@ const placeholderIcon = computed(() => {
 	}
 });
 
-const resolvedIcon = computed(() => resolveToolItemIcon(props.item));
+const resolvedIcon = computed(() => resolveToolItemNodeIcon(props.item));
 </script>
 
 <template>

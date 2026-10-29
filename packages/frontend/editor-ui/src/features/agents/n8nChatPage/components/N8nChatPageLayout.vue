@@ -23,11 +23,14 @@ function goBack(): void {
 <template>
 	<div :class="[$style.page, { [$style.fill]: fill }]">
 		<div :class="$style.topRow">
-			<slot name="leading" />
 			<button type="button" :class="$style.backLink" data-testid="n8n-chat-back" @click="goBack">
 				<N8nIcon icon="arrow-left" size="small" />
 				{{ i18n.baseText('generic.back') }}
 			</button>
+			<template v-if="$slots.leading">
+				<span :class="$style.divider" aria-hidden="true" />
+				<slot name="leading" />
+			</template>
 		</div>
 
 		<div :class="[$style.content, { [$style.fill]: fill }]">
@@ -73,6 +76,12 @@ function goBack(): void {
 	&:hover {
 		color: var(--color--primary);
 	}
+}
+
+.divider {
+	width: var(--border-width);
+	height: var(--spacing--sm);
+	background-color: var(--color--foreground);
 }
 
 .content {

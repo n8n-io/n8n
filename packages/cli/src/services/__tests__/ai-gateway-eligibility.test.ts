@@ -52,6 +52,15 @@ describe('checkAiGatewayEligibility', () => {
 		});
 	});
 
+	it('accepts an MCP registry Gateway credits type, which the config does not list', () => {
+		const result = checkAiGatewayEligibility(
+			makeNode({ type: '@n8n/mcp-registry.n8nConnectBraveSearch' }),
+			'n8nConnectBraveSearchMcpAiGatewayApi',
+			makeConfig(),
+		);
+		expect(result).toEqual({ eligible: true });
+	});
+
 	describe('credential type coverage', () => {
 		it('returns credentialTypeNotCovered when credentialType is not in config.credentialTypes', () => {
 			const result = checkAiGatewayEligibility(

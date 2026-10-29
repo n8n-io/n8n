@@ -165,7 +165,7 @@ onMounted(async () => {
 			placement="bottom"
 		>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				native-type="button"
 				:class="$style.toolsButton"
 				:disabled="disabled"
@@ -196,7 +196,7 @@ onMounted(async () => {
 			>
 				<template #trigger>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						native-type="button"
 						:disabled="disabled"
 						:icon="toolCount === 0 ? 'plus' : undefined"

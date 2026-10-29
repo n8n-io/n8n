@@ -18,5 +18,10 @@ export default mergeConfig(
 				'n8n-workflow': require.resolve('n8n-workflow'),
 			},
 		},
+		// The test harness in `core/nodes-testing` uses legacy decorators. That
+		// file is outside this package, so the tsconfig setting does not apply to it.
+		oxc: {
+			decorator: { legacy: true, emitDecoratorMetadata: true },
+		},
 	}),
 );

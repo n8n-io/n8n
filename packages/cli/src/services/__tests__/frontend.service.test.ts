@@ -15,6 +15,7 @@ import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import { License } from '@/license';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { MfaService } from '@/mfa/mfa.service';
+import type { InboxService } from '@/modules/inbox/inbox.service';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import type { PushConfig } from '@/push/push.config';
 import type { AiUsageService } from '@/services/ai-usage.service';
@@ -129,6 +130,7 @@ describe('FrontendService', () => {
 
 	const credentialsOverwrites = mock<CredentialsOverwrites>({
 		getAll: vi.fn().mockReturnValue({}),
+		getNewerAppProperties: vi.fn().mockReturnValue([]),
 	});
 
 	const license = mock<License>({
@@ -206,6 +208,7 @@ describe('FrontendService', () => {
 	});
 
 	const workflowReviewPolicyService = mock<WorkflowReviewPolicyService>();
+	const inboxService = mock<InboxService>();
 
 	const createMockService = () => {
 		Container.set(
@@ -218,35 +221,46 @@ describe('FrontendService', () => {
 		// constructor-injected mock above must also be registered here.
 		Container.set(License, license);
 
-		return {
-			service: new FrontendService(
-				globalConfig,
-				logger,
-				loadNodesAndCredentials,
-				credentialTypes,
-				credentialsOverwrites,
+		// Suppress the constructor's background write so it cannot outlive the test.
+		// Restore the method so tests and reload handlers can call it explicitly.
+		const generateTypes = vi
+			.spyOn(FrontendService.prototype, 'generateTypes')
+			.mockResolvedValueOnce();
+		try {
+			return {
+				service: new FrontendService(
+					globalConfig,
+					logger,
+					loadNodesAndCredentials,
+					credentialTypes,
+					credentialsOverwrites,
+					license,
+					mailer,
+					instanceSettings,
+					urlService,
+					securityConfig,
+					pushConfig,
+					binaryDataConfig,
+					licenseState,
+					moduleRegistry,
+					mfaService,
+					ownershipService,
+					aiUsageService,
+					workflowRepository,
+					workflowReviewPolicyService,
+					inboxService,
+				),
 				license,
-				mailer,
-				instanceSettings,
-				urlService,
-				securityConfig,
-				pushConfig,
-				binaryDataConfig,
-				licenseState,
-				moduleRegistry,
-				mfaService,
-				ownershipService,
-				aiUsageService,
-				workflowRepository,
-				workflowReviewPolicyService,
-			),
-			license,
-		};
+			};
+		} finally {
+			generateTypes.mockRestore();
+		}
 	};
 
 	beforeEach(() => {
 		originalEnv = { ...process.env };
 		vi.clearAllMocks();
+		moduleRegistry.isActive.mockReturnValue(false);
 		globalConfig.diagnostics.enabled = false;
 		globalConfig.endpoints.frontendHealthCheckTimeoutMs = 5000;
 		globalConfig.aiAssistant.baseUrl = '';
@@ -280,6 +294,44 @@ describe('FrontendService', () => {
 	});
 
 	describe('getSettings', () => {
+		it('refreshes Inbox availability from registered sources on each request', async () => {
+			moduleRegistry.isActive.mockReturnValue(true);
+			inboxService.getSettings
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: ['workflow_review'],
+					failedTypes: [],
+				})
+				.mockResolvedValueOnce({
+					enabled: true,
+					availableTypes: [],
+					failedTypes: ['workflow_review'],
+				});
+			const { service } = createMockService();
+
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: ['workflow_review'],
+				failedTypes: [],
+			});
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: true,
+				availableTypes: [],
+				failedTypes: ['workflow_review'],
+			});
+			expect(inboxService.getSettings).toHaveBeenCalledTimes(2);
+		});
+
+		it('does not query Inbox sources when its module is inactive', async () => {
+			const { service } = createMockService();
+			expect((await service.getSettings()).inbox).toEqual({
+				enabled: false,
+				availableTypes: [],
+				failedTypes: [],
+			});
+			expect(inboxService.getSettings).not.toHaveBeenCalled();
+		});
+
 		it('should return frontend settings', async () => {
 			const { service } = createMockService();
 			const settings = await service.getSettings();
@@ -723,22 +775,6 @@ describe('FrontendService', () => {
 			(globalConfig as any).userManagement = { password: { minLength: 8 } };
 		});
 
-		it('reports granular credential sharing off unless the env flag is set', async () => {
-			delete process.env.N8N_ENV_FEAT_CRED_SHARING;
-
-			const { service } = createMockService();
-
-			expect((await service.getSettings()).granularCredentialSharing).toBe(false);
-		});
-
-		it('reports granular credential sharing on when the env flag is set', async () => {
-			process.env.N8N_ENV_FEAT_CRED_SHARING = 'true';
-
-			const { service } = createMockService();
-
-			expect((await service.getSettings()).granularCredentialSharing).toBe(true);
-		});
-
 		it('should set showSetupOnFirstLoad to false in preview mode', async () => {
 			process.env.N8N_PREVIEW_MODE = 'true';
 
@@ -1120,6 +1156,32 @@ describe('FrontendService', () => {
 			expect(credential.__skipManagedCreation).toBeUndefined();
 		});
 
+		it('should hide the fields that only the newer app of a rollout sets', () => {
+			const credential = {
+				name: 'notionOAuth2Api',
+				displayName: 'Notion OAuth2 API',
+				properties: [],
+			} as ICredentialType;
+			loadNodesAndCredentials.types = { credentials: [credential], nodes: [] };
+			(globalConfig as any).credentials = { overwrite: { skipTypes: [] } };
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({
+				notionOAuth2Api: { clientId: 'id', clientSecret: 'secret' },
+			});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([
+				'clientId',
+				'clientSecret',
+				'scope',
+			]);
+
+			const { service } = createMockService();
+			(service as any).overwriteCredentialsProperties();
+
+			expect(credential.__overwrittenProperties).toEqual(['clientId', 'clientSecret', 'scope']);
+
+			(credentialsOverwrites.getAll as Mock).mockReturnValue({});
+			(credentialsOverwrites.getNewerAppProperties as Mock).mockReturnValue([]);
+		});
+
 		it('should not propagate __skipManagedCreation from a skip-listed parent to extending types', () => {
 			// An overwrite keyed at a base type is inherited by extending types
 			// (__overwrittenProperties), but the skip list is exact-name: skipping the
@@ -1326,9 +1388,9 @@ describe('FrontendService', () => {
 				const largeNodes = createNodes(5000);
 				const smallNodes = createNodes(1);
 				const collectTypes = loadNodesAndCredentials.collectTypes as Mock;
-				collectTypes.mockReturnValueOnce(new Promise(() => {}));
 
 				const { service } = createMockService();
+				expect(collectTypes).not.toHaveBeenCalled();
 
 				for (let attempt = 0; attempt < 10; attempt++) {
 					collectTypes
@@ -1341,6 +1403,8 @@ describe('FrontendService', () => {
 					expect(readTypesFile('credentials')).toEqual([]);
 					expect(readTypesFile('node-versions')).toEqual(expect.any(Array));
 				}
+
+				expect(collectTypes).toHaveBeenCalledTimes(20);
 			});
 		});
 	});

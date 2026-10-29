@@ -123,6 +123,32 @@ describe('Source Control (Public API)', () => {
 			);
 		});
 
+		it('replays a successful pull and does not pull again', async () => {
+			testServer.license.enable('feat:sourceControl');
+			mockConnected();
+
+			const statusResult: SourceControlledFile[] = [sourceControlledFileFixture('wf-1')];
+			const pullSpy = vi
+				.spyOn(Container.get(SourceControlService), 'pullWorkfolder')
+				.mockResolvedValue({ statusCode: 200, statusResult });
+
+			const first = await testServer
+				.publicApiAgentFor(owner)
+				.post(pullUrl)
+				.set('Idempotency-Key', 'pull-once')
+				.send(validBody);
+			const second = await testServer
+				.publicApiAgentFor(owner)
+				.post(pullUrl)
+				.set('Idempotency-Key', 'pull-once')
+				.send(validBody);
+
+			expect(first.status).toBe(200);
+			expect(second.status).toBe(200);
+			expect(second.body).toEqual(first.body);
+			expect(pullSpy).toHaveBeenCalledTimes(1);
+		});
+
 		it('should return 409 when pull reports conflicts', async () => {
 			testServer.license.enable('feat:sourceControl');
 			mockConnected();

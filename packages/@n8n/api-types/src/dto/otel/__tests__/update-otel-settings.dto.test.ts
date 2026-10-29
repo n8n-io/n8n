@@ -40,6 +40,26 @@ describe('UpdateOtelSettingsDto', () => {
 		expect(result.data.exporterProtocol).toBe('http/protobuf');
 	});
 
+	it('defaults the start span flags to false when omitted (body predates the fields)', () => {
+		const result = UpdateOtelSettingsDto.safeParse(validSettings);
+
+		assert(result.success, 'Expected a body without the start span flags to stay valid');
+		expect(result.data.emitWorkflowStartSpan).toBe(false);
+		expect(result.data.emitNodeStartSpan).toBe(false);
+	});
+
+	it('accepts the start span flags', () => {
+		const result = UpdateOtelSettingsDto.safeParse({
+			...validSettings,
+			emitWorkflowStartSpan: true,
+			emitNodeStartSpan: false,
+		});
+
+		assert(result.success, 'Expected the start span flags to be valid');
+		expect(result.data.emitWorkflowStartSpan).toBe(true);
+		expect(result.data.emitNodeStartSpan).toBe(false);
+	});
+
 	it('accepts a full body', () => {
 		const result = UpdateOtelSettingsDto.safeParse(validSettings);
 		expect(result.success).toBe(true);

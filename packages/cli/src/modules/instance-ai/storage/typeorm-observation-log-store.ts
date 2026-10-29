@@ -9,6 +9,8 @@ import {
 	type BuiltObservationLogTaskLockStore,
 	type NewObservationLogEntry,
 	type ObservationCursor,
+	type ObservationLogBatch,
+	type ObservationLogBatchCommitResult,
 	type ObservationLogEntry,
 	type ObservationLogReadOptions,
 	type ObservationLogReflection,
@@ -51,6 +53,12 @@ export class TypeORMObservationLogStore
 		private readonly messageRepo: InstanceAiMessageRepository,
 		private readonly toAgentMessage: (entity: InstanceAiMessage) => AgentDbMessage | undefined,
 	) {}
+
+	async commitObservationLogBatch(
+		batch: ObservationLogBatch,
+	): Promise<ObservationLogBatchCommitResult> {
+		return await this.observationRepo.commitObservationLogBatch(batch);
+	}
 
 	async appendObservationLogEntries(
 		rows: NewObservationLogEntry[],

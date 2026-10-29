@@ -14,7 +14,7 @@ import { type ICredentialContext, jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { AuthService } from '@/auth/auth.service';
-import { ExecutingUserIdentifierProxy } from '@/credentials/executing-user-identifier-proxy';
+import { ExecutingUserIdentifierProxy } from '@n8n/backend-services';
 
 const EncryptedMetadataSchema = z.object({
 	encryptedMetadata: z.string(),

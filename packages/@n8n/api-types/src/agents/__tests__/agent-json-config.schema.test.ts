@@ -16,7 +16,7 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		const activation = enabled === undefined ? {} : { enabled };
 		const config = {
 			...minimalConfig,
-			skills: [{ type: 'skill', id: 'notes', ...activation }],
+			skills: [{ type: 'skill', id: 'notes' }],
 			tools: [
 				{ type: 'custom', id: 'search', requireApproval: true, ...activation },
 				{ type: 'workflow', workflow: 'My Workflow', workflowId: 'wf-1', ...activation },
@@ -41,20 +41,47 @@ describe('AgentJsonConfigSchema — capability activation', () => {
 		expect(
 			AgentJsonConfigSchema.safeParse({
 				...minimalConfig,
-				skills: [{ type: 'skill', id: 'notes', enabled: 'false' }],
+				tools: [{ type: 'custom', id: 'search', enabled: 'false' }],
 			}).success,
 		).toBe(false);
 	});
 });
 
 describe('AgentJsonConfigSchema — model', () => {
-	it('accepts AWS Bedrock model names containing a version colon', () => {
+	it.each(['aws-bedrock/anthropic.claude-sonnet-4-5-v1:0', 'google-vertex/claude-fable-5@default'])(
+		'accepts the versioned model ID %s',
+		(model) => {
+			const result = AgentJsonConfigSchema.safeParse({
+				...minimalConfig,
+				model,
+			});
+
+			expect(result.success).toBe(true);
+		},
+	);
+
+	it('accepts gateway model IDs containing @ after the provider', () => {
 		const result = AgentJsonConfigSchema.safeParse({
 			...minimalConfig,
-			model: 'aws-bedrock/anthropic.claude-sonnet-4-5-v1:0',
+			model: 'openai/@OpenAI/gpt-5-mini',
 		});
 
 		expect(result.success).toBe(true);
+	});
+
+	it('rejects @ in the provider segment', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			model: '@openai/gpt-5-mini',
+		});
+
+		expect(result.success).toBe(false);
+	});
+
+	it('rejects a model without a provider', () => {
+		const result = AgentJsonConfigSchema.safeParse({ ...minimalConfig, model: 'gpt-5-mini' });
+
+		expect(result.success).toBe(false);
 	});
 });
 
@@ -630,6 +657,38 @@ describe('AgentJsonConfigSchema — model/credential coupling', () => {
 		});
 
 		expect(result.success).toBe(true);
+	});
+});
+
+describe('AgentJsonConfigSchema — MCP permissions', () => {
+	it('accepts category defaults and exact tool overrides', () => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [
+				{
+					name: 'github',
+					url: 'https://mcp.example.com',
+					toolPermissions: {
+						categories: { read: 'always_allow', write: 'require_approval' },
+						tools: { delete_repository: 'blocked' },
+					},
+				},
+			],
+		});
+
+		expect(result.success).toBe(true);
+	});
+
+	it.each([
+		{ toolFilter: { mode: 'exclude', tools: ['delete_repository'] } },
+		{ approval: { mode: 'global' } },
+	])('rejects migrated legacy MCP settings: %o', (legacySettings) => {
+		const result = AgentJsonConfigSchema.safeParse({
+			...minimalConfig,
+			mcpServers: [{ name: 'github', url: 'https://mcp.example.com', ...legacySettings }],
+		});
+
+		expect(result.success).toBe(false);
 	});
 });
 
