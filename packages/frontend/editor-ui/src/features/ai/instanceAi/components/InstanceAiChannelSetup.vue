@@ -1,47 +1,30 @@
 <script lang="ts" setup>
 /**
- * Thin transport adapter around the shared `ChannelSetupCard` (body +
- * composable wiring lives there) — this surface only translates the shared
- * `resolve` event into instance AI's own confirm transport
- * (`thread.confirmAction` + `thread.resolveConfirmation`, with the
- * MAX_CONFIRM_ATTEMPTS retry semantics this surface has always had).
+ * Thin adapter around the shared `ChannelSetupCard` (body + composable wiring
+ * lives there). This surface turns the shared `resolve` event into a single
+ * `decide` event, and the parent sends the answer.
  */
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 
 import ChannelSetupCard from '@/features/ai/shared/components/ChannelSetupCard.vue';
 
-import { useThread } from '../instanceAi.store';
-
-const props = defineProps<{
-	requestId: string;
+defineProps<{
 	integrationType: string;
 	agentId: string;
 	projectId: string;
 }>();
 
-const thread = useThread();
-
-const MAX_CONFIRM_ATTEMPTS = 2;
+const emit = defineEmits<{
+	/** Whether the user finished the channel setup. The parent sends it. */
+	decide: [approved: boolean];
+}>();
 
 const submitted = ref(false);
 
-// Extra external gate passed to the shared component: guards against a
-// stray resolve slipping through when the request was already resolved by
-// another path (e.g. a concurrent confirmation), independent of this
-// adapter's own `submitted` guard below.
-const isResolvedOrSubmitted = computed(
-	() => submitted.value || thread.resolvedConfirmationIds.has(props.requestId),
-);
-
-async function onResolve({ approved }: { approved: boolean }) {
-	if (isResolvedOrSubmitted.value) return;
+function onResolve({ approved }: { approved: boolean }) {
+	if (submitted.value) return;
 	submitted.value = true;
-
-	const resolution = approved ? 'approved' : 'deferred';
-	for (let attempt = 0; attempt < MAX_CONFIRM_ATTEMPTS; attempt++) {
-		if (await thread.confirmAction(props.requestId, { kind: 'approval', approved })) break;
-	}
-	thread.resolveConfirmation(props.requestId, resolution);
+	emit('decide', approved);
 }
 </script>
 
@@ -52,7 +35,7 @@ async function onResolve({ approved }: { approved: boolean }) {
 		:integration-type="integrationType"
 		:agent-id="agentId"
 		:project-id="projectId"
-		:disabled="isResolvedOrSubmitted"
+		:disabled="submitted"
 		@resolve="onResolve"
 	/>
 </template>
