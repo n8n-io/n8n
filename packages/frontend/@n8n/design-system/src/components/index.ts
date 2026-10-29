@@ -162,10 +162,20 @@ export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
+export { default as N8nVersionHistory, isVersionHistoryGroup } from './N8nVersionHistory';
+export type {
+	VersionHistoryActionPayload,
+	VersionHistoryEntry,
+	VersionHistoryGroup,
+	VersionHistoryItem,
+	VersionHistoryProps,
+	VersionHistoryStatus,
+	VersionHistoryTogglePayload,
+} from './N8nVersionHistory';
 export { default as N8nSelect } from './N8nSelect';
 export { default as N8nSpinner } from './N8nSpinner';
 export { default as N8nStatusDot } from './N8nStatusDot';
-export type { StatusDotProps, StatusDotVariant } from './N8nStatusDot';
+export type { StatusDotAppearance, StatusDotProps, StatusDotVariant } from './N8nStatusDot';
 export { default as N8nStepper } from './N8nStepper/Stepper.vue';
 export { default as N8nSticky } from './N8nSticky';
 export { default as N8nResizeableSticky } from './N8nResizeableSticky';
