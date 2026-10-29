@@ -142,7 +142,7 @@ export interface WorkflowToolExecutionResult extends WorkflowToolResult {
 	wait?: WorkflowWaitState;
 }
 
-function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
+export function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
 	return isRecord(value) && ('body' in value || 'headers' in value || 'statusCode' in value);
 }
 
@@ -636,7 +636,7 @@ function normaliseExecutionStatus(status: string | undefined): string {
 	return 'success';
 }
 
-function formatResult(
+export function formatResult(
 	executionId: string,
 	status: string | undefined,
 	data: IRun['data'] | undefined,

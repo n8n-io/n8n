@@ -4,6 +4,7 @@ export { CreateAppDto } from './app/create-app.dto';
 export { UpdateAppDto } from './app/update-app.dto';
 export { ListAppsQueryDto } from './app/list-apps-query.dto';
 export { PublishAppDto } from './app/publish-app.dto';
+export { SetAppBindingsDto } from './app/set-app-bindings.dto';
 
 export { AiAskRequestDto } from './ai/ai-ask-request.dto';
 export { AiChatRequestDto } from './ai/ai-chat-request.dto';

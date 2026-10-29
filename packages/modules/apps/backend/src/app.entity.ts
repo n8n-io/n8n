@@ -1,5 +1,5 @@
-import type { AppVisibility } from '@n8n/api-types';
-import { WithTimestamps } from '@n8n/db';
+import type { AppBinding, AppVisibility } from '@n8n/api-types';
+import { JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'app' })
@@ -28,4 +28,7 @@ export class App extends WithTimestamps {
 	@Index()
 	@Column({ type: 'uuid', nullable: true })
 	publishedVersionId: string | null;
+
+	@JsonColumn({ default: '[]' })
+	bindings: AppBinding[];
 }

@@ -1,0 +1,8 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.go.json",
+	"compilerOptions": {
+		"lib": ["ES2022", "DOM", "DOM.Iterable"],
+		"types": ["vitest/globals"]
+	},
+	"include": ["src/**/*.ts"]
+}
