@@ -20,7 +20,7 @@ export default class RunCommand extends Command {
 			description: 'Filter scenarios by name',
 		}),
 		scenarioExclude: Flags.string({
-			description: 'Comma separated list of scenario names to skip',
+			description: 'Comma separated scenario folder names to skip',
 			env: 'BENCHMARK_SCENARIO_EXCLUDE',
 		}),
 		engineType: Flags.string({
