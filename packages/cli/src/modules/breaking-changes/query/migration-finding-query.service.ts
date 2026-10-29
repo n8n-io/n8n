@@ -56,7 +56,7 @@ const workflowFilter = (scope: ReportScope) =>
 type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
-const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
+const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
 
 /**
  * Reads the migration report from the `migration_finding` table and shapes it into the
@@ -181,7 +181,7 @@ export class MigrationFindingQueryService {
 		const issuesByWorkflow =
 			'collectWorkflowData' in rule
 				? await this.issuesFromScan(targetVersion, rule)
-				: await this.issuesFromRecheck(rule, await this.withPublishedNodes(workflows, findings));
+				: await this.issuesFromLatestOrPublished(rule, workflows);
 
 		const affectedWorkflows: BreakingChangeRuleDetailWorkflow[] = [];
 		for (const finding of findings) {
@@ -252,34 +252,37 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * Swaps in the published nodes of each workflow with a `fixed_unpublished` finding:
-	 * only the published version still has the issue, so its issues come from there.
+	 * Issues per workflow id from the latest version. A workflow without issues there,
+	 * and with an older version published, takes the issues of the published version:
+	 * a finding stays listed until the published version is clean too, whatever its status.
 	 */
-	private async withPublishedNodes(
+	private async issuesFromLatestOrPublished(
+		rule: IBreakingChangeWorkflowRule,
 		workflows: WorkflowEntity[],
-		findings: Array<{ workflowId: string; status: string }>,
-	): Promise<WorkflowEntity[]> {
-		const fixedUnpublished = new Set(
-			findings
-				.filter((finding) => finding.status === 'fixed_unpublished')
-				.map((finding) => finding.workflowId),
-		);
-		const versionIds = workflows.flatMap((workflow) =>
-			fixedUnpublished.has(workflow.id) && workflow.activeVersionId
-				? [workflow.activeVersionId]
-				: [],
-		);
-		if (versionIds.length === 0) return workflows;
+	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
+		const issuesByWorkflow = await this.issuesFromRecheck(rule, workflows);
 
-		const versions = await this.workflowHistoryRepository.findNodesByVersionIds(versionIds);
-		const nodesByVersionId = new Map(versions.map(({ versionId, nodes }) => [versionId, nodes]));
-		return workflows.map((workflow) => {
-			const nodes =
-				fixedUnpublished.has(workflow.id) && workflow.activeVersionId
-					? nodesByVersionId.get(workflow.activeVersionId)
-					: undefined;
-			return nodes ? { ...workflow, nodes } : workflow;
+		const publishedVersionIds = new Map<string, WorkflowEntity>();
+		for (const workflow of workflows) {
+			const { activeVersionId, versionId } = workflow;
+			const hasIssues = (issuesByWorkflow.get(workflow.id)?.length ?? 0) > 0;
+			if (!hasIssues && activeVersionId && activeVersionId !== versionId) {
+				publishedVersionIds.set(activeVersionId, workflow);
+			}
+		}
+		if (publishedVersionIds.size === 0) return issuesByWorkflow;
+
+		const versions = await this.workflowHistoryRepository.findNodesByVersionIds([
+			...publishedVersionIds.keys(),
+		]);
+		const published = versions.flatMap(({ versionId, nodes }) => {
+			const workflow = publishedVersionIds.get(versionId);
+			return workflow ? [{ ...workflow, nodes }] : [];
 		});
+		for (const [workflowId, issues] of await this.issuesFromRecheck(rule, published)) {
+			if (issues.length > 0) issuesByWorkflow.set(workflowId, issues);
+		}
+		return issuesByWorkflow;
 	}
 
 	/**
