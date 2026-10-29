@@ -129,6 +129,7 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 		expect(workspaceService.getAgentWorkspace).not.toHaveBeenCalled();
 		expect(builtAgent.workspace).toHaveBeenCalledWith(delegatedWorkspace);
 		expect(builtAgent.tool).toHaveBeenCalledWith(expect.objectContaining({ name: 'import_files' }));
+		expect(delegatedWorkspace.getInstructions()).toContain('sandbox:report.pdf');
 		expect(builtAgent.nativeToolDeferral).toHaveBeenCalledWith({
 			eagerToolNames: expect.arrayContaining([
 				'workspace_read_file',

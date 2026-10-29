@@ -34,6 +34,13 @@ export interface SandboxOutputFile {
 /** Prefix of a file reference that names a file in `outputs/` instead of a fileId. */
 export const SANDBOX_FILE_REF_PREFIX = 'sandbox:';
 
+/** Workspace instructions about files. Only runs with a workspace get them. */
+export const SANDBOX_FILES_INSTRUCTIONS = [
+	`Put each file that you make for the user in ${SANDBOX_OUTPUTS_DIR}/ of your workspace, for example ${SANDBOX_OUTPUTS_DIR}/report.pdf. When your turn ends, n8n stores the new files of ${SANDBOX_OUTPUTS_DIR}/ as conversation files.`,
+	`To use a file of ${SANDBOX_OUTPUTS_DIR}/ in this turn where a tool takes a fileId, give ${SANDBOX_FILE_REF_PREFIX}<path relative to ${SANDBOX_OUTPUTS_DIR}/>, for example ${SANDBOX_FILE_REF_PREFIX}report.pdf.`,
+	`To use a conversation file, such as a user upload, in your workspace, copy it to ${SANDBOX_INPUTS_DIR}/ with import_files.`,
+].join(' ');
+
 export interface ActiveRun {
 	agentId: string | null;
 	getWorkspace: () => Workspace | undefined;
