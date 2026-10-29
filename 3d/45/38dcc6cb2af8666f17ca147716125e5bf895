@@ -1,0 +1,19 @@
+packages/frontend/@n8n/design-system/src/components/N8nChatMessage/ChatMessage.vue
+  s_9436bfedb79644::t_50264ad3141619 65-66,70,73
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d4538dcc6cb2af8666f17ca147716125e5bf895",
+  "prompts": {},
+  "sessions": {
+    "s_9436bfedb79644": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a182be-15ac-7340-b12d-ad3328179abf",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": null
+    }
+  }
+}

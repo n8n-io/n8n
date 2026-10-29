@@ -1,0 +1,19 @@
+packages/frontend/editor-ui/src/experiments/quickjsExpressionShadow/init.ts
+  s_e24c1da51d6f4a::t_346f954526891d 59-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7b772f01ca03f1e5479cd47dd679852131613cb8",
+  "prompts": {},
+  "sessions": {
+    "s_e24c1da51d6f4a": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "be6ffbae-ff51-4ea0-b834-06d689ab5267",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
