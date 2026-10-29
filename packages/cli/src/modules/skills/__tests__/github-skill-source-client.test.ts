@@ -4,9 +4,16 @@ import nock from 'nock';
 
 import { FakeGitHub } from './test-utils/fake-github';
 import { describeSkillSourceClientContract } from './test-utils/skill-source-client.contract';
+import { SkillParseError } from '../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../errors/skill-source-read.error';
 import { SkillSourceUrlError } from '../errors/skill-source-url.error';
+import {
+	DEFAULT_ARCHIVE_LIMITS,
+	archiveSize,
+	type ArchiveLimits,
+	type RepositoryArchive,
+} from '../sources/github/github-archive';
 import { GitHubSkillSourceClient } from '../sources/github/github-skill-source-client';
 import type { SkillContent } from '../utils/skill-content-hash';
 import { writeSkillFolder } from '../utils/skill-md';
@@ -26,6 +33,18 @@ function filesOf(skills: SkillContent[]): Record<string, string> {
 
 const skillMd = (name: string, body = `Follow ${name}.`) =>
 	`---\nname: ${name}\ndescription: ${name} description\n---\n\n${body}\n`;
+
+/** A SKILL.md of exactly `bytes` bytes. */
+const skillMdOfSize = (name: string, bytes: number) =>
+	skillMd(name, 'x'.repeat(bytes - skillMd(name, '').length));
+
+/** A client with small archive limits, so a test needs no large repository. */
+function clientWithLimits(limits: Partial<ArchiveLimits>): GitHubSkillSourceClient {
+	class SmallClient extends GitHubSkillSourceClient {
+		protected override readonly archiveLimits = { ...DEFAULT_ARCHIVE_LIMITS, ...limits };
+	}
+	return new SmallClient(Container.get(OutboundHttp));
+}
 
 describe('GitHubSkillSourceClient', () => {
 	const github = new FakeGitHub();
@@ -129,10 +148,13 @@ describe('GitHubSkillSourceClient', () => {
 			expect((await client.discover(locator)).items).toEqual([{ path: 'skills/pdf' }]);
 		});
 
-		it('refuses a link to a tag or a commit', async () => {
+		it('refuses a link to a tag, a commit or a missing branch', async () => {
 			await expect(
 				client.parseLocator('https://github.com/acme/skills/tree/v1.0.0/skills'),
-			).rejects.toThrow(SkillSourceUrlError);
+			).rejects.toMatchObject({
+				constructor: SkillSourceUrlError,
+				message: 'n8n cannot find this branch. Use a link to a branch, not to a tag or a commit.',
+			});
 		});
 
 		it('fails with SkillSourceNotFoundError for a folder that is not on the branch', async () => {
@@ -167,6 +189,115 @@ describe('GitHubSkillSourceClient', () => {
 
 		expect(fetched.content.files).toEqual([{ path: 'references/small.md', content: '# Small\n' }]);
 		expect(fetched.skippedFiles).toEqual(['references/huge.md']);
+	});
+
+	it('reads a SKILL.md of exactly 1 MB and refuses a larger one', async () => {
+		github.push('acme/skills', {
+			'fits/SKILL.md': skillMdOfSize('fits', 1024 * 1024),
+			'huge/SKILL.md': skillMdOfSize('huge', 1024 * 1024 + 1),
+		});
+		const locator = await client.parseLocator('https://github.com/acme/skills');
+
+		const fetched = await client.fetchLatest(locator, { path: 'fits' });
+
+		expect(fetched.content.name).toBe('fits');
+		await expect(client.fetchLatest(locator, { path: 'huge' })).rejects.toThrow(SkillParseError);
+	});
+
+	it('reports skills deeper than it reads', async () => {
+		github.push('acme/skills', {
+			'a/SKILL.md': skillMd('a'),
+			'1/2/3/4/5/6/7/8/9/deep/SKILL.md': skillMd('deep'),
+		});
+		const locator = await client.parseLocator('https://github.com/acme/skills');
+
+		const { items, tooDeep } = await client.discover(locator);
+
+		expect(items).toEqual([{ path: 'a' }]);
+		expect(tooDeep).toBe(1);
+	});
+
+	it('imports lossy, as it leaves out files a skill cannot hold', () => {
+		expect(client.capabilities.importFidelity).toBe('lossy');
+	});
+
+	describe('archives', () => {
+		const monorepo = () => {
+			const files: Record<string, string> = {
+				'.agents/skills/pdf/SKILL.md': skillMd('pdf'),
+				'docs/SKILL.md': skillMd('docs'),
+			};
+			for (let index = 0; index < 30; index += 1) files[`src/file-${index}.ts`] = 'code\n';
+			github.push('acme/monorepo', files);
+		};
+
+		it('reads a folder link in a repository larger than the limits of one folder', async () => {
+			monorepo();
+			const small = clientWithLimits({ maxEntries: 10 });
+			const folder = await small.parseLocator(
+				'https://github.com/acme/monorepo/tree/main/.agents/skills',
+			);
+			const repository = await small.parseLocator('https://github.com/acme/monorepo');
+
+			const { items } = await small.discover(folder);
+
+			expect(items).toEqual([{ path: '.agents/skills/pdf' }]);
+			await expect(small.discover(repository)).rejects.toMatchObject({
+				constructor: SkillSourceReadError,
+				reason: 'archive_too_large',
+				message: 'The repository is too large for n8n to read. Link to the folder of the skills.',
+			});
+		});
+
+		it('keeps only the files under the folder, and caches each folder apart', async () => {
+			monorepo();
+			const folder = await client.parseLocator(
+				'https://github.com/acme/monorepo/tree/main/.agents/skills',
+			);
+			const repository = await client.parseLocator('https://github.com/acme/monorepo');
+
+			const fromFolder = await client.discover(folder);
+			const fromRepository = await client.discover(repository);
+
+			expect(fromFolder.items).toEqual([{ path: '.agents/skills/pdf' }]);
+			expect(fromRepository.items).toEqual([{ path: '.agents/skills/pdf' }, { path: 'docs' }]);
+			expect(github.requests.archives).toBe(2);
+		});
+
+		it('fails with archive_too_large when the download is over the size limit', async () => {
+			monorepo();
+			const small = clientWithLimits({ maxDownloadBytes: 100 });
+			const locator = await small.parseLocator('https://github.com/acme/monorepo');
+
+			await expect(small.discover(locator)).rejects.toMatchObject({
+				reason: 'archive_too_large',
+				message: 'The repository is too large for n8n to download.',
+			});
+		});
+
+		it('fails with archive_too_large when an archive keeps too much text', async () => {
+			github.push('acme/skills', { 'a/SKILL.md': skillMd('a'), 'b/SKILL.md': skillMd('b') });
+			const small = clientWithLimits({ maxTextBytes: skillMd('a').length + 1 });
+			const locator = await small.parseLocator('https://github.com/acme/skills');
+
+			await expect(small.discover(locator)).rejects.toMatchObject({ reason: 'archive_too_large' });
+		});
+
+		it('counts the paths and text of a cached archive in the cache size', async () => {
+			github.push('acme/skills', {
+				'a/SKILL.md': skillMd('a'),
+				'a/references/x.md': '# X\n',
+				'a/scripts/run.sh': 'run\n',
+			});
+			const locator = await client.parseLocator('https://github.com/acme/skills');
+			await client.discover(locator);
+
+			const cache = client['archives'];
+			const [archive] = await Promise.all([...cache.values()] as Array<Promise<RepositoryArchive>>);
+
+			expect(cache.calculatedSize).toBe(archiveSize(archive));
+			expect(cache.calculatedSize).toBeGreaterThan(skillMd('a').length);
+		});
 	});
 
 	it('reads branches whose names differ only in case as two branches', async () => {
@@ -208,6 +339,37 @@ describe('GitHubSkillSourceClient', () => {
 
 			await expect(client.parseLocator('https://github.com/acme/skills')).rejects.toMatchObject({
 				constructor: SkillSourceReadError,
+				reason: 'rate_limited',
+			});
+		});
+
+		it('reports a 403 with a spent rate limit as rate_limited', async () => {
+			github.push('acme/skills', { 'a/SKILL.md': skillMd('a') });
+			github.failWith = { status: 403, headers: { 'x-ratelimit-remaining': '0' } };
+
+			await expect(client.parseLocator('https://github.com/acme/skills')).rejects.toMatchObject({
+				constructor: SkillSourceReadError,
+				reason: 'rate_limited',
+			});
+		});
+
+		it.each([403, 451])('reports a %i as a repository n8n cannot read', async (status) => {
+			github.push('acme/skills', { 'a/SKILL.md': skillMd('a') });
+			github.failWith = status;
+
+			await expect(client.parseLocator('https://github.com/acme/skills')).rejects.toThrow(
+				SkillSourceNotFoundError,
+			);
+		});
+
+		it('reports a failed archive download by its status', async () => {
+			github.push('acme/skills', { 'a/SKILL.md': skillMd('a') });
+			const locator = await client.parseLocator('https://github.com/acme/skills');
+			github.failWith = { status: 403, headers: { 'x-ratelimit-remaining': '0' } };
+
+			await expect(
+				client.fetchLatest(locator, { path: 'a' }, undefined, 'f'.repeat(40)),
+			).rejects.toMatchObject({
 				reason: 'rate_limited',
 			});
 		});

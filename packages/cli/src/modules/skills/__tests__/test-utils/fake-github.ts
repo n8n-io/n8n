@@ -31,8 +31,17 @@ export class FakeGitHub {
 	/** Requests per host, for tests that count them. */
 	readonly requests = { refs: 0, archives: 0 };
 
-	/** The status that the next requests answer, such as 429, until it is cleared. */
-	failWith: number | undefined;
+	/**
+	 * The status that the next requests answer, such as 429, until it is cleared. With
+	 * `headers`, the answer sends them too, such as `x-ratelimit-remaining`.
+	 */
+	failWith: number | { status: number; headers?: Record<string, string> } | undefined;
+
+	private failure(): [number, string, Record<string, string>] | undefined {
+		if (this.failWith === undefined) return undefined;
+		if (typeof this.failWith === 'number') return [this.failWith, '', {}];
+		return [this.failWith.status, '', this.failWith.headers ?? {}];
+	}
 
 	start(): void {
 		nock('https://github.com')
@@ -40,7 +49,8 @@ export class FakeGitHub {
 			.post(/^\/([^/]+)\/([^/]+)\.git\/git-upload-pack$/)
 			.reply((uri) => {
 				this.requests.refs += 1;
-				if (this.failWith) return [this.failWith, ''];
+				const failure = this.failure();
+				if (failure) return failure;
 				const [, owner, repository] = /^\/([^/]+)\/([^/]+)\.git/.exec(uri) ?? [];
 				const repo = this.repositories.get(`${owner}/${repository}`.toLowerCase());
 				if (!repo) return [401, 'Authentication required'];
@@ -51,7 +61,8 @@ export class FakeGitHub {
 			.get(/^\/([^/]+)\/([^/]+)\/tar\.gz\/([0-9a-f]+)$/)
 			.reply((uri) => {
 				this.requests.archives += 1;
-				if (this.failWith) return [this.failWith, ''];
+				const failure = this.failure();
+				if (failure) return failure;
 				const sha = uri.split('/').at(-1) ?? '';
 				const commit = this.commits.get(sha);
 				if (!commit) return [404, 'Not found'];

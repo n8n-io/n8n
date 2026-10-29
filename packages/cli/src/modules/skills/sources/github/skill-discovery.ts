@@ -24,22 +24,23 @@ export const DEFAULT_SKILL_DISCOVERY_LIMITS: SkillDiscoveryLimits = {
  * The skill folders under `root`, in path order: every folder with a SKILL.md at any depth up
  * to `maxDepth`. A skill folder inside another skill folder belongs to the outer skill, so it
  * is not a skill of its own. `truncated` is true when more than `maxSkills` folders matched.
+ * `tooDeep` counts the skill folders below `maxDepth` that were left out.
  */
 export function findSkillFolders(
 	paths: Iterable<string>,
 	root: string,
 	limits: SkillDiscoveryLimits = DEFAULT_SKILL_DISCOVERY_LIMITS,
-): { folders: string[]; truncated: boolean } {
+): { folders: string[]; truncated: boolean; tooDeep: number } {
 	const candidates: string[] = [];
+	const deep: string[] = [];
 	for (const path of paths) {
 		const segments = path.split('/');
 		if (segments.at(-1) !== SKILL_FILE) continue;
 		const folder = segments.slice(0, -1).join('/');
 		if (!isInside(folder, root)) continue;
-		const below = relativeSegments(folder, root);
-		if (below.length > limits.maxDepth) continue;
 		if (segments.slice(0, -1).some((segment) => SKIPPED_FOLDERS.has(segment))) continue;
-		candidates.push(folder);
+		if (relativeSegments(folder, root).length > limits.maxDepth) deep.push(folder);
+		else candidates.push(folder);
 	}
 	candidates.sort(comparePaths);
 	const folders: string[] = [];
@@ -50,9 +51,13 @@ export function findSkillFolders(
 		accepted.add(folder);
 		folders.push(folder);
 	}
+	// A deep folder inside a skill, or inside a deeper skill, is not a skill of its own.
+	const holders = new Set([...accepted, ...deep]);
 	return {
 		folders: folders.slice(0, limits.maxSkills),
 		truncated: folders.length > limits.maxSkills,
+		tooDeep: deep.filter((folder) => !ancestorsOf(folder).some((outer) => holders.has(outer)))
+			.length,
 	};
 }
 

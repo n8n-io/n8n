@@ -47,7 +47,7 @@ describe('findSkillFolders', () => {
 			folders: [],
 		},
 	])('finds $name', ({ paths, root, folders }) => {
-		expect(findSkillFolders(paths, root)).toEqual({ folders, truncated: false });
+		expect(findSkillFolders(paths, root)).toEqual({ folders, truncated: false, tooDeep: 0 });
 	});
 
 	it('stops at the depth and the count limits', () => {
@@ -56,6 +56,34 @@ describe('findSkillFolders', () => {
 		expect(findSkillFolders(paths, '', { maxDepth: 3, maxSkills: 2 })).toEqual({
 			folders: ['1/2/3', 'a'],
 			truncated: true,
+			tooDeep: 0,
+		});
+	});
+
+	it('counts the skill folders below the depth limit that it leaves out', () => {
+		const paths = [
+			'a/SKILL.md',
+			'a/1/2/3/SKILL.md',
+			'x/1/2/3/SKILL.md',
+			'x/1/2/3/inner/SKILL.md',
+			'y/1/2/3/SKILL.md',
+			'node_modules/1/2/3/SKILL.md',
+		];
+
+		expect(findSkillFolders(paths, '', { maxDepth: 3, maxSkills: 10 })).toEqual({
+			folders: ['a'],
+			truncated: false,
+			tooDeep: 2,
+		});
+	});
+
+	it('measures the depth from the root of the link', () => {
+		const paths = ['skills/1/2/SKILL.md', 'skills/1/2/3/SKILL.md'];
+
+		expect(findSkillFolders(paths, 'skills/1', { maxDepth: 1, maxSkills: 10 })).toEqual({
+			folders: ['skills/1/2'],
+			truncated: false,
+			tooDeep: 0,
 		});
 	});
 });
