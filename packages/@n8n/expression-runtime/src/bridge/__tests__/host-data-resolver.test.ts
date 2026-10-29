@@ -22,6 +22,42 @@ describe('HostDataResolver', () => {
 		expect(readIds).toHaveBeenCalledTimes(1);
 	});
 
+	it('reuses a node parameter value when its parent getter returns a new proxy', () => {
+		const readIds = vi.fn(() => [{ id: 10 }, { id: 20 }]);
+		const readParameters = vi.fn(
+			() =>
+				new Proxy(
+					{},
+					{
+						get: (_, key) => (key === 'ids' ? readIds() : undefined),
+					},
+				),
+		);
+		const resolver = new HostDataResolver({
+			$node: {
+				A: {
+					get parameter() {
+						return readParameters();
+					},
+				},
+			},
+		});
+		const path = ['$node', 'A', 'parameter', 'ids'];
+
+		expect(resolver.resolve(path)).toEqual([{ id: 10 }, { id: 20 }]);
+		expect(resolver.resolve([...path, '0', 'id'])).toBe(10);
+		expect(resolver.resolve([...path, '1', 'id'])).toBe(20);
+		expect(readParameters).toHaveBeenCalledTimes(1);
+		expect(readIds).toHaveBeenCalledTimes(1);
+
+		const ids = resolver['pathCacheRoot']?.children
+			?.get('$node')
+			?.children?.get('A')
+			?.children?.get('parameter')
+			?.children?.get('ids');
+		expect(ids?.children).toBeUndefined();
+	});
+
 	it('reuses a getter result across paths with the same prefix', () => {
 		const readJson = vi.fn(() => ({ name: 'Ada', age: 30 }));
 		const resolver = new HostDataResolver({
@@ -47,18 +83,34 @@ describe('HostDataResolver', () => {
 		expect(item.mock.calls).toEqual([[0], [1], [0]]);
 	});
 
-	it('retains only one $item() result when reading many indices', () => {
+	it('retains only the last item and its parameter value when reading many indices', () => {
+		let parameterReads = 0;
 		const resolver = new HostDataResolver({
-			$item: (index: number) => ({ $json: { index } }),
+			$item: (index: number) => ({
+				$parameter: {
+					get ids() {
+						parameterReads++;
+						return [index];
+					},
+				},
+			}),
 		});
 
 		for (let index = 0; index < 10_000; index++) {
-			expect(resolver.resolve(['$item', String(index), '$json', 'index'])).toBe(index);
+			const path = ['$item', String(index), '$parameter', 'ids'];
+			expect(resolver.resolve(path)).toEqual([index]);
+			expect(resolver.resolve([...path, '0'])).toBe(index);
 		}
 
 		const item = resolver['pathCacheRoot']?.children?.get('$item');
 		expect(item?.children?.size).toBe(1);
-		expect(item?.children?.get('9999')?.value).toEqual({ $json: { index: 9999 } });
+		expect(parameterReads).toBe(10_000);
+		const ids = item?.children?.get('9999')?.children?.get('$parameter')?.children?.get('ids');
+		expect(ids?.value).toEqual([9999]);
+		expect(ids?.children).toBeUndefined();
+
+		expect(resolver.resolve(['$item', '0', '$parameter', 'ids', '0'])).toBe(0);
+		expect(parameterReads).toBe(10_001);
 	});
 
 	it('calls $() once for each node name', () => {

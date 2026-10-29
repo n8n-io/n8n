@@ -59,14 +59,21 @@ describe('WorkflowExpression', () => {
 			nodeName = 'node',
 		) => expression.getParameterValue(value, null, 0, 0, nodeName, inputData, 'manual', {});
 
-		it('resolves a parameter that holds an expression once when its result is an array', () => {
+		it.each(
+			[
+				'$parameter["value1"]',
+				'$node["arrayParameter"].parameter["value1"]',
+				'$item(0).$parameter["value1"]',
+				'$item(0).$node["arrayParameter"].parameter["value1"]',
+			].flatMap((access) => [access, `${access}.map((id) => id)`]),
+		)('resolves an array parameter once through %s', (access) => {
 			const resolve = vi.spyOn(expression, 'getParameterValue');
 			const ids = Array.from({ length: 50 }, (_, id) => id);
 
 			try {
 				expect(
 					evaluate(
-						"={{ $parameter['value1'] }}",
+						`={{ ${access} }}`,
 						ids.map((id) => ({ json: { id } })),
 						'arrayParameter',
 					),

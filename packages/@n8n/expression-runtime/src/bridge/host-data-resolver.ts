@@ -1,7 +1,7 @@
 import type { WorkflowData } from '../types';
 
-// Cache the first two steps. Do not cache deeper array elements.
-const MAX_CACHED_PATH_DEPTH = 2;
+// Cache shallow host bindings by default.
+const DEFAULT_CACHED_PATH_DEPTH = 2;
 
 /** A cached path prefix and its resolved host value. */
 interface CachedPathNode {
@@ -32,6 +32,7 @@ export class HostDataResolver {
 	/** Return the value at the path, or the first null or undefined on it. */
 	resolve(path: readonly string[]): unknown {
 		let node = (this.pathCacheRoot ??= { value: this.getData() });
+		const cacheDepth = getCachedPathDepth(path);
 		for (
 			let depth = 0;
 			depth < path.length && node.value !== undefined && node.value !== null;
@@ -42,10 +43,7 @@ export class HostDataResolver {
 			if (!child) {
 				child = { value: readStep(node.value, key, depth === 1 ? path[0] : undefined) };
 				// Skip deeper steps and primitive leaves to limit the size of the cache.
-				if (
-					depth < MAX_CACHED_PATH_DEPTH &&
-					(depth < path.length - 1 || hasProperties(child.value))
-				) {
+				if (depth < cacheDepth && (depth < path.length - 1 || hasProperties(child.value))) {
 					// Keep only the last item proxy during iteration.
 					if (depth === 1 && path[0] === '$item') {
 						node.children?.clear();
@@ -63,6 +61,18 @@ export class HostDataResolver {
 		this.data = undefined;
 		this.pathCacheRoot = undefined;
 	}
+}
+
+/** Cache through parameter values, which can require a nested expression evaluation. */
+function getCachedPathDepth(path: readonly string[]): number {
+	const rootDepth = path[0] === '$item' ? 2 : 0;
+	if (path[rootDepth] === '$parameter') {
+		return rootDepth + 2;
+	}
+	if (path[rootDepth] === '$node' && path[rootDepth + 2] === 'parameter') {
+		return rootDepth + 4;
+	}
+	return DEFAULT_CACHED_PATH_DEPTH;
 }
 
 /** Call `$item(index)` or `$(nodeName)` at the second step. Read properties elsewhere. */
