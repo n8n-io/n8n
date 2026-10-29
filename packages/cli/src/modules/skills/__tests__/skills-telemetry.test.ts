@@ -145,6 +145,16 @@ describe('SkillsTelemetry', () => {
 		);
 	});
 
+	it('reports a stop of Skill Sync with whether an update waited', async () => {
+		await service.stoppedSync({ provider: 'github', had_pending_update: true }, 'user-1');
+
+		expect(telemetry.track).toHaveBeenCalledWith(TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC, {
+			user_id: 'user-1',
+			provider: 'github',
+			had_pending_update: true,
+		});
+	});
+
 	it('never fails the write it reports', async () => {
 		repository.findByIds.mockRejectedValue(new Error('connection lost'));
 

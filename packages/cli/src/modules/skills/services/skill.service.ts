@@ -29,6 +29,7 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
 import type { SkillFrontmatter, SkillVersion } from '../database/entities/skill-version.entity';
 import type { Skill, SkillSource } from '../database/entities/skill.entity';
+import { SkillSourceRepository } from '../database/repositories/skill-source.repository';
 import {
 	SkillRepository,
 	type SkillListSort,
@@ -58,6 +59,7 @@ import { getSkillHash } from '../utils/skill-hash';
 import { AssistantSkillsFlagGate } from './assistant-skills-flag-gate';
 import { SkillAccessService } from './skill-access.service';
 import { SkillRuntimeService } from './skill-runtime.service';
+import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillSyncedFromService } from './skill-synced-from.service';
 import {
 	blocksDelete,
@@ -141,6 +143,8 @@ export class SkillService {
 		private readonly skillsTelemetry: SkillsTelemetry,
 		private readonly assistantSkillsFlagGate: AssistantSkillsFlagGate,
 		private readonly syncedFrom: SkillSyncedFromService,
+		private readonly sourceRepository: SkillSourceRepository,
+		private readonly skillSyncFlagGate: SkillSyncFlagGate,
 	) {}
 
 	// ---------------------------------------------------------------- user actions
@@ -483,11 +487,10 @@ export class SkillService {
 				const result = { ...unchanged, created: false, skill: current, followingAgentIds: [] };
 				return { saved: result, following: [] };
 			}
-			// Only Skill Sync changes the content of a synced skill. A save with unchanged
-			// content passes above, so a synced skill still accepts a no-op save.
-			const sourceLabel = syncedSourceLabel(latest.skill.source);
-			if (sourceLabel && !allowSynced) {
-				throw new SkillSyncedError(latest.version.name, sourceLabel);
+			// Only Skill Sync changes the content of a synced skill: a skill with a link. A save
+			// with unchanged content passes above, so a synced skill still accepts a no-op save.
+			if (!allowSynced && (await this.sourceRepository.isLinked(skillId, txCtx))) {
+				throw new SkillSyncedError(latest.version.name, sourceLabelOf(latest.skill.source));
 			}
 			await this.assertCanRename(skillId, latest.skill, latest.version.name, skill.name, txCtx);
 			const version = await this.skillRepository.nextVersionNumber(skillId, txCtx);
@@ -541,14 +544,23 @@ export class SkillService {
 					);
 				}
 			}
+			const name =
+				nameAfterMove ??
+				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
+			// All skills of a source share its scope, so a synced skill moves only with its source.
+			if (await this.sourceRepository.isLinked(skillId, txCtx)) {
+				const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
+				throw new SkillSyncedError(
+					name ?? skillId,
+					sourceLabelOf(skill?.source ?? 'github'),
+					'move',
+				);
+			}
 			const others = (await this.skillUsage.findUsingAgentIds(skillId, txCtx)).filter(
 				(id) => id !== keepAgentId,
 			);
 			await this.assertAgentsKeepAccess(others, target, agentProjectIds, txCtx);
 			// The new scope must not already hold a name like the one the skill has after the move.
-			const name =
-				nameAfterMove ??
-				(await this.skillRepository.findLatestSummaries([skillId], txCtx)).get(skillId)?.name;
 			if (name) await this.assertNameFree(name, target, skillId, txCtx);
 			await this.skillRepository.updateTarget(skillId, target, txCtx);
 		});
@@ -715,7 +727,7 @@ export class SkillService {
 		const agentProjectIds = await this.projectScopeService.getProjectIds(user, ['agent:read']);
 		const [usedBy, syncedFrom] = await Promise.all([
 			this.skillUsage.findUsage(skill.id, agentProjectIds ?? 'all'),
-			syncedSourceLabel(skill.source) ? this.syncedFrom.of(skill.id) : null,
+			this.syncedFrom.of(user, skill.id),
 		]);
 		return {
 			...item,
@@ -778,14 +790,17 @@ export class SkillService {
 		);
 		const projectOf = (skill: Skill) =>
 			skill.projectId ?? (skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null);
-		const [latest, usage, projects, creators, canEdit, canDelete] = await Promise.all([
-			this.skillRepository.findLatestSummaries(ids),
-			this.skillUsage.countUsingAgents(ids),
-			this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
-			this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
-			this.skillAccess.accessCheck(user, 'update'),
-			this.skillAccess.accessCheck(user, 'delete'),
-		]);
+		const [latest, usage, projects, creators, canEdit, canDelete, synced, skillSyncOn] =
+			await Promise.all([
+				this.skillRepository.findLatestSummaries(ids),
+				this.skillUsage.countUsingAgents(ids),
+				this.skillRepository.findProjects(skills.flatMap((skill) => projectOf(skill) ?? [])),
+				this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
+				this.skillAccess.accessCheck(user, 'update'),
+				this.skillAccess.accessCheck(user, 'delete'),
+				this.sourceRepository.findLinkedSkillIds(ids),
+				this.skillSyncFlagGate.isEnabled(user),
+			]);
 		const items: SkillListItem[] = [];
 		for (const skill of skills) {
 			const summary = latest.get(skill.id);
@@ -807,8 +822,11 @@ export class SkillService {
 				usedByAgents: usage.get(skill.id) ?? 0,
 				availableToAssistant: skill.availableToAssistant,
 				// The source holds the content of a synced skill, so n8n cannot edit it.
-				canEdit: canEdit(skill, projectId) && !syncedSourceLabel(skill.source),
+				canEdit: canEdit(skill, projectId) && !synced.has(skill.id),
 				canDelete: canDelete(skill, projectId),
+				// Stop syncing needs the update permission of the scope that the skill shares with its source.
+				// The route answers 404 while the Skill Sync flag is off for the user.
+				canStopSyncing: skillSyncOn && synced.has(skill.id) && canEdit(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});
@@ -833,4 +851,9 @@ export class SkillService {
 			]),
 		);
 	}
+}
+
+/** How a message names the source of a synced skill, such as GitHub. */
+function sourceLabelOf(source: SkillSource): string {
+	return syncedSourceLabel(source) ?? 'its source';
 }

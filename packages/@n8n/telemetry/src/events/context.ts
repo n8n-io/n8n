@@ -474,6 +474,18 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			reason: skillSourceReason,
 		}),
 	},
+	USER_STOPPED_SKILL_SYNC: {
+		name: 'User stopped skill sync',
+		description:
+			'A user stopped syncing one synced skill. The skill keeps its versions and becomes a normal skill that n8n can edit. Fires once the link is removed.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			had_pending_update: z
+				.boolean()
+				.describe('Whether an update from the source waited for review. Stop syncing drops it'),
+		}),
+	},
 	USER_DELETED_SKILL: {
 		name: 'User deleted skill',
 		description:

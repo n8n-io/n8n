@@ -13,6 +13,8 @@ import { SkillService } from '../../services/skill.service';
 import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import type { SkillSyncedFromService } from '../../services/skill-synced-from.service';
+import type { SkillSyncFlagGate } from '../../services/skill-sync-flag-gate';
+import type { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
 import { skillContentHash } from '../../utils/skill-content-hash';
 import { FakeSkillUsage } from '../../testing';
@@ -91,6 +93,8 @@ export function createSkillServices() {
 	const users = mock<UserRepository>();
 	const assistantGate = mock<AssistantSkillsFlagGate>();
 	const syncedFrom = mock<SkillSyncedFromService>();
+	const links = mock<SkillSourceRepository>();
+	const skillSyncGate = mock<SkillSyncFlagGate>();
 	const access = new SkillAccessService(skills, projectScope, skillUsage);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
@@ -105,6 +109,8 @@ export function createSkillServices() {
 		telemetry,
 		assistantGate,
 		syncedFrom,
+		links,
+		skillSyncGate,
 	);
 	return {
 		skills,
@@ -116,6 +122,8 @@ export function createSkillServices() {
 		users,
 		assistantGate,
 		syncedFrom,
+		links,
+		skillSyncGate,
 		access,
 		runtime,
 		service,
@@ -127,7 +135,10 @@ export async function resetSkillMocks({
 	skills,
 	usage,
 	txRunner,
-}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'>) {
+	links,
+	skillSyncGate,
+}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'> &
+	Partial<Pick<ReturnType<typeof createSkillServices>, 'links' | 'skillSyncGate'>>) {
 	vi.restoreAllMocks();
 	vi.resetAllMocks();
 	await usage.seed({ agents: [], skills: [] });
@@ -137,4 +148,9 @@ export async function resetSkillMocks({
 	skills.findLatestSummaries.mockResolvedValue(new Map());
 	skills.findVersionsByIds.mockResolvedValue(new Map());
 	skills.findByIds.mockResolvedValue([]);
+	// No skill is synced unless a test links it.
+	links?.isLinked.mockResolvedValue(false);
+	links?.findLinkedSkillIds.mockResolvedValue(new Set());
+	// Skill Sync is off unless a test turns it on.
+	skillSyncGate?.isEnabled.mockResolvedValue(false);
 }

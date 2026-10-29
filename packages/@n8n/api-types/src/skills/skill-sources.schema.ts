@@ -110,4 +110,6 @@ export type SkillSyncedFrom = {
 	label: string;
 	/** The page of the skill in the source. */
 	webUrl: string;
+	/** Whether the user may stop syncing the skill, which makes it a normal skill. */
+	canStopSyncing: boolean;
 };

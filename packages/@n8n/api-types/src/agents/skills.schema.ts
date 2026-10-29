@@ -71,6 +71,8 @@ export type SkillListItem = {
 	availableToAssistant: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
+	/** Whether the skill is synced and the user may stop syncing it. */
+	canStopSyncing: boolean;
 	createdAt: string;
 	updatedAt: string;
 };

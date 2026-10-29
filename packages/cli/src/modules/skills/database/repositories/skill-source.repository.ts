@@ -1,11 +1,12 @@
 import {
 	BaseRepository,
 	TransactionRunner,
+	chunkIds,
 	isUniqueConstraintError,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource } from '@n8n/typeorm';
+import { DataSource, In } from '@n8n/typeorm';
 
 import {
 	SkillSourceConnection,
@@ -30,7 +31,7 @@ class SkillSourceLinkTable extends BaseRepository<SkillSourceLink> {
 export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId'>;
 
 /** The source of a synced skill, and where the skill is in it. */
-export type SyncedFromRow = Pick<SkillSourceConnection, 'type' | 'locator'> & {
+export type SyncedFromRow = Pick<SkillSourceConnection, 'type' | 'locator' | 'projectId'> & {
 	sourceId: string;
 	remoteRef: Record<string, unknown>;
 };
@@ -146,7 +147,43 @@ export class SkillSourceRepository {
 			sourceId: source.id,
 			type: source.type,
 			locator: source.locator,
+			projectId: source.projectId,
 			remoteRef: link.remoteRef,
 		};
+	}
+
+	/** Whether the skill is a synced skill: a link makes it one. */
+	async isLinked(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
+		return await this.links.managerFor(ctx).existsBy(SkillSourceLink, { skillId });
+	}
+
+	/** The skills among `skillIds` that are synced skills. */
+	async findLinkedSkillIds(skillIds: string[], ctx: OperationContext = {}): Promise<Set<string>> {
+		const manager = this.links.managerFor(ctx);
+		const linked = new Set<string>();
+		for (const chunk of chunkIds(skillIds)) {
+			const links = await manager.find(SkillSourceLink, {
+				select: ['skillId'],
+				where: { skillId: In(chunk) },
+			});
+			for (const { skillId } of links) linked.add(skillId);
+		}
+		return linked;
+	}
+
+	async findLinkBySkillId(
+		skillId: string,
+		ctx: OperationContext = {},
+	): Promise<SkillSourceLink | null> {
+		return await this.links.managerFor(ctx).findOneBy(SkillSourceLink, { skillId });
+	}
+
+	/**
+	 * Stop syncing: the skill becomes a normal skill and keeps its versions. Answers false when
+	 * the skill had no link, for example after a stop at the same time.
+	 */
+	async deleteLink(skillId: string, ctx: OperationContext = {}): Promise<boolean> {
+		const result = await this.links.managerFor(ctx).delete(SkillSourceLink, { skillId });
+		return (result.affected ?? 0) > 0;
 	}
 }
