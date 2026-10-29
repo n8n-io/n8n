@@ -476,6 +476,19 @@ describe('Expression - fast native evaluation parity', () => {
 			expect(run(true)).toStrictEqual(run(false));
 			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
 		});
+
+		// A node set to continue on error puts the error on the item, next to `json`.
+		test('a node reference to an item that holds an error matches the engine', () => {
+			const failed = { json: {}, error: new Error('Request failed') };
+			const data = runDataFor([failed as never]);
+			const expr =
+				"={{ (($('Source').first().json.id || $('Source').first().json.rowId) || null) }}";
+			const run = (native: boolean) => evaluate(expr, native, data, [failed as never]);
+
+			expect(nativeOutcome(expr).handled).toBe(true);
+			expect(run(false)).toBeNull();
+			expect(run(true)).toBeNull();
+		});
 	});
 
 	describe('structural guards', () => {

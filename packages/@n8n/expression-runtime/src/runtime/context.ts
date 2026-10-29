@@ -12,6 +12,7 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
@@ -84,6 +85,14 @@ export interface BridgeCallbacks {
 	callHost: BridgeCallback;
 }
 
+function decodingHostValues(callbacks: BridgeCallbacks): BridgeCallbacks {
+	return {
+		getValueAtPath: (...args) => decodeHostValue(callbacks.getValueAtPath(...args)),
+		getArrayElement: (...args) => decodeHostValue(callbacks.getArrayElement(...args)),
+		callHost: callbacks.callHost,
+	};
+}
+
 /**
  * Build a fresh, closure-scoped evaluation context.
  *
@@ -99,15 +108,18 @@ export interface BridgeCallbacks {
  * @returns A context object with all workflow data, proxies, and builtins
  */
 export function buildContext(
-	callbacks: BridgeCallbacks,
+	bridgeCallbacks: BridgeCallbacks,
 	timezone?: string,
 ): Record<string, unknown> {
+	const callbacks = decodingHostValues(bridgeCallbacks);
 	if (timezone && !IANAZone.isValidZone(timezone)) {
 		throw new Error(`Invalid timezone: "${timezone}"`);
 	}
 	Settings.defaultZone = timezone ?? 'system';
 
-	const callHost = (message: unknown) => readHostResult(callbacks.callHost(message));
+	// Check the error flag before decoding. Decoded data can hold the flag as user data.
+	const callHost = (message: unknown) =>
+		decodeHostValue(readHostResult(callbacks.callHost(message)));
 
 	const target: Record<string, unknown> = {};
 

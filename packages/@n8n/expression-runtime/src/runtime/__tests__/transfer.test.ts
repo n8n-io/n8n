@@ -214,6 +214,17 @@ describe('transfer framing', () => {
 			expect(result.date).toBe(date);
 			expect(result.map).toBe(map);
 		});
+
+		it('should keep a __proto__ key as an own key', () => {
+			const body = JSON.parse('{"__proto__":{"a":1}}') as Record<string, unknown>;
+
+			const result = unwrap({ marker: { [TRANSFER_TYPE_KEY]: 'tag' }, body }) as {
+				body: Record<string, unknown>;
+			};
+
+			expect(Object.keys(result.body)).toEqual(['__proto__']);
+			expect(result.body.a).toBeUndefined();
+		});
 	});
 
 	describe('the walk over an escaped payload', () => {
@@ -297,5 +308,37 @@ describe('the round trip through both walks', () => {
 		const value: TransferSentinel = { [TRANSFER_TYPE_KEY]: 'DateTime' };
 
 		expect(roundTrip(value, decodeToSelf)).toEqual(value);
+	});
+});
+
+describe('__prepareForTransfer', () => {
+	it('prepares a shared object once', () => {
+		const shared = { a: 1 };
+
+		const prepared = __prepareForTransfer(
+			Object.assign(new Error('x'), { left: shared, right: shared }),
+		) as { __props: { left: unknown; right: unknown } };
+
+		expect(prepared.__props.left).toBe(prepared.__props.right);
+	});
+
+	it('does not record the objects of a result without an Error', () => {
+		const shared = { a: 1 };
+
+		const prepared = __prepareForTransfer({ left: shared, right: shared }) as {
+			left: unknown;
+			right: unknown;
+		};
+
+		expect(prepared.left).not.toBe(prepared.right);
+	});
+
+	it('gives undefined for a reference back to an Error the walk is inside', () => {
+		const error = new Error('loop') as Error & { self?: unknown };
+		error.self = error;
+
+		const prepared = __prepareForTransfer(error) as { __props: unknown };
+
+		expect(prepared.__props).toEqual({ self: undefined });
 	});
 });
