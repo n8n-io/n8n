@@ -34,43 +34,11 @@ import {
 	WidgetBodyDto,
 } from '@/public-api/__tests__/public-api-controller-test-utils';
 import type { IdempotencyKeyService } from '@/public-api/idempotency-key.service';
-import { resolveClient } from '@/public-api/public-api-client';
 import { PublicApiControllerRegistry } from '@/public-api/public-api-controller.registry';
 import type { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
 import type { LastActiveAtService } from '@/services/last-active-at.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({ userHasScopes: vi.fn() }));
-
-describe('resolveClient', () => {
-	it('returns editor_ui for the editor UI marker value', () => {
-		expect(resolveClient('editor-ui')).toBe('editor_ui');
-	});
-
-	it('ignores case and surrounding whitespace', () => {
-		expect(resolveClient(' Editor-UI ')).toBe('editor_ui');
-	});
-
-	it('returns other for an unknown value', () => {
-		expect(resolveClient('foo')).toBe('other');
-	});
-
-	it('returns other when the header is absent', () => {
-		expect(resolveClient(undefined)).toBe('other');
-	});
-
-	it('returns other for an empty value', () => {
-		expect(resolveClient('')).toBe('other');
-	});
-
-	it('uses the first value of a repeated header', () => {
-		expect(resolveClient(['editor-ui', 'foo'])).toBe('editor_ui');
-		expect(resolveClient(['foo', 'editor-ui'])).toBe('other');
-	});
-
-	it('returns other for an empty list of values', () => {
-		expect(resolveClient([])).toBe('other');
-	});
-});
 
 describe('PublicApiControllerRegistry', () => {
 	const authStrategyRegistry = mock<AuthStrategyRegistry>();

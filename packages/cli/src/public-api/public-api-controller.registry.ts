@@ -44,7 +44,7 @@ import {
 } from '@/public-api/public-api-route-resolver';
 import { formatValidationError } from '@/public-api/public-api-validation-error';
 import { PublicApiRateLimitService } from '@/public-api/public-api-rate-limit.service';
-import { resolveClient } from '@/public-api/public-api-client';
+import { resolvePublicApiClient } from '@/public-api/public-api-client';
 import { sendPublicApiErrorResponse } from '@/public-api/v1/public-api-error-response';
 import { LastActiveAtService } from '@/services/last-active-at.service';
 
@@ -358,7 +358,7 @@ export class PublicApiControllerRegistry {
 					method: req.method,
 					apiVersion,
 					userAgent: req.headers['user-agent'],
-					client: resolveClient(req.headers[N8N_CLIENT_HEADER]),
+					client: resolvePublicApiClient(req.headers[N8N_CLIENT_HEADER]),
 				});
 			}
 

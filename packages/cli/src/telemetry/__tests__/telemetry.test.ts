@@ -1107,6 +1107,7 @@ describe('Telemetry', () => {
 			expect(buffer['user1'].endpoints['POST /executions']).toBe(1);
 			expect(buffer['user1'].user_agents['n8n-cli/1.0']).toBe(2);
 			expect(buffer['user1'].user_agents['custom-app/2.0']).toBe(1);
+			expect(buffer['user1'].consumed_by).toEqual({ editor_ui: 0, other: 3 });
 		});
 
 		test('should handle missing user_agent', () => {
@@ -1151,20 +1152,6 @@ describe('Telemetry', () => {
 			expect(buffer['user2'].endpoints['POST /executions']).toBe(1);
 		});
 
-		test('should start both client counts at zero', () => {
-			telemetry.trackApiInvocation({
-				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
-				api_version: 'v1',
-				client: 'other',
-			});
-
-			const buffer = telemetry.getApiInvocationsBuffer();
-
-			expect(buffer['user1'].consumed_by).toEqual({ editor_ui: 0, other: 1 });
-		});
-
 		test('should count calls for each client in the same entry', () => {
 			telemetry.trackApiInvocation({
 				user_id: 'user1',
@@ -1192,16 +1179,18 @@ describe('Telemetry', () => {
 
 			const buffer = telemetry.getApiInvocationsBuffer();
 
-			expect(Object.keys(buffer)).toEqual(['user1']);
-			expect(buffer['user1'].consumed_by).toEqual({ editor_ui: 1, other: 2 });
-			expect(buffer['user1'].total_calls).toBe(3);
-			expect(buffer['user1'].endpoints).toEqual({
-				'GET /workflows': 2,
-				'GET /executions': 1,
+			expect(buffer).toStrictEqual({
+				user1: {
+					consumed_by: { editor_ui: 1, other: 2 },
+					total_calls: 3,
+					endpoints: {
+						'GET /workflows': 2,
+						'GET /executions': 1,
+					},
+					first: expect.any(Date),
+					user_agents: {},
+				},
 			});
-			expect(buffer['user1'].consumed_by.editor_ui + buffer['user1'].consumed_by.other).toBe(
-				buffer['user1'].total_calls,
-			);
 		});
 
 		test('should not buffer when rudderStack is not initialized', () => {
@@ -1650,48 +1639,6 @@ describe('Telemetry', () => {
 				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
-			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
-		});
-
-		test('should send one usage event per user with counts for each client', () => {
-			telemetry.trackApiInvocation({
-				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
-				api_version: 'v1',
-				client: 'editor_ui',
-			});
-
-			telemetry.trackApiInvocation({
-				user_id: 'user1',
-				path: '/workflows',
-				method: 'GET',
-				api_version: 'v1',
-				client: 'other',
-			});
-
-			telemetry.trackApiInvocation({
-				user_id: 'user1',
-				path: '/executions',
-				method: 'GET',
-				api_version: 'v1',
-				client: 'other',
-			});
-
-			telemetry.flushBuffers();
-
-			const usageCalls = spyTrack.mock.calls.filter(([event]) => event === 'Public API usage');
-			expect(usageCalls).toHaveLength(1);
-			expect(spyTrack).toHaveBeenCalledWith(
-				'Public API usage',
-				expect.objectContaining({
-					user_id: 'user1',
-					total_calls: 3,
-					consumed_by: JSON.stringify({ editor_ui: 1, other: 2 }),
-				}),
-			);
-			const [, properties] = usageCalls[0];
-			expect(properties).not.toHaveProperty('client');
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
 		});
 

@@ -491,7 +491,6 @@ export type RelayEventMap = DataTableEventMap & {
 		method: string;
 		apiVersion: string;
 		userAgent?: string;
-		/** Derived from the `x-n8n-client` header. The header is spoofable, so use for telemetry only. */
 		client: PublicApiClient;
 	};
 

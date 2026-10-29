@@ -64,11 +64,6 @@ interface IApiInvocationProperties {
 	client: PublicApiClient;
 }
 
-/**
- * `consumed_by` counts calls per client. `editor_ui` is a call that carried the editor UI
- * marker header. `other` is any other call. A caller can fake the marker, so it is not an
- * access control. The counts add up to `total_calls`.
- */
 interface IApiInvocationsBufferEntry {
 	total_calls: number;
 	first: Date;
