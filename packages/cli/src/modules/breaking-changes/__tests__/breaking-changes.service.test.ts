@@ -473,6 +473,24 @@ describe('BreakingChangeService', () => {
 			expect(detectSpy).toHaveBeenCalledTimes(1);
 		});
 
+		it('does not check the published version against a rule that threw on the latest version', async () => {
+			const workflow = draftAheadOfPublished('wf-1', [], [fileNode()]);
+			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
+			const detectSpy = vi
+				.spyOn(throwingRule, 'detectWorkflow')
+				.mockRejectedValue(new Error('boom'));
+
+			const result = await service.detectWorkflowHits('v2', 'wf-1');
+
+			expect(result).toEqual({
+				hits: [],
+				publishedHits: [],
+				failedChecks: [{ ruleId: throwingRule.id, workflowId: 'wf-1' }],
+			});
+			expect(detectSpy).toHaveBeenCalledTimes(1);
+		});
+
 		it('does not scan a published version for a single-rule detection', async () => {
 			const workflow = draftAheadOfPublished('wf-1', [], [removedNode()]);
 			workflowRepository.find.mockResolvedValue([workflow] as never);

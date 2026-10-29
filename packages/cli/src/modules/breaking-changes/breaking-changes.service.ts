@@ -310,7 +310,7 @@ export class BreakingChangeService {
 						} else {
 							allAffectedWorkflowsByRule.set(rule.id, [affectedWorkflow]);
 						}
-					} else {
+					} else if (result) {
 						cleanRules.push(rule);
 					}
 				}
@@ -369,7 +369,8 @@ export class BreakingChangeService {
 
 	/**
 	 * Runs the given rules on the published version of a workflow. Callers pass only
-	 * the rules the latest version passed: a hit there decides the finding anyway.
+	 * the rules the latest version passed: a hit there decides the finding anyway,
+	 * and a check that threw leaves the pair undecided.
 	 * ponytail: batch rules judge the latest version only. A batch rule reads every
 	 * workflow at once, so covering the published versions needs a second batch pass.
 	 */
@@ -457,7 +458,7 @@ export class BreakingChangeService {
 		for (const rule of workflowLevelRules) {
 			const result = await this.runWorkflowRule(rule, workflow, nodesGroupedByType, failedChecks);
 			if (result?.isAffected) hits.push({ ruleId: rule.id, workflowId });
-			else cleanRules.push(rule);
+			else if (result) cleanRules.push(rule);
 		}
 
 		const publishedNodes = (await this.loadPublishedNodes([workflow])).get(workflowId);

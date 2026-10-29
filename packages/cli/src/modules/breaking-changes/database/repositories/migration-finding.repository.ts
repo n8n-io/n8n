@@ -247,9 +247,10 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 	}
 
 	/**
-	 * Inserts the findings as `open`. A finding that exists for the same workflow,
-	 * rule and target version is left as it is, so two syncs that run at the same
-	 * time on different mains do not fail each other's batches.
+	 * Inserts each finding with its `status`, or as `open` when it has none. A
+	 * finding that exists for the same workflow, rule and target version is left
+	 * as it is, so two syncs that run at the same time on different mains do not
+	 * fail each other's batches.
 	 */
 	async insertMany(findings: NewMigrationFinding[], ctx: OperationContext): Promise<void> {
 		if (findings.length === 0) return;
