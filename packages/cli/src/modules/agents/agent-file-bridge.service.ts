@@ -12,6 +12,7 @@ import { BinaryDataService } from 'n8n-core';
 import { deepCopy } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import type { IBinaryData, IBinaryKeyData, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { posix } from 'node:path';
 import { z } from 'zod';
 
 import { AgentChatAttachmentService, AgentFileLimitError } from './agent-chat-attachment.service';
@@ -77,7 +78,8 @@ export class AgentFileBridge {
 				threadId,
 			});
 			if (!attachment) throw new UserError(`File "${fileId}" not found in this conversation`);
-			const { fileName } = attachment;
+			// A sandbox file name is a path in outputs/. A node that writes the file must not create directories.
+			const fileName = posix.basename(attachment.fileName);
 			const fileExtension = hasExtension(fileName)
 				? fileName.slice(fileName.lastIndexOf('.') + 1)
 				: undefined;
@@ -86,7 +88,7 @@ export class AgentFileBridge {
 				// A stored binary keeps its storage mode in `data`, as BinaryDataService.store does.
 				data: attachment.binaryDataId.split(':')[0],
 				mimeType: attachment.mimeType,
-				fileName: attachment.fileName,
+				fileName,
 				...(fileExtension && { fileExtension }),
 				bytes: attachment.fileSizeBytes,
 			};
