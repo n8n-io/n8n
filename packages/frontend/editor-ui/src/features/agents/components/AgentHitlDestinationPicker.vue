@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeUnmount, ref, useId, useTemplateRef, watch } from 'vue';
 import {
 	N8nButton,
 	N8nIcon,
@@ -22,6 +22,7 @@ const i18n = useI18n();
 const open = ref(false);
 const query = ref('');
 const options = ref<AgentHitlOption[]>([]);
+const visibleRowCount = computed(() => Math.min(options.value.length, 6));
 const cursor = ref<string>();
 const loading = ref(false);
 const error = ref(false);
@@ -36,23 +37,44 @@ async function loadPage(append = false) {
 	const version = ++generation;
 	loading.value = true;
 	error.value = false;
+	if (!append) {
+		options.value = [];
+		cursor.value = undefined;
+		activeIndex.value = -1;
+	}
+	let nextCursor = append ? cursor.value : undefined;
 	try {
-		const page = await props.load(query.value, append ? cursor.value : undefined);
-		if (disposed || version !== generation) return;
+		const search = query.value;
+		const visited = new Set<string | undefined>();
+		let page: AgentHitlOptionsPage;
+		do {
+			visited.add(nextCursor);
+			page = await props.load(search, nextCursor);
+			if (disposed || version !== generation) return;
+			nextCursor = page.nextCursor && !visited.has(page.nextCursor) ? page.nextCursor : undefined;
+		} while (!page.options.length && nextCursor);
 		options.value = [
 			...new Map(
 				[...(append ? options.value : []), ...page.options].map((option) => [option.id, option]),
 			).values(),
 		];
-		cursor.value = page.nextCursor;
+		cursor.value = nextCursor;
 	} catch {
-		if (!disposed && version === generation) error.value = true;
+		if (!disposed && version === generation) {
+			cursor.value = nextCursor;
+			error.value = true;
+		}
 	} finally {
 		if (!disposed && version === generation) loading.value = false;
 	}
 }
 watch(open, (value) => {
+	clearTimeout(timer);
 	if (value) void loadPage();
+	else {
+		++generation;
+		loading.value = false;
+	}
 });
 watch(query, () => {
 	++generation;
@@ -60,6 +82,9 @@ watch(query, () => {
 	cursor.value = undefined;
 	activeIndex.value = -1;
 	clearTimeout(timer);
+	if (!open.value) return;
+	loading.value = true;
+	error.value = false;
 	timer = setTimeout(() => {
 		void loadPage();
 	}, 250);
@@ -133,11 +158,13 @@ function move(event: KeyboardEvent) {
 				<div :id="listId" role="listbox" :aria-label="label" :aria-busy="loading">
 					<N8nRecycleScroller
 						v-if="options.length"
+						:key="visibleRowCount"
 						ref="scroller"
 						:items="options"
 						item-key="id"
 						:item-size="40"
 						:class="$style.list"
+						:style="{ '--destination-count': visibleRowCount }"
 					>
 						<template #default="{ item }">
 							<button
@@ -154,7 +181,10 @@ function move(event: KeyboardEvent) {
 							</button>
 						</template>
 					</N8nRecycleScroller>
-					<N8nText v-else-if="!loading && !error" color="text-light">{{
+					<N8nText v-else-if="loading" role="status" color="text-light">{{
+						i18n.baseText('generic.loadingEllipsis')
+					}}</N8nText>
+					<N8nText v-else-if="!error" color="text-light">{{
 						i18n.baseText('agents.hitl.noDestinations')
 					}}</N8nText>
 				</div>
@@ -162,11 +192,11 @@ function move(event: KeyboardEvent) {
 					i18n.baseText('agents.hitl.destinationLoadFailed')
 				}}</N8nText>
 				<N8nButton
-					v-if="cursor || error || loading"
+					v-if="error || (cursor && options.length)"
 					variant="ghost"
 					:loading="loading"
 					:label="i18n.baseText(error ? 'generic.retry' : 'agents.hitl.loadMore')"
-					@click="loadPage(!error)"
+					@click="loadPage(true)"
 				/>
 			</div>
 		</template>
@@ -225,8 +255,9 @@ function move(event: KeyboardEvent) {
 	color: var(--input--placeholder--color);
 }
 .list {
-	height: calc(var(--height--xl) * 6);
-	overflow-y: scroll;
+	height: calc(var(--height--xl) * var(--destination-count));
+	flex: none;
+	overflow-y: auto;
 }
 .option {
 	display: flex;

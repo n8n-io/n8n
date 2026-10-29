@@ -511,6 +511,8 @@ Use a searchable select for the decision workflow. Put Create workflow in its me
 Show platform icons in the connected channel select. Use the same form field
 style for searchable destinations. Mark channel results with a hash icon and
 user results with a user icon. Keep search and pagination in the destination menu.
+Size the list to its results, up to six rows. Skip empty provider pages during
+lookup. Show Load more only with results and a continuation cursor.
 Show attached tools in a multiple select with the same icon and name pills as Build.
 Keep attachment edits local until Save. Selecting a tool enables approval and sets
 its destination. Removing a selection restores its default approval behavior.

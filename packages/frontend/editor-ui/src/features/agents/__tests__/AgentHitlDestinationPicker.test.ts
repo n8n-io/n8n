@@ -112,3 +112,89 @@ it.each(['hash', 'user', 'server'] as const)(
 		expect(trigger.attributes('aria-expanded')).toBe('false');
 	},
 );
+
+it('shows loading instead of Load more and skips empty pages before showing a match', async () => {
+	const next = createDeferredPromise<AgentHitlOptionsPage>();
+	const load = vi
+		.fn()
+		.mockResolvedValueOnce({ options: [], nextCursor: 'next' })
+		.mockReturnValueOnce(next.promise);
+	const wrapper = render(load);
+	await wrapper.get('[data-testid="agent-hitl-destination-picker"]').trigger('click');
+	await flushPromises();
+	expect(load).toHaveBeenLastCalledWith('', 'next');
+	expect(wrapper.get('[role="status"]').text()).toBe('Loading...');
+	expect(wrapper.text()).not.toContain('Load more');
+	expect(wrapper.text()).not.toContain('No destinations found');
+	next.resolve({ options: [{ id: 'match', name: 'Matching channel' }], nextCursor: 'more' });
+	await flushPromises();
+	expect(wrapper.get('[role="option"]').text()).toBe('Matching channel');
+	expect(wrapper.text()).toContain('Load more');
+	expect(wrapper.find('[role="status"]').exists()).toBe(false);
+});
+
+it('shows an empty state without Load more after all pages have no matches', async () => {
+	const load = vi
+		.fn()
+		.mockResolvedValueOnce({ options: [], nextCursor: 'next' })
+		.mockResolvedValueOnce({ options: [] });
+	const wrapper = render(load);
+	await wrapper.get('[data-testid="agent-hitl-destination-picker"]').trigger('click');
+	await flushPromises();
+	expect(load).toHaveBeenCalledTimes(2);
+	expect(wrapper.text()).toContain('No destinations found');
+	expect(wrapper.text()).not.toContain('Load more');
+	expect(wrapper.find('[role="option"]').exists()).toBe(false);
+});
+
+it('stops an empty lookup when a provider repeats its cursor', async () => {
+	const load = vi.fn().mockResolvedValue({ options: [], nextCursor: 'same' });
+	const wrapper = render(load);
+	await wrapper.get('[data-testid="agent-hitl-destination-picker"]').trigger('click');
+	await flushPromises();
+	expect(load).toHaveBeenCalledTimes(2);
+	expect(wrapper.text()).toContain('No destinations found');
+	expect(wrapper.text()).not.toContain('Load more');
+});
+
+it('stops checking empty pages when the picker closes', async () => {
+	const first = createDeferredPromise<AgentHitlOptionsPage>();
+	const load = vi.fn().mockReturnValue(first.promise);
+	const wrapper = render(load);
+	const trigger = wrapper.get('[data-testid="agent-hitl-destination-picker"]');
+	await trigger.trigger('click');
+	await flushPromises();
+	await trigger.trigger('click');
+	first.resolve({ options: [], nextCursor: 'next' });
+	await flushPromises();
+	expect(load).toHaveBeenCalledTimes(1);
+	expect(wrapper.find('[role="listbox"]').exists()).toBe(false);
+});
+
+it('keeps loaded results and retries the same page when loading more fails', async () => {
+	const load = vi
+		.fn()
+		.mockResolvedValueOnce({ options: [{ id: 'first', name: 'First' }], nextCursor: 'next' })
+		.mockRejectedValueOnce(new Error('Temporary lookup failure'))
+		.mockResolvedValueOnce({ options: [{ id: 'second', name: 'Second' }] });
+	const wrapper = render(load);
+	await wrapper.get('[data-testid="agent-hitl-destination-picker"]').trigger('click');
+	await flushPromises();
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Load more')
+		?.trigger('click');
+	await flushPromises();
+	expect(wrapper.get('[role="option"]').text()).toBe('First');
+	await wrapper
+		.findAll('button')
+		.find((button) => button.text() === 'Retry')
+		?.trigger('click');
+	await flushPromises();
+	expect(load).toHaveBeenLastCalledWith('', 'next');
+	expect(wrapper.findAll('[role="option"]').map((option) => option.text())).toEqual([
+		'First',
+		'Second',
+	]);
+	expect(wrapper.text()).not.toContain('Load more');
+});

@@ -24,7 +24,7 @@
 	"agents.hitl.slackChannelHelp": "Invite the bot to the channel before you select it.",
 	"agents.hitl.discordUserHelp": "To list users, enable Server Members Intent for the Discord bot.",
 	"agents.hitl.searchDestinations": "Search destinations",
-	"agents.hitl.noDestinations": "No destinations found on this page.",
+	"agents.hitl.noDestinations": "No destinations found",
 	"agents.hitl.destinationLoadFailed": "Could not load destinations. Check the channel permissions and try again.",
 	"agents.hitl.loadMore": "Load more",
 	"agents.hitl.title": "Advanced HITL",
