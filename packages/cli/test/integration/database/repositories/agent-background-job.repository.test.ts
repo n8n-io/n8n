@@ -460,6 +460,7 @@ describe('AgentBackgroundJobRepository', () => {
 			settledAt,
 			notifiedAt: null,
 			pauseRequestId: null,
+			files: null,
 		});
 	});
 
@@ -806,6 +807,20 @@ describe('AgentBackgroundJobRepository', () => {
 		await repository.settleIfActive(id, { status: 'completed', files: [file] });
 
 		expect((await repository.findById(id))?.files).toEqual([file]);
+	});
+
+	it('returns the files of a settled job as group candidates', async () => {
+		const id = uuid();
+		const otherId = uuid();
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		await insertJob({ id, parentThreadId: 'thread-1', status: 'running' });
+		await insertJob({ id: otherId, parentThreadId: 'thread-1' });
+
+		await repository.settleIfActive(id, { status: 'completed', files: [file] });
+
+		const jobs = await repository.findGroupCandidates(agentId, 'thread-1');
+		expect(jobs.find((job) => job.id === id)?.files).toEqual([file]);
+		expect(jobs.find((job) => job.id === otherId)?.files ?? null).toBeNull();
 	});
 
 	it('stores the skipped files of a settled job and reads a job without them', async () => {
