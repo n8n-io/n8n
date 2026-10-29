@@ -1688,6 +1688,93 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
+		it('waits for the new summary when a later Stop of the same plan starts a new report', async () => {
+			const plan = planView();
+			messagesMock.value = [
+				publishPlan(plan),
+				{
+					id: 'report-1-message',
+					role: 'assistant',
+					content: 'First summary.',
+					stopReport: true,
+					executionId: 'report-1',
+				},
+			];
+			planStopState.value = {
+				planId: plan.planId,
+				status: 'stopped',
+				requestedAt: '2026-10-01T10:00:00.000Z',
+				failures: [],
+				plan: null,
+				report: { status: 'completed', executionId: 'report-1' },
+			};
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
+			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
+
+			planStopState.value = {
+				...planStopState.value,
+				requestedAt: '2026-10-01T10:05:00.000Z',
+				report: { status: 'running', executionId: 'report-2' },
+			};
+			await nextTick();
+
+			expect(wrapper.get('[role="status"]').text()).toContain('agents.chat.tasks.inline.preparing');
+
+			messagesMock.value.push({
+				id: 'report-2-message',
+				role: 'assistant',
+				content: 'Second summary.',
+				stopReport: true,
+				executionId: 'report-2',
+			});
+			await nextTick();
+
+			expect(wrapper.find('[data-testid="agent-task-stop-status"]').exists()).toBe(false);
+			expect(
+				wrapper
+					.getComponent({ name: 'AgentChatMessageList' })
+					.props('messages')
+					.filter((message: ChatMessage) => message.stopReport),
+			).toHaveLength(2);
+
+			wrapper.unmount();
+		});
+
+		it('offers Retry when the report runs after the deadline with leftover work', async () => {
+			const plan = planView();
+			messagesMock.value = [publishPlan(plan)];
+			planStopState.value = {
+				planId: plan.planId,
+				status: 'failed',
+				requestedAt: new Date().toISOString(),
+				failures: [{ jobId: 'job', title: 'Workflow' }],
+				plan: null,
+				report: { status: 'running', executionId: 'report' },
+			};
+			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
+
+			expect(wrapper.findComponent(AgentChatPlan).exists()).toBe(false);
+
+			messagesMock.value.push({
+				id: 'report-message',
+				role: 'assistant',
+				content: 'Some work did not stop.',
+				stopReport: true,
+				executionId: 'report',
+			});
+			await nextTick();
+			const notice = wrapper.get('[data-testid="agent-task-stop-status"]');
+
+			expect(notice.text()).toContain('agents.chat.tasks.inline.failed');
+
+			await notice.get('button').trigger('click');
+
+			expect(stopPlanMock).toHaveBeenCalledOnce();
+
+			wrapper.unmount();
+		});
+
 		it('shows Stop progress and summary progress without a child job', async () => {
 			const plan = planView();
 			messagesMock.value = [publishPlan(plan)];
