@@ -1,5 +1,5 @@
 import type { RenameDataTableColumnDto } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	EventService,
 	ProjectNotFoundError,
@@ -8,9 +8,11 @@ import {
 } from '@n8n/backend-services';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { In } from '@n8n/typeorm';
 import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
+import { mock } from 'vitest-mock-extended';
 
 import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
@@ -38,6 +40,7 @@ describe('DataTableService', () => {
 	let mockEventService: Mocked<EventService>;
 	let mockProjectRepository: Mocked<ProjectRepository>;
 	let mockProjectScopeService: Mocked<ProjectScopeService>;
+	let mockModuleRegistry: Mocked<ModuleRegistry>;
 
 	beforeAll(async () => {
 		await testModules.loadModules(['data-table']);
@@ -55,6 +58,7 @@ describe('DataTableService', () => {
 		mockEventService = mockInstance(EventService);
 		mockProjectRepository = mockInstance(ProjectRepository);
 		mockProjectScopeService = mockInstance(ProjectScopeService);
+		mockModuleRegistry = mockInstance(ModuleRegistry);
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
@@ -71,6 +75,7 @@ describe('DataTableService', () => {
 			mockEventService,
 			mockProjectRepository,
 			mockProjectScopeService,
+			mockModuleRegistry,
 		);
 
 		vi.clearAllMocks();
@@ -840,6 +845,82 @@ describe('DataTableService', () => {
 			await expect(dataTableService.resolveOwningProjectId(user, projectId)).rejects.toThrow(
 				DataTableAccessDeniedError,
 			);
+		});
+	});
+
+	describe('assertRowReadAccessIfReturningRows', () => {
+		const user = mock<User>();
+
+		beforeEach(() => {
+			mockProjectScopeService.getProjectIds.mockResolvedValue(['project-1']);
+			mockDataTableRepository.findProjectIdForScope.mockResolvedValue('project-1');
+			mockModuleRegistry.isActive.mockReturnValue(true);
+		});
+
+		it('skips the read check when the operation returns no rows', async () => {
+			await dataTableService.assertRowReadAccessIfReturningRows(user, 'table-1', {});
+
+			expect(mockProjectScopeService.getProjectIds).not.toHaveBeenCalled();
+			expect(mockDataTableRepository.findProjectIdForScope).not.toHaveBeenCalled();
+		});
+
+		it.each([{ returnData: true }, { dryRun: true, returnData: false }])(
+			'checks the table project when the operation returns rows: %j',
+			async (options) => {
+				await dataTableService.assertRowReadAccessIfReturningRows(user, 'table-1', options);
+
+				expect(mockProjectScopeService.getProjectIds).toHaveBeenCalledWith(user, [
+					'dataTable:readRow',
+				]);
+				expect(mockDataTableRepository.findProjectIdForScope).toHaveBeenCalledWith('table-1');
+			},
+		);
+
+		it('allows a global scope before resolving the table', async () => {
+			mockProjectScopeService.getProjectIds.mockResolvedValue(null);
+			mockModuleRegistry.isActive.mockReturnValue(false);
+
+			await dataTableService.assertRowReadAccessIfReturningRows(user, 'table-1', {
+				returnData: true,
+			});
+
+			expect(mockDataTableRepository.findProjectIdForScope).not.toHaveBeenCalled();
+		});
+
+		it('rejects a table in a project without row-read access', async () => {
+			mockDataTableRepository.findProjectIdForScope.mockResolvedValue('project-2');
+
+			await expect(
+				dataTableService.assertRowReadAccessIfReturningRows(user, 'table-1', { returnData: true }),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('rejects a dry run when the user has no readable projects', async () => {
+			mockProjectScopeService.getProjectIds.mockResolvedValue([]);
+
+			await expect(
+				dataTableService.assertRowReadAccessIfReturningRows(user, 'table-1', {
+					dryRun: true,
+					returnData: false,
+				}),
+			).rejects.toThrow(ForbiddenError);
+		});
+
+		it('reports a missing table', async () => {
+			mockDataTableRepository.findProjectIdForScope.mockResolvedValue(null);
+
+			await expect(
+				dataTableService.assertRowReadAccessIfReturningRows(user, 'table-1', { returnData: true }),
+			).rejects.toThrow(NotFoundError);
+		});
+
+		it('reports a missing table when the module is disabled', async () => {
+			mockModuleRegistry.isActive.mockReturnValue(false);
+
+			await expect(
+				dataTableService.assertRowReadAccessIfReturningRows(user, 'table-1', { returnData: true }),
+			).rejects.toThrow('Data table with ID "table-1" not found.');
+			expect(mockDataTableRepository.findProjectIdForScope).not.toHaveBeenCalled();
 		});
 	});
 });

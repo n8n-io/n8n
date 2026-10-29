@@ -38,10 +38,7 @@ import {
 } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
-import {
-	assertRowReadAccessIfReturningRows,
-	assertSchemaWriteAccess,
-} from './data-table-permissions';
+import { assertSchemaWriteAccess } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
 import { DataTableColumnNameConflictError } from './errors/data-table-column-name-conflict.error';
 import { FileUploadError } from './errors/data-table-file-upload.error';
@@ -407,7 +404,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpsertDataTableRowDto,
 	) {
-		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
+		await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.upsertRow(
 				dataTableId,
@@ -437,7 +434,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Body dto: UpdateDataTableRowDto,
 	) {
-		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
+		await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.updateRows(
 				dataTableId,
@@ -467,7 +464,7 @@ export class DataTableController {
 		@Param('dataTableId') dataTableId: string,
 		@Query dto: DeleteDataTableRowsDto,
 	) {
-		await assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
+		await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, dto);
 		try {
 			return await this.dataTableService.deleteRows(
 				dataTableId,
