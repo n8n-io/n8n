@@ -20,7 +20,9 @@ describe('ExecutionLedgerRepository', () => {
 	};
 
 	beforeAll(async () => {
-		await testModules.loadModules(['execution-ledger']);
+		await testModules.loadModules(['execution-ledger'], {
+			'execution-ledger': async () => await import('../../../execution-ledger.module.js'),
+		});
 		await testDb.init();
 		repository = Container.get(ExecutionLedgerRepository);
 		txRunner = Container.get(TransactionRunner);
