@@ -98,6 +98,8 @@ export type SkillScanFinding = {
 	file?: string;
 	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
 	detail: string;
+	/** The linked domain of a `new_url` finding. */
+	domain?: string;
 };
 
 /** The most severe finding gives the verdict. No one can override `blocked`. */

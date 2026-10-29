@@ -138,9 +138,16 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 						rule: 'new_url',
 						severity: 'needs_review',
 						file,
+						domain,
 						detail: `The update links to ${domain}, a domain that the current version does not use.`,
 					}
-				: { rule: 'new_url', severity: 'info', file, detail: `The skill links to ${domain}.` },
+				: {
+						rule: 'new_url',
+						severity: 'info',
+						file,
+						domain,
+						detail: `The skill links to ${domain}.`,
+					},
 		);
 }
 
