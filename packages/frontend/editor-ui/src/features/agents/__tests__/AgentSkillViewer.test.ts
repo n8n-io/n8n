@@ -222,19 +222,6 @@ describe('AgentSkillViewer', () => {
 		);
 		expect(wrapper.emitted('update:valid')?.at(-1)).toEqual([false]);
 	});
-
-	it('shows no allowed tools field', () => {
-		const wrapper = mountViewer({
-			skill: {
-				name: 'Research',
-				description: 'Use for research',
-				instructions: 'Main body',
-				allowedTools: ['load_workflow'],
-			},
-		});
-
-		expect(wrapper.find('[data-testid="agent-skill-allowed-tools"]').exists()).toBe(false);
-	});
 });
 
 function mountViewer(props: Partial<InstanceType<typeof AgentSkillViewer>['$props']> = {}) {

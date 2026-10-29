@@ -2117,6 +2117,35 @@ describe('TelemetryEventRelay', () => {
 			},
 		);
 
+		it.each(['credentials-created', 'credentials-updated'] as const)(
+			'reports the managed app version on `%s`',
+			(eventName) => {
+				eventService.emit(eventName, {
+					credentialName: 'My Notion account',
+					user: {
+						id: 'user123',
+						email: 'user@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						role: { slug: GLOBAL_OWNER_ROLE.slug },
+					},
+					credentialType: 'notionOAuth2Api',
+					credentialId: 'cred123',
+					publicApi: false,
+					supportsManagedAuth: true,
+					usesManagedAuth: true,
+					managedAppVersion: 2,
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					eventName === 'credentials-created'
+						? TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS
+						: TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+					expect.objectContaining({ credential_managed_app_version: 2 }),
+				);
+			},
+		);
+
 		it('should track on `credentials-shared` event', () => {
 			const event: RelayEventMap['credentials-shared'] = {
 				user: {
@@ -3785,6 +3814,29 @@ describe('TelemetryEventRelay', () => {
 				},
 				'user456',
 			);
+		});
+
+		it('tracks a `user-deleted` event without a user with the source', () => {
+			const event: RelayEventMap['user-deleted'] = {
+				user: null,
+				source: 'scim',
+				publicApi: false,
+				targetUserOldStatus: 'active',
+				migrationStrategy: 'delete_data',
+				targetUserId: 'user456',
+			};
+
+			eventService.emit('user-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted user', {
+				user_id: undefined,
+				source: 'scim',
+				public_api: false,
+				target_user_old_status: 'active',
+				migration_strategy: 'delete_data',
+				target_user_id: 'user456',
+				migration_user_id: undefined,
+			});
 		});
 
 		it('should track on `user-invited` event', () => {
@@ -5587,6 +5639,36 @@ describe('TelemetryEventRelay', () => {
 				duration_ms: 2000,
 				workflows_changed: 6,
 				workflows_failed_to_publish: 1,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES.getValidationError(payload),
+			).toBeNull();
+		});
+
+		it('should track a changed Apply preview without workflow totals', () => {
+			eventService.emit('promotion-applied', {
+				user,
+				environmentId: 'env-1',
+				scope: 'project',
+				projectId: 'project-1',
+				outcome: 'preview_changed',
+				durationMs: 20,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				scope: 'project',
+				project_id: 'project-1',
+				outcome: 'preview_changed',
+				failure_kind: undefined,
+				duration_ms: 20,
+				workflows_changed: undefined,
+				workflows_failed_to_publish: undefined,
 			};
 			expect(telemetry.track).toHaveBeenCalledWith(
 				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES,

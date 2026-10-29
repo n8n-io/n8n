@@ -254,6 +254,10 @@ export class CredentialsPublicController {
 			projectType: project?.type,
 			isDynamic: credential.isResolvable ?? false,
 			jweEnabled: body.data.jweEnabled === true,
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
+				credential.type,
+				body.data,
+			),
 		});
 
 		return toCredentialPublicDto(credential, includeDescription);
@@ -358,6 +362,10 @@ export class CredentialsPublicController {
 			jweEnabled: credentialData.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(updatedCredential.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(
+				updatedCredential.type,
+				credentialData,
+			),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(
 				updatedCredential.type,
 				credentialData,
 			),

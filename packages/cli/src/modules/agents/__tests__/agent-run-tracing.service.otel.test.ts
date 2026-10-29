@@ -1,15 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
-import type { OutboundHttp } from '@n8n/backend-network';
 import type { AgentsConfig } from '@n8n/config';
 import { context, type Tracer } from '@opentelemetry/api';
 import { mock } from 'vitest-mock-extended';
-import type { InstanceSettings } from 'n8n-core';
 
 import { OtelTestProvider } from '@/modules/otel/__tests__/support/otel-test-provider';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
 import type { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OtelCustomAttributesConfig } from '@/modules/otel/otel.config';
-import { OtelService } from '@/modules/otel/otel.service';
 
 import { AgentRunTracingService } from '../agent-run-tracing.service';
 
@@ -30,7 +27,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 		const otel = OtelTestProvider.create();
 		try {
 			const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-			const service = new AgentRunTracingService(agentsConfig, otel.asOtelService());
+			const service = new AgentRunTracingService(agentsConfig);
 
 			const built = await service.build(baseMetadata);
 			expect(built).toBeDefined();
@@ -61,7 +58,6 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 		const otel = OtelTestProvider.create({ withContextManager: true });
 		try {
 			const executionLevelTracer = new ExecutionLevelTracer(
-				otel.asOtelService(),
 				mock<OtelSettingsService>({ getSettings: () => ({ injectOutbound: false }) as never }),
 				mock<Logger>(),
 				new OtelCustomAttributesConfig(),
@@ -76,7 +72,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 			executionLevelTracer.startNode({ executionId, node });
 
 			const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-			const agentRunTracingService = new AgentRunTracingService(agentsConfig, otel.asOtelService());
+			const agentRunTracingService = new AgentRunTracingService(agentsConfig);
 
 			const parentCtx = executionLevelTracer.getActiveContext(executionId, node.name);
 			expect(parentCtx).toBeDefined();
@@ -126,13 +122,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 
 	it('emits no spans when the OTel module has not started a provider', async () => {
 		const agentsConfig = mock<AgentsConfig>({ tracingEnabled: true });
-		const otelService = new OtelService(
-			mock<OtelSettingsService>(),
-			mock<InstanceSettings>(),
-			mock<Logger>(),
-			mock<OutboundHttp>(),
-		);
-		const service = new AgentRunTracingService(agentsConfig, otelService);
+		const service = new AgentRunTracingService(agentsConfig);
 
 		const built = await service.build(baseMetadata);
 		expect(built).toBeDefined();
@@ -149,7 +139,7 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 		const otel = OtelTestProvider.create();
 		try {
 			const agentsConfig = mock<AgentsConfig>({ tracingEnabled: false });
-			const service = new AgentRunTracingService(agentsConfig, otel.asOtelService());
+			const service = new AgentRunTracingService(agentsConfig);
 
 			const built = await service.build(baseMetadata);
 			expect(built).toBeUndefined();

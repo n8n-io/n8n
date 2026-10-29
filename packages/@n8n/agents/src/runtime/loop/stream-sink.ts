@@ -423,6 +423,7 @@ export class StreamSink implements RunOutputSink<void> {
 				output: r.modelOutput,
 				...(r.toolEntry.canceled ? { canceled: true } : {}),
 				...(r.mcpServerName !== undefined ? { mcpServerName: r.mcpServerName } : {}),
+				...(r.traceOutput !== undefined ? { traceOutput: r.traceOutput } : {}),
 			});
 			if (r.customMessage) {
 				await this.guard.write({ type: 'message', message: r.customMessage });

@@ -12,6 +12,7 @@ import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
 import { WhatsAppIntegration } from '../platforms/whatsapp/whatsapp-integration';
+import type { WhatsAppOptionPagesStore } from '../platforms/whatsapp/whatsapp-option-pages.store';
 import type { WhatsAppSetupTelemetryService } from '../platforms/whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../platforms/whatsapp/whatsapp-webhook-verification.store';
 
@@ -43,6 +44,7 @@ describe('channel episodic memory policy', () => {
 					instanceSettings,
 					mock<ChannelRateLimitGuard>(),
 					mock<WhatsAppWebhookVerificationStore>(),
+					mock<WhatsAppOptionPagesStore>(),
 					mock<WhatsAppSetupTelemetryService>(),
 				),
 		],

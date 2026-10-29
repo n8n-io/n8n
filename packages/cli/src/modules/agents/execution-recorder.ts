@@ -251,6 +251,8 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
+			/** Host-only data from the tool's `toTraceOutput`, e.g. recalled memory entry ids. */
+			traceOutput?: unknown;
 	  }
 	| {
 			type: 'suspension';
@@ -492,13 +494,7 @@ export class ExecutionRecorder {
 				break;
 			}
 			case 'tool-result':
-				this.recordToolResult(
-					chunk.toolCallId,
-					chunk.toolName,
-					chunk.output,
-					chunk.isError === true,
-					chunk.canceled === true,
-				);
+				this.recordToolResult(chunk);
 				break;
 			case 'usage':
 				this.usage = {
@@ -742,16 +738,15 @@ export class ExecutionRecorder {
 	 * timeline entry to close. In that case we synthesize one from the
 	 * registry so workflow rows and execution-log links still render.
 	 */
-	private recordToolResult(
-		toolCallId: string,
-		name: string,
-		output: unknown,
-		isError: boolean,
-		canceled: boolean,
-	): void {
+	private recordToolResult(chunk: StreamChunk & { type: 'tool-result' }): void {
+		const { toolCallId, toolName: name, output } = chunk;
+		const isError = chunk.isError === true;
+		const canceled = chunk.canceled === true;
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
 		);
+		const traceOutput =
+			chunk.traceOutput !== undefined ? sanitizeExecutionLogValue(chunk.traceOutput) : undefined;
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()
@@ -764,6 +759,7 @@ export class ExecutionRecorder {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
 			if (canceled) pendingTimeline.canceled = true;
+			if (traceOutput !== undefined) pendingTimeline.traceOutput = traceOutput;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -796,6 +792,7 @@ export class ExecutionRecorder {
 			endTime: now,
 			success: !isError,
 			...(canceled ? { canceled: true } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,

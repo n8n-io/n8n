@@ -206,12 +206,6 @@ export interface AgentKnowledgeCitation extends AgentKnowledgeFileIdentity {
 	endLine: number;
 }
 
-export interface AgentKnowledgeLine {
-	lineNumber: number;
-	text: string;
-	truncated: boolean;
-}
-
 export interface SearchKnowledgeMatch extends AgentKnowledgeFileIdentity {
 	lineNumber: number;
 	text: string;

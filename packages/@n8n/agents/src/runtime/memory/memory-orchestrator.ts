@@ -838,10 +838,10 @@ export class MemoryOrchestrator {
 					telemetry,
 					modelFetch: this.config.modelFetch,
 					agentName: this.config.name,
-					// Each embed/reflect usage is forwarded inside the processor
+					// Each embed/consolidate usage is forwarded inside the processor
 					// the moment its model call resolves, before persistence, so a
-					// billed turn is priced even when a later save or applyReflection
-					// throws. Returning usageReports here would double-count.
+					// billed turn is priced even when a later write throws.
+					// Returning usageReports here would double-count.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
 								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);

@@ -150,6 +150,106 @@ describe('PlaywrightAdapter remote mode', () => {
 	);
 });
 
+describe('PlaywrightAdapter page events', () => {
+	interface TrackedState {
+		consoleBuffer: Array<{ text: string }>;
+		errorBuffer: Array<{ message: string }>;
+		networkBuffer: Array<{ url: string }>;
+	}
+
+	/** Tracks a fake page, and returns its buffers and a way to emit page events. */
+	function trackFakePage(adapter: PlaywrightAdapter) {
+		const listeners = new Map<string, (arg: unknown) => void>();
+		const page = {
+			on: vi.fn((event: string, listener: (arg: unknown) => void) =>
+				listeners.set(event, listener),
+			),
+			url: () => 'https://example.com',
+		};
+		const state = (adapter as unknown as { trackPage(page: unknown): TrackedState }).trackPage(
+			page,
+		);
+		const emit = (event: string, arg: unknown) => listeners.get(event)?.(arg);
+		return { state, emit };
+	}
+
+	function consoleMessage(
+		text: string,
+		args = [{ dispose: vi.fn().mockResolvedValue(undefined) }],
+	) {
+		return { type: () => 'log', text: () => text, args: () => args };
+	}
+
+	function response(url: string) {
+		return {
+			url: () => url,
+			request: () => ({ method: () => 'GET' }),
+			status: () => 200,
+			headers: () => ({ 'content-type': 'text/html' }),
+		};
+	}
+
+	function emitThreeOfEach(emit: (event: string, arg: unknown) => void) {
+		for (const n of [1, 2, 3]) {
+			emit('console', consoleMessage(`log ${n}`));
+			emit('pageerror', new Error(`error ${n}`));
+			emit('response', response(`https://example.com/${n}`));
+		}
+	}
+
+	it('keeps only the newest entries of each event type when maxPageEventEntries is set', () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay(), maxPageEventEntries: 2 });
+		const { state, emit } = trackFakePage(adapter);
+
+		emitThreeOfEach(emit);
+
+		expect(state.consoleBuffer.map((e) => e.text)).toEqual(['log 2', 'log 3']);
+		expect(state.errorBuffer.map((e) => e.message)).toEqual(['error 2', 'error 3']);
+		expect(state.networkBuffer.map((e) => e.url)).toEqual([
+			'https://example.com/2',
+			'https://example.com/3',
+		]);
+	});
+
+	it('keeps every entry when maxPageEventEntries is not set', () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
+		const { state, emit } = trackFakePage(adapter);
+
+		emitThreeOfEach(emit);
+
+		expect(state.consoleBuffer).toHaveLength(3);
+		expect(state.errorBuffer).toHaveLength(3);
+		expect(state.networkBuffer).toHaveLength(3);
+	});
+
+	it('releases the argument handles of a console message after it reads the text', () => {
+		const adapter = new PlaywrightAdapter(config, {
+			relay: fakeRelay(),
+			releaseConsoleHandles: true,
+		});
+		const { state, emit } = trackFakePage(adapter);
+		const args = [
+			{ dispose: vi.fn().mockResolvedValue(undefined) },
+			{ dispose: vi.fn().mockRejectedValue(new Error('page closed')) },
+		];
+
+		emit('console', consoleMessage('log {a: 1}', args));
+
+		expect(state.consoleBuffer.map((e) => e.text)).toEqual(['log {a: 1}']);
+		for (const arg of args) expect(arg.dispose).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the argument handles of a console message when releaseConsoleHandles is not set', () => {
+		const adapter = new PlaywrightAdapter(config, { relay: fakeRelay() });
+		const { emit } = trackFakePage(adapter);
+		const args = [{ dispose: vi.fn().mockResolvedValue(undefined) }];
+
+		emit('console', consoleMessage('log', args));
+
+		expect(args[0].dispose).not.toHaveBeenCalled();
+	});
+});
+
 describe('PlaywrightAdapter remote mode without a relay', () => {
 	const directConfig: ResolvedConfig = { ...config, mode: 'remote' };
 

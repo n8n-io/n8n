@@ -177,7 +177,7 @@ describe('ApplyPackageResultDto', () => {
 		environmentId: 'env1',
 		git: { branchName: 'main', commitSha: 'a'.repeat(40) },
 	};
-	const preflight = {
+	const check = {
 		missingProjects: [],
 		missingBindings: [],
 		accessRequirements: [],
@@ -189,10 +189,10 @@ describe('ApplyPackageResultDto', () => {
 		expect(ApplyPackageResultDto.name).toBe('ApplyPackageResultDto');
 		expect(ApplyPackageResultDto.schema).toBe(applyPackageResultSchema);
 		expect(
-			ApplyPackageResultDto.parse({ ...identity, status: 'blocked', preflight, counts: {} }),
-		).toEqual({ ...identity, status: 'blocked', preflight });
+			ApplyPackageResultDto.parse({ ...identity, status: 'blocked', check, counts: {} }),
+		).toEqual({ ...identity, status: 'blocked', check });
 		expect(
-			ApplyPackageResultDto.parse({ ...identity, status: 'source-changed', preflight, counts: {} }),
+			ApplyPackageResultDto.parse({ ...identity, status: 'source-changed', check, counts: {} }),
 		).toEqual({ ...identity, status: 'source-changed' });
 	});
 
@@ -200,7 +200,7 @@ describe('ApplyPackageResultDto', () => {
 		{ ...identity },
 		{ ...identity, status: 'unknown' },
 		{ ...identity, status: 'blocked' },
-		{ ...identity, status: 'blocked', preflight: { ...preflight, missingProjects: undefined } },
+		{ ...identity, status: 'blocked', check: { ...check, missingProjects: undefined } },
 		{ ...identity, status: 'applied', warnings: [] },
 		{ ...identity, status: 'applied', counts: {} },
 	])('requires the fields for each outcome: %j', (value) => {

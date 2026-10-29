@@ -6,15 +6,21 @@ import { ManualExecutionCancelledError } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
 
+import { JobProcessor } from './job-processor';
 import { Publisher } from './pubsub/publisher.service';
 
 /**
  * Cross-process stop protocol for in-memory executions in queue mode.
  *
- * Top-level executions are Bull jobs and are stopped via the `abort-job` job event. A
- * subworkflow execution, however, runs inline in the parent's worker process and has no Bull
- * job, so the main process cannot reach it. The main broadcasts a `stop-execution` command and
- * whichever worker is running that execution cancels it from its own `ActiveExecutions`.
+ * The main broadcasts a `stop-execution` command and whichever worker runs that execution
+ * cancels it. A top-level execution is a Bull job that the worker tracks in `JobProcessor`. A
+ * subworkflow execution runs inline in the parent's worker process and has no Bull job, so the
+ * worker finds it in its own `ActiveExecutions` instead.
+ *
+ * The `abort-job` job event also stops a top-level execution, but only the process that
+ * enqueued the job holds the handle to send it. The broadcast is what reaches the worker when
+ * the stop request arrives at another main, at a main restarted after the enqueue, or for a job
+ * enqueued by a webhook process.
  */
 @Service()
 export class ExecutionStopService {
@@ -23,14 +29,15 @@ export class ExecutionStopService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly publisher: Publisher,
 		private readonly activeExecutions: ActiveExecutions,
+		private readonly jobProcessor: JobProcessor,
 	) {
 		this.logger = this.logger.scoped('scaling');
 	}
 
 	/**
 	 * Broadcast a request to stop an execution to all workers. Workers that are not running the
-	 * execution ignore it. Called from the main process when an execution cannot be reached
-	 * locally (e.g. a subworkflow running on a worker).
+	 * execution ignore it. The main calls this for every stop in queue mode, because it may not
+	 * hold the Bull job handle for the execution.
 	 */
 	async requestStop(executionId: string) {
 		if (this.instanceSettings.instanceType !== 'main') return;
@@ -43,6 +50,8 @@ export class ExecutionStopService {
 
 	@OnPubSubEvent('stop-execution', { instanceType: 'worker' })
 	handleStopExecution({ executionId }: { executionId: string }) {
+		if (this.jobProcessor.stopJobByExecutionId(executionId)) return;
+
 		if (!this.activeExecutions.has(executionId)) return;
 
 		this.logger.debug('Stopping execution on worker after stop-execution command', {
