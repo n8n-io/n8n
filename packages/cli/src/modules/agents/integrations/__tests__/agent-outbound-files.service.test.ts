@@ -9,6 +9,7 @@ import type { AgentChatAttachmentService } from '../../agent-chat-attachment.ser
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { AgentOutboundFiles } from '../agent-outbound-files.service';
+import { DiscordIntegration } from '../platforms/discord/discord-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
 
@@ -41,6 +42,14 @@ function createService() {
 	attachmentService.getBuffer.mockResolvedValue(Buffer.from('png'));
 	const registry = new ChatIntegrationRegistry();
 	registry.register(new SlackIntegration(mock<AgentRepository>()));
+	registry.register(
+		new DiscordIntegration(
+			mock<Logger>(),
+			mock<InstanceSettings>(),
+			mock<AgentRepository>(),
+			mock<OutboundHttp>(),
+		),
+	);
 	registry.register(
 		new TelegramIntegration(
 			mock<Logger>(),
@@ -182,6 +191,25 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		});
 	});
 
+	it('posts Discord reply files as raw uploads with the reply text', async () => {
+		const { service, thread } = createService();
+
+		await service.postReplyFiles(thread, 'discord', {
+			fileIds: ['file-1', 'doc-1'],
+			caption: 'Here are your files.',
+			scope,
+		});
+
+		expect(thread.post).toHaveBeenCalledTimes(1);
+		expect(thread.post).toHaveBeenCalledWith({
+			markdown: 'Here are your files.',
+			files: [
+				{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' },
+				{ data: Buffer.from('png'), filename: 'doc-1.pdf', mimeType: 'application/pdf' },
+			],
+		});
+	});
+
 	it('posts mixed Slack files in one message', async () => {
 		const { service, thread } = createService();
 
@@ -253,6 +281,34 @@ describe('AgentOutboundFiles.groups', () => {
 });
 
 describe('AgentOutboundFiles.check', () => {
+	it('returns a limit error for a Discord file over 10 MiB', async () => {
+		const { service, attachmentService } = createService();
+		attachmentService.getReadable.mockResolvedValue({
+			...chartFile,
+			fileSizeBytes: 10 * 1024 * 1024 + 1,
+		} as never);
+
+		await expect(service.check('discord', ['file-1'], scope)).resolves.toEqual({
+			ok: false,
+			error: {
+				code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+				message: 'File "chart.png" is 10 MB. The discord integration sends files up to 10 MB.',
+			},
+		});
+	});
+
+	it('accepts a Discord file of exactly 10 MiB', async () => {
+		const { service, attachmentService } = createService();
+		attachmentService.getReadable.mockResolvedValue({
+			...chartFile,
+			fileSizeBytes: 10 * 1024 * 1024,
+		} as never);
+
+		await expect(service.check('discord', ['file-1'], scope)).resolves.toEqual([
+			expect.objectContaining({ id: 'file-1' }),
+		]);
+	});
+
 	it('returns a limit error when the platform needs too many messages for the files', async () => {
 		const { service, attachmentService } = createService();
 		// 21 images need 3 Telegram media groups, and the PDF needs a 4th message.
