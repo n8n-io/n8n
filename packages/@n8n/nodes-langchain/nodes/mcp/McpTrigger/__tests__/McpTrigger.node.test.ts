@@ -341,10 +341,34 @@ describe('McpTrigger', () => {
 
 				expect(resp.status).toHaveBeenCalledWith(405);
 				expect(resp.setHeader).toHaveBeenCalledWith('Allow', 'POST, DELETE');
+				expect(resp.send).toHaveBeenCalledWith('Method Not Allowed');
 				expect(mockMcpServer.handleSetupRequest).not.toHaveBeenCalled();
 				expect(result).toEqual({ noWebhookResponse: true });
 			},
 		);
+
+		it('should still set up SSE for a GET without a session ID on version 2', async () => {
+			const req = createMockRequest({ method: 'GET', path: '/webhook' });
+			const resp = createMockResponse();
+			mockContext.getWebhookName.mockReturnValue('setup');
+			mockContext.getRequestObject.mockReturnValue(req as never);
+			mockContext.getResponseObject.mockReturnValue(resp as never);
+			mockContext.getNode.mockReturnValue(
+				mock<INode>({ typeVersion: 2, name: 'MCP Server Trigger' }),
+			);
+
+			await mcpTrigger.webhook(mockContext);
+
+			expect(resp.status).not.toHaveBeenCalledWith(405);
+			expect(mockMcpServer.handleSetupRequest).toHaveBeenCalledWith(
+				req,
+				resp,
+				expect.any(String),
+				'/webhook',
+				expect.any(Array),
+				undefined,
+			);
+		});
 	});
 
 	describe('webhook - default POST', () => {
