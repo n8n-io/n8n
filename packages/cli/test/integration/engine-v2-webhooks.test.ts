@@ -19,9 +19,9 @@ import { agent as testAgent } from 'supertest';
 
 import { CacheService } from '@n8n/backend-services';
 import { ActiveExecutions } from '@/active-executions';
-import { InMemoryExecutionResponseChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
-import { InMemoryExecutionResponseReceiver } from '@/modules/engine-v2/response-channel/in-memory-execution-response-receiver';
-import { InMemoryExecutionResponseSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
+import { ExecutionResponseChannelReceiver } from '@/modules/engine-v2/response-channel/execution-response-receiver';
+import { ExecutionResponseChannelSender } from '@/modules/engine-v2/response-channel/in-memory-execution-response-sender';
+import { createInMemoryExecutionChannel } from '@/modules/engine-v2/response-channel/in-memory-execution-response-channel';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 import { Telemetry } from '@/telemetry';
@@ -44,7 +44,7 @@ const getExecution = vi.fn();
 let builder: User;
 let webhookAgent: SuperAgentTest;
 let webhookTestEndpoint: string;
-let responseSender: InMemoryExecutionResponseSender;
+let responseSender: ExecutionResponseChannelSender;
 
 const webhookNode = (webhookId: string): INode => ({
 	id: randomUUID(),
@@ -87,11 +87,11 @@ beforeAll(async () => {
 	// The host hands the response registry its receiver at boot (`EngineV2Module.init`).
 	// This test drives the webhook route directly, without the module, so it
 	// wires the same receiver by hand.
-	const responseChannel = new InMemoryExecutionResponseChannel();
+	const { publisher, subscriber } = createInMemoryExecutionChannel();
 	Container.get(EngineV2WebhookResponseRegistry).useReceiver(
-		new InMemoryExecutionResponseReceiver(responseChannel, Container.get(Logger)),
+		new ExecutionResponseChannelReceiver(subscriber, Container.get(Logger)),
 	);
-	responseSender = new InMemoryExecutionResponseSender(responseChannel, Container.get(Logger));
+	responseSender = new ExecutionResponseChannelSender(publisher, Container.get(Logger));
 
 	// `/webhook-test/*` is mounted only when a server opts into test webhooks.
 	class EditorFacingWebhookServer extends WebhookServer {

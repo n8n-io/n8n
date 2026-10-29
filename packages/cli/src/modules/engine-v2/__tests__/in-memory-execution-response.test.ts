@@ -2,9 +2,9 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionResponse } from '@n8n/engine';
 import { ENCODED_BUFFER_KEY } from 'n8n-core';
 
-import { InMemoryExecutionResponseChannel } from '../response-channel/in-memory-execution-response-channel';
-import { InMemoryExecutionResponseReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import { InMemoryExecutionResponseSender } from '../response-channel/in-memory-execution-response-sender';
+import { ExecutionResponseChannelReceiver } from '../response-channel/execution-response-receiver';
+import { ExecutionResponseChannelSender } from '../response-channel/in-memory-execution-response-sender';
+import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
 
 const ended = (executionId = 'exec-1', outputs: unknown = null): ExecutionResponse => ({
 	type: 'ended',
@@ -14,28 +14,41 @@ const ended = (executionId = 'exec-1', outputs: unknown = null): ExecutionRespon
 	lastStep: { nodeId: 'a', nodeName: 'A', status: 'completed', outputs: outputs as never },
 });
 
-describe('in-memory execution responses', () => {
-	it('serializes a response before publishing it', () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const publish = vi.spyOn(channel, 'publish');
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
+const setup = (maxFrameBytes?: number) => {
+	const { publisher, subscriber } = createInMemoryExecutionChannel();
+	const publish = vi.spyOn(publisher, 'publish');
 
-		sender.send(ended('exec-1', [[{ at: new Date(0) }]]));
+	return {
+		publisher,
+		subscriber,
+		publish,
+		sender: new ExecutionResponseChannelSender(publisher, mockLogger(), maxFrameBytes),
+		receiver: new ExecutionResponseChannelReceiver(subscriber, mockLogger()),
+	};
+};
 
+describe('ExecutionResponseChannelSender', () => {
+	it('serializes a response and publishes it on the responses topic', () => {
+		const { sender, publish } = setup();
+
+		const result = sender.send(ended('exec-1', [[{ at: new Date(0) }]]));
+
+		expect(result.ok).toBe(true);
 		expect(publish).toHaveBeenCalledExactlyOnceWith(
+			'responses',
 			'exec-1',
 			JSON.stringify(ended('exec-1', [[{ at: '1970-01-01T00:00:00.000Z' }]])),
 		);
 	});
 
 	it('reports a response that exceeds the frame size limit', () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const publish = vi.spyOn(channel, 'publish');
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger(), 256);
+		const { sender, publish } = setup(256);
 
-		sender.send(ended('exec-1', [['x'.repeat(500)]]));
+		const result = sender.send(ended('exec-1', [['x'.repeat(500)]]));
 
+		expect(result.ok).toBe(false);
 		expect(publish).toHaveBeenCalledExactlyOnceWith(
+			'responses',
 			'exec-1',
 			JSON.stringify({
 				type: 'undeliverable',
@@ -49,15 +62,15 @@ describe('in-memory execution responses', () => {
 	});
 
 	it('reports a response that cannot be serialized', () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const publish = vi.spyOn(channel, 'publish');
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
+		const { sender, publish } = setup();
 		const response = ended() as ExecutionResponse & { circular?: unknown };
 		response.circular = response;
 
-		sender.send(response);
+		const result = sender.send(response);
 
+		expect(result.ok).toBe(false);
 		expect(publish).toHaveBeenCalledExactlyOnceWith(
+			'responses',
 			'exec-1',
 			JSON.stringify({
 				type: 'undeliverable',
@@ -70,10 +83,20 @@ describe('in-memory execution responses', () => {
 		);
 	});
 
+	it('refuses to send after it stops', async () => {
+		const { sender, publish } = setup();
+
+		await sender.stop();
+		const result = sender.send(ended());
+
+		expect(result.ok).toBe(false);
+		expect(publish).not.toHaveBeenCalled();
+	});
+});
+
+describe('ExecutionResponseChannelReceiver', () => {
 	it('delivers a base64 Buffer envelope unchanged', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+		const { sender, receiver } = setup();
 		const seen: ExecutionResponse[] = [];
 		await receiver.receive('exec-1', (response) => seen.push(response));
 		const payload = {
@@ -87,79 +110,48 @@ describe('in-memory execution responses', () => {
 		expect(seen).toEqual([{ type: 'response', executionId: 'exec-1', payload }]);
 	});
 
-	it('sends a chunk with the execution ID', () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const publish = vi.spyOn(channel, 'publish');
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-
-		sender.send({
-			type: 'chunk',
-			executionId: 'exec-1',
-			payload: { type: 'item', content: 'hello' },
-		});
-
-		expect(publish).toHaveBeenCalledExactlyOnceWith(
-			'exec-1',
-			JSON.stringify({
-				type: 'chunk',
-				executionId: 'exec-1',
-				payload: { type: 'item', content: 'hello' },
-			}),
-		);
-	});
-
-	it('validates a response before delivering it', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+	it('validates a response before it delivers it', async () => {
+		const { publisher, receiver } = setup();
 		const seen: ExecutionResponse[] = [];
 		await receiver.receive('exec-1', (response) => seen.push(response));
 
-		channel.publish('exec-1', JSON.stringify(ended()));
+		publisher.publish('responses', 'exec-1', JSON.stringify(ended()));
 
 		expect(seen).toEqual([ended()]);
 	});
 
 	it('discards malformed and unreadable responses', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+		const { publisher, receiver } = setup();
 		const seen: ExecutionResponse[] = [];
 		await receiver.receive('exec-1', (response) => seen.push(response));
 
-		channel.publish('exec-1', '{"type":"nonsense"}');
-		channel.publish('exec-1', 'not json at all');
+		publisher.publish('responses', 'exec-1', '{"type":"nonsense"}');
+		publisher.publish('responses', 'exec-1', 'not json at all');
 
 		expect(seen).toEqual([]);
 	});
 
 	it('isolates a handler that throws', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+		const { publisher, receiver } = setup();
 		await receiver.receive('exec-1', () => {
 			throw new Error('boom');
 		});
 
-		expect(() => channel.publish('exec-1', JSON.stringify(ended()))).not.toThrow();
+		expect(() => publisher.publish('responses', 'exec-1', JSON.stringify(ended()))).not.toThrow();
 	});
 
-	it('delivers a response to every handler for that execution', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
-		const first: ExecutionResponse[] = [];
-		const second: ExecutionResponse[] = [];
-		await receiver.receive('exec-1', (response) => first.push(response));
-		await receiver.receive('exec-1', (response) => second.push(response));
+	it('does not deliver frames from another topic', async () => {
+		const { publisher, receiver } = setup();
+		const seen: ExecutionResponse[] = [];
+		await receiver.receive('exec-1', (response) => seen.push(response));
 
-		sender.send(ended());
+		publisher.publish('lifecycle', 'exec-1', JSON.stringify(ended()));
 
-		expect(first).toEqual([ended()]);
-		expect(second).toEqual(first);
+		expect(seen).toEqual([]);
 	});
 
 	it('does not deliver a response to another execution', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+		const { sender, receiver } = setup();
 		const seen: ExecutionResponse[] = [];
 		await receiver.receive('exec-1', (response) => seen.push(response));
 
@@ -169,9 +161,7 @@ describe('in-memory execution responses', () => {
 	});
 
 	it('stops delivery after the handler is removed', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+		const { sender, receiver } = setup();
 		const seen: ExecutionResponse[] = [];
 		const unsubscribe = await receiver.receive('exec-1', (response) => seen.push(response));
 
@@ -181,22 +171,8 @@ describe('in-memory execution responses', () => {
 		expect(seen).toEqual([]);
 	});
 
-	it('stops publishing through the sender', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-		const seen: string[] = [];
-		channel.subscribe('exec-1', (frame) => seen.push(frame));
-
-		await sender.stop();
-		sender.send(ended());
-
-		expect(seen).toEqual([]);
-	});
-
-	it('stops delivery through the receiver', async () => {
-		const channel = new InMemoryExecutionResponseChannel();
-		const sender = new InMemoryExecutionResponseSender(channel, mockLogger());
-		const receiver = new InMemoryExecutionResponseReceiver(channel, mockLogger());
+	it('stops delivery after it stops', async () => {
+		const { sender, receiver } = setup();
 		const seen: ExecutionResponse[] = [];
 		await receiver.receive('exec-1', (response) => seen.push(response));
 

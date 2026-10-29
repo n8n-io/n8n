@@ -11,9 +11,8 @@ import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import { EngineDataPlaneClient } from '../engine-data-plane-client';
 import { EngineV2Module } from '../engine-v2.module';
 import { EngineV2Runtime } from '../engine-v2.runtime';
-import { InMemoryExecutionResponseReceiver } from '../response-channel/in-memory-execution-response-receiver';
-import { RedisExecutionResponseReceiver } from '../response-channel/redis-execution-response-receiver';
-import type { RedisResponseSubscriber } from '../response-channel/redis-execution-response-receiver';
+import { ExecutionResponseChannelReceiver } from '../response-channel/execution-response-receiver';
+import type { RedisChannelSubscriber } from '../response-channel/redis-execution-response-receiver';
 
 describe('EngineV2Module', () => {
 	let module: EngineV2Module;
@@ -24,7 +23,7 @@ describe('EngineV2Module', () => {
 	let controlPlaneServer: EngineControlPlaneServer;
 	let webhookResponseRegistry: EngineV2WebhookResponseRegistry;
 	let redisClientService: RedisClientService;
-	let subscriber: ReturnType<typeof mock<RedisResponseSubscriber>>;
+	let subscriber: ReturnType<typeof mock<RedisChannelSubscriber>>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -39,7 +38,7 @@ describe('EngineV2Module', () => {
 		client = mockInstance(EngineDataPlaneClient);
 		controlPlaneServer = mockInstance(EngineControlPlaneServer);
 		webhookResponseRegistry = mockInstance(EngineV2WebhookResponseRegistry);
-		subscriber = mock<RedisResponseSubscriber>();
+		subscriber = mock<RedisChannelSubscriber>();
 		mockInstance(GlobalConfig, { redis: mock<GlobalConfig['redis']>({ prefix: 'n8n' }) });
 		redisClientService = mockInstance(RedisClientService, {
 			toValidPrefix: (prefix: string) => prefix,
@@ -94,7 +93,7 @@ describe('EngineV2Module', () => {
 			await module.init();
 
 			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
-				expect.any(InMemoryExecutionResponseReceiver),
+				expect.any(ExecutionResponseChannelReceiver),
 			);
 			expect(runtime.init).toHaveBeenCalledWith(expect.anything());
 			expect(redisClientService.createClient).not.toHaveBeenCalled();
@@ -151,11 +150,23 @@ describe('EngineV2Module', () => {
 			expect(redisClientService.createClient).toHaveBeenCalledWith({ type: 'subscriber(n8n)' });
 			expect(subscriber.on).toHaveBeenCalledWith('message', expect.any(Function));
 			expect(webhookResponseRegistry.useReceiver).toHaveBeenCalledWith(
-				expect.any(RedisExecutionResponseReceiver),
+				expect.any(ExecutionResponseChannelReceiver),
 			);
 		});
 
-		it('releases the Redis client when the response receiver fails to start', async () => {
+		it('keeps the Redis channel name of execution responses', async () => {
+			subscriber.subscribe.mockResolvedValue(1);
+			await module.init();
+			const [receiver] = vi.mocked(webhookResponseRegistry.useReceiver).mock.calls[0];
+
+			await receiver.receive('exec-1', vi.fn());
+
+			expect(subscriber.subscribe).toHaveBeenCalledExactlyOnceWith(
+				'n8n:engine-v2-responses:exec-1',
+			);
+		});
+
+		it('releases the Redis client when the channel subscriber fails to start', async () => {
 			subscriber.on.mockImplementation(() => {
 				throw new Error('Subscriber failed');
 			});
@@ -195,7 +206,7 @@ describe('EngineV2Module', () => {
 			expect(controlPlaneServer.start).not.toHaveBeenCalled();
 		});
 
-		it('stops the response receiver and the control plane server, not the data plane', async () => {
+		it('stops the channel subscriber and the control plane server, not the data plane', async () => {
 			await module.init();
 
 			await module.shutdown();
