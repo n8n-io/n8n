@@ -35,6 +35,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 	);
 	const hosts = mock<AppHostService>();
 	hosts.origin.mockImplementation((namespace) => configuredHosts.origin(namespace));
+	hosts.previewOrigin.mockImplementation((namespace) => configuredHosts.previewOrigin(namespace));
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
 	appVersions.hasRunningBuild.mockResolvedValue(false);
 	const service = new AppsService(
@@ -161,9 +162,9 @@ describe('AppsService', () => {
 	});
 
 	it.each([
-		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 57 },
-		{ deploymentType: 'cloud', host: 'foo--bar.app.n8n.cloud', maxLength: 53 },
-		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 63 },
+		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 48 },
+		{ deploymentType: 'cloud', host: 'foo-bar1.app.n8n.cloud', maxLength: 44 },
+		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 54 },
 	])('accepts namespaces at the limit for $deploymentType host $host', async (config) => {
 		const { service, appRepository } = createService(config);
 		const appId = '11111111-1111-4111-8111-111111111111';
@@ -191,8 +192,8 @@ describe('AppsService', () => {
 	});
 
 	it.each([
-		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(58) },
-		{ host: 'foo--bar.app.n8n.cloud', namespace: 'a'.repeat(54) },
+		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(49) },
+		{ host: 'foo-bar1.app.n8n.cloud', namespace: 'a'.repeat(45) },
 	])(
 		'rejects namespace "$namespace" before writing for Cloud host $host',
 		async ({ host, namespace }) => {
