@@ -118,6 +118,8 @@ function update(value: unknown) {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
+	// Keep pill shadows inside the select's clipped value area.
+	padding: var(--spacing--5xs);
 }
 .tag {
 	max-width: 100%;
