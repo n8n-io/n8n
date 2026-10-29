@@ -21,20 +21,14 @@ import type {
 const MODULE_DISABLED_MESSAGE = 'Attempted to use Data table node but the module is disabled';
 
 /**
- * Runs one data table operation for the engine v2 data plane. The data plane
- * has no control plane database, so every read and write of a data table
- * lands here.
+ * Runs one data table operation for the engine v2 data plane.
  *
- * Access follows the v1 proxy: the node type must be one of the data table
- * nodes, and the project is the workflow's home project. The token proves the
- * caller is the engine, not which project it may touch, so the project is
- * resolved here on every call and never read from the request.
- *
- * The workflow id itself is trusted from the data plane, as the credentials
- * route trusts it: an engine execution has no control plane row to check it
- * against, and the data plane holds the shared secret, so it is trusted with
- * every workflow it runs. Binding a token to one execution is a change to the
- * action token model, not to this route.
+ * The data tables are owned by the control plane, so this service proxies
+ * access for the data plane. The data plane asserts the workflow id. We
+ * trust this assertion for an authenticated data plane. This service
+ * resolves the project id from the workflow id. The data table service
+ * enforces access control: whether that project may reach the target data
+ * table. Note: supporting an execution-scoped token is possible future work.
  */
 @Service()
 export class EngineDataTablesService {
@@ -96,6 +90,9 @@ export class EngineDataTablesService {
 				return await proxy.makeAggregateOperations(projectId).createDataTable(call.options);
 		}
 
+		// The access check lives in the proxy: every operation looks the table up
+		// by id and project, and throws `DataTableNotFoundError` when the table is
+		// not in the workflow's project.
 		const table = proxy.makeDataTableOperations(projectId, call.dataTableId);
 
 		switch (call.kind) {
