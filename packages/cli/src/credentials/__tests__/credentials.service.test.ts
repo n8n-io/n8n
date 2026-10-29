@@ -480,9 +480,17 @@ describe('CredentialsService', () => {
 			credentialsRepository.updateDescription.mockResolvedValue(true);
 		});
 
-		it.each(['  New description  ', '', '  ', null, 'x'.repeat(512)])(
-			'saves a normalized description: %s',
-			async (description) => {
+		it.each(
+			[false, true].flatMap((isManaged) =>
+				['  New description  ', '', '  ', null, 'x'.repeat(512)].map((description) => ({
+					isManaged,
+					description,
+				})),
+			),
+		)(
+			'saves a normalized description with isManaged=$isManaged: $description',
+			async ({ isManaged, description }) => {
+				credential.isManaged = isManaged;
 				await service.updateDescription(ownerUser, credential.id, description);
 				const saved = description?.trim() || null;
 				expect(credentialsRepository.updateDescription).toHaveBeenCalledWith(credential.id, saved, {
@@ -518,13 +526,12 @@ describe('CredentialsService', () => {
 			},
 		);
 
-		it.each(['disabled', 'invalid', 'missing', 'managed', 'policy'])(
+		it.each(['disabled', 'invalid', 'missing', 'policy'])(
 			'rejects %s before hooks and writes',
 			async (reason) => {
 				if (reason === 'disabled') postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
 				if (reason === 'missing')
 					credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
-				if (reason === 'managed') credential.isManaged = true;
 				if (reason === 'policy')
 					policyEnforcementService.enforceCredentialSave.mockRejectedValue(
 						new Error('Policy rejected'),

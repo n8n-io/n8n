@@ -851,7 +851,7 @@ Returns `{ success: true }`.
 
 The tool is available when credential descriptions are enabled. The user must have
 `credential:update` permission, and the credential must belong to the conversation's project.
-Managed credentials cannot be edited. Description updates remain available on protected instances.
+Managed credentials allow description updates. Description updates remain available on protected instances.
 The operation keeps credential secrets, names, and types unchanged.
 
 ### `delete_credential`

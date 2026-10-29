@@ -1132,7 +1132,6 @@ export class CredentialsService {
 			{ includeInstanceCredentials: true },
 		);
 		if (!credential) throw new CredentialNotFoundError(credentialId);
-		if (credential.isManaged) throw new BadRequestError('Managed credentials cannot be updated');
 
 		const owningProject =
 			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
