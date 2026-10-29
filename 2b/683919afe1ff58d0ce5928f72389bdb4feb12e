@@ -1,0 +1,37 @@
+packages/frontend/editor-ui/src/features/agents/components/interactive/ApprovalCard.vue
+  s_82789c69de1855::t_047a1908772f52 16,75-87,107-112
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_82789c69de1855::t_542d305206a12d 1766
+  s_82789c69de1855::t_298508f89beedb 1792,1812-1827,1829-1833
+  s_82789c69de1855::t_bdb33832e20e3f 2293-2301
+  s_82789c69de1855::t_047a1908772f52 2312,2321,2323,2325,2328,2335,2338,2342,2345,2357,2359,2365,2368,2370,2565,2570,2572,2575,2577,2579,2582,2584,2631,2640,2644,2646,2649,3358-3359
+  s_82789c69de1855::t_228fb425de8566 2317-2320,2350-2355,2349
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_82789c69de1855::t_bdb33832e20e3f 573,576,578,581,495,504,506,513,517,519,525,465
+  s_82789c69de1855::t_54d66b9cbc7730 1604,1825-1826
+  s_82789c69de1855::t_d6b616fdf44d36 1605-1609,1613-1627,1629-1630,1638
+  s_82789c69de1855::t_5cec4d1fb834d4 67,90,467-481,483,488-493,1495-1502,1593,1610-1611,1684-1685
+  s_82789c69de1855::t_047a1908772f52 579,1632
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_82789c69de1855::t_54d66b9cbc7730 529,533-534
+  s_82789c69de1855::t_bdb33832e20e3f 530
+  s_82789c69de1855::t_047a1908772f52 531-532
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_82789c69de1855::t_047a1908772f52 8868
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2b683919afe1ff58d0ce5928f72389bdb4feb12e",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    }
+  }
+}
