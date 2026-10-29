@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/plans/agent-plan.validation.ts
+  s_a993a926dd6885::t_975a13aa652d5a 2,18
+packages/cli/src/modules/agents/plans/agent-plan-state.ts
+  s_a993a926dd6885::t_975a13aa652d5a 16-18,45,78
+packages/cli/src/modules/agents/plans/__tests__/agent-plan-state.test.ts
+  s_a993a926dd6885::t_88823e73099981 90-99
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "46c4560995ae28a0e0b0553078a5b1e3f92ae2a0",
+  "prompts": {},
+  "sessions": {
+    "s_a993a926dd6885": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf656a40-af37-46a2-b77a-ee066f735319",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
