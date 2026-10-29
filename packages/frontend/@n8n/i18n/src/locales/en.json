@@ -354,6 +354,8 @@
 	"apps.preview.empty.description": "Ask the n8n Assistant to build this app",
 	"apps.preview.firstBuild.heading": "Building the app",
 	"apps.preview.firstBuild.description": "The preview opens when the build is ready",
+	"apps.preview.buildFailedState.heading": "The build failed",
+	"apps.preview.buildFailedState.description": "Ask the n8n Assistant to fix the app",
 	"apps.preview.error.heading": "Could not load the preview",
 	"apps.preview.error.description": "Reload the preview to try again",
 	"apps.preview.loadError": "Could not load the preview",

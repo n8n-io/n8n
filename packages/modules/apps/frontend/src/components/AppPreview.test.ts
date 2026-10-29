@@ -51,7 +51,9 @@ describe('AppPreview', () => {
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		vi.restoreAllMocks();
 		vi.useRealTimers();
+		delete document.body.dataset.theme;
 	});
 
 	it('shows the newest successful version with a new grant', async () => {
@@ -128,26 +130,104 @@ describe('AppPreview', () => {
 		expect(getByTestId('app-preview-status')).toHaveTextContent('Building');
 	});
 
-	it('requests a new grant when the draft version changes or on reload', async () => {
+	it('keeps the frame when a new draft does not change the shown version', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+		const { findByTestId, getByTestId, rerender } = renderComponent();
+		const frame = await findByTestId('app-preview-frame');
+
+		vi.mocked(listAppVersions).mockResolvedValue([
+			version('v3', 'failed'),
+			version('v2', 'succeeded'),
+		]);
+		await rerender({ app: app('v3') });
+
+		await waitFor(() =>
+			expect(getByTestId('app-preview-status')).toHaveTextContent('Build failed'),
+		);
+		expect(getByTestId('app-preview-frame')).toBe(frame);
+		expect(createAppPreview).toHaveBeenCalledOnce();
+	});
+
+	it('shows a new draft version with a new grant', async () => {
 		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
 		const { findByTestId, getByTestId, rerender } = renderComponent();
 		await findByTestId('app-preview-frame');
 
+		vi.mocked(listAppVersions).mockResolvedValue([
+			version('v3', 'succeeded'),
+			version('v2', 'succeeded'),
+		]);
 		await rerender({ app: app('v3') });
+
+		await waitFor(() =>
+			expect(getByTestId('app-preview-frame')).toHaveAttribute(
+				'src',
+				expect.stringContaining('code=v3-2'),
+			),
+		);
+	});
+
+	it('requests a new grant for the same version on reload', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-preview-frame');
+
+		await userEvent.click(getByTestId('app-preview-reload'));
+
 		await waitFor(() =>
 			expect(getByTestId('app-preview-frame')).toHaveAttribute(
 				'src',
 				expect.stringContaining('code=v2-2'),
 			),
 		);
+	});
 
-		await userEvent.click(getByTestId('app-preview-reload'));
-		await waitFor(() =>
-			expect(getByTestId('app-preview-frame')).toHaveAttribute(
-				'src',
-				expect.stringContaining('code=v2-3'),
-			),
+	it('requests a new grant 55 minutes after the last one', async () => {
+		vi.useFakeTimers();
+		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-preview-frame');
+
+		await vi.advanceTimersByTimeAsync(54 * 60 * 1000);
+		expect(createAppPreview).toHaveBeenCalledOnce();
+
+		await vi.advanceTimersByTimeAsync(60 * 1000);
+		expect(getByTestId('app-preview-frame')).toHaveAttribute(
+			'src',
+			expect.stringContaining('code=v2-2'),
 		);
+	});
+
+	it('keeps the preview and shows a toast when a reload fails', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
+		const { findByTestId, getByTestId, queryByTestId } = renderComponent();
+		const frame = await findByTestId('app-preview-frame');
+
+		vi.mocked(listAppVersions).mockRejectedValue(new Error('offline'));
+		await userEvent.click(getByTestId('app-preview-reload'));
+
+		await waitFor(() =>
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not load the preview'),
+		);
+		expect(getByTestId('app-preview-frame')).toBe(frame);
+		expect(queryByTestId('app-preview-error')).not.toBeInTheDocument();
+	});
+
+	it('shows a build failed state when no version has built', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([version('v1', 'failed')]);
+		const { findByTestId, queryByTestId } = renderComponent();
+
+		expect(await findByTestId('app-preview-build-failed')).toBeInTheDocument();
+		expect(queryByTestId('app-preview-empty')).not.toBeInTheDocument();
+	});
+
+	it('labels a version without a label by the end of its id', async () => {
+		vi.mocked(listAppVersions).mockResolvedValue([
+			{ ...version('01234567-89ab-7cde-8f01-23456789abcd', 'succeeded'), label: null },
+		]);
+		const { findByTestId } = renderComponent();
+
+		expect(await findByTestId('app-preview-version')).toHaveTextContent('Version 6789abcd');
 	});
 
 	it('opens the preview in a new tab with a new grant', async () => {
@@ -162,7 +242,6 @@ describe('AppPreview', () => {
 		expect(open).toHaveBeenCalledWith('about:blank', '_blank');
 		await waitFor(() => expect(tab.location.href).toContain('code=v2-2'));
 		expect(tab.opener).toBeNull();
-		open.mockRestore();
 	});
 
 	it('changes the frame width with the screen size', async () => {
@@ -186,7 +265,6 @@ describe('AppPreview', () => {
 		await userEvent.click(getByText('Light'));
 
 		expect(frame).toHaveStyle({ colorScheme: 'light' });
-		delete document.body.dataset.theme;
 	});
 
 	it('shows an error state when the grant fails', async () => {

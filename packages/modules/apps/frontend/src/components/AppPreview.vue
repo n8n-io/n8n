@@ -38,6 +38,7 @@ const OPTION_ICONS: Record<ScreenSize | PreviewTheme, IconName> = {
 	dark: 'moon',
 };
 const POLL_INTERVAL_MS = 3000;
+const GRANT_REFRESH_MS = 55 * 60 * 1000;
 
 function editorTheme(): PreviewTheme {
 	const theme = document.body.dataset.theme;
@@ -53,12 +54,15 @@ const rootStore = useRootStore();
 const latestFetch = useLatestFetch();
 
 const head = ref<AppVersionResponse | null>(null);
-const preview = ref<{ version: AppVersionResponse; url: string } | null>(null);
+type Preview = { version: AppVersionResponse; url: string };
+
+const preview = ref<Preview | null>(null);
 const loading = ref(true);
 const failed = ref(false);
 const screenSize = ref<ScreenSize>('desktop');
 const theme = ref<PreviewTheme>(editorTheme());
 let pollTimer: ReturnType<typeof setTimeout> | undefined;
+let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 const sizeOptions = computed(() =>
 	SCREEN_SIZES.map((value) => ({ value, label: i18n.baseText(`apps.preview.size.${value}`) })),
@@ -67,9 +71,10 @@ const themeOptions = computed(() =>
 	THEMES.map((value) => ({ value, label: i18n.baseText(`apps.preview.theme.${value}`) })),
 );
 const building = computed(() => isBuilding(head.value?.buildStatus));
+const buildFailed = computed(() => head.value?.buildStatus === 'failed');
 const versionLabel = computed(() => {
 	const version = preview.value?.version;
-	return version ? (version.label ?? version.id.slice(0, 8)) : null;
+	return version ? (version.label ?? version.id.slice(-8)) : null;
 });
 
 function isBuilding(status: AppBuildStatus | undefined) {
@@ -87,6 +92,13 @@ async function grant(versionId: string) {
 function stopPolling() {
 	clearTimeout(pollTimer);
 	pollTimer = undefined;
+}
+
+function showPreview(next: Preview | null) {
+	if (next === preview.value) return;
+	clearTimeout(refreshTimer);
+	preview.value = next;
+	if (next) refreshTimer = setTimeout(async () => await reload(true), GRANT_REFRESH_MS);
 }
 
 function poll(versionId: string) {
@@ -111,7 +123,7 @@ function poll(versionId: string) {
 	}, POLL_INTERVAL_MS);
 }
 
-async function reload() {
+async function reload(force = false) {
 	stopPolling();
 	const isLatest = latestFetch.next();
 	loading.value = true;
@@ -119,10 +131,16 @@ async function reload() {
 		const versions = await listAppVersions(rootStore.restApiContext, props.projectId, props.app.id);
 		if (!isLatest()) return;
 		const version = versions.find(isBuilt);
-		const next = version ? { version, url: (await grant(version.id)).url } : null;
+		const current = preview.value;
+		const next =
+			!force && current && version?.id === current.version.id
+				? current
+				: version
+					? { version, url: (await grant(version.id)).url }
+					: null;
 		if (!isLatest()) return;
 		head.value = versions[0] ?? null;
-		preview.value = next;
+		showPreview(next);
 		failed.value = false;
 		if (head.value && isBuilding(head.value.buildStatus)) poll(head.value.id);
 	} catch (error) {
@@ -148,10 +166,15 @@ async function openInNewTab() {
 	}
 }
 
-watch(() => [props.app.id, props.app.draftVersionId], reload, { immediate: true });
+watch(
+	() => [props.app.id, props.app.draftVersionId],
+	async () => await reload(),
+	{ immediate: true },
+);
 
 onBeforeUnmount(() => {
 	stopPolling();
+	clearTimeout(refreshTimer);
 	latestFetch.invalidate();
 });
 
@@ -170,7 +193,7 @@ defineExpose({ reload });
 						:aria-label="i18n.baseText('apps.preview.reload')"
 						:loading="loading"
 						data-test-id="app-preview-reload"
-						@click="reload"
+						@click="reload(true)"
 					/>
 				</N8nTooltip>
 				<N8nText
@@ -184,11 +207,7 @@ defineExpose({ reload });
 				<N8nBadge v-if="building" variant="info" data-test-id="app-preview-status">
 					{{ i18n.baseText('apps.preview.building') }}
 				</N8nBadge>
-				<N8nBadge
-					v-else-if="head?.buildStatus === 'failed'"
-					variant="danger"
-					data-test-id="app-preview-status"
-				>
+				<N8nBadge v-else-if="buildFailed" variant="danger" data-test-id="app-preview-status">
 					{{ i18n.baseText('apps.preview.buildFailed') }}
 				</N8nBadge>
 			</div>
@@ -239,7 +258,7 @@ defineExpose({ reload });
 				data-test-id="app-preview-loading"
 			/>
 			<N8nEmptyState
-				v-else-if="failed"
+				v-else-if="failed && !preview"
 				:icon="{ type: 'icon', value: 'triangle-alert' }"
 				:heading="i18n.baseText('apps.preview.error.heading')"
 				:description="i18n.baseText('apps.preview.error.description')"
@@ -261,6 +280,13 @@ defineExpose({ reload });
 				:heading="i18n.baseText('apps.preview.firstBuild.heading')"
 				:description="i18n.baseText('apps.preview.firstBuild.description')"
 				data-test-id="app-preview-first-build"
+			/>
+			<N8nEmptyState
+				v-else-if="buildFailed"
+				:icon="{ type: 'icon', value: 'triangle-alert' }"
+				:heading="i18n.baseText('apps.preview.buildFailedState.heading')"
+				:description="i18n.baseText('apps.preview.buildFailedState.description')"
+				data-test-id="app-preview-build-failed"
 			/>
 			<N8nEmptyState
 				v-else
