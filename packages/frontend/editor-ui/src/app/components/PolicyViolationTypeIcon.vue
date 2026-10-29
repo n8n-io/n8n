@@ -10,7 +10,7 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
-const { violation, size = 20 } = defineProps<{ violation: PolicyViolation; size?: number }>();
+const { violation } = defineProps<{ violation: PolicyViolation }>();
 
 const nodeTypesStore = useNodeTypesStore();
 
@@ -22,10 +22,10 @@ const nodeType = computed(() =>
 </script>
 
 <template>
-	<NodeIcon v-if="nodeType" :node-type="nodeType" :size="size" />
+	<NodeIcon v-if="nodeType" :node-type="nodeType" :size="20" />
 	<CredentialIcon
 		v-else-if="violation.subjectType === CREDENTIAL_TYPE_SUBJECT && violation.subject"
 		:credential-type-name="violation.subject"
-		:size="size"
+		:size="20"
 	/>
 </template>

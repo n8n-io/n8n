@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { PolicyViolation } from '@n8n/api-types';
+import { POLICY_VIOLATION_SUBJECT_TYPE, type PolicyViolation } from '@n8n/api-types';
 import {
 	N8nButton,
 	N8nDialog,
@@ -57,8 +57,9 @@ watch(
 const destinationType = computed(() => destination.value?.type ?? null);
 
 const NAME_KEY_BY_SUBJECT_TYPE: Record<string, BaseTextKey | undefined> = {
-	nodeType: 'typeAvailabilityPolicies.violations.nodeType',
-	credentialType: 'typeAvailabilityPolicies.violations.credentialType',
+	[POLICY_VIOLATION_SUBJECT_TYPE.nodeType]: 'typeAvailabilityPolicies.violations.nodeType',
+	[POLICY_VIOLATION_SUBJECT_TYPE.credentialType]:
+		'typeAvailabilityPolicies.violations.credentialType',
 };
 
 function nameOf(violation: PolicyViolation): string {
@@ -71,7 +72,9 @@ function rowText(violation: PolicyViolation): string {
 }
 
 function kindOf(violation: PolicyViolation): RestrictedTypeKind {
-	return violation.subjectType === 'credentialType' ? 'credential' : 'node';
+	return violation.subjectType === POLICY_VIOLATION_SUBJECT_TYPE.credentialType
+		? 'credential'
+		: 'node';
 }
 
 const rows = computed(() =>

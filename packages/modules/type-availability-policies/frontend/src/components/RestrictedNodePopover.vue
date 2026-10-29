@@ -46,7 +46,6 @@ const props = withDefaults(
 		align: 'center',
 		sideOffset: 24,
 		markerSize: 'small',
-		projectType: undefined,
 	},
 );
 

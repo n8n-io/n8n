@@ -28,30 +28,26 @@ async function fetchPreview(
 	destinationProjectId: string,
 ): Promise<TransferPreview> {
 	const context = useRootStore().restApiContext;
-	const empty = { unpublishReasons: [], workflowsToUnpublish: [] };
 
+	let response: Partial<TransferPreview> & Pick<TransferPreview, 'restricted' | 'checkFailed'>;
 	switch (target.resourceType) {
 		case 'workflow':
-			return {
-				...empty,
-				...(await fetchWorkflowTransferPreview(context, target.id, destinationProjectId)),
-			};
+			response = await fetchWorkflowTransferPreview(context, target.id, destinationProjectId);
+			break;
 		case 'folder':
-			return {
-				...empty,
-				...(await fetchFolderTransferPreview(
-					context,
-					target.projectId,
-					target.id,
-					destinationProjectId,
-				)),
-			};
+			response = await fetchFolderTransferPreview(
+				context,
+				target.projectId,
+				target.id,
+				destinationProjectId,
+			);
+			break;
 		case 'credential':
-			return {
-				...empty,
-				...(await fetchCredentialTransferPreview(context, target.id, destinationProjectId)),
-			};
+			response = await fetchCredentialTransferPreview(context, target.id, destinationProjectId);
+			break;
 	}
+
+	return { unpublishReasons: [], workflowsToUnpublish: [], ...response };
 }
 
 /** What a move into the destination project would restrict. `null` while unknown. */

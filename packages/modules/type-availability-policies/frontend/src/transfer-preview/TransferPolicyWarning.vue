@@ -15,7 +15,7 @@ const { preview, resourceType, projectId, projectName, labelOf } = defineProps<{
 	labelOf: (violation: PolicyViolation) => string | undefined;
 }>();
 
-const slots = defineSlots<{ icon?(props: { violation: PolicyViolation }): unknown }>();
+defineSlots<{ icon(props: { violation: PolicyViolation }): unknown }>();
 
 const i18n = useI18n();
 
@@ -31,18 +31,16 @@ const canListRestricted = computed(() => hasRestricted.value && resourceType !==
 
 /** The opening sentence names the main consequence; the follow-ups add the others. */
 const lead = computed(() => {
-	const project = projectName;
-
 	if (hasRestricted.value) {
 		if (resourceType === 'credential') {
 			const [violation] = preview.restricted;
 			const type = labelOf(violation) ?? violation.subject ?? violation.message;
 			return i18n.baseText('typeAvailabilityPolicies.transfer.restricted.credential', {
-				interpolate: { type, project },
+				interpolate: { type, project: projectName },
 			});
 		}
 		return i18n.baseText(`typeAvailabilityPolicies.transfer.restricted.${resourceType}`, {
-			interpolate: { project },
+			interpolate: { project: projectName },
 		});
 	}
 
@@ -50,16 +48,19 @@ const lead = computed(() => {
 		return resourceType === 'folder'
 			? i18n.baseText('typeAvailabilityPolicies.transfer.unpublish.folder', {
 					adjustToNumber: unpublishCount.value,
-					interpolate: { count: unpublishCount.value, project },
+					interpolate: { count: unpublishCount.value, project: projectName },
 				})
 			: i18n.baseText('typeAvailabilityPolicies.transfer.unpublish.workflow', {
-					interpolate: { project },
+					interpolate: { project: projectName },
 				});
 	}
 
 	if (preview.checkFailed) {
 		return i18n.baseText('typeAvailabilityPolicies.transfer.checkFailed', {
-			interpolate: { resource: i18n.baseText(`generic.${resourceType}`).toLowerCase(), project },
+			interpolate: {
+				resource: i18n.baseText(`generic.${resourceType}`).toLowerCase(),
+				project: projectName,
+			},
 		});
 	}
 
@@ -67,8 +68,6 @@ const lead = computed(() => {
 });
 
 const followUps = computed(() => {
-	if (!lead.value) return [];
-
 	const sentences: string[] = [];
 	if (hasRestricted.value && unpublishCount.value > 0) {
 		sentences.push(
@@ -108,7 +107,7 @@ const followUps = computed(() => {
 			:project-name="projectName"
 			:label-of="labelOf"
 		>
-			<template v-if="slots.icon" #icon="{ violation }">
+			<template #icon="{ violation }">
 				<slot name="icon" :violation="violation" />
 			</template>
 		</RestrictedTypesDialog>
