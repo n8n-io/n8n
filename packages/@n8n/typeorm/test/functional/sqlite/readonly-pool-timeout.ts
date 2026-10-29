@@ -19,14 +19,16 @@ describe('sqlite driver > readonly pool acquire timeout', () => {
 				driverSpecific: {
 					enableWAL: true,
 					acquireTimeout: 50,
+					poolSize: 2,
 				},
 			})),
 	);
 	beforeEach(() => reloadTestingDatabases(connections));
 	after(() => closeTestingConnections(connections));
 
+	// Same fallback as `SqliteReadWriteDriver`, in case ormconfig overrides `driverSpecific`.
 	const poolSizeOf = (connection: DataSource) =>
-		(connection.options as { poolSize?: number }).poolSize ?? 1;
+		(connection.options as { poolSize?: number }).poolSize ?? 4;
 
 	const leaseWholeReadPool = async (connection: DataSource): Promise<QueryRunner[]> => {
 		const holders: QueryRunner[] = [];
