@@ -44,14 +44,17 @@ export function quotePostgrestComponent(value: unknown): string {
 }
 
 /**
- * Turns the Select Rows, Sort and Output Columns fields into Data API query parameters.
+ * Turns the Select Rows conditions into the one query parameter that narrows a
+ * request. Returns an empty object when nothing survives, which is how a caller
+ * that must not run unfiltered tells the difference.
  *
  * Conditions always go into a single `and=()` or `or=()` group rather than one
  * parameter per column, so two conditions on the same column both survive.
  */
-export function buildLakebaseQuery(input: LakebaseQueryInput): IDataObject {
-	const qs: IDataObject = {};
-
+export function buildLakebaseFilter(input: {
+	where: LakebaseWhereRule[];
+	combineConditions: 'AND' | 'OR';
+}): IDataObject {
 	const terms = input.where
 		.filter((rule) => rule.column)
 		.map((rule) => {
@@ -61,14 +64,28 @@ export function buildLakebaseQuery(input: LakebaseQueryInput): IDataObject {
 			}
 
 			const column = quotePostgrestComponent(rule.column);
-			return VALUELESS_OPERATORS.has(condition)
-				? `${column}.${condition}`
-				: `${column}.${condition}.${quotePostgrestComponent(rule.value ?? '')}`;
+			if (VALUELESS_OPERATORS.has(condition)) return `${column}.${condition}`;
+
+			// An expression resolving to null would read as `col.eq.`, which selects rows
+			// holding an empty string rather than rows holding nothing. An untouched Value
+			// field is '', so only an expression or a hand-authored workflow gets here.
+			if (rule.value === null || rule.value === undefined) {
+				throw new UserError(`The filter on "${String(rule.column)}" has no value`, {
+					description: 'Use the Is Null or Is Not Null condition to match rows with no value.',
+				});
+			}
+
+			return `${column}.${condition}.${quotePostgrestComponent(rule.value)}`;
 		});
 
-	if (terms.length > 0) {
-		qs[input.combineConditions === 'OR' ? 'or' : 'and'] = `(${terms.join(',')})`;
-	}
+	if (terms.length === 0) return {};
+
+	return { [input.combineConditions === 'OR' ? 'or' : 'and']: `(${terms.join(',')})` };
+}
+
+/** Adds the read-only concerns, sorting and column selection, on top of the filter */
+export function buildLakebaseQuery(input: LakebaseQueryInput): IDataObject {
+	const qs: IDataObject = buildLakebaseFilter(input);
 
 	const order = input.sort
 		.filter((rule) => rule.column)

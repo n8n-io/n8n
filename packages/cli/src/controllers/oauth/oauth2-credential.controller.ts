@@ -1,5 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import type { ClientOAuth2Options, OAuth2CredentialData } from '@n8n/client-oauth2';
 import { ClientOAuth2, resolveClientAuthOptions } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
@@ -13,7 +14,7 @@ import { jsonParse } from 'n8n-workflow';
 
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { ExternalHooks } from '@/external-hooks';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
+import { withTokenVersion } from '@/managed-versions';
 import { OauthService, OauthVersion } from '@/oauth/oauth.service';
 import { OAuthRequest } from '@/requests';
 
@@ -39,6 +40,7 @@ export class OAuth2CredentialController {
 	/** Verify and store app code. Generate access tokens and store for respective credential */
 	@Get('/callback', { usesTemplates: true, allowUnauthenticated: true })
 	async handleCallback(req: OAuthRequest.OAuth2Credential.Callback, res: Response) {
+		let credentialType: string | undefined;
 		try {
 			const { code, state: encodedState } = req.query;
 			if (!code || !encodedState) {
@@ -76,6 +78,7 @@ export class OAuth2CredentialController {
 
 			const [credential, decryptedDataOriginal, oauthCredentials, state, flowState] =
 				await this.oauthService.resolveCredential<OAuth2CredentialData>(req);
+			credentialType = credential.type;
 
 			if (typeof state.resource === 'string') {
 				oauthCredentials.resource = state.resource;
@@ -135,9 +138,12 @@ export class OAuth2CredentialController {
 
 			// Only overwrite supplied data as some providers do for example just return the
 			// refresh_token on the very first request and not on subsequent ones.
-			const { oauthTokenData: tokenData } = decryptedDataOriginal;
 			const oauthTokenData: ICredentialDataDecryptedObject = {
-				...(typeof tokenData === 'object' ? tokenData : {}),
+				...this.oauthService.getCarriedOverTokenData(
+					credential.type,
+					decryptedDataOriginal,
+					flowState.managedVersion,
+				),
 				...tokenResponse,
 			} as ICredentialDataDecryptedObject;
 
@@ -150,8 +156,15 @@ export class OAuth2CredentialController {
 				oauthTokenData.resource = state.resource;
 			}
 
+			// Store the managed app version with the tokens, so every later request of this
+			// credential uses the app that issued them.
+			const tokenDataToSave =
+				flowState.managedVersion === undefined
+					? oauthTokenData
+					: withTokenVersion(oauthTokenData, flowState.managedVersion);
+
 			if (!state.origin || state.origin === 'static-credential') {
-				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData });
+				await this.oauthService.encryptAndSaveData(credential, { oauthTokenData: tokenDataToSave });
 
 				this.logger.debug('OAuth2 callback successful for credential', {
 					credentialId: credential.id,
@@ -175,7 +188,7 @@ export class OAuth2CredentialController {
 
 				await this.oauthService.saveDynamicCredential(
 					credential,
-					{ oauthTokenData },
+					{ oauthTokenData: tokenDataToSave },
 					state.authorizationHeader.split('Bearer ')[1],
 					state.credentialResolverId,
 					(state.authMetadata as Record<string, unknown>) ?? {},
@@ -201,7 +214,7 @@ export class OAuth2CredentialController {
 			this.logger.error('OAuth2 callback failed', { error, cause: error.cause });
 			return this.oauthService.renderCallbackError(
 				res,
-				error.message,
+				this.oauthService.extractCallbackErrorMessage(error, credentialType),
 				this.oauthService.extractCallbackErrorReason(error),
 			);
 		}

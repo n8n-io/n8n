@@ -5,7 +5,9 @@
     "./config": "./quality-config.ts",
     "./test": "./quality-test.ts",
     "./cli": "./fixtures/cli.ts",
-    "./metrics": "./utils/metrics.ts"
+    "./metrics": "./utils/metrics.ts",
+    "./containers": "./quality-containers.ts",
+    "./memory": "./quality-memory.ts"
   },
   "scripts": {
     "dev": "N8N_BASE_URL=http://localhost:5678 N8N_EDITOR_URL=http://localhost:8080 RESET_E2E_DB=true playwright test --project=e2e",

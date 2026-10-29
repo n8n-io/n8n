@@ -63,6 +63,22 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		return await this.delete({ createdAt: LessThan(date) });
 	}
 
+	/**
+	 * The newest `limit` versions of a workflow, with only their nodes, for a
+	 * caller that looks for a node as a recent version stored it.
+	 */
+	async findNewestVersionNodes(
+		workflowId: string,
+		limit: number,
+	): Promise<Array<Pick<WorkflowHistory, 'versionId' | 'nodes'>>> {
+		return await this.find({
+			select: ['versionId', 'nodes'],
+			where: { workflowId },
+			order: { createdAt: 'DESC', versionId: 'DESC' },
+			take: limit,
+		});
+	}
+
 	async findVersionSummaries(
 		workflowId: string,
 		versionIds: string[],

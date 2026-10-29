@@ -51,24 +51,24 @@ packages:
   - '!packages/quality/testing/playwright/fixtures/community-packages/packages/**'
 
 catalog:
-  '@ai-sdk/alibaba': ^2.0.32
-  '@ai-sdk/amazon-bedrock': ^5.0.31
-  '@ai-sdk/anthropic': ^4.0.32
-  '@ai-sdk/azure': ^4.0.21
-  '@ai-sdk/cohere': ^4.0.12
-  '@ai-sdk/deepseek': ^3.0.13
-  '@ai-sdk/gateway': ^4.0.52
-  '@ai-sdk/google': ^4.0.24
-  '@ai-sdk/google-vertex': ^5.0.47
-  '@ai-sdk/groq': ^4.0.13
-  '@ai-sdk/minimax': ^3.0.15
-  '@ai-sdk/mistral': ^4.0.14
-  '@ai-sdk/moonshotai': ^3.0.35
-  '@ai-sdk/openai': ^4.0.20
-  '@ai-sdk/openai-compatible': ^3.0.44
-  '@ai-sdk/otel': ^1.0.66
-  '@ai-sdk/provider-utils': ^5.0.27
-  '@ai-sdk/xai': ^4.0.18
+  '@ai-sdk/alibaba': ^2.0.75
+  '@ai-sdk/amazon-bedrock': ^5.0.123
+  '@ai-sdk/anthropic': ^4.0.87
+  '@ai-sdk/azure': ^4.0.109
+  '@ai-sdk/cohere': ^4.0.68
+  '@ai-sdk/deepseek': ^3.0.72
+  '@ai-sdk/gateway': ^4.0.123
+  '@ai-sdk/google': ^4.0.104
+  '@ai-sdk/google-vertex': ^5.0.121
+  '@ai-sdk/groq': ^4.0.69
+  '@ai-sdk/minimax': ^3.0.64
+  '@ai-sdk/mistral': ^4.0.71
+  '@ai-sdk/moonshotai': ^3.0.76
+  '@ai-sdk/openai': ^4.0.101
+  '@ai-sdk/openai-compatible': ^3.0.77
+  '@ai-sdk/otel': ^1.0.150
+  '@ai-sdk/provider-utils': ^5.0.67
+  '@ai-sdk/xai': ^4.0.59
   '@asteasolutions/zod-to-openapi': 7.3.4
   '@azure/identity': 4.13.0
   '@azure/storage-blob': ^12.32.0
@@ -103,8 +103,8 @@ catalog:
   '@langchain/anthropic': 1.5.6
   '@langchain/community': 1.1.27
   '@langchain/core': 1.2.8
-  '@langchain/langgraph': 1.0.2
-  '@langchain/langgraph-checkpoint': 1.0.0
+  '@langchain/langgraph': 1.4.21
+  '@langchain/langgraph-checkpoint': 1.1.6
   '@langchain/openai': 1.4.4
   '@lezer/common': 1.5.0
   '@lezer/generator': 1.8.0
@@ -113,9 +113,15 @@ catalog:
   '@modelcontextprotocol/ext-apps': 1.3.2
   '@modelcontextprotocol/node': 2.0.0
   '@modelcontextprotocol/sdk': 1.31.0
-  '@modelcontextprotocol/server': 2.0.0
+  '@modelcontextprotocol/server': 2.3.0
   '@mozilla/readability': ^0.6.0
   '@n8n_io/ai-assistant-sdk': 1.27.0
+  '@napi-rs/canvas': 1.0.11
+  '@napi-rs/canvas-linux-arm64-musl': 1.0.11
+  '@napi-rs/canvas-linux-x64-musl': 1.0.11
+  '@napi-rs/image': 1.15.0
+  '@napi-rs/image-linux-arm64-musl': 1.15.0
+  '@napi-rs/image-linux-x64-musl': 1.15.0
   '@openrouter/ai-sdk-provider': ^3.0.0
   '@opentelemetry/api': 1.9.1
   '@pinecone-database/pinecone': ^5.0.2
@@ -147,6 +153,8 @@ catalog:
   '@tiptap/starter-kit': 3.30.5
   '@tiptap/vue-3': 3.30.5
   '@types/basic-auth': ^1.1.3
+  '@types/compression': ^1.7.5
+  '@types/cookie-parser': ^1.4.8
   '@types/estree': ^1.0.8
   '@types/express': ^5.0.1
   '@types/jsdom': ^21.1.7
@@ -160,7 +168,6 @@ catalog:
   '@types/mime-types': 3.0.1
   '@types/ms': 2.1.0
   '@types/node': 24.10.1
-  '@types/nodemailer': 8.0.1
   '@types/oracledb': 6.10.3
   '@types/proxy-from-env': ^1.0.4
   '@types/qs': 6.9.15
@@ -184,7 +191,7 @@ catalog:
   '@vitest/coverage-istanbul': 5.0.1
   '@vitest/coverage-v8': 5.0.1
   agent-browser: 0.26.0
-  ai: ^7.0.66
+  ai: ^7.0.150
   axios: 1.20.0
   basic-auth: 2.0.1
   cache-manager: 5.2.3
@@ -194,17 +201,18 @@ catalog:
   cheerio: 1.1.0
   chokidar: 4.0.3
   citty: ^0.1.6
+  compression: 1.8.2
   consola: ^3.4.2
+  cookie-parser: 1.4.7
   cron: 4.4.0
   cron-parser: 5.6.1
   cronstrue: ^3.27.0
   cross-env: ^7.0.3
   csv-parse: 7.0.2
   dotenv: 17.2.3
-  electron: 41.10.4
   esbuild: ^0.28.1
   eslint: 9.29.0
-  eslint-plugin-n8n-nodes-base: ^1.16.7
+  eslint-plugin-n8n-nodes-base: ^2.0.0
   eslint-plugin-oxlint: 1.78.0
   express: 5.1.0
   fast-check: ^3.23.2
@@ -242,27 +250,27 @@ catalog:
   mysql2: 3.23.1
   nanoid: 3.3.18
   nock: 14.0.14
-  nodemailer: 8.0.10
+  nodemailer: 10.0.14
   openai: 6.46.0
   oracledb: 6.10.0
   oxlint: 1.78.0
   oxlint-tsgolint: ^0.21.1
   p-limit: ^3.1.0
   pdf-parse: 2.4.5
-  pdfjs-dist: 5.4.296
+  pdfjs-dist: 6.3.289
   pg: 8.21.0
   picocolors: 1.0.1
   playwright-core: 1.62.1
   posthog-node: 5.49.1
   prettier: 3.6.2
   proxy-from-env: ^1.1.0
-  qs: 6.15.2
+  qs: 6.16.0
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  sanitize-html: 2.17.7
+  sanitize-html: 2.18.0
   sass-embedded: ^1.98.0
   semver: 7.7.3
-  simple-git: 3.36.0
+  simple-git: 4.0.2
   source-map-support: 0.5.21
   ssh2: 1.15.0
   stream-json: 1.9.1
@@ -278,7 +286,7 @@ catalog:
   typescript-eslint: 8.70.0
   uuid: 11.1.1
   validator: 13.15.26
-  vite: ^8.0.2
+  vite: ^8.1.6
   unplugin-dts: ^1.1.0
   vite-plugin-singlefile: 2.3.3
   vitest: 5.0.1
@@ -292,6 +300,10 @@ catalog:
   knip: ^6.35.1
   openapi-types: 12.1.3
   google-auth-library: 10.9.1
+  rate-limit-redis: 4.3.1
+  ioredis-mock: ^8.8.1
+  '@types/ioredis-mock': 8.2.2
+  '@microsoft/opentelemetry': 1.5.0
 
 catalogMode: strict
 
@@ -333,12 +345,11 @@ catalogs:
   # group has to move in lockstep — a caret would let the entries re-resolve to
   # different releases and pull two copies of @sentry/core into the tree.
   sentry:
-    '@sentry/core': 10.70.0
-    '@sentry/node': 10.70.0
-    '@sentry/node-native': 10.70.0
-    '@sentry/profiling-node': 10.70.0
+    '@sentry/core': 11.8.0
+    '@sentry/node': 11.8.0
+    '@sentry/node-native': 11.8.0
+    '@sentry/profiling-node': 11.8.0
   storybook:
-    '@chromatic-com/storybook': ^4.1.3
     '@storybook/addon-a11y': ^10.5.10
     '@storybook/addon-docs': ^10.5.10
     '@storybook/addon-themes': ^10.5.10
@@ -370,7 +381,7 @@ overrides:
   '@browserbasehq/stagehand': npm:empty-npm-package@1.0.0
   sharp: npm:empty-npm-package@1.0.0
   ast-types: 0.16.1
-  baseline-browser-mapping: ^2.10.31
+  baseline-browser-mapping: ^2.11.0
   '@azure/identity': 4.13.0
   '@lezer/common': ^1.2.0
   '@mistralai/mistralai': ^2.2.1
@@ -382,7 +393,7 @@ overrides:
   '@types/node': ^20.17.50
   chokidar: 4.0.3
   esbuild: 'catalog:'
-  multer: ^2.3.0
+  multer: ^2.4.0
   prebuild-install: 7.1.3
   pug: ^3.0.3
   semver: 'catalog:'
@@ -398,7 +409,7 @@ overrides:
   pdf-parse: 'catalog:'
   pdfjs-dist: 'catalog:'
   tmp: 0.2.7
-  nodemailer: 8.0.10
+  nodemailer: 10.0.14
   validator: 'catalog:'
   zod: 3.25.76
   # Scoped to knip so the repo-wide zod 3 pin stays for everything else.
@@ -422,13 +433,14 @@ overrides:
   bn.js@5: 5.2.3
   lodash: 4.18.1
   minimatch@<=5.1.8: 5.1.8
+  minimatch@9.0.1: 9.0.9
   minimatch@10: 10.2.3
   '@hono/node-server': 1.19.15
-  follow-redirects: 1.16.0
+  follow-redirects: 1.16.1
   express-rate-limit: 8.2.2
   underscore: 1.13.8
   flatted: 3.4.2
-  handlebars: 4.7.9
+  handlebars: 4.7.10
   path-to-regexp: 8.4.0
   path-to-regexp@<0.1.13: 0.1.13
   picomatch@2: 2.3.2
@@ -448,7 +460,7 @@ overrides:
   protobufjs: 7.6.5
   shell-quote: 1.11.0
   adm-zip: 0.6.1
-  ip-address@10: 10.3.1
+  ip-address@10: 10.7.1
   brace-expansion@5: 5.0.12
   '@tootallnate/once@2': 2.0.1
   '@vue/server-renderer@3.5.26': 3.5.42
@@ -459,7 +471,7 @@ overrides:
   '@daytona/sdk@0.205.1>@aws-sdk/lib-storage': 3.808.0
   '@daytona/sdk@0.205.1>@opentelemetry/sdk-trace-base': 2.7.1
   langsmith: 0.6.0
-  hono: 4.12.34
+  hono: 4.13.11
   '@tiptap/core': 'catalog:'
   pg: 'catalog:'
   file-type: 'catalog:'
@@ -487,13 +499,18 @@ overrides:
   # The editor schema and DOM parser must use the same model classes.
   prosemirror-model: 1.25.12
   'prosemirror-view@<1.42.3': 1.42.3
+  # Only the pdf-parse CommonJS build loads this copy. Match pdfjs-dist so the image ships one binary.
+  'pdf-parse>@napi-rs/canvas': 'catalog:'
   # The @icetee/ftp patch replaces xregexp with native RegExp.
   '@icetee/ftp>xregexp': npm:empty-npm-package@1.0.0
+  'toml@<4.2.0': 4.2.0
+  # Keep the copies that langchain brings in on the catalog version.
+  '@langchain/langgraph': 'catalog:'
+  '@langchain/langgraph-checkpoint': 'catalog:'
 
 patchedDependencies:
   bull@4.16.4: patches/bull@4.16.4.patch
   element-plus@2.4.3: patches/element-plus@2.4.3.patch
-  pdfjs-dist@5.4.296: patches/pdfjs-dist@5.4.296.patch
   pkce-challenge@5.0.0: patches/pkce-challenge@5.0.0.patch
   '@types/express-serve-static-core@5.0.6': patches/@types__express-serve-static-core@5.0.6.patch
   '@types/ws@8.18.1': patches/@types__ws@8.18.1.patch
@@ -513,7 +530,12 @@ patchedDependencies:
   imapflow@1.7.1: patches/imapflow@1.7.1.patch
   '@chat-adapter/teams@4.37.0': patches/@chat-adapter__teams@4.37.0.patch
   '@chat-adapter/whatsapp@4.37.0': patches/@chat-adapter__whatsapp@4.37.0.patch
+  pdf-parse@2.4.5: patches/pdf-parse@2.4.5.patch
   '@icetee/ftp@0.3.15': patches/@icetee__ftp@0.3.15.patch
+  xml2js@0.6.2: patches/xml2js@0.6.2.patch
+  '@google/generative-ai@0.24.0': patches/@google__generative-ai@0.24.0.patch
+  '@langchain/google-genai@2.1.24': patches/@langchain__google-genai@2.1.24.patch
+  weaviate-client@3.9.0: patches/weaviate-client@3.9.0.patch
 
 allowBuilds:
   '@biomejs/biome': false

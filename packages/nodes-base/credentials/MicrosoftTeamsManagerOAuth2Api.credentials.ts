@@ -3,9 +3,12 @@ import type { Icon, ICredentialType, INodeProperties } from 'n8n-workflow';
 const GRAPH = 'https://graph.microsoft.com';
 
 /**
- * `Application.ReadWrite.All` registers the customer's Entra app. It is
- * admin-consent-only, so one tenant admin approves n8n once and every later
- * sign-in is prompt-free.
+ * `Application.ReadWrite.All` registers the customer's Entra app, and
+ * `AppCatalog.ReadWrite.All` publishes the Teams app straight to the
+ * organisation's catalogue. Both are admin-consent-only, so one tenant admin
+ * approves n8n once and every later sign-in is prompt-free. `AppCatalog.Submit`
+ * is what a user without the Teams administrator role falls back to, for the
+ * submission itself.
  *
  * Nothing here reads or writes anyone's installed apps: the package is
  * uploaded in the Teams client and n8n never looks for it afterwards.
@@ -27,6 +30,8 @@ const scopes = [
 	'offline_access',
 	`${GRAPH}/User.Read`,
 	`${GRAPH}/Application.ReadWrite.All`,
+	`${GRAPH}/AppCatalog.ReadWrite.All`,
+	`${GRAPH}/AppCatalog.Submit`,
 ];
 
 export class MicrosoftTeamsManagerOAuth2Api implements ICredentialType {

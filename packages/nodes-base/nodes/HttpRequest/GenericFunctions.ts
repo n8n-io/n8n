@@ -13,7 +13,7 @@ import {
 	type IOAuth2Options,
 	type IRequestOptions,
 } from 'n8n-workflow';
-import { Stream, type Readable } from 'stream';
+import { Readable, Stream } from 'stream';
 import type { SecureContextOptions } from 'tls';
 
 import type { HttpSslAuthCredentials } from './interfaces';
@@ -37,12 +37,28 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 
 export const REDACTED = '**hidden**';
 
-const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
+export const STREAM_REPLACEMENT = 'Binary data got replaced with this text. Original was a stream.';
 
 function isObject(obj: unknown): obj is IDataObject {
 	return isPlainObject(obj);
 }
 
+/**
+ * Checks for a stream by its shape, not its class. An `instanceof` check misses a
+ * stream from another realm or from a different stream implementation.
+ */
+export function isStream(value: unknown): boolean {
+	if (value instanceof Stream) {
+		return true;
+	}
+
+	return (
+		typeof value === 'object' &&
+		value !== null &&
+		'pipe' in value &&
+		typeof value.pipe === 'function'
+	);
+}
 /**
  * Swaps an upload out of a value headed for the browser. A stream has to go
  * before `deepCopy` runs: once the request is in flight its pipe chain is
@@ -281,6 +297,7 @@ export const prepareRequestBody = async (
 		}, Promise.resolve({}));
 	} else if (bodyType === 'multipart-form-data' && version >= 4.2) {
 		const formData = new FormData();
+		const streams: Readable[] = [];
 
 		for (const parameter of parameters) {
 			if (parameter.parameterType === 'formBinaryData') {
@@ -288,12 +305,15 @@ export const prepareRequestBody = async (
 				const key = Object.keys(entry)[0];
 				const data = entry[key] as { value: Buffer | Readable; options: FormData.AppendOptions };
 				formData.append(key, data.value, data.options);
+				if (data.value instanceof Readable) streams.push(data.value);
 				continue;
 			}
 
 			formData.append(parameter.name, parameter.value);
 		}
 
+		// `FormData.destroy()` drops the appended streams without destroying them.
+		formData.once('close', () => streams.forEach((stream) => stream.destroy()));
 		return formData;
 	} else {
 		return await reduceAsync(parameters, defaultReducer);

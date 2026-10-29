@@ -6,6 +6,7 @@ import type {
 	SharedWorkflow,
 	User,
 	WorkflowEntity,
+	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -15,20 +16,18 @@ import { WorkflowActivationError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveWorkflowManager } from '@/active-workflow-manager';
-import type { CredentialsFinderService } from '@n8n/backend-services';
+import type { CredentialsFinderService, WorkflowMutationHooksProxy } from '@n8n/backend-services';
 import type { CredentialsService } from '@/credentials/credentials.service';
+import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
+import type { NodeTypes } from '@/node-types';
 import type { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
+import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { OwnershipService } from '@/services/ownership.service';
 import type { ProjectService } from '@/services/project.service.ee';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowMutationHooksProxy } from '@/workflows/workflow-mutation-hooks-proxy.service';
-import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-const flags = { credSharingEnabled: false };
-vi.mock('@/constants/credential-sharing', () => ({
-	isCredSharingEnabled: () => flags.credSharingEnabled,
-}));
+import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 describe('EnterpriseWorkflowService', () => {
 	let service: EnterpriseWorkflowService;
@@ -44,11 +43,13 @@ describe('EnterpriseWorkflowService', () => {
 	const credentialsService = mock<CredentialsService>();
 	const ownershipService = mock<OwnershipService>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const nodeTypes = mock<NodeTypes>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
+	const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		flags.credSharingEnabled = false;
+		nodeTypes.getByNameAndVersion.mockReset();
 		service = new EnterpriseWorkflowService(
 			mock(), // logger
 			mock(), // sharedWorkflowRepository
@@ -65,7 +66,9 @@ describe('EnterpriseWorkflowService', () => {
 			workflowPublishHistoryRepository,
 			workflowMutationHooks,
 			policyEnforcementService,
+			nodeTypes,
 			credentialsPermissionChecker,
+			workflowHistoryRepository,
 		);
 	});
 
@@ -286,34 +289,7 @@ describe('EnterpriseWorkflowService', () => {
 			);
 		});
 
-		it('describes every referenced credential regardless of access', async () => {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([]);
-			const workflow = buildWorkflow();
-
-			await service.addCredentialsToWorkflow(workflow, user);
-
-			expect(workflow.usedCredentials).toMatchObject([
-				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
-			]);
-		});
-
-		it('when the flag is off, asks the project-scoped check', async () => {
-			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
-				mock({ id: 'cred-1' }),
-			]);
-			const workflow = buildWorkflow();
-
-			await service.addCredentialsToWorkflow(workflow, user);
-
-			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
-				workflowId: 'workflow-1',
-			});
-			expect(credentialsPermissionChecker.findUnusableInWorkflow).not.toHaveBeenCalled();
-			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
-		});
-
-		it('when the flag is on, asks the rule a run acting as the user follows', async () => {
-			flags.credSharingEnabled = true;
+		it('asks the rule a run acting as the user follows', async () => {
 			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([]);
 			const workflow = buildWorkflow();
 
@@ -324,12 +300,10 @@ describe('EnterpriseWorkflowService', () => {
 				['cred-1'],
 				user.id,
 			);
-			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).not.toHaveBeenCalled();
 			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: true }]);
 		});
 
-		it('when the flag is on, a credential that rule rejects is unusable', async () => {
-			flags.credSharingEnabled = true;
+		it('describes a credential that rule rejects, and marks it unusable', async () => {
 			credentialsPermissionChecker.findUnusableInWorkflow.mockResolvedValue([
 				{ id: 'cred-1', name: 'Google', exists: true, ownerProject: null },
 			]);
@@ -337,7 +311,9 @@ describe('EnterpriseWorkflowService', () => {
 
 			await service.addCredentialsToWorkflow(workflow, user);
 
-			expect(workflow.usedCredentials).toMatchObject([{ id: 'cred-1', currentUserCanUse: false }]);
+			expect(workflow.usedCredentials).toMatchObject([
+				{ id: 'cred-1', name: 'Google', type: 'googlePalmApi', currentUserCanUse: false },
+			]);
 		});
 	});
 
@@ -398,6 +374,306 @@ describe('EnterpriseWorkflowService', () => {
 			expect(() =>
 				service.validateWorkflowCredentialUsage(newVersion, previousVersion, []),
 			).not.toThrow();
+		});
+	});
+
+	describe('validateWorkflowCredentialUsage() - sub-workflow source', () => {
+		const URL_SOURCE = { source: 'url', workflowUrl: 'https://example.com/workflow.json' };
+		const subworkflowNode = (parameters: Record<string, unknown>, overrides: Partial<INode> = {}) =>
+			({
+				id: 'sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters,
+				...overrides,
+			}) as unknown as INode;
+		const save = (
+			newNodes: INode[],
+			previousNodes: INode[] = [],
+			options?: { allowUninspectableSource?: boolean },
+		) =>
+			service.validateWorkflowCredentialUsage(
+				{ nodes: newNodes } as unknown as IWorkflowBase,
+				{ nodes: previousNodes } as unknown as IWorkflowBase,
+				[],
+				[],
+				options,
+			);
+
+		it.each([
+			['"url"', URL_SOURCE],
+			['"localFile"', { source: 'localFile', workflowPath: '/data/workflow.json' }],
+			['an expression', { source: '={{ $json.source }}' }],
+			['not a string', { source: 42 }],
+		])('rejects a new Execute Sub-workflow node whose source is %s', (_label, parameters) => {
+			expect(() => save([subworkflowNode(parameters)])).toThrow(/cannot be checked/);
+		});
+
+		it.each([
+			['absent', {}],
+			['"database"', { source: 'database', workflowId: { __rl: true, value: 'wf-1', mode: 'id' } }],
+			[
+				'"parameter"',
+				{ source: 'parameter', workflowJson: JSON.stringify({ nodes: [], connections: {} }) },
+			],
+		])('accepts a new Execute Sub-workflow node whose source is %s', (_label, parameters) => {
+			expect(() => save([subworkflowNode(parameters)])).not.toThrow();
+		});
+
+		it('rejects a Workflow Tool node whose source is neither "database" nor "parameter"', () => {
+			const node = subworkflowNode(URL_SOURCE, {
+				type: '@n8n/n8n-nodes-langchain.toolWorkflow',
+				typeVersion: 2,
+			});
+			expect(() => save([node])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects the synthetic HITL tool variant of a url-sourced Execute Sub-workflow node', () => {
+			const node = subworkflowNode(URL_SOURCE, { type: 'n8n-nodes-base.executeWorkflowHitlTool' });
+			expect(() => save([node])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects a url-sourced node nested inside an inline sub-workflow', () => {
+			const inner = subworkflowNode(URL_SOURCE, { id: 'inner', name: 'Inner' });
+			const outer = subworkflowNode({
+				source: 'parameter',
+				workflowJson: JSON.stringify({ nodes: [inner], connections: {} }),
+			});
+			expect(() => save([outer])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects a url-sourced Execute Sub-workflow tool inside an inline agent parameter', () => {
+			const agent = {
+				id: 'agent-1',
+				name: 'Agent',
+				type: 'n8n-nodes-base.messageAnAgent',
+				typeVersion: 2,
+				position: [0, 0],
+				parameters: {
+					agentSource: 'inline',
+					inlineAgent: {
+						config: {
+							tools: [
+								{ nodeType: 'n8n-nodes-base.executeWorkflowTool', nodeParameters: URL_SOURCE },
+							],
+						},
+					},
+				},
+			} as unknown as INode;
+			expect(() => save([agent])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects an existing editable node that is changed to a url source', () => {
+			const previous = subworkflowNode({ source: 'database', workflowId: 'wf-1' });
+			expect(() => save([subworkflowNode(URL_SOURCE)], [previous])).toThrow(/cannot be checked/);
+		});
+
+		it('allows renaming, moving and disabling a stored URL node', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const edited = { ...previous, name: 'Renamed', position: [10, 10], disabled: true } as INode;
+
+			const result = save([edited], [previous]);
+
+			expect(result.nodes[0]).toEqual(edited);
+		});
+
+		it('rejects URL changes when the node description is unavailable', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const changed = subworkflowNode({
+				source: 'url',
+				workflowUrl: 'https://example.com/other.json',
+			});
+			expect(() => save([changed], [previous])).toThrow(/cannot be checked/);
+		});
+
+		it('rejects retry setting changes on a stored URL node', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const changed = { ...previous, retryOnFail: true } as INode;
+			expect(() => save([changed], [previous])).toThrow(/cannot be checked/);
+		});
+
+		describe('with the node type description available', () => {
+			beforeEach(() => {
+				nodeTypes.getByNameAndVersion.mockReturnValue({
+					description: {
+						properties: [
+							{ displayName: 'Source', name: 'source', type: 'options', default: 'database' },
+							{
+								displayName: 'Workflow',
+								name: 'workflowId',
+								type: 'string',
+								default: '',
+								displayOptions: { show: { source: ['database'] } },
+							},
+							{
+								displayName: 'URL',
+								name: 'workflowUrl',
+								type: 'string',
+								default: '',
+								displayOptions: { show: { source: ['url'] } },
+							},
+							{ displayName: 'Mode', name: 'mode', type: 'options', default: 'once' },
+						],
+					},
+				} as never);
+			});
+
+			it('accepts omitted parameter defaults', () => {
+				// A node stored through the API may carry a default the editor strips on save.
+				const stored = subworkflowNode({ ...URL_SOURCE, mode: 'once' });
+				const fromEditor = { ...subworkflowNode(URL_SOURCE), name: 'Renamed' } as INode;
+
+				const result = save([fromEditor], [stored]);
+
+				expect(result.nodes[0]).toEqual({ ...stored, name: 'Renamed' });
+			});
+
+			it('accepts omitted hidden parameters', () => {
+				// The editor drops the old database workflow ID when the source is URL.
+				const stored = subworkflowNode({ ...URL_SOURCE, workflowId: 'old-workflow' });
+				const fromEditor = { ...subworkflowNode(URL_SOURCE), name: 'Renamed' } as INode;
+
+				const result = save([fromEditor], [stored]);
+
+				expect(result.nodes[0]).toEqual({ ...stored, name: 'Renamed' });
+			});
+
+			it('rejects URL changes after parameter normalization', () => {
+				const stored = subworkflowNode({ ...URL_SOURCE, mode: 'once' });
+				const changed = subworkflowNode({
+					source: 'url',
+					workflowUrl: 'https://example.com/other.json',
+				});
+
+				expect(() => save([changed], [stored])).toThrow(/cannot be checked/);
+			});
+		});
+
+		it('accepts url-sourced nodes when the caller allows uninspectable sources', () => {
+			const previous = subworkflowNode(URL_SOURCE);
+			const changed = subworkflowNode({
+				source: 'url',
+				workflowUrl: 'https://example.com/other.json',
+			});
+			const options = { allowUninspectableSource: true };
+
+			expect(() => save([subworkflowNode(URL_SOURCE)], [], options)).not.toThrow();
+			expect(save([changed], [previous], options).nodes[0]).toEqual(changed);
+		});
+
+		it('checks source permissions when validating a new workflow', () => {
+			const workflow = { nodes: [subworkflowNode(URL_SOURCE)] } as unknown as IWorkflowBase;
+
+			expect(() => service.validateCredentialPermissionsToUser(workflow, [])).toThrow(
+				/cannot be checked/,
+			);
+			expect(() =>
+				service.validateCredentialPermissionsToUser(workflow, [], {
+					allowUninspectableSource: true,
+				}),
+			).not.toThrow();
+		});
+
+		it('reports runtime-loaded sources even when there are no credential IDs', () => {
+			const workflow = { nodes: [subworkflowNode(URL_SOURCE)] } as unknown as IWorkflowBase;
+
+			expect(service.collectCredentialReferences(workflow)).toEqual({
+				ids: new Set(),
+				hasUnresolved: false,
+				hasUninspectableSource: true,
+			});
+		});
+
+		describe('workflow JSON of the "parameter" source', () => {
+			const WORKFLOW_JSON = JSON.stringify({ nodes: [], connections: {} });
+			const inlineNode = (workflowJson: unknown, overrides: Partial<INode> = {}) =>
+				subworkflowNode({ source: 'parameter', workflowJson }, overrides);
+
+			it.each([
+				['an expression', '={{ $json.wf }}'],
+				['an array holding workflow JSON', [WORKFLOW_JSON]],
+				['an array holding an expression', ['={{ $json.wf }}']],
+				['an object', { nodes: [], connections: {} }],
+			])('rejects a new node whose workflow JSON is %s', (_label, workflowJson) => {
+				expect(() => save([inlineNode(workflowJson)])).toThrow(/cannot be checked/);
+			});
+
+			it.each([
+				['absent', undefined],
+				['fixed JSON', WORKFLOW_JSON],
+				['fixed text that is not JSON', 'not json'],
+			])('accepts a new node whose workflow JSON is %s', (_label, workflowJson) => {
+				expect(() => save([inlineNode(workflowJson)])).not.toThrow();
+			});
+
+			it('accepts an expression left in the workflow JSON of a "database" source', () => {
+				// The node reads the workflow JSON only for the "parameter" source.
+				const node = subworkflowNode({
+					source: 'database',
+					workflowId: 'wf-1',
+					workflowJson: '={{ $json.wf }}',
+				});
+				expect(() => save([node])).not.toThrow();
+			});
+
+			it.each([
+				['Workflow Tool', '@n8n/n8n-nodes-langchain.toolWorkflow'],
+				['Workflow Retriever', '@n8n/n8n-nodes-langchain.retrieverWorkflow'],
+			])('rejects a %s node whose workflow JSON is an expression', (_label, type) => {
+				const node = inlineNode('={{ $json.wf }}', { type, typeVersion: 2 });
+				expect(() => save([node])).toThrow(/cannot be checked/);
+			});
+
+			it('rejects an expression in the workflow JSON of a nested inline sub-workflow', () => {
+				const inner = inlineNode('={{ $json.wf }}', { id: 'inner', name: 'Inner' });
+				const outer = inlineNode(JSON.stringify({ nodes: [inner], connections: {} }));
+				expect(() => save([outer])).toThrow(/cannot be checked/);
+			});
+
+			it('rejects a Workflow Tool inside an inline agent whose workflow JSON is an expression', () => {
+				const agent = {
+					id: 'agent-1',
+					name: 'Agent',
+					type: 'n8n-nodes-base.messageAnAgent',
+					typeVersion: 2,
+					position: [0, 0],
+					parameters: {
+						agentSource: 'inline',
+						inlineAgent: {
+							config: {
+								tools: [
+									{
+										nodeType: '@n8n/n8n-nodes-langchain.toolWorkflow',
+										nodeParameters: { source: 'parameter', workflowJson: "={{ $fromAI('wf') }}" },
+									},
+								],
+							},
+						},
+					},
+				} as unknown as INode;
+				expect(() => save([agent])).toThrow(/cannot be checked/);
+			});
+
+			it('rejects a change to the expression of a stored node', () => {
+				const previous = inlineNode('={{ $json.wf }}');
+				expect(() => save([inlineNode('={{ $json.other }}')], [previous])).toThrow(
+					/cannot be checked/,
+				);
+			});
+
+			it('keeps a stored node with an expression when it is only renamed', () => {
+				const previous = inlineNode('={{ $json.wf }}');
+				const renamed = { ...previous, name: 'Renamed' } as INode;
+
+				expect(save([renamed], [previous]).nodes[0]).toEqual(renamed);
+			});
+
+			it('accepts an expression when the caller allows uninspectable sources', () => {
+				const options = { allowUninspectableSource: true };
+				expect(() => save([inlineNode('={{ $json.wf }}')], [], options)).not.toThrow();
+			});
 		});
 	});
 
@@ -505,12 +781,27 @@ describe('EnterpriseWorkflowService', () => {
 			expect(result.nodes[0]).toEqual(switched);
 		});
 
-		describe('restoring a history version', () => {
+		describe('a node as a history version stored it', () => {
 			const historyNode = () =>
 				httpNode(
 					{ httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } },
 					{ url: 'https://v1.test' },
 				);
+
+			it('keeps a node renamed, moved and disabled since the version stored it', () => {
+				const previousVersion = { nodes: [] } as unknown as IWorkflowBase;
+				const edited = { ...historyNode(), name: 'Renamed', position: [10, 20], disabled: true };
+				const newVersion = { nodes: [edited] } as unknown as IWorkflowBase;
+
+				const result = service.validateWorkflowCredentialUsage(
+					newVersion,
+					previousVersion,
+					accessible,
+					[historyNode()],
+				);
+
+				expect(result.nodes[0]).toEqual(edited);
+			});
 
 			it('keeps a node exactly as the restored version stored it', () => {
 				// The current version dropped the node; the user cannot use its credential.
@@ -722,6 +1013,160 @@ describe('EnterpriseWorkflowService', () => {
 		});
 	});
 
+	describe('preventTampering() - a credential switched back from the workflow history', () => {
+		const user = mock<User>({ id: 'bob', role: { scopes: [] } });
+		const httpNode = (credentialId: string, url = 'https://v1.test') =>
+			({
+				id: 'node-1',
+				name: 'Call',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 4.2,
+				position: [0, 0],
+				parameters: { url },
+				credentials: { httpHeaderAuth: { id: credentialId, name: credentialId } },
+			}) as unknown as INode;
+		const version = (versionId: string, nodes: INode[]) => ({ versionId, nodes });
+
+		beforeEach(() => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('own-cred')],
+			} as unknown as WorkflowEntity);
+			credentialsService.getCredentialsAUserCanUseInAWorkflow.mockResolvedValue([
+				mock({ id: 'own-cred' }),
+			]);
+		});
+
+		it('saves a node switched back to a credential an earlier version stored, with its position', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v3', [httpNode('own-cred')]),
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+			const submitted = { ...httpNode('foreign-cred'), position: [10, 20] };
+
+			const result = await service.preventTampering(
+				{ nodes: [submitted] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(submitted);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledWith('w1', 20);
+		});
+
+		it('matches a stored node after its credential was renamed, also when disabled', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+			const submitted = { ...httpNode('foreign-cred'), disabled: true };
+			submitted.credentials!.httpHeaderAuth.name = 'Renamed';
+
+			const result = await service.preventTampering(
+				{ nodes: [submitted] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(submitted);
+		});
+
+		it('rejects a node that no version stored with that credential', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v3', [httpNode('own-cred')]),
+			]);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('reads only the newest versions, so an older match does not count', async () => {
+			// The repository returns what it was asked for: the limit is the lookback.
+			workflowHistoryRepository.findNewestVersionNodes.mockImplementation(
+				async (_workflowId, limit) =>
+					Array.from({ length: limit }, (_, i) => version(`v${limit - i}`, [httpNode('own-cred')])),
+			);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledTimes(1);
+			expect(workflowHistoryRepository.findNewestVersionNodes).toHaveBeenCalledWith('w1', 20);
+		});
+
+		it('rejects a node whose other parameters changed since the version stored it', async () => {
+			workflowHistoryRepository.findNewestVersionNodes.mockResolvedValue([
+				version('v2', [httpNode('foreign-cred')]),
+			]);
+
+			await expect(
+				service.preventTampering(
+					{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+					'w1',
+					user,
+				),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+		});
+
+		it('reads no history when the user can use every credential in the save', async () => {
+			const result = await service.preventTampering(
+				{ nodes: [httpNode('own-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0].parameters).toEqual({ url: 'https://changed.test' });
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node without an id', async () => {
+			const { id: _, ...withoutId } = httpNode('foreign-cred');
+
+			await expect(
+				service.preventTampering({ nodes: [withoutId] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow(/credentials in the 'Call' node/);
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node blocked only by a sub-workflow source it cannot inspect', async () => {
+			const urlSourcedNode = {
+				id: 'sub-1',
+				name: 'Sub',
+				type: 'n8n-nodes-base.executeWorkflow',
+				typeVersion: 1.2,
+				position: [0, 0],
+				parameters: { source: 'url', workflowUrl: 'https://example.com/workflow.json' },
+			} as unknown as INode;
+
+			await expect(
+				service.preventTampering({ nodes: [urlSourcedNode] } as IWorkflowBase, 'w1', user),
+			).rejects.toThrow();
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+
+		it('reads no history for a node that is read only already', async () => {
+			workflowRepository.get.mockResolvedValue({
+				nodes: [httpNode('foreign-cred')],
+			} as unknown as WorkflowEntity);
+
+			const result = await service.preventTampering(
+				{ nodes: [httpNode('foreign-cred', 'https://changed.test')] } as IWorkflowBase,
+				'w1',
+				user,
+			);
+
+			expect(result.nodes[0]).toEqual(httpNode('foreign-cred'));
+			expect(workflowHistoryRepository.findNewestVersionNodes).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('attemptWorkflowReactivation', () => {
 		// Workflow and folder transfers deactivate, transfer, then re-add. A failed
 		// re-add may have partially registered triggers, in memory and as durable
@@ -750,8 +1195,18 @@ describe('EnterpriseWorkflowService', () => {
 				userId: 'user-1',
 			});
 			expect(result).toEqual({
-				error: expect.objectContaining({ message: 'broken credential' }),
+				error: { name: 'WorkflowActivationError', message: 'broken credential' },
 			});
+		});
+
+		it('returns an unexpected failure instead of throwing it, and logs it', async () => {
+			activeWorkflowManager.add.mockRejectedValue(new Error('active version missing'));
+
+			const result = await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(result).toEqual({ error: { name: 'Error', message: 'active version missing' } });
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
+			expect(service['logger'].error).toHaveBeenCalled();
 		});
 
 		it('should still deactivate the workflow when the trigger teardown fails', async () => {
@@ -761,6 +1216,18 @@ describe('EnterpriseWorkflowService', () => {
 			await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
 
 			expect(workflowRepository.updateActiveState).toHaveBeenCalledWith('wf-1', false);
+		});
+
+		it('returns the failure even when marking the workflow unpublished fails', async () => {
+			activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('broken credential'));
+			workflowRepository.updateActiveState.mockRejectedValueOnce(new Error('database unavailable'));
+
+			const result = await service['attemptWorkflowReactivation']('wf-1', 'version-1', 'user-1');
+
+			expect(result).toEqual({
+				error: { name: 'WorkflowActivationError', message: 'broken credential' },
+			});
+			expect(service['logger'].error).toHaveBeenCalled();
 		});
 
 		it('should not touch triggers or the active flag when reactivation succeeds', async () => {
@@ -773,6 +1240,12 @@ describe('EnterpriseWorkflowService', () => {
 			expect(workflowRepository.updateActiveState).not.toHaveBeenCalled();
 		});
 	});
+
+	const violation = {
+		kind: 'node-type-unavailable',
+		checkId: 'node-type-policy',
+		message: 'Slack is not available in this project',
+	};
 
 	describe('transferFolder()', () => {
 		const user = mock<User>({ id: 'user-1' });
@@ -796,10 +1269,8 @@ describe('EnterpriseWorkflowService', () => {
 
 		beforeEach(() => {
 			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
-			workflowRepository.find.mockResolvedValue(workflows);
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue(workflows);
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
-			policyEnforcementService.hasChecksFor.mockReturnValue(true);
-			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
 			activeWorkflowManager.remove.mockResolvedValue(undefined);
 			activeWorkflowManager.add.mockResolvedValue({ webhooks: true, triggersAndPollers: true });
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -814,51 +1285,153 @@ describe('EnterpriseWorkflowService', () => {
 				.mockResolvedValue(undefined);
 		});
 
-		it('loads the fields the policy check reads', async () => {
+		it('moves the folder without asking the transfer policy', async () => {
 			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
 
-			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: expect.arrayContaining(['name', 'nodes']) }),
-			);
-		});
-
-		it('skips the nodes and the check when no check is registered', async () => {
-			policyEnforcementService.hasChecksFor.mockReturnValue(false);
-
-			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
-
-			expect(workflowRepository.find).toHaveBeenCalledWith(
-				expect.objectContaining({ select: expect.not.arrayContaining(['nodes']) }),
-			);
+			expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+				withNodes: false,
+			});
 			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
-			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
-		});
-
-		it('calls enforceWorkflowTransfer once per workflow with the target project', async () => {
-			await service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0');
-
-			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledTimes(2);
-			for (const workflow of workflows) {
-				expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledWith(
-					{ workflow, targetProjectId: destinationProject.id },
-					{ kind: 'user', user },
-				);
-			}
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
 			expect(moveFoldersSpy).toHaveBeenCalledTimes(1);
 		});
 
-		it('blocks the move and performs no mutation when the policy check throws', async () => {
-			const violation = new Error('blocked by policy');
-			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValueOnce(violation);
+		it('reports the workflows whose republish the destination policy refuses', async () => {
+			activeWorkflowManager.add.mockRejectedValueOnce(new PolicyViolationError([violation]));
 
-			await expect(
-				service.transferFolder(user, 'proj-source', 'folder-1', 'proj-dest', '0'),
-			).rejects.toThrow(violation);
+			const result = await service.transferFolder(
+				user,
+				'proj-source',
+				'folder-1',
+				'proj-dest',
+				'0',
+			);
 
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(moveFoldersSpy).not.toHaveBeenCalled();
+			expect(result).toEqual({
+				unpublishedWorkflows: [
+					{ id: 'wf-1', name: 'Workflow wf-1', unpublishReasons: [violation] },
+				],
+			});
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledExactlyOnceWith('wf-1', false);
+			// One refusal must not leave the rest of the folder unpublished.
+			expect(activeWorkflowManager.add).toHaveBeenCalledTimes(2);
+		});
+
+		it('republishes the rest of the folder after an unexpected failure, and reports it', async () => {
+			activeWorkflowManager.add.mockRejectedValueOnce(new Error('active version missing'));
+
+			const result = await service.transferFolder(
+				user,
+				'proj-source',
+				'folder-1',
+				'proj-dest',
+				'0',
+			);
+
+			expect(result).toEqual({
+				unpublishedWorkflows: [
+					{
+						id: 'wf-1',
+						name: 'Workflow wf-1',
+						error: { name: 'Error', message: 'active version missing' },
+					},
+				],
+			});
+			expect(activeWorkflowManager.add).toHaveBeenCalledTimes(2);
+		});
+
+		it('reports nothing when every workflow republishes', async () => {
+			const result = await service.transferFolder(
+				user,
+				'proj-source',
+				'folder-1',
+				'proj-dest',
+				'0',
+			);
+
+			expect(result).toEqual({ unpublishedWorkflows: [] });
+		});
+	});
+
+	describe('previewFolderTransfer()', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const sourceProject = mock<Project>({ id: 'proj-source' });
+		const destinationProject = mock<Project>({ id: 'proj-dest' });
+
+		const makeWorkflow = (id: string, owner = sourceProject) =>
+			mock<WorkflowEntity>({
+				id,
+				name: `Workflow ${id}`,
+				nodes: [],
+				activeVersion: null,
+				shared: [mock<SharedWorkflow>({ role: 'workflow:owner', project: owner })],
+			});
+
+		const preview = async () =>
+			await service.previewFolderTransfer(user, 'proj-source', 'folder-1', 'proj-dest');
+
+		beforeEach(() => {
+			folderRepository.findOneOrFailFolderInProject.mockResolvedValue(mock());
+			folderRepository.getAllFolderIdsInHierarchy.mockResolvedValue([]);
+			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
+			policyEnforcementService.hasChecksFor.mockReturnValue(true);
+			policyEnforcementService.evaluateWorkflowTransfer.mockResolvedValue({ violations: [] });
+		});
+
+		describe('when no check is registered', () => {
+			beforeEach(() => {
+				policyEnforcementService.hasChecksFor.mockReturnValue(false);
+			});
+
+			it('returns an empty preview without the nodes and without evaluating', async () => {
+				workflowRepository.findInFoldersForTransfer.mockResolvedValue([makeWorkflow('wf-1')]);
+
+				await expect(preview()).resolves.toEqual({
+					restricted: [],
+					workflowsToUnpublish: [],
+					checkFailed: false,
+				});
+				expect(workflowRepository.findInFoldersForTransfer).toHaveBeenCalledWith(['folder-1'], {
+					withNodes: false,
+				});
+				expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
+			});
+
+			it('still refuses a folder whose workflows the destination already owns', async () => {
+				workflowRepository.findInFoldersForTransfer.mockResolvedValue([
+					makeWorkflow('wf-1', destinationProject),
+				]);
+
+				await expect(preview()).rejects.toThrow(TransferWorkflowError);
+			});
+		});
+
+		it('evaluates at most five workflows at once', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue(
+				Array.from({ length: 12 }, (_, index) => makeWorkflow(`wf-${index}`)),
+			);
+			let inFlight = 0;
+			let maxInFlight = 0;
+			policyEnforcementService.evaluateWorkflowTransfer.mockImplementation(async () => {
+				maxInFlight = Math.max(maxInFlight, ++inFlight);
+				await new Promise((resolve) => setImmediate(resolve));
+				inFlight--;
+				return { violations: [] };
+			});
+
+			await preview();
+
+			expect(policyEnforcementService.evaluateWorkflowTransfer).toHaveBeenCalledTimes(12);
+			expect(maxInFlight).toBe(5);
+		});
+
+		it('refuses a folder whose workflows the destination already owns, as the move does', async () => {
+			workflowRepository.findInFoldersForTransfer.mockResolvedValue([
+				makeWorkflow('wf-1', destinationProject),
+			]);
+
+			await expect(preview()).rejects.toThrow(TransferWorkflowError);
+			expect(policyEnforcementService.evaluateWorkflowTransfer).not.toHaveBeenCalled();
 		});
 	});
 
@@ -886,10 +1459,8 @@ describe('EnterpriseWorkflowService', () => {
 		beforeEach(() => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflow());
 			projectService.getProjectWithScope.mockResolvedValue(destinationProject);
-			policyEnforcementService.enforceWorkflowTransfer.mockResolvedValue(mock());
 			// Ownership transfer and credential sharing are exercised by their own
-			// describe blocks below; stubbed here so these tests isolate the
-			// policy-enforcement wiring in `transferWorkflow` itself.
+			// describe blocks below.
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			transferOwnershipSpy = vi
 				.spyOn(service as any, 'transferWorkflowOwnership')
@@ -900,24 +1471,11 @@ describe('EnterpriseWorkflowService', () => {
 				.mockResolvedValue(undefined);
 		});
 
-		it('calls enforceWorkflowTransfer with the target project, not the source', async () => {
-			const workflow = makeWorkflow();
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(workflow);
+		it('moves the workflow without asking the transfer policy', async () => {
+			const result = await service.transferWorkflow(user, 'wf-1', 'proj-dest');
 
-			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
-
-			expect(policyEnforcementService.enforceWorkflowTransfer).toHaveBeenCalledExactlyOnceWith(
-				{
-					workflow,
-					targetProjectId: destinationProject.id,
-				},
-				{ kind: 'user', user },
-			);
-		});
-
-		it('proceeds with the transfer unchanged when the policy check clears', async () => {
-			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
-
+			expect(result).toBeUndefined();
+			expect(policyEnforcementService.enforceWorkflowTransfer).not.toHaveBeenCalled();
 			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
 			expect(shareCredentialsSpy).toHaveBeenCalledTimes(1);
 			expect(workflowRepository.update).toHaveBeenCalledWith(
@@ -926,32 +1484,20 @@ describe('EnterpriseWorkflowService', () => {
 			);
 		});
 
-		it('blocks the transfer and performs no mutation when the policy check throws', async () => {
-			const violation = new Error('blocked by policy');
-			policyEnforcementService.enforceWorkflowTransfer.mockRejectedValue(violation);
+		it('unpublishes a published workflow when the destination policy refuses the republish', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflow({ activeVersionId: 'version-1' }),
+			);
+			activeWorkflowManager.add.mockRejectedValueOnce(new PolicyViolationError([violation]));
 
-			await expect(service.transferWorkflow(user, 'wf-1', 'proj-dest')).rejects.toThrow(violation);
+			const result = await service.transferWorkflow(user, 'wf-1', 'proj-dest');
 
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(transferOwnershipSpy).not.toHaveBeenCalled();
-			expect(shareCredentialsSpy).not.toHaveBeenCalled();
-			expect(workflowRepository.update).not.toHaveBeenCalled();
-		});
-
-		it('resolves the destination project before enforcing the policy check', async () => {
-			const callOrder: string[] = [];
-			projectService.getProjectWithScope.mockImplementation(async () => {
-				callOrder.push('getProjectWithScope');
-				return destinationProject;
-			});
-			policyEnforcementService.enforceWorkflowTransfer.mockImplementation(async () => {
-				callOrder.push('enforceWorkflowTransfer');
-				return await mock();
-			});
-
-			await service.transferWorkflow(user, 'wf-1', 'proj-dest');
-
-			expect(callOrder).toEqual(['getProjectWithScope', 'enforceWorkflowTransfer']);
+			expect(result).toEqual({ unpublishReasons: [violation] });
+			expect(transferOwnershipSpy).toHaveBeenCalledTimes(1);
+			expect(workflowRepository.updateActiveState).toHaveBeenCalledExactlyOnceWith('wf-1', false);
+			expect(workflowPublishHistoryRepository.addRecord).toHaveBeenCalledWith(
+				expect.objectContaining({ workflowId: 'wf-1', event: 'deactivated' }),
+			);
 		});
 	});
 

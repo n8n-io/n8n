@@ -1,5 +1,7 @@
+import { TransactionRunner } from '@n8n/db';
 import {
 	AgentIntegrationConfigSchema,
+	N8N_CHAT_INTEGRATION_TYPE,
 	isDraftIntegration,
 	type AgentIntegrationConfig,
 	type ChatIntegrationDescriptor,
@@ -15,15 +17,20 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import {
 	AgentModificationTelemetryService,
 	diffAgentConfigParts,
-	isUnconfiguredAgent,
 	type AgentActor,
 } from './agent-modification-telemetry.service';
+import { AgentDefinitionService } from './agent-definition.service';
 import { AgentRuntimeCacheService } from './agent-runtime-cache.service';
 import { AgentSetupCompletionService } from './agent-setup-completion.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
-import type { Agent } from './entities/agent.entity';
+import type { Agent, ProjectAgent } from './entities/agent.entity';
 import { toAgentDocument, type AgentSkillRefs } from './json-config/agent-document';
-import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import {
+	ChatIntegrationRegistry,
+	type AgentChatIntegration,
+} from './integrations/agent-chat-integration';
+import { N8nChatFlagService } from './integrations/platforms/n8n-chat/n8n-chat-flag.service';
+import { assertSingleConnections } from './integrations/single-connection';
 import { AgentRepository } from './repositories/agent.repository';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
 import type { IntegrationRef } from './utils/agent-channel';
@@ -43,7 +50,7 @@ export interface IntegrationDelta {
 }
 
 export interface IntegrationDeltaResult {
-	agent: Agent;
+	agent: ProjectAgent;
 	/** False when the delta was already satisfied — nothing was written. */
 	changed: boolean;
 	/** The entry that was actually removed, for the caller's runtime teardown. */
@@ -87,6 +94,26 @@ function projectIntegrations(
 	return next.map((entry) => (matchesIntegrationRef(entry, add) ? add : entry));
 }
 
+function toChatIntegrationDescriptor(i: AgentChatIntegration): ChatIntegrationDescriptor {
+	return {
+		type: i.type,
+		label: i.displayLabel,
+		icon: i.displayIcon,
+		credentialTypes: i.credentialTypes,
+		approvableActions: i.actionToolDefinitions.map(({ name, sensitive }) => ({
+			name,
+			sensitive: sensitive === true,
+		})),
+		...(i.builderGuidance
+			? {
+					capabilities: i.builderGuidance.capabilities,
+					useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
+					useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
+				}
+			: {}),
+	};
+}
+
 @Service()
 export class AgentIntegrationPersistenceService {
 	constructor(
@@ -98,6 +125,9 @@ export class AgentIntegrationPersistenceService {
 		private readonly credentialsService: CredentialsService,
 		private readonly setupCompletionService: AgentSetupCompletionService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly n8nChatFlag: N8nChatFlagService,
+		private readonly definitionService: AgentDefinitionService,
+		private readonly transactionRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -105,23 +135,18 @@ export class AgentIntegrationPersistenceService {
 	 * FE display metadata. Used by `GET /agents/integrations`.
 	 */
 	listChatIntegrations(): ChatIntegrationDescriptor[] {
-		return this.chatIntegrationRegistry.listPublic().map((i) => ({
-			type: i.type,
-			label: i.displayLabel,
-			icon: i.displayIcon,
-			credentialTypes: i.credentialTypes,
-			approvableActions: i.actionToolDefinitions.map(({ name, sensitive }) => ({
-				name,
-				sensitive: sensitive === true,
-			})),
-			...(i.builderGuidance
-				? {
-						capabilities: i.builderGuidance.capabilities,
-						useIntegrationWhen: i.builderGuidance.useIntegrationWhen,
-						useNodeToolWhen: i.builderGuidance.useNodeToolWhen,
-					}
-				: {}),
-		}));
+		return this.chatIntegrationRegistry.listPublic().map(toChatIntegrationDescriptor);
+	}
+
+	/**
+	 * Return the channels the Agent Builder can offer to this user: the public
+	 * catalog, plus n8n Chat while the user is in an active arm of its experiment.
+	 */
+	async listBuilderChatIntegrations(user: User): Promise<ChatIntegrationDescriptor[]> {
+		const integrations = this.listChatIntegrations();
+		const n8nChat = this.chatIntegrationRegistry.get(N8N_CHAT_INTEGRATION_TYPE);
+		if (!n8nChat || !(await this.n8nChatFlag.isEnabledFor(user))) return integrations;
+		return [...integrations, toChatIntegrationDescriptor(n8nChat)];
 	}
 
 	/**
@@ -132,7 +157,7 @@ export class AgentIntegrationPersistenceService {
 	 * Leave runtime connections to the caller. Emit effects after the write.
 	 */
 	async applyIntegrationDelta(
-		agent: Agent,
+		agent: ProjectAgent,
 		delta: IntegrationDelta,
 		context: CredentialIntegrationMutationContext,
 	): Promise<IntegrationDeltaResult> {
@@ -180,13 +205,12 @@ export class AgentIntegrationPersistenceService {
 	}
 
 	private recordIntegrationMutation(
-		agent: Agent,
+		agent: ProjectAgent,
 		skillRefs: AgentSkillRefs,
 		previousIntegrations: AgentIntegrationConfig[],
 		context: CredentialIntegrationMutationContext,
 	): void {
 		const config = agent.schema ? toAgentDocument(agent.schema, skillRefs) : null;
-		const wasUnconfigured = isUnconfiguredAgent(config, previousIntegrations);
 		this.modificationTelemetry.record({
 			agent,
 			config,
@@ -199,11 +223,10 @@ export class AgentIntegrationPersistenceService {
 				previousIntegrations,
 				agent.integrations ?? [],
 			),
-			wasUnconfigured,
 		});
 	}
 	private async applyIntegrationAttempt(
-		agent: Agent,
+		agent: ProjectAgent,
 		{ add, remove }: IntegrationDelta,
 		context: CredentialIntegrationMutationContext,
 		credentialProvider: ReturnType<typeof createAgentCredentialProvider>,
@@ -227,6 +250,7 @@ export class AgentIntegrationPersistenceService {
 		}
 
 		const integrations = projectIntegrations(current, { add, remove });
+		assertSingleConnections(this.chatIntegrationRegistry, integrations);
 		// A channel write keeps the skill refs as they are.
 		const skillRefs = await this.agentSkillRefs.refsForDraft(agent, {});
 		const written = await this.persistIntegrations(
@@ -247,7 +271,7 @@ export class AgentIntegrationPersistenceService {
 	}
 
 	private async persistIntegrations(
-		agent: Agent,
+		agent: ProjectAgent,
 		skillRefs: AgentSkillRefs,
 		integrations: AgentIntegrationConfig[],
 		state: Pick<Agent, 'revision' | 'versionId' | 'activeVersionId'>,
@@ -268,20 +292,26 @@ export class AgentIntegrationPersistenceService {
 			context.user,
 		);
 
-		const written = await this.agentRepository.updateIntegrations(
-			agent.id,
-			integrations,
-			{
-				revision: state.revision,
-				versionId: state.versionId,
-				activeVersionId: state.activeVersionId,
-			},
-			versionId,
-		);
+		const written = await this.transactionRunner.run({}, async (ctx) => {
+			const saved = await this.agentRepository.updateIntegrations(
+				agent.id,
+				integrations,
+				{
+					revision: state.revision,
+					versionId: state.versionId,
+					activeVersionId: state.activeVersionId,
+				},
+				versionId,
+				ctx,
+			);
+			if (!saved) return false;
+			agent.versionId = versionId;
+			agent.revision = state.revision + 1;
+			await this.definitionService.captureVersion(agent, context.user, ctx, context.modifiedBy);
+			return true;
+		});
 		if (!written) return undefined;
 
-		agent.versionId = versionId;
-		agent.revision = state.revision + 1;
 		return { emitSetupCompleted };
 	}
 }

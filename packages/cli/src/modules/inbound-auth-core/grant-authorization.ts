@@ -1,4 +1,4 @@
-import type { ResourceUser } from '@n8n/inbound-auth';
+import type { ResourcePrincipal } from '@n8n/inbound-auth';
 import type { OAuthResourceGrant } from 'n8n-workflow';
 
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -11,7 +11,7 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 export async function authorizeAgainstGrant(
 	workflowFinderService: WorkflowFinderService,
 	grant: OAuthResourceGrant,
-	user: ResourceUser,
+	user: ResourcePrincipal,
 ): Promise<boolean> {
 	if (!grant.executeAccessWorkflowId) return true;
 

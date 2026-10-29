@@ -31,14 +31,14 @@ export const RoleMappingRuleSchema = z.object({
 });
 export type RoleMappingRule = z.infer<typeof RoleMappingRuleSchema>;
 
-export const SurfaceIdSchema = z.enum(['public-api', 'instance-mcp', 'trigger']);
+export const SurfaceIdSchema = z.enum(['public-api', 'instance-mcp', 'trigger', 'apps']);
 export type SurfaceId = z.infer<typeof SurfaceIdSchema>;
 
 export const ManagedBySchema = z.enum(['system', 'admin']);
 export type ManagedBy = z.infer<typeof ManagedBySchema>;
 
 // An admin-supplied endpoint is fetched server-side, so it must be https.
-const HttpsUrl = z
+export const HttpsUrl = z
 	.string()
 	.url()
 	.refine((url) => url.startsWith('https://'), { message: 'must be an https URL' });

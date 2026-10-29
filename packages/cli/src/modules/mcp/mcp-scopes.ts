@@ -60,6 +60,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -76,6 +78,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -84,6 +88,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'unpublish_agent',
 	],
 	'agent:execute': ['call_agent'],
+	'skill:read': ['search_n8n_skills', 'get_skill'],
+	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
@@ -187,6 +193,11 @@ export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:read'],
 	...TOOLS_BY_SCOPE['agent:write'],
 	...TOOLS_BY_SCOPE['agent:execute'],
+]);
+
+export const SKILL_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['skill:read'],
+	...TOOLS_BY_SCOPE['skill:write'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

@@ -89,6 +89,26 @@ describe('ExpressionEngineConfig', () => {
 		});
 	});
 
+	describe('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', () => {
+		test('overrides nativeEvaluationVerifySample', () => {
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', '0.5');
+			expect(Container.get(ExpressionEngineConfig).nativeEvaluationVerifySample).toBe(0.5);
+		});
+
+		test.each(['2', '-0.1'])('falls back to default on %s', (value) => {
+			const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', value);
+			expect(Container.get(ExpressionEngineConfig).nativeEvaluationVerifySample).toBe(0);
+			expect(consoleWarnSpy).toHaveBeenCalled();
+		});
+
+		test('keeps the default on an empty value', () => {
+			vi.stubEnv('N8N_EXPRESSION_ENGINE_NATIVE_EVALUATION_VERIFY_SAMPLE', '');
+			expect(Container.get(ExpressionEngineConfig).nativeEvaluationVerifySample).toBe(0);
+		});
+	});
+
 	describe('N8N_EXPRESSION_ENGINE_TIMEOUT', () => {
 		test('overrides bridgeTimeout', () => {
 			vi.stubEnv('N8N_EXPRESSION_ENGINE_TIMEOUT', '1000');
@@ -156,8 +176,8 @@ describe('ExpressionEngineConfig', () => {
 			expect(Container.get(ExpressionEngineConfig).observabilityEnabled).toBe(true);
 		});
 
-		test('tracesEnabled defaults to true', () => {
-			expect(Container.get(ExpressionEngineConfig).tracesEnabled).toBe(true);
+		test('tracesEnabled defaults to false', () => {
+			expect(Container.get(ExpressionEngineConfig).tracesEnabled).toBe(false);
 		});
 
 		test('slowEvaluationThresholdMs defaults to 50', () => {

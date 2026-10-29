@@ -9,6 +9,7 @@ import type { ErrorReporter } from 'n8n-core';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 
+import { N8N_VERSION } from '../../../../constants';
 import type { RuleRegistry } from '../../breaking-changes.rule-registry.service';
 import type {
 	BreakingChangeDetectionResult,
@@ -122,7 +123,7 @@ describe('MigrationFindingSyncService', () => {
 		workflowRepository.findExistingIds.mockImplementation(async (ids) => ids);
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
 		findingRepository.listForWorkflows.mockResolvedValue([]);
-		findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue([]);
+		findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([]);
 		ownerSuggestionService.suggestOwners.mockResolvedValue([]);
 		breakingChangeService.detect.mockResolvedValue(detectionResult([]));
 
@@ -435,6 +436,17 @@ describe('MigrationFindingSyncService', () => {
 			expect(computeRuleSetFingerprint(['rule-a'])).not.toBe(base);
 		});
 
+		it('changes with the n8n version and stays stable within one version', () => {
+			const ruleIds = ['rule-a', 'rule-b'];
+
+			expect(computeRuleSetFingerprint(ruleIds, '2.0.0')).toBe(
+				computeRuleSetFingerprint(ruleIds, '2.0.0'),
+			);
+			expect(computeRuleSetFingerprint(ruleIds, '2.1.0')).not.toBe(
+				computeRuleSetFingerprint(ruleIds, '2.0.0'),
+			);
+		});
+
 		it('is taken from the rules registered for the target version', async () => {
 			givenWorkflows(0);
 			ruleRegistry.getRules.mockReturnValue(rules('rule-z', 'rule-y'));
@@ -472,14 +484,17 @@ describe('MigrationFindingSyncService', () => {
 	describe('suggested owners', () => {
 		it('stores a suggestion for each workflow in the batch with an open finding and clears the rest', async () => {
 			givenWorkflows(3);
-			findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue(['wf-0000', 'wf-0002']);
+			findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([
+				'wf-0000',
+				'wf-0002',
+			]);
 			ownerSuggestionService.suggestOwners.mockResolvedValue([
 				{ workflowId: 'wf-0000', userId: 'user-1' },
 			]);
 
 			await service.sync(TARGET_VERSION);
 
-			expect(findingRepository.listWorkflowIdsWithOpenFindings).toHaveBeenCalledWith(
+			expect(findingRepository.listWorkflowIdsWithUnresolvedFindings).toHaveBeenCalledWith(
 				TARGET_VERSION,
 				['wf-0000', 'wf-0001', 'wf-0002'],
 				expect.anything(),
@@ -690,14 +705,14 @@ describe('MigrationFindingSyncService', () => {
 		});
 
 		it('refreshes the suggested owner of that workflow', async () => {
-			findingRepository.listWorkflowIdsWithOpenFindings.mockResolvedValue([WORKFLOW_ID]);
+			findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([WORKFLOW_ID]);
 			ownerSuggestionService.suggestOwners.mockResolvedValue([
 				{ workflowId: WORKFLOW_ID, userId: 'user-1' },
 			]);
 
 			await service.syncWorkflow(WORKFLOW_ID);
 
-			expect(findingRepository.listWorkflowIdsWithOpenFindings).toHaveBeenCalledWith(
+			expect(findingRepository.listWorkflowIdsWithUnresolvedFindings).toHaveBeenCalledWith(
 				REPORT_VERSION,
 				[WORKFLOW_ID],
 				expect.anything(),
@@ -734,11 +749,11 @@ describe('MigrationFindingSyncService', () => {
 	});
 
 	describe('syncIfStale', () => {
-		function syncRecord(ruleIds: string[]): MigrationFindingSync {
+		function syncRecord(ruleIds: string[], n8nVersion?: string): MigrationFindingSync {
 			return {
 				targetVersion: TARGET_VERSION,
 				syncedAt: new Date(),
-				ruleSetFingerprint: computeRuleSetFingerprint(ruleIds),
+				ruleSetFingerprint: computeRuleSetFingerprint(ruleIds, n8nVersion),
 			} as MigrationFindingSync;
 		}
 
@@ -762,6 +777,21 @@ describe('MigrationFindingSyncService', () => {
 			expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
 				expect.objectContaining({
 					ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b']),
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('syncs when the stored fingerprint comes from an older n8n version', async () => {
+			givenWorkflows(2);
+			syncRepository.getForVersion.mockResolvedValue(syncRecord(['rule-a', 'rule-b'], '0.0.1'));
+
+			await service.syncIfStale(TARGET_VERSION);
+
+			expect(breakingChangeService.detect).toHaveBeenCalledWith(TARGET_VERSION);
+			expect(syncRepository.upsertForVersion).toHaveBeenCalledWith(
+				expect.objectContaining({
+					ruleSetFingerprint: computeRuleSetFingerprint(['rule-a', 'rule-b'], N8N_VERSION),
 				}),
 				expect.anything(),
 			);

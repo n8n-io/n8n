@@ -1,17 +1,16 @@
-import { N8nAiActivityStepGroup, N8nIcon } from '@n8n/design-system';
+import { N8nIcon } from '@n8n/design-system';
 import userEvent from '@testing-library/user-event';
 import { mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { nextTick } from 'vue';
 import AgentChatPlan from '../components/AgentChatPlan.vue';
+import ChatCollapsibleContainer from '@/features/ai/shared/components/ChatCollapsibleContainer.vue';
 import { planTask, planView } from './fixtures/agent-plan';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({
 		baseText: (key: string, options?: { interpolate?: Record<string, string | number> }) => {
 			if (key === 'agents.chat.plan.title') return `Plan: ${options?.interpolate?.title}`;
-			if (key === 'agents.chat.plan.progress')
-				return `${options?.interpolate?.done} of ${options?.interpolate?.total} tasks done`;
 			return key;
 		},
 	}),
@@ -136,6 +135,29 @@ describe('AgentChatPlan timer', () => {
 });
 
 describe('AgentChatPlan', () => {
+	it('keeps plan details and items in one scroll viewport', () => {
+		const wrapper = mount(AgentChatPlan, {
+			props: {
+				plan: planView({
+					document: {
+						title: 'Research options',
+						presentation: { label: 'Checking sources', detail: 'Reviewed two sources.' },
+						items: [planTask(1)],
+					},
+				}),
+			},
+		});
+		try {
+			const viewport = wrapper.get('[data-reka-scroll-area-viewport]');
+			expect(viewport.element.tagName).toBe('DIV');
+			expect(viewport.text()).toContain('Reviewed two sources.');
+			expect(viewport.get('[data-testid="agent-chat-plan-items"]').text()).toContain('Task 1');
+			expect(viewport.attributes('style')).toContain('max-height: 20vh');
+		} finally {
+			wrapper.unmount();
+		}
+	});
+
 	it('starts collapsed and supports keyboard expansion without changing focus', async () => {
 		const user = userEvent.setup();
 		const wrapper = mount(AgentChatPlan, { props: { plan: planView() }, attachTo: document.body });
@@ -143,14 +165,12 @@ describe('AgentChatPlan', () => {
 			const trigger = wrapper.get('button');
 			expect(trigger.attributes('aria-expanded')).toBe('false');
 			expect(trigger.text()).toContain('Plan: Compare support platforms');
-			expect(wrapper.getComponent(N8nAiActivityStepGroup).props('contentPosition')).toBe('below');
+			expect(wrapper.getComponent(ChatCollapsibleContainer).props('expanded')).toBe(false);
 			expect(trigger.text()).not.toContain('1 of 3 tasks done');
 			trigger.element.focus();
 			await user.keyboard('{Enter}');
 			expect(trigger.attributes('aria-expanded')).toBe('true');
-			expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe(
-				'1 of 3 tasks done',
-			);
+			expect(wrapper.find('[data-testid="agent-chat-plan-summary"]').exists()).toBe(false);
 			expect(wrapper.get('[data-testid="agent-chat-plan-items"]').text()).toContain('Research');
 			expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('tabindex')).toBe(
 				'0',
@@ -188,12 +208,17 @@ describe('AgentChatPlan', () => {
 		const trigger = wrapper.get('button');
 		const indicator = () => wrapper.findAllComponents(N8nIcon)[0];
 		expect(trigger.text()).toContain('Checking sources');
+		expect(wrapper.findAll('[role="status"]')).toHaveLength(1);
+		expect(trigger.find('[role="status"]').exists()).toBe(false);
+		expect(wrapper.get('[role="status"]').text()).toBe('Checking sources');
 		expect(indicator().props()).toMatchObject({ icon: 'loader-circle', spin: true });
 		await trigger.trigger('click');
 		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').attributes('aria-label')).toBe(
 			'Research options',
 		);
-		expect(wrapper.get('p').text()).toBe('Reviewed two of three sources.');
+		expect(wrapper.get('[title="Reviewed two of three sources."]').text()).toBe(
+			'Reviewed two of three sources.',
+		);
 		await wrapper.setProps({
 			plan: {
 				...plan,
@@ -205,21 +230,26 @@ describe('AgentChatPlan', () => {
 			},
 		});
 		expect(trigger.text()).toContain('Stopped checking');
+		expect(wrapper.get('[role="status"]').text()).toBe('Stopped checking');
 		await wrapper.setProps({ plan: { ...wrapper.props('plan'), revision: 3, closed: true } });
 		expect(trigger.text()).toContain('One source remains unchecked.');
-		expect(wrapper.getComponent(N8nAiActivityStepGroup).attributes('title')).toBe(
+		expect(wrapper.get('[role="status"]').text()).toBe('One source remains unchecked.');
+		expect(wrapper.getComponent(ChatCollapsibleContainer).attributes('title')).toBe(
 			'One source remains unchecked.',
 		);
 		expect(wrapper.text()).not.toContain('Plan closed');
 		expect(trigger.text()).not.toContain('Stopped checking');
 		expect(indicator().props()).toMatchObject({ icon: 'list-checks', spin: false });
-		expect(wrapper.text().match(/One source remains unchecked\./g)).toHaveLength(1);
+		expect(wrapper.text().match(/One source remains unchecked\./g)).toHaveLength(2);
+		expect(wrapper.get('[data-testid="agent-chat-plan-details"]').text()).not.toContain(
+			'One source remains unchecked.',
+		);
 		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
 			'in_progress',
 			'failed',
 			'pending',
 		]);
-		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('0 of 3 tasks done');
+		expect(wrapper.find('[data-testid="agent-chat-plan-summary"]').exists()).toBe(false);
 		expect(trigger.attributes('aria-expanded')).toBe('true');
 		wrapper.unmount();
 	});
@@ -321,12 +351,12 @@ describe('AgentChatPlan', () => {
 		await wrapper.get('button').trigger('click');
 		expect(
 			wrapper.findAll('[data-status]').map((row) => row.getComponent(N8nIcon).props('icon')),
-		).toEqual(['check', 'circle', 'loader-circle', 'check', 'x', 'x']);
+		).toEqual(['check', 'circle', 'loader', 'check', 'x', 'x']);
 		expect(wrapper.findAll('[data-status]').map((row) => row.attributes('data-status'))).toEqual([
 			'done',
 			...statuses,
 		]);
-		expect(wrapper.get('[data-testid="agent-chat-plan-summary"]').text()).toBe('1 of 5 tasks done');
+		expect(wrapper.find('[data-testid="agent-chat-plan-summary"]').exists()).toBe(false);
 		expect(
 			wrapper.findAll('[data-status]').map((row) => row.getComponent(N8nIcon).props('spin')),
 		).toEqual([false, false, true, false, false, false]);
@@ -341,7 +371,7 @@ describe('AgentChatPlan', () => {
 		await wrapper.get('button').trigger('click');
 		expect(wrapper.find('img').exists()).toBe(false);
 		expect(wrapper.findAll('li').map((row) => row.text())).toEqual([title, 'Task 2']);
-		expect(wrapper.getComponent(N8nAiActivityStepGroup).attributes('title')).toBe(title);
+		expect(wrapper.getComponent(ChatCollapsibleContainer).attributes('title')).toBe(title);
 		wrapper.unmount();
 	});
 
@@ -356,7 +386,8 @@ describe('AgentChatPlan', () => {
 		});
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
 		await wrapper.get('button').trigger('click');
-		expect(wrapper.text()).toContain('0 of 0 tasks done');
+		expect(wrapper.get('button').text()).toContain('Plan: New plan');
+		expect(wrapper.find('[data-testid="agent-chat-plan-summary"]').exists()).toBe(false);
 		expect(wrapper.findAll('li')).toHaveLength(0);
 		wrapper.unmount();
 	});

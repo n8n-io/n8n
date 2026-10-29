@@ -683,6 +683,18 @@ describe('SourceControlService', () => {
 			});
 		});
 
+		it('does not run the policy preview, because the import enforces on its own', async () => {
+			mockStatusService.getStatus.mockResolvedValueOnce([]);
+			sourceControlImportService.importWorkflowFromWorkFolder.mockResolvedValue([]);
+
+			await sourceControlService.pullWorkfolder(mock<User>({ id: 'user-1' }), {
+				force: true,
+				autoPublish: 'none',
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).not.toHaveBeenCalled();
+		});
+
 		it('announces each pulled workflow, but not one skipped by the content policy', async () => {
 			const user = mock<User>({ id: 'user-1' });
 			mockStatusService.getStatus.mockResolvedValueOnce([
@@ -1113,6 +1125,34 @@ describe('SourceControlService', () => {
 			expect(pushResult.find((i) => i.type === 'folders')).toHaveProperty('conflict', false);
 		});
 
+		it('previews the content-import policy on a pull status', async () => {
+			const files = [mock<SourceControlledFile>({ id: 'workflow-1', type: 'workflow' })];
+			mockStatusService.getStatus.mockResolvedValue(files);
+
+			await sourceControlService.getStatus(globalAdminUserWithId, {
+				direction: 'pull',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).toHaveBeenCalledWith(
+				files,
+				globalAdminUserWithId.id,
+			);
+		});
+
+		it('does not preview the content-import policy on a push status', async () => {
+			mockStatusService.getStatus.mockResolvedValue([]);
+
+			await sourceControlService.getStatus(globalAdminUser, {
+				direction: 'push',
+				verbose: false,
+				preferLocalVersion: false,
+			});
+
+			expect(sourceControlImportService.previewContentImportPolicy).not.toHaveBeenCalled();
+		});
+
 		it('should throw `ForbiddenError` if direction is pull and user is not allowed to globally pull', async () => {
 			// ARRANGE
 			const user = globalMemberUser;
@@ -1504,6 +1544,37 @@ describe('SourceControlService', () => {
 
 			expect(gitService.fetch).toHaveBeenCalledTimes(2);
 			expect(result).toEqual({ branches: ['main'], currentBranch: 'main' });
+		});
+
+		it('marks the instance as v1 on the first connect, also without a matching branch', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(false);
+			gitService.getBranches.mockResolvedValue({ branches: ['develop'], currentBranch: '' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: '',
+				connected: true,
+				environmentsVersion: 'v1',
+			});
+		});
+
+		it('keeps the version when a connected repository initializes again', async () => {
+			preferencesService.isSourceControlConnected = vi.fn().mockReturnValue(true);
+			gitService.getBranches.mockResolvedValue({ branches: ['main'], currentBranch: 'main' });
+
+			await sourceControlService.initializeRepository(
+				{ branchName: 'main', repositoryUrl: 'git@github.com:test/repo.git' } as any,
+				mock<User>(),
+			);
+
+			expect(preferencesService.setPreferences).toHaveBeenCalledWith({
+				branchName: 'main',
+				connected: true,
+			});
 		});
 	});
 

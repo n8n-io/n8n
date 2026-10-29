@@ -1139,6 +1139,8 @@ describe('ScalingService', () => {
 				});
 
 				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
 					'exec-123',
 					expect.objectContaining({
 						status: 'waiting',
@@ -1150,6 +1152,27 @@ describe('ScalingService', () => {
 				);
 			});
 
+			it('should record the node time saved minutes of a v2 job-finished result', () => {
+				getHandler('global:progress')('job-789', {
+					kind: 'job-finished',
+					version: 2,
+					executionId: 'exec-123',
+					workerId: 'worker-456',
+					success: true,
+					status: 'success',
+					startedAt: '2026-07-25T11:59:00.000Z',
+					stoppedAt: '2026-07-25T11:59:30.000Z',
+					nodeTimeSavedMinutes: 60,
+				});
+
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
+					'exec-123',
+					expect.objectContaining({ nodeTimeSavedMinutes: 60 }),
+				);
+			});
+
 			it('should record a v1 job-finished message without a result', () => {
 				getHandler('global:progress')('job-789', {
 					kind: 'job-finished',
@@ -1158,7 +1181,12 @@ describe('ScalingService', () => {
 					success: true,
 				});
 
-				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith('exec-123', undefined);
+				expect(jobOutcomeTracker.recordFinished).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
+					'exec-123',
+					undefined,
+				);
 			});
 
 			it('should record a job-failed report as a handled error', () => {
@@ -1171,10 +1199,12 @@ describe('ScalingService', () => {
 				});
 
 				expect(jobOutcomeTracker.recordFailed).toHaveBeenCalledWith(
+					'jobs',
+					'job-789',
 					'exec-123',
 					expect.any(OperationalError),
 				);
-				expect(jobOutcomeTracker.recordFailed.mock.calls[0][1].message).toBe('boom');
+				expect(jobOutcomeTracker.recordFailed.mock.calls[0][3].message).toBe('boom');
 			});
 
 			it('should settle the wait for a job Bull reports as failed, by queue and job ID', () => {
@@ -1231,7 +1261,7 @@ describe('ScalingService', () => {
 				});
 
 				await expect(wait).resolves.toBeUndefined();
-				expect(service.popJobResult('exec-1')).toBeUndefined();
+				expect(service.popJobResult(job)).toBeUndefined();
 			});
 		});
 	});
@@ -1280,7 +1310,7 @@ describe('ScalingService', () => {
 				runningJobs: 1,
 			});
 
-			scalingService.popJobResult('exec-123');
+			scalingService.popJobResult(mock<Job>({ id: 'job-789', queue: { name: 'jobs' } }));
 
 			expect(scalingService.getDiagnosticCounts().jobResults).toBe(0);
 		});

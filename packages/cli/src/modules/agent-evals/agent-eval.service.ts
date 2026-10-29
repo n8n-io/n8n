@@ -27,6 +27,7 @@ import {
 	AgentEvalRunRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from 'n8n-workflow';
 import pLimit from 'p-limit';
 
 import { BadRequestError, ForbiddenError, NotFoundError, OperationalError } from '@n8n/errors';
@@ -108,6 +109,10 @@ export class AgentEvalService {
 			throw new BadRequestError(
 				`The dataset's agentId ('${payload.agentId}') does not match the agent in the URL.`,
 			);
+		}
+
+		if (payload.datasetSource === 'data_table') {
+			await this.assertDataTableReadable(user, payload.datasetRef.dataTableId);
 		}
 
 		const dataset = await this.datasetRepository.createDataset({
@@ -323,8 +328,13 @@ export class AgentEvalService {
 		return { count, data: runs.map(toRunRecord) };
 	}
 
-	/** A run with a page of its per-case results — the "open a run" view. */
+	/**
+	 * A run with a page of its per-case results — the "open a run" view. Results
+	 * hold copies of the source rows, so the reader needs the same table access
+	 * the runner required of whoever started the run.
+	 */
 	async getRunDetail(
+		user: User,
 		agentId: string,
 		projectId: string,
 		runId: string,
@@ -332,6 +342,7 @@ export class AgentEvalService {
 	): Promise<AgentEvalRunDetail> {
 		await this.assertAgentInProject(agentId, projectId);
 		const run = await this.resolveRun(agentId, runId);
+		await this.assertDatasetSourceReadable(user, await this.resolveDataset(agentId, run.datasetId));
 		const [results, count] = await this.resultRepository.findAndCountByRunId(runId, page);
 		return { ...toRunRecord(run), results: { count, data: results.map(toResultRecord) } };
 	}
@@ -539,6 +550,24 @@ export class AgentEvalService {
 		const dataset = await this.datasetRepository.findByIdAndAgentId(datasetId, agentId);
 		if (!dataset) throw new NotFoundError(`Agent eval dataset ${datasetId} not found.`);
 		return dataset;
+	}
+
+	// The table may live in another project than the agent, so `@ProjectScope` on
+	// the agent's project says nothing about it. Only data-table datasets are
+	// runnable today, so no other source has stored rows to protect.
+	private async assertDatasetSourceReadable(user: User, dataset: AgentEvalDataset): Promise<void> {
+		if (dataset.datasetSource !== 'data_table') return;
+		if (!('dataTableId' in dataset.datasetRef)) {
+			throw new UnexpectedError(
+				`Agent eval dataset ${dataset.id} has a 'data_table' source without a table id.`,
+			);
+		}
+		await this.assertDataTableReadable(user, dataset.datasetRef.dataTableId);
+	}
+
+	private async assertDataTableReadable(user: User, dataTableId: string): Promise<void> {
+		const allowed = await userHasScopes(user, ['dataTable:readRow'], false, { dataTableId });
+		if (!allowed) throw new ForbiddenError('You do not have access to this dataset.');
 	}
 
 	private async resolveRun(agentId: string, runId: string): Promise<AgentEvalRun> {

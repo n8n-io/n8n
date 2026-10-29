@@ -26,7 +26,8 @@ vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
 }));
 
-vi.mock('./oauthCallback', () => ({
+vi.mock('./oauthCallback', async (importOriginal) => ({
+	...(await importOriginal<typeof import('./oauthCallback')>()),
 	getTrustedOAuthOrigins: () => ['http://localhost:5678'],
 	hasOAuthTokenData: vi.fn(() => false),
 	waitForOAuthCallback: vi.fn(async () => 'success'),

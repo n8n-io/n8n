@@ -24,7 +24,7 @@ function makeModelLookup(impl?: ModelLookup['list']): ModelLookup & { list: Mock
  * path where the credential can actually reach it.
  */
 function makeModelLookupServingDefault(credentialType: string) {
-	const { defaultModel } = LLM_PROVIDER_DEFAULTS[credentialType];
+	const defaultModel = LLM_PROVIDER_DEFAULTS[credentialType].defaultModel as string;
 	return makeModelLookup(async () => [{ name: defaultModel, value: defaultModel }]);
 }
 
@@ -43,7 +43,7 @@ function makeFreeCredits(
 	};
 }
 
-describe('resolve_llm tool', () => {
+describe('agent_builder_resolve_llm tool', () => {
 	it('auto-resolves when exactly one LLM-provider credential exists', async () => {
 		const credentialProvider = makeProvider([
 			{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' },
@@ -429,13 +429,18 @@ describe('resolve_llm tool', () => {
 			});
 		});
 
-		it('LLM_PROVIDER_PRIORITY covers every provider in LLM_PROVIDER_DEFAULTS', () => {
-			const definedProviders = new Set(Object.values(LLM_PROVIDER_DEFAULTS).map((d) => d.provider));
+		it('LLM_PROVIDER_PRIORITY covers every provider with a default model', () => {
+			// A provider without a default model (Microsoft Foundry) is never auto-picked.
+			const definedProviders = new Set(
+				Object.values(LLM_PROVIDER_DEFAULTS)
+					.filter((d) => d.defaultModel !== undefined)
+					.map((d) => d.provider),
+			);
 			expect(new Set(LLM_PROVIDER_PRIORITY)).toEqual(definedProviders);
 		});
 	});
 
-	// INS-1263: resolve_llm returned the maintained default without checking it
+	// INS-1263: agent_builder_resolve_llm returned the maintained default without checking it
 	// against the credential, so a model the provider does not serve shipped into
 	// the agent config and every call then failed with `404 Not Found`.
 	describe('provider default verification for own credentials', () => {
@@ -763,6 +768,121 @@ describe('resolve_llm tool', () => {
 				provider: 'anthropic',
 				requestedModel: 'claude-haiku-4-5',
 				error: 'credentials invalid',
+			});
+		});
+	});
+
+	describe('Microsoft Foundry deployments', () => {
+		const chat = { name: 'my-chat (gpt-4.1)', value: 'my-chat', servedModel: 'gpt-4.1' };
+		const mini = { name: 'my-mini (gpt-4.1-mini)', value: 'my-mini', servedModel: 'gpt-4.1-mini' };
+
+		describe.each(['azureOpenAiApi', 'azureEntraCognitiveServicesOAuth2Api'])(
+			'with %s',
+			(credentialType) => {
+				function resolveFoundry(input: Record<string, unknown>, deployments: unknown[] | Error) {
+					const modelLookup = makeModelLookup(async () => {
+						if (deployments instanceof Error) throw deployments;
+						return deployments as Awaited<ReturnType<ModelLookup['list']>>;
+					});
+					const tool = buildResolveLlmTool({
+						credentialProvider: makeProvider([
+							{ id: 'f1', name: 'My Foundry', type: credentialType },
+						]),
+						modelLookup,
+						freeCredits: makeFreeCredits(),
+					});
+					return { result: tool.handler!(input, {}), modelLookup };
+				}
+
+				it('resolves the only deployment when no model is requested', async () => {
+					const { result, modelLookup } = resolveFoundry({ provider: 'azure-openai' }, [chat]);
+
+					await expect(result).resolves.toEqual({
+						ok: true,
+						provider: 'azure-openai',
+						model: 'my-chat',
+						credentialId: 'f1',
+						credentialName: 'My Foundry',
+					});
+					expect(modelLookup.list).toHaveBeenCalledWith('f1', credentialType, 'azure-openai');
+				});
+
+				it('lists the deployments when there are several and no model is requested', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai' }, [chat, mini]);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'unknown_model',
+						provider: 'azure-openai',
+						availableModels: [chat, mini],
+					});
+				});
+
+				it('matches a requested model to the deployment that serves it', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'gpt-4.1' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toMatchObject({ ok: true, model: 'my-chat' });
+				});
+
+				it('resolves a requested deployment name', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'my-mini' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toMatchObject({ ok: true, model: 'my-mini' });
+				});
+
+				it('lists the deployments when the requested model matches none', async () => {
+					const { result } = resolveFoundry({ provider: 'azure-openai', model: 'claude-opus-5' }, [
+						chat,
+						mini,
+					]);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'unknown_model',
+						provider: 'azure-openai',
+						requestedModel: 'claude-opus-5',
+						availableModels: [chat, mini],
+					});
+				});
+
+				it('passes the reason a credential cannot list deployments to the builder', async () => {
+					const { result } = resolveFoundry(
+						{ provider: 'azure-openai' },
+						new Error('Agents need a Microsoft Foundry credential.'),
+					);
+
+					await expect(result).resolves.toEqual({
+						ok: false,
+						reason: 'model_lookup_failed',
+						provider: 'azure-openai',
+						error: 'Agents need a Microsoft Foundry credential.',
+					});
+				});
+			},
+		);
+
+		it('does not auto-pick Foundry over a provider with a default model', async () => {
+			const modelLookup = makeModelLookupServingDefault('anthropicApi');
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider([
+					{ id: 'f1', name: 'My Foundry', type: 'azureOpenAiApi' },
+					{ id: 'a1', name: 'My Anthropic', type: 'anthropicApi' },
+				]),
+				modelLookup,
+				freeCredits: makeFreeCredits(),
+			});
+
+			await expect(tool.handler!({}, {})).resolves.toMatchObject({
+				ok: true,
+				provider: 'anthropic',
+				autoPicked: true,
+				otherProviders: ['azure-openai'],
 			});
 		});
 	});
@@ -1161,6 +1281,123 @@ describe('resolve_llm tool', () => {
 				provider: 'openai',
 				availableModels: [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }],
 			});
+		});
+	});
+
+	// The tool description says only when to call the tool. What to do with a
+	// result travels on that result, so it costs context only when it applies.
+	describe('next step for the model', () => {
+		async function modelView(
+			credentials: CredentialListItem[],
+			input: Record<string, unknown> = {},
+			modelLookup: ModelLookup = makeModelLookup(),
+			freeCredits = makeFreeCredits(),
+		) {
+			const tool = buildResolveLlmTool({
+				credentialProvider: makeProvider(credentials),
+				modelLookup,
+				freeCredits,
+			});
+			const result = await tool.handler!(input, {});
+			return tool.toModelOutput!(result) as Record<string, unknown>;
+		}
+
+		it('adds no next step to a plain resolution', async () => {
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{},
+				makeModelLookupServingDefault('openAiApi'),
+			);
+
+			expect(view.ok).toBe(true);
+			expect(view).not.toHaveProperty('nextStep');
+		});
+
+		it('tells the model to defer a missing credential during an initial build', async () => {
+			const view = await modelView([], { provider: 'anthropic' });
+
+			expect(view.reason).toBe('missing_credential');
+			expect(view.nextStep).toContain('agent_builder_finish_setup');
+			expect(view.nextStep).toContain('existing Agent');
+		});
+
+		it('tells the model to pass the picked credential id after an ambiguous result', async () => {
+			const view = await modelView(
+				[
+					{ id: 'c1', name: 'Work', type: 'anthropicApi' },
+					{ id: 'c2', name: 'Personal', type: 'anthropicApi' },
+				],
+				{ provider: 'anthropic' },
+			);
+
+			expect(view.reason).toBe('ambiguous_credential');
+			expect(view.nextStep).toContain('credentialId');
+		});
+
+		it('tells the model to retry an unknown model from the returned list', async () => {
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{ model: 'gpt-0' },
+				makeModelLookup(async () => [{ name: 'GPT-5 mini', value: 'gpt-5-mini' }]),
+			);
+
+			expect(view.reason).toBe('unknown_model');
+			expect(view.nextStep).toContain('availableModels');
+			expect(view.nextStep).not.toContain('sample');
+		});
+
+		it('says a truncated model list is only a sample', async () => {
+			const models = Array.from({ length: 40 }, (_, i) => ({ name: `m${i}`, value: `m${i}` }));
+			const view = await modelView(
+				[{ id: 'c1', name: 'My OpenAI', type: 'openAiApi' }],
+				{ model: 'gpt-0' },
+				makeModelLookup(async () => models),
+			);
+
+			expect(view.availableModelsTruncated).toBe(true);
+			expect(view.nextStep).toContain('sample');
+			expect(view.nextStep).toContain('agent_builder_ask_questions');
+		});
+
+		it('tells the model to mention claimed free OpenAI credits', async () => {
+			const view = await modelView(
+				[],
+				{},
+				makeModelLookup(),
+				makeFreeCredits(
+					() => true,
+					async () => ({ credentialId: 'free', credentialName: 'n8n free OpenAI API credits' }),
+				),
+			);
+
+			expect(view.claimedFreeOpenAiCredits).toBe(true);
+			expect(view.nextStep).toContain('free OpenAI credits');
+		});
+
+		it('tells the model to state an auto-picked provider as changeable', async () => {
+			const view = await modelView(
+				[
+					{ id: 'c1', name: 'My Anthropic', type: 'anthropicApi' },
+					{ id: 'c2', name: 'My OpenAI', type: 'openAiApi' },
+				],
+				{},
+				makeModelLookup(async (_id, type) => {
+					const defaultModel = LLM_PROVIDER_DEFAULTS[type].defaultModel as string;
+					return [{ name: defaultModel, value: defaultModel }];
+				}),
+			);
+
+			expect(view.autoPicked).toBe(true);
+			expect(view.nextStep).toContain('provider and model');
+			expect(view.nextStep).toContain('changeable');
+		});
+
+		it('tells the model to pick a supported provider after an unsupported one', async () => {
+			const view = await modelView([], { provider: 'not-a-provider' });
+
+			expect(view.reason).toBe('unsupported_provider');
+			expect(view.nextStep).toContain('supportedProviders');
+			expect(view.nextStep).toContain('agent_builder_finish_setup');
 		});
 	});
 });

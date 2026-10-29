@@ -671,7 +671,7 @@ describe('N8nContextMenu', () => {
 		it('should render a submenu trigger with a chevron', async () => {
 			await renderOpen({ items: submenuItems });
 
-			expect(document.querySelector('[data-icon="chevron-right"]')).toBeInTheDocument();
+			expect(document.querySelector('[data-icon="chevron-right-12"]')).toBeInTheDocument();
 			expect(document.body.textContent).toContain('Export as…');
 		});
 

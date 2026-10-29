@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-param-display-name-miscased */
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, UserError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
@@ -10,6 +10,8 @@ import type {
 import { mockDeep } from 'vitest-mock-extended';
 
 import { resolveLakebaseSchemaUrl, resolveLakebaseTableUrl } from '../actions/lakebase/helpers';
+import { OPENAPI_DISABLED_NOTICE } from '../actions/lakebase/openApiDocument';
+import { LAKEBASE_ERROR_HINTS } from '../transport/lakebaseErrors';
 
 // The shared Lakebase transport waits before its schema-cache retry
 vi.mock('@n8n/utils/sleep', () => ({
@@ -22,6 +24,7 @@ import {
 	getLakebaseSchemas,
 	getLakebaseTables,
 } from '../methods/listSearch';
+import { getLakebaseColumns } from '../methods/loadOptions';
 import { resolveLakebaseRestBase } from '../transport';
 
 const HOST = 'https://adb-1234567890.1.azuredatabricks.net';
@@ -86,14 +89,14 @@ const createLoadOptionsContext = (params: Record<string, Locator> = {}) => {
 	return context;
 };
 
-const createExecuteContext = (locators: Record<string, string>) => {
+const createExecuteContext = (locators: Record<string, string>, authentication = 'oAuth2') => {
 	const context = mockDeep<IExecuteFunctions>();
 	// Also satisfies the `'getInputData' in context` guard in getActiveCredentialType
 	context.getInputData.mockReturnValue([]);
 	context.getCredentials.mockResolvedValue({ host: HOST });
 	context.getNode.mockReturnValue(node);
 	context.getNodeParameter.mockImplementation((name: string, index: number) =>
-		name === 'authentication' ? 'oAuth2' : index === ITEM ? locators[name] : undefined,
+		name === 'authentication' ? authentication : index === ITEM ? locators[name] : undefined,
 	);
 	return context;
 };
@@ -501,21 +504,19 @@ describe('listSearch -> getLakebaseTables', () => {
 		expect(error.message).toBe(
 			'Turn on the "OpenAPI specification" setting of the Data API to list tables, or enter the table name By ID',
 		);
-		expect(error.description).toBe(
-			'In Databricks open the project, then Data API > API > Advanced settings, and enable OpenAPI specification.',
-		);
+		expect(error.description).toBe(OPENAPI_DISABLED_NOTICE);
 	});
 
-	it('rethrows other Data API errors untouched', async () => {
+	it('rethrows another Data API error with its own hint, not the OpenAPI one', async () => {
 		const context = createLoadOptionsContext(selectedSchema);
 		const error = apiErrorFromBody(401, { code: 'PGRST301', message: 'invalid token permissions' });
-		const { message: originalMessage, description: originalDescription } = error;
 		apiMock(context).mockResolvedValueOnce(endpointsResponse).mockRejectedValueOnce(error);
 
 		await expect(getLakebaseTables.call(context)).rejects.toBe(error);
 
-		expect(error.message).toBe(originalMessage);
-		expect(error.description).toBe(originalDescription);
+		expect(error.message).toBe('invalid token permissions');
+		expect(error.description).toBe(LAKEBASE_ERROR_HINTS.get('PGRST301'));
+		expect(error.description).not.toContain('OpenAPI');
 	});
 
 	it('surfaces a legible PERMISSION_DENIED from the endpoints lookup', async () => {
@@ -639,6 +640,20 @@ describe('resolveLakebaseRestBase', () => {
 	});
 });
 
+describe('resolveLakebaseRestBase auth', () => {
+	it('refuses personal access token auth before any request', async () => {
+		const context = createExecuteContext(defaultLocators(), 'accessToken');
+
+		const promise = resolveLakebaseRestBase(context, 'spike-test', 'production');
+
+		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(promise).rejects.toMatchObject({
+			message: 'Lakebase requires OAuth2 authentication',
+		});
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+});
+
 describe('resolveLakebaseRestBase memo', () => {
 	it('resolves each project and branch pair once per context', async () => {
 		const context = createExecuteContext(defaultLocators());
@@ -670,6 +685,18 @@ describe('resolveLakebaseRestBase memo', () => {
 });
 
 describe('resolveLakebaseSchemaUrl', () => {
+	it('refuses personal access token auth before any request', async () => {
+		const context = createExecuteContext(defaultLocators(), 'accessToken');
+
+		const promise = resolveLakebaseSchemaUrl(context, ITEM);
+
+		await expect(promise).rejects.toBeInstanceOf(NodeOperationError);
+		await expect(promise).rejects.toMatchObject({
+			message: 'Lakebase requires OAuth2 authentication',
+		});
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+
 	it('reads the four locators of the item and returns the encoded schema URL', async () => {
 		const context = createExecuteContext({ ...defaultLocators(), lakebaseSchema: 'my schema' });
 		apiMock(context).mockResolvedValueOnce(endpointsResponse);
@@ -742,6 +769,91 @@ describe('resolveLakebaseTableUrl', () => {
 			message: 'Select a Lakebase table',
 			context: { itemIndex: ITEM },
 		});
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+});
+
+// `encodeURIComponent('..')` is `'..'`, so a traversal value used to survive
+// encoding and then normalise away, moving a bearer-carrying request to a
+// different endpoint. `toPathSegment` rejects it instead.
+describe('Lakebase path segments reject a traversal value', () => {
+	// An empty locator is rejected earlier by readLocator with a friendlier
+	// message, and is already covered above; only these reach toPathSegment.
+	const TRAVERSAL = ['..', '.'];
+
+	describe.each(TRAVERSAL)('value %j', (value) => {
+		it.each(['lakebaseProject', 'lakebaseBranch'])(
+			'rejects it in %s before any request',
+			async (name) => {
+				const context = createExecuteContext({ ...defaultLocators(), [name]: value });
+
+				await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toThrow();
+				expect(apiMock(context)).not.toHaveBeenCalled();
+			},
+		);
+
+		it.each(['lakebaseDatabase', 'lakebaseSchema'])(
+			'rejects it in %s before the Data API is called',
+			async (name) => {
+				const context = createExecuteContext({ ...defaultLocators(), [name]: value });
+				apiMock(context).mockResolvedValueOnce(endpointsResponse);
+
+				await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toThrow();
+				// Only the endpoint lookup, which carries no user-supplied segment
+				expect(apiMock(context)).toHaveBeenCalledTimes(1);
+			},
+		);
+
+		it('rejects it in lakebaseTable before the Data API is called', async () => {
+			const context = createExecuteContext({ ...defaultLocators(), lakebaseTable: value });
+			apiMock(context).mockResolvedValueOnce(endpointsResponse);
+
+			await expect(resolveLakebaseTableUrl(context, ITEM)).rejects.toThrow();
+			expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	it.each(TRAVERSAL)('reports %j as an invalid identifier', async (value) => {
+		const context = createExecuteContext({ ...defaultLocators(), lakebaseProject: value });
+
+		await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toBeInstanceOf(UserError);
+		await expect(resolveLakebaseSchemaUrl(context, ITEM)).rejects.toMatchObject({
+			message: `Invalid identifier: "${value}" is not allowed`,
+		});
+	});
+
+	it('rejects a traversal project in the branch picker before any request', async () => {
+		const context = createLoadOptionsContext({ lakebaseProject: locator('..') });
+
+		await expect(getLakebaseBranches.call(context)).rejects.toBeInstanceOf(UserError);
+		expect(apiMock(context)).not.toHaveBeenCalled();
+	});
+
+	// The column loader builds the schema URL itself rather than going through
+	// the resolvers above, so it needs its own case.
+	it.each(['lakebaseDatabase', 'lakebaseSchema'])(
+		'rejects a traversal %s in the column loader before the Data API is called',
+		async (name) => {
+			const context = createLoadOptionsContext({
+				...selectedSchema,
+				lakebaseTable: locator('orders'),
+				[name]: locator('..'),
+			});
+			apiMock(context).mockResolvedValueOnce(endpointsResponse);
+
+			await expect(getLakebaseColumns.call(context)).rejects.toBeInstanceOf(UserError);
+			// Only the endpoint lookup, which carries no user-supplied segment
+			expect(apiMock(context)).toHaveBeenCalledTimes(1);
+		},
+	);
+
+	it('rejects a traversal branch in the database picker before any request', async () => {
+		const context = createLoadOptionsContext({
+			lakebaseProject: locator('spike-test'),
+			lakebaseBranch: locator('..'),
+		});
+
+		await expect(getLakebaseDatabases.call(context)).rejects.toBeInstanceOf(UserError);
 		expect(apiMock(context)).not.toHaveBeenCalled();
 	});
 });

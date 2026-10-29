@@ -14,8 +14,24 @@ import { BaseRepository } from './base-repository';
 import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
-import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
+/**
+ * SQL condition for a user in the `deactivated` status of the users list.
+ * Open question Q21 (IAM-1552) decides if the status covers every disabled
+ * user or only the users that SCIM manages. Change the scope only here: the
+ * status filter and the status counts both use this condition.
+ */
+const DEACTIVATED_USER_CONDITION = 'user.disabled = :userListDeactivated';
+const DEACTIVATED_USER_PARAMETERS = { userListDeactivated: true };
+
+/**
+ * Loads accounts of both kinds. A full row comes back as the child entity that
+ * its `kind` names (`Person` or `ServiceAccount`). Use `PersonRepository` or
+ * `ServiceAccountRepository` when only one kind can appear.
+ *
+ * The query methods below predate service accounts. They stay here until their
+ * callers move to `PersonRepository`, so that a caller sees no change.
+ */
 @Service()
 export class UserRepository extends BaseRepository<User> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
@@ -26,15 +42,20 @@ export class UserRepository extends BaseRepository<User> {
 		userIds: string[],
 		options?: {
 			includeRole?: boolean;
+			includeAuthIdentities?: boolean;
 			offset?: number;
 			limit?: number;
 		},
 	) {
+		const relations = [
+			...(options?.includeRole ? ['role'] : []),
+			...(options?.includeAuthIdentities ? ['authIdentities'] : []),
+		];
 		return await this.find({
 			where: { id: In(userIds) },
 			skip: options?.offset,
 			take: options?.limit,
-			relations: options?.includeRole ? ['role'] : undefined,
+			relations: relations.length > 0 ? relations : undefined,
 			order: { id: 'ASC' },
 		});
 	}
@@ -71,8 +92,9 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
-	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
-		return await this.findOneByOrFail({
+	/** A member of the project, or null when the project has no members. */
+	async findOneByProjectId(projectId: string): Promise<User | null> {
+		return await this.findOneBy({
 			projectRelations: { projectId },
 		});
 	}
@@ -103,38 +125,6 @@ export class UserRepository extends BaseRepository<User> {
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
-	}
-
-	/**
-	 * Change a user's email only if it still equals `oldEmail`. Returns `'stale'`
-	 * when the email changed concurrently and `'email-taken'` when another user
-	 * already owns `newEmail`, so the caller can reject the request.
-	 * Uses `save` (not `update`) so the personal-project rename subscriber fires.
-	 */
-	async changeEmail(
-		userId: string,
-		oldEmail: string,
-		newEmail: string,
-	): Promise<'changed' | 'stale' | 'email-taken'> {
-		return await this.manager.transaction(async (trx) => {
-			const user = await trx.findOne(User, {
-				where: { id: userId },
-				// Serialize concurrent changes on Postgres; SQLite serializes writes.
-				...(trx.connection.options.type === 'postgres'
-					? { lock: { mode: 'pessimistic_write' as const } }
-					: {}),
-			});
-			if (user?.email !== oldEmail) return 'stale';
-			user.email = newEmail;
-			try {
-				await trx.save(User, user);
-			} catch (error) {
-				// Another user took `newEmail` between the caller's check and this save.
-				if (isUniqueConstraintError(error)) return 'email-taken';
-				throw error;
-			}
-			return 'changed';
-		});
 	}
 
 	/**
@@ -172,16 +162,6 @@ export class UserRepository extends BaseRepository<User> {
 		return await this.delete({ id: In(userIds) });
 	}
 
-	async findNonShellUser(email: string) {
-		return await this.findOne({
-			where: {
-				email,
-				password: Not(IsNull()),
-			},
-			relations: ['authIdentities', 'role'],
-		});
-	}
-
 	/** Counts the number of users in each role, e.g. `{ admin: 2, member: 6, owner: 1 }` */
 	async countUsersByRole() {
 		const escapedRoleSlug = this.manager.connection.driver.escape('roleSlug');
@@ -196,16 +176,6 @@ export class UserRepository extends BaseRepository<User> {
 			},
 			{} as Record<string, number>,
 		);
-	}
-
-	/**
-	 * Get emails of users who have completed setup, by user IDs.
-	 */
-	async getEmailsByIds(userIds: string[]) {
-		return await this.find({
-			select: ['id', 'email'],
-			where: { id: In(userIds), password: Not(IsNull()) },
-		});
 	}
 
 	async createUserWithProject(
@@ -263,17 +233,23 @@ export class UserRepository extends BaseRepository<User> {
 		projectId,
 		projectRoleSlugs,
 		globalRoleSlugs,
+		userIds,
 	}: {
 		projectId: string;
 		projectRoleSlugs: string[];
 		globalRoleSlugs: string[];
+		userIds?: string[];
 	}): Promise<User[]> {
+		if (userIds?.length === 0) return [];
+
+		const requestedUsers = userIds ? { id: In(userIds) } : {};
 		const where: Array<FindOptionsWhere<User>> = [];
 		if (globalRoleSlugs.length > 0) {
-			where.push({ disabled: false, role: { slug: In(globalRoleSlugs) } });
+			where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
 		}
 		if (projectRoleSlugs.length > 0) {
 			where.push({
+				...requestedUsers,
 				disabled: false,
 				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
 			});
@@ -372,7 +348,16 @@ export class UserRepository extends BaseRepository<User> {
 	private applyUserListFilter(
 		queryBuilder: SelectQueryBuilder<User>,
 		filter: UsersListFilterDto['filter'],
+		roleSlugs?: string[],
 	): SelectQueryBuilder<User> {
+		if (roleSlugs !== undefined) {
+			if (roleSlugs.length === 0) {
+				queryBuilder.andWhere('1 = 0');
+			} else {
+				queryBuilder.andWhere('user.role IN (:...roleSlugs)', { roleSlugs });
+			}
+		}
+
 		if (filter?.email !== undefined) {
 			queryBuilder.andWhere('user.email = :email', {
 				email: filter.email,
@@ -451,7 +436,43 @@ export class UserRepository extends BaseRepository<User> {
 			);
 		}
 
+		if (filter?.status !== undefined) {
+			queryBuilder.andWhere(
+				filter.status === 'deactivated'
+					? DEACTIVATED_USER_CONDITION
+					: `NOT (${DEACTIVATED_USER_CONDITION})`,
+				DEACTIVATED_USER_PARAMETERS,
+			);
+		}
+
 		return queryBuilder;
+	}
+
+	/**
+	 * Number of users in each status of the users list. The counts use every
+	 * list filter except the status filter, so the tab labels of the list do
+	 * not change when the client switches tabs.
+	 */
+	async countUsersListStatuses(
+		filter: UsersListFilterDto['filter'],
+		roleSlugs?: string[],
+	): Promise<{ all: number; active: number; deactivated: number }> {
+		const queryBuilder = this.createQueryBuilder('user')
+			.select('COUNT(*)', 'total')
+			.addSelect(`SUM(CASE WHEN ${DEACTIVATED_USER_CONDITION} THEN 1 ELSE 0 END)`, 'deactivated')
+			.setParameters(DEACTIVATED_USER_PARAMETERS);
+		this.applyUserListFilter(queryBuilder, filter && { ...filter, status: undefined }, roleSlugs);
+
+		const counts = await queryBuilder.getRawOne<{
+			total: number | string;
+			deactivated: number | string | null;
+		}>();
+
+		// PostgreSQL returns COUNT and SUM as strings, and SUM of no rows as null.
+		const all = Number(counts?.total ?? 0);
+		const deactivated = Number(counts?.deactivated ?? 0);
+
+		return { all, active: all - deactivated, deactivated };
 	}
 
 	private applyUserListExpand(
@@ -506,7 +527,10 @@ export class UserRepository extends BaseRepository<User> {
 		return queryBuilder;
 	}
 
-	buildUserQuery(listQueryOptions?: UsersListFilterDto): SelectQueryBuilder<User> {
+	buildUserQuery(
+		listQueryOptions?: UsersListFilterDto,
+		roleSlugs?: string[],
+	): SelectQueryBuilder<User> {
 		const queryBuilder = this.createQueryBuilder('user');
 
 		queryBuilder.leftJoinAndSelect('user.authIdentities', 'authIdentities');
@@ -517,7 +541,7 @@ export class UserRepository extends BaseRepository<User> {
 		const { filter, select, take, skip, expand, sortBy } = listQueryOptions;
 
 		this.applyUserListSelect(queryBuilder, select);
-		this.applyUserListFilter(queryBuilder, filter);
+		this.applyUserListFilter(queryBuilder, filter, roleSlugs);
 		this.applyUserListExpand(queryBuilder, expand);
 		this.applyUserListPagination(queryBuilder, take, skip);
 		this.applyUserListSort(queryBuilder, sortBy);

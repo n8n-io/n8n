@@ -2,12 +2,14 @@ import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import CredentialEdit from './CredentialEdit.vue';
 import { createTestingPinia } from '@pinia/testing';
+import { getActivePinia, setActivePinia } from 'pinia';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	createWorkflowDocumentId,
@@ -483,6 +485,56 @@ describe('CredentialEdit', () => {
 		await retry(() => expect(queryByText('Details')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Connection')).toBeInTheDocument());
 		await retry(() => expect(queryByText('Sharing')).toBeInTheDocument());
+	});
+
+	test('opens on the tab the modal state asks for', async () => {
+		// createTestingPinia makes its pinia the active one; the tests after this one
+		// read stores from the renderer's pinia, so hand it back afterwards.
+		const rendererPinia = getActivePinia();
+		const pinia = createTestingPinia({
+			initialState: {
+				[STORES.UI]: {
+					modalStateById: {
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, initialTab: 'sharing' },
+					},
+				},
+				[STORES.SETTINGS]: {
+					settings: {
+						enterprise: { sharing: true, externalSecrets: false },
+						templates: { host: '' },
+					},
+				},
+			},
+		});
+		const credentialsStore = mockedStore(useCredentialsStore);
+		credentialsStore.state.credentialTypes = {
+			testApi: { name: 'testApi', displayName: 'Test API', properties: [] } as ICredentialType,
+		};
+		credentialsStore.getCredentialData.mockResolvedValueOnce({
+			id: '123',
+			name: 'Test API account',
+			type: 'testApi',
+			data: {},
+			isManaged: false,
+			sharedWithProjects: [],
+			scopes: ['credential:share'],
+			createdAt: '',
+			updatedAt: '',
+		});
+
+		const { findByTestId } = renderComponent({
+			props: { activeId: '123', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'edit' },
+			pinia,
+			global: {
+				stubs: { CredentialSharing: { template: '<div data-test-id="credential-sharing-tab" />' } },
+			},
+		});
+
+		try {
+			expect(await findByTestId('credential-sharing-tab')).toBeInTheDocument();
+		} finally {
+			if (rendererPinia) setActivePinia(rendererPinia);
+		}
 	});
 
 	test('shows Connection and Details for a managed credential', async () => {
@@ -1586,6 +1638,38 @@ describe('CredentialEdit', () => {
 				),
 			);
 			expect(createCredential).toHaveBeenCalledTimes(1);
+		});
+
+		test('lets the bindings flow save a new credential on a protected instance', async () => {
+			const credentialType: ICredentialType = {
+				name: 'testApi',
+				displayName: 'Test API',
+				properties: [],
+			};
+			const createCredential = vi.fn().mockResolvedValue('source-id');
+			const { credentialsStore, pinia } = setupNewCredential(credentialType, {
+				createCredential,
+				destination: {
+					kind: 'pending',
+					id: 'source-project',
+					name: 'Source project',
+					permissions: { create: true },
+				},
+			});
+			mockedStore(useSourceControlStore).preferences.branchReadOnly = true;
+			credentialsStore.getCredentialData.mockResolvedValue(
+				createCredentialResponse({ id: 'source-id', type: 'testApi' }),
+			);
+			const { findByRole } = renderComponent({
+				props: { activeId: 'testApi', modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+				pinia,
+			});
+			const save = await findByRole('button', { name: 'Save' });
+			expect(save).toBeEnabled();
+			await userEvent.click(save);
+			await waitFor(() =>
+				expect(createCredential).toHaveBeenCalledWith(expect.anything(), 'source-project'),
+			);
 		});
 
 		describe('descriptions', () => {

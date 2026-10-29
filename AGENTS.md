@@ -14,6 +14,11 @@ frontend, and extensible node-based workflow engine.
 - Write all technical text (code comments, PR descriptions, issue and ticket
   descriptions, docs) in ASD-STE100 Simplified Technical English: use short
   sentences, the active voice, and one instruction for each sentence
+- **JSDoc on `@Env(...)` config properties is public documentation.** The
+  docs team exports these comments into the environment variable reference on
+  docs.n8n.io. Write them for a self-hosting operator and follow the
+  `n8n:env-var-docs` skill, which applies the n8n docs style guide and
+  overrides the ASD-STE100 rule above for these comments
 - **Secrets on the command line:** if a developer opted into anonymous dev
   metrics (`scripts/dev-metrics`), pnpm command arguments are recorded. Arguments
   of secret-carrying words (`config`, `login`, `publish`, `token`) — whether a
@@ -248,18 +253,36 @@ baseline. A new business-logic import fails CI.
   repository methods you call. `run` **requires** a context — pass an empty `{}`
   at the operation entry point, and reuse the one you were handed everywhere
   below it (a context that already carries a transaction is joined, not nested).
-  Repositories extend `BaseRepository` and resolve the right `EntityManager` with
-  `this.managerFor(ctx)`; the `Transaction` handle is opaque and never exposes a
-  driver type to business logic. See `oauth-token.service.ts` +
-  `oauth-*-token.repository.ts` for a worked example.
+  The `Transaction` handle is opaque and never exposes a driver type to
+  business logic. See `oauth-token.service.ts` for a worked service example
+  (its repositories predate the composition rule below; do not copy their shape).
+- **Repositories compose, they don't extend.** A repository is the boundary
+  that keeps TypeORM out of business logic. If it extended `BaseRepository`,
+  every service that injects it would also get `find`, `save`, `delete`,
+  `createQueryBuilder` and `.manager` for free, and TypeORM would leak through
+  inferred types that no lint rule can see. So a repository is a plain
+  `@Service()` class that holds a **file-private `BaseRepository` subclass (the
+  table)** as a private field and resolves the manager with
+  `this.table.managerFor(ctx)`. The table is never exported or registered with
+  DI. Every data access is a named use-case method on the repository that
+  calls the table internally; there is no generic `find`/`save`/`delete`
+  unless you write it for one operation. See
+  `packages/cli/src/modules/inbound-auth-core/database/repositories/trusted-source.repository.ts`
+  for a worked example. The existing `extends BaseRepository` / `extends
+  Repository` repositories are legacy. Do not copy them, and do not convert them
+  in unrelated PRs. This rule is not yet lint-enforced.
 - **Anti-patterns reviewers reject** — they hide the dependency instead of
   removing it:
   - String-matching TypeORM errors, e.g. `error.name === 'QueryFailedError'`.
   - Relabeling the import from `@n8n/typeorm` to `@n8n/db` to silence the rule
     (`@n8n/db` re-exports several operators/types, but this relabels the
     dependency rather than removing it).
-  - Pushing `.manager` / `createQueryBuilder` into business logic to avoid an
-    operator import — trades a visible leak for an invisible one.
+  - Pushing `.manager` / `createQueryBuilder` / `repo.managerFor(ctx)` into
+    business logic to avoid an operator import — trades a visible leak for an
+    invisible one.
+  - A repository that `extends BaseRepository` / `extends Repository`, or that
+    exposes its table (public property, getter, or a `find(options)`
+    passthrough) — the inherited TypeORM surface must stay private to the table.
 
 ### ESLint configuration layers
 
@@ -315,7 +338,7 @@ extends one of those layers):
 - **All UI text must use i18n** - add translations to `@n8n/i18n` package
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-testid must be a single value** (no spaces or multiple values)
-- Always use the `design-system` skill in reviews
+- Always use the `n8n:ui-design` skill in reviews
 
 ### Verify changes
 
@@ -353,6 +376,7 @@ extends one of those layers):
 | Run backend with PostgreSQL, Redis, email, and proxy services | `pnpm --filter n8n-containers services --services postgres,redis,mailpit,proxy`, then `pnpm dev:be` |
 | Add editor hot reload | `pnpm dev:fe:editor` |
 | Start a Codespace backend and share its port | `pnpm dev:up` |
+| See the telemetry events of a local instance | `pnpm telemetry:sink`, then `pnpm dev:be:telemetry` |
 
 The root `pnpm dev` command does not start a server. See the
 [Playwright guide](packages/quality/testing/playwright/README.md) and the

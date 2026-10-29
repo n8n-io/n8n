@@ -1,5 +1,8 @@
+import type { AgentKnowledgeUsageTracker } from '../../agent-knowledge-usage-tracker';
 import type { AgentMessageSteeringService } from '../../agent-message-steering.service';
 import {
+	encodeEpisodicScopeMetadata,
+	EPISODIC_SCOPE_METADATA_KEY,
 	INLINE_SUB_AGENT_ID,
 	type BuiltAgent,
 	type BuiltTelemetry,
@@ -32,7 +35,10 @@ import {
 	hashAgentSandboxPrincipal,
 } from '../../agent-sandbox-principal';
 import type { AgentSandboxRuntime } from '../../agent-sandbox-runtime.service';
+import { AgentSpendLedger } from '../../budget-guardrail';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
+import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
+import type { SystemAgentUsageRelay } from '../../system-agents/system-agent-usage-relay';
 import { SubAgentRunner } from '../sub-agent-runner';
 import type {
 	ResolvedSubAgentRuntimeSource,
@@ -126,9 +132,12 @@ describe('SubAgentRunner', () => {
 	let runner: SubAgentRunner;
 	let childAgent: Mocked<BuiltAgent>;
 	let agentExecutionService: Mocked<AgentExecutionService>;
+	let knowledgeUsageTracker: Mocked<AgentKnowledgeUsageTracker>;
 	let logger: Mocked<Logger>;
 	let checkpointStorage: Mocked<N8NCheckpointStorage>;
 	let credentialProvider: Mocked<CredentialProvider>;
+	let executionRepository: Mocked<AgentExecutionRepository>;
+	let usageRelay: Mocked<SystemAgentUsageRelay>;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -148,7 +157,12 @@ describe('SubAgentRunner', () => {
 		);
 		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
 		checkpointStorage = mock<N8NCheckpointStorage>();
+		knowledgeUsageTracker = mock<AgentKnowledgeUsageTracker>();
 		logger = mock<Logger>();
+		executionRepository = mock<AgentExecutionRepository>();
+		usageRelay = mock<SystemAgentUsageRelay>();
+		executionRepository.findLinksForChildOf.mockResolvedValue(null);
+		executionRepository.findFirstLinksInThread.mockResolvedValue(null);
 		runner = new SubAgentRunner(
 			sourceResolver,
 			new AgentTurnExecutionService(
@@ -158,11 +172,14 @@ describe('SubAgentRunner', () => {
 				mock<AgentMessageQueueService>(),
 				mock<AgentMessageSteeringService>(),
 				toolApprovalService,
+				knowledgeUsageTracker,
 			),
 			checkpointStorage,
 			logger,
 			aiConfigMock,
 			toolApprovalService,
+			executionRepository,
+			usageRelay,
 		);
 
 		childAgent = mock<BuiltAgent>();
@@ -190,6 +207,74 @@ describe('SubAgentRunner', () => {
 		});
 
 		expect(reconstructionService.reconstructFromResolvedSource).toHaveBeenCalledTimes(1);
+	});
+
+	it('sends the knowledge use of the child run when it ends', async () => {
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+		});
+
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledTimes(1);
+		expect(knowledgeUsageTracker.sendRunUsage).toHaveBeenCalledWith(
+			'child-run-1',
+			expect.objectContaining({ runType: 'production' }),
+		);
+	});
+
+	it.each([
+		['a disabled decision', { disabled: true as const }],
+		['a resolved scope', { writeScopeId: 'slack:T1:C1', readScopeIds: ['slack:T1:C1'] }],
+	])(
+		'keeps the parent turn episodic scope for the child: %s',
+		async (_label, parentEpisodicScope) => {
+			agentExecutionService.startExecutionRecording.mockImplementation(
+				async (_params, startedAt) => ({
+					executionId: 'agent-execution-1',
+					startedAt,
+					inputMessageIds: ['message-1'],
+				}),
+			);
+			agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+			await runner.run(
+				{ ...spawnRequest, parentResourceId: 'task:task-1' },
+				{
+					parentAgentId,
+					projectId,
+					credentialProvider,
+					runType: 'production',
+					parentEpisodicScope,
+				},
+			);
+
+			const options = childAgent.stream.mock.calls[0][1];
+			expect(options?.persistence?.hostMetadata).toMatchObject(
+				encodeEpisodicScopeMetadata(parentEpisodicScope),
+			);
+		},
+	);
+
+	it('leaves a task resource child on its own scope when the parent decided nothing', async () => {
+		agentExecutionService.startExecutionRecording.mockImplementation(
+			async (_params, startedAt) => ({
+				executionId: 'agent-execution-1',
+				startedAt,
+				inputMessageIds: ['message-1'],
+			}),
+		);
+		agentExecutionService.finalizeExecution.mockResolvedValue('agent-execution-1');
+
+		await runner.run(
+			{ ...spawnRequest, parentResourceId: 'task:task-1' },
+			{ parentAgentId, projectId, credentialProvider, runType: 'production' },
+		);
+
+		expect(childAgent.stream.mock.calls[0][1]?.persistence?.hostMetadata).not.toHaveProperty(
+			EPISODIC_SCOPE_METADATA_KEY,
+		);
 	});
 
 	it('rebuilds the child through the shared reconstruction service and runs it with a fresh prompt', async () => {
@@ -610,6 +695,210 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	describe('execution links', () => {
+		// Build the context in each test: `credentialProvider` is assigned in `beforeEach`.
+		const runContext = () => ({
+			projectId,
+			parentAgentId,
+			credentialProvider,
+			runType: 'production' as const,
+		});
+
+		it('links a child to the parent turn that delegates it', async () => {
+			executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+
+			await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+			expect(executionRepository.findLinksForChildOf).toHaveBeenCalledWith('turn-1');
+			expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					source: 'subagent',
+					executionLinks: { parentExecutionId: 'turn-1' },
+				}),
+				expect.any(Date),
+			);
+		});
+
+		it('stores no links when the parent execution is unknown or missing', async () => {
+			await runner.run(spawnRequest, runContext());
+			await runner.run({ ...spawnRequest, parentExecutionId: 'deleted-turn' }, runContext());
+
+			expect(executionRepository.findLinksForChildOf).toHaveBeenCalledTimes(1);
+			for (const [params] of agentExecutionService.startExecutionRecording.mock.calls) {
+				expect(params).not.toHaveProperty('executionLinks');
+			}
+		});
+
+		it('runs the child without links when the link lookup fails', async () => {
+			executionRepository.findLinksForChildOf.mockRejectedValue(new Error('database unavailable'));
+
+			const result = await runner.run(
+				{ ...spawnRequest, parentExecutionId: 'turn-1' },
+				runContext(),
+			);
+
+			expect(result.status).toBe('completed');
+			expect(agentExecutionService.startExecutionRecording.mock.calls[0][0]).not.toHaveProperty(
+				'executionLinks',
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve sub-agent execution links',
+				expect.objectContaining({ error: 'database unavailable' }),
+			);
+		});
+
+		it('keeps the links of the first child execution when a later turn resumes the child', async () => {
+			executionRepository.findFirstLinksInThread.mockResolvedValue({ parentExecutionId: 'turn-1' });
+
+			await runner.resumeForeground(
+				{
+					...delegatedRequest,
+					childRunId: 'child-run-1',
+					childToolCallId: 'tool-call-1',
+					childThreadId: 'child-thread-1',
+					resumeData: { approved: true },
+					resumeContext: { agentId: 'agent-1' },
+					parentThreadId,
+				},
+				runContext(),
+			);
+
+			expect(executionRepository.findFirstLinksInThread).toHaveBeenCalledWith('child-thread-1');
+			expect(executionRepository.findLinksForChildOf).not.toHaveBeenCalled();
+			expect(agentExecutionService.startExecutionRecording).toHaveBeenCalledWith(
+				expect.objectContaining({
+					threadId: 'child-thread-1',
+					executionLinks: { parentExecutionId: 'turn-1' },
+				}),
+				expect.any(Date),
+			);
+		});
+
+		describe('delegated run usage', () => {
+			const finishUsage = {
+				promptTokens: 150_000,
+				completionTokens: 900,
+				totalTokens: 150_900,
+				cost: 0.21,
+				inputTokenDetails: { noCache: 10_000, cacheRead: 130_000, cacheWrite: 10_000 },
+				byPromptSize: [
+					{
+						promptTokensOver: 128_000,
+						maxPromptTokens: 150_000,
+						usage: { promptTokens: 150_000, completionTokens: 900, totalTokens: 150_900 },
+					},
+				],
+			};
+
+			function streamFinishing(usage: StreamChunk & { type: 'finish' }) {
+				childAgent.stream.mockResolvedValue(makeStreamResult([usage]));
+			}
+
+			it('reports the full finish usage of the child with its parent link', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({
+					type: 'finish',
+					finishReason: 'stop',
+					model: 'anthropic/claude-haiku-5-5',
+					usage: finishUsage,
+				});
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledTimes(1);
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledWith({
+					executionId: 'agent-execution-1',
+					threadId: expect.any(String),
+					parentExecutionId: 'turn-1',
+					status: 'completed',
+					model: 'anthropic/claude-haiku-5-5',
+					// Not the recorder's totals: the cache details and the split stay.
+					usage: finishUsage,
+				});
+			});
+
+			it('reports the usage after the execution record is stored', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				const [finalizeOrder] = agentExecutionService.finalizeExecution.mock.invocationCallOrder;
+				const [reportOrder] = usageRelay.reportDelegatedRun.mock.invocationCallOrder;
+				expect(reportOrder).toBeGreaterThan(finalizeOrder);
+			});
+
+			it('still reports the usage when storing the execution record fails', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+				agentExecutionService.finalizeExecution.mockRejectedValue(
+					new Error('database unavailable'),
+				);
+
+				await runner
+					.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext())
+					.catch(() => {});
+
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledTimes(1);
+			});
+
+			it('reports nothing without a parent link or without usage', async () => {
+				streamFinishing({ type: 'finish', finishReason: 'stop', usage: finishUsage });
+				await runner.run(spawnRequest, runContext());
+
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				streamFinishing({ type: 'finish', finishReason: 'stop' });
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				expect(usageRelay.reportDelegatedRun).not.toHaveBeenCalled();
+			});
+
+			it('reports an errored child with the usage it reached', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				childAgent.stream.mockResolvedValue(
+					makeStreamResult([
+						{ type: 'error', error: new Error('model failed') },
+						{ type: 'finish', finishReason: 'error', usage: finishUsage },
+					]),
+				);
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+
+				expect(usageRelay.reportDelegatedRun).toHaveBeenCalledWith(
+					expect.objectContaining({ status: 'errored', usage: finishUsage }),
+				);
+			});
+
+			it('reports the side calls of a linked child with its parent link', async () => {
+				executionRepository.findLinksForChildOf.mockResolvedValue({ parentExecutionId: 'turn-1' });
+				const sideCall = {
+					task: 'observer' as const,
+					model: 'anthropic/claude-haiku-5-5',
+					usage: { promptTokens: 2000, completionTokens: 200, totalTokens: 2200 },
+					cost: 0.003,
+					reportId: 'report-1',
+				};
+
+				await runner.run({ ...spawnRequest, parentExecutionId: 'turn-1' }, runContext());
+				const options = childAgent.stream.mock.calls[0][1];
+				await options?.onSideCallUsage?.(sideCall);
+
+				expect(usageRelay.reportDelegatedSideCall).toHaveBeenCalledWith({
+					...sideCall,
+					executionId: 'agent-execution-1',
+					threadId: expect.any(String),
+					parentExecutionId: 'turn-1',
+				});
+			});
+
+			it('sets no side-call callback on a child without a parent link', async () => {
+				await runner.run(spawnRequest, runContext());
+
+				expect(childAgent.stream.mock.calls[0][1]).not.toHaveProperty('onSideCallUsage');
+			});
+		});
+	});
+
 	it('returns a child suspension with draft resume context', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
@@ -665,13 +954,14 @@ describe('SubAgentRunner', () => {
 		expect(childAgent.close).toHaveBeenCalledTimes(1);
 	});
 
-	it('reports a guardrail stop as a completion that carries the finish reason', async () => {
+	it('reports a guardrail stop as a failure that carries the stop code', async () => {
 		childAgent.stream.mockResolvedValue(
 			makeStreamResult([
 				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
 				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.session' } },
 			]),
 		);
+		const onBudgetNotice = vi.fn();
 
 		await expect(
 			runner.run(spawnRequest, {
@@ -679,14 +969,122 @@ describe('SubAgentRunner', () => {
 				projectId,
 				credentialProvider,
 				runType: 'production',
+				onBudgetNotice,
 			}),
 		).resolves.toMatchObject({
-			status: 'completed',
+			status: 'failed',
 			result: {
 				runId: 'child-run-1',
 				finishReason: 'guardrail',
+				guardrail: { code: 'budget.session' },
 			},
 		});
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session' });
+	});
+
+	it('names the child as the budget owner on a monthly guardrail stop', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.monthly' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: {
+				runId: 'child-run-1',
+				finishReason: 'guardrail',
+				guardrail: { code: 'budget.monthly' },
+			},
+		});
+		expect(onBudgetNotice).toHaveBeenCalledWith({
+			code: 'budget.monthly',
+			agentId: 'agent-1',
+		});
+	});
+
+	it('does not emit a budget notice for a non-budget guardrail stop', async () => {
+		childAgent.stream.mockResolvedValue(
+			makeStreamResult([
+				{ type: 'text-delta', id: 'text-1', delta: 'Partial answer' },
+				{ type: 'finish', finishReason: 'guardrail', guardrail: { code: 'budget.misconfigured' } },
+			]),
+		);
+		const onBudgetNotice = vi.fn();
+
+		await expect(
+			runner.run(spawnRequest, {
+				parentAgentId,
+				projectId,
+				credentialProvider,
+				runType: 'production',
+				onBudgetNotice,
+			}),
+		).resolves.toMatchObject({
+			status: 'failed',
+			result: { finishReason: 'guardrail' },
+		});
+		expect(onBudgetNotice).not.toHaveBeenCalled();
+	});
+
+	it('forwards the budget notice sink into the child guardrail options', async () => {
+		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
+		const onBudgetNotice = vi.fn();
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			rootSessionId: parentThreadId,
+			rootSessionCapUsd: 5,
+			onBudgetNotice,
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		const sink = options?.guardrails?.onNotice;
+		expect(sink).toBeDefined();
+		// A locally-originated notice gets this child's source id.
+		sink?.({ code: 'budget.alert' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.alert', agentId: 'agent-1' });
+		// A deeper child's stamp survives: the innermost owner wins.
+		sink?.({ code: 'budget.alert', agentId: 'grandchild-1' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({
+			code: 'budget.alert',
+			agentId: 'grandchild-1',
+		});
+		// A session stop always spends the root bucket, so it carries no owner.
+		sink?.({ code: 'budget.session', agentId: 'grandchild-1' });
+		expect(onBudgetNotice).toHaveBeenCalledWith({ code: 'budget.session' });
+		sink?.({ code: 'pii.block' });
+		expect(onBudgetNotice).toHaveBeenCalledTimes(3);
+	});
+
+	it('installs the notice ferry even when the child has no budget bucket', async () => {
+		Container.set(AgentSpendLedger, mock<AgentSpendLedger>());
+		const onBudgetNotice = vi.fn();
+
+		await runner.run(spawnRequest, {
+			parentAgentId,
+			projectId,
+			credentialProvider,
+			runType: 'production',
+			onBudgetNotice,
+		});
+
+		const options = childAgent.stream.mock.calls[0]?.[1];
+		expect(options?.guardrails?.hooks).toEqual([]);
+		expect(options?.guardrails?.onNotice).toBeDefined();
 	});
 
 	it('applies the self-delegation model while preserving the parent draft', async () => {
@@ -1176,7 +1574,7 @@ describe('SubAgentRunner', () => {
 				telemetry: {
 					...parentTelemetry,
 					functionId: undefined,
-					metadata: { agent_id: 'agent-1', thread_id: 'parent-thread-1', source: 'sub-agent' },
+					metadata: { thread_id: 'parent-thread-1', source: 'sub-agent' },
 					rootAnchored: false,
 				},
 			}),

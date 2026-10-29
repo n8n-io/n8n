@@ -1,11 +1,13 @@
 import type {
 	AgentJsonMcpServerConfig,
+	McpRegistryDiscoveryRequest,
 	McpRegistryDiscoveryResponse,
 	McpRegistryServerResponse,
 } from '@n8n/api-types';
 import { computed, effectScope, onScopeDispose, ref, watch, type ComputedRef } from 'vue';
 
 import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import {
 	listenForCredentialChanges,
@@ -19,6 +21,11 @@ import type {
 } from '@/features/shared/toolsConnection/types';
 
 import { useAgentMcpDiscovery } from './useAgentMcpDiscovery';
+import {
+	isAiGatewayMcpEntry,
+	toMcpEntryAuth,
+	toMcpRegistryCredentialRefs,
+} from '../utils/mcpRegistryCredentialRefs';
 
 export const MIN_AGENT_MCP_CONNECTION_TIMEOUT_MS = 1_000;
 export const DEFAULT_AGENT_MCP_CONNECTION_TIMEOUT_MS = 60_000;
@@ -74,6 +81,16 @@ function applyDiscoveredConnection(
 	};
 }
 
+/** Gateway credits discover without a stored credential (see the discovery endpoint). */
+function toDiscoveryRequest(
+	slug: string,
+	draft: AgentRegistryMcpDraft | null,
+	credentialId: string | undefined,
+): McpRegistryDiscoveryRequest | undefined {
+	if (draft && isAiGatewayMcpEntry(draft)) return { slug, aiGateway: true };
+	return credentialId ? { slug, credentialId } : undefined;
+}
+
 function removeApprovalRequirements(toolPermissions: McpToolSettings): McpToolSettings {
 	return {
 		categories: {
@@ -111,7 +128,7 @@ export function useAgentRegistryMcpConfig(
 	const draftServer = ref<AgentRegistryMcpDraft | null>(null);
 	const persistedServer = ref<AgentRegistryMcpDraft | null>(null);
 	const discovery = ref<McpRegistryDiscoveryResponse | { status: 'connecting' } | null>(null);
-	let requestId = 0;
+	const { invalidate, next } = useLatestFetch();
 	const title = computed(() => draftServer.value?.name ?? data.value?.mcpServer.name ?? '');
 	const normalizedTitle = computed(() => title.value.trim());
 	const hasDuplicateTitle = computed(
@@ -151,12 +168,7 @@ export function useAgentRegistryMcpConfig(
 				? { connectionFailureReason: discovery.value.failureReason }
 				: {}),
 			iconSource: iconForMcpRegistryServer(server.icons, uiStore.appliedTheme),
-			credentials: server.credentials.map(({ credentialType, name }) => ({
-				authType: credentialType,
-				displayName: name,
-				credentialId: draft.authentication === credentialType ? draft.credential : undefined,
-				required: true,
-			})),
+			credentials: toMcpRegistryCredentialRefs(server, draft),
 			availableTools: liveTools.map(toMcpServerTool),
 			isOfficial: server.isOfficial,
 			settings,
@@ -170,7 +182,8 @@ export function useAgentRegistryMcpConfig(
 
 	async function discover(credentialId = draftServer.value?.credential) {
 		const server = catalogServer.value;
-		if (!server || !credentialId) {
+		const request = server && toDiscoveryRequest(server.slug, draftServer.value, credentialId);
+		if (!request) {
 			discovery.value = {
 				status: 'disconnected',
 				failureReason: 'authentication',
@@ -178,26 +191,26 @@ export function useAgentRegistryMcpConfig(
 			};
 			return;
 		}
-		const currentRequestId = ++requestId;
+		const isCurrent = next();
 		discovery.value = { status: 'connecting' };
-		const result = await discoverRegistry(server.slug, credentialId).catch(
+		const result = await discoverRegistry(request).catch(
 			(): McpRegistryDiscoveryResponse => ({
 				status: 'disconnected',
 				failureReason: 'unknown',
 				tools: [],
 			}),
 		);
-		if (currentRequestId !== requestId) return;
+		if (!isCurrent()) return;
 		discovery.value = result;
 	}
 
 	async function initialize(modalData: AgentRegistryMcpModalData) {
-		const currentRequestId = ++requestId;
+		const isCurrent = next();
 		draftServer.value = { ...modalData.mcpServer };
 		persistedServer.value = modalData.isNew ? null : { ...modalData.mcpServer };
 		discovery.value = { status: 'connecting' };
 		const [catalog] = await Promise.all([fetchCatalog(), preloadCredentials()]);
-		if (currentRequestId !== requestId) return;
+		if (!isCurrent()) return;
 		catalogServer.value =
 			catalog.find(
 				(server) => server.nodeTypeName === modalData.mcpServer.metadata?.nodeTypeName,
@@ -212,7 +225,7 @@ export function useAgentRegistryMcpConfig(
 				void initialize(modalData);
 				return;
 			}
-			requestId++;
+			invalidate();
 			catalogServer.value = null;
 			draftServer.value = null;
 			persistedServer.value = null;
@@ -230,11 +243,7 @@ export function useAgentRegistryMcpConfig(
 
 	async function selectCredential(authType: string, credentialId: string) {
 		if (!draftServer.value) return;
-		draftServer.value = {
-			...draftServer.value,
-			authentication: authType,
-			credential: credentialId,
-		};
+		draftServer.value = { ...draftServer.value, ...toMcpEntryAuth(authType, credentialId) };
 		await discover(credentialId);
 	}
 

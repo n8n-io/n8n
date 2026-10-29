@@ -1,3 +1,4 @@
+import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
 import { computed, defineComponent, h, isReadonly, ref, nextTick } from 'vue';
@@ -13,8 +14,8 @@ import type {
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
-import AgentPreviewDock from '../components/AgentPreviewDock.vue';
-import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentTestDock from '../components/AgentTestDock.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 import {
 	buildAgentConfigFingerprint,
 	type AgentConfigFingerprint,
@@ -106,7 +107,8 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ restApiContext: { baseUrl: '/rest' } }),
 }));
 
-vi.mock('@n8n/i18n', () => {
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	const original = await importOriginal<typeof import('@n8n/i18n')>();
 	const baseText = (
 		key: string,
 		options?: { interpolate?: Record<string, string | number>; adjustToNumber?: number },
@@ -140,7 +142,7 @@ vi.mock('@n8n/i18n', () => {
 		return translations[key] ?? key;
 	};
 	const i18n = { baseText };
-	return { useI18n: () => i18n, i18n };
+	return { ...original, useI18n: () => i18n, i18n };
 });
 
 vi.mock('../components/AgentSessionTimelinePanel.vue', () => ({
@@ -163,6 +165,8 @@ vi.mock('@n8n/design-system', async (importOriginal) => ({
 	useDropdownSearch: (await importOriginal<typeof import('@n8n/design-system')>())
 		.useDropdownSearch,
 	N8nInput: (await importOriginal<typeof import('@n8n/design-system')>()).N8nInput,
+	N8nVisuallyHidden: (await importOriginal<typeof import('@n8n/design-system')>())
+		.N8nVisuallyHidden,
 	N8nButton: { template: '<button><slot name="icon" /><slot /></button>' },
 	N8nCallout: { template: '<div><slot /><slot name="trailingContent" /></div>' },
 	N8nCard: { template: '<div><slot /></div>' },
@@ -204,7 +208,7 @@ vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
 	};
 });
 
-vi.mock('../components/AgentPreviewMoreMenu.vue', function mockPreviewMoreMenu() {
+vi.mock('../components/AgentTestMoreMenu.vue', function mockPreviewMoreMenu() {
 	return { default: { template: '<button />' } };
 });
 
@@ -346,6 +350,7 @@ vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({
 		trackSubmittedMessage: trackSubmittedMessageMock,
 		trackSentMessageToN8nChatAgent: trackSentMessageToN8nChatAgentMock,
+		trackClickedNewTestChat: vi.fn(),
 	}),
 }));
 
@@ -424,7 +429,7 @@ describe('AgentChatPanel', () => {
 		return mount(AgentChatPanel, {
 			attachTo,
 			slots,
-			global: { plugins: [router] },
+			global: { plugins: [router, i18nInstance] },
 			props: {
 				projectId: 'p1',
 				agentId: 'a1',
@@ -435,6 +440,45 @@ describe('AgentChatPanel', () => {
 			},
 		});
 	}
+
+	it('submits a message when Web Crypto is unavailable', async () => {
+		const actual = await vi.importActual<typeof import('../composables/agentTelemetry.utils')>(
+			'../composables/agentTelemetry.utils',
+		);
+		vi.mocked(buildAgentConfigFingerprint).mockImplementationOnce(
+			actual.buildAgentConfigFingerprint,
+		);
+		vi.stubGlobal('crypto', { getRandomValues: crypto.getRandomValues.bind(crypto) });
+		try {
+			sendMessageMock.mockResolvedValueOnce('sent');
+			const wrapper = mountPanel();
+			const input = wrapper.findComponent({ name: 'ChatInputBase' });
+			input.vm.$emit('update:modelValue', 'Hello');
+			await nextTick();
+			input.vm.$emit('submit');
+			await flushPromises();
+
+			expect(sendMessageMock).toHaveBeenCalledExactlyOnceWith(
+				'Hello',
+				undefined,
+				expect.any(Function),
+				undefined,
+			);
+			sendMessageMock.mock.lastCall?.[2]?.();
+			await nextTick();
+			expect(input.props('modelValue')).toBe('');
+			expect(trackSubmittedMessageMock).toHaveBeenCalledWith({
+				agentId: 'a1',
+				status: 'draft',
+				agentConfig: expect.objectContaining({
+					instructions: 'Help.',
+					config_version: expect.stringMatching(/^[0-9a-f]{16}$/),
+				}),
+			});
+		} finally {
+			vi.unstubAllGlobals();
+		}
+	});
 
 	describe('resend after an error', () => {
 		const failedMessages = (attachments?: ChatMessage['attachments']): ChatMessage[] => [
@@ -478,8 +522,8 @@ describe('AgentChatPanel', () => {
 					history: createMemoryHistory(),
 					routes: [{ path: '/', component: { template: '<div />' } }],
 				});
-				const wrapper = mount(AgentPreviewChatPage, {
-					global: { plugins: [router] },
+				const wrapper = mount(AgentTestChatPage, {
+					global: { plugins: [router, i18nInstance] },
 					props: {
 						initialized: true,
 						projectId: 'p1',
@@ -1576,23 +1620,19 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it('links a plan to the current session trace only when the session is available', async () => {
-			messagesMock.value = [planMessage(planView())];
-			const wrapper = mountPanel();
-			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
-			expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
-			await wrapper.setProps({ continueSessionId: 't1' });
-			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
-			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
-				'/projects/p1/agents/a1/sessions/t1',
-			);
-			await wrapper.setProps({ continueSessionId: 't2' });
-			await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
-			expect(wrapper.get('[data-testid="agent-chat-plan-trace"]').attributes('href')).toBe(
-				'/projects/p1/agents/a1/sessions/t2',
-			);
-			wrapper.unmount();
-		});
+		it.each([undefined, 't1', 't2'])(
+			'does not show a trace link in the plan card for session %s',
+			async (continueSessionId) => {
+				messagesMock.value = [planMessage(planView())];
+				const wrapper = mountPanel({ continueSessionId });
+				try {
+					await wrapper.get('[data-testid="agent-chat-plan"] button').trigger('click');
+					expect(wrapper.find('[data-testid="agent-chat-plan-trace"]').exists()).toBe(false);
+				} finally {
+					wrapper.unmount();
+				}
+			},
+		);
 	});
 
 	describe('background task panel', () => {
@@ -2773,7 +2813,9 @@ describe('AgentChatPanel', () => {
 				await nextTick();
 				const approvals = wrapper.get('[data-testid="agent-chat-approvals"]');
 				expect(wrapper.findComponent({ name: 'ChatInputBase' }).exists()).toBe(false);
-				expect(document.activeElement).toBe(approvals.get('[role="listbox"]').element);
+				expect(document.activeElement).toBe(
+					approvals.get('[role="toolbar"] button[tabindex="0"]').element,
+				);
 				await approvals.get(`[data-test-id="approval-card-${action}"]`).trigger('click');
 				expect(resumeMock).toHaveBeenCalledExactlyOnceWith({
 					runId: 'run-1',
@@ -3853,7 +3895,7 @@ describe('AgentChatPanel', () => {
 	});
 });
 
-describe('AgentPreviewDock stream lifecycle', () => {
+describe('AgentTestDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
@@ -3870,7 +3912,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 					const sessionId = ref('session-1');
 					return () =>
 						open.value
-							? h(AgentPreviewDock, {
+							? h(AgentTestDock, {
 									isOpen: true,
 									sessionTitle: 'Session',
 									sessionOptions: [],
@@ -3888,6 +3930,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 							: null;
 				},
 			}),
+			{ global: { plugins: [i18nInstance] } },
 		);
 	}
 

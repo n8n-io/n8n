@@ -260,6 +260,7 @@ describe('node type availability policy project controller shared document prote
 		return {
 			scopeId: response.body.data.scopeId as string,
 			documentId: documents.body.data[0].id as string,
+			version: response.body.data.version as number,
 		};
 	}
 
@@ -275,7 +276,10 @@ describe('node type availability policy project controller shared document prote
 		const shared = await testServer
 			.authAgentFor(owner)
 			.put(`/node-type-policies/scopes/${instanceScopeId}/attachments`)
-			.send({ attachments: [{ policyId: documentId, priority: 0, isFloor: false }] });
+			.send({
+				attachments: [{ policyId: documentId, priority: 0, isFloor: false }],
+				version: instancePut.body.data.version,
+			});
 		expect(shared.statusCode).toBe(200);
 
 		const current = await testServer.authAgentFor(projectAdmin).get(projectRoute(project.id));
@@ -293,7 +297,7 @@ describe('node type availability policy project controller shared document prote
 	});
 
 	test('PUT is rejected with 409 when the project scope has several attached documents', async () => {
-		const { scopeId, documentId } = await configureProject();
+		const { scopeId, documentId, version } = await configureProject();
 
 		const created = await testServer
 			.authAgentFor(owner)
@@ -309,6 +313,7 @@ describe('node type availability policy project controller shared document prote
 					{ policyId: documentId, priority: 0, isFloor: false },
 					{ policyId: secondDocumentId, priority: 1, isFloor: false },
 				],
+				version,
 			});
 		expect(attached.statusCode).toBe(200);
 
@@ -345,6 +350,7 @@ describe('node type availability policy project controller delegate rejection vi
 			.put(`/node-type-policies/scopes/${scopeId}/attachments`)
 			.send({
 				attachments: [{ policyId: created.body.data.policy.id, priority: 0, isFloor: false }],
+				version: configured.body.data.version,
 			});
 
 		expect(response.statusCode).toBe(400);

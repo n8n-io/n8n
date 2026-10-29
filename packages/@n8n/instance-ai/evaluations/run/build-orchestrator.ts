@@ -38,6 +38,7 @@ import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
 import {
 	buildFailedOnInfra,
+	harnessFault,
 	leakHaystackFor,
 	redactLocalRunSecrets,
 	searchableBuildText,
@@ -96,8 +97,12 @@ export interface Lane {
 	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
 	 *  deleting them via another lane's client would 404. */
 	workflowIdsToDelete: Set<string>;
-	/** Invited members, one per build: MCP builds act as it, orchestrator builds use its project. */
+	/** Invited members, one per build: MCP builds act as it, and orchestrator builds use
+	 *  its project when the lane has no team projects. */
 	buildUserPool?: LaneUserPool;
+	/** The license allows team projects, so each orchestrator build gets one the owner
+	 *  administers. Without them, n8n hides execution output from the owner. */
+	teamBuildProjects?: boolean;
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
@@ -476,10 +481,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// would still score on them.
 		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
 			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
-		if (build.priorRunFailed) {
+		const fault = harnessFault(build);
+		if (fault) {
 			const unjudged = allFailVerdicts(
 				collectExpectations(testCase),
-				`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+				`not judged — ${fault.reason}`,
 			);
 			// The row for this build is re-stamped `timeout` too, so the two agree.
 			buildExpectationsByKey.set(
@@ -487,7 +493,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				Promise.resolve(
 					build.timeout
 						? timedOut(unjudged)
-						: unjudged.map((verdict) => ({ ...verdict, attribution: 'framework_issue' as const })),
+						: unjudged.map((verdict) => ({
+								...verdict,
+								incomplete: !fault.counted,
+								attribution: 'framework_issue' as const,
+							})),
 				),
 			);
 			return;

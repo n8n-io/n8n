@@ -11,6 +11,7 @@ import {
 	UrlService,
 	CredentialsFinderService,
 } from '@n8n/backend-services';
+import { OAuthJweServiceProxy } from '@n8n/backend-services/auth';
 import { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
 import type { AuthenticatedRequest, CredentialsEntity, ICredentialsDb } from '@n8n/db';
 import { CredentialsRepository } from '@n8n/db';
@@ -20,7 +21,13 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	jsonParse,
+	MANAGED_VERSION_KEY,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -68,7 +75,6 @@ import {
 } from './types';
 import { CredentialStoreMetadata } from '@/credentials/dynamic-credential-storage.interface';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
-import { OAuthJweServiceProxy } from '@/oauth/oauth-jwe-service.proxy';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import { Time } from '@n8n/constants';
 
@@ -90,10 +96,16 @@ export type OauthFlowState = {
 	codeVerifier?: string;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
 	oauthTokenSecret?: string;
+	/**
+	 * Version of the managed app that the authorization URL was built with. The callback
+	 * uses the same app and stores this version. Not set for a user-owned app.
+	 */
+	managedVersion?: number;
 };
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
 const OAUTH_REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds; // This might be added to a OAuth Config (there is currently none)
+const OFFLINE_ACCESS_SCOPE = 'offline_access';
 
 export interface OAuth2CredentialRefreshResult {
 	headers: Record<string, string>;
@@ -114,6 +126,21 @@ export function shouldSkipAuthOnOAuthCallback() {
 export const skipAuthOnOAuthCallback = shouldSkipAuthOnOAuthCallback();
 
 export { OauthVersion, type OAuth1CredentialData, type CreateCsrfStateData, type CsrfState };
+
+/**
+ * `offline_access` asks the authorization server for a refresh token. It grants no
+ * access to the resource, so a protected resource document (RFC 9728) has no reason
+ * to list it, and most do not. Taking the resource scopes verbatim therefore drops it
+ * even where the authorization server offers it, and the credential is then issued
+ * without a refresh token. `shouldRefreshMcpOAuth2Token` returns false without one, so
+ * the connection stops working at the first token expiry with nothing to recover it.
+ */
+function withOfflineAccess(resourceScopes: string[], authServerScopes?: string[]): string[] {
+	const offered = authServerScopes?.includes(OFFLINE_ACCESS_SCOPE) ?? false;
+	return offered && !resourceScopes.includes(OFFLINE_ACCESS_SCOPE)
+		? [...resourceScopes, OFFLINE_ACCESS_SCOPE]
+		: resourceScopes;
+}
 
 /** The user who started the flow. An externally started dynamic-credential flow has none. */
 const csrfUserId = (csrfData: CreateCsrfStateData) =>
@@ -364,8 +391,9 @@ export class OauthService {
 	protected async getDecryptedDataForAuthUri(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
 	) {
-		return await this.getDecryptedData(credential, additionalData, false);
+		return await this.getDecryptedData(credential, additionalData, false, managedVersion);
 	}
 
 	/**
@@ -382,6 +410,7 @@ export class OauthService {
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		raw: boolean,
+		managedVersion?: number,
 	) {
 		return await this.credentialsHelper.getDecrypted(
 			additionalData,
@@ -390,6 +419,8 @@ export class OauthService {
 			'internal',
 			undefined,
 			raw,
+			undefined,
+			{ managedVersion },
 		);
 	}
 
@@ -397,6 +428,7 @@ export class OauthService {
 		credential: ICredentialsDb,
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
 	) {
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
@@ -405,6 +437,7 @@ export class OauthService {
 			'internal',
 			undefined,
 			undefined,
+			managedVersion,
 		)) as unknown as T;
 	}
 
@@ -547,17 +580,17 @@ export class OauthService {
 			}
 		}
 
-		// Dynamic credentials: skip user-ownership check since the credential may be shared,
-		// but validate userId when both the state and the caller carry an n8n user identity
-		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
-		// When the flow was initiated externally (e.g. via dynamic-credentials.controller),
-		// the state has no userId and the check is skipped.
+		// Dynamic credentials: the credential may be shared, so there is no per-user
+		// ownership check. But a userId in the state means an n8n user started the flow
+		// (editor connect, chat-hub, or a user-bound short link), and the callback must
+		// run as that same user. This stops a completion from another browser binding the
+		// provider tokens to the initiator. The legitimate surfaces all carry that
+		// session, so a sessionless completion is the attack. The static-callback skip
+		// flag does not relax this: a dynamic flow that cannot carry the session uses
+		// N8N_OAUTH_BROWSER_BINDING instead. Externally started flows (external-subject
+		// resolvers) carry no userId and keep the unauthenticated path.
 		if (decryptedState.origin === 'dynamic-credential') {
-			if (
-				req.user?.id !== undefined &&
-				decryptedState.userId !== undefined &&
-				decryptedState.userId !== req.user.id
-			) {
+			if (decryptedState.userId !== undefined && decryptedState.userId !== req.user?.id) {
 				throw new AuthError('Unauthorized');
 			}
 			return [
@@ -618,6 +651,14 @@ export class OauthService {
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
+		// The flow state pins the managed app that the authorization URL used, so it is
+		// read before the credential data is resolved.
+		const flowState = await this.consumeOauthFlowState(state.token);
+
+		if (!flowState || !this.verifyCsrfState(flowState, state)) {
+			throw new UnexpectedError('The OAuth callback state is invalid!');
+		}
+
 		// The state holds the verified starter; the callback request may carry no user at all.
 		const additionalData = await this.getAdditionalData(csrfUserId(state));
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
@@ -629,19 +670,50 @@ export class OauthService {
 			credential,
 			decryptedDataOriginal,
 			additionalData,
+			flowState.managedVersion,
 		);
-
-		const flowState = await this.consumeOauthFlowState(state.token);
-
-		if (!flowState || !this.verifyCsrfState(flowState, state)) {
-			throw new UnexpectedError('The OAuth callback state is invalid!');
-		}
 
 		return [credential, decryptedDataOriginal, oauthCredentials, state, flowState];
 	}
 
+	/**
+	 * The stored token data that a new token can build on, for providers that omit fields such as
+	 * `refresh_token` on a repeat grant. The data belongs to one app, so it is kept only when the
+	 * new connection uses that same app. After a change of app or version the connection is fresh.
+	 */
+	getCarriedOverTokenData(
+		credentialType: string,
+		storedData: ICredentialDataDecryptedObject,
+		managedVersion: number | undefined,
+	): Record<string, unknown> {
+		const { oauthTokenData } = storedData;
+		if (!isRecord(oauthTokenData)) return {};
+
+		const storedVersion = this.credentialsHelper.getBoundVersion(credentialType, storedData);
+		if (storedVersion !== managedVersion) return {};
+
+		// The version is set again from the flow state, so an old one must not survive.
+		const { [MANAGED_VERSION_KEY]: _version, ...tokenData } = oauthTokenData;
+		return tokenData;
+	}
+
 	renderCallbackError(res: Response, message: string, reason?: string) {
 		res.render('oauth-error-callback', { error: { message, reason } });
+	}
+
+	/**
+	 * Derive the heading for the OAuth callback error page.
+	 * Some token endpoints (e.g. Meta Graph API) send `error` as an object with its own text.
+	 * The page shows that text only when the credential type fixes the token endpoint,
+	 * so a user cannot point the request at a host of their choice.
+	 * Callers log the full error before rendering.
+	 */
+	extractCallbackErrorMessage(error: Error, credentialType?: string): string {
+		const hasServerText = error instanceof OAuth2AuthError && error.fromErrorObject;
+		if (hasServerText && !(credentialType && this.hasFixedTokenEndpoint(credentialType))) {
+			return 'The OAuth2 server rejected the token request';
+		}
+		return error.message;
 	}
 
 	/**
@@ -671,9 +743,57 @@ export class OauthService {
 		return causes.length ? causes.join(': ') : undefined;
 	}
 
+	/**
+	 * The OAuth credentials of an existing connection. A managed app is the one that the
+	 * credential stores.
+	 */
 	async getOAuthCredentials<T>(credential: CredentialsEntity, userId?: string): Promise<T> {
 		const additionalData = await this.getAdditionalData(userId);
-		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
+		const decryptedData = await this.loadCredentialData(credential, additionalData);
+
+		return await this.applyDefaultsAndOverwrites<T>(credential, decryptedData, additionalData);
+	}
+
+	/**
+	 * The OAuth credentials for a new connection. A managed app is the default one, also when
+	 * the credential is connected to another one. `managedVersion` is the version of that app,
+	 * or `undefined` for a user-owned app. Store it with the tokens.
+	 */
+	async getNewConnectionCredentials<T>(
+		credential: CredentialsEntity,
+		userId?: string,
+	): Promise<{ oauthCredentials: T; managedVersion?: number }> {
+		const additionalData = await this.getAdditionalData(userId);
+
+		// The stored data has no overwrite applied. Whether the credential uses a managed app
+		// follows from its own client fields, which an overwrite would fill.
+		const storedData = await this.getDecryptedDataForCallback(credential, additionalData);
+		const managedVersion = this.credentialsHelper.getNewConnectionVersion(
+			credential.type,
+			storedData,
+		);
+
+		const decryptedData = await this.loadCredentialData(credential, additionalData, managedVersion);
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
+			credential,
+			decryptedData,
+			additionalData,
+			managedVersion,
+		);
+
+		return { oauthCredentials, managedVersion };
+	}
+
+	private async loadCredentialData(
+		credential: CredentialsEntity,
+		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
+	) {
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(
+			credential,
+			additionalData,
+			managedVersion,
+		);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
@@ -693,13 +813,7 @@ export class OauthService {
 			delete decryptedDataOriginal.scope;
 		}
 
-		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
-			credential,
-			decryptedDataOriginal,
-			additionalData,
-		);
-
-		return oauthCredentials;
+		return decryptedDataOriginal;
 	}
 
 	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {
@@ -910,6 +1024,25 @@ export class OauthService {
 	}
 
 	/**
+	 * Whether the credential type sets `accessTokenUrl` to a static hidden value.
+	 * Stored data never overrides a hidden endpoint (see `OAUTH_PINNED_FIELDS`).
+	 */
+	private hasFixedTokenEndpoint(credentialType: string): boolean {
+		try {
+			const tokenUrl = this.credentialsHelper
+				.getCredentialsProperties(credentialType)
+				.find((property) => property.name === 'accessTokenUrl');
+			return (
+				tokenUrl?.type === 'hidden' &&
+				typeof tokenUrl.default === 'string' &&
+				!tokenUrl.default.startsWith('=')
+			);
+		} catch {
+			return false;
+		}
+	}
+
+	/**
 	 * Checks whether the credential type (after merging inherited properties) exposes
 	 * a user-editable `scope` property. A property is considered editable when it is
 	 * defined and its `type` is not `'hidden'`.
@@ -1022,8 +1155,11 @@ export class OauthService {
 	): Promise<string> {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
-		const oauthCredentials: OAuth2CredentialData =
-			await this.getOAuthCredentials<OAuth2CredentialData>(credential, csrfUserId(csrfData));
+		const { oauthCredentials, managedVersion } =
+			await this.getNewConnectionCredentials<OAuth2CredentialData>(
+				credential,
+				csrfUserId(csrfData),
+			);
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
 		const toDelete: string[] = [];
@@ -1073,7 +1209,7 @@ export class OauthService {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData };
+		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData, managedVersion };
 		if (this.shouldUsePkce(oauthCredentials)) {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -1174,7 +1310,7 @@ export class OauthService {
 		// authorization server's scopes_supported (RFC 8414). Some servers only
 		// advertise the required scopes on the protected resource document.
 		const effectiveScopes = discoveredResourceScopes?.length
-			? discoveredResourceScopes
+			? withOfflineAccess(discoveredResourceScopes, scopes_supported)
 			: scopes_supported;
 		const scope = effectiveScopes?.length ? effectiveScopes.join(' ') : undefined;
 		if (scope) {
@@ -1261,8 +1397,11 @@ export class OauthService {
 	): Promise<string> {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
-		const oauthCredentials: OAuth1CredentialData =
-			await this.getOAuthCredentials<OAuth1CredentialData>(credential, csrfUserId(csrfData));
+		const { oauthCredentials, managedVersion } =
+			await this.getNewConnectionCredentials<OAuth1CredentialData>(
+				credential,
+				csrfUserId(csrfData),
+			);
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
@@ -1335,6 +1474,7 @@ export class OauthService {
 			csrfSecret,
 			stateData: csrfData,
 			oauthTokenSecret: responseJson.oauth_token_secret ?? '',
+			managedVersion,
 		});
 
 		this.logger.debug('OAuth1 authorization url created for credential', {
@@ -1446,7 +1586,7 @@ export class OauthService {
 	/**
 	 * Fetches a `.well-known` discovery document and returns its parsed JSON body.
 	 * Only a 200 is accepted (RFC 8414 / RFC 9728 / OpenID Connect discovery endpoints respond with 200).
-	 * Any other status, or a transport/SSRF failure, throws,
+	 * Any other status, a non-object body, or a transport/SSRF failure throws,
 	 * so the discovery loops can uniformly catch and fall through to the next candidate URL.
 	 */
 	private async fetchDiscoveryDocument(url: string): Promise<unknown> {
@@ -1458,6 +1598,9 @@ export class OauthService {
 		});
 		if (response.statusCode !== 200) {
 			throw new OperationalError(`Request failed with status code ${response.statusCode}`);
+		}
+		if (!isRecord(response.body)) {
+			throw new OperationalError('Discovery response must be a JSON object');
 		}
 		return response.body;
 	}

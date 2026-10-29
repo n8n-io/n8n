@@ -10,7 +10,9 @@ export class WorkflowProjectService {
 	) {}
 
 	private reconstructProject(project: Partial<Project>): Project | undefined {
-		if (typeof project !== 'object' || project === null) return undefined;
+		if (typeof project !== 'object' || project === null || typeof project.id !== 'string') {
+			return undefined;
+		}
 		return Object.assign(new Project(), project);
 	}
 

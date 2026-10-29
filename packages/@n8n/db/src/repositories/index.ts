@@ -55,7 +55,10 @@ export { FolderRepository } from './folder.repository';
 export { FolderAccessRepository } from './folder-access.repository';
 export { FolderTagMappingRepository } from './folder-tag-mapping.repository';
 export { ScopeRepository } from './scope.repository';
-export { IdempotencyKeyRepository } from './idempotency-key.repository';
+export {
+	IdempotencyKeyRepository,
+	type IdempotencyKeyForClaim,
+} from './idempotency-key.repository';
 export { InvalidAuthTokenRepository } from './invalid-auth-token.repository';
 export { InstanceCredentialAssignmentRepository } from './instance-credential-assignment.repository';
 export { LicenseMetricsRepository } from './license-metrics.repository';
@@ -95,7 +98,7 @@ export { SettingsRepository } from './settings.repository';
 export { TagRepository } from './tag.repository';
 export { TestCaseExecutionRepository } from './test-case-execution.repository.ee';
 export { TestRunRepository, type TestRunSummary } from './test-run.repository.ee';
-export { VariablesRepository, type VariableKeyScope } from './variables.repository';
+export { VariablesRepository } from './variables.repository';
 export { WorkflowHistoryRepository } from './workflow-history.repository';
 export { WorkflowStatisticsRepository } from './workflow-statistics.repository';
 export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository';
@@ -127,7 +130,7 @@ export {
 export { WorkflowReviewLifecycleRepository } from './workflow-review-lifecycle.repository';
 export {
 	WorkflowReviewInboxRepository,
-	type InboxCursor,
+	type WorkflowReviewInboxBoundary,
 	type InboxVisibility,
 } from './workflow-review-inbox.repository';
 export {
@@ -148,6 +151,8 @@ export {
 	type NodeUsageScope,
 } from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
+export { PersonRepository, type CloudHooksPeople } from './person.repository';
+export { ServiceAccountRepository } from './service-account.repository';
 export { UserRepository } from './user.repository';
 export { SecretsProviderConnectionRepository } from './secrets-provider-connection.repository.ee';
 export { ProjectSecretsProviderAccessRepository } from './project-secrets-provider-access.repository.ee';

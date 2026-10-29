@@ -1,12 +1,16 @@
+import type { Logger } from '@n8n/backend-common';
 import type { CredentialsEntity, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CredentialsFinderService } from '@n8n/backend-services';
 import { BadRequestError } from '@n8n/errors';
 
+import type { CredentialsService } from '@/credentials/credentials.service';
+
 import type { ArmResponse, TeamsArmService } from '../teams-arm.service';
 import type { TeamsArmTemplateService } from '../teams-arm-template.service';
 import { TeamsBotProvisioningService } from '../teams-bot-provisioning.service';
+import { TeamsCredentialNotesService } from '../teams-credential-notes.service';
 import type { TeamsManagerTokenService } from '../teams-manager-token.service';
 
 const user = mock<User>({ id: 'user-1' });
@@ -19,6 +23,7 @@ const provisionOptions = {
 	projectId: 'project-1',
 	agentId: 'agent-1',
 	agentName: 'Support Bot',
+	credentialId: 'channel-1',
 	subscriptionId: SUBSCRIPTION_ID,
 	msaAppId: '1111aaaa-2222-bbbb-4444-555566667777',
 	msaAppTenantId: '99999999-8888-7777-6666-555555555555',
@@ -36,6 +41,7 @@ describe('TeamsBotProvisioningService', () => {
 	let arm: ReturnType<typeof mock<TeamsArmService>>;
 	let tokens: ReturnType<typeof mock<TeamsManagerTokenService>>;
 	let credentialsFinderService: ReturnType<typeof mock<CredentialsFinderService>>;
+	let credentialsService: ReturnType<typeof mock<CredentialsService>>;
 	let service: TeamsBotProvisioningService;
 
 	/** Paths the bot create and its Teams channel child are PUT to. */
@@ -54,6 +60,7 @@ describe('TeamsBotProvisioningService', () => {
 		arm = mock<TeamsArmService>();
 		tokens = mock<TeamsManagerTokenService>();
 		credentialsFinderService = mock<CredentialsFinderService>();
+		credentialsService = mock<CredentialsService>();
 		const armTemplateService = mock<TeamsArmTemplateService>();
 		armTemplateService.botNameFor.mockReturnValue(BOT_NAME);
 
@@ -62,6 +69,7 @@ describe('TeamsBotProvisioningService', () => {
 			tokens,
 			armTemplateService,
 			credentialsFinderService,
+			new TeamsCredentialNotesService(credentialsFinderService, credentialsService, mock<Logger>()),
 		);
 
 		tokens.acquire.mockResolvedValue('azure-token');
@@ -188,6 +196,73 @@ describe('TeamsBotProvisioningService', () => {
 	});
 
 	describe('provisionBot', () => {
+		const channelCredential = mock<CredentialsEntity>({
+			id: 'channel-1',
+			name: 'Teams',
+			type: 'microsoftEntraServicePrincipalApi',
+		});
+
+		const withChannelCredential = () =>
+			credentialsFinderService.findCredentialForUser.mockImplementation(async (id: string) =>
+				id === 'channel-1'
+					? (channelCredential as never)
+					: (mock<CredentialsEntity>({ type: 'microsoftTeamsManagerOAuth2Api' }) as never),
+			);
+
+		it('keeps the bot name and subscription on the channel credential', async () => {
+			withChannelCredential();
+			credentialsService.decrypt.mockResolvedValue({ clientId: 'app-1' } as never);
+			const encrypted = { data: 'encrypted' };
+			credentialsService.createEncryptedData.mockResolvedValue(encrypted as never);
+			const updated = {
+				clientId: 'app-1',
+				azureBotName: BOT_NAME,
+				azureSubscriptionId: SUBSCRIPTION_ID,
+			};
+
+			await service.provisionBot(provisionOptions);
+
+			expect(credentialsService.createEncryptedData).toHaveBeenCalledWith(
+				expect.objectContaining({ id: 'channel-1', data: updated }),
+			);
+			expect(credentialsService.update).toHaveBeenCalledWith(
+				'channel-1',
+				encrypted,
+				{ kind: 'user', user },
+				updated,
+			);
+		});
+
+		it('leaves a credential it could not decrypt untouched', async () => {
+			withChannelCredential();
+			credentialsService.decrypt.mockResolvedValue({} as never);
+
+			await service.provisionBot(provisionOptions);
+
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
+		it('leaves the credential alone when it already names this bot', async () => {
+			withChannelCredential();
+			credentialsService.decrypt.mockResolvedValue({
+				azureBotName: BOT_NAME,
+				azureSubscriptionId: SUBSCRIPTION_ID,
+			} as never);
+
+			await service.provisionBot(provisionOptions);
+
+			expect(credentialsService.update).not.toHaveBeenCalled();
+		});
+
+		it('still succeeds when the bot cannot be recorded', async () => {
+			withChannelCredential();
+			credentialsService.decrypt.mockRejectedValue(new Error('boom'));
+
+			await expect(service.provisionBot(provisionOptions)).resolves.toMatchObject({
+				botName: BOT_NAME,
+			});
+		});
+
 		it('creates the bot and turns on its Teams channel', async () => {
 			const result = await service.provisionBot(provisionOptions);
 

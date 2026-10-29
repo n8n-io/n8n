@@ -209,5 +209,4 @@ export const defaultSettings: FrontendSettings = {
 		},
 	},
 	useWorkflowPublicationService: false,
-	granularCredentialSharing: false,
 };

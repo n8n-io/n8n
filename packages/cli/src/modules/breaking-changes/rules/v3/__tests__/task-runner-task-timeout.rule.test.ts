@@ -35,8 +35,26 @@ describe('TaskRunnerTaskTimeoutRule', () => {
 	});
 
 	describe('getMetadata()', () => {
-		it('should report an executionsFail impact because a timed-out task fails the Code node', () => {
-			expect(rule.getMetadata().impact).toBe('executionsFail');
+		it('should report an executionsMightFail impact because only a default changes and the admin can override it', () => {
+			expect(rule.getMetadata().impact).toBe('executionsMightFail');
+		});
+
+		it('should say that only the default changes', () => {
+			const { description } = rule.getMetadata();
+
+			expect(description).toMatch(/only the default/i);
+			expect(description).not.toMatch(/will fail|will be aborted|start failing/);
+		});
+	});
+
+	describe('recommendation', () => {
+		it('should name the variable that keeps the current timeout, and say when to set it', async () => {
+			const { recommendations } = await rule.detect();
+			const { description } = recommendations[0];
+
+			expect(description).toContain('N8N_RUNNERS_TASK_TIMEOUT=300');
+			expect(description).toMatch(/only when .*not set/i);
+			expect(description).toMatch(/do not need to do anything/i);
 		});
 	});
 });

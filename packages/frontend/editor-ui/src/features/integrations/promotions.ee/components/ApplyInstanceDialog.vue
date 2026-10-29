@@ -3,23 +3,26 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
 	N8nDialog,
+	N8nDialogBody,
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { ref, shallowRef } from 'vue';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { withMoveAndRenameNote } from '../promotionResult';
 import { applyPromotion } from '../promotionsSettings.api';
 import PromotionBindingsFlow from './PromotionBindingsFlow.vue';
 import type { AppliedResult, BlockedApplyResult } from '../promotions.types';
 
 const props = defineProps<{
 	open: boolean;
-	connectionId: string;
+	environmentId: string;
 	branchName: string;
 }>();
 
@@ -60,11 +63,15 @@ function reportApplied(result: AppliedResult) {
 	// A workflow can be imported and still fail to publish, so success alone would mislead.
 	toast.showMessage({
 		title: i18n.baseText('settings.promotions.apply.toast.success.title'),
-		message: i18n.baseText(
-			notPublished
-				? 'settings.promotions.apply.toast.success.messageNotPublished'
-				: 'settings.promotions.apply.toast.success.message',
-			{ interpolate },
+		message: withMoveAndRenameNote(
+			i18n,
+			i18n.baseText(
+				notPublished
+					? 'settings.promotions.apply.toast.success.messageNotPublished'
+					: 'settings.promotions.apply.toast.success.message',
+				{ interpolate },
+			),
+			result.counts,
 		),
 		type: notPublished ? 'warning' : 'success',
 	});
@@ -107,7 +114,7 @@ async function submit() {
 	isSubmitting.value = true;
 	try {
 		// Whole-branch apply: no expectedSource, so the current branch tip is applied.
-		const result = await applyPromotion(rootStore.publicApiContext, props.connectionId);
+		const result = await applyPromotion(rootStore.publicApiContext, props.environmentId);
 		if (result.status === 'applied') {
 			await onApplied(result);
 			return;
@@ -120,9 +127,15 @@ async function submit() {
 		reportSourceChanged();
 		close();
 	} catch (error) {
-		// Apply can save some changes before a later step fails, so the project list can be stale.
+		// A 409 refuses the apply before any write. Other failures can come after some changes
+		// were saved, so the project list can be stale.
+		const refused = error instanceof ResponseError && error.httpStatusCode === 409;
 		toast.showError(error, i18n.baseText('settings.promotions.apply.toast.error'), {
-			message: i18n.baseText('settings.promotions.apply.toast.error.message'),
+			message: i18n.baseText(
+				refused
+					? 'settings.promotions.apply.toast.error.refused'
+					: 'settings.promotions.apply.toast.error.message',
+			),
 		});
 		void refreshProjects();
 	} finally {
@@ -170,36 +183,41 @@ function onBindingsOpenChange(open: boolean) {
 			</N8nDialogTitle>
 		</N8nDialogHeader>
 
-		<form :class="$style.form" @submit.prevent="submit">
-			<N8nText color="text-base">
-				{{
-					i18n.baseText('settings.promotions.apply.dialog.body', {
-						interpolate: { branch: branchName },
-					})
-				}}
-			</N8nText>
-
-			<N8nDialogFooter>
-				<N8nButton
-					type="button"
-					variant="outline"
-					:disabled="isSubmitting"
-					data-test-id="apply-cancel-button"
-					@click="close"
-				>
-					{{ i18n.baseText('generic.cancel') }}
-				</N8nButton>
-				<N8nButton type="submit" :loading="isSubmitting" data-test-id="apply-confirm-button">
-					{{ i18n.baseText('settings.promotions.apply.dialog.confirm') }}
-				</N8nButton>
-			</N8nDialogFooter>
-		</form>
+		<N8nDialogBody>
+			<form id="apply-instance-form" :class="$style.form" @submit.prevent="submit">
+				<N8nText color="text-base">
+					{{
+						i18n.baseText('settings.promotions.apply.dialog.body', {
+							interpolate: { branch: branchName },
+						})
+					}}
+				</N8nText>
+			</form>
+		</N8nDialogBody>
+		<N8nDialogFooter>
+			<N8nButton
+				type="button"
+				variant="outline"
+				:disabled="isSubmitting"
+				data-test-id="apply-cancel-button"
+				@click="close"
+			>
+				{{ i18n.baseText('generic.cancel') }}
+			</N8nButton>
+			<N8nButton
+				type="submit"
+				form="apply-instance-form"
+				:loading="isSubmitting"
+				data-test-id="apply-confirm-button"
+			>
+				{{ i18n.baseText('settings.promotions.apply.dialog.confirm') }}
+			</N8nButton>
+		</N8nDialogFooter>
 	</N8nDialog>
 	<PromotionBindingsFlow
 		v-else
 		:open="true"
 		:blocked-result="blockedResult"
-		:continue-with="{ kind: 'instance' }"
 		@applied="onBindingsApplied"
 		@source-changed="onBindingsSourceChanged"
 		@update:open="onBindingsOpenChange"

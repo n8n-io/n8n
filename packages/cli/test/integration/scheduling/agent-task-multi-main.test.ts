@@ -75,7 +75,6 @@ describe('agent tasks across two mains over one database', () => {
 				schema: { name: 'Scheduled agent', model: 'm', instructions: 'i' },
 				integrations: [],
 				tools: {},
-				skills: {},
 				versionId,
 				activeVersionId: null,
 			} as Partial<Agent>),
@@ -86,7 +85,6 @@ describe('agent tasks across two mains over one database', () => {
 			author: 'test',
 			schema: null,
 			tools: null,
-			skills: null,
 		});
 		await snapshotRepo.saveForVersion([
 			{

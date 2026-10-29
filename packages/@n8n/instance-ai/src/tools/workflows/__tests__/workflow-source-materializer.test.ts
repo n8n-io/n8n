@@ -369,7 +369,7 @@ describe('materializeWorkflowSource', () => {
 		const jsonSource = '{"name":"W","nodes":[],"connections":{}}';
 		const files = new Map<string, string>([['src/workflows/wf1.json', jsonSource]]);
 		const context = createContext(files);
-		// build-workflow binds the path it built from, a JSON source included.
+		// workflow_builder_build_workflow binds the path it built from, a JSON source included.
 		await saveWorkflowSourceFileBinding(context, {
 			filePath: 'src/workflows/wf1.json',
 			workflowId: 'wf1',

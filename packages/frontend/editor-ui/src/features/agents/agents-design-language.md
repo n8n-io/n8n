@@ -17,6 +17,20 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+## History entry points
+
+Put `Version history` in the Agent actions menu. Put `View timeline` in the
+Publish dropdown. Each action opens its tab, including when the panel is already
+open. Keep history available for saved Agents during edits and with read-only access.
+Hide these entry points in embedded Agent artifacts.
+
+## Configuration add actions
+
+Show a leading `plus` icon beside empty-state configuration add labels. Use
+the ghost button variant for skills, channels, schedules, and capabilities.
+Keep the icon visible before hover so users can identify each action.
+Use the existing icon-only add button when the row contains items.
+
 ## Narrow builder panels
 
 Keep a chip and its adjacent add action inside the available row width. Truncate
@@ -33,7 +47,97 @@ column.
 
 Reduce the editor column side padding when the column is narrow.
 
+## Builder Assistant default
+
+Open the Assistant on each visit to an unpublished Agent when the user can edit
+the Agent and Assistant setup is complete. Let users close it during the visit.
+Keep the panel state when the Agent is saved or published. For published or
+read-only Agents, use the saved panel preference. Apply these defaults in the
+control layout. Keep the experiment layouts unchanged.
+
+## Builder side panel widths
+
+Start the Assistant and Preview panels at 30% of the builder container width.
+Limit this default to 320–720 pixels. Use 480 pixels before measurement.
+Keep saved Assistant widths and user resize choices. Double-click a resize
+handle to reset its panel to the current default.
+Reserve 480 pixels for the editor. When both panels are open, share the
+remaining width in proportion to each panel's requested extra width above
+320 pixels. Do not save automatic layout adjustments as user resize choices.
+
+Disable Test entry points while the Assistant works. Show the same working
+warning beside the Agent title, in the Triggers section, and in the task modal. Keep the action to close
+an open preview available. Restore Test availability when the Assistant finishes.
+
+## Chat-first builder
+
+The Build/Test experiment variants use one chat area in the standalone Agents UI.
+Keep the full Assistant and its Agent artifacts unchanged. Users outside the experiments keep the
+current layout. Keep each chat mounted when the mode changes. Preserve each
+draft, session, and active response.
+Put the grouped Build/Test selector first in the composer toolbar. Use wrench
+and flask icons. Show a purple active state in both themes. Stop the discovery
+pulse after the first message. Disable the pulse for reduced motion.
+
+In the wide variants, start chat at 65% and configuration at 35% of the
+workspace beside the sidebar. Apply this ratio only to the standalone Agents UI.
+Save manual resize choices as a ratio. Keep this preference separate from the
+saved Assistant dock width and the previous fixed configuration width. Keep the
+ratio when the window or sidebar changes size. Double-click the standalone
+divider to reset to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
+When the ratio would break a minimum, the minimum wins.
+Do not cap configuration at a fixed maximum width. Below 680 pixels of available
+workspace, fill the viewport with one panel at a time, above the sidebar. Measure
+the original workspace to keep this layout stable when the sidebar is open.
+Close either chat to show the full-width configuration. Use Chat to reopen the
+selected mode. Keep both panels mounted. Keep the mode selector and composer
+actions inside the input at narrow widths. Show the same preview disclaimer
+below both composers, including empty chats. Use the same footer spacing.
+
+Keep both composers at the same fixed height. Put the placeholder and prompt text
+at the top left. Show the attachment row only when it has content. Put attached
+agents and files above the text. Scroll long prompts and attachment lists inside
+the composer. Use a plus icon for the Test file picker, in the same position as
+the Build menu.
+
+Keep chat width and test placement independent. The control layout keeps its
+existing docks. In toggle variants, always show the selector in the standalone
+builder. Test readiness does not control visibility. Disable Test when the Agent cannot run. Use the
+same validation tooltip as the Test button beside the Agent title to explain the setup issues.
+Show one readiness heading. Put missing instructions, model, and credential in a
+bulleted list under `Add:`. Put other blockers in a bulleted list under `Fix:`.
+Keep the selector visible during later Assistant work, with both modes disabled.
+Do not show a link from the standalone build chat to the full Assistant.
+Test links and task previews select Test. An accepted Fix with Assistant request selects Build.
+Keep Test selected if the Assistant refuses the request to preserve a draft.
+
+## Session controls
+
+Show `Stop session` for a running session, including a child session, when the
+user can access the session and execute the Agent.
+Put it in the session list menu and beside Close in the session detail header.
+Use a red, icon-only ghost control in the header. Match the Preview control's
+size. Disable the action while the request runs. Keep the session running until
+the server reports its final status. Then remove the stop icon and show
+`Session stopped` in the conversation. Keep the notice after a reload. Send the same
+notice to a user who talks to the Agent through a channel.
+Stop discards queued input, including steered messages, before it aborts the active
+execution. Clear the chat queue and close its waiting connections. Keep unsent
+composer drafts. Stop also cancels active background child jobs and clears suspensions for the
+stopped execution. Keep checkpoints from later executions.
+Wrap the header breadcrumbs and actions on narrow screens. Keep Stop and Close
+inside the available width.
+
 ## Preview history
+
+Show token usage after a model turn reports it. Hide the cost when pricing is
+unavailable. Keep known token counts visible. Show a positive cost below the
+display precision as `<$0.0001`. Replace live totals with saved session totals
+after the execution completes. Show server-measured duration with each model
+turn update and when execution ends. Hide duration until a positive server value
+is available. Keep the last confirmed duration between updates. Exclude time
+spent waiting for human approval. Keep progress visible in the session trace
+when the Preview panel is closed.
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
 The shared button shows the history icon and the chat title. Click the title or
@@ -41,6 +145,15 @@ the icon to open history. Show only “Chat history” when no chat title exists
 not show “New session” before the Preview session starts. Truncate long titles
 inside the shared button. Keep the header actions visible.
 Use the `x` icon for the Preview close action, as the Assistant does.
+
+## Session trace actions
+
+Put the session actions menu after `Edit in builder` in the trace header.
+Use the same copy-link, LangSmith export, and delete labels as Preview.
+Show export only when debug export is enabled. Show delete only when the user
+can update the Agent. Confirm session deletion and return to the session list.
+Disable session actions until the current session loads. Disable export and
+delete while their request runs.
 
 ## Fix with Assistant
 
@@ -54,6 +167,12 @@ Keep the test error and its fix action inside the callout. Move the action below
 the error when the row does not fit the panel. Wrap long URLs and error text.
 
 Agent artifacts inside an Assistant chat keep the handoff in that chat.
+
+## Setup checklist
+
+Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+Keep the checklist hidden while the Assistant builds or updates the Agent.
+Use this behavior in Agent artifacts and the standalone Agent Builder.
 
 ## Item context menus
 
@@ -89,6 +208,35 @@ or deactivation.
 
 ## Modal patterns
 
+### Channel behavior settings
+
+Put optional channel behavior controls in the channel edit view after setup.
+Use a Settings Row with a labeled control and a short description of its scope.
+Use `AgentFormSettingRow` for channel switches. Align labels with the form
+fields and switches with the right edge. Keep descriptions visible when they
+wrap. Use the same row for reply controls, approvals, and managed app behavior.
+Keep changes local until Save. Cancel and Close discard them. Show the same
+behavior controls for managed and manual connections.
+
+Group related controls in labeled Settings Row Groups, as Slack and WhatsApp do.
+Put reply controls in Conversations and approval controls in Agent permissions. Keep
+the credential selector outside these groups. Use inset dividers between rows.
+Keep each control on the right and its full description on the left. Keep the
+approval action selector inside its setting row.
+When channel approval is on, show a full-width action picker directly below
+Actions that need approval. Do not show a mode picker or helper text for this
+field. Show saved approval for all actions as a selection of every action.
+
+### Form spacing
+
+Use `--spacing--md` as the gap between independent fields and settings in flat
+Agent forms. The parent owns this gap. Fields and settings must not add outer
+vertical padding, margins, or a minimum row height. Keep label and description
+spacing inside the field. Use `AgentFormSettingRow` for inline controls in
+channel and tool forms. It grows with the text and control content.
+Keep grouped settings surfaces, such as expandable Teams availability, in
+their Settings Row Group layout.
+
 ### Canonical components
 
 Use these components:
@@ -105,14 +253,14 @@ design work.
 
 ### Layout contract
 
-| Area       | Rule                                                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                      |
-| Header     | Do not add a bottom divider. Put Back on the left and Close on the right.                                                     |
-| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.    |
-| Body       | Let `AgentModal` own the outer body inset. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
-| Footer     | Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.               |
-| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                              |
+| Area       | Rule                                                                                                                                                                                                                                                                                                                                                           |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Width      | Use `2xlarge` by default. Keep one width for all steps.                                                                                                                                                                                                                                                                                                        |
+| Header     | Keep Back on the left and Close on the right. Do not add a divider under the header.                                                                                                                                                                                                                                                                           |
+| Title      | Use an editable local name when the asset supports one. Show the asset icon beside the name in tool configuration modals.                                                                                                                                                                                                                                      |
+| Body       | Let `AgentModal` own the outer body inset. Match the header: `--spacing--md` vertical and `--spacing--lg` horizontal. Do not repeat it on the first content wrapper. Focus the first body field. If there is no body control, use the dialog's default focus. Keep the title out of the initial focus order. Scroll the body only. Keep its scrollbar visible. |
+| Footer     | Use the same inset as the header. Keep the footer's top divider. Put ghost Remove on the left. Put Cancel before the primary action on the right.                                                                                                                                                                                                              |
+| Responsive | Support 375 by 667 pixels. Stack footer actions when necessary.                                                                                                                                                                                                                                                                                                |
 
 Use CSS variables for all sizes, spacing, colors, and motion. Do not add a new
 global dialog primitive.
@@ -131,6 +279,11 @@ set it on short modals, such as confirmations, descriptions, and budgets.
 Do not add top padding or a top margin to a modal's first content wrapper. The
 shell supplies that space. Use the flush body only for a full-bleed workspace.
 The workspace must then own all of its edge spacing.
+Keep the shell's bottom body padding when a footer is present. Leave
+`--spacing--md` between the last form control and the footer divider, including
+after scrolling to the end. Do not add this space again in individual forms.
+Stretch footer action buttons on narrow screens. Keep checkbox controls at their
+normal size.
 
 When a nested credential or parameter editor dialog is open, release the parent
 focus trap and block parent dismissal. The nested dialog owns Escape until it
@@ -184,7 +337,7 @@ text and `3xs` spacing. Keep warning and failure indicators distinct.
 ### Multi-step contract
 
 Use the multi-step component for Channels, Sub-agents, Tools, MCP servers,
-Workflows, and Vector stores.
+Workflows, Vector stores, and Skills.
 
 For tools, keep selection and configuration separate. The picker owns search,
 categories, rows, and connection entry points. After selection, route every
@@ -222,6 +375,41 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Small utility dialog      | Keep an appropriate small size. Use Cancel and one bottom-right primary action. JSON import and Agent duplication use this rule.                                                                               |
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
+
+When the skills module is on, `Add skill` starts with the `Skills` picker. The
+picker shows only skills that the Agent can use: skills of its project, skills
+of this Agent only, and global skills. Group them in the tabs All, the project
+name, This agent, and Global. Do not
+show a scope label or an icon in a row. Each row has a switch with the label
+`Attached` or `Detached`. The switch saves at once and keeps the picker open.
+This is an exception to the explicit row action. Disable a skill whose name is
+hard to tell apart from an attached skill, and give the reason in its tooltip.
+A row click opens a read-only preview with Back, Cancel, and `Add skill`. The
+preview of an attached skill shows `Detach` instead of `Add skill`. Both
+actions return to the picker. Do not edit a skill from the picker.
+`Create skill` shows on every tab. It opens the upload screen, and Back returns
+to the picker. The first field of the skill form is `Where can this skill be
+added?`: `This project`, `This agent only`, or `Global`. Each choice has an
+icon. The field starts from the tab: the project tab starts at `This project`,
+the Global tab at `Global`, and the other tabs at `This agent only`. Only a
+user who can create global skills sees `Global`. An existing skill that the
+user can edit shows the same field. Disable it, with a tooltip that gives the
+reason, when another Agent uses the skill. `Save skill` stays disabled until
+the user changes the skill or its target. Do not show the field for an inline
+Agent, which keeps its skills in the node. Then `Add skill` creates the skill on
+the Agent, without the picker.
+
+Show a read-only skill as a document, not as a disabled form. Show each label
+in muted text without the required mark, the description as text, and the
+instructions and references as rendered markdown. Put a muted hint before Cancel that tells the
+user how to edit the skill, or whom to ask. A skill that the user can use but
+not edit opens this way. Hide Save. Keep `Detach` for an attached skill, and
+`Add skill` for a preview of a skill that is not attached.
+
+A skill that the draft pins to an older version also opens read-only, with
+the hint that the agent uses an older version. Its primary action is
+`Use latest version`. The action removes the pin, saves the draft, and opens
+the latest version in the editor.
 
 New skills start with an upload screen. Make `Upload folder` the primary
 action. Support a single `SKILL.md` file and folder drops. Put `Add manually`
@@ -279,6 +467,9 @@ Use `N8nApprovalCard` for Preview tool approvals, including background child
 approvals. It owns the shared layout, keyboard controls, and standard choices
 for the Assistant and Agent Preview. Pass the app catalog labels through
 `useApprovalCardLabels`.
+Use the description slot to show the Agent name and the requested tool name.
+Show a node icon only when configured tool metadata identifies its node type.
+Use the localized Agent label when no name is available.
 Pass the sanitized display arguments from the backend to the shared card.
 For node tools, include the resolved node parameters and any model input.
 The card formats and shows these values inline for both surfaces. Leave space
@@ -292,6 +483,11 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+In the session timeline, show pending background tool approvals below their
+job row. Use the shared approval card and disable automatic focus so rows do
+not take focus as the user scrolls. Keep each card disabled while its response
+is pending. Remove its choices when the approval is resolved.
 
 ## Preview composer queue
 
@@ -320,9 +516,26 @@ Put the action to send a message to the current execution immediately before Edi
 ## Preview retries
 
 Show Resend message inside the latest error callout only for errors that explicitly
-support retry. Use the subtle button style, as Fix with Assistant does. Support the
+support retry. Use the outline button style, as Fix with Assistant does. Support the
 saved empty-answer error and the stream-stall error. Do not offer resend for other
 failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.
 Disable resend while a draft, queued message, active turn, or blocked send exists.
 Keep the message unchanged if an attachment cannot load.
+
+## Versions and publication
+
+Use separate Versions and Publish Timeline tabs. Versions show saved drafts,
+including versions that have never been published. Show the current draft and
+the published version with separate status markers. The timeline keeps each
+publication and unpublication event, including repeated publication of a version.
+Show unknown durations for incomplete legacy records.
+
+Use the small Agent modal shell for version details and publication. Reuse the
+workflow version name and description fields. Both fields are optional. Keep
+Cancel before Save or Publish. Keep entered values when the request fails.
+
+Flush pending editor changes before opening the publish dialog. Keep the selected
+saved version fixed while the dialog is open. Later edits remain in the draft.
+Editing version details does not create another saved version. Restoring a version
+creates a new draft without copying the version name or description.

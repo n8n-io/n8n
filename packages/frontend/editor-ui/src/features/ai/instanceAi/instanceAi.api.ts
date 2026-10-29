@@ -2,7 +2,6 @@ import { makeRestApiRequest } from '@n8n/rest-api-client';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	AiPreferenceScope,
-	ComputerUseChannel,
 	InstanceAiAttachment,
 	InstanceAiBrowserCreateLinkResponse,
 	InstanceAiBrowserStatusResponse,
@@ -37,7 +36,7 @@ export async function postMessage(
 	handoffContext?: InstanceAiHandoffContext,
 	timeZone?: string,
 	pushRef?: string,
-	computerUseChannels?: ComputerUseChannel[],
+	browserUseAvailable?: boolean,
 	threadArtifacts?: InstanceAiThreadArtifactsContext,
 ): Promise<InstanceAiSendMessageResponse> {
 	return await makeRestApiRequest<InstanceAiSendMessageResponse>(
@@ -50,7 +49,7 @@ export async function postMessage(
 			...(handoffContext ? { context: handoffContext } : {}),
 			...(timeZone ? { timeZone } : {}),
 			...(pushRef ? { pushRef } : {}),
-			...(computerUseChannels ? { computerUseChannels } : {}),
+			...(browserUseAvailable !== undefined ? { browserUseAvailable } : {}),
 			...(threadArtifacts ? { threadArtifacts } : {}),
 		},
 	);
@@ -128,40 +127,11 @@ export async function postConfirmation(
 }
 
 /**
- * GET /instance-ai/credits -> { creditsQuota, creditsClaimed, quotaLocked }
- * Returns -1 quota when the proxy is disabled, and also for the activation-capped trial cohort,
- * whose balance is never shown — for them `quotaLocked` is the only usage signal.
+ * GET /instance-ai/credits -> { creditsQuota, creditsClaimed }
+ * Returns -1 quota when proxy is disabled.
  */
 export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
 	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
-}
-
-/**
- * POST /instance-ai/gateway/create-link -> { token, command, expiresAt, ttlSeconds }
- * Generate a dynamic gateway token and pre-built CLI command.
- */
-export async function createGatewayLink(context: IRestApiContext): Promise<{
-	token: string;
-	command: string;
-	expiresAt: string | null;
-	ttlSeconds: number | null;
-}> {
-	return await makeRestApiRequest<{
-		token: string;
-		command: string;
-		expiresAt: string | null;
-		ttlSeconds: number | null;
-	}>(context, 'POST', '/instance-ai/gateway/create-link');
-}
-
-/**
- * POST /instance-ai/gateway/disconnect-session -> { ok }
- * Tear down the current user's gateway session so its tools are no longer
- * exposed to the agent. Does not change the user's localGatewayDisabled
- * preference.
- */
-export async function disconnectGatewaySession(context: IRestApiContext): Promise<void> {
-	await makeRestApiRequest(context, 'POST', '/instance-ai/gateway/disconnect-session');
 }
 
 /**
@@ -199,26 +169,6 @@ export async function getBrowserStatus(
  */
 export async function disconnectBrowserSession(context: IRestApiContext): Promise<void> {
 	await makeRestApiRequest(context, 'POST', '/instance-ai/browser/disconnect-session');
-}
-
-/**
- * GET /instance-ai/gateway/status -> { connected, connectedAt, directory, hostIdentifier, toolCategories }
- * Check whether the gateway daemon is currently connected.
- */
-export async function getGatewayStatus(context: IRestApiContext): Promise<{
-	connected: boolean;
-	connectedAt: string | null;
-	directory: string | null;
-	hostIdentifier: string | null;
-	toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
-}> {
-	return await makeRestApiRequest<{
-		connected: boolean;
-		connectedAt: string | null;
-		directory: string | null;
-		hostIdentifier: string | null;
-		toolCategories: Array<{ name: string; enabled: boolean; writeAccess?: boolean }>;
-	}>(context, 'GET', '/instance-ai/gateway/status');
 }
 
 /**

@@ -2,16 +2,20 @@
 import { describe, it, expect, vi } from 'vitest';
 import { mount } from '@vue/test-utils';
 import type { AgentVersionListItemDto } from '@n8n/api-types';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (k: string) => k }),
 }));
 
+const observe = vi.hoisted(() => vi.fn());
+
 vi.mock('@/app/composables/useIntersectionObserver', () => ({
-	useIntersectionObserver: () => ({ observe: vi.fn() }),
+	useIntersectionObserver: vi.fn(() => ({ observe })),
 }));
 
 vi.mock('@n8n/design-system', () => ({
+	N8nButton: { template: '<button @click="$emit(\'click\')"><slot /></button>', emits: ['click'] },
 	N8nLoading: { name: 'N8nLoading', template: '<div />', props: ['loading', 'rows', 'animated'] },
 	N8nText: { name: 'N8nText', template: '<span><slot /></span>', props: ['size', 'color'] },
 }));
@@ -74,5 +78,57 @@ describe('AgentVersionList — per-row action routing', () => {
 
 		expect(inactive?.props('actions')).toEqual(defaultActions);
 		expect(active?.props('actions')).toEqual(activeActions);
+	});
+	it('disables restore for the current saved draft', async () => {
+		const wrapper = mountList();
+		await wrapper.setProps({ items: [makeItem({ isCurrent: true })] });
+		expect(wrapper.findComponent({ name: 'AgentVersionListItem' }).props('actions')).toMatchObject([
+			{ value: 'revert', disabled: true },
+			{ value: 'publish', disabled: false },
+		]);
+	});
+});
+
+describe('AgentVersionList — loading errors', () => {
+	it('offers retry instead of an empty history after a failed initial load', async () => {
+		const wrapper = mountList();
+		await wrapper.setProps({ items: [], hasLoadError: true });
+		expect(wrapper.find('[role="alert"]').exists()).toBe(true);
+		await wrapper.find('button').trigger('click');
+		expect(wrapper.emitted('retry')).toHaveLength(1);
+	});
+
+	it.each([true, false])('offers retry with loaded rows when hasMore is %s', async (hasMore) => {
+		const wrapper = mountList();
+		await wrapper.setProps({ hasLoadError: true, hasMore });
+		expect(wrapper.findAllComponents({ name: 'AgentVersionListItem' })).toHaveLength(2);
+		await wrapper.get('button').trigger('click');
+		expect(wrapper.emitted('retry')).toHaveLength(1);
+		expect(wrapper.emitted('loadMore')).toBeUndefined();
+
+		await wrapper.setProps({ hasLoadError: false, isLoading: true });
+		expect(wrapper.find('button').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'N8nLoading' }).exists()).toBe(true);
+	});
+
+	it('does not load another page automatically while a retry is needed', async () => {
+		const wrapper = mountList();
+		await wrapper.setProps({ hasMore: true, hasLoadError: true });
+		const { onIntersect } = vi.mocked(useIntersectionObserver).mock.lastCall![0];
+		observe.mockClear();
+		onIntersect();
+		expect(wrapper.emitted('loadMore')).toBeUndefined();
+
+		await wrapper.setProps({ hasLoadError: false, isLoading: true });
+		onIntersect();
+		expect(wrapper.emitted('loadMore')).toBeUndefined();
+		expect(observe).not.toHaveBeenCalled();
+
+		await wrapper.setProps({ isLoading: false });
+		expect(observe).toHaveBeenCalledWith(
+			wrapper.get('[data-test-id="agent-version-history-sentinel"]').element,
+		);
+		onIntersect();
+		expect(wrapper.emitted('loadMore')).toHaveLength(1);
 	});
 });

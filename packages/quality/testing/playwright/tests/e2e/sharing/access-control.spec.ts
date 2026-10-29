@@ -148,7 +148,8 @@ test.describe(
 
 			await n8n.ndv.getNodeCredentialsSelect().click();
 			await expect(n8n.ndv.credentials.getOptionByText(testCredName)).toBeVisible();
-			await expect(n8n.ndv.credentials.getOptionByText(personalCredName)).toBeHidden();
+			// The user's own personal credential follows them into a team project they belong to
+			await expect(n8n.ndv.credentials.getOptionByText(personalCredName)).toBeVisible();
 			await expect(n8n.ndv.credentials.getOptionByText(devCredName)).toBeHidden();
 		});
 

@@ -18,7 +18,9 @@ import type {
 	IntegrationMessageContext,
 } from '../../../integration-tools';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
-import { WhatsAppIntegration } from '../../../platforms/whatsapp-integration';
+import { WhatsAppIntegration } from '../../../platforms/whatsapp/whatsapp-integration';
+import type { WhatsAppSetupTelemetryService } from '../../../platforms/whatsapp/whatsapp-setup-telemetry.service';
+import type { WhatsAppWebhookVerificationStore } from '../../../platforms/whatsapp/whatsapp-webhook-verification.store';
 import {
 	createMockAttachmentService,
 	createReplayContextSetup,
@@ -138,6 +140,8 @@ export function whatsAppThreadId(
 
 export function createWhatsAppIntegration(
 	channelRateLimitGuard = new ChannelRateLimitGuard(),
+	webhookVerification: WhatsAppWebhookVerificationStore = mock<WhatsAppWebhookVerificationStore>(),
+	setupTelemetry: WhatsAppSetupTelemetryService = mock<WhatsAppSetupTelemetryService>(),
 ): WhatsAppIntegration {
 	return new WhatsAppIntegration(
 		mock<BackendLogger>(),
@@ -147,6 +151,8 @@ export function createWhatsAppIntegration(
 			hmacSignatureSecret: 'test-hmac-signature-secret',
 		}),
 		channelRateLimitGuard,
+		webhookVerification,
+		setupTelemetry,
 	);
 }
 
@@ -285,6 +291,8 @@ export async function createWhatsAppReplayContext(
 		integration?: AgentIntegrationConfig;
 		failedApiTypes?: string[];
 		failureSequence?: WhatsAppFailureSequence;
+		webhookVerification?: WhatsAppWebhookVerificationStore;
+		setupTelemetry?: WhatsAppSetupTelemetryService;
 	} = {},
 ): Promise<WhatsAppReplayContext> {
 	const stub = installWhatsAppApiStub(options.failedApiTypes, options.failureSequence);
@@ -294,7 +302,11 @@ export async function createWhatsAppReplayContext(
 	// agree on one connection's cooldown state, mirroring how DI hands both the
 	// same singleton in production.
 	const channelRateLimitGuard = new ChannelRateLimitGuard();
-	const integrationImpl = createWhatsAppIntegration(channelRateLimitGuard);
+	const integrationImpl = createWhatsAppIntegration(
+		channelRateLimitGuard,
+		options.webhookVerification,
+		options.setupTelemetry,
+	);
 	const integration: AgentIntegrationConfig = options.integration ?? {
 		type: 'whatsapp',
 		credentialId: 'cred-whatsapp',

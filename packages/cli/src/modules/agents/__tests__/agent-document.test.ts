@@ -14,7 +14,7 @@ const document: AgentJsonConfig = {
 	tools: [{ type: 'custom', id: 'lookup' }],
 	skills: [
 		{ type: 'skill', id: 'refunds' },
-		{ type: 'skill', id: 'billing', enabled: false },
+		{ type: 'skill', id: 'billing', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
 		{ type: 'skill', id: 'apology' },
 	],
 	tasks: [{ type: 'task', id: 'daily', enabled: true }],
@@ -30,12 +30,12 @@ describe('toAgentDocument / fromAgentDocument', () => {
 		expect(toAgentDocument(config, skillRefs)).toEqual(document);
 	});
 
-	it('keeps the ref order and the enabled flags', () => {
+	it('keeps the ref order and the pins', () => {
 		const { config, skillRefs } = fromAgentDocument(document);
 
 		expect(toAgentDocument(config, skillRefs).skills).toEqual([
 			{ type: 'skill', id: 'refunds' },
-			{ type: 'skill', id: 'billing', enabled: false },
+			{ type: 'skill', id: 'billing', versionId: '0b2c6f1e-7d3a-4c1b-9f2e-5a6b7c8d9e0f' },
 			{ type: 'skill', id: 'apology' },
 		]);
 	});
@@ -69,11 +69,11 @@ describe('toAgentDocument / fromAgentDocument', () => {
 });
 
 describe('config hash of a stored agent', () => {
-	// The value that master computes for this agent, before the skill refs seam.
-	// Clients send this hash back as the base hash of a save, so it must not change.
-	const MASTER_CONFIG_HASH = '04622862951435434cad418aeb1f64a5aa9152535af3f93e68d7730c94cb4dfa';
+	// Clients send this hash back as the base hash of a save, so an accidental change to
+	// how skill refs compose must fail here.
+	const CONFIG_HASH = '1c29b5f1b9a64d762f735e1c218b23da83416ee305dca842f807019a6b4ba752';
 
-	it('composes the same document and hash as before the seam', async () => {
+	it('composes the same document and hash from the stored config and its refs', async () => {
 		const { integrations, ...schema } = document;
 		const agent = { id: 'agent-1', schema: storedAgentConfig(schema), integrations } as Agent;
 
@@ -81,6 +81,6 @@ describe('config hash of a stored agent', () => {
 		const composed = composeJsonConfig(agent, skillRefs);
 
 		expect(composed).toEqual(document);
-		expect(getAgentConfigHash(composed)).toBe(MASTER_CONFIG_HASH);
+		expect(getAgentConfigHash(composed)).toBe(CONFIG_HASH);
 	});
 });

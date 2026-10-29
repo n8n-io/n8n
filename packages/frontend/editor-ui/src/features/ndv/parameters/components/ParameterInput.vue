@@ -99,6 +99,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import {
@@ -394,6 +395,28 @@ const parameterOptions = computed(() => {
 			aiGateway.isActionOptionVisible(node.value ?? null, paramName, String(option.value)),
 	);
 });
+
+// Search text typed into an options dropdown. The search matches the label or
+// the value, so a model shown by its product name is still found by its id.
+const optionsSearch = ref('');
+
+const searchedParameterOptions = computed(() => {
+	const search = optionsSearch.value.trim().toLocaleLowerCase();
+	if (!search) return parameterOptions.value;
+	return parameterOptions.value.filter(
+		(option) =>
+			getOptionsOptionDisplayName(option).toLocaleLowerCase().includes(search) ||
+			String(option.value).toLocaleLowerCase().includes(search),
+	);
+});
+
+function onOptionsSearch(search = '') {
+	optionsSearch.value = search;
+}
+
+function onOptionsVisibleChange(visible: boolean) {
+	if (!visible) optionsSearch.value = '';
+}
 
 const modelValueString = computed<string>(() => {
 	const value = props.modelValue;
@@ -964,11 +987,7 @@ async function loadRemoteParameterOptions() {
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
 	} catch (error: unknown) {
-		if (error instanceof Error) {
-			remoteParameterOptionsLoadingIssues.value = error.message;
-		} else {
-			remoteParameterOptionsLoadingIssues.value = String(error);
-		}
+		remoteParameterOptionsLoadingIssues.value = getErrorMessage(error);
 	}
 
 	remoteParameterOptionsLoading.value = false;
@@ -2093,6 +2112,7 @@ onUpdated(async () => {
 				ref="inputField"
 				:size="inputSize"
 				filterable
+				:filter-method="onOptionsSearch"
 				:model-value="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
@@ -2104,9 +2124,10 @@ onUpdated(async () => {
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
+				@visible-change="onOptionsVisibleChange"
 			>
 				<N8nOption
-					v-for="option in parameterOptions"
+					v-for="option in searchedParameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
 					:disabled="isOptionDisabled(option)"
@@ -2261,6 +2282,7 @@ onUpdated(async () => {
 .parameter-input {
 	display: inline-block;
 	position: relative;
+	min-width: 0;
 
 	:deep(.color-input) {
 		display: flex;

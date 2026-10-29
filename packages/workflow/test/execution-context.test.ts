@@ -52,6 +52,14 @@ describe('toExecutionContext — redaction snapshot', () => {
 		).toThrow();
 	});
 
+	it('parses the channels reported by sub-workflows', () => {
+		const parsed = toExecutionContext({
+			...baseContext,
+			subWorkflowRedaction: { production: true, manual: false },
+		});
+		expect(parsed.subWorkflowRedaction).toEqual({ production: true, manual: false });
+	});
+
 	it('parses a context without a redaction snapshot', () => {
 		const parsed = toExecutionContext({ ...baseContext });
 
@@ -87,6 +95,7 @@ describe('toErrorWorkflowContext', () => {
 		credentials: 'encrypted-identity-carrier',
 		secureArtifacts: 'encrypted-secure-artifacts',
 		redaction: { version: 2, production: true, manual: false },
+		subWorkflowRedaction: { production: true, manual: true },
 		executedByUserId: 'user-1',
 		usesDynamicCredentials: true,
 	};
@@ -106,6 +115,7 @@ describe('toErrorWorkflowContext', () => {
 			triggerNode: { name: 'Webhook', type: 'n8n-nodes-base.webhook' },
 			parentExecutionId: 'parent-1',
 			redaction: { version: 2, production: true, manual: false },
+			subWorkflowRedaction: { production: true, manual: true },
 			executedByUserId: 'user-1',
 			usesDynamicCredentials: true,
 		});

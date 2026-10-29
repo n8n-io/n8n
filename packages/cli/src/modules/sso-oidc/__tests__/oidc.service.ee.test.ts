@@ -6,12 +6,13 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { type LocalServer, startServer } from '@n8n/backend-network/testing';
 import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, SsrfProtectionConfig } from '@n8n/config';
+import { Person, ServiceAccount } from '@n8n/db';
 import type {
 	AuthIdentity,
 	AuthIdentityRepository,
 	SettingsRepository,
-	User,
 	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
@@ -31,8 +32,7 @@ vi.mock('openid-client', async (importOriginal) => {
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
 import { type ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import type { JwtService } from '@/services/jwt.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { JwtService, UrlService } from '@n8n/backend-services';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 
 import { OIDC_PREFERENCES_DB_KEY } from '../constants';
@@ -48,6 +48,7 @@ describe('OidcService', () => {
 	let jwtService: JwtService;
 	let provisioningService: ProvisioningService;
 	let userRepository: UserRepository;
+	let personRepository: PersonRepository;
 	let authIdentityRepository: AuthIdentityRepository;
 	let outboundHttp: Mocked<OutboundHttp>;
 	let customFetch: Mock;
@@ -102,6 +103,7 @@ describe('OidcService', () => {
 			scopesProjectsRolesClaimName: 'n8n_projects',
 		});
 		userRepository = mock<UserRepository>();
+		personRepository = mock<PersonRepository>();
 		authIdentityRepository = mock<AuthIdentityRepository>();
 		customFetch = vi.fn();
 		outboundHttp = mock<OutboundHttp>();
@@ -124,6 +126,7 @@ describe('OidcService', () => {
 			instanceSettings,
 			provisioningService,
 			outboundHttp,
+			personRepository,
 		);
 
 		await oidcService.init();
@@ -406,6 +409,47 @@ describe('OidcService', () => {
 		});
 	});
 
+	describe('sso-login-disabled', () => {
+		beforeEach(() => {
+			mockInstance(Publisher, { publishCommand: vi.fn() });
+			settingsRepository.save = vi.fn().mockResolvedValue(mockConfigFromDB);
+			vi.mocked(client.discovery).mockResolvedValue({} as client.Configuration);
+			vi.spyOn(ssoHelpers, 'emitSsoLoginDisabled').mockResolvedValue();
+		});
+
+		const updateLoginEnabled = async (loginEnabled: boolean) =>
+			await oidcService.updateConfig({ ...mockOidcConfig, loginEnabled } as any as OidcConfigDto);
+
+		it('is emitted when OIDC login turns off', async () => {
+			vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue('oidc');
+
+			await updateLoginEnabled(false);
+
+			expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('email');
+			expect(ssoHelpers.emitSsoLoginDisabled).toHaveBeenCalledExactlyOnceWith('oidc');
+		});
+
+		it.each(['email', 'saml', 'ldap'] as const)(
+			'is not emitted when OIDC is off and the method is %s',
+			async (method) => {
+				vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue(method);
+
+				await updateLoginEnabled(false);
+
+				expect(ssoHelpers.emitSsoLoginDisabled).not.toHaveBeenCalled();
+			},
+		);
+
+		it('is not emitted when OIDC login turns on', async () => {
+			vi.spyOn(ssoHelpers, 'getCurrentAuthenticationMethod').mockReturnValue('email');
+
+			await updateLoginEnabled(true);
+
+			expect(ssoHelpers.setCurrentAuthenticationMethod).toHaveBeenCalledWith('oidc');
+			expect(ssoHelpers.emitSsoLoginDisabled).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('state redirect target', () => {
 		beforeEach(() => {
 			vi.mocked(jwtService.sign).mockImplementation((_purpose, payload) => JSON.stringify(payload));
@@ -609,9 +653,9 @@ describe('OidcService', () => {
 			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
-			authIdentityRepository.findOne = vi
-				.fn()
-				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue({
+				user: Object.assign(new Person(), { email: 'john.doe@test.com' }),
+			} as any);
 
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
@@ -649,7 +693,9 @@ describe('OidcService', () => {
 			oidcService.getOidcConfiguration = vi.fn().mockResolvedValue(configurationWithUserInfo);
 			// @ts-expect-error - applySsoProvisioning is private and only accessible within class 'OidcService'
 			oidcService.applySsoProvisioning = vi.fn().mockResolvedValue(undefined);
-			userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+			personRepository.findByEmailWithAuthIdentities = vi
+				.fn()
+				.mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
@@ -720,7 +766,7 @@ describe('OidcService', () => {
 				.fn()
 				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
 			authIdentityRepository.findOne = vi.fn().mockResolvedValue(null);
-			userRepository.findOne = vi.fn().mockResolvedValue(null);
+			personRepository.findByEmailWithAuthIdentities = vi.fn().mockResolvedValue(null);
 			userRepository.manager.transaction = vi.fn();
 
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
@@ -759,9 +805,9 @@ describe('OidcService', () => {
 			provisioningService.assertSsoLoginAllowed = vi
 				.fn()
 				.mockRejectedValue(new ForbiddenError('Access denied by SSO role mapping configuration'));
-			authIdentityRepository.findOne = vi
-				.fn()
-				.mockResolvedValue({ user: { email: 'john.doe@test.com' } as any });
+			authIdentityRepository.findOne = vi.fn().mockResolvedValue({
+				user: Object.assign(new Person(), { email: 'john.doe@test.com' }),
+			} as any);
 
 			vi.mocked(client.authorizationCodeGrant).mockResolvedValue({
 				access_token: 'valid-access-token',
@@ -843,13 +889,24 @@ describe('OidcService', () => {
 
 		// UserInfo is optional when the ID token contains the profile claims.
 		it('logs in with ID token profile claims when the endpoint is absent', async () => {
-			const user = mock<User>({ id: 'user-id', email: claims.email });
+			const user = Object.assign(new Person(), { id: 'user-id', email: claims.email });
 			vi.mocked(authIdentityRepository.findOne).mockResolvedValue(mock<AuthIdentity>({ user }));
 
 			const result = await oidcService.loginUser(callbackUrl, 'state', 'nonce');
 
 			expect(result).toEqual({ user, idToken: 'valid-id-token' });
 			expect(client.fetchUserInfo).not.toHaveBeenCalled();
+		});
+
+		it('rejects a service account linked to the OIDC identity', async () => {
+			const serviceAccount = Object.assign(new ServiceAccount(), { id: 'sa-1' });
+			vi.mocked(authIdentityRepository.findOne).mockResolvedValue(
+				mock<AuthIdentity>({ user: serviceAccount }),
+			);
+
+			await expect(oidcService.loginUser(callbackUrl, 'state', 'nonce')).rejects.toThrow(
+				ForbiddenError,
+			);
 		});
 
 		it('returns ID token profile claims in the test callback when the endpoint is absent', async () => {
@@ -895,7 +952,7 @@ describe('OidcService', () => {
 	describe('applySsoProvisioning', () => {
 		const claims = { sub: 'user-123', n8n_instance_role: 'global:member' };
 		const userInfo = { email: 'test@example.com', email_verified: true };
-		const user = mock<User>({ id: 'user-id' });
+		const user = Object.assign(new Person(), { id: 'user-id' });
 
 		beforeEach(() => {
 			oidcService.verifyState = vi.fn().mockReturnValue('valid-state');
@@ -1038,6 +1095,7 @@ describe('OidcService', () => {
 				instanceSettings,
 				provisioningService,
 				realOutboundHttp,
+				personRepository,
 			);
 		});
 
@@ -1162,7 +1220,9 @@ describe('OidcService', () => {
 
 	it('should reject linking to an existing user when email is not verified', async () => {
 		mockAuthCallbackWith({ email_verified: false, email: 'john.doe@test.com' });
-		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+		personRepository.findByEmailWithAuthIdentities = vi
+			.fn()
+			.mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
 		await expect(login()).rejects.toThrow(BadRequestError);
 		await expect(login()).rejects.toThrow('Email address is not verified by the identity provider');
@@ -1171,7 +1231,9 @@ describe('OidcService', () => {
 
 	it('should reject when email_verified is the string "false" (no boolean coercion bypass)', async () => {
 		mockAuthCallbackWith({ email_verified: 'false', email: 'john.doe@test.com' });
-		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+		personRepository.findByEmailWithAuthIdentities = vi
+			.fn()
+			.mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
 		await expect(login()).rejects.toThrow(BadRequestError);
 		expect(authIdentityRepository.save).not.toHaveBeenCalled();
@@ -1179,7 +1241,7 @@ describe('OidcService', () => {
 
 	it('should link to an existing user when email_verified is absent (default, permissive)', async () => {
 		mockAuthCallbackWith({ email: 'john.doe@test.com' });
-		userRepository.findOne = vi
+		personRepository.findByEmailWithAuthIdentities = vi
 			.fn()
 			.mockResolvedValue({ id: 'user-1', email: 'john.doe@test.com' } as any);
 
@@ -1192,7 +1254,9 @@ describe('OidcService', () => {
 	it('should reject when email_verified is absent and enforcement is enabled', async () => {
 		setEmailVerifiedRequired();
 		mockAuthCallbackWith({ email: 'john.doe@test.com' });
-		userRepository.findOne = vi.fn().mockResolvedValue({ email: 'john.doe@test.com' } as any);
+		personRepository.findByEmailWithAuthIdentities = vi
+			.fn()
+			.mockResolvedValue({ email: 'john.doe@test.com' } as any);
 
 		await expect(login()).rejects.toThrow(BadRequestError);
 		expect(authIdentityRepository.save).not.toHaveBeenCalled();
@@ -1201,7 +1265,7 @@ describe('OidcService', () => {
 	it('should link when email_verified is true and enforcement is enabled', async () => {
 		setEmailVerifiedRequired();
 		mockAuthCallbackWith({ email_verified: true, email: 'john.doe@test.com' });
-		userRepository.findOne = vi
+		personRepository.findByEmailWithAuthIdentities = vi
 			.fn()
 			.mockResolvedValue({ id: 'user-1', email: 'john.doe@test.com' } as any);
 
@@ -1215,9 +1279,9 @@ describe('OidcService', () => {
 		// Enforcement on + unverified email, but the identity is already bound by `sub`.
 		setEmailVerifiedRequired();
 		mockAuthCallbackWith({ email_verified: false, email: 'john.doe@test.com' });
-		authIdentityRepository.findOne = vi
-			.fn()
-			.mockResolvedValue({ user: { email: 'john.doe@test.com' } } as any);
+		authIdentityRepository.findOne = vi.fn().mockResolvedValue({
+			user: Object.assign(new Person(), { email: 'john.doe@test.com' }),
+		} as any);
 
 		const user = await login();
 

@@ -4,12 +4,13 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 export type { EngineLogger } from './logging';
 
 export {
-	ACTION_TOKEN,
-	IDENTITY_TOKEN,
+	ACTION_TOKEN_SPEC,
+	IDENTITY_TOKEN_SPEC,
 	InvalidActionTokenError,
 	InvalidIdentityTokenError,
 	mintActionToken,
 	mintIdentityToken,
+	mintResumeToken,
 	SharedSecretIdentityVerifier,
 	verifyActionToken,
 } from './auth';
@@ -22,9 +23,14 @@ export type {
 	StepDetail,
 } from './server';
 export type {
+	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 	ExecutionListItem,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeTargetRequest,
+	ResumeTargetResponse,
 } from './server';
 
 // The publisher stays internal: no host constructs or swaps one.

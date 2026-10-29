@@ -144,6 +144,69 @@ describe('withBudgetGuardrail', () => {
 		expect(budgetAlert.notifyMonthlyThreshold).toHaveBeenCalledOnce();
 	});
 
+	it('installs the notice sink without a hook when no budget bucket is on', () => {
+		const onNotice = vi.fn();
+		const attached = withBudgetGuardrail(base, {
+			ledger,
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			onNotice,
+		});
+
+		expect(attached).not.toBe(base);
+		expect(attached.guardrails?.hooks).toEqual([]);
+		const sink = attached.guardrails?.onNotice;
+		expect(sink).toBeDefined();
+		sink?.({ code: 'budget.alert', agentId: 'child-1' });
+		expect(onNotice).toHaveBeenCalledWith({ code: 'budget.alert', agentId: 'child-1' });
+		sink?.({ code: 'pii.block' });
+		expect(onNotice).toHaveBeenCalledTimes(1);
+	});
+
+	it('exposes a notice sink that forwards budget codes and drops others', () => {
+		const onNotice = vi.fn();
+		const attached = withBudgetGuardrail(base, {
+			ledger,
+			budget: { ...saved, enabled: true },
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+			onNotice,
+		});
+
+		const sink = attached.guardrails?.onNotice;
+		expect(sink).toBeDefined();
+		sink?.({ code: 'budget.session', agentId: 'child-1' });
+		expect(onNotice).toHaveBeenCalledWith({ code: 'budget.session', agentId: 'child-1' });
+		sink?.({ code: 'pii.block' });
+		expect(onNotice).toHaveBeenCalledTimes(1);
+	});
+
+	it('adds no sink when no input notice is given', () => {
+		const attached = withBudgetGuardrail(base, {
+			ledger,
+			budget: { ...saved, enabled: true },
+			sessionId: 'thread-1',
+			agentId: 'agent-1',
+		});
+
+		expect(attached.guardrails?.onNotice).toBeUndefined();
+	});
+
+	it('keeps an existing guardrails onNotice when no input notice is given', () => {
+		const existing = vi.fn();
+		const attached = withBudgetGuardrail(
+			{ ...base, guardrails: { hooks: [], onNotice: existing } },
+			{
+				ledger,
+				budget: { ...saved, enabled: true },
+				sessionId: 'thread-1',
+				agentId: 'agent-1',
+			},
+		);
+
+		expect(attached.guardrails?.onNotice).toBe(existing);
+	});
+
 	it('emails the saved agent when a workflow run crosses the alert on a telemetry id', async () => {
 		const freshLedger = spendLedger();
 		const attached = withBudgetGuardrail(base, {

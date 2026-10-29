@@ -6,6 +6,7 @@ import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
 import type { LicenseState } from '../../license-state';
+import { Logger } from '../../logging/logger';
 import { MissingModuleError } from '../errors/missing-module.error';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleLoadError } from '../errors/module-load.error';
@@ -34,7 +35,7 @@ describe('getModuleEntryUrl', () => {
 describe('eligibleModules', () => {
 	it('should not include opt-in modules by default', () => {
 		const eligible = Container.get(ModuleRegistry).eligibleModules;
-		expect(eligible).not.toContain('type-availability-policies');
+		expect(eligible).not.toContain('engine-v2');
 	});
 
 	it('should include policy-infrastructure by default', () => {
@@ -57,20 +58,72 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
-	it.each(['instance-ai', 'agents', 'agent-evals'])(
-		'should include %s by default',
-		(moduleName) => {
-			expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
-		},
-	);
+	it.each([
+		'skills',
+		'instance-ai',
+		'knowledge',
+		'agents',
+		'agent-evals',
+		'inbox',
+		'type-availability-policies',
+	])('should include %s by default', (moduleName) => {
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
+	});
 
-	it.each(['instance-ai', 'agents', 'agent-evals'])(
-		'should allow opting out of the default %s module via env var',
-		(moduleName) => {
-			process.env.N8N_DISABLED_MODULES = moduleName;
-			expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
-		},
-	);
+	it.each([
+		'instance-ai',
+		'knowledge',
+		'agents',
+		'agent-evals',
+		'inbox',
+		'type-availability-policies',
+	])('should allow opting out of the default %s module via env var', (moduleName) => {
+		process.env.N8N_DISABLED_MODULES = moduleName;
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain(moduleName);
+	});
+
+	describe('skills and agents', () => {
+		it('should keep skills eligible and warn once when skills is disabled but agents is not', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills';
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+			const registry = Container.get(ModuleRegistry);
+
+			const eligible = registry.eligibleModules;
+			// Read twice: the warning is logged only once.
+			expect(registry.eligibleModules).toEqual(eligible);
+
+			expect(eligible).toContain('skills');
+			expect(eligible.indexOf('skills')).toBeLessThan(eligible.indexOf('agents'));
+			expect(warn).toHaveBeenCalledTimes(1);
+			expect(warn).toHaveBeenCalledWith(expect.stringContaining('"agents" module'));
+		});
+
+		it('should still apply the other disabled modules when it keeps skills', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills,insights';
+			vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+
+			const eligible = Container.get(ModuleRegistry).eligibleModules;
+
+			expect(eligible).toContain('skills');
+			expect(eligible).not.toContain('insights');
+		});
+
+		it('should allow opting out of skills when agents is disabled too', () => {
+			process.env.N8N_DISABLED_MODULES = 'skills,agents';
+			const warn = vi.spyOn(Container.get(Logger), 'warn').mockImplementation(() => {});
+
+			const eligible = Container.get(ModuleRegistry).eligibleModules;
+
+			expect(eligible).not.toContain('skills');
+			expect(eligible).not.toContain('agents');
+			expect(warn).not.toHaveBeenCalled();
+		});
+	});
+
+	it('should initialize knowledge before agents', () => {
+		const eligible = Container.get(ModuleRegistry).eligibleModules;
+		expect(eligible.indexOf('knowledge')).toBeLessThan(eligible.indexOf('agents'));
+	});
 
 	it('should consider a module ineligible if it was disabled via env var', () => {
 		process.env.N8N_DISABLED_MODULES = 'insights';
@@ -82,6 +135,9 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
 			'source-control',
@@ -105,15 +161,19 @@ describe('eligibleModules', () => {
 			'runtime-credentials',
 			'mcp-registry',
 			'workflow-reviews',
+			'inbox',
+			'skills',
 			'instance-ai',
+			'knowledge',
 			'agents',
 			'agent-evals',
 			'scim',
+			'type-availability-policies',
 		]);
 	});
 
 	it('should consider a module eligible if it was enabled via env var', () => {
-		process.env.N8N_ENABLED_MODULES = 'type-availability-policies';
+		process.env.N8N_ENABLED_MODULES = 'engine-v2';
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual([
 			'policy-infrastructure',
 			'inbound-auth-core',
@@ -123,6 +183,9 @@ describe('eligibleModules', () => {
 			'data-table',
 			'oauth-server',
 			'mcp',
+			// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+			'mcp-discovery',
+			// EOF Experiment cleanup
 			'provisioning',
 			'breaking-changes',
 			'source-control',
@@ -146,11 +209,15 @@ describe('eligibleModules', () => {
 			'runtime-credentials',
 			'mcp-registry',
 			'workflow-reviews',
+			'inbox',
+			'skills',
 			'instance-ai',
+			'knowledge',
 			'agents',
 			'agent-evals',
 			'scim',
 			'type-availability-policies',
+			'engine-v2',
 		]);
 	});
 

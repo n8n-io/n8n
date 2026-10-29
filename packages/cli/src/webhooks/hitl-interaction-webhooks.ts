@@ -2,6 +2,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import type express from 'express';
 import type { ParsedHitlCallbackReference } from 'n8n-core';
 import { verifyHitlCallbackReference } from 'n8n-core';
+import type { IHttpRequestMethods } from 'n8n-workflow';
 
 import { WaitingWebhooks } from './waiting-webhooks';
 import { sanitizeWebhookRequest } from './webhook-request-sanitizer';
@@ -27,6 +28,11 @@ export abstract class HitlInteractionWebhooks extends WaitingWebhooks {
 	protected reject(res: express.Response, status: number): IWebhookResponseCallbackData {
 		res.status(status).send('');
 		return { noWebhookResponse: true };
+	}
+
+	/** The platform posts to one fixed URL, so the route has no execution to read the method from. */
+	async getWebhookMethods(): Promise<IHttpRequestMethods[]> {
+		return ['POST'];
 	}
 
 	/** Parses the raw HTTP body into a typed callback reference, or null if malformed. */

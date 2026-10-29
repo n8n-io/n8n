@@ -29,6 +29,7 @@ import { router } from './actions/router';
 import { authenticationProperty, databricksCredentials } from './authentication';
 import { DATABRICKS_NODE_VERSION } from './constants';
 import * as loadOptions from './methods/loadOptions';
+import * as resourceMapping from './methods/resourceMapping';
 import * as listSearch from './methods/listSearch';
 
 export class Databricks implements INodeType {
@@ -81,6 +82,12 @@ export class Databricks implements INodeType {
 							'Run and inspect Databricks jobs. <a href="https://docs.databricks.com/jobs/index.html" target="_blank">Learn more</a>.',
 					},
 					{
+						name: 'Lakebase',
+						value: 'lakebase',
+						description:
+							'Read and write rows in a Lakebase Postgres database. <a href="https://docs.databricks.com/aws/en/oltp/" target="_blank">Learn more</a>.',
+					},
+					{
 						name: 'Model Serving',
 						value: 'modelServing',
 						description:
@@ -120,7 +127,7 @@ export class Databricks implements INodeType {
 		],
 	};
 
-	methods = { listSearch, loadOptions };
+	methods = { listSearch, loadOptions, resourceMapping };
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		return await router.call(this);

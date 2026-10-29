@@ -40,4 +40,40 @@ describe('objectToError', () => {
 			expect(result.message).toBe('Test error');
 		});
 	});
+
+	describe('policy violations', () => {
+		it('should copy `violations` from the error object', () => {
+			const violation = {
+				kind: 'node-type-unavailable',
+				checkId: 'node-type-availability',
+				message: 'Node type "n8n-nodes-base.set" is blocked by a project policy',
+				subject: 'n8n-nodes-base.set',
+				subjectType: 'nodeType',
+				scope: 'project',
+				projectId: 'project-1',
+				optInAvailable: false,
+			};
+			const errorObject = {
+				message: 'Test error',
+				violations: [violation],
+			};
+			const workflow = mock<Workflow>();
+
+			const result = objectToError(errorObject, workflow);
+
+			expect((result as unknown as { violations: unknown[] }).violations).toEqual([violation]);
+		});
+
+		it('should not copy `isPolicyRefusal`', () => {
+			const errorObject = {
+				message: 'Test error',
+				isPolicyRefusal: true,
+			};
+			const workflow = mock<Workflow>();
+
+			const result = objectToError(errorObject, workflow);
+
+			expect(Object.hasOwn(result, 'isPolicyRefusal')).toBe(false);
+		});
+	});
 });

@@ -1,5 +1,6 @@
 import type { ProviderOptions } from '@ai-sdk/provider-utils';
 import type { TelemetryOptions, ToolCallRepairFunction, ToolSet } from 'ai';
+import { createAbortError } from '../../sdk/abort';
 
 import {
 	buildCheckpointOptions,
@@ -17,6 +18,7 @@ import type {
 	RunOutputSink,
 	RunServices,
 } from '../../types/runtime/agent-loop';
+import { withPromptSizeBreakdown } from './prompt-size-usage';
 import { RuntimeContextBuilder, type StaticLoopContext } from './runtime-context';
 import {
 	extractSettledToolCalls,
@@ -50,7 +52,7 @@ import type {
 } from '../../types/sdk/agent';
 import type { GuardrailStop } from '../../types/sdk/guardrail';
 import type { AgentMessage, ContentToolCall } from '../../types/sdk/message';
-import { getModelIdString } from '../../utils/model';
+import { getCatalogModelId, getModelIdString } from '../../utils/model';
 import { removeToolResultRun } from '../../workspace';
 import { GuardrailRunner } from '../guardrails/guardrail-runner';
 import { createFilteredLogger } from '../logger';
@@ -59,7 +61,7 @@ import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-mem
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
+import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -70,6 +72,7 @@ import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
+import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -87,7 +90,8 @@ const MAX_LOOP_ITERATIONS = 100;
 
 function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
 	return batch.results.some(
-		({ toolName, toolEntry }) => toolMap.get(toolName)?.endsTurn?.(toolEntry.output) === true,
+		({ toolName, input, toolEntry }) =>
+			resolveToolForCall(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
 	);
 }
 
@@ -110,7 +114,7 @@ function resumedTurnEnds(
 			(c) =>
 				c.type === 'tool-call' &&
 				c.state === 'resolved' &&
-				toolMap.get(c.toolName)?.endsTurn?.(c.output) === true,
+				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
 		) ?? false
 	);
 }
@@ -209,7 +213,7 @@ export class AgentRuntime {
 		const tokenCounter = createModelTokenCounter(config.model);
 		this.telemetry = new RuntimeTelemetry(config);
 		this.runId = config.runId ?? generateRunId();
-		if (config.deferredTools && config.deferredTools.length > 0) {
+		if (!config.nativeToolDeferral && config.deferredTools && config.deferredTools.length > 0) {
 			this.deferredToolManager = new DeferredToolManager(config.deferredTools, {
 				...config.toolSearch,
 				// Let the discovery tools recognize the always-available toolset, so a
@@ -542,8 +546,11 @@ export class AgentRuntime {
 		// A skill dependency loads a deferred tool without a `load_tool` record, and
 		// skills restore only when the loop starts. Accept any registered deferred tool.
 		const tool =
-			this.context.getCurrentTools(state.persistence).find((t) => t.name === toolCall.toolName) ??
-			this.deferredToolManager?.getTool(toolCall.toolName);
+			resolveToolForCall(
+				buildToolMap(this.context.getCurrentTools(state.persistence)),
+				toolCall.toolName,
+				toolCall.input,
+			) ?? this.deferredToolManager?.getTool(toolCall.toolName, toolCall.input);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -738,7 +745,7 @@ export class AgentRuntime {
 	private assertNotAborted(abortScope: AgentAbortScope): void {
 		if (abortScope.isAborted) {
 			this.updateState({ status: 'cancelled' });
-			throw new Error('Agent run was aborted');
+			throw createAbortError('Agent run was aborted');
 		}
 	}
 
@@ -771,9 +778,11 @@ export class AgentRuntime {
 			threadId: options.persistence.threadId,
 			resourceId: options.persistence.resourceId,
 			titleConfig: this.config.titleGeneration,
+			telemetry: this.telemetry.resolve(options),
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
 			turnDelta: list.turnDelta(),
+			...(options.titleText !== undefined ? { titleText: options.titleText } : {}),
 			executionCounter: options.executionCounter,
 			onSideCallUsage: options.onSideCallUsage,
 			promptCaching: this.config.promptCaching,
@@ -891,7 +900,10 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence);
+		await this.activeSkills?.restore(list, options?.persistence, {
+			freshRun: ctx.isFreshRun,
+			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
+		});
 		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
@@ -968,7 +980,7 @@ export class AgentRuntime {
 		state: LoopState,
 		pendingResume: PendingResume,
 	): Promise<ToolBatchSettlement<T>> {
-		const { toolMap } = this.context.buildToolLoopContext(
+		const { toolMap } = await this.context.buildToolLoopContext(
 			ctx.staticContext.aiProviderTools,
 			ctx.options?.persistence,
 			ctx.options?.executionCounter,
@@ -1004,6 +1016,9 @@ export class AgentRuntime {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
+		for (const update of this.activeSkills?.takeUpdates() ?? []) {
+			await sink.emitMessage?.(update);
+		}
 		const turn = await this.callModelWithRetries(ctx, sink, state, modelCallContext);
 		// A guardrail refused the call. Usage from any discarded empty attempt
 		// is already folded in; end the run without a new model turn.
@@ -1052,7 +1067,7 @@ export class AgentRuntime {
 
 	private async prepareModelCall(ctx: PreparedLoopContext) {
 		const { list, options, abortScope, staticContext } = ctx;
-		const tools = this.context.buildToolLoopContext(
+		const tools = await this.context.buildToolLoopContext(
 			staticContext.aiProviderTools,
 			options?.persistence,
 			options?.executionCounter,
@@ -1063,6 +1078,7 @@ export class AgentRuntime {
 			list,
 			tools,
 			instructionProviderOptions: ctx.instructionProviderOptions,
+			providerOptions: staticContext.providerOptions,
 			hostVolatileInstructions,
 			activeSkills: this.activeSkills,
 		});
@@ -1074,7 +1090,7 @@ export class AgentRuntime {
 			hasTools: options?.toolsEnabled !== false && tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
-			providerOptions: staticContext.providerOptions,
+			providerOptions: prompt.providerOptions,
 			outputSpec: staticContext.outputSpec,
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
@@ -1118,28 +1134,30 @@ export class AgentRuntime {
 			if (guardrails && guardCtx) await guardrails.after(guardCtx, turn.usage);
 			return turn;
 		};
+		const retryModel = async () => {
+			this.assertNotAborted(ctx.abortScope);
+			return await callModel();
+		};
 
 		let turn = await callModel();
 		// Retry empty stop turns. Charge each attempt before checking for cancellation.
 		for (let retry = 0; turn && retry < MAX_EMPTY_TURN_RETRIES && isEmptyModelTurn(turn); retry++) {
-			this.recordTurnUsage(ctx, sink, state, turn);
-			this.assertNotAborted(ctx.abortScope);
-			turn = await callModel();
+			[, turn] = await Promise.all([this.recordTurnUsage(ctx, sink, state, turn), retryModel()]);
 		}
 		if (!turn) return undefined;
-		this.recordTurnUsage(ctx, sink, state, turn);
+		await this.recordTurnUsage(ctx, sink, state, turn);
 		return turn;
 	}
 
-	private recordTurnUsage<T>(
+	private async recordTurnUsage<T>(
 		ctx: PreparedLoopContext,
 		sink: RunOutputSink<T>,
 		state: LoopState,
 		turn: ModelTurnResult,
-	): void {
-		state.totalUsage = mergeUsage(state.totalUsage, turn.usage);
+	): Promise<void> {
+		state.totalUsage = mergeUsage(state.totalUsage, withPromptSizeBreakdown(turn.usage));
 		incrementTokenCountFromUsage(ctx.options?.executionCounter, turn.usage);
-		sink.reportUsage(state.totalUsage);
+		await sink.reportUsage(state.totalUsage);
 	}
 
 	private async finishToolBatch<T>(
@@ -1422,7 +1440,10 @@ export class AgentRuntime {
 	private async ensureModelCost(): Promise<ModelCost | undefined> {
 		if (this.modelCost) return this.modelCost;
 		try {
-			this.modelCost = await getModelCost(this.modelIdString);
+			this.modelCost = await getModelCost(
+				getCatalogModelId(this.config.model),
+				this.config.modelFetch,
+			);
 		} catch {
 			// Catalog unavailable — proceed without cost data, will retry next call
 		}

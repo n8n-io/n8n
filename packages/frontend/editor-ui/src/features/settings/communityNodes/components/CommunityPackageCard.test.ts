@@ -5,6 +5,9 @@ import { STORES } from '@n8n/stores';
 import CommunityPackageCard from './CommunityPackageCard.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { PublicInstalledNode, PublicInstalledPackage } from 'n8n-workflow';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
+import type { NodeTypeAvailability } from '@n8n/api-types';
+import { waitFor } from '@testing-library/vue';
 
 const communityPackage: PublicInstalledPackage = {
 	packageName: 'n8n-nodes-test',
@@ -111,6 +114,74 @@ describe('CommunityPackageCard', () => {
 			});
 
 			expect(queryByText('Uninstall package')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('restricted badge', () => {
+		const mockNodeAvailability = (
+			unavailable: Record<string, Pick<NodeTypeAvailability, 'scope' | 'optInAvailable'>>,
+		) => {
+			vi.spyOn(useTypeAvailabilityPoliciesStore(), 'getNodeTypeAvailability').mockImplementation(
+				(name: string) =>
+					name in unavailable
+						? { name, available: false, ...unavailable[name] }
+						: { name, available: true },
+			);
+		};
+
+		// Reka UI only mounts tooltip content once the trigger is hovered.
+		function hoverTrigger(element: Element) {
+			element.dispatchEvent(
+				new PointerEvent('pointermove', {
+					bubbles: true,
+					cancelable: true,
+					pointerType: 'mouse',
+					clientX: 100,
+					clientY: 100,
+				}),
+			);
+		}
+
+		it('shows the badge and lists instance-blocked node types in the tooltip', async () => {
+			mockNodeAvailability({ 'n8n-nodes-test.oldNode': { scope: 'instance' } });
+
+			const { getByText } = renderComponent({ props: { communityPackage } });
+
+			const badge = getByText('Restricted');
+			expect(badge).toBeInTheDocument();
+
+			hoverTrigger(badge);
+
+			await waitFor(() => {
+				expect(document.querySelector('[data-dismissable-layer]')).toHaveTextContent('OldNode');
+			});
+			expect(document.querySelector('[data-dismissable-layer]')).not.toHaveTextContent('TestNode');
+		});
+
+		it('does not show the badge when no node type is blocked', () => {
+			mockNodeAvailability({});
+
+			const { queryByText } = renderComponent({ props: { communityPackage } });
+
+			expect(queryByText('Restricted')).not.toBeInTheDocument();
+		});
+
+		it('ignores a project-scoped restriction', () => {
+			mockNodeAvailability({ 'n8n-nodes-test.oldNode': { scope: 'project' } });
+
+			const { queryByText } = renderComponent({ props: { communityPackage } });
+
+			expect(queryByText('Restricted')).not.toBeInTheDocument();
+		});
+
+		it('ignores an instance restriction that projects can opt into', () => {
+			mockNodeAvailability({
+				'n8n-nodes-test.oldNode': { scope: 'instance', optInAvailable: true },
+			});
+
+			const { queryByText } = renderComponent({ props: { communityPackage } });
+
+			expect(queryByText('Restricted')).not.toBeInTheDocument();
 		});
 	});
 });

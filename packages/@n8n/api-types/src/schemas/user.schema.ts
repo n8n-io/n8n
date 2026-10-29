@@ -43,13 +43,30 @@ export const userDetailSchema = userBaseSchema.extend({
 	lastActiveAt: z.string().nullable().optional(),
 	inviteAcceptUrl: z.string().optional(),
 	isManagedByEnv: z.boolean().optional(),
+	/** True when the user cannot sign in, for example after SCIM deprovisioning. */
+	disabled: z.boolean().optional(),
+});
+
+/**
+ * Number of users in each tab of the users list. The counts use every list
+ * filter except the status filter, so the tab labels do not change when the
+ * client switches tabs.
+ */
+export const usersListStatusCountsSchema = z.object({
+	all: z.number(),
+	active: z.number(),
+	deactivated: z.number(),
 });
 
 export const usersListSchema = z.object({
+	/** Number of users that match every filter. */
 	count: z.number(),
 	items: z.array(userDetailSchema),
+	/** Only when the request sets `includeStatusCounts`. */
+	statusCounts: usersListStatusCountsSchema.optional(),
 });
 
 export type User = z.infer<typeof userDetailSchema>;
 export type UsersList = z.infer<typeof usersListSchema>;
+export type UsersListStatusCounts = z.infer<typeof usersListStatusCountsSchema>;
 export type UserProject = z.infer<typeof userProjectSchema>;

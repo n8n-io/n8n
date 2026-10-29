@@ -1,35 +1,25 @@
-import type { AgentConfigValidationIssue } from '@n8n/api-types';
-import type { BaseTextKey } from '@n8n/i18n';
+import type { AgentConfigValidationIssue, AgentJsonConfig } from '@n8n/api-types';
 
-export const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+/**
+ * A workflow blocking the publish: its tool is attached, but the workflow has
+ * no published version yet.
+ */
+export type UnpublishedWorkflowTool = {
+	/** The workflow's display name. */
+	name: string;
+	/** Stable workflow id for opening the editor; absent for by-name references. */
+	workflowId?: string;
 };
 
-export const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
-	'subAgent.missing_reference':
-		'agents.builder.validation.issue.subAgent.missingReference' as BaseTextKey,
-	'subAgent.incompatible_reference':
-		'agents.builder.validation.issue.subAgent.incompatibleReference' as BaseTextKey,
-	'skill.missing_reference':
-		'agents.builder.validation.issue.skill.missingReference' as BaseTextKey,
-	'task.invalid_value': 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
-	'tool.workflow.missing_reference':
-		'agents.builder.validation.issue.tool.workflow.missingReference' as BaseTextKey,
-	'tool.workflow.incompatible_reference':
-		'agents.builder.validation.issue.tool.workflow.incompatibleReference' as BaseTextKey,
-	'tool.custom.missing_reference':
-		'agents.builder.validation.issue.tool.custom.missingReference' as BaseTextKey,
-	'tool.node.missing_reference':
-		'agents.builder.validation.issue.tool.node.missingReference' as BaseTextKey,
-	'mcpServer.incompatible_credential':
-		'agents.builder.validation.issue.mcpServer.incompatibleCredential' as BaseTextKey,
-};
+/** A policy denies the node type this capability runs as, so it cannot publish or preview. */
+export function isRestrictedIssue(issue: AgentConfigValidationIssue): boolean {
+	return issue.code === 'restricted_node_type';
+}
+
+/** The entry itself is allowed, and only the inline agent it embeds holds a denied type. */
+export function isRestrictedByInlineTool(issue: AgentConfigValidationIssue): boolean {
+	return isRestrictedIssue(issue) && issue.reason === 'restricted_by_inline_tool';
+}
 
 /**
  * A warning blocks publishing but not the draft preview: the workflow tool is
@@ -42,4 +32,27 @@ export function isWarningIssue(issue: AgentConfigValidationIssue): boolean {
 /** Warning-only issues are resolved by the publish flow itself, so only the rest block it. */
 export function hasBlockingIssues(issues: AgentConfigValidationIssue[]): boolean {
 	return issues.some((issue) => !isWarningIssue(issue));
+}
+
+/**
+ * The unpublished workflow tools behind a config validation, for the modal the
+ * builder shows instead of a failing publish request. The issue's
+ * `capability.id` is the workflow's display name; `capability.index` locates
+ * the tool config for its stable workflow id.
+ */
+export function unpublishedWorkflowTools(
+	issues: AgentConfigValidationIssue[],
+	tools: NonNullable<AgentJsonConfig['tools']>,
+): UnpublishedWorkflowTool[] {
+	return issues
+		.filter((issue) => isWarningIssue(issue))
+		.map((issue) => {
+			const tool = issue.capability.index === undefined ? undefined : tools[issue.capability.index];
+			const workflowTool = tool?.type === 'workflow' ? tool : undefined;
+			return {
+				name: workflowTool?.workflow ?? issue.capability.id ?? '',
+				workflowId: workflowTool?.workflowId,
+			};
+		})
+		.filter((workflow) => workflow.name !== '');
 }

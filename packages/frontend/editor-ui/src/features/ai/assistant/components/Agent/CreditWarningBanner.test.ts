@@ -119,59 +119,21 @@ describe('CreditWarningBanner', () => {
 		expect(text).toContain('"total":"500"');
 	});
 
-	// The activation-capped trial cohort is never shown a balance,
-	// so the banner has to warn them without quoting one.
-	describe('when amounts are hidden', () => {
-		it('shows the limit-reached text and no figures', () => {
-			mockUserIsTrialing = true;
-			const wrapper = mount(CreditWarningBanner, {
-				props: { creditsRemaining: 5, creditsQuota: 800, amountsHidden: true },
-			});
-
-			const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
-			expect(text).toContain('aiAssistant.builder.creditBanner.limitReachedText');
-			expect(text).not.toContain('remaining');
-			expect(text).not.toContain('800');
+	it('uses an override message and hides dismiss when the state is not dismissible', () => {
+		const wrapper = mount(CreditWarningBanner, {
+			props: {
+				creditsRemaining: 0,
+				creditsQuota: 800,
+				message: "You've run out of AI credits",
+				dismissible: false,
+			},
 		});
 
-		it('labels the action as an upgrade rather than getting more', () => {
-			const wrapper = mount(CreditWarningBanner, {
-				props: { creditsRemaining: 0, creditsQuota: 800, amountsHidden: true },
-			});
-
-			const cta = wrapper.get('[data-test-id="credit-banner-get-more"]').text();
-			expect(cta).toContain('aiAssistant.builder.creditBanner.upgrade');
-		});
-
-		// The tooltip promises credits renew next month. A locked trial quota does not.
-		it('uses an override message and hides dismiss when the state is not dismissible', () => {
-			const wrapper = mount(CreditWarningBanner, {
-				props: {
-					creditsRemaining: 0,
-					creditsQuota: 800,
-					message: "You've run out of AI credits",
-					dismissible: false,
-				},
-			});
-
-			const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
-			expect(text).toContain("You've run out of AI credits");
-			expect(text).not.toContain('remaining');
-			expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
-			expect(wrapper.find('[data-test-id="credit-banner-renewal-info"]').exists()).toBe(false);
-			expect(wrapper.find('[data-test-id="credit-banner-get-more"]').exists()).toBe(true);
-		});
-
-		it('drops the renewal tooltip', () => {
-			const withAmounts = mount(CreditWarningBanner, {
-				props: { creditsRemaining: 0, creditsQuota: 800 },
-			});
-			expect(withAmounts.find('[data-test-id="credit-banner-renewal-info"]').exists()).toBe(true);
-
-			const hidden = mount(CreditWarningBanner, {
-				props: { creditsRemaining: 0, creditsQuota: 800, amountsHidden: true },
-			});
-			expect(hidden.find('[data-test-id="credit-banner-renewal-info"]').exists()).toBe(false);
-		});
+		const text = wrapper.get('[data-test-id="credit-warning-banner"]').text();
+		expect(text).toContain("You've run out of AI credits");
+		expect(text).not.toContain('remaining');
+		expect(wrapper.find('[data-test-id="credit-banner-dismiss"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="credit-banner-renewal-info"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="credit-banner-get-more"]').exists()).toBe(true);
 	});
 });

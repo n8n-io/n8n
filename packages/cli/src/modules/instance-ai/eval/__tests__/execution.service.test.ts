@@ -17,7 +17,7 @@ import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from '
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
-import type { PrepareWorkflowAgentForEval } from '@/modules/agents/agent-runtime-instrumentation';
+import type { PrepareWorkflowAgentForEval } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import type { NodeTypes } from '@/node-types';
 import type { PostHogClient } from '@/posthog';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -34,11 +34,18 @@ vi.mock('@n8n/instance-ai', () => ({
 	createEvalAgent: vi.fn(),
 	extractText: vi.fn(),
 }));
+vi.mock('../data-table-rows', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../data-table-rows')>()),
+	generateDataTableRows: vi.fn(),
+}));
 vi.mock('../pin-data-generator', () => ({
 	generatePinData: vi.fn(),
 }));
 vi.mock('../mock-handler', () => ({
 	createLlmMockHandler: vi.fn(),
+}));
+vi.mock('../node-run-mock', () => ({
+	createNodeRunMockHandler: vi.fn(),
 }));
 vi.mock('../workflow-analysis', () => ({
 	partitionAiRoots: vi.fn(),
@@ -49,8 +56,7 @@ vi.mock('../workflow-analysis', () => ({
 	generateMockHints: vi.fn(),
 	identifyNodesForHints: vi.fn(),
 	identifyNodesForPinData: vi.fn(),
-	isDataTableRead: vi.fn().mockReturnValue(false),
-	emitsDataTableRows: vi.fn().mockReturnValue(false),
+	identifyNodesForRunMock: vi.fn(),
 	detectBinaryDependencies: vi.fn(),
 }));
 
@@ -81,6 +87,8 @@ vi.mock('@n8n/workflow-sdk', async (importOriginal) => ({
 
 // Same constructor-protocol gotcha — use a class so `new Workflow()` returns an instance with `getStartNode`.
 const mockGetStartNode = vi.fn();
+// No-op by default (reset in beforeEach). A test that needs the real constructor's parameter rewrite installs it here.
+const mockWorkflowConstructed = vi.fn();
 vi.mock('n8n-workflow', async () => {
 	const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
 	class MockWorkflow {
@@ -88,6 +96,7 @@ vi.mock('n8n-workflow', async () => {
 		connections: IConnections;
 		getStartNode = mockGetStartNode;
 		constructor(options: { nodes?: Array<{ name: string }>; connections?: IConnections }) {
+			mockWorkflowConstructed(options);
 			// Key the entity's node objects by name (same references, so the SUT's
 			// in-place parameter patching propagates to the executed workflow).
 			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
@@ -115,18 +124,19 @@ vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
 // Import SUT and mocked modules (after vi.mock calls)
 // ---------------------------------------------------------------------------
 
+import { generateDataTableRows } from '../data-table-rows';
 import { EvalExecutionService } from '../execution.service';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
+import { createNodeRunMockHandler } from '../node-run-mock';
 import { createWebSearchMock } from '../web-search-mock';
 import { generatePinData } from '../pin-data-generator';
 import {
 	detectBinaryDependencies,
-	emitsDataTableRows,
 	generateMockHints,
 	identifyNodesForHints,
 	identifyNodesForPinData,
-	isDataTableRead,
+	identifyNodesForRunMock,
 	partitionAiRoots,
 } from '../workflow-analysis';
 import type { MockHints } from '../workflow-analysis';
@@ -139,10 +149,12 @@ const generateMockHintsMock = vi.mocked(generateMockHints);
 const detectBinaryDependenciesMock = vi.mocked(detectBinaryDependencies);
 const identifyNodesForHintsMock = vi.mocked(identifyNodesForHints);
 const identifyNodesForPinDataMock = vi.mocked(identifyNodesForPinData);
-const emitsDataTableRowsMock = vi.mocked(emitsDataTableRows);
+const identifyNodesForRunMockMock = vi.mocked(identifyNodesForRunMock);
+const createNodeRunMockHandlerMock = vi.mocked(createNodeRunMockHandler);
 const partitionAiRootsMock = vi.mocked(partitionAiRoots);
 const createLlmMockHandlerMock = vi.mocked(createLlmMockHandler);
 const generatePinDataMock = vi.mocked(generatePinData);
+const generateDataTableRowsMock = vi.mocked(generateDataTableRows);
 
 function makeWorkflowEntity(overrides: Partial<IWorkflowBase> = {}) {
 	return {
@@ -287,11 +299,14 @@ describe('EvalExecutionService', () => {
 		// between tests — re-set every impl we depend on here.
 		identifyNodesForHintsMock.mockReturnValue([]);
 		identifyNodesForPinDataMock.mockReturnValue([]);
+		identifyNodesForRunMockMock.mockReturnValue([]);
+		createNodeRunMockHandlerMock.mockReturnValue(vi.fn());
 		partitionAiRootsMock.mockReturnValue({ unpinNodes: [], pinNodes: [], autoPinned: [] });
 		generateMockHintsMock.mockResolvedValue(makeEmptyHints());
 		generatePinDataMock.mockResolvedValue({});
 		createLlmMockHandlerMock.mockReturnValue(vi.fn());
 		mockGetStartNode.mockReturnValue(makeStartNode());
+		mockWorkflowConstructed.mockReset();
 		mockWireServerStart.mockResolvedValue('http://127.0.0.1:54321');
 		mockWireServerStop.mockResolvedValue(undefined);
 		// Default: kill-switch enabled. Tests that need it off flip this.
@@ -616,44 +631,6 @@ describe('EvalExecutionService', () => {
 			});
 		});
 
-		it("applies a pinned Data Table read's literal conditions and limit to the generated rows", async () => {
-			const readNode = {
-				id: 'node-3',
-				name: 'Read Pending Tasks',
-				type: 'n8n-nodes-base.dataTable',
-				typeVersion: 1.1,
-				position: [400, 0],
-				parameters: {
-					operation: 'get',
-					matchType: 'allConditions',
-					filters: { conditions: [{ keyName: 'status', condition: 'eq', keyValue: 'pending' }] },
-					returnAll: false,
-					limit: 1,
-				},
-			} as INode;
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				makeWorkflowEntity({ nodes: [makeStartNode(), readNode] }) as never,
-			);
-			identifyNodesForPinDataMock.mockReturnValue([readNode]);
-			emitsDataTableRowsMock.mockReturnValue(true);
-			generatePinDataMock.mockResolvedValue({
-				'Read Pending Tasks': [
-					{ json: { task: 'T-1', status: 'done' } },
-					{ json: { task: 'T-2', status: 'pending' } },
-					{ json: { task: 'T-3', status: 'pending' } },
-				],
-			});
-
-			await service.executeWithLlmMock('wf-1', makeUser());
-
-			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
-				pinData?: Record<string, unknown[]>;
-			};
-			expect(runArg.pinData?.['Read Pending Tasks']).toEqual([
-				{ json: { task: 'T-2', status: 'pending' } },
-			]);
-		});
-
 		it('routes through WorkflowRunner with evaluation mode + pin data + user', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = { body: { email: 'jane@example.com' } };
@@ -756,7 +733,7 @@ describe('EvalExecutionService', () => {
 			const bypassNode = {
 				id: 'node-3',
 				name: 'Only New Jobs',
-				type: 'n8n-nodes-base.dataTable',
+				type: 'n8n-nodes-base.postgres',
 				typeVersion: 1,
 				position: [400, 0],
 				parameters: {},
@@ -778,8 +755,8 @@ describe('EvalExecutionService', () => {
 		it('returns a framework failure when bypass pin data generation fails', async () => {
 			const bypassNode = {
 				id: 'node-3',
-				name: 'Read Data Table',
-				type: 'n8n-nodes-base.dataTable',
+				name: 'Read Orders',
+				type: 'n8n-nodes-base.postgres',
 				typeVersion: 1,
 				position: [400, 0],
 				parameters: {},
@@ -890,6 +867,52 @@ describe('EvalExecutionService', () => {
 			expect(ad.evalLlmMockHandler).toEqual(expect.any(Function));
 		});
 
+		it('answers for nodes the HTTP mock cannot reach at run time and records each run', async () => {
+			const sendEmail = {
+				id: 'node-2',
+				name: 'Send Email',
+				type: 'n8n-nodes-base.emailSend',
+				typeVersion: 2.1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), sendEmail] }) as never,
+			);
+			identifyNodesForRunMockMock.mockReturnValue([sendEmail]);
+			const nodeOutput = [[{ json: { accepted: ['ana@example.com'] }, pairedItem: { item: 0 } }]];
+			createNodeRunMockHandlerMock.mockImplementation((options) => async (context) => {
+				options.onRun?.(context.getNode(), { items: [] }, nodeOutput[0]);
+				return nodeOutput;
+			});
+			let nodeMockOutputs: unknown[] = [];
+			workflowRunner.run.mockImplementation(async (data) => {
+				const ad: { evalNodeMockHandler?: (context: unknown) => Promise<unknown> } = {};
+				await data.configureAdditionalData?.(ad as never);
+				nodeMockOutputs = [
+					await ad.evalNodeMockHandler?.({ getNode: () => sendEmail }),
+					await ad.evalNodeMockHandler?.({ getNode: () => makeStartNode() }),
+				];
+				return DB_EXECUTION_ID;
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(nodeMockOutputs).toEqual([nodeOutput, undefined]);
+			expect(createNodeRunMockHandlerMock).toHaveBeenCalledWith(
+				expect.objectContaining({ nodeNames: new Set(['Send Email']) }),
+			);
+			expect(result.nodeResults['Send Email']).toMatchObject({
+				executionMode: 'mocked',
+				interceptedRequests: [
+					expect.objectContaining({
+						nodeType: 'n8n-nodes-base.emailSend',
+						mockResponse: nodeOutput[0],
+					}),
+				],
+			});
+		});
+
 		it('returns a partial-failure result when the run resolves with undefined', async () => {
 			activeExecutions.getPostExecutePromise.mockResolvedValue(undefined);
 
@@ -940,7 +963,6 @@ describe('EvalExecutionService', () => {
 			expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 				expect.objectContaining({ id: 'wf-1' }),
 				undefined,
-				new Set(),
 			);
 		});
 
@@ -1024,7 +1046,6 @@ describe('EvalExecutionService', () => {
 				expect(identifyNodesForPinDataMock).toHaveBeenCalledWith(
 					expect.objectContaining({ id: 'wf-1' }),
 					new Set(['Agent']),
-					new Set(),
 				);
 			});
 
@@ -1360,6 +1381,117 @@ describe('EvalExecutionService', () => {
 	// ── Parameter issue patching ─────────────────────────────────────
 
 	describe('parameter issue patching', () => {
+		it.each([
+			{
+				mappingMode: 'defineBelow',
+				value: {
+					row_number: '={{ $json.row_number }}',
+					PRD: '={{ $json.output.prd }}',
+					'Test Cases': '={{ $json.output.test_cases }}',
+				},
+			},
+			{ mappingMode: 'autoMapInputData', value: null },
+		])(
+			'keeps a Sheets update mapping ($mappingMode) when Phase 1 builds the workflow before the sheet picker is filled',
+			async (mapper) => {
+				const actual = await vi.importActual<typeof import('n8n-workflow')>('n8n-workflow');
+				// What the real `Workflow` constructor does: rewrite each node's
+				// parameters in place, without the ones hidden by displayOptions.
+				mockWorkflowConstructed.mockImplementation(
+					(options: { nodes: INode[]; nodeTypes: NodeTypes }) => {
+						for (const node of options.nodes) {
+							const nodeType = options.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+							if (!nodeType) continue;
+							node.parameters =
+								actual.NodeHelpers.getNodeParameters(
+									nodeType.description.properties,
+									node.parameters,
+									true,
+									false,
+									node,
+									nodeType.description,
+								) ?? {};
+						}
+					},
+				);
+				const sheetsType = {
+					description: {
+						properties: [
+							{ displayName: 'Resource', name: 'resource', type: 'string', default: 'sheet' },
+							{ displayName: 'Operation', name: 'operation', type: 'string', default: 'update' },
+							{ displayName: 'Document', name: 'documentId', type: 'string', default: '' },
+							{ displayName: 'Sheet', name: 'sheetName', type: 'string', default: '' },
+							{
+								displayName: 'Columns',
+								name: 'columns',
+								type: 'resourceMapper',
+								default: { mappingMode: 'defineBelow', value: null },
+								// Same rule as the node's `untilSheetSelected`.
+								displayOptions: {
+									show: { resource: ['sheet'], operation: ['update'] },
+									hide: { sheetName: [''] },
+								},
+							},
+						],
+					} as unknown as INodeTypeDescription,
+				};
+				nodeTypes.getByNameAndVersion.mockImplementation(
+					(type) =>
+						(type === 'n8n-nodes-base.googleSheets'
+							? sheetsType
+							: { description: { properties: [] } as unknown as INodeTypeDescription }) as never,
+				);
+				workflowFinderService.findWorkflowForUser.mockResolvedValue(
+					makeWorkflowEntity({
+						nodes: [
+							makeStartNode(),
+							{
+								id: 'node-2',
+								name: 'Write PRD to Row',
+								type: 'n8n-nodes-base.googleSheets',
+								typeVersion: 4.7,
+								position: [200, 0],
+								parameters: {
+									resource: 'sheet',
+									operation: 'update',
+									documentId: { __rl: true, mode: 'list', value: '' },
+									sheetName: { __rl: true, mode: 'list', value: '' },
+									columns: { ...mapper, matchingColumns: ['row_number'], schema: [] },
+								},
+							} as INode,
+						],
+						connections: {
+							Webhook: {
+								main: [[{ node: 'Write PRD to Row', type: NodeConnectionTypes.Main, index: 0 }]],
+							},
+						},
+					}) as never,
+				);
+				// The mock gets the entity by reference and Phase 2 changes it later: copy at call time.
+				let hintedNodes: INode[] = [];
+				generateMockHintsMock.mockImplementation(async (options) => {
+					hintedNodes = structuredClone(options.workflow.nodes);
+					return makeEmptyHints();
+				});
+
+				await service.executeWithLlmMock('wf-1', makeUser());
+
+				const runArg = workflowRunner.run.mock.calls[0][0];
+				const sheetsNode = runArg.workflowData.nodes.find(
+					(node) => node.name === 'Write PRD to Row',
+				);
+				expect(sheetsNode?.parameters.columns).toMatchObject({
+					mappingMode: mapper.mappingMode,
+					matchingColumns: ['row_number'],
+					...(mapper.value ? { value: mapper.value } : {}),
+				});
+				const hintedSheetsNode = hintedNodes.find((node) => node.name === 'Write PRD to Row');
+				expect(hintedSheetsNode?.parameters.columns).toMatchObject({
+					matchingColumns: ['row_number'],
+				});
+			},
+		);
+
 		it('keeps missing required parameters visible as failed config issues after synthesis', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
 			nodeTypes.getByNameAndVersion.mockImplementation((nodeType) => {
@@ -1447,6 +1579,46 @@ describe('EvalExecutionService', () => {
 				account: '100000000',
 				note: '__evalMockValue',
 			});
+		});
+
+		it('fills empty required fields of run-mocked nodes but records no config issue, like pinned nodes', async () => {
+			const sendEmail = {
+				id: 'node-2',
+				name: 'Send Email',
+				type: 'n8n-nodes-base.emailSend',
+				typeVersion: 2.1,
+				position: [200, 0],
+				parameters: { fromEmail: placeholderValue('Sender address'), toEmail: '' },
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [makeStartNode(), sendEmail] }) as never,
+			);
+			nodeTypes.getByNameAndVersion.mockImplementation(
+				(nodeType) =>
+					({
+						description: {
+							properties:
+								nodeType === 'n8n-nodes-base.emailSend'
+									? ['fromEmail', 'toEmail'].map((name) => ({
+											name,
+											type: 'string',
+											required: true,
+											default: '',
+											displayName: name,
+										}))
+									: [],
+						} as unknown as INodeTypeDescription,
+					}) as never,
+			);
+			identifyNodesForRunMockMock.mockReturnValue([sendEmail]);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+			const runArg = workflowRunner.run.mock.calls[0][0];
+			const sendNode = runArg.workflowData.nodes.find((node) => node.name === 'Send Email');
+
+			// The engine refuses to run a node with an empty required field, mocked or not.
+			expect(sendNode?.parameters.toEmail).not.toBe('');
+			expect(result.nodeResults['Send Email']?.configIssues).toBeUndefined();
 		});
 
 		it('synthesizes validator-shaped values for selected resource placeholders', async () => {
@@ -1925,6 +2097,46 @@ describe('EvalExecutionService', () => {
 			expect(Object.keys(item?.binary ?? {})).toEqual(['CV_0']);
 		});
 
+		it('pins Form Trigger content in the Form Trigger shape when it comes back webhook-shaped', async () => {
+			const formTrigger = {
+				id: 'node-1',
+				name: 'Feedback Form',
+				type: 'n8n-nodes-base.formTrigger',
+				typeVersion: 2.6,
+				position: [0, 0],
+				parameters: {
+					formFields: { values: [{ fieldLabel: 'Email', fieldName: 'email', fieldType: 'email' }] },
+				},
+			} as INode;
+			mockGetStartNode.mockReturnValue(formTrigger);
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({ nodes: [formTrigger] }) as never,
+			);
+			const hints = makeEmptyHints();
+			hints.triggerContent = { headers: {}, query: {}, body: { email: 'test@example.com' } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			expect(runData.pinData?.['Feedback Form']?.[0]?.json).toEqual({
+				email: 'test@example.com',
+				submittedAt: expect.any(String),
+				formMode: 'production',
+			});
+		});
+
+		it('keeps the body envelope of a Webhook trigger', async () => {
+			const hints = makeEmptyHints();
+			hints.triggerContent = { headers: {}, query: {}, body: { email: 'test@example.com' } };
+			generateMockHintsMock.mockResolvedValue(hints);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
+			const runData = workflowRunner.run.mock.calls[0][0];
+			expect(runData.pinData?.['Webhook']?.[0]?.json).toEqual(hints.triggerContent);
+		});
+
 		it('does not create pin data when triggerContent is empty', async () => {
 			const hints = makeEmptyHints();
 			hints.triggerContent = {};
@@ -1961,13 +2173,13 @@ describe('EvalExecutionService', () => {
 		});
 	});
 
-	// ── Data Table column contracts ──────────────────────────────────
+	// ── Data Table preparation ───────────────────────────────────────
 
-	describe('resolveDataTableColumns (via execution)', () => {
-		function makeDataTableNode(dataTableId: unknown, operation = 'get'): INode {
+	describe('Data Table preparation (via execution)', () => {
+		function dataTableNode(name: string, dataTableId: unknown, operation = 'get'): INode {
 			return {
-				id: 'node-dt',
-				name: 'Get Rows',
+				id: name,
+				name,
 				type: 'n8n-nodes-base.dataTable',
 				typeVersion: 1,
 				position: [200, 0],
@@ -1975,144 +2187,234 @@ describe('EvalExecutionService', () => {
 			} as INode;
 		}
 
-		function makeDataTableWorkflow(dataTableId: unknown, operation = 'get') {
-			const node = makeDataTableNode(dataTableId, operation);
-			// The SUT maps these to names, so the mock must yield node objects.
-			identifyNodesForPinDataMock.mockReturnValue([node]);
-			return makeWorkflowEntity({ nodes: [makeStartNode(), node] });
+		function table(id: string, name: string, projectId = 'proj-1') {
+			return { id, name, projectId, columns: [{ name: 'title', type: 'string' }] };
 		}
 
 		beforeEach(() => {
-			// Mirrors the real predicate: only `get` emits stored rows.
-			emitsDataTableRowsMock.mockImplementation(
-				(node: INode) =>
-					node.type === 'n8n-nodes-base.dataTable' &&
-					(node.parameters as { operation?: string } | undefined)?.operation === 'get',
-			);
 			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
-			dataTableService.getColumns.mockResolvedValue([
-				{ name: 'contact_email', type: 'string' },
-			] as never);
-		});
-
-		it('passes an id-mode locator straight through to the column lookup', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				makeDataTableWorkflow({ __rl: true, mode: 'id', value: 'dt-42' }) as never,
-			);
-
-			await service.executeWithLlmMock('wf-1', makeUser());
-
-			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-42', 'proj-1');
-			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toEqual({
-				'Get Rows': [{ name: 'contact_email', type: 'string' }],
+			generateDataTableRowsMock.mockResolvedValue({
+				rowsByTable: {},
+				warnings: [],
+				timestampedTables: [],
 			});
 		});
 
-		it('resolves a name-mode locator to its id before fetching columns', async () => {
+		it('empties every table the workflow uses and inserts the generated rows', async () => {
+			const read = dataTableNode('Get Sent Posts', { __rl: true, mode: 'id', value: 'dt-1' });
+			const write = dataTableNode(
+				'Mark Sent',
+				{ __rl: true, mode: 'name', value: 'sent posts' },
+				'insert',
+			);
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				makeDataTableWorkflow({ __rl: true, mode: 'name', value: 'Customers' }) as never,
+				makeWorkflowEntity({ nodes: [makeStartNode(), read, write] }) as never,
 			);
-			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([
-				{ id: 'dt-9', name: 'Customers' },
+			dataTableService.getManyAndCount.mockResolvedValue({
+				data: [{ id: 'dt-2', name: 'Sent Posts' }],
+				count: 1,
+			} as never);
+			dataTableService.findDataTablesByIds.mockResolvedValue([
+				table('dt-1', 'Posts'),
+				table('dt-2', 'Sent Posts'),
+			] as never);
+			generateDataTableRowsMock.mockResolvedValue({
+				rowsByTable: { Posts: [{ title: 'Post A' }] },
+				warnings: [],
+				timestampedTables: [],
+			});
+
+			await service.executeWithLlmMock('wf-1', makeUser(), { scenarioHints: 'Post A was sent' });
+
+			expect(dataTableService.getManyAndCount).toHaveBeenCalledWith({
+				filter: { projectId: 'proj-1', name: 'sent posts' },
+				take: 1,
+			});
+			expect(dataTableService.findDataTablesByIds).toHaveBeenCalledWith(['dt-1', 'dt-2']);
+			expect(generateDataTableRowsMock).toHaveBeenCalledWith(
+				expect.objectContaining({
+					scenarioHints: 'Post A was sent',
+					tables: [
+						{ name: 'Posts', columns: [{ name: 'title', type: 'string' }], nodes: [read] },
+						{ name: 'Sent Posts', columns: [{ name: 'title', type: 'string' }], nodes: [write] },
+					],
+				}),
+			);
+			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-1', 'proj-1');
+			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-2', 'proj-1');
+			expect(dataTableService.insertRows).toHaveBeenCalledTimes(1);
+			expect(dataTableService.insertRows).toHaveBeenCalledWith('dt-1', 'proj-1', [
+				{ title: 'Post A' },
 			]);
-
-			await service.executeWithLlmMock('wf-1', makeUser());
-
-			// A name passed to the id lookup used to miss, silently dropping the node
-			// to prompt-only generation with invented column names.
-			expect(dataTableService.findDataTablesByNamesInProject).toHaveBeenCalledWith('proj-1', [
-				'Customers',
-			]);
-			expect(dataTableService.getColumns).toHaveBeenCalledWith('dt-9', 'proj-1');
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
 
-		it.each(['rowExists', 'rowNotExists'])(
-			'skips the column contract for %s, which emits the input item not table rows',
-			async (operation) => {
-				workflowFinderService.findWorkflowForUser.mockResolvedValue(
-					makeDataTableWorkflow({ __rl: true, mode: 'id', value: 'dt-42' }, operation) as never,
-				);
-
-				await service.executeWithLlmMock('wf-1', makeUser());
-
-				// Enforcing table columns here would demand a fixture the real node
-				// never emits, then blame the resulting mismatch on the builder.
-				expect(dataTableService.getColumns).not.toHaveBeenCalled();
-				expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
-			},
-		);
-
-		it('degrades to prompt-only generation when no table matches the name', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				makeDataTableWorkflow({ __rl: true, mode: 'name', value: 'Missing' }) as never,
-			);
-			dataTableService.findDataTablesByNamesInProject.mockResolvedValue([]);
-
-			await service.executeWithLlmMock('wf-1', makeUser());
-
-			expect(dataTableService.getColumns).not.toHaveBeenCalled();
-			expect(generatePinDataMock.mock.calls[0][0].dataTableColumns).toBeUndefined();
-		});
-	});
-
-	describe('seeded Data Table reads (via execution)', () => {
-		function readNode(name: string, dataTableId: unknown): INode {
-			return {
-				id: name,
-				name,
-				type: 'n8n-nodes-base.dataTable',
-				typeVersion: 1,
-				position: [200, 0],
-				parameters: { resource: 'row', operation: 'get', dataTableId },
-			} as INode;
-		}
-
-		beforeEach(() => {
-			vi.mocked(isDataTableRead).mockImplementation(
-				(node: INode) => node.type === 'n8n-nodes-base.dataTable',
-			);
-			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
-		});
-
-		it('leaves the reads of a seeded table out of the pinned nodes', async () => {
+		it('leaves the rows of a table the caller seeded alone', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
 				makeWorkflowEntity({
 					nodes: [
 						makeStartNode(),
-						readNode('Read Seeded', { __rl: true, mode: 'list', value: 'dt-seeded' }),
-						// Spelt in another case: the node resolves names case-insensitively.
-						readNode('Read Named', { __rl: true, mode: 'name', value: 'stock [SEED 1a2b3c4d]' }),
-						readNode('Read Other', { __rl: true, mode: 'id', value: 'dt-other' }),
-						// A name the seed did not create stays pinned.
-						readNode('Read Unseeded', { __rl: true, mode: 'name', value: 'Orders' }),
+						dataTableNode('Read Seeded', { __rl: true, mode: 'id', value: 'dt-seeded' }),
+					],
+				}) as never,
+			);
+
+			await service.executeWithLlmMock('wf-1', makeUser(), { seededDataTableIds: ['dt-seeded'] });
+
+			expect(dataTableService.findDataTablesByIds).not.toHaveBeenCalled();
+			expect(generateDataTableRowsMock).not.toHaveBeenCalled();
+			expect(dataTableService.clearRows).not.toHaveBeenCalled();
+		});
+
+		it("does not touch a table outside the workflow's project", async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-9' }),
 					],
 				}) as never,
 			);
 			dataTableService.findDataTablesByIds.mockResolvedValue([
-				{ id: 'dt-seeded', name: 'Customers' },
-				{ id: 'dt-named', name: 'Stock [seed 1a2b3c4d]' },
+				table('dt-9', 'Elsewhere', 'proj-other'),
 			] as never);
-
-			await service.executeWithLlmMock('wf-1', makeUser(), {
-				seededDataTableIds: ['dt-seeded', 'dt-named'],
-			});
-
-			expect(dataTableService.findDataTablesByIds).toHaveBeenCalledWith(['dt-seeded', 'dt-named']);
-			const liveReads = identifyNodesForPinDataMock.mock.calls[0][2];
-			expect([...(liveReads ?? [])]).toEqual(['Read Seeded', 'Read Named']);
-		});
-
-		it('pins every read when the caller seeded no table', async () => {
-			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				makeWorkflowEntity({
-					nodes: [makeStartNode(), readNode('Read', { __rl: true, mode: 'id', value: 'dt-1' })],
-				}) as never,
-			);
 
 			await service.executeWithLlmMock('wf-1', makeUser());
 
-			expect([...(identifyNodesForPinDataMock.mock.calls[0][2] ?? [])]).toEqual([]);
+			expect(generateDataTableRowsMock).not.toHaveBeenCalled();
+			expect(dataTableService.clearRows).not.toHaveBeenCalled();
+		});
+
+		it('returns a framework failure when row generation fails', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-1' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
+			generateDataTableRowsMock.mockRejectedValue(new Error('model down'));
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.success).toBe(false);
+			expect(result.errors).toEqual(['FRAMEWORK ISSUE: Data Table preparation failed: model down']);
+			expect(logger.error).toHaveBeenCalledWith(
+				'[EvalMock] Data Table preparation failed: model down',
+			);
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('reports rows that need a createdAt or updatedAt time as a framework failure, before it touches a table', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-1' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
+			generateDataTableRowsMock.mockResolvedValue({
+				rowsByTable: { Posts: [{ title: 'Old post' }] },
+				warnings: [],
+				timestampedTables: ['Posts'],
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.errors).toEqual([
+				'FRAMEWORK ISSUE: Data Table preparation failed: the scenario gives rows of "Posts" a createdAt or updatedAt time, and the eval cannot set those columns',
+			]);
+			expect(dataTableService.clearRows).not.toHaveBeenCalled();
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('passes dropped-column warnings on to the verification hints', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-1' }),
+					],
+				}) as never,
+			);
+			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
+			generateDataTableRowsMock.mockResolvedValue({
+				rowsByTable: {},
+				warnings: ['Data table rows for "Posts" named unknown columns, dropped: url'],
+				timestampedTables: [],
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.hints?.warnings).toContain(
+				'Data table rows for "Posts" named unknown columns, dropped: url',
+			);
+		});
+
+		it('warns, and touches no table, when a node picks its table with an expression', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						dataTableNode('Read', { __rl: true, mode: 'id', value: '={{ $json.tableId }}' }),
+					],
+				}) as never,
+			);
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.hints?.warnings).toContain(
+				'Data Table node "Read" picks its table with an expression, so the eval cannot prepare its rows; it reads whatever the table holds',
+			);
+			expect(dataTableService.findDataTablesByIds).not.toHaveBeenCalled();
+			expect(dataTableService.clearRows).not.toHaveBeenCalled();
+		});
+
+		it('finishes filling the tables before it reports a pin data failure', async () => {
+			const bypass = {
+				id: 'pg',
+				name: 'Read Orders',
+				type: 'n8n-nodes-base.postgres',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			} as INode;
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(
+				makeWorkflowEntity({
+					nodes: [
+						makeStartNode(),
+						bypass,
+						dataTableNode('Read', { __rl: true, mode: 'id', value: 'dt-1' }),
+					],
+				}) as never,
+			);
+			identifyNodesForPinDataMock.mockReturnValue([bypass]);
+			generatePinDataMock.mockRejectedValue(new Error('pin generator down'));
+			dataTableService.findDataTablesByIds.mockResolvedValue([table('dt-1', 'Posts')] as never);
+			generateDataTableRowsMock.mockImplementation(async () => {
+				await new Promise((resolve) => setTimeout(resolve, 20));
+				return { rowsByTable: {}, warnings: [], timestampedTables: [] };
+			});
+
+			const result = await service.executeWithLlmMock('wf-1', makeUser());
+
+			expect(result.errors).toEqual([
+				'FRAMEWORK ISSUE: Phase 1.5 pin data generation failed: pin generator down',
+			]);
+			expect(dataTableService.clearRows).toHaveBeenCalledWith('dt-1', 'proj-1');
+		});
+
+		it('skips the preparation for a workflow without Data Table nodes', async () => {
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+
+			await service.executeWithLlmMock('wf-1', makeUser());
+
 			expect(ownershipService.getWorkflowProjectCached).not.toHaveBeenCalled();
+			expect(generateDataTableRowsMock).not.toHaveBeenCalled();
 		});
 	});
 

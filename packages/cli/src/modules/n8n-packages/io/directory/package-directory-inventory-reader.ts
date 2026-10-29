@@ -1,3 +1,16 @@
+import {
+	type SerializedCredential,
+	serializedCredentialSchema,
+	type SerializedDataTable,
+	type SerializedFolder,
+	serializedDataTableSchema,
+	serializedFolderSchema,
+	type SerializedProject,
+	serializedProjectSchema,
+	type SerializedVariable,
+	serializedVariableSchema,
+	serializedWorkflowSchema,
+} from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { jsonParse, UserError } from 'n8n-workflow';
 import type { z } from 'zod';
@@ -7,23 +20,6 @@ import {
 	WorkflowSerializer,
 	type WorkflowPackageContent,
 } from '../../entities/workflow/workflow.serializer';
-import {
-	serializedCredentialSchema,
-	type SerializedCredential,
-} from '../../spec/serialized/credential.schema';
-import {
-	serializedDataTableSchema,
-	type SerializedDataTable,
-} from '../../spec/serialized/data-table.schema';
-import {
-	serializedProjectSchema,
-	type SerializedProject,
-} from '../../spec/serialized/project.schema';
-import {
-	serializedVariableSchema,
-	type SerializedVariable,
-} from '../../spec/serialized/variable.schema';
-import { serializedWorkflowSchema } from '../../spec/serialized/workflow.schema';
 import { PACKAGE_ENTITY_LAYOUT } from '../manifest-entry';
 import type { PackageReader } from '../package-reader';
 
@@ -41,6 +37,12 @@ export interface InventoryWorkflow {
 	id: string;
 	name: string;
 	content: WorkflowPackageContent;
+}
+
+export interface InventoryFolder {
+	path: string;
+	projectId: string;
+	folder: SerializedFolder;
 }
 
 export interface InventoryCredential {
@@ -65,16 +67,18 @@ export interface InventoryDataTable {
 export interface PackageDirectoryInventory {
 	projects: InventoryProject[];
 	workflows: InventoryWorkflow[];
+	folders: InventoryFolder[];
 	credentials: InventoryCredential[];
 	variables: InventoryVariable[];
 	dataTables: InventoryDataTable[];
 }
 
-type EntityKind = 'projects' | 'workflows' | 'credentials' | 'variables' | 'dataTables';
+type EntityKind = 'projects' | 'workflows' | 'folders' | 'credentials' | 'variables' | 'dataTables';
 
 const KIND_BY_FILE_NAME: Record<string, EntityKind> = {
 	[PACKAGE_ENTITY_LAYOUT.projects.fileName]: 'projects',
 	[PACKAGE_ENTITY_LAYOUT.workflows.fileName]: 'workflows',
+	[PACKAGE_ENTITY_LAYOUT.folders.fileName]: 'folders',
 	[PACKAGE_ENTITY_LAYOUT.credentials.fileName]: 'credentials',
 	[PACKAGE_ENTITY_LAYOUT.variables.fileName]: 'variables',
 	[PACKAGE_ENTITY_LAYOUT.dataTables.fileName]: 'dataTables',
@@ -83,6 +87,7 @@ const KIND_BY_FILE_NAME: Record<string, EntityKind> = {
 const LABELS: Record<EntityKind, string> = {
 	projects: 'project',
 	workflows: 'workflow',
+	folders: 'folder',
 	credentials: 'credential',
 	variables: 'variable',
 	dataTables: 'data table',
@@ -98,7 +103,7 @@ interface EntityFile {
 }
 
 /**
- * Reads the projects, workflows, credentials, variables and data tables of a
+ * Reads the projects, workflows, folders, credentials, variables and data tables of a
  * package from its entity files. The directory layout decides which project a
  * file belongs to; the file content supplies every id and name.
  * `manifest.json` and other files are ignored.
@@ -127,6 +132,7 @@ export class PackageDirectoryInventoryReader {
 		return {
 			projects,
 			workflows: await this.readWorkflows(source, files, projectIdOf),
+			folders: await this.readFolders(source, files, projectIdOf),
 			credentials: await this.readCredentials(source, files, projectIdOf),
 			variables: await this.readVariables(source, files, projectIdOf),
 			dataTables: await this.readDataTables(source, files, projectIdOf),
@@ -179,6 +185,28 @@ export class PackageDirectoryInventoryReader {
 		}
 
 		return workflows;
+	}
+
+	private async readFolders(
+		source: PackageFileSource,
+		files: EntityFile[],
+		projectIdOf: (file: EntityFile) => string | null,
+	): Promise<InventoryFolder[]> {
+		const folders: InventoryFolder[] = [];
+		const seenIds = new Set<string>();
+
+		for (const file of files.filter((f) => f.kind === 'folders')) {
+			if (!isFolderLocation(file.segments)) throw unsupportedLocation(file);
+			const projectId = projectIdOf(file);
+			if (projectId === null) {
+				throw new UserError(`Package folder file at ${file.path} is not inside a project.`);
+			}
+			const folder = await this.readEntity(source, file, serializedFolderSchema);
+			assertUnseen(seenIds, folder.id, 'folder id');
+			folders.push({ path: file.path, projectId, folder });
+		}
+
+		return folders;
 	}
 
 	private async readCredentials(
@@ -300,6 +328,11 @@ function isWorkflowLocation(segments: string[]): boolean {
 	if (container.length === 0) return true; // root workflow
 	// A folder chain needs a slug after `folders/`.
 	return container[0] === PACKAGE_ENTITY_LAYOUT.folders.directory && container.length >= 2;
+}
+
+/** `folders/<a>/folder.json`, or deeper under a `folders/<a>/<b>/…` chain of bare slugs. */
+function isFolderLocation(segments: string[]): boolean {
+	return segments.length >= 3 && segments[0] === PACKAGE_ENTITY_LAYOUT.folders.directory;
 }
 
 function unsupportedLocation(file: EntityFile): UserError {

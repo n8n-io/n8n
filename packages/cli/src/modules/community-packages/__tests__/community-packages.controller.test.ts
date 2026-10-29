@@ -1,6 +1,6 @@
 import type { CommunityNodeType, CommunityPackageRequestDto } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
 import type { InstanceSettingsLoaderConfig } from '@n8n/config';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
@@ -28,6 +28,8 @@ describe('CommunityPackagesController', () => {
 		communityPackagesManagedByEnv: false,
 	});
 
+	const installedTypeRestrictions = mock<InstalledTypeRestrictionsProxy>();
+
 	const lifecycle = new CommunityPackagesLifecycleService(
 		logger,
 		push,
@@ -37,6 +39,7 @@ describe('CommunityPackagesController', () => {
 		instanceSettings,
 		communityPackagesConfig,
 		instanceSettingsLoaderConfig,
+		installedTypeRestrictions,
 	);
 
 	const controller = new CommunityPackagesController(lifecycle);
@@ -112,6 +115,47 @@ describe('CommunityPackagesController', () => {
 					packageVersion: '1.0.0',
 				}),
 			);
+		});
+	});
+
+	describe('installPackage policy restrictions', () => {
+		const body = { name: 'n8n-nodes-test' };
+		const installedPackage = { packageName: 'n8n-nodes-test', installedNodes: [] };
+
+		beforeEach(() => {
+			communityPackagesService.parseNpmPackageName.mockReturnValue({
+				rawString: 'n8n-nodes-test',
+				packageName: 'n8n-nodes-test',
+				version: undefined,
+			});
+			communityPackagesService.findInstalledPackage.mockResolvedValue(null);
+			communityPackagesService.checkNpmPackageStatus.mockResolvedValue({ status: 'OK' });
+			communityPackagesService.installPackage.mockResolvedValue(
+				installedPackage as unknown as InstalledPackages,
+			);
+		});
+
+		it('adds the policy restrictions to the install response', async () => {
+			const policyRestrictions = {
+				nodeTypes: [
+					{ type: 'n8n-nodes-test.alpha', blockedOn: 'instance' as const, optInAvailable: false },
+				],
+			};
+			installedTypeRestrictions.describeRestrictions.mockResolvedValue(policyRestrictions);
+
+			await expect(controller.installPackage(req, {}, body)).resolves.toEqual({
+				...installedPackage,
+				policyRestrictions,
+			});
+		});
+
+		it('leaves the policy restrictions out when no policy was evaluated', async () => {
+			installedTypeRestrictions.describeRestrictions.mockResolvedValue(null);
+
+			const response = await controller.installPackage(req, {}, body);
+
+			expect(response).toEqual(installedPackage);
+			expect(response).not.toHaveProperty('policyRestrictions');
 		});
 	});
 

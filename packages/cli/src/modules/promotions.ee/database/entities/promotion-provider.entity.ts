@@ -7,7 +7,7 @@ import { JsonColumn, WithTimestampsAndStringId } from '@n8n/db';
 import { Column, Entity } from '@n8n/typeorm';
 
 /**
- * Credentials for a remote, shared by any number of connections. The database
+ * Credentials for a remote, shared by any number of environments. The database
  * limits which {@link type} and {@link authType} values are allowed.
  */
 @Entity('promotion_provider')

@@ -21,6 +21,10 @@ export const manifestEntrySchema = z.object({
 		),
 });
 
+export const workflowManifestEntrySchema = manifestEntrySchema.extend({
+	isArchived: z.boolean().default(false),
+});
+
 type ManifestEntryList = Array<z.infer<typeof manifestEntrySchema>>;
 
 function assertNoDuplicateIds(
@@ -44,11 +48,11 @@ function assertNoDuplicateIds(
 export const packageManifestSchema = z
 	.object({
 		packageFormatVersion: z.literal(FORMAT_VERSION),
-		exportedAt: z.string().datetime(),
 		sourceN8nVersion: z.string().min(1),
 		sourceId: z.string().min(1),
-		workflows: z.array(manifestEntrySchema).optional(),
+		workflows: z.array(workflowManifestEntrySchema).optional(),
 		agents: z.array(manifestEntrySchema).optional(),
+		skills: z.array(manifestEntrySchema).optional(),
 		folders: z.array(manifestEntrySchema).optional(),
 		projects: z.array(manifestEntrySchema).optional(),
 		credentials: z.array(manifestEntrySchema).optional(),
@@ -60,6 +64,7 @@ export const packageManifestSchema = z
 	.superRefine((manifest, ctx) => {
 		assertNoDuplicateIds(manifest.workflows, 'workflow', ctx);
 		assertNoDuplicateIds(manifest.agents, 'Agent', ctx);
+		assertNoDuplicateIds(manifest.skills, 'skill', ctx);
 		assertNoDuplicateIds(manifest.folders, 'folder', ctx);
 		assertNoDuplicateIds(manifest.projects, 'project', ctx);
 		assertNoDuplicateIds(manifest.credentials, 'credential', ctx);
@@ -69,4 +74,5 @@ export const packageManifestSchema = z
 	});
 
 export type ManifestEntry = z.infer<typeof manifestEntrySchema>;
+export type WorkflowManifestEntry = z.infer<typeof workflowManifestEntrySchema>;
 export type PackageManifest = z.infer<typeof packageManifestSchema>;

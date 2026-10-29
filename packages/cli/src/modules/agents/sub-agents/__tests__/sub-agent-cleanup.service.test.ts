@@ -1,9 +1,11 @@
+import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
+import { TransactionRunner } from '@n8n/db';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentRuntimeCacheService } from '../../agent-runtime-cache.service';
-import type { Agent } from '../../entities/agent.entity';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { SubAgentCleanupService } from '../sub-agent-cleanup.service';
 import { type AgentFixtureOverrides } from '../../__tests__/test-utils/stored-agent-config';
@@ -11,7 +13,7 @@ import { type AgentFixtureOverrides } from '../../__tests__/test-utils/stored-ag
 const projectId = 'project-1';
 const childAgentId = 'child-1';
 
-function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
+function makeAgent(overrides: AgentFixtureOverrides = {}): ProjectAgent {
 	return {
 		id: 'parent-1',
 		projectId,
@@ -21,7 +23,7 @@ function makeAgent(overrides: AgentFixtureOverrides = {}): Agent {
 			instructions: 'Delegate work',
 		} as AgentJsonConfig,
 		...overrides,
-	} as unknown as Agent;
+	} as unknown as ProjectAgent;
 }
 
 function makeService() {
@@ -30,7 +32,13 @@ function makeService() {
 
 	agentRepository.saveDraftFenced.mockResolvedValue(true);
 
-	const service = new SubAgentCleanupService(mockLogger(), agentRepository, runtimeCacheService);
+	const service = new SubAgentCleanupService(
+		mockLogger(),
+		agentRepository,
+		runtimeCacheService,
+		historyTransactionRunner(),
+		mock<AgentDefinitionService>(),
+	);
 
 	return { service, agentRepository, runtimeCacheService };
 }
@@ -70,7 +78,7 @@ describe('SubAgentCleanupService', () => {
 		expect(parent.schema?.subAgents?.maxChildren).toBe(5);
 		// markAgentDraftDirty bumps versionId away from the published version.
 		expect(parent.versionId).not.toBe('v1');
-		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(parent);
+		expect(agentRepository.saveDraftFenced).toHaveBeenCalledWith(parent, {});
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('parent-1');
 	});
 
@@ -192,3 +200,9 @@ describe('SubAgentCleanupService', () => {
 		expect(runtimeCacheService.clearRuntimes).toHaveBeenCalledWith('parent-b');
 	});
 });
+
+function historyTransactionRunner() {
+	const runner = mock<TransactionRunner>();
+	runner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+	return runner;
+}

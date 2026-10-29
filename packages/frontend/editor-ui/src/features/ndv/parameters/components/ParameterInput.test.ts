@@ -301,6 +301,37 @@ describe('ParameterInput.vue', () => {
 		expect(description).toHaveClass('option-description--clamped');
 	});
 
+	test('should match the search in an options dropdown against the label and the value', async () => {
+		const { container, baseElement } = renderComponent({
+			props: {
+				path: 'modelName',
+				parameter: createTestNodeProperties({
+					displayName: 'Model',
+					name: 'modelName',
+					type: 'options',
+					options: [
+						{ name: 'Gemini 2.5 Pro', value: 'models/gemini-2.5-pro' },
+						{ name: 'Gemini 2.5 Flash', value: 'models/gemini-2.5-flash' },
+					],
+					default: 'models/gemini-2.5-flash',
+				}),
+				modelValue: 'models/gemini-2.5-flash',
+			},
+		});
+		const select = container.querySelector('input') as HTMLInputElement;
+		const optionHeadlines = () =>
+			Array.from(baseElement.querySelectorAll('.option-headline')).map((el) =>
+				el.textContent?.trim(),
+			);
+
+		await userEvent.click(container.querySelector('.select-trigger') as HTMLElement);
+		await fireEvent.update(select, 'gemini-2.5-pro');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Pro']));
+
+		await fireEvent.update(select, '2.5 flash');
+		await waitFor(() => expect(optionHeadlines()).toEqual(['Gemini 2.5 Flash']));
+	});
+
 	test('should pass option disabled state to N8nOption', async () => {
 		const options = [
 			{ name: 'Connected Chat Trigger Node', value: 'auto', disabled: true },
@@ -804,6 +835,30 @@ describe('ParameterInput.vue', () => {
 		expect(input).toHaveValue('Set up credential to see options');
 
 		expect(emitted('update')).toBeUndefined();
+	});
+
+	test('should show the message of a node error payload when options fail to load', async () => {
+		mockNodeTypesState.getNodeParameterOptions = vi.fn(async () => {
+			throw { name: 'NodeApiError', message: 'Authentication required' };
+		});
+
+		const { getByTestId, findByText } = renderComponent({
+			props: {
+				path: 'columns',
+				parameter: createTestNodeProperties({
+					displayName: 'Columns',
+					name: 'columns',
+					type: 'options',
+					typeOptions: { loadOptionsMethod: 'getColumnsMultiOptions' },
+				}),
+				modelValue: 'id',
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('parameter-issues')).toBeInTheDocument());
+		await userEvent.hover(getByTestId('parameter-issues').firstElementChild as HTMLElement);
+
+		expect(await findByText(/"Authentication required"/)).toBeInTheDocument();
 	});
 
 	test('should render workflow selector without issues when selected workflow is not archived', async () => {

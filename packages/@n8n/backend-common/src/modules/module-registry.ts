@@ -58,6 +58,9 @@ export class ModuleRegistry {
 		// resource with the oauth-server module's registry on init.
 		'oauth-server',
 		'mcp',
+		// Experiment cleanup (123_surface_mcp_to_claude_trial_users)
+		'mcp-discovery',
+		// EOF Experiment cleanup
 		'provisioning',
 		'breaking-changes',
 		'source-control',
@@ -81,13 +84,23 @@ export class ModuleRegistry {
 		'runtime-credentials',
 		'mcp-registry',
 		'workflow-reviews',
+		'inbox',
+		// skills precedes instance-ai and agents: agents keeps its skills in the
+		// skills module, so skills must start first. See `eligibleModules`.
+		'skills',
 		'instance-ai',
+		// knowledge precedes agents: a module counts as active only after its own
+		// init, and the agents module reads `isActive('knowledge')` in `settings()`.
+		'knowledge',
 		'agents',
 		'agent-evals',
 		'scim',
+		'type-availability-policies',
 	];
 
 	private readonly activeModules: string[] = [];
+
+	private warnedSkillsKept = false;
 
 	private readonly packagedModules: PackagedModules = {};
 
@@ -104,7 +117,19 @@ export class ModuleRegistry {
 
 		const defaultPlusEnabled = [...new Set([...this.defaultModules, ...enabledModules])];
 
-		return defaultPlusEnabled.filter((m) => !disabledModules.includes(m));
+		// Agents keep their skills in the skills module, so the agents module needs the skills module.
+		const agentsOn = defaultPlusEnabled.includes('agents') && !disabledModules.includes('agents');
+		const keepSkills = agentsOn && disabledModules.includes('skills');
+		if (keepSkills && !this.warnedSkillsKept) {
+			this.warnedSkillsKept = true;
+			this.logger.warn(
+				'The "skills" module cannot be disabled while the "agents" module is enabled, because agents keep their skills in the skills module. n8n keeps the "skills" module enabled. To disable it, also disable the "agents" module.',
+			);
+		}
+
+		return defaultPlusEnabled.filter(
+			(m) => !disabledModules.includes(m) || (keepSkills && m === 'skills'),
+		);
 	}
 
 	/**

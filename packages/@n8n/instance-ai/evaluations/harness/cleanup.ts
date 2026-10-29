@@ -10,7 +10,7 @@ import { findAgentArtifactRef } from './agent-execution';
 import type { BuildResult } from './build-workflow';
 import type { EvalLogger } from './logger';
 import { classifyScenarioExecutionError } from './transient-error';
-import { SONNET_MODEL } from '../../src/utils/eval-agents';
+import { JUDGE_MODEL } from '../../src/utils/eval-agents';
 import { runBinaryChecks } from '../binaryChecks/index';
 import type { BinaryCheckContext, CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError } from '../clients/n8n-client';
@@ -239,11 +239,16 @@ export async function cleanupBuild(
 		}
 	}
 
-	// Last, and only once the rest is gone: the user's delete takes its project, so a
-	// retry of a failed delete needs the project to still exist.
-	if (build.buildUserId && clean) {
+	// Last, and only once the rest is gone: a retry of a failed delete needs the
+	// project to still exist. A member's delete takes their personal project; a team
+	// build project (no user) is deleted directly.
+	if (build.buildProjectId && clean) {
 		try {
-			await client.deleteUser(build.buildUserId);
+			if (build.buildUserId) {
+				await client.deleteUser(build.buildUserId);
+			} else {
+				await client.deleteProject(build.buildProjectId);
+			}
 		} catch (error: unknown) {
 			if (!(error instanceof N8nApiError && error.status === 404)) clean = false;
 		}
@@ -284,13 +289,13 @@ export async function runWorkflowChecks(args: {
 	workflow: WorkflowResponse | undefined;
 	prompt: string;
 	agentText: string | undefined;
-	/** Per-live-turn failed build-workflow attempt counts; feeds the efficiency check. */
+	/** Per-live-turn failed workflow_builder_build_workflow attempt counts; feeds the efficiency check. */
 	failedBuildsPerTurn?: number[];
 	logger: EvalLogger;
 }): Promise<CheckOutcome[] | undefined> {
 	if (!args.workflow) return undefined;
 
-	const modelId = hasAnthropicKey() ? SONNET_MODEL : undefined;
+	const modelId = hasAnthropicKey() ? JUDGE_MODEL : undefined;
 	const ctx: BinaryCheckContext = {
 		prompt: args.prompt,
 		...(modelId ? { modelId } : {}),

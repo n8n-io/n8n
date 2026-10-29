@@ -97,7 +97,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { workflowId: 'wf-1', workflowName: 'My Workflow' },
 							}),
 						],
@@ -121,12 +121,12 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { workflowId: 'wf-1', workflowName: 'Lead routing' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-2',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { workflowId: 'wf-1', workflowName: '' },
 							}),
 						],
@@ -148,7 +148,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { name: 'From Args' },
 								result: { workflowId: 'wf-2' },
 							}),
@@ -172,7 +172,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-3' },
 							}),
@@ -195,7 +195,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-update', name: 'Updated Workflow' },
 								result: { success: true },
 							}),
@@ -222,7 +222,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'get-json', workflowId: 'wf-existing' },
 								result: {
 									id: 'wf-existing',
@@ -256,12 +256,12 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-a' },
 							}),
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-b' },
 							}),
@@ -273,6 +273,41 @@ describe('useResourceRegistry', () => {
 
 			expect(producedArtifacts.get('wf-a')?.id).toBe('wf-a');
 			expect(producedArtifacts.get('wf-b')?.id).toBe('wf-b');
+		});
+
+		test('a failed build does not rename a workflow an earlier build saved', async () => {
+			const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-saved',
+								toolName: 'workflow_builder_build_workflow',
+								result: { success: true, workflowId: 'wf-1', workflowName: 'Orders Sync' },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-failed',
+								toolName: 'workflow_builder_build_workflow',
+								args: { name: 'Orders Sync v2' },
+								result: {
+									success: false,
+									workflowId: 'wf-1',
+									workflowName: 'Orders Sync v2',
+									errors: ['Workflow save failed: no permission'],
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(1);
+			expect(producedArtifacts.get('wf-1')?.name).toBe('Orders Sync');
+			expect(linkableResourceNameIndex.get('orders sync')?.id).toBe('wf-1');
+			expect(linkableResourceNameIndex.has('orders sync v2')).toBe(false);
 		});
 	});
 
@@ -545,7 +580,7 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { name: 'Initial' },
 								result: { workflowId: 'wf-1' },
 							}),
@@ -573,13 +608,13 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-create',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { name: 'Keep Me' },
 								result: { workflowId: 'wf-1' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-patch',
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-1' },
 							}),
@@ -600,7 +635,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'Signups' } },
 							}),
@@ -691,7 +726,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
 							}),
 						],
@@ -706,6 +741,86 @@ describe('useResourceRegistry', () => {
 				name: 'Support Bot',
 			});
 			expect(resourceNameIndex.get('support bot')?.id).toBe('agent-1');
+		});
+
+		test('registers an agent created by the select-agent tool', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'agent_builder_select_agent',
+								result: {
+									ok: true,
+									agentId: 'agent-1',
+									agentName: 'Support Bot',
+									projectId: 'project-1',
+									agentChange: 'created',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toEqual({
+				type: 'agent',
+				id: 'agent-1',
+				name: 'Support Bot',
+				projectId: 'project-1',
+			});
+		});
+
+		test('registers an agent from a successful selection and from a builder tool config change', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolName: 'agent_builder_select_agent',
+								result: {
+									ok: true,
+									agentId: 'agent-2',
+									agentName: 'Billing Bot',
+									projectId: 'project-1',
+									agentChange: 'none',
+								},
+							}),
+							makeToolCall({
+								toolName: 'agent_builder_select_agent',
+								result: { ok: false, agentId: 'agent-3', error: 'Agent agent-3 was not found.' },
+							}),
+							makeToolCall({
+								toolName: 'agent_builder_patch_config',
+								result: {
+									ok: true,
+									configMutated: true,
+									agentId: 'agent-1',
+									agentName: 'Support Bot',
+									projectId: 'project-1',
+								},
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('agent-1')).toMatchObject({
+				type: 'agent',
+				name: 'Support Bot',
+			});
+			expect(producedArtifacts.get('agent-2')).toMatchObject({
+				type: 'agent',
+				name: 'Billing Bot',
+				projectId: 'project-1',
+			});
+			expect(producedArtifacts.has('agent-3')).toBe(false);
 		});
 
 		test('does not register an Agent after a read-only builder turn', async () => {
@@ -729,7 +844,7 @@ describe('useResourceRegistry', () => {
 						],
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
 							}),
 						],
@@ -757,7 +872,7 @@ describe('useResourceRegistry', () => {
 						],
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								isLoading: true,
 							}),
 						],
@@ -789,7 +904,7 @@ describe('useResourceRegistry', () => {
 						],
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								isLoading: true,
 							}),
 						],
@@ -821,7 +936,7 @@ describe('useResourceRegistry', () => {
 						],
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								isLoading: true,
 							}),
 						],
@@ -872,7 +987,7 @@ describe('useResourceRegistry', () => {
 
 			messages.value[1].agentTree!.toolCalls.push(
 				makeToolCall({
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 					result: { ok: true, agentId: 'agent-1', agentChange: 'none' },
 				}),
 			);
@@ -884,7 +999,7 @@ describe('useResourceRegistry', () => {
 			messages.value[1].agentTree!.toolCalls.push(
 				makeToolCall({
 					toolCallId: 'tc-2',
-					toolName: 'build-agent',
+					toolName: 'agent_builder_build_agent',
 					result: { ok: true, agentId: 'agent-1', agentChange: 'created' },
 				}),
 			);
@@ -919,7 +1034,7 @@ describe('useResourceRegistry', () => {
 						},
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: {
 									ok: true,
 									agentId: 'agent-1',
@@ -941,7 +1056,7 @@ describe('useResourceRegistry', () => {
 						},
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: {
 									ok: true,
 									agentId: 'agent-2',
@@ -978,12 +1093,12 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-2',
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: { ok: true, agentId: 'agent-1' },
 							}),
 						],
@@ -1033,12 +1148,12 @@ describe('useResourceRegistry', () => {
 						toolCalls: [
 							makeToolCall({
 								toolCallId: 'tc-1',
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: { ok: true, agentId: 'agent-1', agentName: 'Support Agent' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-2',
-								toolName: 'build-agent',
+								toolName: 'agent_builder_build_agent',
 								result: { ok: true, agentId: 'agent-1', agentName: 'Support Bot' },
 							}),
 						],
@@ -1082,6 +1197,110 @@ describe('useResourceRegistry', () => {
 		});
 	});
 
+	describe('producedArtifacts — skill registration', () => {
+		function skillsMessage(calls: Array<Partial<InstanceAiToolCallState>>) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: calls.map((call, index) =>
+						makeToolCall({ toolCallId: `tc-${index}`, toolName: 'skills', ...call }),
+					),
+				}),
+			});
+		}
+
+		test('registers a skill the assistant created', async () => {
+			const { messages, producedArtifacts, producedArtifactOrigins } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'create', scope: 'instance' },
+						result: { success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('skill-1')).toEqual({
+				type: 'skill',
+				id: 'skill-1',
+				name: 'Brand voice',
+			});
+			expect(producedArtifactOrigins.get('skill-1')).toBe('built');
+		});
+
+		test('registers a skill the assistant saved, with the name from the result', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'update', skillId: 'skill-1' },
+						result: { success: true, saved: { id: 'skill-1', name: 'Brand voice v2' } },
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('skill-1')).toEqual(
+				expect.objectContaining({ type: 'skill', name: 'Brand voice v2' }),
+			);
+		});
+
+		test('keeps the known name when a saved result has no name', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'create' },
+						result: { success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+					},
+					{
+						args: { action: 'update', skillId: 'skill-1' },
+						result: { success: true, saved: { id: 'skill-1' } },
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.get('skill-1')?.name).toBe('Brand voice');
+		});
+
+		test('does not register a skill that the assistant only read, listed or failed to write', async () => {
+			const { messages, producedArtifacts } = setup();
+
+			messages.value = [
+				skillsMessage([
+					{
+						args: { action: 'list' },
+						result: { count: 1, skills: [{ id: 'skill-1', name: 'Brand voice' }] },
+					},
+					{
+						args: { action: 'get', skillId: 'skill-1' },
+						result: { id: 'skill-1', name: 'Brand voice', skill: {} },
+					},
+					{
+						args: { action: 'create' },
+						result: { success: false, denied: true, reason: 'User denied the action' },
+					},
+					{
+						args: { action: 'update', skillId: 'skill-1' },
+						result: { success: false, refused: true, reason: 'No permission' },
+					},
+					{
+						args: { action: 'create' },
+						isLoading: true,
+						result: undefined,
+					},
+				]),
+			];
+			await nextTick();
+
+			expect(producedArtifacts.size).toBe(0);
+		});
+	});
+
 	describe('list results do not populate producedArtifacts', () => {
 		test('workflows action=list result is indexed by name only, never in producedArtifacts', async () => {
 			const { messages, producedArtifacts, resourceNameIndex, linkableResourceNameIndex } = setup();
@@ -1091,7 +1310,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'list' },
 								result: {
 									workflows: [
@@ -1120,7 +1339,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'list' },
 								result: {
 									tables: [{ id: 'dt-a', name: 'Existing Table' }],
@@ -1145,12 +1364,12 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'list' },
 								result: { workflows: [{ id: 'wf-1', name: 'Existing' }] },
 							}),
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { patches: [{ op: 'replace' }] },
 								result: { workflowId: 'wf-1' },
 							}),
@@ -1179,7 +1398,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								args: { patches: [{ op: 'replace' }] },
 								result: { success: true, workflowId: 'wf-3' },
 							}),
@@ -1203,7 +1422,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { workflowId: 'wf-4', workflowName: 'Original Name' },
 							}),
 						],
@@ -1224,7 +1443,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'data-tables',
+								toolName: 'data_tables',
 								args: { action: 'create' },
 								result: { table: { id: 'dt-1', name: 'cities1' } },
 							}),
@@ -1312,7 +1531,7 @@ describe('useResourceRegistry', () => {
 						agentTree: makeAgentNode({
 							toolCalls: [
 								makeToolCall({
-									toolName: 'data-tables',
+									toolName: 'data_tables',
 									args: { action, dataTableId: 'Signups' },
 									result: {
 										dataTableId: 'dt-signups',
@@ -1346,7 +1565,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { workflowId: 'wf-1', workflowName: 'Pipeline' },
 							}),
 						],
@@ -1437,7 +1656,7 @@ describe('useResourceRegistry', () => {
 			messages.value[0].agentTree!.toolCalls.push(
 				makeToolCall({
 					toolCallId: 'tc-3',
-					toolName: 'build-workflow',
+					toolName: 'workflow_builder_build_workflow',
 					result: { workflowId: 'wf-2', workflowName: 'Second Pipeline' },
 				}),
 			);
@@ -1461,7 +1680,7 @@ describe('useResourceRegistry', () => {
 					agentTree: makeAgentNode({
 						toolCalls: [
 							makeToolCall({
-								toolName: 'build-workflow',
+								toolName: 'workflow_builder_build_workflow',
 								result: { workflowId: 'wf-1', workflowName: 'Pipeline' },
 							}),
 						],
@@ -1498,7 +1717,7 @@ describe('useResourceRegistry', () => {
 				agentTree: makeAgentNode({
 					toolCalls: [
 						makeToolCall({
-							toolName: 'build-workflow',
+							toolName: 'workflow_builder_build_workflow',
 							result: { workflowId, workflowName: 'Orders' },
 						}),
 					],
@@ -1542,20 +1761,20 @@ describe('useResourceRegistry', () => {
 							// A small `get` returns the document itself.
 							makeToolCall({
 								toolCallId: 'tc-get',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'get', workflowId: 'wf-read' },
 								result: { id: 'wf-read', name: 'Orders', nodes: [], connections: {} },
 							}),
 							// A version read carries a workflowId like a build result does.
 							makeToolCall({
 								toolCallId: 'tc-version',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'get', workflowId: 'wf-version', versionId: 'v1' },
 								result: { workflowId: 'wf-version', name: 'Leads', versionId: 'v1' },
 							}),
 							makeToolCall({
 								toolCallId: 'tc-update',
-								toolName: 'workflows',
+								toolName: 'workflow_builder_workflows',
 								args: { action: 'update', workflowId: 'wf-edited' },
 								result: { success: true, workflowName: 'Invoices' },
 							}),
@@ -1569,6 +1788,36 @@ describe('useResourceRegistry', () => {
 				'wf-read': 'fetched',
 				'wf-version': 'fetched',
 				'wf-edited': 'built',
+			});
+		});
+
+		test('classifies the split workflow tools as fetched or built', async () => {
+			const { messages, producedArtifactOrigins } = setup();
+			messages.value = [
+				makeMessage({
+					agentTree: makeAgentNode({
+						toolCalls: [
+							makeToolCall({
+								toolCallId: 'tc-get',
+								toolName: 'get_workflow',
+								args: { workflowId: 'wf-read' },
+								result: { id: 'wf-read', name: 'Orders', nodes: [], connections: {} },
+							}),
+							makeToolCall({
+								toolCallId: 'tc-restore',
+								toolName: 'restore_workflow_version',
+								args: { workflowId: 'wf-restored', versionId: 'v1' },
+								result: { success: true, workflowName: 'Invoices' },
+							}),
+						],
+					}),
+				}),
+			];
+			await nextTick();
+
+			expect(Object.fromEntries(producedArtifactOrigins)).toEqual({
+				'wf-read': 'fetched',
+				'wf-restored': 'built',
 			});
 		});
 

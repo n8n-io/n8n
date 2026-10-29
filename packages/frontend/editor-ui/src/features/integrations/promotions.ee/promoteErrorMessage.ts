@@ -22,7 +22,7 @@ export function getPromoteErrorMessage(
 
 	const movedMeta = parsePromotionsWorkflowsMovedCrossProjectMeta(error.meta);
 	if (movedMeta) {
-		return i18n.baseText('promotions.modal.promoteError.workflowsMovedCrossProject', {
+		return i18n.baseText('promotions.operation.promoteError.workflowsMovedCrossProject', {
 			interpolate: {
 				workflows: resolveWorkflowTitles(movedMeta.workflowIds, changes),
 			},

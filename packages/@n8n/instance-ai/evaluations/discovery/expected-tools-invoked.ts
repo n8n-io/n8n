@@ -16,6 +16,7 @@
 // its own tool calls.
 // ---------------------------------------------------------------------------
 
+import { resolveBuilderToolName } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { EventOutcome } from '../types';
@@ -32,12 +33,12 @@ const SPAWN_PREFIX = 'spawn_sub_agent:';
 function collectInvokedTools(outcome: EventOutcome): string[] {
 	const tools = new Set<string>();
 	for (const tc of outcome.toolCalls) {
-		if (tc.toolName && !wasDeclined(tc)) tools.add(tc.toolName);
+		if (tc.toolName && !wasDeclined(tc)) tools.add(resolveBuilderToolName(tc.toolName));
 	}
 	for (const agent of outcome.agentActivities) {
-		for (const t of agent.tools) tools.add(t);
+		for (const t of agent.tools) tools.add(resolveBuilderToolName(t));
 		for (const tc of agent.toolCalls) {
-			if (tc.toolName && !wasDeclined(tc)) tools.add(tc.toolName);
+			if (tc.toolName && !wasDeclined(tc)) tools.add(resolveBuilderToolName(tc.toolName));
 		}
 	}
 	return [...tools];
@@ -53,7 +54,8 @@ function matches(name: string, invokedTools: string[], spawnedAgents: string[]):
 	if (name.startsWith(SPAWN_PREFIX)) {
 		return spawnedAgents.includes(name);
 	}
-	return invokedTools.includes(name);
+	// Stored cases can name a tool by its former builder tool name.
+	return invokedTools.includes(resolveBuilderToolName(name));
 }
 
 function validateRule(rule: ExpectedToolInvocations): void {
@@ -78,7 +80,9 @@ function toolCallMatchesExpectation(
 	expectation: ForbiddenToolCall,
 ): boolean {
 	if (wasDeclined(toolCall) !== (expectation.declined ?? false)) return false;
-	if (toolCall.toolName !== expectation.toolName) return false;
+	if (resolveBuilderToolName(toolCall.toolName) !== resolveBuilderToolName(expectation.toolName)) {
+		return false;
+	}
 	if (expectation.args && !matchesArgPattern(expectation.args, toolCall.args)) return false;
 
 	const argsContainAny = expectation.argsContainAny ?? [];

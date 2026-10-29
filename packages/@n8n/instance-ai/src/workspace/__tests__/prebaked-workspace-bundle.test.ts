@@ -69,11 +69,6 @@ describe('loadPrebakedWorkspaceBundle', () => {
 			hashField: 'contentHash',
 			schemaVersion: 1,
 			resourceLabel: 'Test bundle file',
-			invalidManifestLogMessage: 'invalid',
-			staleManifestLogMessage: 'stale',
-			staleManifestLogKeys: { expected: 'expectedHash', actual: 'actualHash' },
-			successLogMessage: 'success',
-			successLogContext: () => ({ root: ROOT }),
 			buildBundle: () => bundle,
 		});
 
@@ -93,11 +88,6 @@ describe('loadPrebakedWorkspaceBundle', () => {
 			hashField: 'contentHash',
 			schemaVersion: 1,
 			resourceLabel: 'Test bundle file',
-			invalidManifestLogMessage: 'invalid',
-			staleManifestLogMessage: 'stale',
-			staleManifestLogKeys: { expected: 'expectedHash', actual: 'actualHash' },
-			successLogMessage: 'success',
-			successLogContext: () => ({ root: ROOT }),
 			buildBundle: () => bundle,
 		});
 
@@ -122,11 +112,6 @@ describe('loadPrebakedWorkspaceBundle', () => {
 			hashField: 'contentHash',
 			schemaVersion: 1,
 			resourceLabel: 'Test bundle file',
-			invalidManifestLogMessage: 'invalid',
-			staleManifestLogMessage: 'stale',
-			staleManifestLogKeys: { expected: 'expectedHash', actual: 'actualHash' },
-			successLogMessage: 'success',
-			successLogContext: () => ({ root: ROOT }),
 			buildBundle: () => bundle,
 		});
 
@@ -158,8 +143,6 @@ describe('materializeWorkspaceBundle', () => {
 			loadPrebaked: async () => await Promise.resolve(undefined),
 			buildBundle: () => bundle,
 			bundleHash: (built) => built.contentHash,
-			materializedLogMessage: 'materialized',
-			materializedLogContext: () => ({ root: ROOT }),
 		});
 
 		expect(result).toBe(bundle);
@@ -188,8 +171,6 @@ describe('materializeWorkspaceBundle', () => {
 			loadPrebaked: async () => await Promise.resolve(undefined),
 			buildBundle: () => bundle,
 			bundleHash: (built) => built.contentHash,
-			materializedLogMessage: 'materialized',
-			materializedLogContext: () => ({ root: ROOT }),
 		});
 
 		expect(writeOrder.at(-1)).toBe(manifestPath);
@@ -216,17 +197,10 @@ describe('materializeWorkspaceBundle', () => {
 					hashField: 'contentHash',
 					schemaVersion: 1,
 					resourceLabel: 'Test bundle file',
-					invalidManifestLogMessage: 'invalid',
-					staleManifestLogMessage: 'stale',
-					staleManifestLogKeys: { expected: 'expectedHash', actual: 'actualHash' },
-					successLogMessage: 'success',
-					successLogContext: () => ({ root: ROOT }),
 					buildBundle: () => bundle,
 				}),
 			buildBundle: () => bundle,
 			bundleHash: (built) => built.contentHash,
-			materializedLogMessage: 'materialized',
-			materializedLogContext: () => ({ root: ROOT }),
 		});
 
 		expect(result).toBe(bundle);
@@ -274,17 +248,10 @@ describe('prebaked bundle checks with verified bundles', () => {
 					hashField: 'contentHash',
 					schemaVersion: 1,
 					resourceLabel: 'Test bundle file',
-					invalidManifestLogMessage: 'invalid',
-					staleManifestLogMessage: 'stale',
-					staleManifestLogKeys: { expected: 'expectedHash', actual: 'actualHash' },
-					successLogMessage: 'success',
-					successLogContext: () => ({ root: ROOT }),
 					buildBundle: () => bundle,
 				}),
 			buildBundle: () => bundle,
 			bundleHash: (built) => built.contentHash,
-			materializedLogMessage: 'materialized',
-			materializedLogContext: () => ({ root: ROOT }),
 		});
 	}
 
@@ -344,6 +311,65 @@ describe('prebaked bundle checks with verified bundles', () => {
 
 		expect([...writes.keys()].sort()).toEqual([manifestPath, ...filePaths].sort());
 		expect(verifiedBundles.get(manifestPath)).toBe(bundle.contentHash);
+	});
+
+	it('logs the decision of a stale manifest', async () => {
+		const { workspace } = createSandboxWorkspace(
+			new Map([
+				[
+					manifestPath,
+					stringifyWorkspaceJson({
+						schemaVersion: 1,
+						contentHash: 'stale',
+						files: ['a.txt', 'old.txt'],
+					}),
+				],
+			]),
+		);
+		const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
+		await loadPrebakedWorkspaceBundle({
+			logger,
+			workspace,
+			manifestPath,
+			expectedHash: bundle.contentHash,
+			hashField: 'contentHash',
+			schemaVersion: 1,
+			resourceLabel: 'Test bundle file',
+			buildBundle: () => bundle,
+		});
+
+		expect(logger.debug).toHaveBeenCalledWith('Checked prebaked workspace bundle', {
+			resource: 'Test bundle file',
+			manifestPath,
+			decision: 'stale',
+			expectedHash: bundle.contentHash,
+			actualHash: 'stale',
+		});
+	});
+
+	it('logs the written bundle', async () => {
+		const { workspace } = createSandboxWorkspace(new Map());
+		const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() };
+
+		await materializeWorkspaceBundle({
+			logger,
+			workspace,
+			resourceLabel: 'Test bundle file',
+			loadPrebaked: async () => await Promise.resolve(undefined),
+			buildBundle: () => bundle,
+			bundleHash: (built) => built.contentHash,
+		});
+
+		expect(logger.debug).toHaveBeenCalledWith(
+			'Wrote workspace bundle',
+			expect.objectContaining({
+				resource: 'Test bundle file',
+				manifestPath,
+				hash: bundle.contentHash,
+				fileCount: bundle.files.size,
+			}),
+		);
 	});
 
 	it('does not record the bundle when a write fails', async () => {

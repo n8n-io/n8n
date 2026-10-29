@@ -8,8 +8,11 @@ import {
 	enrichSbom,
 	buildFirstPartyOsiMap,
 	isPhantomNpm,
+	loadNestedSboms,
+	mergeNestedSboms,
 	FIRST_PARTY_LICENSE_REF,
 	ELECTED_PROPERTY,
+	NESTED_SBOM_SOURCE_PROPERTY,
 } from './enrich-sbom.mjs';
 import { loadSpdxIds, checkSbom } from './check-sbom-licenses.mjs';
 
@@ -74,6 +77,118 @@ describe('enrichComponent', () => {
 		};
 		const out = enrichComponent(input, ctx());
 		assert.deepEqual(out.licenses, input.licenses);
+	});
+});
+
+describe('nested package SBOMs', () => {
+	it('merges licensed dependencies, inherits the package license for local crates, and skips files', () => {
+		const outer = {
+			components: [
+				{
+					name: 'existing',
+					version: '1.0.0',
+					purl: 'pkg:cargo/existing@1.0.0',
+					licenses: [{ license: { id: 'MIT' } }],
+				},
+			],
+		};
+		const nested = {
+			metadata: {
+				component: {
+					name: '@napi-rs/canvas-linux-x64-musl',
+					licenses: [{ license: { id: 'MIT' } }],
+				},
+			},
+			components: [
+				{
+					type: 'file',
+					name: 'skia.node',
+					'bom-ref': 'skia.node',
+				},
+				{
+					type: 'library',
+					name: 'canvas',
+					version: '0.1.0',
+					purl: 'pkg:cargo/canvas@0.1.0',
+					properties: [{ name: 'cdx:rust:source', value: 'local' }],
+				},
+				{
+					type: 'library',
+					name: 'cssparser',
+					version: '0.38.0',
+					purl: 'pkg:cargo/cssparser@0.38.0',
+					licenses: [{ license: { id: 'MPL-2.0' } }],
+				},
+				{
+					type: 'library',
+					name: 'existing',
+					version: '1.0.0',
+					purl: 'pkg:cargo/existing@1.0.0',
+					licenses: [{ license: { id: 'MIT' } }],
+				},
+			],
+		};
+
+		const { sbom, mergedComponents } = mergeNestedSboms(outer, [
+			{ source: '@napi-rs/canvas-linux-x64-musl/sbom.cdx.json', sbom: nested },
+		]);
+
+		assert.equal(mergedComponents, 3);
+		assert.deepEqual(
+			sbom.components.map((component) => component.name),
+			['existing', '@napi-rs/canvas-linux-x64-musl', 'canvas', 'cssparser'],
+		);
+		const nativePackage = sbom.components.find(
+			(component) => component.name === '@napi-rs/canvas-linux-x64-musl',
+		);
+		assert.equal(nativePackage.type, 'library');
+		assert.equal(
+			nativePackage.properties.find((property) => property.name === NESTED_SBOM_SOURCE_PROPERTY)
+				.value,
+			'@napi-rs/canvas-linux-x64-musl/sbom.cdx.json',
+		);
+		const canvas = sbom.components.find((component) => component.name === 'canvas');
+		assert.deepEqual(canvas.licenses, [{ license: { id: 'MIT' } }]);
+		const cssparser = sbom.components.find((component) => component.name === 'cssparser');
+		assert.equal(
+			cssparser.properties.find((property) => property.name === NESTED_SBOM_SOURCE_PROPERTY).value,
+			'@napi-rs/canvas-linux-x64-musl/sbom.cdx.json',
+		);
+	});
+
+	it('finds SBOMs at scoped package roots and in nested node_modules', async () => {
+		const root = await mkdtemp(path.join(os.tmpdir(), 'nested-sboms-'));
+		try {
+			const scoped = path.join(root, '@napi-rs', 'canvas-linux-x64-musl');
+			const nested = path.join(root, 'parent', 'node_modules', 'child');
+			await mkdir(scoped, { recursive: true });
+			await mkdir(nested, { recursive: true });
+			await writeFile(
+				path.join(scoped, 'sbom.cdx.json'),
+				JSON.stringify({
+					metadata: {
+						component: {
+							name: '@napi-rs/canvas-linux-x64-musl',
+							purl: 'pkg:npm/%40napi-rs/canvas-linux-x64-musl@1.0.11',
+						},
+					},
+					components: [{ name: 'cssparser' }],
+				}),
+			);
+			await writeFile(
+				path.join(nested, 'sbom.cdx.json'),
+				JSON.stringify({ components: [{ name: 'nested-child' }] }),
+			);
+
+			const found = await loadNestedSboms(root);
+
+			assert.deepEqual(found.map(({ source }) => source).sort(), [
+				'@napi-rs/canvas-linux-x64-musl/sbom.cdx.json',
+				'parent/node_modules/child/sbom.cdx.json',
+			]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
 	});
 });
 
@@ -221,7 +336,9 @@ describe('isPhantomNpm (cdxgen image-scan noise)', () => {
 				group: '@linear',
 				version: 'UNKNOWN',
 				purl: 'pkg:npm/%40linear/sdk%2Fwebhooks',
-				...syftSrc('/usr/local/lib/node_modules/n8n/node_modules/@linear/sdk/webhooks/package.json'),
+				...syftSrc(
+					'/usr/local/lib/node_modules/n8n/node_modules/@linear/sdk/webhooks/package.json',
+				),
 			}),
 			true,
 		);
@@ -521,7 +638,10 @@ describe('isPhantomNpm across scanners (cdxgen and syft)', () => {
 				version: '2.37.2',
 				purl: 'pkg:npm/%40n8n/task-runner@2.37.2',
 				properties: [
-					{ name: 'syft:location:0:path', value: '/app/node_modules/@n8n/task-runner/package.json' },
+					{
+						name: 'syft:location:0:path',
+						value: '/app/node_modules/@n8n/task-runner/package.json',
+					},
 				],
 			}),
 			false,

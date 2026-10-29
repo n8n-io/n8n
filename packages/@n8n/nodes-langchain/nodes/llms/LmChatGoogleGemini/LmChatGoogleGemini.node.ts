@@ -17,8 +17,13 @@ import {
 	makeN8nLlmFailedAttemptHandler,
 	N8nLlmTracing,
 	getConnectionHintNoticeField,
+	proxyFetch,
 } from '@n8n/ai-utilities';
-import { shouldIncludeGoogleModel } from '@n8n/ai-utilities/model-discovery';
+import {
+	getGoogleModelLabel,
+	pinPrioritizedModels,
+	shouldIncludeGoogleModel,
+} from '@n8n/ai-utilities/model-discovery';
 
 import { MODEL_SELECTION_HINT } from '@utils/model-builder-hints';
 
@@ -35,6 +40,30 @@ async function filterChatModels(
 				supportedGenerationMethods: item.json.supportedGenerationMethods,
 			}),
 	);
+}
+
+/** Show models under the name the API reports, sorted by it, with prioritized models first. */
+async function labelModels(
+	this: IExecuteSingleFunctions,
+	items: INodeExecutionData[],
+): Promise<INodeExecutionData[]> {
+	const labelled = items.map((item) => {
+		// `displayName` and `priority` only carry the API's values to here; options do not keep them.
+		const { displayName, priority, ...option } = item.json;
+		const json =
+			typeof option.value === 'string'
+				? {
+						...option,
+						name: getGoogleModelLabel(
+							option.value,
+							typeof displayName === 'string' ? displayName : undefined,
+						),
+					}
+				: option;
+		return { item: { ...item, json }, priority };
+	});
+	labelled.sort((a, b) => String(a.item.json.name).localeCompare(String(b.item.json.name)));
+	return pinPrioritizedModels(labelled, (entry) => entry.priority).map((entry) => entry.item);
 }
 
 function errorDescriptionMapper(error: NodeError) {
@@ -78,14 +107,11 @@ const modelRLC: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
+						labelModels,
 					],
 				},
 			},
@@ -133,14 +159,11 @@ const modelRLCV2: INodeProperties = {
 								name: '={{$responseItem.name}}',
 								value: '={{$responseItem.name}}',
 								description: '={{$responseItem.description}}',
+								displayName: '={{$responseItem.displayName}}',
+								priority: '={{$responseItem.priority}}',
 							},
 						},
-						{
-							type: 'sort',
-							properties: {
-								key: 'name',
-							},
-						},
+						labelModels,
 					],
 				},
 			},
@@ -244,9 +267,12 @@ export class LmChatGoogleGemini implements INodeType {
 			null,
 		) as SafetySetting[];
 
+		const egressFilter = this.helpers.getSecureEgressFilter();
 		const model = new ChatGoogleGenerativeAI({
 			apiKey: credentials.apiKey as string,
 			baseUrl: credentials.host as string,
+			fetch: async (input: RequestInfo | URL, init?: RequestInit) =>
+				await proxyFetch({ input, init, egressFilter }),
 			model: modelName,
 			topK: options.topK,
 			topP: options.topP,

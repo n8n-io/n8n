@@ -9,8 +9,7 @@ import { lazyImport } from '@n8n/utils/lazy-import';
 import z from 'zod';
 
 import { writeAssistantPreference } from '@/services/ai-preference-write';
-import type { AiPreferenceService } from '@/services/ai-preference.service';
-import type { UrlService } from '@n8n/backend-services';
+import type { AiPreferenceService, UrlService } from '@n8n/backend-services';
 import type { Telemetry } from '@/telemetry';
 
 import {

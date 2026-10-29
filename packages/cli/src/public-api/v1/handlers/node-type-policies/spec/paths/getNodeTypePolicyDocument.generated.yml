@@ -1,12 +1,9 @@
 operationId: getNodeTypePolicyDocument
 tags:
   - NodeTypePolicy
-summary: 'Beta: Retrieve a node type policy document'
-description: '**Beta** — breaking changes may still occur without major version bump.'
+summary: 'Preview: Retrieve a node type policy document'
+description: '**Preview** — breaking changes may still occur without major version bump.'
 x-required-scope: nodeTypePolicy:manage
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

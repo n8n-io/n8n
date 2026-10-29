@@ -1,3 +1,4 @@
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 
 import N8nFormInput from '.';
@@ -79,5 +80,17 @@ describe('N8nFormInput', () => {
 		});
 
 		expect(emitted('validate')).toEqual([[false]]);
+	});
+
+	it('emits enter on Enter but not while the user confirms an IME composition', async () => {
+		const { getByRole, emitted } = renderComponent({ props: { modelValue: '', label: 'Name' } });
+		const input = getByRole('textbox');
+
+		await fireEvent.keyDown(input, { key: 'Enter', isComposing: true });
+		await fireEvent.keyDown(input, { key: 'Enter', keyCode: 229 });
+		expect(emitted('enter')).toBeUndefined();
+
+		await fireEvent.keyDown(input, { key: 'Enter' });
+		expect(emitted('enter')).toHaveLength(1);
 	});
 });

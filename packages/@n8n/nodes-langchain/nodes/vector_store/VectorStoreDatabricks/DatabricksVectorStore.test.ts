@@ -13,17 +13,21 @@ const managedDescribe = {
 	name: 'cat.sch.idx',
 	primary_key: 'id',
 	index_type: 'DELTA_SYNC',
+	endpoint_name: 'ep',
 	delta_sync_index_spec: {
 		source_table: 'cat.sch.docs',
 		embedding_source_columns: [{ name: 'text', embedding_model_endpoint_name: 'e5' }],
 	},
 };
 const ucTable = { columns: [{ name: 'id' }, { name: 'text' }, { name: 'source' }] };
+const standardEndpoint = { name: 'ep', endpoint_type: 'STANDARD' };
+const storageOptimizedEndpoint = { name: 'ep', endpoint_type: 'STORAGE_OPTIMIZED' };
 
 const directDescribe = {
 	name: 'cat.sch.idx',
 	primary_key: 'id',
 	index_type: 'DIRECT_ACCESS',
+	endpoint_name: 'ep',
 	direct_access_index_spec: {
 		embedding_vector_columns: [{ name: 'embedding', embedding_dimension: 3 }],
 		schema_json: '{"id":"string","text":"string","source":"string","embedding":"array<float>"}',
@@ -53,6 +57,13 @@ describe('DatabricksVectorStore', () => {
 
 	const bodyOf = (call: number) => JSON.parse(String(fetchMock.mock.calls[call][1]?.body));
 	const urlOf = (call: number) => String(fetchMock.mock.calls[call][0]);
+
+	// A filtered query reads the endpoint type before the query; STANDARD lets the filter through
+	const replyByUrl = (endpoint: unknown = standardEndpoint) =>
+		fetchMock.mockImplementation(async (url) =>
+			json(String(url).endsWith('/query') ? queryReply : endpoint),
+		);
+	const queryBody = () => bodyOf(fetchMock.mock.calls.length - 1);
 
 	const createStore = async (
 		describe: unknown,
@@ -94,6 +105,7 @@ describe('DatabricksVectorStore', () => {
 				embedding: { kind: 'managed', sourceColumn: 'text', modelEndpoint: 'e5' },
 				schemaColumns: undefined,
 				sourceTable: 'cat.sch.docs',
+				endpointName: 'ep',
 			});
 		});
 
@@ -159,9 +171,11 @@ describe('DatabricksVectorStore', () => {
 
 			const info = await DatabricksVectorStore.describeIndex(fetchMock, host, 'cat.sch.idx');
 
+			expect(fetchMock).toHaveBeenCalledTimes(2);
 			expect(urlOf(0)).toBe(`${host}/api/2.0/vector-search/indexes/cat.sch.idx`);
 			expect(urlOf(1)).toBe(`${host}/api/2.1/unity-catalog/tables/cat.sch.docs`);
 			expect(info.schemaColumns).toEqual(['id', 'text', 'source']);
+			expect(info.endpointType).toBeUndefined();
 		});
 
 		it('leaves the columns unknown when Unity Catalog denies the table', async () => {
@@ -267,11 +281,11 @@ describe('DatabricksVectorStore', () => {
 		// The retriever calls similaritySearch without a filter, so the configured one must apply
 		it('applies the configured search mode and filter to a retriever search', async () => {
 			const store = await managedStore({ queryType: 'HYBRID', filter: { source: 'hr' } });
-			fetchMock.mockResolvedValue(json(queryReply));
+			replyByUrl();
 
 			const docs = await store.similaritySearch('hello', 3);
 
-			expect(bodyOf(0)).toEqual({
+			expect(queryBody()).toEqual({
 				columns: ['id', 'text', 'source'],
 				num_results: 3,
 				query_type: 'HYBRID',
@@ -366,12 +380,129 @@ describe('DatabricksVectorStore', () => {
 			},
 		])('sends $label as filters_json', async ({ config, call, expected }) => {
 			const store = await managedStore({ filter: config });
-			fetchMock.mockResolvedValue(json(queryReply));
+			replyByUrl();
 
 			await store.similaritySearchWithScore('hello', 2, call);
 
-			expect(bodyOf(0).filters_json).toEqual(expected);
+			expect(queryBody().filters_json).toEqual(expected);
 		});
+
+		it('reads the endpoint type once per index description, and only for a filtered query', async () => {
+			const store = await managedStore();
+			replyByUrl();
+
+			await store.similaritySearchWithScore('hello', 2);
+			await store.similaritySearchWithScore('hello', 2, { source: 'hr' });
+			await store.similaritySearchWithScore('hello', 2, { source: 'it' });
+
+			expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+				`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`,
+				`${host}/api/2.0/vector-search/endpoints/ep`,
+				`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`,
+				`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`,
+			]);
+		});
+
+		it('shares one endpoint read between concurrent filtered queries', async () => {
+			const store = await managedStore();
+			replyByUrl();
+
+			await Promise.all([
+				store.similaritySearchWithScore('hello', 2, { source: 'hr' }),
+				store.similaritySearchWithScore('hello', 2, { source: 'it' }),
+			]);
+
+			expect(fetchMock.mock.calls.map(([url]) => String(url))).toEqual([
+				`${host}/api/2.0/vector-search/endpoints/ep`,
+				`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`,
+				`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`,
+			]);
+		});
+
+		it('remembers a refused endpoint read instead of repeating it', async () => {
+			const store = await managedStore();
+			fetchMock.mockResolvedValue(json({ error_code: 'PERMISSION_DENIED' }, 403));
+			const search = async () => await store.similaritySearch('hello', 2, { source: 'hr' });
+
+			await expect(search()).rejects.toThrow('Check that you can read endpoint ep');
+			await expect(search()).rejects.toThrow('Check that you can read endpoint ep');
+
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('retries the endpoint read after a transport error', async () => {
+			const store = await managedStore();
+			fetchMock.mockRejectedValueOnce(new Error('ECONNRESET'));
+
+			await expect(store.similaritySearch('hello', 2, { source: 'hr' })).rejects.toThrow(
+				'ECONNRESET',
+			);
+			replyByUrl();
+			await store.similaritySearch('hello', 2, { source: 'hr' });
+
+			expect(fetchMock).toHaveBeenCalledTimes(3);
+			expect(urlOf(1)).toBe(`${host}/api/2.0/vector-search/endpoints/ep`);
+		});
+
+		it.each([
+			{
+				label: 'the call filter on a STORAGE_OPTIMIZED endpoint',
+				endpoint: json(storageOptimizedEndpoint),
+				config: undefined,
+				search: async (store: DatabricksVectorStore) =>
+					await store.similaritySearchWithScore('hello', 2, { source: 'hr' }),
+				fragment: 'of type STORAGE_OPTIMIZED',
+			},
+			{
+				label: 'the config filter on a STORAGE_OPTIMIZED endpoint',
+				endpoint: json(storageOptimizedEndpoint),
+				config: { source: 'hr' },
+				search: async (store: DatabricksVectorStore) => await store.similaritySearch('hello', 2),
+				fragment: 'needs a SQL filter string (filter_string)',
+			},
+			{
+				label: 'a filter when the endpoint cannot be read',
+				endpoint: json({ error_code: 'PERMISSION_DENIED' }, 403),
+				config: undefined,
+				search: async (store: DatabricksVectorStore) =>
+					await store.similaritySearchWithScore('hello', 2, { source: 'hr' }),
+				fragment: 'Check that you can read endpoint ep',
+			},
+		])('refuses $label before the query', async ({ endpoint, config, search, fragment }) => {
+			const store = await managedStore({ filter: config });
+			fetchMock.mockResolvedValueOnce(endpoint);
+
+			const attempt = search(store);
+
+			await expect(attempt).rejects.toThrow(UserError);
+			await expect(attempt).rejects.toThrow(fragment);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+			expect(urlOf(0)).toBe(`${host}/api/2.0/vector-search/endpoints/ep`);
+		});
+
+		it('refuses a filter without any request when the index names no endpoint', async () => {
+			const { endpoint_name: _, ...noEndpoint } = directDescribe;
+			const store = await createStore(noEndpoint, { contentColumn: 'text' });
+
+			await expect(store.similaritySearch('hello', 2, { source: 'hr' })).rejects.toThrow(
+				'Check that you can read endpoint (unknown)',
+			);
+			expect(fetchMock).not.toHaveBeenCalled();
+		});
+
+		it.each([{ call: {} }, { call: undefined }])(
+			'queries without a filter ($call) and never reads the endpoint',
+			async ({ call }) => {
+				const store = await managedStore();
+				fetchMock.mockResolvedValue(json(queryReply));
+
+				await store.similaritySearchWithScore('hello', 2, call);
+
+				expect(fetchMock).toHaveBeenCalledTimes(1);
+				expect(urlOf(0)).toBe(`${host}/api/2.0/vector-search/indexes/cat.sch.idx/query`);
+				expect(bodyOf(0)).not.toHaveProperty('filters_json');
+			},
+		);
 	});
 
 	describe('result parsing', () => {

@@ -6,11 +6,8 @@ import { readFileSync } from 'fs';
 import { setGlobalState, UserError } from 'n8n-workflow';
 
 import { inE2ETests } from '@/constants';
-import { setMicrosoftObservabilityDefaults } from '@/utils';
 
 const globalConfig = Container.get(GlobalConfig);
-
-setMicrosoftObservabilityDefaults();
 
 if (inE2ETests) {
 	globalConfig.diagnostics.enabled = false;

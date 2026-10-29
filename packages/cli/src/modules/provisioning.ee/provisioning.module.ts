@@ -30,7 +30,7 @@ export class ProvisioningModule implements ModuleInterface {
 
 		// Register the role mapping provider so the identity layer maps roles
 		// through the core `RoleMappingProxyService`, without importing this module.
-		const { RoleMappingProxyService } = await import('@/services/role-mapping-proxy.service.js');
+		const { RoleMappingProxyService } = await import('@n8n/backend-services/auth');
 		const { ProvisioningRoleMappingProvider } = await import('./role-mapping-provider.ee.js');
 		Container.get(RoleMappingProxyService).registerProvider(
 			Container.get(ProvisioningRoleMappingProvider),

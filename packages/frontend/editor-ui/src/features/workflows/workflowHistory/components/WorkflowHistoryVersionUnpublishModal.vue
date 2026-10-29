@@ -135,10 +135,10 @@ onBeforeUnmount(() => {
 								</N8nText>
 								<ul :class="$style.list">
 									<li v-for="dep in group.items" :key="dep.id">
-										<N8nLink v-if="dep.href" :to="dep.href" new-window size="small">
+										<N8nLink v-if="dep.href" :to="dep.href" new-window size="medium">
 											{{ dep.name }}
 										</N8nLink>
-										<N8nText v-else size="small">{{ dep.name }}</N8nText>
+										<N8nText v-else size="medium">{{ dep.name }}</N8nText>
 									</li>
 								</ul>
 							</div>
@@ -157,7 +157,7 @@ onBeforeUnmount(() => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton variant="subtle" size="medium" :disabled="unpublishing" @click="onCancel">
+				<N8nButton variant="outline" size="medium" :disabled="unpublishing" @click="onCancel">
 					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton variant="solid" size="medium" :loading="unpublishing" @click="onUnpublish">

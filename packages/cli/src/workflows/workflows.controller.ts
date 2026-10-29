@@ -5,10 +5,14 @@ import {
 	DeactivateWorkflowDto,
 	ExecutionRedactionQueryDtoSchema,
 	ImportWorkflowFromUrlDto,
+	ListCallableSubworkflowsQueryDto,
 	ManualRunDto,
+	TransferPreviewQueryDto,
 	TransferWorkflowBodyDto,
 	UpdateWorkflowDto,
+	type CallableSubworkflowsResponse,
 	type WorkflowPublicationStatus,
+	type WorkflowTransferPreview,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { OutboundHttp, SsrfBlockedIpError } from '@n8n/backend-network';
@@ -656,6 +660,21 @@ export class WorkflowsController {
 		});
 	}
 
+	@Get('/:workflowId/transfer-preview')
+	@ProjectScope('workflow:move')
+	async transferPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<WorkflowTransferPreview> {
+		return await this.enterpriseWorkflowService.previewWorkflowTransfer(
+			req.user,
+			workflowId,
+			query.destinationProjectId,
+		);
+	}
+
 	@Put('/:workflowId/transfer')
 	@ProjectScope('workflow:move')
 	async transfer(
@@ -715,6 +734,22 @@ export class WorkflowsController {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" does not exist`);
 		}
 		return await this.workflowPublicationStatusService.getStatus(workflowId);
+	}
+
+	/**
+	 * Lists the workflows that this workflow can call as sub-workflows. Only
+	 * editors of the parent can add a sub-workflow call, so this requires
+	 * `workflow:update` on the parent.
+	 */
+	@Get('/:workflowId/callable-subworkflows')
+	@ProjectScope('workflow:update')
+	async getCallableSubworkflows(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('workflowId') workflowId: string,
+		@Query query: ListCallableSubworkflowsQueryDto,
+	): Promise<CallableSubworkflowsResponse> {
+		return await this.workflowService.getCallableSubworkflows(req.user, workflowId, query);
 	}
 
 	@Post('/with-node-types')

@@ -3,11 +3,9 @@ import { mockInstance } from '@n8n/backend-test-utils';
 import type { Request, Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type {
-	ProtectedResource,
-	ProtectedResourceRegistry,
-} from '@/services/protected-resource.registry';
 import type { UrlService } from '@n8n/backend-services';
+import type { AuthenticationService } from '@n8n/inbound-auth';
+import type { ProtectedResource, ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 
 import type { OAuthServerLocalAuthorizationServer } from '../oauth-local-authorization-server';
 import { OAuthServerService } from '../oauth-server.service';
@@ -29,6 +27,7 @@ beforeAll(async () => {
 const urlService = mock<UrlService>();
 const registry = mock<ProtectedResourceRegistry>();
 const localServer = mock<OAuthServerLocalAuthorizationServer>();
+const authenticationService = mock<AuthenticationService>();
 let controller: OAuthControllerClass;
 
 const makeRes = () => {
@@ -53,10 +52,23 @@ const resource = (scopes: string[], isAvailable?: () => Promise<boolean>): Prote
 	scopes,
 });
 
+const publicApiResource: ProtectedResource = {
+	surface: 'public-api',
+	id: 'public-api',
+	getResourceUrl: () => 'https://n8n.test/api/v1',
+	getAudiences: () => ['https://n8n.test/api/v1'],
+	authorize: async () => true,
+	scopes: [],
+};
+
 beforeEach(() => {
 	vi.resetAllMocks();
 	urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.test');
-	controller = new OAuthController(urlService, registry, localServer);
+	authenticationService.advertise.mockResolvedValue({
+		authorizationServers: ['https://n8n.test'],
+		challenges: [],
+	});
+	controller = new OAuthController(urlService, registry, localServer, authenticationService);
 });
 
 describe('OAuthController', () => {
@@ -113,9 +125,9 @@ describe('OAuthController', () => {
 			expect(registry.getByResourcePath).toHaveBeenCalledWith('/webhook/orders?method=GET');
 		});
 
-		test('returns the RFC 9728 metadata document for a resolved resource', async () => {
+		test('returns the RFC 9728 metadata document for a surface outside the pipeline', async () => {
 			const scopes = ['tool:listWorkflows', 'tool:getWorkflowDetails'];
-			registry.getByResourcePath.mockResolvedValue(resource(scopes));
+			registry.getByResourcePath.mockResolvedValue({ ...resource(scopes), surface: 'trigger' });
 			const res = makeRes();
 
 			await controller.protectedResourceMetadata(makeReq(['mcp-server', 'http']), res);
@@ -128,6 +140,87 @@ describe('OAuthController', () => {
 				authorization_servers: ['https://n8n.test'],
 				scopes_supported: scopes,
 			});
+			expect(authenticationService.advertise).not.toHaveBeenCalled();
+		});
+
+		test('lists the issuers of the trusted sources accepted on the instance-mcp surface', async () => {
+			registry.getByResourcePath.mockResolvedValue(resource(['tool:listWorkflows']));
+			authenticationService.advertise.mockResolvedValue({
+				authorizationServers: ['https://n8n.test', 'https://idp.example'],
+				challenges: [],
+			});
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['mcp-server', 'http']), res);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith({
+				surface: 'instance-mcp',
+				resource: {
+					url: 'https://n8n.test/mcp-server/http',
+					acceptedAudiences: ['https://n8n.test/mcp-server/http'],
+				},
+			});
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({
+					authorization_servers: ['https://n8n.test', 'https://idp.example'],
+				}),
+			);
+		});
+
+		test('lists the issuers of the trusted sources accepted on the public-api surface', async () => {
+			registry.getByResourcePath.mockResolvedValue(publicApiResource);
+			authenticationService.advertise.mockResolvedValue({
+				authorizationServers: ['https://n8n.test', 'https://idp.example'],
+				challenges: [],
+			});
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['api', 'v1']), res);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith(
+				expect.objectContaining({
+					surface: 'public-api',
+					resource: {
+						url: 'https://n8n.test/api/v1',
+						acceptedAudiences: ['https://n8n.test/api/v1'],
+					},
+				}),
+			);
+			expect(res.json).toHaveBeenCalledWith({
+				resource: 'https://n8n.test/api/v1',
+				bearer_methods_supported: ['header'],
+				authorization_servers: ['https://n8n.test', 'https://idp.example'],
+			});
+		});
+
+		test('lists only the issuer of the source a trigger accepts', async () => {
+			const trigger: ProtectedResource = {
+				...resource([]),
+				surface: 'trigger',
+				getResourceUrl: () => 'https://n8n.test/webhook/orders?method=POST',
+				getAudiences: () => ['https://n8n.test/webhook/orders?method=POST'],
+				getAcceptedSourceIds: () => ['idp-1'],
+			};
+			registry.getByResourcePath.mockResolvedValue(trigger);
+			authenticationService.advertise.mockResolvedValue({
+				authorizationServers: ['https://idp.example'],
+				challenges: [],
+			});
+			const res = makeRes();
+
+			await controller.protectedResourceMetadata(makeReq(['webhook', 'orders']), res);
+
+			expect(authenticationService.advertise).toHaveBeenCalledWith({
+				surface: 'trigger',
+				resource: {
+					url: 'https://n8n.test/webhook/orders?method=POST',
+					acceptedAudiences: ['https://n8n.test/webhook/orders?method=POST'],
+				},
+				acceptedSourceIds: ['idp-1'],
+			});
+			expect(res.json).toHaveBeenCalledWith(
+				expect.objectContaining({ authorization_servers: ['https://idp.example'] }),
+			);
 		});
 
 		test('omits scopes_supported when the resource advertises no scopes', async () => {
