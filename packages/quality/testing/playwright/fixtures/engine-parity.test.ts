@@ -30,10 +30,12 @@ describe('workflowSettingsFor', () => {
 });
 
 describe('engineParityDisposition', () => {
-	test('runs every test as-is on the legacy engine, whatever its tag', () => {
-		for (const tag of Object.values(ENGINE_TAGS)) {
+	test('runs every test as-is on the legacy engine, unless only engine v2 can run it', () => {
+		const { v2Only, ...others } = ENGINE_TAGS;
+		for (const tag of Object.values(others)) {
 			expect(engineParityDisposition([tag], undefined)).toEqual({ action: 'run' });
 		}
+		expect(engineParityDisposition([v2Only], undefined).action).toBe('skip');
 	});
 
 	test('runs an untagged test on engine v2', () => {
@@ -68,6 +70,19 @@ describe('engineParityDisposition', () => {
 
 	test('rejects a misspelled engine tag on the legacy engine too', () => {
 		expect(() => engineParityDisposition(['@engine:v1only'], undefined)).toThrow(/@engine:v1only/);
+	});
+});
+
+describe('engineParityDisposition for a v2-only test', () => {
+	test('skips it on a stack without engine v2', () => {
+		expect(engineParityDisposition(['@engine:v2-only'], undefined)).toEqual({
+			action: 'skip',
+			reason: expect.stringMatching(/Engine v1/),
+		});
+	});
+
+	test('runs it on a stack that runs engine v2', () => {
+		expect(engineParityDisposition(['@engine:v2-only'], 'container')).toEqual({ action: 'run' });
 	});
 });
 

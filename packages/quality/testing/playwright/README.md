@@ -259,6 +259,7 @@ test('enterprise feature @licensed', ...)           // Requires enterprise licen
 | `@db:reset` | Reset database before each test (container-only) | Tests that need fresh DB state per test (e.g., MFA tests) |
 | `@engine:v2` | Must pass on engine v2 as well | Runs under the `engine-v2:e2e` project (see below) |
 | `@engine:v1-only` | Engine v2 will never support this | Skipped under `engine-v2:e2e`; tracking only |
+| `@engine:v2-only` | Only engine v2 can run this | Skipped on every project without the engine; required green under `engine-v2:e2e` |
 | `@engine:v2-pending` | Engine v2 will support this, but not yet | Expected to fail under `engine-v2:e2e`; an unexpected pass tells you to promote it to `@engine:v2` |
 
 ### Engine v2 parity
@@ -289,7 +290,7 @@ fail the same way on the way in. A webhook or trigger run returns no execution
 id, so `waitForExecution` and `waitForExecutionById` check the execution they
 hand back. A spec that reads no execution calls
 `api.workflows.assertLatestExecutionRoutedToEngine` after the run. A tag the
-parity buckets do not know also fails the test, and names the three valid tags.
+parity buckets do not know also fails the test, and names the four valid tags.
 
 The project only picks up specs with an `@engine:*` tag for now. Tag a spec
 `@engine:v2` once it passes on both engines; use the other two tags to track

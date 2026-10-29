@@ -20,6 +20,8 @@ export const ENGINE_TAGS = {
 	unsupported: `${ENGINE_TAG_PREFIX}v1-only`,
 	/** Engine v2 will support this, but does not yet. Expected to fail there. */
 	pending: `${ENGINE_TAG_PREFIX}v2-pending`,
+	/** Only engine v2 can run this. Skipped on a stack without it. */
+	v2Only: `${ENGINE_TAG_PREFIX}v2-only`,
 } as const;
 
 /**
@@ -56,7 +58,11 @@ export function engineParityDisposition(
 ): EngineParityDisposition {
 	assertKnownTags(tags);
 
-	if (!engine) return { action: 'run' };
+	if (!engine) {
+		return tags.includes(ENGINE_TAGS.v2Only)
+			? { action: 'skip', reason: 'Engine v1 does not support this test' }
+			: { action: 'run' };
+	}
 
 	if (tags.includes(ENGINE_TAGS.unsupported)) {
 		return { action: 'skip', reason: 'Engine v2 will never support this test' };
