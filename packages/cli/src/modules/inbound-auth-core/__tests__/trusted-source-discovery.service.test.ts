@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { Jwk, OAuthDiscoveryClient } from '@n8n/backend-services';
+import type { EventService, Jwk, OAuthDiscoveryClient } from '@n8n/backend-services';
 import {
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
@@ -41,6 +41,7 @@ const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const store = mock<TrustedSourceDbStore>();
 const client = mock<OAuthDiscoveryClient>();
 const localServer = mock<LocalAuthorizationServer>();
+const eventService = mock<EventService>();
 
 let service: TrustedSourceDiscoveryService;
 let counter = 0;
@@ -102,7 +103,7 @@ beforeEach(() => {
 	client.fetchOpenIdConfiguration.mockResolvedValue(fetched(oidcMetadata));
 	client.fetchOAuth2ServerMetadata.mockResolvedValue(fetched(oauth2Metadata));
 	client.fetchJwks.mockResolvedValue(fetchedJwks);
-	service = new TrustedSourceDiscoveryService(logger, store, client, localServer);
+	service = new TrustedSourceDiscoveryService(logger, store, client, localServer, eventService);
 });
 
 afterEach(() => {
@@ -326,6 +327,79 @@ describe('TrustedSourceDiscoveryService', () => {
 			expect(client.fetchOAuth2ServerMetadata).not.toHaveBeenCalled();
 			expect(client.fetchJwks).not.toHaveBeenCalled();
 			expect(store.recordDiscovery).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('healthy event', () => {
+		const refresh = async (src: TrustedSource) => {
+			store.getById.mockResolvedValue(src);
+			await service.refresh(src.id);
+		};
+		const local = { issuer: 'http://localhost:5678', jwks_uri: 'http://localhost:5678/jwks' };
+
+		it.each(['unchecked', 'error'] as const)(
+			'emits trusted-source-healthy once when a %s admin source becomes healthy',
+			async (status) => {
+				const src = source({ status });
+
+				await refresh(src);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith('trusted-source-healthy', {
+					sourceId: src.id,
+				});
+			},
+		);
+
+		// `recorded` pins that the run reached the write, so a silent case cannot pass by accident.
+		const silent: {
+			when: string;
+			recorded: TrustedSource['status'];
+			arrange: () => TrustedSource;
+		}[] = [
+			{
+				when: 'the source was already healthy',
+				recorded: 'healthy',
+				arrange: () => source({ status: 'healthy' }),
+			},
+			{
+				when: 'discovery fails',
+				recorded: 'error',
+				arrange: () => {
+					client.fetchJwks.mockRejectedValue(new Error('JWKS unreachable'));
+					return source();
+				},
+			},
+			{
+				when: 'the lease was lost before the result was written',
+				recorded: 'healthy',
+				arrange: () => {
+					store.recordDiscovery.mockResolvedValue(false);
+					return source();
+				},
+			},
+			{
+				when: 'the source is system-managed',
+				recorded: 'healthy',
+				arrange: () => {
+					localServer.getMetadata.mockResolvedValue(local);
+					localServer.getJwks.mockResolvedValue({ keys });
+					return source({
+						managedBy: 'system',
+						issuer: local.issuer,
+						authentication: { keys: { kind: 'local-keystore' } },
+					});
+				},
+			},
+		];
+
+		it.each(silent)('emits nothing when $when', async ({ arrange, recorded: status }) => {
+			const src = arrange();
+
+			await refresh(src);
+
+			expect(recorded().status).toBe(status);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

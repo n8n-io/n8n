@@ -18,6 +18,7 @@ import {
 	In,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { TrustedSourceFacets } from '@n8n/inbound-auth';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
@@ -6057,6 +6058,76 @@ describe('TelemetryEventRelay', () => {
 					mode: 'internal',
 				},
 			);
+		});
+	});
+
+	describe('trusted source events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		};
+		const issuer = 'https://idp.example.com';
+		const facets: TrustedSourceFacets = {
+			discoveryMode: 'manual',
+			clientKind: 'registered',
+			surfaces: ['public-api', 'instance-mcp'],
+			identitySubject: 'binding',
+			linkByEmail: 'verified-only',
+			provisionHuman: 'jit',
+			roleMappingMode: 'on-provision',
+		};
+		const trackedFacets = {
+			discovery_mode: 'manual',
+			client_kind: 'registered',
+			surfaces: ['public-api', 'instance-mcp'],
+			identity_subject: 'binding',
+			link_by_email: 'verified-only',
+			provision_human: 'jit',
+			role_mapping_mode: 'on-provision',
+		};
+
+		it.each([
+			['trusted-source-created', TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE],
+			['trusted-source-updated', TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE],
+		] as const)('should track on `%s` event with the config facets', (eventName, entry) => {
+			eventService.emit(eventName, { user, sourceId: 'source-1', issuer, facets });
+
+			expect(telemetry.track).toHaveBeenCalledWith(entry, {
+				user_id: 'user-1',
+				source_id: 'source-1',
+				...trackedFacets,
+			});
+		});
+
+		it('should track on `trusted-source-deleted` event', () => {
+			eventService.emit('trusted-source-deleted', { user, sourceId: 'source-1', issuer });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE,
+				{ user_id: 'user-1', source_id: 'source-1' },
+			);
+		});
+
+		it('should track on `trusted-source-healthy` event', () => {
+			eventService.emit('trusted-source-healthy', { sourceId: 'source-1' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
+				{ source_id: 'source-1' },
+			);
+		});
+
+		it('never sends the issuer of a trusted source', () => {
+			eventService.emit('trusted-source-created', { user, sourceId: 'source-1', issuer, facets });
+			eventService.emit('trusted-source-updated', { user, sourceId: 'source-1', issuer, facets });
+			eventService.emit('trusted-source-deleted', { user, sourceId: 'source-1', issuer });
+
+			// The `init` tests above leave extra relays listening, so the call count is not asserted.
+			expect(telemetry.track).toHaveBeenCalled();
+			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('idp.example.com');
 		});
 	});
 });

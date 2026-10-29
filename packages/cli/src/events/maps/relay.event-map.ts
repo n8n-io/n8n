@@ -53,6 +53,7 @@ import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
+import type { TrustedSourceFacets } from '@n8n/inbound-auth';
 
 export type WorkflowActionSource =
 	| 'ui'
@@ -1058,18 +1059,24 @@ export type RelayEventMap = DataTableEventMap & {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-updated': {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-deleted': {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+	};
+
+	'trusted-source-healthy': {
+		sourceId: string;
 	};
 
 	// #endregion
