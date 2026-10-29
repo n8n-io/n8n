@@ -27,7 +27,9 @@ import {
 	N8nSelectedItemsInfo,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
+	N8nStatusDot,
 	N8nText,
+	N8nTooltip,
 	N8nUserSelect,
 } from '@n8n/design-system';
 import type { IUser, TableHeader } from '@n8n/design-system';
@@ -44,7 +46,9 @@ import orderBy from 'lodash/orderBy';
 import { computed, nextTick, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { I18nT } from 'vue-i18n';
+import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import FindingStateSelect from './components/FindingStateSelect.vue';
+import HowToFixPanel from './components/HowToFixPanel.vue';
 import ImpactTag from './components/ImpactTag.vue';
 import WorkflowFiltersPopover from './components/WorkflowFiltersPopover.vue';
 import {
@@ -461,10 +465,12 @@ const skipReasonKeys: Record<
 	| 'settings.migrationReport.detail.notify.skipped.noOwner'
 	| 'settings.migrationReport.detail.notify.skipped.noFinding'
 	| 'settings.migrationReport.detail.notify.skipped.sendFailed'
+	| 'settings.migrationReport.detail.notify.skipped.recentlyNotified'
 > = {
 	no_owner: 'settings.migrationReport.detail.notify.skipped.noOwner',
 	no_finding: 'settings.migrationReport.detail.notify.skipped.noFinding',
 	send_failed: 'settings.migrationReport.detail.notify.skipped.sendFailed',
+	recently_notified: 'settings.migrationReport.detail.notify.skipped.recentlyNotified',
 };
 
 /**
@@ -534,6 +540,20 @@ async function onNotify(workflow: AffectedWorkflow) {
 
 const bulkNotifyTargets = computed(() =>
 	selectedWorkflows.value.filter((workflow) => canNotifyRow(workflow) && !isBusy(workflow)),
+);
+
+// The backend sends one email per owner, listing all of their selected workflows.
+const bulkNotifyOwnerCount = computed(
+	() => new Set(bulkNotifyTargets.value.map((workflow) => workflow.owner?.id)).size,
+);
+
+const bulkNotifyLabel = computed(() =>
+	bulkNotifyOwnerCount.value > 0
+		? i18n.baseText('settings.migrationReport.detail.bulk.notifyOwnerCount', {
+				adjustToNumber: bulkNotifyOwnerCount.value,
+				interpolate: { count: String(bulkNotifyOwnerCount.value) },
+			})
+		: i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners'),
 );
 
 const isBulkNotifying = computed(() =>
@@ -713,6 +733,14 @@ const ownerFilterOptions = computed(() => {
 	);
 });
 
+// Personal projects show as one "Personal" label, the Owner column names the person.
+function projectLabel(workflow: AffectedWorkflow): string {
+	if (workflow.homeProjectType === 'personal') {
+		return i18n.baseText('settings.migrationReport.detail.filters.project.personal');
+	}
+	return workflow.homeProjectName ?? '—';
+}
+
 // The projects of the listed workflows, for the project filter. Personal projects share one option.
 const projectFilterOptions = computed(() => {
 	const projects = new Map<string, string>();
@@ -805,6 +833,14 @@ const sortedWorkflows = computed(() => {
 			</template>
 		</N8nSettingsPageHeader>
 
+		<HowToFixPanel
+			v-if="!isLoading"
+			:class="$style.howToFix"
+			:recommendations="state.recommendations"
+			:documentation-url="state.ruleDocumentationUrl"
+			:migratable="state.migratable"
+		/>
+
 		<div
 			v-if="!isLoading && unusedOpenWorkflows.length > 0"
 			:class="$style.unusedCallout"
@@ -894,32 +930,59 @@ const sortedWorkflows = computed(() => {
 		>
 			<template #[`item.name`]="{ item }">
 				<div :class="$style.cellStack">
-					<N8nLink
-						theme="text"
-						:to="workflowUrl(item)"
-						new-window
-						:title="item.name"
-						:class="[$style.truncate, $style.workflowName]"
-						data-test-id="migration-workflow-name-link"
-					>
-						{{ item.name }}
-					</N8nLink>
-					<N8nText size="small" color="text-light">
-						{{
-							item.active
-								? i18n.baseText('settings.migrationReport.detail.table.published')
-								: i18n.baseText('settings.migrationReport.detail.table.notPublished')
-						}}
-						·
-						<I18nT
-							keypath="settings.migrationReport.detail.table.updated"
-							tag="span"
-							scope="global"
+					<div :class="$style.nameRow">
+						<N8nTooltip
+							v-if="item.active"
+							:content="i18n.baseText('settings.migrationReport.detail.table.published')"
 						>
-							<template #time>
-								<TimeAgo :date="item.lastUpdatedAt.toString()" />
-							</template>
-						</I18nT>
+							<span
+								:class="$style.publishedDot"
+								role="img"
+								:aria-label="i18n.baseText('settings.migrationReport.detail.table.published')"
+								data-test-id="migration-workflow-published"
+							>
+								<N8nStatusDot variant="success" />
+							</span>
+						</N8nTooltip>
+						<N8nLink
+							theme="text"
+							:to="workflowUrl(item)"
+							new-window
+							:title="item.name"
+							:class="[$style.truncate, $style.workflowName]"
+							data-test-id="migration-workflow-name-link"
+						>
+							{{ item.name }}
+						</N8nLink>
+					</div>
+					<N8nText size="small" color="text-light" :class="$style.nameDetails">
+						<span
+							:class="$style.project"
+							:title="projectLabel(item)"
+							data-test-id="migration-workflow-project"
+						>
+							<ProjectIcon
+								:icon="{
+									type: 'icon',
+									value: item.homeProjectType === 'personal' ? 'user' : 'layers',
+								}"
+								border-less
+								size="mini"
+							/>
+							<span :class="$style.truncate">{{ projectLabel(item) }}</span>
+						</span>
+						<span :class="$style.updated">
+							·
+							<I18nT
+								keypath="settings.migrationReport.detail.table.updated"
+								tag="span"
+								scope="global"
+							>
+								<template #time>
+									<TimeAgo :date="item.lastUpdatedAt.toString()" />
+								</template>
+							</I18nT>
+						</span>
 					</N8nText>
 				</div>
 			</template>
@@ -1048,14 +1111,19 @@ const sortedWorkflows = computed(() => {
 						@click="openMigrateModal(selectedWorkflows)"
 					/>
 					<template v-if="canNotify">
-						<N8nButton
-							variant="outline"
-							:label="i18n.baseText('settings.migrationReport.detail.bulk.notifyOwners')"
-							:disabled="bulkNotifyTargets.length === 0"
-							:loading="isBulkNotifying"
-							data-test-id="migration-bulk-notify-button"
-							@click="onBulkNotify"
-						/>
+						<N8nTooltip
+							:content="i18n.baseText('settings.migrationReport.detail.bulk.notify.tooltip')"
+							:disabled="bulkNotifyOwnerCount === 0"
+						>
+							<N8nButton
+								variant="outline"
+								:label="bulkNotifyLabel"
+								:disabled="bulkNotifyTargets.length === 0"
+								:loading="isBulkNotifying"
+								data-test-id="migration-bulk-notify-button"
+								@click="onBulkNotify"
+							/>
+						</N8nTooltip>
 						<N8nText
 							v-if="selectedWithoutOwnerCount > 0"
 							size="small"
@@ -1098,6 +1166,10 @@ const sortedWorkflows = computed(() => {
 	margin-inline: auto;
 }
 
+.howToFix {
+	margin-bottom: var(--spacing--md);
+}
+
 .unusedCallout {
 	display: flex;
 	align-items: center;
@@ -1132,6 +1204,37 @@ const sortedWorkflows = computed(() => {
 /* The ellipsis takes the anchor color, so match it to the link text. */
 .workflowName {
 	color: var(--color--text);
+}
+
+/* A dot before the name shows the published state, so the second line has room for the project. */
+.nameRow {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.publishedDot {
+	display: inline-flex;
+	flex-shrink: 0;
+}
+
+.nameDetails {
+	display: flex;
+	gap: var(--spacing--4xs);
+	white-space: nowrap;
+}
+
+/* A long project name truncates, so the updated time stays in view. */
+.project {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
+	min-width: 0;
+}
+
+.updated {
+	flex-shrink: 0;
 }
 
 .nodeNames {

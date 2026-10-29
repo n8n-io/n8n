@@ -4,8 +4,8 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 export type { EngineLogger } from './logging';
 
 export {
-	ACTION_TOKEN,
-	IDENTITY_TOKEN,
+	ACTION_TOKEN_SPEC,
+	IDENTITY_TOKEN_SPEC,
 	InvalidActionTokenError,
 	InvalidIdentityTokenError,
 	mintActionToken,
@@ -27,6 +27,10 @@ export type {
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 	ExecutionListItem,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeTargetRequest,
+	ResumeTargetResponse,
 } from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
@@ -102,7 +106,7 @@ export type {
 	WorkQueue,
 } from './queue';
 
-export { ExecutionNotFoundError, StepNotFoundError } from './execution';
+export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
 export type {
 	CallerContext,
 	ExecutionMode,
@@ -114,6 +118,8 @@ export type {
 	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	ParentLink,
+	InvalidParentLinkReason,
 	StartExecutionRequest,
 	StartExecutionResult,
 	StepError,

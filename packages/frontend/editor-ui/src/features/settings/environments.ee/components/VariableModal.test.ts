@@ -1,6 +1,6 @@
 import { useUsersStore } from '@n8n/stores/users.store';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { waitFor } from '@testing-library/vue';
+import { fireEvent, waitFor, within } from '@testing-library/vue';
 import { defineComponent } from 'vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -26,29 +26,23 @@ vi.mock('vue-router', () => ({
 	RouterLink: vi.fn(),
 }));
 
-// The close-on-* defaults mirror Modal.vue, so a value other than `true` in the
-// rendered attributes means VariableModal overrides the shared modal behaviour.
-const ModalStub = defineComponent({
+// N8nDialog closes on backdrop click and Escape unless the caller prevents the event.
+// This stub reports that close so the test can check VariableModal still honors it.
+const DialogStub = defineComponent({
+	inheritAttrs: false,
 	props: {
-		name: { type: String, default: '' },
-		title: { type: String, default: '' },
-		eventBus: { type: Object, default: null },
-		closeOnClickModal: { type: Boolean, default: true },
-		closeOnPressEscape: { type: Boolean, default: true },
+		header: { type: String, default: '' },
 	},
+	emits: ['update:open'],
 	template: `
-		<div
-			:data-test-id="name"
-			:data-close-on-click-modal="String(closeOnClickModal)"
-			:data-close-on-press-escape="String(closeOnPressEscape)"
-		>
-			<slot name="header" />
-			<slot name="title" />
-			<slot name="content" />
-			<slot name="footer" />
+		<div role="dialog" v-bind="$attrs" @keydown.esc="$emit('update:open', false)">
+			<h2 v-if="header">{{ header }}</h2>
+			<slot />
 		</div>
 	`,
 });
+
+const dialogPartStub = { template: '<div><slot /></div>' };
 
 const mockVariables: EnvironmentVariable[] = [
 	{
@@ -109,7 +103,11 @@ const initialState = {
 
 const global = {
 	stubs: {
-		Modal: ModalStub,
+		Dialog: DialogStub,
+		DialogHeader: dialogPartStub,
+		DialogTitle: dialogPartStub,
+		DialogFooter: dialogPartStub,
+		DialogDescription: dialogPartStub,
 	},
 };
 
@@ -193,8 +191,9 @@ describe('VariableModal', () => {
 
 			expect(getByTestId('variable-modal-key-input')).toBeInTheDocument();
 			expect(getByTestId('variable-modal-value-input')).toBeInTheDocument();
-			expect(getByTestId('variable-modal-save-button')).toBeInTheDocument();
-			expect(getByTestId('variable-modal-cancel-button')).toBeInTheDocument();
+			const modal = getByTestId('variableModal-modal');
+			expect(within(modal).getByTestId('variable-modal-save-button')).toBeInTheDocument();
+			expect(within(modal).getByTestId('variable-modal-cancel-button')).toBeInTheDocument();
 		});
 
 		it('should create a new global variable', async () => {
@@ -488,8 +487,8 @@ describe('VariableModal', () => {
 
 	describe('close behaviour', () => {
 		it.each(['new', 'edit'] as const)(
-			'keeps the shared close-on-backdrop-click and close-on-escape defaults in %s mode',
-			(mode) => {
+			'closes the store modal when the dialog closes in %s mode',
+			async (mode) => {
 				const { getByTestId } = renderModal({
 					props: {
 						mode,
@@ -499,10 +498,9 @@ describe('VariableModal', () => {
 					pinia,
 				});
 
-				const modal = getByTestId(VARIABLE_MODAL_KEY);
+				await fireEvent.keyDown(getByTestId(`${VARIABLE_MODAL_KEY}-modal`), { key: 'Escape' });
 
-				expect(modal).toHaveAttribute('data-close-on-click-modal', 'true');
-				expect(modal).toHaveAttribute('data-close-on-press-escape', 'true');
+				expect(uiStore.closeModal).toHaveBeenCalledWith(VARIABLE_MODAL_KEY);
 			},
 		);
 	});

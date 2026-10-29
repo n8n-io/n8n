@@ -4,6 +4,7 @@ import { Container } from '@n8n/di';
 
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
+import { SystemAgentRegistrationService } from '@/modules/agents/system-agents/system-agent-registration.service';
 import type { SystemAgentProvider } from '@/modules/agents/system-agents/system-agent.types';
 
 import { createOwner } from '../shared/db/users';
@@ -32,7 +33,7 @@ describe('System agent thread move', () => {
 		await testDb.init();
 		service = Container.get(SystemAgentExecutionService);
 		threads = Container.get(AgentExecutionThreadRepository);
-		await service.register(provider);
+		await Container.get(SystemAgentRegistrationService).register(provider);
 		owner = await createOwner();
 		projectId = (await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id))
 			.id;

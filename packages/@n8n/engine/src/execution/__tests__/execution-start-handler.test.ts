@@ -57,6 +57,7 @@ function makeStepStore(createSteps = vi.fn()): StepStore {
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn(),
 		hasFailedSteps: vi.fn(),
 	};
@@ -73,6 +74,7 @@ function record(graph: WorkflowGraph, overrides: Partial<ExecutionRecord> = {}):
 		triggerOutputs: null,
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
+		parent: null,
 		finishedAt: null,
 		...overrides,
 	};

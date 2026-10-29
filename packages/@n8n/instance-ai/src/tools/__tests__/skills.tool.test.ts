@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions, SkillDetail, SkillListItem } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import type { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import type { InstanceAiContext, InstanceAiSkillService } from '../../types';
@@ -20,8 +21,10 @@ const listItem: SkillListItem = {
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
 	latestVersion: 2,
 	usedByAgents: 3,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
+	canStopSyncing: false,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 };
@@ -31,12 +34,18 @@ const detail: SkillDetail = {
 	skill: { name: 'Brand voice', description: 'Write in the brand voice', instructions: 'Be kind.' },
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+	syncedFrom: null,
 };
 
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
 
-function createSkillService(): { [K in keyof InstanceAiSkillService]: Mock } {
+type SkillServiceMock = {
+	[K in Exclude<keyof InstanceAiSkillService, 'assistantSkillsEnabled'>]: Mock;
+} & Pick<InstanceAiSkillService, 'assistantSkillsEnabled'>;
+
+function createSkillService(assistantSkillsEnabled = true): SkillServiceMock {
 	return {
+		assistantSkillsEnabled,
 		list: vi.fn().mockResolvedValue({ count: 1, data: [listItem] }),
 		get: vi.fn().mockResolvedValue(detail),
 		create: vi.fn().mockResolvedValue(detail),
@@ -135,6 +144,95 @@ describe('skills tool', () => {
 		expect(result).toMatchObject({ id: 'skill_a', skill: detail.skill, skillHash: 'hash-2' });
 	});
 
+	describe('Assistant availability', () => {
+		const parseInput = (skillService: InstanceAiSkillService, input: Record<string, unknown>) =>
+			(createSkillsTool(createContext(skillService)).inputSchema as z.ZodType).parse(input);
+
+		it('returns whether the n8n Assistant can use a skill', async () => {
+			service.get.mockResolvedValue({ ...detail, availableToAssistant: true });
+			const tool = createSkillsTool(createContext(service));
+
+			const listed = await executeTool(tool, { action: 'list' });
+			const read = await executeTool(tool, { action: 'get', skillId: 'skill_a' });
+
+			expect(listed).toMatchObject({ skills: [{ availableToAssistant: false }] });
+			expect(read).toMatchObject({ availableToAssistant: true });
+		});
+
+		it('hides the availability when its flag is off', async () => {
+			const tool = createSkillsTool(createContext(createSkillService(false)));
+
+			const listed = await executeTool<{ skills: object[] }>(tool, { action: 'list' });
+			const read = await executeTool(tool, { action: 'get', skillId: 'skill_a' });
+
+			expect(listed.skills[0]).not.toHaveProperty('availableToAssistant');
+			expect(read).not.toHaveProperty('availableToAssistant');
+		});
+
+		it.each([
+			{ action: 'create', scope: 'instance', skill, availableToAssistant: true },
+			{ action: 'update', skillId: 'skill_a', baseSkillHash: 'hash-2', availableToAssistant: true },
+		])('accepts the availability on $action', (input) => {
+			expect(parseInput(service, input)).toMatchObject({ availableToAssistant: true });
+		});
+
+		it.each([
+			{ action: 'create', scope: 'instance', skill, availableToAssistant: true },
+			{ action: 'update', skillId: 'skill_a', baseSkillHash: 'hash-2', availableToAssistant: true },
+		])('drops the availability on $action when its flag is off', (input) => {
+			expect(parseInput(createSkillService(false), input)).not.toHaveProperty(
+				'availableToAssistant',
+			);
+		});
+
+		it('creates the skill for the n8n Assistant once the user approves', async () => {
+			const input = { action: 'create', scope: 'instance', skill, availableToAssistant: true };
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(tool, input, suspendCtx(suspend));
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Create the skill for every project on this instance, and allow the n8n Assistant to use it',
+				}),
+			);
+			expect(service.create).toHaveBeenCalledWith(input);
+		});
+
+		it.each([
+			{ availableToAssistant: true, change: 'Allow the n8n Assistant to use it.' },
+			{ availableToAssistant: false, change: 'Stop the n8n Assistant from using it.' },
+		])(
+			'names the availability change on the update card: $change',
+			async ({ availableToAssistant, change }) => {
+				const input = {
+					action: 'update',
+					skillId: 'skill_a',
+					baseSkillHash: 'hash-2',
+					availableToAssistant,
+				};
+				const suspend = vi.fn();
+				const tool = createSkillsTool(createContext(service));
+
+				await executeTool(tool, input, suspendCtx(suspend));
+				await executeTool(tool, input, resumeCtx(true));
+
+				expect(suspend).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: `Update the skill. ${change} 3 agents use it.`,
+					}),
+				);
+				expect(service.update).toHaveBeenCalledWith('skill_a', {
+					baseSkillHash: 'hash-2',
+					availableToAssistant,
+				});
+			},
+		);
+	});
+
 	describe('create', () => {
 		const input = { action: 'create', scope: 'project', projectId: 'project-1', skill };
 
@@ -224,6 +322,28 @@ describe('skills tool', () => {
 
 			expect(service.create).toHaveBeenCalledWith(input);
 			expect(result).toMatchObject({ success: true, skill: { id: 'skill_a' } });
+		});
+
+		it('reports the created skill so its tab opens', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'skill',
+				id: 'skill_a',
+				name: 'Brand voice',
+			});
+		});
+
+		it('reports nothing when the user denies the create', async () => {
+			const onArtifactChanged = vi.fn();
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(false));
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
 		});
 
 		it('creates nothing when the user denies', async () => {
@@ -317,12 +437,45 @@ describe('skills tool', () => {
 				success: true,
 				saved: {
 					id: 'skill_a',
+					name: 'Brand voice',
 					versionId: 'version-3',
 					version: 3,
 					created: true,
 					skillHash: 'hash-3',
 				},
 			});
+		});
+
+		it('reports the saved skill so its tab opens', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'skill',
+				id: 'skill_a',
+				name: 'Brand voice',
+			});
+		});
+
+		it('reports nothing when the user denies the update', async () => {
+			const onArtifactChanged = vi.fn();
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(false));
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
+		it('reports nothing when the update is refused', async () => {
+			service.get.mockResolvedValue({ ...detail, canEdit: false });
+			const onArtifactChanged = vi.fn();
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
 		});
 
 		it('names the new place on the card when the update moves the skill', async () => {
@@ -335,6 +488,24 @@ describe('skills tool', () => {
 				expect.objectContaining({
 					message:
 						'Save a new version of the skill. Move it, so it is available for every project on this instance. 3 agents use it.',
+				}),
+			);
+		});
+
+		it('does not promise a new version when the update only moves the skill', async () => {
+			const suspend = vi.fn();
+			const tool = createSkillsTool(createContext(service));
+
+			await executeTool(
+				tool,
+				{ action: 'update', skillId: 'skill_a', baseSkillHash: 'hash-2', scope: 'instance' },
+				suspendCtx(suspend),
+			);
+
+			expect(suspend).toHaveBeenCalledWith(
+				expect.objectContaining({
+					message:
+						'Update the skill. Move it, so it is available for every project on this instance. 3 agents use it.',
 				}),
 			);
 		});
@@ -531,15 +702,27 @@ describe('skills tool', () => {
 		});
 	});
 
+	it('reports no artifact when it only reads, lists or deletes a skill', async () => {
+		service.get.mockResolvedValue({ ...detail, usedByAgents: 0 });
+		const onArtifactChanged = vi.fn();
+		const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+		await executeTool(tool, { action: 'list' });
+		await executeTool(tool, { action: 'get', skillId: 'skill_a' });
+		await executeTool(tool, { action: 'delete', skillId: 'skill_a' }, resumeCtx(true));
+
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+	});
+
 	it('marks its output as untrusted data', () => {
 		expect(createSkillsTool(createContext(service)).outputTrust).toBe('untrusted');
 	});
 
-	it('fails when the skills hub is not available', async () => {
+	it('fails when the skills module is not available', async () => {
 		const tool = createSkillsTool(createContext(undefined));
 
 		await expect(executeTool(tool, { action: 'list', limit: 50 })).rejects.toThrow(
-			'The skills hub is not available on this instance.',
+			'Skills are not available on this instance.',
 		);
 	});
 });

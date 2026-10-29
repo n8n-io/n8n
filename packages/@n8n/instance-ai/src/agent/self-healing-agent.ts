@@ -1,4 +1,4 @@
-import { Agent, Memory, Tool } from '@n8n/agents';
+import { Agent, Memory, Tool, type FetchFn } from '@n8n/agents';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import { getSandboxWorkspaceSection, UNTRUSTED_CONTENT_DOCTRINE } from './shared-prompts';
@@ -13,9 +13,9 @@ import { createToolRegistryFromTools, toolRegistryValues } from '../tool-registr
 import { createDataTablesTool } from '../tools/data-tables.tool';
 import { createExecutionsTool } from '../tools/executions.tool';
 import { createN8nDocsTool } from '../tools/n8n-docs.tool';
-import { createNodesTool } from '../tools/nodes.tool';
+import { createGetNodeTypesTool, createSearchNodesTool } from '../tools/nodes.tool';
 import { createResearchTool } from '../tools/research.tool';
-import { createWorkflowsTool } from '../tools/workflows.tool';
+import { createWorkflowTools } from '../tools/workflows.tool';
 import {
 	buildAgentTraceInputs,
 	mergeTraceRunInputs,
@@ -33,6 +33,9 @@ export interface CreateSelfHealingAgentOptions {
 	verifyCandidate: SelfHealingCandidateVerifier;
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
+	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }
 
 const SOURCE_GUIDANCE =
@@ -47,9 +50,8 @@ function createSelfHealingTools(
 	abortSignal?: AbortSignal,
 ) {
 	return createToolRegistryFromTools([
-		createWorkflowsTool(context, {
+		...createWorkflowTools(context, {
 			allowedActions: ['get', 'get-as-code'],
-			descriptionPrefix: 'Read workflows',
 			sourceGuidance: SOURCE_GUIDANCE,
 		}),
 		createExecutionsTool(context, {
@@ -60,10 +62,8 @@ function createSelfHealingTools(
 			allowedActions: ['list', 'schema', 'query'],
 			description: 'Read data tables and their schemas. Use targeted queries with a small limit.',
 		}),
-		createNodesTool(context, {
-			allowedActions: ['list', 'search', 'describe', 'type-definition', 'suggested'],
-			description: 'Read node metadata. Use type-definition before changing node parameters.',
-		}),
+		createSearchNodesTool(context),
+		createGetNodeTypesTool(context),
 		createN8nDocsTool(context),
 		createResearchTool(context),
 		new Tool('verify_candidate')
@@ -131,11 +131,14 @@ export async function createSelfHealingAgent(
 		.memory(new Memory().storage('memory'));
 
 	if (workspace) agent.workspace(workspace);
+	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
+	const functionId = 'instance-ai.self-healing';
+	if (options.requestLabels) agent.functionId(functionId);
 	const telemetry = tracing?.getTelemetry?.({
 		agentRole: 'self-healing',
-		functionId: 'instance-ai.self-healing',
+		functionId,
 		executionMode: 'background',
 		metadata: modelIdTraceMetadata(modelId),
 	});

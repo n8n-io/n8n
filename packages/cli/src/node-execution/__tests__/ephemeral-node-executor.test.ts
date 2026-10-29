@@ -21,7 +21,6 @@ import { PolicyViolationError } from '@/policy/policy-violation.error';
 
 import {
 	AGENT_PROVIDER_NODE_WHITELIST,
-	AGENT_TOOL_NODE_DENYLIST,
 	EphemeralNodeExecutor,
 	isAgentProviderNode,
 	isUsableAsAgentTool,
@@ -32,6 +31,15 @@ import {
 // fixtures (e.g. `toolDescription`) in place, stacking a proxy layer per call.
 // Assigning also sidesteps DeepPartial narrowing of nested objects like `defaults`.
 const mockNodeType = (overrides: object = {}) => Object.assign(mock<INodeType>(), overrides);
+
+// Listed explicitly so removing an entry from the denylist fails these tests.
+const DENYLISTED_NODE_TYPES = [
+	'n8n-nodes-base.executeCommand',
+	'n8n-nodes-base.ssh',
+	'n8n-nodes-base.readWriteFile',
+	'n8n-nodes-base.readBinaryFile',
+	'n8n-nodes-base.readBinaryFiles',
+];
 
 const mockGetBase = vi.fn();
 
@@ -215,7 +223,7 @@ describe('EphemeralNodeExecutor', () => {
 			expect(result.error).not.toMatch(/not usable as a tool/);
 		});
 
-		it.each([...AGENT_TOOL_NODE_DENYLIST])(
+		it.each(DENYLISTED_NODE_TYPES)(
 			'rejects the denylisted node type "%s" even when it looks like a usable tool',
 			async (nodeType) => {
 				nodeTypes.getByNameAndVersion.mockReturnValue(
@@ -239,21 +247,23 @@ describe('EphemeralNodeExecutor', () => {
 			},
 		);
 
-		it.each([...AGENT_TOOL_NODE_DENYLIST])(
-			'rejects the `*Tool`-suffixed variant of the denylisted node type "%s"',
-			async (nodeType) => {
-				const result = await executor.executeInline({
-					nodeType: `${nodeType}Tool`,
-					nodeTypeVersion: 1,
-					nodeParameters: {},
-					inputData: [],
-					projectId: 'p-1',
-				});
+		it.each(
+			DENYLISTED_NODE_TYPES.flatMap((nodeType) => [
+				[nodeType, 'Tool'],
+				[nodeType, 'HitlTool'],
+			]),
+		)('rejects the denylisted node type "%s" with the `%s` suffix', async (nodeType, suffix) => {
+			const result = await executor.executeInline({
+				nodeType: `${nodeType}${suffix}`,
+				nodeTypeVersion: 1,
+				nodeParameters: {},
+				inputData: [],
+				projectId: 'p-1',
+			});
 
-				expect(result.status).toBe('error');
-				expect(result.error).toContain('not permitted for agent tool execution');
-			},
-		);
+			expect(result.status).toBe('error');
+			expect(result.error).toContain('not permitted for agent tool execution');
+		});
 
 		it('still executes a normal tool node that is not on the denylist', async () => {
 			const execute = vi.fn().mockResolvedValue([[{ json: { ok: true } }]]);

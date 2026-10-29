@@ -134,9 +134,17 @@ writes the bundle again and writes the manifest last. A matching manifest is
 trusted, and setup reads no other bundle file. Each cached sandbox entry keeps
 the result, so later runs do not read the manifest again.
 
-Skills are not stored in the sandbox. `load_skill` serves the skill
-text from memory. Skills refer to the knowledge base with paths relative to the
-workspace root, such as `knowledge-base/index.json`.
+Skills are not stored in the sandbox. `load_skill` serves built-in text from memory.
+Built-in knowledge paths, such as `knowledge-base/index.json`, are relative to the
+workspace root.
+
+Hub skills require the `skills`, `agents`, and `instance-ai` modules,
+`N8N_AGENTS_SKILLS_HUB_ENABLED=true` at startup, and the instance PostHog flag
+`130_attach_skills_to_assistant`. Discovery reads summaries only. Instructions load
+when a skill is selected. Markdown reference bodies load separately through
+`load_skill({ skillId, filePath })`. Both reads use the version selected for the
+turn and check current access. Paths under `.n8n/skills/hub/<stable-id>/` are virtual
+identifiers. No files are written to the workspace.
 
 With `N8N_LOG_LEVEL=debug`, these messages show the bundle file traffic:
 

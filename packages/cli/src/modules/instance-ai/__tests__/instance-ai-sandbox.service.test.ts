@@ -33,6 +33,7 @@ import {
 	isSandboxWorkspaceInitialized,
 	setupSandboxWorkspace,
 	withSandboxLifecycleTrace,
+	type BuilderTemplatesService,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
 } from '@n8n/instance-ai';
@@ -50,6 +51,7 @@ const fakeUser = { id: 'user-1' } as User;
 
 type Overrides = {
 	resolveTracingConfig?: InstanceAiSandboxServiceOptions['resolveTracingConfig'];
+	getTemplatesService?: InstanceAiSandboxServiceOptions['getTemplatesService'];
 	config?: Partial<InstanceAiConfig>;
 	runState?: Partial<InstanceAiSandboxRunState>;
 	backgroundTasks?: Partial<InstanceAiSandboxBackgroundTasks>;
@@ -88,6 +90,7 @@ function createSandboxService(overrides: Overrides = {}) {
 		settingsService,
 		aiService,
 		resolveTracingConfig: overrides.resolveTracingConfig,
+		getTemplatesService: overrides.getTemplatesService ?? vi.fn(),
 	};
 	const service = new InstanceAiSandboxService(options);
 	return { service, logger, errorReporter, runState, backgroundTasks, settingsService, aiService };
@@ -643,13 +646,15 @@ describe('InstanceAiSandboxService', () => {
 			expect(ids[2]).not.toBe(ids[0]);
 		});
 
-		it('threads Daytona name prefixes and labels through sandbox creation', async () => {
+		it('threads Daytona name prefixes, labels and the templates service through sandbox creation', async () => {
+			const templatesService = {} as BuilderTemplatesService;
 			const { service } = createSandboxService({
 				config: {
 					sandboxEnabled: true,
 					sandboxProvider: 'daytona',
 					sandboxNamePrefix: 'Acme Eval',
 				},
+				getTemplatesService: () => templatesService,
 			});
 			const sandbox = { id: 'sandbox-1' };
 			const workspace = { init: vi.fn(async () => {}), destroy: vi.fn(async () => {}) };
@@ -669,7 +674,7 @@ describe('InstanceAiSandboxService', () => {
 						thread_id: 'thread-1',
 					}),
 				}),
-				expect.objectContaining({ useSnapshotFallback: true }),
+				expect.objectContaining({ useSnapshotFallback: true, templatesService }),
 			);
 		});
 

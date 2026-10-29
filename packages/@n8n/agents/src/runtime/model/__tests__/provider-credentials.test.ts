@@ -1,4 +1,5 @@
 import {
+	PROVIDER_CREDENTIAL_SCHEMAS,
 	hasAzureApiKey,
 	hasAzureEntraToken,
 	isAzureEntraCredential,
@@ -57,4 +58,24 @@ describe('azure-openai auth predicates', () => {
 			expect(isAzureEntraCredential({ apiKey: '   ' })).toBe(false);
 		});
 	});
+});
+
+describe('aws-bedrock credential region', () => {
+	const parse = (region: string) =>
+		PROVIDER_CREDENTIAL_SCHEMAS['aws-bedrock'].safeParse({
+			region,
+			accessKeyId: 'id',
+			secretAccessKey: 'secret',
+		}).success;
+
+	it.each(['us-east-1', 'eu-central-1', 'us-gov-west-1', 'ap-southeast-2'])('accepts %s', (r) => {
+		expect(parse(r)).toBe(true);
+	});
+
+	it.each(['attacker.example/', '127.0.0.1.nip.io:9443/', 'us-east-1.evil.com'])(
+		'rejects %s',
+		(r) => {
+			expect(parse(r)).toBe(false);
+		},
+	);
 });

@@ -109,6 +109,10 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 		return result.affected === 1;
 	}
 
+	async discardPendingForSession(threadId: string, ctx: OperationContext): Promise<void> {
+		await this.managerFor(ctx).delete(AgentMessageQueue, { threadId, executionId: IsNull() });
+	}
+
 	async findHead(threadId: string, ctx: OperationContext) {
 		return await this.managerFor(ctx).findOne(AgentMessageQueue, {
 			where: { threadId },

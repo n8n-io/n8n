@@ -11,6 +11,7 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export type * from './quick-connect';
 export * from './agents/index';
+export * from './skills/index';
 export * from './builder-tool-names';
 export * from './schemas/app.schema';
 export * from './schemas/mcp-tool-permissions.schema';
@@ -18,7 +19,10 @@ export * from './instance-registry-types';
 export type * from './instance-reporting';
 export type * from './worker-pools';
 export * from './node-type-availability';
+export type * from './sub-workflow-policy-check';
 export type * from './credential-type-availability';
+export type * from './transfer-preview';
+export type * from './transfer-result';
 export * from './redaction-enforcement';
 export * from './redaction-enforcement-floor';
 export * from './workflow-reviews-policy';
@@ -204,6 +208,8 @@ export {
 export {
 	CREDENTIAL_DESCRIPTION_MAX_LENGTH,
 	credentialDescriptionSchema,
+	updateCredentialDescriptionSchema,
+	UPDATE_CREDENTIAL_DESCRIPTION_TOOL_DESCRIPTION,
 } from './schemas/credential-description.schema';
 export { CREDENTIAL_DESCRIPTIONS_FLAG } from './constants/credential-descriptions';
 export { EMPTY_CANVAS_GROUPS_FLAG } from './constants/empty-canvas-groups';
@@ -233,6 +239,8 @@ export {
 	SOURCE_CONTROL_FILE_LOCATION,
 	SOURCE_CONTROL_FILE_STATUS,
 	SOURCE_CONTROL_FILE_TYPE,
+	ENVIRONMENTS_VERSIONS,
+	type EnvironmentsVersion,
 } from './schemas/source-controlled-file.schema';
 
 export {
@@ -269,8 +277,10 @@ export {
 	type Role,
 	type User,
 	type UsersList,
+	type UsersListStatusCounts,
 	type UserProject,
 	usersListSchema,
+	usersListStatusCountsSchema,
 	userBaseSchema,
 	userDetailSchema,
 } from './schemas/user.schema';
@@ -403,6 +413,9 @@ export {
 	buildUpdateWorkflowSessionGrantKey,
 	buildCredentialDestinationGrantKey,
 	buildDataTablesSessionGrantKey,
+	buildWorkflowActionSessionGrantKey,
+	buildWorkspaceSessionGrantKey,
+	buildCleanupTestExecutionsSessionGrantKey,
 	buildSetupSkipGrantKey,
 	parseSetupSkipGrants,
 	buildFetchUrlGrantKey,
@@ -419,9 +432,11 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
-	plannedTaskArgSchema,
+	tasksUpdatePayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
+	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,
+	workflowsArchivedPayloadSchema,
 	agentSpawnedPayloadSchema,
 	agentActivitySchema,
 	agentChangeSchema,
@@ -449,6 +464,7 @@ export {
 	setupItemSchema,
 	setupItemsPayloadSchema,
 	aiPreferencesAppliedPayloadSchema,
+	skillUpdatePayloadSchema,
 	errorPayloadSchema,
 	mcpToolSchema,
 	mcpToolCallRequestSchema,
@@ -513,6 +529,11 @@ export {
 	INSTANCE_AI_MEMORY_TASK_WAIT_TIMEOUT_MS,
 	AI_GATEWAY_MANAGED_TAG,
 	InstanceAiEvalRestoreThreadRequest,
+	InstanceAiEvalExportExecutionRequest,
+	InstanceAiEvalRestoreExecutionRequest,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type InstanceAiEvalFailedExecutionSummary,
 	InstanceAiEvalSeedDataTableRowsRequest,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
@@ -629,6 +650,7 @@ export type {
 	InstanceAiPreferenceCardEditResponse,
 	PreferenceCardPayload,
 	AiPreferencesAppliedPayload,
+	InstanceAiSkillUpdatePayload,
 	InstanceAiErrorEvent,
 	McpTool,
 	McpToolAnnotations,
@@ -710,7 +732,6 @@ export type {
 	InstanceAiBrowserStatusResponse,
 	ToolCategory,
 	InstanceAiWorkflowSetupNode,
-	PlannedTaskArg,
 	InstanceAiEvalNodeExecutionMode,
 	InstanceAiEvalInterceptedRequest,
 	InstanceAiEvalNodeResult,
@@ -1013,3 +1034,11 @@ export {
 	scimListResponseSchema,
 	scimErrorSchema,
 } from './schemas/scim.schema';
+export {
+	scimDeprovisioningPolicySchema,
+	type ScimConfigResponse,
+	type ScimDeprovisioningPolicy,
+	type ScimTransferTargetPerson,
+	type ScimTransferTargetProject,
+	type ScimTransferTargetsResponse,
+} from './schemas/scim-config.schema';

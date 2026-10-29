@@ -22,7 +22,6 @@ import {
 import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
-import type { Scope } from '@n8n/permissions';
 import isEqual from 'lodash/isEqual';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
@@ -36,7 +35,10 @@ import type { SelfHealingInvestigation } from './database/self-healing-investiga
 import { SelfHealingConfigurationRepository } from './database/self-healing-configuration.repository';
 import { SelfHealingInvestigationRepository } from './database/self-healing-investigation.repository';
 import { SelfHealingResultRepository } from './database/self-healing-result.repository';
-import { SelfHealingConfigurationService } from './self-healing-configuration.service';
+import {
+	REVIEWER_SCOPES,
+	SelfHealingConfigurationService,
+} from './self-healing-configuration.service';
 import { SelfHealingExecutionReferenceService } from './self-healing-execution-reference.service';
 
 export type SelfHealingResultInput = {
@@ -78,12 +80,11 @@ export class SelfHealingResultService {
 		if (!user || user.disabled) {
 			throw new ForbiddenError('Workflow edit access is required.');
 		}
-		const scopes: Scope[] = ['workflow:read', 'workflow:update'];
 		const [projectRoles, workflowRoles] = await Promise.all([
-			this.roles.rolesWithScope('project', scopes),
-			this.roles.rolesWithScope('workflow', scopes),
+			this.roles.rolesWithScope('project', REVIEWER_SCOPES),
+			this.roles.rolesWithScope('workflow', REVIEWER_SCOPES),
 		]);
-		return { user, globalScopes: scopes, projectRoles, workflowRoles };
+		return { user, globalScopes: REVIEWER_SCOPES, projectRoles, workflowRoles };
 	}
 
 	async listForInbox(user: User, query: InboxSourceQuery): Promise<InboxSelfHealingItem[]> {
@@ -323,7 +324,8 @@ export class SelfHealingResultService {
 			resultId,
 		);
 		const suggestionId = result.suggestionId;
-		if (result.outcome !== 'fix_ready' || !suggestionId) {
+		const allowedOutcomes = action === 'apply' ? ['fix_ready', 'needs_you'] : ['fix_ready'];
+		if (!suggestionId || !allowedOutcomes.includes(result.outcome)) {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
 
@@ -359,7 +361,7 @@ export class SelfHealingResultService {
 	}
 
 	async dismiss(user: User, projectId: string, workflowId: string, resultId: string) {
-		const found = await this.txRunner.run({}, async (ctx) => {
+		const outcome = await this.txRunner.run({}, async (ctx) => {
 			const { result, reviewer } = await this.getResultForEditor(
 				user,
 				projectId,
@@ -367,34 +369,39 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-			if (result.dismissedAt) return true;
+			if (result.dismissedAt) return 'already_closed';
 
 			const suggestionId = result.suggestionId;
 			if (suggestionId) {
-				const outcome = await this.actions.discardPending(
+				const discardOutcome = await this.actions.discardPending(
 					reviewer,
 					projectId,
 					workflowId,
 					suggestionId,
 					ctx,
 				);
-				if (outcome === 'unavailable') return false;
-				if (outcome === 'already_closed') return true;
+				if (discardOutcome !== 'discarded') return discardOutcome;
 			} else {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 
-			if (result.outcome === 'needs_you') {
-				await this.results.dismissResult(result.id, user.id, ctx);
+			if (
+				result.outcome === 'needs_you' &&
+				!(await this.results.dismissResult(result.id, user.id, ctx))
+			) {
+				throw new ConflictError('This result is already closed.');
 			}
-			return true;
+			return 'dismissed';
 		});
 
 		// Commit outdated reconciliation before rejecting a stale project route.
-		if (!found) {
+		if (outcome === 'unavailable') {
 			throw new NotFoundError(
 				'This result is no longer available in this project. Refresh the page.',
 			);
+		}
+		if (outcome === 'already_closed') {
+			throw new ConflictError('This result is already closed.');
 		}
 		return await this.getDetail(user, projectId, workflowId, resultId);
 	}

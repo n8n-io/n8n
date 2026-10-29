@@ -1,7 +1,9 @@
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import nock from 'nock';
+import type { MockInstance } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment.repository';
@@ -10,6 +12,7 @@ import { PromotionReviewRepository } from '@/modules/promotions.ee/database/repo
 import { PromotionRunRepository } from '@/modules/promotions.ee/database/repositories/promotion-run.repository';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import {
 	createAdmin,
 	createMember,
@@ -125,7 +128,7 @@ function gitlabWrites(
 describe('Promotion reviews in the Inbox', () => {
 	const testServer = setupTestServer({
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:gitConnections'],
+		enabledFeatures: ['feat:promotions'],
 		modules: ['inbox', 'promotions'],
 	});
 	let owner: User;
@@ -195,16 +198,21 @@ describe('Promotion reviews in the Inbox', () => {
 		(await reviewRepository.findOneByOrFail({ id: reviewId })).approvedById;
 
 	beforeAll(async () => {
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
+			environmentsVersion: 'v2',
+		};
 		reviewRepository = Container.get(PromotionReviewRepository);
 	});
 
-	afterAll(() => {
-		delete process.env.N8N_ENV_FEAT_PROMOTIONS;
+	let emitSpy: MockInstance | undefined;
+
+	afterEach(() => {
+		emitSpy?.mockRestore();
 	});
 
 	beforeEach(async () => {
 		testServer.license.reset();
+		emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		await Container.get(PromotionRunRepository).delete({});
 		await reviewRepository.delete({});
 		await Container.get(PromotionEnvironmentRepository).delete({});
@@ -412,7 +420,7 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(calls.slice(callsForFirstPage)).toEqual([1]);
 	});
 
-	it('hides promotion reviews from a member and while the rollout flag is off', async () => {
+	it('hides promotion reviews from a member and on environments v1', async () => {
 		await insertReview(1);
 		gitlab({ 1: { state: 'opened' } });
 		const member = await createMemberWithApiKey();
@@ -424,13 +432,14 @@ describe('Promotion reviews in the Inbox', () => {
 			closed: 0,
 		});
 
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
+		const preferences = Container.get(SourceControlPreferencesService);
+		preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
 		try {
-			const flagOff = await inbox(owner, { state: 'open', category: 'waiting' });
-			expect(flagOff.body.data.data).toEqual([]);
-			expect(flagOff.body.data.disabledSources).toContain('promotion_review');
+			const onV1 = await inbox(owner, { state: 'open', category: 'waiting' });
+			expect(onV1.body.data.data).toEqual([]);
+			expect(onV1.body.data.disabledSources).toContain('promotion_review');
 		} finally {
-			process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+			preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 		}
 	});
 
@@ -458,19 +467,29 @@ describe('Promotion reviews in the Inbox', () => {
 			});
 			expect(response.body.data).toEqual(merged);
 			expect((await inbox(admin, { state: 'closed' })).body.data.data).toEqual([merged]);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-approved',
+				expect.objectContaining({
+					reviewId,
+					reviewType: 'gitlab',
+					outcome: 'merged',
+					durationMs: expect.any(Number),
+				}),
+			);
 		});
 
-		it('refuses a member and a disabled rollout flag without a GitLab write', async () => {
+		it('refuses a member and an instance on environments v1 without a GitLab write', async () => {
 			const reviewId = await insertReview(1);
 			gitlab({ 1: { state: 'opened' } });
 			const writes = gitlabWrites(1);
 
 			expect((await approve(await createMember(), reviewId)).status).toBe(403);
-			process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
+			const preferences = Container.get(SourceControlPreferencesService);
+			preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
 			try {
 				expect((await approve(await createAdmin(), reviewId)).status).toBe(403);
 			} finally {
-				process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+				preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 			}
 			expect(writes).toEqual([]);
 		});
@@ -487,6 +506,14 @@ describe('Promotion reviews in the Inbox', () => {
 
 			expect((await approve(await createAdmin(), reviewId, sha)).status).toBe(status);
 			expect(writes).toEqual([]);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-approved',
+				expect.objectContaining({
+					reviewId,
+					outcome: 'failed',
+					failureKind: 'user',
+				}),
+			);
 			expect(await approvedById(reviewId)).toBeNull();
 		});
 

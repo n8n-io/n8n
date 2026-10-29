@@ -9,6 +9,7 @@ import {
 	RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 	type RuntimeSkill,
 	type RuntimeSkillLinkedFile,
+	type RuntimeSkillLoadError,
 	type RuntimeSkillLinkedFileGroup,
 	type RuntimeSkillLinkedFiles,
 	type RuntimeSkillRegistry,
@@ -62,7 +63,7 @@ function createRegistryFromNormalized(normalizedSkills: RuntimeSkill[]): Runtime
 
 	return {
 		schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
-		skillsHash: hashRegistry(entries),
+		skillsHash: hashRuntimeSkillRegistry(entries),
 		skills: entries,
 	};
 }
@@ -91,17 +92,21 @@ export function filterRuntimeSkillSource(
 		...source,
 		registry: {
 			...source.registry,
-			skillsHash: hashRegistry(skills),
+			skillsHash: hashRuntimeSkillRegistry(skills),
 			skills,
 		},
 		loadSkill: async (skillId) => (excluded.has(skillId) ? null : await source.loadSkill(skillId)),
 		...(loadFile
 			? {
-					loadFile: async (skillId: string, filePath: string) =>
+					loadFile: async (
+						skillId: string,
+						filePath: string,
+						onError?: (error: RuntimeSkillLoadError) => void,
+					) =>
 						excluded.has(skillId) ||
 						hiddenFiles.has(linkedFileKey(skillId, posix.normalize(filePath)))
 							? null
-							: await loadFile(skillId, filePath),
+							: await loadFile(skillId, filePath, onError),
 				}
 			: {}),
 	};
@@ -134,19 +139,23 @@ export function extendRuntimeSkillSource(
 	const addedIds = new Set(added.registry.skills.map((skill) => skill.id));
 	const mergeRegistry = (base: RuntimeSkillRegistry): RuntimeSkillRegistry => {
 		const entries = [...base.skills, ...added.registry.skills].sort(compareRegistryEntries);
-		return { ...base, skillsHash: hashRegistry(entries), skills: entries };
+		return { ...base, skillsHash: hashRuntimeSkillRegistry(entries), skills: entries };
 	};
 	const { loadFile, prepare } = source;
 
 	const extended: RuntimeSkillSource = {
 		...source,
+		onContext: (usage) => source.onContext?.(usage),
 		registry: mergeRegistry(source.registry),
 		loadSkill: async (skillId) =>
 			addedIds.has(skillId) ? await added.loadSkill(skillId) : await source.loadSkill(skillId),
 		...(loadFile
 			? {
-					loadFile: async (skillId: string, filePath: string) =>
-						addedIds.has(skillId) ? null : await loadFile(skillId, filePath),
+					loadFile: async (
+						skillId: string,
+						filePath: string,
+						onError?: (error: RuntimeSkillLoadError) => void,
+					) => (addedIds.has(skillId) ? null : await loadFile(skillId, filePath, onError)),
 				}
 			: {}),
 	};
@@ -681,7 +690,7 @@ function normalizeLinkedFilePath(filePath: string): string | null {
 	return normalizedPath;
 }
 
-function hashRegistry(skills: RuntimeSkillRegistryEntry[]): string {
+export function hashRuntimeSkillRegistry(skills: RuntimeSkillRegistryEntry[]): string {
 	return hashJson({
 		schemaVersion: RUNTIME_SKILL_REGISTRY_SCHEMA_VERSION,
 		skills: skills.map(toRegistryHashEntry),

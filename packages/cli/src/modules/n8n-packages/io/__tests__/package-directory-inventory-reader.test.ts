@@ -47,7 +47,7 @@ describe('PackageDirectoryInventoryReader', () => {
 				'projects/alpha-p1/project.json': project('p1', 'Alpha'),
 				'projects/alpha-p1/workflows/root-w1/workflow.json': workflow('w1', 'Root'),
 				'projects/alpha-p1/workflows/root-w1/workflow-metadata.json': { publishedVersionId: null },
-				'projects/alpha-p1/folders/f1/folder.json': { id: 'f1', name: 'F1' },
+				'projects/alpha-p1/folders/f1/folder.json': { id: 'f1', name: 'F1', parentFolderId: null },
 				'projects/alpha-p1/folders/f1/folders/f2/workflows/deep-w2/workflow.json': workflow(
 					'w2',
 					'Deep',
@@ -78,6 +78,13 @@ describe('PackageDirectoryInventoryReader', () => {
 			},
 		]);
 		expect(inventory.workflows[0].content.nodes).toEqual([]);
+		expect(inventory.folders).toEqual([
+			{
+				path: 'projects/alpha-p1/folders/f1/folder.json',
+				projectId: 'p1',
+				folder: { id: 'f1', name: 'F1', parentFolderId: null },
+			},
+		]);
 		expect(inventory.credentials).toEqual([
 			{ path: 'credentials/gh-c2/credential.json', projectId: null, credential: credential('c2') },
 			{
@@ -109,8 +116,16 @@ describe('PackageDirectoryInventoryReader', () => {
 		const inventory = await reader.read(
 			sourceOf({
 				'projects/alpha-p1/project.json': project('p1', 'Alpha'),
-				'projects/alpha-p1/folders/ops-f1/folder.json': { id: 'f1', name: 'Ops' },
-				'projects/alpha-p1/folders/ops-f1/orders-f2/folder.json': { id: 'f2', name: 'Orders' },
+				'projects/alpha-p1/folders/ops-f1/folder.json': {
+					id: 'f1',
+					name: 'Ops',
+					parentFolderId: null,
+				},
+				'projects/alpha-p1/folders/ops-f1/orders-f2/folder.json': {
+					id: 'f2',
+					name: 'Orders',
+					parentFolderId: 'f1',
+				},
 				'projects/alpha-p1/folders/ops-f1/orders-f2/workflows/deep-w1/workflow.json': workflow(
 					'w1',
 					'Deep',
@@ -143,6 +158,7 @@ describe('PackageDirectoryInventoryReader', () => {
 		expect(await reader.read(sourceOf({ 'manifest.json': '{}' }))).toEqual({
 			projects: [],
 			workflows: [],
+			folders: [],
 			credentials: [],
 			variables: [],
 			dataTables: [],
@@ -172,6 +188,12 @@ describe('PackageDirectoryInventoryReader', () => {
 		['projects/p1/project.json', 'projects/p1/folders/f1/workflow.json', workflow('w1')],
 		// `folders/` with no folder entry before `workflows/` is malformed.
 		['projects/p1/project.json', 'projects/p1/folders/workflows/w1/workflow.json', workflow('w1')],
+		// A folder file needs a folder entry after `folders/`.
+		[
+			'projects/p1/project.json',
+			'projects/p1/folders/folder.json',
+			{ id: 'f1', name: 'F1', parentFolderId: null },
+		],
 		['projects/p1/project.json', 'projects/p1/credentials/credential.json', credential('c1')],
 		['projects/p1/project.json', 'variables/a/b/variable.json', variable('A')],
 		['projects/p1/project.json', 'projects/p1/data-tables/data-table.json', dataTable('dt1')],

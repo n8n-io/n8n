@@ -2700,6 +2700,31 @@ describe('useCanvasOperations', () => {
 				},
 			});
 		});
+		it('should not toggle a selection that contains a restricted node type', () => {
+			const toast = useToast();
+			const nodes = [
+				createTestNode({ id: '1', name: 'A', type: 'n8n-nodes-base.slack' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(
+				workflowDocumentStoreInstance,
+				'updateNodeProperties',
+			);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			useCanvasOperations().toggleNodesDisabled(['1', '2']);
+
+			expect(updateNodePropertiesSpy).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
+		});
 	});
 
 	describe('revertToggleNodeDisabled', () => {
