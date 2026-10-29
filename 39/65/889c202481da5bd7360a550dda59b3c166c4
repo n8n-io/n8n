@@ -1,0 +1,41 @@
+packages/cli/src/modules/agents/repositories/agent-execution-thread.repository.ts
+  s_79da05e7b3bc68::t_c6e804cb99c456 793
+  s_7547276ac68a00::t_3edf1f98b3f339 802
+  s_79da05e7b3bc68::t_475e977edaa90c 815
+  s_79da05e7b3bc68::t_1e6a99f1944723 837
+  h_7555c3ee6524cf 865
+  s_79da05e7b3bc68::t_bb834be3a887bc 826
+  s_7547276ac68a00::t_beda33f39920d9 787
+packages/cli/test/integration/database/repositories/agent-execution-thread-task-stop.repository.test.ts
+  h_7555c3ee6524cf 120-121,124,132,161,213-214,222,224
+  s_7547276ac68a00::t_3925138c4451cb 119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3965889c202481da5bd7360a550dda59b3c166c4",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_7547276ac68a00": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1790928730106",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    },
+    "s_79da05e7b3bc68": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1793198329018",
+        "model": "unknown"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}
