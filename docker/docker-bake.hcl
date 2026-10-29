@@ -27,7 +27,7 @@ variable "DEBIAN_BUILDER_IMAGE" {
   default = "node:26.12.1-trixie-slim@sha256:94816674c62774da0d099a947bf4613b9e1972a2733abd0d0cd80e795f8411d0"
 }
 variable "DEBIAN_RUNTIME_IMAGE" {
-  default = "n8nio/base:26.12.1-debian@sha256:9c6631767d1f3a0c5040757d2ff26ac6109988e0630bad1a764310d6571b4f6d"
+  default = "n8nio/base:26.12.1-debian@sha256:694957591142a93eb6db31ce0374807c17901e80e8970d5753baf1fb15fdec9f"
 }
 
 # build-node-pc-image.yml publishes these.

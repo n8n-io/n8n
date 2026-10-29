@@ -62,12 +62,15 @@ jobs:
       - name: Resolve build inputs
         id: inputs
         env:
+          # Bake reads an environment variable with the name of a bake variable
+          # as an override, even when it is empty. So no name here matches one.
           BAKE_TARGET: ${{ matrix.bake_target }}
-          TAG: ${{ matrix.tag }}
-          DOCKERFILE: ${{ matrix.dockerfile }}
-          DHI_REF: ${{ matrix.dhi_ref }}
+          MATRIX_TAG: ${{ matrix.tag }}
+          MATRIX_DOCKERFILE: ${{ matrix.dockerfile }}
+          MATRIX_DHI_REF: ${{ matrix.dhi_ref }}
         run: |
           set -euo pipefail
+          TAG=$MATRIX_TAG DOCKERFILE=$MATRIX_DOCKERFILE DHI_REF=$MATRIX_DHI_REF
           if [ -n "$BAKE_TARGET" ]; then
             plan=$(docker buildx bake -f docker/docker-bake.hcl --print "$BAKE_TARGET")
             target=$(jq -c --arg t "$BAKE_TARGET" '.target[$t]' <<<"$plan")
@@ -75,6 +78,9 @@ jobs:
             DHI_REF=$(jq -r '.args.DHI_REF' <<<"$target")
             TAG=$(jq -r '.tags[0] | sub("^n8nio/base:"; "")' <<<"$target")
           fi
+          for value in "$TAG" "$DOCKERFILE" "$DHI_REF"; do
+            [ -n "$value" ] && [ "$value" != null ] || { echo "::error::Unresolved build input"; exit 1; }
+          done
           {
             echo "dockerfile=$DOCKERFILE"
             echo "dhi_ref=$DHI_REF"

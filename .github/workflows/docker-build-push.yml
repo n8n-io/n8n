@@ -8,7 +8,6 @@ run-name: "${{ github.event_name == 'workflow_dispatch' && format('Docker: Build
 
 env:
   NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '26.12.1'
 
 on:
   schedule:
@@ -164,11 +163,19 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      # docker-bake.hcl holds the Node version of the images. The host uses
+      # the same one, because the images copy native bindings from this build.
+      - name: Read the Node version
+        id: node
+        run: |
+          version=$(sed -nE 's/^variable "NODE_VERSION" \{ default = "([^"]+)" \}$/\1/p' docker/docker-bake.hcl)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs
         with:
-          # The image compiles native bindings against this Node version later.
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ steps.node.outputs.version }}
           build-command: pnpm build:n8n
         env:
           RELEASE: ${{ needs.determine-build-context.outputs.n8n_version }}
