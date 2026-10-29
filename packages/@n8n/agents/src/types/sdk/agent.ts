@@ -16,6 +16,7 @@ import type {
 	SubAgentChunkPayload,
 	SubAgentCompletedPayload,
 	SubAgentStartedPayload,
+	ToolApprovalEventPayload,
 } from '../runtime/event';
 import type { SerializedMessageList } from '../runtime/message-list';
 import type { BuiltTelemetry } from '../telemetry';
@@ -175,6 +176,7 @@ export type StreamChunk = ContentMetadata &
 		// `message` is reserved for sub-agent / app-defined `CustomAgentMessage`
 		| { type: 'message'; message: AgentMessage }
 		| ({ type: 'subagent-started' } & SubAgentStartedPayload)
+		| ({ type: 'tool-approval' } & ToolApprovalEventPayload)
 		| ({ type: 'subagent-completed' } & SubAgentCompletedPayload)
 		| ({ type: 'subagent-chunk' } & SubAgentChunkPayload)
 		| {

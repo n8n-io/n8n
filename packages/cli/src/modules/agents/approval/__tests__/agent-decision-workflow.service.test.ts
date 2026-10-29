@@ -1,5 +1,5 @@
 import { AgentChannelHitlService } from '../agent-channel-hitl.service';
-import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
+import { AgentEvent, type BuiltTool, type InterruptibleToolContext } from '@n8n/agents';
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { Container } from '@n8n/di';
 import type { IExecutionResponse, WorkflowEntity } from '@n8n/db';
@@ -58,6 +58,8 @@ function setup(agentConfiguration: AgentJsonConfig = configuration) {
 	const context: InterruptibleToolContext = {
 		suspend,
 		resumeData: undefined,
+		emitEvent: vi.fn(),
+		toolCallId: 'call',
 		continuation: { __agentDecisionWorkflow: true, executionId: 'child' },
 		suspendPayload: { type: 'workflow_wait' },
 	};
@@ -82,13 +84,14 @@ describe('Agent decision workflow approval', () => {
 	});
 
 	it.each([
-		[false, undefined],
-		[true, 3600],
-		[false, 86400],
-		[false, 604800],
+		[false, undefined, false],
+		[true, 3600, false],
+		[false, 86400, false],
+		[false, 604800, false],
+		[false, undefined, true],
 	] as const)(
-		'dispatches a decision workflow with redaction=%s and expiry=%s',
-		async (redacted, expirySeconds) => {
+		'dispatches a decision workflow with redaction=%s, expiry=%s, and immediate=%s',
+		async (redacted, expirySeconds, immediate) => {
 			const { loader, jobs, jobService, executions, wrapped, handler, context } = setup({
 				...configuration,
 				hitlConfigurations: configuration.hitlConfigurations?.map((entry) => ({
@@ -99,7 +102,7 @@ describe('Agent decision workflow approval', () => {
 			Container.set(WorkflowRunner, mock<WorkflowRunner>());
 			const execute = vi.spyOn(workflowTools, 'executeWorkflow').mockResolvedValue({
 				executionId: 'child',
-				status: 'waiting',
+				status: immediate ? 'success' : 'waiting',
 			});
 			loader.loadWorkflow.mockResolvedValue({
 				id: 'decision-workflow',
@@ -108,7 +111,8 @@ describe('Agent decision workflow approval', () => {
 			} as WorkflowEntity);
 			jobs.findWorkflowJobByExecutionId.mockResolvedValue({
 				id: 'job',
-				status: 'running',
+				status: immediate ? 'completed' : 'running',
+				result: immediate ? JSON.stringify({ approved: true }) : null,
 			} as AgentBackgroundJob);
 			executions.findSingleExecution.mockResolvedValue({ status: 'waiting' } as IExecutionResponse);
 			const input = {
@@ -139,8 +143,28 @@ describe('Agent decision workflow approval', () => {
 					},
 				},
 			});
-			expect(result).toBe('waiting');
-			expect(handler).not.toHaveBeenCalled();
+			expect(context.emitEvent).toHaveBeenCalledWith({
+				type: AgentEvent.ToolApproval,
+				phase: 'requested',
+				toolCallId: 'call',
+				toolName: 'write',
+				request: expect.objectContaining({
+					type: 'approval',
+					workflowId: 'decision-workflow',
+					workflowExecutionId: 'child',
+					...(redacted ? { argumentsRedacted: true } : { args: input }),
+				}),
+			});
+			if (redacted)
+				expect(vi.mocked(context.emitEvent!).mock.calls[0][0]).not.toHaveProperty('request.args');
+			expect(result).toBe(immediate ? 'executed' : 'waiting');
+			expect(handler).toHaveBeenCalledTimes(immediate ? 1 : 0);
+			if (immediate) {
+				expect(context.suspend).not.toHaveBeenCalled();
+				expect(context.emitEvent).toHaveBeenLastCalledWith(
+					expect.objectContaining({ phase: 'resolved', response: { approved: true } }),
+				);
+			}
 			expect(loader.loadWorkflow).toHaveBeenCalledWith(
 				'project',
 				expect.objectContaining({ workflowId: 'workflow' }),
@@ -280,6 +304,12 @@ describe('Agent decision workflow approval', () => {
 			expect(request).not.toHaveProperty('description');
 			expect(request.message).not.toContain('Update the selected record.');
 		}
+		expect(context.emitEvent).toHaveBeenCalledWith(
+			expect.objectContaining({
+				phase: 'requested',
+				request: expect.objectContaining({ type: 'approval' }),
+			}),
+		);
 		expect(request.message).toContain('The agent wants to run this tool: write');
 		expect(request.message).not.toContain('secret');
 		expect(loader.loadWorkflow).not.toHaveBeenCalled();
@@ -298,6 +328,13 @@ describe('Agent decision workflow approval', () => {
 				{ value: 1 },
 				{ ...context, resumeData: { approved: !approved } },
 			);
+			expect(context.emitEvent).toHaveBeenCalledWith({
+				type: AgentEvent.ToolApproval,
+				phase: 'resolved',
+				toolCallId: 'call',
+				toolName: 'write',
+				response: { approved },
+			});
 			expect(handler).toHaveBeenCalledTimes(approved ? 1 : 0);
 			if (approved) expect(result).toBe('executed');
 			else expect(result).toMatchObject({ declined: true });
@@ -430,7 +467,7 @@ describe('Agent decision workflow approval', () => {
 				}),
 			);
 			jobs.findWorkflowJobByExecutionId.mockResolvedValue(
-				mock<AgentBackgroundJob>({ id: 'job', status: 'running' }),
+				mock<AgentBackgroundJob>({ id: 'job', status: 'running', workflowId: 'decision' }),
 			);
 			executions.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({ status: 'waiting' }),
@@ -485,6 +522,10 @@ describe('Agent decision workflow approval', () => {
 			expect(execute.mock.calls[0][3].agentRun?.workflowCaller).toBeUndefined();
 			expect(suspend.mock.calls[0][0]).toEqual({
 				type: 'workflow_wait',
+				approval: true,
+				displayName: undefined,
+				workflowId: 'decision',
+				workflowExecutionId: 'child',
 				title: 'Waiting for administrator approval to run write.',
 				components: [
 					{ type: 'section', text: 'Update the selected record.' },

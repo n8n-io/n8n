@@ -3,6 +3,7 @@ import {
 	applyForwardedChildChunk,
 	emptyChildTrace,
 	settleChildTrace,
+	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type PersistedChildTrace,
 	type AgentBackgroundJobSignal,
 } from '@n8n/api-types';
@@ -386,6 +387,17 @@ export class ExecutionRecorder {
 	recordHitlResponse(toolCallId: string, response: unknown): void {
 		this.flushReasoningBuffer();
 		this.flushTextBuffer();
+		// The workflow wake-up arrives before its approval result is read.
+		const wakeUp = this.timeline.findIndex(
+			(event) =>
+				event.type === 'hitl-response' &&
+				event.toolCallId === toolCallId &&
+				isRecord(event.response) &&
+				event.response.type === 'workflow_finished',
+		);
+		if (wakeUp !== -1 && isRecord(response) && typeof response.approved === 'boolean') {
+			this.timeline.splice(wakeUp, 1);
+		}
 		this.appendCompletedEvent({
 			type: 'hitl-response',
 			toolCallId,
@@ -467,6 +479,21 @@ export class ExecutionRecorder {
 			case 'tool-call':
 				this.recordToolCall(chunk.toolCallId, chunk.toolName, chunk.input);
 				break;
+			case 'tool-approval':
+				if (chunk.phase === 'resolved') {
+					this.recordHitlResponse(chunk.toolCallId, chunk.response);
+				} else {
+					this.flushReasoningBuffer();
+					this.flushTextBuffer();
+					this.appendCompletedEvent({
+						type: 'suspension',
+						toolName: chunk.toolName,
+						toolCallId: chunk.toolCallId,
+						timestamp: Date.now(),
+						suspendPayload: sanitizeExecutionLogValue(chunk.request),
+					});
+				}
+				break;
 			case 'tool-execution-start':
 				this.recordToolExecutionStart(chunk.toolCallId, chunk.startTime);
 				break;
@@ -533,6 +560,21 @@ export class ExecutionRecorder {
 				this.flushReasoningBuffer();
 				this.flushTextBuffer();
 				this._suspended = true;
+				if (
+					isRecord(chunk.suspendPayload) &&
+					chunk.suspendPayload.type === WORKFLOW_WAIT_SUSPEND_TYPE &&
+					!this.timeline.some(
+						(event) => event.type === 'hitl-response' && event.toolCallId === chunk.toolCallId,
+					) &&
+					this.timeline.some(
+						(event) =>
+							event.type === 'suspension' &&
+							event.toolCallId === chunk.toolCallId &&
+							isRecord(event.suspendPayload) &&
+							event.suspendPayload.type === 'approval',
+					)
+				)
+					break;
 				this.appendCompletedEvent({
 					type: 'suspension',
 					toolName: chunk.toolName ?? '',

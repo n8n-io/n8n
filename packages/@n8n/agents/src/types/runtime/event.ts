@@ -62,6 +62,14 @@ export interface SubAgentChunkPayload extends SubAgentLifecycleBase {
 	chunk: ForwardedChildChunk;
 }
 
+export type ToolApprovalEventPayload = {
+	toolCallId: string;
+	toolName: string;
+} & (
+	| { phase: 'requested'; request: unknown }
+	| { phase: 'resolved'; response: { approved: boolean; reason?: string } }
+);
+
 export const enum AgentEvent {
 	AgentStart = 'agent_start',
 	AgentEnd = 'agent_end',
@@ -69,6 +77,7 @@ export const enum AgentEvent {
 	TurnEnd = 'turn_end',
 	ToolExecutionStart = 'tool_execution_start',
 	ToolExecutionEnd = 'tool_execution_end',
+	ToolApproval = 'tool_approval',
 	SubAgentStarted = 'subagent_started',
 	SubAgentCompleted = 'subagent_completed',
 	SubAgentChunk = 'subagent_chunk',
@@ -89,6 +98,7 @@ export type AgentEventData =
 			isError: boolean;
 	  }
 	| ({ type: AgentEvent.SubAgentStarted } & SubAgentStartedPayload)
+	| ({ type: AgentEvent.ToolApproval } & ToolApprovalEventPayload)
 	| ({ type: AgentEvent.SubAgentCompleted } & SubAgentCompletedPayload)
 	| ({ type: AgentEvent.SubAgentChunk } & SubAgentChunkPayload)
 	| {

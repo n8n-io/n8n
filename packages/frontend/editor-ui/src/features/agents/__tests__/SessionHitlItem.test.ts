@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import SessionHitlItem from '../components/timeline-items/SessionHitlItem.vue';
 import type { TimelineItem } from '../session-timeline.types';
 
+const resolve = vi.hoisted(() => vi.fn(() => ({ href: '/workflow/decision/executions/42' })));
+vi.mock('vue-router', () => ({ useRouter: () => ({ resolve }) }));
+
 vi.mock('@/app/utils/formatters/dateFormatter', () => ({
 	convertToDisplayDate: () => ({ time: '10:42' }),
 }));
@@ -67,6 +70,27 @@ describe('SessionHitlItem', () => {
 		await wrapper.setProps({ searchQuery: '' });
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
 	});
+
+	it.each(['suspension', 'hitl-response'] as const)(
+		'links the %s to the decision execution',
+		async (kind) => {
+			const wrapper = renderItem({
+				kind,
+				hitlResponse: { approved: true },
+				approvalWorkflowId: 'decision',
+				approvalWorkflowExecutionId: '42',
+				workflowId: 'tool',
+				workflowExecutionId: '99',
+			});
+			await wrapper.get('button').trigger('click');
+			const link = wrapper.get('[data-test-id="open-approval-execution"]');
+			expect(resolve).toHaveBeenCalledWith(
+				expect.objectContaining({ params: { workflowId: 'decision', executionId: '42' } }),
+			);
+			expect(link.attributes('href')).toBe('/workflow/decision/executions/42');
+			expect(link.attributes('target')).toBe('_blank');
+		},
+	);
 
 	it('keeps requests without data non-interactive', () => {
 		const wrapper = renderItem({ hitlRequest: undefined });

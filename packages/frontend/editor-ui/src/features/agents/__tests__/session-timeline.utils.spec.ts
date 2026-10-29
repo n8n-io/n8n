@@ -757,6 +757,68 @@ describe('flattenExecutionsToTimelineItems', () => {
 		});
 	});
 
+	it.each([true, false])(
+		'maps an immediate external decision of %s to approval rows with its execution link',
+		(approved) => {
+			const items = flattenExecutionsToTimelineItems([
+				withTimeline([
+					toolCallEvent({
+						toolCallId: 'external',
+						kind: 'workflow',
+						endTime: 200,
+						success: true,
+						workflowId: 'tool',
+						workflowExecutionId: '99',
+					}),
+					suspensionEvent({
+						toolCallId: 'external',
+						suspendPayload: {
+							type: 'approval',
+							displayName: 'Protected action',
+							workflowId: 'decision',
+							workflowExecutionId: '42',
+						},
+					}),
+					hitlResponseEvent({ toolCallId: 'external', response: { approved } }),
+				]),
+			]);
+			expect(items.map((item) => item.kind)).toEqual(['workflow', 'suspension', 'hitl-response']);
+			expect(items[0]).toMatchObject({
+				workflowId: 'tool',
+				workflowExecutionId: '99',
+				activityStatus: 'completed',
+			});
+			for (const item of items.slice(1))
+				expect(item).toMatchObject({
+					hitlRequestType: 'approval',
+					approvalWorkflowId: 'decision',
+					approvalWorkflowExecutionId: '42',
+				});
+			expect(items[2].hitlResponseStatus).toBe(approved ? 'approved' : 'declined');
+		},
+	);
+
+	it('keeps a restored external workflow wait classified as an approval', () => {
+		const items = flattenExecutionsToTimelineItems([
+			withTimeline([
+				toolCallEvent(),
+				suspensionEvent({
+					suspendPayload: {
+						type: 'workflow_wait',
+						approval: true,
+						workflowId: 'decision',
+						workflowExecutionId: '42',
+					},
+				}),
+			]),
+		]);
+		expect(items[1]).toMatchObject({
+			hitlRequestType: 'approval',
+			approvalWorkflowId: 'decision',
+			approvalWorkflowExecutionId: '42',
+		});
+	});
+
 	it('keeps a pending approval as a two-item tool and request sequence', () => {
 		const items = flattenExecutionsToTimelineItems([
 			withTimeline([

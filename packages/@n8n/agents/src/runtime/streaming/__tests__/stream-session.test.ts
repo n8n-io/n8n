@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 
+import { AgentEvent } from '../../../types/runtime/event';
 import type { StreamChunk } from '../../../types';
 import { AgentEventBus } from '../../state/event-bus';
 import { startStreamSession } from '../stream-session';
@@ -16,6 +17,45 @@ async function drain(stream: ReadableStream<StreamChunk>): Promise<StreamChunk[]
 }
 
 describe('startStreamSession', () => {
+	it('streams approval requests and decisions in order and removes the listener', async () => {
+		const bus = new AgentEventBus();
+		const off = vi.spyOn(bus, 'off');
+		const base = { toolCallId: 'call', toolName: 'write' };
+		const readable = startStreamSession({
+			eventBus: bus,
+			abortScope: bus.createAbortScope(),
+			runId: 'run',
+			options: undefined,
+			withRootSpan: async <T>(_op: unknown, _opts: unknown, _rid: unknown, fn: () => Promise<T>) =>
+				await fn(),
+			runLoop: async (guard) => {
+				bus.emit({
+					type: AgentEvent.ToolApproval,
+					...base,
+					phase: 'requested',
+					request: { type: 'approval' },
+				});
+				bus.emit({
+					type: AgentEvent.ToolApproval,
+					...base,
+					phase: 'resolved',
+					response: { approved: true },
+				});
+				await guard.write({ type: 'finish', finishReason: 'stop' });
+			},
+			flushTelemetry: vi.fn(),
+			cleanupRun: vi.fn(),
+			updateState: vi.fn(),
+			emitError: vi.fn(),
+		});
+		expect(await drain(readable)).toEqual([
+			{ type: 'tool-approval', ...base, phase: 'requested', request: { type: 'approval' } },
+			{ type: 'tool-approval', ...base, phase: 'resolved', response: { approved: true } },
+			{ type: 'finish', finishReason: 'stop' },
+		]);
+		expect(off).toHaveBeenCalledWith(AgentEvent.ToolApproval, expect.any(Function));
+	});
+
 	it('emits only the provider error when a wrapper error follows', async () => {
 		const bus = new AgentEventBus();
 		const abortScope = bus.createAbortScope();

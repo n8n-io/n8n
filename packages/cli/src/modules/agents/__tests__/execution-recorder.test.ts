@@ -14,6 +14,98 @@ function makeToolResultChunk(toolName: string, output: unknown, toolCallId = 'tc
 
 describe('ExecutionRecorder', () => {
 	it.each([true, false])(
+		'records an immediate approval decision of %s without suspending',
+		(approved) => {
+			const recorder = new ExecutionRecorder();
+			recorder.record(makeToolCallChunk('write', { value: 1 }));
+			recorder.record({
+				type: 'tool-approval',
+				phase: 'requested',
+				toolCallId: 'tc1',
+				toolName: 'write',
+				request: {
+					type: 'approval',
+					workflowId: 'decision',
+					workflowExecutionId: '42',
+					args: { password: 'secret' },
+				},
+			});
+			recorder.record({
+				type: 'tool-approval',
+				phase: 'resolved',
+				toolCallId: 'tc1',
+				toolName: 'write',
+				response: { approved },
+			});
+			expect(recorder.suspended).toBe(false);
+			expect(recorder.getMessageRecord().timeline).toMatchObject([
+				{ type: 'tool-call' },
+				{
+					type: 'suspension',
+					suspendPayload: {
+						type: 'approval',
+						workflowId: 'decision',
+						workflowExecutionId: '42',
+						args: { password: '[REDACTED]' },
+					},
+				},
+				{ type: 'hitl-response', response: { approved } },
+			]);
+		},
+	);
+
+	it('keeps one approval request when its workflow parks', () => {
+		const recorder = new ExecutionRecorder();
+		recorder.record({
+			type: 'tool-approval',
+			phase: 'requested',
+			toolCallId: 'call',
+			toolName: 'write',
+			request: { type: 'approval' },
+		});
+		recorder.record({
+			type: 'tool-call-suspended',
+			runId: 'run',
+			toolCallId: 'call',
+			toolName: 'write',
+			suspendPayload: { type: 'workflow_wait' },
+		});
+		expect(recorder.suspended).toBe(true);
+		expect(recorder.getMessageRecord().timeline).toHaveLength(1);
+	});
+
+	it('replaces the workflow wake-up with the saved decision and retains later tool waits', () => {
+		const recorder = new ExecutionRecorder();
+		recorder.record({
+			type: 'tool-approval',
+			phase: 'requested',
+			toolCallId: 'call',
+			toolName: 'write',
+			request: { type: 'approval' },
+		});
+		recorder.recordHitlResponse('call', { type: 'workflow_finished' });
+		recorder.record({
+			type: 'tool-approval',
+			phase: 'resolved',
+			toolCallId: 'call',
+			toolName: 'write',
+			response: { approved: false },
+		});
+		expect(recorder.getMessageRecord().timeline).toMatchObject([
+			{ type: 'suspension' },
+			{ type: 'hitl-response', response: { approved: false } },
+		]);
+		recorder.record({
+			type: 'tool-call-suspended',
+			runId: 'run',
+			toolCallId: 'call',
+			toolName: 'write',
+			suspendPayload: { type: 'workflow_wait' },
+		});
+		expect(recorder.getMessageRecord().timeline).toHaveLength(3);
+	});
+
+	it.each([true, false])(
 		'keeps cumulative usage when final usage is absent (finish: %s)',
 		(finish) => {
 			const recorder = new ExecutionRecorder();

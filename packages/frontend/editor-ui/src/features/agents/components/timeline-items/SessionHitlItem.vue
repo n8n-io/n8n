@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { VIEWS } from '@/app/constants/navigation';
 import { formatTimelineTime } from '../../utils/timeline-time';
 import {
 	N8nAiActivityStepButton,
@@ -6,12 +7,14 @@ import {
 	N8nAiActivityStepResultSection,
 	N8nAnimatedCollapsibleContent,
 	N8nBadge,
+	N8nButton,
 	N8nCodeBlock,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';
 import type { TimelineItem } from '../../session-timeline.types';
 import {
@@ -28,6 +31,15 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const router = useRouter();
+const approvalExecutionHref = computed(() => {
+	const { approvalWorkflowId, approvalWorkflowExecutionId } = props.item;
+	if (!approvalWorkflowId || !approvalWorkflowExecutionId) return '';
+	return router.resolve({
+		name: VIEWS.EXECUTION_PREVIEW,
+		params: { workflowId: approvalWorkflowId, executionId: approvalWorkflowExecutionId },
+	}).href;
+});
 
 const label = computed(function getLabel() {
 	return hitlTimelineName(props.item, i18n);
@@ -139,6 +151,17 @@ const { isOpen } = useTimelineItemExpansion({
 						}}
 					</N8nText>
 					<N8nCodeBlock :code="contentCode" language="json" :class="$style.code" />
+					<div v-if="approvalExecutionHref">
+						<N8nButton
+							variant="outline"
+							size="small"
+							:label="i18n.baseText('agentSessions.workflowLog.openFull')"
+							:href="approvalExecutionHref"
+							target="_blank"
+							rel="noopener noreferrer"
+							data-test-id="open-approval-execution"
+						/>
+					</div>
 				</N8nAiActivityStepResultSection>
 			</N8nAnimatedCollapsibleContent>
 		</CollapsibleRoot>

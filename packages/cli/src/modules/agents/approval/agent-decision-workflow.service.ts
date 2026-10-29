@@ -1,6 +1,6 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import { AgentChannelHitlService } from './agent-channel-hitl.service';
-import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
+import { AgentEvent, type BuiltTool, type InterruptibleToolContext } from '@n8n/agents';
 import { getToolApprovalDisplayName, wrapToolForApproval } from '@n8n/agents/tool';
 import { buildApprovalCardPayload } from '../integrations/agent-chat-suspension-cards';
 import {
@@ -235,6 +235,22 @@ export class AgentDecisionWorkflowService {
 				executionId,
 				...(timeoutAt ? { timeoutAt } : {}),
 			});
+			ctx.emitEvent?.({
+				type: AgentEvent.ToolApproval,
+				phase: 'requested',
+				toolCallId: ctx.toolCallId,
+				toolName: tool.name,
+				request: {
+					type: 'approval',
+					displayName: getToolApprovalDisplayName(tool),
+					...(ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true
+						? { argumentsRedacted: true }
+						: { args: buildApprovalArgs(input), description: ctx.approvalDescription }),
+					...(configuration.method === 'workflow'
+						? { workflowId: workflow.id, workflowExecutionId: executionId }
+						: {}),
+				},
+			});
 		}
 
 		let job = await this.jobRepository.findWorkflowJobByExecutionId(executionId);
@@ -275,6 +291,11 @@ export class AgentDecisionWorkflowService {
 			return await ctx.suspend(
 				{
 					type: WORKFLOW_WAIT_SUSPEND_TYPE,
+					approval: true,
+					displayName: getToolApprovalDisplayName(tool),
+					...(configuration.method === 'workflow'
+						? { workflowId: job.workflowId, workflowExecutionId: executionId }
+						: {}),
 					title: identity.integrationType
 						? `Waiting for administrator approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`
 						: `Waiting for approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`,
@@ -299,6 +320,15 @@ export class AgentDecisionWorkflowService {
 			throw new OperationalError(job.error ?? 'The decision workflow was cancelled');
 		const decision = AgentDecisionSchema.parse(jsonParse<unknown>(job.result));
 		ctx.abortSignal?.throwIfAborted();
+		if (ctx.toolCallId) {
+			ctx.emitEvent?.({
+				type: AgentEvent.ToolApproval,
+				phase: 'resolved',
+				toolCallId: ctx.toolCallId,
+				toolName: tool.name,
+				response: decision,
+			});
+		}
 		if (!decision.approved)
 			return { declined: true, message: `Tool "${tool.name}" was not approved` };
 		return await tool.handler?.call(tool, input, {
