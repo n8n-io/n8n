@@ -911,6 +911,7 @@ export class WorkflowRunner {
 						data: fullExecutionData.data,
 						jobId: job.id.toString(),
 						storedAt: fullExecutionData.storedAt,
+						nodeTimeSavedMinutes: jobResult?.nodeTimeSavedMinutes,
 					};
 				} else {
 					runData = {
@@ -930,6 +931,7 @@ export class WorkflowRunner {
 						}),
 						jobId: job.id.toString(),
 						storedAt: this.storageConfig.modeTag,
+						nodeTimeSavedMinutes: jobResult.nodeTimeSavedMinutes,
 					};
 				}
 
