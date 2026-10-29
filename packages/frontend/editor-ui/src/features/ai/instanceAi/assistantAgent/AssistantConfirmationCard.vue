@@ -4,7 +4,8 @@
  * card emits the Assistant confirm body as the resume data, and the chat resumes
  * the suspended tool call with it.
  */
-import type { InstanceAiConfirmRequest } from '@n8n/api-types';
+import { INSTANCE_AI_THREAD_SOURCE_FALLBACK, type InstanceAiConfirmRequest } from '@n8n/api-types';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
 	N8nApprovalCard,
 	N8nButton,
@@ -14,16 +15,38 @@ import {
 	type ApprovalOption,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { computed, nextTick, onBeforeUnmount, ref } from 'vue';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { computed, inject, nextTick, onBeforeUnmount, ref } from 'vue';
 
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 
 import { buildAlwaysAllowKey } from '../alwaysAllow';
 import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
+import {
+	approvalInputs,
+	continueInputs,
+	getConfirmationType,
+	mcpConnectInputs,
+	questionsInputs,
+	skippedTextInputs,
+	testListenerInputs,
+	textInputs,
+	trackInputCompleted,
+	type ConfirmationInputs,
+} from '../confirmationTelemetry';
 import DomainAccessApproval from '../components/DomainAccessApproval.vue';
+import GatewayResourceDecision from '../components/GatewayResourceDecision.vue';
+import InstanceAiChannelSetup from '../components/InstanceAiChannelSetup.vue';
+import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
 import InstanceAiMcpConnectCard from '../components/InstanceAiMcpConnectCard.vue';
 import InstanceAiQuestions, { type QuestionAnswer } from '../components/InstanceAiQuestions.vue';
+import InstanceAiWorkflowSetup from '../workflowSetup/InstanceAiWorkflowSetup.vue';
+import type {
+	WorkflowSetupApplyPayload,
+	WorkflowSetupOutcome,
+} from '../workflowSetup/workflowSetup.types';
+import { ASSISTANT_AGENT_PROJECT_ID, ASSISTANT_AGENT_THREAD_ID } from './assistantAgentThreads';
 import type { AssistantConfirmationInput } from './assistantConfirmation';
 
 const props = defineProps<{
@@ -32,11 +55,15 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	submit: [resumeData: InstanceAiConfirmRequest];
+	/** `onAccepted` runs once the server accepts the answer. */
+	submit: [resumeData: InstanceAiConfirmRequest, onAccepted?: () => void];
 }>();
 
 const i18n = useI18n();
 const approvalLabels = useApprovalCardLabels();
+const telemetry = useTelemetry();
+const rootStore = useRootStore();
+const threadId = inject(ASSISTANT_AGENT_THREAD_ID, '');
 const submitted = ref(false);
 // Bumped when the chat refuses an answer. The inner cards remount, so they drop
 // their own answered state too.
@@ -50,55 +77,105 @@ function reopen() {
 	attempt.value += 1;
 }
 
+// A payload without a project uses the project of the thread.
+const threadProjectId = inject(ASSISTANT_AGENT_PROJECT_ID, undefined);
+const projectId = computed(() => props.input.projectId ?? threadProjectId);
+
 /** The same order as the current Assistant confirmation panel. */
 const variant = computed(() => {
 	const { input } = props;
 	if (input.inputType === 'questions' && input.questions?.length) return 'questions';
-	// Cards that need the current Assistant thread. They come to this chat later.
-	if (
-		input.setupRequests?.length ||
-		input.credentialRequests?.length ||
-		(input.inputType === 'resource-decision' && input.resourceDecision) ||
-		input.channelConfig
-	) {
-		return 'unsupported';
-	}
 	if (input.mcpConnectRequest) return 'mcp-connect';
+	if (input.setupRequests?.length) return 'workflow-setup';
+	if (input.credentialRequests?.length) return 'credential-setup';
 	if (input.inputType === 'text') return 'text';
 	if (input.inputType === 'continue') return 'continue';
 	if (input.testListener) return 'test-listener';
+	if (input.inputType === 'resource-decision' && input.resourceDecision) {
+		return 'resource-decision';
+	}
+	if (input.channelConfig) return 'channel-config';
 	if (input.domainAccess) return 'domain-access';
 	if (input.webSearch) return 'web-search';
 	if (input.credentialDestination) return 'credential-destination';
 	return 'approval';
 });
 
-function submit(body: InstanceAiConfirmRequest) {
+/** The same event as `InstanceAiConfirmationPanel` sends, for an answer that the server accepted. */
+function trackAnswer(inputs: ConfirmationInputs) {
+	trackInputCompleted(
+		telemetry,
+		{
+			threadId,
+			inputThreadId: props.input.inputThreadId,
+			instanceId: rootStore.instanceId,
+			// Assistant agent threads keep no launch source yet.
+			actionSource: INSTANCE_AI_THREAD_SOURCE_FALLBACK,
+			type: getConfirmationType(props.input),
+			runtime: 'agents',
+		},
+		inputs,
+	);
+}
+
+/**
+ * `inputs` is the telemetry of the answer, sent once the server accepts it. A card
+ * that the backend settles has none.
+ */
+function submit(body: InstanceAiConfirmRequest, inputs?: ConfirmationInputs) {
 	if (isInactive.value) return;
 	submitted.value = true;
-	emit('submit', body);
+	emit('submit', body, inputs ? () => trackAnswer(inputs) : undefined);
 	// The chat removes a card as soon as it takes the answer. A busy chat refuses the
 	// answer and keeps the card, so the card takes the answer back. After a failed
 	// send, the chat renders the card again as a new instance.
 	void nextTick(reopen);
 }
 
+// The workflow setup card hands its answer here, and this card resumes the tool with it.
+// The chat shows the tool result, so the setup card settles as soon as the answer is sent.
+const workflowSetupOutcome = ref<WorkflowSetupOutcome>();
+
+function onWorkflowSetupApply(payload: WorkflowSetupApplyPayload) {
+	submit({ kind: 'setupWorkflowApply', ...payload });
+	workflowSetupOutcome.value = { state: 'applied' };
+}
+
+function onWorkflowSetupDefer() {
+	submit({ kind: 'approval', approved: false });
+	workflowSetupOutcome.value = { state: 'deferred' };
+}
+
 function onQuestionsSubmit(answers: QuestionAnswer[]) {
-	submit({
-		kind: 'questions',
-		answers: answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
-			questionId,
-			selectedOptions,
-			...(customText !== undefined ? { customText } : {}),
-			...(skipped !== undefined ? { skipped } : {}),
-		})),
-	});
+	submit(
+		{
+			kind: 'questions',
+			answers: answers.map(({ questionId, selectedOptions, customText, skipped }) => ({
+				questionId,
+				selectedOptions,
+				...(customText !== undefined ? { customText } : {}),
+				...(skipped !== undefined ? { skipped } : {}),
+			})),
+		},
+		questionsInputs(props.input.questions ?? [], answers),
+	);
 }
 
 function onTextSubmit() {
 	const value = textValue.value.trim();
 	if (!value) return;
-	submit({ kind: 'approval', approved: true, userInput: value });
+	submit(
+		{ kind: 'approval', approved: true, userInput: value },
+		textInputs(props.input.message, value),
+	);
+}
+
+function onTextSkip() {
+	submit({ kind: 'approval', approved: false }, skippedTextInputs(props.input.message));
+}
+
+function onContinue() {
+	submit({ kind: 'approval', approved: true }, continueInputs(props.input.message));
 }
 
 function onMcpConnectResolve({
@@ -108,7 +185,10 @@ function onMcpConnectResolve({
 	approved: boolean;
 	connectedSlugs: string[];
 }) {
-	submit({ kind: 'mcpConnect', approved, connectedSlugs });
+	submit(
+		{ kind: 'mcpConnect', approved, connectedSlugs },
+		mcpConnectInputs(props.input.mcpConnectRequest?.servers ?? [], approved, connectedSlugs),
+	);
 }
 
 // --- Credential destination ---
@@ -151,17 +231,21 @@ const credentialDestinationOptions = computed<ApprovalOption[]>(() => [
 function onCredentialDestinationSelect(key: string) {
 	const destination = props.input.credentialDestination;
 	if (!destination || (key !== 'allow-once' && key !== 'deny')) return;
-	submit({
-		kind: 'credentialDestination',
-		approved: key === 'allow-once',
-		origin: destination.origin,
-	});
+	const approved = key === 'allow-once';
+	submit(
+		{ kind: 'credentialDestination', approved, origin: destination.origin },
+		approvalInputs(props.input.message, approved ? 'approve' : 'deny', false),
+	);
 }
 
 // --- Test listener ---
 
-function settleTestListener(approved: boolean, executionId?: string) {
-	submit({ kind: 'approval', approved, ...(executionId ? { userInput: executionId } : {}) });
+/** `fromPush`: a push event settles the card without a user choice, so it records no input. */
+function settleTestListener(approved: boolean, executionId?: string, fromPush = false) {
+	submit(
+		{ kind: 'approval', approved, ...(executionId ? { userInput: executionId } : {}) },
+		fromPush ? undefined : testListenerInputs(props.input.message, approved),
+	);
 }
 
 function formatDeadline(iso: string): string {
@@ -178,6 +262,7 @@ if (props.input.testListener) {
 		settleTestListener(
 			true,
 			event.type === 'testWebhookReceived' ? event.data.executionId : undefined,
+			true,
 		);
 	});
 	onBeforeUnmount(removePushListener);
@@ -212,13 +297,21 @@ const canAlwaysAllow = computed(() => {
 });
 
 function onApprovalSelect(key: string) {
+	const { message } = props.input;
 	if (key === 'always-allow' && canAlwaysAllow.value) {
 		// The tool stores a thread grant, so later matching calls skip the card.
-		submit({ kind: 'approval', approved: true, scope: 'session' });
+		submit(
+			{ kind: 'approval', approved: true, scope: 'session' },
+			approvalInputs(message, 'approve_always', true),
+		);
 		return;
 	}
 	if (key === 'allow-once' || key === 'deny') {
-		submit({ kind: 'approval', approved: key === 'allow-once' });
+		const approved = key === 'allow-once';
+		submit(
+			{ kind: 'approval', approved },
+			approvalInputs(message, approved ? 'approve' : 'deny', canAlwaysAllow.value),
+		);
 	}
 }
 </script>
@@ -233,22 +326,53 @@ function onApprovalSelect(key: string) {
 			data-test-id="assistant-agent-questions"
 			@submit="onQuestionsSubmit"
 		/>
-		<N8nCard
-			v-else-if="variant === 'unsupported'"
-			:class="$style.card"
-			data-test-id="assistant-agent-unsupported-card"
-		>
-			<N8nText v-if="input.message" tag="div">{{ input.message }}</N8nText>
-			<N8nText tag="div" size="small" color="text-light">
-				{{ i18n.baseText('instanceAi.assistantAgent.unsupportedCard') }}
-			</N8nText>
-		</N8nCard>
 		<InstanceAiMcpConnectCard
 			v-else-if="variant === 'mcp-connect' && input.mcpConnectRequest"
 			:servers="input.mcpConnectRequest.servers"
 			:read-only="isInactive"
 			data-test-id="assistant-agent-mcp-connect"
 			@resolve="onMcpConnectResolve"
+		/>
+		<!-- The setup cards keep their own submitted state. -->
+		<InstanceAiWorkflowSetup
+			v-else-if="variant === 'workflow-setup' && input.setupRequests"
+			:request-id="input.requestId"
+			:setup-requests="input.setupRequests"
+			:project-id="projectId"
+			:credential-flow="input.credentialFlow"
+			:workflow-id="input.workflowId"
+			:thread-id="threadId"
+			:input-thread-id="input.inputThreadId"
+			:outcome="workflowSetupOutcome"
+			@apply="onWorkflowSetupApply"
+			@defer="onWorkflowSetupDefer"
+		/>
+		<InstanceAiCredentialSetup
+			v-else-if="variant === 'credential-setup' && input.credentialRequests"
+			:credential-requests="input.credentialRequests"
+			:message="input.message"
+			:project-id="projectId"
+			:credential-flow="input.credentialFlow"
+			:require-user-selection="input.requireUserSelection"
+			:thread-id="threadId"
+			:input-thread-id="input.inputThreadId"
+			@decide="(body) => submit(body)"
+		/>
+		<GatewayResourceDecision
+			v-else-if="variant === 'resource-decision' && input.resourceDecision"
+			:resource="input.resourceDecision.resource"
+			:description="input.resourceDecision.description"
+			:options="input.resourceDecision.options"
+			:thread-id="threadId"
+			:input-thread-id="input.inputThreadId"
+			@decide="(decision) => submit({ kind: 'resourceDecision', resourceDecision: decision })"
+		/>
+		<InstanceAiChannelSetup
+			v-else-if="variant === 'channel-config' && input.channelConfig"
+			:integration-type="input.channelConfig.integrationType"
+			:agent-id="input.channelConfig.agentId"
+			:project-id="projectId ?? ''"
+			@decide="(approved) => submit({ kind: 'approval', approved })"
 		/>
 		<N8nCard
 			v-else-if="variant === 'test-listener' && input.testListener"
@@ -322,7 +446,7 @@ function onApprovalSelect(key: string) {
 					size="medium"
 					variant="outline"
 					:disabled="isInactive"
-					@click="submit({ kind: 'approval', approved: false })"
+					@click="onTextSkip"
 				>
 					{{ i18n.baseText('instanceAi.askUser.skip') }}
 				</N8nButton>
@@ -345,7 +469,7 @@ function onApprovalSelect(key: string) {
 					variant="solid"
 					:disabled="isInactive"
 					data-test-id="assistant-agent-continue"
-					@click="submit({ kind: 'approval', approved: true })"
+					@click="onContinue"
 				>
 					{{ i18n.baseText('instanceAi.confirmation.continue') }}
 				</N8nButton>

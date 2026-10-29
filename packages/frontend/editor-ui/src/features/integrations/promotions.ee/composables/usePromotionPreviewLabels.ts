@@ -1,7 +1,8 @@
-import type { ApplyCheckResult, PromotionDirection, PromotionResource } from '@n8n/api-types';
+import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
+import type { ApplyCheckResult } from '../promotions.types';
 import { isContainer } from '../promotionPreview.tree';
 
 /** Apply keeps these resources as they are on the instance. It does not create them. */
@@ -18,7 +19,7 @@ const MOVED_DETAIL = {
 	},
 } as const;
 
-/** The labels that the tree rows and the change cards share, so both say the same. */
+/** Labels for change details and blockers in the promotion preview. */
 export function usePromotionPreviewLabels() {
 	const i18n = useI18n();
 

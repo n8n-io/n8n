@@ -9,6 +9,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { deleteAgentTask, getAgentTasks } from '../composables/useAgentApi';
 import { AGENT_TASK_MODAL_KEY } from '../constants';
 import { describeSchedule, getNextScheduleOccurrence } from '../utils/scheduleBuilder';
+import { resolveAgentValidationIssueMessageKey } from '../utils/agentValidationIssueMessages';
 import AgentChipButton from './AgentChipButton.vue';
 import AgentItemContextMenu from './AgentItemContextMenu.vue';
 
@@ -65,23 +66,11 @@ type TaskRow = AgentTaskDto & {
 	invalidReasons: string[];
 };
 
-const ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey> = {
-	missing_required: 'agents.builder.validation.issue.missingRequired' as BaseTextKey,
-	invalid_value: 'agents.builder.validation.issue.task.invalidValue' as BaseTextKey,
-	missing_credential: 'agents.builder.validation.issue.missingCredential' as BaseTextKey,
-	invalid_credential: 'agents.builder.validation.issue.invalidCredential' as BaseTextKey,
-	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
-	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
-	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
-	// A channel and a task carry no node type, so this never reaches here; the map is exhaustive.
-	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
-};
-
 const taskIssueMessages = computed(() => {
 	const messages = new Map<string, string[]>();
 	for (const issue of props.validationIssues) {
 		if (issue.capability.kind !== 'task' || !issue.capability.id) continue;
-		const message = i18n.baseText(ISSUE_KEYS[issue.code], {
+		const message = i18n.baseText(resolveAgentValidationIssueMessageKey(issue), {
 			interpolate: { id: issue.capability.id },
 		});
 		messages.set(issue.capability.id, [

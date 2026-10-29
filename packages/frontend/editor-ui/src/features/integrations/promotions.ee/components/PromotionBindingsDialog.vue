@@ -33,7 +33,7 @@ const props = defineProps<{
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	applied: [result: AppliedResult];
-	'preflight-updated': [preflight: BlockedApplyResult['preflight']];
+	'check-updated': [check: BlockedApplyResult['check']];
 	'source-changed': [result: SourceChangedResult];
 	'close-requested': [resources: CreatedPromotionBinding[]];
 }>();
@@ -43,7 +43,7 @@ const { moveDetail } = usePromotionPreviewLabels();
 const title = useTemplateRef<HTMLElement>('title');
 const bindings = usePromotionBindings();
 const {
-	preflight,
+	check,
 	groups,
 	destructiveChanges,
 	projectDeletions,
@@ -69,9 +69,9 @@ watch(
 	{ immediate: true },
 );
 watch(
-	preflight,
+	check,
 	(value) => {
-		if (value) emit('preflight-updated', value);
+		if (value) emit('check-updated', value);
 	},
 	{ immediate: true, flush: 'sync' },
 );
@@ -287,10 +287,10 @@ async function continueApply() {
 						{{ i18n.baseText(`promotions.bindings.error.${error.kind}`) }}
 						<p v-if="errorDetail">{{ errorDetail }}</p>
 					</N8nCallout>
-					<section v-if="preflight?.accessRequirements.length" :class="$style.notices">
+					<section v-if="check?.accessRequirements.length" :class="$style.notices">
 						<h3>{{ i18n.baseText('promotions.bindings.access.title') }}</h3>
 						<N8nCallout
-							v-for="item in preflight.accessRequirements"
+							v-for="item in check.accessRequirements"
 							:key="item.sourceId"
 							theme="warning"
 						>
@@ -439,9 +439,9 @@ async function continueApply() {
 							</div>
 						</section>
 					</section>
-					<section v-if="preflight?.warnings.length" :class="$style.notices">
+					<section v-if="check?.warnings.length" :class="$style.notices">
 						<h3>{{ i18n.baseText('promotions.bindings.warnings.title') }}</h3>
-						<N8nCallout v-for="(item, index) in preflight.warnings" :key="index" theme="info">
+						<N8nCallout v-for="(item, index) in check.warnings" :key="index" theme="info">
 							{{
 								i18n.baseText('promotions.bindings.warnings.variableShadowed', {
 									interpolate: { name: item.name },

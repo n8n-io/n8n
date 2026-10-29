@@ -8,6 +8,7 @@ import { unwrapLuxonValues } from '../runtime/luxon-transfer';
 import type { DataHolder } from './host-functions';
 import {
 	dispatchHostCall,
+	escapeHostResult,
 	getArrayElement,
 	getValueAtPath,
 	heldData,
@@ -355,7 +356,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(holder: DataHolder): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return dispatchHostCall(rawMsg, heldData(holder));
+				return escapeHostResult(dispatchHostCall(rawMsg, heldData(holder)));
 			} catch (err) {
 				return serializeError(err);
 			}

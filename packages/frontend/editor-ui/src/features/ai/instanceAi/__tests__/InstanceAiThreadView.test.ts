@@ -1687,7 +1687,7 @@ describe('InstanceAiThreadView', () => {
 				agentNode: { agentId: 'agent-1', role: 'orchestrator' },
 				toolCall: {
 					toolCallId: 'tc-q',
-					toolName: 'workflow_builder_ask_user',
+					toolName: 'ask_user',
 					args: {},
 					isLoading: true,
 					confirmationStatus: 'pending',
@@ -2384,6 +2384,21 @@ describe('InstanceAiThreadView', () => {
 			expect(prompt).toContain('Extract Emails');
 			expect(prompt).toContain('Intentional break');
 			expect(prompt).toContain('My Workflow');
+		});
+
+		it('attaches the failed execution to the fix prompt', async () => {
+			seedThreadArtifact('wf-1', 'My Workflow');
+			const user = userEvent.setup();
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+			openPreviewForBuild();
+
+			await emitFailure();
+			await user.click(await findByTestId('instance-ai-fix-with-ai-button'));
+
+			const [, options] = vi.mocked(thread.sendMessage).mock.calls[0];
+			expect(options?.attachments).toEqual([
+				{ type: 'workflow', id: 'wf-1', name: 'My Workflow', executionId: 'exec-1' },
+			]);
 		});
 
 		it('hides the card while the chat is busy', async () => {

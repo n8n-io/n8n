@@ -14,7 +14,8 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	submit: [resumeData: unknown];
+	/** `onAccepted` runs once the server accepts the answer, not when the chat is busy or the send fails. */
+	submit: [resumeData: unknown, onAccepted?: () => void];
 }>();
 
 const renderer = computed(() => findInteractionRenderer(props.payload, props.renderers));
@@ -29,8 +30,8 @@ const rendererProps = computed(() => {
 	return renderer.value.getProps(props.payload);
 });
 
-function onSubmit(resumeData: unknown) {
-	emit('submit', resumeData);
+function onSubmit(resumeData: unknown, onAccepted?: () => void) {
+	emit('submit', resumeData, onAccepted);
 }
 </script>
 

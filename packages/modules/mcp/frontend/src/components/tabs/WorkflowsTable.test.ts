@@ -65,15 +65,11 @@ describe('WorkflowsTable', () => {
 	});
 
 	describe('Pagination', () => {
-		const createWorkflows = (count: number) =>
-			Array.from({ length: count }, (_, index) =>
-				createWorkflow({ id: `workflow-${index + 1}`, name: `Workflow ${index + 1}` }),
-			);
-
+		// Pagination uses the server total. One loaded row avoids unrelated cell render work.
 		it('should render pagination when total count exceeds page size', () => {
 			const { getByTestId } = createComponent({
 				props: {
-					workflows: createWorkflows(10),
+					workflows: [createWorkflow()],
 					totalCount: 11,
 					loading: false,
 				},
@@ -85,7 +81,7 @@ describe('WorkflowsTable', () => {
 		it('should emit table options when page changes', async () => {
 			const { getByTestId, emitted } = createComponent({
 				props: {
-					workflows: createWorkflows(10),
+					workflows: [createWorkflow()],
 					totalCount: 20,
 					loading: false,
 				},

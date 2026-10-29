@@ -11,6 +11,7 @@ export type {
 	SkillTelemetrySource,
 } from './services/skills-telemetry.service';
 export { SkillNameTakenError, skillNameTakenToolMessage } from './errors/skill-name-taken.error';
+export { toSkillToolRefusal, type SkillToolRefusal } from './errors/skill-tool-refusal';
 export {
 	findIntroducedNameClashes,
 	findNameClashGroups,
@@ -18,11 +19,15 @@ export {
 } from './utils/skill-names';
 export { getSkillHash } from './utils/skill-hash';
 export {
+	isSameSkillTarget,
+	skillContentHashOf,
+	skillScopeOf,
 	withTrimmedName,
 	type AssistantSkillContent,
 	type AssistantSkillContext,
 	type AssistantSkillFileContent,
 	type AssistantSkillSummary,
+	type LatestSkill,
 	type McpSkillContent,
 	type SkillMoveOptions,
 	type SkillRef,
