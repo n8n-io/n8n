@@ -10,6 +10,8 @@ import {
 	ModelConfig,
 } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
+import { actionNeedsApproval } from './integrations/integration-tool-definitions';
 import { getProviderPrefix } from '@n8n/ai-utilities/agent-config';
 import {
 	N8N_CHAT_ACTION_TOOL_NAME,
@@ -99,6 +101,7 @@ import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
 import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import { AgentDecisionWorkflowService } from './approval/agent-decision-workflow.service';
+import { withApprovalDescription } from './approval/approval-description';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
@@ -843,21 +846,23 @@ export class AgentRuntimeReconstructionService {
 	): BuiltTool {
 		const effective = route;
 		if (!effective || effective.type === 'conversation') {
-			return wrapToolForApproval(tool, { requireApproval: true });
+			return withApprovalDescription(wrapToolForApproval(tool, { requireApproval: true }));
 		}
-		return Container.get(AgentDecisionWorkflowService).wrap(tool, effective, options.config, {
-			agentId: options.memoryOwnerAgentId,
-			projectId: options.projectId,
-			published: options.runType === 'production',
-			integrations: options.credentialIntegrations,
-			integrationType: options.integrationType,
-			userId: options.attributionUserId ?? options.user?.id,
-			previewChat: options.previewChat,
-			publishedN8nChat:
-				options.runType === 'production' &&
-				options.integrationType === N8N_CHAT_INTEGRATION_TYPE &&
-				options.attributionUserId !== undefined,
-		});
+		return withApprovalDescription(
+			Container.get(AgentDecisionWorkflowService).wrap(tool, effective, options.config, {
+				agentId: options.memoryOwnerAgentId,
+				projectId: options.projectId,
+				published: options.runType === 'production',
+				integrations: options.credentialIntegrations,
+				integrationType: options.integrationType,
+				userId: options.attributionUserId ?? options.user?.id,
+				previewChat: options.previewChat,
+				publishedN8nChat:
+					options.runType === 'production' &&
+					options.integrationType === N8N_CHAT_INTEGRATION_TYPE &&
+					options.attributionUserId !== undefined,
+			}),
+		);
 	}
 
 	private makeMcpClientFactory(
@@ -1177,7 +1182,22 @@ export class AgentRuntimeReconstructionService {
 
 		for (const descriptor of descriptors) {
 			agent.tool(createIntegrationContextTool({ descriptor, queryExecutor }));
-			agent.tool(createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }));
+			const actionTool = createIntegrationActionTool({
+				descriptor,
+				messageContextStore,
+				actionExecutor,
+			});
+			agent.tool(
+				descriptor.approval
+					? withApprovalDescription(actionTool.build(), (input) => {
+							if (!isRecord(input)) return false;
+							const action = descriptor.actionToolDefinitions.find(
+								(entry) => entry.name === input.action,
+							)?.name;
+							return action !== undefined && actionNeedsApproval(descriptor.approval, action);
+						})
+					: actionTool,
+			);
 		}
 	}
 

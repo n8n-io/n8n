@@ -12,6 +12,7 @@ export const APPROVAL_SUSPEND_SCHEMA = z.object({
 	type: z.literal('approval'),
 	toolName: z.string(),
 	displayName: z.string().optional(),
+	description: z.string().optional(),
 	supportsSessionApproval: z.boolean().optional(),
 	args: z.unknown(),
 });
@@ -140,6 +141,9 @@ export function wrapToolForApproval(tool: BuiltTool, config: ApprovalConfig): Bu
 						{
 							type: 'approval',
 							toolName: currentTool.name,
+							...(interruptCtx.approvalDescription
+								? { description: interruptCtx.approvalDescription }
+								: {}),
 							...(approvalContext ? { supportsSessionApproval: true } : {}),
 							...(displayName ? { displayName } : {}),
 							args: approvalContext?.getDisplayArgs

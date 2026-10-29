@@ -185,7 +185,7 @@ describe('Agent decision workflow approval', () => {
 		},
 	);
 
-	it('dispatches a channel request through the same durable decision execution', async () => {
+	it.each([true, false])('dispatches a channel request with redaction=%s', async (redacted) => {
 		const { service, tool, jobs, executions, context, handler, loader } = setup();
 		const channels = mock<AgentChannelHitlService>();
 		Container.set(AgentChannelHitlService, channels);
@@ -239,6 +239,7 @@ describe('Agent decision workflow approval', () => {
 					suspendPayload: undefined,
 					runId: 'run',
 					toolCallId: 'call',
+					approvalDescription: 'Update the selected record.',
 					persistence: {
 						threadId: 'thread',
 						resourceId: 'resource',
@@ -252,7 +253,7 @@ describe('Agent decision workflow approval', () => {
 								}),
 							}),
 							workflowCaller: JSON.stringify({ workflowId: 'caller', executionId: 'parent' }),
-							approvalArgumentsRedacted: true,
+							approvalArgumentsRedacted: redacted,
 						},
 					},
 				},
@@ -266,10 +267,19 @@ describe('Agent decision workflow approval', () => {
 			'caller',
 		);
 		expect(execute.mock.calls[0][2]).toMatchObject({
-			argumentsRedacted: true,
-			message: expect.stringContaining('hidden by the caller settings'),
+			...(redacted ? { argumentsRedacted: true } : { description: 'Update the selected record.' }),
+			message: expect.stringContaining(
+				redacted ? 'hidden by the caller settings' : 'Update the selected record.',
+			),
 		});
-		expect(execute.mock.calls[0][2]).not.toHaveProperty('arguments');
+		const request = execute.mock.calls[0][2];
+		if (redacted) {
+			expect(request).not.toHaveProperty('arguments');
+			expect(request).not.toHaveProperty('description');
+			expect(request.message).not.toContain('Update the selected record.');
+		}
+		expect(request.message).toContain('The agent wants to run this tool: write');
+		expect(request.message).not.toContain('secret');
 		expect(loader.loadWorkflow).not.toHaveBeenCalled();
 		expect(handler).not.toHaveBeenCalled();
 	});
@@ -450,6 +460,7 @@ describe('Agent decision workflow approval', () => {
 				suspendPayload: undefined,
 				runId: 'run',
 				toolCallId: 'call',
+				approvalDescription: 'Update the selected record.',
 				persistence: {
 					threadId: 'thread',
 					resourceId: 'resource',
@@ -472,8 +483,9 @@ describe('Agent decision workflow approval', () => {
 			expect(execute.mock.calls[0][3].agentRun?.workflowCaller).toBeUndefined();
 			expect(suspend.mock.calls[0][0]).toEqual({
 				type: 'workflow_wait',
-				title: 'The Agent is waiting for approval from an administrator.',
+				title: 'Waiting for administrator approval to run write.',
 				components: [
+					{ type: 'section', text: 'Update the selected record.' },
 					{
 						type: 'section',
 						text: 'The Agent will continue when the approval request is resolved.',

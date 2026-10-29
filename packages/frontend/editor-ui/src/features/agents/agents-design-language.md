@@ -476,10 +476,11 @@ for the Assistant and Agent Preview. Pass the app catalog labels through
 Use the description slot to show the Agent name and the requested tool name.
 Show a node icon only when configured tool metadata identifies its node type.
 Use the localized Agent label when no name is available.
-Pass the sanitized display arguments from the backend to the shared card.
-For node tools, include the resolved node parameters and any model input.
-The card formats and shows these values inline for both surfaces. Leave space
-for the card's outline and shadow inside scrollable containers.
+Show the Agent's short approval description in the shared card. Do not show JSON
+arguments when a description is available. Saved requests without a description
+can still show sanitized arguments. Use the same request text in connected
+channel approvals. Offer only approve-once and deny there. Leave space for the
+card's outline and shadow inside scrollable containers.
 Keep approval policy and response payloads in the caller. Show the session
 option only when the backend supports it. Replace the Preview composer with
 pending tool approvals, including background child approvals. Restore the
@@ -505,7 +506,7 @@ Show `Only use {name}` when Disallow user approval is on. Otherwise, show
 Keep requester approval enabled by default. The configuration's
 `Disallow user approval` switch routes conversations to the configured destination.
 Show a fixed waiting message with no approval actions in the requester's
-conversation. The configured workflow or channel owns approver access.
+conversation. Name the tool that is waiting and include its approval description. The configured workflow or channel owns approver access.
 
 Disable the connected channel approval method when no supported channels are
 attached. Put the reason below the option label in smaller, muted text.

@@ -42,7 +42,7 @@ export function approvalNode(
 			responseType: 'approval',
 			message: '={{ $json.message }}',
 			approvalOptions: {
-				values: { approvalType: 'double', approveLabel: 'Approve', disapproveLabel: 'Reject' },
+				values: { approvalType: 'double', approveLabel: 'Approve', disapproveLabel: 'Deny' },
 			},
 			options: { appendAttribution: false },
 			...parameters,

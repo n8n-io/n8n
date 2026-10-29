@@ -1,4 +1,5 @@
 import type { InterruptibleToolContext, ToolApprovalContext } from '@n8n/agents';
+import { withApprovalDescription } from '../../approval/approval-description';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
@@ -1749,7 +1750,13 @@ describe('integration tools', () => {
 			const { tool, actionExecutor } = approvalTool(slackWithApproval);
 			const ctx = makeInterruptibleCtx();
 
-			await tool.handler!(sendToChannel, ctx);
+			await withApprovalDescription(tool).handler!(
+				{
+					...sendToChannel,
+					__approvalDescription: 'Send the status update to the support channel.',
+				},
+				ctx,
+			);
 
 			expect(actionExecutor.execute).not.toHaveBeenCalled();
 			expect(ctx.suspend).toHaveBeenCalledWith(
@@ -1757,6 +1764,8 @@ describe('integration tools', () => {
 					type: 'approval',
 					toolName: 'send_channel_message',
 					displayName: 'send_channel_message → slack:C999',
+					description: 'Send the status update to the support channel.',
+					args: sendToChannel.input,
 				}),
 				expect.objectContaining({ resumeSchema: expect.anything() }),
 			);

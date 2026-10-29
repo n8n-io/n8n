@@ -1,7 +1,8 @@
 import { truncate } from '@n8n/utils/string/truncate';
 import { AgentChannelHitlService } from './agent-channel-hitl.service';
 import type { BuiltTool, InterruptibleToolContext } from '@n8n/agents';
-import { wrapToolForApproval } from '@n8n/agents/tool';
+import { getToolApprovalDisplayName, wrapToolForApproval } from '@n8n/agents/tool';
+import { buildApprovalCardPayload } from '../integrations/agent-chat-suspension-cards';
 import {
 	AGENT_DECISION_TRIGGER_NODE_TYPE,
 	AgentDecisionSchema,
@@ -102,15 +103,22 @@ export class AgentDecisionWorkflowService {
 		};
 	}
 
-	private approvalMessage(toolName: string, input: unknown, redacted: boolean) {
-		const argumentsText = redacted
-			? 'Tool arguments are hidden by the caller settings.'
-			: JSON.stringify(buildApprovalArgs(input), null, 2);
+	private approvalMessage(tool: BuiltTool, description: string | undefined, redacted: boolean) {
+		const card = buildApprovalCardPayload({
+			type: 'approval',
+			toolName: tool.name,
+			displayName: getToolApprovalDisplayName(tool),
+			description: redacted ? 'Request details are hidden by the caller settings.' : description,
+			supportsSessionApproval: false,
+		});
+		const message = [
+			card.title,
+			...card.components.flatMap((component) =>
+				component.type === 'section' && typeof component.text === 'string' ? [component.text] : [],
+			),
+		].join('\n\n');
 		// Telegram escapes can double the length. Leave room for both buttons and the notice.
-		const message = `Approval required for ${toolName}\n\n${argumentsText}`;
-		return message.length > 1900
-			? `${truncate(message, 1900)}\n\nTool arguments are truncated.`
-			: message;
+		return truncate(message, 1900);
 	}
 
 	private async decide(
@@ -175,8 +183,8 @@ export class AgentDecisionWorkflowService {
 					...(configuration.method === 'channel'
 						? {
 								message: this.approvalMessage(
-									tool.name,
-									input,
+									tool,
+									ctx.approvalDescription,
 									ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true,
 								),
 							}
@@ -184,6 +192,10 @@ export class AgentDecisionWorkflowService {
 					requestId: `${ctx.runId}:${ctx.toolCallId}`,
 					agentId: identity.agentId,
 					toolName: tool.name,
+					...(ctx.approvalDescription &&
+					ctx.persistence.hostMetadata?.approvalArgumentsRedacted !== true
+						? { description: ctx.approvalDescription }
+						: {}),
 					...(ctx.persistence.hostMetadata?.approvalArgumentsRedacted === true
 						? { argumentsRedacted: true }
 						: { arguments: buildApprovalArgs(input) }),
@@ -264,9 +276,13 @@ export class AgentDecisionWorkflowService {
 				{
 					type: WORKFLOW_WAIT_SUSPEND_TYPE,
 					title: identity.integrationType
-						? 'The Agent is waiting for approval from an administrator.'
-						: `Waiting for ${configuration.name}`,
+						? `Waiting for administrator approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`
+						: `Waiting for approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`,
 					components: [
+						...(ctx.approvalDescription &&
+						ctx.persistence?.hostMetadata?.approvalArgumentsRedacted !== true
+							? [{ type: 'section', text: ctx.approvalDescription }]
+							: []),
 						{
 							type: 'section',
 							text: 'The Agent will continue when the approval request is resolved.',

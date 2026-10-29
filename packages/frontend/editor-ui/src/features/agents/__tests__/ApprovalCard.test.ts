@@ -65,6 +65,16 @@ describe('ApprovalCard', () => {
 		expect(wrapper.emitted('submit')).toEqual([[{ approved: true, scope: 'session' }]]);
 	});
 
+	it('shows the Agent explanation instead of JSON arguments', () => {
+		const input = parseApprovalInput({
+			...approvalInput,
+			description: '  Calculate the total cost of the selected items.  ',
+		});
+		const wrapper = mountCard(input!);
+		expect(wrapper.text()).toContain('Calculate the total cost of the selected items.');
+		expect(wrapper.find('[data-test-id="approval-card-args"]').exists()).toBe(false);
+	});
+
 	it('shows call arguments inline and emits approved resume data', async () => {
 		const input = parseApprovalInput({
 			...approvalInput,

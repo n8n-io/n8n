@@ -79,6 +79,7 @@ export interface ApprovalInput {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	description?: string;
 	supportsSessionApproval?: boolean;
 	args: unknown;
 }

@@ -3,14 +3,14 @@ import { AgentHitlWorkflowRepository } from '../../repositories/agent-hitl-workf
 import { mock } from 'vitest-mock-extended';
 import type { User } from '@n8n/db';
 import type { AgentHitlChannelConfiguration, AgentIntegrationConfig } from '@n8n/api-types';
-import { OutboundHttp } from '@n8n/backend-network';
+import type { OutboundHttp } from '@n8n/backend-network';
 import { AgentChannelHitlService } from '../agent-channel-hitl.service';
 import {
 	ChatIntegrationRegistry,
 	type AgentChatIntegration,
 } from '../../integrations/agent-chat-integration';
-import { AgentCredentialLookupService } from '../../integrations/agent-credential-lookup.service';
-import { AgentRepository } from '../../repositories/agent.repository';
+import type { AgentCredentialLookupService } from '../../integrations/agent-credential-lookup.service';
+import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ProjectAgent } from '../../entities/agent.entity';
 import { slackHitl } from '../../integrations/platforms/slack/slack-hitl';
 import { telegramHitl } from '../../integrations/platforms/telegram/telegram-hitl';
@@ -108,18 +108,19 @@ describe('Agent channel approval', () => {
 	});
 	it('uses Telegram numeric IDs and rejects usernames', () => {
 		if (!telegramHitl.supported) throw new Error('Expected Telegram support');
+		const createNode = telegramHitl.createNode;
 		const telegram = {
 			...configuration,
 			channel: 'telegram',
 			recipient: { kind: 'user', id: '1234' },
 		} as const;
-		expect(telegramHitl.createNode(telegram)).toMatchObject({
+		expect(createNode(telegram)).toMatchObject({
 			type: 'n8n-nodes-base.telegram',
 			parameters: { chatId: '1234' },
 		});
-		expect(() =>
-			telegramHitl.createNode({ ...telegram, recipient: { kind: 'user', id: '@name' } }),
-		).toThrow('numeric');
+		expect(() => createNode({ ...telegram, recipient: { kind: 'user', id: '@name' } })).toThrow(
+			'numeric',
+		);
 	});
 	it.each(['channel', 'user'] as const)('uses Discord %s destinations', (kind) => {
 		if (!discordHitl.supported) throw new Error('Expected Discord support');

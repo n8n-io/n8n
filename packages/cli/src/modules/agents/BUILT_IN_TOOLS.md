@@ -95,6 +95,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 - Slack user and channel searches read up to five directory pages of 200 entries per call. They stop when a page has matches or the directory ends. If five pages have no matches and more remain, the tool returns `CONTEXT_SEARCH_INCOMPLETE` and `nextQuery` to continue. Only a completed search returns a successful empty list.
 - Slack user and channel searches return `nextCursor` when more results remain. The cursor retains unused matches from the current page and binds the search criteria and filters. Keep the same search inputs when you continue. Use `get_channel_info` when the channel ID is known.
 - Teams and Linear user searches use platform filters. They return a continuation cursor when the platform has another page.
+- Actions that need approval require a short `__approvalDescription` from the model. The runtime shows this description in the request and removes it from the action inputs. Actions that do not need approval do not require this field.
 - Source: [`integrations/integration-tool-factory.ts`](./integrations/integration-tool-factory.ts).
 
 ### `delegate_subagent`

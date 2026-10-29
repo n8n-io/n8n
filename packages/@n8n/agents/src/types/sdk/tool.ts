@@ -88,6 +88,8 @@ export interface ToolContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	/** Short explanation supplied by the model for this approval request. */
+	approvalDescription?: string;
 	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
@@ -120,6 +122,8 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	/** Short explanation supplied by the model for this approval request. */
+	approvalDescription?: string;
 	/** The payload this tool passed to `suspend()` when it suspended, restored from the checkpoint. Only set when the tool is being resumed. */
 	suspendPayload?: S;
 	/** Private continuation this tool passed to `suspend()`, restored from the checkpoint. */

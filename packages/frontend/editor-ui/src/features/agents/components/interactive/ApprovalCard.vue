@@ -62,7 +62,8 @@ function submit(key: string) {
 			i18n.baseText('agents.chat.approval.description', { interpolate: { toolName: toolLabel } })
 		"
 		:labels="approvalLabels"
-		:args="input.args"
+		:description="input.description"
+		:args="input.description ? undefined : input.args"
 		:supports-session-approval="input.supportsSessionApproval"
 		:disabled="disabled"
 		:auto-focus="autoFocus"

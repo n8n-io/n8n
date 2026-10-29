@@ -9,6 +9,7 @@ interface ApprovalSuspendPayload {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	description?: string;
 	supportsSessionApproval?: boolean;
 }
 
@@ -48,7 +49,7 @@ function getApprovalToolLabel(payload: ApprovalSuspendPayload): string {
 		: payload.toolName;
 }
 
-function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
+export function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
 	title: string;
 	components: Array<{ type: string; [key: string]: unknown }>;
 } {
@@ -59,6 +60,9 @@ function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
 		title: 'Approval required',
 		components: [
 			{ type: 'section', text: `The agent wants to run this tool: ${toolLabel}` },
+			...(typeof payload.description === 'string' && payload.description.trim()
+				? [{ type: 'section', text: payload.description.trim() }]
+				: []),
 			{ type: 'fields', fields },
 			{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
 			...(payload.supportsSessionApproval === true
