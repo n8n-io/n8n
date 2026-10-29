@@ -8,7 +8,7 @@ import { entityManagerOf } from '../services/typeorm-transaction';
 /**
  * Runs one fold step in its own savepoint, so a failure undoes only that step before it is
  * rethrown. `TransactionRunner.run` joins an outer transaction and cannot do this.
- * @throws FoldTransactionLostError when `ROLLBACK TO SAVEPOINT` fails.
+ * @throws FoldTransactionLostError when `ROLLBACK TO` or the `RELEASE` after it fails.
  */
 export async function withSavepoint<T>(
 	ctx: OperationContext,
@@ -27,12 +27,16 @@ export async function withSavepoint<T>(
 		await manager.query(`RELEASE SAVEPOINT ${savepoint}`);
 		return result;
 	} catch (stepError) {
-		try {
-			// ROLLBACK TO keeps the savepoint open. COMMIT releases it, so no RELEASE can fail here.
-			await manager.query(`ROLLBACK TO SAVEPOINT ${savepoint}`);
-		} catch (rollbackError) {
-			throw new FoldTransactionLostError(savepoint, stepError, rollbackError);
-		}
+		const restore = async (statement: string) => {
+			try {
+				await manager.query(statement);
+			} catch (statementError) {
+				throw new FoldTransactionLostError(statement, stepError, statementError);
+			}
+		};
+		await restore(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+		// ROLLBACK TO keeps the savepoint open. Left open, it would catch a later same-named rollback.
+		await restore(`RELEASE SAVEPOINT ${savepoint}`);
 		throw stepError;
 	}
 }
