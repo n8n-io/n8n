@@ -514,6 +514,22 @@ describe('UserSelect', () => {
 		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('NP'));
 	});
 
+	it('should not show an empty avatar when no user is selected', () => {
+		const { queryByTestId } = renderComponent({
+			props: { users: sampleUsers, showAvatar: true },
+		});
+
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+	});
+
+	it('should show the select chevron for a remote search when remoteShowSuffix is set', () => {
+		const { container } = renderComponent({
+			props: { users: sampleUsers, remote: true, remoteShowSuffix: true },
+		});
+
+		expect(container.querySelector('.el-select__caret')).toBeInTheDocument();
+	});
+
 	it('should not show an avatar by default', () => {
 		const { queryByTestId } = renderComponent({
 			props: { users: sampleUsers, modelValue: 'u1' },

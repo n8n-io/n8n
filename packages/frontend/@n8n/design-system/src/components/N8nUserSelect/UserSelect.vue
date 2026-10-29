@@ -134,13 +134,13 @@ const getLabel = (user: IUser) => {
 		:size="size"
 		:remote="remote"
 		:loading="loading"
-		:class="{ [$style.withAvatar]: showAvatar, [$style.borderless]: borderless }"
+		:class="{ [$style.withAvatar]: showAvatar && selectedUser, [$style.borderless]: borderless }"
 		@blur="onBlur"
 		@focus="onFocus"
 	>
-		<template v-if="showAvatar || $slots.prefix" #prefix>
+		<template v-if="(showAvatar && selectedUser) || $slots.prefix" #prefix>
 			<N8nAvatar
-				v-if="showAvatar"
+				v-if="showAvatar && selectedUser"
 				size="xsmall"
 				:first-name="avatarNames.firstName"
 				:last-name="avatarNames.lastName"

@@ -19,7 +19,7 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, type ComponentPublicInstance } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 
@@ -28,6 +28,7 @@ import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { useEnvironmentsVersionSwitch } from '@/features/shared/promotions/useEnvironmentsVersionSwitch';
 import PromotionEnvironmentCard from '../components/PromotionEnvironmentCard.vue';
+import { PROTOTYPE_MISSING_PROJECTS } from '../prototypeMissingProjects';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
 import { useInstanceProtection } from '../composables/useInstanceProtection';
 import { usePromotionCheckout } from '../composables/usePromotionCheckout';
@@ -64,6 +65,11 @@ const {
 } = useInstanceProtection();
 
 const environments = ref<Partial<Record<PromotionDirection, PromotionEnvironment>>>({});
+// Prototype preview: the Apply card otherwise always shows the fixture projects.
+const showNoMissingProjects = ref(false);
+const missingProjects = computed(() =>
+	showNoMissingProjects.value ? [] : PROTOTYPE_MISSING_PROJECTS,
+);
 const isInitialLoading = ref(true);
 const loadError = ref(false);
 const busy = reactive(new Map<string, 'retry' | 'remove'>());
@@ -194,6 +200,7 @@ async function remove(environment: PromotionEnvironment) {
 							:busy="busy.get(environments[direction].id)"
 							:connect-error="connectErrors.get(environments[direction].id)"
 							:can-connect="canConnect"
+							:missing-projects="direction === 'apply' ? missingProjects : undefined"
 							:data-test-id="`promotion-environment-card-${direction}`"
 							@retry="retry(environments[direction])"
 							@edit="
@@ -265,6 +272,12 @@ async function remove(environment: PromotionEnvironment) {
 				</template>
 			</I18nT>
 		</N8nText>
+		<N8nSwitch
+			v-model="showNoMissingProjects"
+			:class="$style.prototypeState"
+			:label="i18n.baseText('settings.promotions.apply.newProjects.prototype.none')"
+			data-test-id="prototype-no-missing-projects"
+		/>
 	</N8nSettingsLayout>
 </template>
 
@@ -307,6 +320,17 @@ async function remove(environment: PromotionEnvironment) {
 	color: inherit;
 	text-decoration: underline;
 	cursor: pointer;
+}
+
+.prototypeState {
+	position: fixed;
+	right: var(--spacing--md);
+	bottom: var(--spacing--md);
+	z-index: 20;
+	padding: var(--spacing--xs) var(--spacing--sm);
+	background-color: var(--color--background--light-3);
+	border: var(--border-width) solid var(--border-color--subtle);
+	border-radius: var(--radius--lg);
 }
 
 .empty {
