@@ -8,8 +8,13 @@ import {
 } from '@n8n/backend-test-utils';
 import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
-import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
+import {
+	WORKFLOW_DEPENDENCY_INDEX_VERSION,
+	WorkflowDependencyRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
+import { IsNull, Not } from '@n8n/typeorm';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -208,7 +213,7 @@ describe('WorkflowIndexService Integration', () => {
 						nodeId: 'node-1',
 						nodeVersion: 1,
 					},
-					indexVersionId: 2,
+					indexVersionId: WORKFLOW_DEPENDENCY_INDEX_VERSION,
 				});
 			});
 		});
@@ -323,6 +328,38 @@ describe('WorkflowIndexService Integration', () => {
 			const publishedNodeTypes = getDependencyKeys(publishedDeps, 'nodeType').sort();
 			expect(publishedNodeTypes).toEqual(['n8n-nodes-base.httpRequest', 'n8n-nodes-base.webhook']);
 			expect(getDependencyKeys(publishedDeps, 'webhookPath')).toContain('my-webhook');
+		});
+
+		it('should record the error workflow from the settings in the draft index', async () => {
+			const workflow = await createWorkflow({
+				nodes: [httpRequestNode],
+				settings: { errorWorkflow: 'error-workflow-1' },
+			});
+			// A newer version than the indexed one makes the startup scan pick the workflow up.
+			await workflowRepository.update(workflow.id, { versionCounter: 2 });
+
+			await workflowIndexService.buildIndex();
+
+			const draftDeps = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id, publishedVersionId: IsNull() },
+			});
+			expect(getDependencyKeys(draftDeps, 'errorWorkflow')).toEqual(['error-workflow-1']);
+		});
+
+		it('should record the error workflow from the settings in the published index', async () => {
+			const workflow = await createWorkflow({
+				nodes: [httpRequestNode],
+				settings: { errorWorkflow: 'error-workflow-1' },
+			});
+			await createWorkflowHistory(workflow);
+			await setActiveVersion(workflow.id, workflow.versionId);
+
+			await workflowIndexService.buildIndex();
+
+			const publishedDeps = await workflowDependencyRepository.find({
+				where: { workflowId: workflow.id, publishedVersionId: Not(IsNull()) },
+			});
+			expect(getDependencyKeys(publishedDeps, 'errorWorkflow')).toEqual(['error-workflow-1']);
 		});
 	});
 
