@@ -5,6 +5,7 @@ import { Service } from '@n8n/di';
 import {
 	SkillSourceCredentials,
 	type ResolvedSkillSourceCredential,
+	type SkillSourceCredentialScope,
 } from './skill-source-credentials.contracts';
 
 /**
@@ -43,7 +44,7 @@ export class SkillSourceCredentialsProxy extends SkillSourceCredentials {
 
 	async resolve(
 		credentialId: string,
-		scope: { projectId: string | null; user?: User; types: readonly string[] },
+		scope: SkillSourceCredentialScope,
 	): Promise<ResolvedSkillSourceCredential | null> {
 		if (!this.impl) return null;
 		return await this.impl.resolve(credentialId, scope);

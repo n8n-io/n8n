@@ -203,6 +203,20 @@ describe('GitHubSkillSourceClient', () => {
 			if (ok) expect(read()).toEqual({ token: 't', credentialType: credential.type });
 			else expect(read).toThrow(SkillSourceReadError);
 		});
+
+		it('checks a GitHub App before it has a token, and refuses one for another server', () => {
+			const app = { appId: '1', installationId: '42', privateKey: 'key' };
+
+			expect(() =>
+				client.checkCredential({ type: 'githubAppApi', data: { ...app, accessToken: '' } }),
+			).not.toThrow();
+			expect(() =>
+				client.checkCredential({
+					type: 'githubAppApi',
+					data: { ...app, server: 'https://git.acme.dev/api/v3' },
+				}),
+			).toThrow(SkillSourceReadError);
+		});
 	});
 
 	describe('links', () => {

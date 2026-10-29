@@ -70,6 +70,8 @@ describe('Skill Sync with credentials', () => {
 	let ownerCredential: CredentialsEntity;
 	let memberCredential: CredentialsEntity;
 	let appCredential: CredentialsEntity;
+	let enterpriseAppCredential: CredentialsEntity;
+	let restrictedAppCredential: CredentialsEntity;
 
 	const ghCredential = (name: string, accessToken: string, type = 'githubApi') => ({
 		name,
@@ -121,6 +123,23 @@ describe('Skill Sync with credentials', () => {
 			},
 			inProject(team),
 		);
+		const app = { appId: '1', installationId: '42', privateKey, accessToken: '' };
+		enterpriseAppCredential = await saveCredential(
+			{
+				name: 'Enterprise GitHub App',
+				type: 'githubAppApi',
+				data: { ...app, server: 'https://git.acme.dev/api/v3' },
+			},
+			inProject(team),
+		);
+		restrictedAppCredential = await saveCredential(
+			{
+				name: 'Restricted GitHub App',
+				type: 'githubAppApi',
+				data: { ...app, allowedHttpRequestDomains: 'domains', allowedDomains: 'example.com' },
+			},
+			inProject(team),
+		);
 	});
 
 	beforeEach(async () => {
@@ -153,7 +172,13 @@ describe('Skill Sync with credentials', () => {
 				`/skill-sources/credentials?scope=project&projectId=${team.id}`,
 			);
 
-			expect(names(data)).toEqual(['Expired', 'Team GitHub', 'Team GitHub App']);
+			expect(names(data)).toEqual([
+				'Enterprise GitHub App',
+				'Expired',
+				'Restricted GitHub App',
+				'Team GitHub',
+				'Team GitHub App',
+			]);
 			expect(data.map(({ id }) => id)).not.toContain(oauthCredential.id);
 			expect(data.map(({ id }) => id)).not.toContain(otherTeamCredential.id);
 		});
@@ -253,6 +278,35 @@ describe('Skill Sync with credentials', () => {
 			});
 
 			expect(exchange.isDone()).toBe(true);
+		});
+
+		it('refuses a GitHub App for another server before it mints a token', async () => {
+			const exchange = nock('https://git.acme.dev')
+				.post('/api/v3/app/installations/42/access_tokens')
+				.reply(201, { token: TOKEN });
+
+			const { meta } = await post(
+				editor,
+				'/skill-sources/discover',
+				{ url: PRIVATE, ...scope(), credentialId: enterpriseAppCredential.id },
+				400,
+			);
+
+			expect(meta).toEqual({ reason: 'credential_invalid' });
+			expect(exchange.isDone()).toBe(false);
+		});
+
+		it('holds the token exchange of a GitHub App to the allowed domains of the credential', async () => {
+			const exchange = nock('https://api.github.com')
+				.post('/app/installations/42/access_tokens')
+				.reply(201, { token: TOKEN });
+
+			const response = await editor
+				.post('/skill-sources/discover')
+				.send({ url: PRIVATE, ...scope(), credentialId: restrictedAppCredential.id });
+
+			expect(response.status).toBeGreaterThanOrEqual(400);
+			expect(exchange.isDone()).toBe(false);
 		});
 
 		it('reports a token that GitHub refuses as credential_invalid', async () => {

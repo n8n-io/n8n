@@ -445,6 +445,9 @@ async function onNext() {
 }
 
 function onBack() {
+	// A read still running answers for a step the user left, so it is dropped.
+	discoverRun += 1;
+	discovering.value = false;
 	step.value = step.value === 'choose' ? 'repository' : 'start';
 }
 

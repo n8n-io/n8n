@@ -8,6 +8,7 @@ export { SkillUsageProxy } from './services/skill-usage-proxy.service';
 export {
 	SkillSourceCredentials,
 	type ResolvedSkillSourceCredential,
+	type SkillSourceCredentialScope,
 } from './services/skill-source-credentials.contracts';
 export { SkillSourceCredentialsProxy } from './services/skill-source-credentials-proxy.service';
 export type {

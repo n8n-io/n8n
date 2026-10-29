@@ -370,10 +370,7 @@ export class SkillSourceService {
 		await this.flagGate.assertEnabled(user);
 		const { target } = await this.resolveScope(user, query);
 		const credential = await this.resolveCredential(user, query.credentialId, target.projectId);
-		const client = this.clients
-			.types()
-			.map((type) => this.clients.get(type))
-			.find((candidate) => candidate?.credentialTypes.includes(credential.type));
+		const client = this.clientFor(credential.type);
 		if (!client?.listRepositories) {
 			throw new SkillSourceRequestError(
 				'credential_invalid',
@@ -397,11 +394,17 @@ export class SkillSourceService {
 		credentialId: string,
 		projectId: string | null,
 	): Promise<ResolvedSkillSourceCredential> {
-		const credential = await this.credentials.resolve(credentialId, {
-			projectId,
-			user,
-			types: this.credentialTypes(),
-		});
+		let credential: ResolvedSkillSourceCredential | null;
+		try {
+			credential = await this.credentials.resolve(credentialId, {
+				projectId,
+				user,
+				types: this.credentialTypes(),
+				check: (resolved) => this.clientFor(resolved.type)?.checkCredential?.(resolved),
+			});
+		} catch (error) {
+			throw toSkillSourceRequestError(error);
+		}
 		if (!credential) {
 			throw new SkillSourceRequestError(
 				'credential_out_of_scope',
@@ -411,6 +414,14 @@ export class SkillSourceService {
 			);
 		}
 		return credential;
+	}
+
+	/** The client that reads with credentials of this type. */
+	private clientFor(credentialType: string) {
+		return this.clients
+			.types()
+			.map((type) => this.clients.get(type))
+			.find((candidate) => candidate?.credentialTypes.includes(credentialType));
 	}
 
 	private credentialTypes(): string[] {

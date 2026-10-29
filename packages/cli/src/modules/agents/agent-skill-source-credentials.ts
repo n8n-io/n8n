@@ -11,10 +11,13 @@ import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { ICredentialDataDecryptedObject, IHttpRequestHelper } from 'n8n-workflow';
 
-import { CredentialTypes } from '@/credential-types';
 import { CredentialsHelper } from '@/credentials-helper';
 import { CredentialsService } from '@/credentials/credentials.service';
-import { SkillSourceCredentials, type ResolvedSkillSourceCredential } from '@/modules/skills';
+import {
+	SkillSourceCredentials,
+	type ResolvedSkillSourceCredential,
+	type SkillSourceCredentialScope,
+} from '@/modules/skills';
 
 import { decryptAgentCredential } from './utils/decrypt-agent-credential';
 
@@ -29,7 +32,6 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 	constructor(
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialsHelper: CredentialsHelper,
-		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly projectRepository: ProjectRepository,
@@ -57,9 +59,9 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 
 	async resolve(
 		credentialId: string,
-		scope: { projectId: string | null; user?: User; types: readonly string[] },
+		scope: SkillSourceCredentialScope,
 	): Promise<ResolvedSkillSourceCredential | null> {
-		const { projectId, user, types } = scope;
+		const { projectId, user, types, check } = scope;
 		const credential = await this.credentialsRepository.findOneBy({ id: credentialId });
 		if (!credential || !types.includes(credential.type)) return null;
 		if (user && !(await this.usableBy(user, projectId)).some(({ id }) => id === credentialId)) {
@@ -75,6 +77,7 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 			projectId: decryptIn,
 			userId: user?.id,
 		});
+		check?.({ type: credential.type, data });
 		return { type: credential.type, data: await this.withFreshToken(credential.type, data) };
 	}
 
@@ -107,18 +110,18 @@ export class AgentSkillSourceCredentials extends SkillSourceCredentials {
 
 	/**
 	 * A type that mints short-lived tokens, such as a GitHub App, gets a new one from its own
-	 * `preAuthentication`. The token is not stored: the next resolve mints another.
+	 * `preAuthentication`, held to the allowed domains of the credential. The token is not
+	 * stored: the next resolve mints another.
 	 */
 	private async withFreshToken(
 		type: string,
 		data: ICredentialDataDecryptedObject,
 	): Promise<Record<string, unknown>> {
-		const { preAuthentication } = this.credentialTypes.getByName(type);
-		if (typeof preAuthentication !== 'function') return data;
 		const http = this.outboundHttp.requests();
 		const helper: IHttpRequestHelper = {
 			helpers: { httpRequest: async (options) => await http.request(options) },
 		};
-		return { ...data, ...(await preAuthentication.call(helper, data)) };
+		const fresh = await this.credentialsHelper.runPreAuthentication(helper, data, type);
+		return fresh ? { ...data, ...fresh } : data;
 	}
 }

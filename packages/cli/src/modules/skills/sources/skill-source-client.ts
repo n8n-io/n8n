@@ -85,6 +85,13 @@ export abstract class SkillSourceClient {
 	abstract authFrom(credential: { type: string; data: Record<string, unknown> }): SkillSourceAuth;
 
 	/**
+	 * Refuses a decrypted credential that this client cannot use, such as one for another
+	 * host, with the errors of `authFrom`. It runs before a fresh token is minted, so the
+	 * credential sends no request for a source that refuses it.
+	 */
+	checkCredential?(credential: { type: string; data: Record<string, unknown> }): void;
+
+	/**
 	 * The repositories that the access can read, sorted, and whether there are more than the
 	 * client lists. Only for source types where a credential can browse its sources.
 	 */

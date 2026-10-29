@@ -126,6 +126,16 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 
 	/** Both credential types hold the token in `accessToken`. A GitHub App gets a fresh one. */
 	authFrom(credential: { type: string; data: Record<string, unknown> }): SkillSourceAuth {
+		this.checkCredential(credential);
+		const { type, data } = credential;
+		if (typeof data.accessToken !== 'string' || data.accessToken === '') {
+			throw new SkillSourceReadError('credential_invalid', 'The credential has no token.');
+		}
+		return { token: data.accessToken, credentialType: type };
+	}
+
+	/** A credential of another type, or for another GitHub server, is refused. */
+	checkCredential(credential: { type: string; data: Record<string, unknown> }): void {
 		const { type, data } = credential;
 		if (!this.credentialTypes.includes(type)) {
 			throw new SkillSourceReadError('credential_invalid', 'GitHub cannot use this credential.');
@@ -138,10 +148,6 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 				'Skill Sync reads github.com only. This credential is for another GitHub server.',
 			);
 		}
-		if (typeof data.accessToken !== 'string' || data.accessToken === '') {
-			throw new SkillSourceReadError('credential_invalid', 'The credential has no token.');
-		}
-		return { token: data.accessToken, credentialType: type };
 	}
 
 	async parseLocator(input: string, auth?: SkillSourceAuth): Promise<SkillSourceLocator> {

@@ -611,6 +611,24 @@ describe('SkillSourceConnectDialog', () => {
 		expect(view.emitted('update:open')).toBeUndefined();
 	});
 
+	it('stays on the start when the user goes back while n8n reads the link', async () => {
+		let answer: (value: SkillSourceDiscovery) => void = () => {};
+		skillsStore.discoverSource.mockReturnValue(
+			new Promise<SkillSourceDiscovery>((resolve) => {
+				answer = resolve;
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+		await userEvent.click(view.getByTestId('skill-source-back'));
+		answer(discovery());
+		await new Promise(process.nextTick);
+
+		expect(view.getByTestId('dialog-title')).toHaveTextContent('Connect a source');
+		expect(view.queryByTestId('skill-source-add')).not.toBeInTheDocument();
+	});
+
 	describe('credentials', () => {
 		it('lists the token credentials of the scope and never an OAuth2 credential', async () => {
 			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, APP, OAUTH]);
@@ -777,6 +795,55 @@ describe('SkillSourceConnectDialog', () => {
 				);
 			},
 		);
+
+		it('creates a credential in the account mode and lists its repositories', async () => {
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN]);
+			skillsStore.fetchSourceRepositories.mockResolvedValue(REPOSITORIES);
+			const view = render();
+			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+
+			await pick(view, 'skill-source-credential-select', '+ Connect a new GitHub account');
+
+			expect(uiStore.openNewCredential).toHaveBeenCalledWith(
+				'githubApi',
+				false,
+				false,
+				'personal-1',
+				undefined,
+				undefined,
+				undefined,
+				expect.objectContaining({ onCredentialCreated: expect.any(Function) }),
+			);
+			const created = { id: 'cred-9', name: 'New token', type: 'githubApi' };
+			skillsStore.fetchSourceCredentials.mockResolvedValue([TOKEN, created]);
+			const options = uiStore.openNewCredential.mock.calls[0][7];
+			options?.onCredentialCreated?.({ id: 'cred-9' });
+
+			await waitFor(() =>
+				expect(skillsStore.fetchSourceRepositories).toHaveBeenLastCalledWith({
+					scope: 'instance',
+					credentialId: 'cred-9',
+				}),
+			);
+			expect(await view.findByTestId('skill-source-credential-created')).toBeInTheDocument();
+		});
+
+		it('says when the credentials cannot load, and lists none', async () => {
+			skillsStore.fetchSourceCredentials.mockRejectedValue(new Error('Network down'));
+			const view = render();
+
+			await userEvent.click(view.getByTestId('skill-source-mode-account'));
+
+			await waitFor(() =>
+				expect(showErrorMock).toHaveBeenCalledWith(
+					expect.any(Error),
+					'Could not load the credentials',
+				),
+			);
+			expect(skillsStore.fetchSourceRepositories).not.toHaveBeenCalled();
+			expect(view.getByTestId('skill-source-owner-select').querySelector('input')).toBeDisabled();
+			expect(view.getByTestId('skill-source-next')).toBeDisabled();
+		});
 
 		it('opens the credential modal for a GitHub App installation too', async () => {
 			const view = render();
