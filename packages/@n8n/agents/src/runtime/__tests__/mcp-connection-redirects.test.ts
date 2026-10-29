@@ -1,4 +1,4 @@
-import { createRefreshingAuthFetch } from '@n8n/ai-utilities';
+import { createRefreshingAuthFetch } from '@n8n/ai-utilities/refreshing-auth-fetch';
 import http from 'node:http';
 
 import {
@@ -10,11 +10,13 @@ import { McpConnection } from '../mcp/mcp-connection';
 // Regression guard: configured headers stay within the starting origin. Ref: #42559.
 describe.each(['streamableHttp', 'sse'] as const)('McpConnection %s redirects', (transport) => {
 	it.each([
-		{ status: 307, customFetch: false },
-		{ status: 308, customFetch: false },
-		{ status: 307, customFetch: true },
-		{ status: 308, customFetch: true },
-	])('connects through $status with customFetch=$customFetch', async ({ status, customFetch }) => {
+		{ status: 307, fetchMode: 'default' },
+		{ status: 308, fetchMode: 'default' },
+		{ status: 307, fetchMode: 'guarded' },
+		{ status: 308, fetchMode: 'guarded' },
+		{ status: 307, fetchMode: 'plain' },
+		{ status: 308, fetchMode: 'plain' },
+	])('connects through $status with a $fetchMode fetch', async ({ status, fetchMode }) => {
 		const server = transport === 'sse' ? await startSseServer() : await startStreamableHttpServer();
 		const redirector = http.createServer((request, response) => {
 			const path = request.url ?? '/';
@@ -39,7 +41,7 @@ describe.each(['streamableHttp', 'sse'] as const)('McpConnection %s redirects', 
 			url,
 			transport,
 			connectionTimeoutMs: 5_000,
-			...(customFetch
+			...(fetchMode === 'guarded'
 				? {
 						fetch: createRefreshingAuthFetch({
 							baseFetch: wire,
@@ -47,7 +49,7 @@ describe.each(['streamableHttp', 'sse'] as const)('McpConnection %s redirects', 
 							assertAllowedUrl,
 						}),
 					}
-				: { headers }),
+				: { headers, ...(fetchMode === 'plain' ? { fetch: wire } : {}) }),
 		});
 
 		try {
@@ -80,7 +82,7 @@ describe.each(['streamableHttp', 'sse'] as const)('McpConnection %s redirects', 
 					expect(new Headers(init?.headers).get(name)).toBe(value);
 				}
 			}
-			if (customFetch) {
+			if (fetchMode === 'guarded') {
 				expect(assertAllowedUrl).toHaveBeenCalledWith(url);
 				expect(assertAllowedUrl).toHaveBeenCalledWith(server.url);
 			}

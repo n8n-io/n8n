@@ -126,11 +126,11 @@ export class McpConnection {
 	private async doConnect(): Promise<void> {
 		const sdk = await loadMcpSdk();
 		this.httpFetch = this.config.fetch;
-		if (this.config.url && !this.httpFetch) {
-			const { createRefreshingAuthFetch } = await import('@n8n/ai-utilities');
-			// Let the default fetch scope configured auth headers to redirect origins.
+		// Custom fetches can manage auth across redirects when no extra headers are configured.
+		if (this.config.url && (!this.httpFetch || this.config.headers)) {
+			const { createRefreshingAuthFetch } = await import('@n8n/ai-utilities/refreshing-auth-fetch');
 			this.httpFetch = createRefreshingAuthFetch({
-				baseFetch: globalThis.fetch,
+				baseFetch: this.httpFetch ?? globalThis.fetch,
 				initialHeaders: this.config.headers,
 			});
 		}
@@ -159,7 +159,7 @@ export class McpConnection {
 			await this.client?.close();
 			this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 			await this.connectWithTransport(
-				this.createSseTransport(new URL(this.config.url), this.config, sdk),
+				this.createSseTransport(new URL(this.config.url), sdk),
 				deadline,
 			);
 		}
@@ -329,12 +329,9 @@ export class McpConnection {
 			});
 		} else if (config.url) {
 			const url = new URL(config.url);
-			const requestInit: RequestInit | undefined =
-				config.fetch && config.headers ? { headers: config.headers } : undefined;
 
-			if (config.transport === 'sse') return this.createSseTransport(url, config, sdk);
+			if (config.transport === 'sse') return this.createSseTransport(url, sdk);
 			return new sdk.StreamableHTTPClientTransport(url, {
-				requestInit,
 				fetch: this.httpFetch,
 				redirectPolicy: 'follow',
 			});
@@ -342,9 +339,8 @@ export class McpConnection {
 		throw new Error(`MCP server "${config.name}": provide either "url" or "command"`);
 	}
 
-	private createSseTransport(url: URL, config: McpServerConfig, sdk: McpSdkModule): McpTransport {
+	private createSseTransport(url: URL, sdk: McpSdkModule): McpTransport {
 		return new sdk.SSEClientTransport(url, {
-			requestInit: config.fetch && config.headers ? { headers: config.headers } : undefined,
 			fetch: this.httpFetch,
 			eventSourceInit: { fetch: this.httpFetch },
 			redirectPolicy: 'follow',
