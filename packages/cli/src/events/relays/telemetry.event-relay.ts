@@ -994,6 +994,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && {
@@ -1016,6 +1017,7 @@ export class TelemetryEventRelay extends EventRelay {
 			jwe_enabled: jweEnabled ?? false,
 			credential_supports_managed_auth: supportsManagedAuth ?? false,
 			credential_uses_managed_auth: usesManagedAuth ?? false,
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 
@@ -1048,6 +1050,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && { source: 'backend' }),
@@ -1064,6 +1067,7 @@ export class TelemetryEventRelay extends EventRelay {
 			jwe_enabled: jweEnabled ?? false,
 			credential_supports_managed_auth: supportsManagedAuth ?? false,
 			credential_uses_managed_auth: usesManagedAuth ?? false,
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 
