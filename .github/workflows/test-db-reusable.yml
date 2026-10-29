@@ -8,7 +8,7 @@ on:
         type: string
         default: ''
       matrix:
-        description: 'Job matrix JSON, from .github/scripts/db-test-matrix.mjs.'
+        description: 'Job matrices JSON ({ integration, migration }), from .github/scripts/db-test-matrix.mjs.'
         required: true
         type: string
       run-migrations:
@@ -26,20 +26,19 @@ env:
   NODE_OPTIONS: '--max-old-space-size=6144'
 
 jobs:
+  # Shards, commands and per-shard steps come from db-test-matrix.mjs.
+  # This job runs each entry as given.
   integration:
-    name: ${{ matrix.leg.name }} Integration (${{ matrix.shard }}/2)
-    runs-on: ${{ matrix.leg.runner }}
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      # Split each leg across two runners. On one runner, a leg takes more
-      # than 10 minutes.
       matrix:
-        leg: ${{ fromJSON(inputs.matrix) }}
-        shard: [1, 2]
+        include: ${{ fromJSON(inputs.matrix).integration }}
     env:
-      TEST_IMAGE_POSTGRES: ${{ matrix.leg.TEST_IMAGE_POSTGRES }}
-      COVERAGE_ENABLED: ${{ matrix.leg.collectCoverage }}
+      TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
+      COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
       # With a change signal, the shared vitest config measures only the changed files.
       COVERAGE_SCOPE: ${{ inputs.changed-files != '' && 'changed-files' || 'all' }}
       CHANGED_FILES: ${{ inputs.changed-files }}
@@ -56,22 +55,21 @@ jobs:
 
       - name: Run Integration Tests
         working-directory: packages/cli
-        run: ${{ matrix.leg.test-cmd }} --shard=${{ matrix.shard }}/2
+        run: ${{ matrix.test-cmd }}
 
-      # The steps below are not sharded, so only the first shard runs them.
       # A packaged backend module opts in by defining `test:postgres`.
       - name: Run packaged backend module PostgreSQL tests
-        if: matrix.shard == 1 && matrix.leg.TEST_IMAGE_POSTGRES != ''
+        if: matrix.packaged-modules-cmd != ''
         env:
           COVERAGE_ENABLED: 'false'
-        run: pnpm --filter './packages/modules/*/backend' --if-present run test:postgres --maxWorkers=100%
+        run: ${{ matrix.packaged-modules-cmd }}
 
       # Regenerates the schema docs for this leg's database (sqlite temp file /
       # postgres testcontainer) and fails if they differ from what's committed.
       # tbls runs as a Docker image in CI.
       - name: Verify schema docs are up to date
-        if: matrix.shard == 1 && matrix.leg.schema-check-cmd != ''
-        run: ${{ matrix.leg.schema-check-cmd }}
+        if: matrix.schema-check-cmd != ''
+        run: ${{ matrix.schema-check-cmd }}
 
       # No report exists when the PR changes no cli source files.
       - name: Upload coverage to Codecov
@@ -85,14 +83,14 @@ jobs:
           fail_ci_if_error: false
 
   migration:
-    name: ${{ matrix.name }} Migrations
+    name: ${{ matrix.name }}
     if: inputs.run-migrations
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.matrix) }}
+        include: ${{ fromJSON(inputs.matrix).migration }}
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
     steps:
