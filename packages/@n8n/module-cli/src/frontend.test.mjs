@@ -151,7 +151,12 @@ describe('createFrontend', () => {
 			const manifest = JSON.parse(readFileSync(join(packageDir, 'package.json'), 'utf8'));
 
 			expect(manifest.scripts.lint).toBe('oxlint src --quiet && eslint src --quiet');
-			for (const dependency of ['@n8n/oxlint-config', 'oxlint', 'oxlint-tsgolint']) {
+			for (const dependency of [
+				'@n8n/eslint-plugin-design-system',
+				'@n8n/oxlint-config',
+				'oxlint',
+				'oxlint-tsgolint',
+			]) {
 				expect(Object.keys(manifest.devDependencies)).toContain(dependency);
 			}
 		});

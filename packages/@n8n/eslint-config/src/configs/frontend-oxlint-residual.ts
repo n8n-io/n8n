@@ -11,7 +11,7 @@ const residualScriptRules = new Set([
 
 const isResidualRule = (rule: string) =>
 	rule.startsWith('vue/') ||
-	rule.startsWith('@n8n/design-system/') ||
+	rule === '@n8n/design-system/require-teleported-tooltip-in-dropdown' ||
 	residualScriptRules.has(rule);
 
 export const frontendOxlintResidualConfig = frontendConfig.map((config) => ({
