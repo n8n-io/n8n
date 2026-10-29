@@ -368,6 +368,7 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 				>
 					<N8nMarkdownEditor
 						:class="$style.editor"
+						:container-class="$style.resizable"
 						:model-value="props.skill.instructions ?? ''"
 						:placeholder="i18n.baseText('agents.builder.skills.instructions.placeholder')"
 						show-toolbar="floating"
@@ -508,6 +509,18 @@ watch(formIsValid, (valid) => emit('update:valid', valid), { immediate: true });
 .editor {
 	:global(.n8n-markdown) {
 		min-height: calc(var(--height--5xl) + var(--spacing--sm));
+	}
+}
+
+/* The user drags the bottom edge to make the box taller or shorter. Doubled, so it wins over the
+   editor's own overflow. The text scrolls inside the editor's content, which clips it by default,
+   so a shorter box still shows all of it. */
+.resizable.resizable {
+	resize: vertical;
+	overflow: hidden;
+
+	:global([data-markdown-editor-content-wrapper]) {
+		overflow-y: auto;
 	}
 }
 

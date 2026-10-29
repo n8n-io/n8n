@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import cloneDeep from 'lodash/cloneDeep';
 import isEqual from 'lodash/isEqual';
-import { computed, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onMounted, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import {
 	AGENT_SKILL_DESCRIPTION_MAX_LENGTH,
@@ -157,6 +157,7 @@ const props = defineProps<{
 }>();
 
 const i18n = useI18n();
+const $style = useCssModule();
 const message = useMessage();
 const uiStore = useUIStore();
 const router = useRouter();
@@ -451,7 +452,8 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 					})
 				: i18n.baseText('agents.builder.skills.menu.addToThisAgent'),
 			icon: 'bot',
-			checked: true,
+			// The row draws a switch that is on: the skill is attached.
+			customClass: $style.menuItem,
 			testId: 'agent-skill-menu-attach',
 		});
 	}
@@ -459,10 +461,14 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 		items.push({
 			id: 'change-scope',
 			label: i18n.baseText('agents.builder.skills.menu.changeScope'),
-			icon: selectedScope.value?.icon ?? 'layers',
+			icon: 'globe',
 			disabled: !scopeEditable.value,
+			customClass: $style.menuItem,
 			testId: 'agent-skill-menu-change-scope',
-			children: scopeItems('agent-skill-menu-scope-option-'),
+			children: scopeItems('agent-skill-menu-scope-option-').map((item) => ({
+				...item,
+				customClass: $style.menuItem,
+			})),
 		});
 	}
 	if (isEditing.value && (props.data.onDelete || showAttachToggle.value)) {
@@ -470,12 +476,10 @@ const headerMenuItems = computed<Array<ActionDropdownItem<string>>>(() => {
 			id: 'delete',
 			label: i18n.baseText('agents.builder.skills.menu.delete'),
 			icon: 'trash-2',
-			variant: 'destructive',
 			divided: items.length > 0,
 			// A skill attached to this agent is in use, so the builder cannot delete it.
 			disabled: !props.data.onDelete || !!props.data.deleteDisabledReason || isSaving.value,
-			// The menu has no tooltip, so the reason shows under the label.
-			description: props.data.deleteDisabledReason,
+			customClass: [$style.menuItem, $style.deleteItem].join(' '),
 			testId: 'agent-skill-menu-delete',
 		});
 	}
@@ -794,6 +798,9 @@ const {
 const baseVersion = computed(() =>
 	isPinned.value ? props.data.agentVersions?.draft : versions.value?.[0]?.version,
 );
+
+/** The warning strip of a pinned skill. Compare mode and an opened version have their own bars. */
+const showPinnedBar = computed(() => isPinned.value && !viewedVersion.value && !comparison.value);
 /** The Versions panel shows beside the editor once its list has loaded. Compare mode hides it. */
 const showVersionsPanel = computed(
 	() => isFormStep.value && versionsOpen.value && !!versions.value && !comparison.value,
@@ -1113,7 +1120,9 @@ function onRemove() {
 		:show-cancel="step !== 'select' && !viewedVersion"
 		:cancel-label="isFormStep ? i18n.baseText('generic.close') : undefined"
 		:header-divider="isFormStep"
+		:header-divider-tone="showPinnedBar ? 'warning' : 'default'"
 		:body-flush="isFormStep"
+		:fixed-size="isFormStep"
 		:busy="isImporting || previewLoading || isSaving"
 		size="fit"
 		data-testid="agent-skill-modal"
@@ -1157,7 +1166,29 @@ function onRemove() {
 				activator-size="small"
 				data-testid="agent-skill-header-menu"
 				@select="onHeaderMenuSelect"
-			/>
+			>
+				<template #menuItem="item">
+					<span v-if="item.id === 'attach'" :class="$style.menuSwitchRow">
+						{{ item.label }}
+						<!-- The whole row toggles, so the switch only shows the state. -->
+						<N8nSwitch
+							:model-value="true"
+							:class="$style.menuSwitch"
+							tabindex="-1"
+							aria-hidden="true"
+							data-testid="agent-skill-menu-attach-switch"
+						/>
+					</span>
+					<N8nTooltip
+						v-else-if="item.id === 'delete' && data.deleteDisabledReason"
+						:content="data.deleteDisabledReason"
+						placement="right"
+					>
+						<span data-testid="agent-skill-menu-delete-reason">{{ item.label }}</span>
+					</N8nTooltip>
+					<template v-else>{{ item.label }}</template>
+				</template>
+			</N8nActionDropdown>
 		</template>
 		<template v-if="isFormStep && (showAssistantToggle || latestVersion)" #headerActions>
 			<N8nSwitch
@@ -1311,7 +1342,7 @@ function onRemove() {
 				</N8nButton>
 			</div>
 			<div
-				v-else-if="isPinned && !viewedVersion && data.agentVersions"
+				v-else-if="showPinnedBar && data.agentVersions"
 				:class="$style.pinnedBar"
 				data-testid="agent-skill-pinned-bar"
 			>
@@ -1343,13 +1374,7 @@ function onRemove() {
 				<N8nIcon icon="history" :size="14" />
 				<N8nText size="small">{{ viewingText }}</N8nText>
 			</div>
-			<div
-				:class="[
-					$style.content,
-					isFormStep && $style.contentFlush,
-					showVersionsPanel && $style.contentBesidePanel,
-				]"
-			>
+			<div :class="[$style.content, isFormStep && $style.contentFlush]">
 				<AgentSkillUpload
 					v-if="step === 'upload'"
 					v-model:busy="isImporting"
@@ -1545,6 +1570,26 @@ function onRemove() {
 	margin-bottom: var(--spacing--md);
 }
 
+/* The header menu, as the design: grey icons and check mark, a red Delete when it is allowed. */
+.menuItem :global(svg) {
+	color: var(--color--text--tint-1);
+}
+
+.deleteItem:not([data-disabled]) {
+	color: var(--color--danger);
+}
+
+.menuSwitchRow {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--lg);
+}
+
+.menuSwitch {
+	pointer-events: none;
+}
+
 /* A pinned skill: a warning strip over the file list and the form, as the design does. */
 .pinnedBar {
 	display: flex;
@@ -1606,17 +1651,13 @@ function onRemove() {
 	margin: var(--spacing--md) var(--spacing--lg) 0;
 }
 
-/* The file list runs to the edges of the modal and each column keeps its own inset. */
+/* The file list runs to the edges of the modal and each column keeps its own inset. The modal has
+   a fixed size on these steps, so the columns fill it, beside the Versions panel or not. */
 .contentFlush {
 	gap: 0;
 	align-items: stretch;
-}
-
-/* Beside the Versions panel, the editor gives up the width of the panel. */
-@media (min-width: 769px) {
-	.contentBesidePanel {
-		width: min(52rem, calc(100dvw - var(--spacing--lg) * 3 - var(--spacing--5xl) * 1.25));
-	}
+	width: auto;
+	flex: 1;
 }
 
 /* Nested, so it wins over the file list's own background. */
