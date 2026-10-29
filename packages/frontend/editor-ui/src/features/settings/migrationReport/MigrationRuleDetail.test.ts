@@ -219,16 +219,7 @@ describe('MigrationRuleDetail', () => {
 					.getAllByRole('columnheader')
 					.map((th) => th.textContent?.replace(/[↑↓]/g, '').trim());
 				// The first column holds the select-all checkbox.
-				expect(titles).toEqual([
-					'',
-					'Name',
-					'Project',
-					'Nodes affected',
-					'Usage',
-					'Owner',
-					'State',
-					'',
-				]);
+				expect(titles).toEqual(['', 'Name', 'Nodes affected', 'Usage', 'Owner', 'State', '']);
 			});
 		});
 	});
@@ -1051,9 +1042,9 @@ describe('MigrationRuleDetail', () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => {
-				expect(screen.getByText(/^Published/)).toBeInTheDocument();
-				expect(screen.getByText(/^Not published/)).toBeInTheDocument();
+				expect(screen.getAllByTestId('migration-workflow-published')).toHaveLength(1);
 			});
+			expect(screen.getByTestId('migration-workflow-published')).toHaveAccessibleName('Published');
 		});
 
 		it('should display workflow run counts', async () => {
