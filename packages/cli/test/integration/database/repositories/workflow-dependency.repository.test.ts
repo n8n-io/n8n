@@ -366,6 +366,39 @@ describe('WorkflowDependencyRepository', () => {
 		});
 	});
 
+	describe('findWorkflowCalls()', () => {
+		it('should return workflow calls of the given published versions only', async () => {
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const add = async (dependencyKey: string, publishedVersionId: string | null) => {
+				const dependencies = new WorkflowDependencies(workflow.id, 1, publishedVersionId);
+				dependencies.add({ dependencyType: 'workflowCall', dependencyKey, dependencyInfo: null });
+				await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+			};
+			await add('old-child', 'old-version');
+			await add('draft-child', null);
+			await add('child', 'current-version');
+
+			const calls = await workflowDependencyRepository.findWorkflowCalls(['current-version']);
+
+			expect(calls).toEqual([{ workflowId: workflow.id, calledWorkflowId: 'child' }]);
+		});
+
+		it('should skip other dependency types', async () => {
+			const workflow = await createWorkflow({ versionId: 'v1', nodes: [] });
+			const dependencies = new WorkflowDependencies(workflow.id, 1, 'current-version');
+			dependencies.add({
+				dependencyType: 'credentialId',
+				dependencyKey: 'cred',
+				dependencyInfo: null,
+			});
+			await workflowDependencyRepository.updateDependenciesForWorkflow(workflow.id, dependencies);
+
+			const calls = await workflowDependencyRepository.findWorkflowCalls(['current-version']);
+
+			expect(calls).toEqual([]);
+		});
+	});
+
 	describe('removeDependenciesForWorkflow()', () => {
 		it('should remove all dependencies for a workflow', async () => {
 			//
