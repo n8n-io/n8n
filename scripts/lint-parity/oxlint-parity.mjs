@@ -35,9 +35,10 @@ function arg(name) {
 
 const pkgDir = arg('--pkg');
 const eslintFile = arg('--eslint');
+const includeResidualEslint = process.argv.includes('--residual-eslint');
 if (!pkgDir || !eslintFile) {
 	console.error(
-		'usage: oxlint-parity.mjs --pkg <pkgDir> --eslint <snapshot.json> [--gap <gap.json>]',
+		'usage: oxlint-parity.mjs --pkg <pkgDir> --eslint <snapshot.json> [--gap <gap.json>] [--residual-eslint]',
 	);
 	process.exit(2);
 }
@@ -205,7 +206,31 @@ if (sampled === 0) {
 	process.exit(2);
 }
 
+function resolvedResidualEslintRules() {
+	const rules = new Set();
+	if (!includeResidualEslint) return rules;
+
+	for (const file of sampledFiles) {
+		const out = spawnSync('pnpm', ['exec', 'eslint', '--print-config', file], {
+			cwd: join(root, pkgDir),
+			encoding: 'utf8',
+			maxBuffer: 32 * 1024 * 1024,
+		});
+		const start = out.stdout.indexOf('{');
+		if (start === -1) {
+			throw new Error(`eslint --print-config failed: ${(out.stderr || out.stdout).trim()}`);
+		}
+		const parsed = JSON.parse(out.stdout.slice(start));
+		for (const [id, severity] of Object.entries(parsed.rules ?? {})) {
+			if (isEnabled(severity)) rules.add(id);
+		}
+	}
+
+	return rules;
+}
+
 const { ids: jsPluginIds, overrideOnly, plugins } = await declaredJsPluginRules();
+const residualEslintRules = resolvedResidualEslintRules();
 
 const comparable = (id) => {
 	const overrides = overrideOnly.get(id);
@@ -219,6 +244,10 @@ const oxlintRules = new Set(
 const matched = [];
 const missing = [];
 for (const id of [...eslintRules].sort()) {
+	if (residualEslintRules.has(id)) {
+		matched.push(id);
+		continue;
+	}
 	const target = toOxlintId(id, native);
 	if (target && oxlintRules.has(canonical(target, native))) {
 		matched.push(id);
@@ -246,6 +275,7 @@ const undocumented = missing.filter((entry) => !isDocumented(entry));
 
 console.log(`${pkgDir}: ${sampled} sample files, ${eslintRules.size} ESLint rules at error`);
 console.log(`  jsPlugins declared: ${plugins.join(', ') || 'none'}`);
+if (includeResidualEslint) console.log(`  residual ESLint:    ${residualEslintRules.size} rules`);
 console.log(`  matched:            ${matched.length}`);
 console.log(
 	`  missing in oxlint:  ${missing.length} (${missing.length - undocumented.length} documented)`,
