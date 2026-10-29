@@ -1,6 +1,19 @@
-import type { ActionToggleItem } from '../N8nActionToggle/ActionToggle.types';
+import type { IconName } from '../N8nIcon/icons';
 
 export type VersionHistoryStatus = 'published' | 'latest' | 'default';
+
+/** One entry in a version menu. */
+export interface VersionHistoryAction {
+	/** Id sent on the action event. */
+	id: string;
+	/** Label in the menu. */
+	label: string;
+	/** Icon name shown before the label. */
+	icon?: IconName;
+	/** The user cannot choose this action. */
+	disabled?: boolean;
+}
+
 export interface VersionHistoryItem {
 	/** Stable id for the version. Unique across versions and groups in the list. */
 	id: string;
@@ -19,11 +32,11 @@ export interface VersionHistoryItem {
 	/** Accessible name for the status dot. */
 	statusLabel?: string;
 	/**
-	 * Menu items for the row. Each item is an `ActionToggleItem`, so `icon` draws an icon before the label.
+	 * Menu items for the row. Set `icon` to an icon name to draw an icon before the label.
 	 * The row hides the menu when this list is empty.
 	 * The compare control stays. Use the `actions` slot to replace both controls.
 	 */
-	actions?: Array<ActionToggleItem<string>>;
+	actions?: VersionHistoryAction[];
 	/** The user cannot select this row. Compare and the menu stay available. */
 	disabled?: boolean;
 	/** Disable the compare control for this row. */
@@ -42,11 +55,26 @@ export interface VersionHistoryGroup {
 	items: VersionHistoryItem[];
 }
 
-/** A version row, or a collapsed group of version rows. */
-export type VersionHistoryEntry = VersionHistoryItem | VersionHistoryGroup;
+/** A label that ends the line. The next mark starts a new line. */
+export interface VersionHistoryHeading {
+	type: 'heading';
+	/** Stable id. Unique across versions, groups, and headings in the list. */
+	id: string;
+	/** Text for the heading. */
+	label: string;
+}
+
+/** A version row, a collapsed group, or a heading that breaks the line. */
+export type VersionHistoryEntry = VersionHistoryItem | VersionHistoryGroup | VersionHistoryHeading;
 
 export function isVersionHistoryGroup(entry: VersionHistoryEntry): entry is VersionHistoryGroup {
 	return 'type' in entry && entry.type === 'group';
+}
+
+export function isVersionHistoryHeading(
+	entry: VersionHistoryEntry,
+): entry is VersionHistoryHeading {
+	return 'type' in entry && entry.type === 'heading';
 }
 
 export interface VersionHistoryActionPayload {

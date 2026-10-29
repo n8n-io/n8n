@@ -37,6 +37,13 @@ A scrollable list of versions. A line connects the mark on each row, like a time
 ```typescript
 type VersionHistoryStatus = 'published' | 'latest' | 'default';
 
+interface VersionHistoryAction {
+  id: string;
+  label: string;
+  icon?: string;
+  disabled?: boolean;
+}
+
 interface VersionHistoryItem {
   id: string;
   label: string;
@@ -46,7 +53,7 @@ interface VersionHistoryItem {
   createdAtIso?: string;
   status?: VersionHistoryStatus;
   statusLabel?: string;
-  actions?: Array<ActionToggleItem<string>>;
+  actions?: VersionHistoryAction[];
   disabled?: boolean;
   compareDisabled?: boolean;
   actionsDisabled?: boolean;
@@ -59,7 +66,13 @@ interface VersionHistoryGroup {
   items: VersionHistoryItem[];
 }
 
-type VersionHistoryEntry = VersionHistoryItem | VersionHistoryGroup;
+interface VersionHistoryHeading {
+  type: 'heading';
+  id: string;
+  label: string;
+}
+
+type VersionHistoryEntry = VersionHistoryItem | VersionHistoryGroup | VersionHistoryHeading;
 
 interface VersionHistoryActionPayload {
   id: string;
@@ -78,18 +91,19 @@ interface VersionHistoryTogglePayload {
 - The parent sets the height and the background. The list fills that height and scrolls inside it.
 - The list mounts the rows in view. Scrolling mounts the next rows and drops the rows that leave the view.
 - A line runs through the rail and meets each mark. The first mark has no line above it. The last mark has no line below it.
+- A heading ends the line. Empty space sits above and below the heading. The next mark starts a new line.
+- A group starts collapsed. The toggle shows the caller's label, such as "4 versions". Activating the toggle shows or hides that group's versions. A group at the end of the list stays closed until the user opens it.
 - `published` is a filled success dot. `latest` is a filled warning dot. `default`, and a missing status, is a neutral ring.
 - Each version row has a compare control and a menu. The menu is hidden when `actions` is empty. The compare control stays.
-- Each action is an `ActionToggleItem`. Set `icon` to an icon name to show an icon before the label.
+- Each action has an id and a label. Set `icon` to an icon name to show an icon before the label. Set `disabled` to block that action.
 - `disabled` stops selection for that row. Compare and the menu stay available.
 - `compareDisabled` disables the compare control. `actionsDisabled` disables the menu.
 - A click on the row emits `select`. A click on compare emits `compare`. A menu choice emits `action`.
 - A click on compare or the menu does not select the version.
 - The `actions` slot replaces the compare control and the menu for every version row.
 - Pass `selectedId` when the parent owns the open version. Omit it when the list should keep the row the user selects.
-- A group starts collapsed. The toggle shows the caller's label, such as "4 versions". Activating the toggle shows or hides that group's versions.
 - The group that contains the open version starts open. The user can close it. It opens again when the selection moves into it.
-- Every version id and group id in the list must be unique.
+- Every version id, group id, and heading id in the list must be unique.
 - The caller formats the time and writes the group label.
 - `loading` replaces the list with three skeleton rows.
 - An empty `items` array shows the `empty` slot.
@@ -141,6 +155,20 @@ const items: VersionHistoryEntry[] = [
         label: 'v1.3',
         author: 'Sam',
         createdAt: 'Oct 27 at 18:41',
+        status: 'default',
+      },
+      {
+        id: 'v1b',
+        label: 'v1.2',
+        author: 'Sam',
+        createdAt: 'Oct 27 at 11:02',
+        status: 'default',
+      },
+      {
+        id: 'v1a',
+        label: 'v1.1',
+        author: 'Alex',
+        createdAt: 'Oct 26 at 16:02',
         status: 'default',
       },
     ],

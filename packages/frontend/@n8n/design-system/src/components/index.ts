@@ -162,11 +162,17 @@ export type { SegmentControlProps, SegmentControlSize, SegmentOption } from './N
 export { default as N8nRoute } from './N8nRoute';
 export { default as N8nRecycleScroller } from './N8nRecycleScroller';
 export { default as N8nResizeWrapper } from './N8nResizeWrapper';
-export { default as N8nVersionHistory, isVersionHistoryGroup } from './N8nVersionHistory';
+export {
+	default as N8nVersionHistory,
+	isVersionHistoryGroup,
+	isVersionHistoryHeading,
+} from './N8nVersionHistory';
 export type {
+	VersionHistoryAction,
 	VersionHistoryActionPayload,
 	VersionHistoryEntry,
 	VersionHistoryGroup,
+	VersionHistoryHeading,
 	VersionHistoryItem,
 	VersionHistoryProps,
 	VersionHistoryStatus,

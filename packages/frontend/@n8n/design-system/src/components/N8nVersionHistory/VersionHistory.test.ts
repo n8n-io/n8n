@@ -90,6 +90,7 @@ describe('N8nVersionHistory', () => {
 			{ empty: '<p>No versions yet</p>' },
 		);
 
+		expect(getByTestId('version-history')).toHaveAttribute('aria-label', 'Versions');
 		expect(getByTestId('version-history-empty')).toBeTruthy();
 		expect(getByText('No versions yet')).toBeTruthy();
 		expect(queryByTestId('version-history-item')).toBeNull();
@@ -125,6 +126,7 @@ describe('N8nVersionHistory', () => {
 	it('shows skeleton rows while versions load', () => {
 		const { getByTestId, queryByTestId, queryByText } = renderHistory({ loading: true });
 
+		expect(getByTestId('version-history')).not.toHaveAttribute('aria-label');
 		expect(getByTestId('version-history-loading')).toHaveAttribute(
 			'aria-label',
 			'Loading versions',
@@ -154,6 +156,22 @@ describe('N8nVersionHistory', () => {
 		expect(rows[1].querySelector('[data-segment="gap"]')).toBeTruthy();
 		expect(rows[1].querySelector('[data-segment="above"]')).toBeTruthy();
 		expect(rows[1].querySelector('[data-segment="below"]')).toBeNull();
+	});
+
+	it('ends the line at a heading and starts the next track with no line above', () => {
+		const withHeading: VersionHistoryEntry[] = [
+			items[0],
+			{ type: 'heading', id: 'earlier', label: 'Earlier' },
+			items[1],
+		];
+		const { getAllByTestId, getByText } = renderHistory({ items: withHeading });
+		const rows = getAllByTestId('version-history-row');
+
+		expect(getByText('Earlier')).toBeTruthy();
+		expect(rows[0].querySelector('[data-segment="below"]')).toBeNull();
+		expect(rows[1].querySelector('[data-test-id="version-history-line"]')).toBeNull();
+		expect(rows[2].querySelector('[data-segment="gap"]')).toBeNull();
+		expect(rows[2].querySelector('[data-segment="above"]')).toBeNull();
 	});
 
 	it('draws no line when there is one version', () => {

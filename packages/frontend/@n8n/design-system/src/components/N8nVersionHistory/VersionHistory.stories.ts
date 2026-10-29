@@ -10,6 +10,7 @@ import N8nTabs from '../N8nTabs/Tabs.vue';
 import N8nText from '../N8nText/Text.vue';
 import {
 	isVersionHistoryGroup,
+	isVersionHistoryHeading,
 	type VersionHistoryEntry,
 	type VersionHistoryItem,
 } from './VersionHistory.types';
@@ -69,6 +70,11 @@ const versions: VersionHistoryEntry[] = [
 		items: hiddenVersions,
 	},
 	{
+		type: 'heading',
+		id: 'earlier',
+		label: 'Earlier',
+	},
+	{
 		id: 'v1',
 		label: 'v1',
 		detail: 'In published agent',
@@ -84,58 +90,60 @@ const versions: VersionHistoryEntry[] = [
 	},
 ];
 
-function createManyVersions(): VersionHistoryEntry[] {
-	const total = 80;
-	const entries: VersionHistoryEntry[] = [];
-
-	for (let version = total; version >= 1; version -= 1) {
-		if (version % 10 === 6) {
-			const items: VersionHistoryItem[] = [];
-			for (let extra = 1; extra <= 4; extra += 1) {
-				items.push({
-					id: `v${version}-extra-${extra}`,
-					label: `v${version}.${extra}`,
-					author: 'Sam',
-					createdAt: 'Sep 12 at 11:04:18',
-					createdAtIso: '2026-09-12T11:04:18',
-					status: 'default',
-					actions: rowActions,
-				});
-			}
-			entries.push({
-				type: 'group',
-				id: `group-${version}`,
-				label: `${items.length} versions`,
-				items,
-			});
-		}
-
-		const isLatest = version === total;
-		const isPublished = version === 1;
-		let detail: string | undefined;
-		let status: VersionHistoryItem['status'] = 'default';
-		let statusLabel: string | undefined;
-		if (isLatest) {
-			detail = 'Latest';
-			status = 'latest';
-			statusLabel = 'Latest version';
-		} else if (isPublished) {
-			detail = 'In published agent';
-			status = 'published';
-			statusLabel = 'Published version';
-		}
-		entries.push({
-			id: `v${version}`,
-			label: `v${version}`,
-			detail,
-			author: version % 2 === 0 ? 'Alex' : 'Sam',
-			createdAt: 'Oct 2 at 08:30:00',
-			createdAtIso: '2026-10-02T08:30:00',
-			status,
-			statusLabel,
-			actions: rowActions,
-		});
+function createVersion(version: number, latestVersion: number): VersionHistoryItem {
+	const isLatest = version === latestVersion;
+	const isPublished = version === 13;
+	let detail: string | undefined;
+	let status: VersionHistoryItem['status'] = 'default';
+	let statusLabel: string | undefined;
+	if (isLatest) {
+		detail = 'Latest';
+		status = 'latest';
+		statusLabel = 'Latest version';
+	} else if (isPublished) {
+		detail = 'In published agent';
+		status = 'published';
+		statusLabel = 'Published version';
 	}
+
+	return {
+		id: `v${version}`,
+		label: `v${version}`,
+		detail,
+		author: version % 2 === 0 ? 'Alex' : 'Sam',
+		createdAt: 'Oct 2 at 08:30:00',
+		createdAtIso: '2026-10-02T08:30:00',
+		status,
+		statusLabel,
+		actions: rowActions,
+	};
+}
+
+function createManyVersions(): VersionHistoryEntry[] {
+	const latestVersion = 40;
+	const entries: VersionHistoryEntry[] = [{ type: 'heading', id: 'recent', label: 'Recent' }];
+
+	for (let version = latestVersion; version >= 21; version -= 1) {
+		entries.push(createVersion(version, latestVersion));
+	}
+
+	entries.push({ type: 'heading', id: 'older', label: 'Older' });
+
+	for (let version = 20; version >= 13; version -= 1) {
+		entries.push(createVersion(version, latestVersion));
+	}
+
+	// The tail stays collapsed until the user opens it, as workflow history does.
+	const hidden: VersionHistoryItem[] = [];
+	for (let version = 12; version >= 1; version -= 1) {
+		hidden.push(createVersion(version, latestVersion));
+	}
+	entries.push({
+		type: 'group',
+		id: 'older-versions',
+		label: `${hidden.length} versions`,
+		items: hidden,
+	});
 
 	return entries;
 }
@@ -200,6 +208,10 @@ function filterVersions(entries: VersionHistoryEntry[], query: string): VersionH
 
 	const filtered: VersionHistoryEntry[] = [];
 	for (const entry of entries) {
+		if (isVersionHistoryHeading(entry)) {
+			filtered.push(entry);
+			continue;
+		}
 		if (isVersionHistoryGroup(entry)) {
 			const items = entry.items.filter(matches);
 			if (items.length === 0) continue;
@@ -209,7 +221,12 @@ function filterVersions(entries: VersionHistoryEntry[], query: string): VersionH
 		}
 		if (matches(entry)) filtered.push(entry);
 	}
-	return filtered;
+
+	return filtered.filter((entry, index) => {
+		if (!isVersionHistoryHeading(entry)) return true;
+		const next = filtered[index + 1];
+		return next !== undefined && !isVersionHistoryHeading(next);
+	});
 }
 
 const emptyIconStyle = [
@@ -329,6 +346,8 @@ export const CustomActions: Story = {
 };
 
 const disabledVersions: VersionHistoryEntry[] = versions.map((entry) => {
+	if (isVersionHistoryHeading(entry)) return entry;
+
 	if (isVersionHistoryGroup(entry)) {
 		return {
 			...entry,
@@ -369,14 +388,14 @@ export const ManyVersions: Story = {
 		docs: {
 			description: {
 				story:
-					'Eighty versions, plus collapsed groups. The list mounts the rows in view. Open a group to add its versions.',
+					'The last row is a collapsed group, as in workflow history. Open it to show the older versions. A heading ends the line, then the next mark starts a new one.',
 			},
 		},
 	},
 	render: (args) => ({
 		components: { N8nVersionHistory },
 		setup() {
-			return { args, ...useHistory('v80') };
+			return { args, ...useHistory('v40') };
 		},
 		template: `
 			<div style="${frameStyle}">

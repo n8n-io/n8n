@@ -9,6 +9,7 @@ import type {
 } from './VersionHistory.types';
 import { buildHistoryRows, groupIdForVersion, isHistoryRow } from './versionHistoryRows';
 import VersionHistoryGroup from './VersionHistoryGroup.vue';
+import VersionHistoryHeading from './VersionHistoryHeading.vue';
 import VersionHistoryItem from './VersionHistoryItem.vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nLoading from '../N8nLoading/Loading.vue';
@@ -47,7 +48,7 @@ const SKELETON_ROWS = [
 
 // The scroller measures each row and replaces this estimate.
 // The estimate covers the gap between marks and two lines of text.
-const ESTIMATED_ROW_HEIGHT = 60;
+const ESTIMATED_ROW_HEIGHT = 48;
 
 const { t } = useI18n();
 const expandedIds = ref<Set<string>>(new Set());
@@ -102,7 +103,7 @@ function onToggle(id: string) {
 	<section
 		:class="$style.panel"
 		data-test-id="version-history"
-		:aria-label="!loading && items.length ? listLabel : undefined"
+		:aria-label="!loading ? listLabel : undefined"
 		:aria-busy="loading ? 'true' : undefined"
 	>
 		<div
@@ -145,22 +146,29 @@ function onToggle(id: string) {
 			<template #default="{ item }">
 				<li
 					v-if="isHistoryRow(item)"
-					:class="[$style.row, item.isFirst && $style.first, item.isLast && $style.last]"
+					:class="[
+						$style.row,
+						item.isFirst && $style.first,
+						item.isLast && $style.last,
+						item.kind === 'heading' && $style.headingRow,
+						!item.connectAbove && !item.isFirst && item.kind !== 'heading' && $style.segmentStart,
+					]"
 					data-test-id="version-history-row"
 				>
-					<!-- The gap sits outside the row content. The rail draws the rest of the line. -->
+					<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
 					<span
-						v-if="!item.isFirst"
+						v-if="item.connectAbove"
 						:class="$style.gap"
 						data-test-id="version-history-line"
 						data-segment="gap"
 					/>
+					<VersionHistoryHeading v-if="item.kind === 'heading'" :label="item.label" />
 					<VersionHistoryItem
-						v-if="item.kind === 'version'"
+						v-else-if="item.kind === 'version'"
 						:item="item.item"
 						:selected="item.item.id === activeId"
-						:connect-above="!item.isFirst"
-						:connect-below="!item.isLast"
+						:connect-above="item.connectAbove"
+						:connect-below="item.connectBelow"
 						@select="onSelect"
 						@compare="emit('compare', $event)"
 						@action="onAction(item.item.id, $event)"
@@ -170,11 +178,11 @@ function onToggle(id: string) {
 						</template>
 					</VersionHistoryItem>
 					<VersionHistoryGroup
-						v-else
+						v-else-if="item.kind === 'group'"
 						:label="item.label"
 						:expanded="item.expanded"
-						:connect-above="!item.isFirst"
-						:connect-below="!item.isLast"
+						:connect-above="item.connectAbove"
+						:connect-below="item.connectBelow"
 						@toggle="onToggle(item.groupId)"
 					/>
 				</li>
@@ -209,7 +217,7 @@ function onToggle(id: string) {
 	--version-history--rail-size: var(--spacing--lg);
 
 	// The gap between rows. The timeline line in .gap uses the same length.
-	--version-history--row-gap: var(--spacing--xs);
+	--version-history--row-gap: var(--spacing--3xs);
 
 	position: relative;
 	display: block;
@@ -221,11 +229,22 @@ function onToggle(id: string) {
 }
 
 .first {
-	padding-top: var(--spacing--2xs);
+	padding-top: var(--spacing--3xs);
 }
 
 .last {
-	padding-bottom: var(--spacing--2xs);
+	padding-bottom: var(--spacing--3xs);
+}
+
+// Space with no line. The track ends, the heading shows, and the next track starts.
+.headingRow {
+	padding-top: var(--spacing--sm);
+	padding-bottom: var(--spacing--sm);
+}
+
+// The heading row already holds the space before this track.
+.segmentStart {
+	padding-top: 0;
 }
 
 .gap {
