@@ -55,6 +55,7 @@ Other modules call the services that `index.ts` exports. A contract (an abstract
 | `SkillRuntimeService`                   | What agents and n8n Assistant read to run skills                                          |
 | `SkillsGate`, `AssistantSkillsFlagGate` | Whether skills are on, and whether n8n Assistant skills are on                            |
 | `SkillUsage`, `SkillUsageProxy`         | The contract that the agents module implements                                            |
+| `SkillSourceCredentials`, `SkillSourceCredentialsProxy` | The contract for the credentials of skill sources, which the agents module implements |
 | `SkillNameTakenError` and helpers       | Shared errors, name rules, hashes and types                                               |
 
 It does not export the controller (an import registers its routes), the module class, the repository or the entities. `__tests__/index.test.ts` checks the export list. If another module needs a new symbol, export it. Do not export symbols that no other module uses.
