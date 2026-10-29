@@ -10,6 +10,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { IsNull, Not } from '@n8n/typeorm';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -323,6 +324,40 @@ describe('WorkflowIndexService Integration', () => {
 			const publishedNodeTypes = getDependencyKeys(publishedDeps, 'nodeType').sort();
 			expect(publishedNodeTypes).toEqual(['n8n-nodes-base.httpRequest', 'n8n-nodes-base.webhook']);
 			expect(getDependencyKeys(publishedDeps, 'webhookPath')).toContain('my-webhook');
+		});
+
+		it('should remove published dependencies of unpublished workflows', async () => {
+			const publishedWorkflow = await createWorkflow({ nodes: [httpRequestNode] });
+			await createWorkflowHistory(publishedWorkflow);
+			await setActiveVersion(publishedWorkflow.id, publishedWorkflow.versionId);
+
+			const unpublishedWorkflow = await createWorkflow({ nodes: [webhookNode] });
+			await createWorkflowHistory(unpublishedWorkflow);
+			await setActiveVersion(unpublishedWorkflow.id, unpublishedWorkflow.versionId);
+
+			await workflowIndexService.buildIndex();
+			await workflowRepository.update(unpublishedWorkflow.id, { activeVersionId: null });
+
+			await workflowIndexService.buildIndex();
+
+			expect(
+				await workflowDependencyRepository.existsBy({
+					workflowId: unpublishedWorkflow.id,
+					publishedVersionId: Not(IsNull()),
+				}),
+			).toBe(false);
+			expect(
+				await workflowDependencyRepository.existsBy({
+					workflowId: unpublishedWorkflow.id,
+					publishedVersionId: IsNull(),
+				}),
+			).toBe(true);
+			expect(
+				await workflowDependencyRepository.existsBy({
+					workflowId: publishedWorkflow.id,
+					publishedVersionId: publishedWorkflow.versionId,
+				}),
+			).toBe(true);
 		});
 	});
 

@@ -28,6 +28,9 @@ describe('WorkflowIndexService', () => {
 		vi.resetAllMocks();
 
 		mockTracing.startSpan.mockImplementation(async (_opts, spanCb) => await spanCb(mock<Span>()));
+		mockWorkflowDependencyRepository.findUnpublishedWorkflowIdsWithPublishedDependencies.mockResolvedValue(
+			[],
+		);
 
 		service = new WorkflowIndexService(
 			mockWorkflowDependencyRepository,

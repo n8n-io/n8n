@@ -357,6 +357,18 @@ export class WorkflowDependencyRepository extends Repository<WorkflowDependency>
 		});
 	}
 
+	async findUnpublishedWorkflowIdsWithPublishedDependencies(): Promise<string[]> {
+		const rows = await this.createQueryBuilder('dependency')
+			.innerJoin(WorkflowEntity, 'workflow', 'workflow.id = dependency.workflowId')
+			.where('dependency.publishedVersionId IS NOT NULL')
+			.andWhere('workflow.activeVersionId IS NULL')
+			.select('dependency.workflowId', 'workflowId')
+			.distinct(true)
+			.getRawMany<{ workflowId: string }>();
+
+		return rows.map((row) => row.workflowId);
+	}
+
 	/**
 	 * Lock the workflow row until the transaction ends. Writers of the same workflow's
 	 * index rows, and writers of its `activeVersionId`, wait for the lock.

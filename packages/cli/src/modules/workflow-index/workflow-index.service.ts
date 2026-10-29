@@ -90,8 +90,14 @@ export class WorkflowIndexService {
 					'published',
 				);
 
+				const unpublishedWorkflowIds =
+					await this.dependencyRepository.findUnpublishedWorkflowIdsWithPublishedDependencies();
+				for (const workflowId of unpublishedWorkflowIds) {
+					await this.removePublishedDependenciesForWorkflow(workflowId);
+				}
+
 				this.logger.info(
-					`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows.`,
+					`Finished building workflow dependency index. Processed ${draftCount} draft workflows, ${publishedCount} published workflows, ${unpublishedWorkflowIds.length} unpublished workflows.`,
 				);
 				span.setStatus({ code: SpanStatus.ok });
 			},
