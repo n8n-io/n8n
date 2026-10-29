@@ -10,6 +10,7 @@ import {
 import { Service } from '@n8n/di';
 import {
 	DataSource,
+	In,
 	IsNull,
 	Not,
 	type EntityManager,
@@ -453,17 +454,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
-	/** Top-level private sessions of one user with one agent, newest first. */
-	async findOwnedByAgent(
-		agentId: string,
-		ownerId: string,
-		options: { limit?: number } = {},
-	): Promise<AgentExecutionThread[]> {
-		return await this.find({
-			where: { agentId, ownerId, accessScope: 'user', parentThreadId: IsNull() },
-			order: { updatedAt: 'DESC', id: 'DESC' },
-			...(options.limit ? { take: options.limit } : {}),
-		});
+	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
+		if (ids.length === 0) return [];
+		return await this.findBy({ id: In(ids) });
 	}
 
 	/**

@@ -42,6 +42,15 @@ const setupSnapshotProps = {
 	web_search_provider: z.enum(['brave', 'searxng']).nullable(),
 };
 
+/** The runtimes that run an n8n Assistant thread. */
+export const ASSISTANT_RUNTIMES = ['instance-ai', 'agents'] as const;
+export type AssistantRuntime = (typeof ASSISTANT_RUNTIMES)[number];
+const assistantRuntime = z
+	.enum(ASSISTANT_RUNTIMES)
+	.describe(
+		"The runtime that runs the thread: 'instance-ai' is the current Assistant runtime, 'agents' is the Assistant agent on the Agents runtime",
+	);
+
 const freeNudgeVariant = z.enum(['control', 'variant-1', 'variant-2']);
 const freeNudgeTreatmentVariant = z.enum(['variant-1', 'variant-2']);
 const workflowPreviewsAboveAssistantVariant = z.enum(['control', 'variant']);
@@ -536,6 +545,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			'The user sent an Instance AI chat message that carried node context. Fires only when the submitted message includes at least one node attachment; node_count is the total nodes across every attached set in the message.',
 		properties: z.object({
 			node_count: z.number().describe('Total nodes attached across the sent message'),
+			runtime: assistantRuntime,
 		}),
 	},
 	USER_OPENED_AI_ASSISTANT_MENTION_PICKER: {
@@ -681,7 +691,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	BUILDER_LISTED_WORKFLOWS: {
 		name: 'Builder listed workflows',
 		description:
-			'Instance AI called workflows(action="list"). Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
+			'Instance AI called list_workflows. Emitted on every list call, in both arms of the folder-exploration rollout, so folder-scoped calls have a denominator. Carries no folder names.',
 		properties: z.object({
 			user_id: z.string(),
 			thread_id: z.string().optional(),

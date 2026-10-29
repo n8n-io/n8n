@@ -1,13 +1,20 @@
 import {
 	resolveWhatsAppSettings,
 	type AgentIntegrationConfig,
+	type AgentIntegrationDisconnectWarning,
 	type RichCardComponentType,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { Service } from '@n8n/di';
+import { Container, Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
 import { sleep } from '@n8n/utils/sleep';
-import type { AdapterPostableMessage, ChatInstance, Logger as ChatLogger, RawMessage } from 'chat';
+import type {
+	ActionEvent,
+	AdapterPostableMessage,
+	ChatInstance,
+	Logger as ChatLogger,
+	RawMessage,
+} from 'chat';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError, UserError } from 'n8n-workflow';
 
@@ -41,6 +48,16 @@ import { deriveWhatsAppVerifyToken, stringProperty, stringValue } from '../../in
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
 import { startTypingIndicator } from '../typing-indicator';
+import {
+	WHATSAPP_MAX_LIST_ROWS,
+	WHATSAPP_MAX_PAGED_OPTIONS,
+	WhatsAppOptionPagesStore,
+	encodePageValue,
+	getOptionPage,
+	parsePageValue,
+	type PagedOption,
+} from './whatsapp-option-pages.store';
+import { WhatsAppCredentialCheckService } from './whatsapp-credential-check.service';
 import { WhatsAppSetupTelemetryService } from './whatsapp-setup-telemetry.service';
 import { WhatsAppWebhookVerificationStore } from './whatsapp-webhook-verification.store';
 import { buildWhatsAppOriginDraft } from './whatsapp-origin';
@@ -66,6 +83,9 @@ const WHATSAPP_CUSTOMER_SERVICE_WINDOW_MS = 24 * 60 * 60 * 1000;
  */
 const WHATSAPP_DEFAULT_SESSION_IDLE_TIMEOUT_MINUTES = 30;
 
+/** Posted when the user taps "More…" after the stored options are gone. */
+const OPTIONS_EXPIRED_NOTICE = 'These options are no longer available. Ask again to see the list.';
+
 /** WhatsApp Cloud API's own limit on interactive reply buttons per message. */
 const WHATSAPP_MAX_REPLY_BUTTONS = 3;
 
@@ -77,6 +97,12 @@ const WHATSAPP_MAX_REPLY_BUTTONS = 3;
 const WHATSAPP_TYPING_REFRESH_MS = 20 * 1000;
 
 const WHATSAPP_BOT_USER_NAME = 'n8n-agent';
+
+/** Where the user changes the callback URL of the Meta app that still points here. */
+const META_APP_DASHBOARD_URL = 'https://developers.facebook.com/apps';
+
+/** Removing a channel must not wait on Meta, so the number lookup gives up quickly. */
+const REMOVAL_NUMBER_LOOKUP_TIMEOUT_MS = 3_000;
 
 /**
  * Meta's Cloud API error codes that mean "you're sending too fast," not "this
@@ -197,6 +223,7 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 		private readonly webhookVerification: WhatsAppWebhookVerificationStore,
+		private readonly optionPages: WhatsAppOptionPagesStore,
 		private readonly setupTelemetry: WhatsAppSetupTelemetryService,
 	) {
 		super();
@@ -213,10 +240,46 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	/**
 	 * A new setup of this agent can use a different Meta app. Without this, step
 	 * 4 would confirm the handshake that the removed channel's app completed.
+	 *
+	 * Removing the channel does not change the callback URL in Meta. The number
+	 * keeps sending messages here, and nothing answers them. The warning tells
+	 * the user so.
 	 */
-	async onRemove(ctx: AgentIntegrationRemovalContext): Promise<undefined> {
+	async onRemove(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<AgentIntegrationDisconnectWarning | undefined> {
 		await this.webhookVerification.clear(ctx.agentId);
-		return undefined;
+		// A draft entry has no credential, so no number was ever connected to this agent.
+		if (!ctx.credentialId) return undefined;
+		const displayPhoneNumber = await this.lookUpDisplayPhoneNumber(ctx);
+		return {
+			integrationType: this.type,
+			code: 'number_still_connected',
+			action: { type: 'open_url', url: META_APP_DASHBOARD_URL },
+			...(displayPhoneNumber ? { details: { displayPhoneNumber } } : {}),
+		};
+	}
+
+	/** The number as WhatsApp shows it. Best effort: the warning still works without it. */
+	private async lookUpDisplayPhoneNumber(
+		ctx: AgentIntegrationRemovalContext,
+	): Promise<string | undefined> {
+		try {
+			const status = await Promise.race([
+				Container.get(WhatsAppCredentialCheckService).getMetaStatus(
+					ctx.user,
+					ctx.projectId,
+					ctx.credentialId,
+				),
+				sleep(REMOVAL_NUMBER_LOOKUP_TIMEOUT_MS).then(() => undefined),
+			]);
+			return status?.displayPhoneNumber;
+		} catch (error) {
+			this.logger.debug('[WhatsAppIntegration] Could not read the number for the removal warning', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			return undefined;
+		}
 	}
 
 	/**
@@ -384,12 +447,17 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 	}
 
 	/**
-	 * WhatsApp lists (`select`/`radio_select`) are natively supported by the
-	 * adapter's own Card-to-interactive-message conversion, so they pass
-	 * through unchanged. Only reply buttons need handling here: the Cloud API
-	 * caps interactive messages at 3 buttons and otherwise rejects the send.
+	 * The Cloud API caps a message at 3 reply buttons and a list at 10 rows.
+	 * Extra buttons fold into a list, and a long list is split into pages.
 	 */
-	normalizeComponents(
+	async normalizeComponents(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): Promise<SuspendComponent[]> {
+		return await this.paginateSelect(this.foldButtonsIntoSelect(components, context), context);
+	}
+
+	private foldButtonsIntoSelect(
 		components: SuspendComponent[],
 		context: NormalizeComponentsContext,
 	): SuspendComponent[] {
@@ -433,6 +501,113 @@ export class WhatsAppIntegration extends AgentChatIntegration {
 			})),
 		});
 		return normalized;
+	}
+
+	/**
+	 * A WhatsApp list holds at most 10 rows. For a longer list, the first page
+	 * shows 9 options and a "More…" row. The full list is kept in the option
+	 * store, and {@link claimAction} sends the next page when the user taps it.
+	 */
+	private async paginateSelect(
+		components: SuspendComponent[],
+		context: NormalizeComponentsContext,
+	): Promise<SuspendComponent[]> {
+		const select = components.find((c) => c.type === 'select' || c.type === 'radio_select');
+		if (!select?.options || select.options.length <= WHATSAPP_MAX_LIST_ROWS) return components;
+
+		let options: PagedOption[] = select.options;
+		if (options.length > WHATSAPP_MAX_PAGED_OPTIONS) {
+			this.logger.warn(
+				`[WhatsAppIntegration] Dropping ${options.length - WHATSAPP_MAX_PAGED_OPTIONS} list options — a list shows at most ${WHATSAPP_MAX_PAGED_OPTIONS}.`,
+			);
+			options = options.slice(0, WHATSAPP_MAX_PAGED_OPTIONS);
+		}
+
+		const prompt = components
+			.filter((c) => c.type === 'section')
+			.map((c) => componentTextToString(c.text))
+			.filter(Boolean)
+			.join('\n\n');
+		const key = await this.optionPages.save({
+			options,
+			label: select.label,
+			title: context.title,
+			prompt: prompt || undefined,
+		});
+		if (!key) {
+			// Without the stored list, a "More…" row cannot open the next page.
+			// Show the first 10 options and no "More…" row.
+			return components.map((c) =>
+				c === select ? { ...c, options: options.slice(0, WHATSAPP_MAX_LIST_ROWS) } : c,
+			);
+		}
+		const page = getOptionPage(options, 0);
+		const rows = [...page.options, this.buildMoreOption(options, key, page.nextPage)];
+		return components.map((c) => (c === select ? { ...c, options: rows } : c));
+	}
+
+	private buildMoreOption(
+		options: PagedOption[],
+		key: string,
+		nextPage: number | undefined,
+	): PagedOption {
+		const next = getOptionPage(options, nextPage ?? 0);
+		const first = next.start + 1;
+		const last = next.start + next.options.length;
+		return {
+			label: 'More…',
+			value: encodePageValue(key, nextPage ?? 0),
+			description: `Options ${first}–${last} of ${options.length}`,
+		};
+	}
+
+	/**
+	 * A tap on a "More…" row is not a resume. It sends the next page of options
+	 * as a new message, because WhatsApp cannot edit or delete a message.
+	 */
+	async claimAction(event: ActionEvent): Promise<boolean> {
+		const target = parsePageValue(event.value);
+		if (!target) return false;
+
+		const { thread } = event;
+		if (!thread) return true;
+
+		const stored = await this.optionPages.get(target.key);
+		const page = stored && getOptionPage(stored.options, target.pageIndex);
+		if (!stored || !page || page.options.length === 0) {
+			await thread.post(OPTIONS_EXPIRED_NOTICE);
+			return true;
+		}
+
+		const rows =
+			page.nextPage === undefined
+				? page.options
+				: [...page.options, this.buildMoreOption(stored.options, target.key, page.nextPage)];
+		const first = page.start + 1;
+		const last = page.start + page.options.length;
+		const sdk = await loadChatSdk();
+		// Repeat the original question, so the list still makes sense when the
+		// first message has scrolled out of view.
+		const card = sdk.Card({
+			title: stored.title,
+			children: [
+				...(stored.prompt ? [sdk.Section([sdk.CardText(stored.prompt)] as never)] : []),
+				sdk.Section([
+					sdk.CardText(`Options ${first}–${last} of ${stored.options.length}`),
+				] as never),
+				// The tapped row's id carries the id of the original select, so a pick
+				// on this page resumes the same way as a pick on the first page.
+				sdk.Actions([
+					sdk.Select({
+						id: event.actionId,
+						label: stored.label ?? 'Choose an option',
+						options: rows,
+					}),
+				] as never),
+			] as never,
+		});
+		await thread.post({ card });
+		return true;
 	}
 
 	private createAdapterLogger(): ChatLogger {

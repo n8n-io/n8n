@@ -52,6 +52,29 @@ describe('InstanceAiMarkdown', () => {
 		return getByTestId('markdown-output').textContent ?? '';
 	}
 
+	it.each([true, false])(
+		'uses the Test link label only in the Agents UI (embedded: %s)',
+		(embedded) => {
+			const { getByTestId } = renderComponent({
+				props: { content: '<a href="/projects/project-1/agents/agent-1/preview">Preview</a>' },
+				global: {
+					provide: embedded
+						? {
+								[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
+									type: 'agent',
+									id: 'agent-1',
+									projectId: 'project-1',
+								})),
+							}
+						: {},
+				},
+			});
+			expect(getByTestId('markdown-output').querySelector('a')?.textContent).toBe(
+				embedded ? 'Test' : 'Preview',
+			);
+		},
+	);
+
 	it('should return content unchanged when registry is empty', () => {
 		const result = getProcessedContent('Hello world');
 		expect(result).toBe('Hello world');
@@ -332,6 +355,46 @@ describe('InstanceAiMarkdown', () => {
 
 				expect(openAgentChatPreview).toHaveBeenCalledExactlyOnceWith('agent-1', 'project-1');
 				expect(event.defaultPrevented).toBe(true);
+			},
+		);
+
+		it.each(agentPreviewLinks)(
+			'preserves Cmd/Ctrl-click on $label Preview links with an embedded provider',
+			({ content: agentPreviewContent }) => {
+				const openAgentChatPreview = vi.fn(() => true);
+				const { getByTestId } = renderComponent({
+					props: { content: agentPreviewContent },
+					global: {
+						provide: {
+							openAgentChatPreview,
+							[INSTANCE_AI_EMBED_SUBJECT_KEY as symbol]: computed(() => ({
+								type: 'agent',
+								id: 'agent-1',
+								projectId: 'project-1',
+							})),
+						},
+					},
+				});
+				const link = getByTestId('markdown-output').querySelector('a');
+				if (!link) throw new Error('expected Preview anchor');
+				for (const modifier of [{ metaKey: true }, { ctrlKey: true }]) {
+					const event = clickEvent(modifier);
+					let prevented: boolean | undefined;
+					link.parentElement?.parentElement?.addEventListener(
+						'click',
+						(event) => {
+							prevented = event.defaultPrevented;
+							event.preventDefault();
+						},
+						{ once: true },
+					);
+					link.dispatchEvent(event);
+					expect(prevented).toBe(false);
+				}
+				expect(openAgentChatPreview).not.toHaveBeenCalled();
+				expect(link.getAttribute('href')).toBe(
+					'/projects/project-1/agents/agent-1?openPreview=true',
+				);
 			},
 		);
 

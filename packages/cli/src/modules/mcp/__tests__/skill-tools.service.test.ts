@@ -8,6 +8,7 @@ import {
 	SkillNameTakenError,
 	type SkillService,
 } from '@/modules/skills';
+import { SkillSyncedError } from '@/modules/skills/testing';
 import type { Telemetry } from '@/telemetry';
 
 import { SKILL_TOOLS } from '../mcp-scopes';
@@ -292,6 +293,24 @@ describe('McpSkillToolsService', () => {
 			});
 
 			expect(result.structuredContent).toMatchObject({ ok: false, code: 'skill_name_taken' });
+			expect(skillService.get).not.toHaveBeenCalled();
+		});
+
+		it('tells the client that a synced skill is read-only', async () => {
+			skillService.update.mockRejectedValue(new SkillSyncedError('Brand voice', 'GitHub'));
+
+			const result = await callTool('update_skill', {
+				skillId: 'skill_a',
+				baseSkillHash: 'hash-2',
+				instructions: 'Be kinder.',
+			});
+
+			expect(result.structuredContent).toMatchObject({
+				ok: false,
+				skillId: 'skill_a',
+				code: 'skill_synced',
+				message: expect.stringContaining('Do not retry.'),
+			});
 			expect(skillService.get).not.toHaveBeenCalled();
 		});
 	});

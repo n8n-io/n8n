@@ -812,31 +812,36 @@ describe('SkillRepository', () => {
 	});
 
 	describe('reads for the agents module', () => {
-		it('maps version ids to their number', async () => {
+		it('maps version ids to their skill and number', async () => {
 			const id = await createSkill();
 			const v1 = await latestVersionId(id);
 			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
 
-			expect(await skills.findVersionNumbers([v1, v2, randomUUID()])).toEqual(
+			expect(await skills.findVersionRefs([v1, v2, v1, randomUUID()])).toEqual(
 				new Map([
-					[v1, 1],
-					[v2, 2],
+					[v1, { skillId: id, version: 1 }],
+					[v2, { skillId: id, version: 2 }],
 				]),
 			);
 		});
 
+		it('lists the versions of a skill newest first and reads one by number', async () => {
+			const id = await createSkill();
+			await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
+
+			const list = await skills.findVersionList(id);
+			const first = await skills.findVersionByNumber(id, 1);
+
+			expect(list.map((version) => version.version)).toEqual([2, 1]);
+			expect(first?.version.version).toBe(1);
+			expect(await skills.findVersionByNumber(id, 3)).toBeUndefined();
+		});
+
 		it('finds version ids without their content, for publish', async () => {
 			const id = await createSkill();
-			const v1 = await latestVersionId(id);
 			const v2 = await skills.insertSavedVersion(id, 2, content({ instructions: 'v2' }), null);
 
 			expect(await skills.findLatestVersionIds([id, 'skill_unknown'])).toEqual(new Map([[id, v2]]));
-			expect(await skills.findSkillIdsOfVersions([v1, v2, randomUUID()])).toEqual(
-				new Map([
-					[v1, id],
-					[v2, id],
-				]),
-			);
 		});
 	});
 

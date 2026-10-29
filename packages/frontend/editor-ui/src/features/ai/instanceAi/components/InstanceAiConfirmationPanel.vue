@@ -7,20 +7,28 @@ import {
 	N8nText,
 	type ApprovalOption,
 } from '@n8n/design-system';
-import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { resolveBuilderToolName } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 import type { InstanceAiConfirmation, InstanceAiConfirmRequest } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useApprovalCardLabels } from '@/app/composables/useApprovalCardLabels';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
-import { redactTelemetryProperties } from '@n8n/telemetry';
 import { computed, onBeforeUnmount, ref } from 'vue';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useThread, type PendingConfirmationItem } from '../instanceAi.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { isPendingItemFloating } from '../confirmationKinds';
-import { formatApprovalDetails } from '../approvalDetails';
-import { useToolLabel } from '../toolLabels';
+import { formatApprovalDetails, formatApprovalTitle } from '../approvalDetails';
+import {
+	approvalInputs,
+	continueInputs,
+	getConfirmationType,
+	questionsInputs,
+	skippedTextInputs,
+	testListenerInputs,
+	textInputs,
+	trackInputCompleted as trackSharedInputCompleted,
+	type ConfirmationInputs,
+} from '../confirmationTelemetry';
 import DomainAccessApproval from './DomainAccessApproval.vue';
 import GatewayResourceDecision from './GatewayResourceDecision.vue';
 import InstanceAiChannelSetup from './InstanceAiChannelSetup.vue';
@@ -51,50 +59,20 @@ const approvalLabels = useApprovalCardLabels();
 const rootStore = useRootStore();
 const settingsStore = useInstanceAiSettingsStore();
 const telemetry = useTelemetry();
-const { getToolLabel } = useToolLabel();
 
-function getConfirmationType(conf: InstanceAiConfirmation): string {
-	if (conf.testListener) return 'test-listener';
-	if (conf.credentialDestination) return 'credential-destination';
-	if (conf.inputType) return conf.inputType;
-	if (conf.setupRequests?.length) return 'setup';
-	if (conf.credentialRequests?.length) return 'credential-setup';
-	if (conf.channelConfig) return 'channel-config';
-	return 'approval';
-}
-
-function trackInputCompleted(
-	conf: InstanceAiConfirmation,
-	providedInputs: Array<{
-		label: string;
-		question?: string;
-		input_type?: string;
-		options: string[];
-		option_chosen: string | string[];
-	}>,
-	skippedInputs: Array<{
-		label: string;
-		question?: string;
-		input_type?: string;
-		options: string[];
-	}>,
-	extra?: Record<string, unknown>,
-): void {
-	const eventProps = {
-		thread_id: thread.id,
-		input_thread_id: conf.inputThreadId ?? '',
-		instance_id: rootStore.instanceId,
-		action_source: thread.resolveActionSource(),
-		type: getConfirmationType(conf),
-		provided_inputs: providedInputs,
-		skipped_inputs: skippedInputs,
-		...extra,
-	};
-	// The inputs carry free text — what the user typed into a question card, and
-	// the agent's own description of the action it wants to take. This event
-	// reaches RudderStack *and* PostHog from the browser, so the backend
-	// redactor never sees it. The `*_id` keys are exempted by the scrubber.
-	telemetry.track('User finished providing input', redactTelemetryProperties(eventProps));
+function trackInputCompleted(conf: InstanceAiConfirmation, inputs: ConfirmationInputs): void {
+	trackSharedInputCompleted(
+		telemetry,
+		{
+			threadId: thread.id,
+			inputThreadId: conf.inputThreadId,
+			instanceId: rootStore.instanceId,
+			actionSource: thread.resolveActionSource(),
+			type: getConfirmationType(conf),
+			runtime: 'instance-ai',
+		},
+		inputs,
+	);
 }
 
 interface StandaloneChunk {
@@ -136,61 +114,6 @@ const chunks = computed((): ConfirmationChunk[] => {
 	return [];
 });
 
-const approvalTitleKeys = new Map<string, BaseTextKey>(
-	(
-		[
-			'instanceAi.tools.workflow_builder_workflows.delete.imperative',
-			'instanceAi.tools.workflow_builder_workflows.delete.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_workflows.unarchive.imperative',
-			'instanceAi.tools.workflow_builder_workflows.unarchive.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_workflows.publish.imperative',
-			'instanceAi.tools.workflow_builder_workflows.publish.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_workflows.unpublish.imperative',
-			'instanceAi.tools.workflow_builder_workflows.unpublish.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_workflows.update-version.imperative',
-			'instanceAi.tools.workflow_builder_workflows.update-version.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_workflows.restore-version.imperative',
-			'instanceAi.tools.workflow_builder_workflows.restore-version.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_nodes.execute.imperativeWithResource',
-			'instanceAi.tools.execute_node.imperative',
-			'instanceAi.tools.execute_node.imperativeWithResource',
-			'instanceAi.tools.workflow_builder_executions.run.imperative',
-			'instanceAi.tools.workflow_builder_executions.run.imperativeWithResource',
-			'instanceAi.tools.delete_credential.imperative',
-			'instanceAi.tools.data_tables.create.imperative',
-			'instanceAi.tools.data_tables.create.imperativeWithResource',
-			'instanceAi.tools.data_tables.delete.imperative',
-			'instanceAi.tools.data_tables.delete.imperativeWithResource',
-			'instanceAi.tools.data_tables.add-column.imperative',
-			'instanceAi.tools.data_tables.add-column.imperativeWithResource',
-			'instanceAi.tools.data_tables.delete-column.imperative',
-			'instanceAi.tools.data_tables.delete-column.imperativeWithResource',
-			'instanceAi.tools.data_tables.rename-column.imperative',
-			'instanceAi.tools.data_tables.rename-column.imperativeWithResource',
-			'instanceAi.tools.data_tables.insert-rows.imperative',
-			'instanceAi.tools.data_tables.insert-rows.imperativeWithResource',
-			'instanceAi.tools.data_tables.update-rows.imperative',
-			'instanceAi.tools.data_tables.update-rows.imperativeWithResource',
-			'instanceAi.tools.data_tables.delete-rows.imperative',
-			'instanceAi.tools.data_tables.delete-rows.imperativeWithResource',
-			'instanceAi.tools.skills.create.imperative',
-			'instanceAi.tools.skills.create.imperativeWithResource',
-			'instanceAi.tools.skills.update.imperative',
-			'instanceAi.tools.skills.update.imperativeWithResource',
-			'instanceAi.tools.skills.delete.imperative',
-			'instanceAi.tools.skills.delete.imperativeWithResource',
-			'instanceAi.tools.workspace.tag-workflow.imperative',
-			'instanceAi.tools.workspace.cleanup-test-executions.imperative',
-			'instanceAi.tools.workspace.create-folder.imperative',
-			'instanceAi.tools.workspace.delete-folder.imperative',
-			'instanceAi.tools.workspace.move-workflow-to-folder.imperative',
-			'instanceAi.tools.workflow_builder_build_workflow.imperative',
-			'instanceAi.tools.workflow_builder_build_workflow.imperativeWithResource',
-			'instanceAi.tools.build-workflow-with-agent.imperative',
-		] satisfies BaseTextKey[]
-	).map((key) => [key, key]),
-);
-
 function isDestructive(item: PendingConfirmationItem): boolean {
 	return item.toolCall.confirmation.severity === 'destructive';
 }
@@ -218,32 +141,11 @@ function buildApprovalTitle(item: PendingConfirmationItem): string {
 	if (item.toolCall.confirmation.targetApproval) {
 		return buildApprovalSubtitle(item);
 	}
-	const { args } = item.toolCall;
-	const toolName = resolveBuilderToolName(item.toolCall.toolName, args?.action);
-	// A former multi-action tool resolves to a single-action tool, which takes no action suffix.
-	const actionSelectsTool = toolName !== resolveBuilderToolName(item.toolCall.toolName);
-	const action = typeof args?.action === 'string' && !actionSelectsTool ? args.action : undefined;
-	const keyBase = action
-		? `instanceAi.tools.${toolName}.${action}`
-		: `instanceAi.tools.${toolName}`;
-	const resourceName = item.toolCall.confirmation.resourceName;
-	if (resourceName) {
-		const namedKey = approvalTitleKeys.get(`${keyBase}.imperativeWithResource`);
-		if (namedKey) {
-			const namedPhrase = i18n.baseText(namedKey);
-			return i18n.baseText('instanceAi.confirmation.resourcePrompt', {
-				interpolate: { action: namedPhrase, name: resourceName },
-			});
-		}
-	}
-	const imperativeKey = approvalTitleKeys.get(`${keyBase}.imperative`);
-	if (imperativeKey) {
-		const phrase = i18n.baseText(imperativeKey);
-		return i18n.baseText('instanceAi.confirmation.allowPrompt', {
-			interpolate: { action: phrase },
-		});
-	}
-	return getToolLabel(toolName, args);
+	return formatApprovalTitle({
+		toolName: item.toolCall.toolName,
+		args: item.toolCall.args,
+		resourceName: item.toolCall.confirmation.resourceName,
+	});
 }
 
 /** Show the full change summary. Resource names and values can contain question marks, so never trim at one. */
@@ -339,19 +241,9 @@ async function handleConfirm(item: PendingConfirmationItem, approved: boolean) {
 			: { kind: 'approval', approved };
 		const ok = await thread.confirmAction(conf.requestId, payload);
 		if (!ok) return;
-		const alwaysAllowAvailable = canAlwaysAllow(item);
 		trackInputCompleted(
 			conf,
-			[
-				{
-					label: conf.message,
-					options: alwaysAllowAvailable
-						? ['approve', 'deny', 'approve_always']
-						: ['approve', 'deny'],
-					option_chosen: approved ? 'approve' : 'deny',
-				},
-			],
-			[],
+			approvalInputs(conf.message, approved ? 'approve' : 'deny', canAlwaysAllow(item)),
 		);
 		thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
 	} finally {
@@ -376,17 +268,7 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 		});
 		if (!ok) return;
 		thread.addAlwaysAllowKey(item.toolCall.toolName, item.toolCall.args ?? {}, conf.workflowId);
-		trackInputCompleted(
-			conf,
-			[
-				{
-					label: conf.message,
-					options: ['approve', 'deny', 'approve_always'],
-					option_chosen: 'approve_always',
-				},
-			],
-			[],
-		);
+		trackInputCompleted(conf, approvalInputs(conf.message, 'approve_always', true));
 		thread.resolveConfirmation(conf.requestId, 'approved');
 	} finally {
 		inFlightConfirmations.delete(conf.requestId);
@@ -396,29 +278,13 @@ async function handleAlwaysAllow(item: PendingConfirmationItem) {
 function handleTextSubmit(conf: InstanceAiConfirmation) {
 	const value = (textInputValues.value[conf.requestId] ?? '').trim();
 	if (!value) return;
-	trackInputCompleted(
-		conf,
-		[
-			{
-				label: conf.message,
-				question: conf.message,
-				input_type: 'text',
-				options: [],
-				option_chosen: value,
-			},
-		],
-		[],
-	);
+	trackInputCompleted(conf, textInputs(conf.message, value));
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true, userInput: value });
 }
 
 function handleTextSkip(conf: InstanceAiConfirmation) {
-	trackInputCompleted(
-		conf,
-		[],
-		[{ label: conf.message, question: conf.message, input_type: 'text', options: [] }],
-	);
+	trackInputCompleted(conf, skippedTextInputs(conf.message));
 	thread.resolveConfirmation(conf.requestId, 'deferred');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: false });
 }
@@ -442,17 +308,7 @@ async function settleTestListener(
 		if (!ok) return;
 		// A push event settles the card without a user choice, so it records no input.
 		if (!outcome.fromPush) {
-			trackInputCompleted(
-				conf,
-				[
-					{
-						label: conf.message,
-						options: ['sent', 'cancel'],
-						option_chosen: approved ? 'sent' : 'cancel',
-					},
-				],
-				[],
-			);
+			trackInputCompleted(conf, testListenerInputs(conf.message, approved));
 		}
 		thread.resolveConfirmation(conf.requestId, approved ? 'approved' : 'denied');
 	} finally {
@@ -483,55 +339,24 @@ function formatDeadline(iso: string): string {
 	return new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 }
 
+/** Domain access and web search cards emit the decision, and the panel sends it. */
+function handleDomainDecision(conf: InstanceAiConfirmation, body: InstanceAiConfirmRequest) {
+	thread.resolveConfirmation(
+		conf.requestId,
+		body.kind === 'domainAccessApprove' ? 'approved' : 'denied',
+	);
+	void thread.confirmAction(conf.requestId, body);
+}
+
 function handleContinue(conf: InstanceAiConfirmation) {
 	if (thread.resolvedConfirmationIds.has(conf.requestId)) return;
-	trackInputCompleted(
-		conf,
-		[{ label: conf.message, options: ['continue'], option_chosen: 'continue' }],
-		[],
-	);
+	trackInputCompleted(conf, continueInputs(conf.message));
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'approval', approved: true });
 }
 
 function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAnswer[]) {
-	const questionsById = new Map((conf.questions ?? []).map((q) => [q.id, q]));
-	const provided: Array<{
-		label: string;
-		question: string;
-		input_type: string;
-		options: string[];
-		option_chosen: string | string[];
-	}> = [];
-	const skipped: Array<{ label: string; question: string; input_type: string; options: string[] }> =
-		[];
-	for (const answer of answers) {
-		const questionDef = questionsById.get(answer.questionId);
-		const allOptions = questionDef?.options ?? [];
-		const inputType = questionDef?.type ?? 'text';
-
-		if (answer.skipped) {
-			skipped.push({
-				label: answer.questionId,
-				question: answer.question,
-				input_type: inputType,
-				options: allOptions,
-			});
-		} else {
-			const isMulti = inputType === 'multi';
-			const chosen: string | string[] = isMulti
-				? [...answer.selectedOptions, ...(answer.customText ? [answer.customText] : [])]
-				: answer.customText || answer.selectedOptions[0] || '';
-			provided.push({
-				label: answer.questionId,
-				question: answer.question,
-				input_type: inputType,
-				options: allOptions,
-				option_chosen: chosen,
-			});
-		}
-	}
-	trackInputCompleted(conf, provided, skipped, { num_tasks: answers.length });
+	trackInputCompleted(conf, questionsInputs(conf.questions ?? [], answers));
 	thread.resolveConfirmation(conf.requestId, 'approved');
 	void thread.confirmAction(conf.requestId, { kind: 'questions', answers });
 }
@@ -711,19 +536,19 @@ function handleQuestionsSubmit(conf: InstanceAiConfirmation, answers: QuestionAn
 				v-else-if="chunk.item.toolCall.confirmation.domainAccess"
 				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
 				data-test-id="instance-ai-confirmation-panel"
-				:request-id="chunk.item.toolCall.confirmation.requestId"
 				:url="chunk.item.toolCall.confirmation.domainAccess.url"
 				:host="chunk.item.toolCall.confirmation.domainAccess.host"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
 			/>
 
 			<DomainAccessApproval
 				v-else-if="chunk.item.toolCall.confirmation.webSearch"
 				:key="'floating-' + chunk.item.toolCall.confirmation.requestId"
 				data-test-id="instance-ai-confirmation-panel"
-				:request-id="chunk.item.toolCall.confirmation.requestId"
 				:query="chunk.item.toolCall.confirmation.webSearch.query"
 				:severity="chunk.item.toolCall.confirmation.severity"
+				@decide="handleDomainDecision(chunk.item.toolCall.confirmation, $event)"
 			/>
 
 			<N8nApprovalCard

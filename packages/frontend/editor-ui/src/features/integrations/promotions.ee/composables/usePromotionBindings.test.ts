@@ -202,7 +202,7 @@ it('reconciles a blocked result and stops on a source change', async () => {
 	const next = blocked({ missingBindings: [credential] });
 	vi.mocked(continueApplyPromotion).mockResolvedValueOnce(next);
 	await session.continueInstanceApply();
-	expect(session.preflight.value).toBe(next.preflight);
+	expect(session.check.value).toBe(next.check);
 	expect(session.unresolvedCount.value).toBe(1);
 	await session.createBinding(promotionBindingKey(credential), async () => savedCredential);
 	const changed = {
@@ -233,7 +233,7 @@ it('replaces blockers and preserves saved rows after another blocked result', as
 	});
 	vi.mocked(continueApplyPromotion).mockResolvedValue(next);
 	await session.continueInstanceApply();
-	expect(session.preflight.value).toBe(next.preflight);
+	expect(session.check.value).toBe(next.check);
 	expect(session.originalResult.value).toBe(result);
 	expect(session.unresolvedCount.value).toBe(2);
 	const rows = session.groups.value[0].workflows[0].rows;

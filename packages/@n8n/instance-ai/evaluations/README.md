@@ -12,6 +12,8 @@ Five harnesses live here:
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
+To compare the model context of two commits (tokens for each LLM call, tool list size), use the A/B context benchmark: `eval:ab-bench`. See [ab-bench/README.md](./ab-bench/README.md).
+
 > **Writing a test case?** This README is the reference and quick-start. Use the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) for the shared process and workflow cases. Use the [`create-agent-builder-eval` skill](../../../../.agents/skills/create-agent-builder-eval/SKILL.md) for standalone Agent cases. To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
@@ -886,7 +888,7 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 
 ### Build isolation
 
-Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
+Each orchestrator build runs in its own empty project, named like the lane owner. The owner drives the build. When the license allows team projects, the project is a team project the owner creates, so the owner is its admin and n8n shows it the build's execution output. Cleanup deletes the project; lane setup and the run end also delete any marked build project a crashed or failed build left, because with team projects licensed the agent's project list shows every project. Without team projects, the project is the personal project of a freshly invited member, the only new project an unlicensed instance can create. n8n then hides execution output from the owner, because the owner has no direct access to the member's credentials, and lane setup logs a warning. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there. Under `--keep-workflows`, build projects and members stay. Like the MCP lane, the member path needs a lane without SMTP, so invites return their accept token.
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
 
@@ -1091,7 +1093,7 @@ The seed lives **in the case body** rather than in a sibling file, so it travels
 
 A seed can create folders in the thread's project before the live turn, and place its
 workflows inside them. Use it to grade how the agent finds the contents of a folder the
-user names (CONTEXT-86: `workflow_builder_workflows(action="list")` takes `folderPath` or `folderId`).
+user names (CONTEXT-86: `list_workflows` takes `folderPath` or `folderId`).
 
 ```jsonc
 "seed": {

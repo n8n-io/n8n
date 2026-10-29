@@ -395,6 +395,7 @@ export class N8nPackagesService {
 			sourceN8nVersion: N8N_VERSION,
 			sourceId: this.instanceSettings.instanceId,
 			...(agentEntries.length > 0 ? { agents: agentEntries } : {}),
+			...(agentExportResult?.skillEntries.length ? { skills: agentExportResult.skillEntries } : {}),
 			...(credentialExportResult.entries.length > 0
 				? { credentials: credentialExportResult.entries }
 				: {}),
