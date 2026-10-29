@@ -257,6 +257,61 @@ describe('TelemetryEventRelay', () => {
 			expect(setupListenersSpy).toHaveBeenCalled();
 		});
 
+		// On its own emitter, so only the listeners this relay registered can answer.
+		it('registers a listener for every trusted-source event', async () => {
+			globalConfig.diagnostics.enabled = true;
+			const ownEventService = new EventService();
+			const telemetryEventRelay = new TelemetryEventRelay(
+				ownEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			);
+			await telemetryEventRelay.init();
+			const user = {
+				id: 'user-1',
+				email: 'owner@n8n.io',
+				firstName: 'Own',
+				lastName: 'Er',
+				role: { slug: GLOBAL_OWNER_ROLE.slug },
+			};
+			const facets: TrustedSourceFacets = {
+				discoveryMode: 'auto',
+				clientKind: null,
+				surfaces: ['public-api'],
+				identitySubject: 'binding',
+				linkByEmail: 'verified-only',
+				provisionHuman: 'off',
+				roleMappingMode: 'off',
+			};
+
+			ownEventService.emit('trusted-source-created', { user, sourceId: 's', issuer: 'i', facets });
+			ownEventService.emit('trusted-source-updated', { user, sourceId: 's', issuer: 'i', facets });
+			ownEventService.emit('trusted-source-deleted', { user, sourceId: 's', issuer: 'i' });
+			ownEventService.emit('trusted-source-healthy', { sourceId: 's' });
+
+			const tracked = telemetry.track.mock.calls.map(([entry]) => entry);
+			expect(tracked).toEqual([
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
+			]);
+		});
+
 		it('with diagnostics disabled, should neither init telemetry nor register listeners', async () => {
 			globalConfig.diagnostics.enabled = false;
 			const telemetryEventRelay = new TelemetryEventRelay(

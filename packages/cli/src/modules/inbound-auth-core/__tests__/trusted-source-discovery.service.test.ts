@@ -401,6 +401,60 @@ describe('TrustedSourceDiscoveryService', () => {
 			expect(recorded().status).toBe(status);
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
+
+		// The listed row can be a minute old; the status that counts is the one read under the lease.
+		it('emits nothing when another run already recorded healthy since the source was listed', async () => {
+			const listed = source({ status: 'unchecked' });
+			store.getById
+				.mockResolvedValueOnce(listed)
+				.mockResolvedValueOnce({ ...listed, status: 'healthy' });
+
+			await service.refresh(listed.id);
+
+			expect(recorded().status).toBe('healthy');
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits when another run recorded an error since the source was listed as healthy', async () => {
+			const listed = source({ status: 'healthy' });
+			store.getById
+				.mockResolvedValueOnce(listed)
+				.mockResolvedValueOnce({ ...listed, status: 'error' });
+
+			await service.refresh(listed.id);
+
+			expect(recorded().status).toBe('healthy');
+			expect(eventService.emit).toHaveBeenCalledWith('trusted-source-healthy', {
+				sourceId: listed.id,
+			});
+		});
+
+		it('falls back to the listed status and still refreshes when the row cannot be re-read', async () => {
+			const listed = source({ status: 'unchecked' });
+			store.getById.mockResolvedValueOnce(listed).mockResolvedValueOnce(undefined);
+
+			await service.refresh(listed.id);
+
+			expect(recorded().status).toBe('healthy');
+			expect(eventService.emit).toHaveBeenCalledWith('trusted-source-healthy', {
+				sourceId: listed.id,
+			});
+		});
+
+		it('logs the failed write with the source id and emits nothing when the write throws', async () => {
+			const error = new Error('database unavailable');
+			store.recordDiscovery.mockRejectedValue(error);
+			const src = source();
+
+			await refresh(src);
+
+			expect(recorded().status).toBe('healthy');
+			expect(logger.error).toHaveBeenCalledWith(
+				'Could not write the discovery result of a trusted source',
+				{ id: src.id, error },
+			);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
 	});
 
 	describe('refreshDue', () => {
