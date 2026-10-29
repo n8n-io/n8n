@@ -164,7 +164,7 @@ jobs:
 
   check-do-not-merge:
     name: Do Not Merge
-    needs: changes
+    # Keep this guard independent of the event gate, including on other label changes.
     # Read current labels because concurrent PR events can have stale labels.
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
@@ -186,7 +186,8 @@ jobs:
   required-pr-quality-checks:
     name: Required PR Quality Checks
     needs: [changes, check-pr-size, check-static-analysis, check-knip, check-do-not-merge]
-    if: always() && needs.changes.result != 'skipped'
+    # Validate the guard even when unrelated label events skip the expensive checks.
+    if: always() && (github.event_name == 'pull_request' || github.event_name == 'merge_group')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

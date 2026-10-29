@@ -236,9 +236,9 @@ parallelism). See the `--build-via-mcp` section in
 
 ### Label Triggers
 
-PR quality checks skip unrelated label events, including `cla-signed`.
-A `Do Not Merge` label change runs the full quality gate. This keeps the required
-summary tied to the results of all quality checks. Relevant PR events share a
+Expensive PR quality checks skip unrelated label events, including `cla-signed`.
+The `Do Not Merge` guard and required validation still run on these events.
+A `Do Not Merge` label change runs the full quality gate. Relevant PR events share a
 concurrency group for the PR. A newer event cancels the active run. Unrelated
 labels and issue comments use separate groups, so they cannot cancel that run.
 Reviewer assignment also skips unrelated label events before it starts a runner.
