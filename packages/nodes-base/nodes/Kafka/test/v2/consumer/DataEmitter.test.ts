@@ -213,13 +213,13 @@ describe('createDataEmitter', () => {
 		it('paces a failed hand-off by the configured delay', async () => {
 			await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay: 10_000 }, 'error');
 
-			expect(mockedSleep).toHaveBeenCalledWith(10_000);
+			expect(mockedSleep).toHaveBeenCalledWith(10_000, expect.any(AbortSignal));
 		});
 
 		it('waits not at all when the delay is zero', async () => {
 			await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay: 0 }, 'error');
 
-			expect(mockedSleep).toHaveBeenCalledWith(0);
+			expect(mockedSleep).toHaveBeenCalledWith(0, expect.any(AbortSignal));
 		});
 
 		// setTimeout turns each of these into no wait at all, so without a guard the
@@ -230,7 +230,7 @@ describe('createDataEmitter', () => {
 			async (errorRetryDelay) => {
 				await emitAndFinish({ resolveOffsetMode: 'onSuccess', errorRetryDelay }, 'error');
 
-				expect(mockedSleep).toHaveBeenCalledWith(5000);
+				expect(mockedSleep).toHaveBeenCalledWith(5000, expect.any(AbortSignal));
 			},
 		);
 

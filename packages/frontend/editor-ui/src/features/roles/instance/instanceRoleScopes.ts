@@ -30,6 +30,7 @@ export const INSTANCE_RESOURCE_ORDER: InstanceResource[] = [
 	'variable',
 	'credential',
 	'project',
+	'app',
 	'insights',
 ];
 
@@ -43,6 +44,7 @@ export const INSTANCE_RESOURCE_LABEL_KEYS: Record<InstanceResource, BaseTextKey>
 	variable: 'instanceRoles.resource.variable',
 	credential: 'instanceRoles.resource.credential',
 	project: 'instanceRoles.resource.project',
+	app: 'instanceRoles.resource.app',
 	insights: 'instanceRoles.resource.insights',
 };
 
@@ -117,6 +119,10 @@ export const INSTANCE_OPTION_DESCRIPTION_KEYS: Partial<
 		Manage: 'instanceRoles.description.credential.manage',
 	},
 	project: { Create: 'instanceRoles.description.project.create' },
+	app: {
+		View: 'instanceRoles.description.app.view',
+		Manage: 'instanceRoles.description.app.manage',
+	},
 	insights: { View: 'instanceRoles.description.insights.view' },
 };
 

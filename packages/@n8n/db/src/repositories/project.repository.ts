@@ -1,12 +1,13 @@
 import { UNLIMITED_LICENSE_QUOTA } from '@n8n/constants';
 import { Service } from '@n8n/di';
-import type { EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { Project, ProjectRelation } from '../entities';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 import { chunkIds } from '../utils/chunk-ids';
 import { isUniqueConstraintError } from '../utils/is-unique-constraint-error';
 
@@ -107,11 +108,105 @@ export class ProjectRepository extends BaseRepository<Project> {
 		return rows;
 	}
 
+	/**
+	 * Id, name, type and description of the team projects among these ids.
+	 * Personal projects are excluded, because a rule must never grant access to one.
+	 */
+	async findTeamProjectInfoByIds(
+		ids: string[],
+		ctx: OperationContext = {},
+	): Promise<Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>>> {
+		const manager = this.managerFor(ctx);
+		const rows: Array<Pick<Project, 'id' | 'name' | 'type' | 'description'>> = [];
+		for (const batch of chunkIds(ids)) {
+			rows.push(
+				...(await manager.find(Project, {
+					where: { id: In(batch), type: 'team' },
+					select: ['id', 'name', 'type', 'description'],
+				})),
+			);
+		}
+		return rows;
+	}
+
 	async getAccessibleProjects(userId: string) {
 		return await this.find({
 			where: {
 				projectRelations: {
 					userId,
+				},
+			},
+		});
+	}
+
+	/** An undefined role list allows global access. An empty list matches no projects. */
+	async findOneWithUserRoles(
+		projectId: string,
+		userId: string,
+		roleSlugs: string[] | undefined,
+		ctx: OperationContext = {},
+	): Promise<Project | null> {
+		return await this.managerFor(ctx).findOne(Project, {
+			where: {
+				id: projectId,
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+		});
+	}
+
+	async findIdsWithUserRoles(
+		userId: string,
+		roleSlugs: string[] | undefined,
+		projectIds?: string[],
+	): Promise<string[]> {
+		const where: FindOptionsWhere<Project> = {};
+		if (projectIds) where.id = In(projectIds);
+		if (roleSlugs !== undefined) {
+			// Without explicit IDs, scoped users can list only team projects.
+			if (!projectIds) where.type = 'team';
+			where.projectRelations = { userId, role: { slug: In(roleSlugs) } };
+		}
+
+		const projects = await this.find({
+			where,
+			select: ['id'],
+		});
+		return projects.map(({ id }) => id);
+	}
+
+	async findExistingIds(ids: string[]): Promise<string[]> {
+		if (ids.length === 0) return [];
+
+		const projects = await this.find({ select: ['id'], where: { id: In(ids) } });
+		return projects.map(({ id }) => id);
+	}
+
+	async findByIdsWithUserRoles(
+		ids: string[],
+		userId: string,
+		roleSlugs: string[] | undefined,
+	): Promise<Project[]> {
+		if (ids.length === 0) return [];
+
+		return await this.find({
+			where: {
+				id: In(ids),
+				...(roleSlugs !== undefined && {
+					projectRelations: { userId, role: { slug: In(roleSlugs) } },
+				}),
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	async findOwnedOrAdminByUser(userId: string): Promise<Project[]> {
+		return await this.find({
+			where: {
+				projectRelations: {
+					userId,
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
 				},
 			},
 		});

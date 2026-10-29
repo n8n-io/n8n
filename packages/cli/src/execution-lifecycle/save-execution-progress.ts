@@ -11,6 +11,7 @@ export async function saveExecutionProgress(
 	nodeName: string,
 	_data: ITaskData,
 	executionData: IRunExecutionData,
+	requireRunning = false,
 ) {
 	const logger = Container.get(Logger);
 	const executionPersistence = Container.get(ExecutionPersistence);
@@ -27,7 +28,13 @@ export async function saveExecutionProgress(
 		const updated = await executionPersistence.updateExistingExecution(
 			executionId,
 			{ data: executionData, status: 'running' },
-			{ requireNotFinished: true, requireNotCanceled: true },
+			// If the memory guard stops the execution while this save runs, n8n saves the
+			// execution as failed, with no run data. This save must not then write the run
+			// data back. `requireNotCanceled` cannot catch this, because the status is
+			// `error`, so require `running` instead.
+			requireRunning
+				? { requireNotFinished: true, requireStatus: 'running' }
+				: { requireNotFinished: true, requireNotCanceled: true },
 		);
 
 		if (!updated) {

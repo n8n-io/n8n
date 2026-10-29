@@ -30,6 +30,14 @@ const alias = {
 		__dirname,
 		'../modules/insights/backend/src/index.ts',
 	),
+	'@n8n/backend-module-workflow-builder/module': path.resolve(
+		__dirname,
+		'../modules/workflow-builder/backend/src/workflow-builder.module.ts',
+	),
+	'@n8n/backend-module-workflow-builder': path.resolve(
+		__dirname,
+		'../modules/workflow-builder/backend/src/index.ts',
+	),
 	'@n8n/mcp-apps/server': path.resolve(__dirname, '../@n8n/mcp-apps/src/server/index.ts'),
 	'@n8n/telemetry': path.resolve(__dirname, '../@n8n/telemetry/src'),
 	'@': path.resolve(__dirname, 'src'),

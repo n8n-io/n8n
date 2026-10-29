@@ -4,9 +4,6 @@ tags:
 summary: Retrieve the LDAP configuration
 description: Retrieve the current LDAP configuration, including every field exposed in the UI. The binding admin password is redacted on read. Requires the `ldap:manage` scope and the LDAP feature to be licensed.
 x-required-scope: ldap:manage
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 responses:
   '200':
     description: Operation successful.

@@ -4,9 +4,6 @@ tags:
 summary: Publish a workflow
 description: Publish a workflow. In n8n v1, this action was termed activating a workflow.
 x-required-scope: workflow:activate
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string

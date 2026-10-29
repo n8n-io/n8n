@@ -17,7 +17,10 @@ import { packagedModules } from '@/modules/modules.manifest';
 import { DurableJobProvisioner } from '@/scheduling/durable-job-provisioner';
 import { buildMaterializerTransaction } from '@/scheduling/durable-scheduler';
 import { SystemTaskHandler } from '@/scheduling/system-tasks/system-task-handler';
-import { systemTaskProvisionRequest } from '@/scheduling/system-tasks/system-task-job-registrar';
+import {
+	systemTaskProvisionRequest,
+	durableSystemTask,
+} from '@/scheduling/system-tasks/system-task-job-registrar';
 import { SystemTaskScheduledJobOwner } from '@/scheduling/system-tasks/system-task-scheduled-job-owner';
 import { retryUntil } from '@test-integration/retry-until';
 
@@ -120,7 +123,7 @@ describe('instance reporting across mains', () => {
 	async function provision(task: InstanceReportingTask) {
 		await Container.get(DurableJobProvisioner).provision(
 			systemTaskProvisionRequest(
-				task,
+				durableSystemTask(task),
 				Container.get(SystemTaskScheduledJobOwner),
 				'UTC',
 				new Date(),

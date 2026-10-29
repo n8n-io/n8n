@@ -2,16 +2,12 @@ import type { EventService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig, WorkflowHistoryCompactionConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { DbConnection, WorkflowHistoryRepository } from '@n8n/db';
-import type { InstanceSettings } from 'n8n-core';
+import type { WorkflowHistoryRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import { WorkflowHistoryCompactionService } from '../workflow-history-compaction.service';
 
 describe('WorkflowHistoryCompactionService', () => {
-	const dbConnection = mock<DbConnection>({
-		connectionState: { migrated: true },
-	});
 	const config = mock<WorkflowHistoryCompactionConfig>({
 		batchDelayMs: 1000,
 		batchSize: 1000,
@@ -19,8 +15,6 @@ describe('WorkflowHistoryCompactionService', () => {
 		optimizingTimeWindowHours: 2,
 		trimmingMinimumAgeDays: 7,
 		trimmingTimeWindowDays: 2,
-		trimOnStartUp: false,
-		skipOnStartUp: false,
 	});
 	const globalConfig = mock<GlobalConfig>({
 		generic: { timezone: 'Europe/Berlin' },
@@ -38,167 +32,13 @@ describe('WorkflowHistoryCompactionService', () => {
 		vi.useRealTimers();
 	});
 
-	describe('init', () => {
-		it('should start compacting on main instance that is the leader', () => {
-			const compactingService = new WorkflowHistoryCompactionService(
-				config,
-				globalConfig,
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock<EventService>(),
-			);
-			const runStartupCompaction = vi.spyOn(compactingService, 'runStartupCompaction');
-
-			compactingService.init();
-
-			expect(runStartupCompaction).toHaveBeenCalled();
-		});
-
-		it('should not start pruning on main instance that is a follower', () => {
-			const compactingService = new WorkflowHistoryCompactionService(
-				config,
-				globalConfig,
-				mockLogger(),
-				mock<InstanceSettings>({ isLeader: false, isMultiMain: true }),
-				dbConnection,
-				mock(),
-				mock<EventService>(),
-			);
-			const runStartupCompaction = vi.spyOn(compactingService, 'runStartupCompaction');
-
-			compactingService.init();
-
-			expect(runStartupCompaction).not.toHaveBeenCalled();
-		});
-	});
-
-	it('should skip trimming if pruneTime < trimAge', () => {
-		const compactingService = new WorkflowHistoryCompactionService(
-			{ ...config, trimOnStartUp: true },
-			{ ...globalConfig, workflowHistory: { pruneTime: 24 } },
-			mockLogger(),
-			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-			dbConnection,
-			mock(),
-			mock<EventService>(),
-		);
-
-		vi.spyOn(compactingService, 'compactHistories').mockImplementation((() => {}) as never);
-
-		const trimLongRunningHistoriesSpy = vi.spyOn(compactingService, 'trimLongRunningHistories');
-
-		compactingService.runStartupCompaction();
-
-		expect(trimLongRunningHistoriesSpy).not.toBeCalled();
-	});
-	it('should not skip trimming if pruneTime > trimAge', () => {
-		const compactingService = new WorkflowHistoryCompactionService(
-			{ ...config, trimOnStartUp: true },
-			{ ...globalConfig, workflowHistory: { pruneTime: 8 * 24 } },
-			mockLogger(),
-			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-			dbConnection,
-			mock(),
-			mock<EventService>(),
-		);
-
-		vi.spyOn(compactingService, 'optimizeHistories').mockImplementation((() => {}) as never);
-		const trimLongRunningHistoriesSpy = vi
-			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation((() => {}) as never);
-
-		compactingService.runStartupCompaction();
-
-		expect(trimLongRunningHistoriesSpy).toBeCalled();
-	});
-
-	it('should compact on start up ', () => {
-		const compactingService = new WorkflowHistoryCompactionService(
-			config,
-			globalConfig,
-			mockLogger(),
-			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-			dbConnection,
-			mock(),
-			mock<EventService>(),
-		);
-
-		const optimizeHistoriesSpy = vi
-			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation((() => {}) as never);
-		const trimLongRunningHistoriesSpy = vi
-			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation((() => {}) as never);
-
-		compactingService.runStartupCompaction();
-
-		expect(optimizeHistoriesSpy).toHaveBeenCalled();
-		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
-	});
-
-	it('should not compact on start up if skipOnStartUp is set', () => {
-		const compactingService = new WorkflowHistoryCompactionService(
-			{ ...config, skipOnStartUp: true, trimOnStartUp: true },
-			globalConfig,
-			mockLogger(),
-			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-			dbConnection,
-			mock(),
-			mock<EventService>(),
-		);
-
-		const optimizeHistoriesSpy = vi
-			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation((() => {}) as never);
-		const trimLongRunningHistoriesSpy = vi
-			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation((() => {}) as never);
-
-		compactingService.runStartupCompaction();
-
-		expect(optimizeHistoriesSpy).not.toHaveBeenCalled();
-		expect(trimLongRunningHistoriesSpy).not.toHaveBeenCalled();
-	});
-
-	it('should trim on start up if flag is provided', () => {
-		const compactingService = new WorkflowHistoryCompactionService(
-			{ ...config, trimOnStartUp: true },
-			globalConfig,
-			mockLogger(),
-			mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-			dbConnection,
-			mock(),
-			mock<EventService>(),
-		);
-
-		const optimizeHistoriesSpy = vi
-			.spyOn(compactingService, 'optimizeHistories')
-			.mockImplementation((() => {}) as never);
-		const trimLongRunningHistoriesSpy = vi
-			.spyOn(compactingService, 'trimLongRunningHistories')
-			.mockImplementation((() => {}) as never);
-
-		compactingService.runStartupCompaction();
-
-		expect(trimLongRunningHistoriesSpy).toHaveBeenCalled();
-		// should still call recent history compaction
-		expect(optimizeHistoriesSpy).toHaveBeenCalled();
-	});
-
 	describe('compactHistories', () => {
-		const createService = (
-			workflowHistoryRepository: WorkflowHistoryRepository,
-			isLeader = true,
-		) => {
+		const createService = (workflowHistoryRepository: WorkflowHistoryRepository) => {
 			const eventService = mock<EventService>();
 			const compactingService = new WorkflowHistoryCompactionService(
 				config,
 				globalConfig,
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
 				workflowHistoryRepository,
 				eventService,
 			);
@@ -217,17 +57,6 @@ describe('WorkflowHistoryCompactionService', () => {
 				new Date(now - 26 * Time.hours.toMilliseconds),
 				new Date(now - 24 * Time.hours.toMilliseconds),
 			);
-		});
-
-		it('should optimize on a main that is not the leader', async () => {
-			const workflowHistoryRepository = mock<WorkflowHistoryRepository>();
-			workflowHistoryRepository.getWorkflowIdsInRange.mockResolvedValue(['wf-1']);
-			workflowHistoryRepository.pruneHistory.mockResolvedValue({ seen: 2, deleted: 1 });
-			const { compactingService } = createService(workflowHistoryRepository, false);
-
-			await compactingService.optimizeHistories(new AbortController().signal);
-
-			expect(workflowHistoryRepository.pruneHistory).toHaveBeenCalledOnce();
 		});
 
 		it('should trim over the window between trimmingMinimumAge and the time window, anchored to the start of the day in the instance timezone', async () => {
@@ -291,8 +120,6 @@ describe('WorkflowHistoryCompactionService', () => {
 					config,
 					mock<GlobalConfig>({ generic: { timezone }, workflowHistory: { pruneTime: -1 } }),
 					mockLogger(),
-					mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-					dbConnection,
 					workflowHistoryRepository,
 					mock<EventService>(),
 				);
@@ -366,8 +193,6 @@ describe('WorkflowHistoryCompactionService', () => {
 				abortConfig,
 				globalConfig,
 				mockLogger(),
-				mock<InstanceSettings>({ isLeader: true, instanceType: 'main', isMultiMain: true }),
-				dbConnection,
 				workflowHistoryRepository,
 				eventService,
 			);
@@ -424,22 +249,6 @@ describe('WorkflowHistoryCompactionService', () => {
 				'history-compacted',
 				expect.objectContaining({ workflowsProcessed: 2 }),
 			);
-		});
-
-		it('should hand a detached startup pass a signal that stepdown aborts', () => {
-			const { compactingService } = setupService([]);
-			const optimizeHistories = vi
-				.spyOn(compactingService, 'optimizeHistories')
-				.mockResolvedValue(undefined);
-
-			compactingService.runStartupCompaction();
-
-			const signal = optimizeHistories.mock.calls[0][0];
-			expect(signal.aborted).toBe(false);
-
-			compactingService.stopStartupCompaction();
-
-			expect(signal.aborted).toBe(true);
 		});
 	});
 });

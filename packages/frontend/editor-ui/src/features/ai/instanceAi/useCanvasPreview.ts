@@ -8,7 +8,9 @@ import {
 	getLatestWorkflowUpdateResult,
 	getLatestDataTableResult,
 	getLatestDeletedDataTableId,
+	getLatestAgentArtifactResult,
 	getLatestAgentBuilderTarget,
+	getLatestSkillArtifactResult,
 	getExecutionResultsByWorkflow,
 	type ExecutionResult,
 } from './canvasPreview.utils';
@@ -24,7 +26,7 @@ import type { ThreadRuntime } from './instanceAi.store';
 
 export interface ArtifactTab {
 	id: string;
-	type: 'workflow' | 'data-table' | 'agent';
+	type: 'workflow' | 'data-table' | 'agent' | 'skill';
 	name: string;
 	icon: IconName;
 	projectId?: string;
@@ -90,7 +92,12 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		const result: ArtifactTab[] = [];
 		const linkedAgent = linkedAgentTarget.value;
 		for (const entry of thread.producedArtifacts.values()) {
-			if (entry.type === 'workflow' || entry.type === 'data-table' || entry.type === 'agent') {
+			if (
+				entry.type === 'workflow' ||
+				entry.type === 'data-table' ||
+				entry.type === 'agent' ||
+				entry.type === 'skill'
+			) {
 				result.push({
 					id: entry.id,
 					type: entry.type,
@@ -163,6 +170,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		return tab?.type === 'agent' && tab.pending === true;
 	});
 
+	const activeSkillId = computed(() => {
+		const tab = openTabs.value.find((t) => t.id === activeTabId.value);
+		return tab?.type === 'skill' ? tab.id : null;
+	});
+
 	const executionResultsByWorkflow = computed(() => {
 		const results = new Map<string, ExecutionResult>();
 		for (const message of thread.messages) {
@@ -180,6 +192,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	});
 
 	const dataTableRefreshKey = ref(0);
+	const skillRefreshKey = ref(0);
 
 	const isPreviewVisible = computed(
 		() =>
@@ -358,6 +371,17 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		return true;
 	}
 
+	/**
+	 * Open or switch the preview to a skill.
+	 * Returns true if the preview tab changed; false if the tab was already
+	 * active (so the caller can fall back to opening in a new tab instead).
+	 */
+	function openSkillPreview(skillId: string): boolean {
+		if (activeTabId.value === skillId && isPreviewOpen.value) return false;
+		selectTab(skillId);
+		return true;
+	}
+
 	// --- Guard: fall back if active tab is removed from registry ---
 	// Only acts when there ARE tabs but the selected one is missing (i.e. it was removed).
 	// Skips when tabs are empty to avoid a race where the registry hasn't been populated yet.
@@ -413,7 +437,7 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	// --- Auto-open canvas when an edit-mode builder spawns ---
 	// The workflow-builder carries the existing workflow id in
 	// `targetResource.id` from the moment it is spawned. Opening the preview
-	// then — instead of waiting for the first build-workflow result — lets the
+	// then — instead of waiting for the first workflow_builder_build_workflow result — lets the
 	// user see what is being edited as soon as the sub-agent is called.
 	// Keyed by agentId so a fresh builder spawn re-triggers the preview.
 
@@ -474,7 +498,32 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		{ flush: 'sync' },
 	);
 
-	// --- Refresh preview when setup-workflow / apply-workflow-credentials completes ---
+	// --- Auto-open canvas when the orchestrator creates or changes an Agent ---
+	// The builder tools run in the orchestrator, so their results carry the agent id.
+
+	const latestAgentArtifactResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestAgentArtifactResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestAgentArtifactResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestAgentArtifactResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			showAgentArtifact(latestAgentArtifactResult.value.agentId);
+		},
+		{ flush: 'sync' },
+	);
+
+	// --- Refresh preview when setup-workflow / workflow_builder_apply_workflow_credentials completes ---
 	// These tools modify the workflow (credentials, parameters) but aren't detected
 	// by getLatestBuildResult. Refresh the preview so the iframe shows the latest state.
 
@@ -503,10 +552,9 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		},
 	);
 
-	// --- Refresh preview when a `workflows` update / restore-version / setup completes ---
-	// The `workflows` tool's update / restore-version / setup actions mutate the
-	// workflow definition but surface under tool name 'workflows', so
-	// getLatestBuildResult doesn't detect them. Refresh the preview so the canvas
+	// --- Refresh preview when `restore_workflow_version` or `setup_workflow` completes ---
+	// These tools mutate the workflow definition, but getLatestBuildResult
+	// doesn't detect them. Refresh the preview so the canvas
 	// shows the latest state.
 
 	const latestUpdateResult = computed(() => {
@@ -564,6 +612,36 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		{ flush: 'sync' },
 	);
 
+	// --- Auto-open skill preview when the assistant creates or saves a skill ---
+	// Only a successful `skills` create or update counts. Reading, listing or
+	// mentioning a skill does not open it.
+
+	const latestSkillResult = computed(() => {
+		for (let i = thread.messages.length - 1; i >= 0; i--) {
+			const msg = thread.messages[i];
+			if (msg.agentTree) {
+				const result = getLatestSkillArtifactResult(msg.agentTree);
+				if (result) return result;
+			}
+		}
+		return null;
+	});
+
+	watch(
+		() => latestSkillResult.value?.toolCallId,
+		(toolCallId) => {
+			if (!toolCallId || !latestSkillResult.value) return;
+			if (thread.isHydratingThread) return;
+
+			const targetId = latestSkillResult.value.skillId;
+			showAgentArtifact(targetId);
+			if (activeTabId.value === targetId) {
+				skillRefreshKey.value++;
+			}
+		},
+		{ flush: 'sync' },
+	);
+
 	// --- Close data table preview if the active table is deleted ---
 
 	const latestDeletedDataTableId = computed(() => {
@@ -601,8 +679,10 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		activeAgentId,
 		activeAgentProjectId,
 		activeAgentPending,
+		activeSkillId,
 		activeWorkflowExecutionResult,
 		dataTableRefreshKey,
+		skillRefreshKey,
 		isPreviewVisible,
 		workflowRefreshKey,
 		selectTab,
@@ -613,5 +693,6 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 		openWorkflowPreview,
 		openDataTablePreview,
 		openAgentPreview,
+		openSkillPreview,
 	};
 }

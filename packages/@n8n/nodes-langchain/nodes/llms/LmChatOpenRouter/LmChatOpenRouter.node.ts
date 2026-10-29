@@ -200,6 +200,36 @@ export class LmChatOpenRouter implements INodeType {
 				default: {},
 				options: [
 					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						type: 'options',
+						default: 'medium',
+						description:
+							'Controls the amount of reasoning effort the model will use to generate a response. Higher values may result in more accurate and detailed responses, but may also take longer to generate.',
+						options: [
+							{
+								name: 'Extra High',
+								value: 'xhigh',
+							},
+							{
+								name: 'High',
+								value: 'high',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+							},
+							{
+								name: 'Minimal',
+								value: 'minimal',
+							},
+						],
+					},
+					{
 						displayName: 'Frequency Penalty',
 						name: 'frequencyPenalty',
 						default: 0,
@@ -375,6 +405,7 @@ export class LmChatOpenRouter implements INodeType {
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
+			reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries: number;
@@ -411,50 +442,52 @@ export class LmChatOpenRouter implements INodeType {
 			},
 		};
 
+		const { reasoningEffort, providerRouting, responseFormat, ...modelOptions } = options;
 		// Build provider routing object
 		const provider: Record<string, unknown> = {};
-		if (options.providerRouting) {
-			const routing = options.providerRouting;
-
-			if (routing.order) {
-				provider.order = routing.order
+		if (providerRouting) {
+			if (providerRouting.order) {
+				provider.order = providerRouting.order
 					.split(',')
 					.map((p) => p.trim())
 					.filter((p) => p);
 			}
-			if (routing.allowFallbacks !== undefined) {
-				provider.allow_fallbacks = routing.allowFallbacks;
+			if (providerRouting.allowFallbacks !== undefined) {
+				provider.allow_fallbacks = providerRouting.allowFallbacks;
 			}
-			if (routing.requireParameters !== undefined) {
-				provider.require_parameters = routing.requireParameters;
+			if (providerRouting.requireParameters !== undefined) {
+				provider.require_parameters = providerRouting.requireParameters;
 			}
-			if (routing.dataCollection) {
-				provider.data_collection = routing.dataCollection;
+			if (providerRouting.dataCollection) {
+				provider.data_collection = providerRouting.dataCollection;
 			}
-			if (routing.zdr !== undefined) {
-				provider.zdr = routing.zdr;
+			if (providerRouting.zdr !== undefined) {
+				provider.zdr = providerRouting.zdr;
 			}
-			if (routing.only) {
-				provider.only = routing.only
+			if (providerRouting.only) {
+				provider.only = providerRouting.only
 					.split(',')
 					.map((p) => p.trim())
 					.filter((p) => p);
 			}
-			if (routing.ignore) {
-				provider.ignore = routing.ignore
+			if (providerRouting.ignore) {
+				provider.ignore = providerRouting.ignore
 					.split(',')
 					.map((p) => p.trim())
 					.filter((p) => p);
 			}
-			if (routing.sort) {
-				provider.sort = routing.sort;
+			if (providerRouting.sort) {
+				provider.sort = providerRouting.sort;
 			}
 		}
 
 		// Build modelKwargs
 		const modelKwargs: Record<string, unknown> = {};
-		if (options.responseFormat) {
-			modelKwargs.response_format = { type: options.responseFormat };
+		if (reasoningEffort) {
+			modelKwargs.reasoning = { effort: reasoningEffort };
+		}
+		if (responseFormat) {
+			modelKwargs.response_format = { type: responseFormat };
 		}
 		if (Object.keys(provider).length > 0) {
 			modelKwargs.provider = provider;
@@ -463,7 +496,7 @@ export class LmChatOpenRouter implements INodeType {
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
+			...modelOptions,
 			timeout,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,

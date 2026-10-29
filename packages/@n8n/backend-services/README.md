@@ -84,7 +84,8 @@ Two things do not carry over on purpose:
   uses belongs to that module.
 - Keep the file layout of `cli` (`errors/`, `services/`). A move with `git mv`
   keeps the history readable.
-- Add each new export to `src/index.ts`. Consumers import from the package
-  root only.
+- Add shared exports to `src/index.ts`. Use `@n8n/backend-services/auth` for
+  auth registries and provider proxies. This entry point does not load the
+  cache, Redis, or database-backed services. Keep internal file paths private.
 - Keep `oxlint.config.mts` and `eslint.config.mjs` in step. A ratchet
   allowlist for a moved TypeORM leak goes into both.

@@ -150,7 +150,7 @@ function handleUpgradeClick() {
 						</I18nT>
 					</template>
 					<N8nButton
-						variant="subtle"
+						variant="outline"
 						size="medium"
 						icon="users"
 						:disabled="isInviteDisabled"

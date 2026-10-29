@@ -1,8 +1,9 @@
 import {
-	executionErrorOf,
+	POLICY_PROPAGATION,
 	POSTGRES_CREDENTIAL,
 	postgresCredential,
 	prepareTypePolicyInstance,
+	webhookRunOutcome,
 	webhookToPostgresWorkflow,
 } from './policy-helpers';
 import { expect, test } from '../../../fixtures/base';
@@ -42,18 +43,21 @@ test.describe(
 				defaultAction: 'allow',
 			});
 
-			await api.webhooks.trigger(`/webhook/${webhookPath}`, { maxNotFoundRetries: 5 });
-			const summary = await api.workflows.waitForExecution(workflowId, 15_000, 'webhook');
-			const execution = await api.workflows.getExecution(summary.id);
-
-			expect(execution.status).toBe('error');
-			expect(executionErrorOf(execution).violations).toEqual([
-				expect.objectContaining({
-					kind: 'credential-type-unavailable',
-					subject: POSTGRES_CREDENTIAL,
-					scope: 'instance',
-				}),
-			]);
+			await expect
+				.poll(
+					async () => await webhookRunOutcome(api, workflowId, `/webhook/${webhookPath}`),
+					POLICY_PROPAGATION,
+				)
+				.toEqual({
+					status: 'error',
+					violations: [
+						expect.objectContaining({
+							kind: 'credential-type-unavailable',
+							subject: POSTGRES_CREDENTIAL,
+							scope: 'instance',
+						}),
+					],
+				});
 		});
 	},
 );

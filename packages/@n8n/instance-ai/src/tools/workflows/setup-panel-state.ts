@@ -278,7 +278,7 @@ export function formatWorkflowSetupStateNote(
 			'look and are not anymore (configured, or removed from the workflow). Trust this over older ' +
 			'tool results. When settledSinceLastTurn is non-empty, open is empty, and there are no validation warnings, ' +
 			'load post-build-flow to verify the current configuration on this user turn. ' +
-			'Use verify-built-workflow to refresh verification after setup. Use executions(action="run") ' +
+			'Use workflow_builder_verify_built_workflow to refresh verification after setup. Use workflow_builder_executions(action="run") ' +
 			'when the user asks for a test, including an Execute request from the setup panel. ' +
 			'Do not treat the earlier mocked result as a live execution result.',
 		JSON.stringify({ workflows }),

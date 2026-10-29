@@ -58,15 +58,6 @@ export default defineConfig({
 			},
 		},
 		{
-			files: ['evaluations/computer-use/report-html.ts'],
-			rules: {
-				'typescript/no-unsafe-assignment': 'off',
-				'typescript/no-unsafe-member-access': 'off',
-				'typescript/no-unsafe-argument': 'off',
-				'typescript/no-unsafe-call': 'off',
-			},
-		},
-		{
 			files: ['assets/workflow-diagnostics.mts'],
 			rules: {
 				'import-x-alias/no-extraneous-dependencies': 'off',

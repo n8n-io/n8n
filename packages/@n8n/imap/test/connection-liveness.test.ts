@@ -78,6 +78,32 @@ describe('unresponsive IMAP connection', () => {
 		expect(fake.server.received.some((line) => line.includes('SELECT'))).toBe(true);
 	});
 
+	it('rejects a disconnect during CAPABILITY without an unhandled startup error', async () => {
+		// NODE-6196: Authentication can continue after the socket has closed during startup.
+		fake.server.disconnectOnCapability = true;
+		const unhandled: unknown[] = [];
+		const record = (error: unknown) => unhandled.push(error);
+		process.on('unhandledRejection', record);
+		process.on('uncaughtException', record);
+
+		try {
+			const rejected = vi.fn();
+			await fake.open().then((connection) => connection.end(), rejected);
+
+			// Let startup finish and let Node report any unhandled rejection.
+			await new Promise<void>((resolve) => setImmediate(resolve));
+
+			expect(fake.server.received).toEqual([expect.stringMatching(/^\S+ CAPABILITY$/)]);
+			expect(rejected).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ message: 'Unexpected close', code: 'ClosedAfterConnectText' }),
+			);
+			expect(unhandled).toEqual([]);
+		} finally {
+			process.removeListener('unhandledRejection', record);
+			process.removeListener('uncaughtException', record);
+		}
+	});
+
 	it('reports mail already in the mailbox on open, so a reconnect drains the backlog', async () => {
 		fake.server.exists = 3;
 

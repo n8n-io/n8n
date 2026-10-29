@@ -1,5 +1,7 @@
 import type { JSONRPCMessage } from '@modelcontextprotocol/sdk/types.js';
 
+import type { McpContentBlock } from '../../shared/utils';
+
 export interface McpToolCallInfo {
 	toolName: string;
 	arguments: Record<string, unknown>;
@@ -8,7 +10,7 @@ export interface McpToolCallInfo {
 
 export interface McpToolResult {
 	[key: string]: unknown;
-	content: Array<{ type: string; text: string }>;
+	content: McpContentBlock[];
 	isError?: boolean;
 }
 

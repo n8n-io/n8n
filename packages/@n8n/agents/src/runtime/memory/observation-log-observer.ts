@@ -9,14 +9,14 @@ import type { AgentDbMessage, ContentToolCall, Message } from '../../types/sdk/m
 import type { ObservationCursor } from '../../types/sdk/observation';
 import type {
 	BuiltObservationLogStore,
-	ObservationLogEntry,
+	ObservationLogBatchEntry,
 	ObservationLogMarker,
 	ObservationLogObserveFn,
 	ObservationLogObserverInput,
 } from '../../types/sdk/observation-log';
 import type { BuiltTelemetry } from '../../types/telemetry';
 import { estimateObservationTokens, type TokenCounter } from '../model/model-token-counter';
-import { guardToolResultForModel } from '../tools/tool-result-guard';
+import { guardSerializedToolResultForModel } from '../tools/tool-result-guard';
 
 export type { ObservationLogObserveFn, ObservationLogObserverInput };
 
@@ -29,6 +29,12 @@ const MARKER_BY_TOKEN: Record<string, ObservationLogMarker> = {
 
 const BULLET_PATTERN =
 	/^(\s*)[*-]\s+(CRITICAL|IMPORTANT|INFO|COMPLETION)(?:\s+\(\d{2}:\d{2}\))?\s+(.+)$/iu;
+/**
+ * Indented lines that are malformed structure, not detail: a fence, the sentinel, a timed
+ * unknown marker, or a misspelled marker. Other uppercase words (API, GET) stay detail.
+ */
+const NON_DETAIL_PATTERN =
+	/^(?:```|NO_OBSERVATIONS$|(?:[*-]\s+)?(?:[A-Z_]+\s+\(\d{2}:\d{2}\)|(?:COMPLET|CRITIC|IMPORTAN|INFO)[A-Z]*\b))/u;
 const DEFAULT_MAX_SERIALIZED_CHARS = 2_000;
 const DEFAULT_MAX_STRING_CHARS = 500;
 const DEFAULT_MAX_ARRAY_ITEMS = 20;
@@ -59,20 +65,29 @@ export interface ObservationLogObserverMemory extends BuiltMemory, BuiltObservat
 		opts?: { since?: { sinceCreatedAt: Date; sinceMessageId: string } },
 	): Promise<AgentDbMessage[]>;
 	getCursor(observationScopeId: string): Promise<ObservationCursor | null>;
-	setCursor(cursor: ObservationCursor): Promise<void>;
 }
 
 export async function readObservationState(
 	memory: ObservationLogObserverMemory,
 	observationScopeId: string,
-): Promise<{ cursor: ObservationCursor | null; hasActiveObservations: boolean }> {
-	const [cursor, observations] = await Promise.all([
-		memory.getCursor(observationScopeId),
-		memory.getActiveObservationLog({ observationScopeId, limit: 1, order: 'desc' }),
-	]);
+): Promise<{
+	cursor: ObservationCursor | null;
+	storedCursor: ObservationCursor | null;
+	hasActiveObservations: boolean;
+}> {
+	const storedCursor = await memory.getCursor(observationScopeId);
+	const observations = await memory.getActiveObservationLog({
+		observationScopeId,
+		limit: 1,
+		order: 'desc',
+	});
 	const hasActiveObservations = observations.length > 0;
 	// Missing memory is not proof that the processed history was empty.
-	return { cursor: hasActiveObservations ? cursor : null, hasActiveObservations };
+	return {
+		cursor: hasActiveObservations ? storedCursor : null,
+		storedCursor,
+		hasActiveObservations,
+	};
 }
 
 export interface RunObservationLogObserverOpts {
@@ -85,6 +100,7 @@ export interface RunObservationLogObserverOpts {
 	onMalformedLine?: (line: string) => void;
 	executionCounter?: AgentExecutionCounter;
 	telemetry?: BuiltTelemetry;
+	modelFetch?: typeof globalThis.fetch;
 	/**
 	 * Receives the observer model call's usage the moment it resolves, before
 	 * any parsing or persistence. Forwarding it here (rather than only on the
@@ -119,6 +135,13 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 
 		const match = BULLET_PATTERN.exec(rawLine);
 		if (!match) {
+			// Models often add an indented detail list under an observation. Keep
+			// that detail on the entry above instead of rejecting the response.
+			const previous = entries.at(-1);
+			if (previous && /^\s/.test(rawLine) && !NON_DETAIL_PATTERN.test(trimmed)) {
+				previous.text = appendObservationDetail(previous.text, trimmed);
+				continue;
+			}
 			skippedLines.push(rawLine);
 			continue;
 		}
@@ -139,6 +162,12 @@ export function parseObservationLogMarkdown(markdown: string): ParseObservationL
 	}
 
 	return { entries, skippedLines };
+}
+
+/** Joins a detail line onto one line, so the rendered log keeps one entry per line. */
+function appendObservationDetail(text: string, detailLine: string): string {
+	const detail = detailLine.replace(/^[*-]\s+/, '');
+	return /[:;.!?]$/.test(text) ? `${text} ${detail}` : `${text}; ${detail}`;
 }
 
 export function renderObserverTranscript(
@@ -193,7 +222,10 @@ export async function runObservationLogObserver(
 	opts: RunObservationLogObserverOpts,
 ): Promise<RunObservationLogObserverResult> {
 	const { memory, observationScopeId } = opts;
-	const { cursor, hasActiveObservations } = await readObservationState(memory, observationScopeId);
+	const { cursor, storedCursor, hasActiveObservations } = await readObservationState(
+		memory,
+		observationScopeId,
+	);
 	const deltaMessages = await memory.getMessagesForObservationScope(
 		observationScopeId,
 		cursor
@@ -218,6 +250,52 @@ export async function runObservationLogObserver(
 	if (observable.length === 0) return { status: 'skipped', reason: 'pending-tool-call' };
 
 	const tokenCounter = opts.tokenCounter ?? estimateObservationTokens;
+	const input = await prepareObserverInput(opts, observable, tokenCounter);
+	const observeResult = await opts.observe(input);
+	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
+	const usage = typeof observeResult === 'string' ? undefined : observeResult.usage;
+	const model = typeof observeResult === 'string' ? undefined : observeResult.model;
+	reportSideCallUsage(opts.onUsage, model, usage);
+
+	const prepared = await prepareObservationEntries(markdown, input.now, tokenCounter, opts);
+	const result = {
+		status: 'ran' as const,
+		observationsWritten: 0,
+		cursorAdvanced: false,
+		tokenCount: input.transcriptTokenCount,
+		skippedLines: prepared.skippedLines,
+		usage,
+		model,
+	};
+	if (!prepared.entries || (prepared.entries.length === 0 && !hasActiveObservations)) {
+		return result;
+	}
+
+	const lastMessage = observable[observable.length - 1];
+	const committed =
+		(await memory.commitObservationLogBatch({
+			observationScopeId,
+			expectedCursor: storedCursor,
+			nextCursor: {
+				observationScopeId,
+				lastObservedMessageId: lastMessage.id,
+				lastObservedAt: lastMessage.createdAt,
+				updatedAt: input.now,
+			},
+			entries: prepared.entries,
+		})) === 'committed';
+	return {
+		...result,
+		observationsWritten: committed ? prepared.entries.length : 0,
+		cursorAdvanced: committed,
+	};
+}
+
+async function prepareObserverInput(
+	opts: RunObservationLogObserverOpts,
+	observable: AgentDbMessage[],
+	tokenCounter: TokenCounter,
+): Promise<ObservationLogObserverInput> {
 	const guardedMessages = await Promise.all(
 		observable.map(async (message) => await guardObserverToolResults(message, tokenCounter)),
 	);
@@ -225,34 +303,33 @@ export async function runObservationLogObserver(
 	const tokenCount = await tokenCounter(transcript);
 
 	const observationLogTail = (
-		await memory.getActiveObservationLog({
-			observationScopeId,
+		await opts.memory.getActiveObservationLog({
+			observationScopeId: opts.observationScopeId,
 			limit: opts.observationLogTailLimit,
 			order: 'desc',
 		})
 	).reverse();
 	const now = opts.now ?? new Date();
-	const renderedObservationLogTail = renderObservationLog(observationLogTail);
-	const observeResult = await opts.observe({
-		observationScopeId,
+	return {
+		observationScopeId: opts.observationScopeId,
 		now,
 		deltaMessages: observable,
 		transcript,
 		transcriptTokenCount: tokenCount,
 		observationLogTail,
-		renderedObservationLogTail,
+		renderedObservationLogTail: renderObservationLog(observationLogTail),
 		executionCounter: opts.executionCounter,
 		telemetry: opts.telemetry,
-	});
-	const markdown = typeof observeResult === 'string' ? observeResult : observeResult.text;
-	const observeUsage = typeof observeResult === 'string' ? undefined : observeResult.usage;
-	const observeModel = typeof observeResult === 'string' ? undefined : observeResult.model;
-	// Forward usage immediately after the model call, before parsing or
-	// persistence, so a billed observer turn is priced even when the
-	// post-processing below throws. Fire-and-forget: never block on pricing,
-	// and never let a callback throw or rejection abort observation.
-	reportSideCallUsage(opts.onUsage, observeModel, observeUsage);
+		modelFetch: opts.modelFetch,
+	};
+}
 
+async function prepareObservationEntries(
+	markdown: string,
+	now: Date,
+	tokenCounter: TokenCounter,
+	opts: Pick<RunObservationLogObserverOpts, 'onMalformedLine'>,
+): Promise<{ entries: ObservationLogBatchEntry[] | null; skippedLines: string[] }> {
 	const noObservations = markdown.trim() === 'NO_OBSERVATIONS';
 	const parsed = noObservations
 		? { entries: [], skippedLines: [] }
@@ -266,67 +343,23 @@ export async function runObservationLogObserver(
 			parsed.skippedLines.length > 0 ||
 			parsed.entries.some((entry) => entry.text.length === 0))
 	) {
-		return {
-			status: 'ran',
-			observationsWritten: 0,
-			cursorAdvanced: false,
-			tokenCount,
-			skippedLines: parsed.skippedLines,
-			usage: observeUsage,
-			model: observeModel,
-		};
+		return { entries: null, skippedLines: parsed.skippedLines };
 	}
 
 	const prepared = await Promise.all(
-		parsed.entries.map(async (entry) => {
+		parsed.entries.map(async (entry, index) => {
 			const text = redactText(entry.text).text;
 			return {
 				marker: entry.marker,
 				parentIndex: entry.parentIndex,
 				text,
 				tokenCount: await tokenCounter(text),
+				createdAt: new Date(now.getTime() + index),
 			};
 		}),
 	);
 
-	const inserted: ObservationLogEntry[] = [];
-	for (const entry of prepared) {
-		const parentId = entry.parentIndex === null ? null : (inserted[entry.parentIndex]?.id ?? null);
-		const [row] = await memory.appendObservationLogEntries([
-			{
-				observationScopeId,
-				marker: entry.marker,
-				text: entry.text,
-				parentId,
-				tokenCount: entry.tokenCount,
-				createdAt: new Date(now.getTime() + inserted.length),
-			},
-		]);
-		inserted.push(row);
-	}
-
-	// ponytail: Keep raw history when no observations exist; later runs may review it again.
-	// Add a durable empty-review marker if repeated reviews across runs become costly.
-	const cursorAdvanced = inserted.length > 0 || hasActiveObservations;
-	if (cursorAdvanced) {
-		const lastMessage = observable[observable.length - 1];
-		await memory.setCursor({
-			observationScopeId,
-			lastObservedMessageId: lastMessage.id,
-			lastObservedAt: lastMessage.createdAt,
-			updatedAt: now,
-		});
-	}
-
-	return {
-		status: 'ran',
-		observationsWritten: inserted.length,
-		cursorAdvanced,
-		tokenCount,
-		skippedLines: parsed.skippedLines,
-		usage: observeUsage,
-		model: observeModel,
-	};
+	return { entries: prepared, skippedLines: parsed.skippedLines };
 }
 
 function hasPendingToolCall(message: AgentDbMessage): boolean {
@@ -352,7 +385,7 @@ async function guardObserverToolResults(
 			if (block.type !== 'tool-call' || block.state !== 'resolved') return block;
 			// Bound the serialized result so rich media metadata cannot bypass the guard.
 			const serialized = serializeForObserver(block.output, {}, true);
-			const guarded = await guardToolResultForModel(serialized, tokenCounter);
+			const guarded = await guardSerializedToolResultForModel(serialized, tokenCounter);
 			if (!guarded.truncated) return block;
 			return { ...block, output: guarded.historyOutput };
 		}),

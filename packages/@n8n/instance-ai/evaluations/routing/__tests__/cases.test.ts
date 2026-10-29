@@ -39,7 +39,13 @@ describe('loadRoutingCases', () => {
 				tags: ['routing', 'bucket:clarify', 'accepts:clarify:open'],
 			}),
 			'route-prod-agent-one.json': exportedCase([], {
-				tags: ['routing', 'bucket:agent', 'accepts:clarify:agent', 'accepts:answer:agent'],
+				tags: [
+					'routing',
+					'bucket:agent',
+					'accepts:clarify:agent',
+					'accepts:answer:agent',
+					'clarity:hidden',
+				],
 				conversation: [{ role: 'user', text: ['Answer our support inbox.', 'Use our FAQ.'] }],
 			}),
 			'results.json': '{}',
@@ -66,12 +72,31 @@ describe('loadRoutingCases', () => {
 			{
 				id: 'route-prod-agent-one',
 				bucket: 'agent',
+				clarity: 'hidden',
 				accepts: ['agent', 'clarify:agent', 'answer:agent'],
 				after: ['agent'],
 				userMessage: 'Answer our support inbox.\nUse our FAQ.',
 			},
 		]);
 		expect(needsSetup).toEqual([]);
+	});
+
+	it('reads a clarify:workflow token after the bucket, with the bucket as the after route', () => {
+		const dir = caseDir({
+			'route-workflow-ask.json': exportedCase([], {
+				tags: ['routing', 'bucket:workflow', 'accepts:clarify:workflow'],
+			}),
+		});
+
+		expect(loadRoutingCases(dir).cases).toEqual([
+			{
+				id: 'route-workflow-ask',
+				bucket: 'workflow',
+				accepts: ['workflow', 'clarify:workflow'],
+				after: ['workflow'],
+				userMessage: 'It failed again.',
+			},
+		]);
 	});
 
 	it('keeps the files whose name contains one of the filter tokens', () => {
@@ -144,6 +169,36 @@ describe('loadRoutingCases', () => {
 				seed: { mode: 'inline', folders: [{ id: 'folder-1', name: 'Reports' }] },
 			}),
 			'route-debug-in-browser.json': exportedCase([], { credentialFixture: 'local' }),
+			'route-debug-recorded-run.json': exportedCase([], {
+				seed: {
+					mode: 'inline',
+					workflows: [{ id: 'dS8xQ2mV6bTn4Kp1', name: 'Sync', nodes: [], connections: {} }],
+					recordedRuns: [
+						{
+							workflow: 'dS8xQ2mV6bTn4Kp1',
+							envelope: {
+								format: 'n8n-instance-ai-failed-execution',
+								version: 1,
+								source: {
+									executionId: '42',
+									workflowId: 'source-wf',
+									workflowVersionId: null,
+									createdAt: '2026-10-20T06:00:00.000Z',
+									startedAt: '2026-10-20T06:00:00.000Z',
+									stoppedAt: '2026-10-20T06:00:05.000Z',
+								},
+								execution: {
+									mode: 'trigger',
+									status: 'error',
+									finished: false,
+									workflowData: {},
+									data: '[{}]',
+								},
+							},
+						},
+					],
+				},
+			}),
 		});
 
 		const { cases, needsSetup } = loadRoutingCases(dir);
@@ -152,6 +207,7 @@ describe('loadRoutingCases', () => {
 		expect(needsSetup).toEqual([
 			'route-debug-in-browser',
 			'route-debug-in-folder',
+			'route-debug-recorded-run',
 			'route-debug-replay',
 		]);
 	});
@@ -172,9 +228,10 @@ describe('loadRoutingCases', () => {
 				tags('bucket:debug', 'bucket:agent', 'accepts:debug'),
 			),
 			'route-clarify-no-accepts.json': exportedCase([], tags('bucket:clarify')),
+			'route-debug-bad-clarity.json': exportedCase(['clarity:obvious']),
 			'route-debug-bad-token.json': exportedCase(
 				[],
-				tags('bucket:debug', 'accepts:clarify:workflow'),
+				tags('bucket:debug', 'accepts:answer:workflow'),
 			),
 			'route-debug-two-turns.json': exportedCase([], {
 				conversation: [
@@ -194,7 +251,7 @@ describe('loadRoutingCases', () => {
 		expect(() => loadRoutingCases(dir)).toThrow(
 			expect.objectContaining({
 				message: expect.stringMatching(
-					/route-clarify-direction-no-after\.json: a case with stage directions needs an after:<route> tag[\s\S]*route-clarify-no-accepts\.json: accepts: a bucket:clarify case needs an accepts:<token> tag[\s\S]*route-debug-assistant-turn\.json: needs one user message[\s\S]*route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs one user message, then at most one user turn with only \[stage directions\]/,
+					/route-clarify-direction-no-after\.json: a case with stage directions needs an after:<route> tag[\s\S]*route-clarify-no-accepts\.json: accepts: a bucket:clarify case needs an accepts:<token> tag[\s\S]*route-debug-assistant-turn\.json: needs one user message[\s\S]*route-debug-bad-clarity\.json: clarity\.0[\s\S]*route-debug-bad-token\.json: accepts\.0[\s\S]*route-debug-broken\.json[\s\S]*route-debug-no-routing-tag\.json: has no "routing" tag[\s\S]*route-debug-two-buckets\.json: bucket: needs exactly one bucket:<route> tag[\s\S]*route-debug-two-turns\.json: needs one user message, then at most one user turn with only \[stage directions\]/,
 				),
 			}),
 		);

@@ -130,6 +130,17 @@ export function readVerdictReasoning(verdict: AgentEvalVerdict | null | undefine
 }
 
 /**
+ * The fix the judge's failure produced, when there is one. Only a graded fail
+ * carries it, so a pass, a skipped or errored judge, and a blank value all read
+ * as no suggestion.
+ */
+export function readVerdictSuggestion(verdict: AgentEvalVerdict | null | undefined): string | null {
+	if (verdict?.status !== 'completed' || verdict.outcome !== 'fail') return null;
+	const suggestion = verdict.suggestion?.trim();
+	return suggestion ? suggestion : null;
+}
+
+/**
  * Maps a result's execution status plus its (optional) judge verdict onto the
  * avatar vocabulary shared across every agent-eval view. Execution statuses
  * other than `success` are unaffected by judging — there is nothing to grade

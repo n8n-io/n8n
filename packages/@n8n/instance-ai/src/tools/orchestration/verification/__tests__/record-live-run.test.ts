@@ -2,6 +2,15 @@ import type { InstanceAiContext } from '../../../../types';
 import type { WorkflowBuildOutcome } from '../../../../workflow-loop/workflow-loop-state';
 import { recordLiveRunVerification } from '../record-live-run';
 import type { ExecutionRunResult } from '../types';
+import { emitWorkflowVerificationMetric } from '../verification-metric';
+
+vi.mock('../verification-metric', () => ({
+	emitWorkflowVerificationMetric: vi.fn(async () => await Promise.resolve()),
+}));
+
+beforeEach(() => {
+	vi.mocked(emitWorkflowVerificationMetric).mockClear();
+});
 
 function makeOutcome(overrides: Partial<WorkflowBuildOutcome> = {}): WorkflowBuildOutcome {
 	return {
@@ -114,6 +123,13 @@ describe('recordLiveRunVerification', () => {
 				}),
 			}),
 		);
+		expect(emitWorkflowVerificationMetric).toHaveBeenCalledWith(undefined, {
+			source: 'live_run',
+			workflowId: 'wf_1',
+			workItemId: 'wi_1',
+			executionId: 'exec-2',
+			claim: expect.objectContaining({ level: 'verified' }),
+		});
 	});
 
 	it.each([

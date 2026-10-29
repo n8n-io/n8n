@@ -65,10 +65,12 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 
 	it('forwards the fallback model config to classification and fixture generation', async () => {
 		const fallbackModelConfig = {
+			kind: 'endpoint' as const,
 			id: 'anthropic/claude-opus-4-8' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
+		const modelFetch = vi.fn();
 		mockClassify.mockResolvedValue([
 			{
 				nodeName: 'Send It',
@@ -83,11 +85,14 @@ describe('planVerificationSimulation — simulated trigger verdicts', () => {
 			workflow: wf([{ name: 'Send It', type: 'n8n-nodes-base.slack' }]),
 			workflowId: 'wf-1',
 			fallbackModelConfig,
+			modelFetch,
 		});
 
-		expect(mockClassify).toHaveBeenCalledWith(expect.objectContaining({ fallbackModelConfig }));
+		expect(mockClassify).toHaveBeenCalledWith(
+			expect.objectContaining({ fallbackModelConfig, modelFetch }),
+		);
 		expect(mockGenerateFixtures).toHaveBeenCalledWith(
-			expect.objectContaining({ fallbackModelConfig }),
+			expect.objectContaining({ fallbackModelConfig, modelFetch }),
 		);
 	});
 

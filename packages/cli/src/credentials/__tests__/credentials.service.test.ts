@@ -91,11 +91,6 @@ const viewOnlyUser = mock<User>({
 	} as Role,
 });
 
-const flags = { credSharingEnabled: false };
-vi.mock('@/constants/credential-sharing', () => ({
-	isCredSharingEnabled: () => flags.credSharingEnabled,
-}));
-
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
 		extends: [],
@@ -173,7 +168,6 @@ describe('CredentialsService', () => {
 
 	beforeEach(() => {
 		vi.resetAllMocks();
-		flags.credSharingEnabled = false;
 		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		policyEnforcementService.enforceCredentialSave.mockResolvedValue(cleared);
 		credentialDependencyService.resolveExternalSecretsStoreDependencyFilter.mockResolvedValue(
@@ -1315,6 +1309,23 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('hasConnectionTest', () => {
+		it('is false when n8n has no test for the credential type', () => {
+			credentialsTester.getCredentialTestFunction.mockReturnValue(undefined);
+
+			expect(service.hasConnectionTest('httpHeaderAuth')).toBe(false);
+			expect(credentialsTester.getCredentialTestFunction).toHaveBeenCalledWith('httpHeaderAuth');
+		});
+
+		it('is true when n8n has a test for the credential type', () => {
+			credentialsTester.getCredentialTestFunction.mockReturnValue({
+				testRequest: { request: { url: '/auth.test' } },
+			});
+
+			expect(service.hasConnectionTest('slackApi')).toBe(true);
+		});
+	});
+
 	describe('testById', () => {
 		it('throws CredentialNotFoundError when the user cannot use the credential', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
@@ -1525,7 +1536,7 @@ describe('CredentialsService', () => {
 		it('does not opt generic callers into instance credential access', async () => {
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
 
-			await service.delete(ownerUser, 'credential-id');
+			await expect(service.delete(ownerUser, 'credential-id')).resolves.toBe(false);
 
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				'credential-id',
@@ -1549,7 +1560,9 @@ describe('CredentialsService', () => {
 				status: 'deleted',
 			});
 
-			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+			await expect(
+				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
+			).resolves.toBe(true);
 
 			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
 				credential.id,
@@ -1601,7 +1614,9 @@ describe('CredentialsService', () => {
 				status: 'notFound',
 			});
 
-			await service.delete(ownerUser, credential.id, { includeInstanceCredentials: true });
+			await expect(
+				service.delete(ownerUser, credential.id, { includeInstanceCredentials: true }),
+			).resolves.toBe(false);
 
 			expect(eventService.emit).not.toHaveBeenCalled();
 		});
@@ -1650,7 +1665,7 @@ describe('CredentialsService', () => {
 				new Error('db is gone'),
 			);
 
-			await expect(service.delete(ownerUser, credential.id)).resolves.not.toThrow();
+			await expect(service.delete(ownerUser, credential.id)).resolves.toBe(true);
 
 			expect(credentialsRepository.remove).toHaveBeenCalled();
 			expect(eventService.emit).toHaveBeenCalledWith(
@@ -1680,6 +1695,94 @@ describe('CredentialsService', () => {
 			});
 			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
 			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+	});
+
+	describe('deleteUnowned', () => {
+		it('deletes a credential without an owner and reports the deletion', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'unowned-credential',
+				name: 'Unowned',
+				type: 'openAiApi',
+				isResolvable: false,
+			});
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(credential);
+
+			await service.deleteUnowned(ownerUser, credential.id);
+
+			expect(credentialsRepository.delete).toHaveBeenCalledWith({ id: credential.id });
+			expect(externalHooks.run).toHaveBeenCalledWith('credentials.delete', [credential.id]);
+			expect(eventService.emit).toHaveBeenCalledWith('credentials-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+				credentialName: credential.name,
+				projectId: undefined,
+			});
+			const emittedEventNames = eventService.emit.mock.calls.map((call) => call[0]);
+			expect(emittedEventNames).not.toContain('private-credential-deleted');
+		});
+
+		it('runs the external hook before it deletes the credential', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'unowned-credential' }),
+			);
+
+			await service.deleteUnowned(ownerUser, 'unowned-credential');
+
+			expect(externalHooks.run.mock.invocationCallOrder[0]).toBeLessThan(
+				credentialsRepository.delete.mock.invocationCallOrder[0],
+			);
+		});
+
+		it('keeps the credential when the external hook throws', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(
+				mock<CredentialsEntity>({ id: 'unowned-credential' }),
+			);
+			externalHooks.run.mockRejectedValueOnce(new Error('Hook failed'));
+
+			await expect(service.deleteUnowned(ownerUser, 'unowned-credential')).rejects.toThrow(
+				'Hook failed',
+			);
+
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('reports the deletion of an end-user credential', async () => {
+			const credential = mock<CredentialsEntity>({
+				id: 'unowned-credential',
+				type: 'openAiApi',
+				isResolvable: true,
+			});
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(credential);
+
+			await service.deleteUnowned(ownerUser, credential.id);
+
+			expect(eventService.emit).toHaveBeenCalledWith('private-credential-deleted', {
+				user: ownerUser,
+				credentialType: credential.type,
+				credentialId: credential.id,
+			});
+		});
+
+		it('does nothing when the credential does not exist or still has an owner', async () => {
+			credentialsRepository.findProjectCredentialWithoutOwner.mockResolvedValue(null);
+
+			await service.deleteUnowned(ownerUser, 'credential-id');
+
+			expect(externalHooks.run).not.toHaveBeenCalled();
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('rejects a user without instance-wide credential:delete', async () => {
+			await expect(service.deleteUnowned(memberUser, 'credential-id')).rejects.toThrow(
+				ForbiddenError,
+			);
+
+			expect(credentialsRepository.findProjectCredentialWithoutOwner).not.toHaveBeenCalled();
+			expect(credentialsRepository.delete).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2163,6 +2266,36 @@ describe('CredentialsService', () => {
 			expect(externalHooks.run).toHaveBeenCalledWith('credentials.create', [encrypted]);
 			expect(result).toBe(encrypted);
 			expect(result.name).toBe('Updated by hook');
+		});
+	});
+
+	describe('prepareCredentialsForUse', () => {
+		it('restores a masked key and preserves the original data for secret permission checks', async () => {
+			const storedCredential = mock<CredentialsEntity>({
+				id: 'credential-id',
+				name: 'Vertex',
+				type: 'googleVertexAiApi',
+			});
+			const storedData = { email: 'service@example.com', privateKey: 'stored-key' };
+			vi.spyOn(service, 'decrypt').mockResolvedValue(storedData);
+			vi.spyOn(service, 'replaceCredentialContentsForSharee').mockResolvedValue(undefined);
+			vi.spyOn(service, 'getCredentialTypeProperties').mockReturnValue([]);
+			const result = await service.prepareCredentialsForUse({
+				storedCredential,
+				user: ownerUser,
+				credentialsToUse: {
+					id: storedCredential.id,
+					name: storedCredential.name,
+					type: storedCredential.type,
+					data: { email: 'edited@example.com', privateKey: CREDENTIAL_BLANKING_VALUE },
+				},
+			});
+
+			expect(result.credentials.data).toEqual({
+				email: 'edited@example.com',
+				privateKey: 'stored-key',
+			});
+			expect(result.storedData).toEqual(storedData);
 		});
 	});
 
@@ -3225,6 +3358,49 @@ describe('CredentialsService', () => {
 			);
 		});
 
+		it.each([true, false, undefined])(
+			'excludes end-user credentials only when requested (excludeResolvable=%s)',
+			async (excludeResolvable) => {
+				const projectEndUser = mock<CredentialsEntity>({
+					...regularCredential,
+					id: 'project-end-user',
+					isResolvable: true,
+				});
+				const fixedGlobal = mock<CredentialsEntity>({
+					...globalCredential,
+					id: 'global-fixed',
+					isResolvable: false,
+				});
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+					fixedGlobal,
+					globalCredential,
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+				]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([
+					regularCredential,
+					projectEndUser,
+				]);
+
+				for (const scope of [{ projectId: 'project-1' }, { workflowId: 'workflow-1' }]) {
+					const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+						...scope,
+						excludeResolvable,
+					});
+
+					expect(result.map(({ id }) => id)).toEqual(
+						excludeResolvable
+							? ['cred-1', 'global-fixed']
+							: ['cred-1', 'project-end-user', 'global-fixed', 'cred-2'],
+					);
+				}
+			},
+		);
+
 		it.each([null, 'x'.repeat(CREDENTIAL_DESCRIPTION_MAX_LENGTH)])(
 			'returns the stored description in a workflow-scoped list',
 			async (description) => {
@@ -3400,7 +3576,7 @@ describe('CredentialsService', () => {
 			expect(new Set(credIds).size).toBe(2);
 		});
 
-		describe('personal route (isCredSharingEnabled)', () => {
+		describe('personal route', () => {
 			const personalProject = mock<Project>({ id: 'user-personal-project', type: 'personal' });
 			// A fresh object per call: getCredentialsAUserCanUseInAWorkflow mutates
 			// `.shared` in place on every credential it returns, so reusing one
@@ -3430,24 +3606,7 @@ describe('CredentialsService', () => {
 				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
 			});
 
-			it('excludes the credential when the flag is off, even if the user works in the project', async () => {
-				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
-					makePersonalCredential(),
-				]);
-				projectService.findProjectsWorkflowIsIn.mockResolvedValue([personalProject.id]);
-				projectService.getProjectRelationsForUser.mockResolvedValue([
-					mock<ProjectRelation>({ projectId: personalProject.id }),
-				]);
-
-				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
-					workflowId: 'workflow-1',
-				});
-
-				expect(result).toEqual([]);
-			});
-
-			it('includes the credential via the personal route when the flag is on and the user works in the project', async () => {
-				flags.credSharingEnabled = true;
+			it('includes the credential via the personal route when the user works in the project', async () => {
 				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
 					makePersonalCredential(),
 				]);
@@ -3465,7 +3624,6 @@ describe('CredentialsService', () => {
 			});
 
 			it('includes a credential shared directly with the user when the user works in the project', async () => {
-				flags.credSharingEnabled = true;
 				const sharedCredential = makePersonalCredential();
 				sharedCredential.shared = [
 					{
@@ -3494,7 +3652,6 @@ describe('CredentialsService', () => {
 			});
 
 			it('excludes a credential shared directly with the user when the user does not work in the project', async () => {
-				flags.credSharingEnabled = true;
 				const sharedCredential = makePersonalCredential();
 				sharedCredential.shared = [
 					{
@@ -3517,7 +3674,6 @@ describe('CredentialsService', () => {
 			});
 
 			it('excludes a credential owned by another personal project and not shared with the user', async () => {
-				flags.credSharingEnabled = true;
 				const foreignCredential = makePersonalCredential();
 				foreignCredential.shared = [
 					{
@@ -3539,8 +3695,7 @@ describe('CredentialsService', () => {
 				expect(result).toEqual([]);
 			});
 
-			it('excludes the credential when the flag is on but the user does not work in the project', async () => {
-				flags.credSharingEnabled = true;
+			it('excludes the credential when the user does not work in the project', async () => {
 				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
 					makePersonalCredential(),
 				]);
@@ -3556,8 +3711,119 @@ describe('CredentialsService', () => {
 				expect(result).toEqual([]);
 			});
 
+			it('excludes the personal-route credential when excludePersonalRoute is set', async () => {
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toEqual([]);
+			});
+
+			it('keeps a project-shared credential when excludePersonalRoute is set', async () => {
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+					makePersonalCredential(),
+				]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
+			});
+
+			it('keeps the personal credentials of other users that the project owner may use instance-wide, when excludePersonalRoute is set', async () => {
+				const foreignCredential = makePersonalCredential();
+				foreignCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
+				credentialsRepository.findAllCredentialsForProject.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
+			});
+
+			it('keeps the personal credentials of other users for a workflow, when excludePersonalRoute is set', async () => {
+				const foreignCredential = makePersonalCredential();
+				foreignCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
+				credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					workflowId: 'workflow-1',
+					excludePersonalRoute: true,
+				});
+
+				expect(result).toHaveLength(1);
+				expect(result[0]).toMatchObject({ id: 'cred-personal' });
+			});
+
+			it('keeps the instance-wide personal credentials when excludePersonalRoute is not set', async () => {
+				const foreignCredential = makePersonalCredential();
+				foreignCredential.shared = [
+					{
+						credentialsId: 'cred-personal',
+						role: 'credential:owner',
+						projectId: 'alice-personal-project',
+					},
+				] as SharedCredentials[];
+				credentialsFinderService.findCredentialsForUser.mockResolvedValue([foreignCredential]);
+				userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
+				credentialsRepository.findAllPersonalCredentials.mockResolvedValue([foreignCredential]);
+				projectService.getProjectRelationsForUser.mockResolvedValue([
+					mock<ProjectRelation>({ projectId: 'target-project' }),
+				]);
+
+				const result = await service.getCredentialsAUserCanUseInAWorkflow(user, {
+					projectId: 'target-project',
+				});
+
+				expect(result).toHaveLength(1);
+			});
+
 			it('includes the credential via the personal route for an unsaved workflow (projectId option)', async () => {
-				flags.credSharingEnabled = true;
 				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
 					makePersonalCredential(),
 				]);
@@ -3576,7 +3842,6 @@ describe('CredentialsService', () => {
 			});
 
 			it('reads as the project route when the credential is both project-shared and personal-route eligible', async () => {
-				flags.credSharingEnabled = true;
 				credentialsFinderService.findCredentialsForUser.mockResolvedValue([
 					makePersonalCredential(),
 				]);

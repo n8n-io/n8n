@@ -17,17 +17,17 @@ import {
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
+import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
 import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
-import type { Agent } from './entities/agent.entity';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
-import { getPublishedAgentSnapshot } from './utils/agent-published-snapshot';
+import { resolveAgentRunSource } from './utils/agent-published-snapshot';
 
 export interface GetRuntimeParams {
 	agentId: string;
@@ -66,10 +66,11 @@ export interface AgentRuntime extends ReconstructedAgentRuntime {
 	projectId: string;
 	telemetryConfiguration: IAgentConfigurationTelemetryProperties;
 	/**
-	 * Grants baked into the runtime's tool list by `filterToolsForUser`.
+	 * Grants baked into the runtime's tool list and draft integrations at build.
 	 * The sliding TTL can keep an active runtime alive indefinitely, so these
 	 * are re-checked on cache hits (debounced) rather than waiting for
-	 * eviction. Absent when no user-gated tools made it into the runtime.
+	 * eviction. Absent when no user-gated tool or integration made it into the
+	 * runtime.
 	 */
 	userToolAccessSnapshot?: UserToolAccessSnapshot;
 	/** Epoch ms of the last passing tool-access re-check (build counts as one). */
@@ -122,6 +123,7 @@ export class AgentRuntimeCacheService {
 		private readonly agentRuntimeReconstructionService: AgentRuntimeReconstructionService,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly agentSkillRefs: AgentSkillRefsService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -321,9 +323,12 @@ export class AgentRuntimeCacheService {
 			`Agent ${agentId} not found`,
 		);
 
-		const agentData: Agent = usePublishedVersion
-			? getPublishedAgentSnapshot(agentEntity)
-			: agentEntity;
+		const runSource = await resolveAgentRunSource(
+			agentEntity,
+			usePublishedVersion === true,
+			this.agentSkillRefs,
+			{},
+		);
 
 		// `user` here is whatever `computeRuntimeCacheKey` above already keyed
 		// this build on — undefined for published/integration runs, set for
@@ -338,7 +343,7 @@ export class AgentRuntimeCacheService {
 			agentId,
 		);
 		const reconstruction = this.agentRuntimeReconstructionService.reconstructFromAgentEntity(
-			agentData,
+			runSource,
 			credentialProvider,
 			usePublishedVersion ? 'production' : 'test',
 			integrationType,
@@ -363,7 +368,7 @@ export class AgentRuntimeCacheService {
 			mcpServerAttributions,
 			...(budget !== undefined ? { budget } : {}),
 			projectId,
-			telemetryConfiguration: buildAgentConfigurationTelemetry(agentData),
+			telemetryConfiguration: buildAgentConfigurationTelemetry(runSource),
 			...(userToolAccessSnapshot !== undefined ? { userToolAccessSnapshot } : {}),
 			toolAccessCheckedAt: Date.now(),
 		};

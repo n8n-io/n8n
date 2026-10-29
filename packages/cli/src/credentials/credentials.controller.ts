@@ -4,6 +4,8 @@ import {
 	CredentialsGetOneRequestQuery,
 	GenerateCredentialNameRequestQuery,
 	TestCredentialRequestDto,
+	TransferPreviewQueryDto,
+	type CredentialTransferPreview,
 } from '@n8n/api-types';
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService, CredentialsFinderService } from '@n8n/backend-services';
@@ -112,10 +114,15 @@ export class CredentialsController {
 
 	@Get('/for-workflow')
 	async getProjectCredentials(req: CredentialRequest.ForWorkflow) {
-		const options = z
+		const { forAgent, ...scope } = z
 			.union([z.object({ workflowId: z.string() }), z.object({ projectId: z.string() })])
+			.and(z.object({ forAgent: z.enum(['true', 'false']).optional() }))
 			.parse(req.query);
-		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, options);
+		return await this.credentialsService.getCredentialsAUserCanUseInAWorkflow(req.user, {
+			...scope,
+			excludePersonalRoute: forAgent === 'true',
+			excludeResolvable: forAgent === 'true',
+		});
 	}
 
 	@Get('/new')
@@ -604,6 +611,21 @@ export class CredentialsController {
 			newShareeIds: projectsRelations.map((pr) => pr.userId),
 			credentialsName: credential.name,
 		});
+	}
+
+	@Get('/:credentialId/transfer-preview')
+	@ProjectScope('credential:move')
+	async transferPreview(
+		req: AuthenticatedRequest,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+		@Query query: TransferPreviewQueryDto,
+	): Promise<CredentialTransferPreview> {
+		return await this.enterpriseCredentialsService.previewTransfer(
+			req.user,
+			credentialId,
+			query.destinationProjectId,
+		);
 	}
 
 	@Put('/:credentialId/transfer')

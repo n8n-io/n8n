@@ -4,13 +4,14 @@
  * slider-controlled batch of additional generated examples the user can trim,
  * extend with their own, and hand off to a real check via "Check your agent".
  */
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { AgentEvalDraftCase } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
 import AgentAvatar, { type AgentAvatarKind } from '@/features/agents/components/AgentAvatar.vue';
 import AgentEvalExamplesSlider from '@/features/agents/components/AgentEvalExamplesSlider.vue';
+import AgentEvalSuggestionCard from '@/features/agents/components/AgentEvalSuggestionCard.vue';
 import AgentEvalTryRow from '@/features/agents/components/AgentEvalTryRow.vue';
 
 /** One case of the running suite: its live status and, once settled, its answer. */
@@ -27,6 +28,8 @@ export type SuiteCaseRun = {
 	whatToCheck: string | null;
 	/** Why the case errored, or the judge's reasoning on a graded fail. */
 	errorMessage: string | null;
+	/** One instruction the judge proposed for a graded fail. Absent or null when it made none. */
+	fixSuggestion?: string | null;
 };
 
 const props = defineProps<{
@@ -36,6 +39,11 @@ const props = defineProps<{
 	 *  (the builder's own reused test result was never scenario-generated) —
 	 *  falls back to a generic "Your try" label. */
 	previewScenario: string | null;
+	/** How the confirmed try fared. Defaults to a pass, the state that reaches this panel
+	 *  after "Check harder cases". */
+	previewStatus?: AgentAvatarKind;
+	/** The judge's reasoning behind `previewStatus`, when it graded the try. */
+	previewReasoning?: string | null;
 	projectId?: string;
 	/** Already fetched in full (up to 10) — the slider only trims the display. */
 	examples: AgentEvalDraftCase[];
@@ -49,6 +57,8 @@ const props = defineProps<{
 	stoppingRun?: boolean;
 	/** The cases are saved but their run could not be started or followed. */
 	runFailed?: boolean;
+	/** Result ids whose suggestion is being applied right now. */
+	applyingSuggestionIds?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -62,6 +72,10 @@ const emit = defineEmits<{
 	/** A row's chevron: open the eval view on that case. Null for the confirmed
 	 *  try, which has no result yet — the view just opens. */
 	'open-case': [resultId: string | null];
+	/** "Apply suggestion" on a failed case: rewrite the agent's instructions, then rerun it. */
+	'apply-suggestion': [resultId: string];
+	/** "Apply all suggestions": one rewrite of the instructions for all these cases, then rerun them. */
+	'apply-suggestions': [resultIds: string[]];
 }>();
 
 const i18n = useI18n();
@@ -84,6 +98,43 @@ const allPassed = computed(
 	() => runSettled.value && needsWorkCount.value === 0 && passedCount.value > 0,
 );
 
+// "Keep as is" hides a card until a different suggestion arrives for that case.
+const dismissedSuggestions = ref<string[]>([]);
+const suggestionKey = (run: SuiteCaseRun) => `${run.rowId}:${run.fixSuggestion}`;
+
+function suggestionFor(run: SuiteCaseRun): string | null {
+	if (run.status !== 'work' || !run.resultId || !run.fixSuggestion?.trim()) return null;
+	return dismissedSuggestions.value.includes(suggestionKey(run)) ? null : run.fixSuggestion;
+}
+
+const applyingAny = computed(() => (props.applyingSuggestionIds?.length ?? 0) > 0);
+
+const applicableSuggestionIds = computed(() =>
+	(props.caseRuns ?? [])
+		.filter((run) => suggestionFor(run) !== null)
+		.flatMap((run) => (run.resultId ? [run.resultId] : [])),
+);
+
+const applyingAll = ref(false);
+watch(applyingAny, (applying) => {
+	if (!applying) applyingAll.value = false;
+});
+
+function onApplyAllSuggestions() {
+	applyingAll.value = true;
+	emit('apply-suggestions', applicableSuggestionIds.value);
+}
+
+// A settled run with cases that need work opens its list, so they are not hidden behind
+// the summary. The user can still collapse it.
+watch(
+	() => runSettled.value && needsWorkCount.value > 0,
+	(needsAttention) => {
+		if (needsAttention) summaryExpanded.value = true;
+	},
+	{ immediate: true },
+);
+
 function toggleSummaryExpanded() {
 	summaryExpanded.value = !summaryExpanded.value;
 }
@@ -103,9 +154,10 @@ function onCheckYourAgent() {
 	<div :class="$style.root">
 		<template v-if="!caseRuns">
 			<AgentEvalTryRow
-				status="pass"
+				:status="previewStatus ?? 'pass'"
 				:input="previewInput"
 				:output="previewOutput"
+				:error-message="previewReasoning"
 				:label="previewScenario ?? i18n.baseText('instanceAi.testAgentPreview.yourTry')"
 				hide-revise
 				test-id="instance-ai-test-agent-examples-try"
@@ -204,20 +256,50 @@ function onCheckYourAgent() {
 			</button>
 
 			<div v-if="!runSettled || summaryExpanded" :class="$style.exampleList">
-				<AgentEvalTryRow
-					v-for="run in caseRuns"
-					:key="run.rowId"
-					:status="run.status"
-					:input="run.input"
-					:output="run.output"
-					:label="run.label"
-					:error-message="run.errorMessage"
-					:tool-calls="run.toolCalls"
-					:project-id="projectId"
-					:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
-					@open="emit('open-case', run.resultId)"
-				/>
+				<div v-for="run in caseRuns" :key="run.rowId" :class="$style.exampleItem">
+					<AgentEvalTryRow
+						:status="run.status"
+						:input="run.input"
+						:output="run.output"
+						:label="run.label"
+						:error-message="run.errorMessage"
+						:tool-calls="run.toolCalls"
+						:project-id="projectId"
+						:test-id="`instance-ai-test-agent-examples-case-${run.rowId}`"
+						@open="emit('open-case', run.resultId)"
+					/>
+					<template v-if="suggestionFor(run) && run.resultId">
+						<N8nText
+							v-if="run.errorMessage"
+							color="text-base"
+							size="small"
+							:data-test-id="`instance-ai-test-agent-examples-case-${run.rowId}-verdict`"
+						>
+							{{ run.errorMessage }}
+						</N8nText>
+						<AgentEvalSuggestionCard
+							:suggestion="suggestionFor(run) ?? ''"
+							:applying="applyingSuggestionIds?.includes(run.resultId)"
+							:disabled="applyingAny"
+							:test-id="`instance-ai-test-agent-examples-case-${run.rowId}-suggestion`"
+							@apply="emit('apply-suggestion', run.resultId)"
+							@dismiss="dismissedSuggestions.push(suggestionKey(run))"
+						/>
+					</template>
+				</div>
 			</div>
+
+			<N8nButton
+				v-if="runSettled && summaryExpanded && applicableSuggestionIds.length > 1"
+				variant="solid"
+				size="small"
+				:disabled="applyingAny"
+				:loading="applyingAll"
+				data-test-id="instance-ai-test-agent-examples-apply-all-suggestions"
+				@click="onApplyAllSuggestions"
+			>
+				{{ i18n.baseText('agents.builder.agentEvals.suggestion.applyAll') }}
+			</N8nButton>
 
 			<N8nButton
 				v-if="runFailed"
@@ -230,7 +312,7 @@ function onCheckYourAgent() {
 				{{ i18n.baseText('instanceAi.testAgentPreview.retryRun') }}
 			</N8nButton>
 			<N8nButton
-				v-else-if="!runSettled"
+				v-else-if="!runSettled && !applyingAny"
 				variant="ghost"
 				size="small"
 				:loading="stoppingRun"
@@ -319,6 +401,12 @@ function onCheckYourAgent() {
 .exampleList > * {
 	padding: var(--spacing--3xs) var(--spacing--xs);
 	border-bottom: var(--border);
+}
+
+.exampleItem {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .exampleList > *:last-of-type {

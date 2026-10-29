@@ -22,7 +22,7 @@ import {
 	getProjectContextSection,
 	AUTO_FOLLOW_UP_MESSAGE,
 } from '../internal-messages';
-import { renderAiPreferencesBlock } from '@/services/ai-preference.service';
+import { renderAiPreferencesBlock } from '@n8n/backend-services';
 
 /** A saved preference now carries its id. Ids do not affect rendering, so the text doubles as one. */
 const saved = (...texts: string[]) => texts.map((content) => ({ id: content, content }));
@@ -813,6 +813,15 @@ describe('buildThreadArtifactsBlock', () => {
 		expect(block).not.toMatch(/^<thread-artifacts>\n\[/);
 	});
 
+	it('lists an open skill tab', () => {
+		const block = buildThreadArtifactsBlock({
+			artifacts: [{ type: 'skill', id: 'skill-1', name: 'Brand voice' }],
+			activeId: 'skill-1',
+		});
+
+		expect(block).toContain('Skill "Brand voice" (id: `skill-1`) [current]');
+	});
+
 	it('folds resource attachments into the same block with a durable JSON line', () => {
 		const block = buildThreadArtifactsBlock(
 			{
@@ -873,7 +882,8 @@ describe('buildThreadArtifactsBlock', () => {
 		]);
 
 		expect(block).toContain('New unsaved Agent "New Agent" (pending id: `pending-1`');
-		expect(block).toContain('do not pass its pending id');
+		expect(block).toContain('Do not pass its pending id');
+		expect(block).toContain('If a different Agent is already bound, also pass `createNew: true`.');
 	});
 
 	it('keeps a tag inside an attachment name out of the JSON line and restores it on parse', () => {

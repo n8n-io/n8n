@@ -5,7 +5,6 @@ import type { INodeUi } from '@/Interface';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import { splitName } from '@/features/collaboration/projects/projects.utils';
 import type { IUsedCredential } from '../credentials.types';
-import { useCredentialSharing } from './useCredentialSharing';
 
 /**
  * Who to ask about a credential. A personal project is named after its owner,
@@ -35,7 +34,6 @@ export function useUnusableWorkflowCredentials(
 	nodes: MaybeRefOrGetter<INodeUi[] | undefined>,
 ) {
 	const i18n = useI18n();
-	const { isEnabled } = useCredentialSharing();
 
 	const referencedIds = computed(() => {
 		const ids = new Set<string>();
@@ -51,14 +49,12 @@ export function useUnusableWorkflowCredentials(
 		return ids;
 	});
 
-	const unusable = computed(() => {
-		if (!isEnabled.value) return [];
-
-		return Object.values(toValue(usedCredentials) ?? {}).filter(
+	const unusable = computed(() =>
+		Object.values(toValue(usedCredentials) ?? {}).filter(
 			(credential) =>
 				credential.currentUserCanUse === false && referencedIds.value.has(credential.id),
-		);
-	});
+		),
+	);
 
 	/** Running and publishing both stop; editing and saving do not. */
 	const isBlocked = computed(() => unusable.value.length > 0);

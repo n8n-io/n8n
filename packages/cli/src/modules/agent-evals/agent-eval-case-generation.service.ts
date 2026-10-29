@@ -20,10 +20,11 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ForbiddenError } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
+import { generateFixSuggestion } from './agent-eval-fix-suggestion';
 import { judgeAgentAnswer } from './agent-eval-judge';
 import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import { AgentConfigService } from '../agents/agent-config.service';
-import { AgentTestRunService } from '../agents/agent-test-run.service';
+import { EvalAgentExecutionService } from '../instance-ai/eval/agent-execution.service';
 import {
 	buildAgentSummary,
 	buildCaseGenerationUserPrompt,
@@ -34,7 +35,7 @@ import {
 	type CaseRevisionContext,
 } from './case-generation/case-generation-prompt';
 import { sampleDimensionTuples } from './case-generation/dimensions';
-import { isSupportedAgentProvider } from '../agents/json-config/credential-field-mapping';
+import { isSupportedAgentProvider } from '@/credentials/credential-field-mapping';
 import { resolveCredentialAwareModelConfig } from '../agents/json-config/model-config';
 import { createAgentCredentialProvider } from '../agents/utils/agent-credential-provider';
 import { DataTableService } from '../data-table/data-table.service';
@@ -94,7 +95,7 @@ export class AgentEvalCaseGenerationService {
 		private readonly datasetRepository: AgentEvalDatasetRepository,
 		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
-		private readonly agentTestRunService: AgentTestRunService,
+		private readonly evalAgentExecutionService: EvalAgentExecutionService,
 	) {}
 
 	/**
@@ -196,8 +197,7 @@ export class AgentEvalCaseGenerationService {
 
 	/**
 	 * Draft exactly one case (`count: 1, save: false` — nothing persisted) and
-	 * immediately run it against the agent through the same path Preview Chat
-	 * and the builder's own `call_agent` tool use ({@link AgentTestRunService}) —
+	 * run it with the same mocked tools as saved checks —
 	 * no Data Table, no dataset, no eval-run row. Backs "try it once" and its
 	 * "needs work" retries, which would otherwise litter a fresh dataset+row on
 	 * every attempt the user doesn't keep.
@@ -216,25 +216,30 @@ export class AgentEvalCaseGenerationService {
 		const draftCase = drafted.cases[0];
 		if (!draftCase) return { status: 'failed' };
 
-		const credentialProvider = createAgentCredentialProvider(
-			this.credentialsService,
-			projectId,
-			user,
-			agentId,
-		);
-		const result = await this.agentTestRunService.executeDraftRun({
-			agentId,
-			projectId,
-			user,
-			message: draftCase.input,
-			credentialProvider,
-			source: 'agent-eval-preview',
-		});
+		return await this.runPreviewCase(user, projectId, agentId, draftCase);
+	}
 
-		// `maxIterations` means the agent was cut off before finishing, not that it
-		// produced a real answer — treat it the same as a non-completed run rather
-		// than showing an incomplete response as an approved example.
-		if (result.status !== 'completed' || result.maxIterations) return { status: 'failed' };
+	/**
+	 * Runs one case against the agent and grades it against its rule, without
+	 * persisting anything. A failed rule also gets one suggested fix on its
+	 * verdict. Split from {@link previewRun} so a case can be run again after the
+	 * agent's instructions changed.
+	 */
+	async runPreviewCase(
+		user: User,
+		projectId: string,
+		agentId: string,
+		draftCase: Pick<AgentEvalDraftCase, 'input' | 'whatToCheck' | 'scenario'>,
+	): Promise<PreviewRunResult> {
+		const result = await this.evalAgentExecutionService.executeWithLlmMock(
+			agentId,
+			user,
+			{ projectId },
+			draftCase.input,
+		);
+
+		// An iteration limit leaves an incomplete answer, even when execution succeeded.
+		if (!result.success || result.finishReason === 'max-iterations') return { status: 'failed' };
 
 		// Graded against the rule it was drafted with, so the preview can say whether
 		// the first check passed. A judge failure comes back as an `error` verdict;
@@ -247,20 +252,39 @@ export class AgentEvalCaseGenerationService {
 			},
 			{
 				input: draftCase.input,
-				output: result.response,
+				output: result.finalText,
 				criteria: draftCase.whatToCheck.trim() || null,
 				expectedOutput: null,
 			},
 			{ agentId, projectId, user },
 		);
 
+		const rule = draftCase.whatToCheck.trim();
+		const suggestion =
+			verdict.status === 'completed' && verdict.outcome === 'fail' && rule
+				? await generateFixSuggestion(
+						{
+							agentConfigService: this.agentConfigService,
+							credentialsService: this.credentialsService,
+							logger: this.logger,
+						},
+						{
+							input: draftCase.input,
+							output: result.finalText,
+							rule,
+							reasoning: verdict.reasoning,
+						},
+						{ agentId, projectId, user },
+					)
+				: null;
+
 		return {
 			status: 'completed',
 			input: draftCase.input,
 			whatToCheck: draftCase.whatToCheck,
 			scenario: draftCase.scenario,
-			response: result.response,
-			verdict,
+			response: result.finalText,
+			verdict: suggestion ? { ...verdict, suggestion } : verdict,
 		};
 	}
 

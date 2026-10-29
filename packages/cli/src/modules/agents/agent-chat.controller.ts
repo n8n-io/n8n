@@ -1,18 +1,15 @@
 import {
+	AGENT_CHAT_ERROR_CODES,
 	type AgentBackgroundJobsResponse,
-	type AgentChatAttachmentPayload,
 	AgentChatMessageDto,
+	AgentChatCancelDto,
 	AgentChatQueueUpdateDto,
 	AgentChatQueueSteerDto,
 	AgentChatQueueReorderDto,
 	type AgentChatMessagesResponse,
 	type AgentChatQueueResponse,
-	type AgentSseEvent,
 	AgentChatResumeDto,
-	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
-	MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB,
 	N8N_CHAT_INTEGRATION_TYPE,
-	ViewableMimeTypes,
 } from '@n8n/api-types';
 import { AgentsConfig } from '@n8n/config';
 import type { AuthenticatedRequest } from '@n8n/db';
@@ -24,14 +21,12 @@ import {
 	Patch,
 	Post,
 	ProjectScope,
+	Query,
 	RestController,
 } from '@n8n/decorators';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
 import { redactDeep } from '@n8n/utils/redaction/redact-text';
-import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
-import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
-import { pipeline } from 'node:stream/promises';
 import { randomUUID } from 'node:crypto';
 
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -40,11 +35,9 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { AgentsCredentialProvider } from './adapters/agents-credential-provider';
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentN8nChatUnavailableError } from './agent-n8n-chat-unavailable.error';
-import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
-import type { StoredAttachmentRef } from './types/agent-chat-attachment';
+import { AgentChatRelayService } from './agent-chat-relay.service';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
 import { AgentChatExecutionService } from './agent-chat-execution.service';
 import { AgentExecutionService } from './agent-execution.service';
 import {
@@ -53,19 +46,22 @@ import {
 	threadBelongsTo,
 } from './utils/agent-thread-access';
 import { messagesToDto } from './agent-message-mapper';
-import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
+import type { FlushableResponse } from './agent-sse-stream';
 import { AgentTestChatService, chatThreadId } from './agent-test-chat.service';
 import { AgentTestRunService } from './agent-test-run.service';
 import { AgentsService } from './agents.service';
-import { AgentsBuilderService } from './builder/agents-builder.service';
 import { AgentBackgroundJobService } from './background/agent-background-job.service';
+import { N8NCheckpointStorage } from './integrations/n8n-checkpoint-storage';
 import {
 	draftChatMemoryResourceId,
 	productionChatMemoryResourceId,
 	userIdFromDraftChatMemoryResourceId,
 } from './utils/agent-memory-scope';
-import { resolveInboundMimeType } from './utils/inbound-attachments';
-import { withOpenSuspensions } from './utils/messages-envelope';
+import {
+	ownCheckpoint,
+	threadMessagesResponse,
+	withOpenSuspensions,
+} from './utils/messages-envelope';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentChatController {
@@ -73,7 +69,7 @@ export class AgentChatController {
 		private readonly agentExecutionOrchestratorService: AgentExecutionOrchestratorService,
 		private readonly agentTestRunService: AgentTestRunService,
 		private readonly agentTestChatService: AgentTestChatService,
-		private readonly agentsBuilderService: AgentsBuilderService,
+		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly credentialsService: CredentialsService,
 		private readonly agentsService: AgentsService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
@@ -81,81 +77,9 @@ export class AgentChatController {
 		private readonly backgroundJobService: AgentBackgroundJobService,
 		private readonly chatExecutionService: AgentChatExecutionService,
 		private readonly messageQueue: AgentMessageQueueService,
-		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly chatRelay: AgentChatRelayService,
 	) {}
-
-	private createChatExecution(res: FlushableResponse) {
-		const delivery = initSseStream(res);
-		const requestController = new AbortController();
-		const abandon = () => requestController.abort();
-		delivery.abortSignal.addEventListener('abort', abandon, { once: true });
-		if (delivery.abortSignal.aborted) abandon();
-		return {
-			send: delivery.send,
-			abortSignal: requestController.signal,
-			onExecutionStarted: (id: string, sessionId: string, inputMessageIds: string[]) => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.send({ type: 'execution-started', executionId: id, sessionId, inputMessageIds });
-			},
-			onChunk: delivery.onChunk,
-			close: () => {
-				delivery.abortSignal.removeEventListener('abort', abandon);
-				delivery.close();
-			},
-		};
-	}
-
-	/** Decode, sniff, and persist inbound chat attachments; returns refs for the user turn. */
-	private async storeChatAttachments(params: {
-		attachments: AgentChatAttachmentPayload[] | undefined;
-		agentId: string;
-		projectId: string;
-		threadId: string;
-		resourceId: string;
-		source?: string;
-	}): Promise<StoredAttachmentRef[] | undefined> {
-		const { attachments, agentId, projectId, threadId, resourceId, source = 'chat' } = params;
-		if (!attachments?.length) return undefined;
-
-		const stored: StoredAttachmentRef[] = [];
-		try {
-			for (const attachment of attachments) {
-				const data = Buffer.from(attachment.data, 'base64');
-				if (data.byteLength === 0) {
-					throw new BadRequestError(`Attachment "${attachment.fileName}" is empty`);
-				}
-				if (data.byteLength > MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES) {
-					throw new BadRequestError(
-						`Attachment "${attachment.fileName}" exceeds the ${MAX_AGENT_CHAT_ATTACHMENT_SIZE_MB} MB limit`,
-					);
-				}
-
-				const mimeType = await resolveInboundMimeType(attachment.mimeType, data);
-				const row = await this.agentChatAttachmentService.storeInbound({
-					agentId,
-					projectId,
-					threadId,
-					resourceId,
-					source,
-					fileName: attachment.fileName,
-					mimeType,
-					data,
-				});
-				stored.push({
-					id: row.id,
-					fileName: row.fileName,
-					mimeType: row.mimeType,
-					sizeBytes: row.fileSizeBytes,
-				});
-			}
-		} catch (error) {
-			// Nothing references the already-stored attachments of a rejected message.
-			await this.agentChatAttachmentService.deleteByIds(stored.map((ref) => ref.id));
-			throw error;
-		}
-		return stored;
-	}
 
 	private async requireProductionChat(agentId: string, projectId: string): Promise<void> {
 		if (!(await this.agentsService.isN8nChatPublished(agentId, projectId))) {
@@ -198,52 +122,6 @@ export class AgentChatController {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 	}
 
-	/**
-	 * Enqueue a chat message and relay its execution to the browser stream.
-	 * `accept` validates the request and stores attachments. It returns nothing after it sends its own error.
-	 */
-	private async relayQueuedMessage(
-		res: FlushableResponse,
-		accept: (
-			send: (event: AgentSseEvent) => void,
-			abortSignal: AbortSignal,
-		) => Promise<Parameters<AgentMessageQueueService['enqueue']>[0] | undefined>,
-	): Promise<void> {
-		const delivery = initSseStream(res);
-		const { send, abortSignal } = delivery;
-		let accepted = false;
-		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
-		let attachments: StoredAttachmentRef[] | undefined;
-		try {
-			const input = await accept(send, abortSignal);
-			if (!input) return;
-			attachments = input.payload.attachments;
-			abortSignal.throwIfAborted();
-			const result = await this.messageQueue.enqueue(input, (queueId) => {
-				subscription = this.queuedPreviewStreams.subscribe(queueId, delivery);
-			});
-			if (result.status === 'duplicate') {
-				send({ type: 'done' });
-				return;
-			}
-			accepted = true;
-			subscription?.accepted();
-			send({ type: 'message-queued', queueId: result.item.id, sessionId: input.threadId });
-			await subscription?.done;
-		} catch (error) {
-			send(toChatErrorEvent(error, 'Chat failed'));
-		} finally {
-			// Committed messages own their attachments, including after a disconnect.
-			if (!accepted && attachments?.length) {
-				await this.agentChatAttachmentService
-					.deleteByIds(attachments.map((ref) => ref.id))
-					.catch(() => {});
-			}
-			subscription?.close();
-			delivery.close();
-		}
-	}
-
 	private assertQueueId(queueId: string): void {
 		if (!/^[1-9]\d*$/.test(queueId)) throw new BadRequestError('Invalid queue ID');
 	}
@@ -258,7 +136,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const resourceId = productionChatMemoryResourceId(req.user.id);
-		await this.relayQueuedMessage(res, async () => {
+		await this.chatRelay.relayQueuedMessage(res, async () => {
 			if (!(await this.agentsService.isN8nChatPublished(agentId, projectId))) {
 				throw new AgentN8nChatUnavailableError();
 			}
@@ -266,7 +144,7 @@ export class AgentChatController {
 			// Keep a client session ID for a new session, so a retry stays a duplicate.
 			const threadId = payload.sessionId ?? randomUUID();
 			await this.requireProductionThread(threadId, projectId, agentId, req.user.id, sessionMode);
-			const attachments = await this.storeChatAttachments({
+			const attachments = await this.chatRelay.storeChatAttachments({
 				attachments: payload.attachments,
 				agentId,
 				projectId,
@@ -300,11 +178,8 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Body payload: AgentChatResumeDto,
 	) {
-		const execution = this.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
-		let executionId: string | undefined;
-		try {
-			abortSignal.throwIfAborted();
+		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
+			let executionId: string | undefined;
 			const stream = this.agentExecutionOrchestratorService.resumeForChat({
 				agentId,
 				projectId: req.params.projectId,
@@ -320,7 +195,6 @@ export class AgentChatController {
 				onExecutionRecorded: (id) => {
 					executionId = id;
 				},
-				abortSignal,
 			});
 			let suspended = false;
 			let failed = false;
@@ -332,11 +206,7 @@ export class AgentChatController {
 			if (!suspended && !failed) {
 				send({ type: 'done', ...(executionId ? { executionId } : {}) });
 			}
-		} catch (error) {
-			send(toChatErrorEvent(error, 'Resume failed'));
-		} finally {
-			execution.close();
-		}
+		});
 	}
 
 	@Post('/:agentId/chat', { usesTemplates: true })
@@ -358,7 +228,7 @@ export class AgentChatController {
 			agentId,
 		);
 
-		await this.relayQueuedMessage(res, async (send, abortSignal) => {
+		await this.chatRelay.relayQueuedMessage(res, async (send, abortSignal) => {
 			const prepared = await this.agentTestRunService.prepareDraftRun({
 				agentId,
 				projectId,
@@ -377,7 +247,7 @@ export class AgentChatController {
 				send({
 					type: 'error',
 					message: 'This agent is not ready to run yet.',
-					errorCode: 'agent_misconfigured',
+					errorCode: AGENT_CHAT_ERROR_CODES.agentMisconfigured,
 					missing: prepared.missing,
 				});
 				return undefined;
@@ -394,7 +264,7 @@ export class AgentChatController {
 					kind: 'preview',
 					message,
 					messageId,
-					attachments: await this.storeChatAttachments({
+					attachments: await this.chatRelay.storeChatAttachments({
 						attachments,
 						agentId,
 						projectId,
@@ -418,10 +288,7 @@ export class AgentChatController {
 	) {
 		const { projectId } = req.params;
 		const { runId, toolCallId, resumeData } = payload;
-		const execution = this.createChatExecution(res);
-		const { send, onChunk, abortSignal, onExecutionStarted } = execution;
-		try {
-			abortSignal.throwIfAborted();
+		await this.chatRelay.relayResume(res, async ({ send, onChunk, onExecutionStarted }) => {
 			const result = await this.agentTestRunService.resumePreparedDraftRun({
 				agentId,
 				projectId,
@@ -432,9 +299,8 @@ export class AgentChatController {
 				chatSurface: 'preview',
 				errorMode: 'forward',
 				onChunk,
-				onBudgetNotice: () => send({ type: 'budget-notice', code: 'budget.alert' }),
+				onBudgetNotice: (notice) => send({ type: 'budget-notice', ...notice }),
 				onExecutionStarted,
-				abortSignal,
 			});
 			if (result.status === 'completed') {
 				send({
@@ -442,11 +308,7 @@ export class AgentChatController {
 					...(result.executionId ? { executionId: result.executionId } : {}),
 				});
 			}
-		} catch (error) {
-			send(toChatErrorEvent(error, 'Resume failed'));
-		} finally {
-			execution.close();
-		}
+		});
 	}
 
 	@Delete('/:agentId/chat/:threadId/executions/:executionId')
@@ -457,6 +319,7 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Param('threadId') threadId: string,
 		@Param('executionId') executionId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const cancelRequested = await this.chatExecutionService.requestCancel({
 			projectId: req.params.projectId,
@@ -465,6 +328,7 @@ export class AgentChatController {
 			executionId,
 			userId: req.user.id,
 			surface: 'preview',
+			...(payload.scope ? { scope: payload.scope } : {}),
 		});
 		return { cancelRequested };
 	}
@@ -476,6 +340,7 @@ export class AgentChatController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('runId') runId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		const { projectId } = req.params;
 		const agent = await this.agentsService.findById(agentId, projectId);
@@ -485,6 +350,7 @@ export class AgentChatController {
 			agentId,
 			runId,
 			resourceId: draftChatMemoryResourceId(req.user.id),
+			...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 		});
 		return { cancelled };
 	}
@@ -551,20 +417,11 @@ export class AgentChatController {
 			userId: req.user.id,
 		});
 		if (!history) throw new NotFoundError('Session not found');
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
-			agentId,
-			threadId,
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
+		return threadMessagesResponse(
+			history,
+			ownCheckpoint(checkpoint, productionChatMemoryResourceId(req.user.id)),
 		);
-		return {
-			...withOpenSuspensions(
-				history.messages,
-				checkpoint?.persistence?.resourceId === productionChatMemoryResourceId(req.user.id)
-					? checkpoint
-					: null,
-				{ appendInactiveCheckpointMessages: false },
-			),
-			activeExecutionId: history.activeExecutionId,
-		};
 	}
 
 	// Same reasoning as `getProductionChatMessages`: the attachment's `resourceId`
@@ -591,7 +448,7 @@ export class AgentChatController {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
 		await this.requireProductionThread(attachment.threadId, projectId, agentId, req.user.id);
-		await this.streamAttachment(attachment, res);
+		await this.chatRelay.streamAttachment(attachment, res);
 	}
 
 	// Same reasoning as `getProductionChatMessages`: `messageQueue.listPending`
@@ -997,10 +854,7 @@ export class AgentChatController {
 			agentId,
 			userId: req.user.id,
 		});
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
-			agentId,
-			threadId,
-		);
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(agentId, threadId);
 		if (
 			checkpoint &&
 			(thread?.accessScope === 'project'
@@ -1017,16 +871,8 @@ export class AgentChatController {
 		) {
 			throw new NotFoundError(`Thread "${threadId}" not found`);
 		}
-		if (!history) {
-			if (checkpoint) return { ...withOpenSuspensions([], checkpoint), activeExecutionId: null };
-			throw new NotFoundError(`Thread "${threadId}" not found`);
-		}
-		return {
-			...withOpenSuspensions(history.messages, checkpoint, {
-				appendInactiveCheckpointMessages: false,
-			}),
-			activeExecutionId: history.activeExecutionId,
-		};
+		if (!history && !checkpoint) throw new NotFoundError(`Thread "${threadId}" not found`);
+		return threadMessagesResponse(history, checkpoint);
 	}
 
 	@Get('/:agentId/chat/messages')
@@ -1048,15 +894,13 @@ export class AgentChatController {
 			throw new NotFoundError('Session not found');
 		}
 		const messages = await this.agentTestChatService.getTestChatMessages(agentId, req.user.id);
-		const checkpoint = await this.agentsBuilderService.findOpenCheckpointForThread(
+		const checkpoint = await this.checkpointStorage.findSuspendedForThread(
 			agentId,
 			chatThreadId(agentId, req.user.id),
 		);
 		return withOpenSuspensions(
 			messagesToDto(messages),
-			checkpoint?.persistence?.resourceId === draftChatMemoryResourceId(req.user.id)
-				? checkpoint
-				: null,
+			ownCheckpoint(checkpoint, draftChatMemoryResourceId(req.user.id)),
 		);
 	}
 
@@ -1079,53 +923,7 @@ export class AgentChatController {
 		if (attachment.source === N8N_CHAT_PRODUCTION_SOURCE) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
-		await this.streamAttachment(attachment, res);
-	}
-
-	private async streamAttachment(attachment: AgentChatAttachment, res: Response) {
-		const attachmentId = attachment.id;
-		// Open the stream before writing headers: bytes can be gone while the row
-		// remains (out-of-band storage cleanup), and that must surface as a clean
-		// 404 rather than a half-written response.
-		let stream: Awaited<ReturnType<AgentChatAttachmentService['getStream']>>;
-		try {
-			stream = await this.agentChatAttachmentService.getStream(attachment);
-		} catch (error) {
-			if (error instanceof FileNotFoundError) {
-				throw new NotFoundError(`Attachment "${attachmentId}" is no longer available`);
-			}
-			throw error;
-		}
-
-		res.setHeader('Content-Type', attachment.mimeType);
-		res.setHeader('Content-Length', attachment.fileSizeBytes);
-		res.setHeader('X-Content-Type-Options', 'nosniff');
-		// Sandbox anything rendered inline: attachments are user-supplied content
-		// served same-origin, so active content in them must never script against
-		// the n8n session (same posture as the binary-data controller).
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		// Non-viewable types must not render inline in the browser.
-		if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
-			res.setHeader(
-				'Content-Disposition',
-				`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
-			);
-		}
-
-		// pipeline destroys the source when the client disconnects mid-transfer,
-		// so aborted downloads don't leak file descriptors or object-store sockets.
-		try {
-			await pipeline(stream, res);
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				'code' in error &&
-				error.code === 'ERR_STREAM_PREMATURE_CLOSE'
-			) {
-				return;
-			}
-			throw error;
-		}
+		await this.chatRelay.streamAttachment(attachment, res);
 	}
 
 	@Delete('/:agentId/chat/messages')

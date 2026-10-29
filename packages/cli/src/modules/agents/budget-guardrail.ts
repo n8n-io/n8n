@@ -1,12 +1,17 @@
 import {
 	createBudgetGuardrail,
 	type ExecutionOptions,
+	type GuardrailsOptions,
 	type RunOptions,
 	type SpendEntry,
 	type SpendLedger,
 	type SpendTotal,
 } from '@n8n/agents';
-import type { BudgetGuardrailConfig } from '@n8n/api-types';
+import {
+	isAgentBudgetNoticeCode,
+	type AgentBudgetNotice,
+	type BudgetGuardrailConfig,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 
@@ -130,7 +135,7 @@ export interface BudgetAttachInput {
 	 */
 	useRootSessionCap?: boolean;
 	/** Preview chat shows the approaching card. Cloud also emails the project owner. */
-	onNotice?: (notice: { code: 'budget.alert' }) => void;
+	onNotice?: (notice: AgentBudgetNotice) => void;
 }
 
 interface ResolvedBudgetLimits {
@@ -228,13 +233,53 @@ function hasId(value: string | undefined): value is string {
 	return value !== undefined && value.length > 0;
 }
 
-/** Appends the budget hook when a bucket is on. Leaves the options unchanged otherwise. */
+/**
+ * Adapts the budget notice callback to the SDK's guardrail notice sink, so a
+ * delegated run can forward it to its own children. Drops non-budget codes.
+ */
+function toGuardrailNoticeSink(input: BudgetAttachInput): GuardrailsOptions['onNotice'] {
+	if (!input.onNotice) return undefined;
+	return (notice) => {
+		if (!isAgentBudgetNoticeCode(notice.code)) return;
+		input.onNotice?.({
+			code: notice.code,
+			...(notice.agentId !== undefined ? { agentId: notice.agentId } : {}),
+		});
+	};
+}
+
+/**
+ * Appends hooks and the notice sink to the run's guardrail options, preserving
+ * the existing agent and thread scope. An input sink wins over a stored one.
+ */
+function attachGuardrails<T extends RunOptions & ExecutionOptions>(
+	options: T,
+	hooks: GuardrailsOptions['hooks'],
+	onNotice: GuardrailsOptions['onNotice'],
+): T {
+	const existing = options.guardrails;
+	const notice = onNotice ?? existing?.onNotice;
+	return {
+		...options,
+		guardrails: {
+			hooks: [...(existing?.hooks ?? []), ...hooks],
+			...(existing?.agentId !== undefined ? { agentId: existing.agentId } : {}),
+			...(existing?.threadId !== undefined ? { threadId: existing.threadId } : {}),
+			...(notice !== undefined ? { onNotice: notice } : {}),
+		},
+	};
+}
+
+/**
+ * Appends the budget hook when a bucket is on.
+ */
 export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 	options: T,
 	input: BudgetAttachInput,
 ): T {
 	const limits = resolveBudgetLimits(input);
-	if (!limits) return options;
+	const sink = toGuardrailNoticeSink(input);
+	if (!limits) return sink ? attachGuardrails(options, [], sink) : options;
 
 	const ledger = input.ledger ?? Container.get(AgentSpendLedger);
 	const onNotice = monthlyAlertNotice(input, limits.alertThresholdPercent);
@@ -243,13 +288,5 @@ export function withBudgetGuardrail<T extends RunOptions & ExecutionOptions>(
 		...limits,
 		...(onNotice ? { onNotice } : {}),
 	});
-	const existing = options.guardrails;
-	return {
-		...options,
-		guardrails: {
-			hooks: [...(existing?.hooks ?? []), hook],
-			...(existing?.agentId !== undefined ? { agentId: existing.agentId } : {}),
-			...(existing?.threadId !== undefined ? { threadId: existing.threadId } : {}),
-		},
-	};
+	return attachGuardrails(options, [hook], sink);
 }

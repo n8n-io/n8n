@@ -123,7 +123,7 @@ function questionEvent(
 			payload: {
 				requestId,
 				toolCallId: 'tc-x',
-				toolName: 'ask-user',
+				toolName: 'workflow_builder_ask_user',
 				args: {},
 				severity: 'info',
 				message: 'Please answer',
@@ -134,7 +134,7 @@ function questionEvent(
 	};
 }
 
-function planReviewEvent(requestId: string): CapturedEvent {
+function approvalEvent(requestId: string): CapturedEvent {
 	return {
 		timestamp: 100,
 		type: 'confirmation-request',
@@ -143,11 +143,10 @@ function planReviewEvent(requestId: string): CapturedEvent {
 			payload: {
 				requestId,
 				toolCallId: 'tc-x',
-				toolName: 'create-tasks',
+				toolName: 'workflow_builder_executions',
 				args: {},
-				severity: 'info',
-				message: 'Approve plan?',
-				inputType: 'plan-review',
+				severity: 'warning',
+				message: 'Run this workflow?',
 			},
 		},
 	};
@@ -335,7 +334,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.modes[0]).toBe('confirmation');
 	});
 
-	it('routes ask-user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
+	it('routes workflow_builder_ask_user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'answer_questions',
@@ -390,38 +389,12 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-pr'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-pr'));
 		expect(response.kind).toBe('approval');
 		if (response.kind === 'approval') {
 			expect(response.approved).toBe(true);
 			expect(response.userInput).toBe('looks good');
 		}
-	});
-
-	it('rejects plan review with remaining scripted details before consulting the agent', async () => {
-		const agent = new FakeAgent();
-		const proxy = new UserProxyLlm({
-			conversation: [
-				{ role: 'user', text: 'Build an Airtable to Slack workflow.' },
-				{ role: 'assistant', text: 'Which table and channel?' },
-				{
-					role: 'user',
-					text: 'Use GET https://api.airtable.com/v0/app123abc/Tasks and Slack #daily-tasks.',
-				},
-			],
-			agent,
-		});
-
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-scripted-plan'));
-
-		expect(response.kind).toBe('approval');
-		if (response.kind === 'approval') {
-			expect(response.approved).toBe(false);
-			expect(response.userInput).toContain('Before I approve');
-			expect(response.userInput).toContain('https://api.airtable.com/v0/app123abc/Tasks');
-			expect(response.userInput).toContain('#daily-tasks');
-		}
-		expect(agent.callCount).toBe(0);
 	});
 
 	it('returns approval with no userInput when the agent omits it', async () => {
@@ -432,7 +405,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-pr'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-pr'));
 		expect(response.kind).toBe('approval');
 		if (response.kind === 'approval') {
 			expect(response.approved).toBe(true);
@@ -440,7 +413,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it('rejects a plan when the agent returns approve_or_reject with approved=false', async () => {
+	it('rejects when the agent returns approve_or_reject with approved=false', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'approve_or_reject',
@@ -452,7 +425,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-pr'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-pr'));
 		expect(response.kind).toBe('approval');
 		if (response.kind === 'approval') {
 			expect(response.approved).toBe(false);
@@ -605,13 +578,13 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// TRUST-349 — workflows(action='setup') wizard: credential slots via
+	// TRUST-349 — setup_workflow wizard: credential slots via
 	// apply_setup_wizard's nodeCredentialsJson. This is the tool the builder
 	// actually reaches for during a normal build ("the setup card" a real user
-	// sees); NOT the standalone credentials(action='setup') tool below.
+	// sees); NOT the standalone setup_credentials tool below.
 	// -------------------------------------------------------------------------
 
-	it("workflows(action='setup'): fills both parameters and a credential slot on a mixed wizard card when engaged", async () => {
+	it('setup_workflow: fills both parameters and a credential slot on a mixed wizard card when engaged', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -659,7 +632,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflows(action='setup'): routes a credential-only wizard card to the agent when engaged, instead of auto-declining", async () => {
+	it('setup_workflow: routes a credential-only wizard card to the agent when engaged, instead of auto-declining', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -692,7 +665,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflows(action='setup'): still auto-declines a credential-only wizard card with no governing stage direction", async () => {
+	it('setup_workflow: still auto-declines a credential-only wizard card with no governing stage direction', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
@@ -717,7 +690,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflows(action='setup'): maps different credential types for two different nodes on the same wizard card", async () => {
+	it('setup_workflow: maps different credential types for two different nodes on the same wizard card', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -761,7 +734,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a node not on the setup card", async () => {
+	it('setup_workflow: drops a nodeCredentialsJson entry naming a node not on the setup card', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -796,7 +769,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("workflows(action='setup'): auto-accepts the sole existing credential regardless of the id string given, when there's only one candidate", async () => {
+	it("setup_workflow: auto-accepts the sole existing credential regardless of the id string given, when there's only one candidate", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -831,7 +804,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflows(action='setup'): drops a nodeCredentialsJson entry naming a credential id that matches none of several existing candidates", async () => {
+	it('setup_workflow: drops a nodeCredentialsJson entry naming a credential id that matches none of several existing candidates', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -869,7 +842,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("workflows(action='setup'): fills a wizard credential slot when the model picks the standalone manual action", async () => {
+	it('setup_workflow: fills a wizard credential slot when the model picks the standalone manual action', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -923,7 +896,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflows(action='setup'): creates a real credential when the resolved slot has zero existing candidates", async () => {
+	it('setup_workflow: creates a real credential when the resolved slot has zero existing candidates', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -972,7 +945,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("workflows(action='setup'): registers a mid-run-created credential id for cleanup when configured", async () => {
+	it('setup_workflow: registers a mid-run-created credential id for cleanup when configured', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1009,7 +982,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(createdCredentialIds.has('cred-fresh')).toBe(true);
 	});
 
-	it("workflows(action='setup'): registers the created credential for test bypass when the direction says it works", async () => {
+	it('setup_workflow: registers the created credential for test bypass when the direction says it works', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1048,7 +1021,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
 	});
 
-	it("workflows(action='setup'): bypasses only the credential types the direction says work, on a two-credential card", async () => {
+	it('setup_workflow: bypasses only the credential types the direction says work, on a two-credential card', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1106,7 +1079,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBe(1);
 	});
 
-	it("workflows(action='setup'): leaves the credential test alone when the direction says nothing about validity", async () => {
+	it('setup_workflow: leaves the credential test alone when the direction says nothing about validity', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1139,7 +1112,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(proxy.getDecisionStats()['credential-test-bypassed']).toBeUndefined();
 	});
 
-	it("workflows(action='setup'): creates the credential in the build's project", async () => {
+	it("setup_workflow: creates the credential in the build's project", async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1175,7 +1148,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(createCredential.mock.calls[0]?.[4]).toBe('build-project');
 	});
 
-	it("workflows(action='setup'): keeps the seeded credentials bypassed when it creates another", async () => {
+	it('setup_workflow: keeps the seeded credentials bypassed when it creates another', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1218,7 +1191,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		);
 	});
 
-	it("workflows(action='setup'): declines a zero-candidate credential slot when no credentialCreation is configured", async () => {
+	it('setup_workflow: declines a zero-candidate credential slot when no credentialCreation is configured', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1253,7 +1226,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("workflows(action='setup'): threads a valid setupHint through to credential creation for httpTemplatedCustomAuth", async () => {
+	it('setup_workflow: threads a valid setupHint through to credential creation for httpTemplatedCustomAuth', async () => {
 		const setupHint: InstanceAiCredentialSetupHint = {
 			template: { headers: { Authorization: '{{apiKey}}' } },
 			placeholders: [{ name: 'apiKey', title: 'API Key', optional: false }],
@@ -1295,7 +1268,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		);
 	});
 
-	it("workflows(action='setup'): drops a malformed setupHint instead of forwarding a garbage partial object", async () => {
+	it('setup_workflow: drops a malformed setupHint instead of forwarding a garbage partial object', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1335,7 +1308,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		);
 	});
 
-	it("credentials(action='setup'): handles credential events deterministically without invoking the agent", async () => {
+	it('setup_credentials: handles credential events deterministically without invoking the agent', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'go' }],
@@ -1351,15 +1324,15 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	});
 
 	// -------------------------------------------------------------------------
-	// TRUST-349 — credentials(action='setup') standalone tool: choose_credential_setup_option.
-	// This is the "auto | manual | skip" card — NOT the workflows(action='setup')
+	// TRUST-349 — setup_credentials standalone tool: choose_credential_setup_option.
+	// This is the "auto | manual | skip" card — NOT the setup_workflow
 	// wizard above. Live testing (see PR description) found the builder doesn't
 	// actually reach for this tool during a normal build; kept per explicit
 	// decision to retain it in case some other flow (OAuth-specific, or a
 	// standalone "connect my X account" request) triggers it.
 	// -------------------------------------------------------------------------
 
-	it("credentials(action='setup'): routes to the agent when a stage direction asks the user to engage", async () => {
+	it('setup_credentials: routes to the agent when a stage direction asks the user to engage', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const proxy = new UserProxyLlm({
@@ -1386,7 +1359,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("credentials(action='setup'): resolves manual selection by explicit credentialType among multiple requests", async () => {
+	it('setup_credentials: resolves manual selection by explicit credentialType among multiple requests', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -1417,7 +1390,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("credentials(action='setup'): resolves manual selection to a specific credential by existingCredentialId when several match the same type", async () => {
+	it('setup_credentials: resolves manual selection to a specific credential by existingCredentialId when several match the same type', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -1450,7 +1423,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("credentials(action='setup'): declines manual selection when existingCredentialId does not match any listed credential", async () => {
+	it('setup_credentials: declines manual selection when existingCredentialId does not match any listed credential', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -1486,7 +1459,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("credentials(action='setup'): declines manual selection when several candidates exist and no existingCredentialId disambiguates", async () => {
+	it('setup_credentials: declines manual selection when several candidates exist and no existingCredentialId disambiguates', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const logger = fakeLogger();
@@ -1518,7 +1491,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("credentials(action='setup'): declines manual selection when the requested type has no existing credential and no credentialCreation is configured", async () => {
+	it('setup_credentials: declines manual selection when the requested type has no existing credential and no credentialCreation is configured', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const logger = fakeLogger();
@@ -1542,7 +1515,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("credentials(action='setup'): manual creates a real credential when the requested type has zero existing candidates", async () => {
+	it('setup_credentials: manual creates a real credential when the requested type has zero existing candidates', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'manual' });
 		const { client, createCredential, setThreadCredentialAllowlist } =
@@ -1574,7 +1547,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("credentials(action='setup'): requests automatic setup when the agent picks auto", async () => {
+	it('setup_credentials: requests automatic setup when the agent picks auto', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'choose_credential_setup_option',
@@ -1601,7 +1574,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		}
 	});
 
-	it("credentials(action='setup'): declines auto setup when no credentialType can be resolved from context or the decision", async () => {
+	it('setup_credentials: declines auto setup when no credentialType can be resolved from context or the decision', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'auto' });
 		const logger = fakeLogger();
@@ -1631,7 +1604,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
-	it("credentials(action='setup'): declines when the agent picks skip", async () => {
+	it('setup_credentials: declines when the agent picks skip', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
 		const proxy = new UserProxyLlm({
@@ -1665,7 +1638,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 	// whether a pending note means "engage" or "decline".
 	// -------------------------------------------------------------------------
 
-	it("credentials(action='setup'): routes to the agent whenever any stage direction is pending, regardless of content", async () => {
+	it('setup_credentials: routes to the agent whenever any stage direction is pending, regardless of content', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
 		const proxy = new UserProxyLlm({
@@ -1682,7 +1655,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(1);
 	});
 
-	it("credentials(action='setup'): stays fully deterministic when no stage direction is pending", async () => {
+	it('setup_credentials: stays fully deterministic when no stage direction is pending', async () => {
 		const agent = new FakeAgent();
 		const proxy = new UserProxyLlm({
 			conversation: [{ role: 'user', text: 'Post to Slack every morning.' }],
@@ -1701,7 +1674,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		"[Stay impatient and hands-off for the whole conversation. If the agent asks you to choose or specify any detail — where to store the orders, the schema, field mappings, which service — don't engage with the specifics.]",
 		"[If the agent asks for the API key value: don't provide it — say you'll fill it into the credential yourself later. Approve plans/confirmations otherwise.]",
 	])(
-		"credentials(action='setup'): defers correctly on a real, unrelated-or-declining stage direction (%j) — the model is consulted (content-agnostic gate) but still ends up deferred",
+		'setup_credentials: defers correctly on a real, unrelated-or-declining stage direction (%j) — the model is consulted (content-agnostic gate) but still ends up deferred',
 		async (note) => {
 			const agent = new FakeAgent();
 			agent.enqueue({ action: 'choose_credential_setup_option', option: 'skip' });
@@ -1743,7 +1716,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 				payload: {
 					requestId: 'req-dest',
 					toolCallId: 'tc-x',
-					toolName: 'workflows',
+					toolName: 'workflow_builder_workflows',
 					args: {},
 					severity: 'warning',
 					message: 'Review where this credential will be used',
@@ -1846,7 +1819,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.callCount).toBe(0);
 	});
 
-	it("workflows(action='setup'): routes to the agent even when the payload also includes credentialRequests (setupRequests takes priority)", async () => {
+	it('setup_workflow: routes to the agent even when the payload also includes credentialRequests (setupRequests takes priority)', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'apply_setup_wizard',
@@ -1883,8 +1856,8 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-fail'));
-		// buildAutoApprovePayload returns kind: 'approval' approved: true for plan-review
+		const response = await proxy.respondToConfirmation(approvalEvent('req-fail'));
+		// buildAutoApprovePayload returns kind: 'approval' approved: true for a generic approval
 		expect(response.kind).toBe('approval');
 	});
 
@@ -1897,7 +1870,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 			agent,
 		});
 
-		const response = await proxy.respondToConfirmation(planReviewEvent('req-mis'));
+		const response = await proxy.respondToConfirmation(approvalEvent('req-mis'));
 		expect(response.kind).toBe('approval');
 	});
 
@@ -1989,7 +1962,7 @@ describe('UserProxyLlm.decideFollowUp', () => {
 				data: {
 					payload: {
 						toolCallId: 'build',
-						toolName: 'build-workflow',
+						toolName: 'workflow_builder_build_workflow',
 						result: {
 							success: true,
 							workflowId: 'wf-primary',

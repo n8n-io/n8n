@@ -347,6 +347,16 @@ describe('UI Store', () => {
 			expect(credentialModalState().workflowId).toBeUndefined();
 			expect(credentialModalState().contextNode).toBeUndefined();
 		});
+
+		it('opens on the requested tab, and forgets it for the next credential', () => {
+			const uiStore = useUIStore();
+
+			uiStore.openExistingCredential('cred-1', { initialTab: 'sharing' });
+			expect(credentialModalState().initialTab).toBe('sharing');
+
+			uiStore.openNewCredential('httpBasicAuth');
+			expect(credentialModalState().initialTab).toBeUndefined();
+		});
 	});
 
 	describe('isModalActiveById', () => {

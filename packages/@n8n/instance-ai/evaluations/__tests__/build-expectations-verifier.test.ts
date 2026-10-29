@@ -5,7 +5,7 @@ import { vi } from 'vitest';
 vi.mock('../../src/utils/eval-agents', () => ({
 	createEvalAgent: vi.fn(),
 	EPHEMERAL_CACHE: {},
-	SONNET_MODEL: 'test-sonnet-model',
+	JUDGE_MODEL: 'test-sonnet-model',
 }));
 
 import { createEvalAgent } from '../../src/utils/eval-agents';

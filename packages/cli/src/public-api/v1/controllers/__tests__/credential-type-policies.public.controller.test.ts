@@ -1,7 +1,7 @@
 import type {
-	PolicyEffectiveWriteResultPublicDto,
-	PutInstancePolicyDto,
-	PutProjectPolicyDto,
+	CredentialTypePolicyEffectiveWriteResultPublicDto,
+	PutCredentialTypeInstancePolicyDto,
+	PutCredentialTypeProjectPolicyDto,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import { LICENSE_FEATURES } from '@n8n/constants';
@@ -43,6 +43,7 @@ describe('CredentialTypePoliciesPublicController route metadata', () => {
 				'createCredentialTypePolicyDocument',
 				'deleteCredentialTypePolicyDocument',
 				'getCredentialTypeInstancePolicy',
+				'getCredentialTypePolicyAttachments',
 				'getCredentialTypePolicyDocument',
 				'getCredentialTypeProjectPolicy',
 				'listCredentialTypePolicyDocuments',
@@ -120,6 +121,9 @@ describe('CredentialTypePoliciesPublicController with the module disabled', () =
 			ServiceUnavailableError,
 		);
 		await expect(
+			controller.getCredentialTypePolicyAttachments(req, res, 'scope-id'),
+		).rejects.toThrow(ServiceUnavailableError);
+		await expect(
 			controller.deleteCredentialTypePolicyDocument(req, res, 'policy-id'),
 		).rejects.toThrow(ServiceUnavailableError);
 
@@ -162,8 +166,34 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 		defaultAction: 'deny' as const,
 		version: 4,
 		rules,
-		warnings: [{ ruleId: 'r2', shadowedByRuleId: 'r1' }],
+		warnings: [{ kind: 'shadowed' as const, ruleId: 'r2', shadowedByRuleId: 'r1' }],
 	};
+
+	it('getCredentialTypePolicyAttachments reads the credential type scope with extends rules', async () => {
+		const result = {
+			attachments: [
+				{
+					policyId: 'policy-id',
+					rules: [
+						{
+							id: 'r1',
+							action: 'deny' as const,
+							selector: { kind: 'extends' as const, value: 'oAuth2Api' },
+						},
+					],
+					priority: 5,
+					isFloor: true,
+				},
+			],
+			version: 3,
+		};
+		service.getAttachments.mockResolvedValue(result);
+
+		expect(await controller.getCredentialTypePolicyAttachments(req, res, 'scope-id')).toEqual(
+			result,
+		);
+		expect(service.getAttachments).toHaveBeenCalledWith(CREDENTIAL_TYPES_KIND, 'scope-id');
+	});
 
 	it('getCredentialTypeInstancePolicy reads the null-project scope and maps the response', async () => {
 		service.getEffectivePolicy.mockResolvedValue(effectivePolicy);
@@ -195,9 +225,9 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 
 	it('putCredentialTypeInstancePolicy forwards rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
-		const dto = { rules, defaultAction: 'deny', version: 3 } as PutInstancePolicyDto;
+		const dto = { rules, defaultAction: 'deny', version: 3 } as PutCredentialTypeInstancePolicyDto;
 
-		const result: PolicyEffectiveWriteResultPublicDto =
+		const result: CredentialTypePolicyEffectiveWriteResultPublicDto =
 			await controller.putCredentialTypeInstancePolicy(req, res, dto);
 
 		expect(service.setEffectivePolicy).toHaveBeenCalledWith(
@@ -218,7 +248,7 @@ describe('CredentialTypePoliciesPublicController handler bodies', () => {
 
 	it('putCredentialTypeProjectPolicy forwards the project id, rules, defaultAction, version, and the caller id, and maps the result', async () => {
 		service.setEffectivePolicy.mockResolvedValue(effectiveWrite);
-		const dto = { rules, defaultAction: 'deny', version: 3 } as PutProjectPolicyDto;
+		const dto = { rules, defaultAction: 'deny', version: 3 } as PutCredentialTypeProjectPolicyDto;
 
 		const result = await controller.putCredentialTypeProjectPolicy(req, res, 'project-id', dto);
 

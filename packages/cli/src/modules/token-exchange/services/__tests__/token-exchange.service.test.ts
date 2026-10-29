@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthError, BadRequestError } from '@n8n/errors';
-import type { JwtService } from '@/services/jwt.service';
+import type { JwtService } from '@n8n/backend-services';
 
 import type { TokenExchangeConfig } from '../../token-exchange.config';
 import type { ResolvedTrustedKey } from '../../token-exchange.schemas';

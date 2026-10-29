@@ -7,6 +7,7 @@ import {
 	type PackageResolver,
 	type PolicedType,
 } from './policy-evaluator';
+import type { PolicySelector } from './policy-rule.types';
 
 /**
  * A credential type name (e.g. `slackApi`) carries no package prefix, unlike a node type
@@ -51,15 +52,58 @@ export function packageResolverFor(
 		: nodeTypePackageResolver;
 }
 
-export function policedTypeFor(kind: string, nodeTypes: NodeTypes): (name: string) => PolicedType {
-	return kind === NODE_TYPES_KIND
-		? (name) => ({ name, baseName: nodeTypes.resolveBaseName(name).baseName })
-		: (name) => ({ name, baseName: name });
+/**
+ * Every type `typeName` is built on, walking `extends` breadth-first. The visited set keeps a
+ * community package that declares a cycle from looping forever.
+ */
+function credentialTypeAncestors(
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+	typeName: string,
+): string[] {
+	const { knownCredentials } = loadNodesAndCredentials;
+	const parentsOf = (name: string) =>
+		Object.hasOwn(knownCredentials, name) ? (knownCredentials[name].extends ?? []) : [];
+
+	const seen = new Set<string>([typeName]);
+	const queue = [...parentsOf(typeName)];
+
+	for (let index = 0; index < queue.length; index++) {
+		const parent = queue[index];
+		if (seen.has(parent)) continue;
+		seen.add(parent);
+		queue.push(...parentsOf(parent));
+	}
+
+	seen.delete(typeName);
+	return [...seen];
+}
+
+export function policedTypeFor(
+	kind: string,
+	nodeTypes: NodeTypes,
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+): (name: string) => PolicedType {
+	if (kind === NODE_TYPES_KIND) {
+		return (name) => ({ name, baseName: nodeTypes.resolveBaseName(name).baseName });
+	}
+
+	return (name) => ({
+		name,
+		baseName: name,
+		ancestors: credentialTypeAncestors(loadNodesAndCredentials, name),
+	});
+}
+
+/** Whether a credential type is known, checked at write time for a rule's value. */
+export function isCredentialTypeKnown(
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+	typeName: string,
+): boolean {
+	return Object.hasOwn(loadNodesAndCredentials.knownCredentials, typeName);
 }
 
 /**
- * Whether `packageName` names a package this instance actually has loaded — checked at write
- * time so a `package` rule can never be saved unable to match anything.
+ * Whether `packageName` names a package this instance actually has loaded.
  *
  * `Object.hasOwn`, not `in`: `in` also matches an inherited property, so a rule naming
  * `toString` or `constructor` would pass this check through `Object.prototype` even though
@@ -70,4 +114,31 @@ export function isPackageInstalled(
 	packageName: string,
 ): boolean {
 	return Object.hasOwn(loadNodesAndCredentials.loaders, packageName);
+}
+
+/**
+ * Whether a selector names something this instance has loaded, for the write-time
+ * `notLoaded` warning. A `name` rule on a synthetic tool variant checks its base node.
+ */
+export function loadedCheckFor(
+	kind: string,
+	nodeTypes: NodeTypes,
+	loadNodesAndCredentials: LoadNodesAndCredentials,
+): (selector: PolicySelector) => boolean {
+	const policedType = policedTypeFor(kind, nodeTypes, loadNodesAndCredentials);
+	const isNameKnown =
+		kind === NODE_TYPES_KIND
+			? (name: string) => Object.hasOwn(loadNodesAndCredentials.knownNodes, name)
+			: (name: string) => isCredentialTypeKnown(loadNodesAndCredentials, name);
+
+	return (selector) => {
+		switch (selector.kind) {
+			case 'package':
+				return isPackageInstalled(loadNodesAndCredentials, selector.value);
+			case 'extends':
+				return isCredentialTypeKnown(loadNodesAndCredentials, selector.value);
+			case 'name':
+				return isNameKnown(policedType(selector.value).baseName);
+		}
+	};
 }

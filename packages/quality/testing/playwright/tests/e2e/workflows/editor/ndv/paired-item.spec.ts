@@ -3,7 +3,7 @@ import { test, expect } from '../../../../../fixtures/base';
 test.describe(
 	'NDV Paired Items',
 	{
-		annotation: [{ type: 'owner', description: 'Adore' }],
+		annotation: [{ type: 'owner', description: 'NODES' }],
 	},
 	() => {
 		test('maps paired input and output items', async ({ n8n }) => {

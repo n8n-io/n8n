@@ -2,6 +2,7 @@ import type { JSONSchema7 } from 'json-schema';
 import type { ZodType } from 'zod';
 
 import type { AgentExecutionCounter } from './agent';
+import type { GuardrailNotice } from './guardrail';
 import type { McpToolAnnotations } from './mcp';
 import type { AgentMessage } from './message';
 import type { ApprovalResumePayload } from '../../sdk/tool';
@@ -64,6 +65,8 @@ export interface ToolExecutionContext {
 	continuation?: JSONValue;
 	/** Resume schema restored from persistence for a resumed tool call. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolContext {
@@ -85,6 +88,7 @@ export interface ToolContext {
 	/** Aggregate execution counter for usage telemetry inherited from the current agent run. */
 	executionCounter?: ToolExecutionContext['executionCounter'];
 	approvalContext?: ToolExecutionContext['approvalContext'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface InterruptibleToolContext<S = unknown, R = unknown> {
@@ -122,6 +126,7 @@ export interface InterruptibleToolContext<S = unknown, R = unknown> {
 	continuation?: JSONValue;
 	/** Resume schema persisted for this suspension. */
 	resumeSchema?: ToolSuspendOptions['resumeSchema'];
+	onGuardrailNotice?: (notice: GuardrailNotice) => void;
 }
 
 export interface ToolCancellationContext extends ToolContext {
@@ -137,6 +142,19 @@ export interface ToolCancellationContext extends ToolContext {
 
 export interface BuiltTool {
 	readonly name: string;
+	/**
+	 * Former names of this tool. Persisted checkpoints and message history can
+	 * still reference them, so the runtime resolves them to this tool. They are
+	 * never exposed to the model.
+	 */
+	readonly legacyNames?: readonly string[];
+	/**
+	 * Former tool names that this tool owns only for some values of the call's
+	 * `action` input, keyed by former name. Use it when one multi-action tool
+	 * became one tool for each action, so each persisted call resumes in the
+	 * tool that now owns its action. Never exposed to the model.
+	 */
+	readonly legacyActions?: Readonly<Record<string, readonly string[]>>;
 	readonly description: string;
 	/**
 	 * Behavioural directive paired with the tool, injected into the agent's
@@ -164,6 +182,8 @@ export interface BuiltTool {
 	 * The raw output is stored in history; only the transformed version goes to the model.
 	 */
 	readonly toModelOutput?: (output: unknown) => unknown;
+	/** Derive host-only trace data from the handler output. The model never sees it. */
+	readonly toTraceOutput?: (output: unknown) => unknown;
 	/** Treat every model-facing result and error from this tool as external reference data. */
 	readonly outputTrust?: 'untrusted';
 	/**

@@ -619,4 +619,56 @@ describe('useDataTableColumns', () => {
 			});
 		});
 	});
+
+	describe('schemaReadOnly mode', () => {
+		const createWithLocks = (readOnly: boolean, schemaReadOnly: boolean) => {
+			const composable = useDataTableColumns({
+				onDeleteColumn: mockOnDeleteColumn,
+				onRenameColumn: mockOnRenameColumn,
+				onAddRowClick: mockOnAddRowClick,
+				onAddColumn: mockOnAddColumn,
+				isTextEditorOpen,
+				readOnly: ref(readOnly),
+				schemaReadOnly: ref(schemaReadOnly),
+				schemaReadOnlyTooltip: ref('Protected instance'),
+			});
+			composable.loadColumns([{ id: 'col1', name: 'Column 1', type: 'string', index: 0 }]);
+			return composable.colDefs.value;
+		};
+
+		it('should keep cells and the AddRow button editable', () => {
+			const colDefs = createWithLocks(false, true);
+
+			const column = colDefs.find((col) => col.colId === 'col1');
+			expect(typeof column?.editable).toBe('function');
+			if (typeof column?.editable === 'function') {
+				expect(column.editable({ data: { id: 'row1' } } as EditableCallbackParams)).toBe(true);
+			}
+
+			const idColumn = colDefs.find((col) => col.colId === 'id');
+			const result = idColumn?.cellRendererSelector?.({
+				value: ADD_ROW_ROW_ID,
+			} as ICellRendererParams);
+			expect(result && 'params' in result && result.params.disabled()).toBe(false);
+		});
+
+		it('should lock column menus and the AddColumn button with a tooltip', () => {
+			const colDefs = createWithLocks(false, true);
+
+			const column = colDefs.find((col) => col.colId === 'col1');
+			expect(column?.headerComponentParams.readOnly()).toBe(true);
+
+			const addColumnCol = colDefs.find((col) => col.colId === 'add-column');
+			expect(addColumnCol?.headerComponentParams.disabled()).toBe(true);
+			expect(addColumnCol?.headerComponentParams.disabledTooltip()).toBe('Protected instance');
+		});
+
+		it('should not show the protected instance tooltip when the whole grid is locked', () => {
+			const colDefs = createWithLocks(true, true);
+
+			const addColumnCol = colDefs.find((col) => col.colId === 'add-column');
+			expect(addColumnCol?.headerComponentParams.disabled()).toBe(true);
+			expect(addColumnCol?.headerComponentParams.disabledTooltip()).toBeUndefined();
+		});
+	});
 });

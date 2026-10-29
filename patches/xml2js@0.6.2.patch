@@ -1,0 +1,13 @@
+diff --git a/lib/parser.js b/lib/parser.js
+index 7fa2fc5813450bcc5ff3199e2bfd613409a6087b..50c3ca2673b514a25ac9b74b241eef4c8bc41d88 100644
+--- a/lib/parser.js
++++ b/lib/parser.js
+@@ -96,7 +96,7 @@
+         err = error1;
+         if (!this.saxParser.errThrown) {
+           this.saxParser.errThrown = true;
+-          return this.emit(err);
++          return this.emit('error', err);
+         }
+       }
+     };

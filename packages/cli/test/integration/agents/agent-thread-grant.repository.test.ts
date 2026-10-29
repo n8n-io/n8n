@@ -53,7 +53,6 @@ describe('Agent thread grants', () => {
 				projectId: project.id,
 				integrations: [],
 				tools: {},
-				skills: {},
 			}),
 		);
 		for (const id of ['parent', 'child', 'sibling', 'new-thread']) {

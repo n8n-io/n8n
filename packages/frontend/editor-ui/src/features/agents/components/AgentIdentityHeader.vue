@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { DEFAULT_AGENT_PERSONALISATION } from '@n8n/api-types';
+import { DEFAULT_AGENT_PERSONALISATION, resolveAgentPersonalisation } from '@n8n/api-types';
 import { N8nIconPicker, N8nInlineTextEdit } from '@n8n/design-system';
 import type { IconOrEmoji } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -8,12 +8,6 @@ import { useI18n } from '@n8n/i18n';
 import type { AgentJsonConfig } from '../types';
 
 type AgentPersonalisation = NonNullable<AgentJsonConfig['personalisation']>;
-
-const DEFAULT_GRADIENT_LAYOUT = {
-	angle: 135,
-	fromStop: 0,
-	toStop: 100,
-};
 
 const props = withDefaults(
 	defineProps<{
@@ -30,15 +24,9 @@ const emit = defineEmits<{
 const i18n = useI18n();
 
 const name = computed(() => props.config?.name ?? '');
-const personalisation = computed<AgentPersonalisation>(() => {
-	const value = props.config?.personalisation;
-	return value?.gradient
-		? { icon: value.icon, gradient: { ...DEFAULT_GRADIENT_LAYOUT, ...value.gradient } }
-		: {
-				icon: value?.icon ?? DEFAULT_AGENT_PERSONALISATION.icon,
-				gradient: { ...DEFAULT_AGENT_PERSONALISATION.gradient, ...DEFAULT_GRADIENT_LAYOUT },
-			};
-});
+const personalisation = computed<AgentPersonalisation>(() =>
+	resolveAgentPersonalisation(props.config?.personalisation),
+);
 const iconPickerModel = computed<IconOrEmoji>({
 	get: (): IconOrEmoji => ({
 		type: 'icon',
@@ -78,6 +66,7 @@ function personalisationStyle(value: AgentPersonalisation): Record<string, strin
 			button-size="xlarge"
 			:is-read-only="props.disabled"
 			icons-only
+			:fallback-icon="DEFAULT_AGENT_PERSONALISATION.icon"
 			:container-class="$style.personalisationPicker"
 			:button-class="$style.personalisationIcon"
 			data-testid="agent-personalisation-icon"

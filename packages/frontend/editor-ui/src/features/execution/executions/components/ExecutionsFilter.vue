@@ -227,7 +227,7 @@ onBeforeMount(() => {
 	>
 		<template #trigger>
 			<N8nButton
-				variant="subtle"
+				variant="outline"
 				iconOnly
 				icon="funnel"
 				size="medium"

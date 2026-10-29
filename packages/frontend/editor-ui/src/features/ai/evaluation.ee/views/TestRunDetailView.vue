@@ -284,7 +284,7 @@ onBeforeUnmount(() => evaluationStore.cleanupPolling());
 .runHeading {
 	font-size: var(--font-size--2xl);
 	line-height: 1.1;
-	font-weight: var(--font-weight--bold);
+	font-weight: var(--font-weight--medium);
 	color: var(--color--text);
 	margin: 0;
 	letter-spacing: var(--letter-spacing--tight);

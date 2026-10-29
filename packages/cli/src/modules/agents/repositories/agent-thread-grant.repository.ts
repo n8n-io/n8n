@@ -14,6 +14,10 @@ export class AgentThreadGrantRepository extends BaseRepository<AgentThreadGrant>
 		await this.createQueryBuilder().insert().values({ threadId, grantKey }).orIgnore().execute();
 	}
 
+	async revoke(threadId: string, grantKey: string): Promise<void> {
+		await this.delete({ threadId, grantKey });
+	}
+
 	async findKeys(threadId: string): Promise<Set<string>> {
 		const grants = await this.find({ where: { threadId }, select: ['grantKey'] });
 		return new Set(grants.map(({ grantKey }) => grantKey));

@@ -31,8 +31,8 @@ export const RUNTIME_SKILL_TOOL_NAMES = new Set([SKILL_LOAD_TOOL_NAME]);
 
 const linkedFileSchema: z.ZodType<RuntimeSkillLinkedFile> = z.object({
 	path: z.string(),
-	bytes: z.number(),
-	sha256: z.string(),
+	bytes: z.number().optional(),
+	sha256: z.string().optional(),
 });
 
 const linkedFilesSchema: z.ZodType<RuntimeSkillLinkedFiles> = z.object({
@@ -74,8 +74,6 @@ const skillLoadOutputSchema = z.object({
 	skillId: z.string().optional(),
 	name: z.string().optional(),
 	description: z.string().optional(),
-	path: z.string().optional(),
-	skillDir: z.string().optional(),
 	hash: z.string().optional(),
 	category: z.string().optional(),
 	content: z.string().optional(),
@@ -199,7 +197,9 @@ async function loadSkill(
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
-				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
+				error:
+					source.getLoadError?.(skillEntry.id)?.message ??
+					`File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
@@ -209,8 +209,6 @@ async function loadSkill(
 			success: true,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			path: skillEntry.directory ? `${skillEntry.directory}/${linkedFile.path}` : linkedFile.path,
-			skillDir: skillEntry.directory,
 			hash: skillEntry.hash,
 			category: skillEntry.category,
 			filePath: linkedFile.path,
@@ -227,7 +225,9 @@ async function loadSkill(
 			success: false,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			error: `Skill "${skillEntry.name}" is not attached to this agent.`,
+			error:
+				source.getLoadError?.(skillEntry.id)?.message ??
+				`Skill "${skillEntry.name}" is not attached to this agent.`,
 			availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 		};
 	}
@@ -239,7 +239,9 @@ async function loadSkill(
 			skillId: skillEntry.id,
 			name: skillEntry.name,
 			hash: skillEntry.hash,
-			content: 'The skill instructions are active. Follow them for this task.',
+			content: source.shouldAppendSkillUpdates?.(skillEntry.id)
+				? formatActiveSkill(skill, skillEntry, source.registry)
+				: 'The skill instructions are active. Follow them for this task.',
 			...(references.length > 0
 				? {
 						references: references.map((entry) => ({
@@ -349,10 +351,6 @@ function activationEnvelope(skill: RuntimeSkillRegistryEntry): string {
 			? [`[Reference of: ${skill.parents.map(envelopeValue).join(', ')}]`]
 			: []),
 		...(skill.category ? [`[Skill category: ${envelopeValue(skill.category)}]`] : []),
-		...(skill.directory ? [`[Skill directory: ${envelopeValue(skill.directory)}]`] : []),
-		...((skill.path ?? skill.sourcePath)
-			? [`[Skill path: ${envelopeValue(skill.path ?? skill.sourcePath ?? '')}]`]
-			: []),
 		`[Skill hash: ${envelopeValue(skill.hash)}]`,
 	].join('\n');
 }

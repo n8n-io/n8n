@@ -4,9 +4,11 @@ import { z } from 'zod';
 
 import {
 	createCancelExecutionHandler,
+	createFindLatestExecutionHandler,
 	createGetExecutionHandler,
 	createSearchExecutionsHandler,
 } from './workflow-executions.handlers';
+import { createResumeTargetHandler } from './resume-requests';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
@@ -51,6 +53,10 @@ const StartExecutionBody = z.object({
 	workflow: jsonObjectSchema,
 	/** Trigger output slots. Empty means "no payload" — send `null` or omit instead. */
 	triggerOutputs: z.array(jsonValueSchema).min(1).max(MAX_TRIGGER_SLOTS).nullable().optional(),
+	/** Steps the caller holds the outputs of, by node id: slots like `triggerOutputs`, once per pass. */
+	seededSteps: z
+		.record(z.string().min(1), z.array(z.array(jsonValueSchema).max(MAX_TRIGGER_SLOTS)).min(1))
+		.optional(),
 	mode: z.enum(['production', 'manual']).optional(),
 	// `strict`, so a misspelled key fails loudly instead of running the step
 	// without the fact the caller meant to supply.
@@ -70,6 +76,7 @@ const StartExecutionBody = z.object({
 export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterType {
 	const router = Router();
 	router.post('/search', createSearchExecutionsHandler(deps.executionQuery));
+	router.post('/search/latest', createFindLatestExecutionHandler(deps.executionQuery));
 
 	router.post('/', async (req, res) => {
 		const parsed = StartExecutionBody.safeParse(req.body);
@@ -100,6 +107,10 @@ export function createWorkflowExecutionsRouter(deps: EngineServerDeps): RouterTy
 
 	router.get('/:id', createGetExecutionHandler(deps.executionQuery));
 	router.post('/:id/cancel', createCancelExecutionHandler(deps.cancelExecution));
+	router.post(
+		'/:id/resume-target',
+		createResumeTargetHandler(deps.resumeRequests, deps.executionQuery),
+	);
 
 	return router;
 }

@@ -1,7 +1,12 @@
 import type { WorkflowPublicationStatus } from '@n8n/api-types';
 import type { APIResponse } from '@playwright/test';
 import { readFileSync } from 'fs';
-import { isTerminalExecutionStatus, type IWorkflowBase, type ExecutionSummary } from 'n8n-workflow';
+import {
+	isTerminalExecutionStatus,
+	type IRunData,
+	type IWorkflowBase,
+	type ExecutionSummary,
+} from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
 // Type for execution responses from the n8n API
@@ -156,6 +161,34 @@ export class WorkflowApiHelper {
 
 		if (!response.ok()) {
 			throw new TestError(`Failed to run workflow: ${await response.text()}`);
+		}
+
+		const result = await response.json();
+		const run = (result.data ?? result) as { executionId: string };
+		this.assertRoutedToEngine(run.executionId);
+		return run;
+	}
+
+	/**
+	 * A partial run up to `destinationNodeName`, reusing `runData` from an
+	 * earlier run where it can. Checks the engine routing like {@link runManually}.
+	 */
+	async runToNode(
+		workflowId: string,
+		destinationNodeName: string,
+		options: { runData?: IRunData; dirtyNodeNames?: string[] } = {},
+	): Promise<{ executionId: string }> {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/run`, {
+			data: {
+				destinationNode: { nodeName: destinationNodeName, mode: 'inclusive' },
+				...options,
+			},
+		});
+
+		if (!response.ok()) {
+			throw new TestError(
+				`Failed to run workflow to ${destinationNodeName}: ${await response.text()}`,
+			);
 		}
 
 		const result = await response.json();

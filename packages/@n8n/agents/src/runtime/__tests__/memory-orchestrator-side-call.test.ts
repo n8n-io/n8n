@@ -47,7 +47,10 @@ function runOptions(
 	};
 }
 
-function buildOrchestrator(observationalMemory: ObservationalMemoryConfig): {
+function buildOrchestrator(
+	observationalMemory: ObservationalMemoryConfig,
+	extraConfig: Partial<AgentRuntimeConfig> = {},
+): {
 	orchestrator: MemoryOrchestrator;
 	events: ScopedMemoryTaskEvent[];
 } {
@@ -57,6 +60,7 @@ function buildOrchestrator(observationalMemory: ObservationalMemoryConfig): {
 		memory: new InMemoryMemory(),
 		observationalMemory,
 		onMemoryTaskEvent: (event: ScopedMemoryTaskEvent) => events.push(event),
+		...extraConfig,
 	} as unknown as AgentRuntimeConfig;
 	const tracker = new BackgroundTaskTracker();
 	const orchestrator = new MemoryOrchestrator(
@@ -128,7 +132,7 @@ describe('MemoryOrchestrator side-call cost forwarding', () => {
 		expect(reports).toHaveLength(0);
 	});
 
-	it('does not forward a report when the model has no catalog pricing', async () => {
+	it('forwards a report without cost when the model has no catalog pricing', async () => {
 		mockGetModelCost.mockResolvedValue(undefined);
 		const { orchestrator } = buildOrchestrator({
 			observerThresholdTokens: 10,
@@ -150,7 +154,13 @@ describe('MemoryOrchestrator side-call cost forwarding', () => {
 			list,
 			runOptions((report) => reports.push(report)),
 		);
-		expect(reports).toHaveLength(0);
+		expect(reports).toHaveLength(1);
+		const report = reports[0];
+		expect(report.task).toBe('observer');
+		expect(report.model).toBe('unknown/model');
+		expect(report.usage.promptTokens).toBe(80);
+		expect(report.usage.completionTokens).toBe(20);
+		expect(report).not.toHaveProperty('cost');
 	});
 
 	it('does not break the run when onSideCallUsage throws', async () => {
@@ -178,5 +188,23 @@ describe('MemoryOrchestrator side-call cost forwarding', () => {
 				}),
 			),
 		).resolves.toBeUndefined();
+	});
+
+	it("passes the agent's model transport to the observer", async () => {
+		const modelFetch = vi.fn(async () => new Response('{}'));
+		const observe = vi.fn(
+			async () => await Promise.resolve('* CRITICAL (14:30) User set up mid-run observation.'),
+		);
+		const { orchestrator } = buildOrchestrator(
+			{ observerThresholdTokens: 10, observationLogTailLimit: 20, observe },
+			{ modelFetch },
+		);
+		const list = new AgentMessageList();
+		list.addInput([userMsg('a user message crossing the threshold')]);
+		list.addResponse([assistantMsg('an assistant reply with more work')]);
+
+		await orchestrator.maybeObserveMidRun(list, runOptions());
+
+		expect(observe).toHaveBeenCalledWith(expect.objectContaining({ modelFetch }));
 	});
 });

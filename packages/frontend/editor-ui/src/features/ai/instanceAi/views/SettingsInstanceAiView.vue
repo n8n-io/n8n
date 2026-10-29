@@ -3,12 +3,14 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import {
 	N8nBadge,
 	N8nButton,
+	N8nCallout,
 	N8nDropdownMenu,
 	N8nEmptyState,
+	N8nEnterpriseReadinessBadge,
+	N8nExternalLink,
 	N8nIcon,
 	N8nLoading,
 	N8nOption,
-	N8nPreviewBadge,
 	N8nSelect,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
@@ -28,16 +30,19 @@ import {
 	type InstanceAiPermissionMode,
 } from '@n8n/api-types';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
-import { useRouter } from 'vue-router';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { useTelemetry } from '@n8n/composables/useTelemetry';
+import { useToast } from '@n8n/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 // Experiment cleanup: remove with openWorkflowInAssistant.
 import DefaultEditorSetting from '@/experiments/openWorkflowInAssistant/components/DefaultEditorSetting.vue';
-import { useInstanceAiComputerUseExperiment } from '@/experiments/instanceAiComputerUse';
-import { isContextPreferencesEnabled } from '@/features/settings/context/context.utils';
+import {
+	isContextPreferencesEnabled,
+	isContextSkillsEnabled,
+} from '@/features/settings/context/context.utils';
 import { useInstanceCredentialTest } from '../composables/useInstanceCredentialTest';
 import { useInstanceAiConfiguration } from '../composables/useInstanceAiConfiguration';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -49,7 +54,8 @@ import SandboxSettingsRow from '../components/settings/SandboxSettingsRow.vue';
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const message = useMessage();
-const router = useRouter();
+const toast = useToast();
+const telemetry = useTelemetry();
 const settingsStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const store = useInstanceAiSettingsStore();
@@ -63,9 +69,9 @@ const {
 	searchState,
 } = useInstanceAiConfiguration();
 
-const { isFeatureEnabled: isComputerUseExperimentEnabled } = useInstanceAiComputerUseExperiment();
-
 const DOCS_URL = 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant';
+const DATA_SHARING_DOCS_URL =
+	'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings';
 
 const isAdmin = computed(() => store.canManage);
 const isEnabled = computed(
@@ -203,7 +209,7 @@ const PERMISSION_GROUPS: PermissionGroup[] = [
 	{
 		id: 'system',
 		labelKey: 'settings.n8nAgent.permissions.group.system',
-		keys: ['readFilesystem', 'cleanupTestExecutions'],
+		keys: ['cleanupTestExecutions'],
 	},
 	{
 		id: 'web',
@@ -224,11 +230,17 @@ const PREFERENCES_PERMISSION_GROUP: PermissionGroup = {
 	keys: ['createPreference'],
 };
 
-const permissionGroups = computed(() =>
-	isContextPreferencesEnabled()
-		? [...PERMISSION_GROUPS, PREFERENCES_PERMISSION_GROUP]
-		: PERMISSION_GROUPS,
-);
+const SKILLS_PERMISSION_GROUP: PermissionGroup = {
+	id: 'skills',
+	labelKey: 'settings.n8nAgent.permissions.group.skills',
+	keys: ['createSkill', 'updateSkill', 'deleteSkill'],
+};
+
+const permissionGroups = computed(() => [
+	...PERMISSION_GROUPS,
+	...(isContextPreferencesEnabled() ? [PREFERENCES_PERMISSION_GROUP] : []),
+	...(isContextSkillsEnabled() ? [SKILLS_PERMISSION_GROUP] : []),
+]);
 
 const expandedGroups = reactive<Record<string, boolean>>({});
 
@@ -432,11 +444,6 @@ async function handleStatusAction(action: string) {
 	if (confirmed === MODAL_CONFIRM) await store.persistEnabled(false);
 }
 
-function handleComputerUseToggle(value: boolean) {
-	store.setField('localGatewayDisabled', !value);
-	void store.save();
-}
-
 function handleBrowserUseToggle(value: boolean) {
 	store.setField('browserUseEnabled', value);
 	void store.save();
@@ -452,8 +459,32 @@ function handlePermissionChange(key: keyof InstanceAiPermissions, value: Instanc
 	void store.save();
 }
 
-function openAiUsageSettings() {
-	void router.push({ name: VIEWS.AI_SETTINGS });
+// Data sharing is an instance-wide AI setting, not part of the assistant's own
+// settings, so it is read and saved through the settings store.
+const isDataSharingEnabled = computed(() => settingsStore.isAiDataSharingEnabled);
+const isSavingDataSharing = ref(false);
+const canToggleDataSharing = computed(
+	() =>
+		!isOff.value &&
+		store.canManageAiUsage &&
+		!isDataSharingEnabled.value &&
+		!isSavingDataSharing.value,
+);
+
+// The setting is deprecated: it can only be turned on, so the switch locks once it is.
+async function handleDataSharingToggle(value: boolean) {
+	if (!value || !canToggleDataSharing.value) return;
+
+	isSavingDataSharing.value = true;
+	try {
+		await settingsStore.updateAiDataSharingSettings(true);
+		toast.showMessage({ title: i18n.baseText('settings.ai.updated.success'), type: 'success' });
+		telemetry.track('User changed AI Usage settings', { allow_sending_parameter_values: true });
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.ai.updated.error'));
+	} finally {
+		isSavingDataSharing.value = false;
+	}
 }
 </script>
 
@@ -465,8 +496,11 @@ function openAiUsageSettings() {
 			:docs-url="DOCS_URL"
 			:docs-label="i18n.baseText('settings.n8nAgent.docsLabel')"
 		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="medium" />
+			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
+				<N8nEnterpriseReadinessBadge
+					size="xsmall"
+					data-test-id="n8n-agent-enterprise-readiness-badge"
+				/>
 			</template>
 		</N8nSettingsPageHeader>
 
@@ -656,23 +690,6 @@ function openAiUsageSettings() {
 					</N8nSettingsRow>
 
 					<N8nSettingsRow
-						v-if="isComputerUseExperimentEnabled"
-						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.computerUse.label')"
-						:description="i18n.baseText('settings.n8nAgent.computerUse.description')"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="!(store.settings?.localGatewayDisabled ?? false)"
-								:disabled="store.isSaving || isOff"
-								:aria-label="i18n.baseText('settings.n8nAgent.computerUse.label')"
-								data-test-id="n8n-agent-computer-use-toggle"
-								@update:model-value="handleComputerUseToggle"
-							/>
-						</template>
-					</N8nSettingsRow>
-
-					<N8nSettingsRow
 						:class="{ [$style.dim]: isOff }"
 						:title="i18n.baseText('settings.n8nAgent.browserUse.label')"
 						:description="i18n.baseText('settings.n8nAgent.browserUse.description')"
@@ -770,24 +787,67 @@ function openAiUsageSettings() {
 				</N8nSettingsRowGroup>
 			</N8nSettingsSection>
 
-			<N8nSettingsSection
-				:title="i18n.baseText('settings.n8nAgent.dataSharing.title')"
-				:description="i18n.baseText('settings.n8nAgent.dataSharing.description')"
-			>
+			<N8nSettingsSection :title="i18n.baseText('settings.n8nAgent.dataSharing.title')">
+				<template #description>
+					<N8nText size="small" color="text-base">
+						{{ i18n.baseText('settings.n8nAgent.dataSharing.description') }}
+						<!-- Same docs phrase as N8nSettingsPageHeader: lead-in, inline external link, icon. -->
+						<span :class="$style.docsPhrase">
+							{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLeadingText') }}
+							<N8nExternalLink
+								inline
+								size="xsmall"
+								:href="DATA_SHARING_DOCS_URL"
+								data-test-id="n8n-agent-data-sharing-docs-link"
+							>
+								{{ i18n.baseText('settings.n8nAgent.dataSharing.docsLabel') }}
+							</N8nExternalLink>
+						</span>
+					</N8nText>
+				</template>
 				<N8nSettingsRowGroup>
 					<N8nSettingsRow
 						:class="{ [$style.dim]: isOff }"
-						:title="i18n.baseText('settings.n8nAgent.dataSharing.manage.label')"
-						:description="i18n.baseText('settings.n8nAgent.dataSharing.manage.description')"
-						:clickable="!isOff && store.canManageAiUsage"
-						data-test-id="n8n-agent-data-sharing-row"
-						@click="openAiUsageSettings"
+						:title="i18n.baseText('settings.ai.allowSendingSchema.label')"
+						:description="i18n.baseText('settings.ai.allowSendingSchema.description')"
+						data-test-id="n8n-agent-data-sharing-schema-row"
 					>
-						<template v-if="!isOff && store.canManageAiUsage" #action>
-							<N8nSettingsRowConfigure />
+						<template #action>
+							<N8nSwitch
+								:model-value="true"
+								disabled
+								:aria-label="i18n.baseText('settings.ai.allowSendingSchema.label')"
+								data-test-id="n8n-agent-data-sharing-schema-toggle"
+							/>
+						</template>
+					</N8nSettingsRow>
+					<N8nSettingsRow
+						:class="{ [$style.dim]: isOff }"
+						:title="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+						:description="i18n.baseText('settings.n8nAgent.dataSharing.values.description')"
+						data-test-id="n8n-agent-data-sharing-values-row"
+					>
+						<template #action>
+							<N8nSwitch
+								:model-value="isDataSharingEnabled"
+								:disabled="!canToggleDataSharing"
+								:aria-label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+								data-test-id="n8n-agent-data-sharing-values-toggle"
+								@update:model-value="handleDataSharingToggle"
+							/>
 						</template>
 					</N8nSettingsRow>
 				</N8nSettingsRowGroup>
+				<N8nCallout
+					v-if="!isDataSharingEnabled"
+					theme="warning"
+					data-test-id="n8n-agent-data-sharing-deprecation-notice"
+				>
+					{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated') }}
+					<template v-if="!settingsStore.isCloudDeployment">
+						{{ i18n.baseText('settings.ai.allowSendingParameterValues.deprecated.envVar') }}
+					</template>
+				</N8nCallout>
 			</N8nSettingsSection>
 		</template>
 
@@ -842,6 +902,11 @@ function openAiUsageSettings() {
 .dim {
 	opacity: 0.5;
 	pointer-events: none;
+}
+
+/* Keeps "lead-in + link + icon" on one line, as the page header does. */
+.docsPhrase {
+	white-space: nowrap;
 }
 
 .permissionList {

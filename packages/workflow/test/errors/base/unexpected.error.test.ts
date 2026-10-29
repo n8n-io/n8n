@@ -16,6 +16,17 @@ describe('UnexpectedError', () => {
 		expect(error).toBeInstanceOf(BaseError);
 	});
 
+	it('should set name to the class name', () => {
+		const error = new UnexpectedError('test');
+		expect(error.name).toBe('UnexpectedError');
+	});
+
+	it('should keep name in the spread copy the engine saves', () => {
+		const error = new UnexpectedError('test');
+		const saved = { ...error, message: error.message, stack: error.stack };
+		expect(saved.name).toBe('UnexpectedError');
+	});
+
 	it('should have correct defaults', () => {
 		const error = new UnexpectedError('test');
 		expect(error.level).toBe('error');

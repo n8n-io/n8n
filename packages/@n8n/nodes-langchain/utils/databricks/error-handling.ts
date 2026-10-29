@@ -52,12 +52,16 @@ function isExpiredTokenResponse(error: unknown, expiredStatus: number): boolean 
 	);
 }
 
+const RATE_LIMIT_HINT =
+	"Databricks is throttling requests to this model service. Wait and retry, reduce concurrent requests, or ask your workspace admin to raise the endpoint's rate limit.";
+
 /**
  * A dead session arrives either as a rejected response or as a wrapped throw.
  * `expiredStatus` is undefined for grants that cannot be reconnected, such as a
  * service principal — those keep the generic "check your credentials" advice.
- * On a 429 the thrown error names Databricks and `modelName` (the configured model
- * service) and keeps the Databricks text, which carries the endpoint-specific fix.
+ * A 429 is decorated in place so it names Databricks and `modelName` (the
+ * configured model service) and keeps the Databricks text, then returned so the
+ * shared handler retries it with backoff. This handler never throws on 429.
  */
 export function makeDatabricksFailedAttemptHandler(
 	expiredStatus: number | undefined,
@@ -79,10 +83,9 @@ export function makeDatabricksFailedAttemptHandler(
 				isRecord(error.error) && typeof error.error.message === 'string'
 					? `: ${error.error.message}`
 					: '';
-			throw new OperationalError(`Databricks rate limit reached for ${modelName}${detail}`, {
-				description:
-					"Databricks is throttling requests to this model service. Wait and retry, reduce concurrent requests, or ask your workspace admin to raise the endpoint's rate limit.",
-				cause: error,
+			Object.assign(error, {
+				message: `Databricks rate limit reached for ${modelName}${detail}`,
+				description: RATE_LIMIT_HINT,
 			});
 		}
 	};

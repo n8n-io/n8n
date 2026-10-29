@@ -2,13 +2,21 @@ import type { AgentSessionOrigin, AgentSessionQueryFilters } from '@n8n/api-type
 import type { SerializableAgentState } from '@n8n/agents';
 import {
 	BaseRepository,
-	TransactionRunner,
 	escapeLike,
 	LIKE_ESCAPE_CLAUSE,
+	TransactionRunner,
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, IsNull, Not, type EntityManager, type SelectQueryBuilder } from '@n8n/typeorm';
+import {
+	DataSource,
+	In,
+	IsNull,
+	Not,
+	type EntityManager,
+	type SelectQueryBuilder,
+	type FindOptionsWhere,
+} from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { jsonParse, UserError } from 'n8n-workflow';
 
@@ -41,6 +49,39 @@ export interface AgentExecutionThreadPage {
 	nextCursor: string | null;
 }
 
+/** Position of the last thread on a keyset page: `updatedAt`, then `id` breaks ties. */
+export interface AgentExecutionThreadKeyset {
+	updatedAt: Date;
+	id: string;
+}
+
+export interface AgentExecutionThreadKeysetPage {
+	threads: AgentExecutionThread[];
+	hasMore: boolean;
+}
+
+function ownedSessionWhere(agentId: string, ownerId: string, threadId: string) {
+	return {
+		id: threadId,
+		agentId,
+		ownerId,
+		accessScope: 'user' as const,
+		parentThreadId: IsNull(),
+	};
+}
+
+function accessibleSessionWhere(
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	userId: string,
+): Array<FindOptionsWhere<AgentExecutionThread>> {
+	return [
+		{ id: threadId, projectId, agentId, accessScope: 'project' },
+		{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
+	];
+}
+
 interface AgentSessionDeletionRefs {
 	attachmentBinaryDataIds: string[];
 	executionLogs: Array<Pick<AgentExecution, 'id' | 'storedAt'>>;
@@ -59,6 +100,15 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});
+	}
+
+	async findAccessibleById(
+		threadId: string,
+		projectId: string,
+		agentId: string,
+		userId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy(accessibleSessionWhere(projectId, agentId, threadId, userId));
 	}
 
 	/**
@@ -404,6 +454,147 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
+	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
+		if (ids.length === 0) return [];
+		return await this.findBy({ id: In(ids) });
+	}
+
+	/**
+	 * Top-level private sessions of one user with any instance (system) agent,
+	 * in every project, oldest first. It does not check that a provider is
+	 * registered for the agent, so user deletion finds every session.
+	 */
+	async findOwnedSystemAgentSessions(
+		ownerId: string,
+	): Promise<Array<Pick<AgentExecutionThread, 'id' | 'agentId' | 'projectId'>>> {
+		return await this.find({
+			select: ['id', 'agentId', 'projectId'],
+			where: {
+				ownerId,
+				accessScope: 'user',
+				parentThreadId: IsNull(),
+				agent: { scope: 'instance' },
+			},
+			order: { createdAt: 'ASC', id: 'ASC' },
+		});
+	}
+
+	/** One top-level private session of a user with an agent. */
+	async findOwnedById(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		return await this.findOneBy(ownedSessionWhere(agentId, ownerId, threadId));
+	}
+
+	/**
+	 * Rename a top-level private session of a user with an agent. Returns false
+	 * when no such session exists.
+	 */
+	async renameOwned(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+		title: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const result = await this.managerFor(ctx).update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ title },
+		);
+		return result.affected === 1;
+	}
+
+	/**
+	 * Move a top-level private session of a user with an agent to another
+	 * project, with its chat attachments. Returns false when no such session
+	 * exists. The caller must check that the user can use the target project,
+	 * and run this in a transaction.
+	 */
+	async moveOwned(
+		agentId: string,
+		ownerId: string,
+		threadId: string,
+		projectId: string,
+		ctx: OperationContext,
+	): Promise<boolean> {
+		const manager = this.managerFor(ctx);
+		const result = await manager.update(
+			AgentExecutionThread,
+			ownedSessionWhere(agentId, ownerId, threadId),
+			{ projectId },
+		);
+		if (result.affected !== 1) return false;
+		// Attachment lookups and session deletion filter on the project of the thread.
+		await manager.update(AgentChatAttachment, { agentId, threadId }, { projectId });
+		return true;
+	}
+
+	/**
+	 * One page of the top-level private sessions of a user with an agent,
+	 * newest first. `before` is the last session of the previous page. The
+	 * `id` breaks ties between sessions with the same `updatedAt`, so no
+	 * session is skipped or repeated across pages.
+	 */
+	async findOwnedHistoryPage(
+		agentId: string,
+		ownerId: string,
+		limit: number,
+		search?: string,
+		before?: AgentExecutionThreadKeyset,
+	): Promise<AgentExecutionThreadKeysetPage> {
+		const updatedAt = this.updatedAtExpression();
+		const query = this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere('thread.ownerId = :ownerId', { ownerId })
+			.andWhere("thread.accessScope = 'user'")
+			.andWhere('thread.parentThreadId IS NULL');
+		const term = search?.trim().toLowerCase();
+		if (term) {
+			query.andWhere(`LOWER(thread.title) LIKE :search ${LIKE_ESCAPE_CLAUSE}`, {
+				search: `%${escapeLike(term)}%`,
+			});
+		}
+		if (before) {
+			query.andWhere(
+				`(${updatedAt} < :beforeAt OR (${updatedAt} = :beforeAt AND thread.id < :beforeId))`,
+				{ beforeAt: before.updatedAt, beforeId: before.id },
+			);
+		}
+		// Order by the same expression as the keyset, so ties stored in another format stay together.
+		const threads = await query
+			.orderBy(updatedAt, 'DESC')
+			.addOrderBy('thread.id', 'DESC')
+			.limit(limit + 1)
+			.getMany();
+		const hasMore = threads.length > limit;
+		if (hasMore) threads.pop();
+		return { threads, hasMore };
+	}
+
+	async findIdsByAgentId(agentId: string): Promise<string[]> {
+		const threads = await this.find({ select: { id: true }, where: { agentId } });
+		return threads.map((thread) => thread.id);
+	}
+
+	/** Sessions of an agent last updated before `cutoff`, oldest first, for pruning. */
+	async findByAgentUpdatedBefore(
+		agentId: string,
+		cutoff: Date,
+		limit: number,
+	): Promise<AgentExecutionThread[]> {
+		const updatedAt = this.updatedAtExpression();
+		return await this.createQueryBuilder('thread')
+			.where('thread.agentId = :agentId', { agentId })
+			.andWhere(`${updatedAt} < :cutoff`, { cutoff })
+			.orderBy(updatedAt, 'ASC')
+			.addOrderBy('thread.id', 'ASC')
+			.limit(limit)
+			.getMany();
+	}
+
 	async findByParentThreadId(
 		parentThreadId: string,
 		projectId: string,
@@ -412,6 +603,28 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			where: { parentThreadId, projectId },
 			order: { createdAt: 'ASC' },
 		});
+	}
+
+	/**
+	 * The thread and the threads that delegated to it, from `threadId` up to
+	 * the root. A thread without a row (an inline agent, or a thread that is
+	 * not created yet) ends the chain with `agentId: null`.
+	 */
+	async findDelegationChain(
+		threadId: string,
+	): Promise<Array<{ id: string; agentId: string | null }>> {
+		const chain: Array<{ id: string; agentId: string | null }> = [];
+		const seen = new Set<string>();
+		let id: string | null = threadId;
+		// ponytail: one query per level; use a recursive CTE if delegation trees get deep.
+		while (id !== null && !seen.has(id)) {
+			seen.add(id);
+			const thread: Pick<AgentExecutionThread, 'agentId' | 'parentThreadId'> | null =
+				await this.findOne({ select: ['agentId', 'parentThreadId'], where: { id } });
+			chain.push({ id, agentId: thread?.agentId ?? null });
+			id = thread?.parentThreadId ?? null;
+		}
+		return chain;
 	}
 
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
@@ -459,10 +672,7 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 	): Promise<{ status: 'deleted'; refs: AgentSessionDeletionRefs } | { status: 'busy' } | null> {
 		const manager = this.managerFor(ctx);
 		const thread = await manager.findOne(AgentExecutionThread, {
-			where: [
-				{ id: threadId, projectId, agentId, accessScope: 'project' },
-				{ id: threadId, projectId, agentId, accessScope: 'user', ownerId: userId },
-			],
+			where: accessibleSessionWhere(projectId, agentId, threadId, userId),
 			lock:
 				manager.connection.options.type === 'postgres' ? { mode: 'pessimistic_write' } : undefined,
 		});

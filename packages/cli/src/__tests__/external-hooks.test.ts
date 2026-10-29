@@ -4,10 +4,12 @@ import type {
 	WorkflowRepository,
 	CredentialsRepository,
 	SettingsRepository,
-	UserRepository,
+	Person,
+	PersonRepository,
 	User,
 	Role,
 } from '@n8n/db';
+import type { Repository } from '@n8n/typeorm';
 import type { ErrorReporter } from 'n8n-core';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
@@ -43,7 +45,8 @@ describe('ExternalHooks', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
 	const globalConfig = mock<GlobalConfig>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
+	const personCollection = mock<Repository<Person>>();
 	const settingsRepository = mock<SettingsRepository>();
 	const credentialsRepository = mock<CredentialsRepository>();
 	const workflowRepository = mock<WorkflowRepository>();
@@ -57,11 +60,12 @@ describe('ExternalHooks', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		globalConfig.externalHooks.files = [];
+		personRepository.forCloudHooks.mockReturnValue(personCollection);
 		externalHooks = new ExternalHooks(
 			logger,
 			errorReporter,
 			globalConfig,
-			userRepository,
+			personRepository,
 			settingsRepository,
 			credentialsRepository,
 			workflowRepository,
@@ -112,7 +116,7 @@ describe('ExternalHooks', () => {
 			const hookInvocationContext = hookFn.mock.instances[0] as Record<string, unknown>;
 			expect(hookInvocationContext).toHaveProperty('dbCollections');
 			expect(hookInvocationContext.dbCollections).toEqual({
-				User: userRepository,
+				User: personCollection,
 				Settings: settingsRepository,
 				Credentials: credentialsRepository,
 				Workflow: workflowRepository,

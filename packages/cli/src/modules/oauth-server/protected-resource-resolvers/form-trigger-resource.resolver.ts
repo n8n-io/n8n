@@ -4,13 +4,14 @@ import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { FORM_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import type { ProtectedResourceResolver } from '@/services/protected-resource.registry';
 import { UrlService } from '@n8n/backend-services';
+import { type ProtectedResourceResolver } from '@n8n/backend-services/auth';
 import { WebhookService } from '@/webhooks/webhook.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { triggerResourceGate } from '../resource-gate';
 import {
+	acceptedTrustedSourceIds,
 	FORM_TRIGGER_CONSENT_HINTS,
 	FORM_TRIGGER_SCOPES,
 	trimSlashes,
@@ -87,6 +88,7 @@ export class FormTriggerResourceResolver implements ProtectedResourceResolver {
 				getResourceUrl: () => resourceUrl,
 				getAudiences: () => audiences,
 				getAllowedRedirectUris: async () => [resourceUrl],
+				getAcceptedSourceIds: () => acceptedTrustedSourceIds(node),
 				scopes: FORM_TRIGGER_SCOPES,
 				displayName: workflow.name,
 				uiHints: FORM_TRIGGER_CONSENT_HINTS,

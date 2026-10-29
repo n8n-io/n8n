@@ -164,7 +164,7 @@ function isActiveRange(presetValue: number) {
 	<!-- eslint-disable vue/no-multiple-template-root -->
 	<N8nDateRangePicker v-model="range" v-model:open="open" :max-value :min-value>
 		<template #trigger>
-			<N8nButton variant="subtle" icon="calendar">{{ formattedRange }}</N8nButton>
+			<N8nButton variant="outline" icon="calendar">{{ formattedRange }}</N8nButton>
 		</template>
 		<template #presets>
 			<N8nButton

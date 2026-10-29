@@ -20,7 +20,10 @@ import { randomUUID } from 'node:crypto';
 import {
 	buildAgentTreeFromEvents,
 	createSubAgentResourceIdPrefix,
+	getSelfHealingResourceId,
+	isSelfHealingResourceId,
 	patchThread,
+	SELF_HEALING_RESOURCE_PREFIX,
 	withBoundAgentTarget,
 	type AgentBuilderTarget,
 	type AgentTreeSnapshot,
@@ -290,6 +293,15 @@ export class InstanceAiMemoryService {
 		const thread = await this.agentMemory.getThread(threadId);
 		if (!thread) throw new NotFoundError('Thread not found');
 		return this.toThreadInfo(thread);
+	}
+
+	/** Resolve the actor for background cleanup without granting thread access. */
+	async getThreadActorId(threadId: string): Promise<string | undefined> {
+		const thread = await this.agentMemory.getThread(threadId);
+		if (!thread) return undefined;
+		if (!isSelfHealingResourceId(thread.resourceId)) return thread.resourceId;
+
+		return thread.resourceId.slice(SELF_HEALING_RESOURCE_PREFIX.length) || undefined;
 	}
 
 	async listThreadHistory(
@@ -653,13 +665,18 @@ export class InstanceAiMemoryService {
 	}
 
 	/**
-	 * Remove every thread owned by a user, the sub-agent threads spawned under
-	 * them, and their working-memory resources. Invoked on user deletion to
+	 * Remove the user's chat and internal threads, their sub-agent threads,
+	 * and their working-memory resources. Invoked on user deletion to
 	 * avoid orphaning Instance AI data. Returns the number of owner threads
 	 * deleted.
 	 */
 	async deleteThreadsForUser(userId: string): Promise<number> {
-		return await this.agentMemory.deleteThreadsByResourceId(userId);
+		const chatThreads = await this.agentMemory.deleteThreadsByResourceId(userId);
+		const selfHealingThreads = await this.agentMemory.deleteThreadsByResourceId(
+			getSelfHealingResourceId(userId),
+		);
+
+		return chatThreads + selfHealingThreads;
 	}
 
 	async renameThread(threadId: string, title: string): Promise<InstanceAiThreadInfo> {
