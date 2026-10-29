@@ -1057,7 +1057,8 @@ export class AgentRuntimeReconstructionService {
 				RECALL_MEMORY_TOOL_NAME,
 				FLAG_MEMORY_TOOL_NAME,
 				...Object.values(AGENT_PLAN_TOOL_NAMES),
-				...Object.values(BACKGROUND_JOB_TOOL_NAMES),
+				// Only top-level runs with background tasks get these tools.
+				...(params.backgroundTasksEnabled ? Object.values(BACKGROUND_JOB_TOOL_NAMES) : []),
 			],
 		});
 

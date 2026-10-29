@@ -510,9 +510,6 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 					'read_plan',
 					'update_plan',
 					'close_plan',
-					'check_background_jobs',
-					'resume_background_jobs',
-					'cancel_background_job',
 				],
 			});
 

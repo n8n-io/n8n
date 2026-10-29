@@ -132,8 +132,11 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 				'load_skill',
 				'mark_session_failed',
 				'delegate_subagent',
-				'check_background_jobs',
 			]),
+		});
+		// Sub-agents get no background job tools, so their names are not eager.
+		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining(['check_background_jobs']),
 		});
 	});
 
