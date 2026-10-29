@@ -121,7 +121,7 @@ export class AgentMessageQueueRepository extends BaseRepository<AgentMessageQueu
 			readInboundUserMessage(item.message.content).attachments.map((attachment) => attachment.id),
 		);
 
-		await manager.delete(AgentMessageQueue, { threadId, executionId: IsNull() });
+		await manager.delete(AgentMessageQueue, { id: In(items.map((item) => item.id)) });
 		await manager.update(
 			AgentMessageEntity,
 			{ id: In(items.map((item) => item.messageId)) },

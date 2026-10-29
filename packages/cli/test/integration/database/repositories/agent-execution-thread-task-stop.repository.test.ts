@@ -199,6 +199,21 @@ describe('AgentExecutionThreadRepository task stops', () => {
 		expect((await queue.findHead(thread.id, {}))?.id).toBe(next.id);
 	});
 
+	it('discards only the pending input that it read', async () => {
+		await enqueue('Older input');
+		const listPending = queue.listPending.bind(queue);
+		let late: Awaited<ReturnType<typeof enqueue>> | undefined;
+		vi.spyOn(queue, 'listPending').mockImplementationOnce(async (...args) => {
+			const items = await listPending(...args);
+			late = await enqueue('Late input');
+			return items;
+		});
+
+		await queue.discardPending(thread.id, {});
+
+		expect((await queue.listPending(thread.id, {})).map(({ id }) => id)).toEqual([late?.id]);
+	});
+
 	it.each(['success', 'error', 'cancelled'] as const)(
 		'records a %s report and consumes its job notifications',
 		async (status) => {
