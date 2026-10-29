@@ -1,3 +1,4 @@
+import type { DataTableEventMap } from '@/modules/data-table/data-table-events';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -83,7 +84,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-export type RelayEventMap = {
+export type RelayEventMap = DataTableEventMap & {
 	// #region Lifecycle
 
 	'server-started': {};
@@ -1244,15 +1245,6 @@ export type RelayEventMap = {
 		windowEndIso: string;
 		compactionStartTime: Date;
 	};
-	// #endregion
-
-	// #region Data Tables
-
-	'data-table-deleted': {
-		dataTableId: string;
-		projectId: string;
-	};
-
 	// #endregion
 
 	// #region Folders
