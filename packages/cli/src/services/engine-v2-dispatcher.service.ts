@@ -31,6 +31,7 @@ import {
 import {
 	EngineV2ManualRunPlanner,
 	type ManualRunPlan,
+	type SeededNode,
 } from '@/services/engine-v2-manual-run-planner';
 import { EngineV2PayloadFiles } from '@/services/engine-v2-payload-files.service';
 import { EngineV2PushRegistry } from '@/services/engine-v2-push-registry.service';
@@ -47,6 +48,16 @@ type FiredTrigger = {
 
 /** A run that is ready to send to the data plane. */
 type PreparedStart = { executionId: ExecutionIdV2; request: StartExecutionRequest };
+
+/** One entry per node, its passes in iteration order; the planner numbers them from 0 without gaps. */
+function toSeededSteps(seeded: SeededNode[], toStepOutputs: ToStepOutputs): SeededSteps {
+	// A null prototype: a node id such as `constructor` must land on its own key.
+	const byNode: SeededSteps = Object.create(null);
+	for (const { nodeId, iteration, outputs } of seeded) {
+		(byNode[nodeId] ??= [])[iteration] = toStepOutputs(outputs);
+	}
+	return byNode;
+}
 
 /** Execution modes the v2 path serves today. */
 const ROUTED_MODES = new Set<WorkflowExecuteMode>(['manual', 'webhook', 'trigger']);
@@ -235,11 +246,8 @@ export class EngineV2Dispatcher {
 		const graph = new V1WorkflowConverter().convert(plan?.workflow ?? workflowData, trigger.name, {
 			allowNonTriggerRoot: plan !== undefined,
 		});
-		// One pass per node: a planned run seeds nothing inside a loop yet.
 		const seededSteps: SeededSteps | undefined = plan
-			? Object.fromEntries(
-					plan.seeded.map(({ nodeId, outputs }) => [nodeId, [toStepOutputs(outputs)]]),
-				)
+			? toSeededSteps(plan.seeded, toStepOutputs)
 			: undefined;
 
 		const executionId = data.engineV2ExecutionId ?? createExecutionIdV2();

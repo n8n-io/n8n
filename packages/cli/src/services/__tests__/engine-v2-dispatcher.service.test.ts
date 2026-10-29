@@ -625,7 +625,9 @@ describe('EngineV2Dispatcher', () => {
 				workflow: workflow(),
 				triggerName: MANUAL_TRIGGER.name,
 				triggerOutputs: [[{ json: { from: 'runData' } }]],
-				seeded: [{ nodeId: SET_NODE.id, outputs: [[{ json: { reused: true } }], []] }],
+				seeded: [
+					{ nodeId: SET_NODE.id, iteration: 0, outputs: [[{ json: { reused: true } }], []] },
+				],
 			};
 
 			beforeEach(() => {
@@ -644,6 +646,43 @@ describe('EngineV2Dispatcher', () => {
 				// An empty slot collapses to a dead edge, as for any other step.
 				expect(request.seededSteps).toEqual({
 					[SET_NODE.id]: [[[{ json: { reused: true } }], null]],
+				});
+			});
+
+			it('sends every pass of a seeded node in iteration order', async () => {
+				manualRunPlanner.plan.mockReturnValue({
+					...plan,
+					seeded: [
+						{ nodeId: SET_NODE.id, iteration: 1, outputs: [[{ json: { pass: 1 } }]] },
+						{ nodeId: SET_NODE.id, iteration: 0, outputs: [[{ json: { pass: 0 } }]] },
+					],
+				});
+
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				expect(proxy.startExecution.mock.calls[0][0].seededSteps).toEqual({
+					[SET_NODE.id]: [[[{ json: { pass: 0 } }]], [[{ json: { pass: 1 } }]]],
+				});
+			});
+
+			it('keeps a seeded node whose id is an object property name', async () => {
+				const ownKeyNode = { ...SET_NODE, id: 'constructor' };
+				manualRunPlanner.plan.mockReturnValue({
+					...plan,
+					workflow: workflow({ nodes: [MANUAL_TRIGGER, ownKeyNode] }),
+					seeded: [
+						{ nodeId: ownKeyNode.id, iteration: 0, outputs: [[{ json: { reused: true } }]] },
+					],
+				});
+
+				await dispatcher.start(
+					runData({ destinationNode: { nodeName: SET_NODE.name, mode: 'inclusive' } }),
+				);
+
+				expect(proxy.startExecution.mock.calls[0][0].seededSteps).toEqual({
+					constructor: [[[{ json: { reused: true } }]]],
 				});
 			});
 
