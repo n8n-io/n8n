@@ -967,6 +967,7 @@ describe('SkillService', () => {
 		const rows = [instanceSkill, projectSkill];
 
 		beforeEach(() => {
+			for (const row of rows) row.skill.availableToMCP = true;
 			skills.findLatestSaved.mockImplementation(
 				async (ids) =>
 					new Map(
@@ -976,7 +977,7 @@ describe('SkillService', () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
-		it('lists one page of the project and instance skills the user can list', async () => {
+		it('lists one page of the project and instance skills that the user can list and that are available to MCP', async () => {
 			projectScope.getProjectIds.mockResolvedValue(['project-1']);
 			skills.findVisiblePage.mockResolvedValue({
 				skills: [instanceSkill.skill, projectSkill.skill],
@@ -987,7 +988,7 @@ describe('SkillService', () => {
 
 			expect(skills.findVisiblePage).toHaveBeenCalledWith(
 				{ projectIds: ['project-1'] },
-				{ skip: 100, take: 50 },
+				{ skip: 100, take: 50, availableToMCP: true },
 			);
 			expect(result).toEqual({
 				count: 7,
@@ -1006,7 +1007,7 @@ describe('SkillService', () => {
 
 			expect(skills.findVisiblePage).toHaveBeenCalledWith(
 				{ projectIds: 'all' },
-				{ skip: 0, take: 100 },
+				{ skip: 0, take: 100, availableToMCP: true },
 			);
 		});
 
@@ -1020,6 +1021,12 @@ describe('SkillService', () => {
 
 		it('does not read a skill the user cannot read', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
+		});
+
+		it('does not read a skill that is not available to MCP', async () => {
+			projectSkill.skill.availableToMCP = false;
 
 			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
 		});

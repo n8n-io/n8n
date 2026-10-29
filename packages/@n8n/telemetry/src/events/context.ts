@@ -1,4 +1,4 @@
-import { SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
+import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -467,9 +467,40 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			name_taken: z
 				.number()
 				.describe('Picked skills that did not come in, as the scope had the name'),
+			blocked: z
+				.number()
+				.describe('Picked skills that did not come in, as the security check blocked them'),
+			needs_review: z
+				.number()
+				.describe(
+					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
+				),
 			skipped_files: z.number().describe('Files of the imported skills that the import left out'),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
+		name: 'Skill source check flagged skill',
+		description:
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. Counts rule codes only, never names, files or content.',
+		properties: z.object({
+			user_id: z
+				.string()
+				.optional()
+				.describe('The user who read the link. Absent for a check that runs in the background'),
+			provider: skillSourceProvider,
+			stage: z
+				.enum(['import', 'update'])
+				.describe('`import` is the picker of a connect. `update` is a new version from the source'),
+			verdict: z
+				.enum(['needs_review', 'blocked'])
+				.describe(
+					'`needs_review` imports only after the user ticks "I reviewed the warnings". `blocked` cannot come in',
+				),
+			rule_codes: z
+				.array(z.enum(SKILL_SCAN_RULES))
+				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
 		}),
 	},
 	USER_STOPPED_SKILL_SYNC: {

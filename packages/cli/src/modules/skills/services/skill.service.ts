@@ -203,6 +203,7 @@ export class SkillService {
 		const page = await this.skillRepository.findVisiblePage(visibilityOf(projectIds), {
 			skip,
 			take,
+			availableToMCP: true,
 		});
 		const rows = await this.skillRepository.findLatestSaved(page.skills.map((skill) => skill.id));
 		return {
@@ -217,7 +218,11 @@ export class SkillService {
 	/** The latest saved version of a project or instance skill, for the MCP skills extension. */
 	async readForMcp(user: User, skillId: string): Promise<McpSkillContent | null> {
 		const row = (await this.skillRepository.findLatestSaved([skillId])).get(skillId);
-		if (!row || !(await this.skillAccess.canAccess(user, row.skill, 'read'))) {
+		if (
+			!row ||
+			!row.skill.availableToMCP ||
+			!(await this.skillAccess.canAccess(user, row.skill, 'read'))
+		) {
 			return null;
 		}
 		return toMcpSkillContent(row);
@@ -252,13 +257,19 @@ export class SkillService {
 			source,
 			createdById: user.id,
 		};
-		const id = payload.availableToAssistant
-			? await this.txRunner.run({}, async (ctx) => {
-					const createdId = await this.createTrusted(input, ctx);
-					await this.setAssistantAvailability(createdId, true, target, ctx);
-					return createdId;
-				})
-			: await this.createTrusted(input);
+		const id =
+			payload.availableToAssistant || payload.availableToMCP
+				? await this.txRunner.run({}, async (ctx) => {
+						const createdId = await this.createTrusted(input, ctx);
+						if (payload.availableToAssistant) {
+							await this.setAssistantAvailability(createdId, true, target, ctx);
+						}
+						if (payload.availableToMCP) {
+							await this.setMcpAvailability(createdId, true, target, ctx);
+						}
+						return createdId;
+					})
+				: await this.createTrusted(input);
 		await this.skillsTelemetry.created(
 			user.id,
 			[{ id, ...target }],
@@ -285,7 +296,7 @@ export class SkillService {
 			throw new NotFoundError('Skill not found');
 		}
 		const skill = await this.skillAccess.requireAccess(user, skillId, 'update');
-		const { scope, projectId, availableToAssistant, ...update } = payload;
+		const { scope, projectId, availableToAssistant, availableToMCP, ...update } = payload;
 		const target = scope
 			? await this.skillAccess.resolveCreateTarget(user, { scope, projectId })
 			: undefined;
@@ -293,7 +304,7 @@ export class SkillService {
 
 		const checkedSource = moves ? await this.skillAccess.assertCanMove(user, skillId) : undefined;
 
-		if (!moves && availableToAssistant === undefined) {
+		if (!moves && availableToAssistant === undefined && availableToMCP === undefined) {
 			const { followingAgentIds: _following, ...saved } = await this.saveTrusted(
 				skillId,
 				update,
@@ -320,6 +331,9 @@ export class SkillService {
 			}
 			if (availableToAssistant !== undefined) {
 				await this.setAssistantAvailability(skillId, availableToAssistant, target ?? skill, ctx);
+			}
+			if (availableToMCP !== undefined) {
+				await this.setMcpAvailability(skillId, availableToMCP, target ?? skill, ctx);
 			}
 			return await this.saveTrusted(skillId, update, user.id, ctx);
 		});
@@ -555,14 +569,35 @@ export class SkillService {
 		ctx: OperationContext = {},
 	): Promise<void> {
 		await this.txRunner.run(ctx, async (txCtx) => {
-			await this.skillRepository.lockForEdit([skillId], txCtx);
-			const [skill] = await this.skillRepository.findByIds([skillId], txCtx);
-			if (!skill) throw new NotFoundError('Skill not found');
-			if (skill.projectId !== checkedTarget.projectId) {
-				throw new ConflictError('The skill scope changed. Reload the skill and try again.');
-			}
+			await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
 			await this.skillRepository.setAssistantAvailability(skillId, available, txCtx);
 		});
+	}
+
+	async setMcpAvailability(
+		skillId: string,
+		available: boolean,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.txRunner.run(ctx, async (txCtx) => {
+			await this.lockInCheckedTarget(skillId, checkedTarget, txCtx);
+			await this.skillRepository.updateAvailableToMCP(skillId, available, txCtx);
+		});
+	}
+
+	private async lockInCheckedTarget(
+		skillId: string,
+		checkedTarget: SkillTarget,
+		ctx: OperationContext,
+	): Promise<Skill> {
+		await this.skillRepository.lockForEdit([skillId], ctx);
+		const [skill] = await this.skillRepository.findByIds([skillId], ctx);
+		if (!skill) throw new NotFoundError('Skill not found');
+		if (skill.projectId !== checkedTarget.projectId) {
+			throw new ConflictError('The skill scope changed. Reload the skill and try again.');
+		}
+		return skill;
 	}
 
 	/**
@@ -799,6 +834,7 @@ export class SkillService {
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,
 				availableToAssistant: skill.availableToAssistant,
+				availableToMCP: skill.availableToMCP,
 				// The source holds the content of a synced skill, so n8n cannot edit it.
 				canEdit: canEdit(skill) && !synced.has(skill.id),
 				canDelete: canDelete(skill),

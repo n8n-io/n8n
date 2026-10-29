@@ -323,9 +323,11 @@ import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShieldUser from '~icons/lucide/shield-user';
 import IconLucideShredder from '~icons/lucide/shredder';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
+import IconLucideSmartphone from '~icons/lucide/smartphone';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
 import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
+import IconLucideTablet from '~icons/lucide/tablet';
 import IconLucideTimer from '~icons/lucide/timer';
 import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
@@ -845,6 +847,7 @@ export const updatedIconSet = {
 	'shield-user': IconLucideShieldUser,
 	shredder: IconLucideShredder,
 	'sliders-horizontal': IconLucideSlidersHorizontal,
+	smartphone: IconLucideSmartphone,
 	smile: BrandSmile,
 	sparkles: BrandSparkles,
 	split: BrandSplit,
@@ -859,6 +862,7 @@ export const updatedIconSet = {
 	strikethrough: BrandStrikethrough,
 	sun: BrandSun,
 	table: BrandTable,
+	tablet: IconLucideTablet,
 	tags: BrandTags,
 	telescope: BrandTelescope,
 	terminal: BrandTerminal,

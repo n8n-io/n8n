@@ -68,6 +68,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		latestVersion: 1,
 		availableToAssistant: false,
 		usedByAgents: 0,
+		availableToMCP: false,
 		canEdit: true,
 		canDelete: true,
 		canStopSyncing: false,
@@ -795,6 +796,70 @@ describe('SettingsSkillsView', () => {
 				baseSkillHash: 'hash-1',
 			});
 			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Nothing to save', type: 'info' });
+		});
+	});
+
+	describe('MCP availability', () => {
+		async function openSkill(item: SkillDetail) {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(item);
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+		}
+
+		it('hides the toggle while the MCP skills extension is off', async () => {
+			await openSkill(detail({ availableToMCP: true }));
+
+			expect(lastModalData().availableToMCP).toBeUndefined();
+		});
+
+		it('passes the MCP availability of an agent skill, so a move can turn it on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			await openSkill(detail({ scope: 'agent', agentId: 'a1', availableToMCP: false }));
+
+			expect(lastModalData().availableToMCP).toBe(false);
+		});
+
+		it('marks the skills that MCP clients get in the table', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			skillsStore.skills = [
+				skill({ id: 's1', name: 'Served', availableToMCP: true }),
+				skill({ id: 's2', name: 'Hidden', availableToMCP: false }),
+			];
+			skillsStore.count = 2;
+			const { getAllByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			const icons = getAllByTestId('skill-available-to-mcp-icon');
+			expect(icons).toHaveLength(1);
+			expect(icons[0].closest('tr')).toHaveTextContent('Served');
+		});
+
+		it('saves a change of the toggle without new content and reloads the list', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v1',
+				version: 1,
+				created: false,
+				skill: detail().skill,
+				skillHash: 'hash-1',
+			});
+			await openSkill(detail({ availableToMCP: false }));
+
+			expect(lastModalData().availableToMCP).toBe(false);
+			lastModalData().onConfirm({ id: 's1', skill: detail().skill, availableToMCP: true });
+			await new Promise(process.nextTick);
+
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith(
+				's1',
+				expect.objectContaining({ availableToMCP: true, baseSkillHash: 'hash-1' }),
+			);
+			expect(showMessageMock).not.toHaveBeenCalled();
+			expect(skillsStore.fetchSkills).toHaveBeenCalledTimes(2);
 		});
 	});
 

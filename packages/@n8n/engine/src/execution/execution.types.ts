@@ -49,6 +49,18 @@ export interface CallerContext {
 }
 
 /**
+ * The execution that started this one, and the step that asked for it. Only
+ * the engine's own start path sets it: a caller over HTTP cannot claim a
+ * parent.
+ */
+export interface ParentLink {
+	executionId: string;
+	stepId: string;
+	/** Whether the parent step waits for this execution to end. */
+	awaited: boolean;
+}
+
+/**
  * Lifecycle status of a single step within an execution. `skipped` is terminal
  * at birth: the step was considered and decided against (no live input), so it
  * never runs. `waiting` is the other extreme: the step ran, but it produced no
@@ -123,13 +135,15 @@ export type SeededSteps = Record<string, StepSlots[]>;
 
 /**
  * A step's declaration that it is not done: instead of outputs, it says when
- * to resume. The executor produces it, the engine persists it on the step row,
- * and whatever resumes the step reads it back — the engine never interprets
- * what a resume means to the node.
+ * to resume. The engine persists it on the step row, and whatever resumes the
+ * step reads it back — the engine never interprets what a resume means to the
+ * node.
  *
- * A deadline can end the wait. A resume request can end it. A declaration can
+ * The executor produces the first two variants (`ExecutorWaitDeclaration`). A
+ * deadline can end the wait. A resume request can end it. A declaration can
  * name both, and then the first of the two ends it. A deadline comes paired
- * with the slots it emits, because the step is never re-run.
+ * with the slots it emits, because the step is never re-run. The engine writes
+ * the third variant itself, when it suspends a step on a sub-execution.
  */
 export type WaitDeclaration =
 	| {
@@ -145,7 +159,23 @@ export type WaitDeclaration =
 			resumeAt?: never;
 			outputsAtDeadline?: never;
 			resumeBinding: ResumeBinding;
+	  }
+	| {
+			/**
+			 * The sub-execution this step waits for. Only the sub-execution's end resumes
+			 * the step: the engine does that itself when the sub-execution finishes.
+			 */
+			subExecutionId: string;
+			resumeAt?: never;
+			outputsAtDeadline?: never;
+			resumeBinding?: never;
 	  };
+
+/**
+ * The waits an executor may declare. A wait on a sub-execution is the
+ * engine's own: an executor asks for one with a sub-execution declaration.
+ */
+export type ExecutorWaitDeclaration = Exclude<WaitDeclaration, { subExecutionId: string }>;
 
 /** What a resume request for a wait must name (ADR-20260904-a-derived-token-authorizes-a-resume-request). */
 export type ResumeBinding = 'execution' | 'step';
@@ -159,12 +189,12 @@ export type ResumeBinding = 'execution' | 'step';
 export type ResumeCause = { kind: 'deadline' } | { kind: 'request'; outputs: StepSlots };
 
 /**
- * A wait with no deadline and no resume request would never end, and would
- * strand the execution. The union above makes that unrepresentable. This
- * function catches only a declaration that an executor built outside the type
- * system, as `assertCreatableRecord` does for step creation.
+ * An executor's wait with no deadline and no resume request would never end,
+ * and would strand the execution. The union above makes that unrepresentable.
+ * This function catches only a declaration that an executor built outside the
+ * type system, as `assertCreatableRecord` does for step creation.
  */
-export function hasResumeCondition(wait: WaitDeclaration): boolean {
+export function hasResumeCondition(wait: ExecutorWaitDeclaration): boolean {
 	return (
 		wait.resumeBinding === 'execution' ||
 		wait.resumeBinding === 'step' ||

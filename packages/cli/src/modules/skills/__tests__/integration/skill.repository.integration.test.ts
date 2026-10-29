@@ -228,6 +228,32 @@ describe('SkillRepository', () => {
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
 	});
 
+	it('refuses an MCP availability update when the checked scope changed', async () => {
+		const id = await createSkill({ projectId: project.id });
+		await expect(
+			txRunner.run(
+				{},
+				async (ctx) =>
+					await Container.get(SkillService).setMcpAvailability(
+						id,
+						true,
+						{ projectId: otherProject.id },
+						ctx,
+					),
+			),
+		).rejects.toThrow('The skill scope changed');
+		expect((await skills.findByIds([id]))[0].availableToMCP).toBe(false);
+	});
+
+	it('keeps MCP availability when a skill moves', async () => {
+		const id = await createSkill();
+		await skills.updateAvailableToMCP(id, true);
+		await skills.updateTarget(id, { projectId: project.id });
+		expect((await skills.findByIds([id]))[0].availableToMCP).toBe(true);
+		await skills.updateTarget(id, { projectId: null });
+		expect((await skills.findByIds([id]))[0].availableToMCP).toBe(true);
+	});
+
 	it('keeps Assistant availability when a skill moves', async () => {
 		const id = await createSkill();
 		await skills.setAssistantAvailability(id, true, {});
@@ -496,6 +522,19 @@ describe('SkillRepository', () => {
 			const page = await skills.findVisiblePage(visibility, { skip: 0, search: '100%' });
 
 			expect(ids(page)).toEqual([percent]);
+		});
+
+		it('lists only the skills that are available to MCP when the filter asks for them', async () => {
+			const available = await createSkill();
+			const unavailable = await createSkill();
+			await skills.updateAvailableToMCP(available, true);
+			const visibility = { projectIds: [] };
+
+			const page = await skills.findVisiblePage(visibility, { skip: 0, availableToMCP: true });
+
+			expect(ids(page)).toEqual([available]);
+			expect(page.count).toBe(1);
+			expect(ids(await skills.findVisiblePage(visibility, firstPage))).toContain(unavailable);
 		});
 
 		it('filters by the skills an agent uses, with the other filters', async () => {

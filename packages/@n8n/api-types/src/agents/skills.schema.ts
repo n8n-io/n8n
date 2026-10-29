@@ -15,6 +15,7 @@ import { Z } from '../zod-class';
 
 export const SKILLS_MAX_PAGE_SIZE = 100;
 export const ASSISTANT_SKILLS_FLAG = '130_attach_skills_to_assistant';
+export const MCP_SKILLS_EXTENSION_FLAG = '128_mcp_skills_extension';
 /** Per-user PostHog flag for Skill Sync. Force it on with `N8N_FEATURE_FLAG_OVERRIDES`. */
 export const SKILL_SYNC_FLAG = '136_skill_sync';
 
@@ -67,6 +68,7 @@ export type SkillListItem = {
 	/** Distinct agents that use the skill: draft refs plus published pins. */
 	usedByAgents: number;
 	availableToAssistant: boolean;
+	availableToMCP: boolean;
 	canEdit: boolean;
 	canDelete: boolean;
 	/** Whether the skill is synced and the user may stop syncing it. */
@@ -227,6 +229,7 @@ export class CreateSkillDto extends Z.class({
 	availableToAssistant: z.boolean().optional(),
 	/** Skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
+	availableToMCP: z.boolean().optional(),
 	/** For telemetry only. Absent counts as `manual`. */
 	method: skillCreateMethodSchema.optional(),
 }) {}
@@ -249,4 +252,5 @@ export class SaveSkillDto extends Z.class({
 	scope: skillScopeSchema.optional(),
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
+	availableToMCP: z.boolean().optional(),
 }) {}

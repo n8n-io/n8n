@@ -1,6 +1,8 @@
 import {
 	SKILL_SOURCE_MAX_SKILLS,
 	type SkillListItem,
+	type SkillScanFinding,
+	type SkillScanRule,
 	type SkillScope,
 	type SkillSourceReason,
 } from '@n8n/api-types';
@@ -97,8 +99,14 @@ const SKILL_SOURCE_REASON_KEYS = {
 	too_deep: 'settings.context.skills.connect.error.tooDeep',
 	archive_too_large: 'settings.context.skills.connect.error.archiveTooLarge',
 	parse_error: 'settings.context.skills.connect.error.parseError',
+	blocked_by_check: 'settings.context.skills.connect.error.blockedByCheck',
+	review_required: 'settings.context.skills.connect.error.reviewRequired',
 	name_taken: 'settings.context.skills.connect.error.nameTaken',
 	duplicate_source: 'settings.context.skills.connect.error.duplicateSource',
+	credential_invalid: 'settings.context.skills.connect.error.credentialInvalid',
+	credential_missing: 'settings.context.skills.connect.error.credentialMissing',
+	credential_out_of_scope: 'settings.context.skills.connect.error.credentialOutOfScope',
+	host_blocked: 'settings.context.skills.connect.error.hostBlocked',
 } satisfies Record<SkillSourceReason, BaseTextKey>;
 
 /** The short form in the import toast, as in "Could not add seo-check (reason)". */
@@ -106,9 +114,23 @@ const FAILED_SKILL_REASON_KEYS: Partial<Record<SkillSourceReason, BaseTextKey>> 
 	name_taken: 'settings.context.skills.connect.failed.reason.nameTaken',
 	not_found: 'settings.context.skills.connect.failed.reason.notFound',
 	parse_error: 'settings.context.skills.connect.failed.reason.parseError',
+	blocked_by_check: 'settings.context.skills.connect.failed.reason.blockedByCheck',
+	review_required: 'settings.context.skills.connect.failed.reason.reviewRequired',
 	rate_limited: 'settings.context.skills.connect.failed.reason.rateLimited',
 	unreachable: 'settings.context.skills.connect.failed.reason.unreachable',
 };
+
+/** The text for each rule of the security check. The server text is English only. */
+const SKILL_SCAN_RULE_KEYS = {
+	invalid_skill: 'settings.context.skills.connect.check.rule.invalidSkill',
+	over_limit: 'settings.context.skills.connect.check.rule.overLimit',
+	file_skipped: 'settings.context.skills.connect.check.rule.fileSkipped',
+	hidden_unicode: 'settings.context.skills.connect.check.rule.hiddenUnicode',
+	new_url: 'settings.context.skills.connect.check.rule.newUrl',
+	permission_change: 'settings.context.skills.connect.check.rule.permissionChange',
+	suspicious_phrase: 'settings.context.skills.connect.check.rule.suspiciousPhrase',
+	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
+} satisfies Record<SkillScanRule, BaseTextKey>;
 
 /** A link to a branch, a folder on a branch, or a file on a branch. */
 const GITHUB_BRANCH_LINK =
@@ -125,10 +147,19 @@ export function useSkillSourceReasons() {
 	/**
 	 * A full sentence for why n8n cannot read a link or one skill in it. `link` is the link the
 	 * user pasted: a well-formed branch link with `invalid_url` means the branch is missing.
+	 * `withCredential` says that the read used a credential.
 	 */
-	function reasonText(reason: unknown, link?: string): string {
+	function reasonText(
+		reason: unknown,
+		link?: string,
+		{ withCredential = false }: { withCredential?: boolean } = {},
+	): string {
 		if (!isKnownReason(reason)) {
 			return i18n.baseText('settings.context.skills.connect.error.discover');
+		}
+		// With a credential, a missing repository means the credential cannot read it.
+		if (reason === 'not_found' && withCredential) {
+			return i18n.baseText('settings.context.skills.connect.error.notFoundWithCredential');
 		}
 		if (reason === 'invalid_url' && link && GITHUB_BRANCH_LINK.test(link)) {
 			return i18n.baseText('settings.context.skills.connect.error.branchNotFound');
@@ -148,5 +179,39 @@ export function useSkillSourceReasons() {
 		);
 	}
 
-	return { reasonText, failedSkillReason };
+	/**
+	 * The findings that need review or block the skill, each rule and file one time. `info`
+	 * findings change nothing, and the picker lists skipped files on their own line.
+	 */
+	function findingsText(findings: SkillScanFinding[]): string {
+		const texts = findings
+			.filter((finding) => finding.severity !== 'info')
+			.map(({ rule, file }) => {
+				const finding = i18n.baseText(SKILL_SCAN_RULE_KEYS[rule]);
+				return file
+					? i18n.baseText('settings.context.skills.connect.check.findingInFile', {
+							interpolate: { finding, file },
+						})
+					: finding;
+			});
+		return [...new Set(texts)].join('. ');
+	}
+
+	/**
+	 * The domains that a skill links to. At import a link needs no review, but the user still
+	 * sees where the skill can send an agent.
+	 */
+	function linkedDomainsText(findings: SkillScanFinding[]): string {
+		const domains = new Set(
+			findings.flatMap((finding) =>
+				finding.rule === 'new_url' && finding.domain ? [finding.domain] : [],
+			),
+		);
+		if (domains.size === 0) return '';
+		return i18n.baseText('settings.context.skills.connect.check.linksTo', {
+			interpolate: { domains: [...domains].join(', ') },
+		});
+	}
+
+	return { reasonText, failedSkillReason, findingsText, linkedDomainsText };
 }

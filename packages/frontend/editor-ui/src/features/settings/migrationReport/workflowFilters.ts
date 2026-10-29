@@ -77,12 +77,20 @@ function matchesProject(
 }
 
 // A notified finding still needs a fix, so it filters as open.
+/**
+ * A notified finding still needs a fix, and so does a fix that is not published,
+ * so both count as open.
+ */
+export function isUnresolvedState(state: MigrationFindingListedStatus | 'migrated'): boolean {
+	return state === 'open' || state === 'notified' || state === 'fixed_unpublished';
+}
+
 function matchesState(
 	state: MigrationFindingListedStatus | 'migrated',
 	filter: StateFilter,
 ): boolean {
 	if (filter === 'any') return true;
-	return state === filter || (filter === 'open' && state === 'notified');
+	return filter === 'open' ? isUnresolvedState(state) : state === filter;
 }
 
 /**

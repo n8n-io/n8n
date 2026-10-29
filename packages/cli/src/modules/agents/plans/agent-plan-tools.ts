@@ -9,6 +9,7 @@ import type { AgentPlanService, AgentPlanSnapshot } from '../agent-plan.service'
 import { AgentPlanWriteConflictError } from '../repositories/agent-plan.repository';
 import {
 	AGENT_PLAN_FORMAT_VERSION,
+	AGENT_PLAN_TOOL_NAMES,
 	AgentPlanValidationError,
 	agentPlanDocumentSchema,
 	agentPlanGroupSchema,
@@ -309,7 +310,7 @@ function scopedTool<Schema extends z.ZodType>(
 export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 	return [
 		scopedTool(
-			'create_plan',
+			AGENT_PLAN_TOOL_NAMES.create,
 			'Create the active plan for this conversation. Use unique new: names for new tasks and groups. ' +
 				'Use these names in dependency references. Set every task and group status to "pending", including work you will start immediately. ' +
 				'After creation succeeds, use update_plan with the returned permanent IDs and revision to start ready work.',
@@ -372,13 +373,13 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 			)
 			.build(),
 		scopedTool(
-			'read_plan',
+			AGENT_PLAN_TOOL_NAMES.read,
 			'Read the active plan and its current revision for this conversation. Returns null if there is no active plan.',
 			z.object({}).strict(),
 			async (_input, threadId, ctx) => await service.findActivePlan(threadId, ctx),
 		).build(),
 		scopedTool(
-			'update_plan',
+			AGENT_PLAN_TOOL_NAMES.update,
 			'Update only the supplied fields at the expected revision. Omitted fields and items stay unchanged. ' +
 				'Send only changed fields. Merge document.items and group tasks by id. Existing items keep their order; new items append. ' +
 				'Use removeItemIds to remove items explicitly; an empty items or tasks list removes nothing. ' +
@@ -413,7 +414,7 @@ export function createAgentPlanTools(service: AgentPlanService): BuiltTool[] {
 			},
 		).build(),
 		scopedTool(
-			'close_plan',
+			AGENT_PLAN_TOOL_NAMES.close,
 			'Close the active plan at the expected revision. Preserve its document and release the active-plan slot. ' +
 				'This does not cancel work or imply success.',
 			writeInput,

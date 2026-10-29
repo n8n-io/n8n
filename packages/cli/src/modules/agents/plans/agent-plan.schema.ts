@@ -3,6 +3,14 @@ import { z } from 'zod';
 
 export const AGENT_PLAN_FORMAT_VERSION = 1;
 
+/** In this module, not in the tools module, so callers can read the names without loading the tools. */
+export const AGENT_PLAN_TOOL_NAMES = {
+	create: 'create_plan',
+	read: 'read_plan',
+	update: 'update_plan',
+	close: 'close_plan',
+} as const;
+
 export class AgentPlanValidationError extends UserError {}
 
 const idSchema = z.string().uuid().toLowerCase();

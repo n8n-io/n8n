@@ -637,6 +637,7 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			latestVersion: 1,
 			availableToAssistant: false,
 			usedByAgents: 0,
+			availableToMCP: false,
 			canEdit: false,
 			canDelete: false,
 			canStopSyncing: false,
