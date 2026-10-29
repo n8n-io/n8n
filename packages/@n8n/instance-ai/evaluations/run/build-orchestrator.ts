@@ -44,6 +44,7 @@ import {
 	redactLocalRunSecrets,
 	searchableBuildText,
 	scrubLocalSecretsFromBuild,
+	workflowExpectedForCase,
 	type BuildResult,
 } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
@@ -76,7 +77,12 @@ import type {
 	TranscriptTurn,
 	WorkflowTestCase,
 } from '../types';
-import { agentTurnsAsText, conversationUserTurnsAsText } from '../utils/conversation-text';
+import {
+	agentTurnsAsText,
+	conversationUserTurnsAsText,
+	failedBuildsPerTurn,
+	userTurnsAsText,
+} from '../utils/conversation-text';
 import { UserProxyLlm } from '../utils/user-proxy';
 
 /** Attempts (initial + retries) for a build hitting transient network errors. */
@@ -201,6 +207,9 @@ async function buildWorkflowViaMcpOnLane(config: {
 	credentials?: TestCaseCredential[];
 	seed?: WorkflowTestCase['seed'];
 	executionScenarios?: ExecutionScenario[];
+	/** False for answer-only cases: a finished conversation without a workflow
+	 *  is then graded on the conversation, as on the Instance AI arm. */
+	workflowExpected: boolean;
 	slug: string;
 	iteration: number;
 	args: CliArgs;
@@ -352,12 +361,23 @@ async function buildWorkflowViaMcpOnLane(config: {
 				transcript,
 			};
 		}
+		if (!config.workflowExpected && result.finished) {
+			return {
+				success: true,
+				workflowJsons: [],
+				createdWorkflowIds: [],
+				createdDataTableIds: [],
+				...seedFields,
+				transcript,
+			};
+		}
 		return {
 			...failure(
 				`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
 				transcript,
 			),
 			...seedFields,
+			...timeoutField,
 		};
 	}
 
@@ -753,6 +773,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						credentials: entry.credentials,
 						seed: entry.seed,
 						executionScenarios: entry.executionScenarios,
+						workflowExpected: workflowExpectedForCase(entry),
 						slug: fileSlug,
 						iteration,
 						args,
@@ -788,8 +809,15 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
+						// The turns that were sent, as on the Instance AI arm: the simulated user
+						// may end early, and a replay case's live turn is not authored.
+						prompt: build.transcript
+							? userTurnsAsText(build.transcript)
+							: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
 						agentText: build.transcript ? agentTurnsAsText(build.transcript) : undefined,
+						...(build.transcript
+							? { failedBuildsPerTurn: failedBuildsPerTurn(build.transcript) }
+							: {}),
 						logger,
 					});
 				}

@@ -165,6 +165,27 @@ describe('selectAuthorExpectations', () => {
 		expect(unjudged.every((v) => v.incomplete)).toBe(true);
 	});
 
+	it('leaves expectations ungraded when only the seeded history has agent output', () => {
+		const { logger } = makeLogger();
+		const { expectations, unjudged } = selectAuthorExpectations({
+			testCase: testCase({ processExpectations: ['p1'], outcomeExpectations: ['o1'] }),
+			transcript: [
+				{
+					userMessage: 'earlier ask',
+					steps: [{ kind: 'agent-text', text: 'Built it.' }],
+					seeded: true,
+				},
+				{ userMessage: 'build it', steps: [] },
+			],
+			buildSucceeded: false,
+			isPrebuilt: true,
+			mcpBuild: true,
+			logger,
+		});
+		expect(expectations).toEqual([]);
+		expect(unjudged).toHaveLength(2);
+	});
+
 	it('still judges a genuine build failure that produced agent activity', () => {
 		// The agent tried and got it wrong — that is a real product verdict.
 		const { logger } = makeLogger();

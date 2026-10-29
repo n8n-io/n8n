@@ -709,6 +709,9 @@ describe('buildWorkflowViaMcp', () => {
 			});
 
 			expect(result.failureReason).toBe('timeout');
+			// Recorded as a timeout, not as a builder failure, as on the Instance AI arm.
+			expect(result.timeout).toEqual({ kind: 'conversation', turn: 2, elapsedMs: 50 });
+			expect(result.finished).toBe(false);
 			// An unfinished conversation does not fall back to the seeded workflow.
 			expect(result.workflowId).toBeNull();
 		});
@@ -756,6 +759,7 @@ describe('buildWorkflowViaMcp', () => {
 
 			expect(result.workflowId).toBeNull();
 			expect(result.failureReason).toBe('no-workflow: I need more details.');
+			expect(result.finished).toBe(true);
 			expect(vi.mocked(spawn)).toHaveBeenCalledTimes(1);
 		});
 

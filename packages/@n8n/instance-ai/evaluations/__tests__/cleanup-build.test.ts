@@ -59,6 +59,16 @@ describe('cleanupBuild', () => {
 		expect(mocks.deleteThread).toHaveBeenCalledWith('T1');
 	});
 
+	it('deletes the owner thread an MCP build used for seeding', async () => {
+		const { client, mocks } = makeClient();
+		await cleanupBuild(
+			client,
+			{ ...makeBuild(), threadId: undefined, seedThreadId: 'S1' },
+			silentLogger,
+		);
+		expect(mocks.deleteThread).toHaveBeenCalledWith('S1');
+	});
+
 	it('reports not clean when a deletion fails, but still attempts the rest', async () => {
 		const { client, mocks } = makeClient({
 			deleteWorkflow: vi.fn().mockRejectedValue(new Error('HTTP 502')),

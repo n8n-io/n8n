@@ -562,9 +562,12 @@ export interface McpBuildResult {
 	failureReason?: string;
 	/** The last attempt's conversation: user messages, narration and MCP tool calls. */
 	transcript: TranscriptTurn[];
-	/** Set when the build timeout ended a conversation that had already saved
-	 *  something. That artifact is graded, but its verdicts are kept out of the rate. */
+	/** Set when the build timeout ended the conversation. Anything saved before
+	 *  is graded, but its verdicts are kept out of the rate. */
 	timeout?: BuildTimeout;
+	/** True when the last attempt's conversation ran to its end, so a missing
+	 *  workflow is the builder's answer rather than a crash or a timeout. */
+	finished?: boolean;
 }
 
 /** The simulated user of a multi-turn MCP build. `UserProxyLlm` satisfies it. */
@@ -784,6 +787,7 @@ export async function buildWorkflowViaMcp(opts: {
 	let totalDurationMs = 0;
 	let attemptsUsed = 0;
 	let timeout: BuildTimeout | undefined;
+	let finished = false;
 
 	for (let attempt = 1; attempt <= settings.maxAttempts; attempt++) {
 		attemptsUsed = attempt;
@@ -815,16 +819,17 @@ export async function buildWorkflowViaMcp(opts: {
 		totalDurationMs += result.durationMs;
 		transcript = result.transcript;
 		agent = result.agent;
-		if (result.workflowId || result.agent) {
-			workflowId = result.workflowId;
-			failureReason = undefined;
-			if (result.timedOut) {
-				timeout = {
+		finished = session?.subtype === 'success' && !timedOut;
+		timeout = timedOut
+			? {
 					kind: 'conversation',
 					turn: result.timeoutTurn ?? result.transcript.length,
 					elapsedMs: settings.buildTimeoutMs ?? 0,
-				};
-			}
+				}
+			: undefined;
+		if (result.workflowId || result.agent) {
+			workflowId = result.workflowId;
+			failureReason = undefined;
 			break;
 		}
 		if (spawnError) {
@@ -897,5 +902,6 @@ export async function buildWorkflowViaMcp(opts: {
 		failureReason: built ? undefined : failureReason,
 		transcript,
 		...(timeout ? { timeout } : {}),
+		finished,
 	};
 }

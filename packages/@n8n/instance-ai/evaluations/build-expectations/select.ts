@@ -66,7 +66,10 @@ export function selectAuthorExpectations(args: SelectAuthorExpectationsArgs): {
 	unjudged: BuildExpectationResult[];
 } {
 	const { testCase, buildSucceeded, isPrebuilt, logger } = args;
-	const hasAgentOutput = (args.transcript ?? []).some((turn) => turn.steps.length > 0);
+	// Seeded turns are history the build was handed, not output it produced.
+	const hasAgentOutput = (args.transcript ?? []).some(
+		(turn) => !turn.seeded && turn.steps.length > 0,
+	);
 	const processCount = testCase.processExpectations?.length ?? 0;
 
 	if (!isPrebuilt && !hasAgentOutput && buildSucceeded && processCount > 0) {
