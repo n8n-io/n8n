@@ -224,7 +224,6 @@ export interface ExecuteForTaskNowConfig extends AgentExecutionInput {
 }
 
 export interface ExecuteForWakeConfig extends AgentExecutionInput {
-	wakeJobIds?: string[];
 	backgroundJobSignal: AgentBackgroundJobSignal;
 	pauseReport?: boolean;
 	abortSignal: AbortSignal;
@@ -238,7 +237,6 @@ export interface ExecuteForWakeConfig extends AgentExecutionInput {
 }
 
 export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecutionCallbacks {
-	wake?: { jobIds: string[] };
 	onAdmitted?: () => Promise<void>;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
@@ -1134,7 +1132,6 @@ export class AgentExecutionOrchestratorService {
 				threadId: config.memory.threadId,
 			},
 			backgroundJobSignal: config.backgroundJobSignal,
-			wake: config.wake,
 			onExecutionRecorded: config.onExecutionRecorded,
 			chatSurface: config.chatSurface,
 			acceptsSteering: !config.pauseReport,
@@ -1864,9 +1861,6 @@ export class AgentExecutionOrchestratorService {
 			sandboxPrincipalHash: identity.principalHash,
 			hideUserMessageFromTranscript: true,
 			isWakeRun: true,
-			wake: {
-				jobIds: config.wakeJobIds ?? config.backgroundJobSignal.tasks.map((job) => job.id),
-			},
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
 			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,

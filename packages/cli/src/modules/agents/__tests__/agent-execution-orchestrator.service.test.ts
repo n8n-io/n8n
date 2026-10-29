@@ -3142,7 +3142,6 @@ describe('AgentExecutionOrchestratorService', () => {
 			await service.executeForWake({
 				backgroundJobSignal: { tasks },
 				pauseReport: true,
-				wakeJobIds: ['paused-job'],
 				agentId,
 				projectId,
 				message: 'Acknowledge the stopped plan.',
@@ -3153,7 +3152,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			const recording = executionService.startExecutionRecording.mock.calls[0][0];
 
 			expect(recording.initialTimeline).toBeUndefined();
-			expect(recording.wake).toEqual({ jobIds: ['paused-job'] });
+			expect(recording.hideUserMessageFromTranscript).toBe(true);
 			expect(recording.acceptsSteering).toBe(false);
 
 			const options = runtime.agent.stream.mock.calls[0][1] as ExecutionOptions;

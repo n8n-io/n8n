@@ -105,7 +105,6 @@ export interface RecordMessageParams {
 }
 
 export interface StartExecutionParams extends Omit<RecordMessageParams, 'record' | 'hitlStatus'> {
-	wake?: { jobIds: string[] };
 	resourceId: string;
 	messageOrigin?: Omit<AgentMessageOrigin, 'source' | 'hidden'>;
 	hideUserMessageFromTranscript?: boolean;
@@ -264,10 +263,7 @@ export class AgentExecutionService {
 
 		await this.agentExecutionThreadRepository.markChatResumedAfterStop(
 			params.threadId,
-			!params.wake &&
-				!params.hideUserMessageFromTranscript &&
-				params.userMessage !== null &&
-				!params.resumeRunId,
+			!params.hideUserMessageFromTranscript && params.userMessage !== null && !params.resumeRunId,
 			ctx,
 		);
 

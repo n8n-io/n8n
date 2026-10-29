@@ -51,7 +51,6 @@ export type AgentTurnRequest = { recording: StartExecutionParams } & (
 );
 
 interface ExecuteTurnConfig {
-	wake?: StartExecutionParams['wake'];
 	admittedExecution?: AgentExecutionAdmission;
 	onAdmitted?: () => Promise<void>;
 	agentInstance: RuntimeAgent;
@@ -629,7 +628,6 @@ export class AgentTurnExecutionService {
 		const admission = await this.startExecution(
 			{
 				...turn.recording,
-				wake: config.wake,
 				previewChat: config.chatSurface === 'preview' ? true : undefined,
 				acceptsSteering: chatControl !== undefined && config.acceptsSteering !== false,
 				resumeRunId: turn.type === 'resume' ? turn.options.runId : undefined,
