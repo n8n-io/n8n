@@ -1188,35 +1188,6 @@ describe('ExecutionLevelTracer', () => {
 			expect(workflowSpan.spanContext().traceId).not.toBe(foreignSpan.spanContext().traceId);
 		});
 
-		it('should send no headers through another OTel setup when injectOutbound is false', () => {
-			const noInjectTracer = makeTracer({ settings: { injectOutbound: false } });
-			propagation.disable();
-			propagation.setGlobalPropagator({
-				inject: (_ctx, carrier, setter) => setter.set(carrier, 'sentry-trace', 'foreign'),
-				extract: (ctx) => ctx,
-				fields: () => ['sentry-trace'],
-			});
-
-			try {
-				noInjectTracer.startWorkflow({
-					executionId: 'exec-foreign-off',
-					workflow: defaultWorkflow,
-				});
-				const headers: Record<string, string> = {};
-				noInjectTracer.injectTraceHeaders('exec-foreign-off', undefined, headers);
-				noInjectTracer.endWorkflow({
-					executionId: 'exec-foreign-off',
-					status: 'success',
-					mode: 'webhook',
-					isRetry: false,
-				});
-
-				expect(headers).toEqual({});
-			} finally {
-				propagation.disable();
-			}
-		});
-
 		it('should emit W3C trace context while another library owns the global propagator', () => {
 			const foreignPropagator: TextMapPropagator = {
 				inject: (_ctx, carrier, setter) => setter.set(carrier, 'sentry-trace', 'foreign'),

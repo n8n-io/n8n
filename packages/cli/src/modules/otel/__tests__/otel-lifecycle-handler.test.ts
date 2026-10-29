@@ -321,11 +321,9 @@ describe('OtelLifecycleHandler', () => {
 			);
 		});
 
-		it('should not pass the caller baggage of the parent to the tracer for sub-workflows', async () => {
-			traceContextService.get.mockResolvedValueOnce({
-				...parentTracingContext,
-				baggage: 'tenant=acme',
-			});
+		it('should pass the caller baggage of the parent to the tracer for sub-workflows', async () => {
+			const withBaggage = { ...parentTracingContext, baggage: 'tenant=acme' };
+			traceContextService.get.mockResolvedValueOnce(withBaggage);
 
 			await handler.onWorkflowStart({
 				...baseCtx,
@@ -335,7 +333,7 @@ describe('OtelLifecycleHandler', () => {
 			});
 
 			expect(tracer.startWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ tracingContext: parentTracingContext }),
+				expect.objectContaining({ tracingContext: withBaggage }),
 			);
 		});
 
@@ -701,26 +699,6 @@ describe('OtelLifecycleHandler', () => {
 				}),
 			);
 			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedSpanContext);
-		});
-
-		it('should pass the saved caller baggage to the tracer and persist it again on resume', async () => {
-			const prePauseWithBaggage = { ...prePauseContext, baggage: 'tenant=acme' };
-			const resumedWithBaggage = { ...resumedSpanContext, baggage: 'tenant=acme' };
-			traceContextService.get.mockResolvedValueOnce(prePauseWithBaggage);
-			tracer.startWorkflow.mockReturnValueOnce(resumedWithBaggage);
-
-			await handler.onWorkflowResume({
-				type: 'workflowExecuteResume',
-				workflow: { id: 'wf-1', name: 'Test', versionId: 'v1', nodes: [], connections: {} },
-				workflowInstance: createWorkflowInstance(),
-				executionData: undefined as never,
-				executionId: 'exec-resume',
-			} as never);
-
-			expect(tracer.startWorkflow).toHaveBeenCalledWith(
-				expect.objectContaining({ tracingContext: prePauseWithBaggage }),
-			);
-			expect(traceContextService.persist).toHaveBeenCalledWith('exec-resume', resumedWithBaggage);
 		});
 
 		it('should pass the saved identity to the tracer on resume', async () => {

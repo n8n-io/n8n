@@ -10,21 +10,33 @@ describe('sanitizeInboundBaggage', () => {
 		vi.clearAllMocks();
 	});
 
-	afterEach(() => {
-		expect(logger.warn).not.toHaveBeenCalled();
-	});
-
 	it.each([undefined, '', 42, ['tenant=acme', 1]])('returns undefined for %p', (header) => {
 		expect(sanitizeInboundBaggage(header, logger)).toBeUndefined();
 	});
 
 	it('keeps caller entries', () => {
 		expect(sanitizeInboundBaggage('tenant=acme,region=eu', logger)).toBe('tenant=acme,region=eu');
-		expect(logger.debug).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('keeps entry metadata', () => {
 		expect(sanitizeInboundBaggage('tenant=acme;ttl=60', logger)).toBe('tenant=acme;ttl=60');
+	});
+
+	it('keeps a bare property', () => {
+		expect(sanitizeInboundBaggage('tenant=acme;readonly', logger)).toBe('tenant=acme;readonly');
+	});
+
+	it('drops an entry with a property that is not valid', () => {
+		expect(sanitizeInboundBaggage('tenant=acme;bad property', logger)).toBeUndefined();
+		expect(sanitizeInboundBaggage('tenant=acme;ttl=6 0', logger)).toBeUndefined();
+	});
+
+	it('keeps an entry with an empty property and drops the empty segment', () => {
+		expect(sanitizeInboundBaggage('tenant=acme;', logger)).toBe('tenant=acme');
+		expect(sanitizeInboundBaggage('tenant=acme;;ttl=60', logger)).toBe('tenant=acme;ttl=60');
+		expect(sanitizeInboundBaggage('tenant=acme; ;ttl=60', logger)).toBe('tenant=acme;ttl=60');
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('keeps percent-encoded values encoded', () => {
@@ -39,7 +51,7 @@ describe('sanitizeInboundBaggage', () => {
 
 	it('keeps duplicate keys without logging', () => {
 		expect(sanitizeInboundBaggage('a=1,a=2', logger)).toBe('a=1,a=2');
-		expect(logger.debug).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('keeps an entry with an empty value', () => {
@@ -62,7 +74,7 @@ describe('sanitizeInboundBaggage', () => {
 		const header = 'tenant=acme,n8n.execution.id=forged,N8N.Project.Name=forged';
 
 		expect(sanitizeInboundBaggage(header, logger)).toBe('tenant=acme');
-		expect(logger.debug).toHaveBeenCalledWith(expect.any(String), {
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
 			kept: 1,
 			reservedPrefix: 2,
 			invalid: 0,
@@ -76,19 +88,19 @@ describe('sanitizeInboundBaggage', () => {
 
 	it('returns undefined when only n8n. entries are sent', () => {
 		expect(sanitizeInboundBaggage('n8n.workflow.id=forged', logger)).toBeUndefined();
-		expect(logger.debug).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 
 	it('skips empty list members without logging', () => {
 		expect(sanitizeInboundBaggage(',,tenant=acme,', logger)).toBe('tenant=acme');
-		expect(logger.debug).not.toHaveBeenCalled();
+		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
 	it('drops malformed entries', () => {
 		const header = 'tenant=acme,novalue,=empty-key,bad key=1,quote="x",prop=1;badÿ';
 
 		expect(sanitizeInboundBaggage(header, logger)).toBe('tenant=acme');
-		expect(logger.debug).toHaveBeenCalledWith(expect.any(String), {
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
 			kept: 1,
 			reservedPrefix: 0,
 			invalid: 5,
@@ -102,7 +114,7 @@ describe('sanitizeInboundBaggage', () => {
 		const sanitized = sanitizeInboundBaggage(header, logger);
 
 		expect(sanitized?.split(',')).toHaveLength(180);
-		expect(logger.debug).toHaveBeenCalledWith(expect.any(String), {
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
 			kept: 180,
 			reservedPrefix: 0,
 			invalid: 0,
@@ -114,7 +126,7 @@ describe('sanitizeInboundBaggage', () => {
 		const header = `big=${'v'.repeat(4096)},tenant=acme`;
 
 		expect(sanitizeInboundBaggage(header, logger)).toBe('tenant=acme');
-		expect(logger.debug).toHaveBeenCalledTimes(1);
+		expect(logger.warn).toHaveBeenCalledTimes(1);
 	});
 
 	it('stops at 8192 bytes in total', () => {
@@ -122,7 +134,7 @@ describe('sanitizeInboundBaggage', () => {
 		const header = [entry('a'), entry('b'), entry('c')].join(',');
 
 		expect(sanitizeInboundBaggage(header, logger)).toBe([entry('a'), entry('b')].join(','));
-		expect(logger.debug).toHaveBeenCalledWith(expect.any(String), {
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
 			kept: 2,
 			reservedPrefix: 0,
 			invalid: 0,

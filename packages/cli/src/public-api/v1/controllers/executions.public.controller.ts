@@ -436,7 +436,6 @@ export class ExecutionsPublicController {
 	}
 }
 
-// Only the W3C trace context is public. The saved identity and caller baggage stay internal.
 type PublicTracingContext = { traceparent: string; tracestate?: string };
 
 function toPublicTracingContext(tracingContext: unknown): PublicTracingContext | null {

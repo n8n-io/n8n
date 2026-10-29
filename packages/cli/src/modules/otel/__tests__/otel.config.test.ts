@@ -1,11 +1,10 @@
 import { Container } from '@n8n/di';
 
-import { OtelBaggageConfig, OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
+import { OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
 import {
 	CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR,
 	DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES,
 	OTEL_ENV_VARS,
-	PROPAGATE_BAGGAGE_ENV_VAR,
 } from '../otel.constants';
 
 const DEFAULT_ENDPOINT = 'http://localhost:4318';
@@ -117,24 +116,4 @@ describe('OtelCustomAttributesConfig', () => {
 			expect(prefixes).toEqual(DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES);
 		},
 	);
-});
-
-describe('OtelBaggageConfig', () => {
-	beforeEach(() => {
-		Container.reset();
-	});
-
-	afterEach(() => {
-		delete process.env[PROPAGATE_BAGGAGE_ENV_VAR];
-	});
-
-	it('is off when unset', () => {
-		expect(Container.get(OtelBaggageConfig).propagate).toBe(false);
-	});
-
-	it('is on when the env var is true', () => {
-		process.env[PROPAGATE_BAGGAGE_ENV_VAR] = 'true';
-
-		expect(Container.get(OtelBaggageConfig).propagate).toBe(true);
-	});
 });

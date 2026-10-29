@@ -10,7 +10,6 @@ const MAX_TOTAL_BYTES = 8192;
 // W3C Baggage grammar: `key` is an RFC 7230 token, `value` is `*baggage-octet`.
 const KEY = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/;
 const VALUE = /^[\x21\x23-\x2b\x2d-\x3a\x3c-\x5b\x5d-\x7e]*$/;
-const PROPERTY = /^[\x20-\x7e\t]*$/;
 
 /**
  * Returns the caller's `baggage` header without `n8n.` entries, invalid entries and
@@ -25,14 +24,16 @@ export function sanitizeInboundBaggage(header: unknown, logger: Logger): string 
 	let totalBytes = 0;
 
 	for (const part of raw.split(',')) {
-		const entry = part.trim();
-		if (!entry) continue;
+		const trimmed = part.trim();
+		if (!trimmed) continue;
 
-		const key = parseKey(entry);
-		if (key === undefined) {
+		const parsed = parseEntry(trimmed);
+		if (parsed === undefined) {
 			dropped.invalid++;
 			continue;
 		}
+
+		const { key, entry } = parsed;
 		if (key.toLowerCase().startsWith(RESERVED_KEY_PREFIX)) {
 			dropped.reservedPrefix++;
 			continue;
@@ -54,7 +55,7 @@ export function sanitizeInboundBaggage(header: unknown, logger: Logger): string 
 	}
 
 	if (dropped.reservedPrefix + dropped.invalid + dropped.overLimit > 0) {
-		logger.debug('Dropped entries from the inbound baggage header', {
+		logger.warn('Dropped entries from the inbound baggage header', {
 			kept: kept.length,
 			...dropped,
 		});
@@ -63,8 +64,11 @@ export function sanitizeInboundBaggage(header: unknown, logger: Logger): string 
 	return kept.length > 0 ? kept.join(',') : undefined;
 }
 
-/** Returns the key of a `key=value;property` entry. Undefined when the entry is not valid. */
-function parseKey(entry: string): string | undefined {
+/**
+ * Returns the key of a `key=value;property` entry, with the entry to forward. Undefined when
+ * the entry is not valid.
+ */
+function parseEntry(entry: string): { key: string; entry: string } | undefined {
 	const [member, ...properties] = entry.split(';');
 	const separator = member.indexOf('=');
 	if (separator === -1) return undefined;
@@ -72,9 +76,28 @@ function parseKey(entry: string): string | undefined {
 	const key = member.slice(0, separator).trim();
 	const value = member.slice(separator + 1).trim();
 	if (!KEY.test(key) || !VALUE.test(value)) return undefined;
-	if (!properties.every((property) => PROPERTY.test(property))) return undefined;
 
-	return key;
+	// A trailing or doubled `;` leaves an empty segment. W3C forbids it, but the OTel parser
+	// keeps the entry, so n8n drops the segment instead of a good entry. Rebuilding is safe
+	// here: it only ever removes the empty segments.
+	const named = properties.filter((property) => property.trim() !== '');
+	if (!named.every(isValidProperty)) return undefined;
+
+	return {
+		key,
+		entry: named.length === properties.length ? entry : [member, ...named].join(';'),
+	};
+}
+
+/** A `property` is a bare `key`, or `key=value` with a baggage value. */
+function isValidProperty(property: string): boolean {
+	const separator = property.indexOf('=');
+	if (separator === -1) return KEY.test(property.trim());
+
+	return (
+		KEY.test(property.slice(0, separator).trim()) &&
+		VALUE.test(property.slice(separator + 1).trim())
+	);
 }
 
 function toHeaderString(header: unknown): string | undefined {

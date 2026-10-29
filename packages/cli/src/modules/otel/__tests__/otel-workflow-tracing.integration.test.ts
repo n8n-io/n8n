@@ -269,27 +269,19 @@ describe('Caller baggage', () => {
 		expect(await savedBaggage(executionId)).toBe('tenant=acme');
 	});
 
-	it('should keep the caller baggage when a worker runs the execution', async () => {
+	it('should keep the caller baggage and send it from each node on a worker', async () => {
 		const project = await createTeamProject();
 		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
 
 		const executionId = await executeWorkflowOnWorker(workflow, project.id, { tracingContext });
 
 		expect(await savedBaggage(executionId)).toBe('tenant=acme');
-		for (const span of otel.getFinishedSpans()) {
-			expect(span.attributes).not.toHaveProperty('tenant');
-		}
-	});
-
-	it('should send the caller baggage from each node on a worker', async () => {
-		const project = await createTeamProject();
-		const workflow = await createWorkflow(createMultiNodeWorkflowFixture(), project);
-
-		await executeWorkflowOnWorker(workflow, project.id, { tracingContext });
-
 		expect(sentHeaders).toHaveLength(workflow.nodes.length);
 		for (const headers of sentHeaders) {
 			expect(headers).toMatchObject({ traceparent: expect.any(String), baggage: 'tenant=acme' });
+		}
+		for (const span of otel.getFinishedSpans()) {
+			expect(span.attributes).not.toHaveProperty('tenant');
 		}
 	});
 

@@ -1389,6 +1389,19 @@ describe('extractTracingContext', () => {
 	it('returns undefined when the otel module returns no baggage', () => {
 		expect(extractTracingContext({ baggage: 'n8n.workflow.id=forged' }, otel)).toBeUndefined();
 	});
+
+	it('keeps the trace context when the otel module throws', () => {
+		const throwing = {
+			...otel,
+			extractInboundBaggage: vi.fn(() => {
+				throw new Error('boom');
+			}),
+		};
+
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' }, throwing)).toEqual({
+			traceparent,
+		});
+	});
 });
 
 // Shared by the two `executeWebhook` blocks below: `mockInstance` overwrites the
