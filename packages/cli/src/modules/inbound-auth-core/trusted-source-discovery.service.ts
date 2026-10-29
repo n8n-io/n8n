@@ -61,8 +61,9 @@ export class TrustedSourceDiscoveryService {
 			const token = await this.store.claimDiscovery(source);
 			if (token === null) return;
 			// `source` was listed up to a minute ago and another run may have written since. Nothing
-			// else writes the status while the lease is held, so this read is the status to compare.
-			const before = (await this.store.getById(source.id))?.status ?? source.status;
+			// else writes the status while the lease is held, so the database holds the status to
+			// compare; the cache does not, an in-flight read can re-populate it with the old row.
+			const before = (await this.store.getStatus(source.id)) ?? source.status;
 			const result = await this.discover(source);
 			const recorded = await this.store.recordDiscovery(source, token, result);
 
