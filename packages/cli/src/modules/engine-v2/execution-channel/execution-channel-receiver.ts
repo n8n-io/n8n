@@ -7,7 +7,7 @@ import type {
 	UnsubscribeFromExecutionChannel,
 } from '@n8n/engine';
 
-import type { InMemoryExecutionChannel } from './in-memory-execution-response-channel';
+import type { InMemoryExecutionChannel } from './in-memory-execution-channel';
 
 /** Receives messages on the topic of its codec. */
 export class ExecutionChannelReceiver<T> {

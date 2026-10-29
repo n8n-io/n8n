@@ -7,7 +7,7 @@ import type {
 } from '@n8n/engine';
 import { UnexpectedError } from '@n8n/errors';
 
-import type { RedisExecutionChannelNameGenerator } from './redis-execution-response-channel';
+import type { RedisExecutionChannelNameGenerator } from './redis-execution-channel';
 
 type RedisMessageHandler = (channel: string, message: string) => void;
 
