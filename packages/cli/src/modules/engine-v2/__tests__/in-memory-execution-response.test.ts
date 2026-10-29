@@ -2,7 +2,7 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { ExecutionResponse } from '@n8n/engine';
 import { ENCODED_BUFFER_KEY } from 'n8n-core';
 
-import { ExecutionResponseChannelReceiver } from '../response-channel/execution-response-receiver';
+import { ExecutionResponseChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
 import { ExecutionResponseChannelSender } from '../response-channel/in-memory-execution-response-sender';
 import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
 

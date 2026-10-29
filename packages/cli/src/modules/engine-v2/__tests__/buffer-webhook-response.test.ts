@@ -13,7 +13,7 @@ import { mock } from 'vitest-mock-extended';
 import { createExecutionIdV2 } from '@/executions/execution-id';
 import { EngineV2WebhookResponseRegistry } from '@/modules/engine-v2/webhook-response/webhook-response-registry.service';
 
-import { ExecutionResponseChannelReceiver } from '../response-channel/execution-response-receiver';
+import { ExecutionResponseChannelReceiver } from '../response-channel/in-memory-execution-response-receiver';
 import { ExecutionResponseChannelSender } from '../response-channel/in-memory-execution-response-sender';
 import { createInMemoryExecutionChannel } from '../response-channel/in-memory-execution-response-channel';
 

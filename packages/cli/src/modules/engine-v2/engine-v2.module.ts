@@ -50,7 +50,7 @@ export class EngineV2Module implements ModuleInterface {
 			'./webhook-response/webhook-response-registry.service.js'
 		);
 		const { ExecutionResponseChannelReceiver } = await import(
-			'./response-channel/execution-response-receiver.js'
+			'./response-channel/in-memory-execution-response-receiver.js'
 		);
 
 		if (engineConfig.mode === 'in-process') {
