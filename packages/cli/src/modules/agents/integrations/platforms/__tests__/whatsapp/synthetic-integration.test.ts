@@ -1,3 +1,6 @@
+import type { Logger as BackendLogger } from '@n8n/backend-common';
+import type { CacheService } from '@n8n/backend-services';
+import type { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
@@ -29,6 +32,7 @@ import {
 	whatsAppReplayFixtures,
 	whatsAppWebhook,
 } from '../../../__tests__/helpers/whatsapp/synthetic-fixtures';
+import { WhatsAppOptionPagesStore } from '../../whatsapp/whatsapp-option-pages.store';
 import { WhatsAppCredentialCheckService } from '../../whatsapp/whatsapp-credential-check.service';
 import type { WhatsAppSetupTelemetryService } from '../../whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../../whatsapp/whatsapp-webhook-verification.store';
@@ -730,19 +734,21 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			wrapResumeValue: (rawValue) => JSON.stringify({ value: rawValue }),
 		};
 
-		it('passes components through unchanged when there are 3 or fewer buttons', () => {
+		it('passes components through unchanged when there are 3 or fewer buttons', async () => {
 			const integration = createWhatsAppIntegration();
 			const components: SuspendComponent[] = [{ type: 'section', text: 'Pick one' }, ...buttons(3)];
 
-			expect(integration.normalizeComponents(components, testNormalizeContext)).toEqual(components);
+			expect(await integration.normalizeComponents(components, testNormalizeContext)).toEqual(
+				components,
+			);
 		});
 
-		it('converts overflow buttons into a WhatsApp list when there are more than 3', () => {
+		it('converts overflow buttons into a WhatsApp list when there are more than 3', async () => {
 			const integration = createWhatsAppIntegration();
 			const section: SuspendComponent = { type: 'section', text: 'Pick one' };
 			const components: SuspendComponent[] = [section, ...buttons(4)];
 
-			const normalized = integration.normalizeComponents(components, testNormalizeContext);
+			const normalized = await integration.normalizeComponents(components, testNormalizeContext);
 
 			expect(normalized.filter((c) => c.type === 'button')).toHaveLength(0);
 			expect(normalized[0]).toEqual(section);
@@ -760,7 +766,47 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 		});
 
-		it('merges overflow buttons into an existing select instead of pushing a second one', () => {
+		it('does not page a list of exactly 10 options', async () => {
+			const integration = createWhatsAppIntegration();
+
+			const normalized = await integration.normalizeComponents(buttons(10), testNormalizeContext);
+
+			const select = normalized.find((c) => c.type === 'select');
+			expect(select?.options).toHaveLength(10);
+			expect(select?.options?.some((o) => o.label === 'More…')).toBe(false);
+		});
+
+		it('keeps 9 options and adds a More row when there are more than 10', async () => {
+			const integration = createWhatsAppIntegration();
+
+			const normalized = await integration.normalizeComponents(buttons(14), {
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				wrapResumeValue: (rawValue) => JSON.stringify({ value: rawValue }),
+			});
+
+			const options = normalized.find((c) => c.type === 'select')?.options ?? [];
+			expect(options).toHaveLength(10);
+			expect(options[8].label).toBe('Option 9');
+			expect(options[9]).toMatchObject({
+				label: 'More…',
+				value: expect.stringMatching(/^n8n:page:[0-9a-f]+:1$/),
+				description: 'Options 10–14 of 14',
+			});
+		});
+
+		it('drops options past 50 and logs it', async () => {
+			const logger = mock<BackendLogger>();
+			const integration = createWhatsAppIntegration(undefined, undefined, logger);
+
+			const normalized = await integration.normalizeComponents(buttons(60), testNormalizeContext);
+
+			const options = normalized.find((c) => c.type === 'select')?.options ?? [];
+			expect(options[9].description).toBe('Options 10–18 of 50');
+			expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('Dropping 10 list options'));
+		});
+
+		it('merges overflow buttons into an existing select instead of pushing a second one', async () => {
 			const integration = createWhatsAppIntegration();
 			const existingSelect: SuspendComponent = {
 				type: 'select',
@@ -769,7 +815,7 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			};
 			const components: SuspendComponent[] = [existingSelect, ...buttons(4)];
 
-			const normalized = integration.normalizeComponents(components, testNormalizeContext);
+			const normalized = await integration.normalizeComponents(components, testNormalizeContext);
 
 			expect(normalized.filter((c) => c.type === 'select')).toHaveLength(1);
 			expect(normalized.filter((c) => c.type === 'button')).toHaveLength(0);
@@ -878,26 +924,208 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			}
 		});
 
-		it('lets a valid option past position ten fill the slot of a dropped oversized one', async () => {
+		const listRows = (body: unknown) =>
+			(
+				body as {
+					interactive: {
+						action: { sections: Array<{ rows: Array<{ id: string; title: string }> }> };
+					};
+				}
+			).interactive.action.sections[0].rows;
+
+		let tapCount = 0;
+		const tapListRow = async (
+			ctx: Awaited<ReturnType<typeof createWhatsAppReplayContext>>,
+			fixtures: ReturnType<typeof whatsAppReplayFixtures>,
+			row: { id: string; title: string },
+		) =>
+			await ctx.sendWebhook(
+				whatsAppWebhook({
+					phoneNumberId: fixtures.phoneNumberId,
+					contact: fixtures.contact,
+					message: {
+						from: fixtures.contact.wa_id,
+						id: `wamid.TEST_TAP_${++tapCount}`,
+						timestamp: String(Math.floor(Date.now() / 1000)),
+						type: 'interactive',
+						interactive: { type: 'list_reply', list_reply: { id: row.id, title: row.title } },
+					},
+				}),
+			);
+
+		const manyButtonsStream = (runId: string, toolCallId: string, count: number) => [
+			{
+				type: 'tool-call-suspended' as const,
+				runId,
+				toolCallId,
+				toolName: 'select',
+				suspendPayload: {
+					type: 'form' as const,
+					toolName: 'pick_option',
+					displayName: 'Choose one',
+					components: buttons(count),
+				},
+			},
+			{ type: 'finish' as const, finishReason: 'stop' as const },
+		];
+
+		it('shows 9 options and a More row on the first page of a list with 14 options', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: manyButtonsStream('run-page-1', 'tool-page-1', 14),
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+
+				const rows = listRows(ctx.lastPost()?.body);
+				expect(rows).toHaveLength(10);
+				expect(rows.slice(0, 9).map((r) => r.title)).toEqual(
+					Array.from({ length: 9 }, (_, i) => `Option ${i + 1}`),
+				);
+				expect(rows[9].title).toBe('More…');
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('sends the next page as a new list when the user taps More', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: manyButtonsStream('run-page-2', 'tool-page-2', 14),
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+				await tapListRow(ctx, fixtures, listRows(ctx.lastPost()?.body)[9]);
+
+				const rows = listRows(ctx.lastPost()?.body);
+				// The last page has the 5 options that are left and no More row.
+				expect(rows.map((r) => r.title)).toEqual([
+					'Option 10',
+					'Option 11',
+					'Option 12',
+					'Option 13',
+					'Option 14',
+				]);
+				expect(ctx.agentExecutor.resumeForChat).not.toHaveBeenCalled();
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('repeats the title and prompt of the question on the next page', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: [
+					{
+						type: 'tool-call-suspended',
+						runId: 'run-page-5',
+						toolCallId: 'tool-page-5',
+						toolName: 'select',
+						suspendPayload: {
+							type: 'form',
+							toolName: 'pick_option',
+							title: 'Pick a city',
+							components: [{ type: 'section', text: 'Where should we ship?' }, ...buttons(14)],
+						},
+					},
+					{ type: 'finish', finishReason: 'stop' },
+				],
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+				await tapListRow(ctx, fixtures, listRows(ctx.lastPost()?.body)[9]);
+
+				const body = JSON.stringify(ctx.lastPost()?.body);
+				expect(body).toContain('Pick a city');
+				expect(body).toContain('Where should we ship?');
+				expect(body).toContain('Options 10–14 of 14');
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('resumes the run with the option picked on a later page', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures, {
+				stream: manyButtonsStream('run-page-3', 'tool-page-3', 20),
+			});
+			try {
+				await ctx.sendWebhook(fixtures.mention);
+				const firstPage = listRows(ctx.lastPost()?.body);
+				expect(firstPage[9].title).toBe('More…');
+
+				await tapListRow(ctx, fixtures, firstPage[9]);
+				const secondPage = listRows(ctx.lastPost()?.body);
+				// Page 2 has 9 options and its own More row, because 2 options are left.
+				expect(secondPage.map((r) => r.title)).toEqual([
+					...Array.from({ length: 9 }, (_, i) => `Option ${i + 10}`),
+					'More…',
+				]);
+
+				await tapListRow(ctx, fixtures, secondPage[9]);
+				const thirdPage = listRows(ctx.lastPost()?.body);
+				expect(thirdPage.map((r) => r.title)).toEqual(['Option 19', 'Option 20']);
+
+				ctx.nextStream([
+					{ type: 'text-delta', id: 'resume-text', delta: 'Picked' },
+					{ type: 'finish', finishReason: 'stop' },
+				]);
+				await tapListRow(ctx, fixtures, thirdPage[1]);
+
+				expect(ctx.agentExecutor.resumeForChat).toHaveBeenCalledWith(
+					expect.objectContaining({
+						runId: 'run-page-3',
+						toolCallId: 'tool-page-3',
+						resumeData: { value: 'opt-20' },
+					}),
+				);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('shows the first 10 options without a More row when the option store fails to save', async () => {
+			const cache = mock<CacheService>();
+			cache.set.mockRejectedValue(new Error('redis down'));
+			const logger = mock<BackendLogger>();
+			const store = new WhatsAppOptionPagesStore(
+				cache,
+				logger,
+				mock<AgentsConfig>({ checkpointTtlSeconds: 3600 }),
+			);
+			const integration = createWhatsAppIntegration(undefined, undefined, logger, store);
+
+			const normalized = await integration.normalizeComponents(buttons(14), {
+				runId: 'run-1',
+				toolCallId: 'tool-1',
+				wrapResumeValue: (rawValue) => JSON.stringify({ value: rawValue }),
+			});
+
+			const options = normalized.find((c) => c.type === 'select')?.options ?? [];
+			expect(options.map((o) => o.label)).toEqual(
+				Array.from({ length: 10 }, (_, i) => `Option ${i + 1}`),
+			);
+			expect(logger.warn).toHaveBeenCalled();
+		});
+
+		it('drops an oversized option from its page and keeps every other option reachable', async () => {
 			const fixtures = whatsAppReplayFixtures();
 			const longValue = 'x'.repeat(250);
-			// 11 options: the first is oversized and dropped, leaving exactly 10
-			// valid ones — filtering before slicing must keep all 10, not stop
-			// at whichever 10 came first and lose "Option 10" to the drop.
+			// The first option is oversized, so its row id is too long for WhatsApp.
 			const components: SuspendComponent[] = [
-				{ type: 'button', label: 'Option 0', value: longValue },
-				...Array.from({ length: 10 }, (_, i) => ({
+				{ type: 'button', label: 'Option 1', value: longValue },
+				...Array.from({ length: 13 }, (_, i) => ({
 					type: 'button' as const,
-					label: `Option ${i + 1}`,
-					value: `opt-${i + 1}`,
+					label: `Option ${i + 2}`,
+					value: `opt-${i + 2}`,
 				})),
 			];
 			const ctx = await createWhatsAppReplayContext(fixtures, {
 				stream: [
 					{
 						type: 'tool-call-suspended',
-						runId: 'run-select-4',
-						toolCallId: 'tool-select-4',
+						runId: 'run-page-4',
+						toolCallId: 'tool-page-4',
 						toolName: 'select',
 						suspendPayload: {
 							type: 'form',
@@ -911,14 +1139,40 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 			});
 			try {
 				await ctx.sendWebhook(fixtures.mention);
+				const firstPage = listRows(ctx.lastPost()?.body);
+				// The oversized option leaves a gap on page 1. No option moves to another page.
+				expect(firstPage.map((r) => r.title)).toEqual([
+					...Array.from({ length: 8 }, (_, i) => `Option ${i + 2}`),
+					'More…',
+				]);
 
-				const body = ctx.lastPost()?.body as {
-					interactive: { action: { sections: Array<{ rows: Array<{ title: string }> }> } };
-				};
-				const titles = body.interactive.action.sections[0].rows.map((r) => r.title);
-				expect(titles).toHaveLength(10);
-				expect(titles).not.toContain('Option 0');
-				expect(titles).toContain('Option 10');
+				await tapListRow(ctx, fixtures, firstPage[8]);
+				expect(listRows(ctx.lastPost()?.body).map((r) => r.title)).toEqual([
+					'Option 10',
+					'Option 11',
+					'Option 12',
+					'Option 13',
+					'Option 14',
+				]);
+			} finally {
+				await ctx.shutdown();
+			}
+		});
+
+		it('tells the user when the options of a tapped More row have expired', async () => {
+			const fixtures = whatsAppReplayFixtures();
+			const ctx = await createWhatsAppReplayContext(fixtures);
+			try {
+				await tapListRow(ctx, fixtures, {
+					id: `chat:${JSON.stringify({ a: 'resume:run-gone:tool-gone:0', v: 'n8n:page:0123456789abcdef:1' })}`,
+					title: 'More…',
+				});
+
+				expect(ctx.lastPost()?.body).toMatchObject({
+					type: 'text',
+					text: { body: expect.stringContaining('no longer available') },
+				});
+				expect(ctx.agentExecutor.resumeForChat).not.toHaveBeenCalled();
 			} finally {
 				await ctx.shutdown();
 			}
@@ -1223,7 +1477,13 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		it("answers Meta's handshake with the raw challenge when the token matches", () => {
 			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
 			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
-			const integration = createWhatsAppIntegration(undefined, webhookVerification, setupTelemetry);
+			const integration = createWhatsAppIntegration(
+				undefined,
+				webhookVerification,
+				undefined,
+				undefined,
+				setupTelemetry,
+			);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
@@ -1245,7 +1505,13 @@ describe('WhatsApp Cloud API integration scenarios', () => {
 		it('rejects the handshake when the verify token does not match', () => {
 			const webhookVerification = mock<WhatsAppWebhookVerificationStore>();
 			const setupTelemetry = mock<WhatsAppSetupTelemetryService>();
-			const integration = createWhatsAppIntegration(undefined, webhookVerification, setupTelemetry);
+			const integration = createWhatsAppIntegration(
+				undefined,
+				webhookVerification,
+				undefined,
+				undefined,
+				setupTelemetry,
+			);
 
 			const result = integration.handleUnauthenticatedWebhook({
 				agentId: 'agent-1',
