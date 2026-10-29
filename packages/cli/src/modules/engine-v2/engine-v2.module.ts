@@ -49,44 +49,33 @@ export class EngineV2Module implements ModuleInterface {
 		const { EngineV2WebhookResponseRegistry } = await import(
 			'./webhook-response/webhook-response-registry.service.js'
 		);
-		const { ExecutionChannelReceiver } = await import(
-			'./response-channel/in-memory-execution-response-receiver.js'
-		);
-		const { createExecutionResponseCodec } = await import(
-			'./response-channel/execution-response-frame.js'
-		);
-		const responseCodec = createExecutionResponseCodec(logger);
-
 		if (engineConfig.mode === 'in-process') {
 			// Hand both endpoints over before the engine starts. A short run can answer
 			// before `startExecution` returns, and responses are not replayed.
-			const { createInMemoryExecutionChannel } = await import(
-				'./response-channel/in-memory-execution-response-channel.js'
-			);
-			const { ExecutionChannelSender } = await import(
-				'./response-channel/in-memory-execution-response-sender.js'
-			);
-			const { publisher, subscriber } = createInMemoryExecutionChannel();
+			const { publisher, subscriber, responseSender, responseReceiver } =
+				await this.initInMemoryResponseChannel(logger);
 			this.channelPublisher = publisher;
 			this.channelSubscriber = subscriber;
-			Container.get(EngineV2WebhookResponseRegistry).useReceiver(
-				new ExecutionChannelReceiver(subscriber, responseCodec, logger),
-			);
+			Container.get(EngineV2WebhookResponseRegistry).useReceiver(responseReceiver);
 
 			const { EngineV2Runtime } = await import('./engine-v2.runtime.js');
-			await Container.get(EngineV2Runtime).init(
-				new ExecutionChannelSender(publisher, responseCodec),
-			);
+			await Container.get(EngineV2Runtime).init(responseSender);
 		} else {
 			// The remote data plane publishes over Redis, so only the subscribing end
 			// runs here.
 			const { startRedisExecutionChannelSubscriber } = await import(
 				'./response-channel/redis-execution-response-channel.js'
 			);
+			const { ExecutionChannelReceiver } = await import(
+				'./response-channel/in-memory-execution-response-receiver.js'
+			);
+			const { createExecutionResponseCodec } = await import(
+				'./response-channel/execution-response-frame.js'
+			);
 			const subscriber = await startRedisExecutionChannelSubscriber(logger);
 			this.channelSubscriber = subscriber;
 			Container.get(EngineV2WebhookResponseRegistry).useReceiver(
-				new ExecutionChannelReceiver(subscriber, responseCodec, logger),
+				new ExecutionChannelReceiver(subscriber, createExecutionResponseCodec(logger), logger),
 			);
 		}
 
@@ -97,6 +86,30 @@ export class EngineV2Module implements ModuleInterface {
 		Container.get(EngineDataPlaneProxyService).registerProvider(
 			Container.get(EngineDataPlaneClient),
 		);
+	}
+
+	private async initInMemoryResponseChannel(logger: Logger) {
+		const { createInMemoryExecutionChannel } = await import(
+			'./response-channel/in-memory-execution-response-channel.js'
+		);
+		const { ExecutionChannelSender } = await import(
+			'./response-channel/in-memory-execution-response-sender.js'
+		);
+		const { ExecutionChannelReceiver } = await import(
+			'./response-channel/in-memory-execution-response-receiver.js'
+		);
+		const { createExecutionResponseCodec } = await import(
+			'./response-channel/execution-response-frame.js'
+		);
+		const { publisher, subscriber } = createInMemoryExecutionChannel();
+		const responseCodec = createExecutionResponseCodec(logger);
+
+		return {
+			publisher,
+			subscriber,
+			responseSender: new ExecutionChannelSender(publisher, responseCodec),
+			responseReceiver: new ExecutionChannelReceiver(subscriber, responseCodec, logger),
+		};
 	}
 
 	@OnShutdown()
