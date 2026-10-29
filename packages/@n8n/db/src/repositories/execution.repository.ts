@@ -90,10 +90,8 @@ export type CrashedExecution = {
 	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
-/** A status from which an execution can be resumed. */
 export type ResumableExecutionStatus = 'waiting' | 'new';
 
-/** Result of `claimResumeAttempt`. */
 export type ResumeAttemptClaim =
 	| { outcome: 'claimed'; attempts: number }
 	| { outcome: 'exhausted'; attempts: number; jsonSizeBytes: number }

@@ -533,7 +533,6 @@ export class ExecutionService {
 		return true;
 	}
 
-	/** Ids of all executions still enqueued (`new`), oldest first, without their data. */
 	async findEnqueuedExecutionIds() {
 		return await this.executionRepository.findEnqueuedIds();
 	}

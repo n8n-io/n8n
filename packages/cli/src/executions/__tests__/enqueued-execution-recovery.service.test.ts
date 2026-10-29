@@ -99,8 +99,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		]);
 	});
 
-	// The data of every enqueued execution used to be read in one query before any attempt
-	// could be counted, so a crash during that read repeated on every boot.
 	test('claims a resume attempt before it loads each execution', async () => {
 		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 
@@ -209,8 +207,6 @@ describe('EnqueuedExecutionRecoveryService', () => {
 		expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 	});
 
-	// A read that fails for a reason that can pass must not take the execution out of the
-	// queue for good, and must not count as a resume that killed the process.
 	test('leaves an execution `new` and gives its attempt back when the load fails', async () => {
 		mockEnqueued([enqueuedExecution('1'), enqueuedExecution('2')]);
 		executionPersistence.findSingleExecution.mockRejectedValueOnce(new Error('database is locked'));

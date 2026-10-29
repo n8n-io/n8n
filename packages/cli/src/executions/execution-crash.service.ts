@@ -31,10 +31,7 @@ export class ExecutionCrashService {
 		});
 	}
 
-	/**
-	 * Mark a `waiting` or `new` execution as crashed without resuming it. With
-	 * `expectedAttempts`, the row is left alone if another process resumed it in the meantime.
-	 */
+	/** Mark a `waiting` or `new` execution as crashed without resuming it. */
 	async markAsCrashedFrom(
 		executionId: string,
 		status: ResumableExecutionStatus,

@@ -11,7 +11,6 @@ export class AddResumeAttemptsToExecutionEntity1793282162307 implements Reversib
 			`ALTER TABLE ${tableName} ADD COLUMN ${resumeAttempts} SMALLINT NOT NULL DEFAULT 0`,
 		);
 
-		// SQLite has no column comments, so annotate only on Postgres.
 		if (isPostgres) {
 			await runQuery(
 				`COMMENT ON COLUMN ${tableName}.${resumeAttempts} IS 'Resume attempts since the execution last entered waiting or new. Reset to 0 once the execution runs.'`,

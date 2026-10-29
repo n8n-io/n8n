@@ -72,7 +72,6 @@ export class EnqueuedExecutionRecoveryService {
 	}
 
 	private async recoverEnqueuedExecution(executionId: string) {
-		// Claimed before the resume, so a resume that kills the process cannot repeat without limit
 		const claim = await this.resumeAttemptService.claim(executionId, 'new');
 		if (!claim.granted) return;
 

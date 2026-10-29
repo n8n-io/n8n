@@ -9,7 +9,6 @@ import { ExecutionCrashService } from '@/executions/execution-crash.service';
 
 export type ResumableStatus = 'waiting' | 'new';
 
-/** A granted claim carries its attempt number, which `release` needs. */
 export type ResumeClaim = { granted: true; attempt: number } | { granted: false };
 
 /**

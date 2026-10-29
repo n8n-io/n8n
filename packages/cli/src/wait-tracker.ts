@@ -50,7 +50,6 @@ export class WaitTracker {
 
 	mainTimer: NodeJS.Timeout;
 
-	/** Executions whose resume is in progress in this process. */
 	private readonly resuming = new Set<string>();
 
 	private resumingParkedParents = false;
@@ -163,7 +162,6 @@ export class WaitTracker {
 	}
 
 	private async resumeExecution(executionId: string) {
-		// Claimed before the resume, so a resume that kills the process cannot repeat without limit
 		const claim = await this.resumeAttemptService.claim(executionId, 'waiting');
 		if (!claim.granted) return;
 

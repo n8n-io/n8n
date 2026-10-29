@@ -247,8 +247,6 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).not.toHaveBeenCalled();
 		});
 
-		// The attempt is for a load that kills the process. A load that throws is retried by
-		// the next sweep, so it must not count toward the limit.
 		it('gives the attempt back when the load throws', async () => {
 			executionPersistence.findSingleExecution
 				.calledWith(execution.id)
@@ -263,8 +261,6 @@ describe('WaitTracker', () => {
 			);
 		});
 
-		// A sweep that runs while the first load is in progress used to load the data a
-		// second time, because the row is still `waiting` until the load completes.
 		it('rejects a second resume while the first one is still loading', async () => {
 			const run = createDeferredPromise<string>();
 			workflowRunner.run.mockReturnValueOnce(run.promise);
@@ -1055,8 +1051,6 @@ describe('WaitTracker', () => {
 			expect(executionRepository.findParkedOnSubExecution).toHaveBeenCalledTimes(1);
 		});
 
-		// The inspection loads the parent's full run data, so a load that kills the process
-		// must count like a resume, or the sweep repeats it on every boot without limit.
 		it('claims an attempt before it loads the parent and gives it back after the inspection', async () => {
 			executionPersistence.findSingleExecution
 				.calledWith(parentId)
@@ -1099,9 +1093,6 @@ describe('WaitTracker', () => {
 			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
 		});
 
-		// The callback that resumes a parent after its child finishes may still be waiting for
-		// capacity when the sweep runs. An inspection claim on top of that resume's own claim
-		// could not be given back, and the next sweep would then crash the healthy parent.
 		it('does not inspect a parent that this process is already resuming', async () => {
 			const admission = createDeferredPromise<string>();
 			workflowRunner.run.mockReturnValueOnce(admission.promise);
