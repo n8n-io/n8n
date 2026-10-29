@@ -15,6 +15,7 @@ import { SelfHealingConfigurationService } from '../self-healing/self-healing-co
 import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
 
 import { AssistantAgentProvider } from '../assistant-agent/assistant-agent.provider';
+import { AssistantTurnTracer } from '../assistant-agent/assistant-turn-trace';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -114,6 +115,7 @@ describe('InstanceAiModule.init', () => {
 		mockInstance(InstanceAiSetupTelemetryService);
 		mockInstance(InstanceAiEventRelay);
 		const runtime = mockInstance(InstanceAiService);
+		const tracer = mockInstance(AssistantTurnTracer);
 		const sweeper = mockInstance(InterruptedRunSweeper);
 		sweeper.sweep.mockResolvedValue();
 		const investigations = mockInstance(SelfHealingInvestigationService);
@@ -132,6 +134,7 @@ describe('InstanceAiModule.init', () => {
 			instanceSettings,
 			settings,
 			runtime,
+			tracer,
 		};
 	}
 
@@ -196,6 +199,21 @@ describe('InstanceAiModule.init', () => {
 			expect(loadConfigurationController).not.toHaveBeenCalled();
 		},
 	);
+
+	it('closes the open Assistant agent traces before the service flushes the traces', async () => {
+		const { runtime, tracer } = setup();
+		const order: string[] = [];
+		tracer.finishOpenTraces.mockImplementation(async () => {
+			order.push('traces');
+		});
+		runtime.shutdown.mockImplementation(async () => {
+			order.push('service');
+		});
+
+		await new InstanceAiModule().shutdown();
+
+		expect(order).toEqual(['traces', 'service']);
+	});
 
 	it('registers the Assistant agent only when it is enabled and the agents module starts', async () => {
 		const { config, investigations } = setup();
