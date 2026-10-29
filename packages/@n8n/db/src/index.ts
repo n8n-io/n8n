@@ -20,8 +20,7 @@ export {
 	toDbTimestamp,
 	toSqliteTimestamp,
 } from './utils/dialect-time';
-export { toDialectQuery, toSqlitePlaceholders } from './utils/dialect-sql';
-export type { DialectQuery } from './utils/dialect-sql';
+export { toDialectQuery } from './utils/dialect-sql';
 export { escapeLike, LIKE_ESCAPE_CLAUSE } from './utils/escape-like';
 export { generateHostInstanceId } from './utils/generators';
 export { isEntityNotFoundError } from './utils/is-entity-not-found-error';
