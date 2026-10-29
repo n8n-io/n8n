@@ -326,6 +326,22 @@ export class CommunityPackagesService {
 	}
 
 	/**
+	 * The package ledger is written only after extraction and npm installation finish. Requiring
+	 * both versions prevents another process from loading a directory that merely looks complete
+	 * because its package.json was extracted before the rest of the install finished.
+	 */
+	private async isPackageInstallationComplete(packageName: string, packageVersion: string) {
+		const [onDiskVersion, packageJson] = await Promise.all([
+			this.readInstalledPackageVersion(packageName),
+			this.readPackageJson(),
+		]);
+
+		return (
+			onDiskVersion === packageVersion && packageJson?.dependencies[packageName] === packageVersion
+		);
+	}
+
+	/**
 	 * Rebuilds the ledger from the database, the source of truth for what is installed.
 	 * Writing an empty `dependencies` instead would leave `npm outdated` with nothing
 	 * to compare, silently hiding available updates for every package.
@@ -421,6 +437,27 @@ export class CommunityPackagesService {
 
 			for (const missingPackage of missingPackages) {
 				try {
+					// A peer sharing this volume may have completed the repair since the startup
+					// scan. Reuse it only after the ledger confirms the disk write completed.
+					if (
+						await this.isPackageInstallationComplete(
+							missingPackage.packageName,
+							missingPackage.version,
+						)
+					) {
+						try {
+							await this.assertPackageApiVersionSupported(missingPackage.packageName);
+							await this.reloadPackage(missingPackage.packageName);
+							missingPackages.delete(missingPackage);
+							continue;
+						} catch (error) {
+							this.logger.warn(
+								`Community package files on disk appear incomplete or corrupt, reinstalling ${missingPackage.packageName}`,
+								{ error: ensureError(error) },
+							);
+						}
+					}
+
 					const vettedPackage = vettedPackages.find(
 						(p) => p.packageName === missingPackage.packageName,
 					);
@@ -744,7 +781,6 @@ export class CommunityPackagesService {
 
 			await this.removeNpmPackage(parsed.packageName, {
 				requireNoRecord: true,
-				skipDiskChangesIfMissing: true,
 			});
 		} catch (error) {
 			const details = { packageName, reason: ensureError(error).message };
@@ -766,9 +802,9 @@ export class CommunityPackagesService {
 				});
 			}
 
-			const onDiskVersion = await this.readInstalledPackageVersion(packageName);
-			if (onDiskVersion === packageVersion) {
-				const loadedVersion = this.loadNodesAndCredentials.loaders[packageName]?.packageJson.version;
+			if (await this.isPackageInstallationComplete(packageName, packageVersion)) {
+				const loadedVersion =
+					this.loadNodesAndCredentials.loaders[packageName]?.packageJson.version;
 				if (loadedVersion === packageVersion) {
 					this.logger.debug(
 						`Community package ${packageName} already loaded at ${packageVersion}, skipping`,
@@ -780,36 +816,50 @@ export class CommunityPackagesService {
 				// files instead of downloading the same package into the same directory again. Only
 				// replace an absent or stale loader, so a redundant event cannot remove a working one.
 				await this.assertPackageApiVersionSupported(packageName);
-				await this.reloadPackage(packageName);
+				try {
+					await this.reloadPackage(packageName);
+				} catch (error) {
+					this.logger.warn('Community package files on disk appear incomplete or corrupt', {
+						error: ensureError(error),
+						packageName,
+						packageVersion,
+					});
+					// Fall through to the download path to repair the shared files.
+					return await this.installOrUpdateNpmPackageFiles(packageName, packageVersion);
+				}
 				this.logger.info(`Community package loaded from disk: ${packageName}`);
 				return;
 			}
 
-			const authToken = this.getNpmAuthToken();
-			const backupDirectory = await this.backupPackageDirectory(packageName);
-
-			// Only the directory is rolled back here, never the ledger: on a follower its
-			// entry is justified by the leader's database record, not by this instance's disk.
-			try {
-				await this.downloadPackage(packageName, packageVersion, authToken);
-				// The command may come from a newer leader in a mixed fleet.
-				await this.assertPackageApiVersionSupported(packageName);
-			} catch (error) {
-				// No reload: the previous package was not unloaded before the download
-				await this.restorePackageDirectory(packageName, backupDirectory);
-				throw error;
-			}
-
-			// A failed load keeps the new directory: rolling back to a working older version
-			// would leave this instance silently behind the leader's record.
-			try {
-				await this.reloadPackage(packageName);
-			} finally {
-				await this.discardBackupDirectory(packageName, backupDirectory);
-			}
-
-			this.logger.info(`Community package installed: ${packageName}`);
+			await this.installOrUpdateNpmPackageFiles(packageName, packageVersion);
 		});
+	}
+
+	private async installOrUpdateNpmPackageFiles(packageName: string, packageVersion: string) {
+		const authToken = this.getNpmAuthToken();
+		const backupDirectory = await this.backupPackageDirectory(packageName);
+
+		// Only the directory is rolled back here, never the ledger: on a follower its
+		// entry is justified by the leader's database record, not by this instance's disk.
+		try {
+			await this.downloadPackage(packageName, packageVersion, authToken);
+			// The command may come from a newer leader in a mixed fleet.
+			await this.assertPackageApiVersionSupported(packageName);
+		} catch (error) {
+			// No reload: the previous package was not unloaded before the download
+			await this.restorePackageDirectory(packageName, backupDirectory);
+			throw error;
+		}
+
+		// A failed load keeps the new directory: rolling back to a working older version
+		// would leave this instance silently behind the leader's record.
+		try {
+			await this.reloadPackage(packageName);
+		} finally {
+			await this.discardBackupDirectory(packageName, backupDirectory);
+		}
+
+		this.logger.info(`Community package installed: ${packageName}`);
 	}
 
 	private async reloadPackage(packageName: string) {
@@ -819,10 +869,7 @@ export class CommunityPackagesService {
 		this.loadNodesAndCredentials.releaseTypes();
 	}
 
-	private async removeNpmPackage(
-		packageName: string,
-		options: { requireNoRecord?: boolean; skipDiskChangesIfMissing?: boolean } = {},
-	) {
+	private async removeNpmPackage(packageName: string, options: { requireNoRecord?: boolean } = {}) {
 		return await this.packageMutex(async () => {
 			// Same reason as in `installOrUpdateNpmPackage`: on the receiving path the absent
 			// record is the precondition, and a concurrent install command can restore it.
@@ -832,26 +879,18 @@ export class CommunityPackagesService {
 				});
 			}
 
-			const packageDirectoryExists = await this.packageDirectoryExists(packageName);
-			const ledgerHasPackage =
-				(await this.readPackageJson())?.dependencies[packageName] !== undefined;
-			const shouldChangeDisk =
-				packageDirectoryExists || ledgerHasPackage || !options.skipDiskChangesIfMissing;
-
-			if (shouldChangeDisk) await this.deletePackageDirectory(packageName);
+			await this.deletePackageDirectory(packageName);
 
 			// Housekeeping: the ledger is a projection of the database, so a dangling entry
 			// must not fail the uninstall, but leaving it gives `npm prune` a reason to put
 			// the package back on disk.
-			if (shouldChangeDisk) {
-				try {
-					await this.removePackageJsonDependency(packageName);
-				} catch (error) {
-					this.logger.warn('Failed to remove community package from the ledger', {
-						error: ensureError(error),
-						packageName,
-					});
-				}
+			try {
+				await this.removePackageJsonDependency(packageName);
+			} catch (error) {
+				this.logger.warn('Failed to remove community package from the ledger', {
+					error: ensureError(error),
+					packageName,
+				});
 			}
 
 			await this.loadNodesAndCredentials.unloadPackage(packageName);
@@ -1099,6 +1138,9 @@ export class CommunityPackagesService {
 	}
 
 	private async removePackageJsonDependency(packageName: string) {
+		const packageJson = await this.readPackageJson();
+		if (packageJson && !(packageName in packageJson.dependencies)) return;
+
 		await this.mutatePackageJsonDependencies((dependencies) => {
 			delete dependencies[packageName];
 		});

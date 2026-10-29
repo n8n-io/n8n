@@ -42,6 +42,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	const TARBALL_NAME = `${PACKAGE_NAME}-1.0.0.tgz`;
 
 	const nodesDownloadDir = path.join('tmp', 'n8n-vi-pubsub-downloads');
+	const packageJsonPath = path.join(nodesDownloadDir, 'package.json');
 	const instanceSettings = mock<InstanceSettings>({ nodesDownloadDir });
 	const logger = mock<Logger>();
 	const publisher = mock<Publisher>();
@@ -79,14 +80,17 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		);
 	};
 
+	let installedPackageJson: Record<string, unknown>;
+	let ledgerDependencies: Record<string, string>;
+
 	const execMock = ((...args: Parameters<typeof execFile>) => {
 		const command = args[0];
 		const cmdArgs = args[1];
 		const callback = args[args.length - 1] as ExecFileCallback;
-
 		if (command === 'npm' && cmdArgs?.[0] === 'pack') {
 			callback(null, TARBALL_NAME, '');
 		} else {
+			if (command === 'tar') installedPackageJson.version = PACKAGE_VERSION;
 			callback(null, 'Done', '');
 		}
 	}) as typeof execFile;
@@ -101,12 +105,14 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		vi.mocked(checkIfVersionExistsOrThrow).mockResolvedValue(true);
 		vi.mocked(verifyIntegrity).mockResolvedValue(undefined);
 
-		vi.mocked(readFile).mockResolvedValue(
-			JSON.stringify({
-				name: PACKAGE_NAME,
-				version: PREVIOUS_PACKAGE_VERSION,
-				dependencies: {},
-			}),
+		installedPackageJson = { name: PACKAGE_NAME, version: PREVIOUS_PACKAGE_VERSION };
+		ledgerDependencies = {};
+		vi.mocked(readFile).mockImplementation(async (filePath) =>
+			JSON.stringify(
+				filePath === packageJsonPath
+					? { name: 'installed-nodes', private: true, dependencies: ledgerDependencies }
+					: installedPackageJson,
+			),
 		);
 		vi.mocked(access).mockResolvedValue(undefined);
 		vi.mocked(writeFile).mockResolvedValue(undefined);
@@ -157,9 +163,12 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	};
 
 	const arrangeOnDiskVersion = (version: string) => {
-		vi.mocked(readFile).mockResolvedValue(
-			JSON.stringify({ name: PACKAGE_NAME, version, dependencies: {} }),
-		);
+		installedPackageJson.version = version;
+	};
+
+	const arrangeCompleteInstallation = (version: string) => {
+		arrangeOnDiskVersion(version);
+		ledgerDependencies[PACKAGE_NAME] = version;
 	};
 
 	test.each([PACKAGE_NAME, `@scope/${PACKAGE_NAME}`])(
@@ -436,7 +445,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	test('should load matching files from a shared volume without downloading them again', async () => {
 		const service = createService();
 		arrangeInstalledPackage();
-		arrangeOnDiskVersion(PACKAGE_VERSION);
+		arrangeCompleteInstallation(PACKAGE_VERSION);
 
 		await service.handleInstallEvent({
 			packageName: PACKAGE_NAME,
@@ -449,10 +458,38 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
 	});
 
-	test('should preserve a matching package that is already loaded in memory', async () => {
+	test('should repair matching package files when the ledger does not mark the install complete', async () => {
 		const service = createService();
 		arrangeInstalledPackage();
 		arrangeOnDiskVersion(PACKAGE_VERSION);
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expectDownloadAndLoad(PACKAGE_NAME);
+	});
+
+	test('should not load matching shared files with an unsupported node API version', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		arrangeCompleteInstallation(PACKAGE_VERSION);
+		installedPackageJson.n8n = { n8nNodesApiVersion: '99.0' };
+
+		await service.handleInstallEvent({
+			packageName: PACKAGE_NAME,
+			packageVersion: PACKAGE_VERSION,
+		});
+
+		expect(executeNpmCommand).not.toHaveBeenCalled();
+		expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
+	});
+
+	test('should preserve a matching package that is already loaded in memory', async () => {
+		const service = createService();
+		arrangeInstalledPackage();
+		arrangeCompleteInstallation(PACKAGE_VERSION);
 		const currentLoader = mock<PackageDirectoryLoader>({
 			packageJson: { name: PACKAGE_NAME, version: PACKAGE_VERSION },
 		});
@@ -473,7 +510,7 @@ describe('CommunityPackagesService pubsub handlers', () => {
 	test('should reload matching files when an older version is loaded in memory', async () => {
 		const service = createService();
 		arrangeInstalledPackage();
-		arrangeOnDiskVersion(PACKAGE_VERSION);
+		arrangeCompleteInstallation(PACKAGE_VERSION);
 		loadNodesAndCredentials.loaders = {
 			[PACKAGE_NAME]: mock<PackageDirectoryLoader>({
 				packageJson: { name: PACKAGE_NAME, version: PREVIOUS_PACKAGE_VERSION },
@@ -490,16 +527,34 @@ describe('CommunityPackagesService pubsub handlers', () => {
 		expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
 	});
 
-	test('should only unload when a peer already removed shared package files', async () => {
+	test('should keep an already-completed shared uninstall idempotent', async () => {
 		const service = createService();
 		vi.mocked(access).mockRejectedValue(new Error('Package directory does not exist'));
 
 		await service.handleUninstallEvent({ packageName: PACKAGE_NAME });
 
-		expect(rm).not.toHaveBeenCalled();
+		expect(rm).toHaveBeenCalledWith(`${nodesDownloadDir}/node_modules/${PACKAGE_NAME}`, {
+			recursive: true,
+			force: true,
+			maxRetries: 3,
+		});
 		expect(writeFile).not.toHaveBeenCalled();
 		expect(loadNodesAndCredentials.unloadPackage).toHaveBeenCalledWith(PACKAGE_NAME);
 		expect(loadNodesAndCredentials.postProcessLoaders).toHaveBeenCalled();
+	});
+
+	test('should remove a dangling ledger entry when a peer already removed the directory', async () => {
+		const service = createService();
+		ledgerDependencies[PACKAGE_NAME] = PACKAGE_VERSION;
+		vi.mocked(access).mockRejectedValue(new Error('Package directory does not exist'));
+
+		await service.handleUninstallEvent({ packageName: PACKAGE_NAME });
+
+		expect(writeFile).toHaveBeenCalledWith(
+			packageJsonPath,
+			JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }, null, 2),
+			'utf-8',
+		);
 	});
 
 	describe('logging', () => {

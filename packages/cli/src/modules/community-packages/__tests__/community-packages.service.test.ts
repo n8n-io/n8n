@@ -765,6 +765,13 @@ describe('CommunityPackagesService', () => {
 						private: true,
 						dependencies: { [PACKAGE_NAME]: '1.0.0' },
 					}),
+				)
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: '1.0.0' },
+					}),
 				);
 
 			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow(
@@ -1352,6 +1359,7 @@ describe('CommunityPackagesService', () => {
 				{} as InstalledPackages,
 			);
 			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
 		});
 
 		test('should not attempt to reinstall when no packages are missing', async () => {
@@ -1420,6 +1428,36 @@ describe('CommunityPackagesService', () => {
 			expect(logger.info).toHaveBeenCalledWith(
 				'Packages reinstalled successfully. Resuming regular initialization.',
 			);
+		});
+
+		test('should load a completed shared-volume install during restart without reinstalling it', async () => {
+			const installedPackages = [installedPackage1];
+			const ledgerPath = path.join(nodesDownloadDir, 'package.json');
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockImplementation(async (filePath) =>
+				JSON.stringify(
+					filePath === ledgerPath
+						? {
+								name: 'installed-nodes',
+								private: true,
+								dependencies: { 'package-1': '1.0.0' },
+							}
+						: {
+								name: 'package-1',
+								version: '1.0.0',
+								n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
+							},
+				),
+			);
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith('package-1');
 		});
 
 		test('should not reinstall a package the startup guard skipped as incompatible', async () => {
