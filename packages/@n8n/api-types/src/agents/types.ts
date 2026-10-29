@@ -516,6 +516,19 @@ export interface AgentToolOutputFile {
 	sizeBytes: number;
 }
 
+/** A file of an agent session, for the session files list. */
+export interface AgentSessionFile extends AgentToolOutputFile {
+	/** Where the file came from, e.g. 'chat', 'tool' or 'sandbox'. */
+	source: string;
+	/** ISO 8601 time when the file was stored. */
+	createdAt: string;
+}
+
+export interface AgentSessionFilesResponse {
+	/** Newest first. One entry for each content, plus each older file without a hash. */
+	files: AgentSessionFile[];
+}
+
 /** A tool output file that was not stored. The model gets the reason in the tool result. */
 export interface AgentToolSkippedFile {
 	fileName: string;
