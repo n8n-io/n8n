@@ -10,6 +10,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import type { IWorkflowDb } from '@n8n/db';
 import { WorkflowDependencyRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { IsNull, Not } from '@n8n/typeorm';
 import { ErrorReporter, Tracing } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -323,6 +324,120 @@ describe('WorkflowIndexService Integration', () => {
 			const publishedNodeTypes = getDependencyKeys(publishedDeps, 'nodeType').sort();
 			expect(publishedNodeTypes).toEqual(['n8n-nodes-base.httpRequest', 'n8n-nodes-base.webhook']);
 			expect(getDependencyKeys(publishedDeps, 'webhookPath')).toContain('my-webhook');
+		});
+
+		it('should remove published dependencies of unpublished workflows', async () => {
+			const publishedWorkflow = await createWorkflow({ nodes: [httpRequestNode] });
+			await createWorkflowHistory(publishedWorkflow);
+			await setActiveVersion(publishedWorkflow.id, publishedWorkflow.versionId);
+
+			const unpublishedWorkflow = await createWorkflow({ nodes: [webhookNode] });
+			await createWorkflowHistory(unpublishedWorkflow);
+			await setActiveVersion(unpublishedWorkflow.id, unpublishedWorkflow.versionId);
+
+			await workflowIndexService.buildIndex();
+			await workflowRepository.update(unpublishedWorkflow.id, { activeVersionId: null });
+
+			await workflowIndexService.buildIndex();
+
+			expect(
+				await workflowDependencyRepository.existsBy({
+					workflowId: unpublishedWorkflow.id,
+					publishedVersionId: Not(IsNull()),
+				}),
+			).toBe(false);
+			expect(
+				await workflowDependencyRepository.existsBy({
+					workflowId: unpublishedWorkflow.id,
+					publishedVersionId: IsNull(),
+				}),
+			).toBe(true);
+			expect(
+				await workflowDependencyRepository.existsBy({
+					workflowId: publishedWorkflow.id,
+					publishedVersionId: publishedWorkflow.versionId,
+				}),
+			).toBe(true);
+		});
+	});
+
+	describe('workflow-deactivated event (unpublish)', () => {
+		const nodeWithCredential = (credentialId: string): INode => ({
+			id: 'bq-node',
+			name: 'Google BigQuery',
+			type: 'n8n-nodes-base.googleBigQuery',
+			typeVersion: 2,
+			position: [0, 0],
+			parameters: {},
+			credentials: { googleApi: { id: credentialId, name: `Credential ${credentialId}` } },
+		});
+
+		const credentialKeys = async (workflowId: string) => {
+			const deps = await workflowDependencyRepository.find({ where: { workflowId } });
+			return deps
+				.filter((d) => d.dependencyType === 'credentialId')
+				.map((d) => d.dependencyKey)
+				.sort();
+		};
+
+		it('should stop listing the old credential after unpublish and a draft save with a new credential', async () => {
+			const owner = await createOwner();
+			const oldCredentialId = 'old-credential-x';
+			const newCredentialId = 'new-credential-y';
+
+			const workflow = await createWorkflow({ nodes: [nodeWithCredential(oldCredentialId)] });
+			await workflowDependencyRepository.removeDependenciesForWorkflow(workflow.id);
+			eventService.emit('workflow-created', {
+				user: createUserPayload(owner),
+				workflow,
+				publicApi: false,
+				projectId: uuid(),
+				projectType: 'personal',
+			});
+			await retryUntil(async () => {
+				expect(await credentialKeys(workflow.id)).toEqual([oldCredentialId]);
+			});
+
+			const publishedVersionId = uuid();
+			await createWorkflowHistory({ ...workflow, versionId: publishedVersionId });
+			await setActiveVersion(workflow.id, publishedVersionId);
+			workflow.activeVersionId = publishedVersionId;
+			eventService.emit('workflow-activated', {
+				user: createUserPayload(owner),
+				workflow,
+				workflowId: workflow.id,
+				publicApi: false,
+			});
+			await retryUntil(async () => {
+				const deps = await workflowDependencyRepository.find({
+					where: { workflowId: workflow.id, publishedVersionId },
+				});
+				expect(deps.some((d) => d.dependencyKey === oldCredentialId)).toBe(true);
+			});
+
+			await workflowRepository.update(workflow.id, { active: false, activeVersionId: null });
+			workflow.active = false;
+			workflow.activeVersionId = null;
+			eventService.emit('workflow-deactivated', {
+				user: createUserPayload(owner),
+				workflowId: workflow.id,
+				workflow,
+				publicApi: false,
+				deactivatedVersionId: publishedVersionId,
+			});
+
+			workflow.nodes = [nodeWithCredential(newCredentialId)];
+			workflow.versionCounter = workflow.versionCounter + 1;
+			const savedWorkflow = await workflowRepository.save(workflow);
+			eventService.emit('workflow-saved', {
+				user: createUserPayload(owner),
+				workflow: savedWorkflow,
+				publicApi: false,
+			});
+
+			await retryUntil(async () => {
+				expect(await credentialKeys(workflow.id)).toEqual([newCredentialId]);
+			});
 		});
 	});
 
