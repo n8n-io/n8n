@@ -25,7 +25,7 @@ import {
 import type { SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTelegramAdapter } from '../../esm-loader';
-import { fileAttachmentType } from '../../integration-helpers';
+import { outboundAttachmentType } from '../../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import {
 	createTelegramBridgeExecutionContext,
@@ -108,6 +108,8 @@ export class TelegramIntegration extends AgentChatIntegration {
 		maxFiles: 10,
 		maxFileBytes: 50 * 1024 * 1024,
 		maxCaptionLength: 1024,
+		// sendPhoto accepts up to 10 MB. sendDocument sends a larger image.
+		maxImageBytes: 10 * 1024 * 1024,
 	};
 
 	// sendDocument shows an image as a generic file. Typed attachments use sendPhoto, sendVideo and sendAudio.
@@ -124,10 +126,10 @@ export class TelegramIntegration extends AgentChatIntegration {
 	readonly maxMessageLength = 30_000;
 
 	/** A media group can mix photos and videos, but documents and audio go only with their own type. */
-	groupOutboundFiles<T extends { mimeType: string }>(files: T[]): T[][] {
+	groupOutboundFiles<T extends { mimeType: string; fileSizeBytes: number }>(files: T[]): T[][] {
 		const groups = new Map<string, T[]>();
 		for (const file of files) {
-			const type = fileAttachmentType(file.mimeType);
+			const type = outboundAttachmentType(file, this.fileUploadLimits.maxImageBytes);
 			const key = type === 'image' || type === 'video' ? 'visual' : type;
 			groups.set(key, [...(groups.get(key) ?? []), file]);
 		}

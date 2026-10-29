@@ -13,7 +13,7 @@ import {
 import { splitMessage } from './message-split';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
-	fileAttachmentType,
+	outboundAttachmentType,
 	integrationError,
 	type IntegrationErrorResponse,
 } from './integration-helpers';
@@ -173,20 +173,28 @@ export class AgentOutboundFiles {
 		const integration = this.integrationRegistry.get(platform);
 		return this.group(platform, attachments).map((group) => async () => {
 			// Each file is loaded into memory. MAX_CHANNEL_SEND_FILE_BYTES caps the size.
-			const files = await Promise.all(
+			const loaded = await Promise.all(
 				group.map(async (attachment) => ({
+					attachment,
 					data: await this.attachmentService.getBuffer(attachment),
-					filename: attachment.fileName,
-					mimeType: attachment.mimeType,
 				})),
 			);
-			if (!integration?.sendFilesAsAttachments) return { files };
+			if (!integration?.sendFilesAsAttachments) {
+				return {
+					files: loaded.map(({ attachment, data }) => ({
+						data,
+						filename: attachment.fileName,
+						mimeType: attachment.mimeType,
+					})),
+				};
+			}
+			const maxImageBytes = integration.fileUploadLimits?.maxImageBytes;
 			return {
-				attachments: files.map((file) => ({
-					type: fileAttachmentType(file.mimeType),
-					data: file.data,
-					name: file.filename,
-					mimeType: file.mimeType,
+				attachments: loaded.map(({ attachment, data }) => ({
+					type: outboundAttachmentType(attachment, maxImageBytes),
+					data,
+					name: attachment.fileName,
+					mimeType: attachment.mimeType,
 				})),
 			};
 		});

@@ -135,6 +135,8 @@ export interface FileUploadLimits {
 	maxFileBytes: number;
 	/** Maximum length of the text that goes with files. Undefined means no limit. */
 	maxCaptionLength?: number;
+	/** Maximum size of an image that is sent as an image. A larger image is sent as a file. */
+	maxImageBytes?: number;
 }
 
 export interface PlatformAgentContext {
@@ -347,7 +349,7 @@ export abstract class AgentChatIntegration {
 	 * the order that the agent gave. Undefined sends all files as one group.
 	 * Groups larger than `fileUploadLimits.maxFiles` are split again.
 	 */
-	groupOutboundFiles?<T extends { mimeType: string }>(files: T[]): T[][];
+	groupOutboundFiles?<T extends { mimeType: string; fileSizeBytes: number }>(files: T[]): T[][];
 
 	/** Read-only context queries exposed through the generated integration context tool. */
 	get contextQueries(): IntegrationContextQuery[] {

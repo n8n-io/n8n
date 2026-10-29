@@ -223,6 +223,35 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 	});
 });
 
+describe('AgentOutboundFiles.groups', () => {
+	it('sends a Telegram image over 10 MB as a document with the other documents', async () => {
+		const { service } = createService();
+		const bigImage = {
+			...chartFile,
+			id: 'big',
+			fileName: 'big.png',
+			fileSizeBytes: 11 * 1024 * 1024,
+		};
+		const pdf = { ...chartFile, id: 'doc', fileName: 'doc.pdf', mimeType: 'application/pdf' };
+
+		const groups = await Promise.all(
+			service
+				.groups('telegram', [chartFile, bigImage, pdf] as never)
+				.map(async (load) => await load()),
+		);
+
+		expect(groups).toEqual([
+			{ attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })] },
+			{
+				attachments: [
+					expect.objectContaining({ type: 'file', name: 'big.png' }),
+					expect.objectContaining({ type: 'file', name: 'doc.pdf' }),
+				],
+			},
+		]);
+	});
+});
+
 describe('AgentOutboundFiles.check', () => {
 	it('returns a limit error when the platform needs too many messages for the files', async () => {
 		const { service, attachmentService } = createService();

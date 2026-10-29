@@ -48,6 +48,18 @@ export function fileAttachmentType(mimeType: string): 'image' | 'video' | 'audio
 	return 'file';
 }
 
+/** The attachment type to send a file as. An image over `maxImageBytes` goes as a file. */
+export function outboundAttachmentType(
+	file: { mimeType: string; fileSizeBytes: number },
+	maxImageBytes?: number,
+): 'image' | 'video' | 'audio' | 'file' {
+	const type = fileAttachmentType(file.mimeType);
+	if (type === 'image' && maxImageBytes !== undefined && file.fileSizeBytes > maxImageBytes) {
+		return 'file';
+	}
+	return type;
+}
+
 export function normalizePlatformId(platform: string, id: string): string {
 	return id.includes(':') ? id : `${platform}:${id}`;
 }
