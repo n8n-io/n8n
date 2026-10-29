@@ -55,6 +55,8 @@ const { showMessage, showError, trackImportedSkill } = vi.hoisted(() => ({
 	showError: vi.fn(),
 	trackImportedSkill: vi.fn(),
 }));
+const { confirmSpy } = vi.hoisted(() => ({ confirmSpy: vi.fn() }));
+vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm: confirmSpy }) }));
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showMessage, showError }),
 }));
@@ -185,6 +187,9 @@ function renderModal({
 	| 'onUseLatestVersion'
 	| 'getDefaultName'
 	| 'agentName'
+	| 'latestVersion'
+	| 'agentVersions'
+	| 'onUseVersion'
 > = {}) {
 	const renderComponent = createComponentRenderer(AgentSkillModal, {
 		global: {
@@ -200,7 +205,9 @@ function renderModal({
 						'<button v-bind="$attrs" :disabled="disabled"><slot name="icon" /><slot /></button>',
 					props: ['variant', 'disabled'],
 				},
-				N8nCallout: { template: '<div v-bind="$attrs"><slot /></div>' },
+				N8nCallout: {
+					template: '<div v-bind="$attrs"><slot /><slot name="trailingContent" /></div>',
+				},
 				N8nActionDropdown: ActionDropdownStub,
 				ActionDropdown: ActionDropdownStub,
 				N8nHeading: { template: '<h2><slot /></h2>' },
@@ -1449,8 +1456,43 @@ describe('AgentSkillModal', () => {
 
 			await fireEvent.click(getByTestId('agent-skill-use-latest'));
 
-			expect(uiStore.closeModal).toHaveBeenCalledWith(MODAL_NAME);
+			// The editor stays open. The builder sends the saved version to it.
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 			expect(onUseLatestVersion).toHaveBeenCalledWith('tone');
+		});
+
+		it('shows the skill that the builder sends after a version change, without closing', async () => {
+			getSkillDetail.mockResolvedValue(
+				makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', canEdit: true }),
+			);
+			const data = {
+				projectId: 'p1',
+				agentId: 'a1',
+				skillRefsEnabled: true,
+				skillId: 'tone',
+				skill: { name: 'Support tone', description: 'Use for replies', instructions: 'Be kind' },
+				outdated: true,
+				onUseLatestVersion: vi.fn(),
+				onConfirm: vi.fn(),
+			};
+			const { findByTestId, getByTestId, rerender } = renderModal(data);
+			expect(await findByTestId('agent-skill-description-text')).toHaveTextContent(
+				'Use for replies',
+			);
+
+			await rerender({
+				modalName: MODAL_NAME,
+				data: {
+					...data,
+					skill: { ...data.skill, description: 'Use for every reply' },
+					outdated: false,
+				},
+			});
+
+			const description = await findByTestId('agent-skill-description-input');
+			expect(description.querySelector('input')).toHaveValue('Use for every reply');
+			expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+			expect(uiStore.closeModal).not.toHaveBeenCalled();
 		});
 
 		it('keeps a skill that the user can edit editable', async () => {
@@ -2103,5 +2145,187 @@ describe('Compare mode', () => {
 
 		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
 		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
+	});
+});
+
+describe('Versions in the agent builder', () => {
+	const skill = { name: 'Tone', description: 'Writing style', instructions: 'Be brief.' };
+	const old = { name: 'Tone', description: 'Old style', instructions: 'Be long.' };
+
+	beforeEach(() => {
+		getSkillDetail.mockResolvedValue(makeDetail({ id: 'tone', name: 'Tone', scope: 'project' }));
+		listSkillVersions.mockResolvedValue([
+			{ id: 'id-3', version: 3, createdBy: null, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'id-2', version: 2, createdBy: null, createdAt: '2026-10-25T11:07:00.000Z' },
+			{ id: 'id-1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		getSkillVersion.mockImplementation(async (_context: unknown, _id: string, version: number) => ({
+			id: `id-${version}`,
+			version,
+			createdBy: null,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: old,
+		}));
+	});
+
+	function renderBuilder(agentVersions: {
+		draft: number;
+		published: number | null;
+		pinned: boolean;
+	}) {
+		const onUseVersion = vi.fn();
+		const onUseLatestVersion = vi.fn();
+		const result = renderModal({
+			skillRefsEnabled: true,
+			skill,
+			skillId: 'tone',
+			agentName: 'Darwin',
+			latestVersion: 3,
+			agentVersions,
+			onUseVersion,
+			onUseLatestVersion,
+			onRemove: vi.fn(),
+		});
+		return { ...result, onUseVersion, onUseLatestVersion };
+	}
+
+	it('says the agent follows the latest version and marks the draft and published versions', async () => {
+		const { findByTestId, getByTestId } = renderBuilder({ draft: 3, published: 2, pinned: false });
+
+		const button = await findByTestId('agent-skill-versions-button');
+		expect(button).toHaveTextContent('agents.builder.skills.versions.usingLatest 3');
+		await userEvent.click(button);
+
+		expect(await findByTestId('skill-version-row-2')).toHaveTextContent(
+			'agents.builder.skills.versions.inPublishedAgent',
+		);
+		expect(getByTestId('skill-version-row-3')).not.toHaveTextContent(
+			'agents.builder.skills.versions.inPublishedAgent',
+		);
+	});
+
+	it('gives one version both markers when the draft and the published agent run it', async () => {
+		const { findByTestId, getByTestId } = renderBuilder({ draft: 2, published: 2, pinned: true });
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+
+		const dot = (await findByTestId('skill-version-row-2')).querySelector('[aria-hidden="true"]');
+		expect(dot?.className).toMatch(/draftDot/);
+		expect(dot?.className).toMatch(/publishedDot/);
+		expect(
+			getByTestId('skill-version-row-3').querySelector('[aria-hidden="true"]')?.className,
+		).not.toMatch(/draftDot|publishedDot/);
+	});
+
+	it('marks no version as published for an agent that is not published', async () => {
+		const { findByTestId, queryByTestId } = renderBuilder({
+			draft: 3,
+			published: null,
+			pinned: false,
+		});
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+		await findByTestId('skill-version-row-1');
+
+		expect(queryByTestId('skill-version-published')).not.toBeInTheDocument();
+	});
+
+	it('pins the agent to a version from the row menu', async () => {
+		const { findByTestId, onUseVersion } = renderBuilder({ draft: 3, published: 2, pinned: false });
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+		await findByTestId('skill-version-row-1');
+		await userEvent.click(
+			[...document.querySelectorAll('button')].find(
+				(button) => button.textContent?.trim() === 'agents.builder.skills.versions.useIn Darwin',
+			)!,
+		);
+
+		await waitFor(() =>
+			expect(onUseVersion).toHaveBeenCalledWith('tone', expect.objectContaining({ id: 'id-2' })),
+		);
+	});
+
+	it('shows a pinned skill read-only and goes back to the latest version from the bar', async () => {
+		const { findByTestId, getByTestId, onUseLatestVersion } = renderBuilder({
+			draft: 1,
+			published: 1,
+			pinned: true,
+		});
+
+		expect(await findByTestId('agent-skill-versions-button')).toHaveTextContent(
+			'agents.builder.skills.versions.usingVersion 1',
+		);
+		expect(await findByTestId('agent-skill-pinned-bar')).toHaveTextContent(
+			'agents.builder.skills.versions.pinned Darwin 1',
+		);
+		// The fields stay in the form, disabled, and Save skill is disabled.
+		expect(await findByTestId('agent-skill-name-input')).toBeInTheDocument();
+		expect(
+			getByTestId('agent-skill-description-input').querySelector('input, textarea'),
+		).toBeDisabled();
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+
+		await userEvent.click(await findByTestId('agent-skill-pinned-use-latest'));
+
+		expect(onUseLatestVersion).toHaveBeenCalledWith('tone');
+	});
+
+	it('lets a pinned agent open the latest version and compare against the pinned one', async () => {
+		const { findByTestId, getByTestId } = renderBuilder({ draft: 1, published: 1, pinned: true });
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+		await userEvent.click(await findByTestId('skill-version-row-3'));
+
+		// The latest version is not the one on screen, so the row opens it.
+		expect(await findByTestId('agent-skill-viewing-version')).toHaveTextContent(
+			'agents.builder.skills.versions.viewingLatest 3',
+		);
+		expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 3);
+		// Saving the latest again makes no new version, so there is no Restore.
+		expect(getByTestId('agent-skill-version-done')).toBeInTheDocument();
+		expect(document.querySelector('[data-testid="agent-skill-version-restore"]')).toBeNull();
+
+		await userEvent.click(getByTestId('agent-skill-version-done'));
+		await userEvent.click(await findByTestId('skill-version-compare-2'));
+
+		// The second side of the compare is the pinned version on screen, not the latest.
+		await waitFor(() => expect(getSkillVersion).toHaveBeenCalledWith(expect.anything(), 'tone', 1));
+		expect(getByTestId('agent-skill-compare-from')).toHaveTextContent('1');
+	});
+
+	it('asks before a pin drops unsaved edits, and pins only when the user agrees', async () => {
+		const { findByTestId, getByTestId, onUseVersion } = renderBuilder({
+			draft: 3,
+			published: 2,
+			pinned: false,
+		});
+		await fireEvent.update(
+			(await findByTestId('agent-skill-description-input')).querySelector('input')!,
+			'Writing style, edited',
+		);
+		await userEvent.click(getByTestId('agent-skill-versions-button'));
+
+		confirmSpy.mockResolvedValueOnce('cancel');
+		await userEvent.click(await findByTestId('skill-version-use-latest'));
+		await waitFor(() => expect(confirmSpy).toHaveBeenCalledTimes(1));
+		expect(onUseVersion).not.toHaveBeenCalled();
+
+		confirmSpy.mockResolvedValueOnce('confirm');
+		await userEvent.click(getByTestId('skill-version-use-latest'));
+		await waitFor(() =>
+			expect(onUseVersion).toHaveBeenCalledWith('tone', expect.objectContaining({ id: 'id-3' })),
+		);
+	});
+
+	it('pins the version the agent uses when the Use latest switch is turned off', async () => {
+		const { findByTestId, onUseVersion } = renderBuilder({ draft: 3, published: 2, pinned: false });
+
+		await userEvent.click(await findByTestId('agent-skill-versions-button'));
+		await userEvent.click(await findByTestId('skill-version-use-latest'));
+
+		await waitFor(() =>
+			expect(onUseVersion).toHaveBeenCalledWith('tone', expect.objectContaining({ id: 'id-3' })),
+		);
 	});
 });
