@@ -1636,7 +1636,11 @@ describe('Telemetry', () => {
 
 			expect(spyTrack).toHaveBeenCalledWith(
 				'Public API usage',
-				expect.objectContaining({ user_id: 'user1', total_calls: 1 }),
+				expect.objectContaining({
+					user_id: 'user1',
+					total_calls: 1,
+					consumed_by: JSON.stringify({ editor_ui: 0, other: 1 }),
+				}),
 			);
 			expect(spyTrack).not.toHaveBeenCalledWith('pulse', expect.anything());
 			expect(telemetry.getApiInvocationsBuffer()).toEqual({});
