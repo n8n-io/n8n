@@ -199,6 +199,25 @@ describe('executionLimitDelta', () => {
 	});
 });
 
+describe('rules with an inherited key as a value', () => {
+	const rules = {
+		isBillableExecution,
+		isInsightsProduction,
+		savesTime,
+		countsTowardExecutionLimit,
+	};
+	const counted = { billable: fact(), limit: fact({ event: 'started', outcome: 'none' }) };
+
+	test.each(['constructor', 'toString', '__proto__'])('count nowhere for %s', (value) => {
+		for (const [name, rule] of Object.entries(rules)) {
+			const base = name === 'countsTowardExecutionLimit' ? counted.limit : counted.billable;
+			for (const column of Object.keys(base)) {
+				expect(rule({ ...base, [column]: value } as LedgerFact)).toBe(false);
+			}
+		}
+	});
+});
+
 describe('isLedgerFact', () => {
 	test('returns true for a valid row', () => {
 		expect(isLedgerFact(fact())).toBe(true);

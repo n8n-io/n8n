@@ -156,14 +156,18 @@ const executionLimit = {
 	},
 } satisfies CountingRule;
 
+// Own keys only: an unknown value, or one inherited like `constructor`, counts nowhere.
+function isOn<K extends string>(map: Record<K, boolean>, key: K): boolean {
+	return Object.hasOwn(map, key) && map[key];
+}
+
 function matches(rule: CountingRule, fact: LedgerFact): boolean {
-	// An unknown value reads as undefined; Boolean() makes it count nowhere.
-	return Boolean(
-		rule.entityType[fact.entityType] &&
-			rule.event[fact.event] &&
-			rule.outcome[fact.outcome] &&
-			rule.source[fact.source] &&
-			rule.mode[fact.mode],
+	return (
+		isOn(rule.entityType, fact.entityType) &&
+		isOn(rule.event, fact.event) &&
+		isOn(rule.outcome, fact.outcome) &&
+		isOn(rule.source, fact.source) &&
+		isOn(rule.mode, fact.mode)
 	);
 }
 
