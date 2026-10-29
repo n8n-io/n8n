@@ -46,8 +46,12 @@ export class ConnectSkillSourceDto extends Z.class({
 	...skillSourceTarget,
 	/** The `key` of each picked skill, as discover answered it. */
 	skillKeys: z.array(z.string().min(1).max(2048)).min(1).max(SKILL_SOURCE_MAX_SKILLS),
-	/** The user ticked "I reviewed the warnings" for the picked skills that need review. */
-	reviewedWarnings: z.boolean().optional(),
+	/**
+	 * The `key` of each picked skill that the picker showed as needing review, when the user
+	 * ticked "I reviewed the warnings". Connect imports a skill that needs review only when its
+	 * key is in this list.
+	 */
+	reviewedSkillKeys: z.array(z.string().min(1).max(2048)).max(SKILL_SOURCE_MAX_SKILLS).optional(),
 }) {}
 
 /** The source that a link points to. */

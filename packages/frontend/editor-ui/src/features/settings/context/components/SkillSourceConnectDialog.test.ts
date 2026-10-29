@@ -498,7 +498,7 @@ describe('SkillSourceConnectDialog', () => {
 			url: 'https://github.com/acme/skills',
 			scope: 'instance',
 			skillKeys: ['skills/brand-voice', 'skills/web-scraper'],
-			reviewedWarnings: true,
+			reviewedSkillKeys: ['skills/web-scraper'],
 		});
 	});
 
