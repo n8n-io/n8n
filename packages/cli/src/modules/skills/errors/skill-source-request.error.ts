@@ -16,6 +16,8 @@ const STATUS: Record<SkillSourceReason, number> = {
 	too_many_skills: 422,
 	too_deep: 422,
 	archive_too_large: 422,
+	blocked_by_check: 422,
+	review_required: 422,
 	name_taken: 409,
 	duplicate_source: 409,
 	rate_limited: 429,

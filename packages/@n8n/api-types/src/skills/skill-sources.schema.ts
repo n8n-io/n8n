@@ -17,6 +17,8 @@ export const SKILL_SOURCE_REASONS = [
 	'too_deep',
 	'archive_too_large',
 	'parse_error',
+	'blocked_by_check',
+	'review_required',
 	'name_taken',
 	'duplicate_source',
 ] as const;
@@ -44,6 +46,8 @@ export class ConnectSkillSourceDto extends Z.class({
 	...skillSourceTarget,
 	/** The `key` of each picked skill, as discover answered it. */
 	skillKeys: z.array(z.string().min(1).max(2048)).min(1).max(SKILL_SOURCE_MAX_SKILLS),
+	/** The user ticked "I reviewed the warnings" for the picked skills that need review. */
+	reviewedWarnings: z.boolean().optional(),
 }) {}
 
 /** The source that a link points to. */
@@ -68,6 +72,39 @@ export type SkillSourceDuplicate =
 	| { kind: 'blocked'; where: 'global' | 'scope'; sourceId: string | null }
 	| { kind: 'warning'; projects: Array<{ id: string; name: string }> };
 
+/** The rules of the security check. The build spec lists them in Appendix B. */
+export const SKILL_SCAN_RULES = [
+	'invalid_skill',
+	'over_limit',
+	'file_skipped',
+	'hidden_unicode',
+	'new_url',
+	'permission_change',
+	'suspicious_phrase',
+	'lossy_conversion',
+] as const;
+
+export type SkillScanRule = (typeof SKILL_SCAN_RULES)[number];
+
+/** `info` only tells the user something. It does not change the verdict. */
+export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
+
+export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
+
+export type SkillScanFinding = {
+	rule: SkillScanRule;
+	severity: SkillScanSeverity;
+	/** `SKILL.md`, or the path of a file in the skill folder. */
+	file?: string;
+	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
+	detail: string;
+	/** The linked domain of a `new_url` finding. */
+	domain?: string;
+};
+
+/** The most severe finding gives the verdict. No one can override `blocked`. */
+export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFinding[] };
+
 /** One skill in the picker. */
 export type DiscoveredSkill = {
 	/** Opaque. Send it back in `skillKeys`. */
@@ -82,6 +119,8 @@ export type DiscoveredSkill = {
 	/** The chosen scope already has a skill with this name. */
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;
+	/** The security check. Null when the skill is gone from the source. */
+	check: SkillScanResult | null;
 	webUrl: string;
 };
 

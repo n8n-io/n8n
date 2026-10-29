@@ -53,6 +53,7 @@ function discovered(overrides: Partial<DiscoveredSkill> = {}): DiscoveredSkill {
 		skippedFiles: [],
 		nameTaken: false,
 		error: null,
+		check: { verdict: 'pass', findings: [] },
 		webUrl: 'https://github.com/acme/skills/tree/main/skills/brand-voice',
 		...overrides,
 	};
@@ -344,6 +345,217 @@ describe('SkillSourceConnectDialog', () => {
 		);
 		expect(within(taken).getByRole('checkbox')).toBeDisabled();
 		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 1');
+	});
+
+	it('shows the security check of each skill, and does not let the user pick a blocked one', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({
+				skills: [
+					discovered(),
+					discovered({
+						key: 'skills/web-scraper',
+						location: 'skills/web-scraper',
+						name: 'web-scraper',
+						check: {
+							verdict: 'needs_review',
+							findings: [
+								{
+									rule: 'hidden_unicode',
+									severity: 'needs_review',
+									file: 'SKILL.md',
+									detail: 'Server text',
+								},
+								{
+									rule: 'new_url',
+									severity: 'info',
+									file: 'SKILL.md',
+									domain: 'scraper.example.com',
+									detail: 'Server text',
+								},
+								{
+									rule: 'new_url',
+									severity: 'info',
+									file: 'references/api.md',
+									domain: 'api.example.com',
+									detail: 'Server text',
+								},
+							],
+						},
+					}),
+					discovered({
+						key: 'skills/shell-runner',
+						location: 'skills/shell-runner',
+						name: 'shell-runner',
+						check: {
+							verdict: 'blocked',
+							findings: [
+								{
+									rule: 'over_limit',
+									severity: 'blocked',
+									file: 'references/big.md',
+									detail: 'Server text',
+								},
+								{ rule: 'lossy_conversion', severity: 'needs_review', detail: 'Server text' },
+								{
+									rule: 'new_url',
+									severity: 'info',
+									file: 'SKILL.md',
+									domain: 'shell.example.com',
+									detail: 'Server text',
+								},
+							],
+						},
+					}),
+				],
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		const passed = await view.findByTestId('skill-source-skill-skills/brand-voice');
+		expect(within(passed).getByTestId('skill-source-skill-check')).toHaveTextContent('Passed');
+		expect(within(passed).queryByTestId('skill-source-skill-findings')).not.toBeInTheDocument();
+
+		const review = view.getByTestId('skill-source-skill-skills/web-scraper');
+		expect(within(review).getByTestId('skill-source-skill-check')).toHaveTextContent('Review');
+		const reviewFindings = within(review).getByTestId('skill-source-skill-findings');
+		expect(reviewFindings).toHaveTextContent('Hidden Unicode characters in SKILL.md');
+		expect(reviewFindings).not.toHaveTextContent('domain');
+		expect(reviewFindings).not.toHaveTextContent('Server text');
+		expect(within(review).getByTestId('skill-source-skill-domains')).toHaveTextContent(
+			'Links to scraper.example.com, api.example.com',
+		);
+		expect(within(review).getByRole('checkbox')).not.toBeDisabled();
+
+		const blocked = view.getByTestId('skill-source-skill-skills/shell-runner');
+		expect(within(blocked).getByTestId('skill-source-skill-check')).toHaveTextContent('Blocked');
+		expect(within(blocked).getByTestId('skill-source-skill-findings')).toHaveTextContent(
+			'Over the size limits in references/big.md. Content that n8n cannot convert exactly',
+		);
+		expect(within(blocked).queryByTestId('skill-source-skill-domains')).not.toBeInTheDocument();
+		expect(within(blocked).getByRole('checkbox')).toBeDisabled();
+		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 2');
+	});
+
+	it('shows the findings of a blocked skill that n8n cannot read, not the read error', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({
+				skills: [
+					discovered({
+						error: { reason: 'parse_error', message: 'Server text' },
+						check: {
+							verdict: 'blocked',
+							findings: [
+								{
+									rule: 'over_limit',
+									severity: 'blocked',
+									file: 'SKILL.md',
+									detail: 'Server text',
+								},
+							],
+						},
+					}),
+				],
+			}),
+		);
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		const row = await view.findByTestId('skill-source-skill-skills/brand-voice');
+		expect(within(row).getByTestId('skill-source-skill-findings')).toHaveTextContent(
+			'Over the size limits in SKILL.md',
+		);
+		expect(within(row).queryByTestId('skill-source-skill-reason')).not.toBeInTheDocument();
+	});
+
+	it('imports a skill that needs review only after "I reviewed the warnings"', async () => {
+		const review = discovered({
+			key: 'skills/web-scraper',
+			location: 'skills/web-scraper',
+			name: 'web-scraper',
+			check: {
+				verdict: 'needs_review',
+				findings: [
+					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'x' },
+				],
+			},
+		});
+		skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), review] }));
+		skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		const add = await view.findByTestId('skill-source-add');
+		expect(add).toBeDisabled();
+		await userEvent.click(view.getByRole('checkbox', { name: 'I reviewed the warnings' }));
+		expect(add).not.toBeDisabled();
+		await userEvent.click(add);
+
+		expect(skillsStore.connectSource).toHaveBeenCalledWith({
+			url: 'https://github.com/acme/skills',
+			scope: 'instance',
+			skillKeys: ['skills/brand-voice', 'skills/web-scraper'],
+			reviewedWarnings: true,
+		});
+	});
+
+	it('clears "I reviewed the warnings" when the user unpicks every skill that needs review', async () => {
+		const review = discovered({
+			key: 'skills/web-scraper',
+			location: 'skills/web-scraper',
+			name: 'web-scraper',
+			check: {
+				verdict: 'needs_review',
+				findings: [
+					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'x' },
+				],
+			},
+		});
+		skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), review] }));
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		await userEvent.click(await view.findByRole('checkbox', { name: 'I reviewed the warnings' }));
+		const row = view.getByTestId('skill-source-skill-skills/web-scraper');
+		await userEvent.click(within(row).getByRole('checkbox'));
+		await userEvent.click(within(row).getByRole('checkbox'));
+
+		expect(view.getByRole('checkbox', { name: 'I reviewed the warnings' })).not.toBeChecked();
+		expect(view.getByTestId('skill-source-add')).toBeDisabled();
+	});
+
+	it('asks for no review when the user unpicks every skill that needs it', async () => {
+		const review = discovered({
+			key: 'skills/web-scraper',
+			location: 'skills/web-scraper',
+			name: 'web-scraper',
+			check: {
+				verdict: 'needs_review',
+				findings: [
+					{ rule: 'hidden_unicode', severity: 'needs_review', file: 'SKILL.md', detail: 'x' },
+				],
+			},
+		});
+		skillsStore.discoverSource.mockResolvedValue(discovery({ skills: [discovered(), review] }));
+		skillsStore.connectSource.mockResolvedValue({ sourceId: 'src-1', imported: [], failed: [] });
+		const view = render();
+
+		await pasteLink(view, 'https://github.com/acme/skills');
+
+		const row = await view.findByTestId('skill-source-skill-skills/web-scraper');
+		await userEvent.click(within(row).getByRole('checkbox'));
+		expect(view.queryByTestId('skill-source-reviewed-warnings')).not.toBeInTheDocument();
+		await userEvent.click(view.getByTestId('skill-source-add'));
+
+		expect(skillsStore.connectSource).toHaveBeenCalledWith({
+			url: 'https://github.com/acme/skills',
+			scope: 'instance',
+			skillKeys: ['skills/brand-voice'],
+		});
 	});
 
 	it('says why n8n cannot read a skill in the list, without the server detail', async () => {
