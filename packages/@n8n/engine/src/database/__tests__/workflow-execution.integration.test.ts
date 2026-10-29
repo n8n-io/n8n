@@ -448,6 +448,25 @@ describe('workflow_execution table (integration)', () => {
 			}),
 		).toBe(2);
 	});
+
+	it('carries the parent CHECK and the partial parent index in the schema', async () => {
+		const indexes: Array<{ indexname: string; indexdef: string }> = await dataSource.query(
+			"SELECT indexname, indexdef FROM pg_indexes WHERE tablename = 'workflow_execution'",
+		);
+		const byName = Object.fromEntries(indexes.map((row) => [row.indexname, row.indexdef]));
+		expect(byName.idx_workflow_execution_parent_execution_id).toContain('(parent_execution_id)');
+		expect(byName.idx_workflow_execution_parent_execution_id).toContain(
+			'WHERE (parent_execution_id IS NOT NULL)',
+		);
+
+		const [check]: Array<{ definition: string }> = await dataSource.query(
+			`SELECT pg_get_constraintdef(oid) AS definition FROM pg_constraint
+				 WHERE conname = 'chk_workflow_execution_parent'`,
+		);
+		expect(check.definition).toBe(
+			'CHECK ((((parent_execution_id IS NULL) AND (parent_step_id IS NULL) AND (parent_awaited IS NULL)) OR ((parent_execution_id IS NOT NULL) AND (parent_step_id IS NOT NULL) AND (parent_awaited IS NOT NULL))))',
+		);
+	});
 });
 
 function newRecord(id: string): NewExecutionRecord {
