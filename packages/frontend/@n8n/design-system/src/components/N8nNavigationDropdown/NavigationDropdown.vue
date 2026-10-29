@@ -1,10 +1,15 @@
 <script setup lang="ts">
-import { ElMenu, ElSubMenu, ElMenuItem, type MenuItemRegistered } from 'element-plus';
-import { computed, defineComponent, ref, useSlots } from 'vue';
+import { computed, ref, useAttrs, useSlots } from 'vue';
 import type { RouteLocationRaw } from 'vue-router';
+import { useRouter } from 'vue-router';
 
 import type { IconSize } from '../../types';
 import ConditionalRouterLink from '../ConditionalRouterLink';
+import N8nDropdownMenu from '../N8nDropdownMenu/DropdownMenu.vue';
+import type {
+	DropdownMenuExposed,
+	DropdownMenuItemProps,
+} from '../N8nDropdownMenu/DropdownMenu.types';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';
 import N8nText from '../N8nText';
@@ -26,8 +31,23 @@ type Divider = { isDivider: true; id: string };
 
 type Item = BaseItem & { submenu?: Array<BaseItem | Divider> };
 
+type MenuItemClick = {
+	active: boolean;
+	index: string;
+	indexPath: string[];
+};
+
+type NavItemData = {
+	source: BaseItem;
+	indexPath: string[];
+	showIcon: boolean;
+	/** Item whose append slot renders on this row. Nested rows use the parent item. */
+	appendSource?: Item;
+};
+
 defineOptions({
 	name: 'N8nNavigationDropdown',
+	inheritAttrs: false,
 });
 
 const props = defineProps<{
@@ -37,21 +57,21 @@ const props = defineProps<{
 	submenuClass?: string;
 }>();
 
-const menuRef = ref<typeof ElMenu | null>(null);
-const ROOT_MENU_INDEX = '-1';
-
-// Passing both expand-close-icon and expand-open-icon to ElSubMenu disables
-// Element Plus's default 180° chevron rotation. The displayed chevron for
-// nested submenus is fixed to ArrowRight by Element Plus, so this no-op
-// component is never actually rendered.
-const NoopIcon = defineComponent({ name: 'NoopIcon', render: () => null });
-
 const emit = defineEmits<{
-	itemClick: [item: MenuItemRegistered];
+	itemClick: [item: MenuItemClick];
 	select: [id: Item['id']];
 }>();
 
+const attrs = useAttrs();
 const slots = useSlots();
+const router = useRouter();
+const menuRef = ref<DropdownMenuExposed | null>(null);
+
+const triggerTestId = computed(() => {
+	const value = attrs['data-test-id'];
+	return typeof value === 'string' ? value : undefined;
+});
+
 const hasAppendSlot = (id: string) => Boolean(slots[`item.append.${id}`]);
 
 const orderedMenu = computed(() => {
@@ -76,24 +96,77 @@ defineSlots<{
 	[key: `item.append.${string}`]: (props: { item: Item }) => unknown;
 }>();
 
+const menuModel = computed(() => {
+	const meta = new Map<string, NavItemData>();
+
+	const toItems = (
+		entries: Array<BaseItem | Divider>,
+		parentPath: string[],
+		parent?: Item,
+	): Array<DropdownMenuItemProps<string, NavItemData>> => {
+		const items: Array<DropdownMenuItemProps<string, NavItemData>> = [];
+		let divided = false;
+
+		for (const entry of entries) {
+			if (entry.isDivider) {
+				divided = true;
+				continue;
+			}
+
+			const indexPath = [...parentPath, entry.id];
+			const hasSubmenu = Boolean(entry.submenu?.length);
+			const data: NavItemData = {
+				source: entry,
+				indexPath,
+				showIcon: hasSubmenu || parent !== undefined,
+				appendSource: hasSubmenu ? undefined : (parent ?? entry),
+			};
+			meta.set(entry.id, data);
+
+			items.push({
+				id: entry.id,
+				label: entry.title,
+				disabled: entry.disabled,
+				divided,
+				testId: hasSubmenu
+					? 'navigation-submenu'
+					: parent
+						? 'navigation-submenu-item'
+						: 'navigation-menu-item',
+				children: hasSubmenu ? toItems(entry.submenu ?? [], indexPath, entry) : undefined,
+				data,
+			});
+			divided = false;
+		}
+
+		return items;
+	};
+
+	return {
+		items: toItems(orderedMenu.value, ['-1']),
+		meta,
+	};
+});
+
 const open = () => {
-	menuRef.value?.open(ROOT_MENU_INDEX);
+	menuRef.value?.open();
 };
 
 const close = () => {
-	menuRef.value?.close(ROOT_MENU_INDEX);
+	menuRef.value?.close();
 };
 
-const menuTrigger = ref<'click' | 'hover'>('click');
-const onOpen = (index: string) => {
-	if (index !== ROOT_MENU_INDEX) return;
-	menuTrigger.value = 'hover';
-};
+function onSelect(id: string) {
+	const data = menuModel.value.meta.get(id);
+	if (!data || data.source.disabled) return;
 
-const onClose = (index: string) => {
-	if (index !== ROOT_MENU_INDEX) return;
-	menuTrigger.value = 'click';
-};
+	emit('select', id);
+	emit('itemClick', { active: true, index: id, indexPath: data.indexPath });
+
+	if (data.source.route && router) {
+		void router.push(data.source.route);
+	}
+}
 
 defineExpose({
 	open,
@@ -102,207 +175,76 @@ defineExpose({
 </script>
 
 <template>
-	<ElMenu
+	<N8nDropdownMenu
 		ref="menuRef"
-		mode="horizontal"
-		unique-opened
-		:menu-trigger="menuTrigger"
-		:ellipsis="false"
-		:class="$style.dropdown"
-		@select="emit('select', $event)"
-		@keyup.escape="close"
-		@open="onOpen"
-		@close="onClose"
+		:items="menuModel.items"
+		:disabled="disabled"
+		:modal="false"
+		:teleported="teleport !== false"
+		:extra-popper-class="submenuClass"
+		:data-test-id="triggerTestId"
+		placement="bottom-start"
+		sub-menu-max-height="450px"
+		@select="onSelect"
 	>
-		<ElSubMenu
-			:index="ROOT_MENU_INDEX"
-			:class="$style.trigger"
-			:popper-offset="-10"
-			:popper-class="[$style.submenu, submenuClass ?? ''].join(' ')"
-			:disabled
-			:teleported="teleport"
-		>
-			<template #title>
-				<slot />
-			</template>
+		<template #trigger>
+			<slot />
+		</template>
 
-			<template v-for="item in orderedMenu" :key="item.id">
-				<hr v-if="item.isDivider" />
-				<template v-else-if="item.submenu">
-					<ElSubMenu
-						:popper-class="$style.nestedSubmenu"
-						:index="item.id"
-						:popper-offset="-10"
-						:expand-close-icon="NoopIcon"
-						:expand-open-icon="NoopIcon"
-						data-test-id="navigation-submenu"
-					>
-						<template #title>
-							<div :class="$style.subMenuTitle">
-								<slot name="item-icon" v-bind="{ item }">
-									<!-- Default icon rendering -->
-									<template v-if="item.icon">
-										<N8nIcon
-											v-if="typeof item.icon === 'string' || item.icon.type === 'icon'"
-											:class="{ [$style.submenu__icon]: item.iconMargin !== false }"
-											:icon="typeof item.icon === 'object' ? item.icon.value : item.icon"
-											:size="item.iconSize"
-										/>
-										<N8nText
-											v-else-if="item.icon.type === 'emoji'"
-											:class="{ [$style.submenu__icon]: item.iconMargin !== false }"
-										>
-											{{ item.icon.value }}
-										</N8nText>
-									</template>
-								</slot>
-								{{ item.title }}
-							</div>
-						</template>
-						<template v-for="subitem in item.submenu" :key="subitem.id">
-							<hr v-if="subitem.isDivider" />
-							<ConditionalRouterLink v-else :to="(!subitem.disabled && subitem.route) || undefined">
-								<ElMenuItem
-									data-test-id="navigation-submenu-item"
-									:index="subitem.id"
-									:disabled="subitem.disabled"
-									@click="emit('itemClick', $event)"
-								>
-									<slot name="item-icon" v-bind="{ item: subitem }">
-										<!-- Default icon rendering -->
-										<template v-if="subitem.icon">
-											<N8nIcon
-												v-if="typeof subitem.icon === 'string' || subitem.icon.type === 'icon'"
-												:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
-												:icon="typeof subitem.icon === 'object' ? subitem.icon.value : subitem.icon"
-												:size="subitem.iconSize"
-											/>
-											<N8nText
-												v-else-if="subitem.icon.type === 'emoji'"
-												:class="{ [$style.submenu__icon]: subitem.iconMargin !== false }"
-											>
-												{{ subitem.icon.value }}
-											</N8nText>
-										</template>
-									</slot>
-
-									<span :class="$style.menuItemTitle">{{ subitem.title }}</span>
-									<N8nTooltip
-										v-if="subitem.description"
-										:content="subitem.description"
-										placement="right"
-										:class="$style.infoTooltip"
-									>
-										<N8nIcon icon="info" size="medium" :class="$style.infoIcon" />
-									</N8nTooltip>
-									<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
-										<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
-									</span>
-								</ElMenuItem>
-							</ConditionalRouterLink>
-						</template>
-					</ElSubMenu>
-				</template>
-				<ConditionalRouterLink v-else :to="(!item.disabled && item.route) || undefined">
-					<ElMenuItem
-						:index="item.id"
-						:disabled="item.disabled"
-						data-test-id="navigation-menu-item"
-					>
-						{{ item.title }}
-						<span v-if="hasAppendSlot(item.id)" :class="$style.menuItemAppend">
-							<slot :name="`item.append.${item.id}`" v-bind="{ item }" />
-						</span>
-					</ElMenuItem>
-				</ConditionalRouterLink>
+		<template #item-leading="{ item }">
+			<template v-if="item.data?.showIcon">
+				<slot name="item-icon" :item="item.data.source">
+					<template v-if="item.data.source.icon">
+						<N8nIcon
+							v-if="
+								typeof item.data.source.icon === 'string' || item.data.source.icon.type === 'icon'
+							"
+							class="submenu__icon"
+							:icon="
+								typeof item.data.source.icon === 'object'
+									? item.data.source.icon.value
+									: item.data.source.icon
+							"
+							:size="item.data.source.iconSize"
+						/>
+						<N8nText v-else-if="item.data.source.icon.type === 'emoji'" class="submenu__icon">
+							{{ item.data.source.icon.value }}
+						</N8nText>
+					</template>
+				</slot>
 			</template>
-		</ElSubMenu>
-	</ElMenu>
+		</template>
+
+		<template #item-label="{ item }">
+			<ConditionalRouterLink
+				:to="(!item.disabled && item.data?.source.route) || undefined"
+				:class="$style.menuItemTitle"
+			>
+				{{ item.label }}
+			</ConditionalRouterLink>
+		</template>
+
+		<template #item-trailing="{ item }">
+			<N8nTooltip
+				v-if="item.data?.source.description"
+				:content="item.data.source.description"
+				placement="right"
+				:class="$style.infoTooltip"
+			>
+				<N8nIcon icon="info" size="medium" :class="$style.infoIcon" />
+			</N8nTooltip>
+			<span
+				v-if="item.data?.appendSource && hasAppendSlot(item.data.appendSource.id)"
+				:class="$style.menuItemAppend"
+			>
+				<slot :name="`item.append.${item.data.appendSource.id}`" :item="item.data.appendSource" />
+			</span>
+		</template>
+	</N8nDropdownMenu>
 </template>
 
 <style lang="scss" module>
-:global(.el-menu).dropdown {
-	border-bottom: 0 !important;
-	background-color: transparent;
-
-	> :global(.el-sub-menu) {
-		> :global(.el-sub-menu__title) {
-			height: auto;
-			line-height: initial;
-			border-bottom: 0 !important;
-			padding: 0;
-			&,
-			&:hover,
-			&:focus {
-				background-color: transparent;
-			}
-			:global(.el-sub-menu__icon-arrow) {
-				display: none;
-			}
-		}
-
-		&:global(.is-active) {
-			:global(.el-sub-menu__title) {
-				border: 0;
-			}
-		}
-	}
-}
-
-.nestedSubmenu {
-	:global(.el-menu) {
-		max-height: 450px;
-		overflow: auto;
-	}
-}
-
-.submenu {
-	padding: 5px 0 !important;
-
-	:global(.el-menu--horizontal .el-menu .el-menu-item),
-	:global(.el-menu--horizontal .el-menu .el-sub-menu__title) {
-		color: var(--color--text--shade-1);
-		background-color: var(--menu--color--background);
-	}
-
-	:global(.el-menu--horizontal .el-menu .el-menu-item:not(.is-disabled):hover),
-	:global(.el-menu--horizontal .el-menu .el-sub-menu__title:not(.is-disabled):hover) {
-		background-color: var(--menu--color--background--hover);
-	}
-
-	:global(.el-popper) {
-		padding: 0 10px !important;
-	}
-
-	:global(.el-menu--popup) {
-		border: 1px solid var(--color--foreground);
-		border-radius: var(--radius);
-	}
-
-	:global(.el-menu--horizontal .el-menu .el-menu-item.is-disabled) {
-		opacity: 1;
-		cursor: default;
-		color: var(--color--text--tint-1);
-	}
-
-	:global(.el-sub-menu__icon-arrow svg) {
-		margin-top: auto;
-	}
-
-	& hr {
-		border-top: none;
-		border-bottom: var(--border);
-		margin-block: var(--spacing--4xs);
-	}
-}
-
-.subMenuTitle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-}
-
-.submenu__icon {
+:global(.submenu__icon) {
 	margin-right: var(--spacing--2xs);
 	color: var(--color--text);
 }

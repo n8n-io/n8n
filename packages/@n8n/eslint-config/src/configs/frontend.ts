@@ -24,6 +24,8 @@ export const frontendConfig = tseslint.config(
 
 			'@typescript-eslint/no-use-before-define': 'warn',
 			'@typescript-eslint/no-explicit-any': 'error',
+			'n8n-local-rules/no-element-plus-menu': 'error',
+			'n8n-local-rules/no-reka-ui-menu': 'error',
 			'n8n-local-rules/no-reka-ui-pagination': 'error',
 		},
 	},
