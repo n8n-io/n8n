@@ -1262,8 +1262,6 @@ describe('StepReadyHandler sub-executions', () => {
 				parent: { executionId: 'exec-1', stepId: 'step-a', awaited: false },
 			}),
 		);
-		// The step still runs when the sub-execution starts, so the execution
-		// cannot have ended in between.
 		expect(order).toEqual(['start', 'complete']);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
