@@ -3,7 +3,14 @@ import { createTeamProject, linkUserToProject, randomEmail, testDb } from '@n8n/
 import { ProjectRelationRepository, type User, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { createAdmin, createChatUser, createMember, createOwner } from './shared/db/users';
+import {
+	createAdmin,
+	createChatUser,
+	createLdapUser,
+	createMember,
+	createOwner,
+	createUser,
+} from './shared/db/users';
 
 describe('UserRepository', () => {
 	let userRepository: UserRepository;
@@ -240,6 +247,42 @@ describe('UserRepository', () => {
 			await expect(
 				userRepository.countUsersListStatuses({ email: 'nobody@example.com' }),
 			).resolves.toEqual({ all: 0, active: 0, deactivated: 0 });
+		});
+	});
+
+	describe('findAllWithRoleAndAuthIdentities()', () => {
+		beforeEach(async () => {
+			await testDb.truncate(['User', 'AuthIdentity']);
+		});
+
+		test('should load the role and the auth identities of every user without the role scopes', async () => {
+			const owner = await createOwner();
+			const member = await createMember();
+			const ldapUser = await createLdapUser({ password: null }, 'ldap-user');
+			const pendingUser = await createUser({ password: null });
+
+			const findSpy = vi.spyOn(userRepository, 'find');
+			const users = await userRepository.findAllWithRoleAndAuthIdentities();
+			const findOptions = findSpy.mock.calls[0][0];
+			findSpy.mockRestore();
+
+			const byId = new Map(users.map((user) => [user.id, user]));
+			expect([...byId.keys()].sort()).toEqual(
+				[owner.id, member.id, ldapUser.id, pendingUser.id].sort(),
+			);
+			expect(byId.get(owner.id)?.role.slug).toBe('global:owner');
+			expect(byId.get(member.id)?.role.slug).toBe('global:member');
+			expect(byId.get(ldapUser.id)?.authIdentities).toHaveLength(1);
+			expect(byId.get(ldapUser.id)?.isPending).toBe(false);
+			expect(byId.get(pendingUser.id)?.isPending).toBe(true);
+			expect(byId.get(owner.id)?.role.scopes).toBeUndefined();
+
+			const [sql, parameters] = userRepository
+				.createQueryBuilder('User')
+				.setFindOptions(findOptions ?? {})
+				.getQueryAndParameters();
+			expect(sql).not.toContain('role_scope');
+			expect(await userRepository.query(sql, parameters)).toHaveLength(4);
 		});
 	});
 });

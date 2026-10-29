@@ -1,13 +1,12 @@
-import { createTestingPinia } from '@pinia/testing';
-import RunDataHtml from '@/features/ndv/runData/components/RunDataHtml.vue';
-import { renderComponent } from '@/__tests__/render';
+import { render } from '@testing-library/vue';
 
-describe('RunDataHtml.vue', () => {
+import N8nHtmlPreview from './HtmlPreview.vue';
+
+describe('N8nHtmlPreview', () => {
 	it('should render the sanitized HTML into the preview iframe', () => {
-		const { container } = renderComponent(RunDataHtml, {
-			pinia: createTestingPinia(),
+		const { container } = render(N8nHtmlPreview, {
 			props: {
-				inputHtml: '<p>Hello <strong>World</strong></p>',
+				html: '<p>Hello <strong>World</strong></p>',
 			},
 		});
 
@@ -18,10 +17,9 @@ describe('RunDataHtml.vue', () => {
 	});
 
 	it('should isolate the preview iframe from the parent context', () => {
-		const { container } = renderComponent(RunDataHtml, {
-			pinia: createTestingPinia(),
+		const { container } = render(N8nHtmlPreview, {
 			props: {
-				inputHtml: '<p>content</p>',
+				html: '<p>content</p>',
 			},
 		});
 
@@ -35,14 +33,23 @@ describe('RunDataHtml.vue', () => {
 	it('should keep the preview isolated even when sanitized markup retains attributes', () => {
 		// Some malformed inputs survive sanitization with attributes intact, so the
 		// sandbox is the boundary that must hold regardless of the rendered markup.
-		const { container } = renderComponent(RunDataHtml, {
-			pinia: createTestingPinia(),
+		const { container } = render(N8nHtmlPreview, {
 			props: {
-				inputHtml: '<style></style/><img src=x onerror=alert(1)>',
+				html: '<style></style/><img src=x onerror=alert(1)>',
 			},
 		});
 
 		const iframe = container.querySelector('iframe');
 		expect(iframe?.getAttribute('sandbox')).toBe('');
+	});
+
+	it('should keep the class that callers use to select the iframe', () => {
+		const { container } = render(N8nHtmlPreview, {
+			props: {
+				html: '<p>content</p>',
+			},
+		});
+
+		expect(container.querySelector('iframe')).toHaveClass('__html-display');
 	});
 });

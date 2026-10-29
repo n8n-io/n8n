@@ -44,7 +44,7 @@ import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-p
 import type { IWorkflowToImport } from '@/interfaces';
 import { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
 import { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';

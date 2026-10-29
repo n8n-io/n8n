@@ -1,5 +1,10 @@
 import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import {
+	InstanceWriteAccessService,
+	ProjectScopeService,
+	WorkflowProjectService,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
@@ -25,10 +30,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { OwnershipService } from '@/services/ownership.service';
-
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { assertSchemaWriteAccess } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
@@ -52,9 +53,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
-		private readonly ownershipService: OwnershipService,
+		private readonly workflowProjectService: WorkflowProjectService,
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly projectScopeService: ProjectScopeService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -66,7 +68,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async getProjectId(workflow: Workflow) {
-		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+		const homeProject = await this.workflowProjectService.getWorkflowProjectCached(workflow.id);
 		return homeProject.id;
 	}
 
@@ -110,8 +112,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
-		const hasScope = await userHasScopes(user, [scope], false, { projectId });
-		if (!hasScope) {
+		const projectIds = await this.projectScopeService.getProjectIds(user, [scope]);
+		if (projectIds !== null && !projectIds.includes(projectId)) {
 			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
 		}
 	}

@@ -70,7 +70,7 @@ type Mode = 'account' | 'url';
 const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
-const { reasonText } = useSkillSourceReasons();
+const { reasonText, findingsText, linkedDomainsText } = useSkillSourceReasons();
 const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 
@@ -99,6 +99,8 @@ const repositoriesLoading = ref(false);
 const owner = ref('');
 const repositoryName = ref('');
 
+/** "I reviewed the warnings", for the picked skills that need review. */
+const reviewed = ref(false);
 /** Counts the reads of a link, so the answer of a read from before a close is dropped. */
 let discoverRun = 0;
 let credentialsRun = 0;
@@ -133,6 +135,7 @@ watch(
 		credentialsLoading.value = false;
 		createdCredential.value = null;
 		resetRepositories();
+		reviewed.value = false;
 	},
 	{ immediate: true },
 );
@@ -399,7 +402,42 @@ const canGoNext = computed(
 );
 
 function isSelectable(skill: DiscoveredSkill): boolean {
-	return !skill.nameTaken && !skill.error;
+	return !skill.nameTaken && !skill.error && skill.check?.verdict !== 'blocked';
+}
+
+const needsReview = computed(
+	() =>
+		discovery.value?.skills.some(
+			(skill) => selected.value.includes(skill.key) && skill.check?.verdict === 'needs_review',
+		) ?? false,
+);
+
+// A tick covers the warnings that the user saw, so it goes when no picked skill needs review.
+watch(needsReview, (needed) => {
+	if (!needed) reviewed.value = false;
+});
+
+const canAdd = computed(() => selected.value.length > 0 && (!needsReview.value || reviewed.value));
+
+const CHECK_BADGES = {
+	pass: { variant: 'success', label: 'settings.context.skills.connect.check.pass' },
+	needs_review: { variant: 'warning', label: 'settings.context.skills.connect.check.needsReview' },
+	blocked: { variant: 'danger', label: 'settings.context.skills.connect.check.blocked' },
+} as const;
+
+/**
+ * The findings line of a skill. A SKILL.md that n8n cannot read is blocked, and its findings
+ * name the cause, so they replace the read error.
+ */
+function checkFindings(skill: DiscoveredSkill): string {
+	if (!skill.check || skill.nameTaken) return '';
+	return findingsText(skill.check.findings);
+}
+
+/** The domains of a skill that can come in. A blocked row shows only why it is blocked. */
+function linkedDomains(skill: DiscoveredSkill): string {
+	if (!skill.check || skill.nameTaken || skill.check.verdict === 'blocked') return '';
+	return linkedDomainsText(skill.check.findings);
 }
 
 async function onNext() {
@@ -432,6 +470,7 @@ async function onNext() {
 		discovered.value = target;
 		if (result.duplicate.kind === 'blocked') return;
 		selected.value = result.skills.filter(isSelectable).map((skill) => skill.key);
+		reviewed.value = false;
 		step.value = 'choose';
 	} catch (error) {
 		if (isCurrent()) linkError.value = discoverErrorText(error, link);
@@ -503,13 +542,14 @@ function withSkillName(
 async function onAdd() {
 	const source = discovery.value?.source;
 	const target = discovered.value;
-	if (!source || !target || selected.value.length === 0) return;
+	if (!source || !target || !canAdd.value) return;
 	connecting.value = true;
 	try {
 		const response = await skillsStore.connectSource({
 			...target,
 			...parseScope(scope.value),
 			skillKeys: selected.value,
+			...(needsReview.value ? { reviewedWarnings: true } : {}),
 		});
 		emit('connected', {
 			response: { ...response, failed: response.failed.map(withSkillName) },
@@ -796,6 +836,22 @@ const title = computed(() => {
 							{{ skippedFilesText(item) }}
 						</N8nText>
 						<N8nText
+							v-if="checkFindings(item)"
+							size="small"
+							:color="item.check?.verdict === 'blocked' ? 'danger' : 'warning'"
+							data-test-id="skill-source-skill-findings"
+						>
+							{{ checkFindings(item) }}
+						</N8nText>
+						<N8nText
+							v-if="linkedDomains(item)"
+							size="small"
+							color="text-light"
+							data-test-id="skill-source-skill-domains"
+						>
+							{{ linkedDomains(item) }}
+						</N8nText>
+						<N8nText
 							v-if="item.nameTaken"
 							size="small"
 							color="text-light"
@@ -804,7 +860,7 @@ const title = computed(() => {
 							{{ nameTakenReason(item) }}
 						</N8nText>
 						<N8nText
-							v-else-if="item.error"
+							v-else-if="item.error && !checkFindings(item)"
 							size="small"
 							color="danger"
 							data-test-id="skill-source-skill-reason"
@@ -818,6 +874,13 @@ const title = computed(() => {
 						data-test-id="skill-source-skill-name-taken"
 					>
 						{{ i18n.baseText('settings.context.skills.connect.nameTaken.tag') }}
+					</N8nBadge>
+					<N8nBadge
+						v-else-if="item.check"
+						:variant="CHECK_BADGES[item.check.verdict].variant"
+						data-test-id="skill-source-skill-check"
+					>
+						{{ i18n.baseText(CHECK_BADGES[item.check.verdict].label) }}
 					</N8nBadge>
 				</li>
 			</ul>
@@ -851,6 +914,12 @@ const title = computed(() => {
 					{{ i18n.baseText('settings.context.skills.connect.addTo.hint') }}
 				</N8nText>
 			</div>
+			<N8nCheckbox
+				v-if="needsReview"
+				v-model="reviewed"
+				:label="i18n.baseText('settings.context.skills.connect.check.reviewed')"
+				data-test-id="skill-source-reviewed-warnings"
+			/>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
@@ -881,7 +950,7 @@ const title = computed(() => {
 			<N8nButton
 				v-else-if="step === 'choose'"
 				:label="addLabel"
-				:disabled="selected.length === 0"
+				:disabled="!canAdd"
 				:loading="connecting"
 				data-test-id="skill-source-add"
 				@click="onAdd"
