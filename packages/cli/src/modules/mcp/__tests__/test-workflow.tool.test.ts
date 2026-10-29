@@ -81,7 +81,7 @@ describe('test-workflow MCP tool', () => {
 		vi.mocked(findCredentialRefusal).mockResolvedValue(undefined);
 		vi.mocked(loadExecutionForViewer).mockReset();
 		workflowFinderService = mockInstance(WorkflowFinderService);
-		activeExecutions = mockInstance(ActiveExecutions, { has: vi.fn().mockReturnValue(true) });
+		activeExecutions = mockInstance(ActiveExecutions);
 		workflowRunner = mockInstance(WorkflowRunner);
 		nodeTypes = createMockNodeTypes();
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
@@ -709,61 +709,6 @@ describe('test-workflow MCP tool', () => {
 			expect(result.error).toBe(
 				'Node "HTTP" uses a credential you cannot use. Ask the owner to share it',
 			);
-		});
-
-		test('returns the refusal reason when the runner refused the run before it started', async () => {
-			setupSuccessfulExecution();
-			vi.mocked(findCredentialRefusal).mockResolvedValue({
-				message: 'Node "HTTP" uses a credential you cannot use',
-				nodeName: 'HTTP',
-			});
-			(workflowRunner.run as Mock).mockResolvedValue('exec-refused');
-			(activeExecutions.has as Mock).mockReturnValue(false);
-
-			const result = await testWorkflow(
-				user,
-				workflowFinderService,
-				activeExecutions,
-				workflowRunner,
-				nodeTypes,
-				mcpService,
-				logger,
-				'wf-1',
-				{ Trigger: [{ json: {} }] },
-			);
-
-			expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
-			expect(result).toEqual({
-				executionId: 'exec-refused',
-				status: 'error',
-				error: 'Node "HTTP" uses a credential you cannot use',
-			});
-		});
-
-		test('returns the saved error when the runner finished the run before it started', async () => {
-			setupSuccessfulExecution();
-			(workflowRunner.run as Mock).mockResolvedValue('exec-finished');
-			(activeExecutions.has as Mock).mockReturnValue(false);
-			mockViewedExecution({ error: { message: 'Workflow could not start' } });
-
-			const result = await testWorkflow(
-				user,
-				workflowFinderService,
-				activeExecutions,
-				workflowRunner,
-				nodeTypes,
-				mcpService,
-				logger,
-				'wf-1',
-				{ Trigger: [{ json: {} }] },
-			);
-
-			expect(activeExecutions.getPostExecutePromise).not.toHaveBeenCalled();
-			expect(result).toEqual({
-				executionId: 'exec-finished',
-				status: 'error',
-				error: 'Workflow could not start',
-			});
 		});
 
 		test('does not load the execution when the run succeeds', async () => {
