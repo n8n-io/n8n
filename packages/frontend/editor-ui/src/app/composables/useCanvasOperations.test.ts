@@ -10,7 +10,13 @@ import type {
 	Workflow,
 	IWorkflowGroup,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
+import {
+	NodeConnectionTypes,
+	NodeHelpers,
+	UserError,
+	TelemetryHelpers,
+	deepCopy,
+} from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
 import type {
@@ -104,6 +110,7 @@ import {
 	useWorkflowDocumentStore,
 	createWorkflowDocumentId,
 } from '@/app/stores/workflowDocument.store';
+import { useWorkflowDocumentConnections } from '@/app/stores/workflowDocument/useWorkflowDocumentConnections';
 import { useWorkflowDocumentGraph } from '@/app/stores/workflowDocument/useWorkflowDocumentGraph';
 
 import { useRouter } from 'vue-router';
@@ -9265,6 +9272,7 @@ describe('useCanvasOperations', () => {
 		/**
 		 * Prepares an insert on the source → target edge. The traversal actions
 		 * run on a test Workflow, so `getConnectedNodes` is the real one. The
+		 * connection actions run on the store's own connections composable. The
 		 * history mocks copy the store's bulk recording into `undoStack`.
 		 */
 		function setupEdgeInsert({
@@ -9287,21 +9295,43 @@ describe('useCanvasOperations', () => {
 			nodeTypesStore.nodeTypes = { [SET_NODE_TYPE]: { 1: mainNodeTypeDescription } };
 			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mainNodeTypeDescription);
 			workflowDocumentStoreInstance.allNodes = nodes;
-			workflowDocumentStoreInstance.connectionsBySourceNode = connections;
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockImplementation((id) =>
 				nodesById.get(id),
 			);
 			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockImplementation(
 				(name) => [...nodesById.values()].find((node) => node.name === name) ?? null,
 			);
+
+			const documentConnections = useWorkflowDocumentConnections({
+				getNodeById: (id) => nodesById.get(id),
+				syncWorkflowObject: () => {},
+			});
+			documentConnections.setConnections(deepCopy(connections));
+			vi.spyOn(workflowDocumentStoreInstance, 'connectionsBySourceNode', 'get').mockImplementation(
+				() => documentConnections.connectionsBySourceNode.value,
+			);
+			vi.mocked(workflowDocumentStoreInstance.hasConnection).mockImplementation(
+				documentConnections.hasConnection,
+			);
+			vi.mocked(workflowDocumentStoreInstance.addConnection).mockImplementation(
+				documentConnections.addConnection,
+			);
+			vi.mocked(workflowDocumentStoreInstance.removeConnection).mockImplementation(
+				documentConnections.removeConnection,
+			);
+			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockImplementation(
+				documentConnections.incomingConnectionsByNodeName,
+			);
+			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockImplementation(
+				documentConnections.outgoingConnectionsByNodeName,
+			);
+
 			vi.spyOn(workflowDocumentStoreInstance, 'addNode').mockImplementation((addedNode) => {
 				nodesById.set(addedNode.id, addedNode);
 			});
 			vi.spyOn(workflowDocumentStoreInstance, 'removeNodeById').mockImplementation((id) => {
 				nodesById.delete(id);
 			});
-			vi.mocked(workflowDocumentStoreInstance.incomingConnectionsByNodeName).mockReturnValue({});
-			vi.mocked(workflowDocumentStoreInstance.outgoingConnectionsByNodeName).mockReturnValue({});
 			vi.spyOn(workflowDocumentStoreInstance, 'setNodePositionById').mockImplementation(
 				(id, position) => {
 					const node = nodesById.get(id);
@@ -9348,8 +9378,22 @@ describe('useCanvasOperations', () => {
 
 			const positionOf = (node: TestNode) => nodesById.get(node.id)?.position;
 			const hasNode = (id: string) => nodesById.has(id);
+			const edges = () => listEdges(documentConnections.connectionsBySourceNode.value);
 
-			return { positionOf, hasNode, undoStack };
+			return { positionOf, hasNode, edges, undoStack };
+		}
+
+		/** Lists each connection as `source → target (type)`, in a stable order. */
+		function listEdges(connectionsBySource: IConnections) {
+			return Object.entries(connectionsBySource)
+				.flatMap(([sourceName, connectionsByType]) =>
+					Object.entries(connectionsByType).flatMap(([type, outputs]) =>
+						outputs.flatMap((output) =>
+							(output ?? []).map((target) => `${sourceName} → ${target.node} (${type})`),
+						),
+					),
+				)
+				.sort();
 		}
 
 		function createAgentWithSubNodes() {
@@ -9432,15 +9476,20 @@ describe('useCanvasOperations', () => {
 		it('should record the insert and every shift in one undo step', async () => {
 			const { trigger, agent, slack, model, memory, tool, nodes, connections } =
 				createAgentWithSubNodes();
-			const { positionOf, hasNode, undoStack } = setupEdgeInsert({
+			const { positionOf, hasNode, edges, undoStack } = setupEdgeInsert({
 				nodes,
 				connections,
 				source: trigger,
 				target: agent,
 			});
 
-			const { addNodesAndConnections, revertAddNode, revertUpdateNodePosition } =
-				useCanvasOperations();
+			const {
+				addNodesAndConnections,
+				revertAddNode,
+				revertCreateConnection,
+				revertDeleteConnection,
+				revertUpdateNodePosition,
+			} = useCanvasOperations();
 			const { addedNodes } = await addNodesAndConnections([{ type: SET_NODE_TYPE }], [], {});
 
 			expect(undoStack).toHaveLength(1);
@@ -9466,19 +9515,43 @@ describe('useCanvasOperations', () => {
 				Tool: [384, 208],
 			});
 
+			const insertedName = addedNodes[0].name;
+			expect(edges()).toEqual(
+				[
+					`Chat Trigger → ${insertedName} (main)`,
+					`${insertedName} → AI Agent (main)`,
+					'AI Agent → Slack (main)',
+					'Model → AI Agent (ai_languageModel)',
+					'Memory → AI Agent (ai_memory)',
+					'Tool → AI Agent (ai_tool)',
+				].sort(),
+			);
+
 			// Undo the bulk as useHistoryHelper does, with the history bus handlers that NodeView registers
 			const onNodeMove = ({ nodeName, position }: { nodeName: string; position: XYPosition }) =>
 				revertUpdateNodePosition(nodeName, { x: position[0], y: position[1] });
 			const onRevertAddNode = async ({ node }: { node: INodeUi }) => await revertAddNode(node.name);
+			const onRevertAddConnection = ({ connection }: { connection: [IConnection, IConnection] }) =>
+				revertCreateConnection(connection);
+			const onRevertRemoveConnection = ({
+				connection,
+			}: {
+				connection: [IConnection, IConnection];
+			}) => revertDeleteConnection(connection);
 			historyBus.on('nodeMove', onNodeMove);
 			historyBus.on('revertAddNode', onRevertAddNode);
+			historyBus.on('revertAddConnection', onRevertAddConnection);
+			historyBus.on('revertRemoveConnection', onRevertRemoveConnection);
 			for (const command of [...commands].reverse()) {
 				await command.revert();
 			}
 			historyBus.off('nodeMove', onNodeMove);
 			historyBus.off('revertAddNode', onRevertAddNode);
+			historyBus.off('revertAddConnection', onRevertAddConnection);
+			historyBus.off('revertRemoveConnection', onRevertRemoveConnection);
 
 			expect(hasNode(addedNodes[0].id)).toBe(false);
+			expect(edges()).toEqual(listEdges(connections));
 			expect(positionOf(agent)).toEqual([224, 0]);
 			expect(positionOf(slack)).toEqual([576, 0]);
 			expect(positionOf(model)).toEqual([96, 208]);
