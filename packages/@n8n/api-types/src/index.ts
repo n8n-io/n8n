@@ -430,6 +430,7 @@ export {
 	instanceAiEventSchema,
 	taskItemSchema,
 	taskListSchema,
+	tasksUpdatePayloadSchema,
 	runStartPayloadSchema,
 	runFinishPayloadSchema,
 	ASSISTANT_WORKFLOWS_ARCHIVED_EVENT,

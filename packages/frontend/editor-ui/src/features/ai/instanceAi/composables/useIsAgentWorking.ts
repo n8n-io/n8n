@@ -1,7 +1,7 @@
 import { computed, type ComputedRef } from 'vue';
 
 import { collectActiveBuilderAgents } from '../builderAgents';
-import { useThread, type ThreadRuntime } from '../instanceAi.store';
+import { useArtifactThread, type ArtifactThread } from '../artifactThread';
 
 /**
  * Whether the agent is busy anywhere in this thread — the lock signal shared by
@@ -19,8 +19,8 @@ import { useThread, type ThreadRuntime } from '../instanceAi.store';
  * inject what it provides, and forking this logic there would leave two copies
  * to keep in sync. Everything below it just calls this with no argument.
  */
-export function useIsAgentWorking(runtime?: ThreadRuntime): ComputedRef<boolean> {
-	const thread = runtime ?? useThread();
+export function useIsAgentWorking(runtime?: ArtifactThread): ComputedRef<boolean> {
+	const thread = runtime ?? useArtifactThread();
 
 	return computed(
 		() =>
