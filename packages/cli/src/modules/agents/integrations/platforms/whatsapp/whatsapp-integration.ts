@@ -63,7 +63,10 @@ import {
 import { buildIntegrationConnectionId } from '../../integration-tool-factory';
 import type { IntegrationActionResult, ReplyExpectation } from '../../integration-tool-types';
 import { startTypingIndicator } from '../typing-indicator';
-import { GRAPH_API_BASE_URL, WhatsAppCredentialCheckService } from './whatsapp-credential-check.service';
+import {
+	GRAPH_API_BASE_URL,
+	WhatsAppCredentialCheckService,
+} from './whatsapp-credential-check.service';
 import {
 	buildWhatsAppTemplateMessage,
 	listWhatsAppTemplates,
