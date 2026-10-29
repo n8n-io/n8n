@@ -1,0 +1,55 @@
+packages/cli/src/modules/agents/agent-file-bridge.service.ts
+  s_f6ecac1d27039d::t_af7d5d89a72a2e 18,54,74-80
+packages/cli/src/modules/agents/__tests__/agent-sandbox-files.service.test.ts
+  s_f6ecac1d27039d::t_48909851f417db 126-141,144-145,147-158,161-165,167-168,172-173,175,177-181
+  s_f6ecac1d27039d::t_b75a6dfb76f123 142-143,146,159-160,166,170-171,174
+  ai_agent 169,176
+packages/cli/src/modules/agents/integrations/__tests__/integration-action-executor.test.ts
+  s_f6ecac1d27039d::t_48909851f417db 1844-1846
+  s_f6ecac1d27039d::t_7db63e84d0a53a 72
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  s_f6ecac1d27039d::t_c2dd61856809ad 3,101,130-136,138
+  s_f6ecac1d27039d::t_af7d5d89a72a2e 7
+packages/cli/src/modules/agents/background/background-job-tools.ts
+  s_f6ecac1d27039d::t_34a454621549ab 7,106-109
+  s_f6ecac1d27039d::t_74fc3d60596e2c 103-105,110-111
+packages/cli/src/modules/agents/tools/read-binary-data.tool.ts
+  s_f6ecac1d27039d::t_93845553decfba 51
+  s_f6ecac1d27039d::t_34a454621549ab 13,54
+packages/cli/src/modules/agents/sub-agents/sub-agent-runner.ts
+  s_f6ecac1d27039d::t_f2343bc2bc858b 382-383
+  s_f6ecac1d27039d::t_b75a6dfb76f123 44-48,347,381,384-385,550
+packages/cli/src/modules/agents/agent-sandbox-files.service.ts
+  s_f6ecac1d27039d::t_b75a6dfb76f123 33,103-104,106-109
+  s_f6ecac1d27039d::t_8b2e13b40def53 30-32,34-37,89-97,105,110-121,146
+  s_f6ecac1d27039d::t_dd303752554b29 122-145
+  s_f6ecac1d27039d::t_34a454621549ab 5,52-62
+packages/cli/src/modules/agents/sub-agents/delegate-sub-agent-tool.ts
+  s_f6ecac1d27039d::t_34a454621549ab 16,90-93
+  s_f6ecac1d27039d::t_74fc3d60596e2c 86-89,94-96
+packages/cli/src/modules/agents/integrations/__tests__/agent-outbound-files.service.test.ts
+  s_f6ecac1d27039d::t_7db63e84d0a53a 15
+  s_f6ecac1d27039d::t_48909851f417db 5,57-59,223-241
+packages/cli/src/modules/agents/agent-turn-execution.service.ts
+  s_f6ecac1d27039d::t_f2343bc2bc858b 155
+  s_f6ecac1d27039d::t_b75a6dfb76f123 156-157,200
+packages/cli/src/modules/agents/__tests__/agent-file-bridge.service.test.ts
+  s_f6ecac1d27039d::t_7db63e84d0a53a 11,35-36,40
+  s_f6ecac1d27039d::t_48909851f417db 302-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7f284cbcc4e5cd63013d40d95a640c58a5e243e6",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
