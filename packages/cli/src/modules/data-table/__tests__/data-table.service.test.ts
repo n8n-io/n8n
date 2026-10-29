@@ -10,6 +10,8 @@ import { mockInstance, testModules } from '@n8n/backend-test-utils';
 import {
 	ProjectRelationRepository,
 	ProjectRepository,
+	type OperationContext,
+	type Transaction,
 	type TransactionRunner,
 	type User,
 } from '@n8n/db';
@@ -760,8 +762,11 @@ describe('DataTableService', () => {
 		const dataTableId = 'test-data-table-id';
 
 		it('reads columns and rows inside one read-only transaction', async () => {
+			// The runner hands the callback an enriched context. Both reads must receive
+			// that exact object, not the root context the service passed in.
+			const enrichedCtx: OperationContext = { trx: mock<Transaction>() };
 			mockDataTableRepository.findOneBy.mockResolvedValue({ id: dataTableId } as DataTable);
-			mockTransactionRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
+			mockTransactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(enrichedCtx));
 			mockDataTableColumnRepository.getColumnsInContext.mockResolvedValue([]);
 			mockDataTableRowsRepository.getManyAndCount.mockResolvedValue({ count: 0, data: [] });
 
@@ -772,17 +777,10 @@ describe('DataTableService', () => {
 			expect(mockTransactionRunner.run).toHaveBeenCalledWith({}, expect.any(Function), {
 				readOnly: true,
 			});
-			const ctx = mockTransactionRunner.run.mock.calls[0][0];
-			expect(mockDataTableColumnRepository.getColumnsInContext).toHaveBeenCalledWith(
-				dataTableId,
-				ctx,
-			);
-			expect(mockDataTableRowsRepository.getManyAndCount).toHaveBeenCalledWith(
-				dataTableId,
-				{},
-				[],
-				ctx,
-			);
+			expect(mockDataTableColumnRepository.getColumnsInContext).toHaveBeenCalledTimes(1);
+			expect(mockDataTableColumnRepository.getColumnsInContext.mock.calls[0][1]).toBe(enrichedCtx);
+			expect(mockDataTableRowsRepository.getManyAndCount).toHaveBeenCalledTimes(1);
+			expect(mockDataTableRowsRepository.getManyAndCount.mock.calls[0][3]).toBe(enrichedCtx);
 		});
 	});
 
