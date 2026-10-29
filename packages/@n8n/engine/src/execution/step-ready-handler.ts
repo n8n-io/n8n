@@ -209,6 +209,12 @@ export class StepReadyHandler {
 
 		const started = await this.startSubExecution(step, execution, subExecution);
 		if (started.kind === 'started') return;
+		if (isParentEnded(started.error)) {
+			// The execution ended while the step ran, and its sweep of pending steps
+			// skipped this one. Cancel it as that sweep would have: it did not fail.
+			await this.stepStore.cancelPendingSteps(execution.id);
+			return;
+		}
 
 		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
 		if (!failed) return;
@@ -227,13 +233,7 @@ export class StepReadyHandler {
 		subExecution: SubExecutionDeclaration,
 	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
 		const started = await this.startSubExecution(step, execution, subExecution);
-		if (
-			started.kind === 'error' &&
-			started.error instanceof InvalidParentLinkError &&
-			started.error.reason === 'execution-ended'
-		) {
-			return { kind: 'parent-ended' };
-		}
+		if (started.kind === 'error' && isParentEnded(started.error)) return { kind: 'parent-ended' };
 		return started;
 	}
 
@@ -478,6 +478,11 @@ function stepEventFields(step: StepRecord, node: GraphNode) {
 		iteration: step.iteration,
 		at: new Date().toISOString(),
 	};
+}
+
+/** The start was refused because the parent execution has ended. */
+function isParentEnded(error: unknown): boolean {
+	return error instanceof InvalidParentLinkError && error.reason === 'execution-ended';
 }
 
 function toStepError(error: unknown): StepError {
