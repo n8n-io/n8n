@@ -1,18 +1,6 @@
-import type { IconName } from '../N8nIcon/icons';
+import type { ActionToggleItem } from '../N8nActionToggle/ActionToggle.types';
 
 export type VersionHistoryStatus = 'published' | 'latest' | 'default';
-
-/** One entry in a version menu. */
-export interface VersionHistoryAction {
-	/** Id sent on the action event. */
-	id: string;
-	/** Label in the menu. */
-	label: string;
-	/** Icon name shown before the label. */
-	icon?: IconName;
-	/** The user cannot choose this action. */
-	disabled?: boolean;
-}
 
 export interface VersionHistoryItem {
 	/** Stable id for the version. Unique across versions and groups in the list. */
@@ -32,11 +20,11 @@ export interface VersionHistoryItem {
 	/** Accessible name for the status dot. */
 	statusLabel?: string;
 	/**
-	 * Menu items for the row. Set `icon` to an icon name to draw an icon before the label.
+	 * Menu items for the row. Each item is an `ActionToggleItem`, so `icon` draws an icon before the label.
 	 * The row hides the menu when this list is empty.
 	 * The compare control stays. Use the `actions` slot to replace both controls.
 	 */
-	actions?: VersionHistoryAction[];
+	actions?: Array<ActionToggleItem<string>>;
 	/** The user cannot select this row. Compare and the menu stay available. */
 	disabled?: boolean;
 	/** Disable the compare control for this row. */
@@ -96,10 +84,27 @@ export interface VersionHistoryProps {
 	items: VersionHistoryEntry[];
 	/**
 	 * Id of the open version.
-	 * Pass it to control the selection. Omit it and the list keeps the row the user selects.
+	 * Pass it to control the selection. Set it to the current version so the list opens on that row.
+	 * Omit it and the list keeps the row the user selects.
 	 * A group that contains the open version starts open.
 	 */
 	selectedId?: string;
+	/**
+	 * Id of the row to bring into view.
+	 * The list scrolls when this id changes. It does not follow the open version.
+	 * A group that contains this id opens before the scroll.
+	 * The id can be a version, a group, or a heading.
+	 * A heading above the row stays in view. The row starts below that heading.
+	 * Call `scrollTo` to scroll to the same id again.
+	 */
+	scrollToId?: string;
+	/**
+	 * Id of the version selected on first render.
+	 * Use this when the parent does not pass `selectedId`.
+	 * The list keeps the row the user selects after that.
+	 * A passed `selectedId` replaces this value.
+	 */
+	defaultSelectedId?: string;
 	/** Accessible name for the list. */
 	label?: string;
 	/**
@@ -109,4 +114,16 @@ export interface VersionHistoryProps {
 	loading?: boolean;
 	/** Accessible name for the loading state. */
 	loadingLabel?: string;
+	/**
+	 * More versions can be loaded.
+	 * The list emits loadMore when the end is near the bottom of the scroll area.
+	 */
+	hasMore?: boolean;
+	/**
+	 * A later page is loading.
+	 * The rows stay visible. A status appears at the end of the list.
+	 */
+	loadingMore?: boolean;
+	/** Accessible name for the status at the end of the list. */
+	loadingMoreLabel?: string;
 }

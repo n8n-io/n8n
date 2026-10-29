@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue';
+import { useIntersectionObserver } from '@n8n/composables/useIntersectionObserver';
+import { computed, nextTick, onMounted, ref, watch } from 'vue';
 
 import type {
 	VersionHistoryActionPayload,
@@ -7,11 +8,23 @@ import type {
 	VersionHistoryProps,
 	VersionHistoryTogglePayload,
 } from './VersionHistory.types';
-import { buildHistoryRows, groupIdForVersion, isHistoryRow } from './versionHistoryRows';
+import {
+	pinnedHeading,
+	scrollTopBelowHeading,
+	type HeadingPlacement,
+	type PinnedHeading,
+} from './stickyHeading';
+import {
+	buildHistoryRows,
+	groupIdForVersion,
+	isHistoryRow,
+	listContainsId,
+} from './versionHistoryRows';
 import VersionHistoryGroup from './VersionHistoryGroup.vue';
 import VersionHistoryHeading from './VersionHistoryHeading.vue';
 import VersionHistoryItem from './VersionHistoryItem.vue';
 import { useI18n } from '../../composables/useI18n';
+import { N8nListbox } from '../N8nListbox';
 import N8nLoading from '../N8nLoading/Loading.vue';
 import N8nRecycleScroller from '../N8nRecycleScroller';
 
@@ -20,6 +33,8 @@ defineOptions({ name: 'N8nVersionHistory' });
 const props = withDefaults(defineProps<VersionHistoryProps>(), {
 	items: () => [],
 	loading: false,
+	hasMore: false,
+	loadingMore: false,
 });
 
 const emit = defineEmits<{
@@ -31,6 +46,8 @@ const emit = defineEmits<{
 	action: [value: VersionHistoryActionPayload];
 	/** The user opens or closes a group. */
 	toggle: [value: VersionHistoryTogglePayload];
+	/** The end of the list is near the bottom of the scroll area and more versions can be loaded. */
+	loadMore: [];
 }>();
 
 defineSlots<{
@@ -38,6 +55,8 @@ defineSlots<{
 	empty?: () => unknown;
 	/** Replaces the compare control and the menu. Receives the row. */
 	actions?: (props: { item: VersionHistoryRow }) => unknown;
+	/** Replaces the heading label. The pinned copy uses the same slot. */
+	heading?: (props: { id: string; label: string }) => unknown;
 }>();
 
 const SKELETON_ROWS = [
@@ -50,35 +69,125 @@ const SKELETON_ROWS = [
 // The estimate covers the gap between marks and two lines of text.
 const ESTIMATED_ROW_HEIGHT = 48;
 
+// Fixed list behavior for the version rows.
+const listboxProps = {
+	// One version stays open. A second activation keeps that version.
+	selectionBehavior: 'replace' as const,
+	// Hover paints the row through the item style.
+	highlightOnHover: false,
+	// Up and down move between rows.
+	orientation: 'vertical' as const,
+};
+
 const { t } = useI18n();
 const expandedIds = ref<Set<string>>(new Set());
-// Used only when the parent omits selectedId.
-const uncontrolledSelectedId = ref<string | undefined>();
+// Used only when the parent omits selectedId. The default applies on first render.
+const uncontrolledSelectedId = ref<string | undefined>(props.defaultSelectedId);
+const scrollerRef = ref<{
+	$el?: Element;
+	scrollTo: (position: number, behavior?: ScrollBehavior) => void;
+	getItemOffset: (key: string) => number | undefined;
+	getItemSize: (key: string) => number | undefined;
+} | null>(null);
+const loadMoreSentinel = ref<HTMLElement | null>(null);
+const listScrollTop = ref(0);
+// Measured scrollbar thickness. Keeps the pin off the scrollbar.
+const scrollbarWidth = ref(0);
+const pinned = ref<PinnedHeading | undefined>();
+// The latest row the parent asked to show. Cleared after the scroll runs.
+const pendingScrollId = ref<string | undefined>();
 
 const listLabel = computed(() => props.label ?? t('versionHistory.label'));
 const loadingLabel = computed(() => props.loadingLabel ?? t('versionHistory.loading'));
+const loadingMoreLabel = computed(() => props.loadingMoreLabel ?? t('versionHistory.loadingMore'));
+// The scroller root is the scrollport. The sentinel sits in its footer.
+const scrollRoot = computed(() => {
+	const element = scrollerRef.value?.$el ?? null;
+	return element instanceof HTMLElement ? element : null;
+});
+
+// One request at a time. The parent sets loadingMore, then appends the page.
+const loadRequested = ref(false);
+
+function requestMore() {
+	if (loadRequested.value || !props.hasMore || props.loadingMore || props.loading) return;
+	loadRequested.value = true;
+	emit('loadMore');
+}
+
+// The end marker is short. Start the next page while two rows are still below the fold.
+function maybeLoadMore() {
+	const element = scrollRoot.value;
+	if (!element) return;
+	const distance = element.scrollHeight - element.scrollTop - element.clientHeight;
+	if (distance <= ESTIMATED_ROW_HEIGHT * 2) requestMore();
+}
+
+const { observe: observeForLoadMore, disconnect } = useIntersectionObserver({
+	root: scrollRoot,
+	threshold: 0.01,
+	onIntersect: () => {
+		requestMore();
+	},
+});
+
+// The observer stops after one intersection. Watch again when the page changes.
+watch(
+	[
+		loadMoreSentinel,
+		scrollRoot,
+		() => props.hasMore,
+		() => props.loadingMore,
+		() => props.loading,
+		() => props.items.length,
+	],
+	([sentinel, root, hasMore, loadingMore, loading]) => {
+		if (sentinel && root && hasMore && !loadingMore && !loading) {
+			observeForLoadMore(sentinel);
+			return;
+		}
+		disconnect();
+	},
+	{ flush: 'post' },
+);
+
+watch(
+	() => props.loadingMore,
+	(loadingMore, wasLoading) => {
+		if (!wasLoading || loadingMore) return;
+		loadRequested.value = false;
+		void nextTick(() => maybeLoadMore());
+	},
+);
+
+watch(
+	() => props.items.length,
+	() => {
+		loadRequested.value = false;
+		void nextTick(() => maybeLoadMore());
+	},
+);
 const activeId = computed(() =>
 	props.selectedId !== undefined ? props.selectedId : uncontrolledSelectedId.value,
 );
 
 const selectedGroupId = computed(() => groupIdForVersion(props.items, activeId.value));
 
+function openGroup(groupId: string | undefined) {
+	if (!groupId || expandedIds.value.has(groupId)) return;
+	const next = new Set(expandedIds.value);
+	next.add(groupId);
+	expandedIds.value = next;
+}
+
 // Open the group that contains the selected version. Closing it stays closed
 // until the selection moves.
-watch(
-	selectedGroupId,
-	(groupId) => {
-		if (!groupId || expandedIds.value.has(groupId)) return;
-		const next = new Set(expandedIds.value);
-		next.add(groupId);
-		expandedIds.value = next;
-	},
-	{ immediate: true },
-);
+watch(selectedGroupId, (groupId) => openGroup(groupId), { immediate: true });
 
 const rows = computed(() => buildHistoryRows(props.items, expandedIds.value));
 
-function onSelect(id: string) {
+function onSelect(id: string | undefined) {
+	if (!id) return;
 	if (props.selectedId === undefined) {
 		uncontrolledSelectedId.value = id;
 	}
@@ -97,15 +206,189 @@ function onToggle(id: string) {
 	expandedIds.value = next;
 	emit('toggle', { id, expanded });
 }
+
+// The listbox handles Left and Right after the row.
+// A group handles those keys first.
+function onGroupKeydown(event: KeyboardEvent) {
+	if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+	if (!(event.target instanceof Element)) return;
+
+	const option = event.target.closest('[role="option"]');
+	if (!(option instanceof HTMLElement) || !option.hasAttribute('aria-expanded')) return;
+
+	const expanded = option.getAttribute('aria-expanded') === 'true';
+	const rtl = getComputedStyle(option).direction === 'rtl';
+	const openKey = rtl ? 'ArrowLeft' : 'ArrowRight';
+	const closeKey = rtl ? 'ArrowRight' : 'ArrowLeft';
+	const shouldOpen = event.key === openKey && !expanded;
+	const shouldClose = event.key === closeKey && expanded;
+	if (!shouldOpen && !shouldClose) return;
+
+	const id = option.dataset.value;
+	if (!id) return;
+
+	event.preventDefault();
+	event.stopPropagation();
+	onToggle(id);
+}
+
+function headingPlacements(): HeadingPlacement[] {
+	const scroller = scrollerRef.value;
+	if (!scroller) return [];
+
+	const placements: HeadingPlacement[] = [];
+	for (const row of rows.value) {
+		if (row.kind !== 'heading') continue;
+		const top = scroller.getItemOffset(row.key);
+		const height = scroller.getItemSize(row.key);
+		if (top === undefined || height === undefined) continue;
+		placements.push({ key: row.key, label: row.label, top, height });
+	}
+
+	return placements;
+}
+
+/** Distance to scroll so the row starts below the heading that covers it. */
+function scrollTopFor(id: string): number | undefined {
+	const scroller = scrollerRef.value;
+	const row = rows.value.find((entry) => entry.key === id);
+	if (!scroller || !row) return undefined;
+
+	const top = scroller.getItemOffset(id);
+	if (top === undefined) return undefined;
+
+	return scrollTopBelowHeading(headingPlacements(), top, row.kind === 'heading');
+}
+
+function flushScroll() {
+	const id = pendingScrollId.value;
+	if (!id || props.loading) return;
+	// Drop a target that is not in the loaded list. Keep it while the list is still empty.
+	if (props.items.length > 0 && !listContainsId(props.items, id)) {
+		pendingScrollId.value = undefined;
+		return;
+	}
+
+	const top = scrollTopFor(id);
+	if (top === undefined) return;
+
+	scrollerRef.value?.scrollTo(top);
+	pendingScrollId.value = undefined;
+
+	// The scroller measures the rows it just mounted on the next tick.
+	// Place the row again when that changes the heading height.
+	void nextTick(() => {
+		if (pendingScrollId.value) return;
+		const settled = scrollTopFor(id);
+		if (settled === undefined || settled === listScrollTop.value) return;
+		scrollerRef.value?.scrollTo(settled);
+	});
+}
+
+/** Scroll a row into view. A group that contains the id opens first. A heading above the row stays in view. */
+function scrollTo(id: string) {
+	pendingScrollId.value = id;
+	openGroup(groupIdForVersion(props.items, id));
+	void nextTick(() => flushScroll());
+}
+
+// The open version and the scroll target are separate.
+// A click in the list must not move the scroll position.
+watch(
+	() => props.scrollToId,
+	(id, previous) => {
+		if (id) {
+			scrollTo(id);
+			return;
+		}
+		if (previous && pendingScrollId.value === previous) {
+			pendingScrollId.value = undefined;
+		}
+	},
+	{ immediate: true },
+);
+
+function updatePinnedHeading() {
+	const scroller = scrollerRef.value;
+	const element = scroller?.$el;
+	if (element instanceof HTMLElement) {
+		scrollbarWidth.value = Math.max(0, element.offsetWidth - element.clientWidth);
+	}
+
+	if (!scroller) {
+		pinned.value = undefined;
+		return;
+	}
+
+	pinned.value = pinnedHeading(headingPlacements(), listScrollTop.value);
+}
+
+function onListScroll(top: number) {
+	listScrollTop.value = top;
+	updatePinnedHeading();
+	maybeLoadMore();
+}
+
+const pinClipStyle = computed(() => {
+	if (!pinned.value) return undefined;
+
+	return {
+		// The clip matches the measured heading row. The value comes from layout, not a token.
+		height: `${pinned.value.height}px`,
+		// The scrollbar sits in the scroller. This inset keeps the pin off it.
+		insetInlineEnd: scrollbarWidth.value > 0 ? `${scrollbarWidth.value}px` : undefined,
+	};
+});
+
+const pinShiftStyle = computed(() => {
+	if (!pinned.value || pinned.value.offset === 0) return undefined;
+
+	return {
+		transform: `translateY(${pinned.value.offset}px)`,
+	};
+});
+
+watch(rows, () => {
+	void nextTick(() => updatePinnedHeading());
+	if (!pendingScrollId.value) return;
+	void nextTick(() => flushScroll());
+});
+
+watch(
+	() => props.loading,
+	(loading) => {
+		if (loading || !pendingScrollId.value) return;
+		void nextTick(() => flushScroll());
+	},
+);
+
+onMounted(() => {
+	void nextTick(() => flushScroll());
+});
+
+defineExpose({ scrollTo });
 </script>
 
 <template>
 	<section
 		:class="$style.panel"
 		data-test-id="version-history"
-		:aria-label="!loading ? listLabel : undefined"
+		:aria-label="!loading && !rows.length ? listLabel : undefined"
 		:aria-busy="loading ? 'true' : undefined"
 	>
+		<div
+			v-if="pinned && !loading && rows.length"
+			:class="$style.pin"
+			:style="pinClipStyle"
+			data-test-id="version-history-sticky-heading"
+			aria-hidden="true"
+		>
+			<div :class="[$style.row, $style.headingRow, $style.pinHeading]" :style="pinShiftStyle">
+				<VersionHistoryHeading :label="pinned.label">
+					<slot v-if="$slots.heading" name="heading" :id="pinned.key" :label="pinned.label" />
+				</VersionHistoryHeading>
+			</div>
+		</div>
 		<div
 			v-if="loading"
 			:class="$style.loading"
@@ -136,58 +419,103 @@ function onToggle(id: string) {
 			</div>
 		</div>
 
-		<N8nRecycleScroller
+		<!-- The scroller mounts each row in a div, so this list cannot be a ul. -->
+		<N8nListbox
 			v-else-if="rows.length"
+			v-bind="listboxProps"
 			:class="$style.list"
-			:items="rows"
-			item-key="key"
-			:item-size="ESTIMATED_ROW_HEIGHT"
+			:model-value="activeId"
+			:label="listLabel"
+			@update:model-value="onSelect"
+			@keydown.capture="onGroupKeydown"
 		>
-			<template #default="{ item }">
-				<li
-					v-if="isHistoryRow(item)"
-					:class="[
-						$style.row,
-						item.isFirst && $style.first,
-						item.isLast && $style.last,
-						item.kind === 'heading' && $style.headingRow,
-						!item.connectAbove && !item.isFirst && item.kind !== 'heading' && $style.segmentStart,
-					]"
-					data-test-id="version-history-row"
-				>
-					<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
-					<span
-						v-if="item.connectAbove"
-						:class="$style.gap"
-						data-test-id="version-history-line"
-						data-segment="gap"
-					/>
-					<VersionHistoryHeading v-if="item.kind === 'heading'" :label="item.label" />
-					<VersionHistoryItem
-						v-else-if="item.kind === 'version'"
-						:item="item.item"
-						:selected="item.item.id === activeId"
-						:connect-above="item.connectAbove"
-						:connect-below="item.connectBelow"
-						@select="onSelect"
-						@compare="emit('compare', $event)"
-						@action="onAction(item.item.id, $event)"
+			<N8nRecycleScroller
+				ref="scrollerRef"
+				:items="rows"
+				item-key="key"
+				:item-size="ESTIMATED_ROW_HEIGHT"
+				@scroll="onListScroll"
+			>
+				<template #default="{ item }">
+					<div
+						v-if="isHistoryRow(item)"
+						:class="[
+							$style.row,
+							item.isFirst && $style.first,
+							item.isLast && $style.last,
+							item.kind === 'heading' && $style.headingRow,
+							item.kind === 'heading' && pinned?.key === item.key && $style.pinnedSource,
+							!item.connectAbove && !item.isFirst && item.kind !== 'heading' && $style.segmentStart,
+						]"
+						data-test-id="version-history-row"
 					>
-						<template v-if="$slots.actions" #actions="slotProps">
-							<slot name="actions" v-bind="slotProps" />
-						</template>
-					</VersionHistoryItem>
-					<VersionHistoryGroup
-						v-else-if="item.kind === 'group'"
-						:label="item.label"
-						:expanded="item.expanded"
-						:connect-above="item.connectAbove"
-						:connect-below="item.connectBelow"
-						@toggle="onToggle(item.groupId)"
-					/>
-				</li>
-			</template>
-		</N8nRecycleScroller>
+						<!-- The gap sits outside the row content. A heading leaves this gap empty. -->
+						<span
+							v-if="item.connectAbove"
+							:class="$style.gap"
+							data-test-id="version-history-line"
+							data-segment="gap"
+						/>
+						<VersionHistoryHeading v-if="item.kind === 'heading'" :label="item.label">
+							<slot v-if="$slots.heading" name="heading" :id="item.key" :label="item.label" />
+						</VersionHistoryHeading>
+						<VersionHistoryItem
+							v-else-if="item.kind === 'version'"
+							:item="item.item"
+							:connect-above="item.connectAbove"
+							:connect-below="item.connectBelow"
+							:aria-setsize="rows.length"
+							:aria-posinset="item.position"
+							@compare="emit('compare', $event)"
+							@action="onAction(item.item.id, $event)"
+						>
+							<template v-if="$slots.actions" #actions="slotProps">
+								<slot name="actions" v-bind="slotProps" />
+							</template>
+						</VersionHistoryItem>
+						<VersionHistoryGroup
+							v-else-if="item.kind === 'group'"
+							:id="item.groupId"
+							:label="item.label"
+							:expanded="item.expanded"
+							:connect-above="item.connectAbove"
+							:connect-below="item.connectBelow"
+							:aria-setsize="rows.length"
+							:aria-posinset="item.position"
+							@toggle="onToggle(item.groupId)"
+						/>
+					</div>
+				</template>
+				<template v-if="hasMore || loadingMore" #footer>
+					<div
+						ref="loadMoreSentinel"
+						:class="[$style.loadMore, loadingMore ? $style.loadingMore : $style.sentinel]"
+						data-test-id="version-history-load-more"
+						:role="loadingMore ? 'status' : undefined"
+						:aria-live="loadingMore ? 'polite' : undefined"
+						:aria-busy="loadingMore ? 'true' : undefined"
+						:aria-hidden="loadingMore ? undefined : 'true'"
+						:aria-label="loadingMore ? loadingMoreLabel : undefined"
+					>
+						<div v-if="loadingMore" :class="$style.skeleton" aria-hidden="true">
+							<span :class="$style.skeletonMark">
+								<span :class="$style.skeletonDot">
+									<N8nLoading variant="circle" />
+								</span>
+							</span>
+							<span :class="$style.skeletonCopy">
+								<span :class="$style.skeletonLine" :style="{ width: '42%' }">
+									<N8nLoading variant="text" />
+								</span>
+								<span :class="$style.skeletonLine" :style="{ width: '68%' }">
+									<N8nLoading variant="text" />
+								</span>
+							</span>
+						</div>
+					</div>
+				</template>
+			</N8nRecycleScroller>
+		</N8nListbox>
 
 		<div v-else :class="$style.empty" data-test-id="version-history-empty">
 			<slot name="empty" />
@@ -197,6 +525,7 @@ function onToggle(id: string) {
 
 <style lang="scss" module>
 .panel {
+	position: relative;
 	display: flex;
 	flex-direction: column;
 	height: 100%;
@@ -205,7 +534,31 @@ function onToggle(id: string) {
 	color: var(--color--text);
 }
 
+// The pin sits over the list. Overflow hides the heading as the next one pushes it up.
+.pin {
+	position: absolute;
+	z-index: 1;
+	inset-block-start: 0;
+	inset-inline: 0;
+	overflow: hidden;
+	pointer-events: none;
+}
+
+.pinHeading {
+	pointer-events: auto;
+	// The parent sets this to the surface behind the list.
+	background-color: var(--version-history--heading--color--background, var(--background--surface));
+}
+
+// The pin draws this heading. Hide this copy so the two do not stack.
+.pinnedSource {
+	opacity: 0;
+}
+
 .list {
+	position: relative;
+	// Stay under the pinned heading. A focused row can still paint above the track.
+	z-index: 0;
 	flex: 1;
 	min-height: 0;
 }
@@ -225,7 +578,6 @@ function onToggle(id: string) {
 	width: 100%;
 	padding-top: var(--version-history--row-gap);
 	padding-inline: var(--spacing--2xs);
-	list-style: none;
 }
 
 .first {
@@ -339,5 +691,17 @@ function onToggle(id: string) {
 	min-height: 0;
 	padding: var(--spacing--lg) var(--spacing--md);
 	text-align: center;
+}
+
+.loadMore {
+	box-sizing: border-box;
+}
+
+.sentinel {
+	height: var(--spacing--5xs);
+}
+
+.loadingMore {
+	padding: 0 var(--spacing--2xs) var(--spacing--3xs);
 }
 </style>

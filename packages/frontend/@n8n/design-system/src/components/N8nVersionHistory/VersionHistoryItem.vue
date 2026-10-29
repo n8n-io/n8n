@@ -7,12 +7,12 @@ import VersionHistoryStatusDot from './VersionHistoryStatusDot.vue';
 import { useI18n } from '../../composables/useI18n';
 import N8nActionToggle from '../N8nActionToggle/ActionToggle.vue';
 import N8nIconButton from '../N8nIconButton/IconButton.vue';
+import { N8nListboxItem } from '../N8nListbox';
 import N8nText from '../N8nText/Text.vue';
 import N8nTooltip from '../N8nTooltip/Tooltip.vue';
 
 const props = defineProps<{
 	item: VersionHistoryItem;
-	selected?: boolean;
 	/** Line from the top of the row content to the dot. */
 	connectAbove?: boolean;
 	/** Line from the dot to the bottom of the row content. */
@@ -20,7 +20,6 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	select: [id: string];
 	compare: [id: string];
 	action: [action: string];
 }>();
@@ -57,9 +56,9 @@ const accessibleName = computed(() =>
 		.join(', '),
 );
 
-function onSelect() {
-	if (props.item.disabled) return;
-	emit('select', props.item.id);
+function onActionsKeydown(event: KeyboardEvent) {
+	if (event.key === 'Tab') return;
+	event.stopPropagation();
 }
 
 function onCompare() {
@@ -73,53 +72,40 @@ function onAction(action: string) {
 </script>
 
 <template>
-	<div
-		:class="[$style.body, selected && $style.selected]"
+	<N8nListboxItem
+		:value="item.id"
+		:disabled="item.disabled"
+		:aria-label="accessibleName"
+		:class="$style.body"
 		data-test-id="version-history-item"
 		:data-version-id="item.id"
 	>
-		<VersionHistoryRail
-			mark="dot"
-			:connect-above="connectAbove"
-			:connect-below="connectBelow"
-			@click="onSelect"
-		>
+		<VersionHistoryRail mark="dot" :connect-above="connectAbove" :connect-below="connectBelow">
 			<VersionHistoryStatusDot :status="status" />
 		</VersionHistoryRail>
-		<button
-			type="button"
-			:class="$style.select"
-			role="menuitem"
-			:disabled="item.disabled"
-			:aria-label="accessibleName"
-			:aria-current="selected ? 'true' : undefined"
-			data-test-id="version-history-select"
-			@click="onSelect"
-		>
-			<span :class="$style.content">
-				<span :class="$style.mainRow">
-					<N8nText bold size="small" color="text-dark" :class="$style.label">
-						{{ item.label }}
+		<div :class="$style.content">
+			<span :class="$style.mainRow">
+				<N8nText bold size="small" color="text-dark" :class="$style.label">
+					{{ item.label }}
+				</N8nText>
+				<template v-if="item.detail">
+					<span :class="$style.separator" aria-hidden="true">·</span>
+					<N8nText size="small" color="text-light" :class="$style.detail">
+						{{ item.detail }}
 					</N8nText>
-					<template v-if="item.detail">
-						<span :class="$style.separator" aria-hidden="true">·</span>
-						<N8nText size="small" color="text-light" :class="$style.detail">
-							{{ item.detail }}
-						</N8nText>
-					</template>
-				</span>
-				<span v-if="item.author || item.createdAt" :class="$style.metaRow">
-					<N8nText v-if="item.author" size="small" color="text-base" :class="$style.author">
-						{{ item.author }}<template v-if="item.createdAt">, </template>
-					</N8nText>
-					<time v-if="item.createdAt" :datetime="item.createdAtIso" :class="$style.time">
-						<N8nText size="small" color="text-base">{{ item.createdAt }}</N8nText>
-					</time>
-				</span>
+				</template>
 			</span>
-		</button>
-		<!-- Actions stay outside the select control. A click on them does not select the version. -->
-		<div :class="$style.actions">
+			<span v-if="item.author || item.createdAt" :class="$style.metaRow">
+				<N8nText v-if="item.author" size="small" color="text-base" :class="$style.author">
+					{{ item.author }}<template v-if="item.createdAt">, </template>
+				</N8nText>
+				<time v-if="item.createdAt" :datetime="item.createdAtIso" :class="$style.time">
+					<N8nText size="small" color="text-base">{{ item.createdAt }}</N8nText>
+				</time>
+			</span>
+		</div>
+		<!-- Actions stay outside selection. A click or keypress on them does not select the version. -->
+		<div :class="$style.actions" @click.stop @keydown="onActionsKeydown">
 			<slot name="actions" :item="item">
 				<N8nTooltip placement="top" :content="compareLabel" :disabled="item.compareDisabled">
 					<N8nIconButton
@@ -139,12 +125,10 @@ function onAction(action: string) {
 				/>
 			</slot>
 		</div>
-	</div>
+	</N8nListboxItem>
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/_focus.scss';
-
 .body {
 	display: flex;
 	align-items: center;
@@ -152,37 +136,6 @@ function onAction(action: string) {
 	box-sizing: border-box;
 	padding-inline: var(--version-history--body-pad, var(--spacing--3xs));
 	border-radius: var(--radius);
-	background-color: transparent;
-
-	&:hover,
-	&.selected {
-		background-color: var(--color--background--light-1);
-	}
-}
-
-button.select {
-	display: flex;
-	align-items: center;
-	flex: 1;
-	min-width: 0;
-	margin: 0;
-	padding: var(--spacing--4xs);
-	border: none;
-	border-radius: var(--radius);
-	appearance: none;
-	background-color: transparent;
-	color: inherit;
-	font: inherit;
-	text-align: start;
-	cursor: pointer;
-
-	&:focus-visible {
-		@include focus.focus-ring;
-	}
-
-	&:disabled {
-		cursor: not-allowed;
-	}
 }
 
 .content {
@@ -190,6 +143,7 @@ button.select {
 	flex-direction: column;
 	flex: 1 1 auto;
 	min-width: 0;
+	padding: var(--spacing--4xs);
 }
 
 .mainRow {

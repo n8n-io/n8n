@@ -10,7 +10,10 @@ defineProps<{
 
 <template>
 	<div :class="$style.heading" data-test-id="version-history-heading">
-		<N8nText size="small" bold color="text-base">{{ label }}</N8nText>
+		<!-- The parent slot replaces the label. This padding keeps the label lined up. -->
+		<slot>
+			<N8nText size="small" bold color="text-base">{{ label }}</N8nText>
+		</slot>
 	</div>
 </template>
 

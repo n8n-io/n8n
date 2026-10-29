@@ -3,10 +3,14 @@ import { action } from 'storybook/actions';
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 
 import N8nButton from '../N8nButton';
+import N8nCard from '../N8nCard';
+import N8nHeading from '../N8nHeading/Heading.vue';
 import N8nIcon from '../N8nIcon/Icon.vue';
-import N8nIconButton from '../N8nIconButton/IconButton.vue';
 import N8nInput from '../N8nInput/Input.vue';
-import N8nTabs from '../N8nTabs/Tabs.vue';
+import N8nInputLabel from '../N8nInputLabel';
+import N8nOption from '../N8nOption';
+import N8nSelect from '../N8nSelect';
+import N8nSwitch from '../N8nSwitch';
 import N8nText from '../N8nText/Text.vue';
 import {
 	isVersionHistoryGroup,
@@ -150,23 +154,154 @@ function createManyVersions(): VersionHistoryEntry[] {
 
 const manyVersions = createManyVersions();
 
+// This story uses 2026 as the current year.
+const CURRENT_YEAR = 2026;
+
+const MONTH_NAMES = [
+	'January',
+	'February',
+	'March',
+	'April',
+	'May',
+	'June',
+	'July',
+	'August',
+	'September',
+	'October',
+	'November',
+	'December',
+] as const;
+
+const MONTH_SHORT_NAMES = [
+	'Jan',
+	'Feb',
+	'Mar',
+	'Apr',
+	'May',
+	'Jun',
+	'Jul',
+	'Aug',
+	'Sep',
+	'Oct',
+	'Nov',
+	'Dec',
+] as const;
+
+interface VersionMonth {
+	year: number;
+	/** Month number from 1 to 12. */
+	month: number;
+	count: number;
+}
+
+// 30 versions across four months in the current year, then 60 across six months in 2025.
+const groupedMonths: VersionMonth[] = [
+	{ year: 2026, month: 10, count: 8 },
+	{ year: 2026, month: 9, count: 8 },
+	{ year: 2026, month: 8, count: 7 },
+	{ year: 2026, month: 7, count: 7 },
+	{ year: 2025, month: 12, count: 10 },
+	{ year: 2025, month: 11, count: 10 },
+	{ year: 2025, month: 10, count: 10 },
+	{ year: 2025, month: 9, count: 10 },
+	{ year: 2025, month: 8, count: 10 },
+	{ year: 2025, month: 7, count: 10 },
+];
+
+function padTime(value: number): string {
+	return String(value).padStart(2, '0');
+}
+
+function monthHeading(year: number, month: number): string {
+	const name = MONTH_NAMES[month - 1];
+	if (year === CURRENT_YEAR) return name;
+	return `${name} ${year}`;
+}
+
+function createGroupedByMonth(): VersionHistoryEntry[] {
+	const total = groupedMonths.reduce((sum, group) => sum + group.count, 0);
+	const latestVersion = total;
+	const publishedVersion = 70;
+	let version = latestVersion;
+	const entries: VersionHistoryEntry[] = [];
+
+	for (const group of groupedMonths) {
+		entries.push({
+			type: 'heading',
+			id: `${group.year}-${padTime(group.month)}`,
+			label: monthHeading(group.year, group.month),
+		});
+
+		const lastDay = group.year === CURRENT_YEAR && group.month === 10 ? 29 : 28;
+		for (let index = 0; index < group.count; index += 1) {
+			const day =
+				group.count === 1
+					? lastDay
+					: lastDay - Math.floor((index * (lastDay - 1)) / (group.count - 1));
+			const hour = 8 + ((version * 3) % 12);
+			const minute = (version * 7) % 60;
+			const second = (version * 11) % 60;
+			const isLatest = version === latestVersion;
+			const isPublished = version === publishedVersion;
+			let detail: string | undefined;
+			let status: VersionHistoryItem['status'] = 'default';
+			let statusLabel: string | undefined;
+			if (isLatest) {
+				detail = 'Latest';
+				status = 'latest';
+				statusLabel = 'Latest version';
+			} else if (isPublished) {
+				detail = 'In published agent';
+				status = 'published';
+				statusLabel = 'Published version';
+			}
+
+			const stamp = `${padTime(hour)}:${padTime(minute)}:${padTime(second)}`;
+			entries.push({
+				id: `v${version}`,
+				label: `v${version}`,
+				detail,
+				author: version % 2 === 0 ? 'Alex' : 'Sam',
+				createdAt: `${MONTH_SHORT_NAMES[group.month - 1]} ${day} at ${stamp}`,
+				createdAtIso: `${group.year}-${padTime(group.month)}-${padTime(day)}T${stamp}`,
+				status,
+				statusLabel,
+				actions: isPublished
+					? [
+							{ id: 'restore', label: 'Restore', icon: 'undo-2' as const },
+							{ id: 'unpublish', label: 'Unpublish', icon: 'eye-off' as const },
+						]
+					: rowActions,
+			});
+			version -= 1;
+		}
+	}
+
+	return entries;
+}
+
+const groupedByMonth = createGroupedByMonth();
+
 const meta = {
 	title: 'Core/VersionHistory',
 	component: N8nVersionHistory,
-	parameters: {
-		docs: {
-			description: {
-				component:
-					'A version list. A line connects the marks. A group starts collapsed and opens to show more versions. The list virtualizes rows. The caller formats each time and supplies the empty state. Each version has a compare control and a menu. The actions slot replaces both. The parent sets the height and the background.',
-			},
-		},
-	},
 } satisfies Meta<typeof N8nVersionHistory>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const frameStyle = ['width: 20rem', 'height: 28rem', 'max-width: 100%'].join('; ');
+// The list sits on the page. A border separates it from that surface.
+// The pinned heading uses the same surface.
+const frameStyle = [
+	'box-sizing: border-box',
+	'width: 20rem',
+	'height: 28rem',
+	'max-width: 100%',
+	'overflow: hidden',
+	'border: var(--border)',
+	'border-radius: var(--radius)',
+	'--version-history--heading--color--background: var(--color--background--light-2)',
+].join('; ');
 
 const panelStyle = [
 	'display: flex',
@@ -176,7 +311,8 @@ const panelStyle = [
 	'max-width: 100%',
 	'overflow: hidden',
 	'border: var(--border)',
-	'border-radius: var(--radius--lg)',
+	'border-radius: var(--radius)',
+	'box-shadow: var(--shadow--xs)',
 	'background-color: var(--background--surface)',
 ].join('; ');
 
@@ -188,6 +324,13 @@ const panelHeaderStyle = [
 	'flex-shrink: 0',
 	'padding: var(--spacing--xs)',
 	'border-bottom: var(--border)',
+].join('; ');
+
+const searchHeaderStyle = [
+	'display: flex',
+	'align-items: center',
+	'flex-shrink: 0',
+	'padding: var(--spacing--xs)',
 ].join('; ');
 
 const panelBodyStyle = ['display: flex', 'flex-direction: column', 'flex: 1', 'min-height: 0'].join(
@@ -281,6 +424,32 @@ export const Default: Story = {
 	},
 };
 
+// The parent opens the list on the version the user is viewing.
+// That version can sit inside a group. The group starts open.
+export const Selected: Story = {
+	render: (args) => ({
+		components: { N8nVersionHistory },
+		setup() {
+			return { args, ...useHistory('v2b') };
+		},
+		template: `
+			<div style="${frameStyle}">
+				<N8nVersionHistory
+					v-bind="args"
+					:selected-id="selectedId"
+					@select="onSelect"
+					@compare="onCompare"
+					@action="onAction"
+					@toggle="onToggle"
+				/>
+			</div>
+		`,
+	}),
+	args: {
+		items: versions,
+	},
+};
+
 export const Empty: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory, N8nIcon, N8nText },
@@ -308,14 +477,43 @@ export const Empty: Story = {
 	},
 };
 
-export const CustomActions: Story = {
+export const CustomHeading: Story = {
 	parameters: {
 		docs: {
 			description: {
-				story: 'The actions slot replaces the compare control and the menu on every row.',
+				story:
+					'The heading slot replaces the label. The pinned heading uses the same slot. This story sits on the main background, so the pin uses that color.',
 			},
 		},
 	},
+	render: (args) => ({
+		components: { N8nVersionHistory, N8nText },
+		setup() {
+			return { args, ...useHistory() };
+		},
+		template: `
+			<div style="${frameStyle}">
+				<N8nVersionHistory
+					v-bind="args"
+					:selected-id="selectedId"
+					@select="onSelect"
+					@compare="onCompare"
+					@action="onAction"
+					@toggle="onToggle"
+				>
+					<template #heading="{ label }">
+						<N8nText size="small" bold color="text-light">{{ label }}</N8nText>
+					</template>
+				</N8nVersionHistory>
+			</div>
+		`,
+	}),
+	args: {
+		items: versions,
+	},
+};
+
+export const CustomActions: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory, N8nButton },
 		setup() {
@@ -369,14 +567,6 @@ const disabledVersions: VersionHistoryEntry[] = versions.map((entry) => {
 });
 
 export const Disabled: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'Each version sets disabled, so the row cannot be selected. Compare and the menu are disabled on their own.',
-			},
-		},
-	},
 	...Default,
 	args: {
 		items: disabledVersions,
@@ -384,14 +574,6 @@ export const Disabled: Story = {
 };
 
 export const ManyVersions: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story:
-					'The last row is a collapsed group, as in workflow history. Open it to show the older versions. A heading ends the line, then the next mark starts a new one.',
-			},
-		},
-	},
 	render: (args) => ({
 		components: { N8nVersionHistory },
 		setup() {
@@ -415,15 +597,136 @@ export const ManyVersions: Story = {
 	},
 };
 
-export const Loading: Story = {
+const scrollSelectStyle = [
+	'width: 20rem',
+	'max-width: 100%',
+	'margin-bottom: var(--spacing--2xs)',
+].join('; ');
+
+function versionChoices(entries: VersionHistoryEntry[]): Array<{ id: string; label: string }> {
+	const choices: Array<{ id: string; label: string }> = [];
+
+	for (const entry of entries) {
+		if (isVersionHistoryHeading(entry)) {
+			choices.push({ id: entry.id, label: entry.label });
+			continue;
+		}
+		if (isVersionHistoryGroup(entry)) {
+			for (const item of entry.items) {
+				choices.push({ id: item.id, label: item.label });
+			}
+			continue;
+		}
+		choices.push({
+			id: entry.id,
+			label: entry.detail ? `${entry.label} · ${entry.detail}` : entry.label,
+		});
+	}
+
+	return choices;
+}
+
+export const ScrollToVersion: Story = {
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'Skeleton rows show for two seconds, then the list appears. Reset starts the wait again.',
+					'Choose a version to bring that row into view. A version in the closed group opens the group first. A heading above the row stays in view, and the row starts below it.',
 			},
 		},
 	},
+	render: (args) => ({
+		components: { N8nVersionHistory, N8nSelect, N8nOption, N8nInputLabel },
+		setup() {
+			const history = useHistory('v40');
+			const scrollToId = ref<string | undefined>();
+			const choices = versionChoices(manyVersions);
+
+			function onScrollTarget(value: unknown) {
+				if (typeof value !== 'string' || value.length === 0) return;
+				scrollToId.value = value;
+				history.selectedId.value = value;
+			}
+
+			return {
+				args,
+				...history,
+				scrollToId,
+				choices,
+				onScrollTarget,
+			};
+		},
+		template: `
+			<div>
+				<div style="${scrollSelectStyle}">
+					<N8nInputLabel label="Version" :bold="false" size="small" />
+					<N8nSelect
+						:model-value="scrollToId"
+						size="small"
+						placeholder="Choose a version"
+						filterable
+						@update:model-value="onScrollTarget"
+					>
+						<N8nOption
+							v-for="choice in choices"
+							:key="choice.id"
+							:value="choice.id"
+							:label="choice.label"
+						/>
+					</N8nSelect>
+				</div>
+				<div style="${frameStyle}">
+					<N8nVersionHistory
+						v-bind="args"
+						:scroll-to-id="scrollToId"
+						:selected-id="selectedId"
+						@select="onSelect"
+						@compare="onCompare"
+						@action="onAction"
+						@toggle="onToggle"
+					/>
+				</div>
+			</div>
+		`,
+	}),
+	args: {
+		items: manyVersions,
+	},
+};
+
+export const GroupedByMonth: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'Headings break the list into months. A heading for the current year is the month name. A heading for a past year adds the year. Scroll and the current heading stays at the top until the next month pushes it up. The list has 30 versions across four months in 2026. It has 60 versions across six months in 2025.',
+			},
+		},
+	},
+	render: (args) => ({
+		components: { N8nVersionHistory },
+		setup() {
+			return { args, ...useHistory('v90') };
+		},
+		template: `
+			<div style="${frameStyle}">
+				<N8nVersionHistory
+					v-bind="args"
+					:selected-id="selectedId"
+					@select="onSelect"
+					@compare="onCompare"
+					@action="onAction"
+					@toggle="onToggle"
+				/>
+			</div>
+		`,
+	}),
+	args: {
+		items: groupedByMonth,
+	},
+};
+
+export const Loading: Story = {
 	render: (args) => ({
 		components: { N8nVersionHistory, N8nButton },
 		setup() {
@@ -466,67 +769,134 @@ export const Loading: Story = {
 	},
 };
 
+function namedVersions(entries: VersionHistoryEntry[]): VersionHistoryEntry[] {
+	return entries.filter(
+		(entry) => !isVersionHistoryGroup(entry) && 'detail' in entry && Boolean(entry.detail),
+	);
+}
+
+function findVersion(entries: VersionHistoryEntry[], id: string): VersionHistoryItem | undefined {
+	for (const entry of entries) {
+		if (isVersionHistoryGroup(entry)) {
+			const nested = entry.items.find((item) => item.id === id);
+			if (nested) return nested;
+			continue;
+		}
+		if (isVersionHistoryHeading(entry)) continue;
+		if (entry.id === id) return entry;
+	}
+	return undefined;
+}
+
+const layoutStyle = [
+	'display: grid',
+	'grid-template-columns: minmax(0, 1fr) 22rem',
+	'width: min(64rem, 100%)',
+	'height: 36rem',
+	'overflow: hidden',
+	'border: var(--border)',
+	'background-color: var(--color--background--light-3)',
+].join('; ');
+
+const contentStyle = [
+	'display: flex',
+	'flex-direction: column',
+	'gap: var(--spacing--sm)',
+	'min-width: 0',
+	'min-height: 0',
+	'padding: var(--spacing--lg)',
+].join('; ');
+
+const canvasStyle = [
+	'flex: 1',
+	'min-height: 0',
+	'border: var(--border)',
+	'border-radius: var(--radius)',
+	'background-color: var(--background--surface)',
+].join('; ');
+
+const sidebarStyle = [
+	'display: flex',
+	'flex-direction: column',
+	'min-width: 0',
+	'min-height: 0',
+	'background-color: var(--background--surface)',
+	'border-left: var(--border)',
+].join('; ');
+
 export const InPanel: Story = {
 	parameters: {
 		docs: {
 			description: {
 				story:
-					'The list fills a panel. The header switches between versions and a timeline, as the history demo does.',
+					'The history sits in a side panel next to a content area. The header uses a switch. The content card uses the card radius.',
 			},
 		},
 	},
 	render: (args) => ({
-		components: { N8nVersionHistory, N8nTabs, N8nIconButton, N8nText },
+		components: { N8nVersionHistory, N8nHeading, N8nSwitch, N8nCard, N8nText },
 		setup() {
-			const tab = ref('versions');
-			const tabOptions = [
-				{ label: 'Versions', value: 'versions' },
-				{ label: 'Timeline', value: 'timeline' },
-			];
-			return { args, tab, tabOptions, onClose: action('close'), ...useHistory() };
+			const namedOnly = ref(false);
+			const history = useHistory('v40');
+			const visibleItems = computed(() =>
+				namedOnly.value ? namedVersions(manyVersions) : manyVersions,
+			);
+			const selected = computed(() => findVersion(manyVersions, history.selectedId.value));
+			const selectedTitle = computed(() => {
+				const item = selected.value;
+				if (!item) return 'No version open';
+				return item.detail ? `${item.label} · ${item.detail}` : item.label;
+			});
+			const selectedMeta = computed(() => {
+				const item = selected.value;
+				if (!item) return '';
+				return [item.author, item.createdAt].filter(Boolean).join(', ');
+			});
+			return {
+				args,
+				namedOnly,
+				visibleItems,
+				selectedTitle,
+				selectedMeta,
+				...history,
+			};
 		},
 		template: `
-			<div style="${panelStyle}">
-				<header style="${panelHeaderStyle}">
-					<N8nTabs v-model="tab" :options="tabOptions" size="small" />
-					<N8nIconButton
-						icon="x"
-						variant="ghost"
-						size="medium"
-						aria-label="Close"
-						@click="onClose"
-					/>
-				</header>
-				<div style="${panelBodyStyle}">
-					<N8nVersionHistory
-						v-if="tab === 'versions'"
-						v-bind="args"
-						:selected-id="selectedId"
-						@select="onSelect"
-						@compare="onCompare"
-						@action="onAction"
-						@toggle="onToggle"
-					/>
-					<div v-else style="padding: var(--spacing--sm)">
-						<N8nText size="small" color="text-light">Publish events appear here.</N8nText>
+			<div style="${layoutStyle}">
+				<section style="${contentStyle}">
+					<N8nHeading tag="h2" size="medium">Support agent</N8nHeading>
+					<N8nCard>
+						<N8nText bold>{{ selectedTitle }}</N8nText>
+						<N8nText size="small" color="text-light">{{ selectedMeta }}</N8nText>
+					</N8nCard>
+					<div style="${canvasStyle}"></div>
+				</section>
+				<aside style="${sidebarStyle}">
+					<header style="${panelHeaderStyle}">
+						<N8nHeading tag="h2" size="small" bold>Versions</N8nHeading>
+						<N8nSwitch v-model="namedOnly" label="Named versions" size="small" />
+					</header>
+					<div style="${panelBodyStyle}">
+						<N8nVersionHistory
+							v-bind="args"
+							:items="visibleItems"
+							:selected-id="selectedId"
+							@select="onSelect"
+							@compare="onCompare"
+							@action="onAction"
+							@toggle="onToggle"
+						/>
 					</div>
-				</div>
+				</aside>
 			</div>
 		`,
 	}),
 	args: {
-		items: versions,
+		items: manyVersions,
 	},
 };
 
 export const Search: Story = {
-	parameters: {
-		docs: {
-			description: {
-				story: 'The parent filters the list. A group stays when one of its versions matches.',
-			},
-		},
-	},
 	render: (args) => ({
 		components: { N8nVersionHistory, N8nInput, N8nIcon, N8nText },
 		setup() {
@@ -536,10 +906,10 @@ export const Search: Story = {
 		},
 		template: `
 			<div style="${panelStyle}">
-				<header style="${panelHeaderStyle}">
-					<N8nInput v-model="query" size="small" placeholder="Search versions" clearable>
+				<header style="${searchHeaderStyle}">
+					<N8nInput v-model="query" placeholder="Search versions" clearable>
 						<template #prefix>
-							<N8nIcon icon="search" size="small" />
+							<N8nIcon icon="search" />
 						</template>
 					</N8nInput>
 				</header>
@@ -565,5 +935,145 @@ export const Search: Story = {
 	}),
 	args: {
 		items: versions,
+	},
+};
+
+const PAGE_SIZE = 12;
+const TOTAL_VERSIONS = 400;
+const PAGE_DELAY_MS = 800;
+
+interface VersionPage {
+	items: VersionHistoryItem[];
+	nextCursor: number | null;
+}
+
+/** Stand-in for a paged versions API. Newest versions come first. */
+async function fetchVersionPage(cursor: number): Promise<VersionPage> {
+	const start = cursor;
+	const end = Math.min(cursor + PAGE_SIZE, TOTAL_VERSIONS);
+
+	return await new Promise((resolve) => {
+		window.setTimeout(() => {
+			const page: VersionHistoryItem[] = [];
+			for (let index = start; index < end; index += 1) {
+				page.push(createVersion(TOTAL_VERSIONS - index, TOTAL_VERSIONS));
+			}
+			resolve({
+				items: page,
+				nextCursor: end < TOTAL_VERSIONS ? end : null,
+			});
+		}, PAGE_DELAY_MS);
+	});
+}
+
+const loadMoreToolbarStyle = [
+	'display: flex',
+	'align-items: center',
+	'justify-content: space-between',
+	'gap: var(--spacing--2xs)',
+	'width: 20rem',
+	'max-width: 100%',
+	'margin-bottom: var(--spacing--2xs)',
+].join('; ');
+
+export const LoadMore: Story = {
+	parameters: {
+		docs: {
+			description: {
+				story:
+					'The list loads the first page from a mock API. Scroll to the end to load the next page. Each page returns 12 versions. There are 400 versions in total. The request waits before it resolves.',
+			},
+		},
+	},
+	render: (args) => ({
+		components: { N8nVersionHistory, N8nButton, N8nText },
+		setup() {
+			const items = ref<VersionHistoryEntry[]>([]);
+			const hasMore = ref(false);
+			const loading = ref(true);
+			const loadingMore = ref(false);
+			const selectedId = ref<string | undefined>();
+			let cursor = 0;
+			let requestId = 0;
+
+			async function reset() {
+				const id = ++requestId;
+				loading.value = true;
+				loadingMore.value = false;
+				hasMore.value = false;
+				items.value = [];
+				cursor = 0;
+				const page = await fetchVersionPage(0);
+				if (id !== requestId) return;
+				items.value = page.items;
+				cursor = page.nextCursor ?? 0;
+				hasMore.value = page.nextCursor !== null;
+				selectedId.value = page.items[0]?.id;
+				loading.value = false;
+			}
+
+			async function onLoadMore() {
+				if (loading.value || loadingMore.value || !hasMore.value) return;
+				const id = requestId;
+				loadingMore.value = true;
+				action('loadMore')(cursor);
+				const page = await fetchVersionPage(cursor);
+				if (id !== requestId) return;
+				items.value = [...items.value, ...page.items];
+				cursor = page.nextCursor ?? cursor;
+				hasMore.value = page.nextCursor !== null;
+				loadingMore.value = false;
+			}
+
+			onMounted(() => {
+				void reset();
+			});
+			onUnmounted(() => {
+				requestId += 1;
+			});
+
+			return {
+				args,
+				items,
+				hasMore,
+				loading,
+				loadingMore,
+				selectedId,
+				total: TOTAL_VERSIONS,
+				reset,
+				onLoadMore,
+				onSelect(id: string) {
+					selectedId.value = id;
+					action('select')(id);
+				},
+				onCompare: action('compare'),
+				onAction: action('action'),
+			};
+		},
+		template: `
+			<div>
+				<div style="${loadMoreToolbarStyle}">
+					<N8nText size="small" color="text-light">{{ items.length }} of {{ total }}</N8nText>
+					<N8nButton size="small" variant="outline" label="Reset" @click="reset" />
+				</div>
+				<div style="${frameStyle}">
+					<N8nVersionHistory
+						v-bind="args"
+						:items="items"
+						:loading="loading"
+						:loading-more="loadingMore"
+						:has-more="hasMore"
+						:selected-id="selectedId"
+						@select="onSelect"
+						@compare="onCompare"
+						@action="onAction"
+						@load-more="onLoadMore"
+					/>
+				</div>
+			</div>
+		`,
+	}),
+	args: {
+		items: [],
 	},
 };

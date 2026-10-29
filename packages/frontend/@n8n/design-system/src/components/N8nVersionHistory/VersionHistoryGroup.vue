@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import N8nIcon from '../N8nIcon';
+import { N8nListboxItem } from '../N8nListbox';
 import N8nText from '../N8nText/Text.vue';
 import VersionHistoryRail from './VersionHistoryRail.vue';
 
 defineOptions({ name: 'N8nVersionHistoryGroup' });
 
 defineProps<{
+	/** Value for the list row. Unique across versions and groups. */
+	id: string;
 	label: string;
 	expanded: boolean;
 	connectAbove?: boolean;
@@ -16,6 +19,11 @@ const emit = defineEmits<{
 	toggle: [];
 }>();
 
+function onSelect(event: Event) {
+	event.preventDefault();
+	emit('toggle');
+}
+
 // The chevron stays small so the timeline meets a 12px mark.
 const iconProps = {
 	size: 'small' as const,
@@ -24,47 +32,33 @@ const iconProps = {
 </script>
 
 <template>
-	<button
-		type="button"
+	<N8nListboxItem
+		:value="id"
 		:class="$style.group"
 		:aria-expanded="expanded"
 		data-test-id="version-history-group"
-		@click="emit('toggle')"
+		@select="onSelect"
 	>
 		<VersionHistoryRail mark="icon" :connect-above="connectAbove" :connect-below="connectBelow">
 			<N8nIcon v-bind="iconProps" :icon="expanded ? 'chevron-down' : 'chevron-right'" />
 		</VersionHistoryRail>
 		<N8nText size="small" color="text-base" :class="$style.label">{{ label }}</N8nText>
-	</button>
+	</N8nListboxItem>
 </template>
 
 <style lang="scss" module>
-@use '../../css/mixins/_focus.scss';
-
-button.group {
+.group {
 	display: flex;
 	align-items: center;
 	width: 100%;
 	margin: 0;
-	// Clear the user-agent button padding and border so the rail lines up with version rows.
+	// Taller than the label so the track can stop short of the chevron.
+	min-height: var(--height--xs);
+	// Match the version row inset so the rail lines up.
 	padding: 0;
 	padding-inline: var(--version-history--body-pad, var(--spacing--3xs));
-	border: none;
 	border-radius: var(--radius);
-	appearance: none;
-	background-color: transparent;
-	color: inherit;
-	font: inherit;
 	text-align: start;
-	cursor: pointer;
-
-	&:hover {
-		background-color: var(--color--background--light-1);
-	}
-
-	&:focus-visible {
-		@include focus.focus-ring;
-	}
 }
 
 .label {

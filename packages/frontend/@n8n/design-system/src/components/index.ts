@@ -10,6 +10,7 @@ export { default as N8nAssistantAvatar } from './AskAssistantAvatar';
 export { default as N8nAssistantText } from './AskAssistantText';
 export { default as N8nActionDropdown } from './N8nActionDropdown';
 export { default as N8nActionToggle } from './N8nActionToggle';
+export type { ActionToggleItem } from './N8nActionToggle';
 export { default as N8nDropdownMenu } from './N8nDropdownMenu/DropdownMenu.vue';
 export { default as N8nDropdownMenuItem } from './N8nDropdownMenu/DropdownMenuItem.vue';
 export { useDropdownSearch } from './N8nDropdownMenu/composables/useDropdownSearch';
@@ -103,6 +104,16 @@ export { default as N8nInputLabel } from './N8nInputLabel';
 export { default as N8nInputNumber } from './N8nInputNumber';
 export type * from './N8nInputNumber/InputNumber.types';
 export { default as N8nLink } from './N8nLink';
+export { N8nListbox, N8nListboxItem } from './N8nListbox';
+export type {
+	ListboxItemProps,
+	ListboxItemSlots,
+	ListboxOrientation,
+	ListboxProps,
+	ListboxSelectionBehavior,
+	ListboxSlots,
+	ListboxValue,
+} from './N8nListbox';
 export { default as N8nLogo } from './N8nLogo';
 export { default as N8nLoading } from './N8nLoading';
 export { default as N8nMarkdown } from './N8nMarkdown';
@@ -168,7 +179,6 @@ export {
 	isVersionHistoryHeading,
 } from './N8nVersionHistory';
 export type {
-	VersionHistoryAction,
 	VersionHistoryActionPayload,
 	VersionHistoryEntry,
 	VersionHistoryGroup,

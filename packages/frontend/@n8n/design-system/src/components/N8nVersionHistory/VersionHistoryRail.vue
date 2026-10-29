@@ -82,13 +82,13 @@ defineSlots<{
 	margin-top: calc(var(--spacing--2xs) / 2);
 }
 
-// The group chevron uses the small icon size, which is 12px.
+// The group chevron is 12px. Keep 4px clear of the track.
 .above.icon {
-	margin-bottom: calc(var(--spacing--xs) / 2);
+	margin-bottom: calc(var(--spacing--xs) / 2 + var(--spacing--4xs));
 }
 
 .below.icon {
-	margin-top: calc(var(--spacing--xs) / 2);
+	margin-top: calc(var(--spacing--xs) / 2 + var(--spacing--4xs));
 }
 
 .mark {

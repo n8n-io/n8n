@@ -41,6 +41,7 @@ export default {
 	'resizeWrapper.drag': 'Drag',
 	'versionHistory.label': 'Versions',
 	'versionHistory.loading': 'Loading versions',
+	'versionHistory.loadingMore': 'Loading more versions',
 	'versionHistory.compare': 'Compare',
 	'notice.showMore': 'Show more',
 	'notice.showLess': 'Show less',
