@@ -7,14 +7,19 @@ import type {
 	INodeParameters,
 	IWorkflowBase,
 	IWorkflowGroup,
+	IWorkflowSettings,
 	NodeParameterValueType,
 } from '.';
 import { compareConnections, type ConnectionsDiff } from './connections-diff';
 
 export type WorkflowDiffBase = Omit<
 	IWorkflowBase,
-	'id' | 'active' | 'activeVersionId' | 'isArchived' | 'name'
-> & { name: string | null };
+	'id' | 'active' | 'activeVersionId' | 'isArchived' | 'name' | 'settings'
+> & {
+	name: string | null;
+	// A workflow history row stores null when the version has no version-scoped settings.
+	settings?: IWorkflowSettings | null;
+};
 
 export type DiffableNode = Pick<INode, 'id' | 'parameters' | 'name'>;
 export type DiffableWorkflow<N extends DiffableNode = DiffableNode> = {
