@@ -184,7 +184,7 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 	const searchTerm = history.value.search.trim().toLowerCase();
 	const agentThreads = instanceAiSettingsStore.isAssistantAgentEnabled
 		? assistantAgentThreadsStore.knownThreads.filter(
-				(thread) => filter(thread) && thread.title.toLowerCase().includes(searchTerm),
+				(thread) => filter(thread) && (thread.title ?? '').toLowerCase().includes(searchTerm),
 			)
 		: [];
 	return [
