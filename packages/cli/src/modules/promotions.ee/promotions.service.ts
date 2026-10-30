@@ -262,6 +262,7 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		await this.removeLeftoverLockFiles(input, branchName);
 		const credentials = await this.credentialsFor(input);
 		const target = await this.prepareTargetBranch(input, branchName, credentials);
 		const targetBranchName = target?.targetBranchName;
@@ -459,6 +460,7 @@ export class PromotionsService {
 		await this.assertCheckoutReady(input, 'promoting');
 
 		const branchName = checkoutBranchName(input.config);
+		await this.removeLeftoverLockFiles(input, branchName);
 		const credentials = await this.credentialsFor(input);
 		// A branched environment resets the checkout to the latest base here, so the
 		// selection applies on top of it and pushes to a fresh promotion branch.
@@ -1296,6 +1298,15 @@ export class PromotionsService {
 		return await this.gitService.readFilesAtCommit({
 			...operation,
 			filePaths: filePaths.filter((path) => existing.has(path)),
+		});
+	}
+
+	/** A killed earlier operation can leave Git lock files that block every write. Run under the lock. */
+	private async removeLeftoverLockFiles(input: PromotionOperationInput, branchName: string) {
+		await this.gitService.removeLeftoverLockFiles({
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName,
+			environmentId: input.environmentId,
 		});
 	}
 

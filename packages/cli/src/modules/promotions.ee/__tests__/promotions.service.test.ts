@@ -3136,6 +3136,76 @@ describe('PromotionsService', () => {
 			);
 		});
 
+		it.each([
+			{
+				name: 'promote',
+				call: async () =>
+					await service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
+			},
+			{
+				name: 'promoteProjectSelection',
+				call: async () =>
+					await service.promoteProjectSelection('p1', actor, {
+						workflowIds: ['w1'],
+						canExportVariableValues: true,
+					}),
+			},
+		])(
+			'$name removes leftover Git lock files inside the lock before any other Git step',
+			async ({ call }) => {
+				const input = promoteInput();
+				resolver.resolveForEnvironment.mockResolvedValue(input);
+				resolver.resolveForProject.mockResolvedValue(input);
+				await markCloned(input, 'staging');
+				projectRepository.findOneBy.mockResolvedValue({
+					id: 'p1',
+					name: 'Alpha',
+					type: 'team',
+				} as never);
+				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
+					new Map([['w1', mock<Project>({ id: 'p1' })]]),
+				);
+				const lockHeld: boolean[] = [];
+				gitService.removeLeftoverLockFiles.mockImplementationOnce(async () => {
+					lockHeld.push(
+						!(await environmentLock.run(ENVIRONMENT_ID, async () => true).catch(() => false)),
+					);
+				});
+				// Stop at the reset, which is the first Git write after the cleanup.
+				const stopped = new Error('stopped at the reset');
+				gitService.prepareCheckoutForPromotion.mockRejectedValueOnce(stopped);
+
+				await expect(call()).rejects.toBe(stopped);
+
+				expect(gitService.removeLeftoverLockFiles).toHaveBeenCalledExactlyOnceWith({
+					paths: workingDirectory.paths(ENVIRONMENT_ID),
+					branchName: 'staging',
+					environmentId: ENVIRONMENT_ID,
+				});
+				expect(lockHeld).toEqual([true]);
+				const [cleanup] = gitService.removeLeftoverLockFiles.mock.invocationCallOrder;
+				expect(cleanup).toBeLessThan(gitService.hasRemoteBranch.mock.invocationCallOrder[0]);
+				expect(cleanup).toBeLessThan(
+					gitService.prepareCheckoutForPromotion.mock.invocationCallOrder[0],
+				);
+			},
+		);
+
+		it('does not remove Git lock files on connect or apply', async () => {
+			resolver.resolveForEnvironment.mockResolvedValueOnce(promoteInput());
+			resolver.resolveForEnvironment.mockResolvedValueOnce(promoteInput());
+			await service.clone(ENVIRONMENT_ID, actor);
+			expect(gitService.clone).toHaveBeenCalled();
+
+			resolver.resolveForEnvironment.mockResolvedValue(applyInput());
+			await markCloned(applyInput(), 'dev');
+			// The branch has no package, so Apply stops after its first Git read.
+			await expect(service.apply(ENVIRONMENT_ID, actor)).rejects.toThrow(BadRequestError);
+			expect(gitService.listBranchTree).toHaveBeenCalled();
+
+			expect(gitService.removeLeftoverLockFiles).not.toHaveBeenCalled();
+		});
+
 		it('reads branch files, review commits, and the Apply package without the lock', async () => {
 			const run = vi.spyOn(environmentLock, 'run');
 			const commitSha = 'c'.repeat(40);

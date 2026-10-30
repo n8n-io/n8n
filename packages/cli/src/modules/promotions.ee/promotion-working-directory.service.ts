@@ -12,7 +12,7 @@ const SAFE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 
 const DESCRIPTOR_FILE = 'cache.json';
 
-function isMissing(error: unknown): boolean {
+export function isMissing(error: unknown): boolean {
 	return error instanceof Error && 'code' in error && error.code === 'ENOENT';
 }
 

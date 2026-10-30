@@ -3495,6 +3495,197 @@ describe('Promote a project selection', () => {
 	});
 });
 
+describe('Promote from a clean checkout', () => {
+	/** Pauses the next export after it starts, then runs or fails it. */
+	const pauseNextExport = (outcome: 'run' | 'fail') => {
+		let exportStarted!: () => void;
+		const started = new Promise<void>((resolve) => (exportStarted = resolve));
+		let resume!: () => void;
+		const paused = new Promise<void>((resolve) => (resume = resolve));
+		const exportPackage = packagesService.exportPackageToDirectory.bind(packagesService);
+		const spy = vi
+			.spyOn(packagesService, 'exportPackageToDirectory')
+			.mockImplementationOnce(async (...args) => {
+				exportStarted();
+				await paused;
+				if (outcome === 'fail') throw new Error('The export failed');
+				return await exportPackage(...args);
+			});
+		return { started, resume, spy };
+	};
+
+	const promoteSelection = async (projectId: string, workflowId: string, commitMessage: string) =>
+		await service.promoteProjectSelection(projectId, owner, {
+			workflowIds: [workflowId],
+			commitMessage,
+			canExportVariableValues: true,
+		});
+
+	const committedPaths = async (bareDir: string, commitSha: string) =>
+		(await createFixtureGit(bareDir).raw(['show', '--name-only', '--format=', commitSha]))
+			.split('\n')
+			.filter(Boolean);
+
+	it('keeps the selection backup of a running selective promote and restores the package from it', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
+		const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2', 'w3']);
+		await promoteSelection(project.id, workflows[0].id, 'Add w1');
+
+		const { repositoryFolder } = workingDirectory.paths(environmentId);
+		const packageFolder = path.join(repositoryFolder, 'n8n');
+		const backupFolder = `${packageFolder}.pre-selection`;
+		const remoteGit = createFixtureGit(remote.bareDir);
+		const headBefore = (await remoteGit.revparse(['main'])).trim();
+		const packageBefore = await snapshotWorkingTree(packageFolder);
+		const pause = pauseNextExport('fail');
+
+		try {
+			const first = promoteSelection(project.id, workflows[1].id, 'Add w2');
+			await pause.started;
+			// The first promote made its backup before its export started.
+			expect(await snapshotWorkingTree(backupFolder)).toEqual(packageBefore);
+
+			const second = promoteSelection(project.id, workflows[2].id, 'Add w3');
+			await expect(second).rejects.toThrow(LockedError);
+			await expect(second).rejects.toMatchObject({ httpStatusCode: 423 });
+			expect(await snapshotWorkingTree(packageFolder)).toEqual(packageBefore);
+			expect(await snapshotWorkingTree(backupFolder)).toEqual(packageBefore);
+			expect(pause.spy).toHaveBeenCalledOnce();
+
+			pause.resume();
+			await expect(first).rejects.toThrow('The export failed');
+		} finally {
+			pause.resume();
+			pause.spy.mockRestore();
+		}
+
+		expect(await snapshotWorkingTree(packageFolder)).toEqual(packageBefore);
+		await expect(stat(backupFolder)).rejects.toMatchObject({ code: 'ENOENT' });
+		expect((await remoteGit.revparse(['main'])).trim()).toBe(headBefore);
+
+		const result = await promoteSelection(project.id, workflows[1].id, 'Add w2');
+
+		expect((await remoteGit.revparse(['main^'])).trim()).toBe(headBefore);
+		expect((await remoteGit.revparse(['main'])).trim()).toBe(result.git.commitSha);
+		const { dir } = await inspectBranch(remote.bareDir);
+		expect((await readBranchEntities(dir, 'workflow.json')).map((w) => w.id).sort()).toEqual(
+			[workflows[0].id, workflows[1].id].sort(),
+		);
+	});
+
+	it('keeps the commit of an interrupted branched promote off the base branch of a later direct promote', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(
+			remote.bareDir,
+			{ apply: 'main', promote: 'main' },
+			true,
+		);
+		await service.clone(environments.promote.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+		const remoteGit = createFixtureGit(remote.bareDir);
+		const baseCommit = (await remoteGit.revparse(['main'])).trim();
+
+		// The remote refuses each promotion branch and records the commit it refused.
+		const refusedCommitFile = path.join(testRoot, 'refused-commit');
+		await writeFile(
+			path.join(remote.bareDir, 'hooks', 'pre-receive'),
+			[
+				'#!/bin/sh',
+				'while read old new ref; do',
+				'  case "$ref" in',
+				`    refs/heads/n8n-promotion/*) echo "$new" > '${refusedCommitFile}'; exit 1 ;;`,
+				'  esac',
+				'done',
+				'',
+			].join('\n'),
+			{ mode: 0o755 },
+		);
+
+		await expect(
+			service.promote(environments.promote.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'Interrupted promotion',
+			}),
+		).rejects.toThrow();
+		const refusedCommit = (await readFile(refusedCommitFile, 'utf-8')).trim();
+		expect(refusedCommit).toMatch(/^[0-9a-f]{40}$/);
+		expect((await remoteGit.raw(['for-each-ref', 'refs/heads/n8n-promotion/'])).trim()).toBe('');
+
+		await environmentRepository.update(environments.promote.id, {
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
+		});
+		const result = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'Direct promotion',
+		});
+
+		expect(result.git.branchName).toBe('main');
+		expect((await remoteGit.raw(['rev-list', 'main'])).trim().split('\n')).toEqual([
+			result.git.commitSha,
+			baseCommit,
+		]);
+		expect((await remoteGit.raw(['rev-list', 'main'])).split('\n')).not.toContain(refusedCommit);
+		expect((await remoteGit.raw(['log', '--format=%s', 'main'])).split('\n')).not.toContain(
+			'Interrupted promotion',
+		);
+	});
+
+	it.each([false, true])(
+		'commits no untracked file that an earlier selective promote left in the package (branch on promotion: %s)',
+		async (createBranchOnPromotion) => {
+			const remote = await createRemote();
+			const environments = await createInstanceEnvironments(
+				remote.bareDir,
+				{ apply: 'main', promote: 'main' },
+				createBranchOnPromotion,
+			);
+			const { environmentId } = await service.clone(environments.promote.id, owner);
+			const { project, workflows } = await setupProjectWithWorkflows('Orders', ['w1', 'w2']);
+			await promoteSelection(project.id, workflows[0].id, 'Add w1');
+
+			// A promote that stops after its folder swap and before its commit leaves new files untracked.
+			const { repositoryFolder } = workingDirectory.paths(environmentId);
+			const leftover = path.join(repositoryFolder, 'n8n', 'projects', 'leftover', 'workflow.json');
+			await mkdir(path.dirname(leftover), { recursive: true });
+			await writeFile(leftover, '{"id":"leftover"}');
+
+			const result = await promoteSelection(project.id, workflows[1].id, 'Add w2');
+
+			const paths = await committedPaths(remote.bareDir, result.git.commitSha);
+			expect(paths.some((filePath) => filePath.endsWith('workflow.json'))).toBe(true);
+			expect(paths).not.toContain('n8n/projects/leftover/workflow.json');
+			await expect(stat(leftover)).rejects.toMatchObject({ code: 'ENOENT' });
+		},
+	);
+
+	it('promotes when an earlier Git process left the index lock file', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const { environmentId } = await service.clone(environments.promote.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		await createWorkflow({ name: 'Process order', nodes: [], connections: {} }, project);
+		const indexLock = path.join(
+			workingDirectory.paths(environmentId).repositoryFolder,
+			'.git',
+			'index.lock',
+		);
+		await writeFile(indexLock, '');
+
+		const result = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: false,
+			commitMessage: 'Promote after a crash',
+		});
+
+		expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
+			result.git.commitSha,
+		);
+		await expect(stat(indexLock)).rejects.toMatchObject({ code: 'ENOENT' });
+	});
+});
+
 describe('Promotion base branch listing', () => {
 	let project: Project;
 	const listBaseBranchFiles = async (projectId: string) =>

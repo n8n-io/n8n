@@ -1,7 +1,7 @@
 import type { PromotionProviderAuthType, PromotionSshKeyType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { chmod, mkdir, mkdtemp, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readdir, rename, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { UnexpectedError } from 'n8n-workflow';
@@ -20,10 +20,11 @@ import { BadRequestError, ServiceUnavailableError } from '@n8n/errors';
 import {
 	GIT_COMMAND_STALL_TIMEOUT_MS,
 	GIT_READ_CONCURRENCY,
+	PACKAGE_SUBFOLDER,
 	PROMOTION_KEY_COMMENT,
 } from './constants';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
-import { deleteTrash, moveToTrash } from './promotion-working-directory.service';
+import { deleteTrash, isMissing, moveToTrash } from './promotion-working-directory.service';
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
@@ -58,6 +59,11 @@ type TreeEntry = { path: string; objectName: string; size: number };
 
 /** A full SHA-1 or SHA-256 object name, as `rev-parse` prints it. */
 const COMMIT_SHA = /^[0-9a-f]{40}([0-9a-f]{24})?$/;
+
+/** Lock files that only a write takes. A fetch takes only `refs/remotes` locks, so those stay. */
+const WRITER_LOCK_FILES = ['index.lock', 'HEAD.lock'];
+/** Branch names can contain `/`, so their lock files can sit in subfolders. */
+const LOCAL_BRANCH_REFS = path.join('refs', 'heads');
 
 const BASE_GIT_OPTIONS = {
 	binary: 'git',
@@ -403,9 +409,43 @@ export class PromotionsGitService {
 							['--progress'],
 						);
 						await git.raw(['reset', '--hard', `origin/${branchName}`]);
+						// `reset --hard` keeps untracked files, and a crashed promotion can leave some in the package.
+						await git.raw(['clean', '-ffdx', '--', PACKAGE_SUBFOLDER]);
 						return { commitSha: (await git.revparse(['HEAD'])).trim() };
 					},
 				);
+			});
+		} catch (error) {
+			throw this.mapGitError(error, { environmentId, branchName });
+		}
+	}
+
+	/**
+	 * Removes the Git lock files that only a write takes. Git cannot remove them after a SIGKILL,
+	 * and a leftover file makes every later `git add` and `reset --hard` fail. Call it only under
+	 * the environment lock, before the first write. Reads run without that lock, but a fetch takes
+	 * only `refs/remotes` locks, so this never removes the lock of a running read.
+	 */
+	async removeLeftoverLockFiles({
+		paths,
+		branchName,
+		environmentId,
+	}: Pick<GitOperation, 'paths' | 'branchName' | 'environmentId'>): Promise<void> {
+		const gitDir = path.join(paths.repositoryFolder, '.git');
+		try {
+			await this.lockCheckout(paths.repositoryFolder, async () => {
+				for (const lockFile of await listWriterLockFiles(gitDir)) {
+					try {
+						await unlink(path.join(gitDir, lockFile));
+					} catch (error) {
+						if (isMissing(error)) continue;
+						throw error;
+					}
+					this.logger.debug('Removed a leftover Git lock file from the promotion checkout', {
+						environmentId,
+						lockFile,
+					});
+				}
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
@@ -920,6 +960,21 @@ function isRemoteGitError(error: unknown): boolean {
 		return REMOTE_GIT_COMMANDS.has(commands[index]);
 	}
 	return false;
+}
+
+/** The writer lock files that can exist, as paths inside `gitDir`. */
+async function listWriterLockFiles(gitDir: string): Promise<string[]> {
+	const refEntries = await readdir(path.join(gitDir, LOCAL_BRANCH_REFS), {
+		recursive: true,
+		withFileTypes: true,
+	}).catch((error: unknown) => {
+		if (isMissing(error)) return [];
+		throw error;
+	});
+	const branchLockFiles = refEntries
+		.filter((entry) => entry.isFile() && entry.name.endsWith('.lock'))
+		.map((entry) => path.relative(gitDir, path.join(entry.parentPath, entry.name)));
+	return [...WRITER_LOCK_FILES, ...branchLockFiles];
 }
 
 async function hasCommit(git: SimpleGit, commitSha: string): Promise<boolean> {

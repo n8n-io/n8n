@@ -756,11 +756,101 @@ describe('PromotionsGitService (git operations)', () => {
 			expect(mockGit.raw).toHaveBeenCalledWith(['reset', '--hard', 'origin/main']);
 		});
 
+		it('removes untracked files from the package folder only, after the reset', async () => {
+			mockGit.listRemote.mockResolvedValue('def456\trefs/heads/main\n');
+			mockGit.revparse.mockResolvedValue('d'.repeat(40) + '\n');
+
+			await call();
+
+			expect(mockGit.raw.mock.calls).toEqual([
+				[['reset', '--hard', 'origin/main']],
+				[['clean', '-ffdx', '--', 'n8n']],
+			]);
+		});
+
 		it('rejects a promotion when the remote base branch does not exist', async () => {
 			mockGit.listRemote.mockResolvedValue('');
 
 			await expect(call()).rejects.toThrow('Remote branch does not exist: main');
 			expect(mockGit.fetch).not.toHaveBeenCalled();
+			expect(mockGit.raw).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('removeLeftoverLockFiles', () => {
+		const call = async () =>
+			await gitService.removeLeftoverLockFiles({ paths, branchName: 'main', environmentId });
+
+		const gitPath = (...segments: string[]) =>
+			path.join(paths.repositoryFolder, '.git', ...segments);
+
+		const writeGitFile = async (...segments: string[]) => {
+			await mkdir(path.dirname(gitPath(...segments)), { recursive: true });
+			await writeFile(gitPath(...segments), 'content');
+		};
+
+		const exists = async (...segments: string[]) =>
+			await stat(gitPath(...segments)).then(
+				() => true,
+				() => false,
+			);
+
+		it('removes the index, HEAD, and local branch lock files, also in nested branch folders', async () => {
+			await writeGitFile('index.lock');
+			await writeGitFile('HEAD.lock');
+			await writeGitFile('refs', 'heads', 'main.lock');
+			await writeGitFile('refs', 'heads', 'team', 'feature.lock');
+
+			await call();
+
+			expect(await exists('index.lock')).toBe(false);
+			expect(await exists('HEAD.lock')).toBe(false);
+			expect(await exists('refs', 'heads', 'main.lock')).toBe(false);
+			expect(await exists('refs', 'heads', 'team', 'feature.lock')).toBe(false);
+			expect(await exists('refs', 'heads', 'team')).toBe(true);
+			for (const lockFile of [
+				'index.lock',
+				'HEAD.lock',
+				path.join('refs', 'heads', 'main.lock'),
+				path.join('refs', 'heads', 'team', 'feature.lock'),
+			]) {
+				expect(logger.debug).toHaveBeenCalledWith(
+					'Removed a leftover Git lock file from the promotion checkout',
+					{ environmentId, lockFile },
+				);
+			}
+		});
+
+		it('keeps branch refs, remote-tracking lock files, and FETCH_HEAD', async () => {
+			await writeGitFile('refs', 'heads', 'main');
+			await writeGitFile('refs', 'remotes', 'origin', 'main.lock');
+			await writeGitFile('FETCH_HEAD');
+			await writeGitFile('index');
+
+			await call();
+
+			expect(await exists('refs', 'heads', 'main')).toBe(true);
+			expect(await exists('refs', 'remotes', 'origin', 'main.lock')).toBe(true);
+			expect(await exists('FETCH_HEAD')).toBe(true);
+			expect(await exists('index')).toBe(true);
+			expect(logger.debug).not.toHaveBeenCalled();
+		});
+
+		it('does nothing when no lock file exists', async () => {
+			await mkdir(gitPath(), { recursive: true });
+
+			await expect(call()).resolves.toBeUndefined();
+
+			expect(await readdir(gitPath())).toEqual([]);
+			expect(logger.debug).not.toHaveBeenCalled();
+		});
+
+		it('runs no Git command', async () => {
+			await writeGitFile('index.lock');
+
+			await call();
+
+			expect(simpleGitMock).not.toHaveBeenCalled();
 		});
 	});
 
