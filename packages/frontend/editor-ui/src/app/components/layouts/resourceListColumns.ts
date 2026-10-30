@@ -58,11 +58,6 @@ export function useResourceListColumns() {
 			width: RESOURCE_LIST_COLUMN_WIDTH.medium,
 			priority: 3,
 		}),
-		status: (): ResourceListColumn => ({
-			key: 'status',
-			label: i18n.baseText('resourcesList.column.status'),
-			width: RESOURCE_LIST_COLUMN_WIDTH.medium,
-		}),
 		/** Dependency count pill, without a heading */
 		dependencies: (): ResourceListColumn => ({
 			key: 'dependencies',

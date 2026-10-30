@@ -118,20 +118,26 @@ onMounted(() => {
 .inset {
 	// The sidebar and the gutter share one background, so the panel reads as the foreground.
 	--sidebar--border-color: transparent;
+	// The sidebars paint the menu background, so they follow the frame.
+	--menu--color--background: var(--app-shell--color--background);
 
-	background-color: var(--menu--color--background);
+	background-color: var(--app-shell--color--background);
 
 	.content {
+		// Surfaces inside the panel, such as sticky headers and cards, match the panel.
+		--background--surface: var(--app-shell--panel--color--background);
+
 		// An outer layout sizes every nested `main` to 100%, which would push the margins out of view.
 		width: auto;
 		height: auto;
 		min-width: 0;
 		min-height: 0;
 		margin: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) 0;
-		border: var(--border-width, 1px) solid var(--border-color--subtle);
+		// A half-pixel hairline, drawn as one device pixel on high-density screens
+		border: 0.5px solid var(--app-shell--panel--border-color);
 		border-radius: var(--radius--sm);
-		background-color: var(--background--surface);
-		box-shadow: var(--shadow--2xs);
+		background-color: var(--app-shell--panel--color--background);
+		box-shadow: var(--app-shell--panel--shadow);
 		overflow: hidden;
 	}
 

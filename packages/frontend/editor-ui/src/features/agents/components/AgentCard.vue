@@ -206,6 +206,18 @@ async function toggleMCPAccess(enabled: boolean) {
 				>
 					{{ agent.name }}
 				</N8nText>
+				<span v-if="isPublished" :class="$style.mcpIndicator" @click.stop>
+					<PublicationIndicator
+						:label="
+							locale.baseText(
+								hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+							)
+						"
+						:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+						:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
+						data-test-id="agent-card-publish-indicator"
+					/>
+				</span>
 				<N8nBadge
 					v-if="!canUpdate"
 					:class="$style.readonlyBadge"
@@ -229,21 +241,6 @@ async function toggleMCPAccess(enabled: boolean) {
 				<N8nText size="small" color="text-light" :class="$style.meta">
 					{{ formattedCreatedAtDate }}
 				</N8nText>
-			</template>
-			<template #status>
-				<span :class="$style.cellContent" @click.stop>
-					<PublicationIndicator
-						v-if="isPublished"
-						:label="
-							locale.baseText(
-								hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
-							)
-						"
-						:variant="hasUnpublishedChanges ? 'warning' : 'success'"
-						:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
-						data-test-id="agent-card-publish-indicator"
-					/>
-				</span>
 			</template>
 			<template #actions>
 				<span :class="$style.cellContent" @click.stop>

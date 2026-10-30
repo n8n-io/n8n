@@ -57,7 +57,6 @@ const listColumns = computed<ResourceListColumn[]>(() => [
 	resourceListColumns.name(),
 	resourceListColumns.updated(),
 	resourceListColumns.created(),
-	resourceListColumns.status(),
 	// New chat and the row menu
 	resourceListColumns.actions(2),
 ]);

@@ -337,7 +337,6 @@ const listColumns = computed<ResourceListColumn[]>(() => [
 	...(showCardsBadge.value ? [resourceListColumns.location()] : []),
 	resourceListColumns.updated(),
 	resourceListColumns.created(),
-	resourceListColumns.status(),
 	...(isWorkflowCardMcpToggleEnabled.value && mcpModuleActive.value
 		? [
 				{
@@ -2551,7 +2550,6 @@ const onNameSubmit = async (name: string) => {
 		<template #empty>
 			<EmptySharedSectionActionBox
 				v-if="projectPages.isSharedSubPage && personalProject"
-				:personal-project="personalProject"
 				resource-type="workflows"
 			/>
 			<div v-else>
@@ -2630,7 +2628,6 @@ const onNameSubmit = async (name: string) => {
 				</N8nInfoTip>
 				<EmptySharedSectionActionBox
 					v-if="projectPages.isSharedSubPage && personalProject"
-					:personal-project="personalProject"
 					resource-type="workflows"
 				/>
 				<N8nEmptyState

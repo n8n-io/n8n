@@ -633,6 +633,13 @@
 	--menu--color--background--hover: var(--color--neutral-200);
 	--menu--color--background--active: var(--color--neutral-200);
 
+	// App shell: the frame around the main content panel, and the panel itself
+	--app-shell--color--background: var(--menu--color--background);
+	--app-shell--panel--color--background: var(--background--surface);
+	--app-shell--panel--border-color: var(--color--neutral-250);
+	// A soft drop plus a tight contact shadow. No primitive has these low alphas.
+	--app-shell--panel--shadow: 0 3px 6px -2px oklch(0% 0 0 / 0.02), 0 1px 1px oklch(0% 0 0 / 0.04);
+
 	// Params
 	--icon--color: var(--color--text--tint-1);
 	--icon--color--hover: var(--color--orange-600);
@@ -1236,6 +1243,13 @@
 	--menu--color--background: var(--color--neutral-950);
 	--menu--color--background--hover: var(--color--neutral-700);
 	--menu--color--background--active: var(--color--neutral-700);
+
+	// The frame is darker than the panel, so the panel reads as the foreground.
+	--app-shell--color--background: var(--color--neutral-black);
+	--app-shell--panel--color--background: var(--color--neutral-950);
+	// A shadow does not show on a black frame, so the border separates the panel.
+	--app-shell--panel--border-color: var(--color--white-alpha-150);
+	--app-shell--panel--shadow: none;
 
 	/* Ag Grid */
 	--grid--row--color--background--selected: var(--color--purple-900);

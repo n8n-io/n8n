@@ -117,7 +117,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 									{{ summaryTitles[id] }}
 								</N8nTooltip>
 							</strong>
-							<small :class="$style.days">
+							<small v-if="displayDateRangeLabel" :class="$style.days">
 								{{ displayDateRangeLabel }}
 							</small>
 							<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
@@ -173,7 +173,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 .insightsWrapper {
 	position: relative;
 	padding: var(--spacing--xs) 0 0;
-	margin-bottom: var(--spacing--2xl);
+	margin-bottom: var(--spacing--xl);
 }
 
 .insights {
@@ -182,7 +182,6 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 
 	ul {
 		display: flex;
-		height: 101px;
 		align-items: stretch;
 		justify-content: space-evenly;
 		border: var(--border);
@@ -214,7 +213,8 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			align-content: center;
 			width: 100%;
 			height: 100%;
-			padding: var(--spacing--3xs) var(--spacing--lg) 0;
+			// The bottom padding gives back the space of the active tab border
+			padding: var(--spacing--sm) var(--spacing--md) calc(var(--spacing--sm) - 3px);
 			background-color: var(--background--surface);
 			border-bottom: 3px solid transparent;
 
@@ -234,12 +234,12 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				font-size: var(--font-size--sm);
 				font-weight: 400;
 				white-space: nowrap;
-				margin-bottom: var(--spacing--3xs);
+				margin-bottom: var(--spacing--2xs);
 			}
 
 			.days {
 				padding: 0;
-				margin: 0 0 var(--spacing--xs);
+				margin: 0 0 var(--spacing--2xs);
 				color: var(--color--text--tint-1);
 				font-size: var(--font-size--2xs);
 				font-weight: var(--font-weight--regular);

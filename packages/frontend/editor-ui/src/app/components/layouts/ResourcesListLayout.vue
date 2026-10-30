@@ -4,6 +4,7 @@ import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount, provide } f
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
 import ResourceListHeader from '@/app/components/layouts/ResourceListHeader.vue';
+import ResourceListSkeleton from '@/app/components/layouts/ResourceListSkeleton.vue';
 import {
 	type ResourceListColumn,
 	ResourceListColumnsKey,
@@ -34,7 +35,6 @@ import {
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
-	N8nLoading,
 	N8nRecycleScroller,
 	N8nText,
 	getScrollParent,
@@ -731,7 +731,7 @@ defineExpose({
 			</template>
 		</template>
 		<div v-if="showLoadingState" class="resource-list-loading">
-			<N8nLoading :rows="25" :shrink-last="false" />
+			<ResourceListSkeleton />
 		</div>
 		<template v-else>
 			<div v-if="showEmptyState">
@@ -750,7 +750,7 @@ defineExpose({
 				<slot name="preamble" />
 
 				<div v-if="resourcesRefreshing" class="resource-list-loading resource-list-loading-instant">
-					<N8nLoading :rows="rowsPerPage" :shrink-last="false" />
+					<ResourceListSkeleton />
 				</div>
 				<div
 					v-else-if="filteredAndSortedResources.length > 0"
@@ -790,7 +790,7 @@ defineExpose({
 							:class="$style.loadMore"
 							data-test-id="resources-list-load-more"
 						>
-							<N8nLoading :rows="3" :shrink-last="false" />
+							<ResourceListSkeleton :rows="3" :header="false" />
 						</div>
 					</div>
 					<!-- DATATABLE -->
@@ -899,8 +899,14 @@ defineExpose({
 	--card--color--background: transparent;
 	--card--color--background--hover: var(--background--hover);
 	--card--padding: var(--spacing--xs) var(--spacing--sm);
+	// A rounded corner bends the divider, so only the hover fill is rounded.
+	--card--radius: 0;
 
 	width: 100%;
+
+	:global(.card:hover) {
+		--card--radius: var(--radius);
+	}
 	// The page has no bottom padding, so keep the last row off the panel edge.
 	padding-bottom: var(--spacing--sm);
 
@@ -935,7 +941,7 @@ defineExpose({
 }
 
 .loadMore {
-	padding: var(--spacing--xs) var(--spacing--sm);
+	position: relative;
 }
 
 .datatable {
@@ -955,22 +961,6 @@ defineExpose({
 	Show the loading skeleton only if the loading takes longer than 300ms
 	*/
 	animation: 0.01s linear 0.3s forwards changeVisibility;
-	:deep(.el-skeleton) {
-		width: 100%;
-
-		> div {
-			> div:first-child {
-				.el-skeleton__item {
-					height: 42px;
-					margin: 0;
-				}
-			}
-		}
-
-		.el-skeleton__item {
-			height: 69px;
-		}
-	}
 }
 .resource-list-loading-instant {
 	animation: 0.01s linear 0s forwards changeVisibility;

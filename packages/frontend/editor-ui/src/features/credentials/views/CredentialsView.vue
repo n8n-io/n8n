@@ -425,7 +425,6 @@ onMounted(() => {
 		<template #empty>
 			<EmptySharedSectionActionBox
 				v-if="overview.isSharedSubPage && personalProject"
-				:personal-project="personalProject"
 				resource-type="credentials"
 			/>
 			<ResourcesListEmptyState

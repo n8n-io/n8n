@@ -708,6 +708,25 @@ const tags = computed(
 				>
 					{{ data.name }}
 				</N8nText>
+				<span v-if="data.isArchived || publicationIndicator" :class="$style.indicator" @click.stop>
+					<N8nText
+						v-if="data.isArchived"
+						color="text-light"
+						size="small"
+						bold
+						data-test-id="workflow-card-archived"
+					>
+						{{ locale.baseText('workflows.item.archived') }}
+					</N8nText>
+					<PublicationIndicator
+						v-else-if="publicationIndicator"
+						:variant="publicationIndicator.variant"
+						:label="publicationIndicator.label"
+						:tooltip="publicationIndicator.tooltip"
+						:data-state="publicationIndicator.state"
+						data-test-id="workflow-card-publish-indicator"
+					/>
+				</span>
 				<N8nBadge v-if="!workflowPermissions.update" variant="outline">
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
@@ -787,27 +806,6 @@ const tags = computed(
 				<N8nText size="small" color="text-light" :class="$style.meta">
 					{{ formattedCreatedAtDate }}
 				</N8nText>
-			</template>
-			<template #status>
-				<span :class="$style.cellContent" @click.stop>
-					<N8nText
-						v-if="data.isArchived"
-						color="text-light"
-						size="small"
-						bold
-						data-test-id="workflow-card-archived"
-					>
-						{{ locale.baseText('workflows.item.archived') }}
-					</N8nText>
-					<PublicationIndicator
-						v-else-if="publicationIndicator"
-						:variant="publicationIndicator.variant"
-						:label="publicationIndicator.label"
-						:tooltip="publicationIndicator.tooltip"
-						:data-state="publicationIndicator.state"
-						data-test-id="workflow-card-publish-indicator"
-					/>
-				</span>
 			</template>
 			<template #mcp>
 				<span :class="$style.cellContent" @click.stop>

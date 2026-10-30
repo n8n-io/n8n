@@ -102,23 +102,24 @@ describe('ResourcesListLayout', () => {
 	});
 
 	it('should render loading skeleton', () => {
-		const { container } = renderComponent({
+		const { getByTestId } = renderComponent({
 			props: {
 				loading: true,
 			},
 		});
 
-		expect(container.querySelectorAll('.el-skeleton__p')).toHaveLength(25);
+		const skeleton = getByTestId('resources-list-skeleton');
+		expect(skeleton.querySelectorAll('[data-column="name"]')).toHaveLength(10);
 	});
 
 	it('should render loading skeleton instead of list chrome while refreshing an empty list', () => {
-		const { container, queryByTestId } = renderComponent({
+		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
 				resourcesRefreshing: true,
 			},
 		});
 
-		expect(container.querySelectorAll('.el-skeleton__p')).toHaveLength(25);
+		expect(getByTestId('resources-list-skeleton')).toBeInTheDocument();
 		expect(queryByTestId('resources-list-search')).not.toBeInTheDocument();
 	});
 

@@ -176,7 +176,7 @@ type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
 const createWorkflowButton = computed(() => ({
 	value: ACTION_TYPES.WORKFLOW,
-	label: i18n.baseText('projects.header.create.workflow'),
+	label: i18n.baseText('projects.menu.create.workflow'),
 	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
@@ -186,7 +186,7 @@ const createWorkflowButton = computed(() => ({
 
 const createCredentialButton = computed(() => ({
 	value: ACTION_TYPES.CREDENTIAL,
-	label: i18n.baseText('projects.header.create.credential'),
+	label: i18n.baseText('projects.menu.create.credential'),
 	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
@@ -196,7 +196,7 @@ const createCredentialButton = computed(() => ({
 
 const createDataTableButton = computed(() => ({
 	value: ACTION_TYPES.DATA_TABLE,
-	label: i18n.baseText('dataTable.add.button.label'),
+	label: i18n.baseText('projects.menu.create.dataTable'),
 	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
@@ -206,7 +206,7 @@ const createDataTableButton = computed(() => ({
 
 const createVariableButton = computed(() => ({
 	value: ACTION_TYPES.VARIABLE,
-	label: i18n.baseText('variables.add.button.label'),
+	label: i18n.baseText('projects.menu.create.variable'),
 	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
 	size: 'mini' as const,
 	disabled:
@@ -217,7 +217,7 @@ const createVariableButton = computed(() => ({
 
 const createAgentButton = computed(() => ({
 	value: ACTION_TYPES.AGENT,
-	label: i18n.baseText('projects.header.create.agent'),
+	label: i18n.baseText('projects.menu.create.agent'),
 	size: 'mini' as const,
 	disabled: !canCreateAgent.value,
 }));
@@ -252,7 +252,7 @@ const menu = computed(() => {
 	if (selectedMainButtonType.value !== ACTION_TYPES.WORKFLOW) {
 		items.push({
 			value: ACTION_TYPES.WORKFLOW,
-			label: i18n.baseText('projects.header.create.workflow'),
+			label: i18n.baseText('projects.menu.create.workflow'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).workflow.create,
@@ -263,7 +263,7 @@ const menu = computed(() => {
 	if (selectedMainButtonType.value !== ACTION_TYPES.CREDENTIAL) {
 		items.push({
 			value: ACTION_TYPES.CREDENTIAL,
-			label: i18n.baseText('projects.header.create.credential'),
+			label: i18n.baseText('projects.menu.create.credential'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
@@ -276,7 +276,7 @@ const menu = computed(() => {
 	) {
 		items.push({
 			value: ACTION_TYPES.VARIABLE,
-			label: i18n.baseText('variables.add.button.label'),
+			label: i18n.baseText('projects.menu.create.variable'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).projectVariable.create,
@@ -286,7 +286,7 @@ const menu = computed(() => {
 	if (showFolders.value) {
 		items.push({
 			value: ACTION_TYPES.FOLDER,
-			label: i18n.baseText('projects.header.create.folder'),
+			label: i18n.baseText('projects.menu.create.folder'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).folder.create,
@@ -300,7 +300,7 @@ const menu = computed(() => {
 		// TODO: this should probably be moved to the module descriptor as a setting
 		items.push({
 			value: ACTION_TYPES.DATA_TABLE,
-			label: i18n.baseText('dataTable.add.button.label'),
+			label: i18n.baseText('projects.menu.create.dataTable'),
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
@@ -310,7 +310,7 @@ const menu = computed(() => {
 	if (settingsStore.isAgentsEnabled && selectedMainButtonType.value !== ACTION_TYPES.AGENT) {
 		items.push({
 			value: ACTION_TYPES.AGENT,
-			label: i18n.baseText('projects.header.create.agent'),
+			label: i18n.baseText('projects.menu.create.agent'),
 			disabled: !canCreateAgent.value,
 		});
 	}
