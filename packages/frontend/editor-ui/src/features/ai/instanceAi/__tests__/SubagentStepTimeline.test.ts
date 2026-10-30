@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import userEvent from '@testing-library/user-event';
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import { createTestingPinia } from '@pinia/testing';
 import SubagentStepTimeline from '../components/SubagentStepTimeline.vue';
@@ -132,6 +133,51 @@ describe('SubagentStepTimeline', () => {
 		expect(getByText('Here is some code:')).toBeInTheDocument();
 		// "Thinking" only shows when expanded
 		expect(queryByText('Thinking')).not.toBeInTheDocument();
+	});
+
+	it('keeps streamed long-text labels outside a polite live region', async () => {
+		const { getByText, rerender } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					timeline: [{ type: 'text', content: 'Generating code\n```js\nconst value = 1;\n```' }],
+				}),
+			},
+		});
+
+		expect(getByText('Generating code')).toHaveAttribute('aria-live', 'off');
+
+		await rerender({
+			agentNode: makeAgentNode({
+				timeline: [{ type: 'text', content: 'Generating code now\n```js\nconst value = 2;\n```' }],
+			}),
+		});
+
+		expect(getByText('Generating code now')).toHaveAttribute('aria-live', 'off');
+	});
+
+	it('opens long text with Enter and restores its short label with Space', async () => {
+		const user = userEvent.setup();
+		const { getByRole, container } = renderComponent({
+			props: {
+				agentNode: makeAgentNode({
+					timeline: [{ type: 'text', content: 'Generated code:\n```js\nconst value = 42;\n```' }],
+				}),
+			},
+		});
+		const trigger = getByRole('button', { name: 'Generated code:' });
+		expect(trigger).toHaveAttribute('aria-expanded', 'false');
+
+		trigger.focus();
+		await user.keyboard('{Enter}');
+		expect(trigger).toHaveAttribute('aria-expanded', 'true');
+		expect(trigger).toHaveTextContent('Thinking');
+		expect(container.querySelector('pre')).toBeVisible();
+		expect(container.querySelector('pre')).toHaveTextContent('const value = 42;');
+
+		await user.keyboard(' ');
+		expect(trigger).toHaveAttribute('aria-expanded', 'false');
+		expect(trigger).toHaveTextContent('Generated code:');
+		expect(trigger).not.toHaveTextContent('Thinking');
 	});
 
 	it('should truncate long labels (>80 chars) with ellipsis', () => {

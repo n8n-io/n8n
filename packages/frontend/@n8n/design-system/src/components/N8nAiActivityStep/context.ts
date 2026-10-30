@@ -1,5 +1,5 @@
-import type { InjectionKey } from 'vue';
+import type { InjectionKey, MaybeRef } from 'vue';
 
-export const aiActivityStepGroupContext: InjectionKey<boolean> = Symbol(
+export const aiActivityStepGroupContext: InjectionKey<MaybeRef<boolean>> = Symbol(
 	'aiActivityStepGroupContext',
 );
