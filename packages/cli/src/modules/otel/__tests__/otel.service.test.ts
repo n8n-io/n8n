@@ -192,6 +192,7 @@ describe('OtelService', () => {
 	let exporterFactory: OtelExporterFactory;
 	let moduleRegistry: ReturnType<typeof mock<ModuleRegistry>>;
 	let publisher: ReturnType<typeof mock<Publisher>>;
+	let externalHooks: ReturnType<typeof mock<ExternalHooks>>;
 	let service: OtelService;
 
 	const createService = (sdk: OtelSdk) =>
@@ -203,7 +204,7 @@ describe('OtelService', () => {
 			sdk,
 			moduleRegistry,
 			publisher,
-			mock<ExternalHooks>(),
+			externalHooks,
 			mock<OtelConfigureHook>(),
 		);
 
@@ -223,6 +224,7 @@ describe('OtelService', () => {
 		moduleRegistry = mock<ModuleRegistry>();
 		publisher = mock<Publisher>();
 		publisher.publishCommand.mockResolvedValue();
+		externalHooks = mock<ExternalHooks>();
 		service = createService(otelSdk);
 	});
 	afterEach(() => vi.restoreAllMocks());
@@ -277,6 +279,20 @@ describe('OtelService', () => {
 			expect(OTLPTraceExporter).not.toHaveBeenCalled();
 			expect(fetchMock).not.toHaveBeenCalled();
 			expect(stoppedSdk.apply).not.toHaveBeenCalled();
+		});
+
+		it('logs a warning and still finishes startup when the otel.configure hook throws', async () => {
+			otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+			externalHooks.run.mockRejectedValue(new Error('hook file is broken'));
+
+			await service.init();
+			await flushPromises();
+
+			expect(otelSdk.apply).toHaveBeenCalledTimes(1);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'The otel.configure external hook failed, so n8n starts without it',
+				{ error: 'hook file is broken' },
+			);
 		});
 
 		it('logs connectivity failure and still finishes startup', async () => {

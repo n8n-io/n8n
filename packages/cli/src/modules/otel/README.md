@@ -152,7 +152,8 @@ object. n8n keeps only string values.
   `baggage` header next to `traceparent` on outbound requests. Without a mapper, n8n sends no
   `baggage` header.
 
-A mapper that throws logs one warning, then n8n ignores it and keeps the span as it is.
+A hook file that throws at startup logs one warning, and n8n starts without the mappers. A
+mapper that throws logs one warning, then n8n ignores it and keeps the span as it is.
 
 Example hook file. Load it with `EXTERNAL_HOOK_FILES=/absolute/path/to/otel-project-resource.hook.js`:
 

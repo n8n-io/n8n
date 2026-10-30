@@ -81,7 +81,13 @@ export class OtelService {
 	) {}
 
 	async init(): Promise<void> {
-		await this.externalHooks.run('otel.configure', [this.configureHook.api]);
+		try {
+			await this.externalHooks.run('otel.configure', [this.configureHook.api]);
+		} catch (error) {
+			this.logger.warn('The otel.configure external hook failed, so n8n starts without it', {
+				error: getErrorMessage(error),
+			});
+		}
 		await this.applySavedSettings();
 	}
 
