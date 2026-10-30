@@ -28,7 +28,9 @@ import type {
 	IBreakingChangeRule,
 	IBreakingChangeWorkflowRule,
 	WorkflowDetectionReport,
+	WorkflowScanContext,
 } from './types';
+import { createWorkflowScanContext } from './types';
 import { N8N_VERSION } from '../../constants';
 
 /** One rule check on one workflow that threw, so its result is unknown. */
@@ -235,6 +237,7 @@ export class BreakingChangeService {
 		const workflowMetadataMap: Map<string, WorkflowMetadata> = new Map();
 		const publishedHits: WorkflowRuleHit[] = [];
 		const failedChecks: FailedRuleCheck[] = [];
+		const context = createWorkflowScanContext();
 
 		// Reset batch rules internal state before processing
 		batchRules.forEach((rule) => rule.reset());
@@ -296,6 +299,7 @@ export class BreakingChangeService {
 						rule,
 						workflow,
 						nodesGroupedByType,
+						context,
 						failedChecks,
 					);
 					if (result?.isAffected) {
@@ -327,7 +331,7 @@ export class BreakingChangeService {
 				const nodes = publishedNodes.get(workflow.id);
 				if (nodes) {
 					publishedHits.push(
-						...(await this.detectPublishedHits(cleanRules, workflow, nodes, failedChecks)),
+						...(await this.detectPublishedHits(cleanRules, workflow, nodes, context, failedChecks)),
 					);
 				}
 			}
@@ -378,13 +382,20 @@ export class BreakingChangeService {
 		rules: IBreakingChangeWorkflowRule[],
 		workflow: WorkflowEntity,
 		publishedNodes: INode[],
+		context: WorkflowScanContext,
 		failedChecks: FailedRuleCheck[],
 	): Promise<WorkflowRuleHit[]> {
 		const published = { ...workflow, nodes: publishedNodes };
 		const nodesGroupedByType = groupNodesByType(publishedNodes);
 		const hits: WorkflowRuleHit[] = [];
 		for (const rule of rules) {
-			const result = await this.runWorkflowRule(rule, published, nodesGroupedByType, failedChecks);
+			const result = await this.runWorkflowRule(
+				rule,
+				published,
+				nodesGroupedByType,
+				context,
+				failedChecks,
+			);
 			if (result?.isAffected) hits.push({ ruleId: rule.id, workflowId: workflow.id });
 		}
 		return hits;
@@ -416,10 +427,11 @@ export class BreakingChangeService {
 		rule: IBreakingChangeWorkflowRule,
 		workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
+		context: WorkflowScanContext,
 		failedChecks: FailedRuleCheck[],
 	): Promise<WorkflowDetectionReport | undefined> {
 		try {
-			return await rule.detectWorkflow(workflow, nodesGroupedByType);
+			return await rule.detectWorkflow(workflow, nodesGroupedByType, context);
 		} catch (error) {
 			this.reportRuleError(error, rule.id, workflow.id);
 			failedChecks.push({ ruleId: rule.id, workflowId: workflow.id });
@@ -455,15 +467,22 @@ export class BreakingChangeService {
 		const hits: WorkflowRuleHit[] = [];
 		const cleanRules: IBreakingChangeWorkflowRule[] = [];
 		const failedChecks: FailedRuleCheck[] = [];
+		const context = createWorkflowScanContext();
 		for (const rule of workflowLevelRules) {
-			const result = await this.runWorkflowRule(rule, workflow, nodesGroupedByType, failedChecks);
+			const result = await this.runWorkflowRule(
+				rule,
+				workflow,
+				nodesGroupedByType,
+				context,
+				failedChecks,
+			);
 			if (result?.isAffected) hits.push({ ruleId: rule.id, workflowId });
 			else if (result) cleanRules.push(rule);
 		}
 
 		const publishedNodes = (await this.loadPublishedNodes([workflow])).get(workflowId);
 		const publishedHits = publishedNodes
-			? await this.detectPublishedHits(cleanRules, workflow, publishedNodes, failedChecks)
+			? await this.detectPublishedHits(cleanRules, workflow, publishedNodes, context, failedChecks)
 			: [];
 
 		return { hits, publishedHits, failedChecks };

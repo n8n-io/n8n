@@ -37,6 +37,19 @@ export interface IBreakingChangeInstanceRule {
 	detect(): Promise<InstanceDetectionReport>;
 }
 
+/**
+ * Data that lives for one scan, so a rule loads it once and not once per workflow.
+ * ponytail: one typed field per need. Make it generic when a third rule needs a cache.
+ */
+export interface WorkflowScanContext {
+	/** Slack API credential ID to whether its signature secret is missing. */
+	slackSignatureSecretMissing: Map<string, boolean>;
+}
+
+export const createWorkflowScanContext = (): WorkflowScanContext => ({
+	slackSignatureSecretMissing: new Map(),
+});
+
 export interface IBreakingChangeWorkflowRule {
 	id: string;
 	getMetadata(): BreakingChangeRuleMetadata;
@@ -47,6 +60,7 @@ export interface IBreakingChangeWorkflowRule {
 	detectWorkflow(
 		workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
+		context?: WorkflowScanContext,
 	): Promise<WorkflowDetectionReport>;
 }
 
