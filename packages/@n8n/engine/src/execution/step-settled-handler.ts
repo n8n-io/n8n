@@ -23,7 +23,11 @@ import {
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
-import { collectSubExecutionResult, resumeAwaitingParent } from './sub-execution-resume';
+import {
+	collectSubExecutionResult,
+	resumeAwaitingParent,
+	terminalNodeIds,
+} from './sub-execution-resume';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -251,7 +255,10 @@ export class StepSettledHandler {
 								status: 'completed',
 								result: collectSubExecutionResult(
 									execution.graph,
-									await this.stepStore.loadAllSteps(execution.id),
+									await this.stepStore.loadStepsByNodeIds(
+										execution.id,
+										terminalNodeIds(execution.graph),
+									),
 								),
 							},
 				);

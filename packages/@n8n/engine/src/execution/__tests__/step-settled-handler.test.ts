@@ -124,6 +124,7 @@ function makeStepStore(
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
@@ -623,7 +624,7 @@ describe('StepSettledHandler sub-executions', () => {
 			{ id: 'step-m', nodeId: 'm' },
 			{
 				countSettledSteps: vi.fn().mockResolvedValue(5),
-				loadAllSteps: vi
+				loadStepsByNodeIds: vi
 					.fn()
 					.mockResolvedValue([
 						row('trigger', 'completed', [[]]),
@@ -674,7 +675,7 @@ describe('StepSettledHandler sub-executions', () => {
 			{ id: 'step-c-1', nodeId: 'c', iteration: 1 },
 			{
 				countSettledSteps: vi.fn().mockResolvedValue(5),
-				loadAllSteps: vi
+				loadStepsByNodeIds: vi
 					.fn()
 					// Out of graph order, and with a pass of `b` that did not complete.
 					.mockResolvedValue([

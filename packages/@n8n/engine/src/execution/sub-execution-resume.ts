@@ -10,30 +10,21 @@ export interface SubExecutionResumeDeps {
 	stepQueue: WorkQueue<StepMessage>;
 }
 
-/**
- * Hands an ended sub-execution's outcome to the parent step that waits for it:
- * the step is queued again with the outcome as its resume cause, announced,
- * and the parent's status refreshed. Resume first, announce second, as the
- * wait sweep does: the row is `queued` before any worker can hear of it.
- *
- * A parent step that is not waiting any more was cancelled with its
- * execution, and nothing is owed to it.
- *
- * TODO(CET-342): a crash between the end and the resume leaves a parent step
- * waiting on a sub-execution that has ended. The rows say so, and a redelivery
- * cannot repeat an end it lost, so reconciliation re-issues the resume.
- */
+/** Resume the parent step with the sub-execution outcome, and announce the step on the work queue. */
 export async function resumeAwaitingParent(
 	deps: SubExecutionResumeDeps,
-	execution: ExecutionRecord,
+	subExecution: ExecutionRecord,
 	outcome: SubExecutionOutcome,
 ): Promise<void> {
-	const { parent } = execution;
+	const { parent } = subExecution;
 	if (!parent?.awaited) return;
 
+	// Resume first, announce second: the row is `queued` before any worker can
+	// hear of it. A parent step that is not waiting any more was cancelled with
+	// its execution, and nothing is owed to it.
 	const resumed = await deps.stepStore.resumeStep(parent.stepId, {
 		kind: 'subExecution',
-		executionId: execution.id,
+		executionId: subExecution.id,
 		...outcome,
 	});
 	if (!resumed) return;
@@ -47,45 +38,45 @@ export async function resumeAwaitingParent(
 }
 
 /**
- * The outputs of every completed terminal step, in graph order and then by
- * pass. Several terminal branches all contribute, which is where engine v1
- * reports the last node that ran instead.
- *
- * A node is terminal when nothing follows it. A loop's entry node counts when
- * no edge leaves the loop: its edges into the loop body are the loop's own,
- * and only the pass that ended the loop carries what the loop produced.
+ * The nodes whose outputs are a sub-execution's result, in graph order: the
+ * nodes nothing follows. A loop's entry node counts when no edge leaves the
+ * loop, since its edges into the loop body are the loop's own.
  */
-export function collectSubExecutionResult(
-	graph: WorkflowGraph,
-	steps: StepRecord[],
-): SubExecutionResult {
+export function terminalNodeIds(graph: WorkflowGraph): string[] {
 	const closedLoopEntries = new Set(
 		deriveLoops(graph)
 			.filter((loop) => loop.exitEdges.length === 0)
 			.map((loop) => loop.batchNodeId),
 	);
 	const sources = new Set(graph.edges.map((edge) => edge.from));
-	const terminalOrder = new Map(
-		graph.nodes
-			.filter((node) => closedLoopEntries.has(node.id) || !sources.has(node.id))
-			.map((node, index) => [node.id, index]),
-	);
+	return graph.nodes
+		.filter((node) => closedLoopEntries.has(node.id) || !sources.has(node.id))
+		.map((node) => node.id);
+}
 
-	const completed = steps.filter(
-		(step) => step.status === 'completed' && terminalOrder.has(step.nodeId),
-	);
+/**
+ * Get the outcome of a sub-execution to return as a result to the parent.
+ *
+ * `steps` are the terminal nodes' steps, see `terminalNodeIds`. Every
+ * completed one contributes, in graph order and then by pass, except for a
+ * loop entry, where only the pass that ended the loop carries what the loop
+ * produced.
+ */
+export function collectSubExecutionResult(
+	graph: WorkflowGraph,
+	steps: StepRecord[],
+): SubExecutionResult {
+	const order = new Map(terminalNodeIds(graph).map((nodeId, index) => [nodeId, index]));
+	const loopEntries = new Set(deriveLoops(graph).map((loop) => loop.batchNodeId));
+
+	const completed = steps.filter((step) => step.status === 'completed' && order.has(step.nodeId));
 	const lastPass = new Map<string, number>();
 	for (const step of completed) {
 		lastPass.set(step.nodeId, Math.max(lastPass.get(step.nodeId) ?? -1, step.iteration));
 	}
 
 	return completed
-		.filter(
-			(step) => !closedLoopEntries.has(step.nodeId) || step.iteration === lastPass.get(step.nodeId),
-		)
-		.sort(
-			(a, b) =>
-				terminalOrder.get(a.nodeId)! - terminalOrder.get(b.nodeId)! || a.iteration - b.iteration,
-		)
+		.filter((step) => !loopEntries.has(step.nodeId) || step.iteration === lastPass.get(step.nodeId))
+		.sort((a, b) => order.get(a.nodeId)! - order.get(b.nodeId)! || a.iteration - b.iteration)
 		.map(({ nodeId, iteration, outputs }) => ({ nodeId, iteration, outputs: outputs ?? [] }));
 }
