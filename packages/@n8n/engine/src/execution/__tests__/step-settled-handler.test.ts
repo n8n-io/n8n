@@ -626,13 +626,7 @@ describe('StepSettledHandler sub-executions', () => {
 				countSettledSteps: vi.fn().mockResolvedValue(5),
 				loadStepsByNodeIds: vi
 					.fn()
-					.mockResolvedValue([
-						row('trigger', 'completed', [[]]),
-						row('a', 'completed', [[{ json: { a: 1 } }]]),
-						row('b', 'completed', [[{ json: { b: 1 } }]]),
-						row('c', 'completed', [[{ json: { c: 1 } }]]),
-						row('m', 'completed', [[{ json: { done: true } }]]),
-					]),
+					.mockResolvedValue([row('m', 'completed', [[{ json: { done: true } }]])]),
 			},
 		);
 		const { handler, executionStore, stepQueue } = makeHandler(stepStore, {
@@ -641,7 +635,9 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		// Only `m` has no outgoing edge, so only its outputs are the sub-execution's result.
+		// Only `m` has no outgoing edge, so only its steps are read and only its
+		// outputs are the sub-execution's result.
+		expect(stepStore.loadStepsByNodeIds).toHaveBeenCalledWith('exec-1', ['m']);
 		expect(stepStore.resumeStep).toHaveBeenCalledWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
@@ -683,8 +679,6 @@ describe('StepSettledHandler sub-executions', () => {
 						row('b', 'skipped', null, 1),
 						row('c', 'completed', [[{ json: { c: 0 } }]], 0),
 						row('b', 'completed', [[{ json: { b: 0 } }]], 0),
-						row('a', 'completed', [[{ json: { a: 1 } }]]),
-						row('trigger', 'completed', [[]]),
 					]),
 			},
 		);
@@ -694,6 +688,7 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle({ ...event, stepId: 'step-c-1' });
 
+		expect(stepStore.loadStepsByNodeIds).toHaveBeenCalledWith('exec-1', ['b', 'c']);
 		expect(stepStore.resumeStep).toHaveBeenCalledWith(
 			'step-call',
 			expect.objectContaining({
