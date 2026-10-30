@@ -1,5 +1,6 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import {
+	AiPreferenceRepository,
 	User,
 	UserRepository,
 	GLOBAL_MEMBER_ROLE,
@@ -13,6 +14,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
+import { randomUUID } from 'node:crypto';
 
 import { createMember } from '../../shared/db/users';
 
@@ -31,7 +33,7 @@ describe('UserRepository (both kinds)', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['User']);
+		await testDb.truncate(['AiPreference', 'Project', 'User']);
 	});
 
 	afterAll(async () => {
@@ -165,6 +167,40 @@ describe('UserRepository (both kinds)', () => {
 
 			expect(await personRepository.findById(person.id)).toBeInstanceOf(Person);
 			expect(await personRepository.findById(serviceAccount.id)).toBeNull();
+		});
+
+		it('finds people by ids, but not service accounts', async () => {
+			const personRepository = Container.get(PersonRepository);
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+
+			const found = await personRepository.findManyByIds([person.id, serviceAccount.id]);
+
+			expect(found.map(({ id }) => id)).toEqual([person.id]);
+		});
+	});
+
+	describe('relations', () => {
+		it('loads a service account that acted as a ServiceAccount', async () => {
+			const serviceAccount = await createServiceAccount();
+			const project = await createTeamProject();
+			const preferences = Container.get(AiPreferenceRepository);
+			const { id } = await preferences.save(
+				preferences.create({
+					id: randomUUID(),
+					content: 'Rule.',
+					source: 'ui',
+					projectId: project.id,
+					createdById: serviceAccount.id,
+				}),
+			);
+
+			const loaded = await preferences.findOneOrFail({
+				where: { id },
+				relations: { createdBy: true },
+			});
+
+			expect(loaded.createdBy).toBeInstanceOf(ServiceAccount);
 		});
 	});
 

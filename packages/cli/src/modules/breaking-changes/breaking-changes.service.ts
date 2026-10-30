@@ -346,7 +346,7 @@ export class BreakingChangeService {
 	 * The published nodes of each workflow whose latest version is ahead of the
 	 * published one. The other workflows are absent, so they are scanned only once.
 	 */
-	private async loadPublishedNodes(workflows: WorkflowEntity[]): Promise<Map<string, INode[]>> {
+	async loadPublishedNodes(workflows: WorkflowEntity[]): Promise<Map<string, INode[]>> {
 		const workflowIdByVersionId = new Map<string, string>();
 		for (const { id, activeVersionId, versionId } of workflows) {
 			if (activeVersionId && activeVersionId !== versionId) {
