@@ -618,19 +618,12 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
-	/**
-	 * Deletion targets of a workflow, soft-deleted ones included. The two
-	 * `deletedAt` branches let Postgres combine the partial `(workflowId, status, id)`
-	 * index with the `deletedAt` index, as no index covers `workflowId` alone.
-	 */
+	/** Deletion targets of a workflow, soft-deleted ones included. */
 	async findForDeletionByWorkflowId(workflowId: string, limit: number) {
 		const executions = await this.createQueryBuilder('execution')
 			.withDeleted()
 			.select(['execution.id', 'execution.workflowId', 'execution.storedAt'])
-			.where('execution.workflowId = :workflowId AND execution.deletedAt IS NULL', { workflowId })
-			.orWhere('execution.workflowId = :workflowId AND execution.deletedAt IS NOT NULL', {
-				workflowId,
-			})
+			.where('execution.workflowId = :workflowId', { workflowId })
 			.limit(limit)
 			.getMany();
 

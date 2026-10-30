@@ -23,6 +23,9 @@ import { bigintStringToNumber, idStringifier } from '../utils/transformers';
 export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 @Entity()
+// Serves the FK cascade from `workflow_entity` and lookups that include
+// soft-deleted rows, which the partial indexes cannot. See migration 1793353882390.
+@Index(['workflowId'])
 @Index(['workflowId', 'id'])
 @Index(['waitTill', 'id'])
 @Index(['finished', 'id'])
