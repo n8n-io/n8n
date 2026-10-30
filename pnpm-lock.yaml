@@ -1444,6 +1444,9 @@ importers:
       '@n8n/backend-network':
         specifier: workspace:*
         version: link:../backend-network
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
@@ -1568,6 +1571,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1765,6 +1771,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -1844,6 +1853,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -2050,6 +2062,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -2111,6 +2126,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -2656,6 +2674,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -3160,6 +3181,9 @@ importers:
 
   packages/@n8n/inbound-auth:
     dependencies:
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../permissions
@@ -3683,6 +3707,9 @@ importers:
       '@n8n/engine':
         specifier: workspace:*
         version: link:../engine
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       n8n-core:
         specifier: workspace:*
         version: link:../../core
@@ -4327,6 +4354,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../errors
       '@n8n/utils':
         specifier: workspace:*
         version: link:../utils
@@ -6347,6 +6377,9 @@ importers:
       '@n8n/constants':
         specifier: workspace:*
         version: link:../../../@n8n/constants
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
       '@n8n/permissions':
         specifier: workspace:*
         version: link:../../../@n8n/permissions
@@ -6672,6 +6705,9 @@ importers:
       '@n8n/design-system':
         specifier: workspace:*
         version: link:../@n8n/design-system
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../@n8n/errors
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../../@n8n/eslint-config
@@ -7449,6 +7485,9 @@ importers:
       '@n8n/di':
         specifier: workspace:*
         version: link:../../../@n8n/di
+      '@n8n/errors':
+        specifier: workspace:*
+        version: link:../../../@n8n/errors
       '@n8n/typeorm':
         specifier: workspace:*
         version: link:../../../@n8n/typeorm
@@ -7458,9 +7497,6 @@ importers:
       n8n-core:
         specifier: workspace:*
         version: link:../../../core
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
     devDependencies:
       '@n8n/backend-test-utils':
         specifier: workspace:*
@@ -8367,9 +8403,6 @@ importers:
       '@n8n/errors':
         specifier: workspace:*
         version: link:../../../@n8n/errors
-      n8n-workflow:
-        specifier: workspace:*
-        version: link:../../../workflow
     devDependencies:
       '@n8n/oxlint-config':
         specifier: workspace:*
