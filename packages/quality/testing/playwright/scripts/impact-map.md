@@ -112,13 +112,37 @@ run." (The sibling fallback is a deliberate, sound trade: a new file is assumed
 exercised by the specs that exercise its directory — a superset in practice, far
 cheaper than the whole suite.)
 
-## 8. Where things live
+## 8. Line-level selection (backend `.ts` files)
+
+For a changed backend `.ts` file, `select` uses the changed lines, not the whole
+file. A change selects the specs that ran the innermost function that contains
+it, plus the specs that ran functions nested in that function. A change inside a
+function that no spec ran selects nothing and is reported as uncovered.
+
+The map records the commit that the coverage ran on (`sha`). Line numbers in the
+map refer to that commit, and a PR's changed lines refer to its merge base. So
+`select` translates the lines with `git diff <map sha> <merge base>`. It then
+parses the file at the map commit to find the function ranges.
+
+The file falls back to file-level when:
+
+- the map has no `sha`, or CI cannot fetch that commit;
+- a changed line also changed between the map commit and the merge base;
+- a change is outside every function, for example an import, a class field, a
+  decorator, or other module-level code;
+- the map has no entry at the start line of the function that contains the
+  change.
+
+Frontend and `.vue` files always use file-level selection.
+
+## 9. Where things live
 
 | Thing | File |
 |---|---|
 | Committed map | `.github/test-metrics/e2e-impact-map.json` |
 | Build + encode the map | `scripts/aggregate-coverage.mjs`, janitor `coverage-map.ts` (`mergeCoverage`, `encodeImpactMap`) |
 | Pick specs for a change | `scripts/select-affected-e2e.mjs` → janitor `select-e2e` |
+| Line-level scopes | janitor `core/read-line-scopes.ts`, test-impact `line-scope.ts` |
 | Backend per-spec capture | `fixtures/backend-v8-coverage.ts`, `scripts/emit-spec-backend-lcovs.ts` |
 | Full pipeline notes | `scripts/coverage-workflow.md` |
 

@@ -15,6 +15,8 @@
  * git diff resolves straight to the spec files that cover the touched functions.
  */
 
+import { resolveSpans, type LineScope } from './line-scope.js';
+
 export interface FileCoverage {
 	/** function name → { definition line, summed hit count } */
 	fns: Map<string, { line: number; hits: number }>;
@@ -40,6 +42,8 @@ export type ImpactMap = Record<string, Record<string, string[]>>;
  * would otherwise dominate the artifact. See `scripts/impact-map.md`.
  */
 export interface InternedImpactMap {
+	/** The commit that the coverage ran on. The map's line numbers refer to it. */
+	sha?: string;
 	specs: string[];
 	files: Record<string, Record<string, number[] | string>>;
 }
@@ -132,6 +136,7 @@ export function parseLcov(text: string, fallbackSpec = ''): LcovRecord[] {
 /**
  * Merge per-spec lcovs into one unified lcov + the impact map. Hit counts sum;
  * the map records, per function, the SET of specs that executed it (hits > 0).
+ * A function that no spec executed keeps an entry with an empty set.
  * Output is deterministic (sorted) so the merge is order-independent.
  */
 export function buildImpactMap(inputs: LcovInput[]): MergeResult {
@@ -153,12 +158,12 @@ export function buildImpactMap(inputs: LcovInput[]): MergeResult {
 				const cur = f.fns.get(fn.name) ?? { line: fn.line, hits: 0 };
 				cur.hits += fn.hits;
 				f.fns.set(fn.name, cur);
-				if (fn.hits > 0) {
-					const key = `${rec.file}#${fn.line}`;
-					let specs = funcToSpecs.get(key);
-					if (!specs) funcToSpecs.set(key, (specs = new Set()));
-					specs.add(rec.spec);
-				}
+				// Keep functions that no spec ran, with an empty spec set: line-level
+				// selection uses them to tell an unrun function from a parse mismatch.
+				const key = `${rec.file}#${fn.line}`;
+				let specs = funcToSpecs.get(key);
+				if (!specs) funcToSpecs.set(key, (specs = new Set()));
+				if (fn.hits > 0) specs.add(rec.spec);
 			}
 			for (const ln of rec.lines) {
 				f.lines.set(ln.line, (f.lines.get(ln.line) ?? 0) + ln.hits);
@@ -216,7 +221,7 @@ function assembleImpactMap(funcToSpecs: Map<string, Set<string>>): ImpactMap {
 }
 
 /** Intern spec paths into an index — the lossless on-disk form (see {@link InternedImpactMap}). */
-export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
+export function encodeImpactMap(map: ImpactMap, sha?: string): InternedImpactMap {
 	const index = new Map<string, number>();
 	const specs: string[] = [];
 	const internSpec = (s: string): number => {
@@ -242,7 +247,7 @@ export function encodeImpactMap(map: ImpactMap): InternedImpactMap {
 			files[file][line] = encodeSpecSet(indices, specs.length);
 		}
 	}
-	return { specs, files };
+	return { ...(sha ? { sha } : {}), specs, files };
 }
 
 /**
@@ -268,6 +273,11 @@ export interface ChangedFile {
 	file: string;
 	/** Changed source line numbers. Omit for file-level (whole-file) resolution. */
 	lines?: number[];
+	/**
+	 * Changed spans and function ranges, both in the lines of the commit that the
+	 * map was built from. Takes precedence over `lines`. See {@link resolveSpans}.
+	 */
+	scope?: LineScope;
 }
 
 export interface ResolveResult {
@@ -328,6 +338,8 @@ function buildDirIndex(map: ImpactMap): Map<string, Set<string>> {
  * when the map is known function-complete for the file. The default-safe usage —
  * and what the CLI does — is FILE-LEVEL (omit `lines`): a changed file selects
  * every spec covering any part of it. Treat `lines` as an opt-in optimisation.
+ * A `scope` (changed spans plus parsed function ranges) avoids this gap: see
+ * {@link resolveSpans}. The CLI passes a scope when it can build one.
  *
  * SIBLING FALLBACK (`opts.siblingFallback`): an unmapped file (new / never-
  * covered) otherwise forces 'broad' — counterintuitive for a new file in a
@@ -358,7 +370,7 @@ export function resolveImpact(
 	const declare = opts.onUncovered === 'declare';
 	const dirIndex = opts.siblingFallback && !declare ? buildDirIndex(map) : undefined;
 
-	for (const { file, lines } of changed) {
+	for (const { file, lines, scope } of changed) {
 		const fileMap = map[file];
 		if (!fileMap) {
 			if (declare) {
@@ -387,8 +399,20 @@ export function resolveImpact(
 		const addFile = () => {
 			for (const fnLine of fnStarts) for (const s of fileMap[String(fnLine)]) specs.add(s);
 		};
+		if (scope) {
+			const scoped = resolveSpans(fileMap, scope.ranges, scope.spans);
+			if (scoped === null) addFile();
+			else for (const s of scoped) specs.add(s);
+			// Only functions that no spec ran changed: no E2E checks this change.
+			if (declare && scoped?.length === 0) uncovered.push(file);
+			continue;
+		}
 		if (!lines || lines.length === 0) {
 			addFile();
+			// The map lists the file, but no spec ran any of its functions.
+			if (declare && fnStarts.every((line) => fileMap[String(line)].length === 0)) {
+				uncovered.push(file);
+			}
 			continue;
 		}
 		for (const line of lines) {
