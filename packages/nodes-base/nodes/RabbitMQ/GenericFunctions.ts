@@ -9,7 +9,7 @@ import type {
 	IRun,
 	ITriggerFunctions,
 } from 'n8n-workflow';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, SystemShutdownExecutionCancelledError } from 'n8n-workflow';
 
 import { sleep } from '@n8n/utils/sleep';
 import type { ExchangeType, Options, RabbitMQCredentials, TriggerOptions } from './types';
@@ -208,6 +208,8 @@ export async function handleMessage(
 	acknowledgeMode: string,
 	options: TriggerOptions,
 ) {
+	let acknowledgementAttempted = false;
+	let completionWaitStarted = false;
 	try {
 		if (acknowledgeMode !== 'immediately') {
 			messageTracker.received(message);
@@ -215,7 +217,7 @@ export async function handleMessage(
 
 		const item = await parseMessage(message, options, this.helpers);
 
-		let responsePromise: IDeferredPromise<IRun> | undefined = undefined;
+		let responsePromise: IDeferredPromise<IRun | undefined> | undefined = undefined;
 		let responsePromiseHook: IDeferredPromise<IExecuteResponsePromiseData> | undefined = undefined;
 		if (acknowledgeMode === 'laterMessageNode') {
 			responsePromiseHook = this.helpers.createDeferredPromise<IExecuteResponsePromiseData>();
@@ -224,7 +226,7 @@ export async function handleMessage(
 			// unconditionally resolves the hook at teardown via
 			// resolveExecutionResponsePromise with an empty {} — the payload
 			// shape is what tells a real sendResponse apart from that cleanup.
-			responsePromise = this.helpers.createDeferredPromise<IRun>();
+			responsePromise = this.helpers.createDeferredPromise<IRun | undefined>();
 		} else if (acknowledgeMode !== 'immediately') {
 			responsePromise = this.helpers.createDeferredPromise();
 		}
@@ -236,7 +238,9 @@ export async function handleMessage(
 			// sendResponse from Delete-from-Queue — that's the fast-ack path.
 			// For the empty cleanup, fall through to the final IRun and decide
 			// ack vs nack based on error state.
-			type RaceResult = { kind: 'hook'; isRealSendResponse: boolean } | { kind: 'run'; data: IRun };
+			type RaceResult =
+				| { kind: 'hook'; isRealSendResponse: boolean }
+				| { kind: 'run'; data: IRun | undefined };
 			const hookRace: Promise<RaceResult> = responsePromiseHook.promise.then((data) => ({
 				kind: 'hook',
 				isRealSendResponse:
@@ -249,13 +253,18 @@ export async function handleMessage(
 				kind: 'run',
 				data,
 			}));
+			completionWaitStarted = true;
 			const first = await Promise.race([hookRace, runRace]);
 
 			if (first.kind === 'hook' && first.isRealSendResponse) {
+				acknowledgementAttempted = true;
 				channel.ack(message);
 			} else {
 				const runData = first.kind === 'run' ? first.data : await responsePromise.promise;
-				if (runData?.data?.resultData?.error) {
+				acknowledgementAttempted = true;
+				if (!runData) {
+					channel.nack(message, false, false);
+				} else if (runData.data?.resultData?.error) {
 					channel.nack(message);
 				} else {
 					channel.ack(message);
@@ -264,23 +273,37 @@ export async function handleMessage(
 			messageTracker.answered(message);
 		} else if (responsePromise && acknowledgeMode !== 'laterMessageNode') {
 			// Acknowledge message after the execution finished
-			await responsePromise.promise.then(async (data: IRun) => {
-				if (data.data.resultData.error) {
+			completionWaitStarted = true;
+			await responsePromise.promise.then(async (data: IRun | undefined) => {
+				if (!data || data.data.resultData.error) {
 					// The execution did fail
 					if (acknowledgeMode === 'executionFinishesSuccessfully') {
-						channel.nack(message);
+						acknowledgementAttempted = true;
+						if (data) channel.nack(message);
+						else channel.nack(message, false, false);
 						messageTracker.answered(message);
 						return;
 					}
 				}
+				acknowledgementAttempted = true;
 				channel.ack(message);
 				messageTracker.answered(message);
 			});
 		} else {
 			// Acknowledge message directly
+			acknowledgementAttempted = true;
 			channel.ack(message);
 		}
 	} catch (error) {
+		let acknowledgementError: unknown;
+		if (completionWaitStarted && !acknowledgementAttempted) {
+			try {
+				channel.nack(message, false, error instanceof SystemShutdownExecutionCancelledError);
+			} catch (requeueError) {
+				// A closed channel returns its deliveries to the broker.
+				acknowledgementError = requeueError;
+			}
+		}
 		const workflow = this.getWorkflow();
 		const node = this.getNode();
 		if (acknowledgeMode !== 'immediately') {
@@ -292,6 +315,7 @@ export async function handleMessage(
 			{
 				node: node.name,
 				workflowId: workflow.id,
+				...(acknowledgementError ? { acknowledgementError } : {}),
 			},
 		);
 	}

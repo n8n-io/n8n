@@ -1,3 +1,11 @@
+import {
+	ManualExecutionCancelledError,
+	TimeoutExecutionCancelledError,
+	MemoryPressureExecutionCancelledError,
+	SystemShutdownExecutionCancelledError,
+	UserError,
+} from 'n8n-workflow';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { Channel, Connection, ConsumeMessage, Message } from 'amqplib';
 import { mock, mockDeep } from 'vitest-mock-extended';
 import type {
@@ -567,6 +575,187 @@ describe('RabbitMQ GenericFunctions', () => {
 					workflowId: '123',
 				},
 			);
+		});
+		describe('broker replies after completion errors', () => {
+			beforeEach(() => {
+				mockChannel.ack.mockReset();
+				mockChannel.nack.mockReset();
+				context.emit.mockReset();
+				context.helpers.createDeferredPromise.mockImplementation(createDeferredPromise);
+				context.getWorkflow.mockReturnValue(mock<IWorkflowMetadata>({ id: 'test-workflow' }));
+				context.getNode.mockReturnValue(mock<INode>({ name: 'RabbitMQ Trigger' }));
+			});
+
+			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'does not requeue malformed JSON before completion in %s mode',
+				async (mode) => {
+					await handleMessage.call(
+						context,
+						{ content: Buffer.from('{invalid') } as Message,
+						mockChannel,
+						messageTracker,
+						mode,
+						{ ...options, jsonParseBody: true },
+					);
+					expect(context.emit).not.toHaveBeenCalled();
+					expect(mockChannel.ack).not.toHaveBeenCalled();
+					expect(mockChannel.nack).not.toHaveBeenCalled();
+					expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+					expect(context.logger.error).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'does not requeue a synchronous emit failure in %s mode',
+				async (mode) => {
+					context.emit.mockImplementation(() => {
+						throw new Error('Emit failed');
+					});
+					await handleMessage.call(
+						context,
+						{ content: Buffer.from('{}') } as Message,
+						mockChannel,
+						messageTracker,
+						mode,
+						options,
+					);
+					expect(context.emit).toHaveBeenCalledTimes(1);
+					expect(mockChannel.ack).not.toHaveBeenCalled();
+					expect(mockChannel.nack).not.toHaveBeenCalled();
+					expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+					expect(context.logger.error).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			it.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'rejects a message without requeue when completion rejects in %s mode',
+				async (mode) => {
+					context.emit.mockImplementation((_items, _hook, done) => {
+						done?.reject(new Error('Completion lookup failed'));
+					});
+					await handleMessage.call(
+						context,
+						{ content: Buffer.from('{}') } as Message,
+						mockChannel,
+						messageTracker,
+						mode,
+						options,
+					);
+					expect(context.emit).toHaveBeenCalledTimes(1);
+					expect(mockChannel.nack).toHaveBeenCalledTimes(1);
+					expect(mockChannel.nack).toHaveBeenCalledWith(expect.anything(), false, false);
+					expect(mockChannel.ack).not.toHaveBeenCalled();
+					expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+				},
+			);
+
+			describe.each(['executionFinishes', 'executionFinishesSuccessfully', 'laterMessageNode'])(
+				'%s completion outcomes',
+				(mode) => {
+					it.each([
+						{
+							reason: 'manual stop',
+							error: new ManualExecutionCancelledError('exec-1'),
+							requeue: false,
+						},
+						{
+							reason: 'timeout',
+							error: new TimeoutExecutionCancelledError('exec-1'),
+							requeue: false,
+						},
+						{
+							reason: 'memory stop',
+							error: new MemoryPressureExecutionCancelledError('exec-1'),
+							requeue: false,
+						},
+						{
+							reason: 'unsupported request',
+							error: new UserError('Unsupported completion'),
+							requeue: false,
+						},
+						{
+							reason: 'shutdown',
+							error: new SystemShutdownExecutionCancelledError('exec-1'),
+							requeue: true,
+						},
+					])('replies to $reason with requeue=$requeue', async ({ error, requeue }) => {
+						context.emit.mockImplementation((_items, _hook, done) => {
+							done?.reject(error);
+						});
+						const message = { content: Buffer.from('{}') } as Message;
+						await handleMessage.call(context, message, mockChannel, messageTracker, mode, options);
+						expect(context.emit).toHaveBeenCalledTimes(1);
+						expect(mockChannel.nack).toHaveBeenCalledExactlyOnceWith(message, false, requeue);
+						expect(mockChannel.ack).not.toHaveBeenCalled();
+						expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+					});
+
+					it('handles an absent run result without requeueing', async () => {
+						context.emit.mockImplementation((_items, _hook, done) => {
+							done?.resolve(undefined);
+						});
+						const message = { content: Buffer.from('{}') } as Message;
+						await handleMessage.call(context, message, mockChannel, messageTracker, mode, options);
+						expect(context.emit).toHaveBeenCalledTimes(1);
+						if (mode === 'executionFinishes') {
+							expect(mockChannel.ack).toHaveBeenCalledExactlyOnceWith(message);
+							expect(mockChannel.nack).not.toHaveBeenCalled();
+						} else {
+							expect(mockChannel.nack).toHaveBeenCalledExactlyOnceWith(message, false, false);
+							expect(mockChannel.ack).not.toHaveBeenCalled();
+						}
+						expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+						expect(context.logger.error).not.toHaveBeenCalled();
+					});
+				},
+			);
+
+			it('does not send a second reply when acknowledgement throws', async () => {
+				context.emit.mockImplementation((_items, _hook, done) => {
+					done?.resolve(mock<IRun>({ data: { resultData: { runData: {}, error: undefined } } }));
+				});
+				mockChannel.ack.mockImplementation(() => {
+					throw new Error('Channel closed');
+				});
+				await handleMessage.call(
+					context,
+					{ content: Buffer.from('{}') } as Message,
+					mockChannel,
+					messageTracker,
+					'executionFinishesSuccessfully',
+					options,
+				);
+				expect(mockChannel.ack).toHaveBeenCalledTimes(1);
+				expect(mockChannel.nack).not.toHaveBeenCalled();
+				expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+			});
+
+			it('logs a negative acknowledgement failure without rejecting the message handler', async () => {
+				context.emit.mockImplementation((_items, _hook, done) => {
+					done?.reject(new Error('Completion lookup failed'));
+				});
+				const channelError = new Error('Channel closed');
+				mockChannel.nack.mockImplementation(() => {
+					throw channelError;
+				});
+				await expect(
+					handleMessage.call(
+						context,
+						{ content: Buffer.from('{}') } as Message,
+						mockChannel,
+						messageTracker,
+						'executionFinishesSuccessfully',
+						options,
+					),
+				).resolves.toBeUndefined();
+				expect(context.emit).toHaveBeenCalledTimes(1);
+				expect(mockChannel.nack).toHaveBeenCalledTimes(1);
+				expect(messageTracker.answered).toHaveBeenCalledTimes(1);
+				expect(context.logger.error).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.objectContaining({ acknowledgementError: channelError }),
+				);
+			});
 		});
 	});
 });

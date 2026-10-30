@@ -13,13 +13,14 @@ import type {
 	WorkflowHistory,
 	WorkflowRepository,
 } from '@n8n/db';
-import type { IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import { createDeferredPromise, type IDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { toITaskData } from '@test/helpers';
 import type { ErrorReporter } from 'n8n-core';
 import {
 	NodeConnectionTypes,
 	type IConnections,
 	type INode,
+	type IRun,
 	type INodeExecutionData,
 	type INodeType,
 	type IWorkflowBase,
@@ -142,6 +143,22 @@ describe('WorkflowExecutionService', () => {
 	});
 
 	describe('runWorkflow()', () => {
+		test('passes the caller completion promise to the runner', async () => {
+			const completion = createDeferredPromise<IRun | undefined>();
+			await workflowExecutionService.runWorkflow(
+				mock<IWorkflowBase>({ nodes: [] }),
+				mock<INode>(),
+				[[]],
+				mock(),
+				'trigger',
+				undefined,
+				undefined,
+				'completion',
+				completion,
+			);
+			expect(workflowRunner.run.mock.calls[0]?.[5]).toBe(completion);
+		});
+
 		test('should call `WorkflowRunner.run()`', async () => {
 			const node = mock<INode>();
 			const workflow = mock<IWorkflowBase>({
@@ -218,6 +235,7 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunner.run).toHaveBeenCalledWith(
 				expect.objectContaining({ deduplicationKey: 'wf-1:node-1:1700000000000' }),
 				true,
+				undefined,
 				undefined,
 				undefined,
 				undefined,
@@ -320,6 +338,7 @@ describe('WorkflowExecutionService', () => {
 				undefined,
 				{ executionId: 'exec-9', expectedStatus: 'new' },
 				responsePromise,
+				undefined,
 			);
 		});
 
@@ -338,6 +357,7 @@ describe('WorkflowExecutionService', () => {
 				false,
 				undefined,
 				{ executionId: 'exec-9', expectedStatus: 'new' },
+				undefined,
 				undefined,
 			);
 		});
@@ -363,6 +383,7 @@ describe('WorkflowExecutionService', () => {
 					undefined,
 					{ executionId: 'exec-9', expectedStatus: 'new' },
 					responsePromise,
+					undefined,
 				);
 			},
 		);
@@ -396,6 +417,7 @@ describe('WorkflowExecutionService', () => {
 				undefined,
 				{ executionId: 'exec-9', expectedStatus: 'new' },
 				responsePromise,
+				undefined,
 			);
 		});
 
@@ -444,6 +466,27 @@ describe('WorkflowExecutionService', () => {
 			expect(responsePromise.reject).not.toHaveBeenCalled();
 		});
 
+		test('rejects completion when a committed poll cannot start', async () => {
+			const completion = createDeferredPromise<IRun | undefined>();
+			const runError = new Error('Dispatch failed');
+			const rejected = expect(completion.promise).rejects.toBe(runError);
+			workflowRunner.run.mockRejectedValue(runError);
+			await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				undefined,
+				'completion',
+				completion,
+			);
+			expect(workflowRunner.run.mock.calls[0]?.[5]).toBe(completion);
+			await rejected;
+		});
+
 		test('crashes the committed execution when the runner refuses to start it', async () => {
 			const runError = new Error('concurrency queue torn down');
 			workflowRunner.run.mockRejectedValue(runError);
@@ -456,12 +499,38 @@ describe('WorkflowExecutionService', () => {
 			expect(errorReporter.error).toHaveBeenCalledWith(runError, expect.anything());
 		});
 
+		test('settles an already-claimed poll as skipped without reporting a failure', async () => {
+			workflowRunner.run.mockRejectedValue(new ExecutionAlreadyResumingError('exec-9'));
+			const completion = createDeferredPromise<IRun | undefined>();
+			const result = completion.promise.then(
+				(value) => ({ state: 'resolved', value }),
+				(error: unknown) => ({ state: 'rejected', error }),
+			);
+			const returned = await workflowExecutionService.runPolledWorkflow(
+				workflow,
+				node,
+				pollItems,
+				additionalData,
+				'trigger',
+				cursor,
+				responsePromise,
+				undefined,
+				'completion',
+				completion,
+			);
+			expect(returned).toBeUndefined();
+			expect(await result).toEqual({ state: 'resolved', value: undefined });
+			expect(responsePromise.resolve).toHaveBeenCalledWith({});
+			expect(responsePromise.reject).not.toHaveBeenCalled();
+			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
+		});
+
 		test('leaves the committed execution alone when another process already claimed it', async () => {
 			workflowRunner.run.mockRejectedValue(new ExecutionAlreadyResumingError('exec-9'));
 
 			const returned = await runPolledWorkflow();
 
-			expect(returned).toBe('exec-9');
+			expect(returned).toBeUndefined();
 			expect(executionCrashService.markAsCrashed).not.toHaveBeenCalled();
 			expect(responsePromise.reject).not.toHaveBeenCalled();
 		});
@@ -548,6 +617,7 @@ describe('WorkflowExecutionService', () => {
 				undefined,
 				undefined,
 				responsePromise,
+				undefined,
 			);
 			expect(pollCursorService.commitCursorOnly).toHaveBeenCalledWith({
 				workflowId: 'wf-1',

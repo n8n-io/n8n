@@ -36,6 +36,7 @@ import {
 	TimeoutExecutionCancelledError,
 	Workflow,
 	WorkflowOperationError,
+	UnexpectedError,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -417,10 +418,17 @@ export class WorkflowRunner {
 		realtime?: boolean,
 		existingExecution?: ResumableExecution,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
+		completionPromise?: IDeferredPromise<IRun | undefined>,
 	): Promise<string> {
 		// The engine v2 path owns the whole run: it keeps no control-plane
 		// execution row, so everything below here does not apply to it.
 		if (this.engineV2Dispatcher.routesToEngineV2(data, existingExecution)) {
+			if (completionPromise) {
+				const error = new UnexpectedError('Engine v2 does not support a completion promise');
+				completionPromise.reject(error);
+				responsePromise?.reject(error);
+				throw error;
+			}
 			return await this.engineV2Dispatcher.start(data);
 		}
 
@@ -439,7 +447,11 @@ export class WorkflowRunner {
 					data.userId,
 				);
 			} catch (error) {
-				const executionId = await this.activeExecutions.add(data, existingExecution);
+				const executionId = await this.activeExecutions.add(
+					data,
+					existingExecution,
+					completionPromise,
+				);
 				await this.failExecution(data, executionId, error, responsePromise);
 				return executionId;
 			}
@@ -455,7 +467,7 @@ export class WorkflowRunner {
 		}
 
 		// Register a new execution
-		const executionId = await this.activeExecutions.add(data, existingExecution);
+		const executionId = await this.activeExecutions.add(data, existingExecution, completionPromise);
 
 		if (establishContextError) {
 			await this.failExecution(data, executionId, establishContextError, responsePromise);
