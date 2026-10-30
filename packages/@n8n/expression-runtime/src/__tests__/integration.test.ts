@@ -232,6 +232,7 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 
 			it.each([
 				{ label: 'plain object', expression: '({ payload })' },
+				{ label: 'Error', expression: 'Object.assign(new Error("from guest"), { payload })' },
 				{
 					label: 'class instance',
 					expression: 'new (class { constructor() { this.payload = payload; } })()',
@@ -687,6 +688,93 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		).toBe('10:30 AM');
 	});
 
+	describe('returned Error fields', () => {
+		it.each(['detail', 'toJSON'])(
+			'should return the original Error when a hidden %s getter throws',
+			async (key) => {
+				const bridge = createBridge();
+				await bridge.initialize();
+				try {
+					const result = bridge.execute(
+						`return Object.defineProperties(new TypeError('original'), {
+							${key}: { get() { throw new RangeError('getter failed'); } },
+							code: { value: 400 }
+						});`,
+						{},
+					) as Error;
+
+					expect(result).toBeInstanceOf(TypeError);
+					expect(result.message).toBe('original');
+					expect(Object.hasOwn(result, key)).toBe(false);
+					expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+						value: 400,
+						enumerable: false,
+					});
+				} finally {
+					await bridge.dispose();
+				}
+			},
+		);
+
+		it.each([
+			{ label: 'function', expression: '() => 1' },
+			{ label: 'Promise', expression: '(async () => 1)()' },
+			{ label: 'symbol', expression: 'Symbol("detail")' },
+		])('should omit a $label from an Error', ({ expression }) => {
+			for (const nested of [false, true]) {
+				const result = evaluator.evaluate(
+					`{{ (() => {
+						const value = ${expression};
+						const detail = ${nested ? '{ code: 400, values: [value, { value }] }' : 'value'};
+						return Object.assign(new TypeError('original', { cause: detail }), {
+							code: 400, detail, toJSON: () => detail
+						});
+					})() }}`,
+					{ $json: {} },
+					caller,
+				) as Error & { code: number; detail: unknown; toJSON: () => unknown };
+				const expected = nested
+					? { code: 400, values: [undefined, { value: undefined }] }
+					: undefined;
+
+				expect(result).toBeInstanceOf(TypeError);
+				expect(result.message).toBe('original');
+				expect(result.code).toBe(400);
+				expect(result.detail).toStrictEqual(expected);
+				expect(result.cause).toStrictEqual(expected);
+				expect(result.toJSON()).toStrictEqual(expected);
+			}
+		});
+
+		it('should keep non-enumerable custom fields', async () => {
+			const bridge = createBridge();
+			await bridge.initialize();
+			try {
+				// Expressions cannot call defineProperties. Set up the fields in the guest directly.
+				const result = bridge.execute(
+					`return Object.defineProperties(new TypeError('original'), {
+						code: { value: 400 },
+						detail: { value: new Error('inner') },
+						visible: { value: true, enumerable: true }
+					});`,
+					{},
+				) as Error & { detail: Error };
+
+				expect(result).toBeInstanceOf(TypeError);
+				expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+					value: 400,
+					enumerable: false,
+				});
+				expect(result.detail).toBeInstanceOf(Error);
+				expect(result.detail.message).toBe('inner');
+				expect(Object.keys(result)).toEqual(['visible']);
+				expect(JSON.stringify(result)).toBe('{"visible":true}');
+			} finally {
+				await bridge.dispose();
+			}
+		});
+	});
+
 	it('should throw when the result cannot be cloned (function or Promise)', () => {
 		const data = { $json: {} };
 
@@ -697,6 +785,9 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			'could not be cloned',
 		);
 		expect(() => evaluator.evaluate('{{ ({ fn: () => 1 }) }}', data, caller)).toThrow(
+			'could not be cloned',
+		);
+		expect(() => evaluator.evaluate('{{ ({ task: (async () => 1)() }) }}', data, caller)).toThrow(
 			'could not be cloned',
 		);
 	});
