@@ -14,10 +14,9 @@ import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { AgentEvalDatasetRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { OperationalError, UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, OperationalError, UserError } from '@n8n/errors';
 import { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import { generateFixSuggestion } from './agent-eval-fix-suggestion';

@@ -14,7 +14,8 @@ import {
 import { QueryFailedError } from '@n8n/typeorm';
 import type { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { IBinaryData, IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
-import { createEmptyRunExecutionData, UnexpectedError } from 'n8n-workflow';
+import { createEmptyRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DuplicateExecutionError } from '@/errors/duplicate-execution.error';

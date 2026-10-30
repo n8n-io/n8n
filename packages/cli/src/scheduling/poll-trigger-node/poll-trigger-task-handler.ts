@@ -19,7 +19,7 @@ import {
 	TriggersAndPollers,
 } from 'n8n-core';
 import type { Failure, IWorkflowBase } from 'n8n-workflow';
-import { OperationalError, UnexpectedError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError } from '@n8n/errors';
 import { aborted } from 'node:util';
 
 import { PollBackoffService } from '@/workflows/triggers/poll-backoff.service';

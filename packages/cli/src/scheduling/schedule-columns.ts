@@ -1,6 +1,6 @@
 import type { ScheduledJob } from '@n8n/db';
 import type { ScheduleDefinition } from '@n8n/scheduler';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * Both directions of the mapping between a `ScheduleDefinition` and the flat

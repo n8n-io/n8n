@@ -13,7 +13,8 @@ import {
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UserError, type INode, type WorkflowActivateMode } from 'n8n-workflow';
+import type { INode, WorkflowActivateMode } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { NodeTypes } from '@/node-types';
 import { enforceWorkflowPublishPolicy } from '@/policy/enforce-workflow-publish';

@@ -14,7 +14,7 @@ import type { AdditionalDataContext, V1StepExecutorDeps } from '@n8n/node-engine
 import { createEngineStepDataLoader, V1StepExecutor } from '@n8n/node-engine-compatibility';
 import { BinaryDataService, FileLocation } from 'n8n-core';
 import type { IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import assert from 'node:assert';
 import type { Server } from 'node:http';
 

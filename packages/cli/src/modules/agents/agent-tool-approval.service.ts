@@ -1,7 +1,7 @@
 import type { ToolApprovalContext } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { Telemetry } from '@/telemetry';
 

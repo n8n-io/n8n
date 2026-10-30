@@ -9,7 +9,7 @@ import type {
 } from '@n8n/decorators';
 import { ENFORCEMENT_POINT_METHODS, PolicyCheckMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import type {

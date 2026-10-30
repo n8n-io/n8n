@@ -1,7 +1,7 @@
 import { BaseRepository, TransactionRunner, chunkIds, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { PolicyAttachment } from '../../policy-rule.types';
 import { TypeAvailabilityPolicyAttachment } from '../entities/type-availability-policy-attachment.entity';

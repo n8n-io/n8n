@@ -5,7 +5,8 @@ import type {
 	MessageEventBusDestinationSyslogOptions,
 	MessageEventBusDestinationWebhookOptions,
 } from 'n8n-workflow';
-import { MessageEventBusDestinationTypeNames, UnexpectedError } from 'n8n-workflow';
+import { MessageEventBusDestinationTypeNames } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 

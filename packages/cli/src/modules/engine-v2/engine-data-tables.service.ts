@@ -1,8 +1,7 @@
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
 
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import {
 	DataTableProxyService,
 	dataTableNotFoundInProject,

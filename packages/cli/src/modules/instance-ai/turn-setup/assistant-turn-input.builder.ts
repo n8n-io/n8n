@@ -42,7 +42,7 @@ import {
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import type { AssistantTurnEnvironment } from './assistant-turn-environment.factory';

@@ -3,7 +3,7 @@ import { ScheduledJobOwnerType } from '@n8n/constants';
 import type { ScheduledJobOwner, ScheduledJobOwnerRef } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import type { ScheduledJobOwnerResolver } from '@n8n/scheduler';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 /**
  * Marks an agent as the owner of the scheduled jobs that its published tasks create.

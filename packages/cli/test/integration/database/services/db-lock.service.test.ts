@@ -10,7 +10,7 @@ import {
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { sleep } from '@n8n/utils/sleep';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';

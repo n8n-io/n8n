@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 export class TaskRequestTimeoutError extends OperationalError {
 	description: string;

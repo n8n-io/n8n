@@ -11,7 +11,6 @@ import type { Response } from 'express';
 import { sleep } from '@n8n/utils/sleep';
 import { InstanceSettings } from 'n8n-core';
 import {
-	OperationalError,
 	ManualExecutionCancelledError,
 	type IWorkflowBase,
 	jsonParse,
@@ -28,7 +27,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { ActiveExecutions } from '@/active-executions';
 import { ChatExecutionManager } from '@/chat/chat-execution-manager';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
-import { BadRequestError, InternalServerError } from '@n8n/errors';
+import { BadRequestError, InternalServerError, OperationalError } from '@n8n/errors';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { ExecutionService } from '@/executions/execution.service';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';

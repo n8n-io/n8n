@@ -12,7 +12,7 @@ import type {
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';
 

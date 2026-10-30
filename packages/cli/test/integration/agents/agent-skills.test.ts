@@ -14,7 +14,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { TransactionRunner, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentPublishService } from '@/modules/agents/agent-publish.service';

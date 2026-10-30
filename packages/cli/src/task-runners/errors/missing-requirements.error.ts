@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 const ERROR_MESSAGE = 'Failed to start Python task runner in internal mode.';
 

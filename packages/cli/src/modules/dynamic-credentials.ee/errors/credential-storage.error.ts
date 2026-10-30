@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 export class CredentialStorageError extends UserError {
 	constructor(message: string, options?: { cause?: unknown }) {

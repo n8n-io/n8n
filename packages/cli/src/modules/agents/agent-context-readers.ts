@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { AgentSkillsService } from './agent-skills.service';
 import type { AgentTaskService } from './agent-task.service';

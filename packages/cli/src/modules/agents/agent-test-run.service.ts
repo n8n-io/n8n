@@ -14,8 +14,7 @@ import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError } from '@n8n/errors';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ForbiddenError, UnexpectedError, UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { userHasScopes } from '@/permissions.ee/check-access';

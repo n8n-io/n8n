@@ -1,6 +1,6 @@
 import { instanceAiSandboxProviderSchema } from '@n8n/api-types';
 import { normalizeSandboxProvider as normalizeRuntimeSandboxProvider } from '@n8n/agents/sandbox';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import {
 	N8N_SANDBOX_SERVICE_URL_REQUIRED_MESSAGE,

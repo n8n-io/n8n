@@ -39,13 +39,11 @@ import {
 	fileTypeFromMimeType,
 	MANUAL_TRIGGER_NODE_TYPE,
 	NodeHelpers,
-	OperationalError,
 	TimeoutExecutionCancelledError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	type IWorkflowIssues,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveExecutions } from '@/active-executions';

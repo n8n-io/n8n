@@ -3,7 +3,8 @@ import get from 'lodash/get';
 import { BinaryDataService } from 'n8n-core';
 import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
 import type { INodeExecutionData, ITaskData, WebhookResponseData } from 'n8n-workflow';
-import { BINARY_ENCODING, OperationalError } from 'n8n-workflow';
+import { BINARY_ENCODING } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { Readable } from 'node:stream';
 
 /** Response that is not a stream */

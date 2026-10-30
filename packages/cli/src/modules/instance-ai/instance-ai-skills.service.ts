@@ -1,7 +1,7 @@
 import { filterRuntimeSkillSource, type RuntimeSkillContent } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { loadInstanceAiPromptSkills, type PromptProfile } from '@n8n/instance-ai';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	type AssistantSkillContent,

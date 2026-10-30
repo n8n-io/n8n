@@ -9,7 +9,7 @@ import type {
 	TaskResultData,
 } from '@n8n/task-runner';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { TaskDeferredError } from '@/task-runners/task-broker/errors/task-deferred.error';

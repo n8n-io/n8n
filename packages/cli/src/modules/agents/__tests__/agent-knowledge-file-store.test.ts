@@ -1,7 +1,7 @@
 import { FsByteStore, SkippedEntryDeletionError } from '@n8n/blob-storage';
 import type { BinaryDataRepository } from '@n8n/db';
 import type { ErrorReporter, StorageConfig } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mkdtemp, readdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';

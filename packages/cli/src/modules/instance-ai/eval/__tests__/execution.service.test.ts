@@ -13,7 +13,8 @@ import type {
 	IWorkflowBase,
 	INodeTypeDescription,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, TimeoutExecutionCancelledError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';

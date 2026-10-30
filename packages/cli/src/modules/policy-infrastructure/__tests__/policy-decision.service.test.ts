@@ -14,7 +14,7 @@ import {
 	workflowContentSubject,
 } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { PolicyActor } from '@/policy/policy-enforcement-backend';

@@ -1,7 +1,8 @@
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, type EntityManager } from '@n8n/typeorm';
-import { UnexpectedError, jsonParse } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { ResolvedSourceKeys } from '../../token-exchange.schemas';
 import { TrustedKeySourceEntity } from '../entities/trusted-key-source.entity';

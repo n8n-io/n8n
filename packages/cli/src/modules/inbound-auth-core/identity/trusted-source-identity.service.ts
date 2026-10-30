@@ -24,7 +24,7 @@ import {
 	type Verified,
 } from '@n8n/inbound-auth';
 import { GLOBAL_OWNER_ROLE_SLUG, type Principal, type SecurityContext } from '@n8n/permissions';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { TrustedSourceIdentityEntity } from '../database/entities/trusted-source-identity.entity';
 import {

@@ -2,8 +2,7 @@ import type { SerializedCredential, SerializedVariable } from '@n8n/api-types';
 import { LicenseState } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 
-import { ForbiddenError } from '@n8n/errors';
-import { UnexpectedError } from 'n8n-workflow';
+import { ForbiddenError, UnexpectedError } from '@n8n/errors';
 
 import {
 	credentialUpdateScope,

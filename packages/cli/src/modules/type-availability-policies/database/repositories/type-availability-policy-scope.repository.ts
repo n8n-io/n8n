@@ -7,7 +7,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, Not, type EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { PolicyAction } from '../../policy-rule.types';
 import { TypeAvailabilityPolicyScope } from '../entities/type-availability-policy-scope.entity';

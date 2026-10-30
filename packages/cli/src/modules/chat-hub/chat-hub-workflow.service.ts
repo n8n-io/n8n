@@ -44,13 +44,12 @@ import {
 	MEMORY_MANAGER_NODE_TYPE,
 	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
-	OperationalError,
 	type IBinaryData,
 	type NodeParameterValueType,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError } from '@n8n/errors';
 import type { UserLike } from '@/types/user-like.types';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';

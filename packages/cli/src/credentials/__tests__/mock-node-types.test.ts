@@ -1,5 +1,5 @@
 import type { INodeType } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 

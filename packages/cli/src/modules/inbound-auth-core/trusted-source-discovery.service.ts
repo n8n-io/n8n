@@ -10,7 +10,7 @@ import {
 	type TrustedSource,
 } from '@n8n/inbound-auth';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { TrustedSourceDbStore, type DiscoveryResult } from './trusted-source.store';
 

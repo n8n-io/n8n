@@ -1,4 +1,4 @@
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 export const SLACK_SEARCH_PAGE_SIZE = 200;

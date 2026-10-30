@@ -24,7 +24,7 @@ import {
 } from '@opentelemetry/resources';
 import { NodeSDK } from '@opentelemetry/sdk-node';
 import type { BasicTracerProvider } from '@opentelemetry/sdk-trace-base';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { createAgent365TracerProvider } from './agent-365-provider';
 import { SampledParentSampler, SampledSpanProcessor } from './customer-sampling';

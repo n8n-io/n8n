@@ -15,7 +15,7 @@ import type {
 	SecretsBuffer,
 	ToolContext,
 } from '@n8n/mcp-browser';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 import { timingSafeEqual } from 'node:crypto';
 import { mkdir } from 'node:fs/promises';

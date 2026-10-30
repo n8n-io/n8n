@@ -1,9 +1,8 @@
 import { ExportPackageRequestDto } from '@n8n/api-types';
 import type { EventService } from '@n8n/backend-services';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import type { Response } from 'express';
-import { UserError } from 'n8n-workflow';
 import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 

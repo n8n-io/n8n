@@ -15,7 +15,7 @@ import {
 } from '@n8n/decorators';
 import type { Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	markPublicApiController,

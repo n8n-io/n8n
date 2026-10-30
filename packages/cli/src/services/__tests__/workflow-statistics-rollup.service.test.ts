@@ -3,7 +3,7 @@ import type { DbLockService, WorkflowStatisticsRepository } from '@n8n/db';
 import { StatisticsNames } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { WorkflowStatisticsService } from '../workflow-statistics.service';
 import { WorkflowStatisticsRollupService } from '../workflow-statistics-rollup.service';

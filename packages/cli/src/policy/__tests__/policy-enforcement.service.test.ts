@@ -1,6 +1,6 @@
 import type { PolicedWorkflow, PolicyDecision, PolicyViolation } from '@n8n/decorators';
 import { workflowContentSubject } from '@n8n/decorators';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import type { PolicyActor, PolicyEnforcementBackend } from '../policy-enforcement-backend';

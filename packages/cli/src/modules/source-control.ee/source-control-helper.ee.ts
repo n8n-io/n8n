@@ -9,10 +9,10 @@ import isEqual from 'lodash/isEqual';
 import {
 	deepCopy,
 	jsonParse,
-	UserError,
 	type DataTableColumnType,
 	type ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { ok } from 'node:assert/strict';
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';

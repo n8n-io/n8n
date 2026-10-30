@@ -2,9 +2,15 @@ import type { Message } from '@n8n/agents';
 import type { AgentChatQueueResponse, AgentMessageAuthor } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
 
-import { ConflictError, BadRequestError, NotFoundError } from '@n8n/errors';
+import {
+	ConflictError,
+	BadRequestError,
+	NotFoundError,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageSteeringService } from './agent-message-steering.service';

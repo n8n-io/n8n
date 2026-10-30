@@ -11,7 +11,7 @@ import type {
 } from '@n8n/expression-runtime';
 import { EXPRESSION_METRICS, NoOpProvider } from '@n8n/expression-runtime';
 import { SpanStatusCode, trace } from '@opentelemetry/api';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import promClient, { type Counter, type Gauge, type Histogram } from 'prom-client';
 
 import { ATTRIBUTE, DURATION_BUCKETS_SECONDS } from './expression-observability.constants';

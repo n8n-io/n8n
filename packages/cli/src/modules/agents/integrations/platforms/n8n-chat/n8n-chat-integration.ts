@@ -2,7 +2,7 @@ import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
 import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	AgentChatIntegration,

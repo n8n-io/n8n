@@ -3,7 +3,8 @@ import type { ShutdownHandler } from '@n8n/decorators';
 import { ShutdownMetadata } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
-import { assert, UnexpectedError, UserError } from 'n8n-workflow';
+import { assert } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 /** Error reported when a listener fails to shutdown gracefully */
 export class ComponentShutdownError extends UnexpectedError {

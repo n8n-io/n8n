@@ -2,7 +2,7 @@ import { raceWithAbort, throwIfAborted } from '@n8n/agents';
 import { Service } from '@n8n/di';
 import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { userHasScopes } from '@/permissions.ee/check-access';

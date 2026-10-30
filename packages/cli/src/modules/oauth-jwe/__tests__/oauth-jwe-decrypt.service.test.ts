@@ -1,6 +1,6 @@
 import { CompactEncrypt, generateKeyPair } from 'jose';
 import type { CryptoKey } from 'jose';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { UrlService } from '@n8n/backend-services';

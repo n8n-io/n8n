@@ -9,7 +9,8 @@ import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
-import { UserError, type Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { ChatInstance } from './chat-integration.service';
 import type { NormalizeComponentsContext, SuspendComponent } from './component-mapper';

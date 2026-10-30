@@ -5,8 +5,8 @@ import {
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IWorkflowExecutionDataProcess,
-	UnexpectedError,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 
 vi.mock(
