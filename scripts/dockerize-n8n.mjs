@@ -35,7 +35,7 @@ const noCache = process.env.DOCKER_BUILD_NO_CACHE === 'true';
 const withBaseImage = process.env.DOCKER_BUILD_BASE_IMAGE === 'true';
 // Opt-in: only cloud deploys the distroless runners image, so local builds skip it.
 const withDistroless = process.env.DOCKER_BUILD_DISTROLESS === 'true';
-// Opt-in: also build the Debian (glibc) n8n image, tagged with a -debian suffix.
+// Opt-in: also build the Debian (glibc) n8n and runners images, tagged with a -debian suffix.
 const withDebian = process.env.DOCKER_BUILD_DEBIAN === 'true';
 // Build n8n on the pointer-compressed bases. The pins live in the bake file.
 const pointerCompressed = process.env.DOCKER_BUILD_PC === 'true';
@@ -57,7 +57,7 @@ const compiledTaskRunnerDir = path.join(rootDir, 'dist', 'task-runner-javascript
 
 /**
  * Which bake targets to build. n8n and runners are always built; the base image,
- * the distroless runners and the Debian n8n image are opt-in.
+ * the distroless runners and the Debian images are opt-in.
  * @returns {string[]}
  */
 function selectTargets() {
@@ -65,7 +65,7 @@ function selectTargets() {
 	// downstream jobs load `n8nio/n8n:local` either way.
 	const targets = [pointerCompressed ? 'n8n-pc' : 'n8n', 'runners'];
 	if (withDistroless) targets.push('runners-distroless');
-	if (withDebian) targets.push('n8n-debian');
+	if (withDebian) targets.push('n8n-debian', 'runners-debian');
 	if (withBaseImage) targets.unshift('base');
 	return targets;
 }

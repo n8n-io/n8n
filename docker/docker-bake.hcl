@@ -50,6 +50,7 @@ variable "N8N_PC_TAGS" { default = "" }
 variable "N8N_DEBIAN_TAGS" { default = "" }
 variable "RUNNERS_TAGS" { default = "" }
 variable "RUNNERS_DISTROLESS_TAGS" { default = "" }
+variable "RUNNERS_DEBIAN_TAGS" { default = "" }
 variable "BASE_TAGS" { default = "" }
 variable "BASE_DEBIAN_TAGS" { default = "" }
 
@@ -112,6 +113,16 @@ target "runners" {
   tags       = tags(RUNNERS_TAGS, "${RUNNERS_IMAGE_BASE_NAME}:${IMAGE_TAG}")
 }
 
+target "runners-debian" {
+  inherits   = ["_app"]
+  dockerfile = "docker/images/runners/Dockerfile.debian"
+  tags       = tags(RUNNERS_DEBIAN_TAGS, "${RUNNERS_IMAGE_BASE_NAME}:${IMAGE_TAG}-debian")
+  args = {
+    BUILDER_IMAGE = DEBIAN_BUILDER_IMAGE
+    RUNTIME_IMAGE = DEBIAN_RUNTIME_IMAGE
+  }
+}
+
 target "runners-distroless" {
   inherits   = ["_app"]
   dockerfile = "docker/images/runners/Dockerfile.distroless"
@@ -135,4 +146,4 @@ target "base-debian" {
 group "default" { targets = ["n8n", "runners"] }
 group "distroless" { targets = ["n8n", "runners", "runners-distroless"] }
 group "all" { targets = ["base", "n8n", "runners", "runners-distroless"] }
-group "release" { targets = ["n8n", "n8n-pc", "n8n-debian", "runners", "runners-distroless"] }
+group "release" { targets = ["n8n", "n8n-pc", "n8n-debian", "runners", "runners-distroless", "runners-debian"] }
