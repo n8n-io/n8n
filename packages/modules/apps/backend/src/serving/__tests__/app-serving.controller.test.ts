@@ -137,9 +137,14 @@ describe('AppServingController', () => {
 		);
 	});
 
-	it.each([false, true])(
-		'sets the HTML base for nested navigation (preview: %s)',
-		async (preview) => {
+	it.each([
+		{ preview: false, prefix: '' },
+		{ preview: true, prefix: '' },
+		{ preview: false, prefix: '/$&' },
+		{ preview: true, prefix: '/$&' },
+	])(
+		'sets the HTML base for nested navigation (preview: $preview, prefix: $prefix)',
+		async ({ preview, prefix }) => {
 			const { controller, req, res, bundles, hosts } = setup('/orders/123');
 			const html = Buffer.from(
 				'<!doctype html><html><head><title>App</title></head><body></body></html>',
@@ -147,14 +152,16 @@ describe('AppServingController', () => {
 			const file = { body: html, contentType: 'text/html; charset=utf-8', etag: 'original' };
 			bundles.get.mockResolvedValue(new Map([['index.html', file]]));
 			Object.defineProperty(hosts, 'sameOrigin', { value: true });
-			const root = `/apps/app-id/${preview ? '_preview/' : ''}`;
+			const root = `${prefix}/apps/app-id/${preview ? '_preview/' : ''}`;
 			hosts.appPath.mockReturnValue(root);
 			req.appContext = { app: mock({ id: 'app-id' }), versionId: 'version', preview };
 
 			await controller.serve(req, res);
 
 			expect(res.send).toHaveBeenCalledWith(
-				Buffer.from(html.toString().replace('<head>', `<head><base href="${root}">`)),
+				Buffer.from(
+					`<!doctype html><html><head><base href="${root}"><title>App</title></head><body></body></html>`,
+				),
 			);
 			expect(hosts.appPath).toHaveBeenCalledWith('app-id', preview);
 			expect(res.set).toHaveBeenCalledWith(

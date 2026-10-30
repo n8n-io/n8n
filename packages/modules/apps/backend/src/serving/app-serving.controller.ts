@@ -67,7 +67,9 @@ export class AppServingController {
 				const insertion = /<head\b[^>]*>/i.test(html)
 					? /<head\b[^>]*>/i
 					: /^(\s*<!doctype[^>]*>)?/i;
-				const body = Buffer.from(html.replace(insertion, `$&<base href="${base}">`));
+				const body = Buffer.from(
+					html.replace(insertion, (match) => `${match}<base href="${base}">`),
+				);
 				file = { ...file, body, etag: `W/"${createHash('sha256').update(body).digest('hex')}"` };
 			}
 			res.set({
