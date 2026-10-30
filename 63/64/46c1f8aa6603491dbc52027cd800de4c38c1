@@ -1,0 +1,60 @@
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_dfe3f914c8bb46::t_912595f03ef487 970-973,983
+  s_dfe3f914c8bb46::t_bd5c1437de4ea9 16,236-238,940-948,969,974-980,984-988,991-997,1003-1011,1140,1261-1262
+  s_dfe3f914c8bb46::t_fc8104c3f72faa 981-982,998-1002
+  s_dfe3f914c8bb46::t_4e54ea6182aa77 989-990
+  s_dfe3f914c8bb46::t_f3aacf31396637 1263-1264
+packages/@n8n/api-types/src/agents/agent-hitl.schema.ts
+  s_dfe3f914c8bb46::t_4ae71d7b1c4227 15
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_dfe3f914c8bb46::t_4ae71d7b1c4227 13,32,37-42
+packages/cli/src/modules/agents/approval/approval-expiry.ts
+  s_dfe3f914c8bb46::t_4e54ea6182aa77 9-10
+  s_dfe3f914c8bb46::t_bd5c1437de4ea9 1-8,11
+packages/cli/src/modules/agents/repositories/agent-background-job.repository.ts
+  s_dfe3f914c8bb46::t_bd5c1437de4ea9 37,315-322
+  s_dfe3f914c8bb46::t_1941442dcfda79 6,323-334
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_912595f03ef487 258
+  s_dfe3f914c8bb46::t_bd5c1437de4ea9 14,31,159-164,190-191,224,229-230,259-260
+  s_dfe3f914c8bb46::t_19bab7e3b1c62b 231-232,261
+packages/frontend/editor-ui/src/features/agents/components/AgentHitlConfigurationModal.vue
+  s_dfe3f914c8bb46::t_4ae71d7b1c4227 59-61,243,293-298,300-312,425-435,466-474
+  s_dfe3f914c8bb46::t_402b07be7c27fc 475-478
+packages/cli/src/modules/agents/agent-workflow-tool-resume.service.ts
+  s_dfe3f914c8bb46::t_bd5c1437de4ea9 150-155
+packages/@n8n/api-types/src/agents/__tests__/agent-hitl.schema.test.ts
+  s_dfe3f914c8bb46::t_83151c591b87bf 47-66
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_dfe3f914c8bb46::t_8cbd70b1d74eca 226-229
+packages/cli/src/modules/agents/__tests__/agent-workflow-tool-resume.service.test.ts
+  s_dfe3f914c8bb46::t_812151bbc031de 570-581
+packages/cli/src/modules/agents/approval/SPIKE.md
+  s_dfe3f914c8bb46::t_8a4d024171b2fe 35-40
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_656ce61aad12c0 32,50,84-132,134-136,139-149,151-186,542-579
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_dfe3f914c8bb46::t_42313b87fe8be4 4,7,16-17,97,1834-1986
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_dfe3f914c8bb46::t_2e653dee8f6bbf 21,98-173
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentHitlConfigurationModal.test.ts
+  s_dfe3f914c8bb46::t_a141f16ecfe82d 50,54-55,229-290
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_0b42e1dbb4d20b 489-493
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "636446c1f8aa6603491dbc52027cd800de4c38c1",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/@n8n/instance-ai/skills/agent-builder/SKILL.md
+  s_482f48320b007f::t_a53ac32434f0f0 191-192
+packages/cli/src/modules/agents/__tests__/agent-workflow-execution.service.test.ts
+  s_dfe3f914c8bb46::t_0cebbe754fda3b 6,218-219
+packages/cli/src/modules/agents/agent-workflow-execution.service.ts
+  s_dfe3f914c8bb46::t_402f46803a5cd6 17,900,910
+packages/cli/src/modules/agents/approval/SPIKE.md
+  s_dfe3f914c8bb46::t_b6e7a58b4cd7c3 52-53
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_768974cab050b3 205-206,213
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentCapabilitiesActions.test.ts
+  s_dfe3f914c8bb46::t_b5a38ef72e161f 1,108,140-146
+packages/frontend/editor-ui/src/features/agents/components/AgentBuilderEditorColumn.vue
+  s_dfe3f914c8bb46::t_f342074c7ccda8 406
+packages/frontend/editor-ui/src/features/agents/composables/useAgentCapabilitiesActions.ts
+  s_dfe3f914c8bb46::t_e59ad6cb5cc959 160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "04281c7afb88d4ce9ccceb3d47e1695b47430207",
+  "prompts": {},
+  "sessions": {
+    "s_482f48320b007f": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a163de-1528-7382-879b-fbc784061690",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    },
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

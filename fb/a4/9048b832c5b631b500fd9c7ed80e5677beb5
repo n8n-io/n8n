@@ -1,0 +1,31 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/AssistantAgentThreadView.vue
+  s_0c1e7397c731df::t_3160bddb407c4c 213,221-224,478-479,557
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_0c1e7397c731df::t_3160bddb407c4c 1401-1404,1490-1491
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/artifactThread.test.ts
+  s_0c1e7397c731df::t_b0bb0b46b83c87 12-14,16-21,67,125-149
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/AssistantAgentThreadView.test.ts
+  s_0c1e7397c731df::t_b0bb0b46b83c87 31,41,79,106-107,112,289-290,544-548,556-570,601,605,608,613-620
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_0c1e7397c731df::t_b0bb0b46b83c87 4318-4326
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiWorkflowPreview.vue
+  s_0c1e7397c731df::t_3160bddb407c4c 55-56,122
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useInstanceAiWorkflowPreviewExecution.ts
+  s_0c1e7397c731df::t_3160bddb407c4c 18,255
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "fba49048b832c5b631b500fd9c7ed80e5677beb5",
+  "prompts": {},
+  "sessions": {
+    "s_0c1e7397c731df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3f885b6f-e4a6-4eed-8359-34895c30ec9a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
