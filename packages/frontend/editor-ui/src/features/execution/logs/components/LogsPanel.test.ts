@@ -24,7 +24,7 @@ import {
 	nodeTypes,
 } from '../__test__/data';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
-import { IN_PROGRESS_EXECUTION_ID } from '@/app/constants';
+import { IN_PROGRESS_EXECUTION_ID, LOGS_EXECUTION_DATA_THROTTLE_DURATION } from '@/app/constants';
 import { createExecutionDataId, useExecutionDataStore } from '@/app/stores/executionData.store';
 import {
 	LogsPanelHostKey,
@@ -494,6 +494,46 @@ describe('LogsPanel', () => {
 			expect(ndvStore.activeNodeName).toBe('AI Agent');
 			expect(ndvStore.output.run).toBe(0);
 		});
+	});
+
+	it('should open the renamed node after a rename while the run is pending', async () => {
+		const canvasOperations = useCanvasOperations();
+
+		logsStore.toggleOpen(true);
+		// Create deep copy so that renaming doesn't affect other test cases
+		const workflow = deepCopy(aiChatWorkflow);
+		workflow.id = 'pending-rename-workflow-id';
+		setWorkflow(workflow);
+		setExecutionData({
+			...aiChatExecutionResponse,
+			id: IN_PROGRESS_EXECUTION_ID,
+			status: 'running',
+			finished: false,
+			stoppedAt: undefined,
+		});
+
+		const rendered = render();
+		await rendered.findAllByRole('treeitem');
+
+		await canvasOperations.renameNode('AI Agent', 'Renamed Agent');
+
+		async function openFirstRow() {
+			vi.advanceTimersByTime(LOGS_EXECUTION_DATA_THROTTLE_DURATION + 1);
+			await flushPromises();
+			const agentRow = (await rendered.findAllByRole('treeitem'))[0];
+			await fireEvent.click(within(agentRow).getAllByLabelText('Open...')[0]);
+		}
+
+		await openFirstRow();
+		await waitFor(() => expect(ndvStore.activeNodeName).toBe('Renamed Agent'));
+
+		ndvStore.unsetActiveNodeName();
+		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).promotePendingExecution(
+			'exec-1',
+		);
+
+		await openFirstRow();
+		await waitFor(() => expect(ndvStore.activeNodeName).toBe('Renamed Agent'));
 	});
 
 	it('should toggle subtree when chevron icon button is pressed', async () => {
