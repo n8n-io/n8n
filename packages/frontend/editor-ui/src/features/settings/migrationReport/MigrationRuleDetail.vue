@@ -798,8 +798,6 @@ const sortedWorkflows = computed(() => {
 	return orderBy(filteredWorkflows.value, [sortValues[id] ?? id], [desc ? 'desc' : 'asc']);
 });
 
-// A rule can flag thousands of workflows, and each row renders several inputs,
-// so the table renders one page at a time.
 const page = ref(0);
 const itemsPerPage = ref(25);
 
