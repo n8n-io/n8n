@@ -252,6 +252,77 @@ describe('refreshOAuth2Token', () => {
 		);
 	});
 
+	test.each([undefined, {}, { access_token: '' }])(
+		'should acquire and persist a client credentials token with initial token data %j',
+		async (oauthTokenData) => {
+			const credentials = {
+				...mockCredentialData,
+				grantType: 'clientCredentials',
+				oauthTokenData,
+			};
+			mockThis.getCredentials.mockResolvedValue(credentials);
+			mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue(
+				oauthTokenData ? { oauthTokenData } : {},
+			);
+			const tokenScope = nock(baseUrl)
+				.post('/token', {
+					client_id: 'test-client-id',
+					client_secret: 'test-client-secret',
+					grant_type: 'client_credentials',
+					scope: 'openid',
+				})
+				.reply(200, {
+					access_token: 'initial-token',
+					token_type: 'bearer',
+				});
+
+			const result = await refreshOAuth2Token.call(
+				mockThis,
+				'test-credentials-type',
+				mockNode,
+				mockAdditionalData,
+			);
+
+			expect(result).toEqual(expect.objectContaining({ access_token: 'initial-token' }));
+			expect(tokenScope.isDone()).toBe(true);
+			expect(
+				mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+			).toHaveBeenCalledExactlyOnceWith(
+				mockNode.credentials!['test-credentials-type'],
+				'test-credentials-type',
+				expect.objectContaining({
+					oauthTokenData: expect.objectContaining({ access_token: 'initial-token' }),
+				}),
+				mockAdditionalData,
+			);
+		},
+	);
+
+	test('should reuse a client credentials token acquired before the stored credential is re-read', async () => {
+		mockThis.getCredentials.mockResolvedValue({
+			...mockCredentialData,
+			grantType: 'clientCredentials',
+			oauthTokenData: undefined,
+		});
+		mockAdditionalData.credentialsHelper.getDecrypted.mockResolvedValue({
+			oauthTokenData: { access_token: 'already-acquired-token', token_type: 'bearer' },
+		});
+		const tokenScope = nock(baseUrl).post('/token').reply(200, { access_token: 'unused-token' });
+
+		const result = await refreshOAuth2Token.call(
+			mockThis,
+			'test-credentials-type',
+			mockNode,
+			mockAdditionalData,
+		);
+
+		expect(result).toEqual({ access_token: 'already-acquired-token', token_type: 'bearer' });
+		expect(tokenScope.isDone()).toBe(false);
+		expect(
+			mockAdditionalData.credentialsHelper.updateCredentialsOauthTokenData,
+		).not.toHaveBeenCalled();
+	});
+
 	test('should include resource when fetching a client credentials token', async () => {
 		mockThis.getCredentials.mockResolvedValue({
 			...mockCredentialData,
