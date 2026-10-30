@@ -27,6 +27,7 @@ import type { McpAuthenticationOption, McpServerTransport, McpTool } from './typ
 import {
 	connectMcpClientForCredential,
 	getAllTools,
+	getMcpToolDisplayName,
 	isStructuredContent,
 	mapToNodeOperationError,
 } from './utils';
@@ -423,7 +424,7 @@ export async function loadMcpToolOptions(
 	try {
 		const tools = await getAllTools(client.result);
 		return tools.map((tool) => ({
-			name: tool.name,
+			name: getMcpToolDisplayName(tool),
 			value: tool.name,
 			description: tool.description,
 			inputSchema: tool.inputSchema,
