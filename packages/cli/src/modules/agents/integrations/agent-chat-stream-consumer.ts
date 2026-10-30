@@ -47,7 +47,7 @@ interface AgentChatStreamConsumerOptions {
 	/** Post the files that a run queued for its final reply, with the reply text as caption. */
 	postReplyFiles?: (
 		thread: Thread<unknown, unknown>,
-		params: { fileIds: string[]; caption: string; agentThreadId: string },
+		params: { fileIds: string[]; caption: string; agentThreadId: string; onPosted?: () => void },
 	) => Promise<void>;
 }
 
@@ -513,6 +513,7 @@ export class AgentChatStreamConsumer {
 		if (state.suspended || state.replyFiles.size === 0) return;
 		const fileIds = [...new Set([...state.replyFiles.values()].flat())];
 		state.replyFiles.clear();
+		let textPosted = false;
 		try {
 			if (!this.options.postReplyFiles || !options.agentThreadId) {
 				throw new OperationalError('Files cannot be sent without the agent thread of the run');
@@ -521,6 +522,9 @@ export class AgentChatStreamConsumer {
 				fileIds,
 				caption,
 				agentThreadId: options.agentThreadId,
+				onPosted: () => {
+					textPosted = true;
+				},
 			});
 			state.hasVisibleResponse = true;
 		} catch (error) {
@@ -529,9 +533,10 @@ export class AgentChatStreamConsumer {
 			});
 			// Do not lose the reply text with the files. A wake delivery throws
 			// only when the text or the error notice cannot be posted, so a
-			// retry does not post the text again.
+			// retry does not post the text again. The first post carries the
+			// text, so it is posted again only when nothing was posted.
 			const throwOnDeliveryError = options.throwOnDeliveryError;
-			if (caption.trim()) {
+			if (caption.trim() && !textPosted) {
 				await this.postBufferedText(thread, caption, state, throwOnDeliveryError);
 			}
 			await this.postError(thread, error, state, throwOnDeliveryError);

@@ -209,13 +209,23 @@ export class AgentOutboundFiles {
 	async postReplyFiles(
 		thread: Thread<unknown, unknown>,
 		platform: string,
-		params: { fileIds: string[]; scope: OutboundFileScope; caption: string },
+		params: {
+			fileIds: string[];
+			scope: OutboundFileScope;
+			caption: string;
+			/** Called after each message that is posted. The first one carries the caption. */
+			onPosted?: () => void;
+		},
 	): Promise<void> {
 		const checked = await this.check(platform, params.fileIds, params.scope);
 		if (!Array.isArray(checked)) throw new OperationalError(checked.error.message);
 		const caption: PostableMarkdown = { markdown: params.caption };
 		await postWithFileGroups(
-			async (message) => await thread.post(message),
+			async (message) => {
+				const sent = await thread.post(message);
+				params.onPosted?.();
+				return sent;
+			},
 			caption,
 			this.groups(platform, checked),
 			captionLimits(this.integrationRegistry.get(platform)),

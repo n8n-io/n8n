@@ -675,6 +675,7 @@ describe('AgentChatStreamConsumer — files queued for the final reply', () => {
 			fileIds: ['file-1'],
 			caption: 'Here is your chart.',
 			agentThreadId: 'agent-thread-1',
+			onPosted: expect.any(Function),
 		});
 		expect(localThread.post).not.toHaveBeenCalled();
 	});
@@ -697,6 +698,7 @@ describe('AgentChatStreamConsumer — files queued for the final reply', () => {
 			fileIds: ['file-1'],
 			caption: '',
 			agentThreadId: 'agent-thread-1',
+			onPosted: expect.any(Function),
 		});
 	});
 
@@ -782,6 +784,7 @@ describe('AgentChatStreamConsumer — files queued for the final reply', () => {
 			fileIds: ['file-1', 'file-2'],
 			caption: 'Done.',
 			agentThreadId: 'agent-thread-1',
+			onPosted: expect.any(Function),
 		});
 	});
 
@@ -840,6 +843,33 @@ describe('AgentChatStreamConsumer — files queued for the final reply', () => {
 		);
 
 		expect(localThread.post).toHaveBeenCalledWith({ markdown: 'Here is your chart.' });
+		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
+	});
+
+	it('does not post the reply text again when a later file group fails', async () => {
+		const { consumer, postReplyFiles, postErrorToThread } = makeFilesConsumer(true);
+		const error = new Error('Failed to upload the second file group');
+		// The first group goes out with the caption, then the second group fails.
+		postReplyFiles.mockImplementation(async (_thread, { onPosted }) => {
+			onPosted?.();
+			throw error;
+		});
+		const localThread = mock<Thread<unknown, unknown>>();
+
+		await consumer.consume(
+			makeStream([
+				queued('tc-1', ['file-1', 'doc-1']),
+				{ type: 'text-delta', id: 't-1', delta: 'Here is your chart.' },
+			]),
+			localThread,
+			{ agentThreadId: 'agent-thread-1' },
+		);
+
+		expect(postReplyFiles).toHaveBeenCalledWith(
+			localThread,
+			expect.objectContaining({ caption: 'Here is your chart.' }),
+		);
+		expect(localThread.post).not.toHaveBeenCalled();
 		expect(postErrorToThread).toHaveBeenCalledWith(localThread, error, undefined);
 	});
 

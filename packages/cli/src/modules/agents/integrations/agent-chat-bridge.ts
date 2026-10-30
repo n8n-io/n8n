@@ -293,10 +293,11 @@ export class AgentChatBridge {
 			handleSuspension: this.handleSuspension.bind(this),
 			handleMessage: this.handleMessage.bind(this),
 			isIntegrationActionTool: (toolName) => actionToolNamePattern.test(toolName),
-			postReplyFiles: async (thread, { fileIds, caption, agentThreadId }) =>
+			postReplyFiles: async (thread, { fileIds, caption, agentThreadId, onPosted }) =>
 				await Container.get(AgentOutboundFiles).postReplyFiles(thread, integration.type, {
 					fileIds,
 					caption,
+					onPosted,
 					scope: { projectId: n8nProjectId, threadId: agentThreadId },
 				}),
 		});
