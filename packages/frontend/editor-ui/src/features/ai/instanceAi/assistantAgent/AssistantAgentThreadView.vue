@@ -26,6 +26,7 @@ import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composabl
 
 import { provideArtifactThread } from '../artifactThread';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
+import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
@@ -154,6 +155,7 @@ provideArtifactThread(thread);
 const preview = useCanvasPreview({ thread, threadId: () => props.threadId });
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAppPreview', preview.openAppPreview);
 
 const activeAgentHref = computed(() => {
 	const agentId = preview.activeAgentId.value;
@@ -437,6 +439,14 @@ function removeStagedNodes(chipId: string): void {
 							:data-table-id="preview.activeDataTableId.value"
 							:project-id="preview.activeDataTableProjectId.value"
 							:refresh-key="preview.dataTableRefreshKey.value"
+						/>
+						<InstanceAiAppPreview
+							v-if="preview.isPreviewVisible.value && preview.activeApp.value"
+							:class="$style.previewSlot"
+							:project-id="preview.activeApp.value.projectId"
+							:app-id="preview.activeApp.value.id"
+							:refresh-key="preview.appRefreshKey.value"
+							@deleted="preview.closeTab"
 						/>
 						<div
 							v-if="preview.isPreviewVisible.value && activeAgentHref"

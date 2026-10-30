@@ -598,6 +598,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 
 	return new Tool(DOMAIN_TOOL_IDS.BUILD_WORKFLOW)
 		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.BUILD_WORKFLOW))
+		.requiresWorkspace()
 		.description(
 			'Build and save a workflow from workflow source. ' +
 				'Load `workflow-builder` via `load_skill` before calling this tool. ' +

@@ -5,6 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
 import {
 	FolderRepository,
+	PersonRepository,
 	ProjectRepository,
 	SharedWorkflowRepository,
 	UserRepository,
@@ -614,6 +615,7 @@ describe('auto-close on source-control pull', () => {
 			Container.get(SharedWorkflowRepository),
 			mock(), // sharedCredentialsRepository
 			Container.get(UserRepository),
+			Container.get(PersonRepository),
 			mock(), // variablesRepository
 			Container.get(WorkflowRepository),
 			mock(), // workflowTagMappingRepository

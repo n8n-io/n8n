@@ -27,6 +27,7 @@ const {
 	telemetryTrack,
 	previewProps,
 	previewThread,
+	appPreviewProps,
 	routerPush,
 	focusInput,
 } = vi.hoisted(() => ({
@@ -35,6 +36,7 @@ const {
 	telemetryTrack: vi.fn(),
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
 	previewThread: { current: undefined as ArtifactThread | undefined },
+	appPreviewProps: { current: undefined as Record<string, unknown> | undefined },
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
 }));
@@ -137,6 +139,18 @@ vi.mock('../../components/InstanceAiResourcePicker.vue', () => ({
 							projectId: props.projectId,
 						}),
 				}),
+	}),
+}));
+
+vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			return () => {
+				appPreviewProps.current = { ...attrs };
+				return h('div', { 'data-test-id': 'app-preview-stub' });
+			};
+		},
 	}),
 }));
 
@@ -246,6 +260,7 @@ describe('AssistantAgentThreadView', () => {
 		panelProps.current = {};
 		previewProps.current = undefined;
 		previewThread.current = undefined;
+		appPreviewProps.current = undefined;
 		routerPush.mockReset();
 		focusInput.mockReset();
 		composerAttachments.value = [];
@@ -375,6 +390,46 @@ describe('AssistantAgentThreadView', () => {
 
 		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
 		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-1' });
+	});
+
+	it('opens the app that the Assistant commits and reloads it on the next commit', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+		const commitMessage = (toolCallId: string): ChatMessage => ({
+			id: `a-${toolCallId}`,
+			role: 'assistant',
+			content: '',
+			toolCalls: [
+				{
+					tool: 'apps',
+					toolCallId,
+					input: { action: 'commit', appId: 'app-1', label: 'Change' },
+					output: {
+						app: { id: 'app-1', name: 'Todos', projectId: 'project-1' },
+						versionId: toolCallId,
+						buildStatus: 'succeeded',
+					},
+					state: 'done',
+				},
+			],
+		});
+
+		chatMessages.value = [commitMessage('tc-1')];
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+		expect(appPreviewProps.current).toMatchObject({
+			'project-id': 'project-1',
+			'app-id': 'app-1',
+		});
+		const firstKey = appPreviewProps.current?.['refresh-key'];
+
+		chatMessages.value = [...chatMessages.value, commitMessage('tc-2')];
+		await flushPromises();
+
+		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
 	});
 
 	it('does not open the preview for a workflow built before the thread loaded', async () => {

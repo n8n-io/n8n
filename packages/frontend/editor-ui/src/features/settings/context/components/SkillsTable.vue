@@ -236,13 +236,13 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			</template>
 
 			<template #[`item.createdBy`]="{ item }">
-				<!-- The same person cell as the users table. -->
 				<div v-if="item.createdBy" :class="$style.creator" data-test-id="skill-created-by">
 					<N8nUserInfo
 						:first-name="item.createdBy.firstName"
 						:last-name="item.createdBy.lastName"
 						:email="item.createdBy.email"
 						:is-current-user="item.createdBy.id === usersStore.currentUserId"
+						hide-avatar
 					/>
 				</div>
 				<N8nText v-else size="small" color="text-light" data-test-id="skill-created-by-none">

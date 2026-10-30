@@ -59,6 +59,7 @@ import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
+import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
 import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgentCapabilitySummary';
@@ -327,6 +328,7 @@ provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
+provide('openAppPreview', preview.openAppPreview);
 provide('pendingComposerContext', handoffContext);
 provide(
 	'dismissPendingComposerContext',
@@ -1024,6 +1026,14 @@ function handleNewThreadClick() {
 								:class="$style.previewSlot"
 								:skill-id="preview.activeSkillId.value"
 								:refresh-key="preview.skillRefreshKey.value"
+							/>
+							<InstanceAiAppPreview
+								v-if="preview.isPreviewVisible.value && preview.activeApp.value"
+								:class="$style.previewSlot"
+								:project-id="preview.activeApp.value.projectId"
+								:app-id="preview.activeApp.value.id"
+								:refresh-key="preview.appRefreshKey.value"
+								@deleted="preview.closeTab"
 							/>
 						</div>
 					</TabsRoot>
