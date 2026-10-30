@@ -5,186 +5,140 @@ import type { CustomModelEndpointFetchContext } from './auth-fetch';
 import type { EndpointCredential, LoginMethod } from './types';
 
 const BASE_URL = 'https://gateway.example.com/v1';
+const INHERITED = { Authorization: 'Bearer placeholder' };
 
 const node = {
 	id: '1',
 	name: 'Custom Model Endpoint',
-	type: '@n8n/n8n-nodes-langchain.customModelEndpoint',
+	type: 'test',
 	typeVersion: 1,
 	position: [0, 0],
 	parameters: {},
 } as INode;
-
 const ctx = { getNode: () => node } as unknown as CustomModelEndpointFetchContext;
-
-const allowAll = {
-	validateUrl: async () => ({ ok: true }),
-} as unknown as NodeEgressFilter;
+const allowAll = { validateUrl: async () => ({ ok: true }) } as unknown as NodeEgressFilter;
 
 const endpointWith = (
 	login: LoginMethod,
 	gatewayHeaders: Record<string, string> = {},
 ): EndpointCredential => ({ baseUrl: BASE_URL, login, gatewayHeaders });
 
-/** Records what every hop received, and replays the queued responses in order. */
-function recordingFetch(responses: Response[]) {
+function recordingFetch(responses: Response[] = []) {
 	const calls: Array<{ url: string; headers: Headers }> = [];
 	const queue = [...responses];
 	const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
-		const url = input instanceof Request ? input.url : input.toString();
-		calls.push({ url, headers: new Headers(init?.headers ?? {}) });
+		calls.push({
+			url: input instanceof Request ? input.url : input.toString(),
+			headers: new Headers(init?.headers ?? {}),
+		});
 		return queue.shift() ?? new Response('{}', { status: 200 });
 	};
 	return { calls, fetchImpl: fetchImpl as unknown as typeof fetch };
 }
 
+function authFetchFor(
+	endpoint: EndpointCredential,
+	overrides: {
+		credential?: ICredentialDataDecryptedObject;
+		egressFilter?: NodeEgressFilter;
+		responses?: Response[];
+		requestHeaders?: Record<string, string>;
+	} = {},
+) {
+	const { calls, fetchImpl } = recordingFetch(overrides.responses);
+	const authFetch = createCustomModelEndpointAuthFetch(ctx, overrides.credential ?? {}, {
+		endpoint,
+		egressFilter: overrides.egressFilter ?? allowAll,
+		baseFetch: fetchImpl,
+		requestHeaders: overrides.requestHeaders,
+	});
+	return { calls, authFetch };
+}
+
 const redirectTo = (location: string) => new Response(null, { status: 302, headers: { location } });
 
+const restrictedTo = (domains: string): ICredentialDataDecryptedObject => ({
+	allowedHttpRequestDomains: 'domains',
+	allowedDomains: domains,
+});
+
 describe('createCustomModelEndpointAuthFetch', () => {
-	describe('the login header the AI library already added', () => {
-		it('removes it when the key belongs in a header the user named', async () => {
-			const { calls, fetchImpl } = recordingFetch([]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith({ type: 'header', name: 'X-Api-Key', prefix: '', key: 'secret' }),
-					egressFilter: allowAll,
-					baseFetch: fetchImpl,
-				},
-			);
+	it.each<[string, LoginMethod, string | null]>([
+		[
+			'no Authorization when the key goes in a header the user named',
+			{ type: 'header', name: 'X-Api-Key', prefix: '', key: 'secret' },
+			null,
+		],
+		['no Authorization when the gateway needs no login', { type: 'none' }, null],
+		['its own Bearer token', { type: 'bearer', token: 'real' }, 'Bearer real'],
+		[
+			'its own Basic credentials',
+			{ type: 'basic', username: 'u', password: 'p' },
+			`Basic ${Buffer.from('u:p').toString('base64')}`,
+		],
+	])('sends %s, replacing the one the AI library added', async (_name, login, expected) => {
+		const { calls, authFetch } = authFetchFor(endpointWith(login));
 
-			await authFetch(BASE_URL, { headers: { Authorization: 'Bearer placeholder' } });
+		await authFetch(BASE_URL, { headers: INHERITED });
 
-			expect(calls[0].headers.get('x-api-key')).toBe('secret');
-			expect(calls[0].headers.has('authorization')).toBe(false);
-		});
+		expect(calls[0].headers.get('authorization')).toBe(expected);
+	});
 
-		it('removes it when the gateway needs no login at all', async () => {
-			const { calls, fetchImpl } = recordingFetch([]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith({ type: 'none' }),
-					egressFilter: allowAll,
-					baseFetch: fetchImpl,
-				},
-			);
+	it('strips the inherited header when the caller passes a Request', async () => {
+		const { calls, authFetch } = authFetchFor(endpointWith({ type: 'none' }));
 
-			await authFetch(BASE_URL, { headers: { Authorization: 'Bearer placeholder' } });
+		await authFetch(new Request(BASE_URL, { headers: INHERITED }));
 
-			expect(calls[0].headers.has('authorization')).toBe(false);
-		});
+		expect(calls[0].headers.has('authorization')).toBe(false);
+	});
 
-		it('replaces it when the credential signs with a Bearer token of its own', async () => {
-			const { calls, fetchImpl } = recordingFetch([]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith({ type: 'bearer', token: 'real' }),
-					egressFilter: allowAll,
-					baseFetch: fetchImpl,
-				},
-			);
+	it('sends the credential login and the gateway headers together', async () => {
+		const endpoint = endpointWith(
+			{ type: 'header', name: 'X-Api-Key', prefix: 'Token', key: 'secret' },
+			{ 'X-Gateway-Team': 'platform' },
+		);
+		const { calls, authFetch } = authFetchFor(endpoint, { requestHeaders: { 'X-Run-Id': '42' } });
 
-			await authFetch(BASE_URL, { headers: { Authorization: 'Bearer placeholder' } });
+		await authFetch(BASE_URL);
 
-			expect(calls[0].headers.get('authorization')).toBe('Bearer real');
-		});
-
-		it('removes it when the caller passes a Request rather than headers in init', async () => {
-			const { calls, fetchImpl } = recordingFetch([]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith({ type: 'none' }),
-					egressFilter: allowAll,
-					baseFetch: fetchImpl,
-				},
-			);
-
-			await authFetch(new Request(BASE_URL, { headers: { Authorization: 'Bearer placeholder' } }));
-
-			expect(calls[0].headers.has('authorization')).toBe(false);
+		expect(Object.fromEntries(calls[0].headers)).toMatchObject({
+			'x-api-key': 'Token secret',
+			'x-gateway-team': 'platform',
+			'x-run-id': '42',
 		});
 	});
 
 	describe('redirects', () => {
-		it('sends no login or gateway header once a hop leaves the origin', async () => {
-			const { calls, fetchImpl } = recordingFetch([redirectTo('https://elsewhere.example.net/v1')]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith(
-						{ type: 'header', name: 'X-Api-Key', prefix: '', key: 'secret' },
-						{ 'X-Gateway-Team': 'platform' },
-					),
-					egressFilter: allowAll,
-					baseFetch: fetchImpl,
-				},
-			);
+		const endpoint = endpointWith(
+			{ type: 'bearer', token: 'real' },
+			{ 'X-Gateway-Team': 'platform' },
+		);
+
+		it.each<[string, string, boolean]>([
+			['keeps them while the hops stay on one origin', 'https://gateway.example.com/v2/chat', true],
+			['withholds them once a hop leaves the origin', 'https://elsewhere.example.net/v1', false],
+		])('%s', async (_name, location, stillSent) => {
+			const { calls, authFetch } = authFetchFor(endpoint, { responses: [redirectTo(location)] });
 
 			await authFetch(BASE_URL);
 
 			expect(calls).toHaveLength(2);
-			expect(calls[0].headers.get('x-api-key')).toBe('secret');
-			expect(calls[0].headers.get('x-gateway-team')).toBe('platform');
-			expect(calls[1].headers.has('x-api-key')).toBe(false);
-			expect(calls[1].headers.has('x-gateway-team')).toBe(false);
-		});
-
-		it('keeps sending them while the hops stay on the same origin', async () => {
-			const { calls, fetchImpl } = recordingFetch([
-				redirectTo('https://gateway.example.com/v2/chat'),
-			]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith(
-						{ type: 'bearer', token: 'real' },
-						{ 'X-Gateway-Team': 'platform' },
-					),
-					egressFilter: allowAll,
-					baseFetch: fetchImpl,
-				},
-			);
-
-			await authFetch(BASE_URL);
-
-			expect(calls[1].headers.get('authorization')).toBe('Bearer real');
-			expect(calls[1].headers.get('x-gateway-team')).toBe('platform');
+			expect(calls[1].headers.has('authorization')).toBe(stillSent);
+			expect(calls[1].headers.has('x-gateway-team')).toBe(stillSent);
 		});
 
 		it('fails when a hop leaves the domains the credential allows', async () => {
-			const credential: ICredentialDataDecryptedObject = {
-				allowedHttpRequestDomains: 'domains',
-				allowedDomains: 'gateway.example.com',
-			};
-			const { fetchImpl } = recordingFetch([redirectTo('https://elsewhere.example.net/v1')]);
-			const authFetch = createCustomModelEndpointAuthFetch(ctx, credential, {
-				endpoint: endpointWith({ type: 'bearer', token: 'real' }),
-				egressFilter: allowAll,
-				baseFetch: fetchImpl,
+			const { authFetch } = authFetchFor(endpoint, {
+				credential: restrictedTo('gateway.example.com'),
+				responses: [redirectTo('https://elsewhere.example.net/v1')],
 			});
 
 			await expect(authFetch(BASE_URL)).rejects.toThrow('Domain not allowed');
 		});
 
 		it('allows the base URL host even when the user listed other domains', async () => {
-			const credential: ICredentialDataDecryptedObject = {
-				allowedHttpRequestDomains: 'domains',
-				allowedDomains: 'other.example.org',
-			};
-			const { calls, fetchImpl } = recordingFetch([]);
-			const authFetch = createCustomModelEndpointAuthFetch(ctx, credential, {
-				endpoint: endpointWith({ type: 'bearer', token: 'real' }),
-				egressFilter: allowAll,
-				baseFetch: fetchImpl,
+			const { calls, authFetch } = authFetchFor(endpoint, {
+				credential: restrictedTo('other.example.org'),
 			});
 
 			await authFetch(BASE_URL);
@@ -198,16 +152,7 @@ describe('createCustomModelEndpointAuthFetch', () => {
 			const blocked = {
 				validateUrl: async () => ({ ok: false, error: new Error('Address is blocked') }),
 			} as unknown as NodeEgressFilter;
-			const { fetchImpl } = recordingFetch([]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith({ type: 'bearer', token: 'real' }),
-					egressFilter: blocked,
-					baseFetch: fetchImpl,
-				},
-			);
+			const { authFetch } = authFetchFor(endpointWith({ type: 'none' }), { egressFilter: blocked });
 
 			await expect(authFetch(BASE_URL)).rejects.toThrow('Address is blocked');
 		});
@@ -220,38 +165,14 @@ describe('createCustomModelEndpointAuthFetch', () => {
 					return { ok: true };
 				},
 			} as unknown as NodeEgressFilter;
-			const { fetchImpl } = recordingFetch([redirectTo('https://gateway.example.com/v2/chat')]);
-			const authFetch = createCustomModelEndpointAuthFetch(
-				ctx,
-				{},
-				{
-					endpoint: endpointWith({ type: 'none' }),
-					egressFilter: recording,
-					baseFetch: fetchImpl,
-				},
-			);
+			const { authFetch } = authFetchFor(endpointWith({ type: 'none' }), {
+				egressFilter: recording,
+				responses: [redirectTo('https://gateway.example.com/v2/chat')],
+			});
 
 			await authFetch(BASE_URL);
 
 			expect(seen).toEqual([BASE_URL, 'https://gateway.example.com/v2/chat']);
 		});
-	});
-
-	it('sends the per-request headers the node supplies', async () => {
-		const { calls, fetchImpl } = recordingFetch([]);
-		const authFetch = createCustomModelEndpointAuthFetch(
-			ctx,
-			{},
-			{
-				endpoint: endpointWith({ type: 'bearer', token: 'real' }),
-				egressFilter: allowAll,
-				baseFetch: fetchImpl,
-				requestHeaders: { 'X-Run-Id': '42' },
-			},
-		);
-
-		await authFetch(BASE_URL);
-
-		expect(calls[0].headers.get('x-run-id')).toBe('42');
 	});
 });

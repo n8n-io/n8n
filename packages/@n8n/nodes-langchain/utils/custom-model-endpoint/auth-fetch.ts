@@ -17,12 +17,7 @@ export type CustomModelEndpointFetchContext =
 	| ISupplyDataFunctions
 	| ILoadOptionsFunctions;
 
-/**
- * The AI library signs every request the OpenAI way, `Authorization: Bearer
- * <key>`, before the transport sees it. A gateway that reads its key from
- * another header, or needs none, must not receive that one: the user never
- * configured it, and a gateway that reads both may prefer it.
- */
+// The AI library signs every request `Authorization: Bearer <key>` before the transport sees it
 function withoutInheritedAuthorization(
 	input: RequestInfo | URL,
 	init: RequestInit | undefined,
@@ -37,14 +32,6 @@ function withoutInheritedAuthorization(
 	return { input, init: { ...init, headers } };
 }
 
-/**
- * The fetch both Custom Model Endpoint nodes and the model list send their
- * requests through. It carries the credential's own login and gateway headers,
- * and checks every host it reaches, including each redirect hop.
- *
- * Redirects are followed here rather than by the platform, which is what
- * withholds the headers once a hop leaves the starting origin.
- */
 export function createCustomModelEndpointAuthFetch(
 	ctx: CustomModelEndpointFetchContext,
 	credential: ICredentialDataDecryptedObject,
@@ -57,7 +44,6 @@ export function createCustomModelEndpointAuthFetch(
 ): typeof fetch {
 	const { endpoint, egressFilter, baseFetch, requestHeaders } = options;
 	const node = ctx.getNode();
-	// The base URL is the credential's own, so credentialOwnedSurface joins its host to the allowlist
 	const allowedDomains = getCredentialAllowedDomains({
 		node,
 		credentialData: credential,
