@@ -16,6 +16,12 @@ export type SkillTelemetryMethod = 'manual' | 'upload' | 'ai' | 'sync';
 
 type SkillPlace = { scope: 'project'; project_id: string } | { scope: 'instance' };
 
+/** The source of a synced skill. Pass it for a skill that Skill Sync imported. */
+export type SkillTelemetryOrigin = {
+	source_provider: ConnectedSourceProps['provider'];
+	source_access: ConnectedSourceProps['access'];
+};
+
 type ConnectedSourceProps = InferTelemetryProps<
 	typeof TELEMETRY_EVENT.CONTEXT.USER_CONNECTED_SKILL_SOURCE
 >;
@@ -66,6 +72,7 @@ export class SkillsTelemetry {
 		refs: SkillTelemetryRef[],
 		source: SkillTelemetrySource,
 		method: SkillTelemetryMethod,
+		origin?: SkillTelemetryOrigin,
 	): Promise<void> {
 		await this.safely(async () => {
 			const skills = await this.resolve(refs);
@@ -76,6 +83,7 @@ export class SkillsTelemetry {
 					...placeOf(skill),
 					source,
 					method,
+					...origin,
 				});
 			}
 		});

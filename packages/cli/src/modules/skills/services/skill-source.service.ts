@@ -226,10 +226,12 @@ export class SkillSourceService {
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
 		let needsReview = 0;
+		const access = source.auth?.credentialId ? 'credential' : 'public';
 		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
 			await this.skillsTelemetry.importedFromSource(
 				{
 					provider: source.type,
+					access,
 					scope_type: scopeType,
 					first_or_more: 'first',
 					selected: keys.length,
@@ -356,6 +358,7 @@ export class SkillSourceService {
 			imported.map(({ skillId }) => ({ id: skillId, ...target })),
 			source.type,
 			'sync',
+			{ source_provider: source.type, source_access: access },
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
 	}
