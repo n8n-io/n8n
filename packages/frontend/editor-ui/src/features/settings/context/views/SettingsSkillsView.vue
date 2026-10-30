@@ -290,43 +290,25 @@ function scopeLock(
 }
 
 /*
- * The URL drives the skill modal, as on the credentials page: `?skillId=<id>` shows
- * that skill and `?create=true` starts a new one. The page only writes the URL, and
- * one watcher opens or closes the modal to match it. Closing the modal clears the URL.
+ * The URL drives the skill modal, as on the credentials page: `?skillId=<id>` opens that
+ * skill and `?create=true` starts a new one. Clicks only write the URL, and closing the
+ * modal clears it.
  */
 
-/** The page opens the modal from the URL only after the list and the projects load. */
-const isReady = ref(false);
-
-const requestedSkillId = computed<string | null>(() => {
-	const { skillId } = route.query;
-	return typeof skillId === 'string' && skillId !== '' ? skillId : null;
-});
-const requestsCreate = computed(() => !requestedSkillId.value && route.query.create === 'true');
-
-/** What the URL asks the modal to show: one skill, a new skill, or nothing. */
-const modalInUrl = computed<string | null>(() => {
-	if (requestedSkillId.value) return `skill:${requestedSkillId.value}`;
-	return requestsCreate.value ? 'create' : null;
-});
-
-/** What the open modal shows, in the same form as `modalInUrl`. */
-let shownModal: string | null = null;
-
 /** Writes the modal state to the URL and keeps the other query parameters. */
-async function setModalQuery(next: { skillId?: string; create?: 'true' }) {
+function setSkillQuery(next: { skillId?: string; create?: 'true' } = {}) {
 	// A late call after the user left the page must not change the next page's URL.
 	if (route.name !== VIEWS.SETTINGS_CONTEXT_SKILLS) return;
 	const { skillId: _skillId, create: _create, ...query } = route.query;
-	await router.replace({ query: { ...query, ...next } });
+	void router.replace({ query: { ...query, ...next } });
 }
 
-async function onOpenSkill(item: Pick<SkillListItem, 'id'>) {
-	await setModalQuery({ skillId: item.id });
+function onOpenSkill(item: Pick<SkillListItem, 'id'>) {
+	setSkillQuery({ skillId: item.id });
 }
 
-async function onCreateSkill() {
-	await setModalQuery({ create: 'true' });
+function onCreateSkill() {
+	setSkillQuery({ create: 'true' });
 }
 
 /** The API answers 404 for a missing skill and for one the user cannot see. */
@@ -334,25 +316,17 @@ function isSkillNotFoundError(error: unknown): boolean {
 	return error instanceof ResponseError && error.httpStatusCode === 404;
 }
 
-/**
- * Counts the requests to open a skill. Only the latest one may open the modal: a slow
- * answer for a skill that the URL no longer names must not replace the current one.
- */
+/** Only the latest request may open the modal, so a slow answer cannot replace a newer one. */
 let openRequest = 0;
 
-function cancelPendingOpen() {
-	openRequest++;
-}
-
-async function openEditModal(skillId: string) {
-	const request = ++openRequest;
+async function openEditModal(skillId: string, request: number) {
 	let detail: SkillDetail;
 	try {
 		detail = await skillsStore.fetchSkill(skillId);
 	} catch (error) {
 		if (request !== openRequest) return;
 		// A link to a skill that is not there leaves the list, not a broken modal.
-		await setModalQuery({});
+		setSkillQuery();
 		if (isSkillNotFoundError(error)) {
 			showMessage({
 				title: i18n.baseText('settings.context.skills.error.notFound'),
@@ -387,44 +361,44 @@ async function openEditModal(skillId: string) {
 		onConfirm: async ({ skill, scope }) =>
 			await onSave(detail.id, skill, detail.skillHash, scope !== currentValue ? scope : undefined),
 	});
-	shownModal = `skill:${detail.id}`;
 }
 
-/** Opens, replaces or closes the modal so that it shows what the URL names. */
-async function syncModalWithUrl() {
-	if (!isReady.value || route.name !== VIEWS.SETTINGS_CONTEXT_SKILLS) return;
-	// The URL changed, so a pending open is out of date.
-	cancelPendingOpen();
-	if (modalInUrl.value === shownModal) return;
-	if (shownModal !== null) {
-		shownModal = null;
-		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+/** Set while the page closes the modal to show what the URL names next. */
+let isReplacingModal = false;
+
+/** Opens the modal that the URL names. Runs after the first load and when the URL changes. */
+async function maybeOpenSkillModal() {
+	const request = ++openRequest;
+	if (uiStore.activeModals.includes(AGENT_SKILL_MODAL_KEY)) {
 		// The modal remounts, so it does not keep the fields of the previous skill.
+		isReplacingModal = true;
+		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+		isReplacingModal = false;
 		await nextTick();
 	}
-	if (requestedSkillId.value) {
-		await openEditModal(requestedSkillId.value);
-	} else if (requestsCreate.value) {
-		if (openCreateModal()) {
-			shownModal = 'create';
-		} else {
-			// The user cannot create a skill anywhere, so the link has nothing to show.
-			await setModalQuery({});
-		}
+	const { skillId, create } = route.query;
+	if (typeof skillId === 'string' && skillId !== '') {
+		await openEditModal(skillId, request);
+	} else if (create === 'true' && !openCreateModal()) {
+		// The user cannot create a skill anywhere, so the link has nothing to show.
+		setSkillQuery();
 	}
 }
 
-watch([isReady, modalInUrl], syncModalWithUrl);
+/** The scope options need the projects, so the modal waits for the first load. */
+let isLoaded = false;
 
-// The user closes the modal, so the URL follows it and a refresh shows the list.
+watch(
+	() => [route.query.skillId, route.query.create],
+	async () => {
+		if (isLoaded && route.name === VIEWS.SETTINGS_CONTEXT_SKILLS) await maybeOpenSkillModal();
+	},
+);
+
 listenForModalChanges({
 	store: uiStore,
 	onModalClosed(modalName) {
-		if (modalName !== AGENT_SKILL_MODAL_KEY) return;
-		const closed = shownModal;
-		shownModal = null;
-		// The URL may already name another skill, which the page opens next.
-		if (closed !== null && closed === modalInUrl.value) void setModalQuery({});
+		if (modalName === AGENT_SKILL_MODAL_KEY && !isReplacingModal) setSkillQuery();
 	},
 });
 
@@ -497,13 +471,13 @@ onMounted(async () => {
 	if (!loadFailed.value) {
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_VIEWED_SKILLS, { count: skillsStore.count });
 	}
-	// The scope options need the projects, so the modal waits for them. The skill may be
-	// on another page, so it is read by id rather than from the list.
-	isReady.value = true;
+	// The skill may be on another page, so it is read by id rather than from the list.
+	isLoaded = true;
+	await maybeOpenSkillModal();
 });
 
 // The modal is global, so a late answer must not open it on the next page.
-onBeforeUnmount(cancelPendingOpen);
+onBeforeUnmount(() => openRequest++);
 </script>
 
 <template>
