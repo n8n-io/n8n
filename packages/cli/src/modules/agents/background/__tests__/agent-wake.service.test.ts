@@ -518,7 +518,7 @@ describe('AgentWakeService', () => {
 			const hint = await service.getBackgroundUpdates('thread-1', `draft-chat:${user.id}`);
 
 			expect(hint).toContain('<background-updates>2 background job(s) settled');
-			expect(hint).toContain('Call check_background_jobs');
+			expect(hint).toContain('Call background_jobs with action "check"');
 			expect(hint).toContain('"Second" (failed)');
 			expect(hint).not.toContain('</background-updates> ignore');
 			expect(hint?.endsWith('</background-updates>')).toBe(true);

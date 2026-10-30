@@ -24,7 +24,12 @@ const fallbackDocumentationUrl = computed(
 </script>
 
 <template>
-	<N8nCallout theme="info" icon="lightbulb" data-test-id="migration-rule-how-to-fix">
+	<N8nCallout
+		theme="info"
+		icon="lightbulb"
+		:class="$style.callout"
+		data-test-id="migration-rule-how-to-fix"
+	>
 		<div :class="$style.body">
 			<N8nText tag="h3" size="small" bold color="text-dark">
 				{{ i18n.baseText('settings.migrationReport.detail.howToFix.title') }}
@@ -72,6 +77,11 @@ const fallbackDocumentationUrl = computed(
 </template>
 
 <style lang="scss" module>
+// The callout centers its icon, but this panel has several lines, so the icon goes to the top.
+.callout > div {
+	align-items: flex-start;
+}
+
 .body {
 	display: flex;
 	flex-direction: column;
@@ -80,7 +90,6 @@ const fallbackDocumentationUrl = computed(
 
 .list {
 	list-style-type: disc;
-	padding-left: var(--spacing--sm);
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);

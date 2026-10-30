@@ -37,26 +37,39 @@ async function countInChunks(text: string, countChunk: (chunk: string) => number
 	return total;
 }
 
-// Encoding time grows quadratically with the length of a whitespace-free pre-token
-// (emoji, CJK, long words), so no chunk may contain a longer whitespace-free run than this.
+// Encoding time grows quadratically for long whitespace and non-whitespace pre-tokens.
+// Bound both kinds of runs in each chunk.
 const MAX_UNBROKEN_RUN_CHARS = 200;
 
+// Both encodings have a token for 128 spaces. Split space runs at this token boundary.
+const SPACE_TOKEN_CHUNK = ' '.repeat(128);
+
 // Split before whitespace, where BPE pre-tokens begin, so chunk counts stay close to the full count.
-// Cut long whitespace-free runs into bounded pieces, but never split a surrogate pair.
+// Cut long runs into bounded pieces, but never split a surrogate pair.
 function findChunkEnd(text: string, start: number): number {
 	const limit = Math.min(start + TOKEN_COUNT_CHUNK_CHARS, text.length);
 	const runStart = findLongRunStart(text, start, limit);
 	if (runStart === -1) return splitBeforeLastWhitespace(text, start, limit);
-	// A run that starts after `start` follows whitespace: split before that whitespace.
-	if (runStart - 1 > start) return runStart - 1;
-	return keepSurrogatePairWhole(text, start + MAX_UNBROKEN_RUN_CHARS);
+	if (runStart > start) {
+		const boundary = /\s/.test(text[runStart]) ? runStart : runStart - 1;
+		if (boundary > start) return boundary;
+	}
+	const chunkChars = text.startsWith(SPACE_TOKEN_CHUNK, start)
+		? SPACE_TOKEN_CHUNK.length
+		: MAX_UNBROKEN_RUN_CHARS;
+	return keepSurrogatePairWhole(text, start + chunkChars);
 }
 
 function findLongRunStart(text: string, start: number, limit: number): number {
 	let runStart = start;
+	let runIsWhitespace = /\s/.test(text[start]);
 	for (let index = start; index < limit; index++) {
-		if (/\s/.test(text[index])) runStart = index + 1;
-		else if (index + 1 - runStart >= MAX_UNBROKEN_RUN_CHARS) return runStart;
+		const isWhitespace = /\s/.test(text[index]);
+		if (isWhitespace !== runIsWhitespace) {
+			runStart = index;
+			runIsWhitespace = isWhitespace;
+		}
+		if (index + 1 - runStart >= MAX_UNBROKEN_RUN_CHARS) return runStart;
 	}
 	return -1;
 }

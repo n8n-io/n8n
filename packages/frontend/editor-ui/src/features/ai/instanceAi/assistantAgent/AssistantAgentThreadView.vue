@@ -58,6 +58,7 @@ import {
 	consumePendingAssistantAgentMessage,
 } from './assistantAgentThreads';
 import { assistantConfirmationExtension } from './assistantConfirmation';
+import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import {
 	countSentNodes,
@@ -135,7 +136,7 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 	pendingReferences = [];
 }
 
-const interactionExtensions = [assistantConfirmationExtension];
+const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 

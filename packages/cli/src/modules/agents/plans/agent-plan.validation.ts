@@ -224,7 +224,7 @@ export function prepareAgentPlan(
 				fail(id, 'Delegated task definitions cannot change');
 
 			if (old.item.status === 'paused' && item.status !== 'paused')
-				fail(id, 'Use resume_background_jobs to continue this task');
+				fail(id, 'Use background_jobs with action "resume" to continue this task');
 
 			// Only Stop pauses parent-run work. No model edit can resume it, so the task stays stuck.
 			if (old.item.status !== 'paused' && item.status === 'paused')

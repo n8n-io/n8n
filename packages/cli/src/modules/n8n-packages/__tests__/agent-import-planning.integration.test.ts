@@ -22,6 +22,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -31,6 +32,7 @@ import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { NodeTypes } from '@/node-types';
@@ -157,7 +159,9 @@ async function records() {
 		Container.get(CredentialsRepository).find({ order: { id: 'ASC' } }),
 		Container.get(WorkflowRepository).find({ order: { id: 'ASC' } }),
 		Container.get(ProjectRepository).find({ order: { id: 'ASC' } }),
-		Container.get(AgentHistoryRepository).find({ order: { versionId: 'ASC' } }),
+		Container.get(DataSource)
+			.getRepository(AgentHistory)
+			.find({ order: { versionId: 'ASC' } }),
 	]);
 }
 
@@ -911,13 +915,16 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 				projectId: project.id,
 			});
 			if (action === 'unpublish') {
-				await Container.get(AgentHistoryRepository).saveVersion({
-					agentId: 'source',
-					versionId: 'published',
-					schema: null,
-					tools: {},
-					publishedBy: 'Test',
-				});
+				await Container.get(AgentHistoryRepository).saveVersion(
+					{
+						agentId: 'source',
+						versionId: 'published',
+						schema: null,
+						tools: {},
+						publishedBy: 'Test',
+					},
+					{},
+				);
 				await agents.update('source', { activeVersionId: 'published' });
 			}
 		}

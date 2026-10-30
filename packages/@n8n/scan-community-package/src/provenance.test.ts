@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'vitest';
 
-import { checkPackageProvenance } from '../scanner/provenance.mjs';
+import { checkPackageProvenance } from './provenance.js';
 
 test('checkPackageProvenance passes when npm provenance metadata is present', () => {
 	assert.deepEqual(
@@ -56,7 +56,10 @@ test('checkPackageProvenance fails when lint checks pass but npm provenance is m
 
 	assert.equal(lintResult.passed, true);
 	assert.equal(provenanceResult.passed, false);
-	assert.match(provenanceResult.message, /Package was not published with npm provenance/);
+	assert.match(
+		provenanceResult.passed ? '' : provenanceResult.message,
+		/Package was not published with npm provenance/,
+	);
 });
 
 test('checkPackageProvenance fails for unsupported provenance predicate types', () => {

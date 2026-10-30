@@ -174,7 +174,7 @@ describe('Agent skills in the skills module', () => {
 			[second.versionId, 'Second instructions'],
 			[third.versionId, 'Third instructions'],
 		]) {
-			const saved = await history.findByVersionAndAgentId(versionId!, agent.id);
+			const saved = await history.findByVersionAndAgentId(versionId!, agent.id, {});
 			expect(saved).not.toBeNull();
 			const snapshot = await skillRefs.readVersion(saved!, {});
 			expect(snapshot.skills[skill]?.instructions).toBe(instructions);

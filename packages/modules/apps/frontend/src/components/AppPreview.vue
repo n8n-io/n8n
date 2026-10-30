@@ -5,10 +5,8 @@ import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nBadge,
 	N8nEmptyState,
-	N8nIcon,
 	N8nIconButton,
 	N8nLoading,
-	N8nSegmentControl,
 	N8nText,
 	N8nTooltip,
 	type IconName,
@@ -19,6 +17,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
 import { createAppPreview } from '../apps.api';
 import type { AppVersions } from '../composables/useAppVersions';
+import AppPreviewOptionMenu from './AppPreviewOptionMenu.vue';
 
 const SCREEN_SIZES = ['desktop', 'tablet', 'mobile'] as const;
 type ScreenSize = (typeof SCREEN_SIZES)[number];
@@ -65,10 +64,18 @@ const theme = ref<PreviewTheme>(editorTheme());
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 const sizeOptions = computed(() =>
-	SCREEN_SIZES.map((value) => ({ value, label: i18n.baseText(`apps.preview.size.${value}`) })),
+	SCREEN_SIZES.map((value) => ({
+		value,
+		label: i18n.baseText(`apps.preview.size.${value}`),
+		icon: OPTION_ICONS[value],
+	})),
 );
 const themeOptions = computed(() =>
-	THEMES.map((value) => ({ value, label: i18n.baseText(`apps.preview.theme.${value}`) })),
+	THEMES.map((value) => ({
+		value,
+		label: i18n.baseText(`apps.preview.theme.${value}`),
+		icon: OPTION_ICONS[value],
+	})),
 );
 const loading = computed(() => props.versions.loading.value || granting.value);
 const failed = computed(() => props.versions.failed.value || grantFailed.value);
@@ -158,14 +165,6 @@ onBeforeUnmount(() => {
 						@click="reload"
 					/>
 				</N8nTooltip>
-				<N8nText
-					v-if="versionLabel"
-					size="small"
-					color="text-light"
-					data-test-id="app-preview-version"
-				>
-					{{ i18n.baseText('apps.preview.version', { interpolate: { version: versionLabel } }) }}
-				</N8nText>
 				<N8nBadge v-if="building" variant="info" data-test-id="app-preview-status">
 					{{ i18n.baseText('apps.preview.building') }}
 				</N8nBadge>
@@ -173,31 +172,28 @@ onBeforeUnmount(() => {
 					{{ i18n.baseText('apps.preview.buildFailed') }}
 				</N8nBadge>
 			</div>
+			<N8nText
+				v-if="versionLabel"
+				size="small"
+				color="text-light"
+				:class="$style.version"
+				data-test-id="app-preview-version"
+			>
+				{{ i18n.baseText('apps.preview.version', { interpolate: { version: versionLabel } }) }}
+			</N8nText>
 			<div :class="$style.right">
-				<N8nSegmentControl
+				<AppPreviewOptionMenu
 					v-model="screenSize"
 					:options="sizeOptions"
-					size="small"
+					:label="i18n.baseText('apps.preview.size.label')"
 					data-test-id="app-preview-size"
-				>
-					<template #option="{ value, label }">
-						<span :class="$style.option">
-							<N8nIcon :icon="OPTION_ICONS[value]" size="small" />{{ label }}
-						</span>
-					</template>
-				</N8nSegmentControl>
-				<N8nSegmentControl
+				/>
+				<AppPreviewOptionMenu
 					v-model="theme"
 					:options="themeOptions"
-					size="small"
+					:label="i18n.baseText('apps.preview.theme.label')"
 					data-test-id="app-preview-theme"
-				>
-					<template #option="{ value, label }">
-						<span :class="$style.option">
-							<N8nIcon :icon="OPTION_ICONS[value]" size="small" />{{ label }}
-						</span>
-					</template>
-				</N8nSegmentControl>
+				/>
 				<N8nTooltip :content="i18n.baseText('apps.preview.openInNewTab')">
 					<N8nIconButton
 						icon="external-link"
@@ -271,10 +267,10 @@ onBeforeUnmount(() => {
 
 .toolbar {
 	display: grid;
-	grid-template-columns: 1fr 1fr;
+	grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
 	align-items: center;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--2xs) var(--spacing--md);
+	padding: var(--spacing--2xs) var(--spacing--md) var(--spacing--2xs) var(--spacing--2xs);
 }
 
 .left,
@@ -285,14 +281,25 @@ onBeforeUnmount(() => {
 	min-width: 0;
 }
 
-.right {
-	justify-content: flex-end;
+.left {
+	grid-column: 1;
 }
 
-.option {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
+.right {
+	grid-column: 3;
+	justify-content: flex-end;
+
+	> * {
+		flex-shrink: 0;
+	}
+}
+
+.version {
+	grid-column: 2;
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .stage {
@@ -302,7 +309,7 @@ onBeforeUnmount(() => {
 	justify-content: center;
 	flex: 1;
 	min-height: 0;
-	padding: 0 var(--spacing--md) var(--spacing--md);
+	padding: 0 var(--spacing--xs) var(--spacing--xs);
 	overflow: auto;
 }
 
