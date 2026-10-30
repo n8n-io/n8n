@@ -82,6 +82,14 @@ import PrivateCredentialIcon from '@/features/resolvers/components/PrivateCreden
 import TypeToConfirmDialog from './TypeToConfirmDialog.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import { useCredentialForm } from '../../composables/useCredentialForm';
+import {
+	getPolicyViolations,
+	PolicyViolationList,
+	RestrictedCredentialCallout,
+	useTypeAvailabilityPoliciesStore,
+} from '@n8n/frontend-module-type-availability-policies';
+import { usePolicyViolationLabels } from '@/app/composables/usePolicyViolationLabels';
+import type { PolicyViolation } from '@n8n/api-types';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -294,6 +302,8 @@ const {
 	credentialProperties,
 	requiredPropertiesFilled,
 	isCredentialTestable,
+	isCredentialTypeRestricted,
+	credentialTypeRestriction,
 	credentialPermissions,
 	usesExternalSecrets,
 	homeProject,
@@ -830,6 +840,37 @@ function onDescriptionEdit(text: string) {
 	hasUnsavedChanges.value = true;
 }
 
+const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
+const { labelOf: policyViolationLabelOf } = usePolicyViolationLabels();
+
+const saveViolations = ref<PolicyViolation[]>([]);
+const projectBehindModal = typeAvailabilityPoliciesStore.requestedProjectId;
+
+watch(
+	() => homeProject.value?.id,
+	(projectId) => {
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
+	},
+	{ immediate: true },
+);
+
+onBeforeUnmount(() => {
+	if (!projectBehindModal || projectBehindModal === typeAvailabilityPoliciesStore.loadedProjectId) {
+		return;
+	}
+
+	void typeAvailabilityPoliciesStore.fetchForProject(projectBehindModal);
+});
+
+function showPolicyRefusal(error: unknown): boolean {
+	const violations = getPolicyViolations(error);
+	if (!violations || !credentialType.value || activeTab.value !== 'connection') return false;
+
+	saveViolations.value = violations;
+	scrollToTop();
+	return true;
+}
+
 function scrollToTop() {
 	setTimeout(() => {
 		if (contentRef.value) {
@@ -896,6 +937,8 @@ async function saveCredential(): Promise<
 async function persistCredential(): Promise<
 	ICredentialsResponse | ICredentialsDecryptedResponse | null
 > {
+	saveViolations.value = [];
+
 	if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
 		scrollToTop();
@@ -1165,6 +1208,7 @@ async function createCredential(
 			type: 'success',
 		});
 	} catch (error) {
+		if (showPolicyRefusal(error)) return null;
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.createCredential.title'),
@@ -1228,6 +1272,8 @@ async function updateCredential(
 			});
 		}
 	} catch (error) {
+		if (showPolicyRefusal(error)) return null;
+
 		toast.showError(
 			error,
 			i18n.baseText('credentialEdit.credentialEdit.showError.updateCredential.title'),
@@ -1742,6 +1788,28 @@ const { width } = useElementSize(credNameRef);
 										</N8nButton>
 									</template>
 								</N8nCallout>
+								<N8nCallout
+									v-if="saveViolations.length"
+									theme="danger"
+									data-test-id="credential-policy-violations"
+								>
+									{{
+										i18n.baseText(
+											isNewCredential
+												? 'credentialEdit.credentialEdit.showError.createCredential.title'
+												: 'credentialEdit.credentialEdit.showError.updateCredential.title',
+										)
+									}}
+									<PolicyViolationList
+										:violations="saveViolations"
+										:label-of="policyViolationLabelOf"
+									/>
+								</N8nCallout>
+								<RestrictedCredentialCallout
+									v-if="isCredentialTypeRestricted && credentialType"
+									:credential-type-name="credentialType.displayName"
+									:restriction="credentialTypeRestriction"
+								/>
 								<CredentialConfig
 									:credential-type="credentialType"
 									:credential-properties="credentialProperties"

@@ -202,3 +202,30 @@ export function useNodeTypeRestriction(nodeType: MaybeRefOrGetter<string | null 
 
 	return { restriction, isRestricted, restrictionScope };
 }
+
+const CREDENTIAL_CALLOUT_KEY: Record<RestrictionMessage, BaseTextKey> = {
+	instance: 'typeAvailabilityPolicies.restrictedCredentialType.callout.instance',
+	project: 'typeAvailabilityPolicies.restrictedCredentialType.callout.project',
+	optIn: 'typeAvailabilityPolicies.restrictedCredentialType.callout.optIn',
+	generic: 'typeAvailabilityPolicies.restrictedCredentialType.callout.generic',
+};
+
+export function describeCredentialTypeRestriction(
+	credentialTypeName: string,
+	verdict: OptionalVerdict,
+): string {
+	return useI18n().baseText(CREDENTIAL_CALLOUT_KEY[getRestrictionMessage(verdict)], {
+		interpolate: { credentialType: credentialTypeName },
+	});
+}
+
+export function useCredentialTypeRestriction(
+	credentialType: MaybeRefOrGetter<string | null | undefined>,
+) {
+	const restriction = computed(() => {
+		const type = toValue(credentialType);
+		return type ? getCredentialTypeRestriction(type) : null;
+	});
+
+	return { restriction, isRestricted: computed(() => restriction.value !== null) };
+}
