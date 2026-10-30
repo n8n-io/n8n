@@ -12,7 +12,7 @@ import { mock } from 'vitest-mock-extended';
 import { N8N_VERSION } from '../../../constants';
 import { MigrationRegistry } from '../breaking-changes.migration-registry.service';
 import { RuleRegistry } from '../breaking-changes.rule-registry.service';
-import type { IBreakingChangeRule } from '../types';
+import type { IBreakingChangeRule, IBreakingChangeWorkflowRule } from '../types';
 import { BreakingChangeService } from '../breaking-changes.service';
 import { createNode, createWorkflow } from './test-helpers';
 import { FileAccessRule } from '../rules/v2/file-access.rule';
@@ -183,6 +183,27 @@ describe('BreakingChangeService', () => {
 			await service.detect('v2');
 
 			expect(workflowRepository.count).toHaveBeenCalledTimes(2);
+		});
+
+		it('should pass one scan context to the rules for every workflow of a scan', async () => {
+			const first = createWorkflow('wf-1', 'First', []);
+			const second = createWorkflow('wf-2', 'Second', []);
+			workflowRepository.find.mockResolvedValue([first.workflow, second.workflow] as never);
+			workflowRepository.count.mockResolvedValue(2);
+			const rule = ruleRegistry.getRule(
+				'file-access-restriction-v2',
+			) as IBreakingChangeWorkflowRule;
+			const detectWorkflow = vi.spyOn(rule, 'detectWorkflow');
+
+			await service.detect('v2');
+			await service.detect('v2');
+
+			const contexts = detectWorkflow.mock.calls.map(([, , context]) => context);
+			expect(contexts).toHaveLength(4);
+			expect(contexts[0]).toBeDefined();
+			expect(contexts[1]).toBe(contexts[0]);
+			expect(contexts[2]).not.toBe(contexts[0]);
+			expect(contexts[3]).toBe(contexts[2]);
 		});
 
 		it('should skip a rule that throws for a workflow and keep the other results', async () => {
