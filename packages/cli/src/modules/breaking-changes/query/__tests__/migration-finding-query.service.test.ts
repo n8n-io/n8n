@@ -164,7 +164,7 @@ describe('MigrationFindingQueryService', () => {
 		migrationRegistry.has.mockImplementation((id) => id === 'rule-b');
 		breakingChangeService.getAllInstanceRulesResults.mockResolvedValue([]);
 		breakingChangeService.loadPublishedNodes.mockResolvedValue(new Map());
-		workflowRepository.count.mockResolvedValue(0);
+		workflowRepository.countUnarchived.mockResolvedValue(0);
 		workflowRepository.findByIds.mockResolvedValue([]);
 		workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
 		findingRepository.countUnresolvedByRule.mockResolvedValue([]);
@@ -195,7 +195,7 @@ describe('MigrationFindingQueryService', () => {
 	describe('getLightReport', () => {
 		it('lists each workflow rule with open findings, with its metadata and count from the table', async () => {
 			findingRepository.countUnresolvedByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
-			workflowRepository.count.mockResolvedValue(10);
+			workflowRepository.countUnarchived.mockResolvedValue(10);
 
 			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
@@ -298,6 +298,8 @@ describe('MigrationFindingQueryService', () => {
 			const scope: ReportScope = { kind: 'workflows', workflowIds: ['wf-1', 'wf-2', 'wf-3'] };
 			findingRepository.countUnresolvedByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 2 }]);
 			findingRepository.countDistinctUnresolvedWorkflows.mockResolvedValue(2);
+			// One of the three workflows in scope is archived.
+			workflowRepository.countUnarchived.mockResolvedValue(2);
 			breakingChangeService.getAllInstanceRulesResults.mockResolvedValue([
 				mock<BreakingChangeInstanceRuleResult>({ ruleId: 'instance-rule' }),
 			]);
@@ -319,12 +321,12 @@ describe('MigrationFindingQueryService', () => {
 				scope.workflowIds,
 				expect.anything(),
 			);
-			expect(result.totalWorkflows).toBe(3);
+			expect(workflowRepository.countUnarchived).toHaveBeenCalledWith(scope.workflowIds);
+			expect(result.totalWorkflows).toBe(2);
 			expect(result.totalAffectedWorkflows).toBe(2);
 			expect(result.report.workflowResults.map((r) => r.nbAffectedWorkflows)).toEqual([2]);
 			expect(result.report.instanceResults).toEqual([]);
 			expect(breakingChangeService.getAllInstanceRulesResults).not.toHaveBeenCalled();
-			expect(workflowRepository.count).not.toHaveBeenCalled();
 		});
 
 		it('reports no generatedAt when no sync ran yet', async () => {

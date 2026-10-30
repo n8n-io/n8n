@@ -262,6 +262,22 @@ describe('MigrationFindingRepository', () => {
 		});
 	});
 
+	describe('deleteForWorkflows', () => {
+		test('deletes every finding of the given workflows, for all versions, and keeps the others', async () => {
+			const [archived, kept] = await Promise.all([createWorkflow(), createWorkflow()]);
+			await findingRepository.insertMany(
+				[finding(archived.id), finding(archived.id, 'removed-nodes-v2', 'v2'), finding(kept.id)],
+				ctx,
+			);
+
+			await findingRepository.deleteForWorkflows([archived.id], ctx);
+
+			expect(await findingRepository.listForWorkflows('v3', [archived.id], ctx)).toEqual([]);
+			expect(await findingRepository.listForWorkflows('v2', [archived.id], ctx)).toEqual([]);
+			expect(await findingRepository.listForWorkflows('v3', [kept.id], ctx)).toHaveLength(1);
+		});
+	});
+
 	describe('markNotifiedForIds', () => {
 		test('sets the status to notified and records notifiedAt', async () => {
 			const workflow = await createWorkflow();

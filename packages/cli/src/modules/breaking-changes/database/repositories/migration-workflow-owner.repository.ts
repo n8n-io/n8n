@@ -1,4 +1,4 @@
-import { BaseRepository, type OperationContext, TransactionRunner } from '@n8n/db';
+import { BaseRepository, chunkIds, type OperationContext, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
 
@@ -64,6 +64,16 @@ export class MigrationWorkflowOwnerRepository extends BaseRepository<MigrationWo
 				assignedAt: null,
 			});
 		});
+	}
+
+	/** Deletes the suggested owners of the given workflows. An owner a person assigned is kept. */
+	async deleteSuggestionsForWorkflows(workflowIds: string[], ctx: OperationContext): Promise<void> {
+		for (const chunk of chunkIds(workflowIds)) {
+			await this.managerFor(ctx).delete(MigrationWorkflowOwner, {
+				workflowId: In(chunk),
+				source: 'suggested',
+			});
+		}
 	}
 
 	/**

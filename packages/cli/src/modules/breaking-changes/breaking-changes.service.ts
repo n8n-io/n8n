@@ -551,7 +551,7 @@ export class BreakingChangeService {
 			(rule): rule is IBreakingChangeInstanceRule => 'detect' in rule,
 		);
 
-		const totalWorkflows = await this.workflowRepository.count();
+		const totalWorkflows = await this.workflowRepository.countUnarchived();
 
 		const [instanceLevelResults, workflowScan] = await Promise.all([
 			this.getAllInstanceRulesResults(instanceLevelRules),

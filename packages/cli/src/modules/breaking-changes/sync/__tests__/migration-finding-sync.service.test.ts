@@ -97,13 +97,13 @@ describe('MigrationFindingSyncService', () => {
 	let errorReporter: MockProxy<ErrorReporter>;
 	let service: MigrationFindingSyncService;
 
-	/** Feeds `getIdsAfter` from a mutable list, so a test can remove a workflow between pages. */
+	/** Feeds `getUnarchivedIdsAfter` from a mutable list, so a test can remove a workflow between pages. */
 	function givenWorkflows(count: number) {
 		const allIds = Array.from(
 			{ length: count },
 			(_, index) => `wf-${String(index).padStart(4, '0')}`,
 		);
-		workflowRepository.getIdsAfter.mockImplementation(async (afterId, take) =>
+		workflowRepository.getUnarchivedIdsAfter.mockImplementation(async (afterId, take) =>
 			allIds.filter((id) => afterId === undefined || id > afterId).slice(0, take),
 		);
 		return allIds;
@@ -123,6 +123,7 @@ describe('MigrationFindingSyncService', () => {
 		txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
 		// By default every paged id still exists when the batch re-checks it.
 		workflowRepository.findExistingIds.mockImplementation(async (ids) => ids);
+		workflowRepository.getArchivedIds.mockResolvedValue([]);
 		ruleRegistry.getRules.mockReturnValue(rules('rule-a', 'rule-b'));
 		findingRepository.listForWorkflows.mockResolvedValue([]);
 		findingRepository.listWorkflowIdsWithUnresolvedFindings.mockResolvedValue([]);
@@ -521,6 +522,34 @@ describe('MigrationFindingSyncService', () => {
 		expect(breakingChangeService.detect).toHaveBeenCalledTimes(2);
 	});
 
+	describe('archived workflows', () => {
+		it('deletes the findings and suggested owners of archived workflows in one transaction', async () => {
+			givenWorkflows(1);
+			workflowRepository.getArchivedIds.mockResolvedValue(['wf-archived-1', 'wf-archived-2']);
+
+			await service.sync(TARGET_VERSION);
+
+			const archived = ['wf-archived-1', 'wf-archived-2'];
+			expect(findingRepository.deleteForWorkflows).toHaveBeenCalledWith(
+				archived,
+				expect.anything(),
+			);
+			expect(ownerRepository.deleteSuggestionsForWorkflows).toHaveBeenCalledWith(
+				archived,
+				findingRepository.deleteForWorkflows.mock.calls[0][1],
+			);
+			expect(syncRepository.upsertForVersion).toHaveBeenCalled();
+		});
+
+		it('deletes nothing when no workflow is archived', async () => {
+			givenWorkflows(1);
+
+			await service.sync(TARGET_VERSION);
+
+			expect(findingRepository.deleteForWorkflows).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('suggested owners', () => {
 		it('stores a suggestion for each workflow in the batch with an open finding and clears the rest', async () => {
 			givenWorkflows(3);
@@ -782,6 +811,35 @@ describe('MigrationFindingSyncService', () => {
 
 			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledTimes(2);
 			expect(txRunner.run).toHaveBeenCalledTimes(2);
+		});
+
+		it('deletes the findings of an archived workflow instead of checking it', async () => {
+			workflowRepository.findArchivedState.mockResolvedValue({ isArchived: true });
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(breakingChangeService.detectWorkflowHits).not.toHaveBeenCalled();
+			expect(findingRepository.deleteForWorkflows).toHaveBeenCalledWith(
+				[WORKFLOW_ID],
+				expect.anything(),
+			);
+			expect(ownerRepository.deleteSuggestionsForWorkflows).toHaveBeenCalledWith(
+				[WORKFLOW_ID],
+				expect.anything(),
+			);
+			expect(findingRepository.insertMany).not.toHaveBeenCalled();
+		});
+
+		it('checks a workflow that is not archived', async () => {
+			workflowRepository.findArchivedState.mockResolvedValue({ isArchived: false });
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(breakingChangeService.detectWorkflowHits).toHaveBeenCalledWith(
+				REPORT_VERSION,
+				WORKFLOW_ID,
+			);
+			expect(findingRepository.deleteForWorkflows).not.toHaveBeenCalled();
 		});
 
 		it('refreshes the suggested owner of that workflow', async () => {

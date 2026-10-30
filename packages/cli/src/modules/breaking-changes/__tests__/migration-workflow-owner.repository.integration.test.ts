@@ -221,6 +221,30 @@ describe('MigrationWorkflowOwnerRepository', () => {
 		});
 	});
 
+	describe('deleteSuggestionsForWorkflows', () => {
+		test('deletes the suggested owners of the given workflows and keeps assigned owners', async () => {
+			const [suggested, assigned, other] = await Promise.all([
+				createWorkflow(),
+				createWorkflow(),
+				createWorkflow(),
+			]);
+			await repository.replaceSuggestions(
+				[suggested.id, other.id],
+				[
+					{ workflowId: suggested.id, userId: alice.id },
+					{ workflowId: other.id, userId: alice.id },
+				],
+				ctx,
+			);
+			await repository.assign(assigned.id, bob.id, alice.id, ctx);
+
+			await repository.deleteSuggestionsForWorkflows([suggested.id, assigned.id], ctx);
+
+			const rows = await repository.findByWorkflowIds([suggested.id, assigned.id, other.id], ctx);
+			expect(rows.map((row) => row.workflowId).sort()).toEqual([assigned.id, other.id].sort());
+		});
+	});
+
 	describe('findByWorkflowIds', () => {
 		test('returns an empty list for an empty id array', async () => {
 			expect(await repository.findByWorkflowIds([], ctx)).toEqual([]);

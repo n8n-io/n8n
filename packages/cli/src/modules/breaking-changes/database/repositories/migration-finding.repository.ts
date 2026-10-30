@@ -327,6 +327,13 @@ export class MigrationFindingRepository extends BaseRepository<MigrationFinding>
 		);
 	}
 
+	/** Deletes every finding of the given workflows, for all target versions. */
+	async deleteForWorkflows(workflowIds: string[], ctx: OperationContext): Promise<void> {
+		for (const chunk of chunkIds(workflowIds)) {
+			await this.managerFor(ctx).delete(MigrationFinding, { workflowId: In(chunk) });
+		}
+	}
+
 	/** Called by the sync when a re-scan no longer detects the finding. */
 	async markFixedForIds(ids: MigrationFindingId[], ctx: OperationContext): Promise<void> {
 		await this.updateStatusForIds(ids, 'fixed', undefined, ctx);

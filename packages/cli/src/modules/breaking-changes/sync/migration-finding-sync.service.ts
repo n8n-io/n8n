@@ -109,6 +109,9 @@ export class MigrationFindingSyncService {
 		// so the scan runs first and the table is updated from its output afterwards.
 		const { report, publishedHits, failedChecks } =
 			await this.breakingChangeService.detect(targetVersion);
+		// The scan and the paging below skip archived workflows. Their findings are deleted,
+		// so the report does not show them. A restore detects them again.
+		await this.deleteFindingsOf(await this.workflowRepository.getArchivedIds());
 		const hitsByWorkflow = groupHitsByWorkflow(report.workflowResults);
 		const publishedHitsByWorkflow = groupByWorkflow(publishedHits);
 
@@ -130,7 +133,7 @@ export class MigrationFindingSyncService {
 		let workflowIds: string[];
 		let failedBatches = 0;
 		do {
-			workflowIds = await this.workflowRepository.getIdsAfter(afterId, take);
+			workflowIds = await this.workflowRepository.getUnarchivedIdsAfter(afterId, take);
 			try {
 				await this.syncBatch(targetVersion, workflowIds, {
 					hitsByWorkflow,
@@ -201,6 +204,12 @@ export class MigrationFindingSyncService {
 		if (!targetVersion) return;
 
 		try {
+			const state = await this.workflowRepository.findArchivedState(workflowId);
+			if (state?.isArchived) {
+				await this.deleteFindingsOf([workflowId]);
+				return;
+			}
+
 			const { hits, publishedHits, failedChecks } =
 				await this.breakingChangeService.detectWorkflowHits(targetVersion, workflowId);
 			// A batch rule decides from all workflows at once, so only a full sync
@@ -222,6 +231,16 @@ export class MigrationFindingSyncService {
 			});
 			this.errorReporter.error(error, { extra: { targetVersion, workflowId } });
 		}
+	}
+
+	/** Deletes the findings of the workflows, for all versions, and their suggested owners. */
+	private async deleteFindingsOf(workflowIds: string[]): Promise<void> {
+		if (workflowIds.length === 0) return;
+
+		await this.txRunner.run({}, async (ctx: OperationContext) => {
+			await this.findingRepository.deleteForWorkflows(workflowIds, ctx);
+			await this.ownerRepository.deleteSuggestionsForWorkflows(workflowIds, ctx);
+		});
 	}
 
 	/**

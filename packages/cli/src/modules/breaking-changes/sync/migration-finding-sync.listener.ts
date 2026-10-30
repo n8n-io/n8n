@@ -7,7 +7,7 @@ import { MigrationFindingSyncService } from './migration-finding-sync.service';
 
 /**
  * Keeps the `migration_finding` table current between full scans: each time a
- * workflow is created, saved, published, unpublished, archived, or pulled from
+ * workflow is created, saved, published, unpublished, archived, restored, or pulled from
  * source control, its findings are re-checked.
  * The module registers it only when there is a report target version.
  */
@@ -35,8 +35,11 @@ export class MigrationFindingSyncListener {
 		this.eventService.on('workflow-deactivated', async ({ workflowId }) => {
 			await this.syncWorkflow(workflowId);
 		});
-		// Archiving unpublishes the workflow without a workflow-deactivated event.
+		// The sync deletes the findings of an archived workflow and detects them again on restore.
 		this.eventService.on('workflow-archived', async ({ workflowId }) => {
+			await this.syncWorkflow(workflowId);
+		});
+		this.eventService.on('workflow-unarchived', async ({ workflowId }) => {
 			await this.syncWorkflow(workflowId);
 		});
 		this.eventService.on('workflow-imported', async ({ workflowId }) => {

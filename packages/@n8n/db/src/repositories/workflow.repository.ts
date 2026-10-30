@@ -697,13 +697,16 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * Up to `take` workflow ids greater than `afterId`, in ascending order. Keyset paging:
+	 * Up to `take` unarchived workflow ids greater than `afterId`, in ascending order. Keyset paging:
 	 * a workflow deleted between two pages does not shift the next page, so no id is skipped.
 	 */
-	async getIdsAfter(afterId: string | undefined, take: number): Promise<string[]> {
+	async getUnarchivedIdsAfter(afterId: string | undefined, take: number): Promise<string[]> {
 		const workflows = await this.find({
 			select: { id: true },
-			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			where:
+				afterId === undefined
+					? { isArchived: false }
+					: { id: MoreThan(afterId), isArchived: false },
 			take,
 			order: { id: 'ASC' },
 		});
@@ -712,8 +715,8 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	}
 
 	/**
-	 * One page of workflows for the migration report scan, keyset-paged like `getIdsAfter`.
-	 * It returns only the fields the scan rules and the report read.
+	 * One page of unarchived workflows for the migration report scan, keyset-paged like
+	 * `getUnarchivedIdsAfter`. It returns only the fields the scan rules and the report read.
 	 */
 	async findMigrationScanPage(
 		afterId: string | undefined,
@@ -721,10 +724,29 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	): Promise<WorkflowEntity[]> {
 		return await this.find({
 			select: ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'],
-			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			where:
+				afterId === undefined
+					? { isArchived: false }
+					: { id: MoreThan(afterId), isArchived: false },
 			take,
 			order: { id: 'ASC' },
 		});
+	}
+
+	/** `workflowIds` limits the count to those workflows; `undefined` counts all. */
+	async countUnarchived(workflowIds?: string[]): Promise<number> {
+		if (workflowIds === undefined) return await this.count({ where: { isArchived: false } });
+
+		let total = 0;
+		for (const chunk of chunkIds(workflowIds)) {
+			total += await this.count({ where: { id: In(chunk), isArchived: false } });
+		}
+		return total;
+	}
+
+	async getArchivedIds(): Promise<string[]> {
+		const workflows = await this.find({ select: { id: true }, where: { isArchived: true } });
+		return workflows.map(({ id }) => id);
 	}
 
 	/** The subset of `workflowIds` that still exists, in no particular order. */

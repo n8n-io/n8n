@@ -622,18 +622,18 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
-	describe('getIdsAfter', () => {
+	describe('getUnarchivedIdsAfter', () => {
 		it('should return the first ids when no cursor is given', async () => {
 			const findSpy = vi
 				.spyOn(workflowRepository, 'find')
 				.mockResolvedValue([Object.assign(new WorkflowEntity(), { id: 'a' })]);
 
-			const result = await workflowRepository.getIdsAfter(undefined, 100);
+			const result = await workflowRepository.getUnarchivedIdsAfter(undefined, 100);
 
 			expect(result).toEqual(['a']);
 			expect(findSpy).toHaveBeenCalledWith({
 				select: { id: true },
-				where: {},
+				where: { isArchived: false },
 				take: 100,
 				order: { id: 'ASC' },
 			});
@@ -647,12 +647,12 @@ describe('WorkflowRepository', () => {
 					Object.assign(new WorkflowEntity(), { id: 'c' }),
 				]);
 
-			const result = await workflowRepository.getIdsAfter('a', 100);
+			const result = await workflowRepository.getUnarchivedIdsAfter('a', 100);
 
 			expect(result).toEqual(['b', 'c']);
 			expect(findSpy).toHaveBeenCalledWith({
 				select: { id: true },
-				where: { id: MoreThan('a') },
+				where: { id: MoreThan('a'), isArchived: false },
 				take: 100,
 				order: { id: 'ASC' },
 			});
@@ -672,16 +672,45 @@ describe('WorkflowRepository', () => {
 			expect(next).toBe(page);
 			expect(findSpy).toHaveBeenNthCalledWith(1, {
 				select,
-				where: {},
+				where: { isArchived: false },
 				take: 100,
 				order: { id: 'ASC' },
 			});
 			expect(findSpy).toHaveBeenNthCalledWith(2, {
 				select,
-				where: { id: MoreThan('a') },
+				where: { id: MoreThan('a'), isArchived: false },
 				take: 100,
 				order: { id: 'ASC' },
 			});
+		});
+	});
+
+	describe('countUnarchived', () => {
+		it('should count only the workflows that are not archived', async () => {
+			const countSpy = vi.spyOn(workflowRepository, 'count').mockResolvedValue(3);
+
+			expect(await workflowRepository.countUnarchived()).toBe(3);
+			expect(countSpy).toHaveBeenCalledWith({ where: { isArchived: false } });
+		});
+
+		it('should count only the given workflows that are not archived', async () => {
+			const countSpy = vi.spyOn(workflowRepository, 'count').mockResolvedValue(1);
+
+			expect(await workflowRepository.countUnarchived(['a', 'b'])).toBe(1);
+			expect(countSpy).toHaveBeenCalledWith({
+				where: { id: In(['a', 'b']), isArchived: false },
+			});
+		});
+	});
+
+	describe('getArchivedIds', () => {
+		it('should return the ids of the archived workflows', async () => {
+			const findSpy = vi
+				.spyOn(workflowRepository, 'find')
+				.mockResolvedValue([Object.assign(new WorkflowEntity(), { id: 'a' })]);
+
+			expect(await workflowRepository.getArchivedIds()).toEqual(['a']);
+			expect(findSpy).toHaveBeenCalledWith({ select: { id: true }, where: { isArchived: true } });
 		});
 	});
 
