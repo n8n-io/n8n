@@ -199,6 +199,56 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('Value types at the transfer boundary', () => {
+		describe.each([
+			{ label: 'returns a custom result', parser: '() => ({ name: "custom" })' },
+			{ label: 'throws', parser: '() => { throw new Error("custom parser"); }' },
+		])('host data with a JSON parser that $label', ({ parser }) => {
+			it.each(['$json.profile.name', '$json.rows[0].name', '$input.first().json.profile.name'])(
+				'reads %s',
+				(access) => {
+					const json = { profile: { name: 'from host' }, rows: [{ name: 'from host' }] };
+					const data = { $json: json, $input: { first: () => ({ json }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const original = JSON.parse; JSON.parse = ${parser}; try { return ${access}; } finally { JSON.parse = original; } })() }}`,
+							data,
+							caller,
+						),
+					).toBe('from host');
+				},
+			);
+		});
+
+		describe.each([
+			{ label: 'plain', properties: {} },
+			{ label: 'transfer marker', properties: { __n8nType: 'user data' } },
+			{ label: 'bridge marker', properties: { __isDate: true } },
+		])('own JSON keys in a $label object', ({ properties }) => {
+			const payload = {
+				...(JSON.parse('{"__proto__":{"flag":1},"kept":2}') as Record<string, unknown>),
+				...properties,
+			};
+
+			it.each([
+				{ label: 'plain object', expression: '({ payload })' },
+				{
+					label: 'class instance',
+					expression: 'new (class { constructor() { this.payload = payload; } })()',
+				},
+			])('keeps own JSON keys when returning a $label', ({ expression }) => {
+				const result = evaluator.evaluate(
+					`{{ (() => { const payload = JSON.parse(${JSON.stringify(JSON.stringify(payload))}); return ${expression}; })() }}`,
+					{},
+					caller,
+				) as { payload: Record<string, unknown> };
+
+				expect(Object.hasOwn(result.payload, '__proto__')).toBe(true);
+				expect(result.payload).toStrictEqual(payload);
+				expect(Object.getPrototypeOf(result.payload)).toBe(Object.prototype);
+			});
+		});
+
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
 			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);
@@ -262,6 +312,36 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			const [setEntry] = [...(fromSet as Set<unknown>)];
 			expect(setEntry).not.toBeInstanceOf(DateTime);
 			expect(setEntry).toEqual(expected);
+		});
+
+		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
+			const data = { $json: {} };
+			const flagged =
+				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]) }';
+			const expected = {
+				__isError: true,
+				when: new Date('2024-01-15T00:00:00.000Z'),
+				n: NaN,
+				tags: new Set([1]),
+			};
+
+			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${flagged}]]) }}`, data, caller);
+			const fromSet = evaluator.evaluate(`{{ new Set([${flagged}]) }}`, data, caller);
+
+			expect((fromMap as Map<string, unknown>).get('k')).toEqual(expected);
+			expect([...(fromSet as Set<unknown>)]).toEqual([expected]);
+		});
+
+		it('should return a user object with an __isError key as data', () => {
+			const data = { $json: { flag: { __isError: true, message: 'from data' } } };
+
+			expect(
+				evaluator.evaluate('{{ ({ __isError: true, message: "hi" }) }}', data, caller),
+			).toEqual({ __isError: true, message: 'hi' });
+			expect(evaluator.evaluate('{{ $json.flag }}', data, caller)).toEqual({
+				__isError: true,
+				message: 'from data',
+			});
 		});
 
 		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
