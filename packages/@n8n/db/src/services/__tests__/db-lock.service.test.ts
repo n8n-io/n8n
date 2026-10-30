@@ -1,7 +1,7 @@
 import type { DatabaseConfig } from '@n8n/config';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { DbLockService } from '../db-lock.service';

@@ -1,7 +1,8 @@
 import { Service } from '@n8n/di';
 import type { FindManyOptions } from '@n8n/typeorm';
 import { DataSource, In } from '@n8n/typeorm';
-import { UnexpectedError, type IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { TestRun } from '../entities';
 import type { TestRunStatus } from '../entities/test-run.ee';

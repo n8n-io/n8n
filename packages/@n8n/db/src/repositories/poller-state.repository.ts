@@ -3,7 +3,7 @@ import { ScheduledTaskStatus } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager, type ObjectLiteral } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { PollerState, ScheduledTask } from '../entities';
 import { BaseRepository } from './base-repository';

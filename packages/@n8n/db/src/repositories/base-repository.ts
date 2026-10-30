@@ -1,6 +1,6 @@
 import { Repository } from '@n8n/typeorm';
 import type { EntityManager, EntityTarget, ObjectLiteral } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { OperationContext, TransactionRunner } from '../services/transaction';
 import { TypeOrmTransaction } from '../services/typeorm-transaction';
