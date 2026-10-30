@@ -232,6 +232,7 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 
 			it.each([
 				{ label: 'plain object', expression: '({ payload })' },
+				{ label: 'Error', expression: 'Object.assign(new Error("from guest"), { payload })' },
 				{
 					label: 'class instance',
 					expression: 'new (class { constructor() { this.payload = payload; } })()',

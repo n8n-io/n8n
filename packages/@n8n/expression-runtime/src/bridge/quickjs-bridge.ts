@@ -4,6 +4,7 @@ import * as path from 'node:path';
 
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, Logger, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
+import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runtime/error-transfer';
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
@@ -207,6 +208,9 @@ function unwrapSentinels(value: unknown): unknown {
 		return result;
 	}
 	if (isLuxonSentinel(value)) return rebuildLuxonValue(value);
+	if (isErrorTransferSentinel(value)) {
+		return rebuildErrorValue(value, unwrapSentinels);
+	}
 	if (isEscapedTransferValue(value)) return unescapeTransferValue(value);
 	if (isDateSentinel(value)) return new Date(value.__isoString);
 	if (isNaNSentinel(value)) return NaN;
@@ -968,6 +972,10 @@ export class QuickJsBridge implements RuntimeBridge {
 		// Outside a collection, these markers come from __prepareForTransfer above,
 		// so pass them to the host as they are.
 		if (!inCollection) {
+			// The values inside an Error marker still need the wrapping above.
+			if (v['${TRANSFER_TYPE_KEY}'] === '${ERROR_TYPE}') {
+				return wrapErrorMarker(v);
+			}
 			if (typeof v['${TRANSFER_TYPE_KEY}'] === 'string') return v;
 			if (v['${TRANSFER_ESCAPED_KEY}'] === true) {
 				var payload = v.__value;
@@ -990,6 +998,15 @@ export class QuickJsBridge implements RuntimeBridge {
 			}
 		}
 		return wrapOwnKeys(v, inCollection);
+	}
+
+	function wrapErrorMarker(marker) {
+		var result = {};
+		Object.keys(marker).forEach(function(key) {
+			var isData = key === '__props' || key === '__cause' || key === '__json';
+			defineOwnValue(result, key, isData ? wrapChild(marker[key], false) : marker[key]);
+		});
+		return result;
 	}
 
 	// vm.dump() drops an undefined object value and turns an undefined array item into null.
