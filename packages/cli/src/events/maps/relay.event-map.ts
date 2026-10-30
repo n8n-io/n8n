@@ -53,7 +53,7 @@ import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
-import type { TrustedSourceFacets } from '@n8n/inbound-auth';
+import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
 
 export type WorkflowActionSource =
 	| 'ui'
@@ -1079,6 +1079,8 @@ export type RelayEventMap = DataTableEventMap & {
 		sourceId: string;
 	};
 
+	'trusted-source-first-authenticated': { sourceId: string; surface: SurfaceId };
+
 	// #endregion
 
 	// #region Token exchange
@@ -1176,6 +1178,21 @@ export type RelayEventMap = DataTableEventMap & {
 
 	'memory-guard-hold-ended': {
 		heldMs: number;
+		/** Executions still waiting when the hold ended. */
+		heldExecutions: number;
+		longestWaitMs: number;
+	};
+
+	/** A production execution starts to wait because of a hold. */
+	'memory-guard-execution-held': {
+		executionId: string;
+	};
+
+	/** A held execution starts, or is cancelled while it waits. */
+	'memory-guard-execution-released': {
+		executionId: string;
+		waitedMs: number;
+		started: boolean;
 	};
 
 	/** Crashed sessions so far, by the strongest guard action before each crash. */

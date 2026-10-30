@@ -120,6 +120,7 @@ describe('OauthService', () => {
 		);
 
 		globalConfig.endpoints = { rest: 'rest' } as any;
+		globalConfig.auth = { oauthCimdEnabled: false, oauthClientMetadataUrl: '' } as any;
 		urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678');
 		vi.mocked(WorkflowExecuteAdditionalData.getBase).mockResolvedValue(
 			mock<IWorkflowExecuteAdditionalData>(),
@@ -2648,6 +2649,54 @@ describe('OauthService', () => {
 			);
 		});
 
+		it.each([
+			['omit the scope when the server advertises none', true, undefined],
+			['default the scope to openid without automatic registration', false, ['openid']],
+		])('should %s', async (_, useDynamicClientRegistration, expectedScopes) => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			let capturedOptions: { scopes?: string[] } | undefined;
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				capturedOptions = options as { scopes?: string[] };
+				return { code: { getUri: () => ({ toString: () => '' }) } } as any;
+			});
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			vi.spyOn(service, 'getNewConnectionCredentials').mockResolvedValue({
+				oauthCredentials: useDynamicClientRegistration
+					? ({
+							serverUrl: 'https://example.domain',
+							useDynamicClientRegistration,
+						} as OAuth2CredentialData)
+					: ({
+							clientId: 'client_id',
+							authUrl: 'https://example.domain/oauth2/auth',
+							accessTokenUrl: 'https://example.domain/oauth2/token',
+							grantType: 'authorizationCode',
+						} as OAuth2CredentialData),
+			});
+			vi.mocked(httpClientMock.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/oauth2/auth',
+					token_endpoint: 'https://example.domain/oauth2/token',
+					registration_endpoint: 'https://example.domain/oauth2/register',
+					token_endpoint_auth_methods_supported: ['none'],
+					code_challenge_methods_supported: ['S256'],
+				},
+			} as any);
+			vi.mocked(httpClientMock.post).mockResolvedValue({
+				data: { client_id: 'registered_client_id' },
+			} as any);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(capturedOptions?.scopes).toEqual(expectedScopes);
+		});
+
 		it('should throw BadRequestError when OAuth2 server metadata is invalid', async () => {
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
@@ -4337,7 +4386,7 @@ describe('OauthService', () => {
 			});
 		});
 
-		describe('performDynamicClientRegistration', () => {
+		describe('registerClient', () => {
 			const makeMetadata = (overrides: Record<string, unknown> = {}) => ({
 				authorization_endpoint: 'https://auth.example.com/oauth2/auth',
 				token_endpoint: 'https://auth.example.com/oauth2/token',
@@ -4346,6 +4395,154 @@ describe('OauthService', () => {
 				token_endpoint_auth_methods_supported: ['client_secret_basic'],
 				code_challenge_methods_supported: [],
 				...overrides,
+			});
+
+			describe('with client ID metadata documents (CIMD)', () => {
+				const cimdMetadata = (overrides: Record<string, unknown> = {}) =>
+					makeMetadata({
+						client_id_metadata_document_supported: true,
+						token_endpoint_auth_methods_supported: ['none'],
+						code_challenge_methods_supported: ['S256'],
+						...overrides,
+					});
+
+				beforeEach(() => {
+					globalConfig.auth.oauthCimdEnabled = true;
+					urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+				});
+
+				it('should use the instance metadata document URL as the client ID without registering', async () => {
+					const oauthCredentials = makeDcrCredentials({ clientSecret: 'stale-secret' });
+					const toUpdate = {};
+					const toDelete: string[] = [];
+					vi.mocked(httpClientMock.get).mockResolvedValueOnce({ data: cimdMetadata() });
+
+					await (service as any).registerClient(
+						oauthCredentials,
+						'https://auth.example.com',
+						toUpdate,
+						toDelete,
+					);
+
+					expect(httpClientMock.post).not.toHaveBeenCalled();
+					expect(externalHooks.run).not.toHaveBeenCalledWith(
+						'oauth2.dynamicClientRegistration',
+						expect.anything(),
+					);
+					expect(toUpdate).toEqual({
+						authUrl: 'https://auth.example.com/oauth2/auth',
+						accessTokenUrl: 'https://auth.example.com/oauth2/token',
+						grantType: 'pkce',
+						usePkce: true,
+						clientId: 'https://n8n.example.com/rest/oauth2-credential/client-metadata.json',
+					});
+					expect(toDelete).toEqual(['authentication', 'clientSecret']);
+				});
+
+				it('should use the configured metadata document URL', async () => {
+					globalConfig.auth.oauthClientMetadataUrl =
+						'https://oauth.example.com/client-metadata.json';
+					const toUpdate: Record<string, unknown> = {};
+					vi.mocked(httpClientMock.get).mockResolvedValueOnce({ data: cimdMetadata() });
+
+					await (service as any).registerClient(
+						makeDcrCredentials(),
+						'https://auth.example.com',
+						toUpdate,
+						[],
+					);
+
+					expect(toUpdate.clientId).toBe('https://oauth.example.com/client-metadata.json');
+					expect(httpClientMock.post).not.toHaveBeenCalled();
+				});
+
+				it.each([
+					['the flag is off', {}, () => (globalConfig.auth.oauthCimdEnabled = false)],
+					['the server does not support CIMD', { client_id_metadata_document_supported: false }],
+					[
+						'the server does not support S256 PKCE',
+						{
+							code_challenge_methods_supported: ['plain'],
+							token_endpoint_auth_methods_supported: ['none', 'client_secret_post'],
+						},
+					],
+					[
+						'the server does not support public clients',
+						{ token_endpoint_auth_methods_supported: ['client_secret_basic'] },
+					],
+					['the credential uses JWE', {}, undefined, { jweEnabled: true, inlineJwks: true }],
+					[
+						'the instance is not served over HTTPS',
+						{},
+						() => urlService.getInstanceBaseUrl.mockReturnValue('http://localhost:5678'),
+					],
+				] as Array<[string, Record<string, unknown>, (() => unknown)?, Record<string, unknown>?]>)(
+					'should use DCR when %s',
+					async (_, metadataOverrides, setup, credentialOverrides = {}) => {
+						setup?.();
+						oauthJweServiceProxy.getDcrJweFields.mockResolvedValue({ jwks: { keys: [] } });
+						const toUpdate: Record<string, unknown> = {};
+						vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+							data: cimdMetadata(metadataOverrides),
+						});
+						vi.mocked(httpClientMock.post).mockResolvedValueOnce({
+							data: { client_id: 'registered-client-id', client_secret: 'secret' },
+						});
+
+						await (service as any).registerClient(
+							makeDcrCredentials(credentialOverrides),
+							'https://auth.example.com',
+							toUpdate,
+							[],
+						);
+
+						expect(httpClientMock.post).toHaveBeenCalledWith(
+							'https://auth.example.com/oauth2/register',
+							expect.any(Object),
+						);
+						expect(toUpdate.clientId).toBe('registered-client-id');
+					},
+				);
+
+				it('should throw a clear error when the server supports neither CIMD nor DCR', async () => {
+					vi.mocked(httpClientMock.get).mockResolvedValueOnce({
+						data: cimdMetadata({
+							client_id_metadata_document_supported: undefined,
+							registration_endpoint: undefined,
+						}),
+					});
+
+					await expect(
+						(service as any).registerClient(
+							makeDcrCredentials(),
+							'https://auth.example.com',
+							{},
+							[],
+						),
+					).rejects.toThrow('The OAuth2 server does not support automatic client registration.');
+					expect(httpClientMock.post).not.toHaveBeenCalled();
+				});
+			});
+
+			describe('getClientMetadataDocument', () => {
+				it('should throw NotFoundError when CIMD is off', () => {
+					expect(() => service.getClientMetadataDocument()).toThrow(NotFoundError);
+				});
+
+				it('should list the instance callback as the redirect URI', () => {
+					globalConfig.auth.oauthCimdEnabled = true;
+					urlService.getInstanceBaseUrl.mockReturnValue('https://n8n.example.com');
+
+					expect(service.getClientMetadataDocument()).toEqual({
+						client_id: 'https://n8n.example.com/rest/oauth2-credential/client-metadata.json',
+						client_name: 'n8n',
+						client_uri: 'https://n8n.io/',
+						redirect_uris: ['https://n8n.example.com/rest/oauth2-credential/callback'],
+						grant_types: ['authorization_code', 'refresh_token'],
+						response_types: ['code'],
+						token_endpoint_auth_method: 'none',
+					});
+				});
 			});
 
 			it('should register with the second discovery URL when the first one fails', async () => {
@@ -4359,7 +4556,7 @@ describe('OauthService', () => {
 					data: { client_id: 'registered-client-id' },
 				});
 
-				await (service as any).performDynamicClientRegistration(
+				await (service as any).registerClient(
 					oauthCredentials,
 					'https://auth.example.com/issuer',
 					toUpdate,
@@ -4415,7 +4612,7 @@ describe('OauthService', () => {
 						data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 					});
 
-					await (service as any).performDynamicClientRegistration(
+					await (service as any).registerClient(
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
@@ -4456,7 +4653,7 @@ describe('OauthService', () => {
 					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 				});
 
-				await (service as any).performDynamicClientRegistration(
+				await (service as any).registerClient(
 					oauthCredentials,
 					'https://auth.example.com',
 					toUpdate,
@@ -4482,7 +4679,7 @@ describe('OauthService', () => {
 					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 				});
 
-				await (service as any).performDynamicClientRegistration(
+				await (service as any).registerClient(
 					oauthCredentials,
 					'https://auth.example.com',
 					toUpdate,
@@ -4519,7 +4716,7 @@ describe('OauthService', () => {
 					data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 				});
 
-				await (service as any).performDynamicClientRegistration(
+				await (service as any).registerClient(
 					oauthCredentials,
 					'https://auth.example.com',
 					toUpdate,
@@ -4546,12 +4743,7 @@ describe('OauthService', () => {
 				});
 
 				await expect(
-					(service as any).performDynamicClientRegistration(
-						makeDcrCredentials(),
-						'https://auth.example.com',
-						{},
-						[],
-					),
+					(service as any).registerClient(makeDcrCredentials(), 'https://auth.example.com', {}, []),
 				).rejects.toThrow('No supported grant type and authentication method found');
 				expect(httpClientMock.post).not.toHaveBeenCalled();
 			});
@@ -4577,7 +4769,7 @@ describe('OauthService', () => {
 							data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 						});
 
-						await (service as any).performDynamicClientRegistration(
+						await (service as any).registerClient(
 							oauthCredentials,
 							'https://auth.example.com',
 							toUpdate,
@@ -4621,7 +4813,7 @@ describe('OauthService', () => {
 						data: { client_id: 'registered-client-id', client_secret: 'registered-secret' },
 					});
 
-					await (service as any).performDynamicClientRegistration(
+					await (service as any).registerClient(
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
@@ -4664,7 +4856,7 @@ describe('OauthService', () => {
 						data: { client_id: 'registered-client-id', client_secret: 'ignored-secret' },
 					});
 
-					await (service as any).performDynamicClientRegistration(
+					await (service as any).registerClient(
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
@@ -4700,7 +4892,7 @@ describe('OauthService', () => {
 						data: { client_id: 'registered-client-id' },
 					});
 
-					await (service as any).performDynamicClientRegistration(
+					await (service as any).registerClient(
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
@@ -4727,7 +4919,7 @@ describe('OauthService', () => {
 						data: { client_id: 'registered-client-id' },
 					});
 
-					await (service as any).performDynamicClientRegistration(
+					await (service as any).registerClient(
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
@@ -4758,7 +4950,7 @@ describe('OauthService', () => {
 						data: { client_id: 'registered-client-id' },
 					});
 
-					await (service as any).performDynamicClientRegistration(
+					await (service as any).registerClient(
 						oauthCredentials,
 						'https://auth.example.com',
 						toUpdate,
@@ -4897,12 +5089,7 @@ describe('OauthService', () => {
 				});
 
 				const oauthCredentials = { serverUrl: 'https://as.example.com' } as OAuth2CredentialData;
-				await (service as any).performDynamicClientRegistration(
-					oauthCredentials,
-					'https://as.example.com',
-					{},
-					[],
-				);
+				await (service as any).registerClient(oauthCredentials, 'https://as.example.com', {}, []);
 
 				expect(requestMock).toHaveBeenCalledWith(
 					expect.objectContaining({

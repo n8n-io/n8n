@@ -946,7 +946,10 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 }
 
 async function loadRemoteParameterOptions() {
+	// A read-only view shows the stored value; it has no use for live options
+	// and may not be allowed to load them with the node's credential.
 	if (
+		props.isReadOnly ||
 		!node.value ||
 		!hasRemoteMethod.value ||
 		remoteParameterOptionsLoading.value ||
@@ -1477,7 +1480,8 @@ onBeforeUnmount(() => {
 watch(
 	() => node.value?.credentials,
 	async (newCredentials, oldCredentials) => {
-		if (!hasRemoteMethod.value || !node.value) return;
+		// Read-only: no options are loaded, so there is nothing to validate the value against.
+		if (!hasRemoteMethod.value || !node.value || props.isReadOnly) return;
 		await loadRemoteParameterOptions();
 		// Credentials changed again while loading — a newer run will validate the fresh results.
 		if (!node.value || node.value.credentials !== newCredentials) return;

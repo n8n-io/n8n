@@ -32,7 +32,7 @@ export class CreateWorkflowExecution1778529600000 implements MigrationInterface 
 						name: 'parent_execution_id',
 						type: 'uuid',
 						isNullable: true,
-						comment: 'The execution whose step started this one. Null for a top-level execution.',
+						comment: 'The parent execution. Null for a top-level execution.',
 					},
 					{ name: 'parent_step_id', type: 'uuid', isNullable: true },
 					{

@@ -22,6 +22,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ForbiddenError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { Credentials } from 'n8n-core';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -31,12 +32,14 @@ import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { ChatIntegrationRegistry } from '@/modules/agents/integrations/agent-chat-integration';
 import { TeamsIntegration } from '@/modules/agents/integrations/platforms/teams/teams-integration';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { NodeTypes } from '@/node-types';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import {
 	createSkill,
+	deleteAllSkills,
 	deleteSkill,
 	findLatestSkillVersion,
 	toSkillContent,
@@ -83,6 +86,8 @@ beforeAll(async () => {
 }, 60_000);
 beforeEach(async () => {
 	await agents.delete({});
+	// Skills belong to projects and outlive their Agents.
+	await deleteAllSkills();
 	await testDb.truncate([
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -108,16 +113,6 @@ function agent(sourceAgentId: string, config: Partial<AgentJsonConfig> = {}): Pr
 		tools: {},
 		tasks: {},
 		metadata: { versionId: 'source-version', publishedVersionId: null },
-	};
-}
-
-function agentSkill(id: string, agentId: string, name = 'Review'): SerializedSkill {
-	return {
-		id,
-		scope: 'agent',
-		agentId,
-		skill: { name, description: 'Review.', instructions: 'Review the change.' },
-		frontmatter: null,
 	};
 }
 
@@ -164,7 +159,9 @@ async function records() {
 		Container.get(CredentialsRepository).find({ order: { id: 'ASC' } }),
 		Container.get(WorkflowRepository).find({ order: { id: 'ASC' } }),
 		Container.get(ProjectRepository).find({ order: { id: 'ASC' } }),
-		Container.get(AgentHistoryRepository).find({ order: { versionId: 'ASC' } }),
+		Container.get(DataSource)
+			.getRepository(AgentHistory)
+			.find({ order: { versionId: 'ASC' } }),
 	]);
 }
 
@@ -305,7 +302,7 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 		subAgents: { agents: [{ agentId: 'shared' }] },
 	});
 	const request = input([first, second]);
-	const review = agentSkill('skill_review', 'shared');
+	const review = sharedSkill('skill_review', 'project');
 	request.skills = [review];
 	request.workflows = [
 		{
@@ -349,14 +346,9 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	});
 	expect(a.config?.credential).toBe(plan.credentialPlan.stubIds.get('model-credential'));
 	expect(b.config?.credential).toBe(AI_GATEWAY_MANAGED_TAG);
-	expect(plan.agentPlan!.skills).toEqual({
-		sharedUsers: new Set(),
-		shared: [],
-		owned: new Map([
-			['shared', [{ skill: review, target: { projectId: null, agentId: 'shared' } }]],
-		]),
-		raisedRevisions: new Map(),
-	});
+	expect(plan.agentPlan!.skills?.shared).toEqual([
+		expect.objectContaining({ skill: review, target: { projectId: project.id } }),
+	]);
 	expect(a.tools).toEqual(first.tools);
 	expect(a.config?.skills).toEqual(first.config?.skills);
 	expect(a.tasks).toEqual(first.tasks);
@@ -654,8 +646,8 @@ it.each([
 			{ type: 'skill', id: 'skill_second' },
 		];
 		request.skills = [
-			agentSkill('skill_first', 'source'),
-			agentSkill('skill_second', 'source', 'review'),
+			sharedSkill('skill_first', 'project'),
+			sharedSkill('skill_second', 'project', 'review'),
 		];
 	} else if (invalid === 'self-reference') {
 		source.config!.subAgents = { agents: [{ agentId: 'source' }] };
@@ -780,14 +772,15 @@ it('checks the names that the Agent keeps after a skipped skill', async () => {
 	request.options.conflictPolicy = 'skip';
 	request.skills = [
 		sharedSkill('skill_support', 'project', 'Support'),
-		agentSkill('skill_review', 'source'),
+		sharedSkill('skill_review', 'project'),
 	];
 	const plan = await planner.plan(request);
+	// The kept skill is a project skill, so the project already has the name.
 	expect(plan.blockingIssues).toEqual([
 		expect.objectContaining({
 			type: 'agent-invalid',
 			path: 'skills.skill_review',
-			message: expect.stringContaining('hard to tell apart'),
+			message: expect.stringContaining('already named "Review"'),
 		}),
 	]);
 	await deleteSkill('skill_support');
@@ -817,10 +810,10 @@ it('reports two instance skills with names like each other in different project 
 
 it('reports a rename that clashes with a skill of another Agent that follows the skill', async () => {
 	await agents.save({ id: 'follower', name: 'Follower', projectId: project.id });
-	// The follower's own skill is in another scope, so only the follower check sees the clash.
+	// The follower's other skill is in another scope, so only the follower check sees the clash.
 	for (const [id, target] of [
-		['skill_shared', { projectId: project.id, agentId: null }],
-		['skill_pricing', { projectId: null, agentId: 'follower' }],
+		['skill_shared', { projectId: project.id }],
+		['skill_pricing', { projectId: null }],
 	] as const) {
 		await createSkill({
 			id,
@@ -853,11 +846,11 @@ it('reports a rename that clashes with a skill of another Agent that follows the
 it('keeps a name clash that the Agent already has', async () => {
 	await agents.save({ id: 'source', name: 'Existing', projectId: project.id });
 	const skills = [
-		agentSkill('skill_first', 'source'),
-		agentSkill('skill_second', 'source', 'review'),
+		sharedSkill('skill_first', 'project'),
+		sharedSkill('skill_second', 'project', 'review'),
 	];
 	for (const { id, skill } of skills) {
-		await createSkill({ id, agentId: 'source', content: toSkillContent(skill) });
+		await createSkill({ id, projectId: project.id, content: toSkillContent(skill) });
 	}
 	await Container.get(AgentSkillRepository).replaceDependencies(
 		'source',
@@ -922,13 +915,16 @@ it.each(['create', 'update', 'publish', 'unpublish'] as const)(
 				projectId: project.id,
 			});
 			if (action === 'unpublish') {
-				await Container.get(AgentHistoryRepository).saveVersion({
-					agentId: 'source',
-					versionId: 'published',
-					schema: null,
-					tools: {},
-					publishedBy: 'Test',
-				});
+				await Container.get(AgentHistoryRepository).saveVersion(
+					{
+						agentId: 'source',
+						versionId: 'published',
+						schema: null,
+						tools: {},
+						publishedBy: 'Test',
+					},
+					{},
+				);
 				await agents.update('source', { activeVersionId: 'published' });
 			}
 		}

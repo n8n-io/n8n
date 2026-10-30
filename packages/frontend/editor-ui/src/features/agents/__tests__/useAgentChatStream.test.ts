@@ -235,6 +235,7 @@ function buildHook(
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -397,6 +398,24 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			usage: undefined,
 			complete: true,
 		});
+	});
+
+	it('passes on every received stream event, in order', async () => {
+		const onStreamEvent = vi.fn();
+		const events: AgentSseEvent[] = [
+			{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'Hel' },
+			{ type: 'text-delta', id: 'text-1', delta: 'lo' },
+			{ type: 'finish', finishReason: 'stop' },
+			{ type: 'done', executionId: 'execution-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events));
+		const hook = buildHook('thread-1', { onStreamEvent });
+
+		await hook.sendMessage('hello');
+		await flushPromises();
+
+		expect(onStreamEvent.mock.calls.map(([event]) => event)).toEqual(events);
 	});
 
 	it('renders nested approval while preserving delegated tool input', async () => {
@@ -2225,6 +2244,59 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 		expect(assistant[0].hostEvents).toEqual([
 			expect.objectContaining({ name: 'test.progress', key: 'build', payload: { done: 1 } }),
 		]);
+		expect(assistant[1].hostEvents).toBeUndefined();
+	});
+
+	it('keeps host events sent before the first step on the message of that step', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', key: 'turn', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'reasoning-start', id: 'r-1' },
+			{ type: 'reasoning-delta', id: 'r-1', delta: 'Plan the reply.' },
+			{ type: 'reasoning-end', id: 'r-1' },
+			{ type: 'text-delta', id: 't-1', delta: 'hello' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant).toHaveLength(1);
+		expect(assistant[0].content).toBe('hello');
+		expect(assistant[0].thinkingSegments).toEqual([
+			expect.objectContaining({ content: 'Plan the reply.' }),
+		]);
+		expect(assistant[0].hostEvents).toEqual([
+			expect.objectContaining({ name: 'test.prepared', payload: { step: 0 } }),
+		]);
+	});
+
+	it('starts a new message at the next step after a message with step output', async () => {
+		const events: AgentSseEvent[] = [
+			{ type: 'host-event', name: 'test.prepared', payload: { step: 0 } },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-1', delta: 'Step one' },
+			{ type: 'finish-step' },
+			{ type: 'start-step' },
+			{ type: 'text-delta', id: 't-2', delta: 'Step two' },
+			{ type: 'finish-step' },
+			{ type: 'done' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events)) as typeof fetch;
+
+		const hook = buildHook();
+		await hook.sendMessage('run');
+		await flushPromises();
+		await nextTick();
+
+		const assistant = hook.messages.value.filter((message) => message.role === 'assistant');
+		expect(assistant.map(({ content }) => content)).toEqual(['Step one', 'Step two']);
+		expect(assistant[0].hostEvents).toHaveLength(1);
 		expect(assistant[1].hostEvents).toBeUndefined();
 	});
 

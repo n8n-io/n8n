@@ -12143,6 +12143,95 @@ describe('Tool builder — ending the turn', () => {
 	});
 });
 
+describe('AgentRuntime — workspace prewarm', () => {
+	beforeEach(() => {
+		generateText.mockReset();
+		streamText.mockReset();
+	});
+
+	function makeStreamStartingToolInput(toolName: string) {
+		return {
+			stream: makeChunkStream([
+				{ type: 'tool-input-start', id: 'tc-1', toolName },
+				{ type: 'text-delta', id: 'text-1', text: 'Done' },
+			]),
+			finishReason: Promise.resolve('stop'),
+			usage: Promise.resolve({ inputTokens: 10, outputTokens: 5, totalTokens: 15 }),
+			response: Promise.resolve({
+				messages: [{ role: 'assistant', content: [{ type: 'text', text: 'Done' }] }],
+			}),
+			toolCalls: Promise.resolve([]),
+		};
+	}
+
+	function createAgent(prewarm: () => void, tools: BuiltTool[] = []) {
+		const agent = new Agent('prewarm-test')
+			.model('openai/gpt-4o-mini')
+			.instructions('Test')
+			.workspace(new Workspace({ filesystem: new InMemoryFilesystem(), prewarm }));
+		return tools.length > 0 ? agent.tool(tools) : agent;
+	}
+
+	async function streamOnce(agent: Agent): Promise<void> {
+		const result = await agent.stream('run');
+		await collectChunks(result.stream);
+	}
+
+	const sandboxTool = new Tool('compile')
+		.description('Compile in the sandbox')
+		.input(z.object({}))
+		.requiresWorkspace()
+		.handler(async () => await Promise.resolve('ok'))
+		.build();
+
+	const plainTool = new Tool('search')
+		.description('Search the web')
+		.input(z.object({}))
+		.handler(async () => await Promise.resolve('ok'))
+		.build();
+
+	it('prepares the workspace when the model starts the input of a tool that needs it', async () => {
+		const prewarm = vi.fn();
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('compile'));
+
+		await streamOnce(createAgent(prewarm, [sandboxTool]));
+
+		expect(prewarm).toHaveBeenCalledOnce();
+	});
+
+	it('prepares the workspace for the built-in workspace tools', async () => {
+		const prewarm = vi.fn();
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('workspace_write_file'));
+
+		await streamOnce(createAgent(prewarm));
+
+		expect(prewarm).toHaveBeenCalledOnce();
+	});
+
+	it('does not prepare the workspace for a tool that does not need it', async () => {
+		const prewarm = vi.fn();
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('search'));
+
+		await streamOnce(createAgent(prewarm, [plainTool]));
+
+		expect(prewarm).not.toHaveBeenCalled();
+	});
+
+	it('finishes the run when the prewarm hook throws', async () => {
+		const prewarm = vi.fn(() => {
+			throw new Error('sandbox unavailable');
+		});
+		streamText.mockReturnValueOnce(makeStreamStartingToolInput('compile'));
+
+		const result = await createAgent(prewarm, [sandboxTool]).stream('run');
+		const chunks = await collectChunks(result.stream);
+
+		expect(prewarm).toHaveBeenCalledOnce();
+		expect(chunks.some((chunk) => chunk.type === 'error')).toBe(false);
+		expect(chunks.at(-1)?.type).toBe('finish');
+	});
+});
+
 describe('AgentRuntime — tool output files', () => {
 	beforeEach(() => {
 		generateText.mockReset();

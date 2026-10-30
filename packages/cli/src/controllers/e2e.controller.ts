@@ -429,37 +429,48 @@ export class E2EController {
 		return this.coverageSession;
 	}
 
-	private static coverageKey(url: string, fn: Profiler.FunctionCoverage): string {
-		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0}`;
-	}
-
-	private static coverageCount(fn: Profiler.FunctionCoverage): number {
-		return fn.ranges.reduce((sum, range) => sum + range.count, 0);
+	private static coverageKey(
+		url: string,
+		fn: Profiler.FunctionCoverage,
+		range: Profiler.CoverageRange,
+	): string {
+		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0} ${range.startOffset}-${range.endOffset}`;
 	}
 
 	private static indexCoverage(scripts: Profiler.ScriptCoverage[]): Map<string, number> {
 		const index = new Map<string, number>();
 		for (const script of scripts) {
 			for (const fn of script.functions) {
-				index.set(E2EController.coverageKey(script.url, fn), E2EController.coverageCount(fn));
+				for (const range of fn.ranges) {
+					index.set(E2EController.coverageKey(script.url, fn, range), range.count);
+				}
 			}
 		}
 		return index;
 	}
 
-	/** Keep only functions whose hit count rose since the baseline (this spec). */
+	/**
+	 * Return each script that ran code since the baseline, with every range count
+	 * replaced by its increase. Keep the zero-count functions: V8 ranges nest, so
+	 * a reader treats a missing function as covered by its enclosing range.
+	 */
 	private static deltaCoverage(
 		scripts: Profiler.ScriptCoverage[],
 		baseline: Map<string, number>,
 	): Profiler.ScriptCoverage[] {
 		const delta: Profiler.ScriptCoverage[] = [];
 		for (const script of scripts) {
-			const functions = script.functions.filter(
-				(fn) =>
-					E2EController.coverageCount(fn) >
-					(baseline.get(E2EController.coverageKey(script.url, fn)) ?? 0),
-			);
-			if (functions.length) delta.push({ ...script, functions });
+			let ran = false;
+			const functions = script.functions.map((fn) => ({
+				...fn,
+				ranges: fn.ranges.map((range) => {
+					const before = baseline.get(E2EController.coverageKey(script.url, fn, range)) ?? 0;
+					const count = Math.max(0, range.count - before);
+					if (count > 0) ran = true;
+					return { ...range, count };
+				}),
+			}));
+			if (ran) delta.push({ ...script, functions });
 		}
 		return delta;
 	}

@@ -79,9 +79,9 @@ export class LaneUserPool {
 
 /**
  * Accept a pooled invitation (which logs the fresh client in as the member),
- * mint and return the member's MCP API key, and create the case's declared
- * credentials in their personal project. Throws on any step so a partial setup
- * fails the build instead of skewing it.
+ * mint the member's MCP API key, and create the case's declared credentials in
+ * their personal project. Returns the key and the member's id. Throws on any
+ * step so a partial setup fails the build instead of skewing it.
  */
 export async function provisionCaseBuildUser(opts: {
 	pool: LaneUserPool;
@@ -90,7 +90,7 @@ export async function provisionCaseBuildUser(opts: {
 	credentials?: TestCaseCredential[];
 	onCredentialCreated: (id: string) => void;
 	logger?: EvalLogger;
-}): Promise<string> {
+}): Promise<{ mcpApiKey: string; userId: string }> {
 	const { pool, memberClient } = opts;
 	const user = await pool.claim();
 	await memberClient.acceptInvitation({
@@ -104,7 +104,7 @@ export async function provisionCaseBuildUser(opts: {
 		onCreated: opts.onCredentialCreated,
 		logger: opts.logger,
 	});
-	return mcpApiKey;
+	return { mcpApiKey, userId: user.id };
 }
 
 /** A team build project, or a member's personal project (`userId` set). */

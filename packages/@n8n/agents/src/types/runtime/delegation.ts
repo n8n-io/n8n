@@ -39,6 +39,16 @@ const jsonValueSchema: z.ZodType<JSONValue> = z.lazy(() =>
 	]),
 );
 
+/** A file that a sub-agent made. The parent passes `fileId` to tools or to other sub-agents. */
+export const delegateSubAgentFileSchema = z.object({
+	fileId: z.string(),
+	fileName: z.string(),
+	mimeType: z.string(),
+	sizeBytes: z.number(),
+});
+
+export type DelegateSubAgentFile = z.infer<typeof delegateSubAgentFileSchema>;
+
 // Model-facing input: the arguments the LLM fills in when it calls the tool.
 // The `.describe(...)` text is what the model reads, so keep it task-oriented.
 export const delegateSubAgentInputSchema = z.object({
@@ -60,6 +70,12 @@ export const delegateSubAgentInputSchema = z.object({
 			'All details the child needs, since it sees nothing else: constraints, paths, data, prior decisions, acceptance criteria, and what you have already tried or ruled out.',
 		),
 	expectedOutput: z.string().optional().describe('The expected shape or contents of the answer.'),
+	fileIds: z
+		.array(z.string())
+		.optional()
+		.describe(
+			'IDs of files that the sub-agent can use. It can read only these files and the files it makes. Files it makes come back in the result.',
+		),
 	difficulty: SubAgentTaskDifficultySchema.optional().describe(
 		'Optional difficulty estimate for this delegated task. Use low for simple bounded work, medium for moderate analysis or implementation, and high for complex research, architecture, or multi-step reasoning.',
 	),
@@ -71,7 +87,7 @@ export const delegateSubAgentModeInputSchema = delegateSubAgentInputSchema.exten
 	planTask: planTaskRefSchema
 		.optional()
 		.describe(
-			'For background work in a plan, use the plan ID and leaf task ID from the latest plan snapshot. Children inherit their task.',
+			'For background work in a plan: planId is the plan ID and planTaskId is the id of a leaf task from the latest plan snapshot. Children inherit their task.',
 		),
 	mode: z
 		.enum(['foreground', 'background'])
@@ -102,6 +118,8 @@ export const delegateSubAgentOutputSchema = z.object({
 		.optional(),
 	finishReason: z.string().optional(),
 	error: z.string().optional(),
+	files: z.array(delegateSubAgentFileSchema).optional(),
+	filesError: z.string().optional(),
 	resumeContext: jsonValueSchema.optional(),
 	pendingSuspend: z
 		.array(
@@ -229,6 +247,10 @@ export interface DelegateSubAgentToolOutput {
 	finishReason?: FinishReason;
 	/** Present when status is 'failed'. */
 	error?: string;
+	/** Files that the child made. The host lets the parent read them. */
+	files?: DelegateSubAgentFile[];
+	/** Set when the host could not list the files that the child made. */
+	filesError?: string;
 	/** Host-owned, serializable context required to reconstruct this exact child. */
 	resumeContext?: JSONValue;
 	/** Present when status is 'suspended' — child run paused awaiting tool resume. */

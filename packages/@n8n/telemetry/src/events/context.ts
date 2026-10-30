@@ -1,4 +1,4 @@
-import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS } from '@n8n/api-types';
+import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -37,19 +37,17 @@ const optionalUserId = z
 		'The acting user. Absent on the events the editor fires, which identify the user already',
 	);
 
-/** Where a skill lives. An agent skill takes its project from its agent. */
+/** Where a skill lives. */
 const skillScope = z
-	.enum(['project', 'agent', 'instance'])
-	.describe('Where the skill lives: one project, one agent, or the whole instance');
+	.enum(skillScopeSchema.options)
+	.describe('Where the skill lives: one project, or the whole instance');
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
 
 const skillProjectId = z
 	.string()
 	.optional()
-	.describe(
-		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
-	);
+	.describe('The project of a project skill. Absent for an instance skill');
 
 /**
  * The surface that wrote the skill: the values of `skill.source` without `import`, as a
@@ -503,6 +501,42 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			rule_codes: z
 				.array(z.enum(SKILL_SCAN_RULES))
 				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+		}),
+	},
+	SKILL_SOURCE_UPDATE_FOUND: {
+		name: 'Skill source update found',
+		description:
+			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			trigger: z
+				.enum(['background', 'manual'])
+				.describe(
+					'`background` is the check that runs on its own, every hour by default. `manual` is Check now',
+				),
+			skills_with_updates: z.number().describe('Synced skills with a new update in this check'),
+			pass: z.number().describe('New updates that the security check passed'),
+			needs_review: z.number().describe('New updates that the security check flagged for review'),
+			blocked: z.number().describe('New updates that the security check blocked'),
+		}),
+	},
+	USER_CHECKED_SKILL_SOURCE_NOW: {
+		name: 'User checked skill source now',
+		description:
+			'A user clicked Check for updates on a synced skill, which checks its whole source. Fires once per click, also when the check fails, with the reason code, and when n8n did not check again because the source was checked less than a minute ago.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			updates_found: z
+				.number()
+				.describe('Skills of the source with an update that waits for review, after the check'),
+			throttled: z
+				.boolean()
+				.describe(
+					'True when the source was checked less than a minute ago, so n8n did not check it again',
+				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
 		}),
 	},
 	USER_STOPPED_SKILL_SYNC: {

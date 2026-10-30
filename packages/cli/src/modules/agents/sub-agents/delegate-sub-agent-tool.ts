@@ -83,6 +83,7 @@ export function createN8nDelegateSubAgentTool(options: CreateN8nDelegateSubAgent
 					...(request.expectedOutput !== undefined
 						? { expectedOutput: request.expectedOutput }
 						: {}),
+					...(request.fileIds !== undefined ? { fileIds: request.fileIds } : {}),
 					...(policy !== undefined ? { policy } : {}),
 					...(request.parentThreadId !== undefined
 						? { parentThreadId: request.parentThreadId }

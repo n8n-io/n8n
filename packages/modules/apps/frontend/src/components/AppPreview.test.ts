@@ -50,6 +50,22 @@ const AppPreviewHost = defineComponent({
 
 const renderComponent = createComponentRenderer(AppPreviewHost, {
 	props: { app: app() },
+	global: {
+		stubs: {
+			DropdownMenu: {
+				props: ['items'],
+				emits: ['select'],
+				template: `<div>
+					<slot name="trigger" />
+					<button
+						v-for="item in items"
+						:key="item.id"
+						@click="$emit('select', item.id)"
+					>{{ item.label }}</button>
+				</div>`,
+			},
+		},
+	},
 });
 
 describe('AppPreview', () => {

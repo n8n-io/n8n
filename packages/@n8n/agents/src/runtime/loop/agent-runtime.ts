@@ -1106,9 +1106,31 @@ export class AgentRuntime {
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
 			onInputRejected: this.createInputRejectionHandler(ctx),
+			onToolInputStart: this.createWorkspacePrewarmHandler(tools.toolMap),
 		};
 
 		return { toolMap: tools.toolMap, modelCallContext };
+	}
+
+	/** Prepare the workspace while the model streams the input of a tool that uses it. */
+	private createWorkspacePrewarmHandler(
+		toolMap: Map<string, BuiltTool>,
+	): ModelCallContext['onToolInputStart'] {
+		const prewarm = this.config.prewarmWorkspace;
+		if (!prewarm) return undefined;
+		return (toolName) => {
+			if (!toolMap.get(toolName)?.requiresWorkspace) return;
+			try {
+				prewarm();
+			} catch (error) {
+				// Best effort: the tool call prepares the workspace itself if this fails.
+				logger.warn('Failed to start preparing the workspace', {
+					runId: this.runId,
+					toolName,
+					error,
+				});
+			}
+		};
 	}
 
 	private createInputRejectionHandler(

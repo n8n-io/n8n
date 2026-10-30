@@ -2502,7 +2502,7 @@ describe('AgentExecutionOrchestratorService', () => {
 		// n8n Chat accepts steering, same as Preview, so the turn gets an
 		// `onInputBoundary` hook to consume mid-run steered input.
 		expect(runtime.agent.stream.mock.calls[0][1]?.onInputBoundary).toBeInstanceOf(Function);
-		// The resume_background_jobs tool only runs this turn when the marker is set,
+		// The background_jobs resume action only runs this turn when the marker is set,
 		// same as Preview.
 		expect(runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata).toMatchObject({
 			[BACKGROUND_PAUSE_USER_TURN_KEY]: true,
@@ -3506,7 +3506,7 @@ describe('AgentExecutionOrchestratorService', () => {
 			expect.any(Date),
 		);
 		expect(chatIntegrationService.getBridge).not.toHaveBeenCalled();
-		// Wake runs never set the resume_background_jobs marker, even for n8n Chat.
+		// Wake runs never set the background_jobs resume marker, even for n8n Chat.
 		expect(
 			runtime.agent.stream.mock.calls[0][1]?.persistence?.hostMetadata?.[
 				BACKGROUND_PAUSE_USER_TURN_KEY

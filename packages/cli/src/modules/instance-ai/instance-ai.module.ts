@@ -119,6 +119,8 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(SystemAgentRegistrationService).register(
 			Container.get(AssistantAgentProvider),
 		);
+		// Its routes depend on the agents module, so they load only with the agent.
+		await import('./assistant-agent/assistant-agent.controller.js');
 		this.assistantAgentRegistered = true;
 	}
 

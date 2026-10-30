@@ -67,6 +67,8 @@ export interface ModelCallContext {
 	outputSpec?: ReturnType<typeof Output.object>;
 	maxOutputTokens?: number;
 	onInputRejected?: (error: unknown) => Promise<void>;
+	/** Called when the model begins to stream a tool call's input. Must not throw. */
+	onToolInputStart?: (toolName: string) => void;
 	aiSdkOptions: {
 		telemetry?: TelemetryOptions;
 		toolChoice?: 'none';

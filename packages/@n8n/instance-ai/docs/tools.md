@@ -49,8 +49,8 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | Tool | Actions |
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
-| `data_tables` | 11 |
-| `workspace` | 8 |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
+| `list_projects`, `list_tags`, `tag_workflow`, `cleanup_test_executions`, `list_folders`, `create_folder`, `delete_folder`, `move_workflow_to_folder` | single-purpose |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
@@ -343,7 +343,7 @@ this tool with `filePath`.
 | `name` | string | no | Workflow name override for new workflows |
 | `workItemId` | string | no | Work item hint for workflow-loop reporting |
 | `isSupportingWorkflow` | boolean | no | Marks a saved sub-workflow as supporting |
-| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `workspace(action="move-workflow-to-folder")`. Advertised only while folder exploration is on |
+| `folderPath` | string | no | Folder to create the new workflow in, named as the user named it (`Clients/Acme`, `Acme`). Same strict resolution as `list`; an unresolved folder fails the build before anything is saved, with the real folders listed. New workflows only: to move an existing one use `move_workflow_to_folder`. Advertised only while folder exploration is on |
 
 There is deliberately **no `projectId`**: a build writes to the project the
 conversation is bound to, and nothing can redirect it. The field used to exist and
@@ -1102,55 +1102,59 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data_tables` (11 actions)
+## Data table tools (11 tools)
 
-Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
-`updatedAt`) are reserved and auto-managed.
+Full CRUD suite for n8n data tables. Each operation is a separate tool. System
+columns (`id`, `createdAt`, `updatedAt`) are reserved and auto-managed. The
+read tools never suspend. The write tools ask for approval unless the
+permission allows them. Stored calls of the former `data_tables` tool still
+resolve to the matching tool.
 
 ### Table operations
 
-| Action | Description |
-|--------|-------------|
-| `list` | List data tables |
-| `create` | Create a data table with columns |
-| `delete` | Delete a data table after confirmation |
-| `schema` | Get the table columns |
+| Tool | Description |
+|------|-------------|
+| `list_data_tables` | List data tables |
+| `create_data_table` | Create a data table with columns |
+| `delete_data_table` | Delete a data table after confirmation |
+| `get_data_table_schema` | Get the table columns |
 
 ### Column operations
 
-| Action | Description |
-|--------|-------------|
-| `add-column` | Add a column to a table |
-| `delete-column` | Remove a column from a table |
-| `rename-column` | Rename a column |
+| Tool | Description |
+|------|-------------|
+| `add_data_table_column` | Add a column to a table |
+| `delete_data_table_column` | Remove a column from a table |
+| `rename_data_table_column` | Rename a column |
 
 ### Row operations
 
-| Action | Description |
-|--------|-------------|
-| `query` | Query rows with optional filters |
-| `insert-rows` | Insert one or more rows |
-| `update-rows` | Update rows matching a filter |
-| `delete-rows` | Delete rows matching a non-empty filter after confirmation |
+| Tool | Description |
+|------|-------------|
+| `query_data_table` | Query rows with optional filters |
+| `insert_data_table_rows` | Insert one or more rows |
+| `update_data_table_rows` | Update rows matching a filter |
+| `delete_data_table_rows` | Delete rows matching a non-empty filter after confirmation |
 
 ---
 
-## `workspace` (4 or 8 actions)
+## Workspace tools (4 or 8 tools)
 
-The registry always contains this tool. Without `workspaceService`, every call
-returns an unavailable error. Folder actions are present only when
+Each action of the former `workspace` tool is its own tool. The registry always
+contains the first four tools. Without `workspaceService`, every call returns an
+unavailable error. The folder tools are present only when
 `workspaceService.listFolders` is available.
 
 | Tool | Description |
 |------|-------------|
-| `list-projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
-| `tag-workflow` | Apply tags to a workflow |
-| `list-tags` | List available tags |
-| `cleanup-test-executions` | Remove test execution data |
-| `list-folders` | List folders (conditional) |
-| `create-folder` | Create a new folder (conditional) |
-| `delete-folder` | Delete a folder (conditional) |
-| `move-workflow-to-folder` | Move a workflow to a folder (conditional) |
+| `list_projects` | List projects accessible to the user; on a project-scoped thread the conversation's own project carries `isCurrentProject: true` |
+| `tag_workflow` | Apply tags to a workflow |
+| `list_tags` | List available tags |
+| `cleanup_test_executions` | Remove test execution data |
+| `list_folders` | List folders (conditional) |
+| `create_folder` | Create a new folder (conditional) |
+| `delete_folder` | Delete a folder (conditional) |
+| `move_workflow_to_folder` | Move a workflow to a folder (conditional) |
 
 ---
 
