@@ -1,4 +1,4 @@
-import { MoveAgentSkillsToProjects1793303501348 as BaseMigration } from '../common/1793303501348-MoveAgentSkillsToProjects';
+import { MoveAgentSkillsToProjects1793370894943 as BaseMigration } from '../common/1793370894943-MoveAgentSkillsToProjects';
 
 /**
  * On SQLite, dropping the CHECK and the `agentId` column recreate the whole `skill` table.
@@ -6,6 +6,6 @@ import { MoveAgentSkillsToProjects1793303501348 as BaseMigration } from '../comm
  * it with ON DELETE CASCADE, so the recreate's DROP would delete their rows. Disable
  * foreign keys for the migration so the drop stays local to `skill`.
  */
-export class MoveAgentSkillsToProjects1793303501348 extends BaseMigration {
+export class MoveAgentSkillsToProjects1793370894943 extends BaseMigration {
 	withFKsDisabled = true as const;
 }

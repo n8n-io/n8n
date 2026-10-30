@@ -11,7 +11,7 @@ import { randomUUID } from 'node:crypto';
 
 import { skillContentHash } from '@/modules/skills/testing';
 
-const migrationName = 'MoveAgentSkillsToProjects1793303501348';
+const migrationName = 'MoveAgentSkillsToProjects1793370894943';
 
 type Row = Record<string, string | number | boolean | null>;
 type SkillRow = { id: string; projectId: string | null };
