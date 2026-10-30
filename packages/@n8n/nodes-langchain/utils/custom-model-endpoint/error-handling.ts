@@ -23,6 +23,13 @@ function isAlreadyClientShaped(body: Record<string, unknown>): boolean {
 	return isRecord(body.error) && typeof body.error.message === 'string';
 }
 
+/** Reads back what this module writes, for callers that handle a failure themselves. */
+export function clientErrorMessage(text: string): string | undefined {
+	const parsed = parseJson(text);
+	if (!isRecord(parsed) || !isRecord(parsed.error)) return undefined;
+	return typeof parsed.error.message === 'string' ? parsed.error.message : undefined;
+}
+
 const NAMED_ENTITIES: Record<string, string> = {
 	amp: '&',
 	lt: '<',
