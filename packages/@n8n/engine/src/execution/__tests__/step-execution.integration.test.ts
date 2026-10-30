@@ -83,7 +83,7 @@ describe('step execution (integration)', () => {
 			 * wait for the finish, or the runtime stops before the sweep runs.
 			 */
 			resolveOn?: 'finish' | 'suspend';
-			/** How many executions must finish first: a sub-execution finishes before its parent. */
+			/** How many executions must finish first. */
 			finishCount?: number;
 		} = {},
 	) {
@@ -617,7 +617,7 @@ describe('step execution (integration)', () => {
 		expect(execution.finishedAt).toBeInstanceOf(Date);
 	});
 
-	it('starts a detached sub-execution from a completed step and does not wait for it', async () => {
+	it('starts a detached sub-execution and does not wait for it', async () => {
 		const parentGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },

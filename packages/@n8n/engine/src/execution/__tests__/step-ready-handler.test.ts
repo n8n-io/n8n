@@ -1219,6 +1219,25 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
+	it('announces nothing when the step stopped waiting before the start failed', async () => {
+		const stepStore = makeStepStore({}, { failWaitingStep: vi.fn().mockResolvedValue(false) });
+		const queue = makeQueue();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{ v1StepExecutor: makeExecutor({ subExecution }) },
+			undefined,
+			undefined,
+			undefined,
+			{ start: vi.fn().mockRejectedValue(new Error('admittance rejected')) },
+		);
+
+		await handler.handle(event);
+
+		expect(queue.publish).not.toHaveBeenCalled();
+	});
+
 	it('starts a detached sub-execution before the step completes, without awaiting it', async () => {
 		const order: string[] = [];
 		const stepStore = makeStepStore(
@@ -1262,14 +1281,41 @@ describe('StepReadyHandler sub-executions', () => {
 				parent: { executionId: 'exec-1', stepId: 'step-a', awaited: false },
 			}),
 		);
-		// The step still runs when the sub-execution starts, so the execution
-		// cannot have ended in between.
 		expect(order).toEqual(['start', 'complete']);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
 			stepId: 'step-a',
 		});
+	});
+
+	it('cancels the waiting step and announces nothing when the execution ended before the sub-execution started', async () => {
+		const stepStore = makeStepStore();
+		const queue = makeQueue();
+		const publisher = makeLifecycleEventPublisher();
+		const handler = makeHandler(
+			makeExecutionStore(),
+			stepStore,
+			queue,
+			{ v1StepExecutor: makeExecutor({ subExecution }) },
+			publisher,
+			undefined,
+			undefined,
+			{
+				start: vi
+					.fn()
+					.mockRejectedValue(new InvalidParentLinkError('execution-ended', 'exec-1 is cancelled')),
+			},
+		);
+
+		await handler.handle(event);
+
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledWith('exec-1');
+		expect(stepStore.failWaitingStep).not.toHaveBeenCalled();
+		expect(publisher.publish).not.toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:failed' }),
+		);
+		expect(queue.publish).not.toHaveBeenCalled();
 	});
 
 	it('records the outputs when the execution ended before a detached sub-execution started', async () => {

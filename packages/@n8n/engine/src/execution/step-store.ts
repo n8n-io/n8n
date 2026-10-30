@@ -13,8 +13,8 @@ import type {
  *
  * Creation statuses only: a row becomes `running`, `waiting`, `failed`, or
  * `cancelled` solely through `claimStep`, `suspendStep`, `failStep`,
- * `cancelStep`, or `cancelPendingSteps`, so it cannot bypass the checks and
- * locking those transitions enforce.
+ * `failWaitingStep`, `cancelStep`, or `cancelPendingSteps`, so it cannot
+ * bypass the checks and locking those transitions enforce.
  *
  * A step created `completed` (the trigger) must carry its slot list, even
  * `[]`: a missing one persists as SQL NULL, which liveness reads as every
