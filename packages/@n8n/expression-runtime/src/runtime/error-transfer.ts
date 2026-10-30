@@ -8,7 +8,7 @@
  */
 
 import type { TransferSentinel } from './transfer';
-import { defineOwnValue, transferTypeOf, TRANSFER_TYPE_KEY } from './transfer';
+import { defineOwnValue, isPlainObject, transferTypeOf, TRANSFER_TYPE_KEY } from './transfer';
 
 export const ERROR_TYPE = 'Error';
 
@@ -28,6 +28,7 @@ export interface ErrorValueSentinel extends TransferSentinel {
 	__props: unknown;
 	__cause?: unknown;
 	__json?: unknown;
+	__jsonKeys?: string[];
 }
 
 type Encode = (value: unknown) => unknown;
@@ -53,11 +54,22 @@ function hiddenCauseOf(error: Error, encodeChild: Encode): Pick<ErrorValueSentin
 }
 
 /** The `toJSON` result of an Error, or nothing when it has none or it throws. */
-function jsonFormOf(error: Error, encodeChild: Encode): Pick<ErrorValueSentinel, '__json'> {
+function jsonFormOf(
+	error: Error,
+	encodeChild: Encode,
+): Pick<ErrorValueSentinel, '__json' | '__jsonKeys'> {
 	const toJSON: unknown = Reflect.get(error, 'toJSON');
 	if (typeof toJSON === 'function') {
 		try {
-			return { __json: encodeChild(toJSON.call(error)) };
+			const json: unknown = toJSON.call(error);
+			// Find direct fields before transfer, while object identity is intact.
+			const keys =
+				typeof json === 'object' && json !== null && isPlainObject(json)
+					? Object.keys(json).filter(
+							(key) => Object.hasOwn(error, key) && Object.is(json[key], Reflect.get(error, key)),
+						)
+					: [];
+			return { __json: encodeChild(json), __jsonKeys: keys };
 		} catch {
 			// JSON.stringify then falls back to the own keys, as for any Error.
 		}
@@ -100,7 +112,21 @@ export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Enc
 	}
 	if ('__json' in sentinel) {
 		const json = decodeChild(sentinel.__json);
-		defineOwnValue(error, 'toJSON', () => json, false);
+		const keys = (sentinel.__jsonKeys ?? []).filter((key) => Object.hasOwn(error, key));
+		defineOwnValue(
+			error,
+			'toJSON',
+			function (this: Error) {
+				if (keys.length === 0 || typeof json !== 'object' || json === null) return json;
+				// Refresh direct fields. Keep omitted fields out and calculated values as captured.
+				const result = { ...json };
+				for (const key of keys) {
+					defineOwnValue(result, key, Reflect.get(this, key));
+				}
+				return result;
+			},
+			false,
+		);
 	}
 
 	return error;

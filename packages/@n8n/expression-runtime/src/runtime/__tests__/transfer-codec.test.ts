@@ -15,6 +15,90 @@ describe.each([
 			unwrapTransferredValue(structuredClone(__prepareForTransfer(value))),
 	},
 ])('transfer codec ($name)', ({ roundTrip }) => {
+	it('serializes the current fields in the JSON form of an Error', () => {
+		class EditableError extends Error {
+			description: string | undefined = 'original';
+			context = { attempt: 1 };
+
+			toJSON() {
+				return {
+					message: this.message,
+					description: this.description,
+					context: this.context,
+					format: 'error',
+				};
+			}
+		}
+		const original = new EditableError('original');
+		const result = roundTrip(original) as EditableError;
+		const first = result.toJSON();
+
+		result.message = 'changed';
+		result.description = 'x';
+		result.context = { attempt: 2 };
+
+		expect(JSON.parse(JSON.stringify(result))).toStrictEqual({
+			message: 'changed',
+			description: 'x',
+			context: { attempt: 2 },
+			format: 'error',
+		});
+		expect(first).toStrictEqual(original.toJSON());
+
+		result.description = undefined;
+		expect(JSON.parse(JSON.stringify(result))).not.toHaveProperty('description');
+	});
+
+	it('keeps omitted and projected fields out of the JSON form', () => {
+		class ProjectedError extends Error {
+			internal = 'not in JSON';
+			override cause = Object.assign(new Error('inner'), { details: 'not in JSON' });
+
+			toJSON() {
+				return {
+					message: this.message,
+					cause: { name: this.cause.name, message: this.cause.message },
+				};
+			}
+		}
+		const original = new ProjectedError('original');
+		const result = roundTrip(original) as ProjectedError;
+
+		result.message = 'changed';
+		result.internal = 'also not in JSON';
+
+		expect(JSON.parse(JSON.stringify(result))).toStrictEqual({
+			message: 'changed',
+			cause: { name: 'Error', message: 'inner' },
+		});
+	});
+
+	it.each([null, 'short error', ['short error']])('keeps a non-record JSON form: %j', (json) => {
+		const error = Object.assign(new Error('original'), { toJSON: () => json });
+		const result = roundTrip(error) as Error;
+
+		result.message = 'changed';
+
+		expect(JSON.stringify(result)).toBe(JSON.stringify(json));
+	});
+
+	it('keeps a JSON field whose source property does not cross the boundary', () => {
+		const error = Object.assign(new Error('original'), {
+			toJSON(this: Error) {
+				return { message: this.message, hidden: Reflect.get(this, 'hidden') };
+			},
+		});
+		Object.defineProperty(error, 'hidden', { value: 'from toJSON' });
+		const result = roundTrip(error) as Error;
+
+		result.message = 'changed';
+
+		expect(JSON.parse(JSON.stringify(result))).toStrictEqual({
+			message: 'changed',
+			hidden: 'from toJSON',
+		});
+	});
+
 	it('rebuilds each Error in a shared chain once', () => {
 		let error = new Error('leaf');
 		for (let index = 0; index < 12; index++) {

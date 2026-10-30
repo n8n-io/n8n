@@ -210,6 +210,43 @@ describe('Expression - Error instances in item data (engine parity)', () => {
 		});
 
 		describe('Error returned by the expression', () => {
+			it('serializes fields changed inside the expression', () => {
+				const error = apiError();
+				const expected = {
+					...error.toJSON!(),
+					message: 'changed',
+					description: 'x',
+					context: { attempt: 2 },
+				};
+				const item = { json: { error }, pairedItem: { item: 0 } };
+
+				const result = evaluate(
+					'={{ (() => { const e = $json.error; e.message = "changed"; e.description = "x"; e.context = { attempt: 2 }; return JSON.stringify(e) })() }}',
+					item,
+					native,
+				);
+
+				expect(result).toBe(JSON.stringify(expected));
+			});
+
+			it('serializes fields changed after the Error returns to the host', () => {
+				const error = apiError();
+				const expected = {
+					...error.toJSON!(),
+					message: 'changed',
+					description: 'x',
+					context: { attempt: 2 },
+				};
+				const item = { json: { error }, pairedItem: { item: 0 } };
+				const result = evaluate('={{ $json.error }}', item, native) as NodeApiError;
+
+				result.message = 'changed';
+				result.description = 'x';
+				result.context = { attempt: 2 };
+
+				expect(JSON.stringify(result)).toBe(JSON.stringify(expected));
+			});
+
 			it.each(['={{ $json.error }}', "={{ $('Source').item.json.error }}"])('%s', (expr) => {
 				const result = evaluate(expr, jsonErrorItem, native);
 
