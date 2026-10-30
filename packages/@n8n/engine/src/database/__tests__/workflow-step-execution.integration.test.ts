@@ -811,6 +811,43 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.error).toEqual(error);
 	});
 
+	it('TypeOrmStepStore.failWaitingStep fails a waiting step and persists the error', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'waiting',
+			waitDeclaration: { subExecutionId: 'exec-sub' },
+		});
+
+		const error = { name: 'Error', message: 'admittance rejected' };
+		expect(await store.failWaitingStep(id, error)).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('failed');
+		expect(found.error).toEqual(error);
+	});
+
+	it.each(['queued', 'running'] as const)(
+		'TypeOrmStepStore.failWaitingStep leaves a %s step alone',
+		async (status) => {
+			const executionId = await createExecution();
+			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status });
+
+			expect(await store.failWaitingStep(id, { name: 'Error', message: 'x' })).toBe(false);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(status);
+			expect(found.error).toBeNull();
+		},
+	);
+
 	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));

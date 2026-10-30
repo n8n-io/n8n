@@ -3,6 +3,7 @@ import {
 	BaseRepository,
 	isUniqueConstraintError,
 	parseDbTime,
+	Person,
 	Project,
 	ProjectRelation,
 	SharedWorkflow,
@@ -252,8 +253,9 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 	) {
 		if (userIds?.length === 0) return [];
 
+		// Reviewers are chosen by name and review in their inbox, so they are people.
 		const query = this.manager
-			.createQueryBuilder(User, 'user')
+			.createQueryBuilder(Person, 'user')
 			.leftJoin(
 				ProjectRelation,
 				'projectMember',

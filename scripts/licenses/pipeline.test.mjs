@@ -17,7 +17,7 @@ import { fileURLToPath } from 'node:url';
 //
 // Both fixtures are frozen: the SBOM and the override config it needs are a
 // matched pair, so the chain runs strict and no dependency change can break it.
-// The *shipped* license-overrides.json is validated by render-licenses-md.test.mjs.
+// The image tests below use the shipped config to check image-only resolutions.
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURE = path.join(scriptDir, '__fixtures__', 'sample.cdx.json');
@@ -136,4 +136,56 @@ describe('license-generation chain (real CLIs end-to-end)', () => {
 
 		assert.equal(run(ENRICH, [...args, '--lenient-config']).status, 0);
 	});
+});
+
+describe('image license resolutions (shipped config)', () => {
+	let dir;
+	before(async () => {
+		dir = await mkdtemp(path.join(os.tmpdir(), 'image-lic-chain-'));
+	});
+	after(async () => {
+		await rm(dir, { recursive: true, force: true });
+	});
+
+	for (const { component, license } of [
+		{
+			component: {
+				group: '@getzep',
+				name: 'zep-js',
+				version: '2.0.2',
+				purl: 'pkg:npm/%40getzep/zep-js@2.0.2',
+				licenses: [],
+			},
+			license: 'Apache-2.0',
+		},
+		{
+			component: {
+				name: 'sentry',
+				version: '0.45.0',
+				purl: 'pkg:npm/sentry@0.45.0',
+				licenses: [{ license: { name: 'FSL-1.1-Apache-2.0' } }],
+			},
+			license: 'FSL-1.1-ALv2',
+		},
+	]) {
+		it(`resolves ${component.purl} before the image license gate`, async () => {
+			const sbomPath = path.join(dir, `${component.name}.cdx.json`);
+			await writeFile(sbomPath, JSON.stringify({ components: [component] }));
+			const gateArgs = [sbomPath, ...ALLOW_REFS, '--enforce-prefix=pkg:npm/'];
+
+			const rawGate = run(CHECK, gateArgs);
+			assert.equal(rawGate.status, 1, rawGate.stderr);
+			assert.ok(rawGate.stderr.includes(component.purl), rawGate.stderr);
+
+			const enrich = run(ENRICH, [sbomPath, '--lenient-config', '--drop-phantom-npm']);
+			assert.equal(enrich.status, 0, enrich.stderr);
+			const sbom = JSON.parse(await readFile(sbomPath, 'utf-8'));
+			assert.equal(sbom.components.length, 1);
+			assert.equal(sbom.components[0].purl, component.purl);
+			assert.deepEqual(sbom.components[0].licenses, [{ license: { id: license } }]);
+
+			const enrichedGate = run(CHECK, gateArgs);
+			assert.equal(enrichedGate.status, 0, enrichedGate.stderr);
+		});
+	}
 });
