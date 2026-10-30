@@ -1063,12 +1063,12 @@ export class InstanceAiAdapterService {
 		}
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
-				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+				'**Folders** — organizing workflows into folders (list_folders, create_folder, delete_folder, move_workflow_to_folder) is available on registered Community Edition or paid plans.',
 			);
 		}
 		if (!this.teamProjectsLicensed()) {
 			hints.push(
-				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
+				'**Team projects** — this instance has no team-project license. `list_projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -1277,7 +1277,7 @@ export class InstanceAiAdapterService {
 
 		/**
 		 * The folders the caller may name, per project. Access is checked with the
-		 * same scope the workspace tool's `list-folders` uses, so a folder name is
+		 * same scope the `list_folders` tool uses, so a folder name is
 		 * never revealed through a project the user cannot list folders in.
 		 * Returns undefined when folders cannot be read at all (unlicensed or
 		 * missing dependency), which the resolver reports as `unsupported`.

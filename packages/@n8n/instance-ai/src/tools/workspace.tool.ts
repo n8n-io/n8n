@@ -1,19 +1,24 @@
 /**
- * Consolidated workspace tool — projects, tags, folders, execution cleanup.
+ * Workspace tools: one tool for each action of the former multi-action
+ * `workspace` tool (projects, tags, folders, execution cleanup).
  */
 import { Tool } from '@n8n/agents';
 import {
+	WORKSPACE_TOOL_NAME_BY_ACTION,
+	getLegacyBuilderToolActions,
 	folderNameSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 	buildWorkspaceSessionGrantKey,
 	buildCleanupTestExecutionsSessionGrantKey,
 } from '@n8n/api-types';
+import type { WorkspaceToolAction } from '@n8n/api-types';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -111,30 +116,20 @@ const resumeSchema = instanceAiApprovalResumeSchema;
 
 // ── Input union ─────────────────────────────────────────────────────────────
 
-function buildInputSchema(context: InstanceAiContext) {
-	const baseActions = [
-		listProjectsAction,
-		listTagsAction,
-		tagWorkflowAction,
-		cleanupTestExecutionsAction,
-	] as const;
+const ACTION_SCHEMAS = {
+	'list-projects': listProjectsAction,
+	'list-tags': listTagsAction,
+	'tag-workflow': tagWorkflowAction,
+	'cleanup-test-executions': cleanupTestExecutionsAction,
+	'list-folders': listFoldersAction,
+	'create-folder': createFolderAction,
+	'delete-folder': deleteFolderAction,
+	'move-workflow-to-folder': moveWorkflowToFolderAction,
+} satisfies Record<WorkspaceToolAction, z.ZodDiscriminatedUnionOption<'action'>>;
 
-	if (context.workspaceService?.listFolders) {
-		return sanitizeInputSchema(
-			z.discriminatedUnion('action', [
-				...baseActions,
-				listFoldersAction,
-				createFolderAction,
-				deleteFolderAction,
-				moveWorkflowToFolderAction,
-			]),
-		);
-	}
-
-	return sanitizeInputSchema(z.discriminatedUnion('action', [...baseActions]));
-}
-
-type Input = z.infer<ReturnType<typeof buildInputSchema>>;
+type Input = {
+	[A in WorkspaceToolAction]: z.infer<(typeof ACTION_SCHEMAS)[A]>;
+}[WorkspaceToolAction];
 
 // ── Suspend/resume helpers ──────────────────────────────────────────────────
 
@@ -416,46 +411,83 @@ async function handleMoveWorkflowToFolder(
 
 // ── Tool factory ────────────────────────────────────────────────────────────
 
-export function createWorkspaceTool(context: InstanceAiContext) {
+/** Actions that only read, so their tools never ask for approval. */
+const READ_ACTIONS = new Set<WorkspaceToolAction>(['list-projects', 'list-tags', 'list-folders']);
+
+const neverSuspend = async (): Promise<never> => {
+	throw new Error('This workspace tool cannot ask for approval');
+};
+
+async function runWorkspaceAction(
+	context: InstanceAiContext,
+	input: Input,
+	ctx: WorkspaceToolContext,
+) {
 	if (!context.workspaceService) {
-		return (
-			new Tool('workspace')
-				.description('Workspace management is not available in this environment.')
-				.input(z.object({ action: z.string() }))
-				// eslint-disable-next-line @typescript-eslint/require-await -- must be async to match execute signature
-				.handler(async () => {
-					return { error: 'Workspace service is not available in this environment.' };
-				})
-				.build()
-		);
+		return { error: 'Workspace service is not available in this environment.' };
+	}
+	switch (input.action) {
+		case 'list-projects':
+			return await handleListProjects(context);
+		case 'list-tags':
+			return await handleListTags(context);
+		case 'tag-workflow':
+			return await handleTagWorkflow(context, input, ctx);
+		case 'cleanup-test-executions':
+			return await handleCleanupTestExecutions(context, input, ctx);
+		case 'list-folders':
+			return await handleListFolders(context, input);
+		case 'create-folder':
+			return await handleCreateFolder(context, input, ctx);
+		case 'delete-folder':
+			return await handleDeleteFolder(context, input, ctx);
+		case 'move-workflow-to-folder':
+			return await handleMoveWorkflowToFolder(context, input, ctx);
+	}
+}
+
+/** Builds the tool for one workspace action. */
+export function createWorkspaceActionTool(context: InstanceAiContext, action: WorkspaceToolAction) {
+	const name = WORKSPACE_TOOL_NAME_BY_ACTION[action];
+	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
+	const tool = new Tool(name)
+		.description(schema.shape.action.description ?? '')
+		.input(sanitizeInputSchema(schema.omit({ action: true })));
+	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
+		tool.legacyActions(legacyName, ...actions);
+	}
+	// The input schema omits `action`, so restore it for the shared handlers.
+	const withAction = (input: unknown) =>
+		({ ...(typeof input === 'object' && input !== null ? input : {}), action }) as Input;
+
+	if (READ_ACTIONS.has(action)) {
+		return tool
+			.handler(
+				async (input) =>
+					await runWorkspaceAction(context, withAction(input), {
+						resumeData: undefined,
+						suspend: neverSuspend,
+					}),
+			)
+			.build();
 	}
 
-	const inputSchema = buildInputSchema(context);
-
-	return new Tool('workspace')
-		.description('Manage workspace resources — projects, tags, folders, and execution cleanup.')
-		.input(inputSchema)
+	return tool
 		.suspend(suspendSchema)
 		.resume(resumeSchema)
-		.handler(async (input: Input, ctx) => {
-			switch (input.action) {
-				case 'list-projects':
-					return await handleListProjects(context);
-				case 'list-tags':
-					return await handleListTags(context);
-				case 'tag-workflow':
-					return await handleTagWorkflow(context, input, ctx);
-				case 'cleanup-test-executions':
-					return await handleCleanupTestExecutions(context, input, ctx);
-				case 'list-folders':
-					return await handleListFolders(context, input);
-				case 'create-folder':
-					return await handleCreateFolder(context, input, ctx);
-				case 'delete-folder':
-					return await handleDeleteFolder(context, input, ctx);
-				case 'move-workflow-to-folder':
-					return await handleMoveWorkflowToFolder(context, input, ctx);
-			}
-		})
+		.handler(
+			async (input, ctx) =>
+				await runWorkspaceAction(context, withAction(input), {
+					resumeData: ctx.resumeData,
+					suspend: ctx.suspend,
+				}),
+		)
 		.build();
+}
+
+/** Builds the workspace tools this context supports. */
+export function createWorkspaceTools(context: InstanceAiContext) {
+	return getSupportedWorkspaceActions(context).map((action) =>
+		createWorkspaceActionTool(context, action),
+	);
 }

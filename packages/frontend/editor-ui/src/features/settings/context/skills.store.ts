@@ -108,6 +108,11 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.stopSyncingSkill(rootStore.restApiContext, id);
 	}
 
+	/** Check now on the source of a synced skill. The caller reloads the list. */
+	async function checkForUpdates(id: string) {
+		return await api.checkSkillForUpdates(rootStore.restApiContext, id);
+	}
+
 	return {
 		skills,
 		count,
@@ -126,5 +131,6 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		discoverSource,
 		connectSource,
 		stopSyncingSkill,
+		checkForUpdates,
 	};
 });

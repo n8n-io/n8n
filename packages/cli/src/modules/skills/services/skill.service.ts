@@ -834,7 +834,7 @@ export class SkillService {
 				this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
 				this.skillAccess.accessCheck(user, 'update'),
 				this.skillAccess.accessCheck(user, 'delete'),
-				this.sourceRepository.findLinkedSkillIds(ids),
+				this.sourceRepository.findSyncStates(ids),
 				this.skillSyncFlagGate.isEnabled(user),
 			]);
 		const items: SkillListItem[] = [];
@@ -864,6 +864,9 @@ export class SkillService {
 				// Stop syncing needs the update permission of the scope that the skill shares with its source.
 				// The route answers 404 while the Skill Sync flag is off for the user.
 				canStopSyncing: skillSyncOn && synced.has(skill.id) && canEdit(skill, projectId),
+				syncState: synced.get(skill.id) ?? null,
+				// Check now needs the same permission as stop syncing.
+				canCheckForUpdates: skillSyncOn && synced.has(skill.id) && canEdit(skill, projectId),
 				createdAt: skill.createdAt.toISOString(),
 				updatedAt: skill.updatedAt.toISOString(),
 			});
