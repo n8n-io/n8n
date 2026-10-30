@@ -108,7 +108,7 @@ export class SSHClientsManager {
 	async getClient(credentials: SSHCredentials, abortController?: AbortController): Promise<Client> {
 		abortController = abortController ?? new AbortController();
 
-		const { sshAuthenticateWith, sshHost, sshPort, sshUser } = credentials;
+		const { sshAuthenticateWith, sshHost, sshPort, sshUser, sshHostKeyFingerprint } = credentials;
 		const sshConfig: ConnectConfig = {
 			host: sshHost,
 			port: sshPort,
@@ -121,7 +121,28 @@ export class SSHClientsManager {
 					}),
 		};
 
-		const clientHash = createHash('sha1').update(JSON.stringify(sshConfig)).digest('base64');
+		const pinnedFingerprint = sshHostKeyFingerprint?.trim() || undefined;
+
+		const clientHash = createHash('sha1')
+			.update(JSON.stringify({ ...sshConfig, pinnedFingerprint }))
+			.digest('base64');
+
+		if (pinnedFingerprint) {
+			// Accept the `ssh-keygen -lf` format, with or without the prefix and padding
+			const expectedFingerprint = pinnedFingerprint.replace(/^SHA256:/i, '').replace(/=+$/, '');
+
+			sshConfig.hostVerifier = (key: Buffer) => {
+				const fingerprint = createHash('sha256').update(key).digest('base64').replace(/=+$/, '');
+				if (fingerprint === expectedFingerprint) return true;
+
+				this.logger.warn('SSH host key fingerprint does not match the configured fingerprint', {
+					sshHost,
+					expected: `SHA256:${expectedFingerprint}`,
+					received: `SHA256:${fingerprint}`,
+				});
+				return false;
+			};
+		}
 
 		const existing = this.clients.get(clientHash);
 		if (existing) {
