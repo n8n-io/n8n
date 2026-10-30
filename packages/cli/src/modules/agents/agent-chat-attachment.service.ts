@@ -195,7 +195,7 @@ export class AgentChatAttachmentService {
 	 */
 	async listForSession(
 		scope: { projectId: string; threadId: string },
-		excludeSource: string,
+		excludeSource?: string,
 	): Promise<AgentSessionFile[]> {
 		const files = await this.repository.findInThreadNewestFirst(scope, excludeSource, {});
 		const seen = new Set<string>();
