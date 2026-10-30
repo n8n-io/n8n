@@ -15,6 +15,7 @@ import { computed, ref, shallowReactive, shallowRef, watch } from 'vue';
 
 import ContactAdminModal from '../components/ContactAdminModal.vue';
 import RestrictedNodePopover from '../components/RestrictedNodePopover.vue';
+import { useCloseOnEscape } from '../composables/useCloseOnEscape';
 import {
 	getViolationVerdict,
 	resolveRestrictionContact,
@@ -41,6 +42,12 @@ const open = defineModel<boolean>('open', { default: false });
 const i18n = useI18n();
 
 const isContactAdminOpen = ref(false);
+
+// The contact dialog takes Escape while it is open, so one press closes only the top dialog.
+useCloseOnEscape(
+	() => open.value && !isContactAdminOpen.value,
+	() => (open.value = false),
+);
 
 // Loaded on mount, so the contact copy is right when the dialog opens. Until it loads, or if
 // it fails, the copy names the instance admin.

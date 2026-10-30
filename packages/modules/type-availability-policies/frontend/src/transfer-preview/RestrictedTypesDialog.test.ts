@@ -1,7 +1,8 @@
 import type { PolicyViolation } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { h } from 'vue';
 
 import RestrictedTypesDialog from './RestrictedTypesDialog.vue';
@@ -247,5 +248,52 @@ describe('RestrictedTypesDialog', () => {
 		await userEvent.click(getByTestId('restricted-types-close'));
 
 		expect(emitted()['update:open']).toEqual([[false]]);
+	});
+
+	describe('Escape key', () => {
+		// The move modal under the dialog is an Element Plus modal, which listens in the bubble phase.
+		const hostListener = vi.fn();
+
+		beforeEach(() => document.addEventListener('keydown', hostListener));
+		afterEach(() => {
+			document.removeEventListener('keydown', hostListener);
+			hostListener.mockReset();
+		});
+
+		it('closes only the dialog, not the move modal under it', async () => {
+			const { getByTestId, emitted } = renderComponent();
+
+			await fireEvent.keyDown(getByTestId('restricted-types-list'), { key: 'Escape' });
+
+			expect(emitted()['update:open']).toEqual([[false]]);
+			expect(hostListener).not.toHaveBeenCalled();
+		});
+
+		it('lets other keys reach the move modal', async () => {
+			const { getByTestId, emitted } = renderComponent();
+
+			await fireEvent.keyDown(getByTestId('restricted-types-list'), { key: 'Enter' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+			expect(hostListener).toHaveBeenCalledOnce();
+		});
+
+		it('lets Escape reach the move modal while the dialog is closed', async () => {
+			const { emitted } = renderComponent({ props: { open: false } });
+
+			await fireEvent.keyDown(document.body, { key: 'Escape' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+			expect(hostListener).toHaveBeenCalledOnce();
+		});
+
+		it('stays open while the contact dialog on top of it takes Escape', async () => {
+			const { getByTestId, emitted } = renderComponent();
+			await userEvent.click(getByTestId('restricted-types-contact-admin'));
+
+			await fireEvent.keyDown(getByTestId('contact-admin-modal'), { key: 'Escape' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+		});
 	});
 });

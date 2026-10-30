@@ -13,7 +13,6 @@ import { staticRolesWithScope } from '@n8n/permissions';
 import type { IUserResponse, Project } from '@n8n/rest-api-client';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useEventListener } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
 import {
@@ -23,6 +22,7 @@ import {
 	type ContactAudience,
 	type RestrictedTypeKind,
 } from '../type-availability-policies.constants';
+import { useCloseOnEscape } from '../composables/useCloseOnEscape';
 import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.store';
 
 const {
@@ -136,18 +136,7 @@ watch(
 	{ immediate: true },
 );
 
-// An Element Plus modal under the dialog closes on a document Escape listener, which runs before
-// the dialog's own window listener. Only a window capture listener runs before it.
-useEventListener(
-	() => (open.value ? window : null),
-	'keydown',
-	(event: KeyboardEvent) => {
-		if (event.key !== 'Escape') return;
-		event.stopPropagation();
-		open.value = false;
-	},
-	{ capture: true },
-);
+useCloseOnEscape(open, () => (open.value = false));
 
 function mailtoHref(email: string): string {
 	return `mailto:${email}?subject=${encodeURIComponent(mailSubject.value)}`;
