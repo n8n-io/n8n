@@ -109,6 +109,7 @@ const SKILL_SOURCE_REASON_KEYS = {
 	parse_error: 'settings.context.skills.connect.error.parseError',
 	blocked_by_check: 'settings.context.skills.connect.error.blockedByCheck',
 	review_required: 'settings.context.skills.connect.error.reviewRequired',
+	over_limit: 'settings.context.skills.connect.error.overLimit',
 	name_taken: 'settings.context.skills.connect.error.nameTaken',
 	duplicate_source: 'settings.context.skills.connect.error.duplicateSource',
 	credential_invalid: 'settings.context.skills.connect.error.credentialInvalid',
@@ -124,6 +125,7 @@ const FAILED_SKILL_REASON_KEYS: Partial<Record<SkillSourceReason, BaseTextKey>> 
 	parse_error: 'settings.context.skills.connect.failed.reason.parseError',
 	blocked_by_check: 'settings.context.skills.connect.failed.reason.blockedByCheck',
 	review_required: 'settings.context.skills.connect.failed.reason.reviewRequired',
+	over_limit: 'settings.context.skills.connect.failed.reason.overLimit',
 	rate_limited: 'settings.context.skills.connect.failed.reason.rateLimited',
 	unreachable: 'settings.context.skills.connect.failed.reason.unreachable',
 };

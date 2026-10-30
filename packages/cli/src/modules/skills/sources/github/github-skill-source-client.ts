@@ -1,3 +1,4 @@
+import { agentSkillReferencePathSchema } from '@n8n/api-types';
 import {
 	HttpResponseSizeLimitError,
 	OutboundHttp,
@@ -26,8 +27,8 @@ import {
 	splitBranchAndPath,
 } from './github-link';
 import { lsRefsRequestBody, parseLsRefsResponse, type GitRefs } from './git-refs';
+import { discoverPluginGroups } from './plugin-discovery';
 import { SKILL_FILE, filesOfSkill, findSkillFolders, isInside } from './skill-discovery';
-import { SkillParseError } from '../../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 import { SkillSourceUrlError } from '../../errors/skill-source-url.error';
@@ -40,6 +41,7 @@ import {
 	type SkillSourceCapabilities,
 	type SkillSourceIdentity,
 	type SkillSourceLocator,
+	type SkillSourceListing,
 	type SkillSourceRepository,
 } from '../skill-source-client';
 
@@ -198,10 +200,7 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		return gitHubTreeUrl(owner, repository, branch, ref ? readRef(ref).path : path);
 	}
 
-	async discover(
-		locator: SkillSourceLocator,
-		auth?: SkillSourceAuth,
-	): Promise<{ items: RemoteSkillRef[]; truncated: boolean; tooDeep: number; revision: string }> {
+	async discover(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<SkillSourceListing> {
 		const parsed = readLocator(locator);
 		const sha = await this.head(parsed, auth);
 		const archive = await this.archiveAt(parsed, sha, auth);
@@ -211,7 +210,27 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		}
 		const { folders, truncated, tooDeep } = findSkillFolders(archive.paths, path);
 		const items = folders.map((folder): GitHubSkillRef => ({ path: folder }));
-		return { items, truncated, tooDeep, revision: sha };
+		const { groups, groupingWarnings, externalPlugins } = discoverPluginGroups(
+			archive,
+			folders,
+			path,
+		);
+		return {
+			items,
+			truncated,
+			tooDeep,
+			revision: sha,
+			...(groups.length > 0
+				? {
+						groups: groups.map(({ paths, ...group }) => ({
+							...group,
+							refs: paths.map((folder) => ({ path: folder })),
+						})),
+					}
+				: {}),
+			...(groupingWarnings.length > 0 ? { groupingWarnings } : {}),
+			...(externalPlugins.length > 0 ? { externalPlugins } : {}),
+		};
 	}
 
 	async fetchLatest(
@@ -227,20 +246,35 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const inRepository = (file: string) => (path ? `${path}/${file}` : file);
 		const skillFile = inRepository(SKILL_FILE);
 		if (archive.oversized.has(skillFile)) {
-			throw new SkillParseError(`The SKILL.md of ${path || '/'} is larger than 1 MB.`);
+			throw new SkillSourceReadError(
+				'over_limit',
+				`The SKILL.md of ${path || '/'} is larger than 1 MB.`,
+			);
 		}
 		if (!archive.text.has(skillFile)) {
 			throw new SkillSourceNotFoundError(`The skill folder ${path || '/'} has no SKILL.md.`);
 		}
-		// A reference over the size limit has no text, so it is skipped, not imported empty.
+		// An oversized reference must not leave the imported skill incomplete.
 		const all = filesOfSkill(archive.paths, path);
+		const included = new Set(all.map(inRepository));
+		const excluded = archive.paths
+			.filter((file) => isInside(file, path) && !included.has(file))
+			.map((file) => (path ? file.slice(path.length + 1) : file));
 		const oversized = all.filter((file) => archive.oversized.has(inRepository(file)));
+		if (oversized.some((file) => agentSkillReferencePathSchema.safeParse(file).success)) {
+			throw new SkillSourceReadError('over_limit', 'A reference is larger than 1 MB.');
+		}
 		const files = all
 			.filter((file) => !archive.oversized.has(inRepository(file)))
 			.map((file) => ({ path: file, content: archive.text.get(inRepository(file)) ?? '' }));
 		const folderName = path.split('/').at(-1) || parsed.repository;
 		const { content, skippedFiles } = readSkillFolder(folderName, files);
-		return { content, revision: sha, fidelity: [], skippedFiles: [...skippedFiles, ...oversized] };
+		return {
+			content,
+			revision: sha,
+			fidelity: [],
+			skippedFiles: [...skippedFiles, ...oversized, ...excluded].sort(),
+		};
 	}
 
 	/**

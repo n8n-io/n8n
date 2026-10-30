@@ -94,7 +94,7 @@ export function isInside(path: string, folder: string): boolean {
 }
 
 /** Every folder above `folder`, the root (empty) first. */
-function ancestorsOf(folder: string): string[] {
+export function ancestorsOf(folder: string): string[] {
 	if (folder === '') return [];
 	const segments = folder.split('/');
 	return segments.map((_, index) => segments.slice(0, index).join('/'));

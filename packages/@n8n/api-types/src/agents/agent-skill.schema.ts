@@ -58,6 +58,7 @@ const agentSkillReferencesSchema = z
 		if (totalLength > AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH) {
 			ctx.addIssue({
 				code: z.ZodIssueCode.custom,
+				params: { reason: 'over_limit' },
 				message: `Reference content must total ${AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH} characters or fewer`,
 			});
 		}

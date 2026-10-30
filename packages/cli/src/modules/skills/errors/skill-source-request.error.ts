@@ -11,6 +11,7 @@ const STATUS: Record<SkillSourceReason, number> = {
 	invalid_url: 400,
 	unsupported_provider: 400,
 	parse_error: 400,
+	over_limit: 422,
 	not_found: 404,
 	no_skills_found: 422,
 	too_many_skills: 422,

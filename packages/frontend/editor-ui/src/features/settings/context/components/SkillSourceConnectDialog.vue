@@ -29,6 +29,7 @@ import {
 	N8nSelect2,
 	N8nTabs,
 	N8nText,
+	N8nTooltip,
 } from '@n8n/design-system';
 import type { ComboboxItem, IconOrEmoji, SelectItem, TabOptions } from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
@@ -566,24 +567,6 @@ function nameTakenReason(skill: DiscoveredSkill): string {
 	});
 }
 
-/** How many skipped paths the list names before it only counts the rest. */
-const SKIPPED_FILES_SHOWN = 3;
-
-function skippedFilesText(skill: DiscoveredSkill): string {
-	const count = skill.skippedFiles.length;
-	const shown = skill.skippedFiles.slice(0, SKIPPED_FILES_SHOWN).join(', ');
-	const files =
-		count > SKIPPED_FILES_SHOWN
-			? i18n.baseText('settings.context.skills.connect.skippedFiles.more', {
-					interpolate: { files: shown, count: count - SKIPPED_FILES_SHOWN },
-				})
-			: shown;
-	return i18n.baseText('settings.context.skills.connect.skippedFiles', {
-		interpolate: { count, files },
-		adjustToNumber: count,
-	});
-}
-
 /**
  * Where the add button puts the skills, with the icon and name that the user knows: the globe for
  * Global, and the project's own icon and name for a project. A project without an icon keeps the
@@ -706,15 +689,82 @@ const pickerTabs = computed<Array<TabOptions<PickerTab>>>(() =>
 	})),
 );
 
-/** A new tab previews its first skill, so the preview is never empty when a tab has skills. */
+/** The preview key of the plugins that live in other repositories. No skill has this key. */
+const EXTERNAL_PLUGINS_KEY = '__external_plugins__';
+
+const externalPlugins = computed(() => discovery.value?.externalPlugins ?? []);
+
+/**
+ * A new tab previews its first skill, so the preview is never empty when a tab has skills. A
+ * source with no skills of its own previews its external plugins instead.
+ */
 function selectTab(tab: PickerTab) {
 	activeTab.value = tab;
-	previewKey.value = skillsByTab.value[tab][0]?.key ?? null;
+	previewKey.value =
+		skillsByTab.value[tab][0]?.key ??
+		(externalPlugins.value.length > 0 ? EXTERNAL_PLUGINS_KEY : null);
 }
 
 const previewSkill = computed(
 	() => discovery.value?.skills.find((skill) => skill.key === previewKey.value) ?? null,
 );
+
+/** A skill that n8n cannot read has no name, so the row names its folder, not the full path. */
+function skillTitle(skill: DiscoveredSkill): string {
+	return skill.name ?? skill.location.split('/').filter(Boolean).pop() ?? skill.location;
+}
+
+type SkillGroup = { id: string; name: string; skills: DiscoveredSkill[] };
+
+/**
+ * The skills of the active tab by plugin, in the order the source lists them. A source without
+ * plugins gives one group with no name, so the list shows no headers. Skills outside every
+ * plugin come last, under "Other skills".
+ */
+const tabGroups = computed<SkillGroup[]>(() => {
+	const skills = skillsByTab.value[activeTab.value];
+	const hasPlugins = discovery.value?.skills.some((skill) => skill.group) ?? false;
+	if (!hasPlugins) return skills.length > 0 ? [{ id: '', name: '', skills }] : [];
+	const groups = new Map<string, SkillGroup>();
+	const other: SkillGroup = {
+		id: '',
+		name: i18n.baseText('settings.context.skills.connect.ungrouped'),
+		skills: [],
+	};
+	for (const skill of skills) {
+		if (!skill.group) {
+			other.skills.push(skill);
+			continue;
+		}
+		const group = groups.get(skill.group.id) ?? { ...skill.group, skills: [] };
+		group.skills.push(skill);
+		groups.set(skill.group.id, group);
+	}
+	return [...groups.values(), ...(other.skills.length > 0 ? [other] : [])];
+});
+
+/** The skills of a group that the user can pick. Blocked skills have no checkbox. */
+function selectableKeys(group: SkillGroup): string[] {
+	return group.skills.filter(isSelectable).map((skill) => skill.key);
+}
+
+function groupState(group: SkillGroup): { checked: boolean; indeterminate: boolean } {
+	const keys = selectableKeys(group);
+	const picked = keys.filter((key) => selected.value.includes(key)).length;
+	return {
+		checked: picked > 0 && picked === keys.length,
+		indeterminate: picked > 0 && picked < keys.length,
+	};
+}
+
+/** Picks every skill of the group, or none when all are already picked. */
+function toggleGroup(group: SkillGroup) {
+	const keys = selectableKeys(group);
+	const allPicked = keys.every((key) => selected.value.includes(key));
+	selected.value = allPicked
+		? selected.value.filter((key) => !keys.includes(key))
+		: [...new Set([...selected.value, ...keys])];
+}
 
 const SEVERITY_ORDER = { blocked: 0, needs_review: 1, info: 2 } as const;
 
@@ -977,57 +1027,137 @@ function unavailableReason(skill: DiscoveredSkill): string {
 		</N8nDialogBody>
 
 		<N8nDialogBody v-else-if="discovery" :class="[$style.body, $style.bodyWithTabs]">
-			<N8nCallout v-if="duplicateMessage" theme="warning" data-test-id="skill-source-duplicate">
+			<N8nCallout
+				v-if="duplicateMessage"
+				theme="warning"
+				slim
+				icon-size="small"
+				data-test-id="skill-source-duplicate"
+			>
 				{{ duplicateMessage }}
+			</N8nCallout>
+			<N8nCallout
+				v-if="discovery.groupingWarnings?.length"
+				theme="warning"
+				slim
+				icon-size="small"
+				data-test-id="skill-source-grouping-warning"
+			>
+				{{ i18n.baseText('settings.context.skills.connect.groupingWarning.title') }}.
+				{{ i18n.baseText('settings.context.skills.connect.groupingWarning.description') }}.
+				<N8nTooltip placement="bottom">
+					<template #content>
+						<p :class="$style.tooltipText">
+							{{ i18n.baseText('settings.context.skills.connect.groupingWarning.details') }}
+						</p>
+						<ul :class="$style.tooltipList">
+							<li v-for="path in discovery.groupingWarnings" :key="path">{{ path }}</li>
+						</ul>
+					</template>
+					<span :class="$style.detailsTrigger" tabindex="0">
+						{{ i18n.baseText('settings.context.skills.connect.viewDetails') }}
+					</span>
+				</N8nTooltip>
 			</N8nCallout>
 			<div :class="$style.picker">
 				<ul :class="$style.list" data-test-id="skill-source-skills">
 					<li
-						v-for="item in skillsByTab[activeTab]"
-						:key="item.key"
+						v-if="discovery.skills.length === 0"
+						:class="$style.listEmpty"
+						data-test-id="skill-source-no-skills"
+					>
+						<N8nText size="small" color="text-light">
+							{{ i18n.baseText('settings.context.skills.connect.noLocalSkills') }}
+						</N8nText>
+					</li>
+					<template v-for="group in tabGroups" :key="group.id || '__other__'">
+						<!-- One checkbox picks every skill of the plugin. -->
+						<li v-if="group.name" :class="$style.groupHeader" data-test-id="skill-source-group">
+							<N8nCheckbox
+								v-if="selectableKeys(group).length > 0"
+								:model-value="groupState(group).checked"
+								:indeterminate="groupState(group).indeterminate"
+								:aria-label="group.name"
+								data-test-id="skill-source-group-checkbox"
+								@update:model-value="toggleGroup(group)"
+							/>
+							<N8nIcon v-else icon="layers" size="small" color="text-light" />
+							<N8nText size="small" bold>{{ group.name }}</N8nText>
+							<N8nText size="small" color="text-light">{{ group.skills.length }}</N8nText>
+						</li>
+						<li
+							v-for="item in group.skills"
+							:key="item.key"
+							:class="[
+								$style.item,
+								previewKey === item.key && $style.itemActive,
+								!isSelectable(item) && $style.disabled,
+							]"
+							role="button"
+							tabindex="0"
+							:aria-pressed="previewKey === item.key"
+							:data-test-id="`skill-source-skill-${item.key}`"
+							@click="previewKey = item.key"
+							@keydown.enter.self.prevent="previewKey = item.key"
+							@keydown.space.self.prevent="previewKey = item.key"
+						>
+							<!-- The checkbox picks the skill. The rest of the row only previews it. -->
+							<span :class="$style.checkboxCell" @click.stop @keydown.stop>
+								<N8nCheckbox
+									:model-value="isSelectable(item) && selected.includes(item.key)"
+									:disabled="!isSelectable(item)"
+									:aria-label="item.name ?? item.location"
+									data-test-id="skill-source-skill-checkbox"
+									@update:model-value="toggle(item.key, $event)"
+								/>
+							</span>
+							<div :class="$style.itemText">
+								<N8nText bold>{{ skillTitle(item) }}</N8nText>
+								<N8nText
+									v-if="item.description"
+									size="small"
+									color="text-light"
+									:class="$style.clamp"
+								>
+									{{ item.description }}
+								</N8nText>
+								<!-- A skill that cannot come in has no checkbox to explain why, so its row says it. -->
+								<N8nText
+									v-if="activeTab === 'unavailable' && unavailableReason(item)"
+									size="small"
+									color="danger"
+									data-test-id="skill-source-skill-reason"
+								>
+									{{ unavailableReason(item) }}
+								</N8nText>
+							</div>
+						</li>
+					</template>
+					<!-- Plugins that live in other repositories: one row, the preview lists them. -->
+					<li
+						v-if="externalPlugins.length > 0"
 						:class="[
 							$style.item,
-							previewKey === item.key && $style.itemActive,
-							!isSelectable(item) && $style.disabled,
+							$style.externalRow,
+							previewKey === EXTERNAL_PLUGINS_KEY && $style.itemActive,
 						]"
 						role="button"
 						tabindex="0"
-						:aria-pressed="previewKey === item.key"
-						:data-test-id="`skill-source-skill-${item.key}`"
-						@click="previewKey = item.key"
-						@keydown.enter.self.prevent="previewKey = item.key"
-						@keydown.space.self.prevent="previewKey = item.key"
+						:aria-pressed="previewKey === EXTERNAL_PLUGINS_KEY"
+						data-test-id="skill-source-external-plugins"
+						@click="previewKey = EXTERNAL_PLUGINS_KEY"
+						@keydown.enter.self.prevent="previewKey = EXTERNAL_PLUGINS_KEY"
+						@keydown.space.self.prevent="previewKey = EXTERNAL_PLUGINS_KEY"
 					>
-						<!-- The checkbox picks the skill. The rest of the row only previews it. -->
-						<span :class="$style.checkboxCell" @click.stop @keydown.stop>
-							<N8nCheckbox
-								:model-value="isSelectable(item) && selected.includes(item.key)"
-								:disabled="!isSelectable(item)"
-								:aria-label="item.name ?? item.location"
-								data-test-id="skill-source-skill-checkbox"
-								@update:model-value="toggle(item.key, $event)"
-							/>
-						</span>
-						<div :class="$style.itemText">
-							<N8nText bold>{{ item.name ?? item.location }}</N8nText>
-							<N8nText
-								v-if="item.description"
-								size="small"
-								color="text-light"
-								:class="$style.clamp"
-							>
-								{{ item.description }}
-							</N8nText>
-							<!-- A skill that cannot come in has no checkbox to explain why, so its row says it. -->
-							<N8nText
-								v-if="activeTab === 'unavailable' && unavailableReason(item)"
-								size="small"
-								color="danger"
-								data-test-id="skill-source-skill-reason"
-							>
-								{{ unavailableReason(item) }}
-							</N8nText>
-						</div>
+						<N8nIcon icon="external-link" size="small" color="text-light" />
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText('settings.context.skills.connect.externalPlugins.count', {
+									interpolate: { count: externalPlugins.length },
+									adjustToNumber: externalPlugins.length,
+								})
+							}}
+						</N8nText>
 					</li>
 				</ul>
 
@@ -1059,14 +1189,6 @@ function unavailableReason(skill: DiscoveredSkill): string {
 						>
 							{{ reasonText(previewSkill.error.reason) }}
 						</N8nCallout>
-						<N8nText
-							v-if="previewSkill.skippedFiles.length > 0"
-							size="small"
-							color="text-light"
-							data-test-id="skill-source-skill-skipped"
-						>
-							{{ skippedFilesText(previewSkill) }}
-						</N8nText>
 						<div
 							v-if="previewFindings.length === 0 && !previewSkill.error && !previewSkill.nameTaken"
 							:class="$style.noIssues"
@@ -1110,6 +1232,47 @@ function unavailableReason(skill: DiscoveredSkill): string {
 									v-if="row.isMatch"
 									:class="[$style.mark, $style[`mark-${finding.severity}`]]"
 								>{{ row.match }}</mark>{{ row.after }}</span></span></code></pre>
+							</li>
+						</ul>
+						<div
+							v-if="previewSkill.skippedFiles.length > 0"
+							:class="$style.skipped"
+							data-test-id="skill-source-skill-skipped"
+						>
+							<N8nCallout theme="info" icon="file-minus" icon-size="small" slim>
+								{{
+									i18n.baseText('settings.context.skills.connect.skippedFiles.count', {
+										interpolate: { count: previewSkill.skippedFiles.length },
+										adjustToNumber: previewSkill.skippedFiles.length,
+									})
+								}}. {{ i18n.baseText('settings.context.skills.connect.skippedFiles.hint') }}.
+							</N8nCallout>
+							<ul :class="$style.pathList">
+								<li v-for="path in previewSkill.skippedFiles" :key="path">{{ path }}</li>
+							</ul>
+						</div>
+					</template>
+					<template v-else-if="previewKey === EXTERNAL_PLUGINS_KEY">
+						<div :class="$style.previewHeader">
+							<div :class="$style.previewPath">
+								<N8nIcon icon="external-link" size="medium" color="text-light" />
+								<N8nText size="medium" color="text-light">
+									{{ i18n.baseText('settings.context.skills.connect.externalPlugins') }}
+								</N8nText>
+							</div>
+						</div>
+						<N8nCallout theme="info" icon-size="small" slim>
+							{{ i18n.baseText('settings.context.skills.connect.externalPluginHint') }}.
+						</N8nCallout>
+						<ul :class="$style.externalList" data-test-id="skill-source-external-plugin-list">
+							<li
+								v-for="(plugin, index) in externalPlugins"
+								:key="`${plugin.manifestPath}:${index}`"
+							>
+								<N8nText size="small" bold>{{ plugin.name }}</N8nText>
+								<N8nText size="small" color="text-light" :class="$style.mono">
+									{{ plugin.manifestPath }}
+								</N8nText>
 							</li>
 						</ul>
 					</template>
@@ -1466,6 +1629,77 @@ function unavailableReason(skill: DiscoveredSkill): string {
 }
 
 /* The footer stretches its items to the button height, so the checkbox centres itself. */
+.groupHeader {
+	position: sticky;
+	top: 0;
+	z-index: 1;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	padding: var(--spacing--2xs) var(--spacing--sm);
+	background-color: var(--background--surface);
+	border-bottom: var(--border);
+
+	/* A second plugin starts with a line above, so the groups read apart. */
+	.item + & {
+		border-top: var(--border);
+	}
+}
+
+.listEmpty {
+	padding: var(--spacing--sm);
+}
+
+.externalRow {
+	align-items: center;
+	border-top: var(--border);
+}
+
+.skipped {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.pathList,
+.tooltipList {
+	margin: 0;
+	padding-inline-start: var(--spacing--sm);
+	font-family: var(--font-family--monospace);
+	font-size: var(--font-size--2xs);
+	color: var(--text-color--subtle);
+	overflow-wrap: anywhere;
+}
+
+.externalList {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+
+	li {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing--5xs);
+	}
+}
+
+.mono {
+	font-family: var(--font-family--monospace);
+	overflow-wrap: anywhere;
+}
+
+.tooltipText {
+	margin: 0 0 var(--spacing--3xs);
+}
+
+.detailsTrigger {
+	text-decoration: underline;
+	cursor: help;
+}
+
 .reviewed {
 	align-self: center;
 	margin-inline-end: var(--spacing--xs);

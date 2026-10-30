@@ -80,6 +80,23 @@ describe('readRepositoryArchive', () => {
 		expect(abort).toHaveBeenCalledTimes(1);
 	});
 
+	it('retains manifests inside the selected folder only', async () => {
+		const archive = await readRepositoryArchive(
+			streamOf(
+				archiveOf({
+					'.claude-plugin/marketplace.json': 'outside',
+					'plugins/a/.claude-plugin/plugin.json': 'claude',
+					'plugins/a/.cursor-plugin/marketplace.json': 'cursor',
+					'plugins/a/plugin.json': 'standard',
+					'plugins/a/hooks/hooks.json': 'hooks',
+				}),
+			),
+			{ root: 'plugins/a' },
+		);
+		expect([...archive.text.values()]).toEqual(['claude', 'cursor', 'standard']);
+		expect(archive.paths).not.toContain('.claude-plugin/marketplace.json');
+	});
+
 	it('stops reading the archive once its files are over the uncompressed size', async () => {
 		const limits = { ...DEFAULT_ARCHIVE_LIMITS, maxUncompressedBytes: 1000 };
 

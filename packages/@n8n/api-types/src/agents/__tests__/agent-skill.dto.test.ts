@@ -2,6 +2,7 @@ import {
 	AGENT_SKILL_INSTRUCTIONS_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_CONTENT_MAX_LENGTH,
 	AGENT_SKILL_REFERENCE_MAX_COUNT,
+	AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH,
 	agentSkillReferencePathSchema,
 	agentSkillSchema,
 } from '../agent-skill.schema';
@@ -139,6 +140,26 @@ describe('agent skill DTOs', () => {
 				})),
 			}).success,
 		).toBe(false);
+	});
+
+	it('identifies a combined reference size limit without parsing the message', () => {
+		const result = agentSkillSchema.safeParse({
+			...validSkill,
+			references: Array.from({ length: 5 }, (_, index) => ({
+				path: `references/${index}.md`,
+				content: 'x'.repeat(Math.ceil(AGENT_SKILL_REFERENCES_TOTAL_MAX_LENGTH / 5)),
+			})),
+		});
+		expect(result.success).toBe(false);
+		if (!result.success) {
+			expect(result.error.issues).toEqual([
+				expect.objectContaining({
+					code: 'custom',
+					params: { reason: 'over_limit' },
+					path: ['references'],
+				}),
+			]);
+		}
 	});
 
 	it.each(['', '   ', '\n\t'])('rejects instructions %j without text', (instructions) => {

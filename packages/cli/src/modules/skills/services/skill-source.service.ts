@@ -14,6 +14,7 @@ import {
 	type ListSkillSourceRepositoriesQueryDto,
 	type SkillSourceCredentialOption,
 	type SkillSourceRepositoryList,
+	type SkillSourceGroup,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -43,6 +44,7 @@ import {
 	type SkillSourceAuth,
 	type SkillSourceClient,
 	type SkillSourceLocator,
+	type SkillSourceListing,
 } from '../sources/skill-source-client';
 import { contentToAgentSkill, toSkillContent, type SkillTarget } from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
@@ -81,6 +83,9 @@ type ParsedSource = {
 /** The skills of a source at one revision. */
 type Discovered = {
 	refs: RemoteSkillRef[];
+	groups: Map<string, SkillSourceGroup>;
+	groupingWarnings: string[];
+	externalPlugins: NonNullable<SkillSourceListing['externalPlugins']>;
 	truncated: boolean;
 	/** Skills that the client did not list, as they are too deep in the source. */
 	tooDeep: number;
@@ -170,10 +175,17 @@ export class SkillSourceService {
 						error: read.error ?? null,
 						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
+						...(discovered.groups.has(read.key) ? { group: discovered.groups.get(read.key) } : {}),
 					}),
 				),
 				truncated: discovered.truncated,
 				tooDeep: discovered.tooDeep,
+				...(discovered.groupingWarnings.length > 0
+					? { groupingWarnings: discovered.groupingWarnings }
+					: {}),
+				...(discovered.externalPlugins.length > 0
+					? { externalPlugins: discovered.externalPlugins }
+					: {}),
 			};
 		} catch (error) {
 			await this.skillsTelemetry.connectedSource(
@@ -564,6 +576,9 @@ export class SkillSourceService {
 
 	private async discoverAll(source: ParsedSource): Promise<Discovered> {
 		const refs: RemoteSkillRef[] = [];
+		const groups = new Map<string, SkillSourceGroup>();
+		const groupingWarnings: string[] = [];
+		const externalPlugins: NonNullable<SkillSourceListing['externalPlugins']> = [];
 		let truncated = false;
 		let tooDeep = 0;
 		let revision: string | undefined;
@@ -572,6 +587,11 @@ export class SkillSourceService {
 			do {
 				const page = await source.client.discover(source.locator, source.auth, cursor);
 				refs.push(...page.items);
+				for (const { refs: groupedRefs, ...group } of page.groups ?? []) {
+					for (const ref of groupedRefs) groups.set(refKey(ref), group);
+				}
+				groupingWarnings.push(...(page.groupingWarnings ?? []));
+				externalPlugins.push(...(page.externalPlugins ?? []));
 				truncated ||= page.truncated === true;
 				tooDeep += page.tooDeep ?? 0;
 				revision ??= page.revision;
@@ -580,7 +600,7 @@ export class SkillSourceService {
 		} catch (error) {
 			throw toSkillSourceRequestError(error);
 		}
-		if (refs.length === 0) {
+		if (refs.length === 0 && externalPlugins.length === 0 && groupingWarnings.length === 0) {
 			if (tooDeep > 0) {
 				throw new SkillSourceRequestError(
 					'too_deep',
@@ -592,7 +612,7 @@ export class SkillSourceService {
 				'n8n found no skills here. A skill is a folder with a SKILL.md file.',
 			);
 		}
-		return { refs, truncated, tooDeep, revision };
+		return { refs, truncated, tooDeep, revision, groups, groupingWarnings, externalPlugins };
 	}
 
 	/**
@@ -623,7 +643,7 @@ export class SkillSourceService {
 			fetched = await source.client.fetchLatest(source.locator, ref, source.auth, revision);
 		} catch (error) {
 			const reason = skillSourceReasonOf(error);
-			if (reason !== 'parse_error' && reason !== 'not_found') {
+			if (reason !== 'parse_error' && reason !== 'not_found' && reason !== 'over_limit') {
 				throw toSkillSourceRequestError(error);
 			}
 			return {

@@ -2,6 +2,7 @@ import type { Readable } from 'node:stream';
 import { Parser, type ReadEntry } from 'tar';
 
 import { isInside } from './skill-discovery';
+import { isPluginManifest } from './plugin-discovery';
 import { SkillSourceReadError } from '../../errors/skill-source-read.error';
 
 export type ArchiveLimits = {
@@ -27,8 +28,7 @@ export const DEFAULT_ARCHIVE_LIMITS: ArchiveLimits = {
 
 /**
  * The files of a repository folder at one commit. Every file keeps its path, so the picker can
- * list the files that an import skips. Only the files that can become skill content keep their
- * text: SKILL.md files and markdown under a `references` folder.
+ * list the files that an import skips. Skill Markdown and plugin manifests keep their text. Other files keep only their paths.
  */
 export type RepositoryArchive = {
 	paths: string[];
@@ -175,6 +175,6 @@ function withoutTopFolder(path: string): string | undefined {
 function keepsText(path: string): boolean {
 	const segments = path.split('/');
 	const name = segments.at(-1) ?? '';
-	if (name === 'SKILL.md') return true;
+	if (name === 'SKILL.md' || isPluginManifest(path)) return true;
 	return segments.includes('references') && /\.(md|markdown)$/i.test(name);
 }
