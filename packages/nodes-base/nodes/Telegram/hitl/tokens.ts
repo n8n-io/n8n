@@ -1,4 +1,5 @@
 import { createHmac } from 'crypto';
+import { UserError } from 'n8n-workflow';
 
 /**
  * Derives the `secret_token` registered with Telegram's `setWebhook` for HITL
@@ -21,6 +22,8 @@ import { createHmac } from 'crypto';
  * stays untouched.
  */
 export function deriveHitlSecretToken(accessToken: string): string {
+	// An empty key would make the value computable by anyone. Fail closed.
+	if (!accessToken) throw new UserError('The Telegram credential has no access token');
 	const botId = accessToken.split(':')[0];
 
 	// Telegram's secret_token accepts 1-256 chars of A-Za-z0-9_-, exactly the

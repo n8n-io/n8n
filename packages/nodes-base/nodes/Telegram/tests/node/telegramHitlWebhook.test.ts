@@ -163,6 +163,20 @@ describe('telegramSendAndWaitWebhook', () => {
 		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
 	});
 
+	it('fails closed when the credential has no access token', async () => {
+		webhookFns.getCredentials.mockResolvedValue({ accessToken: '' });
+		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
+		webhookFns.getNodeParameter.mockImplementation((name: unknown) =>
+			name === 'chatApproval' ? true : undefined,
+		);
+		webhookFns.getHeaderData.mockReturnValue({ 'x-telegram-bot-api-secret-token': '' });
+
+		await expect(telegramSendAndWaitWebhook.call(webhookFns)).rejects.toThrow(
+			'The Telegram credential has no access token',
+		);
+		expect(genericFunctions.apiRequest).not.toHaveBeenCalled();
+	});
+
 	it('responds 403 and does not resume when the secret-token header is wrong', async () => {
 		webhookFns.getBodyData.mockReturnValue(makeCallbackQueryBody());
 		webhookFns.getNodeParameter.mockImplementation((name: unknown) =>
