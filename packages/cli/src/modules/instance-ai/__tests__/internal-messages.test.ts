@@ -126,7 +126,7 @@ describe('cleanStoredUserMessage', () => {
 	it('hides the whole cloud browser follow-up message', () => {
 		const stored = [
 			'<cloud-browser-task-completed>',
-			'Cloud browser tasks that ended. This is an automated report, not a message from the user.',
+			'Virtual browser tasks that ended. This is an automated report, not a message from the user.',
 			'<task taskId="task_1" outcome="succeeded">',
 			'Title: Find the price',
 			wrapUntrustedData('$20 a month', 'cloud-browser'),
