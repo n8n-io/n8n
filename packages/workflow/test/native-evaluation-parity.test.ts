@@ -874,6 +874,46 @@ describe('Expression - fast native evaluation parity', () => {
 		expect(evaluate(expr, true, data, items)).toStrictEqual(evaluate(expr, false, data, items));
 	});
 
+	// CET-573: a Data Table row filter resolves `{{ ($('Node').first().json.count || -1) }}`
+	// over a node output that can hold an Error object.
+	test.each([
+		['at the item root', { json: { count: 3 }, error: new Error('boom') }],
+		['under json.error', { json: { count: 3, error: new Error('boom') } }],
+	])('a node reference with a || fallback over an Error %s matches the engine', (_, source) => {
+		const items = [{ ...source, pairedItem: { item: 0 } }] as unknown as Array<
+			ReturnType<typeof makeItem>
+		>;
+		const data = runDataFor(items);
+		const expr = "={{ ($('Source').first().json.count || -1) }}";
+
+		expect(evaluate(expr, false, data, items)).toBe(3);
+		expect(evaluate(expr, true, data, items)).toBe(3);
+	});
+
+	// CET-574: a declarative node reads a parameter through `$parameter`, and that
+	// parameter resolves `{{ ($('Node').first().json.name ?? 'fallback') }}` in a nested
+	// evaluation over a node output that can hold an Error object.
+	test.each([
+		['at the item root', { json: { name: 'Acme' }, error: new Error('boom') }],
+		['under json.error', { json: { name: 'Acme', error: new Error('boom') } }],
+	])(
+		'a nested $parameter read with a ?? fallback over an Error %s matches the engine',
+		(_, source) => {
+			const items = [{ ...source, pairedItem: { item: 0 } }] as unknown as Array<
+				ReturnType<typeof makeItem>
+			>;
+			const data = runDataFor(items);
+			const { parameters } = workflow.getNode('Current')!;
+			parameters.nested = "={{ ($('Source').first().json.name ?? 'fallback') }}";
+			try {
+				expect(evaluate('={{ $parameter.nested }}', false, data, items)).toBe('Acme');
+				expect(evaluate('={{ $parameter.nested }}', true, data, items)).toBe('Acme');
+			} finally {
+				delete parameters.nested;
+			}
+		},
+	);
+
 	// extendSyntax rewrites calls to extension-named methods into extend()
 	// dispatch; native evaluation calls natives directly, so its allowlist
 	// must never contain an extension name.
