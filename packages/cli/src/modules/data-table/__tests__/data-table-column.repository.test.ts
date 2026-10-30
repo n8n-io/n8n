@@ -6,7 +6,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
-import type { DataTableDDLService } from '../data-table-ddl.service';
+import type { DataTableDDLService } from '../persistence/data-table-ddl';
 import { DataTable } from '../data-table.entity';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';

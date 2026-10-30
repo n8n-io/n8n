@@ -1,3 +1,4 @@
+import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -50,18 +51,40 @@ const skillProjectId = z
 		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
 	);
 
-/** The surface that wrote the skill. Kept apart from `skill.source`, which stores no MCP value. */
+/**
+ * The surface that wrote the skill: the values of `skill.source` without `import`, as a
+ * package import reports no skill telemetry.
+ */
 const skillSource = z
-	.enum(['ui', 'agent', 'mcp', 'assistant'])
+	.enum(['ui', 'agent', 'mcp', 'assistant', 'github'])
 	.describe(
-		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder',
+		'`ui` is the Skills settings page. `agent` is the agent builder: a person in its skill modal, or n8n Assistant when it builds the agent. `mcp` is an MCP client. `assistant` is n8n Assistant outside the agent builder. `github` is Skill Sync from a GitHub source',
 	);
 
 /** Whether a person or an assistant wrote the text. */
 const skillMethod = z
-	.enum(['manual', 'upload', 'ai'])
+	.enum(['manual', 'upload', 'ai', 'sync'])
 	.describe(
-		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. Filter out `ai` to count the skills people write by hand',
+		'`manual` is text typed in the skill modal. `upload` is a SKILL.md file or folder parsed in the browser. `ai` is text that n8n Assistant or an MCP client wrote. `sync` is a skill that Skill Sync imported from a source. Count only `manual` and `upload` for the skills people write by hand',
+	);
+
+/** The type of a Skill Sync source. */
+const skillSourceProvider = z.enum(['github']).describe('The type of the source, such as GitHub');
+
+/** Where a source puts its skills. */
+const skillSourceScopeType = z
+	.enum(['global', 'team', 'personal'])
+	.describe('The scope of the source: Global, a team project, or a personal project');
+
+const skillSourceStatus = z
+	.enum(['success', 'failure'])
+	.describe('Whether the action succeeded. A failure carries a reason code');
+
+const skillSourceReason = z
+	.enum([...SKILL_SOURCE_REASONS, 'unexpected'])
+	.optional()
+	.describe(
+		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. `unexpected` is a failure with no known reason. A success carries only `too_many_skills` or `too_deep`, when the source had skills that n8n did not list. Absent on other successes',
 	);
 
 const preferenceExampleId = z
@@ -408,6 +431,90 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			file: z
 				.enum(['skill_md', 'reference'])
 				.describe('`skill_md` is the SKILL.md file. `reference` is a file under `references/`'),
+		}),
+	},
+	USER_CONNECTED_SKILL_SOURCE: {
+		name: 'User connected skill source',
+		description:
+			'A user connected a source, such as a GitHub repository, to sync skills into one scope. Fires once per connect request, also when it fails, with the reason code. Also fires as a failure when reading the link for the picker fails or finds the source already connected (`duplicate_result: blocked`). The skills it imported are reported by `User imported skills from source`.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			access: z
+				.enum(['public', 'credential'])
+				.describe('`public` reads a public source without a credential'),
+			scope_type: skillSourceScopeType,
+			duplicate_result: z
+				.enum(['none', 'warning', 'blocked'])
+				.describe(
+					'Whether the same source is in another scope the user can see (`warning`), or in Global or this scope (`blocked`)',
+				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	USER_IMPORTED_SKILLS_FROM_SOURCE: {
+		name: 'User imported skills from source',
+		description:
+			'A user imported skills from a source. Fires once the import commits, also when it imported nothing, with the reason code. Counts only, never names or content.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			scope_type: skillSourceScopeType,
+			first_or_more: z
+				.enum(['first', 'more'])
+				.describe('`first` is the import of a new connect. `more` adds skills to a source'),
+			selected: z.number().describe('Skills the user picked'),
+			imported: z.number().describe('Skills that came in'),
+			name_taken: z
+				.number()
+				.describe('Picked skills that did not come in, as the scope had the name'),
+			blocked: z
+				.number()
+				.describe('Picked skills that did not come in, as the security check blocked them'),
+			needs_review: z
+				.number()
+				.describe(
+					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
+				),
+			skipped_files: z.number().describe('Files of the imported skills that the import left out'),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
+		name: 'Skill source check flagged skill',
+		description:
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. Counts rule codes only, never names, files or content.',
+		properties: z.object({
+			user_id: z
+				.string()
+				.optional()
+				.describe('The user who read the link. Absent for a check that runs in the background'),
+			provider: skillSourceProvider,
+			stage: z
+				.enum(['import', 'update'])
+				.describe('`import` is the picker of a connect. `update` is a new version from the source'),
+			verdict: z
+				.enum(['needs_review', 'blocked'])
+				.describe(
+					'`needs_review` imports only after the user ticks "I reviewed the warnings". `blocked` cannot come in',
+				),
+			rule_codes: z
+				.array(z.enum(SKILL_SCAN_RULES))
+				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+		}),
+	},
+	USER_STOPPED_SKILL_SYNC: {
+		name: 'User stopped skill sync',
+		description:
+			'A user stopped syncing one synced skill. The skill keeps its versions and becomes a normal skill that n8n can edit. Fires once the link is removed.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			had_pending_update: z
+				.boolean()
+				.describe('Whether an update from the source waited for review. Stop syncing drops it'),
 		}),
 	},
 	USER_DELETED_SKILL: {

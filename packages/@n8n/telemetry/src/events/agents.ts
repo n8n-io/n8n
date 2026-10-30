@@ -388,6 +388,84 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 				.describe(
 					'Vector store searches that failed. Each one also counts in vector_store_search_count',
 				),
+			file_age_days_min: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the newest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
+			file_age_days_max: z
+				.number()
+				.optional()
+				.describe(
+					'Age in full days, when the run ends, of the oldest knowledge file that read_file read successfully. Absent when the run read no file.',
+				),
+			file_age_days_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average age in full days of the knowledge files that read_file read successfully, with one decimal. Each file counts once, also when the run read it more than once. Absent when the run read no file.',
+				),
+			file_age_days_median: z
+				.number()
+				.optional()
+				.describe(
+					'Median age of the knowledge files that read_file read successfully. Each file counts once, and each age is in full days. With an even number of files, the median is the average of the two middle ages, so it can end in .5. Absent when the run read no file.',
+				),
+			file_age_days_first_25: z
+				.array(z.number())
+				.optional()
+				.describe(
+					'Ages in full days of the first 25 different knowledge files that read_file read successfully, in the order of their first read. Absent when the run read no file.',
+				),
+			file_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the finished search_text calls, failed ones included. Includes sandbox start and file copy. Absent when no call finished.',
+				),
+			file_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest finished search_text call. Absent when no call finished.',
+				),
+			file_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'Finished search_text calls that worked and found nothing. Absent when no call finished.',
+				),
+			file_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed search_text calls, each name once. Absent when no call finished.',
+				),
+			vector_store_search_duration_ms_avg: z
+				.number()
+				.optional()
+				.describe(
+					'Average duration of the finished vector store searches, failed ones included. Absent when no search finished.',
+				),
+			vector_store_search_duration_ms_max: z
+				.number()
+				.optional()
+				.describe(
+					'Duration of the slowest finished vector store search. Absent when no search finished.',
+				),
+			vector_store_empty_search_count: z
+				.number()
+				.optional()
+				.describe(
+					'Finished vector store searches that worked and found nothing. Absent when no search finished.',
+				),
+			vector_store_error_types: z
+				.array(z.string())
+				.optional()
+				.describe(
+					'Error names of the failed vector store searches, each name once. Absent when no search finished.',
+				),
 		}),
 	},
 	AGENT_EXECUTION_COUNT: {
@@ -687,7 +765,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	BUILDER_ASKED_QUESTIONS: {
 		name: 'Builder asked questions',
 		description:
-			'The Instance AI builder used the agent_builder_ask_questions tool and suspended, showing the user a batch of questions to determine the shape of the agent.',
+			'The Instance AI builder showed the questions step of agent_builder_finish_setup. Before Oct 2026 it also fired for the retired agent_builder_ask_questions tool.',
 		properties: z.object({
 			...builderSessionIdentity,
 			question_count: z.number(),
@@ -697,7 +775,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 	USER_ANSWERED_BUILDER_QUESTIONS: {
 		name: 'User answered builder questions',
 		description:
-			'The user resumed a builder agent_builder_ask_questions card by answering, skipping, or dismissing it.',
+			'The user answered, skipped, or dismissed the questions step of agent_builder_finish_setup. Before Oct 2026 it also fired for the retired agent_builder_ask_questions tool.',
 		properties: z.object({
 			...builderSessionIdentity,
 			outcome: z.enum(['answered', 'skipped', 'dismissed']),
@@ -900,6 +978,7 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 					'user',
 					'agent',
 					'skill',
+					'memory',
 					'tool',
 					'node',
 					'workflow',

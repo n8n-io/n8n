@@ -46,6 +46,10 @@ vi.mock('@n8n/ai-utilities', () => ({
 	braveSearch: vi.fn(),
 	searxngSearch: vi.fn(),
 }));
+vi.mock('@/utils/ai-proxy-fetch', () => ({
+	createAiProxyFetch: vi.fn(() => vi.fn()),
+	createWebSearchFetch: vi.fn(() => vi.fn()),
+}));
 
 import type { PolicyCleared } from '@n8n/decorators';
 import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
@@ -1974,6 +1978,7 @@ import type { License } from '@/license';
 
 import type { OutboundHttp } from '@n8n/backend-network';
 import { ModuleRegistry } from '@n8n/backend-common';
+import { EngineConfig } from '@n8n/config';
 import type {
 	InstanceAiBuilderDelegate,
 	InstanceAiSkillService,
@@ -1983,6 +1988,7 @@ import type {
 import { InstanceAiAdapterService } from '../instance-ai.adapter.service';
 import { InstanceAiBuilderDelegateAdapterService } from '../instance-ai-builder-delegate.adapter';
 import { InstanceAiSkillsAdapterService } from '../instance-ai-skills.adapter';
+import { SkillsGate } from '@/modules/skills';
 import type { TemporaryWorkflowMarkers } from '../temporary-workflow-markers';
 import { AgentsBuilderService } from '@/modules/agents/builder/agents-builder.service';
 import type { AgentCredentialProvider } from '@/modules/agents/agent-credential-provider.contracts';
@@ -2210,6 +2216,7 @@ describe('web-search provider selection', () => {
 			'BSA-key',
 			'quakes',
 			expect.objectContaining({ maxResults: 3 }),
+			expect.any(Function),
 		);
 		expect(searxngSearch).not.toHaveBeenCalled();
 	});
@@ -2232,7 +2239,12 @@ describe('web-search provider selection', () => {
 	it('falls back to SearXNG when only a URL is set', async () => {
 		await buildSearch({ searxngUrl: 'http://searxng:8080' })!('quakes');
 
-		expect(searxngSearch).toHaveBeenCalledWith('http://searxng:8080', 'quakes', expect.anything());
+		expect(searxngSearch).toHaveBeenCalledWith(
+			'http://searxng:8080',
+			'quakes',
+			expect.anything(),
+			expect.any(Function),
+		);
 		expect(braveSearch).not.toHaveBeenCalled();
 	});
 });
@@ -4376,6 +4388,7 @@ describe('createWorkflowAdapter', () => {
 	it('defaults executionOrder to v1 when the SDK workflow declares no settings', async () => {
 		// Regression: the SDK omits the settings argument when empty, so AI-authored
 		// workflows persisted with `{}` and ran on legacy v0.
+		Container.get(EngineConfig).defaultType = 'v1';
 		const { adapter, mockWorkflowRepository, mockWorkflowService } =
 			createWorkflowAdapterForTests();
 
@@ -4394,6 +4407,7 @@ describe('createWorkflowAdapter', () => {
 	});
 
 	it('keeps an explicit executionOrder from the SDK workflow', async () => {
+		Container.get(EngineConfig).defaultType = 'v1';
 		const { adapter, mockWorkflowService } = createWorkflowAdapterForTests();
 
 		await adapter.createFromWorkflowJSON({
@@ -4407,6 +4421,65 @@ describe('createWorkflowAdapter', () => {
 			expect.anything(),
 			expect.anything(),
 		);
+	});
+
+	describe('default engine', () => {
+		const withEngine = (engineType: 'v1' | 'v2') =>
+			({ ...minimalWorkflowJSON, settings: { engineType } }) as unknown as WorkflowJSON;
+
+		const activateEngineV2Module = () =>
+			vi
+				.spyOn(Container.get(ModuleRegistry), 'isActive')
+				.mockImplementation((name) => name === 'engine-v2');
+
+		afterEach(() => {
+			Container.get(EngineConfig).defaultType = 'v1';
+			vi.restoreAllMocks();
+		});
+
+		it('saves a workflow without an engine on v2 when the default is v2 and the module is active', async () => {
+			Container.get(EngineConfig).defaultType = 'v2';
+			activateEngineV2Module();
+			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v2' } }),
+			);
+		});
+
+		it.each([
+			{ engineType: 'v1' as const, defaultType: 'v2' as const },
+			{ engineType: 'v2' as const, defaultType: 'v1' as const },
+		])(
+			'keeps an explicit $engineType when the default is $defaultType',
+			async ({ engineType, defaultType }) => {
+				Container.get(EngineConfig).defaultType = defaultType;
+				activateEngineV2Module();
+				const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+				await adapter.createFromWorkflowJSON(withEngine(engineType));
+
+				expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+					1,
+					expect.objectContaining({ settings: { executionOrder: 'v1', engineType } }),
+				);
+			},
+		);
+
+		it('writes no engine when the default is v2 but the module is not active', async () => {
+			Container.get(EngineConfig).defaultType = 'v2';
+			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ settings: { executionOrder: 'v1' } }),
+			);
+		});
 	});
 
 	describe('execution timeout', () => {
@@ -9145,31 +9218,32 @@ describe('createContext — skill service wiring', () => {
 
 	it.each([
 		{
-			name: 'wires skills when the agents module is active',
-			moduleActive: true,
+			name: 'wires skills when the skills gate is on',
+			skillsEnabled: true,
 			agentsEnabled: true,
 			expected: true,
 		},
 		{
 			name: 'wires skills when Settings > Agents is off',
-			moduleActive: true,
+			skillsEnabled: true,
 			agentsEnabled: false,
 			expected: true,
 		},
 		{
-			name: 'omits skills when the agents module is inactive',
-			moduleActive: false,
+			name: 'omits skills when the skills gate is off',
+			skillsEnabled: false,
 			agentsEnabled: true,
 			expected: false,
 		},
-	])('$name', ({ moduleActive, agentsEnabled, expected }) => {
+	])('$name', ({ skillsEnabled, agentsEnabled, expected }) => {
 		const skillService = mock<InstanceAiSkillService>();
 		const moduleRegistry = {
-			isActive: vi.fn().mockReturnValue(moduleActive),
+			isActive: vi.fn().mockReturnValue(true),
 			settings: new Map([['agents', { enabled: agentsEnabled }]]),
 		};
 		vi.spyOn(Container, 'get').mockImplementation((token: unknown) => {
 			if (token === ModuleRegistry) return moduleRegistry;
+			if (token === SkillsGate) return { isEnabled: skillsEnabled };
 			if (token === InstanceAiSkillsAdapterService) {
 				return { createService: vi.fn().mockReturnValue(skillService) };
 			}
@@ -9194,6 +9268,7 @@ describe('createContext — skill service wiring', () => {
 						settings: new Map([['agents', { enabled: true }]]),
 					};
 				}
+				if (token === SkillsGate) return { isEnabled: true };
 				if (token === InstanceAiSkillsAdapterService) return { createService };
 				if (token === InstanceAiBuilderDelegateAdapterService) return { createDelegate: vi.fn() };
 				throw new Error(`Unexpected Container.get call in test: ${String(token)}`);

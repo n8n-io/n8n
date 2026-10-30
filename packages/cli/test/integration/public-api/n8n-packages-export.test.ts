@@ -260,6 +260,7 @@ describe('POST /n8n-packages/export', () => {
 				id: workflow.id,
 				name: 'Daily Report',
 				target: `projects/${segment}/workflows/daily-report-${workflow.id}`,
+				isArchived: false,
 			},
 		]);
 		expect(await reader.listEntries()).toEqual(

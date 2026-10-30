@@ -40,7 +40,7 @@ import { AgentSkillRefsService } from '@/modules/agents/agent-skill-refs.service
 import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
-import { registerSkillAgentsProvider } from '@/modules/agents/register-skill-agents-provider';
+import { registerSkillUsage } from '@/modules/agents/register-skill-usage';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
@@ -56,8 +56,8 @@ import {
 import { streamToBuffer } from '@/modules/n8n-packages/__tests__/utils/tar-support';
 import { TarPackageWriter } from '@/modules/n8n-packages/io/tar/tar-package-writer';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
-import { SkillRepository } from '@/modules/skills/skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import { createSkill, toSkillContent } from '@/modules/skills/testing';
+import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { Telemetry } from '@/telemetry';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -90,7 +90,7 @@ let agents: AgentRepository;
 let tasks: AgentTaskRepository;
 
 beforeAll(async () => {
-	registerSkillAgentsProvider();
+	registerSkillUsage();
 	agents = Container.get(AgentRepository);
 	tasks = Container.get(AgentTaskRepository);
 	Container.get(InstanceSettings).markAsLeader();
@@ -116,7 +116,6 @@ beforeEach(async () => {
 	for (const [index, entry] of fixture.manifest.agents.entries()) {
 		const {
 			config,
-			skills,
 			tasks: taskDefinitions,
 			...definition
 		} = serializedAgentSchema.parse(fixture.files[`${entry.target}/agent.json`]);
@@ -134,21 +133,17 @@ beforeEach(async () => {
 				subAgents: { agents: [{ agentId: fixture.manifest.agents[1 - index].id }] },
 			}),
 		});
-		for (const [id, skill] of Object.entries(skills)) {
-			await Container.get(SkillRepository).createSkill(
-				{
-					id,
-					target: { projectId: null, agentId: agent.id },
-					source: 'agent',
-					createdById: owner.id,
-				},
-				toSkillContent(skill),
-			);
-		}
-		await Container.get(AgentSkillRepository).replaceDependencies(
-			agent.id,
-			Object.keys(skills).map((skillId) => ({ skillId })),
-		);
+		const skill = serializedSkillSchema.parse(fixture.files[`skills/${entry.id}_skill/skill.json`]);
+		await createSkill({
+			id: skill.id,
+			agentId: agent.id,
+			source: 'agent',
+			createdById: owner.id,
+			content: toSkillContent(skill.skill, skill.frontmatter),
+		});
+		await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [
+			{ skillId: skill.id },
+		]);
 		await tasks.save(
 			Object.entries(taskDefinitions).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
 		);
@@ -272,6 +267,15 @@ it.each(['loose', 'project'] as const)(
 			await agents.save(sourceAgents[0]);
 			bindings = JSON.stringify({ credentials: { [sourceCredential.id]: targetCredential.id } });
 		}
+		const slackSettings = { messagingExperience: 'agent', onlyRespondWhenMentioned: true } as const;
+		const sourceSlack = await createCredentials(
+			{ name: 'Source Slack', type: 'slackApi', data: '' },
+			sourceProject,
+		);
+		sourceAgents[0].integrations = [
+			{ type: 'slack', credentialId: sourceSlack.id, settings: slackSettings },
+		];
+		await agents.save(sourceAgents[0]);
 		const archive = await download(
 			shape === 'project' ? { projectIds: [sourceProject.id] } : undefined,
 		);
@@ -304,6 +308,17 @@ it.each(['loose', 'project'] as const)(
 				activeVersionId: null,
 				status: 'created',
 				publishing: { state: 'unchanged' },
+				channels:
+					index === 0
+						? [
+								{
+									type: 'slack',
+									status: 'setup-required',
+									reason: 'new-channel',
+									setupUrl: expect.stringContaining(`/projects/${projectId}/agents/${localId}`),
+								},
+							]
+						: [],
 			});
 			const saved = await agents.findById(localId);
 			expect(saved).toMatchObject({
@@ -315,6 +330,18 @@ it.each(['loose', 'project'] as const)(
 					subAgents: { agents: [{ agentId: result.bindings.agents[sourceAgents[1 - index].id] }] },
 				},
 			});
+			// The channel settings travel; the source credential does not connect the channel.
+			expect(saved!.integrations).toEqual(
+				index === 0 ? [{ type: 'slack', credentialId: '', settings: slackSettings }] : [],
+			);
+			const destinationCredentials = await Container.get(SharedCredentialsRepository).find({
+				where: { projectId },
+				relations: { credentials: true },
+			});
+			// A credential that only a channel uses is neither imported nor stubbed.
+			expect(destinationCredentials.map(({ credentials }) => credentials.type)).not.toContain(
+				'slackApi',
+			);
 			expect(await skillRefs.readDraft({ id: localId }, {})).toEqual(sourceSkills[index]);
 			const [task] = await tasks.findByAgentId(localId);
 			expect(task).toMatchObject({

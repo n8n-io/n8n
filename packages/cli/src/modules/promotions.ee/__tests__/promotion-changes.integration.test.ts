@@ -21,7 +21,6 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
@@ -33,6 +32,7 @@ import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialTypes } from '@/credential-types';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
@@ -44,7 +44,6 @@ import {
 	executeWorkflowNode,
 } from '@/modules/n8n-packages/__tests__/utils/test-builders';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
 import { TagService } from '@/services/tag.service';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createTag } from '@test-integration/db/tags';
@@ -53,13 +52,10 @@ import { createFolder } from '@test-integration/db/folders';
 import { createVariable } from '@test-integration/db/variables';
 import { initNodeTypes, setupTestServer } from '@test-integration/utils';
 
-import { PACKAGE_SUBFOLDER } from '../constants';
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
-import { PromotionChangesController } from '../promotion-changes.controller';
-import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -70,11 +66,16 @@ Container.set(
 	new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder: instanceFolder })),
 );
 mockInstance(ActiveWorkflowManager);
-beforeAll(async () => await testModules.loadModules(['agents']));
+// The Apply preview plans the import, which checks node and credential types.
+mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
+beforeAll(async () => {
+	await testModules.loadModules(['agents']);
+	await initNodeTypes();
+});
 const server = setupTestServer({
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin'],
+	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin', 'feat:folders'],
 });
 
 let remoteFolder: string;
@@ -141,7 +142,7 @@ async function addEnvironment(providerId: string, direction: PromotionDirection)
 				}
 			: { direction, settings: { schemaVersion: 1, branchName: 'main' } }),
 	});
-	await Container.get(PromotionsService).clone(environment.id);
+	await Container.get(PromotionsService).clone(environment.id, { id: 'clone-actor' } as User);
 	return environment;
 }
 
@@ -172,7 +173,7 @@ it("previews against the project's environment, not the instance one", async () 
 		projectPromote.id,
 		'promote',
 	);
-	await Container.get(PromotionsService).clone(projectPromote.id);
+	await Container.get(PromotionsService).clone(projectPromote.id, owner);
 	const agent = server.authAgentFor(owner);
 
 	const linkedPreview = await agent.get(`/promotions/${linked.id}/changes/promote`).expect(200);
@@ -611,13 +612,8 @@ it('lists what applying the branch changes on this instance, named and archived 
 	await Container.get(VariablesRepository).delete(variable.id);
 	await Container.get(VariablesService).updateCache();
 
-	const readFromGit = vi.spyOn(Container.get(PromotionsGitService), 'readFilesAtCommit');
 	const response = await agent.get(applyEndpoint).expect(200);
 	expect(response.body.data.commitSha).toBe(baseline);
-	expect(readFromGit.mock.calls.flatMap(([{ filePaths }]) => filePaths)).toEqual([
-		`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
-	]);
-	readFromGit.mockRestore();
 	expect(response.body.data.changes).toHaveLength(5);
 	expect(response.body.data.changes).toEqual(
 		expect.arrayContaining([
@@ -835,77 +831,17 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	const project = await createTeamProject('Private', owner);
 	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
-	const blockersEndpoint = `${applyEndpoint}/blockers?commitSha=${'0'.repeat(40)}`;
 	await server.authlessAgent.get(endpoint).expect(401);
-	await server.authlessAgent.get(blockersEndpoint).expect(401);
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	// A project admin manages the project, but lacks the global promotion scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
 	server.license.disable('feat:promotions');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
-	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
-
-// No built-in role has the read scope without the apply scope, so the requests above cannot tell them apart.
-it('requires the global apply scope for the Apply check', () => {
-	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-		PromotionChangesController as Controller,
-	);
-
-	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
-		scope: 'promotions:apply',
-		globalOnly: true,
-	});
-});
-
-it('checks Apply blockers at the commit of the Apply preview, also after a newer push', async () => {
-	const owner = await createOwner();
-	const project = await createTeamProject('Orders', owner);
-	const firstVariable = await createVariable('FIRST_URL', 'https://first.example.com');
-	await buildWorkflowReferencingVariables({
-		name: 'Uses FIRST_URL',
-		project,
-		variableNames: [firstVariable.key],
-	});
-	const environments = await createInstanceEnvironments(['promote', 'apply']);
-	const service = Container.get(PromotionsService);
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'First',
-		canExportVariableValues: true,
-	});
-	const agent = server.authAgentFor(owner);
-	const preview = await agent.get(`/promotions/${project.id}/changes/apply`).expect(200);
-	const { commitSha } = preview.body.data;
-
-	const secondVariable = await createVariable('SECOND_URL', 'https://second.example.com');
-	await buildWorkflowReferencingVariables({
-		name: 'Uses SECOND_URL',
-		project,
-		variableNames: [secondVariable.key],
-	});
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'Second',
-		canExportVariableValues: true,
-	});
-	await Container.get(VariablesRepository).delete([firstVariable.id, secondVariable.id]);
-	await Container.get(VariablesService).updateCache();
-
-	const response = await agent
-		.get(`/promotions/${project.id}/changes/apply/blockers`)
-		.query({ commitSha })
-		.expect(200);
-
-	expect(response.body.data.git.commitSha).toBe(commitSha);
-	expect(response.body.data.preflight.missingBindings).toEqual([
-		expect.objectContaining({ kind: 'variable', name: 'FIRST_URL' }),
-	]);
-}, 30_000);
 
 describe('resources in the preview', () => {
 	const promoteBaseline = async (environmentId: string, owner: User) =>
@@ -956,6 +892,97 @@ describe('resources in the preview', () => {
 			}),
 		]);
 	}, 30_000);
+
+	it('shows on Apply the import conflicts that stop it, and each move between projects once', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Releases', owner);
+		const elsewhere = await createTeamProject('Elsewhere', owner);
+		const shared = await createWorkflow({ name: 'Shared', nodes: [], connections: {} }, project);
+		const custom = await createWorkflow(
+			{
+				name: 'Uses a custom node',
+				nodes: [
+					{
+						id: 'custom',
+						name: 'Custom',
+						type: 'n8n-nodes-custom.notInstalled',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+			project,
+		);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		// This instance moves a workflow to another project, which Apply of the branch cannot undo.
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: shared.id },
+			{ projectId: elsewhere.id },
+		);
+
+		const preview = (
+			await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/apply`).expect(200)
+		).body.data;
+
+		const releases = { id: project.id, name: 'Releases' };
+		expect(preview.check.conflicts).toEqual([
+			{
+				kind: 'workflow',
+				code: 'missing-node-type',
+				reason: 'n8n-nodes-custom.notInstalled@1',
+				consumers: [
+					{ project: releases, workflows: [{ id: custom.id, name: 'Uses a custom node' }] },
+				],
+			},
+		]);
+		expect(preview.check.movedWorkflows).toEqual([
+			{
+				id: shared.id,
+				name: 'Shared',
+				project: releases,
+				projectExists: true,
+				instanceProject: { id: elsewhere.id, name: 'Elsewhere' },
+			},
+		]);
+	}, 30_000);
+
+	it('stops Apply when this instance changed after the preview, then applies what the preview shows', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(workflow.id, { name: 'Invoice (local)' });
+
+		const agent = server.authAgentFor(owner);
+		const endpoint = `/promotions/${project.id}/changes/apply`;
+		const loadPreview = async () => (await agent.get(endpoint).expect(200)).body.data;
+		const applyShown = async (preview: {
+			source: { environmentId: string; branchName: string };
+			commitSha: string;
+			revision: string;
+		}) =>
+			await Container.get(PromotionsService).applyProjectSelection(project.id, owner, {
+				workflowIds: [workflow.id],
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				expectedPreviewRevision: preview.revision,
+			});
+
+		const stale = await loadPreview();
+		await workflowRepository.update(workflow.id, { name: 'Invoice (edited again)' });
+		expect(await applyShown(stale)).toMatchObject({ status: 'preview-changed' });
+		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+			name: 'Invoice (edited again)',
+		});
+
+		expect(await applyShown(await loadPreview())).toMatchObject({ status: 'applied' });
+		const after = await loadPreview();
+		expect(after.changes).toEqual([]);
+	}, 60_000);
 
 	it('lists a changed data table once, with each workflow that uses it, and describes the new column', async () => {
 		const owner = await createOwner();
@@ -1084,11 +1111,11 @@ describe('resources in the preview', () => {
 		);
 	}, 30_000);
 
-	it('leaves out changes that Apply does not make and reuses a credential that already exists', async () => {
+	it('leaves out changes that Apply does not make and shows the credential name that Apply writes', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const folder = await createFolder(project, { name: 'Invoices' });
-		await createWorkflow(
+		const invoices = await createWorkflow(
 			{ name: 'Send invoices', nodes: [], connections: {}, parentFolder: folder },
 			project,
 		);
@@ -1103,8 +1130,8 @@ describe('resources in the preview', () => {
 		});
 		const environments = await createInstanceEnvironments(['promote', 'apply']);
 		await promoteBaseline(environments.promote.id, owner);
-		// Apply keeps the local credential name, but gives the folder the name on the branch. The
-		// credential stays, but no local workflow uses it, so the local export does not hold it.
+		// Apply gives the folder and the credential, which the project owns, the names on the branch.
+		// No local workflow uses the credential, so the local export does not hold it.
 		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
 		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
 		await Container.get(WorkflowRepository).delete(charge.id);
@@ -1123,12 +1150,83 @@ describe('resources in the preview', () => {
 				change: 'modified',
 			}),
 			expect.objectContaining({ key: `workflow:${charge.id}`, change: 'added' }),
+			// Apply renames the folder only together with a selected workflow inside it.
+			expect.objectContaining({ key: `workflow:${invoices.id}`, change: 'unchanged' }),
 			expect.objectContaining({
 				key: `credential:${credential.id}`,
-				name: 'Local billing API',
-				change: 'unchanged',
+				name: 'Billing API',
+				previousName: 'Local billing API',
+				change: 'modified',
 			}),
 		]);
+	}, 30_000);
+
+	it('lists the workflow of a credential that Apply updates when nothing else changes', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const credential = await saveCredential(
+			{ name: 'Billing API', type: 'httpHeaderAuth', data: {} },
+			{ project, role: 'credential:owner' },
+		);
+		const charge = await buildWorkflowReferencingCredential({
+			name: 'Charge customers',
+			project,
+			credential,
+		});
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
+
+		const { body } = await server
+			.authAgentFor(owner)
+			.get(`/promotions/${project.id}/changes/apply`)
+			.expect(200);
+
+		expect(body.data.resources).toContainEqual(
+			expect.objectContaining({
+				key: `credential:${credential.id}`,
+				name: 'Billing API',
+				previousName: 'Local billing API',
+				change: 'modified',
+			}),
+		);
+		expect(body.data.changes).toEqual([
+			expect.objectContaining({ id: charge.id, status: 'modified' }),
+		]);
+	}, 30_000);
+
+	it('lists a workflow inside a folder that Apply renames as renamed', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const folder = await createFolder(project, { name: 'Invoices' });
+		const workflow = await createWorkflow(
+			{ name: 'Send invoices', nodes: [], connections: {}, parentFolder: folder },
+			project,
+		);
+		const environments = await createInstanceEnvironments(['promote', 'apply']);
+		await promoteBaseline(environments.promote.id, owner);
+		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
+
+		const { body } = await server
+			.authAgentFor(owner)
+			.get(`/promotions/${project.id}/changes/apply`)
+			.expect(200);
+
+		// Apply renames the folder only together with a selected workflow inside it.
+		expect(body.data.changes).toEqual([
+			expect.objectContaining({ id: workflow.id, status: 'renamed' }),
+		]);
+		expect(body.data.resources).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					key: `folder:${folder.id}`,
+					name: 'Invoices',
+					previousName: 'Local invoices',
+					change: 'modified',
+				}),
+				expect.objectContaining({ key: `workflow:${workflow.id}`, change: 'unchanged' }),
+			]),
+		);
 	}, 30_000);
 
 	it.each([

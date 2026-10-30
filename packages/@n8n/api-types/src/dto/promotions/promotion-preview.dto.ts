@@ -5,7 +5,8 @@ import {
 	promotionBindingProjectSchema,
 	promotionDataTableChangeSchema,
 	promotionInstanceProjectSchema,
-} from './promotion-binding-preflight.dto';
+	promotionPreviewCheckSchema,
+} from './promotion-apply-check.dto';
 import { Z } from '../../zod-class';
 import { serializedCredentialSchema } from '../packages/credential.schema';
 import { serializedDataTableSchema } from '../packages/data-table.schema';
@@ -95,6 +96,13 @@ export const promotionPreviewSchema = promotionChangesSchema.extend({
 	resources: z.array(promotionResourceSchema),
 	dependencies: z.array(promotionResourceDependencySchema),
 	blocker: promotionBlockerSchema.optional(),
+	/** Apply only: what stops the Apply of each workflow, from the same plan as the resources. */
+	check: promotionPreviewCheckSchema.optional(),
+	/**
+	 * Apply only: a hash of the resources and the check. Apply compares it with a fresh preview
+	 * and stops when the instance changed after the preview was loaded.
+	 */
+	revision: z.string().optional(),
 });
 
 export type PromotionPreview = z.infer<typeof promotionPreviewSchema>;

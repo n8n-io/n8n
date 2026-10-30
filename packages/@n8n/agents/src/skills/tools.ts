@@ -15,6 +15,7 @@ import {
 	type RuntimeSkillSource,
 	type RuntimeSkillLoader,
 	type RuntimeSkillContent,
+	type RuntimeSkillLoadError,
 } from './types';
 
 const TRUNCATION_FOOTER = `\n\n[... output truncated to ${RUNTIME_SKILL_MAX_OUTPUT_BYTES / 1024} KB ...]`;
@@ -84,6 +85,7 @@ const skillLoadOutputSchema = z.object({
 	references: z.array(z.object({ skillId: z.string(), description: z.string() })).optional(),
 	linkedFiles: linkedFilesSchema.optional(),
 	error: z.string().optional(),
+	errorCode: z.enum(['temporarily_unavailable', 'unavailable', 'invalid_reference']).optional(),
 	availableSkills: z.array(z.string()).optional(),
 });
 
@@ -144,7 +146,7 @@ async function loadSkill(
 ): Promise<SkillLoadOutput | SkillLoadContentOutput> {
 	const { skillId, name, loadFile } = input;
 	await source.prepare?.();
-	const requestedEntry = findSkillEntry(source.registry, { skillId, name });
+	const requestedEntry = findRuntimeSkillEntry(source.registry, { skillId, name });
 	// A path to a reference file activates the reference instead of returning raw text.
 	const referenceEntry =
 		requestedEntry && input.filePath !== undefined
@@ -156,6 +158,10 @@ async function loadSkill(
 		return {
 			ok: false,
 			success: false,
+			errorCode:
+				skillId && source.getLoadError?.(skillId)?.retryable
+					? 'temporarily_unavailable'
+					: 'unavailable',
 			error: `Unknown skill: ${skillId ?? name ?? ''}`,
 			availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 		};
@@ -172,6 +178,7 @@ async function loadSkill(
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
+				errorCode: 'invalid_reference',
 				error: `File is not registered for skill ${skillEntry.name}: ${linkedFilePath}. To load the main skill instructions, retry without filePath.`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
@@ -184,21 +191,27 @@ async function loadSkill(
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
+				errorCode: 'invalid_reference',
 				error: 'This skill source does not support loading linked files.',
 				linkedFiles: skillEntry.linkedFiles,
 			};
 		}
 
-		const file = await loadFile(skillEntry.id, linkedFile.path);
+		let readError: RuntimeSkillLoadError | undefined;
+		const file = await loadFile(skillEntry.id, linkedFile.path, (error) => {
+			readError = error;
+		});
 		if (!file) {
+			const loadError = readError ?? source.getLoadError?.(skillEntry.id);
 			return {
 				ok: false,
 				success: false,
 				skillId: skillEntry.id,
 				name: skillEntry.name,
 				filePath: linkedFilePath,
+				errorCode: loadError?.retryable ? 'temporarily_unavailable' : 'unavailable',
 				error:
-					source.getLoadError?.(skillEntry.id)?.message ??
+					loadError?.message ??
 					`File is not registered for skill ${skillEntry.name}: ${linkedFilePath}`,
 				linkedFiles: skillEntry.linkedFiles,
 			};
@@ -220,14 +233,14 @@ async function loadSkill(
 
 	const skill = await (activate ?? source.loadSkill)(skillEntry.id);
 	if (!skill) {
+		const loadError = source.getLoadError?.(skillEntry.id);
 		return {
 			ok: false,
 			success: false,
 			skillId: skillEntry.id,
 			name: skillEntry.name,
-			error:
-				source.getLoadError?.(skillEntry.id)?.message ??
-				`Skill "${skillEntry.name}" is not attached to this agent.`,
+			errorCode: loadError?.retryable ? 'temporarily_unavailable' : 'unavailable',
+			error: loadError?.message ?? `Skill "${skillEntry.name}" is not attached to this agent.`,
 			availableSkills: source.registry.skills.map((entry) => entry.id).slice(0, 20),
 		};
 	}
@@ -328,7 +341,7 @@ export function findReferenceByPath(
 	);
 }
 
-function findSkillEntry(
+export function findRuntimeSkillEntry(
 	registry: RuntimeSkillRegistry,
 	input: { skillId?: string; name?: string },
 ): RuntimeSkillRegistryEntry | undefined {
@@ -366,7 +379,7 @@ function findRegisteredLinkedFile(
 	return undefined;
 }
 
-function isMainSkillFilePath(filePath?: string): boolean {
+export function isMainSkillFilePath(filePath?: string): boolean {
 	if (filePath === undefined) return true;
 	const normalized = filePath.trim();
 	return (

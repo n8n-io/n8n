@@ -9,6 +9,7 @@ import { AgentMemoryEntryCandidateEntity } from '@/modules/agents/entities/agent
 import { AgentMemoryEntrySourceEntity } from '@/modules/agents/entities/agent-memory-entry-source.entity';
 import { AgentMessageEntity } from '@/modules/agents/entities/agent-message.entity';
 import { AgentThreadEntity } from '@/modules/agents/entities/agent-thread.entity';
+import { AgentMemoryEntrySourceRepository } from '@/modules/agents/repositories/agent-memory-entry-source.repository';
 import { AgentMemoryEntryRepository } from '@/modules/agents/repositories/agent-memory-entry.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentResourceRepository } from '@/modules/agents/repositories/agent-resource.repository';
@@ -91,7 +92,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		await expect(entryRepository.countActiveByAgent(agentId)).resolves.toBe(3);
 	});
 
-	it('deletes an entry by dropping it and hides it from the list and the count', async () => {
+	it('marks an entry deleted and hides it from the list and the count', async () => {
 		const id = await insertEntry('a', '2026-10-01T10:00:00.000Z');
 
 		await expect(entryRepository.markDeleted(agentId, id)).resolves.toBe(true);
@@ -99,7 +100,7 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 		await expect(entryRepository.listActiveByAgent(agentId, 10)).resolves.toEqual([]);
 		await expect(entryRepository.countActiveByAgent(agentId)).resolves.toBe(0);
 		expect(await entryRepository.findOneByOrFail({ id })).toMatchObject({
-			status: 'dropped',
+			status: 'deleted',
 			content: 'a',
 		});
 	});
@@ -125,6 +126,88 @@ describe('AgentMemoryEntryRepository list and delete', () => {
 
 		expect(await entryRepository.findOneByOrFail({ id })).toMatchObject({ status: 'active' });
 		await expect(entryRepository.countActiveByAgent(agentId)).resolves.toBe(1);
+	});
+
+	describe('trace lookups', () => {
+		let threadId: string;
+
+		beforeEach(async () => {
+			threadId = uuid();
+			await Container.get(DataSource).manager.insert(AgentThreadEntity, {
+				id: threadId,
+				resourceId,
+			});
+		});
+
+		async function insertCandidate() {
+			const id = uuid();
+			await Container.get(DataSource).manager.insert(AgentMemoryEntryCandidateEntity, {
+				id,
+				agentId,
+				resourceId,
+				threadId,
+				sourceMessageId: null,
+				runId: 'run-1',
+				toolCallId: uuid(),
+				content: 'fact',
+				evidenceText: 'fact',
+				kind: 'fact',
+				status: 'completed',
+			});
+			return id;
+		}
+
+		async function insertSource(memoryEntryId: string, candidateId: string, createdAt: string) {
+			const id = uuid();
+			await Container.get(DataSource).manager.insert(AgentMemoryEntrySourceEntity, {
+				id,
+				agentId,
+				memoryEntryId,
+				candidateId,
+				threadId,
+				evidenceHash: id,
+				evidenceText: 'evidence',
+				createdAt: new Date(createdAt),
+			});
+			return id;
+		}
+
+		it('finds entries of the agent in any status', async () => {
+			const active = await insertEntry('a', '2026-10-01T10:00:00.000Z');
+			const deleted = await insertEntry('b', '2026-10-01T10:00:00.000Z', 'deleted');
+			const superseded = await insertEntry('c', '2026-10-01T10:00:00.000Z', 'superseded');
+
+			const found = await entryRepository.findInAnyStatus(agentId, [
+				active,
+				deleted,
+				superseded,
+				uuid(),
+			]);
+
+			expect(found.map(({ id }) => id).sort()).toEqual([active, deleted, superseded].sort());
+			await expect(entryRepository.findInAnyStatus(uuid(), [active])).resolves.toEqual([]);
+		});
+
+		it('finds the sources of entries and candidates oldest first', async () => {
+			const sources = Container.get(AgentMemoryEntrySourceRepository);
+			const first = await insertEntry('a', '2026-10-01T10:00:00.000Z');
+			const second = await insertEntry('b', '2026-10-01T10:00:00.000Z');
+			const candidate = await insertCandidate();
+			const newest = await insertSource(first, candidate, '2026-10-03T10:00:00.000Z');
+			const oldest = await insertSource(second, candidate, '2026-10-01T10:00:00.000Z');
+			const unrelated = await insertSource(
+				second,
+				await insertCandidate(),
+				'2026-10-02T10:00:00.000Z',
+			);
+
+			const byEntry = await sources.findByEntryIds(agentId, [first, second]);
+			const byCandidate = await sources.findByCandidateIds(agentId, [candidate]);
+
+			expect(byEntry.map(({ id }) => id)).toEqual([oldest, unrelated, newest]);
+			expect(byCandidate.map(({ id }) => id)).toEqual([oldest, newest]);
+			await expect(sources.findByEntryIds(uuid(), [first])).resolves.toEqual([]);
+		});
 	});
 
 	describe('source filters and facets', () => {

@@ -1,3 +1,4 @@
+import { PackageExportBlockedError } from '../../entities/package-export.errors';
 import { createManifestEntry, entityIdOfSegment } from '../manifest-entry';
 
 describe('createManifestEntry', () => {
@@ -32,6 +33,15 @@ describe('createManifestEntry', () => {
 		);
 
 		expect(new Set(targets).size).toBe(targets.length);
+	});
+
+	it('accepts a skill id with hyphens and still blocks a path separator', () => {
+		expect(createManifestEntry('skills', 'skills', { id: 'release-notes', name: 'Notes' })).toEqual(
+			{ id: 'release-notes', name: 'Notes', target: 'skills/notes-release-notes' },
+		);
+		expect(() => createManifestEntry('skills', 'skills', { id: 'a/b', name: 'Notes' })).toThrow(
+			PackageExportBlockedError,
+		);
 	});
 
 	it('blocks an export when the path segment exceeds 255 characters', () => {

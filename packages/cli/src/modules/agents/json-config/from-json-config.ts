@@ -17,6 +17,7 @@ import type {
 } from '@n8n/agents';
 import { modelConfigToId } from '@n8n/agents';
 import { wrapToolForApproval } from '@n8n/agents/tool';
+import { isRecord } from '@n8n/utils/is-record';
 import {
 	getNativeWebSearchProviderTools,
 	getProviderPrefix,
@@ -26,7 +27,6 @@ import {
 } from '@n8n/ai-utilities/agent-config';
 import {
 	AI_GATEWAY_MANAGED_TAG,
-	MANAGED_CREDENTIAL_TOKEN,
 	type AgentModelCredentialConfig,
 	type AgentSkill,
 	type AgentJsonConfig,
@@ -40,7 +40,7 @@ import { createHash } from 'crypto';
 import { z } from 'zod';
 
 import {
-	resolveEmbeddingProviderOptionsFromCredential,
+	resolveEpisodicMemoryEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptions,
 	type ManagedEmbeddingProviderOptionsResolver,
 } from '@/modules/knowledge/vector-stores/embedding-credential';
@@ -165,18 +165,24 @@ function countVectorStoreSearches(
 		...searchTool,
 		async handler(input, ctx) {
 			const finishSearch = onVectorStoreSearch(ctx.runId);
+			const startedAt = Date.now();
 			let output: unknown;
 			try {
 				output = await searchHandler.call(searchTool, input, ctx);
 			} catch (error) {
-				finishSearch({ failed: true });
+				const errorType = error instanceof Error ? error.name : typeof error;
+				finishSearch({ failed: true, searchDurationMs: Date.now() - startedAt, errorType });
 				throw error;
 			}
+
+			const searchDurationMs = Date.now() - startedAt;
 
 			const modelOutput = searchTool.toModelOutput ? searchTool.toModelOutput(output) : output;
 			const json: string | undefined = JSON.stringify(modelOutput);
 			const contentChars = json?.length ?? 0;
-			finishSearch({ failed: false, contentChars });
+			const emptySearch =
+				isRecord(output) && Array.isArray(output.results) && output.results.length === 0;
+			finishSearch({ failed: false, contentChars, searchDurationMs, emptySearch });
 			return output;
 		},
 	};
@@ -278,13 +284,7 @@ export async function buildFromJson(
 
 	// Memory
 	if (config.memory?.enabled) {
-		await applyMemoryFromConfig(
-			agent,
-			config.memory,
-			options.memoryFactory,
-			options.credentialProvider,
-			options.resolveManagedEmbeddingProviderOptions,
-		);
+		await applyMemoryFromConfig(agent, config.memory, options);
 	}
 
 	// Config options
@@ -406,7 +406,7 @@ function buildFallbackWebSearchTool(
 				if (typeof credential.apiKey !== 'string') {
 					throw new Error('Brave Search credential is missing an API key.');
 				}
-				return await braveSearch(credential.apiKey, args.query, searchOptions);
+				return await braveSearch(credential.apiKey, args.query, searchOptions, webSearchFetch);
 			}
 
 			// SearXNG is self-hosted, so it has no gateway-served managed path.
@@ -565,9 +565,12 @@ async function resolveToolRef(
 async function applyMemoryFromConfig(
 	agent: AgentBuilder,
 	memoryConfig: AgentJsonMemoryConfig,
-	memoryFactory: MemoryFactory,
-	credentialProvider: CredentialProvider,
-	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	{
+		memoryFactory,
+		credentialProvider,
+		resolveManagedEmbeddingProviderOptions,
+		modelFetch,
+	}: BuildFromJsonOptions,
 ) {
 	const { Memory } = await import('@n8n/agents');
 	const memory = new Memory();
@@ -577,11 +580,10 @@ async function applyMemoryFromConfig(
 
 	if (memoryConfig.episodicMemory?.enabled === true) {
 		memory.episodicMemory(
-			await resolveEpisodicMemoryJsonConfig(
-				memoryConfig.episodicMemory,
-				credentialProvider,
+			await resolveEpisodicMemoryJsonConfig(memoryConfig.episodicMemory, credentialProvider, {
 				resolveManagedEmbeddingProviderOptions,
-			),
+				modelFetch,
+			}),
 		);
 	}
 
@@ -635,20 +637,20 @@ async function applyMemoryFromConfig(
 async function resolveEpisodicMemoryJsonConfig(
 	config: Extract<NonNullable<AgentJsonMemoryConfig['episodicMemory']>, { enabled: true }>,
 	credentialProvider: CredentialProvider,
-	resolveManagedEmbeddingProviderOptions?: ManagedEmbeddingProviderOptionsResolver,
+	{
+		resolveManagedEmbeddingProviderOptions,
+		modelFetch,
+	}: Pick<BuildFromJsonOptions, 'resolveManagedEmbeddingProviderOptions' | 'modelFetch'>,
 ) {
-	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryReflectFn } = await import(
-		'@n8n/agents'
-	);
+	const { DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL, createEpisodicMemoryConsolidateFn } =
+		await import('@n8n/agents');
 	const embeddingModel = DEFAULT_EPISODIC_MEMORY_EMBEDDING_MODEL;
-	const embeddingProviderOptions =
-		config.credential === MANAGED_CREDENTIAL_TOKEN
-			? await resolveManagedEmbeddingProviderOptions?.()
-			: await resolveEmbeddingProviderOptionsFromCredential(
-					config.credential,
-					embeddingModel,
-					credentialProvider,
-				);
+	const embeddingProviderOptions = await resolveEpisodicMemoryEmbeddingProviderOptions(
+		config.credential,
+		embeddingModel,
+		credentialProvider,
+		{ resolveManaged: resolveManagedEmbeddingProviderOptions, fetch: modelFetch },
+	);
 
 	if (!embeddingProviderOptions) {
 		throw new Error('Managed Episodic Memory embeddings require the AI assistant proxy.');
@@ -657,7 +659,7 @@ async function resolveEpisodicMemoryJsonConfig(
 	return {
 		enabled: true,
 		...(config.reflectorModel !== undefined && {
-			reflect: createEpisodicMemoryReflectFn(
+			consolidate: createEpisodicMemoryConsolidateFn(
 				await resolveMemoryWorkerModelConfig(config.reflectorModel, credentialProvider),
 			),
 		}),

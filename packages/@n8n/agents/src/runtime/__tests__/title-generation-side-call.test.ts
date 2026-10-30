@@ -115,6 +115,7 @@ describe('generateThreadTitle side-call cost', () => {
 		const memory = new InMemoryMemory();
 		await memory.saveThread({ id: THREAD_ID, resourceId: RESOURCE_ID });
 		const reports: SideCallUsageReport[] = [];
+		const modelFetch = vi.fn<typeof fetch>();
 		const foundryModel = {
 			id: 'azure-openai/my-chat',
 			catalogModelId: 'azure-openai/gpt-4.1',
@@ -129,6 +130,7 @@ describe('generateThreadTitle side-call cost', () => {
 			resourceId: RESOURCE_ID,
 			titleConfig: { model: foundryModel },
 			agentModel: foundryModel,
+			modelFetch,
 			turnDelta: [
 				{
 					id: 'm1',
@@ -142,7 +144,7 @@ describe('generateThreadTitle side-call cost', () => {
 			},
 		});
 
-		expect(mockGetModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1');
+		expect(mockGetModelCost).toHaveBeenCalledWith('azure-openai/gpt-4.1', modelFetch);
 		expect(reports[0].model).toBe('azure-openai/gpt-4.1');
 	});
 

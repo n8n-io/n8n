@@ -12,7 +12,7 @@ export interface AgentRunSource<T extends Agent = ProjectAgent> {
 	/** The agent draft, or the agent with the content of its published version. */
 	agent: T;
 	skillRefs: AgentSkillRefs;
-	/** Skill bodies from the skills hub, keyed by skill id: the draft's or the pinned ones. */
+	/** Skill bodies from the skills module, keyed by skill id: the draft's or the pinned ones. */
 	skills: Record<string, AgentSkill>;
 }
 

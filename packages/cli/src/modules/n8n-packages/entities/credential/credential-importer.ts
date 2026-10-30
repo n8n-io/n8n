@@ -66,6 +66,7 @@ export class CredentialImporter {
 				projectId: context.projectId,
 				user: context.user,
 				credentialBindings: request.credentialBindings,
+				excludePersonalRoute: request.personalRoute === 'exclude',
 			});
 		const stubIds = new Map(
 			credentialsToStub(request.missingMode, resolution).map(({ sourceId }) => [
@@ -344,6 +345,7 @@ export class CredentialImporter {
 			jweEnabled: data.jweEnabled === true,
 			supportsManagedAuth: this.credentialsOverwrites.supportsManagedAuth(saved.type),
 			usesManagedAuth: this.credentialsOverwrites.usesManagedAuth(saved.type, data),
+			managedAppVersion: this.credentialsOverwrites.getManagedAppVersion(saved.type, data),
 		});
 	}
 

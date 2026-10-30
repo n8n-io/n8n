@@ -9,6 +9,7 @@ import type {
 	PackageManifest,
 	WorkflowManifestEntry,
 } from '../spec/manifest.schema';
+import { skillIdSchema } from '../spec/serialized/skill.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a
@@ -29,6 +30,7 @@ export const PACKAGE_ENTITY_LAYOUT = {
 	folders: { directory: 'folders', fileName: 'folder.json' },
 	workflows: { directory: 'workflows', fileName: 'workflow.json' },
 	agents: { directory: 'agents', fileName: 'agent.json' },
+	skills: { directory: 'skills', fileName: 'skill.json' },
 	credentials: { directory: 'credentials', fileName: 'credential.json' },
 	dataTables: { directory: 'data-tables', fileName: 'data-table.json' },
 	variables: { directory: 'variables', fileName: 'variable.json' },
@@ -50,6 +52,7 @@ const FALLBACK_SLUGS = {
 	folders: 'folder',
 	workflows: 'workflow',
 	agents: 'agent',
+	skills: 'skill',
 	credentials: 'credential',
 	dataTables: 'data-table',
 	variables: 'variable',
@@ -106,13 +109,33 @@ export function entityIdOfSegment(segment: string): string {
 		);
 }
 
+/**
+ * Skill IDs follow the skill ref ID rule, which allows hyphens. No reader takes a skill ID
+ * from its path: import reads it from the manifest, and promotions carry no skills.
+ */
+function idPathSegment(
+	collection: ManifestEntityCollection,
+	entity: { id: string; name: string },
+): string {
+	if (collection !== 'skills') return encodeIdSegment(entity.id);
+	if (!skillIdSchema.safeParse(entity.id).success) {
+		throw new PackageExportBlockedError(
+			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
+			{
+				description: `Id "${entity.id}" may contain only letters, digits, underscores, and hyphens.`,
+			},
+		);
+	}
+	return entity.id;
+}
+
 export function createManifestEntry(
 	collection: ManifestEntityCollection,
 	baseDir: string,
 	entity: { id: string; name: string },
 ): ManifestEntry {
 	const slug = generateSlug(entity.name, FALLBACK_SLUGS[collection]);
-	const pathSegment = `${slug}-${encodeIdSegment(entity.id)}`;
+	const pathSegment = `${slug}-${idPathSegment(collection, entity)}`;
 	if (pathSegment.length > MAX_PATH_SEGMENT_LENGTH) {
 		throw new PackageExportBlockedError(
 			`${collection} entry "${entity.name}" creates a path segment longer than ${MAX_PATH_SEGMENT_LENGTH} characters. Shorten the entity name and retry the export.`,

@@ -31,7 +31,11 @@ import {
 	AgentExecutionRepository,
 	type AgentExecutionUsageRow,
 } from '../repositories/agent-execution.repository';
-import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import {
+	AgentExecutionThreadRepository,
+	type AgentExecutionThreadKeyset,
+	type AgentExecutionThreadKeysetPage,
+} from '../repositories/agent-execution-thread.repository';
 import { AgentThreadGrantRepository } from '../repositories/agent-thread-grant.repository';
 import type { StoredAttachmentRef } from '../types/agent-chat-attachment';
 import type { AgentExecutionAdmission } from '../types/agent-queued-message';
@@ -182,9 +186,33 @@ export class SystemAgentExecutionService {
 		user: User,
 		threadId: string,
 	): Promise<AgentExecutionThread> {
-		const thread = await this.getThread(agentId, user, threadId);
+		const thread = await this.findUsableThread(agentId, user, threadId);
+		if (!thread) throw new NotFoundError('Session not found');
+		return thread;
+	}
+
+	/**
+	 * Like `getUsableThread`, but `null` when the user has no thread with this id,
+	 * for example a new session before its first message.
+	 */
+	async findUsableThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		const thread = await this.findOwnedThread(agentId, user, threadId);
+		if (!thread) return null;
 		await this.assertCanUse(agentId, user, thread.projectId);
 		return thread;
+	}
+
+	private async findOwnedThread(
+		agentId: string,
+		user: User,
+		threadId: string,
+	): Promise<AgentExecutionThread | null> {
+		this.assertRegistered(agentId);
+		return await this.threadRepository.findOwnedById(agentId, user.id, threadId);
 	}
 
 	// ── Threads ──────────────────────────────────────────────────────────────
@@ -257,15 +285,28 @@ export class SystemAgentExecutionService {
 		return { provider, thread };
 	}
 
-	async listThreads(agentId: string, user: User, limit?: number) {
+	/**
+	 * One page of the user's own sessions with the agent, newest first. `search`
+	 * matches the title, and `before` is the last session of the previous page.
+	 */
+	async listThreads(
+		agentId: string,
+		user: User,
+		options: { limit: number; search?: string; before?: AgentExecutionThreadKeyset },
+	): Promise<AgentExecutionThreadKeysetPage> {
 		this.assertRegistered(agentId);
-		return await this.threadRepository.findOwnedByAgent(agentId, user.id, { limit });
+		return await this.threadRepository.findOwnedHistoryPage(
+			agentId,
+			user.id,
+			options.limit,
+			options.search,
+			options.before,
+		);
 	}
 
 	/** Load a thread the user owns. It checks ownership only, not the floor. */
 	async getThread(agentId: string, user: User, threadId: string): Promise<AgentExecutionThread> {
-		this.assertRegistered(agentId);
-		const thread = await this.threadRepository.findOwnedById(agentId, user.id, threadId);
+		const thread = await this.findOwnedThread(agentId, user, threadId);
 		if (!thread) throw new NotFoundError('Session not found');
 		return thread;
 	}

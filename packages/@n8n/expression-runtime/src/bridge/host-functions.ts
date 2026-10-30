@@ -1,6 +1,12 @@
 import type { WorkflowData } from '../types';
 import type { ErrorSentinel } from '../runtime/lazy-proxy';
+import {
+	isEscapedTransferValue,
+	TRANSFER_ESCAPED_KEY,
+	TRANSFER_VALUE_KEY,
+} from '../runtime/transfer';
 import { bridgeMessageSchema } from './bridge-messages';
+import type { HostDataResolver } from './host-data-resolver';
 
 // ============================================================================
 // Host-side functions shared by the expression bridges.
@@ -8,7 +14,7 @@ import { bridgeMessageSchema } from './bridge-messages';
 // Both IsolatedVmBridge and QuickJsBridge expose the same three host
 // callbacks to the guest — getValueAtPath, getArrayElement, callHost — plus
 // the error-sentinel helpers and bundle loader around them. The logic is
-// engine-agnostic: each bridge wraps these pure functions in its own
+// engine-agnostic: each bridge wraps these functions in its own
 // callback mechanism (ivm.Callback / vm.newFunction) and marshals the
 // plain, JSON-shaped return values across its own boundary.
 // ============================================================================
@@ -20,6 +26,16 @@ export function isErrorSentinel(value: unknown): value is ErrorSentinel {
 		value !== null &&
 		(value as Record<string, unknown>).__isError === true
 	);
+}
+
+/**
+ * Wrap host-call data whose root looks like an error sentinel or an escape
+ * wrapper, so the guest reads it as data.
+ */
+export function escapeHostResult(value: unknown): unknown {
+	return isErrorSentinel(value) || isEscapedTransferValue(value)
+		? { [TRANSFER_ESCAPED_KEY]: true, [TRANSFER_VALUE_KEY]: value }
+		: value;
 }
 
 /**
@@ -68,57 +84,37 @@ export function reconstructError(data: ErrorSentinel): Error {
 	return error;
 }
 
-/**
- * Navigate the data object by path and return metadata or a primitive value.
- *
- * Used by createDeepLazyProxy when accessing properties. Returns metadata
- * markers for arrays and objects, or the primitive value directly.
- *
- * Special-case: paths starting with ['$item', index] call data.$item(index)
- * to get the sub-proxy for that item, then continue navigating the rest;
- * likewise ['$', nodeName] calls data.$(nodeName).
- *
- * Function-typed values are returned as `undefined` — every callable on
- * the host data surface (`$('Foo').first()`, `$items()`, `$fromAI()`,
- * `$evaluateExpression()`, `$getPairedItem()`) is wired guest-side via
- * the typed-RPC dispatcher (`callHost`). No expression form should
- * reach a function through this path (invariant:
- * __tests__/host-fn-shadowing.test.ts).
- */
-export function getValueAtPath(data: WorkflowData, pathArr: string[]): unknown {
-	let value: unknown = data;
-	let startIndex = 0;
-	const itemFn = (data as Record<string, unknown>).$item;
-	if (pathArr.length >= 2 && pathArr[0] === '$item' && typeof itemFn === 'function') {
-		const itemIndex = parseInt(pathArr[1], 10);
-		if (!isNaN(itemIndex)) {
-			value = (itemFn as (i: number) => unknown)(itemIndex);
-			startIndex = 2;
-		}
-	} else {
-		const dollarFn = (data as Record<string, unknown>).$;
-		if (pathArr.length >= 2 && pathArr[0] === '$' && typeof dollarFn === 'function') {
-			value = (dollarFn as (name: string) => unknown)(pathArr[1]);
-			startIndex = 2;
-		}
-	}
-	for (let i = startIndex; i < pathArr.length; i++) {
-		value = (value as Record<string, unknown>)?.[pathArr[i]];
-		if (value === undefined || value === null) {
-			return value;
-		}
+/** Read a host path and return its value or metadata for lazy access. */
+export function getValueAtPath(resolver: HostDataResolver, pathArr: readonly string[]): unknown {
+	return toHostMetadata(resolver.resolve(pathArr));
+}
+
+/** Read one array item and return its value or metadata for lazy access. */
+export function getArrayElement(
+	resolver: HostDataResolver,
+	pathArr: readonly string[],
+	index: number,
+): unknown {
+	const arr = resolver.resolve(pathArr);
+	if (!Array.isArray(arr)) {
+		return undefined;
 	}
 
-	// Functions are not reachable via the lazy-proxy data path —
-	// every callable on the host data surface routes through the
-	// typed-RPC dispatcher. Return undefined so any residual
-	// access surfaces as missing rather than as a stale metadata
-	// marker the runtime no longer knows how to interpret.
+	// Only non-negative integer indices select array items.
+	if (!Number.isInteger(index) || index < 0) {
+		return undefined;
+	}
+
+	return toHostMetadata(arr[index]);
+}
+
+/** Describe objects and arrays without reading their contents. */
+function toHostMetadata(value: unknown): unknown {
+	// Host functions use the callHost channel, not the lazy data path.
 	if (typeof value === 'function') {
 		return undefined;
 	}
 
-	// Handle arrays - always lazy, only transfer length
 	if (Array.isArray(value)) {
 		return {
 			__isArray: true,
@@ -127,13 +123,11 @@ export function getValueAtPath(data: WorkflowData, pathArr: string[]): unknown {
 		};
 	}
 
-	// Dates have no enumerable own keys; pass through instead of
-	// marshaling as an empty object.
+	// Dates have no enumerable own keys. Transfer the value directly.
 	if (value instanceof Date) {
 		return value;
 	}
 
-	// Handle objects - return metadata with keys
 	if (value !== null && typeof value === 'object') {
 		return {
 			__isObject: true,
@@ -141,83 +135,7 @@ export function getValueAtPath(data: WorkflowData, pathArr: string[]): unknown {
 		};
 	}
 
-	// Primitive value
 	return value;
-}
-
-/**
- * Get an array element at an index, navigating to the array by path first
- * (same `$`/`$item` special-casing as getValueAtPath).
- *
- * Used by the array proxy when accessing numeric indices.
- */
-export function getArrayElement(data: WorkflowData, pathArr: string[], index: number): unknown {
-	let arr: unknown = data;
-	let startIndex = 0;
-	const itemFn = (data as Record<string, unknown>).$item;
-	if (pathArr.length >= 2 && pathArr[0] === '$item' && typeof itemFn === 'function') {
-		const itemIndex = parseInt(pathArr[1], 10);
-		if (!isNaN(itemIndex)) {
-			arr = (itemFn as (i: number) => unknown)(itemIndex);
-			startIndex = 2;
-		}
-	} else {
-		const dollarFn = (data as Record<string, unknown>).$;
-		if (pathArr.length >= 2 && pathArr[0] === '$' && typeof dollarFn === 'function') {
-			arr = (dollarFn as (name: string) => unknown)(pathArr[1]);
-			startIndex = 2;
-		}
-	}
-	for (let i = startIndex; i < pathArr.length; i++) {
-		arr = (arr as Record<string, unknown>)?.[pathArr[i]];
-		if (arr === undefined || arr === null) {
-			return undefined;
-		}
-	}
-
-	if (!Array.isArray(arr)) {
-		return undefined;
-	}
-
-	// Only genuine array indices are reachable; anything else (e.g.
-	// 'constructor', '__lookupGetter__') would read off the prototype
-	// chain and could leak a host function reference across the boundary.
-	if (!Number.isInteger(index) || index < 0) {
-		return undefined;
-	}
-
-	const element = arr[index];
-
-	// Functions are never reachable through the data surface — mirror the
-	// guard in getValueAtPath so a host callable can't cross the boundary
-	// (invariant: __tests__/host-fn-shadowing.test.ts).
-	if (typeof element === 'function') {
-		return undefined;
-	}
-
-	// Dates have no enumerable own keys; pass through instead of
-	// marshaling as an empty object.
-	if (element instanceof Date) {
-		return element;
-	}
-
-	// If element is object/array, return metadata
-	if (element !== null && typeof element === 'object') {
-		if (Array.isArray(element)) {
-			return {
-				__isArray: true,
-				__length: element.length,
-				__data: null,
-			};
-		}
-		return {
-			__isObject: true,
-			__keys: Object.keys(element),
-		};
-	}
-
-	// Primitive element
-	return element;
 }
 
 /**

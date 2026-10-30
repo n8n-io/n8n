@@ -16,6 +16,7 @@ import {
 	isErroredTimelineItem,
 	isSubAgentTimelineItem,
 	matchesTimelineFilters,
+	memoryTimelineName,
 	timelineItemStatus,
 } from '../session-timeline.utils';
 import { chartBlockStyleForItem } from '../session-timeline.styles';
@@ -106,6 +107,8 @@ function popoverLabel(item: TimelineItem): string {
 			return i18n.baseText('agentSessions.timeline.agent');
 		case 'skill':
 			return i18n.baseText('agentSessions.timeline.skill');
+		case 'memory':
+			return i18n.baseText('agentSessions.timeline.memory');
 		case 'tool':
 			return i18n.baseText('agentSessions.timeline.tool');
 		case 'workflow':
@@ -137,6 +140,8 @@ function popoverName(item: TimelineItem): string {
 			return truncate(item.content ?? '', 80);
 		case 'skill':
 			return item.skillName ?? resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
+		case 'memory':
+			return memoryTimelineName(item, i18n);
 		case 'tool': {
 			return resolveToolNameForDisplay(item.toolName, i18n, item.toolOutput);
 		}
@@ -412,14 +417,12 @@ onBeforeUnmount(() => {
 <style module lang="scss">
 .carousel {
 	display: flex;
+	flex-shrink: 0;
 	align-items: center;
 	justify-content: flex-start;
 	gap: var(--spacing--4xs);
 	width: 100%;
 	min-width: 0;
-	overflow-x: auto;
-	scroll-snap-type: x mandatory;
-	height: var(--height--lg);
 	padding-block: var(--spacing--xs);
 	max-width: var(--n8n-session-panel--container-width, none);
 	margin: 0 auto;

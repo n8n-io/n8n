@@ -43,11 +43,16 @@ export interface AgentRuntimeConfig {
 	name: string;
 	model: ModelConfig;
 	/**
-	 * Proxy-aware `fetch` used for all model calls in this runtime (main model,
+	 * Proxy-aware `fetch` used for all model and catalog calls in this runtime (main model,
 	 * title generation and memory tasks). When unset, model construction falls back to the ambient
 	 * HTTP_PROXY resolver.
 	 */
 	modelFetch?: FetchFn;
+	/**
+	 * Caller identity sent as the `x-n8n-function-id` header on this runtime's model
+	 * calls. Side calls add a suffix (`.memory-observer`, `.title`). Unset: no header.
+	 */
+	functionId?: string;
 	instructions: string;
 	skillSource?: RuntimeSkillSource;
 	instructionProviderOptions?: ProviderOptions;

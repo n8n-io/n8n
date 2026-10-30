@@ -3,6 +3,9 @@ import { setActivePinia } from 'pinia';
 import { effectScope } from 'vue';
 import type { AgentN8nChatThreadSummary } from '@n8n/api-types';
 
+import { useSettingsStore } from '@n8n/stores/settings.store';
+
+import { useAssistantAgentThreadsStore } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads.store';
 import { useInstanceAiStore } from '@/features/ai/instanceAi/instanceAi.store';
 import { useAgentN8nChatThreadsStore } from './n8nChatThreads.store';
 import { useRecentChats } from './useRecentChats';
@@ -42,5 +45,52 @@ describe('useRecentChats', () => {
 		expect(ids).toEqual(['opened', 'recent']);
 
 		scope.stop();
+	});
+
+	describe('Assistant agent threads', () => {
+		function setAssistantAgentEnabled(enabled: boolean) {
+			useSettingsStore().moduleSettings = {
+				'instance-ai': {
+					enabled: true,
+					mcpConnectionsAvailable: false,
+					browserUseEnabled: false,
+					proxyEnabled: false,
+					cloudManaged: false,
+					sandboxEnabled: true,
+					workflowBuilderAvailable: true,
+					sandboxUnavailableReason: null,
+					runDebugEnabled: false,
+					workflowSuggestionsEnabled: false,
+					assistantAgentEnabled: enabled,
+				},
+			};
+		}
+
+		function recentIds() {
+			const scope = effectScope();
+			const { recentChats } = scope.run(() => useRecentChats())!;
+			const ids = recentChats.value.map((item) => `${item.kind}:${item.thread.id}`);
+			scope.stop();
+			return ids;
+		}
+
+		beforeEach(() => {
+			useInstanceAiStore().threads = [];
+			useAssistantAgentThreadsStore().recentThreads = [
+				{ id: 'aa1', title: null, updatedAt: '2025-01-04T00:00:00.000Z', projectId: 'p1' },
+			];
+		});
+
+		it('merges them in while the Assistant agent is on', () => {
+			setAssistantAgentEnabled(true);
+
+			expect(recentIds()).toEqual(['assistant-agent:aa1']);
+		});
+
+		it('leaves them out while the Assistant agent is off', () => {
+			setAssistantAgentEnabled(false);
+
+			expect(recentIds()).toEqual([]);
+		});
 	});
 });

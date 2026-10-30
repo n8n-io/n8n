@@ -222,4 +222,34 @@ describe('AgentMemoryEntriesService', () => {
 			expect(memoryEntryRepository.markDeleted).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('deleteCapture', () => {
+		it('deletes the capture', async () => {
+			const { service, memoryEntryRepository } = makeService();
+			memoryEntryRepository.deleteCandidate.mockResolvedValue(true);
+
+			await service.deleteCapture('agent-1', 'project-1', 'c1');
+
+			expect(memoryEntryRepository.deleteCandidate).toHaveBeenCalledWith('agent-1', 'c1', {});
+		});
+
+		it('throws when the capture is not pending or completed', async () => {
+			const { service, memoryEntryRepository } = makeService();
+			memoryEntryRepository.deleteCandidate.mockResolvedValue(false);
+
+			await expect(service.deleteCapture('agent-1', 'project-1', 'c1')).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+
+		it('throws when the agent is not in the project', async () => {
+			const { service, agentRepository, memoryEntryRepository } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(null);
+
+			await expect(service.deleteCapture('agent-1', 'project-1', 'c1')).rejects.toThrow(
+				NotFoundError,
+			);
+			expect(memoryEntryRepository.deleteCandidate).not.toHaveBeenCalled();
+		});
+	});
 });
