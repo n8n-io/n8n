@@ -1,0 +1,30 @@
+packages/modules/apps/frontend/src/components/AppPreviewOptionMenu.test.ts
+  s_07bab60c73146f::t_2beff6f9bdc94c 20,22-24,26-28
+  s_07bab60c73146f::t_3c8ca6ce9cddb8 3
+  s_07bab60c73146f::t_c7ddbc37866bfc 19,21,25,29-30
+packages/modules/apps/frontend/src/components/AppPreviewOptionMenu.vue
+  s_07bab60c73146f::t_ee822daa147cd0 6
+  s_07bab60c73146f::t_4e9ef114e9067b 34-48
+  s_07bab60c73146f::t_dad87f483fb3ac 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "512cca8f82766f0e540074c38a3a3c5574ae53ed",
+  "prompts": {},
+  "humans": {
+    "h_44f8d1c0f2f8c4": {
+      "author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_07bab60c73146f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "40e54674-1c0b-4e73-b395-0a7af1faeeec",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}

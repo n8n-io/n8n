@@ -1,0 +1,16 @@
+packages/cli/src/public-api/v1/controllers/workflows.public.controller.ts
+  h_5d40c27a8fdfd1 405
+packages/cli/src/public-api/v1/handlers/workflows/spec/paths/updateWorkflow.generated.yml
+  h_5d40c27a8fdfd1 5
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2fe1416356dd456a0b83440655e0259ef6e568be",
+  "prompts": {},
+  "humans": {
+    "h_5d40c27a8fdfd1": {
+      "author": "Sam Wooler <swooler592@gmail.com>"
+    }
+  }
+}
