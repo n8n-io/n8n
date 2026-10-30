@@ -1,4 +1,5 @@
 import { truncate } from '@n8n/utils/string/truncate';
+import { isRecord } from '@n8n/utils/is-record';
 import { AgentChannelHitlService } from './agent-channel-hitl.service';
 import { AgentEvent, type BuiltTool, type InterruptibleToolContext } from '@n8n/agents';
 import { getToolApprovalDisplayName, wrapToolForApproval } from '@n8n/agents/tool';
@@ -74,7 +75,6 @@ export class AgentDecisionWorkflowService {
 			(entry) => entry.id === effective.configurationId,
 		);
 		const handler = tool.handler;
-		const conversational = wrapToolForApproval(tool, { requireApproval: true });
 		return {
 			...tool,
 			approval: { required: true },
@@ -86,18 +86,11 @@ export class AgentDecisionWorkflowService {
 				if (
 					ctx.suspendPayload !== undefined &&
 					!pending.success &&
-					!(identity.integrationType && !configuration?.disallowRequesterApproval)
+					(!isRecord(ctx.suspendPayload) || ctx.suspendPayload.type !== 'approval')
 				) {
 					return await handler?.call(tool, input, ctx);
 				}
-				if (!configuration) throw new UserError('The selected approval settings are unavailable');
-				if (
-					!pending.success &&
-					identity.integrationType &&
-					!configuration.disallowRequesterApproval
-				) {
-					return await conversational.handler?.call(conversational, input, ctx);
-				}
+				if (!configuration) throw new UserError('The selected human interaction is unavailable');
 				return await this.decide(tool, input, ctx, configuration, identity);
 			},
 		};
@@ -296,9 +289,7 @@ export class AgentDecisionWorkflowService {
 					...(configuration.method === 'workflow'
 						? { workflowId: job.workflowId, workflowExecutionId: executionId }
 						: {}),
-					title: identity.integrationType
-						? `Waiting for administrator approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`
-						: `Waiting for approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`,
+					title: `Waiting for approval to run ${getToolApprovalDisplayName(tool) ?? tool.name}.`,
 					components: [
 						...(ctx.approvalDescription &&
 						ctx.persistence?.hostMetadata?.approvalArgumentsRedacted !== true

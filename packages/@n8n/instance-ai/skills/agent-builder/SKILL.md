@@ -190,12 +190,14 @@ approves or rejects them in this chat. If it returns `approval_required` for an
 unsupported interaction, explain that it cannot be completed here and send the
 user to the Preview link from `sessionContext` to run it again.
 
-The Approval settings spike adds workflow and connected-channel approval for saved
+The Human interactions spike adds workflow and connected-channel approval for saved
 Agents called from a workflow or conversation. Workflow calls require Message
 an Agent version 4. It does not yet support scheduled Agent tasks. Do not promise
 that path.
 
-Use `hitlConfigurations` for named approval destinations. A workflow configuration
+Use `hitlConfigurations` in the Agent JSON for named human interactions. Do not
+create a separate configuration resource. These definitions import and export
+with the Agent. A workflow configuration
 has `id`, `name`, `method: "workflow"`, and `workflowId`. A channel configuration
 has `id`, `name`, `method: "channel"`, `channel`, `credentialId`, and
 `recipient: { kind: "channel" | "user", id, name? }`. Use a Slack, Telegram, or
@@ -210,13 +212,17 @@ MCP server that uses a destination. There is no Agent-wide default destination.
 Keep `requireApproval` and MCP permission rules. The route selects the destination.
 It does not require approval by itself.
 
-With no configuration, approval uses the current conversation behavior. With a
-configuration, a conversation still asks its requester unless
-`disallowRequesterApproval: true` is set on that configuration. Workflow calls
-use the selected destination because they have no conversational requester.
-When requester approval is disabled, the conversation shows a fixed administrator
-waiting message with no approval actions. The configured workflow or channel
-controls its approvers. This option does not add an n8n administrator-role check.
+With no configuration, approval uses the current conversation behavior. A selected
+configuration always handles approval, including in a conversation. The requester
+sees a fixed waiting message with no approval actions. The workflow or channel
+controls its approvers. This does not add an n8n administrator-role check.
+
+Use the selected workflow name or the platform and destination for the default
+interaction name. Set `nameOverridden: false` for an automatic name. Use
+`nameOverridden: true` when the user chooses a custom name. Preserve a custom
+name when its destination changes. Existing names without this field stay custom.
+The UI calls these definitions Human interactions. Tools select a Human interaction
+for approval. Only approval interactions are available in this spike.
 
 A decision workflow starts with `n8n-nodes-base.agentDecisionTrigger`. Add
 review steps and return one terminal item with `{ approved: boolean }`.
@@ -227,7 +233,7 @@ published decision workflow. Requests have no expiry by default. Set
 `expirySeconds` to 3600, 86400, or 604800 for a one-hour, one-day, or one-week
 deadline. Omit it for no expiry. An expired request does not run the tool.
 Agent Settings configures
-approval destinations.
+human interactions.
 
 After a successful build or config change that leaves the Agent ready to try,
 include that Preview markdown link in your wrap-up. Keep Preview links as

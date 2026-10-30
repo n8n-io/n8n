@@ -30,18 +30,26 @@ it('requires a Discord server and excludes Linear', () => {
 	);
 });
 
-it('accepts the requester approval policy for both methods', () => {
+it.each([true, false])('discards the retired requester policy %s from both methods', (policy) => {
 	for (const configuration of [
 		{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' },
 		{ ...base, channel: 'telegram' },
 	]) {
 		expect(
-			AgentHitlConfigurationSchema.parse(configuration).disallowRequesterApproval,
-		).toBeUndefined();
-		expect(
-			AgentHitlConfigurationSchema.parse({ ...configuration, disallowRequesterApproval: true })
-				.disallowRequesterApproval,
-		).toBe(true);
+			AgentHitlConfigurationSchema.parse({ ...configuration, disallowRequesterApproval: policy }),
+		).toEqual(configuration);
+	}
+});
+
+it.each([true, false])('keeps the name override state %s in both methods', (nameOverridden) => {
+	for (const configuration of [
+		{ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' },
+		{ ...base, channel: 'telegram' },
+	]) {
+		expect(AgentHitlConfigurationSchema.parse({ ...configuration, nameOverridden })).toEqual({
+			...configuration,
+			nameOverridden,
+		});
 	}
 });
 

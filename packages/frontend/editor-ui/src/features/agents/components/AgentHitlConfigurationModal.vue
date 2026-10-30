@@ -13,7 +13,6 @@ import {
 	N8nSelect2,
 	type SelectOptionBase,
 	N8nText,
-	N8nSwitch2,
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -31,7 +30,6 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { getAgentHitlChannels, getAgentHitlChannelOptions } from '../composables/useAgentApi';
 import type { AgentHitlContext } from './agent-hitl.types';
 import AgentModal from './modals/AgentModal.vue';
-import AgentFormSettingRow from './AgentFormSettingRow.vue';
 import AgentHitlDestinationPicker from './AgentHitlDestinationPicker.vue';
 import AgentHitlToolsSelect from './AgentHitlToolsSelect.vue';
 import { hitlConfigurationToolKeys } from '../utils/hitlConfiguration';
@@ -53,11 +51,9 @@ const router = useRouter();
 const rootStore = useRootStore();
 const workflowsStore = useWorkflowsStore();
 const workflowList = useWorkflowsListStore();
-const name = ref(
-	props.configuration?.name ??
-		i18n.baseText('agents.hitl.defaultName', { interpolate: { number: String(props.nextNumber) } }),
+const customName = ref(
+	props.configuration?.nameOverridden === false ? '' : (props.configuration?.name ?? ''),
 );
-const disallowRequesterApproval = ref(props.configuration?.disallowRequesterApproval ?? false);
 const expirySeconds = ref<AgentHitlConfiguration['expirySeconds'] | 'none'>(
 	props.configuration?.expirySeconds ?? 'none',
 );
@@ -125,6 +121,36 @@ const telegramId = ref(
 		? props.configuration.recipient.id
 		: '',
 );
+const generatedName = computed(() => {
+	const defaultName = i18n.baseText('agents.hitl.defaultName', {
+		interpolate: { number: String(props.nextNumber) },
+	});
+	if (method.value === 'workflow') {
+		return (
+			workflows.value.find((workflow) => workflow.id === workflowId.value)?.name ??
+			(props.configuration?.method === 'workflow' &&
+			props.configuration.workflowId === workflowId.value
+				? props.configuration.name
+				: defaultName)
+		);
+	}
+	const destination =
+		channel.value?.channel === 'telegram' ? telegramId.value : recipient.value?.name;
+	if (!channel.value || !destination) return defaultName;
+	const destinationName =
+		recipientKind.value === 'channel' && !destination.startsWith('#')
+			? `#${destination}`
+			: destination;
+	return i18n.baseText('agents.hitl.channelName', {
+		interpolate: { channel: channelLabel(channel.value), destination: destinationName },
+	});
+});
+const name = computed({
+	get: () => (customName.value.trim() ? customName.value : generatedName.value),
+	set: (value: string) => {
+		customName.value = value;
+	},
+});
 const loading = ref(false);
 const creating = ref(false);
 const destinationValid = computed(() =>
@@ -301,7 +327,7 @@ function save() {
 	const base = {
 		id: props.configuration?.id ?? uuid(),
 		name: name.value.trim(),
-		disallowRequesterApproval: disallowRequesterApproval.value,
+		nameOverridden: Boolean(customName.value.trim()),
 		expirySeconds: expirySeconds.value === 'none' ? undefined : expirySeconds.value,
 	};
 	if (method.value === 'workflow')
@@ -493,18 +519,6 @@ function save() {
 			<N8nText size="small" color="text-light">{{
 				i18n.baseText('agents.hitl.expiryHelp')
 			}}</N8nText>
-			<AgentFormSettingRow
-				control-id="agent-hitl-disallow-requester"
-				:title="i18n.baseText('agents.hitl.disallowRequester')"
-				:description="i18n.baseText('agents.hitl.disallowRequesterHelp')"
-			>
-				<N8nSwitch2
-					id="agent-hitl-disallow-requester"
-					v-model="disallowRequesterApproval"
-					:aria-label="i18n.baseText('agents.hitl.disallowRequester')"
-					data-testid="agent-hitl-disallow-requester"
-				/>
-			</AgentFormSettingRow>
 		</div>
 		<template v-if="configuration" #footerLeft>
 			<N8nButton variant="ghost" data-testid="agent-hitl-remove" @click="emit('remove')">

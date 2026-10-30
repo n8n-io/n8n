@@ -1,6 +1,6 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { defineComponent } from 'vue';
-import { N8nSwitch2, N8nTooltip, N8nCombobox2, N8nSelect2 } from '@n8n/design-system';
+import { N8nTooltip, N8nCombobox2, N8nSelect2 } from '@n8n/design-system';
 import type { AgentHitlConfiguration, AgentJsonConfig } from '@n8n/api-types';
 import { getAgentHitlChannels } from '../composables/useAgentApi';
 import AgentHitlConfigurationModal from '../components/AgentHitlConfigurationModal.vue';
@@ -155,18 +155,6 @@ it('explains the disabled Save on focus until a workflow is selected', async () 
 	expect(wrapper.emitted('save')?.[0]).toEqual([
 		expect.objectContaining({ method: 'workflow', workflowId: 'review' }),
 	]);
-});
-
-it('requires a configuration name before Save is enabled', async () => {
-	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
-	await flushPromises();
-	const save = wrapper.get('[data-testid="agent-hitl-save"]');
-	expect(save.attributes('disabled')).toBeUndefined();
-	await wrapper.get('[data-testid="title"]').setValue('  ');
-	expect(save.attributes('disabled')).toBeDefined();
-	expect(await saveHint(wrapper)).toBe('Enter a configuration name');
-	await wrapper.get('[data-testid="title"]').setValue('Review');
-	expect(save.attributes('disabled')).toBeUndefined();
 });
 
 it('names a new workflow from the Agent and the next available number', async () => {
@@ -325,20 +313,12 @@ it('preserves an existing channel configuration and queries its selected connect
 	]);
 });
 
-it('defaults administrator approval off and saves the selected policy', async () => {
+it('saves without the retired requester policy', async () => {
 	const wrapper = render({ id: 'review', name: 'Review', method: 'workflow', workflowId: 'wf' });
 	await flushPromises();
-	const toggle = wrapper.getComponent(N8nSwitch2);
-	expect(toggle.props('modelValue')).toBe(false);
-	toggle.vm.$emit('update:modelValue', true);
-	await wrapper.vm.$nextTick();
-	await wrapper
-		.findAll('button')
-		.find((button) => button.text() === 'Save')
-		?.trigger('click');
-	expect(wrapper.emitted('save')?.[0]).toEqual([
-		expect.objectContaining({ disallowRequesterApproval: true, workflowId: 'wf' }),
-	]);
+	expect(wrapper.find('[data-testid="agent-hitl-disallow-requester"]').exists()).toBe(false);
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
+	expect(wrapper.emitted('save')?.[0]?.[0]).not.toHaveProperty('disallowRequesterApproval');
 });
 
 it('disables channel approval with a separate explanation when no channels are attached', async () => {
@@ -472,12 +452,12 @@ it('shows platform icons in the channel select and recipient icons for each dest
 	expect(wrapper.getComponent(AgentHitlDestinationPicker).props('icon')).toBe('hash');
 });
 
-it('uses Approval settings for new configurations and preserves saved names', async () => {
+it('uses Human interactions for new configurations and preserves saved names', async () => {
 	const wrapper = render();
 	await flushPromises();
 	expect(wrapper.get('[data-testid="title"]').element).toHaveProperty(
 		'value',
-		'Approval settings 8',
+		'Human interaction 8',
 	);
 	const saved = render({
 		id: 'existing',
@@ -487,6 +467,95 @@ it('uses Approval settings for new configurations and preserves saved names', as
 	});
 	await flushPromises();
 	expect(saved.get('[data-testid="title"]').element).toHaveProperty('value', 'HITL Settings 1');
+});
+
+it('generates names from workflow choices and keeps automatic naming after Save', async () => {
+	const wrapper = render();
+	await flushPromises();
+	const picker = wrapper.getComponent(N8nCombobox2);
+	picker.vm.$emit('update:modelValue', 'review');
+	await wrapper.vm.$nextTick();
+	expect(wrapper.get('[data-testid="title"]').element).toHaveProperty('value', 'Review expenses');
+	picker.vm.$emit('update:modelValue', 'other');
+	await wrapper.vm.$nextTick();
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
+	const saved = wrapper.emitted('save')?.[0]?.[0] as AgentHitlConfiguration;
+	expect(saved).toMatchObject({ name: 'Confirm deployment', nameOverridden: false });
+	const reopened = render(saved);
+	await flushPromises();
+	reopened.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');
+	await reopened.vm.$nextTick();
+	expect(reopened.get('[data-testid="title"]').element).toHaveProperty('value', 'Review expenses');
+});
+
+it('adopts the created workflow name unless the user has renamed the interaction', async () => {
+	const wrapper = render();
+	await flushPromises();
+	const create = wrapper
+		.getComponent(N8nCombobox2)
+		.props('items')
+		?.find((item) => 'value' in item && item.value === '__create_hitl_workflow__');
+	if (create && 'onSelect' in create) create.onSelect?.(new Event('select'));
+	await flushPromises();
+	expect(wrapper.get('[data-testid="title"]').element).toHaveProperty(
+		'value',
+		'Support Agent approval workflow 1',
+	);
+});
+
+it('preserves a custom name when the workflow changes and the modal reopens', async () => {
+	const wrapper = render();
+	await flushPromises();
+	await wrapper.get('[data-testid="title"]').setValue('Finance team');
+	wrapper.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'review');
+	await wrapper.vm.$nextTick();
+	await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
+	const saved = wrapper.emitted('save')?.[0]?.[0] as AgentHitlConfiguration;
+	expect(saved).toMatchObject({ name: 'Finance team', nameOverridden: true });
+	const reopened = render(saved);
+	await flushPromises();
+	reopened.getComponent(N8nCombobox2).vm.$emit('update:modelValue', 'other');
+	await reopened.vm.$nextTick();
+	expect(reopened.get('[data-testid="title"]').element).toHaveProperty('value', 'Finance team');
+});
+
+it.each([
+	['channel', 'approvals', 'Slack #approvals'],
+	['channel', '#approvals', 'Slack #approvals'],
+	['user', 'Reviewer', 'Slack Reviewer'],
+] as const)(
+	'names a Slack %s destination %s automatically',
+	async (kind, destination, expected) => {
+		const wrapper = render();
+		await flushPromises();
+		getSelect(wrapper, 'agent-hitl-method').vm.$emit('update:modelValue', 'channel');
+		await flushPromises();
+		getSelect(wrapper, 'agent-hitl-channel').vm.$emit('update:modelValue', 'slack:slack');
+		await flushPromises();
+		getSelect(wrapper, 'agent-hitl-recipient-type').vm.$emit('update:modelValue', kind);
+		await flushPromises();
+		wrapper
+			.getComponent(AgentHitlDestinationPicker)
+			.vm.$emit('update:modelValue', { id: 'destination', name: destination });
+		await wrapper.vm.$nextTick();
+		expect(wrapper.get('[data-testid="title"]').element).toHaveProperty('value', expected);
+		await wrapper.get('[data-testid="agent-hitl-save"]').trigger('click');
+		expect(wrapper.emitted('save')?.[0]?.[0]).toMatchObject({
+			name: expected,
+			nameOverridden: false,
+		});
+	},
+);
+
+it('names a Telegram destination from its user ID', async () => {
+	const wrapper = render();
+	await flushPromises();
+	getSelect(wrapper, 'agent-hitl-method').vm.$emit('update:modelValue', 'channel');
+	await flushPromises();
+	getSelect(wrapper, 'agent-hitl-channel').vm.$emit('update:modelValue', 'telegram:bot');
+	await flushPromises();
+	await wrapper.get('[data-testid="agent-hitl-telegram-user"]').setValue('12345');
+	expect(wrapper.get('[data-testid="title"]').element).toHaveProperty('value', 'Telegram 12345');
 });
 
 it('renders a saved channel icon and label after loading without opening the select', async () => {

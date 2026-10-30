@@ -482,7 +482,7 @@ export const AgentJsonConfigBaseSchema = z.object({
 	hitlConfigurations: z
 		.array(AgentHitlConfigurationSchema)
 		.refine((entries) => new Set(entries.map(({ id }) => id)).size === entries.length, {
-			message: 'Approval configuration IDs must be unique',
+			message: 'Human interaction IDs must be unique',
 		})
 		.optional(),
 	name: z.string().min(1).max(128),

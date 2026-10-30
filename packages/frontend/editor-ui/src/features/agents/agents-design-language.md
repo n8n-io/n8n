@@ -491,33 +491,38 @@ Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
 
-Approval settings use `AgentChipRow` and `AgentChipButton`, as the Build
+Human interactions use `AgentChipRow` and `AgentChipButton`, as the Build
 page does. Each pill opens its configuration. Put the add action after the pills.
-Use the item context menu for removal. Select a destination on each gated tool
+Use the item context menu for removal. Select an interaction on each gated tool
 or MCP server. Do not show an Agent-wide default destination.
-Label the destination select `Approval settings`. For MCP servers, place it
-after tool permissions and use `Approval settings for Ask first tools`. Show it
+Label the select `Human interaction for approval`. For MCP servers, place it
+after tool permissions and use `Human interaction for Ask first tools`. Show it
 when at least one tool or category uses Ask first. Default the select to `Ask user`.
-Put `Create configuration` first in the searchable select, with a plus icon.
-Use each configuration's workflow or channel icon, as its settings pill does.
-Show `Only use {name}` when Disallow user approval is on. Otherwise, show
-`Ask user or {name}`. Keep this label in the selected field too.
+Put `Create human interaction` first in the searchable select, with a plus icon.
+Show each interaction's name and workflow or channel icon in its option and selection.
 
-Keep requester approval enabled by default. The configuration's
-`Disallow user approval` switch routes conversations to the configured destination.
-Show a fixed waiting message with no approval actions in the requester's
-conversation. Name the tool that is waiting and include its approval description. The configured workflow or channel owns approver access.
+A configured interaction always handles approval, including in conversations.
+Only tools without an interaction ask the requester. Show a fixed waiting message
+with no approval actions in the requester's conversation. Name the tool that is
+waiting and include its approval description. The configured workflow or channel
+owns approver access.
+
+Generate the interaction name from the selected workflow name or the platform
+and destination. Prefix channel destinations with a hash. Let users override the
+name in the modal title. Keep automatic naming after Save until a user overrides
+it. Preserve names from older configurations. Store the definitions and name
+override state in the Agent JSON.
 
 Disable the connected channel approval method when no supported channels are
 attached. Put the reason below the option label in smaller, muted text.
 Request expiry defaults to no expiry. Offer one hour, one day, and one week.
-Keep expiry local until Save, as the destination and approval policy do.
+Keep expiry local until Save, as the destination does.
 Keep Save disabled until the approval configuration is complete. Explain the missing
-name, workflow selection, or channel configuration in a tooltip on hover and focus.
+workflow selection or channel configuration in a tooltip on hover and focus.
 Use a searchable select for the decision workflow. Put Create workflow in its menu.
 Show platform icons in the connected channel select. Use `N8nSelect2` item icons
 so saved selections keep the icon and label in the same layout after loading.
-Use the large size of the current Design System selects throughout Approval settings.
+Use the large size of the current Design System selects throughout Human interactions.
 Keep single-row tool selections at this height. Let the field grow when pills wrap.
 Use the same form field style for searchable destinations. Mark channel results with a hash icon and
 user results with a user icon. Keep search and pagination in the destination menu.

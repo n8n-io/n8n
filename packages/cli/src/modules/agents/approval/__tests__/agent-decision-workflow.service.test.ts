@@ -400,20 +400,15 @@ describe('Agent decision workflow approval', () => {
 	});
 
 	it.each(['n8n_chat', 'slack', 'telegram', 'discord'])(
-		'asks the requester in %s when administrator approval is off',
+		'asks the requester in %s when no interaction is configured',
 		async (integrationType) => {
 			const { service, tool, handler, suspend, context, loader } = setup();
-			const wrapped = service.wrap(
-				tool,
-				{ type: 'configuration', configurationId: 'review' },
-				configuration,
-				{
-					agentId: 'agent',
-					projectId: 'project',
-					published: false,
-					integrationType,
-				},
-			);
+			const wrapped = service.wrap(tool, undefined, configuration, {
+				agentId: 'agent',
+				projectId: 'project',
+				published: false,
+				integrationType,
+			});
 			await wrapped.handler?.(
 				{},
 				{ ...context, continuation: undefined, suspendPayload: undefined },
@@ -438,12 +433,15 @@ describe('Agent decision workflow approval', () => {
 	);
 
 	it.each([
-		['n8n_chat', true, false],
-		['n8n_chat', false, true],
-		['slack', false, false],
+		['n8n_chat', true, false, false],
+		['n8n_chat', false, true, false],
+		['slack', false, false, false],
+		['telegram', false, false, false],
+		['discord', false, false, false],
+		['slack', false, false, true],
 	] as const)(
-		'routes administrator approval outside %s (preview=%s, publishedChat=%s)',
-		async (integrationType, previewChat, publishedN8nChat) => {
+		'uses the configured interaction in %s (preview=%s, publishedChat=%s, requesterCheckpoint=%s)',
+		async (integrationType, previewChat, publishedN8nChat, requesterCheckpoint) => {
 			const { service, tool, jobs, executions, loader, context, suspend, handler } = setup();
 			Container.set(WorkflowRunner, mock<WorkflowRunner>());
 			const execute = vi
@@ -472,17 +470,10 @@ describe('Agent decision workflow approval', () => {
 			executions.findSingleExecution.mockResolvedValue(
 				mock<IExecutionResponse>({ status: 'waiting' }),
 			);
-			const adminConfig = {
-				...configuration,
-				hitlConfigurations: configuration.hitlConfigurations?.map((entry) => ({
-					...entry,
-					disallowRequesterApproval: true,
-				})),
-			};
 			const wrapped = service.wrap(
 				tool,
 				{ type: 'configuration', configurationId: 'review' },
-				adminConfig,
+				configuration,
 				{
 					agentId: 'agent',
 					projectId: 'project',
@@ -496,7 +487,8 @@ describe('Agent decision workflow approval', () => {
 			const initial: InterruptibleToolContext = {
 				...context,
 				continuation: undefined,
-				suspendPayload: undefined,
+				suspendPayload: requesterCheckpoint ? { type: 'approval' } : undefined,
+				resumeData: requesterCheckpoint ? { approved: true } : undefined,
 				runId: 'run',
 				toolCallId: 'call',
 				approvalDescription: 'Update the selected record.',
@@ -526,7 +518,7 @@ describe('Agent decision workflow approval', () => {
 				displayName: undefined,
 				workflowId: 'decision',
 				workflowExecutionId: 'child',
-				title: 'Waiting for administrator approval to run write.',
+				title: 'Waiting for approval to run write.',
 				components: [
 					{ type: 'section', text: 'Update the selected record.' },
 					{
@@ -562,6 +554,21 @@ describe('Agent decision workflow approval', () => {
 			expect(handler).toHaveBeenCalledOnce();
 		},
 	);
+
+	it('does not ask the requester when the configured interaction is missing', async () => {
+		const { service, tool, context, suspend, handler } = setup();
+		const wrapped = service.wrap(
+			tool,
+			{ type: 'configuration', configurationId: 'missing' },
+			configuration,
+			{ agentId: 'agent', projectId: 'project', published: false, integrationType: 'slack' },
+		);
+		await expect(
+			wrapped.handler?.({}, { ...context, continuation: undefined, suspendPayload: undefined }),
+		).rejects.toThrow('The selected human interaction is unavailable');
+		expect(suspend).not.toHaveBeenCalled();
+		expect(handler).not.toHaveBeenCalled();
+	});
 
 	it('uses an explicit conversation override', () => {
 		const { service, tool } = setup();

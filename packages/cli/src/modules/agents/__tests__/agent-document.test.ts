@@ -1,4 +1,5 @@
-import type { AgentJsonConfig } from '@n8n/api-types';
+import { AgentJsonConfigSchema, type AgentJsonConfig } from '@n8n/api-types';
+import { jsonParse } from 'n8n-workflow';
 
 import type { Agent } from '../entities/agent.entity';
 import { composeJsonConfig } from '../json-config/agent-config-composition';
@@ -28,6 +29,56 @@ describe('toAgentDocument / fromAgentDocument', () => {
 		expect(config).not.toHaveProperty('skills');
 		expect(skillRefs).toEqual(document.skills);
 		expect(toAgentDocument(config, skillRefs)).toEqual(document);
+	});
+
+	it('keeps human interactions and tool routes in the stored JSON and exported document', () => {
+		const configured: AgentJsonConfig = {
+			...document,
+			hitlConfigurations: [
+				{
+					id: 'workflow',
+					name: 'Review expenses',
+					nameOverridden: false,
+					method: 'workflow',
+					workflowId: 'review',
+				},
+				{
+					id: 'channel',
+					name: 'Operations team',
+					nameOverridden: true,
+					method: 'channel',
+					channel: 'telegram',
+					credentialId: 'bot',
+					recipient: { kind: 'user', id: '12345' },
+				},
+			],
+			tools: [
+				{
+					type: 'custom',
+					id: 'lookup',
+					requireApproval: true,
+					approvalRoute: { type: 'configuration', configurationId: 'workflow' },
+				},
+			],
+			mcpServers: [
+				{
+					name: 'Operations',
+					url: 'https://example.com/mcp',
+					transport: 'streamableHttp',
+					authentication: 'none',
+					approvalRoute: { type: 'configuration', configurationId: 'channel' },
+				},
+			],
+		};
+		const { config, skillRefs } = fromAgentDocument(configured);
+		expect(config.hitlConfigurations).toEqual(configured.hitlConfigurations);
+		const exported = JSON.stringify(toAgentDocument(config, skillRefs));
+		const imported = AgentJsonConfigSchema.parse(jsonParse<unknown>(exported));
+		expect(imported.hitlConfigurations).toEqual(configured.hitlConfigurations);
+		expect(imported.tools).toEqual(configured.tools);
+		expect(imported.mcpServers).toEqual(configured.mcpServers);
+		const restored = fromAgentDocument(imported);
+		expect(restored.config.hitlConfigurations).toEqual(configured.hitlConfigurations);
 	});
 
 	it('keeps the ref order and the pins', () => {

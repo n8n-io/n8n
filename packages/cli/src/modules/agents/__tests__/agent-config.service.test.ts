@@ -373,7 +373,7 @@ describe('AgentConfigService', () => {
 	});
 
 	describe('updateConfig', () => {
-		describe('HITL configurations', () => {
+		describe('Human interactions', () => {
 			const configurations: AgentHitlConfiguration[] = [
 				{
 					id: 'workflow-review',
@@ -413,7 +413,7 @@ describe('AgentConfigService', () => {
 					const updated = {
 						...configuration,
 						name: 'Administrator review',
-						disallowRequesterApproval: true,
+						nameOverridden: true,
 						expirySeconds: 3600 as const,
 					};
 					const changed = await service.updateConfig(

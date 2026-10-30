@@ -34,12 +34,7 @@ const items = computed<ComboboxItem[]>(() => [
 	{ value: 'default', label: i18n.baseText('agents.hitl.useDefault'), icon: 'user' },
 	...configurations.value.map((configuration) => ({
 		value: configuration.id,
-		label: i18n.baseText(
-			configuration.disallowRequesterApproval
-				? 'agents.hitl.route.only'
-				: 'agents.hitl.route.userOr',
-			{ interpolate: { name: configuration.name } },
-		),
+		label: configuration.name,
 		icon: configuration.method === 'workflow' ? ('workflow' as const) : configuration.channel,
 	})),
 ]);

@@ -1,11 +1,11 @@
-# Approval settings workflow spike
+# Human interactions workflow spike
 
 Run the database migrations. Use Message an Agent version 4.
 
 This branch implements workflow and connected-channel approval destinations.
 It includes the workflow caller and item continuation in the same spike.
 
-1. Open a saved Agent. Open Settings, then Approval settings.
+1. Open a saved Agent. Open Settings, then Human interactions.
 2. Create a configuration. Select a workflow or a connected Slack, Telegram, or
    Discord channel. The workflow picker includes search and Create workflow.
 3. For a workflow, add review steps between the Agent decision trigger and the response.
@@ -19,15 +19,19 @@ It includes the workflow caller and item continuation in the same spike.
 8. Approve or reject through the workflow. The same Agent run resumes.
    A rejection does not run the protected tool.
 
-Approval routing has four cases:
+Approval routing has two cases:
 
 1. A gated tool with no configuration uses the current approval behavior.
-2. A conversation with a configuration still asks its requester by default.
-3. A workflow call uses the tool's selected configuration.
-4. A configuration with `disallowRequesterApproval: true` routes a conversation to
-   its destination. The requester sees a fixed administrator waiting message.
-   The conversation has no approval buttons. The workflow or channel controls its
-   approvers. This setting does not add an n8n administrator-role check.
+2. A configured interaction handles approval for conversations and workflow calls.
+   The requester sees a fixed waiting message with no approval buttons.
+   The workflow or channel controls its approvers. This does not add an n8n
+   administrator-role check.
+
+Interaction definitions stay in `hitlConfigurations` in the Agent JSON.
+They need no separate configuration table or migration. Import and export keep
+these definitions and the tool and MCP routes. Runtime jobs still store pending
+request state. Names follow the workflow or channel destination until a user
+overrides the title. `nameOverridden` stores this choice in the same JSON.
 
 There is no Agent-wide default destination. Settings lists configurations as
 editable pills with an adjacent add action.

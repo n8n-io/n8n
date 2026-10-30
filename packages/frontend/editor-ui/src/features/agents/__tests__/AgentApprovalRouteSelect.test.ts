@@ -15,7 +15,6 @@ const configurations: AgentHitlConfiguration[] = [
 		channel: 'slack',
 		credentialId: 'slack',
 		recipient: { kind: 'channel', id: 'C1' },
-		disallowRequesterApproval: true,
 	},
 	{
 		id: 'telegram',
@@ -24,7 +23,6 @@ const configurations: AgentHitlConfiguration[] = [
 		channel: 'telegram',
 		credentialId: 'telegram',
 		recipient: { kind: 'user', id: '123' },
-		disallowRequesterApproval: false,
 	},
 	{
 		id: 'discord',
@@ -34,7 +32,6 @@ const configurations: AgentHitlConfiguration[] = [
 		credentialId: 'discord',
 		recipient: { kind: 'channel', id: 'C2' },
 		guildId: 'server',
-		disallowRequesterApproval: true,
 	},
 ];
 function render(modelValue?: AgentApprovalRoute) {
@@ -56,22 +53,22 @@ function render(modelValue?: AgentApprovalRoute) {
 	return { wrapper, config, saveConfiguration };
 }
 
-it('lists creation first, the default, and each configuration with its approval policy and icon', async () => {
+it('lists creation first, the default, and each interaction with its name and icon', async () => {
 	const { wrapper } = render();
 	const input = wrapper.get<HTMLInputElement>('input');
-	expect(wrapper.get('label').text()).toBe('Approval settings');
-	expect(input.attributes('aria-label')).toBe('Approval settings');
+	expect(wrapper.get('label').text()).toBe('Human interaction for approval');
+	expect(input.attributes('aria-label')).toBe('Human interaction for approval');
 	expect(input.element.value).toBe('Ask user');
 	await input.trigger('focus');
 	await flushPromises();
 	const options = wrapper.findAll('[role="option"]');
 	expect(options.map((option) => option.text())).toEqual([
-		'Create configuration',
+		'Create human interaction',
 		'Ask user',
-		'Ask user or HITL Settings 1',
-		'Only use Slack review',
-		'Ask user or Telegram review',
-		'Only use Discord review',
+		'HITL Settings 1',
+		'Slack review',
+		'Telegram review',
+		'Discord review',
 	]);
 	for (const [index, icon] of [
 		'plus',
@@ -83,25 +80,25 @@ it('lists creation first, the default, and each configuration with its approval 
 	].entries()) {
 		expect(options[index].find(`[data-icon="${icon}"]`).exists()).toBe(true);
 	}
-	await wrapper.setProps({ label: 'Approval settings for Ask first tools' });
-	expect(wrapper.get('label').text()).toBe('Approval settings for Ask first tools');
-	expect(input.attributes('aria-label')).toBe('Approval settings for Ask first tools');
+	await wrapper.setProps({ label: 'Human interaction for Ask first tools' });
+	expect(wrapper.get('label').text()).toBe('Human interaction for Ask first tools');
+	expect(input.attributes('aria-label')).toBe('Human interaction for Ask first tools');
 });
 
-it('searches configurations and keeps the selected policy and icon in the field', async () => {
+it('searches configurations and keeps the selected name and icon in the field', async () => {
 	const { wrapper, config } = render();
 	const input = wrapper.get<HTMLInputElement>('input');
 	await input.trigger('focus');
 	await input.setValue('slack');
 	await flushPromises();
 	const options = wrapper.findAll('[role="option"]').filter((option) => option.isVisible());
-	expect(options.map((option) => option.text())).toEqual(['Only use Slack review']);
+	expect(options.map((option) => option.text())).toEqual(['Slack review']);
 	await options[0].trigger('click');
 	expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([
 		{ type: 'configuration', configurationId: 'slack' },
 	]);
 	await wrapper.setProps({ modelValue: { type: 'configuration', configurationId: 'slack' } });
-	expect(input.element.value).toBe('Only use Slack review');
+	expect(input.element.value).toBe('Slack review');
 	expect(wrapper.get('[data-testid="agent-approval-route"] [data-icon="slack"]').exists()).toBe(
 		true,
 	);
@@ -109,11 +106,11 @@ it('searches configurations and keeps the selected policy and icon in the field'
 		...config.value,
 		hitlConfigurations: configurations.map((configuration) => ({
 			...configuration,
-			disallowRequesterApproval: false,
+			name: configuration.id === 'slack' ? 'Slack team' : configuration.name,
 		})),
 	};
 	await flushPromises();
-	expect(input.element.value).toBe('Ask user or Slack review');
+	expect(input.element.value).toBe('Slack team');
 	await input.trigger('focus');
 	await input.setValue('Ask user');
 	await flushPromises();
@@ -133,7 +130,7 @@ it('opens creation without changing the route and selects the saved configuratio
 	await wrapper.get('[role="option"]').trigger('click');
 	await flushPromises();
 	expect(wrapper.emitted('update:modelValue')).toBeUndefined();
-	expect(input.element.value).toBe('Only use Slack review');
+	expect(input.element.value).toBe('Slack review');
 	const modal = wrapper.getComponent(AgentHitlConfigurationModal);
 	expect(modal.props('nextNumber')).toBe(5);
 	modal.vm.$emit('close');
