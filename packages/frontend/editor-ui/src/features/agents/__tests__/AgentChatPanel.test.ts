@@ -1397,12 +1397,15 @@ describe('AgentChatPanel', () => {
 			getSessionFilesMock.mockResolvedValue({ files: [file] });
 		});
 
-		it('shows the toggle only for a preview chat session', () => {
+		it('shows the toggle only for a preview or n8n Chat session', () => {
 			expect(mountPanel({ continueSessionId: 't1' }).find(toggle).exists()).toBe(true);
-			expect(mountPanel().find(toggle).exists()).toBe(false);
 			expect(
 				mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' }).find(toggle).exists(),
-			).toBe(false);
+			).toBe(true);
+			expect(mountPanel().find(toggle).exists()).toBe(false);
+			expect(mountPanel({ continueSessionId: 't1', channel: 'system' }).find(toggle).exists()).toBe(
+				false,
+			);
 		});
 
 		it('lists the files with a download link when opened', async () => {
@@ -1410,11 +1413,43 @@ describe('AgentChatPanel', () => {
 
 			await open(wrapper);
 
-			expect(getSessionFilesMock).toHaveBeenCalledWith({ baseUrl: '/rest' }, 'p1', 'a1', 't1');
+			expect(getSessionFilesMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				't1',
+				'chat',
+			);
 			const link = wrapper.find('[data-test-id="session-file-link"]');
 			expect(link.text()).toBe('reports/q1.csv');
 			expect(link.attributes('download')).toBe('q1.csv');
-			expect(link.attributes('href')).toContain('/attachments/f-1?threadId=t1');
+			expect(link.attributes('href')).toContain('/chat/attachments/f-1?threadId=t1');
+		});
+
+		it('lists n8n Chat files with links to the n8n Chat download route', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' });
+
+			await open(wrapper);
+
+			expect(getSessionFilesMock).toHaveBeenCalledWith(
+				{ baseUrl: '/rest' },
+				'p1',
+				'a1',
+				't1',
+				'n8n-chat',
+			);
+			expect(wrapper.find('[data-test-id="session-file-link"]').attributes('href')).toContain(
+				'/n8n-chat/attachments/f-1',
+			);
+		});
+
+		it('closes and clears the list when the session changes', async () => {
+			const wrapper = mountPanel({ continueSessionId: 't1', channel: 'n8n-chat' });
+			await open(wrapper);
+
+			await wrapper.setProps({ continueSessionId: 't2' });
+
+			expect(wrapper.find('[data-test-id="session-file-link"]').exists()).toBe(false);
 		});
 
 		it('reloads the open list when a turn ends', async () => {

@@ -78,5 +78,20 @@ describe('AgentChatAttachmentRepository', () => {
 				order: { createdAt: 'DESC' },
 			});
 		});
+
+		it('finds files of all sources when no source is excluded', async () => {
+			const find = entityManager.find.mockResolvedValue([]);
+
+			await repository.findInThreadNewestFirst(
+				{ projectId: 'p-1', threadId: 'root' },
+				undefined,
+				{},
+			);
+
+			expect(find).toHaveBeenCalledWith(AgentChatAttachment, {
+				where: { projectId: 'p-1', threadId: 'root' },
+				order: { createdAt: 'DESC' },
+			});
+		});
 	});
 });
