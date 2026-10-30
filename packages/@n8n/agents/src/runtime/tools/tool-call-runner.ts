@@ -110,7 +110,7 @@ export class ToolCallRunner {
 		// lifecycle end and skip re-execution.
 		const settledBlock = this.findSettledToolCall(list, toolCallId);
 		if (settledBlock) {
-			return this.completeSettledToolCall(params, settledBlock);
+			return await this.completeSettledToolCall(params, settledBlock);
 		}
 
 		if (isCancellation(resumeData) && !builtTool.handleCancellation) {
@@ -312,11 +312,11 @@ export class ToolCallRunner {
 			);
 	}
 
-	/** Emit ToolExecutionEnd for a block the AI SDK already settled; the result was written earlier. */
-	private completeSettledToolCall(
+	/** Emit ToolExecutionEnd and guard local errors for a block the AI SDK already settled. */
+	private async completeSettledToolCall(
 		params: ProcessToolCallParams,
 		settledBlock: SettledToolCall,
-	): ToolCallOutcome {
+	): Promise<ToolCallOutcome> {
 		const settledResult =
 			settledBlock.state === 'resolved' ? settledBlock.output : settledBlock.error;
 		this.eventBus.emit({
@@ -326,6 +326,14 @@ export class ToolCallRunner {
 			result: settledResult,
 			isError: settledBlock.state === 'rejected',
 		});
+		if (settledBlock.state === 'rejected' && !settledBlock.providerExecuted) {
+			const guardedError = await guardToolErrorForModel(
+				settledBlock.error,
+				this.deps.tokenCounter,
+				this.getResultStorage(params),
+			);
+			params.list.setToolCallError(params.toolCallId, guardedError);
+		}
 		return { outcome: 'noop' };
 	}
 
