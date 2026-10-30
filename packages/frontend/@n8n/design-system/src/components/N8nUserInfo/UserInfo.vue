@@ -35,6 +35,12 @@ const classes = computed(
 		[$style.disabled]: props.disabled,
 	}),
 );
+
+const fullName = computed(() =>
+	[props.firstName, props.lastName, props.isCurrentUser ? t('nds.userInfo.you') : '']
+		.filter(Boolean)
+		.join(' '),
+);
 </script>
 
 <template>
@@ -51,9 +57,8 @@ const classes = computed(
 		</div>
 		<div v-else :class="$style.infoContainer">
 			<div :class="$style.nameLine">
-				<N8nText :class="$style.truncate" :bold="true" color="text-dark">
-					{{ firstName }} {{ lastName }}
-					{{ isCurrentUser ? t('nds.userInfo.you') : '' }}
+				<N8nText :class="$style.truncate" :title="fullName" :bold="true" color="text-dark">
+					{{ fullName }}
 				</N8nText>
 				<N8nBadge v-if="disabled">Disabled</N8nBadge>
 			</div>
