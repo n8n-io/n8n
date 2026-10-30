@@ -73,6 +73,8 @@ export class SkillSourceRepository {
 			locator: OpaqueSourceValue;
 			identityKey: string;
 			projectId: string | null;
+			/** Null for a public source. */
+			credentialId: string | null;
 			createdById: string;
 		},
 		ctx: OperationContext = {},
@@ -83,7 +85,6 @@ export class SkillSourceRepository {
 			await manager.save(
 				manager.create(SkillSourceConnection, {
 					...source,
-					credentialId: null,
 					status: 'connected',
 					probeCursor: null,
 					lastCheckedAt: new Date(),

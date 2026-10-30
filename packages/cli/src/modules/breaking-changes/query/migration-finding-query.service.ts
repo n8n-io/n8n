@@ -58,7 +58,7 @@ export type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWo
 const assistantActionOf = (rule: WorkflowLevelRule) => rule.getMetadata().assistant ?? 'none';
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
-const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'nodes', 'updatedAt'];
+const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
 
 /**
  * Reads the migration report from the `migration_finding` table and shapes it into the
@@ -85,7 +85,7 @@ export class MigrationFindingQueryService {
 	}
 
 	/**
-	 * The overview: one entry per workflow rule with its unresolved (open or notified) and won't fix finding counts,
+	 * The overview: one entry per workflow rule with its unresolved (open, notified or fixed unpublished) and won't fix finding counts,
 	 * plus live instance results.
 	 */
 	async getLightReport(
@@ -182,7 +182,7 @@ export class MigrationFindingQueryService {
 		const issuesByWorkflow =
 			'collectWorkflowData' in rule
 				? await this.issuesFromScan(targetVersion, rule)
-				: await this.issuesFromRecheck(rule, workflows);
+				: await this.issuesFromLatestOrPublished(rule, workflows);
 
 		const affectedWorkflows: BreakingChangeRuleDetailWorkflow[] = [];
 		for (const finding of findings) {
@@ -287,6 +287,31 @@ export class MigrationFindingQueryService {
 		return new Map(
 			(result?.affectedWorkflows ?? []).map((workflow) => [workflow.id, workflow.issues]),
 		);
+	}
+
+	/**
+	 * Issues per workflow id from the latest version. A workflow without issues there,
+	 * and with an older version published, takes the issues of the published version:
+	 * a finding stays listed until the published version is clean too, whatever its status.
+	 */
+	private async issuesFromLatestOrPublished(
+		rule: IBreakingChangeWorkflowRule,
+		workflows: WorkflowEntity[],
+	): Promise<Map<string, BreakingChangeWorkflowIssue[]>> {
+		const issuesByWorkflow = await this.issuesFromRecheck(rule, workflows);
+
+		const withoutIssues = workflows.filter(
+			(workflow) => (issuesByWorkflow.get(workflow.id)?.length ?? 0) === 0,
+		);
+		const publishedNodes = await this.breakingChangeService.loadPublishedNodes(withoutIssues);
+		const published = withoutIssues.flatMap((workflow) => {
+			const nodes = publishedNodes.get(workflow.id);
+			return nodes ? [{ ...workflow, nodes }] : [];
+		});
+		for (const [workflowId, issues] of await this.issuesFromRecheck(rule, published)) {
+			if (issues.length > 0) issuesByWorkflow.set(workflowId, issues);
+		}
+		return issuesByWorkflow;
 	}
 
 	/**

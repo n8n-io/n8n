@@ -7,7 +7,6 @@ import {
 import { GlobalConfig } from '@n8n/config';
 import { DslColumn } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { DataSourceOptions } from '@n8n/typeorm';
 import type {
 	DataTableColumnJsType,
 	DataTableColumnType,
@@ -41,10 +40,7 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 	});
 }
 
-function dataTableColumnTypeToSql(
-	type: DataTableCreateColumnSchema['type'],
-	dbType: DataSourceOptions['type'],
-) {
+function dataTableColumnTypeToSql(type: DataTableCreateColumnSchema['type'], dbType: string) {
 	switch (type) {
 		case 'string':
 			return 'TEXT';
@@ -69,10 +65,7 @@ function dataTableColumnTypeToSql(
 	}
 }
 
-function columnToWildcardAndType(
-	column: DataTableCreateColumnSchema,
-	dbType: DataSourceOptions['type'],
-) {
+function columnToWildcardAndType(column: DataTableCreateColumnSchema, dbType: string) {
 	return `${quoteIdentifier(column.name, dbType)} ${dataTableColumnTypeToSql(column.type, dbType)}`;
 }
 
@@ -87,7 +80,7 @@ export function isValidDataTableId(id: string) {
 export function addColumnQuery(
 	tableName: DataTableUserTableName,
 	column: DataTableCreateColumnSchema,
-	dbType: DataSourceOptions['type'],
+	dbType: string,
 ) {
 	// API requests should already conform to this, but better safe than sorry
 	if (!isValidColumnName(column.name)) {
@@ -102,7 +95,7 @@ export function addColumnQuery(
 export function deleteColumnQuery(
 	tableName: DataTableUserTableName,
 	column: string,
-	dbType: DataSourceOptions['type'],
+	dbType: string,
 ): string {
 	const quotedTableName = quoteIdentifier(tableName, dbType);
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
@@ -112,7 +105,7 @@ export function renameColumnQuery(
 	tableName: DataTableUserTableName,
 	oldColumnName: string,
 	newColumnName: string,
-	dbType: DataSourceOptions['type'],
+	dbType: string,
 ): string {
 	if (!isValidColumnName(oldColumnName) || !isValidColumnName(newColumnName)) {
 		throw new UnexpectedError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
@@ -128,13 +121,13 @@ export function renameColumnQuery(
 export function renameTableQuery(
 	oldTableName: DataTableUserTableName,
 	newTableName: DataTableUserTableName,
-	dbType: DataSourceOptions['type'],
+	dbType: string,
 ): string {
 	// `ALTER TABLE ... RENAME TO` is valid on both SQLite and Postgres
 	return `ALTER TABLE ${quoteIdentifier(oldTableName, dbType)} RENAME TO ${quoteIdentifier(newTableName, dbType)}`;
 }
 
-export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
+export function quoteIdentifier(name: string, dbType: string): string {
 	switch (dbType) {
 		case 'postgres':
 		case 'sqlite':
@@ -181,7 +174,7 @@ export function extractReturningData(raw: unknown): DataTableRowReturn[] {
 	return raw;
 }
 
-export function extractInsertedIds(raw: unknown, dbType: DataSourceOptions['type']): number[] {
+export function extractInsertedIds(raw: unknown, dbType: string): number[] {
 	switch (dbType) {
 		case 'postgres': {
 			if (!isArrayOf(raw, hasRowId)) {
@@ -286,10 +279,7 @@ export function normalizeRows(
  * Format a date value (Date object or ISO string) for database storage.
  * Converts to database-specific format.
  */
-function formatDateForDatabase(
-	value: DataTableColumnJsType,
-	dbType?: DataSourceOptions['type'],
-): string {
+function formatDateForDatabase(value: DataTableColumnJsType, dbType?: string): string {
 	let date: Date;
 
 	if (value instanceof Date) {
@@ -322,7 +312,7 @@ function formatDateForDatabase(
 export function normalizeValueForDatabase(
 	value: DataTableColumnJsType,
 	columnType: string | undefined,
-	dbType?: DataSourceOptions['type'],
+	dbType?: string,
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
 		return formatDateForDatabase(value, dbType);
@@ -340,7 +330,7 @@ export function normalizeValueForDatabase(
 export function normalizeUserRowValueForDatabase(
 	value: unknown,
 	columnType: string | undefined,
-	dbType?: DataSourceOptions['type'],
+	dbType?: string,
 ): unknown {
 	if (value === null || value === undefined) return null;
 

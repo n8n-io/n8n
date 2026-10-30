@@ -11,6 +11,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
+	ServiceAccountRepository,
 	TransactionRunner,
 	UserRepository,
 	type User,
@@ -696,6 +697,21 @@ it('rejects workflows and reviewers outside the project', async () => {
 	).rejects.toThrow('from this project');
 	await expect(
 		configurations.save(user, project.id, { ...input, reviewerIds: [other.user.id] }),
+	).rejects.toThrow('project members with workflow edit access');
+});
+
+it('does not offer or accept a service account as a reviewer', async () => {
+	const { user, project, input } = await fixture();
+	const serviceAccount = await Container.get(ServiceAccountRepository).create({
+		name: 'Deploy bot',
+		role: GLOBAL_MEMBER_ROLE,
+	});
+	await linkUserToProject(serviceAccount, project, 'project:editor');
+
+	const choices = await configurations.getConfigurationChoices(project.id);
+	expect(choices.reviewers.map(({ id }) => id)).not.toContain(serviceAccount.id);
+	await expect(
+		configurations.save(user, project.id, { ...input, reviewerIds: [serviceAccount.id] }),
 	).rejects.toThrow('project members with workflow edit access');
 });
 

@@ -4,7 +4,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IBinaryData } from 'n8n-workflow';
 import { jsonParse, base64DecodeUTF8 } from 'n8n-workflow';
 import VueJsonPretty from 'vue-json-pretty';
-import RunDataHtml from './RunDataHtml.vue';
+import { N8nHtmlPreview } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
@@ -74,7 +74,7 @@ onMounted(async () => {
 				:deep="3"
 				:show-length="true"
 			/>
-			<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="data" />
+			<N8nHtmlPreview v-else-if="binaryData.fileType === 'html'" :html="data" />
 			<!-- An iframe, not an embed: an `object-src 'none'` CSP refuses embeds -->
 			<iframe
 				v-else

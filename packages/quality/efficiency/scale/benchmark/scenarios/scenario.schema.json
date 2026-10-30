@@ -44,8 +44,17 @@
 		"scenarioData": {
 			"$ref": "#/definitions/ScenarioData",
 			"description": "Data to import before running the scenario"
+		},
+		"supportedEngines": {
+			"type": "array",
+			"description": "Execution engines that can run the workflows of the scenario. The benchmark skips the scenario when the selected engine is not in this list",
+			"items": {
+				"enum": ["v1", "v2"]
+			},
+			"minItems": 1,
+			"uniqueItems": true
 		}
 	},
-	"required": ["name", "description", "scriptPath", "scenarioData"],
+	"required": ["name", "description", "scriptPath", "scenarioData", "supportedEngines"],
 	"additionalProperties": false
 }

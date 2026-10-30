@@ -10,11 +10,20 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { isRecord } from '@n8n/utils/is-record';
 import { extension } from 'mime-types';
 import { BinaryDataService } from 'n8n-core';
-import { deepCopy } from 'n8n-workflow';
-import type { IBinaryData, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { deepCopy, UserError } from 'n8n-workflow';
+import type { IBinaryData, IBinaryKeyData, IDataObject, INodeExecutionData } from 'n8n-workflow';
+import { z } from 'zod';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { resolveInboundMimeType } from './utils/inbound-attachments';
+
+/** Optional tool input. The model passes file IDs from the chat or from other tool results. */
+export const FILES_INPUT_SCHEMA = z
+	.record(z.string(), z.string())
+	.optional()
+	.describe(
+		'Files to pass to the tool. Key = binary property name (usually "data"), value = fileId.',
+	);
 
 export interface AgentFileScope {
 	/** Null for inline agents, which have no `agents` row. */
@@ -42,6 +51,52 @@ export class AgentFileBridge {
 		private readonly binaryDataService: BinaryDataService,
 		private readonly attachmentService: AgentChatAttachmentService,
 	) {}
+
+	/**
+	 * Resolve the `files` tool input to binary entries for an input item. Each
+	 * entry points to the stored bytes, so nothing is copied. Only files that
+	 * the thread can read resolve. Pass `stored` to {@link adoptFromItems}, so
+	 * an input file that the tool returns unchanged keeps its file ID.
+	 */
+	async toBinary(
+		input: unknown,
+		scope: { projectId: string; threadId?: string },
+	): Promise<{ binary: IBinaryKeyData; stored: Map<string, AgentToolOutputFile> } | undefined> {
+		const files = FILES_INPUT_SCHEMA.parse(input);
+		if (!files || Object.keys(files).length === 0) return undefined;
+		const { threadId } = scope;
+		if (!threadId) throw new UserError('Files can only be passed to tools in a conversation');
+
+		const binary: IBinaryKeyData = {};
+		const stored = new Map<string, AgentToolOutputFile>();
+		for (const [key, fileId] of Object.entries(files)) {
+			const attachment = await this.attachmentService.getReadable(fileId, {
+				projectId: scope.projectId,
+				threadId,
+			});
+			if (!attachment) throw new UserError(`File "${fileId}" not found in this conversation`);
+			const { fileName } = attachment;
+			const fileExtension = hasExtension(fileName)
+				? fileName.slice(fileName.lastIndexOf('.') + 1)
+				: undefined;
+			binary[key] = {
+				id: attachment.binaryDataId,
+				// A stored binary keeps its storage mode in `data`, as BinaryDataService.store does.
+				data: attachment.binaryDataId.split(':')[0],
+				mimeType: attachment.mimeType,
+				fileName: attachment.fileName,
+				...(fileExtension && { fileExtension }),
+				bytes: attachment.fileSizeBytes,
+			};
+			stored.set(attachment.binaryDataId, {
+				fileId,
+				fileName: attachment.fileName,
+				mimeType: attachment.mimeType,
+				sizeBytes: attachment.fileSizeBytes,
+			});
+		}
+		return { binary, stored };
+	}
 
 	/**
 	 * Copy each `item.binary` entry into agent storage. The copy keeps the file
