@@ -51,7 +51,7 @@ describe('getSystemPrompt — cloud browser', () => {
 			expect(section).toContain(BROWSER_USE_NOTE);
 			expect(section).toContain(USE_CLOUD_BROWSER);
 			// The UI shows this tip, so the agent does not repeat it.
-			expect(section).not.toContain('how they can connect their own browser instead');
+			expect(section).not.toContain('select "Connect browser"');
 			expect(section).not.toContain(ASK_WHICH_BROWSER);
 		});
 
