@@ -3,7 +3,7 @@ import { buildResumeTraceInput } from '../resume-trace-input';
 describe('buildResumeTraceInput', () => {
 	it('records the values that the user typed or chose', () => {
 		const answers = [{ questionId: 'q-1', selectedOptions: ['Slack'] }];
-		const resourceDecision = { workflowId: 'wf-1', decision: 'reuse' };
+		const resourceDecision = 'allowForSession';
 
 		expect(
 			buildResumeTraceInput({
