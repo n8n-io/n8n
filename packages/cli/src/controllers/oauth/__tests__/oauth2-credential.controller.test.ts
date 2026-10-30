@@ -207,6 +207,23 @@ describe('OAuth2CredentialController', () => {
 			);
 		});
 
+		it('should hide the error details when the response carries an issuer', async () => {
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'invalid_client',
+				error_description: 'Unknown client',
+				iss: 'https://auth.example.com',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				undefined,
+			);
+		});
+
 		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {
 			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
 			const mockGetToken = vi.fn().mockResolvedValue({

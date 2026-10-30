@@ -202,6 +202,7 @@ export declare namespace OAuthRequest {
 				admin_consent?: string;
 				error?: string;
 				error_description?: string;
+				iss?: string;
 			}
 		>;
 	}

@@ -75,18 +75,25 @@ export class OAuth2CredentialController {
 					return res.render('admin-consent-callback');
 				}
 
-				const { error, error_description: errorDescription } = req.query;
+				const { error, error_description: errorDescription, iss } = req.query;
 				if (typeof error === 'string' && error) {
 					this.logger.warn('OAuth2 server returned an authorization error', {
 						error,
 						errorDescription,
+						iss,
 					});
+					// n8n does not record the expected issuer yet, so it cannot verify `iss` (RFC 9207).
+					// The MCP spec forbids showing error details from an unverified issuer.
+					const reason =
+						iss !== undefined
+							? undefined
+							: typeof errorDescription === 'string' && errorDescription
+								? `${error}: ${errorDescription}`
+								: error;
 					return this.oauthService.renderCallbackError(
 						res,
 						'The OAuth2 server returned an error.',
-						typeof errorDescription === 'string' && errorDescription
-							? `${error}: ${errorDescription}`
-							: error,
+						reason,
 					);
 				}
 
