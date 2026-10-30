@@ -435,13 +435,13 @@ describe('InstanceAiInput — mention attachments', () => {
 		);
 	});
 
-	it('inserts quoted text, attaches the workflow, and registers a transient reference', async () => {
+	it('attaches the workflow without inserting text, and registers a transient reference', async () => {
 		const { getByRole, getByTestId, emitted } = renderMentionsInput();
 		const textbox = getByRole('textbox');
 		await userEvent.type(textbox, 'Compare ');
 		await userEvent.click(getByTestId('mention-picker-select'));
 
-		expect(textbox).toHaveValue('Compare "Orders"');
+		expect(textbox).toHaveValue('Compare ');
 		expect(getByTestId('attachment-preview-resource')).toHaveTextContent('Orders');
 		expect(emitted()['mention-reference-added']).toHaveLength(1);
 		expect(emitted()['mention-workflow-open']?.[0]).toEqual(['w1']);
@@ -524,7 +524,7 @@ describe('InstanceAiInput — mention attachments', () => {
 		});
 		await userEvent.click(getByTestId('mention-picker-select-node'));
 
-		expect(getByRole('textbox')).toHaveValue('"Validate"');
+		expect(getByRole('textbox')).toHaveValue('');
 		await userEvent.click(getByTestId('instance-ai-send-button'));
 		const submit = emitted().submit?.[0] as [string, unknown[]];
 		expect(submit[1]).toEqual([

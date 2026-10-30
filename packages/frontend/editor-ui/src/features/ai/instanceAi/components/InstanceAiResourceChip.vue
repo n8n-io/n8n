@@ -50,7 +50,7 @@ function handleRemoveKeydown(event: KeyboardEvent): void {
 				@keydown="handleRemoveKeydown"
 				@click.stop="emit('remove')"
 			>
-				<N8nIcon icon="x" size="large" />
+				<N8nIcon icon="x" size="small" />
 			</button>
 		</div>
 		<template #content>
@@ -127,8 +127,8 @@ function handleRemoveKeydown(event: KeyboardEvent): void {
 }
 
 // Pointer devices: the X is layered over the leading icon and only revealed on
-// hover or keyboard focus, so the chip stays compact. It is centered on the icon
-// box (chip padding plus half the box), and the larger X overflows it symmetrically.
+// hover or keyboard focus, so the chip stays compact. It matches the 12px icon
+// it covers and is centered on that box.
 @media (hover: hover) {
 	.remove {
 		position: absolute;
