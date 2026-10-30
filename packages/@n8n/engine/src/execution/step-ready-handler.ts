@@ -53,7 +53,7 @@ type Dispatch =
 			kind: 'run';
 			executor: IStepExecutor;
 			inputs: StepSlots;
-			endedSubExecution?: SubExecutionResumeCause;
+			subExecutionResult?: SubExecutionResumeCause;
 	  };
 
 /**
@@ -298,7 +298,7 @@ export class StepReadyHandler {
 			kind: 'run',
 			executor: this.executorFor(step, node),
 			inputs: await this.gatherInputs(execution, step),
-			...(resumeCause ? { endedSubExecution: resumeCause } : {}),
+			...(resumeCause ? { subExecutionResult: resumeCause } : {}),
 		};
 	}
 
@@ -306,7 +306,7 @@ export class StepReadyHandler {
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		{ executor, inputs, endedSubExecution }: Extract<Dispatch, { kind: 'run' }>,
+		{ executor, inputs, subExecutionResult }: Extract<Dispatch, { kind: 'run' }>,
 	): Promise<StepExecutionResult> {
 		// The slots are stored without inspection: which ones fired is the
 		// settlement handler's concern. A declaration is not opaque in the same
@@ -316,8 +316,9 @@ export class StepReadyHandler {
 		const result = await executor.execute({
 			node,
 			inputs,
-			// The executor answers the node's sub-workflow call from it instead of starting one.
-			...(endedSubExecution ? { resume: endedSubExecution } : {}),
+			// If we're resuming from a sub-execution, we pass in the result so the
+			// executor can use it to answer the sub-workflow call.
+			...(subExecutionResult ? { resume: subExecutionResult } : {}),
 			context: {
 				executionId: execution.id,
 				stepId: step.id,
