@@ -114,10 +114,8 @@ describe('useExecutingNode composable', () => {
 	});
 
 	describe('concurrent strategy', () => {
-		const useConcurrentExecutingNode = () => useExecutingNode();
-
 		it('shows every node that runs at the same time', () => {
-			const { executingNode, addExecutingNode, isNodeExecuting } = useConcurrentExecutingNode();
+			const { executingNode, addExecutingNode, isNodeExecuting } = useExecutingNode();
 
 			addExecutingNode('nodeA', V2_ID, 0, 0);
 			addExecutingNode('nodeB', V2_ID, 1, 1);
@@ -128,8 +126,7 @@ describe('useExecutingNode composable', () => {
 		});
 
 		it('clears each node on its own nodeExecuteAfter', () => {
-			const { addExecutingNode, removeExecutingNode, isNodeExecuting } =
-				useConcurrentExecutingNode();
+			const { addExecutingNode, removeExecutingNode, isNodeExecuting } = useExecutingNode();
 
 			addExecutingNode('nodeA', V2_ID, 0, 0);
 			addExecutingNode('nodeB', V2_ID, 1, 1);
@@ -145,7 +142,7 @@ describe('useExecutingNode composable', () => {
 
 		it('keeps a node with two runs in flight until both finish', () => {
 			const { executingNode, addExecutingNode, removeExecutingNode, isNodeExecuting } =
-				useConcurrentExecutingNode();
+				useExecutingNode();
 
 			addExecutingNode('nodeA', V2_ID, 0, 0);
 			addExecutingNode('nodeA', V2_ID, 1, 1);
@@ -160,7 +157,7 @@ describe('useExecutingNode composable', () => {
 
 		it('ignores a nodeExecuteAfter for a run that is not in flight', () => {
 			const { executingNode, lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
-				useConcurrentExecutingNode();
+				useExecutingNode();
 
 			addExecutingNode('nodeA', V2_ID, 0, 0);
 			// A finished run of the same node, and an After whose Before never arrived.
@@ -175,7 +172,7 @@ describe('useExecutingNode composable', () => {
 
 		it('ignores a nodeExecuteAfter for a node that is not running', () => {
 			const { executingNode, lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
-				useConcurrentExecutingNode();
+				useExecutingNode();
 
 			addExecutingNode('nodeA', V2_ID, 0, 0);
 			removeExecutingNode('nodeB', 0);
@@ -186,8 +183,7 @@ describe('useExecutingNode composable', () => {
 		});
 
 		it('tracks the node that finished last', () => {
-			const { lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
-				useConcurrentExecutingNode();
+			const { lastAddedExecutingNode, addExecutingNode, removeExecutingNode } = useExecutingNode();
 
 			addExecutingNode('nodeB', V2_ID, 0, 0);
 			addExecutingNode('nodeA', V2_ID, 1, 1);
@@ -198,8 +194,7 @@ describe('useExecutingNode composable', () => {
 		});
 
 		it('ignores a nodeExecuteAfter before any node started', () => {
-			const { executingNode, lastAddedExecutingNode, removeExecutingNode } =
-				useConcurrentExecutingNode();
+			const { executingNode, lastAddedExecutingNode, removeExecutingNode } = useExecutingNode();
 
 			removeExecutingNode('nodeA', 0);
 
@@ -215,7 +210,7 @@ describe('useExecutingNode composable', () => {
 				removeExecutingNode,
 				clearNodeExecutionQueue,
 				isNodeExecuting,
-			} = useConcurrentExecutingNode();
+			} = useExecutingNode();
 
 			addExecutingNode('nodeA', V2_ID, 0, 0);
 			addExecutingNode('nodeA', V2_ID, 1, 1);

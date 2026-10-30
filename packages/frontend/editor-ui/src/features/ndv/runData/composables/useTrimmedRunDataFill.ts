@@ -84,7 +84,11 @@ export function useTrimmedRunDataFill(options: {
 	}
 
 	watch(
-		() => [toValue(options.nodeName), toValue(options.runIndex), toValue(options.isTrimmed)],
+		[
+			() => toValue(options.nodeName),
+			() => toValue(options.runIndex),
+			() => toValue(options.isTrimmed),
+		],
 		() => {
 			cancelDelay();
 			if (toValue(options.isTrimmed) && getFillableExecutionId() !== undefined) {

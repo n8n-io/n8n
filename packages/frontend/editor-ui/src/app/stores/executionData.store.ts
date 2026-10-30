@@ -653,7 +653,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			if (!tasksData || !fetchedRuns) return;
 
 			// Same check as `isTrimmedTaskData`. That helper's module imports the
-			// workflows store, which imports this store (`import-x/no-cycle`).
+			// workflow execution state store, which imports this store (`import-x/no-cycle`).
 			const isTrimmed = (taskData: ITaskData) =>
 				taskData.data?.main?.some((main) => isTrimmedNodeExecutionData(main)) ?? false;
 
@@ -662,10 +662,13 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 				const fetchedRun = fetchedRuns[runIndex];
 				if (!isTrimmed(taskData) || !fetchedRun || isTrimmed(fetchedRun)) return;
 
+				// An own `error` key makes the panel count the run as one item, so set
+				// it only when the fetched run failed.
+				const { error: _liveError, ...liveFields } = taskData;
 				tasksData.splice(runIndex, 1, {
-					...taskData,
+					...liveFields,
 					data: fetchedRun.data,
-					error: fetchedRun.error,
+					...(fetchedRun.error ? { error: fetchedRun.error } : {}),
 				});
 				filled = true;
 			});

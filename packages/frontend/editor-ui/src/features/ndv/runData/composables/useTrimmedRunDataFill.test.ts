@@ -1,4 +1,5 @@
 import { computed, effectScope, nextTick, ref, type EffectScope } from 'vue';
+import type { MockInstance } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import type { ExecutionStatus, IRunData } from 'n8n-workflow';
 import { createTestWorkflowExecutionResponse } from '@/__tests__/mocks';
@@ -52,7 +53,9 @@ function fetchedExecution(runData: IRunData) {
 }
 
 describe('useTrimmedRunDataFill', () => {
-	let fetchExecutionDataById: ReturnType<typeof vi.fn>;
+	let fetchExecutionDataById: MockInstance<
+		ReturnType<typeof useWorkflowsStore>['fetchExecutionDataById']
+	>;
 	let scopes: EffectScope[];
 
 	function startFill(
@@ -83,12 +86,11 @@ describe('useTrimmedRunDataFill', () => {
 		vi.useFakeTimers();
 		setActivePinia(createPinia());
 		scopes = [];
-		fetchExecutionDataById = vi.fn(async () =>
-			fetchedExecution({ NodeA: [taskData(fullData)], NodeB: [taskData(fullData)] }),
-		);
-		vi.spyOn(useWorkflowsStore(), 'fetchExecutionDataById').mockImplementation(
-			fetchExecutionDataById,
-		);
+		fetchExecutionDataById = vi
+			.spyOn(useWorkflowsStore(), 'fetchExecutionDataById')
+			.mockImplementation(async () =>
+				fetchedExecution({ NodeA: [taskData(fullData)], NodeB: [taskData(fullData)] }),
+			);
 	});
 
 	afterEach(() => {
@@ -184,6 +186,17 @@ describe('useTrimmedRunDataFill', () => {
 
 		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
 		useWorkflowExecutionStateStore(documentId).setActiveExecutionId(undefined);
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY);
+		expect(fetchExecutionDataById).not.toHaveBeenCalled();
+	});
+
+	it('fetches nothing when the execution reaches a terminal state during the delay', async () => {
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] });
+		startFill();
+
+		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+		setUpExecution(V2_ID, { NodeA: [taskData(trimmedData)] }, 'success');
 
 		await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY);
 		expect(fetchExecutionDataById).not.toHaveBeenCalled();

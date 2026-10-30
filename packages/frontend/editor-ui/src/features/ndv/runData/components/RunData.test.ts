@@ -27,6 +27,7 @@ import {
 	TRIMMED_TASK_DATA_CONNECTIONS_KEY,
 	type ExecutionStatus,
 	type INodeExecutionData,
+	type IConnectedNode,
 	type IRunData,
 	type IRunExecutionData,
 	type ITaskData,
@@ -1651,9 +1652,25 @@ describe('RunData', () => {
 			expect(getByTestId('ndv-items-count')).toHaveTextContent('1 item');
 		});
 
+		it('shows the loading state in the schema view while a displayed parent node is trimmed', () => {
+			const { getByTestId } = render({
+				displayMode: 'schema',
+				paneType: 'input',
+				defaultRunItems: [{ json: { value: 'live' } }],
+				otherNodeRuns: [trimmedRun],
+				executionStatus: 'running',
+				inputNodes: [
+					{ name: 'Test Node', indicies: [], depth: 1 },
+					{ name: 'Other Node', indicies: [], depth: 2 },
+				],
+			});
+
+			expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
+		});
+
 		describe('fill from the execution', () => {
 			const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
-			const fetchedItems = [{ json: { value: 'fetched' } }];
+			const fetchedItems = [{ json: { value: 'fetched' } }, { json: { value: 'fetched 2' } }];
 			const fetchedRun = {
 				startTime: Date.now(),
 				executionIndex: 0,
@@ -1661,9 +1678,16 @@ describe('RunData', () => {
 				data: { main: [fetchedItems] },
 				source: [null],
 			} as unknown as ITaskData;
+			const otherNode = createTestNode({
+				id: '2',
+				name: 'Other Node',
+				type: SET_NODE_TYPE,
+				position: [0, 0],
+				parameters: {},
+			});
 
 			beforeEach(() => {
-				vi.useFakeTimers({ shouldAdvanceTime: true });
+				vi.useFakeTimers();
 			});
 
 			afterEach(() => {
@@ -1680,49 +1704,43 @@ describe('RunData', () => {
 				});
 
 				expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
-				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY - 1);
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
 				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
 
-				await vi.advanceTimersByTimeAsync(1);
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await flushPromises();
 				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
 				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledWith(V2_ID);
 
-				await waitFor(() => {
-					expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
-					expect(
-						getAllByTestId('run-data-schema-item').map((item) => jsonParse(item.textContent ?? '')),
-					).toEqual(fetchedItems.map((item) => item.json));
-				});
+				expect(queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
+				expect(getByTestId('ndv-items-count')).toHaveTextContent('2 items');
+				expect(
+					getAllByTestId('run-data-schema-item').map((item) => jsonParse(item.textContent ?? '')),
+				).toEqual(fetchedItems.map((item) => item.json));
 			});
 
-			it('fetches once for the new node after a switch to another trimmed node', async () => {
+			it('restarts the delay and fetches once after a switch from one trimmed node to another', async () => {
 				const rendered = render({
 					displayMode: 'schema',
+					runs: [trimmedRun],
 					executionStatus: 'running',
 					activeExecutionId: V2_ID,
 					otherNodeRuns: [trimmedRun],
-					fetchedRunData: { 'Other Node': [fetchedRun] },
+					fetchedRunData: { 'Test Node': [fetchedRun], 'Other Node': [fetchedRun] },
 				});
 
-				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY);
-				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
-
-				await rendered.rerender({
-					node: createTestNode({
-						id: '2',
-						name: 'Other Node',
-						type: SET_NODE_TYPE,
-						position: [0, 0],
-						parameters: {},
-					}),
-				});
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await rendered.rerender({ node: otherNode });
 				expect(rendered.getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
 
-				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY);
+				// The delay of the first node would end here.
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
+
+				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY / 2);
+				await flushPromises();
 				expect(workflowsStore.fetchExecutionDataById).toHaveBeenCalledTimes(1);
-				await waitFor(() => {
-					expect(rendered.queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
-				});
+				expect(rendered.queryByTestId('ndv-trimmed-loading')).not.toBeInTheDocument();
 			});
 
 			it('does not fetch for a numeric execution ID', async () => {
@@ -1735,6 +1753,7 @@ describe('RunData', () => {
 				});
 
 				await vi.advanceTimersByTimeAsync(TRIMMED_RUN_DATA_FILL_DELAY * 2);
+				await flushPromises();
 
 				expect(workflowsStore.fetchExecutionDataById).not.toHaveBeenCalled();
 				expect(getByTestId('ndv-trimmed-loading')).toBeInTheDocument();
@@ -1885,6 +1904,7 @@ describe('RunData', () => {
 		activeExecutionId,
 		otherNodeRuns,
 		fetchedRunData,
+		inputNodes,
 	}: {
 		defaultRunItems?: INodeExecutionData[];
 		workflowId?: string;
@@ -1911,6 +1931,8 @@ describe('RunData', () => {
 		otherNodeRuns?: ITaskData[];
 		/** Run data that `fetchExecutionDataById` resolves with. */
 		fetchedRunData?: IRunData;
+		/** The parent nodes that the input panel's schema view shows. */
+		inputNodes?: IConnectedNode[];
 		lastSuccessfulExecution?: {
 			id: string;
 			finished: boolean;
@@ -2070,7 +2092,7 @@ describe('RunData', () => {
 					position: [0, 0],
 					parameters: {},
 				}),
-				nodes: [{ name: 'Test Node', indicies: [], depth: 1 }],
+				nodes: inputNodes ?? [{ name: 'Test Node', indicies: [], depth: 1 }],
 				runIndex: 0,
 				paneType,
 				isExecuting: false,
