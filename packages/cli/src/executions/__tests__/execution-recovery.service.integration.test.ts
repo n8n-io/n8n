@@ -7,6 +7,7 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import {
+	ExecutionLedger,
 	ExecutionRepository,
 	WorkflowRepository,
 	ProjectRelationRepository,
@@ -81,7 +82,13 @@ describe('ExecutionRecoveryService', () => {
 			ownershipService,
 			projectRelationRepository,
 			workflowPushNotifier,
-			new ExecutionCrashService(executionRepository, mock(), eventService, instanceSettings),
+			new ExecutionCrashService(
+				executionRepository,
+				mock(),
+				eventService,
+				instanceSettings,
+				Container.get(ExecutionLedger),
+			),
 		);
 	});
 

@@ -1,5 +1,6 @@
-import type { EventService } from '@n8n/backend-services';
+import type { EventService, ExecutionLedger } from '@n8n/backend-services';
 import type { CrashedExecution, ExecutionRepository } from '@n8n/db';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,12 +12,14 @@ describe('ExecutionCrashService', () => {
 	const workflowStatisticsService = mock<WorkflowStatisticsService>();
 	const eventService = mock<EventService>();
 	const instanceSettings = mock<InstanceSettings>({ hostId: 'main-1' });
+	const executionLedger = mock<ExecutionLedger>({ isEnabled: true });
 
 	const crashService = new ExecutionCrashService(
 		executionRepository,
 		workflowStatisticsService,
 		eventService,
 		instanceSettings,
+		executionLedger,
 	);
 
 	const startedAt = new Date('2025-01-01T00:00:00.000Z');
@@ -78,9 +81,23 @@ describe('ExecutionCrashService', () => {
 
 	const emitted = () => workflowStatisticsService.emit.mock.calls;
 	const announced = () => eventService.emit.mock.calls;
+	const recordedEnded = () => executionLedger.recordEnded.mock.calls.map(([facts]) => facts);
+
+	const endedFactsOf = (execution: CrashedExecution, rowStoppedAt = execution.stoppedAt) => ({
+		executionId: execution.id,
+		workflowId: execution.workflowId,
+		workflowName: execution.workflowName,
+		mode: execution.mode,
+		occurredAt: rowStoppedAt,
+		outcome: 'crashed',
+		runtimeMs: rowStoppedAt.getTime() - startedAt.getTime(),
+		timeSavedMin: 0,
+	});
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		executionLedger.recordEnded.mockResolvedValue();
+		Object.assign(executionLedger, { isEnabled: true });
 	});
 
 	test('reports the executions it transitioned for counting', async () => {
@@ -287,6 +304,72 @@ describe('ExecutionCrashService', () => {
 			await crashService.announceStalledExecution('1');
 
 			expect(announced()).toEqual([]);
+		});
+	});
+
+	describe('ledger ended rows', () => {
+		test('records an ended row for each execution it crashed', async () => {
+			const first = crashedExecution('1');
+			const second = crashedExecution('2');
+			transitions([first, second]);
+
+			await crashService.markAsCrashed(['1', '2'], 'queue-recovery');
+
+			await vi.waitFor(() =>
+				expect(recordedEnded()).toEqual([endedFactsOf(first), endedFactsOf(second)]),
+			);
+		});
+
+		test('records the ended row with the stop time the caller gives', async () => {
+			const first = crashedExecution('1');
+			const lastNodeStoppedAt = new Date('2025-01-01T00:00:30.000Z');
+			transitions([first]);
+
+			await crashService.markAsCrashedWithoutCounting('1', 'startup-recovery', {
+				stoppedAt: lastNodeStoppedAt,
+			});
+
+			await vi.waitFor(() =>
+				expect(recordedEnded()).toEqual([endedFactsOf(first, lastNodeStoppedAt)]),
+			);
+		});
+
+		test('records an ended row for each execution of a deactivated workflow', async () => {
+			const first = crashedExecution('1');
+			executionRepository.markWorkflowExecutionsAsCrashed.mockResolvedValue([first]);
+
+			await crashService.markWorkflowExecutionsAsCrashed('workflow-1');
+
+			await vi.waitFor(() => expect(recordedEnded()).toEqual([endedFactsOf(first)]));
+		});
+
+		test('has no runtime for an execution that never started', async () => {
+			transitions([crashedExecution('1', { startedAt: null })]);
+
+			await crashService.markAsCrashed(['1'], 'start-failure');
+
+			await vi.waitFor(() => expect(recordedEnded()).toMatchObject([{ runtimeMs: 0 }]));
+		});
+
+		test('writes the rows one at a time', async () => {
+			const firstWrite = createDeferredPromise();
+			executionLedger.recordEnded.mockReturnValueOnce(firstWrite.promise);
+			transitions([crashedExecution('1'), crashedExecution('2')]);
+
+			await crashService.markAsCrashed(['1', '2'], 'queue-recovery');
+			await vi.waitFor(() => expect(executionLedger.recordEnded).toHaveBeenCalledTimes(1));
+
+			firstWrite.resolve();
+			await vi.waitFor(() => expect(executionLedger.recordEnded).toHaveBeenCalledTimes(2));
+		});
+
+		test('records nothing when the ledger module is off', async () => {
+			Object.assign(executionLedger, { isEnabled: false });
+			transitions([crashedExecution('1')]);
+
+			await crashService.markAsCrashed(['1'], 'queue-recovery');
+
+			expect(executionLedger.recordEnded).not.toHaveBeenCalled();
 		});
 	});
 });
