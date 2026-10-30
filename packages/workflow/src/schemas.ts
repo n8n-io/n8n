@@ -359,6 +359,7 @@ export const ResourceMapperFieldSchema: z.ZodType<ResourceMapperField> = z.objec
 	removed: z.boolean().optional(),
 	options: z.array(INodePropertyOptionsSchema),
 	readOnly: z.boolean().optional(),
+	description: z.string().optional(),
 });
 
 export const ResourceMapperValueSchema: z.ZodType<ResourceMapperValue> = z.object({

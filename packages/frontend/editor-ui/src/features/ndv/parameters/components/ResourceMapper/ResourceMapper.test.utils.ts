@@ -201,6 +201,23 @@ export const MAPPING_COLUMNS_RESPONSE: ResourceMapperFields = {
 	],
 };
 
+// Description a node can supply per field via its `resourceMapperMethod`
+export const FIELD_DESCRIPTION = 'Rendered as the help tooltip for this field';
+
+/**
+ * Same response as `MAPPING_COLUMNS_RESPONSE`, but with a node-supplied
+ * `description` on a plain field ('Username'), on the default matching column
+ * ('id') and on a required field ('First name'), so the precedence between the
+ * three possible tooltip sources can be asserted.
+ */
+export const MAPPING_COLUMNS_RESPONSE_WITH_DESCRIPTIONS: ResourceMapperFields = {
+	fields: MAPPING_COLUMNS_RESPONSE.fields.map((field) =>
+		['Username', 'id', 'First name'].includes(field.id)
+			? { ...field, description: FIELD_DESCRIPTION }
+			: field,
+	),
+};
+
 // Gets the latest `valueChanged` event emitted by the component
 // This will be used to inspect current resource mapper value set in node parameters
 export function getLatestValueChangeEvent(emitted: Record<string, unknown[]>) {
