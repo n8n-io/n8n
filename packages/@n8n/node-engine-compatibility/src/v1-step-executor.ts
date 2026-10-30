@@ -11,10 +11,10 @@ import {
 	Expression,
 	isNodeClassInstance,
 	SEND_AND_WAIT_OPERATION,
-	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	EngineRequestNotSupportedError,
