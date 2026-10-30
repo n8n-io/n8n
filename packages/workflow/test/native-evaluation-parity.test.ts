@@ -866,13 +866,14 @@ describe('Expression - fast native evaluation parity', () => {
 
 	// CET-571: Edit Fields (Set) v2 in raw JSON mode resolves `{{ $input.all().length }}`
 	// over items that can hold an Error object.
-	test('$input.all().length over an item that holds an Error matches the engine', () => {
+	test('$input.all().length returns 1 for an item that holds an Error', () => {
 		const errorItem = { json: { error: new Error('boom') }, pairedItem: { item: 0 } };
 		const items = [errorItem] as unknown as Array<ReturnType<typeof makeItem>>;
 		const data = runDataFor(items);
 		const expr = '={{ $input.all().length }}';
 
-		expect(evaluate(expr, true, data, items)).toStrictEqual(evaluate(expr, false, data, items));
+		expect(evaluate(expr, false, data, items)).toBe(1);
+		expect(evaluate(expr, true, data, items)).toBe(1);
 	});
 
 	// CET-573: a Data Table row filter resolves `{{ ($('Node').first().json.count || -1) }}`
