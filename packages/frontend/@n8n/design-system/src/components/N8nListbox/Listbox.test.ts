@@ -6,6 +6,12 @@ import { defineComponent, nextTick, ref } from 'vue';
 import N8nListbox from './Listbox.vue';
 import N8nListboxItem from './ListboxItem.vue';
 
+// The list releases focus on the second tick after mount.
+async function afterMount() {
+	await nextTick();
+	await nextTick();
+}
+
 const HarnessWithButton = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
 	props: {
@@ -162,7 +168,7 @@ describe('N8nListbox', () => {
 
 	it('tabs through a control inside the item before the next item', async () => {
 		const { getByRole } = render(HarnessWithButton, { props: { modelValue: 'v2' } });
-		await nextTick();
+		await afterMount();
 		const current = getByRole('option', { name: 'v2' });
 		current.focus();
 
@@ -190,7 +196,7 @@ describe('N8nListbox', () => {
 
 	it('moves the highlight with Tab and then with the arrow keys', async () => {
 		const { getByRole } = render(Harness, { props: { modelValue: 'v2' } });
-		await nextTick();
+		await afterMount();
 		getByRole('option', { name: 'v2' }).focus();
 
 		await userEvent.tab();
@@ -207,7 +213,7 @@ describe('N8nListbox', () => {
 
 	it('moves the highlight with the arrow keys and selects on Enter', async () => {
 		const { getByRole, emitted } = render(Harness, { props: { modelValue: 'v2' } });
-		await nextTick();
+		await afterMount();
 		const current = getByRole('option', { name: 'v2' });
 		current.focus();
 
@@ -290,7 +296,7 @@ describe('N8nListbox', () => {
 
 	it('moves the highlight with the pointer when highlightOnHover is set', async () => {
 		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
-		await nextTick();
+		await afterMount();
 
 		await userEvent.hover(getByRole('option', { name: 'v1' }));
 
@@ -300,7 +306,7 @@ describe('N8nListbox', () => {
 
 	it('clears the hovered row when arrow keys move and the pointer stays', async () => {
 		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
-		await nextTick();
+		await afterMount();
 		const current = getByRole('option', { name: 'v2' });
 		const next = getByRole('option', { name: 'v1' });
 
@@ -346,7 +352,7 @@ describe('N8nListbox', () => {
 
 	it('does not move the highlight on hover when highlightOnHover is off', async () => {
 		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: false } });
-		await nextTick();
+		await afterMount();
 		const current = getByRole('option', { name: 'v2' });
 		current.focus();
 
@@ -358,7 +364,7 @@ describe('N8nListbox', () => {
 
 	it('moves the highlight with Left and Right when orientation is horizontal', async () => {
 		const { getByRole } = render(HorizontalHarness);
-		await nextTick();
+		await afterMount();
 		const list = getByRole('listbox', { name: 'Density' });
 
 		expect(list).toHaveAttribute('aria-orientation', 'horizontal');
