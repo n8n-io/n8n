@@ -2,7 +2,7 @@ operationId: deletePromotionEnvironment
 tags:
   - Promotions
 summary: Delete a promotion environment
-description: Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in Git changes.
+description: Deletes the environment with its project links and local checkout. Its provider is kept. Nothing in the Git repository changes. The open promotion reviews of the environment close in n8n. Their merge requests stay open on the Git host.
 x-required-scope: promotions:delete
 parameters:
   - schema:
@@ -21,5 +21,7 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

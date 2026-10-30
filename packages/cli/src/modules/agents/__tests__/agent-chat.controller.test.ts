@@ -1,3 +1,4 @@
+import type { AgentPlanService } from '../agent-plan.service';
 import { EventEmitter } from 'node:events';
 import { PassThrough, Readable } from 'node:stream';
 import type { SerializableAgentState } from '@n8n/agents';
@@ -9,6 +10,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { FileNotFoundError } from 'n8n-core';
 
+import { AgentTaskCancellationService } from '@/modules/agents/agent-task-cancellation.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -95,6 +97,7 @@ function makeController() {
 	const messageQueue = mock<AgentMessageQueueService>();
 	messageQueue.enqueue.mockImplementation(async (_input, onInserted) => {
 		onInserted?.('queue-1');
+
 		return { status: 'accepted', item: mock<AgentMessageQueue>({ id: 'queue-1' }) };
 	});
 	const previewStreams = new AgentQueuedTestStreamService(
@@ -105,7 +108,10 @@ function makeController() {
 		mock<Subscriber>(),
 	);
 
+	const taskCancellation = mock<AgentTaskCancellationService>();
+	const plans = mock<AgentPlanService>();
 	const controller = new AgentChatController(
+		taskCancellation,
 		agentExecutionOrchestratorService,
 		agentTestRunService,
 		mock<AgentTestChatService>(),
@@ -119,9 +125,12 @@ function makeController() {
 		messageQueue,
 		agentsConfig,
 		new AgentChatRelayService(messageQueue, previewStreams, agentChatAttachmentService),
+		plans,
 	);
 
 	return {
+		plans,
+		taskCancellation,
 		controller,
 		agentsConfig,
 		messageQueue,
@@ -211,6 +220,11 @@ describe('AgentChatController route access scopes', () => {
 		['getProductionBackgroundJobs', 'agent:execute'],
 		['stopProductionBackgroundJobs', 'agent:execute'],
 		['resumeProductionBackgroundJob', 'agent:execute'],
+		['cancelTasks', 'agent:execute'],
+		['streamTaskCancellation', 'agent:execute'],
+		['getTaskCancellation', 'agent:execute'],
+		['getPlan', 'agent:execute'],
+		['getProductionPlan', 'agent:execute'],
 		['getTestChatMessages', 'agent:read'],
 		['clearTestChatMessages', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
@@ -437,6 +451,7 @@ describe('AgentChatController background tasks', () => {
 		expect(backgroundJobService.listCurrentGroupForThread).toHaveBeenCalledWith(
 			'agent-1',
 			'thread-1',
+			{ includePaused: true },
 		);
 		expect(backgroundJobService.markMailConsumed).not.toHaveBeenCalled();
 	});
@@ -1784,5 +1799,98 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 			await expect(controller.getProductionChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 			expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
 		});
+	});
+});
+
+describe('AgentChatController task cancellation', () => {
+	const request = {
+		params: { projectId: 'project', agentId: 'agent', threadId: 'thread' },
+		user: { id: 'user' },
+	};
+
+	it('reads the current plan after the existing thread access check', async () => {
+		const { controller, agentsService, plans, agentExecutionService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+		plans.findLatestPlan.mockResolvedValue(null);
+
+		expect(await controller.getPlan(request as never)).toBeNull();
+		expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
+		expect(agentExecutionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread',
+			'project',
+			'agent',
+			'user',
+			{ previewChat: true, sessionMode: 'existing' },
+		);
+
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
+		plans.findLatestPlan.mockClear();
+
+		await expect(controller.getPlan(request as never)).rejects.toThrow('Session not found');
+		expect(plans.findLatestPlan).not.toHaveBeenCalled();
+	});
+
+	it.each(['getPlan', 'getProductionPlan'] as const)(
+		'%s reads the plan when task features are off',
+		async (method) => {
+			const { controller, agentsConfig, agentsService, agentExecutionService, plans } =
+				makeController();
+			agentsConfig.backgroundTasksEnabled = false;
+			agentsConfig.planToolsEnabled = false;
+			agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+			plans.findLatestPlan.mockResolvedValue(null);
+
+			expect(await controller[method](request as never)).toBeNull();
+			expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
+		},
+	);
+
+	it('checks published chat and thread access before reading its plan', async () => {
+		const { controller, agentsService, plans, agentExecutionService } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+		plans.findLatestPlan.mockResolvedValue(null);
+
+		expect(await controller.getProductionPlan(request as never)).toBeNull();
+		expect(plans.findLatestPlan).toHaveBeenCalledWith('thread', {});
+
+		plans.findLatestPlan.mockClear();
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+
+		await expect(controller.getProductionPlan(request as never)).rejects.toThrow(
+			'Session not found',
+		);
+		expect(plans.findLatestPlan).not.toHaveBeenCalled();
+	});
+
+	it('stops the displayed plan without an automatic wake', async () => {
+		const { controller, agentsService, taskCancellation } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+		const payload = { planId: 'plan' };
+		await controller.cancelTasks(request as never, makeSseResponse([]), payload);
+
+		expect(taskCancellation.request).toHaveBeenCalledWith('thread', 'plan');
+	});
+
+	it('rejects cancellation and state reads for a session the user cannot access', async () => {
+		const { controller, agentsService, agentExecutionService, taskCancellation } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent' } as never);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false);
+
+		await expect(
+			controller.cancelTasks(request as never, makeSseResponse([]), {
+				planId: null,
+			}),
+		).rejects.toThrow('Session not found');
+		await expect(
+			controller.streamTaskCancellation(request as never, makeSseResponse([]), { planId: null }),
+		).rejects.toThrow('Session not found');
+		await expect(controller.getTaskCancellation(request as never)).rejects.toThrow(
+			'Session not found',
+		);
+		expect(taskCancellation.request).not.toHaveBeenCalled();
+		expect(taskCancellation.state).not.toHaveBeenCalled();
 	});
 });

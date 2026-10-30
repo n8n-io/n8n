@@ -49,7 +49,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | Tool | Actions |
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
-| `data_tables` | 11 |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
@@ -61,6 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
+| `apps` | 6 |
 | `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
@@ -1101,36 +1102,39 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data_tables` (11 actions)
+## Data table tools (11 tools)
 
-Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
-`updatedAt`) are reserved and auto-managed.
+Full CRUD suite for n8n data tables. Each operation is a separate tool. System
+columns (`id`, `createdAt`, `updatedAt`) are reserved and auto-managed. The
+read tools never suspend. The write tools ask for approval unless the
+permission allows them. Stored calls of the former `data_tables` tool still
+resolve to the matching tool.
 
 ### Table operations
 
-| Action | Description |
-|--------|-------------|
-| `list` | List data tables |
-| `create` | Create a data table with columns |
-| `delete` | Delete a data table after confirmation |
-| `schema` | Get the table columns |
+| Tool | Description |
+|------|-------------|
+| `list_data_tables` | List data tables |
+| `create_data_table` | Create a data table with columns |
+| `delete_data_table` | Delete a data table after confirmation |
+| `get_data_table_schema` | Get the table columns |
 
 ### Column operations
 
-| Action | Description |
-|--------|-------------|
-| `add-column` | Add a column to a table |
-| `delete-column` | Remove a column from a table |
-| `rename-column` | Rename a column |
+| Tool | Description |
+|------|-------------|
+| `add_data_table_column` | Add a column to a table |
+| `delete_data_table_column` | Remove a column from a table |
+| `rename_data_table_column` | Rename a column |
 
 ### Row operations
 
-| Action | Description |
-|--------|-------------|
-| `query` | Query rows with optional filters |
-| `insert-rows` | Insert one or more rows |
-| `update-rows` | Update rows matching a filter |
-| `delete-rows` | Delete rows matching a non-empty filter after confirmation |
+| Tool | Description |
+|------|-------------|
+| `query_data_table` | Query rows with optional filters |
+| `insert_data_table_rows` | Insert one or more rows |
+| `update_data_table_rows` | Update rows matching a filter |
+| `delete_data_table_rows` | Delete rows matching a non-empty filter after confirmation |
 
 ---
 
@@ -1296,6 +1300,43 @@ those cases. The model relays a rejection in its own words and never says
 The system prompt carries the judgment of *when* to call it (see
 `getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
 carries *what* it does.
+
+---
+
+## `apps` *(conditional)*
+
+Build n8n Apps. Present only when the apps module is active, the run has a
+bound project and the sandbox is available. The adapter wires `appService`, and
+the turn setup removes it without a sandbox, so the tool, the `app-builder`
+skill and the `<app-targets>` block share one gate. Deferred: the skill lists
+the tool in `recommended_tools`.
+
+| Action | Scope | Description |
+|--------|-------|-------------|
+| `create` | `app:create` | Create an app in the bound project and open it. The first app of a thread uses the pending app id from thread metadata |
+| `list` | `app:list` | Apps of the bound project (at most 50), optionally filtered by name |
+| `get` | `app:read` | App state |
+| `open` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
+| `commit` | `app:update` | Save the folder as one version and wait for its build |
+| `discard` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
+
+The model edits the folder with the workspace tools and runs `npm ci` and
+`npm run build` there before it commits. The source moves in and out of the
+sandbox as one archive (`AppSourceArchiveService` in the apps module). The
+commit archive is read back as a file, not through command output.
+`apps/<appId>.base-version` holds the draft version the folder started from. A
+commit is based on that version, so a draft that changed since then fails the
+commit with a conflict and the folder stays. A commit leaves out
+`node_modules` and `dist`, and n8n builds the version again.
+
+`create` and every commit add the app to the thread metadata key
+`instanceAiAppTargets`. Reads and opens do not. A thread can build several
+apps. On each user turn the `<app-targets>` block names these apps. They also
+report the app as an `app` artifact through `onArtifactChanged`, so the thread
+shows the app's tab. The `create` and commit results include `app` (`id`,
+`name`, `projectId`) for the frontend.
+
+Errors return `{ error }`.
 
 ---
 

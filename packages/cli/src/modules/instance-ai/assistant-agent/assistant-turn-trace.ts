@@ -28,6 +28,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type {
 	AgentExecutionStreamChunk,
+	SteeredMessageEvent,
 	SystemAgentResumeTurn,
 	SystemAgentTurn,
 	SystemAgentTurnOutcome,
@@ -109,6 +110,22 @@ function continuedFromMetadata(anchor: AssistantTraceAnchor | undefined): Record
 
 type TraceStatus = 'completed' | 'suspended' | 'error' | 'cancelled';
 
+interface TraceFinishOptions {
+	/** Why the turn stopped, for a turn that the host closes, such as at shutdown. */
+	reason?: string;
+	/**
+	 * What closed the turn. Defaults to `orchestrator`, the end of the agent run.
+	 * Set it only when the host closes the turn.
+	 */
+	completionSource?: string;
+}
+
+/** How the host closes the trace of a turn that still runs at shutdown. */
+const SHUTDOWN_FINISH: TraceFinishOptions = {
+	reason: 'service_shutdown',
+	completionSource: 'service_cleanup',
+};
+
 function traceStatusOf(status: SystemAgentTurnOutcome['status']): TraceStatus {
 	return status === 'errored' ? 'error' : status;
 }
@@ -166,12 +183,16 @@ export class AssistantTurnTrace {
 
 	private firstResponseRecorded = false;
 
+	private steeredMessageCount = 0;
+
 	constructor(
 		readonly context: InstanceAiTraceContext,
 		private readonly runId: string,
 		private readonly logger: Logger,
 		/** The inputs of the `agent: orchestrator` span of a new turn. */
 		private readonly orchestratorInputs: Record<string, unknown> = {},
+		/** Called once, after the trace finished. */
+		private readonly onFinished?: () => void,
 	) {}
 
 	/** The ids that the client and the feedback use to find the trace. */
@@ -274,12 +295,51 @@ export class AssistantTurnTrace {
 				this.suspension = parseSuspension(chunk) ?? undefined;
 				this.signals.push({ kind: 'hitl', toolName: chunk.toolName });
 				break;
+			case 'message-steered':
+				this.recordSteeredMessage(chunk);
+				break;
 			case 'subagent-started':
 				this.signals.push({ kind: 'task-card' });
 				break;
 			default:
 				break;
 		}
+	}
+
+	/**
+	 * Records a message that the user steered into the running turn. The runtime
+	 * adds it to the input of the next model call, so it is part of this turn,
+	 * not a new one.
+	 */
+	private recordSteeredMessage(event: SteeredMessageEvent): void {
+		this.steeredMessageCount++;
+		const { message } = event;
+		const text = message.content
+			.filter((part) => part.type === 'text' && part.text)
+			.map((part) => part.text)
+			.join('\n');
+		const fileCount = message.content.filter((part) => part.type === 'file').length;
+		const recorded = { message: text, ...(fileCount > 0 ? { fileCount } : {}) };
+		const { context } = this;
+		const record = async () => {
+			const run = await context.startChildRun(context.actorRun, {
+				name: 'user: steered message',
+				canonicalName: 'instance-ai.steered_message',
+				runType: 'chain',
+				tags: ['steered-message'],
+				metadata: { queue_id: event.queueId, message_id: message.id },
+				inputs: recorded,
+			});
+			await context.finishRun(run, { outputs: recorded });
+		};
+		const recording = record().catch((error: unknown) => {
+			this.logger.warn('Failed to trace a steered Assistant message', {
+				runId: this.runId,
+				error: getErrorMessage(error),
+			});
+		});
+		// The turn can finish before the span exports, so keep the trace open for it.
+		context.keepOpenUntilSettled?.(recording);
 	}
 
 	/**
@@ -301,7 +361,11 @@ export class AssistantTurnTrace {
 	}
 
 	/** Finishes the orchestrator and root spans with the outcome of the turn. Runs once. */
-	async finish(outcome: Pick<SystemAgentTurnOutcome, 'status' | 'error'>, modelId?: ModelConfig) {
+	async finish(
+		outcome: Pick<SystemAgentTurnOutcome, 'status' | 'error'>,
+		modelId?: ModelConfig,
+		options: TraceFinishOptions = {},
+	) {
 		if (this.finished) return;
 		this.finished = true;
 		const { context, runId } = this;
@@ -326,15 +390,23 @@ export class AssistantTurnTrace {
 				status,
 				runId,
 				...(this.outputText ? { response: this.outputText } : {}),
+				...(options.reason ? { reason: options.reason } : {}),
 			};
 			actorMetadata = { final_status: status, ...modelMetadata };
+			const runMetadata = buildRunTraceMetadata(this.signals, {
+				status: status === 'error' ? 'error' : status,
+			});
+			// The user did not cancel a turn that the host closes. The current runtime
+			// also leaves out the cancellation type then.
+			if (options.completionSource) delete runMetadata.cancellation_type;
 			rootMetadata = {
 				...actorMetadata,
-				completion_source: 'orchestrator',
-				...buildRunTraceMetadata(this.signals, {
-					status: status === 'error' ? 'error' : status,
-				}),
+				completion_source: options.completionSource ?? 'orchestrator',
+				...runMetadata,
 			};
+		}
+		if (this.steeredMessageCount > 0) {
+			rootMetadata = { ...rootMetadata, steered_message_count: this.steeredMessageCount };
 		}
 
 		try {
@@ -359,6 +431,7 @@ export class AssistantTurnTrace {
 			});
 		} finally {
 			releaseTraceClient(context.rootRun.traceId);
+			this.onFinished?.();
 		}
 	}
 }
@@ -371,6 +444,12 @@ export class AssistantTurnTrace {
 @Service()
 export class AssistantTurnTracer {
 	private readonly logger: Logger;
+
+	/** Traces of turns that run in this process and have not finished yet. */
+	private readonly openTraces = new Set<AssistantTurnTrace>();
+
+	/** Set when shutdown starts. A turn that starts after it runs without a trace. */
+	private closing = false;
 
 	constructor(
 		logger: Logger,
@@ -389,6 +468,7 @@ export class AssistantTurnTracer {
 		turn: SystemAgentTurn,
 		setup: AssistantTraceTurnSetup,
 	): Promise<AssistantTurnTrace | undefined> {
+		if (this.closing) return undefined;
 		const anchor =
 			turn.type === 'resume'
 				? readAssistantTraceAnchor(turn.checkpointHostMetadata[ASSISTANT_TRACE_METADATA_KEY])
@@ -502,6 +582,19 @@ export class AssistantTurnTracer {
 		});
 	}
 
+	/**
+	 * Closes the traces of the turns that still run, like the current runtime
+	 * does at shutdown. The Agents runtime does not settle these turns before
+	 * the process exits, so without this their roots stay open in LangSmith.
+	 * Call it before the final flush of the trace providers.
+	 */
+	async finishOpenTraces(): Promise<void> {
+		this.closing = true;
+		for (const trace of [...this.openTraces]) {
+			await trace.finish({ status: 'cancelled' }, undefined, SHUTDOWN_FINISH);
+		}
+	}
+
 	private commonOptions(scope: AssistantTraceScope) {
 		return {
 			threadId: scope.threadId,
@@ -524,9 +617,22 @@ export class AssistantTurnTracer {
 	): Promise<AssistantTurnTrace | undefined> {
 		try {
 			const context = await createContext();
-			return context
-				? new AssistantTurnTrace(context, scope.runId, this.logger, orchestratorInputs)
-				: undefined;
+			if (!context) return undefined;
+			const trace: AssistantTurnTrace = new AssistantTurnTrace(
+				context,
+				scope.runId,
+				this.logger,
+				orchestratorInputs,
+				() => this.openTraces.delete(trace),
+			);
+			// Shutdown started while the trace was created, after the open traces were
+			// closed. Close this one too, and run the turn without a trace.
+			if (this.closing) {
+				await trace.finish({ status: 'cancelled' }, undefined, SHUTDOWN_FINISH);
+				return undefined;
+			}
+			this.openTraces.add(trace);
+			return trace;
 		} catch (error) {
 			this.logger.warn('Failed to create the Assistant agent turn trace', {
 				threadId: scope.threadId,
