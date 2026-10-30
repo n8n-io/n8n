@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import { ExecutionLedger, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import fs from 'fs';
@@ -148,7 +148,6 @@ export class ExecuteBatch extends BaseCommand<z.infer<typeof flagsSchema>> {
 		ExecuteBatch.cancelled = true;
 
 		await Container.get(ActiveExecutions).shutdown(true);
-		await Container.get(ExecutionLedger).drain();
 
 		// We may receive true but when called from `process.on`
 		// we get the signal (SIGINT, etc.)

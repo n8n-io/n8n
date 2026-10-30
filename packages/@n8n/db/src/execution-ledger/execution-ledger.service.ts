@@ -20,8 +20,6 @@ import type { OperationContext } from '../services/transaction';
 export class ExecutionLedger {
 	private writer?: ExecutionLedgerWriter;
 
-	private readonly pendingEnded = new Set<Promise<void>>();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
@@ -59,29 +57,15 @@ export class ExecutionLedger {
 		this.reportUnrecorded(await this.writer.writeEnded(facts, ctx), facts);
 	}
 
-	/** Never rejects. Callers that can wait should await it, the rest can drop it. */
+	/**
+	 * Never rejects, so callers can drop the promise. Like workflow statistics, an insert that
+	 * is still running when the process exits is lost.
+	 */
 	async recordEnded(facts: ExecutionLedgerEndedFacts): Promise<void> {
 		if (!this.writer) return;
 
-		const pending = this.writeEnded(this.writer, facts);
-		this.pendingEnded.add(pending);
 		try {
-			await pending;
-		} finally {
-			this.pendingEnded.delete(pending);
-		}
-	}
-
-	/** Waits for every `recordEnded` insert, including those that start during the wait. */
-	async drain(): Promise<void> {
-		while (this.pendingEnded.size > 0) {
-			await Promise.allSettled([...this.pendingEnded]);
-		}
-	}
-
-	private async writeEnded(writer: ExecutionLedgerWriter, facts: ExecutionLedgerEndedFacts) {
-		try {
-			this.reportUnrecorded(await writer.writeEnded(facts, {}), facts);
+			this.reportUnrecorded(await this.writer.writeEnded(facts, {}), facts);
 		} catch (e) {
 			const error = ensureError(e);
 			const { executionId, workflowId } = facts;
