@@ -111,6 +111,7 @@ export class AgentChatAttachmentService {
 	async storeInbound(params: StoreInboundAttachmentParams): Promise<AgentChatAttachment> {
 		const attachmentId = params.id ?? generateNanoId();
 		const root = await this.findRootThread(params.threadId);
+		// ponytail: the check reads usage before the insert, so parallel stores can each pass and go over a cap by their sizes. The caps are soft. Lock the root thread if they must be exact.
 		await this.checkLimits(params, root.id);
 		// The download route authorizes by the owning agent, so a file that a
 		// sub-agent makes takes the agent of the root thread.
