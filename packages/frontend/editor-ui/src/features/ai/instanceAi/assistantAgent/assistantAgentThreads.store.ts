@@ -128,15 +128,22 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		return true;
 	}
 
+	// The latest rename of each thread. Only it can restore the old title.
+	const renameVersions = new Map<string, number>();
+
 	/** Shows the new title at once, and restores the old one when the request fails. */
 	async function renameThread(threadId: string, title: string): Promise<void> {
 		const previous = renamedTitles.value.get(threadId);
+		const version = (renameVersions.get(threadId) ?? 0) + 1;
+		renameVersions.set(threadId, version);
 		renamedTitles.value.set(threadId, title);
 		try {
 			await renameSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId, title);
 		} catch (error) {
-			if (previous === undefined) renamedTitles.value.delete(threadId);
-			else renamedTitles.value.set(threadId, previous);
+			if (renameVersions.get(threadId) === version) {
+				if (previous === undefined) renamedTitles.value.delete(threadId);
+				else renamedTitles.value.set(threadId, previous);
+			}
 			throw error;
 		}
 	}
