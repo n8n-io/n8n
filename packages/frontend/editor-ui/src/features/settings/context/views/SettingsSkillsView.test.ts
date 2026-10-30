@@ -1122,8 +1122,8 @@ describe('SettingsSkillsView', () => {
 			const ReviewStub = {
 				name: 'SkillUpdateReviewDialog',
 				props: ['open', 'skillId'],
-				emits: ['update:open', 'changed'],
-				template: `<div v-if="open" data-test-id="review-stub">{{ skillId }}</div>`,
+				emits: ['update:open', 'changed', 'stopSyncing'],
+				template: `<div v-if="open" data-test-id="review-stub">{{ skillId }}<button data-test-id="review-stub-stop" @click="$emit('stopSyncing', skillId)" /></div>`,
 			};
 			const source = {
 				id: 'src-1',
@@ -1179,6 +1179,27 @@ describe('SettingsSkillsView', () => {
 				await userEvent.click(await findByTestId('skill-sync-badge-update_available'));
 
 				expect(getByTestId('review-stub')).toHaveTextContent('s1');
+			});
+
+			it('stops syncing from the review with the same confirmation, and closes it', async () => {
+				enableSkillSync();
+				skillsStore.skills = [
+					skill({ source: 'github', syncState: 'update_available', canStopSyncing: true }),
+				];
+				skillsStore.count = 1;
+				skillsStore.stopSyncingSkill.mockResolvedValue(undefined);
+				const { findByTestId, getByTestId, queryByTestId } = renderWithStubs();
+
+				await userEvent.click(await findByTestId('skill-sync-badge-update_available'));
+				await userEvent.click(getByTestId('review-stub-stop'));
+
+				await waitFor(() => expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1'));
+				expect(confirmMock).toHaveBeenCalledWith(
+					expect.stringContaining('You cannot undo this.'),
+					'Stop syncing research-search?',
+					expect.anything(),
+				);
+				await waitFor(() => expect(queryByTestId('review-stub')).toBeNull());
 			});
 
 			it('checks a source from the Sources tab and reloads both lists', async () => {

@@ -780,6 +780,23 @@ async function onUpdatesChanged() {
 	}
 }
 
+/** Stop syncing from the review: the same confirmation, then the review closes. */
+async function onStopSyncingFromReview(skillId: string) {
+	let skill: SkillListItem;
+	try {
+		skill =
+			skillsStore.skills.find((item) => item.id === skillId) ??
+			(await skillsStore.fetchSkill(skillId));
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.stopSyncing.error'));
+		return;
+	}
+	await onStopSyncing(skill, () => {
+		reviewOpen.value = false;
+	});
+	await loadSources();
+}
+
 async function onCheckSource(source: SkillSourceListItem) {
 	try {
 		const result = await skillsStore.checkSource(source.id);
@@ -1027,6 +1044,7 @@ onMounted(async () => {
 			v-model:open="reviewOpen"
 			:skill-id="reviewSkillId"
 			@changed="onUpdatesChanged"
+			@stop-syncing="onStopSyncingFromReview"
 		/>
 
 		<SkillSourceConnectDialog

@@ -33,6 +33,8 @@ const emit = defineEmits<{
 	'update:open': [open: boolean];
 	/** The update was accepted or skipped, so the lists reload. */
 	changed: [];
+	/** Stop syncing, from the footer as in the skill modal. The view asks first. */
+	stopSyncing: [skillId: string];
 }>();
 
 const i18n = useI18n();
@@ -238,13 +240,13 @@ function openInGitHub() {
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogBody v-if="review && update" :class="$style.body">
-			<N8nText tag="p" size="small" color="text-light">
+			<N8nCallout theme="secondary" icon="git-branch" data-test-id="skill-update-banner">
 				{{
 					i18n.baseText('settings.context.skills.review.banner', {
 						interpolate: { label: review.source.label, path: update.location },
 					})
 				}}
-			</N8nText>
+			</N8nCallout>
 
 			<div :class="$style.columns">
 				<nav :class="$style.files" data-test-id="skill-update-files">
@@ -362,6 +364,15 @@ function openInGitHub() {
 				:disabled="!update"
 				@click="openInGitHub"
 			/>
+			<N8nButton
+				v-if="canReview && skillId"
+				variant="ghost"
+				icon="unlink"
+				:label="i18n.baseText('settings.context.skills.stopSyncing.action')"
+				:disabled="acting !== null"
+				data-test-id="skill-update-stop-syncing"
+				@click="emit('stopSyncing', skillId)"
+			/>
 			<span :class="$style.spacer" />
 			<template v-if="canReview">
 				<N8nButton
@@ -456,6 +467,13 @@ function openInGitHub() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+/* A box, as in the prototype: what Accept changes stands apart from the details above. */
+.next {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border: var(--border);
+	border-radius: var(--radius);
 }
 
 .mono {

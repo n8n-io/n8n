@@ -237,6 +237,17 @@ describe('SkillUpdateReviewDialog', () => {
 		expect(emitted('changed')).toHaveLength(1);
 	});
 
+	it('shows the synced banner and offers Stop syncing', async () => {
+		const { getByTestId, emitted } = await open();
+
+		expect(getByTestId('skill-update-banner')).toHaveTextContent(
+			'Synced from acme/skills · skills/brand-voice.',
+		);
+		await userEvent.click(getByTestId('skill-update-stop-syncing'));
+
+		expect(emitted('stopSyncing')).toEqual([['skill-1']]);
+	});
+
 	it('changes nothing on Later', async () => {
 		const { getByTestId, emitted } = await open();
 
@@ -280,6 +291,7 @@ describe('SkillUpdateReviewDialog', () => {
 		expect(getByTestId('skill-update-read-only')).toHaveTextContent(text);
 		expect(queryByTestId('skill-update-accept')).toBeNull();
 		expect(queryByTestId('skill-update-skip')).toBeNull();
+		expect(queryByTestId('skill-update-stop-syncing')).toBeNull();
 		expect(getByTestId('skill-update-done')).toBeInTheDocument();
 	});
 });
