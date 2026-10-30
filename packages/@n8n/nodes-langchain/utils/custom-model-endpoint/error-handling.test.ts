@@ -140,6 +140,35 @@ describe('wrapCustomModelEndpointErrorFetch', () => {
 				'The subscription key is invalid',
 			);
 		});
+
+		it('redacts a secret echoed inside an already OpenAI-shaped body', async () => {
+			const endpoint = endpointWith({
+				type: 'header',
+				name: 'X-Api-Key',
+				prefix: '',
+				key: 'sk-live-9f2a71c4ab',
+			});
+			const body = JSON.stringify({
+				error: {
+					message: 'Invalid proxy server token passed. Received API Key = sk-live-9f2a71c4ab',
+					type: 'auth_error',
+				},
+			});
+			const wrapped = wrapCustomModelEndpointErrorFetch(failingWith(body), {
+				secrets: endpointSecrets(endpoint),
+			});
+
+			const text = await (await wrapped(BASE_URL)).text();
+
+			expect(text).not.toContain('sk-live-9f2a71c4ab');
+			// The shape the client reads is preserved, including fields beside the message
+			expect(JSON.parse(text)).toEqual({
+				error: {
+					message: 'Invalid proxy server token passed. Received API Key = [redacted]',
+					type: 'auth_error',
+				},
+			});
+		});
 	});
 });
 

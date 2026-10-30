@@ -94,9 +94,13 @@ export function wrapCustomModelEndpointErrorFetch(
 
 		const text = await response.text();
 		const message = messageFromBody(text);
+		// A body already in the client's shape is passed through whole so the fields
+		// beside the message survive, but it is still redacted: an OpenAI-compatible
+		// gateway is exactly the kind that echoes a rejected key back. It is not
+		// truncated, because cutting JSON short would leave it unparseable.
 		const body =
 			message === undefined
-				? text
+				? redact(text, options.secrets)
 				: JSON.stringify({ error: { message: truncate(redact(message, options.secrets)) } });
 
 		const headers = new Headers(response.headers);
