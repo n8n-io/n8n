@@ -124,7 +124,10 @@ describe('webhook runs on engine v2', () => {
 		const workflow = await createV2Workflow(webhookNode(webhookId));
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({
+			waitingForWebhook: true,
+			formTestUrls: [],
+		});
 
 		const response = await webhookAgent
 			.post(`/${webhookTestEndpoint}/${webhookId}`)
@@ -261,7 +264,7 @@ describe.each([
 		);
 
 		const listening = await startListening(workflow.id);
-		expect(listening.body.data).toEqual({ waitingForWebhook: true });
+		expect(listening.body.data).toEqual({ waitingForWebhook: true, formTestUrls: [] });
 
 		const response = await webhookAgent
 			.post(`/${webhookTestEndpoint}/${webhookId}`)

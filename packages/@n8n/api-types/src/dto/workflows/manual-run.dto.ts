@@ -60,6 +60,14 @@ export type ManualRunPayload =
 	| FullManualExecutionFromUnknownTriggerPayload
 	| PartialManualExecutionToDestinationPayload;
 
+export type ManualRunResponse =
+	| { executionId: string }
+	| {
+			waitingForWebhook: true;
+			/** Test URLs of the Form Triggers the backend registered for this run. */
+			formTestUrls: string[];
+	  };
+
 // Payloads with neither a trigger nor a destination fit none of the cases.
 const missingStartConditionSchema = z.custom<never>(() => false, {
 	message:
