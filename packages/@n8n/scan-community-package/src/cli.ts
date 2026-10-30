@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 
-const args = process.argv.slice(2);
-if (args.length < 1) {
+import { resolvePackage, analyzePackageByName } from './scanner.js';
+
+const [packageSpec] = process.argv.slice(2);
+if (!packageSpec) {
 	console.error('Usage: npx @n8n/scan-community-package <package-name>[@version]');
 	process.exit(1);
 }
 
-import { resolvePackage, analyzePackageByName } from './scanner.mjs';
-
-const packageSpec = args[0];
 const { packageName, version } = resolvePackage(packageSpec);
 try {
 	const result = await analyzePackageByName(packageName, version);
@@ -24,7 +23,7 @@ try {
 			console.log(result.details);
 		}
 	}
-} catch (error) {
+} catch (error: unknown) {
 	console.error('Analysis failed:', error);
 	process.exit(1);
 }
