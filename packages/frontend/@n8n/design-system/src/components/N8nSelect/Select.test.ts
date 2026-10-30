@@ -4,6 +4,7 @@ import { defineComponent, ref } from 'vue';
 
 import N8nSelect from './Select.vue';
 import { removeDynamicAttributes } from '../../utils';
+import { insideDialogBodyKey } from '../N8nDialog/dialogContext';
 import N8nOption from '../N8nOption/Option.vue';
 
 describe('components', () => {
@@ -107,5 +108,31 @@ describe('components', () => {
 
 			expect(textbox).toHaveValue('1');
 		});
+
+		it.each([
+			{ insideDialogBody: true, teleported: false, position: 'fixed' },
+			{ insideDialogBody: false, teleported: false, position: 'absolute' },
+			{ insideDialogBody: true, teleported: true, position: 'absolute' },
+		])(
+			'should position the dropdown as $position when inside dialog body is $insideDialogBody and teleported is $teleported',
+			async ({ insideDialogBody, teleported, position }) => {
+				const { container } = render(N8nSelect, {
+					props: { teleported },
+					global: {
+						components: { 'n8n-option': N8nOption },
+						provide: { [insideDialogBodyKey]: insideDialogBody },
+					},
+					slots: { default: '<n8n-option value="1" label="1" />' },
+				});
+
+				await userEvent.click(container.querySelector('input')!);
+
+				await waitFor(() =>
+					expect(document.querySelector<HTMLElement>('.el-select__popper')?.style.position).toBe(
+						position,
+					),
+				);
+			},
+		);
 	});
 });
