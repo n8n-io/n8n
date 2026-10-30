@@ -23,6 +23,10 @@ export const breakingChangeRuleImpactSchema = z.enum([
 ]);
 export type BreakingChangeRuleImpact = z.infer<typeof breakingChangeRuleImpactSchema>;
 
+/** What n8n Assistant can do with a workflow rule's findings. See the breaking-changes module README. */
+export const breakingChangeAssistantActionSchema = z.enum(['fix', 'review', 'none']);
+export type BreakingChangeAssistantAction = z.infer<typeof breakingChangeAssistantActionSchema>;
+
 export const breakingChangeIssueLevelSchema = z.enum(['info', 'warning', 'error']);
 
 export const breakingChangeVersionSchema = z.enum(['v2', 'v3']);
@@ -167,6 +171,7 @@ export type BreakingChangeRuleDetailWorkflow = z.infer<typeof ruleDetailWorkflow
 
 const ruleDetailResultSchema = workflowRuleResultsSchema.extend({
 	affectedWorkflows: z.array(ruleDetailWorkflowSchema),
+	assistantAction: breakingChangeAssistantActionSchema,
 });
 export type BreakingChangeRuleDetailResult = z.infer<typeof ruleDetailResultSchema>;
 

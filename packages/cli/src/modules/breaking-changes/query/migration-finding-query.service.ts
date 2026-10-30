@@ -52,7 +52,10 @@ const workflowFilter = (scope: ReportScope) =>
 	scope.kind === 'workflows' ? scope.workflowIds : undefined;
 
 /** The rule fields both report types share. */
-type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+export type RuleDescription = Omit<BreakingChangeWorkflowRuleResult, 'affectedWorkflows'>;
+
+/** What n8n Assistant can do with a rule's findings. A rule that does not opt in offers none. */
+const assistantActionOf = (rule: WorkflowLevelRule) => rule.getMetadata().assistant ?? 'none';
 
 /** The same fields the scan loads, so a rule sees the same workflow data on both paths. */
 const WORKFLOW_FIELDS = ['name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
@@ -201,7 +204,44 @@ export class MigrationFindingQueryService {
 			});
 		}
 
-		return { ...(await this.describeRule(rule, affectedWorkflows)), affectedWorkflows };
+		return {
+			...(await this.describeRule(rule, affectedWorkflows)),
+			affectedWorkflows,
+			assistantAction: assistantActionOf(rule),
+		};
+	}
+
+	/**
+	 * One finding for a hand-off to n8n Assistant: the rule and the workflow's current issues.
+	 * Undefined unless the rule targets this version, checks one workflow at a time and offers
+	 * the Assistant. The caller loads the workflow and checks access.
+	 */
+	async describeWorkflowFinding(
+		targetVersion: BreakingChangeVersion,
+		ruleId: string,
+		workflow: WorkflowEntity,
+	): Promise<
+		| {
+				rule: RuleDescription;
+				issues: BreakingChangeWorkflowIssue[];
+				assistantAction: 'fix' | 'review';
+		  }
+		| undefined
+	> {
+		const rule = this.ruleRegistry.getRule(ruleId);
+		if (!rule || !('detectWorkflow' in rule) || rule.getMetadata().version !== targetVersion) {
+			return undefined;
+		}
+		const assistantAction = assistantActionOf(rule);
+		if (assistantAction === 'none') return undefined;
+
+		const issuesByWorkflow = await this.issuesFromRecheck(rule, [workflow]);
+
+		return {
+			rule: await this.describeRule(rule),
+			issues: issuesByWorkflow.get(workflow.id) ?? [],
+			assistantAction,
+		};
 	}
 
 	private async describeRule(

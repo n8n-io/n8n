@@ -1612,10 +1612,39 @@ export type InstanceAiSetupPanelExecuteHandoffContext = z.infer<
 	typeof instanceAiSetupPanelExecuteHandoffContextSchema
 >;
 
+/** What an automated migration left for the Assistant. Display text, so every field is length-capped. */
+export const instanceAiAutomatedMigrationOutcomeSchema = z.discriminatedUnion('outcome', [
+	z.object({
+		outcome: z.literal('refused'),
+		message: z.string().min(1).max(1000),
+		nodeName: z.string().min(1).max(255).optional(),
+	}),
+	z.object({
+		outcome: z.literal('partial'),
+		unmapped: z.array(z.string().min(1).max(500)).max(50),
+		notes: z.array(z.string().min(1).max(1000)).max(50),
+	}),
+]);
+export type InstanceAiAutomatedMigrationOutcome = z.infer<
+	typeof instanceAiAutomatedMigrationOutcomeSchema
+>;
+
+/** Opens the Assistant on one migration report finding. The client sends ids only; the server reads the finding. */
+export const instanceAiMigrationReportHandoffContextSchema = z.object({
+	source: z.literal('migration-report'),
+	ruleId: z.string().min(1).max(128),
+	workflowId: z.string().min(1).max(64),
+	automatedMigration: instanceAiAutomatedMigrationOutcomeSchema.optional(),
+});
+export type InstanceAiMigrationReportHandoffContext = z.infer<
+	typeof instanceAiMigrationReportHandoffContextSchema
+>;
+
 export const instanceAiHandoffContextSchema = z.discriminatedUnion('source', [
 	instanceAiCredentialHandoffContextSchema,
 	instanceAiAgentPreviewHandoffContextSchema,
 	instanceAiSetupPanelExecuteHandoffContextSchema,
+	instanceAiMigrationReportHandoffContextSchema,
 ]);
 export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSchema>;
 
@@ -1753,6 +1782,7 @@ export class InstanceAiCorrectTaskRequest extends Z.class({
  * - `agent_builder_page` — Instance AI hand-off from the agent builder
  * - `agent_preview` — send a preview chat session to Instance AI
  * - `self_healing_result` — continue from a saved Assistant report in the Inbox
+ * - `migration_report`: fix one finding of the major-version migration report
  * - `assistant_page` — first message typed on the Instance AI empty/home page
  * - `onboarding` — seeded "Welcome to n8n" thread for a new user; the greeting is stored before the first user turn
  * - `preferences_empty_state` — "Suggest preferences" on the empty AI preferences page
@@ -1774,6 +1804,7 @@ export const INSTANCE_AI_THREAD_SOURCES = [
 	'agent_builder_page',
 	'agent_preview',
 	'self_healing_result',
+	'migration_report',
 	'assistant_page',
 	'onboarding',
 	'preferences_empty_state', // Experiment cleanup (127_preferences_empty_state)
@@ -1812,6 +1843,8 @@ export type InstanceAiThreadSourcePersisted =
  *   mid-thread rather than as a first message
  * - `handoff_agent_change_request` — agent builder hand-off: a fix request or a
  *   change request, dropped into the composer
+ * - `handoff_migration_report`: fix one migration report finding, from the
+ *   finding row or after an automated migration left work behind
  * - `template_adjustment` — "start from this template and help me adapt it",
  *   from the in-app template preview or an n8n.io deep link
  * - `template_example` — a featured example card on the empty state
@@ -1834,6 +1867,7 @@ export const INSTANCE_AI_PREFILL_TYPES = [
 	'handoff_fix_with_ai',
 	'handoff_setup_panel_execute',
 	'handoff_agent_change_request',
+	'handoff_migration_report',
 	'template_adjustment',
 	'template_example',
 	'suggestion_catalog',

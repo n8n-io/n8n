@@ -16,6 +16,7 @@ export const ChatMessagesRetrieverRemovedRule = createNodeReplacementRule({
 	id: 'chat-messages-retriever-removed',
 	removedNodeName: 'Chat Messages Retriever',
 	removedNodeType: '@n8n/n8n-nodes-langchain.memoryChatRetriever',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Memory Manager',
@@ -47,6 +48,7 @@ export const CronRemovedRule = createNodeReplacementRule({
 	id: 'cron-removed',
 	removedNodeName: 'Cron',
 	removedNodeType: 'n8n-nodes-base.cron',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Schedule Trigger',
@@ -59,6 +61,7 @@ export const FunctionRemovedRule = createNodeReplacementRule({
 	id: 'function-removed',
 	removedNodeName: 'Function',
 	removedNodeType: 'n8n-nodes-base.function',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Code',
@@ -71,6 +74,7 @@ export const FunctionItemRemovedRule = createNodeReplacementRule({
 	id: 'function-item-removed',
 	removedNodeName: 'Function Item',
 	removedNodeType: 'n8n-nodes-base.functionItem',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Code',
@@ -83,6 +87,7 @@ export const HtmlExtractRemovedRule = createNodeReplacementRule({
 	id: 'html-extract-removed',
 	removedNodeName: 'HTML Extract',
 	removedNodeType: 'n8n-nodes-base.htmlExtract',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with HTML',
@@ -95,6 +100,7 @@ export const HttpRequestToolRemovedRule = createNodeReplacementRule({
 	id: 'http-request-tool-removed',
 	removedNodeName: 'HTTP Request Tool',
 	removedNodeType: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with HTTP Request',
@@ -120,6 +126,7 @@ export const ItemListsRemovedRule = createNodeReplacementRule({
 	id: 'item-lists-removed',
 	removedNodeName: 'Item Lists',
 	removedNodeType: 'n8n-nodes-base.itemLists',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Aggregate',
@@ -176,6 +183,7 @@ export const IntervalRemovedRule = createNodeReplacementRule({
 	id: 'interval-removed',
 	removedNodeName: 'Interval',
 	removedNodeType: 'n8n-nodes-base.interval',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Schedule Trigger',
@@ -201,6 +209,7 @@ export const ManualChatTriggerRemovedRule = createNodeReplacementRule({
 	id: 'manual-chat-trigger-removed',
 	removedNodeName: 'Manual Chat Trigger',
 	removedNodeType: '@n8n/n8n-nodes-langchain.manualChatTrigger',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Chat Trigger',
@@ -225,6 +234,7 @@ export const OpenAiRemovedRule = createNodeReplacementRule({
 	id: 'openai-removed',
 	removedNodeName: 'OpenAI',
 	removedNodeType: 'n8n-nodes-base.openAi',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with OpenAI',
@@ -237,6 +247,7 @@ export const OpenAiModelRemovedRule = createNodeReplacementRule({
 	id: 'openai-model-removed',
 	removedNodeName: 'OpenAI Model',
 	removedNodeType: '@n8n/n8n-nodes-langchain.lmOpenAi',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with OpenAI Chat Model',
@@ -273,6 +284,7 @@ export const ReadBinaryFileRemovedRule = createNodeReplacementRule({
 	id: 'read-binary-file-removed',
 	removedNodeName: 'Read Binary File',
 	removedNodeType: 'n8n-nodes-base.readBinaryFile',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Read/Write Files from Disk',
@@ -286,6 +298,7 @@ export const ReadBinaryFilesRemovedRule = createNodeReplacementRule({
 	id: 'read-binary-files-removed',
 	removedNodeName: 'Read Binary Files',
 	removedNodeType: 'n8n-nodes-base.readBinaryFiles',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Read/Write Files from Disk',
@@ -299,6 +312,7 @@ export const ReadPdfRemovedRule = createNodeReplacementRule({
 	id: 'read-pdf-removed',
 	removedNodeName: 'Read PDF',
 	removedNodeType: 'n8n-nodes-base.readPDF',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with Extract From File',
@@ -348,6 +362,7 @@ export const WorkflowTriggerRemovedRule = createNodeReplacementRule({
 	id: 'workflow-trigger-removed',
 	removedNodeName: 'Workflow Trigger',
 	removedNodeType: 'n8n-nodes-base.workflowTrigger',
+	assistant: 'fix',
 	recommendations: [
 		{
 			action: 'Replace with n8n Trigger',
