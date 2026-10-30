@@ -6,7 +6,7 @@ import {
 	sanitizeAgentSkillBodies,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { AgentArtifact } from '../../types';
 

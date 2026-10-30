@@ -1,4 +1,4 @@
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 export class WorkflowNotFoundError extends OperationalError {
 	constructor(readonly workflowId: string) {

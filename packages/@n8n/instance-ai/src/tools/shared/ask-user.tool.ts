@@ -2,7 +2,7 @@ import { Tool } from '@n8n/agents';
 import { getLegacyBuilderToolNames } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { nanoid } from 'nanoid';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { ASK_USER_TOOL_ID } from '../tool-ids';
