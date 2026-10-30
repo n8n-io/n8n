@@ -188,6 +188,7 @@ test.describe(
 				return stream;
 			};
 			const jobs = async () => await api.agents.backgroundTasks(project.id, agent.id, threadId);
+
 			try {
 				await mockModel(n8nContainer);
 				const firstTurn = await chat('Start the workflow with value original.', true);
@@ -203,11 +204,21 @@ test.describe(
 				expect(beforeStop.progress).toMatchObject({ input: 'original', revision: 'initial' });
 
 				const stop = await stoppingApi.agents.stopBackgroundTasks(project.id, agent.id, threadId);
-				expect(stop.tasks).toEqual([]);
+				// Preview keeps the stop outcome visible until the next group starts.
+				const stopped = [
+					{ id: firstJob.id, kind: 'workflow', status: 'cancelled', pauseRequested: true },
+				];
+
+				expect(stop.tasks).toMatchObject(stopped);
+
 				const reportRequest = {
 					method: 'POST',
 					path: '/v1/messages',
-					body: { type: 'REGEX', regex: '(?s)(?=.*"stream"\\s*:\\s*true)(?!.*"tools"\\s*:).*' },
+					body: {
+						type: 'JSON',
+						json: JSON.stringify({ stream: true, tool_choice: { type: 'none' } }),
+						matchType: 'ONLY_MATCHING_FIELDS',
+					},
 				};
 				await expect
 					.poll(async () => await n8nContainer.services.proxy.wasRequestMade(reportRequest))
@@ -220,7 +231,8 @@ test.describe(
 						return items.some((item) => item.id === queued?.queueId);
 					})
 					.toBe(true);
-				expect((await jobs()).tasks).toEqual([]);
+
+				expect((await jobs()).tasks).toMatchObject(stopped);
 				expect((await api.workflows.getExecution(original.id)).status).toBe('canceled');
 				const oldCallback = await api.webhooks.trigger(beforeStop.callbackPath, {
 					maxNotFoundRetries: 0,

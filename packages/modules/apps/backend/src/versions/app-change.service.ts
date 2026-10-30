@@ -5,6 +5,7 @@ import { ConflictError } from '@n8n/errors';
 
 import { AppBuildService } from '../build/app-build.service';
 import { createAppScaffold } from '../scaffold/app-scaffold';
+import type { AppVersion } from './app-version.entity';
 import { AppVersionService } from './app-version.service';
 import type { AppFiles } from '../storage/app-version-stores';
 
@@ -48,6 +49,45 @@ export class AppChangeService {
 			}
 			throw error;
 		}
+	}
+
+	/**
+	 * Saves the source of `expectedDraftVersionId` with other bindings as a new
+	 * version. The new version shares a successful build of the draft, because
+	 * bindings do not change the bundle. Otherwise it starts its own build.
+	 */
+	async saveBindings(
+		projectId: string,
+		appId: string,
+		expectedDraftVersionId: string,
+		bindings: AppBinding[],
+	): Promise<AppVersion> {
+		this.builds.assertNotStopping();
+		const draft = await this.versions.getVersion(projectId, appId, expectedDraftVersionId);
+		if (draft.buildStatus === 'succeeded' && draft.bundleArtifactId !== null) {
+			return await this.versions.copyDraft(projectId, appId, expectedDraftVersionId, bindings);
+		}
+		const files = await this.versions.readSource(projectId, appId, expectedDraftVersionId);
+		const version = await this.versions.saveSource(
+			projectId,
+			appId,
+			expectedDraftVersionId,
+			files,
+			draft.label,
+			bindings,
+		);
+		try {
+			await this.builds.startBuild(projectId, appId, version.id);
+		} catch (error) {
+			// The bindings are saved. The build status shows the problem, and the user can retry it.
+			this.logger.warn('Could not start the build of an app version.', {
+				projectId,
+				appId,
+				versionId: version.id,
+				error,
+			});
+		}
+		return version;
 	}
 
 	// TODO: might remove this later, as it's likely that the AI assistant

@@ -1,5 +1,12 @@
-import type { CallerContext, ExecutionMode, StepSlots, WaitDeclaration } from '../execution';
-import type { GraphNode } from '../graph';
+import type {
+	CallerContext,
+	ExecutionMode,
+	StepSlots,
+	TriggerOutputs,
+	ExecutorWaitDeclaration,
+	WorkflowDocument,
+} from '../execution';
+import type { GraphNode, WorkflowGraph } from '../graph';
 import type { LifecycleEventCallback } from '../lifecycle-events';
 import type { ResponseEmitter, ResponseExpectation } from '../response-channel';
 
@@ -56,23 +63,57 @@ export interface StepExecutionRequest {
 }
 
 /**
- * What running a step produced: its output slots, or a declaration that it is
- * not done. Exclusive — a step that waits has no outputs yet, and the outputs
- * a deadline would emit ride inside the declaration.
+ * A sub-execution the step asks for. The executor minted the id and had the
+ * workflow resolved; the engine starts it. One run of a step asks for at most
+ * one.
+ */
+export type SubExecutionDeclaration = {
+	executionId: string;
+	workflowId: string;
+	graph: WorkflowGraph;
+	workflow: WorkflowDocument;
+	triggerOutputs?: TriggerOutputs | null;
+} & SubExecutionMode;
+
+/** Whether the step waits for the sub-execution, and what it completes with if not. */
+export type SubExecutionMode =
+	| {
+			/** The step suspends until the sub-execution ends, and has no outputs yet. */
+			awaited: true;
+			outputs?: never;
+	  }
+	| {
+			/** Nothing waits for the sub-execution. It ends with the parent. */
+			awaited: false;
+			/** The step completes with these once the sub-execution has started. */
+			outputs: StepSlots;
+	  };
+
+/**
+ * What running a step produced: its output slots, a wait, or a sub-execution.
+ * Exclusive — a step that waits has no outputs yet, and the outputs a deadline
+ * or a detached sub-execution would emit ride inside the declaration.
  *
- * The `?: never` members give both branches the same keys, so `result.wait`
+ * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
- * `'wait' in result`, and a value carrying both fields would type-check.
+ * `'wait' in result`, and a value carrying two fields would type-check.
  */
 export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
 			wait?: never;
+			subExecution?: never;
 	  }
 	| {
-			wait: WaitDeclaration;
+			wait: ExecutorWaitDeclaration;
 			outputs?: never;
+			subExecution?: never;
+	  }
+	| {
+			subExecution: SubExecutionDeclaration;
+			outputs?: never;
+			wait?: never;
 	  };
 
 /**

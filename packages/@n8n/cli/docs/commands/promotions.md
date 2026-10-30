@@ -105,8 +105,11 @@ longer. JSON output shows the full values, so copy them from there.
 }
 ```
 
-Give the token the `read_api` and `write_repository` scopes. Protected branches
-can require the Maintainer role to push.
+Give the token the `api` and `write_repository` scopes. The `api` scope is
+required to open merge requests. Give the token user the Developer role or
+higher. Protected branches can require the Maintainer role to push. Approve in
+n8n merges the merge request, so the token user needs the Maintainer role, or
+permission to merge, on the base branch.
 
 ## `promotion-provider create`
 
@@ -252,6 +255,8 @@ n8n-cli promotion-environment delete env-1
 `update` takes `name`, `providerId`, `remote`, `settings`, or a combination. The
 direction and the scope cannot change. `settings` replaces the whole saved
 settings and must match the direction, so send every setting you want to keep.
+A new provider type or repository closes the open promotion reviews of the
+environment in n8n. Their merge requests stay open on the Git host.
 
 ```bash
 echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnPromotion":true}}' \
@@ -259,7 +264,8 @@ echo '{"settings":{"schemaVersion":1,"baseBranchName":"main","createBranchOnProm
 ```
 
 `delete` also removes the project links and the local checkout. The provider
-stays. Nothing in Git changes.
+stays. Nothing in the Git repository changes. The open promotion reviews of the
+environment close in n8n. Their merge requests stay open on the Git host.
 
 ## `promotion-environment connect` / `disconnect`
 

@@ -1,9 +1,17 @@
 import { loadReplayedMessages, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
-import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
+import {
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
+	type AiPreferencesAppliedPayload,
+} from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 
-import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../../internal-messages';
+import {
+	buildAppTargetsBlock,
+	buildThreadArtifactsBlock,
+	buildThreadContextBlock,
+} from '../../internal-messages';
 import type { AssistantTurnEnvironment } from '../assistant-turn-environment.factory';
 import { AssistantTurnInputBuilder, OPENED_METADATA_KEY } from '../assistant-turn-input.builder';
 
@@ -187,6 +195,40 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 
 		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
 		expect(service.logger.warn).toHaveBeenCalled();
+	});
+});
+
+describe('AssistantTurnInputBuilder — resolveAppTargetsBlock', () => {
+	type Internals = {
+		resolveAppTargetsBlock: (
+			context: { appService?: { getApp: Mock } },
+			metadata: Record<string, unknown>,
+		) => Promise<string>;
+	};
+
+	const builder = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
+	const [first, missing, pending] = [1, 2, 3].map((n) => `00000000-0000-4000-8000-00000000000${n}`);
+	const metadata = {
+		[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [
+			{ appId: first, projectId: 'project-1' },
+			{ appId: missing, projectId: 'project-1' },
+		],
+		[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: pending, projectId: 'project-1' },
+	};
+
+	it('sends nothing without the app service', async () => {
+		expect(await builder.resolveAppTargetsBlock({}, metadata)).toBe('');
+	});
+
+	it('lists the apps that still exist and the pending app', async () => {
+		const getApp = vi.fn(async (appId: string) => {
+			if (appId === missing) throw new Error('Not found');
+			return { id: appId, name: 'Orders' };
+		});
+
+		const block = await builder.resolveAppTargetsBlock({ appService: { getApp } }, metadata);
+
+		expect(block).toBe(buildAppTargetsBlock([{ id: first, name: 'Orders' }], true));
 	});
 });
 

@@ -6,6 +6,7 @@
   "bin": "scanner/cli.mjs",
   "scripts": {
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest"
   },
   "files": [

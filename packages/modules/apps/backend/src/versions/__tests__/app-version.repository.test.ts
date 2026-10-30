@@ -8,7 +8,6 @@ import {
 } from '@n8n/typeorm';
 import { mock } from 'vitest-mock-extended';
 
-import { App } from '../../app.entity';
 import { AppVersion } from '../app-version.entity';
 import { AppVersionRepository } from '../app-version.repository';
 
@@ -125,36 +124,34 @@ describe('AppVersionRepository build state', () => {
 		);
 	});
 
-	describe('setDraftBindings', () => {
+	it('inserts a copy that references the artifacts and the build of the source version', async () => {
+		const { repository, manager } = setup();
+		const statusAt = new Date('2026-01-01T11:00:00.000Z');
+		const source = {
+			id: 'version',
+			appId: 'app',
+			label: 'Old',
+			sourceArtifactId: 3,
+			bundleArtifactId: 4,
+			buildAttempts: 1,
+			buildStatus: 'succeeded',
+			buildStatusUpdatedAt: statusAt,
+			bindings: [],
+		} as unknown as AppVersion;
 		const bindings = [{ key: 'submit', kind: 'workflow' as const, workflowId: 'w1' }];
 
-		it('changes the bindings of the unpublished draft', async () => {
-			const { repository, manager, version } = setup();
-			manager.findOneBy.mockResolvedValueOnce(
-				mock<App>({ id: 'app', draftVersionId: 'version', publishedVersionId: 'older' }),
-			);
+		await repository.insertCopy(source, { id: 'copy', label: 'Old', bindings }, {});
 
-			expect(await repository.setDraftBindings('app', 'version', bindings)).toBe(version);
-			expect(manager.findOneBy).toHaveBeenNthCalledWith(1, App, {
-				id: 'app',
-				draftVersionId: 'version',
-			});
-			expect(manager.update).toHaveBeenCalledExactlyOnceWith(
-				AppVersion,
-				{ id: 'version', appId: 'app' },
-				{ bindings },
-			);
-		});
-
-		it.each([
-			['the version is published', { draftVersionId: 'version', publishedVersionId: 'version' }],
-			['the version is no longer the draft', null],
-		])('keeps the bindings when %s', async (_, app) => {
-			const { repository, manager } = setup();
-			manager.findOneBy.mockResolvedValueOnce(app && mock<App>({ id: 'app', ...app }));
-
-			expect(await repository.setDraftBindings('app', 'version', bindings)).toBeNull();
-			expect(manager.update).not.toHaveBeenCalled();
+		expect(manager.insert).toHaveBeenCalledExactlyOnceWith(AppVersion, {
+			id: 'copy',
+			label: 'Old',
+			bindings,
+			appId: 'app',
+			sourceArtifactId: 3,
+			bundleArtifactId: 4,
+			buildAttempts: 1,
+			buildStatus: 'succeeded',
+			buildStatusUpdatedAt: statusAt,
 		});
 	});
 

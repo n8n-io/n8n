@@ -6,6 +6,7 @@ export { AppsService } from './apps.service';
 export { AppVersionService } from './versions/app-version.service';
 export { AppBuildService } from './build/app-build.service';
 export { AppChangeService } from './versions/app-change.service';
+export { AppSourceArchiveService } from './versions/app-source-archive.service';
 export { AppSandboxSettings, type AppSandboxResolveOptions } from './build/app-sandbox-settings';
 export {
 	AppAgentPort,
@@ -18,6 +19,8 @@ export {
 	type AppVisitor,
 } from './bindings/app-binding-ports';
 export { AppRuntimeError } from './bindings/app-runtime.error';
+export { AppBindingsService } from './bindings/app-bindings.service';
+export { renderBindingTypes } from './bindings/app-binding-types';
 export { AppsConfig } from './apps.config';
 export { AppVersionRepository } from './versions/app-version.repository';
 export { AppArtifactService } from './storage/app-artifact.service';

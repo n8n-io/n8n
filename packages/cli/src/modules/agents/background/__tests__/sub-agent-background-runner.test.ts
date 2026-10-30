@@ -93,12 +93,15 @@ describe('resumePaused', () => {
 		id: 'job-1',
 		status: 'paused',
 		pauseRequestId: 'stop-1',
+		planId: 'plan-1',
+		planTaskId: 'task-1',
 		notifiedAt: new Date(),
 		parentAgentId: 'agent-1',
 		parentThreadId: 'thread-1',
 		subAgentId: 'sub-1',
 		childThreadId: 'child-thread-1',
 	});
+
 	function prepare(approval = false) {
 		const setupResult = setup();
 		const taskPath = '/root/research_0';
@@ -148,9 +151,13 @@ describe('resumePaused', () => {
 		});
 		await backgroundRunner.resumePaused(job, context, reservationTimeoutAt);
 		await flushDetachedRun();
+
 		expect(runner.resumePaused).toHaveBeenCalledWith(
 			expect.objectContaining({ childThreadId: job.childThreadId, childRunId: 'run-1' }),
-			expect.objectContaining({ runtimeSnapshot: 'saved-configuration' }),
+			expect.objectContaining({
+				runtimeSnapshot: 'saved-configuration',
+				planTask: { planId: 'plan-1', planTaskId: 'task-1' },
+			}),
 		);
 		expect(jobRepository.resumeIfPaused).toHaveBeenCalledWith(
 			job.id,
@@ -243,6 +250,10 @@ describe('resumePaused', () => {
 		);
 		await flushDetachedRun();
 		expect(runner.resumeForeground.mock.lastCall?.[1].abortSignal?.aborted).toBe(true);
+		expect(runner.resumeForeground.mock.lastCall?.[1].planTask).toEqual({
+			planId: 'plan-1',
+			planTaskId: 'task-1',
+		});
 	});
 
 	it('rejects an expired checkpoint without starting replacement work', async () => {

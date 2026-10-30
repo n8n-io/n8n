@@ -16,6 +16,7 @@ import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillService } from '../../services/skill.service';
 import { createSkill } from '../../testing';
+import { linkSkill } from '../test-utils/skill-source-fixtures';
 import { PostHogClient } from '@/posthog';
 
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
@@ -648,6 +649,7 @@ describe('SkillsController', () => {
 
 		it('refuses a content change to a synced skill', async () => {
 			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			await linkSkill(id, { projectId: project.id, createdById: ownerUser.id });
 			const { skillHash } = (await editor.get(`/skills/${id}`).expect(200)).body.data;
 
 			const refused = await editor
@@ -662,7 +664,25 @@ describe('SkillsController', () => {
 			expect(read.body.data).toMatchObject({ source: 'github', latestVersion: 1 });
 		});
 
-		it('moves a synced skill, because a move does not change its content', async () => {
+		it('refuses to move a synced skill on its own, as it moves only with its source', async () => {
+			const { id } = await createSkill({ projectId: project.id, source: 'github' });
+			await linkSkill(id, { projectId: project.id, createdById: ownerUser.id });
+			const { skillHash } = (await owner.get(`/skills/${id}`).expect(200)).body.data;
+
+			const refused = await owner
+				.patch(`/skills/${id}`)
+				.send({ scope: 'instance', baseSkillHash: skillHash })
+				.expect(400);
+			const read = await owner.get(`/skills/${id}`).expect(200);
+
+			expect(refused.body.message).toBe(
+				'"Brand voice" is synced from GitHub, so it moves only with its source. Stop syncing it to move it on its own.',
+			);
+			expect(read.body.data).toMatchObject({ scope: 'project', projectId: project.id });
+		});
+
+		it('moves a skill that stopped syncing, as its source no longer holds it', async () => {
+			// `source` keeps `github` after Stop syncing. Without a link the skill is not synced.
 			const { id } = await createSkill({ projectId: project.id, source: 'github' });
 			const { skillHash } = (await owner.get(`/skills/${id}`).expect(200)).body.data;
 
@@ -733,6 +753,49 @@ describe('SkillsController', () => {
 
 			expect(responses.map((response) => response.status).sort()).toEqual([200, 409]);
 			expect(read.body.data.latestVersion).toBe(2);
+		});
+	});
+
+	describe('MCP availability', () => {
+		it('is off by default and stores the value sent on create', async () => {
+			const off = await create(editor, { scope: 'project', projectId: project.id, skill: body });
+			const on = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: { ...body, name: 'Tone' },
+				availableToMCP: true,
+			});
+
+			const list = await editor.get(`/skills?projectId=${project.id}`).expect(200);
+			const read = await editor.get(`/skills/${on.id}`).expect(200);
+
+			const items = list.body.data.data as Array<{ id: string; availableToMCP: boolean }>;
+			expect(Object.fromEntries(items.map((item) => [item.id, item.availableToMCP]))).toEqual({
+				[off.id]: false,
+				[on.id]: true,
+			});
+			expect(read.body.data.availableToMCP).toBe(true);
+		});
+
+		it('changes without a new version, and only for users who may edit the skill', async () => {
+			const { id, skillHash } = await create(editor, {
+				scope: 'project',
+				projectId: project.id,
+				skill: body,
+			});
+
+			await viewer
+				.patch(`/skills/${id}`)
+				.send({ availableToMCP: true, baseSkillHash: skillHash })
+				.expect(403);
+			const saved = await editor
+				.patch(`/skills/${id}`)
+				.send({ availableToMCP: true, baseSkillHash: skillHash })
+				.expect(200);
+			const read = await editor.get(`/skills/${id}`).expect(200);
+
+			expect(saved.body.data).toMatchObject({ version: 1, created: false });
+			expect(read.body.data).toMatchObject({ availableToMCP: true, latestVersion: 1 });
 		});
 	});
 

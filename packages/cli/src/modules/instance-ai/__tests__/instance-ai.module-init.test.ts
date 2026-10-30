@@ -15,6 +15,7 @@ import { SelfHealingConfigurationService } from '../self-healing/self-healing-co
 import { SelfHealingResultService } from '../self-healing/self-healing-result.service';
 
 import { AssistantAgentProvider } from '../assistant-agent/assistant-agent.provider';
+import { AssistantTurnTracer } from '../assistant-agent/assistant-turn-trace';
 import { InterruptedRunSweeper } from '../event-bus/interrupted-run-sweeper';
 import { InstanceAiEventRelay } from '../instance-ai-event-relay.service';
 import { InstanceAiSettingsService } from '../instance-ai-settings.service';
@@ -114,6 +115,7 @@ describe('InstanceAiModule.init', () => {
 		mockInstance(InstanceAiSetupTelemetryService);
 		mockInstance(InstanceAiEventRelay);
 		const runtime = mockInstance(InstanceAiService);
+		const tracer = mockInstance(AssistantTurnTracer);
 		const sweeper = mockInstance(InterruptedRunSweeper);
 		sweeper.sweep.mockResolvedValue();
 		const investigations = mockInstance(SelfHealingInvestigationService);
@@ -132,6 +134,7 @@ describe('InstanceAiModule.init', () => {
 			instanceSettings,
 			settings,
 			runtime,
+			tracer,
 		};
 	}
 
@@ -196,6 +199,60 @@ describe('InstanceAiModule.init', () => {
 			expect(loadConfigurationController).not.toHaveBeenCalled();
 		},
 	);
+
+	describe('shutdown with the Assistant agent', () => {
+		async function initModule(assistantAgentEnabled: boolean) {
+			const context = setup();
+			context.config.assistantAgentEnabled = assistantAgentEnabled;
+			mockInstance(SystemAgentRegistrationService).register.mockResolvedValue();
+			mockInstance(AssistantAgentProvider);
+			const modules = mockInstance(ModuleRegistry);
+			Object.defineProperty(modules, 'eligibleModules', {
+				get: () => ['instance-ai', 'agents'],
+			});
+			const module = new InstanceAiModule();
+			await module.init();
+			await vi.waitFor(() => expect(context.investigations.reconcile).toHaveBeenCalledOnce());
+			return { ...context, module };
+		}
+
+		it('closes the open Assistant agent traces before the service flushes the traces', async () => {
+			const { module, runtime, tracer } = await initModule(true);
+			const order: string[] = [];
+			tracer.finishOpenTraces.mockImplementation(async () => {
+				order.push('traces');
+			});
+			runtime.shutdown.mockImplementation(async () => {
+				order.push('service');
+			});
+
+			await module.shutdown();
+
+			expect(order).toEqual(['traces', 'service']);
+		});
+
+		it('does not touch the Assistant agent traces when the Assistant agent is off', async () => {
+			const { module, runtime, tracer } = await initModule(false);
+
+			await module.shutdown();
+
+			expect(tracer.finishOpenTraces).not.toHaveBeenCalled();
+			expect(runtime.shutdown).toHaveBeenCalledOnce();
+		});
+
+		it('shuts down the current runtime when closing the traces fails', async () => {
+			const { module, runtime, tracer, logger } = await initModule(true);
+			tracer.finishOpenTraces.mockRejectedValue(new Error('Exporter gone'));
+
+			await module.shutdown();
+
+			expect(runtime.shutdown).toHaveBeenCalledOnce();
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to close the Assistant agent traces at shutdown',
+				expect.anything(),
+			);
+		});
+	});
 
 	it('registers the Assistant agent only when it is enabled and the agents module starts', async () => {
 		const { config, investigations } = setup();

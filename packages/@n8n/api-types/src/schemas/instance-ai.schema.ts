@@ -126,6 +126,32 @@ export function buildUpdateWorkflowSessionGrantKey(workflowId: string): string {
 	return `workflows:update:${workflowId}`;
 }
 
+/**
+ * Builds the thread-level "always allow" grant key for a gated action on one
+ * workflow, such as `publish` or `unarchive`. Scoped per workflow, so approving
+ * one workflow never approves the same action on another.
+ */
+export function buildWorkflowActionSessionGrantKey(action: string, workflowId: string): string {
+	return `workflows:${action}:${workflowId}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for a workspace action, such
+ * as `tag-workflow` or `create-folder`.
+ */
+export function buildWorkspaceSessionGrantKey(action: string): string {
+	return `workspace:${action}`;
+}
+
+/**
+ * Builds the thread-level "always allow" grant key for deleting the test
+ * executions of one workflow. Scoped per workflow, so approving the cleanup of
+ * one workflow never approves it for another.
+ */
+export function buildCleanupTestExecutionsSessionGrantKey(workflowId: string): string {
+	return `workspace:cleanup-test-executions:${workflowId}`;
+}
+
 /** Builds the thread-level grant for using a credential with one exact service origin. */
 export function buildCredentialDestinationGrantKey(workflowId: string, origin: string): string {
 	return `credential-destination:${encodeURIComponent(workflowId)}:${encodeURIComponent(origin)}`;
@@ -1120,6 +1146,18 @@ export const workflowsArchivedPayloadSchema = z.object({
 	workflowIds: z.array(z.string()),
 });
 
+/** Host event of an Assistant agent turn with the LangSmith ids of the turn's trace. */
+export const ASSISTANT_TRACE_EVENT = 'assistant-trace';
+
+export const assistantTracePayloadSchema = z.object({
+	/** OTel trace id of the turn's root span. */
+	traceId: z.string().optional(),
+	langsmithTraceId: z.string(),
+	langsmithRunId: z.string(),
+});
+
+export type AssistantTracePayload = z.infer<typeof assistantTracePayloadSchema>;
+
 /**
  * One entry of the setup panel checklist. Service-keyed (one row per
  * credential type, fanned out to all nodes that use it via `nodeBindings`),
@@ -1480,6 +1518,15 @@ export const instanceAiAgentAttachmentSchema = z.object({
 });
 export type InstanceAiAgentAttachment = z.infer<typeof instanceAiAgentAttachmentSchema>;
 
+export const INSTANCE_AI_APP_TARGETS_METADATA_KEY = 'instanceAiAppTargets';
+export const INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY = 'instanceAiPendingAppTarget';
+
+export const instanceAiAppTargetSchema = z.object({
+	appId: z.string().uuid(),
+	projectId: z.string().min(1),
+});
+export type InstanceAiAppTarget = z.infer<typeof instanceAiAppTargetSchema>;
+
 const instanceAiNodeRefSchema = z.object({
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
@@ -1598,7 +1645,7 @@ export type InstanceAiHandoffContext = z.infer<typeof instanceAiHandoffContextSc
  * agent resolves contents with its tools. Cap matches the send-message field.
  */
 export const instanceAiThreadArtifactSchema = z.object({
-	type: z.enum(['workflow', 'agent', 'data-table', 'skill']),
+	type: z.enum(['workflow', 'agent', 'data-table', 'skill', 'app']),
 	id: z.string().min(1).max(64),
 	name: z.string().max(255).optional(),
 	projectId: z.string().min(1).max(64).optional(),

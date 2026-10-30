@@ -6,7 +6,7 @@ description: >-
   Load after direct builds, when verificationReadiness requires action, or on
   orchestrator verify/setup follow-up turns.
 recommended_tools:
-  - workflow_builder_ask_user
+  - ask_user
   - workflow_builder_verify_built_workflow
   - get_workflow
   - get_workflow_as_code
@@ -539,7 +539,7 @@ setup only when the build outcome reports mocked credentials or
 
 **Let setup collect the choice when a service has multiple credentials of the
 same type.** The setup card lists every credential of that type, so the user
-picks one there. Do not ask this in chat or with `workflow_builder_ask_user`.
+picks one there. Do not ask this in chat or with `ask_user`.
 Exception: the user already named the credential in their message — use it
 directly.
 
@@ -556,7 +556,7 @@ standalone credential request: `setup_credentials`
 outside any workflow. That picker is locked to a single
 `credentialType`. So when `search_credential_types`
 returns more than one auth option for the service (e.g. `notionApi` and
-`notionOAuth2Api`), use `workflow_builder_ask_user` with a single-select before
+`notionOAuth2Api`), use `ask_user` with a single-select before
 the setup call. List OAuth2 first and present it as the recommended option.
 Exception: the user has clearly indicated an auth type (e.g. "api key", "oauth",
 "personal token") — map it to the matching `credentialType` without asking. In a

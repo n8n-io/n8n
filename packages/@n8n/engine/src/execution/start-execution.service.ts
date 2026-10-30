@@ -10,14 +10,17 @@ import {
 } from '../graph';
 import type { OrchestrationMessage, WorkQueue } from '../queue';
 import type { ResponseExpectation } from '../response-channel';
-import type { ExecutionStore } from './execution-store';
-import type {
-	CallerContext,
-	ExecutionMode,
-	SeededSteps,
-	TriggerOutputs,
-	WorkflowDocument,
+import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
+import {
+	isLiveExecutionStatus,
+	type CallerContext,
+	type ExecutionMode,
+	type ParentLink,
+	type SeededSteps,
+	type TriggerOutputs,
+	type WorkflowDocument,
 } from './execution.types';
+import { StepNotFoundError, type StepStore } from './step-store';
 
 export interface StartExecutionRequest {
 	workflowId: string;
@@ -41,16 +44,42 @@ export interface StartExecutionRequest {
 	 * starts. The engine never mints one.
 	 */
 	executionId: string;
+	/** The execution and step that asked for this one. Absent for a top-level run. */
+	parent?: ParentLink;
 }
 
 export interface StartExecutionResult {
 	executionId: string;
 }
 
+/**
+ * The parent link names an execution or a step that cannot have asked for
+ * this one. The engine builds the link from rows it holds, so this is a bug
+ * in the caller, not a request to refuse politely.
+ */
+export class InvalidParentLinkError extends Error {
+	constructor(
+		readonly reason: InvalidParentLinkReason,
+		detail: string,
+	) {
+		super(`Invalid parent link (${reason}): ${detail}`);
+		this.name = 'InvalidParentLinkError';
+	}
+}
+
+export type InvalidParentLinkReason =
+	| 'execution-not-found'
+	| 'execution-ended'
+	| 'step-not-found'
+	| 'step-of-another-execution'
+	| 'step-not-waiting'
+	| 'step-not-running';
+
 export class StartExecutionService {
 	constructor(
 		private readonly admittance: AdmittanceService,
 		private readonly executionStore: ExecutionStore,
+		private readonly stepStore: StepStore,
 		private readonly workQueue: WorkQueue<OrchestrationMessage>,
 		private readonly validateGraph: (graph: WorkflowGraph) => void = validateExecutableGraph,
 	) {}
@@ -60,6 +89,7 @@ export class StartExecutionService {
 		// admittance capacity, and nothing is persisted for it.
 		this.validateGraph(request.graph);
 		validateSeededSteps(request.graph, request.seededSteps ?? {});
+		if (request.parent) await this.validateParent(request.parent);
 
 		const decision = await this.admittance.evaluate({ workflowId: request.workflowId });
 		if (!decision.accept) {
@@ -82,6 +112,7 @@ export class StartExecutionService {
 			seededSteps: request.seededSteps,
 			callerContext: request.callerContext,
 			responseExpectation: request.responseExpectation ?? { kind: 'none' },
+			parent: request.parent ?? null,
 		});
 
 		// TODO(CAT-2938): the persist above and this publish aren't atomic — a
@@ -94,6 +125,55 @@ export class StartExecutionService {
 
 		return { executionId };
 	}
+
+	/**
+	 * The link has no foreign key: a parent is pruned while its sub-executions
+	 * stay, so the rows are independent and this is where the link is checked.
+	 * The parent must be live and the step must be its own, in the state that
+	 * asks for a sub-execution: suspended when it waits for this one, still
+	 * running when it does not. A step starts nothing once it has settled.
+	 */
+	private async validateParent(parent: ParentLink): Promise<void> {
+		const [execution, step] = await Promise.all([
+			this.executionStore.loadExecution(parent.executionId).catch(absentAsInvalid),
+			this.stepStore.loadStep(parent.stepId).catch(absentAsInvalid),
+		]);
+		if (!isLiveExecutionStatus(execution.status)) {
+			throw new InvalidParentLinkError(
+				'execution-ended',
+				`execution ${parent.executionId} is ${execution.status}`,
+			);
+		}
+		if (step.executionId !== parent.executionId) {
+			throw new InvalidParentLinkError(
+				'step-of-another-execution',
+				`step ${parent.stepId} belongs to execution ${step.executionId}, not ${parent.executionId}`,
+			);
+		}
+		if (parent.awaited && step.status !== 'waiting') {
+			throw new InvalidParentLinkError(
+				'step-not-waiting',
+				`step ${parent.stepId} is ${step.status}`,
+			);
+		}
+		if (!parent.awaited && step.status !== 'running') {
+			throw new InvalidParentLinkError(
+				'step-not-running',
+				`step ${parent.stepId} is ${step.status}`,
+			);
+		}
+	}
+}
+
+/** A missing parent row is an invalid link, not a lookup failure of its own. */
+function absentAsInvalid(error: unknown): never {
+	if (error instanceof ExecutionNotFoundError) {
+		throw new InvalidParentLinkError('execution-not-found', error.message);
+	}
+	if (error instanceof StepNotFoundError) {
+		throw new InvalidParentLinkError('step-not-found', error.message);
+	}
+	throw error;
 }
 
 /**

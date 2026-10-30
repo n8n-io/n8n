@@ -972,8 +972,8 @@ catalogs:
       version: 6.0.2
   undici-v7:
     undici:
-      specifier: ^7.29.1
-      version: 7.29.1
+      specifier: ^7.30.1
+      version: 7.30.1
 
 overrides:
   libphonenumber-js: npm:empty-npm-package@1.0.0
@@ -1085,8 +1085,8 @@ overrides:
   ibm-cloud-sdk-core: ^5.5.0
   undici@5: ^6.28.1
   undici@6: ^6.28.1
-  undici@7: ^7.29.1
-  node-gyp>undici: ^7.29.1
+  undici@7: ^7.30.1
+  node-gyp>undici: ^7.30.1
   '@babel/traverse@<7.23.2': ^7.23.2
   '@vitest/browser@<4.1.10': 4.1.10
   immutable: 5.1.8
@@ -1316,7 +1316,7 @@ importers:
         version: 0.6.0(@opentelemetry/api@1.9.1)(@opentelemetry/exporter-trace-otlp-proto@0.221.0(@opentelemetry/api@1.9.1))(@opentelemetry/sdk-trace-base@2.10.0(@opentelemetry/api@1.9.1))(openai@6.46.0(@aws-sdk/credential-provider-node@3.972.80)(@smithy/signature-v4@5.7.2)(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.76))(ws@8.21.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       undici:
         specifier: catalog:undici-v7
-        version: 7.29.1
+        version: 7.30.1
       yaml:
         specifier: 'catalog:'
         version: 2.8.3
@@ -1471,7 +1471,7 @@ importers:
         version: 3.0.3
       undici:
         specifier: catalog:undici-v7
-        version: 7.29.1
+        version: 7.30.1
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -1874,7 +1874,7 @@ importers:
         version: 6.16.0
       undici:
         specifier: catalog:undici-v7
-        version: 7.29.1
+        version: 7.30.1
       zod:
         specifier: 3.25.76
         version: 3.25.76
@@ -3297,7 +3297,7 @@ importers:
         version: 7.0.2
       undici:
         specifier: catalog:undici-v7
-        version: 7.29.1
+        version: 7.30.1
       vite:
         specifier: 'catalog:'
         version: 8.3.4(@types/node@20.19.41)(esbuild@0.28.1)(jiti@2.6.1)(sass-embedded@1.98.0)(sass@1.98.0)(terser@5.16.1)(tsx@4.19.3)(yaml@2.8.3)
@@ -4043,6 +4043,9 @@ importers:
       '@n8n/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
+      '@n8n/eslint-plugin-design-system':
+        specifier: workspace:*
+        version: link:../../frontend/@n8n/eslint-plugin-design-system
       '@stylistic/eslint-plugin':
         specifier: ^5.0.0
         version: 5.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -4052,6 +4055,9 @@ importers:
       eslint-plugin-lodash:
         specifier: ^8.0.0
         version: 8.0.0(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
+      eslint-plugin-n8n-nodes-base:
+        specifier: 'catalog:'
+        version: 2.0.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)
       eslint-plugin-unused-imports:
         specifier: ^4.1.4
         version: 4.1.4(@typescript-eslint/eslint-plugin@8.70.0(@typescript-eslint/parser@8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1))(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))
@@ -5057,6 +5063,9 @@ importers:
       luxon:
         specifier: 'catalog:'
         version: 3.7.2
+      mime-types:
+        specifier: 'catalog:'
+        version: 3.0.2
       moment-timezone:
         specifier: 'catalog:'
         version: 0.5.48
@@ -5253,6 +5262,9 @@ importers:
       '@types/luxon':
         specifier: 'catalog:'
         version: 3.2.0
+      '@types/mime-types':
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/ms':
         specifier: 'catalog:'
         version: 2.1.0
@@ -6733,9 +6745,6 @@ importers:
       '@types/markdown-it':
         specifier: 'catalog:'
         version: 13.0.9
-      '@types/sanitize-html':
-        specifier: 'catalog:'
-        version: 2.11.0
       '@types/semver':
         specifier: 'catalog:'
         version: 7.7.0
@@ -6913,9 +6922,6 @@ importers:
       reka-ui:
         specifier: ^2.5.0
         version: 2.5.0(patch_hash=f1cec654cb01a5751dfc1de06604bb22f9518860ea9c72fb685e770509923a2f)(typescript@6.0.2)(vue@3.5.26(typescript@6.0.2))
-      sanitize-html:
-        specifier: 'catalog:'
-        version: 2.18.0
       sass-embedded:
         specifier: 'catalog:'
         version: 1.98.0
@@ -8532,9 +8538,15 @@ importers:
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
+      '@n8n/eslint-config':
+        specifier: workspace:*
+        version: link:../@n8n/eslint-config
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../@n8n/eslint-plugin-community-nodes
+      '@n8n/oxlint-config':
+        specifier: workspace:*
+        version: link:../@n8n/oxlint-config
       '@n8n/playwright-janitor':
         specifier: workspace:*
         version: link:../quality/testing/janitor
@@ -8631,6 +8643,9 @@ importers:
       confusables:
         specifier: 1.1.1
         version: 1.1.1
+      eslint:
+        specifier: 'catalog:'
+        version: 9.29.0(jiti@2.6.1)(supports-color@8.1.1)
       fast-check:
         specifier: 'catalog:'
         version: 3.23.2
@@ -8643,6 +8658,12 @@ importers:
       nock:
         specifier: 'catalog:'
         version: 14.0.14
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.78.0(oxlint-tsgolint@0.21.1)
+      oxlint-tsgolint:
+        specifier: 'catalog:'
+        version: 0.21.1
       reflect-metadata:
         specifier: 'catalog:'
         version: 0.2.2
@@ -8772,7 +8793,7 @@ importers:
         version: 11.13.0(supports-color@8.1.1)
       undici:
         specifier: catalog:undici-v7
-        version: 7.29.1
+        version: 7.30.1
     devDependencies:
       '@n8n/eslint-config':
         specifier: workspace:*
@@ -24324,8 +24345,8 @@ packages:
     resolution: {integrity: sha512-R+RODBqp6i2pPflGdq+xIOUkl+RNfGgHwoinecKu/JCuf2uO06cOKoDbI2P7Dn6KcswdKwrczbU6IYJ6K8X+wg==}
     engines: {node: '>=18.17'}
 
-  undici@7.29.1:
-    resolution: {integrity: sha512-RYONW2MeafgYlkVOKYKkA/Ag7BmXqgIWCa8t1m0JcxrQg9pI9lEqRhAOruOBCbAohOa/gkCF+iPi9hrgvTzu6Q==}
+  undici@7.30.1:
+    resolution: {integrity: sha512-03KrMbjIFDWQR5RNPrSw3bd1r12JpyFQl9/yxjUbJtqkjmllqC5lFjZh6ujeuJCKr8EOQvRW872Oy/az+nLYxg==}
     engines: {node: '>=20.18.1'}
 
   unicorn-magic@0.3.0:
@@ -25400,7 +25421,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.0.8
-      undici: 7.29.1
+      undici: 7.30.1
       zod: 3.25.76
 
   '@ai-sdk/provider-utils@5.0.67(zod@3.25.76)':
@@ -25409,7 +25430,7 @@ snapshots:
       '@standard-schema/spec': 1.1.0
       '@workflow/serde': 4.1.0
       eventsource-parser: 3.0.8
-      undici: 7.29.1
+      undici: 7.30.1
       zod: 3.25.76
 
   '@ai-sdk/provider@4.0.15':
@@ -29703,7 +29724,7 @@ snapshots:
       crypto-js: 4.2.0
       node-machine-id: 1.1.12
       node-rsa: 2.0.0
-      undici: 7.29.1
+      undici: 7.30.1
 
   '@napi-rs/canvas-android-arm64@1.0.11':
     optional: true
@@ -30992,13 +31013,13 @@ snapshots:
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       typescript: '@typescript/typescript6@6.0.2'
-      undici: 7.29.1
+      undici: 7.30.1
 
   '@qdrant/js-client-rest@1.19.0(typescript@7.0.2)':
     dependencies:
       '@qdrant/openapi-typescript-fetch': 1.2.6
       typescript: 7.0.2
-      undici: 7.29.1
+      undici: 7.30.1
 
   '@qdrant/openapi-typescript-fetch@1.2.6': {}
 
@@ -35007,7 +35028,7 @@ snapshots:
       parse5: 7.3.0
       parse5-htmlparser2-tree-adapter: 7.1.0
       parse5-parser-stream: 7.1.2
-      undici: 7.29.1
+      undici: 7.30.1
       whatwg-mimetype: 4.0.0
 
   chokidar@4.0.3:
@@ -43344,7 +43365,7 @@ snapshots:
       ssh-remote-port-forward: 1.0.4
       tar-fs: 2.1.5
       tmp: 0.2.7
-      undici: 7.29.1
+      undici: 7.30.1
     transitivePeerDependencies:
       - supports-color
 
@@ -43899,7 +43920,7 @@ snapshots:
 
   undici@6.29.0: {}
 
-  undici@7.29.1: {}
+  undici@7.30.1: {}
 
   unicorn-magic@0.3.0: {}
 

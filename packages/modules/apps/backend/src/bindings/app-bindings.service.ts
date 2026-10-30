@@ -16,6 +16,7 @@ import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
 import { AppVersionRepository } from '../versions/app-version.repository';
+import { AppChangeService } from '../versions/app-change.service';
 
 const WRITE_TABLE_PERMISSIONS = new Set(['insert', 'update', 'delete']);
 
@@ -35,15 +36,16 @@ export function toRuntimeBinding(binding: AppBinding): AppRuntimeBinding {
 }
 
 /**
- * Bindings belong to an app version, like its code. The editor reads and
- * changes the bindings of the draft version. A published version keeps its
- * bindings, so a change reaches the live app only when a version is published.
+ * Bindings belong to an app version, like its code. The editor reads the
+ * bindings of the draft version, and a change saves a new version. A change
+ * reaches the live app only when a version is published.
  */
 @Service()
 export class AppBindingsService {
 	constructor(
 		private readonly apps: AppRepository,
 		private readonly versions: AppVersionRepository,
+		private readonly changes: AppChangeService,
 		private readonly dataTables: AppDataTablePort,
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
@@ -59,40 +61,36 @@ export class AppBindingsService {
 	}
 
 	/**
-	 * Replaces the whole binding list of the draft version. The acting user must
-	 * be able to use each resource now, because the app later acts as its
-	 * project without a user check.
+	 * Saves the source of the draft with a new binding list as a new version, as a
+	 * source change does. The acting user must be able to use each resource now,
+	 * because the app later acts as its project without a user check.
 	 */
 	async setBindings(
 		user: User,
 		projectId: string,
 		appId: string,
+		baseVersionId: string,
 		bindings: AppBinding[],
 	): Promise<AppBindingsResponse> {
 		const app = await this.requireApp(projectId, appId);
-		const versionId = app.draftVersionId;
-		if (!versionId) {
+		if (!app.draftVersionId) {
 			throw new ConflictError('Save the app source before you set its bindings.');
 		}
-		if (versionId === app.publishedVersionId) {
-			throw new ConflictError(
-				'The draft version is published. Save a new version before you change its bindings.',
-			);
+		if (app.draftVersionId !== baseVersionId) {
+			throw new ConflictError('The app draft changed. Reload the app before you set its bindings.');
 		}
 		for (const binding of bindings) {
 			await this.assertCanBind(user, projectId, binding);
 		}
-		const updated = await this.versions.setDraftBindings(appId, versionId, bindings);
-		if (!updated) {
-			throw new ConflictError('The app draft changed. Reload the app before you set its bindings.');
-		}
-		this.logger.debug('Updated app bindings.', {
+		const version = await this.changes.saveBindings(projectId, appId, baseVersionId, bindings);
+		this.logger.debug('Saved app bindings as a new version.', {
 			projectId,
 			appId,
-			versionId,
+			baseVersionId,
+			versionId: version.id,
 			count: bindings.length,
 		});
-		return await this.describe(app, versionId, updated.bindings);
+		return await this.describe(app, version.id, version.bindings);
 	}
 
 	async getTypes(projectId: string, appId: string): Promise<string> {

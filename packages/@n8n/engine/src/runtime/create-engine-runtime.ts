@@ -126,6 +126,14 @@ export function createEngineRuntime({
 		),
 	);
 	const waitSweeper = new WaitSweeper(stepStore, stepQueue, logger, waitSweepIntervalMs);
+	// One start path for every execution: the API and a step's sub-execution both admit
+	// and validate here, and only this path can set a parent link.
+	const startExecution = new StartExecutionService(
+		admittance,
+		executionStore,
+		stepStore,
+		orchestrationQueue,
+	);
 	const stepWorker = new StepWorker(
 		stepQueue,
 		new StepReadyHandler(
@@ -135,13 +143,14 @@ export function createEngineRuntime({
 			dependencies,
 			lifecycleEventPublisher,
 			responseSender,
+			startExecution,
 			// A deadline set after the sweeper armed would otherwise wait for its next pass.
 			() => waitSweeper.noteSuspended(),
 		),
 	);
 
 	const { app } = createEngineServer({
-		startExecution: new StartExecutionService(admittance, executionStore, orchestrationQueue),
+		startExecution,
 		cancelExecution: new CancelExecutionService(
 			executionStore,
 			stepStore,

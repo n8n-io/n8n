@@ -441,7 +441,7 @@ export class UserProxyLlm {
 			return undefined;
 		}
 
-		// workflow_builder_ask_user questions go to the LLM; only single-blob text is scripted here.
+		// ask_user questions go to the LLM; only single-blob text is scripted here.
 		if (inputType === 'text') {
 			const userInput = this.consumeAllRemainingUserScriptTurns();
 			if (userInput) return { kind: 'approval', approved: true, userInput };

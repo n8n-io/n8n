@@ -664,6 +664,15 @@ export abstract class AgentChatIntegration {
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
 
+	/**
+	 * For a synthetic message that reports a failed send: the platform ID of
+	 * the message that failed, and the text to give a chat that sent it. The
+	 * bridge sends the report to the session that sent the message.
+	 */
+	getFailedSendReport?(
+		message: Message<unknown>,
+	): { messageId: string; chatNotice: string } | undefined;
+
 	/** Replacement text for action cards preserved after a user responds. */
 	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;
 

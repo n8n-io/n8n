@@ -164,12 +164,14 @@ function renderModal({
 		AgentSkillModalData,
 		| 'readOnly'
 		| 'syncedFrom'
+		| 'onStopSyncing'
 		| 'scopeOptions'
 		| 'initialScope'
 		| 'scopeLockedReason'
 		| 'getDefaultName'
 		| 'availableToAssistant'
 		| 'usedBy'
+		| 'availableToMCP'
 		| 'onDelete'
 		| 'deleteDisabledReason'
 		| 'initialVersionsOpen'
@@ -1542,6 +1544,7 @@ describe('AgentSkillModal from Settings', () => {
 					type: 'github',
 					label: 'acme/skills',
 					webUrl: 'https://github.com/acme/skills/tree/main/brand-voice',
+					canStopSyncing: false,
 				},
 			},
 		});
@@ -1558,6 +1561,83 @@ describe('AgentSkillModal from Settings', () => {
 		expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
 	});
 
+	it('offers Stop syncing on a synced skill the user may stop syncing', async () => {
+		const onStopSyncing = vi.fn();
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills',
+					canStopSyncing: true,
+				},
+				onStopSyncing,
+			},
+		});
+
+		const button = getByTestId('agent-skill-stop-syncing');
+		expect(button).toHaveTextContent('settings.context.skills.stopSyncing.action');
+		await userEvent.click(button);
+
+		expect(onStopSyncing).toHaveBeenCalledWith('s1');
+	});
+
+	it('disables Stop syncing while a stop runs, so it is sent once', async () => {
+		let finish: () => void = () => {};
+		const onStopSyncing = vi.fn(
+			async () => await new Promise<void>((resolve) => (finish = resolve)),
+		);
+		const { getByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills',
+					canStopSyncing: true,
+				},
+				onStopSyncing,
+			},
+		});
+
+		const button = getByTestId('agent-skill-stop-syncing');
+		await userEvent.click(button);
+		await userEvent.click(button);
+
+		expect(onStopSyncing).toHaveBeenCalledTimes(1);
+		expect(button).toBeDisabled();
+		finish();
+		await vi.waitFor(() => expect(button).not.toBeDisabled());
+	});
+
+	it('hides Stop syncing when the user may not stop syncing the skill', () => {
+		const { getByTestId, queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				readOnly: true,
+				syncedFrom: {
+					sourceId: 'src-1',
+					type: 'github',
+					label: 'acme/skills',
+					webUrl: 'https://github.com/acme/skills',
+					canStopSyncing: false,
+				},
+				onStopSyncing: vi.fn(),
+			},
+		});
+
+		expect(getByTestId('agent-skill-open-in-github')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-stop-syncing')).not.toBeInTheDocument();
+	});
+
 	it('reads where a synced skill comes from in the agent builder, and the server keeps it read-only', async () => {
 		getSkillDetail.mockResolvedValue({
 			...makeDetail({ id: 's1', name: 'Brand voice', scope: 'project', canEdit: false }),
@@ -1566,6 +1646,7 @@ describe('AgentSkillModal from Settings', () => {
 				type: 'github',
 				label: 'acme/skills',
 				webUrl: 'https://github.com/acme/skills',
+				canStopSyncing: true,
 			},
 		});
 		const { findByTestId, queryByTestId } = renderModal({
@@ -1788,6 +1869,42 @@ describe('AgentSkillModal from Settings', () => {
 
 		expect(queryByTestId('agent-skill-scope')).not.toBeInTheDocument();
 	});
+
+	it('hides the MCP toggle when Settings gives no MCP availability', () => {
+		const { queryByTestId } = renderModal({
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+			},
+		});
+
+		expect(queryByTestId('skill-available-to-mcp')).not.toBeInTheDocument();
+	});
+
+	it('saves a change of the MCP toggle as a change of the skill', async () => {
+		const onConfirm = vi.fn();
+		const { getByTestId, getByText } = renderModal({
+			onConfirm,
+			skillId: 's1',
+			skill: SAVED_SKILL,
+			settings: {
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
+				availableToMCP: false,
+			},
+		});
+
+		expect(getByText('settings.context.skills.modal.mcp.toggle')).toBeInTheDocument();
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+		await userEvent.click(getByTestId('skill-available-to-mcp'));
+		await fireEvent.click(getByTestId('agent-skill-create-save'));
+
+		expect(onConfirm).toHaveBeenCalledWith(
+			expect.objectContaining({ id: 's1', skill: SAVED_SKILL, availableToMCP: true }),
+		);
+	});
 });
 
 function makeListItem(
@@ -1805,8 +1922,10 @@ function makeListItem(
 		latestVersion: 1,
 		availableToAssistant: false,
 		usedByAgents: 0,
+		availableToMCP: false,
 		canEdit: true,
 		canDelete: true,
+		canStopSyncing: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -1889,6 +2008,28 @@ describe('Assistant availability', () => {
 		await waitFor(() =>
 			expect(onConfirm).toHaveBeenCalledWith(
 				expect.objectContaining({ scope, availableToAssistant: true, skill: savedSkill }),
+			),
+		);
+	});
+
+	it.each([
+		['Marketing', 'project:p1'],
+		['Global', 'instance'],
+	])('shows the MCP toggle before saving a move to %s', async (label, scope) => {
+		const onConfirm = vi.fn();
+		const { getByTestId, queryByTestId } = renderModal({
+			skill: savedSkill,
+			skillId: 'skill-1',
+			onConfirm,
+			settings: { ...agentSettings, availableToMCP: false },
+		});
+		expect(queryByTestId('skill-available-to-mcp')).not.toBeInTheDocument();
+		await selectScope(label);
+		await userEvent.click(getByTestId('skill-available-to-mcp'));
+		await userEvent.click(getByTestId('agent-skill-create-save'));
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith(
+				expect.objectContaining({ scope, availableToMCP: true, skill: savedSkill }),
 			),
 		);
 	});
@@ -2096,8 +2237,68 @@ describe('Versions panel', () => {
 		expect(getByTestId('agent-skill-create-save')).toBeInTheDocument();
 	});
 
-	it('saves an older version as a new version', async () => {
+	it('saves an older version as a new version and keeps the editor open on it', async () => {
 		const onConfirm = vi.fn();
+		const { findByTestId, getByTestId, queryByTestId } = renderModal({
+			skill: latest,
+			skillId: 'tone',
+			onConfirm,
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		listSkillVersions.mockResolvedValue([
+			{ id: 'v3', version: 3, createdBy: author, createdAt: '2026-10-28T11:07:00.000Z' },
+			{ id: 'v2', version: 2, createdBy: author, createdAt: '2026-10-27T11:07:00.000Z' },
+			{ id: 'v1', version: 1, createdBy: null, createdAt: '2026-10-20T11:07:00.000Z' },
+		]);
+		await userEvent.click(await findByTestId('agent-skill-version-restore'));
+
+		await waitFor(() =>
+			expect(onConfirm).toHaveBeenCalledWith({ id: 'tone', skill: old, restoredFrom: 1 }),
+		);
+		expect(await findByTestId('skill-version-row-3')).toHaveTextContent(
+			'agents.builder.skills.versions.latest',
+		);
+		expect(useUIStore().closeModal).not.toHaveBeenCalled();
+		expect(queryByTestId('agent-skill-viewing-version')).not.toBeInTheDocument();
+		expect(getByTestId('agent-skill-versions-button')).toHaveTextContent(
+			'agents.builder.skills.versions.number 3',
+		);
+		expect(getByTestId('agent-skill-description-input').querySelector('input')!).toHaveValue(
+			'Old style',
+		);
+		// The restored content is the saved state, so there is nothing to save.
+		expect(getByTestId('agent-skill-create-save')).toBeDisabled();
+	});
+
+	it('shows SKILL.md after a restore, even when the restored skill has the open file', async () => {
+		const guide = { path: 'references/guide.md', content: 'Read this.' };
+		getSkillVersion.mockResolvedValue({
+			id: 'v1',
+			version: 1,
+			createdBy: author,
+			createdAt: '2026-10-20T11:07:00.000Z',
+			skill: { ...old, references: [guide] },
+		});
+		const { findByTestId, queryByTestId } = renderModal({
+			skill: { ...latest, references: [guide] },
+			skillId: 'tone',
+			settings: { ...settings, initialVersionsOpen: true },
+		});
+
+		await userEvent.click(await findByTestId('skill-version-row-1'));
+		await userEvent.click(await findByTestId('agent-skill-reference-nav-item-references-guide-md'));
+		expect(await findByTestId('agent-skill-reference-text')).toBeInTheDocument();
+
+		await userEvent.click(await findByTestId('agent-skill-version-restore'));
+
+		expect(await findByTestId('agent-skill-instructions-editor')).toBeInTheDocument();
+		expect(queryByTestId('agent-skill-reference-editor')).not.toBeInTheDocument();
+	});
+
+	it('stays on the older version when the restore save fails', async () => {
+		const onConfirm = vi.fn().mockResolvedValue({ saved: false });
 		const { findByTestId } = renderModal({
 			skill: latest,
 			skillId: 'tone',
@@ -2108,7 +2309,10 @@ describe('Versions panel', () => {
 		await userEvent.click(await findByTestId('skill-version-row-1'));
 		await userEvent.click(await findByTestId('agent-skill-version-restore'));
 
-		await waitFor(() => expect(onConfirm).toHaveBeenCalledWith({ id: 'tone', skill: old }));
+		await waitFor(() => expect(onConfirm).toHaveBeenCalled());
+		expect(await findByTestId('agent-skill-viewing-version')).toBeInTheDocument();
+		expect(listSkillVersions).toHaveBeenCalledTimes(1);
+		expect(useUIStore().closeModal).not.toHaveBeenCalled();
 	});
 
 	it('lets a read-only user open older versions but not restore them', async () => {

@@ -17,7 +17,7 @@ import {
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
-import type { UserRepository, WorkflowRepository } from '@n8n/db';
+import type { PersonRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -938,7 +938,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 
 		// Provide real ChatIntegrationRegistry with N8nChatIntegration registered.
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new N8nChatIntegration(mock<UserRepository>()));
+		registry.register(new N8nChatIntegration(mock<PersonRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 
 		// Provide mocked integration services required when the integration block runs.
@@ -1232,6 +1232,63 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			getInjectedToolNames().filter((name) => name === DELEGATE_SUB_AGENT_TOOL_NAME),
 		).toHaveLength(1);
 	});
+
+	it.each([
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: false, allowPlanTools: true, planToolsEnabled: true, expected: false },
+		{ previewChat: true, allowPlanTools: false, planToolsEnabled: true, expected: false },
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: false, expected: false },
+	])(
+		'validates plan tasks only in enabled Preview runs: %j',
+		async ({ previewChat, allowPlanTools, planToolsEnabled, expected }) => {
+			Container.get(AgentsConfig).backgroundTasksEnabled = true;
+			Container.get(AgentsConfig).planToolsEnabled = planToolsEnabled;
+			Container.set(AgentPlanService, mock<AgentPlanService>());
+
+			const backgroundRunner = mock<SubAgentBackgroundRunner>();
+			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+			Container.set(SubAgentBackgroundRunner, backgroundRunner);
+
+			try {
+				await makeReconstructionService().reconstructFromAgentEntity(
+					storedRunSource(makeAgentEntity()),
+					mock<CredentialProvider>(),
+					'test',
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					undefined,
+					{ previewChat, allowPlanTools },
+				);
+
+				const delegate = getInjectedDelegateTool();
+
+				if (!delegate?.handler) throw new Error('Expected delegation tool');
+
+				await delegate.handler(
+					{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+					{
+						persistence: {
+							threadId: 'thread-1',
+							resourceId: 'resource-1',
+							hostMetadata: encodeAgentSandboxHostMetadata({
+								projectId: 'project-1',
+								principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+							}),
+						},
+					},
+				);
+
+				expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+					expect.objectContaining({ validatePlanTask: expected }),
+					expect.any(Object),
+				);
+			} finally {
+				Container.get(AgentsConfig).planToolsEnabled = false;
+			}
+		},
+	);
 
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;

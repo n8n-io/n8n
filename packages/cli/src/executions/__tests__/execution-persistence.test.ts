@@ -2146,24 +2146,22 @@ describe('ExecutionPersistence', () => {
 	describe('hardDeleteByWorkflowId', () => {
 		const executionPersistence = createPersistenceService('db');
 
-		const executionRow = (id: string, storedAt: 'db' | 'fs' = 'db') =>
-			Object.assign(new ExecutionEntity(), { id, workflowId: 'wf-1', storedAt });
+		const executionRow = (id: string, storedAt: 'db' | 'fs' = 'db') => ({
+			executionId: id,
+			workflowId: 'wf-1',
+			storedAt,
+		});
 
 		it('should delete executions in batches until none remain, including soft-deleted ones', async () => {
-			executionRepository.find
+			executionRepository.findForDeletionByWorkflowId
 				.mockResolvedValueOnce([executionRow('exec-1'), executionRow('exec-2', 'fs')])
 				.mockResolvedValueOnce([executionRow('exec-3')])
 				.mockResolvedValueOnce([]);
 
 			await executionPersistence.hardDeleteByWorkflowId('wf-1');
 
-			expect(executionRepository.find).toHaveBeenCalledTimes(3);
-			expect(executionRepository.find).toHaveBeenCalledWith({
-				select: ['id', 'workflowId', 'storedAt'],
-				where: { workflowId: 'wf-1' },
-				take: 500,
-				withDeleted: true,
-			});
+			expect(executionRepository.findForDeletionByWorkflowId).toHaveBeenCalledTimes(3);
+			expect(executionRepository.findForDeletionByWorkflowId).toHaveBeenCalledWith('wf-1', 500);
 			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(1, ['exec-1', 'exec-2']);
 			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(2, ['exec-3']);
 			expect(binaryDataService.deleteMany).toHaveBeenCalledTimes(2);
@@ -2173,7 +2171,7 @@ describe('ExecutionPersistence', () => {
 		});
 
 		it('should delete nothing when the workflow has no executions', async () => {
-			executionRepository.find.mockResolvedValueOnce([]);
+			executionRepository.findForDeletionByWorkflowId.mockResolvedValueOnce([]);
 
 			await executionPersistence.hardDeleteByWorkflowId('wf-1');
 
@@ -2183,7 +2181,7 @@ describe('ExecutionPersistence', () => {
 		});
 
 		it('should propagate a batch failure without deleting further batches', async () => {
-			executionRepository.find
+			executionRepository.findForDeletionByWorkflowId
 				.mockResolvedValueOnce([executionRow('exec-1')])
 				.mockResolvedValueOnce([executionRow('exec-2')]);
 			executionRepository.deleteByIds
@@ -2197,58 +2195,60 @@ describe('ExecutionPersistence', () => {
 			// first batch was deleted before the failure; retrying resumes from the rest
 			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(1, ['exec-1']);
 			expect(executionRepository.deleteByIds).toHaveBeenNthCalledWith(2, ['exec-2']);
-			expect(executionRepository.find).toHaveBeenCalledTimes(2);
+			expect(executionRepository.findForDeletionByWorkflowId).toHaveBeenCalledTimes(2);
 		});
 
 		it('should throw instead of looping on when executions keep being added', async () => {
 			const sqlitePersistence = createPersistenceService('db', 'sqlite');
-			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+			executionRepository.findForDeletionByWorkflowId.mockResolvedValue([executionRow('exec-1')]);
 
 			await expect(sqlitePersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
 				'executions keep being added',
 			);
 
-			expect(executionRepository.find).toHaveBeenCalledTimes(20_001); // fixed per-run batch cap + final probe
+			expect(executionRepository.findForDeletionByWorkflowId).toHaveBeenCalledTimes(20_001); // fixed per-run batch cap + final probe
 			expect(executionRepository.query).not.toHaveBeenCalled(); // no catalog estimate outside Postgres
-			executionRepository.find.mockReset();
+			executionRepository.findForDeletionByWorkflowId.mockReset();
 		});
 
 		it('should succeed when the deletion converges exactly on the last allowed batch', async () => {
 			const sqlitePersistence = createPersistenceService('db', 'sqlite');
 			for (let i = 0; i < 20_000; i++) {
-				executionRepository.find.mockResolvedValueOnce([executionRow('exec-1')]);
+				executionRepository.findForDeletionByWorkflowId.mockResolvedValueOnce([
+					executionRow('exec-1'),
+				]);
 			}
-			executionRepository.find.mockResolvedValue([]); // final probe finds none left
+			executionRepository.findForDeletionByWorkflowId.mockResolvedValue([]); // final probe finds none left
 
 			await expect(sqlitePersistence.hardDeleteByWorkflowId('wf-1')).resolves.toBeUndefined();
 
-			expect(executionRepository.find).toHaveBeenCalledTimes(20_001); // 20k full batches + final probe
-			executionRepository.find.mockReset();
+			expect(executionRepository.findForDeletionByWorkflowId).toHaveBeenCalledTimes(20_001); // 20k full batches + final probe
+			executionRepository.findForDeletionByWorkflowId.mockReset();
 		});
 
 		it('should scale the safeguard cap with the table-size estimate on Postgres', async () => {
 			executionRepository.query.mockResolvedValueOnce([{ estimate: '10000000' }]);
-			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+			executionRepository.findForDeletionByWorkflowId.mockResolvedValue([executionRow('exec-1')]);
 
 			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
 				'executions keep being added',
 			);
 
 			// 2 x 10M estimate / 500 per batch = 40k batches, + final probe
-			expect(executionRepository.find).toHaveBeenCalledTimes(40_001);
-			executionRepository.find.mockReset();
+			expect(executionRepository.findForDeletionByWorkflowId).toHaveBeenCalledTimes(40_001);
+			executionRepository.findForDeletionByWorkflowId.mockReset();
 		});
 
 		it('should fall back to the fixed cap when the Postgres estimate is unavailable', async () => {
 			executionRepository.query.mockResolvedValueOnce([{ estimate: '-1' }]); // never-analyzed table
-			executionRepository.find.mockResolvedValue([executionRow('exec-1')]);
+			executionRepository.findForDeletionByWorkflowId.mockResolvedValue([executionRow('exec-1')]);
 
 			await expect(executionPersistence.hardDeleteByWorkflowId('wf-1')).rejects.toThrow(
 				'executions keep being added',
 			);
 
-			expect(executionRepository.find).toHaveBeenCalledTimes(20_001);
-			executionRepository.find.mockReset();
+			expect(executionRepository.findForDeletionByWorkflowId).toHaveBeenCalledTimes(20_001);
+			executionRepository.findForDeletionByWorkflowId.mockReset();
 		});
 	});
 

@@ -1,5 +1,4 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue';
-import type { ThreadRuntime } from '../../instanceAi.store';
 import type { WorkflowSetupApplyPayload, WorkflowSetupSection } from '../workflowSetup.types';
 import type { CredentialSelectionsMap } from './useWorkflowSetupInputs';
 import { useWorkflowSetupTelemetry } from './useWorkflowSetupTelemetry';
@@ -38,7 +37,8 @@ export function useWorkflowSetupActions(deps: {
 	goToStep: (index: number) => void;
 	inputs: WorkflowSetupInputAccessors;
 	applyMachine: ApplyMachine;
-	thread: ThreadRuntime;
+	threadId: Ref<string>;
+	inputThreadId: Ref<string | undefined>;
 }): WorkflowSetupActions {
 	const isActionPending = ref(false);
 	const workflowSetupTelemetry = useWorkflowSetupTelemetry({
@@ -51,7 +51,8 @@ export function useWorkflowSetupActions(deps: {
 			isSectionComplete: deps.inputs.isSectionComplete,
 			isSectionSkipped: deps.inputs.isSectionSkipped,
 		},
-		thread: deps.thread,
+		threadId: deps.threadId,
+		inputThreadId: deps.inputThreadId,
 	});
 
 	/**

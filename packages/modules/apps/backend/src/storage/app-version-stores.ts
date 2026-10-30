@@ -16,6 +16,12 @@ export abstract class AppSourceVersionStore {
 	/** Creates a source-backed version with a queued build and advances the draft atomically. */
 	abstract createVersion(version: NewSourceVersion, files: AppFiles): Promise<void>;
 
+	/**
+	 * Creates a version that shares the source and the build of the expected draft,
+	 * with other bindings, and advances the draft atomically.
+	 */
+	abstract copyDraft(version: NewSourceVersion & { expectedDraftVersionId: string }): Promise<void>;
+
 	abstract readSource(versionId: string): Promise<AppFiles>;
 
 	abstract listSourceFiles(versionId: string): Promise<string[]>;

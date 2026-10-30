@@ -39,11 +39,13 @@ describe('SkillService', () => {
 		telemetry,
 		users,
 		assistantGate,
+		links,
+		skillSyncGate,
 		service,
 	} = createSkillServices();
 	const user = mock<User>({ id: 'user-1' });
 
-	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
+	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner, links, skillSyncGate }));
 
 	describe('createTrusted', () => {
 		it('creates the skill with an id in the agent skill format', async () => {
@@ -389,6 +391,9 @@ describe('SkillService', () => {
 				source: 'github',
 			});
 
+			// A link makes a skill synced, not its source value.
+			beforeEach(() => links.isLinked.mockResolvedValue(true));
+
 			it.each([
 				{ case: 'new instructions', update: { instructions: 'new' } },
 				{ case: 'a rename', update: { name: 'Tone' } },
@@ -630,6 +635,23 @@ describe('SkillService', () => {
 			await service.moveTrusted('skill_a', { projectId: 'p2', agentId: null }, 'agent-1');
 
 			expect(skills.updateTarget).toHaveBeenCalled();
+		});
+
+		it('refuses to move a synced skill on its own, for every caller', async () => {
+			await givenUsers();
+			links.isLinked.mockResolvedValue(true);
+			skills.findLatestSummaries.mockResolvedValue(
+				new Map([['skill_a', { name: 'Brand voice', description: 'd', version: 1 }]]),
+			);
+			skills.findByIds.mockResolvedValue([mock<Skill>({ id: 'skill_a', source: 'github' })]);
+
+			await expectError(
+				service.moveTrusted('skill_a', { projectId: null, agentId: null }, undefined),
+				SkillSyncedError,
+				'"Brand voice" is synced from GitHub, so it moves only with its source. Stop syncing it to move it on its own.',
+			);
+			expect(links.isLinked).toHaveBeenCalledWith('skill_a', TX_CTX);
+			expect(skills.updateTarget).not.toHaveBeenCalled();
 		});
 
 		it('refuses to move a skill into a scope that holds a name like it', async () => {
@@ -988,6 +1010,7 @@ describe('SkillService', () => {
 		const rows = [instanceSkill, projectSkill, agentSkill];
 
 		beforeEach(() => {
+			for (const row of rows) row.skill.availableToMCP = true;
 			skills.findLatestSaved.mockImplementation(
 				async (ids) =>
 					new Map(
@@ -997,7 +1020,7 @@ describe('SkillService', () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
 		});
 
-		it('lists one page of the project and instance skills the user can list, without agent skills', async () => {
+		it('lists one page of the project and instance skills that the user can list and that are available to MCP', async () => {
 			projectScope.getProjectIds.mockResolvedValue(['project-1']);
 			skills.findVisiblePage.mockResolvedValue({
 				skills: [instanceSkill.skill, projectSkill.skill],
@@ -1008,7 +1031,7 @@ describe('SkillService', () => {
 
 			expect(skills.findVisiblePage).toHaveBeenCalledWith(
 				{ projectIds: ['project-1'], agentIds: [] },
-				{ skip: 100, take: 50 },
+				{ skip: 100, take: 50, availableToMCP: true },
 			);
 			expect(result).toEqual({
 				count: 7,
@@ -1027,7 +1050,7 @@ describe('SkillService', () => {
 
 			expect(skills.findVisiblePage).toHaveBeenCalledWith(
 				{ projectIds: 'all', agentIds: [] },
-				{ skip: 0, take: 100 },
+				{ skip: 0, take: 100, availableToMCP: true },
 			);
 		});
 
@@ -1045,6 +1068,12 @@ describe('SkillService', () => {
 
 		it('does not read a skill the user cannot read', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
+		});
+
+		it('does not read a skill that is not available to MCP', async () => {
+			projectSkill.skill.availableToMCP = false;
 
 			expect(await service.readForMcp(user, 'skill-2')).toBeNull();
 		});

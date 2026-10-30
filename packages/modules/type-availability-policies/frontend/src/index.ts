@@ -9,6 +9,7 @@ export {
 	describeAgentToolRestriction,
 	describeNodeTypeRestriction,
 	describeRestrictedNodeTypes,
+	getCredentialTypeRestriction,
 	getNodeTypeRestriction,
 	getRestrictionMessage,
 	getViolationVerdict,

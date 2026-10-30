@@ -157,6 +157,25 @@ describe('workspace tool', () => {
 			});
 		});
 
+		it('stores a grant when the user always allows it, and skips the next approval', async () => {
+			const context = createMockContext();
+			context.grantSessionToolApproval = vi.fn(async () => {});
+			const tool = createWorkspaceTool(context);
+			const input = { action: 'tag-workflow', workflowId: 'wf1', tags: ['prod'] };
+
+			await executeTool(tool, input, {
+				resumeData: { approved: true, scope: 'session' },
+			} as never);
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith('workspace:tag-workflow');
+
+			context.sessionApprovedToolKeys = new Set(['workspace:tag-workflow']);
+			const suspend = vi.fn();
+			await executeTool(tool, input, { suspend } as never);
+
+			expect(suspend).not.toHaveBeenCalled();
+		});
+
 		it('should suspend for confirmation when permission requires approval', async () => {
 			const context = createMockContext();
 			const suspend = vi.fn();
@@ -394,6 +413,36 @@ describe('workspace tool', () => {
 				expect(result).toEqual({ error: expect.stringContaining('greater than 0') });
 			},
 		);
+
+		it('stores a per-workflow grant that skips the approval only for that workflow', async () => {
+			const context = createMockContext();
+			context.grantSessionToolApproval = vi.fn(async () => {});
+			(context.workspaceService!.cleanupTestExecutions as Mock).mockResolvedValue({
+				deletedCount: 0,
+			});
+			const tool = createWorkspaceTool(context);
+
+			await executeTool(tool, { action: 'cleanup-test-executions', workflowId: 'wf1' }, {
+				resumeData: { approved: true, scope: 'session' },
+			} as never);
+
+			expect(context.grantSessionToolApproval).toHaveBeenCalledWith(
+				'workspace:cleanup-test-executions:wf1',
+			);
+
+			context.sessionApprovedToolKeys = new Set(['workspace:cleanup-test-executions:wf1']);
+			const sameWorkflowSuspend = vi.fn();
+			await executeTool(tool, { action: 'cleanup-test-executions', workflowId: 'wf1' }, {
+				suspend: sameWorkflowSuspend,
+			} as never);
+			expect(sameWorkflowSuspend).not.toHaveBeenCalled();
+
+			const otherWorkflowSuspend = vi.fn();
+			await executeTool(tool, { action: 'cleanup-test-executions', workflowId: 'wf2' }, {
+				suspend: otherWorkflowSuspend,
+			} as never);
+			expect(otherWorkflowSuspend).toHaveBeenCalled();
+		});
 	});
 
 	it.each([

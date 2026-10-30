@@ -100,6 +100,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 vi.mock('@n8n/i18n', () => {
 	const i18n = {
 		translations: {
+			'agentSessions.status.cancelled': 'Canceled',
 			'agents.chat.plan.error.rejected':
 				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
@@ -167,6 +168,37 @@ function mountSteps(
 describe('AgentChatToolSteps', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+	});
+
+	it.each([
+		{ state: TOOL_CALL_STATE.CANCELLED, output: 'Tool call canceled' },
+		{
+			state: TOOL_CALL_STATE.ERROR,
+			output: 'Error: Tool call stopped by guardrail: tasks-cancelled',
+		},
+	])('shows canceled work without an error or repair action: $state', (cancellation) => {
+		const wrapper = mountSteps(
+			[{ tool: 'update_plan', toolCallId: 'tc-canceled', ...cancellation }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-summary"]').text()).toBe('Canceled');
+		expect(wrapper.find('[data-testid="tool-step-warning"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="tool-step-error"]').exists()).toBe(false);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(
+			false,
+		);
+	});
+
+	it('keeps other guardrail refusals visible as tool errors', () => {
+		const error = 'Error: Tool call stopped by guardrail: tool.blocked';
+		const wrapper = mountSteps(
+			[{ tool: 'lookup', toolCallId: 'tc-error', state: TOOL_CALL_STATE.ERROR, output: error }],
+			{ canFixWithAssistant: true, executionId: 'execution-1' },
+		);
+
+		expect(wrapper.get('[data-testid="tool-step-warning"]').attributes('title')).toBe(error);
+		expect(wrapper.find('[data-test-id="agent-chat-tool-fix-with-assistant"]').exists()).toBe(true);
 	});
 
 	it.each([
@@ -942,5 +974,75 @@ describe('AgentChatToolSteps', () => {
 				[[expect.objectContaining({ toolCallId: 'tc-normal' })]],
 			]);
 		});
+	});
+});
+
+describe('AgentChatToolSteps — output files', () => {
+	it('renders the files of a tool output as attachments below the step', () => {
+		const toolCall: ToolCall = {
+			tool: 'generate_image',
+			toolCallId: 'tc-image',
+			state: TOOL_CALL_STATE.DONE,
+			output: {
+				status: 'success',
+				data: [{ binary: { data: 'aid-1' } }],
+				files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+			},
+		};
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls: [toolCall], projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([
+			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
+		]);
+	});
+
+	it('renders the files of a tool output in a group of tool steps', () => {
+		const toolCalls: ToolCall[] = [
+			{
+				tool: 'search',
+				toolCallId: 'tc-search',
+				state: TOOL_CALL_STATE.DONE,
+				output: { status: 'success' },
+			},
+			{
+				tool: 'generate_image',
+				toolCallId: 'tc-image',
+				state: TOOL_CALL_STATE.DONE,
+				output: {
+					status: 'success',
+					data: [{ binary: { data: 'aid-1' } }],
+					files: [{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 }],
+				},
+			},
+		];
+		const wrapper = mount(AgentChatToolSteps, {
+			props: { toolCalls, projectId: 'p1', agentId: 'a1' },
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		const lists = wrapper.findAll('[data-test-id="tool-output-files"]');
+		expect(lists).toHaveLength(1);
+		expect(JSON.parse(lists[0].text())).toEqual([
+			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
+		]);
 	});
 });

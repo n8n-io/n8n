@@ -39,6 +39,7 @@ import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,
+	entityIdOfSegment,
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import { generateSlug } from '@/modules/n8n-packages/io/slug.utils';
@@ -342,7 +343,7 @@ export class PromotionChangeService {
 		{ commitSha, keys }: PromotionResourceDetailsRequestDto,
 	): Promise<PromotionResourceDetails> {
 		this.assertCanPreview(user, direction);
-		const requestedIds = new Set(keys.map((key) => key.slice(key.lastIndexOf(':') + 1)));
+		const requestedIds = new Set(keys.map((key) => key.slice(key.indexOf(':') + 1)));
 		const readBranch = async (paths: readonly string[]) =>
 			commitSha === null
 				? new Map<string, string>()
@@ -551,8 +552,7 @@ function blobsByPath(files: readonly PackageFile[]): Map<string, string> {
 /** Entity directories end with `-<id>`, and the entity file sits inside that directory. */
 function entityIdOfPath(path: string): string {
 	const segments = path.split('/');
-	const directory = segments[segments.length - 2] ?? '';
-	return directory.slice(directory.lastIndexOf('-') + 1);
+	return entityIdOfSegment(segments[segments.length - 2] ?? '');
 }
 
 function toChanges(

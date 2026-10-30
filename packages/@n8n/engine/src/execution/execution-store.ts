@@ -4,6 +4,7 @@ import type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionStatus,
+	ParentLink,
 	SeededSteps,
 	StepKey,
 	StepKeyId,
@@ -27,6 +28,8 @@ interface BaseExecutionRecord {
 	callerContext: CallerContext;
 	/** What kind of a response the caller expects. */
 	responseExpectation: ResponseExpectation;
+	/** The execution that started this one, or `null` for a top-level one. */
+	parent: ParentLink | null;
 }
 
 /**

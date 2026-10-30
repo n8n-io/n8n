@@ -1,6 +1,7 @@
 import { MOONSHOTAI_KIMI_K3_MODEL_ID, UNLIMITED_CREDITS } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
+import type { InstanceAiConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -22,10 +23,17 @@ vi.mock('@/utils/ai-proxy-language-model', () => ({
 	createProxyLanguageModel: (...args: unknown[]) => createProxyLanguageModel(...args),
 }));
 
+const createAnthropic = vi.hoisted(() => vi.fn());
+vi.mock('@ai-sdk/anthropic', () => ({
+	createAnthropic: (...args: unknown[]) => createAnthropic(...args),
+}));
+
 import { InstanceAiModelService } from '../instance-ai-model.service';
 import type { InstanceAiSettingsService } from '../instance-ai-settings.service';
 
 const fakeUser = { id: 'user-1' } as User;
+
+type CustomFetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 function createClient() {
 	return {
@@ -42,13 +50,21 @@ describe('InstanceAiModelService', () => {
 	const aiService = mock<AiService>();
 	const outboundHttp = mock<OutboundHttp>();
 	const logger = mock<Logger>();
+	const instanceAiConfig = { modelRequestLabels: true } as InstanceAiConfig;
 
 	let service: InstanceAiModelService;
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 		capturedTokenGetters.length = 0;
-		service = new InstanceAiModelService(settingsService, aiService, outboundHttp, logger);
+		instanceAiConfig.modelRequestLabels = true;
+		service = new InstanceAiModelService(
+			settingsService,
+			aiService,
+			outboundHttp,
+			logger,
+			instanceAiConfig,
+		);
 	});
 
 	afterEach(() => {
@@ -70,6 +86,118 @@ describe('InstanceAiModelService', () => {
 					bodyTimeout: AI_REQUEST_TIMEOUT_MS,
 				},
 			});
+		});
+
+		it('sends the feature, version, run and thread headers through the AI transport', async () => {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+
+			await service.getLabeledModelFetch({ runId: 'run-1', threadId: 'thread-1' })(
+				'https://api.example.test/v1/chat/completions',
+				{ method: 'POST', headers: { authorization: 'Bearer key' } },
+			);
+
+			const headers = new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+			expect(headers.get('authorization')).toBe('Bearer key');
+			expect(headers.get('x-n8n-feature')).toBe('instance-ai');
+			expect(headers.get('x-n8n-version')).not.toBeNull();
+			expect(headers.get('x-n8n-run-id')).toBe('run-1');
+			expect(headers.get('x-n8n-thread-id')).toBe('thread-1');
+			expect(outboundHttp.transport).toHaveBeenCalledTimes(1);
+		});
+
+		it('sends no labels through the plain transport for helper calls', async () => {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+
+			await service.getModelFetch()('https://api.example.test/v1/chat/completions', {
+				method: 'POST',
+			});
+
+			const headers = new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+			expect(headers.get('x-n8n-feature')).toBeNull();
+		});
+	});
+
+	describe('model request labels off (the default)', () => {
+		beforeEach(() => {
+			instanceAiConfig.modelRequestLabels = false;
+		});
+
+		async function headersSentBy(fetchFor: (s: InstanceAiModelService) => CustomFetchLike) {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+			await fetchFor(service)('https://api.example.test/v1/chat/completions', {
+				method: 'POST',
+				headers: { authorization: 'Bearer key' },
+			});
+			return new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+		}
+
+		it('sends no labels on the labeled transport', async () => {
+			const headers = await headersSentBy((s) =>
+				s.getLabeledModelFetch({ runId: 'run-1', threadId: 'thread-1' }),
+			);
+			expect(headers.get('authorization')).toBe('Bearer key');
+			expect(headers.get('x-n8n-feature')).toBeNull();
+			expect(headers.get('x-n8n-run-id')).toBeNull();
+			expect(headers.get('x-n8n-thread-id')).toBeNull();
+		});
+
+		it('uses the plain transport as is, with no header rewriting', () => {
+			const baseFetch = vi.fn();
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+			expect(service.getModelFetch()).toBe(baseFetch);
+		});
+	});
+
+	describe('HTTP(S)_PROXY with an Anthropic model', () => {
+		const savedProxy = process.env.HTTP_PROXY;
+
+		beforeEach(() => {
+			process.env.HTTP_PROXY = 'http://proxy.test:8080';
+			aiService.isProxyEnabled.mockReturnValue(false);
+			settingsService.resolveModelConfig.mockResolvedValue('anthropic/claude-x');
+			createAnthropic.mockReturnValue(() => ({}));
+		});
+
+		afterEach(() => {
+			if (savedProxy === undefined) delete process.env.HTTP_PROXY;
+			else process.env.HTTP_PROXY = savedProxy;
+		});
+
+		async function headersSentByAnthropicClient() {
+			const baseFetch = vi.fn(
+				async (_input: RequestInfo | URL, _init?: RequestInit) =>
+					await Promise.resolve(new Response('{}')),
+			);
+			outboundHttp.transport.mockReturnValue({ asCustomFetch: () => baseFetch } as never);
+			await service.resolveAgentModelConfig(fakeUser, { runId: 'run-1', threadId: 'thread-1' });
+			const { fetch } = createAnthropic.mock.calls[0]?.[0] as { fetch: CustomFetchLike };
+			await fetch('https://api.anthropic.com/v1/messages', { method: 'POST' });
+			return new Headers(baseFetch.mock.calls[0]?.[1]?.headers);
+		}
+
+		it('sends the run labels when request labels are on', async () => {
+			const headers = await headersSentByAnthropicClient();
+			expect(headers.get('x-n8n-feature')).toBe('instance-ai');
+			expect(headers.get('x-n8n-run-id')).toBe('run-1');
+			expect(headers.get('x-n8n-thread-id')).toBe('thread-1');
+		});
+
+		it('sends no labels when request labels are off', async () => {
+			instanceAiConfig.modelRequestLabels = false;
+			const headers = await headersSentByAnthropicClient();
+			expect(headers.get('x-n8n-feature')).toBeNull();
 		});
 	});
 

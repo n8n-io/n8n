@@ -79,6 +79,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_annotations](public.execution_annotations.md) | 6 |  | BASE TABLE |
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
 | [public.execution_entity](public.execution_entity.md) | 19 |  | BASE TABLE |
+| [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
 | [public.folder_tag](public.folder_tag.md) | 2 |  | BASE TABLE |
@@ -154,7 +155,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.token_exchange_jti](public.token_exchange_jti.md) | 3 |  | BASE TABLE |
 | [public.trusted_key](public.trusted_key.md) | 4 |  | BASE TABLE |
 | [public.trusted_key_source](public.trusted_key_source.md) | 8 |  | BASE TABLE |
-| [public.trusted_source](public.trusted_source.md) | 15 |  | BASE TABLE |
+| [public.trusted_source](public.trusted_source.md) | 16 |  | BASE TABLE |
 | [public.trusted_source_identity](public.trusted_source_identity.md) | 8 |  | BASE TABLE |
 | [public.type_availability_policy](public.type_availability_policy.md) | 7 |  | BASE TABLE |
 | [public.type_availability_policy_attachment](public.type_availability_policy_attachment.md) | 6 |  | BASE TABLE |
@@ -1248,6 +1249,24 @@ erDiagram
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
 }
+"public.execution_ledger" {
+  varchar_32_ blockedBy
+  varchar_36_ entityId
+  varchar_128_ entityName
+  varchar_16_ entityType
+  varchar_16_ event
+  uuid eventId
+  varchar_36_ executionId
+  bigint id
+  varchar_32_ mode
+  timestamp_3__with_time_zone occurredAt
+  varchar_8_ origin
+  varchar_16_ outcome
+  varchar_36_ projectId
+  integer runtimeMs
+  varchar_32_ source
+  integer timeSavedMin
+}
 "public.execution_metadata" {
   integer executionId FK
   integer id
@@ -1971,6 +1990,7 @@ erDiagram
   timestamp_3__with_time_zone createdAt
   varchar_36_ discoveryClaimToken
   timestamp_3__with_time_zone discoveryClaimedAt
+  timestamp_3__with_time_zone firstAuthenticatedAt
   varchar_36_ id
   varchar issuer
   timestamp_3__with_time_zone lastCheckedAt

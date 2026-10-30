@@ -492,12 +492,25 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			expect(runtimeAgent.nativeToolDeferral).toHaveBeenCalledWith({
 				eagerToolNames: [
 					'workspace_read_file',
+					'workspace_read_files',
 					'workspace_read_tool_result',
 					'workspace_write_file',
 					'workspace_str_replace_file',
+					'workspace_edit_files',
 					'workspace_execute_command',
 					'load_skill',
 					'mark_session_failed',
+					'delegate_subagent',
+					'write_todos',
+					'read_binary_data',
+					'get_environment',
+					'recall_memory',
+					'flag_memory',
+					'create_plan',
+					'read_plan',
+					'update_plan',
+					'close_plan',
+					'resume_background_jobs',
 				],
 			});
 

@@ -68,7 +68,7 @@ export class PromotionReviewChangesService {
 		if (!headCommitSha) {
 			throw new BadRequestError('GitLab did not report the head commit of the merge request.');
 		}
-		const baseline = baselineOf(mergeRequest);
+		const baseline = baselineOf(target.review, mergeRequest);
 		const outcome = outcomeOf(target.review, mergeRequest);
 		let commits;
 		try {
@@ -78,8 +78,8 @@ export class PromotionReviewChangesService {
 				baseline,
 			});
 		} catch (error) {
-			// The host drops the refs of a finished review. Its outcome is still worth showing.
-			if (!(error instanceof PromotionReviewCommitsMissingError) || !outcome) throw error;
+			// The commits are gone from the host or in another repository. Show how the review ended.
+			if (!(error instanceof PromotionReviewCommitsMissingError)) throw error;
 			if (!('commitSha' in baseline)) throw error;
 			return {
 				baselineCommitSha: baseline.commitSha,
@@ -187,12 +187,15 @@ export class PromotionReviewChangesService {
 /**
  * An open review diffs against its merge base with the target branch, so a rebase on the host
  * does not add the commits of the target branch. After a merge, that merge base is the head
- * itself, so a merged or closed review diffs against the base that the host recorded.
+ * itself, so a merged or closed review diffs against the base that the host recorded. A review
+ * that n8n closed counts as finished.
  */
 function baselineOf(
+	review: PromotionReview,
 	mergeRequest: GitLabMergeRequest,
 ): { targetBranchName: string } | { commitSha: string; targetBranchName: string } {
-	if (mergeRequest.state === 'opened' || mergeRequest.state === 'locked') {
+	const isOpen = mergeRequest.state === 'opened' || mergeRequest.state === 'locked';
+	if (isOpen && review.state !== 'closed') {
 		return { targetBranchName: mergeRequest.target_branch };
 	}
 	const commitSha = mergeRequest.diff_refs?.base_sha;
@@ -212,6 +215,15 @@ function outcomeOf(
 	mergeRequest: GitLabMergeRequest,
 ): PromotionReviewOutcome | null {
 	const { state, web_url: webUrl } = mergeRequest;
+	// A close by n8n is final, whatever the host does later.
+	if (review.state === 'closed' && !endedOnHostFirst(review, mergeRequest)) {
+		return {
+			state: 'closed',
+			at: review.lastStateChangeAt?.toISOString() ?? null,
+			by: 'n8n',
+			webUrl,
+		};
+	}
 	if (state !== 'merged' && state !== 'closed') return null;
 	const hostActor =
 		state === 'merged'
@@ -228,6 +240,15 @@ function outcomeOf(
 		by: approverName ?? hostActor ?? null,
 		webUrl,
 	};
+}
+
+/** n8n records a host merge or close only after the host made it. */
+function endedOnHostFirst(review: PromotionReview, mergeRequest: GitLabMergeRequest): boolean {
+	const { state } = mergeRequest;
+	if (state !== 'merged' && state !== 'closed') return false;
+	const endedAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
+	if (!endedAt || !review.lastStateChangeAt) return true;
+	return new Date(endedAt) <= review.lastStateChangeAt;
 }
 
 function newestBranchName({ runs }: PromotionReview): string | null {

@@ -17,7 +17,7 @@ export function memorySkill(): RuntimeSkill {
 		allowedTools: [
 			'agent_builder_resolve_llm',
 			'setup_credentials',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent-context',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',

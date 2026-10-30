@@ -1,3 +1,4 @@
+import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
 import type { SerializableAgentState } from '@n8n/agents';
 import { LockService, type Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
@@ -13,6 +14,7 @@ import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { AgentConversationStateService } from '@/modules/agents/agent-conversation-state.service';
 import type { AgentExecutionOrchestratorService } from '@/modules/agents/agent-execution-orchestrator.service';
 import type { AgentExecutionUpdateBroadcaster } from '@/modules/agents/agent-execution-update-broadcaster';
+import type { AgentPlanService } from '@/modules/agents/agent-plan.service';
 import { hashAgentSandboxPrincipal } from '@/modules/agents/agent-sandbox-principal';
 import {
 	AgentBackgroundJobService,
@@ -80,7 +82,7 @@ describe('AgentBackgroundJobRepository', () => {
 			parentThreadId: string;
 		},
 	) {
-		await repository.insert({
+		await repository.save({
 			kind: 'subagent',
 			status: 'completed',
 			parentAgentId: agentId,
@@ -93,6 +95,23 @@ describe('AgentBackgroundJobRepository', () => {
 			...overrides,
 		});
 	}
+
+	it.each([
+		['cancelled', null, 'Late result'],
+		['cancelled', 'Saved result', 'Saved result'],
+		['completed', null, null],
+		['failed', null, null],
+		['running', null, null],
+	] as const)(
+		'preserves late output only for a canceled job without output (%s, %s)',
+		async (status, result, expected) => {
+			const id = uuid();
+			await insertJob({ id, parentThreadId: uuid(), status, result });
+			await repository.preserveLateCompletedResult(id, 'Late result');
+
+			expect(await repository.findById(id)).toMatchObject({ status, result: expected });
+		},
+	);
 
 	it('admits five active tasks beside a paused group and fences concurrent spawns', async () => {
 		const parentThreadId = uuid();
@@ -172,7 +191,14 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(
 			await repository.reservePausedGroup(parentThreadId, agentId, ids.slice(1), timeoutAt, 5),
 		).toBe('reserved');
-		await repository.requestPause(agentId, parentThreadId, 'draft-chat:user-1', uuidv7());
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			parentThreadId,
+			'draft-chat:user-1',
+			uuidv7(),
+		);
+
 		expect(await repository.resumeIfPaused(ids[1], agentId, 'running', timeoutAt, timeoutAt)).toBe(
 			false,
 		);
@@ -255,12 +281,20 @@ describe('AgentBackgroundJobRepository', () => {
 			),
 		).toEqual([]);
 		expect((await repository.findById(oldJobs[0]))?.status).toBe('paused');
-		await repository.requestPause(agentId, parentThreadId, 'draft-chat:user-1', uuidv7());
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			parentThreadId,
+			'draft-chat:user-1',
+			uuidv7(),
+		);
+
 		expect((await repository.findById(finishingId))?.pauseRequestId).toBe(newerId);
 		const logger = mock<Logger>();
 		logger.scoped.mockReturnValue(logger);
 		const checkpointTtlSeconds = Container.get(AgentsConfig).checkpointTtlSeconds;
 		const service = new AgentBackgroundJobService(
+			mock<AgentExecutionThreadRepository>(),
 			repository,
 			mock<AgentExecutionRepository>(),
 			mock<ExecutionPersistence>(),
@@ -270,7 +304,9 @@ describe('AgentBackgroundJobRepository', () => {
 			mock<AgentExecutionUpdateBroadcaster>(),
 			Container.get(N8NCheckpointStorage),
 			mock<AgentMessageRepository>(),
+			mock<AgentPlanRepository>(),
 		);
+
 		if (recover) {
 			await repository.settleIfActive(finishingId, { status: 'completed', result: 'Done' });
 			await service.reconcile();
@@ -289,6 +325,14 @@ describe('AgentBackgroundJobRepository', () => {
 			});
 		}
 		expect((await repository.findById(foreignId))?.status).toBe('paused');
+
+		if (kind === 'subagent') {
+			expect(await checkpoints.findByRunId(runIds.get(newJobId)!)).toMatchObject({
+				expired: false,
+				state: expect.any(String),
+			});
+		}
+
 		expect(await repository.findById(newJobId)).toMatchObject({
 			status,
 			error: status === 'failed' ? 'Workflow failed' : null,
@@ -404,6 +448,8 @@ describe('AgentBackgroundJobRepository', () => {
 		const jobs = await repository.findGroupCandidates(agentId, 'thread-1');
 		expect(jobs).toHaveLength(1);
 		expect({ ...jobs[0] }).toEqual({
+			planId: null,
+			planTaskId: null,
 			id,
 			kind: 'subagent',
 			title: 'Research',
@@ -480,8 +526,15 @@ describe('AgentBackgroundJobRepository', () => {
 			status: 'running',
 			settledAt: null,
 		});
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuid());
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			'parent',
+			'draft-chat:user-1',
+			pauseRequestId,
+		);
+		await repository.requestPauseForActiveJobs(agentId, 'parent', 'draft-chat:user-1', uuid());
+
 		expect(
 			(await repository.findByParentThread('parent'))
 				.filter((job) => job.pauseRequestId === pauseRequestId)
@@ -490,6 +543,7 @@ describe('AgentBackgroundJobRepository', () => {
 		).toEqual([first, second, workflow].sort());
 		expect((await repository.findById(otherResource))?.pauseRequestId).toBeNull();
 		expect((await repository.findById(otherThread))?.pauseRequestId).toBeNull();
+
 		expect(await repository.resumeIfSuspended(second, new Date())).toBe(false);
 		expect(await repository.findById(second)).toMatchObject({
 			status: 'suspended',
@@ -546,7 +600,14 @@ describe('AgentBackgroundJobRepository', () => {
 				settledAt: null,
 			});
 		}
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', pauseRequestId);
+
+		await repository.requestPauseForActiveJobs(
+			agentId,
+			'parent',
+			'draft-chat:user-1',
+			pauseRequestId,
+		);
+
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
 		await repository.settleIfActive(cancelled, { status: 'cancelled' });
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
@@ -559,7 +620,9 @@ describe('AgentBackgroundJobRepository', () => {
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(true);
 		expect(await repository.markMailConsumed('parent', [cancelled, completed], true)).toBe(2);
 		const delivered = await repository.findById(cancelled);
-		await repository.requestPause(agentId, 'parent', 'draft-chat:user-1', uuidv7());
+
+		await repository.requestPauseForActiveJobs(agentId, 'parent', 'draft-chat:user-1', uuidv7());
+
 		expect(await repository.findById(cancelled)).toEqual(delivered);
 		expect(await repository.findWakeableUnconsumed('parent')).toEqual([]);
 		expect(await repository.hasRequestedStop('parent', 'draft-chat:user-1')).toBe(false);
@@ -769,6 +832,7 @@ describe('AgentBackgroundJobRepository', () => {
 
 	it('settles a job, delays its wake, retries delivery, and marks the result as delivered', async () => {
 		vi.useFakeTimers();
+
 		try {
 			const jobId = uuid();
 			// The owner role grants the agent:execute permission required for a wake.
@@ -810,6 +874,7 @@ describe('AgentBackgroundJobRepository', () => {
 				return affected;
 			});
 			const jobService = new AgentBackgroundJobService(
+				mock<AgentExecutionThreadRepository>(),
 				repository,
 				executionRepository,
 				mock<ExecutionPersistence>(),
@@ -819,8 +884,14 @@ describe('AgentBackgroundJobRepository', () => {
 				mock<AgentExecutionUpdateBroadcaster>(),
 				checkpointStorage,
 				mock<AgentMessageRepository>(),
+				mock<AgentPlanRepository>(),
 			);
+
+			const planService = mock<AgentPlanService>();
+			planService.findActivePlan.mockResolvedValue(null);
+
 			const wakeService = new AgentWakeService(
+				Container.get(AgentExecutionThreadRepository),
 				repository,
 				new AgentConversationStateService(executionRepository, checkpointStorage),
 				agentRepository,
@@ -833,6 +904,7 @@ describe('AgentBackgroundJobRepository', () => {
 				agentsConfig,
 				logger,
 				jobService,
+				planService,
 			);
 			Container.set(AgentWakeService, wakeService);
 

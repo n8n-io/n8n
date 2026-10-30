@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 
 import { DateTime, Duration, Interval } from 'luxon';
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
 import { ExpressionEvaluator } from '../evaluator/expression-evaluator';
 import { IsolatedVmBridge } from '../bridge/isolated-vm-bridge';
 import { QuickJsBridge } from '../bridge/quickjs-bridge';
@@ -1104,6 +1104,77 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 		expect(evaluator.evaluate('{{ $json.nested + "|" + $json.other }}', data, caller)).toBe(
 			'inner|OUTER_VALUE',
 		);
+	});
+
+	describe('host value reads', () => {
+		const rows = [
+			{ id: 1, tags: ['a', 'b'] },
+			{ id: 2, tags: ['c'] },
+		];
+
+		it('reads a host getter once when the guest copies its whole value', () => {
+			const read = vi.fn(() => ({ rows, count: rows.length }));
+			const data = {
+				get $json() {
+					return read();
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json }}', data, caller)).toEqual({ rows, count: 2 });
+			expect(read).toHaveBeenCalledTimes(1);
+		});
+
+		it('recreates an evicted $item() result when copying a lazy value', () => {
+			const item = vi.fn((index: number) => ({ $json: { index, rows } }));
+			const node = vi.fn((name: string) => ({ json: { name, rows } }));
+			const data = { $item: item, $: node } as unknown as WorkflowData;
+
+			expect(
+				evaluator.evaluate(
+					'{{ [$item(0).$json.rows, $item(0).$json.index, $item(1).$json.index, $("A").json.rows, $("A").json.name] }}',
+					data,
+					caller,
+				),
+			).toEqual([rows, 0, 1, rows, 'A']);
+			// Copying the returned rows reads item 0 again after item 1.
+			expect(item.mock.calls).toEqual([[0], [1], [0]]);
+			expect(node.mock.calls).toEqual([['A']]);
+		});
+
+		it('reads the host data again in the next evaluation', () => {
+			let current = 'first';
+			const data = {
+				get $json() {
+					return { value: current };
+				},
+			};
+
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('first');
+			current = 'second';
+			expect(evaluator.evaluate('{{ $json.value }}', data, caller)).toBe('second');
+		});
+
+		it('reads a getter again after it threw', () => {
+			let attempts = 0;
+			const data = {
+				$json: {
+					get flaky() {
+						attempts++;
+						if (attempts === 1) throw new Error('not ready');
+						return 'ready';
+					},
+				},
+			};
+
+			expect(
+				evaluator.evaluate(
+					'{{ (() => { try { return $json.flaky; } catch (e) { return $json.flaky; } })() }}',
+					data,
+					caller,
+				),
+			).toBe('ready');
+			expect(attempts).toBe(2);
+		});
 	});
 });
 

@@ -20,6 +20,8 @@ export interface AgentBackgroundJobDto {
 }
 
 export interface AgentBackgroundJobSignal {
+	/** No background results or unfinished plan tasks remain when this turn starts. */
+	isFinal?: boolean;
 	tasks: Array<
 		Pick<AgentBackgroundJobDto, 'id' | 'title' | 'kind'> & {
 			status: Exclude<AgentBackgroundJobDto['status'], 'running' | 'suspended' | 'paused'>;

@@ -194,6 +194,25 @@ describe('GitLabMergeRequestClient', () => {
 		await expect(promise).rejects.toThrow(message);
 	});
 
+	it.each([401, 403])(
+		'asks for the Maintainer role when a merge returns HTTP %s',
+		async (status) => {
+			respond(status, {});
+
+			await expect(client.merge(access, { projectId: 42, iid: 7 }, 'abc')).rejects.toThrow(
+				/Maintainer role/,
+			);
+		},
+	);
+
+	it.each([401, 403])('asks for the Developer role when a read returns HTTP %s', async (status) => {
+		respond(status, {});
+
+		await expect(client.getMergeRequest(access, { projectId: 42, iid: 7 })).rejects.toThrow(
+			/Developer role/,
+		);
+	});
+
 	it('includes field errors from a GitLab validation response', async () => {
 		respond(400, {
 			message: {

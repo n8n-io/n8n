@@ -26,6 +26,7 @@ import {
 } from '@n8n/db';
 import {
 	FolderRepository,
+	PersonRepository,
 	ProjectRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
@@ -149,6 +150,7 @@ describe('SourceControlImportService', () => {
 			sharedWorkflowRepository,
 			sharedCredentialsRepository,
 			userRepository,
+			Container.get(PersonRepository),
 			variablesRepository,
 			workflowRepository,
 			workflowTagMappingRepository,
@@ -1598,6 +1600,48 @@ describe('SourceControlImportService', () => {
 				expect(sharing).toBeTruthy(); // original user missing, so importing user owns credential
 			});
 		});
+
+		// A service account has no email, so the export writes a null `personalEmail`.
+		// The importing user is not the global owner, so the test fails if the import
+		// gives the credential to some other person.
+		describe('if the personal owner specified by `ownedBy` has no email', () => {
+			it.each([
+				['a null email', { type: 'personal', personalEmail: null }],
+				['no email', { type: 'personal' }],
+			])('should assign credential ownership to importing user for %s', async (_, ownedBy) => {
+				const importingUser = await createAdmin();
+
+				vi.mocked(readFile).mockResolvedValue(Buffer.from('some-content'));
+
+				const CREDENTIAL_ID = nanoid();
+
+				const stub = {
+					id: CREDENTIAL_ID,
+					name: 'My Credential',
+					type: 'someCredentialType',
+					data: {},
+					ownedBy,
+				} as ExportableCredential;
+
+				vi.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+				cipher.encryptV2.mockResolvedValue('some-encrypted-data');
+
+				await service.importCredentialsFromWorkFolder(
+					[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+					importingUser.id,
+				);
+
+				const personalProject = await getPersonalProject(importingUser);
+
+				const sharing = await sharedCredentialsRepository.findOneBy({
+					credentialsId: CREDENTIAL_ID,
+					role: 'credential:owner',
+				});
+
+				expect(sharing?.projectId).toBe(personalProject.id);
+			});
+		});
 	});
 
 	describe('if owner specified by `ownedBy` does not exist at target instance', () => {
@@ -2195,6 +2239,35 @@ describe('SourceControlImportService', () => {
 				// Verify workflow was not created in database
 				const workflowInDb = await workflowRepository.findOne({ where: { id: workflow.id } });
 				expect(workflowInDb).toBeNull();
+			});
+		});
+
+		// A service account has no email, so the export writes a null `personalEmail`.
+		// The importing user is not the global owner, so the test fails if the import
+		// gives the workflow to some other person.
+		describe('if the personal owner has no email', () => {
+			it.each([
+				['a null email', { type: 'personal', personalEmail: null }],
+				['no email', { type: 'personal' }],
+			])('should give the workflow to the importing user for %s', async (_, owner) => {
+				const importingUser = await createAdmin();
+				const workflow = {
+					...makeWorkflowImport(),
+					owner: owner as IWorkflowToImport['owner'],
+				};
+				const file = putWorkflowFile(workflow.id, workflow);
+
+				await service.importWorkflowFromWorkFolder(
+					[mock<SourceControlledFile>({ id: workflow.id, file })],
+					importingUser.id,
+				);
+
+				const personalProject = await getPersonalProject(importingUser);
+				const sharing = await sharedWorkflowRepository.findOneBy({
+					workflowId: workflow.id,
+					role: 'workflow:owner',
+				});
+				expect(sharing?.projectId).toBe(personalProject.id);
 			});
 		});
 

@@ -140,4 +140,75 @@ describe('AppChangeService', () => {
 		);
 		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version');
 	});
+
+	describe('saveBindings', () => {
+		const bindings: AppBinding[] = [{ key: 'submit', kind: 'workflow', workflowId: 'w1' }];
+
+		it('copies a built draft with the new bindings and does not build', async () => {
+			const { service, versions, builds } = setup();
+			const copy = { id: 'copy', bindings } as AppVersion;
+			versions.getVersion.mockResolvedValue({
+				id: 'draft',
+				buildStatus: 'succeeded',
+				bundleArtifactId: 4,
+			} as AppVersion);
+			versions.copyDraft.mockResolvedValue(copy);
+
+			expect(await service.saveBindings('project', 'app', 'draft', bindings)).toBe(copy);
+			expect(versions.copyDraft).toHaveBeenCalledWith('project', 'app', 'draft', bindings);
+			expect(versions.saveSource).not.toHaveBeenCalled();
+			expect(builds.startBuild).not.toHaveBeenCalled();
+		});
+
+		it.each(['queued', 'running', 'failed'] as const)(
+			'saves the source of a %s draft with the new bindings and starts its build',
+			async (buildStatus) => {
+				const { service, versions, builds } = setup();
+				versions.getVersion.mockResolvedValue({
+					id: 'draft',
+					label: 'Draft',
+					buildStatus,
+					bundleArtifactId: null,
+				} as AppVersion);
+				versions.readSource.mockResolvedValue(createAppScaffold());
+
+				const version = await service.saveBindings('project', 'app', 'draft', bindings);
+
+				expect(version.id).toBe('new-version');
+				expect(versions.saveSource).toHaveBeenCalledWith(
+					'project',
+					'app',
+					'draft',
+					createAppScaffold(),
+					'Draft',
+					bindings,
+				);
+				expect(builds.startBuild).toHaveBeenCalledWith('project', 'app', 'new-version');
+				expect(versions.copyDraft).not.toHaveBeenCalled();
+			},
+		);
+
+		it('keeps the saved bindings when the build cannot start', async () => {
+			const { service, versions, builds } = setup();
+			versions.getVersion.mockResolvedValue({ id: 'draft', buildStatus: 'queued' } as AppVersion);
+			versions.readSource.mockResolvedValue(createAppScaffold());
+			builds.startBuild.mockRejectedValue(new ConflictError('The app build is already running.'));
+
+			expect((await service.saveBindings('project', 'app', 'draft', bindings)).id).toBe(
+				'new-version',
+			);
+		});
+
+		it('rejects binding changes during shutdown', async () => {
+			const { service, versions, builds } = setup();
+			builds.assertNotStopping.mockImplementation(() => {
+				throw new ConflictError('The instance is stopping.');
+			});
+
+			await expect(service.saveBindings('project', 'app', 'draft', bindings)).rejects.toThrow(
+				ConflictError,
+			);
+			expect(versions.getVersion).not.toHaveBeenCalled();
+		});
+	});
 });

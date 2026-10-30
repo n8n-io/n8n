@@ -255,6 +255,19 @@ export class InstanceAiModule implements ModuleInterface {
 	async shutdown() {
 		if (!this.isMain()) return;
 
+		if (this.assistantAgentRegistered) {
+			// Before the service shutdown, whose final flush exports these trace roots.
+			// A failure here must not stop the shutdown of the current Assistant runtime.
+			try {
+				const { AssistantTurnTracer } = await import('./assistant-agent/assistant-turn-trace.js');
+				await Container.get(AssistantTurnTracer).finishOpenTraces();
+			} catch (error) {
+				Container.get(Logger)
+					.scoped('instance-ai')
+					.warn('Failed to close the Assistant agent traces at shutdown', { error });
+			}
+		}
+
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		await Container.get(InstanceAiService).shutdown();
 	}

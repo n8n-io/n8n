@@ -11,6 +11,10 @@ import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
 } from './platforms/linear/linear-tool-definitions';
+import {
+	WHATSAPP_ACTION_TOOL_DEFINITIONS,
+	WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
+} from './platforms/whatsapp/whatsapp-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
@@ -208,7 +212,16 @@ const addReactionActionInputSchema = z.object({
 
 const doNotRespondActionInputSchema = z.object({
 	action: z.literal('do_not_respond'),
-	input: noInputSchema,
+	input: z
+		.object({
+			reason: z
+				.string()
+				.min(1)
+				.max(200)
+				.optional()
+				.describe('Short reason for the run record. It is not sent to anyone.'),
+		})
+		.strict(),
 });
 
 export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
@@ -306,7 +319,7 @@ const OPT_IN_ACTION_TOOL_DEFINITIONS = [
 		name: 'do_not_respond',
 		inputSchema: doNotRespondActionInputSchema,
 		description:
-			'do_not_respond: no input. Ends the turn without sending any message. Use only for messages in subscribed group channels or threads that need no reaction from you, or when the user explicitly asked you not to reply. Never use it for direct messages or direct mentions. After calling it, stop immediately — do not write any text and never post a message saying you are staying silent.',
+			'do_not_respond: optional input.reason is a short note for the run record and is never sent. Ends the turn without sending any message. Use only for messages in subscribed group channels or threads that need no reaction from you, or when the user explicitly asked you not to reply. Never use it for direct messages or direct mentions. After calling it, stop immediately — do not write any text and never post a message saying you are staying silent.',
 	},
 ] satisfies IntegrationActionDefinition[];
 
@@ -317,6 +330,7 @@ export const DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS = GENERIC_ACTION_TOOL_D
 const ALL_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 	...GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS,
 	...LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
+	...WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
 ] satisfies IntegrationContextQueryDefinition[];
 
 const ALL_ACTION_TOOL_DEFINITIONS = [
@@ -324,6 +338,7 @@ const ALL_ACTION_TOOL_DEFINITIONS = [
 	...EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS,
 	...OPT_IN_ACTION_TOOL_DEFINITIONS,
 	...LINEAR_ACTION_TOOL_DEFINITIONS,
+	...WHATSAPP_ACTION_TOOL_DEFINITIONS,
 ] satisfies IntegrationActionDefinition[];
 
 // Compile-time: every operation union member must have a matching definition.
@@ -364,7 +379,15 @@ export function actionNeedsApproval(
 	// of the silence the model chose.
 	if (action === 'do_not_respond') return false;
 	if (approval.mode === 'global') return true;
-	return approval.tools.includes(action);
+	return approvalToolsFor(action).some((tool) => approval.tools.includes(tool));
+}
+
+/**
+ * Configs saved before `send_template` existed cannot list it. A template is a
+ * message to the customer, so it follows the approval of the sends it replaces.
+ */
+function approvalToolsFor(action: IntegrationAction): IntegrationAction[] {
+	return action === 'send_template' ? [action, 'send_dm'] : [action];
 }
 
 function toDefinitionMap<

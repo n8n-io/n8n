@@ -7,6 +7,7 @@ import {
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
+	getDataTableCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -143,13 +144,16 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 }
 
 const REMOVED_WORKFLOWS_TOOL_LABEL_NAME = 'workflow_builder_workflows';
+/** Data table tools share the labels of the former multi-action tool, keyed by action. */
+const DATA_TABLE_LABEL_TOOL_NAME = 'data_tables';
 
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
 	if (toolName.endsWith('-with-agent')) return 'share';
 	if (toolName === 'resolve_integration') return 'share';
 	if (SKILL_TOOLS.has(toolName) || toolName === 'n8n-docs') return 'book-open';
-	if (toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES) return 'table';
+	if (getDataTableCallAction(rawToolName) || toolName === DATA_TABLE_LABEL_TOOL_NAME)
+		return 'table';
 	if (toolName === 'activity') return 'history';
 	if (toolName === 'conversation-history') return 'message-square';
 	if (toolName === 'mcp-servers') return 'plug';
@@ -238,11 +242,14 @@ export function useToolLabel() {
 			return i18n.baseText('instanceAi.tools.workspace_execute_command.skill');
 		}
 
+		const dataTableAction = getDataTableCallAction(toolName, args?.action);
 		// Stored calls of removed workflows actions keep the former tool's labels.
 		const labelToolName = isFormerWorkflowsTool(toolName)
 			? REMOVED_WORKFLOWS_TOOL_LABEL_NAME
-			: toolName;
-		const action = typeof args?.action === 'string' ? args.action : undefined;
+			: dataTableAction
+				? DATA_TABLE_LABEL_TOOL_NAME
+				: toolName;
+		const action = dataTableAction ?? (typeof args?.action === 'string' ? args.action : undefined);
 		if (action) {
 			const actionKey = `instanceAi.tools.${labelToolName}.${action}` as BaseTextKey;
 			const actionTranslated = i18n.baseText(actionKey);
@@ -250,9 +257,13 @@ export function useToolLabel() {
 		}
 		const key = `instanceAi.tools.${labelToolName}` as BaseTextKey;
 		const translated = i18n.baseText(key);
-		return translated === key
-			? formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName
-			: translated;
+		if (translated !== key) return translated;
+		if (rawToolName !== toolName) {
+			const rawKey = `instanceAi.tools.${rawToolName}` as BaseTextKey;
+			const rawTranslated = i18n.baseText(rawKey);
+			if (rawTranslated !== rawKey) return rawTranslated;
+		}
+		return formatToolNameForDisplay(stripBuilderToolPrefix(rawToolName)) || rawToolName;
 	}
 
 	function getToggleLabel(toolCall: InstanceAiToolCallState): string | undefined {

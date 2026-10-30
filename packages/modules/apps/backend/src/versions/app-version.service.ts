@@ -65,6 +65,38 @@ export class AppVersionService {
 		return version;
 	}
 
+	/**
+	 * Saves the draft with other bindings as a new version. The new version shares
+	 * the source and the build of the draft, so use it only for a built draft.
+	 */
+	async copyDraft(
+		projectId: string,
+		appId: string,
+		expectedDraftVersionId: string,
+		bindings: AppBinding[],
+	): Promise<AppVersion> {
+		const app = await this.requireApp(projectId, appId);
+		this.checkDraft(app.draftVersionId, expectedDraftVersionId);
+		const draft = await this.requireVersion(expectedDraftVersionId);
+		const versionId = uuidv7();
+		await this.sourceVersions.copyDraft({
+			id: versionId,
+			appId,
+			expectedDraftVersionId,
+			label: draft.label,
+			bindings,
+		});
+		const version = await this.requireVersion(versionId);
+		this.logger.debug('Copied the app draft with new bindings.', {
+			projectId,
+			appId,
+			sourceVersionId: expectedDraftVersionId,
+			versionId,
+		});
+		await this.prune(appId);
+		return version;
+	}
+
 	async attachBundle(
 		projectId: string,
 		appId: string,

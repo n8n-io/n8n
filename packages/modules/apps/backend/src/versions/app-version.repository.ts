@@ -1,4 +1,3 @@
-import type { AppBinding } from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -10,7 +9,6 @@ import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 
-import { App } from '../app.entity';
 import type { AppBuildAttempt } from '../build/app-build.types';
 import { AppVersion } from './app-version.entity';
 
@@ -36,6 +34,23 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			}
 			throw error;
 		}
+	}
+
+	/** Inserts a version that references the source and bundle artifacts of `source`. */
+	async insertCopy(
+		source: AppVersion,
+		data: Pick<AppVersion, 'id' | 'label' | 'bindings'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).insert(AppVersion, {
+			...data,
+			appId: source.appId,
+			sourceArtifactId: source.sourceArtifactId,
+			bundleArtifactId: source.bundleArtifactId,
+			buildAttempts: source.buildAttempts,
+			buildStatus: source.buildStatus,
+			buildStatusUpdatedAt: source.buildStatusUpdatedAt,
+		});
 	}
 
 	async findVersionById(versionId: string, ctx: OperationContext = {}): Promise<AppVersion | null> {
@@ -165,24 +180,6 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 			return await manager.findOneBy(AppVersion, where);
 		});
 	}
-
-	/** Changes only a version that the app does not publish, so a live app keeps its bindings. */
-	async setDraftBindings(
-		appId: string,
-		versionId: string,
-		bindings: AppBinding[],
-		ctx: OperationContext = {},
-	): Promise<AppVersion | null> {
-		return await this.runInTransaction(ctx, async (manager) => {
-			const app = await manager.findOneBy(App, { id: appId, draftVersionId: versionId });
-			if (!app || app.publishedVersionId === versionId) return null;
-			const where = { id: versionId, appId };
-			const result = await manager.update(AppVersion, where, { bindings });
-			if (!result.affected) return null;
-			return await manager.findOneBy(AppVersion, where);
-		});
-	}
-
 	async clearBundles(versionIds: string[], ctx: OperationContext): Promise<void> {
 		for (const ids of chunkIds(versionIds)) {
 			await this.managerFor(ctx).update(AppVersion, { id: In(ids) }, { bundleArtifactId: null });

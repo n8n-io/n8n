@@ -10,7 +10,7 @@ import {
 } from '../self-healing';
 import { SELF_HEALING_PROMPT } from '../self-healing/self-healing.prompt';
 import { createToolRegistryFromTools, toolRegistryValues } from '../tool-registry';
-import { createDataTablesTool } from '../tools/data-tables.tool';
+import { createDataTableTools } from '../tools/data-tables.tool';
 import { createExecutionsTool } from '../tools/executions.tool';
 import { createN8nDocsTool } from '../tools/n8n-docs.tool';
 import { createGetNodeTypesTool, createSearchNodesTool } from '../tools/nodes.tool';
@@ -34,6 +34,8 @@ export interface CreateSelfHealingAgentOptions {
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
 	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }
 
 const SOURCE_GUIDANCE =
@@ -56,9 +58,9 @@ function createSelfHealingTools(
 			allowedActions: ['list', 'get', 'debug', 'get-node-output', 'get-resolved-node-parameters'],
 			description: 'Read execution status, diagnostics, node output, and resolved parameters.',
 		}),
-		createDataTablesTool(context, {
+		...createDataTableTools(context, {
 			allowedActions: ['list', 'schema', 'query'],
-			description: 'Read data tables and their schemas. Use targeted queries with a small limit.',
+			skillGuidance: false,
 		}),
 		createSearchNodesTool(context),
 		createGetNodeTypesTool(context),
@@ -132,9 +134,11 @@ export async function createSelfHealingAgent(
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
+	const functionId = 'instance-ai.self-healing';
+	if (options.requestLabels) agent.functionId(functionId);
 	const telemetry = tracing?.getTelemetry?.({
 		agentRole: 'self-healing',
-		functionId: 'instance-ai.self-healing',
+		functionId,
 		executionMode: 'background',
 		metadata: modelIdTraceMetadata(modelId),
 	});

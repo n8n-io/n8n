@@ -65,7 +65,14 @@ export const delegateSubAgentInputSchema = z.object({
 	),
 });
 
+const planTaskRefSchema = z.object({ planId: z.string().uuid(), planTaskId: z.string().uuid() });
+
 export const delegateSubAgentModeInputSchema = delegateSubAgentInputSchema.extend({
+	planTask: planTaskRefSchema
+		.optional()
+		.describe(
+			'For background work in a plan, use the plan ID and leaf task ID from the latest plan snapshot. Children inherit their task.',
+		),
 	mode: z
 		.enum(['foreground', 'background'])
 		.optional()
@@ -113,6 +120,7 @@ export const delegateSubAgentOutputSchema = z.object({
 export const delegateSubAgentBackgroundOutputSchema = z.discriminatedUnion('status', [
 	z.object({
 		status: z.literal('started'),
+		planTask: planTaskRefSchema.optional(),
 		jobId: z.string(),
 		note: z.string().optional(),
 	}),

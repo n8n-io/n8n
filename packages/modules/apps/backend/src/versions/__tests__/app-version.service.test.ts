@@ -48,6 +48,40 @@ function createService() {
 }
 
 describe('AppVersionService', () => {
+	describe('copyDraft', () => {
+		const next: AppBinding = { key: 'tasks', kind: 'dataTable', dataTableId: 't1', permissions: ['read'] };
+
+		it('saves the draft with the new bindings and its label, then prunes', async () => {
+			const { service, versions, sourceVersions, retention, version } = createService();
+			sourceVersions.copyDraft.mockImplementation(async (data) => {
+				versions.findVersionById.mockResolvedValue({ ...version, ...data });
+			});
+
+			const copy = await service.copyDraft('project', appId, versionId, [next]);
+
+			expect(sourceVersions.copyDraft).toHaveBeenCalledWith({
+				id: copy.id,
+				appId,
+				expectedDraftVersionId: versionId,
+				label: 'Original',
+				bindings: [next],
+			});
+			expect(copy.id).not.toBe(versionId);
+			expect(copy.bindings).toEqual([next]);
+			expect(retention.prune).toHaveBeenCalledWith(appId);
+		});
+
+		it('refuses when the draft is another version', async () => {
+			const { service, apps, sourceVersions } = createService();
+			apps.findInProject.mockResolvedValue(mock<App>({ id: appId, draftVersionId: 'newer' }));
+
+			await expect(service.copyDraft('project', appId, versionId, [next])).rejects.toThrow(
+				ConflictError,
+			);
+			expect(sourceVersions.copyDraft).not.toHaveBeenCalled();
+		});
+	});
+
 	it('does not read source files from another app', async () => {
 		const { service, versions, sourceVersions } = createService();
 		versions.findVersionById.mockResolvedValue(

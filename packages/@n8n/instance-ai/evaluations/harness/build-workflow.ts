@@ -54,7 +54,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
-import { restoreRecordedRuns } from './recorded-runs';
+import { restoreRecordedRuns, seedNodeNamesById } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -1036,6 +1036,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						threadId,
 						recordedRuns: config.seed.recordedRuns,
 						seedWorkflows: seedWorkflowsBySeedId,
+						seedNodeNames: seedNodeNamesById(config.seed.workflows),
 						logger,
 						laneTag: config.laneTag,
 					});

@@ -29,6 +29,12 @@ type ImportedFromSourceProps = InferTelemetryProps<
 /** A Skill Sync reason code, or `unexpected` for a failure with no known reason. */
 export type SkillSourceTelemetryReason = NonNullable<ConnectedSourceProps['reason']>;
 
+type FlaggedSkillProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL
+>;
+
+type StoppedSyncProps = InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC>;
+
 type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId' | 'agentId'>;
 
 /**
@@ -125,6 +131,26 @@ export class SkillsTelemetry {
 	async importedFromSource(props: Omit<ImportedFromSourceProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_IMPORTED_SKILLS_FROM_SOURCE, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	/** One skill that the security check did not pass. A background check has no user. */
+	async flaggedSkill(props: Omit<FlaggedSkillProps, 'user_id'>, userId?: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL, {
+				...(userId ? { user_id: userId } : {}),
+				...props,
+			});
+		});
+	}
+
+	/** One synced skill that became a normal skill. */
+	async stoppedSync(props: Omit<StoppedSyncProps, 'user_id'>, userId: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC, {
 				user_id: userId,
 				...props,
 			});

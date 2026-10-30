@@ -171,6 +171,7 @@ Agent artifacts inside an Assistant chat keep the handoff in that chat.
 ## Setup checklist
 
 Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+Hide it when the Agent is published, including when the draft has pending changes.
 Keep the checklist hidden while the Assistant builds or updates the Agent.
 Use this behavior in Agent artifacts and the standalone Agent Builder.
 
@@ -446,6 +447,67 @@ and output in the collapsed details and the trace. Keep earlier failed calls
 visible after a successful retry. Unexpected failures keep the existing error
 treatment.
 
+## Plan progress
+
+Read the current plan from the server. Historical tool results do not define the card.
+Refresh on conversation load, job updates, plan-tool completion, and reconnection.
+Accept status changes with an unchanged plan revision. Discard superseded requests.
+
+Use calculated task statuses for progress, the spinner, timing, and visibility.
+Count each standalone task and empty group as one task. An empty group stays Pending.
+When a group has subtasks, count those subtasks instead of the group.
+Show `paused` as **Stopped**. A capacity reservation does not start the spinner.
+Hide the card when all leaves have final statuses or the plan is closed.
+Parent-run tasks need explicit updates. Delegated tasks follow their owning job.
+
+## Stop tasks in Agent Preview
+
+Place **Stop all tasks** beside **View trace** in the expanded plan card.
+Use the same action in the background task card when there is no plan.
+Hide the stack during the request and show the inline stop status.
+Keep the user's expansion choice. Restore focus when the action disappears.
+Keep the action available while the plan has unfinished work. This includes
+planning and result review between tasks. Hide it after the plan stops or ends.
+
+Hide the stack immediately when the user selects **Stop all tasks**. Show an
+inline **Stopping all tasks…** status and **This may take a while** at the end
+of the scrollable transcript. Keep stop, summary, and retry statuses in the
+chat flow. Do not attach them to the composer. After the captured work settles,
+show **Preparing a summary…** until the reply appears.
+Keep the stopped stack hidden. Explain the outcome in a brief chat reply.
+Keep this reply and its **View trace** link in message history. Later messages,
+continuation, and reloads must not remove it. Each Stop keeps its own reply.
+Use plain reply text, as the paused wireframe shows. Do not add a collapsed card.
+If the summary has no text, keep a factual fallback in that same history entry.
+Keep results and **View trace** available. Do not claim that external actions
+were undone or that late work cannot run.
+
+Hide the stack when work finishes. Show **Preparing the summary…** in the
+scrollable transcript while the final reply has no text. Replace that status
+with the model's reply as text arrives. Keep **View trace** below the status
+and the reply. Keep the reply and link after later messages and reloads. Use
+plain chat text with a link row below it. Do not show a second loading indicator
+or a collapsed result card for the final batch. Keep partial result cards while
+other tasks continue. Keep a factual fallback and trace access if no summary
+text arrives. Do not add artifact links until that feature is available.
+A result batch is not final while the plan has unfinished tasks. Keep the
+partial result card if the reply starts another background job or adds more
+plan work. Do not attach the final-summary trace link to that progress reply.
+Keep the stack visible after a recovered tool error if work is
+still active. A failure to stop shows an inline explanation and **Retry stopping**.
+Keep the stack hidden during that failure. A report failure shows a factual
+fallback with trace access.
+
+Stop remains resumable in the same chat. The user names tasks in a message for
+selective continuation. Show the stack again after continuation succeeds or
+new work starts. A new message alone does not resume stopped tasks. Keep the
+paused task states and completed results. Do not add row controls.
+
+The acknowledgement uses the normal message queue. Disable tools and steering
+for this reply. Composer Stop controls only the current response, including
+the acknowledgement. Discard older queued input when Stop starts. Process later
+messages after the acknowledgement. Restart completion is best effort.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent
@@ -483,6 +545,12 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+Attach the plan card directly above the approval card. Keep both in one stack
+without a gap. Use the standard approval header with the Agent and tool names.
+For background tasks, show **Approval for [task title]** above these names inside
+the approval header.
+Keep the approval card in front of the plan card's overlapping lower edge.
 
 In the session timeline, show pending background tool approvals below their
 job row. Use the shared approval card and disable automatic focus so rows do

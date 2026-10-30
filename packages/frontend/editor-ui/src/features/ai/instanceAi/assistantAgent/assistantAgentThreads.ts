@@ -15,6 +15,9 @@ export const ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES: ProviderAttachmentCapabili
 /** The id of the open Assistant agent thread, for cards that report it in telemetry. */
 export const ASSISTANT_AGENT_THREAD_ID: InjectionKey<string> = Symbol('assistantAgentThreadId');
 
+/** The working project of the open Assistant agent thread, for cards whose payload has none. */
+export const ASSISTANT_AGENT_PROJECT_ID: InjectionKey<string> = Symbol('assistantAgentProjectId');
+
 /**
  * Which runtime runs a thread at `/assistant/:threadId`: the current Assistant
  * runtime, or the Assistant agent on the agents runtime with the project of

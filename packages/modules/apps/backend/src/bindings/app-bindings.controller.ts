@@ -24,6 +24,7 @@ export class AppBindingsController {
 			req.user,
 			req.params.projectId,
 			req.params.appId,
+			dto.baseVersionId,
 			dto.bindings,
 		);
 	}

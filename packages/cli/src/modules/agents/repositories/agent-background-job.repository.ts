@@ -1,3 +1,4 @@
+import type { AgentPlanTaskRef } from '@n8n/api-types';
 import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, IsNull, LessThan, Not } from '@n8n/typeorm';
@@ -11,8 +12,11 @@ import {
 import { AgentCheckpoint } from '../entities/agent-checkpoint.entity';
 import { AgentExecution } from '../entities/agent-execution.entity';
 import { AgentExecutionThreadRepository } from './agent-execution-thread.repository';
+import { AgentPlanRepository } from './agent-plan.repository';
 
 type NewAgentBackgroundJobBase = {
+	sourceExecutionId?: string;
+	planTask?: AgentPlanTaskRef;
 	id: string;
 	parentAgentId: string;
 	parentThreadId: string;
@@ -22,6 +26,8 @@ type NewAgentBackgroundJobBase = {
 };
 
 export type NewSubAgentJob = NewAgentBackgroundJobBase & {
+	validatePlanTask?: boolean;
+	inheritedPlanTask?: boolean;
 	kind: 'subagent';
 	subAgentId: string;
 	childThreadId: string;
@@ -48,7 +54,16 @@ export type ExpectedBackgroundJobState = {
 
 export type BackgroundJobGroupItem = Pick<
 	AgentBackgroundJob,
-	'id' | 'kind' | 'title' | 'status' | 'createdAt' | 'settledAt' | 'notifiedAt' | 'pauseRequestId'
+	| 'id'
+	| 'kind'
+	| 'title'
+	| 'status'
+	| 'createdAt'
+	| 'settledAt'
+	| 'notifiedAt'
+	| 'pauseRequestId'
+	| 'planId'
+	| 'planTaskId'
 >;
 
 @Service()
@@ -57,6 +72,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		dataSource: DataSource,
 		transactionRunner: TransactionRunner,
 		private readonly threadRepository: AgentExecutionThreadRepository,
+		private readonly plans: AgentPlanRepository,
 	) {
 		super(AgentBackgroundJob, dataSource.manager, transactionRunner);
 	}
@@ -66,9 +82,19 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			if (!(await this.threadRepository.lockById(job.parentThreadId, ctx))) {
 				throw new UserError('Session not found');
 			}
+
 			if ((await this.countActiveSubAgentsByParentThread(job.parentThreadId, ctx)) >= limit)
 				return false;
-			await manager.insert(AgentBackgroundJob, { ...job, status: 'running' });
+
+			const { planTask, validatePlanTask, inheritedPlanTask, ...stored } = job;
+
+			if (validatePlanTask || planTask)
+				await this.plans.validateTask(job.parentThreadId, planTask, ctx, inheritedPlanTask);
+
+			await manager.insert(AgentBackgroundJob, { ...stored, ...planTask, status: 'running' });
+
+			if (planTask) await this.plans.bindJob(job.parentThreadId, planTask, job.id, ctx);
+
 			return true;
 		});
 	}
@@ -80,17 +106,37 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	async insertWorkflowJobOrGetExisting(
 		job: NewWorkflowJob,
 	): Promise<{ inserted: true } | { inserted: false; existing: AgentBackgroundJob }> {
-		await this.createQueryBuilder()
-			.insert()
-			.into(AgentBackgroundJob)
-			.values({ ...job, status: 'running' })
-			.orIgnore()
-			.execute();
+		await this.runInTransaction({}, async (manager, ctx) => {
+			await this.threadRepository.lockById(job.parentThreadId, ctx);
+
+			const { planTask, ...stored } = job;
+
+			if (
+				planTask &&
+				!(await manager.existsBy(AgentBackgroundJob, { childExecutionId: job.childExecutionId }))
+			)
+				await this.plans.validateTask(job.parentThreadId, planTask, ctx, true);
+
+			await manager
+				.createQueryBuilder()
+				.insert()
+				.into(AgentBackgroundJob)
+				.values({ ...stored, ...planTask, status: 'running' })
+				.orIgnore()
+				.execute();
+
+			if (planTask && (await manager.existsBy(AgentBackgroundJob, { id: job.id })))
+				await this.plans.bindJob(job.parentThreadId, planTask, job.id, ctx);
+
+			// The service stops late workflow receipts before returning them to the caller.
+		});
 
 		const inserted = await this.existsBy({ id: job.id });
+
 		if (inserted) return { inserted: true };
 
 		const existing = await this.findOne({ where: { childExecutionId: job.childExecutionId } });
+
 		if (existing) return { inserted: false, existing };
 
 		throw new OperationalError('Failed to register workflow background job');
@@ -128,6 +174,8 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 				'settledAt',
 				'notifiedAt',
 				'pauseRequestId',
+				'planId',
+				'planTaskId',
 			],
 			order: { createdAt: 'ASC' },
 		});
@@ -178,8 +226,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.where({ parentThreadId, id: In(ids) })
 			.andWhere('settledAt IS NOT NULL')
 			.andWhere('notifiedAt IS NULL');
+
 		if (!includePauseReports) query.andWhere('pauseRequestId IS NULL');
+
 		const result = await query.execute();
+
 		return result.affected ?? 0;
 	}
 
@@ -201,6 +252,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.andWhere('checkpoint.state = :state')
 			.andWhere('checkpoint.expired = :expired')
 			.getQuery();
+
 		return `EXISTS ${checkpoint}`;
 	}
 
@@ -274,10 +326,13 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.andWhere('checkpoint.state IS NOT NULL')
 			.andWhere('checkpoint.updatedAt > :updatedAfter')
 			.getQuery();
+
 		const query = this.createQueryBuilder('job')
 			.where({ kind: 'subagent', status: 'paused' })
 			.andWhere(`NOT EXISTS ${checkpoint}`, { expired: false, updatedAfter });
+
 		if (parentThreadId) query.andWhere('job.parentThreadId = :parentThreadId', { parentThreadId });
+
 		return await query.getMany();
 	}
 
@@ -300,6 +355,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			.where({ id, status: 'running' })
 			.andWhere(this.matchCheckpoint(), { runId, state, expired: false })
 			.execute();
+
 		return result.affected === 1;
 	}
 
@@ -308,10 +364,11 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			{ id, status: 'suspended', pauseRequestId: IsNull() },
 			{ status: 'running', timeoutAt, notifiedAt: null },
 		);
+
 		return result.affected === 1;
 	}
 
-	async requestPause(
+	async requestPauseForActiveJobs(
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId: string,
@@ -319,13 +376,40 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 	): Promise<void> {
 		await this.runInTransaction({}, async (manager, ctx) => {
 			await this.threadRepository.lockById(parentThreadId, ctx);
+
 			await manager
 				.createQueryBuilder()
 				.update(AgentBackgroundJob)
 				.set({ pauseRequestId, notifiedAt: null })
-				.where({ parentAgentId, parentThreadId, parentResourceId })
+				.where({
+					parentAgentId,
+					parentThreadId,
+					parentResourceId,
+				})
 				.andWhere("status IN ('running', 'suspended')")
+				// Keep the existing Stop group until its notification is delivered.
 				.andWhere('(pauseRequestId IS NULL OR notifiedAt IS NOT NULL)')
+				.execute();
+		});
+	}
+
+	async requestPauseForCapturedJobs(
+		parentAgentId: string,
+		parentThreadId: string,
+		parentResourceId: string,
+		pauseRequestId: string,
+		jobIds: string[],
+	): Promise<void> {
+		await this.runInTransaction({}, async (manager, ctx) => {
+			await this.threadRepository.lockById(parentThreadId, ctx);
+
+			await manager
+				.createQueryBuilder()
+				.update(AgentBackgroundJob)
+				.set({ pauseRequestId, notifiedAt: null })
+				.where({ parentAgentId, parentThreadId, parentResourceId, id: In(jobIds) })
+				// Include unreported results from jobs that finished after capture.
+				.andWhere("(status IN ('running', 'suspended') OR notifiedAt IS NULL)")
 				.execute();
 		});
 	}
@@ -425,6 +509,43 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		});
 	}
 
+	async reservePlanJobs(
+		threadId: string,
+		stopId: string,
+		ids: string[],
+		timeoutAt: Date,
+		limit: number,
+	) {
+		return await this.runInTransaction({}, async (manager, ctx) => {
+			await this.threadRepository.lockById(threadId, ctx);
+
+			const stop = await this.threadRepository.findTaskStop(threadId, ctx);
+
+			if (stop?.pause.id !== stopId || !stop.pause.resumedAt) return 'changed' as const;
+
+			if (!ids.length) return 'reserved' as const;
+
+			const jobs = await manager.find(AgentBackgroundJob, { where: { id: In(ids) } });
+
+			if (
+				jobs.length !== ids.length ||
+				jobs.some((job) => job.status !== 'paused' || !job.pauseRequestId || !job.notifiedAt)
+			)
+				return 'changed' as const;
+
+			for (const parentThreadId of new Set(jobs.map((job) => job.parentThreadId))) {
+				const selected = jobs.filter((job) => job.parentThreadId === parentThreadId).length;
+
+				if ((await this.countActiveSubAgentsByParentThread(parentThreadId, ctx)) + selected > limit)
+					return 'limit-reached' as const;
+			}
+
+			await manager.update(AgentBackgroundJob, { id: In(ids) }, { status: 'suspended', timeoutAt });
+
+			return 'reserved' as const;
+		});
+	}
+
 	async releasePausedResume(id: string, pauseRequestId: string, timeoutAt: Date): Promise<boolean> {
 		const result = await this.update(
 			{ id, status: 'suspended', pauseRequestId, timeoutAt, notifiedAt: Not(IsNull()) },
@@ -459,10 +580,12 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 					where: { ...scope, kind: 'subagent', status: 'paused', pauseRequestId: Not(IsNull()) },
 				})
 			).filter((job) => {
-				if (!job.pauseRequestId || job.pauseRequestId === latestId) return false;
+				if (job.planId || !job.pauseRequestId || job.pauseRequestId === latestId) return false;
+
 				if (job.pauseRequestId[14] !== '7') return true;
 				return latestId[14] === '7' && job.pauseRequestId < latestId;
 			});
+
 			if (older.length === 0) return [];
 			await manager.update(
 				AgentBackgroundJob,
@@ -507,7 +630,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 			},
 			{
 				status: settlement.status,
-				result: settlement.result ?? null,
+				result: settlement.result ?? (settlement.status === 'cancelled' ? () => '"result"' : null),
 				error: settlement.error ?? null,
 				settledAt: new Date(),
 				notifiedAt:
@@ -517,7 +640,13 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 						: null,
 			},
 		);
+
 		return result.affected === 1;
+	}
+
+	async preserveLateCompletedResult(id: string, result: string): Promise<void> {
+		// A confirmed output remains useful even when cancellation won the terminal-state race.
+		await this.update({ id, status: 'cancelled', result: IsNull() }, { result });
 	}
 
 	/** Delete settled jobs older than the cutoff only if their results are marked as delivered. */
@@ -525,6 +654,7 @@ export class AgentBackgroundJobRepository extends BaseRepository<AgentBackground
 		await this.delete({
 			status: In(['completed', 'failed', 'cancelled']),
 			settledAt: LessThan(cutoff),
+			planId: IsNull(),
 			notifiedAt: Not(IsNull()),
 		});
 	}

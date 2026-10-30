@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppResponse } from '@n8n/api-types';
+import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import {
 	isIconOrEmoji,
@@ -21,6 +21,7 @@ import { useRouter } from 'vue-router';
 import { listApps } from '../apps.api';
 import { APP_DETAIL_VIEW, PROJECT_APPS, type AppViewTab } from '../apps.constants';
 import AppActions from './AppActions.vue';
+import AppPublishButton from './AppPublishButton.vue';
 
 const PERSONAL_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
 const DEFAULT_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -31,9 +32,13 @@ function projectIcon(project: Project | null): IconOrEmoji {
 	return isIconOrEmoji(project?.icon) ? project.icon : DEFAULT_PROJECT_ICON;
 }
 
-const props = defineProps<{ projectId: string; app: AppResponse | null }>();
+const props = defineProps<{
+	projectId: string;
+	app: AppResponse | null;
+	publishableVersion: AppVersionResponse | null;
+}>();
 
-const emit = defineEmits<{ deleted: [appId: string] }>();
+const emit = defineEmits<{ updated: [app: AppResponse]; deleted: [appId: string] }>();
 
 const tab = defineModel<AppViewTab>('tab', { required: true });
 
@@ -158,9 +163,12 @@ watch(
 			data-test-id="app-header-tabs"
 		/>
 		<div :class="$style.right">
-			<N8nButton variant="outline" disabled data-test-id="app-header-publish">
-				{{ i18n.baseText('apps.detail.publish') }}
-			</N8nButton>
+			<AppPublishButton
+				v-if="app"
+				:app="app"
+				:version="publishableVersion"
+				@updated="emit('updated', $event)"
+			/>
 		</div>
 	</header>
 </template>
