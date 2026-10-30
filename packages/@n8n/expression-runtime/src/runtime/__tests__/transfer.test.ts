@@ -339,6 +339,6 @@ describe('__prepareForTransfer', () => {
 
 		const prepared = __prepareForTransfer(error) as { __props: unknown };
 
-		expect(prepared.__props).toEqual({ self: undefined });
+		expect(prepared.__props).toStrictEqual({ self: undefined });
 	});
 });
