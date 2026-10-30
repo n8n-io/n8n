@@ -18,9 +18,9 @@ export class FilterV1 implements INodeType {
 		this.description = {
 			...baseDescription,
 			version: 1,
+			iconColor: 'sky-blue',
 			defaults: {
 				name: 'Filter',
-				color: '#229eff',
 			},
 			inputs: [NodeConnectionTypes.Main],
 			outputs: [NodeConnectionTypes.Main],

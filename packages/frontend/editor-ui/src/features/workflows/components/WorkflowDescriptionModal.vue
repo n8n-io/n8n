@@ -48,9 +48,7 @@ const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
 
 const tagIds = ref<string[]>([...(props.data.workflowTags ?? [])]);
-const showTags = computed(
-	() => props.data.workflowTags !== undefined && settingsStore.areTagsEnabled,
-);
+const showTags = computed(() => props.data.workflowTags !== undefined);
 
 const modalTitle = computed(() => props.data.workflowName || i18n.baseText('generic.description'));
 

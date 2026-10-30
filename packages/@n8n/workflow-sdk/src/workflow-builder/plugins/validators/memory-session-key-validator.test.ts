@@ -74,9 +74,9 @@ describe('memorySessionKeyValidator', () => {
 			);
 		});
 
-		it('returns warning for legacy memory sessionId parameters using $json', () => {
+		it('returns warning for memory sessionId parameters using $json', () => {
 			const node = createMockNode(
-				'@n8n/n8n-nodes-langchain.memoryMotorhead',
+				'@n8n/n8n-nodes-langchain.memoryPostgresChat',
 				'Conversation Memory',
 				{
 					parameters: {

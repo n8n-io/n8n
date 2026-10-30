@@ -715,10 +715,9 @@ function rewriteFormFieldsHtml(parameters: INodeParameters, fromName: string): I
  * uses when a node is renamed. Beyond ordinary `=`-prefixed expressions
  * (handled everywhere), mirrors the node-type-specific categories
  * `Workflow.renameNode` also treats as renamable without a leading `=`: a
- * Code/Function/AiTransform node's `jsCode`, an HTML/Mailgun node's top-level
- * `html`, and a Form node's per-field `html` content — so a reference to the
- * replaced trigger inside a template doesn't dangle just because it isn't a
- * plain expression.
+ * Code node's `jsCode`, an HTML/Mailgun node's top-level `html`, and a Form
+ * node's per-field `html` content — so a reference to the replaced trigger
+ * inside a template doesn't dangle just because it isn't a plain expression.
  */
 function rewriteExpressionRefs(
 	parameters: INodeParameters,

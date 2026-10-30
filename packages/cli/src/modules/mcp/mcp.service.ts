@@ -699,10 +699,8 @@ export class McpService {
 
 		registerIfAllowed(listN8nGatewayServicesTool);
 
-		if (!this.globalConfig.tags.disabled) {
-			const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
-			registerIfAllowed(listTagsTool);
-		}
+		const listTagsTool = createListTagsTool(user, this.tagService, this.telemetry);
+		registerIfAllowed(listTagsTool);
 
 		if (featureFlags.instanceContextEnabled) {
 			// Whether the *token* carries `credential:read`. It narrows a token rather than proving a

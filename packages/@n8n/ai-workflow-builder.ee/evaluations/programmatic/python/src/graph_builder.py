@@ -152,7 +152,6 @@ def _is_trigger_node(node: Dict[str, Any]) -> bool:
         "manualtrigger",
         "scheduletrigger",
         "chattrigger",
-        "cron",  # n8n-nodes-base.cron
     ]
 
     for trigger_type in trigger_types:

@@ -18,6 +18,7 @@ import { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
+import { EncryptionBootstrapService } from '@/encryption/encryption-bootstrap.service';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { ActivityEventRelay } from '@/events/relays/activity.event-relay';
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
@@ -57,6 +58,9 @@ dbConnection.migrate.mockResolvedValue(undefined);
 const deploymentKeyRepository = mockInstance(DeploymentKeyRepository);
 deploymentKeyRepository.findActiveIdentifier.mockResolvedValue(null);
 deploymentKeyRepository.seedActiveIdentifier.mockResolvedValue(undefined);
+
+const encryptionBootstrapService = mockInstance(EncryptionBootstrapService);
+encryptionBootstrapService.run.mockResolvedValue(undefined);
 
 mockInstance(RedisClientService);
 mockInstance(PubSubRegistry);

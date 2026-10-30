@@ -233,7 +233,6 @@ packages/@n8n/instance-ai/                              @n8n-io/ai-assistant
 packages/@n8n/nodes-langchain/                          @n8n-io/ai
 packages/@n8n/nodes-langchain/nodes/agents/             @n8n-io/ai-agents
 packages/@n8n/nodes-langchain/nodes/chains/             @n8n-io/ai-agents
-packages/@n8n/nodes-langchain/nodes/code/               @n8n-io/ai-agents
 packages/@n8n/nodes-langchain/nodes/output_parser/      @n8n-io/ai-agents
 packages/@n8n/nodes-langchain/nodes/llms/               @n8n-io/ai-agents
 packages/@n8n/nodes-langchain/nodes/vendors/            @n8n-io/ai-agents
@@ -287,7 +286,6 @@ packages/nodes-base/nodes/Form/                         @n8n-io/nodes required
 packages/nodes-base/nodes/Wait/                         @n8n-io/nodes required
 packages/nodes-base/utils/sendAndWait/                  @n8n-io/nodes required
 packages/nodes-base/nodes/Git/                          @n8n-io/nodes required
-packages/node-dev/                                      @n8n-io/nodes
 packages/@n8n/imap/                                     @n8n-io/nodes
 packages/@n8n/mcp-browser/                              @n8n-io/nodes required
 packages/@n8n/mcp-browser-extension/                    @n8n-io/nodes required

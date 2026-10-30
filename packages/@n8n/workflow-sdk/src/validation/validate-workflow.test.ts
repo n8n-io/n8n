@@ -134,7 +134,7 @@ describe('Validation', () => {
 			expect(disconnectedWarnings).toHaveLength(0);
 		});
 
-		it.each(['n8n-nodes-base.cron', 'n8n-nodes-base.start', 'n8n-nodes-base.emailReadImap'])(
+		it.each(['n8n-nodes-base.start', 'n8n-nodes-base.emailReadImap'])(
 			'should treat %s as a trigger (canonical trigger detection)',
 			(type) => {
 				const result = validateWorkflow({

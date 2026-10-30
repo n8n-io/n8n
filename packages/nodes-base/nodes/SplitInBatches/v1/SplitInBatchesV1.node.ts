@@ -15,9 +15,9 @@ export class SplitInBatchesV1 implements INodeType {
 		group: ['organization'],
 		version: 1,
 		description: 'Split data into batches and iterate over each batch',
+		iconColor: 'dark-green',
 		defaults: {
 			name: 'Split In Batches',
-			color: '#007755',
 		},
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],

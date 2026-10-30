@@ -48,15 +48,12 @@
 		},
 		{
 			"parameters": {
-				"mode": "jsonToBinary",
-				"convertAllData": false,
-				"options": {
-					"useRawData": true
-				}
+				"operation": "toJson",
+				"options": {}
 			},
-			"name": "Move Binary Data",
-			"type": "n8n-nodes-base.moveBinaryData",
-			"typeVersion": 1,
+			"name": "Convert to File",
+			"type": "n8n-nodes-base.convertToFile",
+			"typeVersion": 1.1,
 			"position": [440, 0],
 			"id": "9cba2be3-50e0-4ae2-b7a6-2f0caefb50ef"
 		},
@@ -85,7 +82,7 @@
 				]
 			]
 		},
-		"Move Binary Data": {
+		"Convert to File": {
 			"main": [
 				[
 					{
@@ -100,7 +97,7 @@
 			"main": [
 				[
 					{
-						"node": "Move Binary Data",
+						"node": "Convert to File",
 						"type": "main",
 						"index": 0
 					}

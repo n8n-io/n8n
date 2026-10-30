@@ -32,7 +32,7 @@ Example pattern:
 
 ## Analysis Implementation
 
-Use Function node (not Function Item) when analysis needs all items as a whole (calculating totals, finding trends). Function Item operates per item only.
+Use the Code node in Run Once for All Items mode when analysis needs all items as a whole (calculating totals, finding trends). Run Once for Each Item mode operates per item only.
 
 For AI-powered analysis, filter irrelevant content first to minimize tokens. Batch data into single prompts when possible.
 
@@ -126,7 +126,7 @@ Use conditional branches (IF nodes) for post-analysis actions:
 - Use clear condition names
 - Handle both true and false branches
 
-### Code / Function (n8n-nodes-base.function)
+### Code (n8n-nodes-base.code)
 
 **Purpose**: Custom JavaScript for calculations, statistics, anomaly detection
 
@@ -137,12 +137,10 @@ Use conditional branches (IF nodes) for post-analysis actions:
 - Implement custom algorithms
 
 **Best Practices**:
-- Use Function node (not Function Item) for whole-dataset operations
-- Return proper data structure: \`return items\`
+- Use Run Once for All Items mode for whole-dataset operations
+- Return proper data structure: \`return $input.all()\`
 - Add comments to explain logic
 - Test with edge cases
-
-**Note**: Consider using the newer Code node (n8n-nodes-base.code) as Function node is deprecated.
 
 ### Aggregate (n8n-nodes-base.aggregate)
 
@@ -308,11 +306,11 @@ Use conditional branches (IF nodes) for post-analysis actions:
 
 ### Incorrect Aggregation Logic
 
-**Problem**: Using Function Item instead of Function node for whole-dataset calculations.
+**Problem**: Using Run Once for Each Item mode for whole-dataset calculations.
 
 **Solution**:
-- Use Function node (not Function Item) for totals, averages, trends
-- Function Item operates per item only
+- Use the Code node in Run Once for All Items mode for totals, averages, trends
+- Run Once for Each Item mode operates per item only
 - Understand the difference between item-level and dataset-level operations
 - Use Aggregate node for common operations
 

@@ -31,8 +31,8 @@ describe('POST /audit', () => {
 			nodes: [
 				{
 					id: randomUUID(),
-					name: 'Read file',
-					type: 'n8n-nodes-base.readBinaryFile',
+					name: 'Spreadsheet File',
+					type: 'n8n-nodes-base.spreadsheetFile',
 					typeVersion: 1,
 					position: [0, 0],
 					parameters: {},
@@ -55,8 +55,8 @@ describe('POST /audit', () => {
 						location: [
 							expect.objectContaining({
 								kind: 'node',
-								nodeName: 'Read file',
-								nodeType: 'n8n-nodes-base.readBinaryFile',
+								nodeName: 'Spreadsheet File',
+								nodeType: 'n8n-nodes-base.spreadsheetFile',
 							}),
 						],
 					}),

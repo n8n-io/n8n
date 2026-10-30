@@ -1,10 +1,8 @@
-import { readFile as fsReadFile } from 'fs/promises';
 import { NodeOperationError, jsonParse } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
 	INodeParameterResourceLocator,
-	IRequestOptions,
 } from 'n8n-workflow';
 
 export async function getWorkflowInfo(this: IExecuteFunctions, source: string, itemIndex = 0) {
@@ -22,56 +20,16 @@ export async function getWorkflowInfo(this: IExecuteFunctions, source: string, i
 			) as INodeParameterResourceLocator;
 			workflowInfo.id = value as string;
 		}
-	} else if (source === 'localFile') {
-		// Read workflow from filesystem
-		const workflowPath = this.getNodeParameter('workflowPath', itemIndex) as string;
-
-		const handleFileError = (error: unknown): never => {
-			if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
-				throw new NodeOperationError(
-					this.getNode(),
-					`The file "${workflowPath}" could not be found, [item ${itemIndex}]`,
-				);
-			}
-			throw error;
-		};
-
-		const resolvedPath = await this.helpers.resolvePath(workflowPath).catch(handleFileError);
-
-		if (this.helpers.isFilePathBlocked(resolvedPath)) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'Access to the workflow file path is not allowed',
-			);
-		}
-
-		const workflowJson = await fsReadFile(resolvedPath, { encoding: 'utf8' }).catch(
-			handleFileError,
-		);
-
-		workflowInfo.code = jsonParse(workflowJson, {
-			errorMessage: 'The file content is not valid JSON', // pass a custom error message to not expose the file contents
-		});
 	} else if (source === 'parameter') {
 		// Read workflow from parameter
 		const workflowJson = this.getNodeParameter('workflowJson', itemIndex) as string;
 		workflowInfo.code = jsonParse(workflowJson);
-	} else if (source === 'url') {
-		// Read workflow from url
-		const workflowUrl = this.getNodeParameter('workflowUrl', itemIndex) as string;
-
-		const requestOptions = {
-			headers: {
-				accept: 'application/json,text/*;q=0.99',
-			},
-			method: 'GET',
-			uri: workflowUrl,
-			json: true,
-			gzip: true,
-		} satisfies IRequestOptions;
-
-		const response = await this.helpers.request(requestOptions);
-		workflowInfo.code = response;
+	} else if (source === 'localFile' || source === 'url') {
+		// Old workflows can still carry these values, so fail with a clear message
+		throw new NodeOperationError(
+			this.getNode(),
+			`The "${source === 'localFile' ? 'Local File' : 'URL'}" source was removed. Save the sub-workflow on this n8n instance and use the "Database" source, or paste the workflow JSON into the "Define Below" source instead.`,
+		);
 	}
 
 	return workflowInfo;

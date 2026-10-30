@@ -58,6 +58,15 @@ describe('eligibleModules', () => {
 		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('policy-infrastructure');
 	});
 
+	it('should not include the deprecated chat-hub module by default', () => {
+		expect(Container.get(ModuleRegistry).eligibleModules).not.toContain('chat-hub');
+	});
+
+	it('should allow opting back into chat-hub via env var', () => {
+		process.env.N8N_ENABLED_MODULES = 'chat-hub';
+		expect(Container.get(ModuleRegistry).eligibleModules).toContain('chat-hub');
+	});
+
 	it.each([
 		'skills',
 		'instance-ai',
@@ -144,7 +153,6 @@ describe('eligibleModules', () => {
 			'breaking-changes',
 			'source-control',
 			'dynamic-credentials',
-			'chat-hub',
 			'sso-oidc',
 			'sso-saml',
 			'log-streaming',
@@ -193,7 +201,6 @@ describe('eligibleModules', () => {
 			'breaking-changes',
 			'source-control',
 			'dynamic-credentials',
-			'chat-hub',
 			'sso-oidc',
 			'sso-saml',
 			'log-streaming',

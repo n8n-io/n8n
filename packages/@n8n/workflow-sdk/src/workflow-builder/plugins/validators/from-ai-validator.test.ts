@@ -108,7 +108,7 @@ describe('fromAiValidator', () => {
 		});
 
 		it('returns no warning for tool node using $fromAI', () => {
-			const node = createMockNode('@n8n/n8n-nodes-langchain.toolHttpRequest', {
+			const node = createMockNode('n8n-nodes-base.httpRequestTool', {
 				parameters: { url: '={{ $fromAI("url") }}' },
 			});
 			const ctx = createMockPluginContext();

@@ -915,11 +915,6 @@ export type RelayEventMap = DataTableEventMap & {
 		projects: ProjectSummary[];
 	};
 
-	'external-secrets-system-roles-toggled': {
-		userId: string;
-		enabled: boolean;
-	};
-
 	// #endregion
 
 	// #region LDAP

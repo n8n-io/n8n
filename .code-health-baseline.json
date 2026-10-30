@@ -157,36 +157,28 @@
 				"hash": "4a6882cb8d62"
 			}
 		],
-		"packages/node-dev/package.json": [
-			{
-				"rule": "catalog-violations",
-				"line": 48,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "da9b64834300"
-			}
-		],
 		"packages/@n8n/cli/package.json": [
 			{
 				"rule": "catalog-violations",
 				"line": 84,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "733c3960022e"
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "78dcf13f2250"
 			}
 		],
 		"packages/@n8n/node-cli/package.json": [
 			{
 				"rule": "catalog-violations",
-				"line": 53,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "9711a9b00bf9"
+				"line": 54,
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "b6a694c807bc"
 			}
 		],
 		"packages/quality/efficiency/scale/benchmark/package.json": [
 			{
 				"rule": "catalog-violations",
 				"line": 38,
-				"message": "@oclif/core appears in 4 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
-				"hash": "e07bb1da47d7"
+				"message": "@oclif/core appears in 3 packages with 2 different versions — add to pnpm-workspace.yaml catalog",
+				"hash": "654187703480"
 			}
 		],
 		"packages/nodes-base/package.json": [

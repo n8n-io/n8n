@@ -26,11 +26,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "item= {\n  name:'testing xml',\n  arr:[{key:'item1'},{key:'item2'}],\n  subobj:{\n    arr:[1,2,3,4,5],\n    secondarr:[{key:'subitem1'},{key:'subitem2'},{key:'subitem3'}]\n  }\n};\nreturn item;"
+				"mode": "runOnceForEachItem",
+				"jsCode": "$input.item.json = {\n  name:'testing xml',\n  arr:[{key:'item1'},{key:'item2'}],\n  subobj:{\n    arr:[1,2,3,4,5],\n    secondarr:[{key:'subitem1'},{key:'subitem2'},{key:'subitem3'}]\n  }\n};\nreturn $input.item;"
 			},
 			"name": "FunctionItem",
-			"type": "n8n-nodes-base.functionItem",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [450, 300],
 			"id": "dfb38369-2fb3-4d92-b843-b663b3a4675a"
 		},
@@ -48,11 +49,12 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "if(JSON.stringify($node['FunctionItem'].json) !== JSON.stringify($node['XML1'].json) ){\n    throw new Error('Problem in XML conversion');\n}\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "if(JSON.stringify($node['FunctionItem'].json) !== JSON.stringify($node['XML1'].json) ){\n    throw new Error('Problem in XML conversion');\n}\nreturn $input.all();"
 			},
 			"name": "Function",
-			"type": "n8n-nodes-base.function",
-			"typeVersion": 1,
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
 			"position": [990, 350],
 			"id": "f03b8331-fa37-4aeb-97c9-0a3514942f96"
 		}

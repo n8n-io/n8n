@@ -106,32 +106,35 @@
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 2 Seconds",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [600, 300],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "b84a023d-475e-42ac-888a-e0c43d13e10e"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 2 Seconds1",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1050, 300],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "2303fc2b-2701-44b7-98ed-139094b9c457"
 		},
 		{
 			"parameters": {
-				"functionCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn items;"
+				"mode": "runOnceForAllItems",
+				"jsCode": "function sleep(milliseconds) {\n  return new Promise(\n    resolve => setTimeout(resolve, milliseconds)\n  );\n}\n\nawait sleep(2000);\n\n// Output data\nreturn $input.all();"
 			},
 			"name": "Sleep 2 Seconds2",
-			"type": "n8n-nodes-base.function",
+			"type": "n8n-nodes-base.code",
 			"position": [1350, 300],
-			"typeVersion": 1,
+			"typeVersion": 2,
 			"id": "3bdb67df-5473-42f6-aacb-5125ac0483b7"
 		}
 	],

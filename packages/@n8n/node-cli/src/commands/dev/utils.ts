@@ -1,8 +1,13 @@
-import { type ChildProcess, execSync, spawn } from 'node:child_process';
+import { isRecord } from '@n8n/utils/is-record';
+import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
+import { type ChildProcess, execSync, spawn, type SpawnOptions } from 'node:child_process';
+import { type FSWatcher, readdirSync, statSync, watch } from 'node:fs';
 import fs from 'node:fs/promises';
+import path from 'node:path';
 import picocolors from 'picocolors';
 
 import { jsonParse } from '../../utils/json';
+import { STATIC_ASSET_IGNORE } from '../build';
 
 interface CommandOutput {
 	name: string;
@@ -171,6 +176,19 @@ export function openUrl(url: string): void {
 	} catch {
 		// Ignore errors when opening URLs
 	}
+}
+
+/**
+ * Quote one argument of a `cmd.exe /d /s /c` command line. Every argument is
+ * quoted rather than only those holding whitespace, because cmd.exe treats
+ * `&`, `|`, `<`, `>`, `(`, `)` and `^` as metacharacters wherever they appear
+ * outside quotes. `%VAR%` is still expanded; a command line cannot prevent it.
+ */
+function quoteForCmd(arg: string): string {
+	// A backslash is only special before a quote, so double just those runs,
+	// including the run that would otherwise escape our own closing quote.
+	const escaped = arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\*)$/, '$1$1');
+	return `"${escaped}"`;
 }
 
 export interface CommandConfig {
@@ -378,10 +396,11 @@ async function killProcess(proc: ChildProcess, graceful: boolean): Promise<void>
 	}
 
 	// Wait for the whole process group to drain rather than only the direct
-	// child. The direct child (shell wrapper or `npx`) typically exits much
-	// faster than the n8n server it spawns, which needs time to release its
-	// listening port. Exiting before the descendants finish would leak the
-	// port until the user manually killed the process.
+	// child. The direct child is now the command itself (`docker run`, or the
+	// package manager wrapping `tsc`), and it can still report exit before the
+	// container or the n8n server below it releases the listening port. Exiting
+	// before the descendants finish would leak the port until the user manually
+	// killed the process.
 	const deadline = Date.now() + CONFIG.GRACEFUL_SHUTDOWN_TIMEOUT;
 	while (Date.now() < deadline) {
 		const groupDrained = isWindows || !isProcessGroupAlive(pid);
@@ -520,13 +539,12 @@ export function runCommands(config: CommandsConfig): void {
 
 		commandOutputs.push(output);
 
-		const commandString = `${cmdConfig.cmd} ${cmdConfig.args.join(' ')}`;
-
-		const child = spawn(commandString, {
-			shell: true,
+		const isWindows = process.platform === 'win32';
+		const spawnOptions = {
 			cwd: cmdConfig.cwd,
 			stdio: ['ignore', 'pipe', 'pipe'],
-			detached: process.platform !== 'win32',
+			// Own process group, so quitting can signal the whole tree at once.
+			detached: !isWindows,
 			env: {
 				...process.env,
 				...cmdConfig.env,
@@ -534,7 +552,20 @@ export function runCommands(config: CommandsConfig): void {
 				COLORTERM: 'truecolor',
 				TERM: 'xterm-256color',
 			},
-		});
+		} satisfies SpawnOptions;
+
+		// Pass the arguments as an array so no shell ever parses them: a project
+		// path holding `$`, a backtick, `;` or `&` has to reach the child intact.
+		// Windows package managers are `.cmd` shims, which cannot run without a
+		// terminal, so there we invoke cmd.exe ourselves. `shell: true` is not an
+		// option: it concatenates the arguments without escaping them (DEP0190).
+		const child = isWindows
+			? spawn(
+					process.env.ComSpec ?? 'cmd.exe',
+					['/d', '/s', '/c', `"${[cmdConfig.cmd, ...cmdConfig.args].map(quoteForCmd).join(' ')}"`],
+					{ ...spawnOptions, windowsVerbatimArguments: true },
+				)
+			: spawn(cmdConfig.cmd, cmdConfig.args, spawnOptions);
 
 		childProcesses.push(child);
 
@@ -550,12 +581,20 @@ export function runCommands(config: CommandsConfig): void {
 			}
 		};
 
-		child.stdout.on('data', handleData);
-		child.stderr.on('data', handleData);
+		child.stdout?.on('data', handleData);
+		child.stderr?.on('data', handleData);
+
+		// Without a shell in front, a missing binary arrives as an 'error' event
+		// instead of exit code 127, and an unhandled one would take down the CLI.
+		child.on('error', (error) => {
+			output.lines.push(picocolors.red(`Failed to start ${cmdConfig.cmd}: ${error.message}`));
+			output.isRunning = false;
+			output.exitCode ??= 127;
+		});
 
 		child.on('close', (code) => {
 			output.isRunning = false;
-			output.exitCode = code;
+			output.exitCode ??= code;
 		});
 	});
 
@@ -570,19 +609,185 @@ export async function readPackageName(): Promise<string> {
 		.then((packageJson) => jsonParse<{ name: string }>(packageJson)?.name ?? 'unknown');
 }
 
-export function createOpenN8nHandler(): KeyHandler {
+export function createOpenN8nHandler(url: string): KeyHandler {
 	return {
 		key: 'o',
 		handler: () => {
-			openUrl('http://localhost:5678');
+			openUrl(url);
 		},
 	};
 }
 
-export function buildHelpText(hasN8n: boolean, isN8nReady: boolean): string {
-	const quitText = `${picocolors.dim('Press')} q ${picocolors.dim('to quit')}`;
-	if (hasN8n && isN8nReady) {
-		return `${quitText} ${picocolors.dim('|')} o ${picocolors.dim('to open n8n')}`;
+const HEALTH_POLL_INTERVAL_MS = 1000;
+
+/**
+ * Resolves once n8n reports itself ready, or after `timeoutMs`. Readiness, not
+ * `/healthz`: the latter answers before the controllers are registered, so a
+ * reload sent on that signal 404s.
+ */
+export async function waitForN8n(baseUrl: string, timeoutMs = 300_000): Promise<boolean> {
+	const deadline = Date.now() + timeoutMs;
+
+	for (;;) {
+		const remaining = deadline - Date.now();
+		if (remaining <= 0) return false;
+
+		try {
+			// Bound every attempt by the time left. A port that accepts but never
+			// answers would otherwise park this await forever, so the loop would
+			// never re-check the deadline and `timeoutMs` would mean nothing.
+			const response = await fetch(`${baseUrl}/healthz/readiness`, {
+				signal: AbortSignal.timeout(remaining),
+			});
+			if (response.ok) return true;
+		} catch {
+			// Not up yet
+		}
+
+		// Clamp the backoff too, so a failure near the deadline cannot overshoot.
+		const left = deadline - Date.now();
+		if (left <= 0) return false;
+		await sleep(Math.min(HEALTH_POLL_INTERVAL_MS, left));
 	}
-	return quitText;
+}
+
+/**
+ * Reloading is a local call into an already-running n8n, so a few seconds is
+ * generous. This is called fire-and-forget on every compile, so an unbounded
+ * request would leave a pending promise and an open socket behind each time.
+ */
+const RELOAD_TIMEOUT_MS = 5000;
+
+function reloadFailure(response: Response, body: string): string {
+	// Without the route n8n serves the SPA catch-all, so the body is HTML.
+	if (response.status === 404) {
+		return 'this n8n has no reload endpoint - use a newer image, or set N8N_DEV_RELOAD=true on --external-n8n';
+	}
+
+	const parsed = jsonParse<unknown>(body);
+	if (isRecord(parsed) && typeof parsed.message === 'string' && parsed.message.length > 0) {
+		return parsed.message;
+	}
+
+	return `n8n answered ${response.status}`;
+}
+
+/**
+ * Tell a running n8n to re-read the node from disk. Push rather than watch: the
+ * container cannot watch a bind mount, and "compile succeeded, now reload"
+ * cannot race a half-written `dist` the way a debounced watcher can.
+ */
+export async function triggerReload(baseUrl: string): Promise<Result<void, string>> {
+	try {
+		const response = await fetch(`${baseUrl}/rest/dev/reload`, {
+			method: 'POST',
+			signal: AbortSignal.timeout(RELOAD_TIMEOUT_MS),
+		});
+		if (response.ok) return createResultOk(undefined);
+
+		return createResultError(reloadFailure(response, await response.text().catch(() => '')));
+	} catch {
+		return createResultError(`n8n not reachable at ${baseUrl}`);
+	}
+}
+
+const STATIC_ASSET_PATTERN = /\.(png|svg)$|__schema__[\\/].*\.json$/;
+
+/**
+ * Every top-level directory `copyStaticFiles` can read from. Dotted directories
+ * and the ignore list are skipped because `recursive` costs one inotify watch
+ * per subdirectory on Linux, which a tree like `.git` can exhaust as ENOSPC.
+ */
+function watchableAssetDirs(): string[] {
+	try {
+		return readdirSync(process.cwd(), { withFileTypes: true })
+			.filter((entry) => entry.isDirectory())
+			.map((entry) => entry.name)
+			.filter((name) => !name.startsWith('.') && !STATIC_ASSET_IGNORE.includes(name));
+	} catch {
+		return [];
+	}
+}
+
+/**
+ * Watch static assets on the host. `copyStaticFiles()` only runs at startup, so
+ * without this an icon or schema edit never reaches `dist`.
+ */
+export function watchStaticFiles(onChange: () => void): () => void {
+	const watchers: FSWatcher[] = [];
+	const watched = new Set<string>();
+
+	const watchAssetDir = (dir: string): boolean => {
+		if (watched.has(dir)) return true;
+
+		const target = path.join(process.cwd(), dir);
+		try {
+			if (!statSync(target).isDirectory()) return false;
+		} catch {
+			return false;
+		}
+
+		// `filename` is relative to `target`, which the pattern already allows for.
+		const watcher = watch(target, { recursive: true }, (_event, filename) => {
+			if (!filename) return;
+			if (!STATIC_ASSET_PATTERN.test(filename)) return;
+			onChange();
+		});
+		watcher.unref();
+		watchers.push(watcher);
+		watched.add(dir);
+		return true;
+	};
+
+	for (const dir of watchableAssetDirs()) watchAssetDir(dir);
+
+	// Covers both directories created after startup and assets in the root
+	// itself, for a single descriptor.
+	const rootWatcher = watch(process.cwd(), (_event, filename) => {
+		if (!filename) return;
+
+		if (STATIC_ASSET_PATTERN.test(filename)) {
+			onChange();
+			return;
+		}
+
+		if (filename.startsWith('.') || STATIC_ASSET_IGNORE.includes(filename)) return;
+		if (!watchAssetDir(filename)) return;
+		// The directory can already hold assets when the watcher attaches.
+		onChange();
+	});
+	rootWatcher.unref();
+	watchers.push(rootWatcher);
+
+	return () => {
+		for (const watcher of watchers) watcher.close();
+	};
+}
+
+export interface ReloadStatus {
+	at: Date;
+	result: Result<void, string>;
+}
+
+function formatReloadStatus({ at, result }: ReloadStatus): string {
+	// 24-hour HH:MM, so the line width does not change by locale.
+	const time = at.toTimeString().slice(0, 5);
+	return result.ok
+		? picocolors.green(`✓ reloaded ${time}`)
+		: picocolors.red(`✗ reload failed: ${result.error}`);
+}
+
+export function buildHelpText(
+	hasN8n: boolean,
+	isN8nReady: boolean,
+	lastReload?: ReloadStatus,
+): string {
+	const segments = [`${picocolors.dim('Press')} q ${picocolors.dim('to quit')}`];
+	if (hasN8n && isN8nReady) segments.push(`o ${picocolors.dim('to open n8n')}`);
+	if (lastReload) segments.push(formatReloadStatus(lastReload));
+
+	// `calculatePanelHeight` budgets one help line, so wrapping a long failure
+	// reason would push a panel row off-screen.
+	const terminalWidth = process.stdout.columns ?? CONFIG.SEPARATOR_WIDTH;
+	return truncateLine(segments.join(` ${picocolors.dim('|')} `), terminalWidth - 1);
 }

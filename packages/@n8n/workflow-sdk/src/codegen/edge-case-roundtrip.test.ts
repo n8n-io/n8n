@@ -742,7 +742,7 @@ describe('Edge Case Roundtrip Tests', () => {
 					{
 						id: 'tool-1',
 						name: 'HTTP Tool',
-						type: '@n8n/n8n-nodes-langchain.toolHttpRequest',
+						type: 'n8n-nodes-base.httpRequestTool',
 						typeVersion: 1.1,
 						position: [200, 400],
 						parameters: {},

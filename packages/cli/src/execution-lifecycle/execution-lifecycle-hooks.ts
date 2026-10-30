@@ -4,7 +4,6 @@ import {
 	type RedactableExecution,
 	ExecutionRedactionServiceProxy,
 } from '@n8n/backend-services';
-import { ExecutionsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { ExecutionRepository, UserRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
@@ -510,21 +509,6 @@ function hookFunctionsPush(
 	});
 }
 
-function hookFunctionsPreExecute(
-	hooks: ExecutionLifecycleHooks,
-	source?: IWorkflowExecutionDataProcess['source'],
-) {
-	if (!Container.get(ExecutionsConfig).preExecuteErrorCreatesExecution) {
-		return;
-	}
-
-	const externalHooks = Container.get(ExternalHooks);
-	const workflowContext = Container.get(WorkflowHookContextService);
-	hooks.addHandler('workflowExecuteBefore', async function (workflow) {
-		await externalHooks.run('workflow.preExecute', [workflow, this.mode, workflowContext, source]);
-	});
-}
-
 function hookFunctionsPostExecute(hooks: ExecutionLifecycleHooks) {
 	const externalHooks = Container.get(ExternalHooks);
 	const workflowContext = Container.get(WorkflowHookContextService);
@@ -920,7 +904,6 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsSave(hooks, { saveSettings, parentExecution });
 	hookFunctionsSaveProgress(hooks, { saveSettings });
 	hookFunctionsStatistics(hooks);
-	hookFunctionsPreExecute(hooks);
 	hookFunctionsPostExecute(hooks);
 	Container.get(ModulesHooksRegistry).addHooks(hooks);
 	return hooks;
@@ -964,7 +947,6 @@ export function getLifecycleHooksForScalingWorker(
 	hookFunctionsSaveWorker(hooks, optionalParameters);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks, source);
-	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
 
 	if (executionMode === 'manual' && Container.get(InstanceSettings).isWorker) {
@@ -1011,7 +993,6 @@ export function getLifecycleHooksForScalingMain(
 
 	hookFunctionsWorkflowEvents(hooks, userId, projectId, projectName, source, telemetryMetadata);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
-	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
 	hookFunctionsFinalizeExecutionStatus(hooks);
 
@@ -1126,7 +1107,6 @@ export function getLifecycleHooksForRegularMain(
 	hookFunctionsPush(hooks, optionalParameters, userId, source);
 	hookFunctionsSaveProgress(hooks, optionalParameters);
 	hookFunctionsStatistics(hooks, source);
-	hookFunctionsPreExecute(hooks, source);
 	hookFunctionsPostExecute(hooks);
 	Container.get(ModulesHooksRegistry).addHooks(
 		hooks,

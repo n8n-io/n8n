@@ -1099,7 +1099,6 @@ describe('ProjectSettings', () => {
 					multipleConnections: false,
 					forProjects: true,
 					roleBasedAccess: false,
-					systemRolesEnabled: false,
 				},
 			};
 			const rbacStore = mockedStore(useRBACStore);

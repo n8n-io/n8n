@@ -34,7 +34,6 @@ import type {
 	IExecuteFunctions,
 	IDataObject,
 	IDestinationNode,
-	IWorkflowDataProxyData,
 } from 'n8n-workflow';
 import {
 	UnexpectedError,
@@ -45,6 +44,7 @@ import {
 	NodeOperationError,
 	UserError,
 	Workflow,
+	WorkflowDataProxy,
 	BINARY_MODE_COMBINED,
 } from 'n8n-workflow';
 import assert from 'node:assert';
@@ -55,7 +55,6 @@ import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
 
 import type { ExecutionLifecycleHooks } from '../execution-lifecycle-hooks';
-import { ExecuteContext } from '../node-execution-context';
 import { DirectedGraph } from '../partial-execution-utils';
 import * as partialExecutionUtils from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
@@ -2156,7 +2155,7 @@ describe('WorkflowExecute', () => {
 					throw new Error('paired item not found');
 				},
 			},
-			{ name: 'returns null', getPairedItem: () => null },
+			{ name: 'returns null', getPairedItem: () => null as unknown as INodeExecutionData },
 			{
 				name: 'returns undefined',
 				getPairedItem: () => undefined as unknown as INodeExecutionData,
@@ -2164,8 +2163,8 @@ describe('WorkflowExecute', () => {
 		])(
 			'should route an error item undecorated when the paired item lookup $name',
 			({ getPairedItem }) => {
-				vi.spyOn(ExecuteContext.prototype, 'getWorkflowDataProxy').mockReturnValue(
-					mock<IWorkflowDataProxyData>({ $getPairedItem: vi.fn(getPairedItem) }),
+				vi.spyOn(WorkflowDataProxy.prototype, 'resolvePairedItem').mockImplementation(
+					getPairedItem,
 				);
 				const nodeSuccessData: INodeExecutionData[][] = [
 					[{ json: { error: 'Test error' }, pairedItem: { item: 0, input: 0 } }],
