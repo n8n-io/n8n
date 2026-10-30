@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { Logger } from '@n8n/backend-common';
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
+import { TransactionRunner } from '@n8n/db';
 import { Container } from '@n8n/di';
 
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
@@ -33,6 +34,7 @@ describe('Instance AI thread history', () => {
 			Container.get(InstanceAiObservationCursorRepository),
 			Container.get(InstanceAiObservationLockRepository),
 			Container.get(Logger),
+			Container.get(TransactionRunner),
 		);
 	});
 

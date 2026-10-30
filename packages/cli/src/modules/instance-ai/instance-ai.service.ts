@@ -936,7 +936,7 @@ export class InstanceAiService {
 			throw new ForbiddenError('Not authorized for this thread');
 		}
 		const [observations, cursor] = await Promise.all([
-			this.observationRepo.findActiveForThread(threadId),
+			this.observationRepo.findActiveForThread(threadId, {}),
 			this.observationCursorRepo.findForThread(threadId),
 		]);
 		return {

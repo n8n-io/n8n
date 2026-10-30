@@ -1,3 +1,4 @@
+import type { TransactionRunner } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { InstanceAiMessage } from '../../entities/instance-ai-message.entity';
@@ -38,6 +39,7 @@ function createObservationLogStore(deps: {
 			if (typeof parsed.role !== 'string' || !Array.isArray(parsed.content)) return undefined;
 			return { ...parsed, id: entity.id, createdAt: entity.createdAt } as never;
 		},
+		mock<TransactionRunner>(),
 	);
 }
 
@@ -45,8 +47,7 @@ describe('TypeORMObservationLogStore', () => {
 	it('appends and reads active observation log entries', async () => {
 		const observationRepo = mock<InstanceAiObservationRepository>();
 		const createdAt = new Date('2026-01-01T00:00:00.000Z');
-		observationRepo.create.mockImplementation((row) => row as InstanceAiObservation);
-		observationRepo.save.mockResolvedValue([
+		observationRepo.appendLogEntries.mockResolvedValue([
 			{
 				id: 'obs-1',
 				observationScopeId: 'thread-1',
@@ -59,7 +60,7 @@ describe('TypeORMObservationLogStore', () => {
 				createdAt,
 			},
 		] as never);
-		observationRepo.find.mockResolvedValueOnce([
+		observationRepo.findLogEntries.mockResolvedValueOnce([
 			{
 				id: 'obs-1',
 				observationScopeId: 'thread-1',
@@ -93,7 +94,10 @@ describe('TypeORMObservationLogStore', () => {
 			}),
 		]);
 		expect(active).toEqual(inserted);
-		expect(observationRepo.create).toHaveBeenCalledWith(expect.objectContaining({ tokenCount: 4 }));
+		expect(observationRepo.appendLogEntries).toHaveBeenCalledWith(
+			[expect.objectContaining({ tokenCount: 4 })],
+			{},
+		);
 	});
 
 	it('stores and reads observation cursors', async () => {
