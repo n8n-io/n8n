@@ -1,0 +1,214 @@
+packages/cli/src/modules/instance-ai/turn-setup/assistant-turn-trace-input.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-65
+packages/quality/testing/playwright/config/intercepts.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,4-9,36-39,172-220
+packages/quality/testing/playwright/fixtures/engine-parity.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-2,8,33-35,38,75-231
+packages/quality/testing/playwright/tests/e2e/workflows/editor/execution/engine-type-setting.spec.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 43,45-47
+packages/modules/apps/frontend/src/components/AppPreview.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 5,8,41-49,51-52,144,146,153,162,164,171,221
+packages/cli/src/modules/agents/integrations/__tests__/channel-episodic-scope.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 4,55
+packages/cli/src/modules/instance-ai/tracing/suspension-trace.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-25
+packages/modules/apps/frontend/src/components/AppPublishButton.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-211
+packages/cli/src/modules/agents/system-agents/system-agent-execution.service.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1085,1122-1125
+packages/@n8n/typeorm/test/functional/transaction/sqlite-pooled-transaction-type/sqlite-pooled-transaction-type.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 39-112
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 341-352
+packages/modules/apps/frontend/src/components/AppHeader.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,31-41,45,67-72,117,119-121,123
+packages/modules/apps/frontend/src/apps.permissions.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 11
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 180,197-198,2479-2485,3635
+packages/modules/apps/frontend/src/components/AppPublishButton.vue
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-161
+packages/modules/apps/frontend/src/composables/useAppVersions.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-100
+packages/quality/testing/playwright/config/intercepts.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-148
+scripts/licenses/license-overrides.json
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 68-75
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1149-1160
+.github/workflows/test-db-reusable.yml
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 11,29-30,32,38,62,65,86,93
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-trace.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-539
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqliteReadWriteQueryRunner.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 19,42-46,50,92-96,103-106,110,112
+packages/@n8n/db/src/repositories/__tests__/person.repository.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 85-93
+packages/quality/testing/playwright/services/workflow-api-helper.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 213-339
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.service.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 5345-5346
+.github/scripts/db-test-matrix.test.mjs
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 4-10,176-228
+  s_ff45a7d9223bfa::t_5143669a3e8586 229
+packages/modules/apps/frontend/src/apps.api.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 10-11,68,81-90
+  s_ff45a7d9223bfa::t_ca43fcc19a279f 91
+packages/@n8n/oxlint-config/src/configs/nodes.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 6,28-137
+packages/quality/testing/playwright/tests/e2e/building-blocks/workflow-entry-points.spec.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,22-35
+  s_ff45a7d9223bfa::t_afbb86747111c9 36
+packages/cli/src/modules/agents/integrations/__tests__/n8n-chat-integration.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,25-26,141,146,159-179,197,206-207,266,271
+packages/cli/src/modules/breaking-changes/breaking-changes.service.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 349
+packages/quality/testing/playwright/README.md
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 262,282-293
+scripts/lint-parity/oxlint-gap.json
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 31-58
+packages/cli/src/modules/agents/system-agents/system-agent.types.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 26-28,127-133
+packages/cli/src/modules/breaking-changes/query/__tests__/migration-finding-query.service.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 166,607-609,614-616,624
+packages/cli/src/modules/instance-ai/self-healing/database/self-healing-configuration.repository.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 6,256,258
+packages/modules/apps/frontend/src/apps.api.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 77-99
+packages/quality/testing/playwright/tests/e2e/api/wait-webhook-early-resume.spec.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 58-59
+packages/cli/src/modules/agents/__tests__/agents-service-reconstruct-gating.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 20,941
+packages/cli/docs/adr/ADR-20261029-trace-assistant-agent-turns-in-the-current-assistant-trace-shape.md
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-65
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-turn-trace.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-468
+packages/quality/testing/playwright/services/workflow-api-helper.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 21-25,204,206-209,213,215,242,248-256,547,609,623,634-640
+  s_ff45a7d9223bfa::t_0fab16ef4ade8f 641-642
+packages/@n8n/node-cli/README.md
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 99,192-193,226-232,243,247,250
+packages/nodes-base/oxlint.config.mts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-64
+packages/@n8n/oxlint-config/package.json
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 51
+packages/nodes-base/package.json
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 25-26,905,907,940,945-946
+packages/cli/src/modules/instance-ai/self-healing/__tests__/self-healing-configuration.service.integration.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 14,703-714
+  s_ff45a7d9223bfa::t_f852a09492219c 715-717
+packages/modules/apps/frontend/src/composables/useAppVersions.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-137
+packages/cli/src/modules/agents/integrations/platforms/n8n-chat/n8n-chat-integration.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 3,81,149-151,154,160-162
+packages/quality/testing/playwright/fixtures/base.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 11-16,63-68,161-169,171
+packages/@n8n/db/src/services/transaction.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 29-32,38-42,58-68
+.github/test-metrics/e2e-impact-map.json
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1
+packages/cli/src/modules/agents/agent-memory-entries.service.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 7,63-64,73,165-166,168-170
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-execution.service.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-2,655-697
+  s_ff45a7d9223bfa::t_17cbd7865465a7 698
+packages/cli/test/integration/database/repositories/workflow-history.repository.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 728-767
+packages/@n8n/create-node/README.md
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 7,10-12,18,21-22,26,29-30,53-54,74,81,89,204-210,224,228,231
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqliteReadonlyConnectionPool.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 3,6,73,90-94,96,107-122
+  s_ff45a7d9223bfa::t_68adda2124217f 123-124
+packages/@n8n/typeorm/src/driver/sqlite-pooled/SqliteReadWriteDriver.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 7,112,120
+packages/cli/src/modules/instance-ai/run-trace-metadata.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 33-63,71-73,79-80,83-99,122-134
+packages/cli/src/modules/instance-ai/tracing/__tests__/resume-trace-input.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-47
+packages/cli/src/modules/agents/__tests__/agent-memory-entries.service.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,22,27,29,82,88-89,99,105-106,114-122
+  s_ff45a7d9223bfa::t_614d8862bee5a2 123-128
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 13,28-31,41,43-46,53-55,62-72,82-83,98-103
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-tool-filtering.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 14,222
+packages/cli/src/modules/breaking-changes/query/migration-finding-query.service.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 263-269
+packages/modules/apps/frontend/src/components/AppHeader.vue
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 2,24,35-39,41,166-171
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,5-6,8,29-45,47-48,51-54,57-61,64-69,71-74,173-214
+packages/@n8n/db/src/services/typeorm-transaction.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 4,17-18,45-51,67-71,79-113
+  s_ff45a7d9223bfa::t_18514173feffa5 114
+packages/@n8n/typeorm/test/functional/sqlite/readonly-pool-timeout.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-93
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,30,67,81-82,93,97,610-754
+  s_ff45a7d9223bfa::t_3767aa0d9d06fd 755-756
+packages/@n8n/db/src/services/__tests__/typeorm-transaction.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 2,114-213
+  s_ff45a7d9223bfa::t_c81b686d70e9c9 214
+packages/cli/vitest.config.integration.testcontainers.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 8-10
+scripts/lint-parity/OXLINT_MIGRATION_BLOCKERS.md
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 152,159,163,165-168,188
+scripts/lint-parity/oxlint-parity.mjs
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 67
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-event-sink.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 36-37,41
+scripts/licenses/pipeline.test.mjs
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 20,140-190
+  s_ff45a7d9223bfa::t_ed99bbf088a83c 191
+packages/@n8n/instance-ai/src/index.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 49,114-116,314-316
+  s_ff45a7d9223bfa::t_b7845f0f3e5783 317
+knip.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 118
+packages/cli/src/services/ai-gateway.service.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 13,115,674-675,677,687-689
+packages/cli/src/modules/instance-ai/tracing/resume-trace-input.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-19
+packages/quality/testing/playwright/composables/TestEntryComposer.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 155
+packages/nodes-base/eslint.oxlint-residual.config.mjs
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-39
+packages/modules/apps/frontend/src/components/AppPreview.vue
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 2,20-21,49,56-57,61-62,73-74,88,91-93,95-100,102,104-105,108,111,115-119,135-136,158
+packages/cli/src/modules/instance-ai/turn-setup/__tests__/assistant-turn-trace-input.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-35
+packages/quality/testing/playwright/fixtures/engine-parity.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1-2,4-6,23-24,61-65,88-171
+packages/@n8n/api-types/src/index.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 440-441,657
+.github/scripts/db-test-matrix.mjs
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,10-11,16-17,113-161,166
+packages/@n8n/db/src/repositories/person.repository.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 129-132
+packages/cli/test/integration/database/repositories/account-repositories.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 1,3,17,36,171-204
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 49,59,121,162-209,212-213,222,237-256,259,265,275,285-287,289,309-319,332,341-349,393-397,402
+packages/quality/testing/playwright/vitest.config.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 9
+packages/cli/src/services/__tests__/ai-gateway.service.test.ts
+  s_ff45a7d9223bfa::t_3e5d7b3b1c6ad9 4,58,82,324-326,329,333,352-353,356,360,369,371
+pnpm-lock.yaml
+  s_ff45a7d9223bfa::t_188f122da2b1e0 4031-4033,8511-8513,8517-8519,8616-8618,8631-8636
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0d6eab0d35debb8a3fe501cac2295f4ab49c8153",
+  "prompts": {},
+  "sessions": {
+    "s_ff45a7d9223bfa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18394-cfb2-7020-b04f-e51e4e8b1a24",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/plans/agent-plan-state.ts
+  h_7555c3ee6524cf 33,36-37,39,43,90
+  s_79da05e7b3bc68::t_09176205f04216 34-35,38,40-42,44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "b502ed1167ffbc58cf7f618972b4bbc8e84d073a",
+  "prompts": {},
+  "humans": {
+    "h_7555c3ee6524cf": {
+      "author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  },
+  "sessions": {
+    "s_79da05e7b3bc68": {
+      "agent_id": {
+        "tool": "github-copilot-jetbrains",
+        "id": "1793198329018",
+        "model": "unknown"
+      },
+      "human_author": null
+    }
+  }
+}

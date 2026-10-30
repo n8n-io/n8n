@@ -1,0 +1,23 @@
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a993a926dd6885::t_677a8955fc5477 1825-1841
+  s_a993a926dd6885::t_b17d08ccbe65fe 1
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_a993a926dd6885::t_b965b65d89e7bd 800,816-820,843
+  s_a993a926dd6885::t_677a8955fc5477 842
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "099a101cfe0087395c3362b011b3afc7c19bd287",
+  "prompts": {},
+  "sessions": {
+    "s_a993a926dd6885": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cf656a40-af37-46a2-b77a-ee066f735319",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
