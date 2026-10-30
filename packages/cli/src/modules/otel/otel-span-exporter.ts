@@ -1,6 +1,6 @@
 import type { Attributes } from '@opentelemetry/api';
 import { resourceFromAttributes, type Resource } from '@opentelemetry/resources';
-import type { SpanExporter } from '@opentelemetry/sdk-trace-base';
+import type { ReadableSpan, SpanExporter } from '@opentelemetry/sdk-trace-base';
 
 import { withResource } from '@/observability/span-resource';
 
