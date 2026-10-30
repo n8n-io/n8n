@@ -363,6 +363,22 @@ describe('ExecutionCrashService', () => {
 			await vi.waitFor(() => expect(executionLedger.recordEnded).toHaveBeenCalledTimes(2));
 		});
 
+		test('waits for the rows of one batch before it writes the next batch', async () => {
+			const firstWrite = createDeferredPromise();
+			executionLedger.recordEnded.mockReturnValueOnce(firstWrite.promise);
+			executionRepository.markAsCrashed.mockImplementation(async (_ids, onBatchTransitioned) => {
+				onBatchTransitioned?.([crashedExecution('1')]);
+				onBatchTransitioned?.([crashedExecution('2')]);
+				return await Promise.resolve([]);
+			});
+
+			await crashService.markAsCrashed(['1', '2'], 'queue-recovery');
+			await vi.waitFor(() => expect(executionLedger.recordEnded).toHaveBeenCalledTimes(1));
+
+			firstWrite.resolve();
+			await vi.waitFor(() => expect(executionLedger.recordEnded).toHaveBeenCalledTimes(2));
+		});
+
 		test('records nothing when the ledger module is off', async () => {
 			Object.assign(executionLedger, { isEnabled: false });
 			transitions([crashedExecution('1')]);

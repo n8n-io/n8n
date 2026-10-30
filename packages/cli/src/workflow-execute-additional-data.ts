@@ -812,10 +812,11 @@ async function startExecution(
 				executionId,
 				fullExecutionData,
 			);
-			const facts = ended
-				? toEndedFactsFromRun({ executionId, workflow: workflowData, run: fullRunData })
-				: undefined;
-			if (facts) void Container.get(ExecutionLedger).recordEnded(facts);
+			const executionLedger = Container.get(ExecutionLedger);
+			if (!ended || !executionLedger.isEnabled) return;
+
+			const facts = toEndedFactsFromRun({ executionId, workflow: workflowData, run: fullRunData });
+			if (facts) void executionLedger.recordEnded(facts);
 		};
 
 		// Nothing else records this failure, and a detached caller never sees the error.
