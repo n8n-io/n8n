@@ -863,6 +863,17 @@ describe('Expression - fast native evaluation parity', () => {
 		});
 	});
 
+	// CET-571: Edit Fields (Set) v2 in raw JSON mode resolves `{{ $input.all().length }}`
+	// over items that can hold an Error object.
+	test('$input.all().length over an item that holds an Error matches the engine', () => {
+		const errorItem = { json: { error: new Error('boom') }, pairedItem: { item: 0 } };
+		const items = [errorItem] as unknown as Array<ReturnType<typeof makeItem>>;
+		const data = runDataFor(items);
+		const expr = '={{ $input.all().length }}';
+
+		expect(evaluate(expr, true, data, items)).toStrictEqual(evaluate(expr, false, data, items));
+	});
+
 	// extendSyntax rewrites calls to extension-named methods into extend()
 	// dispatch; native evaluation calls natives directly, so its allowlist
 	// must never contain an extension name.
