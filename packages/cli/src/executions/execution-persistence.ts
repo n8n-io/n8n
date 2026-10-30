@@ -23,7 +23,9 @@ import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import {
 	createEmptyRunExecutionData,
+	isTerminalExecutionStatus,
 	migrateRunExecutionData,
+	UNFINISHED_EXECUTION_STATUSES,
 	UnexpectedError,
 } from 'n8n-workflow';
 
@@ -47,6 +49,9 @@ type DeletionTarget = ExecutionRef & { storedAt: ExecutionDataStorageLocation };
 
 type InFlightExecutionOutcome = Pick<IExecutionResponse, 'status' | 'finished' | 'stoppedAt'>;
 
+/** `ended` is true only for the write that moved the run from an unfinished to a terminal status. */
+export type ExecutionOutcomeSaveResult = { updated: boolean; ended: boolean };
+
 type FoundExecution = IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
 
 type UpdatableEntityColumns = Omit<
@@ -61,6 +66,13 @@ type UpdatableEntityColumns = Omit<
 	| 'customData'
 	| 'deletedAt'
 >;
+
+type OutcomeColumns = UpdatableEntityColumns & Pick<Partial<IExecutionResponse>, 'deletedAt'>;
+
+type UpdateEntity = (
+	where: FindOptionsWhere<ExecutionEntity>,
+	columns: OutcomeColumns,
+) => Promise<{ affected?: number }>;
 
 /**
  * Performs a persistence operation on an execution and its blob of data.
@@ -250,10 +262,32 @@ export class ExecutionPersistence {
 		execution: Partial<IExecutionResponse>,
 		conditions?: UpdateExecutionConditions,
 	): Promise<boolean> {
+		const { updated } = await this.save(executionId, execution, conditions, { gate: false });
+		return updated;
+	}
+
+	/**
+	 * Like {@link updateExistingExecution}, but also reports whether this write finished the run.
+	 * When several writers finish the same run at once, only one of them gets `ended`.
+	 */
+	async saveExecutionOutcome(
+		executionId: string,
+		execution: Partial<IExecutionResponse>,
+		conditions?: UpdateExecutionConditions,
+	): Promise<ExecutionOutcomeSaveResult> {
+		return await this.save(executionId, execution, conditions, { gate: true });
+	}
+
+	private async save(
+		executionId: string,
+		execution: Partial<IExecutionResponse>,
+		conditions: UpdateExecutionConditions | undefined,
+		{ gate }: { gate: boolean },
+	): Promise<ExecutionOutcomeSaveResult> {
 		const hasDataField = execution.data !== undefined || execution.workflowData !== undefined;
 
 		if (!hasDataField) {
-			return await this.updateEntityOnly(executionId, execution, conditions);
+			return await this.updateEntityOnly(executionId, execution, conditions, gate);
 		}
 
 		const entity = await this.executionRepository.findOne({
@@ -262,7 +296,7 @@ export class ExecutionPersistence {
 			withDeleted: conditions?.includeDeleted,
 		});
 
-		if (!entity) return false;
+		if (!entity) return { updated: false, ended: false };
 
 		const ref = { workflowId: entity.workflowId, executionId };
 
@@ -272,6 +306,7 @@ export class ExecutionPersistence {
 			entity.workflowVersionId,
 			execution,
 			conditions,
+			gate,
 		);
 	}
 
@@ -682,27 +717,63 @@ export class ExecutionPersistence {
 	 * - When pruning is enabled, writes the final state and soft-deletes with a
 	 * backdated `deletedAt` so the execution is immediately eligible for the
 	 * next pruning hard-delete batch. A canceled execution keeps its status.
-	 * - When pruning is disabled, hard-deletes immediately so the execution
-	 * is not persisted indefinitely.
+	 * - When pruning is disabled, writes the final state, then hard-deletes
+	 * immediately so the execution is not persisted indefinitely.
 	 */
-	async deleteInFlightExecution(target: DeletionTarget, outcome: InFlightExecutionOutcome) {
-		if (this.executionsConfig.pruneData) {
-			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
-			const deletedAt = new Date(Date.now() - bufferMs);
-			const { affected } = await this.executionRepository.update(
-				this.buildEntityWhereCondition(target.executionId, { requireNotCanceled: true }),
-				{
-					deletedAt,
-					status: outcome.status,
-					// oxlint-disable-next-line typescript/no-deprecated
-					finished: outcome.finished,
-					stoppedAt: outcome.stoppedAt,
-				},
-			);
-			if (!affected) await this.executionRepository.update(target.executionId, { deletedAt });
-		} else {
+	async deleteInFlightExecution(
+		target: DeletionTarget,
+		outcome: InFlightExecutionOutcome,
+	): Promise<Pick<ExecutionOutcomeSaveResult, 'ended'>> {
+		if (!this.executionsConfig.pruneData) {
+			// The write before the delete tells whether this run ended here or earlier.
+			const { ended } = await this.writeOutcome(target.executionId, this.toOutcomeColumns(outcome));
 			await this.hardDelete(target);
+			return { ended };
 		}
+
+		const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+		const deletedAt = new Date(Date.now() - bufferMs);
+		const { updated, ended } = await this.writeOutcome(target.executionId, {
+			deletedAt,
+			...this.toOutcomeColumns(outcome),
+		});
+		if (!updated) await this.executionRepository.update(target.executionId, { deletedAt });
+		return { ended };
+	}
+
+	/**
+	 * Soft-delete a finished execution and write its final state in the same statement, so a
+	 * crash sweep cannot finish it again. A canceled execution keeps its status.
+	 */
+	async softDeleteWithOutcome(
+		executionId: string,
+		outcome: InFlightExecutionOutcome,
+	): Promise<Pick<ExecutionOutcomeSaveResult, 'ended'>> {
+		const { updated, ended } = await this.writeOutcome(executionId, {
+			deletedAt: new Date(),
+			...this.toOutcomeColumns(outcome),
+		});
+		if (!updated) await this.executionRepository.softDelete(executionId);
+		return { ended };
+	}
+
+	private async writeOutcome(executionId: string, columns: OutcomeColumns) {
+		return await this.writeEntityColumns(
+			async (where, values) => await this.executionRepository.update(where, values),
+			executionId,
+			columns,
+			{ requireNotCanceled: true },
+			true,
+		);
+	}
+
+	private toOutcomeColumns(outcome: InFlightExecutionOutcome): OutcomeColumns {
+		return {
+			status: outcome.status,
+			// oxlint-disable-next-line typescript/no-deprecated
+			finished: outcome.finished,
+			stoppedAt: outcome.stoppedAt,
+		};
 	}
 
 	async hardDelete(target: DeletionTarget | DeletionTarget[]) {
@@ -839,14 +910,63 @@ export class ExecutionPersistence {
 	private async updateEntityOnly(
 		executionId: string,
 		execution: Partial<IExecutionResponse>,
-		conditions?: UpdateExecutionConditions,
-	): Promise<boolean> {
+		conditions: UpdateExecutionConditions | undefined,
+		gate: boolean,
+	): Promise<ExecutionOutcomeSaveResult> {
 		const updatableColumns = this.pickUpdatableEntityColumns(execution);
-		if (Object.keys(updatableColumns).length === 0) return true;
+		if (Object.keys(updatableColumns).length === 0) return { updated: true, ended: false };
 
-		const whereCondition = this.buildEntityWhereCondition(executionId, conditions);
-		const result = await this.executionRepository.update(whereCondition, updatableColumns);
-		return (result.affected ?? 0) > 0;
+		return await this.writeEntityColumns(
+			async (where, columns) => await this.executionRepository.update(where, columns),
+			executionId,
+			updatableColumns,
+			conditions,
+			gate,
+		);
+	}
+
+	/**
+	 * With `gate`, a terminal status is first written only to an unfinished row. That statement
+	 * matches for one writer only, so its caller is the one that ended the run. When it matches
+	 * nothing, the plain statement runs, so a late write still lands as before.
+	 */
+	private async writeEntityColumns(
+		update: UpdateEntity,
+		executionId: string,
+		columns: OutcomeColumns,
+		conditions: UpdateExecutionConditions | undefined,
+		gate: boolean,
+	): Promise<ExecutionOutcomeSaveResult> {
+		const where = this.buildEntityWhereCondition(executionId, conditions);
+		const endingWhere = gate
+			? this.buildEndingWhereCondition(where, columns, conditions)
+			: undefined;
+
+		if (!endingWhere) {
+			const { affected } = await update(where, columns);
+			return { updated: (affected ?? 0) > 0, ended: false };
+		}
+
+		const { affected: endedRows } = await update(endingWhere, columns);
+		if ((endedRows ?? 0) > 0) return { updated: true, ended: true };
+		// The required status is already unfinished, so the plain statement would match nothing too.
+		if (endingWhere === where) return { updated: false, ended: false };
+
+		const { affected } = await update(where, columns);
+		return { updated: (affected ?? 0) > 0, ended: false };
+	}
+
+	private buildEndingWhereCondition(
+		where: FindOptionsWhere<ExecutionEntity>,
+		columns: OutcomeColumns,
+		conditions: UpdateExecutionConditions | undefined,
+	): FindOptionsWhere<ExecutionEntity> | undefined {
+		if (!isTerminalExecutionStatus(columns.status)) return undefined;
+
+		const requiredStatus = conditions?.requireStatus;
+		if (requiredStatus) return isTerminalExecutionStatus(requiredStatus) ? undefined : where;
+
+		return { ...where, status: In([...UNFINISHED_EXECUTION_STATUSES]) };
 	}
 
 	private async applyDataUpdate(
@@ -854,8 +974,9 @@ export class ExecutionPersistence {
 		mode: ExecutionDataStorageLocation,
 		workflowVersionId: string | null,
 		execution: Partial<IExecutionResponse>,
-		conditions?: UpdateExecutionConditions,
-	): Promise<boolean> {
+		conditions: UpdateExecutionConditions | undefined,
+		gate: boolean,
+	): Promise<ExecutionOutcomeSaveResult> {
 		const { data, workflowData } = execution;
 		const updatableColumns = this.pickUpdatableEntityColumns(execution);
 
@@ -868,10 +989,18 @@ export class ExecutionPersistence {
 
 		return await this.executionRepository.manager.transaction(async (tx) => {
 			const whereCondition = this.buildEntityWhereCondition(ref.executionId, conditions);
+			let ended = false;
 
 			if (Object.keys(updatableColumns).length > 0) {
-				const result = await tx.update(ExecutionEntity, whereCondition, updatableColumns);
-				if ((result.affected ?? 0) === 0) return false;
+				const result = await this.writeEntityColumns(
+					async (where, columns) => await tx.update(ExecutionEntity, where, columns),
+					ref.executionId,
+					updatableColumns,
+					conditions,
+					gate,
+				);
+				if (!result.updated) return result;
+				ended = result.ended;
 			} else if (conditions) {
 				// No entity columns to update, but the caller still requested a guarded write.
 				const lock =
@@ -884,7 +1013,7 @@ export class ExecutionPersistence {
 					lock,
 					withDeleted: conditions.includeDeleted,
 				});
-				if (!matchingRow) return false;
+				if (!matchingRow) return { updated: false, ended: false };
 			}
 
 			if (isFullOverwrite) {
@@ -906,7 +1035,7 @@ export class ExecutionPersistence {
 					{ id: ref.executionId },
 					{ jsonSizeBytes, binaryDataSizeBytes },
 				);
-				return true;
+				return { updated: true, ended };
 			}
 
 			const stored = await this.trackRead(mode, async () =>
@@ -948,7 +1077,7 @@ export class ExecutionPersistence {
 					: { jsonSizeBytes };
 			await tx.update(ExecutionEntity, { id: ref.executionId }, sizeColumns);
 
-			return true;
+			return { updated: true, ended };
 		});
 	}
 
