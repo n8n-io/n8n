@@ -69,7 +69,8 @@ card shows and dropped when the review approves, so it counts the same as in
 Manual mode.
 
 The judge sees the user's messages, the user's answers in question cards, and
-the Assistant's text.
+the Assistant's text. `pnpm eval:approval-judge` measures it on a directory of
+cases (see the evaluations README).
 
 ### Approval copy
 
