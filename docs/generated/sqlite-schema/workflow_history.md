@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "workflow_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "authors" varchar(255) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "nodes" text NOT NULL, "connections" text NOT NULL, "name" varchar(128), "autosaved" boolean NOT NULL DEFAULT (false), "description" text, "nodeGroups" text NOT NULL DEFAULT ('[]'), CONSTRAINT "FK_1e31657f5fe46816c34be7c1b4b" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
+CREATE TABLE "workflow_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "workflowId" varchar(36) NOT NULL, "authors" varchar(255) NOT NULL, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "nodes" text NOT NULL, "connections" text NOT NULL, "name" varchar(128), "autosaved" boolean NOT NULL DEFAULT (false), "description" text, "nodeGroups" text NOT NULL DEFAULT ('[]'), "settings" JSON, CONSTRAINT "FK_1e31657f5fe46816c34be7c1b4b" FOREIGN KEY ("workflowId") REFERENCES "workflow_entity" ("id") ON DELETE CASCADE ON UPDATE NO ACTION)
 ```
 
 </details>
@@ -23,6 +23,7 @@ CREATE TABLE "workflow_history" ("versionId" varchar(36) PRIMARY KEY NOT NULL, "
 | name | varchar(128) |  | true |  |  |  |
 | nodeGroups | TEXT | '[]' | false |  |  |  |
 | nodes | TEXT |  | false |  |  |  |
+| settings | JSON |  | true |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | versionId | varchar(36) |  | false | [workflow_entity](workflow_entity.md) [workflow_publication_trigger_status](workflow_publication_trigger_status.md) [workflow_publish_history](workflow_publish_history.md) [workflow_published_version](workflow_published_version.md) [workflow_review_request_workflow](workflow_review_request_workflow.md) |  |  |
 | workflowId | varchar(36) |  | false |  | [workflow_entity](workflow_entity.md) |  |
@@ -66,6 +67,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  JSON settings
   datetime_3_ updatedAt
   varchar_36_ versionId PK
   varchar_36_ workflowId FK
