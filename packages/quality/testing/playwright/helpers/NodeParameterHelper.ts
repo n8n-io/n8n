@@ -16,7 +16,7 @@ export class NodeParameterHelper {
 		const parameterContainer = this.ndv.getParameterInput(parameterName);
 		const [hasSwitch, hasSelect, hasSelectCaret] = await Promise.all([
 			parameterContainer
-				.locator('.el-switch')
+				.locator('[role="switch"]')
 				.count()
 				.then((count) => count > 0),
 			parameterContainer

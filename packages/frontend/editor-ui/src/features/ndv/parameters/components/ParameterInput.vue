@@ -118,7 +118,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
 import { useBuilderStore } from '@/features/ai/assistant/builder.store';
 
-import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
+import { ElColorPicker, ElDatePicker, ElDialog } from 'element-plus';
 import {
 	N8nIcon,
 	N8nIconPicker,
@@ -2223,13 +2223,13 @@ onUpdated(async () => {
 				@update:model-value="valueChanged"
 			/>
 
-			<ElSwitch
+			<N8nSwitch
 				v-else-if="parameter.type === 'boolean'"
 				ref="inputField"
 				:class="{ 'switch-input': true, 'ph-no-capture': shouldRedactValue }"
-				active-color="#13ce66"
-				:model-value="displayValue"
+				:model-value="Boolean(displayValue)"
 				:disabled="isReadOnly"
+				size="small"
 				@update:model-value="valueChanged"
 			/>
 			<div v-if="!isReadOnly && showDragnDropTip" :class="$style.tip">
@@ -2258,7 +2258,14 @@ onUpdated(async () => {
 }
 
 .switch-input {
+	// A drag replaces this switch with a 32px input. Keep that box height
+	// so the fields below stay under the pointer.
+	display: inline-flex;
+	align-items: center;
+	box-sizing: border-box;
+	height: var(--height--md);
 	margin: var(--spacing--5xs) 0 var(--spacing--2xs) 0;
+	vertical-align: middle;
 }
 
 .parameter-value-container {

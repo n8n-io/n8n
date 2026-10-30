@@ -394,7 +394,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async setParameterSwitch(parameterName: string, enabled: boolean): Promise<void> {
-		const switchElement = this.getParameterInput(parameterName).locator('.el-switch');
+		const switchElement = this.getParameterInput(parameterName).locator('[role="switch"]');
 		const isCurrentlyEnabled = (await switchElement.getAttribute('aria-checked')) === 'true';
 		if (isCurrentlyEnabled !== enabled) {
 			await switchElement.click();
@@ -460,7 +460,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	getParameterSwitch(parameterName: string) {
-		return this.getParameterInput(parameterName).locator('.el-switch');
+		return this.getParameterInput(parameterName).locator('[role="switch"]');
 	}
 
 	getParameterTextInput(parameterName: string) {
@@ -564,7 +564,7 @@ export class NodeDetailsViewPage extends BasePage {
 	}
 
 	async checkParameterCheckboxInputByName(name: string): Promise<void> {
-		const checkbox = this.getParameterInput(name).locator('.el-switch.switch-input');
+		const checkbox = this.getParameterInput(name).locator('[role="switch"]');
 		await checkbox.click();
 	}
 

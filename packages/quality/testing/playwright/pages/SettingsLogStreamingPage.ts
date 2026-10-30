@@ -281,7 +281,7 @@ export class SettingsLogStreamingPage extends BasePage {
 	async toggleSendHeaders(): Promise<void> {
 		await this.getDestinationModal()
 			.getByTestId('parameter-input-sendHeaders')
-			.locator('.el-switch')
+			.locator('[role="switch"]')
 			.click();
 	}
 
