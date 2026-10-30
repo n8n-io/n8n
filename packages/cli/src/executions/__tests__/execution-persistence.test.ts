@@ -1953,6 +1953,10 @@ describe('ExecutionPersistence', () => {
 		const executionPersistence = createPersistenceService('db');
 		const baseTarget = { workflowId: 'wf-1', executionId: 'exec-1' };
 
+		afterEach(() => {
+			executionsConfig.pruneData = true;
+		});
+
 		it('should delete execution, binary data, and blob data when storedAt is fs', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 
@@ -2068,6 +2072,18 @@ describe('ExecutionPersistence', () => {
 			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
 			expect(jsonStore.delete).not.toHaveBeenCalled();
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
+		});
+
+		it('should not soft-delete the rows when pruning is disabled, because no pruning run would remove them', async () => {
+			executionsConfig.pruneData = false;
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+
+			await executionPersistence.hardDelete(target);
+
+			expect(executionRepository.softDeleteByIds).not.toHaveBeenCalled();
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ type: 'execution', ...target }]);
+			expect(jsonStore.delete).toHaveBeenCalledWith([target]);
+			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
 		});
 	});
 
@@ -2297,10 +2313,7 @@ describe('ExecutionPersistence', () => {
 			await executionPersistence.deleteInFlightExecution(target, outcome);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
-			expect(executionRepository.softDeleteByIds).toHaveBeenCalledWith(
-				['exec-1'],
-				expect.any(Date),
-			);
+			expect(executionRepository.softDeleteByIds).not.toHaveBeenCalled();
 			expect(executionRepository.update).not.toHaveBeenCalled();
 		});
 	});

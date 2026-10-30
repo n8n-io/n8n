@@ -709,13 +709,16 @@ export class ExecutionPersistence {
 		if (targets.length === 0) return;
 		const executionIds = targets.map((t) => t.executionId);
 
-		// Soft-delete first, so a failure below leaves a hidden row for the next prune, not one without data.
-		await this.executionRepository.softDeleteByIds(executionIds, this.prunableDeletedAt());
-		// Binaries next. A failure leaves the payload and the rows, so the next prune retries them.
+		// Hide the rows first, so a failure below leaves them for the next prune, not visible without data.
+		// Pruning off: nothing removes hidden rows, so they stay visible and the user can delete them again.
+		if (this.executionsConfig.pruneData) {
+			await this.executionRepository.softDeleteByIds(executionIds, this.prunableDeletedAt());
+		}
+		// Binaries next. A failure leaves the payload and the rows.
 		await this.binaryDataService.deleteMany(
 			targets.map((t) => ({ type: 'execution' as const, ...t })),
 		);
-		// Payload next. A failure leaves the rows, so the next prune retries them.
+		// Payload next. A failure leaves the rows.
 		await this.jsonStore.delete(this.toBlobRefs(targets));
 
 		await this.executionRepository.deleteByIds(executionIds);
@@ -747,7 +750,7 @@ export class ExecutionPersistence {
 		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
 
 		// Batches keep each row delete under the SQLite expression-depth limit.
-		// Each batch soft-deletes the rows, then deletes binaries, the payload and the rows.
+		// Each batch deletes binaries, then the payload, then the rows.
 		for (const batch of chunk(refs, this.executionRepository.hardDeletionBatchSize)) {
 			await this.hardDelete(batch);
 		}
