@@ -236,7 +236,9 @@ export async function cleanupBuild(
 		if (!threadId) continue;
 		try {
 			await client.deleteThread(threadId);
-		} catch {
+		} catch (error: unknown) {
+			// Already gone after an earlier pass: the state this wants.
+			if (error instanceof N8nApiError && error.status === 404) continue;
 			clean = false; // Best-effort cleanup
 		}
 	}
