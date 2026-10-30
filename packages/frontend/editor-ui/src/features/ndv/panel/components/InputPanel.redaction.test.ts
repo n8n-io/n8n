@@ -6,6 +6,7 @@ import {
 	createTestWorkflowExecutionResponse,
 } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import { WorkflowDocumentStoreKey, WorkflowIdKey } from '@/app/constants/injectionKeys';
 import {
 	createWorkflowDocumentId,
@@ -31,7 +32,7 @@ const noPermissionDescription =
 
 function renderRedactedExecution(reason: RedactionInfo['reason'], canShareCredential = false) {
 	const pinia = createTestingPinia({ stubActions: false });
-	useUsersStore().currentUser = createUser({
+	mockedStore(useUsersStore).currentUser = createUser({
 		globalScopes: canShareCredential ? ['credential:share'] : [],
 	});
 
