@@ -1,31 +1,19 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
-import { mintActionToken, mintIdentityToken, type LifecycleEvent } from '@n8n/engine';
+import { mintActionToken, mintIdentityToken } from '@n8n/engine';
 import type { Request, Response } from 'express';
 import request from 'supertest';
 import { mock } from 'vitest-mock-extended';
 
 import { EngineControlPlaneServer } from '../engine-control-plane-server';
 import type { EngineCredentialsController } from '../engine-credentials.controller';
-import type { EngineLifecycleEventPushRelay } from '../engine-lifecycle-event-push-relay';
-import { EngineLifecycleEventController } from '../engine-lifecycle-event.controller';
 
 const authSecret = 'a'.repeat(32);
-
-const events: LifecycleEvent[] = [
-	{
-		type: 'execution:completed',
-		executionId: 'exec-1',
-		workflowId: 'wf-1',
-		at: '2026-08-25T10:00:00.000Z',
-	},
-];
 
 /** Binds for real, so these exercise the wiring rather than a mock app. */
 describe('EngineControlPlaneServer', () => {
 	let server: EngineControlPlaneServer;
 	let serverLogger: Logger;
-	let pushRelay: EngineLifecycleEventPushRelay;
 	let credentialsController: EngineCredentialsController;
 	let baseUrl: string;
 
@@ -40,12 +28,9 @@ describe('EngineControlPlaneServer', () => {
 
 	beforeEach(async () => {
 		serverLogger = mock<Logger>();
-		pushRelay = mock<EngineLifecycleEventPushRelay>();
 		credentialsController = mock<EngineCredentialsController>();
-		const controller = new EngineLifecycleEventController(pushRelay);
 		server = new EngineControlPlaneServer(
 			engineConfig(),
-			controller,
 			credentialsController,
 			mock<Logger>({ scoped: vi.fn().mockReturnValue(serverLogger) }),
 		);
@@ -57,12 +42,6 @@ describe('EngineControlPlaneServer', () => {
 	afterEach(async () => {
 		await server.stop();
 	});
-
-	const post = (body: unknown, token?: string) => {
-		const req = request(baseUrl).post('/internal/status-callback');
-		if (token) req.set('Authorization', `Bearer ${token}`);
-		return req.send(body as object);
-	};
 
 	const postResolve = (body: unknown, token?: string) => {
 		const req = request(baseUrl).post('/internal/credentials/resolve');
@@ -98,52 +77,13 @@ describe('EngineControlPlaneServer', () => {
 		expect(response.body).toEqual({ status: 'ok' });
 	});
 
-	it('accepts a batch from an authenticated data plane', async () => {
-		const response = await post({ events }, mintActionToken(authSecret, 'lifecycle-events:write'));
+	it('no longer accepts lifecycle events over HTTP', async () => {
+		const response = await request(baseUrl)
+			.post('/internal/status-callback')
+			.set('Authorization', `Bearer ${mintActionToken(authSecret, 'credentials:read')}`)
+			.send({ events: [] });
 
-		expect(response.status).toBe(204);
-		// Confirms the request reached the relay.
-		expect(pushRelay.relay).toHaveBeenCalledExactlyOnceWith(events);
-	});
-
-	it.each([
-		['no token', undefined],
-		[
-			'an identity token minted for the other direction',
-			mintIdentityToken(authSecret, {
-				cpId: 'cp-1',
-				tenantId: 'tenant-1',
-			}),
-		],
-		[
-			'a token signed with a different secret',
-			mintActionToken('b'.repeat(32), 'lifecycle-events:write'),
-		],
-		[
-			'an action token minted for credential reads',
-			mintActionToken(authSecret, 'credentials:read'),
-		],
-	])('rejects %s', async (_label, token) => {
-		const response = await post({ events }, token);
-
-		expect(response.status).toBe(401);
-		expect(response.body).toEqual({ code: 401, message: 'Unauthenticated' });
-	});
-
-	it('rejects a batch the engine schema does not accept', async () => {
-		const response = await post(
-			{ events: [{ type: 'nope' }] },
-			mintActionToken(authSecret, 'lifecycle-events:write'),
-		);
-
-		expect(response.status).toBe(400);
-	});
-
-	it('does not authenticate the request body before the caller', async () => {
-		// An unauthenticated caller must not learn whether its body would validate.
-		const response = await post({ events: [{ type: 'nope' }] });
-
-		expect(response.status).toBe(401);
+		expect(response.status).toBe(404);
 	});
 
 	describe('credential resolve route', () => {
@@ -155,6 +95,12 @@ describe('EngineControlPlaneServer', () => {
 					res.status(200).json({ data: {} });
 				},
 			);
+		});
+
+		it('does not read the request body before it authenticates the caller', async () => {
+			const response = await postResolve('not json');
+
+			expect(response.status).toBe(401);
 		});
 
 		it('hands an authenticated request with its parsed body to the controller', async () => {
@@ -169,7 +115,10 @@ describe('EngineControlPlaneServer', () => {
 
 		it.each([
 			['no token', undefined],
-			['a lifecycle token', mintActionToken(authSecret, 'lifecycle-events:write')],
+			[
+				'an identity token minted for the other direction',
+				mintIdentityToken(authSecret, { cpId: 'cp-1', tenantId: 'tenant-1' }),
+			],
 			[
 				'a token signed with a different secret',
 				mintActionToken('b'.repeat(32), 'credentials:read'),
@@ -178,6 +127,7 @@ describe('EngineControlPlaneServer', () => {
 			const response = await postResolve(body, token);
 
 			expect(response.status).toBe(401);
+			expect(response.body).toEqual({ code: 401, message: 'Unauthenticated' });
 			expect(credentialsController.resolveCredential).not.toHaveBeenCalled();
 		});
 	});
