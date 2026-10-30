@@ -1,5 +1,6 @@
 import { isObjectLiteral } from '@n8n/backend-common';
-import { NodeOperationError, WorkflowOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
+import { NodeOperationError } from 'n8n-workflow';
 import type { Workflow } from 'n8n-workflow';
 
 /**
@@ -40,9 +41,7 @@ export function objectToError(errorObject: unknown, workflow: Workflow): Error {
 			(errorObject.level === 'warning' || errorObject.level === 'info')
 		) {
 			// A plain `Error` has no level, so the error reporter would send this expected error to Sentry.
-			const operationError = new WorkflowOperationError(errorObject.message);
-			operationError.level = errorObject.level;
-			error = operationError;
+			error = new OperationalError(errorObject.message, { level: errorObject.level });
 		}
 
 		if (error === undefined) {

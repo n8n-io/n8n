@@ -729,7 +729,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				const run = runSubWorkflow(false);
 
 				await expect(run).rejects.toThrow('cannot be called by this workflow');
-				await expect(run).rejects.toMatchObject({ level: 'warning' });
+				await expect(run).rejects.toMatchObject({ level: 'warning', shouldReport: false });
 
 				expect(WorkflowExecute).not.toHaveBeenCalled();
 				expect(executeErrorWorkflow).not.toHaveBeenCalled();
