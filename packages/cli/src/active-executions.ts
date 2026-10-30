@@ -144,7 +144,6 @@ export class ActiveExecutions {
 					data: executionData.executionData!,
 					waitTill: null,
 					status: executionStatus,
-					// The execution runs now, so its resume attempts start again at zero
 					resumeAttempts: 0,
 				};
 

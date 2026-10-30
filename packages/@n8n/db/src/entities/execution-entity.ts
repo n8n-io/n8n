@@ -128,11 +128,7 @@ export class ExecutionEntity {
 	@Column({ type: 'bigint', default: 0, transformer: bigintStringToNumber })
 	binaryDataSizeBytes: number;
 
-	/**
-	 * Resume attempts since the execution last entered `waiting` or `new`. Incremented before
-	 * each load, so a load that kills the process stays counted. Reset to 0 once the execution
-	 * runs.
-	 */
+	/** Resume attempts since the execution last entered `waiting` or `new`. Reset once it runs. */
 	@Column({ type: 'smallint', default: 0 })
 	resumeAttempts: number;
 

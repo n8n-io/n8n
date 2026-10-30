@@ -447,9 +447,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Set a `waiting` or `new` execution to `crashed`. `markAsCrashed` skips those statuses on
-	 * purpose, so the caller names the one to leave. With `expectedAttempts`, the row is left
-	 * alone if its count changed since the caller read it.
+	 * Set a `waiting` or `new` execution to `crashed`, which `markAsCrashed` skips on purpose.
+	 * With `expectedAttempts`, the row is left alone if its count changed since it was read.
 	 */
 	async markAsCrashedFrom(
 		executionId: string,
@@ -817,8 +816,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	/**
 	 * Count one resume attempt before the load, so a load that kills the process stays
-	 * counted. Reports `exhausted` once the count has reached `maxAttempts`, and `conflict`
-	 * when the row is no longer in `status`.
+	 * counted. `conflict` means the row is no longer in `status`.
 	 */
 	async claimResumeAttempt(
 		executionId: string,
@@ -861,7 +859,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	/** Ids of all `new` executions, oldest first. */
 	async findEnqueuedIds(): Promise<string[]> {
 		const rows = await this.find({
 			select: ['id'],
