@@ -93,12 +93,15 @@ describe('resumePaused', () => {
 		id: 'job-1',
 		status: 'paused',
 		pauseRequestId: 'stop-1',
+		planId: 'plan-1',
+		planTaskId: 'task-1',
 		notifiedAt: new Date(),
 		parentAgentId: 'agent-1',
 		parentThreadId: 'thread-1',
 		subAgentId: 'sub-1',
 		childThreadId: 'child-thread-1',
 	});
+
 	function prepare(approval = false) {
 		const setupResult = setup();
 		const taskPath = '/root/research_0';
@@ -148,9 +151,13 @@ describe('resumePaused', () => {
 		});
 		await backgroundRunner.resumePaused(job, context, reservationTimeoutAt);
 		await flushDetachedRun();
+
 		expect(runner.resumePaused).toHaveBeenCalledWith(
 			expect.objectContaining({ childThreadId: job.childThreadId, childRunId: 'run-1' }),
-			expect.objectContaining({ runtimeSnapshot: 'saved-configuration' }),
+			expect.objectContaining({
+				runtimeSnapshot: 'saved-configuration',
+				planTask: { planId: 'plan-1', planTaskId: 'task-1' },
+			}),
 		);
 		expect(jobRepository.resumeIfPaused).toHaveBeenCalledWith(
 			job.id,
@@ -243,6 +250,10 @@ describe('resumePaused', () => {
 		);
 		await flushDetachedRun();
 		expect(runner.resumeForeground.mock.lastCall?.[1].abortSignal?.aborted).toBe(true);
+		expect(runner.resumeForeground.mock.lastCall?.[1].planTask).toEqual({
+			planId: 'plan-1',
+			planTaskId: 'task-1',
+		});
 	});
 
 	it('rejects an expired checkpoint without starting replacement work', async () => {
@@ -298,6 +309,17 @@ describe('spawn', () => {
 			parentResourceId: 'resource-1',
 			parentPrincipalHash: 'principal-hash',
 		});
+	});
+
+	it('forwards the parent execution id to the run and omits it when none is supplied', async () => {
+		const { backgroundRunner, runner, context } = setup();
+
+		await backgroundRunner.spawn({ ...request, parentExecutionId: 'turn-1' }, context);
+		await backgroundRunner.spawn(request, context);
+		await flushDetachedRun();
+
+		expect(runner.run.mock.calls[0][0]).toMatchObject({ parentExecutionId: 'turn-1' });
+		expect(runner.run.mock.calls[1][0]).not.toHaveProperty('parentExecutionId');
 	});
 
 	it('runs on its own abort scope without parent telemetry or execution counter', async () => {

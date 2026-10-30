@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { InboxItem, InboxSelfHealingItem } from '@n8n/api-types';
+import type { InboxItem, InboxSelfHealingItem, PromotionReviewType } from '@n8n/api-types';
 import {
 	N8nAssistantAvatar,
 	N8nBadge,
 	N8nCard,
-	N8nIcon,
 	N8nText,
 	N8nTimeAgo,
+	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,6 +17,9 @@ defineProps<{ item: InboxItem; selected: boolean }>();
 const emit = defineEmits<{ select: [] }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
+
+// A promotion review shows the icon of its Git host. A new host needs an icon here.
+const reviewTypeIcon = { gitlab: 'gitlab' } satisfies Record<PromotionReviewType, IconName>;
 
 function itemTitle(item: InboxItem) {
 	switch (item.type) {
@@ -101,15 +104,18 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 				<N8nBadge
 					v-if="item.type === 'promotion_review'"
 					variant="outline"
-					leading-icon="git-branch"
+					:leading-icon="reviewTypeIcon[item.reviewType]"
 					:class="$style.workflowBadge"
 					>{{ i18n.baseText('inbox.promotionReview.badge') }}</N8nBadge
 				>
-				<N8nBadge v-else-if="item.workflowName" variant="outline" :class="$style.workflowBadge">
-					<span :class="$style.workflowBadgeText" :title="item.workflowName"
-						><N8nIcon icon="workflow" size="small" /><span>{{ item.workflowName }}</span></span
-					>
-				</N8nBadge>
+				<N8nBadge
+					v-else-if="item.workflowName"
+					variant="outline"
+					leading-icon="workflow"
+					:class="$style.workflowBadge"
+					:title="item.workflowName"
+					>{{ item.workflowName }}</N8nBadge
+				>
 				<div :class="$style.metaActions">
 					<N8nText
 						v-if="item.type === 'promotion_review' && item.remoteError"
@@ -194,20 +200,6 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 	color: var(--color--text);
 	> span {
 		max-width: 100%;
-	}
-}
-.workflowBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	max-width: 100%;
-	min-width: 0;
-	line-height: calc(var(--font-size--sm) + var(--border-width));
-	> span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		min-width: 0;
 	}
 }
 .metaActions {

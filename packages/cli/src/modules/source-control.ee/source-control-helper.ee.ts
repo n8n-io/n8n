@@ -214,7 +214,8 @@ export async function generateSshKeyPair(keyType: KeyPairType): Promise<KeyPair>
 	return await generateGitSshKeyPair(keyType, SOURCE_CONTROL_GIT_KEY_COMMENT);
 }
 
-export function getRepoType(repoUrl: string): 'github' | 'gitlab' | 'other' {
+export function getRepoType(repoUrl?: string): 'github' | 'gitlab' | 'other' {
+	if (!repoUrl) return 'other';
 	if (repoUrl.includes('github.com')) {
 		return 'github';
 	} else if (repoUrl.includes('gitlab.com')) {

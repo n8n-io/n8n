@@ -30,6 +30,37 @@ type FirstVisibleSummary = {
 	firstToolName?: string;
 };
 
+/**
+ * What the user could see during a run, in order. Both Assistant runtimes map
+ * their own stream to these signals, so their traces carry the same metadata.
+ */
+export type RunTraceSignal =
+	| { kind: 'tool-call'; toolName: string }
+	| { kind: 'hitl'; toolName: string }
+	| { kind: 'text'; text: string }
+	| { kind: 'task-card' };
+
+/** The signal of an event of the current runtime, if the event is visible. */
+export function runTraceSignalOf(event: InstanceAiEvent): RunTraceSignal | undefined {
+	switch (event.type) {
+		case 'tool-call':
+			return { kind: 'tool-call', toolName: event.payload.toolName };
+		case 'confirmation-request':
+			return { kind: 'hitl', toolName: event.payload.toolName };
+		// A streamed segment reaches this read as deltas mid-run and as one
+		// coalesced `text-block` once it closes (the durable log never persists
+		// deltas), so both spellings have to count as visible assistant text.
+		case 'text-delta':
+		case 'text-block':
+			return { kind: 'text', text: event.payload.text };
+		case 'agent-spawned':
+		case 'tasks-update':
+			return { kind: 'task-card' };
+		default:
+			return undefined;
+	}
+}
+
 function withFirstToolName(
 	state: InstanceAiFirstVisibleState,
 	firstToolName: string | undefined,
@@ -37,43 +68,35 @@ function withFirstToolName(
 	return firstToolName ? { state, firstToolName } : { state };
 }
 
-function getFirstToolName(events: InstanceAiEvent[]): string | undefined {
-	for (const event of events) {
-		if (event.type === 'tool-call') return event.payload.toolName;
+function getFirstToolName(signals: RunTraceSignal[]): string | undefined {
+	for (const signal of signals) {
+		if (signal.kind === 'tool-call') return signal.toolName;
 	}
 
 	return undefined;
 }
 
-function getFirstVisibleSummary(events: InstanceAiEvent[]): FirstVisibleSummary {
-	const firstToolName = getFirstToolName(events);
+function getFirstVisibleSummary(signals: RunTraceSignal[]): FirstVisibleSummary {
+	const firstToolName = getFirstToolName(signals);
 	let sawToolCall = false;
 
-	for (const event of events) {
-		if (event.type === 'tool-call') {
-			sawToolCall = true;
-			continue;
-		}
-
-		if (event.type === 'confirmation-request') {
-			return {
-				state: 'contextless_hitl',
-				firstToolName: firstToolName ?? event.payload.toolName,
-			};
-		}
-
-		// A streamed segment reaches this read as deltas mid-run and as one
-		// coalesced `text-block` once it closes (the durable log never persists
-		// deltas), so both spellings have to count as visible assistant text.
-		if (
-			(event.type === 'text-delta' || event.type === 'text-block') &&
-			event.payload.text.trim().length > 0
-		) {
-			return withFirstToolName('assistant_text', firstToolName);
-		}
-
-		if (event.type === 'agent-spawned' || event.type === 'tasks-update') {
-			return withFirstToolName('task_card', firstToolName);
+	for (const signal of signals) {
+		switch (signal.kind) {
+			case 'tool-call':
+				sawToolCall = true;
+				break;
+			case 'hitl':
+				return {
+					state: 'contextless_hitl',
+					firstToolName: firstToolName ?? signal.toolName,
+				};
+			case 'text':
+				if (signal.text.trim().length > 0) {
+					return withFirstToolName('assistant_text', firstToolName);
+				}
+				break;
+			case 'task-card':
+				return withFirstToolName('task_card', firstToolName);
 		}
 	}
 
@@ -96,7 +119,19 @@ export function buildInstanceAiRunTraceMetadata(
 	events: InstanceAiEvent[],
 	options: InstanceAiRunTraceMetadataOptions,
 ): Record<string, unknown> {
-	const firstVisible = getFirstVisibleSummary(events);
+	const signals: RunTraceSignal[] = [];
+	for (const event of events) {
+		const signal = runTraceSignalOf(event);
+		if (signal) signals.push(signal);
+	}
+	return buildRunTraceMetadata(signals, options);
+}
+
+export function buildRunTraceMetadata(
+	signals: RunTraceSignal[],
+	options: InstanceAiRunTraceMetadataOptions,
+): Record<string, unknown> {
+	const firstVisible = getFirstVisibleSummary(signals);
 	const metadata: Record<string, unknown> = {
 		first_visible_state: firstVisible.state,
 	};

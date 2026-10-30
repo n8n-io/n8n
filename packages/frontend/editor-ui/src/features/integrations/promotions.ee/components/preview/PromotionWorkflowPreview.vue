@@ -14,7 +14,6 @@ const props = defineProps<{
 	resourceKey: ResourceKey;
 	workflowName: string;
 	direction: PromotionDirection;
-	branchName?: string;
 	graph: SelectionGraph;
 }>();
 const emit = defineEmits<{ activate: []; retry: []; refresh: [] }>();
@@ -44,24 +43,16 @@ const PromotionWorkflowDiff = defineAsyncComponent(
 				:detail="detail"
 				:resource-key="resourceKey"
 				:direction="direction"
-				:branch-name="branchName"
 				:graph="graph"
 			/>
 			<template #fallback>
-				<PromotionWorkflowShell
-					status="loading"
-					:workflow-name="workflowName"
-					:direction="direction"
-					:branch-name="branchName"
-				/>
+				<PromotionWorkflowShell status="loading" :workflow-name="workflowName" />
 			</template>
 		</Suspense>
 		<PromotionWorkflowShell
 			v-else
 			:status="status"
 			:workflow-name="workflowName"
-			:direction="direction"
-			:branch-name="branchName"
 			@activate="emit('activate')"
 			@retry="emit('retry')"
 			@refresh="emit('refresh')"

@@ -1,11 +1,13 @@
 import { ApplyPackageResultDto, type ContinueApplyPackageDto } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import { OutboundHttp, SsrfProtectionService, type DnsResolver } from '@n8n/backend-network';
 import { createTeamProject, getPersonalProject, testDb } from '@n8n/backend-test-utils';
 import { SsrfProtectionConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { GLOBAL_MEMBER_ROLE, ProjectRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { onTestFinished } from 'vitest';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { Cipher } from 'n8n-core';
 import nock from 'nock';
@@ -32,8 +34,9 @@ import { setupTestServer } from '@test-integration/utils';
 
 describe('Promotions in Public API', () => {
 	const testServer = setupTestServer({
+		reuseServer: true,
 		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:gitConnections'],
+		enabledFeatures: ['feat:promotions'],
 		modules: ['promotions'],
 	});
 	let owner: User;
@@ -537,7 +540,7 @@ describe('Promotions in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('read_api scope');
+			expect(response.body.message).toContain('api scope');
 			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
 			api.done();
 		});
@@ -1250,7 +1253,7 @@ describe('Promotions in Public API', () => {
 
 		it.each([
 			{ route: 'repositories', status: 401, message: 'rejected the access token' },
-			{ route: 'repositories', status: 403, message: 'read_api scope' },
+			{ route: 'repositories', status: 403, message: 'api scope' },
 			{ route: 'repositories', status: 503, message: 'not available' },
 			{ route: 'repositories/42/branches', status: 403, message: 'repository access' },
 		])(
@@ -1385,9 +1388,9 @@ describe('Promotions in Public API', () => {
 			'requires the API-key discovery scope and user permission for %s',
 			async (route) => {
 				const id = await savedProvider();
-				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:read'] });
-				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:list'] });
-				const member = await createMemberWithApiKey({ scopes: ['gitConnection:discover'] });
+				const readOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:read'] });
+				const listOnlyOwner = await createOwnerWithApiKey({ scopes: ['promotions:list'] });
+				const member = await createMemberWithApiKey({ scopes: ['promotions:discover'] });
 				for (const user of [readOnlyOwner, listOnlyOwner, member]) {
 					const response = await testServer
 						.publicApiAgentFor(user)
@@ -1398,7 +1401,7 @@ describe('Promotions in Public API', () => {
 					(await testServer.publicApiAgentFor(readOnlyOwner).get(`/promotions/providers/${id}`))
 						.status,
 				).toBe(200);
-				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:discover'] });
+				const discoveryOwner = await createOwnerWithApiKey({ scopes: ['promotions:discover'] });
 				const admin = await createAdminWithApiKey();
 				for (const user of [discoveryOwner, admin]) {
 					const api = (
@@ -1425,7 +1428,7 @@ describe('Promotions in Public API', () => {
 
 		it.each(routes)('requires an active, licensed promotions module for %s', async (route) => {
 			const agent = testServer.publicApiAgentFor(owner);
-			testServer.license.disable('feat:gitConnections');
+			testServer.license.disable('feat:promotions');
 			expect((await agent.get(`/promotions/providers/not-needed/${route}`)).status).toBe(403);
 			testServer.license.reset();
 			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
@@ -1742,7 +1745,7 @@ describe('Promotions in Public API', () => {
 	});
 
 	it('rejects every request when the feature is not licensed', async () => {
-		testServer.license.disable('feat:gitConnections');
+		testServer.license.disable('feat:promotions');
 		const response = await testServer.publicApiAgentFor(owner).get('/promotions/environments');
 		expect(response.status).toBe(403);
 	});
@@ -1852,8 +1855,8 @@ describe('Promotions in Public API', () => {
 		async (canExportVariableValues) => {
 			const scopedOwner = await createOwnerWithApiKey({
 				scopes: canExportVariableValues
-					? ['gitConnection:push', 'variable:list']
-					: ['gitConnection:push'],
+					? ['promotions:promote', 'variable:list']
+					: ['promotions:promote'],
 			});
 			const environmentId = randomUUID();
 			const promote = vi
@@ -1880,6 +1883,29 @@ describe('Promotions in Public API', () => {
 		},
 	);
 
+	it('accepts a Promote without a commit message', async () => {
+		const environmentId = randomUUID();
+		const promote = vi
+			.spyOn(Container.get(PromotionsService), 'promote')
+			.mockRejectedValueOnce(new BadRequestError('Operation stopped for test'));
+		try {
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.post(`/promotions/environments/${environmentId}/promote`)
+				.send({});
+
+			expect(response.status).toBe(400);
+			expect(response.body.message).toBe('Operation stopped for test');
+			expect(promote).toHaveBeenCalledWith(
+				environmentId,
+				expect.objectContaining({ id: owner.id }),
+				expect.not.objectContaining({ commitMessage: expect.anything() }),
+			);
+		} finally {
+			promote.mockRestore();
+		}
+	});
+
 	it('refuses to change the authentication method of a provider', async () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
@@ -1895,6 +1921,8 @@ describe('Promotions in Public API', () => {
 		const agent = testServer.publicApiAgentFor(owner);
 		const providerId = await createProvider(agent);
 		const environmentId = await createEnvironment(agent, { providerId });
+		const emit = vi.spyOn(Container.get(EventService), 'emit');
+		onTestFinished(() => emit.mockRestore());
 
 		const inUse = await agent.delete(`/promotions/providers/${providerId}`);
 		await agent.delete(`/promotions/environments/${environmentId}`);
@@ -1905,6 +1933,14 @@ describe('Promotions in Public API', () => {
 		expect(
 			await Container.get(PromotionProviderRepository).findOneBy({ id: providerId }),
 		).toBeNull();
+		// The database reports the deleted rows, so each delete emits once and the refused one not at all.
+		const deletes = emit.mock.calls.filter(([name]) =>
+			['promotion-provider-deleted', 'promotion-environment-deleted'].includes(name),
+		);
+		expect(deletes.map(([name]) => name)).toEqual([
+			'promotion-environment-deleted',
+			'promotion-provider-deleted',
+		]);
 	});
 
 	it('stores nothing when the environment names an unknown provider', async () => {
@@ -2257,10 +2293,10 @@ describe('Promotions in Public API', () => {
 				.mockResolvedValue({ commitSha: 'a'.repeat(40), source, changes: [] });
 			try {
 				const pushOnly = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 				const pullOnly = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:apply'] }),
 				);
 
 				const promote = await pushOnly.get('/promotions/projects/proj1/changes/promote');
@@ -2313,7 +2349,7 @@ describe('Promotions in Public API', () => {
 			git: { commitSha: 'a'.repeat(40), branchName: 'main' },
 		};
 
-		it('requires the push API-key scope', async () => {
+		it('requires the promote API-key scope', async () => {
 			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 			const response = await testServer
 				.publicApiAgentFor(restrictedOwner)
@@ -2322,9 +2358,9 @@ describe('Promotions in Public API', () => {
 			expect(response.status).toBe(403);
 		});
 
-		it('rejects a user without the push grant', async () => {
-			// The key carries the push scope, but a member's role does not grant it.
-			const member = await createMemberWithApiKey({ scopes: ['gitConnection:push'] });
+		it('rejects a user without the promote grant', async () => {
+			// The key carries the promote scope, but a member's role does not grant it.
+			const member = await createMemberWithApiKey({ scopes: ['promotions:promote'] });
 			const response = await testServer
 				.publicApiAgentFor(member)
 				.post('/promotions/projects/proj1/promote')
@@ -2334,12 +2370,12 @@ describe('Promotions in Public API', () => {
 
 		it('requires a licensed and active module', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
-			testServer.license.disable('feat:gitConnections');
+			testServer.license.disable('feat:promotions');
 			expect(
 				(await agent.post('/promotions/projects/proj1/promote').send({ workflowIds: ['w1'] }))
 					.status,
 			).toBe(403);
-			testServer.license.enable('feat:gitConnections');
+			testServer.license.enable('feat:promotions');
 			const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 			try {
 				const project = await createTeamProject('Team project', owner);
@@ -2371,10 +2407,10 @@ describe('Promotions in Public API', () => {
 				.mockResolvedValue(promoteResult);
 			try {
 				const withVars = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:push', 'variable:list'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:promote', 'variable:list'] }),
 				);
 				const withoutVars = testServer.publicApiAgentFor(
-					await createOwnerWithApiKey({ scopes: ['gitConnection:push'] }),
+					await createOwnerWithApiKey({ scopes: ['promotions:promote'] }),
 				);
 
 				const first = await withVars
@@ -2423,7 +2459,7 @@ describe('Promotions in Public API', () => {
 			expectedSource: { environmentId: 'env1', branchName: 'main', commitSha: 'a'.repeat(40) },
 		};
 
-		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+		it.each(['apply', 'apply/continue'])('%s requires the apply API-key scope', async (route) => {
 			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 			const response = await testServer
 				.publicApiAgentFor(restrictedOwner)
@@ -2433,10 +2469,10 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(['apply', 'apply/continue'])(
-			'%s rejects a user without the pull grant',
+			'%s rejects a user without the apply grant',
 			async (route) => {
-				// The key carries the pull scope, but a member's role does not grant it.
-				const member = await createMemberWithApiKey({ scopes: ['gitConnection:pull'] });
+				// The key carries the apply scope, but a member's role does not grant it.
+				const member = await createMemberWithApiKey({ scopes: ['promotions:apply'] });
 				const response = await testServer
 					.publicApiAgentFor(member)
 					.post(`/promotions/projects/proj1/${route}`)
@@ -2449,11 +2485,11 @@ describe('Promotions in Public API', () => {
 			'%s requires a licensed and active module',
 			async (route) => {
 				const agent = testServer.publicApiAgentFor(owner);
-				testServer.license.disable('feat:gitConnections');
+				testServer.license.disable('feat:promotions');
 				expect(
 					(await agent.post(`/promotions/projects/proj1/${route}`).send(selectionBody)).status,
 				).toBe(403);
-				testServer.license.enable('feat:gitConnections');
+				testServer.license.enable('feat:promotions');
 				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 				try {
 					expect(
@@ -2465,19 +2501,27 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('rejects an empty selection with 400 on both routes', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			expect(
-				(await agent.post('/promotions/projects/proj1/apply').send({ workflowIds: [] })).status,
-			).toBe(400);
-			expect(
-				(
-					await agent
-						.post('/promotions/projects/proj1/apply/continue')
-						.send({ workflowIds: [], expectedSource: selectionBody.expectedSource })
-				).status,
-			).toBe(400);
-		});
+		it.each([
+			{ selection: 'an empty', workflowIds: [] },
+			{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] },
+		])(
+			'rejects $selection selection before calling either Apply service',
+			async ({ workflowIds }) => {
+				const service = Container.get(PromotionsService);
+				const initial = vi.spyOn(service, 'applyProjectSelection');
+				const continuation = vi.spyOn(service, 'continueApplyProjectSelection');
+				const agent = testServer.publicApiAgentFor(owner);
+				for (const route of ['apply', 'apply/continue']) {
+					const response = await agent.post(`/promotions/projects/proj1/${route}`).send({
+						workflowIds,
+						expectedSource: selectionBody.expectedSource,
+					});
+					expect(response.status, JSON.stringify(response.body)).toBe(400);
+				}
+				expect(initial).not.toHaveBeenCalled();
+				expect(continuation).not.toHaveBeenCalled();
+			},
+		);
 
 		it('requires workflowIds and a supported source on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);
@@ -2496,7 +2540,7 @@ describe('Promotions in Public API', () => {
 		});
 
 		it.each(['blocked', 'applied', 'source-changed'] as const)(
-			'returns the %s contract through both selective apply routes with only the pull scope',
+			'returns the %s contract through both selective apply routes with only the apply scope',
 			async (status) => {
 				const consumers = [
 					{
@@ -2517,7 +2561,7 @@ describe('Promotions in Public API', () => {
 					status,
 					environmentId: selectionBody.expectedSource.environmentId,
 					git: { branchName: 'main', commitSha: selectionBody.expectedSource.commitSha },
-					preflight: {
+					check: {
 						missingProjects: [],
 						missingBindings: [
 							{
@@ -2536,16 +2580,17 @@ describe('Promotions in Public API', () => {
 					warnings,
 					counts: {
 						projects: { created: 0, updated: 0, skipped: 0, deleted: 0 },
-						folders: { created: 0, skipped: 0, removed: 0 },
+						folders: { created: 0, updated: 0, skipped: 0, moved: 0, renamed: 0, removed: 0 },
 						workflows: {
 							created: 0,
 							updated: 0,
 							skipped: 0,
+							moved: 0,
 							archived: 0,
 							deleted: 0,
 							publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
 						},
-						credentials: { matched: 0, stubbed: 0 },
+						credentials: { matched: 0, stubbed: 0, updated: 0 },
 						dataTables: { matched: 0, created: 0, updated: 0 },
 						variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 						tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },
@@ -2557,7 +2602,7 @@ describe('Promotions in Public API', () => {
 					.spyOn(service, 'continueApplyProjectSelection')
 					.mockResolvedValue(result);
 				try {
-					const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+					const restrictedOwner = await createOwnerWithApiKey({ scopes: ['promotions:apply'] });
 					const agent = testServer.publicApiAgentFor(restrictedOwner);
 					for (const route of ['apply', 'apply/continue']) {
 						const response = await agent
@@ -2590,7 +2635,7 @@ describe('Promotions in Public API', () => {
 		};
 		const unknownId = randomUUID();
 
-		it.each(['apply', 'apply/continue'])('%s requires the pull API-key scope', async (route) => {
+		it.each(['apply', 'apply/continue'])('%s requires the apply API-key scope', async (route) => {
 			const restrictedOwner = await createOwnerWithApiKey({ scopes: ['variable:list'] });
 			const response = await testServer
 				.publicApiAgentFor(restrictedOwner)
@@ -2603,12 +2648,12 @@ describe('Promotions in Public API', () => {
 			'%s requires a licensed and active module',
 			async (route) => {
 				const agent = testServer.publicApiAgentFor(owner);
-				testServer.license.disable('feat:gitConnections');
+				testServer.license.disable('feat:promotions');
 				expect(
 					(await agent.post(`/promotions/environments/${unknownId}/${route}`).send(continueBody))
 						.status,
 				).toBe(403);
-				testServer.license.enable('feat:gitConnections');
+				testServer.license.enable('feat:promotions');
 				const active = vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockReturnValue(false);
 				try {
 					expect(
@@ -2622,7 +2667,7 @@ describe('Promotions in Public API', () => {
 		);
 
 		it.each(['apply', 'apply/continue'])(
-			'%s rejects a user without the pull grant',
+			'%s rejects a user without the apply grant',
 			async (route) => {
 				await Container.get(UserRepository).update(owner.id, { role: GLOBAL_MEMBER_ROLE });
 				const response = await testServer
@@ -2682,7 +2727,7 @@ describe('Promotions in Public API', () => {
 			'returns the %s contract through both Apply routes with only the pull API-key scope',
 			async (status) => {
 				const id = await createEnvironment(testServer.publicApiAgentFor(owner));
-				const restrictedOwner = await createOwnerWithApiKey({ scopes: ['gitConnection:pull'] });
+				const restrictedOwner = await createOwnerWithApiKey({ scopes: ['promotions:apply'] });
 				const agent = testServer.publicApiAgentFor(restrictedOwner);
 				const consumers = [
 					{
@@ -2703,7 +2748,7 @@ describe('Promotions in Public API', () => {
 					status,
 					environmentId: id,
 					git: { branchName: 'main', commitSha: continueBody.expectedSource.commitSha },
-					preflight: {
+					check: {
 						missingProjects: [],
 						missingBindings: [
 							{
@@ -2722,16 +2767,17 @@ describe('Promotions in Public API', () => {
 					warnings,
 					counts: {
 						projects: { created: 0, updated: 0, skipped: 0, deleted: 0 },
-						folders: { created: 0, skipped: 0, removed: 0 },
+						folders: { created: 0, updated: 0, skipped: 0, moved: 0, renamed: 0, removed: 0 },
 						workflows: {
 							created: 0,
 							updated: 0,
 							skipped: 0,
+							moved: 0,
 							archived: 0,
 							deleted: 0,
 							publishing: { published: 0, unpublished: 0, unchanged: 0, blocked: 0, failed: 0 },
 						},
-						credentials: { matched: 0, stubbed: 0 },
+						credentials: { matched: 0, stubbed: 0, updated: 0 },
 						dataTables: { matched: 0, created: 0, updated: 0 },
 						variables: { matched: 0, created: 0, updated: 0, stubbed: 0, missing: 0 },
 						tags: { matched: 0, created: 0, renamed: 0, reconciled: 0, skipped: 0 },

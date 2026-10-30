@@ -13,6 +13,7 @@ import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsRepository,
 	FolderRepository,
+	ProjectRepository,
 	SharedWorkflowRepository,
 	TagRepository,
 	type User,
@@ -20,18 +21,17 @@ import {
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
 } from '@n8n/db';
-import { ControllerRegistryMetadata, type Controller } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Cipher, type InstanceSettings } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import { mkdtempSync } from 'node:fs';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { simpleGit } from 'simple-git';
 import { onTestFinished, vi } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { CredentialTypes } from '@/credential-types';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
@@ -55,25 +55,39 @@ import type { PromotionEnvironment } from '../database/entities/promotion-enviro
 import { PromotionEnvironmentProjectRepository } from '../database/repositories/promotion-environment-project.repository';
 import { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
-import { PromotionChangesController } from '../promotion-changes.controller';
 import { PromotionsService } from '../promotions.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
+import { createFixtureGit } from './utils/git-remote-fixture';
+import { insertTokenProvider, writeInstancePromotionPackage } from './utils/promotion-fixtures';
 
 const instanceFolder = mkdtempSync(path.join(tmpdir(), 'promotion-preview-'));
+const emptyRemoteSeed = path.join(instanceFolder, 'empty-remote.git');
 Container.set(
 	PromotionWorkingDirectoryService,
 	new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder: instanceFolder })),
 );
 mockInstance(ActiveWorkflowManager);
-beforeAll(async () => await testModules.loadModules(['agents']));
+// The Apply preview plans the import, which checks node and credential types.
+mockInstance(CredentialTypes).recognizes.mockReturnValue(true);
+beforeAll(async () => {
+	await testModules.loadModules(['agents']);
+	await initNodeTypes();
+});
 const server = setupTestServer({
+	reuseServer: true,
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages', 'data-table'],
-	enabledFeatures: ['feat:gitConnections', 'feat:projectRole:admin'],
+	enabledFeatures: ['feat:promotions', 'feat:projectRole:admin', 'feat:folders'],
 });
 
+let remoteRoot: string;
 let remoteFolder: string;
+let sourceFixture: ReturnType<typeof createSourceFixture> | undefined;
+
+beforeAll(async () => {
+	await createFixtureGit().raw(['init', '--bare', '--initial-branch=main', emptyRemoteSeed]);
+});
 
 beforeEach(async () => {
 	await Container.get(PromotionEnvironmentProjectRepository).delete({});
@@ -94,12 +108,14 @@ beforeEach(async () => {
 	]);
 	await Container.get(VariablesService).updateCache();
 	mockDataTableSizeValidator();
-	remoteFolder = await mkdtemp(path.join(tmpdir(), 'promotion-preview-remote-'));
-	await simpleGit().raw(['init', '--bare', remoteFolder]);
+	remoteRoot = await mkdtemp(path.join(tmpdir(), 'promotion-preview-remote-'));
+	remoteFolder = path.join(remoteRoot, 'remote.git');
+	await cp(emptyRemoteSeed, remoteFolder, { recursive: true });
+	sourceFixture = undefined;
 });
 
 afterEach(async () => {
-	await rm(remoteFolder, { recursive: true, force: true });
+	await rm(remoteRoot, { recursive: true, force: true });
 });
 
 afterAll(async () => {
@@ -108,15 +124,7 @@ afterAll(async () => {
 
 /** Both directions point at `main` of the same remote, so one instance can play source and destination. */
 async function createInstanceEnvironments(directions: PromotionDirection[] = ['promote']) {
-	const provider = await Container.get(PromotionProviderRepository).insertProvider({
-		name: 'Preview',
-		type: 'git',
-		authType: 'token',
-		config: { schemaVersion: 1 },
-		auth: await Container.get(Cipher).encryptV2(
-			JSON.stringify({ schemaVersion: 1, username: 'test', password: 'test' }),
-		),
-	});
+	const provider = await insertTokenProvider({ name: 'Preview' });
 	const environments = {} as Record<PromotionDirection, PromotionEnvironment>;
 	for (const direction of directions) {
 		environments[direction] = await addEnvironment(provider.id, direction);
@@ -137,12 +145,35 @@ async function addEnvironment(providerId: string, direction: PromotionDirection)
 				}
 			: { direction, settings: { schemaVersion: 1, branchName: 'main' } }),
 	});
-	await Container.get(PromotionsService).clone(environment.id);
+	await Container.get(PromotionsService).clone(environment.id, { id: 'clone-actor' } as User);
 	return environment;
 }
 
 async function remoteHead(): Promise<string> {
-	return (await simpleGit(remoteFolder).revparse(['main'])).trim();
+	return (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
+}
+
+const fixtureGitConfig = ['user.name=n8n test', 'user.email=n8n-test@example.com'];
+
+async function createSourceFixture() {
+	const dir = path.join(remoteRoot, 'source');
+	await createFixtureGit().clone(remoteFolder, dir);
+	return { dir, git: createFixtureGit(dir, { config: fixtureGitConfig }) };
+}
+
+/** Builds branch data for preview checks. Roundtrip tests still run Promote. */
+async function exportPreviewBaseline(environment: PromotionEnvironment, owner: User) {
+	const checkout =
+		environment.direction === 'promote'
+			? Container.get(PromotionWorkingDirectoryService).paths(environment.id).repositoryFolder
+			: undefined;
+	const source = checkout
+		? { dir: checkout, git: createFixtureGit(checkout, { config: fixtureGitConfig }) }
+		: await (sourceFixture ??= createSourceFixture());
+	await writeInstancePromotionPackage(owner, path.join(source.dir, 'n8n'));
+	await source.git.add('--all');
+	await source.git.commit('Preview fixture');
+	await source.git.push('origin', 'HEAD:refs/heads/main');
 }
 
 /** The source a preview reports for an environment created by `createInstanceEnvironments`. */
@@ -168,7 +199,7 @@ it("previews against the project's environment, not the instance one", async () 
 		projectPromote.id,
 		'promote',
 	);
-	await Container.get(PromotionsService).clone(projectPromote.id);
+	await Container.get(PromotionsService).clone(projectPromote.id, owner);
 	const agent = server.authAgentFor(owner);
 
 	const linkedPreview = await agent.get(`/promotions/${linked.id}/changes/promote`).expect(200);
@@ -219,16 +250,15 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		commitMessage: 'Baseline',
 		canExportVariableValues: true,
 	});
+
+	const workflows = Container.get(WorkflowRepository);
+	// Publication is state in the metadata file, not content, so it never lists.
+	await workflows.update(publishable.id, { activeVersionId: publishable.versionId });
 	expect((await agent.get(endpoint).expect(200)).body.data).toMatchObject({
 		commitSha: await remoteHead(),
 		source: sourceOf(environments.promote),
 		changes: [],
 	});
-
-	const workflows = Container.get(WorkflowRepository);
-	// Publication is state in the metadata file, not content, so it never lists.
-	await workflows.update(publishable.id, { activeVersionId: publishable.versionId });
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	await workflows.update(modified.id, { name: 'Renamed', settings: { executionOrder: 'v1' } });
 	await workflows.update(archived.id, { isArchived: true });
 	await workflows.delete(removed.id);
@@ -260,7 +290,6 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		commitMessage: 'Changes',
 		canExportVariableValues: true,
 	});
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	await workflows.update(archived.id, { isArchived: false });
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
 		expect.objectContaining({ id: archived.id, status: 'modified' }),
@@ -269,7 +298,43 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 		{ workflowId: modified.id, role: 'workflow:owner' },
 		{ projectId: otherProject.id },
 	);
-	const movedOut = (await agent.get(endpoint).expect(200)).body.data.changes;
+	const movedOutPreview = (await agent.get(endpoint).expect(200)).body.data;
+	// Promote refuses a workflow that moved to another project, so the preview names that project.
+	expect(movedOutPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'deleted',
+			movedToProject: { id: otherProject.id, name: otherProject.name },
+		}),
+	);
+	// The other side of the same move: the branch still holds the workflow in the first project.
+	const movedInPreview = (
+		await agent.get(`/promotions/${otherProject.id}/changes/promote`).expect(200)
+	).body.data;
+	expect(movedInPreview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			change: 'added',
+			movedFromProject: { id: project.id, name: project.name },
+		}),
+	);
+	// A personal project's name holds its owner's email, so the preview leaves it out.
+	const personal = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: personal.id },
+	);
+	expect((await agent.get(endpoint).expect(200)).body.data.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${modified.id}`,
+			movedToProject: { id: personal.id },
+		}),
+	);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: modified.id, role: 'workflow:owner' },
+		{ projectId: otherProject.id },
+	);
+	const movedOut = movedOutPreview.changes;
 	expect(movedOut).toHaveLength(2);
 	expect(movedOut).toContainEqual(
 		expect.objectContaining({
@@ -278,6 +343,35 @@ it('lists new, changed, moved, archived, restored and deleted workflows through 
 			status: 'deleted',
 			version: null,
 			updatedAt: null,
+		}),
+	);
+}, 30_000);
+
+it('marks a workflow that moved into a project that has no files on the branch yet', async () => {
+	const owner = await createOwner();
+	const billing = await createTeamProject('Billing', owner);
+	const workflow = await createWorkflow({ name: 'Invoices', nodes: [], connections: {} }, billing);
+	const environments = await createInstanceEnvironments();
+	await exportPreviewBaseline(environments.promote, owner);
+	// Created after the promote, so the branch holds nothing for it.
+	const later = await createTeamProject('Later', owner);
+	await Container.get(SharedWorkflowRepository).update(
+		{ workflowId: workflow.id, role: 'workflow:owner' },
+		{ projectId: later.id },
+	);
+	const branch = await Container.get(PromotionsService).readBranchPackage(later.id, 'promote');
+	expect(branch.files).toEqual([]);
+	expect(branch.hasManifest).toBe(true);
+
+	const preview = (
+		await server.authAgentFor(owner).get(`/promotions/${later.id}/changes/promote`).expect(200)
+	).body.data;
+
+	expect(preview.resources).toContainEqual(
+		expect.objectContaining({
+			key: `workflow:${workflow.id}`,
+			change: 'added',
+			movedFromProject: { id: billing.id, name: billing.name },
 		}),
 	);
 }, 30_000);
@@ -291,10 +385,7 @@ it('preserves workflow moves and changes across workflow files', async () => {
 		project,
 	);
 	const environments = await createInstanceEnvironments();
-	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
-		commitMessage: 'Baseline',
-		canExportVariableValues: true,
-	});
+	await exportPreviewBaseline(environments.promote, owner);
 	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const agent = server.authAgentFor(owner);
 	const workflows = Container.get(WorkflowRepository);
@@ -343,10 +434,7 @@ it('logs file hashes without workflow content', async () => {
 	);
 	const environments = await createInstanceEnvironments();
 	const service = Container.get(PromotionsService);
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'Baseline',
-		canExportVariableValues: true,
-	});
+	await exportPreviewBaseline(environments.promote, owner);
 	const base = (await service.readBranchPackage(project.id, 'promote')).files.find(
 		(file) => file.entityId === workflow.id && file.fileName === 'workflow.json',
 	);
@@ -455,13 +543,9 @@ it('detects variable and data table changes without reporting shadowed or unrela
 	});
 	await createWorkflow({ name: 'Unrelated', nodes: [], connections: {} }, project);
 	const environments = await createInstanceEnvironments();
-	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
-		commitMessage: 'Baseline',
-		canExportVariableValues: true,
-	});
+	await exportPreviewBaseline(environments.promote, owner);
 	const agent = server.authAgentFor(owner);
 	const endpoint = `/promotions/${project.id}/changes/promote`;
-	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
 	await variables.update(global.id, { value: 'changed global' });
 	await Container.get(VariablesService).updateCache();
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([]);
@@ -476,10 +560,7 @@ it('detects variable and data table changes without reporting shadowed or unrela
 		expect.objectContaining({ id: withTable.id, status: 'modified', dependencyCount: 1 }),
 		expect.objectContaining({ id: withVariable.id, status: 'modified', dependencyCount: 1 }),
 	]);
-	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
-		commitMessage: 'Dependencies',
-		canExportVariableValues: true,
-	});
+	await exportPreviewBaseline(environments.promote, owner);
 	await variables.delete(global.id);
 	await Container.get(VariablesService).updateCache();
 	expect((await agent.get(endpoint).expect(200)).body.data.changes).toEqual([
@@ -607,11 +688,8 @@ it('counts a variable on apply only when this instance lacks it in the scope of 
 		project,
 		variableNames: ['API_URL'],
 	});
-	const environments = await createInstanceEnvironments(['promote', 'apply']);
-	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
-		commitMessage: 'Baseline',
-		canExportVariableValues: true,
-	});
+	const environments = await createInstanceEnvironments(['apply']);
+	await exportPreviewBaseline(environments.apply, owner);
 	const agent = server.authAgentFor(owner);
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
 	const variables = Container.get(VariablesRepository);
@@ -660,14 +738,7 @@ it('answers for a destination that has only an apply environment', async () => {
 	exportSpy.mockRestore();
 	await agent.get(endpoint).expect(404);
 
-	// A source instance promotes the project, then the destination is left with Apply only.
-	const promote = await addEnvironment(environments.apply.providerId, 'promote');
-	const service = Container.get(PromotionsService);
-	await service.promote(promote.id, owner, {
-		commitMessage: 'From the source',
-		canExportVariableValues: true,
-	});
-	await Container.get(PromotionEnvironmentRepository).delete({ id: promote.id });
+	await exportPreviewBaseline(environments.apply, owner);
 	await Container.get(WorkflowRepository).delete(workflow.id);
 
 	const response = await agent.get(applyEndpoint).expect(200);
@@ -725,11 +796,8 @@ it('lists every local workflow as deleted when a valid branch manifest has no en
 	const owner = await createOwner();
 	const otherProject = await createTeamProject('Other', owner);
 	await createWorkflow({ name: 'Elsewhere', nodes: [], connections: {} }, otherProject);
-	const environments = await createInstanceEnvironments(['promote', 'apply']);
-	await Container.get(PromotionsService).promote(environments.promote.id, owner, {
-		commitMessage: 'Without the project',
-		canExportVariableValues: true,
-	});
+	const environments = await createInstanceEnvironments(['apply']);
+	await exportPreviewBaseline(environments.apply, owner);
 	// The project appears after the promotion, so the branch manifest does not know it.
 	const project = await createTeamProject('Destination', owner);
 	const workflow = await createWorkflow(
@@ -758,85 +826,19 @@ it('checks authentication, the scopes of each direction, and the promotions lice
 	const project = await createTeamProject('Private', owner);
 	const endpoint = `/promotions/${project.id}/changes/promote`;
 	const applyEndpoint = `/promotions/${project.id}/changes/apply`;
-	const blockersEndpoint = `${applyEndpoint}/blockers?commitSha=${'0'.repeat(40)}`;
 	await server.authlessAgent.get(endpoint).expect(401);
-	await server.authlessAgent.get(blockersEndpoint).expect(401);
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
-	// A project admin manages the project, but lacks the global git connection scopes.
+	// A project admin manages the project, but lacks the global promotion scopes.
 	await linkUserToProject(member, project, 'project:admin');
 	await server.authAgentFor(member).get(endpoint).expect(403);
 	await server.authAgentFor(member).get(applyEndpoint).expect(403);
-	await server.authAgentFor(member).get(blockersEndpoint).expect(403);
 	await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/sideways`).expect(404);
-	server.license.disable('feat:gitConnections');
+	server.license.disable('feat:promotions');
 	await server.authAgentFor(owner).get(endpoint).expect(403);
-	await server.authAgentFor(owner).get(blockersEndpoint).expect(403);
 });
-
-// No built-in role has the read scope without the pull scope, so the requests above cannot tell them apart.
-it('requires the global pull scope of Apply for the Apply check', () => {
-	const metadata = Container.get(ControllerRegistryMetadata).getControllerMetadata(
-		PromotionChangesController as Controller,
-	);
-
-	expect(metadata.routes.get('getApplyBlockers')?.accessScope).toEqual({
-		scope: 'gitConnection:pull',
-		globalOnly: true,
-	});
-});
-
-it('checks Apply blockers at the commit of the Apply preview, also after a newer push', async () => {
-	const owner = await createOwner();
-	const project = await createTeamProject('Orders', owner);
-	const firstVariable = await createVariable('FIRST_URL', 'https://first.example.com');
-	await buildWorkflowReferencingVariables({
-		name: 'Uses FIRST_URL',
-		project,
-		variableNames: [firstVariable.key],
-	});
-	const environments = await createInstanceEnvironments(['promote', 'apply']);
-	const service = Container.get(PromotionsService);
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'First',
-		canExportVariableValues: true,
-	});
-	const agent = server.authAgentFor(owner);
-	const preview = await agent.get(`/promotions/${project.id}/changes/apply`).expect(200);
-	const { commitSha } = preview.body.data;
-
-	const secondVariable = await createVariable('SECOND_URL', 'https://second.example.com');
-	await buildWorkflowReferencingVariables({
-		name: 'Uses SECOND_URL',
-		project,
-		variableNames: [secondVariable.key],
-	});
-	await service.promote(environments.promote.id, owner, {
-		commitMessage: 'Second',
-		canExportVariableValues: true,
-	});
-	await Container.get(VariablesRepository).delete([firstVariable.id, secondVariable.id]);
-	await Container.get(VariablesService).updateCache();
-
-	const response = await agent
-		.get(`/promotions/${project.id}/changes/apply/blockers`)
-		.query({ commitSha })
-		.expect(200);
-
-	expect(response.body.data.git.commitSha).toBe(commitSha);
-	expect(response.body.data.preflight.missingBindings).toEqual([
-		expect.objectContaining({ kind: 'variable', name: 'FIRST_URL' }),
-	]);
-}, 30_000);
 
 describe('resources in the preview', () => {
-	const promoteBaseline = async (environmentId: string, owner: User) =>
-		await Container.get(PromotionsService).promote(environmentId, owner, {
-			commitMessage: 'Baseline',
-			canExportVariableValues: true,
-		});
-
 	it('lists a renamed nested folder with the workflows that carry the rename, unchanged themselves', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Reports', owner);
@@ -847,7 +849,7 @@ describe('resources in the preview', () => {
 			project,
 		);
 		const environments = await createInstanceEnvironments();
-		await promoteBaseline(environments.promote.id, owner);
+		await exportPreviewBaseline(environments.promote, owner);
 		await Container.get(FolderRepository).update(weekly.id, { name: 'Monthly' });
 
 		const { body } = await server
@@ -880,6 +882,97 @@ describe('resources in the preview', () => {
 		]);
 	}, 30_000);
 
+	it('shows on Apply the import conflicts that stop it, and each move between projects once', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Releases', owner);
+		const elsewhere = await createTeamProject('Elsewhere', owner);
+		const shared = await createWorkflow({ name: 'Shared', nodes: [], connections: {} }, project);
+		const custom = await createWorkflow(
+			{
+				name: 'Uses a custom node',
+				nodes: [
+					{
+						id: 'custom',
+						name: 'Custom',
+						type: 'n8n-nodes-custom.notInstalled',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: {},
+					},
+				],
+				connections: {},
+			},
+			project,
+		);
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		// This instance moves a workflow to another project, which Apply of the branch cannot undo.
+		await Container.get(SharedWorkflowRepository).update(
+			{ workflowId: shared.id },
+			{ projectId: elsewhere.id },
+		);
+
+		const preview = (
+			await server.authAgentFor(owner).get(`/promotions/${project.id}/changes/apply`).expect(200)
+		).body.data;
+
+		const releases = { id: project.id, name: 'Releases' };
+		expect(preview.check.conflicts).toEqual([
+			{
+				kind: 'workflow',
+				code: 'missing-node-type',
+				reason: 'n8n-nodes-custom.notInstalled@1',
+				consumers: [
+					{ project: releases, workflows: [{ id: custom.id, name: 'Uses a custom node' }] },
+				],
+			},
+		]);
+		expect(preview.check.movedWorkflows).toEqual([
+			{
+				id: shared.id,
+				name: 'Shared',
+				project: releases,
+				projectExists: true,
+				instanceProject: { id: elsewhere.id, name: 'Elsewhere' },
+			},
+		]);
+	}, 30_000);
+
+	it('stops Apply when this instance changed after the preview, then applies what the preview shows', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		const workflowRepository = Container.get(WorkflowRepository);
+		await workflowRepository.update(workflow.id, { name: 'Invoice (local)' });
+
+		const agent = server.authAgentFor(owner);
+		const endpoint = `/promotions/${project.id}/changes/apply`;
+		const loadPreview = async () => (await agent.get(endpoint).expect(200)).body.data;
+		const applyShown = async (preview: {
+			source: { environmentId: string; branchName: string };
+			commitSha: string;
+			revision: string;
+		}) =>
+			await Container.get(PromotionsService).applyProjectSelection(project.id, owner, {
+				workflowIds: [workflow.id],
+				expectedSource: { ...preview.source, commitSha: preview.commitSha },
+				expectedPreviewRevision: preview.revision,
+			});
+
+		const stale = await loadPreview();
+		await workflowRepository.update(workflow.id, { name: 'Invoice (edited again)' });
+		expect(await applyShown(stale)).toMatchObject({ status: 'preview-changed' });
+		expect(await workflowRepository.findOneByOrFail({ id: workflow.id })).toMatchObject({
+			name: 'Invoice (edited again)',
+		});
+
+		expect(await applyShown(await loadPreview())).toMatchObject({ status: 'applied' });
+		const after = await loadPreview();
+		expect(after.changes).toEqual([]);
+	}, 60_000);
+
 	it('lists a changed data table once, with each workflow that uses it, and describes the new column', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Orders', owner);
@@ -899,7 +992,7 @@ describe('resources in the preview', () => {
 			references: [{ dataTableId: table.id }],
 		});
 		const environments = await createInstanceEnvironments();
-		await promoteBaseline(environments.promote.id, owner);
+		await exportPreviewBaseline(environments.promote, owner);
 		await tables.addColumn(table.id, project.id, { name: 'total', type: 'number' });
 		const agent = server.authAgentFor(owner);
 
@@ -963,7 +1056,7 @@ describe('resources in the preview', () => {
 			project,
 		);
 		const environments = await createInstanceEnvironments();
-		await promoteBaseline(environments.promote.id, owner);
+		await exportPreviewBaseline(environments.promote, owner);
 		// The new error workflow no longer exists, so neither side holds it. The reference still shows.
 		await Container.get(WorkflowRepository).update(escalate.id, {
 			settings: { errorWorkflow: 'DeletedErrorFlow' },
@@ -1007,11 +1100,11 @@ describe('resources in the preview', () => {
 		);
 	}, 30_000);
 
-	it('leaves out changes that Apply does not make and reuses a credential that already exists', async () => {
+	it('leaves out changes that Apply does not make and shows the credential name that Apply writes', async () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('Billing', owner);
 		const folder = await createFolder(project, { name: 'Invoices' });
-		await createWorkflow(
+		const invoices = await createWorkflow(
 			{ name: 'Send invoices', nodes: [], connections: {}, parentFolder: folder },
 			project,
 		);
@@ -1024,10 +1117,10 @@ describe('resources in the preview', () => {
 			project,
 			credential,
 		});
-		const environments = await createInstanceEnvironments(['promote', 'apply']);
-		await promoteBaseline(environments.promote.id, owner);
-		// Apply keeps the local folder and credential names. The credential stays, but no local
-		// workflow uses it, so the local export does not hold it.
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		// Apply gives the folder and the credential, which the project owns, the names on the branch.
+		// No local workflow uses the credential, so the local export does not hold it.
 		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
 		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
 		await Container.get(WorkflowRepository).delete(charge.id);
@@ -1039,13 +1132,90 @@ describe('resources in the preview', () => {
 
 		expect(body.data.resources).toEqual([
 			expect.objectContaining({ key: `project:${project.id}`, change: 'unchanged' }),
+			expect.objectContaining({
+				key: `folder:${folder.id}`,
+				name: 'Invoices',
+				previousName: 'Local invoices',
+				change: 'modified',
+			}),
 			expect.objectContaining({ key: `workflow:${charge.id}`, change: 'added' }),
+			// Apply renames the folder only together with a selected workflow inside it.
+			expect.objectContaining({ key: `workflow:${invoices.id}`, change: 'unchanged' }),
 			expect.objectContaining({
 				key: `credential:${credential.id}`,
-				name: 'Local billing API',
-				change: 'unchanged',
+				name: 'Billing API',
+				previousName: 'Local billing API',
+				change: 'modified',
 			}),
 		]);
+	}, 30_000);
+
+	it('lists the workflow of a credential that Apply updates when nothing else changes', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const credential = await saveCredential(
+			{ name: 'Billing API', type: 'httpHeaderAuth', data: {} },
+			{ project, role: 'credential:owner' },
+		);
+		const charge = await buildWorkflowReferencingCredential({
+			name: 'Charge customers',
+			project,
+			credential,
+		});
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		await Container.get(CredentialsRepository).update(credential.id, { name: 'Local billing API' });
+
+		const { body } = await server
+			.authAgentFor(owner)
+			.get(`/promotions/${project.id}/changes/apply`)
+			.expect(200);
+
+		expect(body.data.resources).toContainEqual(
+			expect.objectContaining({
+				key: `credential:${credential.id}`,
+				name: 'Billing API',
+				previousName: 'Local billing API',
+				change: 'modified',
+			}),
+		);
+		expect(body.data.changes).toEqual([
+			expect.objectContaining({ id: charge.id, status: 'modified' }),
+		]);
+	}, 30_000);
+
+	it('lists a workflow inside a folder that Apply renames as renamed', async () => {
+		const owner = await createOwner();
+		const project = await createTeamProject('Billing', owner);
+		const folder = await createFolder(project, { name: 'Invoices' });
+		const workflow = await createWorkflow(
+			{ name: 'Send invoices', nodes: [], connections: {}, parentFolder: folder },
+			project,
+		);
+		const environments = await createInstanceEnvironments(['apply']);
+		await exportPreviewBaseline(environments.apply, owner);
+		await Container.get(FolderRepository).update(folder.id, { name: 'Local invoices' });
+
+		const { body } = await server
+			.authAgentFor(owner)
+			.get(`/promotions/${project.id}/changes/apply`)
+			.expect(200);
+
+		// Apply renames the folder only together with a selected workflow inside it.
+		expect(body.data.changes).toEqual([
+			expect.objectContaining({ id: workflow.id, status: 'renamed' }),
+		]);
+		expect(body.data.resources).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					key: `folder:${folder.id}`,
+					name: 'Invoices',
+					previousName: 'Local invoices',
+					change: 'modified',
+				}),
+				expect.objectContaining({ key: `workflow:${workflow.id}`, change: 'unchanged' }),
+			]),
+		);
 	}, 30_000);
 
 	it.each([
@@ -1079,8 +1249,8 @@ describe('resources in the preview', () => {
 			const project = await createTeamProject('Releases', owner);
 			const workflow = await createWorkflow({ name: 'Ship', nodes: [], connections: {} }, project);
 			const tag = await createTag({ name: 'release' }, workflow);
-			const environments = await createInstanceEnvironments(['promote', 'apply']);
-			await promoteBaseline(environments.promote.id, owner);
+			const environments = await createInstanceEnvironments(['apply']);
+			await exportPreviewBaseline(environments.apply, owner);
 			await changeLocalTag(tag.id);
 
 			const agent = server.authAgentFor(owner);
@@ -1115,7 +1285,7 @@ describe('resources in the preview', () => {
 		const project = await createTeamProject('Finance', owner);
 		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
 		const environments = await createInstanceEnvironments();
-		await promoteBaseline(environments.promote.id, owner);
+		await exportPreviewBaseline(environments.promote, owner);
 		const workflows = Container.get(WorkflowRepository);
 		await workflows.update(workflow.id, { name: 'Invoice v2' });
 		const draft = await createWorkflow({ name: 'Draft', nodes: [], connections: {} }, project);
@@ -1169,12 +1339,8 @@ describe('resources in the preview', () => {
 		const owner = await createOwner();
 		const project = await createTeamProject('New team', owner);
 		const workflow = await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
-		const seed = await mkdtemp(path.join(tmpdir(), 'promotion-preview-seed-'));
-		onTestFinished(async () => await rm(seed, { recursive: true, force: true }));
-		const git = simpleGit(seed);
-		await git.init();
-		await git.addConfig('user.email', 'test@example.com').addConfig('user.name', 'Test');
-		await writeFile(path.join(seed, 'README.md'), '# Workflows\n');
+		const { dir, git } = await (sourceFixture ??= createSourceFixture());
+		await writeFile(path.join(dir, 'README.md'), '# Workflows\n');
 		await git.add('README.md').commit('Add README');
 		await git.push(remoteFolder, 'HEAD:main');
 		await createInstanceEnvironments();

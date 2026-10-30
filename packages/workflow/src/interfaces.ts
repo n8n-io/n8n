@@ -641,7 +641,7 @@ export interface IHttpRequestOptions {
 	abortSignal?: GenericAbortSignal;
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -700,7 +700,7 @@ export interface IRequestOptions {
 
 	/**
 	 * Whether to send credentials on cross-origin redirects
-	 * @default true - for backwards compatibility
+	 * @default false
 	 */
 	sendCredentialsOnCrossOriginRedirect?: boolean;
 	/**
@@ -1111,6 +1111,14 @@ export interface RequestHelperFunctions {
 	 * @param {UseDefaultSsrfPolicy} [useDefaultSsrfPolicy='safe'] how the instance policy applies to the returned filter
 	 */
 	getSecureEgressFilter(useDefaultSsrfPolicy?: UseDefaultSsrfPolicy): NodeEgressFilter;
+	/**
+	 * W3C trace context (`traceparent`, plus `tracestate` when set) for the node that
+	 * runs now, for clients that build their own HTTP transport. `httpRequest` and
+	 * `request` add these headers themselves. Empty when there is nothing to send, so
+	 * callers can use it unguarded. Call it for each request: one open transport
+	 * serves many spans.
+	 */
+	getTraceHeaders(): Record<string, string>;
 }
 
 export type SSHCredentials = {
@@ -1186,6 +1194,14 @@ export type Cron = {
 
 export interface SchedulingFunctions {
 	registerCron(cron: Cron, onTick: (scheduledT: Date) => void): void;
+}
+
+export interface ExpressionIsolateFunctions {
+	/**
+	 * Runs `fn` with an expression isolate held, so it can resolve node parameters.
+	 * Reuses an isolate already held and releases only one it acquired.
+	 */
+	withExpressionIsolate<T>(fn: () => Promise<T>): Promise<T>;
 }
 
 export type NodeTypeAndVersion = {
@@ -1634,7 +1650,8 @@ export interface ITriggerFunctions
 		BaseHelperFunctions &
 		BinaryHelperFunctions &
 		SSHTunnelFunctions &
-		SchedulingFunctions;
+		SchedulingFunctions &
+		ExpressionIsolateFunctions;
 }
 
 export interface IHookFunctions
@@ -3519,6 +3536,9 @@ export interface IRun {
 
 	/** ID of the job this execution belongs to. Only in scaling mode. */
 	jobId?: string;
+
+	/** Total minutes of time saved that nodes report. Only in scaling mode. */
+	nodeTimeSavedMinutes?: number;
 }
 
 export type SchemaType =
@@ -4704,4 +4724,4 @@ export interface StructuredChunk {
 	};
 }
 
-export type ApiKeyAudience = 'public-api' | 'mcp-server-api' | 'scim-api';
+export type ApiKeyAudience = 'public-api' | 'mcp-server-api';

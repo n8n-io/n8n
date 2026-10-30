@@ -19,7 +19,6 @@ const renderComponent = createComponentRenderer(PromotionWorkflowPreview, {
 		resourceKey: 'workflow:w1',
 		workflowName: 'Invoice reconciliation',
 		direction: 'promote',
-		branchName: 'main',
 		graph: buildSelectionGraph(billingPreview(), 'promote'),
 	},
 });

@@ -1,5 +1,5 @@
 import { createChildSubAgentTaskPath } from '@n8n/agents';
-import type { SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
+import type { AgentPlanTaskRef, SubAgentSource, SubAgentTaskDifficulty } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -40,6 +40,10 @@ export type BackgroundSubAgentRunContext = Pick<
 >;
 
 export interface BackgroundSpawnRequest {
+	sourceExecutionId?: string;
+	planTask?: AgentPlanTaskRef;
+	validatePlanTask?: boolean;
+	inheritedPlanTask?: boolean;
 	subAgentId: string;
 	source: SubAgentSource;
 	taskName: string;
@@ -49,6 +53,8 @@ export interface BackgroundSpawnRequest {
 	/** Self-delegation only: model tier override applied by the runner. */
 	difficulty?: SubAgentTaskDifficulty;
 	parentThreadId: string;
+	/** Execution of the parent turn that dispatches the job. Links the child execution to it. */
+	parentExecutionId?: string;
 	parentResourceId: string;
 	parentSandboxPrincipalHash: string;
 	parentMessageContext?: IntegrationMessageContext | null;
@@ -93,12 +99,17 @@ export class SubAgentBackgroundRunner {
 			id: jobId,
 			parentAgentId: context.parentAgentId,
 			parentThreadId: request.parentThreadId,
+			sourceExecutionId: request.sourceExecutionId,
+			planTask: request.planTask,
+			validatePlanTask: request.validatePlanTask,
+			inheritedPlanTask: request.inheritedPlanTask,
 			parentResourceId: request.parentResourceId,
 			parentPrincipalHash: request.parentSandboxPrincipalHash,
 			title: request.taskName,
 			subAgentId: request.subAgentId,
 			childThreadId,
 		});
+
 		if (receipt.status !== 'started') return receipt;
 
 		// The job runs on its own abort scope: the parent's signal dies with the
@@ -114,6 +125,7 @@ export class SubAgentBackgroundRunner {
 				abortController.signal.throwIfAborted();
 			}
 			expected.timeoutAt = job?.timeoutAt;
+
 			return await this.runner.run(
 				{
 					goal: request.goal,
@@ -123,6 +135,9 @@ export class SubAgentBackgroundRunner {
 						? { expectedOutput: request.expectedOutput }
 						: {}),
 					parentThreadId: request.parentThreadId,
+					...(request.parentExecutionId !== undefined
+						? { parentExecutionId: request.parentExecutionId }
+						: {}),
 					parentResourceId: request.parentResourceId,
 					parentSandboxPrincipalHash: request.parentSandboxPrincipalHash,
 					childThreadId,
@@ -138,6 +153,7 @@ export class SubAgentBackgroundRunner {
 					instrumentation: context.instrumentation,
 					abortSignal: abortController.signal,
 					backgroundJobId: jobId,
+					planTask: request.planTask,
 					shouldPause: async () => await this.jobService.shouldPause(jobId),
 					parentMessageContext: request.parentMessageContext,
 					// The parent thread is the root session: the child debits it, not
@@ -207,6 +223,10 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
 						shouldPause: async () => await this.jobService.shouldPause(job.id),
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
@@ -237,7 +257,9 @@ export class SubAgentBackgroundRunner {
 						},
 					},
 				);
+
 				if (!admitted) throw new UserError('This background approval could not be resumed');
+
 				return result;
 			},
 			() => claimed,
@@ -313,6 +335,10 @@ export class SubAgentBackgroundRunner {
 					},
 					{
 						...context,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
 						abortSignal: controller.signal,
 						selfDelegationDifficulty: metadata.difficulty,
 						runtimeSnapshot: metadata.runtimeSnapshot,

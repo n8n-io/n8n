@@ -21,7 +21,7 @@ or item references, use `workspace_read_file` to read the source-data and list
 sections in `knowledge-base/reference/workflow-builder-guardrails.md`.
 
 When you need SDK syntax, read `knowledge-base/reference/workflow-sdk-language.md`.
-Use `workflow_builder_nodes` for metadata and follow `@builderHint` annotations in type definitions.
+Use `search_nodes` and `get_node_types` for metadata and follow `@builderHint` annotations in type definitions.
 Use `n8n-docs` for product documentation. Keep data-table queries narrow.
 
 Make the smallest useful change. Preserve node IDs, workflow intent, and

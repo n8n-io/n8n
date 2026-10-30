@@ -51,48 +51,6 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 	useRootStore: () => ({ instanceId: 'test-instance' }),
 }));
 
-// Mock element-plus dropdown components to make @visible-change testable in jsdom
-vi.mock('element-plus', async (importOriginal) => {
-	const actual = await importOriginal<Record<string, unknown>>();
-	return {
-		...actual,
-		ElDropdown: defineComponent({
-			props: ['trigger', 'popperOptions', 'popperClass'],
-			emits: ['visible-change'],
-			setup(_, { slots, emit }) {
-				return () =>
-					h('div', [
-						h(
-							'button',
-							{
-								'data-test-id': 'el-dropdown-trigger',
-								onClick: () => emit('visible-change', true),
-							},
-							slots.default?.(),
-						),
-						h('div', { 'data-test-id': 'el-dropdown-content' }, slots.dropdown?.()),
-					]);
-			},
-		}),
-		ElDropdownMenu: defineComponent({
-			setup(_, { slots }) {
-				return () => h('div', slots.default?.());
-			},
-		}),
-		ElDropdownItem: defineComponent({
-			emits: ['click'],
-			setup(_, { slots, emit }) {
-				return () =>
-					h(
-						'li',
-						{ class: 'workflow-diff-node-item', onClick: (e: Event) => emit('click', e) },
-						slots.default?.(),
-					);
-			},
-		}),
-	};
-});
-
 // Mock stores
 vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: () => ({
@@ -285,7 +243,7 @@ describe('WorkflowDiffView', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('el-dropdown-trigger'));
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
 
 			await waitFor(() => {
 				expect(telemetry.track).toHaveBeenCalledWith('user_opens_diff_changes_list', {
@@ -319,7 +277,7 @@ describe('WorkflowDiffView', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('el-dropdown-trigger'));
+			await userEvent.click(getByTestId('workflow-diff-changes-menu'));
 
 			await waitFor(() => expect(getByText('Test Node')).toBeInTheDocument());
 			await userEvent.click(getByText('Test Node'));

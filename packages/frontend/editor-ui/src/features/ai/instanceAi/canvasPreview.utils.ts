@@ -3,6 +3,8 @@ import {
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	isFormerWorkflowsTool,
+	resolveBuilderToolName,
 } from '@n8n/api-types';
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -193,17 +195,26 @@ export function getLatestWorkflowSetupResult(
 	return undefined;
 }
 
-const WORKFLOW_MUTATING_ACTIONS = new Set(['update', 'restore-version', 'setup']);
+const WORKFLOW_MUTATING_TOOLS = new Set<string>([
+	WORKFLOW_BUILDER_TOOL_NAMES.RESTORE_WORKFLOW_VERSION,
+	WORKFLOW_BUILDER_TOOL_NAMES.SETUP_WORKFLOW,
+]);
+
+/** Stored calls of the former multi-action workflows tool also count, including its removed `update`. */
+function isWorkflowMutatingCall(tc: InstanceAiToolCallState): boolean {
+	if (isFormerWorkflowsTool(tc.toolName) && tc.args?.action === 'update') return true;
+	return WORKFLOW_MUTATING_TOOLS.has(resolveBuilderToolName(tc.toolName, tc.args?.action));
+}
 
 /**
  * Walks an agent tree depth-first (most recent last) and returns the workflowId
- * (from args) and toolCallId from the latest successful `workflows` tool call
- * that mutated the workflow definition (action=update / restore-version / setup).
- * These modify an existing workflow but surface under tool name 'workflows' —
- * invisible to getLatestBuildResult — and don't reliably return the workflowId in
- * the result, so it is read from the call args. `setup` is the current path for
- * credential/parameter configuration (the inline setup card); the legacy
- * setup-workflow / workflow_builder_apply_workflow_credentials tools are handled by
+ * (from args) and toolCallId from the latest successful tool call that mutated
+ * the workflow definition (restore_workflow_version / setup_workflow). These
+ * modify an existing workflow but are invisible to getLatestBuildResult, and
+ * don't reliably return the workflowId in the result, so it is read from the
+ * call args. `setup_workflow` is the current path for credential/parameter
+ * configuration (the inline setup card); the legacy setup-workflow /
+ * workflow_builder_apply_workflow_credentials tools are handled by
  * getLatestWorkflowSetupResult.
  */
 export function getLatestWorkflowUpdateResult(
@@ -216,14 +227,7 @@ export function getLatestWorkflowUpdateResult(
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
 		const args = tc.args as Record<string, unknown> | undefined;
-		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
-			typeof args?.action === 'string' &&
-			WORKFLOW_MUTATING_ACTIONS.has(args.action) &&
-			!tc.isLoading &&
-			tc.result &&
-			typeof tc.result === 'object'
-		) {
+		if (isWorkflowMutatingCall(tc) && !tc.isLoading && tc.result && typeof tc.result === 'object') {
 			const result = tc.result as Record<string, unknown>;
 			if (result.success === true && typeof args?.workflowId === 'string') {
 				return { workflowId: args.workflowId, toolCallId: tc.toolCallId };
@@ -252,8 +256,8 @@ const WORKFLOW_LOCKING_TOOLS = new Set<string>([
  *   2. An active workflow-builder sub-agent targeting the workflow (covers the
  *      whole build window: read file → edit → submit-workflow → verify).
  *   3. An in-flight workflow-affecting tool call targeting the workflow — the
- *      build/setup/verify tools, `executions.run`, or a `workflows` update /
- *      restore-version / setup action. Read-only `workflows` actions (including
+ *      build/setup/verify tools, `executions.run`, `restore_workflow_version` or
+ *      `setup_workflow`. Read-only workflow tools (including
  *      historical get-json events, get, list, …) don't lock.
  */
 export function isAgentEditingWorkflow(
@@ -279,8 +283,8 @@ export function isAgentEditingWorkflow(
 			getLatestWorkflowUpdateResult(node)?.workflowId === workflowId ||
 			node.toolCalls.some(
 				(call) =>
-					call.toolName === WORKFLOW_BUILDER_TOOL_NAMES.CREDENTIALS &&
-					call.args?.action === 'setup' &&
+					resolveBuilderToolName(call.toolName, call.args?.action) ===
+						SHARED_BUILDER_TOOL_NAMES.SETUP_CREDENTIALS &&
 					isRecord(call.result) &&
 					call.result.announced === true &&
 					call.result.preBuild === true &&
@@ -309,13 +313,7 @@ export function isAgentEditingWorkflow(
 		if (WORKFLOW_LOCKING_TOOLS.has(tc.toolName)) return true;
 		if (tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && args.action === 'run')
 			return true;
-		if (
-			tc.toolName === WORKFLOW_BUILDER_TOOL_NAMES.WORKFLOWS &&
-			typeof args?.action === 'string' &&
-			WORKFLOW_MUTATING_ACTIONS.has(args.action)
-		) {
-			return true;
-		}
+		if (isWorkflowMutatingCall(tc)) return true;
 	}
 
 	for (const child of node.children) {
@@ -488,6 +486,140 @@ export function getLatestDataTableResult(node: InstanceAiAgentNode): DataTableRe
 		}
 	}
 	return undefined;
+}
+
+/** Name of the n8n Assistant tool that manages skills in the skills hub. */
+export const SKILLS_TOOL_NAME = 'skills';
+
+const SKILL_WRITE_ACTIONS = new Set(['create', 'update']);
+
+const UNTRUSTED_DATA_PATTERN = /^<untrusted_data\b[^>]*>\n([\s\S]*)\n<\/untrusted_data>$/;
+
+function unwrapUntrustedToolResult(result: unknown): unknown {
+	if (!isRecord(result) || result.type !== 'content' || !Array.isArray(result.value)) {
+		return result;
+	}
+	const [part]: unknown[] = result.value;
+	if (!isRecord(part) || part.type !== 'text' || typeof part.text !== 'string') return result;
+	const json = UNTRUSTED_DATA_PATTERN.exec(part.text)?.[1];
+	if (json === undefined) return result;
+	try {
+		const parsed: unknown = JSON.parse(json);
+		return parsed;
+	} catch {
+		return result;
+	}
+}
+
+/** The Skills Hub deep link that opens one skill. */
+export function skillsHubHref(skillId: string): string {
+	return `/settings/context/skills?skillId=${encodeURIComponent(skillId)}`;
+}
+
+export interface SkillArtifact {
+	skillId: string;
+	name?: string;
+}
+
+export type SkillArtifactResult = ToolArtifactResult<SkillArtifact>;
+
+/**
+ * The skill that a finished `skills` call created or saved. Only a successful
+ * create or update counts: a list, a get, a delete, a denied or a refused call
+ * does not make the skill an artifact.
+ */
+export function getSkillArtifactFromToolCall(
+	tc: InstanceAiToolCallState,
+): SkillArtifact | undefined {
+	if (tc.toolName !== SKILLS_TOOL_NAME || tc.isLoading) return undefined;
+	const action = tc.args?.action;
+	if (typeof action !== 'string' || !SKILL_WRITE_ACTIONS.has(action)) return undefined;
+	const result = unwrapUntrustedToolResult(tc.result);
+	if (!isRecord(result) || result.success !== true) return undefined;
+
+	// create: { success, skill: { id, name, ... } }. update: { success, saved: { id, name? } }.
+	const written = action === 'create' ? result.skill : result.saved;
+	if (!isRecord(written)) return undefined;
+	const skillId =
+		typeof written.id === 'string'
+			? written.id
+			: typeof tc.args?.skillId === 'string'
+				? tc.args.skillId
+				: undefined;
+	if (!skillId) return undefined;
+	const name =
+		typeof written.name === 'string' && written.name.trim() !== '' ? written.name : undefined;
+	return { skillId, ...(name ? { name } : {}) };
+}
+
+export type ToolArtifactResult<T> = T & {
+	/** Unique per operation — changes even when the same artifact is saved again. */
+	toolCallId: string;
+};
+
+/**
+ * Walks an agent tree depth-first (most recent last) and returns the latest
+ * artifact that `extract` finds in a tool call.
+ */
+function getLatestToolArtifactResult<T extends object>(
+	node: InstanceAiAgentNode,
+	extract: (tc: InstanceAiToolCallState) => T | undefined,
+): ToolArtifactResult<T> | undefined {
+	for (let i = node.children.length - 1; i >= 0; i--) {
+		const childResult = getLatestToolArtifactResult(node.children[i], extract);
+		if (childResult) return childResult;
+	}
+	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
+		const tc = node.toolCalls[i];
+		const artifact = extract(tc);
+		if (artifact) return { ...artifact, toolCallId: tc.toolCallId };
+	}
+	return undefined;
+}
+
+/** The latest skill that the assistant created or saved with the `skills` tool. */
+export function getLatestSkillArtifactResult(
+	node: InstanceAiAgentNode,
+): SkillArtifactResult | undefined {
+	return getLatestToolArtifactResult(node, getSkillArtifactFromToolCall);
+}
+
+/** The app detail page of one app. */
+export function appHref(projectId: string, appId: string): string {
+	return `/projects/${projectId}/apps/${appId}`;
+}
+
+/** Name of the n8n Assistant tool that builds n8n Apps. */
+export const APPS_TOOL_NAME = 'apps';
+
+/** `get` and `open` only read the app. */
+const APP_WRITE_ACTIONS = new Set(['create', 'commit']);
+
+export interface AppArtifact {
+	appId: string;
+	name: string;
+	projectId: string;
+}
+
+/** The app that a finished `apps` call created or committed. */
+export function getAppArtifactFromToolCall(tc: InstanceAiToolCallState): AppArtifact | undefined {
+	if (tc.toolName !== APPS_TOOL_NAME || tc.isLoading) return undefined;
+	const action = tc.args?.action;
+	if (typeof action !== 'string' || !APP_WRITE_ACTIONS.has(action)) return undefined;
+	const result = unwrapUntrustedToolResult(tc.result);
+	if (!isRecord(result) || !isRecord(result.app)) return undefined;
+	const { id, name, projectId } = result.app;
+	if (typeof id !== 'string' || typeof name !== 'string' || typeof projectId !== 'string') {
+		return undefined;
+	}
+	return { appId: id, name, projectId };
+}
+
+/** The latest app that the assistant created or committed with the `apps` tool. */
+export function getLatestAppArtifactResult(
+	node: InstanceAiAgentNode,
+): ToolArtifactResult<AppArtifact> | undefined {
+	return getLatestToolArtifactResult(node, getAppArtifactFromToolCall);
 }
 
 function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {

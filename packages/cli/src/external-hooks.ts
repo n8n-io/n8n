@@ -2,12 +2,12 @@ import type { FrontendSettings } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { ClientOAuth2Options } from '@n8n/client-oauth2';
 import { GlobalConfig } from '@n8n/config';
-import type { TagEntity, User, ICredentialsDb, PublicUser } from '@n8n/db';
+import type { TagEntity, User, ICredentialsDb, CloudHooksPeople, PublicUser } from '@n8n/db';
 import {
 	CredentialsRepository,
 	WorkflowRepository,
 	SettingsRepository,
-	UserRepository,
+	PersonRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ErrorReporter } from 'n8n-core';
@@ -26,7 +26,7 @@ import type { Config } from '@/config';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
-	User: UserRepository;
+	User: CloudHooksPeople;
 	Settings: SettingsRepository;
 	Credentials: CredentialsRepository;
 	Workflow: WorkflowRepository;
@@ -185,13 +185,13 @@ export class ExternalHooks {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly globalConfig: GlobalConfig,
-		userRepository: UserRepository,
+		personRepository: PersonRepository,
 		settingsRepository: SettingsRepository,
 		credentialsRepository: CredentialsRepository,
 		workflowRepository: WorkflowRepository,
 	) {
 		this.dbCollections = {
-			User: userRepository,
+			User: personRepository.forCloudHooks(),
 			Settings: settingsRepository,
 			Credentials: credentialsRepository,
 			Workflow: workflowRepository,

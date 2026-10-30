@@ -4,7 +4,7 @@ dependencies:
   tools:
     - workflow_builder_build_workflow
     - workflow_builder_verify_built_workflow
-    - workflow_builder_workflows
+    - setup_workflow
     - workflow_builder_executions
 description: >-
   Load before workflow_builder_build_workflow and before scoping or planning new workflows and
@@ -53,7 +53,6 @@ Ask a single-choice question if several named services are equally central.
 Otherwise state a reasonable starting assumption. Do not offer a multi-select
 list that adds services or triggers to the first version.
 
-The `planning` skill and `workflow_builder_create_tasks` tool are unavailable in this mode.
 Keep additional workflows as later roadmap items.
 
 ## Build, set up, and run

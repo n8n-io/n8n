@@ -48,10 +48,12 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'relay-agent-queued-chat',
 	'cancel-agent-chat-execution',
 	'cancel-agent-chat-foreground',
+	'stop-agent-session',
 	'relay-agent-message-queue-update',
 	'relay-agent-background-tasks-update',
 	'relay-agent-update',
 	'resume-agent-workflow-tool',
+	'self-healing-failure',
 	'cancel-agent-background-job',
 	'wake-agent-background-job',
 	'relay-instance-ai-event',
@@ -69,6 +71,7 @@ export const IMMEDIATE_COMMANDS = new Set<PubSub.Command['command']>([
 	'display-workflow-activation-error',
 	'display-workflow-publication-status',
 	'workflow-publish-wake-up',
+	'reload-public-api-rate-limit-settings',
 ]);
 
 /** How often a main rechecks the DB for a queued job whose completion event it may have missed. */

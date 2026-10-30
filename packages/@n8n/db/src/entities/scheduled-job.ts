@@ -1,6 +1,7 @@
 import {
 	SCHEDULED_JOB_NAME_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_ID_MAX_LENGTH,
+	SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH,
 	SCHEDULED_JOB_OWNER_TYPE_MAX_LENGTH,
 	ScheduledJobMisfirePolicy,
 } from '@n8n/constants';
@@ -74,7 +75,7 @@ export class ScheduledJob extends WithTimestamps {
 	 * Which part of the owner, e.g. a workflow's trigger node id. `null` when the
 	 * owner has no parts.
 	 */
-	@Column({ type: 'varchar', length: 36, nullable: true })
+	@Column({ type: 'varchar', length: SCHEDULED_JOB_OWNER_MEMBER_ID_MAX_LENGTH, nullable: true })
 	ownerMemberId: string | null;
 
 	/**

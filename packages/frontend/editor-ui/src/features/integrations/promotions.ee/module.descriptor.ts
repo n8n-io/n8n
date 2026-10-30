@@ -17,9 +17,9 @@ const SettingsView = async () => await import('./views/PromotionsSettingsView.vu
 const EnvironmentView = async () => await import('./views/PromotionEnvironmentView.vue');
 const PreviewView = async () => await import('./views/PromotionPreviewView.vue');
 
-// Check the rollout flag here because module routes skip custom middleware.
+// Module routes skip custom middleware, so the gate runs here.
 const requirePromotionsEnabled = () =>
-	usePromotionsEnabled().isEnabled.value || { name: VIEWS.HOMEPAGE };
+	usePromotionsEnabled().isEnabled.value || { name: VIEWS.SOURCE_CONTROL };
 
 /** A project page that shows the changes before the user promotes or applies them. */
 const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
@@ -37,10 +37,10 @@ const previewRoute = (direction: PromotionDirection): RouteRecordRaw => ({
 	// Users who cannot promote or apply see no promotions UI, so a direct link leads home.
 	// The rbac middleware needs project scopes, which these routes do not load.
 	beforeEnter: () => {
-		const scope = direction === 'promote' ? 'gitConnection:push' : 'gitConnection:pull';
+		const scope = direction === 'promote' ? 'promotions:promote' : 'promotions:apply';
 		const allowed =
 			usePromotionsEnabled().isEnabled.value &&
-			useRBACStore().hasScope(['gitConnection:read', scope], {}, { mode: 'allOf' });
+			useRBACStore().hasScope(['promotions:read', scope], {}, { mode: 'allOf' });
 		return allowed || { name: VIEWS.HOMEPAGE };
 	},
 });

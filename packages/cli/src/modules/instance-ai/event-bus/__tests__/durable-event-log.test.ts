@@ -254,7 +254,7 @@ describe('DurableEventLog', () => {
 				type: 'tasks-update',
 				runId: RUN,
 				agentId: AGENT,
-				payload: { tasks: { tasks: [] }, planItems: [] },
+				payload: { tasks: { tasks: [] } },
 			},
 			{
 				type: 'preference-card',

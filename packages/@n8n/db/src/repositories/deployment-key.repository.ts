@@ -10,7 +10,6 @@ import {
 	OAUTH_SIGNING_KEY_TYPE,
 } from '../entities/deployment-key';
 import { DbLock, DbLockService } from '../services/db-lock.service';
-import type { OperationContext } from '../services/transaction';
 import { TransactionRunner } from '../services/transaction';
 
 /**
@@ -35,10 +34,6 @@ export type ListDeploymentKeysOptions = {
 class DeploymentKeyStore extends BaseRepository<DeploymentKey> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(DeploymentKey, dataSource.manager, transactionRunner);
-	}
-
-	managerForContext(ctx: OperationContext) {
-		return this.managerFor(ctx);
 	}
 }
 
@@ -124,7 +119,7 @@ export class DeploymentKeyRepository {
 	 */
 	async seedLegacyCbcKey(encryptedValue: string): Promise<void> {
 		await this.dbLockService.withLockContext(DbLock.DATA_ENCRYPTION_KEY_SEED, async (ctx) => {
-			const repo = this.store.managerForContext(ctx).getRepository(DeploymentKey);
+			const repo = this.store.managerFor(ctx).getRepository(DeploymentKey);
 			const existing = await repo.findOne({
 				where: { type: 'data_encryption', algorithm: 'aes-256-cbc' },
 			});
@@ -255,7 +250,7 @@ export class DeploymentKeyRepository {
 			status: 'active',
 		});
 		return await this.transactionRunner.run({}, async (ctx) => {
-			const tx = this.store.managerForContext(ctx);
+			const tx = this.store.managerFor(ctx);
 			await tx.update(
 				DeploymentKey,
 				{ type: entity.type, status: 'active' },
@@ -267,7 +262,7 @@ export class DeploymentKeyRepository {
 
 	async activateDataEncryptionKey(id: string): Promise<void> {
 		await this.transactionRunner.run({}, async (ctx) => {
-			const tx = this.store.managerForContext(ctx);
+			const tx = this.store.managerFor(ctx);
 			const target = await tx.findOne(DeploymentKey, {
 				where: { id, type: 'data_encryption' },
 			});

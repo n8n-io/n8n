@@ -29,7 +29,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		variable: {},
 		projectVariable: {},
 		sourceControl: {},
-		gitConnection: {},
+		promotions: {},
 		externalSecretsProvider: {},
 		externalSecret: {},
 		project: {},

@@ -1,6 +1,11 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { WorkflowRepository, WorkflowStatisticsRepository } from '@n8n/db';
+import type {
+	WorkflowHistoryRepository,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import type { ErrorReporter } from 'n8n-core';
+import type { INode } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,6 +24,7 @@ describe('BreakingChangeService', () => {
 	const logger = mockLogger();
 
 	let workflowRepository: Mocked<WorkflowRepository>;
+	let workflowHistoryRepository: Mocked<WorkflowHistoryRepository>;
 	let workflowStatisticsRepository: Mocked<WorkflowStatisticsRepository>;
 	let ruleRegistry: RuleRegistry;
 	let errorReporter: Mocked<ErrorReporter>;
@@ -28,6 +34,7 @@ describe('BreakingChangeService', () => {
 		vi.clearAllMocks();
 
 		workflowRepository = mock<WorkflowRepository>();
+		workflowHistoryRepository = mock<WorkflowHistoryRepository>();
 		workflowStatisticsRepository = mock<WorkflowStatisticsRepository>();
 		ruleRegistry = new RuleRegistry(logger);
 		errorReporter = mock<ErrorReporter>();
@@ -39,6 +46,7 @@ describe('BreakingChangeService', () => {
 			ruleRegistry,
 			new MigrationRegistry(logger),
 			workflowRepository,
+			workflowHistoryRepository,
 			workflowStatisticsRepository,
 			logger,
 			errorReporter,
@@ -372,6 +380,7 @@ describe('BreakingChangeService', () => {
 			);
 			expect(result).toEqual({
 				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				publishedHits: [],
 				failedChecks: [],
 			});
 			expect(batchRule.collectWorkflowData).not.toHaveBeenCalled();
@@ -390,6 +399,7 @@ describe('BreakingChangeService', () => {
 
 			expect(result).toEqual({
 				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				publishedHits: [],
 				failedChecks: [{ ruleId: throwingRule.id, workflowId: 'wf-1' }],
 			});
 			expect(errorReporter.error).toHaveBeenCalledWith(
@@ -403,7 +413,92 @@ describe('BreakingChangeService', () => {
 
 			const result = await service.detectWorkflowHits('v2', 'wf-gone');
 
-			expect(result).toEqual({ hits: [], failedChecks: [] });
+			expect(result).toEqual({ hits: [], publishedHits: [], failedChecks: [] });
+		});
+	});
+
+	describe('published version', () => {
+		const removedNode = () => createNode('Spontit Node', 'n8n-nodes-base.spontit');
+		const fileNode = () => createNode('File Node', 'n8n-nodes-base.readWriteFile');
+
+		/** A workflow whose latest version `v2` is ahead of the published version `v1`. */
+		function draftAheadOfPublished(id: string, draftNodes: INode[], publishedNodes: INode[]) {
+			const { workflow } = createWorkflow(id, 'Test Workflow', draftNodes);
+			workflow.versionId = `${id}-v2`;
+			workflow.activeVersionId = `${id}-v1`;
+			workflowHistoryRepository.findNodesByVersionIds.mockResolvedValue([
+				{ versionId: `${id}-v1`, nodes: publishedNodes },
+			] as never);
+			return workflow;
+		}
+
+		it('scans the published version of a workflow whose latest version is ahead of it', async () => {
+			const ahead = draftAheadOfPublished('wf-1', [], [removedNode()]);
+			const { workflow: same } = createWorkflow('wf-2', 'Same', [removedNode()]);
+			const { workflow: unpublished } = createWorkflow('wf-3', 'Unpublished', [], false);
+			workflowRepository.find.mockResolvedValue([ahead, same, unpublished] as never);
+			workflowRepository.count.mockResolvedValue(3);
+
+			const { publishedHits } = await service.detect('v2');
+
+			expect(workflowHistoryRepository.findNodesByVersionIds).toHaveBeenCalledTimes(1);
+			expect(workflowHistoryRepository.findNodesByVersionIds).toHaveBeenCalledWith(['wf-1-v1']);
+			expect(publishedHits).toEqual([{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }]);
+		});
+
+		it('loads no published version when every workflow has its latest version published', async () => {
+			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [removedNode()]);
+			workflowRepository.find.mockResolvedValue([workflow] as never);
+			workflowRepository.count.mockResolvedValue(1);
+
+			const { publishedHits } = await service.detect('v2');
+
+			expect(workflowHistoryRepository.findNodesByVersionIds).not.toHaveBeenCalled();
+			expect(publishedHits).toEqual([]);
+		});
+
+		it('checks the published version only against the rules the latest version passed', async () => {
+			const workflow = draftAheadOfPublished('wf-1', [removedNode()], [removedNode(), fileNode()]);
+			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			const removedNodesRule = ruleRegistry.getRule('removed-nodes-v2') as RemovedNodesRule;
+			const detectSpy = vi.spyOn(removedNodesRule, 'detectWorkflow');
+
+			const result = await service.detectWorkflowHits('v2', 'wf-1');
+
+			expect(result).toEqual({
+				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
+				publishedHits: [{ ruleId: 'file-access-restriction-v2', workflowId: 'wf-1' }],
+				failedChecks: [],
+			});
+			expect(detectSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not check the published version against a rule that threw on the latest version', async () => {
+			const workflow = draftAheadOfPublished('wf-1', [], [fileNode()]);
+			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
+			const detectSpy = vi
+				.spyOn(throwingRule, 'detectWorkflow')
+				.mockRejectedValue(new Error('boom'));
+
+			const result = await service.detectWorkflowHits('v2', 'wf-1');
+
+			expect(result).toEqual({
+				hits: [],
+				publishedHits: [],
+				failedChecks: [{ ruleId: throwingRule.id, workflowId: 'wf-1' }],
+			});
+			expect(detectSpy).toHaveBeenCalledTimes(1);
+		});
+
+		it('does not scan a published version for a single-rule detection', async () => {
+			const workflow = draftAheadOfPublished('wf-1', [], [removedNode()]);
+			workflowRepository.find.mockResolvedValue([workflow] as never);
+			workflowRepository.count.mockResolvedValue(1);
+
+			await service.detectRule('v2', ruleRegistry.getRule('removed-nodes-v2') as RemovedNodesRule);
+
+			expect(workflowHistoryRepository.findNodesByVersionIds).not.toHaveBeenCalled();
 		});
 	});
 });

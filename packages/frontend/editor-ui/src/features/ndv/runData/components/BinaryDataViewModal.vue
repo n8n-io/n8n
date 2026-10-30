@@ -2,12 +2,11 @@
 import { computed, ref, watch, onBeforeUnmount } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import VueJsonPretty from 'vue-json-pretty';
-import RunDataHtml from './RunDataHtml.vue';
 import RunDataMarkdown from './RunDataMarkdown.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import type { BinaryMetadata } from '@n8n/design-system';
+import { N8nHtmlPreview, type BinaryMetadata } from '@n8n/design-system';
 
 const i18n = useI18n();
 const workflowsStore = useWorkflowsStore();
@@ -174,7 +173,7 @@ onBeforeUnmount(() => {
 					/>
 
 					<!-- HTML -->
-					<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="displayData" />
+					<N8nHtmlPreview v-else-if="binaryData.fileType === 'html'" :html="displayData" />
 
 					<!-- Markdown -->
 					<RunDataMarkdown

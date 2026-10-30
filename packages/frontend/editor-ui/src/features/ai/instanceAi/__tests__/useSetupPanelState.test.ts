@@ -128,7 +128,7 @@ describe('useSetupPanelState', () => {
 		});
 		thread.messages[0].agentTree!.toolCalls.push({
 			toolCallId: 'setup',
-			toolName: 'workflow_builder_credentials',
+			toolName: 'credentials',
 			args: { action: 'setup' },
 			isLoading: false,
 			result: { success: true, preBuild: true, workflowId: WORKFLOW_ID },

@@ -16,7 +16,6 @@ import type {
 	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { sleep } from '@n8n/utils/sleep';
 import {
 	BINARY_ENCODING,
 	NodeApiError,
@@ -25,6 +24,8 @@ import {
 	jsonParse,
 	removeCircularRefs,
 	setSafeObjectProperty,
+	sleepUnlessExecutionCancelled,
+	throwIfExecutionCancelled,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -38,6 +39,7 @@ import {
 	getAllowedDomains,
 	getOAuth2AdditionalParameters,
 	getSecrets,
+	isStream,
 	prepareRequestBody,
 	reduceAsync,
 	replaceNullValues,
@@ -47,6 +49,7 @@ import {
 } from '../GenericFunctions';
 import { setFilename } from './utils/binaryData';
 import { mimeTypeFromResponse } from './utils/parse';
+import { getResponseForContext } from './utils/response-context';
 import { configureResponseOptimizer } from '../shared/optimizeResponse';
 
 import { binaryToStringWithEncodingDetection } from './utils/buffer-decoding';
@@ -342,9 +345,12 @@ export class HttpRequestV3 implements INodeType {
 				const batchSize = batching?.batch?.batchSize > 0 ? batching?.batch?.batchSize : 1;
 				const batchInterval = batching?.batch.batchInterval;
 
+				// Stop sending requests when the execution is cancelled
+				throwIfExecutionCancelled(this);
+
 				if (itemIndex > 0 && batchSize >= 0 && batchInterval > 0) {
 					if (itemIndex % batchSize === 0) {
-						await sleep(batchInterval);
+						await sleepUnlessExecutionCancelled(this, batchInterval);
 					}
 				}
 
@@ -539,6 +545,8 @@ export class HttpRequestV3 implements INodeType {
 					requestOptions.useStream = true;
 				} else if (bodyContentType === 'raw') {
 					requestOptions.json = false;
+					// The response arrives as a stream. The paginated helper reads it for paginated requests.
+					// The response loop below reads it for json and text formats.
 					requestOptions.useStream = true;
 				} else {
 					requestOptions.json = true;
@@ -806,7 +814,8 @@ export class HttpRequestV3 implements INodeType {
 					requestPromises.push(requestWithAuthentication);
 				}
 			} catch (error) {
-				if (!this.continueOnFail()) throw error;
+				// A cancelled execution must not continue with the next items
+				if (this.getExecutionCancelSignal()?.aborted || !this.continueOnFail()) throw error;
 
 				requestPromises.push(Promise.reject(error).catch(() => {}));
 
@@ -942,18 +951,6 @@ export class HttpRequestV3 implements INodeType {
 				for (let [index, response] of Object.entries(responses)) {
 					if (response?.request?.constructor.name === 'ClientRequest') delete response.request;
 
-					if (this.getMode() === 'manual' && index === '0') {
-						// For manual executions save the first response in the context
-						// so that we can use it in the frontend and so make it easier for
-						// the users to create the required pagination expressions
-						const nodeContext = this.getContext('node');
-						if (pagination && pagination.paginationMode !== 'off') {
-							nodeContext.response = responseData.value[0];
-						} else {
-							nodeContext.response = responseData.value;
-						}
-					}
-
 					const responseContentType = response.headers['content-type'] ?? '';
 					if (autoDetectResponseFormat) {
 						if (responseContentType.includes('application/json')) {
@@ -992,6 +989,26 @@ export class HttpRequestV3 implements INodeType {
 							}
 						}
 					}
+
+					// A raw request body streams the response for every format. Read the stream unless
+					// the response is a file. The pagination helper has already read its own stream.
+					if (responseFormat !== 'file' && isStream(response.body)) {
+						response.body = await binaryToStringWithEncodingDetection(
+							response.body as Readable,
+							responseContentType,
+							this.helpers,
+						);
+					}
+
+					if (this.getMode() === 'manual' && index === '0') {
+						// For manual executions save the first response in the context
+						// so that we can use it in the frontend and so make it easier for
+						// the users to create the required pagination expressions.
+						// Save a plain copy after the body is resolved. The execution stores
+						// the context, so it must not hold a response stream.
+						this.getContext('node').response = getResponseForContext(response);
+					}
+
 					// This is a no-op outside of tool usage
 					const optimizeResponse = configureResponseOptimizer(this, itemIndex);
 

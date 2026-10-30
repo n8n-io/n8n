@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { ref } from 'vue';
 
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
@@ -76,6 +76,14 @@ const PreferenceModalStub = {
 		</div>
 	`,
 };
+
+async function clickRowAction(table: HTMLElement, action: 'edit' | 'delete') {
+	await userEvent.click(within(table).getByTestId('preference-actions').querySelector('button')!);
+	await waitFor(() =>
+		expect(document.querySelector(`[data-test-id="action-${action}"]`)).toBeInTheDocument(),
+	);
+	await userEvent.click(document.querySelector(`[data-test-id="action-${action}"]`)!);
+}
 
 const renderComponent = createComponentRenderer(SettingsPreferencesView, {
 	global: { stubs: { PreferenceModal: PreferenceModalStub } },
@@ -169,15 +177,15 @@ describe('SettingsPreferencesView', () => {
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', '');
 	});
 
-	it('opens the edit modal with the row it was triggered from', async () => {
+	it('opens the edit modal when a row is clicked', async () => {
 		const row = preference();
 		contextStore.preferences = [row];
 		contextStore.count = 1;
 
-		const { getByTestId } = renderView();
+		const { getByTestId, getByText } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-edit-button'));
+		await userEvent.click(getByText(row.content));
 
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-open', 'true');
 		expect(getByTestId('preference-modal-stub')).toHaveAttribute('data-preference-id', row.id);
@@ -206,7 +214,7 @@ describe('SettingsPreferencesView', () => {
 		const { getByTestId } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-delete-button'));
+		await clickRowAction(getByTestId('preferences-table'), 'delete');
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).toHaveBeenCalledWith('p1');
@@ -262,7 +270,7 @@ describe('SettingsPreferencesView', () => {
 		const { getByTestId } = renderView();
 		await new Promise(process.nextTick);
 
-		await userEvent.click(getByTestId('preference-delete-button'));
+		await clickRowAction(getByTestId('preferences-table'), 'delete');
 		await new Promise(process.nextTick);
 
 		expect(contextStore.deletePreference).not.toHaveBeenCalled();
@@ -520,6 +528,178 @@ describe('SettingsPreferencesView', () => {
 			skip: 0,
 			take: 50,
 			sortBy: 'updatedAt:desc',
+		});
+	});
+
+	describe('search', () => {
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('searches on the server and shows an empty table, not the empty state, for no matches', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			emptyStateVariant.value = 'assistant';
+			// A first load with rows, so the toolbar renders in every empty state variant.
+			contextStore.preferences = [preference()];
+			contextStore.count = 1;
+			const { getByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+			expect(queryByTestId('preferences-empty-state')).not.toBeInTheDocument();
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+		});
+
+		it('starts a new search on the first page with an empty selection', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [preference({ id: 'a' }), preference({ id: 'b' })];
+			contextStore.count = 60; // two pages at the default size of 50
+
+			const { getByTestId, getAllByRole, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByTestId('pagination-next'));
+			await new Promise(process.nextTick);
+			await userEvent.click(getAllByRole('checkbox')[0]);
+			expect(getByTestId('preferences-delete-selected-button')).toBeInTheDocument();
+
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+			expect(queryByTestId('preferences-delete-selected-button')).not.toBeInTheDocument();
+		});
+
+		it('keeps the toolbar while a cleared search with no matches reloads', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			emptyStateVariant.value = 'assistant';
+			contextStore.preferences = [preference()];
+			contextStore.count = 1;
+			const { getByTestId, queryByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'zzz');
+			await vi.runAllTimersAsync();
+
+			// The unfiltered reload has not run yet: the zero still describes the search.
+			await userEvent.clear(getByTestId('preferences-search'));
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [preference()];
+				contextStore.count = 1;
+				return { count: 1, data: contextStore.preferences };
+			});
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+			});
+			expect(queryByTestId('preferences-empty-state-assistant')).not.toBeInTheDocument();
+			expect(getByTestId('preferences-search')).toBeInTheDocument();
+		});
+
+		it('ignores an older load that finishes after a new search', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [preference()];
+			contextStore.count = 60; // two pages at the default size of 50
+
+			const { getByTestId } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByTestId('pagination-next'));
+			await new Promise(process.nextTick);
+
+			// The reload of page 2 stays pending until the search has finished.
+			let finishOlderLoad: () => void = () => {};
+			contextStore.fetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishOlderLoad = () => resolve({ count: 1, data: [] });
+					}),
+			);
+			await userEvent.click(getByTestId('preference-modal-stub-saved'));
+
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [preference()];
+				contextStore.count = 1;
+				return { count: 1, data: contextStore.preferences };
+			});
+			await userEvent.type(getByTestId('preferences-search'), 'short');
+			await vi.runAllTimersAsync();
+			const callsAfterSearch = contextStore.fetchPreferences.mock.calls.length;
+
+			// Page 2 no longer exists, but the older load must not fetch again with its old filter.
+			finishOlderLoad();
+			await vi.runAllTimersAsync();
+
+			expect(contextStore.fetchPreferences).toHaveBeenCalledTimes(callsAfterSearch);
+			expect(contextStore.fetchPreferences).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 50,
+				sortBy: 'updatedAt:desc',
+				search: 'short',
+			});
+		});
+
+		it('reports no visit when a search replaces the first load', async () => {
+			vi.useFakeTimers({ shouldAdvanceTime: true });
+			contextStore.preferences = [];
+			contextStore.count = 0;
+
+			// The first load stays pending until the search has finished.
+			let finishFirstLoad: () => void = () => {};
+			contextStore.fetchPreferences.mockImplementationOnce(
+				async () =>
+					await new Promise((resolve) => {
+						finishFirstLoad = () => resolve({ count: 0, data: [] });
+					}),
+			);
+			contextStore.fetchPreferences.mockImplementation(async () => {
+				contextStore.preferences = [];
+				contextStore.count = 0;
+				return { count: 0, data: [] };
+			});
+
+			const { getByTestId } = renderView();
+			await userEvent.type(getByTestId('preferences-search'), 'zzz');
+			await vi.runAllTimersAsync();
+
+			finishFirstLoad();
+			await vi.runAllTimersAsync();
+
+			// The store holds the filtered rows, so their count does not describe the visit.
+			expect(trackMock).not.toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CONTEXT.USER_VIEWED_PREFERENCES,
+				expect.anything(),
+			);
+			expect(trackEmptyStateExposure).not.toHaveBeenCalled();
 		});
 	});
 

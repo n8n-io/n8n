@@ -12,6 +12,8 @@ Five harnesses live here:
 - **`eval:discovery`** — orchestrator in-process, scored against required or forbidden tool/dispatch events (no n8n server)
 - **`eval:pairwise`** — live orchestrator workflow builds, scored by an LLM judge panel against do/don't lists. Intended for head-to-head comparison with `ai-workflow-builder.ee` on the same dataset
 
+To compare the model context of two commits (tokens for each LLM call, tool list size), use the A/B context benchmark: `eval:ab-bench`. See [ab-bench/README.md](./ab-bench/README.md).
+
 > **Writing a test case?** This README is the reference and quick-start. Use the [`create-instance-ai-eval` skill](../../../../.agents/skills/create-instance-ai-eval/SKILL.md) for the shared process and workflow cases. Use the [`create-agent-builder-eval` skill](../../../../.agents/skills/create-agent-builder-eval/SKILL.md) for standalone Agent cases. To source cases from real failures, see [sourcing from LangTracer + LangSmith](../../../../.agents/skills/create-instance-ai-eval/sourcing-cases.md).
 
 Sections:
@@ -66,14 +68,14 @@ You need an n8n instance running with Instance AI enabled, a seeded owner accoun
    LANGSMITH_API_KEY=...
    ```
 
-2. **Start the instance**:
+2. **Start the instance**. `N8N_INSTANCE_AI_EVAL_INSTANCE=true` registers the eval routes the harness calls:
    ```bash
-   dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true dotenvx run -f .env.local -- pnpm dev:ai
    ```
 
 3. **Create the owner account**. First time only: open `http://localhost:5678`, sign up with the email/password from your `.env.local`. If you'd rather reset to a known state (useful after deleting the DB or between iterations), start the server with `E2E_TESTS=true` and `curl` the reset endpoint:
    ```bash
-   E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
+   N8N_INSTANCE_AI_EVAL_INSTANCE=true E2E_TESTS=true dotenvx run -f .env.local -- pnpm dev:ai
    # then in another shell:
    curl -sf -X POST http://localhost:5678/rest/e2e/reset \
      -H "Content-Type: application/json" \
@@ -98,6 +100,7 @@ docker run -d --name n8n-eval \
   -e E2E_TESTS=true \
   -e N8N_ENABLED_MODULES=instance-ai,agents \
   -e N8N_AI_ENABLED=true \
+  -e N8N_INSTANCE_AI_EVAL_INSTANCE=true \
   -e N8N_INSTANCE_AI_MODEL_API_KEY=your-key \
   -p 5678:5678 \
   n8nio/n8n:local
@@ -166,7 +169,7 @@ Set the mock settings on the n8n server process and the judge settings on the CL
 
 | Env var | Default | Description |
 |---------|---------|-------------|
-| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-4-6` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI |
+| `N8N_INSTANCE_AI_EVAL_MODEL` | `N8N_INSTANCE_AI_MODEL`, then `anthropic/claude-sonnet-5-5` | Model of every eval agent that does not pin one: the mock layer on the server, the user proxy on the CLI. `eval:discovery` reads it as the orchestrator model under test and falls back to `anthropic/claude-sonnet-4-6` |
 | `N8N_INSTANCE_AI_EVAL_EFFORT` | `medium` | Effort of the same agents |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_MODEL` | `anthropic/claude-sonnet-5-5` | Model of the judges: checklist verifier, expectations judge, binary LLM checks, computer-use grader. The user proxy and the mocks keep their model |
 | `N8N_INSTANCE_AI_EVAL_JUDGE_EFFORT` | `high` | Effort of the judges |
@@ -364,7 +367,7 @@ on disk. Losing this field turns it into a normal attachment test.
 | `N8N_AI_ASSISTANT_BASE_URL` | No | Set to `""` to bypass the hosted AI proxy and hit Anthropic directly — useful to avoid per-tenant quota during large batch runs |
 | `INSTANCE_AI_BRAVE_SEARCH_API_KEY` | No | Set on the **target n8n instance** (note: no `N8N_` prefix) to enable the builder's `web-search` action. Unset = the action returns zero results, which reads to the agent as "nothing found". A licensed instance with `N8N_AI_ASSISTANT_BASE_URL` set routes search through the AI proxy instead and ignores this key |
 | `N8N_INSTANCE_AI_RUN_DEBUG_ENABLED` | No | Set to `true` on the target n8n instance to capture orchestrator LLM steps and workflow code for the eval LLM debug report (`workflow-eval-llm-debug.html`). Off by default. |
-| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
+| `N8N_INSTANCE_AI_EVAL_INSTANCE` | No | Set to `true` on a throwaway eval instance, never on a daily dev instance. Feature flags then come only from env overrides (`N8N_FEATURE_FLAG_OVERRIDES`, `N8N_INSTANCE_AI_*_ENABLED`): every flag-gated feature runs its default arm unless a run turns it on, instead of each fresh instance drawing its own flags from the live PostHog rollout. It also lets an eval run reset Remove Duplicates history between scenarios. It registers the `/rest/instance-ai/eval/` routes and allows the `observerThresholdTokens` chat override. Without it, the harness gets 404 from those routes. `run-eval-lanes.sh` and LangTracer's eval n8n containers (compose bundle, Kubernetes pool) set it. A dispatcher pointed at an n8n you start yourself does not: set it on that n8n. When a feature reaches 100% rollout, delete its flag from the code or add it to the eval overrides, or evals keep testing the old path. |
 
 **LangSmith caveat:** if `LANGSMITH_API_KEY` is set in `.env.local`, local runs also land in the shared `instance-ai-workflow-evals` dataset. Unset it (or run without `dotenvx`) to keep exploratory runs out of team results.
 
@@ -643,6 +646,7 @@ before the turn:
 - `seed.messages` are earlier messages in the thread.
 - `seed.workflows` and `seed.dataTables` are on the instance.
 - `seed.priorRuns` are failed runs. `hints` is the error of the run.
+  The stub instance cannot serve `seed.recordedRuns`, so it skips cases that have them.
 - `attach` is the workflow or Agent (from `seed.agents`) the user has open. The
   turn sends it in the same `<thread-context>` block as production.
 - `credentials` are accounts. Each account passes its connection test, unless
@@ -752,8 +756,7 @@ error class — it counts as a primary fail in the comparison report.
 The agent is stubbed for non-interactive use. The summary tracks divergence
 from this assumption — investigate any non-zero count:
 
-- `askUserCount` — `workflow_builder_ask_user` tool was invoked (eval responds with `{ approved: false }`)
-- `planToolCount` — `workflow_builder_create_tasks` was invoked (single-prompt dataset shouldn't trigger planning)
+- `askUserCount` — `ask_user` tool was invoked (eval responds with `{ approved: false }`)
 - `autoApprovedSuspensions` — HITL-gated tool fired (e.g., `data_tables` create); auto-approved
 - `mockedCredentialTypes` — credential types the agent referenced (auto-mocked since `credentialService.list()` returns `[]`)
 
@@ -885,7 +888,7 @@ A direction governs only what it covers; otherwise the proxy answers every quest
 
 ### Build isolation
 
-Each orchestrator build runs in its own empty project: the personal project of a freshly invited member, named like the lane owner. The owner still drives the build; the member only owns the project. An unlicensed instance cannot create team projects, so a new user is the only way to get a new project. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there; under `--keep-workflows` the members stay, with their projects. Like the MCP lane, this needs a lane without SMTP, so invites return their accept token.
+Each orchestrator build runs in its own empty project, named like the lane owner. The owner drives the build. When the license allows team projects, the project is a team project the owner creates, so the owner is its admin and n8n shows it the build's execution output. Cleanup deletes the project; lane setup and the run end also delete any marked build project a crashed or failed build left, because with team projects licensed the agent's project list shows every project. Without team projects, the project is the personal project of a freshly invited member, the only new project an unlicensed instance can create. n8n then hides execution output from the owner, because the owner has no direct access to the member's credentials, and lane setup logs a warning. Cleanup deletes the member, which also deletes its project and anything a timed-out build left there. Under `--keep-workflows`, build projects and members stay. Like the MCP lane, the member path needs a lane without SMTP, so invites return their accept token.
 
 If the agent still reads a workflow that its build did not create or seed, the run fails as a harness fault: its rows and expectations fail with `framework_issue`. The pass rate shows the leak, builder analyses can filter it out by attribution, and the log names the workflow. A timeout still wins: if the build also timed out, the run stays neutral as `timeout`, like every timed-out run.
 
@@ -895,13 +898,15 @@ By default a build sees **no credentials**: the harness pins every build thread'
 
 Agent Builder model catalog requests also stay local. Eval threads return one deterministic fake model for each model provider. They do not decrypt the placeholder credential or contact the provider. Production threads continue to use live model catalogs.
 
+Live resource lookups (`get_node_parameter_options`) on a declared credential stay local too: they return "Resource exploration is not available.", the answer production gives when lookups are not available, and they do not contact the provider. A credential declared `valid: false` or `blank: true` still runs the live lookup, so it fails the way a broken credential does. Setting a live `EVAL_*_ACCESS_TOKEN` does not turn lookups back on.
+
 A case that tests credential behaviour declares what should exist:
 
 ```json
 "credentials": [{ "type": "slackApi" }, { "type": "slackApi" }]
 ```
 
-Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
+Declared credentials are created for real (placeholder token; set the matching `EVAL_*_ACCESS_TOKEN` for a live token) before the build, the thread's view is pinned to exactly that set, and they're deleted at the end of the run. Their connection test resolves as passing — a declared credential stands for one the user already connected — the same treatment a credential set up on a card during the run gets. A type n8n has no connection test for (Header, Basic or Bearer Auth) is not bypassed: its test returns production's "No testing function found for this credential." Counts matter: exactly one credential of a type is the builder's auto-attach path; two or more force the mock path. `name` is optional — duplicates get a `#2` suffix.
 
 Each type needs a data template in `credentials/seeder.ts`; declaring an unknown type fails the build with a pointer there.
 
@@ -981,6 +986,28 @@ requires the agent to read it.
   against history the instance does not have.
 - Runs execute sequentially in declared order, before the live turn, on a 120s budget —
   tighter than a scenario execution, which gets the case's build budget (900s by default).
+
+#### `seed.recordedRuns` — the same failure on every run
+
+`priorRuns` asks the mock layer to fail again on each eval, so the failure can differ from
+run to run. `recordedRuns` restores a failed run recorded once, so every eval sees the same
+record: the same node outputs, the same error.
+
+```jsonc
+"seed": {
+  "mode": "inline",
+  "workflows": [{ "id": "dS8xQ2mV6bTn4Kp1", "name": "Daily Sync", "nodes": [], "connections": {} }],
+  "recordedRuns": [{ "workflow": "dS8xQ2mV6bTn4Kp1", "envelope": { "format": "n8n-instance-ai-failed-execution", "version": 1 /* … */ } }]
+}
+```
+
+- Get an `envelope` from `POST /rest/instance-ai/eval/export-execution` on an eval
+  instance (`N8N_INSTANCE_AI_EVAL_INSTANCE=true`), for one failed run (`error` or
+  `crashed`) of a thread's project.
+- `workflow` is the seed workflow's `id`, as for `priorRuns`. The restore binds the run to
+  the restored workflow and moves its timestamps so it ends at restore time.
+- Recorded runs restore in declared order, before any `priorRuns`. A restore that fails is
+  a seeding failure (framework issue), not an agent failure.
 
 #### `mode: "replay"` — reproduce a real conversation (no repo content)
 
@@ -1066,7 +1093,7 @@ The seed lives **in the case body** rather than in a sibling file, so it travels
 
 A seed can create folders in the thread's project before the live turn, and place its
 workflows inside them. Use it to grade how the agent finds the contents of a folder the
-user names (CONTEXT-86: `workflow_builder_workflows(action="list")` takes `folderPath` or `folderId`).
+user names (CONTEXT-86: `list_workflows` takes `folderPath` or `folderId`).
 
 ```jsonc
 "seed": {

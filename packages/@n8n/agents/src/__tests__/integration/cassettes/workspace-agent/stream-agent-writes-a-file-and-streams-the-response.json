@@ -46,6 +46,44 @@
 					}
 				},
 				{
+					"name": "workspace_read_files",
+					"description": "Read several workspace files, or line ranges of them, in one call. Returns at most 500 lines of each file; `truncated` marks a cut read, so read the rest with a later `startLine`. A file that cannot be read returns an `error` and does not stop the others.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"files": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string",
+											"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
+										},
+										"startLine": {
+											"type": "integer",
+											"exclusiveMinimum": 0,
+											"description": "First line to read (default: 1)"
+										},
+										"endLine": {
+											"type": "integer",
+											"exclusiveMinimum": 0,
+											"description": "Last line to read (default: end)"
+										}
+									},
+									"required": ["path"],
+									"additionalProperties": false
+								},
+								"minItems": 1,
+								"maxItems": 20
+							}
+						},
+						"required": ["files"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
 					"name": "workspace_read_tool_result",
 					"description": "Inspect an oversized tool result stored in the workspace. Start with view=describe, then use view=json with relevant JSON Pointers and nextOffset values. Continue until you have enough evidence for the user request; do not assume the first page is complete when hasMore is true.",
 					"input_schema": {
@@ -143,6 +181,86 @@
 							}
 						},
 						"required": ["path", "content"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_edit_files",
+					"description": "Write or edit several workspace files in one call. Runs every operation, in order, and returns a result for each one. A `replace` operation is atomic for its file, like workspace_str_replace_file. A failed operation does not stop the others.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"operations": {
+								"type": "array",
+								"items": {
+									"anyOf": [
+										{
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string",
+													"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
+												},
+												"content": {
+													"type": "string",
+													"description": "Content to write to the file"
+												},
+												"recursive": {
+													"type": "boolean",
+													"description": "Create parent directories if they do not exist"
+												},
+												"type": {
+													"type": "string",
+													"const": "write"
+												}
+											},
+											"required": ["path", "content", "type"],
+											"additionalProperties": false
+										},
+										{
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string",
+													"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
+												},
+												"replacements": {
+													"type": "array",
+													"items": {
+														"type": "object",
+														"properties": {
+															"old_str": {
+																"type": "string",
+																"description": "Exact text to replace. Must match exactly and be unique."
+															},
+															"new_str": {
+																"type": "string",
+																"description": "Replacement text to write in place of old_str."
+															}
+														},
+														"required": ["old_str", "new_str"],
+														"additionalProperties": false
+													},
+													"minItems": 1,
+													"description": "Ordered exact string replacements applied atomically."
+												},
+												"type": {
+													"type": "string",
+													"const": "replace"
+												}
+											},
+											"required": ["path", "replacements", "type"],
+											"additionalProperties": false
+										}
+									]
+								},
+								"minItems": 1,
+								"maxItems": 50,
+								"description": "`write` replaces a whole file. `replace` applies exact text replacements"
+							}
+						},
+						"required": ["operations"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -377,33 +495,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013cd564d8fda3010bdf32ba2398736b04b59f9d60f690f2d52d54bd596ca9a4d06e2c5b1537b02dba2fcf7ca81b084856d2f2de4e699b1e7bd377666684986455490f73827e9191df7326414d11af8674920a0e384b85d8358436133d22020d55865d4cf512daafe757fd41f26c3d12049061083cac2197e2e93c1e02d2935fafcfae3d5fdf5646568f2cece6f32880f32410cceea6040ef956734216d6a0d936110dfbec7e0d996d2117a6b40984aebadc9d38f8a4c4a1d63468c4afbd656b5e895292b966c17643c88e1cd288921c53427993a4256d6c86ec8ceef08b353be766fc840654e0539d472543c8d7ff40ef2436f1d83adb883ef550c9edc52a52459910301419a0c5d50509919b9c05ccec982006359e21295c63b4d50d751f8ea5e8f3605df8a29efb44d17c7cb7e24a4c993d1c386edbe3f90ddee636bb5ac3cb5a50feb4a268351f1f57652fda255f9e9cdb8b8faf2fe76395b7c80180c1661dfcaba852f3125b9728a49ce946ece08ba8058d7415fad03ef5daa4c394ab965171d702c95991f908a2018e1940e1969c6e77568423a3a6c2c8fa03685bcf7d6ec824b74ac5037461000f533b5f84f18d6d30d8ce8a874678154e206d1996170be93e6cc484434859739c1f1eb7d16485adb17fcc0ddcb73664c71747897cf0c28b5e6129e78386eda5c22cfee229e1661a12eedaf63e651e83c9750303f851aead34dda967fead1b6dc83704ae6769e3bcaaae3843d169d896bbfc9ffe5dc55ffc3c1eb60521a8feba76c8fc9b7ef8346a2dfa6b97a5b100b0000"
+			"1f8b0800000000000013cd564d6fd34010bdf757587376c049482bf9868a0081a804874688a0d5d49edadb6c76cdee6c1a88fcdfd13a716bbb29f402a96f3b1f3befbd197996d6a4398d56e41c16241ca3e5931c19d3680bfcb32248a1e784b83d43ba8595c949410a99429fd3a844b9f4a357a3d968924c66e32419430c320f77b84224e3f179f1f5f59466f3b7cb9bf7d3d2bff972c9fe1ce2412588c11a150ce89c748c3a94cd8c66d20ce9b7efbb034a4d1652ed958ac1b1a984257446f74c8e7e78d219f58c39314ae55a9b6fe9485d79166c96a41da4d3b364164386594922b3842c8d16fd90a4f55bc2fc315f9b1b2a5055d28a2c2a315b3d8cbff78ecba1b78ec178ee9a26a73138b26b99916019a480a0558e360fb2eb6bb281b928c8400adab0c0354a85572a28ec2aa2bc9b52c7904b2cb4712cb3bd36751445517d7242bb31d9b7405c29932d0f0fcb8190064c4e9b9d245d7f50649fc7c628e11db50313ce5e24e38b0f5e9697f38f9bb9ff7571eae79f3fbdd39329c4a07115f26e8d5dba0a3312b75632896bd9b06bc483745b87262815c4b92b954b4b19435d77a9555217032e1104233c463f27c5f867fa4d488ffece728f65d7e41b67f45d70859625aac6082940fd6803fe1382ed022ae472f10ca0a4d1025e96a4a019ccce77645ccabce00d370a1d1b4a1c2d9a5b07121d1915695e34dd83fac8481c5bc2957c6e13a48b28fcca9ec100b905d44f1c9eb04cffb6004cd5c133b8ad7d591c64d6734287496fd57717c79317fee0f550ffc327c060679f9dd50fe91f92b1eb834e1f7e03a26cc4aeb1090000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:00Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-30T09:06:55Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:00Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-30T09:06:55Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:00Z",
+			"anthropic-ratelimit-requests-reset": "2026-10-30T09:06:55Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:00Z",
+			"anthropic-ratelimit-tokens-remaining": "11998000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-30T09:06:55Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a35e578739bdc2fa-VIE",
+			"cf-ray": "a52944470d10866e-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 04 Sep 2026 16:24:00 GMT",
-			"request-id": "req_011Ceii5VaAP1tXGjUY3VVzk",
+			"date": "Fri, 30 Oct 2026 09:06:55 GMT",
+			"request-id": "req_011CgYA3dpPFTFFYKnUfeFfZ",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=104",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-c92fa8284e11b8a33b457a136bf52dfe-fbb18fadfeadaefd-01",
+			"traceresponse": "00-c8afbfb28d6a958d6b5ffb0e2d3cbeb3-9185a4ee9c02c341-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
@@ -438,7 +557,7 @@
 					"content": [
 						{
 							"type": "tool_use",
-							"id": "toolu_015mZGMuzewpRB7m3YKGvfkL",
+							"id": "toolu_01NJuihVWKxWuzN6uWQMGn23",
 							"name": "workspace_write_file",
 							"input": {
 								"path": "/hello.txt",
@@ -455,7 +574,7 @@
 					"content": [
 						{
 							"type": "tool_result",
-							"tool_use_id": "toolu_015mZGMuzewpRB7m3YKGvfkL",
+							"tool_use_id": "toolu_01NJuihVWKxWuzN6uWQMGn23",
 							"content": "{\"success\":true}"
 						}
 					]
@@ -479,6 +598,44 @@
 							}
 						},
 						"required": ["path"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_read_files",
+					"description": "Read several workspace files, or line ranges of them, in one call. Returns at most 500 lines of each file; `truncated` marks a cut read, so read the rest with a later `startLine`. A file that cannot be read returns an `error` and does not stop the others.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"files": {
+								"type": "array",
+								"items": {
+									"type": "object",
+									"properties": {
+										"path": {
+											"type": "string",
+											"description": "Path to the file to read, relative to the workspace root (absolute paths must be under it)"
+										},
+										"startLine": {
+											"type": "integer",
+											"exclusiveMinimum": 0,
+											"description": "First line to read (default: 1)"
+										},
+										"endLine": {
+											"type": "integer",
+											"exclusiveMinimum": 0,
+											"description": "Last line to read (default: end)"
+										}
+									},
+									"required": ["path"],
+									"additionalProperties": false
+								},
+								"minItems": 1,
+								"maxItems": 20
+							}
+						},
+						"required": ["files"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -581,6 +738,86 @@
 							}
 						},
 						"required": ["path", "content"],
+						"additionalProperties": false,
+						"$schema": "http://json-schema.org/draft-07/schema#"
+					}
+				},
+				{
+					"name": "workspace_edit_files",
+					"description": "Write or edit several workspace files in one call. Runs every operation, in order, and returns a result for each one. A `replace` operation is atomic for its file, like workspace_str_replace_file. A failed operation does not stop the others.",
+					"input_schema": {
+						"type": "object",
+						"properties": {
+							"operations": {
+								"type": "array",
+								"items": {
+									"anyOf": [
+										{
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string",
+													"description": "Path to the file to write, relative to the workspace root (absolute paths must be under it)"
+												},
+												"content": {
+													"type": "string",
+													"description": "Content to write to the file"
+												},
+												"recursive": {
+													"type": "boolean",
+													"description": "Create parent directories if they do not exist"
+												},
+												"type": {
+													"type": "string",
+													"const": "write"
+												}
+											},
+											"required": ["path", "content", "type"],
+											"additionalProperties": false
+										},
+										{
+											"type": "object",
+											"properties": {
+												"path": {
+													"type": "string",
+													"description": "Path to the file to edit, relative to the workspace root (absolute paths must be under it)"
+												},
+												"replacements": {
+													"type": "array",
+													"items": {
+														"type": "object",
+														"properties": {
+															"old_str": {
+																"type": "string",
+																"description": "Exact text to replace. Must match exactly and be unique."
+															},
+															"new_str": {
+																"type": "string",
+																"description": "Replacement text to write in place of old_str."
+															}
+														},
+														"required": ["old_str", "new_str"],
+														"additionalProperties": false
+													},
+													"minItems": 1,
+													"description": "Ordered exact string replacements applied atomically."
+												},
+												"type": {
+													"type": "string",
+													"const": "replace"
+												}
+											},
+											"required": ["path", "replacements", "type"],
+											"additionalProperties": false
+										}
+									]
+								},
+								"minItems": 1,
+								"maxItems": 50,
+								"description": "`write` replaces a whole file. `replace` applies exact text replacements"
+							}
+						},
+						"required": ["operations"],
 						"additionalProperties": false,
 						"$schema": "http://json-schema.org/draft-07/schema#"
 					}
@@ -815,33 +1052,34 @@
 		},
 		"status": 200,
 		"response": [
-			"1f8b0800000000000013b554c172d33010bde72bc49e9d62871a26ba75caf0031c29a36ead25d658968cb44e031dff3be32426b693142ed5c5a3f79eb46f77b5a62d3996a2a61871432a32065e686494e205f857432061424232ec41be40ed35599050586c352d4b3455bbbc5de6cb55bacab334cd2001a3fb3be246a559764fc6e4c5c7fc0ef3dfd5fddda7edd7b5af219945820482b73d80319ac8e8fab085774c8e417efb9e4064dfa84018bd03e95a6b8f50a49f2db98226a0264663e380b5837be39a9615fb8a5c04b95adf7e48a0c0a22455044236dea9a9241df840a8af71c3d93e023525d514d0aabc3ed79fd8ac9cb35d02bee531942510296c4d418a0d0590d0574663d07d91dd0f0a7de26a431e2438cf0ab7682c3e5982ae13dd6241875e1feba89eac2faacb1dbf20d9c7d0b43b243ae6fb3c8fe79876bd70ff91009d18af9383c6b8cd2ca4801e846b2e3559c6d75dee2513970764eaeeafece8f1b37734f329aed6eacd5cbc135f8c25b17f39a405b2787c5f92b5fe8677fc289e0d978315f1009103616ddc463cfb50c507b881d7faeb9b7fb5d73723c7a78b86b9bf98f68484519a93c904725a711b1cfcf77c766f38a0f3895a77d71a7ffae79d976fccc1f9d3f903e33b8cf453050000"
+			"1f8b0800000000000013c5554d73d33010bde75788bd70718a9d92017c63e0020766182e309451b7d6d6165124575aa7291dff7746490cb671f83890fae2d1bed5eedba7d58a366439176b0a014b9281d1f34c21632eee81ef6a821c062024dd1af27b583b450672280c368ae615ea55337f3a5fce17e96299a56906096815638452a659f6aafcf4f25c7fa4d5dbe5fbe5cdb70f7576f7f51d24a34c908077261a30041d186d4c5b38cb6419f2cf5ff60bd4963ce4b6312681c0ae969e30383b3005ba69c81634302a62d42674b6a62b47dbba61c96e4536407efeecc5f3040a2c2a92852764edac1cbaa41dee09d531acdb1b33505dd19a3c1ab95cffeaff13cdaa31da26e01aee9bb20402f98d2e48b28e4a40944aa15751757b4d3e162e4b729083752c7183dae0958902879a48f5b7b409288da57581757190a615fdaf9dcd68df2e87a39057c615abe9a69970d9b152b4dd4bd3c7a332877d4cdbe8b8fbe500ed64fe5adb7294504034c2318e8a0ce3ef39ee5c061cf79621b71f6e0786af9da53dcb93a77e24de3cde90d8b517a9be5427a722b82271ad0d89cb2730ec9a0760539131ee8cb77cf9b0a2dc6aae76ca1ca2890b80f6e434027bc2b5b6a5b8757e152ee00cfef65ebbfa4fd7dad53d3ee370ddc33159da00845e2983490e6495e4c65bf887793e7a1cdaff38e1472379b1688f8930a5661f83f1997c0749a02b239b070000"
 		],
 		"rawHeaders": {
 			"anthropic-ratelimit-input-tokens-limit": "10000000",
-			"anthropic-ratelimit-input-tokens-remaining": "9999000",
-			"anthropic-ratelimit-input-tokens-reset": "2026-09-04T16:24:01Z",
+			"anthropic-ratelimit-input-tokens-remaining": "9998000",
+			"anthropic-ratelimit-input-tokens-reset": "2026-10-30T09:06:56Z",
 			"anthropic-ratelimit-output-tokens-limit": "2000000",
 			"anthropic-ratelimit-output-tokens-remaining": "2000000",
-			"anthropic-ratelimit-output-tokens-reset": "2026-09-04T16:24:01Z",
+			"anthropic-ratelimit-output-tokens-reset": "2026-10-30T09:06:56Z",
 			"anthropic-ratelimit-requests-limit": "20000",
 			"anthropic-ratelimit-requests-remaining": "19999",
-			"anthropic-ratelimit-requests-reset": "2026-09-04T16:24:01Z",
+			"anthropic-ratelimit-requests-reset": "2026-10-30T09:06:56Z",
 			"anthropic-ratelimit-tokens-limit": "12000000",
-			"anthropic-ratelimit-tokens-remaining": "11999000",
-			"anthropic-ratelimit-tokens-reset": "2026-09-04T16:24:01Z",
+			"anthropic-ratelimit-tokens-remaining": "11998000",
+			"anthropic-ratelimit-tokens-reset": "2026-10-30T09:06:56Z",
 			"cache-control": "no-cache",
 			"cf-cache-status": "DYNAMIC",
-			"cf-ray": "a35e57901943c2fa-VIE",
+			"cf-ray": "a529444d8f9d866e-TXL",
 			"connection": "keep-alive",
 			"content-encoding": "gzip",
 			"content-security-policy": "default-src 'none'; frame-ancestors 'none'",
 			"content-type": "text/event-stream; charset=utf-8",
-			"date": "Fri, 04 Sep 2026 16:24:01 GMT",
-			"request-id": "req_011Ceii5bc48bofgyMzQdAW6",
+			"date": "Fri, 30 Oct 2026 09:06:56 GMT",
+			"request-id": "req_011CgYA3iFHGFtFWwDvzu4vJ",
 			"server": "cloudflare",
+			"server-timing": "x-originResponse;dur=109",
 			"strict-transport-security": "max-age=31536000; includeSubDomains; preload",
-			"traceresponse": "00-fffb78370d81b133bf9802bea3839cdd-7a01d90177eb7d92-01",
+			"traceresponse": "00-4159296cf1a51f77e55f3ffa85244cde-1b9fa33b19653465-01",
 			"transfer-encoding": "chunked",
 			"vary": "Accept-Encoding",
 			"x-robots-tag": "none"
