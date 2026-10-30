@@ -3,7 +3,6 @@ import { Container } from '@n8n/di';
 import {
 	createEmptyRunExecutionData,
 	createRunExecutionData,
-	UnexpectedError,
 	type IExecutionContext,
 	type IN8NOAuthMetadata,
 	type INode,
@@ -12,6 +11,7 @@ import {
 	type Workflow,
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { Cipher } from '@/encryption';

@@ -10,7 +10,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import nock from 'nock';
 import dns from 'node:dns';
 import type { LookupAddress } from 'node:dns';

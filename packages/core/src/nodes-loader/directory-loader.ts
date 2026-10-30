@@ -17,7 +17,8 @@ import type {
 	KnownNodesAndCredentials,
 	NodeLoader,
 } from 'n8n-workflow';
-import { isExpression, isSubNodeType, UnexpectedError, UserError } from 'n8n-workflow';
+import { isExpression, isSubNodeType } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 import { readdirSync, realpathSync } from 'node:fs';
 import * as path from 'path';
 

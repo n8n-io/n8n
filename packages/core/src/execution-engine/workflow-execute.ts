@@ -51,17 +51,14 @@ import {
 	NodeHelpers,
 	NodeConnectionTypes,
 	ApplicationError,
-	BaseError,
 	isNodeClassInstance,
-	UnexpectedError,
-	UserError,
-	OperationalError,
 	NodeApiError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
 	createRunExecutionData,
 	applyDynamicCredentialsUsage,
 } from 'n8n-workflow';
+import { BaseError, UnexpectedError, UserError, OperationalError } from '@n8n/errors';
 import PCancelable, { type OnCancelFunction } from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
