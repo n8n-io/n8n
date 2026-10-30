@@ -103,6 +103,39 @@ describe('IsolatedVmBridge', () => {
 			await bridge.dispose();
 		});
 
+		it.each([
+			{ name: 'Map', value: new Map([['id', 42]]) },
+			{ name: 'typed array', value: new Uint8Array([42]) },
+		])('reports a transfer failure for a proxied $name in an item', ({ value }) => {
+			const item = { json: { value: new Proxy(value, {}) } };
+
+			expect(() =>
+				bridge.execute('return this.$("Source").first().json.value;', {
+					$: () => ({ first: () => item }),
+				}),
+			).toThrow();
+		});
+
+		it.each(['this.$json.error', 'this.$json.errors[0]'])(
+			'preserves a proxy date in an error read from %s',
+			(expression) => {
+				const date = new Date(0);
+				const proxy = new Proxy(date, {
+					get: (target, key) => {
+						const value: unknown = Reflect.get(target, key);
+						return typeof value === 'function' ? value.bind(target) : value;
+					},
+				});
+				const error = Object.assign(new Error('sample'), { createdAt: proxy });
+
+				expect(
+					bridge.execute(`return ${expression}.createdAt.getTime();`, {
+						$json: { error, errors: [error] },
+					}),
+				).toBe(0);
+			},
+		);
+
 		it('should free the data of a finished call after the bridge is disposed', async () => {
 			setFlagsFromString('--expose_gc');
 			const gc = runInNewContext('gc') as unknown as () => void;

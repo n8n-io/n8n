@@ -6,27 +6,45 @@ import { getArrayElement, getValueAtPath } from '../host-functions';
 describe.each([
 	{
 		name: 'getValueAtPath',
-		read: (value: unknown) =>
-			getValueAtPath(new HostDataResolver({ $json: { value } }), Object.freeze(['$json', 'value'])),
+		read: (value: unknown, copyValue?: (value: unknown) => unknown) =>
+			getValueAtPath(
+				new HostDataResolver({ $json: { value } }),
+				Object.freeze(['$json', 'value']),
+				copyValue,
+			),
 	},
 	{
 		name: 'getArrayElement',
-		read: (value: unknown) =>
+		read: (value: unknown, copyValue?: (value: unknown) => unknown) =>
 			getArrayElement(
 				new HostDataResolver({ $json: { values: [value] } }),
 				Object.freeze(['$json', 'values']),
 				0,
+				copyValue,
 			),
 	},
 ])('$name metadata', ({ read }) => {
 	it.each([undefined, null, false, 0, '', 42, 'text'])('preserves %j', (value) => {
-		expect(read(value)).toBe(value);
+		const copyValue = vi.fn();
+		expect(read(value, copyValue)).toBe(value);
+		expect(copyValue).not.toHaveBeenCalled();
 	});
 
 	it('returns dates directly', () => {
 		const value = new Date('2026-01-01T00:00:00Z');
 
 		expect(read(value)).toBe(value);
+	});
+
+	it('copies dates when the bridge provides a copier', () => {
+		const value = new Date('2026-01-01T00:00:00Z');
+		const copyValue = vi.fn((input: unknown) => structuredClone(input));
+
+		const result = read(value, copyValue);
+
+		expect(result).toEqual(value);
+		expect(result).not.toBe(value);
+		expect(copyValue).toHaveBeenCalledExactlyOnceWith(value);
 	});
 
 	it('returns undefined for functions without calling them', () => {
@@ -37,14 +55,17 @@ describe.each([
 	});
 
 	it('describes an array without reading its elements', () => {
+		const copyValue = vi.fn();
 		const readElement = vi.fn(() => 42);
 		const value = Object.freeze(Object.defineProperty([0, 1], '0', { get: readElement }));
 
-		expect(read(value)).toEqual({ __isArray: true, __length: 2, __data: null });
+		expect(read(value, copyValue)).toEqual({ __isArray: true, __length: 2, __data: null });
 		expect(readElement).not.toHaveBeenCalled();
+		expect(copyValue).not.toHaveBeenCalled();
 	});
 
 	it('describes an object without reading its property values', () => {
+		const copyValue = vi.fn();
 		const readCount = vi.fn(() => 42);
 		const value = Object.freeze({
 			get count() {
@@ -52,8 +73,9 @@ describe.each([
 			},
 		});
 
-		expect(read(value)).toEqual({ __isObject: true, __keys: ['count'] });
+		expect(read(value, copyValue)).toEqual({ __isObject: true, __keys: ['count'] });
 		expect(readCount).not.toHaveBeenCalled();
+		expect(copyValue).not.toHaveBeenCalled();
 	});
 });
 
