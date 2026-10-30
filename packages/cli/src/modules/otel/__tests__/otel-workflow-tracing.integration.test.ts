@@ -1,6 +1,7 @@
 import { createTeamProject, createWorkflow, getPersonalProject } from '@n8n/backend-test-utils';
 import { ProjectRepository, WorkflowRepository, type ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { propagation } from '@opentelemetry/api';
 import { SpanStatusCode } from '@opentelemetry/api';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -29,6 +30,8 @@ import { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelSettingsService } from '../otel-settings.service';
 import { OtelBaggageConfig, OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
 import { DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES } from '../otel.constants';
+
+import { OUTBOUND_HEADERS_PROPAGATOR } from '@/observability/swappable-pipeline';
 
 let otel: OtelTestProvider;
 let workflowRunner: WorkflowRunner;
@@ -227,9 +230,13 @@ describe('OTEL Workflow Tracing Integration', () => {
 describe('Caller baggage', () => {
 	const tracingContext = { baggage: 'tenant=acme' };
 
+	// The test environment never starts the OTel SDK, so `OtelService` installs no global
+	// propagator. Install the one it uses when `injectOutbound` is on.
 	const setBaggagePropagation = async (enabled: boolean) => {
 		Container.get(OtelBaggageConfig).propagate = enabled;
 		await Container.get(OtelSettingsService).loadSettings();
+		propagation.disable();
+		if (enabled) propagation.setGlobalPropagator(OUTBOUND_HEADERS_PROPAGATOR);
 	};
 
 	beforeAll(async () => await setBaggagePropagation(true));
