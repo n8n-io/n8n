@@ -25,7 +25,7 @@ import shellModalsContent from './defaults/modals.ts?raw';
  * file has nothing left to check and goes with it.
  *
  * Not asserted in reverse: a definition may be rendered by something other than a
- * `<ModalRoot>` (`WorkflowHistory.vue` drives its diff modal through `<Modal>`
+ * `<ModalRoot>` (`WorkflowHistory.vue` drives its diff modal through `N8nDialog`
  * directly), so an entry with no matching root is not necessarily dead.
  */
 

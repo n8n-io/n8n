@@ -142,7 +142,7 @@ describe('WhatsNewModal', () => {
 			},
 		});
 
-		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 
 		expect(screen.getByText("What's New in n8n 1.100.0")).toBeInTheDocument();
@@ -160,9 +160,9 @@ describe('WhatsNewModal', () => {
 			},
 		});
 
-		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 
-		const closeButton = getByRole('button', { name: 'Close this dialog' });
+		const closeButton = getByRole('button', { name: 'Close dialog' });
 		expect(closeButton).toBeInTheDocument();
 
 		await userEvent.click(closeButton);
@@ -194,7 +194,7 @@ describe('WhatsNewModal', () => {
 			},
 		});
 
-		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 
 		expect(getByTestId('whats-new-modal-update-button')).toBeEnabled();
@@ -213,7 +213,7 @@ describe('WhatsNewModal', () => {
 			},
 		});
 
-		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('whats-new-modal-update-button'));
@@ -235,7 +235,7 @@ describe('WhatsNewModal', () => {
 			},
 		});
 
-		await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 		await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 
 		await userEvent.click(getByTestId('whats-new-modal-next-versions-link'));
@@ -256,7 +256,7 @@ describe('WhatsNewModal', () => {
 				},
 			});
 
-			await waitFor(() => expect(queryByTestId('whatsNew-modal')).toBeInTheDocument());
+			await waitFor(() => expect(queryByTestId('whats-new-item-1')).toBeInTheDocument());
 			expect(queryByTestId('whats-new-modal-update-button')).not.toBeInTheDocument();
 		});
 
@@ -272,7 +272,7 @@ describe('WhatsNewModal', () => {
 				},
 			});
 
-			await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+			await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 
 			const updateButton = getByTestId('whats-new-modal-update-button');
 			expect(updateButton).toBeInTheDocument();
@@ -291,7 +291,7 @@ describe('WhatsNewModal', () => {
 				},
 			});
 
-			await waitFor(() => expect(getByTestId('whatsNew-modal')).toBeInTheDocument());
+			await waitFor(() => expect(getByTestId('whats-new-item-1')).toBeInTheDocument());
 			const updateButton = getByTestId('whats-new-modal-update-button');
 			expect(updateButton).toBeInTheDocument();
 			expect(updateButton).toBeEnabled();
