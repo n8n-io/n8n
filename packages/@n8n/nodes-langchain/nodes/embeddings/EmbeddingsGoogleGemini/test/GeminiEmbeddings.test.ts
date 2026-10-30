@@ -112,6 +112,61 @@ describe('GeminiEmbeddings', () => {
 			});
 		});
 
+		it('sends query requests through the configured fetch function', async () => {
+			const fetch = vi
+				.fn<typeof globalThis.fetch>()
+				.mockResolvedValue(
+					new Response(JSON.stringify({ embedding: { values: [0.1, 0.2] } }), { status: 200 }),
+				);
+			const embeddings = new GeminiEmbeddings({
+				apiKey: 'test-key',
+				baseUrl: 'https://gemini.example.com',
+				model: 'models/gemini-embedding-001',
+				outputDimensionality: 768,
+				fetch,
+			});
+
+			const result = await embeddings.embedQuery('What is n8n?');
+
+			expect(result).toEqual([0.1, 0.2]);
+			expect(fetch).toHaveBeenCalledTimes(1);
+			const [url, init] = fetch.mock.calls[0];
+			expect(String(url)).toBe(
+				'https://gemini.example.com/v1beta/models/gemini-embedding-001:embedContent',
+			);
+			expect(JSON.parse(String(init?.body))).toMatchObject({ outputDimensionality: 768 });
+		});
+
+		it('sends batched document requests through the configured fetch function', async () => {
+			const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(
+				new Response(JSON.stringify({ embeddings: [{ values: [0.1] }, { values: [0.2] }] }), {
+					status: 200,
+				}),
+			);
+			const embeddings = new GeminiEmbeddings({
+				apiKey: 'test-key',
+				baseUrl: 'https://gemini.example.com',
+				model: 'models/gemini-embedding-001',
+				outputDimensionality: 768,
+				fetch,
+			});
+
+			const result = await embeddings.embedDocuments(['a', 'b']);
+
+			expect(result).toEqual([[0.1], [0.2]]);
+			expect(fetch).toHaveBeenCalledTimes(1);
+			const [url, init] = fetch.mock.calls[0];
+			expect(String(url)).toBe(
+				'https://gemini.example.com/v1beta/models/gemini-embedding-001:batchEmbedContents',
+			);
+			const { requests } = JSON.parse(String(init?.body)) as {
+				requests: Array<Record<string, unknown>>;
+			};
+			for (const request of requests) {
+				expect(request).toMatchObject({ outputDimensionality: 768 });
+			}
+		});
+
 		it('replaces newlines with spaces by default', async () => {
 			const { embeddings, ownClient } = buildEmbeddings({ outputDimensionality: 768 });
 

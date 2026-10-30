@@ -33,6 +33,7 @@ export class GeminiEmbeddings extends GoogleGenerativeAIEmbeddings {
 
 	// The base class keeps its GenerativeModel private, so the requests that carry
 	// `outputDimensionality` go through a second instance created from the same inputs.
+	// It must get the same `fetch`, or these requests skip the node's egress filter.
 	private readonly embedClient: GenerativeModel;
 
 	constructor(fields: GeminiEmbeddingsParams) {
@@ -41,7 +42,7 @@ export class GeminiEmbeddings extends GoogleGenerativeAIEmbeddings {
 		// The base constructor has already rejected a missing API key at this point.
 		this.embedClient = new GoogleGenerativeAI(this.apiKey ?? '').getGenerativeModel(
 			{ model: this.model },
-			{ baseUrl: fields.baseUrl },
+			{ baseUrl: fields.baseUrl, fetch: fields.fetch },
 		);
 	}
 
