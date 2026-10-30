@@ -98,34 +98,37 @@ const threadsStore = useAssistantAgentThreadsStore();
 // A new thread has a launch marker until the server accepts its first message.
 // The server does not know the thread before then.
 const launch = getAssistantAgentLaunch(props.threadId);
-// The first message from the empty view, which can carry files.
-const pendingMessage = consumePendingAssistantAgentMessage(props.threadId);
-const isNewThread = launch !== undefined || pendingMessage !== undefined;
-const isNewSession = ref(isNewThread);
-// What a hand-off from another page left for this thread. The opening message
+// What the empty view or a hand-off left for this new thread. The first message
 // and the nodes are read once, so a reload cannot send them again. The rest
 // stays until the server accepts the first message.
 const handoff = readPendingHandoff();
-let pendingReferences: InstanceAiAttachment[] = [
-	...(pendingMessage?.references ?? []),
-	...handoff.references,
-];
+const isNewThread = launch !== undefined || handoff.firstMessage !== undefined;
+const isNewSession = ref(isNewThread);
+let pendingReferences: InstanceAiAttachment[] = handoff.references;
 let pendingHandoffContext: InstanceAiHandoffContext | undefined = handoff.context;
 // The lists show a thread opened by URL even when it is older than the recent page.
 if (!isNewThread) void threadsStore.loadThread(props.threadId);
 
 function readPendingHandoff() {
-	const firstMessage = consumePendingFirstMessage(props.threadId);
+	// The empty view keeps its message in memory, because it can carry files. A
+	// hand-off stores its message in localStorage, so a new tab can read it.
+	const fromEmptyView = consumePendingAssistantAgentMessage(props.threadId);
+	const fromHandoff = consumePendingFirstMessage(props.threadId);
+	const firstMessage = fromEmptyView
+		? { text: fromEmptyView.text, files: fromEmptyView.files, references: fromEmptyView.references }
+		: fromHandoff
+			? { text: fromHandoff.message, files: [], references: fromHandoff.attachments ?? [] }
+			: undefined;
 	const workflow = getPendingWorkflowAttachment(props.threadId);
 	const draft = getPendingComposerDraft(props.threadId);
 	const nodes = consumePendingDraftAttachment(props.threadId);
-	const context = firstMessage?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
+	const context = fromHandoff?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
 	const references: InstanceAiAttachment[] = [
-		...(firstMessage?.attachments ?? []),
+		...(firstMessage?.references ?? []),
 		...(workflow ? [workflow] : []),
 	];
 	return {
-		message: firstMessage?.message,
+		firstMessage,
 		draft: draft?.text,
 		nodes,
 		context,
@@ -197,10 +200,8 @@ const trace = useAssistantAgentTrace({
 
 watch(panel, (current) => {
 	if (!current) return;
-	if (pendingMessage) {
-		current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
-	} else if (handoff.message !== undefined) {
-		current.sendMessageFromOutside(handoff.message, []);
+	if (handoff.firstMessage) {
+		current.sendMessageFromOutside(handoff.firstMessage.text, handoff.firstMessage.files);
 	} else if (handoff.draft) {
 		current.setDraft(handoff.draft);
 	}
