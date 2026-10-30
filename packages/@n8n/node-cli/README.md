@@ -96,7 +96,7 @@ This command:
 - Starts n8n on `http://localhost:5678` (unless using `--external-n8n`)
 - Links your node to n8n's custom nodes directory (`~/.n8n-node-cli/.n8n/custom`)
 - Rebuilds on file changes for live preview
-- Watches for changes in your `src/` directory
+- Watches for changes in your `nodes/` and `credentials/` directories
 
 **Examples:**
 ```bash
@@ -189,8 +189,8 @@ The recommended workflow using the scaffolding tool:
 
 1. **Create your node**:
    ```bash
-   npm create @n8n/node my-awesome-node
-   cd my-awesome-node
+   npm create @n8n/node n8n-nodes-my-app
+   cd n8n-nodes-my-app
    ```
 
 2. **Start development**:
@@ -223,13 +223,13 @@ The recommended workflow using the scaffolding tool:
 The CLI expects your project to follow this structure:
 
 ```
-my-node/
-├── src/
-│   ├── nodes/
-│   │   └── MyNode/
-│   │       ├── MyNode.node.ts
-│   │       └── MyNode.node.json
-│   └── credentials/
+n8n-nodes-my-app/
+├── nodes/
+│   └── MyApp/
+│       ├── MyApp.node.ts
+│       └── MyApp.node.json
+├── credentials/
+│   └── MyAppApi.credentials.ts
 ├── package.json
 └── tsconfig.json
 ```
@@ -240,14 +240,14 @@ The CLI reads configuration from your `package.json`:
 
 ```json
 {
-  "name": "n8n-nodes-my-awesome-node",
+  "name": "n8n-nodes-my-app",
   "n8n": {
     "n8nNodesApiVersion": 1,
     "nodes": [
-      "dist/nodes/MyNode/MyNode.node.js"
+      "dist/nodes/MyApp/MyApp.node.js"
     ],
     "credentials": [
-      "dist/credentials/MyNodeAuth.credentials.js"
+      "dist/credentials/MyAppApi.credentials.js"
     ]
   }
 }

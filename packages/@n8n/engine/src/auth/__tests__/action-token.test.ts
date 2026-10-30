@@ -64,6 +64,13 @@ describe('verifyActionToken', () => {
 		expect(() => verify(token)).toThrow(InvalidActionTokenError);
 	});
 
+	it('round trips a data-tables:use token, so a step can reach the data table route', () => {
+		const token = mintActionToken(secret, 'data-tables:use');
+
+		expect(() => verifyActionToken(secret, token, 'data-tables:use')).not.toThrow();
+		expect(() => verify(token)).toThrow(InvalidActionTokenError);
+	});
+
 	it('rejects a token whose scope is not one the data plane can mint', () => {
 		const token = signRawToken(
 			{ scope: 'credentials:write' },

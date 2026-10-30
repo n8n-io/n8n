@@ -725,4 +725,44 @@ describe('WorkflowHistoryRepository', () => {
 			expect(result).toEqual([]);
 		});
 	});
+
+	describe('findNodesByVersionIds', () => {
+		const testNode2 = { ...testNode1, id: uuid(), name: 'testNode2' } satisfies INode;
+
+		it('returns the versionId and nodes of each requested version, across workflows', async () => {
+			const workflowA = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+			const workflowB = await createWorkflow({ versionId: uuid(), nodes: [testNode1] });
+			const vA = uuid();
+			const vB = uuid();
+			const vNotRequested = uuid();
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vA,
+				nodes: [testNode1],
+			});
+			await createWorkflowHistory(workflowB, undefined, undefined, {
+				versionId: vB,
+				nodes: [testNode2],
+			});
+			await createWorkflowHistory(workflowA, undefined, undefined, {
+				versionId: vNotRequested,
+				nodes: [testNode2],
+			});
+
+			const repository = Container.get(WorkflowHistoryRepository);
+			const result = await repository.findNodesByVersionIds([vA, vB, uuid()]);
+
+			expect(result.sort((a, b) => a.versionId.localeCompare(b.versionId))).toEqual(
+				[
+					{ versionId: vA, nodes: [testNode1] },
+					{ versionId: vB, nodes: [testNode2] },
+				].sort((a, b) => a.versionId.localeCompare(b.versionId)),
+			);
+		});
+
+		it('returns an empty array for an empty id list', async () => {
+			const repository = Container.get(WorkflowHistoryRepository);
+
+			expect(await repository.findNodesByVersionIds([])).toEqual([]);
+		});
+	});
 });
