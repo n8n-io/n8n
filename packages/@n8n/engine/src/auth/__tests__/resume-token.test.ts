@@ -160,6 +160,29 @@ describe('approval callback', () => {
 		expect(verify(`${APPROVAL_CALLBACK_PREFIX}${respelled}|a|${mac}`)).toBeUndefined();
 	});
 
+	it('keeps its format, so a callback minted before a deploy still verifies after it', () => {
+		expect(approve).toBe('nhitl2|AZmhsgAAcACAAAAAAAAAqg|a|dogwRAx9LxZmMQoVbV7EXECxw8hV4vss');
+	});
+
+	it('rejects a callback with an extra part', () => {
+		expect(verify(`${approve}|x`)).toBeUndefined();
+	});
+
+	it.each([
+		['too short', approve.slice(0, -1)],
+		['too long', `${approve}A`],
+	])('rejects a MAC that is %s without an error', (_, reference) => {
+		expect(verify(reference)).toBeUndefined();
+	});
+
+	it('mints a callback that verifies for an upper-case step id', () => {
+		expect(verify(mintApprovalCallback(secret, stepId.toUpperCase(), 'a'))).toEqual({
+			kind: 'approval-callback',
+			stepId,
+			decision: 'a',
+		});
+	});
+
 	it('refuses to mint for a step id that is not a UUID', () => {
 		expect(() => mintApprovalCallback(secret, 'step-1', 'a')).toThrow();
 	});
@@ -174,7 +197,7 @@ describe('parseApprovalCallback', () => {
 	});
 
 	it.each([
-		'nhitl1|exec-1|a|0123456789abcdef0123456789abcdef',
+		'nhitl1|AZmhsgAAcACAAAAAAAAAqg|a|dogwRAx9LxZmMQoVbV7EXECxw8hV4vss',
 		`${APPROVAL_CALLBACK_PREFIX}short|a|mac`,
 		`${APPROVAL_CALLBACK_PREFIX}AZmhsgAAcACAAAAAAAAAqg|x|mac`,
 		`${APPROVAL_CALLBACK_PREFIX}AZmhsgAAcACAAAAAAAAAqg|a|`,

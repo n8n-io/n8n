@@ -149,6 +149,12 @@ describe('ResumeRequestService.locate', () => {
 		await expect(service.locate(executionId, token)).resolves.toMatchObject({ stepId: 's1' });
 	});
 
+	it('answers null when the step-bound wait ends during the hold', async () => {
+		const { service } = setup({ waiting: [[stepBound()], []] });
+
+		await expect(service.locate(executionId, token)).resolves.toBeNull();
+	});
+
 	it('answers null once the hold runs out', async () => {
 		const { service, loadWaitingSteps } = setup();
 
@@ -285,6 +291,28 @@ describe('ResumeRequestService.locateByToken', () => {
 		},
 	);
 
+	it('waits between two checks of a step', async () => {
+		const { service } = setup({
+			step: [stepBound({ status: 'running' }), stepBound()],
+			serviceHold: { attempts: 2, delayMs: 50 },
+		});
+		const [, stepToken] = stepTokens[1];
+		const startedAt = Date.now();
+
+		await service.locateByToken(stepId, stepToken);
+
+		expect(Date.now() - startedAt).toBeGreaterThanOrEqual(45);
+	});
+
+	it('finds a step that starts to wait at the last check', async () => {
+		const { service } = setup({
+			step: [stepBound({ status: 'running' }), stepBound({ status: 'running' }), stepBound()],
+		});
+		const [, stepToken] = stepTokens[1];
+
+		await expect(service.locateByToken(stepId, stepToken)).resolves.toEqual(located);
+	});
+
 	it('holds a step-bound token at an execution-bound wait, then answers null', async () => {
 		const { service, loadStep } = setup({ step: accepting(stepId) });
 		const [, stepToken] = stepTokens[1];
@@ -416,6 +444,25 @@ describe('ResumeRequestService.resolve', () => {
 			rejection('not_waiting'),
 		);
 		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+	});
+
+	it('refuses a token that does not verify', async () => {
+		const { service, stepStore } = setup();
+
+		await expect(service.resolve('s1', 'not-a-token', outputs)).rejects.toEqual(
+			rejection('invalid_token'),
+		);
+		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+	});
+
+	// A token for another step must not learn whether this step waits.
+	it('refuses a token for another step with 401 even when that step does not wait', async () => {
+		const { service } = setup({ step: stepBound({ id: otherStepId, status: 'completed' }) });
+		const [, stepToken] = stepTokens[1];
+
+		await expect(service.resolve(otherStepId, stepToken, outputs)).rejects.toEqual(
+			rejection('invalid_token'),
+		);
 	});
 
 	it('refuses a step that does not exist as it refuses a bad token', async () => {
