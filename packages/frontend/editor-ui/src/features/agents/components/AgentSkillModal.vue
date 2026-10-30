@@ -1332,19 +1332,21 @@ function onRemove() {
 			/>
 		</div>
 		<template v-else-if="step !== 'select'">
-			<N8nCallout
+			<!-- A full-width bar, as the prototype shows it, so it stacks with the version bar below. -->
+			<div
 				v-if="syncedFrom && step === 'edit'"
-				theme="info"
-				icon="git-branch"
-				:class="[$style.callout, isFormStep && $style.calloutInset]"
+				:class="$style.syncedBar"
 				data-testid="agent-skill-synced-banner"
 			>
-				{{
-					i18n.baseText('settings.context.skills.synced.banner', {
-						interpolate: { repo: syncedFrom.label },
-					})
-				}}
-			</N8nCallout>
+				<N8nIcon icon="git-branch" :size="14" />
+				<N8nText size="small" color="text-dark" :class="$style.syncedText">
+					{{
+						i18n.baseText('settings.context.skills.synced.banner', {
+							interpolate: { repo: syncedFrom.label },
+						})
+					}}
+				</N8nText>
+			</div>
 			<N8nCallout
 				v-else-if="data.readOnly"
 				theme="info"
@@ -1712,6 +1714,20 @@ function onRemove() {
 }
 
 /* A full-width strip under the header, as the body of the form steps is flush. */
+.syncedBar {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--lg);
+	border-bottom: var(--border-width) var(--border-style) var(--callout--border-color--secondary);
+	background-color: var(--callout--color--background--secondary);
+	color: var(--callout--color--text--secondary);
+}
+
+.syncedText {
+	color: inherit;
+}
+
 .viewingBar {
 	display: flex;
 	align-items: center;
