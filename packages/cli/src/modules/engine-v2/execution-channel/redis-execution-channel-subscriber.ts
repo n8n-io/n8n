@@ -7,7 +7,7 @@ import type {
 	ExecutionChannelTopic,
 	UnsubscribeFromExecutionChannel,
 } from './execution-channel';
-import type { RedisExecutionChannelNameGenerator } from './redis-execution-response-channel';
+import type { RedisExecutionChannelNameGenerator } from './redis-execution-channel';
 
 type RedisMessageHandler = (channel: string, message: string) => void;
 
