@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import fs from 'fs';
 import path from 'path';
 import { ESLint } from 'eslint';
@@ -8,25 +6,55 @@ import tmp from 'tmp';
 import semver from 'semver';
 import axios from 'axios';
 import glob from 'fast-glob';
-import { fileURLToPath } from 'url';
 import { defineConfig } from 'eslint/config';
 
-import { checkPackageProvenance, NPM_PROVENANCE_PREDICATE_TYPE } from './provenance.mjs';
+import {
+	checkPackageProvenance,
+	NPM_PROVENANCE_PREDICATE_TYPE,
+	type PackageMetadata,
+} from './provenance.js';
 
 // Cap registry/tarball requests; axios has no default timeout, so a stalled
 // connection would otherwise hang the scan indefinitely.
 axios.defaults.timeout = 300_000;
 
 const { stdout } = process;
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
 const registry = 'https://registry.npmjs.org/';
+
+interface Attestation {
+	predicateType?: string;
+	bundle?: { dsseEnvelope?: { payload?: string } };
+}
+
+interface ProvenanceStatement {
+	predicate?: {
+		buildDefinition?: {
+			resolvedDependencies?: Array<{ uri?: string; digest?: { gitCommit?: string } }>;
+		};
+	};
+}
+
+interface SourceRepo {
+	owner: string;
+	repo: string;
+	gitCommit: string;
+}
+
+export interface AnalysisResult {
+	passed: boolean;
+	message?: string;
+	details?: string;
+	error?: unknown;
+}
+
+const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
 /**
  * Checks if the given childPath is contained within the parentPath. Resolves
  * the paths before comparing them, so that relative paths are also supported.
  */
-export function isContainedWithin(parentPath, childPath) {
+export function isContainedWithin(parentPath: string, childPath: string) {
 	parentPath = path.resolve(parentPath);
 	childPath = path.resolve(childPath);
 
@@ -44,7 +72,7 @@ export function isContainedWithin(parentPath, childPath) {
  *
  * @throws {UnexpectedError} If the resulting path is not contained within the parentPath.
  */
-export function safeJoinPath(parentPath, ...paths) {
+export function safeJoinPath(parentPath: string, ...paths: string[]) {
 	const candidate = path.join(parentPath, ...paths);
 
 	if (!isContainedWithin(parentPath, candidate)) {
@@ -56,13 +84,12 @@ export function safeJoinPath(parentPath, ...paths) {
 	return candidate;
 }
 
-export const resolvePackage = (packageSpec) => {
+export const resolvePackage = (packageSpec: string) => {
 	// Validate input to prevent command injection
 	if (!/^[a-zA-Z0-9@/_.-]+$/.test(packageSpec)) {
 		throw new Error('Invalid package specification');
 	}
 
-	let packageName, version;
 	if (packageSpec.startsWith('@')) {
 		if (packageSpec.includes('@', 1)) {
 			// Handle scoped packages with versions
@@ -77,11 +104,11 @@ export const resolvePackage = (packageSpec) => {
 		}
 	}
 	// Handle regular packages
-	const parts = packageSpec.split('@');
-	return { packageName: parts[0], version: parts[1] || null };
+	const [packageName = '', version] = packageSpec.split('@');
+	return { packageName, version: version || null };
 };
 
-const downloadAndExtractPackage = async (packageName, version) => {
+const downloadAndExtractPackage = async (packageName: string, version: string) => {
 	try {
 		// Download the tarball using safe arguments
 		const npmResult = spawnSync('npm', ['-q', 'pack', `${packageName}@${version}`], {
@@ -116,7 +143,7 @@ const downloadAndExtractPackage = async (packageName, version) => {
 
 		return packageDir;
 	} catch (error) {
-		console.error(`\nFailed to download package: ${error.message}`);
+		console.error(`\nFailed to download package: ${errorMessage(error)}`);
 		throw error;
 	}
 };
@@ -130,12 +157,12 @@ const downloadAndExtractPackage = async (packageName, version) => {
  * Returns `{ owner, repo, gitCommit }`, or `null` when the attestation is
  * missing, malformed, or points at an unsupported host.
  */
-export const parseSourceRepo = (attestations) => {
+export const parseSourceRepo = (attestations: Attestation[] | undefined): SourceRepo | null => {
 	const provenance = attestations?.find((a) => a.predicateType === NPM_PROVENANCE_PREDICATE_TYPE);
 	const payload = provenance?.bundle?.dsseEnvelope?.payload;
 	if (!payload) return null;
 
-	let statement;
+	let statement: ProvenanceStatement | null;
 	try {
 		statement = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
 	} catch {
@@ -149,7 +176,7 @@ export const parseSourceRepo = (attestations) => {
 		/^git\+https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?(?:@|$)/.exec(
 			dependency?.uri ?? '',
 		);
-	if (!match || !/^[0-9a-f]{40,64}$/i.test(gitCommit ?? '')) return null;
+	if (!match?.[1] || !match[2] || !gitCommit || !/^[0-9a-f]{40,64}$/i.test(gitCommit)) return null;
 
 	return { owner: match[1], repo: match[2], gitCommit };
 };
@@ -158,10 +185,11 @@ export const parseSourceRepo = (attestations) => {
 // a stalled connection must not hang the gate.
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
 
-const fetchSourceInfo = async (packageName, version) => {
-	const { data } = await axios.get(`${registry}-/npm/v1/attestations/${packageName}@${version}`, {
-		timeout: SOURCE_FETCH_TIMEOUT_MS,
-	});
+const fetchSourceInfo = async (packageName: string, version: string) => {
+	const { data } = await axios.get<{ attestations?: Attestation[] }>(
+		`${registry}-/npm/v1/attestations/${packageName}@${version}`,
+		{ timeout: SOURCE_FETCH_TIMEOUT_MS },
+	);
 	return parseSourceRepo(data.attestations);
 };
 
@@ -169,7 +197,7 @@ const fetchSourceInfo = async (packageName, version) => {
  * Finds the directory inside a source checkout whose package.json declares
  * the given package name — handles both single-package repos and monorepos.
  */
-export const findPackageRoot = (sourceDir, packageName) => {
+export const findPackageRoot = (sourceDir: string, packageName: string) => {
 	const packageJsonPaths = glob.sync('**/package.json', {
 		cwd: sourceDir,
 		absolute: true,
@@ -178,7 +206,8 @@ export const findPackageRoot = (sourceDir, packageName) => {
 
 	for (const packageJsonPath of packageJsonPaths) {
 		try {
-			if (JSON.parse(fs.readFileSync(packageJsonPath, 'utf8')).name === packageName) {
+			const packageJson: { name?: unknown } = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+			if (packageJson.name === packageName) {
 				return path.dirname(packageJsonPath);
 			}
 		} catch {
@@ -189,9 +218,12 @@ export const findPackageRoot = (sourceDir, packageName) => {
 	return null;
 };
 
-const downloadAndExtractSource = async ({ owner, repo, gitCommit }, packageName) => {
+const downloadAndExtractSource = async (
+	{ owner, repo, gitCommit }: SourceRepo,
+	packageName: string,
+) => {
 	const url = `https://codeload.github.com/${owner}/${repo}/tar.gz/${gitCommit}`;
-	const { data } = await axios.get(url, {
+	const { data } = await axios.get<ArrayBuffer>(url, {
 		responseType: 'arraybuffer',
 		timeout: SOURCE_FETCH_TIMEOUT_MS,
 	});
@@ -232,10 +264,8 @@ export const SOURCE_FILE_PATTERNS = ['package.json', '{nodes,credentials}/**/*.{
  */
 export const buildScanConfig = async () => {
 	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
-	const tsParser = await import('@typescript-eslint/parser');
+	const parser = await import('@typescript-eslint/parser');
 	const n8nNodesPlugin = (await import('eslint-plugin-n8n-nodes-base')).default;
-
-	const parser = tsParser.default ?? tsParser;
 
 	return defineConfig(
 		n8nCommunityNodesPlugin.configs.recommended,
@@ -296,9 +326,9 @@ export const buildScanConfig = async () => {
 };
 
 export const analyzePackage = async (
-	packageDir,
+	packageDir: string,
 	filePatterns = ['**/*.js', '**/*.ts', '**/*.json'],
-) => {
+): Promise<AnalysisResult> => {
 	const eslint = new ESLint({
 		cwd: packageDir,
 		allowInlineConfig: false,
@@ -339,20 +369,23 @@ export const analyzePackage = async (
 		console.error(error);
 		return {
 			passed: false,
-			message: `Analysis failed: ${error.message}`,
+			message: `Analysis failed: ${errorMessage(error)}`,
 			error,
 		};
 	}
 };
 
-export const analyzePackageByName = async (packageName, version) => {
+export const analyzePackageByName = async (
+	packageName: string,
+	version: string | null,
+): Promise<AnalysisResult & { packageName: string; version: string | null }> => {
 	try {
 		let exactVersion = version;
-		let packageMetadata;
+		let packageMetadata: PackageMetadata | undefined;
 
 		// If version is a range, get the latest matching version
 		if (version && semver.validRange(version) && !semver.valid(version)) {
-			const { data } = await axios.get(`${registry}/${packageName}`);
+			const { data } = await axios.get<PackageMetadata>(`${registry}/${packageName}`);
 			packageMetadata = data;
 			const versions = Object.keys(data.versions);
 			exactVersion = semver.maxSatisfying(versions, version);
@@ -364,18 +397,22 @@ export const analyzePackageByName = async (packageName, version) => {
 
 		// If no version specified, get the latest
 		if (!exactVersion) {
-			const { data } = await axios.get(`${registry}/${packageName}`);
+			const { data } = await axios.get<PackageMetadata>(`${registry}/${packageName}`);
 			packageMetadata = data;
-			exactVersion = data['dist-tags'].latest;
+			exactVersion = data['dist-tags'].latest ?? null;
 		}
 
-		packageMetadata ??= (await axios.get(`${registry}/${packageName}`)).data;
+		if (!exactVersion) {
+			throw new Error('No latest version found');
+		}
+
+		packageMetadata ??= (await axios.get<PackageMetadata>(`${registry}/${packageName}`)).data;
 		exactVersion = packageMetadata['dist-tags']?.[exactVersion] ?? exactVersion;
 		const label = `${packageName}@${exactVersion}`;
 
 		stdout.write(`Checking provenance for ${label}...`);
 		const provenanceResult = checkPackageProvenance(packageMetadata, exactVersion);
-		if (stdout.TTY) {
+		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
@@ -399,9 +436,9 @@ export const analyzePackageByName = async (packageName, version) => {
 		// back to a tarball-only scan would silently reintroduce that blind
 		// spot.
 		stdout.write(`Fetching source for ${label}...`);
-		let sourceDir = null;
-		let sourceInfo = null;
-		let sourceError = null;
+		let sourceDir: string | null = null;
+		let sourceInfo: SourceRepo | null = null;
+		let sourceError: unknown = null;
 		try {
 			sourceInfo = await fetchSourceInfo(packageName, exactVersion);
 			if (sourceInfo) {
@@ -410,13 +447,15 @@ export const analyzePackageByName = async (packageName, version) => {
 		} catch (error) {
 			sourceError = error;
 		}
-		if (stdout.TTY) {
+		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
 
-		if (!sourceDir) {
-			const reason = sourceError?.message ?? 'unsupported or unlocatable source repository';
+		if (!sourceDir || !sourceInfo) {
+			const reason = sourceError
+				? errorMessage(sourceError)
+				: 'unsupported or unlocatable source repository';
 			stdout.write(`❌ Could not fetch source for ${label} \n`);
 
 			return {
@@ -434,7 +473,7 @@ export const analyzePackageByName = async (packageName, version) => {
 
 		stdout.write(`Downloading ${label}...`);
 		const packageDir = await downloadAndExtractPackage(packageName, exactVersion);
-		if (stdout.TTY) {
+		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
@@ -454,7 +493,7 @@ export const analyzePackageByName = async (packageName, version) => {
 			message: [sourceResult, distResult].find((r) => !r.passed)?.message,
 			details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
 		};
-		if (stdout.TTY) {
+		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
@@ -471,7 +510,7 @@ export const analyzePackageByName = async (packageName, version) => {
 			packageName,
 			version,
 			passed: false,
-			message: `Analysis failed: ${error.message}`,
+			message: `Analysis failed: ${errorMessage(error)}`,
 		};
 	}
 };

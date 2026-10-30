@@ -3,14 +3,17 @@
   "version": "0.41.0",
   "description": "Static code analyser for n8n community packages",
   "license": "LicenseRef-n8n-sustainable-use",
-  "bin": "scanner/cli.mjs",
+  "type": "module",
+  "bin": "dist/cli.js",
   "scripts": {
+    "build": "tsc --project tsconfig.build.json",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:dev": "vitest"
   },
   "files": [
-    "scanner"
+    "dist"
   ],
   "dependencies": {
     "eslint": "catalog:",
@@ -24,7 +27,11 @@
     "tmp": "0.2.4"
   },
   "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/node": "catalog:",
+    "@types/semver": "catalog:",
+    "@types/tmp": "0.2.6",
     "vitest": "catalog:"
   }
 }

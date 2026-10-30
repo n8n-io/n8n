@@ -9,14 +9,14 @@ import {
 	findPackageRoot,
 	parseSourceRepo,
 	SOURCE_FILE_PATTERNS,
-} from './scanner.mjs';
+} from './scanner.js';
 
 /**
  * Build a temporary package directory on disk so we can hand it to
  * `analyzePackage` exactly the way the scanner would after extracting a
  * tarball from npm.
  */
-function makeFixturePackage(files) {
+function makeFixturePackage(files: Record<string, string | object>) {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-fixture-'));
 	for (const [relativePath, contents] of Object.entries(files)) {
 		const fullPath = path.join(dir, relativePath);
@@ -41,14 +41,14 @@ describe('buildScanConfig', () => {
 		const pluginBlock = config.find((block) => block.plugins?.['n8n-nodes-base']);
 
 		expect(pluginBlock).toBeDefined();
-		expect(pluginBlock.plugins['n8n-nodes-base'].configs).toHaveProperty('community');
-		expect(pluginBlock.plugins['n8n-nodes-base'].configs).toHaveProperty('credentials');
-		expect(pluginBlock.plugins['n8n-nodes-base'].configs).toHaveProperty('nodes');
+		expect(pluginBlock?.plugins?.['n8n-nodes-base']?.configs).toHaveProperty('community');
+		expect(pluginBlock?.plugins?.['n8n-nodes-base']?.configs).toHaveProperty('credentials');
+		expect(pluginBlock?.plugins?.['n8n-nodes-base']?.configs).toHaveProperty('nodes');
 	});
 
 	it('applies each external ruleset with the correct file scoping', async () => {
 		const config = await buildScanConfig();
-		const ruleBlockFor = (glob) =>
+		const ruleBlockFor = (glob: string) =>
 			config.find(
 				(block) =>
 					block.files?.includes(glob) &&
@@ -80,7 +80,7 @@ describe('buildScanConfig', () => {
 });
 
 describe('parseSourceRepo', () => {
-	const makeAttestation = (predicate) => [
+	const makeAttestation = (predicate: object) => [
 		{
 			predicateType: 'https://slsa.dev/provenance/v1',
 			bundle: {
@@ -169,7 +169,7 @@ describe('parseSourceRepo', () => {
 });
 
 describe('findPackageRoot', () => {
-	let fixtureDir;
+	let fixtureDir: string | undefined;
 
 	afterEach(() => {
 		if (fixtureDir) {
@@ -199,7 +199,7 @@ describe('findPackageRoot', () => {
 });
 
 describe('analyzePackage', () => {
-	let fixtureDir;
+	let fixtureDir: string | undefined;
 
 	afterEach(() => {
 		if (fixtureDir) {
