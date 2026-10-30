@@ -275,6 +275,13 @@ describe('AgentSandboxFilesService', () => {
 			);
 		});
 
+		it('tells the model that a sandbox file is already in the workspace', async () => {
+			await expect(
+				service.importFiles(workspace, { 'r.pdf': 'sandbox:report.pdf' }, readScope),
+			).rejects.toThrow('is already in your workspace at outputs/report.pdf');
+			expect(filesystem.writeFile).not.toHaveBeenCalled();
+		});
+
 		it('rejects files over the import cap together', async () => {
 			readable({ f1: 600 * 1024, f2: 600 * 1024 });
 
