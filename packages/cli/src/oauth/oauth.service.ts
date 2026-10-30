@@ -1643,7 +1643,12 @@ export class OauthService {
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
-			scopes: split(credential.scope ?? 'openid', ','),
+			// With automatic registration the scope comes from discovery. When the server
+			// advertises none, the MCP spec omits the parameter.
+			scopes:
+				credential.useDynamicClientRegistration && !credential.scope
+					? undefined
+					: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,

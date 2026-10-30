@@ -2649,6 +2649,54 @@ describe('OauthService', () => {
 			);
 		});
 
+		it.each([
+			['omit the scope when the server advertises none', true, undefined],
+			['default the scope to openid without automatic registration', false, ['openid']],
+		])('should %s', async (_, useDynamicClientRegistration, expectedScopes) => {
+			const { ClientOAuth2 } = await import('@n8n/client-oauth2');
+			let capturedOptions: { scopes?: string[] } | undefined;
+			vi.mocked(ClientOAuth2).mockImplementation(function (options) {
+				capturedOptions = options as { scopes?: string[] };
+				return { code: { getUri: () => ({ toString: () => '' }) } } as any;
+			});
+
+			const credential = mock<CredentialsEntity>({ id: '1', type: 'mcpOAuth2Api' });
+			vi.spyOn(service, 'getNewConnectionCredentials').mockResolvedValue({
+				oauthCredentials: useDynamicClientRegistration
+					? ({
+							serverUrl: 'https://example.domain',
+							useDynamicClientRegistration,
+						} as OAuth2CredentialData)
+					: ({
+							clientId: 'client_id',
+							authUrl: 'https://example.domain/oauth2/auth',
+							accessTokenUrl: 'https://example.domain/oauth2/token',
+							grantType: 'authorizationCode',
+						} as OAuth2CredentialData),
+			});
+			vi.mocked(httpClientMock.get).mockResolvedValue({
+				data: {
+					authorization_endpoint: 'https://example.domain/oauth2/auth',
+					token_endpoint: 'https://example.domain/oauth2/token',
+					registration_endpoint: 'https://example.domain/oauth2/register',
+					token_endpoint_auth_methods_supported: ['none'],
+					code_challenge_methods_supported: ['S256'],
+				},
+			} as any);
+			vi.mocked(httpClientMock.post).mockResolvedValue({
+				data: { client_id: 'registered_client_id' },
+			} as any);
+			vi.spyOn(service, 'encryptAndSaveData').mockResolvedValue(undefined);
+
+			await service.generateAOauth2AuthUri(credential, {
+				cid: credential.id,
+				origin: 'static-credential',
+				userId: 'user-id',
+			});
+
+			expect(capturedOptions?.scopes).toEqual(expectedScopes);
+		});
+
 		it('should throw BadRequestError when OAuth2 server metadata is invalid', async () => {
 			const credential = mock<CredentialsEntity>({ id: '1', type: 'googleOAuth2Api' });
 			const oauthCredentials = {
