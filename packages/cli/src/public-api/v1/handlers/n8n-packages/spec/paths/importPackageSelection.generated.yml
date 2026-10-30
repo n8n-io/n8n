@@ -111,5 +111,7 @@ responses:
           required:
             - message
             - issues
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '500':
     $ref: ../../../../shared/spec/responses/internalServerError.yml

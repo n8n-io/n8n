@@ -517,7 +517,7 @@ describe('createBuildWorkflowTool', () => {
 
 			expect(result.success).toBe(false);
 			expect(context.workflowService.updateFromWorkflowJSON).not.toHaveBeenCalled();
-			expect(result.errors?.join(' ')).toContain('move-workflow-to-folder');
+			expect(result.errors?.join(' ')).toContain('move_workflow_to_folder');
 		});
 
 		it.each(['', ' ', '/'])(

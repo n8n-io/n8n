@@ -93,10 +93,10 @@ import {
 
 // `list` and `node-usage` share these fields, so each has to read correctly for both tools.
 const PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. Read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write.';
+	'Project ID, obtainable from `list_projects`. Read that one project instead of the default scope — use it for "what is in project X" rather than reading the whole instance and guessing which results belong to X. Read-only, so it narrows what you can already see rather than widening it, and it does not move where you can write.';
 
 const SETUP_PROJECT_ID_FIELD_DESCRIPTION =
-	'Project ID, obtainable from `workspace(action="list-projects")`. Scope credential creation to that project.';
+	'Project ID, obtainable from `list_projects`. Scope credential creation to that project.';
 
 const SCOPE_FIELD_DESCRIPTION =
 	"Which project(s) to read. Defaults to this conversation's project. Use 'instance' only when you have a clear reason to look across all projects you can access.";
@@ -615,7 +615,7 @@ function formatFolderResolutionNote(failure: FolderResolutionFailure): string {
 		case 'unsupported':
 			return `Folder "${failure.requested}" could not be used: Folders are not available on this instance (unlicensed), so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Tell the user and ask the user how to proceed.`;
 		case 'scope-too-wide':
-			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`workspace(action="list-projects")\`) to narrow to one project, then retry.`;
+			return `Folder "${failure.requested}" could not be resolved: this listing spans too many projects to scan folders across the whole instance, so no rows were returned. Do NOT substitute a \`query\` name filter — folder membership is not a name prefix. Pass \`projectId\` (from \`list_projects\`) to narrow to one project, then retry.`;
 		default:
 			return `Folder "${failure.requested}" was not found, so no rows were returned.${candidates}${guidance}`;
 	}
