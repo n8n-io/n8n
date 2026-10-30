@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
+import { computed } from 'vue';
 import type { TableHeader } from '@n8n/design-system';
 import type { RouteLocationRaw } from 'vue-router';
 import { VIEWS } from '@/app/constants';
@@ -25,7 +25,7 @@ const sortBy = defineModel<Array<{ id: WorkflowDataKeys; desc: boolean }>>('sort
 const i18n = useI18n();
 const projectsStore = useProjectsStore();
 
-const headers = ref<Array<TableHeader<WorkflowDataItem>>>([
+const headers = computed<Array<TableHeader<WorkflowDataItem>>>(() => [
 	{
 		title: i18n.baseText('settings.communityNodes.confirmModal.workflowsTable.workflow'),
 		key: 'name',
