@@ -89,7 +89,7 @@ export class ExecutionLedger {
 				...meta,
 				error: error.message,
 			});
-			this.errorReporter.error(error, { extra: meta });
+			this.errorReporter.error(error, { extra: meta, shouldBeLogged: false });
 		}
 	}
 
@@ -101,7 +101,9 @@ export class ExecutionLedger {
 
 		const message = 'The workflow has no owner project, so the run is not in the execution ledger';
 		this.logger.error(message, { executionId, workflowId });
-		this.errorReporter.error(new UnexpectedError(message, { extra: { executionId, workflowId } }));
+		this.errorReporter.error(new UnexpectedError(message, { extra: { executionId, workflowId } }), {
+			shouldBeLogged: false,
+		});
 	}
 }
 
