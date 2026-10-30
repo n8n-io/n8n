@@ -1203,7 +1203,12 @@ export class AgentRuntimeReconstructionService {
 					actionToolGuidance: [
 						...(integrationDef?.actionToolGuidance ?? []),
 						...(integrationDef?.fileUploadLimits
-							? [buildFileUploadGuidance(integrationDef.fileUploadLimits)]
+							? [
+									buildFileUploadGuidance(
+										integrationDef.fileUploadLimits,
+										!integrationDef.disableStreaming,
+									),
+								]
 							: []),
 					],
 				};

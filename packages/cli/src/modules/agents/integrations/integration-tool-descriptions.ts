@@ -49,10 +49,15 @@ export function buildActionToolDescription(
 	].join('\n\n');
 }
 
-export function buildFileUploadGuidance(limits: FileUploadLimits): string {
+/** A platform that streams the reply posts the queued files after it, so the reply text is not their message. */
+export function buildFileUploadGuidance(limits: FileUploadLimits, streamsReply: boolean): string {
 	const maxFileBytes = Math.min(limits.maxFileBytes, MAX_CHANNEL_SEND_FILE_BYTES);
 	const maxMegabytes = Math.floor(maxFileBytes / (1024 * 1024));
-	return `To send files, add input.fileIds to respond, send_dm or send_channel_message. Use fileIds from tool results or user uploads. In the conversation that you reply to, respond with fileIds posts nothing at once: the files go with your final reply, and your reply text is their message. Other sends post message.text with the files. You can mix file types. The platform can send the files as more than one message, and the text goes with the first.${captionGuidance(limits.maxCaptionLength)} Send up to ${limits.maxFiles * MAX_FILE_MESSAGES_PER_SEND} files of up to ${maxMegabytes} MB each with one action.`;
+	const sendLimit = `Send up to ${limits.maxFiles * MAX_FILE_MESSAGES_PER_SEND} files of up to ${maxMegabytes} MB each with one action.`;
+	if (streamsReply) {
+		return `To send files, add input.fileIds to respond, send_dm or send_channel_message. Use fileIds from tool results or user uploads. In the conversation that you reply to, respond with fileIds posts nothing at once: the files are posted after your final reply as their own message. Other sends post message.text with the files. You can mix file types. The platform can send the files as more than one message. For the other sends, the text goes with the first.${captionGuidance(limits.maxCaptionLength)} ${sendLimit}`;
+	}
+	return `To send files, add input.fileIds to respond, send_dm or send_channel_message. Use fileIds from tool results or user uploads. In the conversation that you reply to, respond with fileIds posts nothing at once: the files go with your final reply, and your reply text is their message. Other sends post message.text with the files. You can mix file types. The platform can send the files as more than one message, and the text goes with the first.${captionGuidance(limits.maxCaptionLength)} ${sendLimit}`;
 }
 
 function captionGuidance(maxCaptionLength: number | undefined): string {
