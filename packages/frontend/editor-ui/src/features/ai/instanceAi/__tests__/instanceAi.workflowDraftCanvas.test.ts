@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { toDraftWorkflowDb } from '../instanceAi.workflowDraftCanvas';
+import { draftNodeKey, toDraftWorkflowDb, withDraftNodes } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
 function draft(overrides: Partial<WorkflowDraft['workflow']> = {}): WorkflowDraft {
@@ -34,6 +34,25 @@ function draft(overrides: Partial<WorkflowDraft['workflow']> = {}): WorkflowDraf
 }
 
 describe('toDraftWorkflowDb', () => {
+	it('marks the nodes that the draft issues name', () => {
+		const withIssues: WorkflowDraft = {
+			...draft(),
+			issues: [
+				{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Set' },
+				{ code: 'SET_EMPTY', message: 'No fields', nodeName: 'Set' },
+				{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				{ code: 'GHOST', message: 'Gone', nodeName: 'Missing' },
+			],
+		};
+
+		const workflow = toDraftWorkflowDb(withIssues, 'draft-doc');
+
+		expect(workflow.nodes[0].issues).toBeUndefined();
+		expect(workflow.nodes[1].issues).toEqual({
+			parameters: { SET_INVALID_ASSIGNMENT: ['Missing id'], SET_EMPTY: ['No fields'] },
+		});
+	});
+
 	it('keys the workflow by its own document id and revision', () => {
 		const workflow = toDraftWorkflowDb(draft(), 'draft-doc');
 
@@ -78,5 +97,36 @@ describe('toDraftWorkflowDb', () => {
 		expect(workflow.connections).toEqual({
 			Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
 		});
+	});
+});
+
+describe('withDraftNodes', () => {
+	it('keeps the given nodes and the connections between them', () => {
+		const full = draft();
+
+		const partial = withDraftNodes(full, [full.workflow.nodes[0]]);
+
+		expect(partial.workflow.nodes.map((node) => node.name)).toEqual(['Start']);
+		expect(partial.workflow.connections).toEqual({ Start: { main: [[]] } });
+		expect(partial.revision).toBe(full.revision);
+	});
+
+	it('keeps only the shown nodes in groups and drops empty groups', () => {
+		const full = draft({
+			nodeGroups: [
+				{ id: 'g-1', name: 'Both', nodeIds: ['node-1', 'missing'] },
+				{ id: 'g-2', name: 'Hidden', nodeIds: ['missing'] },
+			],
+		});
+
+		const partial = withDraftNodes(full, [full.workflow.nodes[0]]);
+
+		expect(partial.workflow.nodeGroups).toEqual([{ id: 'g-1', name: 'Both', nodeIds: ['node-1'] }]);
+	});
+
+	it('keys a node by its id, else by its name', () => {
+		const { nodes } = draft().workflow;
+
+		expect(nodes.map(draftNodeKey)).toEqual(['node-1', 'Set']);
 	});
 });

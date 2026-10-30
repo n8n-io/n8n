@@ -1,4 +1,10 @@
-import { workflowDraftPayloadSchema } from '@n8n/api-types';
+import {
+	WORKFLOW_DRAFT_ISSUE_MESSAGE_MAX_LENGTH,
+	WORKFLOW_DRAFT_ISSUES_MAX,
+	workflowDraftIssuesPayloadSchema,
+	workflowDraftPayloadSchema,
+	type InstanceAiWorkflowDraftIssue,
+} from '@n8n/api-types';
 import type { WorkflowJSON } from '@n8n/workflow-sdk';
 
 import { prepareWorkflowForSave } from './prepare-workflow-for-save';
@@ -14,9 +20,26 @@ export interface WorkflowDraft {
 	workflow: WorkflowJSON;
 }
 
+export interface WorkflowDraftIssues {
+	filePath: string;
+	issues: InstanceAiWorkflowDraftIssue[];
+}
+
 export interface WorkflowDraftPublisher {
 	/** Publish a compiled workflow as a `workflow-draft` event. Never throws. */
 	publish(draft: WorkflowDraft): Promise<void>;
+	/**
+	 * Publish the validation issues of the last draft of a file as a
+	 * `workflow-draft-issues` event. Does nothing for a file with no draft. Never throws.
+	 */
+	publishIssues(issues: WorkflowDraftIssues): void;
+}
+
+function capIssues(issues: InstanceAiWorkflowDraftIssue[]): InstanceAiWorkflowDraftIssue[] {
+	return issues.slice(0, WORKFLOW_DRAFT_ISSUES_MAX).map((issue) => ({
+		...issue,
+		message: issue.message.slice(0, WORKFLOW_DRAFT_ISSUE_MESSAGE_MAX_LENGTH),
+	}));
 }
 
 /**
@@ -62,6 +85,36 @@ export function createWorkflowDraftPublisher(options: {
 				});
 			} catch (error) {
 				context.logger.debug('Skipped workflow draft preview', {
+					filePath,
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		},
+
+		publishIssues({ filePath, issues }) {
+			const revision = revisions.get(filePath);
+			if (revision === undefined) return;
+			try {
+				const parsed = workflowDraftIssuesPayloadSchema.safeParse({
+					filePath,
+					revision,
+					issues: capIssues(issues),
+				});
+				if (!parsed.success) {
+					context.logger.debug('Skipped workflow draft issues', {
+						filePath,
+						error: parsed.error.message,
+					});
+					return;
+				}
+				eventBus.publish(threadId, {
+					type: 'workflow-draft-issues',
+					runId,
+					agentId,
+					payload: parsed.data,
+				});
+			} catch (error) {
+				context.logger.debug('Skipped workflow draft issues', {
 					filePath,
 					error: error instanceof Error ? error.message : String(error),
 				});

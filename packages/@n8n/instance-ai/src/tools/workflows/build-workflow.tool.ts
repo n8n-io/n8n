@@ -498,6 +498,15 @@ async function handleValidationFailure(args: ValidationFailureArgs) {
 		grouping,
 	} = args;
 
+	// Mark the blocked nodes on the draft the user is watching.
+	context.workflowDraftPublisher?.publishIssues({
+		filePath,
+		issues: blocking.map(({ code, message, nodeName }) => ({
+			code,
+			message,
+			...(nodeName ? { nodeName } : {}),
+		})),
+	});
 	const validationErrors = blocking.map(
 		(e) => `[${e.code}]${e.nodeName ? ` (${e.nodeName})` : ''}: ${e.message}`,
 	);

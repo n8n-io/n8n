@@ -1691,11 +1691,12 @@ describe('createBuildWorkflowTool', () => {
 	describe('workflow drafts', () => {
 		function withDraftPublisher(source = 'workflow source') {
 			const publish = vi.fn(async () => await Promise.resolve());
+			const publishIssues = vi.fn();
 			const made = makeContext({
 				source,
-				overrides: { workflowDraftPublisher: { publish } },
+				overrides: { workflowDraftPublisher: { publish, publishIssues } },
 			});
-			return { ...made, publish };
+			return { ...made, publish, publishIssues };
 		}
 
 		it('publishes the compiled workflow as a draft even when validation blocks the save', async () => {
@@ -1722,6 +1723,44 @@ describe('createBuildWorkflowTool', () => {
 				workflowId: undefined,
 				workflow: generatedWorkflow,
 			});
+		});
+
+		it('publishes the issues that blocked the save for the draft', async () => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath, publishIssues } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+			expect(publishIssues).toHaveBeenCalledWith({
+				filePath,
+				issues: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+			});
+		});
+
+		it('publishes no issues when the build saves', async () => {
+			const { context, filePath, publishIssues } = withDraftPublisher();
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(true);
+			expect(publishIssues).not.toHaveBeenCalled();
 		});
 
 		it('names the bound workflow on the draft of an edit', async () => {

@@ -2,6 +2,7 @@ import { computed, nextTick, reactive, ref, shallowRef, triggerRef, watch } from
 import { v4 as uuidv4 } from 'uuid';
 import {
 	applyWorkflowDraft,
+	applyWorkflowDraftIssues,
 	dismissWorkflowDrafts,
 	settleWorkflowDraft,
 	type WorkflowDraftsByFilePath,
@@ -1125,7 +1126,14 @@ export function createThreadRuntime(
 				};
 			}
 			if (parsed.data.type === 'workflow-draft') {
-				workflowDrafts.value = applyWorkflowDraft(workflowDrafts.value, parsed.data.payload);
+				workflowDrafts.value = applyWorkflowDraft(
+					workflowDrafts.value,
+					parsed.data.payload,
+					parsed.data.runId,
+				);
+			}
+			if (parsed.data.type === 'workflow-draft-issues') {
+				workflowDrafts.value = applyWorkflowDraftIssues(workflowDrafts.value, parsed.data.payload);
 			}
 			if (parsed.data.type === 'tool-result') {
 				workflowDrafts.value = settleWorkflowDraft(

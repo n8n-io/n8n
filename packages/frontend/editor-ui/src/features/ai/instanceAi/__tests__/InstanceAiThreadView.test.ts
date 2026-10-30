@@ -22,7 +22,10 @@ import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
 import { fetchThreadTabs } from '../instanceAi.memory.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
+import {
+	INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT,
+	INSTANCE_AI_SETUP_PANEL_EXPERIMENT,
+} from '@/app/constants/experiments';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { INSTANCE_AI_VIEW, NEW_CONVERSATION_TITLE } from '../constants';
 import { LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
@@ -196,12 +199,13 @@ let workflowLoadedEmit: ((event: 'workflow-loaded', workflowId: string) => void)
 
 const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowDraftPreviewStub',
-	props: { draft: { type: Object, required: true }, building: Boolean },
+	props: { draft: { type: Object, required: true }, building: Boolean, statusText: String },
 	setup: (props) => () =>
 		h('div', {
 			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
 			'data-file-path': (props.draft as { filePath: string }).filePath,
 			'data-building': String(props.building),
+			'data-status-text': props.statusText ?? '',
 		}),
 });
 
@@ -2668,6 +2672,79 @@ describe('InstanceAiThreadView', () => {
 			workflowLoadedEmit?.('workflow-loaded', 'wf-1');
 
 			expect(thread.dismissWorkflowDrafts).toHaveBeenCalledWith('wf-1');
+		});
+
+		function stageNewWorkflow() {
+			thread.messages = [
+				{
+					id: 'staging-request',
+					role: 'user',
+					content: 'Build a workflow',
+					reasoning: '',
+					isStreaming: false,
+					createdAt: '2026-04-01T00:00:00.000Z',
+				},
+				{
+					id: 'staging-run',
+					runId: 'run-1',
+					role: 'assistant',
+					content: '',
+					reasoning: '',
+					isStreaming: true,
+					createdAt: '2026-04-01T00:00:01.000Z',
+					agentTree: {
+						runId: 'run-1',
+						agentId: 'agent-root',
+						role: 'orchestrator',
+						status: 'active',
+						textContent: '',
+						reasoning: '',
+						children: [],
+						timeline: [],
+						toolCalls: [
+							{
+								toolCallId: 'tc-skill',
+								toolName: 'load_skill',
+								args: { name: 'workflow-builder' },
+								isLoading: false,
+							},
+							{
+								toolCallId: 'tc-search',
+								toolName: 'search_nodes',
+								args: { queries: ['gmail', 'slack'] },
+								isLoading: true,
+							},
+						],
+					},
+				},
+			] as typeof thread.messages;
+		}
+
+		it('shows the staging canvas of a new workflow with the step of the agent', async () => {
+			trackCanvasRendered.mockClear();
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'variant' : undefined,
+			);
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			stageNewWorkflow();
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', 'staging:run-1');
+			expect(preview).toHaveAttribute('data-status-text', 'Searching for gmail, slack');
+			expect(trackCanvasRendered).toHaveBeenCalledWith('staging');
+		});
+
+		it('shows no staging canvas in the control arm', async () => {
+			mockedStore(usePostHog).getVariant.mockImplementation((name) =>
+				name === INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name ? 'control' : undefined,
+			);
+			const { queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			stageNewWorkflow();
+			await nextTick();
+
+			expect(queryByTestId('instance-ai-workflow-draft-preview-stub')).toBeNull();
 		});
 
 		it('reports the first draft and saved canvas renders', async () => {

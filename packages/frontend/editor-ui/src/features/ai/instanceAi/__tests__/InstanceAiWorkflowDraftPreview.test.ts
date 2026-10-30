@@ -58,10 +58,74 @@ function draft(names: string[], revision = 1): WorkflowDraft {
 
 const renderComponent = createComponentRenderer(InstanceAiWorkflowDraftPreview);
 
+function mockReducedMotion(reduce: boolean) {
+	vi.stubGlobal(
+		'matchMedia',
+		vi.fn((query: string) => ({
+			matches: reduce && query.includes('prefers-reduced-motion'),
+			media: query,
+			addEventListener: vi.fn(),
+			removeEventListener: vi.fn(),
+			addListener: vi.fn(),
+			removeListener: vi.fn(),
+			onchange: null,
+			dispatchEvent: vi.fn(),
+		})),
+	);
+}
+
 describe('InstanceAiWorkflowDraftPreview', () => {
 	beforeEach(() => {
 		canvasProps.current = undefined;
 		canvasProps.eventBus = undefined;
+		// Nodes show at once, so each test sees the full draft.
+		mockReducedMotion(true);
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+		vi.unstubAllGlobals();
+	});
+
+	it('adds the nodes one at a time when motion is allowed', async () => {
+		mockReducedMotion(false);
+		vi.useFakeTimers();
+		renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start', 'Set']), building: true },
+		});
+
+		expect(canvasProps.current?.nodes ?? []).toHaveLength(0);
+		await vi.advanceTimersByTimeAsync(80);
+		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start']);
+		await vi.advanceTimersByTimeAsync(80);
+		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start', 'Set']);
+	});
+
+	it('shows the step of the agent while it works', () => {
+		const { getByTestId } = renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start']), building: true, statusText: 'Searching for gmail' },
+		});
+
+		expect(getByTestId('instance-ai-workflow-draft-badge')).toHaveTextContent(
+			'Searching for gmail',
+		);
+	});
+
+	it('marks the nodes of the draft issues', () => {
+		const withIssues: WorkflowDraft = {
+			...draft(['Start', 'Set']),
+			issues: [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Set' }],
+		};
+
+		renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: withIssues, building: true },
+		});
+
+		const set = canvasProps.current?.nodes.find((n) => n.data?.name === 'Set');
+		expect(set?.data?.issues.validation).toEqual([expect.stringContaining('Missing id')]);
 	});
 
 	it('renders the draft nodes on a read-only canvas', () => {

@@ -50,7 +50,9 @@ function setup(context = makeContext()) {
 	});
 	const drafts = () =>
 		published.flatMap((event) => (event.type === 'workflow-draft' ? [event] : []));
-	return { publisher, published, drafts, context };
+	const issueEvents = () =>
+		published.flatMap((event) => (event.type === 'workflow-draft-issues' ? [event] : []));
+	return { publisher, published, drafts, issueEvents, context };
 }
 
 describe('createWorkflowDraftPublisher', () => {
@@ -162,5 +164,67 @@ describe('createWorkflowDraftPublisher', () => {
 		});
 
 		expect(published).toHaveLength(0);
+	});
+
+	describe('publishIssues', () => {
+		const issue = { code: 'SET_INVALID_ASSIGNMENT', message: 'Bad assignment', nodeName: 'Set' };
+
+		it('publishes the issues for the last draft of the file', async () => {
+			const { publisher, published, issueEvents } = setup();
+			await publisher.publish({ filePath: FILE, workflow: compiledWorkflow() });
+			await publisher.publish({ filePath: FILE, workflow: compiledWorkflow() });
+
+			publisher.publishIssues({ filePath: FILE, issues: [issue] });
+
+			expect(issueEvents()).toHaveLength(1);
+			expect(instanceAiEventSchema.safeParse(published.at(-1)).success).toBe(true);
+			expect(issueEvents()[0]).toMatchObject({
+				runId: 'run-1',
+				agentId: 'agent-1',
+				payload: { filePath: FILE, revision: 2, issues: [issue] },
+			});
+		});
+
+		it('publishes nothing for a file with no draft', () => {
+			const { publisher, published } = setup();
+
+			publisher.publishIssues({ filePath: FILE, issues: [issue] });
+
+			expect(published).toHaveLength(0);
+		});
+
+		it('keeps the first 50 issues and shortens long messages', async () => {
+			const { publisher, issueEvents } = setup();
+			await publisher.publish({ filePath: FILE, workflow: compiledWorkflow() });
+			const issues = Array.from({ length: 60 }, (_, i) => ({
+				code: `CODE_${i}`,
+				message: 'x'.repeat(600),
+			}));
+
+			publisher.publishIssues({ filePath: FILE, issues });
+
+			const payload = issueEvents()[0].payload;
+			expect(payload.issues).toHaveLength(50);
+			expect(payload.issues[0].code).toBe('CODE_0');
+			expect(payload.issues[0].message.length).toBeLessThanOrEqual(500);
+		});
+
+		it('does not throw when the event bus fails', async () => {
+			const context = makeContext();
+			const publisher = createWorkflowDraftPublisher({
+				eventBus: {
+					publish: (_threadId, event) => {
+						if (event.type === 'workflow-draft-issues') throw new Error('bus down');
+					},
+				},
+				threadId: 'thread-1',
+				runId: 'run-1',
+				agentId: 'agent-1',
+				context,
+			});
+			await publisher.publish({ filePath: FILE, workflow: compiledWorkflow() });
+
+			expect(() => publisher.publishIssues({ filePath: FILE, issues: [issue] })).not.toThrow();
+		});
 	});
 });

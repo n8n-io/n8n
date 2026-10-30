@@ -63,6 +63,12 @@ import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiWorkflowDraftPreview from './components/InstanceAiWorkflowDraftPreview.vue';
 import { useDraftWorkflowPreviewTelemetry } from '@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry';
+import { INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT } from '@/app/constants/experiments';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useWorkflowStaging } from './composables/useWorkflowStaging';
+import { useWorkflowBuildStepLabel } from './composables/useWorkflowBuildStepLabel';
+import { isStagingDraft, toStagingNodeTypeInfo } from './instanceAi.workflowStaging';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import InstanceAiAppPreview from './components/InstanceAiAppPreview.vue';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -245,6 +251,21 @@ watch(
 	{ immediate: true },
 );
 
+// Experiment cleanup (137_instance_ai_draft_workflow_preview)
+const posthog = usePostHog();
+const nodeTypesStore = useNodeTypesStore();
+const describeStagingNodeType = (nodeType: string) =>
+	toStagingNodeTypeInfo(nodeTypesStore.getNodeType(nodeType));
+const workflowStaging = useWorkflowStaging({
+	messages: () => thread.messages,
+	workflowDrafts: () => thread.workflowDrafts,
+	enabled: () =>
+		posthog.getVariant(INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.name) ===
+		INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant,
+	describeType: describeStagingNodeType,
+});
+// EOF Experiment cleanup
+
 // --- Canvas / data table preview ---
 const appTargets = computed(() =>
 	getAppTargetsFromThreadMetadata(store.getThreadMetadata(props.threadId)),
@@ -268,6 +289,7 @@ const preview = useCanvasPreview({
 		},
 	},
 	workflowDrafts: () => thread.workflowDrafts,
+	stagingDraft: () => workflowStaging.stagingDraft.value,
 	dismissWorkflowDrafts: (workflowId) => thread.dismissWorkflowDrafts(workflowId),
 });
 const openSkillTabs = computed(() => preview.openTabs.value.filter((tab) => tab.type === 'skill'));
@@ -279,12 +301,27 @@ watch(
 	{ immediate: true },
 );
 
+const buildStepLabel = useWorkflowBuildStepLabel();
+/** What the agent does now, on the badge of the draft canvas. */
+const draftStatusText = computed(() => {
+	const step = workflowStaging.buildStep.value;
+	if (!step) return undefined;
+	return buildStepLabel(step, {
+		nodeTypeName: (nodeType) => describeStagingNodeType(nodeType)?.displayName,
+		issueCount: preview.activeWorkflowDraft.value?.issues?.length ?? 0,
+	});
+});
+
 // Experiment cleanup (137_instance_ai_draft_workflow_preview)
 const draftPreviewTelemetry = useDraftWorkflowPreviewTelemetry(thread);
 watch(
-	() => preview.isPreviewVisible.value && preview.activeWorkflowDraft.value !== undefined,
-	(draftOnScreen) => {
-		if (draftOnScreen) draftPreviewTelemetry.trackCanvasRendered('draft');
+	() => {
+		const draft = preview.activeWorkflowDraft.value;
+		if (!preview.isPreviewVisible.value || !draft) return undefined;
+		return isStagingDraft(draft) ? 'staging' : 'draft';
+	},
+	(kind) => {
+		if (kind) draftPreviewTelemetry.trackCanvasRendered(kind);
 	},
 	{ immediate: true },
 );
@@ -1051,6 +1088,7 @@ function handleNewThreadClick() {
 								:class="$style.previewSlot"
 								:draft="preview.activeWorkflowDraft.value"
 								:building="isAgentWorking"
+								:status-text="draftStatusText"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

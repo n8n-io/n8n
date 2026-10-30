@@ -351,13 +351,13 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 	WORKFLOW_CANVAS_FIRST_RENDERED: {
 		name: 'AI Assistant workflow canvas first rendered',
 		description:
-			'The n8n Assistant preview first showed a workflow canvas during a run of the draft workflow preview experiment (137). Fires at most once per run for each canvas kind: once for the first unsaved draft, once for the first saved workflow.',
+			'The n8n Assistant preview first showed a workflow canvas during a run of the draft workflow preview experiment (137). Fires at most once per run for each canvas kind: once for the staging canvas of a new workflow, once for the first unsaved draft, once for the first saved workflow. A staging render before exposure is sent at exposure, with the time of the render.',
 		properties: z.object({
 			...draftWorkflowPreviewProps,
 			canvas_kind: z
-				.enum(['draft', 'saved'])
+				.enum(['staging', 'draft', 'saved'])
 				.describe(
-					'draft: the unsaved workflow parsed from the agent source. saved: the workflow after the build saved it',
+					'staging: the canvas of a new workflow with the node types the agent read, before the first compile. draft: the unsaved workflow compiled from the agent source. saved: the workflow after the build saved it',
 				),
 			ms_since_message: z
 				.number()
@@ -382,7 +382,7 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 				.int()
 				.describe('Milliseconds from the user message that started the run to the abandon'),
 			canvas_state: z
-				.enum(['none', 'draft', 'saved'])
+				.enum(['none', 'staging', 'draft', 'saved'])
 				.describe('The most complete canvas the user saw in this run before abandoning it'),
 		}),
 	},

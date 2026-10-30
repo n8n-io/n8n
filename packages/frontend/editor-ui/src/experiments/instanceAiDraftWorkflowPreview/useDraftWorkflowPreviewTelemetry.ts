@@ -16,7 +16,7 @@ import { usePostHog } from '@/app/stores/posthog.store';
 type Variant =
 	| typeof INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.control
 	| typeof INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_EXPERIMENT.variant;
-type CanvasKind = 'draft' | 'saved';
+type CanvasKind = 'staging' | 'draft' | 'saved';
 
 /** The part of a thread runtime this telemetry reads. */
 export interface DraftWorkflowPreviewTelemetryThread {
@@ -31,6 +31,8 @@ interface TrackedRun {
 	startedAt: number;
 	exposed: boolean;
 	rendered: Set<CanvasKind>;
+	/** Renders before exposure, with their time since the message. Sent at exposure. */
+	pendingRenders: Map<CanvasKind, number>;
 	abandoned: boolean;
 }
 
@@ -81,7 +83,8 @@ export function findWorkflowBuildStart(
 
 function canvasState(run: TrackedRun): 'none' | CanvasKind {
 	if (run.rendered.has('saved')) return 'saved';
-	return run.rendered.has('draft') ? 'draft' : 'none';
+	if (run.rendered.has('draft')) return 'draft';
+	return run.rendered.has('staging') ? 'staging' : 'none';
 }
 
 /**
@@ -126,6 +129,25 @@ export function useDraftWorkflowPreviewTelemetry(thread: DraftWorkflowPreviewTel
 			...baseProps(run, variant.value),
 			is_new_workflow: isNewWorkflow,
 		});
+		for (const [kind, msSinceMessage] of run.pendingRenders) {
+			sendCanvasRendered(run, variant.value, kind, msSinceMessage);
+		}
+		run.pendingRenders.clear();
+	}
+
+	function sendCanvasRendered(
+		current: TrackedRun,
+		assigned: Variant,
+		kind: CanvasKind,
+		msSinceMessage: number,
+	) {
+		current.rendered.add(kind);
+		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_CANVAS_FIRST_RENDERED, {
+			...baseProps(current, assigned),
+			canvas_kind: kind,
+			ms_since_message: msSinceMessage,
+			is_new_workflow: isNewWorkflow,
+		});
 	}
 
 	function trackAbandon(reason: 'stopped' | 'left') {
@@ -141,14 +163,16 @@ export function useDraftWorkflowPreviewTelemetry(thread: DraftWorkflowPreviewTel
 
 	function trackCanvasRendered(kind: CanvasKind) {
 		checkExposure();
-		if (!run?.exposed || run.rendered.has(kind) || !variant.value) return;
-		run.rendered.add(kind);
-		telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_CANVAS_FIRST_RENDERED, {
-			...baseProps(run, variant.value),
-			canvas_kind: kind,
-			ms_since_message: Date.now() - run.startedAt,
-			is_new_workflow: isNewWorkflow,
-		});
+		if (!run || run.rendered.has(kind) || !variant.value) return;
+		const msSinceMessage = Date.now() - run.startedAt;
+		// The staging canvas opens before the first build step, so it waits for exposure.
+		if (!run.exposed) {
+			if (kind === 'staging' && !run.pendingRenders.has(kind)) {
+				run.pendingRenders.set(kind, msSinceMessage);
+			}
+			return;
+		}
+		sendCanvasRendered(run, variant.value, kind, msSinceMessage);
 	}
 
 	function leaveIfRunning() {
@@ -170,6 +194,7 @@ export function useDraftWorkflowPreviewTelemetry(thread: DraftWorkflowPreviewTel
 				startedAt: sentAt ?? Date.now(),
 				exposed: false,
 				rendered: new Set(),
+				pendingRenders: new Map(),
 				abandoned: false,
 			};
 			sentAt = undefined;

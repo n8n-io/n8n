@@ -81,7 +81,8 @@ function getBasename(path: string): string {
 	return cleanPath.split('/').filter(Boolean).at(-1) ?? cleanPath;
 }
 
-function humanizeFileLabel(path: string): string {
+/** A file path or skill name as lower-case words, e.g. `references/aiAgents.md` → "ai agents". */
+export function humanizeFileLabel(path: string): string {
 	const basename = getBasename(path);
 	const withoutExtension = basename.replace(/\.[^.]+$/, '');
 	return withoutExtension

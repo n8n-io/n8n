@@ -283,6 +283,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'tasks-update',
 	'setup-items',
 	'workflow-draft',
+	'workflow-draft-issues',
 	'preferences-applied',
 	'preference-card',
 	'thread-title-updated',
@@ -305,6 +306,8 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'status',
 	// Large and stale once the workflow saves; the saved workflow is the durable fact.
 	'workflow-draft',
+	// Belongs to one draft revision, which is ephemeral too.
+	'workflow-draft-issues',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1311,6 +1314,25 @@ export const workflowDraftPayloadSchema = z.object({
 });
 export type InstanceAiWorkflowDraftPayload = z.infer<typeof workflowDraftPayloadSchema>;
 
+export const WORKFLOW_DRAFT_ISSUES_MAX = 50;
+export const WORKFLOW_DRAFT_ISSUE_MESSAGE_MAX_LENGTH = 500;
+
+export const workflowDraftIssueSchema = z.object({
+	code: z.string().min(1).max(100),
+	message: z.string().max(WORKFLOW_DRAFT_ISSUE_MESSAGE_MAX_LENGTH),
+	/** The node the issue is on. Absent for an issue of the whole workflow. */
+	nodeName: z.string().optional(),
+});
+export type InstanceAiWorkflowDraftIssue = z.infer<typeof workflowDraftIssueSchema>;
+
+/** The validation issues that blocked the save of one draft revision. */
+export const workflowDraftIssuesPayloadSchema = z.object({
+	filePath: z.string().min(1),
+	revision: z.number().int().nonnegative(),
+	issues: z.array(workflowDraftIssueSchema).max(WORKFLOW_DRAFT_ISSUES_MAX),
+});
+export type InstanceAiWorkflowDraftIssuesPayload = z.infer<typeof workflowDraftIssuesPayloadSchema>;
+
 /** A later fact about a preference the `save_user_preference` tool saved in this run:
  *  the user edited it or undid it from the card. Appended by the card endpoints, not
  *  by the tool, and only while the card is on the latest turn. An edit names the scope
@@ -1458,6 +1480,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 		payload: workflowDraftPayloadSchema,
 	}),
 	z.object({
+		type: z.literal('workflow-draft-issues'),
+		...eventBase,
+		payload: workflowDraftIssuesPayloadSchema,
+	}),
+	z.object({
 		type: z.literal('preferences-applied'),
 		...eventBase,
 		payload: aiPreferencesAppliedPayloadSchema,
@@ -1500,6 +1527,10 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
 export type InstanceAiWorkflowDraftEvent = Extract<InstanceAiEvent, { type: 'workflow-draft' }>;
+export type InstanceAiWorkflowDraftIssuesEvent = Extract<
+	InstanceAiEvent,
+	{ type: 'workflow-draft-issues' }
+>;
 export type InstanceAiPreferencesAppliedEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'preferences-applied' }

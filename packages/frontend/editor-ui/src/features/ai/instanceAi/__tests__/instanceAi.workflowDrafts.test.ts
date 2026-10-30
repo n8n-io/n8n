@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	applyWorkflowDraft,
+	applyWorkflowDraftIssues,
 	dismissWorkflowDrafts,
 	draftTabId,
 	settleWorkflowDraft,
@@ -21,7 +22,44 @@ function payload(overrides: Partial<InstanceAiWorkflowDraftPayload> = {}) {
 }
 
 describe('workflow drafts', () => {
+	describe('applyWorkflowDraftIssues', () => {
+		const issues = [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Bad', nodeName: 'Set' }];
+
+		it('sets the issues on the draft revision they belong to', () => {
+			const drafts = applyWorkflowDraft({}, payload({ revision: 2 }));
+
+			const next = applyWorkflowDraftIssues(drafts, { filePath: FILE, revision: 2, issues });
+
+			expect(next[FILE].issues).toEqual(issues);
+		});
+
+		it('drops issues of another revision or file', () => {
+			const drafts = applyWorkflowDraft({}, payload({ revision: 2 }));
+
+			expect(applyWorkflowDraftIssues(drafts, { filePath: FILE, revision: 1, issues })).toBe(
+				drafts,
+			);
+			expect(applyWorkflowDraftIssues(drafts, { filePath: 'other.ts', revision: 2, issues })).toBe(
+				drafts,
+			);
+		});
+
+		it('clears the issues with the next revision', () => {
+			const withIssues = applyWorkflowDraftIssues(applyWorkflowDraft({}, payload()), {
+				filePath: FILE,
+				revision: 1,
+				issues,
+			});
+
+			expect(applyWorkflowDraft(withIssues, payload({ revision: 2 }))[FILE].issues).toBeUndefined();
+		});
+	});
+
 	describe('applyWorkflowDraft', () => {
+		it('keeps the run that made the draft', () => {
+			expect(applyWorkflowDraft({}, payload(), 'run-7')[FILE].runId).toBe('run-7');
+		});
+
 		it('stores a draft by its file path', () => {
 			const drafts = applyWorkflowDraft({}, payload());
 

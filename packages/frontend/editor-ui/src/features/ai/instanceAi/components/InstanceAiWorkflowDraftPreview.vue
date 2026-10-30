@@ -9,17 +9,24 @@ import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.ty
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 
 import { useDraftWorkflowDocument } from '../composables/useDraftWorkflowDocument';
+import { useStaggeredList } from '../composables/useStaggeredList';
+import { draftNodeKey, withDraftNodes } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
 const props = defineProps<{
 	draft: WorkflowDraft;
 	/** The agent is still working, so a save can still replace this draft. */
 	building: boolean;
+	/** What the agent does now. Replaces the building label while it works. */
+	statusText?: string;
 }>();
 
 const i18n = useI18n();
 const eventBus = createEventBus<CanvasEventBusEvents>();
-const { documentStore } = useDraftWorkflowDocument(() => props.draft);
+// New nodes join one at a time, so the canvas grows with a rhythm.
+const visibleNodes = useStaggeredList(() => props.draft.workflow.nodes, { key: draftNodeKey });
+const visibleDraft = computed(() => withDraftNodes(props.draft, visibleNodes.value));
+const { documentStore } = useDraftWorkflowDocument(() => visibleDraft.value);
 // The editor canvas reads its workflow from this key, so it renders the draft.
 provide(WorkflowDocumentStoreKey, documentStore);
 
@@ -29,7 +36,7 @@ const canvasId = computed(() => `instance-ai-draft-${props.draft.filePath}`);
 // Fit the view when the agent adds nodes, so the newest one is on screen. A change
 // to existing nodes keeps the viewport the user has.
 watch(
-	() => props.draft.workflow.nodes.map((node) => node.name),
+	() => visibleNodes.value.map((node) => node.name),
 	(names, previous) => {
 		if (names.some((name) => !previous.includes(name))) eventBus.emit('fitView');
 	},
@@ -55,7 +62,7 @@ watch(
 			<N8nText size="small" color="text-base">
 				{{
 					building
-						? i18n.baseText('instanceAi.workflowDraft.building')
+						? (statusText ?? i18n.baseText('instanceAi.workflowDraft.building'))
 						: i18n.baseText('instanceAi.workflowDraft.unsaved')
 				}}
 			</N8nText>
@@ -74,6 +81,30 @@ watch(
 .canvas {
 	width: 100%;
 	height: 100%;
+
+	// A node animates when it mounts. Node ids stay the same between revisions, so
+	// only new nodes animate.
+	:global(.vue-flow__node) {
+		animation: draft-node-enter var(--duration--snappy) var(--easing--ease-out-quart) both;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		:global(.vue-flow__node) {
+			animation: none;
+		}
+	}
+}
+
+@keyframes draft-node-enter {
+	from {
+		opacity: 0;
+		scale: 0.92;
+	}
+
+	to {
+		opacity: 1;
+		scale: 1;
+	}
 }
 
 .badge {

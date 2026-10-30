@@ -296,6 +296,43 @@ describe('instanceAiEventSchema', () => {
 		});
 	});
 
+	describe('workflow-draft-issues events', () => {
+		const issuesEvent = {
+			type: 'workflow-draft-issues',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				filePath: 'src/workflows/demo.workflow.ts',
+				revision: 2,
+				issues: [
+					{ code: 'SET_INVALID_ASSIGNMENT', message: 'Bad assignment', nodeName: 'Set' },
+					{ code: 'GROUP_DROPPED_OVER_CEILING', message: 'Too many groups' },
+				],
+			},
+		};
+
+		it('parses issues with and without a node name', () => {
+			expect(instanceAiEventSchema.parse(issuesEvent)).toEqual(issuesEvent);
+		});
+
+		it('rejects issues without a file path', () => {
+			const { filePath: _filePath, ...payload } = issuesEvent.payload;
+
+			expect(instanceAiEventSchema.safeParse({ ...issuesEvent, payload }).success).toBe(false);
+		});
+
+		it('rejects more than 50 issues', () => {
+			const issues = Array.from({ length: 51 }, () => issuesEvent.payload.issues[0]);
+			const event = { ...issuesEvent, payload: { ...issuesEvent.payload, issues } };
+
+			expect(instanceAiEventSchema.safeParse(event).success).toBe(false);
+		});
+
+		it('is ephemeral, so issues are never persisted or replayed', () => {
+			expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('workflow-draft-issues')).toBe(true);
+		});
+	});
+
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});

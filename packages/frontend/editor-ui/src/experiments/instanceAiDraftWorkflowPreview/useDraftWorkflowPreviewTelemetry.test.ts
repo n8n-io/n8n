@@ -163,6 +163,39 @@ describe('useDraftWorkflowPreviewTelemetry', () => {
 		expect(track).not.toHaveBeenCalled();
 	});
 
+	it('reports a staging render that came before exposure once the run is exposed', async () => {
+		vi.useFakeTimers();
+		try {
+			const { startRun, updateTree, telemetry } = setup();
+			await startRun();
+			vi.advanceTimersByTime(1000);
+			telemetry.trackCanvasRendered('staging');
+			expect(tracked(TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_CANVAS_FIRST_RENDERED)).toHaveLength(0);
+
+			vi.advanceTimersByTime(5000);
+			await updateTree(agentTree({ toolCalls: [buildCall()] }));
+
+			const [[, props]] = tracked(TELEMETRY_EVENT.INSTANCE_AI.WORKFLOW_CANVAS_FIRST_RENDERED);
+			expect(props).toMatchObject({ canvas_kind: 'staging', is_new_workflow: true });
+			expect(props.ms_since_message).toBeLessThan(2000);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reports a stopped run during staging with the staging canvas', async () => {
+		const { startRun, updateTree, telemetry } = setup();
+		await startRun(agentTree({ toolCalls: [buildCall()] }));
+		telemetry.trackCanvasRendered('staging');
+
+		await updateTree(agentTree({ toolCalls: [buildCall()], status: 'cancelled' }));
+
+		expect(track).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.RUN_ABANDONED,
+			expect.objectContaining({ canvas_state: 'staging' }),
+		);
+	});
+
 	it('reports a stopped run with the canvas the user saw', async () => {
 		const { startRun, updateTree, telemetry } = setup();
 		await startRun(agentTree({ toolCalls: [buildCall()] }));

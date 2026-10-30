@@ -445,6 +445,29 @@ describe('createThreadRuntime - SSE and hydration', () => {
 			expect(activeRuntime(registry).workflowDrafts[filePath].savedWorkflowId).toBe('wf-1');
 		});
 
+		test('keeps the run that made a draft', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].runId).toBe('run-1');
+		});
+
+		test('sets the validation issues on the draft they blocked', () => {
+			const issues = [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Bad', nodeName: 'Set' }];
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(
+				makeSSEEvent({
+					type: 'workflow-draft-issues',
+					runId: 'run-1',
+					agentId: 'agent-root',
+					payload: { filePath, revision: 1, issues },
+				}),
+			);
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].issues).toEqual(issues);
+		});
+
 		test('removes a saved draft once the saved workflow is on screen', () => {
 			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
 			capturedOnMessage!(draftEvent(1));

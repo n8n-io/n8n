@@ -1,6 +1,8 @@
 import {
 	isSafeObjectKey,
 	type InstanceAiWorkflowDraft,
+	type InstanceAiWorkflowDraftIssue,
+	type InstanceAiWorkflowDraftIssuesPayload,
 	type InstanceAiWorkflowDraftPayload,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
@@ -14,6 +16,10 @@ export interface WorkflowDraft {
 	workflow: InstanceAiWorkflowDraft;
 	/** Set when a build saved this file. The saved canvas replaces the draft once it loads. */
 	savedWorkflowId?: string;
+	/** The run that made this draft. */
+	runId?: string;
+	/** The validation issues that blocked the save of this revision. */
+	issues?: InstanceAiWorkflowDraftIssue[];
 }
 
 export type WorkflowDraftsByFilePath = Record<string, WorkflowDraft>;
@@ -32,11 +38,23 @@ export function getDraftWorkflowId(draft: WorkflowDraft): string | undefined {
 export function applyWorkflowDraft(
 	drafts: WorkflowDraftsByFilePath,
 	payload: InstanceAiWorkflowDraftPayload,
+	runId?: string,
 ): WorkflowDraftsByFilePath {
 	if (!isSafeObjectKey(payload.filePath)) return drafts;
 	const current = drafts[payload.filePath];
 	if (current && current.revision >= payload.revision) return drafts;
-	return { ...drafts, [payload.filePath]: { ...payload } };
+	return { ...drafts, [payload.filePath]: { ...payload, ...(runId ? { runId } : {}) } };
+}
+
+/** Set the issues on the draft revision whose save they blocked. */
+export function applyWorkflowDraftIssues(
+	drafts: WorkflowDraftsByFilePath,
+	payload: InstanceAiWorkflowDraftIssuesPayload,
+): WorkflowDraftsByFilePath {
+	if (!Object.hasOwn(drafts, payload.filePath)) return drafts;
+	const draft = drafts[payload.filePath];
+	if (draft.revision !== payload.revision) return drafts;
+	return { ...drafts, [payload.filePath]: { ...draft, issues: payload.issues } };
 }
 
 function toSavedSource(result: unknown) {

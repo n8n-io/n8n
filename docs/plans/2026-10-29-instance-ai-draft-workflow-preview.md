@@ -137,13 +137,16 @@ All tasks are implemented with tests. Manual verification in a running instance
 is still open: force the flag to `variant`, build a new workflow, then edit it,
 and check the events with `pnpm telemetry:sink`.
 
+The [staging canvas](2026-10-30-instance-ai-draft-staging-canvas.md) extends
+this feature. It opens the canvas of a new workflow before the first compile,
+and it marks the draft nodes that block the save.
+
 ## Out of scope
 
 - A preview while the agent streams the source file. In the traced build the
   write took 48s. A draft needs a complete file, so this needs another
   approach.
 - Diff highlights between the draft and the saved workflow.
-- Parse errors shown to the user.
 - Drafts for agent, data table, or skill artifacts.
 
 ## Evals
