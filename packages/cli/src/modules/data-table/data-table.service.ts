@@ -75,6 +75,7 @@ export class DataTableService {
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectScopeService: ProjectScopeService,
 		private readonly moduleRegistry: ModuleRegistry,
+		private readonly transactionRunner: TransactionRunner,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
