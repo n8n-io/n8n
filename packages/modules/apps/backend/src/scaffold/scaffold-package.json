@@ -1,0 +1,20 @@
+{
+	"name": "n8n-app",
+	"version": "1.0.0",
+	"private": true,
+	"type": "module",
+	"engines": {
+		"node": ">=22",
+		"npm": ">=10"
+	},
+	"scripts": {
+		"build": "vite build"
+	},
+	"dependencies": {
+		"vue": "3.5.13"
+	},
+	"devDependencies": {
+		"@vitejs/plugin-vue": "5.2.4",
+		"vite": "6.3.5"
+	}
+}

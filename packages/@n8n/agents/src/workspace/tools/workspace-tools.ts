@@ -3,6 +3,7 @@ import type { WorkspaceFilesystem, WorkspaceSandbox } from '../types';
 import { createAppendFileTool } from './append-file';
 import { createCopyFileTool } from './copy-file';
 import { createDeleteFileTool } from './delete-file';
+import { createEditFilesTool } from './edit-files';
 import { createExecuteCommandTool } from './execute-command';
 import { createFileStatTool } from './file-stat';
 import { createListFilesTool } from './list-files';
@@ -10,6 +11,7 @@ import { createMkdirTool } from './mkdir';
 import { createMoveFileTool } from './move-file';
 import { createKillProcessTool, createListProcessesTool } from './process-tools';
 import { createReadFileTool } from './read-file';
+import { createReadFilesTool } from './read-files';
 import { createReadToolResultTool } from './read-tool-result';
 import { createRmdirTool } from './rmdir';
 import { createStrReplaceFileTool } from './str-replace-file';
@@ -22,9 +24,11 @@ interface WorkspaceLike {
 
 export const CORE_WORKSPACE_TOOL_NAMES: ReadonlySet<string> = new Set([
 	'workspace_read_file',
+	'workspace_read_files',
 	'workspace_read_tool_result',
 	'workspace_write_file',
 	'workspace_str_replace_file',
+	'workspace_edit_files',
 	'workspace_execute_command',
 ]);
 
@@ -33,9 +37,11 @@ export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 
 	if (workspace.filesystem) {
 		tools.push(createReadFileTool(workspace.filesystem));
+		tools.push(createReadFilesTool(workspace.filesystem));
 		tools.push(createReadToolResultTool(workspace.filesystem));
 		tools.push(createStrReplaceFileTool(workspace.filesystem));
 		tools.push(createWriteFileTool(workspace.filesystem));
+		tools.push(createEditFilesTool(workspace.filesystem));
 		tools.push(createListFilesTool(workspace.filesystem));
 		tools.push(createFileStatTool(workspace.filesystem));
 		tools.push(createMkdirTool(workspace.filesystem));
@@ -55,5 +61,5 @@ export function createWorkspaceTools(workspace: WorkspaceLike): BuiltTool[] {
 		tools.push(createKillProcessTool(workspace.sandbox.processes));
 	}
 
-	return tools;
+	return tools.map((tool) => ({ ...tool, requiresWorkspace: true }));
 }

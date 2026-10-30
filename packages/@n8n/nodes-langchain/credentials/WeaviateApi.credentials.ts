@@ -126,6 +126,20 @@ export class WeaviateApi implements ICredentialType {
 				},
 			},
 		},
+		{
+			displayName: 'Custom Connection gRPC Proxy',
+			name: 'custom_connection_grpc_proxy',
+			description: 'The URL of an HTTP proxy for gRPC requests. Leave empty to connect directly.',
+			placeholder: 'http://proxy.example.com:3128',
+			type: 'string',
+			typeOptions: { password: true },
+			default: '',
+			displayOptions: {
+				show: {
+					connection_type: ['custom_connection'],
+				},
+			},
+		},
 	];
 
 	test: ICredentialTestRequest = {

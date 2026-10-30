@@ -18,9 +18,11 @@ import type { Response } from 'express';
 import { DirectedGraph, StorageConfig, WorkflowExecute } from 'n8n-core';
 import * as core from 'n8n-core';
 import {
+	type IDataObject,
 	type IExecuteData,
 	type IExecuteResponsePromiseData,
 	type INode,
+	type IObservableObject,
 	type IRun,
 	type IRunExecutionData,
 	type ITaskData,
@@ -33,6 +35,7 @@ import {
 	type WorkflowExecuteMode,
 	Workflow,
 	ExecutionError,
+	ObservableObject,
 	WorkflowOperationError,
 	TimeoutExecutionCancelledError,
 	createRunExecutionData,
@@ -237,11 +240,10 @@ describe('processError', () => {
 			expect.objectContaining({ status: 'success', finished: true, data: successData }),
 		);
 		await expect(responsePromise.promise).resolves.toBe(EXECUTION_ENDED_WITHOUT_RESPONSE);
-		expect(deleteInFlightSpy).toHaveBeenCalledWith({
-			workflowId: workflow.id,
-			executionId: execution.id,
-			storedAt: 'db',
-		});
+		expect(deleteInFlightSpy).toHaveBeenCalledWith(
+			{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 		expect(watcher.workflowExecuteAfter).toHaveBeenCalledTimes(0);
 	});
@@ -350,11 +352,10 @@ describe('processError', () => {
 		const run = await postExecutePromise;
 		expect(run).toEqual(expect.objectContaining({ status: 'error', finished: false }));
 		// ...but the retention decision ran anyway, off the row that was found.
-		expect(deleteInFlightSpy).toHaveBeenCalledWith({
-			workflowId: workflow.id,
-			executionId: execution.id,
-			storedAt: 'db',
-		});
+		expect(deleteInFlightSpy).toHaveBeenCalledWith(
+			{ workflowId: workflow.id, executionId: execution.id, storedAt: 'db' },
+			expect.objectContaining({ status: 'success', finished: true }),
+		);
 		expect(activeExecutions.has(execution.id)).toBe(false);
 	});
 
@@ -957,6 +958,28 @@ describe('run', () => {
 			expect(addSpy).not.toHaveBeenCalled();
 		});
 
+		it('hands a v2 resume to the dispatcher without taking over a control-plane row', async () => {
+			// ARRANGE
+			const dispatcher = Container.get(EngineV2Dispatcher);
+			vi.spyOn(dispatcher, 'routesToEngineV2').mockReturnValueOnce(false);
+			const resumeSpy = vi.spyOn(dispatcher, 'resume').mockResolvedValueOnce('dp-uuid');
+			const addSpy = vi.spyOn(Container.get(ActiveExecutions), 'add');
+			const data = mock<IWorkflowExecutionDataProcess>();
+			const existingExecution = {
+				executionId: 'dp-uuid',
+				expectedStatus: 'waiting' as const,
+				engineResume: { stepId: 'step-1', token: 't' },
+			};
+
+			// ACT
+			const executionId = await runner.run(data, true, true, existingExecution);
+
+			// ASSERT
+			expect(executionId).toBe('dp-uuid');
+			expect(resumeSpy).toHaveBeenCalledWith(existingExecution, data);
+			expect(addSpy).not.toHaveBeenCalled();
+		});
+
 		it('leaves the v1 path alone when the run does not route to engine v2', async () => {
 			// ARRANGE
 			const dispatcher = Container.get(EngineV2Dispatcher);
@@ -1191,6 +1214,157 @@ describe('enqueueExecution', () => {
 		);
 	});
 
+	describe('when the start fails on main', () => {
+		const runHook = vi.fn().mockResolvedValue(undefined);
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'webhook',
+			workflowData: { nodes: [], staticData: {} },
+			executionData: createRunExecutionData({}),
+		});
+
+		const finishedRun = () => {
+			const call = runHook.mock.calls.find(([name]) => name === 'workflowExecuteAfter');
+			return (call?.[1] as [IRun])[0];
+		};
+
+		beforeEach(() => {
+			runHook.mockClear();
+			vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingWorker').mockReturnValueOnce(
+				mock<core.ExecutionLifecycleHooks>({ runHook }),
+			);
+		});
+
+		it('flags the run as failed before start when the job cannot be enqueued', async () => {
+			addJob.mockRejectedValueOnce(new Error('queue unavailable'));
+
+			// @ts-expect-error Private method
+			await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrow(
+				'queue unavailable',
+			);
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		it('does not flag the run once the job is enqueued', async () => {
+			addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+				mock<core.ExecutionLifecycleHooks>({
+					runHook: vi.fn().mockRejectedValue(new Error('hook failed')),
+				}),
+			);
+
+			// @ts-expect-error Private method
+			await expect(runner.enqueueExecution('1', 'workflow-xyz', data)).rejects.toThrow(
+				'hook failed',
+			);
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBeUndefined();
+		});
+	});
+
+	it('keeps failedBeforeStart when it rebuilds the run from the job result', async () => {
+		const activeExecutions = Container.get(ActiveExecutions);
+		let workflowExecution: PCancelable<IRun> | undefined;
+		vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+			workflowExecution = execution;
+		});
+		vi.spyOn(activeExecutions, 'getResponseMode').mockReturnValue(undefined);
+		const finalize = vi.spyOn(activeExecutions, 'finalizeExecution');
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+			mock<core.ExecutionLifecycleHooks>(),
+		);
+		const data = mock<IWorkflowExecutionDataProcess>({
+			executionMode: 'trigger',
+			workflowData: { nodes: [], staticData: {} },
+			forceFullExecutionData: false,
+		});
+		addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+		waitForJob.mockResolvedValueOnce(undefined);
+		popJobResult.mockReturnValueOnce({
+			success: false,
+			status: 'error',
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			failedBeforeStart: true,
+		} satisfies JobFinishedProps);
+
+		// @ts-expect-error Private method
+		await runner.enqueueExecution('1', 'workflow-xyz', data);
+		await workflowExecution;
+
+		const [, run] = finalize.mock.calls.at(-1)!;
+		expect(run?.data.resultData.failedBeforeStart).toBe(true);
+	});
+
+	it.each([
+		{
+			path: 'without the DB row',
+			forceFullExecutionData: false,
+			jobResult: mock<JobFinishedProps>({
+				status: 'success',
+				waitTill: null,
+				nodeTimeSavedMinutes: 60,
+			}),
+			row: undefined,
+			expected: 60,
+		},
+		{
+			path: 'from the DB row',
+			forceFullExecutionData: true,
+			jobResult: mock<JobFinishedProps>({
+				status: 'success',
+				waitTill: null,
+				nodeTimeSavedMinutes: 60,
+			}),
+			row: mock<IExecutionResponse>({ status: 'success', waitTill: null }),
+			expected: 60,
+		},
+		{
+			path: 'from the DB row without a job result',
+			forceFullExecutionData: false,
+			jobResult: undefined,
+			row: mock<IExecutionResponse>({ status: 'success', waitTill: null }),
+			expected: undefined,
+		},
+	])(
+		'sets the node time saved minutes on the run built $path',
+		async ({ forceFullExecutionData, jobResult, row, expected }) => {
+			const activeExecutions = Container.get(ActiveExecutions);
+			let workflowExecution: PCancelable<IRun> | undefined;
+			vi.spyOn(activeExecutions, 'attachWorkflowExecution').mockImplementation((_, execution) => {
+				workflowExecution = execution;
+			});
+			const finalize = vi.spyOn(activeExecutions, 'finalizeExecution');
+			vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain').mockReturnValueOnce(
+				mock<core.ExecutionLifecycleHooks>(),
+			);
+			const data = mock<IWorkflowExecutionDataProcess>({
+				executionMode: 'trigger',
+				workflowData: { nodes: [], staticData: {} },
+				forceFullExecutionData,
+			});
+			addJob.mockResolvedValueOnce(mock<Job>({ id: 'job-1', data: { executionId: '1' } }));
+			waitForJob.mockResolvedValueOnce(undefined);
+			popJobResult.mockReturnValueOnce(jobResult);
+			const findSingleExecution = vi.spyOn(
+				Container.get(ExecutionPersistence),
+				'findSingleExecution',
+			);
+			if (row) findSingleExecution.mockResolvedValueOnce(row);
+
+			// @ts-expect-error Private method
+			await runner.enqueueExecution('1', 'workflow-xyz', data);
+			await workflowExecution;
+
+			expect(findSingleExecution).toHaveBeenCalledTimes(row ? 1 : 0);
+			expect(finalize).toHaveBeenCalledWith(
+				'1',
+				expect.objectContaining({ nodeTimeSavedMinutes: expected }),
+			);
+		},
+	);
+
 	it('should fail the execution when the result cannot be read from the DB after the job ended', async () => {
 		const activeExecutions = Container.get(ActiveExecutions);
 		let workflowExecution: PCancelable<IRun> | undefined;
@@ -1278,6 +1452,8 @@ describe('enqueueExecution', () => {
 			data.executionMode,
 			'1',
 			expect.anything(),
+			undefined,
+			true,
 		);
 		expect(addJob).not.toHaveBeenCalled();
 	});
@@ -1721,6 +1897,22 @@ describe('pre-persist context establishment', () => {
 		expect(capturedAddData!.executionData!.executionData!.runtimeData).toBeDefined();
 	});
 
+	it('does not clear the change flag of the static data the caller has written to', async () => {
+		// A webhook writes node static data through its own Workflow, which marks the
+		// shared object as changed. That flag is what makes the caller save the write
+		// after run() returns, so establishing the context must leave it set.
+		const staticData: IDataObject = {};
+		ObservableObject.create(staticData).count = 1;
+		expect((staticData as unknown as IObservableObject).__dataChanged).toBe(true);
+
+		const data = buildRunData(buildExecutionDataWithHeader());
+		data.workflowData.staticData = staticData;
+
+		await expect(runner.run(data)).rejects.toThrow('short-circuit for test');
+
+		expect((staticData as unknown as IObservableObject).__dataChanged).toBe(true);
+	});
+
 	it('does not persist when preExecute blocks the run', async () => {
 		const workflowPreExecute = Container.get(WorkflowPreExecute);
 		gateSpy = vi.spyOn(workflowPreExecute, 'run').mockRejectedValue(new Error('blocked'));
@@ -1749,7 +1941,28 @@ describe('pre-persist context establishment', () => {
 		await expect(runner.run(data)).resolves.toBe('exec-1');
 
 		expect(gateSpy).not.toHaveBeenCalled();
-		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined);
+		expect(failExecution).toHaveBeenCalledWith(data, 'exec-1', unauthorized, undefined, undefined);
+	});
+
+	it('flags the run as failed before start when credential authorization fails', async () => {
+		vi.spyOn(Container.get(CredentialsPermissionChecker), 'check').mockRejectedValueOnce(
+			new Error('unauthorized'),
+		);
+		addSpy.mockReset();
+		addSpy.mockResolvedValue('exec-1');
+		const runHook = vi.fn().mockResolvedValue(undefined);
+		vi.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForRegularMain').mockReturnValueOnce(
+			mock<core.ExecutionLifecycleHooks>({ runHook }),
+		);
+		vi.spyOn(Container.get(ActiveExecutions), 'finalizeExecution').mockReturnValue();
+
+		await runner.run(buildRunData(buildExecutionDataWithHeader()));
+
+		const [, [run]] = runHook.mock.calls.find(([name]) => name === 'workflowExecuteAfter') as [
+			string,
+			[IRun],
+		];
+		expect(run.data.resultData.failedBeforeStart).toBe(true);
 	});
 
 	it('skips the preExecute gate when claiming an existing execution', async () => {
@@ -1857,6 +2070,49 @@ describe('pre-persist context establishment', () => {
 			await runner.run(data);
 
 			expect(gateSpy).not.toHaveBeenCalled();
+		});
+
+		const finishedRun = () => {
+			const call = lifecycleRunHook.mock.calls.find(([name]) => name === 'workflowExecuteAfter');
+			return (call?.[1] as [IRun])[0];
+		};
+
+		it('flags the failed run as failed before start', async () => {
+			await runner.run(buildRunData(buildExecutionDataWithHeader()));
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		const withEarlierRunData = () => {
+			const executionData = buildExecutionDataWithHeader();
+			executionData.resultData.runData = {
+				Earlier: [{ startTime: 0, executionIndex: 0, executionTime: 0, source: [] }],
+			};
+			return executionData;
+		};
+
+		it('flags a retry that carries the run data of the original execution', async () => {
+			await runner.run(buildRunData(withEarlierRunData(), 'retry'));
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		it('flags a claimed new execution', async () => {
+			await runner.run(buildRunData(buildExecutionDataWithHeader()), undefined, undefined, {
+				executionId: 'exec-1',
+				expectedStatus: 'new',
+			});
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBe(true);
+		});
+
+		it('does not flag a resumed run whose nodes ran before it waited', async () => {
+			await runner.run(buildRunData(withEarlierRunData()), undefined, undefined, {
+				executionId: 'exec-1',
+				expectedStatus: 'waiting',
+			});
+
+			expect(finishedRun().data.resultData.failedBeforeStart).toBeUndefined();
 		});
 	});
 });

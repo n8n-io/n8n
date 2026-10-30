@@ -4,7 +4,12 @@ import { formatEntityFile } from './entity-file-format';
 import type { PackageWriter } from './package-writer';
 import { generateSlug } from './slug.utils';
 import { PackageExportBlockedError } from '../entities/package-export.errors';
-import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
+import type {
+	ManifestEntry,
+	PackageManifest,
+	WorkflowManifestEntry,
+} from '../spec/manifest.schema';
+import { skillIdSchema } from '../spec/serialized/skill.schema';
 
 /**
  * Derived from the manifest so a new collection cannot ship without a
@@ -25,6 +30,7 @@ export const PACKAGE_ENTITY_LAYOUT = {
 	folders: { directory: 'folders', fileName: 'folder.json' },
 	workflows: { directory: 'workflows', fileName: 'workflow.json' },
 	agents: { directory: 'agents', fileName: 'agent.json' },
+	skills: { directory: 'skills', fileName: 'skill.json' },
 	credentials: { directory: 'credentials', fileName: 'credential.json' },
 	dataTables: { directory: 'data-tables', fileName: 'data-table.json' },
 	variables: { directory: 'variables', fileName: 'variable.json' },
@@ -32,7 +38,10 @@ export const PACKAGE_ENTITY_LAYOUT = {
 } as const satisfies Record<ManifestEntityCollection, { directory: string; fileName: string }>;
 
 // Hyphens delimit the slug and ID in exported directory names.
-const SAFE_ID = /^[A-Za-z0-9_]+$/;
+// Unsafe ID characters become uppercase .XX UTF-8 byte escapes.
+// Promotions decode these paths from Git, so keep the format stable.
+const UNSAFE_ID_CHARACTER = /[^A-Za-z0-9_]/gu;
+const ESCAPED_ID_BYTES = /(?:\.[0-9A-F]{2})+/g;
 
 // Keep generated entity directory names within the common 255-character filesystem limit.
 const MAX_PATH_SEGMENT_LENGTH = 255;
@@ -43,6 +52,7 @@ const FALLBACK_SLUGS = {
 	folders: 'folder',
 	workflows: 'workflow',
 	agents: 'agent',
+	skills: 'skill',
 	credentials: 'credential',
 	dataTables: 'data-table',
 	variables: 'variable',
@@ -85,22 +95,47 @@ export function agentMetadataFilePath(target: string): string {
 	return `${target}/agent-metadata.json`;
 }
 
+function encodeIdSegment(id: string): string {
+	return id.replace(UNSAFE_ID_CHARACTER, (character) =>
+		Buffer.from(character).toString('hex').toUpperCase().replace(/../g, '.$&'),
+	);
+}
+
+export function entityIdOfSegment(segment: string): string {
+	return segment
+		.slice(segment.lastIndexOf('-') + 1)
+		.replace(ESCAPED_ID_BYTES, (escaped) =>
+			Buffer.from(escaped.replace(/\./g, ''), 'hex').toString(),
+		);
+}
+
+/**
+ * Skill IDs follow the skill ref ID rule, which allows hyphens. No reader takes a skill ID
+ * from its path: import reads it from the manifest, and promotions carry no skills.
+ */
+function idPathSegment(
+	collection: ManifestEntityCollection,
+	entity: { id: string; name: string },
+): string {
+	if (collection !== 'skills') return encodeIdSegment(entity.id);
+	if (!skillIdSchema.safeParse(entity.id).success) {
+		throw new PackageExportBlockedError(
+			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
+			{
+				description: `Id "${entity.id}" may contain only letters, digits, underscores, and hyphens.`,
+			},
+		);
+	}
+	return entity.id;
+}
+
 export function createManifestEntry(
 	collection: ManifestEntityCollection,
 	baseDir: string,
 	entity: { id: string; name: string },
 ): ManifestEntry {
-	if (!SAFE_ID.test(entity.id)) {
-		throw new PackageExportBlockedError(
-			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
-			{
-				description: `Id "${entity.id}" may contain only letters, digits, and underscores.`,
-			},
-		);
-	}
-
 	const slug = generateSlug(entity.name, FALLBACK_SLUGS[collection]);
-	const pathSegment = `${slug}-${entity.id}`;
+	const pathSegment = `${slug}-${idPathSegment(collection, entity)}`;
 	if (pathSegment.length > MAX_PATH_SEGMENT_LENGTH) {
 		throw new PackageExportBlockedError(
 			`${collection} entry "${entity.name}" creates a path segment longer than ${MAX_PATH_SEGMENT_LENGTH} characters. Shorten the entity name and retry the export.`,
@@ -132,11 +167,11 @@ export async function writeWorkflowManifestEntry(
 	workflow: { id: string; name: string },
 	content: SerializedWorkflow,
 	metadata: SerializedWorkflowMetadata,
-): Promise<ManifestEntry> {
+): Promise<WorkflowManifestEntry> {
 	const entry = await writeManifestEntry(writer, 'workflows', baseDir, workflow, content);
 	await writer.writeFile(
 		workflowMetadataFilePath(entry.target),
 		JSON.stringify(metadata, null, '\t'),
 	);
-	return entry;
+	return { ...entry, isArchived: content.isArchived };
 }

@@ -392,7 +392,6 @@ describe('workflow_step_execution table (integration)', () => {
 		const wait = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-			acceptsResumeRequest: false,
 		};
 
 		expect(await store.suspendStep(id, wait)).toBe(true);
@@ -413,7 +412,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
 
-		expect(await store.suspendStep(id, { acceptsResumeRequest: true })).toBe(true);
+		expect(await store.suspendStep(id, { resumeBinding: 'execution' })).toBe(true);
 
 		const found = await dataSource
 			.getRepository(WorkflowStepExecution)
@@ -432,7 +431,7 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'queued',
 		});
 
-		expect(await store.suspendStep(id, { acceptsResumeRequest: true })).toBe(false);
+		expect(await store.suspendStep(id, { resumeBinding: 'execution' })).toBe(false);
 
 		const found = await dataSource
 			.getRepository(WorkflowStepExecution)
@@ -445,7 +444,7 @@ describe('workflow_step_execution table (integration)', () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
 		const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status: 'running' });
-		await store.suspendStep(id, { acceptsResumeRequest: true });
+		await store.suspendStep(id, { resumeBinding: 'execution' });
 
 		// expected but pending: the execution stays open until the wait resolves
 		expect(await store.countSettledSteps(executionId)).toBe(0);
@@ -454,7 +453,7 @@ describe('workflow_step_execution table (integration)', () => {
 	it('TypeOrmStepStore.resumeStep queues a waiting step and records what resumed it', async () => {
 		const executionId = await createExecution();
 		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
-		const wait: WaitDeclaration = { acceptsResumeRequest: true };
+		const wait: WaitDeclaration = { resumeBinding: 'execution' };
 		const { id } = await seedStep({
 			executionId,
 			nodeId: 'a',
@@ -499,7 +498,6 @@ describe('workflow_step_execution table (integration)', () => {
 		const wait: WaitDeclaration = {
 			resumeAt: '2099-01-01T00:00:00.000Z',
 			outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-			acceptsResumeRequest: false,
 		};
 		const { id } = await seedStep({
 			executionId,
@@ -530,11 +528,10 @@ describe('workflow_step_execution table (integration)', () => {
 			status: 'waiting',
 			waitDeclaration:
 				waitTill === null
-					? { acceptsResumeRequest: true }
+					? { resumeBinding: 'execution' }
 					: {
 							resumeAt: waitTill.toISOString(),
 							outputsAtDeadline: [[{ json: { passed: 'through' } }]],
-							acceptsResumeRequest: false,
 						},
 			waitTill,
 		});
@@ -813,6 +810,43 @@ describe('workflow_step_execution table (integration)', () => {
 		expect(found.status).toBe('failed');
 		expect(found.error).toEqual(error);
 	});
+
+	it('TypeOrmStepStore.failWaitingStep fails a waiting step and persists the error', async () => {
+		const executionId = await createExecution();
+		const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+		const { id } = await seedStep({
+			executionId,
+			nodeId: 'a',
+			status: 'waiting',
+			waitDeclaration: { subExecutionId: 'exec-sub' },
+		});
+
+		const error = { name: 'Error', message: 'admittance rejected' };
+		expect(await store.failWaitingStep(id, error)).toBe(true);
+
+		const found = await dataSource
+			.getRepository(WorkflowStepExecution)
+			.findOneOrFail({ where: { id } });
+		expect(found.status).toBe('failed');
+		expect(found.error).toEqual(error);
+	});
+
+	it.each(['queued', 'running'] as const)(
+		'TypeOrmStepStore.failWaitingStep leaves a %s step alone',
+		async (status) => {
+			const executionId = await createExecution();
+			const store = new TypeOrmStepStore(dataSource.getRepository(WorkflowStepExecution));
+			const { id } = await seedStep({ executionId, nodeId: 'a', iteration: 0, status });
+
+			expect(await store.failWaitingStep(id, { name: 'Error', message: 'x' })).toBe(false);
+
+			const found = await dataSource
+				.getRepository(WorkflowStepExecution)
+				.findOneOrFail({ where: { id } });
+			expect(found.status).toBe(status);
+			expect(found.error).toBeNull();
+		},
+	);
 
 	it('TypeOrmStepStore.createSteps persists a skipped step (settled at birth)', async () => {
 		const executionId = await createExecution();

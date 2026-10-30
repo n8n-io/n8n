@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { ElSelect } from 'element-plus';
 import type { ComponentPublicInstance, PropType, Ref } from 'vue';
-import { computed, onMounted, onUpdated, ref, useAttrs } from 'vue';
+import { computed, inject, onMounted, onUpdated, ref, useAttrs } from 'vue';
 
 import type { InnerSelectRef, N8nSelectExposed } from './Select.types';
 import type { SelectSize } from '../../types';
 import { isEventBindingElementAttribute } from '../../utils';
+import { insideDialogBodyKey } from '../N8nDialog/dialogContext';
 
 /**
  * `ElSelect.props` is typed as `any`, and spreading `any` collapses this whole
@@ -130,6 +131,14 @@ const classes = computed(() => {
 	return props.size === 'xlarge' ? 'xlarge' : '';
 });
 
+const isInsideDialogBody = inject(insideDialogBodyKey, false);
+
+const popperOptions = computed(() =>
+	isInsideDialogBody && !props.teleported
+		? { strategy: 'fixed' as const, ...props.popperOptions }
+		: props.popperOptions,
+);
+
 const focus = () => {
 	innerSelect.value?.focus();
 };
@@ -191,6 +200,7 @@ defineExpose<N8nSelectExposed>({
 			:model-value="props.modelValue ?? undefined"
 			:size="computedSize"
 			:popper-class="props.popperClass"
+			:popper-options="popperOptions"
 			:class="$style[classes]"
 		>
 			<template v-if="$slots.prefix" #prefix>

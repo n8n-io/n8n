@@ -1,5 +1,8 @@
+import { N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+
 import {
 	capabilityCountTelemetryProperties,
+	countAgentCapabilities,
 	type AgentCapabilityCounts,
 } from '../agent-capabilities';
 
@@ -43,5 +46,16 @@ describe('capabilityCountTelemetryProperties', () => {
 			tool_count: 0,
 			trigger_count: 0,
 		});
+	});
+});
+
+describe('countAgentCapabilities', () => {
+	it('does not count n8n Chat as a channel', () => {
+		expect(
+			countAgentCapabilities(null, [
+				{ type: N8N_CHAT_INTEGRATION_TYPE, credentialId: '' },
+				{ type: 'slack', credentialId: 'cred-1' },
+			]).channel,
+		).toBe(1);
 	});
 });

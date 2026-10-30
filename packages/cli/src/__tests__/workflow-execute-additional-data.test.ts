@@ -1388,6 +1388,80 @@ describe('WorkflowExecuteAdditionalData', () => {
 			});
 		});
 
+		describe('workflow version selection for nested sub-workflows', () => {
+			const triggerNode = (name: string): INode => ({
+				id: name,
+				name,
+				type: 'n8n-nodes-base.executeWorkflowTrigger',
+				typeVersion: 1.3,
+				position: [0, 0],
+				parameters: {},
+			});
+			const DRAFT_VERSION = 'draft-version-id';
+			const PUBLISHED_VERSION = 'published-version-id';
+
+			beforeEach(() => {
+				activeExecutions.add.mockClear();
+				workflowRepository.get.mockResolvedValue(
+					mock<WorkflowEntity>({
+						id: 'workflow-123',
+						name: 'Test Workflow',
+						active: true,
+						versionId: DRAFT_VERSION,
+						activeVersionId: PUBLISHED_VERSION,
+						activeVersion: mock({
+							versionId: PUBLISHED_VERSION,
+							nodes: [triggerNode('Published Trigger')],
+							connections: {},
+						}),
+						nodes: [triggerNode('Draft Trigger')],
+						connections: {},
+						staticData: {},
+					}),
+				);
+			});
+
+			const loadedVersionId = () => activeExecutions.add.mock.lastCall?.[0].workflowData.versionId;
+
+			it.each<[WorkflowExecuteMode | undefined, string]>([
+				['manual', DRAFT_VERSION],
+				['chat', DRAFT_VERSION],
+				['trigger', PUBLISHED_VERSION],
+				[undefined, PUBLISHED_VERSION],
+			])(
+				'uses the root execution mode %s when the parent runs as integrated',
+				async (rootExecutionMode, expectedVersionId) => {
+					await executeWorkflow(
+						{ id: 'workflow-123' },
+						mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode }),
+						mock<ExecuteWorkflowOptions>({
+							loadedWorkflowData: undefined,
+							loadedRunData: undefined,
+							executionMode: 'integrated',
+							parentWorkflowId: 'parent-123',
+						}),
+					);
+
+					expect(loadedVersionId()).toBe(expectedVersionId);
+				},
+			);
+
+			it('uses the parent execution mode when no root mode is recorded', async () => {
+				await executeWorkflow(
+					{ id: 'workflow-123' },
+					mock<IWorkflowExecuteAdditionalData>({ rootExecutionMode: undefined }),
+					mock<ExecuteWorkflowOptions>({
+						loadedWorkflowData: undefined,
+						loadedRunData: undefined,
+						executionMode: 'manual',
+						parentWorkflowId: 'parent-123',
+					}),
+				);
+
+				expect(loadedVersionId()).toBe(DRAFT_VERSION);
+			});
+		});
+
 		describe('sub-workflow execution timeouts', () => {
 			const now = Date.now();
 			const getDeadlineFromNow = (offsetSeconds: number) => now + offsetSeconds * 1000;

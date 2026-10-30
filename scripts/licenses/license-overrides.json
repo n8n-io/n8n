@@ -65,6 +65,14 @@
       "license": "Apache-2.0",
       "source": "https://github.com/getzep/zep-js/blob/main/LICENSE — 'Apache License, Version 2.0, January 2004'. The published package carries no license field (the npm registry reports null) and ships no LICENSE file."
     },
+    "@getzep/zep-js": {
+      "license": "Apache-2.0",
+      "source": "https://github.com/getzep/zep-js/blob/oss/LICENSE — Apache License, Version 2.0. The published OSS SDK at 2.0.2 omits the license field and LICENSE file. Use the upstream license, as for zep-cloud."
+    },
+    "sentry": {
+      "license": "FSL-1.1-ALv2",
+      "source": "https://www.npmjs.com/package/sentry/v/0.45.0 — LICENSE.md declares Functional Source License 1.1 with an Apache 2.0 future license. The package uses the non-SPDX abbreviation 'FSL-1.1-Apache-2.0'. Normalize it to https://spdx.org/licenses/FSL-1.1-ALv2.html."
+    },
     "fnv": {
       "license": "MIT",
       "source": "https://crates.io/crates/fnv — dual-licensed Apache-2.0 OR MIT. The Canvas nested SBOM declares the non-SPDX expression 'Apache-2.0 / MIT'; n8n elects MIT. Version-agnostic because the crate license is stable across releases."

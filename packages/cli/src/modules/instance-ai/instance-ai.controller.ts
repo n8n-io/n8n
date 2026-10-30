@@ -2,7 +2,7 @@ import {
 	InstanceAiConfirmRequestDto,
 	InstanceAiFeedbackRequestDto,
 	InstanceAiRenameThreadRequestDto,
-	InstanceAiThreadTabsRequestDto,
+	AssistantThreadTabsRequestDto,
 	InstanceAiPreferenceCardEditRequestDto,
 	InstanceAiPreferenceCardUndoRequestDto,
 	InstanceAiSendMessageRequest,
@@ -20,7 +20,7 @@ import {
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiEvent,
-	InstanceAiThreadTabsResponse,
+	AssistantThreadTabsResponse,
 } from '@n8n/api-types';
 import { ModuleRegistry } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
@@ -934,7 +934,7 @@ export class InstanceAiController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
-	): Promise<InstanceAiThreadTabsResponse> {
+	): Promise<AssistantThreadTabsResponse> {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return { state: await this.threadTabsService.getState(threadId, req.user.id) };
@@ -946,8 +946,8 @@ export class InstanceAiController {
 		req: AuthenticatedRequest,
 		_res: Response,
 		@Param('threadId') threadId: string,
-		@Body payload: InstanceAiThreadTabsRequestDto,
-	): Promise<InstanceAiThreadTabsResponse> {
+		@Body payload: AssistantThreadTabsRequestDto,
+	): Promise<AssistantThreadTabsResponse> {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		// The DTO strips unknown keys, so the payload is the state to save.

@@ -3,6 +3,7 @@ import {
 	CONTEXT_PREFERENCES_ENABLED_VARIANT,
 	CONTEXT_PREFERENCES_FLAG,
 	INSTANCE_ACTIVITY_CONTEXT_FLAG,
+	CREDENTIAL_DESCRIPTIONS_FLAG,
 } from '@n8n/api-types';
 import type { PostHogClient } from '@/posthog';
 import type { LicenseState, ModuleRegistry } from '@n8n/backend-common';
@@ -25,7 +26,7 @@ import type { UrlService } from '@n8n/backend-services';
 import { Container } from '@n8n/di';
 
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
-import { SkillsHubRollout } from '@/modules/skills/skills-hub-rollout';
+import { SkillsGate } from '@/modules/skills';
 
 import { ACTIVITY_LOG_TOOLS, INSTANCE_CONTEXT_TOOLS } from '../mcp-scopes';
 import { McpProtectedResource } from '../mcp-protected-resource';
@@ -72,10 +73,19 @@ describe('McpProtectedResource', () => {
 			CommunityPackagesConfig,
 			mock<CommunityPackagesConfig>({ enabled: true, verifiedEnabled: true }),
 		);
-		Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: true }));
+		Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: true }));
 	});
 
 	describe('getScopeTools', () => {
+		it.each([true, false])('lists description updates only when enabled: %s', async (enabled) => {
+			postHogClient.getFeatureFlagForInstance.mockImplementation(async (flag) =>
+				flag === CREDENTIAL_DESCRIPTIONS_FLAG ? enabled : true,
+			);
+			expect((await resource.getScopeTools())['credential:update']).toEqual(
+				enabled ? ['update_credential_description'] : [],
+			);
+		});
+
 		it('withholds Agent scopes and tools when Agents is disabled', async () => {
 			vi.mocked(moduleRegistry.settings.get).mockReturnValue({ enabled: false });
 			const scopeTools = await resource.getScopeTools();
@@ -84,8 +94,8 @@ describe('McpProtectedResource', () => {
 			expect(scopeTools['agent:read']).toBeUndefined();
 		});
 
-		it('withholds skill scopes and tools when the skills hub is off', async () => {
-			Container.set(SkillsHubRollout, mock<SkillsHubRollout>({ isEnabled: false }));
+		it('withholds skill scopes and tools while the skills gate is off', async () => {
+			Container.set(SkillsGate, mock<SkillsGate>({ isEnabled: false }));
 
 			expect(resource.scopes).toContain('agent:read');
 			expect(resource.scopes).not.toContain('skill:read');
@@ -159,12 +169,16 @@ describe('McpProtectedResource', () => {
 			}
 		});
 
-		it('checks the activity flag without a user argument', async () => {
+		it('checks each instance flag once without a user argument', async () => {
 			await resource.getScopeTools();
 
-			expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledExactlyOnceWith(
-				INSTANCE_ACTIVITY_CONTEXT_FLAG,
-			);
+			for (const flag of [INSTANCE_ACTIVITY_CONTEXT_FLAG, CREDENTIAL_DESCRIPTIONS_FLAG]) {
+				expect(
+					postHogClient.getFeatureFlagForInstance.mock.calls.filter(
+						([requested]) => requested === flag,
+					),
+				).toEqual([[flag]]);
+			}
 		});
 
 		it('should drop tools this instance does not expose', async () => {

@@ -7,4 +7,5 @@ export interface SerializedMessageList {
 	responseIds: string[];
 	/** IDs only. Resumed runs load their content from the current skill catalog. */
 	activeSkillIds?: string[];
+	activeSkillVersions?: Record<string, string | null>;
 }

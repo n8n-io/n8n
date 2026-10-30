@@ -1,6 +1,9 @@
+import type { FetchFn } from '@n8n/agents';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CreateAppDto,
+	ListAppsQueryDto,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
@@ -22,6 +25,7 @@ import {
 	INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT,
 	INSTANCE_AI_CONCISE_STYLE_FLAG,
 	INSTANCE_AI_CONCISE_STYLE_ENABLED_VARIANT,
+	ASSISTANT_SKILLS_FLAG,
 } from '@n8n/api-types';
 import type { AiGatewayConfigDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -39,6 +43,7 @@ import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig, IExecutionResponse } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
 	ExecutionRepository,
 	FolderRepository,
 	ProjectRepository,
@@ -50,6 +55,7 @@ import {
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
+	InstanceAiAppService,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
@@ -85,6 +91,8 @@ import type {
 	AiGatewayNodeMeta,
 	ExploreResourcesParams,
 	ExploreResourcesResult,
+	ResolveParameterOptionsParams,
+	ResolveParameterOptionsResult,
 	UnavailableLocatorValue,
 	ProjectSummary,
 	FolderSummary,
@@ -168,10 +176,12 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
+	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
@@ -189,6 +199,7 @@ import { InstanceAiBuilderDelegateAdapterService } from './instance-ai-builder-d
 import { InstanceAiSkillsAdapterService } from './instance-ai-skills.adapter';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableService } from '@/modules/data-table/data-table.service';
+import { SkillsGate } from '@/modules/skills';
 import {
 	MCP_REGISTRY_PACKAGE_NAME,
 	getMcpRegistryCredentialOptions,
@@ -212,11 +223,15 @@ import { PostHogClient } from '@/posthog';
 import { AiGatewayService } from '@/services/ai-gateway.service';
 import { writeAssistantPreference } from '@/services/ai-preference-write';
 import { FolderService } from '@/services/folder.service';
-import { NodeResourceExplorerService } from '@/services/node-resource-explorer.service';
+import {
+	getParameterOptionsCredentialReferences,
+	NodeResourceExplorerService,
+} from '@/services/node-resource-explorer.service';
 import { ProjectService } from '@/services/project.service.ee';
 
 import { TagService } from '@/services/tag.service';
 import { Telemetry } from '@/telemetry';
+import { createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { resolveBuiltinNodeDefinitionDirs } from '@/utils/node-definition-dirs';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -224,6 +239,7 @@ import {
 	exceedsMaxExecutionTimeout,
 } from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -246,6 +262,7 @@ import {
 	sdkPinDataToRuntime,
 } from './instance-ai-run-pin-data';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
+import type { TemporaryWorkflowMarkers } from './temporary-workflow-markers';
 import {
 	buildToolAgentRequest,
 	declaredToolArguments,
@@ -415,6 +432,7 @@ export interface InstanceAiFeatureFlags {
 	credentialDescriptionsEnabled: boolean;
 	/** Shared activity recording and retrieval use the same instance gate. */
 	instanceContextEnabled: boolean;
+	assistantSkillsEnabled: boolean;
 }
 
 @Service()
@@ -530,7 +548,8 @@ export class InstanceAiAdapterService {
 			 *  mid-run, after this context is built. */
 			getCredentialIdAllowlist?: () => string[] | undefined;
 			/** Eval-only: resolve a credential's connection test as successful without
-			 *  contacting the provider. A predicate rather than a list because the
+			 *  contacting the provider, when its type has a connection test (a type with
+			 *  none gets production's result). A predicate rather than a list because the
 			 *  harness registers bypasses mid-run, after this context is built. */
 			shouldBypassCredentialTest?: (credentialId: string) => boolean;
 			/** Eval-only: the provider stand-in for a credential type's connection test.
@@ -557,15 +576,20 @@ export class InstanceAiAdapterService {
 			 *  Falsy → `list` keeps the pre-feature shape: no folder fields, no
 			 *  folder attribution. */
 			folderExplorationEnabled?: boolean;
+			/** Keeps the temporary workflows of the thread. Absent → the temporary workflow table. */
+			temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 			/** True while the thread runs the onboarding flow. Gates the `leave-onboarding` tool. */
 			onboardingThread?: boolean;
 			credentialDescriptionsEnabled?: boolean;
 			/** Saved AI preferences gate (via `resolveExperimentGates`). Falsy → no
 			 *  `save_user_preference` tool. */
 			aiPreferencesEnabled?: boolean;
+			assistantSkillsEnabled?: boolean;
 			/** Host-resolved model for the run — fallback for utility LLM calls
 			 *  (simulation fixtures, destructiveness classification). */
 			modelId?: ModelConfig;
+			/** Transport for those utility LLM calls. */
+			modelFetch?: FetchFn;
 			/** Effective data-sharing setting for this run. Absent → the env value. */
 			allowSendingParameterValues?: boolean;
 		},
@@ -589,7 +613,9 @@ export class InstanceAiAdapterService {
 			onboardingThread,
 			credentialDescriptionsEnabled,
 			aiPreferencesEnabled,
+			assistantSkillsEnabled,
 			modelId,
+			modelFetch,
 			allowSendingParameterValues = this.allowSendingParameterValues,
 		} = options ?? {};
 
@@ -627,11 +653,13 @@ export class InstanceAiAdapterService {
 			...(onboardingThread ? { onboardingThread: true } : {}),
 			...(credentialDescriptionsEnabled ? { credentialDescriptionsEnabled: true } : {}),
 			modelId,
+			modelFetch,
 			workflowService: this.createWorkflowAdapter(user, threadId, projectId, {
 				nodeUsageGateOpen: nodeUsageEnabled === true,
 				folderExploration: folderExplorationEnabled === true,
 				setupPanelVariant,
 				allowSendingParameterValues,
+				temporaryWorkflowMarkers: options?.temporaryWorkflowMarkers,
 			}),
 			executionService: this.createExecutionAdapter(
 				user,
@@ -641,7 +669,7 @@ export class InstanceAiAdapterService {
 				projectId,
 			),
 			credentialService,
-			nodeService: this.createNodeAdapter(user, shouldBypassCredentialTest),
+			nodeService: this.createNodeAdapter(user, projectId, shouldBypassCredentialTest),
 			dataTableService,
 			...(configEvalsEnabled && this.evaluationConfigService
 				? {
@@ -667,7 +695,8 @@ export class InstanceAiAdapterService {
 				? { activityService: this.createActivityAdapter(user, projectId) }
 				: {}),
 			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
-			skillService: this.getSkillService(user),
+			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
+			appService: this.createAppAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -724,12 +753,16 @@ export class InstanceAiAdapterService {
 			: provider;
 	}
 
-	private getSkillService(user: User): InstanceAiSkillService | undefined {
+	private getSkillService(
+		user: User,
+		assistantSkillsEnabled: boolean,
+	): InstanceAiSkillService | undefined {
 		try {
-			const moduleRegistry = Container.get(ModuleRegistry);
-			if (!moduleRegistry.isActive('agents')) return undefined;
-			if (moduleRegistry.settings.get('agents')?.skillsHubEnabled !== true) return undefined;
-			return Container.get(InstanceAiSkillsAdapterService).createService(user);
+			if (!Container.get(SkillsGate).isEnabled) return undefined;
+			return Container.get(InstanceAiSkillsAdapterService).createService(
+				user,
+				assistantSkillsEnabled,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to resolve the skills adapter; skill tools disabled', {
 				error: error instanceof Error ? error.message : String(error),
@@ -778,14 +811,18 @@ export class InstanceAiAdapterService {
 	async resolveExperimentGates(user: User): Promise<InstanceAiFeatureFlags> {
 		let flags: Awaited<ReturnType<PostHogClient['getFeatureFlags']>> = {};
 		let instanceContextEnabled = false;
+		let assistantSkillsEnabled = false;
 		try {
 			const postHog = Container.get(PostHogClient);
-			const [userFlags, instanceFlag] = await Promise.allSettled([
+			const [userFlags, instanceFlag, assistantSkillsFlag] = await Promise.allSettled([
 				postHog.getFeatureFlags(user),
 				postHog.getFeatureFlagForInstance(INSTANCE_ACTIVITY_CONTEXT_FLAG),
+				postHog.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG),
 			]);
 			if (userFlags.status === 'fulfilled') flags = userFlags.value;
 			instanceContextEnabled = instanceFlag.status === 'fulfilled' && instanceFlag.value === true;
+			assistantSkillsEnabled =
+				assistantSkillsFlag.status === 'fulfilled' && assistantSkillsFlag.value === true;
 		} catch {
 			// Leave unreadable flags unassigned.
 		}
@@ -813,6 +850,7 @@ export class InstanceAiAdapterService {
 				INSTANCE_AI_FOLDER_EXPLORATION_ENABLED_VARIANT,
 			aiPreferencesEnabled: flags[CONTEXT_PREFERENCES_FLAG] === CONTEXT_PREFERENCES_ENABLED_VARIANT,
 			instanceContextEnabled,
+			assistantSkillsEnabled,
 		};
 	}
 
@@ -990,12 +1028,13 @@ export class InstanceAiAdapterService {
 		return meta;
 	}
 
-	private getTemplatesService(): BuilderTemplatesServiceInstance {
+	getTemplatesService(): BuilderTemplatesServiceInstance {
 		if (!this.templatesService) {
 			this.templatesService = new BuilderTemplatesService({
 				...builderTemplatesOptionsFromEnv({ logger: this.logger }),
 				cacheDir: path.join(this.instanceSettings.n8nFolder, 'n8n-sdk-templates'),
 				logger: this.logger,
+				fetch: createAiProxyFetch(this.outboundHttp),
 			});
 		}
 		return this.templatesService;
@@ -1024,12 +1063,12 @@ export class InstanceAiAdapterService {
 		}
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
-				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+				'**Folders** — organizing workflows into folders (list_folders, create_folder, delete_folder, move_workflow_to_folder) is available on registered Community Edition or paid plans.',
 			);
 		}
 		if (!this.teamProjectsLicensed()) {
 			hints.push(
-				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
+				'**Team projects** — this instance has no team-project license. `list_projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -1104,13 +1143,22 @@ export class InstanceAiAdapterService {
 			}
 		};
 
-		const assertCredentialInBoundProject = async (credentialId: string) => {
+		const assertCredentialInBoundProject = async (
+			credentialId: string,
+			{ requireOwner = false }: { requireOwner?: boolean } = {},
+		) => {
 			if (boundProjectId === undefined) return;
 			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 				credentialId,
 			);
-			// A missing credential falls through to the caller's not-found path.
-			if (owner) assertInBoundProject(owner.id);
+			if (!owner && requireOwner) {
+				// An absent owner can mean a missing credential or an instance-wide credential.
+				const existingIds = await Container.get(CredentialsRepository).findExistingIds([
+					credentialId,
+				]);
+				if (existingIds.length === 0) throw new CredentialNotFoundError(credentialId);
+			}
+			if (owner || requireOwner) assertInBoundProject(owner?.id);
 		};
 
 		return {
@@ -1133,6 +1181,7 @@ export class InstanceAiAdapterService {
 			folderExploration?: boolean;
 			setupPanelVariant?: 'control' | 'variant';
 			allowSendingParameterValues?: boolean;
+			temporaryWorkflowMarkers?: TemporaryWorkflowMarkers;
 		} = {},
 	): InstanceAiWorkflowService {
 		const setupExperimentProperties = options.setupPanelVariant
@@ -1141,6 +1190,17 @@ export class InstanceAiAdapterService {
 					[`$feature/${INSTANCE_AI_SETUP_PANEL_FLAG}`]: options.setupPanelVariant,
 				}
 			: {};
+		// The Assistant agent keeps its markers in its own thread state. The current
+		// runtime uses the temporary workflow table, written with the workflow.
+		const markers = options.temporaryWorkflowMarkers;
+		const isTemporary = async (workflowId: string) =>
+			markers
+				? await markers.has(workflowId)
+				: await this.aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId);
+		const unmarkTemporary = async (workflowId: string) =>
+			markers
+				? await markers.unmark(workflowId)
+				: await this.aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
 		const foldersOn = options.folderExploration === true;
 		// Attribution reveals folder ids, names and paths on every row, so it needs
 		// the licence as well as the flag. Resolution stays on the flag alone so an
@@ -1217,7 +1277,7 @@ export class InstanceAiAdapterService {
 
 		/**
 		 * The folders the caller may name, per project. Access is checked with the
-		 * same scope the workspace tool's `list-folders` uses, so a folder name is
+		 * same scope the `list_folders` tool uses, so a folder name is
 		 * never revealed through a project the user cannot list folders in.
 		 * Returns undefined when folders cannot be read at all (unlicensed or
 		 * missing dependency), which the resolver reports as `unsupported`.
@@ -1620,9 +1680,9 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) return;
-				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) return;
+				if (!(await isTemporary(workflowId))) return;
 
-				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				await unmarkTemporary(workflowId);
 			},
 
 			async archiveIfAiTemporary(workflowId: string) {
@@ -1631,16 +1691,14 @@ export class InstanceAiAdapterService {
 					'workflow:update',
 				]);
 				if (!workflow) return false;
-				if (!(await aiBuilderTemporaryWorkflowRepository.existsForWorkflow(workflowId))) {
-					return false;
-				}
+				if (!(await isTemporary(workflowId))) return false;
 				if (workflow.isArchived) {
-					await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+					await unmarkTemporary(workflowId);
 					return false;
 				}
 
 				await workflowService.archive(user, workflowId, { skipArchived: true });
-				await aiBuilderTemporaryWorkflowRepository.unmark(workflowId);
+				await unmarkTemporary(workflowId);
 				return true;
 			},
 
@@ -1783,11 +1841,12 @@ export class InstanceAiAdapterService {
 				}
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
-				// the graph breadth-first. Generated code still wins if it sets its own.
-				const settings = {
+				// the graph breadth-first. Generated code still wins if it sets its own order
+				// or engine.
+				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
-				} as IWorkflowSettings;
+				} as IWorkflowSettings);
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -1833,7 +1892,7 @@ export class InstanceAiAdapterService {
 					async (transactionManager, ctx) => {
 						const workflow = await workflowRepository.createContent(newWorkflow, ctx);
 						await sharedWorkflowRepository.makeOwner([workflow.id], projectId, transactionManager);
-						if (options?.markAsAiTemporary) {
+						if (options?.markAsAiTemporary && !markers) {
 							if (!threadId) {
 								throw new UnexpectedError(
 									'Cannot mark AI-builder temporary workflow without a thread ID',
@@ -1863,6 +1922,10 @@ export class InstanceAiAdapterService {
 
 				let updated: WorkflowEntity;
 				try {
+					// Thread state is not part of the transaction above. Marking here puts a
+					// failed write on the cleanup path, so the shell does not stay behind.
+					if (options?.markAsAiTemporary && markers) await markers.mark(saved.id);
+
 					// Enforce credential tamper protection — same guard as the
 					// REST controller (workflows.controller PATCH /:workflowId).
 					// oxlint-disable-next-line typescript/no-deprecated
@@ -1887,7 +1950,7 @@ export class InstanceAiAdapterService {
 					try {
 						const archived = await workflowService.archive(user, saved.id, { skipArchived: true });
 						if (archived && options?.markAsAiTemporary) {
-							await aiBuilderTemporaryWorkflowRepository.unmark(saved.id);
+							await unmarkTemporary(saved.id);
 						}
 					} catch (cleanupError) {
 						logger.warn('Failed to clean up AI-builder workflow shell after create failure', {
@@ -2167,9 +2230,11 @@ export class InstanceAiAdapterService {
 			executionId: string,
 			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
-			const execution = await executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
+			// A manual execution that n8n did not save stays readable only for the user who
+			// started it, until pruning hard-deletes it.
+			const execution =
+				(await executionRepository.findSingleExecution(executionId, { includeData: false })) ??
+				(await findUnsavedManualExecutionForViewer(executionId, user));
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
@@ -2514,7 +2579,7 @@ export class InstanceAiAdapterService {
 				const target = nodes.find((node) => node.name === nodeName);
 				if (!target) {
 					throw new UserError(
-						`The workflow has no node named "${nodeName}". Use workflow_builder_workflows(action="get-as-code") to see the node names.`,
+						`The workflow has no node named "${nodeName}". Use get_workflow_as_code to see the node names.`,
 					);
 				}
 				if (target.disabled) {
@@ -2598,7 +2663,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2613,7 +2678,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -3009,6 +3074,11 @@ export class InstanceAiAdapterService {
 				} satisfies CredentialDetail;
 			},
 
+			async updateDescription(credentialId, description) {
+				await assertCredentialInBoundProject(credentialId, { requireOwner: true });
+				await credentialsService.updateDescription(user, credentialId, description);
+			},
+
 			async delete(credentialId: string) {
 				await assertCredentialInBoundProject(credentialId);
 				await credentialsService.delete(user, credentialId);
@@ -3034,7 +3104,12 @@ export class InstanceAiAdapterService {
 				// indistinguishable from a genuine pass on purpose — a hint that it was
 				// bypassed would make the agent hedge, which is the very behaviour such a
 				// case exists to rule out. The harness records the bypass on its own side.
-				if (shouldBypassCredentialTest?.(credentialId) === true) {
+				// A type n8n cannot test (Header Auth, say) is not bypassed: the real test
+				// below returns production's "No testing function found" without a request.
+				if (
+					shouldBypassCredentialTest?.(credentialId) === true &&
+					credentialsService.hasConnectionTest(credential.type)
+				) {
 					return { success: true, message: 'Connection tested successfully' };
 				}
 
@@ -3468,6 +3543,49 @@ export class InstanceAiAdapterService {
 		};
 	}
 
+	private createAppAdapter(user: User, projectId?: string): InstanceAiAppService | undefined {
+		if (!projectId || !Container.get(ModuleRegistry).isActive('apps')) return undefined;
+		const { assertProjectScope } = this.createProjectScopeHelpers(user, projectId);
+		const services = async (scope: Scope) => {
+			if (scope === 'app:create' || scope === 'app:update') this.assertInstanceNotReadOnly('apps');
+			await assertProjectScope([scope], projectId);
+			const { AppsService, AppSourceArchiveService } = await import('@n8n/backend-module-apps');
+			return { apps: Container.get(AppsService), sources: Container.get(AppSourceArchiveService) };
+		};
+
+		return {
+			createApp: async ({ name, namespace, id }) => {
+				const { apps } = await services('app:create');
+				return await apps.createApp(projectId, CreateAppDto.parse({ name, namespace }), { id });
+			},
+			listApps: async ({ name }) => {
+				const { apps } = await services('app:list');
+				return await apps.listApps(projectId, ListAppsQueryDto.parse({ name, take: '50' }));
+			},
+			getApp: async (appId) => {
+				const { apps } = await services('app:read');
+				return await apps.getApp(projectId, appId);
+			},
+			findApp: async (appId) => {
+				const { apps } = await services('app:read');
+				try {
+					return await apps.getApp(projectId, appId);
+				} catch (error) {
+					if (error instanceof NotFoundError) return undefined;
+					throw error;
+				}
+			},
+			exportDraft: async (appId) => {
+				const { sources } = await services('app:read');
+				return await sources.exportDraft(projectId, appId);
+			},
+			commit: async (appId, baseVersionId, archive, label) => {
+				const { sources } = await services('app:update');
+				return await sources.commit(projectId, appId, baseVersionId, archive, label);
+			},
+		};
+	}
+
 	private createDataTableAdapter(user: User, boundProjectId?: string): InstanceAiDataTableService {
 		const { dataTableService, dataTableRepository } = this;
 		const assertNotReadOnly = () => this.assertInstanceNotReadOnly('data tables');
@@ -3857,6 +3975,7 @@ export class InstanceAiAdapterService {
 			const { abortSignal: _abortSignal, ...cacheable } = options ?? {};
 			return `${keyPrefix}${JSON.stringify([query, cacheable])}`;
 		};
+		const searchFetch = createWebSearchFetch(this.outboundHttp);
 
 		// When the AI service proxy is enabled (licensed instance), search always goes
 		// through the proxy which provides managed Brave Search with credit tracking.
@@ -3882,7 +4001,7 @@ export class InstanceAiAdapterService {
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
-				const result = await braveSearch(apiKey, query, options ?? {});
+				const result = await braveSearch(apiKey, query, options ?? {}, searchFetch);
 				cache.set(cacheKey, result);
 				return result;
 			};
@@ -3894,7 +4013,7 @@ export class InstanceAiAdapterService {
 				const cached = cache.get(cacheKey);
 				if (cached) return cached;
 
-				const result = await searxngSearch(searxngUrl, query, options ?? {});
+				const result = await searxngSearch(searxngUrl, query, options ?? {}, searchFetch);
 				cache.set(cacheKey, result);
 				return result;
 			};
@@ -3924,6 +4043,7 @@ export class InstanceAiAdapterService {
 	 *  connected; its live resource lookups are answered as unavailable. */
 	private createNodeAdapter(
 		user: User,
+		boundProjectId?: string,
 		shouldBypassCredentialTest?: (credentialId: string) => boolean,
 	): InstanceAiNodeService {
 		// Use the service-level cache instead of a per-adapter closure.
@@ -4140,12 +4260,37 @@ export class InstanceAiAdapterService {
 						...(mode ? { mode } : {}),
 					});
 
-				const result = await getDefinition(nodeType);
-				const unavailable = getUnavailableNotice(nodeType);
-				if (unavailable && !result.error) return { ...result, unavailable };
-				if (!result.error || nodeType.includes('.')) return result;
+				const enrichDefinition = async (
+					nodeId: string,
+					defResult: Awaited<ReturnType<typeof getDefinition>>,
+				) => {
+					if (defResult.error) return defResult;
+					const [nodes, gatewayConfig] = await Promise.all([getAllNodes(), getGatewayConfig()]);
+					const parsedVersion = version ? Number.parseFloat(version.replace(/^v/i, '')) : undefined;
+					const desc = findNodeByVersion(
+						nodes,
+						nodeId,
+						Number.isFinite(parsedVersion) ? parsedVersion : undefined,
+					);
+					const meta = buildMeta(gatewayConfig, desc?.name ?? nodeId);
+					const unavailable = getUnavailableNotice(nodeId);
+					return {
+						...defResult,
+						...(unavailable ? { unavailable } : {}),
+						...(meta ? { aiGateway: meta } : {}),
+						...(desc?.webhooks ? { webhooks: desc.webhooks } : {}),
+						...(desc?.polling ? { polling: desc.polling } : {}),
+						...(desc?.triggerPanel !== undefined ? { triggerPanel: desc.triggerPanel } : {}),
+					};
+				};
 
-				return await getDefinition(`${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`);
+				const result = await getDefinition(nodeType);
+				if (!result.error || nodeType.includes('.')) {
+					return await enrichDefinition(nodeType, result);
+				}
+
+				const registryId = `${MCP_REGISTRY_PACKAGE_NAME}.${nodeType}`;
+				return await enrichDefinition(registryId, await getDefinition(registryId));
 			},
 
 			listDiscriminators: async (nodeType) => {
@@ -4318,6 +4463,31 @@ export class InstanceAiAdapterService {
 					throw new OperationalError(RESOURCE_EXPLORATION_UNAVAILABLE);
 				}
 				return await this.nodeResourceExplorerService.exploreResources(user, params);
+			},
+
+			resolveParameterOptions: async (
+				params: ResolveParameterOptionsParams,
+			): Promise<ResolveParameterOptionsResult> => {
+				// Eval-only: the same seeded-credential bypass as `exploreResources` above.
+				const references = getParameterOptionsCredentialReferences(params);
+				if (references.some(({ credentialId }) => shouldBypassCredentialTest?.(credentialId))) {
+					try {
+						for (const reference of references) {
+							await this.nodeResourceExplorerService.assertExploreCredentialAccess(user, reference);
+						}
+					} catch (error) {
+						return {
+							ok: false,
+							code: 'lookup_failed',
+							message: error instanceof Error ? error.message : String(error),
+						};
+					}
+					return { ok: false, code: 'lookup_failed', message: RESOURCE_EXPLORATION_UNAVAILABLE };
+				}
+				return await this.nodeResourceExplorerService.resolveParameterOptions(user, {
+					...params,
+					...(boundProjectId ? { projectId: boundProjectId } : {}),
+				});
 			},
 
 			findUnavailableLocatorValues: async (params): Promise<UnavailableLocatorValue[]> =>

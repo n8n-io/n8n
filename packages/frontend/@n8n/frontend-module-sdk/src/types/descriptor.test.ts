@@ -62,4 +62,46 @@ describe('FrontendModuleDescription', () => {
 		expect(descriptor.parameterInputs?.[0]?.type).toBe('resourceLocator');
 		expect(descriptor.parameterInputs?.[0]?.capabilities?.ownsFromAiOverride).toBeUndefined();
 	});
+
+	it('accepts a run data display mode contribution with a lazy component', () => {
+		const descriptor: FrontendModuleDescription = {
+			id: 'display-modes',
+			name: 'Display modes',
+			description: 'A descriptor contributing a run data display mode',
+			icon: 'box',
+			runDataDisplayModes: [
+				{
+					id: 'chart',
+					label: () => 'Chart',
+					icon: 'chart-column-decreasing',
+					component: async () => await Promise.resolve({ name: 'ChartView' }),
+					canRender: ({ data, pane }) => pane === 'output' && data.length > 0,
+					autoSelect: true,
+					supports: { search: true },
+				},
+			],
+		};
+
+		const [mode] = descriptor.runDataDisplayModes ?? [];
+		expect(mode?.id).toBe('chart');
+		expect(mode?.canRender({ data: [], node: {} as never, pane: 'output' })).toBe(false);
+	});
+
+	it('type-checks a run data display mode contribution', () => {
+		const base = {
+			id: 'chart',
+			label: () => 'Chart',
+			icon: 'chart-column-decreasing',
+			component: { name: 'ChartView' },
+		} as const;
+
+		const modes: FrontendModuleDescription['runDataDisplayModes'] = [
+			// @ts-expect-error `canRender` takes one context object, not positional arguments.
+			{ ...base, canRender: (data: unknown[], node: unknown) => data.length > 0 && !!node },
+			// @ts-expect-error `icon` must be a design-system icon name.
+			{ ...base, icon: 'not-an-icon', canRender: () => true },
+		];
+
+		expect(modes).toHaveLength(2);
+	});
 });

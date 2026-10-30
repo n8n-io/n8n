@@ -27,7 +27,7 @@ import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
@@ -94,6 +94,8 @@ export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
+	/** Also update a soft-deleted execution. */
+	includeDeleted?: boolean;
 }
 
 export interface IGetExecutionsQueryFilter {
@@ -190,7 +192,6 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		transactionRunner: TransactionRunner,
 	) {
@@ -617,7 +618,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutionsByFilter({
+	/** Deletion targets of a workflow, soft-deleted ones included. */
+	async findForDeletionByWorkflowId(workflowId: string, limit: number) {
+		const executions = await this.createQueryBuilder('execution')
+			.withDeleted()
+			.select(['execution.id', 'execution.workflowId', 'execution.storedAt'])
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.limit(limit)
+			.getMany();
+
+		return executions.map(({ id, workflowId, storedAt }) => ({
+			executionId: id,
+			workflowId,
+			storedAt,
+		}));
+	}
+
+	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
 		deleteConditions,
@@ -657,23 +674,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			return [];
 		}
 
-		const refs = executions.map(({ id, workflowId, storedAt }) => ({
+		return executions.map(({ id, workflowId, storedAt }) => ({
 			executionId: id,
 			workflowId,
 			storedAt,
 		}));
-
-		const toDelete = [...refs];
-		do {
-			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = toDelete.splice(0, this.hardDeletionBatchSize);
-			await Promise.all([
-				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch.map((b) => ({ type: 'execution' as const, ...b }))),
-			]);
-		} while (toDelete.length > 0);
-
-		return refs;
 	}
 
 	async getIdsSince(date: Date) {
@@ -760,6 +765,30 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			executionId,
 			storedAt,
 		}));
+	}
+
+	/**
+	 * A finished manual execution that n8n did not save, until pruning hard-deletes it.
+	 * It is soft-deleted, so other reads do not return it. The caller must check that
+	 * the reader started it.
+	 */
+	async findUnsavedManualExecution(executionId: string): Promise<ExecutionEntity | null> {
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const bufferMs =
+			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+
+		return await this.findOne({
+			where: {
+				id: executionId,
+				mode: 'manual',
+				// A run whose final data was never written still has its start status.
+				status: In(['success', 'error', 'crashed', 'canceled']),
+				deletedAt: Raw((column) => `${column} > ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+			},
+			relations: { metadata: true },
+			// An unsaved manual execution is soft-deleted when it finishes.
+			withDeleted: true,
+		});
 	}
 
 	async deleteByIds(executionIds: string[]) {

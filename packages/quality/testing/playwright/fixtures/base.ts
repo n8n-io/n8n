@@ -8,7 +8,12 @@ import { a11yFixtures, type A11yTestFixtures } from './a11y';
 import { shouldSkipContainerRequirement } from './capabilities';
 import { consoleErrorFixtures } from './console-error-monitor';
 import { containerFixtures, type ContainerWorkerFixtures } from './containers';
-import { engineParityDisposition, workflowSettingsFor } from './engine-parity';
+import {
+	type CanvasRunGuard,
+	engineParityDisposition,
+	watchCanvasRuns,
+	workflowSettingsFor,
+} from './engine-parity';
 import { N8N_AUTH_COOKIE } from '../config/constants';
 import { setupDefaultInterceptors } from '../config/intercepts';
 import { backendV8CoverageFixtures } from '../fixtures/backend-v8-coverage';
@@ -55,6 +60,12 @@ type TestFixtures = {
 	containerRequirement: undefined;
 	/** Internal auto fixture: sorts a test into its engine v2 parity bucket by tag. */
 	engineParity: undefined;
+	/**
+	 * Watches the runs the page starts and fails the test after it when one
+	 * stayed on the legacy engine. A test that runs the legacy engine on purpose
+	 * calls `allowLegacyRuns()`.
+	 */
+	canvasRuns: CanvasRunGuard;
 };
 
 type WorkerFixtures = ContainerWorkerFixtures & {
@@ -147,9 +158,17 @@ export const test = base.extend<
 		await use(frontendUrl);
 	},
 
-	n8n: async ({ context, n8nStackConfig }, use, testInfo) => {
+	canvasRuns: async ({ context, n8nStackConfig }, use) => {
+		const guard = await watchCanvasRuns(context, workflowSettingsFor(n8nStackConfig));
+		await use(guard);
+		guard.assertRoutedToEngine();
+	},
+
+	// `canvasRuns` installs its route before this fixture opens the page.
+	n8n: async ({ context, n8nStackConfig, canvasRuns }, use, testInfo) => {
+		void canvasRuns;
 		const apiOptions = { workflowSettings: workflowSettingsFor(n8nStackConfig) };
-		await setupDefaultInterceptors(context);
+		await setupDefaultInterceptors(context, apiOptions);
 		const page = await context.newPage();
 
 		// Set debounce multiplier for E2E tests - 1 means normal timing (no change)
