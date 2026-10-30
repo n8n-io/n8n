@@ -551,10 +551,55 @@ describe('AgentChatController session files', () => {
 		agentChatAttachmentService.listForSession.mockResolvedValue(files);
 
 		await expect(controller.getSessionFiles(request as never)).resolves.toEqual({ files });
+		expect(agentExecutionService.canUseDraftThread).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			'user-1',
+			{ previewChat: true, sessionMode: 'existing' },
+		);
 		expect(agentChatAttachmentService.listForSession).toHaveBeenCalledWith(
 			{ projectId: 'project-1', threadId: 'thread-1' },
 			'n8n_chat_production',
 		);
+	});
+
+	it('rejects a session that is not a preview thread of the user', async () => {
+		const { controller, agentsService, agentExecutionService, agentChatAttachmentService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.canUseDraftThread.mockResolvedValue(false as never);
+
+		await expect(controller.getSessionFiles(request as never)).rejects.toThrow(NotFoundError);
+		expect(agentChatAttachmentService.listForSession).not.toHaveBeenCalled();
+	});
+
+	it('rejects a project-scoped session with a checkpoint of a user draft', async () => {
+		const {
+			controller,
+			agentsService,
+			agentExecutionService,
+			checkpointStorage,
+			agentChatAttachmentService,
+		} = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(
+			mock<AgentExecutionThread>({
+				projectId: 'project-1',
+				agentId: 'agent-1',
+				accessScope: 'project',
+				ownerId: null,
+			}),
+		);
+		checkpointStorage.findSuspendedForThread.mockResolvedValue(
+			mock<SerializableAgentState>({
+				persistence: { threadId: 'thread-1', resourceId: 'draft-chat:user-2' },
+			}),
+		);
+
+		await expect(controller.getSessionFiles(request as never)).rejects.toThrow(NotFoundError);
+		expect(agentChatAttachmentService.listForSession).not.toHaveBeenCalled();
 	});
 
 	it('returns no files for a new session and rejects an unrelated thread', async () => {
