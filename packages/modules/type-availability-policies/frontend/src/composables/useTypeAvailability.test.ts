@@ -57,45 +57,55 @@ describe('useTypeAvailability', () => {
 	});
 
 	describe('nodeTypeRestriction', () => {
-		it('passes the explicit project id through to the store getter', () => {
+		it('answers from the store when its project is the loaded one', () => {
 			const store = useTypeAvailabilityPoliciesStore();
 			vi.spyOn(store, 'fetchForProject').mockResolvedValue(undefined);
-			const getNodeTypeAvailability = vi
-				.spyOn(store, 'getNodeTypeAvailability')
-				.mockReturnValue({ name: SLACK_NODE, available: false, scope: 'project' });
+			store.loadedProjectId = 'project-a';
+			vi.spyOn(store, 'getNodeTypeAvailability').mockReturnValue({
+				name: SLACK_NODE,
+				available: false,
+				scope: 'project',
+			});
 
 			const { nodeTypeRestriction } = useTypeAvailability(ref('project-a'));
-			const restriction = nodeTypeRestriction(SLACK_NODE);
 
-			expect(getNodeTypeAvailability).toHaveBeenCalledWith(SLACK_NODE, 'project-a');
-			expect(restriction).toMatchObject({ scope: 'project' });
+			expect(nodeTypeRestriction(SLACK_NODE)).toMatchObject({ scope: 'project' });
 		});
 
-		it('returns null and skips the store lookup without a project id', () => {
+		it('returns null while another project is loaded', () => {
 			const store = useTypeAvailabilityPoliciesStore();
 			vi.spyOn(store, 'fetchForProject').mockResolvedValue(undefined);
+			store.loadedProjectId = 'project-b';
 			const getNodeTypeAvailability = vi.spyOn(store, 'getNodeTypeAvailability');
 
-			const { nodeTypeRestriction } = useTypeAvailability(ref(null));
+			const { nodeTypeRestriction } = useTypeAvailability(ref('project-a'));
 
 			expect(nodeTypeRestriction(SLACK_NODE)).toBeNull();
 			expect(getNodeTypeAvailability).not.toHaveBeenCalled();
 		});
 
+		it('returns null without a project id', () => {
+			const store = useTypeAvailabilityPoliciesStore();
+			vi.spyOn(store, 'fetchForProject').mockResolvedValue(undefined);
+
+			const { nodeTypeRestriction } = useTypeAvailability(ref(null));
+
+			expect(nodeTypeRestriction(SLACK_NODE)).toBeNull();
+		});
+
 		it('composes the credential-only node answer from the credential type it wraps', () => {
 			const store = useTypeAvailabilityPoliciesStore();
 			vi.spyOn(store, 'fetchForProject').mockResolvedValue(undefined);
+			store.loadedProjectId = 'project-a';
 			vi.spyOn(store, 'getNodeTypeAvailability').mockReturnValue({
 				name: HTTP_REQUEST,
 				available: true,
 			});
-			const getCredentialTypeAvailability = vi
-				.spyOn(store, 'getCredentialTypeAvailability')
-				.mockImplementation((name) =>
-					name === VIRUS_TOTAL_CREDENTIAL
-						? { name, available: false, scope: 'instance' }
-						: { name, available: true },
-				);
+			vi.spyOn(store, 'getCredentialTypeAvailability').mockImplementation((name) =>
+				name === VIRUS_TOTAL_CREDENTIAL
+					? { name, available: false, scope: 'instance' }
+					: { name, available: true },
+			);
 
 			const { nodeTypeRestriction } = useTypeAvailability(ref('project-a'));
 
@@ -103,40 +113,46 @@ describe('useTypeAvailability', () => {
 				name: VIRUS_TOTAL_CREDENTIAL,
 				scope: 'instance',
 			});
-			expect(getCredentialTypeAvailability).toHaveBeenCalledWith(
-				VIRUS_TOTAL_CREDENTIAL,
-				'project-a',
-			);
 		});
 	});
 
 	describe('credentialTypeRestriction', () => {
-		it('passes the explicit project id through to the store getter', () => {
+		it('answers from the store when its project is the loaded one', () => {
 			const store = useTypeAvailabilityPoliciesStore();
 			vi.spyOn(store, 'fetchForProject').mockResolvedValue(undefined);
-			const getCredentialTypeAvailability = vi
-				.spyOn(store, 'getCredentialTypeAvailability')
-				.mockReturnValue({ name: VIRUS_TOTAL_CREDENTIAL, available: false, scope: 'instance' });
+			store.loadedProjectId = 'project-a';
+			vi.spyOn(store, 'getCredentialTypeAvailability').mockReturnValue({
+				name: VIRUS_TOTAL_CREDENTIAL,
+				available: false,
+				scope: 'instance',
+			});
 
 			const { credentialTypeRestriction } = useTypeAvailability(ref('project-a'));
-			const restriction = credentialTypeRestriction(VIRUS_TOTAL_CREDENTIAL);
 
-			expect(getCredentialTypeAvailability).toHaveBeenCalledWith(
-				VIRUS_TOTAL_CREDENTIAL,
-				'project-a',
-			);
-			expect(restriction).toMatchObject({ scope: 'instance' });
+			expect(credentialTypeRestriction(VIRUS_TOTAL_CREDENTIAL)).toMatchObject({
+				scope: 'instance',
+			});
 		});
 
-		it('returns null and skips the store lookup without a project id', () => {
+		it('returns null while another project is loaded', () => {
 			const store = useTypeAvailabilityPoliciesStore();
 			vi.spyOn(store, 'fetchForProject').mockResolvedValue(undefined);
+			store.loadedProjectId = 'project-b';
 			const getCredentialTypeAvailability = vi.spyOn(store, 'getCredentialTypeAvailability');
+
+			const { credentialTypeRestriction } = useTypeAvailability(ref('project-a'));
+
+			expect(credentialTypeRestriction(VIRUS_TOTAL_CREDENTIAL)).toBeNull();
+			expect(getCredentialTypeAvailability).not.toHaveBeenCalled();
+		});
+
+		it('returns null without a project id', () => {
+			const store = useTypeAvailabilityPoliciesStore();
+			vi.spyOn(store, 'fetchForProject').mockResolvedValue(undefined);
 
 			const { credentialTypeRestriction } = useTypeAvailability(ref(undefined));
 
 			expect(credentialTypeRestriction(VIRUS_TOTAL_CREDENTIAL)).toBeNull();
-			expect(getCredentialTypeAvailability).not.toHaveBeenCalled();
 		});
 	});
 });

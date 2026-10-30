@@ -10,7 +10,8 @@ import { useTypeAvailabilityPoliciesStore } from '../type-availability-policies.
 
 /**
  * The entry point for a surface that lists, adds or configures node or credential types. It
- * loads the policies of `projectId` and answers for that project, whichever project is active.
+ * loads the policies of `projectId`. The store holds one project, so while another project is
+ * loaded every lookup here reports no restriction.
  */
 export function useTypeAvailability(projectId: MaybeRefOrGetter<string | null | undefined>) {
 	const store = useTypeAvailabilityPoliciesStore();
@@ -23,14 +24,17 @@ export function useTypeAvailability(projectId: MaybeRefOrGetter<string | null | 
 		{ immediate: true },
 	);
 
-	function nodeTypeRestriction(nodeType: string): TypeRestriction | null {
+	const isLoadedForProject = () => {
 		const id = toValue(projectId);
-		return id ? getNodeTypeRestriction(nodeType, id) : null;
+		return !!id && store.loadedProjectId === id;
+	};
+
+	function nodeTypeRestriction(nodeType: string): TypeRestriction | null {
+		return isLoadedForProject() ? getNodeTypeRestriction(nodeType) : null;
 	}
 
 	function credentialTypeRestriction(credentialType: string): CredentialTypeAvailability | null {
-		const id = toValue(projectId);
-		return id ? getCredentialTypeRestriction(credentialType, id) : null;
+		return isLoadedForProject() ? getCredentialTypeRestriction(credentialType) : null;
 	}
 
 	return { nodeTypeRestriction, credentialTypeRestriction };
