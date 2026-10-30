@@ -12,7 +12,7 @@ The package name can include a version, a version range, or a dist-tag. Scoped p
 
 ```
 $ npx @n8n/scan-community-package n8n-nodes-PACKAGE@1.2.3
-$ npx @n8n/scan-community-package n8n-nodes-PACKAGE@^1.0.0
+$ npx @n8n/scan-community-package n8n-nodes-PACKAGE@1.x
 $ npx @n8n/scan-community-package @SCOPE/n8n-nodes-PACKAGE@beta
 ```
 
