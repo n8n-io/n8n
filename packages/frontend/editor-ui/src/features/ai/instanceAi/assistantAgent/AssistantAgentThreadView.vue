@@ -29,6 +29,7 @@ import { provideArtifactThread } from '../artifactThread';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
+import InstanceAiInputMenu from '../components/InstanceAiInputMenu.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
 import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
@@ -421,6 +422,7 @@ function removeStagedNodes(chipId: string): void {
 						channel="system"
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
+						:show-attach-button="false"
 						@stream-event="trace.recordEvent"
 						@session-created="onSessionCreated"
 						@message-accepted="onMessageAccepted"
@@ -435,6 +437,10 @@ function removeStagedNodes(chipId: string): void {
 								@update:attachment="updateStagedNodes"
 								@remove-all="removeStagedNodes(id)"
 							/>
+						</template>
+						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
+						<template #footer-start>
+							<InstanceAiInputMenu @attach-files="panel?.openFilePicker()" />
 						</template>
 					</AgentChatPanel>
 				</div>
