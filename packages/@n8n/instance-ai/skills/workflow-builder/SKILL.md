@@ -28,13 +28,19 @@ recommended_tools:
   - get_node_types
   - get_node_parameter_options
   - execute_node
-  - data_tables
+  - list_data_tables
+  - get_data_table_schema
+  - query_data_table
+  - create_data_table
   - list_credentials
   - search_credential_types
   - setup_credentials
   - test_credential
   - workflow_builder_verify_built_workflow
-  - workflow_builder_executions
+  - list_executions
+  - get_execution
+  - run_workflow
+  - debug_execution
 ---
 
 # Workflow Builder
@@ -340,7 +346,7 @@ rebuild with the same `filePath`, then inspect and verify again.
 
 Never tell the user a workflow is fixed, verified, tested, or working from a
 build/save or its static checks alone — only from a `workflow_builder_verify_built_workflow`
-or `workflow_builder_executions` run that exercised the claimed path; otherwise say explicitly
+or `run_workflow` run that exercised the claimed path; otherwise say explicitly
 what you could not verify and why. Never dismiss a live execution error as a
 harness or stale-state artifact without re-running.
 
@@ -356,7 +362,7 @@ save. The job is done when one of these is true:
 Prefer `workflow_builder_verify_built_workflow` for workflows saved by `workflow_builder_build_workflow`; it can
 be called again with `workflowId` if the original `workItemId` is no longer in
 context. For alternate deterministic scenarios, pass `fixtureOverrides` for
-nodes already classified as simulated. Use raw `workflow_builder_executions(action="run")` only
+nodes already classified as simulated. Use raw `run_workflow` only
 for ad hoc non-build verification or when the user explicitly wants a live run.
 If live connectivity also matters for a branch-controlled workflow, verify the
 fixture-backed branch coverage first and run a separate live smoke check, or
@@ -492,16 +498,16 @@ workflows stay in one workflow. Before writing multi-workflow code, load the
 ## Data Tables
 
 n8n normalizes Data Table column names to snake_case, for example `dayName`
-becomes `day_name`. Always call `data_tables(action="schema")` before using a
+becomes `day_name`. Always call `get_data_table_schema` before using a
 Data Table in workflow code so you use real column names.
 
 When building workflows that create or use tables, load `data-table-manager`
 via `load_skill` first (if not already loaded this turn), then follow that
 skill for schema/row guidance. Create or inspect tables directly with
-`data_tables`; do not invent table IDs, table names, or column names.
+the data table tools; do not invent table IDs, table names, or column names.
 
-When diagnosing why a workflow's table lookup misses, keep every `data_tables`
-query targeted: filter on the column under investigation (`ilike` for
+When diagnosing why a workflow's table lookup misses, keep every `query_data_table`
+call targeted: filter on the column under investigation (`ilike` for
 case-insensitive partial matches; `like` is case-sensitive) with `limit` of 5
 or fewer. Never pull a table unfiltered — rows can carry very large values
 (inline base64 images, raw payloads), and a filter that matches every row

@@ -47,6 +47,22 @@ describe('buildAlwaysAllowKey', () => {
 		});
 	});
 
+	describe('split execution tools', () => {
+		it('maps run_workflow and run_workflow_step to the same keys as the former tool', () => {
+			expect(buildAlwaysAllowKey('run_workflow', { workflowId: 'wf-1' })).toBe(
+				'executions:run:wf-1',
+			);
+			expect(buildAlwaysAllowKey('run_workflow', {})).toBeNull();
+			expect(
+				buildAlwaysAllowKey('run_workflow_step', {
+					workflowId: 'wf-1',
+					nodeName: 'HTTP Request',
+				}),
+			).toBe('executions:run-step:wf-1:HTTP Request');
+			expect(buildAlwaysAllowKey('run_workflow_step', { workflowId: 'wf-1' })).toBeNull();
+		});
+	});
+
 	describe('workflow edits', () => {
 		it('scopes an update and a build to the workflow', () => {
 			expect(
@@ -89,6 +105,12 @@ describe('buildAlwaysAllowKey', () => {
 		expect(buildAlwaysAllowKey('data_tables', { action: 'insert-rows' })).toBe(
 			'data-tables:insert-rows',
 		);
+	});
+
+	it('uses the same action grant key for split data table tools', () => {
+		expect(buildAlwaysAllowKey('insert_data_table_rows', {})).toBe('data-tables:insert-rows');
+		expect(buildAlwaysAllowKey('delete_data_table', {})).toBe('data-tables:delete');
+		expect(buildAlwaysAllowKey('rename_data_table_column', {})).toBe('data-tables:rename-column');
 	});
 
 	it('falls back to the tool and the action for other tools', () => {

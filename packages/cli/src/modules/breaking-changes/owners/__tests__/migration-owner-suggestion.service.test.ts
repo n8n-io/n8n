@@ -109,6 +109,17 @@ describe('MigrationOwnerSuggestionService', () => {
 		expect(userRepository.findAllWithRoleAndAuthIdentities).not.toHaveBeenCalled();
 	});
 
+	it('uses the users the caller loaded instead of loading them again', async () => {
+		givenActivity({ 'wf-1': { userId: 'alice', at: at('2026-09-01T10:00:00Z') } });
+		const users = await service.loadEligibleUsers();
+		userRepository.findAllWithRoleAndAuthIdentities.mockClear();
+
+		expect(await service.suggestOwners(['wf-1'], users)).toEqual([
+			{ workflowId: 'wf-1', userId: 'alice' },
+		]);
+		expect(userRepository.findAllWithRoleAndAuthIdentities).not.toHaveBeenCalled();
+	});
+
 	it('asks each source for the same bounded number of recent actions per workflow', async () => {
 		await service.suggestOwners(['wf-1']);
 

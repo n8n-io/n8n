@@ -353,6 +353,15 @@ describe('workflows tool', () => {
 			});
 		});
 
+		it('marks only get-as-code as needing the workspace, since it writes the source file', () => {
+			const context = createMockContext();
+			const flagged = createWorkflowTools(context)
+				.filter((tool) => tool.requiresWorkspace)
+				.map((tool) => tool.name);
+
+			expect(flagged).toEqual(['get_workflow_as_code']);
+		});
+
 		it('should support a filtered safe action surface', () => {
 			const context = createMockContext();
 			const tools = createWorkflowTools(context, { allowedActions: builderWorkflowActions });

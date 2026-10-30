@@ -6,6 +6,7 @@ import type {
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
+	N8nActionDropdown,
 	N8nIconButton,
 	N8nLink,
 	N8nResizeWrapper,
@@ -26,8 +27,10 @@ import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composabl
 
 import { provideArtifactThread } from '../artifactThread';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
+import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
+import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
 import NodesAttachmentChips from '../components/NodesAttachmentChips.vue';
@@ -56,6 +59,7 @@ import {
 	readNodesAttachment,
 	toNodesComposerAttachment,
 } from './assistantNodeAttachments';
+import { useAssistantAgentTrace } from './useAssistantAgentTrace';
 import { useAssistantArtifactThread } from './useAssistantArtifactThread';
 
 const props = defineProps<{ threadId: string; projectId: string }>();
@@ -113,6 +117,12 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 const interactionExtensions = [assistantConfirmationExtension];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
+
+const trace = useAssistantAgentTrace({
+	threadId: props.threadId,
+	messages: () => panel.value?.messages ?? [],
+});
+
 watch(panel, (current) => {
 	if (!current || !pendingMessage) return;
 	current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
@@ -153,6 +163,7 @@ provideArtifactThread(thread);
 const preview = useCanvasPreview({ thread, threadId: () => props.threadId });
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
+provide('openAppPreview', preview.openAppPreview);
 
 const activeAgentHref = computed(() => {
 	const agentId = preview.activeAgentId.value;
@@ -271,6 +282,24 @@ function removeStagedNodes(chipId: string): void {
 							@click="startNewThread"
 						/>
 					</N8nTooltip>
+					<N8nActionDropdown
+						v-if="trace.isEnabled"
+						:items="trace.menuItems"
+						placement="bottom-end"
+						data-test-id="assistant-agent-trace-menu"
+						@select="trace.runAction"
+					>
+						<template #activator>
+							<N8nIconButton
+								icon="bug"
+								variant="ghost"
+								size="small"
+								icon-size="large"
+								:aria-label="i18n.baseText('instanceAi.debug.title')"
+								data-test-id="assistant-agent-trace-button"
+							/>
+						</template>
+					</N8nActionDropdown>
 					<N8nTooltip
 						v-if="canShowArtifactsPanel && !preview.isPreviewVisible.value"
 						:content="artifactsPanelToggleLabel"
@@ -288,8 +317,40 @@ function removeStagedNodes(chipId: string): void {
 							@click="toggleArtifactsPanel"
 						/>
 					</N8nTooltip>
+					<!-- With no tabs to show, the toggle opens a resource in a new tab. It waits for
+					the history, which can open tabs for past builds. -->
+					<InstanceAiResourcePicker
+						v-if="
+							!thread.isHydratingThread &&
+							!preview.isPreviewVisible.value &&
+							preview.openTabs.value.length === 0
+						"
+						:project-id="props.projectId"
+						:excluded-tabs="preview.openTabs.value"
+						placement="bottom-end"
+						content-test-id="assistant-agent-open-resource-picker"
+						@select="preview.openTab"
+					>
+						<template #trigger>
+							<N8nTooltip
+								:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+								as-child
+							>
+								<N8nIconButton
+									icon="square-plus"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="assistant-agent-open-resource"
+									:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+								/>
+							</N8nTooltip>
+						</template>
+					</InstanceAiResourcePicker>
 					<N8nTooltip
-						v-if="!preview.isPreviewVisible.value"
+						v-else-if="!preview.isPreviewVisible.value"
 						:content="previewToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
@@ -325,6 +386,7 @@ function removeStagedNodes(chipId: string): void {
 						channel="system"
 						:client-context="clientContext"
 						:interaction-extensions="interactionExtensions"
+						@stream-event="trace.recordEvent"
 						@session-created="onSessionCreated"
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
@@ -404,6 +466,14 @@ function removeStagedNodes(chipId: string): void {
 							:data-table-id="preview.activeDataTableId.value"
 							:project-id="preview.activeDataTableProjectId.value"
 							:refresh-key="preview.dataTableRefreshKey.value"
+						/>
+						<InstanceAiAppPreview
+							v-if="preview.isPreviewVisible.value && preview.activeApp.value"
+							:class="$style.previewSlot"
+							:project-id="preview.activeApp.value.projectId"
+							:app-id="preview.activeApp.value.id"
+							:refresh-key="preview.appRefreshKey.value"
+							@deleted="preview.closeTab"
 						/>
 						<div
 							v-if="preview.isPreviewVisible.value && activeAgentHref"

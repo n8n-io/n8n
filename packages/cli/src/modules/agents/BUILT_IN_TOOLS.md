@@ -26,12 +26,23 @@ custom endpoints, and Gateway credits use the complete eager catalog.
 These local tools stay eager when they are attached:
 
 - `workspace_read_file`
+- `workspace_read_files`
 - `workspace_read_tool_result`
 - `workspace_write_file`
 - `workspace_str_replace_file`
+- `workspace_edit_files`
 - `workspace_execute_command`
 - `load_skill`
 - `mark_session_failed`
+- `create_plan`
+- `read_plan`
+- `update_plan`
+- `close_plan`
+- `resume_background_jobs`
+
+Planning and Continue must not depend on tool discovery. Their schemas stay
+in model context when the tools are attached. The existing feature flags and
+runtime rules still control whether the tools are attached.
 
 Other eligible local tools are deferred. This includes built-in, custom,
 workflow, node, integration, knowledge, memory, and MCP tools. Provider-native
@@ -72,9 +83,11 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 | Tool | Purpose |
 | --- | --- |
 | `workspace_read_file` | Reads a file from the workspace. |
+| `workspace_read_files` | Reads several files, or line ranges of them, in one call. |
 | `workspace_read_tool_result` | Reads the full result of an earlier tool call. |
 | `workspace_write_file` | Writes a file to the workspace. |
 | `workspace_str_replace_file` | Replaces a string in a workspace file. |
+| `workspace_edit_files` | Applies several writes and replacements in one call, and reports each result. |
 | `workspace_append_file` | Appends content to a workspace file. |
 | `workspace_list_files` | Lists the files in the workspace. |
 | `workspace_file_stat` | Returns metadata for a workspace file. |
@@ -136,7 +149,7 @@ Send only fields that must change. Do not resend unchanged tasks, descriptions, 
 The tool merges `items` and group `tasks` by ID. Omitted fields and items stay unchanged.
 Existing items keep their order. New items append and require all creation fields with a `new:` ID.
 For a child task, send its group ID and put the child update in `tasks`.
-For example, a task completion needs only:
+For example, a parent-run task completion needs only:
 
 ```json
 {
@@ -152,14 +165,43 @@ Use `removeItemIds` to remove pending items. An empty `items` or `tasks` list re
 A supplied `dependsOn` list replaces that item's dependencies. Use `[]` to clear it.
 Set `presentation`, `presentation.detail`, `resultSummary`, or `fallbackFor` to `null` to clear it.
 The service validates the complete result and saves it with its history in one transaction.
-Final items, task prerequisites, and service timestamps retain their existing rules.
+Task prerequisites and service timestamps remain protected. Titles and result summaries can change after completion.
 If an update fails, correct it and retry before reporting progress. Read the plan again after a revision conflict.
 `close_plan` closes the active plan without changing its document or cancelling work.
 
-Snapshots report `finishedAt` when all task leaves have a final status.
-A group with children contributes its child tasks. An empty group counts as one task.
-The timestamp is the last leaf end time. A later group status update does not extend it.
-Group statuses remain independent, so readiness can still list a pending group after its children finish.
+Plan format 2 gives each task one source of status:
+
+- Parent-run tasks store their status and timestamps in the plan. Use `update_plan` for these tasks.
+- Delegated tasks store one owning job ID. Register the job and bind it to the task in one transaction.
+- Groups store no status or timestamps. Calculate them from their children.
+
+A running job or an approval wait means `in_progress`. A paused job means `paused`.
+A completed job means `done`. Failed and cancelled jobs keep those statuses.
+A Continue capacity reservation remains `paused` until the job resumes.
+Nested jobs can inherit a task reference. They do not control the task status.
+
+Group status uses this priority: `in_progress`, `paused`, `pending`, `failed`, `cancelled`, then `done`.
+An empty group stays `pending`. Successful fallbacks replace their original tasks in this calculation.
+The same calculation supplies plan reads, dependency checks, delegation checks, and Continue selection.
+Job states load in one batch. Job transitions do not change the plan revision or history.
+Keep linked job records while the plan exists.
+
+The parent can edit titles and result summaries. It cannot override a delegated task status.
+Create a new task for further delegated work. A manual task can move from `done` to `in_progress`
+only if no task that depends on it has started.
+
+Snapshots report `finishedAt` when all leaves have a final status.
+The current-plan GET route is authoritative. Chat history cannot restore a deleted plan card.
+Refresh the card on conversation load, job updates, plan-tool completion, and reconnection.
+Job transitions can change a snapshot without changing its revision.
+
+### Development data reset
+
+`ResetAgentPlansForJobStatus1793353273511` is irreversible. It removes format 1 plans and their history.
+It clears their job links and obsolete plan references in Stop records and checkpoint resume metadata.
+It preserves chat messages, executions, background jobs, job outcomes, and unrelated checkpoint data.
+It does not convert old plans. New plans use format 2, including plans in existing conversations.
+Use a coordinated restart for this development upgrade. Restart completion remains best effort.
 
 ## Background job tools
 
@@ -171,9 +213,29 @@ Source: [`background/background-job-tools.ts`](./background/background-job-tools
 | --- | --- |
 | `check_background_jobs` | Lists the background jobs of the conversation with their status and results. |
 | `cancel_background_job` | Cancels a running background job by its job id. |
-| `resume_background_jobs` | Resumes jobs from the latest user stop. |
+| `resume_background_jobs` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
 
 Use `delegate_subagent` with `mode: "background"` to start a background sub-agent.
+In Agent Preview, pass `planTask: { planId, planTaskId }` for work in an active plan.
+The host checks the leaf task and its prerequisites before dispatch.
+Children inherit this link from host metadata. They cannot change it through tool input.
+Waiting workflow jobs retain the same link. Foreground workflows do not get background job rows.
+
+To continue a plan, pass `planId` to `resume_background_jobs`.
+Pass `taskIds` to continue only those tasks. A group selects its unfinished children.
+An empty `taskIds` list is invalid. Omit it to select the whole plan.
+The tool does not resume prerequisites or approve pending tools.
+It reports blocked tasks, failed resumes, and workflows that need a new execution.
+Stop sets unfinished parent-run tasks to `paused`. Continue restores selected tasks to `pending`
+or `in_progress`, based on whether they had started. Unstarted parent-run tasks can return to `pending`
+while prerequisites remain unfinished. Continue does not dispatch them. Paused jobs with unfinished prerequisites stay paused.
+Delegated tasks follow their jobs. A paused sub-agent resumes the same job.
+A cancelled workflow needs a new task and job. Use `fallbackFor` when it replaces cancelled work.
+
+A new user turn admits chat work. It does not resume stopped tasks.
+New plan tasks can run while older tasks remain stopped.
+A completed background job makes its task Done without a separate result approval.
+The parent still needs explicit updates for work it performs itself, including comparisons and recommendations.
 
 ## `mark_session_failed`: session outcomes
 

@@ -26,12 +26,12 @@ export class AgentDependencyIndexService {
 	}
 
 	async remove(agentId: string): Promise<void> {
-		await this.credentialDependencyRepository.removeForAgent(agentId);
+		await this.credentialDependencyRepository.removeForAgent(agentId, {});
 		await this.workflowDependencyRepository.removeForAgent(agentId);
 	}
 
 	async refresh(agentId: string): Promise<void> {
-		await this.credentialDependencyRepository.refreshForAgent(agentId);
+		await this.credentialDependencyRepository.refreshForAgent(agentId, {});
 		await this.workflowDependencyRepository.refreshForAgent(agentId);
 	}
 
@@ -45,9 +45,10 @@ export class AgentDependencyIndexService {
 	}
 
 	async invalidateRuntimesForCredential(credentialId: string): Promise<void> {
-		const credentials = await this.credentialDependencyRepository.findByCredentialIds([
-			credentialId,
-		]);
+		const credentials = await this.credentialDependencyRepository.findByCredentialIds(
+			[credentialId],
+			{},
+		);
 		for (const { agentId } of credentials) this.runtimeCache.clearRuntimes(agentId);
 	}
 
