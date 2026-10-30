@@ -977,6 +977,57 @@ describe('SourceControlImportService', () => {
 				userRepository.findOne.mockResolvedValue(mockUser);
 			});
 
+			it.each([
+				{ remoteSettings: { timezone: 'Europe/Berlin' }, published: true, refresh: true },
+				{ remoteSettings: {}, published: true, refresh: true },
+				{ remoteSettings: null, published: true, refresh: true },
+				{ remoteSettings: undefined, published: true, refresh: false },
+				{ remoteSettings: { timezone: 'UTC' }, published: true, refresh: false },
+				{ remoteSettings: { timezone: 'Europe/Berlin' }, published: false, refresh: false },
+			])(
+				'handles a settings import without auto-publish: %j',
+				async ({ remoteSettings, published, refresh }) => {
+					const existingWorkflow = Object.assign(new WorkflowEntity(), {
+						id: 'workflow1',
+						active: published,
+						activeVersionId: published ? 'published-version' : null,
+						versionId: 'draft-version',
+						settings: { timezone: 'UTC' },
+					});
+					workflowRepository.findByIds.mockResolvedValue([existingWorkflow]);
+					fsReadFile.mockResolvedValue(
+						JSON.stringify({
+							id: 'workflow1',
+							name: 'Scheduled Workflow',
+							nodes: [],
+							connections: {},
+							versionId: 'draft-version',
+							settings: remoteSettings,
+						}),
+					);
+
+					await service.importWorkflowFromWorkFolder(
+						[mock<SourceControlledFile>({ file: '/mock/workflow1.json', id: 'workflow1' })],
+						mockUserId,
+						'none',
+					);
+
+					if (refresh) {
+						expect(workflowService.activateWorkflow).toHaveBeenCalledExactlyOnceWith(
+							mockUser,
+							'workflow1',
+							{ versionId: 'published-version', publishHistory: 'none' },
+						);
+						expect(
+							workflowRepository.upsertImportedContent.mock.invocationCallOrder[0],
+						).toBeLessThan(workflowService.activateWorkflow.mock.invocationCallOrder[0]);
+					} else {
+						expect(workflowService.activateWorkflow).not.toHaveBeenCalled();
+					}
+					expect(workflowService.deactivateWorkflow).not.toHaveBeenCalled();
+				},
+			);
+
 			it('should preserve existing active state of an active workflow with autoPublish="none"', async () => {
 				const mockWorkflowFile = '/mock/workflow1.json';
 				const mockWorkflowData = {

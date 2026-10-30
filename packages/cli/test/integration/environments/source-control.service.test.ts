@@ -1,6 +1,13 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
-import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
+import {
+	createActiveWorkflow,
+	createTeamProject,
+	createWorkflow,
+	testDb,
+	testModules,
+} from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import {
 	CredentialsEntity,
 	type Folder,
@@ -12,6 +19,7 @@ import {
 	type TagEntity,
 	type User,
 	WorkflowEntity,
+	WorkflowPublishedVersionRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -25,6 +33,7 @@ import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { DataTable } from '@/modules/data-table/data-table.entity';
 import { InstanceRedactionEnforcementService } from '@/modules/redaction/instance-redaction-enforcement.service';
 import {
@@ -47,6 +56,7 @@ import type { ExportableDataTable } from '@/modules/source-control.ee/types/expo
 import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
 import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';
 import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner';
+import { NodeTypes } from '@/node-types';
 import { createCredentials } from '@test-integration/db/credentials';
 import { createDataTable } from '@test-integration/db/data-tables';
 import { createFolder } from '@test-integration/db/folders';
@@ -659,6 +669,103 @@ describe('SourceControlService', () => {
 	});
 
 	describe('workflow settings imports', () => {
+		test.each([false, true])(
+			'refreshes the published Schedule Trigger after a timezone-only pull (unpublished draft: %s)',
+			async (hasUnpublishedDraft) => {
+				const { ScheduleTrigger } = await import(
+					'n8n-nodes-base/dist/nodes/Schedule/ScheduleTrigger.node'
+				);
+				const workflow = await createActiveWorkflow(
+					{
+						settings: { timezone: 'UTC' },
+						nodes: [
+							{
+								id: randomUUID(),
+								name: 'Schedule Trigger',
+								type: 'n8n-nodes-base.scheduleTrigger',
+								typeVersion: 1.2,
+								position: [0, 0],
+								parameters: { rule: { interval: [{ field: 'hours', hoursInterval: 1 }] } },
+							},
+						],
+						connections: {},
+					},
+					projectA,
+				);
+				const workflowRepository = Container.get(WorkflowRepository);
+				const draftVersionId = hasUnpublishedDraft ? randomUUID() : workflow.versionId;
+				if (hasUnpublishedDraft) {
+					await workflowRepository.update(workflow.id, { versionId: draftVersionId, nodes: [] });
+				}
+				const fileName = `${SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER}/${workflow.id}.json`;
+				gitFiles[fileName] = {
+					...toExportableWorkflow(workflow, projectA),
+					versionId: draftVersionId,
+					...(hasUnpublishedDraft && { nodes: [] }),
+					settings: { timezone: 'Europe/Berlin' },
+				};
+				const workflowsConfig = Container.get(GlobalConfig).workflows;
+				const originalUsePublicationService = workflowsConfig.useWorkflowPublicationService;
+				workflowsConfig.useWorkflowPublicationService = false;
+				const nodeTypeSpy = vi
+					.spyOn(Container.get(NodeTypes), 'getByNameAndVersion')
+					.mockReturnValue(new ScheduleTrigger());
+				const activeWorkflowManager = Container.get(ActiveWorkflowManager);
+				const removeSpy = vi.spyOn(activeWorkflowManager, 'remove').mockResolvedValue(true);
+				const registrations: WorkflowEntity[] = [];
+				const addSpy = vi.spyOn(activeWorkflowManager, 'add').mockImplementation(async (id) => {
+					registrations.push(
+						await workflowRepository.findOneOrFail({
+							where: { id },
+							relations: ['activeVersion'],
+						}),
+					);
+					return { webhooks: false, triggersAndPollers: true };
+				});
+
+				try {
+					const options = { direction: 'pull', preferLocalVersion: false, verbose: false } as const;
+					const status = await statusService.getStatus(globalAdmin, options);
+					const candidates = status.filter((file) => file.id === workflow.id);
+					expect(candidates).toEqual([
+						expect.objectContaining({ type: 'workflow', status: 'modified', location: 'remote' }),
+					]);
+
+					const result = await Container.get(
+						SourceControlImportService,
+					).importWorkflowFromWorkFolder(candidates, globalAdmin.id, 'none');
+
+					expect(result).toEqual([
+						expect.objectContaining({ id: workflow.id, publishingError: undefined }),
+					]);
+					expect(removeSpy).toHaveBeenCalledExactlyOnceWith(workflow.id);
+					expect(addSpy).toHaveBeenCalledExactlyOnceWith(workflow.id, 'update', undefined, {
+						actor: { kind: 'user', user: expect.objectContaining({ id: globalAdmin.id }) },
+					});
+					expect(registrations).toEqual([
+						expect.objectContaining({
+							settings: { timezone: 'Europe/Berlin' },
+							versionId: draftVersionId,
+							activeVersionId: workflow.activeVersionId,
+							activeVersion: expect.objectContaining({ nodes: workflow.nodes }),
+						}),
+					]);
+					const nextStatus = await statusService.getStatus(globalAdmin, options);
+					expect(nextStatus.filter((file) => file.id === workflow.id)).toEqual([]);
+				} finally {
+					workflowsConfig.useWorkflowPublicationService = originalUsePublicationService;
+					nodeTypeSpy.mockRestore();
+					removeSpy.mockRestore();
+					addSpy.mockRestore();
+					delete gitFiles[fileName];
+					await Container.get(WorkflowPublishedVersionRepository).removePublishedVersion(
+						workflow.id,
+					);
+					await workflowRepository.delete(workflow.id);
+				}
+			},
+		);
+
 		const cases: Array<{
 			name: string;
 			localSettings: IWorkflowSettings;

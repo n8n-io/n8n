@@ -1,6 +1,13 @@
 import type { SourceControlledFile, WorkflowPublishBlockedDetails } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { FindOptionsWhere, TagEntity, User, Variables, WorkflowEntity } from '@n8n/db';
+import type {
+	FindOptionsWhere,
+	PublishHistoryScope,
+	TagEntity,
+	User,
+	Variables,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	CredentialsRepository,
 	Folder,
@@ -1005,9 +1012,25 @@ export class SourceControlImportService {
 			targetOwnerProject,
 		});
 
-		// Now publish the workflow if needed (after history is saved)
-		if (shouldPublishAfterImport) {
-			const publishResult = await this.publishWorkflow(id, versionId, userId);
+		// Refresh the retained published graph so triggers use the imported settings.
+		const activeVersionIdToRefresh =
+			!shouldPublishAfterImport &&
+			!importedWorkflow.isArchived &&
+			importedWorkflow.activeVersionId === existingWorkflow?.activeVersionId &&
+			importedWorkflow.settings !== undefined &&
+			!isEqual(existingWorkflow?.settings ?? {}, importedWorkflow.settings)
+				? importedWorkflow.activeVersionId
+				: undefined;
+		const versionIdToActivate = shouldPublishAfterImport ? versionId : activeVersionIdToRefresh;
+
+		// Publish or refresh only after history and ownership are saved.
+		if (versionIdToActivate) {
+			const publishResult = await this.publishWorkflow(
+				id,
+				versionIdToActivate,
+				userId,
+				activeVersionIdToRefresh ? { publishHistory: 'none' } : {},
+			);
 			if (!publishResult.success) {
 				finalPublishingError = publishResult.error;
 				finalPublishingErrorDetails = publishResult.errorDetails;
@@ -1088,6 +1111,7 @@ export class SourceControlImportService {
 		workflowId: string,
 		versionId: string,
 		userId: string,
+		options: { publishHistory?: PublishHistoryScope } = {},
 	): Promise<{
 		success: boolean;
 		error?: string;
@@ -1104,6 +1128,7 @@ export class SourceControlImportService {
 			this.logger.debug(`Publishing imported workflow id ${workflowId}`);
 			await this.workflowService.activateWorkflow(user, workflowId, {
 				versionId,
+				...options,
 			});
 			return { success: true };
 		} catch (e) {
