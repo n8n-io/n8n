@@ -1,0 +1,133 @@
+packages/modules/apps/frontend/src/components/publish/AppSharePopover.test.ts
+  s_b6d332c56aa1c5::t_b52359c222c28b 1-88
+packages/modules/apps/frontend/src/components/AppView.vue
+  s_b6d332c56aa1c5::t_30f92de7b4fb67 35,104
+packages/modules/apps/frontend/src/components/publish/AppSharePopover.vue
+  s_b6d332c56aa1c5::t_d4ad9728052800 14,56
+  s_b6d332c56aa1c5::t_86fcddc965135c 1-13,15-55,57-78
+packages/@n8n/db/src/migrations/common/1793373652880-AddDescriptionToAppVersion.ts
+  s_b6d332c56aa1c5::t_58ab231a93ada6 1-2,5,10-11,16-17
+  s_b6d332c56aa1c5::t_2e9aa401f2ee18 3-4,6-9,12-15
+packages/@n8n/api-types/src/schemas/app.schema.ts
+  s_b6d332c56aa1c5::t_5d07afeb42285c 16-19,44
+packages/modules/apps/frontend/src/components/configure/AppConfigureGeneral.test.ts
+  s_b6d332c56aa1c5::t_f9e5c3b8b7f6d6 1-213
+packages/modules/apps/frontend/src/components/AppHeader.vue
+  s_b6d332c56aa1c5::t_d4ad9728052800 25,167-172
+packages/modules/apps/frontend/src/components/configure/AppConfigure.vue
+  s_b6d332c56aa1c5::t_24191d7b62af4e 2,4,6,8,13
+packages/modules/apps/frontend/src/components/AppHeader.test.ts
+  s_b6d332c56aa1c5::t_c39f02f858d9e9 74-79,133-134,140-147
+  s_b6d332c56aa1c5::t_46a3874befe21f 135-139
+  s_b6d332c56aa1c5::t_b9ff1199df2f33 35
+  s_b6d332c56aa1c5::t_0a6dc07c371d61 148-149
+packages/modules/apps/frontend/src/components/publish/AppLinkField.vue
+  s_b6d332c56aa1c5::t_fb338cad099e65 2,5,12-17
+  s_b6d332c56aa1c5::t_4694be1e010ab3 1,3-4,6-11,18-19
+packages/modules/apps/frontend/src/components/AppPublishButton.vue
+  s_b6d332c56aa1c5::t_e13a05571af026 98
+  s_b6d332c56aa1c5::t_696c06ccfc175d 15,17,19,31,66-76,121-127
+packages/modules/apps/backend/src/versions/app-version.entity.ts
+  s_b6d332c56aa1c5::t_d504516d4813a9 17-19
+packages/modules/apps/frontend/src/composables/useAppVersions.test.ts
+  s_b6d332c56aa1c5::t_b9ff1199df2f33 17
+packages/modules/apps/backend/src/publication/__tests__/app-publication.service.test.ts
+  s_b6d332c56aa1c5::t_492d0707a49797 38-44,78-79,81-83,89-90,137
+  s_b6d332c56aa1c5::t_953b99bb3ed0d0 136
+  s_b6d332c56aa1c5::t_86506bb14a8d1c 29,48-60,66-75,80,85-88
+  s_b6d332c56aa1c5::t_088d15e445cbc4 61-65,76-77
+  s_b6d332c56aa1c5::t_b24ee309f05198 84
+  s_b6d332c56aa1c5::t_253761d1a5fe69 91
+packages/modules/apps/backend/src/publication/app-publication.controller.ts
+  s_b6d332c56aa1c5::t_d504516d4813a9 37-38
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_b6d332c56aa1c5::t_f9e5c3b8b7f6d6 362-372
+  s_b6d332c56aa1c5::t_d4ad9728052800 344,347-355
+  s_b6d332c56aa1c5::t_08e8019861712a 345-346
+packages/modules/apps/frontend/src/apps.api.ts
+  s_b6d332c56aa1c5::t_08e8019861712a 7,98,100-105
+packages/@n8n/api-types/src/dto/app/publish-app.dto.ts
+  s_b6d332c56aa1c5::t_5d07afeb42285c 2-7,10-15
+packages/modules/apps/backend/src/publication/app-publication.service.ts
+  s_b6d332c56aa1c5::t_492d0707a49797 21-24,26
+  s_b6d332c56aa1c5::t_916fbf3caf54fb 44
+  s_b6d332c56aa1c5::t_d504516d4813a9 1,25,43,45-49,51
+packages/modules/apps/backend/src/versions/app-version.repository.ts
+  s_b6d332c56aa1c5::t_916fbf3caf54fb 167
+  s_b6d332c56aa1c5::t_d504516d4813a9 168-174
+packages/modules/apps/frontend/src/components/AppView.test.ts
+  s_b6d332c56aa1c5::t_30f92de7b4fb67 58-59
+  s_b6d332c56aa1c5::t_b9ff1199df2f33 33
+  s_b6d332c56aa1c5::t_3bc839ec32ec78 165,167,169
+packages/modules/apps/frontend/src/components/configure/AppConfigure.test.ts
+  s_b6d332c56aa1c5::t_fcce32ba72543d 21,24-25,28,35-36,38,41,44
+packages/@n8n/api-types/src/dto/app/__tests__/app.dto.test.ts
+  s_b6d332c56aa1c5::t_5283e9998ce323 81-82,84-87,89-111,113-114
+  s_b6d332c56aa1c5::t_492d0707a49797 88
+packages/modules/apps/frontend/src/components/publish/AppVisibilitySelect.test.ts
+  s_b6d332c56aa1c5::t_c26a254c97c86e 2-12,14-15,17-20,22-30
+  s_b6d332c56aa1c5::t_ff958819410233 1,21
+  s_b6d332c56aa1c5::t_eacae4704bcff5 13,16
+packages/modules/apps/frontend/src/components/AppPreview.test.ts
+  s_b6d332c56aa1c5::t_e1e4c1ed53c3fe 33
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.vue
+  s_b6d332c56aa1c5::t_b24ee309f05198 22,55-56,63
+  s_b6d332c56aa1c5::t_6acd16d02a4d01 1,8,18-19,21,23-25,29-38,41-42,51-54,64-71,73-82,117-130,132-143,150-151
+  s_b6d332c56aa1c5::t_51890f3f184f8d 2-7,9-17,20,26-28,39-40,43-50,57-62,72,83-116,131,144-149
+packages/modules/apps/frontend/src/components/configure/AppConfigureGeneral.vue
+  s_b6d332c56aa1c5::t_f9e5c3b8b7f6d6 2-7,29,31,37-39,44,46,74-75,77,98,133,137,140
+packages/modules/apps/frontend/src/components/publish/AppPublishDialog.test.ts
+  s_b6d332c56aa1c5::t_e54a45435a3869 34-36,38,43-49,52-55,57-60,62-84,86-87
+  s_b6d332c56aa1c5::t_eacae4704bcff5 3,37,40,61,92,103,105
+  s_b6d332c56aa1c5::t_98bd3963aab4cb 6
+  s_b6d332c56aa1c5::t_86b63b7c0cacf2 94,104,109
+  s_b6d332c56aa1c5::t_75687305d2eb4f 1-2,4-5,7-33,39,41-42,50-51,56,85,88-91,93,95-102,106-108,110-111
+packages/modules/apps/frontend/src/__tests__/fixtures.ts
+  s_b6d332c56aa1c5::t_b9ff1199df2f33 25
+  s_b6d332c56aa1c5::t_9cec6ddc7bf7e1 1-24,26-38
+packages/modules/apps/frontend/src/apps.api.test.ts
+  s_b6d332c56aa1c5::t_08e8019861712a 94-97,103
+packages/modules/apps/frontend/src/components/publish/AppLinkField.test.ts
+  s_b6d332c56aa1c5::t_0704daebc30d40 1-8,14-15
+  s_b6d332c56aa1c5::t_05af4bd0017fb2 9-13
+packages/modules/apps/frontend/src/components/AppPublishButton.test.ts
+  s_b6d332c56aa1c5::t_c4e2b0e71e0b36 8,13,18,64-70,89,91-92,95,127,129-130,134,136,187,193,195-197
+  s_b6d332c56aa1c5::t_b9ff1199df2f33 39
+  s_b6d332c56aa1c5::t_eacae4704bcff5 97
+packages/modules/apps/backend/src/app.repository.ts
+  s_b6d332c56aa1c5::t_492d0707a49797 1,41,47
+packages/modules/apps/frontend/src/components/publish/AppVisibilitySelect.vue
+  s_b6d332c56aa1c5::t_4e8c3b6d60e070 1-71
+docs/generated/postgres-schema/README.md
+  s_b6d332c56aa1c5::t_e90b9988f5acca 57,1005
+docs/generated/postgres-schema/public.app.md
+  s_b6d332c56aa1c5::t_d9ca0b397c565c 72
+docs/generated/postgres-schema/public.app_artifact.md
+  s_b6d332c56aa1c5::t_6d85c8ae7e87a3 63
+docs/generated/postgres-schema/public.app_version.md
+  s_b6d332c56aa1c5::t_8d7041bf57cfdf 13,63
+docs/generated/sqlite-schema/README.md
+  s_b6d332c56aa1c5::t_0a0e1604d41dd2 57,991
+docs/generated/sqlite-schema/app.md
+  s_b6d332c56aa1c5::t_06142184973da9 77
+docs/generated/sqlite-schema/app_artifact.md
+  s_b6d332c56aa1c5::t_5cbef1a29e7e98 60
+docs/generated/sqlite-schema/app_version.md
+  s_b6d332c56aa1c5::t_6ce98f59463174 9,24,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b0a0b57394b1311ca98c8650a1c0b9e1d93f4ef1",
+  "prompts": {},
+  "sessions": {
+    "s_b6d332c56aa1c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f6b2437c-b582-4a87-95e4-7349acfdcb64",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
