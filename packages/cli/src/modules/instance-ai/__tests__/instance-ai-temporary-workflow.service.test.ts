@@ -50,6 +50,7 @@ function createService() {
 		nodeUsageEnabled: false,
 		nodeContextEnabled: false,
 		folderExplorationEnabled: false,
+		approvalModesEnabled: false,
 		instanceContextEnabled: false,
 		assistantSkillsEnabled: false,
 	});

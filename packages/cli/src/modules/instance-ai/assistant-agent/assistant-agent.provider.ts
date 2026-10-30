@@ -250,6 +250,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				proxyRunConfig,
 				experimentGates,
 				...(trace ? { tracing: trace.context } : {}),
+				attachesAgent: request.attachments?.some((attachment) => attachment.type === 'agent'),
 			},
 			runtime,
 		);
