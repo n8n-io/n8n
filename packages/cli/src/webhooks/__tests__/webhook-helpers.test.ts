@@ -1624,7 +1624,7 @@ describe('executeWebhook form content type', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		webhookService.runWebhook.mockResolvedValue({});
 
@@ -2481,7 +2481,7 @@ describe('executeWebhook in responseNode mode when the Respond node never runs',
 	 */
 	const startWebhook = async () => {
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -2677,6 +2677,7 @@ describe('executeWebhook response-mode callback contract', () => {
 			mock<IWorkflowExecuteAdditionalData>({
 				// A real string: the formPage branch builds a URL from it.
 				formWaitingBaseUrl: 'http://localhost:5678/form-waiting',
+				otel: undefined,
 			}),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
@@ -2863,7 +2864,7 @@ describe('executeWebhook on engine v2', () => {
 		vi.clearAllMocks();
 
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		ownershipService.getWorkflowProjectCached.mockResolvedValue(
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
@@ -3533,7 +3534,7 @@ describe('executeWebhook when the node webhook throws', () => {
 			mock<Project>({ id: 'project-1', name: 'Project 1' }),
 		);
 		vi.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(
-			mock<IWorkflowExecuteAdditionalData>(),
+			mock<IWorkflowExecuteAdditionalData>({ otel: undefined }),
 		);
 		engineV2Dispatcher.handlesWorkflow.mockReturnValue(false);
 		if (webhookResult !== undefined) {

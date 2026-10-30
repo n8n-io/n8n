@@ -30,10 +30,11 @@ Only these tracers export spans:
 - When another OTel setup is already registered at startup, for example with
   `NODE_OPTIONS=--require @opentelemetry/auto-instrumentations-node/register`, n8n leaves it
   alone. Workflow spans then go to that setup, and the n8n OTel settings have no effect.
-- Workflow spans never join a trace that is active in the process. An inbound `traceparent`
-  header still sets the parent.
-- n8n sends `traceparent` on outbound requests only when OTel is on and
-  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. It never sends `baggage`.
+- Workflow spans never join a trace that is active in the process. The trace headers of a
+  webhook request still set the parent.
+- n8n reads trace headers on webhooks and sends them on outbound requests only when OTel is on
+  and `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. The `baggage` that a caller sends to a webhook
+  goes out again on the requests of that execution.
 
 `OTEL_*` env vars fill in what the n8n settings do not set:
 
@@ -55,15 +56,16 @@ There are two ways to add the headers:
   its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
   helper is public, so a community node can use it too.
 
-`getTraceHeaders()` returns `traceparent`, and also `tracestate` when the trace has one. It
+`getTraceHeaders()` returns `traceparent`, and also `tracestate` and `baggage` when the
+execution has them. It
 returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
 off, or when no execution runs. Use the result without a guard.
 
 Both ways write the headers with the global propagator. `OtelService` installs it from the
 settings: W3C trace context and baggage when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is on, nothing
 when it is off. When another OTel setup is already registered, its propagator stays in
-control. `ExecutionLevelTracer` keeps a private trace context propagator only to save the
-trace context on the execution, which must work when outbound headers are off.
+control. The execution row keeps the trace context and baggage in one fixed W3C format, so a
+resume, a queue worker or a sub-workflow continues the trace also when outbound headers are off.
 
 Both ways obey these rules:
 
@@ -87,7 +89,8 @@ project name holds the user's name and email.
 - `ExecutionIdentitySpanProcessor` copies the identity from that key to each span at start.
   It never reads baggage: a caller can send `n8n.*` entries in an inbound `baggage` header,
   but cannot write the private key.
-- The tracer never makes this context active. `getActiveContext` returns the span only.
+- The tracer never makes this context active. `getActiveContext` returns it with the running
+  span, so the spans of an agent run carry the identity too.
 - Each segment of an execution builds the identity from the current workflow name and
   project, because a workflow can be renamed or moved during a wait. A later segment runs
   the workflow saved at the start, so it reads the current name from the database.
@@ -95,8 +98,7 @@ project name holds the user's name and email.
   when the project lookup fails. A reconstructed crash span reads it, so it shows the
   identity of the last segment.
 
-This key is n8n's single source of truth for the execution identity. Inbound and outbound
-baggage (GOV-143) decides what it reads from this key and what it adds to baggage.
+This key is n8n's single source of truth for the execution identity. Baggage never carries it.
 
 ### Start marker spans
 

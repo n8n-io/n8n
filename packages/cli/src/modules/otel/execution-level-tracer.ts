@@ -1,16 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { Attributes, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
-import {
-	context,
-	defaultTextMapGetter,
-	defaultTextMapSetter,
-	propagation,
-	ROOT_CONTEXT,
-	SpanStatusCode,
-	trace,
-} from '@opentelemetry/api';
-import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
+import { defaultTextMapSetter, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
+import { isTimeInputHrTime } from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -33,9 +25,8 @@ import {
 } from './execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
-import type { TracingContext } from './tracing-context';
+import { fromTracingContext, toTracingContext, type TracingContext } from './tracing-context';
 
-const propagator = new W3CTraceContextPropagator();
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -67,7 +58,7 @@ export class ExecutionLevelTracer {
 		try {
 			const identity = resolveWorkflowIdentity(params);
 			const parentCtx = withExecutionIdentity(
-				this.parseTraceParentHeaders(params.tracingContext),
+				fromTracingContext(params.tracingContext),
 				identity,
 			);
 			const links = this.buildContinuationLinks(params.linkTo);
@@ -104,7 +95,7 @@ export class ExecutionLevelTracer {
 				);
 			}
 
-			return toTracingParentContext(span, identity);
+			return { ...toTracingContext(workflowContext), identity };
 		} catch (error) {
 			this.logger.warn('Failed to start workflow span', {
 				executionId: params.executionId,
@@ -194,7 +185,7 @@ export class ExecutionLevelTracer {
 					...identity,
 				},
 			},
-			withExecutionIdentity(this.parseTraceParentHeaders(params.tracingContext), identity),
+			withExecutionIdentity(fromTracingContext(params.tracingContext), identity),
 		);
 	}
 
@@ -237,7 +228,7 @@ export class ExecutionLevelTracer {
 			}
 
 			// Keyed by node name — names are unique within a workflow and this is what
-			// the outbound header injection path passes (see `findMostSpecificSpan`).
+			// the outbound header injection path passes (see `getActiveContext`).
 			executionNodes.set(params.node.name, { span });
 		} catch (error) {
 			this.logger.warn('Failed to start node span', {
@@ -286,16 +277,18 @@ export class ExecutionLevelTracer {
 	}
 
 	/**
-	 * Returns the OTel context of the most specific active span for an
-	 * execution — its running node, falling back to the workflow span — so
-	 * callers outside this module (e.g. an agent run invoked from a workflow
-	 * node) can nest their own spans under it instead of starting a
-	 * disconnected trace. Undefined when neither span is active (e.g. otel
-	 * disabled, or the execution/node isn't tracked here).
+	 * Returns the execution's context with its running node's span, falling back to
+	 * the workflow span, so callers outside this module (e.g. an agent run invoked
+	 * from a workflow node) can nest their own spans under it.
 	 */
 	getActiveContext(executionId: string, nodeName?: string): Context | undefined {
-		const span = this.findMostSpecificSpan(executionId, nodeName);
-		return span ? trace.setSpan(context.active(), span) : undefined;
+		const workflow = this.activeWorkflowSpans.get(executionId);
+		if (!workflow) return undefined;
+
+		const node = nodeName
+			? this.activeNodeSpansByExecutionId.get(executionId)?.get(nodeName)
+			: undefined;
+		return node ? trace.setSpan(workflow.context, node.span) : workflow.context;
 	}
 
 	injectTraceHeaders(
@@ -304,10 +297,8 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			const span = this.findMostSpecificSpan(executionId, nodeName);
-			if (!span) return;
-
-			propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
+			const ctx = this.getActiveContext(executionId, nodeName);
+			if (ctx) propagation.inject(ctx, headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -334,15 +325,8 @@ export class ExecutionLevelTracer {
 		}
 	}
 
-	private parseTraceParentHeaders(tracingContext?: TracingContext): Context {
-		if (!tracingContext) return ROOT_CONTEXT;
-		return propagator.extract(ROOT_CONTEXT, tracingContext, defaultTextMapGetter);
-	}
-
 	private buildContinuationLinks(linkTo?: TracingContext) {
-		if (!linkTo) return undefined;
-		const extracted = propagator.extract(ROOT_CONTEXT, linkTo, defaultTextMapGetter);
-		const spanContext = trace.getSpanContext(extracted);
+		const spanContext = linkTo && trace.getSpanContext(fromTracingContext(linkTo));
 		if (!spanContext) return undefined;
 		return [
 			{
@@ -350,14 +334,6 @@ export class ExecutionLevelTracer {
 				attributes: { [ATTR.CONTINUATION_REASON]: 'resume' },
 			},
 		];
-	}
-
-	private findMostSpecificSpan(executionId: string, nodeName?: string): Span | undefined {
-		return (
-			(nodeName
-				? this.activeNodeSpansByExecutionId.get(executionId)?.get(nodeName)?.span
-				: undefined) ?? this.activeWorkflowSpans.get(executionId)?.span
-		);
 	}
 
 	private endDanglingNodeSpans(executionId: string, reason = 'workflow_cancelled'): void {
@@ -405,12 +381,6 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 			projectId: params.project?.id,
 		})
 	);
-}
-
-function toTracingParentContext(span: Span, identity: ExecutionIdentity): TracingContext {
-	const carrier: Record<string, string> = {};
-	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
-	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate, identity };
 }
 
 // Only a recorded SDK span has a start time. The API span type does not expose it.

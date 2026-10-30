@@ -30,10 +30,12 @@ export class OtelModule implements ModuleInterface {
 
 	async context(): Promise<ModuleContext> {
 		const { ExecutionLevelTracer } = await import('./execution-level-tracer.js');
+		const { extractTracingContext } = await import('./tracing-context.js');
 		const tracer = Container.get(ExecutionLevelTracer);
 
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
+			extractTracingContext,
 		};
 	}
 
