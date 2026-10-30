@@ -38,6 +38,7 @@ import {
 	createChatUser,
 	createMember,
 	createOwner,
+	createServiceAccountWithProject,
 	createUser,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -1136,6 +1137,19 @@ describe('project member reviewers', () => {
 			'No reviewer can edit these workflows',
 		);
 		expect(await configurations.list(project.id)).toEqual([]);
+	});
+
+	// Only a person can review a fix.
+	it('does not count a service account that can edit workflows in the project group', async () => {
+		await disableInstanceAdmins();
+		const { user, project, input } = await teamFixture();
+		const serviceAccount = await createServiceAccountWithProject();
+		await linkUserToProject(serviceAccount, project, 'project:editor');
+		await linkUserToProject(user, project, 'project:viewer');
+
+		await expect(configurations.save(user, project.id, input)).rejects.toThrow(
+			'No reviewer can edit these workflows',
+		);
 	});
 
 	it('counts a global admin who is a project member through the project group', async () => {

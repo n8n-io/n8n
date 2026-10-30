@@ -281,7 +281,7 @@ export class SelfHealingConfigurationRepository extends BaseRepository<SelfHeali
 
 	private reviewerMembers(configuration: SelfHealingConfiguration, ctx: OperationContext) {
 		const query = this.managerFor(ctx)
-			.createQueryBuilder(User, 'user')
+			.createQueryBuilder(Person, 'user')
 			.innerJoin(SelfHealingConfiguration, 'configuration', 'configuration.id = :configurationId', {
 				configurationId: configuration.id,
 			})
