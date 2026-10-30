@@ -103,15 +103,18 @@ export class ExecutionCrashService {
 		return crashed;
 	}
 
-	/** One insert at a time, so a large sweep does not take the whole connection pool. */
+	/** Chained, so batches and sweeps insert one row at a time and do not take the whole pool. */
+	private endedWrites = Promise.resolve();
+
 	private recordEnded(executions: CrashedExecution[], stoppedAtOverride?: Date) {
 		if (!this.executionLedger.isEnabled || executions.length === 0) return;
 
-		void (async () => {
-			for (const execution of executions) {
-				await this.executionLedger.recordEnded(toEndedFactsFromCrash(execution, stoppedAtOverride));
-			}
-		})();
+		const facts = executions.map((execution) =>
+			toEndedFactsFromCrash(execution, stoppedAtOverride),
+		);
+		this.endedWrites = this.endedWrites.then(async () => {
+			for (const fact of facts) await this.executionLedger.recordEnded(fact);
+		});
 	}
 
 	private count(executions: CrashedExecution[]) {
