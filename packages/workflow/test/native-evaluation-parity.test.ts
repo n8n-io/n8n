@@ -872,6 +872,7 @@ describe('Expression - fast native evaluation parity', () => {
 		const data = runDataFor(items);
 		const expr = '={{ $input.all().length }}';
 
+		expect(nativeOutcome(expr, { data, items }).handled).toBe(true);
 		expect(evaluate(expr, false, data, items)).toBe(1);
 		expect(evaluate(expr, true, data, items)).toBe(1);
 	});
@@ -888,6 +889,7 @@ describe('Expression - fast native evaluation parity', () => {
 		const data = runDataFor(items);
 		const expr = "={{ ($('Source').first().json.count || -1) }}";
 
+		expect(nativeOutcome(expr, { data, items }).handled).toBe(true);
 		expect(evaluate(expr, false, data, items)).toBe(3);
 		expect(evaluate(expr, true, data, items)).toBe(3);
 	});
@@ -908,6 +910,7 @@ describe('Expression - fast native evaluation parity', () => {
 			const { parameters } = workflow.getNode('Current')!;
 			parameters.nested = "={{ ($('Source').first().json.name ?? 'fallback') }}";
 			try {
+				expect(nativeOutcome('={{ $parameter.nested }}', { data, items }).handled).toBe(true);
 				expect(evaluate('={{ $parameter.nested }}', false, data, items)).toBe('Acme');
 				expect(evaluate('={{ $parameter.nested }}', true, data, items)).toBe('Acme');
 			} finally {
