@@ -1,11 +1,9 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 /**
- * Index `execution_entity.workflowId` on its own. The 2024 index refactor dropped
- * the only index that started with `workflowId` and had no partial condition, so
- * the foreign key cascade from `workflow_entity` and the batch lookup in
- * `hardDeleteByWorkflowId`, which include soft-deleted rows, scanned the whole
- * table on every workflow deletion.
+ * Index `workflowId` on its own, for the foreign key cascade from `workflow_entity`
+ * and for lookups that include soft-deleted rows. The partial indexes on
+ * `workflowId` cover only live rows.
  */
 export class AddExecutionEntityWorkflowIdIndex1793353882390 implements ReversibleMigration {
 	async up({ schemaBuilder: { createIndex } }: MigrationContext) {
