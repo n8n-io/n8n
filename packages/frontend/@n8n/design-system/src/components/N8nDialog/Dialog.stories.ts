@@ -19,7 +19,8 @@ import N8nIconButton from '../N8nIconButton';
 import N8nCheckbox from '../../v2/components/Checkbox/Checkbox.vue';
 import N8nInput from '../N8nInput/Input.vue';
 import N8nInputLabel from '../N8nInputLabel/InputLabel.vue';
-import N8nMenuItem from '../N8nMenuItem';
+import N8nListbox from '../../v2/components/Listbox/Listbox.vue';
+import N8nListboxItem from '../../v2/components/Listbox/ListboxItem.vue';
 import N8nModalSidebar from '../N8nModalSidebar';
 import N8nSwitch2 from '../N8nSwitch/Switch.vue';
 import N8nSelect2 from '../../v2/components/Select/Select.vue';
@@ -783,7 +784,7 @@ export const ModalSidebar: Story = {
 		docs: {
 			description: {
 				story:
-					'N8nModalSidebar sits in the dialog body. The body does not scroll. The sidebar and the main area scroll on their own. The rows are menu items.',
+					'N8nModalSidebar sits in the dialog body. The body does not scroll. The sidebar and the main area scroll on their own. Arrow keys move through the files.',
 			},
 		},
 	},
@@ -794,8 +795,10 @@ export const ModalSidebar: Story = {
 			N8nDialogHeader,
 			N8nDialogTitle,
 			N8nButton,
+			N8nIcon,
 			N8nIconButton,
-			N8nMenuItem,
+			N8nListbox,
+			N8nListboxItem,
 			N8nModalSidebar,
 			N8nText,
 		},
@@ -803,6 +806,11 @@ export const ModalSidebar: Story = {
 			const isOpen = ref(false);
 			const width = ref(240);
 			const activeId = ref(pluginReadme.id);
+
+			function menuIcon(item: IMenuItem) {
+				return typeof item.icon === 'string' ? item.icon : undefined;
+			}
+
 			return {
 				isOpen,
 				width,
@@ -811,6 +819,7 @@ export const ModalSidebar: Story = {
 				pluginFileSections,
 				pluginFiles,
 				pluginFileDetails,
+				menuIcon,
 			};
 		},
 		template: `
@@ -826,34 +835,42 @@ export const ModalSidebar: Story = {
 				<N8nDialogBody style="padding: 0; overflow: hidden; border-block: var(--border);">
 					<div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
 						<N8nModalSidebar v-model:width="width" label="Plugin files" :min-width="180" :max-width="360">
-							<div style="display: flex; flex-direction: column; padding: var(--spacing--2xs) 0;">
-								<div style="padding: 0 var(--spacing--3xs) var(--spacing--2xs);">
-									<N8nMenuItem
-										:item="pluginReadme"
-										:active="activeId === pluginReadme.id"
-										@click="activeId = pluginReadme.id"
-									/>
-								</div>
-								<section v-for="section in pluginFileSections" :key="section.id">
-									<div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--4xs); margin: var(--spacing--4xs) var(--spacing--3xs) 0; padding: var(--spacing--4xs) var(--spacing--3xs);">
-										<N8nText size="small" color="text-light" bold>{{ section.label }}</N8nText>
-										<N8nIconButton
-											icon="plus"
-											variant="ghost"
-											size="xsmall"
-											:aria-label="section.addLabel"
-										/>
-									</div>
-									<div style="display: flex; flex-direction: column; padding: var(--spacing--2xs) var(--spacing--3xs);">
-										<N8nMenuItem
+							<div style="padding-block: var(--spacing--xs); padding-inline: calc(var(--spacing--xs) + var(--spacing--xs));">
+								<N8nListbox
+									v-model="activeId"
+									variant="flush"
+									size="small"
+									max-height="none"
+									aria-label="Plugin files"
+									style="width: 100%; --listbox-flush-highlight-inset-inline: var(--spacing--xs); --listbox-flush-highlight-inset-block: 0px; --listbox-flush-gap: var(--spacing--5xs); --listbox-row-min-height: var(--spacing--xl); --listbox-row-padding-block: var(--spacing--4xs); --listbox-label-line-height: var(--font-size--lg);"
+								>
+									<N8nListboxItem :value="pluginReadme.id" :label="pluginReadme.label">
+										<template #leading>
+											<N8nIcon v-if="menuIcon(pluginReadme)" :icon="menuIcon(pluginReadme)" />
+										</template>
+									</N8nListboxItem>
+									<template v-for="section in pluginFileSections" :key="section.id">
+										<div style="display: flex; align-items: center; justify-content: space-between; gap: var(--spacing--4xs); margin-top: var(--spacing--xs); padding-block: var(--spacing--4xs);" @keydown.stop>
+											<N8nText size="small" color="text-light" bold>{{ section.label }}</N8nText>
+											<N8nIconButton
+												icon="plus"
+												variant="ghost"
+												size="xsmall"
+												:aria-label="section.addLabel"
+											/>
+										</div>
+										<N8nListboxItem
 											v-for="item in section.items"
 											:key="item.id"
-											:item="item"
-											:active="item.id === activeId"
-											@click="activeId = item.id"
-										/>
-									</div>
-								</section>
+											:value="item.id"
+											:label="item.label"
+										>
+											<template #leading>
+												<N8nIcon v-if="menuIcon(item)" :icon="menuIcon(item)" />
+											</template>
+										</N8nListboxItem>
+									</template>
+								</N8nListbox>
 							</div>
 						</N8nModalSidebar>
 
