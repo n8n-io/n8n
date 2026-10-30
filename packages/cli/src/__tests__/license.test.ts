@@ -3,7 +3,6 @@ import { mockInstance, mockLogger } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
 import type { SettingsRepository } from '@n8n/db';
 import { LicenseManager } from '@n8n_io/license-sdk';
-import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { InstanceSettings } from 'n8n-core';
 import type { MockedClass } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -376,24 +375,6 @@ describe('License', () => {
 				}
 			},
 		);
-
-		it('activate on a follower main in queue mode publishes', async () => {
-			const { Publisher } = await import('@/scaling/pubsub/publisher.service.js');
-			const publisher = mockInstance(Publisher, { publishCommand: vi.fn() });
-			license = new License(
-				mockLogger(),
-				mock<InstanceSettings>({ instanceType: 'main', isLeader: false }),
-				mock(),
-				mock(),
-				mock<GlobalConfig>({ license: licenseConfig, executions: { mode: 'queue' } }),
-			);
-			await license.init();
-
-			await license.activate(MOCK_ACTIVATION_KEY);
-			await new Promise(setImmediate);
-
-			expect(publisher.publishCommand).toHaveBeenCalledWith({ command: 'reload-license' });
-		});
 	});
 
 	describe('reload', () => {
@@ -510,33 +491,6 @@ describe('License', () => {
 			await license.reload();
 
 			expect(callback).toHaveBeenCalledWith('');
-		});
-
-		it('should call callbacks on license activation', async () => {
-			const subscriber = vi.fn();
-			license.onCertRefresh(subscriber);
-
-			await license.activate(MOCK_ACTIVATION_KEY);
-
-			expect(subscriber).toHaveBeenCalledTimes(1);
-		});
-
-		it('should load the renewed cert before calling callbacks', async () => {
-			const { calls, instances } = (LicenseManager as MockedClass<typeof LicenseManager>).mock;
-			const certLoaded = createDeferredPromise();
-			vi.mocked(instances[instances.length - 1]).reloadStoredCert.mockReturnValue(
-				certLoaded.promise,
-			);
-			const subscriber = vi.fn();
-			license.onCertRefresh(subscriber);
-
-			calls[calls.length - 1][0].onLicenseRenewed!();
-			await new Promise(setImmediate);
-			expect(subscriber).not.toHaveBeenCalled();
-
-			certLoaded.resolve();
-			await new Promise(setImmediate);
-			expect(subscriber).toHaveBeenCalledTimes(1);
 		});
 
 		it('should call multiple registered callbacks', async () => {

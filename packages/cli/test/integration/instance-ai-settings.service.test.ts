@@ -209,7 +209,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 	it('saves enabled on Enterprise only once a thread exists', async () => {
 		vi.spyOn(Container.get(License), 'getPlanName').mockReturnValue('Enterprise');
 
-		await service.keepEnabledIfInUse();
+		await service.loadFromDb();
 
 		expect(service.isInstanceAiEnabled()).toBe(false);
 		await expect(settingsRepository.findByKey('instanceAi.settings')).resolves.toBeNull();
@@ -218,7 +218,7 @@ describe('InstanceAiSettingsService (integration)', () => {
 		await threadRepository.save(
 			threadRepository.create({ id: randomUUID(), resourceId: owner.id, projectId: project.id }),
 		);
-		await service.keepEnabledIfInUse();
+		await service.loadFromDb();
 
 		const persisted = await settingsRepository.findByKey('instanceAi.settings');
 		expect(persisted?.value).toContain('"enabled":true');

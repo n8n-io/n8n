@@ -359,10 +359,11 @@ export class InstanceAiSettingsService {
 	}
 
 	/**
-	 * Enterprise defaults to off, but an instance that already uses the Assistant stays on.
+	 * Runs at startup. Enterprise defaults to off, but an instance that already uses the
+	 * Assistant stays on.
 	 * Threads are deleted with their user, so save the choice instead of re-checking them.
 	 */
-	async keepEnabledIfInUse(): Promise<void> {
+	private async keepEnabledIfInUse(): Promise<void> {
 		if (this.enabled !== undefined || this.config.enabled !== undefined) return;
 		if (!this.license.isEnterprisePlan() || !(await this.threadRepository.exists())) return;
 		await this.withPersistedAdminSettings(async (ctx, persisted) => {

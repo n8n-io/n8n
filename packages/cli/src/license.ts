@@ -184,8 +184,6 @@ export class License implements LicenseProvider {
 
 	private async onLicenseRenewed() {
 		void this.broadcastReloadLicenseCommand();
-		// The SDK calls this callback before it loads the renewed cert.
-		await this.manager?.reloadStoredCert();
 		await this.notifyRefreshCallbacks();
 	}
 
@@ -242,10 +240,6 @@ export class License implements LicenseProvider {
 		}
 
 		await this.manager.activate(activationKey, { eulaUri, email: userEmail });
-		// Like a renewal, activation stores a new cert on this main only.
-		// The SDK fires no callback for it, so notify here.
-		void this.broadcastReloadLicenseCommand();
-		await this.notifyRefreshCallbacks();
 		this.logger.debug('License activated');
 	}
 

@@ -1,4 +1,4 @@
-import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -44,21 +44,6 @@ export class InstanceAiModule implements ModuleInterface {
 		Container.get(SandboxSettingsService).registerCredentialUses();
 		credentialBroker.registerUse(INSTANCE_AI_SEARCH_CREDENTIAL_POLICY);
 		await settingsService.loadFromDb();
-		// The default depends on the license plan, so re-check it and refresh the cached
-		// frontend settings when the license changes.
-		const { License } = await import('@/license.js');
-		Container.get(License).onCertRefresh(() => {
-			void settingsService
-				.keepEnabledIfInUse()
-				.finally(
-					async () => await Container.get(ModuleRegistry).refreshModuleSettings('instance-ai'),
-				)
-				.catch((error: unknown) => {
-					Container.get(Logger)
-						.scoped('instance-ai')
-						.error('Failed to apply a license change to the n8n Assistant', { error });
-				});
-		});
 		// Instantiating the setup telemetry service registers its settings-updated
 		// listener. A setup finished by env vars only becomes observable at boot,
 		// so the once-per-instance completion telemetry is also checked here.
