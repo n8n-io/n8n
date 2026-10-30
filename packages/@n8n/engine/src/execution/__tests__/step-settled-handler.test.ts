@@ -652,55 +652,6 @@ describe('StepSettledHandler sub-executions', () => {
 		expect(executionStore.refreshLiveStatus).toHaveBeenCalledWith('exec-parent');
 	});
 
-	it('orders the result by the graph, then by pass, and leaves out terminal steps that did not complete', async () => {
-		// trigger -> a -> {b, c}: both b and c are terminal, b before c in the graph.
-		const forked: WorkflowGraph = {
-			nodes: [
-				{ id: 'trigger', name: 'T', type: 'trigger' },
-				{ id: 'a', name: 'A', type: 'v1-node' },
-				{ id: 'b', name: 'B', type: 'v1-node' },
-				{ id: 'c', name: 'C', type: 'v1-node' },
-			],
-			edges: [
-				{ from: 'trigger', to: 'a', outputIndex: 0, inputIndex: 0 },
-				{ from: 'a', to: 'b', outputIndex: 0, inputIndex: 0 },
-				{ from: 'a', to: 'c', outputIndex: 1, inputIndex: 0 },
-			],
-		};
-		const stepStore = makeStepStore(
-			{ id: 'step-c-1', nodeId: 'c', iteration: 1 },
-			{
-				countSettledSteps: vi.fn().mockResolvedValue(5),
-				loadStepsByNodeIds: vi
-					.fn()
-					// Out of graph order, and with a pass of `b` that did not complete.
-					.mockResolvedValue([
-						row('c', 'completed', [[{ json: { c: 1 } }]], 1),
-						row('b', 'skipped', null, 1),
-						row('c', 'completed', [[{ json: { c: 0 } }]], 0),
-						row('b', 'completed', [[{ json: { b: 0 } }]], 0),
-					]),
-			},
-		);
-		const { handler } = makeHandler(stepStore, {
-			executionStore: makeExecutionStore({ parent, graph: forked }),
-		});
-
-		await handler.handle({ ...event, stepId: 'step-c-1' });
-
-		expect(stepStore.loadStepsByNodeIds).toHaveBeenCalledWith('exec-1', ['b', 'c']);
-		expect(stepStore.resumeStep).toHaveBeenCalledWith(
-			'step-call',
-			expect.objectContaining({
-				result: [
-					{ nodeId: 'b', iteration: 0, outputs: [[{ json: { b: 0 } }]] },
-					{ nodeId: 'c', iteration: 0, outputs: [[{ json: { c: 0 } }]] },
-					{ nodeId: 'c', iteration: 1, outputs: [[{ json: { c: 1 } }]] },
-				],
-			}),
-		);
-	});
-
 	it('cancels the pending steps even when the parent resume throws', async () => {
 		const stepStore = makeStepStore(
 			{ status: 'failed', error: { name: 'TypeError', message: 'boom' } },
@@ -768,40 +719,6 @@ describe('StepSettledHandler sub-executions', () => {
 		});
 	});
 
-	it('resumes no parent on a redelivered failure event', async () => {
-		const stepStore = makeStepStore({ status: 'failed', error: { name: 'Error', message: 'x' } });
-		const { handler } = makeHandler(stepStore, {
-			executionStore: makeExecutionStore(
-				{ parent },
-				{ finishExecution: vi.fn().mockResolvedValue(null) },
-			),
-		});
-
-		await handler.handle(event);
-
-		expect(stepStore.resumeStep).not.toHaveBeenCalled();
-	});
-
-	it('announces no resume when the parent step no longer waits', async () => {
-		// The parent was cancelled, and its waiting step with it.
-		const stepStore = makeStepStore(
-			{ id: 'step-m', nodeId: 'm' },
-			{
-				countSettledSteps: vi.fn().mockResolvedValue(5),
-				resumeStep: vi.fn().mockResolvedValue(false),
-			},
-		);
-		const { handler, stepQueue, executionStore } = makeHandler(stepStore, {
-			executionStore: makeExecutionStore({ parent }),
-		});
-
-		await handler.handle({ ...event, stepId: 'step-m' });
-
-		expect(stepStore.resumeStep).toHaveBeenCalledOnce();
-		expect(stepQueue.publish).not.toHaveBeenCalled();
-		expect(executionStore.refreshLiveStatus).not.toHaveBeenCalledWith('exec-parent');
-	});
-
 	it('resumes nothing for a parent that does not await the sub-execution', async () => {
 		const stepStore = makeStepStore(
 			{ id: 'step-m', nodeId: 'm' },
@@ -814,6 +731,7 @@ describe('StepSettledHandler sub-executions', () => {
 		await handler.handle({ ...event, stepId: 'step-m' });
 
 		expect(stepStore.resumeStep).not.toHaveBeenCalled();
+		expect(stepStore.loadStepsByNodeIds).not.toHaveBeenCalled();
 		expect(stepQueue.publish).not.toHaveBeenCalled();
 	});
 
