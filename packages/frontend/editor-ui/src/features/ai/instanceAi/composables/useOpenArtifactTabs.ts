@@ -135,6 +135,10 @@ export function useOpenArtifactTabs({
 		);
 	}
 
+	function hasTab(tabId: string) {
+		return findTab(tabId) !== undefined;
+	}
+
 	/**
 	 * Close a tab. Returns the id of the tab to show instead: the next tab, or
 	 * the previous one when the closed tab was the last.
@@ -298,6 +302,7 @@ export function useOpenArtifactTabs({
 		isLoaded,
 		storedActiveTab,
 		storedPreviewOpen,
+		hasTab,
 		closeTab,
 		reopenTab,
 		openTab,

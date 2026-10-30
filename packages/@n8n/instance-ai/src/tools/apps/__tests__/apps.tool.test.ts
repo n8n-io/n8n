@@ -65,6 +65,7 @@ function setup(metadata: Record<string, unknown> = {}) {
 	const { thread, memory } = createThread(metadata);
 	const trackTelemetry = vi.fn();
 	const onArtifactChanged = vi.fn();
+	const logger = { warn: vi.fn() };
 	const context = {
 		userId: 'user-1',
 		threadId: 'thread-1',
@@ -74,11 +75,19 @@ function setup(metadata: Record<string, unknown> = {}) {
 		workspace: {},
 		trackTelemetry,
 		onArtifactChanged,
+		logger,
 	} as unknown as InstanceAiContext;
 	vi.mocked(readBaseVersion).mockResolvedValue(undefined);
 	vi.mocked(checkOutDraft).mockResolvedValue(null);
 	vi.mocked(packAppFolder).mockResolvedValue(ARCHIVE);
-	return { tool: createAppsTool(context), appService, thread, trackTelemetry, onArtifactChanged };
+	return {
+		tool: createAppsTool(context),
+		appService,
+		thread,
+		trackTelemetry,
+		onArtifactChanged,
+		logger,
+	};
 }
 
 describe('apps tool', () => {
@@ -253,6 +262,39 @@ describe('apps tool', () => {
 			build_status: 'failed',
 			build_stage: 'build',
 		});
+	});
+
+	it('returns a saved commit when the app cannot be read after it', async () => {
+		const { tool, appService, onArtifactChanged, logger } = setup();
+		vi.mocked(readBaseVersion).mockResolvedValue('v1');
+		appService.commit.mockResolvedValue({
+			versionId: 'v2',
+			status: 'succeeded',
+			attempts: 1,
+			statusUpdatedAt: null,
+		});
+		appService.getApp.mockRejectedValue(new Error('Database unavailable'));
+
+		const result = await executeTool(tool, { action: 'commit', appId: SERVER_ID, label: 'Edit' });
+
+		expect(result).toEqual({ app: { id: SERVER_ID }, versionId: 'v2', buildStatus: 'succeeded' });
+		expect(writeBaseVersion).toHaveBeenCalledWith({}, SERVER_ID, 'v2');
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+		expect(logger.warn).toHaveBeenCalledWith('Failed to report the changed app', {
+			appId: SERVER_ID,
+			error: 'Database unavailable',
+		});
+	});
+
+	it('returns a created app when the artifact report fails', async () => {
+		const { tool, appService, onArtifactChanged, logger } = setup();
+		appService.createApp.mockResolvedValue(app(SERVER_ID));
+		onArtifactChanged.mockRejectedValue(new Error('Event bus unavailable'));
+
+		const result = await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
+
+		expect(result).toMatchObject({ app: { id: SERVER_ID }, path: `apps/${SERVER_ID}` });
+		expect(logger.warn).toHaveBeenCalled();
 	});
 
 	it('keeps the base when the commit fails, so the folder is not lost', async () => {

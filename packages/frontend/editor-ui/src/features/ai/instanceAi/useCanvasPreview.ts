@@ -399,9 +399,10 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	/**
 	 * Open or switch the preview to a skill or an app.
 	 * Returns true if the preview tab changed; false if the tab was already
-	 * active (so the caller can fall back to opening in a new tab instead).
+	 * active or does not exist (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openArtifactPreview(artifactId: string): boolean {
+		if (!tabs.hasTab(artifactId)) return false;
 		if (activeTabId.value === artifactId && isPreviewOpen.value) return false;
 		selectTab(artifactId);
 		return true;

@@ -1303,6 +1303,13 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeSkillId.value).toBe('skill-1');
 			expect(ctx.openSkillPreview('skill-1')).toBe(false);
 		});
+
+		test('openAppPreview does not switch to an app without a tab', () => {
+			const ctx = setup();
+
+			expect(ctx.openAppPreview('app-unknown')).toBe(false);
+			expect(ctx.activeTabId.value).toBeUndefined();
+		});
 	});
 
 	describe('close data table on delete', () => {

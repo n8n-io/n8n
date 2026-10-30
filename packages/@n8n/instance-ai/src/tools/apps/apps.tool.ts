@@ -52,17 +52,30 @@ function commitResult({ versionId, status, diagnostics }: AppBuildResponse) {
 	};
 }
 
+type AppSummary = { id: string; name: string; projectId: string };
+
 async function reportChangedApp(
 	context: InstanceAiContext,
-	app: { id: string; name: string; projectId: string },
-) {
-	await addAppTarget(context, { appId: app.id, projectId: app.projectId });
-	await context.onArtifactChanged?.({
-		type: 'app',
-		id: app.id,
-		name: app.name,
-		projectId: app.projectId,
-	});
+	appId: string,
+	loadApp: () => Promise<AppSummary>,
+): Promise<AppSummary | undefined> {
+	try {
+		const app = await loadApp();
+		await addAppTarget(context, { appId: app.id, projectId: app.projectId });
+		await context.onArtifactChanged?.({
+			type: 'app',
+			id: app.id,
+			name: app.name,
+			projectId: app.projectId,
+		});
+		return app;
+	} catch (error) {
+		context.logger.warn('Failed to report the changed app', {
+			appId,
+			error: error instanceof Error ? error.message : String(error),
+		});
+		return undefined;
+	}
 }
 
 async function open(workspace: Workspace, apps: InstanceAiAppService, appId: string) {
@@ -85,7 +98,7 @@ async function createApp(
 		existing ??
 		(await apps.createApp({ name: input.name, namespace: input.namespace, id: pendingId }));
 	const { path } = await open(workspace, apps, app.id);
-	await reportChangedApp(context, app);
+	await reportChangedApp(context, app.id, async () => app);
 	return existing ? { app, path, alreadyCreated: true } : { app, path };
 }
 
@@ -107,8 +120,7 @@ async function commit(
 		label,
 	);
 	await writeBaseVersion(workspace, appId, build.versionId);
-	const app = await apps.getApp(appId);
-	await reportChangedApp(context, app);
+	const app = await reportChangedApp(context, appId, async () => await apps.getApp(appId));
 	context.trackTelemetry?.('instance_ai_app_change_committed', {
 		thread_id: context.threadId,
 		app_id: appId,
@@ -116,7 +128,10 @@ async function commit(
 		build_status: build.status,
 		build_stage: build.diagnostics?.stage ?? null,
 	});
-	return { app: { id: app.id, name: app.name, projectId: app.projectId }, ...commitResult(build) };
+	return {
+		app: app ? { id: app.id, name: app.name, projectId: app.projectId } : { id: appId },
+		...commitResult(build),
+	};
 }
 
 async function handle(
