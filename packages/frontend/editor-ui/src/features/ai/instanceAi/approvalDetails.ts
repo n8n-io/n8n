@@ -342,8 +342,8 @@ export function formatApprovalTitle(params: {
 		: executionAction
 			? `instanceAi.tools.workflow_builder_executions.${executionAction}`
 			: action
-			? `instanceAi.tools.${toolName}.${action}`
-			: `instanceAi.tools.${toolName}`;
+				? `instanceAi.tools.${toolName}.${action}`
+				: `instanceAi.tools.${toolName}`;
 	if (resourceName) {
 		const namedKey = approvalTitleKeys.get(`${keyBase}.imperativeWithResource`);
 		if (namedKey) {

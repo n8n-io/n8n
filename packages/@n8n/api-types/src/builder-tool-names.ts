@@ -254,9 +254,7 @@ export const EXECUTION_TOOL_NAME_BY_ACTION = {
 
 export type ExecutionToolAction = keyof typeof EXECUTION_TOOL_NAME_BY_ACTION;
 
-export const EXECUTION_TOOL_NAMES: readonly string[] = Object.values(
-	EXECUTION_TOOL_NAME_BY_ACTION,
-);
+export const EXECUTION_TOOL_NAMES: readonly string[] = Object.values(EXECUTION_TOOL_NAME_BY_ACTION);
 
 function isExecutionToolAction(key: string): key is ExecutionToolAction {
 	return Object.hasOwn(EXECUTION_TOOL_NAME_BY_ACTION, key);
