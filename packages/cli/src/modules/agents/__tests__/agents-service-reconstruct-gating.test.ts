@@ -1111,6 +1111,8 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			);
 			expect(getInjectedToolNames()).toEqual(expect.arrayContaining(planToolNames));
 			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
+			const eagerToolNames = builtAgent.nativeToolDeferral.mock.calls[0][0].eagerToolNames;
+			expect(eagerToolNames.includes('check_background_jobs')).toBe(backgroundTasksEnabled);
 			if (backgroundTasksEnabled) {
 				expect(getInjectedToolNames()).toContain('check_background_jobs');
 				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);

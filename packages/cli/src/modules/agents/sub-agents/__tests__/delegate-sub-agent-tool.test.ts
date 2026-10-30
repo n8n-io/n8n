@@ -637,4 +637,13 @@ describe('formatSubAgentToolOutput', () => {
 			finishReason: 'stop',
 		});
 	});
+
+	it('tells the parent model when the child files could not be listed', () => {
+		const filesError = 'The files of the sub-agent could not be listed';
+
+		expect(formatSubAgentToolOutput({ ...foregroundResult, filesError })).toMatchObject({
+			status: 'completed',
+			filesError,
+		});
+	});
 });

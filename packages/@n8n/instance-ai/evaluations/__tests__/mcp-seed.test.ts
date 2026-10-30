@@ -2,11 +2,16 @@ import type { N8nClient } from '../clients/n8n-client';
 import { reconstructSeedFromThread } from '../harness/langsmith-seed';
 import type { EvalLogger } from '../harness/logger';
 import { executePriorRuns } from '../harness/prior-runs';
+import { restoreRecordedRuns } from '../harness/recorded-runs';
 import type { CaseSeed } from '../harness/schema';
 import { prepareMcpBuildSeed } from '../run/mcp-seed';
 import type { ConversationTurn, ExecutionScenario } from '../types';
 
 vi.mock('../harness/prior-runs', () => ({ executePriorRuns: vi.fn() }));
+vi.mock('../harness/recorded-runs', async (importOriginal) => ({
+	...(await importOriginal<typeof import('../harness/recorded-runs')>()),
+	restoreRecordedRuns: vi.fn(),
+}));
 vi.mock('../harness/langsmith-seed', () => ({ reconstructSeedFromThread: vi.fn() }));
 
 const silentLogger: EvalLogger = {
@@ -99,6 +104,7 @@ async function prepare(
 describe('prepareMcpBuildSeed', () => {
 	beforeEach(() => {
 		vi.mocked(executePriorRuns).mockReset();
+		vi.mocked(restoreRecordedRuns).mockReset();
 		vi.mocked(reconstructSeedFromThread).mockReset();
 	});
 
@@ -232,6 +238,45 @@ describe('prepareMcpBuildSeed', () => {
 		expect(client).toBe(clients.owner);
 		expect(seedWorkflows.get('wf-seed-0001')?.id).toBe(prepared?.workflowIds[0]);
 		expect(prepared?.priorRunFailed).toBe('wf-seed-0001: boom');
+	});
+
+	it('restores recorded runs on the restored workflow, before the prior runs', async () => {
+		const clients = makeClients();
+		vi.mocked(restoreRecordedRuns).mockResolvedValue(['exec-1']);
+		vi.mocked(executePriorRuns).mockResolvedValue([]);
+		const envelope = { source: { executionId: 'src-1' } } as never;
+
+		const prepared = await prepare(clients, {
+			seed: inlineSeed({
+				workflows: [seedWorkflow('wf-seed-0001', 'Order sync')],
+				recordedRuns: [{ workflow: 'wf-seed-0001', envelope }],
+				priorRuns: [{ workflow: 'wf-seed-0001' }],
+			}),
+		});
+
+		const { client, threadId, seedWorkflows, recordedRuns } =
+			vi.mocked(restoreRecordedRuns).mock.calls[0][0];
+		expect(client).toBe(clients.owner);
+		expect(threadId).toBe(prepared?.threadId);
+		expect(recordedRuns).toEqual([{ workflow: 'wf-seed-0001', envelope }]);
+		expect(seedWorkflows.get('wf-seed-0001')?.id).toBe(prepared?.workflowIds[0]);
+		expect(vi.mocked(restoreRecordedRuns).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(executePriorRuns).mock.invocationCallOrder[0],
+		);
+	});
+
+	it('fails the seeding when a recorded run cannot be restored', async () => {
+		const clients = makeClients();
+		vi.mocked(restoreRecordedRuns).mockRejectedValue(new Error('restore-execution 400'));
+
+		await expect(
+			prepare(clients, {
+				seed: inlineSeed({
+					workflows: [seedWorkflow('wf-seed-0001', 'Order sync')],
+					recordedRuns: [{ workflow: 'wf-seed-0001', envelope: {} as never }],
+				}),
+			}),
+		).rejects.toThrow(/restore-execution 400/);
 	});
 
 	it('reuses a seed table a scenario also declares, and creates the rest empty', async () => {

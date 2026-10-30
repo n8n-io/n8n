@@ -897,6 +897,8 @@ async function backgroundWaitingExecution(
 			// matching the settle hook's projection.
 			const settlementStatus = settlementStatusForExecution(rawStatus);
 			const runData = full.data?.resultData?.runData;
+			// Store the files one time. The tool result and the job list the same file IDs.
+			const finished = await finishResult(fresh, context, ctx, inputFiles);
 			await jobService.settle(jobId, {
 				status: settlementStatus,
 				result:
@@ -904,12 +906,15 @@ async function backgroundWaitingExecution(
 						? serializeWorkflowJobResult(collectResultData(runData, false))
 						: null,
 				error: fresh.error ?? null,
+				files: settlementStatus === 'completed' && finished.files?.length ? finished.files : null,
+				skippedFiles:
+					settlementStatus === 'completed' && finished.skippedFiles ? finished.skippedFiles : null,
 			});
 			// The tool returns the result directly. Mark it as delivered
 			// even if another writer settled the job.
 			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
-			return { ...(await finishResult(fresh, context, ctx, inputFiles)), jobId };
+			return { ...finished, jobId };
 		}
 
 		const continuesAt = result.wait?.waitTill

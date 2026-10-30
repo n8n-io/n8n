@@ -187,6 +187,12 @@ describe('createDelegateSubAgentTool', () => {
 		},
 	);
 
+	it('tells the model to pass files in fileIds', () => {
+		expect(createDelegateSubAgentTool().systemInstruction).toContain(
+			'Pass files in fileIds, not in the goal or context text.',
+		);
+	});
+
 	it('uses a host-provided system instruction instead of the built-in guidance', () => {
 		const tool = createDelegateSubAgentTool({
 			name: 'agent',
@@ -1148,6 +1154,14 @@ describe('renderDelegateSubAgentPrompt', () => {
 		expect(prompt).toContain('YOUR TASK:\nFind it.');
 		expect(prompt).toContain('CONTEXT:\nauth endpoints');
 		expect(prompt).toContain('EXPECTED OUTPUT:\na summary');
+	});
+
+	it('lists the file IDs the child can use', () => {
+		expect(renderDelegateSubAgentPrompt({ goal: 'Find it.' })).not.toContain('FILES');
+
+		const prompt = renderDelegateSubAgentPrompt({ goal: 'Find it.', fileIds: ['f1', 'f2'] });
+
+		expect(prompt).toContain('FILES (pass these fileIds to tools):\nf1\nf2');
 	});
 
 	it('uses generic summary guidance for delegated work', () => {

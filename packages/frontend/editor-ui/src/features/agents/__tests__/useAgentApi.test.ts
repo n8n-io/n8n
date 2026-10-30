@@ -20,6 +20,7 @@ import {
 	stopAgentBackgroundJobs,
 	updateAgentQueuedMessage,
 	getChatMessages,
+	getChatAttachmentUrl,
 	listAgents,
 	listAgentsPage,
 	listN8nChatAgents,
@@ -337,6 +338,16 @@ describe('useAgentApi', () => {
 			],
 			[restApiContext, 'POST', `${path}/queue%2F1/steer`, { executionId: 'A' }],
 		]);
+	});
+
+	describe('getChatAttachmentUrl', () => {
+		it('adds the session thread only when given', () => {
+			const url = getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1');
+			expect(url).toBe('/rest/projects/p1/agents/v2/a1/chat/attachments/att-1');
+			expect(getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1', 'chat', 'th/1')).toBe(
+				`${url}?threadId=th%2F1`,
+			);
+		});
 	});
 
 	describe('getChatMessages', () => {

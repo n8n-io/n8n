@@ -522,7 +522,8 @@ How it differs from the manifest flow:
 - **Seeded cases.** A case `seed` (inline or replay) is restored before `claude`
   starts, through an owner thread bound to the build user's project
   (`run/mcp-seed.ts`). Workflows, data tables, folders and Agents land in that
-  project and are exposed to MCP (`availableInMCP`), prior runs execute, and a
+  project and are exposed to MCP (`availableInMCP`), recorded runs are restored,
+  prior runs execute, and a
   seeded team project is shared with the build user as a viewer. The opening
   message names an attached workflow or Agent with its id. `claude` has no n8n
   thread, so the earlier conversation is sent as text before the opening

@@ -160,6 +160,36 @@ describe('Agent file read grants', () => {
 		).rejects.toThrow(`File "${file.id}" not found in this conversation`);
 	});
 
+	it('passes a file to a grandchild and returns the child output to the parent', async () => {
+		const tree = await createTree();
+		const input = await storeFile(tree.root);
+		await service.grantToSubAgent([input.id], {
+			projectId,
+			parentThreadId: tree.root,
+			childThreadId: tree.child,
+		});
+		await service.grantToSubAgent([input.id], {
+			projectId,
+			parentThreadId: tree.child,
+			childThreadId: tree.grandchild,
+		});
+		expect(await canRead(input.id, tree.grandchild)).toBe(true);
+
+		const output = await storeFile(tree.grandchild);
+		expect(await canRead(output.id, tree.child)).toBe(false);
+
+		const files = await service.returnToParent({
+			projectId,
+			parentThreadId: tree.child,
+			childThreadId: tree.grandchild,
+		});
+
+		expect(files).toEqual([
+			{ fileId: output.id, fileName: 'file.txt', mimeType: 'text/plain', sizeBytes: 1 },
+		]);
+		expect(await canRead(output.id, tree.child)).toBe(true);
+	});
+
 	it('deletes grants with their file', async () => {
 		const tree = await createTree();
 		const file = await storeFile(tree.root);

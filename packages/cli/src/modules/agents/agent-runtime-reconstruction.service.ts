@@ -95,6 +95,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
 import { AGENT_PLAN_TOOL_NAMES } from './plans/agent-plan.schema';
+import { BACKGROUND_JOB_TOOL_NAMES } from './background/background-job-messages';
 import { createGetEnvironmentTool, GET_ENVIRONMENT_TOOL_NAME } from './tools/environment-tool';
 import {
 	createMarkSessionFailedTool,
@@ -1056,7 +1057,8 @@ export class AgentRuntimeReconstructionService {
 				RECALL_MEMORY_TOOL_NAME,
 				FLAG_MEMORY_TOOL_NAME,
 				...Object.values(AGENT_PLAN_TOOL_NAMES),
-				'resume_background_jobs',
+				// Only top-level runs with background tasks get these tools.
+				...(params.backgroundTasksEnabled ? Object.values(BACKGROUND_JOB_TOOL_NAMES) : []),
 			],
 		});
 
