@@ -26,6 +26,7 @@ export interface ErrorValueSentinel extends TransferSentinel {
 	__message: string;
 	__stack?: string;
 	__props: unknown;
+	__nonEnumerableKeys?: string[];
 	__cause?: unknown;
 	__json?: unknown;
 	__jsonKeys?: string[];
@@ -33,15 +34,31 @@ export interface ErrorValueSentinel extends TransferSentinel {
 
 type Encode = (value: unknown) => unknown;
 
+const BUILT_IN_ERROR_KEYS = new Set(['name', 'message', 'stack', 'cause']);
+
 export function isErrorTransferSentinel(value: unknown): value is ErrorValueSentinel {
 	return transferTypeOf(value) === ERROR_TYPE;
 }
 
-/** The own keys of an Error that hold data. A function cannot cross the boundary. */
-function dataPropsOf(error: Error): Record<string, unknown> {
-	return Object.fromEntries(
-		Object.entries(error).filter(([, value]) => typeof value !== 'function'),
-	);
+/** Keep custom fields and their visibility. Hidden built-in fields use separate markers. */
+function dataPropsOf(
+	error: Error,
+	encodeChild: Encode,
+): Pick<ErrorValueSentinel, '__props' | '__nonEnumerableKeys'> {
+	const props: Record<string, unknown> = {};
+	const nonEnumerableKeys: string[] = [];
+	for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(error))) {
+		if (descriptor.enumerable || !BUILT_IN_ERROR_KEYS.has(key)) {
+			const value: unknown = Reflect.get(error, key);
+			if (typeof value !== 'function') {
+				defineOwnValue(props, key, value);
+				if (!descriptor.enumerable) {
+					nonEnumerableKeys.push(key);
+				}
+			}
+		}
+	}
+	return { __props: encodeChild(props), __nonEnumerableKeys: nonEnumerableKeys };
 }
 
 /** The `cause` an Error got from its constructor options. That key is not enumerable. */
@@ -86,7 +103,7 @@ export function errorToSentinel(error: Error, encodeChild: Encode): ErrorValueSe
 		[TRANSFER_TYPE_KEY]: ERROR_TYPE,
 		__name: String(error.name),
 		__message: String(error.message),
-		__props: encodeChild(dataPropsOf(error)),
+		...dataPropsOf(error, encodeChild),
 		...(typeof error.stack === 'string' ? { __stack: error.stack } : {}),
 		...hiddenCauseOf(error, encodeChild),
 		...jsonFormOf(error, encodeChild),
@@ -105,7 +122,10 @@ export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Enc
 		.filter(([key, value]) => typeof value === 'string' && !Object.hasOwn(props, key))
 		.filter(([key, value]) => value !== Reflect.get(error, key))
 		.forEach(([key, value]) => defineOwnValue(error, key, value, false));
-	Object.entries(props).forEach(([key, value]) => defineOwnValue(error, key, value));
+	const nonEnumerableKeys = new Set(sentinel.__nonEnumerableKeys);
+	Object.entries(props).forEach(([key, value]) =>
+		defineOwnValue(error, key, value, !nonEnumerableKeys.has(key)),
+	);
 
 	if ('__cause' in sentinel) {
 		defineOwnValue(error, 'cause', decodeChild(sentinel.__cause), false);

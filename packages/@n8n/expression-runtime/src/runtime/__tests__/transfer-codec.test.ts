@@ -10,6 +10,84 @@ describe.each([
 			unwrapTransferredValue(structuredClone(__prepareForTransfer(value))),
 	},
 ])('transfer codec ($name)', ({ roundTrip }) => {
+	describe.each([
+		{ label: 'function', value: () => 1 },
+		{ label: 'Promise', value: Promise.resolve(1) },
+		{ label: 'symbol', value: Symbol('detail') },
+	])('an Error with a $label', ({ value }) => {
+		it('omits the value from fields, cause and the JSON form', () => {
+			const error = Object.assign(new TypeError('original', { cause: value }), {
+				detail: value,
+				code: 400,
+				toJSON: () => value,
+			});
+
+			const result = roundTrip(error) as typeof error;
+
+			expect(result).toBeInstanceOf(TypeError);
+			expect(result.message).toBe('original');
+			expect(result.code).toBe(400);
+			expect(result.detail).toBeUndefined();
+			expect(result.cause).toBeUndefined();
+			expect(result.toJSON()).toBeUndefined();
+		});
+
+		it('omits nested values from fields, cause and the JSON form', () => {
+			const detail = { code: 400, values: [value, { value }] };
+			const error = Object.assign(new Error('original', { cause: detail }), {
+				detail,
+				toJSON: () => detail,
+			});
+
+			const result = roundTrip(error) as typeof error;
+			const expected = { code: 400, values: [undefined, { value: undefined }] };
+
+			expect(result.detail).toStrictEqual(expected);
+			expect(result.cause).toBe(result.detail);
+			expect(result.toJSON()).toBe(result.detail);
+		});
+	});
+
+	it('keeps non-enumerable custom fields out of the default JSON form', () => {
+		const error = Object.assign(new TypeError('original'), { visible: true });
+		Object.defineProperties(error, {
+			code: { value: 400 },
+			detail: { value: new Error('inner') },
+			['__proto__']: { value: { source: 'data' } },
+		});
+
+		const result = roundTrip(error) as Error & { detail: Error };
+
+		expect(result).toBeInstanceOf(TypeError);
+		expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+			value: 400,
+			enumerable: false,
+		});
+		expect(result.detail).toBeInstanceOf(Error);
+		expect(result.detail.message).toBe('inner');
+		expect(Object.getOwnPropertyDescriptor(result, '__proto__')).toMatchObject({
+			value: { source: 'data' },
+			enumerable: false,
+		});
+		expect(Object.keys(result)).toEqual(['visible']);
+		expect(JSON.stringify(result)).toBe('{"visible":true}');
+	});
+
+	it('keeps enumerable built-in fields', () => {
+		const error = new Error('original');
+		Object.defineProperties(error, {
+			name: { value: 'CustomError', enumerable: true },
+			message: { value: 'changed', enumerable: true },
+			stack: { value: 'custom stack', enumerable: true },
+			cause: { value: 400, enumerable: true },
+		});
+
+		const result = roundTrip(error) as Error;
+
+		expect(Object.keys(result)).toEqual(Object.keys(error));
+		expect(JSON.stringify(result)).toBe(JSON.stringify(error));
+	});
+
 	it('serializes the current fields in the JSON form of an Error', () => {
 		class EditableError extends Error {
 			description: string | undefined = 'original';
@@ -77,7 +155,7 @@ describe.each([
 		expect(JSON.stringify(result)).toBe(JSON.stringify(json));
 	});
 
-	it('keeps a JSON field whose source property does not cross the boundary', () => {
+	it('updates a non-enumerable field in the JSON form', () => {
 		const error = Object.assign(new Error('original'), {
 			toJSON(this: Error) {
 				return { message: this.message, hidden: Reflect.get(this, 'hidden') };
@@ -87,10 +165,11 @@ describe.each([
 		const result = roundTrip(error) as Error;
 
 		result.message = 'changed';
+		Reflect.set(result, 'hidden', 'changed hidden');
 
 		expect(JSON.parse(JSON.stringify(result))).toStrictEqual({
 			message: 'changed',
-			hidden: 'from toJSON',
+			hidden: 'changed hidden',
 		});
 	});
 
