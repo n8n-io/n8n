@@ -400,6 +400,18 @@ describe('TelegramIntegration secret token', () => {
 		expect(request.body.secret_token).toBe(expectedSecret('cluster-key', 'agent-Z', 'cred-Z'));
 	});
 
+	it('onAfterConnect resets stale allowed_updates filters when registering the webhook', async () => {
+		const { integration, requestMock } = makeIntegration();
+		requestMock.mockResolvedValue({ statusCode: 200, body: {} });
+
+		await integration.onAfterConnect(makeContext());
+
+		const request = requestMock.mock.calls[0][0] as {
+			body: { allowed_updates: string[] };
+		};
+		expect(request.body.allowed_updates).toEqual([]);
+	});
+
 	it('onAfterConnect uses the default safe client (user-configurable Bot API host)', async () => {
 		const { integration, requestMock, outboundHttp } = makeIntegration();
 		requestMock.mockResolvedValue({ statusCode: 200, body: {} });

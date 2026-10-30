@@ -216,6 +216,9 @@ export class TelegramIntegration extends AgentChatIntegration {
 		const response = await this.botApiRequest(ctx.credential, 'setWebhook', {
 			url: webhookUrl,
 			secret_token: secretToken,
+			// Reset any filter left by a previous webhook owner. Telegram otherwise
+			// reuses it, which can prevent approval callback queries from reaching us.
+			allowed_updates: [],
 		});
 		if (!this.isOkStatus(response.statusCode)) {
 			throw new Error(`Failed to register Telegram webhook: ${this.stringifyBody(response.body)}`);
