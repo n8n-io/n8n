@@ -1,7 +1,11 @@
 import type { AgentDefinitionService } from '@/modules/agents/agent-definition.service';
 /* eslint-disable @typescript-eslint/require-await, @typescript-eslint/unbound-method -- async mock stubs, unbound-method references and short `cb` names are acceptable test idioms */
 
-import { DEFAULT_AGENT_PERSONALISATION, N8N_CHAT_INTEGRATION_TYPE } from '@n8n/api-types';
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	N8N_CHAT_INTEGRATION_TYPE,
+	type ListAgentsQueryDto,
+} from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import type { Telemetry } from '@/telemetry';
 import { AgentConfigPreparationService } from '../agent-config-preparation.service';
@@ -13,6 +17,7 @@ import type { NodeToolAiGatewayService } from '../json-config/node-tool-ai-gatew
 import type { EventService, ProjectScopeService } from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type {
+	Project,
 	ProjectRelationRepository,
 	TransactionRunner,
 	User,
@@ -1438,23 +1443,41 @@ describe('AgentsService', () => {
 	});
 
 	describe('findListableByUserPaginated', () => {
-		const user = { id: 'user-1' } as unknown as User;
-
-		it('scopes to agent:list, the scope the project list route requires', async () => {
+		it('loads project metadata for projects where the user holds agent:list', async () => {
 			const { service, agentRepository, projectRelationRepository, projectScopeService } =
 				makeService();
+			const options: ListAgentsQueryDto = { skip: 0, take: 10 };
+			const response = {
+				count: 1,
+				data: [makeAgent({ project: mock<Project>({ id: projectId, name: 'Support Team' }) })],
+			};
 			projectScopeService.getProjectIds.mockResolvedValue(['project-1', 'project-2']);
-			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
-			const options = { skip: 0, take: 10 } as never;
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue(response);
 
-			await service.findListableByUserPaginated(user, options);
+			await expect(service.findListableByUserPaginated(user, options)).resolves.toBe(response);
 
 			expect(projectScopeService.getProjectIds).toHaveBeenCalledWith(user, ['agent:list']);
 			expect(projectRelationRepository.findAllByUser).not.toHaveBeenCalled();
 			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(
 				['project-1', 'project-2'],
 				options,
+				{ withProject: true },
 			);
+		});
+
+		it('passes an empty project list when the user has no listable projects', async () => {
+			const { service, agentRepository, projectScopeService } = makeService();
+			const options: ListAgentsQueryDto = { skip: 0, take: 10 };
+			projectScopeService.getProjectIds.mockResolvedValue([]);
+			agentRepository.findByProjectIdsPaginated.mockResolvedValue({ count: 0, data: [] });
+
+			await expect(service.findListableByUserPaginated(user, options)).resolves.toEqual({
+				count: 0,
+				data: [],
+			});
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith([], options, {
+				withProject: true,
+			});
 		});
 
 		it('passes a null project scope through, so a global role sees every project', async () => {
@@ -1465,7 +1488,9 @@ describe('AgentsService', () => {
 
 			await service.findListableByUserPaginated(user, options);
 
-			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(null, options);
+			expect(agentRepository.findByProjectIdsPaginated).toHaveBeenCalledWith(null, options, {
+				withProject: true,
+			});
 		});
 	});
 

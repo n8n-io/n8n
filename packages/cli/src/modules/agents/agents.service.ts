@@ -728,7 +728,9 @@ export class AgentsService {
 		options: ListAgentsQueryDto,
 	): Promise<AgentListResult> {
 		const projectIds = await this.projectScopeService.getProjectIds(user, ['agent:list']);
-		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options);
+		return await this.agentRepository.findByProjectIdsPaginated(projectIds, options, {
+			withProject: true,
+		});
 	}
 
 	/**
