@@ -13,6 +13,7 @@ import type {
 	CommandGroup,
 } from '../types';
 import { ACTIONS_TAB, ALL_TAB, PAGE_SIZE, PREVIEW_LIMIT, useCommandBar } from './useCommandBar';
+import { useNodeCommands } from './useNodeCommands';
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
 	...(await importOriginal()),
@@ -120,7 +121,7 @@ vi.mock('./useRecentResources', () => ({
 		}),
 }));
 vi.mock('./useNodeCommands', () => ({
-	useNodeCommands: () =>
+	useNodeCommands: vi.fn(() =>
 		group([{ id: 'add-sticky', title: 'Add sticky note', section: 'Nodes' }], {
 			source: {
 				id: 'nodes',
@@ -133,6 +134,7 @@ vi.mock('./useNodeCommands', () => ({
 				}),
 			},
 		}),
+	),
 }));
 vi.mock('./useWorkflowCommands', () => ({
 	useWorkflowCommands: () => group([subWorkflowAction]),
@@ -211,6 +213,24 @@ describe('useCommandBar', () => {
 		nodeEntries.value = items('node', 25);
 		assistantCommands.value = [];
 		renderCommandBar();
+	});
+
+	it('limits canvas highlights to an open command bar on the canvas', async () => {
+		const [options] = vi.mocked(useNodeCommands).mock.calls[0];
+		currentRoute.value = { name: VIEWS.WORKFLOW, params: {} };
+		await open();
+		await search('example.com');
+		expect(options.query.value).toBe('example.com');
+
+		commandBar.isOpen.value = false;
+		await nextTick();
+		expect(options.query.value).toBe('');
+
+		await open();
+		await search('example.com');
+		currentRoute.value = { name: VIEWS.WORKFLOWS, params: {} };
+		await nextTick();
+		expect(options.query.value).toBe('');
 	});
 
 	it('initializes the groups and node types when it opens', async () => {
