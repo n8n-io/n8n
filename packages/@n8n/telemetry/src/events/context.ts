@@ -505,6 +505,42 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
 		}),
 	},
+	SKILL_SOURCE_UPDATE_FOUND: {
+		name: 'Skill source update found',
+		description:
+			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			trigger: z
+				.enum(['background', 'manual'])
+				.describe(
+					'`background` is the check that runs on its own, every hour by default. `manual` is Check now',
+				),
+			skills_with_updates: z.number().describe('Synced skills with a new update in this check'),
+			pass: z.number().describe('New updates that the security check passed'),
+			needs_review: z.number().describe('New updates that the security check flagged for review'),
+			blocked: z.number().describe('New updates that the security check blocked'),
+		}),
+	},
+	USER_CHECKED_SKILL_SOURCE_NOW: {
+		name: 'User checked skill source now',
+		description:
+			'A user clicked Check for updates on a synced skill, which checks its whole source. Fires once per click, also when the check fails, with the reason code, and when n8n did not check again because the source was checked less than a minute ago.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			updates_found: z
+				.number()
+				.describe('Skills of the source with an update that waits for review, after the check'),
+			throttled: z
+				.boolean()
+				.describe(
+					'True when the source was checked less than a minute ago, so n8n did not check it again',
+				),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
 	USER_STOPPED_SKILL_SYNC: {
 		name: 'User stopped skill sync',
 		description:

@@ -53,6 +53,15 @@ const globalOptions = {
 			props: ['projectId', 'app', 'versions'],
 			template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
 		},
+		AppConfigure: {
+			props: ['app', 'versions', 'tab'],
+			emits: ['updated', 'update:tab'],
+			template: `<div data-test-id="app-view-configure">
+				<span data-test-id="configure-tab">{{ tab }}</span>
+				<button data-test-id="configure-select-basics" @click="$emit('update:tab', 'basics')" />
+				<button data-test-id="configure-rename" @click="$emit('updated', { ...app, name: 'Renamed app' })" />
+			</div>`,
+		},
 	},
 };
 
@@ -154,11 +163,37 @@ describe('AppView', () => {
 		expect(queryByTestId('app-view-preview')).not.toBeInTheDocument();
 	});
 
-	it('opens the configure tab for a configure section with a sub-tab', async () => {
+	it.each([
+		['configure', 'basics'],
+		['configure.basics', 'basics'],
+		['configure.unknown', 'basics'],
+	])('opens the configure tab %s on the %s sub-tab', async (section, subTab) => {
 		vi.mocked(getApp).mockResolvedValue(app('app-1'));
-		const { findByTestId } = renderComponent({ props: { section: 'configure.authentication' } });
+		const { findByTestId } = renderComponent({ props: { section } });
 
-		expect(await findByTestId('app-view-configure')).toBeInTheDocument();
+		expect(await findByTestId('configure-tab')).toHaveTextContent(subTab);
+	});
+
+	it('emits the configure section when the sub-tab changes', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId, emitted } = renderComponent({
+			props: { section: 'configure' },
+		});
+		await findByTestId('app-view-configure');
+
+		await userEvent.click(getByTestId('configure-select-basics'));
+
+		expect(emitted('update:section')).toEqual([['configure.basics']]);
+	});
+
+	it('shows the app from a configure update', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId } = renderComponent({ props: { section: 'configure' } });
+		await findByTestId('app-view-configure');
+
+		await userEvent.click(getByTestId('configure-rename'));
+
+		expect(getByTestId('app-header')).toHaveTextContent('Renamed app');
 	});
 
 	it('emits the section when the tab changes', async () => {

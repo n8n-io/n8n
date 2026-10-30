@@ -1,5 +1,9 @@
 <script setup lang="ts">
-import { promotionDirectionSchema, type PromotionDirection } from '@n8n/api-types';
+import {
+	isPromotionGitHostType,
+	promotionDirectionSchema,
+	type PromotionDirection,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -102,10 +106,14 @@ async function retry(environment: PromotionEnvironment) {
 }
 
 async function remove(environment: PromotionEnvironment) {
+	// Only a Promote environment on a Git host has promotion reviews to close.
+	const hasReviews =
+		environment.direction === 'promote' && isPromotionGitHostType(environment.provider.type);
+	const messageKey = hasReviews
+		? 'settings.promotions.environment.remove.confirm.message.gitHost'
+		: 'settings.promotions.environment.remove.confirm.message';
 	const confirmed = await message.confirm(
-		i18n.baseText('settings.promotions.environment.remove.confirm.message', {
-			interpolate: { name: environment.name },
-		}),
+		i18n.baseText(messageKey, { interpolate: { name: environment.name } }),
 		i18n.baseText('settings.promotions.environment.remove.confirm.title'),
 		{
 			confirmButtonText: i18n.baseText('settings.promotions.environment.remove.confirm.button'),

@@ -4,7 +4,12 @@
 // reconstruct each seed workflow from its source at the build boundary. Transient:
 // traces retain ~14 days.
 
-import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
+import {
+	DATA_TABLE_TOOL_NAMES,
+	isFormerDataTablesTool,
+	REMOVED_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
@@ -489,7 +494,9 @@ function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number)
 			// Redact data-table row payloads: seeded messages are written to the eval
 			// instance + shown to the judge, so real (PII) rows must not ride along.
 			const toolName = resolveTraceToolName(tool.name);
-			const isDataTable = toolName.split('[')[0] === DOMAIN_TOOL_IDS.DATA_TABLES;
+			const baseToolName = toolName.split('[')[0];
+			const isDataTable =
+				DATA_TABLE_TOOL_NAMES.includes(baseToolName) || isFormerDataTablesTool(baseToolName);
 			content.push({
 				type: 'tool-call',
 				toolCallId,

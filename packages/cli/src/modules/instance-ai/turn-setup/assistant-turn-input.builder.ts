@@ -81,10 +81,14 @@ import {
 import { ONBOARDING_OPENING } from '../onboarding-opening';
 import { type OrchestratorResumeReason } from '../tracing';
 
-/** Workflow/agent attachments carry a display name; a nodes attachment doesn't. */
+/**
+ * Workflow/agent attachments carry a display name; a nodes attachment doesn't.
+ * An unsaved agent has only a placeholder name, so it cannot title a thread.
+ */
 function isNamedResourceAttachment(
 	attachment: InstanceAiResourceAttachment,
 ): attachment is InstanceAiWorkflowAttachment | InstanceAiAgentAttachment {
+	if (attachment.type === 'agent' && attachment.pending) return false;
 	return attachment.type !== 'nodes' && Boolean(attachment.name);
 }
 
