@@ -64,6 +64,7 @@ import {
 import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
+import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { DeprecatedNodesValidationService } from '@/workflows/deprecated-nodes-validation.service';
 
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
@@ -686,9 +687,14 @@ describe('WorkflowExecuteAdditionalData', () => {
 					new Error('Node "Trigger" does not have access to the credential'),
 				);
 			const failPolicyCheck = () =>
-				vi
-					.mocked(Container.get(SubworkflowPolicyChecker).check)
-					.mockRejectedValueOnce(new Error('Target workflow refuses this caller'));
+				vi.mocked(Container.get(SubworkflowPolicyChecker).check).mockRejectedValueOnce(
+					new SubworkflowPolicyDenialError({
+						subworkflowId: 'sub-id',
+						subworkflowProject: mock<Project>({ type: 'team', name: 'Team Project' }),
+						hasReadAccess: false,
+						instanceUrl: 'http://localhost:5678',
+					}),
+				);
 
 			it('starts the sub-workflow error workflow and fails the caller', async () => {
 				failCredentialCheck();
@@ -717,10 +723,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 				expect(WorkflowExecute).not.toHaveBeenCalled();
 			});
 
-			it('records the failure without the error workflow when the sub-workflow policy refuses the caller', async () => {
+			it('records the failure without the error workflow and keeps the warning level when the sub-workflow policy refuses the caller', async () => {
 				failPolicyCheck();
 
-				await expect(runSubWorkflow(false)).rejects.toThrow('refuses this caller');
+				const run = runSubWorkflow(false);
+
+				await expect(run).rejects.toThrow('cannot be called by this workflow');
+				await expect(run).rejects.toMatchObject({ level: 'warning' });
 
 				expect(WorkflowExecute).not.toHaveBeenCalled();
 				expect(executeErrorWorkflow).not.toHaveBeenCalled();
@@ -742,7 +751,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					if (doNotWaitToFinish) {
 						await expect(run).resolves.toEqual({ executionId: EXECUTION_ID, data: [null] });
 					} else {
-						await expect(run).rejects.toThrow('refuses this caller');
+						await expect(run).rejects.toThrow('cannot be called by this workflow');
 					}
 
 					await vi.waitFor(() =>
