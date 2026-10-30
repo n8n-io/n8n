@@ -1237,6 +1237,7 @@ export class AgentRuntimeReconstructionService {
 									buildFileUploadGuidance(
 										integrationDef.fileUploadLimits,
 										!integrationDef.disableStreaming,
+										this.agentChatAttachmentService.maxStoredFileBytes,
 									),
 								]
 							: []),
