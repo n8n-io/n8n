@@ -1,22 +1,27 @@
 #!/usr/bin/env node
 
+import { resolvePackage, analyzePackageByName, getExitCode, EXIT_CODES } from './scanner.mjs';
+
 const args = process.argv.slice(2);
 if (args.length < 1) {
 	console.error('Usage: npx @n8n/scan-community-package <package-name>[@version]');
-	process.exit(1);
+	process.exit(EXIT_CODES.ERROR);
 }
 
-import { resolvePackage, analyzePackageByName } from './scanner.mjs';
-
 const packageSpec = args[0];
-const { packageName, version } = resolvePackage(packageSpec);
 try {
+	const { packageName, version } = resolvePackage(packageSpec);
 	const result = await analyzePackageByName(packageName, version);
 
 	if (result.passed) {
 		console.log(`✅ Package ${packageName}@${result.version} has passed all security checks`);
 	} else {
-		console.log(`❌ Package ${packageName}@${result.version} has failed security checks`);
+		const label = `${packageName}@${result.version}`;
+		console.log(
+			result.error
+				? `❌ Could not complete the scan of ${label}`
+				: `❌ Package ${label} has failed security checks`,
+		);
 		console.log(`Reason: ${result.message}`);
 
 		if (result.details) {
@@ -24,7 +29,10 @@ try {
 			console.log(result.details);
 		}
 	}
+
+	// Set rather than call process.exit() so piped stdout is flushed first
+	process.exitCode = getExitCode(result);
 } catch (error) {
 	console.error('Analysis failed:', error);
-	process.exit(1);
+	process.exitCode = EXIT_CODES.ERROR;
 }

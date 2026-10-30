@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	analyzePackage,
 	buildScanConfig,
+	EXIT_CODES,
 	findPackageRoot,
+	getExitCode,
+	isSourceUnavailable,
 	parseSourceRepo,
 	SOURCE_FILE_PATTERNS,
 } from './scanner.mjs';
@@ -368,5 +371,40 @@ describe('analyzePackage', () => {
 
 		expect(result.passed).toBe(true);
 		expect(result.message).toBe('No files found to analyze');
+	});
+
+	it('marks a crash during analysis as an error, not a failed check', async () => {
+		fixtureDir = makeFixturePackage({ 'index.js': 'module.exports = {};\n' });
+
+		// fast-glob rejects non-string patterns, which throws inside the try
+		const result = await analyzePackage(fixtureDir, [42]);
+
+		expect(result.passed).toBe(false);
+		expect(result.error).toBeInstanceOf(Error);
+		expect(result.message).toMatch(/^Analysis failed: /);
+		expect(getExitCode(result)).toBe(EXIT_CODES.ERROR);
+	});
+});
+
+describe('getExitCode', () => {
+	it.each([
+		['passed', { passed: true }, 0],
+		['could not complete', { passed: false, error: new Error('npm pack failed') }, 1],
+		['failed a check', { passed: false, message: 'ESLint violations found' }, 2],
+	])('returns the code for a scan that %s', (_, result, code) => {
+		expect(getExitCode(result)).toBe(code);
+	});
+});
+
+describe('isSourceUnavailable', () => {
+	// 4xx is on the package author; everything else is a scanner-side error
+	it.each([
+		[{ response: { status: 404 } }, true],
+		[{ response: { status: 403 } }, true],
+		[{ response: { status: 502 } }, false],
+		[{ code: 'ECONNABORTED' }, false],
+		[new Error('tar extraction failed'), false],
+	])('classifies %o as %s', (error, expected) => {
+		expect(isSourceUnavailable(error)).toBe(expected);
 	});
 });
