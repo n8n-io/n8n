@@ -136,8 +136,12 @@ onMounted(() => {
 	}
 
 	// A thin thumb on a clear track, so the scrollbar blends into the panel.
+	// Always reserve the scrollbar space, so the page width stays the same on short
+	// pages and while a page loads.
 	.contentWrapper {
 		@include mixins.scroll-bar;
+
+		scrollbar-gutter: stable;
 	}
 }
 

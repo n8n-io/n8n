@@ -556,6 +556,9 @@ const onSelect = (action: string, source: CreateSource) => {
 	display: flex;
 	align-items: flex-end;
 	gap: var(--spacing--sm);
+	// Reserve the list toolbar height, so the row keeps its size on tabs without
+	// the toolbar and while a list page remounts on a tab change
+	min-height: calc(var(--height--md) + var(--spacing--3xs));
 	margin: var(--spacing--2xs) 0 var(--spacing--xs);
 	// A hairline under the whole tab row; the active tab underline paints over it.
 	box-shadow: inset 0 calc(-1 * var(--border-width, 1px)) 0 var(--border-color);
