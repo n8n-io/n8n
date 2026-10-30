@@ -287,6 +287,16 @@ describe('RestrictedTypesDialog', () => {
 			expect(hostListener).toHaveBeenCalledOnce();
 		});
 
+		it('leaves Escape to an open row popover', async () => {
+			const { getAllByTestId, emitted } = renderComponent();
+			const popover = getAllByTestId('row-popover')[0];
+			popover.setAttribute('data-escape-owner', '');
+
+			await fireEvent.keyDown(popover, { key: 'Escape' });
+
+			expect(emitted()['update:open']).toBeUndefined();
+		});
+
 		it('stays open while the contact dialog on top of it takes Escape', async () => {
 			const { getByTestId, emitted } = renderComponent();
 			await userEvent.click(getByTestId('restricted-types-contact-admin'));

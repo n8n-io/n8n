@@ -11,6 +11,7 @@ import {
 } from '@vueuse/core';
 import { computed, getCurrentInstance, nextTick, ref, watch } from 'vue';
 
+import { ESCAPE_OWNER_ATTRIBUTE } from '../composables/useCloseOnEscape';
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { useRestrictionContact, type OptionalVerdict } from '../composables/useNodeTypeRestriction';
 import {
@@ -172,6 +173,7 @@ function onContentKeydown(event: KeyboardEvent) {
 					tabindex="0"
 					role="img"
 					:aria-label="i18n.baseText(RESTRICTED_TYPE_COPY[kind].title)"
+					:[ESCAPE_OWNER_ATTRIBUTE]="open ? '' : undefined"
 					@keydown="onMarkerKeydown"
 					@pointerdown="reopen"
 				>
@@ -185,6 +187,7 @@ function onContentKeydown(event: KeyboardEvent) {
 					ref="contentRef"
 					:class="$style.popover"
 					data-test-id="node-restricted-popover"
+					:[ESCAPE_OWNER_ATTRIBUTE]="''"
 					@pointerdown.stop
 					@mousedown.prevent
 					@keydown="onContentKeydown"
