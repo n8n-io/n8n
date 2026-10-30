@@ -34,7 +34,15 @@ function baseName(fileName: string) {
 			{{ i18n.baseText('agents.chat.sessionFiles.loadFailed') }}
 		</N8nText>
 		<N8nText
-			v-else-if="!loading && files.length === 0"
+			v-else-if="loading && files.length === 0"
+			size="small"
+			color="text-light"
+			data-test-id="session-files-loading"
+		>
+			{{ i18n.baseText('agents.chat.sessionFiles.loading') }}
+		</N8nText>
+		<N8nText
+			v-else-if="files.length === 0"
 			size="small"
 			color="text-light"
 			data-test-id="session-files-empty"

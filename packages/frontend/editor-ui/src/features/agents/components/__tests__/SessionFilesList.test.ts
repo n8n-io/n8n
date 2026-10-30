@@ -30,6 +30,24 @@ describe('SessionFilesList', () => {
 		expect(getByTestId('session-files-empty')).toHaveTextContent('No files in this session yet');
 	});
 
+	it('shows a loading status instead of the empty state while the first load runs', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { files: [], fileHref, loading: true },
+		});
+
+		expect(getByTestId('session-files-loading')).toHaveTextContent('Loading session files...');
+		expect(queryByTestId('session-files-empty')).not.toBeInTheDocument();
+	});
+
+	it('keeps the list while it reloads', () => {
+		const { getByTestId, queryByTestId } = renderComponent({
+			props: { files: [file], fileHref, loading: true },
+		});
+
+		expect(getByTestId('session-file-link')).toBeInTheDocument();
+		expect(queryByTestId('session-files-loading')).not.toBeInTheDocument();
+	});
+
 	it('shows an error instead of the list when loading failed', () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: { files: [file], fileHref, error: true },
