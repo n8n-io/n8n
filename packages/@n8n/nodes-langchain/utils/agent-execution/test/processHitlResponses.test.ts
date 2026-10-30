@@ -110,6 +110,26 @@ describe('processHitlResponses', () => {
 			expect(action.metadata?.parentNodeName).toBe('HITL Node');
 		});
 
+		it('keeps the routing key when approved input contains a `tool` argument', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					createHitlActionResponse(true, {
+						...hitlMetadata,
+						originalInput: { tool: 'user-tool', query: 'test' },
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = processHitlResponses(response, 0);
+
+			const action = result.pendingGatedToolRequest?.actions[0];
+			expect(action?.input).toEqual({ tool: 'my_tool', query: 'test' });
+			expect(action?.nodeName).toBe('Gated Tool Node');
+			expect(action?.metadata?.parentNodeName).toBe('HITL Node');
+			expect(action?.input).not.toHaveProperty('_n8nOriginalToolArg');
+		});
+
 		it('removes approved HITL response from processed responses', () => {
 			const response: EngineResponse<RequestResponseMetadata> = {
 				actionResponses: [createHitlActionResponse(true, hitlMetadata)],

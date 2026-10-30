@@ -1,5 +1,6 @@
+import { BaseRepository, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, LessThan, Repository } from '@n8n/typeorm';
+import { DataSource, LessThan } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 
 import type { AgentChannelStatusValue } from '../entities/agent-channel-status.entity';
@@ -25,6 +26,12 @@ const CONFLICT_PATHS = ['agentId', 'integrationType', 'credentialId', 'hostId'] 
  */
 const MAX_ERROR_MESSAGE_LENGTH = 1024;
 
+class AgentChannelStatusTable extends BaseRepository<AgentChannelStatus> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentChannelStatus, dataSource.manager, transactionRunner);
+	}
+}
+
 /**
  * Reads and writes what each process observed about the channels it runs.
  *
@@ -38,12 +45,15 @@ const MAX_ERROR_MESSAGE_LENGTH = 1024;
  * that line and only touches rows their own owner has stopped refreshing.
  */
 @Service()
-export class AgentChannelStatusRepository extends Repository<AgentChannelStatus> {
+export class AgentChannelStatusRepository {
+	private readonly table: AgentChannelStatusTable;
+
 	constructor(
 		dataSource: DataSource,
+		transactionRunner: TransactionRunner,
 		private readonly instanceSettings: InstanceSettings,
 	) {
-		super(AgentChannelStatus, dataSource.manager);
+		this.table = new AgentChannelStatusTable(dataSource, transactionRunner);
 	}
 
 	/**
@@ -53,8 +63,13 @@ export class AgentChannelStatusRepository extends Repository<AgentChannelStatus>
 	 * present in the value literal on conflict. The message is capped here rather
 	 * than at the call sites so no caller can bloat a row with a response body.
 	 */
-	async saveOwn(ref: AgentChannelRef, observation: AgentChannelObservation): Promise<void> {
-		await this.upsert(
+	async saveOwn(
+		ref: AgentChannelRef,
+		observation: AgentChannelObservation,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.table.managerFor(ctx).upsert(
+			AgentChannelStatus,
 			{
 				...this.own(ref),
 				...observation,
@@ -66,8 +81,14 @@ export class AgentChannelStatusRepository extends Repository<AgentChannelStatus>
 	}
 
 	/** Keep this process's row counting, without disturbing its retry deadline. */
-	async refreshOwnLease(ref: AgentChannelRef, expiresAt: Date | null): Promise<void> {
-		await this.update(this.own(ref), { expiresAt, updatedAt: new Date() });
+	async refreshOwnLease(
+		ref: AgentChannelRef,
+		expiresAt: Date | null,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.table
+			.managerFor(ctx)
+			.update(AgentChannelStatus, this.own(ref), { expiresAt, updatedAt: new Date() });
 	}
 
 	/**
@@ -75,27 +96,34 @@ export class AgentChannelStatusRepository extends Repository<AgentChannelStatus>
 	 * running it — whether the channel was removed, the agent unpublished, or
 	 * ownership moved to another main.
 	 */
-	async clearOwnChannel(ref: AgentChannelRef): Promise<void> {
-		await this.delete(this.own(ref));
+	async clearOwnChannel(ref: AgentChannelRef, ctx: OperationContext): Promise<void> {
+		await this.table.managerFor(ctx).delete(AgentChannelStatus, this.own(ref));
 	}
 
 	/** Withdraw everything this process said, on its way out. */
-	async clearOwnHost(): Promise<void> {
-		await this.delete({ hostId: this.instanceSettings.hostId });
+	async clearOwnHost(ctx: OperationContext): Promise<void> {
+		await this.table
+			.managerFor(ctx)
+			.delete(AgentChannelStatus, { hostId: this.instanceSettings.hostId });
 	}
 
-	async findOwnChannel(ref: AgentChannelRef): Promise<AgentChannelStatus | null> {
-		return await this.findOneBy(this.own(ref));
+	async findOwnChannel(
+		ref: AgentChannelRef,
+		ctx: OperationContext,
+	): Promise<AgentChannelStatus | null> {
+		return await this.table.managerFor(ctx).findOneBy(AgentChannelStatus, this.own(ref));
 	}
 
 	/** This process's own rows, for deciding what to retry and what to refresh. */
-	async findOwnAll(): Promise<AgentChannelStatus[]> {
-		return await this.findBy({ hostId: this.instanceSettings.hostId });
+	async findOwnAll(ctx: OperationContext): Promise<AgentChannelStatus[]> {
+		return await this.table
+			.managerFor(ctx)
+			.findBy(AgentChannelStatus, { hostId: this.instanceSettings.hostId });
 	}
 
 	/** Every process's account of this agent's channels, for reporting. */
-	async findByAgentId(agentId: string): Promise<AgentChannelStatus[]> {
-		return await this.findBy({ agentId });
+	async findByAgentId(agentId: string, ctx: OperationContext): Promise<AgentChannelStatus[]> {
+		return await this.table.managerFor(ctx).findBy(AgentChannelStatus, { agentId });
 	}
 
 	/**
@@ -104,8 +132,10 @@ export class AgentChannelStatusRepository extends Repository<AgentChannelStatus>
 	 * owner will never come back to clean up after itself. Rows with no expiry are
 	 * left alone — nothing is refreshing them by design.
 	 */
-	async deleteExpired(now: Date): Promise<number> {
-		const { affected } = await this.delete({ expiresAt: LessThan(now) });
+	async deleteExpired(now: Date, ctx: OperationContext): Promise<number> {
+		const { affected } = await this.table
+			.managerFor(ctx)
+			.delete(AgentChannelStatus, { expiresAt: LessThan(now) });
 		return affected ?? 0;
 	}
 

@@ -1,5 +1,10 @@
 import type { DataTableListOptions, ListDataTableQueryDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import {
+	InstanceWriteAccessService,
+	ProjectScopeService,
+	WorkflowProjectService,
+} from '@n8n/backend-services';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { type Scope } from '@n8n/permissions';
@@ -25,10 +30,6 @@ import {
 	NodeOperationError,
 } from 'n8n-workflow';
 
-import { userHasScopes } from '@/permissions.ee/check-access';
-import { InstanceWriteAccessService } from '@n8n/backend-services';
-import { OwnershipService } from '@/services/ownership.service';
-
 import { DataTableAggregateService } from './data-table-aggregate.service';
 import { assertSchemaWriteAccess } from './data-table-permissions';
 import { DataTableService } from './data-table.service';
@@ -47,14 +48,28 @@ export function isAllowedNode(s: string): s is AllowedNode {
 	return ALLOWED_NODES.includes(s as AllowedNode);
 }
 
+/**
+ * What the node is told when the table it names is not in the workflow's
+ * project. Shared with the engine v2 control plane, so both engines say it
+ * the same way.
+ */
+export function dataTableNotFoundInProject(dataTableId: string) {
+	return {
+		message: `Data table with ID '${dataTableId}' could not be found in this project`,
+		description:
+			'It may have been deleted, or skipped when the workflow was imported. Choose an existing data table in the node.',
+	};
+}
+
 @Service()
 export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
 		private readonly dataTableService: DataTableService,
 		private readonly dataTableAggregateService: DataTableAggregateService,
-		private readonly ownershipService: OwnershipService,
+		private readonly workflowProjectService: WorkflowProjectService,
 		private readonly logger: Logger,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly projectScopeService: ProjectScopeService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -66,7 +81,7 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async getProjectId(workflow: Workflow) {
-		const homeProject = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+		const homeProject = await this.workflowProjectService.getWorkflowProjectCached(workflow.id);
 		return homeProject.id;
 	}
 
@@ -94,14 +109,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
 		} catch (error) {
 			if (error instanceof DataTableNotFoundError) {
-				throw new NodeOperationError(
-					node,
-					`Data table with ID '${dataTableId}' could not be found in this project`,
-					{
-						description:
-							'It may have been deleted, or skipped when the workflow was imported. Choose an existing data table in the node.',
-					},
-				);
+				const { message, description } = dataTableNotFoundInProject(dataTableId);
+				throw new NodeOperationError(node, message, { description });
 			}
 			throw error;
 		}
@@ -110,8 +119,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 	}
 
 	private async requireScope(user: User, scope: Scope, projectId: string): Promise<void> {
-		const hasScope = await userHasScopes(user, [scope], false, { projectId });
-		if (!hasScope) {
+		const projectIds = await this.projectScopeService.getProjectIds(user, [scope]);
+		if (projectIds !== null && !projectIds.includes(projectId)) {
 			throw new Error(`User does not have '${scope}' access on project '${projectId}'`);
 		}
 	}
@@ -241,7 +250,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		};
 	}
 
-	private makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {
+	/** The operations of one project. Public for the engine v2 control plane, which resolves the project itself. */
+	makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {
 		const dataTableService = this.dataTableService;
 		return {
 			getProjectId() {
@@ -249,9 +259,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			},
 
 			async getManyAndCount(options: ListDataTableOptions = {}) {
+				// The pinned project last, so a filter cannot list another project.
 				const serviceOptions: DataTableListOptions = {
 					...options,
-					filter: { projectId, ...(options.filter ?? {}) },
+					filter: { ...(options.filter ?? {}), projectId },
 				};
 				return await dataTableService.getManyAndCount(serviceOptions);
 			},
@@ -266,7 +277,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		};
 	}
 
-	private makeDataTableOperations(
+	/** The operations of one table. Every one checks that the table is in the project. */
+	makeDataTableOperations(
 		projectId: string,
 		dataTableId: string,
 	): Omit<IDataTableProjectService, keyof IDataTableProjectAggregateService> {

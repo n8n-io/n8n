@@ -1,7 +1,12 @@
 import type { AuthenticatedN8nApiClient } from '@/n8n-api-client/authenticated-n8n-api-client';
 import { CredentialApiClient } from '@/n8n-api-client/credentials-api-client';
 import { DataTableApiClient } from '@/n8n-api-client/data-table-api-client';
-import type { Workflow, Credential, DataTable } from '@/n8n-api-client/n8n-api-client.types';
+import type {
+	Workflow,
+	Credential,
+	DataTable,
+	WorkflowEngineType,
+} from '@/n8n-api-client/n8n-api-client.types';
 import { ProjectApiClient } from '@/n8n-api-client/project-api-client';
 import { WorkflowApiClient } from '@/n8n-api-client/workflows-api-client';
 import type { LoadableScenarioData } from '@/scenario/scenario-data-loader';
@@ -15,7 +20,11 @@ export class ScenarioDataImporter {
 	private readonly dataTableApiClient: DataTableApiClient;
 	private readonly projectApiClient: ProjectApiClient;
 
-	constructor(n8nApiClient: AuthenticatedN8nApiClient) {
+	constructor(
+		n8nApiClient: AuthenticatedN8nApiClient,
+		/** When set, every imported workflow runs on this execution engine */
+		private readonly engineType?: WorkflowEngineType,
+	) {
 		this.workflowApiClient = new WorkflowApiClient(n8nApiClient);
 		this.credentialApiClient = new CredentialApiClient(n8nApiClient);
 		this.dataTableApiClient = new DataTableApiClient(n8nApiClient);
@@ -124,6 +133,9 @@ export class ScenarioDataImporter {
 		const createdWorkflow = await this.workflowApiClient.createWorkflow({
 			...opts.workflow,
 			name: this.getBenchmarkWorkflowName(opts.workflow),
+			...(this.engineType
+				? { settings: { ...opts.workflow.settings, engineType: this.engineType } }
+				: {}),
 		});
 
 		return await this.workflowApiClient.activateWorkflow(createdWorkflow);

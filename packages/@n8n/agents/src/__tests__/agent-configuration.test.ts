@@ -1,3 +1,5 @@
+import type { LanguageModel } from 'ai';
+
 import { Agent } from '../sdk/agent';
 import type { ExecutionOptions, RunOptions } from '../types';
 
@@ -72,5 +74,40 @@ describe('Agent.configuration()', () => {
 		agent.configuration({ maxIterations: 20 });
 		const result = (agent as unknown as WithPrivates).mergeWithDefaults();
 		expect(result?.maxIterations).toBe(20);
+	});
+});
+
+describe('Agent.snapshot model', () => {
+	// The shape of an AI SDK model instance, as an AI service proxy builds it.
+	function prebuiltModel(provider: string, modelId: string) {
+		return {
+			specificationVersion: 'v2',
+			provider,
+			modelId,
+			supportedUrls: {},
+			doGenerate: vi.fn(),
+			doStream: vi.fn(),
+		} as unknown as LanguageModel;
+	}
+
+	it('reads the provider and name of a model id', () => {
+		const agent = new Agent('test').model('anthropic/claude-opus-5-5');
+
+		expect(agent.snapshot.model).toEqual({ provider: 'anthropic', name: 'claude-opus-5-5' });
+	});
+
+	it('reads the provider and name of a model config', () => {
+		const agent = new Agent('test').model({ id: 'openai/gpt-5.4', apiKey: 'key' });
+
+		expect(agent.snapshot.model).toEqual({ provider: 'openai', name: 'gpt-5.4' });
+	});
+
+	it.each([
+		['anthropic.messages', 'claude-opus-5-5', 'anthropic'],
+		['moonshotai.chat', 'kimi-k3', 'moonshotai'],
+	])('reads the provider of a pre-built %s model', (provider, modelId, expected) => {
+		const agent = new Agent('test').model(prebuiltModel(provider, modelId));
+
+		expect(agent.snapshot.model).toEqual({ provider: expected, name: modelId });
 	});
 });

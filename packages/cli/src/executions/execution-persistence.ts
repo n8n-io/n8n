@@ -18,6 +18,7 @@ import type {
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
+import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
 import {
@@ -58,6 +59,7 @@ type UpdatableEntityColumns = Omit<
 	| 'createdAt'
 	| 'startedAt'
 	| 'customData'
+	| 'deletedAt'
 >;
 
 /**
@@ -107,12 +109,16 @@ export class ExecutionPersistence {
 		const executionEntity = { ...rest, createdAt: new Date(), storedAt, workflowVersionId };
 
 		let reclaimedTombstone: DeletionTarget | null = null;
+		const failedCreate: {
+			blobTarget: (ExecutionRef & { storedAt: BlobStorageLocation }) | null;
+		} = { blobTarget: null };
 		try {
 			const executionId = await this.executionRepository.runInTransaction(ctx, async (tx) => {
 				reclaimedTombstone = await this.reclaimTombstone(tx, executionEntity.deduplicationKey);
 				const { identifiers } = await tx.insert(ExecutionEntity, executionEntity);
 				const executionId = String(identifiers[0].id);
 				const ref = { workflowId: id, executionId };
+				if (storedAt !== 'db') failedCreate.blobTarget = { ...ref, storedAt };
 
 				const jsonSizeBytes = await this.trackWrite(storedAt, ref.workflowId, async () => {
 					const bundle: ExecutionDataPayload = {
@@ -138,6 +144,19 @@ export class ExecutionPersistence {
 
 			return executionId;
 		} catch (error) {
+			const failedTarget = failedCreate.blobTarget;
+			if (failedTarget) {
+				try {
+					await this.jsonStore.delete([failedTarget]);
+				} catch (cleanupError) {
+					this.errorReporter.error(cleanupError, {
+						extra: {
+							executionId: failedTarget.executionId,
+							storedAt: failedTarget.storedAt,
+						},
+					});
+				}
+			}
 			if (executionEntity.deduplicationKey && this.isDuplicateExecutionError(error)) {
 				throw new DuplicateExecutionError(executionEntity.deduplicationKey, error);
 			}
@@ -240,6 +259,7 @@ export class ExecutionPersistence {
 		const entity = await this.executionRepository.findOne({
 			where: this.buildEntityWhereCondition(executionId, conditions),
 			select: ['id', 'workflowId', 'storedAt', 'workflowVersionId'],
+			withDeleted: conditions?.includeDeleted,
 		});
 
 		if (!entity) return false;
@@ -322,6 +342,32 @@ export class ExecutionPersistence {
 
 		if (!entity) return undefined;
 
+		return await this.readSingleExecution(entity, options);
+	}
+
+	/**
+	 * A finished manual execution that n8n did not save, with its run data, until pruning
+	 * hard-deletes it. The caller must check that the reader started it.
+	 */
+	async findUnsavedManualExecution(executionId: string): Promise<IExecutionResponse | undefined> {
+		const entity = await this.executionRepository.findUnsavedManualExecution(executionId);
+		if (!entity) return undefined;
+
+		return await this.readSingleExecution(entity, { includeData: true, unflattenData: true });
+	}
+
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { includeData: true; unflattenData: true; includeAnnotation?: boolean },
+	): Promise<IExecutionResponse | undefined>;
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean; maxDataSizeBytes?: number },
+	): Promise<FoundExecution | undefined>;
+	private async readSingleExecution(
+		entity: ExecutionEntity,
+		options: { unflattenData?: boolean; includeAnnotation?: boolean; maxDataSizeBytes?: number },
+	): Promise<FoundExecution | undefined> {
 		const max = this.maxDisplayDataSize(options);
 		const ref = { workflowId: entity.workflowId, executionId: entity.id };
 
@@ -663,19 +709,40 @@ export class ExecutionPersistence {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
 
-		// Files first: a failed file delete leaves the rows, so the next run retries them.
-		await Promise.all([
-			this.binaryDataService.deleteMany(targets.map((t) => ({ type: 'execution' as const, ...t }))),
-			this.jsonStore.delete(this.toBlobRefs(targets)),
-		]);
+		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
+		await this.binaryDataService.deleteMany(
+			targets.map((t) => ({ type: 'execution' as const, ...t })),
+		);
+		// Payload next. A failure leaves the rows, so the next run retries them.
+		await this.jsonStore.delete(this.toBlobRefs(targets));
 
 		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
 	}
 
-	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
-		const refs = await this.executionRepository.deleteExecutionsByFilter(criteria);
+	/** Resolve and remove one execution together with every storage-backed payload it owns. */
+	async hardDeleteById(executionId: string) {
+		const execution = await this.executionRepository.findOne({
+			select: ['id', 'workflowId', 'storedAt'],
+			where: { id: executionId },
+			withDeleted: true,
+		});
+		if (!execution) return;
 
-		await this.jsonStore.delete(this.toBlobRefs(refs));
+		await this.hardDelete({
+			executionId: execution.id,
+			workflowId: execution.workflowId,
+			storedAt: execution.storedAt,
+		});
+	}
+
+	async hardDeleteBy(criteria: ExecutionDeletionCriteria) {
+		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
+
+		// Batches keep each row delete under the SQLite expression-depth limit.
+		// Each batch deletes binaries, then the payload, then the rows.
+		for (const batch of chunk(refs, this.executionRepository.hardDeletionBatchSize)) {
+			await this.hardDelete(batch);
+		}
 	}
 
 	/**
@@ -692,32 +759,20 @@ export class ExecutionPersistence {
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {
-			const executions = await this.executionRepository.find({
-				select: ['id', 'workflowId', 'storedAt'],
-				where: { workflowId },
-				take: ExecutionPersistence.bulkDeletionBatchSize,
-				withDeleted: true, // sweep soft-deleted executions too, or they'd be left to the FK cascade
-			});
-
-			if (executions.length === 0) return;
-
-			await this.hardDelete(
-				executions.map((execution) => ({
-					executionId: execution.id,
-					workflowId: execution.workflowId,
-					storedAt: execution.storedAt,
-				})),
+			// Soft-deleted executions are swept too, or they'd be left to the FK cascade.
+			const targets = await this.executionRepository.findForDeletionByWorkflowId(
+				workflowId,
+				ExecutionPersistence.bulkDeletionBatchSize,
 			);
+
+			if (targets.length === 0) return;
+
+			await this.hardDelete(targets);
 		}
 
 		// The loop may have converged exactly on its last allowed batch - only
 		// fail if executions actually remain.
-		const remaining = await this.executionRepository.find({
-			select: ['id'],
-			where: { workflowId },
-			take: 1,
-			withDeleted: true,
-		});
+		const remaining = await this.executionRepository.findForDeletionByWorkflowId(workflowId, 1);
 		if (remaining.length === 0) return;
 
 		throw new UnexpectedError(
@@ -815,6 +870,7 @@ export class ExecutionPersistence {
 					where: whereCondition,
 					select: ['id'],
 					lock,
+					withDeleted: conditions.includeDeleted,
 				});
 				if (!matchingRow) return false;
 			}
@@ -912,6 +968,9 @@ export class ExecutionPersistence {
 			customData: _customData,
 			jsonSizeBytes: _jsonSizeBytes,
 			binaryDataSizeBytes: _binaryDataSizeBytes,
+			// Only the delete paths set it. A caller that writes back an execution it read
+			// earlier must not restore a row that was deleted in the meantime.
+			deletedAt: _deletedAt,
 			...updatableColumns
 		} = execution;
 		return updatableColumns;

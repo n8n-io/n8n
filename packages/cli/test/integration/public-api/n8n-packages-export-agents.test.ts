@@ -14,7 +14,6 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { Readable } from 'node:stream';
 
-import { setSkillsHubFlag } from '@/modules/skills/__tests__/test-utils/skills-hub-flag';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
@@ -31,15 +30,15 @@ import { TarPackageReader } from '@/modules/n8n-packages/io/tar/tar-package-read
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import type { ExportPackageEventCounts } from '@/modules/n8n-packages/n8n-packages.types';
 import { serializedAgentSchema } from '@/modules/n8n-packages/spec/serialized/agent.schema';
+import { serializedSkillSchema } from '@/modules/n8n-packages/spec/serialized/skill.schema';
 import { createFolder } from '@test-integration/db/folders';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
 import { createProjectVariable } from '@test-integration/db/variables';
 import { setupTestServer } from '@test-integration/utils';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
-import { SkillRepository } from '@/modules/skills/skill.repository';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
-import { toSkillContent } from '@/modules/skills/skill.service';
+import { createSkill, deleteAllSkills, toSkillContent } from '@/modules/skills/testing';
 
 beforeAll(async () => await testModules.loadModules(['n8n-packages', 'skills', 'agents']));
 const server = setupTestServer({ endpointGroups: ['publicApi'] });
@@ -52,7 +51,6 @@ let workflow: WorkflowEntity;
 let repository: AgentRepository;
 
 beforeAll(async () => {
-	setSkillsHubFlag(true);
 	repository = Container.get(AgentRepository);
 	Container.get(InstanceSettings).markAsLeader();
 });
@@ -84,7 +82,7 @@ afterEach(async () => {
 	await repository.delete({});
 	await Container.get(AgentHistoryRepository).delete({});
 	await Container.get(AgentTaskRepository).delete({});
-	await Container.get(SkillRepository).delete({});
+	await deleteAllSkills();
 	await testDb.truncate([
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -134,26 +132,25 @@ async function download(body: Partial<ExportPackageRequestDto>, user = owner) {
 }
 
 it('downloads an Agent with its skills, tools, tasks, and dependencies', async () => {
-	const { config, tasks, skills, ...content } = serializedAgentSchema.parse(
-		looseAgentsFixture().files['agents/support/agent.json'],
+	const fixture = looseAgentsFixture();
+	const { config, tasks, ...content } = serializedAgentSchema.parse(
+		fixture.files['agents/support/agent.json'],
 	);
 	agent = await repository.save({
 		...agent,
 		...content,
 		schema: config && storedAgentConfig(config),
 	});
-	const [skillId] = Object.keys(skills);
-	const { allowedTools: _dropped, ...skill } = skills[skillId];
-	const skillRepository = Container.get(SkillRepository);
-	await skillRepository.createSkill(
-		{
-			id: skillId,
-			target: { projectId: project.id, agentId: null },
-			source: 'ui',
-			createdById: null,
-		},
-		toSkillContent(skill),
-	);
+	const {
+		id: skillId,
+		skill,
+		frontmatter,
+	} = serializedSkillSchema.parse(fixture.files['skills/support_source_skill/skill.json']);
+	await createSkill({
+		id: skillId,
+		projectId: project.id,
+		content: toSkillContent(skill, frontmatter),
+	});
 	await Container.get(AgentSkillRepository).replaceDependencies(agent.id, [{ skillId }]);
 	await Container.get(AgentTaskRepository).save(
 		Object.entries(tasks).map(([id, task]) => ({ id, agentId: agent.id, ...task })),
@@ -180,10 +177,13 @@ it('downloads an Agent with its skills, tools, tasks, and dependencies', async (
 		sourceAgentId: agent.id,
 		availableInMCP: true,
 		config: { skills: [{ type: 'skill', id: skillId }], tasks: [{ enabled: false }] },
-		skills: { [skillId]: skill },
 		tools: content.tools,
 		tasks: { [`${agent.id}_task`]: { cronExpression: '0 9 * * *', timezone: null } },
 	});
+	expect(manifest.skills?.map(({ id }) => id)).toEqual([skillId]);
+	expect(await Container.get(N8nPackageParser).getSkills(reader)).toEqual([
+		{ id: skillId, scope: 'project', skill, frontmatter },
+	]);
 });
 
 it.each(['mixed', 'project'] as const)('downloads a %s selection', async (selection) => {

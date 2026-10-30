@@ -11,6 +11,8 @@
  * - `engineContainerEnv`: the `n8n engine` container (data plane), in
  *   `container` mode only.
  */
+import { createHash } from 'node:crypto';
+
 export type EngineMode = 'in-process' | 'container';
 
 export const ENGINE_MODULE = 'engine-v2';
@@ -51,6 +53,15 @@ const CONNECTION_KEYS = [
 /** Env the engine container must never receive: control plane database access and its key. */
 const CONTROL_PLANE_ONLY_KEYS = ['N8N_ENCRYPTION_KEY', 'N8N_ENCRYPTION_KEY_FILE'];
 const CONTROL_PLANE_ONLY_PREFIXES = ['DB_'];
+
+/**
+ * The secret the data plane signs and checks resume tokens with. Only the data
+ * plane gets it. Derived from the project name, so a rerun with the same name
+ * reuses the containers instead of changing their env.
+ */
+function resumeSecret(projectName: string): string {
+	return createHash('sha256').update(`${projectName}:engine-resume`).digest('hex');
+}
 
 interface EngineEnvOptions {
 	engine: EngineMode | undefined;
@@ -148,12 +159,15 @@ export function applyEngineEnv(
 		env.N8N_ENGINE_CONTROL_PLANE_PORT = String(ENGINE_CONTROL_PLANE_PORT);
 		env.N8N_ENGINE_AUTH_SECRET = authSecret;
 		applySharedStoragePath(env);
-		// The main never touches the data plane database in this mode.
+		// The main never touches the data plane database in this mode, and it
+		// refuses to start with the resume secret.
 		delete env.N8N_ENGINE_DATABASE_URL;
+		delete env.N8N_ENGINE_RESUME_SECRET;
 		return;
 	}
 
 	env.N8N_ENGINE_DATABASE_URL = resolveEngineDatabaseUrl(env);
+	env.N8N_ENGINE_RESUME_SECRET = resumeSecret(projectName);
 }
 
 /**
@@ -186,6 +200,7 @@ export function engineContainerEnv(
 		...env,
 		N8N_ENGINE_DATABASE_URL: databaseUrl,
 		N8N_ENGINE_AUTH_SECRET: authSecret,
+		N8N_ENGINE_RESUME_SECRET: resumeSecret(projectName),
 		N8N_ENGINE_CONTROL_PLANE_BASE_URL: `http://${mainHostname(projectName)}:${ENGINE_CONTROL_PLANE_PORT}`,
 		// The main dials this address and the stack probes it, so a caller's `env`
 		// must not move it or bind it to loopback.

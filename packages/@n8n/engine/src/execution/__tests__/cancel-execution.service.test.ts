@@ -21,6 +21,7 @@ const execution: ExecutionRecord = {
 	triggerOutputs: null,
 	callerContext: { hostMode: 'trigger' },
 	responseExpectation: { kind: 'none' },
+	parent: null,
 	finishedAt: null,
 };
 
@@ -30,6 +31,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		loadExecution: vi
 			.fn()
 			.mockResolvedValue({ ...execution, status: 'cancelled', finishedAt: new Date() }),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn(),
 		finishExecution: vi.fn(),
 		cancelExecution: vi

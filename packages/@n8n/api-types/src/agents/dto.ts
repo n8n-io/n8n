@@ -17,11 +17,19 @@ import {
 	createAgentSkillSchema,
 } from './agent-skill.schema';
 import { agentTaskSchema } from './agent-task.schema';
-import { N8N_CHAT_INTEGRATION_TYPE } from './types';
+import {
+	AGENT_MEMORY_FILTER_SOURCES,
+	AGENT_MEMORY_SOURCE_FACETS,
+	N8N_CHAT_INTEGRATION_TYPE,
+} from './types';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
 import { booleanFromString } from '../schemas/boolean-from-string';
 import { threadTitleSearchSchema } from '../schemas/thread-title-search.schema';
 import { Z } from '../zod-class';
+import {
+	workflowVersionNameSchema,
+	workflowVersionDescriptionSchema,
+} from '../schemas/workflow-version.schema';
 
 export class AgentsSettingsDto extends Z.class({
 	enabled: z.boolean(),
@@ -129,6 +137,10 @@ export type AgentSessionQueryFilters = Pick<
 export class ListAgentMemoryEntriesQueryDto extends Z.class({
 	cursor: z.string().min(1).optional(),
 	limit: z.string().optional(),
+	source: z.enum(AGENT_MEMORY_FILTER_SOURCES).optional(),
+	/** Narrows `source` to one user, channel or team. Requires `source` and `sourceFacetId`. */
+	sourceFacet: z.enum(AGENT_MEMORY_SOURCE_FACETS).optional(),
+	sourceFacetId: z.string().min(1).max(255).optional(),
 }) {}
 
 /** Cross-agent n8n Chat thread list: cursor + limit only, no status/origin/scope filters. */
@@ -139,6 +151,19 @@ export class ListN8nChatThreadsQueryDto extends Z.class({
 	/** Filters threads to one agent. */
 	agentId: z.string().min(1).max(128).optional(),
 	search: threadTitleSearchSchema,
+}) {}
+
+/** The thread list of a system agent: one page, optionally filtered by title. */
+export class ListSystemAgentThreadsQueryDto extends Z.class({
+	// The `nextCursor` of the previous page. The route decodes it.
+	cursor: z.string().max(512).optional(),
+	limit: z.string().optional(),
+	search: threadTitleSearchSchema,
+}) {}
+
+/** A message to a system agent. `projectId` is the working project of a new session. */
+export class SystemAgentChatQueryDto extends Z.class({
+	projectId: z.string().min(1).max(128).optional(),
 }) {}
 
 export class AgentProviderModelsQueryDto extends Z.class({
@@ -478,7 +503,15 @@ export class AgentDisconnectIntegrationDto extends Z.class({
 	deleteExternalResource: z.boolean().optional(),
 }) {}
 
+const agentVersionMetadataShape = {
+	name: workflowVersionNameSchema.unwrap().trim().nullable().optional(),
+	description: workflowVersionDescriptionSchema.nullable(),
+};
+
+export class UpdateAgentVersionDto extends Z.class(agentVersionMetadataShape) {}
+
 export class PublishAgentDto extends Z.class({
+	...agentVersionMetadataShape,
 	versionId: z.string().min(1).optional(),
 }) {}
 

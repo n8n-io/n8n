@@ -118,7 +118,7 @@ describe('TeamsManagedSetupService', () => {
 
 			expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(
 				scope.user,
-				expect.objectContaining({ excludePersonalRoute: true }),
+				expect.objectContaining({ excludePersonalRoute: true, excludeResolvable: true }),
 			);
 		});
 
@@ -152,6 +152,21 @@ describe('TeamsManagedSetupService', () => {
 		it('asks for a reconnect when the grant carries no refresh token', async () => {
 			withManagerCredential({
 				oauthTokenData: { access_token: 'token', scope: ALL_SCOPES },
+			});
+
+			const [summary] = (await service.getSetupState(scope)).managerCredentials;
+			expect(summary).toMatchObject({ connected: true, reconnectRequired: true });
+		});
+
+		it('asks for a reconnect when the app that issued the sign-in is not in the overwrites', async () => {
+			credentialsOverwrites.getManagedAuthState.mockReturnValue('missing-app');
+			withManagerCredential({
+				oauthTokenData: {
+					access_token: 'token',
+					refresh_token: 'refresh-1',
+					scope: ALL_SCOPES,
+					n8n_managed_version: 1,
+				},
 			});
 
 			const [summary] = (await service.getSetupState(scope)).managerCredentials;

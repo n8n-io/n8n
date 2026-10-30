@@ -13,6 +13,23 @@ Regenerate existing Promotions snapshots.
 Package import errors also use `usedBy` for resource consumers.
 Update API clients to read each consumer's `kind` and `id`.
 
+The package import API now uses `conflictPolicy` for both Agents and workflows.
+Update API clients to send this field to `/api/v1/n8n-packages/import` and `/api/v1/n8n-packages/import-selection`.
+Both endpoints reject the old `workflowConflictPolicy` field.
+The ordinary import endpoint requires `conflictPolicy`.
+The selection endpoint defaults it to `new-version`.
+The ordinary import API also uses `idPolicy` and `publishingPolicy` for both Agents and workflows.
+These fields replace `workflowIdPolicy`, `agentIdPolicy`, `workflowPublishingPolicy`, and `agentPublishingPolicy`.
+The old fields are rejected.
+The selection import API replaces `workflowIdPolicy` with `idPolicy`.
+Only `source` is supported for `idPolicy`.
+Selection imports retain their fixed `match-source` publication policy.
+
+Use `--conflict-policy`, `--id-policy`, and `--publishing-policy` in the CLI.
+The CLI rejects the old workflow-specific flag names, including their camelCase spellings.
+Selection imports accept `--conflict-policy` and `--id-policy`.
+There are no compatibility aliases or per-kind policy overrides.
+
 # 2.0.0
 
 ### What changed?

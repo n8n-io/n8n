@@ -35,7 +35,7 @@ function findAiSubNodeNames(workflow: IWorkflowBase): Set<string> {
 	return subNodes;
 }
 
-/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). */
+/** Node types that bypass the HTTP mock handler (non-HTTP protocols or non-helper HTTP). The run-time node mock answers for them. */
 const BYPASS_NODE_TYPES = new Set([
 	'n8n-nodes-base.redis',
 	'n8n-nodes-base.mongoDb',
@@ -103,7 +103,7 @@ const PROTOCOL_BINARY_SUB_NODE_TYPES = new Set([
 	'@n8n/n8n-nodes-langchain.chatHubVectorStorePGVector',
 ]);
 
-/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`) and bypass-protocol nodes. */
+/** Returns nodes that need pin data — AI roots (unless in `exclusionSet`). */
 export function identifyNodesForPinData(
 	workflow: IWorkflowBase,
 	exclusionSet?: Set<string>,
@@ -112,9 +112,18 @@ export function identifyNodesForPinData(
 
 	return workflow.nodes.filter((node) => {
 		if (node.disabled) return false;
-		if (aiRootNodes.has(node.name) && !exclusionSet?.has(node.name)) return true;
-		return BYPASS_NODE_TYPES.has(node.type);
+		return aiRootNodes.has(node.name) && !exclusionSet?.has(node.name);
 	});
+}
+
+/** Returns the nodes the run-time node mock answers for: nodes the HTTP mock cannot reach, and
+ *  send-and-wait nodes, which park the run until a person answers. */
+export function identifyNodesForRunMock(workflow: IWorkflowBase): INode[] {
+	return workflow.nodes.filter(
+		(node) =>
+			!node.disabled &&
+			(BYPASS_NODE_TYPES.has(node.type) || node.parameters?.operation === 'sendAndWait'),
+	);
 }
 
 // ---------------------------------------------------------------------------

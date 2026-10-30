@@ -1,17 +1,27 @@
 <script setup lang="ts">
-import { onMounted, ref, watch } from 'vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nText, updatedIconSet } from '@n8n/design-system';
+import { computed, onMounted, ref, watch } from 'vue';
+import { N8nButton, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
 import type { IconName } from '@n8n/design-system';
-import type { AgentMemoryEntryDto, AgentMemoryEntrySourceDto } from '@n8n/api-types';
+import type {
+	AgentMemoryEntryDto,
+	AgentMemoryEntrySourceDto,
+	AgentMemorySourceFacetGroupDto,
+} from '@n8n/api-types';
 import { useToast } from '@n8n/composables/useToast';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
-import { deleteAgentMemoryEntry, listAgentMemoryEntries } from '../composables/useAgentApi';
+import {
+	deleteAgentMemoryEntry,
+	getAgentMemorySourceFacets,
+	listAgentMemoryEntries,
+	type AgentMemorySourceSelection,
+} from '../composables/useAgentApi';
 import { useAgentConfirmationModal } from '../composables/useAgentConfirmationModal';
-import { useAgentIntegrationsCatalog } from '../composables/useAgentIntegrationsCatalog';
+import { useAgentMemorySourceLabels } from '../composables/useAgentMemorySourceLabels';
+import AgentMemorySourceFilter from './AgentMemorySourceFilter.vue';
 import AgentPanel from './AgentPanel.vue';
 
 const INLINE_PAGE_SIZE = 10;
@@ -28,7 +38,7 @@ const i18n = useI18n();
 const rootStore = useRootStore();
 const { showError, showMessage } = useToast();
 const { openAgentConfirmationModal } = useAgentConfirmationModal();
-const { catalog, ensureLoaded } = useAgentIntegrationsCatalog();
+const { kindIcon, kindLabel, ensureLoaded } = useAgentMemorySourceLabels();
 
 const entries = ref<AgentMemoryEntryDto[]>([]);
 const total = ref(0);
@@ -38,22 +48,23 @@ const loadFailed = ref(false);
 const deletingId = ref<string | null>(null);
 /** The parent hides the other Knowledge cards while this is true. */
 const showAll = defineModel<boolean>('showAll', { default: false });
+/** The mode the user asked for. `showAll` can lag when the parent owns it. */
+const fullList = ref(showAll.value);
+/** The source filter only applies to the full list. */
+const sourceSelection = ref<AgentMemorySourceSelection>({});
+const facetGroups = ref<AgentMemorySourceFacetGroupDto[]>([]);
+const isFiltered = computed(() => fullList.value && !!sourceSelection.value.source);
+const emptyText = computed(() =>
+	i18n.baseText(
+		isFiltered.value
+			? ('agents.builder.memory.entries.noMatches' as BaseTextKey)
+			: ('agents.builder.memory.entries.empty' as BaseTextKey),
+	),
+);
 
 function limitFor(showAllEntries: boolean) {
 	return showAllEntries ? FULL_PAGE_SIZE : INLINE_PAGE_SIZE;
 }
-
-const SURFACE_ICONS: Record<string, IconName> = {
-	'n8n-chat': 'message-circle',
-	preview: 'flask-conical',
-	build: 'wrench',
-};
-
-const SURFACE_LABELS: Record<string, BaseTextKey> = {
-	'n8n-chat': 'agents.builder.memory.entries.source.chat' as BaseTextKey,
-	preview: 'agents.builder.memory.entries.source.preview' as BaseTextKey,
-	build: 'agents.builder.memory.entries.source.build' as BaseTextKey,
-};
 
 function isStale(projectId: string, agentId: string) {
 	return projectId !== props.projectId || agentId !== props.agentId;
@@ -71,6 +82,7 @@ async function loadEntries({ append, limit }: { append: boolean; limit: number }
 		const page = await listAgentMemoryEntries(rootStore.restApiContext, projectId, agentId, {
 			limit,
 			cursor: append ? (nextCursor.value ?? undefined) : undefined,
+			...(fullList.value && sourceSelection.value),
 		});
 		if (isOutdated()) return;
 		loadFailed.value = false;
@@ -87,9 +99,29 @@ async function loadEntries({ append, limit }: { append: boolean; limit: number }
 	}
 }
 
+async function loadFacets() {
+	const { projectId, agentId } = props;
+	try {
+		const facets = await getAgentMemorySourceFacets(rootStore.restApiContext, projectId, agentId);
+		if (!isStale(projectId, agentId)) facetGroups.value = facets.groups;
+	} catch {
+		// The list still works without the filter options.
+		if (!isStale(projectId, agentId)) facetGroups.value = [];
+	}
+}
+
+function resetFilters() {
+	sourceSelection.value = {};
+}
+
 async function setShowAll(value: boolean) {
 	showAll.value = value;
-	await loadEntries({ append: false, limit: limitFor(value) });
+	fullList.value = value;
+	if (!value) resetFilters();
+	await Promise.all([
+		loadEntries({ append: false, limit: limitFor(value) }),
+		value ? loadFacets() : undefined,
+	]);
 }
 
 async function onDelete(entry: AgentMemoryEntryDto) {
@@ -126,18 +158,9 @@ async function onDelete(entry: AgentMemoryEntryDto) {
 	}
 }
 
-function isIconName(icon: unknown): icon is IconName {
-	return typeof icon === 'string' && icon in updatedIconSet;
-}
-
-function integrationIcon(kind: string): IconName {
-	const icon = catalog.value?.find(({ type }) => type === kind)?.icon;
-	return isIconName(icon) ? icon : 'zap';
-}
-
 function sourceIcon(source: AgentMemoryEntrySourceDto | undefined): IconName {
 	if (!source) return 'brain';
-	return SURFACE_ICONS[source.kind] ?? integrationIcon(source.kind);
+	return kindIcon(source.kind);
 }
 
 function sourcePlace(source: AgentMemoryEntrySourceDto): string | undefined {
@@ -145,9 +168,7 @@ function sourcePlace(source: AgentMemoryEntrySourceDto): string | undefined {
 		return i18n.baseText('agents.builder.memory.entries.source.directMessage' as BaseTextKey);
 	}
 	if (source.place) return source.place;
-	const surfaceLabel = SURFACE_LABELS[source.kind];
-	if (surfaceLabel) return i18n.baseText(surfaceLabel);
-	return catalog.value?.find(({ type }) => type === source.kind)?.label;
+	return kindLabel(source.kind);
 }
 
 function sourceParts(source: AgentMemoryEntrySourceDto | undefined): Array<string | undefined> {
@@ -173,7 +194,10 @@ function metaLine(entry: AgentMemoryEntryDto): string {
 }
 
 onMounted(async () => {
-	await loadEntries({ append: false, limit: limitFor(showAll.value) });
+	await Promise.all([
+		loadEntries({ append: false, limit: limitFor(showAll.value) }),
+		showAll.value ? loadFacets() : undefined,
+	]);
 	await ensureLoaded(props.projectId).catch(() => undefined);
 });
 
@@ -181,9 +205,21 @@ watch(
 	() => [props.projectId, props.agentId],
 	async () => {
 		showAll.value = false;
+		fullList.value = false;
+		resetFilters();
+		facetGroups.value = [];
 		await loadEntries({ append: false, limit: INLINE_PAGE_SIZE });
 	},
 );
+
+watch(showAll, (value) => {
+	fullList.value = value;
+});
+
+watch(sourceSelection, async () => {
+	if (!fullList.value) return;
+	await loadEntries({ append: false, limit: FULL_PAGE_SIZE });
+});
 </script>
 
 <template>
@@ -231,12 +267,15 @@ watch(
 				</div>
 			</template>
 
+			<div v-if="showAll" :class="$style.toolbar">
+				<AgentMemorySourceFilter v-model="sourceSelection" :groups="facetGroups" />
+			</div>
 			<N8nText
 				v-if="!loading && !loadFailed && entries.length === 0"
 				color="text-light"
 				data-testid="agent-memory-entries-empty"
 			>
-				{{ i18n.baseText('agents.builder.memory.entries.empty' as BaseTextKey) }}
+				{{ emptyText }}
 			</N8nText>
 			<ul v-else :class="$style.list">
 				<li
@@ -285,6 +324,12 @@ watch(
 	flex-direction: column;
 	gap: var(--spacing--sm);
 	width: 100%;
+}
+
+.toolbar {
+	display: flex;
+	justify-content: flex-end;
+	padding-bottom: var(--spacing--xs);
 }
 
 .backRow {

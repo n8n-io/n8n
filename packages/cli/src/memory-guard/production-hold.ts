@@ -1,3 +1,4 @@
+import { EventService } from '@n8n/backend-services';
 import { Service } from '@n8n/di';
 import type { WorkflowExecuteMode } from 'n8n-workflow';
 
@@ -11,7 +12,8 @@ interface HeldExecution {
 
 /**
  * Production executions that wait because memory is high. The memory guard starts and
- * ends the hold. Concurrency control makes executions wait here, so it has no dependencies.
+ * ends the hold. Concurrency control makes executions wait here, so this must depend on
+ * nothing that depends on concurrency control.
  */
 @Service()
 export class ProductionHold {
@@ -19,6 +21,8 @@ export class ProductionHold {
 
 	/** Oldest first. */
 	private readonly held: HeldExecution[] = [];
+
+	constructor(private readonly eventService: EventService) {}
 
 	/** Make new production executions wait until the hold ends and `admit()` lets them start. */
 	start() {
@@ -37,6 +41,7 @@ export class ProductionHold {
 
 	/** Resolves when `admit()` lets the execution start. */
 	async wait(executionId: string) {
+		this.eventService.emit('memory-guard-execution-held', { executionId });
 		await new Promise<void>((admit) => {
 			this.held.push({ executionId, heldAt: Date.now(), admit });
 		});
@@ -49,6 +54,7 @@ export class ProductionHold {
 			const item = this.held.shift();
 			if (!item) break;
 			item.admit();
+			this.release(item, true);
 			started++;
 		}
 		return started;
@@ -58,8 +64,18 @@ export class ProductionHold {
 	remove(executionId: string) {
 		const index = this.held.findIndex((item) => item.executionId === executionId);
 		if (index === -1) return false;
-		this.held.splice(index, 1);
+		const [item] = this.held.splice(index, 1);
+		this.release(item, false);
 		return true;
+	}
+
+	/** Report how long the execution waited, and whether it starts or was cancelled. */
+	private release({ executionId, heldAt }: HeldExecution, started: boolean) {
+		this.eventService.emit('memory-guard-execution-released', {
+			executionId,
+			waitedMs: Date.now() - heldAt,
+			started,
+		});
 	}
 
 	has(executionId: string) {

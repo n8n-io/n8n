@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { GlobalConfig } from '@n8n/config';
-import type { ApiKey, User, UserRepository } from '@n8n/db';
+import type { ApiKey, User, PersonRepository } from '@n8n/db';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
@@ -9,6 +9,7 @@ import type { UrlService } from '@n8n/backend-services';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
 import { NodeMailer } from '@/user-management/email/node-mailer';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { mockServiceAccount } from '@test/mock-objects';
 
 // This suite renders real email templates from disk; opt out of the global fs mocks.
 vi.unmock('node:fs/promises');
@@ -65,11 +66,11 @@ describe('UserManagementMailer', () => {
 			},
 		});
 		const urlService = mock<UrlService>();
-		const userRepository = mock<UserRepository>();
+		const personRepository = mock<PersonRepository>();
 		const userManagementMailer = new UserManagementMailer(
 			config,
 			mock(),
-			userRepository,
+			personRepository,
 			urlService,
 			mock(),
 		);
@@ -107,7 +108,7 @@ describe('UserManagementMailer', () => {
 			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
 			const newShareeIds = ['recipient1', 'recipient2'];
 			const workflow = mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' });
-			userRepository.getEmailsByIds.mockResolvedValue([
+			personRepository.getEmailsByIds.mockResolvedValue([
 				{ id: 'recipient1', email: 'recipient1@user.com' },
 				{ id: 'recipient2', email: 'recipient2@user.com' },
 			] as User[]);
@@ -132,10 +133,51 @@ describe('UserManagementMailer', () => {
 			});
 		});
 
+		it.each([
+			[
+				'a workflow',
+				async (sharer: User) =>
+					await userManagementMailer.notifyWorkflowShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						workflow: mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' }),
+					}),
+				'Deploy bot has shared an n8n workflow with you',
+			],
+			[
+				'a credential',
+				async (sharer: User) =>
+					await userManagementMailer.notifyCredentialsShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						credentialsName: 'Test Credentials',
+					}),
+				'Deploy bot has shared an n8n credential with you',
+			],
+			[
+				'a project',
+				async (sharer: User) =>
+					await userManagementMailer.notifyProjectShared({
+						sharer,
+						newSharees: [{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG }],
+						project: { id: 'project1', name: 'Test Project' },
+					}),
+				'Deploy bot has invited you to a project',
+			],
+		])('should name a service account that shares %s by its name', async (_, share, subject) => {
+			personRepository.getEmailsByIds.mockResolvedValue([
+				{ id: 'recipient1', email: 'recipient1@user.com' },
+			] as User[]);
+
+			await share(mockServiceAccount());
+
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith(expect.objectContaining({ subject }));
+		});
+
 		it('should send credentials share notifications', async () => {
 			const sharer = mock<User>({ firstName: 'Sharer', email: 'sharer@user.com' });
 			const newShareeIds = ['recipient1', 'recipient2'];
-			userRepository.getEmailsByIds.mockResolvedValue([
+			personRepository.getEmailsByIds.mockResolvedValue([
 				{ id: 'recipient1', email: 'recipient1@user.com' },
 				{ id: 'recipient2', email: 'recipient2@user.com' },
 			] as User[]);
@@ -175,7 +217,7 @@ describe('UserManagementMailer', () => {
 			async (reason, text, nextStep) => {
 				const recipient = mock<User>({ id: 'owner-1' });
 				const workflow = mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' });
-				userRepository.getEmailsByIds.mockResolvedValue([
+				personRepository.getEmailsByIds.mockResolvedValue([
 					{ id: 'owner-1', email: 'owner@user.com' },
 				] as User[]);
 
@@ -285,7 +327,7 @@ describe('UserManagementMailer', () => {
 				{ userId: 'recipient2', role: PROJECT_VIEWER_ROLE_SLUG },
 			];
 			const project = { id: 'project1', name: 'Test Project' };
-			userRepository.getEmailsByIds.mockResolvedValue([
+			personRepository.getEmailsByIds.mockResolvedValue([
 				{
 					id: 'recipient1',
 					email: 'recipient1@user.com',

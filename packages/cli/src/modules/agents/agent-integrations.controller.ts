@@ -108,7 +108,7 @@ export class AgentIntegrationsController {
 		const agent = await this.agentRepository.findByIdAndProjectId(agentId, req.params.projectId);
 		if (!agent) throw new NotFoundError(`Agent "${agentId}" not found`);
 
-		const statuses = await this.channelStatusRepository.findByAgentId(agentId);
+		const statuses = await this.channelStatusRepository.findByAgentId(agentId, {});
 		const now = new Date();
 
 		return {

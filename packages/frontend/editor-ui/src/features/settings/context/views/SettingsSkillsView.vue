@@ -4,10 +4,13 @@ import { useRoute, useRouter } from 'vue-router';
 import { useDebounceFn } from '@vueuse/core';
 import { saveAs } from 'file-saver';
 import {
+	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
+	skillScopeSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
+	type SkillDetail,
 	type SkillListItem,
 	type SkillUserDto,
 } from '@n8n/api-types';
@@ -15,8 +18,10 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
+import { ResponseError } from '@n8n/rest-api-client';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import {
+	N8nActionDropdown,
 	N8nButton,
 	N8nHeading,
 	N8nIcon,
@@ -28,13 +33,14 @@ import {
 	N8nSettingsPageHeader,
 	N8nText,
 } from '@n8n/design-system';
-import type { TableOptions } from '@n8n/design-system';
+import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useMessage } from '@/app/composables/useMessage';
 import { DEBOUNCE_TIME, MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useAssistantSkillsExperiment } from '@/experiments/assistantSkills/useAssistantSkillsExperiment';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -47,7 +53,11 @@ import type {
 	AgentSkillModalScopeOption,
 } from '@/features/agents/components/AgentSkillModal.vue';
 
+import SkillSourceConnectDialog, {
+	type SkillSourceConnected,
+} from '../components/SkillSourceConnectDialog.vue';
 import SkillsTable from '../components/SkillsTable.vue';
+import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
 import {
 	canWriteInstanceSkillScope,
@@ -58,10 +68,15 @@ import {
 } from '../context.utils';
 import type { SkillListQuery } from '../skills.api';
 import { useSkillsStore } from '../skills.store';
-import { useSkillScopeDisplay } from '../skills.utils';
+import {
+	PROJECT_SCOPE_PREFIX,
+	parseScope,
+	useSkillDeleteRule,
+	useSkillScopeDisplay,
+	useSkillSourceReasons,
+} from '../skills.utils';
 
 const INSTANCE_SCOPE = 'instance';
-const PROJECT_SCOPE_PREFIX = 'project:';
 
 /** Empty means no filter, so the filters dropdown counts only the set ones. */
 type SkillFilters = {
@@ -83,9 +98,14 @@ const uiStore = useUIStore();
 const projectsStore = useProjectsStore();
 const skillsStore = useSkillsStore();
 const { isEnabled: assistantSkillsEnabled } = useAssistantSkillsExperiment();
+const posthogStore = usePostHog();
+const { deleteBlockedReason } = useSkillDeleteRule();
 const telemetry = useTelemetry();
 const { showError, showMessage } = useToast();
 const { scopeDisplay } = useSkillScopeDisplay();
+const { failedSkillReason, reasonText } = useSkillSourceReasons();
+const skillSyncEnabled = useSkillSyncFlag();
+const connectOpen = ref(false);
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -105,6 +125,7 @@ const agentFilterOptions = computed(() =>
 );
 const creators = ref<SkillUserDto[]>([]);
 const loadFailed = ref(false);
+const mcpSkillsEnabled = computed(() => posthogStore.isFeatureEnabled(MCP_SKILLS_EXTENSION_FLAG));
 
 // The empty states describe the rows on screen, so they follow the query that loaded
 // them, not the live search input.
@@ -124,7 +145,6 @@ const scopeFilterOptions = computed(() =>
 		[
 			['instance', 'settings.context.skills.filter.instance'],
 			['project', 'settings.context.skills.filter.project'],
-			['agent', 'settings.context.skills.filter.agent'],
 		] as const
 	).map(([value, key]) => ({ value, label: i18n.baseText(key) })),
 );
@@ -135,7 +155,8 @@ function creatorLabel(creator: SkillUserDto): string {
 }
 
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
-	return scope === 'instance' || scope === 'project' || scope === 'agent' ? { scope } : {};
+	const parsed = skillScopeSchema.safeParse(scope);
+	return parsed.success ? { scope: parsed.data } : {};
 }
 
 // Paging, sort, search and filters run on the server: the count and the page both
@@ -157,7 +178,7 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 
 /**
  * Where a new skill can live: the instance, the personal project and the team projects
- * that the user may write to. An agent skill is made from inside its agent, not here.
+ * that the user may write to.
  */
 const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 	const options: AgentSkillModalScopeOption[] = [];
@@ -166,7 +187,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
-			target: { projectId: null, agentId: null },
+			target: { projectId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -175,7 +196,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
-			target: { projectId: personalProject.id, agentId: null },
+			target: { projectId: personalProject.id },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -184,19 +205,11 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
-			target: { projectId: project.id, agentId: null },
+			target: { projectId: project.id },
 		});
 	}
 	return options;
 });
-
-/** Settings creates and moves skills only to a project or the instance, never to one agent. */
-function parseScope(value: string): { scope: 'project' | 'instance'; projectId?: string } {
-	if (value.startsWith(PROJECT_SCOPE_PREFIX)) {
-		return { scope: 'project', projectId: value.slice(PROJECT_SCOPE_PREFIX.length) };
-	}
-	return { scope: 'instance' };
-}
 
 // Only the newest load updates the page state, so a slow earlier search cannot win.
 const { next: nextLoad } = useLatestFetch();
@@ -312,15 +325,86 @@ function openCreateModal() {
 	openModal({
 		scopeOptions: options,
 		initialScope: options[0].value,
+		...(mcpSkillsEnabled.value ? { availableToMCP: false } : {}),
 		existingSkillNames: [],
 		getDefaultName: async (scopeValue) =>
 			await skillsStore.fetchNewSkillName({
 				...parseScope(scopeValue),
 				name: i18n.baseText('agents.builder.skills.defaultName'),
 			}),
-		onConfirm: async ({ skill, scope, method }) =>
-			await onCreate(skill, scope ?? options[0].value, method),
+		onConfirm: async ({ skill, scope, method, availableToMCP }) =>
+			await onCreate(skill, scope ?? options[0].value, method, availableToMCP),
 	});
+}
+
+type CreateAction = 'github' | 'manual';
+
+const createMenuItems = computed<Array<ActionDropdownItem<CreateAction>>>(() => [
+	{
+		id: 'github',
+		label: i18n.baseText('settings.context.skills.actions.connectGithub'),
+		icon: 'git-branch',
+		testId: 'skills-create-github',
+	},
+	{
+		id: 'manual',
+		label: i18n.baseText('settings.context.skills.actions.createManually'),
+		icon: 'pen',
+		testId: 'skills-create-manual',
+	},
+]);
+
+function onCreateMenuSelect(action: CreateAction) {
+	if (action === 'github') connectOpen.value = true;
+	else openCreateModal();
+}
+
+type FailedSkill = SkillSourceConnected['response']['failed'][number];
+
+/** Names each skill that did not come in, with why. */
+function failedNames(failed: FailedSkill[]): string {
+	return failed
+		.map((item) =>
+			i18n.baseText('settings.context.skills.connect.failed.item', {
+				interpolate: { name: item.name ?? item.key, reason: failedSkillReason(item.reason) },
+			}),
+		)
+		.join(', ');
+}
+
+/** The imported skills are new rows, so the list reloads. Skills that did not come in are named. */
+async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSourceConnected) {
+	const failed = response.failed.length > 0 ? failedNames(response.failed) : '';
+	if (response.imported.length > 0) {
+		showMessage({
+			title: i18n.baseText('settings.context.skills.connect.success', {
+				interpolate: {
+					count: response.imported.length,
+					scope: scopeLabel,
+					repo: sourceLabel,
+				},
+				adjustToNumber: response.imported.length,
+			}),
+			...(failed
+				? {
+						message: i18n.baseText('settings.context.skills.connect.failed', {
+							interpolate: { names: failed },
+						}),
+					}
+				: {}),
+			type: failed ? 'warning' : 'success',
+		});
+	} else {
+		showMessage({
+			title: i18n.baseText('settings.context.skills.connect.error.connect'),
+			message: i18n.baseText('settings.context.skills.connect.failed', {
+				interpolate: { names: failed },
+			}),
+			type: 'error',
+		});
+	}
+	void loadCreators();
+	await load();
 }
 
 /**
@@ -355,6 +439,7 @@ async function onCreate(
 	skill: AgentSkill,
 	scopeValue: string,
 	method?: SkillCreateMethod,
+	availableToMCP?: boolean,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let createdId: string;
 	try {
@@ -363,6 +448,7 @@ async function onCreate(
 				...parseScope(scopeValue),
 				skill,
 				...(method ? { method } : {}),
+				availableToMCP,
 			})
 		).id;
 	} catch (error) {
@@ -375,7 +461,7 @@ async function onCreate(
 	return undefined;
 }
 
-/** The value of the scope picker for a saved skill. An agent skill has no picker value of its own. */
+/** The value of the scope picker for a saved skill. */
 function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string {
 	if (skill.scope === 'project' && skill.projectId)
 		return `${PROJECT_SCOPE_PREFIX}${skill.projectId}`;
@@ -388,15 +474,24 @@ function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string
  * use can still move: the modal warns about a scope that drops an agent.
  */
 function scopeLock(
-	detail: Pick<SkillListItem, 'canDelete'>,
+	detail: Pick<SkillDetail, 'canDelete' | 'syncedFrom'>,
 ): Pick<AgentSkillModalData, 'scopeLockedReason'> {
+	// A synced skill moves only with its source, until the user stops syncing it.
+	if (detail.syncedFrom) {
+		return {
+			scopeLockedReason: i18n.baseText('settings.context.skills.synced.scopeLocked', {
+				interpolate: { repo: detail.syncedFrom.label },
+			}),
+		};
+	}
 	if (!detail.canDelete) {
 		return { scopeLockedReason: i18n.baseText('settings.context.skills.modal.scope.noDelete') };
 	}
 	return {};
 }
 
-async function openEditModal(item: Pick<SkillListItem, 'id'>) {
+/** `show` opens the editor with the Versions panel or with the latest two versions compared. */
+async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' | 'compare') {
 	try {
 		const detail = await skillsStore.fetchSkill(item.id);
 		telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_OPENED_SKILL, {
@@ -406,30 +501,46 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>) {
 			read_only: !detail.canEdit,
 		});
 		const currentValue = scopeValueOf(detail);
-		// The current scope is listed even when the user could not create a skill there,
-		// such as an agent skill, which is only made from inside its agent.
+		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+		// A restore keeps the modal open, so the next save must send the hash it produced.
+		let baseSkillHash = detail.skillHash;
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
 			readOnly: !detail.canEdit,
-			...(assistantSkillsEnabled.value && detail.scope !== 'agent'
+			...(detail.syncedFrom ? { syncedFrom: detail.syncedFrom } : {}),
+			...(assistantSkillsEnabled.value
 				? { availableToAssistant: detail.availableToAssistant }
 				: {}),
 			scopeOptions: options,
 			initialScope: currentValue,
+			...(mcpSkillsEnabled.value ? { availableToMCP: detail.availableToMCP } : {}),
 			...scopeLock(detail),
 			usedBy: detail.usedBy,
 			existingSkillNames: [],
-			onConfirm: async ({ skill, scope, availableToAssistant }) =>
+			latestVersion: detail.latestVersion,
+			initialVersionsOpen: show === 'versions',
+			initialCompare: show === 'compare',
+			onDelete: async () => await onDelete(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
+			deleteDisabledReason: deleteBlockedReason(detail),
+			...(detail.syncedFrom?.canStopSyncing
+				? {
+						onStopSyncing: async () =>
+							await onStopSyncing(detail, () => uiStore.closeModal(AGENT_SKILL_MODAL_KEY)),
+					}
+				: {}),
+			onConfirm: async ({ skill, scope, availableToAssistant, availableToMCP }) =>
 				await onSave(
 					detail.id,
 					skill,
-					detail.skillHash,
+					baseSkillHash,
 					scope !== currentValue ? scope : undefined,
 					availableToAssistant,
+					availableToMCP,
+					(skillHash) => (baseSkillHash = skillHash),
 				),
 		});
 	} catch (error) {
@@ -445,10 +556,12 @@ async function onSave(
 	baseSkillHash: string,
 	newScope?: string,
 	availableToAssistant?: boolean,
+	availableToMCP?: boolean,
+	onSaved?: (skillHash: string) => void,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
-		({ created } = await skillsStore.saveSkill(id, {
+		const saved = await skillsStore.saveSkill(id, {
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
@@ -457,12 +570,20 @@ async function onSave(
 			baseSkillHash,
 			...(newScope ? parseScope(newScope) : {}),
 			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
-		}));
+			availableToMCP,
+		});
+		created = saved.created;
+		onSaved?.(saved.skillHash);
 	} catch (error) {
 		return saveFailed(error);
 	}
 	// Scope and availability changes do not create a content version.
-	if (created || newScope !== undefined || availableToAssistant !== undefined) {
+	if (
+		created ||
+		newScope !== undefined ||
+		availableToAssistant !== undefined ||
+		availableToMCP !== undefined
+	) {
 		await load();
 		confirmIfHidden(id, 'saved');
 	} else {
@@ -488,7 +609,8 @@ async function onDownload(item: Pick<SkillListItem, 'id'>) {
 	}
 }
 
-async function onDelete(skill: SkillListItem) {
+/** `onDeleted` runs as soon as the delete succeeds, before the list reloads. */
+async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void) {
 	const confirmed = await message.confirm(
 		i18n.baseText('settings.context.skills.delete.confirm.message'),
 		i18n.baseText('settings.context.skills.delete.confirm.title'),
@@ -501,6 +623,7 @@ async function onDelete(skill: SkillListItem) {
 	if (confirmed !== MODAL_CONFIRM) return;
 	try {
 		await skillsStore.deleteSkill(skill.id);
+		onDeleted?.();
 		showMessage({
 			title: i18n.baseText('settings.context.skills.delete.success'),
 			type: 'success',
@@ -511,6 +634,85 @@ async function onDelete(skill: SkillListItem) {
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
+	await load();
+}
+
+/**
+ * The skill keeps its versions and becomes a normal skill that the user can edit. The row
+ * menu and the modal both use this. The modal closes, as in the prototype, and the list
+ * reloads with the row editable.
+ */
+async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
+	const name = skill.name;
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.context.skills.stopSyncing.confirm.message', {
+			interpolate: { scope: scopeDisplay(skill).label, count: skill.latestVersion },
+			adjustToNumber: skill.latestVersion,
+		}),
+		i18n.baseText('settings.context.skills.stopSyncing.confirm.title', {
+			interpolate: { name },
+		}),
+		{
+			confirmButtonText: i18n.baseText('settings.context.skills.stopSyncing.action'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+	try {
+		await skillsStore.stopSyncingSkill(skill.id);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.skills.stopSyncing.error'));
+		return;
+	}
+	onStopped?.();
+	showMessage({
+		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
+		type: 'success',
+	});
+	await load();
+}
+
+/**
+ * Check now: checks the whole source of the skill. The list reloads, so the badges of every
+ * skill of the source show what the check found.
+ */
+async function onCheckForUpdates(skill: SkillListItem) {
+	let result;
+	try {
+		result = await skillsStore.checkForUpdates(skill.id);
+	} catch (error) {
+		const reason = error instanceof ResponseError ? error.meta?.reason : undefined;
+		// The user cannot pick another credential here, so that reason gets its own text.
+		const text =
+			reason === 'credential_missing'
+				? i18n.baseText('settings.context.skills.checkForUpdates.error.credentialMissing')
+				: reason !== undefined
+					? reasonText(reason)
+					: undefined;
+		showError(
+			text ? new Error(text) : error,
+			i18n.baseText('settings.context.skills.checkForUpdates.error'),
+		);
+		return;
+	}
+	const { label, updatesFound, throttled } = result;
+	showMessage({
+		title: throttled
+			? i18n.baseText('settings.context.skills.checkForUpdates.throttled', {
+					interpolate: { label },
+				})
+			: i18n.baseText('settings.context.skills.checkForUpdates.checked', {
+					interpolate: { label },
+				}),
+		message:
+			updatesFound === 0
+				? i18n.baseText('settings.context.skills.checkForUpdates.none')
+				: i18n.baseText('settings.context.skills.checkForUpdates.found', {
+						interpolate: { count: updatesFound },
+						adjustToNumber: updatesFound,
+					}),
+		type: 'success',
+	});
 	await load();
 }
 
@@ -651,8 +853,22 @@ onMounted(async () => {
 				</div>
 			</ResourceFiltersDropdown>
 			<span :class="$style.spacer" />
+			<N8nActionDropdown
+				v-if="scopeOptions.length > 0 && skillSyncEnabled"
+				:items="createMenuItems"
+				placement="bottom-end"
+				data-test-id="skills-create-menu"
+				@select="onCreateMenuSelect"
+			>
+				<template #activator>
+					<N8nButton data-test-id="skills-create-menu-button">
+						{{ i18n.baseText('settings.context.skills.actions.createMenu') }}
+						<N8nIcon icon="chevron-down" size="small" />
+					</N8nButton>
+				</template>
+			</N8nActionDropdown>
 			<N8nButton
-				v-if="scopeOptions.length > 0"
+				v-else-if="scopeOptions.length > 0"
 				:label="i18n.baseText('settings.context.skills.actions.create')"
 				data-test-id="skills-create-button"
 				@click="openCreateModal"
@@ -666,8 +882,13 @@ onMounted(async () => {
 			:loading="showLoading"
 			:show-empty="emptyState !== 'none'"
 			:show-assistant-availability="assistantSkillsEnabled"
-			@open="openEditModal"
+			:show-mcp-availability="mcpSkillsEnabled"
+			@open="openEditModal($event)"
+			@timeline="openEditModal($event, 'versions')"
+			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
+			@check-for-updates="onCheckForUpdates($event)"
+			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
 			@update:options="onOptionsUpdate"
 		>
@@ -697,6 +918,13 @@ onMounted(async () => {
 				</div>
 			</template>
 		</SkillsTable>
+
+		<SkillSourceConnectDialog
+			v-if="skillSyncEnabled"
+			v-model:open="connectOpen"
+			:scope-options="scopeOptions"
+			@connected="onSourceConnected"
+		/>
 	</N8nSettingsLayout>
 </template>
 

@@ -277,14 +277,26 @@ describe('Microsoft Teams Helpers Functions', () => {
 			};
 		});
 
-		it('should return true when no secret is stored (backward compatibility)', () => {
+		it('should return false when no secret is stored', () => {
 			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
 				body: { value: [{ clientState: 'anything' }] },
 			});
 			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({});
 
 			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
-			expect(result).toBe(true);
+			expect(result).toBe(false);
+		});
+
+		it('should return false when the stored secret is empty', () => {
+			(mockWebhookFunctions.getRequestObject as Mock).mockReturnValue({
+				body: { value: [{ clientState: '' }] },
+			});
+			(mockWebhookFunctions.getWorkflowStaticData as Mock).mockReturnValue({
+				webhookSecret: '',
+			});
+
+			const result = verifyWebhook.call(mockWebhookFunctions as IWebhookFunctions);
+			expect(result).toBe(false);
 		});
 
 		it('should return true when clientState matches the stored secret', () => {

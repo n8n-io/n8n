@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-utilities",
-  "version": "0.38.0",
+  "version": "0.39.0",
   "description": "Utilities for building AI nodes in n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -27,6 +27,9 @@
       ],
       "http-proxy-agent": [
         "dist/esm/utils/http-proxy-agent.d.ts"
+      ],
+      "refreshing-auth-fetch": [
+        "dist/esm/utils/refreshing-auth-fetch.d.ts"
       ],
       "tokenizer": [
         "dist/esm/utils/tokenizer/tiktoken.d.ts"
@@ -88,6 +91,11 @@
       "types": "./dist/esm/utils/http-proxy-agent.d.ts",
       "import": "./dist/esm/utils/http-proxy-agent.js",
       "require": "./dist/cjs/utils/http-proxy-agent.js"
+    },
+    "./refreshing-auth-fetch": {
+      "types": "./dist/esm/utils/refreshing-auth-fetch.d.ts",
+      "import": "./dist/esm/utils/refreshing-auth-fetch.js",
+      "require": "./dist/cjs/utils/refreshing-auth-fetch.js"
     },
     "./tokenizer": {
       "types": "./dist/esm/utils/tokenizer/tiktoken.d.ts",

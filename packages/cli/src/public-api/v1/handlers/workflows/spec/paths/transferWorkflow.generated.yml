@@ -35,3 +35,5 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '415':
     $ref: ../../../../shared/spec/responses/unsupportedMediaType.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

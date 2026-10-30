@@ -60,7 +60,6 @@ function createSetupFactory() {
 		},
 		browserSessionService: { findMcpServer: vi.fn() },
 		aiService: { isProxyEnabled: vi.fn(() => false) },
-		dbIterationLogStorage: {},
 		instanceWriteAccess: { isReadOnly: vi.fn(() => false) },
 		telemetry: { track: vi.fn() },
 		evalCredentialAllowlists: {},
@@ -68,6 +67,7 @@ function createSetupFactory() {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			getModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn() },
 		instanceAiErrorReporter: {
@@ -90,9 +90,9 @@ function createRuntime(overrides: Partial<AssistantTurnRuntime> = {}): Assistant
 	return {
 		memory: mock<AssistantTurnRuntime['memory']>({
 			getThread: vi.fn(async () => null),
-			getThreadProjectId: vi.fn(async () => 'project-1'),
 		}),
 		resourceId: 'user-1',
+		getProjectId: vi.fn(async () => 'project-1'),
 		eventBus: mock<AssistantTurnRuntime['eventBus']>(),
 		turnState: {
 			getBuildMode: vi.fn(() => 'progressive' as const),
@@ -169,9 +169,36 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const { orchestrationContext } = await factory.create(params, createRuntime());
 
 			expect(orchestrationContext.cancelBackgroundTask).toBeUndefined();
-			expect(orchestrationContext.schedulePlannedTasks).toBeUndefined();
 			expect(orchestrationContext.sendCorrectionToTask).toBeUndefined();
 		});
+
+		it.each([
+			{ workflowBuilderAvailable: true, sandboxEnabled: true, expected: true },
+			{ workflowBuilderAvailable: true, sandboxEnabled: false, expected: false },
+			{ workflowBuilderAvailable: false, sandboxEnabled: true, expected: false },
+		])(
+			'keeps the app service, tool and skill only with a sandbox workspace (%o)',
+			async ({ workflowBuilderAvailable, sandboxEnabled, expected }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.adapterService.createContext.mockReturnValue(
+					mock<InstanceAiContext>({ appService: mock() }),
+				);
+				fields.settingsService.getSandboxStatus.mockReturnValue({ workflowBuilderAvailable });
+				const runtime = createRuntime();
+				runtime.sandbox.resolveConfig = vi.fn(
+					async () => ({ enabled: sandboxEnabled, provider: 'local' }) as unknown as SandboxConfig,
+				);
+
+				const { context } = await factory.create(params, runtime);
+
+				expect(fields.skillsService.loadSkills).toHaveBeenCalledWith(
+					expect.objectContaining({ appBuildingEnabled: expected }),
+					expect.anything(),
+				);
+				expect(context.appService !== undefined).toBe(expected);
+				expect(context.workspace !== undefined).toBe(expected);
+			},
+		);
 
 		it('uses the workflow task coordinator directly when the runtime does not sync tasks', async () => {
 			const { factory } = createSetupFactory();
@@ -201,7 +228,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			const runtime = createRuntime({
 				memory: mock<AssistantTurnRuntime['memory']>({
 					getThread: vi.fn(async () => ({ resourceId: 'user-2' }) as never),
-					getThreadProjectId: vi.fn(),
 				}),
 			});
 
@@ -300,7 +326,6 @@ describe('AssistantTurnEnvironmentFactory', () => {
 					editorBaseUrl: '',
 				}),
 				mock<UrlService>({ getInstanceBaseUrl: vi.fn(() => 'https://acme.example.com') }),
-				mock(),
 				mock(),
 				mock(),
 				mock(),

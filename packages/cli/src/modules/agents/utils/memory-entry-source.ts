@@ -14,7 +14,9 @@ import {
 
 const INTEGRATION_KINDS = ['slack', 'linear', 'discord', 'telegram', 'whatsapp', 'teams'] as const;
 
-function isIntegrationKind(type: string | undefined): type is (typeof INTEGRATION_KINDS)[number] {
+export type IntegrationSourceKind = (typeof INTEGRATION_KINDS)[number];
+
+export function isIntegrationKind(type: string | undefined): type is IntegrationSourceKind {
 	return INTEGRATION_KINDS.some((kind) => kind === type);
 }
 

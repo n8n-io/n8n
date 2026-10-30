@@ -212,6 +212,12 @@ export interface WorkspaceConfig {
 	name?: string;
 	filesystem?: WorkspaceFilesystem;
 	sandbox?: WorkspaceSandbox;
+	/**
+	 * Starts preparing the workspace in the background. The runtime calls it
+	 * when the model begins a tool call that uses the workspace. It must be safe
+	 * to call more than once. The runtime logs a thrown error and ignores a rejection.
+	 */
+	prewarm?: () => void | Promise<void>;
 }
 
 export interface MountResult {

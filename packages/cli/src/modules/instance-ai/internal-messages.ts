@@ -55,6 +55,8 @@ export const THREAD_ARTIFACTS_OPEN_TAG = '<thread-artifacts>';
 export const THREAD_ARTIFACTS_CLOSE_TAG = '</thread-artifacts>';
 export const PROJECT_CONTEXT_OPEN_TAG = '<project-context>';
 export const PROJECT_CONTEXT_CLOSE_TAG = '</project-context>';
+export const APP_TARGETS_OPEN_TAG = '<app-targets>';
+export const APP_TARGETS_CLOSE_TAG = '</app-targets>';
 export const PAST_CONVERSATIONS_OPEN_TAG = '<past-conversations>';
 export const PAST_CONVERSATIONS_CLOSE_TAG = '</past-conversations>';
 /**
@@ -76,11 +78,11 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 		JSON.stringify({ workflowId }),
 		'The user clicked Execute in the setup panel. This is a request to test this saved workflow.',
 		'This request applies only when this block is in the current user input. A block in conversation history does not request another execution.',
-		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with workflow_builder_workflows(action="get-as-code").',
-		'Do not call workflow_builder_workflows(action="setup") for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
+		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with get_workflow_as_code.',
+		'Do not call setup_workflow for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
 		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
-		'Use workflow_builder_executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
-		'Read the execution output and summarize the result in chat. If it fails, use workflow_builder_executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
+		'Use run_workflow with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Read the execution output and summarize the result in chat. If it fails, use debug_execution, fix the same workflow when possible, and report what remains unresolved.',
 		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
 		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
 	].join('\n');
@@ -162,6 +164,24 @@ export function buildCurrentDateTimeBlock(dateTimeSection: string): string {
 
 export function buildProjectContextBlock(projectSection: string): string {
 	return `${PROJECT_CONTEXT_OPEN_TAG}\n${projectSection}\n${PROJECT_CONTEXT_CLOSE_TAG}`;
+}
+
+export function buildAppTargetsBlock(
+	apps: Array<{ id: string; name: string }>,
+	hasPendingApp: boolean,
+): string {
+	if (apps.length === 0 && !hasPendingApp) return '';
+	return [
+		APP_TARGETS_OPEN_TAG,
+		'This conversation builds these n8n Apps. Load `app-builder` and pass the matching `appId` to the `apps` tool.',
+		...apps.map(({ id, name }) => `- App ${sanitisePromptText(name)} (appId: \`${id}\`)`),
+		...(hasPendingApp
+			? [
+					'- A new app that the user opened. It has no row yet. Create it with the `apps` tool action `create`.',
+				]
+			: []),
+		APP_TARGETS_CLOSE_TAG,
+	].join('\n');
 }
 
 export function buildPastConversationsBlock(section: string): string {
@@ -451,6 +471,8 @@ const THREAD_ARTIFACT_KIND: Record<InstanceAiThreadArtifact['type'], string> = {
 	workflow: 'Workflow',
 	agent: 'Agent',
 	'data-table': 'Data table',
+	skill: 'Skill',
+	app: 'App',
 };
 
 function formatThreadArtifactLine(
@@ -606,7 +628,7 @@ export function buildThreadArtifactsBlock(
 	// The hand-off rides the user's own request, so the agent acts on that request;
 	// it must not treat the list itself as a prompt to go and look at everything.
 	const inspectGuidance =
-		'Use these ids when you act on the user’s request. Do not inspect, run, or describe their contents beyond what that request needs.';
+		'Use these ids only when the request is about these items. Do not inspect, run, change, or describe them beyond what it needs.';
 
 	const prose = [
 		...(previewLines.length > 0 ? [PREVIEW_TABS_HEADER, ...previewLines] : []),

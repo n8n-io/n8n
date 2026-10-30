@@ -1,11 +1,19 @@
 import { loadReplayedMessages, type AgentDbMessage, type BuiltMemory } from '@n8n/agents';
-import type { AiPreferencesAppliedPayload } from '@n8n/api-types';
+import {
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
+	type AiPreferencesAppliedPayload,
+} from '@n8n/api-types';
 import { AI_PREFERENCES_CLEARED_BLOCK, renderAiPreferencesBlock } from '@n8n/backend-services';
 import type { Mock } from 'vitest';
 
-import { buildThreadArtifactsBlock, buildThreadContextBlock } from '../../internal-messages';
+import {
+	buildAppTargetsBlock,
+	buildThreadArtifactsBlock,
+	buildThreadContextBlock,
+} from '../../internal-messages';
 import type { AssistantTurnEnvironment } from '../assistant-turn-environment.factory';
-import { AssistantTurnInputBuilder } from '../assistant-turn-input.builder';
+import { AssistantTurnInputBuilder, OPENED_METADATA_KEY } from '../assistant-turn-input.builder';
 
 type ThreadMemoryMock = {
 	getMessages: Mock;
@@ -187,6 +195,40 @@ describe('AssistantTurnInputBuilder — resolveThreadArtifactsTurn', () => {
 
 		expect(await resolve(service, { artifacts: [] })).toContain('no tabs open');
 		expect(service.logger.warn).toHaveBeenCalled();
+	});
+});
+
+describe('AssistantTurnInputBuilder — resolveAppTargetsBlock', () => {
+	type Internals = {
+		resolveAppTargetsBlock: (
+			context: { appService?: { getApp: Mock } },
+			metadata: Record<string, unknown>,
+		) => Promise<string>;
+	};
+
+	const builder = Object.create(AssistantTurnInputBuilder.prototype) as unknown as Internals;
+	const [first, missing, pending] = [1, 2, 3].map((n) => `00000000-0000-4000-8000-00000000000${n}`);
+	const metadata = {
+		[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [
+			{ appId: first, projectId: 'project-1' },
+			{ appId: missing, projectId: 'project-1' },
+		],
+		[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: pending, projectId: 'project-1' },
+	};
+
+	it('sends nothing without the app service', async () => {
+		expect(await builder.resolveAppTargetsBlock({}, metadata)).toBe('');
+	});
+
+	it('lists the apps that still exist and the pending app', async () => {
+		const getApp = vi.fn(async (appId: string) => {
+			if (appId === missing) throw new Error('Not found');
+			return { id: appId, name: 'Orders' };
+		});
+
+		const block = await builder.resolveAppTargetsBlock({ appService: { getApp } }, metadata);
+
+		expect(block).toBe(buildAppTargetsBlock([{ id: first, name: 'Orders' }], true));
 	});
 });
 
@@ -535,8 +577,6 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 		runId: 'run-1',
 		message: 'Build a digest',
 		fileAttachments: [],
-		isReplanFollowUp: false,
-		isPostPlanFollowUp: false,
 	};
 
 	it('gives an ordinary turn a new work item that reports to the workflow loop', () => {
@@ -549,33 +589,186 @@ describe('AssistantTurnInputBuilder — applyTurnScope', () => {
 			runId: 'run-1',
 			taskId: 'build-run-1',
 			workItemId: expect.stringMatching(/^wi_/),
-			allowPostPlanWorkflowCreate: false,
 			workflowTaskService: environment.workflowTasks,
 		});
 		expect(environment.orchestrationContext).toMatchObject({
 			currentUserMessage: 'Build a digest',
-			isReplanFollowUp: false,
 			timeZone: 'UTC',
 		});
 	});
+});
 
-	it('uses the build context of a planned build follow-up', () => {
-		const environment = createEnvironment();
-		const plannedContext = {
+describe('AssistantTurnInputBuilder — opening-turn title', () => {
+	function createMemory(thread: { title?: string; metadata?: Record<string, unknown> }) {
+		return {
+			getThread: vi.fn(async () => ({ id: 'thread-1', resourceId: 'user-1', ...thread })),
+			patchThread: vi.fn(
+				async (args: {
+					update: (current: { title?: string; metadata?: Record<string, unknown> }) => unknown;
+				}) => args.update({ metadata: {}, ...thread }),
+			),
+			getMessages: vi.fn(async () => []),
+		};
+	}
+
+	function createBuilder() {
+		return Object.assign(Object.create(AssistantTurnInputBuilder.prototype) as object, {
+			defaultTimeZone: 'UTC',
+			webhookBaseUrl: 'https://acme.example.com/webhook',
+			formBaseUrl: 'https://acme.example.com/form',
+			logger: { warn: vi.fn(), debug: vi.fn() },
+			buildWorkflowSetupStateBlock: vi.fn(async () => ''),
+			instanceContext: {
+				buildBlock: vi.fn(async () => ({ state: 'absent', reason: 'disabled' })),
+			},
+			resolveBoundProject: vi.fn(async () => undefined),
+			skillsService: { loadSkill: vi.fn(async () => ({ instructions: '' })) },
+		}) as unknown as AssistantTurnInputBuilder;
+	}
+
+	async function buildOpeningTurn(
+		memory: ReturnType<typeof createMemory>,
+		params: {
+			titledByRuntime?: boolean;
+			contextAttachments?: unknown[];
+			message?: string;
+			fileAttachments?: unknown[];
+		} = {},
+	) {
+		const conversationHistory = {
+			getPastConversationsSection: vi.fn(async () => undefined),
+		};
+		const environment = {
+			context: {},
+			memory,
+			taskStorage: { get: vi.fn(async () => undefined) },
+			conversationHistory,
+			aiPreferencesEnabled: false,
+			instanceContextEnabled: false,
+			skillScope: {},
+		} as unknown as AssistantTurnEnvironment;
+		await createBuilder().buildInput(environment, { eventBus: { publish: vi.fn() } } as never, {
+			user: { id: 'user-1' } as never,
 			threadId: 'thread-1',
 			runId: 'run-1',
-			taskId: 'task-1',
-			workItemId: 'wi_planned',
-			allowPostPlanWorkflowCreate: true,
+			message: params.message ?? 'Send me a daily digest of new GitHub issues',
+			fileAttachments: (params.fileAttachments ?? []) as never,
+			contextAttachments: (params.contextAttachments ?? []) as never,
+			...(params.titledByRuntime !== undefined ? { titledByRuntime: params.titledByRuntime } : {}),
+		});
+		const update = memory.patchThread.mock.results[0]?.value as Promise<unknown> | undefined;
+		return {
+			patch: update ? await update : undefined,
+			pastConversationsRequested:
+				conversationHistory.getPastConversationsSection.mock.calls.length > 0,
 		};
+	}
 
-		createBuilder().applyTurnScope(environment, {
-			...scope,
-			timeZone: 'Europe/Helsinki',
-			workflowBuildContext: plannedContext,
+	it('titles an untitled thread from the first message and marks it opened', async () => {
+		const memory = createMemory({});
+
+		const { patch, pastConversationsRequested } = await buildOpeningTurn(memory);
+
+		expect(patch).toEqual({
+			title: 'Send me a daily digest of new GitHub issues',
+			metadata: { [OPENED_METADATA_KEY]: true },
+		});
+		expect(pastConversationsRequested).toBe(true);
+	});
+
+	it('marks the thread opened without a title when the agent runtime titles it', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, { titledByRuntime: true });
+
+		expect(patch).toEqual({ metadata: { [OPENED_METADATA_KEY]: true } });
+	});
+
+	it('keeps the final title of a hand-off when the agent runtime titles the thread', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			titledByRuntime: true,
+			contextAttachments: [{ type: 'workflow', id: 'wf-1', name: 'Digest' }],
 		});
 
-		expect(environment.context.workflowBuildContext).toBe(plannedContext);
-		expect(environment.orchestrationContext.timeZone).toBe('Europe/Helsinki');
+		expect(patch).toEqual({
+			title: 'Digest',
+			metadata: { [OPENED_METADATA_KEY]: true, titleRefined: true },
+		});
+	});
+
+	it('leaves the title to the agent runtime when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			titledByRuntime: true,
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({ metadata: { [OPENED_METADATA_KEY]: true } });
+	});
+
+	it('titles from the message when only an unsaved agent is attached', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			contextAttachments: [
+				{ type: 'agent', id: 'agent-1', projectId: 'project-1', name: 'Untitled', pending: true },
+			],
+		});
+
+		expect(patch).toEqual({
+			title: 'Send me a daily digest of new GitHub issues',
+			metadata: { [OPENED_METADATA_KEY]: true },
+		});
+	});
+
+	it('does not open an untitled thread again after its opening turn', async () => {
+		const memory = createMemory({ metadata: { [OPENED_METADATA_KEY]: true } });
+
+		const { pastConversationsRequested } = await buildOpeningTurn(memory, {
+			titledByRuntime: true,
+		});
+
+		expect(memory.patchThread).not.toHaveBeenCalled();
+		expect(pastConversationsRequested).toBe(false);
+	});
+
+	it('does not open a titled thread from before the opened flag', async () => {
+		const memory = createMemory({ title: 'GitHub issues digest' });
+
+		const { pastConversationsRequested } = await buildOpeningTurn(memory);
+
+		expect(memory.patchThread).not.toHaveBeenCalled();
+		expect(pastConversationsRequested).toBe(false);
+	});
+
+	it('opens an onboarding thread on its first user turn', async () => {
+		const memory = createMemory({
+			title: 'Welcome to n8n',
+			metadata: { source: 'onboarding' },
+		});
+
+		const { patch, pastConversationsRequested } = await buildOpeningTurn(memory);
+
+		expect(patch).toEqual({
+			title: 'Welcome to n8n',
+			metadata: { source: 'onboarding', [OPENED_METADATA_KEY]: true, titleRefined: true },
+		});
+		expect(pastConversationsRequested).toBe(true);
+	});
+
+	it('marks an attachment-only opener opened even when it gets no title', async () => {
+		const memory = createMemory({});
+
+		const { patch } = await buildOpeningTurn(memory, {
+			message: '',
+			fileAttachments: [{ fileName: '', mimeType: 'image/png', data: '' }],
+		});
+
+		expect(patch).toEqual({ title: '', metadata: { [OPENED_METADATA_KEY]: true } });
 	});
 });

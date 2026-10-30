@@ -21,6 +21,17 @@ export class AgentMemoryController {
 		return await this.agentMemoryEntriesService.list(agentId, projectId, req.user.id, query);
 	}
 
+	@Get('/:agentId/memory-entries/facets')
+	@ProjectScope('agent:read')
+	async listMemorySourceFacets(
+		req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+	) {
+		return await this.agentMemoryEntriesService.listSourceFacets(agentId, projectId, req.user.id);
+	}
+
 	@Delete('/:agentId/memory-entries/:entryId')
 	@ProjectScope('agent:update')
 	async deleteMemoryEntry(
@@ -31,6 +42,19 @@ export class AgentMemoryController {
 		@Param('entryId') entryId: string,
 	) {
 		await this.agentMemoryEntriesService.delete(agentId, projectId, entryId);
+		return { success: true };
+	}
+
+	@Delete('/:agentId/memory-captures/:captureId')
+	@ProjectScope('agent:update')
+	async deleteMemoryCapture(
+		_req: AuthenticatedRequest<{ projectId: string }>,
+		_res: Response,
+		@Param('projectId') projectId: string,
+		@Param('agentId') agentId: string,
+		@Param('captureId') captureId: string,
+	) {
+		await this.agentMemoryEntriesService.deleteCapture(agentId, projectId, captureId);
 		return { success: true };
 	}
 }

@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { EngineConfig } from '@n8n/config';
 import type { ActionScope } from '@n8n/engine';
-import { ACTION_TOKEN, mintActionToken, mintIdentityToken } from '@n8n/engine';
+import { ACTION_TOKEN_SPEC, mintActionToken, mintIdentityToken } from '@n8n/engine';
 import type { NextFunction, Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import type { Mocked } from 'vitest';
@@ -117,9 +117,9 @@ describe('createEngineControlPlaneAuthMiddleware', () => {
 	it('rejects a token with a scope the engine does not know', () => {
 		const token = jwt.sign({ scope: 'credential:read' }, authSecret, {
 			algorithm: 'HS256',
-			issuer: ACTION_TOKEN.issuer,
-			audience: ACTION_TOKEN.audience,
-			expiresIn: ACTION_TOKEN.ttlSeconds,
+			issuer: ACTION_TOKEN_SPEC.issuer,
+			audience: ACTION_TOKEN_SPEC.audience,
+			expiresIn: ACTION_TOKEN_SPEC.ttlSeconds,
 		});
 
 		expectRejected(authenticate(`Bearer ${token}`));

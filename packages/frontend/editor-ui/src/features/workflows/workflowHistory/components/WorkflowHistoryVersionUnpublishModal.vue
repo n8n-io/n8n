@@ -130,10 +130,10 @@ onBeforeUnmount(() => {
 							<N8nScrollArea max-height="30vh" type="auto">
 								<ul v-if="affectedDependencies.length > 0" :class="$style.list">
 									<li v-for="dep in affectedDependencies" :key="`${dep.type}-${dep.id}`">
-										<N8nLink v-if="dep.href" :to="dep.href" new-window size="small">
+										<N8nLink v-if="dep.href" :to="dep.href" new-window size="medium">
 											{{ dep.name }}
 										</N8nLink>
-										<N8nText v-else size="small">{{ dep.name }}</N8nText>
+										<N8nText v-else size="medium">{{ dep.name }}</N8nText>
 									</li>
 								</ul>
 								<N8nText v-if="hiddenAffectedCount > 0" size="small" color="text-light">
