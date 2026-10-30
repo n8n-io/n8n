@@ -218,21 +218,36 @@ export class OAuthSigningKeyService {
 
 	private async readPublishedKeyRows(): Promise<PublishedKeyList> {
 		const rows = await this.deploymentKeyRepository.findOAuthSigningKeys();
-		const keys = rows
-			.filter((row) => row.algorithm === OAUTH_SIGNING_ALGORITHM)
-			.map((row) => {
+		const readAt = Date.now();
+		const keys: PublishedSigningKey[] = [];
+
+		for (const row of rows) {
+			if (row.algorithm !== OAUTH_SIGNING_ALGORITHM) continue;
+
+			const active = row.status === 'active';
+			const updatedAt = new Date(row.updatedAt).getTime();
+			if (!active && readAt - updatedAt > RETIRED_SIGNING_KEY_GRACE_MS) continue;
+
+			try {
 				const publicJwk = toPublicJwk(this.readPrivateJwk(row));
 				const { kty, crv, x, y } = publicJwk;
-				return {
+				keys.push({
 					kid: row.id,
 					publicJwk,
 					publicKey: createPublicKey({ key: { kty, crv, x, y }, format: 'jwk' }),
-					active: row.status === 'active',
-					updatedAt: new Date(row.updatedAt).getTime(),
-				};
-			});
+					active,
+					updatedAt,
+				});
+			} catch (error) {
+				if (active) throw error;
+				this.logger.warn('Failed to read retired OAuth signing key; skipping it', {
+					error,
+					keyId: row.id,
+				});
+			}
+		}
 
-		return { keys, readAt: Date.now() };
+		return { keys, readAt };
 	}
 
 	private readPrivateJwk(row: DeploymentKey): JsonWebKey {
