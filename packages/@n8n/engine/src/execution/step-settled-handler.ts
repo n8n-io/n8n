@@ -114,13 +114,11 @@ export class StepSettledHandler {
 		await this.stepStore.cancelPendingSteps(execution.id);
 	}
 
-	/**
-	 * The error to report for a failed execution. Usually this step's own; if
-	 * it did not fail itself, that of any failed step, since several may have
-	 * failed and one is as good as another.
-	 */
+	/** The error to report for a failed execution. */
 	private async failureOf(execution: ExecutionRecord, step: StepRecord): Promise<StepError> {
 		if (step.status === 'failed' && step.error) return step.error;
+		// If a different step failed, find it. Note: it's possible multiple steps
+		// may have failed - we choose any for now.
 		const failed = (await this.stepStore.loadAllSteps(execution.id)).find(
 			(row) => row.status === 'failed' && row.error,
 		);
