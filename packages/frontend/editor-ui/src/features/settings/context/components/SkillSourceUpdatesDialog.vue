@@ -10,6 +10,7 @@ import {
 	N8nDialogBody,
 	N8nDialogFooter,
 	N8nIcon,
+	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -24,12 +25,17 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { useSkillSourceReasons } from '../skills.utils';
 import { useSkillsStore } from '../skills.store';
 
-const props = defineProps<{ open: boolean; sourceId: string | null }>();
+const props = defineProps<{
+	open: boolean;
+	sourceId: string | null;
+	/** The label of the source, such as `owner/repository`, so the title shows while it loads. */
+	label?: string;
+}>();
 
 const emit = defineEmits<{
 	'update:open': [open: boolean];
 	/** Opens the review of one update. */
-	review: [skillId: string];
+	review: [skillId: string, name: string];
 	/** Updates came in, so the lists reload. */
 	changed: [];
 }>();
@@ -165,17 +171,22 @@ function openInGitHub() {
 	<N8nDialog
 		:open="open"
 		:header="
-			data
-				? i18n.baseText('settings.context.skills.updates.title', {
-						interpolate: { label: data.source.label },
-					})
-				: ''
+			i18n.baseText('settings.context.skills.updates.title', {
+				interpolate: { label: data?.source.label ?? props.label ?? '' },
+			})
 		"
 		size="medium"
 		data-test-id="skill-source-updates-dialog"
 		@update:open="emit('update:open', $event)"
 	>
 		<N8nDialogBody :class="$style.body">
+			<!-- The commit details come from GitHub, so the first load can take a moment. -->
+			<N8nLoading
+				v-if="loading && !data"
+				variant="p"
+				:rows="4"
+				data-test-id="skill-source-updates-loading"
+			/>
 			<template v-if="data">
 				<div :class="$style.source">
 					<N8nIcon icon="github" size="small" />
@@ -221,7 +232,7 @@ function openInGitHub() {
 						:key="update.skillId"
 						:class="$style.row"
 						data-test-id="skill-source-update-row"
-						@click="emit('review', update.skillId)"
+						@click="emit('review', update.skillId, update.name)"
 					>
 						<div :class="$style.rowText">
 							<N8nText size="medium" color="text-dark">{{ update.name }}</N8nText>

@@ -268,10 +268,36 @@ export class SkillSyncService {
 		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
 			throw new NotFoundError('Source not found');
 		}
-		const [summary] = await this.sourceService.describeSources(user, [source]);
 		const links = await this.sourceRepository.findPendingLinks(source.id);
+		// The commit comes from the source over the network, so it loads while the updates do.
+		const [[summary], commit, updates] = await Promise.all([
+			this.sourceService.describeSources(user, [source]),
+			// The newest revision that the check read, so the dialog names the latest commit.
+			this.newestCommitOf(source, client, links),
+			this.describeUpdates(source, client, links),
+		]);
+		return { source: summary, commit, updates };
+	}
+
+	/** The review of one update: the diff, the check, the commit and what happens next. */
+	async getUpdate(user: User, skillId: string): Promise<SkillUpdateReview> {
+		const { link, source, client } = await this.requirePending(user, skillId, 'view');
+		const [[update], [described], commit] = await Promise.all([
+			this.describeUpdates(source, client, [link]),
+			this.sourceService.describeSources(user, [source]),
+			this.commitOf(source, client, link),
+		]);
+		if (!update) throw staleError();
+		return { source: described, commit, update };
+	}
+
+	/** The updates of these links, by name. In batches, as each reads its agents and rename rules. */
+	private async describeUpdates(
+		source: SkillSourceConnection,
+		client: SkillSourceClient,
+		links: SkillSourceLink[],
+	): Promise<SkillPendingUpdate[]> {
 		const updates: SkillPendingUpdate[] = [];
-		// In batches, as each update reads its agents and its rename rules.
 		for (let start = 0; start < links.length; start += FETCH_CONCURRENCY) {
 			const batch = links.slice(start, start + FETCH_CONCURRENCY);
 			const latest = await this.skillRepository.findLatestSaved(batch.map((link) => link.skillId));
@@ -280,22 +306,7 @@ export class SkillSyncService {
 			);
 			updates.push(...described.flatMap((update) => update ?? []));
 		}
-		return {
-			source: summary,
-			// The newest revision that the check read, so the dialog names the latest commit.
-			commit: await this.newestCommitOf(source, client, links),
-			updates: updates.sort((a, b) => a.name.localeCompare(b.name)),
-		};
-	}
-
-	/** The review of one update: the diff, the check, the commit and what happens next. */
-	async getUpdate(user: User, skillId: string): Promise<SkillUpdateReview> {
-		const { link, source, client } = await this.requirePending(user, skillId, 'view');
-		const latest = await this.skillRepository.findLatestSaved([skillId]);
-		const update = await this.describeUpdate(source, client, link, latest);
-		if (!update) throw staleError();
-		const [described] = await this.sourceService.describeSources(user, [source]);
-		return { source: described, commit: await this.commitOf(source, client, link), update };
+		return updates.sort((a, b) => a.name.localeCompare(b.name));
 	}
 
 	/**

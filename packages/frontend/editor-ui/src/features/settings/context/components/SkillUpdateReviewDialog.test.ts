@@ -248,6 +248,16 @@ describe('SkillUpdateReviewDialog', () => {
 		expect(emitted('stopSyncing')).toEqual([['skill-1']]);
 	});
 
+	it('shows the name and a loading state while the review loads', async () => {
+		skillsStore.fetchSkillUpdate.mockReturnValue(new Promise(() => {}));
+		const { getByTestId } = render({
+			props: { open: true, skillId: 'skill-1', name: 'brand-voice' },
+		});
+
+		expect(getByTestId('dialog-title')).toHaveTextContent('brand-voice');
+		expect(getByTestId('skill-update-loading')).toBeInTheDocument();
+	});
+
 	it('changes nothing on Later', async () => {
 		const { getByTestId, emitted } = await open();
 

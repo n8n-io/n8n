@@ -726,8 +726,10 @@ type SkillsTab = 'skills' | 'sources';
 const activeTab = ref<SkillsTab>('skills');
 const sourcesLoading = ref(false);
 const updatesSourceId = ref<string | null>(null);
+const updatesLabel = ref<string | undefined>();
 const updatesOpen = ref(false);
 const reviewSkillId = ref<string | null>(null);
+const reviewName = ref<string | undefined>();
 const reviewOpen = ref(false);
 
 const tabOptions = computed<Array<TabOptions<SkillsTab>>>(() => [
@@ -759,13 +761,15 @@ async function onTabChange(tab: SkillsTab) {
 	if (tab === 'sources') await loadSources();
 }
 
-function openUpdates(sourceId: string) {
+function openUpdates(sourceId: string, label?: string) {
 	updatesSourceId.value = sourceId;
+	updatesLabel.value = label;
 	updatesOpen.value = true;
 }
 
-function openReview(skillId: string) {
+function openReview(skillId: string, name?: string) {
 	reviewSkillId.value = skillId;
+	reviewName.value = name;
 	reviewOpen.value = true;
 }
 
@@ -776,7 +780,7 @@ async function onUpdatesChanged() {
 	if (updatesOpen.value && updatesSourceId.value) {
 		const sourceId = updatesSourceId.value;
 		updatesOpen.value = false;
-		openUpdates(sourceId);
+		openUpdates(sourceId, updatesLabel.value);
 	}
 }
 
@@ -982,7 +986,7 @@ onMounted(async () => {
 			v-if="activeTab === 'sources'"
 			:sources="skillsStore.sources"
 			:loading="sourcesLoading"
-			@review="openUpdates($event.id)"
+			@review="openUpdates($event.id, $event.label)"
 			@check-now="onCheckSource"
 		/>
 
@@ -999,7 +1003,7 @@ onMounted(async () => {
 			@timeline="openEditModal($event, 'versions')"
 			@compare="openEditModal($event, 'compare')"
 			@download="onDownload"
-			@review-update="openReview($event.id)"
+			@review-update="openReview($event.id, $event.name)"
 			@check-for-updates="onCheckForUpdates($event)"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
@@ -1036,6 +1040,7 @@ onMounted(async () => {
 			v-if="skillSyncEnabled"
 			v-model:open="updatesOpen"
 			:source-id="updatesSourceId"
+			:label="updatesLabel"
 			@review="openReview"
 			@changed="onUpdatesChanged"
 		/>
@@ -1043,6 +1048,7 @@ onMounted(async () => {
 			v-if="skillSyncEnabled"
 			v-model:open="reviewOpen"
 			:skill-id="reviewSkillId"
+			:name="reviewName"
 			@changed="onUpdatesChanged"
 			@stop-syncing="onStopSyncingFromReview"
 		/>

@@ -156,7 +156,17 @@ describe('SkillSourceUpdatesDialog', () => {
 
 		await userEvent.click(getAllByTestId('skill-source-update-row')[0]);
 
-		expect(emitted('review')).toEqual([['skill-1']]);
+		expect(emitted('review')).toEqual([['skill-1', 'brand-voice']]);
+	});
+
+	it('shows the title and a loading state while the updates load', async () => {
+		skillsStore.fetchSourceUpdates.mockReturnValue(new Promise(() => {}));
+		const { getByTestId } = render({
+			props: { open: true, sourceId: 'src-1', label: 'acme/skills' },
+		});
+
+		expect(getByTestId('dialog-title')).toHaveTextContent('Updates from acme/skills');
+		expect(getByTestId('skill-source-updates-loading')).toBeInTheDocument();
 	});
 
 	it('changes nothing on Later', async () => {

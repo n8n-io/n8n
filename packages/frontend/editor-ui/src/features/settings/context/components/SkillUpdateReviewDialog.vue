@@ -8,6 +8,7 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
+	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -27,7 +28,12 @@ import {
 import { useSkillScopeDisplay, useSkillSourceReasons } from '../skills.utils';
 import { useSkillsStore } from '../skills.store';
 
-const props = defineProps<{ open: boolean; skillId: string | null }>();
+const props = defineProps<{
+	open: boolean;
+	skillId: string | null;
+	/** The name of the skill, so the title shows while the review loads. */
+	name?: string;
+}>();
 
 const emit = defineEmits<{
 	'update:open': [open: boolean];
@@ -234,12 +240,16 @@ function openInGitHub() {
 <template>
 	<N8nDialog
 		:open="open"
-		:header="update?.name ?? ''"
+		:header="update?.name ?? props.name ?? ''"
 		size="2xlarge"
 		data-test-id="skill-update-review-dialog"
 		@update:open="emit('update:open', $event)"
 	>
-		<N8nDialogBody v-if="review && update" :class="$style.body">
+		<N8nDialogBody v-if="loading && !review" :class="$style.body">
+			<!-- The commit details come from GitHub, so the first load can take a moment. -->
+			<N8nLoading variant="p" :rows="8" data-test-id="skill-update-loading" />
+		</N8nDialogBody>
+		<N8nDialogBody v-else-if="review && update" :class="$style.body">
 			<N8nCallout theme="secondary" icon="git-branch" data-test-id="skill-update-banner">
 				{{
 					i18n.baseText('settings.context.skills.review.banner', {
