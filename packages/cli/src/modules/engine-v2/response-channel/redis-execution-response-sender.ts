@@ -1,10 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionResponse, ExecutionResponseSender } from '@n8n/engine';
-import { createResultError, createResultOk, type Result } from '@n8n/utils/result';
-import { UnexpectedError } from 'n8n-workflow';
 
-import { serializeExecutionResponse } from './execution-response-frame';
-import type { RedisExecutionResponseChannelNameGenerator } from './redis-execution-response-channel';
+import type { ExecutionChannelPublisher, ExecutionChannelTopic } from './execution-channel';
+import type { RedisExecutionChannelNameGenerator } from './redis-execution-response-channel';
 
 /**
  * How long (in ms) shutdown waits for in-flight publishes. Redis queues commands
@@ -12,42 +9,37 @@ import type { RedisExecutionResponseChannelNameGenerator } from './redis-executi
  */
 export const SHUTDOWN_DRAIN_TIMEOUT_MS = 5_000;
 
-export interface RedisResponsePublisher {
+export interface RedisChannelPublisher {
 	publish(channel: string, message: string): Promise<unknown>;
 	disconnect(): void;
 }
 
-/** Publishes serialized execution responses to execution-specific Redis channels. */
-export class RedisExecutionResponseSender implements ExecutionResponseSender {
+/** Publishes serialized frames to execution-specific Redis channels. */
+export class RedisExecutionChannelPublisher implements ExecutionChannelPublisher {
 	private stopped = false;
 
 	private readonly inFlightPublishes = new Set<Promise<unknown>>();
 
 	constructor(
-		private readonly publisher: RedisResponsePublisher,
-		private readonly getChannelName: RedisExecutionResponseChannelNameGenerator,
+		private readonly publisher: RedisChannelPublisher,
+		private readonly getChannelName: RedisExecutionChannelNameGenerator,
 		private readonly logger: Logger,
 	) {}
 
-	send(response: ExecutionResponse): Result<void, Error> {
-		if (this.stopped) {
-			return createResultError(new UnexpectedError('The execution response sender has stopped.'));
-		}
-
-		const frameResult = serializeExecutionResponse(response, this.logger);
+	publish(topic: ExecutionChannelTopic, executionId: string, frame: string): void {
+		if (this.stopped) return;
 
 		const publishTask: Promise<unknown> = this.publisher
-			.publish(this.getChannelName(response.executionId), frameResult.frame)
+			.publish(this.getChannelName(topic, executionId), frame)
 			.catch((error: unknown) => {
-				this.logger.error('Failed to publish an execution response', {
-					executionId: response.executionId,
+				this.logger.error('Failed to publish to the execution channel', {
+					topic,
+					executionId,
 					error,
 				});
 			})
 			.finally(() => this.inFlightPublishes.delete(publishTask));
 		this.inFlightPublishes.add(publishTask);
-
-		return frameResult.ok ? createResultOk(undefined) : createResultError(frameResult.error);
 	}
 
 	async stop(): Promise<void> {
@@ -73,7 +65,7 @@ export class RedisExecutionResponseSender implements ExecutionResponseSender {
 		}
 
 		if (this.inFlightPublishes.size > 0) {
-			this.logger.warn('Execution responses were still being published at shutdown', {
+			this.logger.warn('Execution channel frames were still being published at shutdown', {
 				count: this.inFlightPublishes.size,
 			});
 		}

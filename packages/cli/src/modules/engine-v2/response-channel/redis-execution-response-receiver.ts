@@ -1,24 +1,25 @@
 import type { Logger } from '@n8n/backend-common';
-import type { ExecutionResponse } from '@n8n/engine';
 import { UnexpectedError } from 'n8n-workflow';
 
-import { deserializeExecutionResponse } from './execution-response-frame';
 import type {
-	ExecutionResponseReceiver,
-	UnsubscribeExecutionResponse,
-} from './execution-response-receiver';
-import type { RedisExecutionResponseChannelNameGenerator } from './redis-execution-response-channel';
+	ExecutionChannelFrameHandler,
+	ExecutionChannelSubscriber,
+	ExecutionChannelTopic,
+	UnsubscribeFromExecutionChannel,
+} from './execution-channel';
+import type { RedisExecutionChannelNameGenerator } from './redis-execution-response-channel';
 
 type RedisMessageHandler = (channel: string, message: string) => void;
 
 type RedisConnectionHandler = () => void;
 
-type ExecutionSubscription = {
+type ChannelSubscription = {
+	topic: ExecutionChannelTopic;
 	executionId: string;
-	handler: (response: ExecutionResponse) => void;
+	handler: ExecutionChannelFrameHandler;
 };
 
-export interface RedisResponseSubscriber {
+export interface RedisChannelSubscriber {
 	subscribe(...channels: string[]): Promise<unknown>;
 	unsubscribe(channel: string): Promise<unknown>;
 	on(event: 'close' | 'ready', handler: RedisConnectionHandler): unknown;
@@ -28,8 +29,12 @@ export interface RedisResponseSubscriber {
 	disconnect(): void;
 }
 
-export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver {
-	private readonly subscriptionsByChannel = new Map<string, ExecutionSubscription>();
+/**
+ * Subscribes to execution-specific Redis channels on one connection. Each topic
+ * of an execution has its own Redis channel, with one subscriber.
+ */
+export class RedisExecutionChannelSubscriber implements ExecutionChannelSubscriber {
+	private readonly subscriptionsByChannel = new Map<string, ChannelSubscription>();
 
 	private started = false;
 
@@ -38,8 +43,8 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 	private lostConnection = false;
 
 	constructor(
-		private readonly subscriber: RedisResponseSubscriber,
-		private readonly getChannelName: RedisExecutionResponseChannelNameGenerator,
+		private readonly subscriber: RedisChannelSubscriber,
+		private readonly getChannelName: RedisExecutionChannelNameGenerator,
 		private readonly logger: Logger,
 	) {}
 
@@ -52,23 +57,24 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		this.started = true;
 	}
 
-	async receive(
+	async subscribe(
+		topic: ExecutionChannelTopic,
 		executionId: string,
-		handler: (response: ExecutionResponse) => void,
-	): Promise<UnsubscribeExecutionResponse> {
+		handler: ExecutionChannelFrameHandler,
+	): Promise<UnsubscribeFromExecutionChannel> {
 		if (this.stopped) return () => {};
 		if (!this.started) {
-			throw new UnexpectedError('The execution response receiver has not started');
+			throw new UnexpectedError('The execution channel subscriber has not started');
 		}
 
-		const channel = this.getChannelName(executionId);
+		const channel = this.getChannelName(topic, executionId);
 		if (this.subscriptionsByChannel.has(channel)) {
 			throw new UnexpectedError(
-				`Execution response receiver already has a subscriber for execution "${executionId}"`,
+				`The execution channel already has a subscriber for "${topic}" of execution "${executionId}"`,
 			);
 		}
 
-		const subscription: ExecutionSubscription = { executionId, handler };
+		const subscription: ChannelSubscription = { topic, executionId, handler };
 		this.subscriptionsByChannel.set(channel, subscription);
 		try {
 			await this.subscriber.subscribe(channel);
@@ -84,8 +90,8 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 
 	private unsubscribeHandler(
 		channel: string,
-		subscription: ExecutionSubscription,
-	): UnsubscribeExecutionResponse {
+		subscription: ChannelSubscription,
+	): UnsubscribeFromExecutionChannel {
 		return () => {
 			if (this.stopped || this.subscriptionsByChannel.get(channel) !== subscription) {
 				return;
@@ -93,7 +99,8 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 
 			this.subscriptionsByChannel.delete(channel);
 			void this.subscriber.unsubscribe(channel).catch((error: unknown) => {
-				this.logger.error('Failed to unsubscribe from execution responses', {
+				this.logger.error('Failed to unsubscribe from the execution channel', {
+					topic: subscription.topic,
 					executionId: subscription.executionId,
 					error,
 				});
@@ -138,7 +145,7 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 			await this.subscriber.subscribe(...channels);
 		} catch (error) {
 			this.lostConnection = true;
-			this.logger.error('Failed to resubscribe to execution responses after Redis reconnect', {
+			this.logger.error('Failed to resubscribe to the execution channel after Redis reconnect', {
 				error,
 			});
 		}
@@ -148,16 +155,12 @@ export class RedisExecutionResponseReceiver implements ExecutionResponseReceiver
 		const subscription = this.subscriptionsByChannel.get(channel);
 		if (subscription === undefined) return;
 
-		const responseResult = deserializeExecutionResponse(frame, this.logger);
-		if (!responseResult.ok) return;
-		const response = responseResult.result;
-
 		try {
-			subscription.handler(response);
+			subscription.handler(frame);
 		} catch (error) {
-			this.logger.error('An execution response handler failed', {
-				executionId: response.executionId,
-				type: response.type,
+			this.logger.error('An execution channel frame handler failed', {
+				topic: subscription.topic,
+				executionId: subscription.executionId,
 				error,
 			});
 		}
