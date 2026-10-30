@@ -31,6 +31,7 @@ import {
 	type ResolveResult,
 	decodeImpactMap,
 } from './impact-map.js';
+import type { LineScope } from './line-scope.js';
 import { CoverageMapStrategy } from './select/coverage-map-strategy.js';
 import { DependencyGraphStrategy } from './select/dep-graph-strategy.js';
 import { selectImpactedTests } from './select/pipeline.js';
@@ -64,6 +65,9 @@ export interface SelectTestsInput {
 	 *  `runtimeClosure` in dep-graph). Classifies `pnpm.overrides` changes;
 	 *  omitted → an override change stays broad. */
 	runtimeClosure?: ReadonlySet<string>;
+	/** Line-level scopes by changed file, in the map commit's lines. A file
+	 *  without a scope resolves at file level. */
+	lineScopes?: Record<string, LineScope>;
 }
 
 export interface SelectTestsResult extends ResolveResult {
@@ -197,7 +201,10 @@ export function selectTests(input: SelectTestsInput): SelectTestsResult {
 	strategies.unshift(new CoverageMapStrategy(map, { allSpecs, onUncovered: 'declare' }));
 
 	return selectImpactedTests(
-		impactful.map((file) => ({ file })),
+		impactful.map((file) => {
+			const scope = input.lineScopes?.[file];
+			return scope ? { file, scope } : { file };
+		}),
 		strategies,
 	);
 }
