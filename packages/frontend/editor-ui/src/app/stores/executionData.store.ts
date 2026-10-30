@@ -10,6 +10,7 @@ import {
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
 	isIndefiniteWait,
+	isTrimmedNodeExecutionData,
 	type ExecutionStatus,
 	type INode,
 	type IPinData,
@@ -640,6 +641,38 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			}
 		}
 
+		/**
+		 * Fills the trimmed runs of one node from runs fetched over REST, when the
+		 * push message with the node's data is late or lost. It copies only `data`
+		 * and `error` from the fetched run at the same index, and keeps the live
+		 * run's other fields. It skips a run that has its data, and a fetched run
+		 * that is missing or trimmed itself.
+		 */
+		function fillTrimmedNodeRunData(nodeName: string, fetchedRuns: ITaskData[] | undefined) {
+			const tasksData = execution.value?.data?.resultData.runData[nodeName];
+			if (!tasksData || !fetchedRuns) return;
+
+			// Same check as `isTrimmedTaskData`. That helper's module imports the
+			// workflows store, which imports this store (`import-x/no-cycle`).
+			const isTrimmed = (taskData: ITaskData) =>
+				taskData.data?.main?.some((main) => isTrimmedNodeExecutionData(main)) ?? false;
+
+			let filled = false;
+			tasksData.forEach((taskData, runIndex) => {
+				const fetchedRun = fetchedRuns[runIndex];
+				if (!isTrimmed(taskData) || !fetchedRun || isTrimmed(fetchedRun)) return;
+
+				tasksData.splice(runIndex, 1, {
+					...taskData,
+					data: fetchedRun.data,
+					error: fetchedRun.error,
+				});
+				filled = true;
+			});
+
+			if (filled) commitExecutionMutation(CHANGE_ACTION.UPDATE, nodeName);
+		}
+
 		function clearNodeExecutionData(nodeName: string) {
 			if (!execution.value?.data) return;
 			const { [nodeName]: _removed, ...remaining } = execution.value.data.resultData.runData;
@@ -791,6 +824,7 @@ export function useExecutionDataStore(id: ExecutionDataId) {
 			clearExecutionStartedData,
 			updateNodeExecutionStatus,
 			updateNodeExecutionRunData,
+			fillTrimmedNodeRunData,
 			clearNodeExecutionData,
 			renameExecutionDataNode,
 			markAsStopped,

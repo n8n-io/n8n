@@ -82,7 +82,8 @@ import RunDataPaginationBar from './RunDataPaginationBar.vue';
 import { parseAiContent } from '@/app/utils/aiUtils';
 import { I18nT } from 'vue-i18n';
 import RunDataBinary from './RunDataBinary.vue';
-import { hasTrimmedRunData } from '@/features/execution/executions/executions.utils';
+import { isTrimmedTaskData } from '@/features/execution/executions/executions.utils';
+import { useTrimmedRunDataFill } from '@/features/ndv/runData/composables/useTrimmedRunDataFill';
 import NDVEmptyState from '@/features/ndv/panel/components/NDVEmptyState.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
 
@@ -480,9 +481,18 @@ const dataCount = computed(() =>
 	getDataCount(props.runIndex, currentOutputIndex.value, connectionType.value),
 );
 
-const isTrimmedManualExecutionDataItem = computed(() =>
-	workflowRunData.value ? hasTrimmedRunData(workflowRunData.value) : false,
-);
+// Follows the shown run only: another node's trimmed data must not hide this run's data.
+const isTrimmedManualExecutionDataItem = computed(() => {
+	const taskData = currentNodeRunData.value?.[props.runIndex];
+	return taskData ? (isTrimmedTaskData(taskData) ?? false) : false;
+});
+
+useTrimmedRunDataFill({
+	nodeName: () => node.value?.name,
+	runIndex: () => props.runIndex,
+	isTrimmed: isTrimmedManualExecutionDataItem,
+	hasWorkflowExecution: () => props.workflowExecution !== undefined,
+});
 
 const isExecutionInTerminalState = computed(() =>
 	isTerminalExecutionStatus(currentExecution.value?.status ?? undefined),

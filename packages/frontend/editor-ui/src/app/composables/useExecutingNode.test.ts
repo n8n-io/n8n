@@ -1,5 +1,8 @@
 import { useExecutingNode } from './useExecutingNode';
 
+const V1_ID = '123';
+const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+
 describe('useExecutingNode composable', () => {
 	it('should initialize with an empty executingNode queue', () => {
 		const { executingNode } = useExecutingNode();
@@ -8,7 +11,7 @@ describe('useExecutingNode composable', () => {
 
 	it('should show a node once it starts executing', () => {
 		const { executingNode, addExecutingNode, isNodeExecuting } = useExecutingNode();
-		addExecutingNode('node1', 0);
+		addExecutingNode('node1', V1_ID, 0);
 		expect(executingNode.value).toEqual(['node1']);
 		expect(isNodeExecuting('node1')).toBe(true);
 	});
@@ -22,8 +25,8 @@ describe('useExecutingNode composable', () => {
 		it('supersedes the current node when a higher sequence number arrives', () => {
 			const { executingNode, addExecutingNode, isNodeExecuting } = useExecutingNode();
 
-			addExecutingNode('nodeA', 0);
-			addExecutingNode('nodeB', 2);
+			addExecutingNode('nodeA', V1_ID, 0);
+			addExecutingNode('nodeB', V1_ID, 2);
 
 			expect(executingNode.value).toEqual(['nodeB']);
 			expect(isNodeExecuting('nodeA')).toBe(false);
@@ -35,8 +38,8 @@ describe('useExecutingNode composable', () => {
 
 			// nodeB (seq 2) is executing; a late nodeA event (seq 1) resurfaces after
 			// a suspended tab resumes — it must not overwrite the current node.
-			addExecutingNode('nodeB', 2);
-			addExecutingNode('nodeA', 1);
+			addExecutingNode('nodeB', V1_ID, 2);
+			addExecutingNode('nodeA', V1_ID, 1);
 
 			expect(executingNode.value).toEqual(['nodeB']);
 			expect(isNodeExecuting('nodeA')).toBe(false);
@@ -49,7 +52,7 @@ describe('useExecutingNode composable', () => {
 			const { executingNode, addExecutingNode, removeExecutingNode, isNodeExecuting } =
 				useExecutingNode();
 
-			addExecutingNode('nodeA', 0);
+			addExecutingNode('nodeA', V1_ID, 0);
 			removeExecutingNode('nodeA');
 
 			expect(executingNode.value).toEqual([]);
@@ -61,7 +64,7 @@ describe('useExecutingNode composable', () => {
 				useExecutingNode();
 
 			// nodeB superseded nodeA; a late after(nodeA) must not clear nodeB's spinner.
-			addExecutingNode('nodeB', 2);
+			addExecutingNode('nodeB', V1_ID, 2);
 			removeExecutingNode('nodeA');
 
 			expect(executingNode.value).toEqual(['nodeB']);
@@ -72,7 +75,7 @@ describe('useExecutingNode composable', () => {
 			const { executingNode, addExecutingNode, clearNodeExecutionQueue, lastAddedExecutingNode } =
 				useExecutingNode();
 
-			addExecutingNode('nodeA', 5);
+			addExecutingNode('nodeA', V1_ID, 5);
 			clearNodeExecutionQueue();
 
 			expect(executingNode.value).toEqual([]);
@@ -80,7 +83,7 @@ describe('useExecutingNode composable', () => {
 
 			// After a clear the baseline is reset, so the next run's first event (seq 0)
 			// is accepted even though 0 is not greater than the previous sequence.
-			addExecutingNode('nodeB', 0);
+			addExecutingNode('nodeB', V1_ID, 0);
 			expect(executingNode.value).toEqual(['nodeB']);
 		});
 	});
@@ -91,13 +94,13 @@ describe('useExecutingNode composable', () => {
 				useExecutingNode();
 
 			// A run reaches a wait node, which finishes and clears the spinner.
-			addExecutingNode('Wait', 0);
+			addExecutingNode('Wait', V1_ID, 0);
 			removeExecutingNode('Wait');
 			expect(executingNode.value).toEqual([]);
 
 			// On resume the per-execution counter restarts at 0. Because nothing is
 			// shown, the resumed node is accepted despite the low sequence number.
-			addExecutingNode('AfterWait', 0);
+			addExecutingNode('AfterWait', V1_ID, 0);
 			expect(isNodeExecuting('AfterWait')).toBe(true);
 			expect(executingNode.value).toEqual(['AfterWait']);
 		});
@@ -105,19 +108,19 @@ describe('useExecutingNode composable', () => {
 
 	it('tracks the last node that started executing', () => {
 		const { lastAddedExecutingNode, addExecutingNode } = useExecutingNode();
-		addExecutingNode('nodeA', 0);
-		addExecutingNode('nodeB', 1);
+		addExecutingNode('nodeA', V1_ID, 0);
+		addExecutingNode('nodeB', V1_ID, 1);
 		expect(lastAddedExecutingNode.value).toBe('nodeB');
 	});
 
 	describe('concurrent strategy', () => {
-		const useConcurrentExecutingNode = () => useExecutingNode({ engineType: 'v2' });
+		const useConcurrentExecutingNode = () => useExecutingNode();
 
 		it('shows every node that runs at the same time', () => {
 			const { executingNode, addExecutingNode, isNodeExecuting } = useConcurrentExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
-			addExecutingNode('nodeB', 1, 1);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
+			addExecutingNode('nodeB', V2_ID, 1, 1);
 
 			expect(executingNode.value).toEqual(['nodeA', 'nodeB']);
 			expect(isNodeExecuting('nodeA')).toBe(true);
@@ -128,8 +131,8 @@ describe('useExecutingNode composable', () => {
 			const { addExecutingNode, removeExecutingNode, isNodeExecuting } =
 				useConcurrentExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
-			addExecutingNode('nodeB', 1, 1);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
+			addExecutingNode('nodeB', V2_ID, 1, 1);
 			removeExecutingNode('nodeA', 0);
 
 			expect(isNodeExecuting('nodeA')).toBe(false);
@@ -144,8 +147,8 @@ describe('useExecutingNode composable', () => {
 			const { executingNode, addExecutingNode, removeExecutingNode, isNodeExecuting } =
 				useConcurrentExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
-			addExecutingNode('nodeA', 1, 1);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
+			addExecutingNode('nodeA', V2_ID, 1, 1);
 			expect(executingNode.value).toEqual(['nodeA']);
 
 			removeExecutingNode('nodeA', 1);
@@ -159,10 +162,10 @@ describe('useExecutingNode composable', () => {
 			const { executingNode, lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
 				useConcurrentExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
 			// A finished run of the same node, and an After whose Before never arrived.
 			removeExecutingNode('nodeA', 0);
-			addExecutingNode('nodeA', 1, 1);
+			addExecutingNode('nodeA', V2_ID, 1, 1);
 			removeExecutingNode('nodeA', 0);
 			removeExecutingNode('nodeA', 5);
 
@@ -174,7 +177,7 @@ describe('useExecutingNode composable', () => {
 			const { executingNode, lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
 				useConcurrentExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
 			removeExecutingNode('nodeB', 0);
 			removeExecutingNode('nodeB', 1);
 
@@ -186,8 +189,8 @@ describe('useExecutingNode composable', () => {
 			const { lastAddedExecutingNode, addExecutingNode, removeExecutingNode } =
 				useConcurrentExecutingNode();
 
-			addExecutingNode('nodeB', 0, 0);
-			addExecutingNode('nodeA', 1, 1);
+			addExecutingNode('nodeB', V2_ID, 0, 0);
+			addExecutingNode('nodeA', V2_ID, 1, 1);
 			removeExecutingNode('nodeA', 1);
 			removeExecutingNode('nodeB', 0);
 
@@ -214,48 +217,44 @@ describe('useExecutingNode composable', () => {
 				isNodeExecuting,
 			} = useConcurrentExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
-			addExecutingNode('nodeA', 1, 1);
-			addExecutingNode('nodeB', 2, 2);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
+			addExecutingNode('nodeA', V2_ID, 1, 1);
+			addExecutingNode('nodeB', V2_ID, 2, 2);
 			clearNodeExecutionQueue();
 
 			expect(executingNode.value).toEqual([]);
 			expect(lastAddedExecutingNode.value).toBeNull();
 
 			// The runs in flight reset too, so the next run reuses execution index 0.
-			addExecutingNode('nodeA', 0, 0);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
 			removeExecutingNode('nodeA', 0);
 			expect(isNodeExecuting('nodeA')).toBe(false);
 		});
 
 		it('selects the strategy again after a clear', () => {
-			let engineType: 'v1' | 'v2' = 'v1';
-			const { executingNode, addExecutingNode, clearNodeExecutionQueue } = useExecutingNode({
-				engineType: () => engineType,
-			});
+			const { executingNode, addExecutingNode, clearNodeExecutionQueue } = useExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
-			addExecutingNode('nodeB', 1, 1);
+			addExecutingNode('nodeA', V1_ID, 0, 0);
+			addExecutingNode('nodeB', V1_ID, 1, 1);
 			expect(executingNode.value).toEqual(['nodeB']);
 
-			// A settings change during a run applies from the next run.
-			engineType = 'v2';
-			addExecutingNode('nodeC', 2, 2);
+			// The first node of a run selects the strategy. It stays until a clear.
+			addExecutingNode('nodeC', V2_ID, 2, 2);
 			expect(executingNode.value).toEqual(['nodeC']);
 
 			clearNodeExecutionQueue();
-			addExecutingNode('nodeA', 0, 0);
-			addExecutingNode('nodeB', 1, 1);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
+			addExecutingNode('nodeB', V2_ID, 1, 1);
 			expect(executingNode.value).toEqual(['nodeA', 'nodeB']);
 		});
 
-		it('shows only the latest node after a clear when no engine type is set', () => {
+		it('shows only the latest node after a clear for a numeric execution ID', () => {
 			const { executingNode, addExecutingNode, clearNodeExecutionQueue } = useExecutingNode();
 
-			addExecutingNode('nodeA', 0, 0);
+			addExecutingNode('nodeA', V2_ID, 0, 0);
 			clearNodeExecutionQueue();
-			addExecutingNode('nodeA', 0, 0);
-			addExecutingNode('nodeB', 1, 1);
+			addExecutingNode('nodeA', V1_ID, 0, 0);
+			addExecutingNode('nodeB', V1_ID, 1, 1);
 
 			expect(executingNode.value).toEqual(['nodeB']);
 		});
