@@ -1,7 +1,8 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { sanitizeErrorDetail } from '@n8n/utils/redaction/sanitize-error-detail';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
-import { OperationalError, UnexpectedError, UserError, type IDataObject } from 'n8n-workflow';
+import type { IDataObject } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import type { CollectedTrace, MlflowSpan } from './types';
 import { MLFLOW_ATTRIBUTE, MLFLOW_TRACE_METADATA } from './types';

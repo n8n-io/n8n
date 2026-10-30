@@ -1,5 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings';
-import { OperationalError, UserError } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { DatabricksVectorStoreConfig } from './DatabricksVectorStore';

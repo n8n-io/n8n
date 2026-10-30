@@ -6,9 +6,9 @@ import {
 	ChatNodeMessageType,
 	FREE_TEXT_CHAT_RESPONSE_TYPE,
 	NodeOperationError,
-	UserError,
 	WAIT_INDEFINITELY,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	ChatNodeMessage,
 	ChatNodeMessageButtonType,

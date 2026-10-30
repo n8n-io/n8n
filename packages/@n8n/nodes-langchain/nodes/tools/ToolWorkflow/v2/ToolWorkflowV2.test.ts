@@ -1,6 +1,7 @@
 import { DynamicTool } from '@langchain/core/tools';
 import { sleep } from '@n8n/utils/sleep';
-import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	ISupplyDataFunctions,
 	INodeExecutionData,
