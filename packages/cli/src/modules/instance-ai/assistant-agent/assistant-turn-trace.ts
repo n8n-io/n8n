@@ -28,6 +28,7 @@ import { nanoid } from 'nanoid';
 import { N8N_VERSION, WORKFLOW_SDK_VERSION } from '@/constants';
 import type {
 	AgentExecutionStreamChunk,
+	SteeredMessageEvent,
 	SystemAgentResumeTurn,
 	SystemAgentTurn,
 	SystemAgentTurnOutcome,
@@ -166,6 +167,8 @@ export class AssistantTurnTrace {
 
 	private firstResponseRecorded = false;
 
+	private steeredMessageCount = 0;
+
 	constructor(
 		readonly context: InstanceAiTraceContext,
 		private readonly runId: string,
@@ -274,12 +277,51 @@ export class AssistantTurnTrace {
 				this.suspension = parseSuspension(chunk) ?? undefined;
 				this.signals.push({ kind: 'hitl', toolName: chunk.toolName });
 				break;
+			case 'message-steered':
+				this.recordSteeredMessage(chunk);
+				break;
 			case 'subagent-started':
 				this.signals.push({ kind: 'task-card' });
 				break;
 			default:
 				break;
 		}
+	}
+
+	/**
+	 * Records a message that the user steered into the running turn. The runtime
+	 * adds it to the input of the next model call, so it is part of this turn,
+	 * not a new one.
+	 */
+	private recordSteeredMessage(event: SteeredMessageEvent): void {
+		this.steeredMessageCount++;
+		const { message } = event;
+		const text = message.content
+			.filter((part) => part.type === 'text' && part.text)
+			.map((part) => part.text)
+			.join('\n');
+		const fileCount = message.content.filter((part) => part.type === 'file').length;
+		const recorded = { message: text, ...(fileCount > 0 ? { fileCount } : {}) };
+		const { context } = this;
+		const record = async () => {
+			const run = await context.startChildRun(context.actorRun, {
+				name: 'user: steered message',
+				canonicalName: 'instance-ai.steered_message',
+				runType: 'chain',
+				tags: ['steered-message'],
+				metadata: { queue_id: event.queueId, message_id: message.id },
+				inputs: recorded,
+			});
+			await context.finishRun(run, { outputs: recorded });
+		};
+		const recording = record().catch((error: unknown) => {
+			this.logger.warn('Failed to trace a steered Assistant message', {
+				runId: this.runId,
+				error: getErrorMessage(error),
+			});
+		});
+		// The turn can finish before the span exports, so keep the trace open for it.
+		context.keepOpenUntilSettled?.(recording);
 	}
 
 	/**
@@ -335,6 +377,9 @@ export class AssistantTurnTrace {
 					status: status === 'error' ? 'error' : status,
 				}),
 			};
+		}
+		if (this.steeredMessageCount > 0) {
+			rootMetadata = { ...rootMetadata, steered_message_count: this.steeredMessageCount };
 		}
 
 		try {
