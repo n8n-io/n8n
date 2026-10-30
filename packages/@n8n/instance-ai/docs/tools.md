@@ -54,7 +54,8 @@ the Assistant's text. In a long thread it sees the newest messages. From the
 part before them it sees only what the user wrote, up to a budget of messages
 and characters. A limit that the user set there stays in view while it fits
 the budget. A note tells the judge when older messages are left out. Of a long
-message it sees only the end.
+message it sees only the end. `pnpm eval:approval-judge` measures the judge on
+a directory of cases (see the evaluations README).
 
 ### Approval copy
 
