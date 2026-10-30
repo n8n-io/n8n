@@ -1,3 +1,4 @@
+import type { BreakingChangeAssistantAction } from '@n8n/api-types';
 import { createTestingPinia } from '@pinia/testing';
 import { computed, ref } from 'vue';
 import { screen, waitFor } from '@testing-library/vue';
@@ -92,7 +93,7 @@ const secondWorkflow = {
 	issues: [{ ...workflow.issues[0], nodeId: 'node-2', nodeName: 'Other AI Transform' }],
 };
 
-function render(workflows = [workflow], assistantAction = 'fix') {
+function render(workflows = [workflow], assistantAction: BreakingChangeAssistantAction = 'fix') {
 	eventBus = createEventBus();
 	return renderComponent({
 		props: {
@@ -291,20 +292,23 @@ describe('MigrateWorkflowModal', () => {
 		it.each([
 			{ when: 'the rule declares none', assistantAction: 'none', available: true },
 			{ when: 'the Assistant is unavailable', assistantAction: 'fix', available: false },
-		])('offers no Assistant after a refusal when $when', async ({ assistantAction, available }) => {
-			assistantAvailable.value = available;
-			vi.mocked(breakingChangesApi.migrateWorkflowForRule).mockRejectedValue(
-				new ResponseError('Refused.', { httpStatusCode: 400 }),
-			);
-			render([workflow], assistantAction);
+		] as const)(
+			'offers no Assistant after a refusal when $when',
+			async ({ assistantAction, available }) => {
+				assistantAvailable.value = available;
+				vi.mocked(breakingChangesApi.migrateWorkflowForRule).mockRejectedValue(
+					new ResponseError('Refused.', { httpStatusCode: 400 }),
+				);
+				render([workflow], assistantAction);
 
-			await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
+				await userEvent.click(screen.getByTestId('migrate-modal-confirm-button'));
 
-			await screen.findByText('Refused.');
-			expect(
-				screen.queryByTestId('migrate-modal-continue-in-assistant-button'),
-			).not.toBeInTheDocument();
-		});
+				await screen.findByText('Refused.');
+				expect(
+					screen.queryByTestId('migrate-modal-continue-in-assistant-button'),
+				).not.toBeInTheDocument();
+			},
+		);
 	});
 
 	describe('bulk', () => {
