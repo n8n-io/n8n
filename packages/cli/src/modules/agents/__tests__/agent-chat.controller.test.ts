@@ -2062,9 +2062,18 @@ describe('AgentChatController task cancellation', () => {
 		await controller.cancelProductionTasks(request as never, makeSseResponse([]), {
 			planId: 'plan',
 		});
+		await controller.streamProductionTaskCancellation(request as never, makeSseResponse([]), {
+			planId: 'plan',
+		});
 		await controller.getProductionTaskCancellation(request as never);
 
 		expect(taskCancellation.request).toHaveBeenCalledWith('thread', 'plan', undefined, 'n8n-chat');
+		expect(taskCancellation.request).toHaveBeenCalledWith(
+			'thread',
+			'plan',
+			expect.any(Function),
+			'n8n-chat',
+		);
 		expect(taskCancellation.state).toHaveBeenCalledWith('thread');
 	});
 

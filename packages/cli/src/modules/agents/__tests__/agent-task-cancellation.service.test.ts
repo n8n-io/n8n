@@ -163,7 +163,9 @@ it('stops an n8n Chat conversation with its own surface, memory and report kind'
 
 	await service.request('thread', null, undefined, 'n8n-chat');
 
-	expect(chat.requestCancel).toHaveBeenCalledWith(expect.objectContaining({ surface: 'n8n-chat' }));
+	expect(chat.requestCancel).toHaveBeenCalledWith(
+		expect.objectContaining({ surface: 'n8n-chat', scope: 'foreground' }),
+	);
 	expect(jobs.requestPause).toHaveBeenCalledWith(
 		'agent',
 		'thread',
