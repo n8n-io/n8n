@@ -21,6 +21,7 @@ import type * as ResumableStreamExecutorMod from './runtime/resumable-stream-exe
 import type * as RunStateRegistryMod from './runtime/run-state-registry';
 import type * as StreamRunnerMod from './runtime/stream-runner';
 import type * as TerminalResponseGuardMod from './runtime/terminal-response-guard';
+import type * as CloudBrowserAgentMod from './agent/cloud-browser-agent';
 import type * as SkillsMod from './skills/skills';
 import type * as StorageMod from './storage';
 import type * as InstanceContextReachMod from './stream/instance-context-reach';
@@ -233,6 +234,9 @@ const loadRunStateRegistry = lazyModule(
 const loadBackgroundTaskManager = lazyModule(
 	() => require('./runtime/background-task-manager') as typeof BackgroundTaskManagerMod,
 );
+const loadCloudBrowserAgent = lazyModule(
+	() => require('./agent/cloud-browser-agent') as typeof CloudBrowserAgentMod,
+);
 const loadTerminalResponseGuard = lazyModule(
 	() => require('./runtime/terminal-response-guard') as typeof TerminalResponseGuardMod,
 );
@@ -283,6 +287,10 @@ export {
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export type {
+	CloudBrowserTaskInput,
+	CloudBrowserTaskStartResult,
+} from './tools/orchestration/start-cloud-browser-task.tool';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -417,6 +425,11 @@ export const ThreadTaskStorage: typeof StorageMod.ThreadTaskStorage = lazyClass(
 	() => loadStorage().ThreadTaskStorage,
 );
 export const getThread: typeof StorageMod.getThread = lazyFunction(() => loadStorage().getThread);
+export type CloudBrowserTaskStorage = StorageMod.CloudBrowserTaskStorage;
+export const CloudBrowserTaskStorage: typeof StorageMod.CloudBrowserTaskStorage = lazyClass(
+	() => loadStorage().CloudBrowserTaskStorage,
+);
+export type { CloudBrowserTaskRecord } from './storage/cloud-browser-task-storage';
 export type TerminalOutcomeStorage = StorageMod.TerminalOutcomeStorage;
 export const TerminalOutcomeStorage: typeof StorageMod.TerminalOutcomeStorage = lazyClass(
 	() => loadStorage().TerminalOutcomeStorage,
@@ -578,6 +591,16 @@ export type {
 	TerminalResponseStatus,
 	TerminalVisibilitySource,
 } from './runtime/terminal-response-guard';
+export const runCloudBrowserAgent: typeof CloudBrowserAgentMod.runCloudBrowserAgent = lazyFunction(
+	() => loadCloudBrowserAgent().runCloudBrowserAgent,
+);
+export type {
+	CloudBrowserAgentBrief,
+	CloudBrowserCredentialToCreate,
+	CloudBrowserAgentOutcome,
+	CloudBrowserAgentResult,
+	RunCloudBrowserAgentOptions,
+} from './agent/cloud-browser-agent';
 export const executeResumableStream: typeof ResumableStreamExecutorMod.executeResumableStream =
 	lazyFunction(() => loadResumableStreamExecutor().executeResumableStream);
 export type {

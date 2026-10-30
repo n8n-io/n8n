@@ -5562,6 +5562,55 @@ describe('InstanceAiService — background task cancellation', () => {
 			}),
 		);
 	});
+
+	it('marks the agent-completed event of a detached task when the thread is cancelled', () => {
+		const service = createCancellationService();
+		service.backgroundTasks.cancelThread.mockReturnValue([
+			{ ...task, role: 'cloud-browser', detachedFromTurn: true },
+		]);
+
+		service.cancelRun('thread-a');
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			detachedFromTurn: true,
+			payload: { role: 'cloud-browser', result: '', status: 'cancelled' },
+		});
+	});
+
+	it('does not mark the agent-completed event of a task that is not detached', () => {
+		const service = createCancellationService();
+
+		service.cancelRun('thread-a');
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			payload: { role: 'builder', result: '', status: 'cancelled' },
+		});
+	});
+
+	it('marks the agent-completed event of a detached task when that task is cancelled', () => {
+		const service = createCancellationService();
+		service.backgroundTasks.cancelTask.mockReturnValue({
+			...task,
+			role: 'cloud-browser',
+			detachedFromTurn: true,
+		});
+
+		service.cancelBackgroundTask('thread-a', 'task-1');
+
+		expect(service.eventBus.publish).toHaveBeenCalledWith('thread-a', {
+			type: 'agent-completed',
+			runId: 'task-run-1',
+			agentId: 'agent-1',
+			detachedFromTurn: true,
+			payload: { role: 'cloud-browser', result: '', status: 'cancelled' },
+		});
+	});
 });
 
 describe('InstanceAiService — deterministic workflow setup follow-up', () => {

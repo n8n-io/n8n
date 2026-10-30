@@ -792,6 +792,43 @@ describe('InstanceAiController', () => {
 			expect(sseRes.write).not.toHaveBeenCalled();
 		});
 
+		it('should write a run-sync frame for a background task, but not for one detached from its turn', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			instanceAiService.getRunIdsForMessageGroup.mockImplementation((groupId) => [
+				groupId === 'mg-builder' ? 'run-builder' : 'run-browser',
+			]);
+			eventLog.getEventsForRuns.mockResolvedValue([RUN_START] as never);
+			eventBus.subscribe.mockReturnValue(vi.fn());
+			const { sseReq, sseRes, frames } = sseIo();
+
+			await controller.events(sseReq, sseRes, THREAD_ID, { lastEventId: undefined } as never);
+
+			const runSyncGroups = frames()
+				.filter((frame) => frame.startsWith('event: run-sync\n'))
+				.map(
+					(frame) =>
+						(
+							JSON.parse(frame.slice('event: run-sync\ndata: '.length)) as {
+								messageGroupId: string;
+							}
+						).messageGroupId,
+				);
+			expect(runSyncGroups).toEqual(['mg-builder']);
+		});
+
 		it('should close SSE stream when thread ownership changes after pre-creation subscribe', async () => {
 			// Simulate: thread does not exist at connect time
 			memoryService.checkThreadOwnership.mockResolvedValueOnce('not_found');
@@ -1806,6 +1843,36 @@ describe('InstanceAiController', () => {
 			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
 				limit: 50,
 				page: 0,
+			});
+		});
+
+		it("should leave out a background task's turn, but not the turn of one detached from it", async () => {
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [
+					{ status: 'running', runId: 'run-builder', messageGroupId: 'mg-builder' },
+					{
+						status: 'running',
+						runId: 'run-browser',
+						messageGroupId: 'mg-browser',
+						detachedFromTurn: true,
+					},
+				],
+			} as never);
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(memoryService.getRichMessages).toHaveBeenCalledWith(USER_ID, THREAD_ID, {
+				limit: 50,
+				page: 0,
+				excludeRunIds: ['run-builder'],
+				excludeMessageGroupIds: ['mg-builder'],
 			});
 		});
 

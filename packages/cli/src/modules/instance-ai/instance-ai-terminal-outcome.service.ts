@@ -414,6 +414,8 @@ export class InstanceAiTerminalOutcomeService {
 	}
 
 	async recordBackgroundTerminalOutcome(task: ManagedBackgroundTask): Promise<void> {
+		// A task detached from its turn reports how it ended in its own follow-up run.
+		if (task.detachedFromTurn) return;
 		const outcome = this.buildBackgroundTerminalOutcome(task);
 		let persisted = false;
 		try {

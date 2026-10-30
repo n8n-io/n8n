@@ -190,10 +190,15 @@ function buildLogDerivedSnapshots(
 	// A run's run-start is its first fact, so the run-to-group mapping is
 	// complete before any grouping decision needs it.
 	const groupKeyByRun = new Map<string, string>();
+	// Agents that keep working after their turn ended, such as cloud browser tasks.
+	const detachedFromTurnAgentIds = new Set<string>();
 	for (const row of rows) {
 		if (row.event.type === 'run-start') {
 			const groupId = row.event.payload.messageGroupId;
 			if (typeof groupId === 'string' && groupId) groupKeyByRun.set(row.runId, groupId);
+		}
+		if (row.event.type === 'agent-spawned' && row.event.detachedFromTurn) {
+			detachedFromTurnAgentIds.add(row.event.agentId);
 		}
 	}
 	// An excluded run poisons its whole message group: deriving a partial tree
@@ -243,9 +248,13 @@ function buildLogDerivedSnapshots(
 		// happen long after the turn. It must not move the anchor: the parser
 		// drops a snapshot anchored after the next conversational message, so a
 		// late fact would unpair the whole turn instead of correcting one card.
+		// An agent detached from its turn logs its events under the run that started it, long
+		// after the turn ended, while the user keeps chatting. For the same reason, they must not
+		// move the anchor.
 		if (
 			row.runId === group.runIds[0] &&
 			row.event.type !== 'preference-card' &&
+			!detachedFromTurnAgentIds.has(row.event.agentId) &&
 			row.createdAt > group.anchorAt
 		) {
 			group.anchorAt = row.createdAt;

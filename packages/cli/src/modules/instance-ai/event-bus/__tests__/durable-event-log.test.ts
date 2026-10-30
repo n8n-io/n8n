@@ -359,6 +359,81 @@ describe('DurableEventLog', () => {
 		log.clear();
 	});
 
+	describe('agents detached from their turn', () => {
+		const DETACHED = 'cloud-browser-1';
+
+		function detachedToolCall(toolCallId: string): InstanceAiEvent {
+			return { ...toolCall(toolCallId, DETACHED), detachedFromTurn: true };
+		}
+
+		function detachedCompleted(): InstanceAiEvent {
+			return {
+				type: 'agent-completed',
+				runId: RUN,
+				agentId: DETACHED,
+				detachedFromTurn: true,
+				payload: { role: 'cloud-browser', result: 'done' },
+			};
+		}
+
+		it('keeps tool calls and the completion of a detached agent after its run was cancelled', async () => {
+			const repo = new FakeRepo();
+			const { log } = buildLog(repo);
+			await publishAll(log, [
+				{ ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+			]);
+			const emitted = await publishAll(log, [
+				detachedToolCall('browse'),
+				toolCall('late'),
+				detachedCompleted(),
+			]);
+			expect(emitted.map((row) => [row.event.type, row.event.agentId])).toEqual([
+				['tool-call', DETACHED],
+				['agent-completed', DETACHED],
+			]);
+			expect(repo.rows.map((row) => [row.event.type, row.event.agentId])).toEqual([
+				['run-finish', AGENT],
+				['tool-call', DETACHED],
+				['agent-completed', DETACHED],
+			]);
+			log.clear();
+		});
+
+		it('keeps detached agent events when the cancellation is only in storage', async () => {
+			const repo = new FakeRepo();
+			repo.rows.push({
+				seq: 1,
+				event: { ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+			});
+			const { log } = buildLog(repo);
+			await publishAll(log, [detachedToolCall('browse'), detachedCompleted()]);
+			expect(repo.rows.map((row) => [row.seq, row.event.type])).toEqual([
+				[1, 'run-finish'],
+				[2, 'tool-call'],
+				[3, 'agent-completed'],
+			]);
+			log.clear();
+		});
+
+		it('still drops unflagged late activity of the same cancelled run', async () => {
+			const repo = new FakeRepo();
+			repo.rows.push({
+				seq: 1,
+				event: { ...runFinish(), payload: { status: 'cancelled' } } as InstanceAiEvent,
+			});
+			const { log } = buildLog(repo);
+			const emitted = await publishAll(log, [
+				toolCall('late'),
+				toolCall('late-child', DETACHED),
+				detachedToolCall('browse'),
+			]);
+			expect(emitted.map((row) => row.event.detachedFromTurn)).toEqual([true]);
+			expect(repo.rows.map((row) => row.event.type)).toEqual(['run-finish', 'tool-call']);
+			expect(repo.rows[1].event.detachedFromTurn).toBe(true);
+			log.clear();
+		});
+	});
+
 	it('keeps cancellation last when another writer still emits deltas', async () => {
 		const repo = new FakeRepo();
 		const { log: writer } = buildLog(repo);

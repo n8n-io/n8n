@@ -368,6 +368,8 @@ export class InstanceAiController {
 		// Background tasks — each may belong to a different group
 		for (const task of threadStatus.backgroundTasks) {
 			if (task.status !== 'running' || !task.messageGroupId) continue;
+			// The task's turn has ended, so we don't need to mark it as live.
+			if (task.detachedFromTurn) continue;
 			if (!liveGroups.has(task.messageGroupId)) {
 				liveGroups.set(task.messageGroupId, {
 					runIds: this.instanceAiService.getRunIdsForMessageGroup(task.messageGroupId),
@@ -1017,6 +1019,8 @@ export class InstanceAiController {
 		}
 		for (const t of threadStatus.backgroundTasks) {
 			if (t.status !== 'running') continue;
+			// The turn is already saved and no longer live, so we don't exclude it from history.
+			if (t.detachedFromTurn) continue;
 			if (t.runId) excludeRunIds.push(t.runId);
 			if (t.messageGroupId) excludeMessageGroupIds.push(t.messageGroupId);
 		}
