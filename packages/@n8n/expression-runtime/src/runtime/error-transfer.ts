@@ -49,12 +49,16 @@ function dataPropsOf(
 	const nonEnumerableKeys: string[] = [];
 	for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(error))) {
 		if (descriptor.enumerable || !BUILT_IN_ERROR_KEYS.has(key)) {
-			const value: unknown = Reflect.get(error, key);
-			if (typeof value !== 'function') {
-				defineOwnValue(props, key, value);
-				if (!descriptor.enumerable) {
-					nonEnumerableKeys.push(key);
+			try {
+				const value: unknown = Reflect.get(error, key);
+				if (typeof value !== 'function') {
+					defineOwnValue(props, key, value);
+					if (!descriptor.enumerable) {
+						nonEnumerableKeys.push(key);
+					}
 				}
+			} catch {
+				// A custom getter must not replace the original Error.
 			}
 		}
 	}
@@ -75,9 +79,9 @@ function jsonFormOf(
 	error: Error,
 	encodeChild: Encode,
 ): Pick<ErrorValueSentinel, '__json' | '__jsonKeys'> {
-	const toJSON: unknown = Reflect.get(error, 'toJSON');
-	if (typeof toJSON === 'function') {
-		try {
+	try {
+		const toJSON: unknown = Reflect.get(error, 'toJSON');
+		if (typeof toJSON === 'function') {
 			const json: unknown = toJSON.call(error);
 			// Find direct fields before transfer, while object identity is intact.
 			const keys =
@@ -87,9 +91,9 @@ function jsonFormOf(
 						)
 					: [];
 			return { __json: encodeChild(json), __jsonKeys: keys };
-		} catch {
-			// JSON.stringify then falls back to the own keys, as for any Error.
 		}
+	} catch {
+		// JSON.stringify then falls back to the own keys, as for any Error.
 	}
 	return {};
 }

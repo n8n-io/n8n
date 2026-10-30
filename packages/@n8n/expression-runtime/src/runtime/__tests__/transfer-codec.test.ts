@@ -73,6 +73,42 @@ describe.each([
 		expect(JSON.stringify(result)).toBe('{"visible":true}');
 	});
 
+	describe.each([true, false])('an Error with enumerable=%s getters', (enumerable) => {
+		it.each(['detail', 'toJSON'])('keeps the original Error when the %s getter throws', (key) => {
+			const error = Object.assign(new TypeError('original', { cause: new Error('inner') }), {
+				before: 'first',
+			});
+			Object.defineProperties(error, {
+				[key]: {
+					enumerable,
+					get() {
+						throw new RangeError('getter failed');
+					},
+				},
+				code: { value: 400, enumerable },
+				readable: { get: () => 'available', enumerable },
+			});
+
+			const result = roundTrip(error) as typeof error;
+
+			expect(result).toBeInstanceOf(TypeError);
+			expect(result.message).toBe('original');
+			expect(result.stack).toBe(error.stack);
+			expect(result.cause).toBeInstanceOf(Error);
+			expect(result.cause).toHaveProperty('message', 'inner');
+			expect(result.before).toBe('first');
+			expect(Object.hasOwn(result, key)).toBe(false);
+			expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+				value: 400,
+				enumerable,
+			});
+			expect(Object.getOwnPropertyDescriptor(result, 'readable')).toMatchObject({
+				value: 'available',
+				enumerable,
+			});
+		});
+	});
+
 	it('keeps enumerable built-in fields', () => {
 		const error = new Error('original');
 		Object.defineProperties(error, {

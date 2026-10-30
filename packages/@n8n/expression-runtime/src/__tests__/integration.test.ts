@@ -719,6 +719,33 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('returned Error fields', () => {
+		it.each(['detail', 'toJSON'])(
+			'should return the original Error when a hidden %s getter throws',
+			async (key) => {
+				const bridge = createBridge();
+				await bridge.initialize();
+				try {
+					const result = bridge.execute(
+						`return Object.defineProperties(new TypeError('original'), {
+							${key}: { get() { throw new RangeError('getter failed'); } },
+							code: { value: 400 }
+						});`,
+						{},
+					) as Error;
+
+					expect(result).toBeInstanceOf(TypeError);
+					expect(result.message).toBe('original');
+					expect(Object.hasOwn(result, key)).toBe(false);
+					expect(Object.getOwnPropertyDescriptor(result, 'code')).toMatchObject({
+						value: 400,
+						enumerable: false,
+					});
+				} finally {
+					await bridge.dispose();
+				}
+			},
+		);
+
 		it.each([
 			{ label: 'function', expression: '() => 1' },
 			{ label: 'Promise', expression: '(async () => 1)()' },
