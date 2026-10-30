@@ -326,7 +326,12 @@ export class MemoryGuardService {
 		this.holdStartedAt = undefined;
 		this.fastSamplingUntil = Date.now() + FAST_SAMPLING_AFTER_HOLD_MS;
 		this.productionHold.end();
-		this.eventService.emit('memory-guard-hold-ended', { heldMs });
+		const { heldCount, oldestHeldAt } = this.productionHold;
+		this.eventService.emit('memory-guard-hold-ended', {
+			heldMs,
+			heldExecutions: heldCount,
+			longestWaitMs: oldestHeldAt === undefined ? 0 : Date.now() - oldestHeldAt,
+		});
 		return heldMs;
 	}
 
