@@ -329,9 +329,14 @@ const getHeaderAuthName = async (
 	const id = node.credentials?.httpHeaderAuth?.id;
 	if (!id) return null;
 
-	const creds = await credentialsService.getOne(user, id, true);
-	if (hasHttpHeaderAuthDecryptedData(creds)) {
-		return creds.data.name;
+	// A failed lookup must not fail the whole workflow details read.
+	try {
+		const creds = await credentialsService.getOne(user, id, true);
+		if (hasHttpHeaderAuthDecryptedData(creds)) {
+			return creds.data.name;
+		}
+	} catch {
+		return null;
 	}
 	return null;
 };

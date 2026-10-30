@@ -227,7 +227,9 @@ describe('getWebhookDetails', () => {
 		);
 
 		expect(res).toContain('Node name: Secured Webhook');
-		expect(res).toContain('Production URL: https://example.com/webhook/secured');
+		expect(res).toContain(
+			'Production URL: https://example.com/webhook/wf-1/secured%20webhook/secured',
+		);
 		expect(res).toContain('HTTP Method: POST');
 	});
 
