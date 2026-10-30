@@ -105,15 +105,17 @@ export async function deleteSubscriptions(
 	return refused.flat();
 }
 
+// The reconcile removes an own subscription whose resource is missing from these lists, so
+// they read every page: Graph pages a long list with `@odata.nextLink`.
 export async function fetchAllTeams(
 	this: IHookFunctions | IWebhookFunctions,
 ): Promise<TeamResponse[]> {
-	const { value: teams } = (await microsoftApiRequest.call(
+	return (await microsoftApiRequestAllItems.call(
 		this,
+		'value',
 		'GET',
 		joinedTeamsEndpoint.call(this),
-	)) as { value: TeamResponse[] };
-	return teams;
+	)) as TeamResponse[];
 }
 
 export async function fetchAllChannels(
@@ -122,12 +124,12 @@ export async function fetchAllChannels(
 ): Promise<ChannelResponse[]> {
 	// Route through buildTeamsPath so `teamId` is validated before interpolation
 	// (watch-all is also guarded in getResourcePath).
-	const { value: channels } = (await microsoftApiRequest.call(
+	return (await microsoftApiRequestAllItems.call(
 		this,
+		'value',
 		'GET',
 		buildTeamsPath.call(this, ['/v1.0/teams/', { id: teamId }, '/channels']),
-	)) as { value: ChannelResponse[] };
-	return channels;
+	)) as ChannelResponse[];
 }
 
 export async function createSubscription(
@@ -203,13 +205,70 @@ export async function listOwnSubscriptions(
 	return subscriptions.filter((subscription) => subscription.notificationUrl === webhookUrl);
 }
 
+type SecretProof = 'match' | 'other' | 'unknown';
+
 /**
- * Applies the ownership rule to one own listing: one stored live subscription per
- * required resource stays, the uncovered resources are created with the stored secret, and
- * every own subscription that is neither kept nor forgotten goes. Two stored subscriptions on
- * one resource are both untrusted unless a renewal in this request proves one of them; the
- * other stored ones are then forgotten, not deleted. Reads and writes `subscriptionIds` itself, so the trust
- * decision and the write share one source. Returns the create errors. Never throws.
+ * Reads each id with GET by id, which returns the clientState that the listing hides, and
+ * says whether the subscription carries the stored secret. A 404 counts as another secret:
+ * nothing is there to keep. A failed read, or an answer without a clientState or for another
+ * id or URL, is unknown. Never throws.
+ */
+async function proveSecrets(
+	this: IHookFunctions | IWebhookFunctions,
+	ids: string[],
+	webhookUrl: string,
+	clientState: string,
+): Promise<Map<string, SecretProof>> {
+	const proofs = await Promise.all(
+		ids.map(async (id): Promise<[string, SecretProof]> => {
+			try {
+				const answer: unknown = await microsoftApiRequest.call(
+					this,
+					'GET',
+					buildTeamsPath.call(this, ['/v1.0/subscriptions/', { id }]),
+				);
+				const answeredSecret = isRecord(answer) ? answer.clientState : undefined;
+				if (
+					isSubscriptionResponse(answer) &&
+					answer.id === id &&
+					answer.notificationUrl === webhookUrl &&
+					typeof answeredSecret === 'string'
+				) {
+					return [id, answeredSecret === clientState ? 'match' : 'other'];
+				}
+				logTrigger.call(this, 'debug', 'could not prove the secret of a subscription', {
+					subscriptionId: id,
+				});
+			} catch (error) {
+				if (error instanceof NodeApiError && error.httpCode === '404') return [id, 'other'];
+				logTrigger.call(this, 'debug', 'failed to read subscription', {
+					subscriptionId: id,
+					error: ensureError(error).message,
+				});
+			}
+			return [id, 'unknown'];
+		}),
+	);
+	return new Map(proofs);
+}
+
+/**
+ * Marks the workflow so that its next lifecycle batch lists and reconciles instead of only
+ * renewing, after a failed create, read or listing. Writes on change only: the static-data
+ * proxy marks every set and delete as a change, and each change is a database write.
+ */
+export function markPendingReconcile(webhookData: IDataObject, pending: boolean): void {
+	if (pending && webhookData.pendingReconcile !== true) webhookData.pendingReconcile = true;
+	if (!pending && webhookData.pendingReconcile !== undefined) delete webhookData.pendingReconcile;
+}
+
+/**
+ * Applies the ownership rule to one own listing: one live subscription with the stored secret
+ * per required resource stays, the uncovered resources are created with the stored secret, and
+ * every other listed own subscription goes, except a stored one beside a keeper, which is
+ * forgotten, and everything on a held resource. Reads and writes
+ * `subscriptionIds` itself, so the trust decision and the write share one source. Returns the
+ * create errors, and whether the next lifecycle batch must reconcile again. Never throws.
  */
 export async function reconcileSubscriptions(
 	this: IHookFunctions | IWebhookFunctions,
@@ -223,9 +282,21 @@ export async function reconcileSubscriptions(
 		renewed?: ReadonlySet<string>;
 		/** Ids Graph reported removed. */
 		gone?: ReadonlySet<string>;
+		/**
+		 * A lifecycle batch leaves a resource with an unproven subscription as it is. Activation
+		 * replaces it: a failed create there fails the activation, and core retries it.
+		 */
+		holdUnproven: boolean;
 	},
-): Promise<Error[]> {
-	const { webhookUrl, clientState, subscriptions, renewed = new Set(), gone = new Set() } = input;
+): Promise<{ errors: Error[]; retry: boolean }> {
+	const {
+		webhookUrl,
+		clientState,
+		subscriptions,
+		renewed = new Set(),
+		gone = new Set(),
+		holdUnproven,
+	} = input;
 	const webhookData = this.getWorkflowStaticData('node');
 	const storedIds = getStoredIds(webhookData);
 	const required = [...new Set(input.requiredResources)];
@@ -237,43 +308,70 @@ export async function reconcileSubscriptions(
 			.map((sub) => sub.id),
 	);
 	const isStored = (sub: SubscriptionResponse) => storedIds.includes(sub.id) && !gone.has(sub.id);
-	// Trust needs the own listing and the stored id, so an own subscription that is not stored
-	// never becomes a keeper. Renewed first, then the later expiry, then the id, so a request
-	// that renews several twins keeps the same one whatever the listing order.
-	const candidates = subscriptions
-		.filter((sub) => isStored(sub) && live.has(sub.id) && required.includes(sub.resource))
-		.sort(
-			(a, b) =>
-				Number(renewed.has(b.id)) - Number(renewed.has(a.id)) ||
-				(Date.parse(b.expirationDateTime) || 0) - (Date.parse(a.expirationDateTime) || 0) ||
-				(a.id < b.id ? -1 : 1),
-		);
+	// Renewed first, then stored, then the later expiry, then the id, so requests that see the
+	// same subscriptions keep the same one whatever the listing order.
+	const byPreference = (a: SubscriptionResponse, b: SubscriptionResponse) =>
+		Number(renewed.has(b.id)) - Number(renewed.has(a.id)) ||
+		Number(isStored(b)) - Number(isStored(a)) ||
+		(Date.parse(b.expirationDateTime) || 0) - (Date.parse(a.expirationDateTime) || 0) ||
+		(a.id < b.id ? -1 : 1);
+
+	// A renewal in this request proves the secret: its lifecycle item passed verification. Earlier
+	// versions stored every own subscription, whatever its secret, so storage alone decides only
+	// for a stored subscription that is the only live own one and the only stored one on its
+	// resource. Elsewhere GET by id proves the live ones, so a live listed subscription with the
+	// stored secret goes only beside a keeper, or at activation when its read failed and the
+	// create replaces it. Stale, unlisted and no longer required ones go without a read.
 	const keepers = new Map<string, string>();
-	for (const sub of candidates) {
-		if (!keepers.has(sub.resource)) keepers.set(sub.resource, sub.id);
+	const unproven: SubscriptionResponse[] = [];
+	for (const resource of required) {
+		const onResource = subscriptions.filter((sub) => sub.resource === resource);
+		const liveHere = onResource.filter((sub) => live.has(sub.id));
+		const storedLive = liveHere.filter(isStored);
+		const [renewedKeeper] = storedLive.filter((sub) => renewed.has(sub.id)).sort(byPreference);
+		if (renewedKeeper) keepers.set(resource, renewedKeeper.id);
+		else if (
+			storedLive.length === 1 &&
+			liveHere.length === 1 &&
+			onResource.filter(isStored).length === 1
+		) {
+			keepers.set(resource, storedLive[0].id);
+		} else unproven.push(...liveHere);
 	}
-	// Earlier versions stored every own subscription, whatever its secret. A renewal in this
-	// request proves the secret (its lifecycle item passed verification). Without one, two
-	// stored subscriptions on one resource, live or not, are both untrusted and the resource is
-	// created again.
-	const storedPerResource = new Map<string, number>();
-	for (const sub of subscriptions.filter(isStored)) {
-		storedPerResource.set(sub.resource, (storedPerResource.get(sub.resource) ?? 0) + 1);
-	}
-	for (const [resource, keeper] of keepers) {
-		if ((storedPerResource.get(resource) ?? 0) > 1 && !renewed.has(keeper)) {
-			keepers.delete(resource);
+	const proofs = await proveSecrets.call(
+		this,
+		unproven.map((sub) => sub.id),
+		webhookUrl,
+		clientState,
+	);
+	// On a lifecycle batch a failed read never costs a subscription that delivers.
+	const held = new Set<string>();
+	for (const resource of required) {
+		if (keepers.has(resource)) continue;
+		const candidates = unproven.filter((sub) => sub.resource === resource);
+		if (holdUnproven && candidates.some((sub) => proofs.get(sub.id) === 'unknown')) {
+			held.add(resource);
+			continue;
 		}
+		const [keeper] = candidates.filter((sub) => proofs.get(sub.id) === 'match').sort(byPreference);
+		if (keeper) keepers.set(resource, keeper.id);
 	}
 	const keeperIds = new Set(keepers.values());
-	// A stored subscription beside a renewed keeper is forgotten, not deleted, whatever its
-	// listed expiry: a request that renewed it can run at the same time and keep it, and the
-	// two must not delete each other's keeper. Unless it expires first, one with the stored
-	// secret names an unknown id at its next renewal, and that reconcile tries to remove it.
-	// One with another secret fails verification, is never renewed and expires.
+	// A stored subscription beside a keeper is forgotten, not deleted, whatever its listed
+	// expiry: a request that renewed it can run at the same time and keep it, and two requests
+	// that share the stored ids must not delete each other's keeper. Unless it expires first, one
+	// with the stored secret names an unknown id at its next renewal, and that reconcile removes
+	// it. One with another secret is never renewed and expires, or goes now when GET by id
+	// proved it.
 	const forgotten = new Set(
 		subscriptions
-			.filter((sub) => isStored(sub) && keepers.has(sub.resource) && !keeperIds.has(sub.id))
+			.filter(
+				(sub) =>
+					isStored(sub) &&
+					keepers.has(sub.resource) &&
+					!keeperIds.has(sub.id) &&
+					proofs.get(sub.id) !== 'other',
+			)
 			.map((sub) => sub.id),
 	);
 
@@ -284,24 +382,31 @@ export async function reconcileSubscriptions(
 	const refused = new Set(
 		await deleteSubscriptions.call(this, [
 			...subscriptions
-				.map((sub) => sub.id)
-				.filter((id) => !keeperIds.has(id) && !forgotten.has(id)),
+				.filter(
+					(sub) => !keeperIds.has(sub.id) && !forgotten.has(sub.id) && !held.has(sub.resource),
+				)
+				.map((sub) => sub.id),
 			...storedAbsent,
 		]),
 	);
 	const { ids: created, errors } = await createSubscriptions.call(
 		this,
 		webhookUrl,
-		required.filter((resource) => !keepers.has(resource)),
+		required.filter((resource) => !keepers.has(resource) && !held.has(resource)),
 		clientState,
 	);
 
 	// A stored id that is not listed and that Graph refused to remove stays, so the next
-	// reconcile retries the delete; the by-URL listing cannot find it.
+	// reconcile retries the delete; the by-URL listing cannot find it. The stored ids of a held
+	// resource stay too, so the next reconcile sees the same subscriptions.
 	const retained = storedAbsent.filter((id) => refused.has(id));
+	const heldIds = subscriptions
+		.filter((sub) => isStored(sub) && held.has(sub.resource))
+		.map((sub) => sub.id);
 	const ids = [
 		...new Set([
 			...required.flatMap((resource) => keepers.get(resource) ?? []),
+			...heldIds,
 			...retained,
 			...created,
 		]),
@@ -313,17 +418,16 @@ export async function reconcileSubscriptions(
 	const unchanged =
 		raw !== undefined && raw.length === ids.length && ids.every((id) => raw.includes(id));
 	if (!unchanged) webhookData.subscriptionIds = ids;
-	return errors;
+	return { errors, retry: errors.length > 0 || held.size > 0 };
 }
 
 /**
  * Whether the stored ids alone cover every required resource with a live subscription at
  * this URL. Reads each stored id with GET by id, which has its own budget: 2000 requests per
  * 20 s for an app across all tenants, against 40 for the listing. Two stored subscriptions on
- * one resource both count: keeping them is safer than core's cleanup, and the next listing
- * trusts neither unless a renewal proves one. An answer with another clientState covers
- * nothing. An answer without one counts, because the listing never returns clientState and
- * GET by id is not proven to. Never throws.
+ * one resource both count: keeping them is safer than core's cleanup, and the next reconcile
+ * proves each secret. An answer with another clientState covers nothing. An answer without
+ * one still counts here; the reconcile treats it as unproven. Never throws.
  */
 export async function storedSubscriptionsCover(
 	this: IHookFunctions | IWebhookFunctions,
@@ -392,7 +496,8 @@ export function isSubscriptionResponse(value: unknown): value is SubscriptionRes
  * Runs after `webhook()` sent the 202. Never throws: a throw skips the static-data
  * save and core would answer an ended response. Renews the stored ids the batch names;
  * a batch with a removal, an unknown id, a failed renewal or a rejected item lists once
- * and reconciles, and so does a trigger that watches one resource but stores more ids.
+ * and reconciles, and so does a trigger that watches one resource but stores more ids, or
+ * one that an earlier batch marked because its reconcile did not finish.
  */
 export async function handleLifecycleNotifications(
 	this: IWebhookFunctions,
@@ -493,7 +598,11 @@ export async function handleLifecycleNotifications(
 		(event === 'newChannel' || event === 'newChannelMessage' || event === 'newTeamMember') &&
 		(this.getNodeParameter('watchAllTeams', false) === true ||
 			(event === 'newChannelMessage' && this.getNodeParameter('watchAllChannels', false) === true));
+	// ponytail: no backoff for a marked workflow; it lists at most once per lifecycle batch, and
+	// Graph sets the batch rate and documents no limit. Add a backoff if marked workflows show up
+	// in the listing budget.
 	const renewOnly =
+		webhookData.pendingReconcile !== true &&
 		rejectedCount === 0 &&
 		gone.size === 0 &&
 		[...toRenew].every((id) => renewed.has(id)) &&
@@ -515,13 +624,15 @@ export async function handleLifecycleNotifications(
 			'failed to list subscriptions or resolve resources, skipped re-create',
 			{ subscriptionIds: affectedIds, error: ensureError(error).message },
 		);
+		markPendingReconcile(webhookData, true);
 		return;
 	}
 
 	// An orphan whose own challenge fails verification never reaches this handler, so a
 	// batch with an anomaly (a removal, an unknown id, a failed renewal, a rejected item)
-	// must prune for it. The helpers log the failures.
-	await reconcileSubscriptions.call(this, {
+	// must prune for it. The helpers log the failures. A failed create or read marks the
+	// workflow, so a later batch reconciles again instead of only renewing.
+	const { retry } = await reconcileSubscriptions.call(this, {
 		webhookUrl,
 		clientState,
 		requiredResources,
@@ -531,7 +642,9 @@ export async function handleLifecycleNotifications(
 		],
 		renewed,
 		gone,
+		holdUnproven: true,
 	});
+	markPendingReconcile(webhookData, retry);
 }
 
 /** The accepted items of the request body; `[]` for a missing, empty or non-array body. */

@@ -23,6 +23,7 @@ import {
 	isLifecycleNotification,
 	listOwnSubscriptions,
 	logTrigger,
+	markPendingReconcile,
 	reconcileSubscriptions,
 	storedSubscriptionsCover,
 	verifyWebhook,
@@ -382,6 +383,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 						logTrigger.call(this, 'warn', 'failed to list subscriptions, kept the stored ones', {
 							error: ensureError(error).message,
 						});
+						markPendingReconcile(webhookData, true);
 						return true;
 					}
 					throw error;
@@ -401,16 +403,22 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				}
 
 				const requiredResources = [await getResourcePath.call(this, event)].flat();
-				const [createError] = await reconcileSubscriptions.call(this, {
+				const {
+					errors: [createError],
+					retry,
+				} = await reconcileSubscriptions.call(this, {
 					webhookUrl,
 					clientState,
 					requiredResources,
 					subscriptions,
+					// A failed create here throws, so a resource that cannot be proven is replaced.
+					holdUnproven: false,
 				});
 				// A resource without a live subscription is a dark trigger, so the activation
 				// fails with the Graph error. A failed removal only warns: the next reconcile
 				// retries it, from the listing or from the stored ids.
 				if (createError) throw createError;
+				markPendingReconcile(webhookData, retry);
 				return true;
 			},
 
@@ -447,6 +455,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 
 				webhookData.subscriptionIds = ids;
 				webhookData.webhookSecret = clientState;
+				markPendingReconcile(webhookData, false);
 				return true;
 			},
 
@@ -479,6 +488,7 @@ export class MicrosoftTeamsTrigger implements INodeType {
 				delete webhookData.subscriptionIds;
 				delete webhookData.webhookSecret;
 				delete webhookData.staleSubscriptionIds;
+				delete webhookData.pendingReconcile;
 				return refused.length === 0;
 			},
 		},
