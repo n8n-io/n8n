@@ -1,0 +1,20 @@
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_82789c69de1855::t_393425144b2600 20,251-266
+  s_82789c69de1855::t_eac43660049a61 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6b2c6add8af68ebd12fe71131d2f3cc1613beeb9",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Eugene Molodkin <eugene@n8n.io>"
+    }
+  }
+}

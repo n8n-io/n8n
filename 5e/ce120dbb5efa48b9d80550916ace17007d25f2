@@ -1,0 +1,23 @@
+packages/@n8n/task-runner-python/tests/unit/test_sentry.py
+  s_ed6bb18de3e3ec::t_1f72460529f7eb 71
+  s_ed6bb18de3e3ec::t_5ee451af83129f 271-326
+  s_ed6bb18de3e3ec::t_3bcdd7592bfc07 2-4
+packages/@n8n/task-runner-python/src/sentry.py
+  s_ed6bb18de3e3ec::t_8519238165ffc8 56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5ece120dbb5efa48b9d80550916ace17007d25f2",
+  "prompts": {},
+  "sessions": {
+    "s_ed6bb18de3e3ec": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "148caa73-55c4-4c4b-8349-3f5248bfca19",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "sim <olivier.dejong@n8n.io>"
+    }
+  }
+}

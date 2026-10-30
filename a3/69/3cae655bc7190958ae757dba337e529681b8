@@ -1,0 +1,55 @@
+packages/cli/src/scaling/pubsub/pubsub.types.ts
+  s_0b0df9fc8eb30f::t_670cfafd8384a0 100,160-161
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_0b0df9fc8eb30f::t_790b3d5c9c9260 168
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_0b0df9fc8eb30f::t_597ae5412da65c 77-81,259,264,269,274
+  s_0b0df9fc8eb30f::t_913ceeee1592e7 8-11,19,22,47,49-58,68-69,72-76,82,111-116,118,120-125,128-129,131,155-164,166-173,175-176,251-258,260-263,265-268,270-273,275-288,290-294,296-297,300-397,399-400,402-410,412-425,427-436,438-439,441-444,446,466-467,469-470,472-473,475,477-479,482,484,486,488-489,491-501,503-517,519-522,524-531,535-581
+  s_0b0df9fc8eb30f::t_866e21d055587b 48,447,476
+  s_0b0df9fc8eb30f::t_c4b74eb61207d9 165,174,289,295,298-299,398,401,411,426,437,440,445,448-465,468,471,474,480-481,483,485,487,490,502,518,523,532-534
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_0b0df9fc8eb30f::t_64320a1d5820b5 28,97,146,179-180,303-311
+  s_0b0df9fc8eb30f::t_3727f2bf25e4cd 312-313
+packages/cli/src/scaling/constants.ts
+  s_0b0df9fc8eb30f::t_670cfafd8384a0 75-76
+packages/cli/src/public-api/v1/controllers/promotions.public.controller.ts
+  s_0b0df9fc8eb30f::t_4d0aed3b7916ee 404
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_0b0df9fc8eb30f::t_866e21d055587b 97-98
+packages/@n8n/decorators/src/pubsub/pubsub-metadata.ts
+  s_0b0df9fc8eb30f::t_670cfafd8384a0 63
+packages/cli/src/scaling/pubsub/__tests__/publisher.service.test.ts
+  s_0b0df9fc8eb30f::t_670cfafd8384a0 183
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_0b0df9fc8eb30f::t_64320a1d5820b5 194-195
+  s_0b0df9fc8eb30f::t_d5cb8fb7ec3cf4 75,187
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_0b0df9fc8eb30f::t_b341359c644b4d 95-97,146-148,185-186
+  s_0b0df9fc8eb30f::t_790b3d5c9c9260 1,10,139,141-145,149-157,159-161
+  s_0b0df9fc8eb30f::t_108d7001a40123 3,5,7-9,12-13,15-19,22-23,35-36,43-44,47-54,67-68,73-75,87,94,98-138,140,158,162-184,187-204
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_0b0df9fc8eb30f::t_e989220d0b2eec 14,45,89,100-106,136-146,229-232,272
+packages/cli/src/scaling/pubsub/pubsub.event-map.ts
+  s_0b0df9fc8eb30f::t_670cfafd8384a0 449-451,454-457,459-463
+  s_0b0df9fc8eb30f::t_b341359c644b4d 452-453,458
+packages/cli/src/public-api/v1/handlers/promotions/spec/paths/disconnectPromotionCheckout.generated.yml
+  s_0b0df9fc8eb30f::t_42f3861e7c1829 5
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_0b0df9fc8eb30f::t_790b3d5c9c9260 209
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a3693cae655bc7190958ae757dba337e529681b8",
+  "prompts": {},
+  "sessions": {
+    "s_0b0df9fc8eb30f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a9810ed1-9d1d-4e24-a6ea-c5819f7faeb2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,52 @@
+packages/cli/src/modules/promotions.ee/promotions.module.ts
+  s_0a72bc3c235415::t_4c6a5e65a8f6bf 19-24
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_0a72bc3c235415::t_041d810056ede0 34,37,172-176,297-308
+  s_0a72bc3c235415::t_5252d908d01ef5 309
+packages/cli/src/modules/promotions.ee/__tests__/promotion-providers.service.test.ts
+  s_0a72bc3c235415::t_041d810056ede0 13-14,24-25,33,35,76,297-363
+  s_0a72bc3c235415::t_b08851c10dddb9 364-365
+packages/cli/src/modules/promotions.ee/promotion-checkout-cleanup.service.ts
+  s_0a72bc3c235415::t_250682cc88ef96 1-70,75-89
+  s_0a72bc3c235415::t_df7ba0ca3f20aa 71-74
+packages/cli/src/modules/promotions.ee/database/repositories/promotion-environment.repository.ts
+  s_0a72bc3c235415::t_d516df35de4224 4
+  s_0a72bc3c235415::t_d5aa2da9fca87a 5,85-97,101
+  s_0a72bc3c235415::t_19e9329c9df74d 98-100
+  s_0a72bc3c235415::t_352ff931ee6566 102
+packages/cli/src/modules/promotions.ee/promotions.service.ts
+  s_0a72bc3c235415::t_7f4481ac08669f 77,209
+  s_0a72bc3c235415::t_4c6a5e65a8f6bf 151
+packages/cli/src/modules/promotions.ee/__tests__/promotions-package.integration.test.ts
+  s_0a72bc3c235415::t_9a69b96b5059ec 97,188-192,202,205
+packages/cli/src/modules/promotions.ee/promotion-environments.service.ts
+  s_0a72bc3c235415::t_e12f8fbe9a9576 64
+  s_0a72bc3c235415::t_53100171a18785 18,35,62,163-168,203,311-320
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environment.repository.integration.test.ts
+  s_0a72bc3c235415::t_78b81e804bdd89 1-95
+packages/cli/src/modules/promotions.ee/promotion-providers.service.ts
+  s_0a72bc3c235415::t_7f4481ac08669f 32,55,180-181,204
+packages/cli/src/modules/promotions.ee/__tests__/promotion-environments.service.test.ts
+  s_0a72bc3c235415::t_19e9329c9df74d 191,198-210,234,241
+  s_0a72bc3c235415::t_6ad530572c20c1 1,19,97,114-126,169-190,192-197,211-233,235-240,242-282
+packages/cli/src/modules/promotions.ee/__tests__/promotion-checkout-cleanup.service.test.ts
+  s_0a72bc3c235415::t_7002a7a3c0faaa 1-206
+packages/cli/src/modules/promotions.ee/promotion-working-directory.service.ts
+  s_0a72bc3c235415::t_17bfd8200a27c0 4,29,92-108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7089df94ea5041c382e026b100cf4e375536c32b",
+  "prompts": {},
+  "sessions": {
+    "s_0a72bc3c235415": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c9ecc3c-aafa-44f1-8213-2bcc4eb98d48",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Irénée <irenee.ajeneza@n8n.io>"
+    }
+  }
+}
