@@ -75,7 +75,7 @@ watch(open, (isOpen) => isOpen && reset(), { immediate: true });
 <template>
 	<N8nDialog
 		v-model:open="open"
-		size="small"
+		size="medium"
 		:header="i18n.baseText('apps.publish.dialog.title')"
 		data-test-id="app-publish-dialog"
 	>
