@@ -4,13 +4,42 @@ import {
 	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	buildUpdateWorkflowSessionGrantKey,
+	buildWorkflowActionSessionGrantKey,
+	buildCleanupTestExecutionsSessionGrantKey,
+	buildWorkspaceSessionGrantKey,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 	REMOVED_BUILDER_TOOL_NAMES,
 	SHARED_BUILDER_TOOL_NAMES,
 	WORKFLOW_BUILDER_TOOL_NAMES,
+	WORKFLOW_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
+
+/** Workflow tool actions whose approval the backend stores as a per-workflow grant. */
+const WORKFLOW_GRANT_ACTIONS = new Set([
+	'delete',
+	'unarchive',
+	'publish',
+	'unpublish',
+	'restore-version',
+	'update-version',
+]);
+
+/** The grant action of each workflow tool that has one, such as `delete` for `archive_workflow`. */
+const WORKFLOW_GRANT_ACTION_BY_TOOL = new Map<string, string>(
+	Object.entries(WORKFLOW_TOOL_NAME_BY_ACTION)
+		.filter(([action]) => WORKFLOW_GRANT_ACTIONS.has(action))
+		.map(([action, tool]) => [tool, action]),
+);
+
+/** The grant action of a call: from its tool, or from a stored call of the former workflows tool. */
+function workflowGrantAction(toolName: string, action: string): string | undefined {
+	if (isFormerWorkflowsTool(toolName)) {
+		return WORKFLOW_GRANT_ACTIONS.has(action) ? action : undefined;
+	}
+	return WORKFLOW_GRANT_ACTION_BY_TOOL.get(toolName);
+}
 
 // Session "Always allow" keys. They match the thread grants that the backend
 // persists, so a UI key and a stored grant name the same permission. Both
@@ -69,6 +98,21 @@ export function buildAlwaysAllowKey(
 	) {
 		if (!workflowId) return null;
 		return buildUpdateWorkflowSessionGrantKey(workflowId);
+	}
+	// Other gated workflow actions, such as publish, are per-workflow too, matching the
+	// backend `workflows:<action>:<id>` thread grant. Without an ID, fail closed.
+	const grantAction = workflowGrantAction(toolName, action);
+	if (grantAction) {
+		if (!workflowId) return null;
+		return buildWorkflowActionSessionGrantKey(grantAction, workflowId);
+	}
+	if (toolName === 'workspace' && action === 'cleanup-test-executions') {
+		// Deleting test executions is per-workflow, matching the backend thread grant.
+		if (!workflowId) return null;
+		return buildCleanupTestExecutionsSessionGrantKey(workflowId);
+	}
+	if (toolName === 'workspace') {
+		return buildWorkspaceSessionGrantKey(action);
 	}
 	if (toolName === SHARED_BUILDER_TOOL_NAMES.DATA_TABLES) {
 		return buildDataTablesSessionGrantKey(action);

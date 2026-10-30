@@ -1078,6 +1078,15 @@ Packages whose license cannot be resolved from disk go in
 `scripts/licenses/license-overrides.json` with a verified `source` citation — the upstream
 LICENSE file, not registry metadata.
 
+PR CI calls `sbom-validation-callable.yml` when the root manifest, lockfile, or workspace
+configuration changes. It also runs when the scripts manifest or lockfile changes.
+It also runs for changes to the license scripts, production build script, Node setup action,
+or SBOM validation workflow. It builds the production closure at the PR merge SHA with
+`N8N_GENERATE_LICENSES=true`. This runs cdxgen, enrichment, license rendering, and the SPDX
+gate. `Required Checks` includes the result. The job has read-only access and publishes
+no SBOM artifacts. If dependency installation fails, `setup-nodejs` uploads diagnostics
+as `pnpm-install-logs-*` artifacts. GitHub retains these logs for seven days.
+
 `test-sbom-nightly.yml` runs at 04:00 UTC. It waits up to two hours for the current scheduled
 Docker build to complete. It builds the production deployment closure at that run's SHA and
 validates the release SBOM. It also resolves the four immutable SHA image tags from that

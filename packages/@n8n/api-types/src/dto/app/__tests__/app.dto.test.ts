@@ -13,7 +13,7 @@ describe('app DTOs', () => {
 		});
 	});
 
-	it.each(['', ' ', 'My-App', '-app', 'app-', 'app--name', '../app', 'a'.repeat(64)])(
+	it.each(['', ' ', 'My-App', '-app', 'app-', 'app--name', '../app', 'a'.repeat(55)])(
 		'rejects namespace %j',
 		(namespace) => {
 			expect(CreateAppDto.safeParse({ name: 'App', namespace }).success).toBe(false);

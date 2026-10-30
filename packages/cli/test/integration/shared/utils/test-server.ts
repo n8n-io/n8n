@@ -127,6 +127,7 @@ export const setupTestServer = ({
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
 	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagForInstance.mockResolvedValue(undefined);
 	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
 		featureFlags: {},
 		featureFlagPayloads: {},
@@ -449,6 +450,11 @@ export const setupTestServer = ({
 			}
 
 			await Container.get(ModuleRegistry).initModules('main');
+			// As `start` does: the skills module reads the credentials of its sources through cli.
+			const { registerSkillSourceCredentials } = await import(
+				'@/credentials/skill-source-credentials.js'
+			);
+			registerSkillSourceCredentials();
 			Container.get(ControllerRegistry).activate(app);
 
 			await Container.get(AuthHandlerRegistry).init();

@@ -505,6 +505,23 @@ export interface PersistedChildTrace {
 	steps: PersistedChildTraceStep[];
 }
 
+/**
+ * A file that a workflow or node tool returned. The tool output lists these
+ * in its `files` field. The model sees only this metadata, not the bytes.
+ */
+export interface AgentToolOutputFile {
+	fileId: string;
+	fileName: string;
+	mimeType: string;
+	sizeBytes: number;
+}
+
+/** A tool output file that was not stored. The model gets the reason in the tool result. */
+export interface AgentToolSkippedFile {
+	fileName: string;
+	reason: string;
+}
+
 export interface AgentPersistedMessageContentPart {
 	type: 'text' | 'reasoning' | 'tool-call' | 'file' | (string & {});
 	text?: string;

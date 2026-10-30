@@ -21,8 +21,25 @@ export type SkillSourceIdentity = {
 	repository: string;
 };
 
-/** Access for a private source. The service resolves the n8n credential to a token. */
-export type SkillSourceAuth = { token: string };
+/**
+ * Access for a private source. The service resolves the n8n credential, and the client turns
+ * it into this with `authFrom`. `credentialType` tells the client what kind of token it is.
+ */
+export type SkillSourceAuth = {
+	token: string;
+	credentialType: string;
+	/** The n8n credential. A client keys its caches by it, as a fresh token changes each time. */
+	credentialId?: string;
+};
+
+/** One repository that a credential can read, for the repository select. */
+export type SkillSourceRepository = {
+	owner: string;
+	name: string;
+	private: boolean;
+	/** A link that `parseLocator` reads. */
+	url: string;
+};
 
 /** A part of the remote skill that the content of an n8n skill cannot hold. */
 export type SkillSourceFidelityWarning = { code: string; detail: string };
@@ -65,7 +82,40 @@ export abstract class SkillSourceClient {
 	/** The n8n credential types that can read a private source. */
 	abstract readonly credentialTypes: readonly string[];
 
+	/**
+	 * The access of a decrypted credential of one of `credentialTypes`. Throws
+	 * `SkillSourceReadError` with `credential_invalid` for a credential that this client cannot
+	 * use, such as one without a token or for another host.
+	 */
+	abstract authFrom(credential: {
+		id?: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): SkillSourceAuth;
+
+	/**
+	 * Refuses a decrypted credential that this client cannot use, such as one for another
+	 * host, with the errors of `authFrom`. It runs before a fresh token is minted, so the
+	 * credential sends no request for a source that refuses it.
+	 */
+	checkCredential?(credential: { type: string; data: Record<string, unknown> }): void;
+
+	/**
+	 * The repositories that the access can read, sorted, and whether there are more than the
+	 * client lists. Only for source types where a credential can browse its sources.
+	 */
+	listRepositories?(
+		auth: SkillSourceAuth,
+	): Promise<{ repositories: SkillSourceRepository[]; truncated: boolean }>;
+
 	abstract readonly capabilities: SkillSourceCapabilities;
+
+	/**
+	 * Whether the link is for this source type, such as a github.com link for GitHub. A cheap
+	 * check with no request. The service picks the client that handles a link, and that
+	 * client's `parseLocator` explains what is wrong with it.
+	 */
+	abstract handles(input: string): boolean;
 
 	/**
 	 * Parses a link that a user pasted. Async, because a branch name can contain "/" and needs
@@ -76,21 +126,50 @@ export abstract class SkillSourceClient {
 
 	abstract identity(locator: SkillSourceLocator): SkillSourceIdentity;
 
+	/**
+	 * How the picker names a source: a label such as `owner/repository`, the branch (null for
+	 * a source type without branches), and the folder that the link points to.
+	 */
+	abstract describe(locator: SkillSourceLocator): {
+		label: string;
+		ref: string | null;
+		path: string;
+	};
+
+	/** Where one skill is in the source, such as its folder, for the picker. */
+	abstract location(ref: RemoteSkillRef): string;
+
 	/** A page in the source that a user can open, for the source or for one skill. */
 	abstract webUrl(locator: SkillSourceLocator, ref?: RemoteSkillRef): string;
 
-	/** One page of the skills in the source. Call again with `next` until it is undefined. */
+	/**
+	 * One page of the skills in the source. Call again with `next` until it is undefined.
+	 * `truncated` is true when the source has more skills than the client lists. `revision`,
+	 * when the client has one, is the revision of the whole source that the page lists.
+	 */
 	abstract discover(
 		locator: SkillSourceLocator,
 		auth?: SkillSourceAuth,
 		cursor?: string,
-	): Promise<{ items: RemoteSkillRef[]; next?: string }>;
+	): Promise<{
+		items: RemoteSkillRef[];
+		next?: string;
+		truncated?: boolean;
+		/** Skills that the client did not list, as they are deeper than it looks. */
+		tooDeep?: number;
+		revision?: string;
+	}>;
 
-	/** The current content of one skill. Throws `SkillSourceNotFoundError` when it is gone. */
+	/**
+	 * The current content of one skill. Throws `SkillSourceNotFoundError` when it is gone.
+	 * With `revision` from `discover`, the client may read the skill at that revision, so the
+	 * fetches of one import read the same state of the source without asking for it again.
+	 */
 	abstract fetchLatest(
 		locator: SkillSourceLocator,
 		ref: RemoteSkillRef,
 		auth?: SkillSourceAuth,
+		revision?: string,
 	): Promise<FetchedSkill>;
 }
 

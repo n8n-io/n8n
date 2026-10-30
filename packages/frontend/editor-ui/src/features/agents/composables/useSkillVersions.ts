@@ -8,8 +8,14 @@ import { countsByFile, diffSkills } from '../components/skillVersions/skillVersi
 import type { AgentSkill } from '../types';
 import { getSkillVersion, listSkillVersions } from './useAgentApi';
 
-/** The saved versions of one skill, and the older version the user opened. */
-export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) {
+/**
+ * The saved versions of one skill, and the version the user opened. `baseVersion` is the version
+ * the editor shows: a pinned agent's version in the builder, else the latest.
+ */
+export function useSkillVersions(
+	skillId: MaybeRefOrGetter<string | undefined>,
+	baseVersion?: MaybeRefOrGetter<number | undefined>,
+) {
 	const rootStore = useRootStore();
 	const i18n = useI18n();
 	const { showError } = useToast();
@@ -61,10 +67,10 @@ export function useSkillVersions(skillId: MaybeRefOrGetter<string | undefined>) 
 	/** The version the user asked for last, so a slower earlier answer cannot replace it. */
 	let requestedVersion: number | null = null;
 
-	/** Shows an older version. The latest version shows the editor again. */
+	/** Shows another version. The base version shows the editor again. */
 	async function openVersion(version: number) {
 		requestedVersion = version;
-		if (version === versions.value?.[0]?.version) {
+		if (version === (toValue(baseVersion) ?? versions.value?.[0]?.version)) {
 			viewedVersion.value = null;
 			return;
 		}

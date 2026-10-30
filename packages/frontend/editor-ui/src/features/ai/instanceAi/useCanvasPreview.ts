@@ -1,6 +1,7 @@
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiAttachment } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import {
 	getLatestBuildResult,
 	getLatestBuilderTarget,
@@ -22,7 +23,7 @@ import {
 	useOpenArtifactTabs,
 	type ThreadTabsStorage,
 } from './composables/useOpenArtifactTabs';
-import type { ThreadRuntime } from './instanceAi.store';
+import type { ArtifactThread } from './artifactThread';
 
 export interface ArtifactTab {
 	id: string;
@@ -37,7 +38,7 @@ export interface ArtifactTab {
 }
 
 interface UseCanvasPreviewOptions {
-	thread: ThreadRuntime;
+	thread: ArtifactThread;
 	threadId: () => string;
 	initialAgentId?: () => string | undefined;
 	/** Saves the open tabs. Without it, the tabs reset when the thread loads again. */
@@ -61,6 +62,8 @@ function getAttachedArtifactId(attachment: InstanceAiAttachment): string | undef
 }
 
 export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCanvasPreviewOptions) {
+	const recentWorkflowsStore = useRecentWorkflowsStore();
+
 	// --- Tab state ---
 	const activeTabId = ref<string>();
 	// The stored tabs of the thread remember this. It applies once they load.
@@ -290,9 +293,19 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 
 	// --- Actions ---
 
+	// The user opened the workflow, so it shows in their recent workflows, as from the editor.
+	function recordWorkflowOpen(workflowId: string) {
+		const tab = openTabs.value.find(({ id }) => id === workflowId);
+		recentWorkflowsStore.registerWorkflowOpen(workflowId, tab?.projectId ?? thread.projectId);
+	}
+
+	/** Show a tab the user picked. Agent changes use `showAgentArtifact` instead. */
 	function selectTab(tabId: string) {
 		// Opening a closed artifact from the chat or the artifacts list shows its tab again.
 		tabs.reopenTab(tabId);
+		if (openTabs.value.find(({ id }) => id === tabId)?.type === 'workflow') {
+			recordWorkflowOpen(tabId);
+		}
 		activeTabId.value = tabId;
 		userTabId.value = isAgentWorking.value ? tabId : undefined;
 		setPreviewOpen(true);
@@ -343,7 +356,11 @@ export function useCanvasPreview({ thread, initialAgentId, tabsStorage }: UseCan
 	 * active (so the caller can fall back to opening in a new tab instead).
 	 */
 	function openWorkflowPreview(workflowId: string): boolean {
-		if (activeTabId.value === workflowId && isPreviewOpen.value) return false;
+		if (activeTabId.value === workflowId && isPreviewOpen.value) {
+			// Already on screen, for example after the agent opened it. The user still opened it.
+			recordWorkflowOpen(workflowId);
+			return false;
+		}
 		selectTab(workflowId);
 		return true;
 	}

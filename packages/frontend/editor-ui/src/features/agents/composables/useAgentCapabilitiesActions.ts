@@ -7,8 +7,10 @@ import {
 	skillNameKey,
 	type AgentConfigValidationIssue,
 	type AgentSkillAvailability,
+	type AgentSkillVersionInfo,
 	type SkillCreateMethod,
 	type SkillDetail,
+	type SkillVersionDetail,
 	type SkillListItem,
 	type SkillNewNameQueryDto,
 } from '@n8n/api-types';
@@ -332,7 +334,7 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 		return out;
 	});
 
-	function onOpenSkillFromList(id: string) {
+	function onOpenSkillFromList(id: string, options: { showVersions?: boolean } = {}) {
 		const skill = appliedSkills.value.find((s) => s.id === id)?.skill;
 		if (!skill) return;
 
@@ -356,6 +358,12 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 				latestVersion: skillRefsEnabled.value
 					? agent.value?.skillVersions?.[id]?.latest
 					: undefined,
+				agentVersions: skillRefsEnabled.value ? agent.value?.skillVersions?.[id] : undefined,
+				initialVersionsOpen: options.showVersions,
+				onUseVersion: (skillId: string, version: SkillVersionDetail) => {
+					if (agentId.value !== targetAgentId) return;
+					void pinSkillVersion(skillId, version);
+				},
 				projectLabel: projectName.value ?? undefined,
 				agentName: agent.value?.name,
 				canCreateInstanceSkills: rbacStore.hasScope('skill:create'),
@@ -677,26 +685,135 @@ export function useAgentCapabilitiesActions(deps: UseAgentCapabilitiesActionsDep
 			showError(error, locale.baseText('agents.builder.skills.useLatest.error'));
 			return;
 		}
-		if (agentId.value !== targetAgentId || agent.value?.id !== targetAgentId) return;
-		if (!localConfig.value) return;
+		if (agentId.value !== targetAgentId) return;
+		await applySkillVersion(skillId, {
+			skill: detail.skill,
+			skillHash: detail.skillHash,
+			version: detail.latestVersion,
+		});
+	}
+
+	/**
+	 * Pins the agent draft to one saved version of a skill. The draft runs that version and the
+	 * published agent keeps its own until the next publish.
+	 */
+	async function pinSkillVersion(skillId: string, version: SkillVersionDetail) {
+		await applySkillVersion(skillId, {
+			skill: version.skill,
+			version: version.version,
+			versionId: version.id,
+		});
+	}
+
+	/**
+	 * Puts one skill back as it was before a version change. Only this skill's entry and ref
+	 * change, so edits made to the agent while the save ran stay.
+	 */
+	function restoreSkillVersion(
+		skillId: string,
+		previous: {
+			skill?: AgentSkill;
+			skillHash?: string;
+			outdated: boolean;
+			versions?: AgentSkillVersionInfo;
+			ref?: NonNullable<AgentJsonConfig['skills']>[number];
+		},
+	) {
+		if (!agent.value || !localConfig.value) return;
+		const outdatedSkillIds = (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId);
+		const { [skillId]: _hash, ...otherHashes } = agent.value.skillHashes ?? {};
 		agent.value = {
 			...agent.value,
-			skills: { ...(agent.value.skills ?? {}), [skillId]: detail.skill },
-			skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: detail.skillHash },
-			outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+			...(previous.skill ? { skills: { ...agent.value.skills, [skillId]: previous.skill } } : {}),
+			skillHashes:
+				previous.skillHash !== undefined
+					? { ...otherHashes, [skillId]: previous.skillHash }
+					: otherHashes,
+			outdatedSkillIds: previous.outdated ? [...outdatedSkillIds, skillId] : outdatedSkillIds,
+			...(previous.versions
+				? { skillVersions: { ...agent.value.skillVersions, [skillId]: previous.versions } }
+				: {}),
+		};
+		const previousRef = previous.ref;
+		if (!previousRef) return;
+		scheduleConfigUpdate({
+			skills: (localConfig.value.skills ?? []).map((ref) =>
+				ref.id === skillId ? previousRef : ref,
+			),
+		});
+	}
+
+	/**
+	 * Points the draft ref at a version of the skill: pinned with `versionId`, else following
+	 * the latest. Saves, then shows it in the open editor with the Versions panel shown.
+	 */
+	async function applySkillVersion(
+		skillId: string,
+		target: { skill: AgentSkill; version: number; versionId?: string; skillHash?: string },
+	) {
+		const targetAgentId = agentId.value;
+		if (agent.value?.id !== targetAgentId || !localConfig.value) return;
+		const pinned = target.versionId !== undefined;
+		const versions = agent.value.skillVersions?.[skillId];
+		// Kept, so a save that does not persist can put this skill back as the server still has it.
+		const previous = {
+			skill: agent.value.skills?.[skillId],
+			skillHash: agent.value.skillHashes?.[skillId],
+			outdated: (agent.value.outdatedSkillIds ?? []).includes(skillId),
+			versions,
+			ref: localConfig.value.skills?.find((ref) => ref.id === skillId),
+		};
+		agent.value = {
+			...agent.value,
+			skills: { ...(agent.value.skills ?? {}), [skillId]: target.skill },
+			...(target.skillHash
+				? { skillHashes: { ...(agent.value.skillHashes ?? {}), [skillId]: target.skillHash } }
+				: {}),
+			...(pinned
+				? {}
+				: {
+						outdatedSkillIds: (agent.value.outdatedSkillIds ?? []).filter((id) => id !== skillId),
+					}),
+			...(versions
+				? {
+						skillVersions: {
+							...agent.value.skillVersions,
+							[skillId]: { ...versions, draft: target.version, pinned },
+						},
+					}
+				: {}),
 		};
 		scheduleConfigUpdate({
 			skills: (localConfig.value.skills ?? []).map((ref) =>
-				ref.id === skillId ? { type: 'skill', id: skillId } : ref,
+				ref.id !== skillId
+					? ref
+					: pinned
+						? { type: 'skill', id: skillId, versionId: target.versionId }
+						: { type: 'skill', id: skillId },
 			),
 		});
+		if (flushConfigSave) {
+			let persisted: boolean;
+			try {
+				// A skipped, stale or outdated save resolves, but the server still has the old ref.
+				persisted = (await flushConfigSave()) === undefined;
+			} catch {
+				persisted = false;
+			}
+			if (!persisted) {
+				// Without the undo, every later save sends the refused ref again.
+				if (agentId.value === targetAgentId) restoreSkillVersion(skillId, previous);
+				return;
+			}
+		}
 		try {
 			await beforeAgentMutation?.();
 		} catch {
 			return;
 		}
-		if (agentId.value !== targetAgentId) return;
-		onOpenSkillFromList(skillId);
+		// The editor stays open and shows the saved version. A closed editor stays closed.
+		if (agentId.value !== targetAgentId || !uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open) return;
+		onOpenSkillFromList(skillId, { showVersions: true });
 	}
 
 	function onConnectedTriggersUpdate(triggers: string[]) {

@@ -649,7 +649,7 @@ describe('N8nMemory', () => {
 			status: 'active',
 			supersededBy: null,
 			embeddingModel: 'openai/text-embedding-3-small',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 			metadata: null,
 			lastSeenAt: createdAt,
 			createdAt,
@@ -1249,7 +1249,7 @@ describe('N8nMemory', () => {
 				{
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for the memory store.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'openai/text-embedding-3-small',
 				},
 				[
@@ -1266,7 +1266,7 @@ describe('N8nMemory', () => {
 				expect.objectContaining({
 					resourceId: 'resource-1',
 					content: 'User chose Postgres for the memory store.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'openai/text-embedding-3-small',
 				}),
 				[{ observationId: 'obs-1', threadId: 'thread-1', evidenceText: 'User chose Postgres' }],
@@ -1276,7 +1276,7 @@ describe('N8nMemory', () => {
 				id: 'memory-1',
 				content: 'User chose Postgres for the memory store.',
 				status: 'active',
-				embedding: [1, 0],
+				embedding: new Float32Array([1, 0]),
 			});
 		});
 
@@ -1286,7 +1286,7 @@ describe('N8nMemory', () => {
 					resourceId: 'integration:slack:U_BOB',
 					episodic: threadEpisodic,
 					content: 'The Flan recipe uses three eggs.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'openai/text-embedding-3-small',
 				},
 				[{ candidateId: 'candidate-1', threadId: 'thread-1', evidenceText: 'Use three eggs.' }],
@@ -1326,7 +1326,11 @@ describe('N8nMemory', () => {
 					['hash-1'],
 				);
 				expect(entries).toEqual([
-					expect.objectContaining({ id: 'memory-1', status: 'dropped', embedding: [1, 0] }),
+					expect.objectContaining({
+						id: 'memory-1',
+						status: 'dropped',
+						embedding: new Float32Array([1, 0]),
+					}),
 				]);
 			},
 		);
@@ -1370,18 +1374,24 @@ describe('N8nMemory', () => {
 		});
 
 		it('searches scoped active entries through hybrid ranking', async () => {
-			memoryEntryRepository.find.mockResolvedValue([
+			const entities = [
 				makeMemoryEntryEntity({
 					id: 'memory-1',
 					content: 'User chose Postgres for the memory store.',
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 				}),
 				makeMemoryEntryEntity({
 					id: 'memory-2',
 					content: 'User investigated a webhook timeout.',
-					embedding: [0, 1],
+					contentHash: 'hash-2',
+					embedding: new Float32Array([0, 1]),
 				}),
-			]);
+			];
+			memoryEntryRepository.findRankableEntries.mockResolvedValue(entities);
+			memoryEntryRepository.findInAnyStatus.mockImplementation(
+				async (_agentId, ids) =>
+					await Promise.resolve(entities.filter(({ id }) => ids.includes(id))),
+			);
 
 			const results = await memory.episodic.searchEntries(
 				{ resourceId: 'resource-1', threadId: 'thread-1' },
@@ -1389,19 +1399,19 @@ describe('N8nMemory', () => {
 				{ queryEmbedding: [1, 0], topK: 1 },
 			);
 
-			expect(memoryEntryRepository.find).toHaveBeenCalledWith({
-				where: {
-					agentId: 'agent-1',
-					resourceId: In(['resource-1']),
-					status: In(['active']),
-				},
-			});
+			expect(memoryEntryRepository.findRankableEntries).toHaveBeenCalledWith(
+				'agent-1',
+				['resource-1'],
+				['active'],
+			);
 			expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
 			expect(results.map((result) => result.id)).toEqual(['memory-1']);
+			expect(memoryEntryRepository.findInAnyStatus).toHaveBeenCalledWith('agent-1', ['memory-1']);
 		});
 
 		it('limits write-scope searches to the resolved write scope', async () => {
-			memoryEntryRepository.find.mockResolvedValue([]);
+			memoryEntryRepository.findRankableEntries.mockResolvedValue([]);
+			memoryEntryRepository.findInAnyStatus.mockResolvedValue([]);
 
 			await memory.episodic.searchEntries(
 				{ resourceId: 'integration:slack:U1', threadId: 'thread-1', episodic: threadEpisodic },
@@ -1409,24 +1419,28 @@ describe('N8nMemory', () => {
 				{ writeScopeOnly: true },
 			);
 
-			expect(memoryEntryRepository.find).toHaveBeenCalledWith({
-				where: {
-					agentId: 'agent-1',
-					resourceId: In(['thread:thread-1']),
-					status: In(['active']),
-				},
-			});
+			expect(memoryEntryRepository.findRankableEntries).toHaveBeenCalledWith(
+				'agent-1',
+				['thread:thread-1'],
+				['active'],
+			);
 		});
 
 		describe('without a resolved scope on an integration resource', () => {
 			const scope = { resourceId: 'integration:slack:U1', threadId: 'thread-1' };
 
 			it('recalls nothing and reads no entries', async () => {
+				memoryEntryRepository.findRankableEntries.mockResolvedValue([]);
+				memoryEntryRepository.findInAnyStatus.mockResolvedValue([]);
+
 				await expect(memory.episodic.searchEntries(scope, 'shared fact')).resolves.toEqual([]);
 				await expect(
 					memory.episodic.searchEntries(scope, 'shared fact', { writeScopeOnly: true }),
 				).resolves.toEqual([]);
-				expect(memoryEntryRepository.find).not.toHaveBeenCalled();
+				const searchedScopes = memoryEntryRepository.findRankableEntries.mock.calls.map(
+					([, resourceIds]) => resourceIds,
+				);
+				expect(searchedScopes).toEqual([[], []]);
 			});
 
 			it.each([
@@ -1485,7 +1499,8 @@ describe('N8nMemory', () => {
 			});
 
 			it('recalls only from the resolved read scopes', async () => {
-				memoryEntryRepository.find.mockResolvedValue([]);
+				memoryEntryRepository.findRankableEntries.mockResolvedValue([]);
+				memoryEntryRepository.findInAnyStatus.mockResolvedValue([]);
 				const readScopeIds = ['slack:T1:channel:C1', 'slack:T1:user:U_ALICE'];
 
 				await memory.episodic.searchEntries(
@@ -1494,13 +1509,11 @@ describe('N8nMemory', () => {
 				);
 
 				expect(messageRepository.findRecentThreadIdsByResourceId).not.toHaveBeenCalled();
-				expect(memoryEntryRepository.find).toHaveBeenCalledWith({
-					where: {
-						agentId: 'agent-1',
-						resourceId: In(readScopeIds),
-						status: In(['active']),
-					},
-				});
+				expect(memoryEntryRepository.findRankableEntries).toHaveBeenCalledWith(
+					'agent-1',
+					readScopeIds,
+					['active'],
+				);
 			});
 
 			it('saves entries under the resolved write scope without storing the scope itself', async () => {

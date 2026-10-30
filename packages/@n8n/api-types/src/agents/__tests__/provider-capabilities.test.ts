@@ -3,7 +3,7 @@ import { acceptedMimeTypesFromCapabilities, resolvePromptCaching } from '../prov
 describe('acceptedMimeTypesFromCapabilities', () => {
 	it('joins every accepted media-type family', () => {
 		expect(acceptedMimeTypesFromCapabilities({ image: true, pdf: true, audio: true })).toBe(
-			'image/*,application/pdf,audio/*',
+			'image/png,image/jpeg,image/gif,image/webp,application/pdf,audio/*',
 		);
 	});
 

@@ -131,6 +131,7 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 				'workspace_read_file',
 				'load_skill',
 				'mark_session_failed',
+				'delegate_subagent',
 			]),
 		});
 	});

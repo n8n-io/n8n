@@ -36,6 +36,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
+import { WorkflowEngineDefaults } from './workflow-engine-defaults';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -76,6 +77,7 @@ export class WorkflowCreationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowEngineDefaults: WorkflowEngineDefaults,
 	) {}
 
 	async prepareBatchContext(
@@ -351,6 +353,8 @@ export class WorkflowCreationService {
 					transactionManager,
 					batchContext?.autoExposeNewWorkflows,
 				);
+
+				newWorkflow.settings = this.workflowEngineDefaults.applyTo(newWorkflow.settings);
 
 				if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 					newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(

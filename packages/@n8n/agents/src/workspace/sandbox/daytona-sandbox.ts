@@ -222,6 +222,7 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * same-named sandbox another process owns.
 	 */
 	private remoteAcquired = false;
+	private createdFresh = false;
 
 	constructor(private readonly options: DaytonaSandboxOptions = {}) {
 		super();
@@ -240,6 +241,14 @@ export class DaytonaSandbox extends BaseSandbox {
 		});
 	}
 
+	/**
+	 * Whether the latest start() created the remote sandbox rather than attaching to one.
+	 * A fresh sandbox holds only what its image bakes.
+	 */
+	get createdFreshSandbox(): boolean {
+		return this.createdFresh;
+	}
+
 	get instance(): Sandbox {
 		if (!this.sandbox) {
 			throw new Error(`Daytona sandbox "${this.id}" is not running`);
@@ -256,7 +265,11 @@ export class DaytonaSandbox extends BaseSandbox {
 		try {
 			const client = await this.getDaytona();
 			const existing = await this.findExistingSandbox(client, deadline);
-			this.sandbox = existing ?? (await this.createSandboxOrReattach(client, deadline));
+			const acquired = existing
+				? { sandbox: existing, created: false }
+				: await this.createSandboxOrReattach(client, deadline);
+			this.sandbox = acquired.sandbox;
+			this.createdFresh = acquired.created;
 			this.remoteAcquired = true;
 		} catch (error) {
 			throw this.toAcquisitionError(error);
@@ -290,14 +303,17 @@ export class DaytonaSandbox extends BaseSandbox {
 	 * exists even though the initial lookup missed it due to a concurrent create from
 	 * another main. Deterministic names make reattach safe.
 	 */
-	private async createSandboxOrReattach(client: Daytona, deadline: number): Promise<Sandbox> {
+	private async createSandboxOrReattach(
+		client: Daytona,
+		deadline: number,
+	): Promise<{ sandbox: Sandbox; created: boolean }> {
 		let conflictError: unknown;
 		let attempt = 0;
 		let consecutiveAbsent = 0;
 
 		do {
 			try {
-				return await this.createSandbox(client, deadline);
+				return { sandbox: await this.createSandbox(client, deadline), created: true };
 			} catch (error) {
 				if (!isSandboxNameConflictError(error)) throw error;
 				conflictError = error;
@@ -308,7 +324,7 @@ export class DaytonaSandbox extends BaseSandbox {
 						sandboxName: this.sandboxName,
 						remoteSandboxId: existing.sandbox.id,
 					});
-					return existing.sandbox;
+					return { sandbox: existing.sandbox, created: false };
 				}
 				if (existing.status === 'absent') {
 					// Create keeps conflicting while the lookup keeps missing: the conflicting

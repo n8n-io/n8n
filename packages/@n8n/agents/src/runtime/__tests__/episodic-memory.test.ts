@@ -63,7 +63,7 @@ async function saveEpisodicEntry(
 	],
 ): Promise<EpisodicMemoryEntry> {
 	const saved = await memory.episodic.saveEntryWithSources(
-		{ embedding: [1, 0], ...newEntry },
+		{ embedding: new Float32Array([1, 0]), ...newEntry },
 		sources,
 	);
 	if (!saved) throw new Error('Expected episodic entry to be saved');
@@ -116,12 +116,20 @@ async function enqueueCandidate(
 
 describe('rankEpisodicMemoryEntries', () => {
 	it('ranks by similarity and ignores inactive entries by default', () => {
-		const close = entry({ id: 'close', content: 'Acme webhook retries', embedding: [1, 0] });
-		const far = entry({ id: 'far', content: 'Acme webhook 429 delay', embedding: [0.6, 0.8] });
+		const close = entry({
+			id: 'close',
+			content: 'Acme webhook retries',
+			embedding: new Float32Array([1, 0]),
+		});
+		const far = entry({
+			id: 'far',
+			content: 'Acme webhook 429 delay',
+			embedding: new Float32Array([0.6, 0.8]),
+		});
 		const superseded = entry({
 			id: 'superseded',
 			content: 'Acme webhook memory store was SQLite.',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 			status: 'superseded',
 		});
 
@@ -137,9 +145,9 @@ describe('rankEpisodicMemoryEntries', () => {
 	it('keeps only entries at or above the similarity floor', () => {
 		// Cosine similarity to [1, 0]: 1, 0.8 and 0.3.
 		const entries = [
-			entry({ id: 'best', embedding: [1, 0] }),
-			entry({ id: 'related', embedding: [0.8, 0.6] }),
-			entry({ id: 'unrelated', embedding: [0.3, 0.95] }),
+			entry({ id: 'best', embedding: new Float32Array([1, 0]) }),
+			entry({ id: 'related', embedding: new Float32Array([0.8, 0.6]) }),
+			entry({ id: 'unrelated', embedding: new Float32Array([0.3, 0.95]) }),
 		];
 
 		const withFloor = rankEpisodicMemoryEntries(entries, {
@@ -154,11 +162,22 @@ describe('rankEpisodicMemoryEntries', () => {
 
 	it('ranks a newer correction above the value it replaced when the floor is on', () => {
 		const day = (n: number) => new Date(Date.UTC(2026, 5, n));
-		const replaced = entry({ id: 'replaced', embedding: [0.81, 0.586], lastSeenAt: day(1) });
-		const correction = entry({ id: 'correction', embedding: [0.8, 0.6], lastSeenAt: day(28) });
+		const replaced = entry({
+			id: 'replaced',
+			embedding: new Float32Array([0.81, 0.586]),
+			lastSeenAt: day(1),
+		});
+		const correction = entry({
+			id: 'correction',
+			embedding: new Float32Array([0.8, 0.6]),
+			lastSeenAt: day(28),
+		});
 		// Weakly related entries below the floor still count for the recency rank.
 		const weak = Array.from({ length: 40 }, (_, index) =>
-			entry({ embedding: [0.3, 0.954], lastSeenAt: new Date(day(2).getTime() + index * 60_000) }),
+			entry({
+				embedding: new Float32Array([0.3, 0.954]),
+				lastSeenAt: new Date(day(2).getTime() + index * 60_000),
+			}),
 		);
 
 		const results = rankEpisodicMemoryEntries([replaced, correction, ...weak], {
@@ -171,7 +190,10 @@ describe('rankEpisodicMemoryEntries', () => {
 
 	it('returns nothing when no entry reaches the similarity floor', () => {
 		const results = rankEpisodicMemoryEntries(
-			[entry({ embedding: [0.3, 0.95] }), entry({ embedding: [0.2, 0.98] })],
+			[
+				entry({ embedding: new Float32Array([0.3, 0.95]) }),
+				entry({ embedding: new Float32Array([0.2, 0.98]) }),
+			],
 			{ queryEmbedding: [1, 0], minSimilarity: 0.4 },
 		);
 
@@ -180,11 +202,15 @@ describe('rankEpisodicMemoryEntries', () => {
 
 	it('does not match on shared words alone', () => {
 		// The words match the query exactly, but the meaning is unrelated.
-		const wordMatch = entry({ id: 'words', content: 'Acme webhook 429', embedding: [0.1, 0.99] });
+		const wordMatch = entry({
+			id: 'words',
+			content: 'Acme webhook 429',
+			embedding: new Float32Array([0.1, 0.99]),
+		});
 		const meaning = entry({
 			id: 'meaning',
 			content: 'Rate limits on Acme callbacks',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 		});
 
 		const results = rankEpisodicMemoryEntries([wordMatch, meaning], {
@@ -200,14 +226,14 @@ describe('rankEpisodicMemoryEntries', () => {
 		const older = entry({
 			id: 'older',
 			content: 'Billing contact is Dana.',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 			createdAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
 			lastSeenAt: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000),
 		});
 		const newer = entry({
 			id: 'newer',
 			content: 'Billing contact is now Priya.',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 			createdAt: now,
 			lastSeenAt: now,
 		});
@@ -218,7 +244,11 @@ describe('rankEpisodicMemoryEntries', () => {
 	});
 
 	it('returns no entries without a query embedding', () => {
-		const stored = entry({ id: 'stored', content: 'User chose Postgres.', embedding: [1, 0] });
+		const stored = entry({
+			id: 'stored',
+			content: 'User chose Postgres.',
+			embedding: new Float32Array([1, 0]),
+		});
 
 		expect(rankEpisodicMemoryEntries([stored], { topK: 5 })).toEqual([]);
 	});
@@ -286,12 +316,12 @@ describe('createRecallMemoryTool', () => {
 		await saveEpisodicEntry(memory, {
 			resourceId: 'user-1',
 			content: 'Spend alerts go to Sin on Slack.',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 		});
 		await saveEpisodicEntry(memory, {
 			resourceId: 'user-1',
 			content: 'User likes salmon.',
-			embedding: [0.2, 0.98],
+			embedding: new Float32Array([0.2, 0.98]),
 		});
 		const tool = createRecallMemoryTool({ memory, config: { embedder: fakeEmbedder }, scope });
 		if (!tool.handler) throw new Error('Expected recall memory tool to have a handler');
@@ -374,7 +404,7 @@ describe('createRecallMemoryTool', () => {
 		const saved = await saveEpisodicEntry(memory, {
 			resourceId: 'user-1',
 			content: 'User chose Postgres for the memory store.',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 		});
 		const span = {
 			end: vi.fn(),
@@ -480,7 +510,12 @@ describe('InMemoryMemory resolved episodic scope', () => {
 
 	async function saveIn(memory: InMemoryMemory, scope: ReturnType<typeof inChannel>) {
 		const saved = await memory.episodic.saveEntryWithSources(
-			{ resourceId: scope.resourceId, episodic: scope.episodic, content, embedding: [1, 0] },
+			{
+				resourceId: scope.resourceId,
+				episodic: scope.episodic,
+				content,
+				embedding: new Float32Array([1, 0]),
+			},
 			[
 				{
 					candidateId: `candidate-${scope.threadId}`,
@@ -530,7 +565,7 @@ describe('InMemoryMemory resolved episodic scope', () => {
 					episodic: scope.episodic,
 					content,
 					lastSeenAt,
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 				},
 				[
 					{
@@ -895,7 +930,7 @@ describe('agent-directed episodic capture', () => {
 				{
 					resourceId: scope.resourceId,
 					content,
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'test-model',
 					createdAt,
 					lastSeenAt: createdAt,
@@ -963,7 +998,7 @@ describe('agent-directed episodic capture', () => {
 		await saveEpisodicEntry(memory, {
 			resourceId: scope.resourceId,
 			content: contents[0],
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 			embeddingModel: 'test-model',
 		});
 		for (const [index, content] of contents.entries()) {
@@ -1003,10 +1038,10 @@ describe('agent-directed episodic capture', () => {
 			expect.objectContaining({ values: [contents[1], contents[3]] }),
 		);
 		expect(save.mock.calls.map(([candidate]) => [candidate.content, candidate.embedding])).toEqual([
-			[contents[0], [1, 0]],
-			[contents[1], [0, 1]],
-			[contents[2], [0, 1]],
-			[contents[3], [1, 1]],
+			[contents[0], new Float32Array([1, 0])],
+			[contents[1], new Float32Array([0, 1])],
+			[contents[2], new Float32Array([0, 1])],
+			[contents[3], new Float32Array([1, 1])],
 		]);
 		expect(result).toMatchObject({
 			entriesWritten: 4,
@@ -1035,17 +1070,17 @@ describe('agent-directed episodic capture', () => {
 		const stored = await saveEpisodicEntry(memory, {
 			resourceId: scope.resourceId,
 			content: 'User prefers concise reports.',
-			embedding: [1, 0],
+			embedding: new Float32Array([1, 0]),
 		});
 		await saveEpisodicEntry(memory, {
 			resourceId: 'user-2',
 			content: stored.content,
-			embedding: [0, 1],
+			embedding: new Float32Array([0, 1]),
 		});
 		const matches = await memory.episodic.getEntriesByContentHashes(scope, [stored.contentHash]);
 		expect(matches).toEqual([stored]);
 		matches[0].content = 'Changed outside the store';
-		matches[0].embedding?.push(2);
+		matches[0].embedding?.fill(2);
 		matches[0].createdAt.setFullYear(2000);
 
 		await expect(
@@ -1056,15 +1091,19 @@ describe('agent-directed episodic capture', () => {
 
 	it.each([
 		{ name: 'missing vector', embedding: undefined, embeddingModel: 'test-model' },
-		{ name: 'empty vector', embedding: [], embeddingModel: 'test-model' },
-		{ name: 'NaN vector', embedding: [Number.NaN, 0], embeddingModel: 'test-model' },
+		{ name: 'empty vector', embedding: new Float32Array([]), embeddingModel: 'test-model' },
 		{
-			name: 'infinite vector',
-			embedding: [1, Number.POSITIVE_INFINITY],
+			name: 'NaN vector',
+			embedding: new Float32Array([Number.NaN, 0]),
 			embeddingModel: 'test-model',
 		},
-		{ name: 'missing model', embedding: [1, 0], embeddingModel: undefined },
-		{ name: 'different model', embedding: [0, 1], embeddingModel: 'old-model' },
+		{
+			name: 'infinite vector',
+			embedding: new Float32Array([1, Number.POSITIVE_INFINITY]),
+			embeddingModel: 'test-model',
+		},
+		{ name: 'missing model', embedding: new Float32Array([1, 0]), embeddingModel: undefined },
+		{ name: 'different model', embedding: new Float32Array([0, 1]), embeddingModel: 'old-model' },
 	])(
 		'refreshes a $name on the same entry and reuses it later',
 		async ({ embedding, embeddingModel }) => {
@@ -1098,7 +1137,7 @@ describe('agent-directed episodic capture', () => {
 					content: stored.content,
 					createdAt: stored.createdAt,
 					metadata: stored.metadata,
-					embedding: [1, 0],
+					embedding: new Float32Array([1, 0]),
 					embeddingModel: 'test-model',
 				}),
 			]);
@@ -1214,10 +1253,13 @@ describe('agent-directed episodic capture', () => {
 		expect(entries).toHaveLength(2);
 		expect(entries).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ content: 'User prefers concise reports.', embedding: [1, 0] }),
+				expect.objectContaining({
+					content: 'User prefers concise reports.',
+					embedding: new Float32Array([1, 0]),
+				}),
 				expect.objectContaining({
 					content: 'The preferred reports use concise summaries.',
-					embedding: [0, 1],
+					embedding: new Float32Array([0, 1]),
 				}),
 			]),
 		);
@@ -1300,7 +1342,11 @@ describe('episodic memory consolidation', () => {
 	});
 
 	async function store(content: string, embedding: number[]): Promise<EpisodicMemoryEntry> {
-		return await saveEpisodicEntry(memory, { resourceId: scope.resourceId, content, embedding });
+		return await saveEpisodicEntry(memory, {
+			resourceId: scope.resourceId,
+			content,
+			embedding: Float32Array.from(embedding),
+		});
 	}
 
 	async function flag(content: string, toolCallId: string) {
@@ -1434,7 +1480,7 @@ describe('episodic memory consolidation', () => {
 		]);
 
 		const merged = await entryWithContent(MERGED);
-		expect(merged).toMatchObject({ status: 'active', embedding: [0, 1, 0] });
+		expect(merged).toMatchObject({ status: 'active', embedding: new Float32Array([0, 1, 0]) });
 		await expect(entryWithContent(renewal.content)).resolves.toMatchObject({
 			status: 'superseded',
 			supersededBy: merged?.id,

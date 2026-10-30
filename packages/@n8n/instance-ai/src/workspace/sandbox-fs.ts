@@ -38,6 +38,11 @@ export interface SandboxWorkspace extends SharedSandboxWorkspace {
 			content: string | Buffer,
 			options?: { recursive?: boolean; abortSignal?: AbortSignal },
 		) => Promise<void>;
+		/** Write many files in one request, creating parent directories. */
+		writeFiles?: (
+			files: Array<{ path: string; content: string | Buffer }>,
+			options?: { abortSignal?: AbortSignal },
+		) => Promise<void>;
 		mkdir: (
 			path: string,
 			options?: { recursive?: boolean; abortSignal?: AbortSignal },
