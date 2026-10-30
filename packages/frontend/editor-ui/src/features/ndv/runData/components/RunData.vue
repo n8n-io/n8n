@@ -90,6 +90,7 @@ import {
 	N8nBlockUi,
 	N8nButton,
 	N8nCallout,
+	N8nHtmlPreview,
 	N8nIconButton,
 	N8nInfoTip,
 	N8nLink,
@@ -106,7 +107,6 @@ const LazyRunDataTable = defineAsyncComponent(async () => await import('./RunDat
 const LazyRunDataJson = defineAsyncComponent(async () => await import('./RunDataJson.vue'));
 
 const LazyRunDataSchema = defineAsyncComponent(async () => await import('./VirtualSchema.vue'));
-const LazyRunDataHtml = defineAsyncComponent(async () => await import('./RunDataHtml.vue'));
 const LazyRunDataAi = defineAsyncComponent(
 	async () => await import('./RunDataParsedAiContent.vue'),
 );
@@ -2218,9 +2218,10 @@ defineExpose({ enterEditMode });
 				/>
 			</Suspense>
 
-			<Suspense v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'">
-				<LazyRunDataHtml :input-html="inputHtml" />
-			</Suspense>
+			<N8nHtmlPreview
+				v-else-if="hasNodeRun && isPaneTypeOutput && displayMode === 'html'"
+				:html="inputHtml"
+			/>
 
 			<Suspense v-else-if="hasNodeRun && displayMode === 'ai'">
 				<LazyRunDataAi

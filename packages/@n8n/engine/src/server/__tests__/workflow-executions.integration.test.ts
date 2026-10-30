@@ -228,10 +228,7 @@ describe('POST /api/workflow-executions/search (integration)', () => {
 	});
 });
 
-/**
- * A sub-execution, written through the store: the route refuses to set a
- * parent, and the engine's own start path is what sets one.
- */
+/** Writes through the store, because the route drops `parent`. */
 async function startSubExecution(parent: ParentLink): Promise<string> {
 	const id = generateId();
 	await createStores(dataSource).executionStore.createExecution({
@@ -686,6 +683,23 @@ describe('POST /api/workflow-executions/search/latest (integration)', () => {
 			workflow: sampleWorkflow,
 			steps: [],
 		});
+	});
+
+	it('returns the newest sub-execution of a parent execution', async () => {
+		const parentId = await start(generateId());
+		await startSubExecution({ executionId: parentId, stepId: generateId(), awaited: true });
+		const newest = await startSubExecution({
+			executionId: parentId,
+			stepId: generateId(),
+			awaited: false,
+		});
+		await start(generateId());
+
+		const response = await findLatest({ workflowIds: 'all', parentExecutionId: parentId }).expect(
+			200,
+		);
+
+		expect(response.body).toMatchObject({ id: newest });
 	});
 
 	it('returns 404 not_found when nothing matches', async () => {

@@ -1,4 +1,4 @@
-import { SKILL_SOURCE_REASONS } from '@n8n/api-types';
+import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -469,7 +469,74 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			name_taken: z
 				.number()
 				.describe('Picked skills that did not come in, as the scope had the name'),
+			blocked: z
+				.number()
+				.describe('Picked skills that did not come in, as the security check blocked them'),
+			needs_review: z
+				.number()
+				.describe(
+					'Imported skills that the security check flagged for review, after "I reviewed the warnings"',
+				),
 			skipped_files: z.number().describe('Files of the imported skills that the import left out'),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
+	SKILL_SOURCE_CHECK_FLAGGED_SKILL: {
+		name: 'Skill source check flagged skill',
+		description:
+			'The security check of Skill Sync gave a skill from a source a verdict other than pass. At import it fires when the picker reads the link, once for each flagged skill, so a second read of the same link fires again. Counts rule codes only, never names, files or content.',
+		properties: z.object({
+			user_id: z
+				.string()
+				.optional()
+				.describe('The user who read the link. Absent for a check that runs in the background'),
+			provider: skillSourceProvider,
+			stage: z
+				.enum(['import', 'update'])
+				.describe('`import` is the picker of a connect. `update` is a new version from the source'),
+			verdict: z
+				.enum(['needs_review', 'blocked'])
+				.describe(
+					'`needs_review` imports only after the user ticks "I reviewed the warnings". `blocked` cannot come in',
+				),
+			rule_codes: z
+				.array(z.enum(SKILL_SCAN_RULES))
+				.describe('The rules that gave a `needs_review` or `blocked` finding, each one time'),
+		}),
+	},
+	SKILL_SOURCE_UPDATE_FOUND: {
+		name: 'Skill source update found',
+		description:
+			'A check of a Skill Sync source found new content for some of its synced skills. Fires once per check that stores at least one new update, from the check that runs on its own and from Check now. An update that already waited for review, or that a user skipped, does not count again. Counts only, never names or content. Carries no user id, so it reaches BigQuery and not PostHog.',
+		properties: z.object({
+			provider: skillSourceProvider,
+			trigger: z
+				.enum(['background', 'manual'])
+				.describe(
+					'`background` is the check that runs on its own, every hour by default. `manual` is Check now',
+				),
+			skills_with_updates: z.number().describe('Synced skills with a new update in this check'),
+			pass: z.number().describe('New updates that the security check passed'),
+			needs_review: z.number().describe('New updates that the security check flagged for review'),
+			blocked: z.number().describe('New updates that the security check blocked'),
+		}),
+	},
+	USER_CHECKED_SKILL_SOURCE_NOW: {
+		name: 'User checked skill source now',
+		description:
+			'A user clicked Check for updates on a synced skill, which checks its whole source. Fires once per click, also when the check fails, with the reason code, and when n8n did not check again because the source was checked less than a minute ago.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			updates_found: z
+				.number()
+				.describe('Skills of the source with an update that waits for review, after the check'),
+			throttled: z
+				.boolean()
+				.describe(
+					'True when the source was checked less than a minute ago, so n8n did not check it again',
+				),
 			status: skillSourceStatus,
 			reason: skillSourceReason,
 		}),

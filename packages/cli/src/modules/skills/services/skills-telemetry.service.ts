@@ -29,7 +29,19 @@ type ImportedFromSourceProps = InferTelemetryProps<
 /** A Skill Sync reason code, or `unexpected` for a failure with no known reason. */
 export type SkillSourceTelemetryReason = NonNullable<ConnectedSourceProps['reason']>;
 
+type FlaggedSkillProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL
+>;
+
 type StoppedSyncProps = InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC>;
+
+type UpdateFoundProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND
+>;
+
+type CheckedNowProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.USER_CHECKED_SKILL_SOURCE_NOW
+>;
 
 type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId' | 'agentId'>;
 
@@ -133,10 +145,37 @@ export class SkillsTelemetry {
 		});
 	}
 
+	/** One skill that the security check did not pass. A background check has no user. */
+	async flaggedSkill(props: Omit<FlaggedSkillProps, 'user_id'>, userId?: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL, {
+				...(userId ? { user_id: userId } : {}),
+				...props,
+			});
+		});
+	}
+
 	/** One synced skill that became a normal skill. */
 	async stoppedSync(props: Omit<StoppedSyncProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	/** A check of a source that stored new updates. It has no user, also for Check now. */
+	async updateFound(props: UpdateFoundProps) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND, props);
+		});
+	}
+
+	/** One Check now, also a failed or a throttled one. */
+	async checkedNow(props: Omit<CheckedNowProps, 'user_id'>, userId: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CHECKED_SKILL_SOURCE_NOW, {
 				user_id: userId,
 				...props,
 			});

@@ -1,5 +1,6 @@
 import { computed, reactive } from 'vue';
 import { defineStore } from 'pinia';
+import toPath from 'lodash-es/toPath';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
@@ -10,12 +11,12 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import type { ExternalSecretsProvider } from '@n8n/api-types';
 
 /**
- * Transforms flat dot-notated secret keys into a nested object structure.
+ * Transforms secret paths into a nested object structure. Bracket notation preserves literal keys.
  *
  * Takes secrets grouped by provider (e.g., `{ "aws": ["db.host", "db.password", "api_key"] }`)
  * and converts them into nested objects with masked values (e.g., `{ "aws": { "db": { "host": "*********", "password": "*********" }, "api_key": "*********" } }`).
  *
- * @param secrets - Record of provider names to arrays of dot-notated secret keys
+ * @param secrets - Record of provider names to arrays of secret paths
  * @returns Nested object structure with all values masked as '*********'
  */
 function transformSecretsToNestedObject(
@@ -27,9 +28,9 @@ function transformSecretsToNestedObject(
 			if (!Array.isArray(providerSecrets)) return providerAcc;
 			providerAcc[provider] = providerSecrets.reduce<Record<string, object | string>>(
 				(secretAcc, secret) => {
-					const splitSecret = secret.split('.');
+					const splitSecret = toPath(secret);
 					if (splitSecret.length === 1) {
-						secretAcc[secret] = '*********';
+						secretAcc[splitSecret[0]] = '*********';
 						return secretAcc;
 					}
 					const obj = secretAcc[splitSecret[0]] ?? {};

@@ -1,6 +1,4 @@
 import {
-	AGENT_SKILL_NAME_MAX_LENGTH,
-	agentSkillSchema,
 	type AgentSkill,
 	type ConnectSkillSourceDto,
 	type DiscoverSkillSourceDto,
@@ -8,14 +6,19 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 	type SkillSourceDuplicate,
+	type SkillScanResult,
 	type SkillSourceReason,
+	type ListSkillSourceCredentialsQueryDto,
+	type ListSkillSourceRepositoriesQueryDto,
+	type SkillSourceCredentialOption,
+	type SkillSourceRepositoryList,
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
-import { z } from 'zod';
 
 import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
 import {
@@ -23,6 +26,7 @@ import {
 	SkillSourceRepository,
 } from '../database/repositories/skill-source.repository';
 import { SkillRepository } from '../database/repositories/skill.repository';
+import { SkillParseError } from '../errors/skill-parse.error';
 import {
 	SkillSourceRequestError,
 	skillSourceReasonOf,
@@ -33,27 +37,28 @@ import {
 	skillSourceIdentityKey,
 	type FetchedSkill,
 	type RemoteSkillRef,
+	type SkillSourceAuth,
 	type SkillSourceClient,
 	type SkillSourceLocator,
 } from '../sources/skill-source-client';
-import { contentToAgentSkill, toSkillContent, type SkillTarget } from '../utils/skill-content';
+import {
+	contentToAgentSkill,
+	importableSkillSchema,
+	toSkillContent,
+	type SkillTarget,
+} from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
 import { SkillAccessService } from './skill-access.service';
+import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
+import type { ResolvedSkillSourceCredential } from './skill-source-credentials.contracts';
 import { isNameTaken } from './skill.policy';
+import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
 
 /** Skills fetched at the same time from one source. */
 const FETCH_CONCURRENCY = 8;
-
-/**
- * What an imported skill must be. Skills ignore `allowedTools`, as a create does. The name is
- * trimmed as a create stores it, so the name checks and the baseline hash match the stored skill.
- */
-const importableSkillSchema = agentSkillSchema
-	.omit({ allowedTools: true })
-	.extend({ name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH) });
 
 type ScopeType = 'global' | 'team' | 'personal';
 
@@ -63,6 +68,8 @@ type ParsedSource = {
 	type: SkillSourceType;
 	locator: SkillSourceLocator;
 	identityKey: string;
+	/** The access of the credential for a private source. Undefined for a public one. */
+	auth?: SkillSourceAuth;
 };
 
 /** The skills of a source at one revision. */
@@ -77,7 +84,7 @@ type Discovered = {
 /** The properties of `User connected skill source` that a request fills in as it goes. */
 type ConnectReport = {
 	provider: SkillSourceType;
-	access: 'public';
+	access: 'public' | 'credential';
 	scope_type: ScopeType;
 	duplicate_result: SkillSourceDuplicate['kind'];
 };
@@ -89,6 +96,8 @@ type ReadSkill = {
 	fetched?: FetchedSkill;
 	skill?: AgentSkill;
 	error?: { reason: SkillSourceReason; message: string };
+	/** Absent when the skill is gone from the source. */
+	check?: SkillScanResult;
 };
 
 /**
@@ -107,6 +116,8 @@ export class SkillSourceService {
 		private readonly clients: SkillSourceClientRegistry,
 		private readonly txRunner: TransactionRunner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly scanner: SkillSecurityScanner,
+		private readonly credentials: SkillSourceCredentialsProxy,
 	) {}
 
 	/**
@@ -117,21 +128,27 @@ export class SkillSourceService {
 	async discover(user: User, payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType);
+		const report = connectReport(scopeType, payload.credentialId);
 		try {
-			const source = await this.parse(payload.url);
+			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
 			const discovered = await this.discoverAll(source);
 			const skills = await this.readAll(source, discovered);
 			const names = await this.skillRepository.findLatestNamesInTarget(target);
+			const nameTaken = (read: ReadSkill) =>
+				read.skill !== undefined && isNameTaken(read.skill.name, names);
 			const { client, locator } = source;
 			if (duplicate.kind === 'blocked') {
 				await this.skillsTelemetry.connectedSource(
 					{ ...report, status: 'failure', reason: 'duplicate_source' },
 					user.id,
 				);
+			} else {
+				// A row with a taken name shows that, and not the verdict.
+				const shown = skills.filter((read) => !nameTaken(read));
+				await this.trackFlagged(user, source.type, shown);
 			}
 			return {
 				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
@@ -143,8 +160,9 @@ export class SkillSourceService {
 						name: read.skill?.name ?? read.fetched?.content.name ?? null,
 						description: read.skill?.description ?? read.fetched?.content.description ?? null,
 						skippedFiles: read.fetched?.skippedFiles ?? [],
-						nameTaken: read.skill !== undefined && isNameTaken(read.skill.name, names),
+						nameTaken: nameTaken(read),
 						error: read.error ?? null,
+						check: read.check ?? null,
 						webUrl: client.webUrl(locator, read.ref),
 					}),
 				),
@@ -168,20 +186,17 @@ export class SkillSourceService {
 	async connect(user: User, payload: ConnectSkillSourceDto): Promise<SkillSourceConnectResponse> {
 		await this.flagGate.assertEnabled(user);
 		const { target, scopeType } = await this.resolveScope(user, payload);
-		const report = connectReport(scopeType);
+		const report = connectReport(scopeType, payload.credentialId);
 		try {
-			const source = await this.parse(payload.url);
+			const source = await this.parse(payload, user, target.projectId);
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
 			if (duplicate.kind === 'blocked') throw duplicateError(duplicate.where);
-			const { response, warning } = await this.importSkills(
-				user,
-				source,
-				target,
-				payload.skillKeys,
-				scopeType,
-			);
+			const { response, warning } = await this.importSkills(user, source, target, scopeType, {
+				skillKeys: payload.skillKeys,
+				reviewedSkillKeys: payload.reviewedSkillKeys ?? [],
+			});
 			await this.skillsTelemetry.connectedSource(
 				{ ...report, status: 'success', ...(warning ? { reason: warning } : {}) },
 				user.id,
@@ -202,13 +217,15 @@ export class SkillSourceService {
 		user: User,
 		source: ParsedSource,
 		target: SkillTarget,
-		skillKeys: string[],
 		scopeType: ScopeType,
+		{ skillKeys, reviewedSkillKeys }: { skillKeys: string[]; reviewedSkillKeys: string[] },
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
+		const reviewed = new Set(reviewedSkillKeys);
 		const failed: SkillSourceConnectResponse['failed'] = [];
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
+		let needsReview = 0;
 		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
 			await this.skillsTelemetry.importedFromSource(
 				{
@@ -218,6 +235,8 @@ export class SkillSourceService {
 					selected: keys.length,
 					imported: imported.length,
 					name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
+					blocked: failed.filter((failure) => failure.reason === 'blocked_by_check').length,
+					needs_review: needsReview,
 					skipped_files: skippedFiles,
 					status,
 					...(reason ? { reason } : {}),
@@ -237,8 +256,25 @@ export class SkillSourceService {
 				else failed.push({ key, name: null, reason: 'not_found' });
 			}
 			const reads = await this.readAll(source, { ...discovered, refs: picked });
+			const importable: ReadSkill[] = [];
 			for (const read of reads) {
-				if (read.error) failed.push({ key: read.key, name: null, reason: read.error.reason });
+				// The source can change after discover, so connect checks the content it imports.
+				// A SKILL.md that n8n cannot read is also blocked, and the check names the cause.
+				if (read.check?.verdict === 'blocked') {
+					failed.push({
+						key: read.key,
+						name: read.skill?.name ?? read.fetched?.content.name ?? null,
+						reason: 'blocked_by_check',
+					});
+				} else if (read.error) {
+					failed.push({ key: read.key, name: null, reason: read.error.reason });
+				} else if (read.check?.verdict === 'needs_review' && !reviewed.has(read.key)) {
+					// The user reviewed the warnings of the skills that the picker showed, so a skill
+					// that needs review only since discover did not get that review.
+					failed.push({ key: read.key, name: read.skill?.name ?? null, reason: 'review_required' });
+				} else {
+					importable.push(read);
+				}
 			}
 
 			await this.txRunner.run({}, async (ctx) => {
@@ -250,7 +286,10 @@ export class SkillSourceService {
 							locator: source.locator,
 							identityKey: source.identityKey,
 							projectId: target.projectId,
+							credentialId: source.auth?.credentialId ?? null,
 							createdById: user.id,
+							// The check fetches nothing while the source stays at this revision.
+							probeCursor: discovered.revision ?? null,
 						},
 						ctx,
 					);
@@ -261,7 +300,7 @@ export class SkillSourceService {
 				// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
 				// adds its name, so two picked skills with one name do not both come in.
 				const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
-				for (const read of reads) {
+				for (const read of importable) {
 					const { skill, fetched } = read;
 					if (!skill || !fetched) continue;
 					if (isNameTaken(skill.name, names)) {
@@ -295,21 +334,18 @@ export class SkillSourceService {
 					names.push({ skillId, name: skill.name });
 					imported.push({ key: read.key, skillId, name: skill.name });
 					skippedFiles += fetched.skippedFiles.length;
+					if (read.check?.verdict === 'needs_review') needsReview += 1;
 				}
 				if (imported.length === 0) {
 					const reason = failed[0]?.reason ?? 'no_skills_found';
-					throw new SkillSourceRequestError(
-						reason,
-						reason === 'name_taken'
-							? 'Every picked skill has a name that this scope already has.'
-							: 'n8n could not import any of the picked skills.',
-					);
+					throw new SkillSourceRequestError(reason, noImportMessage(failed, reason));
 				}
 			});
 		} catch (error) {
 			// The transaction rolled back, so nothing came in.
 			imported.length = 0;
 			skippedFiles = 0;
+			needsReview = 0;
 			await track('failure', telemetryReasonOf(error));
 			throw error;
 		}
@@ -322,6 +358,27 @@ export class SkillSourceService {
 			'sync',
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
+	}
+
+	/** One event for each skill that the picker shows as needing review or blocked. */
+	private async trackFlagged(user: User, provider: SkillSourceType, reads: ReadSkill[]) {
+		await Promise.all(
+			reads.map(async ({ check }) => {
+				if (!check || check.verdict === 'pass') return;
+				const ruleCodes = check.findings
+					.filter((finding) => finding.severity !== 'info')
+					.map((finding) => finding.rule);
+				await this.skillsTelemetry.flaggedSkill(
+					{
+						provider,
+						stage: 'import',
+						verdict: check.verdict,
+						rule_codes: [...new Set(ruleCodes)],
+					},
+					user.id,
+				);
+			}),
+		);
 	}
 
 	/**
@@ -340,12 +397,101 @@ export class SkillSourceService {
 		return { target, scopeType: project?.type === 'personal' ? 'personal' : 'team' };
 	}
 
+	/** The credentials that can read a private source in the scope, for the credential select. */
+	async listCredentials(
+		user: User,
+		query: ListSkillSourceCredentialsQueryDto,
+	): Promise<SkillSourceCredentialOption[]> {
+		await this.flagGate.assertEnabled(user);
+		const { target } = await this.resolveScope(user, query);
+		return await this.credentials.listUsable(user, target.projectId, this.credentialTypes());
+	}
+
+	/** The repositories that a credential can read, to pick one in place of a link. */
+	async listRepositories(
+		user: User,
+		query: ListSkillSourceRepositoriesQueryDto,
+	): Promise<SkillSourceRepositoryList> {
+		await this.flagGate.assertEnabled(user);
+		const { target } = await this.resolveScope(user, query);
+		const credential = await this.resolveCredential(user, query.credentialId, target.projectId);
+		const client = this.clientFor(credential.type);
+		if (!client?.listRepositories) {
+			throw new SkillSourceRequestError(
+				'credential_invalid',
+				'This credential cannot list repositories.',
+			);
+		}
+		try {
+			return await client.listRepositories(client.authFrom(credential));
+		} catch (error) {
+			throw toSkillSourceRequestError(error);
+		}
+	}
+
+	/**
+	 * The credential for a source in the scope. The scope must accept it, and the user must be
+	 * able to use it. One answer covers a credential that is out of scope, that the user cannot
+	 * use, and that does not exist, so the answer never tells that a credential exists.
+	 */
+	private async resolveCredential(
+		user: User,
+		credentialId: string,
+		projectId: string | null,
+		client?: SkillSourceClient,
+	): Promise<ResolvedSkillSourceCredential> {
+		let credential: ResolvedSkillSourceCredential | null;
+		try {
+			// With the client of the link, only its credential types and its check apply.
+			credential = await this.credentials.resolve(credentialId, {
+				projectId,
+				user,
+				types: client ? client.credentialTypes : this.credentialTypes(),
+				check: (resolved) => (client ?? this.clientFor(resolved.type))?.checkCredential?.(resolved),
+			});
+		} catch (error) {
+			// A failure without a reason comes from decrypting the credential or from minting
+			// its token, such as a GitHub App with a wrong key: the credential cannot be used.
+			if (skillSourceReasonOf(error) === undefined) {
+				throw new SkillSourceRequestError(
+					'credential_invalid',
+					'n8n could not get a token from this credential. Check its settings.',
+				);
+			}
+			throw toSkillSourceRequestError(error);
+		}
+		if (!credential) {
+			throw new SkillSourceRequestError(
+				'credential_out_of_scope',
+				projectId
+					? 'This project cannot use that credential. Pick a credential that the project owns, that is shared with it, or that is global.'
+					: 'A Global source needs a credential that an admin owns.',
+			);
+		}
+		return credential;
+	}
+
+	private allClients(): SkillSourceClient[] {
+		return this.clients.types().flatMap((type) => this.clients.get(type) ?? []);
+	}
+
+	/** The client that reads with credentials of this type. */
+	private clientFor(credentialType: string) {
+		return this.allClients().find((client) => client.credentialTypes.includes(credentialType));
+	}
+
+	private credentialTypes(): string[] {
+		return this.allClients().flatMap((client) => client.credentialTypes);
+	}
+
 	/** The client that handles the link, and the source it points to. */
-	private async parse(url: string): Promise<ParsedSource> {
-		const client = this.clients
-			.types()
-			.map((type) => this.clients.get(type))
-			.find((candidate) => candidate?.handles(url));
+	private async parse(
+		payload: { url: string; credentialId?: string },
+		user: User,
+		projectId: string | null,
+	): Promise<ParsedSource> {
+		const { url, credentialId } = payload;
+		const client = this.allClients().find((candidate) => candidate.handles(url));
 		if (!client) {
 			if (isWebLink(url)) {
 				throw new SkillSourceRequestError(
@@ -358,14 +504,19 @@ export class SkillSourceService {
 				'This is not a GitHub repository link. Use https://github.com/owner/repo.',
 			);
 		}
+		const credential = credentialId
+			? await this.resolveCredential(user, credentialId, projectId, client)
+			: undefined;
 		try {
-			const locator = await client.parseLocator(url);
+			const auth = credential ? client.authFrom(credential) : undefined;
+			const locator = await client.parseLocator(url, auth);
 			return {
 				client,
 				// The registry holds only the clients of stored source types.
 				type: client.type as SkillSourceType,
 				locator,
 				identityKey: skillSourceIdentityKey(client.identity(locator)),
+				auth,
 			};
 		} catch (error) {
 			throw toSkillSourceRequestError(error);
@@ -415,7 +566,7 @@ export class SkillSourceService {
 		let cursor: string | undefined;
 		try {
 			do {
-				const page = await source.client.discover(source.locator, undefined, cursor);
+				const page = await source.client.discover(source.locator, source.auth, cursor);
 				refs.push(...page.items);
 				truncated ||= page.truncated === true;
 				tooDeep += page.tooDeep ?? 0;
@@ -465,31 +616,39 @@ export class SkillSourceService {
 		const key = refKey(ref);
 		let fetched: FetchedSkill;
 		try {
-			fetched = await source.client.fetchLatest(source.locator, ref, undefined, revision);
+			fetched = await source.client.fetchLatest(source.locator, ref, source.auth, revision);
 		} catch (error) {
 			const reason = skillSourceReasonOf(error);
 			if (reason !== 'parse_error' && reason !== 'not_found') {
 				throw toSkillSourceRequestError(error);
 			}
-			return { key, ref, error: { reason, message: getErrorMessage(error) } };
-		}
-		const parsed = importableSkillSchema.safeParse(contentToAgentSkill(fetched.content));
-		if (!parsed.success) {
-			const issue = parsed.error.issues[0];
-			const field = issue?.path.join('.') || 'skill';
 			return {
 				key,
 				ref,
-				fetched,
-				error: { reason: 'parse_error', message: `${field}: ${issue?.message ?? 'invalid'}` },
+				error: { reason, message: getErrorMessage(error) },
+				...(error instanceof SkillParseError ? { check: this.scanner.scanUnreadable(error) } : {}),
 			};
 		}
-		return { key, ref, fetched, skill: parsed.data };
+		// The security check alone decides whether a skill is valid. Its findings name the cause.
+		const check = this.scanner.scan(fetched);
+		if (check.verdict === 'blocked') return { key, ref, fetched, check };
+		const parsed = importableSkillSchema.safeParse(contentToAgentSkill(fetched.content));
+		if (!parsed.success) {
+			throw new UnexpectedError('The security check passed a skill that n8n cannot store', {
+				extra: { issues: parsed.error.issues },
+			});
+		}
+		return { key, ref, fetched, skill: parsed.data, check };
 	}
 }
 
-function connectReport(scopeType: ScopeType): ConnectReport {
-	return { provider: 'github', access: 'public', scope_type: scopeType, duplicate_result: 'none' };
+function connectReport(scopeType: ScopeType, credentialId?: string): ConnectReport {
+	return {
+		provider: 'github',
+		access: credentialId ? 'credential' : 'public',
+		scope_type: scopeType,
+		duplicate_result: 'none',
+	};
 }
 
 /** A failure always carries a reason, so a bug shows in telemetry as `unexpected`. */
@@ -517,6 +676,22 @@ function isWebLink(input: string): boolean {
 /** The key of a skill in the picker. The ref is opaque, so its JSON is the key. */
 function refKey(ref: RemoteSkillRef): string {
 	return JSON.stringify(ref);
+}
+
+/** The message names a cause only when every picked skill failed for it. */
+function noImportMessage(
+	failed: SkillSourceConnectResponse['failed'],
+	reason: SkillSourceReason,
+): string {
+	if (failed.some((failure) => failure.reason !== reason)) {
+		return 'n8n could not import any of the picked skills.';
+	}
+	if (reason === 'name_taken') return 'Every picked skill has a name that this scope already has.';
+	if (reason === 'blocked_by_check') return 'The security check blocked every picked skill.';
+	if (reason === 'review_required') {
+		return 'Every picked skill needs a review of its warnings before it can come in.';
+	}
+	return 'n8n could not import any of the picked skills.';
 }
 
 function duplicateError(where: 'global' | 'scope'): SkillSourceRequestError {

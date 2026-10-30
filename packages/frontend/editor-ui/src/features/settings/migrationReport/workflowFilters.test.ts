@@ -101,6 +101,8 @@ describe('workflowFilters', () => {
 		expect(matches(workflow({ status: 'wont_fix' }), { state: 'wont_fix' })).toBe(true);
 		expect(matches(workflow({ status: 'notified' }), { state: 'open' })).toBe(true);
 		expect(matches(workflow({ status: 'notified' }), { state: 'wont_fix' })).toBe(false);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'open' })).toBe(true);
+		expect(matches(workflow({ status: 'fixed_unpublished' }), { state: 'wont_fix' })).toBe(false);
 		// A migrated row keeps its status, but the page shows it as migrated.
 		expect(
 			matchesWorkflowFilters(

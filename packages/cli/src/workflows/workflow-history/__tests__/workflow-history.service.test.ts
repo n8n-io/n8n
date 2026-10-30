@@ -15,6 +15,7 @@ import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-v
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { getWorkflow, getWorkflowHistory } from '@test-integration/workflow';
+import { mockServiceAccount } from '@test/mock-objects';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
 const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
@@ -244,6 +245,30 @@ describe('WorkflowHistoryService', () => {
 			// Assert
 			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
 				expect.objectContaining({ authors: 'John Doe (via MCP)' }),
+			);
+		});
+
+		it('should name a service account author by its name', async () => {
+			// Arrange
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			const workflowId = '123';
+			workflow.connections = {};
+			workflow.id = workflowId;
+			workflow.versionId = '456';
+			const serviceAccount = mockServiceAccount();
+
+			// Act
+			await workflowHistoryService.saveVersion(
+				serviceAccount,
+				workflow,
+				workflowId,
+				false,
+				'n8n-mcp',
+			);
+
+			// Assert
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ authors: 'Deploy bot (via MCP)' }),
 			);
 		});
 

@@ -49,6 +49,7 @@ vi.mock('@n8n/design-system', () => ({
 		</div>`,
 	},
 	N8nIcon: { template: '<i />' },
+	N8nLink: { props: ['to', 'theme', 'size', 'underline'], template: '<a :href="to"><slot /></a>' },
 	N8nIconButton: {
 		template: '<button v-bind="$attrs" @click="$emit(\'click\')">{{ icon }}</button>',
 		props: ['icon', 'variant', 'size'],
@@ -150,6 +151,362 @@ vi.mock('@n8n/i18n', () => ({
 }));
 
 describe('AgentChatMessageList', () => {
+	it('shows the summary after a parent completes the plan', async () => {
+		const complete = {
+			...planMessage(planView({ document: { title: 'Research', items: [planTask(1, 'done')] } }), {
+				tool: 'update_plan',
+			}),
+			executionId: 'parent',
+			status: 'streaming' as const,
+		};
+
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [complete], messagingState: 'receiving', taskTraceRoute: '/trace' },
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.preparing',
+		);
+
+		await wrapper.setProps({
+			messages: [
+				{ ...complete, status: 'success' },
+				{
+					id: 'reply',
+					executionId: 'parent',
+					role: 'assistant',
+					content: 'Found 12 unresolved threads.',
+					status: 'streaming',
+				},
+			],
+		});
+
+		expect(wrapper.findAll('[data-testid="agent-chat-task-summary"]')).toHaveLength(1);
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'Found 12 unresolved threads.',
+		);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
+	it('replaces the final summary status with text and keeps its trace link in history', async () => {
+		const message: ChatMessage = {
+			id: 'final:assistant',
+			executionId: 'final',
+			role: 'assistant',
+			status: 'streaming',
+			content: '',
+			backgroundJobSignal: {
+				isFinal: true,
+				tasks: [{ id: 'job', title: 'Research', kind: 'subagent', status: 'completed' }],
+			},
+		};
+
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'receiving', taskTraceRoute: '/trace' },
+		});
+		const summary = () => wrapper.get('[data-testid="agent-chat-task-summary"]');
+
+		expect(summary().get('[role="status"]').text()).toBe('agents.chat.tasks.summary.preparing');
+		expect(summary().get('a').attributes('href')).toBe('/trace');
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+
+		await wrapper.setProps({ messages: [{ ...message, content: 'Found 12 unresolved threads.' }] });
+
+		expect(summary().find('[role="status"]').exists()).toBe(false);
+		expect(summary().text()).toContain('Found 12 unresolved threads.');
+
+		const saved = {
+			...message,
+			status: 'success' as const,
+			content: 'Found 12 unresolved threads.',
+		};
+		await wrapper.setProps({
+			messages: [saved, { id: 'later', role: 'user', content: 'Thank you' }],
+			messagingState: 'idle',
+		});
+
+		expect(summary().get('a').attributes('href')).toBe('/trace');
+
+		wrapper.unmount();
+
+		const reloaded = mount(AgentChatMessageList, {
+			props: { messages: [saved], messagingState: 'idle', taskTraceRoute: '/trace' },
+		});
+
+		expect(reloaded.get('[data-testid="agent-chat-task-summary"]').text()).toContain(saved.content);
+		expect(reloaded.find('a[href="/trace"]').exists()).toBe(true);
+
+		reloaded.unmount();
+	});
+
+	it('removes the final-summary link when the result turn starts another job, including on reload', async () => {
+		const message: ChatMessage = {
+			id: 'results',
+			executionId: 'wake',
+			role: 'assistant',
+			content: '',
+			status: 'streaming',
+			backgroundJobSignal: {
+				isFinal: true,
+				tasks: [{ id: 'job', title: 'Rubric', kind: 'subagent', status: 'completed' }],
+			},
+		};
+
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'receiving', taskTraceRoute: '/trace' },
+		});
+
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		const progress: ChatMessage = {
+			...message,
+			status: 'success',
+			content: 'Started the segment research.',
+			toolCalls: [
+				{
+					tool: 'delegate_subagent',
+					toolCallId: 'next',
+					state: 'done',
+					output: { jobId: 'next-job', status: 'started' },
+				},
+			],
+		};
+		await wrapper.setProps({ messages: [progress], messagingState: 'idle' });
+
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-chat-task-summary"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(true);
+		expect(wrapper.text()).toContain(progress.content);
+
+		wrapper.unmount();
+
+		const reloaded = mount(AgentChatMessageList, {
+			props: { messages: [progress], messagingState: 'idle', taskTraceRoute: '/trace' },
+		});
+
+		expect(reloaded.find('a[href="/trace"]').exists()).toBe(false);
+		expect(reloaded.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(true);
+
+		reloaded.unmount();
+	});
+
+	it('shows an inline summary before the result turn starts without a second loading indicator', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [],
+				messagingState: 'waitingFirstChunk',
+				preparingSummary: true,
+				taskTraceRoute: '/trace',
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.preparing',
+		);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+
+		wrapper.unmount();
+	});
+
+	it('shows the summary fallback when the results are not summarized in time', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [],
+				messagingState: 'idle',
+				summaryMissing: true,
+				taskTraceRoute: '/trace',
+			},
+		});
+
+		expect(wrapper.find('[role="status"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.empty',
+		);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
+	it.each(['tool run', 'message'] as const)(
+		'keeps preparing feedback between a completed %s and the summary stream',
+		async (kind) => {
+			const message: ChatMessage =
+				kind === 'tool run'
+					? planMessage(
+							planView({ document: { title: 'Research', items: [planTask(1, 'done')] } }),
+							{ tool: 'update_plan' },
+						)
+					: {
+							id: 'final',
+							role: 'assistant',
+							content: '',
+							status: 'success',
+							backgroundJobSignal: { isFinal: true, tasks: [] },
+						};
+
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [message],
+					messagingState: 'waitingFirstChunk',
+					preparingSummary: true,
+					taskTraceRoute: '/trace',
+				},
+			});
+
+			expect(wrapper.findAll('[data-testid="agent-chat-task-summary"]')).toHaveLength(1);
+			expect(wrapper.get('[role="status"]').text()).toBe('agents.chat.tasks.summary.preparing');
+			expect(wrapper.text()).not.toContain('agents.chat.tasks.summary.empty');
+
+			await wrapper.setProps({ preparingSummary: false, messagingState: 'idle' });
+
+			expect(wrapper.find('[role="status"]').exists()).toBe(false);
+			expect(wrapper.text()).toContain('agents.chat.tasks.summary.empty');
+
+			wrapper.unmount();
+		},
+	);
+
+	it('keeps an empty final reply with trace access after the run ends', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [
+					{
+						id: 'final',
+						role: 'assistant',
+						content: '',
+						status: 'error',
+						backgroundJobSignal: { isFinal: true, tasks: [] },
+					},
+				],
+				messagingState: 'idle',
+				taskTraceRoute: '/trace',
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-task-summary"]').text()).toContain(
+			'agents.chat.tasks.summary.empty',
+		);
+		expect(wrapper.find('[role="status"]').exists()).toBe(false);
+		expect(wrapper.find('a[href="/trace"]').exists()).toBe(true);
+
+		wrapper.unmount();
+	});
+
+	it('keeps each Stop reply and trace link before later messages', async () => {
+		const stopped: ChatMessage = {
+			id: 'stop-1',
+			role: 'assistant',
+			content: 'I stopped reading the channel. You can continue.',
+			stopReport: true,
+			executionId: 'report-1',
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [stopped], messagingState: 'idle', taskTraceRoute: '/trace' },
+		});
+		await wrapper.setProps({
+			messages: [
+				stopped,
+				{ id: 'continue', role: 'user', content: 'Continue reading.' },
+				{ ...stopped, id: 'stop-2', executionId: 'report-2', content: 'I stopped again.' },
+			],
+		});
+
+		expect(wrapper.findAll('[data-testid="agent-chat-stop-reply"]')).toHaveLength(2);
+		expect(wrapper.findAll('a[href="/trace"]')).toHaveLength(2);
+		expect(wrapper.text()).toMatch(
+			/I stopped reading[\s\S]*Continue reading[\s\S]*I stopped again/,
+		);
+
+		wrapper.unmount();
+	});
+
+	it('shows a saved fallback for an empty Stop reply without a loading indicator', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'stopped', role: 'assistant', content: '', stopReport: true }],
+				messagingState: 'idle',
+			},
+		});
+
+		expect(wrapper.get('[data-testid="agent-chat-stop-reply"]').text()).toContain(
+			'agents.chat.tasks.inline.reportFailed',
+		);
+		expect(wrapper.findComponent({ name: 'AgentTypingIndicator' }).exists()).toBe(false);
+		expect(wrapper.find('a').exists()).toBe(false);
+
+		wrapper.unmount();
+	});
+
+	it('renders the status after the messages inside the transcript', () => {
+		const wrapper = mount(AgentChatMessageList, {
+			props: {
+				messages: [{ id: 'reply', role: 'assistant', content: 'Research is in progress.' }],
+				messagingState: 'idle',
+			},
+			slots: { status: '<div role="status">Stopping all tasks…</div>' },
+		});
+
+		expect(wrapper.element.lastElementChild?.contains(wrapper.get('[role="status"]').element)).toBe(
+			true,
+		);
+		expect(wrapper.text()).toMatch(/Research is in progress\.[\s\S]*Stopping all tasks…/);
+
+		wrapper.unmount();
+	});
+
+	it.each([true, false])(
+		'follows a resized status only when near the bottom: %s',
+		async (nearBottom) => {
+			let resizeStatus: (() => void) | undefined;
+			vi.stubGlobal(
+				'ResizeObserver',
+				class {
+					constructor(onResize: () => void) {
+						resizeStatus = onResize;
+					}
+
+					observe() {}
+
+					disconnect() {}
+				},
+			);
+			vi.stubGlobal('requestAnimationFrame', (onFrame: FrameRequestCallback) => {
+				onFrame(0);
+
+				return 0;
+			});
+			const wrapper = mount(AgentChatMessageList, {
+				props: { messages: [], messagingState: 'idle' },
+				slots: { status: '<div role="status">Stopping all tasks…</div>' },
+			});
+
+			try {
+				await flushPromises();
+				const scroller = wrapper.element as HTMLElement;
+				Object.defineProperty(scroller, 'scrollHeight', { configurable: true, value: 500 });
+				Object.defineProperty(scroller, 'clientHeight', { value: 100 });
+				scroller.scrollTop = nearBottom ? 400 : 0;
+				await wrapper.trigger('scroll');
+
+				Object.defineProperty(scroller, 'scrollHeight', { value: 600 });
+
+				expect(resizeStatus).toBeDefined();
+
+				resizeStatus?.();
+				await flushPromises();
+
+				expect(scroller.scrollTop).toBe(nearBottom ? 600 : 0);
+			} finally {
+				wrapper.unmount();
+				vi.unstubAllGlobals();
+			}
+		},
+	);
+
 	const emptyAnswerError =
 		'The model finished without returning an answer. Try again or use another model.';
 	const streamStallError =
@@ -383,6 +740,29 @@ describe('AgentChatMessageList', () => {
 			],
 		});
 		expect(calls().map((call) => call.tool)).toEqual(['create_plan', 'update_plan']);
+		wrapper.unmount();
+	});
+
+	it('hides empty saved result events and keeps the acknowledgement text', async () => {
+		const message: ChatMessage = {
+			id: 'stop:assistant',
+			executionId: 'stop',
+			role: 'assistant',
+			content: '',
+			backgroundJobSignal: { tasks: [] },
+		};
+		const wrapper = mount(AgentChatMessageList, {
+			props: { messages: [message], messagingState: 'idle' },
+		});
+
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.find('[data-testid="markdown-chunk"]').exists()).toBe(false);
+
+		await wrapper.setProps({ messages: [{ ...message, content: 'The plan is stopped.' }] });
+
+		expect(wrapper.find('[data-testid="agent-chat-background-job-signal"]').exists()).toBe(false);
+		expect(wrapper.get('[data-testid="markdown-chunk"]').text()).toBe('The plan is stopped.');
+
 		wrapper.unmount();
 	});
 

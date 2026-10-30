@@ -66,6 +66,7 @@ function makeExecutionStore(
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi
 			.fn()
@@ -108,6 +109,7 @@ function makeStepStore(
 		resumeDueSteps: vi.fn().mockResolvedValue([]),
 		nextWaitDeadline: vi.fn().mockResolvedValue(null),
 		failStep: vi.fn(),
+		failWaitingStep: vi.fn(),
 		cancelStep: vi.fn(),
 		cancelPendingSteps: vi.fn(),
 		// like the store: only requested keys that have rows appear

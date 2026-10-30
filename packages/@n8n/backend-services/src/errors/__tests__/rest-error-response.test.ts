@@ -3,6 +3,7 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { ConflictError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { classifyRestError } from '../rest-error-classifier';
+import { AiPreferenceScopeFullError } from '../response-errors/ai-preference-scope-full.error';
 import { serializeInternalRestError, serializePublicApiError } from '../rest-error-response';
 
 describe('rest-error-response', () => {
@@ -61,6 +62,21 @@ describe('rest-error-response', () => {
 				meta: { conflicts },
 			},
 		});
+	});
+
+	it('leaves internal-only meta out of both response formats', () => {
+		const error = new AiPreferenceScopeFullError('user', { limit: 50, actual: 50 });
+		const descriptor = classifyRestError(error);
+
+		expect(serializeInternalRestError(descriptor)).toEqual({
+			status: 400,
+			body: { code: 400, message: 'A user cannot hold more than 50 preferences' },
+		});
+		expect(serializePublicApiError(descriptor)).toEqual({
+			status: 400,
+			body: { message: 'A user cannot hold more than 50 preferences' },
+		});
+		expect(error.meta).toEqual({ limit: 50, actual: 50 });
 	});
 
 	it('maps UserError to 400', () => {
