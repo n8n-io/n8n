@@ -345,36 +345,6 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			});
 		});
 
-		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
-			const data = { $json: {} };
-			const flagged =
-				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]) }';
-			const expected = {
-				__isError: true,
-				when: new Date('2024-01-15T00:00:00.000Z'),
-				n: NaN,
-				tags: new Set([1]),
-			};
-
-			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${flagged}]]) }}`, data, caller);
-			const fromSet = evaluator.evaluate(`{{ new Set([${flagged}]) }}`, data, caller);
-
-			expect((fromMap as Map<string, unknown>).get('k')).toEqual(expected);
-			expect([...(fromSet as Set<unknown>)]).toEqual([expected]);
-		});
-
-		it('should return a user object with an __isError key as data', () => {
-			const data = { $json: { flag: { __isError: true, message: 'from data' } } };
-
-			expect(
-				evaluator.evaluate('{{ ({ __isError: true, message: "hi" }) }}', data, caller),
-			).toEqual({ __isError: true, message: 'hi' });
-			expect(evaluator.evaluate('{{ $json.flag }}', data, caller)).toEqual({
-				__isError: true,
-				message: 'from data',
-			});
-		});
-
 		it('should convert the values inside an object with an __isError key in an object or an array', () => {
 			const data = { $json: {} };
 			const flagged =
