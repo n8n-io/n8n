@@ -1,5 +1,5 @@
 import type { NodeExecutionHint } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * Nodes that take a list of field names report one hint per field they couldn't

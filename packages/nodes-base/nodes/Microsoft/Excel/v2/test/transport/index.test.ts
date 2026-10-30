@@ -1,11 +1,11 @@
 import {
 	NodeApiError,
 	NodeOperationError,
-	OperationalError,
 	type IExecuteFunctions,
 	type ILoadOptionsFunctions,
 	type INode,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { Mock, Mocked } from 'vitest';
 import { mockDeep } from 'vitest-mock-extended';
 

@@ -1,5 +1,5 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 
 import { setInputs, setOutputs } from '../utils/evaluationUtils';

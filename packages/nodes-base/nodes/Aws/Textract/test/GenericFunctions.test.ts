@@ -1,6 +1,6 @@
 import { mock } from 'vitest-mock-extended';
 import type { ICredentialTestFunctions } from 'n8n-workflow';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 vi.mock('aws4', () => ({
 	sign: vi.fn(),

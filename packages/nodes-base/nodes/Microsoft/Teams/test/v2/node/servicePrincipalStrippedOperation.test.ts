@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import type { IExecuteFunctions, INode, INodeParameters, INodeProperties } from 'n8n-workflow';
-import { NodeHelpers, UserError } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 

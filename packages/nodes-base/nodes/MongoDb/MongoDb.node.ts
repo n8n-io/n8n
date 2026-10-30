@@ -8,7 +8,8 @@ import type {
 	MongoClient,
 } from 'mongodb';
 import { MongoBulkWriteError, ObjectId } from 'mongodb';
-import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	IExecuteFunctions,
 	ICredentialsDecrypted,

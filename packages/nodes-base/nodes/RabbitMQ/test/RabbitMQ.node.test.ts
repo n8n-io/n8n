@@ -1,6 +1,7 @@
 import type { Channel, Connection } from 'amqplib';
 import { mock, mockDeep } from 'vitest-mock-extended';
-import { UserError, type IExecuteFunctions, type INode } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import * as GenericFunctions from '../GenericFunctions';
 import { RabbitMQ } from '../RabbitMQ.node';

@@ -1,12 +1,12 @@
 import {
 	NodeConnectionTypes,
-	UnexpectedError,
 	type INodeExecutionData,
 	type INodeProperties,
 	type INodeType,
 	type INodeTypeDescription,
 	type IPollFunctions,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { authenticationProperty, databricksCredentials } from './authentication';
 import { DATABRICKS_TRIGGER_NODE_VERSION } from './constants';

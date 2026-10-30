@@ -8,7 +8,8 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError, safeRegex, UserError } from 'n8n-workflow';
+import { NodeOperationError, safeRegex } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import oracledb from 'oracledb';
 
 import { routeBinaryProperties } from '@utils/binary';

@@ -1,8 +1,5 @@
-import {
-	OperationalError,
-	type IGetNodeParameterOptions,
-	type ILoadOptionsFunctions,
-} from 'n8n-workflow';
+import type { IGetNodeParameterOptions, ILoadOptionsFunctions } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { AzureCosmosDb } from '../../AzureCosmosDb.node';
 import { HeaderConstants } from '../../helpers/constants';

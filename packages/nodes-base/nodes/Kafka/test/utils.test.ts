@@ -12,7 +12,8 @@ import type {
 	NodeEgressFilter,
 } from 'n8n-workflow';
 import { sleep } from '@n8n/utils/sleep';
-import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { getEventListeners } from 'node:events';
 import http from 'node:http';
 import https from 'node:https';

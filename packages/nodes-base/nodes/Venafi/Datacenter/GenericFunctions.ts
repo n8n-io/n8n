@@ -7,7 +7,7 @@ import type {
 	IPollFunctions,
 	IRequestOptions,
 } from 'n8n-workflow';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 export async function venafiApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions | IPollFunctions,

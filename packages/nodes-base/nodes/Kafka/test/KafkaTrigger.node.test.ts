@@ -15,10 +15,10 @@ import {
 import {
 	NodeOperationError,
 	TriggerCloseError,
-	UnexpectedError,
 	type INodeTypeBaseDescription,
 	type IRun,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { testTriggerNode } from '@test/nodes/TriggerHelpers';
 
