@@ -247,10 +247,9 @@ export class BreakingChangeService {
 		// Keyset paging: an offset makes the database read past every earlier row for each page.
 		let afterId: string | undefined;
 		for (;;) {
-			const workflows = await this.workflowRepository.findPageAfter(
+			const workflows = await this.workflowRepository.findMigrationScanPage(
 				afterId,
 				this.batchSize,
-				WORKFLOW_FIELDS,
 			);
 			if (workflows.length === 0) break;
 

@@ -711,14 +711,16 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows.map(({ id }) => id);
 	}
 
-	/** Like `getIdsAfter`, but returns the workflows with the `select` fields. */
-	async findPageAfter(
+	/**
+	 * One page of workflows for the migration report scan, keyset-paged like `getIdsAfter`.
+	 * It returns only the fields the scan rules and the report read.
+	 */
+	async findMigrationScanPage(
 		afterId: string | undefined,
 		take: number,
-		select: Array<keyof WorkflowEntity>,
 	): Promise<WorkflowEntity[]> {
 		return await this.find({
-			select,
+			select: ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'],
 			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
 			take,
 			order: { id: 'ASC' },

@@ -659,24 +659,25 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
-	describe('findPageAfter', () => {
-		it('should return the selected fields of the workflows after the cursor', async () => {
+	describe('findMigrationScanPage', () => {
+		it('should return the scan fields of the workflows after the cursor', async () => {
 			const page = [Object.assign(new WorkflowEntity(), { id: 'b', name: 'B' })];
 			const findSpy = vi.spyOn(workflowRepository, 'find').mockResolvedValue(page);
+			const select = ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
 
-			const first = await workflowRepository.findPageAfter(undefined, 100, ['id', 'name']);
-			const next = await workflowRepository.findPageAfter('a', 100, ['id', 'name']);
+			const first = await workflowRepository.findMigrationScanPage(undefined, 100);
+			const next = await workflowRepository.findMigrationScanPage('a', 100);
 
 			expect(first).toBe(page);
 			expect(next).toBe(page);
 			expect(findSpy).toHaveBeenNthCalledWith(1, {
-				select: ['id', 'name'],
+				select,
 				where: {},
 				take: 100,
 				order: { id: 'ASC' },
 			});
 			expect(findSpy).toHaveBeenNthCalledWith(2, {
-				select: ['id', 'name'],
+				select,
 				where: { id: MoreThan('a') },
 				take: 100,
 				order: { id: 'ASC' },
