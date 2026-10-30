@@ -37,14 +37,14 @@ export function parseStatusHostEvent(event: AgentsChatHostEvent): string | undef
 	return parsed.success && parsed.data.message ? parsed.data.message : undefined;
 }
 
-/** The step that tells which instance context the turn read, before its tool steps. */
+/** The step that tells which instance context the turn read, in the thinking block. */
 export const assistantInstanceContextExtension: AgentsChatInteractionExtension = {
 	key: 'assistant_instance_context',
 	matchHostEvent: (event) => parseInstanceContextHostEvent(event) !== undefined,
 	hostEventComponent: defineAsyncComponent(
 		async () => await import('./AssistantInstanceContextHostEvent.vue'),
 	),
-	hostEventPlacement: HOST_EVENT_PLACEMENT.START,
+	hostEventPlacement: HOST_EVENT_PLACEMENT.THINKING,
 };
 
 /**

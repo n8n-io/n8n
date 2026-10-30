@@ -2246,6 +2246,50 @@ describe('AgentChatMessageList', () => {
 			wrapper.unmount();
 		});
 
+		it('renders thinking events in the thinking block, before the reasoning', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.THINKING, 'context')], {
+					thinkingSegments: [{ id: 'reasoning-1', content: 'Plan the reply.' }],
+				}),
+			]);
+
+			const block = wrapper.find('[data-test-id="shared-thinking-block"]');
+			const children = block
+				.findAll('[data-testid="agent-chat-host-event"], [data-test-id="shared-reasoning-block"]')
+				.map((element) => element.attributes('data-placement') ?? 'reasoning');
+			expect(children).toEqual(['thinking', 'reasoning']);
+			expect(renderOrder(wrapper)).toEqual(['text', 'thinking:context']);
+			wrapper.unmount();
+		});
+
+		it('renders thinking events in the thinking block of a tool run', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.THINKING, 'context')], {
+					content: '',
+					toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done' }],
+					thinkingSegments: [{ id: 'reasoning-1', content: 'Choose a tool.' }],
+				}),
+				{ id: 'assistant-2', role: 'assistant', content: 'Found it', status: 'success' },
+			]);
+
+			const block = wrapper.find('[data-test-id="shared-thinking-block"]');
+			expect(block.find('[data-testid="agent-chat-host-event"]').attributes('data-placement')).toBe(
+				'thinking',
+			);
+			expect(renderOrder(wrapper)).toEqual(['text', 'thinking:context']);
+			wrapper.unmount();
+		});
+
+		it('renders thinking events at the start when the message has no thinking block', () => {
+			const wrapper = mountList([
+				assistantMessage([hostEvent(TEST_HOST_EVENT.THINKING, 'context')]),
+			]);
+
+			expect(wrapper.find('[data-test-id="shared-thinking-block"]').exists()).toBe(false);
+			expect(renderOrder(wrapper)).toEqual(['start:context', 'text']);
+			wrapper.unmount();
+		});
+
 		it('shows transient events while the message has no text and hides them once text exists', async () => {
 			const events = [hostEvent(TEST_HOST_EVENT.TRANSIENT, 't')];
 			const wrapper = mountList([

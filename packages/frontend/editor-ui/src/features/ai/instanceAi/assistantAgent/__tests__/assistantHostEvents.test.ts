@@ -30,10 +30,10 @@ const injectedContext = hostEvent('instance-context', {
 });
 
 describe('assistant host event extensions', () => {
-	it('renders the instance context at the start of the message', () => {
+	it('renders the instance context in the thinking block', () => {
 		expect(findHostEventRenderer(injectedContext, assistantHostEventExtensions)).toEqual({
 			component: assistantInstanceContextExtension.hostEventComponent,
-			placement: 'start',
+			placement: 'thinking',
 		});
 	});
 

@@ -9,7 +9,7 @@ defineProps<{ items: AgentsChatHostEventItem[] }>();
 </script>
 
 <template>
-	<div v-if="items.length">
+	<div v-if="items.length" :class="$style.events">
 		<div
 			v-for="item in items"
 			:key="hostEventIdentity(item.event)"
@@ -23,6 +23,11 @@ defineProps<{ items: AgentsChatHostEventItem[] }>();
 </template>
 
 <style module>
+/* Each event is a child of the parent layout, such as the gap of the thinking block. */
+.events {
+	display: contents;
+}
+
 /* The same gap as below the tool steps, so a start event does not touch the text. */
 .start {
 	margin-bottom: var(--spacing--sm);
