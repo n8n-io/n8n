@@ -453,7 +453,7 @@ export class Compression implements INodeType {
 								if (!fileName) {
 									fileName = binaryData.fileName?.split('.')[0];
 								} else {
-									fileName = fileName.replace('.gz', '').replace('.gzip', '');
+									fileName = fileName.replace(/\.(gz|gzip)$/, '');
 								}
 
 								const fileExtension = binaryData.fileExtension
