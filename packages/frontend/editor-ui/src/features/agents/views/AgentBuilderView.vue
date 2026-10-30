@@ -1729,10 +1729,18 @@ async function createPendingAgent(
 		const result = await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, request);
 		return result.agent;
 	}
-	return await createAgent(rootStore.restApiContext, targetProjectId, name, {
-		id: targetAgentId,
-		config: initialConfig,
-	});
+	try {
+		return await createAgent(rootStore.restApiContext, targetProjectId, name, {
+			id: targetAgentId,
+			config: initialConfig,
+		});
+	} catch (error) {
+		// The Assistant agent builds a pending agent under this same id, so it can win the insert.
+		const lostInsert = error instanceof ResponseError && error.httpStatusCode === 409;
+		if (!aiThreadId.value || !lostInsert) throw error;
+		const existing = await getAgent(rootStore.restApiContext, targetProjectId, targetAgentId);
+		return { ...existing, config: null, configHash: null, adopted: true };
+	}
 }
 
 function applyPersistedAgent(

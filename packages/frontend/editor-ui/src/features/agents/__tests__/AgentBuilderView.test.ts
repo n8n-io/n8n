@@ -1072,6 +1072,28 @@ describe('AgentBuilderView — preview routing', () => {
 		forgetAssistantAgentThread('assistant-agent-thread');
 	});
 
+	it('uses the agent the Assistant agent already created under the pending id', async () => {
+		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
+		routeQuery.assistantThread = 'assistant-agent-thread';
+		rememberAssistantAgentThread('assistant-agent-thread', 'p1');
+		createAgentMock.mockRejectedValueOnce(
+			new ResponseError('An agent with this id already exists', { httpStatusCode: 409 }),
+		);
+		const wrapper = await renderView();
+		const editor = wrapper.findComponent({ name: 'AgentBuilderEditorColumn' });
+
+		editor.vm.$emit('update:config', { instructions: 'Answer support mail' });
+		await vi.waitFor(() =>
+			expect(showMessageMock).toHaveBeenCalledWith(expect.objectContaining({ type: 'warning' })),
+		);
+
+		expect(createAgentMock).toHaveBeenCalledOnce();
+		expect(updateConfigMock).not.toHaveBeenCalled();
+		expect(fetchConfigMock).toHaveBeenCalledWith('p1', 'a1');
+		expect(editor.props('agentUnsaved')).toBe(false);
+		forgetAssistantAgentThread('assistant-agent-thread');
+	});
+
 	it('merges a later auto-applied default model into an already-queued autosave snapshot', async () => {
 		history.replaceState({ instanceAiPendingAgentId: 'a1' }, '');
 		const wrapper = await renderView();
