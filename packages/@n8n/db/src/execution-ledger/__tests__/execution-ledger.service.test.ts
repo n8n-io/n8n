@@ -103,7 +103,9 @@ describe('ExecutionLedger', () => {
 				executionId: 'exec-1',
 				workflowId: 'wf-1',
 			});
-			expect(errorReporter.error).toHaveBeenCalledTimes(1);
+			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), {
+				shouldBeLogged: false,
+			});
 		});
 	});
 
@@ -128,6 +130,7 @@ describe('ExecutionLedger', () => {
 			);
 			expect(errorReporter.error).toHaveBeenCalledWith(error, {
 				extra: { executionId: 'exec-1', workflowId: 'wf-1' },
+				shouldBeLogged: false,
 			});
 		});
 
