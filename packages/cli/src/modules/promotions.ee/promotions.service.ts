@@ -34,7 +34,9 @@ import {
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
 import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
+import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
 import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import { writeWorkflowRequirementFiles } from './workflow-requirements';
 import { manifestEntrySchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import {
@@ -270,6 +272,8 @@ export class PromotionsService {
 				}),
 				{ targetDir: stagingFolder },
 			);
+			// The branch holds no manifest. Each workflow keeps its requirements next to its file.
+			await writeWorkflowRequirementFiles(stagingFolder, exportResult.manifest);
 
 			// Replace the managed package only after the new one is complete.
 			await rm(packageFolder, { recursive: true, force: true });
@@ -441,15 +445,15 @@ export class PromotionsService {
 		// No package yet means this selection becomes the first export.
 		const packageExisted = await pathExists(packageFolder);
 		if (
-			!(await pathExists(path.join(packageFolder, MANIFEST_FILE))) &&
+			!(await pathExists(path.join(packageFolder, PROJECTS_DIRECTORY))) &&
 			(await this.gitService.hasCommittedPath({
 				paths: this.workingDirectory.paths(input.environmentId),
 				branchName,
 				environmentId: input.environmentId,
-				pathspec: `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`,
+				pathspec: `${PACKAGE_SUBFOLDER}/${PROJECTS_DIRECTORY}`,
 			}))
 		) {
-			// The commit holds a manifest the checkout lost. A push would drop branch content or metadata.
+			// The commit holds projects that the checkout lost. A push would drop branch content or metadata.
 			throw new BadRequestError(
 				'The local copy of the promote branch is incomplete. Disconnect and connect it again in the instance environment settings.',
 			);
@@ -1556,6 +1560,8 @@ function appliedOutcome(
 		workflowsFailedToPublish: workflows.publishing.failed,
 	};
 }
+
+const PROJECTS_DIRECTORY = PACKAGE_ENTITY_LAYOUT.projects.directory;
 
 const BRANCH_MANIFEST_PATH = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 

@@ -75,6 +75,15 @@ describe('branch-manifest', () => {
 			});
 		});
 
+		it('lists one variable for the two directories that a renamed variable leaves', () => {
+			const lists = deriveLists([
+				['variables/old-v1/variable.json', '{"name":"old","type":"string"}'],
+				['variables/new-v1/variable.json', '{"name":"new","type":"string"}'],
+			]);
+
+			expect(lists.variables).toEqual([{ id: 'v1', name: 'new', target: 'variables/new-v1' }]);
+		});
+
 		it('lists entries in the same order whatever the order of the files', () => {
 			const reversed = deriveLists([...files].reverse());
 

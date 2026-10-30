@@ -208,7 +208,7 @@ beforeEach(async () => {
 			mock<EventService>(),
 		),
 		workingDirectory,
-		new WorkingCopyUpdater(instanceSettings, logger),
+		new WorkingCopyUpdater(logger),
 		gitService,
 		projectRepository,
 		Container.get(SharedWorkflowRepository),

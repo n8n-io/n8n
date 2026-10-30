@@ -1,5 +1,11 @@
 import { jsonParse } from 'n8n-workflow';
+import * as fs from 'node:fs/promises';
+import path from 'node:path';
 import { z } from 'zod';
+
+import { formatEntityFile } from '@/modules/n8n-packages/io/entity-file-format';
+import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import type { PackageRequirements } from '@/modules/n8n-packages/spec/requirements.schema';
 
@@ -160,4 +166,27 @@ export function joinWorkflowRequirements(
 		...(tags ? { tags } : {}),
 	};
 	return Object.keys(requirements).length > 0 ? requirements : undefined;
+}
+
+/**
+ * Writes the requirements of every workflow in the manifest next to its workflow file, and
+ * removes the file of a workflow that has none. The manifest itself is not written: the branch
+ * holds no `manifest.json`, because the entity files and these files carry the same facts.
+ */
+export async function writeWorkflowRequirementFiles(
+	packageFolder: string,
+	manifest: PackageManifest,
+): Promise<void> {
+	const workflows = manifest.workflows ?? [];
+	const byWorkflow = splitRequirementsByWorkflow(
+		manifest.requirements,
+		workflows.map(({ id }) => id),
+	);
+	for (const { id, target } of workflows) {
+		const file = path.join(packageFolder, workflowRequirementsPath(target));
+		const own = byWorkflow.get(id);
+		if (own) await fs.writeFile(file, formatEntityFile(own));
+		else await fs.rm(file, { force: true });
+	}
+	await fs.rm(path.join(packageFolder, MANIFEST_FILE), { force: true });
 }

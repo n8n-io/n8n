@@ -173,10 +173,7 @@ describe('PromotionsService', () => {
 			resolver,
 			providersService,
 			workingDirectory,
-			new WorkingCopyUpdater(
-				mock<InstanceSettings>({ n8nFolder, instanceId: 'inst-test' }),
-				logger,
-			),
+			new WorkingCopyUpdater(logger),
 			gitService,
 			projectRepository,
 			sharedWorkflowRepository,
@@ -633,9 +630,11 @@ describe('PromotionsService', () => {
 			);
 			expect(path.dirname(stagingFolder)).toBe(repositoryFolder);
 			expect(path.basename(stagingFolder)).toMatch(/^\.n8n-/);
-			expect(await readFile(path.join(packageFolder, 'manifest.json'), 'utf-8')).toBe(
-				'{"projects":[]}',
-			);
+			// The branch holds no manifest.
+			await expect(stat(path.join(packageFolder, 'manifest.json'))).rejects.toThrow();
+			expect(
+				await readFile(path.join(packageFolder, 'projects', 'alpha', 'project.json'), 'utf-8'),
+			).toBe('{}');
 			// `.git` and user files at the root are untouched.
 			expect(await readFile(path.join(repositoryFolder, '.git', 'HEAD'), 'utf-8')).toBe(
 				'ref: refs/heads/staging',
@@ -1597,10 +1596,14 @@ describe('PromotionsService', () => {
 				canExportVariableValues: true,
 			});
 
-			const snapshot = JSON.parse(await readExported('manifest.json')) as {
-				workflows: Array<{ id: string }>;
-			};
-			expect(snapshot.workflows.map((w) => w.id).sort()).toEqual(['w1', 'w2']);
+			// The branch holds no manifest. Both workflow files stay, so a read lists both.
+			await expect(stat(path.join(packageFolder, 'manifest.json'))).rejects.toThrow();
+			await expect(
+				readExported('projects/alpha/workflows/w1/workflow.json'),
+			).resolves.toBeDefined();
+			await expect(
+				readExported('projects/alpha/workflows/w2/workflow.json'),
+			).resolves.toBeDefined();
 		});
 
 		it('keeps the push result and removes staging when backup cleanup fails', async () => {

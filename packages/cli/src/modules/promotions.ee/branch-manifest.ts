@@ -135,7 +135,14 @@ function deriveEntity(location: EntityLocation, meta: EntityMeta): Derived {
 function toLists(derived: readonly Derived[]): DerivedLists {
 	const lists: DerivedLists = {};
 	const sorted = derived.toSorted((a, b) => a.entry.target.localeCompare(b.entry.target));
+	const variableIds = new Set<string>();
 	for (const { collection, entry, isArchived } of sorted) {
+		if (collection === 'variables') {
+			// A selective push leaves the directory of a renamed variable until the next full push, so two
+			// directories can hold one id. The first one stands for it.
+			if (variableIds.has(entry.id)) continue;
+			variableIds.add(entry.id);
+		}
 		if (collection === 'workflows') {
 			(lists.workflows ??= []).push({ ...entry, isArchived });
 		} else {
