@@ -308,7 +308,7 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('page header', () => {
-		it('shows the limited enterprise support badge next to the title on enterprise', () => {
+		it('shows the limited enterprise readiness badge next to the title on enterprise', () => {
 			setPlanName(settingsStore, 'Enterprise');
 
 			const { getByRole, getByTestId } = renderComponent();
@@ -318,7 +318,7 @@ describe('SettingsInstanceAiView', () => {
 			);
 		});
 
-		it('does not show the limited enterprise support badge on other plans', () => {
+		it('does not show the limited enterprise readiness badge on other plans', () => {
 			setPlanName(settingsStore, 'Business');
 
 			const { queryByTestId } = renderComponent();
@@ -660,7 +660,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(queryByTestId('n8n-agent-sandbox-dialog-save')).toBeNull();
 		});
 
-		it('shows the limited enterprise support badge in the empty state', () => {
+		it('shows the limited enterprise readiness badge in the empty state', () => {
 			setPlanName(settingsStore, 'Enterprise');
 			store.$patch({ settings: { ...store.settings!, enabled: false } });
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
