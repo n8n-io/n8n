@@ -35,8 +35,9 @@ export class ResetAgentPlansForJobStatus1793353273511 implements IrreversibleMig
 	private async clearStopReferences(ctx: MigrationContext) {
 		const { escape, runInBatches, runQuery, parseJson, logger } = ctx;
 
+		// Updates keep the row set, so a stable order keeps offset pages from skipping rows.
 		await runInBatches<{ id: string; taskStop: string }>(
-			`SELECT ${escape.columnName('id')}, ${escape.columnName('taskStop')} FROM ${escape.tableName('agent_execution_threads')} WHERE ${escape.columnName('taskStop')} IS NOT NULL`,
+			`SELECT ${escape.columnName('id')}, ${escape.columnName('taskStop')} FROM ${escape.tableName('agent_execution_threads')} WHERE ${escape.columnName('taskStop')} IS NOT NULL ORDER BY ${escape.columnName('id')}`,
 			async (rows) => {
 				for (const row of rows) {
 					let stop: Record<string, unknown>;
@@ -70,7 +71,7 @@ export class ResetAgentPlansForJobStatus1793353273511 implements IrreversibleMig
 		const { escape, runInBatches, runQuery, parseJson, logger } = ctx;
 
 		await runInBatches<{ runId: string; state: string }>(
-			`SELECT ${escape.columnName('runId')}, ${escape.columnName('state')} FROM ${escape.tableName('agent_checkpoints')} WHERE ${escape.columnName('state')} IS NOT NULL`,
+			`SELECT ${escape.columnName('runId')}, ${escape.columnName('state')} FROM ${escape.tableName('agent_checkpoints')} WHERE ${escape.columnName('state')} IS NOT NULL ORDER BY ${escape.columnName('runId')}`,
 			async (rows) => {
 				for (const row of rows) {
 					let state: { persistence?: { hostMetadata?: Record<string, unknown> } };
