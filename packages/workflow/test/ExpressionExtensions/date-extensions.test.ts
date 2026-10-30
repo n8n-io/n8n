@@ -171,6 +171,15 @@ describe('Data Transformation Functions', () => {
 				expect(() => evaluate('={{ $now.isBetween($now) }}')).toThrow();
 			});
 
+			// The test workflow timezone defaults to America/New_York (global-state default).
+			test('.isBetween() keeps the written day of date-only bounds west of UTC', () => {
+				expect(
+					evaluate(
+						"={{ DateTime.local(2023, 6, 16, 23, 0).isBetween('2023-06-16', '2023-06-17') }}",
+					),
+				).toBe(true);
+			});
+
 			test('should not work for a more than two arguments', () => {
 				expect(() =>
 					evaluate("={{ $now.isBetween($now, '2023-06-23', '2023-09-21'.toDate()) }}"),
