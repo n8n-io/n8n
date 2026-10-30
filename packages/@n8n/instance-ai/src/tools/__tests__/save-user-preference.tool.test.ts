@@ -1,5 +1,5 @@
 import { AI_PREFERENCE_CONTENT_MAX_LENGTH } from '@n8n/api-types';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { executeTool } from '../../__tests__/tool-test-utils';

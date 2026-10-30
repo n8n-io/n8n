@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 export function toSafeErrorMessage(
 	logger: { warn(message: string, metadata?: Record<string, unknown>): void },
