@@ -150,8 +150,8 @@ export class WaitTracker {
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
-		// A sweep can find the row still `waiting` while this process resumes it. A second
-		// resume would double the memory in use and use up a second attempt.
+		// A poll can find the row still `waiting` while this process resumes it. A second
+		// resume would double the memory in use and consume a second attempt.
 		if (this.resuming.has(executionId)) throw new ExecutionAlreadyResumingError(executionId);
 		this.resuming.add(executionId);
 		try {
@@ -168,7 +168,7 @@ export class WaitTracker {
 		try {
 			await this.loadAndRun(executionId);
 		} catch (error) {
-			// A resume that throws is retried by the next sweep, so it must not count toward the limit
+			// The next poll retries a resume that throws, so it must not count toward the limit
 			await this.resumeAttemptService.release(executionId, 'waiting', claim.attempt);
 			throw error;
 		}
@@ -386,15 +386,15 @@ export class WaitTracker {
 	}
 
 	private async resumeParentIfChildFinished(parentId: string) {
-		// The child-completion callback may be resuming this parent. It holds the same guard,
-		// so the inspection must not claim a second attempt on top of that resume's claim.
+		// The child-completion callback may be resuming this parent under the same guard, so
+		// the inspection must not count a second attempt on top of that resume.
 		if (this.resuming.has(parentId)) return;
 		this.resuming.add(parentId);
 
 		let childExecution: RelatedExecution | undefined;
 		try {
-			// The inspection loads the parent's full run data, so it counts as a resume attempt
-			// until it ends. The resume that may follow claims its own.
+			// The inspection loads the parent's full run data, so it counts as an attempt until
+			// it ends. The resume that may follow counts its own.
 			const claim = await this.resumeAttemptService.claim(parentId, 'waiting');
 			if (!claim.granted) return;
 

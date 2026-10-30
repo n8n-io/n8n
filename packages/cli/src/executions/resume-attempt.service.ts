@@ -12,10 +12,10 @@ export type ResumableStatus = 'waiting' | 'new';
 export type ResumeClaim = { granted: true; attempt: number } | { granted: false };
 
 /**
- * Bounds how often an execution is resumed from `waiting` or `new`. A resume loads the full
- * run data while the row keeps its status, so a resume that kills the process repeats on
- * every start. This service claims an attempt in the database before each resume and marks
- * the execution as crashed once the attempts are used up.
+ * Limits how many times a `waiting` or `new` execution is loaded. The row keeps its status
+ * while its run data loads, so a load that kills the process repeats on every start. This
+ * service counts each load in the database before it starts and marks the execution
+ * `crashed` once the count reaches the limit.
  */
 @Service()
 export class ResumeAttemptService {
@@ -27,9 +27,8 @@ export class ResumeAttemptService {
 	) {}
 
 	/**
-	 * Claims one resume attempt. A refused claim means the attempts are used up: the
-	 * execution is then marked as crashed and the caller must not resume it. Throws
-	 * `ExecutionAlreadyResumingError` when the row has left `status`.
+	 * Counts one load. Once the limit is reached it marks the execution `crashed` instead and
+	 * refuses. Throws `ExecutionAlreadyResumingError` when the row has left `status`.
 	 */
 	async claim(executionId: string, status: ResumableStatus): Promise<ResumeClaim> {
 		const limit = this.executionsConfig.recovery.maxResumeAttempts;
@@ -65,7 +64,7 @@ export class ResumeAttemptService {
 		return { granted: true, attempt: claim.attempts };
 	}
 
-	/** Gives back a claimed attempt. A failed release is logged, not thrown. */
+	/** Gives back an attempt. A failure is logged, not thrown. */
 	async release(executionId: string, status: ResumableStatus, attempt: number) {
 		if (attempt <= 0) return;
 

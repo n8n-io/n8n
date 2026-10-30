@@ -447,9 +447,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Set a `waiting` or `new` execution to `crashed` without resuming it. `markAsCrashed`
-	 * leaves those statuses alone on purpose, so the status to leave is named here. With
-	 * `expectedAttempts`, the row is left alone if its count changed since the caller read it.
+	 * Set a `waiting` or `new` execution to `crashed`. `markAsCrashed` skips those statuses on
+	 * purpose, so the caller names the one to leave. With `expectedAttempts`, the row is left
+	 * alone if its count changed since the caller read it.
 	 */
 	async markAsCrashedFrom(
 		executionId: string,
@@ -816,9 +816,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Claim one resume attempt, before the resume. An attempt that kills the process then
-	 * stays counted. Reports `exhausted` once `maxAttempts` are used, and `conflict` when the
-	 * row is no longer in `status`.
+	 * Count one resume attempt before the load, so a load that kills the process stays
+	 * counted. Reports `exhausted` once the count has reached `maxAttempts`, and `conflict`
+	 * when the row is no longer in `status`.
 	 */
 	async claimResumeAttempt(
 		executionId: string,
@@ -834,7 +834,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const { resumeAttempts: attempts, jsonSizeBytes } = execution;
 		if (attempts >= maxAttempts) return { outcome: 'exhausted', attempts, jsonSizeBytes };
 
-		// The current count is part of the predicate, so two processes cannot share one claim.
+		// The count just read is part of the predicate, so two processes cannot take the same attempt.
 		const result = await this.update(
 			{ id: executionId, status, resumeAttempts: attempts },
 			{ resumeAttempts: attempts + 1 },
@@ -845,8 +845,8 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 	}
 
 	/**
-	 * Give back a claimed attempt. `attempts` is the count the claim returned, so a later
-	 * claim by another process is not undone.
+	 * Give back an attempt. `attempts` is the count the claim returned, so a newer claim by
+	 * another process is not undone.
 	 */
 	async releaseResumeAttempt(
 		executionId: string,
@@ -861,7 +861,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		return (result.affected ?? 0) > 0;
 	}
 
-	/** Ids of all executions still enqueued (`new`), oldest first. */
+	/** Ids of all `new` executions, oldest first. */
 	async findEnqueuedIds(): Promise<string[]> {
 		const rows = await this.find({
 			select: ['id'],

@@ -129,9 +129,9 @@ export class ExecutionEntity {
 	binaryDataSizeBytes: number;
 
 	/**
-	 * Resume attempts since the execution last entered `waiting` or `new`. Written before
-	 * each attempt, so an attempt that kills the process stays counted. Reset to 0 once the
-	 * execution runs.
+	 * Resume attempts since the execution last entered `waiting` or `new`. Incremented before
+	 * each load, so a load that kills the process stays counted. Reset to 0 once the execution
+	 * runs.
 	 */
 	@Column({ type: 'smallint', default: 0 })
 	resumeAttempts: number;

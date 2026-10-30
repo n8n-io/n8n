@@ -31,7 +31,7 @@ export class ExecutionCrashService {
 		});
 	}
 
-	/** Mark a `waiting` or `new` execution as crashed without resuming it. */
+	/** Mark a `waiting` or `new` execution as `crashed`, which `markAsCrashed` skips. */
 	async markAsCrashedFrom(
 		executionId: string,
 		status: ResumableExecutionStatus,

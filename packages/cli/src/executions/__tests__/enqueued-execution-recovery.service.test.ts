@@ -54,7 +54,7 @@ describe('EnqueuedExecutionRecoveryService', () => {
 			eventService,
 		);
 
-	/** Enqueued rows by id; an id without a row has unreadable data. */
+	/** Enqueued rows by id. An id without a row has unreadable data. */
 	const mockEnqueued = (executions: Array<IExecutionResponse | string>) => {
 		const ids = executions.map((e) => (typeof e === 'string' ? e : e.id));
 		const rows = new Map(

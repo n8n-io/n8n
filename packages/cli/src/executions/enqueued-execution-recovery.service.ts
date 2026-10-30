@@ -103,9 +103,9 @@ export class EnqueuedExecutionRecoveryService {
 	}
 
 	/**
-	 * Loads the execution, or returns `undefined` when it must not start now. Data that is
-	 * gone for good crashes the row, else it would sit at "Queued" forever. A read that fails
-	 * for a passing reason leaves the row `new` for the next start and gives the attempt back.
+	 * Loads the execution, or returns `undefined` when it must not start now. Missing or
+	 * corrupt data marks the row `crashed`, else it would sit at "Queued" forever. Any other
+	 * read error leaves the row `new` for the next start and gives the attempt back.
 	 */
 	private async loadEnqueuedExecution(executionId: string, attempt: number) {
 		let execution: IExecutionResponse | undefined;
