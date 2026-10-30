@@ -1,3 +1,4 @@
+import { N8N_CLIENT_EDITOR_UI, N8N_CLIENT_HEADER } from '@n8n/api-types';
 import type { PublicApiContext } from '@n8n/rest-api-client';
 import { randomString, setGlobalState } from 'n8n-workflow';
 import { defineStore } from 'pinia';
@@ -130,8 +131,10 @@ export const useRootStore = defineStore(STORES.ROOT, () => {
 		pushRef: state.value.pushRef,
 	}));
 
+	// The header tells the backend that the editor UI made the call. Telemetry reads it.
 	const publicApiContext = computed<PublicApiContext>(() => ({
 		baseUrl: `${state.value.baseUrl}${state.value.publicApiPath}`,
+		headers: { [N8N_CLIENT_HEADER]: N8N_CLIENT_EDITOR_UI },
 	}));
 
 	// #endregion

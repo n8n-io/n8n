@@ -22,7 +22,7 @@ import type {
 	UpdatePromotionProviderDto,
 } from '@n8n/api-types';
 import type { PublicApiContext } from '@n8n/rest-api-client';
-import { request, ResponseError } from '@n8n/rest-api-client';
+import { makePublicApiRequest, ResponseError } from '@n8n/rest-api-client';
 
 export type PromotionProvider = PromotionProviderPublicDto;
 export type PromotionEnvironment = PromotionEnvironmentPublicDto;
@@ -35,12 +35,12 @@ export const fetchPromotionRepositories = async (
 	providerId: string,
 	query: Partial<ListPromotionRepositoriesQueryDto> = {},
 ): Promise<PromotionRepositoryListPublicDto> =>
-	await request({
-		method: 'GET',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories`,
-		data: query,
-	});
+	await makePublicApiRequest(
+		context,
+		'GET',
+		`${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories`,
+		query,
+	);
 
 export const fetchPromotionBranches = async (
 	context: PublicApiContext,
@@ -48,12 +48,12 @@ export const fetchPromotionBranches = async (
 	repositoryId: string,
 	query: Partial<ListPromotionBranchesQueryDto> = {},
 ): Promise<PromotionBranchListPublicDto> =>
-	await request({
-		method: 'GET',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories/${encodeURIComponent(repositoryId)}/branches`,
-		data: query,
-	});
+	await makePublicApiRequest(
+		context,
+		'GET',
+		`${promotionsApiRoot}/providers/${encodeURIComponent(providerId)}/repositories/${encodeURIComponent(repositoryId)}/branches`,
+		query,
+	);
 
 async function fetchAllPages<T>(
 	fetchPage: (cursor?: string) => Promise<{ data: T[]; nextCursor: string | null }>,
@@ -74,41 +74,23 @@ export const fetchPromotionProvider = async (
 	context: PublicApiContext,
 	id: string,
 ): Promise<PromotionProvider> =>
-	await request({
-		method: 'GET',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/providers/${id}`,
-	});
+	await makePublicApiRequest(context, 'GET', `${promotionsApiRoot}/providers/${id}`);
 
 export const createPromotionProvider = async (
 	context: PublicApiContext,
 	payload: CreatePromotionProviderDto,
 ): Promise<PromotionProviderCreatedPublicDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/providers`,
-		data: payload,
-	});
+	await makePublicApiRequest(context, 'POST', `${promotionsApiRoot}/providers`, payload);
 
 export const updatePromotionProvider = async (
 	context: PublicApiContext,
 	id: string,
 	payload: UpdatePromotionProviderDto,
 ): Promise<PromotionProvider> =>
-	await request({
-		method: 'PUT',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/providers/${id}`,
-		data: payload,
-	});
+	await makePublicApiRequest(context, 'PUT', `${promotionsApiRoot}/providers/${id}`, payload);
 
 const deletePromotionProvider = async (context: PublicApiContext, id: string): Promise<void> => {
-	await request({
-		method: 'DELETE',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/providers/${id}`,
-	});
+	await makePublicApiRequest(context, 'DELETE', `${promotionsApiRoot}/providers/${id}`);
 };
 
 /** The API refuses to delete a provider that an environment still uses, in any scope. */
@@ -131,11 +113,9 @@ export const fetchPromotionEnvironments = async (
 ): Promise<PromotionEnvironmentSummary[]> =>
 	await fetchAllPages(
 		async (cursor) =>
-			await request({
-				method: 'GET',
-				baseURL: context.baseUrl,
-				endpoint: `${promotionsApiRoot}/environments`,
-				data: { ...filter, cursor },
+			await makePublicApiRequest(context, 'GET', `${promotionsApiRoot}/environments`, {
+				...filter,
+				cursor,
 			}),
 	);
 
@@ -144,44 +124,30 @@ export const fetchPromotionEnvironment = async (
 	context: PublicApiContext,
 	id: string,
 ): Promise<PromotionEnvironment> =>
-	await request({
-		method: 'GET',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${encodeURIComponent(id)}`,
-	});
+	await makePublicApiRequest(
+		context,
+		'GET',
+		`${promotionsApiRoot}/environments/${encodeURIComponent(id)}`,
+	);
 
 export const createPromotionEnvironment = async (
 	context: PublicApiContext,
 	payload: CreatePromotionEnvironmentDto,
 ): Promise<PromotionEnvironment> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments`,
-		data: payload,
-	});
+	await makePublicApiRequest(context, 'POST', `${promotionsApiRoot}/environments`, payload);
 
 export const updatePromotionEnvironment = async (
 	context: PublicApiContext,
 	id: string,
 	payload: UpdatePromotionEnvironmentDto,
 ): Promise<PromotionEnvironment> =>
-	await request({
-		method: 'PUT',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${id}`,
-		data: payload,
-	});
+	await makePublicApiRequest(context, 'PUT', `${promotionsApiRoot}/environments/${id}`, payload);
 
 export const deletePromotionEnvironment = async (
 	context: PublicApiContext,
 	id: string,
 ): Promise<void> => {
-	await request({
-		method: 'DELETE',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${id}`,
-	});
+	await makePublicApiRequest(context, 'DELETE', `${promotionsApiRoot}/environments/${id}`);
 };
 
 /** Connects the environment on the instance. For Git, this clones its branch. Safe to repeat. */
@@ -189,11 +155,11 @@ export const connectPromotionCheckout = async (
 	context: PublicApiContext,
 	environmentId: string,
 ): Promise<PromotionCheckoutPublicDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${environmentId}/connect`,
-	});
+	await makePublicApiRequest(
+		context,
+		'POST',
+		`${promotionsApiRoot}/environments/${environmentId}/connect`,
+	);
 
 /** Promotes the whole instance through its instance Promote environment. */
 export const promotePackage = async (
@@ -201,24 +167,24 @@ export const promotePackage = async (
 	environmentId: string,
 	payload: PromotePackageDto,
 ): Promise<PromotePackageResultDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${environmentId}/promote`,
-		data: payload,
-	});
+	await makePublicApiRequest(
+		context,
+		'POST',
+		`${promotionsApiRoot}/environments/${environmentId}/promote`,
+		payload,
+	);
 
 export const applyPromotion = async (
 	context: PublicApiContext,
 	environmentId: string,
 	payload?: ApplyPackageDto,
 ): Promise<ApplyPackageResultDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${environmentId}/apply`,
-		data: payload,
-	});
+	await makePublicApiRequest(
+		context,
+		'POST',
+		`${promotionsApiRoot}/environments/${environmentId}/apply`,
+		payload,
+	);
 
 /** Resumes an apply that paused on unresolved bindings, once they are created. */
 export const continueApplyPromotion = async (
@@ -226,12 +192,12 @@ export const continueApplyPromotion = async (
 	environmentId: string,
 	payload: ContinueApplyPackageDto,
 ): Promise<ApplyPackageResultDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/environments/${environmentId}/apply/continue`,
-		data: payload,
-	});
+	await makePublicApiRequest(
+		context,
+		'POST',
+		`${promotionsApiRoot}/environments/${environmentId}/apply/continue`,
+		payload,
+	);
 
 /** Applies only the chosen workflows into the destination project. */
 export const applyProjectSelection = async (
@@ -239,12 +205,12 @@ export const applyProjectSelection = async (
 	projectId: string,
 	payload: ApplySelectionDto,
 ): Promise<ApplyPackageResultDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply`,
-		data: payload,
-	});
+	await makePublicApiRequest(
+		context,
+		'POST',
+		`${promotionsApiRoot}/projects/${projectId}/apply`,
+		payload,
+	);
 
 /** Resumes a selective apply that paused on unresolved bindings, once they are created. */
 export const continueApplyProjectSelection = async (
@@ -252,9 +218,9 @@ export const continueApplyProjectSelection = async (
 	projectId: string,
 	payload: ContinueApplySelectionDto,
 ): Promise<ApplyPackageResultDto> =>
-	await request({
-		method: 'POST',
-		baseURL: context.baseUrl,
-		endpoint: `${promotionsApiRoot}/projects/${projectId}/apply/continue`,
-		data: payload,
-	});
+	await makePublicApiRequest(
+		context,
+		'POST',
+		`${promotionsApiRoot}/projects/${projectId}/apply/continue`,
+		payload,
+	);

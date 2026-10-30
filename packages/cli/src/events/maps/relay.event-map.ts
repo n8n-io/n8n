@@ -51,6 +51,7 @@ import type {
 import type { TracingContext } from '@/modules/otel/tracing-context';
 import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
+import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import type { AiEventMap } from './ai.event-map';
 
@@ -490,6 +491,7 @@ export type RelayEventMap = DataTableEventMap & {
 		method: string;
 		apiVersion: string;
 		userAgent?: string;
+		client: PublicApiClient;
 	};
 
 	// #endregion

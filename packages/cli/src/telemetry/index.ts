@@ -27,6 +27,7 @@ import type {
 } from '@/interfaces';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
+import type { PublicApiClient } from '@/public-api/public-api-client';
 
 import { SourceControlPreferencesService } from '../modules/source-control.ee/source-control-preferences.service.ee';
 import { USER_CALLED_MCP_TOOL_EVENT } from '../modules/mcp/mcp.constants';
@@ -60,6 +61,7 @@ interface IApiInvocationProperties {
 	method: string;
 	api_version: string;
 	user_agent?: string;
+	client: PublicApiClient;
 }
 
 interface IApiInvocationsBufferEntry {
@@ -67,6 +69,7 @@ interface IApiInvocationsBufferEntry {
 	first: Date;
 	endpoints: Record<string, number>;
 	user_agents: Record<string, number>;
+	consumed_by: Record<PublicApiClient, number>;
 }
 
 interface IApiInvocationsBuffer {
@@ -280,6 +283,7 @@ export class Telemetry {
 					first: entry.first,
 					endpoints: JSON.stringify(entry.endpoints),
 					user_agents: JSON.stringify(entry.user_agents),
+					consumed_by: JSON.stringify(entry.consumed_by),
 				});
 			}
 		}
@@ -546,17 +550,17 @@ export class Telemetry {
 	trackApiInvocation(properties: IApiInvocationProperties) {
 		if (!this.rudderStack) return;
 
-		const { user_id, path, method, user_agent } = properties;
+		const { user_id, path, method, user_agent, client } = properties;
 
-		this.apiInvocationsBuffer[user_id] = this.apiInvocationsBuffer[user_id] ?? {
+		const entry = (this.apiInvocationsBuffer[user_id] ??= {
 			total_calls: 0,
 			first: new Date(),
 			endpoints: {},
 			user_agents: {},
-		};
-
-		const entry = this.apiInvocationsBuffer[user_id];
+			consumed_by: { editor_ui: 0, other: 0 },
+		});
 		entry.total_calls++;
+		entry.consumed_by[client]++;
 
 		const endpointKey = `${method} ${path}`;
 		entry.endpoints[endpointKey] = (entry.endpoints[endpointKey] ?? 0) + 1;
