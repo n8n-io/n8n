@@ -1,18 +1,23 @@
 import type { CreatePromotionProviderDto, UpdatePromotionProviderDto } from '@n8n/api-types';
+import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { User } from '@n8n/db';
-import type { Cipher } from 'n8n-core';
+import { Container } from '@n8n/di';
+import type { Cipher, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
 import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import type { GitHostClient } from '../git-hosts/git-host.types';
-import type { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
+import { PromotionEnvironmentLockService } from '../promotion-environment-lock.service';
 import { PromotionProvidersService } from '../promotion-providers.service';
+import type { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 
 describe('PromotionProvidersService', () => {
@@ -74,6 +79,7 @@ describe('PromotionProvidersService', () => {
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
 		providerRepository.updateProviderIfUnchanged.mockResolvedValue(true);
 		gitHosts.clientFor.mockReturnValue(mock<GitHostClient>());
+		checkoutCleanup.changeHostUrl.mockImplementation(async (_providerId, update) => await update());
 	});
 
 	describe('create', () => {
@@ -313,7 +319,7 @@ describe('PromotionProvidersService', () => {
 			providerRepository.findById.mockResolvedValue(gitlabProvider());
 		});
 
-		it('resets the checkouts of the provider after the host URL changes', async () => {
+		const changeHostUrl = async () =>
 			await service.update(
 				'prov3',
 				{
@@ -323,10 +329,13 @@ describe('PromotionProvidersService', () => {
 				actor,
 			);
 
-			expect(checkoutCleanup.resetCheckoutsForHostChange).toHaveBeenCalledWith('prov3');
-			expect(
-				checkoutCleanup.resetCheckoutsForHostChange.mock.invocationCallOrder[0],
-			).toBeGreaterThan(providerRepository.updateProviderIfUnchanged.mock.invocationCallOrder[0]);
+		it('writes the provider through the checkout cleanup after the host URL changes', async () => {
+			await changeHostUrl();
+
+			expect(checkoutCleanup.changeHostUrl).toHaveBeenCalledWith('prov3', expect.any(Function));
+			expect(checkoutCleanup.changeHostUrl.mock.invocationCallOrder[0]).toBeLessThan(
+				providerRepository.updateProviderIfUnchanged.mock.invocationCallOrder[0],
+			);
 		});
 
 		it.each<{ change: string; input: UpdatePromotionProviderDto }>([
@@ -342,24 +351,110 @@ describe('PromotionProvidersService', () => {
 		])('resets no checkout when $change', async ({ input }) => {
 			await service.update('prov3', input, actor);
 
-			expect(checkoutCleanup.resetCheckoutsForHostChange).not.toHaveBeenCalled();
+			expect(checkoutCleanup.changeHostUrl).not.toHaveBeenCalled();
 		});
 
-		it('resets no checkout when the update loses a race', async () => {
+		it('fails when the update loses a race', async () => {
 			providerRepository.updateProviderIfUnchanged.mockResolvedValueOnce(false);
 
-			await expect(
-				service.update(
+			await expect(changeHostUrl()).rejects.toThrow(ConflictError);
+		});
+
+		describe('with the environment lock', () => {
+			const ENVIRONMENT_IDS = [
+				'0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5b',
+				'0199a1b2-c3d4-7e5f-8a9b-0c1d2e3f4a5c',
+			];
+			const logger = mock<Logger>();
+			const workingDirectory = mock<PromotionWorkingDirectoryService>();
+			const environmentLock = new PromotionEnvironmentLockService(Container.get(LockService));
+			const lockedService = new PromotionProvidersService(
+				providerRepository,
+				environmentRepository,
+				gitService,
+				cipher,
+				gitHosts,
+				eventService,
+				new PromotionCheckoutCleanupService(
+					workingDirectory,
+					environmentRepository,
+					environmentLock,
+					logger,
+					mock<Publisher>(),
+					mock<InstanceSettings>({ isMultiMain: false }),
+				),
+			);
+
+			const holdLock = async (environmentId: string) => {
+				let release!: () => void;
+				let acquired!: () => void;
+				const held = new Promise<void>((resolve) => (acquired = resolve));
+				const done = environmentLock.run(environmentId, async () => {
+					acquired();
+					await new Promise<void>((resolve) => (release = resolve));
+				});
+				await held;
+				return async () => {
+					release();
+					await done;
+				};
+			};
+
+			const isLockFree = async (environmentId: string) =>
+				await environmentLock.run(environmentId, async () => true).catch(() => false);
+
+			const hostClient = mock<GitHostClient>();
+
+			beforeEach(() => {
+				logger.scoped.mockReturnValue(logger);
+				workingDirectory.resetCheckout.mockResolvedValue([]);
+				gitHosts.clientFor.mockReturnValue(hostClient);
+				environmentRepository.findIdsWithRepositoryPathByProvider.mockResolvedValue(
+					ENVIRONMENT_IDS,
+				);
+			});
+
+			const changeHostUrlWithLock = async () =>
+				await lockedService.update(
 					'prov3',
 					{
 						config: { schemaVersion: 1, baseUrl: 'https://gitlab.other.example.com' },
 						auth: tokenAuth,
 					},
 					actor,
-				),
-			).rejects.toThrow(ConflictError);
+				);
 
-			expect(checkoutCleanup.resetCheckoutsForHostChange).not.toHaveBeenCalled();
+			it('checks host access first, then writes while it holds one lock for each affected environment', async () => {
+				const run = vi.spyOn(environmentLock, 'run');
+				providerRepository.updateProviderIfUnchanged.mockImplementation(async () => {
+					expect(await isLockFree(ENVIRONMENT_IDS[0])).toBe(false);
+					expect(await isLockFree(ENVIRONMENT_IDS[1])).toBe(false);
+					return true;
+				});
+
+				await changeHostUrlWithLock();
+
+				expect(run.mock.calls.slice(0, 2).map(([id]) => id)).toEqual(ENVIRONMENT_IDS);
+				expect(hostClient.validateAccess.mock.invocationCallOrder[0]).toBeLessThan(
+					run.mock.invocationCallOrder[0],
+				);
+				expect(workingDirectory.resetCheckout).toHaveBeenCalledTimes(2);
+			});
+
+			it('fails with 423, releases the locks it holds, and writes nothing when one environment is busy', async () => {
+				const release = await holdLock(ENVIRONMENT_IDS[1]);
+
+				await expect(changeHostUrlWithLock()).rejects.toThrow(LockedError);
+
+				expect(providerRepository.updateProviderIfUnchanged).not.toHaveBeenCalled();
+				expect(workingDirectory.resetCheckout).not.toHaveBeenCalled();
+				expect(await isLockFree(ENVIRONMENT_IDS[0])).toBe(true);
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'promotion-provider-updated',
+					expect.objectContaining({ outcome: 'failed', failureKind: 'busy' }),
+				);
+				await release();
+			});
 		});
 	});
 

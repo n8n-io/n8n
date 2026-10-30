@@ -23,6 +23,7 @@ import {
 	PROMOTION_KEY_COMMENT,
 } from './constants';
 import { PromotionReviewCommitsMissingError } from './promotion-review-commits-missing.error';
+import { deleteTrash, moveToTrash } from './promotion-working-directory.service';
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 import { buildHttpsGitConfig, buildSshCommand, generateSshKeyPair } from './promotions-git.utils';
 import type { PromotionGitCredentials } from './promotions.types';
@@ -33,6 +34,8 @@ type PromotionGitPaths = {
 	repositoryFolder: string;
 	nextRepositoryFolder: string;
 	sshDir: string;
+	/** Where removed checkouts go before they are deleted. */
+	trashFolder: string;
 };
 
 type GitOperation = {
@@ -173,6 +176,7 @@ export class PromotionsGitService {
 		await this.validateBranchName(branchName);
 		await mkdir(paths.rootFolder, { recursive: true });
 		const { repositoryFolder, nextRepositoryFolder, sshDir } = paths;
+		let trashed: string | undefined;
 
 		try {
 			await this.lockCheckout(repositoryFolder, async () => {
@@ -211,7 +215,8 @@ export class PromotionsGitService {
 								]);
 							}
 							beforeSwap?.();
-							await rm(repositoryFolder, { recursive: true, force: true });
+							// A rename to trash, so the old checkout leaves its path at once.
+							trashed = await moveToTrash(repositoryFolder, paths.trashFolder);
 							await rename(nextRepositoryFolder, repositoryFolder);
 						},
 					);
@@ -222,6 +227,21 @@ export class PromotionsGitService {
 			});
 		} catch (error) {
 			throw this.mapGitError(error, { environmentId, branchName });
+		} finally {
+			// After the swap, or after a failed rename. Either way the old checkout is not in use.
+			if (trashed) await this.deleteTrashAfterSwap(trashed, environmentId);
+		}
+	}
+
+	/** A failed deletion only leaves disk in use. */
+	private async deleteTrashAfterSwap(trashed: string, environmentId: string) {
+		try {
+			await deleteTrash([trashed]);
+		} catch (error) {
+			this.logger.warn('Failed to delete the old promotion checkout in the trash', {
+				environmentId,
+				error: error instanceof Error ? error.message : String(error),
+			});
 		}
 	}
 

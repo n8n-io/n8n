@@ -218,6 +218,7 @@ describe('PromotionsService', () => {
 			new PromotionCheckoutCleanupService(
 				workingDirectory,
 				mock<PromotionEnvironmentRepository>(),
+				environmentLock,
 				logger,
 				publisher,
 				mock<InstanceSettings>({ isMultiMain: true }),
@@ -342,6 +343,65 @@ describe('PromotionsService', () => {
 				'github.com ssh-ed25519 AAAA',
 			);
 			expect(result.hasCheckout).toBe(false);
+		});
+
+		const createCheckout = async () => {
+			const input = promoteInput();
+			resolver.resolveForEnvironment.mockResolvedValue(input);
+			await markCloned(input, 'staging');
+			const { repositoryFolder } = workingDirectory.paths(ENVIRONMENT_ID);
+			await mkdir(repositoryFolder, { recursive: true });
+			return repositoryFolder;
+		};
+
+		it('resolves the environment again while it holds the lock', async () => {
+			await createCheckout();
+			const lockFreeOnResolve: boolean[] = [];
+			resolver.resolveForEnvironment.mockImplementation(async () => {
+				lockFreeOnResolve.push(
+					await environmentLock.run(ENVIRONMENT_ID, async () => true).catch(() => false),
+				);
+				return promoteInput();
+			});
+
+			await service.disconnect(ENVIRONMENT_ID);
+
+			expect(lockFreeOnResolve).toEqual([true, false]);
+		});
+
+		it('fails with 423 and changes nothing when another operation holds the lock', async () => {
+			const repositoryFolder = await createCheckout();
+			const release = await holdLock();
+
+			await expect(service.disconnect(ENVIRONMENT_ID)).rejects.toThrow(LockedError);
+
+			await expect(stat(repositoryFolder)).resolves.toBeDefined();
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+			await release();
+		});
+
+		it('stops with 503 before the removal when the lock is lost', async () => {
+			const repositoryFolder = await createCheckout();
+			loseLock();
+
+			await expect(service.disconnect(ENVIRONMENT_ID)).rejects.toThrow(PromotionLockLostError);
+
+			await expect(stat(repositoryFolder)).resolves.toBeDefined();
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
+		});
+
+		it('changes nothing when the environment is gone once it holds the lock', async () => {
+			const repositoryFolder = await createCheckout();
+			resolver.resolveForEnvironment
+				.mockResolvedValueOnce(promoteInput())
+				.mockRejectedValueOnce(new NotFoundError('Promotion environment not found'));
+
+			await expect(service.disconnect(ENVIRONMENT_ID)).rejects.toThrow(NotFoundError);
+
+			await expect(stat(repositoryFolder)).resolves.toBeDefined();
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
 		it('asks the other mains to remove their checkouts', async () => {

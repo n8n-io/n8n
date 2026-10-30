@@ -175,33 +175,38 @@ export class PromotionEnvironmentsService {
 		const settings =
 			input.settings && (await this.checkSettings(current.direction, input.settings));
 
-		const closed = await this.txRunner.run({}, async (ctx) => {
-			const updated = await this.environmentRepository.updateEnvironment(
-				id,
-				current.providerId,
-				{
-					...(input.name !== undefined && { name: input.name }),
-					...(changesRemote && { remote }),
-					...(input.providerId !== undefined && { providerId: input.providerId }),
-					...(settings && { settings }),
-				},
-				ctx,
-			);
-			if (!updated) {
-				throw new ConflictError(
-					'The environment changed during the update. Reload it and try again.',
-				);
-			}
-			if (!invalidatesOpenReviews(current, { provider, remote })) return 0;
-			return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), ctx);
-		});
-		this.logClosedReviews(id, closed, 'environment_target_changed');
-		// Compare values: a request can send the current remote again.
+		// Decide before the write, so only an update that changes the checkout takes the
+		// environment lock. Compare values: a request can send the current remote again.
 		const changesCheckout =
 			(changesRemote && !isDeepStrictEqual(remote, current.remote)) ||
 			provider.id !== current.providerId ||
 			(settings !== undefined && this.changesCheckoutBranch(current, settings));
-		if (changesCheckout) await this.checkoutCleanup.resetCheckoutAfterSettingsChange(id);
+
+		const updateRows = async () =>
+			await this.txRunner.run({}, async (ctx) => {
+				const updated = await this.environmentRepository.updateEnvironment(
+					id,
+					current.providerId,
+					{
+						...(input.name !== undefined && { name: input.name }),
+						...(changesRemote && { remote }),
+						...(input.providerId !== undefined && { providerId: input.providerId }),
+						...(settings && { settings }),
+					},
+					ctx,
+				);
+				if (!updated) {
+					throw new ConflictError(
+						'The environment changed during the update. Reload it and try again.',
+					);
+				}
+				if (!invalidatesOpenReviews(current, { provider, remote })) return 0;
+				return await this.reviewRepository.closeOpenByEnvironmentId(id, new Date(), ctx);
+			});
+		const closed = changesCheckout
+			? await this.checkoutCleanup.changeCheckoutSettings(id, updateRows)
+			: await updateRows();
+		this.logClosedReviews(id, closed, 'environment_target_changed');
 		const changedFields = [
 			...(input.name !== undefined ? ['name' as const] : []),
 			...(input.remote !== undefined ? ['remote' as const] : []),
@@ -227,16 +232,20 @@ export class PromotionEnvironmentsService {
 	 */
 	async delete(id: string, actor: User): Promise<void> {
 		const { id: environmentId, direction, scope } = await this.getEntity(id);
-		// Close first: the delete clears the environment of its reviews.
-		const { closed, deleted } = await this.txRunner.run({}, async (ctx) => {
-			const closed = await this.reviewRepository.closeOpenByEnvironmentId(
-				environmentId,
-				new Date(),
-				ctx,
-			);
-			const deleted = await this.environmentRepository.deleteEnvironment(environmentId, ctx);
-			return { closed, deleted };
-		});
+		const { closed, deleted } = await this.checkoutCleanup.deleteEnvironment(
+			environmentId,
+			async () =>
+				// Close first: the delete clears the environment of its reviews.
+				await this.txRunner.run({}, async (ctx) => {
+					const closed = await this.reviewRepository.closeOpenByEnvironmentId(
+						environmentId,
+						new Date(),
+						ctx,
+					);
+					const deleted = await this.environmentRepository.deleteEnvironment(environmentId, ctx);
+					return { closed, deleted };
+				}),
+		);
 		this.logClosedReviews(environmentId, closed, 'environment_deleted');
 		if (deleted) {
 			this.eventService.emit('promotion-environment-deleted', {
@@ -246,7 +255,6 @@ export class PromotionEnvironmentsService {
 				environmentScope: scope,
 			});
 		}
-		await this.checkoutCleanup.removeDeletedEnvironment(environmentId);
 	}
 
 	async listProjects(id: string): Promise<PromotionEnvironmentProjectListPublicDto> {

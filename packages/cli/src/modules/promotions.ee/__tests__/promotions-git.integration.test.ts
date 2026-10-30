@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -108,6 +108,7 @@ describe('Promotion Git checkout', () => {
 			repositoryFolder: path.join(rootFolder, 'repository'),
 			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
 			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
 		};
 
 		await new PromotionsGitService(mockLogger()).clone({
@@ -133,6 +134,7 @@ describe('Promotion Git checkout', () => {
 			repositoryFolder: path.join(rootFolder, 'repository'),
 			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
 			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
 		};
 		const operation = {
 			remoteUrl: pathToFileURL(remotePath).href,
@@ -157,6 +159,45 @@ describe('Promotion Git checkout', () => {
 
 		expect(await readFile(marker, 'utf8')).toBe('current');
 		await expect(stat(paths.nextRepositoryFolder)).rejects.toThrow();
+		await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
+	});
+
+	it('moves the old checkout to trash and empties it after the swap', async () => {
+		const remotePath = path.join(tmpRoot, 'remote.git');
+		execFileSync('git', ['init', '--bare', '--quiet', remotePath]);
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		const paths = {
+			rootFolder,
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, 'ssh'),
+			trashFolder: path.join(tmpRoot, 'trash'),
+		};
+		const operation = {
+			remoteUrl: pathToFileURL(remotePath).href,
+			credentials: { authType: 'token', username: 'git-user', password: 'git-password' } as const,
+			paths,
+			branchName: 'main',
+			environmentId: 'environment-1',
+		};
+		const gitService = new PromotionsGitService(mockLogger());
+		await gitService.clone(operation);
+		const marker = path.join(paths.repositoryFolder, 'marker');
+		await writeFile(marker, 'previous');
+
+		await gitService.clone(operation);
+
+		await expect(stat(marker)).rejects.toMatchObject({ code: 'ENOENT' });
+		const head = execFileSync(
+			'git',
+			['-C', paths.repositoryFolder, 'symbolic-ref', '--short', 'HEAD'],
+			{
+				encoding: 'utf8',
+			},
+		).trim();
+		expect(head).toBe('main');
+		await expect(stat(paths.nextRepositoryFolder)).rejects.toThrow();
+		await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
 	});
 });
 
@@ -216,6 +257,7 @@ describe('Promotion Git reads at a commit', () => {
 					repositoryFolder,
 					nextRepositoryFolder: path.join(tmpRoot, 'next'),
 					sshDir: path.join(tmpRoot, 'ssh'),
+					trashFolder: path.join(tmpRoot, 'trash'),
 				},
 				branchName: 'main',
 				environmentId: 'environment-1',

@@ -1,7 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockLogger } from '@n8n/backend-test-utils';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { mock } from 'vitest-mock-extended';
@@ -171,6 +171,7 @@ describe('PromotionsGitService (git operations)', () => {
 		repositoryFolder: string;
 		nextRepositoryFolder: string;
 		sshDir: string;
+		trashFolder: string;
 	};
 
 	beforeEach(async () => {
@@ -183,6 +184,7 @@ describe('PromotionsGitService (git operations)', () => {
 			repositoryFolder: path.join(rootFolder, 'repository'),
 			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
 			sshDir: path.join(rootFolder, '.ssh'),
+			trashFolder: path.join(rootFolder, 'trash'),
 		};
 	});
 
@@ -243,6 +245,28 @@ describe('PromotionsGitService (git operations)', () => {
 				'--progress',
 			]);
 			await expect(stat(paths.repositoryFolder)).resolves.toBeDefined();
+		});
+
+		it('moves the old checkout to trash, puts the new one in place, and empties the trash', async () => {
+			mockGit.listRemote.mockResolvedValue('abc123\trefs/heads/main\n');
+			await mkdir(paths.repositoryFolder, { recursive: true });
+			await writeFile(path.join(paths.repositoryFolder, 'old-checkout'), 'old');
+			mockGit.clone.mockImplementation(async (_url: unknown, dir: unknown) => {
+				await mkdir(String(dir), { recursive: true });
+				await writeFile(path.join(String(dir), 'new-checkout'), 'new');
+				return '';
+			});
+
+			await call();
+
+			await expect(
+				readFile(path.join(paths.repositoryFolder, 'new-checkout'), 'utf8'),
+			).resolves.toBe('new');
+			await expect(stat(path.join(paths.repositoryFolder, 'old-checkout'))).rejects.toMatchObject({
+				code: 'ENOENT',
+			});
+			await expect(stat(paths.nextRepositoryFolder)).rejects.toMatchObject({ code: 'ENOENT' });
+			await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
 		});
 
 		it('passes token credentials through the operation environment', async () => {

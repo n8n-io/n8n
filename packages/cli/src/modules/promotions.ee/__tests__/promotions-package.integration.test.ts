@@ -204,6 +204,7 @@ beforeEach(async () => {
 	const checkoutCleanup = new PromotionCheckoutCleanupService(
 		workingDirectory,
 		environmentRepository,
+		Container.get(PromotionEnvironmentLockService),
 		logger,
 		mock<Publisher>(),
 		instanceSettings,
@@ -759,6 +760,24 @@ describe('Promote and Apply', () => {
 			}
 		},
 	);
+
+	it('replaces the checkout through the trash when Connect runs again', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		const paths = workingDirectory.paths(environments.promote.id);
+		await writeFile(path.join(paths.repositoryFolder, 'previous-checkout'), 'old');
+
+		await service.clone(environments.promote.id, owner);
+
+		await expect(stat(path.join(paths.repositoryFolder, 'previous-checkout'))).rejects.toThrow();
+		await expect(stat(path.join(paths.repositoryFolder, '.git'))).resolves.toBeDefined();
+		await expect(workingDirectory.readDescriptor(environments.promote.id)).resolves.toMatchObject({
+			environmentId: environments.promote.id,
+			checkoutBranchName: 'main',
+		});
+		await expect(readdir(paths.trashFolder)).resolves.toEqual([]);
+	});
 
 	it('rejects a second Promote on the same environment with 423 while the first runs', async () => {
 		const remote = await createRemote();

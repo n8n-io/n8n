@@ -219,8 +219,12 @@ export class PromotionsService {
 	 * changes no branch, package, or instance content.
 	 */
 	async disconnect(environmentId: string): Promise<PromotionCheckoutPublicDto> {
-		const input = await this.resolver.resolveForEnvironment(environmentId);
-		await this.checkoutCleanup.resetCheckoutAfterDisconnect(input.environmentId);
+		const { environmentId: lockedId } = await this.resolver.resolveForEnvironment(environmentId);
+		// Resolve again inside the lock, so a Delete that ran in between makes this fail.
+		const input = await this.checkoutCleanup.disconnect(
+			lockedId,
+			async () => await this.resolver.resolveForEnvironment(environmentId),
+		);
 		return {
 			...this.checkoutIdentity(input),
 			branchName: checkoutBranchName(input.config),
