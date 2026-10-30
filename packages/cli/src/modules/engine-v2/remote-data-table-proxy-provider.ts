@@ -41,6 +41,7 @@ import type {
 
 type WireRow = Extract<DataTableCall, { kind: 'insertRows' }>['rows'][number];
 type WireFilter = Extract<DataTableCall, { kind: 'deleteRows' }>['options']['filter'];
+type WireListOptions = Extract<DataTableCall, { kind: 'getManyAndCount' }>['options'];
 
 /** A cell as JSON carries it. A `Date` becomes its ISO string, which the service accepts. */
 function toWireValue(value: DataTableColumnJsType): WireRow[string] {
@@ -56,6 +57,19 @@ function toWireFilter(filter: DataTableFilter): WireFilter {
 		type: filter.type,
 		filters: filter.filters.map((entry) => ({ ...entry, value: toWireValue(entry.value) })),
 	};
+}
+
+/**
+ * Keeps the filter keys the v1 proxy honours. v1 ignores any other key, and the
+ * control plane pins the project, so the wire does not carry them.
+ */
+function toWireListOptions(options: ListDataTableOptions): WireListOptions {
+	const { filter, ...rest } = options;
+	if (!filter) return rest;
+	const wireFilter: NonNullable<WireListOptions['filter']> = {};
+	if (filter.id !== undefined) wireFilter.id = filter.id;
+	if (filter.name !== undefined) wireFilter.name = filter.name;
+	return { ...rest, filter: wireFilter };
 }
 
 /** Sends one call for the node that owns the proxy, and returns the raw `data`. */
@@ -107,7 +121,7 @@ class RemoteDataTableAggregate implements IDataTableProjectAggregateService {
 		options: ListDataTableOptions,
 	): Promise<{ count: number; data: DataTable[] }> {
 		return await this.call(
-			{ kind: 'getManyAndCount', options },
+			{ kind: 'getManyAndCount', options: toWireListOptions(options) },
 			dataTableCallResultSchemas.getManyAndCount,
 		);
 	}

@@ -122,6 +122,22 @@ describe('RemoteDataTableProxyProvider', () => {
 			expect(result.data[0].createdAt).toEqual(new Date(when));
 		});
 
+		it('sends only the filter keys the control plane accepts, as v1 ignores the rest', async () => {
+			answerWith('project-1');
+			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
+			answerWith({ count: 0, data: [] });
+
+			await aggregate.getManyAndCount({
+				filter: { name: 'people', projectId: 'other-project', owner: 'nobody' },
+				take: 1,
+			});
+
+			expect(sentCall(1)).toEqual({
+				kind: 'getManyAndCount',
+				options: { filter: { name: 'people' }, take: 1 },
+			});
+		});
+
 		it('creates a table', async () => {
 			answerWith('project-1');
 			const aggregate = await provider.getDataTableAggregateProxy(workflow, node);
