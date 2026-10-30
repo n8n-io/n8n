@@ -28,6 +28,7 @@ import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
 import ChatSemanticSearchSettings from './ChatSemanticSearchSettings.vue';
 
 const i18n = useI18n();
+const CHAT_DOCS_URL = 'https://docs.n8n.io/advanced-ai/chat-hub/';
 const posthogStore = usePostHog();
 const isSemanticSearchEnabled = computed(() =>
 	posthogStore.isVariantEnabled(
@@ -136,6 +137,7 @@ onMounted(async () => {
 			<N8nEnterpriseReadinessBadge
 				v-if="settingsStore.isEnterprisePlan"
 				size="xsmall"
+				:docs-url="CHAT_DOCS_URL"
 				data-test-id="chat-hub-enterprise-readiness-badge"
 			/>
 		</div>
