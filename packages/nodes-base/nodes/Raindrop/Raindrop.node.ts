@@ -20,7 +20,7 @@ import {
 	userFields,
 	userOperations,
 } from './descriptions';
-import { raindropApiRequest } from './GenericFunctions';
+import { raindropApiRequest, raindropApiRequestAllItems } from './GenericFunctions';
 
 export class Raindrop implements INodeType {
 	description: INodeTypeDescription = {
@@ -165,13 +165,18 @@ export class Raindrop implements INodeType {
 
 						const collectionId = this.getNodeParameter('collectionId', i);
 						const endpoint = `/raindrops/${collectionId}`;
-						responseData = await raindropApiRequest.call(this, 'GET', endpoint, {}, {});
-						responseData = responseData.items;
 
-						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0);
-							responseData = responseData.slice(0, limit);
-						}
+						const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
+
+						responseData = await raindropApiRequestAllItems.call(
+							this,
+							'items',
+							'GET',
+							endpoint,
+							{},
+							{},
+							limit,
+						);
 					} else if (operation === 'update') {
 						// ----------------------------------
 						//         bookmark: update
@@ -266,7 +271,7 @@ export class Raindrop implements INodeType {
 						//        collection: getAll
 						// ----------------------------------
 
-						const returnAll = this.getNodeParameter('returnAll', 0);
+						const returnAll = this.getNodeParameter('returnAll', i);
 
 						const endpoint =
 							this.getNodeParameter('type', i) === 'parent'
@@ -277,7 +282,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0);
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					} else if (operation === 'update') {
@@ -406,7 +411,7 @@ export class Raindrop implements INodeType {
 						responseData = responseData.items;
 
 						if (!returnAll) {
-							const limit = this.getNodeParameter('limit', 0);
+							const limit = this.getNodeParameter('limit', i);
 							responseData = responseData.slice(0, limit);
 						}
 					}
