@@ -142,10 +142,9 @@ export class SystemAgentChatController {
 		@Param('agentId') agentId: string,
 		@Param('threadId') threadId: string,
 		@Body payload: RenameSystemAgentThreadDto,
-	): Promise<SystemAgentThreadSummary> {
-		return toThreadSummary(
-			await this.systemAgents.updateThread(agentId, req.user, threadId, { title: payload.title }),
-		);
+	) {
+		await this.systemAgents.updateThread(agentId, req.user, threadId, { title: payload.title });
+		return { success: true };
 	}
 
 	@Post('/:agentId/chat/resume', { usesTemplates: true })

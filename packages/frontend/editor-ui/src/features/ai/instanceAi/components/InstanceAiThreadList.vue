@@ -489,8 +489,7 @@ function handleThreadAction(action: string, itemId: string) {
 		</template>
 
 		<template #item-edit="{ item, ui }">
-			<!-- Keys stay in the input: on the menu, Space or Enter selects the row and letters jump between rows. -->
-			<div :class="[$style.renameContainer, ui.class]" @pointerdown.stop @click.stop @keydown.stop>
+			<div :class="[$style.renameContainer, ui.class]">
 				<input
 					:ref="setRenameInput"
 					v-model="editingTitle"

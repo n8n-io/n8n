@@ -1091,13 +1091,14 @@ export const renameSystemAgentThread = async (
 	agentId: string,
 	threadId: string,
 	title: string,
-): Promise<SystemAgentThreadSummary> =>
-	await makeRestApiRequest<SystemAgentThreadSummary>(
+): Promise<void> => {
+	await makeRestApiRequest(
 		context,
 		'PATCH',
 		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
 		{ title },
 	);
+};
 
 /** Deletes one of the user's own threads with a system agent. */
 export const deleteSystemAgentThread = async (

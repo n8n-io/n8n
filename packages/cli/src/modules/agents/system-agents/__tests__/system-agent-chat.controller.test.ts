@@ -348,13 +348,8 @@ describe('SystemAgentChatController', () => {
 	});
 
 	describe('renameThread', () => {
-		it('renames an owned thread and returns its summary', async () => {
+		it('renames an owned thread through the execution service', async () => {
 			const { controller, systemAgents } = setup();
-			systemAgents.updateThread.mockResolvedValue({
-				...thread,
-				title: 'Weekly digest',
-				updatedAt: new Date('2026-10-19T10:00:00.000Z'),
-			} as AgentExecutionThread);
 
 			const result = await controller.renameThread(
 				request({}),
@@ -367,12 +362,7 @@ describe('SystemAgentChatController', () => {
 			expect(systemAgents.updateThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1', {
 				title: 'Weekly digest',
 			});
-			expect(result).toEqual({
-				id: 'thread-1',
-				title: 'Weekly digest',
-				updatedAt: '2026-10-19T10:00:00.000Z',
-				projectId: 'project-1',
-			});
+			expect(result).toEqual({ success: true });
 		});
 
 		it('refuses to rename a thread the user does not own', async () => {
