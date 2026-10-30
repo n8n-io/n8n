@@ -7,8 +7,8 @@ import {
 	type INodeExecutionData,
 	type IPairedItemData,
 	NodeOperationError,
-	UserError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { Mock } from 'vitest';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
