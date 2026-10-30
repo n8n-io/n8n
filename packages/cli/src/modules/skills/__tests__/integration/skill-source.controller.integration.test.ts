@@ -129,6 +129,116 @@ describe('SkillSourceController', () => {
 	});
 
 	describe('discover', () => {
+		it('groups skills without changing their keys when a plugin is renamed', async () => {
+			const manifest = '.claude-plugin/marketplace.json';
+			const files = {
+				...FILES,
+				[manifest]: JSON.stringify({ plugins: [{ name: 'documents', source: './skills' }] }),
+			};
+			github.push('acme/skills', files);
+			const { data: discovery } = await discover(owner, { url: REPO, scope: 'instance' });
+			expect(discovery.skills.find((skill) => skill.name === 'pdf')?.group).toEqual({
+				id: `${manifest}#0`,
+				name: 'documents',
+			});
+			github.push('acme/skills', {
+				...files,
+				[manifest]: JSON.stringify({ plugins: [{ name: 'renamed', source: './skills' }] }),
+			});
+			const { data } = await connect(owner, {
+				url: REPO,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['pdf']),
+			});
+			expect(data.failed).toEqual([]);
+			expect(data.imported).toEqual([expect.objectContaining({ name: 'pdf' })]);
+		});
+
+		it('allows valid imports after a malformed manifest and ignores it for folder links', async () => {
+			github.push('acme/skills', { ...FILES, '.claude-plugin/marketplace.json': '{bad json' });
+			const { data } = await discover(owner, { url: REPO, scope: 'instance' });
+			expect(data.groupingWarnings).toEqual(['.claude-plugin/marketplace.json']);
+			expect(data.skills.every((skill) => skill.group === undefined)).toBe(true);
+			const { data: folder } = await discover(owner, {
+				url: `${REPO}/tree/main/skills/pdf`,
+				scope: 'instance',
+			});
+			expect(folder.groupingWarnings).toBeUndefined();
+			expect(folder.skills).toHaveLength(1);
+			const { data: imported } = await connect(owner, {
+				url: REPO,
+				scope: 'instance',
+				skillKeys: keysOf(data, ['pdf']),
+			});
+			expect(imported.imported).toHaveLength(1);
+		});
+
+		it('shows external marketplace entries even when there are no local skills', async () => {
+			github.push('acme/external', {
+				'.claude-plugin/marketplace.json': JSON.stringify({
+					plugins: [{ name: 'remote', source: { source: 'github', repo: 'acme/remote' } }],
+				}),
+			});
+			const { data } = await discover(owner, {
+				url: 'https://github.com/acme/external',
+				scope: 'instance',
+			});
+			expect(data.skills).toEqual([]);
+			expect(data.externalPlugins).toEqual([
+				{ name: 'remote', manifestPath: '.claude-plugin/marketplace.json' },
+			]);
+			expect(await countSources()).toBe(0);
+		});
+
+		it('imports a 1024-character description and blocks content over the limits', async () => {
+			github.push('acme/limits', {
+				'fits/SKILL.md': skillMd('fits', 'a'.repeat(1024)),
+				'description/SKILL.md': skillMd('description', 'a'.repeat(1025)),
+				'instructions/SKILL.md': skillMd('instructions', 'Description', 'a'.repeat(65_537)),
+				'reference/SKILL.md': skillMd('reference'),
+				'reference/references/large.md': 'a'.repeat(65_537),
+				'archive/SKILL.md': skillMd('archive'),
+				'archive/references/large.md': 'a'.repeat(1024 * 1024 + 1),
+				'total/SKILL.md': skillMd('total'),
+				...Object.fromEntries(
+					Array.from({ length: 5 }, (_, index) => [
+						`total/references/${index}.md`,
+						'a'.repeat(60_000),
+					]),
+				),
+				'count/SKILL.md': skillMd('count'),
+				...Object.fromEntries(
+					Array.from({ length: 21 }, (_, index) => [`count/references/${index}.md`, 'Text']),
+				),
+			});
+			const url = 'https://github.com/acme/limits';
+			const { data } = await discover(owner, { url, scope: 'instance' });
+			expect(data.skills.find((skill) => skill.name === 'fits')?.error).toBeNull();
+			expect(data.skills.filter((skill) => skill.name !== 'fits')).toHaveLength(6);
+			expect(
+				data.skills
+					.filter((skill) => skill.name !== 'fits')
+					.map((skill) => ({
+						location: skill.location,
+						reason: skill.error?.reason,
+					})),
+			).toEqual(
+				['archive', 'count', 'description', 'instructions', 'reference', 'total'].map(
+					(location) => ({ location, reason: 'over_limit' }),
+				),
+			);
+			const { data: imported } = await connect(owner, {
+				url,
+				scope: 'instance',
+				skillKeys: data.skills.map((skill) => skill.key),
+			});
+			expect(imported.imported).toEqual([expect.objectContaining({ name: 'fits' })]);
+			expect(imported.failed).toHaveLength(6);
+			expect(imported.failed.every((skill) => skill.reason === 'over_limit')).toBe(true);
+			const version = await findLatestSkillVersion(imported.imported[0].skillId);
+			expect(version?.description).toHaveLength(1024);
+		});
+
 		it('lists every skill with what the import keeps and leaves out', async () => {
 			const { data } = await discover(owner, { url: REPO, scope: 'instance' });
 

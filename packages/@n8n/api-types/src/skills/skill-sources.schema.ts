@@ -17,6 +17,7 @@ export const SKILL_SOURCE_REASONS = [
 	'too_deep',
 	'archive_too_large',
 	'parse_error',
+	'over_limit',
 	'name_taken',
 	'duplicate_source',
 ] as const;
@@ -68,6 +69,11 @@ export type SkillSourceDuplicate =
 	| { kind: 'blocked'; where: 'global' | 'scope'; sourceId: string | null }
 	| { kind: 'warning'; projects: Array<{ id: string; name: string }> };
 
+/** A display group. It does not change the identity or content of a skill. */
+export type SkillSourceGroup = { id: string; name: string };
+
+export type ExternalSkillPlugin = { name: string; manifestPath: string };
+
 /** One skill in the picker. */
 export type DiscoveredSkill = {
 	/** Opaque. Send it back in `skillKeys`. */
@@ -83,12 +89,17 @@ export type DiscoveredSkill = {
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;
 	webUrl: string;
+	group?: SkillSourceGroup;
 };
 
 export type SkillSourceDiscovery = {
 	source: SkillSourceSummary;
 	duplicate: SkillSourceDuplicate;
 	skills: DiscoveredSkill[];
+	/** Manifests that could not be read. The skills remain selectable. */
+	groupingWarnings?: string[];
+	/** Marketplace entries that require a separate connection. */
+	externalPlugins?: ExternalSkillPlugin[];
 	/** True when the source has more skills than n8n lists (`too_many_skills`). */
 	truncated: boolean;
 	/** Skills that n8n did not list, as they are deeper in the source than n8n looks (`too_deep`). */

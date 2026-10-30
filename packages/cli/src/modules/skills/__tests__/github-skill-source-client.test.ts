@@ -4,7 +4,6 @@ import nock from 'nock';
 
 import { FakeGitHub } from './test-utils/fake-github';
 import { describeSkillSourceClientContract } from './test-utils/skill-source-client.contract';
-import { SkillParseError } from '../errors/skill-parse.error';
 import { SkillSourceNotFoundError } from '../errors/skill-source-not-found.error';
 import { SkillSourceReadError } from '../errors/skill-source-read.error';
 import { SkillSourceUrlError } from '../errors/skill-source-url.error';
@@ -177,7 +176,19 @@ describe('GitHubSkillSourceClient', () => {
 		});
 	});
 
-	it('skips a reference over the size limit instead of importing it empty', async () => {
+	it('lists excluded nested skill and dependency files as skipped', async () => {
+		github.push('acme/skills', {
+			'pdf/SKILL.md': skillMd('pdf'),
+			'pdf/examples/inner/SKILL.md': skillMd('inner'),
+			'pdf/node_modules/tool/index.js': 'code',
+		});
+		const locator = await client.parseLocator('https://github.com/acme/skills');
+		const fetched = await client.fetchLatest(locator, { path: 'pdf' });
+		expect(fetched.content.files).toEqual([]);
+		expect(fetched.skippedFiles).toEqual(['examples/inner/SKILL.md', 'node_modules/tool/index.js']);
+	});
+
+	it('blocks a skill with a reference over the size limit', async () => {
 		github.push('acme/skills', {
 			'pdf/SKILL.md': skillMd('pdf'),
 			'pdf/references/small.md': '# Small\n',
@@ -185,10 +196,9 @@ describe('GitHubSkillSourceClient', () => {
 		});
 		const locator = await client.parseLocator('https://github.com/acme/skills');
 
-		const fetched = await client.fetchLatest(locator, { path: 'pdf' });
-
-		expect(fetched.content.files).toEqual([{ path: 'references/small.md', content: '# Small\n' }]);
-		expect(fetched.skippedFiles).toEqual(['references/huge.md']);
+		await expect(client.fetchLatest(locator, { path: 'pdf' })).rejects.toMatchObject({
+			reason: 'over_limit',
+		});
 	});
 
 	it('reads a SKILL.md of exactly 1 MB and refuses a larger one', async () => {
@@ -201,7 +211,9 @@ describe('GitHubSkillSourceClient', () => {
 		const fetched = await client.fetchLatest(locator, { path: 'fits' });
 
 		expect(fetched.content.name).toBe('fits');
-		await expect(client.fetchLatest(locator, { path: 'huge' })).rejects.toThrow(SkillParseError);
+		await expect(client.fetchLatest(locator, { path: 'huge' })).rejects.toMatchObject({
+			reason: 'over_limit',
+		});
 	});
 
 	it('reports skills deeper than it reads', async () => {

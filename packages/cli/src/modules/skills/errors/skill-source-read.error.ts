@@ -9,7 +9,7 @@ export class SkillSourceReadError extends OperationalError {
 	constructor(
 		readonly reason: Extract<
 			SkillSourceReason,
-			'rate_limited' | 'unreachable' | 'archive_too_large'
+			'rate_limited' | 'unreachable' | 'archive_too_large' | 'over_limit'
 		>,
 		message: string,
 		options: { cause?: unknown } = {},

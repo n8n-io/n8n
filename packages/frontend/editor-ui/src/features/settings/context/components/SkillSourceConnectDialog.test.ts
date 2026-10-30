@@ -410,6 +410,79 @@ describe('SkillSourceConnectDialog', () => {
 		expect(view.queryByTestId('skill-source-truncated')).not.toBeInTheDocument();
 	});
 
+	it('keeps valid skills selectable when plugin grouping fails', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({ groupingWarnings: ['.claude-plugin/marketplace.json'] }),
+		);
+		const view = render();
+		await pasteLink(view, 'https://github.com/acme/skills');
+		expect(await view.findByTestId('skill-source-grouping-warning')).toHaveTextContent(
+			"Skills couldn't be grouped by plugin",
+		);
+		expect(view.getByText('.claude-plugin/marketplace.json')).toBeInTheDocument();
+		expect(view.getByTestId('skill-source-add')).toBeEnabled();
+		await userEvent.click(view.getByTestId('skill-source-add'));
+		expect(skillsStore.connectSource).toHaveBeenCalledWith(
+			expect.objectContaining({ skillKeys: ['skills/brand-voice', 'skills/seo-check'] }),
+		);
+	});
+
+	it('groups skills by plugin and keeps ungrouped skills selectable', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({
+				skills: [
+					discovered({ group: { id: 'writing', name: 'Writing' } }),
+					discovered({ key: 'other', name: 'other' }),
+				],
+			}),
+		);
+		const view = render();
+		await pasteLink(view, 'https://github.com/acme/skills');
+		expect(await view.findByRole('heading', { name: 'Writing' })).toBeInTheDocument();
+		expect(view.getByRole('heading', { name: 'Other skills' })).toBeInTheDocument();
+		expect(
+			within(view.getByRole('region', { name: 'Writing' })).getByRole('checkbox'),
+		).toBeEnabled();
+		expect(view.queryByTestId('skill-source-grouping-warning')).not.toBeInTheDocument();
+	});
+
+	it('shows external-only entries without an import action', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({
+				skills: [],
+				externalPlugins: [{ name: 'remote', manifestPath: '.claude-plugin/marketplace.json' }],
+			}),
+		);
+		const view = render();
+		await pasteLink(view, 'https://github.com/acme/skills');
+		expect(await view.findByTestId('skill-source-external-plugins')).toHaveTextContent(
+			'In another repository, connect it separately',
+		);
+		expect(view.queryAllByRole('checkbox')).toHaveLength(0);
+		expect(view.getByTestId('skill-source-add')).toBeDisabled();
+	});
+
+	it('blocks only skills that exceed the content limits', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({
+				skills: [
+					discovered(),
+					discovered({
+						key: 'large',
+						name: 'large',
+						error: { reason: 'over_limit', message: 'Over limit' },
+					}),
+				],
+			}),
+		);
+		const view = render();
+		await pasteLink(view, 'https://github.com/acme/skills');
+		const blocked = await view.findByTestId('skill-source-skill-large');
+		expect(within(blocked).getByRole('checkbox')).toBeDisabled();
+		expect(blocked).toHaveTextContent('This skill exceeds the import limits');
+		expect(view.getByTestId('skill-source-add')).toHaveTextContent('Add 1');
+	});
+
 	it('names the files the import skips for each skill', async () => {
 		skillsStore.discoverSource.mockResolvedValue(
 			discovery({
@@ -437,12 +510,13 @@ describe('SkillSourceConnectDialog', () => {
 
 		const one = await view.findByTestId('skill-source-skill-skills/brand-voice');
 		expect(within(one).getByTestId('skill-source-skill-skipped')).toHaveTextContent(
-			'Skips 1 file: scripts/run.py',
+			'1 file skipped',
 		);
 		const many = view.getByTestId('skill-source-skill-skills/seo-check');
 		expect(within(many).getByTestId('skill-source-skill-skipped')).toHaveTextContent(
-			'Skips 5 files: scripts/run.py, assets/logo.png, bin/tool and 2 more',
+			'5 files skipped',
 		);
+		expect(within(many).getByText('data/b.bin')).toBeInTheDocument();
 		const none = view.getByTestId('skill-source-skill-skills/plain');
 		expect(within(none).queryByTestId('skill-source-skill-skipped')).not.toBeInTheDocument();
 	});

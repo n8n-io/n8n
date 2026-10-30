@@ -197,23 +197,25 @@ function nameTakenReason(skill: DiscoveredSkill): string {
 	});
 }
 
-/** How many skipped paths the list names before it only counts the rest. */
-const SKIPPED_FILES_SHOWN = 3;
-
-function skippedFilesText(skill: DiscoveredSkill): string {
-	const count = skill.skippedFiles.length;
-	const shown = skill.skippedFiles.slice(0, SKIPPED_FILES_SHOWN).join(', ');
-	const files =
-		count > SKIPPED_FILES_SHOWN
-			? i18n.baseText('settings.context.skills.connect.skippedFiles.more', {
-					interpolate: { files: shown, count: count - SKIPPED_FILES_SHOWN },
-				})
-			: shown;
-	return i18n.baseText('settings.context.skills.connect.skippedFiles', {
-		interpolate: { count, files },
-		adjustToNumber: count,
-	});
-}
+const skillGroups = computed(() => {
+	const groups = new Map<string, { id: string; name: string; skills: DiscoveredSkill[] }>();
+	const skills = discovery.value?.skills ?? [];
+	for (const skill of skills) {
+		const id = skill.group?.id ?? '';
+		const group = groups.get(id) ?? {
+			id,
+			name:
+				skill.group?.name ??
+				(skills.some((item) => item.group)
+					? i18n.baseText('settings.context.skills.connect.ungrouped')
+					: ''),
+			skills: [],
+		};
+		group.skills.push(skill);
+		groups.set(id, group);
+	}
+	return [...groups.values()];
+});
 
 const addLabel = computed(() =>
 	selected.value.length > 0
@@ -346,59 +348,118 @@ const title = computed(() =>
 			<N8nCallout v-if="duplicateMessage" theme="warning" data-test-id="skill-source-duplicate">
 				{{ duplicateMessage }}
 			</N8nCallout>
-			<ul :class="$style.list" data-test-id="skill-source-skills">
-				<li
-					v-for="item in discovery.skills"
-					:key="item.key"
-					:class="[$style.item, !isSelectable(item) && $style.disabled]"
-					:data-test-id="`skill-source-skill-${item.key}`"
-				>
-					<N8nCheckbox
-						:model-value="isSelectable(item) && selected.includes(item.key)"
-						:disabled="!isSelectable(item)"
-						:aria-label="item.name ?? item.location"
-						data-test-id="skill-source-skill-checkbox"
-						@update:model-value="toggle(item.key, $event)"
-					/>
-					<div :class="$style.itemText">
-						<N8nText bold>{{ item.name ?? item.location }}</N8nText>
-						<N8nText v-if="item.description" size="small" color="text-light">
-							{{ item.description }}
-						</N8nText>
-						<N8nText
-							v-if="item.skippedFiles.length > 0"
-							size="small"
-							color="text-light"
-							data-test-id="skill-source-skill-skipped"
+			<N8nCallout
+				v-if="discovery.groupingWarnings?.length"
+				theme="warning"
+				data-test-id="skill-source-grouping-warning"
+			>
+				<N8nText bold>{{
+					i18n.baseText('settings.context.skills.connect.groupingWarning.title')
+				}}</N8nText>
+				<p>{{ i18n.baseText('settings.context.skills.connect.groupingWarning.description') }}</p>
+				<details :class="$style.details">
+					<summary>{{ i18n.baseText('settings.context.skills.connect.viewDetails') }}</summary>
+					<p>{{ i18n.baseText('settings.context.skills.connect.groupingWarning.details') }}</p>
+					<ul>
+						<li v-for="path in discovery.groupingWarnings" :key="path">{{ path }}</li>
+					</ul>
+				</details>
+			</N8nCallout>
+			<div :class="$style.list" data-test-id="skill-source-skills">
+				<section v-for="group in skillGroups" :key="group.id" :aria-label="group.name || undefined">
+					<N8nText v-if="group.name" tag="h3" size="small" bold :class="$style.groupName">{{
+						group.name
+					}}</N8nText>
+					<ul :class="$style.groupItems">
+						<li
+							v-for="item in group.skills"
+							:key="item.key"
+							:class="[$style.item, !isSelectable(item) && $style.disabled]"
+							:data-test-id="`skill-source-skill-${item.key}`"
 						>
-							{{ skippedFilesText(item) }}
-						</N8nText>
-						<N8nText
-							v-if="item.nameTaken"
-							size="small"
-							color="text-light"
-							data-test-id="skill-source-skill-reason"
-						>
-							{{ nameTakenReason(item) }}
-						</N8nText>
-						<N8nText
-							v-else-if="item.error"
-							size="small"
-							color="danger"
-							data-test-id="skill-source-skill-reason"
-						>
-							{{ reasonText(item.error.reason) }}
-						</N8nText>
-					</div>
-					<N8nBadge
-						v-if="item.nameTaken"
-						variant="subtle"
-						data-test-id="skill-source-skill-name-taken"
+							<N8nCheckbox
+								:model-value="isSelectable(item) && selected.includes(item.key)"
+								:disabled="!isSelectable(item)"
+								:aria-label="item.name ?? item.location"
+								data-test-id="skill-source-skill-checkbox"
+								@update:model-value="toggle(item.key, $event)"
+							/>
+							<div :class="$style.itemText">
+								<N8nText bold>{{ item.name ?? item.location }}</N8nText>
+								<N8nText v-if="item.description" size="small" color="text-light">
+									{{ item.description }}
+								</N8nText>
+								<N8nText size="small" color="text-light" :class="$style.location">{{
+									item.location
+								}}</N8nText>
+								<details
+									v-if="item.skippedFiles.length > 0"
+									:class="$style.details"
+									data-test-id="skill-source-skill-skipped"
+								>
+									<summary>
+										{{
+											i18n.baseText('settings.context.skills.connect.skippedFiles.count', {
+												interpolate: { count: item.skippedFiles.length },
+												adjustToNumber: item.skippedFiles.length,
+											})
+										}}
+									</summary>
+									<ul>
+										<li v-for="path in item.skippedFiles" :key="path">{{ path }}</li>
+									</ul>
+									<p>{{ i18n.baseText('settings.context.skills.connect.skippedFiles.hint') }}</p>
+								</details>
+								<N8nText
+									v-if="item.nameTaken"
+									size="small"
+									color="text-light"
+									data-test-id="skill-source-skill-reason"
+								>
+									{{ nameTakenReason(item) }}
+								</N8nText>
+								<N8nText
+									v-else-if="item.error"
+									size="small"
+									color="danger"
+									data-test-id="skill-source-skill-reason"
+								>
+									{{ reasonText(item.error.reason) }}
+								</N8nText>
+							</div>
+							<N8nBadge
+								v-if="item.nameTaken"
+								variant="subtle"
+								data-test-id="skill-source-skill-name-taken"
+							>
+								{{ i18n.baseText('settings.context.skills.connect.nameTaken.tag') }}
+							</N8nBadge>
+							<N8nBadge v-if="item.error" variant="subtle">{{
+								i18n.baseText('settings.context.skills.connect.blocked')
+							}}</N8nBadge>
+						</li>
+					</ul>
+				</section>
+			</div>
+			<N8nText v-if="discovery.skills.length === 0" size="small" color="text-light">{{
+				i18n.baseText('settings.context.skills.connect.noLocalSkills')
+			}}</N8nText>
+			<div v-if="discovery.externalPlugins?.length" data-test-id="skill-source-external-plugins">
+				<N8nText bold size="small">{{
+					i18n.baseText('settings.context.skills.connect.externalPlugins')
+				}}</N8nText>
+				<ul :class="$style.externalPlugins">
+					<li
+						v-for="(plugin, index) in discovery.externalPlugins"
+						:key="`${plugin.manifestPath}:${index}`"
 					>
-						{{ i18n.baseText('settings.context.skills.connect.nameTaken.tag') }}
-					</N8nBadge>
-				</li>
-			</ul>
+						<N8nText bold size="small">{{ plugin.name }}</N8nText>
+						<N8nText size="small" color="text-light">{{
+							i18n.baseText('settings.context.skills.connect.externalPluginHint')
+						}}</N8nText>
+					</li>
+				</ul>
+			</div>
 			<N8nText
 				v-if="discovery.truncated"
 				size="small"
@@ -504,6 +565,46 @@ const title = computed(() =>
 	list-style: none;
 	border: var(--border);
 	border-radius: var(--radius);
+}
+
+.groupItems {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+}
+
+.groupName {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	margin: 0;
+	border-bottom: var(--border);
+}
+
+.details {
+	font-size: var(--font-size--2xs);
+	overflow-wrap: anywhere;
+
+	summary {
+		cursor: pointer;
+		text-decoration: underline;
+	}
+	ul {
+		padding-left: var(--spacing--sm);
+	}
+}
+
+.location {
+	overflow-wrap: anywhere;
+}
+
+.externalPlugins {
+	list-style: none;
+	padding: 0;
+	li {
+		display: flex;
+		flex-direction: column;
+		gap: var(--spacing--5xs);
+		margin-top: var(--spacing--xs);
+	}
 }
 
 .item {

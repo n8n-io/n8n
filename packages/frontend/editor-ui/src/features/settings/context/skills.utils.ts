@@ -105,6 +105,7 @@ const SKILL_SOURCE_REASON_KEYS = {
 	too_deep: 'settings.context.skills.connect.error.tooDeep',
 	archive_too_large: 'settings.context.skills.connect.error.archiveTooLarge',
 	parse_error: 'settings.context.skills.connect.error.parseError',
+	over_limit: 'settings.context.skills.connect.error.overLimit',
 	name_taken: 'settings.context.skills.connect.error.nameTaken',
 	duplicate_source: 'settings.context.skills.connect.error.duplicateSource',
 } satisfies Record<SkillSourceReason, BaseTextKey>;
@@ -114,6 +115,7 @@ const FAILED_SKILL_REASON_KEYS: Partial<Record<SkillSourceReason, BaseTextKey>> 
 	name_taken: 'settings.context.skills.connect.failed.reason.nameTaken',
 	not_found: 'settings.context.skills.connect.failed.reason.notFound',
 	parse_error: 'settings.context.skills.connect.failed.reason.parseError',
+	over_limit: 'settings.context.skills.connect.failed.reason.overLimit',
 	rate_limited: 'settings.context.skills.connect.failed.reason.rateLimited',
 	unreachable: 'settings.context.skills.connect.failed.reason.unreachable',
 };
