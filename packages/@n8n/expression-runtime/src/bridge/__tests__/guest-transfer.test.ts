@@ -100,4 +100,73 @@ describe('prepareForGuest', () => {
 		expect(result.pending).toBeUndefined();
 		expect(result.code).toBe(1);
 	});
+
+	it.each(['meta first', 'error first'])(
+		'keeps a shared parent separate inside and outside an Error (%s)',
+		(order) => {
+			class RequestData {
+				id = 1;
+			}
+			const meta = { request: new RequestData() };
+			const error = Object.assign(new Error('x'), { meta });
+			const value = order === 'meta first' ? { meta, error } : { error, meta };
+
+			const result = roundTrip(value) as {
+				meta: unknown;
+				error: Error & { meta: unknown };
+			};
+
+			expect(result.meta).toStrictEqual({ request: { id: 1 } });
+			expect(result.error.meta).toStrictEqual({ request: undefined });
+		},
+	);
+
+	it('encodes a shared parent once per mode across two Errors', () => {
+		class RequestData {
+			id = 1;
+		}
+		const meta = { request: new RequestData() };
+		const first = Object.assign(new Error('first'), { meta });
+		const second = Object.assign(new Error('second'), { meta });
+		type PreparedError = { __props: { meta: unknown } };
+
+		const prepared = prepareForGuest({ left: meta, right: meta, first, second }) as {
+			__value: { left: unknown; right: unknown; first: PreparedError; second: PreparedError };
+		};
+		const result = prepared.__value;
+
+		expect(result.left).toBe(result.right);
+		expect(result.first.__props.meta).toBe(result.second.__props.meta);
+		expect(result.first.__props.meta).not.toBe(result.left);
+		expect(result.first.__props.meta).toStrictEqual({ request: undefined });
+	});
+
+	it('reuses the filtered parent in a nested Error', () => {
+		class RequestData {
+			id = 1;
+		}
+		const meta = { request: new RequestData() };
+		const inner = Object.assign(new Error('inner'), { meta });
+		const outer = Object.assign(new Error('outer', { cause: inner }), { meta });
+
+		const prepared = prepareForGuest(outer) as {
+			__value: { __props: { meta: unknown }; __cause: { __props: { meta: unknown } } };
+		};
+		const result = prepared.__value;
+
+		expect(result.__props.meta).toStrictEqual({ request: undefined });
+		expect(result.__cause.__props.meta).toBe(result.__props.meta);
+	});
+
+	it('cuts a reference from an Error back to its containing item', () => {
+		const item = { id: 'abc', error: new Error('x') };
+		Object.assign(item.error, { item });
+
+		const result = roundTrip(item) as { id: string; error: Error & { item: unknown } };
+
+		expect(result.id).toBe('abc');
+		expect(result.error.message).toBe('x');
+		expect(Object.hasOwn(result.error, 'item')).toBe(true);
+		expect(result.error.item).toBeUndefined();
+	});
 });

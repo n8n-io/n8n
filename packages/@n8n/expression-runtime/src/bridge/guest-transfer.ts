@@ -6,16 +6,11 @@ import {
 	encodeOnce,
 	isPlainObject,
 	isStructuredCloneBuiltin,
-	newObjectWalk,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_FRAMING_KEYS,
 	TRANSFER_TYPE_KEY,
 	TRANSFER_VALUE_KEY,
 } from '../runtime/transfer';
-
-interface Walk extends ObjectWalk {
-	insideError: boolean;
-}
 
 function isObject(value: unknown): value is object {
 	return typeof value === 'object' && value !== null;
@@ -56,51 +51,72 @@ function childHoldsError(value: object, seen: Set<object>): boolean {
 }
 
 /**
- * User data can hold the same keys as our framing. Such an object is escaped,
- * so the guest reads the object itself as data but still walks what is inside it.
+ * Each mode needs its own cache because Error contents use different filtering.
+ * Both modes share the active objects to cut cycles through an Error.
  */
-function encodeRecord(object: object, walk: Walk): unknown {
-	const result: Record<string, unknown> = {};
-	const entries = Object.entries(object).filter(([, value]) => typeof value !== 'function');
-	entries.forEach(([key, value]) => defineOwnValue(result, key, encodeForGuest(value, walk)));
-	return entries.some(([key]) => TRANSFER_FRAMING_KEYS.includes(key))
-		? { [TRANSFER_ESCAPED_KEY]: true, [TRANSFER_VALUE_KEY]: result }
-		: result;
-}
+class GuestEncoder {
+	private readonly walk: ObjectWalk;
 
-function encodeObject(value: object, walk: Walk): unknown {
-	if (value instanceof Error) {
-		const errorWalk = { ...walk, insideError: true };
-		return errorToSentinel(value, (child) => encodeForGuest(child, errorWalk));
-	}
-	if (Array.isArray(value)) {
-		return value.map((item: unknown) => encodeForGuest(item, walk));
-	}
-	return encodeRecord(value, walk);
-}
+	private errorEncoder?: GuestEncoder;
 
-/**
- * Inside an Error, a class instance or a Promise gives undefined. Such an
- * instance can be a large host object, such as the request of an HTTP client
- * error. Structured clone cannot copy a Promise.
- */
-function encodeUnwalked(value: object, walk: Walk): unknown {
-	const cloneable = isStructuredCloneBuiltin(value) && !(value instanceof Promise);
-	return walk.insideError && !cloneable ? undefined : value;
-}
+	constructor(
+		private readonly insideError = false,
+		open = new Set<object>(),
+	) {
+		this.walk = { done: new Map(), open };
+	}
 
-/**
- * Copy a value into a form both bridges can send. A function gives undefined,
- * and so does a reference back to an object the walk is inside.
- */
-function encodeForGuest(value: unknown, walk: Walk): unknown {
-	if (!isObject(value)) {
-		return typeof value === 'function' ? undefined : value;
+	/**
+	 * Copy a value into a form both bridges can send. A function gives undefined,
+	 * and so does a reference back to an object the walk is inside.
+	 */
+	encode(value: unknown): unknown {
+		if (!isObject(value)) {
+			return typeof value === 'function' ? undefined : value;
+		}
+		if (!isWalked(value)) {
+			return this.encodeUnwalked(value);
+		}
+		return encodeOnce(value, this.walk, (object) => this.encodeObject(object));
 	}
-	if (!isWalked(value)) {
-		return encodeUnwalked(value, walk);
+
+	private inError(): GuestEncoder {
+		return this.insideError ? this : (this.errorEncoder ??= new GuestEncoder(true, this.walk.open));
 	}
-	return encodeOnce(value, walk, (object) => encodeObject(object, walk));
+
+	private encodeObject(value: object): unknown {
+		if (value instanceof Error) {
+			const encoder = this.inError();
+			return errorToSentinel(value, (child) => encoder.encode(child));
+		}
+		if (Array.isArray(value)) {
+			return value.map((item: unknown) => this.encode(item));
+		}
+		return this.encodeRecord(value);
+	}
+
+	/**
+	 * User data can hold the same keys as our framing. Such an object is escaped,
+	 * so the guest reads the object itself as data but still walks what is inside it.
+	 */
+	private encodeRecord(object: object): unknown {
+		const result: Record<string, unknown> = {};
+		const entries = Object.entries(object).filter(([, value]) => typeof value !== 'function');
+		entries.forEach(([key, value]) => defineOwnValue(result, key, this.encode(value)));
+		return entries.some(([key]) => TRANSFER_FRAMING_KEYS.includes(key))
+			? { [TRANSFER_ESCAPED_KEY]: true, [TRANSFER_VALUE_KEY]: result }
+			: result;
+	}
+
+	/**
+	 * Inside an Error, a class instance or a Promise gives undefined. Such an
+	 * instance can be a large host object, such as the request of an HTTP client
+	 * error. Structured clone cannot copy a Promise.
+	 */
+	private encodeUnwalked(value: object): unknown {
+		const cloneable = isStructuredCloneBuiltin(value) && !(value instanceof Promise);
+		return this.insideError && !cloneable ? undefined : value;
+	}
 }
 
 function holdsTypeKey(value: unknown): boolean {
@@ -119,7 +135,7 @@ export function prepareForGuest(value: unknown): unknown {
 	if (holdsTypeKey(value) || holdsError(value, new Set<object>())) {
 		return {
 			[TRANSFER_TYPE_KEY]: HOST_VALUE_TYPE,
-			[TRANSFER_VALUE_KEY]: encodeForGuest(value, { ...newObjectWalk(), insideError: false }),
+			[TRANSFER_VALUE_KEY]: new GuestEncoder().encode(value),
 		};
 	}
 	return value;
