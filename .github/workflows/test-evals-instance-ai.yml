@@ -526,9 +526,13 @@ jobs:
               -H "Content-Type: application/json" \
               -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' \
               -c "/tmp/cookies-$port.txt" -o /dev/null
-            cfg=$(curl -sf -b "/tmp/cookies-$port.txt" \
+            # Branches older than the move of the settings routes serve them
+            # under /rest/instance-ai. Remove this fallback when those branches are gone.
+            settings=$(curl -sf -b "/tmp/cookies-$port.txt" \
               "http://localhost:$port/rest/assistant/settings" \
-              | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
+              || curl -sf -b "/tmp/cookies-$port.txt" \
+                "http://localhost:$port/rest/instance-ai/settings")
+            cfg=$(echo "$settings" | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
             if [ "$cfg" != "true $SANDBOX_PROVIDER" ]; then
               echo "::error::lane $lane (port $port): expected 'true $SANDBOX_PROVIDER', got '$cfg'"
               bad=$((bad+1))
