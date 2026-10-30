@@ -168,7 +168,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [workflow_builder_session](workflow_builder_session.md) | 9 |  | table |
 | [workflow_dependency](workflow_dependency.md) | 9 |  | table |
 | [workflow_entity](workflow_entity.md) | 20 |  | table |
-| [workflow_history](workflow_history.md) | 11 |  | table |
+| [workflow_history](workflow_history.md) | 12 |  | table |
 | [workflow_publication_outbox](workflow_publication_outbox.md) | 8 |  | table |
 | [workflow_publication_retry_state](workflow_publication_retry_state.md) | 4 |  | table |
 | [workflow_publication_trigger_status](workflow_publication_trigger_status.md) | 8 |  | table |
@@ -2129,6 +2129,7 @@ erDiagram
   varchar_128_ name
   TEXT nodeGroups
   TEXT nodes
+  JSON settings
   datetime_3_ updatedAt
   varchar_36_ versionId PK
   varchar_36_ workflowId FK
