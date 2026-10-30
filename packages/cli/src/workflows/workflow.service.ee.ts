@@ -102,11 +102,7 @@ type CredentialReferences = {
 export type CredentialGuardOptions = {
 	/** Allow content loaded at runtime only for users who can use every credential. */
 	allowUninspectableSource?: boolean;
-	/**
-	 * Fail the save when a read-only node has other edits than name, position and
-	 * disabled state. A caller that cannot see which nodes are read only would lose
-	 * those edits to the restore without notice.
-	 */
+	/** Fail the save when a read-only node has other edits to non-editable fields. */
 	rejectReadOnlyNodeEdits?: boolean;
 };
 
@@ -488,10 +484,8 @@ export class EnterpriseWorkflowService {
 				throw this.inaccessibleCredentialsError(node);
 			}
 
-			// Reject changes instead of silently discarding them when we restore the stored
-			// node. The editor allows these source settings to be edited, and a Public API
-			// caller cannot see that a node is read only.
 			const mustMatchStoredNode = blockedBySource || options.rejectReadOnlyNodeEdits;
+
 			// An absent stored-only field means the caller did not send it, so it is unchanged.
 			const sentStoredOnlyFieldChanged = STORED_ONLY_NODE_FIELDS.some(
 				(field) => node[field] !== undefined && !isEqual(node[field], previousNode[field]),
@@ -500,8 +494,12 @@ export class EnterpriseWorkflowService {
 				this.getNodeDefinition(node),
 				this.getNodeDefinition(previousNode),
 			);
+
+			// Reject changes instead of silently discarding them when we restore the stored node.
 			if (mustMatchStoredNode && (sentStoredOnlyFieldChanged || definitionChanged)) {
-				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
+				if (blockedBySource) {
+					throw new UninspectableSubworkflowSourceError(node);
+				}
 				throw this.inaccessibleCredentialsError(node);
 			}
 
