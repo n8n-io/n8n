@@ -8,10 +8,9 @@ import { InsightsDateFilterDto, ListInsightsWorkflowQueryDto } from '@n8n/api-ty
 import { AuthenticatedRequest } from '@n8n/db';
 import { Get, GlobalScope, Licensed, Query, RestController } from '@n8n/decorators';
 import { DateTime } from 'luxon';
-import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError, ForbiddenError, InternalServerError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, InternalServerError, UserError } from '@n8n/errors';
 
 import { InsightsService } from './insights.service';
 

@@ -23,6 +23,7 @@
   ],
   "dependencies": {
     "@n8n/engine": "workspace:*",
+    "@n8n/errors": "workspace:*",
     "n8n-core": "workspace:*",
     "n8n-workflow": "workspace:*"
   },

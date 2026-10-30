@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { DEFAULT_SHUTDOWN_PRIORITY } from './constants';
 import { ShutdownMetadata } from './shutdown-metadata';

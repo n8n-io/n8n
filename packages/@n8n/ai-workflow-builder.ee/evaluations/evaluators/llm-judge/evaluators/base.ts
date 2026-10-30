@@ -3,7 +3,7 @@ import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import type { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type { z } from 'zod';
 
 import type { EvaluationInput } from '../evaluation';
