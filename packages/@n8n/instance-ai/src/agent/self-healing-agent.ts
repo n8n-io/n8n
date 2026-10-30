@@ -34,6 +34,8 @@ export interface CreateSelfHealingAgentOptions {
 	abortSignal?: AbortSignal;
 	thinkingEnabled?: boolean;
 	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }
 
 const SOURCE_GUIDANCE =
@@ -132,9 +134,11 @@ export async function createSelfHealingAgent(
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
 	if (options.thinkingEnabled !== false) applyAgentThinking(agent, modelId);
 
+	const functionId = 'instance-ai.self-healing';
+	if (options.requestLabels) agent.functionId(functionId);
 	const telemetry = tracing?.getTelemetry?.({
 		agentRole: 'self-healing',
-		functionId: 'instance-ai.self-healing',
+		functionId,
 		executionMode: 'background',
 		metadata: modelIdTraceMetadata(modelId),
 	});

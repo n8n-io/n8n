@@ -3435,7 +3435,9 @@ describe('AgentChatPanel', () => {
 			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 			expect(chatInput.props('showAttach')).toBe(true);
-			expect(chatInput.props('acceptedMimeTypes')).toBe('image/*,application/pdf');
+			expect(chatInput.props('acceptedMimeTypes')).toBe(
+				'image/png,image/jpeg,image/gif,image/webp,application/pdf',
+			);
 		});
 
 		it('hides the attach button when every family in the prop is false', () => {
@@ -3505,7 +3507,9 @@ describe('AgentChatPanel', () => {
 			expect(input.props('placeholder')).toBe('Message Agent…');
 			expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
 			expect(input.props('showAttach')).toBe(true);
-			expect(input.props('acceptedMimeTypes')).toBe('image/*,application/pdf');
+			expect(input.props('acceptedMimeTypes')).toBe(
+				'image/png,image/jpeg,image/gif,image/webp,application/pdf',
+			);
 		});
 
 		describe('slots', () => {

@@ -40,7 +40,17 @@ import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
 import assert from 'node:assert';
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+	cp,
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	rename,
+	rm,
+	stat,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
@@ -106,6 +116,9 @@ type TestRemote = {
 	git: SimpleGit;
 };
 
+const REMOTE_BARE_DIR = 'remote.git';
+const REMOTE_WORKING_DIR = 'remote-working';
+
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
 	endpointGroups: ['publicApi'],
@@ -124,6 +137,7 @@ let projectService: ProjectService;
 let packagesService: N8nPackagesService;
 let owner: User;
 let testRoot: string;
+let remoteTemplateRoot: string;
 let service: PromotionsService;
 let workingDirectory: PromotionWorkingDirectoryService;
 
@@ -218,9 +232,12 @@ afterEach(async () => {
 	await rm(testRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
 });
 
-async function createRemote(): Promise<TestRemote> {
-	const bareDir = path.join(testRoot, 'remote.git');
-	const workingDir = path.join(testRoot, 'remote-working');
+// Most tests need the same one-commit remote. Build it once and copy it per test:
+// a copy is much faster than the git processes that build it.
+beforeAll(async () => {
+	remoteTemplateRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-remote-template-'));
+	const bareDir = path.join(remoteTemplateRoot, REMOTE_BARE_DIR);
+	const workingDir = path.join(remoteTemplateRoot, REMOTE_WORKING_DIR);
 	await simpleGit().raw(['init', '--bare', bareDir]);
 	await simpleGit().raw(['init', '--initial-branch=main', workingDir]);
 
@@ -230,10 +247,22 @@ async function createRemote(): Promise<TestRemote> {
 	await writeFile(path.join(workingDir, 'README.md'), '# n8n promotions test\n');
 	await git.add(['README.md']);
 	await git.commit('Initial commit');
-	await git.raw(['remote', 'add', 'origin', bareDir]);
+	// A relative URL keeps the copy pointed at its own bare repository.
+	await git.raw(['remote', 'add', 'origin', `../${REMOTE_BARE_DIR}`]);
 	await git.raw(['push', '--set-upstream', 'origin', 'main']);
+});
 
-	return { bareDir, workingDir, git };
+afterAll(async () => {
+	await rm(remoteTemplateRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+});
+
+async function createRemote(): Promise<TestRemote> {
+	const bareDir = path.join(testRoot, REMOTE_BARE_DIR);
+	const workingDir = path.join(testRoot, REMOTE_WORKING_DIR);
+	await cp(path.join(remoteTemplateRoot, REMOTE_BARE_DIR), bareDir, { recursive: true });
+	await cp(path.join(remoteTemplateRoot, REMOTE_WORKING_DIR), workingDir, { recursive: true });
+
+	return { bareDir, workingDir, git: simpleGit(workingDir) };
 }
 
 /**
@@ -1915,6 +1944,77 @@ describe('Apply a project selection', () => {
 			expect(await listApplyChanges(project.id)).toEqual([]);
 		},
 	);
+});
+
+describe('Apply leaves publish state to the target', () => {
+	// The source published all three workflows. The target published `live`, left `draft`
+	// unpublished, and has no `added` yet.
+	const seedTarget = async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		await service.clone(environments.apply.id, owner);
+		const project = await createTeamProject('Orders', owner);
+		const repository = Container.get(WorkflowRepository);
+		const live = await createActiveWorkflow({ name: 'Live' }, project);
+		const draft = await createActiveWorkflow({ name: 'Draft' }, project);
+		const added = await createActiveWorkflow({ name: 'Added' }, project);
+		await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Export',
+		});
+
+		await repository.update(live.id, { name: 'Live (target)' });
+		await repository.update(draft.id, { name: 'Draft (target)', activeVersionId: null });
+		await Container.get(WorkflowPublicationTriggerStatusRepository).delete({
+			workflowId: added.id,
+		});
+		await Container.get(WorkflowPublishedVersionRepository).delete({ workflowId: added.id });
+		await repository.update(added.id, { activeVersionId: null });
+		await repository.delete(added.id);
+		return { environments, project, live, draft, added };
+	};
+
+	const expectTargetStateKept = async (
+		{ live, draft, added }: Awaited<ReturnType<typeof seedTarget>>,
+		counts: Extract<ApplyPackageResultDto, { status: 'applied' }>['counts'],
+	) => {
+		expect(counts.workflows).toMatchObject({ created: 1, updated: 2 });
+		expect(counts.workflows.publishing).toMatchObject({
+			published: 0,
+			unpublished: 0,
+			blocked: 0,
+			failed: 0,
+		});
+		const repository = Container.get(WorkflowRepository);
+		const applied = async (id: string) => await repository.findOneByOrFail({ id });
+		expect(await applied(live.id)).toMatchObject({
+			name: 'Live',
+			activeVersionId: live.activeVersionId,
+		});
+		expect(await applied(draft.id)).toMatchObject({ name: 'Draft', activeVersionId: null });
+		expect(await applied(added.id)).toMatchObject({ name: 'Added', activeVersionId: null });
+	};
+
+	it('keeps the target state of each workflow although the source published all of them', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.apply(seeded.environments.apply.id, owner);
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
+	});
+
+	it('keeps the target state of each selected workflow in a project apply', async () => {
+		const seeded = await seedTarget();
+
+		const result = await service.applyProjectSelection(seeded.project.id, owner, {
+			workflowIds: [seeded.live.id, seeded.draft.id, seeded.added.id],
+		});
+
+		assert(result.status === 'applied', JSON.stringify(result));
+		await expectTargetStateKept(seeded, result.counts);
+	});
 });
 
 describe('Apply moves and renames within a project', () => {

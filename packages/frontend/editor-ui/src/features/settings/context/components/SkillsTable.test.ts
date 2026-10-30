@@ -38,6 +38,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		latestVersion: 1,
 		availableToAssistant: false,
 		usedByAgents: 0,
+		availableToMCP: false,
 		canEdit: true,
 		canDelete: true,
 		canStopSyncing: false,
@@ -49,9 +50,9 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 
 const renderTable = createComponentRenderer(SkillsTable);
 
-function render(skills: SkillListItem[]) {
+function render(skills: SkillListItem[], showMcpAvailability = false) {
 	return renderTable({
-		props: { skills, itemsLength: skills.length, loading: false },
+		props: { skills, itemsLength: skills.length, loading: false, showMcpAvailability },
 	});
 }
 
@@ -119,7 +120,7 @@ describe('SkillsTable', () => {
 		expect(getByTestId('skill-scope-badge')).toHaveTextContent(label);
 	});
 
-	it('shows the creator with the user cell of the users table', () => {
+	it('shows the creator name and email without an avatar', () => {
 		const { getByTestId } = render([
 			skill({
 				createdBy: { id: 'u1', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
@@ -129,6 +130,7 @@ describe('SkillsTable', () => {
 		const cell = getByTestId('skill-created-by');
 		expect(cell).toHaveTextContent('Ada Lovelace');
 		expect(cell).toHaveTextContent('ada@example.com');
+		expect(within(cell).queryByTestId('user-avatar')).not.toBeInTheDocument();
 	});
 
 	it('shows a dash when the creator is gone', () => {
@@ -136,6 +138,21 @@ describe('SkillsTable', () => {
 
 		expect(getByTestId('skill-created-by-none')).toHaveTextContent('—');
 		expect(queryByTestId('skill-created-by')).not.toBeInTheDocument();
+	});
+
+	it('marks a skill that is available to MCP clients', () => {
+		const { getAllByTestId } = render(
+			[skill({ id: 's1', availableToMCP: true }), skill({ id: 's2', availableToMCP: false })],
+			true,
+		);
+
+		expect(getAllByTestId('skill-available-to-mcp-icon')).toHaveLength(1);
+	});
+
+	it('does not mark skills while the MCP skills extension is off', () => {
+		const { queryByTestId } = render([skill({ availableToMCP: true })]);
+
+		expect(queryByTestId('skill-available-to-mcp-icon')).not.toBeInTheDocument();
 	});
 
 	it('shows a dash for a skill that no agent uses', () => {

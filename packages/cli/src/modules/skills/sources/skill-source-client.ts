@@ -21,8 +21,25 @@ export type SkillSourceIdentity = {
 	repository: string;
 };
 
-/** Access for a private source. The service resolves the n8n credential to a token. */
-export type SkillSourceAuth = { token: string };
+/**
+ * Access for a private source. The service resolves the n8n credential, and the client turns
+ * it into this with `authFrom`. `credentialType` tells the client what kind of token it is.
+ */
+export type SkillSourceAuth = {
+	token: string;
+	credentialType: string;
+	/** The n8n credential. A client keys its caches by it, as a fresh token changes each time. */
+	credentialId?: string;
+};
+
+/** One repository that a credential can read, for the repository select. */
+export type SkillSourceRepository = {
+	owner: string;
+	name: string;
+	private: boolean;
+	/** A link that `parseLocator` reads. */
+	url: string;
+};
 
 /** A part of the remote skill that the content of an n8n skill cannot hold. */
 export type SkillSourceFidelityWarning = { code: string; detail: string };
@@ -64,6 +81,32 @@ export abstract class SkillSourceClient {
 
 	/** The n8n credential types that can read a private source. */
 	abstract readonly credentialTypes: readonly string[];
+
+	/**
+	 * The access of a decrypted credential of one of `credentialTypes`. Throws
+	 * `SkillSourceReadError` with `credential_invalid` for a credential that this client cannot
+	 * use, such as one without a token or for another host.
+	 */
+	abstract authFrom(credential: {
+		id?: string;
+		type: string;
+		data: Record<string, unknown>;
+	}): SkillSourceAuth;
+
+	/**
+	 * Refuses a decrypted credential that this client cannot use, such as one for another
+	 * host, with the errors of `authFrom`. It runs before a fresh token is minted, so the
+	 * credential sends no request for a source that refuses it.
+	 */
+	checkCredential?(credential: { type: string; data: Record<string, unknown> }): void;
+
+	/**
+	 * The repositories that the access can read, sorted, and whether there are more than the
+	 * client lists. Only for source types where a credential can browse its sources.
+	 */
+	listRepositories?(
+		auth: SkillSourceAuth,
+	): Promise<{ repositories: SkillSourceRepository[]; truncated: boolean }>;
 
 	abstract readonly capabilities: SkillSourceCapabilities;
 

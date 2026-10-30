@@ -4,12 +4,15 @@ import { CacheService, EventService, WorkflowProjectService } from '@n8n/backend
 import type { ListQueryDb } from '@n8n/db';
 import {
 	GLOBAL_OWNER_ROLE,
+	Person,
 	Project,
 	User,
 	ProjectRelationRepository,
 	ProjectRepository,
 	UserRepository,
 	Role,
+	ServiceAccount,
+	ServiceAccountDetails,
 	SettingsRepository,
 	Scope,
 } from '@n8n/db';
@@ -58,13 +61,24 @@ export class OwnershipService {
 		};
 	}
 
+	/** Rebuilds the child class that `kind` names, so the account guards work on a cached copy. */
+	private reconstructAccount(cachedUser: Partial<User>): User {
+		if (cachedUser.kind !== 'service') return Object.assign(new Person(), cachedUser);
+
+		const serviceAccount = Object.assign(new ServiceAccount(), cachedUser);
+		if ('details' in cachedUser && cachedUser.details && typeof cachedUser.details === 'object') {
+			serviceAccount.details = Object.assign(new ServiceAccountDetails(), cachedUser.details);
+		}
+		return serviceAccount;
+	}
+
 	reconstructUser(cachedUser: Partial<User>): User | undefined {
 		if (typeof cachedUser !== 'object' || cachedUser === null) {
 			// performing runtime checks here, because the data is originating from
 			// an external system our cache
 			return undefined;
 		}
-		const user = Object.assign(new User(), cachedUser);
+		const user = this.reconstructAccount(cachedUser);
 		if ('role' in cachedUser && cachedUser.role && typeof cachedUser.role === 'object') {
 			user.role = Object.assign(new Role(), cachedUser.role);
 			if ('scopes' in cachedUser.role && Array.isArray(cachedUser.role.scopes)) {

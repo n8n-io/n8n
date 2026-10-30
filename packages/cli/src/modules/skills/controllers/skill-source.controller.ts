@@ -1,6 +1,11 @@
-import { ConnectSkillSourceDto, DiscoverSkillSourceDto } from '@n8n/api-types';
+import {
+	ConnectSkillSourceDto,
+	DiscoverSkillSourceDto,
+	ListSkillSourceCredentialsQueryDto,
+	ListSkillSourceRepositoriesQueryDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Middleware, Param, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
@@ -31,6 +36,26 @@ export class SkillSourceController {
 			return;
 		}
 		next();
+	}
+
+	/** The credentials that can read a private source in the scope, for the credential select. */
+	@Get('/credentials')
+	async credentials(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListSkillSourceCredentialsQueryDto,
+	) {
+		return await this.skillSourceService.listCredentials(req.user, query);
+	}
+
+	/** The repositories that a credential can read, to pick one in place of a link. */
+	@Get('/repositories')
+	async repositories(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Query query: ListSkillSourceRepositoriesQueryDto,
+	) {
+		return await this.skillSourceService.listRepositories(req.user, query);
 	}
 
 	/** Reads a link and lists its skills for the picker. Writes nothing. */
