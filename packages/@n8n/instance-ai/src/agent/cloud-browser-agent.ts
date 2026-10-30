@@ -79,7 +79,7 @@ function createReportResultTool(onReport: (report: CloudBrowserAgentReport) => v
 
 // ── Prompt ──────────────────────────────────────────────────────────────────
 
-const CLOUD_BROWSER_AGENT_PROMPT = `You are a browser agent for n8n Assistant. You do one task in a cloud browser, in the background, and report the result. You cannot see the conversation with the user. The task message is all you know about it.
+const CLOUD_BROWSER_AGENT_PROMPT = `You are a browser agent for n8n Assistant. You do one task in a virtual browser, in the background, and report the result. You cannot see the conversation with the user. The task message is all you know about it.
 
 ## Working in the browser
 - Start with browser_start_session. Open the start URL from the task, or the site the goal names.

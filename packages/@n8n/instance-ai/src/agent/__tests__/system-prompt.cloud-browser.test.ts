@@ -8,16 +8,23 @@ const BROWSER_USE_NOTE = "The Browser Use section is about the user's own browse
 
 function cloudBrowserSection(browserUseState?: BrowserUseState): string {
 	const prompt = getSystemPrompt({ cloudBrowserEnabled: true, browserUseState });
-	return prompt.slice(prompt.indexOf('## Cloud Browser'));
+	return prompt.slice(prompt.indexOf('## Virtual Browser'));
 }
 
 describe('getSystemPrompt — cloud browser', () => {
 	it('omits the section when the cloud browser is off', () => {
-		expect(getSystemPrompt({})).not.toContain('## Cloud Browser');
+		expect(getSystemPrompt({})).not.toContain('## Virtual Browser');
 	});
 
 	it('names the start tool when the cloud browser is on', () => {
 		expect(cloudBrowserSection()).toContain(ORCHESTRATION_TOOL_IDS.START_CLOUD_BROWSER_TASK);
+	});
+
+	it('tells the model to just say "browser" when it talks to the user', () => {
+		const section = cloudBrowserSection();
+
+		expect(section).toContain('**When you talk to the user, just say "browser".**');
+		expect(section).toContain('Never say "cloud browser"');
 	});
 
 	describe("the user's own browser", () => {
@@ -31,19 +38,20 @@ describe('getSystemPrompt — cloud browser', () => {
 				'"Your browser: runs directly in Chrome. The chat is paused while the Assistant completes the task."',
 			);
 			expect(section).toContain(
-				'"Cloud browser: runs in a virtual browser. You can keep chatting while the Assistant completes the task."',
+				'"Virtual browser: runs in the background. You can keep chatting while the Assistant completes the task."',
 			);
 			expect(section).toContain('`required: true`');
 			expect(section).toContain('a saved preference');
 			expect(section).not.toContain(USE_CLOUD_BROWSER);
 		});
 
-		it('uses the cloud browser and gives the steps to connect when it is not connected', () => {
+		it('uses the cloud browser without telling the user how to connect when it is not connected', () => {
 			const section = cloudBrowserSection({ status: 'disconnected' });
 
 			expect(section).toContain(BROWSER_USE_NOTE);
 			expect(section).toContain(USE_CLOUD_BROWSER);
-			expect(section).toContain('select "Connect browser"');
+			// The UI shows this tip, so the agent does not repeat it.
+			expect(section).not.toContain('how they can connect their own browser instead');
 			expect(section).not.toContain(ASK_WHICH_BROWSER);
 		});
 
