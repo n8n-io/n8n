@@ -126,6 +126,10 @@ export class PersonRepository {
 		});
 	}
 
+	async findManyByIds(ids: string[]): Promise<Person[]> {
+		return await this.table.find({ where: { id: In(ids) }, order: { id: 'ASC' } });
+	}
+
 	/**
 	 * The full TypeORM repository behind the `User` collection that the cloud
 	 * hooks receive. The hooks call `find`, `count` and `save` on it directly, so
