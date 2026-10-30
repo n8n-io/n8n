@@ -1,9 +1,11 @@
-import type { AppResponse } from '@n8n/api-types';
+import type { AppBuildStatus, AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
+import { waitFor } from '@testing-library/vue';
+import { defineComponent, h, ref } from 'vue';
 
-import { getApp } from '../apps.api';
+import { getApp, listAppVersions } from '../apps.api';
 import AppView from './AppView.vue';
 
 vi.mock('../apps.api');
@@ -24,27 +26,52 @@ const app = (id: string): AppResponse => ({
 	updatedAt: '2026-10-02T10:00:00.000Z',
 });
 
-const renderComponent = createComponentRenderer(AppView, {
-	props: { projectId: 'project-1', appId: 'app-1' },
-	global: {
-		stubs: {
-			AppHeader: {
-				props: ['projectId', 'app', 'tab'],
-				emits: ['deleted', 'update:tab'],
-				template: `<div>
-					<button data-test-id="app-header" @click="$emit('deleted', app?.id)">{{ app?.name }}</button>
-					<button data-test-id="configure" @click="$emit('update:tab', 'configure')" />
-				</div>`,
-			},
-			AppPreview: {
-				props: ['projectId', 'app'],
-				template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
-			},
-		},
-	},
+const version = (id: string, buildStatus: AppBuildStatus): AppVersionResponse => ({
+	id,
+	appId: 'app-1',
+	label: null,
+	sourceArtifactId: 1,
+	bundleArtifactId: buildStatus === 'succeeded' ? 2 : null,
+	buildStatus,
+	createdAt: '2026-10-01T10:00:00.000Z',
+	updatedAt: '2026-10-01T10:00:00.000Z',
 });
 
+const globalOptions = {
+	stubs: {
+		AppHeader: {
+			props: ['projectId', 'app', 'tab', 'publishableVersion'],
+			emits: ['deleted', 'updated', 'update:tab'],
+			template: `<div>
+					<button data-test-id="app-header" @click="$emit('deleted', app?.id)">{{ app?.name }}</button>
+					<span data-test-id="publishable-version">{{ publishableVersion?.id }}</span>
+					<button data-test-id="publish" @click="$emit('updated', { ...app, name: 'Published app' })" />
+					<button data-test-id="configure" @click="$emit('update:tab', 'configure')" />
+				</div>`,
+		},
+		AppPreview: {
+			props: ['projectId', 'app', 'versions'],
+			template: '<div data-test-id="app-view-preview">{{ app.id }}</div>',
+		},
+	},
+};
+
+const renderComponent = createComponentRenderer(AppView, {
+	props: { projectId: 'project-1', appId: 'app-1' },
+	global: globalOptions,
+});
+
+const view = ref<{ refresh: () => Promise<void> }>();
+const renderWithRef = createComponentRenderer(
+	defineComponent(() => () => h(AppView, { ref: view, projectId: 'project-1', appId: 'app-1' })),
+	{ global: globalOptions },
+);
+
 describe('AppView', () => {
+	beforeEach(() => {
+		vi.mocked(listAppVersions).mockResolvedValue([]);
+	});
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -142,5 +169,47 @@ describe('AppView', () => {
 		await userEvent.click(getByTestId('configure'));
 
 		expect(emitted('update:section')).toEqual([['configure']]);
+	});
+
+	it('passes the newest built version to the header', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		vi.mocked(listAppVersions).mockResolvedValue([
+			version('v2', 'running'),
+			version('v1', 'succeeded'),
+		]);
+		const { findByTestId } = renderComponent();
+
+		await waitFor(async () =>
+			expect(await findByTestId('publishable-version')).toHaveTextContent('v1'),
+		);
+		expect(listAppVersions).toHaveBeenCalledWith(expect.anything(), 'project-1', 'app-1');
+	});
+
+	it('shows the app from the header update', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId } = renderComponent();
+		await findByTestId('app-view-preview');
+
+		await userEvent.click(getByTestId('publish'));
+
+		expect(getByTestId('app-header')).toHaveTextContent('Published app');
+	});
+
+	it('refreshes the app and its versions without the loading state', async () => {
+		vi.mocked(getApp).mockResolvedValue(app('app-1'));
+		const { findByTestId, getByTestId, queryByTestId } = renderWithRef();
+		await findByTestId('app-view-preview');
+		vi.mocked(getApp).mockResolvedValue({ ...app('app-1'), name: 'Changed by the assistant' });
+		vi.mocked(listAppVersions).mockResolvedValue([version('v1', 'succeeded')]);
+
+		const refresh = view.value?.refresh();
+
+		expect(queryByTestId('app-view-loading')).not.toBeInTheDocument();
+		await refresh;
+		await waitFor(() =>
+			expect(getByTestId('app-header')).toHaveTextContent('Changed by the assistant'),
+		);
+		expect(getByTestId('publishable-version')).toHaveTextContent('v1');
+		expect(getByTestId('app-view-preview')).toBeInTheDocument();
 	});
 });

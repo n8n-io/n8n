@@ -11,6 +11,7 @@ import {
 	GLOBAL_MEMBER_ROLE,
 	ProjectRelationRepository,
 	ProjectRepository,
+	ServiceAccountRepository,
 	TransactionRunner,
 	UserRepository,
 	type User,
@@ -37,6 +38,7 @@ import {
 	createChatUser,
 	createMember,
 	createOwner,
+	createServiceAccountWithProject,
 	createUser,
 } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
@@ -699,6 +701,21 @@ it('rejects workflows and reviewers outside the project', async () => {
 	).rejects.toThrow('project members with workflow edit access');
 });
 
+it('does not offer or accept a service account as a reviewer', async () => {
+	const { user, project, input } = await fixture();
+	const serviceAccount = await Container.get(ServiceAccountRepository).create({
+		name: 'Deploy bot',
+		role: GLOBAL_MEMBER_ROLE,
+	});
+	await linkUserToProject(serviceAccount, project, 'project:editor');
+
+	const choices = await configurations.getConfigurationChoices(project.id);
+	expect(choices.reviewers.map(({ id }) => id)).not.toContain(serviceAccount.id);
+	await expect(
+		configurations.save(user, project.id, { ...input, reviewerIds: [serviceAccount.id] }),
+	).rejects.toThrow('project members with workflow edit access');
+});
+
 it('validates only requested IDs and stores duplicate selections once', async () => {
 	const { user, project, workflow, input } = await fixture();
 	await createWorkflow({}, project);
@@ -1120,6 +1137,32 @@ describe('project member reviewers', () => {
 			'No reviewer can edit these workflows',
 		);
 		expect(await configurations.list(project.id)).toEqual([]);
+	});
+
+	// Only a person can review a fix.
+	it('does not count a service account that can edit workflows in the project group', async () => {
+		await disableInstanceAdmins();
+		const { user, project, input } = await teamFixture();
+		const serviceAccount = await createServiceAccountWithProject();
+		await linkUserToProject(serviceAccount, project, 'project:editor');
+		await linkUserToProject(user, project, 'project:viewer');
+
+		await expect(configurations.save(user, project.id, input)).rejects.toThrow(
+			'No reviewer can edit these workflows',
+		);
+	});
+
+	it('does not count a service account in the project group as a reviewer of a fix', async () => {
+		const { user, project, input } = await teamFixture();
+		const projectEditor = await createServiceAccountWithProject();
+		await linkUserToProject(projectEditor, project, 'project:editor');
+		// An instance admin is an implicit member of every team project.
+		const instanceAdmin = await createServiceAccountWithProject(GLOBAL_ADMIN_ROLE);
+		const saved = await configurations.save(user, project.id, input);
+
+		expect(await repository.isReviewer(saved.id, user.id, {})).toBe(true);
+		expect(await repository.isReviewer(saved.id, projectEditor.id, {})).toBe(false);
+		expect(await repository.isReviewer(saved.id, instanceAdmin.id, {})).toBe(false);
 	});
 
 	it('counts a global admin who is a project member through the project group', async () => {

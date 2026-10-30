@@ -1,3 +1,7 @@
+import type { IDataTableProjectAggregateService, IDataTableProjectService } from 'n8n-workflow';
+import { expectTypeOf } from 'vitest';
+
+import type { DataTableCallKind } from '../engine-data-tables.contract';
 import {
 	dataTableCallRequestSchema,
 	isDataTableCallErrorResponse,
@@ -119,6 +123,15 @@ describe('dataTableCallRequestSchema', () => {
 		};
 
 		expect(dataTableCallRequestSchema.safeParse(request).success).toBe(false);
+	});
+
+	it('carries one kind for each proxy method, so a new method cannot miss the data plane', () => {
+		// `deleteDataTableAll` is left out on purpose: no node calls it.
+		type ProxyMethod =
+			| keyof IDataTableProjectService
+			| Exclude<keyof IDataTableProjectAggregateService, 'deleteDataTableAll'>;
+
+		expectTypeOf<DataTableCallKind>().toEqualTypeOf<ProxyMethod>();
 	});
 
 	it('rejects a kind the control plane does not serve', () => {

@@ -74,3 +74,26 @@ export async function createAppPreview(
 		`/projects/${projectId}/apps/${appId}/versions/${versionId}/preview`,
 	);
 }
+
+export async function publishApp(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+	versionId: string,
+): Promise<AppResponse> {
+	return await makeRestApiRequest(context, 'POST', `/projects/${projectId}/apps/${appId}/publish`, {
+		versionId,
+	});
+}
+
+export async function unpublishApp(
+	context: IRestApiContext,
+	projectId: string,
+	appId: string,
+): Promise<AppResponse> {
+	return await makeRestApiRequest(
+		context,
+		'POST',
+		`/projects/${projectId}/apps/${appId}/unpublish`,
+	);
+}

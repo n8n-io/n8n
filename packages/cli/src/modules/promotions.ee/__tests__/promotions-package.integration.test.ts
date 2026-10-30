@@ -40,7 +40,17 @@ import { Container } from '@n8n/di';
 import type { Cipher, InstanceSettings } from 'n8n-core';
 import { jsonParse, type INode } from 'n8n-workflow';
 import assert from 'node:assert';
-import { mkdir, mkdtemp, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+	cp,
+	mkdir,
+	mkdtemp,
+	readdir,
+	readFile,
+	rename,
+	rm,
+	stat,
+	writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { simpleGit, type SimpleGit } from 'simple-git';
@@ -106,6 +116,9 @@ type TestRemote = {
 	git: SimpleGit;
 };
 
+const REMOTE_BARE_DIR = 'remote.git';
+const REMOTE_WORKING_DIR = 'remote-working';
+
 beforeAll(async () => await testModules.loadModules(['agents']));
 const testServer = setupTestServer({
 	endpointGroups: ['publicApi'],
@@ -124,6 +137,7 @@ let projectService: ProjectService;
 let packagesService: N8nPackagesService;
 let owner: User;
 let testRoot: string;
+let remoteTemplateRoot: string;
 let service: PromotionsService;
 let workingDirectory: PromotionWorkingDirectoryService;
 
@@ -218,9 +232,12 @@ afterEach(async () => {
 	await rm(testRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
 });
 
-async function createRemote(): Promise<TestRemote> {
-	const bareDir = path.join(testRoot, 'remote.git');
-	const workingDir = path.join(testRoot, 'remote-working');
+// Most tests need the same one-commit remote. Build it once and copy it per test:
+// a copy is much faster than the git processes that build it.
+beforeAll(async () => {
+	remoteTemplateRoot = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-remote-template-'));
+	const bareDir = path.join(remoteTemplateRoot, REMOTE_BARE_DIR);
+	const workingDir = path.join(remoteTemplateRoot, REMOTE_WORKING_DIR);
 	await simpleGit().raw(['init', '--bare', bareDir]);
 	await simpleGit().raw(['init', '--initial-branch=main', workingDir]);
 
@@ -230,10 +247,22 @@ async function createRemote(): Promise<TestRemote> {
 	await writeFile(path.join(workingDir, 'README.md'), '# n8n promotions test\n');
 	await git.add(['README.md']);
 	await git.commit('Initial commit');
-	await git.raw(['remote', 'add', 'origin', bareDir]);
+	// A relative URL keeps the copy pointed at its own bare repository.
+	await git.raw(['remote', 'add', 'origin', `../${REMOTE_BARE_DIR}`]);
 	await git.raw(['push', '--set-upstream', 'origin', 'main']);
+});
 
-	return { bareDir, workingDir, git };
+afterAll(async () => {
+	await rm(remoteTemplateRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 50 });
+});
+
+async function createRemote(): Promise<TestRemote> {
+	const bareDir = path.join(testRoot, REMOTE_BARE_DIR);
+	const workingDir = path.join(testRoot, REMOTE_WORKING_DIR);
+	await cp(path.join(remoteTemplateRoot, REMOTE_BARE_DIR), bareDir, { recursive: true });
+	await cp(path.join(remoteTemplateRoot, REMOTE_WORKING_DIR), workingDir, { recursive: true });
+
+	return { bareDir, workingDir, git: simpleGit(workingDir) };
 }
 
 /**
