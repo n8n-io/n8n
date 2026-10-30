@@ -1,0 +1,55 @@
+packages/cli/src/__tests__/wait-tracker.test.ts
+  s_dfe3f914c8bb46::t_ced5169b20e9f1 228-273
+packages/cli/src/modules/agents/approval/SPIKE.md
+  s_dfe3f914c8bb46::t_651b30901a0eec 84-89
+packages/cli/src/modules/agents/approval/agent-channel-hitl.service.ts
+  s_dfe3f914c8bb46::t_3605cd9b053b59 11,13-23,36-38,41-128
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-bridge.test.ts
+  s_dfe3f914c8bb46::t_af9950297355cc 6-7,2938-2988
+packages/cli/src/modules/agents/integrations/__tests__/agent-chat-hitl-resume-handler.test.ts
+  s_dfe3f914c8bb46::t_56d2bf1aa3bddf 1-2,389-415
+packages/cli/src/modules/agents/integrations/agent-chat-bridge.ts
+  s_dfe3f914c8bb46::t_02181d07a146d8 21,445-464
+packages/cli/src/modules/agents/integrations/agent-chat-hitl-resume-handler.ts
+  s_dfe3f914c8bb46::t_76260bf857942b 126-129,203,205,215-224
+packages/cli/src/modules/agents/integrations/channel-hitl.ts
+  s_dfe3f914c8bb46::t_1662dd0cad9270 40
+packages/cli/src/wait-tracker.ts
+  s_dfe3f914c8bb46::t_7b09cccd4b85e1 12,27,147-150,163-164,186-202
+packages/nodes-base/nodes/Discord/v2/actions/message/sendAndWait.operation.ts
+  s_dfe3f914c8bb46::t_9bf7caebe6a49d 8,21
+packages/nodes-base/nodes/Discord/v2/helpers/utils.ts
+  s_dfe3f914c8bb46::t_7717789850a535 1-2,429-438
+packages/nodes-base/nodes/Slack/V2/GenericFunctions.ts
+  s_dfe3f914c8bb46::t_04a04022d67a5e 539-540,542-543,579-580,582,588-597
+packages/nodes-base/nodes/Slack/V2/SlackV2.node.ts
+  s_dfe3f914c8bb46::t_e365a74ef2be29 57-60,183
+packages/nodes-base/nodes/Telegram/GenericFunctions.ts
+  s_dfe3f914c8bb46::t_afd8c080d59b5e 305
+packages/nodes-base/nodes/Telegram/Telegram.node.ts
+  s_dfe3f914c8bb46::t_151cf34f24dd7c 31-34,2040
+packages/nodes-base/utils/sendAndWait/agent-approval.test.ts
+  s_dfe3f914c8bb46::t_5c2bddda92c0b6 1-93
+packages/nodes-base/utils/sendAndWait/descriptions.ts
+  s_dfe3f914c8bb46::t_50919692da2edc 3-10
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-approval-response.test.ts
+  s_dfe3f914c8bb46::t_a9fa6adf0b5b89 1-181
+packages/cli/src/modules/agents/approval/__tests__/agent-channel-hitl.service.test.ts
+  s_dfe3f914c8bb46::t_c119aaef2a0228 2-4,46-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "705ddd57b88cbae2e62e1b30caf8306762b50d4a",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}

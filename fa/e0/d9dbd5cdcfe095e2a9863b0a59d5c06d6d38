@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/agent-config-preparation.service.ts
+  s_dfe3f914c8bb46::t_fe4b156448956b 539
+packages/cli/src/modules/agents/__tests__/agent-config.service.test.ts
+  s_dfe3f914c8bb46::t_262511736b2025 7,378-426,447,453-454,459,465
+  s_dfe3f914c8bb46::t_5269809aaf6a9e 427-446,448-452,455-458,460-464,466
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fae0d9dbd5cdcfe095e2a9863b0a59d5c06d6d38",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
