@@ -1464,6 +1464,21 @@ describe('AgentChatPanel', () => {
 			expect(wrapper.find('[data-test-id="session-file-link"]').exists()).toBe(false);
 		});
 
+		it('ignores a failed request of the previous session', async () => {
+			const previous = createDeferredPromise<{ files: Array<typeof file> }>();
+			getSessionFilesMock.mockReturnValueOnce(previous.promise);
+			const wrapper = mountPanel({ continueSessionId: 't1' });
+			await open(wrapper);
+
+			await wrapper.setProps({ continueSessionId: 't2' });
+			await open(wrapper);
+			previous.reject(new Error('network'));
+			await flushPromises();
+
+			expect(wrapper.find('[data-test-id="session-files-error"]').exists()).toBe(false);
+			expect(wrapper.find('[data-test-id="session-file-link"]').exists()).toBe(true);
+		});
+
 		it('reloads the open list when a turn ends', async () => {
 			const wrapper = mountPanel({ continueSessionId: 't1' });
 			await open(wrapper);
