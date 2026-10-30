@@ -239,6 +239,16 @@ export class SkillSourceRepository {
 	}
 
 	/**
+	 * A check that did not read the source, because its access still waits after a rate limit.
+	 * Only the reason changes: `lastCheckedAt` keeps the time of the last read.
+	 */
+	async recordDelayed(sourceId: string): Promise<void> {
+		await this.sources
+			.managerFor({})
+			.update(SkillSourceConnection, { id: sourceId }, { lastErrorReason: 'rate_limited' });
+	}
+
+	/**
 	 * The result of one check of a source. `lastCheckedAt` and `lastErrorReason` change only
 	 * when no check that started later wrote them first, so a slow check never hides a newer
 	 * result. `probeCursor` moves only from the cursor that the check started from. When

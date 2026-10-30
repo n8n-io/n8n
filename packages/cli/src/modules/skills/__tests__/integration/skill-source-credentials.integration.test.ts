@@ -536,6 +536,59 @@ describe('Skill Sync with credentials', () => {
 			expect(await lastErrorOf(sourceId)).toBe('credential_invalid');
 		});
 
+		describe('the wait after a rate limit, for each access', () => {
+			const retryAt = () =>
+				Reflect.get(Container.get(SkillSyncService), 'retryAt') as Map<string, number>;
+
+			/** Imports a public repository into the team, with no credential. */
+			const importPublic = async () => {
+				github.push('acme/public', { 'skills/doc/SKILL.md': skillMd('doc') });
+				const body = {
+					url: 'https://github.com/acme/public',
+					scope: 'project',
+					projectId: team.id,
+				};
+				const { data: discovery } = await post<SkillSourceDiscovery>(
+					editor,
+					'/skill-sources/discover',
+					body,
+				);
+				const { data } = await post<SkillSourceConnectResponse>(editor, '/skill-sources', {
+					...body,
+					skillKeys: discovery.skills.map(({ key }) => key),
+				});
+				return data.sourceId;
+			};
+
+			beforeEach(() => retryAt().clear());
+
+			it('still reads a source with a credential while public access waits', async () => {
+				const privateSource = (await importPrivate()).sourceId;
+				const publicSource = await importPublic();
+				retryAt().set('public:github', Date.now() + 3_600_000);
+				github.requests.refs = 0;
+
+				await Container.get(SkillSyncService).checkAll();
+
+				expect(github.requests.refs).toBe(1);
+				expect(await lastErrorOf(privateSource)).toBeNull();
+				expect(await lastErrorOf(publicSource)).toBe('rate_limited');
+			});
+
+			it('still reads a public source while a credential waits', async () => {
+				const privateSource = (await importPrivate()).sourceId;
+				const publicSource = await importPublic();
+				retryAt().set(`credential:${teamCredential.id}`, Date.now() + 3_600_000);
+				github.requests.refs = 0;
+
+				await Container.get(SkillSyncService).checkAll();
+
+				expect(github.requests.refs).toBe(1);
+				expect(await lastErrorOf(privateSource)).toBe('rate_limited');
+				expect(await lastErrorOf(publicSource)).toBeNull();
+			});
+		});
+
 		it('reports host_blocked for a credential of another GitHub server', async () => {
 			const { sourceId } = await importPrivate();
 			await db().update(
