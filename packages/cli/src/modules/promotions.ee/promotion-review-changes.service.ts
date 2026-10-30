@@ -253,7 +253,8 @@ async function readManifest(
 async function readSide(commit: PackageCommit): Promise<ReviewSide> {
 	const blobByPath = await commit.listFiles();
 	const manifest = await readManifest(commit, blobByPath);
-	// A commit before the first promotion has no package. A requirements file that is not valid makes the side unreadable.
+	// A commit before the first promotion has no package. An invalid requirements file makes a side
+	// unreadable.
 	return { side: { manifest, blobByPath }, manifestUnreadable: !manifest && blobByPath.size > 0 };
 }
 

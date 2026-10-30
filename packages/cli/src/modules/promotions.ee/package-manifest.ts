@@ -5,7 +5,13 @@ import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { BlobCache } from './blob-cache';
-import { deriveLists, packageRoot, readDerivedLists, type ReadSource } from './branch-manifest';
+import {
+	deriveLists,
+	packageRoot,
+	READ_CHUNK_SIZE,
+	readDerivedLists,
+	type ReadSource,
+} from './branch-manifest';
 import {
 	joinWorkflowRequirements,
 	parseWorkflowRequirements,
@@ -57,8 +63,6 @@ function withHeader(
 		...(requirements ? { requirements } : {}),
 	};
 }
-
-const READ_CHUNK_SIZE = 100;
 
 /** What each requirements file said, by the Git blob SHA of the file. */
 const requirementsCache = new BlobCache<WorkflowRequirements>(50_000);

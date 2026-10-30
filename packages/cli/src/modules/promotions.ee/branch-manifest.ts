@@ -6,7 +6,6 @@ import {
 	type ManifestEntityCollection,
 } from '@/modules/n8n-packages/io/manifest-entry';
 import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 
 import { BlobCache } from './blob-cache';
 
@@ -15,7 +14,7 @@ import { BlobCache } from './blob-cache';
  * that adds an entity, so two merge requests that add entities next to each other would conflict
  * on it. The entity files hold the same facts, so every read from Git derives the lists from them.
  */
-export const DERIVED_COLLECTIONS = [
+const DERIVED_COLLECTIONS = [
 	'projects',
 	'folders',
 	'workflows',
@@ -32,14 +31,7 @@ const FILE_NAMES = new Set<string>(
 	DERIVED_COLLECTIONS.map((collection) => PACKAGE_ENTITY_LAYOUT[collection].fileName),
 );
 
-const READ_CHUNK_SIZE = 100;
-
-/** The manifest as the branch stores it: without the lists that the entity files hold. */
-export function stripDerivedLists(manifest: PackageManifest): PackageManifest {
-	const stripped = { ...manifest };
-	for (const collection of DERIVED_COLLECTIONS) delete stripped[collection];
-	return stripped;
-}
+export const READ_CHUNK_SIZE = 100;
 
 type EntityLocation = { collection: DerivedCollection; target: string; slug: string; id: string };
 
@@ -86,11 +78,6 @@ function locateEntities(paths: Iterable<string>, prefix = ''): LocatedEntity[] {
 		if (location) located.push({ path, location });
 	}
 	return located;
-}
-
-/** The entity files among `paths`. A path outside `prefix` is left out. */
-export function entityFilePaths(paths: Iterable<string>, prefix = ''): string[] {
-	return locateEntities(paths, prefix).map(({ path }) => path);
 }
 
 type Derived = { collection: DerivedCollection; entry: ManifestEntry; isArchived: boolean };
@@ -162,23 +149,6 @@ export function deriveLists(
 		if (location) derived.push(deriveEntity(location, parseMeta(content)));
 	}
 	return toLists(derived);
-}
-
-/** Puts the lists that the entity files hold into a manifest, replacing any that it carries. */
-export function withDerivedLists(manifest: PackageManifest, lists: DerivedLists): PackageManifest {
-	return { ...stripDerivedLists(manifest), ...lists };
-}
-
-/** Parses a package manifest read from Git. `null` when the file is missing or invalid. */
-export function parsePackageManifest(raw: string | undefined): PackageManifest | null {
-	let json: unknown;
-	try {
-		json = jsonParse(raw ?? '');
-	} catch {
-		return null;
-	}
-	const manifest = packageManifestSchema.safeParse(json);
-	return manifest.success ? manifest.data : null;
 }
 
 export type ReadSource = {

@@ -15,11 +15,11 @@ import type { PackageRequirements } from '@/modules/n8n-packages/spec/requiremen
  * different workflows never change the same file. Reads join the files into the `requirements`
  * block that import expects. The file lists what the workflow uses, so a row has no `usedBy`.
  */
-export const WORKFLOW_REQUIREMENTS_FILE = 'requirements.json';
+const WORKFLOW_REQUIREMENTS_FILE = 'requirements.json';
 
 const nonEmpty = z.string().min(1);
 
-export const workflowRequirementsSchema = z.object({
+const workflowRequirementsSchema = z.object({
 	credentials: z
 		.array(z.object({ id: nonEmpty, name: nonEmpty.optional(), type: nonEmpty.optional() }))
 		.optional(),
