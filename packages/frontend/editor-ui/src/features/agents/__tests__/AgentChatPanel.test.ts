@@ -3639,6 +3639,24 @@ describe('AgentChatPanel', () => {
 				]);
 			});
 
+			it('emits typed text that cancels an open question, without its files', async () => {
+				messagesMock.value = [
+					{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage,
+					openInteractiveMessage(),
+				];
+				const wrapper = mountPanel();
+
+				hostVm(wrapper).sendMessageFromOutside('go another direction', [
+					new File(['a'], 'a.png', { type: 'image/png' }),
+				]);
+				await flushPromises();
+
+				expect(cancelAndSteerMock).toHaveBeenCalledOnce();
+				expect(wrapper.emitted('message-sending')).toEqual([
+					[{ text: 'go another direction', files: [], isFirstMessage: false }],
+				]);
+			});
+
 			it('marks a message as not the first once the thread has a user message', async () => {
 				messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
 				sendMessageMock.mockResolvedValueOnce('sent');

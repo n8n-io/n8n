@@ -5,7 +5,7 @@ import { setActivePinia } from 'pinia';
 
 import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 
-import { USER_TYPED_MESSAGE } from '../../prefills';
+import { resolveAuthorship, USER_TYPED_MESSAGE } from '../../prefills';
 import { useAssistantAgentMessageTelemetry } from '../useAssistantAgentMessageTelemetry';
 
 const { telemetryTrack } = vi.hoisted(() => ({ telemetryTrack: vi.fn() }));
@@ -93,6 +93,38 @@ describe('useAssistantAgentMessageTelemetry', () => {
 			},
 			{ prefill_type: null, mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS },
 		]);
+	});
+
+	it('forgets a host send that the next send is not', () => {
+		const telemetry = useAssistantAgentMessageTelemetry('thread-1');
+		telemetry.expectHostSend({
+			text: 'Build a digest',
+			authorship: { kind: 'prefill', prefillType: 'suggestion_catalog' },
+		});
+
+		telemetry.trackSend(sending('Something else'));
+		telemetry.trackSend(sending('Build a digest'));
+
+		expect(telemetryTrack.mock.calls.map(([, props]) => props)).toMatchObject([
+			{ prefill_type: null },
+			{ prefill_type: null },
+		]);
+	});
+
+	it('reports an unchanged pre-fill whose text ends with white space as not edited', () => {
+		const text = 'Build a digest\n';
+		const telemetry = useAssistantAgentMessageTelemetry('thread-1');
+		telemetry.expectHostSend({
+			text,
+			authorship: resolveAuthorship(text, { text, prefillType: 'suggestion_catalog' }),
+		});
+
+		telemetry.trackSend(sending('Build a digest'));
+
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			EVENT,
+			expect.objectContaining({ prefill_type: 'suggestion_catalog', prompt_modified: false }),
+		);
 	});
 
 	it('falls back to the composer pre-fill when the sent text is not the host text', () => {

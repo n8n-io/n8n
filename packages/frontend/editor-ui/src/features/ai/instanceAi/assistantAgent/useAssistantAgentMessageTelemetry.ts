@@ -42,10 +42,12 @@ export function useAssistantAgentMessageTelemetry(threadId: string) {
 	let hostSend: AssistantAgentHostSend | null = null;
 
 	function takeAuthorship(text: string): Omit<AssistantAgentHostSend, 'text'> {
-		if (hostSend?.text.trim() === text) {
-			const { authorship, mentionCounts } = hostSend;
-			hostSend = null;
-			return { authorship, mentionCounts };
+		// Only the next send can be the host send. A refused host send leaves its text
+		// as the user's draft, so that next send is still the host text when it matches.
+		const host = hostSend;
+		hostSend = null;
+		if (host?.text.trim() === text) {
+			return { authorship: host.authorship, mentionCounts: host.mentionCounts };
 		}
 		return { authorship: resolveAuthorship(text, prefill) };
 	}
