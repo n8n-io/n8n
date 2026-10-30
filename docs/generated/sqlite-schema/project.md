@@ -181,6 +181,7 @@ erDiagram
   varchar userId FK
 }
 "app" {
+  TEXT bindings
   datetime_3_ createdAt
   varchar draftVersionId FK
   varchar id PK

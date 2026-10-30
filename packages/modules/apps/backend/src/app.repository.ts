@@ -1,4 +1,4 @@
-import type { CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
+import type { AppBinding, CreateAppDto, ListAppsQueryDto, UpdateAppDto } from '@n8n/api-types';
 import {
 	BaseRepository,
 	escapeLike,
@@ -48,6 +48,20 @@ export class AppRepository extends BaseRepository<App> {
 		return await this.findInProject(projectId, appId, ctx);
 	}
 
+	async setBindings(
+		projectId: string,
+		appId: string,
+		bindings: AppBinding[],
+		ctx: OperationContext = {},
+	): Promise<App | null> {
+		const where = { id: appId, projectId };
+		return await this.runInTransaction(ctx, async (manager) => {
+			const result = await manager.update(App, where, { bindings });
+			if (!result.affected) return null;
+			return await manager.findOneBy(App, where);
+		});
+	}
+
 	async advanceDraft(
 		appId: string,
 		expectedVersionId: string | null,
@@ -92,6 +106,7 @@ export class AppRepository extends BaseRepository<App> {
 				projectId,
 				draftVersionId: null,
 				publishedVersionId: null,
+				bindings: [],
 			});
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {

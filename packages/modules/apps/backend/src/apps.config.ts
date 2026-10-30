@@ -14,6 +14,18 @@ export class AppsConfig {
 	@Env('N8N_APPS_SERVE_RATE_LIMIT', rateLimit)
 	rateLimitServe: number = 1200;
 
+	/** Maximum app API requests per IP address per minute for each API route in each main process. App API requests read and write data tables, run workflows, and chat with agents. Set to 0 to disable it. */
+	@Env('N8N_APPS_API_RATE_LIMIT', rateLimit)
+	rateLimitApi: number = 120;
+
+	/** Maximum workflow runs that app API requests can wait for at the same time in each main process. Requests above this limit get a "too many requests" error. Set to 0 to disable it. */
+	@Env('N8N_APPS_API_MAX_CONCURRENT_RUNS', rateLimit)
+	apiMaxConcurrentRuns: number = 20;
+
+	/** Maximum time an app API request waits for a workflow run to finish, in milliseconds. After this time the app gets the execution ID and checks the run later. */
+	@Env('N8N_APPS_API_RUN_WAIT_MS', positiveInteger.max(2 ** 31 - 1))
+	apiRunWaitMs: number = 60 * 1000;
+
 	/** Maximum decoded app bundle bytes to cache in each main process. Bundles larger than this limit are served without retaining them in the cache. */
 	@Env('N8N_APPS_BUNDLE_CACHE_MAX_BYTES', positiveInteger)
 	bundleCacheMaxBytes: number = 64 * 1024 * 1024;

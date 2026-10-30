@@ -70,6 +70,7 @@ erDiagram
   datetime_3_ updatedAt
 }
 "app" {
+  TEXT bindings
   datetime_3_ createdAt
   varchar draftVersionId FK
   varchar id PK

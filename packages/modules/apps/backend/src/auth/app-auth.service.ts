@@ -22,6 +22,10 @@ export interface AppRequest extends Request {
 	};
 }
 
+export type AppAdmission =
+	| { ok: true; app: App; security?: SecurityContext }
+	| { ok: false; app: App; reason: 'unauthenticated' | 'insufficient_scope' };
+
 @Service()
 export class AppAuthService {
 	constructor(
@@ -42,13 +46,10 @@ export class AppAuthService {
 		return app;
 	}
 
-	async authenticate(req: AppRequest, res: Response, next: NextFunction): Promise<void> {
+	/** Resolves the published app of the request host and checks the visitor's session. */
+	async admit(req: Request): Promise<AppAdmission> {
 		const app = await this.requireApp(req);
-		req.appContext = { app, versionId: app.publishedVersionId };
-		if (app.visibility === 'public') {
-			next();
-			return;
-		}
+		if (app.visibility === 'public') return { ok: true, app };
 		const resource = this.resources.forApp(app);
 		const request = { method: req.method, url: this.hosts.callbackUrl(app), ip: req.ip ?? '' };
 		const result = await this.admission.admitBearer(
@@ -56,8 +57,20 @@ export class AppAuthService {
 			request,
 			readCookie(req, appCookieName(this.hosts.baseUrl, 'session')) ?? '',
 		);
+		if (result.ok) return { ok: true, app, security: result.context };
+		return {
+			ok: false,
+			app,
+			reason: result.reason === 'insufficient_scope' ? 'insufficient_scope' : 'unauthenticated',
+		};
+	}
+
+	async authenticate(req: AppRequest, res: Response, next: NextFunction): Promise<void> {
+		const result = await this.admit(req);
+		const { app } = result;
+		req.appContext = { app, versionId: app.publishedVersionId };
 		if (result.ok) {
-			req.appContext.security = result.context;
+			req.appContext.security = result.security;
 			next();
 			return;
 		}
@@ -156,6 +169,22 @@ export class AppAuthService {
 			maxAge: result.expiresIn * 1000,
 		});
 		res.redirect(this.returnPath(result.metadata.returnPath));
+	}
+
+	/**
+	 * Returns the ID of an anonymous visitor and sets its cookie when it is new.
+	 * Agent conversations of public apps are scoped by this ID.
+	 */
+	anonymousVisitorId(req: Request, res: Response): string {
+		const name = appCookieName(this.hosts.baseUrl, 'visitor');
+		const existing = readCookie(req, name);
+		if (existing && /^[a-f0-9]{64}$/.test(existing)) return existing;
+		const id = randomBytes(32).toString('hex');
+		res.cookie(name, id, {
+			...appCookieOptions(this.hosts.baseUrl),
+			maxAge: 365 * 24 * 60 * 60 * 1000,
+		});
+		return id;
 	}
 
 	private returnPath(value: string | undefined): string {
