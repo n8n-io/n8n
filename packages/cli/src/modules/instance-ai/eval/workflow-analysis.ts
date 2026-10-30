@@ -572,6 +572,10 @@ export interface GenerateMockHintsOptions {
 	scenarioHints?: string;
 	/** The node the run starts at when the hints name no start node. */
 	defaultStartNodeName?: string;
+	/** Every trigger the run can start from. With two or more, the hints must name one. */
+	triggerNodeNames?: string[];
+	/** What the scenario tests. Only the start-trigger vote sees it, so it does not shape mock data. */
+	scenarioDescription?: string;
 }
 
 export const TRIGGER_CONTENT_CORRECTION =
@@ -589,7 +593,8 @@ RULES:
    - For a Manual Trigger: it emits one empty item, so return {} and never invent fields for it, even when downstream nodes reference trigger fields
    - CRITICAL: apart from a Manual Trigger, triggerContent must NEVER be an empty object ({}). Even for scenarios that test empty payloads ("empty submission", "no data", "missing fields"), emit the trigger envelope with empty *nested* fields — an empty webhook is { headers: {}, query: {}, body: {} }, a schedule with no context is { timestamp: "..." }. The workflow cannot execute without trigger output. The one exception is a polling or event trigger that the scenario says has NOTHING to emit ("no new emails", "no new rows", "no results"): then set "triggerEmitsNoItems": true and omit triggerContent — the harness pins the trigger to zero items so downstream nodes do not run.
    - CRITICAL: check what downstream nodes reference (e.g., $json.body.email, $json.subject, $json.text) and ensure those paths exist in triggerContent
-   - CRITICAL: when the workflow has MULTIPLE trigger nodes, pick the ONE the Test Scenario targets (the trigger whose firing the scenario describes, e.g. "The weekly Schedule Trigger fires") and return its exact node name in a "startNodeName" field. triggerContent must be THAT trigger's output.
+   - CRITICAL: when the user message has a "## Triggers" section, the workflow has several entry points. Pick the ONE whose firing starts the run the Test Scenario describes, and return its exact node name in "startNodeName". Match the scenario's event to the trigger's type and settings: a recurring or timed run is a Schedule Trigger, an incoming request is a Webhook, a new email or row is that service's trigger. A Manual Trigger runs only when a person clicks "Execute workflow": pick it only when the scenario describes a person starting the run by hand. triggerContent must be THAT trigger's output.
+   - When the user message has a "## Start trigger" section, the run starts at that trigger: set "startNodeName" to it and make triggerContent its output.
    - CRITICAL: triggerContent must NEVER contain binary file CONTENT — no base64 blobs, no fake file-bytes placeholders. When the trigger carries a file (form upload, email attachment, incoming media), declare it with a METADATA-ONLY binary map instead: "binary": { "<propertyKey>": { "mimeType": "<real MIME>", "fileName": "<name.ext>" } } — the harness synthesizes real file bytes from that metadata and attaches them at the item level. For a PDF or text file whose words the scenario states, also add "text": "<those words as plain text>" to its entry — the harness writes them into the file. The MIME type and file name MUST match the scenario: an image/png upload scenario needs mimeType "image/png" and a .png fileName, never a generic application/octet-stream. Use "data" as the propertyKey unless downstream nodes reference a different binary property name.
 3. Create a "nodeHints" object with one entry per node that calls an external service. Each hint states the DATA the service holds for that node: the records, field values, counts, IDs, dates and statuses, using entities from the global context. One node can send several requests (for example it reads a sheet's metadata and rows, then appends a row). Write each hint in two parts: "Before the node runs:" with what the service already holds, then "The node writes:" with what the node adds, changes or sends (or "nothing"). A read that happens before the write sees only the "Before the node runs" data.
 4. A hint states data, never a response layout. Do not write JSON, braces, field paths, wrapper keys, status envelopes or "return {...}". Do not describe what the n8n node outputs after its own processing (simplified records, rows keyed by column header, parsed JSON, fields such as json.data or output[0].content[0].text). The mock server writes each response in the real API's wire format and only needs the facts. Write facts as plain sentences, e.g. "Sheet 'Leads' has columns Name, Email, Status and 2 rows: Ann Lee, ann@x.example, new; Bo Chan, bo@x.example, won."
@@ -600,20 +605,9 @@ RULES:
 9. **Dates and timestamps.** The user prompt ends with a "## Date anchors" block listing today's real date plus relative anchors. EVERY date or timestamp you emit — in globalContext, triggerContent, and nodeHints — MUST be derived from those anchors, never from training data. Workflows compare mock data against the real execution clock ($now, Date.now()): a "recent" record dated months ago gets silently filtered out and the test fails. When the scenario describes a relative window ("issues from the last 2 weeks", "yesterday's orders"), compute concrete dates from the anchors and place records safely INSIDE the window (e.g. 2-5 days ago), never on its boundary. State those concrete dates in globalContext and nodeHints so every node's mock uses the same ones.
 10. Return ONLY valid JSON, no explanation or markdown fencing.`;
 
-function buildUserPrompt(
-	workflow: IWorkflowBase,
-	nodeNames: string[],
-	scenarioHints?: string,
-): string {
-	const sections: string[] = [
-		'Generate a consistent data context and per-node mock hints for this workflow.',
-	];
-
-	if (scenarioHints) {
-		sections.push('', '## Test Scenario', '', scenarioHints);
-	}
-
-	sections.push('', '## Workflow Nodes', '');
+/** The node list and connections, as both Phase 1 prompts show them. */
+function describeWorkflow(workflow: IWorkflowBase): string[] {
+	const sections: string[] = ['', '## Workflow Nodes', ''];
 	for (const node of workflow.nodes) {
 		let line = `- ${node.name} (${node.type})`;
 		const config = extractNodeConfig(node);
@@ -636,6 +630,44 @@ function buildUserPrompt(
 				}
 			}
 		}
+	}
+	return sections;
+}
+
+function triggerLines(workflow: IWorkflowBase, triggerNodeNames: string[]): string[] {
+	return triggerNodeNames.map((name) => {
+		const node = workflow.nodes.find((n) => n.name === name);
+		return `- ${name} (${node?.type ?? 'unknown'})`;
+	});
+}
+
+function buildUserPrompt(
+	workflow: IWorkflowBase,
+	nodeNames: string[],
+	scenarioHints: string | undefined,
+	triggerNodeNames: string[],
+	startTrigger: string | undefined,
+): string {
+	const sections: string[] = [
+		'Generate a consistent data context and per-node mock hints for this workflow.',
+	];
+
+	if (scenarioHints) {
+		sections.push('', '## Test Scenario', '', scenarioHints);
+	}
+
+	sections.push(...describeWorkflow(workflow));
+
+	if (startTrigger) {
+		sections.push('', '## Start trigger', '', ...triggerLines(workflow, [startTrigger]));
+	} else if (triggerNodeNames.length > 1) {
+		sections.push(
+			'',
+			'## Triggers',
+			'',
+			`The workflow has ${triggerNodeNames.length} triggers. Set "startNodeName" to the one the Test Scenario fires:`,
+			...triggerLines(workflow, triggerNodeNames),
+		);
 	}
 
 	sections.push('', '## Expected Output', '', '```json', '{');
@@ -664,6 +696,63 @@ function buildUserPrompt(
 }
 
 const MAX_HINT_ATTEMPTS = 2;
+
+const START_TRIGGER_VOTES = 3;
+
+const START_TRIGGER_PROMPT =
+	"You pick which trigger starts one test run of an n8n workflow. The workflow has several triggers, and nodes can branch on which trigger fired (for example an IF on $('<trigger>').isExecuted). Pick the trigger whose firing starts the run the scenario describes, and whose path reaches the nodes that run needs. Match the scenario's event to the trigger's type and settings: a recurring or timed run is a Schedule Trigger, an incoming request is a Webhook, a new email or row is that service's trigger. A Manual Trigger runs only when a person clicks \"Execute workflow\": pick it only when the scenario describes a person starting the run by hand. Answer with the trigger's exact name and nothing else.";
+
+/**
+ * Separate small calls pick the start trigger, and the majority wins. Inside the
+ * large hint call the choice was a side task and fell back to the Manual Trigger
+ * in about 1 of 5 runs. Returns undefined when no trigger gets a majority.
+ */
+async function voteStartTrigger(
+	workflow: IWorkflowBase,
+	triggerNodeNames: string[],
+	scenarioHints?: string,
+	scenarioDescription?: string,
+): Promise<string | undefined> {
+	const prompt = [
+		'## Scenario',
+		'',
+		scenarioDescription ?? '',
+		scenarioHints ? `\nData setup: ${scenarioHints}` : '',
+		...describeWorkflow(workflow),
+		'',
+		'## Triggers',
+		'',
+		...triggerLines(workflow, triggerNodeNames),
+	].join('\n');
+
+	const answers = await Promise.allSettled(
+		Array.from({ length: START_TRIGGER_VOTES }, async () => {
+			const agent = createEvalAgent('eval-start-trigger', { instructions: START_TRIGGER_PROMPT });
+			const result = await agent.generate(prompt, {
+				abortSignal: AbortSignal.timeout(HINT_LLM_TIMEOUT_MS),
+			});
+			// The model sometimes reasons before the name, so the last trigger it names is its answer.
+			const text = extractText(result);
+			const end = (name: string) => text.lastIndexOf(name) + name.length;
+			return triggerNodeNames
+				.filter((name) => text.includes(name))
+				.sort((a, b) => end(b) - end(a) || b.length - a.length)[0];
+		}),
+	);
+	const votes = new Map<string, number>();
+	for (const answer of answers) {
+		if (answer.status === 'fulfilled' && answer.value) {
+			votes.set(answer.value, (votes.get(answer.value) ?? 0) + 1);
+		}
+	}
+	Container.get(Logger).debug(
+		`[EvalMock] Start trigger votes: ${JSON.stringify(Object.fromEntries(votes))}`,
+	);
+	for (const [name, count] of votes) {
+		if (count * 2 > START_TRIGGER_VOTES) return name;
+	}
+	return undefined;
+}
 
 /**
  * Stall guard for one hint-generation LLM call. Phase 1 is a single call with
@@ -704,14 +793,30 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 
 	if (nodeNames.length === 0) return emptyResult;
 
-	const basePrompt = buildUserPrompt(workflow, nodeNames, scenarioHints);
+	const triggerNodeNames = options.triggerNodeNames ?? [];
+	const startTrigger =
+		triggerNodeNames.length > 1
+			? await voteStartTrigger(
+					workflow,
+					triggerNodeNames,
+					scenarioHints,
+					options.scenarioDescription,
+				)
+			: undefined;
+	const basePrompt = buildUserPrompt(
+		workflow,
+		nodeNames,
+		scenarioHints,
+		triggerNodeNames,
+		startTrigger,
+	);
 	const warnings: string[] = [];
 	let lastReason = '';
 
 	for (let attempt = 1; attempt <= MAX_HINT_ATTEMPTS; attempt++) {
 		let reason = '';
 		const userPrompt = lastReason
-			? `${basePrompt}\n\n## Correction required\n\n${correctionFor(lastReason)}`
+			? `${basePrompt}\n\n## Correction required\n\n${correctionFor(lastReason, triggerNodeNames)}`
 			: basePrompt;
 		try {
 			const agent = createEvalAgent('eval-hint-generator', {
@@ -756,11 +861,19 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 				// The model answers a bool as a word often enough to read both spellings.
 				const triggerEmitsNoItems =
 					parsed.triggerEmitsNoItems === true || parsed.triggerEmitsNoItems === 'true';
-				const startNodeName =
-					typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
+				const answeredStart =
+					startTrigger ??
+					(typeof parsed.startNodeName === 'string' && parsed.startNodeName.length > 0
 						? parsed.startNodeName
-						: undefined;
-				if (
+						: undefined);
+				const startMissing =
+					triggerNodeNames.length > 1 &&
+					!(answeredStart && triggerNodeNames.includes(answeredStart));
+				// On the last attempt a missing start keeps the hints and runs from the default start.
+				const startNodeName = startMissing ? undefined : answeredStart;
+				if (startMissing && attempt < MAX_HINT_ATTEMPTS) {
+					reason = 'missing startNodeName';
+				} else if (
 					Object.keys(triggerContent).length === 0 &&
 					!triggerEmitsNoItems &&
 					!isManualTriggerNode(workflow, startNodeName ?? options.defaultStartNodeName)
@@ -771,6 +884,11 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 					const nodeHints: Record<string, string> = {};
 					for (const [key, value] of Object.entries(parsed.nodeHints as Record<string, unknown>)) {
 						nodeHints[key] = typeof value === 'string' ? value : JSON.stringify(value);
+					}
+					if (startMissing) {
+						warnings.push(
+							`Phase 1 attempt ${attempt}/${MAX_HINT_ATTEMPTS}: missing startNodeName, using the default start node`,
+						);
 					}
 					return {
 						globalContext,
@@ -799,10 +917,13 @@ export async function generateMockHints(options: GenerateMockHintsOptions): Prom
 	Container.get(Logger).error(
 		`[EvalMock] Phase 1 exhausted ${MAX_HINT_ATTEMPTS} attempts — ${warnings.join('; ')}`,
 	);
-	return { ...emptyResult, warnings };
+	return { ...emptyResult, ...(startTrigger ? { startNodeName: startTrigger } : {}), warnings };
 }
 
-function correctionFor(reason: string): string {
+function correctionFor(reason: string, triggerNodeNames: string[]): string {
 	if (reason === 'empty triggerContent') return TRIGGER_CONTENT_CORRECTION;
+	if (reason === 'missing startNodeName') {
+		return `The previous answer did not set "startNodeName" to one of the workflow's triggers: ${triggerNodeNames.join(', ')}. Set it to the trigger the Test Scenario fires.`;
+	}
 	return `The previous answer was unusable: ${reason}. Return only the JSON object described under "Expected Output".`;
 }
