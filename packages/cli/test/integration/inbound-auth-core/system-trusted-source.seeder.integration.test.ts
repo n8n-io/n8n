@@ -89,7 +89,7 @@ describe('SystemTrustedSourceSeeder (integration)', () => {
 			status: 'unchecked',
 			metadata: null,
 			lastCheckedAt: null,
-			configVersion: 1,
+			configVersion: 2,
 		});
 		expect(all[0].config).not.toContain('local-keystore');
 		expect(await store.getByIssuer(baseUrl)).toMatchObject({
