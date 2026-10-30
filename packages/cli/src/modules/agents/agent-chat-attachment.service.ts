@@ -291,6 +291,14 @@ export class AgentChatAttachmentService {
 		}
 	}
 
+	async getBuffer(attachment: AgentChatAttachment): Promise<Buffer> {
+		return await this.binaryDataService.getAsBuffer({
+			id: attachment.binaryDataId,
+			data: '',
+			mimeType: attachment.mimeType,
+		});
+	}
+
 	async getStream(attachment: AgentChatAttachment): Promise<Readable> {
 		return await this.binaryDataService.getAsStream(attachment.binaryDataId);
 	}

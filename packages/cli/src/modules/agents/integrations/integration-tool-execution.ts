@@ -54,6 +54,18 @@ export function isSilentActionOutput(output: unknown): boolean {
 	);
 }
 
+/** File IDs that a respond queued for the final reply, on its own or inside a batch. */
+export function readQueuedFileIds(output: unknown): string[] {
+	if (!isRecord(output) || output.ok !== true) return [];
+	if (Array.isArray(output.queuedFileIds)) {
+		return output.queuedFileIds.filter((fileId): fileId is string => typeof fileId === 'string');
+	}
+	if (!Array.isArray(output.results)) return [];
+	return output.results.flatMap((entry) =>
+		isRecord(entry) ? readQueuedFileIds(entry.result) : [],
+	);
+}
+
 export function integrationActionApprovalKey(connectionId: string, action: string): string {
 	return JSON.stringify(['integration_action', connectionId, action]);
 }
@@ -153,8 +165,9 @@ export async function executeActionToolBatch(params: {
 	messageContextStore: IntegrationMessageContextStore;
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
+	projectId?: string;
 }): Promise<unknown> {
-	const { operations, descriptor, messageContextStore, actionExecutor, ctx } = params;
+	const { operations, descriptor, messageContextStore, actionExecutor, ctx, projectId } = params;
 	let currentMessageContext = getOptionalCurrentContext({
 		descriptor,
 		persistence: ctx.persistence,
@@ -168,6 +181,7 @@ export async function executeActionToolBatch(params: {
 			messageContextStore,
 			actionExecutor,
 			ctx,
+			projectId,
 			currentMessageContext,
 			allowSuspend: false,
 		});
@@ -188,6 +202,8 @@ export async function executeActionToolOperation(params: {
 	actionExecutor: IntegrationActionExecutor;
 	ctx: ToolContext;
 	interruptCtx?: InterruptibleToolContext;
+	/** Project of the agent. `input.fileIds` resolve in this project only. */
+	projectId?: string;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
 	/** Action the user just approved, so the gate below lets it through once. */
@@ -202,6 +218,7 @@ export async function executeActionToolOperation(params: {
 		interruptCtx,
 		allowSuspend,
 		approvedAction,
+		projectId,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -276,6 +293,9 @@ export async function executeActionToolOperation(params: {
 		runId: ctx.runId,
 		toolCallId: ctx.toolCallId,
 		currentMessageContext,
+		...(projectId && persistence
+			? { fileScope: { projectId, threadId: persistence.threadId } }
+			: {}),
 	});
 
 	if (!result.ok) return result;

@@ -7,7 +7,7 @@ import type { BridgeStatusHandle } from './agent-chat-integration';
 import { isIntegrationActionSuspendPayload } from './agent-chat-suspension-cards';
 import { type TextEndFn, type TextYieldFn } from './types';
 import { isRateLimitedToolOutput } from './channel-rate-limit';
-import { isSilentActionOutput } from './integration-tool-execution';
+import { isSilentActionOutput, readQueuedFileIds } from './integration-tool-execution';
 import { messageBreak, splitMessage } from './message-split';
 
 type SuspendedChunk = Extract<StreamChunk, { type: 'tool-call-suspended' }>;
@@ -44,6 +44,11 @@ interface AgentChatStreamConsumerOptions {
 	singleStreamedRunPerTurn?: boolean;
 	/** Text past this many characters continues in a new message. */
 	maxMessageLength?: number;
+	/** Post the files that a run queued for its final reply, with the reply text as caption. */
+	postReplyFiles?: (
+		thread: Thread<unknown, unknown>,
+		params: { fileIds: string[]; caption: string; agentThreadId: string; onPosted?: () => void },
+	) => Promise<void>;
 }
 
 /** The platform did not accept a reply, so the user did not get all of it. */
@@ -52,6 +57,13 @@ export class ReplyDeliveryError extends OperationalError {
 		const reason = cause instanceof Error ? cause.message : String(cause);
 		super(`Failed to post the reply: ${reason}`, { cause });
 	}
+}
+
+/** A tool result from the part of a run before it was suspended. */
+export interface EarlierToolResult {
+	toolCallId: string;
+	toolName: string;
+	output: unknown;
 }
 
 interface ConsumeStreamOptions {
@@ -69,6 +81,13 @@ interface ConsumeStreamOptions {
 	 * nobody asked the agent, so an error post would be noise.
 	 */
 	quietErrors?: boolean;
+	/** Agent thread of the run. Files queued for the final reply are read in this thread. */
+	agentThreadId?: string;
+	/**
+	 * Tool results of a resumed run from before its suspension. Files that they
+	 * queued go with the final reply of this part of the run.
+	 */
+	earlierToolResults?: EarlierToolResult[];
 }
 
 interface ResponseState {
@@ -91,6 +110,10 @@ interface ResponseState {
 	fallbackSource: 'tool-error' | 'suspension' | 'rate-limit' | null;
 	fallbackError: unknown;
 	quietErrors: boolean;
+	/** File IDs that respond queued for the final reply, by tool call. */
+	replyFiles: Map<string, string[]>;
+	/** The run stopped at a suspension. The resume sends the queued files. */
+	suspended: boolean;
 }
 
 interface ResponseLifecycle {
@@ -106,6 +129,8 @@ const createResponseState = (options: ConsumeStreamOptions): ResponseState => ({
 	fallbackSource: null,
 	fallbackError: null,
 	quietErrors: options.quietErrors === true,
+	replyFiles: new Map(),
+	suspended: false,
 });
 
 const BUDGET_STOP_TEXT = {
@@ -263,6 +288,7 @@ export class AgentChatStreamConsumer {
 			endStreamingPost,
 		});
 		const responseState = createResponseState(options);
+		this.seedReplyFiles(options, responseState);
 		let budgetStop: string | undefined;
 		let stopped = false;
 
@@ -311,6 +337,7 @@ export class AgentChatStreamConsumer {
 						await responseLifecycle.resumeThinking();
 						break;
 					case 'tool-call-suspended': {
+						responseState.suspended = true;
 						await responseLifecycle.startDiscreteResponse();
 						const result = await this.options.handleSuspension(chunk, thread, options.actingUserId);
 						responseState.hasVisibleResponse ||= result === 'posted';
@@ -362,6 +389,8 @@ export class AgentChatStreamConsumer {
 		} finally {
 			await responseLifecycle.finish();
 		}
+		// A streamed reply cannot carry files, so they follow it in their own message.
+		await this.postReplyFiles(thread, responseState, '', options);
 	}
 
 	// Preserve paragraph breaks when the bridge extracts text from the full stream.
@@ -458,6 +487,60 @@ export class AgentChatStreamConsumer {
 		if (state.fallbackSource === 'tool-error') {
 			state.fallbackSource = null;
 		}
+		this.noteReplyFiles(chunk, state);
+	}
+
+	private noteReplyFiles(result: EarlierToolResult, state: ResponseState): void {
+		if (!(this.options.isIntegrationActionTool?.(result.toolName) ?? false)) return;
+		const fileIds = readQueuedFileIds(result.output);
+		if (fileIds.length > 0) state.replyFiles.set(result.toolCallId, fileIds);
+	}
+
+	private seedReplyFiles(options: ConsumeStreamOptions, state: ResponseState): void {
+		for (const result of options.earlierToolResults ?? []) this.noteReplyFiles(result, state);
+	}
+
+	/**
+	 * Post the files that the run queued for its final reply. A suspended run
+	 * keeps them: its resume rebuilds the queue and sends them one time.
+	 */
+	private async postReplyFiles(
+		thread: Thread<unknown, unknown>,
+		state: ResponseState,
+		caption: string,
+		options: ConsumeStreamOptions,
+	): Promise<void> {
+		if (state.suspended || state.replyFiles.size === 0) return;
+		const fileIds = [...new Set([...state.replyFiles.values()].flat())];
+		state.replyFiles.clear();
+		let textPosted = false;
+		try {
+			if (!this.options.postReplyFiles || !options.agentThreadId) {
+				throw new OperationalError('Files cannot be sent without the agent thread of the run');
+			}
+			await this.options.postReplyFiles(thread, {
+				fileIds,
+				caption,
+				agentThreadId: options.agentThreadId,
+				onPosted: () => {
+					textPosted = true;
+				},
+			});
+			state.hasVisibleResponse = true;
+		} catch (error) {
+			this.options.logger.error('[AgentChatBridge] Failed to post reply files', {
+				error: error instanceof Error ? error.message : String(error),
+			});
+			// Do not lose the reply text with the files. A wake delivery throws
+			// only when the text or the error notice cannot be posted, so a
+			// retry does not post the text again. The first post carries the
+			// text, so it is posted again only when nothing was posted.
+			const throwOnDeliveryError = options.throwOnDeliveryError;
+			if (caption.trim() && !textPosted) {
+				await this.postBufferedText(thread, caption, state, throwOnDeliveryError);
+			}
+			await this.postError(thread, error, state, throwOnDeliveryError);
+		}
 	}
 
 	/**
@@ -537,6 +620,7 @@ export class AgentChatStreamConsumer {
 	): Promise<void> {
 		let buffer = '';
 		const responseState = createResponseState(options);
+		this.seedReplyFiles(options, responseState);
 		const responseLifecycle = this.createResponseLifecycle({
 			statusHandle: options.statusHandle,
 		});
@@ -559,6 +643,7 @@ export class AgentChatStreamConsumer {
 						if (!responseState.suppressText) buffer += chunk.delta;
 						break;
 					case 'tool-call-suspended': {
+						responseState.suspended = true;
 						if (isIntegrationActionSuspendPayload(chunk.suspendPayload)) {
 							// The integration action already posted its interactive card.
 							buffer = '';
@@ -610,6 +695,13 @@ export class AgentChatStreamConsumer {
 					default:
 						break;
 				}
+			}
+			// The final reply text is the caption of the queued files.
+			if (responseState.replyFiles.size > 0 && !responseState.suspended) {
+				const caption = buffer;
+				buffer = '';
+				await responseLifecycle.startDiscreteResponse();
+				await this.postReplyFiles(thread, responseState, caption, options);
 			}
 			await flushBuffer();
 			if (stopped) {
