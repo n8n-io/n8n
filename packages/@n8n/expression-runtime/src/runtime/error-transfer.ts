@@ -26,6 +26,7 @@ export interface ErrorValueSentinel extends TransferSentinel {
 	__message: string;
 	__stack?: string;
 	__props: unknown;
+	__nonEnumerableKeys?: string[];
 	__cause?: unknown;
 	__json?: unknown;
 	__jsonKeys?: string[];
@@ -33,15 +34,35 @@ export interface ErrorValueSentinel extends TransferSentinel {
 
 type Encode = (value: unknown) => unknown;
 
+const BUILT_IN_ERROR_KEYS = new Set(['name', 'message', 'stack', 'cause']);
+
 export function isErrorTransferSentinel(value: unknown): value is ErrorValueSentinel {
 	return transferTypeOf(value) === ERROR_TYPE;
 }
 
-/** The own keys of an Error that hold data. A function cannot cross the boundary. */
-function dataPropsOf(error: Error): Record<string, unknown> {
-	return Object.fromEntries(
-		Object.entries(error).filter(([, value]) => typeof value !== 'function'),
-	);
+/** Keep custom fields and their visibility. Hidden built-in fields use separate markers. */
+function dataPropsOf(
+	error: Error,
+	encodeChild: Encode,
+): Pick<ErrorValueSentinel, '__props' | '__nonEnumerableKeys'> {
+	const props: Record<string, unknown> = {};
+	const nonEnumerableKeys: string[] = [];
+	for (const [key, descriptor] of Object.entries(Object.getOwnPropertyDescriptors(error))) {
+		if (descriptor.enumerable || !BUILT_IN_ERROR_KEYS.has(key)) {
+			try {
+				const value: unknown = Reflect.get(error, key);
+				if (typeof value !== 'function') {
+					defineOwnValue(props, key, value);
+					if (!descriptor.enumerable) {
+						nonEnumerableKeys.push(key);
+					}
+				}
+			} catch {
+				// A custom getter must not replace the original Error.
+			}
+		}
+	}
+	return { __props: encodeChild(props), __nonEnumerableKeys: nonEnumerableKeys };
 }
 
 /** The `cause` an Error got from its constructor options. That key is not enumerable. */
@@ -58,9 +79,9 @@ function jsonFormOf(
 	error: Error,
 	encodeChild: Encode,
 ): Pick<ErrorValueSentinel, '__json' | '__jsonKeys'> {
-	const toJSON: unknown = Reflect.get(error, 'toJSON');
-	if (typeof toJSON === 'function') {
-		try {
+	try {
+		const toJSON: unknown = Reflect.get(error, 'toJSON');
+		if (typeof toJSON === 'function') {
 			const json: unknown = toJSON.call(error);
 			// Find direct fields before transfer, while object identity is intact.
 			const keys =
@@ -70,9 +91,9 @@ function jsonFormOf(
 						)
 					: [];
 			return { __json: encodeChild(json), __jsonKeys: keys };
-		} catch {
-			// JSON.stringify then falls back to the own keys, as for any Error.
 		}
+	} catch {
+		// JSON.stringify then falls back to the own keys, as for any Error.
 	}
 	return {};
 }
@@ -86,7 +107,7 @@ export function errorToSentinel(error: Error, encodeChild: Encode): ErrorValueSe
 		[TRANSFER_TYPE_KEY]: ERROR_TYPE,
 		__name: String(error.name),
 		__message: String(error.message),
-		__props: encodeChild(dataPropsOf(error)),
+		...dataPropsOf(error, encodeChild),
 		...(typeof error.stack === 'string' ? { __stack: error.stack } : {}),
 		...hiddenCauseOf(error, encodeChild),
 		...jsonFormOf(error, encodeChild),
@@ -105,7 +126,10 @@ export function rebuildErrorValue(sentinel: ErrorValueSentinel, decodeChild: Enc
 		.filter(([key, value]) => typeof value === 'string' && !Object.hasOwn(props, key))
 		.filter(([key, value]) => value !== Reflect.get(error, key))
 		.forEach(([key, value]) => defineOwnValue(error, key, value, false));
-	Object.entries(props).forEach(([key, value]) => defineOwnValue(error, key, value));
+	const nonEnumerableKeys = new Set(sentinel.__nonEnumerableKeys);
+	Object.entries(props).forEach(([key, value]) =>
+		defineOwnValue(error, key, value, !nonEnumerableKeys.has(key)),
+	);
 
 	if ('__cause' in sentinel) {
 		defineOwnValue(error, 'cause', decodeChild(sentinel.__cause), false);

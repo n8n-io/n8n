@@ -50,6 +50,13 @@ export function __prepareForTransfer(value: unknown): unknown {
 }
 
 function prepareValue(value: unknown, walk: ObjectWalk | undefined): unknown {
+	// An unsupported child must not prevent its Error from crossing the boundary.
+	if (
+		walk !== undefined &&
+		(typeof value === 'function' || typeof value === 'symbol' || value instanceof Promise)
+	) {
+		return undefined;
+	}
 	if (value === null || typeof value !== 'object') {
 		return value;
 	}
