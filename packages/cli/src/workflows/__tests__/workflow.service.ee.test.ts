@@ -883,8 +883,9 @@ describe('EnterpriseWorkflowService', () => {
 			const foreignCredential = { httpHeaderAuth: { id: 'foreign-cred', name: 'Theirs' } };
 
 			it('rejects a parameter change on a read-only node', () => {
-				const previous = httpNode(foreignCredential);
-				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+				const previousVersion = {
+					nodes: [httpNode(foreignCredential)],
+				} as unknown as IWorkflowBase;
 				const newVersion = {
 					nodes: [httpNode(foreignCredential, { url: 'https://changed.test' })],
 				} as unknown as IWorkflowBase;
@@ -901,8 +902,9 @@ describe('EnterpriseWorkflowService', () => {
 			});
 
 			it('rejects a read-only node whose credential is swapped for another the user cannot use', () => {
-				const previous = httpNode(foreignCredential);
-				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+				const previousVersion = {
+					nodes: [httpNode(foreignCredential)],
+				} as unknown as IWorkflowBase;
 				const newVersion = {
 					nodes: [httpNode({ httpHeaderAuth: { id: 'other-foreign-cred', name: 'Fake' } })],
 				} as unknown as IWorkflowBase;
@@ -919,8 +921,9 @@ describe('EnterpriseWorkflowService', () => {
 			});
 
 			it('rejects a read-only node whose unresolved credential is replaced', () => {
-				const previous = httpNode({ httpHeaderAuth: { id: null, name: 'Old' } });
-				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+				const previousVersion = {
+					nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'Old' } })],
+				} as unknown as IWorkflowBase;
 				const newVersion = {
 					nodes: [httpNode({ httpHeaderAuth: { id: null, name: 'New' } })],
 				} as unknown as IWorkflowBase;
@@ -937,10 +940,16 @@ describe('EnterpriseWorkflowService', () => {
 			});
 
 			it('keeps a read-only node that is only renamed, moved or disabled', () => {
-				const previous = httpNode(foreignCredential);
-				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
-				const edited = { ...previous, name: 'Renamed', position: [10, 20], disabled: true };
-				const newVersion = { nodes: [edited] } as unknown as IWorkflowBase;
+				const previousNode = httpNode(foreignCredential);
+				const newNode = {
+					...previousNode,
+					name: 'Renamed',
+					position: [10, 20],
+					disabled: true,
+				};
+
+				const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+				const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
 
 				const result = service.validateWorkflowCredentialUsage(
 					newVersion,
@@ -950,59 +959,76 @@ describe('EnterpriseWorkflowService', () => {
 					rejectReadOnlyNodeEdits,
 				);
 
-				expect(result.nodes[0]).toEqual(edited);
+				expect(result.nodes[0]).toEqual(newNode);
 			});
 
-			it('keeps a read-only node whose stored version has extendsCredential and the submitted one does not', () => {
-				const previous = { ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' };
-				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
-				const newVersion = { nodes: [httpNode(foreignCredential)] } as unknown as IWorkflowBase;
+			describe('extendsCredential', () => {
+				it('keeps a read-only node whose stored version has extendsCredential and the submitted one does not', () => {
+					const previousNode = {
+						...httpNode(foreignCredential),
+						extendsCredential: 'httpHeaderAuth',
+					};
+					const newNode = httpNode(foreignCredential);
 
-				expect(() =>
-					service.validateWorkflowCredentialUsage(
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = { nodes: [newNode] } as unknown as IWorkflowBase;
+
+					const result = service.validateWorkflowCredentialUsage(
 						newVersion,
 						previousVersion,
 						accessible,
 						[],
 						rejectReadOnlyNodeEdits,
-					),
-				).not.toThrow();
-			});
+					);
 
-			it('keeps a read-only node whose submitted extendsCredential matches the stored one', () => {
-				const previous = { ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' };
-				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
-				const newVersion = {
-					nodes: [{ ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' }],
-				} as unknown as IWorkflowBase;
+					expect(result.nodes[0]).toEqual(previousNode);
+				});
 
-				expect(() =>
-					service.validateWorkflowCredentialUsage(
+				it('keeps a read-only node whose submitted extendsCredential matches the stored one', () => {
+					const previousNode = {
+						...httpNode(foreignCredential),
+						extendsCredential: 'httpHeaderAuth',
+					};
+					const newNode = { ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' };
+
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = {
+						nodes: [newNode],
+					} as unknown as IWorkflowBase;
+
+					const result = service.validateWorkflowCredentialUsage(
 						newVersion,
 						previousVersion,
 						accessible,
 						[],
 						rejectReadOnlyNodeEdits,
-					),
-				).not.toThrow();
-			});
+					);
 
-			it('rejects a read-only node whose submitted extendsCredential differs from the stored one', () => {
-				const previous = { ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' };
-				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
-				const newVersion = {
-					nodes: [{ ...httpNode(foreignCredential), extendsCredential: 'httpBasicAuth' }],
-				} as unknown as IWorkflowBase;
+					expect(result.nodes[0]).toEqual(previousNode);
+				});
 
-				expect(() =>
-					service.validateWorkflowCredentialUsage(
-						newVersion,
-						previousVersion,
-						accessible,
-						[],
-						rejectReadOnlyNodeEdits,
-					),
-				).toThrow(/credentials in the 'Call' node/);
+				it('rejects a read-only node whose submitted extendsCredential differs from the stored one', () => {
+					const previousNode = {
+						...httpNode(foreignCredential),
+						extendsCredential: 'httpHeaderAuth',
+					};
+					const newNode = { ...httpNode(foreignCredential), extendsCredential: 'httpBasicAuth' };
+
+					const previousVersion = { nodes: [previousNode] } as unknown as IWorkflowBase;
+					const newVersion = {
+						nodes: [newNode],
+					} as unknown as IWorkflowBase;
+
+					expect(() =>
+						service.validateWorkflowCredentialUsage(
+							newVersion,
+							previousVersion,
+							accessible,
+							[],
+							rejectReadOnlyNodeEdits,
+						),
+					).toThrow(/credentials in the 'Call' node/);
+				});
 			});
 
 			describe('with parameter defaults from the node type', () => {
