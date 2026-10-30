@@ -1,13 +1,6 @@
-import { ApplicationError as ErrorsApplicationError } from '@n8n/errors';
+import { ApplicationError } from '../application.error';
 
-import { ApplicationError } from '../src';
-
-// This file is the compatibility boundary, exempt from the `no-application-error` lint rule.
 describe('ApplicationError compatibility shim', () => {
-	it('exposes the same class from `n8n-workflow` and `@n8n/errors`', () => {
-		expect(ApplicationError).toBe(ErrorsApplicationError);
-	});
-
 	it('keeps the deprecated `ApplicationError` constructor behavior', () => {
 		const error = new ApplicationError('boom', {
 			tags: { foo: 'bar' },

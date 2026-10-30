@@ -1,11 +1,7 @@
-import { BaseError, UserError as SharedUserError } from '@n8n/errors';
-import { UserError } from '../../../src/errors';
+import { BaseError } from '../base.error';
+import { UserError } from '../user.error';
 
 describe('UserError', () => {
-	it('should re-export the shared class', () => {
-		expect(UserError).toBe(SharedUserError);
-	});
-
 	it('should be an instance of UserError', () => {
 		const error = new UserError('test');
 		expect(error).toBeInstanceOf(UserError);
