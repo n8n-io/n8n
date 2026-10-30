@@ -24,6 +24,7 @@ import type { FetchFn } from '../runtime/model/model-factory';
 import { mergeProviderOptions } from '../runtime/model/prompt-cache';
 import { AgentEventBus } from '../runtime/state/event-bus';
 import { RunStateManager } from '../runtime/state/run-state';
+import { assertFunctionId } from '../runtime/telemetry/function-id';
 import { deriveSubAgentTelemetry } from '../runtime/telemetry/sub-agent-telemetry';
 import {
 	LOAD_TOOL_TOOL_NAME,
@@ -175,6 +176,8 @@ export class Agent implements BuiltAgent, AgentBuilder {
 
 	private modelFetchValue?: FetchFn;
 
+	private functionIdValue?: string;
+
 	private instructionProviderOpts?: ProviderOptions;
 
 	private instructionsText?: string;
@@ -287,6 +290,18 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	modelFetch(fetch: FetchFn): this {
 		this.modelFetchValue = fetch;
+		return this;
+	}
+
+	/**
+	 * Name the caller of this agent's model calls, sent as the `x-n8n-function-id`
+	 * header (for example `instance-ai.orchestrator`). Sub-agents send
+	 * `<id>.subagent`. When unset, no header is sent. Only `[A-Za-z0-9._-]`: fetch
+	 * rejects a header value outside Latin-1 on every call.
+	 */
+	functionId(id: string): this {
+		assertFunctionId(id);
+		this.functionIdValue = id;
 		return this;
 	}
 
@@ -713,20 +728,17 @@ export class Agent implements BuiltAgent, AgentBuilder {
 	 */
 	get snapshot(): AgentSnapshot {
 		let model: AgentSnapshot['model'];
-		const rawModelId =
-			typeof this.modelConfig === 'string'
-				? this.modelConfig
-				: this.modelConfig && typeof this.modelConfig === 'object' && 'id' in this.modelConfig
-					? this.modelConfig.id
-					: undefined;
+		const rawModelId = this.modelConfig ? modelConfigToId(this.modelConfig) : undefined;
 
 		if (rawModelId) {
 			const slashIdx = rawModelId.indexOf('/');
 			if (slashIdx === -1) {
 				model = { provider: null, name: rawModelId };
 			} else {
+				// A pre-built model reports `<provider>.<api>`, for example `anthropic.messages`.
+				const provider = rawModelId.slice(0, slashIdx).split('.')[0];
 				model = {
-					provider: rawModelId.slice(0, slashIdx),
+					provider: provider || null,
 					name: rawModelId.slice(slashIdx + 1),
 				};
 			}
@@ -1149,6 +1161,7 @@ export class Agent implements BuiltAgent, AgentBuilder {
 			name: this.name,
 			model: modelConfig,
 			...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+			...(this.functionIdValue !== undefined ? { functionId: this.functionIdValue } : {}),
 			instructions,
 			...(this.skillSource ? { skillSource: this.skillSource } : {}),
 			tools: allTools.length > 0 ? allTools : undefined,
@@ -1309,6 +1322,9 @@ export class Agent implements BuiltAgent, AgentBuilder {
 				// Inherit the parent's transport so children can't bypass a
 				// guarded/instrumented fetch via the ambient default.
 				...(this.modelFetchValue !== undefined ? { modelFetch: this.modelFetchValue } : {}),
+				...(this.functionIdValue !== undefined
+					? { functionId: `${this.functionIdValue}.subagent` }
+					: {}),
 				instructions:
 					'You are a focused subagent working on a specific delegated task. Complete the delegated task independently and return a concise, self-contained summary to your parent agent.',
 				tools: tools.length > 0 ? tools : undefined,

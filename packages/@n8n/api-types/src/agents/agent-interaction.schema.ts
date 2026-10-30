@@ -10,13 +10,11 @@ import { channelConfigSchema, credentialRequestSchema } from '../schemas/instanc
  *
  * The tool name is the discriminator on the wire (see
  * `agent-builder-interactive.ts`'s doc comment); these schemas cover the
- * three tools whose suspend/resume payload matches instance-AI's own
- * confirmation-request/confirm-response wire contract:
- * `agent_builder_ask_questions`, `agent_builder_ask_credential`/
- * `agent_builder_ask_embedding_credential`, and `agent_builder_configure_channel`.
+ * interactive cards whose suspend/resume payload matches instance-AI's own
+ * confirmation-request/confirm-response wire contract: questions, credentials,
+ * and `agent_builder_configure_channel`.
  */
 
-export const ASK_QUESTIONS_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.ASK_QUESTIONS;
 export const CONFIGURE_CHANNEL_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.CONFIGURE_CHANNEL;
 
 /**
@@ -52,7 +50,7 @@ export const CONFIG_MUTATION_TOOL_NAMES = [
 export const AGENT_BUILDER_TEST_TOOL_NAME = AGENT_BUILDER_TOOL_NAMES.CALL_AGENT;
 
 // ---------------------------------------------------------------------------
-// agent_builder_ask_questions
+// ask_user and the questions step of agent_builder_finish_setup
 // ---------------------------------------------------------------------------
 
 export const interactionQuestionSchema = z.object({

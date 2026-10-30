@@ -802,6 +802,7 @@ export interface CredentialHostInfo {
 }
 
 export interface InstanceAiCredentialService {
+	updateDescription(credentialId: string, description: string | null): Promise<void>;
 	/**
 	 * List credentials.
 	 *
@@ -904,7 +905,7 @@ export interface InstanceAiActivityEntry {
 
 /**
  * An entry in full, plus the rest of what the log knows about the same resource. Deliberately not
- * the live record: `workflow_builder_workflows` and `list_credentials` already fetch those, and the entry carries the ids
+ * the live record: `get_workflow` and `list_credentials` already fetch those, and the entry carries the ids
  * to call them with.
  */
 export interface InstanceAiActivityExpansion {
@@ -1530,7 +1531,7 @@ export interface InstanceAiBuilderDelegate {
 	): BuiltTool[];
 	/** Runtime skills that the builder tools rely on, such as `agent-builder-config`. */
 	getRuntimeSkills(): RuntimeSkill[];
-	/** Preview link and model recommendations for the target agent. */
+	/** Preview link for the target agent. */
 	getBuilderSessionContext(agentId: string): Promise<string>;
 	/** Current display name of the agent, or undefined when not found. */
 	resolveAgentName(agentId: string): Promise<string | undefined>;
@@ -1671,7 +1672,7 @@ export interface InstanceAiContext {
 	projectId?: string;
 	/**
 	 * Per-run folder-exploration gate, resolved by the host before the context
-	 * is built. When true, the `workflow_builder_workflows` list action advertises folder fields
+	 * is built. When true, `list_workflows` advertises folder fields
 	 * and rows carry `folder`. Absent or false keeps the pre-feature shape.
 	 */
 	folderExplorationEnabled?: boolean;
@@ -2260,4 +2261,6 @@ export interface CreateInstanceAgentOptions {
 	onMemoryTaskEvent?: (event: ScopedMemoryTaskEvent) => void;
 	/** Transport for the agent's model calls. Sub-agents and memory tasks inherit it. */
 	modelFetch?: FetchFn;
+	/** Send the `x-n8n-function-id` header on model calls (`N8N_INSTANCE_AI_MODEL_REQUEST_LABELS`). */
+	requestLabels?: boolean;
 }

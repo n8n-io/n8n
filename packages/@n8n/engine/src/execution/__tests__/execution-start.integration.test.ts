@@ -21,6 +21,7 @@ import {
 	type WorkQueue,
 } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
+import type { CancelExecutionService } from '../cancel-execution.service';
 import { ExecutionStartHandler } from '../execution-start-handler';
 import { OrchestrationWorker } from '../orchestration-worker';
 import { StartExecutionService } from '../start-execution.service';
@@ -76,7 +77,7 @@ describe('execution start (integration)', () => {
 				orchestrationQueue,
 				noopLifecycleEventPublisher,
 				noopExecutionResponseSender,
-				{ cancelSubExecutions: vi.fn() },
+				{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 			),
 		);
 		worker.start();

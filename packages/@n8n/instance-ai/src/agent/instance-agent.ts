@@ -5,6 +5,7 @@ import {
 	extendRuntimeSkillSource,
 	Memory,
 } from '@n8n/agents';
+import { SPLIT_BUILDER_TOOLS } from '@n8n/api-types';
 
 import { applyAgentThinking } from './apply-agent-thinking';
 import {
@@ -141,10 +142,12 @@ export async function createInstanceAgent(
 		? createOrchestrationTools(orchestrationContext)
 		: createToolRegistry();
 
-	// Keep MCP tools from shadowing domain or orchestration tools.
+	// Keep MCP tools from shadowing domain or orchestration tools. Former split tool
+	// names stay reserved so persisted calls still resolve through their legacy actions.
 	const reservedToolNames = new Set<string>([
 		...getActiveOrchestratorDomainToolNames(domainContext),
 		...orchestrationTools.keys(),
+		...Object.keys(SPLIT_BUILDER_TOOLS),
 	]);
 
 	const claimedOrchestratorToolNames = createClaimedToolNames(reservedToolNames);
@@ -219,9 +222,10 @@ export async function createInstanceAgent(
 		orchestrationContext?.promptConfiguration?.version,
 	);
 	setTraceModelId(orchestrationContext?.tracing, modelId);
+	const functionId = 'instance-ai.orchestrator';
 	const telemetry = orchestrationContext?.tracing?.getTelemetry?.({
 		agentRole: 'orchestrator',
-		functionId: 'instance-ai.orchestrator',
+		functionId,
 		executionMode: 'foreground',
 		metadata: modelIdTraceMetadata(modelId),
 	});
@@ -238,6 +242,7 @@ export async function createInstanceAgent(
 		agent.mcpConnectionFailures(mcpConnectionFailures);
 	}
 	if (options.modelFetch) agent.modelFetch(options.modelFetch);
+	if (options.requestLabels) agent.functionId(functionId);
 	if (options.thinkingEnabled !== false) {
 		applyAgentThinking(agent, modelId);
 	}

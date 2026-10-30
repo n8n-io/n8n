@@ -13,6 +13,7 @@ import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/cor
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
+import { WORKFLOW_TRACER_NAME } from '@/observability/tracer-names';
 
 import {
 	buildExecutionIdentity,
@@ -32,10 +33,8 @@ import {
 import { OtelSettingsService } from './otel-settings.service';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
-import { OtelService } from './otel.service';
 import type { TracingContext } from './tracing-context';
 
-const TRACER_NAME = 'n8n-workflow';
 const propagator = new W3CTraceContextPropagator();
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
@@ -56,14 +55,13 @@ export class ExecutionLevelTracer {
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 
 	constructor(
-		private readonly otelService: OtelService,
 		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
 	) {}
 
 	private get tracer() {
-		return this.otelService.getTracer(TRACER_NAME);
+		return trace.getTracer(WORKFLOW_TRACER_NAME);
 	}
 
 	startWorkflow(params: StartWorkflowParams) {

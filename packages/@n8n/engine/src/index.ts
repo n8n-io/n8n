@@ -85,10 +85,11 @@ export type {
 	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
-	SubExecutionDeclaration,
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
+	SubExecutionDeclaration,
+	SubExecutionMode,
 } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
@@ -113,7 +114,6 @@ export type {
 	SubExecutionOutcome,
 	SubExecutionResult,
 	SubExecutionResumeCause,
-	SubExecutionStarter,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
@@ -124,6 +124,7 @@ export type {
 	NewExecutionRecord,
 	NewStepRecord,
 	ParentLink,
+	InvalidParentLinkReason,
 	StartExecutionRequest,
 	StartExecutionResult,
 	StepError,
@@ -137,6 +138,7 @@ export type {
 	StepView,
 	SeededSteps,
 	TriggerOutputs,
+	ExecutorWaitDeclaration,
 	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';

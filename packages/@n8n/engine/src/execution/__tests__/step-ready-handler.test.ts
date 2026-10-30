@@ -12,12 +12,9 @@ import {
 	type StepStatus,
 	type WaitDeclaration,
 } from '../execution.types';
-import {
-	resolveInputReads,
-	StepReadyHandler,
-	type SubExecutionCanceller,
-	type SubExecutionStarter,
-} from '../step-ready-handler';
+import type { CancelExecutionService } from '../cancel-execution.service';
+import { InvalidParentLinkError, type StartExecutionService } from '../start-execution.service';
+import { resolveInputReads, StepReadyHandler } from '../step-ready-handler';
 import type { StepRecord, StepStore, StepSummary } from '../step-store';
 
 /** Key for a `loadStepsByKeys` result at iteration 0, as the handler requests them. */
@@ -55,10 +52,17 @@ function makeLifecycleEventPublisher(): LifecycleEventPublisher {
 	return { publish: vi.fn(), stop: vi.fn() };
 }
 
-/** Handler with a throwaway publisher, for the tests that ignore it. */
+/** The one method of the start service the handler calls; a stub stands in for the class. */
+type SubExecutionStarter = Pick<StartExecutionService, 'start'>;
+
 function makeSubExecutionStarter(): SubExecutionStarter {
 	return { start: vi.fn().mockResolvedValue({ executionId: 'exec-sub' }) };
 }
+
+/** The one method of the cancel service the handler calls; a stub stands in for the class. */
+type SubExecutionCanceller = Pick<CancelExecutionService, 'cancelSubExecutions'>;
+
+/** Handler with a throwaway publisher, for the tests that ignore it. */
 
 function makeHandler(
 	executionStore: ExecutionStore,
@@ -78,8 +82,8 @@ function makeHandler(
 		dependencies,
 		lifecycleEventPublisher,
 		responseSender,
-		subExecutionStarter,
-		subExecutionCanceller,
+		subExecutionStarter as StartExecutionService,
+		subExecutionCanceller as CancelExecutionService,
 		onStepSuspended,
 	);
 }
@@ -139,6 +143,7 @@ function makeStepStore(step: Partial<StepRecord> = {}, overrides: Partial<StepSt
 		loadStepSummariesByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		countSettledSteps: vi.fn().mockResolvedValue(0),
 		hasFailedSteps: vi.fn().mockResolvedValue(false),
@@ -949,25 +954,6 @@ describe('StepReadyHandler waits', () => {
 		);
 	});
 
-	it('fails the step when the executor declares a sub-execution wait instead of a sub-execution declaration', async () => {
-		// Only the engine suspends a step on a sub-execution, before it starts one. A
-		// declaration from outside would wait for a sub-execution that nothing starts.
-		const stepStore = makeStepStore();
-		const handler = makeHandler(makeExecutionStore(), stepStore, makeQueue(), {
-			v1StepExecutor: makeExecutor({
-				wait: { subExecutionId: 'exec-sub' },
-			}),
-		});
-
-		await handler.handle(event);
-
-		expect(stepStore.suspendStep).not.toHaveBeenCalled();
-		expect(stepStore.failStep).toHaveBeenCalledWith(
-			'step-a',
-			expect.objectContaining({ message: expect.stringContaining('sub-execution') as string }),
-		);
-	});
-
 	it.each([{}, { resumeBinding: null }, { resumeBinding: 'bogus' }])(
 		'fails the step when the declaration can never resume %#',
 		async (declaration) => {
@@ -1131,7 +1117,9 @@ describe('StepReadyHandler sub-executions', () => {
 		graph: subWorkflowGraph,
 		workflow: { id: 'wf-sub' },
 		triggerOutputs: [[{ json: { in: 1 } }]],
+		awaited: true,
 	};
+	const detached = { ...subExecution, awaited: false };
 	const subExecutionWait: WaitDeclaration = {
 		subExecutionId: 'exec-sub',
 	};
@@ -1282,7 +1270,7 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
-	it('starts the detached sub-executions after the step completes, without awaiting them', async () => {
+	it('starts a detached sub-execution before the step completes, without awaiting it', async () => {
 		const order: string[] = [];
 		const stepStore = makeStepStore(
 			{},
@@ -1306,8 +1294,7 @@ describe('StepReadyHandler sub-executions', () => {
 			queue,
 			{
 				v1StepExecutor: makeExecutor({
-					outputs: [[{ json: { id: 'exec-sub' } }]],
-					detached: [subExecution],
+					subExecution: { ...detached, outputs: [[{ json: { id: 'exec-sub' } }]] },
 				}),
 			},
 			undefined,
@@ -1326,9 +1313,9 @@ describe('StepReadyHandler sub-executions', () => {
 				parent: { executionId: 'exec-1', stepId: 'step-a', awaited: false },
 			}),
 		);
-		// The step's outcome is on the row before the sub-execution exists, so a sub-execution
-		// that ends at once finds a settled step and nothing to resume.
-		expect(order).toEqual(['complete', 'start']);
+		// The step still runs when the sub-execution starts, so the execution
+		// cannot have ended in between.
+		expect(order).toEqual(['start', 'complete']);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',
@@ -1336,7 +1323,7 @@ describe('StepReadyHandler sub-executions', () => {
 		});
 	});
 
-	it('cancels the detached sub-executions it started when the parent ended in the meantime', async () => {
+	it('cancels the detached sub-execution it started when the parent ended in the meantime', async () => {
 		const executionStore = makeExecutionStore();
 		const live = await executionStore.loadExecution('exec-1');
 		const ended: ExecutionRecord = { ...live, status: 'cancelled', finishedAt: new Date() };
@@ -1346,7 +1333,7 @@ describe('StepReadyHandler sub-executions', () => {
 			executionStore,
 			makeStepStore(),
 			makeQueue(),
-			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [subExecution] }) },
+			{ v1StepExecutor: makeExecutor({ subExecution: { ...detached, outputs: [[]] } }) },
 			undefined,
 			undefined,
 			undefined,
@@ -1359,14 +1346,24 @@ describe('StepReadyHandler sub-executions', () => {
 		expect(subExecutionCanceller.cancelSubExecutions).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
-	it('starts no detached sub-execution when another owner took the step over', async () => {
-		const stepStore = makeStepStore({}, { completeStep: vi.fn().mockResolvedValue(false) });
-		const subExecutionStarter = makeSubExecutionStarter();
+	it('records the outputs when the execution ended before a detached sub-execution started', async () => {
+		// A sibling failed, or a cancel came, while the node ran: the outputs are
+		// still the node's outcome, and an ended execution is owed no sub-execution.
+		const stepStore = makeStepStore();
+		const subExecutionStarter: SubExecutionStarter = {
+			start: vi
+				.fn()
+				.mockRejectedValue(new InvalidParentLinkError('execution-ended', 'exec-1 is cancelled')),
+		};
 		const handler = makeHandler(
 			makeExecutionStore(),
 			stepStore,
 			makeQueue(),
-			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [subExecution] }) },
+			{
+				v1StepExecutor: makeExecutor({
+					subExecution: { ...detached, outputs: [[{ json: { ok: true } }]] },
+				}),
+			},
 			undefined,
 			undefined,
 			undefined,
@@ -1375,30 +1372,40 @@ describe('StepReadyHandler sub-executions', () => {
 
 		await handler.handle(event);
 
-		expect(subExecutionStarter.start).not.toHaveBeenCalled();
+		expect(subExecutionStarter.start).toHaveBeenCalledTimes(1);
+		expect(stepStore.failStep).not.toHaveBeenCalled();
+		expect(stepStore.completeStep).toHaveBeenCalledWith('step-a', [[{ json: { ok: true } }]]);
 	});
 
-	it('settles the completed step and then reports a detached sub-execution that could not start', async () => {
+	it('fails the step instead of completing it when a detached sub-execution cannot start', async () => {
 		const stepStore = makeStepStore();
 		const subExecutionStarter: SubExecutionStarter = {
 			start: vi.fn().mockRejectedValue(new Error('admittance rejected')),
 		};
 		const queue = makeQueue();
+		const publisher = makeLifecycleEventPublisher();
 		const handler = makeHandler(
 			makeExecutionStore(),
 			stepStore,
 			queue,
-			{ v1StepExecutor: makeExecutor({ outputs: [[]], detached: [subExecution] }) },
-			undefined,
+			{ v1StepExecutor: makeExecutor({ subExecution: { ...detached, outputs: [[]] } }) },
+			publisher,
 			undefined,
 			undefined,
 			subExecutionStarter,
 		);
 
-		await expect(handler.handle(event)).rejects.toThrow(/exec-sub.*admittance rejected/);
+		await handler.handle(event);
 
-		// The step completed, so its outcome stands; only the sub-execution is missing.
-		expect(stepStore.failStep).not.toHaveBeenCalled();
+		// The node reported an id that will not run, so its outcome does not stand.
+		expect(stepStore.completeStep).not.toHaveBeenCalled();
+		expect(stepStore.failStep).toHaveBeenCalledWith(
+			'step-a',
+			expect.objectContaining({ name: 'Error', message: 'admittance rejected' }),
+		);
+		expect(publisher.publish).toHaveBeenCalledWith(
+			expect.objectContaining({ type: 'step:failed', stepId: 'step-a' }),
+		);
 		expect(queue.publish).toHaveBeenCalledWith({
 			type: 'step:settled',
 			executionId: 'exec-1',

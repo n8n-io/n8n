@@ -29,7 +29,7 @@ pnpm <anything>
 ```
 
 - Replaced **in place**, so it works regardless of PATH order. If the binary's
-  dir isn't writable it's skipped (rare — corepack pnpm lives in a user-writable
+  dir isn't writable it's skipped (rare — pnpm lives in a user-writable
   dir).
 - `N8N_DEV_SHIM_ACTIVE` guards against double-counting nested calls (e.g.
   `turbo -> pnpm`) and the tracker's own `<bin> --version` probe.
