@@ -1,36 +1,34 @@
 import type { IWorkflowSettings } from './interfaces';
 
 /**
- * - `version`: saved with each workflow version, goes live on publish.
- * - `live`: one value for the workflow, applies at once on save.
+ * - `version` saved with each workflow version, goes live on publish.
+ * - `live` one value for the workflow, applies at once on save.
  */
 export type WorkflowSettingScope = 'version' | 'live';
 
-/**
- * The scope of every workflow setting. A new setting without a scope does not
- * compile. Settings that control access, data protection or records stay `live`.
- */
+type ScopeForEverySetting = Record<keyof Required<IWorkflowSettings>, WorkflowSettingScope>;
+
 export const WORKFLOW_SETTINGS_SCOPE = {
-	timezone: 'live',
-	errorWorkflow: 'live',
+	availableInMCP: 'live',
+	binaryMode: 'live',
 	callerIds: 'live',
 	callerPolicy: 'live',
+	credentialResolverId: 'live',
+	customTelemetryTags: 'live',
+	engineType: 'version',
+	errorWorkflow: 'live',
+	executionOrder: 'live',
+	executionTimeout: 'live',
+	redactCallerExecutions: 'live',
+	redactionPolicy: 'live',
 	saveDataErrorExecution: 'live',
 	saveDataSuccessExecution: 'live',
-	saveManualExecutions: 'live',
 	saveExecutionProgress: 'live',
-	executionTimeout: 'live',
-	executionOrder: 'live',
-	engineType: 'version',
-	binaryMode: 'live',
-	timeSavedPerExecution: 'live',
+	saveManualExecutions: 'live',
 	timeSavedMode: 'live',
-	availableInMCP: 'live',
-	credentialResolverId: 'live',
-	redactionPolicy: 'live',
-	redactCallerExecutions: 'live',
-	customTelemetryTags: 'live',
-} as const satisfies Record<keyof Required<IWorkflowSettings>, WorkflowSettingScope>;
+	timeSavedPerExecution: 'live',
+	timezone: 'live',
+} satisfies ScopeForEverySetting;
 
 type SettingsScopeMap = typeof WORKFLOW_SETTINGS_SCOPE;
 
