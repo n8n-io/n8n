@@ -41,6 +41,9 @@ const arg = (name, fallback) =>
 const SHARDS = arg('shards', '/tmp/shards');
 const UNIT_SHARDS = arg('unit-shards', null);
 const OUT = arg('out', './coverage');
+// The commit the coverage ran on. The map records it so that selection can map a
+// PR's changed lines to the map's lines. Without it, selection stays file-level.
+const SHA = arg('sha', process.env.GITHUB_SHA);
 
 /** Recursively collect files under `dir` matching `predicate(filename)`. */
 function findFiles(dir, predicate, acc = []) {
@@ -114,6 +117,7 @@ function merge(inputsDir, outLcov, outMap) {
 			`--inputs-dir=${inputsDir}`,
 			`--out-lcov=${outLcov}`,
 			`--out-map=${outMap}`,
+			...(SHA ? [`--sha=${SHA}`] : []),
 		],
 		{ stdio: 'inherit' },
 	);
