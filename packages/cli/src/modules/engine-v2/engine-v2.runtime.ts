@@ -25,7 +25,9 @@ import { NodeTypes } from '@/node-types';
 import { EngineAdditionalDataBuilder } from './engine-additional-data';
 import { EngineControlPlaneClient } from './engine-control-plane-client';
 import { EngineCredentialsClient } from './engine-credentials-client';
+import { EngineDataTablesClient } from './engine-data-tables-client';
 import { RemoteCredentialsHelper } from './remote-credentials-helper';
+import { RemoteDataTableProxyProvider } from './remote-data-table-proxy-provider';
 
 /**
  * Runs the engine v2 data plane inside the n8n process.
@@ -56,6 +58,7 @@ export class EngineV2Runtime {
 		private readonly logger: Logger,
 		private readonly controlPlaneClient: EngineControlPlaneClient,
 		private readonly credentialsClient: EngineCredentialsClient,
+		private readonly dataTablesClient: EngineDataTablesClient,
 		private readonly credentialsHelper: CredentialsHelper,
 		private readonly credentialTypes: CredentialTypes,
 		private readonly additionalDataBuilder: EngineAdditionalDataBuilder,
@@ -151,8 +154,13 @@ export class EngineV2Runtime {
 			context,
 			stopping.signal,
 		);
+		const dataTableProxyProvider = new RemoteDataTableProxyProvider(
+			this.dataTablesClient,
+			context,
+			stopping.signal,
+		);
 
-		return this.additionalDataBuilder.build(context, credentialsHelper);
+		return this.additionalDataBuilder.build(context, credentialsHelper, dataTableProxyProvider);
 	}
 
 	private async initServer(): Promise<void> {
