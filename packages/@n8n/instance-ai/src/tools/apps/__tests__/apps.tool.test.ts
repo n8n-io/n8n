@@ -1,9 +1,10 @@
-import { isZodSchema } from '@n8n/agents';
+import { isZodSchema, type BuiltTool } from '@n8n/agents';
 import { zodToJsonSchema } from '@n8n/ai-utilities/json-schema';
 import {
 	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
 	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
 	type AppResponse,
+	type AppBlueprint,
 } from '@n8n/api-types';
 import { mock } from 'vitest-mock-extended';
 
@@ -59,6 +60,23 @@ function app(id: string, projectId = 'project-1') {
 }
 
 const ARCHIVE = Buffer.from('archive');
+const BLUEPRINT: AppBlueprint = {
+	name: 'Todos',
+	namespace: 'todos',
+	visibility: 'project',
+	description: 'Track tasks and mark them complete.',
+	theme: 'both',
+};
+
+function createInput(blueprint: AppBlueprint = BLUEPRINT) {
+	return { action: 'create' as const, blueprint };
+}
+
+async function approveCreate(tool: BuiltTool, blueprint: AppBlueprint = BLUEPRINT) {
+	return await executeTool(tool, createInput(blueprint), {
+		resumeData: { approved: true, blueprint },
+	});
+}
 
 function setup(metadata: Record<string, unknown> = {}) {
 	const appService = mock<InstanceAiAppService>();
@@ -93,6 +111,65 @@ function setup(metadata: Record<string, unknown> = {}) {
 describe('apps tool', () => {
 	beforeEach(() => vi.clearAllMocks());
 
+	it('suspends with the proposed blueprint before creating an app', async () => {
+		const { tool, appService } = setup();
+		const suspend = vi.fn(async (payload: unknown) => await Promise.resolve(payload));
+
+		await executeTool(tool, createInput(), { suspend });
+
+		expect(suspend).toHaveBeenCalledWith({
+			requestId: expect.any(String),
+			message: 'Review the blueprint for Todos',
+			severity: 'info',
+			inputType: 'app-blueprint',
+			appBlueprint: BLUEPRINT,
+		});
+		expect(appService.createApp).not.toHaveBeenCalled();
+	});
+
+	it('does not let the model prefill additional instructions', () => {
+		const { tool } = setup();
+		const parsed = parseToolInput(
+			tool,
+			createInput({ ...BLUEPRINT, additionalInstructions: 'Use compact cards.' }),
+		);
+
+		expect(parsed.success).toBe(true);
+		if (parsed.success) expect(parsed.data).toEqual(createInput());
+	});
+
+	it('cancels without creating an app', async () => {
+		const { tool, appService } = setup();
+
+		const result = await executeTool(tool, createInput(), {
+			resumeData: { approved: false, blueprint: BLUEPRINT },
+		});
+
+		expect(result).toEqual({
+			approved: false,
+			blueprint: BLUEPRINT,
+		});
+		expect(appService.createApp).not.toHaveBeenCalled();
+	});
+
+	it('returns optional build instructions after approval', async () => {
+		const { tool, appService } = setup();
+		appService.createApp.mockResolvedValue(app(SERVER_ID));
+		const blueprint = { ...BLUEPRINT, additionalInstructions: 'Use compact cards.' };
+
+		const result = await executeTool(tool, createInput(), {
+			resumeData: {
+				approved: true,
+				blueprint,
+			},
+		});
+
+		expect(result).toMatchObject({
+			approved: true,
+			blueprint,
+		});
+	});
+
 	it('creates the first app under the pending id, opens it and adds it to the thread', async () => {
 		const { tool, appService, thread, onArtifactChanged } = setup({
 			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: PENDING_ID, projectId: 'project-1' },
@@ -100,16 +177,13 @@ describe('apps tool', () => {
 		appService.findApp.mockResolvedValue(undefined);
 		appService.createApp.mockResolvedValue(app(PENDING_ID));
 
-		const result = await executeTool(tool, {
-			action: 'create',
-			name: 'Todos',
-			namespace: 'todos',
-		});
+		const result = await approveCreate(tool);
 
 		expect(result).toMatchObject({ path: `apps/${PENDING_ID}` });
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Todos',
 			namespace: 'todos',
+			visibility: 'project',
 			id: PENDING_ID,
 		});
 		expect(checkOutDraft).toHaveBeenCalledWith({}, appService, PENDING_ID);
@@ -133,7 +207,7 @@ describe('apps tool', () => {
 		appService.createApp.mockResolvedValue(app(PENDING_ID));
 		vi.mocked(checkOutDraft).mockRejectedValue(new Error('Sandbox command failed'));
 
-		const result = await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
+		const result = await approveCreate(tool);
 
 		expect(result).toEqual({ error: 'Sandbox command failed' });
 
@@ -149,11 +223,12 @@ describe('apps tool', () => {
 		});
 		appService.createApp.mockResolvedValue(app(SERVER_ID));
 
-		await executeTool(tool, { action: 'create', name: 'Admin', namespace: 'admin' });
+		await approveCreate(tool, { ...BLUEPRINT, name: 'Admin', namespace: 'admin' });
 
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Admin',
 			namespace: 'admin',
+			visibility: 'project',
 			id: undefined,
 		});
 		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
@@ -168,7 +243,7 @@ describe('apps tool', () => {
 		});
 		appService.createApp.mockResolvedValue(app(SERVER_ID));
 
-		await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
+		await approveCreate(tool);
 
 		expect(appService.findApp).not.toHaveBeenCalled();
 		expect(appService.createApp).toHaveBeenCalledWith(expect.objectContaining({ id: undefined }));
@@ -180,11 +255,7 @@ describe('apps tool', () => {
 		});
 		appService.findApp.mockResolvedValue(app(PENDING_ID));
 
-		const result = await executeTool(tool, {
-			action: 'create',
-			name: 'Todos',
-			namespace: 'todos',
-		});
+		const result = await approveCreate(tool);
 
 		expect(result).toMatchObject({ alreadyCreated: true });
 		expect(appService.createApp).not.toHaveBeenCalled();
@@ -196,11 +267,7 @@ describe('apps tool', () => {
 		});
 		appService.findApp.mockRejectedValue(new Error('Database unavailable'));
 
-		const result = await executeTool(tool, {
-			action: 'create',
-			name: 'Todos',
-			namespace: 'todos',
-		});
+		const result = await approveCreate(tool);
 
 		expect(result).toEqual({ error: 'Database unavailable' });
 		expect(appService.createApp).not.toHaveBeenCalled();
@@ -291,7 +358,7 @@ describe('apps tool', () => {
 		appService.createApp.mockResolvedValue(app(SERVER_ID));
 		onArtifactChanged.mockRejectedValue(new Error('Event bus unavailable'));
 
-		const result = await executeTool(tool, { action: 'create', name: 'Todos', namespace: 'todos' });
+		const result = await approveCreate(tool);
 
 		expect(result).toMatchObject({ app: { id: SERVER_ID }, path: `apps/${SERVER_ID}` });
 		expect(logger.warn).toHaveBeenCalled();
@@ -359,7 +426,10 @@ describe('apps tool', () => {
 		const { tool } = setup();
 
 		expect(
-			parseToolInput(tool, { action: 'create', name: 'Todos', namespace: 'Todo App' }).success,
+			parseToolInput(tool, {
+				action: 'create',
+				blueprint: { ...BLUEPRINT, namespace: 'Todo App' },
+			}).success,
 		).toBe(false);
 	});
 

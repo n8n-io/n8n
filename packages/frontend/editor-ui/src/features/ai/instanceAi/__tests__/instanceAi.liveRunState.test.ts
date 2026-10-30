@@ -148,6 +148,23 @@ describe('instanceAi.liveRunState', () => {
 			expect(shouldRearmRunAfterConfirm({ kind: 'mcpConnect', approved: false })).toBe(true);
 		});
 
+		test('re-arms after either app blueprint decision', () => {
+			const blueprint = {
+				name: 'Planner',
+				namespace: 'planner',
+				visibility: 'project' as const,
+				description: 'Plan weekly tasks.',
+				theme: 'both' as const,
+			};
+
+			expect(shouldRearmRunAfterConfirm({ kind: 'appBlueprint', approved: true, blueprint })).toBe(
+				true,
+			);
+			expect(shouldRearmRunAfterConfirm({ kind: 'appBlueprint', approved: false, blueprint })).toBe(
+				true,
+			);
+		});
+
 		test('re-arms on resume-capable confirm kinds', () => {
 			expect(
 				shouldRearmRunAfterConfirm({

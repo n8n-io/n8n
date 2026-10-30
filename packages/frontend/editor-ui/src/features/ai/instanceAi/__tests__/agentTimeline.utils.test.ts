@@ -485,6 +485,33 @@ describe('buildTimelineBlocks', () => {
 		expect(blocks.map((block) => block.type)).toEqual(['thinking', 'mcp-connect']);
 	});
 
+	test('an app blueprint renders as a standalone block', () => {
+		const blocks = blocksOf(
+			[toolEntry('tc-1', 'r1')],
+			[
+				makeToolCall({
+					toolCallId: 'tc-1',
+					toolName: 'apps',
+					confirmation: {
+						requestId: 'req-1',
+						severity: 'info',
+						message: 'Review the app blueprint',
+						inputType: 'app-blueprint',
+						appBlueprint: {
+							name: 'Planner',
+							namespace: 'planner',
+							visibility: 'project',
+							description: 'Plan weekly tasks.',
+							theme: 'both',
+						},
+					},
+				}),
+			],
+		);
+
+		expect(blocks.map((block) => block.type)).toEqual(['app-blueprint']);
+	});
+
 	test('an in-flight connect call stays a trace row until its payload arrives', () => {
 		const blocks = blocksOf(
 			[reasoning('r1'), toolEntry('tc-1', 'r1')],

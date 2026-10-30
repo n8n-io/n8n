@@ -1296,7 +1296,12 @@ export interface InstanceAiDataTableService {
 }
 
 export interface InstanceAiAppService {
-	createApp(input: { name: string; namespace: string; id?: string }): Promise<AppResponse>;
+	createApp(input: {
+		name: string;
+		namespace: string;
+		visibility?: AppResponse['visibility'];
+		id?: string;
+	}): Promise<AppResponse>;
 	listApps(query: { name?: string }): Promise<AppListResponse>;
 	getApp(appId: string): Promise<AppResponse>;
 	findApp(appId: string): Promise<AppResponse | undefined>;
