@@ -1,0 +1,36 @@
+packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.ts
+  s_4367c29be9a1f1::t_d42d2919415805 13,104-108
+packages/frontend/@n8n/frontend-module-sdk/src/types/descriptor.test.ts
+  s_4367c29be9a1f1::t_015397ec50b976 76,94
+  s_4367c29be9a1f1::t_76b68359807abf 65-75,77-93,95-106
+packages/@n8n/module-cli/frontend-module-guide.md
+  s_4367c29be9a1f1::t_fa2fe1e79d58ae 179,230-232,239-266
+  s_4367c29be9a1f1::t_46d9c750feae4a 185-194
+  s_4367c29be9a1f1::t_7150442b091116 267
+packages/frontend/@n8n/frontend-module-sdk/src/types/index.ts
+  s_4367c29be9a1f1::t_d42d2919415805 5
+packages/@n8n/module-cli/src/templates/frontend/module.ts.template
+  s_4367c29be9a1f1::t_641ba89f1d9a24 25,29-30
+packages/frontend/@n8n/frontend-module-sdk/src/types/runDataDisplayMode.ts
+  s_4367c29be9a1f1::t_27be168bfb5f9b 1-84
+packages/frontend/@n8n/frontend-module-sdk/src/runDataDisplayModes.ts
+  s_4367c29be9a1f1::t_aa7089963a641a 1-5
+packages/frontend/@n8n/frontend-module-sdk/src/index.ts
+  s_4367c29be9a1f1::t_d42d2919415805 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0054611f6e0fbfbdb74126705630563ab697b53d",
+  "prompts": {},
+  "sessions": {
+    "s_4367c29be9a1f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8991c965-9f30-4180-a501-051ae3861442",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jani Jez <jani.jez@n8n.io>"
+    }
+  }
+}
