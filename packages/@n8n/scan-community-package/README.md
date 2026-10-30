@@ -27,8 +27,3 @@ The scanner runs these steps in sequence. It stops at the first step that fails.
 3. **Static analysis.** The scanner lints two sets of files with ESLint. Both must pass:
    - the attested source: `package.json` and the files in `nodes/` and `credentials/`
    - the published npm tarball: all `.js` files and `package.json`
-
-### Requirements
-
-- `npm` and `tar` must be on the `PATH`.
-- The scanner needs network access to `registry.npmjs.org` and `codeload.github.com`.
