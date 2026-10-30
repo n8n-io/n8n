@@ -68,12 +68,12 @@ class GuestEncoder {
 	}
 
 	/**
-	 * Copy a value into a form both bridges can send. A function gives undefined,
-	 * and so does a reference back to an object the walk is inside.
+	 * Copy a value into a form both bridges can send. A function or a symbol gives
+	 * undefined, and so does a reference back to an object the walk is inside.
 	 */
 	encode(value: unknown): unknown {
 		if (!isObject(value)) {
-			return typeof value === 'function' ? undefined : value;
+			return typeof value === 'function' || typeof value === 'symbol' ? undefined : value;
 		}
 		if (!isWalked(value)) {
 			return this.encodeUnwalked(value);
@@ -102,7 +102,7 @@ class GuestEncoder {
 	 */
 	private encodeRecord(object: object): unknown {
 		const result: Record<string, unknown> = {};
-		const entries = Object.entries(object).filter(([, value]) => typeof value !== 'function');
+		const entries = Object.entries(object);
 		entries.forEach(([key, value]) => defineOwnValue(result, key, this.encode(value)));
 		return entries.some(([key]) => TRANSFER_FRAMING_KEYS.includes(key))
 			? { [TRANSFER_ESCAPED_KEY]: true, [TRANSFER_VALUE_KEY]: result }
