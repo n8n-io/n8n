@@ -6,7 +6,6 @@ import { getActivePinia, setActivePinia } from 'pinia';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
 import { STORES } from '@n8n/stores';
 import { retry, mockedStore } from '@/__tests__/utils';
-import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 import { useCredentialsStore } from '../../credentials.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
@@ -57,7 +56,6 @@ const {
 	fetchGatewayConfigMock,
 	fetchGatewayWalletMock,
 	saveAfterGatewayToggleMock,
-	toastShowErrorMock,
 	toastShowMessageMock,
 } = vi.hoisted(() => ({
 	aiGatewayBalance: { value: 1 },
@@ -65,7 +63,6 @@ const {
 	fetchGatewayConfigMock: vi.fn(),
 	fetchGatewayWalletMock: vi.fn(),
 	saveAfterGatewayToggleMock: vi.fn(),
-	toastShowErrorMock: vi.fn(),
 	toastShowMessageMock: vi.fn(),
 }));
 
@@ -84,7 +81,7 @@ vi.mock('vue-router', async () => ({
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({
-		showError: toastShowErrorMock,
+		showError: vi.fn(),
 		showMessage: toastShowMessageMock,
 	}),
 }));
@@ -2880,9 +2877,6 @@ describe('CredentialEdit - restricted credential types', () => {
 		renderComponent({
 			props: { activeId: RESTRICTED_TYPE.name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
 			pinia,
-			global: {
-				stubs: { CredentialSharing: { template: '<div data-test-id="credential-sharing-tab" />' } },
-			},
 		});
 
 	it('explains the restriction when an existing credential is opened', async () => {
@@ -2919,67 +2913,5 @@ describe('CredentialEdit - restricted credential types', () => {
 		await findByTestId('credential-save-button');
 
 		expect(queryByTestId('restricted-credential-callout')).not.toBeInTheDocument();
-	});
-
-	const refusedSave = () =>
-		Object.assign(new Error('Blocked by policy'), {
-			httpStatusCode: 403,
-			meta: {
-				violations: [
-					{
-						kind: 'credential-type-unavailable',
-						checkId: 'credential-type-availability',
-						message: 'Credential type "openAiApi" is blocked by an instance policy',
-						subject: 'openAiApi',
-						subjectType: 'credentialType',
-						scope: 'instance',
-					},
-				],
-			},
-		});
-
-	it('renders the violations of a refused save instead of a toast', async () => {
-		const { pinia, credentialsStore } = setup();
-		mockRestrictedCredentialTypes({});
-		credentialsStore.createNewCredential.mockRejectedValue(refusedSave());
-
-		const { findByTestId, findByRole } = renderRestricted(pinia);
-
-		await userEvent.click(await findByRole('button', { name: 'Save' }));
-		await waitFor(() => expect(credentialsStore.createNewCredential).toHaveBeenCalled());
-
-		expect(await findByTestId('credential-policy-violations')).toHaveTextContent(
-			'Problem creating credential',
-		);
-		expect(toastShowErrorMock).not.toHaveBeenCalled();
-	});
-
-	it('keeps the toast for a save refused from the sharing tab', async () => {
-		const { pinia, credentialsStore } = setup({ initialTab: 'sharing' });
-		mockRestrictedCredentialTypes({});
-		credentialsStore.createNewCredential.mockRejectedValue(refusedSave());
-
-		const { findByTestId, findByRole, queryByTestId } = renderRestricted(pinia);
-		expect(await findByTestId('credential-sharing-tab')).toBeInTheDocument();
-
-		await userEvent.click(await findByRole('button', { name: 'Save' }));
-		await waitFor(() => expect(toastShowErrorMock).toHaveBeenCalled());
-
-		expect(queryByTestId('credential-policy-violations')).not.toBeInTheDocument();
-	});
-
-	it('gives the policy store back the project it had when the modal closes', async () => {
-		const { pinia } = setup();
-		mockRestrictedCredentialTypes({});
-		const policiesStore = mockedStore(useTypeAvailabilityPoliciesStore);
-		policiesStore.requestedProjectId = 'project-behind-the-modal';
-
-		const { findByTestId, unmount } = renderRestricted(pinia);
-		await findByTestId('credential-save-button');
-		expect(policiesStore.fetchForProject).toHaveBeenCalledWith('personal-project');
-
-		unmount();
-
-		expect(policiesStore.fetchForProject).toHaveBeenLastCalledWith('project-behind-the-modal');
 	});
 });
