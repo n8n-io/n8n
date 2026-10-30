@@ -1,5 +1,6 @@
 // services/api-helper.ts
 import type {
+	AiPreferenceDto,
 	ClusterInfoResponse,
 	InstanceAiEnsureThreadResponse,
 	InstanceAiPermissions,
@@ -806,6 +807,26 @@ export class ApiHelpers {
 			throw new TestError(
 				`Failed to set MCP access: ${response.status()} ${await response.text()}`,
 			);
+		}
+	}
+
+	/** Create a preference for the signed-in user. */
+	async createAiPreference(content: string): Promise<AiPreferenceDto> {
+		const response = await this.request.post('/rest/ai-preferences', {
+			data: { content, scope: 'user', projectId: null },
+		});
+		if (!response.ok()) {
+			throw new TestError(`Failed to create preference: ${await response.text()}`);
+		}
+		const result = (await response.json()) as { data: AiPreferenceDto };
+		return result.data;
+	}
+
+	/** Delete a preference created by a test. */
+	async deleteAiPreference(id: string): Promise<void> {
+		const response = await this.request.delete(`/rest/ai-preferences/${id}`);
+		if (!response.ok()) {
+			throw new TestError(`Failed to delete preference: ${await response.text()}`);
 		}
 	}
 
