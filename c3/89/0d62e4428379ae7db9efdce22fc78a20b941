@@ -1,0 +1,21 @@
+packages/cli/src/workflows/workflow.service.ee.ts
+  s_1846b2775c62ad::t_d316a2fedebe69 42,543-552,565-576
+packages/cli/test/integration/folder/folder.controller.test.ts
+  s_1846b2775c62ad::t_2462825c02b618 1874
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c3890d62e4428379ae7db9efdce22fc78a20b941",
+  "prompts": {},
+  "sessions": {
+    "s_1846b2775c62ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ba7efea-ee8f-4ee1-b780-73cd9b83ced1",
+        "model": "unknown"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
