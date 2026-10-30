@@ -1,9 +1,12 @@
 <script lang="ts" setup>
-import type {
-	InstanceAiAgentNode,
-	InstanceAiTimelineEntry,
-	InstanceAiToolCallState,
+import {
+	appBlueprintSchema,
+	type AppBlueprint,
+	type InstanceAiAgentNode,
+	type InstanceAiTimelineEntry,
+	type InstanceAiToolCallState,
 } from '@n8n/api-types';
+import { isRecord } from '@n8n/utils/is-record';
 import { useI18n } from '@n8n/i18n';
 import { computed, inject } from 'vue';
 import {
@@ -20,6 +23,7 @@ import { useThread } from '../instanceAi.store';
 import AgentSection from './AgentSection.vue';
 import AnsweredQuestions from './AnsweredQuestions.vue';
 import ArtifactCard from './ArtifactCard.vue';
+import InstanceAiAppBlueprint from './InstanceAiAppBlueprint.vue';
 import InstanceAiMcpConnect from './InstanceAiMcpConnect.vue';
 import PreferenceCard from './PreferenceCard.vue';
 import TaskChecklist from './TaskChecklist.vue';
@@ -231,6 +235,14 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 	const requestId = tc.confirmation?.requestId;
 	return !!requestId && thread.resolvedConfirmationIds.has(requestId);
 }
+
+function resolveAppBlueprint(tc: InstanceAiToolCallState): AppBlueprint | undefined {
+	if (isRecord(tc.result)) {
+		const parsed = appBlueprintSchema.safeParse(tc.result.blueprint);
+		if (parsed.success) return parsed.data;
+	}
+	return tc.confirmation?.appBlueprint;
+}
 </script>
 
 <template>
@@ -275,6 +287,15 @@ function isCardReadOnly(tc: InstanceAiToolCallState): boolean {
 				:servers="block.toolCall.confirmation.mcpConnectRequest.servers"
 				:read-only="isCardReadOnly(block.toolCall)"
 				:expired="block.toolCall.confirmation.expired"
+			/>
+
+			<InstanceAiAppBlueprint
+				v-else-if="block.type === 'app-blueprint' && block.toolCall.confirmation?.appBlueprint"
+				:key="block.toolCall.confirmation.requestId"
+				:request-id="block.toolCall.confirmation.requestId"
+				:input-thread-id="block.toolCall.confirmation.inputThreadId"
+				:blueprint="resolveAppBlueprint(block.toolCall)!"
+				:read-only="isCardReadOnly(block.toolCall)"
 			/>
 
 			<!-- Answered questions (read-only after resolution) -->

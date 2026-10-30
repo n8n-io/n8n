@@ -3554,9 +3554,13 @@ export class InstanceAiAdapterService {
 		};
 
 		return {
-			createApp: async ({ name, namespace, id }) => {
+			createApp: async ({ name, namespace, visibility, id }) => {
 				const { apps } = await services('app:create');
-				return await apps.createApp(projectId, CreateAppDto.parse({ name, namespace }), { id });
+				return await apps.createApp(
+					projectId,
+					CreateAppDto.parse({ name, namespace, visibility }),
+					{ id },
+				);
 			},
 			listApps: async ({ name }) => {
 				const { apps } = await services('app:list');
