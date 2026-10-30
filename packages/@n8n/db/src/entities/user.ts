@@ -12,7 +12,8 @@ import {
 	PrimaryGeneratedColumn,
 	TableInheritance,
 } from '@n8n/typeorm';
-import { type IUser, type IUserSettings, UnexpectedError } from 'n8n-workflow';
+import type { IUser, IUserSettings } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { JsonColumn, WithTimestamps } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
