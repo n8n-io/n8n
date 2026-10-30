@@ -390,7 +390,7 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 
 	private async claimWithPostgres(opts: ClaimDueTasksOptions): Promise<ScheduledTask[]> {
 		const taskTypesSql = '= ANY($3)';
-		const dueBeforeSql = "now() + ($4 || ' milliseconds')::interval";
+		const dueBeforeSql = "now() + ($4::float8 * INTERVAL '1 millisecond')";
 
 		// Two claimers must not both use a job's last free place. The `xmin` guard skips
 		// a job that another claim changed, and `claimed_jobs` changes each job it uses.
@@ -421,13 +421,13 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 			 )
 			 UPDATE ${this.tableName}
 			   SET "status" = '${ScheduledTaskStatus.Running}', "claimedBy" = $1,
-			       "leaseExpiresAt" = now() + ($2 || ' milliseconds')::interval,
+			       "leaseExpiresAt" = now() + ($2::float8 * INTERVAL '1 millisecond'),
 			       "leaseEpoch" = "leaseEpoch" + 1
 			 WHERE "id" IN (
 			   SELECT "id" FROM candidates
 			    WHERE "concurrencyLimit" IS NULL OR "jobId" IN (SELECT "id" FROM claimed_jobs))
 			 RETURNING *`,
-			[opts.host, String(opts.leaseMs), opts.taskTypes, String(opts.lookaheadMs), opts.batchSize],
+			[opts.host, opts.leaseMs, opts.taskTypes, opts.lookaheadMs, opts.batchSize],
 		);
 
 		return rows;

@@ -441,6 +441,72 @@ describe('softDeleteOnPruningCycle()', () => {
 		});
 	});
 
+	describe('when EXECUTIONS_DATA_MAX_AGE and the hard-delete buffer are 30 days', () => {
+		const thirtyOneDaysAgo = new Date(Date.now() - 31 * Time.days.toMilliseconds);
+		const twentyNineDaysAgo = new Date(Date.now() - 29 * Time.days.toMilliseconds);
+
+		beforeAll(() => {
+			executionsConfig.pruneDataMaxAge = 30 * 24;
+			executionsConfig.pruneDataMaxCount = 0;
+			executionsConfig.pruneDataHardDeleteBuffer = 30 * 24;
+		});
+
+		test('should mark as deleted based on EXECUTIONS_DATA_MAX_AGE', async () => {
+			const executions = [
+				await createExecution(
+					{
+						finished: true,
+						startedAt: thirtyOneDaysAgo,
+						stoppedAt: thirtyOneDaysAgo,
+						status: 'success',
+					},
+					workflow,
+				),
+				await createExecution(
+					{
+						finished: true,
+						startedAt: twentyNineDaysAgo,
+						stoppedAt: twentyNineDaysAgo,
+						status: 'success',
+					},
+					workflow,
+				),
+			];
+
+			await pruningService.softDelete();
+
+			expect(await findAllExecutions()).toEqual([
+				expect.objectContaining({ id: executions[0].id, deletedAt: expect.any(Date) }),
+				expect.objectContaining({ id: executions[1].id, deletedAt: null }),
+			]);
+		});
+
+		test('keeps soft-deleted executions within the hard-delete buffer', async () => {
+			const expired = await createExecution(
+				{
+					status: 'success',
+					finished: true,
+					stoppedAt: thirtyOneDaysAgo,
+					deletedAt: thirtyOneDaysAgo,
+				},
+				workflow,
+			);
+			await createExecution(
+				{
+					status: 'success',
+					finished: true,
+					stoppedAt: thirtyOneDaysAgo,
+					deletedAt: twentyNineDaysAgo,
+				},
+				workflow,
+			);
+
+			const refs = await Container.get(ExecutionRepository).findSoftDeletedExecutions();
+
+			expect(refs.map(({ executionId }) => executionId)).toEqual([expired.id]);
+		});
+	});
+
 	describe('when the instance clock runs ahead of the database clock', () => {
 		const realNow = Date.now();
 
