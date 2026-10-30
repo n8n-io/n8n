@@ -21,6 +21,7 @@ import {
 	updateAgentQueuedMessage,
 	getChatMessages,
 	getChatAttachmentUrl,
+	getSessionFiles,
 	listAgents,
 	listAgentsPage,
 	listN8nChatAgents,
@@ -346,6 +347,34 @@ describe('useAgentApi', () => {
 			expect(url).toBe('/rest/projects/p1/agents/v2/a1/chat/attachments/att-1');
 			expect(getChatAttachmentUrl(restApiContext, 'p1', 'a1', 'att-1', 'chat', 'th/1')).toBe(
 				`${url}?threadId=th%2F1`,
+			);
+		});
+	});
+
+	describe('getSessionFiles', () => {
+		it('lists the files of a preview session', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await expect(getSessionFiles(restApiContext, 'p1', 'a1', 'th/1')).resolves.toEqual({
+				files: [],
+			});
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/p1/agents/v2/a1/chat/th%2F1/files',
+			);
+		});
+
+		it('lists the files of an n8n Chat session on the n8n Chat route', async () => {
+			vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ files: [] });
+
+			await getSessionFiles(restApiContext, 'p1', 'a1', 'th-1', 'n8n-chat');
+
+			expect(makeRestApiRequest).toHaveBeenCalledWith(
+				restApiContext,
+				'GET',
+				'/projects/p1/agents/v2/a1/n8n-chat/th-1/files',
 			);
 		});
 	});
