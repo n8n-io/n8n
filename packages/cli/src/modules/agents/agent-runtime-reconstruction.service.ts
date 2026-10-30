@@ -238,6 +238,27 @@ interface ToolRunIdentity {
 	backgroundTasksEnabled: boolean;
 }
 
+/**
+ * Harness tools stay eager, so the model sees their schemas without a tool search.
+ * The user's own tools (workflow, node, integration, MCP) stay deferred.
+ */
+function harnessEagerToolNames(params: RuntimeDependencies): string[] {
+	return [
+		...CORE_WORKSPACE_TOOL_NAMES,
+		'load_skill',
+		MARK_SESSION_FAILED_TOOL_NAME,
+		DELEGATE_SUB_AGENT_TOOL_NAME,
+		WRITE_TODOS_TOOL_NAME,
+		READ_BINARY_DATA_TOOL_NAME,
+		GET_ENVIRONMENT_TOOL_NAME,
+		RECALL_MEMORY_TOOL_NAME,
+		FLAG_MEMORY_TOOL_NAME,
+		...Object.values(AGENT_PLAN_TOOL_NAMES),
+		// Only top-level runs with background tasks get these tools.
+		...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
+	];
+}
+
 async function getChatIntegrationToolServices() {
 	const { IntegrationMessageContextService } = await import(
 		'./integrations/integration-message-context.service.js'
@@ -1051,25 +1072,7 @@ export class AgentRuntimeReconstructionService {
 		const { agent, agentId, projectId, runtimeProfile, config, abortSignal } = params;
 
 		throwIfAborted(abortSignal);
-		// Harness tools stay eager, so the model sees their schemas without a tool search.
-		// The user's own tools (workflow, node, integration, MCP) stay deferred.
-		agent.nativeToolDeferral({
-			eagerToolNames: [
-				...CORE_WORKSPACE_TOOL_NAMES,
-				'load_skill',
-				MARK_SESSION_FAILED_TOOL_NAME,
-				DELEGATE_SUB_AGENT_TOOL_NAME,
-				WRITE_TODOS_TOOL_NAME,
-				READ_BINARY_DATA_TOOL_NAME,
-				IMPORT_FILES_TOOL_NAME,
-				GET_ENVIRONMENT_TOOL_NAME,
-				RECALL_MEMORY_TOOL_NAME,
-				FLAG_MEMORY_TOOL_NAME,
-				...Object.values(AGENT_PLAN_TOOL_NAMES),
-				// Only top-level runs with background tasks get these tools.
-				...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
-			],
-		});
+		agent.nativeToolDeferral({ eagerToolNames: harnessEagerToolNames(params) });
 
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
@@ -1124,16 +1127,18 @@ export class AgentRuntimeReconstructionService {
 		return parentWorkspaceHandle;
 	}
 
-	private async attachWorkspaceTools(
-		{ agent, projectId }: RuntimeDependencies,
-		workspace: Workspace,
-	) {
+	private async attachWorkspaceTools(params: RuntimeDependencies, workspace: Workspace) {
+		const { agent, projectId } = params;
 		agent.workspace(workspace);
 		if (!(await this.sandboxFiles.isEnabled())) return;
 		const getInstructions = workspace.getInstructions.bind(workspace);
 		workspace.getInstructions = () =>
 			[getInstructions(), SANDBOX_FILES_INSTRUCTIONS].filter(Boolean).join('\n\n');
 		agent.tool(createImportFilesTool({ projectId, workspace, sandboxFiles: this.sandboxFiles }));
+		// Eager only when attached, so a user tool with the same name stays deferred.
+		agent.nativeToolDeferral({
+			eagerToolNames: [...harnessEagerToolNames(params), IMPORT_FILES_TOOL_NAME],
+		});
 	}
 
 	private async attachWorkspace(
