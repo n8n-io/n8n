@@ -71,6 +71,8 @@ describe('test-workflow MCP tool', () => {
 		nodeTypes = createMockNodeTypes();
 		telemetry = mockInstance(Telemetry, { track: vi.fn() });
 		mcpService = mockInstance(McpService, { isQueueMode: false });
+		// The user can use every credential unless a test says otherwise.
+		mockInstance(CredentialsPermissionChecker);
 	});
 
 	describe('smoke tests', () => {
