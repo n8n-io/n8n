@@ -35,6 +35,7 @@ const {
 	routerPush,
 	focusInput,
 	openFilePicker,
+	composerBlocked,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
 	sendMessageFromOutside: vi.fn(),
@@ -45,6 +46,7 @@ const {
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
 	openFilePicker: vi.fn(),
+	composerBlocked: { current: false },
 }));
 
 const { fetchTabs, saveTabs } = vi.hoisted(() => ({
@@ -109,7 +111,7 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				panelProps.current = { ...attrs };
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
 					slots['composer-attachments']?.(),
-					slots['footer-start']?.(),
+					slots['footer-start']?.({ disabled: composerBlocked.current }),
 				]);
 			};
 		},
@@ -192,11 +194,16 @@ vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 // The real menu reads the MCP and browser use stores, which have their own tests.
 vi.mock('../../components/InstanceAiInputMenu.vue', () => ({
 	default: defineComponent({
+		props: { disabled: { type: Boolean, default: false } },
 		emits: ['attachFiles'],
 		setup:
-			(_props, { emit }) =>
+			(props, { emit }) =>
 			() =>
-				h('button', { 'data-test-id': 'input-menu-attach', onClick: () => emit('attachFiles') }),
+				h('button', {
+					'data-test-id': 'input-menu-attach',
+					disabled: props.disabled,
+					onClick: () => emit('attachFiles'),
+				}),
 	}),
 }));
 
@@ -292,6 +299,7 @@ describe('AssistantAgentThreadView', () => {
 		routerPush.mockReset();
 		focusInput.mockReset();
 		openFilePicker.mockReset();
+		composerBlocked.current = false;
 		composerAttachments.value = [];
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
@@ -328,6 +336,14 @@ describe('AssistantAgentThreadView', () => {
 		await userEvent.click(getByTestId('input-menu-attach'));
 
 		expect(openFilePicker).toHaveBeenCalledTimes(1);
+	});
+
+	it('disables the "+" menu while the composer takes no input', async () => {
+		composerBlocked.current = true;
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+
+		expect(getByTestId('input-menu-attach')).toBeDisabled();
 	});
 
 	it('adds a thread opened by URL to the lists right away', async () => {

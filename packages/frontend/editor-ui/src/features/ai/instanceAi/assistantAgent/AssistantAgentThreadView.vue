@@ -439,8 +439,8 @@ function removeStagedNodes(chipId: string): void {
 							/>
 						</template>
 						<!-- The Assistant "+" menu replaces the attach button: files, connectors and browser use. -->
-						<template #footer-start>
-							<InstanceAiInputMenu @attach-files="panel?.openFilePicker()" />
+						<template #footer-start="{ disabled }">
+							<InstanceAiInputMenu :disabled="disabled" @attach-files="panel?.openFilePicker()" />
 						</template>
 					</AgentChatPanel>
 				</div>
