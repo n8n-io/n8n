@@ -342,7 +342,8 @@ function hostValueToJson(value: unknown): string {
 	if (value === undefined) return 'undefined';
 	if (value === null) return 'null';
 	try {
-		return safeStringify(wrapSpecialValuesForGuest(value));
+		// JSON.stringify returns undefined for a symbol or a function.
+		return safeStringify(wrapSpecialValuesForGuest(value)) ?? 'undefined';
 	} catch {
 		return 'undefined';
 	}
@@ -1263,7 +1264,11 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (json === 'undefined') return this.vm.undefined;
 
 		// JSON keys must keep their data meaning, including __proto__.
-		const result = this.vm.evalCode(`__unwrapFromHost(${safeStringify(json)})`);
+		const unwrapFn = this.vm.getProp(this.vm.global, '__unwrapFromHost');
+		const jsonHandle = this.vm.newString(json);
+		const result = this.vm.callFunction(unwrapFn, this.vm.undefined, jsonHandle);
+		jsonHandle.dispose();
+		unwrapFn.dispose();
 		if (result.error) {
 			result.error.dispose();
 			return this.vm.undefined;

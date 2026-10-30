@@ -216,6 +216,15 @@ describe('QuickJsBridge workflow data', () => {
 		).toBe('from host');
 	});
 
+	it('reads a host symbol as undefined and frees the runtime', async () => {
+		const bridge = await newBridge();
+
+		expect(bridge.execute('return this.$json.sym;', { $json: { sym: Symbol('s') } })).toBe(
+			undefined,
+		);
+		await expect(bridge.dispose()).resolves.toBeUndefined();
+	});
+
 	it('should free the data of a finished call while the bridge is alive', async () => {
 		const bridge = await newBridge();
 		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
