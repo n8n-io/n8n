@@ -447,10 +447,11 @@ export class AgentChatController {
 			projectId,
 			userId: req.user.id,
 		});
+		// Agent output files (tool and sandbox) have no resource ID. The thread check below limits them to this user's own session.
 		if (
 			!attachment ||
-			attachment.source !== N8N_CHAT_PRODUCTION_SOURCE ||
-			attachment.resourceId !== productionChatMemoryResourceId(req.user.id)
+			(attachment.source === N8N_CHAT_PRODUCTION_SOURCE &&
+				attachment.resourceId !== productionChatMemoryResourceId(req.user.id))
 		) {
 			throw new NotFoundError(`Attachment "${attachmentId}" not found`);
 		}
