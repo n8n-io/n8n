@@ -775,6 +775,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	/** Soft-delete the executions that are still visible. Already soft-deleted rows keep their `deletedAt`. */
+	async softDeleteByIds(executionIds: string[], deletedAt: Date) {
+		await this.update({ id: In(executionIds), deletedAt: IsNull() }, { deletedAt });
+	}
+
 	async deleteByIds(executionIds: string[]) {
 		return await this.delete({ id: In(executionIds) });
 	}

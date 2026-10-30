@@ -17,7 +17,6 @@ import type {
 } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { IsNull } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -711,10 +710,7 @@ export class ExecutionPersistence {
 		const executionIds = targets.map((t) => t.executionId);
 
 		// Soft-delete first, so a failure below leaves a hidden row for the next prune, not one without data.
-		await this.executionRepository.update(
-			{ id: In(executionIds), deletedAt: IsNull() },
-			{ deletedAt: this.prunableDeletedAt() },
-		);
+		await this.executionRepository.softDeleteByIds(executionIds, this.prunableDeletedAt());
 		// Binaries next. A failure leaves the payload and the rows, so the next prune retries them.
 		await this.binaryDataService.deleteMany(
 			targets.map((t) => ({ type: 'execution' as const, ...t })),

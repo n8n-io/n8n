@@ -2050,7 +2050,7 @@ describe('ExecutionPersistence', () => {
 
 			await executionPersistence.hardDelete(target);
 
-			const [softDelete] = executionRepository.update.mock.invocationCallOrder;
+			const [softDelete] = executionRepository.softDeleteByIds.mock.invocationCallOrder;
 			const [rows] = executionRepository.deleteByIds.mock.invocationCallOrder;
 			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
 			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
@@ -2061,7 +2061,7 @@ describe('ExecutionPersistence', () => {
 
 		it('should not delete binaries, the payload or the rows when the soft-delete rejects', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
-			executionRepository.update.mockRejectedValueOnce(new Error('db down'));
+			executionRepository.softDeleteByIds.mockRejectedValueOnce(new Error('db down'));
 
 			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('db down');
 
@@ -2297,10 +2297,11 @@ describe('ExecutionPersistence', () => {
 			await executionPersistence.deleteInFlightExecution(target, outcome);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
-			expect(executionRepository.update).toHaveBeenCalledTimes(1);
-			expect(executionRepository.update).toHaveBeenCalledWith(expect.anything(), {
-				deletedAt: expect.any(Date),
-			});
+			expect(executionRepository.softDeleteByIds).toHaveBeenCalledWith(
+				['exec-1'],
+				expect.any(Date),
+			);
+			expect(executionRepository.update).not.toHaveBeenCalled();
 		});
 	});
 
