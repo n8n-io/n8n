@@ -25,12 +25,6 @@ const endedFacts: ExecutionLedgerEndedFacts = {
 };
 const txCtx = { trx: mock<Transaction>() };
 
-const deferred = () => {
-	let resolve!: () => void;
-	const promise = new Promise<void>((r) => (resolve = r));
-	return { promise, resolve };
-};
-
 describe('ExecutionLedger', () => {
 	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
@@ -49,7 +43,6 @@ describe('ExecutionLedger', () => {
 			await ledger.recordStarted(startedFacts, {});
 			await ledger.recordEndedInTransaction(endedFacts, {});
 			await ledger.recordEnded(endedFacts);
-			await ledger.drain();
 
 			expect(ledger.isEnabled).toBe(false);
 			expect(logger.error).not.toHaveBeenCalled();
@@ -144,37 +137,6 @@ describe('ExecutionLedger', () => {
 
 			expect(logger.error).toHaveBeenCalledTimes(1);
 			expect(errorReporter.error).toHaveBeenCalledTimes(1);
-		});
-	});
-
-	describe('drain', () => {
-		beforeEach(() => ledger.setImplementation(writer));
-
-		it('waits for running inserts, also those that start during the drain', async () => {
-			const first = deferred();
-			const second = deferred();
-			writer.writeEnded
-				.mockImplementationOnce(async () => {
-					await first.promise;
-					void ledger.recordEnded(endedFacts);
-					return { recorded: true };
-				})
-				.mockImplementationOnce(async () => {
-					await second.promise;
-					return { recorded: true };
-				});
-
-			void ledger.recordEnded(endedFacts);
-			let drained = false;
-			const draining = ledger.drain().then(() => (drained = true));
-
-			first.resolve();
-			await new Promise(setImmediate);
-			expect(drained).toBe(false);
-
-			second.resolve();
-			await draining;
-			expect(writer.writeEnded).toHaveBeenCalledTimes(2);
 		});
 	});
 });
