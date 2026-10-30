@@ -80,11 +80,13 @@ function encodeObject(value: object, walk: Walk): unknown {
 }
 
 /**
- * Inside an Error, a class instance gives undefined. Such an instance can be a
- * large host object, such as the request of an HTTP client error.
+ * Inside an Error, a class instance or a Promise gives undefined. Such an
+ * instance can be a large host object, such as the request of an HTTP client
+ * error. Structured clone cannot copy a Promise.
  */
 function encodeUnwalked(value: object, walk: Walk): unknown {
-	return walk.insideError && !isStructuredCloneBuiltin(value) ? undefined : value;
+	const cloneable = isStructuredCloneBuiltin(value) && !(value instanceof Promise);
+	return walk.insideError && !cloneable ? undefined : value;
 }
 
 /**

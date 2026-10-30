@@ -91,4 +91,13 @@ describe('prepareForGuest', () => {
 		expect(result.error.at).toEqual(new Date(0));
 		expect(result.point).toEqual({ x: 1 });
 	});
+
+	it('drops a Promise inside an Error', () => {
+		const error = Object.assign(new Error('x'), { pending: Promise.resolve(1), code: 1 });
+
+		const result = roundTrip(error) as Error & Record<string, unknown>;
+
+		expect(result.pending).toBeUndefined();
+		expect(result.code).toBe(1);
+	});
 });
