@@ -1,0 +1,125 @@
+import { createComponentRenderer } from '@/__tests__/render';
+import {
+	createWorkflowDocumentId,
+	useWorkflowDocumentStore,
+} from '@/app/stores/workflowDocument.store';
+import type { CanvasEventBusEvents, CanvasNode } from '@/features/workflows/canvas/canvas.types';
+import type { EventBus } from '@n8n/utils/event-bus';
+import { createTestingPinia } from '@pinia/testing';
+import { defineComponent, h } from 'vue';
+
+import InstanceAiWorkflowDraftPreview from '../components/InstanceAiWorkflowDraftPreview.vue';
+import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
+
+const canvasProps = vi.hoisted(() => ({
+	current: undefined as { nodes: CanvasNode[]; readOnly: boolean } | undefined,
+	eventBus: undefined as EventBus<CanvasEventBusEvents> | undefined,
+}));
+
+vi.mock('@/features/workflows/canvas/components/Canvas.vue', () => ({
+	default: defineComponent({
+		props: ['id', 'nodes', 'connections', 'renderData', 'readOnly', 'eventBus', 'showNodeGroups'],
+		setup(props) {
+			return () => {
+				canvasProps.current = { nodes: props.nodes, readOnly: props.readOnly };
+				canvasProps.eventBus = props.eventBus;
+				return h('div', { 'data-test-id': 'mock-canvas' });
+			};
+		},
+	}),
+}));
+
+function node(name: string, x: number) {
+	return {
+		id: `id-${name}`,
+		name,
+		type: 'n8n-nodes-base.noOp',
+		typeVersion: 1,
+		position: [x, 0] satisfies [number, number],
+		parameters: {},
+	};
+}
+
+function draft(names: string[], revision = 1): WorkflowDraft {
+	return {
+		filePath: 'src/workflows/demo.workflow.ts',
+		revision,
+		workflow: {
+			name: 'Demo',
+			nodes: names.map((name, index) => node(name, index * 200)),
+			connections: {},
+		},
+	};
+}
+
+const renderComponent = createComponentRenderer(InstanceAiWorkflowDraftPreview);
+
+describe('InstanceAiWorkflowDraftPreview', () => {
+	beforeEach(() => {
+		canvasProps.current = undefined;
+		canvasProps.eventBus = undefined;
+	});
+
+	it('renders the draft nodes on a read-only canvas', () => {
+		renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start', 'Set']), building: true },
+		});
+
+		expect(canvasProps.current?.readOnly).toBe(true);
+		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start', 'Set']);
+	});
+
+	it('labels the draft as building while the agent works', () => {
+		const { getByTestId } = renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start']), building: true },
+		});
+
+		expect(getByTestId('instance-ai-workflow-draft-badge')).toHaveTextContent(/building/i);
+	});
+
+	it('labels the draft as not saved once the agent stops', () => {
+		const { getByTestId } = renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start']), building: false },
+		});
+
+		expect(getByTestId('instance-ai-workflow-draft-badge')).toHaveTextContent(/not saved/i);
+	});
+
+	it('fits the view when a new revision adds nodes', async () => {
+		const { rerender } = renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start']), building: true },
+		});
+		const emit = vi.spyOn(canvasProps.eventBus!, 'emit');
+
+		await rerender({ draft: draft(['Start', 'Set'], 2), building: true });
+
+		expect(emit).toHaveBeenCalledWith('fitView');
+		expect(canvasProps.current?.nodes).toHaveLength(2);
+	});
+
+	it('keeps the view when a new revision only changes existing nodes', async () => {
+		const { rerender } = renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start', 'Set']), building: true },
+		});
+		const emit = vi.spyOn(canvasProps.eventBus!, 'emit');
+
+		await rerender({ draft: draft(['Start', 'Set'], 2), building: true });
+
+		expect(emit).not.toHaveBeenCalledWith('fitView');
+	});
+
+	it('never writes to the saved workflow document', () => {
+		const pinia = createTestingPinia({ stubActions: false });
+		renderComponent({ pinia, props: { draft: draft(['Start']), building: true } });
+
+		const saved = useWorkflowDocumentStore(
+			createWorkflowDocumentId('src/workflows/demo.workflow.ts'),
+		);
+		expect(saved.allNodes).toHaveLength(0);
+	});
+});

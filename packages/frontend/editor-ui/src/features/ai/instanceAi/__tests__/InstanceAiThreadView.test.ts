@@ -97,6 +97,11 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 	useTelemetry: () => ({ track: telemetryTrackSpy }),
 }));
 
+const trackCanvasRendered = vi.fn();
+vi.mock('@/experiments/instanceAiDraftWorkflowPreview/useDraftWorkflowPreviewTelemetry', () => ({
+	useDraftWorkflowPreviewTelemetry: () => ({ trackCanvasRendered }),
+}));
+
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: showErrorSpy, showMessage: showMessageSpy }),
 }));
@@ -187,6 +192,18 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 let workflowPreviewEmit:
 	| ((event: 'workflow-failures', payload: WorkflowFailuresReport) => void)
 	| null = null;
+let workflowLoadedEmit: ((event: 'workflow-loaded', workflowId: string) => void) | null = null;
+
+const InstanceAiWorkflowDraftPreviewStub = defineComponent({
+	name: 'InstanceAiWorkflowDraftPreviewStub',
+	props: { draft: { type: Object, required: true }, building: Boolean },
+	setup: (props) => () =>
+		h('div', {
+			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
+			'data-file-path': (props.draft as { filePath: string }).filePath,
+			'data-building': String(props.building),
+		}),
+});
 
 const InstanceAiWorkflowPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowPreviewStub',
@@ -194,9 +211,10 @@ const InstanceAiWorkflowPreviewStub = defineComponent({
 		workflowId: { type: String, required: true },
 		initialNodeId: { type: String, required: false },
 	},
-	emits: ['initial-node-id-consumed', 'workflow-failures'],
+	emits: ['initial-node-id-consumed', 'workflow-failures', 'workflow-loaded'],
 	setup(props, { emit, expose }) {
 		workflowPreviewEmit = emit as typeof workflowPreviewEmit;
+		workflowLoadedEmit = emit as typeof workflowLoadedEmit;
 		const openWorkflowPreview = inject<((id: string) => boolean) | undefined>(
 			'openWorkflowPreview',
 			undefined,
@@ -416,6 +434,7 @@ const defaultViewStubs = {
 	InstanceAiSetupPanel: InstanceAiSetupPanelStub,
 	InstanceAiInput: InstanceAiInputStub,
 	InstanceAiWorkflowPreview: InstanceAiWorkflowPreviewStub,
+	InstanceAiWorkflowDraftPreview: InstanceAiWorkflowDraftPreviewStub,
 	InstanceAiAgentPreview: InstanceAiAgentPreviewStub,
 	InstanceAiConfirmationPanel: InstanceAiConfirmationPanelStub,
 	AgentSection: AgentSectionStub,
@@ -2611,6 +2630,61 @@ describe('InstanceAiThreadView', () => {
 
 		expect(reopenedPreview).toHaveAttribute('data-workflow-id', 'workflow-1');
 		expect(reopenedPreview).not.toHaveAttribute('data-initial-node-id');
+	});
+
+	describe('workflow drafts', () => {
+		const filePath = 'src/workflows/demo.workflow.ts';
+		const draft = (overrides: Record<string, unknown> = {}) => ({
+			filePath,
+			revision: 1,
+			workflow: { name: 'Demo', nodes: [], connections: {} },
+			...overrides,
+		});
+
+		it('shows the draft canvas for a new workflow before it is saved', async () => {
+			const { findByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft() };
+
+			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
+			expect(preview).toHaveAttribute('data-file-path', filePath);
+			expect(queryByTestId('instance-ai-workflow-preview-stub')).toBeNull();
+		});
+
+		it('covers the saved canvas with its draft until the saved workflow loads', async () => {
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft({ workflowId: 'wf-1' }) };
+			await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await findByTestId('instance-ai-workflow-preview-stub');
+
+			thread.workflowDrafts = {
+				[filePath]: draft({ workflowId: 'wf-1', savedWorkflowId: 'wf-1' }),
+			};
+			await vi.waitFor(() => expect(workflowLoadedEmit).not.toBeNull());
+			workflowLoadedEmit?.('workflow-loaded', 'wf-1');
+
+			expect(thread.dismissWorkflowDrafts).toHaveBeenCalledWith('wf-1');
+		});
+
+		it('reports the first draft and saved canvas renders', async () => {
+			trackCanvasRendered.mockClear();
+			thread.producedArtifacts = new Map([
+				['wf-1', { type: 'workflow', id: 'wf-1', name: 'Demo' }],
+			]) as typeof thread.producedArtifacts;
+			const { findByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+			thread.workflowDrafts = { [filePath]: draft({ workflowId: 'wf-1' }) };
+			await findByTestId('instance-ai-workflow-draft-preview-stub');
+			await vi.waitFor(() => expect(workflowLoadedEmit).not.toBeNull());
+			workflowLoadedEmit?.('workflow-loaded', 'wf-1');
+
+			expect(trackCanvasRendered).toHaveBeenCalledWith('draft');
+			expect(trackCanvasRendered).toHaveBeenCalledWith('saved');
+		});
 	});
 
 	describe('Fix with AI card', () => {

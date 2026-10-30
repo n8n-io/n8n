@@ -42,6 +42,7 @@ function createSetupFactory() {
 				configEvalsEnabled: false,
 				conversationHistoryEnabled: false,
 				progressiveBuildingEnabled: false,
+				draftWorkflowPreviewEnabled: false,
 				conciseStyleEnabled: false,
 				setupPanelEnabled: false,
 				setupPanelVariant: 'control',
@@ -186,6 +187,29 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(report).toHaveBeenCalledWith(
 				expect.any(Error),
 				expect.objectContaining({ component: 'instance-ai-agent-builder-usage', tracing }),
+			);
+		});
+
+		it('creates no workflow draft previewer when the draft preview gate is off', async () => {
+			const { factory } = createSetupFactory();
+
+			const { orchestrationContext } = await factory.create(params, createRuntime());
+
+			expect(orchestrationContext.workflowDraftPreviewer).toBeUndefined();
+		});
+
+		it('creates a workflow draft previewer when the draft preview gate is on', async () => {
+			const { factory, fields } = createSetupFactory();
+			const gates = await fields.adapterService.resolveExperimentGates();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...gates,
+				draftWorkflowPreviewEnabled: true,
+			});
+
+			const { orchestrationContext } = await factory.create(params, createRuntime());
+
+			expect(orchestrationContext.workflowDraftPreviewer).toEqual(
+				expect.objectContaining({ observe: expect.any(Function) }),
 			);
 		});
 

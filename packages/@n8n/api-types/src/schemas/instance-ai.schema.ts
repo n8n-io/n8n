@@ -281,6 +281,7 @@ export const instanceAiEventTypeSchema = z.enum([
 	'skill-update',
 	'tasks-update',
 	'setup-items',
+	'workflow-draft',
 	'preferences-applied',
 	'preference-card',
 	'thread-title-updated',
@@ -301,6 +302,8 @@ export const INSTANCE_AI_EPHEMERAL_EVENT_TYPES: ReadonlySet<InstanceAiEventType>
 	'text-delta',
 	'reasoning-delta',
 	'status',
+	// Large and stale once the workflow saves; the saved workflow is the durable fact.
+	'workflow-draft',
 ]);
 
 // ---------------------------------------------------------------------------
@@ -1267,6 +1270,45 @@ export const setupItemsPayloadSchema = z.object({
 		.transform((items) => items.filter((item): item is InstanceAiSetupItem => item !== null)),
 });
 
+const workflowDraftNodeSchema = z
+	.object({
+		id: z.string().optional(),
+		name: z.string(),
+		type: z.string(),
+		typeVersion: z.number(),
+		position: z.tuple([z.number(), z.number()]),
+		parameters: z.record(z.unknown()).optional(),
+		disabled: z.boolean().optional(),
+	})
+	.passthrough();
+
+const workflowDraftConnectionSchema = z.object({
+	node: z.string(),
+	type: z.string(),
+	index: z.number(),
+});
+
+/** An unsaved workflow parsed from the builder's source file, shaped for the canvas. */
+export const instanceAiWorkflowDraftSchema = z.object({
+	name: z.string(),
+	nodes: z.array(workflowDraftNodeSchema),
+	connections: z.record(
+		z.record(z.array(z.array(workflowDraftConnectionSchema).nullable().optional())),
+	),
+});
+export type InstanceAiWorkflowDraft = z.infer<typeof instanceAiWorkflowDraftSchema>;
+
+export const workflowDraftPayloadSchema = z.object({
+	/** Workspace-relative source path. Identifies a draft that has no saved workflow yet. */
+	filePath: z.string().min(1),
+	/** The saved workflow the source file is bound to, when there is one. */
+	workflowId: z.string().min(1).max(64).optional(),
+	/** Increases for each draft of a file, so a client can drop a stale one. */
+	revision: z.number().int().nonnegative(),
+	workflow: instanceAiWorkflowDraftSchema,
+});
+export type InstanceAiWorkflowDraftPayload = z.infer<typeof workflowDraftPayloadSchema>;
+
 /** A later fact about a preference the `save_user_preference` tool saved in this run:
  *  the user edited it or undid it from the card. Appended by the card endpoints, not
  *  by the tool, and only while the card is on the latest turn. An edit names the scope
@@ -1409,6 +1451,11 @@ export const instanceAiEventSchema = z.discriminatedUnion('type', [
 	z.object({ type: z.literal('tasks-update'), ...eventBase, payload: tasksUpdatePayloadSchema }),
 	z.object({ type: z.literal('setup-items'), ...eventBase, payload: setupItemsPayloadSchema }),
 	z.object({
+		type: z.literal('workflow-draft'),
+		...eventBase,
+		payload: workflowDraftPayloadSchema,
+	}),
+	z.object({
 		type: z.literal('preferences-applied'),
 		...eventBase,
 		payload: aiPreferencesAppliedPayloadSchema,
@@ -1450,6 +1497,7 @@ export type InstanceAiConfirmationRequestEvent = Extract<
 >;
 export type InstanceAiTasksUpdateEvent = Extract<InstanceAiEvent, { type: 'tasks-update' }>;
 export type InstanceAiSetupItemsEvent = Extract<InstanceAiEvent, { type: 'setup-items' }>;
+export type InstanceAiWorkflowDraftEvent = Extract<InstanceAiEvent, { type: 'workflow-draft' }>;
 export type InstanceAiPreferencesAppliedEvent = Extract<
 	InstanceAiEvent,
 	{ type: 'preferences-applied' }
@@ -2870,6 +2918,10 @@ export const INSTANCE_AI_CONVERSATION_HISTORY_ENABLED_VARIANT = 'variant';
 
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_FLAG = '111_instance_ai_progressive_building';
 export const INSTANCE_AI_PROGRESSIVE_BUILDING_ENABLED_VARIANT = 'variant';
+
+/** Shows the workflow on the canvas as soon as the builder writes its source, before the save. */
+export const INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_FLAG = '137_instance_ai_draft_workflow_preview';
+export const INSTANCE_AI_DRAFT_WORKFLOW_PREVIEW_ENABLED_VARIANT = 'variant';
 
 /**
  * Selects the concise reply style (`concise@1`) for Instance AI runs. Off by

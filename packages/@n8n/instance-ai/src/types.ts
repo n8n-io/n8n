@@ -87,6 +87,7 @@ import type {
 	WorkflowTriggerVerificationProgress,
 } from './workflow-loop/workflow-loop-state';
 import type { BuilderTemplatesService } from './workspace/builder-templates-service';
+import type { WorkflowDraftPreviewer } from './tools/workflows/workflow-draft-previewer';
 
 // ── Data shapes ──────────────────────────────────────────────────────────────
 
@@ -2289,6 +2290,8 @@ export interface OrchestrationContext {
 	skills?: RuntimeSkillSource;
 	/** Add loaded Hub content to UI events without changing agent memory. */
 	mapSkillEventForDisplay?: (event: InstanceAiEvent) => InstanceAiEvent;
+	/** Turns workflow source writes into canvas drafts. Present only while the draft preview gate is on. */
+	workflowDraftPreviewer?: WorkflowDraftPreviewer;
 	/** OAuth2 callback URL for the n8n instance (e.g. http://localhost:5678/rest/oauth2-credential/callback) */
 	oauth2CallbackUrl?: string;
 	/** Cancel a running background task by its ID */

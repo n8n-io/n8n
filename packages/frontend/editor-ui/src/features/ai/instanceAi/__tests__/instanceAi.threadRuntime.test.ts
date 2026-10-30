@@ -405,6 +405,57 @@ describe('createThreadRuntime - SSE and hydration', () => {
 		expect(items[0]).toMatchObject({ credentialType: 'notionApi' });
 	});
 
+	describe('workflow drafts', () => {
+		const filePath = 'src/workflows/demo.workflow.ts';
+		const draftEvent = (revision: number) =>
+			makeSSEEvent({
+				type: 'workflow-draft',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					filePath,
+					revision,
+					workflow: { name: `Draft ${revision}`, nodes: [], connections: {} },
+				},
+			});
+		const buildResult = () =>
+			makeSSEEvent({
+				type: 'tool-result',
+				runId: 'run-1',
+				agentId: 'agent-root',
+				payload: {
+					toolCallId: 'tc-build',
+					result: { success: true, filePath, workflowId: 'wf-1' },
+				},
+			});
+
+		test('keeps the latest draft of each source file', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(2));
+			capturedOnMessage!(draftEvent(1));
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].workflow.name).toBe('Draft 2');
+		});
+
+		test('marks a draft saved when the build saves its file', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(buildResult());
+
+			expect(activeRuntime(registry).workflowDrafts[filePath].savedWorkflowId).toBe('wf-1');
+		});
+
+		test('removes a saved draft once the saved workflow is on screen', () => {
+			capturedOnMessage!(makeSSEEvent(validRunStartEvent('run-1', 'agent-root')));
+			capturedOnMessage!(draftEvent(1));
+			capturedOnMessage!(buildResult());
+
+			activeRuntime(registry).dismissWorkflowDrafts('wf-1');
+
+			expect(activeRuntime(registry).workflowDrafts).toEqual({});
+		});
+	});
+
 	test('preferences-applied SSE events replace the applied payload, empty included', () => {
 		const runtime = activeRuntime(registry);
 		expect(runtime.appliedPreferences).toBeNull();

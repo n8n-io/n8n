@@ -227,6 +227,56 @@ describe('instanceAiEventSchema', () => {
 		expect(instanceAiEventSchema.parse(event)).toEqual(event);
 	});
 
+	describe('workflow-draft events', () => {
+		const draftEvent = {
+			type: 'workflow-draft',
+			runId: 'run-1',
+			agentId: 'agent-1',
+			payload: {
+				filePath: 'src/workflows/demo.workflow.ts',
+				workflowId: 'wf-1',
+				revision: 2,
+				workflow: {
+					name: 'Demo',
+					nodes: [
+						{
+							id: 'node-1',
+							name: 'Start',
+							type: 'n8n-nodes-base.manualTrigger',
+							typeVersion: 1,
+							position: [0, 0],
+							parameters: {},
+						},
+					],
+					connections: {
+						Start: { main: [[{ node: 'Set', type: 'main', index: 0 }]] },
+					},
+				},
+			},
+		};
+
+		it('parses a draft of a bound workflow', () => {
+			expect(instanceAiEventSchema.parse(draftEvent)).toEqual(draftEvent);
+		});
+
+		it('parses a draft without a workflow id', () => {
+			const { workflowId: _workflowId, ...payload } = draftEvent.payload;
+			const event = { ...draftEvent, payload };
+
+			expect(instanceAiEventSchema.parse(event)).toEqual(event);
+		});
+
+		it('rejects a draft without a file path', () => {
+			const { filePath: _filePath, ...payload } = draftEvent.payload;
+
+			expect(instanceAiEventSchema.safeParse({ ...draftEvent, payload }).success).toBe(false);
+		});
+
+		it('is ephemeral, so drafts are never persisted or replayed', () => {
+			expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('workflow-draft')).toBe(true);
+		});
+	});
+
 	it('keeps setup-items durable (not ephemeral) so snapshots survive refresh', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('setup-items')).toBe(false);
 	});

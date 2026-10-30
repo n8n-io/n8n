@@ -580,6 +580,12 @@ export declare const suspendedInstanceContextSchema: typeof InstanceContextState
 export type { HubSkillTelemetryState } from './runtime/instance-context-state';
 export { createSetupItemsEmitter, isSetupPanelEnabled } from './tools/workflows/setup-items';
 export {
+	createContextWorkflowDraftSources,
+	createWorkflowDraftPreviewer,
+	type WorkflowDraftPreviewer,
+	type WorkflowDraftSources,
+} from './tools/workflows/workflow-draft-previewer';
+export {
 	formatWorkflowSetupStateNote,
 	observeWorkflowSetupStates,
 } from './tools/workflows/setup-panel-state';
