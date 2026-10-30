@@ -92,10 +92,7 @@ export function knownAssistantThreadRuntime(
 	options: { assistantAgentEnabled: boolean; isAssistantThread: (threadId: string) => boolean },
 ): AssistantThreadRuntime | undefined {
 	const projectId = knownAgentThreads.get(threadId) ?? getAssistantAgentLaunch(threadId)?.projectId;
-	if (projectId) {
-		rememberAssistantAgentThread(threadId, projectId);
-		return { kind: 'assistant-agent', projectId };
-	}
+	if (projectId) return { kind: 'assistant-agent', projectId };
 	if (!options.assistantAgentEnabled || options.isAssistantThread(threadId)) {
 		return { kind: 'assistant' };
 	}
