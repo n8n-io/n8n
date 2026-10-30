@@ -199,8 +199,10 @@ function selectRepository(repository: PromotionRepository) {
 	if (!isSameRepository) form.branch = repository.defaultBranch ?? '';
 }
 
-// The API closes the open reviews on the old repository. Git host paths ignore case.
+// The API closes the open reviews of a Promote environment on the old repository. Git host paths
+// ignore case.
 const changesReviewRepository = (current: PromotionEnvironment) =>
+	current.direction === 'promote' &&
 	hasHostApi.value &&
 	form.repositoryPath?.toLowerCase() !== current.remote.repositoryPath?.toLowerCase();
 

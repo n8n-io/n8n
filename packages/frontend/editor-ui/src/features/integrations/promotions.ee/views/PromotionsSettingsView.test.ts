@@ -116,31 +116,45 @@ describe('PromotionsSettingsView', () => {
 		expect(cachedEnvironments.hasApplyConfig.value).toBe(false);
 	});
 
-	it('says that removing a Git host environment closes its open promotion reviews', async () => {
-		const gitlabEnvironment: PromotionEnvironment = {
-			...applyEnvironment,
-			provider: { ...applyEnvironment.provider, type: 'gitlab', authType: 'token' },
-		};
-		api.fetchPromotionEnvironments.mockResolvedValue([gitlabEnvironment]);
-		api.fetchPromotionEnvironment.mockResolvedValue(gitlabEnvironment);
-		mockConfirm.mockResolvedValue(MODAL_CANCEL);
-		renderView();
+	it.each([
+		{
+			direction: 'promote' as const,
+			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+			message: 'open promotion reviews close in n8n',
+		},
+		{
+			direction: 'apply' as const,
+			settings: applyEnvironment.settings,
+			message: 'If no other environment uses the same provider',
+		},
+	])(
+		'only mentions promotion reviews when it removes a Promote environment on a Git host: $direction',
+		async ({ direction, settings, message }) => {
+			const gitlabEnvironment = {
+				...applyEnvironment,
+				id: `environment-${direction}`,
+				direction,
+				settings,
+				provider: { ...applyEnvironment.provider, type: 'gitlab', authType: 'token' },
+			} as PromotionEnvironment;
+			api.fetchPromotionEnvironments.mockResolvedValue([gitlabEnvironment]);
+			api.fetchPromotionEnvironment.mockResolvedValue(gitlabEnvironment);
+			mockConfirm.mockResolvedValue(MODAL_CANCEL);
+			renderView();
 
-		const card = await screen.findByTestId('promotion-environment-card-apply');
-		await userEvent.click(
-			within(within(card).getByTestId('promotion-environment-menu')).getByRole('button'),
-		);
-		await userEvent.click(await screen.findByTestId('action-remove'));
+			const card = await screen.findByTestId(`promotion-environment-card-${direction}`);
+			await userEvent.click(
+				within(within(card).getByTestId('promotion-environment-menu')).getByRole('button'),
+			);
+			await userEvent.click(await screen.findByTestId('action-remove'));
 
-		await waitFor(() =>
-			expect(mockConfirm).toHaveBeenCalledWith(
-				expect.stringContaining('open promotion reviews close in n8n'),
-				expect.anything(),
-				expect.anything(),
-			),
-		);
-		expect(api.deletePromotionEnvironment).not.toHaveBeenCalled();
-	});
+			await waitFor(() => expect(mockConfirm).toHaveBeenCalled());
+			const [shown] = mockConfirm.mock.calls[0];
+			expect(shown).toContain(message);
+			if (direction === 'apply') expect(shown).not.toContain('promotion reviews');
+			expect(api.deletePromotionEnvironment).not.toHaveBeenCalled();
+		},
+	);
 
 	it('offers no switch back while no v1 repository is connected', async () => {
 		api.fetchPromotionEnvironments.mockResolvedValue([]);

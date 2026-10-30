@@ -106,8 +106,10 @@ async function retry(environment: PromotionEnvironment) {
 }
 
 async function remove(environment: PromotionEnvironment) {
-	// Only a Git host environment has promotion reviews to close.
-	const messageKey = isPromotionGitHostType(environment.provider.type)
+	// Only a Promote environment on a Git host has promotion reviews to close.
+	const hasReviews =
+		environment.direction === 'promote' && isPromotionGitHostType(environment.provider.type);
+	const messageKey = hasReviews
 		? 'settings.promotions.environment.remove.confirm.message.gitHost'
 		: 'settings.promotions.environment.remove.confirm.message';
 	const confirmed = await message.confirm(

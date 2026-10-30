@@ -242,58 +242,71 @@ describe('PromotionEnvironmentView', () => {
 		expect(mockConfirm).not.toHaveBeenCalled();
 	});
 
-	it('asks before it saves another GitLab repository, because its open reviews close', async () => {
-		const gitlabProvider = { ...gitProvider, id: 'provider-gitlab', type: 'gitlab' as const };
-		const other: PromotionRepository = {
-			...repository,
-			id: '43',
-			fullPath: 'team/other',
-			remoteUrl: 'https://gitlab.example.com/team/other.git',
-		};
-		api.fetchPromotionEnvironment.mockResolvedValue(
-			applyEnvironment({
-				provider: gitlabProvider,
-				remote: {
-					schemaVersion: 1,
-					remoteUrl: repository.remoteUrl,
-					repositoryPath: repository.fullPath,
-				},
-			}),
-		);
-		api.fetchPromotionRepositories.mockResolvedValue({
-			data: [repository, other],
-			nextCursor: null,
-		});
-		api.fetchPromotionBranches.mockResolvedValue({ data: [], nextCursor: null });
-		api.updatePromotionEnvironment.mockResolvedValue(applyEnvironment());
-		mockConfirm.mockResolvedValueOnce(MODAL_CANCEL).mockResolvedValueOnce(MODAL_CONFIRM);
-		await renderAt('/edit/environment-apply');
-
-		const repositorySelect = await screen.findByTestId('promotion-environment-repository-select');
-		await userEvent.click(within(repositorySelect).getByRole('combobox'));
-		await userEvent.click(await screen.findByRole('option', { name: 'team/other' }));
-		await userEvent.click(screen.getByTestId('promotion-environment-save'));
-
-		await waitFor(() => expect(mockConfirm).toHaveBeenCalledTimes(1));
-		expect(mockConfirm).toHaveBeenCalledWith(
-			expect.stringContaining('open promotion reviews of Development close'),
-			'Change repository?',
-			expect.objectContaining({ customClass: 'el-message-box--destructive' }),
-		);
-		expect(api.updatePromotionEnvironment).not.toHaveBeenCalled();
-
-		await userEvent.click(screen.getByTestId('promotion-environment-save'));
-
-		await waitFor(() =>
-			expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
-				expect.anything(),
-				'environment-apply',
-				expect.objectContaining({
-					remote: { schemaVersion: 1, remoteUrl: other.remoteUrl },
+	it.each([
+		{ direction: 'promote' as const, asks: true },
+		{ direction: 'apply' as const, asks: false },
+	])(
+		'asks before it saves another GitLab repository only for a Promote environment: $direction',
+		async ({ direction, asks }) => {
+			const gitlabProvider = { ...gitProvider, id: 'provider-gitlab', type: 'gitlab' as const };
+			const other: PromotionRepository = {
+				...repository,
+				id: '43',
+				fullPath: 'team/other',
+				remoteUrl: 'https://gitlab.example.com/team/other.git',
+			};
+			api.fetchPromotionEnvironment.mockResolvedValue(
+				applyEnvironment({
+					direction,
+					...(direction === 'promote' && {
+						settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+					}),
+					provider: gitlabProvider,
+					remote: {
+						schemaVersion: 1,
+						remoteUrl: repository.remoteUrl,
+						repositoryPath: repository.fullPath,
+					},
 				}),
-			),
-		);
-	});
+			);
+			api.fetchPromotionRepositories.mockResolvedValue({
+				data: [repository, other],
+				nextCursor: null,
+			});
+			api.fetchPromotionBranches.mockResolvedValue({ data: [], nextCursor: null });
+			api.updatePromotionEnvironment.mockResolvedValue(applyEnvironment());
+			mockConfirm.mockResolvedValueOnce(MODAL_CANCEL).mockResolvedValueOnce(MODAL_CONFIRM);
+			await renderAt('/edit/environment-apply');
+
+			const repositorySelect = await screen.findByTestId('promotion-environment-repository-select');
+			await userEvent.click(within(repositorySelect).getByRole('combobox'));
+			await userEvent.click(await screen.findByRole('option', { name: 'team/other' }));
+			await userEvent.click(screen.getByTestId('promotion-environment-save'));
+
+			if (asks) {
+				await waitFor(() => expect(mockConfirm).toHaveBeenCalledTimes(1));
+				expect(mockConfirm).toHaveBeenCalledWith(
+					expect.stringContaining('open promotion reviews of Development close'),
+					'Change repository?',
+					expect.objectContaining({ customClass: 'el-message-box--destructive' }),
+				);
+				expect(api.updatePromotionEnvironment).not.toHaveBeenCalled();
+
+				await userEvent.click(screen.getByTestId('promotion-environment-save'));
+			}
+
+			await waitFor(() =>
+				expect(api.updatePromotionEnvironment).toHaveBeenCalledWith(
+					expect.anything(),
+					'environment-apply',
+					expect.objectContaining({
+						remote: { schemaVersion: 1, remoteUrl: other.remoteUrl },
+					}),
+				),
+			);
+			if (!asks) expect(mockConfirm).not.toHaveBeenCalled();
+		},
+	);
 
 	it('saves a changed branch and connects again', async () => {
 		allowConnect();
