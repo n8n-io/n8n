@@ -1667,33 +1667,33 @@ export type InstanceAiThreadArtifactsContext = z.infer<
 >;
 
 /** Identifies a resource that a thread tab shows. */
-export const instanceAiThreadTabRefSchema = instanceAiThreadArtifactSchema.pick({
+export const assistantThreadTabRefSchema = instanceAiThreadArtifactSchema.pick({
 	type: true,
 	id: true,
 });
-export type InstanceAiThreadTabRef = z.infer<typeof instanceAiThreadTabRefSchema>;
+export type AssistantThreadTabRef = z.infer<typeof assistantThreadTabRefSchema>;
 
 /** One open tab. The name lets the tab render before the resource details load. */
-export const instanceAiThreadTabSchema = instanceAiThreadTabRefSchema.extend({
+export const assistantThreadTabSchema = assistantThreadTabRefSchema.extend({
 	name: z.string().max(255),
 	projectId: z.string().min(1).max(64).optional(),
 });
-export type InstanceAiThreadTab = z.infer<typeof instanceAiThreadTabSchema>;
+export type AssistantThreadTab = z.infer<typeof assistantThreadTabSchema>;
+
+/** Most open tabs a stored thread tabs state holds. */
+export const MAX_ASSISTANT_THREAD_OPEN_TABS = 100;
+/** Most closed artifacts a stored thread tabs state remembers. */
+export const MAX_ASSISTANT_THREAD_CLOSED_TABS = 500;
 
 /**
  * The tabs a user has open in a thread. `tabs` is in display order.
  * `closedTabs` holds the artifacts the user closed, so they do not reopen when
- * the thread loads again.
+ * the thread loads again. Both Assistant runtimes use this shape.
  */
-/** Most open tabs a stored thread tabs state holds. */
-export const MAX_INSTANCE_AI_THREAD_OPEN_TABS = 100;
-/** Most closed artifacts a stored thread tabs state remembers. */
-export const MAX_INSTANCE_AI_THREAD_CLOSED_TABS = 500;
-
-export const instanceAiThreadTabsStateSchema = z.object({
-	tabs: z.array(instanceAiThreadTabSchema).max(MAX_INSTANCE_AI_THREAD_OPEN_TABS),
-	closedTabs: z.array(instanceAiThreadTabRefSchema).max(MAX_INSTANCE_AI_THREAD_CLOSED_TABS),
-	activeTab: instanceAiThreadTabRefSchema.nullable(),
+export const assistantThreadTabsStateSchema = z.object({
+	tabs: z.array(assistantThreadTabSchema).max(MAX_ASSISTANT_THREAD_OPEN_TABS),
+	closedTabs: z.array(assistantThreadTabRefSchema).max(MAX_ASSISTANT_THREAD_CLOSED_TABS),
+	activeTab: assistantThreadTabRefSchema.nullable(),
 	/**
 	 * Whether the preview panel is open. Without it, the active tab does not
 	 * tell if the user can see that tab. Optional, so a state saved before this
@@ -1701,14 +1701,14 @@ export const instanceAiThreadTabsStateSchema = z.object({
 	 */
 	previewOpen: z.boolean().optional(),
 });
-export type InstanceAiThreadTabsState = z.infer<typeof instanceAiThreadTabsStateSchema>;
+export type AssistantThreadTabsState = z.infer<typeof assistantThreadTabsStateSchema>;
 
-export interface InstanceAiThreadTabsResponse {
+export interface AssistantThreadTabsResponse {
 	/**
 	 * `null` when no tabs are stored for this thread yet. The server stores them
 	 * when the agent changes an artifact, and the client when the user changes a tab.
 	 */
-	state: InstanceAiThreadTabsState | null;
+	state: AssistantThreadTabsState | null;
 }
 
 /**
