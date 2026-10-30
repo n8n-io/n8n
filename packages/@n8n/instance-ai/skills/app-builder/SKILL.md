@@ -18,7 +18,8 @@ edit the files with the workspace tools.
 ## What an app can do today
 
 - Apps run in the browser only. They cannot call n8n workflows, data tables or
-  agents yet. Keep data in component state or `localStorage`.
+  agents yet. Keep data in component state or `localStorage`. Follow the browser
+  storage rules below.
 - Use only the dependencies of the scaffold: `vue`, `vite` and
   `@vitejs/plugin-vue`. You cannot change `package.json` or
   `package-lock.json`. Write routing, state and UI components yourself.
@@ -44,6 +45,14 @@ const appRoot = new URL(document.querySelector('base')?.href ?? '/', location.hr
   page must use the same root as a visit to the home page.
 - Keep the supplied base element. Do not hardcode a separate base for previews.
   Use only the scaffold dependencies for routing.
+
+## Browser storage
+
+In same-origin mode, apps, previews and the editor share `localStorage`.
+Prefix keys with the app ID, for example `n8n-app:<app-id>:settings`.
+Use separate keys for preview data. Remove only the app's keys.
+Do not call `localStorage.clear()`. Do not store sensitive data, credentials or tokens.
+Key prefixes prevent collisions. They do not provide access control.
 
 ## Scaffold
 
