@@ -97,11 +97,12 @@ test.describe(
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
 		// TODO(CET-315): the child's branches converge on one input, which engine v2
-		// refuses. `each` mode has no engine v2 implementation yet either.
-		for (const mode of ['once', 'each']) {
-			test(`returns the reported false-branch items in ${mode} mode @engine:v2-pending`, async ({
-				api,
-			}) => {
+		// refuses. Engine v2 does not run `each` mode at all.
+		for (const { mode, engine } of [
+			{ mode: 'once', engine: '@engine:v2-pending' },
+			{ mode: 'each', engine: '@engine:v1-only' },
+		]) {
+			test(`returns the reported false-branch items in ${mode} mode ${engine}`, async ({ api }) => {
 				const child = await api.workflows.importWorkflowFromDefinition(
 					definition('ado-5857-child.json'),
 				);
@@ -114,8 +115,8 @@ test.describe(
 			});
 		}
 
-		// Engine v2 returns the last node's first output, so a declared output
-		// contract over several outputs does not hold there yet.
+		// TODO(CET-581): engine v2 returns the last node's first output, so a declared
+		// output contract over several outputs does not hold there yet.
 		for (const { kind, ids, engine } of [
 			{ kind: 'filter', ids: [56], engine: '@engine:v2-pending' },
 			{ kind: 'emptyFilter', ids: [], engine: '@engine:v2' },
@@ -153,7 +154,7 @@ test.describe(
 			{ kind: 'switch', ids: [56] },
 			{ kind: 'inputSwitch', ids: [56] },
 		] as const) {
-			// Engine v2 does not record `subWorkflowOutput` on the sub-execution yet.
+			// TODO(CET-582): engine v2 does not record `subWorkflowOutput` on the sub-execution.
 			test(`returns ${kind} output after a persisted wait and an unpublished draft edit @engine:v2-pending`, async ({
 				api,
 			}) => {
