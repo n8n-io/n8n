@@ -1,3 +1,4 @@
+import { retryabilityFromError } from '@n8n/backend-network';
 import * as mailparser from 'mailparser';
 import nock from 'nock';
 
@@ -58,6 +59,71 @@ describe('GmailTrigger', () => {
 				value: [{ name: 'To', address: 'to@example.com' }],
 				html: 'to@example.com',
 			},
+		});
+	});
+
+	describe('poll API failures', () => {
+		afterEach(() => {
+			nock.cleanAll();
+		});
+
+		describe.each([
+			{ statusCode: 401, message: 'Invalid Credentials', retryAfter: undefined },
+			{ statusCode: 429, message: 'User-rate limit exceeded', retryAfter: '180' },
+		])('$statusCode from the messages list', ({ statusCode, message, retryAfter }) => {
+			describe.each([
+				{ cursor: 'new', nodeStaticData: {} },
+				{ cursor: 'existing', nodeStaticData: { lastTimeChecked: 1727777957 } },
+			])('with $cursor cursor state', ({ nodeStaticData }) => {
+				it.each(['trigger', 'manual'] as const)(
+					'should reject in %s mode with the API error metadata',
+					async (mode) => {
+						const api = nock(baseUrl)
+							.get('/gmail/v1/users/me/messages')
+							.query(true)
+							.reply(
+								statusCode,
+								{ error: { code: statusCode, message } },
+								retryAfter ? { 'Retry-After': retryAfter } : {},
+							);
+						const poll = testPollingTriggerNode(GmailTrigger, {
+							mode,
+							node: { typeVersion: 1.4, parameters: { simple: true } },
+							workflowStaticData: { 'Gmail Trigger': { ...nodeStaticData } },
+						});
+
+						// NODE-6293: The scheduler needs a rejected poll to apply back-off.
+						try {
+							await expect(poll).rejects.toMatchObject({
+								httpCode: String(statusCode),
+							});
+							await expect(
+								poll.catch((error: unknown) => retryabilityFromError(error)),
+							).resolves.toMatchObject({
+								status: statusCode,
+								...(retryAfter ? { retryAfterMs: 180_000 } : {}),
+							});
+						} finally {
+							api.done();
+						}
+					},
+				);
+			});
+		});
+
+		it('should return null for a successful scheduled poll with no new mail', async () => {
+			const api = nock(baseUrl)
+				.get('/gmail/v1/users/me/messages')
+				.query(true)
+				.reply(200, { messages: [], resultSizeEstimate: 0 } satisfies MessageListResponse);
+
+			const { response } = await testPollingTriggerNode(GmailTrigger, {
+				mode: 'trigger',
+				node: { typeVersion: 1.4, parameters: { simple: true } },
+			});
+
+			api.done();
+			expect(response).toBeNull();
 		});
 	});
 
