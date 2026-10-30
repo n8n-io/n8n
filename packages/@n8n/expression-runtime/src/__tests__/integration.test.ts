@@ -199,6 +199,56 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('Value types at the transfer boundary', () => {
+		describe.each([
+			{ label: 'returns a custom result', parser: '() => ({ name: "custom" })' },
+			{ label: 'throws', parser: '() => { throw new Error("custom parser"); }' },
+		])('host data with a JSON parser that $label', ({ parser }) => {
+			it.each(['$json.profile.name', '$json.rows[0].name', '$input.first().json.profile.name'])(
+				'reads %s',
+				(access) => {
+					const json = { profile: { name: 'from host' }, rows: [{ name: 'from host' }] };
+					const data = { $json: json, $input: { first: () => ({ json }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const original = JSON.parse; JSON.parse = ${parser}; try { return ${access}; } finally { JSON.parse = original; } })() }}`,
+							data,
+							caller,
+						),
+					).toBe('from host');
+				},
+			);
+		});
+
+		describe.each([
+			{ label: 'plain', properties: {} },
+			{ label: 'transfer marker', properties: { __n8nType: 'user data' } },
+			{ label: 'bridge marker', properties: { __isDate: true } },
+		])('own JSON keys in a $label object', ({ properties }) => {
+			const payload = {
+				...(JSON.parse('{"__proto__":{"flag":1},"kept":2}') as Record<string, unknown>),
+				...properties,
+			};
+
+			it.each([
+				{ label: 'plain object', expression: '({ payload })' },
+				{
+					label: 'class instance',
+					expression: 'new (class { constructor() { this.payload = payload; } })()',
+				},
+			])('keeps own JSON keys when returning a $label', ({ expression }) => {
+				const result = evaluator.evaluate(
+					`{{ (() => { const payload = JSON.parse(${JSON.stringify(JSON.stringify(payload))}); return ${expression}; })() }}`,
+					{},
+					caller,
+				) as { payload: Record<string, unknown> };
+
+				expect(Object.hasOwn(result.payload, '__proto__')).toBe(true);
+				expect(result.payload).toStrictEqual(payload);
+				expect(Object.getPrototypeOf(result.payload)).toBe(Object.prototype);
+			});
+		});
+
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
 			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);

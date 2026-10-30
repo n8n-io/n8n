@@ -1,6 +1,7 @@
 import { encodeLuxonValue } from './luxon-transfer';
 import type { SentinelEncoder } from './transfer';
 import {
+	defineOwnValue,
 	isPlainObject,
 	isStructuredCloneBuiltin,
 	TRANSFER_ESCAPED_KEY,
@@ -65,7 +66,7 @@ export function __prepareForTransfer(value: unknown): unknown {
 	let collides = false;
 	for (const key of Object.keys(value)) {
 		if (TRANSFER_FRAMING_KEYS.includes(key)) collides = true;
-		result[key] = __prepareForTransfer(value[key]);
+		defineOwnValue(result, key, __prepareForTransfer(value[key]));
 	}
 	// User data can hold the same keys as our framing. Escape such an object, so
 	// the host reads the object itself as data but still walks what is inside it.

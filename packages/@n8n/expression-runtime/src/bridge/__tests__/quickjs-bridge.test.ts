@@ -205,6 +205,26 @@ describe('QuickJsBridge workflow data', () => {
 		await Promise.all(bridges.splice(0).map(async (bridge) => await bridge.dispose()));
 	});
 
+	it('reads host objects after an earlier call changes the JSON parser', async () => {
+		const bridge = await newBridge();
+		bridge.execute('JSON.parse = () => { throw new Error("custom parser"); }; return 1;', {});
+
+		expect(
+			bridge.execute('return this.$json.profile.name;', {
+				$json: { profile: { name: 'from host' } },
+			}),
+		).toBe('from host');
+	});
+
+	it('reads a host symbol as undefined and frees the runtime', async () => {
+		const bridge = await newBridge();
+
+		expect(bridge.execute('return this.$json.sym;', { $json: { sym: Symbol('s') } })).toBe(
+			undefined,
+		);
+		await expect(bridge.dispose()).resolves.toBeUndefined();
+	});
+
 	it('should free the data of a finished call while the bridge is alive', async () => {
 		const bridge = await newBridge();
 		let data: { $json: { value: number } } | undefined = { $json: { value: 42 } };
