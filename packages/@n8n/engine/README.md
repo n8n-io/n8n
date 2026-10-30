@@ -6,6 +6,9 @@ See the [Engine v2 project](https://linear.app/n8n/project/engine-20-59ba0ba6099
 for context. Public API and core interfaces are still being defined; the package
 is currently a scaffold and is not yet wired into n8n.
 
+See [Configure handler concurrency](docs/handler-concurrency.md) to try the
+bounded dispatch spike.
+
 ## Dependencies
 
 Be careful adding dependencies here. This package should not have runtime
