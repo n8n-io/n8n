@@ -50,7 +50,7 @@ build, not at the first compile. Show the agent's progress on that canvas:
 | When staging starts | The first `load_skill` call with `name` or `skillId` `workflow-builder` in the active run. |
 | New or edit | Staging stops, with no trace, when the run shows that it edits a saved workflow. See [New or edit](#new-or-edit). |
 | Staging canvas | The existing read-only draft canvas (`InstanceAiWorkflowDraftPreview`). It renders a synthetic draft with placeholder nodes and no connections. |
-| Placeholder nodes | One for each node type (with its discriminators) that `get_node_types` requested, in a grid of 4 columns, in the order they were read. |
+| Placeholder nodes | One for each node type (with its discriminators) that `get_node_types` requested, in a grid of 4 columns. Triggers first, at the top left, then the other types in the order they were read. |
 | Animation | Placeholders join the canvas one at a time, 80 ms apart. Each node fades and scales in over 240 ms. `prefers-reduced-motion` turns off the animation and the delay. |
 | Handoff to the real draft | The first `workflow-draft` of the run replaces the staging canvas. The real nodes use the same entrance animation. The placeholders go away with the staging canvas. |
 | Status line | The draft badge shows the current step of the run. See [Status line](#status-line). |
@@ -147,7 +147,10 @@ active run:
 - The user message of the run attaches a workflow.
 
 Staging also ends when the first `workflow-draft` of the run arrives, because
-the draft takes over. When the run ends with no draft, the staging tab closes.
+the draft takes over. It stays ended after a build of the run saves the
+workflow (`success: true` with a `workflowId`). The saved canvas dismisses the
+run's draft when it loads, so the draft alone cannot keep staging ended while
+the run verifies and sets up the workflow. When the run ends with no draft, the staging tab closes.
 
 Risk: an edit that loads the skill before it reads the workflow shows the
 staging canvas for about one tool call. The attachment rule removes the common
@@ -210,10 +213,33 @@ When no call is loading, it uses the newest completed call.
   - `typeVersion`: the requested version, or the latest version of the type.
   - `parameters`: `resource`, `operation` and `mode` when they were requested,
     so the canvas subtitle shows them.
-  - `position`: column `i % 4`, row `floor(i / 4)`. Use a step of 10 × 8 grid
-    units (`GRID_SIZE`), so the nodes are on the canvas grid.
+  - Order: trigger types first (`group` includes `trigger`), then the other
+    types in the order they were read. Unknown types take no cell.
+  - `position`: column `i % 4`, row `floor(i / 4)`. Use a step of 20 × 14 grid
+    units (`GRID_SIZE`), so the nodes are on the canvas grid. The step has
+    room for a wide configurable node and a label with a two-line subtitle.
 - The staging canvas fits the view after each new node. The draft canvas
   already does this when nodes are added.
+
+### Node search panel
+
+While the agent searches for nodes and reads their schemas, a read-only panel
+that looks like the node selector slides in on the right of the draft canvas.
+
+- **Data:** `getNodeSearchPanel(tree)` reads the newest `search_nodes` call of
+  the run: its queries, whether it still runs, and the node types in
+  `result.results`. A result type is `picked` when a later `get_node_types`
+  call requests it. The panel shows only while the step is `searching` or
+  `reading`.
+- **Component:** `InstanceAiNodeSearchPanel.vue`. A search box types the
+  queries in (`useTypewriter`). It has no input, so it never takes the focus.
+  Loading rows show while the search runs. Each result is an
+  `N8nNodeCreatorNode` with a `NodeIcon`, as in the node selector. A picked row
+  is active and has a check icon. It shows at most 8 rows, and they join one at
+  a time.
+- **Why not the real node selector:** it adds nodes to the injected workflow
+  (here the draft), its store is global, it takes the keyboard focus, and its
+  client-side search can disagree with the agent's backend search.
 
 ### Entrance animation
 

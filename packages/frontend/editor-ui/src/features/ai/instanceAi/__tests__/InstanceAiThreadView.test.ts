@@ -199,13 +199,21 @@ let workflowLoadedEmit: ((event: 'workflow-loaded', workflowId: string) => void)
 
 const InstanceAiWorkflowDraftPreviewStub = defineComponent({
 	name: 'InstanceAiWorkflowDraftPreviewStub',
-	props: { draft: { type: Object, required: true }, building: Boolean, statusText: String },
+	props: {
+		draft: { type: Object, required: true },
+		building: Boolean,
+		statusText: String,
+		searchPanel: Object,
+	},
 	setup: (props) => () =>
 		h('div', {
 			'data-test-id': 'instance-ai-workflow-draft-preview-stub',
 			'data-file-path': (props.draft as { filePath: string }).filePath,
 			'data-building': String(props.building),
 			'data-status-text': props.statusText ?? '',
+			'data-search-queries': (
+				props.searchPanel as { queries?: string[] } | undefined
+			)?.queries?.join(','),
 		}),
 });
 
@@ -2732,6 +2740,7 @@ describe('InstanceAiThreadView', () => {
 			const preview = await findByTestId('instance-ai-workflow-draft-preview-stub');
 			expect(preview).toHaveAttribute('data-file-path', 'staging:run-1');
 			expect(preview).toHaveAttribute('data-status-text', 'Searching for gmail, slack');
+			expect(preview).toHaveAttribute('data-search-queries', 'gmail,slack');
 			expect(trackCanvasRendered).toHaveBeenCalledWith('staging');
 		});
 

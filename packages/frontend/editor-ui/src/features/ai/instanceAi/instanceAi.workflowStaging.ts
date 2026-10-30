@@ -50,8 +50,9 @@ const EDIT_TOOLS = new Set<string>([
 	WORKFLOW_BUILDER_TOOL_NAMES.GET_WORKFLOW_AS_CODE,
 ]);
 const STAGING_COLUMNS = 4;
-const STAGING_COLUMN_STEP = 10 * GRID_SIZE;
-const STAGING_ROW_STEP = 8 * GRID_SIZE;
+// Room for a wide configurable node, and for a label with a two-line subtitle.
+const STAGING_COLUMN_STEP = 20 * GRID_SIZE;
+const STAGING_ROW_STEP = 14 * GRID_SIZE;
 
 function collectToolCalls(node: InstanceAiAgentNode): InstanceAiToolCallState[] {
 	return [...node.toolCalls, ...node.children.flatMap(collectToolCalls)];
@@ -83,6 +84,13 @@ function isEditCall(toolCall: InstanceAiToolCallState): boolean {
 		name === WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW &&
 		stringArg(toolCall.args, 'workflowId') !== undefined
 	);
+}
+
+/** A build that saved a workflow. From then on the saved canvas owns the tab. */
+function isSavedBuild(toolCall: InstanceAiToolCallState): boolean {
+	if (toolName(toolCall) !== WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW) return false;
+	const { result } = toolCall;
+	return isRecord(result) && result.success === true && typeof result.workflowId === 'string';
 }
 
 function toVersion(value: unknown): number | undefined {
@@ -131,6 +139,8 @@ export function getWorkflowStaging(
 	const toolCalls = collectToolCalls(tree);
 	if (!toolCalls.some(isWorkflowBuilderLoad)) return undefined;
 	if (toolCalls.some(isEditCall)) return undefined;
+	// The run's drafts go away once the saved canvas loads, so the save itself ends staging.
+	if (toolCalls.some(isSavedBuild)) return undefined;
 
 	const nodes = new Map<string, WorkflowStagingNode>();
 	for (const node of toolCalls.flatMap(requestedNodes)) {
@@ -182,11 +192,57 @@ export function getWorkflowBuildStep(tree: InstanceAiAgentNode): WorkflowBuildSt
 	return (newest && toBuildStep(newest)) ?? { kind: 'preparing' };
 }
 
+/** The agent's newest node search, for the search panel of the draft canvas. */
+export interface NodeSearchPanel {
+	/** The tool call id of the search. */
+	id: string;
+	queries: string[];
+	searching: boolean;
+	/** The node types the search found, in result order. */
+	results: string[];
+	/** The result types the agent read after the search. */
+	picked: string[];
+}
+
+function searchResultTypes(result: unknown): string[] {
+	if (!isRecord(result) || !Array.isArray(result.results)) return [];
+	const types = result.results.flatMap((item: unknown) =>
+		isRecord(item) && typeof item.name === 'string' ? [item.name] : [],
+	);
+	return [...new Set(types)];
+}
+
+/** Undefined when the agent has not searched, or has moved on from searching and reading. */
+export function getNodeSearchPanel(tree: InstanceAiAgentNode): NodeSearchPanel | undefined {
+	const step = getWorkflowBuildStep(tree);
+	if (step.kind !== 'searching' && step.kind !== 'reading') return undefined;
+	const toolCalls = collectToolCalls(tree);
+	const index = toolCalls.findLastIndex(
+		(toolCall) => toolName(toolCall) === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES,
+	);
+	if (index === -1) return undefined;
+	const search = toolCalls[index];
+	const results = searchResultTypes(search.result);
+	const read = new Set(
+		toolCalls
+			.slice(index + 1)
+			.flatMap((toolCall) => requestedNodes(toolCall).map((n) => n.nodeType)),
+	);
+	return {
+		id: search.toolCallId,
+		queries: searchQueries(search.args),
+		searching: search.isLoading,
+		results,
+		picked: results.filter((nodeType) => read.has(nodeType)),
+	};
+}
+
 type StagingDraftNode = WorkflowDraft['workflow']['nodes'][number];
 
 export interface StagingNodeTypeInfo {
 	displayName: string;
 	defaultVersion: number;
+	isTrigger?: boolean;
 }
 
 /** The staging canvas of a run, as a draft. Its file path is not a source file. */
@@ -199,12 +255,19 @@ export function isStagingDraft(draft: WorkflowDraft): boolean {
 }
 
 export function toStagingNodeTypeInfo(
-	description: Pick<INodeTypeDescription, 'displayName' | 'version' | 'defaultVersion'> | null,
+	description: Pick<
+		INodeTypeDescription,
+		'displayName' | 'version' | 'defaultVersion' | 'group'
+	> | null,
 ): StagingNodeTypeInfo | undefined {
 	if (!description) return undefined;
-	const { displayName, version, defaultVersion } = description;
+	const { displayName, version, defaultVersion, group } = description;
 	const newest = Array.isArray(version) ? Math.max(...version) : version;
-	return { displayName, defaultVersion: defaultVersion ?? newest };
+	return {
+		displayName,
+		defaultVersion: defaultVersion ?? newest,
+		isTrigger: group.includes('trigger'),
+	};
 }
 
 function uniqueName(name: string, used: Map<string, number>): string {
@@ -218,27 +281,29 @@ export function toStagingWorkflowNodes(
 	staging: WorkflowStaging,
 	describeType: (nodeType: string) => StagingNodeTypeInfo | undefined,
 ): StagingDraftNode[] {
-	const usedNames = new Map<string, number>();
-	return staging.nodes.flatMap((node, index) => {
+	const known = staging.nodes.flatMap((node) => {
 		const info = describeType(node.nodeType);
-		if (!info) return [];
-		const parameters = {
+		return info ? [{ node, info }] : [];
+	});
+	// Triggers start a workflow, so they go to the top left.
+	const ordered = [
+		...known.filter(({ info }) => info.isTrigger),
+		...known.filter(({ info }) => !info.isTrigger),
+	];
+	const usedNames = new Map<string, number>();
+	return ordered.map(({ node, info }, index) => ({
+		id: node.id,
+		name: uniqueName(info.displayName, usedNames),
+		type: node.nodeType,
+		typeVersion: node.version ?? info.defaultVersion,
+		position: [
+			(index % STAGING_COLUMNS) * STAGING_COLUMN_STEP,
+			Math.floor(index / STAGING_COLUMNS) * STAGING_ROW_STEP,
+		],
+		parameters: {
 			...(node.resource ? { resource: node.resource } : {}),
 			...(node.operation ? { operation: node.operation } : {}),
 			...(node.mode ? { mode: node.mode } : {}),
-		};
-		return [
-			{
-				id: node.id,
-				name: uniqueName(info.displayName, usedNames),
-				type: node.nodeType,
-				typeVersion: node.version ?? info.defaultVersion,
-				position: [
-					(index % STAGING_COLUMNS) * STAGING_COLUMN_STEP,
-					Math.floor(index / STAGING_COLUMNS) * STAGING_ROW_STEP,
-				],
-				parameters,
-			},
-		];
-	});
+		},
+	}));
 }

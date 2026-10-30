@@ -8,10 +8,12 @@ import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.types';
 import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 
+import InstanceAiNodeSearchPanel from './InstanceAiNodeSearchPanel.vue';
 import { useDraftWorkflowDocument } from '../composables/useDraftWorkflowDocument';
 import { useStaggeredList } from '../composables/useStaggeredList';
 import { draftNodeKey, withDraftNodes } from '../instanceAi.workflowDraftCanvas';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
+import type { NodeSearchPanel } from '../instanceAi.workflowStaging';
 
 const props = defineProps<{
 	draft: WorkflowDraft;
@@ -19,6 +21,8 @@ const props = defineProps<{
 	building: boolean;
 	/** What the agent does now. Replaces the building label while it works. */
 	statusText?: string;
+	/** The agent's newest node search, while it searches and reads node types. */
+	searchPanel?: NodeSearchPanel;
 }>();
 
 const i18n = useI18n();
@@ -57,6 +61,18 @@ watch(
 			:striped-background="false"
 			:class="$style.canvas"
 		/>
+		<Transition
+			:enter-from-class="$style.searchHidden"
+			:leave-to-class="$style.searchHidden"
+			:enter-active-class="$style.searchMoving"
+			:leave-active-class="$style.searchMoving"
+		>
+			<InstanceAiNodeSearchPanel
+				v-if="searchPanel"
+				:class="$style.searchPanel"
+				:panel="searchPanel"
+			/>
+		</Transition>
 		<div :class="$style.badge" data-test-id="instance-ai-workflow-draft-badge">
 			<N8nSpinner v-if="building" size="small" />
 			<N8nText size="small" color="text-base">
@@ -104,6 +120,30 @@ watch(
 	to {
 		opacity: 1;
 		scale: 1;
+	}
+}
+
+.searchPanel {
+	position: absolute;
+	top: var(--spacing--3xl);
+	right: var(--spacing--sm);
+	max-height: calc(100% - var(--spacing--3xl) - var(--spacing--sm));
+}
+
+.searchMoving {
+	transition:
+		opacity var(--duration--snappy) var(--easing--ease-out-quart),
+		translate var(--duration--snappy) var(--easing--ease-out-quart);
+}
+
+.searchHidden {
+	opacity: 0;
+	translate: var(--spacing--lg) 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.searchMoving {
+		transition: none;
 	}
 }
 

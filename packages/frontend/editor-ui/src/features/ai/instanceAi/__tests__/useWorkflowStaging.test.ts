@@ -140,6 +140,32 @@ describe('useWorkflowStaging', () => {
 		expect(stagingDraft.value).toBeUndefined();
 	});
 
+	it('does not come back when the saved draft of the run is dismissed', async () => {
+		const savedBuild: InstanceAiToolCallState = {
+			...call('workflow_builder_build_workflow', { filePath: 'a.ts' }),
+			result: { success: true, filePath: 'a.ts', workflowId: 'wf-new' },
+		};
+		const { stagingDraft, drafts } = setup([
+			userMessage(),
+			assistantMessage([loadBuilder, readSlack, savedBuild]),
+		]);
+		drafts.value = {
+			'a.ts': {
+				filePath: 'a.ts',
+				revision: 1,
+				runId: 'run-1',
+				savedWorkflowId: 'wf-new',
+				workflow: { name: 'A', nodes: [], connections: {} },
+			},
+		};
+		await nextTick();
+
+		drafts.value = {};
+		await nextTick();
+
+		expect(stagingDraft.value).toBeUndefined();
+	});
+
 	it('reports the step of the running agent', () => {
 		const { buildStep } = setup([
 			userMessage(),
@@ -147,6 +173,26 @@ describe('useWorkflowStaging', () => {
 		]);
 
 		expect(buildStep.value).toEqual({ kind: 'searching', queries: ['slack'] });
+	});
+
+	it('reports the search panel of the running agent', () => {
+		const { searchPanel } = setup([
+			userMessage(),
+			assistantMessage([loadBuilder, call('search_nodes', { queries: ['slack'] })]),
+		]);
+
+		expect(searchPanel.value).toMatchObject({ queries: ['slack'] });
+	});
+
+	it('reports no search panel when the experiment is off or the run ended', () => {
+		const searching = [loadBuilder, call('search_nodes', { queries: ['slack'] })];
+
+		expect(
+			setup([userMessage(), assistantMessage(searching)], { enabled: false }).searchPanel.value,
+		).toBeUndefined();
+		expect(
+			setup([userMessage(), assistantMessage(searching, false)]).searchPanel.value,
+		).toBeUndefined();
 	});
 
 	it('reports no step once the run ends', () => {

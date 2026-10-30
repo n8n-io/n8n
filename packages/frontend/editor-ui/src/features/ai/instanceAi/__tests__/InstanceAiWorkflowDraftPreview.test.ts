@@ -102,6 +102,24 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start', 'Set']);
 	});
 
+	it('shows the node search of the agent next to the canvas', () => {
+		const { getByTestId, queryByTestId, rerender } = renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: draft(['Start']), building: true },
+		});
+		expect(queryByTestId('instance-ai-node-search-panel')).toBeNull();
+
+		void rerender({
+			draft: draft(['Start']),
+			building: true,
+			searchPanel: { id: 'tc-1', queries: ['gmail'], searching: true, results: [], picked: [] },
+		});
+
+		return vi.waitFor(() =>
+			expect(getByTestId('instance-ai-node-search-panel')).toBeInTheDocument(),
+		);
+	});
+
 	it('shows the step of the agent while it works', () => {
 		const { getByTestId } = renderComponent({
 			pinia: createTestingPinia({ stubActions: false }),

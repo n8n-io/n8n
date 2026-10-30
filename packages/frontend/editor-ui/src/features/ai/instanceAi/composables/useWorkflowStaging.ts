@@ -4,6 +4,7 @@ import { computed } from 'vue';
 
 import type { WorkflowDraft, WorkflowDraftsByFilePath } from '../instanceAi.workflowDrafts';
 import {
+	getNodeSearchPanel,
 	getWorkflowBuildStep,
 	getWorkflowStaging,
 	stagingFilePath,
@@ -64,5 +65,10 @@ export function useWorkflowStaging(options: {
 		return turn ? getWorkflowBuildStep(turn.tree) : undefined;
 	});
 
-	return { stagingDraft, buildStep };
+	const searchPanel = computed(() => {
+		const turn = runningTurn.value;
+		return options.enabled() && turn ? getNodeSearchPanel(turn.tree) : undefined;
+	});
+
+	return { stagingDraft, buildStep, searchPanel };
 }

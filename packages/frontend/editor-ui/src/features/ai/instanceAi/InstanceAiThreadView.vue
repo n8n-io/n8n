@@ -1089,6 +1089,7 @@ function handleNewThreadClick() {
 								:draft="preview.activeWorkflowDraft.value"
 								:building="isAgentWorking"
 								:status-text="draftStatusText"
+								:search-panel="workflowStaging.searchPanel.value"
 							/>
 							<InstanceAiDataTablePreview
 								v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

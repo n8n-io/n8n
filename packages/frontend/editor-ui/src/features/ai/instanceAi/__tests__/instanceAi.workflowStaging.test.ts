@@ -1,6 +1,7 @@
 import type { InstanceAiAgentNode, InstanceAiToolCallState } from '@n8n/api-types';
 
 import {
+	getNodeSearchPanel,
 	getWorkflowBuildStep,
 	getWorkflowStaging,
 	isStagingDraft,
@@ -140,6 +141,35 @@ describe('getWorkflowStaging', () => {
 	])('is undefined when %s', (_, editCall) => {
 		expect(getWorkflowStaging(tree([loadBuilder(), editCall]), { hasNodeType })).toBeUndefined();
 	});
+
+	it('stays ended after a build of the run saved the workflow', () => {
+		const saved = call(
+			'workflow_builder_build_workflow',
+			{ filePath: 'a.ts' },
+			{ result: { success: true, filePath: 'a.ts', workflowId: 'wf-new' } },
+		);
+		const verify = call('workflow_builder_verify_built_workflow', { workflowId: 'wf-new' });
+
+		expect(
+			getWorkflowStaging(tree([loadBuilder(), saved, verify]), { hasNodeType }),
+		).toBeUndefined();
+	});
+
+	it('keeps staging while a build runs or after a build that did not save', () => {
+		const running = call(
+			'workflow_builder_build_workflow',
+			{ filePath: 'a.ts' },
+			{ isLoading: true, result: undefined },
+		);
+		const blocked = call(
+			'workflow_builder_build_workflow',
+			{ filePath: 'a.ts' },
+			{ result: { success: false, filePath: 'a.ts' } },
+		);
+
+		expect(getWorkflowStaging(tree([loadBuilder(), running]), { hasNodeType })).toBeDefined();
+		expect(getWorkflowStaging(tree([loadBuilder(), blocked]), { hasNodeType })).toBeDefined();
+	});
 });
 
 describe('getWorkflowBuildStep', () => {
@@ -225,11 +255,94 @@ describe('getWorkflowBuildStep', () => {
 	});
 });
 
+describe('getNodeSearchPanel', () => {
+	const search = (overrides: Partial<InstanceAiToolCallState> = {}) =>
+		call(
+			'search_nodes',
+			{ queries: ['gmail', 'slack'] },
+			{
+				result: {
+					results: [
+						{ name: 'n8n-nodes-base.gmail' },
+						{ name: 'n8n-nodes-base.gmailTrigger' },
+						{ name: 'n8n-nodes-base.slack' },
+						{ name: 'n8n-nodes-base.gmail' },
+						{ bad: true },
+					],
+				},
+				...overrides,
+			},
+		);
+
+	it('is undefined before the agent searches', () => {
+		expect(getNodeSearchPanel(tree([loadBuilder()]))).toBeUndefined();
+	});
+
+	it('shows the queries while the search runs', () => {
+		const running = search({ isLoading: true, result: undefined });
+
+		expect(getNodeSearchPanel(tree([running]))).toEqual({
+			id: running.toolCallId,
+			queries: ['gmail', 'slack'],
+			searching: true,
+			results: [],
+			picked: [],
+		});
+	});
+
+	it('lists the result node types once, in their order', () => {
+		expect(getNodeSearchPanel(tree([search()]))).toMatchObject({
+			searching: false,
+			results: ['n8n-nodes-base.gmail', 'n8n-nodes-base.gmailTrigger', 'n8n-nodes-base.slack'],
+		});
+	});
+
+	it('marks the result types the agent reads after the search', () => {
+		const before = call('get_node_types', { nodeTypes: ['n8n-nodes-base.slack'] });
+		const after = call('get_node_types', {
+			nodeTypes: [{ nodeType: 'n8n-nodes-base.gmail', operation: 'send' }],
+		});
+
+		expect(getNodeSearchPanel(tree([before, search(), after]))?.picked).toEqual([
+			'n8n-nodes-base.gmail',
+		]);
+	});
+
+	it('shows the newest search', () => {
+		const older = search();
+		const newer = call(
+			'search_nodes',
+			{ query: 'http' },
+			{ result: { results: [{ name: 'n8n-nodes-base.httpRequest' }] } },
+		);
+
+		expect(getNodeSearchPanel(tree([older, newer]))).toMatchObject({
+			id: newer.toolCallId,
+			queries: ['http'],
+			results: ['n8n-nodes-base.httpRequest'],
+		});
+	});
+
+	it('closes when the agent moves on from searching and reading', () => {
+		const read = call('get_node_types', { nodeTypes: ['n8n-nodes-base.gmail'] });
+
+		expect(getNodeSearchPanel(tree([search(), read]))).toBeDefined();
+		expect(
+			getNodeSearchPanel(tree([search(), read, call('workspace_write_file')])),
+		).toBeUndefined();
+	});
+});
+
 describe('toStagingWorkflowNodes', () => {
 	const describeType = (type: string) =>
 		({
 			'n8n-nodes-base.slack': { displayName: 'Slack', defaultVersion: 2.3 },
 			'n8n-nodes-base.set': { displayName: 'Edit Fields', defaultVersion: 3.4 },
+			'n8n-nodes-base.scheduleTrigger': {
+				displayName: 'Schedule Trigger',
+				defaultVersion: 1.2,
+				isTrigger: true,
+			},
 		})[type];
 
 	function staging(nodes: WorkflowStaging['nodes']): WorkflowStaging {
@@ -247,12 +360,30 @@ describe('toStagingWorkflowNodes', () => {
 			describeType,
 		);
 
+		// Wide enough for a configurable node and a two-line subtitle.
 		expect(nodes.map((node) => node.position)).toEqual([
 			[0, 0],
-			[160, 0],
 			[320, 0],
-			[480, 0],
-			[0, 128],
+			[640, 0],
+			[960, 0],
+			[0, 224],
+		]);
+	});
+
+	it('puts the triggers first, at the top left', () => {
+		const nodes = toStagingWorkflowNodes(
+			staging([
+				{ id: 'staging:a', nodeType: 'n8n-nodes-base.slack' },
+				{ id: 'staging:b', nodeType: 'n8n-nodes-base.set' },
+				{ id: 'staging:c', nodeType: 'n8n-nodes-base.scheduleTrigger' },
+			]),
+			describeType,
+		);
+
+		expect(nodes.map((node) => [node.name, node.position])).toEqual([
+			['Schedule Trigger', [0, 0]],
+			['Slack', [320, 0]],
+			['Edit Fields', [640, 0]],
 		]);
 	});
 
@@ -305,19 +436,30 @@ describe('toStagingWorkflowNodes', () => {
 describe('toStagingNodeTypeInfo', () => {
 	it('uses the default version of the type', () => {
 		expect(
-			toStagingNodeTypeInfo({ displayName: 'Slack', version: [1, 2, 2.3], defaultVersion: 2.2 }),
-		).toEqual({ displayName: 'Slack', defaultVersion: 2.2 });
+			toStagingNodeTypeInfo({
+				displayName: 'Slack',
+				version: [1, 2, 2.3],
+				defaultVersion: 2.2,
+				group: ['output'],
+			}),
+		).toEqual({ displayName: 'Slack', defaultVersion: 2.2, isTrigger: false });
 	});
 
 	it('uses the newest version when the type has no default', () => {
-		expect(toStagingNodeTypeInfo({ displayName: 'Slack', version: [1, 2.3, 2] })).toEqual({
-			displayName: 'Slack',
-			defaultVersion: 2.3,
-		});
-		expect(toStagingNodeTypeInfo({ displayName: 'Set', version: 3 })).toEqual({
+		expect(
+			toStagingNodeTypeInfo({ displayName: 'Slack', version: [1, 2.3, 2], group: ['output'] }),
+		).toEqual({ displayName: 'Slack', defaultVersion: 2.3, isTrigger: false });
+		expect(toStagingNodeTypeInfo({ displayName: 'Set', version: 3, group: ['input'] })).toEqual({
 			displayName: 'Set',
 			defaultVersion: 3,
+			isTrigger: false,
 		});
+	});
+
+	it('marks a trigger type', () => {
+		expect(
+			toStagingNodeTypeInfo({ displayName: 'Schedule Trigger', version: 1, group: ['trigger'] }),
+		).toMatchObject({ isTrigger: true });
 	});
 
 	it('is undefined for an unknown type', () => {

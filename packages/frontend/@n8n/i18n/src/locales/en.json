@@ -8425,6 +8425,7 @@
 	"instanceAi.projectSelect.personalSpace": "Personal space",
 	"instanceAi.agentPreview.building": "n8n Assistant is making changes…",
 	"instanceAi.workflowDraft.newWorkflow": "New workflow",
+	"instanceAi.workflowDraft.search.ariaLabel": "Nodes the agent searched for",
 	"instanceAi.workflowDraft.step.preparing": "Preparing",
 	"instanceAi.workflowDraft.step.searching": "Searching for {list}",
 	"instanceAi.workflowDraft.step.referencing": "Referencing {name}",
