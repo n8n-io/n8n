@@ -1,3 +1,11 @@
+## [1.123.91](https://github.com/n8n-io/n8n/compare/n8n@1.123.90...n8n@1.123.91) (2026-10-30)
+
+
+### Bug Fixes
+
+* **core:** Fix $('Node') expressions returning null for legacy Code node output ([#42249](https://github.com/n8n-io/n8n/issues/42249)) ([18c89cd](https://github.com/n8n-io/n8n/commit/18c89cdf2eda635fbb892730189a2de1a48b46da))
+
+
 ## [1.123.90](https://github.com/n8n-io/n8n/compare/n8n@1.123.89...n8n@1.123.90) (2026-10-29)
 
 
