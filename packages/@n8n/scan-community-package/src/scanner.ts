@@ -66,8 +66,6 @@ export const isContainedWithin = (parentPath: string, childPath: string): boolea
  * Joins the given paths to the parentPath, ensuring that the resulting path
  * is still contained within the parentPath. If not, it throws an error to
  * prevent path traversal vulnerabilities.
- *
- * @throws {UnexpectedError} If the resulting path is not contained within the parentPath.
  */
 export const safeJoinPath = (parentPath: string, ...paths: string[]): string => {
 	const candidate = path.join(parentPath, ...paths);
@@ -178,8 +176,8 @@ const downloadAndExtractPackage = async (packageName: string, version: string) =
  * scan to proceed, so any package that reaches this point attests exactly
  * which source produced the published artifact.
  *
- * Returns `{ owner, repo, gitCommit }`, or `null` when the attestation is
- * missing, malformed, or points at an unsupported host.
+ * Returns `null` when the attestation is missing, malformed, or points at an
+ * unsupported host.
  */
 export const parseSourceRepo = (
 	attestations: readonly Attestation[] | undefined,
