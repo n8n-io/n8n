@@ -7,7 +7,7 @@ import { Z } from '../../zod-class';
  * Public list item — same as internal list metadata, minus internal-only fields.
  */
 export const workflowVersionListItemPublicSchema = workflowHistoryListItemSchema
-	.omit({ autosaved: true })
+	.omit({ autosaved: true, settings: true })
 	.extend({
 		createdAt: z.string().datetime(),
 		updatedAt: z.string().datetime(),

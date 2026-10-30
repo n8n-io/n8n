@@ -25,7 +25,12 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 		version: Pick<
 			WorkflowHistory,
 			'authors' | 'connections' | 'nodes' | 'versionId' | 'workflowId' | 'autosaved'
-		> & { name?: string; description?: string; nodeGroups?: WorkflowHistory['nodeGroups'] },
+		> & {
+			name?: string;
+			description?: string;
+			nodeGroups?: WorkflowHistory['nodeGroups'];
+			settings?: WorkflowHistory['settings'];
+		},
 		ctx: OperationContext,
 	) {
 		await this.managerFor(ctx).insert(WorkflowHistory, version);
@@ -254,6 +259,7 @@ export class WorkflowHistoryRepository extends BaseRepository<WorkflowHistory> {
 			[
 				this.makeSkipActiveAndNamedVersionsRule(protectedVersions),
 				SKIP_RULES.skipDifferentUsers,
+				SKIP_RULES.skipDifferentVersionedSettings,
 				...skipRules,
 			],
 			metaData,

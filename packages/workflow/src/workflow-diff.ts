@@ -10,6 +10,7 @@ import type {
 	NodeParameterValueType,
 } from '.';
 import { compareConnections, type ConnectionsDiff } from './connections-diff';
+import { versionedSettingsEqual } from './workflow-settings-scope';
 
 export type WorkflowDiffBase = Omit<
 	IWorkflowBase,
@@ -299,6 +300,14 @@ function skipDifferentUsers<N extends DiffableNode = DiffableNode>(
 	return next.authors !== prev.authors;
 }
 
+/** Keeps a version that runs with other version-scoped settings, such as another engine. */
+function skipDifferentVersionedSettings(
+	prev: { settings?: IWorkflowSettings | null },
+	next: { settings?: IWorkflowSettings | null },
+) {
+	return !versionedSettingsEqual(prev.settings, next.settings);
+}
+
 export const RULES = {
 	mergeAdditiveChanges,
 	makeMergeDependingOnSizeRule,
@@ -307,6 +316,7 @@ export const RULES = {
 export const SKIP_RULES = {
 	makeSkipTimeDifference,
 	skipDifferentUsers,
+	skipDifferentVersionedSettings,
 };
 
 // MetaData fields are only included if requested

@@ -411,6 +411,32 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
+	test('should store the engine in the first workflow history version', async () => {
+		const payload = {
+			name: 'testing engine',
+			nodes: [
+				{
+					id: 'uuid-1234',
+					parameters: {},
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [240, 300],
+				},
+			],
+			connections: {},
+			settings: { engineType: 'v2', timezone: 'America/New_York' },
+		};
+
+		const response = await authOwnerAgent.post('/workflows').send(payload);
+
+		expect(response.statusCode).toBe(200);
+		const historyVersion = await workflowHistoryRepository.findOneOrFail({
+			where: { workflowId: response.body.data.id },
+		});
+		expect(historyVersion.settings).toEqual({ engineType: 'v2' });
+	});
+
 	test('should set autosaved: true in workflow history when autosaved parameter is sent', async () => {
 		const payload = {
 			name: 'testing autosave',
