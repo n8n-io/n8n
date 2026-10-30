@@ -1,5 +1,6 @@
 import type { DynamicStructuredTool } from '@langchain/classic/tools';
-import { NodeConnectionTypes, NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	EngineRequest,
 	EngineResponse,

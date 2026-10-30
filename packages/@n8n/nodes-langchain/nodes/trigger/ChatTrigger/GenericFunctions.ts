@@ -1,5 +1,5 @@
 import basicAuth from 'basic-auth';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { ICredentialDataDecryptedObject, IUser, IWebhookFunctions } from 'n8n-workflow';
 
 import { ChatTriggerAuthorizationError } from './error';

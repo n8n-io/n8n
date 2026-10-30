@@ -1,4 +1,4 @@
-import { OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	buildTraceInfo,

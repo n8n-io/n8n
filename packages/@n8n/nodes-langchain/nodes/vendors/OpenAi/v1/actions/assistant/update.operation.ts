@@ -4,7 +4,8 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 } from 'n8n-workflow';
-import { NodeOperationError, UnexpectedError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { apiRequest } from '../../../transport';
 import { assistantRLC, modelRLC } from '../descriptions';
