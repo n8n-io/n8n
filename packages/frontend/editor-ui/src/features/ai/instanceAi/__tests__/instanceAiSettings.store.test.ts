@@ -1,4 +1,5 @@
 import { setActivePinia, createPinia } from 'pinia';
+import { useToast } from '@n8n/composables/useToast';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { FrontendModuleSettings } from '@n8n/api-types';
 import { usePostHog } from '@/app/stores/posthog.store';
@@ -49,6 +50,8 @@ const mockVerifySearch = vi.fn();
 const mockCreateBrowserLink = vi.fn();
 const mockDisconnectBrowserSession = vi.fn();
 const mockGetBrowserStatus = vi.fn();
+const mockFetchUserPreferences = vi.fn();
+const mockUpdateUserPreferences = vi.fn();
 
 vi.mock('../instanceAi.settings.api', () => ({
 	fetchSettings: (...args: unknown[]) => mockFetchSettings(...args),
@@ -59,6 +62,8 @@ vi.mock('../instanceAi.settings.api', () => ({
 	verifyModel: (...args: unknown[]) => mockVerifyModel(...args),
 	verifySandbox: (...args: unknown[]) => mockVerifySandbox(...args),
 	verifySearch: (...args: unknown[]) => mockVerifySearch(...args),
+	fetchUserPreferences: (...args: unknown[]) => mockFetchUserPreferences(...args),
+	updateUserPreferences: (...args: unknown[]) => mockUpdateUserPreferences(...args),
 }));
 
 vi.mock('../instanceAi.api', () => ({
@@ -512,6 +517,114 @@ describe('useInstanceAiSettingsStore', () => {
 			settingsStore.moduleSettings = {};
 
 			expect(store.isBrowserUseAvailable).toBe(false);
+		});
+	});
+
+	describe('approval mode', () => {
+		it('starts in Manual without a choice until the preferences load', () => {
+			expect(store.approvalMode).toBe('manual');
+			expect(store.approvalModesAvailable).toBe(false);
+		});
+
+		it('loads the mode and whether the user can choose one', async () => {
+			mockFetchUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			await store.fetchPreferences();
+
+			expect(store.approvalMode).toBe('auto');
+			expect(store.approvalModesAvailable).toBe(true);
+		});
+
+		it('keeps Manual without a choice when the preferences fail to load', async () => {
+			mockFetchUserPreferences.mockRejectedValue(new Error('offline'));
+
+			await store.fetchPreferences();
+
+			expect(store.approvalMode).toBe('manual');
+			expect(store.approvalModesAvailable).toBe(false);
+		});
+
+		it('saves a new mode', async () => {
+			mockUpdateUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			await expect(store.setApprovalMode('auto')).resolves.toBe(true);
+
+			expect(mockUpdateUserPreferences).toHaveBeenCalledWith(expect.anything(), {
+				approvalMode: 'auto',
+			});
+			expect(store.approvalMode).toBe('auto');
+		});
+
+		it('restores the previous mode and shows an error when the save fails', async () => {
+			const error = new Error('not available');
+			mockUpdateUserPreferences.mockRejectedValue(error);
+
+			await expect(store.setApprovalMode('auto')).resolves.toBe(false);
+
+			expect(store.approvalMode).toBe('manual');
+			expect(vi.mocked(useToast)().showError).toHaveBeenCalledWith(
+				error,
+				'instanceAi.approvalMode.saveError',
+			);
+		});
+
+		it('does not save the mode that is already set', async () => {
+			await expect(store.setApprovalMode('manual')).resolves.toBe(true);
+
+			expect(mockUpdateUserPreferences).not.toHaveBeenCalled();
+		});
+
+		it('keeps a saved mode when an older load returns after the save', async () => {
+			let finishLoad: (value: unknown) => void = () => {};
+			mockFetchUserPreferences.mockReturnValue(new Promise((resolve) => (finishLoad = resolve)));
+			mockUpdateUserPreferences.mockResolvedValue({
+				approvalMode: 'auto',
+				approvalModesAvailable: true,
+			});
+
+			const load = store.fetchPreferences();
+			await store.setApprovalMode('auto');
+			finishLoad({ approvalMode: 'manual', approvalModesAvailable: true });
+			await load;
+
+			expect(store.approvalMode).toBe('auto');
+		});
+
+		it('sends the saves one at a time, so the last pick wins on the server', async () => {
+			let finishFirstSave: (value: unknown) => void = () => {};
+			mockUpdateUserPreferences
+				.mockReturnValueOnce(new Promise((resolve) => (finishFirstSave = resolve)))
+				.mockResolvedValueOnce({ approvalMode: 'manual', approvalModesAvailable: true });
+
+			const firstSave = store.setApprovalMode('auto');
+			const secondSave = store.setApprovalMode('manual');
+			await vi.waitFor(() => expect(mockUpdateUserPreferences).toHaveBeenCalledTimes(1));
+			finishFirstSave({ approvalMode: 'auto', approvalModesAvailable: true });
+			await Promise.all([firstSave, secondSave]);
+
+			expect(mockUpdateUserPreferences).toHaveBeenLastCalledWith(expect.anything(), {
+				approvalMode: 'manual',
+			});
+			expect(store.approvalMode).toBe('manual');
+		});
+
+		it('loads the preferences again only after a failed load', async () => {
+			mockFetchUserPreferences
+				.mockRejectedValueOnce(new Error('offline'))
+				.mockResolvedValue({ approvalMode: 'auto', approvalModesAvailable: true });
+
+			await store.fetchPreferences();
+			await store.fetchPreferencesAfterFailure();
+			await store.fetchPreferencesAfterFailure();
+
+			expect(mockFetchUserPreferences).toHaveBeenCalledTimes(2);
+			expect(store.approvalModesAvailable).toBe(true);
 		});
 	});
 });

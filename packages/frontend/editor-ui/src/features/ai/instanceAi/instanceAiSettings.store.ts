@@ -13,6 +13,8 @@ import {
 	verifyModel as verifyModelRequest,
 	verifySandbox as verifySandboxRequest,
 	verifySearch as verifySearchRequest,
+	fetchUserPreferences,
+	updateUserPreferences,
 } from './instanceAi.settings.api';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { createBrowserLink, disconnectBrowserSession, getBrowserStatus } from './instanceAi.api';
@@ -20,6 +22,7 @@ import {
 	DEFAULT_INSTANCE_AI_PERMISSIONS,
 	type FrontendModuleSettings,
 	type InstanceAiAdminSettingsResponse,
+	type InstanceAiApprovalMode,
 	type InstanceAiAdminSettingsUpdateRequest,
 	type InstanceAiProviderConnection,
 	type InstanceAiPermissions,
@@ -255,6 +258,60 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		return settings.value?.permissions?.[key] ?? DEFAULT_INSTANCE_AI_PERMISSIONS[key];
 	}
 
+	// ── Per-user preferences ───────────────────────────────────────────────
+
+	/** The user's approval mode. Manual until the server says otherwise. */
+	const approvalMode = ref<InstanceAiApprovalMode>('manual');
+	/** Whether the user can pick an approval mode. */
+	const approvalModesAvailable = ref(false);
+	let preferencesLoadFailed = false;
+	/** Counts the saves of the mode, so that a response older than the last save changes nothing. */
+	let approvalModeSaves = 0;
+	/** The save in progress. The next save waits for it, so the server keeps the last pick. */
+	let pendingApprovalModeSave: Promise<unknown> = Promise.resolve();
+
+	async function fetchPreferences(): Promise<void> {
+		const savesAtStart = approvalModeSaves;
+		try {
+			const preferences = await fetchUserPreferences(rootStore.restApiContext);
+			preferencesLoadFailed = false;
+			if (savesAtStart !== approvalModeSaves) return;
+			approvalMode.value = preferences.approvalMode;
+			approvalModesAvailable.value = preferences.approvalModesAvailable;
+		} catch {
+			// Without preferences the chat shows no mode selector. Runs still use the saved mode.
+			preferencesLoadFailed = true;
+		}
+	}
+
+	/** Loads the preferences again when the last load failed, so the selector can come back. */
+	async function fetchPreferencesAfterFailure(): Promise<void> {
+		if (preferencesLoadFailed) await fetchPreferences();
+	}
+
+	/** Saves the approval mode. The next run uses it. Returns whether the save succeeded. */
+	async function setApprovalMode(mode: InstanceAiApprovalMode): Promise<boolean> {
+		const previous = approvalMode.value;
+		if (mode === previous) return true;
+		const save = ++approvalModeSaves;
+		approvalMode.value = mode;
+		const request = pendingApprovalModeSave.then(
+			async () => await updateUserPreferences(rootStore.restApiContext, { approvalMode: mode }),
+		);
+		pendingApprovalModeSave = request.catch(() => undefined);
+		try {
+			const preferences = await request;
+			if (save !== approvalModeSaves) return true;
+			approvalMode.value = preferences.approvalMode;
+			approvalModesAvailable.value = preferences.approvalModesAvailable;
+			return true;
+		} catch (error) {
+			if (save === approvalModeSaves) approvalMode.value = previous;
+			toast.showError(error, i18n.baseText('instanceAi.approvalMode.saveError'));
+			return false;
+		}
+	}
+
 	// ── Browser Use ────────────────────────────────────────────────────────
 
 	async function fetchBrowserStatus(): Promise<void> {
@@ -451,6 +508,12 @@ export const useInstanceAiSettingsStore = defineStore('instanceAiSettings', () =
 		verifyModel,
 		verifySandbox,
 		verifySearch,
+		// Per-user preferences
+		approvalMode,
+		approvalModesAvailable,
+		fetchPreferences,
+		fetchPreferencesAfterFailure,
+		setApprovalMode,
 		// Browser Use
 		browserConnected,
 		browserUseConnectionStatus,
