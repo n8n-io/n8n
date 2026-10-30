@@ -178,9 +178,8 @@ describe('Expression - fast native evaluation parity', () => {
 	// builds: HANDLED entries must be evaluated natively, RUNTIME_BAILOUT
 	// entries must hand off to the engine. Parity alone cannot tell the two
 	// apart, since a bailout returns the engine's value either way.
-	const nativeOutcome = (expr: string) => {
+	const nativeOutcome = (expr: string, { data, items } = fixtureFor(expr)) => {
 		const node = workflow.getNode('Current');
-		const { data, items } = fixtureFor(expr);
 		const proxy = new WorkflowDataProxy(
 			workflow,
 			data,
@@ -479,15 +478,15 @@ describe('Expression - fast native evaluation parity', () => {
 
 		// A node set to continue on error puts the error on the item, next to `json`.
 		test('a node reference to an item that holds an error matches the engine', () => {
-			const failed = { json: {}, error: new Error('Request failed') };
-			const data = runDataFor([failed as never]);
-			const expr =
-				"={{ (($('Source').first().json.id || $('Source').first().json.rowId) || null) }}";
-			const run = (native: boolean) => evaluate(expr, native, data, [failed as never]);
+			const failed = { json: { id: 'abc' }, error: new Error('Request failed') };
+			const items = [failed as never];
+			const data = runDataFor(items);
+			const expr = "={{ $('Source').first().json.id }}";
+			const run = (native: boolean) => evaluate(expr, native, data, items);
 
-			expect(nativeOutcome(expr).handled).toBe(true);
-			expect(run(false)).toBeNull();
-			expect(run(true)).toBeNull();
+			expect(nativeOutcome(expr, { data, items }).handled).toBe(true);
+			expect(run(false)).toBe('abc');
+			expect(run(true)).toBe('abc');
 		});
 	});
 
