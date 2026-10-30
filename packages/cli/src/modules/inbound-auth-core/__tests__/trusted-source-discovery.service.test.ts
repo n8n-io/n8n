@@ -63,6 +63,7 @@ function source(overrides: SourceOverrides = {}): TrustedSource {
 		status: 'unchecked',
 		lastError: null,
 		lastCheckedAt: null,
+		firstAuthenticatedAt: null,
 		createdAt: '2026-09-30T10:00:00.000Z',
 		updatedAt: '2026-09-30T10:00:00.000Z',
 		config: migrateToLatest(

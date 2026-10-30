@@ -385,6 +385,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
 			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
 			'trusted-source-healthy': (event) => this.trustedSourceHealthy(event),
+			'trusted-source-first-authenticated': (event) => this.trustedSourceFirstAuthenticated(event),
 		});
 	}
 
@@ -617,6 +618,19 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY, {
 			source_id: sourceId,
 		});
+	}
+
+	private trustedSourceFirstAuthenticated({
+		sourceId,
+		surface,
+	}: RelayEventMap['trusted-source-first-authenticated']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+			{
+				source_id: sourceId,
+				surface,
+			},
+		);
 	}
 
 	// #endregion
