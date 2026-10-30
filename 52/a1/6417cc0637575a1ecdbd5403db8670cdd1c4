@@ -1,0 +1,19 @@
+packages/@n8n/expression-runtime/src/bridge/__tests__/quickjs-bridge.test.ts
+  s_4632be3df540f4::t_90e2dd6122560b 219-227
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "52a16417cc0637575a1ecdbd5403db8670cdd1c4",
+  "prompts": {},
+  "sessions": {
+    "s_4632be3df540f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9547e767-69db-4251-9968-5b15aa5a2396",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
