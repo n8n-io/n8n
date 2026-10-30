@@ -57,10 +57,7 @@ export class ExecutionLevelTracer {
 	startWorkflow(params: StartWorkflowParams) {
 		try {
 			const identity = resolveWorkflowIdentity(params);
-			const parentCtx = withExecutionIdentity(
-				fromTracingContext(params.tracingContext),
-				identity,
-			);
+			const parentCtx = withExecutionIdentity(fromTracingContext(params.tracingContext), identity);
 			const links = this.buildContinuationLinks(params.linkTo);
 			const projectCustomAttributes = this.buildCustomAttributes(
 				'project',
