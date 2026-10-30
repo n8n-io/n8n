@@ -55,6 +55,25 @@ describe('Data Transformation Functions', () => {
 			);
 		});
 
+		test('.pluck() should return values in the order of the requested fields', () => {
+			const pluck = arrayExtensions.functions.pluck as (
+				value: unknown[],
+				extraArgs: unknown[],
+			) => unknown[];
+			expect(
+				pluck(
+					[
+						{ lastName: 'Doe', firstName: 'John' },
+						{ firstName: 'Jane', lastName: 'Roe' },
+					],
+					['firstName', 'lastName'],
+				),
+			).toEqual([
+				['John', 'Doe'],
+				['Jane', 'Roe'],
+			]);
+		});
+
 		test('.pluck() should work return everything with no args', () => {
 			expect(
 				evaluate(`={{ [
