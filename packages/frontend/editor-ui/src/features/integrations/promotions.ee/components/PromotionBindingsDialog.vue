@@ -646,6 +646,11 @@ async function continueApply() {
 .scope {
 	margin-top: var(--spacing--4xs);
 }
+	
+.status {
+	font-size: var(--font-size--2xs);
+}
+	
 .pending {
 	color: var(--text-color--warning);
 }
