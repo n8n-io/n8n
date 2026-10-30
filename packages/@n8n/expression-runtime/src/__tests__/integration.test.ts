@@ -199,6 +199,52 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 	});
 
 	describe('Value types at the transfer boundary', () => {
+		describe.each([
+			{ label: 'plain', properties: {} },
+			{ label: 'transfer marker', properties: { __n8nType: 'user data' } },
+			{ label: 'bridge marker', properties: { __isDate: true } },
+		])('own JSON keys in a $label object', ({ properties }) => {
+			const payload = {
+				...(JSON.parse('{"__proto__":{"flag":1},"kept":2}') as Record<string, unknown>),
+				...properties,
+			};
+
+			it.each(['$json.error', '$input.first().json.error'])(
+				'keeps own JSON keys when reading %s',
+				(access) => {
+					const error = Object.assign(new Error('from host'), { payload });
+					const data = { $json: { error }, $input: { first: () => ({ json: { error } }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const value = ${access}.payload; return [Object.hasOwn(value, "__proto__"), Object.entries(value)]; })() }}`,
+							data,
+							caller,
+						),
+					).toEqual([true, Object.entries(payload)]);
+				},
+			);
+
+			it.each([
+				{ label: 'plain object', expression: '({ payload })' },
+				{ label: 'Error', expression: 'Object.assign(new Error("from guest"), { payload })' },
+				{
+					label: 'class instance',
+					expression: 'new (class { constructor() { this.payload = payload; } })()',
+				},
+			])('keeps own JSON keys when returning a $label', ({ expression }) => {
+				const result = evaluator.evaluate(
+					`{{ (() => { const payload = JSON.parse(${JSON.stringify(JSON.stringify(payload))}); return ${expression}; })() }}`,
+					{},
+					caller,
+				) as { payload: Record<string, unknown> };
+
+				expect(Object.hasOwn(result.payload, '__proto__')).toBe(true);
+				expect(result.payload).toStrictEqual(payload);
+				expect(Object.getPrototypeOf(result.payload)).toBe(Object.prototype);
+			});
+		});
+
 		it('should not affect primitive return values', () => {
 			const data = { $json: { count: 42 } };
 			expect(evaluator.evaluate('{{ $json.count }}', data, caller)).toBe(42);

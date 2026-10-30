@@ -2,6 +2,7 @@ import { errorToSentinel } from './error-transfer';
 import { encodeLuxonValue } from './luxon-transfer';
 import type { ObjectWalk, SentinelEncoder } from './transfer';
 import {
+	defineOwnValue,
 	encodeOnce,
 	isPlainObject,
 	isStructuredCloneBuiltin,
@@ -86,7 +87,7 @@ function prepareObject(value: object, walk: ObjectWalk | undefined): unknown {
 	let collides = false;
 	for (const key of Object.keys(value)) {
 		if (TRANSFER_FRAMING_KEYS.includes(key)) collides = true;
-		result[key] = prepareChild(value[key]);
+		defineOwnValue(result, key, prepareChild(value[key]));
 	}
 	// User data can hold the same keys as our framing. Escape such an object, so
 	// the host reads the object itself as data but still walks what is inside it.

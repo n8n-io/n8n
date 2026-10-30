@@ -190,6 +190,13 @@ describe('Expression - Error instances in item data (engine parity)', () => {
 			it("={{ $('Source').item.json.body.a }}", () => {
 				expect(evaluate("={{ $('Source').item.json.body.a }}", item, native)).toBeUndefined();
 			});
+
+			it('keeps the own JSON key and its value', () => {
+				const result = evaluate("={{ $('Source').item.json.body }}", item, native);
+
+				expect(Object.hasOwn(result, '__proto__')).toBe(true);
+				expect(result).toStrictEqual(item.json.body);
+			});
 		});
 
 		describe('Error inside data that holds the error flag', () => {

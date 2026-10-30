@@ -8,6 +8,7 @@ import { ERROR_TYPE, isErrorTransferSentinel, rebuildErrorValue } from '../runti
 import { isLuxonSentinel, rebuildLuxonValue } from '../runtime/luxon-transfer';
 import type { EscapedTransferValue } from '../runtime/transfer';
 import {
+	defineOwnValue,
 	isEscapedTransferValue,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
@@ -183,7 +184,7 @@ function unescapeTransferValue(value: EscapedTransferValue): unknown {
 	if (Array.isArray(inner)) return inner.map((entry) => unwrapSentinels(entry));
 	const unescaped: Record<string, unknown> = {};
 	for (const [key, entry] of Object.entries(inner)) {
-		unescaped[key] = unwrapSentinels(entry);
+		defineOwnValue(unescaped, key, unwrapSentinels(entry));
 	}
 	return unescaped;
 }
@@ -202,7 +203,7 @@ function unwrapSentinels(value: unknown): unknown {
 		const inner = value.__value;
 		const result: Record<string, unknown> = {};
 		for (const key of Object.keys(inner)) {
-			result[key] = unwrapSentinels(inner[key]);
+			defineOwnValue(result, key, unwrapSentinels(inner[key]));
 		}
 		return result;
 	}
@@ -229,7 +230,7 @@ function unwrapSentinels(value: unknown): unknown {
 		const err = new ErrorCtor(value.__message);
 		if (value.__extra) {
 			for (const [k, v] of Object.entries(value.__extra)) {
-				(err as unknown as Record<string, unknown>)[k] = unwrapSentinels(v);
+				defineOwnValue(err, k, unwrapSentinels(v));
 			}
 		}
 		return err;
@@ -243,7 +244,7 @@ function unwrapSentinels(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map((entry) => unwrapSentinels(entry));
 	const result: Record<string, unknown> = {};
 	for (const key of Object.keys(value as Record<string, unknown>)) {
-		result[key] = unwrapSentinels((value as Record<string, unknown>)[key]);
+		defineOwnValue(result, key, unwrapSentinels((value as Record<string, unknown>)[key]));
 	}
 	return result;
 }
@@ -293,7 +294,7 @@ function wrapSpecialValuesForGuest(value: unknown): unknown {
 	let collides = false;
 	for (const key of Object.keys(record)) {
 		if (TRANSFER_MARKER_KEYS.has(key)) collides = true;
-		result[key] = wrapSpecialValuesForGuest(record[key]);
+		defineOwnValue(result, key, wrapSpecialValuesForGuest(record[key]));
 	}
 	return collides ? { __isEscaped: true, __value: result } : result;
 }
@@ -911,6 +912,10 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const wrapperCode = `
 (function() {
+	// Define own data keys so a JSON __proto__ key stays part of the data.
+	function defineOwnValue(target, key, value) {
+		Object.defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
+	}
 	var original = __prepareForTransfer;
 	globalThis.__prepareForTransfer = function(value) {
 		var prepared = original(value);
@@ -942,7 +947,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			var errKeys = Object.keys(v);
 			for (var ei = 0; ei < errKeys.length; ei++) {
 				if (errKeys[ei] !== 'name' && errKeys[ei] !== 'message' && errKeys[ei] !== 'stack') {
-					errExtra[errKeys[ei]] = wrapSpecialValues(v[errKeys[ei]], true);
+					defineOwnValue(errExtra, errKeys[ei], wrapSpecialValues(v[errKeys[ei]], true));
 				}
 			}
 			return { __isErrorValue: true, __name: v.name || 'Error', __message: v.message || '', __extra: errExtra };
@@ -997,7 +1002,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		var result = {};
 		Object.keys(marker).forEach(function(key) {
 			var isData = key === '__props' || key === '__cause' || key === '__json';
-			result[key] = isData ? wrapChild(marker[key], false) : marker[key];
+			defineOwnValue(result, key, isData ? wrapChild(marker[key], false) : marker[key]);
 		});
 		return result;
 	}
@@ -1032,7 +1037,7 @@ export class QuickJsBridge implements RuntimeBridge {
 			) {
 				collides = true;
 			}
-			result[key] = wrapChild(v[key], inCollection);
+			defineOwnValue(result, key, wrapChild(v[key], inCollection));
 		}
 		// User objects whose keys collide with transfer markers are escaped so
 		// the host returns them as plain data (as isolated-vm does) instead of
@@ -1062,13 +1067,13 @@ export class QuickJsBridge implements RuntimeBridge {
 			var inner = v.__value;
 			var out = {};
 			var ekeys = Object.keys(inner);
-			for (var e = 0; e < ekeys.length; e++) out[ekeys[e]] = unwrapFromHost(inner[ekeys[e]]);
+			for (var e = 0; e < ekeys.length; e++) defineOwnValue(out, ekeys[e], unwrapFromHost(inner[ekeys[e]]));
 			return out;
 		}
 		if (Array.isArray(v)) return v.map(unwrapFromHost);
 		var result = {};
 		var keys = Object.keys(v);
-		for (var n = 0; n < keys.length; n++) result[keys[n]] = unwrapFromHost(v[keys[n]]);
+		for (var n = 0; n < keys.length; n++) defineOwnValue(result, keys[n], unwrapFromHost(v[keys[n]]));
 		return result;
 	};
 })();
@@ -1252,7 +1257,8 @@ export class QuickJsBridge implements RuntimeBridge {
 		const json = hostValueToJson(value);
 		if (json === 'undefined') return this.vm.undefined;
 
-		const result = this.vm.evalCode(`__unwrapFromHost(${json})`);
+		// JSON keys must keep their data meaning, including __proto__.
+		const result = this.vm.evalCode(`__unwrapFromHost(JSON.parse(${safeStringify(json)}))`);
 		if (result.error) {
 			result.error.dispose();
 			return this.vm.undefined;
