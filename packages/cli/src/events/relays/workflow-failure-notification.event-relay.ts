@@ -48,9 +48,9 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 
 		try {
 			// Only a person has an email, so a service account owner gets nothing
-			const user = await this.personRepository.findById(userId);
+			const person = await this.personRepository.findById(userId);
 
-			if (!user?.email) {
+			if (!person?.email) {
 				this.logger.warn(
 					'Cannot send first production failure email - user not found or no email',
 					{
@@ -63,8 +63,8 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 
 			// Send email notification
 			await this.mailer.workflowFailure({
-				email: user.email,
-				firstName: user.firstName,
+				email: person.email,
+				firstName: person.firstName,
 				workflowId,
 				workflowName,
 			});
@@ -72,7 +72,7 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 			this.logger.info('Sent first production failure email', {
 				workflowId,
 				userId,
-				email: user.email,
+				email: person.email,
 			});
 		} catch (error) {
 			this.logger.error('Failed to send first production failure email', {

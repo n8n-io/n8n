@@ -1777,9 +1777,9 @@ export class SourceControlImportService {
 			return ownedBy.teamId;
 		}
 		if (ownedBy?.type === 'personal' && ownedBy.personalEmail) {
-			const user = await this.personRepository.findByEmail(ownedBy.personalEmail);
-			if (user) {
-				return (await this.projectRepository.getPersonalProjectForUserOrFail(user.id)).id;
+			const person = await this.personRepository.findByEmail(ownedBy.personalEmail);
+			if (person) {
+				return (await this.projectRepository.getPersonalProjectForUserOrFail(person.id)).id;
 			}
 			this.logger.debug(
 				`User ${ownedBy.personalEmail} not found locally. Using pulling user's personal project as fallback.`,
@@ -2261,13 +2261,13 @@ export class SourceControlImportService {
 			const email = typeof owner === 'string' ? owner : owner.personalEmail;
 			// A lookup with no email matches any person. The caller falls back to the puller.
 			if (!email) return null;
-			const user = await this.personRepository.findByEmail(email);
+			const person = await this.personRepository.findByEmail(email);
 
-			if (!user) {
+			if (!person) {
 				return null;
 			}
 
-			return await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
+			return await this.projectRepository.getPersonalProjectForUserOrFail(person.id);
 		} else if (owner.type === 'team') {
 			return await this.projectRepository.findOne({
 				where: { id: owner.teamId },
