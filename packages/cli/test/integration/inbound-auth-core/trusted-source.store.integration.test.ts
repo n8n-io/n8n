@@ -128,11 +128,11 @@ describe('TrustedSourceStore (integration)', () => {
 				type: 'oauth2',
 				managedBy: 'admin',
 				status: 'unchecked',
-				configVersion: 1,
+				configVersion: 2,
 			});
 			expect(row.config).not.toContain('oauth2');
 			expect(JSON.parse(await cipher.decryptV2(row.config))).toMatchObject({
-				version: 1,
+				version: 2,
 				authentication: { type: 'oauth2', clockSkewSeconds: 60 },
 				identity: { subject: 'binding' },
 			});
@@ -195,7 +195,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await store.getById(row.id)).toMatchObject({
 				id: row.id,
 				name: 'Acme',
-				config: { version: 1 },
+				config: { version: 2 },
 			});
 			expect(await store.getByIssuer('https://acme.example.com')).toMatchObject({ id: row.id });
 			expect(await store.getById('missing')).toBeUndefined();
@@ -283,7 +283,7 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(updated).toMatchObject({
 				name: 'New',
 				issuer: 'https://new.example.com',
-				configVersion: 1,
+				configVersion: 2,
 			});
 			expect(updated.config).not.toBe(row.config);
 

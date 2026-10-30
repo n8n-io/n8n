@@ -289,7 +289,7 @@ export class TrustedSourceIdentityService extends IdentityService {
 	): Promise<Resolved> {
 		const { provision } = source.config.identity;
 
-		if (provision.human === 'off') return { ok: false, reason: 'provision-refused' };
+		if (provision.person === 'off') return { ok: false, reason: 'provision-refused' };
 
 		const email = external.email;
 

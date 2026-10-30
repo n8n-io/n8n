@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import type { TrustedSourceConfigInput } from '@n8n/inbound-auth';
 import { DataSource, type Repository } from '@n8n/typeorm';
 import { CREDENTIAL_BLANKING_VALUE } from 'n8n-workflow';
+import { Cipher } from 'n8n-core';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
@@ -44,7 +45,7 @@ let bindings: Repository<TrustedSourceIdentityEntity>;
 let emit: MockInstance;
 
 const minimalConfig = (): TrustedSourceConfigInput => ({
-	version: 1,
+	version: 2,
 	authentication: { type: 'oauth2' },
 	surfaces: { 'public-api': {} },
 });
@@ -115,7 +116,61 @@ beforeEach(async () => {
 	discoveryClient.fetchJwks.mockReset();
 });
 
+const jitIdentity = {
+	provision: { person: 'jit' },
+	roleMapping: { mode: 'on-provision', fallbackInstanceRole: 'global:member' },
+};
+
 describe('POST /trusted-sources', () => {
+	it('lets an admin save v2 person provisioning', async () => {
+		const response = await adminAgent.post('/trusted-sources').send(
+			body({
+				config: { ...minimalConfig(), identity: jitIdentity },
+			}),
+		);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.config).toMatchObject({
+			version: 2,
+			identity: { provision: { person: 'jit' } },
+		});
+		const row = await rows.findOneByOrFail({ id: response.body.data.id });
+		expect(row.configVersion).toBe(2);
+		expect(
+			JSON.parse(await Container.get(Cipher).decryptV2(row.config)).identity.provision,
+		).toEqual({ person: 'jit' });
+	});
+
+	it.each(['post', 'patch'] as const)(
+		'rejects person provisioning without email linking on %s',
+		async (method) => {
+			const path =
+				method === 'post' ? '/trusted-sources' : `/trusted-sources/${(await createSource()).id}`;
+			const response = await adminAgent[method](path).send(
+				body({
+					config: { ...minimalConfig(), identity: { ...jitIdentity, linkByEmail: 'off' } },
+				}),
+			);
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body).toMatchObject({
+				path: ['config', 'identity', 'linkByEmail'],
+				message: 'jit provisioning requires email linking',
+			});
+		},
+	);
+
+	it('rejects the v1 provisioning key in a v2 write', async () => {
+		const response = await adminAgent.post('/trusted-sources').send(
+			body({
+				config: { ...minimalConfig(), identity: { provision: { human: 'jit' } } },
+			}),
+		);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body).toMatchObject({ path: ['config', 'identity', 'provision'] });
+	});
+
 	it('creates an admin source with defaults applied and returns it without the secret', async () => {
 		const response = await ownerAgent
 			.post('/trusted-sources')
@@ -131,7 +186,7 @@ describe('POST /trusted-sources', () => {
 			lastError: null,
 			lastCheckedAt: null,
 			config: {
-				version: 1,
+				version: 2,
 				authentication: {
 					type: 'oauth2',
 					clockSkewSeconds: 60,
@@ -143,7 +198,7 @@ describe('POST /trusted-sources', () => {
 		expect(JSON.stringify(response.body)).not.toContain('s3cret');
 
 		const row = await rows.findOneByOrFail({ id: response.body.data.id });
-		expect(row).toMatchObject({ managedBy: 'admin', status: 'unchecked', configVersion: 1 });
+		expect(row).toMatchObject({ managedBy: 'admin', status: 'unchecked', configVersion: 2 });
 		expect(await storedClient(row.id)).toEqual({
 			kind: 'registered',
 			clientId: 'n8n',
@@ -301,6 +356,28 @@ describe('GET /trusted-sources', () => {
 });
 
 describe('GET /trusted-sources/:id', () => {
+	it('returns a stored v1 source as v2 with person provisioning', async () => {
+		const { id } = await createSource();
+		await rows.update(id, {
+			configVersion: 1,
+			config: await Container.get(Cipher).encryptV2({
+				...minimalConfig(),
+				version: 1,
+				identity: { ...jitIdentity, provision: { human: 'jit' } },
+			}),
+		});
+		await cacheService.reset();
+
+		const response = await ownerAgent.get(`/trusted-sources/${id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.config).toMatchObject({
+			version: 2,
+			identity: { provision: { person: 'jit' } },
+		});
+		expect(response.body.data.config.identity.provision).not.toHaveProperty('human');
+	});
+
 	it('returns the full source with the secret blanked for an owner', async () => {
 		const { id } = await createSource({ config: withClient('s3cret') });
 
