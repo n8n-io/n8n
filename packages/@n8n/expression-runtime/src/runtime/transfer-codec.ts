@@ -15,9 +15,9 @@ function isHostValue(value: unknown): value is HostValue {
 }
 
 /** Rebuild a real instance from any marker the runtime writes. */
-export const decodeTransferSentinel: SentinelDecoder = (sentinel) =>
+export const decodeTransferSentinel: SentinelDecoder = (sentinel, decodeChild) =>
 	isErrorTransferSentinel(sentinel)
-		? rebuildErrorValue(sentinel, unwrapTransferredValue)
+		? rebuildErrorValue(sentinel, decodeChild)
 		: decodeLuxonSentinel(sentinel);
 
 /** Walk a transferred value and rebuild every instance a marker in it carries. */

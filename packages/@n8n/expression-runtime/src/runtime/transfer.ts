@@ -56,12 +56,16 @@ export interface EscapedTransferValue {
 }
 
 /**
- * Rebuild a real instance from a marker.
+ * Rebuild a real instance from a marker. Use `decodeChild` to keep its contents
+ * in the same walk and reuse objects that the walk has already decoded.
  *
  * Only the guest walk writes the type key, and it escapes any user object that
  * carries one, so a decoder only ever sees a type its own encoder wrote.
  */
-export type SentinelDecoder = (sentinel: TransferSentinel) => unknown;
+export type SentinelDecoder = (
+	sentinel: TransferSentinel,
+	decodeChild: (value: unknown) => unknown,
+) => unknown;
 
 /** Give back a sentinel for a value the decoder owns, or nothing for any other. */
 export type SentinelEncoder = (value: object) => TransferSentinel | undefined;
@@ -182,7 +186,11 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		return result;
 	}
 	if (!isPlainObject(value)) return value;
-	if (isTransferSentinel(value)) return decode(value);
+	if (isTransferSentinel(value)) {
+		const result = decode(value, (child) => unwrapValue(child, decode, seen));
+		seen.set(value, result);
+		return result;
+	}
 	if (isEscapedTransferValue(value)) {
 		const inner: unknown = value[TRANSFER_VALUE_KEY];
 		// An opaque payload is a value the guest could not walk, so nothing in it
@@ -190,6 +198,7 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		// keys collide, so the walk goes on below and rebuilds markers deeper in.
 		if (isOpaqueTransferValue(value)) return inner;
 		if (typeof inner !== 'object' || inner === null) return inner;
+		if (seen.has(inner)) return seen.get(inner);
 		// An array payload is walked as an array. Its own entries carry no framing,
 		// so reading it as a marker is never right.
 		if (Array.isArray(inner)) return unwrapValue(inner, decode, seen);
