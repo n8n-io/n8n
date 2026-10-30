@@ -3,7 +3,11 @@ import {
 	createWorkflowDocumentId,
 	useWorkflowDocumentStore,
 } from '@/app/stores/workflowDocument.store';
-import type { CanvasEventBusEvents, CanvasNode } from '@/features/workflows/canvas/canvas.types';
+import {
+	CANVAS_NODE_GROUP_TYPE,
+	type CanvasEventBusEvents,
+	type CanvasNode,
+} from '@/features/workflows/canvas/canvas.types';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createTestingPinia } from '@pinia/testing';
 import { defineComponent, h } from 'vue';
@@ -68,6 +72,18 @@ describe('InstanceAiWorkflowDraftPreview', () => {
 
 		expect(canvasProps.current?.readOnly).toBe(true);
 		expect(canvasProps.current?.nodes.map((n) => n.data?.name)).toEqual(['Start', 'Set']);
+	});
+
+	it('renders the node groups of the draft', () => {
+		const grouped = draft(['Start', 'Set']);
+		grouped.workflow.nodeGroups = [{ id: 'g-1', name: 'Intake', nodeIds: ['id-Start', 'id-Set'] }];
+
+		renderComponent({
+			pinia: createTestingPinia({ stubActions: false }),
+			props: { draft: grouped, building: true },
+		});
+
+		expect(canvasProps.current?.nodes.map((n) => n.type)).toContain(CANVAS_NODE_GROUP_TYPE);
 	});
 
 	it('labels the draft as building while the agent works', () => {

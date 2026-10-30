@@ -266,6 +266,25 @@ describe('instanceAiEventSchema', () => {
 			expect(instanceAiEventSchema.parse(event)).toEqual(event);
 		});
 
+		it('keeps the node groups of a draft', () => {
+			const nodeGroups = [
+				{ id: 'g-1', name: 'Intake', nodeIds: ['node-1'], description: 'Reads leads' },
+			];
+			const event = {
+				...draftEvent,
+				payload: {
+					...draftEvent.payload,
+					workflow: { ...draftEvent.payload.workflow, nodeGroups },
+				},
+			};
+
+			const parsed = instanceAiEventSchema.parse(event);
+
+			expect(parsed.type === 'workflow-draft' && parsed.payload.workflow.nodeGroups).toEqual(
+				nodeGroups,
+			);
+		});
+
 		it('rejects a draft without a file path', () => {
 			const { filePath: _filePath, ...payload } = draftEvent.payload;
 

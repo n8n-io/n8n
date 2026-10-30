@@ -56,6 +56,12 @@ describe('toDraftWorkflowDb', () => {
 		expect(second).toBe(first);
 	});
 
+	it('keeps the node groups', () => {
+		const nodeGroups = [{ id: 'g-1', name: 'Intake', nodeIds: ['node-1'] }];
+
+		expect(toDraftWorkflowDb(draft({ nodeGroups }), 'draft-doc').nodeGroups).toEqual(nodeGroups);
+	});
+
 	it('keeps connections of known types and drops the rest', () => {
 		const workflow = toDraftWorkflowDb(
 			draft({

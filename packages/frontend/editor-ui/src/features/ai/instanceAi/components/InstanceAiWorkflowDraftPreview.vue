@@ -2,14 +2,13 @@
 import { N8nSpinner, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, watch } from 'vue';
+import { computed, provide, watch } from 'vue';
 
+import { WorkflowDocumentStoreKey } from '@/app/constants/injectionKeys';
 import type { CanvasEventBusEvents } from '@/features/workflows/canvas/canvas.types';
-import Canvas from '@/features/workflows/canvas/components/Canvas.vue';
-import CanvasBackground from '@/features/workflows/canvas/components/elements/background/CanvasBackground.vue';
-import CanvasNode from '@/features/workflows/canvas/components/elements/nodes/CanvasNode.vue';
+import WorkflowCanvas from '@/features/workflows/canvas/components/WorkflowCanvas.vue';
 
-import { useDraftWorkflowCanvas } from '../composables/useDraftWorkflowCanvas';
+import { useDraftWorkflowDocument } from '../composables/useDraftWorkflowDocument';
 import type { WorkflowDraft } from '../instanceAi.workflowDrafts';
 
 const props = defineProps<{
@@ -20,7 +19,9 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const eventBus = createEventBus<CanvasEventBusEvents>();
-const { nodes, connections, renderData } = useDraftWorkflowCanvas(() => props.draft);
+const { documentStore } = useDraftWorkflowDocument(() => props.draft);
+// The editor canvas reads its workflow from this key, so it renders the draft.
+provide(WorkflowDocumentStoreKey, documentStore);
 
 // Vue Flow keeps one store per id, so each source file gets its own canvas.
 const canvasId = computed(() => `instance-ai-draft-${props.draft.filePath}`);
@@ -42,25 +43,13 @@ watch(
 		:aria-label="i18n.baseText('instanceAi.workflowDraft.ariaLabel')"
 		data-test-id="instance-ai-workflow-draft-preview"
 	>
-		<Canvas
+		<WorkflowCanvas
 			:id="canvasId"
-			:nodes="nodes"
-			:connections="connections"
-			:render-data="renderData"
-			:read-only="true"
 			:event-bus="eventBus"
-			:show-node-groups="false"
+			:read-only="true"
+			:striped-background="false"
 			:class="$style.canvas"
-		>
-			<template #node="{ nodeProps }">
-				<CanvasNode v-bind="nodeProps" :read-only="true">
-					<template #toolbar />
-				</CanvasNode>
-			</template>
-			<template #canvas-background="{ viewport }">
-				<CanvasBackground :striped="false" :viewport="viewport" />
-			</template>
-		</Canvas>
+		/>
 		<div :class="$style.badge" data-test-id="instance-ai-workflow-draft-badge">
 			<N8nSpinner v-if="building" size="small" />
 			<N8nText size="small" color="text-base">

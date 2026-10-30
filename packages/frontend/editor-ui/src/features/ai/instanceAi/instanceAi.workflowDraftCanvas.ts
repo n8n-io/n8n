@@ -67,5 +67,6 @@ export function toDraftWorkflowDb(draft: WorkflowDraft, documentWorkflowId: stri
 		activeVersionId: null,
 		nodes: draft.workflow.nodes.map((node) => toNode(node, draft.filePath)),
 		connections: toConnections(draft.workflow.connections),
+		...(draft.workflow.nodeGroups ? { nodeGroups: draft.workflow.nodeGroups } : {}),
 	};
 }

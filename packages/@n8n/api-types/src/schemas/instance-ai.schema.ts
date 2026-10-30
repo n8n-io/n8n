@@ -1,3 +1,4 @@
+import { nodeGroupSchema } from '../dto/packages/workflow.schema';
 import type { InstanceAiEventLifecycle } from './instance-ai-event-lifecycle';
 import { instanceAiApprovalDetailsSchema } from './instance-ai-approval.schema';
 import { WorkflowExecuteModeList } from 'n8n-workflow';
@@ -1295,6 +1296,7 @@ export const instanceAiWorkflowDraftSchema = z.object({
 	connections: z.record(
 		z.record(z.array(z.array(workflowDraftConnectionSchema).nullable().optional())),
 	),
+	nodeGroups: z.array(nodeGroupSchema).optional(),
 });
 export type InstanceAiWorkflowDraft = z.infer<typeof instanceAiWorkflowDraftSchema>;
 

@@ -33,7 +33,7 @@ function setup(sources: Partial<WorkflowDraftSources> = {}) {
 	const resolvedSources: WorkflowDraftSources = {
 		readSource: vi.fn(async () => await Promise.resolve(source('Read from disk'))),
 		findBoundWorkflowId: vi.fn(async () => await Promise.resolve(undefined)),
-		alignWithSavedWorkflow: vi.fn(async () => await Promise.resolve()),
+		prepareLikeSave: vi.fn(async () => await Promise.resolve()),
 		...sources,
 	};
 	const previewer = createWorkflowDraftPreviewer({
@@ -93,6 +93,27 @@ describe('createWorkflowDraftPreviewer', () => {
 		expect(draft.payload.workflow.name).toBe('Written');
 		expect(draft.payload.workflow.nodes.map((node) => node.name)).toEqual(['Start', 'Set']);
 		expect(sources.readSource).not.toHaveBeenCalled();
+	});
+
+	it('keeps the node groups the source declares', async () => {
+		const { previewer, published } = setup();
+		const grouped = source('Grouped').replace(
+			"version: 3.4, config: { name: 'Set', parameters: {} } }),\n);",
+			"version: 3.4, config: { name: 'Set', parameters: {} } }),\n).group('Intake', [start], { description: 'Reads the input' });",
+		);
+		expect(grouped).toContain('.group(');
+
+		previewer.observe(toolCall('tc-1', 'workspace_write_file', { path: FILE, content: grouped }));
+		previewer.observe(toolResult('tc-1', { success: true }));
+
+		await vi.waitFor(() => expect(drafts(published)).toHaveLength(1));
+		expect(drafts(published)[0].payload.workflow.nodeGroups).toEqual([
+			expect.objectContaining({
+				name: 'Intake',
+				description: 'Reads the input',
+				nodeIds: [expect.any(String)],
+			}),
+		]);
 	});
 
 	it('reads the file after a successful string replacement', async () => {
@@ -172,13 +193,13 @@ describe('createWorkflowDraftPreviewer', () => {
 	});
 
 	it('aligns a bound workflow with its saved layout and names it', async () => {
-		const alignWithSavedWorkflow = vi.fn(async (json: WorkflowJSON) => {
+		const prepareLikeSave = vi.fn(async (json: WorkflowJSON) => {
 			json.nodes[0].position = [999, 999];
 			await Promise.resolve();
 		});
 		const { previewer, published } = setup({
 			findBoundWorkflowId: vi.fn(async () => await Promise.resolve('wf-saved')),
-			alignWithSavedWorkflow,
+			prepareLikeSave,
 		});
 
 		previewer.observe(toolCall('tc-1', 'workspace_str_replace_file', { path: FILE }));
@@ -187,8 +208,18 @@ describe('createWorkflowDraftPreviewer', () => {
 		await vi.waitFor(() => expect(drafts(published)).toHaveLength(1));
 		const [draft] = drafts(published);
 		expect(draft.payload.workflowId).toBe('wf-saved');
-		expect(alignWithSavedWorkflow).toHaveBeenCalledWith(expect.anything(), 'wf-saved');
+		expect(prepareLikeSave).toHaveBeenCalledWith(expect.anything(), 'wf-saved');
 		expect(draft.payload.workflow.nodes[0].position).toEqual([999, 999]);
+	});
+
+	it('prepares an unbound draft the way the save would', async () => {
+		const { previewer, published, sources } = setup();
+
+		previewer.observe(toolCall('tc-1', 'workspace_str_replace_file', { path: FILE }));
+		previewer.observe(toolResult('tc-1', { success: true }));
+
+		await vi.waitFor(() => expect(drafts(published)).toHaveLength(1));
+		expect(sources.prepareLikeSave).toHaveBeenCalledWith(expect.anything(), undefined);
 	});
 
 	it('drops a draft that a newer write of the same file overtook', async () => {
@@ -249,6 +280,28 @@ describe('createContextWorkflowDraftSources', () => {
 		).resolves.toBe('wf-1');
 	});
 
+	it('drops the groups that the save would drop', async () => {
+		const draft: WorkflowJSON = {
+			name: 'Draft',
+			nodes: [
+				{
+					id: 'start',
+					name: 'Start',
+					type: 'n8n-nodes-base.manualTrigger',
+					typeVersion: 1,
+					position: [0, 0],
+					parameters: {},
+				},
+			],
+			connections: {},
+			nodeGroups: [{ id: 'g-1', name: 'Ghost', nodeIds: ['missing-node'] }],
+		};
+
+		await createContextWorkflowDraftSources(makeContext()).prepareLikeSave(draft, undefined);
+
+		expect(draft.nodeGroups ?? []).toHaveLength(0);
+	});
+
 	it('moves surviving nodes to their saved positions', async () => {
 		const saved = {
 			name: 'Saved',
@@ -282,7 +335,7 @@ describe('createContextWorkflowDraftSources', () => {
 			connections: {},
 		};
 
-		await createContextWorkflowDraftSources(context).alignWithSavedWorkflow(draft, 'wf-1');
+		await createContextWorkflowDraftSources(context).prepareLikeSave(draft, 'wf-1');
 
 		expect(draft.nodes[0].position).toEqual([400, 300]);
 	});

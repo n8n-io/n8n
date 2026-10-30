@@ -8,9 +8,8 @@ import {
 import { isRecord } from '@n8n/utils/is-record';
 import { parseWorkflowSource, type WorkflowJSON } from '@n8n/workflow-sdk';
 
-import { preserveExistingNodePositions } from './preserve-node-positions';
+import { prepareWorkflowForSave } from './prepare-workflow-for-save';
 import { getWorkflowSourceFileBinding } from './workflow-file-bindings';
-import { ensureUniqueNodeIds, preserveExistingNodeIds } from './workflow-json-utils';
 import { isTypeScriptWorkflowSource, isWorkflowJsonSourceFile } from './workflow-source-compiler';
 import type { InstanceAiEventBus } from '../../event-bus/event-bus.interface';
 import type { Logger } from '../../logger';
@@ -21,8 +20,8 @@ import { readWorkspaceFile } from '../../workspace/workspace-files';
 export interface WorkflowDraftSources {
 	readSource(filePath: string): Promise<string | null>;
 	findBoundWorkflowId(filePath: string): Promise<string | undefined>;
-	/** Moves the draft's nodes to where the saved workflow has them. */
-	alignWithSavedWorkflow(json: WorkflowJSON, workflowId: string): Promise<void>;
+	/** Runs the save's own preparation, so the draft matches what the save will store. */
+	prepareLikeSave(json: WorkflowJSON, workflowId: string | undefined): Promise<void>;
 }
 
 /** Reads through the run's workspace, file bindings and saved workflows. */
@@ -37,12 +36,10 @@ export function createContextWorkflowDraftSources(
 		async findBoundWorkflowId(filePath) {
 			return (await getWorkflowSourceFileBinding(context, filePath))?.workflowId;
 		},
-		// The same identity and position passes the save runs, so the swap to the
-		// saved workflow does not move nodes.
-		async alignWithSavedWorkflow(json, workflowId) {
-			ensureUniqueNodeIds(json);
-			await preserveExistingNodeIds(json, workflowId, context);
-			await preserveExistingNodePositions(json, workflowId, context);
+		// Identity, groups and layout all go through the same passes as the save,
+		// so the saved workflow does not differ from the draft the user watched.
+		async prepareLikeSave(json, workflowId) {
+			await prepareWorkflowForSave(json, workflowId, context);
 		},
 	};
 }
@@ -128,7 +125,7 @@ export function createWorkflowDraftPreviewer(options: {
 		const json = parseSource(write.filePath, content);
 		if (!json) return undefined;
 		const workflowId = await sources.findBoundWorkflowId(write.filePath);
-		if (workflowId) await sources.alignWithSavedWorkflow(json, workflowId);
+		await sources.prepareLikeSave(json, workflowId);
 		const parsed = workflowDraftPayloadSchema.safeParse({
 			filePath: write.filePath,
 			...(workflowId ? { workflowId } : {}),
