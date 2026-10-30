@@ -78,7 +78,10 @@ describe('AgentDependencyIndexListener', () => {
 			} as never);
 			await new Promise(setImmediate);
 
-			expect(credentialDependencyRepository.findByCredentialIds).toHaveBeenCalledWith(['cred-1']);
+			expect(credentialDependencyRepository.findByCredentialIds).toHaveBeenCalledWith(
+				['cred-1'],
+				{},
+			);
 			expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-a');
 			expect(runtimeCache.clearRuntimes).toHaveBeenCalledWith('agent-b');
 		},

@@ -109,7 +109,7 @@ async function seedIndexedAgent(
 	});
 	agent.activeVersionId = publishedVersionId;
 	await agentRepo.save(agent);
-	await agentDepRepo.refreshForAgent(agent.id);
+	await agentDepRepo.refreshForAgent(agent.id, {});
 	await agentWorkflowDepRepo.refreshForAgent(agent.id);
 
 	return agent;

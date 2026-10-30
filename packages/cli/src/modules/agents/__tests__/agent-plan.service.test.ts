@@ -1,4 +1,6 @@
-import type { OperationContext, Transaction } from '@n8n/db';
+import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
+import { TransactionRunner, type OperationContext, type Transaction } from '@n8n/db';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
@@ -12,7 +14,13 @@ import {
 
 const repository = mock<AgentPlanRepository>();
 const ctx: OperationContext = { trx: mock<Transaction>() };
-const service = new AgentPlanService(repository);
+const tx = mock<TransactionRunner>();
+const service = new AgentPlanService(
+	repository,
+	tx,
+	mock<AgentExecutionThreadRepository>(),
+	mock<AgentExecutionUpdateBroadcaster>(),
+);
 const data: AgentPlanDocument = {
 	title: 'Plan',
 	description: 'Goal',
@@ -33,7 +41,7 @@ const record: AgentPlanRecord = {
 	id: randomUUID(),
 	threadId: 'thread',
 	revision: 1,
-	formatVersion: 1,
+	formatVersion: 2,
 	data,
 	closedAt: null,
 	createdAt: new Date('2026-09-24T10:00:00Z'),
@@ -43,6 +51,9 @@ const write = { threadId: record.threadId, planId: record.id, expectedRevision: 
 
 beforeEach(() => {
 	vi.resetAllMocks();
+
+	tx.run.mockImplementation(async (ctx, callback) => await callback(ctx));
+	repository.jobStatesForPlan.mockResolvedValue([]);
 	repository.findPlan.mockResolvedValue(record);
 	repository.createActivePlan.mockResolvedValue(record);
 	repository.replacePlan.mockImplementation(async (input) => ({
@@ -54,7 +65,8 @@ beforeEach(() => {
 
 describe('AgentPlanService', () => {
 	it('creates a typed plan with derived readiness and passes the transaction context', async () => {
-		const input = { id: record.id, threadId: record.threadId, formatVersion: 1, data };
+		const input = { id: record.id, threadId: record.threadId, formatVersion: 2, data };
+
 		expect(await service.createActivePlan(input, ctx)).toMatchObject({
 			data,
 			readiness: { ready: [data.items[0].id], blocked: [] },
@@ -62,7 +74,7 @@ describe('AgentPlanService', () => {
 		expect(repository.createActivePlan).toHaveBeenCalledWith(input, ctx);
 	});
 
-	it.each([2, 0])('rejects format %s before writing', async (formatVersion) => {
+	it.each([1, 0])('rejects format %s before writing', async (formatVersion) => {
 		await expect(service.createActivePlan({ ...record, formatVersion }, ctx)).rejects.toThrow(
 			'Unsupported plan format',
 		);
@@ -75,19 +87,20 @@ describe('AgentPlanService', () => {
 
 	it('rejects invalid updates without writing', async () => {
 		await expect(
-			service.replacePlan({ ...write, formatVersion: 1, data: { ...data, extra: true } }, ctx),
+			service.replacePlan({ ...write, formatVersion: 2, data: { ...data, extra: true } }, ctx),
 		).rejects.toThrow(AgentPlanValidationError);
 		expect(repository.replacePlan).not.toHaveBeenCalled();
 	});
 
 	it('reads a scoped revision before validating and replacing the full document', async () => {
 		const proposed = { ...data, items: [{ ...data.items[0], status: 'done' }] };
-		const next = await service.replacePlan({ ...write, formatVersion: 1, data: proposed }, ctx);
+		const next = await service.replacePlan({ ...write, formatVersion: 2, data: proposed }, ctx);
+
 		expect(repository.findPlan).toHaveBeenCalledWith(record.threadId, record.id, ctx);
 		expect(repository.replacePlan).toHaveBeenCalledWith(
 			{
 				...write,
-				formatVersion: 1,
+				formatVersion: 2,
 				data: {
 					...proposed,
 					items: [
@@ -116,7 +129,8 @@ describe('AgentPlanService', () => {
 		['stale', { ...record, revision: 2 }],
 	] as const)('rejects %s targets before replacing or closing', async (_label, current) => {
 		repository.findPlan.mockResolvedValue(current);
-		await expect(service.replacePlan({ ...write, formatVersion: 1, data }, ctx)).rejects.toThrow(
+
+		await expect(service.replacePlan({ ...write, formatVersion: 2, data }, ctx)).rejects.toThrow(
 			AgentPlanWriteConflictError,
 		);
 		await expect(service.closePlan(write, ctx)).rejects.toThrow(AgentPlanWriteConflictError);
@@ -127,7 +141,8 @@ describe('AgentPlanService', () => {
 	it('propagates a conflict after validation without retrying', async () => {
 		const conflict = new AgentPlanWriteConflictError();
 		repository.replacePlan.mockRejectedValue(conflict);
-		await expect(service.replacePlan({ ...write, formatVersion: 1, data }, ctx)).rejects.toBe(
+
+		await expect(service.replacePlan({ ...write, formatVersion: 2, data }, ctx)).rejects.toBe(
 			conflict,
 		);
 		expect(repository.replacePlan).toHaveBeenCalledTimes(1);
@@ -144,7 +159,7 @@ describe('AgentPlanService', () => {
 		const revision = {
 			planId: record.id,
 			revision: 1,
-			formatVersion: 1,
+			formatVersion: 2,
 			data,
 			closedAt: null,
 			createdAt: record.createdAt,
@@ -152,11 +167,11 @@ describe('AgentPlanService', () => {
 		repository.findActivePlan.mockResolvedValue(record);
 		repository.findRevision.mockResolvedValue(revision);
 		const expected = { data, readiness: { ready: [data.items[0].id], blocked: [] } };
+
 		expect(await service.findActivePlan(record.threadId, ctx)).toMatchObject(expected);
 		expect(await service.findPlan(record.threadId, record.id, ctx)).toMatchObject(expected);
 		expect(await service.findRevision(record.threadId, record.id, 1, ctx)).toMatchObject({
 			...revision,
-			...expected,
 		});
 		expect(repository.findActivePlan).toHaveBeenCalledWith(record.threadId, ctx);
 		expect(repository.findRevision).toHaveBeenCalledWith(record.threadId, record.id, 1, ctx);
@@ -173,10 +188,11 @@ describe('AgentPlanService', () => {
 	});
 
 	it.each([
-		{ ...record, formatVersion: 2 },
+		{ ...record, formatVersion: 1 },
 		{ ...record, data: { ...data, extra: true } },
 	])('rejects unsupported stored documents on reads and closure', async (unsupported) => {
 		repository.findPlan.mockResolvedValue(unsupported);
+
 		await expect(service.findPlan(record.threadId, record.id, ctx)).rejects.toThrow(
 			AgentPlanValidationError,
 		);
@@ -186,10 +202,11 @@ describe('AgentPlanService', () => {
 
 	it('delegates history pagination without decoding document content', async () => {
 		const history = {
-			items: [{ revision: 1, formatVersion: 1, closedAt: null, createdAt: record.createdAt }],
+			items: [{ revision: 1, formatVersion: 2, closedAt: null, createdAt: record.createdAt }],
 			nextCursor: 1,
 		};
 		repository.listHistory.mockResolvedValue(history);
+
 		expect(
 			await service.listHistory(record.threadId, record.id, { afterRevision: 0, limit: 1 }, ctx),
 		).toBe(history);

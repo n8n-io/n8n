@@ -160,6 +160,7 @@ export interface AgentsChatHostEvent {
 }
 
 export interface AgentsChatMessage {
+	stopReport?: boolean;
 	backgroundJobSignal?: AgentBackgroundJobSignal;
 	id: string;
 	role: ChatMessageRole;

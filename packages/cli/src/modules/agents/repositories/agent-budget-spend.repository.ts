@@ -1,4 +1,4 @@
-import { BaseRepository, dbNowLiteral, TransactionRunner } from '@n8n/db';
+import { BaseRepository, dbNowLiteral, TransactionRunner, type OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
@@ -6,6 +6,12 @@ import { UnexpectedError } from 'n8n-workflow';
 
 import { AgentBudgetAppliedCall } from '../entities/agent-budget-applied-call.entity';
 import { AgentBudgetSpend } from '../entities/agent-budget-spend.entity';
+
+class AgentBudgetSpendTable extends BaseRepository<AgentBudgetSpend> {
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(AgentBudgetSpend, dataSource.manager, transactionRunner);
+	}
+}
 
 /** One ledger key and the USD amount to add. */
 export interface AgentBudgetSpendEntry {
@@ -35,14 +41,16 @@ export function previousTotalUsd(totalUsd: number, usd: number): number {
  * `applySpend` inserts the call id and increments the totals in one transaction.
  */
 @Service()
-export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend> {
+export class AgentBudgetSpendRepository {
+	private readonly table: AgentBudgetSpendTable;
+
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
-		super(AgentBudgetSpend, dataSource.manager, transactionRunner);
+		this.table = new AgentBudgetSpendTable(dataSource, transactionRunner);
 	}
 
 	/** Returns the stored total for a ledger key. A missing key is 0. */
-	async readTotal(key: string): Promise<number> {
-		const totals = await this.readTotalsWith(this.managerFor({}), [key]);
+	async readTotal(key: string, ctx: OperationContext): Promise<number> {
+		const totals = await this.readTotalsWith(this.table.managerFor(ctx), [key]);
 		return totals.get(key) ?? 0;
 	}
 
@@ -54,8 +62,9 @@ export class AgentBudgetSpendRepository extends BaseRepository<AgentBudgetSpend>
 	async applySpend(
 		callId: string,
 		entries: AgentBudgetSpendEntry[],
+		ctx: OperationContext,
 	): Promise<AgentBudgetSpendTotal[]> {
-		return await this.runInTransaction({}, async (manager) => {
+		return await this.table.runInTransaction(ctx, async (manager) => {
 			const inserted = await this.insertAppliedCall(manager, callId);
 			if (inserted) await this.incrementKeys(manager, entries);
 			const stored = await this.readTotalsWith(

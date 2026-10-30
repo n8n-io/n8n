@@ -48,6 +48,19 @@ export function isAllowedNode(s: string): s is AllowedNode {
 	return ALLOWED_NODES.includes(s as AllowedNode);
 }
 
+/**
+ * What the node is told when the table it names is not in the workflow's
+ * project. Shared with the engine v2 control plane, so both engines say it
+ * the same way.
+ */
+export function dataTableNotFoundInProject(dataTableId: string) {
+	return {
+		message: `Data table with ID '${dataTableId}' could not be found in this project`,
+		description:
+			'It may have been deleted, or skipped when the workflow was imported. Choose an existing data table in the node.',
+	};
+}
+
 @Service()
 export class DataTableProxyService implements DataTableProxyProvider {
 	constructor(
@@ -96,14 +109,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			await this.dataTableService.validateDataTableExists(dataTableId, projectId);
 		} catch (error) {
 			if (error instanceof DataTableNotFoundError) {
-				throw new NodeOperationError(
-					node,
-					`Data table with ID '${dataTableId}' could not be found in this project`,
-					{
-						description:
-							'It may have been deleted, or skipped when the workflow was imported. Choose an existing data table in the node.',
-					},
-				);
+				const { message, description } = dataTableNotFoundInProject(dataTableId);
+				throw new NodeOperationError(node, message, { description });
 			}
 			throw error;
 		}
@@ -243,7 +250,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		};
 	}
 
-	private makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {
+	/** The operations of one project. Public for the engine v2 control plane, which resolves the project itself. */
+	makeAggregateOperations(projectId: string): IDataTableProjectAggregateService {
 		const dataTableService = this.dataTableService;
 		return {
 			getProjectId() {
@@ -251,9 +259,10 @@ export class DataTableProxyService implements DataTableProxyProvider {
 			},
 
 			async getManyAndCount(options: ListDataTableOptions = {}) {
+				// The pinned project last, so a filter cannot list another project.
 				const serviceOptions: DataTableListOptions = {
 					...options,
-					filter: { projectId, ...(options.filter ?? {}) },
+					filter: { ...(options.filter ?? {}), projectId },
 				};
 				return await dataTableService.getManyAndCount(serviceOptions);
 			},
@@ -268,7 +277,8 @@ export class DataTableProxyService implements DataTableProxyProvider {
 		};
 	}
 
-	private makeDataTableOperations(
+	/** The operations of one table. Every one checks that the table is in the project. */
+	makeDataTableOperations(
 		projectId: string,
 		dataTableId: string,
 	): Omit<IDataTableProjectService, keyof IDataTableProjectAggregateService> {

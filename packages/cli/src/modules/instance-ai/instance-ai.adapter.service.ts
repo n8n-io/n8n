@@ -2,6 +2,8 @@ import type { FetchFn } from '@n8n/agents';
 import { braveSearch, searxngSearch, type WebSearchResponse } from '@n8n/ai-utilities';
 import {
 	AI_GATEWAY_MANAGED_TAG,
+	CreateAppDto,
+	ListAppsQueryDto,
 	AI_ASSISTANT_AT_MENTIONS_FLAG,
 	CANVAS_NODE_CONTEXT_FLAG,
 	CREDENTIAL_DESCRIPTIONS_FLAG,
@@ -53,6 +55,7 @@ import {
 import { redactTelemetryText, TELEMETRY_EVENT } from '@n8n/telemetry';
 import { Container, Service } from '@n8n/di';
 import type {
+	InstanceAiAppService,
 	InstanceAiContext,
 	InstanceAiConversationHistoryReader,
 	InstanceAiWorkflowService,
@@ -693,6 +696,7 @@ export class InstanceAiAdapterService {
 				: {}),
 			...(aiPreferencesEnabled ? { aiPreferenceService: this.createPreferenceAdapter(user) } : {}),
 			skillService: this.getSkillService(user, assistantSkillsEnabled === true),
+			appService: this.createAppAdapter(user, projectId),
 			webResearchService: this.createWebResearchAdapter(user, searchProxyConfig),
 			workspaceService: this.createWorkspaceAdapter(user, projectId),
 			templatesService: this.getTemplatesService(),
@@ -1059,12 +1063,12 @@ export class InstanceAiAdapterService {
 		}
 		if (!this.license.isLicensed('feat:folders')) {
 			hints.push(
-				'**Folders** — organizing workflows into folders (list-folders, create-folder, delete-folder, move-workflow-to-folder) is available on registered Community Edition or paid plans.',
+				'**Folders** — organizing workflows into folders (list_folders, create_folder, delete_folder, move_workflow_to_folder) is available on registered Community Edition or paid plans.',
 			);
 		}
 		if (!this.teamProjectsLicensed()) {
 			hints.push(
-				'**Team projects** — this instance has no team-project license. `list-projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
+				'**Team projects** — this instance has no team-project license. `list_projects` returns only the user personal project and the project of this conversation, even when the instance holds more. Do not offer to create or move resources into another project. Team projects need a plan upgrade.',
 			);
 		}
 		return hints;
@@ -1273,7 +1277,7 @@ export class InstanceAiAdapterService {
 
 		/**
 		 * The folders the caller may name, per project. Access is checked with the
-		 * same scope the workspace tool's `list-folders` uses, so a folder name is
+		 * same scope the `list_folders` tool uses, so a folder name is
 		 * never revealed through a project the user cannot list folders in.
 		 * Returns undefined when folders cannot be read at all (unlicensed or
 		 * missing dependency), which the resolver reports as `unsupported`.
@@ -2659,7 +2663,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2674,7 +2678,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -3535,6 +3539,49 @@ export class InstanceAiAdapterService {
 				await assertWorkflowInBoundProject(workflowId);
 				await findWorkflow(workflowId, 'workflow:update');
 				await evaluationConfigService.delete(workflowId, configId);
+			},
+		};
+	}
+
+	private createAppAdapter(user: User, projectId?: string): InstanceAiAppService | undefined {
+		if (!projectId || !Container.get(ModuleRegistry).isActive('apps')) return undefined;
+		const { assertProjectScope } = this.createProjectScopeHelpers(user, projectId);
+		const services = async (scope: Scope) => {
+			if (scope === 'app:create' || scope === 'app:update') this.assertInstanceNotReadOnly('apps');
+			await assertProjectScope([scope], projectId);
+			const { AppsService, AppSourceArchiveService } = await import('@n8n/backend-module-apps');
+			return { apps: Container.get(AppsService), sources: Container.get(AppSourceArchiveService) };
+		};
+
+		return {
+			createApp: async ({ name, namespace, id }) => {
+				const { apps } = await services('app:create');
+				return await apps.createApp(projectId, CreateAppDto.parse({ name, namespace }), { id });
+			},
+			listApps: async ({ name }) => {
+				const { apps } = await services('app:list');
+				return await apps.listApps(projectId, ListAppsQueryDto.parse({ name, take: '50' }));
+			},
+			getApp: async (appId) => {
+				const { apps } = await services('app:read');
+				return await apps.getApp(projectId, appId);
+			},
+			findApp: async (appId) => {
+				const { apps } = await services('app:read');
+				try {
+					return await apps.getApp(projectId, appId);
+				} catch (error) {
+					if (error instanceof NotFoundError) return undefined;
+					throw error;
+				}
+			},
+			exportDraft: async (appId) => {
+				const { sources } = await services('app:read');
+				return await sources.exportDraft(projectId, appId);
+			},
+			commit: async (appId, baseVersionId, archive, label) => {
+				const { sources } = await services('app:update');
+				return await sources.commit(projectId, appId, baseVersionId, archive, label);
 			},
 		};
 	}

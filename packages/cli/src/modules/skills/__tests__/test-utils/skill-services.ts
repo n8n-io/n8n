@@ -147,7 +147,7 @@ export async function resetSkillMocks({
 	skills.findByIds.mockResolvedValue([]);
 	// No skill is synced unless a test links it.
 	links?.isLinked.mockResolvedValue(false);
-	links?.findLinkedSkillIds.mockResolvedValue(new Set());
+	links?.findSyncStates.mockResolvedValue(new Map());
 	// Skill Sync is off unless a test turns it on.
 	skillSyncGate?.isEnabled.mockResolvedValue(false);
 }

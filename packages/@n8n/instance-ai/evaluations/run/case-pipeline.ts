@@ -44,7 +44,7 @@ import type { BuildExpectationResult, ExecutionScenario, WorkflowTestCase } from
 
 const NO_SEED_MAPPING_REASON =
 	'Scenario declares seedDataTables but the build provided no seeded-table mapping ' +
-	'(MCP/prebuilt builds do not seed data tables) — refusing to run without the declared rows';
+	'(prebuilt builds do not seed data tables) — refusing to run without the declared rows';
 
 /** Row inputs: the per-scenario fields (dataset example shape) plus the
  *  iteration tag the drivers stamp when expanding for N iterations. */
@@ -363,9 +363,10 @@ export function createCasePipeline(deps: CasePipelineDeps): CasePipeline {
 			});
 		}
 
+		const seedThreadId = build.seedThreadId ?? build.threadId;
 		const seedContext: ScenarioSeedContext | undefined =
-			build.threadId && build.seededScenarioTableIdsByName
-				? { threadId: build.threadId, tableIdsByName: build.seededScenarioTableIdsByName }
+			seedThreadId && build.seededScenarioTableIdsByName
+				? { threadId: seedThreadId, tableIdsByName: build.seededScenarioTableIdsByName }
 				: undefined;
 
 		// Agent scenario path — real model, mocked tool HTTP. Mirrors the

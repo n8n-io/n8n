@@ -7,7 +7,7 @@ import {
 	agentSkillShape,
 	skillCreateMethodSchema,
 } from './agent-skill.schema';
-import type { SkillSyncedFrom } from '../skills/skill-sources.schema';
+import type { SkillSyncedFrom, SkillSyncState } from '../skills/skill-sources.schema';
 import type { AgentSkill } from './types';
 import type { ProjectType } from '../schemas/project.schema';
 import { paginationSchema } from '../dto/pagination/pagination.dto';
@@ -73,6 +73,10 @@ export type SkillListItem = {
 	canDelete: boolean;
 	/** Whether the skill is synced and the user may stop syncing it. */
 	canStopSyncing: boolean;
+	/** The sync state of a synced skill, for its badge. Null for a skill that is not synced. */
+	syncState: SkillSyncState | null;
+	/** Whether the skill is synced and the user may check its source for updates now. */
+	canCheckForUpdates: boolean;
 	createdAt: string;
 	updatedAt: string;
 };

@@ -14,6 +14,8 @@ import {
 	isAgentEditingAgent,
 	getActiveSelectedAgentIds,
 	getLatestSkillArtifactResult,
+	getAppArtifactFromToolCall,
+	getLatestAppArtifactResult,
 	getSkillArtifactFromToolCall,
 } from '../canvasPreview.utils';
 
@@ -1801,6 +1803,73 @@ describe('getLatestSkillArtifactResult', () => {
 			skillId: 'skill-2',
 			name: 'Two',
 			toolCallId: 'tc-update',
+		});
+	});
+});
+
+describe('getAppArtifactFromToolCall', () => {
+	const app = { id: 'app-1', name: 'Todos', projectId: 'project-1', namespace: 'todos' };
+	const expected = { appId: 'app-1', name: 'Todos', projectId: 'project-1' };
+
+	test.each([
+		['create', { action: 'create', name: 'Todos', namespace: 'todos' }, { app }],
+		['commit', { action: 'commit', appId: 'app-1', label: 'Add list' }, { app, versionId: 'v1' }],
+	])('returns the app of a successful %s', (_label, args, result) => {
+		expect(getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result }))).toEqual(
+			expected,
+		);
+	});
+
+	test.each([
+		['a get', { action: 'get', appId: 'app-1' }, { app }],
+		['an open', { action: 'open', appId: 'app-1' }, { app, path: 'apps/app-1' }],
+		['an error', { action: 'commit', appId: 'app-1' }, { error: 'There are no staged changes.' }],
+	])('returns undefined for %s', (_label, args, result) => {
+		expect(
+			getAppArtifactFromToolCall(makeToolCall({ toolName: 'apps', args, result })),
+		).toBeUndefined();
+	});
+
+	test('returns undefined for a call that is still running', () => {
+		expect(
+			getAppArtifactFromToolCall(
+				makeToolCall({ toolName: 'apps', args: { action: 'create' }, isLoading: true }),
+			),
+		).toBeUndefined();
+	});
+});
+
+describe('getLatestAppArtifactResult', () => {
+	test('returns the latest app write, also from a child agent', () => {
+		const root = makeAgentNode({
+			toolCalls: [
+				makeToolCall({
+					toolCallId: 'tc-create',
+					toolName: 'apps',
+					args: { action: 'create' },
+					result: { app: { id: 'app-1', name: 'One', projectId: 'project-1' } },
+				}),
+			],
+			children: [
+				makeAgentNode({
+					agentId: 'child',
+					toolCalls: [
+						makeToolCall({
+							toolCallId: 'tc-commit',
+							toolName: 'apps',
+							args: { action: 'commit', appId: 'app-2' },
+							result: { app: { id: 'app-2', name: 'Two', projectId: 'project-1' } },
+						}),
+					],
+				}),
+			],
+		});
+
+		expect(getLatestAppArtifactResult(root)).toEqual({
+			appId: 'app-2',
+			name: 'Two',
+			projectId: 'project-1',
+			toolCallId: 'tc-commit',
 		});
 	});
 });

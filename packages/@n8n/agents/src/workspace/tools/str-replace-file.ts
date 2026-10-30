@@ -11,7 +11,7 @@ const strReplacementSchema = z.object({
 	new_str: z.string().describe('Replacement text to write in place of old_str.'),
 });
 
-const inputSchema = z.object({
+export const strReplaceFileInputSchema = z.object({
 	path: z
 		.string()
 		.describe(
@@ -55,40 +55,41 @@ function isBatchReplaceResult(
 	return Array.isArray(result);
 }
 
+/** Apply the replacements of one file. Shared by `workspace_str_replace_file` and `workspace_edit_files`. */
+export async function strReplaceFile(
+	filesystem: WorkspaceFilesystem,
+	input: z.infer<typeof strReplaceFileInputSchema>,
+	abortSignal?: AbortSignal,
+): Promise<StrReplaceFileOutput> {
+	try {
+		const content = await filesystem.readFile(input.path, { encoding: 'utf-8', abortSignal });
+		const editor = new TextEditorDocument({ initialText: content.toString() });
+		const result = editor.executeBatch(input.replacements);
+
+		if (isBatchReplaceResult(result)) {
+			return { success: false, error: 'String replacement failed.', results: result };
+		}
+
+		const editedContent = editor.getText();
+		if (editedContent === null) {
+			throw new Error(`File "${input.path}" is not loaded.`);
+		}
+
+		await filesystem.writeFile(input.path, editedContent, { overwrite: true, abortSignal });
+		return { success: true, result };
+	} catch (error) {
+		if (isAbortError(error)) throw error;
+		return createErrorOutput(error);
+	}
+}
+
 export function createStrReplaceFileTool(filesystem: WorkspaceFilesystem): BuiltTool {
 	return new Tool('workspace_str_replace_file')
 		.description(
 			'Apply one or more exact text replacements to a workspace file atomically. If any replacement fails, no changes are written.',
 		)
-		.input(inputSchema)
+		.input(strReplaceFileInputSchema)
 		.output(outputSchema)
-		.handler(async (input, ctx) => {
-			try {
-				const content = await filesystem.readFile(input.path, {
-					encoding: 'utf-8',
-					abortSignal: ctx.abortSignal,
-				});
-				const editor = new TextEditorDocument({ initialText: content.toString() });
-				const result = editor.executeBatch(input.replacements);
-
-				if (isBatchReplaceResult(result)) {
-					return { success: false, error: 'String replacement failed.', results: result };
-				}
-
-				const editedContent = editor.getText();
-				if (editedContent === null) {
-					throw new Error(`File "${input.path}" is not loaded.`);
-				}
-
-				await filesystem.writeFile(input.path, editedContent, {
-					overwrite: true,
-					abortSignal: ctx.abortSignal,
-				});
-				return { success: true, result };
-			} catch (error) {
-				if (isAbortError(error)) throw error;
-				return createErrorOutput(error);
-			}
-		})
+		.handler(async (input, ctx) => await strReplaceFile(filesystem, input, ctx.abortSignal))
 		.build();
 }

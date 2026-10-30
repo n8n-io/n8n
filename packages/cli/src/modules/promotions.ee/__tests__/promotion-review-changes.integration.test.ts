@@ -3,13 +3,12 @@ import { createTeamProject, createWorkflow, mockInstance, testDb } from '@n8n/ba
 import type { User } from '@n8n/db';
 import { ProjectRepository, SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { Cipher, type InstanceSettings } from 'n8n-core';
+import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 import { mkdtempSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { simpleGit } from 'simple-git';
 import { mock } from 'vitest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -29,7 +28,11 @@ import { PromotionReviewHostResolver } from '../promotion-review-host.resolver';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsService } from '../promotions.service';
 
+import { createFixtureGit, createGitRemoteSeed, type TestRemote } from './utils/git-remote-fixture';
+import { insertTokenProvider } from './utils/promotion-fixtures';
+
 const instanceFolder = mkdtempSync(path.join(tmpdir(), 'promotion-review-changes-'));
+const remoteSeedRoot = path.join(instanceFolder, 'remote-seed');
 Container.set(
 	PromotionWorkingDirectoryService,
 	new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder: instanceFolder })),
@@ -40,6 +43,7 @@ const access = { baseUrl: 'https://gitlab.example.com', accessToken: 'token' };
 const hostResolver = mockInstance(PromotionReviewHostResolver);
 const mergeRequests = mockInstance(GitLabMergeRequestClient);
 const server = setupTestServer({
+	reuseServer: true,
 	endpointGroups: ['promotions'],
 	modules: ['promotions', 'n8n-packages'],
 	enabledFeatures: ['feat:promotions'],
@@ -47,6 +51,7 @@ const server = setupTestServer({
 
 const author = ['-c', 'user.name=Reviewer', '-c', 'user.email=reviewer@example.com'];
 let remoteFolder: string;
+let remoteSeed: Promise<TestRemote> | undefined;
 let owner: User;
 let environmentId: string;
 /** What GitLab reports for each merge request, by iid. */
@@ -79,8 +84,9 @@ beforeEach(async () => {
 	owner = await createOwner();
 
 	remoteFolder = await mkdtemp(path.join(tmpdir(), 'promotion-review-changes-remote-'));
-	await simpleGit().raw(['init', '--bare', '--initial-branch=main', remoteFolder]);
-	await commitOnMain(async () => {});
+	remoteSeed ??= createGitRemoteSeed(remoteSeedRoot, 'empty');
+	await remoteSeed;
+	await cp(path.join(remoteSeedRoot, 'remote.git'), remoteFolder, { recursive: true });
 
 	hostMergeRequests = new Map();
 	hostResolver.resolve.mockResolvedValue({ access, projectPath: 'platform/workflows' });
@@ -107,15 +113,7 @@ beforeEach(async () => {
 		return mergeRequest;
 	});
 
-	const provider = await Container.get(PromotionProviderRepository).insertProvider({
-		name: 'Reviews',
-		type: 'git',
-		authType: 'token',
-		config: { schemaVersion: 1 },
-		auth: await Container.get(Cipher).encryptV2(
-			JSON.stringify({ schemaVersion: 1, username: 'test', password: 'test' }),
-		),
-	});
+	const provider = await insertTokenProvider({ name: 'Reviews' });
 	const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
 		name: 'Reviews',
 		scope: 'instance',
@@ -145,14 +143,14 @@ async function promote(commitMessage: string) {
 }
 
 async function moveReviewHead(iid: number, sha: string) {
-	await simpleGit(remoteFolder).raw(['update-ref', `refs/merge-requests/${iid}/head`, sha]);
+	await createFixtureGit(remoteFolder).raw(['update-ref', `refs/merge-requests/${iid}/head`, sha]);
 	const mergeRequest = hostMergeRequests.get(iid);
 	if (mergeRequest) hostMergeRequests.set(iid, { ...mergeRequest, sha });
 }
 
 /** Merges like GitLab with a fast-forward merge, and returns the base that GitLab records. */
 async function mergeOnHost(iid: number, headSha: string) {
-	const remote = simpleGit(remoteFolder);
+	const remote = createFixtureGit(remoteFolder);
 	const baseSha = (await remote.revparse(['main'])).trim();
 	await remote.raw(['update-ref', 'refs/heads/main', headSha]);
 	const mergeRequest = hostMergeRequests.get(iid);
@@ -175,7 +173,7 @@ function finishOnHost(
 }
 
 async function dropReviewRefs(iid: number, branchName: string) {
-	const remote = simpleGit(remoteFolder);
+	const remote = createFixtureGit(remoteFolder);
 	await remote.raw(['update-ref', '-d', `refs/merge-requests/${iid}/head`]);
 	await remote.raw(['update-ref', '-d', `refs/heads/${branchName}`]);
 	// A clone of a local path copies every object, so the host must also drop the loose ones.
@@ -187,13 +185,8 @@ async function dropReviewRefs(iid: number, branchName: string) {
 async function commitOnMain(change: (folder: string) => Promise<void>) {
 	const folder = await mkdtemp(path.join(tmpdir(), 'promotion-review-changes-clone-'));
 	try {
-		const git = simpleGit(folder);
-		await git.raw(['init', '--initial-branch=main']);
-		await git.addRemote('origin', remoteFolder);
-		if ((await simpleGit(remoteFolder).raw(['branch', '--list', 'main'])).trim()) {
-			await git.fetch('origin', 'main');
-			await git.raw(['reset', '--hard', 'origin/main']);
-		}
+		await createFixtureGit().clone(remoteFolder, folder, ['--branch', 'main']);
+		const git = createFixtureGit(folder);
 		await change(folder);
 		await git.raw(['add', '--all']);
 		await git.raw([...author, 'commit', '--allow-empty', '-m', 'Edit on the host']);
@@ -207,8 +200,8 @@ async function commitOnMain(change: (folder: string) => Promise<void>) {
 async function rebaseOnHost({ iid, branchName }: { iid: number; branchName: string }) {
 	const folder = await mkdtemp(path.join(tmpdir(), 'promotion-review-changes-rebase-'));
 	try {
-		await simpleGit().clone(remoteFolder, folder, ['--branch', branchName]);
-		const git = simpleGit(folder);
+		await createFixtureGit().clone(remoteFolder, folder, ['--branch', branchName]);
+		const git = createFixtureGit(folder);
 		await git.raw([...author, 'rebase', 'origin/main']);
 		await git.raw(['push', '--force', 'origin', `HEAD:refs/heads/${branchName}`]);
 		await moveReviewHead(iid, (await git.revparse(['HEAD'])).trim());
@@ -298,7 +291,9 @@ it('shows only the changes of the review after a rebase on the host', async () =
 
 	// Somebody changes another workflow on the target branch, then rebases the review on it.
 	await commitOnMain(async (folder) => {
-		const [file] = (await simpleGit(folder).raw(['ls-files', `*-${invoice.id}/workflow.json`]))
+		const [file] = (
+			await createFixtureGit(folder).raw(['ls-files', `*-${invoice.id}/workflow.json`])
+		)
 			.split('\n')
 			.filter(Boolean);
 		const workflow = JSON.parse(await readFile(path.join(folder, file), 'utf8'));
@@ -308,7 +303,7 @@ it('shows only the changes of the review after a rebase on the host', async () =
 		);
 	});
 	await rebaseOnHost(review);
-	const mainTip = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+	const mainTip = (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
 
 	const changes = await changesOf(review.reviewId);
 
@@ -321,7 +316,7 @@ it('diffs a merged review against the base that the host recorded', async () => 
 	const project = await createTeamProject('Sales', owner);
 	const quote = await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);
 	const review = await promote('Baseline');
-	const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+	const baseSha = (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
 	await mergeOnHost(review.iid, review.commitSha);
 
 	const changes = await changesOf(review.reviewId);
@@ -346,7 +341,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		await rebaseOnHost(review);
 		const headSha = hostMergeRequests.get(review.iid)?.sha;
 		if (!headSha) throw new Error('The rebase recorded no head');
-		const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+		const baseSha = (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
 		await dropReviewRefs(review.iid, review.branchName);
 		// A fresh checkout has none of the review commits, as after a reconnect.
 		await Container.get(PromotionsService).clone(environmentId, owner);
@@ -421,6 +416,79 @@ describe('when the host dropped the commits of a finished review', () => {
 			webUrl: hostMergeRequests.get(review.iid)?.web_url,
 		});
 	}, 60_000);
+
+	it('keeps the close of n8n when the host still has the review open, and after the host merges it', async () => {
+		const { review, headSha, baseSha } = await promoteAndLose();
+		await Container.get(PromotionReviewRepository).update(review.reviewId, {
+			state: 'closed',
+			lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
+		});
+		const mergeRequest = hostMergeRequests.get(review.iid);
+		if (!mergeRequest) throw new Error(`Unknown merge request ${review.iid}`);
+		hostMergeRequests.set(review.iid, {
+			...mergeRequest,
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+		const closedByN8n = {
+			state: 'closed',
+			at: '2026-10-05T10:00:00.000Z',
+			by: 'n8n',
+			webUrl: mergeRequest.web_url,
+		};
+
+		expect(await changesOf(review.reviewId)).toEqual({
+			baselineCommitSha: baseSha,
+			headCommitSha: headSha,
+			resources: [],
+			dependencies: [],
+			warnings: ['commitsUnavailable'],
+			outcome: closedByN8n,
+		});
+
+		finishOnHost(review.iid, {
+			state: 'merged',
+			merged_at: '2026-10-06T10:00:00.000Z',
+			merge_user: { name: 'Ada Lovelace' },
+			diff_refs: { base_sha: baseSha, head_sha: headSha },
+		});
+
+		expect((await changesOf(review.reviewId)).outcome).toEqual(closedByN8n);
+	}, 60_000);
+
+	it.each([
+		{
+			state: 'closed' as const,
+			host: { closed_at: '2026-10-04T10:00:00.000Z', closed_by: { name: 'Grace Hopper' } },
+			by: 'Grace Hopper',
+		},
+		{
+			state: 'merged' as const,
+			host: { merged_at: '2026-10-04T10:00:00.000Z', merge_user: { name: 'Ada Lovelace' } },
+			by: 'Ada Lovelace',
+		},
+	])(
+		'names the host user when the host $state the review before n8n closed it',
+		async ({ state, host, by }) => {
+			const { review, headSha, baseSha } = await promoteAndLose();
+			await Container.get(PromotionReviewRepository).update(review.reviewId, {
+				state: 'closed',
+				lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
+			});
+			finishOnHost(review.iid, {
+				state,
+				...host,
+				diff_refs: { base_sha: baseSha, head_sha: headSha },
+			});
+
+			expect((await changesOf(review.reviewId)).outcome).toEqual({
+				state,
+				at: '2026-10-04T10:00:00.000Z',
+				by,
+				webUrl: hostMergeRequests.get(review.iid)?.web_url,
+			});
+		},
+		60_000,
+	);
 
 	it('still fails for an open review, which has no outcome to show', async () => {
 		const { review } = await promoteAndLose();
@@ -522,7 +590,11 @@ it('reads a merged review from the target branch after the host deleted its head
 	const headSha = hostMergeRequests.get(review.iid)?.sha;
 	if (!headSha) throw new Error('The rebase recorded no head');
 	await mergeOnHost(review.iid, headSha);
-	await simpleGit(remoteFolder).raw(['update-ref', '-d', `refs/merge-requests/${review.iid}/head`]);
+	await createFixtureGit(remoteFolder).raw([
+		'update-ref',
+		'-d',
+		`refs/merge-requests/${review.iid}/head`,
+	]);
 
 	const changes = await changesOf(review.reviewId);
 
@@ -542,15 +614,15 @@ it('refuses a promote when the manifest of the target branch cannot be read', as
 	const project = await createTeamProject('Sales', owner);
 	await createWorkflow({ name: 'Quote', nodes: [], connections: {} }, project);
 	await commitOnMain(writeUnreadableManifest);
-	const mainBefore = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+	const mainBefore = (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
 
 	await expect(promote('Changes')).rejects.toMatchObject({
 		httpStatusCode: 400,
 		message: expect.stringContaining('"n8n/manifest.json" on the branch is not readable'),
 	});
 	expect(hostMergeRequests.size).toBe(0);
-	expect((await simpleGit(remoteFolder).raw(['branch', '--list'])).trim()).toBe('* main');
-	expect((await simpleGit(remoteFolder).revparse(['main'])).trim()).toBe(mainBefore);
+	expect((await createFixtureGit(remoteFolder).raw(['branch', '--list'])).trim()).toBe('* main');
+	expect((await createFixtureGit(remoteFolder).revparse(['main'])).trim()).toBe(mainBefore);
 }, 60_000);
 
 it('lists nothing when the recorded base of a closed review has an unreadable manifest', async () => {
@@ -560,7 +632,7 @@ it('lists nothing when the recorded base of a closed review has an unreadable ma
 	// The manifest on `main` became unreadable after the promote, and the host recorded that
 	// commit as the base of the review when it closed.
 	await commitOnMain(writeUnreadableManifest);
-	const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
+	const baseSha = (await createFixtureGit(remoteFolder).revparse(['main'])).trim();
 	const mergeRequest = hostMergeRequests.get(review.iid);
 	assert(mergeRequest);
 	hostMergeRequests.set(review.iid, {

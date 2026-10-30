@@ -27,12 +27,23 @@ const isModeRootExecution = {
 	agent: false,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
+type BillableRunData = {
+	mode: WorkflowExecuteMode;
+	status: ExecutionStatus;
+	/** Null while no runner has taken the execution. */
+	startedAt: Date | null;
+	data?: { resultData?: { failedBeforeStart?: true } };
+};
+
 export function isBillableExecution(
-	runData: { mode: WorkflowExecuteMode; status: ExecutionStatus },
+	runData: BillableRunData,
 	source?: WorkflowExecutionSource,
 ): boolean {
 	return (
 		source !== 'instance_ai' &&
+		// A run that no runner took, or that failed before its first node, did no work.
+		runData.startedAt !== null &&
+		runData.data?.resultData?.failedBeforeStart !== true &&
 		isModeRootExecution[runData.mode] &&
 		isStatusRootExecution[runData.status]
 	);
