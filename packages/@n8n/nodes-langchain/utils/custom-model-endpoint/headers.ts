@@ -15,6 +15,9 @@ function getLoginHeader(login: LoginMethod): Record<string, string> {
 			};
 		case 'none':
 			return {};
+		// The token is fetched per request, so the auth fetch adds this one
+		case 'oauth2':
+			return {};
 	}
 }
 
