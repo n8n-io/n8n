@@ -28,6 +28,7 @@ import { McpOAuthApiHelper } from './mcp-oauth-api-helper';
 import { MetricsApiHelper } from './metrics-api-helper';
 import { NodeParameterApiHelper } from './node-parameter-api-helper';
 import { ProjectApiHelper } from './project-api-helper';
+import { PromotionsApiHelper } from './promotions-api-helper';
 import { PublicApiHelper } from './public-api-helper';
 import { RoleApiHelper } from './role-api-helper';
 import { SecuritySettingsApiHelper } from './security-settings-api-helper';
@@ -106,6 +107,7 @@ export class ApiHelpers {
 	credentialTypePolicies: TypePolicyApiHelper<'credential'>;
 	nodeParameters: NodeParameterApiHelper;
 	communityPackages: CommunityPackagesApiHelper;
+	promotions: PromotionsApiHelper;
 
 	publicApi: PublicApiHelper;
 
@@ -137,6 +139,7 @@ export class ApiHelpers {
 		this.credentialTypePolicies = new TypePolicyApiHelper(this, 'credential');
 		this.nodeParameters = new NodeParameterApiHelper(this);
 		this.communityPackages = new CommunityPackagesApiHelper(this);
+		this.promotions = new PromotionsApiHelper(this);
 
 		this.publicApi = new PublicApiHelper(this);
 	}
