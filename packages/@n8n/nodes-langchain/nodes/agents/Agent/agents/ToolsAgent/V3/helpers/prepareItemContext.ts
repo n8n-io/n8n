@@ -69,6 +69,7 @@ export async function prepareItemContext(
 		systemMessage: options.systemMessage,
 		passthroughBinaryImages: options.passthroughBinaryImages ?? true,
 		passthroughBinaryPdfs: options.passthroughBinaryPdfs ?? false,
+		passthroughToolResultImages: options.passthroughToolResultImages ?? false,
 		outputParser,
 		model,
 	});

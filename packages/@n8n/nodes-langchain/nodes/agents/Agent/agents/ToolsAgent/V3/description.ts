@@ -31,6 +31,15 @@ const maxTokensFromMemoryOption: INodeProperties = {
 		'The maximum number of tokens to read from the chat memory history. Set to 0 to read all history.',
 };
 
+const passthroughToolResultImagesOption: INodeProperties = {
+	displayName: 'Automatically Passthrough Tool Result Images',
+	name: 'passthroughToolResultImages',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether images returned by a tool call (e.g. an MCP tool) are automatically passed through to the agent as image type messages, instead of being serialized to text. Requires a vision-capable model.',
+};
+
 export const toolsAgentProperties: INodeProperties = {
 	displayName: 'Options',
 	name: 'options',
@@ -44,5 +53,6 @@ export const toolsAgentProperties: INodeProperties = {
 		getBatchingOptionFields(undefined, 1),
 		maxTokensFromMemoryOption,
 		forceToolCallOnFirstIterationOption,
+		passthroughToolResultImagesOption,
 	],
 };
