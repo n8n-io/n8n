@@ -1,6 +1,6 @@
 import { Column, Entity, ManyToOne, OneToMany, PrimaryColumn, Relation } from '@n8n/typeorm';
 import { IConnections } from 'n8n-workflow';
-import type { INode, IWorkflowGroup } from 'n8n-workflow';
+import type { INode, IWorkflowGroup, VersionedWorkflowSettings } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestamps } from './abstract-entity';
 import { WorkflowEntity } from './workflow-entity';
@@ -34,6 +34,13 @@ export class WorkflowHistory extends WithTimestamps {
 
 	@Column({ default: false })
 	autosaved: boolean;
+
+	/**
+	 * The version-scoped workflow settings of this version, such as the engine.
+	 * Null when the version has none, for example on versions saved before this column existed.
+	 */
+	@JsonColumn({ nullable: true })
+	settings: VersionedWorkflowSettings | null;
 
 	@ManyToOne('WorkflowEntity', {
 		onDelete: 'CASCADE',
