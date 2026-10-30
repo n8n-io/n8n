@@ -437,9 +437,6 @@ function toBaggage(header: string | undefined): Baggage | undefined {
 	return kept.getAllEntries().length ? kept : undefined;
 }
 
-// A caller must not pass itself off as n8n, so no entry under the prefix n8n owns goes out
-// or on to the execution row. The parser decodes the key first, so `n8n%2Efoo` cannot hide
-// the prefix, and the comparison ignores case because the parser keeps the case it was given.
 function withoutReservedEntries(baggage: Baggage): Baggage {
 	const reserved = baggage
 		.getAllEntries()

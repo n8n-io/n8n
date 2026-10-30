@@ -1152,8 +1152,6 @@ describe('ExecutionLevelTracer', () => {
 			expect(propagation.getBaggage(ctx!)).toBeUndefined();
 		});
 
-		// The webhook drops these on the way in. A saved row is read again on every segment,
-		// so the one place that writes the header drops them as well.
 		it.each([
 			['a reserved key', 'tenant=acme,n8n.execution.id=forged'],
 			['a percent-encoded reserved key', 'tenant=acme,n8n%2Eexecution%2Eid=forged'],

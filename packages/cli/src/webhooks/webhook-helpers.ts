@@ -1845,11 +1845,6 @@ function toUnansweredRunResponse(
 	}
 }
 
-/**
- * Reads the W3C trace context and, through the otel module, the caller's baggage from webhook
- * headers for OTel propagation.
- * Returns undefined when the request has neither.
- */
 export function extractTracingContext(
 	headers: IncomingHttpHeaders,
 	otel: IWorkflowExecuteAdditionalData['otel'],

@@ -227,8 +227,6 @@ describe('OTEL Workflow Tracing Integration', () => {
 describe('Caller baggage', () => {
 	const tracingContext = { baggage: 'tenant=acme' };
 
-	// The headers that `injectTraceHeaders` gives each node while it runs, the same call that
-	// the HTTP request helpers and the MCP client make.
 	const sentHeaders: Array<Record<string, string>> = [];
 
 	beforeEach(() => {

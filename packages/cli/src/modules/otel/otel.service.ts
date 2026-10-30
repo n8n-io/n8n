@@ -65,8 +65,6 @@ const stripEmptyResolutionNote = (message: string) =>
 
 @Service()
 export class OtelService {
-	// Read once, as the other OTel variables are. It names the headers; the switch decides
-	// whether n8n sends any.
 	private readonly envPropagator = propagatorFromEnv();
 
 	private activeExport?: ActiveExport;
@@ -88,7 +86,6 @@ export class OtelService {
 		await this.applySavedSettings();
 	}
 
-	/** The spec asks for a warning for a propagator name n8n does not carry. */
 	private warnUnknownPropagators(): void {
 		const unknown = unknownPropagatorNames(propagatorNamesFromEnv() ?? []);
 		if (unknown.length === 0) return;

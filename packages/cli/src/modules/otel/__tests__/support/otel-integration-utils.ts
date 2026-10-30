@@ -84,9 +84,6 @@ export async function initOtelTestEnvironment() {
 	config.includeNodeSpans = true;
 	config.injectOutbound = true;
 
-	// The test provider holds the global tracer provider, so n8n skips its own SDK and
-	// never installs a propagator. Install the one the settings ask for, so the outbound
-	// headers are the ones a running instance sends.
 	propagation.setGlobalPropagator(DEFAULT_OUTBOUND_PROPAGATOR);
 
 	return {
