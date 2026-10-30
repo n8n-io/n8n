@@ -9,8 +9,16 @@ import { useInstanceAiWorkflowPreviewExecution } from '../composables/useInstanc
 import { useIsAgentWorking } from '../composables/useIsAgentWorking';
 import { provideThread, type ThreadRuntime } from '../instanceAi.store';
 
+const { pushListeners } = vi.hoisted(() => ({
+	pushListeners: [] as Array<(event: unknown) => void>,
+}));
 vi.mock('@/app/stores/pushConnection.store', () => ({
-	usePushConnectionStore: () => ({ addEventListener: vi.fn(() => vi.fn()) }),
+	usePushConnectionStore: () => ({
+		addEventListener: vi.fn((listener: (event: unknown) => void) => {
+			pushListeners.push(listener);
+			return vi.fn();
+		}),
+	}),
 }));
 
 function createArtifactThread(overrides: Partial<ArtifactThread> = {}): ArtifactThread {
@@ -56,6 +64,7 @@ function runInChild<T>(provide: () => void, setup: () => T): T {
 describe('useArtifactThread', () => {
 	beforeEach(() => {
 		setActivePinia(createTestingPinia());
+		pushListeners.length = 0;
 	});
 
 	it('returns the provided artifact thread', () => {
@@ -112,5 +121,31 @@ describe('useArtifactThread', () => {
 		execution.restoreExecutionResult();
 
 		expect(getRemembered).toHaveBeenCalledWith('wf-1');
+	});
+
+	it('reports the finished runs of the previewed workflow by their status', () => {
+		const reportWorkflowFailures = vi.fn();
+		const reportWorkflowSuccess = vi.fn();
+		runInChild(
+			() => provideArtifactThread(createArtifactThread()),
+			() =>
+				useInstanceAiWorkflowPreviewExecution({
+					workflowId: () => 'wf-1',
+					executionResult: () => undefined,
+					reportWorkflowFailures,
+					reportWorkflowSuccess,
+					paneElement: () => null,
+				}),
+		);
+		const finish = (data: Record<string, unknown>) => {
+			for (const listener of pushListeners) listener({ type: 'executionFinished', data });
+		};
+
+		finish({ workflowId: 'wf-1', executionId: 'exec-1', status: 'error' });
+		finish({ workflowId: 'wf-2', executionId: 'exec-2', status: 'success' });
+		finish({ workflowId: 'wf-1', executionId: 'exec-3', status: 'success' });
+
+		expect(reportWorkflowFailures).toHaveBeenCalledExactlyOnceWith('exec-1', 'wf-1');
+		expect(reportWorkflowSuccess).toHaveBeenCalledExactlyOnceWith('wf-1');
 	});
 });

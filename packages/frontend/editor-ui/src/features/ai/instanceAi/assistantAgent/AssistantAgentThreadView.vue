@@ -210,12 +210,16 @@ const dismissedExecutionId = ref<string | null>(null);
 const activeFixWithAiOffer = computed(() => {
 	const run = failedRun.value;
 	if (!run || run.executionId === dismissedExecutionId.value) return null;
-	if (panel.value?.isStreaming) return null;
+	if (panel.value?.isBusy) return null;
 	return { ...run, workflowName: thread.producedArtifacts.get(run.workflowId)?.name };
 });
 
 function handleWorkflowFailures(report: WorkflowFailuresReport): void {
 	failedRun.value = report;
+}
+
+function handleWorkflowSucceeded(workflowId: string): void {
+	if (failedRun.value?.workflowId === workflowId) failedRun.value = null;
 }
 
 function dismissFixWithAiOffer(): void {
@@ -471,9 +475,9 @@ function removeStagedNodes(chipId: string): void {
 						@message-accepted="onMessageAccepted"
 						@update:streaming="onStreamingChange"
 					>
-						<template #inline-offers>
+						<!-- Passed only with an offer, so the chat keeps its empty state and spacing. -->
+						<template v-if="activeFixWithAiOffer" #inline-offers>
 							<InstanceAiFixWithAiPanel
-								v-if="activeFixWithAiOffer"
 								:node-name="activeFixWithAiOffer.errors[0].nodeName"
 								:error-message="activeFixWithAiOffer.errors[0].errorMessage"
 								:failed-count="activeFixWithAiOffer.errors.length"
@@ -550,6 +554,7 @@ function removeStagedNodes(chipId: string): void {
 							:refresh-key="preview.workflowRefreshKey.value"
 							:execution-result="preview.activeWorkflowExecutionResult.value"
 							@workflow-failures="handleWorkflowFailures"
+							@workflow-succeeded="handleWorkflowSucceeded"
 						/>
 						<InstanceAiDataTablePreview
 							v-if="preview.isPreviewVisible.value && preview.activeDataTableId.value"

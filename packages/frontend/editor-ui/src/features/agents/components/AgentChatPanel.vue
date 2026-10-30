@@ -1398,6 +1398,10 @@ defineExpose({
 	/** The chips staged with `addComposerAttachment`, until the message that sends them is accepted. */
 	composerAttachments: readonly(composerAttachments),
 	isStreaming: computed(() => isStreaming.value),
+	/** The chat streams, cannot take a send, or waits for the user to answer a card. */
+	isBusy: computed(
+		() => isStreaming.value || isSubmissionBlocked.value || hasOpenInteraction.value,
+	),
 	isLoadingHistory: computed(() => isLoadingHistory.value),
 });
 
@@ -1483,7 +1487,8 @@ onBeforeUnmount(() => {
 				!isStreaming &&
 				!stopNotice &&
 				!preparingSummary &&
-				!summaryMissing
+				!summaryMissing &&
+				!$slots['inline-offers']
 			"
 		>
 			<slot name="empty-state">

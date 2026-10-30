@@ -28,6 +28,7 @@ import AssistantAgentThreadView from '../AssistantAgentThreadView.vue';
 
 const {
 	panelProps,
+	panelSlots,
 	sendMessageFromOutside,
 	telemetryTrack,
 	previewProps,
@@ -37,6 +38,7 @@ const {
 	focusInput,
 } = vi.hoisted(() => ({
 	panelProps: { current: {} as Record<string, unknown> },
+	panelSlots: { current: [] as string[] },
 	sendMessageFromOutside: vi.fn(),
 	telemetryTrack: vi.fn(),
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
@@ -74,7 +76,7 @@ vi.mock('@vueuse/core', async (importOriginal) => {
 // The chat state that the stub panel exposes, as the real panel does.
 const chatMessages = ref<ChatMessage[]>([]);
 const isLoadingHistory = ref(true);
-const isStreaming = ref(false);
+const isBusy = ref(false);
 const composerAttachments = ref<AgentChatComposerAttachment[]>([]);
 
 vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
@@ -101,11 +103,13 @@ vi.mock('@/features/agents/components/AgentChatPanel.vue', () => ({
 				removeComposerAttachment,
 				composerAttachments,
 				messages: chatMessages,
-				isStreaming,
+				isStreaming: ref(false),
+				isBusy,
 				isLoadingHistory,
 			});
 			return () => {
 				panelProps.current = { ...attrs };
+				panelSlots.current = Object.keys(slots);
 				return h('div', { 'data-test-id': 'agent-chat-panel-stub' }, [
 					slots['inline-offers']?.(),
 					slots['composer-attachments']?.(),
@@ -282,7 +286,8 @@ describe('AssistantAgentThreadView', () => {
 		composerAttachments.value = [];
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
-		isStreaming.value = false;
+		isBusy.value = false;
+		panelSlots.current = [];
 		if (threadArea.width) threadArea.width.value = 0;
 		fetchTabs.mockReset().mockResolvedValue({ state: null });
 		saveTabs.mockReset().mockResolvedValue({ state: null });
@@ -536,13 +541,32 @@ describe('AssistantAgentThreadView', () => {
 			chatMessages.value = [buildMessage('tc-1')];
 			await flushPromises();
 
+			await reportFailure(report);
+			return result;
+		}
+
+		async function reportFailure(report: WorkflowFailuresReport) {
 			const onWorkflowFailures = previewProps.current?.onWorkflowFailures as (
 				report: WorkflowFailuresReport,
 			) => void;
 			onWorkflowFailures(report);
 			await flushPromises();
-			return result;
 		}
+
+		async function reportSuccess(workflowId: string) {
+			const onWorkflowSucceeded = previewProps.current?.onWorkflowSucceeded as (
+				workflowId: string,
+			) => void;
+			onWorkflowSucceeded(workflowId);
+			await flushPromises();
+		}
+
+		it('passes no offers to the chat without a failed run', async () => {
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(panelSlots.current).not.toContain('inline-offers');
+		});
 
 		it('offers a fix when a preview run fails', async () => {
 			const { getByTestId } = await renderWithFailedRun();
@@ -574,20 +598,26 @@ describe('AssistantAgentThreadView', () => {
 			await user.click(getByTestId('instance-ai-fix-with-ai-dismiss'));
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
 
-			const onWorkflowFailures = previewProps.current?.onWorkflowFailures as (
-				report: WorkflowFailuresReport,
-			) => void;
-			onWorkflowFailures({ ...failureReport, executionId: 'exec-2' });
-			await flushPromises();
+			await reportFailure({ ...failureReport, executionId: 'exec-2' });
 			expect(getByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
 		});
 
-		it('hides the offer while the Assistant replies', async () => {
+		it('hides the offer while the chat is busy', async () => {
 			const { queryByTestId } = await renderWithFailedRun();
 
-			isStreaming.value = true;
+			isBusy.value = true;
 			await flushPromises();
 
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
+		});
+
+		it('clears the offer when a later run of the same workflow succeeds', async () => {
+			const { queryByTestId } = await renderWithFailedRun();
+
+			await reportSuccess('wf-other');
+			expect(queryByTestId('instance-ai-fix-with-ai-panel')).toBeInTheDocument();
+
+			await reportSuccess('wf-1');
 			expect(queryByTestId('instance-ai-fix-with-ai-panel')).not.toBeInTheDocument();
 		});
 	});

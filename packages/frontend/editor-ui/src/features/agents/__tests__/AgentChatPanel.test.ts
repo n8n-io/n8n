@@ -4315,6 +4315,15 @@ describe('AgentChatPanel', () => {
 				).toBe(true);
 			});
 
+			it('shows the inline-offers slot instead of the empty state', () => {
+				const wrapper = mountPanel({}, undefined, {
+					'inline-offers': '<div data-testid="host-offer" />',
+				});
+
+				expect(wrapper.find('[data-testid="host-offer"]').exists()).toBe(true);
+				expect(wrapper.find('[data-testid="empty-state-stub"]').exists()).toBe(false);
+			});
+
 			it('renders the above-input slot before the composer', () => {
 				const wrapper = mountPanel({}, undefined, {
 					'above-input': '<div data-testid="host-checklist" />',
