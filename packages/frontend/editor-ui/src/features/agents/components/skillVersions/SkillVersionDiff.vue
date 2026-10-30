@@ -141,6 +141,8 @@ function rendersAsMarkdown(section: DiffSection, text: string): boolean {
 	padding: var(--spacing--2xs) 0;
 	border: var(--border);
 	border-radius: var(--radius);
+	/* Read-only fields: a fill sets them apart from the dialog, as disabled inputs do. */
+	background-color: var(--color--background--light-2);
 	overflow-wrap: anywhere;
 }
 

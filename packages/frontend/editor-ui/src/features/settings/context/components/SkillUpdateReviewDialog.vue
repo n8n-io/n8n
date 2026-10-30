@@ -8,6 +8,7 @@ import {
 	N8nDialog,
 	N8nDialogBody,
 	N8nDialogFooter,
+	N8nIcon,
 	N8nLoading,
 	N8nText,
 } from '@n8n/design-system';
@@ -111,7 +112,10 @@ const sections = computed(() => {
 	const added = lines.filter((line) => line.type === 'added').length;
 	const removed = lines.filter((line) => line.type === 'removed').length;
 	return [
-		...diffSkills(current.current, current.update),
+		// The title names the skill, so the name shows only when the update renames it.
+		...diffSkills(current.current, current.update).filter(
+			(section) => section.key !== 'name' || section.added + section.removed > 0,
+		),
 		// Accept stores the frontmatter too, so a change to it shows as its own entry.
 		...(added + removed > 0 ? [{ key: FRONTMATTER, lines, added, removed }] : []),
 	];
@@ -250,13 +254,16 @@ function openInGitHub() {
 			<N8nLoading variant="p" :rows="8" data-test-id="skill-update-loading" />
 		</N8nDialogBody>
 		<N8nDialogBody v-else-if="review && update" :class="$style.body">
-			<N8nCallout theme="secondary" icon="git-branch" data-test-id="skill-update-banner">
-				{{
-					i18n.baseText('settings.context.skills.review.banner', {
-						interpolate: { label: review.source.label, path: update.location },
-					})
-				}}
-			</N8nCallout>
+			<div :class="$style.banner" data-test-id="skill-update-banner">
+				<N8nIcon icon="git-branch" :size="14" />
+				<N8nText size="small" :class="$style.bannerText">
+					{{
+						i18n.baseText('settings.context.skills.review.banner', {
+							interpolate: { label: review.source.label, path: update.location },
+						})
+					}}
+				</N8nText>
+			</div>
 
 			<div :class="$style.columns">
 				<nav :class="$style.files" data-test-id="skill-update-files">
@@ -429,6 +436,20 @@ function openInGitHub() {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.banner {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--radius);
+	background-color: var(--callout--color--background--secondary);
+	color: var(--callout--color--text--secondary);
+}
+
+.bannerText {
+	color: inherit;
 }
 
 .columns {
