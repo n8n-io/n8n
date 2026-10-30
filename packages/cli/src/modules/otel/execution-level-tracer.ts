@@ -1,13 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type {
-	Attributes,
-	Baggage,
-	Context,
-	Exception,
-	Span,
-	TimeInput,
-} from '@opentelemetry/api';
+import type { Attributes, Baggage, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
 import {
 	context,
 	defaultTextMapGetter,
@@ -350,7 +343,11 @@ export class ExecutionLevelTracer {
 
 	private parseCallerBaggage(executionId: string, header: string | undefined): Baggage | undefined {
 		if (!header) return undefined;
-		const extracted = baggagePropagator.extract(ROOT_CONTEXT, { baggage: header }, defaultTextMapGetter);
+		const extracted = baggagePropagator.extract(
+			ROOT_CONTEXT,
+			{ baggage: header },
+			defaultTextMapGetter,
+		);
 		const baggage = propagation.getBaggage(extracted);
 		if (!baggage) return undefined;
 

@@ -1162,7 +1162,8 @@ describe('ExecutionLevelTracer', () => {
 			const saved = baggageTracer.startWorkflow({
 				executionId: 'exec-bag-reserved',
 				tracingContext: {
-					baggage: 'tenant=acme,n8n.execution.id=forged,N8N.Project.Name=forged,n8n%2Eworkflow.id=x',
+					baggage:
+						'tenant=acme,n8n.execution.id=forged,N8N.Project.Name=forged,n8n%2Eworkflow.id=x',
 				},
 				workflow: defaultWorkflow,
 			});
