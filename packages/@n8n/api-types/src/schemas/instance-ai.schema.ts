@@ -27,13 +27,13 @@ import { Z } from '../zod-class';
 // ---------------------------------------------------------------------------
 
 /**
- * Sentinel value returned by `GET /instance-ai/credits` when the AI service
+ * Sentinel value returned by `GET /assistant/credits` when the AI service
  * proxy is disabled (credits are not metered). Consumers should treat this as "unlimited".
  */
 export const UNLIMITED_CREDITS = -1;
 
 /**
- * The instance's n8n Assistant credit standing, as reported by `GET /instance-ai/credits`, by the
+ * The instance's n8n Assistant credit standing, as reported by `GET /assistant/credits`, by the
  * `updateInstanceAiCredits` push and by the internal callers that pass it around.
  *
  * `creditsQuota` is {@link UNLIMITED_CREDITS} when the AI service proxy is disabled.

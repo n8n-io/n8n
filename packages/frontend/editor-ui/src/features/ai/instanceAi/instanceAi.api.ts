@@ -127,11 +127,11 @@ export async function postConfirmation(
 }
 
 /**
- * GET /instance-ai/credits -> { creditsQuota, creditsClaimed }
+ * GET /assistant/credits -> { creditsQuota, creditsClaimed }
  * Returns -1 quota when proxy is disabled.
  */
 export async function getInstanceAiCredits(context: IRestApiContext): Promise<InstanceAiCredits> {
-	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/instance-ai/credits');
+	return await makeRestApiRequest<InstanceAiCredits>(context, 'GET', '/assistant/credits');
 }
 
 /**
