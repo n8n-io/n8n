@@ -17,8 +17,25 @@ import { updateApp } from '../../apps.api';
 import { getAppPermissions } from '../../apps.permissions';
 import type { AppConfigureTabEmits, AppConfigureTabProps } from './appConfigureTabs';
 
-const SCHEMAS = { name: appNameSchema, namespace: appNamespaceSchema };
-type Field = keyof typeof SCHEMAS;
+const FIELDS = [
+	{
+		id: 'name',
+		schema: appNameSchema,
+		maxLength: 128,
+		label: 'apps.configure.basics.name',
+		description: undefined,
+		invalidText: 'apps.configure.basics.nameInvalid',
+	},
+	{
+		id: 'namespace',
+		schema: appNamespaceSchema,
+		maxLength: 54,
+		label: 'apps.configure.basics.namespace',
+		description: 'apps.configure.basics.namespaceDescription',
+		invalidText: 'apps.configure.basics.namespaceInvalid',
+	},
+] as const;
+type Field = (typeof FIELDS)[number]['id'];
 
 const props = defineProps<AppConfigureTabProps>();
 
@@ -31,9 +48,17 @@ const rootStore = useRootStore();
 
 const form = ref<Record<Field, string>>({ name: props.app.name, namespace: props.app.namespace });
 const saving = ref<Partial<Record<Field, boolean>>>({});
+let pendingSave = Promise.resolve();
 
 const canUpdate = computed(() => getAppPermissions(props.app.projectId).canUpdate);
-const namespaceValid = computed(() => SCHEMAS.namespace.safeParse(form.value.namespace).success);
+const invalid = computed(
+	() =>
+		new Set(
+			FIELDS.filter(({ id, schema }) => !schema.safeParse(form.value[id]).success).map(
+				({ id }) => id,
+			),
+		),
+);
 
 function reset(field: Field) {
 	form.value[field] = props.app[field];
@@ -53,14 +78,7 @@ async function confirmNamespaceChange() {
 	return answer === 'confirm';
 }
 
-async function commit(field: Field) {
-	const value = form.value[field].trim();
-	if (saving.value[field]) return;
-	if (value === props.app[field] || !SCHEMAS[field].safeParse(value).success) {
-		reset(field);
-		return;
-	}
-	saving.value[field] = true;
+async function save(field: Field, value: string) {
 	try {
 		if (field === 'namespace' && !(await confirmNamespaceChange())) {
 			reset(field);
@@ -77,6 +95,17 @@ async function commit(field: Field) {
 	} finally {
 		saving.value[field] = false;
 	}
+}
+
+function commit(field: Field) {
+	const value = form.value[field].trim();
+	if (saving.value[field] || invalid.value.has(field)) return;
+	if (value === props.app[field]) {
+		reset(field);
+		return;
+	}
+	saving.value[field] = true;
+	pendingSave = pendingSave.then(async () => await save(field, value));
 }
 
 function onKeydown(event: KeyboardEvent, field: Field) {
@@ -107,42 +136,31 @@ watch(
 					{{ i18n.baseText('apps.configure.basics.description') }}
 				</N8nText>
 			</div>
-			<N8nSettingsRow :title="i18n.baseText('apps.configure.basics.name')" layout="vertical">
-				<template #action>
-					<N8nInput
-						v-model="form.name"
-						:maxlength="128"
-						:disabled="!canUpdate || saving.name"
-						:aria-label="i18n.baseText('apps.configure.basics.name')"
-						data-test-id="app-configure-name"
-						@blur="commit('name')"
-						@keydown="onKeydown($event, 'name')"
-					/>
-				</template>
-			</N8nSettingsRow>
 			<N8nSettingsRow
-				:title="i18n.baseText('apps.configure.basics.namespace')"
-				:description="i18n.baseText('apps.configure.basics.namespaceDescription')"
+				v-for="field in FIELDS"
+				:key="field.id"
+				:title="i18n.baseText(field.label)"
+				:description="field.description && i18n.baseText(field.description)"
 				layout="vertical"
 			>
 				<template #action>
 					<div :class="$style.field">
 						<N8nInput
-							v-model="form.namespace"
-							:class="{ [$style.invalid]: !namespaceValid }"
-							:maxlength="54"
-							:disabled="!canUpdate || saving.namespace"
-							:aria-label="i18n.baseText('apps.configure.basics.namespace')"
-							data-test-id="app-configure-namespace"
-							@blur="commit('namespace')"
-							@keydown="onKeydown($event, 'namespace')"
+							v-model="form[field.id]"
+							:class="{ [$style.invalid]: invalid.has(field.id) }"
+							:maxlength="field.maxLength"
+							:disabled="!canUpdate || saving[field.id]"
+							:aria-label="i18n.baseText(field.label)"
+							:data-test-id="`app-configure-${field.id}`"
+							@blur="commit(field.id)"
+							@keydown="onKeydown($event, field.id)"
 						/>
 						<N8nText
-							v-if="!namespaceValid"
+							v-if="invalid.has(field.id)"
 							:class="$style.error"
-							data-test-id="app-configure-namespace-error"
+							:data-test-id="`app-configure-${field.id}-error`"
 						>
-							{{ i18n.baseText('apps.configure.basics.namespaceInvalid') }}
+							{{ i18n.baseText(field.invalidText) }}
 						</N8nText>
 					</div>
 				</template>

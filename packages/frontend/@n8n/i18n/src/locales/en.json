@@ -352,6 +352,7 @@
 	"apps.configure.basics.title": "Basics",
 	"apps.configure.basics.description": "How your app appears in the browser",
 	"apps.configure.basics.name": "App name",
+	"apps.configure.basics.nameInvalid": "Enter an app name.",
 	"apps.configure.basics.namespace": "Namespace",
 	"apps.configure.basics.namespaceDescription": "Part of the app URL. Changing it changes the URL.",
 	"apps.configure.basics.namespaceInvalid": "Use lowercase letters, numbers and single hyphens between them, up to 54 characters.",

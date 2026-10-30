@@ -103,18 +103,52 @@ describe('AppConfigureTabBasics', () => {
 		expect(updateApp).not.toHaveBeenCalled();
 	});
 
-	it('shows an error for an invalid namespace and resets it on blur', async () => {
+	it('keeps an invalid namespace with its error on blur', async () => {
 		providePermissions(['app:update']);
 		const { getByTestId, queryByTestId } = renderComponent();
 		expect(queryByTestId('app-configure-namespace-error')).not.toBeInTheDocument();
 
 		await userEvent.type(getByTestId('app-configure-namespace'), '--Bad');
-		expect(getByTestId('app-configure-namespace-error')).toBeInTheDocument();
-
 		await userEvent.tab();
 
 		expect(updateApp).not.toHaveBeenCalled();
-		expect(getByTestId('app-configure-namespace')).toHaveValue('expenses');
+		expect(getByTestId('app-configure-namespace')).toHaveValue('expenses--Bad');
+		expect(getByTestId('app-configure-namespace-error')).toBeInTheDocument();
+	});
+
+	it('shows an error for an empty name and does not save it', async () => {
+		providePermissions(['app:update']);
+		const { getByTestId } = renderComponent();
+
+		await userEvent.clear(getByTestId('app-configure-name'));
+		await userEvent.tab();
+
+		expect(updateApp).not.toHaveBeenCalled();
+		expect(getByTestId('app-configure-name-error')).toHaveTextContent('Enter an app name.');
+	});
+
+	it('saves the second field only after the first save ends', async () => {
+		providePermissions(['app:update']);
+		let finishFirst: (value: AppResponse) => void = () => {};
+		vi.mocked(updateApp)
+			.mockImplementationOnce(async () => await new Promise((resolve) => (finishFirst = resolve)))
+			.mockResolvedValueOnce(app('Sales', { namespace: 'sales' }));
+		const { getByTestId, emitted } = renderComponent();
+
+		await userEvent.clear(getByTestId('app-configure-name'));
+		await userEvent.type(getByTestId('app-configure-name'), 'Sales');
+		await userEvent.click(getByTestId('app-configure-namespace'));
+		await userEvent.clear(getByTestId('app-configure-namespace'));
+		await userEvent.type(getByTestId('app-configure-namespace'), 'sales');
+		await userEvent.tab();
+		expect(updateApp).toHaveBeenCalledOnce();
+
+		finishFirst(app('Sales'));
+
+		await waitFor(() => expect(updateApp).toHaveBeenCalledTimes(2));
+		await waitFor(() =>
+			expect(emitted('updated')).toEqual([[app('Sales')], [app('Sales', { namespace: 'sales' })]]),
+		);
 	});
 
 	it('keeps an edit in one field when the other field is saved', async () => {
