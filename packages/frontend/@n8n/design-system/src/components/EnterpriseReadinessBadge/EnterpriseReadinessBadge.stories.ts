@@ -4,6 +4,8 @@ import EnterpriseReadinessBadge from './EnterpriseReadinessBadge.vue';
 import { BADGE_SIZE } from '../N8nBadge/Badge.type';
 import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
 
+const DOCS_URL = 'https://docs.n8n.io/advanced-ai/chat-hub/';
+
 const meta = {
 	title: 'Core/EnterpriseReadinessBadge',
 	component: EnterpriseReadinessBadge,
@@ -30,6 +32,7 @@ export const Default: Story = {
 	},
 	args: {
 		size: 'xxsmall',
+		docsUrl: DOCS_URL,
 	},
 };
 
@@ -39,8 +42,8 @@ export const Sizes: Story = {
 			components: { EnterpriseReadinessBadge },
 			template: `
 				<div style="display: flex; gap: var(--spacing--sm); align-items: center;">
-					<EnterpriseReadinessBadge size="xxsmall" />
-					<EnterpriseReadinessBadge size="xsmall" />
+					<EnterpriseReadinessBadge size="xxsmall" docs-url="${DOCS_URL}" />
+					<EnterpriseReadinessBadge size="xsmall" docs-url="${DOCS_URL}" />
 				</div>
 			`,
 		};
@@ -54,7 +57,7 @@ export const WithPreviewBadge: Story = {
 			template: `
 				<div style="display: flex; gap: var(--spacing--2xs); align-items: center;">
 					<PreviewBadge />
-					<EnterpriseReadinessBadge />
+					<EnterpriseReadinessBadge docs-url="${DOCS_URL}" />
 				</div>
 			`,
 		};

@@ -435,10 +435,9 @@ $expand-easing: motion.$blur-motion-easing;
 }
 
 // Trailing badges are taller than the title text.
-// A wider gap keeps the description clear of the badge boxes.
-// A row without trailing content keeps the smaller gap.
+// Keep a wider gap than a row with no badge, so the description stays clear of the badge.
 .textWithTitleTrailing {
-	gap: var(--spacing--xs);
+	gap: var(--spacing--2xs);
 }
 
 .title {
@@ -451,7 +450,7 @@ $expand-easing: motion.$blur-motion-easing;
 .titleLine {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--3xs);
 	min-width: 0;
 }
 

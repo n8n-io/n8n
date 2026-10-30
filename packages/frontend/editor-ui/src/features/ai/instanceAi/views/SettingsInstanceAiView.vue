@@ -500,6 +500,7 @@ async function handleDataSharingToggle(value: boolean) {
 			<template v-if="settingsStore.isEnterprisePlan" #titleTrailing>
 				<N8nEnterpriseReadinessBadge
 					size="xsmall"
+					:docs-url="DOCS_URL"
 					data-test-id="n8n-agent-enterprise-readiness-badge"
 				/>
 			</template>
