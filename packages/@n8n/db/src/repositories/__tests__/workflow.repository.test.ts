@@ -659,6 +659,31 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findPageAfter', () => {
+		it('should return the selected fields of the workflows after the cursor', async () => {
+			const page = [Object.assign(new WorkflowEntity(), { id: 'b', name: 'B' })];
+			const findSpy = vi.spyOn(workflowRepository, 'find').mockResolvedValue(page);
+
+			const first = await workflowRepository.findPageAfter(undefined, 100, ['id', 'name']);
+			const next = await workflowRepository.findPageAfter('a', 100, ['id', 'name']);
+
+			expect(first).toBe(page);
+			expect(next).toBe(page);
+			expect(findSpy).toHaveBeenNthCalledWith(1, {
+				select: ['id', 'name'],
+				where: {},
+				take: 100,
+				order: { id: 'ASC' },
+			});
+			expect(findSpy).toHaveBeenNthCalledWith(2, {
+				select: ['id', 'name'],
+				where: { id: MoreThan('a') },
+				take: 100,
+				order: { id: 'ASC' },
+			});
+		});
+	});
+
 	describe('findExistingIds', () => {
 		it('returns only the ids that still exist', async () => {
 			entityManager.find.mockResolvedValue([

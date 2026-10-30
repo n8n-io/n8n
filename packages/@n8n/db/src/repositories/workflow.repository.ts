@@ -711,6 +711,20 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		return workflows.map(({ id }) => id);
 	}
 
+	/** Like `getIdsAfter`, but returns the workflows with the `select` fields. */
+	async findPageAfter(
+		afterId: string | undefined,
+		take: number,
+		select: Array<keyof WorkflowEntity>,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select,
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
 	/** The subset of `workflowIds` that still exists, in no particular order. */
 	async findExistingIds(workflowIds: string[], ctx: OperationContext = {}): Promise<string[]> {
 		if (workflowIds.length === 0) return [];
