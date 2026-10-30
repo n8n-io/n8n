@@ -49,6 +49,32 @@ function readLoginMethod(data: CustomModelEndpointCredentialData): LoginMethod {
 	}
 }
 
+export type OpenAiCredentialData = {
+	apiKey?: string;
+	organizationId?: string;
+	url?: string;
+	header?: boolean;
+	headerName?: string;
+	headerValue?: string;
+};
+
+/** So a workflow already reaching a gateway through the OpenAI node keeps its credential. */
+export function readOpenAiCredential(data: OpenAiCredentialData): EndpointCredential {
+	const custom =
+		data.header && data.headerName?.trim()
+			? { [data.headerName.trim()]: data.headerValue ?? '' }
+			: {};
+	const organization = data.organizationId?.trim()
+		? { 'OpenAI-Organization': data.organizationId.trim() }
+		: {};
+
+	return {
+		baseUrl: normalizeEndpoint(data.url) ?? '',
+		login: { type: 'bearer', token: data.apiKey?.trim() ?? '' },
+		gatewayHeaders: { ...organization, ...custom },
+	};
+}
+
 export function readCustomModelEndpointCredential(
 	data: CustomModelEndpointCredentialData,
 ): EndpointCredential {
