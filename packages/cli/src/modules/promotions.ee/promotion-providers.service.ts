@@ -29,6 +29,7 @@ import { PromotionEnvironmentRepository } from './database/repositories/promotio
 import { PromotionProviderRepository } from './database/repositories/promotion-provider.repository';
 import { GitHostClients } from './git-hosts/git-host-clients';
 import type { GitHostDiscoveryQuery } from './git-hosts/git-host.types';
+import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import { mapPromotionConflicts } from './promotion-conflicts';
 import { observePromotion } from './promotion-telemetry';
 import { PromotionsGitService } from './promotions-git.service';
@@ -51,6 +52,7 @@ export class PromotionProvidersService {
 		private readonly cipher: Cipher,
 		private readonly gitHosts: GitHostClients,
 		private readonly eventService: EventService,
+		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
 	) {}
 
 	async create(
@@ -175,6 +177,8 @@ export class PromotionProvidersService {
 		const { id } = current;
 		const { changes, config, credentials } = await this.prepareUpdate(current, input);
 		const updatesAuthentication = input.auth !== undefined || input.config !== undefined;
+		const changesHostUrl =
+			input.config !== undefined && !this.isSameHostUrl(current.config, input.config);
 
 		if (updatesAuthentication) {
 			await this.validateHostAccess(
@@ -197,6 +201,7 @@ export class PromotionProvidersService {
 		} else {
 			await this.providerRepository.updateProvider(id, changes);
 		}
+		if (changesHostUrl) await this.checkoutCleanup.resetCheckoutsForHostChange(id);
 		// Read the row back. A provider deleted in between fails the update.
 		return this.toPublic(await this.getEntity(id));
 	}

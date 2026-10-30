@@ -96,6 +96,7 @@ import { PromotionEnvironmentResolver } from '../promotion-environment.resolver'
 import { PromotionProvidersService } from '../promotion-providers.service';
 import { PromotionReviewGateService } from '../promotion-review-gate.service';
 import { PromotionReviewsService } from '../promotion-reviews.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { PromotionsService } from '../promotions.service';
@@ -199,6 +200,11 @@ beforeEach(async () => {
 		instanceId: 'inst-test',
 	});
 	workingDirectory = new PromotionWorkingDirectoryService(instanceSettings);
+	const checkoutCleanup = new PromotionCheckoutCleanupService(
+		workingDirectory,
+		environmentRepository,
+		logger,
+	);
 	service = new PromotionsService(
 		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),
 		new PromotionProvidersService(
@@ -208,8 +214,10 @@ beforeEach(async () => {
 			cipher,
 			mock<GitHostClients>(),
 			mock<EventService>(),
+			checkoutCleanup,
 		),
 		workingDirectory,
+		checkoutCleanup,
 		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
 		projectRepository,
