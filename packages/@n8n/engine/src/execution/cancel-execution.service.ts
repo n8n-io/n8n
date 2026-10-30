@@ -14,9 +14,7 @@ export interface CancelExecutionResult {
 }
 
 /**
- * Ends an execution on request. No more steps will be planned. A sub-execution
- * cancelled on its own resumes the step that waits for it, so that step fails
- * instead of waiting for ever.
+ * Ends an execution on request. No more steps will be planned.
  * TODO(CAT-4757): interrupt already-running steps through their executor.
  */
 export class CancelExecutionService {
