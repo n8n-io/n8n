@@ -115,6 +115,9 @@ const SKILL_SOURCE_REASON_KEYS = {
 	credential_missing: 'settings.context.skills.connect.error.credentialMissing',
 	credential_out_of_scope: 'settings.context.skills.connect.error.credentialOutOfScope',
 	host_blocked: 'settings.context.skills.connect.error.hostBlocked',
+	stale: 'settings.context.skills.connect.error.stale',
+	name_clash: 'settings.context.skills.connect.error.nameClash',
+	skill_deleted: 'settings.context.skills.connect.error.skillDeleted',
 } satisfies Record<SkillSourceReason, BaseTextKey>;
 
 /** The short form in the import toast, as in "Could not add seo-check (reason)". */

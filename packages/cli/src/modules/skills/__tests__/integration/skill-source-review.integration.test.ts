@@ -194,6 +194,21 @@ describe('Review of skill updates', () => {
 			expect((await outsider.get('/skill-sources').expect(200)).body.data).toEqual([]);
 		});
 
+		it('checks a source now, for a user who may change it', async () => {
+			const { sourceId } = await importAll();
+			await db().update(SkillSourceConnection, { id: sourceId }, { lastCheckedAt: new Date(0) });
+			github.push('acme/skills', {
+				...github.files('acme/skills'),
+				'skills/docx/SKILL.md': skillMd('docx', 'v2'),
+			});
+
+			const { body } = await editor.post(`/skill-sources/${sourceId}/check`).expect(200);
+
+			expect(body.data).toMatchObject({ label: 'acme/skills', updatesFound: 1, throttled: false });
+			await viewer.post(`/skill-sources/${sourceId}/check`).expect(403);
+			await outsider.post(`/skill-sources/${sourceId}/check`).expect(404);
+		});
+
 		it('answers 404 with the flag off', async () => {
 			postHog.getFeatureFlags.mockResolvedValue({});
 

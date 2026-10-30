@@ -1,4 +1,7 @@
 import type {
+	AcceptSkillUpdatesDto,
+	ReviewSkillUpdateDto,
+	SkillSourceListItem,
 	ConnectSkillSourceDto,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -113,8 +116,48 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.checkSkillForUpdates(rootStore.restApiContext, id);
 	}
 
+	const sources = ref<SkillSourceListItem[]>([]);
+
+	/** The sources that the user can see, for the Sources tab. */
+	async function fetchSources() {
+		sources.value = await api.listSkillSources(rootStore.restApiContext);
+		return sources.value;
+	}
+
+	async function checkSource(sourceId: string) {
+		return await api.checkSkillSource(rootStore.restApiContext, sourceId);
+	}
+
+	async function fetchSourceUpdates(sourceId: string) {
+		return await api.getSkillSourceUpdates(rootStore.restApiContext, sourceId);
+	}
+
+	async function acceptSourceUpdates(sourceId: string, payload: AcceptSkillUpdatesDto) {
+		return await api.acceptSkillSourceUpdates(rootStore.restApiContext, sourceId, payload);
+	}
+
+	async function fetchSkillUpdate(skillId: string) {
+		return await api.getSkillUpdate(rootStore.restApiContext, skillId);
+	}
+
+	async function acceptSkillUpdate(skillId: string, payload: ReviewSkillUpdateDto) {
+		return await api.acceptSkillUpdate(rootStore.restApiContext, skillId, payload);
+	}
+
+	async function skipSkillUpdate(skillId: string, payload: ReviewSkillUpdateDto) {
+		await api.skipSkillUpdate(rootStore.restApiContext, skillId, payload);
+	}
+
 	return {
 		skills,
+		sources,
+		fetchSources,
+		checkSource,
+		fetchSourceUpdates,
+		acceptSourceUpdates,
+		fetchSkillUpdate,
+		acceptSkillUpdate,
+		skipSkillUpdate,
 		count,
 		loading,
 		fetchSkills,

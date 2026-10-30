@@ -136,6 +136,26 @@ export class SkillSyncService {
 	 */
 	async checkNow(user: User, skillId: string): Promise<SkillSourceCheckResponse> {
 		const { source } = await this.requireSource(user, skillId, 'checkNow');
+		return await this.checkSourceNow(user, source);
+	}
+
+	/** Check now from the Sources tab: the same check for a source by its id. */
+	async checkNowBySource(user: User, sourceId: string): Promise<SkillSourceCheckResponse> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.sourceRepository.findById(sourceId);
+		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		if (!(await this.skillAccess.canOnSource(user, source, 'checkNow'))) {
+			throw new ForbiddenError('You are not allowed to check this source.');
+		}
+		return await this.checkSourceNow(user, source);
+	}
+
+	private async checkSourceNow(
+		user: User,
+		source: SkillSourceConnection,
+	): Promise<SkillSourceCheckResponse> {
 		const client = this.clients.get(source.type);
 		if (!client) throw new NotFoundError('This skill is not synced.');
 		const label = client.describe(source.locator).label;
@@ -326,7 +346,7 @@ export class SkillSyncService {
 		for (const { skillId, contentHash } of uniqueBy(request.updates, (update) => update.skillId)) {
 			const link = await this.sourceRepository.findLinkBySkillId(skillId);
 			try {
-				if (!link || link.sourceId !== source.id) throw staleError();
+				if (link?.sourceId !== source.id) throw staleError();
 				response.accepted.push(
 					await this.acceptOne(
 						user,

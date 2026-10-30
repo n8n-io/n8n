@@ -73,6 +73,16 @@ export class SkillSourceController {
 		return await this.skillSyncService.listUpdates(req.user, sourceId);
 	}
 
+	/** Check now from the Sources tab: checks the source for updates. */
+	@Post('/:sourceId/check')
+	async checkSource(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+	) {
+		return await this.skillSyncService.checkNowBySource(req.user, sourceId);
+	}
+
 	/** Update all: accepts each reviewed update of the source that is not blocked. */
 	@Post('/:sourceId/updates/accept')
 	async acceptAll(
