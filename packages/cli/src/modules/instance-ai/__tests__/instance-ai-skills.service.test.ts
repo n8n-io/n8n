@@ -15,6 +15,7 @@ const openScope: InstanceAiSkillScope = {
 	profile: resolvePromptProfile({ mode: 'default' }).profile,
 	flags: { configEvalsEnabled: true, instanceContextEnabled: true },
 	agentBuildingEnabled: true,
+	appBuildingEnabled: true,
 };
 
 const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
@@ -33,6 +34,7 @@ const gatedSkills: Array<[string, InstanceAiSkillScope, SkillId[]]> = [
 		{ ...openScope, agentBuildingEnabled: false },
 		[SKILLS.agentBuilder, SKILLS.intentRecognition],
 	],
+	['appBuildingEnabled', { ...openScope, appBuildingEnabled: false }, [SKILLS.appBuilder]],
 ];
 
 describe('InstanceAiSkillsService', () => {

@@ -23,6 +23,9 @@ const loadCredentialsTool = lazyMod(
 const loadConversationHistoryTool = lazyMod(
 	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
 );
+const loadAppsTool = lazyMod(
+	() => require('./apps/apps.tool') as typeof import('./apps/apps.tool'),
+);
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
 );
@@ -152,6 +155,13 @@ function getOrchestratorDomainToolFactories(
 		],
 	];
 
+	if (context.credentialDescriptionsEnabled === true) {
+		tools.push([
+			DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION,
+			() => loadCredentialsTool().createUpdateCredentialDescriptionTool(context),
+		]);
+	}
+
 	// Onboarding threads only: the tool ends the flow the host seeded, and the frontend restores
 	// the chat chrome when it sees the call.
 	if (context.onboardingThread) {
@@ -220,6 +230,10 @@ function getOrchestratorDomainToolFactories(
 
 	if (context.skillService) {
 		tools.push([DOMAIN_TOOL_IDS.SKILLS, () => loadSkillsTool().createSkillsTool(context)]);
+	}
+
+	if (context.appService) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
 	}
 
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {

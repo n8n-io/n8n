@@ -26,9 +26,11 @@ custom endpoints, and Gateway credits use the complete eager catalog.
 These local tools stay eager when they are attached:
 
 - `workspace_read_file`
+- `workspace_read_files`
 - `workspace_read_tool_result`
 - `workspace_write_file`
 - `workspace_str_replace_file`
+- `workspace_edit_files`
 - `workspace_execute_command`
 - `load_skill`
 - `mark_session_failed`
@@ -54,6 +56,15 @@ each child's selected model. There is no feature flag or Agent Builder setting.
 - Attach condition: Always attached.
 - Source: [`tools/environment-tool.ts`](./tools/environment-tool.ts).
 
+### `read_binary_data`
+
+- Purpose: Reads a file by its fileId. The tool checks that the thread can read the file and that its bytes are still in storage. Other types than images, PDFs and text return an error.
+  - Images and PDFs go to the model as file parts. The model must support the type: PNG, JPEG, GIF and WebP for images. The limit is the chat attachment size (10 MB). The file stays attached in later model calls, under the same budget as user files. A file outside the budget shows the text `[File "<name>" (fileId: <id>) is not attached now.]`.
+  - The tool description tells the model to read a file that is not attached now again, and not to read a file that is already attached.
+  - Text files (up to 200 KB) go into the tool result as text, one time. The tool result size guard applies to them, and later model calls do not load them again.
+- Attach condition: The agent is not an inline agent.
+- Source: [`tools/read-binary-data.tool.ts`](./tools/read-binary-data.tool.ts).
+
 ## Workspace and knowledge tools
 
 Attach condition: The sandbox is on and the agent is not an inline agent. The runtime attaches them through `agent.workspace(...)` in `attachWorkspaceAndKnowledge`. A delegated sub-agent gets the same tools scoped to its own folder in the parent workspace.
@@ -63,9 +74,11 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 | Tool | Purpose |
 | --- | --- |
 | `workspace_read_file` | Reads a file from the workspace. |
+| `workspace_read_files` | Reads several files, or line ranges of them, in one call. |
 | `workspace_read_tool_result` | Reads the full result of an earlier tool call. |
 | `workspace_write_file` | Writes a file to the workspace. |
 | `workspace_str_replace_file` | Replaces a string in a workspace file. |
+| `workspace_edit_files` | Applies several writes and replacements in one call, and reports each result. |
 | `workspace_append_file` | Appends content to a workspace file. |
 | `workspace_list_files` | Lists the files in the workspace. |
 | `workspace_file_stat` | Returns metadata for a workspace file. |

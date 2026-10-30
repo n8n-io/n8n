@@ -1,3 +1,4 @@
+import type { UpdatePromotionEnvironmentDto } from '@n8n/api-types';
 import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
 import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
@@ -10,16 +11,13 @@ import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '@/modules/promotions.ee/database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from '@/modules/promotions.ee/database/repositories/promotion-run.repository';
+import { insertTokenProvider } from '@/modules/promotions.ee/__tests__/utils/promotion-fixtures';
+import { storePromotionRemote } from '@/modules/promotions.ee/git-hosts/git-host-remote';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
+import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-environments.service';
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
-import {
-	createAdmin,
-	createMember,
-	createMemberWithApiKey,
-	createOwnerWithApiKey,
-	createUser,
-} from '@test-integration/db/users';
+import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 const baseUrl = 'https://gitlab.example.com';
@@ -127,7 +125,8 @@ function gitlabWrites(
 
 describe('Promotion reviews in the Inbox', () => {
 	const testServer = setupTestServer({
-		endpointGroups: ['publicApi'],
+		reuseServer: true,
+		endpointGroups: ['promotions'],
 		enabledFeatures: ['feat:promotions'],
 		modules: ['inbox', 'promotions'],
 	});
@@ -160,33 +159,35 @@ describe('Promotion reviews in the Inbox', () => {
 	}
 
 	async function createEnvironment(
-		provider: object,
-		target: { name: string; scope: string; remoteUrl: string },
+		provider: Parameters<typeof insertTokenProvider>[0],
+		target: { name: string; scope: 'instance' | 'projects'; remoteUrl: string },
 	) {
-		const agent = testServer.publicApiAgentFor(owner);
-		const created = await agent.post('/promotions/providers').send(provider);
-		expect(created.status, JSON.stringify(created.body)).toBe(201);
-		const environment = await agent.post('/promotions/environments').send({
+		// Provider validation has separate API tests. Inbox tests need stored fixtures.
+		const created = await insertTokenProvider(provider);
+		const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
 			name: target.name,
 			scope: target.scope,
-			providerId: created.body.provider.id,
-			remote: { schemaVersion: 1, remoteUrl: target.remoteUrl },
+			providerId: created.id,
+			// Stored like the API stores it: a repository path for a Git host.
+			remote: storePromotionRemote(created, { schemaVersion: 1, remoteUrl: target.remoteUrl }),
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 		});
-		expect(environment.status, JSON.stringify(environment.body)).toBe(201);
-		return environment.body.id as string;
+		return environment.id;
 	}
 
 	/** A plain Git provider has no host API, so its reviews report no_connection. */
 	const createGitEnvironment = async (name: string) =>
 		await createEnvironment(
-			{ name, type: 'git', auth: { authType: 'token', username: 'u', password: 'p' } },
+			{ name, type: 'git' },
 			{ name, scope: 'projects', remoteUrl: `https://example.com/org/${name}.git` },
 		);
 
-	const inbox = async (user: User, query: Record<string, string>) =>
-		await testServer.authAgentFor(user).get('/inbox').query(query);
+	const inbox = async (user: User, query: Record<string, string>) => {
+		const response = await testServer.authAgentFor(user).get('/inbox').query(query);
+		expect(response.status, response.text).toBe(200);
+		return response;
+	};
 
 	const approve = async (user: User, reviewId: string, headCommitSha = headSha) =>
 		await testServer
@@ -218,24 +219,11 @@ describe('Promotion reviews in the Inbox', () => {
 		await Container.get(PromotionEnvironmentRepository).delete({});
 		await Container.get(PromotionProviderRepository).delete({});
 		await testDb.truncate(['User']);
-		owner = await createOwnerWithApiKey();
-
-		const validation = nock(baseUrl)
-			.get('/api/v4/user')
-			.reply(200, { id: 1 })
-			.get('/api/v4/projects')
-			.query(true)
-			.reply(200, []);
+		owner = await createOwner();
 		environmentId = await createEnvironment(
-			{
-				name: 'GitLab',
-				type: 'gitlab',
-				auth: { authType: 'token', password: token },
-				config: { schemaVersion: 1, baseUrl },
-			},
+			{ name: 'GitLab', type: 'gitlab', password: token, config: { schemaVersion: 1, baseUrl } },
 			{ name: 'To production', scope: 'instance', remoteUrl: `${baseUrl}/platform/workflows.git` },
 		);
-		validation.done();
 	});
 
 	afterEach(() => nock.cleanAll());
@@ -244,52 +232,40 @@ describe('Promotion reviews in the Inbox', () => {
 		const stateOf = async (reviewId: string) =>
 			(await reviewRepository.findOneByOrFail({ id: reviewId })).state;
 
-		const createProvider = async (payload: object) => {
-			const created = await testServer
-				.publicApiAgentFor(owner)
-				.post('/promotions/providers')
-				.send(payload);
-			expect(created.status, JSON.stringify(created.body)).toBe(201);
-			return created.body.provider.id as string;
-		};
+		// The public API tests cover the endpoints. These tests need only the service.
+		const environments = () => Container.get(PromotionEnvironmentsService);
 
 		it('closes the open reviews of a deleted environment and keeps the merged ones', async () => {
 			const open = await insertReview(1);
 			const merged = await insertReview(2);
 			await reviewRepository.update({ id: merged }, { state: 'merged' });
 
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.delete(`/promotions/environments/${environmentId}`);
+			await environments().delete(environmentId, owner);
 
-			expect(response.status).toBe(204);
 			expect(await stateOf(open)).toBe('closed');
 			expect(await stateOf(merged)).toBe('merged');
 		});
 
-		it.each([
+		it.each<{
+			change: string;
+			expected: string;
+			update: () => Promise<UpdatePromotionEnvironmentDto>;
+		}>([
 			{ change: 'a rename', expected: 'open', update: async () => ({ name: 'Renamed' }) },
 			{
 				// Another base URL can name the same host, so only the repository decides.
 				change: 'another GitLab provider for the same repository',
 				expected: 'open',
-				update: async () => {
-					const alias = 'https://gitlab-alias.example.com';
-					nock(alias)
-						.get('/api/v4/user')
-						.reply(200, { id: 1 })
-						.get('/api/v4/projects')
-						.query(true)
-						.reply(200, []);
-					return {
-						providerId: await createProvider({
+				update: async () => ({
+					providerId: (
+						await insertTokenProvider({
 							name: 'GitLab alias',
 							type: 'gitlab',
-							auth: { authType: 'token', password: token },
-							config: { schemaVersion: 1, baseUrl: alias },
-						}),
-					};
-				},
+							password: token,
+							config: { schemaVersion: 1, baseUrl: 'https://gitlab-alias.example.com' },
+						})
+					).id,
+				}),
 			},
 			{
 				change: 'another repository',
@@ -302,23 +278,14 @@ describe('Promotion reviews in the Inbox', () => {
 				change: 'a plain Git provider',
 				expected: 'closed',
 				update: async () => ({
-					providerId: await createProvider({
-						name: 'Plain',
-						type: 'git',
-						auth: { authType: 'token', username: 'u', password: 'p' },
-					}),
+					providerId: (await insertTokenProvider({ name: 'Plain', type: 'git' })).id,
 				}),
 			},
 		])('after $change, the open review is $expected', async ({ expected, update }) => {
 			const review = await insertReview(1);
-			const body = await update();
 
-			const response = await testServer
-				.publicApiAgentFor(owner)
-				.put(`/promotions/environments/${environmentId}`)
-				.send(body);
+			await environments().update(environmentId, await update(), owner);
 
-			expect(response.status, JSON.stringify(response.body)).toBe(200);
 			expect(await stateOf(review)).toBe(expected);
 		});
 	});
@@ -514,7 +481,7 @@ describe('Promotion reviews in the Inbox', () => {
 	it('hides promotion reviews from a member and on environments v1', async () => {
 		await insertReview(1);
 		gitlab({ 1: { state: 'opened' } });
-		const member = await createMemberWithApiKey();
+		const member = await createMember();
 
 		const asMember = await inbox(member, { state: 'open', category: 'waiting' });
 		expect(asMember.body.data.data).toEqual([]);

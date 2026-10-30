@@ -243,11 +243,22 @@ describe('PromotionEnvironmentView', () => {
 	});
 
 	it.each([
-		{ direction: 'promote' as const, asks: true },
-		{ direction: 'apply' as const, asks: false },
+		{
+			direction: 'promote',
+			asks: true,
+			overrides: {
+				direction: 'promote',
+				settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
+			} satisfies Partial<PromotionEnvironment>,
+		},
+		{
+			direction: 'apply',
+			asks: false,
+			overrides: { direction: 'apply' } satisfies Partial<PromotionEnvironment>,
+		},
 	])(
 		'asks before it saves another GitLab repository only for a Promote environment: $direction',
-		async ({ direction, asks }) => {
+		async ({ asks, overrides }) => {
 			const gitlabProvider = { ...gitProvider, id: 'provider-gitlab', type: 'gitlab' as const };
 			const other: PromotionRepository = {
 				...repository,
@@ -257,10 +268,7 @@ describe('PromotionEnvironmentView', () => {
 			};
 			api.fetchPromotionEnvironment.mockResolvedValue(
 				applyEnvironment({
-					direction,
-					...(direction === 'promote' && {
-						settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
-					}),
+					...overrides,
 					provider: gitlabProvider,
 					remote: {
 						schemaVersion: 1,

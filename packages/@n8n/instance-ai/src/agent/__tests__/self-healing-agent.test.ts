@@ -197,6 +197,22 @@ describe('createSelfHealingAgent', () => {
 		setModelFetch.mockRestore();
 	});
 
+	it('names its model calls only when request labels are on', async () => {
+		const setFunctionId = vi.spyOn(Agent.prototype, 'functionId');
+		const options = {
+			modelId: new MockLanguageModelV3(),
+			context: createContext(),
+			verifyCandidate: vi.fn(),
+		};
+
+		await createSelfHealingAgent(options);
+		expect(setFunctionId).not.toHaveBeenCalled();
+
+		await createSelfHealingAgent({ ...options, requestLabels: true });
+		expect(setFunctionId).toHaveBeenCalledWith('instance-ai.self-healing');
+		setFunctionId.mockRestore();
+	});
+
 	it('restricts the final SDK tools and includes the investigation prompt', async () => {
 		const context = createContext();
 		context.workspace = new Workspace({
@@ -248,8 +264,10 @@ describe('createSelfHealingAgent', () => {
 				DOMAIN_TOOL_IDS.RESEARCH,
 				'verify_candidate',
 				'workspace_read_file',
+				'workspace_read_files',
 				'workspace_read_tool_result',
 				'workspace_write_file',
+				'workspace_edit_files',
 				'workspace_str_replace_file',
 				'workspace_execute_command',
 			].sort(),

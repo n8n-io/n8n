@@ -1,13 +1,13 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { simpleGit } from 'simple-git';
 
 import { DirectoryPackageWriter } from '@/modules/n8n-packages/io/directory/directory-package-writer';
 import { HashingPackageWriter } from '@/modules/n8n-packages/io/hashing-package-writer';
 
 import { parseBaseBranchFiles, parsePackageFiles } from '../base-branch-files';
 import { diffPackageFiles } from '../diff-package-files';
+import { createFixtureGit } from './utils/git-remote-fixture';
 
 it('compares Git and writer output without losing scoped identities, and ignores workflow metadata', async () => {
 	const root = await mkdtemp(path.join(tmpdir(), 'promotion-diff-'));
@@ -30,9 +30,8 @@ it('compares Git and writer output without losing scoped identities, and ignores
 		];
 		const directoryWriter = new DirectoryPackageWriter(root);
 		for (const file of base) await directoryWriter.writeFile(file.path, file.content);
-		const git = simpleGit(root);
+		const git = createFixtureGit(root);
 		await git.init(['--object-format=sha1']);
-		await git.addConfig('core.autocrlf', 'false');
 		await git.add('.');
 		const tree = (await git.raw(['write-tree'])).trim();
 		const baseFiles = parseBaseBranchFiles(await git.raw(['ls-tree', '-r', '-z', tree]), {

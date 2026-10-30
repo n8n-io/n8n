@@ -1,5 +1,10 @@
 import { UnexpectedError, UnimplementedError, type JsonValue } from '../common';
-import type { ExternalDependencies, IStepExecutor, StepExecutionResult } from '../dependencies';
+import type {
+	ExternalDependencies,
+	IStepExecutor,
+	SubExecutionDeclaration,
+	StepExecutionResult,
+} from '../dependencies';
 import {
 	deriveLoops,
 	isBatchStepConfig,
@@ -22,10 +27,11 @@ import {
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
-	type WaitDeclaration,
+	type ExecutorWaitDeclaration,
 } from './execution.types';
 import { classifyEdge, sourceRow } from './iteration-mapping';
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
+import { InvalidParentLinkError, type StartExecutionService } from './start-execution.service';
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
@@ -52,6 +58,7 @@ export class StepReadyHandler {
 		private readonly dependencies: ExternalDependencies,
 		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
 		private readonly responseSender: ExecutionResponseSender,
+		private readonly startExecution: StartExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
 		private readonly onStepSuspended: () => void = () => {},
 	) {}
@@ -103,7 +110,8 @@ export class StepReadyHandler {
 		// recording `failed` on a step whose side effects happened would be a lie.
 		let run:
 			| { kind: 'outputs'; outputs: StepSlots }
-			| { kind: 'wait'; wait: WaitDeclaration }
+			| { kind: 'wait'; wait: ExecutorWaitDeclaration }
+			| { kind: 'subExecution'; subExecution: SubExecutionDeclaration }
 			| { kind: 'error'; error: unknown };
 		try {
 			let result: StepExecutionResult;
@@ -114,11 +122,28 @@ export class StepReadyHandler {
 			} else {
 				result = { outputs: await this.runBatchNode(step, execution, node) };
 			}
-			run = result.wait
-				? { kind: 'wait', wait: result.wait }
-				: { kind: 'outputs', outputs: result.outputs };
+			if (result.wait) {
+				run = { kind: 'wait', wait: result.wait };
+			} else if (result.subExecution) {
+				run = { kind: 'subExecution', subExecution: result.subExecution };
+			} else {
+				run = { kind: 'outputs', outputs: result.outputs };
+			}
 		} catch (error) {
 			run = { kind: 'error', error };
+		}
+
+		if (run.kind === 'subExecution') {
+			const { subExecution } = run;
+			if (subExecution.awaited) {
+				await this.handleAwaitedSubExecution(event, step, execution, node, subExecution);
+				return;
+			}
+			const started = await this.handleDetachedSubExecution(step, execution, subExecution);
+			run =
+				started.kind === 'error'
+					? { kind: 'error', error: started.error }
+					: { kind: 'outputs', outputs: subExecution.outputs };
 		}
 
 		let recorded: boolean;
@@ -160,6 +185,83 @@ export class StepReadyHandler {
 			executionId: event.executionId,
 			stepId: event.stepId,
 		});
+	}
+
+	/**
+	 * Suspend the step on an awaited sub-execution, then start the sub-execution.
+	 *
+	 * We suspend first so the sub-execution never finishes before we suspend.
+	 */
+	private async handleAwaitedSubExecution(
+		event: StepReadyEvent,
+		step: StepRecord,
+		execution: ExecutionRecord,
+		node: GraphNode,
+		subExecution: SubExecutionDeclaration,
+	): Promise<void> {
+		// A CAS on `running`: losing it means something else took the step over.
+		const recorded = await this.stepStore.suspendStep(event.stepId, {
+			subExecutionId: subExecution.executionId,
+		});
+		if (!recorded) return;
+		// If the suspension results in no running steps, mark the execution as waiting.
+		await this.executionStore.refreshLiveStatus(execution.id);
+
+		const started = await this.startSubExecution(step, execution, subExecution);
+		if (started.kind === 'started') return;
+
+		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
+		if (!failed) return;
+		this.lifecycleEventPublisher.publish({ type: 'step:failed', ...stepEventFields(step, node) });
+		await this.orchestrationQueue.publish({
+			type: 'step:settled',
+			executionId: event.executionId,
+			stepId: event.stepId,
+		});
+	}
+
+	/** Starts a detached sub-execution. */
+	private async handleDetachedSubExecution(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		subExecution: SubExecutionDeclaration,
+	): Promise<{ kind: 'started' } | { kind: 'parent-ended' } | { kind: 'error'; error: unknown }> {
+		const started = await this.startSubExecution(step, execution, subExecution);
+		if (
+			started.kind === 'error' &&
+			started.error instanceof InvalidParentLinkError &&
+			started.error.reason === 'execution-ended'
+		) {
+			return { kind: 'parent-ended' };
+		}
+		return started;
+	}
+
+	/**
+	 * Starts the sub-execution a step asked for, linked to the step that asked. The
+	 * sub-execution inherits the mode and the caller context, and never the response
+	 * expectation: a sub-execution does not answer the parent's caller.
+	 */
+	private async startSubExecution(
+		step: StepRecord,
+		execution: ExecutionRecord,
+		subExecution: SubExecutionDeclaration,
+	): Promise<{ kind: 'started' } | { kind: 'error'; error: unknown }> {
+		try {
+			await this.startExecution.start({
+				executionId: subExecution.executionId,
+				workflowId: subExecution.workflowId,
+				graph: subExecution.graph,
+				workflow: subExecution.workflow,
+				triggerOutputs: subExecution.triggerOutputs,
+				mode: execution.mode,
+				callerContext: execution.callerContext,
+				parent: { executionId: execution.id, stepId: step.id, awaited: subExecution.awaited },
+			});
+			return { kind: 'started' };
+		} catch (error) {
+			return { kind: 'error', error };
+		}
 	}
 
 	private async runStep(
@@ -410,7 +512,7 @@ function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
  * Rejects a declaration that would strand the execution. Throwing records the
  * step as failed, which a wait nothing can end would never do on its own.
  */
-function validateWaitDeclaration(stepId: string, wait: WaitDeclaration): void {
+function validateWaitDeclaration(stepId: string, wait: ExecutorWaitDeclaration): void {
 	if (!hasResumeCondition(wait)) {
 		throw new UnexpectedError(
 			`step ${stepId} declares a wait that can never resume: it names neither a deadline nor a resume binding`,

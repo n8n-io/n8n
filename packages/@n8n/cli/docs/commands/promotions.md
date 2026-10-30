@@ -105,8 +105,11 @@ longer. JSON output shows the full values, so copy them from there.
 }
 ```
 
-Give the token the `read_api` and `write_repository` scopes. Protected branches
-can require the Maintainer role to push.
+Give the token the `api` and `write_repository` scopes. The `api` scope is
+required to open merge requests. Give the token user the Developer role or
+higher. Protected branches can require the Maintainer role to push. Approve in
+n8n merges the merge request, so the token user needs the Maintainer role, or
+permission to merge, on the base branch.
 
 ## `promotion-provider create`
 

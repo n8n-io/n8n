@@ -173,6 +173,13 @@ export interface StepStore {
 	failStep(id: string, error: StepError): Promise<boolean>;
 
 	/**
+	 * Fail a step that waits on a sub-execution the engine could not start. As
+	 * `failStep`, but a compare-and-set on `waiting`: the step suspended before
+	 * the start was attempted, so no worker owns it.
+	 */
+	failWaitingStep(id: string, error: StepError): Promise<boolean>;
+
+	/**
 	 * Settle a claimed step that will not run, because its execution ended
 	 * between the claim and the run. As `completeStep`, a compare-and-set on
 	 * `running`, so a worker that lost the claim writes nothing.

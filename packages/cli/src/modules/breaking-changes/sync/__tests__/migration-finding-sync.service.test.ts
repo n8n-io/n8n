@@ -41,6 +41,7 @@ const TARGET_VERSION: BreakingChangeVersion = 'v2';
 function detectionResult(
 	hits: MigrationFindingHit[],
 	failedChecks: MigrationFindingHit[] = [],
+	publishedHits: MigrationFindingHit[] = [],
 ): BreakingChangeDetectionResult {
 	const workflowIdsByRule = new Map<string, string[]>();
 	for (const hit of hits) {
@@ -67,6 +68,7 @@ function detectionResult(
 		},
 		totalWorkflows: 0,
 		failedChecks,
+		publishedHits,
 	};
 }
 
@@ -157,9 +159,9 @@ describe('MigrationFindingSyncService', () => {
 		expect(findingRepository.insertMany).toHaveBeenCalledTimes(1);
 		expect(findingRepository.insertMany).toHaveBeenCalledWith(
 			[
-				{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0000' },
-				{ targetVersion: TARGET_VERSION, ruleId: 'rule-b', workflowId: 'wf-0000' },
-				{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0002' },
+				{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0000', status: 'open' },
+				{ targetVersion: TARGET_VERSION, ruleId: 'rule-b', workflowId: 'wf-0000', status: 'open' },
+				{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0002', status: 'open' },
 			],
 			expect.anything(),
 		);
@@ -226,6 +228,44 @@ describe('MigrationFindingSyncService', () => {
 		expect(findingRepository.updateStatusForIds).not.toHaveBeenCalled();
 	});
 
+	it('marks a finding fixed_unpublished when only the published version still has it', async () => {
+		givenWorkflows(2);
+		breakingChangeService.detect.mockResolvedValue(
+			detectionResult(
+				[],
+				[],
+				[
+					{ ruleId: 'rule-a', workflowId: 'wf-0000' },
+					{ ruleId: 'rule-a', workflowId: 'wf-0001' },
+				],
+			),
+		);
+		findingRepository.listForWorkflows.mockResolvedValue([
+			findingRow(1, 'rule-a', 'wf-0000', 'open'),
+		]);
+
+		await service.sync(TARGET_VERSION);
+
+		expect(findingRepository.updateStatusForIds).toHaveBeenCalledWith(
+			[1],
+			'fixed_unpublished',
+			undefined,
+			expect.anything(),
+		);
+		expect(findingRepository.insertMany).toHaveBeenCalledWith(
+			[
+				{
+					targetVersion: TARGET_VERSION,
+					ruleId: 'rule-a',
+					workflowId: 'wf-0001',
+					status: 'fixed_unpublished',
+				},
+			],
+			expect.anything(),
+		);
+		expect(findingRepository.markFixedForIds).not.toHaveBeenCalled();
+	});
+
 	it('leaves the finding of a rule check that threw untouched', async () => {
 		givenWorkflows(3);
 		breakingChangeService.detect.mockResolvedValue(
@@ -264,7 +304,7 @@ describe('MigrationFindingSyncService', () => {
 		await service.sync(TARGET_VERSION);
 
 		expect(findingRepository.insertMany).toHaveBeenCalledWith(
-			[{ targetVersion: TARGET_VERSION, ruleId: 'rule-b', workflowId: 'wf-0000' }],
+			[{ targetVersion: TARGET_VERSION, ruleId: 'rule-b', workflowId: 'wf-0000', status: 'open' }],
 			expect.anything(),
 		);
 		expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
@@ -321,7 +361,7 @@ describe('MigrationFindingSyncService', () => {
 			expect.anything(),
 		);
 		expect(findingRepository.insertMany).toHaveBeenCalledWith(
-			[{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0000' }],
+			[{ targetVersion: TARGET_VERSION, ruleId: 'rule-a', workflowId: 'wf-0000', status: 'open' }],
 			expect.anything(),
 		);
 		expect(syncRepository.upsertForVersion).toHaveBeenCalledTimes(1);
@@ -569,7 +609,11 @@ describe('MigrationFindingSyncService', () => {
 
 		beforeEach(() => {
 			reportTarget.version = REPORT_VERSION;
-			breakingChangeService.detectWorkflowHits.mockResolvedValue({ hits: [], failedChecks: [] });
+			breakingChangeService.detectWorkflowHits.mockResolvedValue({
+				hits: [],
+				publishedHits: [],
+				failedChecks: [],
+			});
 		});
 
 		afterEach(() => {
@@ -580,6 +624,7 @@ describe('MigrationFindingSyncService', () => {
 		it('inserts an open finding for a workflow that now trips a rule', async () => {
 			breakingChangeService.detectWorkflowHits.mockResolvedValue({
 				hits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+				publishedHits: [],
 				failedChecks: [],
 			});
 
@@ -590,7 +635,14 @@ describe('MigrationFindingSyncService', () => {
 				WORKFLOW_ID,
 			);
 			expect(findingRepository.insertMany).toHaveBeenCalledWith(
-				[{ targetVersion: REPORT_VERSION, ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+				[
+					{
+						targetVersion: REPORT_VERSION,
+						ruleId: 'rule-a',
+						workflowId: WORKFLOW_ID,
+						status: 'open',
+					},
+				],
 				expect.anything(),
 			);
 			expect(findingRepository.markFixedForIds).not.toHaveBeenCalled();
@@ -609,6 +661,7 @@ describe('MigrationFindingSyncService', () => {
 		it('reopens a fixed finding when the issue returns', async () => {
 			breakingChangeService.detectWorkflowHits.mockResolvedValue({
 				hits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+				publishedHits: [],
 				failedChecks: [],
 			});
 			findingRepository.listForWorkflows.mockResolvedValue([row(1, 'rule-a', 'fixed')]);
@@ -622,6 +675,25 @@ describe('MigrationFindingSyncService', () => {
 				expect.anything(),
 			);
 			expect(findingRepository.insertMany).not.toHaveBeenCalled();
+		});
+
+		it('marks the finding fixed_unpublished when only the published version still has it', async () => {
+			breakingChangeService.detectWorkflowHits.mockResolvedValue({
+				hits: [],
+				publishedHits: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
+				failedChecks: [],
+			});
+			findingRepository.listForWorkflows.mockResolvedValue([row(1, 'rule-a', 'open')]);
+
+			await service.syncWorkflow(WORKFLOW_ID);
+
+			expect(findingRepository.updateStatusForIds).toHaveBeenCalledWith(
+				[1],
+				'fixed_unpublished',
+				undefined,
+				expect.anything(),
+			);
+			expect(findingRepository.markFixedForIds).not.toHaveBeenCalled();
 		});
 
 		it('reads and writes only the rows of that workflow, in one transaction', async () => {
@@ -648,6 +720,7 @@ describe('MigrationFindingSyncService', () => {
 		it('leaves the pair of a failed rule check untouched and still syncs the other rules', async () => {
 			breakingChangeService.detectWorkflowHits.mockResolvedValue({
 				hits: [{ ruleId: 'rule-b', workflowId: WORKFLOW_ID }],
+				publishedHits: [],
 				failedChecks: [{ ruleId: 'rule-a', workflowId: WORKFLOW_ID }],
 			});
 			findingRepository.listForWorkflows.mockResolvedValue([
@@ -658,7 +731,14 @@ describe('MigrationFindingSyncService', () => {
 			await service.syncWorkflow(WORKFLOW_ID);
 
 			expect(findingRepository.insertMany).toHaveBeenCalledWith(
-				[{ targetVersion: REPORT_VERSION, ruleId: 'rule-b', workflowId: WORKFLOW_ID }],
+				[
+					{
+						targetVersion: REPORT_VERSION,
+						ruleId: 'rule-b',
+						workflowId: WORKFLOW_ID,
+						status: 'open',
+					},
+				],
 				expect.anything(),
 			);
 			expect(findingRepository.markFixedForIds).toHaveBeenCalledWith([2], expect.anything());
@@ -685,7 +765,7 @@ describe('MigrationFindingSyncService', () => {
 			breakingChangeService.detectWorkflowHits.mockImplementationOnce(
 				async () =>
 					await new Promise((resolve) => {
-						releaseFirst = () => resolve({ hits: [], failedChecks: [] });
+						releaseFirst = () => resolve({ hits: [], publishedHits: [], failedChecks: [] });
 					}),
 			);
 

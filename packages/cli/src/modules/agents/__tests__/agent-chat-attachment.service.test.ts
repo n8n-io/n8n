@@ -1,5 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
-import type { BinaryDataService } from 'n8n-core';
+import { EntityNotFoundError } from '@n8n/typeorm';
+import { FileNotFoundError, type BinaryDataService } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -84,8 +85,9 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockImplementation(async (input) => input as AgentChatAttachment);
+			repository.saveInboundAttachment.mockImplementation(
+				async (input) => input as AgentChatAttachment,
+			);
 
 			const stored = await service.storeInbound({
 				agentId: 'agent-1',
@@ -108,7 +110,10 @@ describe('AgentChatAttachmentService', () => {
 				expect.anything(),
 			);
 
-			expect(repository.save).toHaveBeenCalledTimes(1);
+			expect(repository.saveInboundAttachment).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ binaryDataId: stored.binaryDataId, fileSizeBytes: 3 }),
+				{},
+			);
 			expect(stored.binaryDataId).toBe('filesystem-v2:agents/agent-1/attachments/att-1/x');
 			expect(stored.fileSizeBytes).toBe(3);
 			expect(stored.source).toBe('chat');
@@ -122,8 +127,9 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockImplementation(async (input) => input as AgentChatAttachment);
+			repository.saveInboundAttachment.mockImplementation(
+				async (input) => input as AgentChatAttachment,
+			);
 
 			const stored = await service.storeInbound({
 				agentId: 'agent-3',
@@ -172,8 +178,7 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockRejectedValue(new Error('db down'));
+			repository.saveInboundAttachment.mockRejectedValue(new Error('db down'));
 
 			await expect(
 				service.storeInbound({
@@ -206,10 +211,11 @@ describe('AgentChatAttachmentService', () => {
 				childThreadId: 'child',
 			});
 
-			expect(repository.findByIdsInThread).toHaveBeenCalledWith(['att-1'], {
-				projectId: 'project-1',
-				threadId: 'root',
-			});
+			expect(repository.findByIdsInThread).toHaveBeenCalledWith(
+				['att-1'],
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
 			expect(grantRepository.findGrantedIds).not.toHaveBeenCalled();
 			expect(grantRepository.grant).toHaveBeenCalledWith(['att-1'], 'child');
 		});
@@ -283,10 +289,11 @@ describe('AgentChatAttachmentService', () => {
 			);
 			const bytes = await store.load({ id: 'att-1' });
 
-			expect(repository.findByIdForAgent).toHaveBeenCalledWith('att-1', {
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			});
+			expect(repository.findByIdForAgent).toHaveBeenCalledWith(
+				'att-1',
+				{ agentId: 'agent-1', projectId: 'project-1' },
+				{},
+			);
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
 
@@ -304,10 +311,11 @@ describe('AgentChatAttachmentService', () => {
 			);
 			const bytes = await store.load({ id: 'att-1' }, { threadId: 'thread-1' });
 
-			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-1', {
-				projectId: 'project-1',
-				threadId: 'thread-1',
-			});
+			expect(repository.findByIdInThread).toHaveBeenCalledWith(
+				'att-1',
+				{ projectId: 'project-1', threadId: 'thread-1' },
+				{},
+			);
 			expect(repository.findByIdForAgent).not.toHaveBeenCalled();
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
@@ -336,10 +344,11 @@ describe('AgentChatAttachmentService', () => {
 			await store.load({ id: 'att-4' }, { threadId: 'grandchild' });
 
 			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(1);
-			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-4', {
-				projectId: 'project-1',
-				threadId: 'root',
-			});
+			expect(repository.findByIdInThread).toHaveBeenCalledWith(
+				'att-4',
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
 
 			await store.load({ id: 'att-1' }, { threadId: 'root' });
 			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(2);
@@ -403,6 +412,32 @@ describe('AgentChatAttachmentService', () => {
 		});
 	});
 
+	describe('hasStoredData', () => {
+		const attachment = mock<AgentChatAttachment>({ binaryDataId: 'filesystem-v2:abc' });
+
+		it('returns true when the bytes are in storage', async () => {
+			binaryDataService.getMetadata.mockResolvedValue({ fileSize: 3, mimeType: 'image/png' });
+
+			expect(await service.hasStoredData(attachment)).toBe(true);
+			expect(binaryDataService.getMetadata).toHaveBeenCalledWith('filesystem-v2:abc');
+		});
+
+		it.each([
+			['filesystem, S3 or Azure', new FileNotFoundError('abc')],
+			['database', new EntityNotFoundError('BinaryDataFile', { fileId: 'abc' })],
+		])('returns false when the bytes are gone in %s mode', async (_mode, error) => {
+			binaryDataService.getMetadata.mockRejectedValue(error);
+
+			expect(await service.hasStoredData(attachment)).toBe(false);
+		});
+
+		it('throws other storage errors', async () => {
+			binaryDataService.getMetadata.mockRejectedValue(new Error('storage down'));
+
+			await expect(service.hasStoredData(attachment)).rejects.toThrow('storage down');
+		});
+	});
+
 	describe('deleteByThread', () => {
 		it('deletes rows and bytes for the thread within the given scope', async () => {
 			binaryDataService.deleteManyByBinaryDataId.mockResolvedValue(undefined as never);
@@ -413,10 +448,12 @@ describe('AgentChatAttachmentService', () => {
 
 			await service.deleteByThread('thread-1', { projectId: 'project-1' });
 
-			expect(repository.findByThread).toHaveBeenCalledWith('thread-1', {
-				projectId: 'project-1',
-			});
-			expect(repository.delete).toHaveBeenCalledWith(['att-1', 'att-2']);
+			expect(repository.findByThread).toHaveBeenCalledWith(
+				'thread-1',
+				{ projectId: 'project-1' },
+				{},
+			);
+			expect(repository.deleteByIds).toHaveBeenCalledWith(['att-1', 'att-2'], {});
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
 				'filesystem-v2:a',
 				'filesystem-v2:b',
@@ -426,7 +463,7 @@ describe('AgentChatAttachmentService', () => {
 		it('is a no-op for threads without attachments', async () => {
 			repository.findByThread.mockResolvedValue([]);
 			await service.deleteByThread('thread-1', { agentId: 'agent-1' });
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -459,9 +496,10 @@ describe('AgentChatAttachmentService', () => {
 				scope,
 				before,
 				BATCH_SIZE,
+				{},
 			);
-			expect(repository.delete).toHaveBeenCalledTimes(3);
-			expect(repository.delete).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2']);
+			expect(repository.deleteByIds).toHaveBeenCalledTimes(3);
+			expect(repository.deleteByIds).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2'], {});
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenLastCalledWith([
 				'filesystem-v2:c-0',
 				'filesystem-v2:c-1',
@@ -476,7 +514,7 @@ describe('AgentChatAttachmentService', () => {
 
 			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(BATCH_SIZE);
 			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
-			expect(repository.delete).toHaveBeenCalledTimes(1);
+			expect(repository.deleteByIds).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns 0 and deletes nothing when no file is overdue', async () => {
@@ -484,7 +522,7 @@ describe('AgentChatAttachmentService', () => {
 
 			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(0);
 			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 
@@ -494,7 +532,7 @@ describe('AgentChatAttachmentService', () => {
 			await service.deleteFromSourceCreatedBefore(scope, before);
 
 			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
-				repository.delete.mock.invocationCallOrder[0],
+				repository.deleteByIds.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -505,7 +543,7 @@ describe('AgentChatAttachmentService', () => {
 			await expect(service.deleteFromSourceCreatedBefore(scope, before)).rejects.toThrow(
 				'storage down',
 			);
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 		});
 
 		it('stops between batches when the signal aborts', async () => {

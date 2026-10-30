@@ -52,7 +52,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
-| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential` | single-purpose |
+| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -61,6 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
+| `apps` | 6 |
 | `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
@@ -841,6 +842,19 @@ nodesWithAccess? }], notFound? }`. The description contains the full stored
 text, or `null` when unset. `notFound` lists the ids that did not resolve. The
 response never contains credential secret data.
 
+### `update_credential_description`
+
+Set or replace an existing credential description only when the user explicitly requests it.
+Describe its purpose and intended use from known context. Keep it concise and exclude secrets.
+Pass `credentialId` and `description`.
+The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
+Returns `{ success: true }`.
+
+The tool is available when credential descriptions are enabled. The user must have
+`credential:update` permission, and the credential must belong to the conversation's project.
+Managed credentials allow description updates. Description updates remain available on protected instances.
+The operation keeps credential secrets, names, and types unchanged.
+
 ### `delete_credential`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
@@ -1283,6 +1297,43 @@ those cases. The model relays a rejection in its own words and never says
 The system prompt carries the judgment of *when* to call it (see
 `getPreferenceSavingSection` in `agent/system-prompt.ts`); the description
 carries *what* it does.
+
+---
+
+## `apps` *(conditional)*
+
+Build n8n Apps. Present only when the apps module is active, the run has a
+bound project and the sandbox is available. The adapter wires `appService`, and
+the turn setup removes it without a sandbox, so the tool, the `app-builder`
+skill and the `<app-targets>` block share one gate. Deferred: the skill lists
+the tool in `recommended_tools`.
+
+| Action | Scope | Description |
+|--------|-------|-------------|
+| `create` | `app:create` | Create an app in the bound project and open it. The first app of a thread uses the pending app id from thread metadata |
+| `list` | `app:list` | Apps of the bound project (at most 50), optionally filtered by name |
+| `get` | `app:read` | App state |
+| `open` | `app:read` | Put the draft source into `apps/<appId>` in the sandbox workspace. Keeps a folder that is already open |
+| `commit` | `app:update` | Save the folder as one version and wait for its build |
+| `discard` | `app:read` | Replace the folder with the current draft. Keeps `node_modules` |
+
+The model edits the folder with the workspace tools and runs `npm ci` and
+`npm run build` there before it commits. The source moves in and out of the
+sandbox as one archive (`AppSourceArchiveService` in the apps module). The
+commit archive is read back as a file, not through command output.
+`apps/<appId>.base-version` holds the draft version the folder started from. A
+commit is based on that version, so a draft that changed since then fails the
+commit with a conflict and the folder stays. A commit leaves out
+`node_modules` and `dist`, and n8n builds the version again.
+
+`create` and every commit add the app to the thread metadata key
+`instanceAiAppTargets`. Reads and opens do not. A thread can build several
+apps. On each user turn the `<app-targets>` block names these apps. They also
+report the app as an `app` artifact through `onArtifactChanged`, so the thread
+shows the app's tab. The `create` and commit results include `app` (`id`,
+`name`, `projectId`) for the frontend.
+
+Errors return `{ error }`.
 
 ---
 
