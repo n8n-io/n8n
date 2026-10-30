@@ -49,7 +49,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | Tool | Actions |
 |------|---------|
 | `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
-| `data_tables` | 11 |
+| `list_data_tables`, `get_data_table_schema`, `query_data_table`, `create_data_table`, `delete_data_table`, `add_data_table_column`, `delete_data_table_column`, `rename_data_table_column`, `insert_data_table_rows`, `update_data_table_rows`, `delete_data_table_rows` | single-purpose |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
 | `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
@@ -1102,36 +1102,39 @@ one caller stops its wait without cancelling a refresh shared with other callers
 
 ---
 
-## `data_tables` (11 actions)
+## Data table tools (11 tools)
 
-Full CRUD suite for n8n data tables. System columns (`id`, `createdAt`,
-`updatedAt`) are reserved and auto-managed.
+Full CRUD suite for n8n data tables. Each operation is a separate tool. System
+columns (`id`, `createdAt`, `updatedAt`) are reserved and auto-managed. The
+read tools never suspend. The write tools ask for approval unless the
+permission allows them. Stored calls of the former `data_tables` tool still
+resolve to the matching tool.
 
 ### Table operations
 
-| Action | Description |
-|--------|-------------|
-| `list` | List data tables |
-| `create` | Create a data table with columns |
-| `delete` | Delete a data table after confirmation |
-| `schema` | Get the table columns |
+| Tool | Description |
+|------|-------------|
+| `list_data_tables` | List data tables |
+| `create_data_table` | Create a data table with columns |
+| `delete_data_table` | Delete a data table after confirmation |
+| `get_data_table_schema` | Get the table columns |
 
 ### Column operations
 
-| Action | Description |
-|--------|-------------|
-| `add-column` | Add a column to a table |
-| `delete-column` | Remove a column from a table |
-| `rename-column` | Rename a column |
+| Tool | Description |
+|------|-------------|
+| `add_data_table_column` | Add a column to a table |
+| `delete_data_table_column` | Remove a column from a table |
+| `rename_data_table_column` | Rename a column |
 
 ### Row operations
 
-| Action | Description |
-|--------|-------------|
-| `query` | Query rows with optional filters |
-| `insert-rows` | Insert one or more rows |
-| `update-rows` | Update rows matching a filter |
-| `delete-rows` | Delete rows matching a non-empty filter after confirmation |
+| Tool | Description |
+|------|-------------|
+| `query_data_table` | Query rows with optional filters |
+| `insert_data_table_rows` | Insert one or more rows |
+| `update_data_table_rows` | Update rows matching a filter |
+| `delete_data_table_rows` | Delete rows matching a non-empty filter after confirmation |
 
 ---
 

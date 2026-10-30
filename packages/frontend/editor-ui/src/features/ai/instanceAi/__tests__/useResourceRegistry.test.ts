@@ -1553,9 +1553,14 @@ describe('useResourceRegistry', () => {
 			});
 		});
 
-		test.each(['schema', 'query'] as const)(
-			'registers data table from data-tables %s result with resolved metadata',
-			async (action) => {
+		test.each([
+			{ toolName: 'data_tables', action: 'schema' },
+			{ toolName: 'data_tables', action: 'query' },
+			{ toolName: 'get_data_table_schema', action: 'schema' },
+			{ toolName: 'query_data_table', action: 'query' },
+		] as const)(
+			'registers data table from $toolName $action result with resolved metadata',
+			async ({ toolName, action }) => {
 				const { messages, producedArtifacts, linkableResourceNameIndex } = setup();
 
 				messages.value = [
@@ -1563,8 +1568,11 @@ describe('useResourceRegistry', () => {
 						agentTree: makeAgentNode({
 							toolCalls: [
 								makeToolCall({
-									toolName: 'data_tables',
-									args: { action, dataTableId: 'Signups' },
+									toolName,
+									args:
+										toolName === 'data_tables'
+											? { action, dataTableId: 'Signups' }
+											: { dataTableId: 'Signups' },
 									result: {
 										dataTableId: 'dt-signups',
 										dataTableName: 'Signups',
