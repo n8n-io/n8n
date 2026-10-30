@@ -464,6 +464,20 @@ describe('PromotionCheckoutCleanupService', () => {
 				expect(await exists(path.join(paths.sshDir, 'known_hosts'))).toBe(true);
 			});
 
+			it('keeps a checkout without a descriptor when the settings changed', async () => {
+				// A clone writes the descriptor only after it succeeds.
+				const paths = await createCheckout(LIVE_ID);
+				await rm(paths.descriptorFile);
+				environmentRepository.findByIdWithProvider.mockResolvedValue(
+					environment({ settings: { schemaVersion: 1, branchName: 'production' } }),
+				);
+
+				await handle();
+
+				expect(await exists(paths.repositoryFolder)).toBe(true);
+				expect(await exists(paths.nextRepositoryFolder)).toBe(true);
+			});
+
 			it('removes the whole folder when the environment is gone', async () => {
 				const paths = await createCheckout(LIVE_ID);
 				environmentRepository.findByIdWithProvider.mockResolvedValue(null);
