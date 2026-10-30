@@ -1,7 +1,8 @@
-import fs from 'fs';
-import path from 'path';
-import { ESLint } from 'eslint';
-import { spawnSync } from 'child_process';
+import fs from 'node:fs';
+import path from 'node:path';
+import { ESLint, type Linter } from 'eslint';
+import { spawnSync } from 'node:child_process';
+import { isRecord } from '@n8n/utils/is-record';
 import tmp from 'tmp';
 import semver from 'semver';
 import axios from 'axios';
@@ -22,39 +23,35 @@ const { stdout } = process;
 const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
 const registry = 'https://registry.npmjs.org/';
 
-interface Attestation {
-	predicateType?: string;
-	bundle?: { dsseEnvelope?: { payload?: string } };
-}
+type Attestation = {
+	readonly predicateType?: string;
+	readonly bundle?: { readonly dsseEnvelope?: { readonly payload?: string } };
+};
 
-interface ProvenanceStatement {
-	predicate?: {
-		buildDefinition?: {
-			resolvedDependencies?: Array<{ uri?: string; digest?: { gitCommit?: string } }>;
-		};
-	};
-}
+type SourceRepo = {
+	readonly owner: string;
+	readonly repo: string;
+	readonly gitCommit: string;
+};
 
-interface SourceRepo {
-	owner: string;
-	repo: string;
-	gitCommit: string;
-}
-
-export interface AnalysisResult {
-	passed: boolean;
-	message?: string;
-	details?: string;
-	error?: unknown;
-}
+export type AnalysisResult =
+	| { readonly passed: true; readonly message?: string; readonly details?: never }
+	| {
+			readonly passed: false;
+			readonly message: string;
+			readonly details?: string;
+			readonly error?: unknown;
+	  };
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+const field = (value: unknown, key: string): unknown => (isRecord(value) ? value[key] : undefined);
 
 /**
  * Checks if the given childPath is contained within the parentPath. Resolves
  * the paths before comparing them, so that relative paths are also supported.
  */
-export function isContainedWithin(parentPath: string, childPath: string) {
+export function isContainedWithin(parentPath: string, childPath: string): boolean {
 	parentPath = path.resolve(parentPath);
 	childPath = path.resolve(childPath);
 
@@ -72,7 +69,7 @@ export function isContainedWithin(parentPath: string, childPath: string) {
  *
  * @throws {UnexpectedError} If the resulting path is not contained within the parentPath.
  */
-export function safeJoinPath(parentPath: string, ...paths: string[]) {
+export function safeJoinPath(parentPath: string, ...paths: string[]): string {
 	const candidate = path.join(parentPath, ...paths);
 
 	if (!isContainedWithin(parentPath, candidate)) {
@@ -84,7 +81,9 @@ export function safeJoinPath(parentPath: string, ...paths: string[]) {
 	return candidate;
 }
 
-export const resolvePackage = (packageSpec: string) => {
+export const resolvePackage = (
+	packageSpec: string,
+): { packageName: string; version: string | null } => {
 	// Validate input to prevent command injection
 	if (!/^[a-zA-Z0-9@/_.-]+$/.test(packageSpec)) {
 		throw new Error('Invalid package specification');
@@ -142,7 +141,7 @@ const downloadAndExtractPackage = async (packageName: string, version: string) =
 		fs.unlinkSync(safeJoinPath(TEMP_DIR, tarballName));
 
 		return packageDir;
-	} catch (error) {
+	} catch (error: unknown) {
 		console.error(`\nFailed to download package: ${errorMessage(error)}`);
 		throw error;
 	}
@@ -157,26 +156,33 @@ const downloadAndExtractPackage = async (packageName: string, version: string) =
  * Returns `{ owner, repo, gitCommit }`, or `null` when the attestation is
  * missing, malformed, or points at an unsupported host.
  */
-export const parseSourceRepo = (attestations: Attestation[] | undefined): SourceRepo | null => {
+export const parseSourceRepo = (
+	attestations: readonly Attestation[] | undefined,
+): SourceRepo | null => {
 	const provenance = attestations?.find((a) => a.predicateType === NPM_PROVENANCE_PREDICATE_TYPE);
 	const payload = provenance?.bundle?.dsseEnvelope?.payload;
 	if (!payload) return null;
 
-	let statement: ProvenanceStatement | null;
+	let statement: unknown;
 	try {
 		statement = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'));
 	} catch {
 		return null;
 	}
 
-	const dependency = statement?.predicate?.buildDefinition?.resolvedDependencies?.[0];
-	const gitCommit = dependency?.digest?.gitCommit;
+	const dependencies = field(
+		field(field(statement, 'predicate'), 'buildDefinition'),
+		'resolvedDependencies',
+	);
+	const dependency: unknown = Array.isArray(dependencies) ? dependencies[0] : undefined;
+	const uri = field(dependency, 'uri');
+	const gitCommit = field(field(dependency, 'digest'), 'gitCommit');
+	if (typeof uri !== 'string' || typeof gitCommit !== 'string') return null;
+
 	// ponytail: GitHub only — add a host→archive-URL mapping if GitLab-built packages show up
 	const match =
-		/^git\+https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?(?:@|$)/.exec(
-			dependency?.uri ?? '',
-		);
-	if (!match?.[1] || !match[2] || !gitCommit || !/^[0-9a-f]{40,64}$/i.test(gitCommit)) return null;
+		/^git\+https:\/\/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+?)(?:\.git)?(?:@|$)/.exec(uri);
+	if (!match?.[1] || !match[2] || !/^[0-9a-f]{40,64}$/i.test(gitCommit)) return null;
 
 	return { owner: match[1], repo: match[2], gitCommit };
 };
@@ -197,7 +203,7 @@ const fetchSourceInfo = async (packageName: string, version: string) => {
  * Finds the directory inside a source checkout whose package.json declares
  * the given package name — handles both single-package repos and monorepos.
  */
-export const findPackageRoot = (sourceDir: string, packageName: string) => {
+export const findPackageRoot = (sourceDir: string, packageName: string): string | null => {
 	const packageJsonPaths = glob.sync('**/package.json', {
 		cwd: sourceDir,
 		absolute: true,
@@ -206,8 +212,8 @@ export const findPackageRoot = (sourceDir: string, packageName: string) => {
 
 	for (const packageJsonPath of packageJsonPaths) {
 		try {
-			const packageJson: { name?: unknown } = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
-			if (packageJson.name === packageName) {
+			const packageJson: unknown = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+			if (field(packageJson, 'name') === packageName) {
 				return path.dirname(packageJsonPath);
 			}
 		} catch {
@@ -262,7 +268,7 @@ export const SOURCE_FILE_PATTERNS = ['package.json', '{nodes,credentials}/**/*.{
  * tests can assert the external `eslint-plugin-n8n-nodes-base` plugin and its
  * rulesets are wired in, independent of ESLint execution.
  */
-export const buildScanConfig = async () => {
+export const buildScanConfig = async (): Promise<Linter.Config[]> => {
 	const { n8nCommunityNodesPlugin } = await import('@n8n/eslint-plugin-community-nodes');
 	const parser = await import('@typescript-eslint/parser');
 	const n8nNodesPlugin = (await import('eslint-plugin-n8n-nodes-base')).default;
@@ -365,7 +371,7 @@ export const analyzePackage = async (
 		}
 
 		return { passed: true };
-	} catch (error) {
+	} catch (error: unknown) {
 		console.error(error);
 		return {
 			passed: false,
@@ -444,7 +450,7 @@ export const analyzePackageByName = async (
 			if (sourceInfo) {
 				sourceDir = await downloadAndExtractSource(sourceInfo, packageName);
 			}
-		} catch (error) {
+		} catch (error: unknown) {
 			sourceError = error;
 		}
 		if (stdout.isTTY) {
@@ -488,11 +494,19 @@ export const analyzePackageByName = async (
 		// by the source scan and only false-positive on filename rules here.
 		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
-		const analysisResult = {
-			passed: sourceResult.passed && distResult.passed,
-			message: [sourceResult, distResult].find((r) => !r.passed)?.message,
-			details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
-		};
+		const failures = [sourceResult, distResult].filter((r) => !r.passed);
+		const [firstFailure] = failures;
+		const analysisResult: AnalysisResult = firstFailure
+			? {
+					passed: false,
+					message: firstFailure.message,
+					details:
+						failures
+							.map((r) => r.details)
+							.filter(Boolean)
+							.join('\n') || undefined,
+				}
+			: { passed: true };
 		if (stdout.isTTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
@@ -504,7 +518,7 @@ export const analyzePackageByName = async (
 			version: exactVersion,
 			...analysisResult,
 		};
-	} catch (error) {
+	} catch (error: unknown) {
 		console.error(`Failed to analyze ${packageName}@${version}:`, error);
 		return {
 			packageName,

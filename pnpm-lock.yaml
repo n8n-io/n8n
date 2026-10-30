@@ -4087,6 +4087,9 @@ importers:
       '@n8n/eslint-plugin-community-nodes':
         specifier: workspace:*
         version: link:../eslint-plugin-community-nodes
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../utils
       '@typescript-eslint/parser':
         specifier: 'catalog:'
         version: 8.70.0(@typescript/typescript6@6.0.2)(eslint@9.29.0(jiti@2.6.1)(supports-color@8.1.1))(supports-color@8.1.1)

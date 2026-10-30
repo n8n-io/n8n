@@ -3,15 +3,23 @@ const N8N_COMMUNITY_NODE_PUBLISH_DOCS_URL =
 	'https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/';
 
 /** The parts of an npm registry package document that the scanner reads. */
-export interface PackageMetadata {
-	'dist-tags': Record<string, string>;
-	versions: Record<
-		string,
-		{ dist?: { attestations?: { provenance?: { predicateType?: string } } } }
+export type PackageMetadata = {
+	readonly 'dist-tags': Readonly<Record<string, string>>;
+	readonly versions: Readonly<
+		Record<
+			string,
+			{
+				readonly dist?: {
+					readonly attestations?: { readonly provenance?: { readonly predicateType?: string } };
+				};
+			}
+		>
 	>;
-}
+};
 
-export type ProvenanceResult = { passed: true } | { passed: false; message: string };
+export type ProvenanceResult =
+	| { readonly passed: true }
+	| { readonly passed: false; readonly message: string };
 
 export const checkPackageProvenance = (
 	packageMetadata: Pick<PackageMetadata, 'versions'>,

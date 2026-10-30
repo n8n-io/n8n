@@ -20,6 +20,7 @@
     "fast-glob": "catalog:",
     "axios": "catalog:",
     "@n8n/eslint-plugin-community-nodes": "workspace:*",
+    "@n8n/utils": "workspace:*",
     "@typescript-eslint/parser": "catalog:",
     "eslint-plugin-n8n-nodes-base": "catalog:",
     "semver": "catalog:",

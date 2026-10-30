@@ -23,7 +23,7 @@ try {
 			console.log(result.details);
 		}
 	}
-} catch (error) {
+} catch (error: unknown) {
 	console.error('Analysis failed:', error);
 	process.exit(1);
 }
