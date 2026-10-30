@@ -64,6 +64,18 @@ describe('prepareForGuest', () => {
 		expect((roundTrip(value) as { data: unknown }).data).toEqual(value.data);
 	});
 
+	it('reads a class instance with framing keys as data', () => {
+		class Payload {
+			__n8nType = 'Error';
+			__message = 'not an error';
+		}
+
+		const result = roundTrip({ error: new Error('x'), data: new Payload() }) as { data: unknown };
+
+		expect(result.data).not.toBeInstanceOf(Error);
+		expect(result.data).toEqual({ __n8nType: 'Error', __message: 'not an error' });
+	});
+
 	it('wraps a top-level object that holds the type key', () => {
 		const value = { __n8nType: 'HostValue', __value: 'user data' };
 

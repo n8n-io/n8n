@@ -8,6 +8,7 @@ import {
 	isStructuredCloneBuiltin,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_FRAMING_KEYS,
+	TRANSFER_OPAQUE_KEY,
 	TRANSFER_TYPE_KEY,
 	TRANSFER_VALUE_KEY,
 } from '../runtime/transfer';
@@ -112,10 +113,18 @@ class GuestEncoder {
 	 * Inside an Error, a class instance or a Promise gives undefined. Such an
 	 * instance can be a large host object, such as the request of an HTTP client
 	 * error. Structured clone cannot copy a Promise.
+	 *
+	 * Outside an Error, a class instance is marked opaque. Structured clone
+	 * flattens its prototype away, so a framing key on it would read as ours.
 	 */
 	private encodeUnwalked(value: object): unknown {
 		const cloneable = isStructuredCloneBuiltin(value) && !(value instanceof Promise);
-		return this.insideError && !cloneable ? undefined : value;
+		if (this.insideError && !cloneable) {
+			return undefined;
+		}
+		return isStructuredCloneBuiltin(value)
+			? value
+			: { [TRANSFER_ESCAPED_KEY]: true, [TRANSFER_OPAQUE_KEY]: true, [TRANSFER_VALUE_KEY]: value };
 	}
 }
 
