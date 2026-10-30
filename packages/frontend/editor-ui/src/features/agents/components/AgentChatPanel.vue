@@ -1477,9 +1477,10 @@ async function loadSessionFiles() {
 		);
 		if (props.continueSessionId === threadId) sessionFiles.value = files;
 	} catch {
-		sessionFilesError.value = true;
+		// A response for a previous session must not change the state of the open one.
+		if (props.continueSessionId === threadId) sessionFilesError.value = true;
 	} finally {
-		sessionFilesLoading.value = false;
+		if (props.continueSessionId === threadId) sessionFilesLoading.value = false;
 	}
 }
 
@@ -1497,6 +1498,8 @@ watch(
 	() => {
 		sessionFilesOpen.value = false;
 		sessionFiles.value = [];
+		sessionFilesError.value = false;
+		sessionFilesLoading.value = false;
 	},
 );
 
