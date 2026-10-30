@@ -10,6 +10,7 @@ import {
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
+	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PromotionBindingConflict, PromotionBindingConsumer } from '@n8n/api-types';
@@ -417,10 +418,13 @@ async function continueApply() {
 														@click="create(row.key, $event)"
 													/>
 												</div>
-												<div :class="$style.scope">{{ destinationScope(row.binding) }}</div>
+												<N8nText tag="div" size="small" color="text-light" :class="$style.scope">
+													{{ destinationScope(row.binding) }}
+												</N8nText>
 											</td>
 											<td aria-live="polite">
-												<span
+												<N8nText
+													size="medium"
 													:class="[
 														$style.status,
 														row.status === 'resolved' ? $style.resolved : $style.pending,
@@ -431,7 +435,7 @@ async function continueApply() {
 														size="small"
 													/>
 													{{ i18n.baseText(`promotions.bindings.status.${row.status}`) }}
-												</span>
+												</N8nText>
 											</td>
 										</tr>
 									</tbody>
@@ -457,14 +461,20 @@ async function continueApply() {
 			</form>
 		</N8nDialogBody>
 		<N8nDialogFooter :class="$style.actions">
-			<span v-if="mode === 'bindings'" :class="$style.count" role="status">
+			<N8nText
+				v-if="mode === 'bindings'"
+				size="small"
+				color="text-base"
+				:class="$style.count"
+				role="status"
+			>
 				{{
 					i18n.baseText('promotions.bindings.unresolvedCount', {
 						adjustToNumber: unresolvedCount,
 						interpolate: { count: unresolvedCount },
 					})
 				}}
-			</span>
+			</N8nText>
 			<N8nButton
 				type="button"
 				:variant="mode === 'blocked' ? 'solid' : 'outline'"
@@ -568,8 +578,8 @@ async function continueApply() {
 		padding: var(--spacing--2xs) var(--spacing--xs);
 		background: var(--background--subtle);
 		color: var(--text-color--subtle);
-		font-size: var(--font-size--3xs);
-		font-weight: var(--font-weight--regular);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--medium);
 	}
 
 	th,
@@ -635,14 +645,8 @@ async function continueApply() {
 
 .scope {
 	margin-top: var(--spacing--4xs);
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--3xs);
 }
 
-.status {
-	font-size: var(--font-size--3xs);
-	line-height: var(--line-height--xl);
-}
 .pending {
 	color: var(--text-color--warning);
 }
@@ -669,7 +673,5 @@ async function continueApply() {
 .count {
 	margin-right: auto;
 	align-self: center;
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--3xs);
 }
 </style>
