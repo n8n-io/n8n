@@ -407,6 +407,79 @@ describe('AssistantTurnTracer', () => {
 		);
 	});
 
+	it('closes the traces of running turns at shutdown, and only those', async () => {
+		const running = traceContext();
+		const settled = traceContext();
+		vi.mocked(createInstanceAiTraceContext)
+			.mockResolvedValueOnce(running.context)
+			.mockResolvedValueOnce(settled.context);
+		const instance = tracer();
+		await instance.startForTurn(startTurn(), setup);
+		const settledTrace = await instance.startForTurn(startTurn(), setup);
+		await settledTrace?.finish({ status: 'completed' });
+		settled.finishRun.mockClear();
+
+		await instance.finishOpenTraces();
+
+		expect(running.finishRun).toHaveBeenCalledWith(running.rootRun, {
+			outputs: { status: 'cancelled', runId: 'run-1', reason: 'service_shutdown' },
+			metadata: expect.objectContaining({
+				final_status: 'cancelled',
+				completion_source: 'service_cleanup',
+			}),
+		});
+		// The user did not cancel the turn, so the root has no cancellation type.
+		expect(running.finishRun).not.toHaveBeenCalledWith(
+			running.rootRun,
+			expect.objectContaining({
+				metadata: expect.objectContaining({ cancellation_type: expect.anything() }),
+			}),
+		);
+		expect(settled.finishRun).not.toHaveBeenCalled();
+
+		// A trace closes once: a second shutdown call finds nothing open.
+		running.finishRun.mockClear();
+		await instance.finishOpenTraces();
+		expect(running.finishRun).not.toHaveBeenCalled();
+	});
+
+	it('runs a turn that starts after shutdown began without a trace', async () => {
+		const instance = tracer();
+		await instance.finishOpenTraces();
+		const turn = startTurn();
+
+		await expect(instance.startForTurn(turn, setup)).resolves.toBeUndefined();
+
+		expect(createInstanceAiTraceContext).not.toHaveBeenCalled();
+		expect(turn.emitHostEvent).not.toHaveBeenCalled();
+	});
+
+	it('closes a trace that is created while shutdown runs', async () => {
+		const { context, rootRun, finishRun } = traceContext();
+		let createTrace!: (value: InstanceAiTraceContext) => void;
+		vi.mocked(createInstanceAiTraceContext).mockReturnValue(
+			new Promise((resolve) => {
+				createTrace = resolve;
+			}),
+		);
+		const instance = tracer();
+		const turn = startTurn();
+		const started = instance.startForTurn(turn, setup);
+
+		await instance.finishOpenTraces();
+		createTrace(context);
+
+		await expect(started).resolves.toBeUndefined();
+		expect(finishRun).toHaveBeenCalledWith(
+			rootRun,
+			expect.objectContaining({
+				outputs: { status: 'cancelled', runId: 'run-1', reason: 'service_shutdown' },
+				metadata: expect.objectContaining({ completion_source: 'service_cleanup' }),
+			}),
+		);
+		expect(turn.emitHostEvent).not.toHaveBeenCalled();
+	});
+
 	it('links a card answer to the beat it continues, with the answer values', async () => {
 		const { context } = traceContext();
 		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
