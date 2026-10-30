@@ -50,7 +50,8 @@ the probe tracks is sent only when the card shows. `approval-judge.ts`
 describes what the judge reads and how it cuts long input.
 
 The judge sees the user's messages, the user's answers in question cards, and
-the Assistant's text.
+the Assistant's text. `pnpm eval:approval-judge` measures it on a directory of
+cases (see the evaluations README).
 
 ### Approval copy
 
