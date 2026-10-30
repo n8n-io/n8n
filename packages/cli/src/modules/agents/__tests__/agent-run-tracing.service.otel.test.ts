@@ -5,7 +5,6 @@ import { mock } from 'vitest-mock-extended';
 
 import { OtelTestProvider } from '@/modules/otel/__tests__/support/otel-test-provider';
 import { ExecutionLevelTracer } from '@/modules/otel/execution-level-tracer';
-import type { OtelSettingsService } from '@/modules/otel/otel-settings.service';
 import { OtelCustomAttributesConfig } from '@/modules/otel/otel.config';
 
 import { AgentRunTracingService } from '../agent-run-tracing.service';
@@ -58,7 +57,6 @@ describe('AgentRunTracingService (real OTel provider)', () => {
 		const otel = OtelTestProvider.create({ withContextManager: true });
 		try {
 			const executionLevelTracer = new ExecutionLevelTracer(
-				mock<OtelSettingsService>({ getSettings: () => ({ injectOutbound: false }) as never }),
 				mock<Logger>(),
 				new OtelCustomAttributesConfig(),
 			);

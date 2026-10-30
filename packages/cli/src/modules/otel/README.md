@@ -59,6 +59,12 @@ There are two ways to add the headers:
 returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
 off, or when no execution runs. Use the result without a guard.
 
+Both ways write the headers with the global propagator. `OtelService` installs it from the
+settings: W3C trace context and baggage when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is on, nothing
+when it is off. When another OTel setup is already registered, its propagator stays in
+control. `ExecutionLevelTracer` keeps a private trace context propagator only to save the
+trace context on the execution, which must work when outbound headers are off.
+
 Both ways obey these rules:
 
 - **Read the headers for each request.** They name the span that is active now. A transport
@@ -160,7 +166,7 @@ graph TD
         LCH["OtelLifecycleHandler
         @OnLifecycleEvent and @OnPubSubEvent"]
         ELT["ExecutionLevelTracer
-        span maps by execution id, W3C propagator"]
+        span maps by execution id, saves the trace context"]
         TCS["TraceContextService
         trace context and identity on the execution row"]
     end
