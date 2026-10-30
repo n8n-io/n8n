@@ -107,6 +107,40 @@ describe('ZendeskTrigger Node', () => {
 			);
 			expect(postWebhookCalls).toHaveLength(0);
 		});
+
+		it('should fall back to status for condition field when field is omitted from serialized parameters', async () => {
+			mockThis.getNodeParameter = vi.fn().mockImplementation((name: string) => {
+				if (name === 'service') return 'support';
+				if (name === 'conditions')
+					return {
+						all: [{ operation: 'value', value: 'new' }],
+						any: [{ operation: 'value', value: 'open' }],
+					};
+				if (name === 'options') return {};
+			});
+
+			const createdWebhook = { id: 'webhook-123' };
+			const signingSecretResponse = { signing_secret: { secret: 'test-signing-secret' } };
+			const createdTrigger = { id: 'trigger-456' };
+
+			const apiRequestSpy = vi
+				.spyOn(GenericFunctions, 'zendeskApiRequest')
+				.mockResolvedValueOnce({ webhook: createdWebhook })
+				.mockResolvedValueOnce(signingSecretResponse)
+				.mockResolvedValueOnce({ trigger: createdTrigger });
+
+			const trigger = new ZendeskTrigger();
+			const result = await trigger.webhookMethods.default.create.call(mockThis);
+
+			expect(result).toBe(true);
+			const postTriggerCall = apiRequestSpy.mock.calls.find(
+				([method, path]) => method === 'POST' && path === '/triggers',
+			);
+			expect(postTriggerCall).toBeDefined();
+			const bodyTrigger = postTriggerCall![2] as any;
+			expect(bodyTrigger.trigger.conditions.all[0].field).toBe('status');
+			expect(bodyTrigger.trigger.conditions.any[0].field).toBe('status');
+		});
 	});
 
 	describe('delete webhook method', () => {
@@ -182,6 +216,51 @@ describe('ZendeskTrigger Node', () => {
 			expect(result).toBe(true);
 
 			// DELETE /webhooks must not have been called
+			const deleteWebhookCalls = apiRequestSpy.mock.calls.filter(
+				([method, path]) =>
+					method === 'DELETE' && typeof path === 'string' && path.startsWith('/webhooks'),
+			);
+			expect(deleteWebhookCalls).toHaveLength(0);
+		});
+
+		it('should recognize webhook is still in use when notification_webhook is not the first action in remainingTriggers', async () => {
+			const apiRequestSpy = vi
+				.spyOn(GenericFunctions, 'zendeskApiRequest')
+				.mockResolvedValueOnce({});
+			vi.spyOn(GenericFunctions, 'zendeskApiRequestAllItems').mockResolvedValueOnce([
+				{
+					actions: [
+						{ field: 'current_tags', value: ['tag1'] },
+						{ field: 'notification_webhook', value: [webhookData.targetId, '{}'] },
+					],
+				},
+			]);
+
+			const trigger = new ZendeskTrigger();
+			const result = await trigger.webhookMethods.default.delete.call(mockThis);
+
+			expect(result).toBe(true);
+			const deleteWebhookCalls = apiRequestSpy.mock.calls.filter(
+				([method, path]) =>
+					method === 'DELETE' && typeof path === 'string' && path.startsWith('/webhooks'),
+			);
+			expect(deleteWebhookCalls).toHaveLength(0);
+		});
+
+		it('should treat triggers with missing or invalid actions as still in use to prevent accidental webhook deletion', async () => {
+			const apiRequestSpy = vi
+				.spyOn(GenericFunctions, 'zendeskApiRequest')
+				.mockResolvedValueOnce({});
+			vi.spyOn(GenericFunctions, 'zendeskApiRequestAllItems').mockResolvedValueOnce([
+				{
+					actions: undefined,
+				},
+			]);
+
+			const trigger = new ZendeskTrigger();
+			const result = await trigger.webhookMethods.default.delete.call(mockThis);
+
+			expect(result).toBe(true);
 			const deleteWebhookCalls = apiRequestSpy.mock.calls.filter(
 				([method, path]) =>
 					method === 'DELETE' && typeof path === 'string' && path.startsWith('/webhooks'),
@@ -320,6 +399,75 @@ describe('ZendeskTrigger Node', () => {
 			);
 
 			expect(result).toBe(false);
+		});
+
+		it('should safely handle triggers with undefined or null id without throwing TypeError', async () => {
+			vi.spyOn(GenericFunctions, 'zendeskApiRequest').mockResolvedValueOnce({
+				webhooks: [matchingWebhook],
+			});
+			vi.spyOn(GenericFunctions, 'zendeskApiRequestAllItems').mockResolvedValueOnce([
+				{ id: undefined, actions: [] },
+				{ id: null, actions: [] },
+				ownTrigger,
+			]);
+
+			const webhookData: Record<string, unknown> = {
+				targetId: ZENDESK_WEBHOOK_ID,
+				webhookId: ZENDESK_TRIGGER_ID,
+			};
+			const trigger = new ZendeskTrigger();
+
+			const result = await trigger.webhookMethods.default.checkExists.call(
+				makeCheckExistsContext(webhookData),
+			);
+
+			expect(result).toBe(true);
+		});
+
+		it('should safely return false without throwing when stored webhookId is null or empty', async () => {
+			vi.spyOn(GenericFunctions, 'zendeskApiRequest').mockResolvedValueOnce({
+				webhooks: [matchingWebhook],
+			});
+			const allItemsSpy = vi.spyOn(GenericFunctions, 'zendeskApiRequestAllItems');
+
+			const webhookData: Record<string, unknown> = {
+				webhookId: null,
+			};
+			const trigger = new ZendeskTrigger();
+
+			const result = await trigger.webhookMethods.default.checkExists.call(
+				makeCheckExistsContext(webhookData),
+			);
+
+			expect(result).toBe(false);
+			expect(allItemsSpy).not.toHaveBeenCalled();
+		});
+
+		it('should find matching trigger when notification_webhook is not the first action', async () => {
+			vi.spyOn(GenericFunctions, 'zendeskApiRequest').mockResolvedValueOnce({
+				webhooks: [matchingWebhook],
+			});
+			vi.spyOn(GenericFunctions, 'zendeskApiRequestAllItems').mockResolvedValueOnce([
+				{
+					id: ZENDESK_TRIGGER_ID,
+					actions: [
+						{ field: 'status', value: 'solved' },
+						{ field: 'notification_webhook', value: [ZENDESK_WEBHOOK_ID, '{}'] },
+					],
+				},
+			]);
+
+			const webhookData: Record<string, unknown> = {
+				targetId: ZENDESK_WEBHOOK_ID,
+				webhookId: ZENDESK_TRIGGER_ID,
+			};
+			const trigger = new ZendeskTrigger();
+
+			const result = await trigger.webhookMethods.default.checkExists.call(
+				makeCheckExistsContext(webhookData),
+			);
+
+			expect(result).toBe(true);
 		});
 	});
 
