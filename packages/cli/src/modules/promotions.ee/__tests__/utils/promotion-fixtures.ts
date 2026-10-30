@@ -1,7 +1,7 @@
 import {
 	promotionProviderTypeCapabilities,
+	type PromotionGitHostConfig,
 	type PromotionProviderConfig,
-	type PromotionProviderType,
 } from '@n8n/api-types';
 import { ProjectRepository, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -22,11 +22,12 @@ export async function insertTokenProvider({
 	password = 'test',
 }: {
 	name: string;
-	type?: PromotionProviderType;
-	config?: PromotionProviderConfig;
 	username?: string;
 	password?: string;
-}) {
+} & (
+	| { type?: 'git'; config?: PromotionProviderConfig }
+	| { type: 'gitlab'; config: PromotionGitHostConfig }
+)) {
 	const credentials = {
 		schemaVersion: 1,
 		username: promotionProviderTypeCapabilities[type].tokenUsername ?? username,
