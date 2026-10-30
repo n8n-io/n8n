@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, ref, watch } from 'vue';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
 import {
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	createFormEventBus,
 	N8nAnimatedCollapsibleContent,
 	N8nButton,

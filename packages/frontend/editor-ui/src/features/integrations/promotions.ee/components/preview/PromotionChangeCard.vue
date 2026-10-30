@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import {
+	CollapsibleContent,
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	N8nButton,
 	N8nCallout,
 	N8nCheckbox,
@@ -10,7 +13,6 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { CollapsibleContent, CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, watch } from 'vue';
 import { I18nT } from 'vue-i18n';
 

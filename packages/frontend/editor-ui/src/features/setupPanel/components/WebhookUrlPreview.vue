@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
-import { ElCollapseTransition } from 'element-plus';
+import { CollapsibleContent, CollapsibleRoot, N8nIcon, N8nTooltip } from '@n8n/design-system';
 
 import { useClipboard } from '@n8n/composables/useClipboard';
 import { useToast } from '@n8n/composables/useToast';
@@ -38,27 +37,29 @@ function copyUrl(url: string) {
 				{{ i18n.baseText('setupPanel.webhookUrl.title') }}
 			</span>
 		</div>
-		<ElCollapseTransition>
-			<div v-if="!isCollapsed" :class="$style['url-list']">
-				<N8nTooltip
-					v-for="(item, index) in urls"
-					:key="index"
-					:content="i18n.baseText('setupPanel.webhookUrl.clickToCopy')"
-					placement="top"
-				>
-					<div
-						data-test-id="webhook-url-item"
-						:class="$style['url-row']"
-						@click="copyUrl(item.url)"
+		<CollapsibleRoot :open="!isCollapsed">
+			<CollapsibleContent>
+				<div :class="$style['url-list']">
+					<N8nTooltip
+						v-for="(item, index) in urls"
+						:key="index"
+						:content="i18n.baseText('setupPanel.webhookUrl.clickToCopy')"
+						placement="top"
 					>
-						<span v-if="item.isMethodVisible" :class="$style['method-badge']">
-							{{ item.httpMethod }}
-						</span>
-						<span :class="$style['url-text']">{{ item.url }}</span>
-					</div>
-				</N8nTooltip>
-			</div>
-		</ElCollapseTransition>
+						<div
+							data-test-id="webhook-url-item"
+							:class="$style['url-row']"
+							@click="copyUrl(item.url)"
+						>
+							<span v-if="item.isMethodVisible" :class="$style['method-badge']">
+								{{ item.httpMethod }}
+							</span>
+							<span :class="$style['url-text']">{{ item.url }}</span>
+						</div>
+					</N8nTooltip>
+				</div>
+			</CollapsibleContent>
+		</CollapsibleRoot>
 	</div>
 </template>
 

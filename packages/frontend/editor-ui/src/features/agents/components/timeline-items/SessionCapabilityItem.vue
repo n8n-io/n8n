@@ -8,6 +8,8 @@ import {
 	N8nAiActivityStepChevron,
 	N8nAiActivityStepResultSection,
 	N8nAnimatedCollapsibleContent,
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	N8nButton,
 	N8nCallout,
 	N8nCodeBlock,
@@ -18,7 +20,6 @@ import {
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { truncate } from '@n8n/utils/string/truncate';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed } from 'vue';
 import { useRouter } from 'vue-router';
 import { useTimelineItemExpansion } from '../../composables/useTimelineItemExpansion';

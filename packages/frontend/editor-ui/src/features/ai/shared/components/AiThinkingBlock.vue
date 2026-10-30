@@ -1,7 +1,11 @@
 <script lang="ts" setup>
-import { N8nAiActivityStepChevron, N8nAnimatedCollapsibleContent } from '@n8n/design-system';
+import {
+	CollapsibleRoot,
+	CollapsibleTrigger,
+	N8nAiActivityStepChevron,
+	N8nAnimatedCollapsibleContent,
+} from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, onUnmounted, ref, watch } from 'vue';
 import { firstSentence } from '../thinking.utils';
 

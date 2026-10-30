@@ -1,13 +1,15 @@
 <script lang="ts" setup>
 import { truncate } from '@n8n/utils/string/truncate';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import { computed, inject } from 'vue';
 
 import { aiActivityStepGroupContext } from './context';
 import N8nAiActivityStepButton from '../N8nAiActivityStepButton';
 import N8nAiActivityStepChevron from '../N8nAiActivityStepChevron';
 import N8nAiActivityStepResultSection from '../N8nAiActivityStepResultSection';
-import N8nAnimatedCollapsibleContent from '../N8nAnimatedCollapsibleContent';
+import N8nAnimatedCollapsibleContent, {
+	CollapsibleRoot,
+	CollapsibleTrigger,
+} from '../N8nAnimatedCollapsibleContent';
 import N8nCallout from '../N8nCallout';
 import N8nIcon from '../N8nIcon';
 import type { IconName } from '../N8nIcon/icons';

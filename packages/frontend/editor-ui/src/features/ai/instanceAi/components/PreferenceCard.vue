@@ -2,6 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import type { InstanceAiToolCallState } from '@n8n/api-types';
 import {
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	N8nAiActivityStepChevron,
 	N8nAnimatedCollapsibleContent,
 	N8nCallout,
@@ -11,7 +13,6 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 
 import { aiPreferenceTargetOf } from '@n8n/api-types';
 

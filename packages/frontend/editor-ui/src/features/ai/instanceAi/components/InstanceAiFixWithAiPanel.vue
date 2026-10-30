@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import {
+	CollapsibleRoot,
+	CollapsibleTrigger,
 	N8nButton,
 	N8nIcon,
 	N8nText,
@@ -7,7 +9,6 @@ import {
 } from '@n8n/design-system';
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import { CollapsibleRoot, CollapsibleTrigger } from 'reka-ui';
 import ConfirmationFooter from './ConfirmationFooter.vue';
 
 const props = withDefaults(

@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { CollapsibleRoot } from 'reka-ui';
 import { useI18n } from '@n8n/i18n';
 import {
+	CollapsibleRoot,
 	N8nAnimatedCollapsibleContent,
 	N8nButton,
 	N8nDialog,

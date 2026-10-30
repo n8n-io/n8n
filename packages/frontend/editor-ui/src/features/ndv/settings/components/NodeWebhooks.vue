@@ -16,8 +16,14 @@ import { computedAsync } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 
-import { ElCol, ElCollapseTransition, ElRow } from 'element-plus';
-import { N8nIcon, N8nSegmentControl, N8nTooltip } from '@n8n/design-system';
+import { ElCol, ElRow } from 'element-plus';
+import {
+	CollapsibleContent,
+	CollapsibleRoot,
+	N8nIcon,
+	N8nSegmentControl,
+	N8nTooltip,
+} from '@n8n/design-system';
 const props = defineProps<{
 	node: INodeUi;
 	nodeTypeDescription: INodeTypeDescription | null;
@@ -207,39 +213,41 @@ watch(
 			:title="isMinimized ? baseText.clickToDisplay : baseText.clickToHide"
 			@click="isMinimized = !isMinimized"
 		>
-			<N8nIcon icon="chevron-right" class="minimize-button minimize-icon" />
+			<N8nIcon icon="chevron-right" size="small" class="chevron" />
 			{{ baseText.toggleTitle }}
 		</div>
-		<ElCollapseTransition>
-			<div v-if="!isMinimized" class="node-webhooks">
-				<div v-if="!isProductionOnly" class="url-selection">
-					<ElRow>
-						<ElCol :span="24">
-							<N8nSegmentControl v-model="showUrlFor" :options="urlOptions" />
-						</ElCol>
-					</ElRow>
-				</div>
+		<CollapsibleRoot :open="!isMinimized">
+			<CollapsibleContent>
+				<div class="node-webhooks">
+					<div v-if="!isProductionOnly" class="url-selection">
+						<ElRow>
+							<ElCol :span="24">
+								<N8nSegmentControl v-model="showUrlFor" :options="urlOptions" />
+							</ElCol>
+						</ElRow>
+					</div>
 
-				<N8nTooltip
-					v-for="(item, index) in visibleWebhookUrls"
-					:key="index"
-					class="item"
-					:content="baseText.clickToCopy"
-					placement="left"
-				>
-					<div class="webhook-wrapper">
-						<div v-if="item.isMethodVisible" class="http-field">
-							<div class="http-method">{{ item.httpMethod }}</div>
-						</div>
-						<div class="url-field">
-							<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
-								{{ item.url }}
+					<N8nTooltip
+						v-for="(item, index) in visibleWebhookUrls"
+						:key="index"
+						class="item"
+						:content="baseText.clickToCopy"
+						placement="left"
+					>
+						<div class="webhook-wrapper">
+							<div v-if="item.isMethodVisible" class="http-field">
+								<div class="http-method">{{ item.httpMethod }}</div>
+							</div>
+							<div class="url-field">
+								<div class="webhook-url left-ellipsis clickable" @click="copyWebhookUrl(item)">
+									{{ item.url }}
+								</div>
 							</div>
 						</div>
-					</div>
-				</N8nTooltip>
-			</div>
-		</ElCollapseTransition>
+					</N8nTooltip>
+				</div>
+			</CollapsibleContent>
+		</CollapsibleRoot>
 	</div>
 </template>
 
@@ -252,7 +260,9 @@ watch(
 	border-bottom: 1px solid var(--color--text--tint-2);
 
 	.headline {
-		color: $color-primary;
+		display: flex;
+		align-items: center;
+		gap: var(--spacing--4xs);
 		font-weight: var(--font-weight--medium);
 		font-size: var(--font-size--2xs);
 	}
@@ -273,11 +283,6 @@ watch(
 	color: var(--color--foreground--tint-2);
 }
 
-.minimize-icon {
-	font-size: 1.3em;
-	margin-right: 0.5em;
-}
-
 .mode-selection-headline {
 	line-height: 1.8em;
 }
@@ -295,22 +300,11 @@ watch(
 	margin-top: var(--spacing--xs);
 }
 
-.minimize-button {
-	display: inline-block;
-	-webkit-transition-duration: 0.5s;
-	-moz-transition-duration: 0.5s;
-	-o-transition-duration: 0.5s;
-	transition-duration: 0.5s;
-
-	-webkit-transition-property: -webkit-transform;
-	-moz-transition-property: -moz-transform;
-	-o-transition-property: -o-transform;
-	transition-property: transform;
+.chevron {
+	flex-shrink: 0;
 }
-.expanded .minimize-button {
-	-webkit-transform: rotate(90deg);
-	-moz-transform: rotate(90deg);
-	-o-transform: rotate(90deg);
+
+.expanded .chevron {
 	transform: rotate(90deg);
 }
 
