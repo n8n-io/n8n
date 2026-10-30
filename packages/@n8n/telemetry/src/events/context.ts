@@ -1,4 +1,4 @@
-import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS } from '@n8n/api-types';
+import { SKILL_SCAN_RULES, SKILL_SOURCE_REASONS, skillScopeSchema } from '@n8n/api-types';
 import { z } from 'zod/v4';
 
 import { defineTelemetryEvents } from '../define';
@@ -37,19 +37,17 @@ const optionalUserId = z
 		'The acting user. Absent on the events the editor fires, which identify the user already',
 	);
 
-/** Where a skill lives. An agent skill takes its project from its agent. */
+/** Where a skill lives. */
 const skillScope = z
-	.enum(['project', 'agent', 'instance'])
-	.describe('Where the skill lives: one project, one agent, or the whole instance');
+	.enum(skillScopeSchema.options)
+	.describe('Where the skill lives: one project, or the whole instance');
 
 const skillId = z.string().describe('The skill. Its name and text are never reported');
 
 const skillProjectId = z
 	.string()
 	.optional()
-	.describe(
-		'The project of a project skill, or the project of the agent for an agent skill. Absent for an instance skill',
-	);
+	.describe('The project of a project skill. Absent for an instance skill');
 
 /**
  * The surface that wrote the skill: the values of `skill.source` without `import`, as a

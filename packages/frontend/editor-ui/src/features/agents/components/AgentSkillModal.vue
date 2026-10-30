@@ -394,11 +394,7 @@ const cannotEdit = computed(
 );
 /** Save sends a snapshot, so the editor is locked until the answer comes back. */
 const editorLocked = computed(() => isReadOnly.value || isSaving.value);
-const savedTarget = computed<AgentSkillAvailability | undefined>(() => {
-	if (!skillAccess.value) return undefined;
-	if (skillAccess.value.agentId) return 'agent';
-	return skillAccess.value.scope === 'instance' ? 'instance' : 'project';
-});
+const savedTarget = computed<AgentSkillAvailability | undefined>(() => skillAccess.value?.scope);
 const showAvailabilitySelect = computed(() => {
 	if (!props.data.skillRefsEnabled || step.value === 'preview') return false;
 	if (!isEditing.value) return true;
@@ -409,7 +405,6 @@ const showInstanceTarget = computed(
 );
 const AVAILABILITY_ICONS = {
 	project: 'layers',
-	agent: 'bot',
 	instance: 'globe',
 } as const satisfies Record<AgentSkillAvailability, string>;
 const availabilityOptions = computed(() => [
@@ -418,7 +413,6 @@ const availabilityOptions = computed(() => [
 		value: 'project' as const,
 		label: props.data.projectLabel ?? i18n.baseText('agents.builder.skills.availableTo.project'),
 	},
-	{ value: 'agent' as const, label: i18n.baseText('agents.builder.skills.availableTo.agent') },
 	...(showInstanceTarget.value
 		? [
 				{
@@ -461,7 +455,7 @@ function onScopeChoice(value: string) {
 		scope.value = value;
 		return;
 	}
-	if (value === 'project' || value === 'agent' || value === 'instance') availableTo.value = value;
+	if (value === 'project' || value === 'instance') availableTo.value = value;
 }
 
 function scopeItems(testIdPrefix: string): Array<ActionDropdownItem<string>> {
@@ -555,14 +549,14 @@ const pendingMove = computed<
 			? { target: option.target, destination: option.label, usage }
 			: undefined;
 	}
-	const agentId = props.data.agentId;
 	const usage = skillAccess.value?.usedBy;
-	if (!showAvailabilitySelect.value || !isEditing.value || !agentId || !usage) return undefined;
+	if (!showAvailabilitySelect.value || !isEditing.value || !props.data.agentId || !usage) {
+		return undefined;
+	}
 	if (availableTo.value === savedTarget.value) return undefined;
-	const target: SkillMoveTarget =
-		availableTo.value === 'project'
-			? { projectId: props.data.projectId ?? null, agentId: null }
-			: { projectId: null, agentId: availableTo.value === 'agent' ? agentId : null };
+	const target: SkillMoveTarget = {
+		projectId: availableTo.value === 'project' ? (props.data.projectId ?? null) : null,
+	};
 	const option = availabilityOptions.value.find(({ value }) => value === availableTo.value);
 	return { target, destination: option?.label ?? '', usage };
 });
@@ -577,15 +571,10 @@ const accessWarning = computed(() => {
 	const parts: string[] = [];
 	if (names.length > 0) {
 		parts.push(
-			i18n.baseText(
-				target.agentId
-					? 'agents.builder.skills.loseAccess.agentOnly'
-					: 'agents.builder.skills.loseAccess',
-				{
-					interpolate: { agents: names.join(', '), destination },
-					adjustToNumber: names.length,
-				},
-			),
+			i18n.baseText('agents.builder.skills.loseAccess', {
+				interpolate: { agents: names.join(', '), destination },
+				adjustToNumber: names.length,
+			}),
 		);
 	}
 	if (hidden > 0) {
@@ -724,9 +713,8 @@ function getSimilarNameReason(name: string): string | undefined {
 	});
 }
 
-function getPickerCategory(librarySkill: SkillListItem): 'project' | 'this-agent' | 'global' {
-	if (librarySkill.scope === 'instance') return 'global';
-	return librarySkill.agentId ? 'this-agent' : 'project';
+function getPickerCategory(librarySkill: SkillListItem): 'project' | 'global' {
+	return librarySkill.scope === 'instance' ? 'global' : 'project';
 }
 
 async function loadLibrarySkills() {
@@ -743,9 +731,7 @@ async function loadLibrarySkills() {
 }
 
 function targetForPickerCategory(category: ToolCategoryKey): AgentSkillAvailability {
-	if (category === 'project') return 'project';
-	if (category === 'global' && props.data.canCreateInstanceSkills) return 'instance';
-	return 'agent';
+	return category === 'global' && props.data.canCreateInstanceSkills ? 'instance' : 'project';
 }
 
 function onPickerCreate(category: ToolCategoryKey) {
@@ -1307,7 +1293,7 @@ function onRemove() {
 			<ToolsConnectionModal
 				:open="modalOpen && step === 'select'"
 				:items="pickerItems"
-				:categories="['all', 'project', 'this-agent', 'global']"
+				:categories="['all', 'project', 'global']"
 				:category-labels="data.projectLabel ? { project: data.projectLabel } : undefined"
 				:detail-item="null"
 				:search-placeholder="i18n.baseText('agents.builder.skills.picker.search.placeholder')"

@@ -231,11 +231,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							</N8nBadge>
 						</N8nTooltip>
 						<N8nTooltip
-							v-if="
-								props.showAssistantAvailability &&
-								item.scope !== 'agent' &&
-								item.availableToAssistant
-							"
+							v-if="props.showAssistantAvailability && item.availableToAssistant"
 							:content="i18n.baseText('settings.context.skills.assistant.label')"
 						>
 							<N8nBadge
@@ -247,7 +243,7 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							</N8nBadge>
 						</N8nTooltip>
 						<N8nTooltip
-							v-if="props.showMcpAvailability && item.scope !== 'agent' && item.availableToMCP"
+							v-if="props.showMcpAvailability && item.availableToMCP"
 							placement="right"
 							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
 						>

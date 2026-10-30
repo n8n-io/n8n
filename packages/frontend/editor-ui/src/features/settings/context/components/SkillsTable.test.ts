@@ -31,8 +31,6 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		projectId: null,
 		projectName: null,
 		projectType: null,
-		agentId: null,
-		agentName: null,
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
@@ -115,7 +113,6 @@ describe('SkillsTable', () => {
 				projectType: 'personal',
 			}),
 		],
-		['FirstClassDarwin only', skill({ scope: 'agent', agentName: 'FirstClassDarwin' })],
 	])('labels the scope "%s"', (label, row) => {
 		const { getByTestId } = render([row]);
 

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { jsonValueSchema } from '../common';
+import type { JsonValue } from '../common';
 
 /** Cap on one batch, so a sender can never build a body the receiver rejects. */
 export const MAX_LIFECYCLE_EVENTS_PER_BATCH = 500;
@@ -44,10 +44,11 @@ export const lifecycleEventSchema = z.discriminatedUnion('type', [
 		/**
 		 * The slots the step produced, exactly as persisted. The one payload that
 		 * carries data rather than identifiers, because it saves the host a read
-		 * where freshness matters most. A slot's contents are opaque, so only the
-		 * list is validated.
+		 * where freshness matters most. A slot's contents are opaque and can be
+		 * large, so only the list is validated: walking every value cost the host
+		 * more CPU than running the step did.
 		 */
-		outputs: z.array(jsonValueSchema),
+		outputs: z.array(z.custom<JsonValue>()),
 	}),
 	z.object({ type: z.literal('step:failed'), ...stepFields }),
 ]);

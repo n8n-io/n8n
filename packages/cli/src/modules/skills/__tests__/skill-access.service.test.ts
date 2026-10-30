@@ -39,21 +39,6 @@ describe('SkillAccessService', () => {
 			});
 		});
 
-		it('checks projectSkill:update on the project of the agent of an agent skill', async () => {
-			vi.mocked(userHasScopes).mockResolvedValue(true);
-			await usage.seed({
-				agents: [{ key: 'agent-1', name: 'Support bot', project: PROJECT }],
-				skills: [],
-			});
-
-			expect(
-				await access.canAccess(user, skillRow('skill_a', { agentId: 'agent-1' }), 'update'),
-			).toBe(true);
-			expect(userHasScopes).toHaveBeenCalledWith(user, ['projectSkill:update'], false, {
-				projectId: PROJECT,
-			});
-		});
-
 		it('needs skill:update for an instance skill', async () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(true);
 
@@ -73,15 +58,6 @@ describe('SkillAccessService', () => {
 			vi.mocked(hasGlobalScope).mockReturnValue(false);
 
 			expect(await access.canAccess(user, skillRow('skill_a'), 'read')).toBe(true);
-		});
-
-		it('needs skill:read for an agent skill whose agent is gone', async () => {
-			vi.mocked(hasGlobalScope).mockReturnValue(false);
-
-			expect(await access.canAccess(user, skillRow('skill_a', { agentId: 'gone' }), 'read')).toBe(
-				false,
-			);
-			expect(hasGlobalScope).toHaveBeenCalledWith(user, 'skill:read');
 		});
 
 		it('checks the scope of the operation on the project of a project skill', async () => {
@@ -110,12 +86,8 @@ describe('SkillAccessService', () => {
 
 			const canUpdate = await access.accessCheck(user, 'update');
 
-			expect(canUpdate(skillRow('skill_a', { projectId: PROJECT }), PROJECT)).toBe(true);
-			expect(canUpdate(skillRow('skill_b', { projectId: 'other-project' }), 'other-project')).toBe(
-				false,
-			);
-			// An agent skill is checked against the project of its agent.
-			expect(canUpdate(skillRow('skill_c', { agentId: 'agent-1' }), PROJECT)).toBe(true);
+			expect(canUpdate(skillRow('skill_a', { projectId: PROJECT }))).toBe(true);
+			expect(canUpdate(skillRow('skill_b', { projectId: 'other-project' }))).toBe(false);
 			expect(projectScope.getProjectIds).toHaveBeenCalledTimes(1);
 			expect(projectScope.getProjectIds).toHaveBeenCalledWith(user, ['projectSkill:update']);
 			expect(userHasScopes).not.toHaveBeenCalled();
@@ -126,9 +98,7 @@ describe('SkillAccessService', () => {
 
 			const canDelete = await access.accessCheck(user, 'delete');
 
-			expect(canDelete(skillRow('skill_a', { projectId: 'any-project' }), 'any-project')).toBe(
-				true,
-			);
+			expect(canDelete(skillRow('skill_a', { projectId: 'any-project' }))).toBe(true);
 		});
 
 		it('applies the canAccess rules to instance skills', async () => {
@@ -138,8 +108,8 @@ describe('SkillAccessService', () => {
 			const canUpdate = await access.accessCheck(user, 'update');
 			const canRead = await access.accessCheck(user, 'read');
 
-			expect(canUpdate(skillRow('skill_c'), null)).toBe(false);
-			expect(canRead(skillRow('skill_c'), null)).toBe(true);
+			expect(canUpdate(skillRow('skill_c'))).toBe(false);
+			expect(canRead(skillRow('skill_c'))).toBe(true);
 		});
 	});
 
