@@ -163,7 +163,9 @@ describe('domain tool construction', () => {
 			query_data_table: { id: 'data-table:query' },
 			delete_data_table_rows: { id: 'data-table:delete-rows' },
 			list_projects: { id: 'workspace:list-projects' },
+			list_tags: { id: 'workspace:list-tags' },
 			tag_workflow: { id: 'workspace:tag-workflow' },
+			cleanup_test_executions: { id: 'workspace:cleanup-test-executions' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
 			search_nodes: { id: 'search_nodes' },
@@ -177,6 +179,15 @@ describe('domain tool construction', () => {
 		expect(orchestratorTools.has('workflow_builder_workflows')).toBe(false);
 		expect(orchestratorTools.has('workflows')).toBe(false);
 		expect(orchestratorTools.has('workspace')).toBe(false);
+		// This context has no folder support, so no folder tools.
+		for (const name of [
+			'list_folders',
+			'create_folder',
+			'delete_folder',
+			'move_workflow_to_folder',
+		]) {
+			expect(orchestratorTools.has(name)).toBe(false);
+		}
 		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);
@@ -203,6 +214,25 @@ describe('domain tool construction', () => {
 		expect(createDataTableTool).toHaveBeenCalledWith(context, 'delete-rows');
 		expect(orchestratorTools.has('data_tables')).toBe(false);
 		expect(orchestratorTools.has('workflow_builder_executions')).toBe(false);
+	});
+
+	it('registers the folder tools when the workspace service supports folders', () => {
+		const context = makeContext({
+			workspaceService: {
+				listFolders: vi.fn(),
+			} as unknown as InstanceAiContext['workspaceService'],
+		});
+
+		expect(Object.fromEntries(createOrchestratorDomainTools(context))).toMatchObject({
+			list_projects: { id: 'workspace:list-projects' },
+			list_tags: { id: 'workspace:list-tags' },
+			tag_workflow: { id: 'workspace:tag-workflow' },
+			cleanup_test_executions: { id: 'workspace:cleanup-test-executions' },
+			list_folders: { id: 'workspace:list-folders' },
+			create_folder: { id: 'workspace:create-folder' },
+			delete_folder: { id: 'workspace:delete-folder' },
+			move_workflow_to_folder: { id: 'workspace:move-workflow-to-folder' },
+		});
 	});
 
 	it('never defers model catalog search behind search_tools', () => {

@@ -91,6 +91,14 @@ export const SHARED_BUILDER_TOOL_NAMES = {
 	INSERT_DATA_TABLE_ROWS: 'insert_data_table_rows',
 	UPDATE_DATA_TABLE_ROWS: 'update_data_table_rows',
 	DELETE_DATA_TABLE_ROWS: 'delete_data_table_rows',
+	LIST_PROJECTS: 'list_projects',
+	LIST_TAGS: 'list_tags',
+	TAG_WORKFLOW: 'tag_workflow',
+	CLEANUP_TEST_EXECUTIONS: 'cleanup_test_executions',
+	LIST_FOLDERS: 'list_folders',
+	CREATE_FOLDER: 'create_folder',
+	DELETE_FOLDER: 'delete_folder',
+	MOVE_WORKFLOW_TO_FOLDER: 'move_workflow_to_folder',
 	SEARCH_NODES: 'search_nodes',
 	GET_NODE_TYPES: 'get_node_types',
 	GET_NODE_PARAMETER_OPTIONS: 'get_node_parameter_options',
@@ -269,14 +277,14 @@ const SPLIT_EXECUTIONS_TOOL: SplitBuilderTool = { actions: EXECUTION_TOOL_NAME_B
 
 /** The tool that owns each action of the former multi-action `workspace` tool. */
 export const WORKSPACE_TOOL_NAME_BY_ACTION = {
-	'list-projects': 'list_projects',
-	'list-tags': 'list_tags',
-	'tag-workflow': 'tag_workflow',
-	'cleanup-test-executions': 'cleanup_test_executions',
-	'list-folders': 'list_folders',
-	'create-folder': 'create_folder',
-	'delete-folder': 'delete_folder',
-	'move-workflow-to-folder': 'move_workflow_to_folder',
+	'list-projects': SHARED_BUILDER_TOOL_NAMES.LIST_PROJECTS,
+	'list-tags': SHARED_BUILDER_TOOL_NAMES.LIST_TAGS,
+	'tag-workflow': SHARED_BUILDER_TOOL_NAMES.TAG_WORKFLOW,
+	'cleanup-test-executions': SHARED_BUILDER_TOOL_NAMES.CLEANUP_TEST_EXECUTIONS,
+	'list-folders': SHARED_BUILDER_TOOL_NAMES.LIST_FOLDERS,
+	'create-folder': SHARED_BUILDER_TOOL_NAMES.CREATE_FOLDER,
+	'delete-folder': SHARED_BUILDER_TOOL_NAMES.DELETE_FOLDER,
+	'move-workflow-to-folder': SHARED_BUILDER_TOOL_NAMES.MOVE_WORKFLOW_TO_FOLDER,
 } as const;
 
 export type WorkspaceToolAction = keyof typeof WORKSPACE_TOOL_NAME_BY_ACTION;

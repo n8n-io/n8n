@@ -6,8 +6,6 @@ import {
 	EXECUTION_TOOL_ACTIONS,
 	EXECUTION_TOOL_NAME_BY_ACTION,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
-	WORKSPACE_FOLDER_TOOL_ACTIONS,
-	WORKSPACE_TOOL_ACTIONS,
 	WORKSPACE_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
@@ -17,6 +15,7 @@ import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } 
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
 import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
+import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -149,12 +148,7 @@ function getOrchestratorDomainToolFactories(
 			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
 			() => loadDataTablesTool().createDataTableTool(context, action),
 		]),
-		// Folder tools need a workspace service that supports folders.
-		...WORKSPACE_TOOL_ACTIONS.filter(
-			(action) =>
-				context.workspaceService?.listFolders !== undefined ||
-				!WORKSPACE_FOLDER_TOOL_ACTIONS.includes(action),
-		).map((action): [string, DomainToolFactory] => [
+		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
 			WORKSPACE_TOOL_NAME_BY_ACTION[action],
 			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
 		]),

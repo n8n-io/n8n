@@ -1,5 +1,6 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
@@ -94,6 +95,13 @@ describe('workspace tools', () => {
 				'delete_folder',
 				'move_workflow_to_folder',
 			]);
+		});
+
+		it('gives no tool an action field in its input schema', () => {
+			for (const tool of createWorkspaceTools(contextWithFolderActions())) {
+				expect(tool.inputSchema).toBeInstanceOf(z.ZodObject);
+				expect((tool.inputSchema as z.AnyZodObject).shape).not.toHaveProperty('action');
+			}
 		});
 
 		it('omits the folder tools when the workspace service has no folder support', () => {

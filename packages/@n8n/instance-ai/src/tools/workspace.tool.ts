@@ -4,8 +4,6 @@
  */
 import { Tool } from '@n8n/agents';
 import {
-	WORKSPACE_FOLDER_TOOL_ACTIONS,
-	WORKSPACE_TOOL_ACTIONS,
 	WORKSPACE_TOOL_NAME_BY_ACTION,
 	getLegacyBuilderToolActions,
 	folderNameSchema,
@@ -20,6 +18,7 @@ import { z } from 'zod';
 
 import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
+import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
 // ── Shared fields (single source of truth for fields used across actions) ───
 
@@ -418,17 +417,6 @@ const READ_ACTIONS = new Set<WorkspaceToolAction>(['list-projects', 'list-tags',
 const neverSuspend = async (): Promise<never> => {
 	throw new Error('This workspace tool cannot ask for approval');
 };
-
-/**
- * The workspace actions this context supports. Folder actions need a workspace
- * service that supports folders.
- */
-export function getSupportedWorkspaceActions(context: InstanceAiContext): WorkspaceToolAction[] {
-	const supportsFolders = context.workspaceService?.listFolders !== undefined;
-	return WORKSPACE_TOOL_ACTIONS.filter(
-		(action) => supportsFolders || !WORKSPACE_FOLDER_TOOL_ACTIONS.includes(action),
-	);
-}
 
 async function runWorkspaceAction(
 	context: InstanceAiContext,
