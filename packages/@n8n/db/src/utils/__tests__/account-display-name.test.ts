@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { Person, ServiceAccount, ServiceAccountDetails } from '../../entities';
 import { accountFirstName, accountFullName } from '../account-display-name';

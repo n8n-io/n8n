@@ -40,9 +40,9 @@ import type {
 import {
 	CRASHABLE_EXECUTION_STATUSES,
 	migrateRunExecutionData,
-	UnexpectedError,
 	WAIT_FOR_SUB_EXECUTION,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import {
 	AnnotationTagEntity,
