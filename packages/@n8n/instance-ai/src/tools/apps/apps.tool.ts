@@ -83,16 +83,23 @@ async function reportChangedApp(
 	}
 }
 
-async function open(workspace: Workspace, apps: InstanceAiAppService, appId: string) {
+async function open(
+	context: InstanceAiContext,
+	workspace: Workspace,
+	apps: InstanceAiAppService,
+	appId: string,
+) {
 	const baseVersionId = await readBaseVersion(workspace, appId);
-	if (baseVersionId !== undefined)
-		return { path: appFolder(appId), baseVersionId, alreadyOpen: true };
-	return { path: appFolder(appId), baseVersionId: await checkOutDraft(workspace, apps, appId) };
+	const result =
+		baseVersionId !== undefined
+			? { path: appFolder(appId), baseVersionId, alreadyOpen: true }
+			: { path: appFolder(appId), baseVersionId: await checkOutDraft(workspace, apps, appId) };
+	await reportChangedApp(context, appId, async () => await apps.getApp(appId));
+	return result;
 }
 
 async function createApp(
 	context: InstanceAiContext,
-	workspace: Workspace,
 	apps: InstanceAiAppService,
 	blueprint: AppBlueprint,
 ) {
@@ -107,9 +114,7 @@ async function createApp(
 			visibility: blueprint.visibility,
 			id: pendingId,
 		}));
-	const { path } = await open(workspace, apps, app.id);
-	await reportChangedApp(context, app.id, async () => app);
-	return existing ? { app, path, alreadyCreated: true } : { app, path };
+	return existing ? { app, alreadyCreated: true } : { app };
 }
 
 async function commit(
@@ -167,7 +172,7 @@ async function handle(
 		case 'get':
 			return { app: await apps.getApp(input.appId) };
 		case 'open':
-			return await open(workspace, apps, input.appId);
+			return await open(context, workspace, apps, input.appId);
 		case 'commit':
 			return await commit(context, workspace, apps, input.appId, input.label);
 		case 'discard':
@@ -184,9 +189,10 @@ export function createAppsTool(context: InstanceAiContext) {
 			'Build n8n Apps: small static Vue apps that n8n builds and hosts. ' +
 				'Load `app-builder` via `load_skill` before calling this tool. ' +
 				'`create` shows an editable blueprint and creates the app only after approval. ' +
+				'After an approved `create`, call `open` with the returned `app.id` before editing files. ' +
 				'Use the approved blueprint, including additional instructions, while building. ' +
 				'If the user cancels, do not create the app. ' +
-				'`create` and `open` put the app source into the sandbox workspace. Edit it there with the workspace tools. ' +
+				'`open` puts the app source into the sandbox workspace. Edit it there with the workspace tools. ' +
 				'`commit` saves the folder as one version and builds it.',
 		)
 		.input(sanitizeInputSchema(inputSchema))
@@ -227,7 +233,7 @@ export function createAppsTool(context: InstanceAiContext) {
 					return {
 						approved: true,
 						blueprint,
-						...(await createApp(context, workspace, apps, blueprint)),
+						...(await createApp(context, apps, blueprint)),
 					};
 				}
 				return await handle(context, workspace, apps, input);
