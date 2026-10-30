@@ -13,6 +13,7 @@ import { staticRolesWithScope } from '@n8n/permissions';
 import type { IUserResponse } from '@n8n/rest-api-client';
 import { useRolesStore } from '@n8n/stores/roles.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { useEventListener } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
 
 import {
@@ -118,6 +119,19 @@ watch(
 		isLoading.value = false;
 	},
 	{ immediate: true },
+);
+
+// An Element Plus modal under the dialog closes on a document Escape listener, which runs before
+// the dialog's own window listener. Only a window capture listener runs before it.
+useEventListener(
+	() => (open.value ? window : null),
+	'keydown',
+	(event: KeyboardEvent) => {
+		if (event.key !== 'Escape') return;
+		event.stopPropagation();
+		open.value = false;
+	},
+	{ capture: true },
 );
 
 function mailtoHref(email: string): string {

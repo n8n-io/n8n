@@ -49,7 +49,6 @@ import type { DataTableRow, DataTableRowReturn, DataTableRowReturnWithState } fr
 
 import { DataTableAggregateService } from '@/modules/data-table/data-table-aggregate.service';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { assertRowReadAccessIfReturningRows } from '@/modules/data-table/data-table-permissions';
 import type { DataTable } from '@/modules/data-table/data-table.entity';
 import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableAccessDeniedError } from '@/modules/data-table/errors/data-table-access-denied.error';
@@ -543,7 +542,10 @@ export class DataTablesPublicController {
 		const { filter, data, returnData, dryRun } = body;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.upsertRow(
@@ -577,7 +579,10 @@ export class DataTablesPublicController {
 		const { filter, data, returnData, dryRun } = body;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.updateRows(
@@ -639,7 +644,10 @@ export class DataTablesPublicController {
 		const { filter, returnData, dryRun } = query;
 
 		try {
-			await assertRowReadAccessIfReturningRows(req.user, dataTableId, { dryRun, returnData });
+			await this.dataTableService.assertRowReadAccessIfReturningRows(req.user, dataTableId, {
+				dryRun,
+				returnData,
+			});
 
 			const projectId = await this.dataTableService.getProjectIdForDataTable(dataTableId);
 			const result = await this.dataTableService.deleteRows(

@@ -317,6 +317,8 @@ export interface EpisodicMemoryConsolidatorInput {
 	executionCounter?: AgentExecutionCounter;
 	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
 	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
 export interface EpisodicMemoryConsolidation {

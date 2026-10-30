@@ -397,6 +397,7 @@ export function convertDbMessages(
 			id: msg.id ?? crypto.randomUUID(),
 			role,
 			content: text,
+			...(role === CHAT_MESSAGE_ROLE.ASSISTANT && msg.stopReport ? { stopReport: true } : {}),
 			...(msg.author && { author: msg.author }),
 			...(renderParts.length > 0 && { renderParts }),
 			thinking: thinking || undefined,
@@ -436,6 +437,7 @@ export function convertDbMessages(
 			result.push(createStoppedMessage(msg.executionId));
 		}
 	}
+
 	return result;
 }
 

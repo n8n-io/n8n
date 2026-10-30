@@ -4,17 +4,26 @@ import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
+import type {
+	ExecutionStatus,
+	INodeExecutionData,
+	IRunData,
+	ITaskData,
+	TerminalExecutionStatus,
+} from 'n8n-workflow';
+import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
-import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
-import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
+import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { APPROVAL_EXPIRED_ERROR, hasApprovalExpired } from '../approval/approval-expiry';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
+import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
+import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import {
 	AgentBackgroundJobRepository,
 	type AgentBackgroundJobSettlement,
@@ -23,11 +32,10 @@ import {
 	type NewSubAgentJob,
 	type NewWorkflowJob,
 } from '../repositories/agent-background-job.repository';
+import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
-import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
-import { isApprovalSuspendPayload } from '../integrations/agent-chat-suspension-cards';
-import { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
+import { AgentPlanRepository } from '../repositories/agent-plan.repository';
 import { formatPauseHandoff, REPLACED_PAUSE_GROUP_NOTICE } from './background-job-messages';
 import {
 	BACKGROUND_APPROVAL_RUN_PREFIX,
@@ -59,6 +67,8 @@ export type BackgroundJobView = Pick<
 	| 'notifiedAt'
 	| 'childExecutionId'
 	| 'pauseRequestId'
+	| 'planId'
+	| 'planTaskId'
 >;
 
 /** Cap on the result text persisted on a workflow job row. */
@@ -80,36 +90,42 @@ export function settlementStatusForExecution(
 	return 'failed';
 }
 
-/** Extract the JSON items produced by the last run of a node. */
-function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
+/** Extract the items produced by the last run of a node. */
+function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): INodeExecutionData[] {
 	const lastRun = nodeRuns[nodeRuns.length - 1];
 	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
+	return lastRun.data.main.flatMap((items) => items ?? []);
+}
+
+/** Build a map from node name to output items. Items keep their binary data. */
+export function collectResultItems(
+	runData: IRunData,
+	allOutputs: boolean,
+): Record<string, INodeExecutionData[]> {
+	const nodeNames = allOutputs ? Object.keys(runData) : Object.keys(runData).slice(-1);
+	const resultItems: Record<string, INodeExecutionData[]> = {};
+	for (const nodeName of nodeNames) {
+		const outputItems = outputItemsFromNodeRuns(runData[nodeName]);
+		if (outputItems.length > 0) resultItems[nodeName] = outputItems;
+	}
+	return resultItems;
+}
+
+/** Map each node's output items to their JSON. */
+export function toResultData(
+	resultItems: Record<string, INodeExecutionData[]>,
+): Record<string, unknown> {
+	return Object.fromEntries(
+		Object.entries(resultItems).map(([nodeName, items]) => [
+			nodeName,
+			items.map((item) => item.json),
+		]),
+	);
 }
 
 /** Build the resultData map from an execution's runData. */
 export function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
-	const resultData: Record<string, unknown> = {};
-
-	if (allOutputs) {
-		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-			const outputItems = outputItemsFromNodeRuns(nodeRuns);
-			if (outputItems.length > 0) {
-				resultData[nodeName] = outputItems;
-			}
-		}
-		return resultData;
-	}
-
-	const nodeNames = Object.keys(runData);
-	const lastNodeName = nodeNames[nodeNames.length - 1];
-	if (lastNodeName) {
-		const outputItems = outputItemsFromNodeRuns(runData[lastNodeName]);
-		if (outputItems.length > 0) {
-			resultData[lastNodeName] = outputItems;
-		}
-	}
-	return resultData;
+	return toResultData(collectResultItems(runData, allOutputs));
 }
 
 /**
@@ -153,6 +169,7 @@ export class AgentBackgroundJobService {
 	}>();
 
 	constructor(
+		private readonly threadRepository: AgentExecutionThreadRepository,
 		private readonly jobRepository: AgentBackgroundJobRepository,
 		private readonly executionRepository: AgentExecutionRepository,
 		private readonly executionPersistence: ExecutionPersistence,
@@ -162,6 +179,7 @@ export class AgentBackgroundJobService {
 		private readonly updateBroadcaster: AgentExecutionUpdateBroadcaster,
 		private readonly checkpointStorage: N8NCheckpointStorage,
 		private readonly messageRepository: AgentMessageRepository,
+		private readonly plans: AgentPlanRepository,
 	) {
 		this.logger = this.logger.scoped('agents');
 	}
@@ -267,14 +285,27 @@ export class AgentBackgroundJobService {
 	): Promise<boolean> {
 		const controller = this.abortControllers.get(jobId);
 		let releaseController = true;
+
 		try {
 			const settled = await this.jobRepository.settleIfActive(jobId, settlement, expected);
 			releaseController = settled;
+
 			const job = await this.findJob(jobId);
+
 			if (job && job.status !== 'running' && job.status !== 'suspended' && job.status !== 'paused')
 				await this.clearChildCheckpoint(job);
-			if (!settled || !job) return settled;
+
+			if (!settled || !job) {
+				if (job?.status === 'cancelled' && settlement.status === 'completed' && settlement.result) {
+					await this.jobRepository.preserveLateCompletedResult(jobId, settlement.result);
+					this.notifyJobUpdate(job);
+				}
+
+				return settled;
+			}
+
 			if (job.pauseRequestId) await this.retainLatestStopGroup(job);
+
 			this.notifyJobUpdate(job);
 			if (job.kind !== 'approval') await this.requestWakeSafely(job.parentThreadId);
 			return true;
@@ -333,18 +364,34 @@ export class AgentBackgroundJobService {
 		parentAgentId: string,
 		parentThreadId: string,
 		parentResourceId: string,
+		pauseRequestId = uuidv7(),
+		jobIds?: string[],
 	): Promise<void> {
 		await this.pruneExpiredPausedJobs(parentThreadId);
-		await this.jobRepository.requestPause(
-			parentAgentId,
-			parentThreadId,
-			parentResourceId,
-			uuidv7(),
-		);
+
+		if (jobIds) {
+			await this.jobRepository.requestPauseForCapturedJobs(
+				parentAgentId,
+				parentThreadId,
+				parentResourceId,
+				pauseRequestId,
+				jobIds,
+			);
+		} else {
+			await this.jobRepository.requestPauseForActiveJobs(
+				parentAgentId,
+				parentThreadId,
+				parentResourceId,
+				pauseRequestId,
+			);
+		}
+
 		this.updateBroadcaster.notifyBackgroundJobsUpdated(parentAgentId, parentThreadId);
+
 		const jobs = await this.jobRepository.findByParentThread(parentThreadId);
 		const selected = jobs.filter(
 			(job) =>
+				(jobIds === undefined || jobIds.includes(job.id)) &&
 				job.parentAgentId === parentAgentId &&
 				job.parentResourceId === parentResourceId &&
 				job.pauseRequestId &&
@@ -371,11 +418,14 @@ export class AgentBackgroundJobService {
 		parentThreadId: string,
 		parentResourceId: string,
 		executionId: string,
+		selection?: { planId: string; taskIds?: string[] },
 	) {
 		const execution = await this.executionRepository.findExecution(executionId);
+
 		if (execution?.threadId !== parentThreadId || execution.status !== 'running') {
 			return { status: 'unavailable' as const, jobs: [] };
 		}
+
 		const inputs =
 			(await this.messageRepository.findExecutionInputs([executionId])).get(executionId) ?? [];
 		const userInput = inputs
@@ -387,7 +437,9 @@ export class AgentBackgroundJobService {
 					message.resourceId === parentResourceId,
 			)
 			.at(-1);
+
 		if (!userInput) return { status: 'unavailable' as const, jobs: [] };
+
 		await this.pruneExpiredPausedJobs(parentThreadId);
 		await this.releaseStaleResumeReservations(
 			parentAgentId,
@@ -395,23 +447,91 @@ export class AgentBackgroundJobService {
 			parentResourceId,
 			execution.startedAt ?? execution.createdAt,
 		);
+
+		const planStop = await this.threadRepository.findTaskStop(parentThreadId);
+		const planSelection = selection ?? (planStop?.planId ? { planId: planStop.planId } : undefined);
+
+		if (planSelection) {
+			const selected = await this.plans.selectStoppedTasks(
+				parentThreadId,
+				planSelection.planId,
+				planSelection.taskIds,
+			);
+
+			if (selected.status !== 'selected') return { status: selected.status, jobs: [] };
+
+			if (
+				selected.jobs.some(
+					(job) => job.status === 'running' || job.status === 'suspended' || !job.notifiedAt,
+				)
+			)
+				return { status: 'stopping' as const, jobs: [] };
+
+			const paused = selected.jobs.filter(
+				(job) => job.kind === 'subagent' && job.status === 'paused',
+			);
+			const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+			const admission = await this.jobRepository.reservePlanJobs(
+				parentThreadId,
+				selected.stopId,
+				paused.map((job) => job.id),
+				timeoutAt,
+				MAX_RUNNING_JOBS_PER_THREAD,
+			);
+
+			if (admission !== 'reserved')
+				return {
+					status:
+						admission === 'limit-reached' ? ('limit-reached' as const) : ('stopping' as const),
+					jobs: [],
+				};
+
+			return {
+				status: 'ready' as const,
+				jobs: paused,
+				timeoutAt,
+				selection: { planId: selected.planId, stopId: selected.stopId, taskIds: selected.taskIds },
+				blocked: selected.blocked,
+				failed: selected.jobs
+					.filter((job) => job.status === 'failed')
+					.map((job) => ({ jobId: job.id, planTaskId: job.planTaskId, error: job.error })),
+				workflowsToRestart: selected.jobs
+					.filter((job) => job.kind === 'workflow' && job.status === 'cancelled')
+					.map((job) => ({
+						jobId: job.id,
+						title: job.title,
+						workflowId: job.workflowId,
+						previousExecutionId: job.childExecutionId,
+						planTask:
+							job.planId && job.planTaskId
+								? { planId: job.planId, planTaskId: job.planTaskId }
+								: undefined,
+					})),
+			};
+		}
+
+		const newPlanRequest = Boolean(
+			planStop?.pause.reportedAt && !planStop.generation.executionIds.includes(executionId),
+		);
 		const jobs = (await this.jobRepository.findByParentThread(parentThreadId)).filter(
 			(job) =>
 				job.parentAgentId === parentAgentId &&
 				job.parentResourceId === parentResourceId &&
 				job.pauseRequestId,
 		);
+
 		if (
 			jobs.some(
 				(job) =>
 					job.status === 'running' ||
 					job.status === 'suspended' ||
 					!job.notifiedAt ||
-					userInput.createdAt <= job.notifiedAt,
+					(!newPlanRequest && userInput.createdAt <= job.notifiedAt),
 			)
 		) {
 			return { status: 'stopping' as const, jobs: [] };
 		}
+
 		const stoppedGroup = latestStopGroup(jobs);
 		const workflowsToRestart = stoppedGroup
 			.filter((job) => job.kind === 'workflow' && job.status === 'cancelled')
@@ -424,14 +544,17 @@ export class AgentBackgroundJobService {
 		const paused = stoppedGroup.filter((job) => job.kind === 'subagent' && job.status === 'paused');
 		const latestId = paused[0]?.pauseRequestId;
 		const timeoutAt = new Date(Date.now() + SUB_AGENT_BACKGROUND_TIMEOUT_MS);
+
 		if (!latestId) {
 			if (
 				workflowsToRestart.length === 0 &&
 				stoppedGroup.some((job) => job.error === EXPIRED_BACKGROUND_CHECKPOINT_ERROR)
 			)
 				return { status: 'expired' as const, jobs: [] };
+
 			return { status: 'ready' as const, jobs: [], timeoutAt, workflowsToRestart };
 		}
+
 		const admission = await this.jobRepository.reservePausedGroup(
 			parentThreadId,
 			latestId,
@@ -439,9 +562,27 @@ export class AgentBackgroundJobService {
 			timeoutAt,
 			MAX_RUNNING_JOBS_PER_THREAD,
 		);
+
 		if (admission === 'limit-reached') return { status: 'limit-reached' as const, jobs: [] };
+
 		if (admission !== 'reserved') return { status: 'stopping' as const, jobs: [] };
+
 		return { status: 'ready' as const, jobs: paused, timeoutAt, workflowsToRestart };
+	}
+
+	async finishPlanResume(
+		parentAgentId: string,
+		threadId: string,
+		selection: { planId: string; stopId: string; taskIds: string[] },
+	) {
+		await this.plans.releaseStoppedTasks(
+			threadId,
+			selection.planId,
+			selection.stopId,
+			selection.taskIds,
+		);
+
+		this.updateBroadcaster.notifyBackgroundJobsUpdated(parentAgentId, threadId);
 	}
 
 	private async releaseStaleResumeReservations(
@@ -679,6 +820,8 @@ export class AgentBackgroundJobService {
 			notifiedAt: job.notifiedAt,
 			childExecutionId: job.childExecutionId,
 			pauseRequestId: job.pauseRequestId,
+			planId: job.planId,
+			planTaskId: job.planTaskId,
 		};
 	}
 
@@ -690,6 +833,7 @@ export class AgentBackgroundJobService {
 	async listCurrentGroupForThread(
 		parentAgentId: string,
 		parentThreadId: string,
+		options: { includePaused?: boolean } = {},
 	): Promise<(BackgroundJobGroupItem & Pick<AgentBackgroundJobDto, 'approval'>)[]> {
 		const candidates = await this.jobRepository.findGroupCandidates(parentAgentId, parentThreadId);
 		const stoppingRequests = new Set(
@@ -703,8 +847,10 @@ export class AgentBackgroundJobService {
 				.map((job) => job.pauseRequestId),
 		);
 		const jobs = candidates
-			.filter((job) =>
-				job.pauseRequestId ? stoppingRequests.has(job.pauseRequestId) : job.status !== 'paused',
+			.filter(
+				(job) =>
+					options.includePaused ||
+					(job.pauseRequestId ? stoppingRequests.has(job.pauseRequestId) : job.status !== 'paused'),
 			)
 			.sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id));
 		let group: BackgroundJobGroupItem[] = [];
@@ -717,19 +863,26 @@ export class AgentBackgroundJobService {
 			group.push(job);
 			groupEndsAt = Math.max(
 				groupEndsAt,
-				job.status === 'running' || job.status === 'suspended'
+				job.status === 'running' ||
+					job.status === 'suspended' ||
+					(options.includePaused && job.status === 'paused')
 					? Number.POSITIVE_INFINITY
 					: (job.settledAt?.getTime() ?? startedAt),
 			);
 		}
 
-		// Keep finished jobs visible until the parent consumes their results.
+		// Keep stop outcomes visible in Preview after the parent consumes the report.
 		if (
 			!group.some(
-				(job) => job.status === 'running' || job.status === 'suspended' || !job.notifiedAt,
+				(job) =>
+					job.status === 'running' ||
+					job.status === 'suspended' ||
+					(options.includePaused && (job.status === 'paused' || job.pauseRequestId)) ||
+					!job.notifiedAt,
 			)
 		)
 			return [];
+
 		return await Promise.all(
 			group.map(async (job) => {
 				if (job.status !== 'suspended' || job.pauseRequestId) return job;
@@ -872,7 +1025,7 @@ export class AgentBackgroundJobService {
 	}
 
 	private async requestWakeSafely(parentThreadId: string): Promise<void> {
-		if (!this.agentsConfig.backgroundTasksEnabled) return;
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled) return;
 
 		try {
 			const { AgentWakeService } = await import('./agent-wake.service.js');

@@ -201,7 +201,6 @@ export function useWorkflowUpdate() {
 			{
 				trackHistory: true,
 				trackBulk: false,
-				forcePosition: true,
 				telemetry: false,
 			},
 		);

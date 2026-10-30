@@ -3,6 +3,10 @@ import {
 	raceWithAbort,
 	throwIfAborted,
 	CORE_WORKSPACE_TOOL_NAMES,
+	DELEGATE_SUB_AGENT_TOOL_NAME,
+	FLAG_MEMORY_TOOL_NAME,
+	RECALL_MEMORY_TOOL_NAME,
+	WRITE_TODOS_TOOL_NAME,
 	type Agent as RuntimeAgent,
 	type CreateDelegateSubAgentToolOptions,
 	BuiltTool,
@@ -94,8 +98,16 @@ import { AgentSecureRuntime } from './runtime/agent-secure-runtime';
 import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-tool';
 import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
-import { createGetEnvironmentTool } from './tools/environment-tool';
-import { createMarkSessionFailedTool } from './tools/mark-session-failed.tool';
+import { AGENT_PLAN_TOOL_NAMES } from './plans/agent-plan.schema';
+import { createGetEnvironmentTool, GET_ENVIRONMENT_TOOL_NAME } from './tools/environment-tool';
+import {
+	createMarkSessionFailedTool,
+	MARK_SESSION_FAILED_TOOL_NAME,
+} from './tools/mark-session-failed.tool';
+import {
+	createReadBinaryDataTool,
+	READ_BINARY_DATA_TOOL_NAME,
+} from './tools/read-binary-data.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
 import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
@@ -206,7 +218,6 @@ interface RuntimeDependencies
 		| 'supportsHitl'
 		| 'allowBackgroundTasks'
 		| 'unavailableTools'
-		| 'previewChat'
 	> {
 	agent: RuntimeAgent;
 	agentId: string;
@@ -1002,6 +1013,7 @@ export class AgentRuntimeReconstructionService {
 				return await resolveNodeTool(ref, {
 					executor: this.ephemeralNodeExecutor,
 					projectId: runIdentity.projectId,
+					agentId: runIdentity.agentId,
 					instrumentToolAdditionalData,
 				});
 			}
@@ -1066,10 +1078,26 @@ export class AgentRuntimeReconstructionService {
 
 	private async injectRuntimeDependencies(params: RuntimeDependencies): Promise<void> {
 		const { agent, agentId, projectId, runtimeProfile, config, abortSignal } = params;
+
 		throwIfAborted(abortSignal);
+		// Harness tools stay eager, so the model sees their schemas without a tool search.
+		// The user's own tools (workflow, node, integration, MCP) stay deferred.
 		agent.nativeToolDeferral({
-			eagerToolNames: [...CORE_WORKSPACE_TOOL_NAMES, 'load_skill', 'mark_session_failed'],
+			eagerToolNames: [
+				...CORE_WORKSPACE_TOOL_NAMES,
+				'load_skill',
+				MARK_SESSION_FAILED_TOOL_NAME,
+				DELEGATE_SUB_AGENT_TOOL_NAME,
+				WRITE_TODOS_TOOL_NAME,
+				READ_BINARY_DATA_TOOL_NAME,
+				GET_ENVIRONMENT_TOOL_NAME,
+				RECALL_MEMORY_TOOL_NAME,
+				FLAG_MEMORY_TOOL_NAME,
+				...Object.values(AGENT_PLAN_TOOL_NAMES),
+				'resume_background_jobs',
+			],
 		});
+
 		agent.tool(createGetEnvironmentTool());
 		const parentWorkspaceHandle = await this.attachWorkspaceAndKnowledge(params);
 		throwIfAborted(abortSignal);
@@ -1084,11 +1112,14 @@ export class AgentRuntimeReconstructionService {
 		if (!agent.hasCheckpointStorage()) {
 			agent.checkpoint(this.n8nCheckpointStorage.getStorage(agentId));
 		}
-		agent.fileStore(
-			this.agentChatAttachmentService.getFileStore(
-				{ agentId, projectId },
-				getProviderPrefix(config.model),
-			),
+		const provider = getProviderPrefix(config.model);
+		agent.fileStore(this.agentChatAttachmentService.getFileStore({ agentId, projectId }, provider));
+		agent.tool(
+			createReadBinaryDataTool({
+				projectId,
+				provider,
+				attachmentService: this.agentChatAttachmentService,
+			}),
 		);
 	}
 
@@ -1277,6 +1308,7 @@ export class AgentRuntimeReconstructionService {
 			abortSignal: params.abortSignal,
 		};
 		let runBackgroundSubAgent: CreateDelegateSubAgentToolOptions['runBackgroundSubAgent'];
+
 		if (backgroundTasksEnabled) {
 			// Background tools attach only to the root agent, so its cap is the root cap.
 			const budget = config.config?.guardrails?.budget;
@@ -1284,10 +1316,15 @@ export class AgentRuntimeReconstructionService {
 			const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
 			runBackgroundSubAgent = await this.attachBackgroundJobTools({
 				...delegationParams,
+				planTasksEnabled:
+					params.previewChat === true &&
+					params.allowPlanTools !== false &&
+					Container.get(AgentsConfig).planToolsEnabled,
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
 			});
 		}
+
 		throwIfAborted(params.abortSignal);
 		await this.attachSubAgentDelegationTool({
 			...delegationParams,
@@ -1419,6 +1456,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async attachBackgroundJobTools(params: {
+		planTasksEnabled: boolean;
 		agent: RuntimeAgent;
 		parentAgentId: string;
 		projectId: string;
@@ -1432,7 +1470,15 @@ export class AgentRuntimeReconstructionService {
 		rootSessionCapUsd?: number;
 		abortSignal?: AbortSignal;
 	}): Promise<NonNullable<CreateDelegateSubAgentToolOptions['runBackgroundSubAgent']>> {
-		const { agent, parentAgentId, projectId, delegation, abortSignal, ...runContext } = params;
+		const {
+			agent,
+			parentAgentId,
+			projectId,
+			delegation,
+			planTasksEnabled,
+			abortSignal,
+			...runContext
+		} = params;
 		const {
 			createBackgroundSubAgentHandler,
 			createCheckBackgroundJobsTool,
@@ -1461,7 +1507,9 @@ export class AgentRuntimeReconstructionService {
 		);
 
 		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
+
 		return createBackgroundSubAgentHandler({
+			planTasksEnabled,
 			jobService,
 			backgroundRunner: Container.get(SubAgentBackgroundRunner),
 			sourcesById: delegation.sourcesById,

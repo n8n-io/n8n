@@ -102,6 +102,7 @@ export type AgentSkillModalData = {
 	initialScope?: string;
 	/** Settings only. Absent disables Assistant availability editing for every scope. */
 	availableToAssistant?: boolean;
+	availableToMCP?: boolean;
 	/**
 	 * A default name that no skill in the scope has yet, as new workflows get one. Called
 	 * when the user starts a skill by hand, with the Settings scope value or, in the agent
@@ -143,6 +144,7 @@ export type AgentSkillModalData = {
 	/**
 	 * Called on Save. A promise keeps the modal open until it settles. It closes unless the
 	 * result is an `AgentSkillConfirmFailure`, so a refused save keeps what the user typed.
+	 * A restore stays open, so its promise must settle after the new version is saved.
 	 */
 	onConfirm: (payload: {
 		id?: string;
@@ -150,8 +152,11 @@ export type AgentSkillModalData = {
 		availableTo?: AgentSkillAvailability;
 		scope?: string;
 		availableToAssistant?: boolean;
+		availableToMCP?: boolean;
 		/** Set on create only: whether the user typed the skill or uploaded it. */
 		method?: SkillCreateMethod;
+		/** Set when the save restores this older version. */
+		restoredFrom?: number;
 	}) => AgentSkillConfirmResult | Promise<AgentSkillConfirmResult>;
 	outdated?: boolean;
 	onUseLatestVersion?: (id: string) => void;
@@ -228,6 +233,15 @@ const assistantAvailabilityChanged = computed(
 	() =>
 		showAssistantAvailability.value &&
 		availableToAssistant.value !== props.data.availableToAssistant,
+);
+const availableToMCP = ref(props.data.availableToMCP ?? false);
+const showAvailableToMCP = computed(
+	() =>
+		props.data.availableToMCP !== undefined &&
+		(scope.value === 'instance' || scope.value.startsWith('project:')),
+);
+const availableToMCPChanged = computed(
+	() => showAvailableToMCP.value && availableToMCP.value !== props.data.availableToMCP,
 );
 
 /** The last default name the server gave. A name the user typed is never replaced. */
@@ -694,6 +708,7 @@ const hasChanges = computed(
 		!isEditing.value ||
 		!isEqual(skill.value, initialSkill.value) ||
 		assistantAvailabilityChanged.value ||
+		availableToMCPChanged.value ||
 		(showAvailabilitySelect.value && availableTo.value !== savedTarget.value) ||
 		(canChangeScope.value && scope.value !== props.data.initialScope),
 );
@@ -803,13 +818,16 @@ onMounted(() => {
 const showAssistantToggle = computed(
 	() => showScope.value && showAssistantAvailability.value && !cannotEdit.value,
 );
+const showMcpToggle = computed(
+	() => showScope.value && showAvailableToMCP.value && !cannotEdit.value,
+);
 
-const latestVersion = computed(() => (props.data.skillId ? props.data.latestVersion : undefined));
 const versionsOpen = ref(!!props.data.initialVersionsOpen);
 const {
 	versions,
 	viewedVersion,
 	loadVersions,
+	reloadVersions,
 	fetchVersion,
 	openVersion,
 	comparison,
@@ -821,6 +839,11 @@ const {
 } = useSkillVersions(
 	() => props.data.skillId,
 	() => baseVersion.value,
+);
+
+// A restore adds a version while the editor is open, so the loaded list wins over the prop.
+const latestVersion = computed(() =>
+	props.data.skillId ? (versions.value?.[0]?.version ?? props.data.latestVersion) : undefined,
 );
 
 /** The version the editor shows: the one a pinned agent runs, else the latest. */
@@ -880,7 +903,14 @@ const versionOptions = computed(() =>
 /** The agent the builder opened the editor from, for the markers and "Use in <agent>". */
 const timelineAgent = computed(() =>
 	props.data.agentVersions && props.data.agentName
-		? { name: props.data.agentName, ...props.data.agentVersions }
+		? {
+				name: props.data.agentName,
+				...props.data.agentVersions,
+				// A draft that follows the latest version runs the version a restore adds.
+				draft: props.data.agentVersions.pinned
+					? props.data.agentVersions.draft
+					: (latestVersion.value ?? props.data.agentVersions.draft),
+			}
 		: undefined,
 );
 const versionsButtonLabel = computed(() => {
@@ -936,13 +966,19 @@ onMounted(() => {
 	if (props.data.initialCompare) void compareLatestTwo();
 });
 
-/** Saves the content of an older version as the next version, like any other save. */
+/** Saves the content of an older version as the next version and keeps the editor open on it. */
 async function restoreVersion(version: number) {
 	if (!canRestore.value || isSaving.value) return;
 	const detail =
 		viewedVersion.value?.version === version ? viewedVersion.value : await fetchVersion(version);
 	if (!detail) return;
-	await submit(normalizeSkill({ ...detail.skill }), {});
+	const restored = normalizeSkill({ ...detail.skill });
+	if (!(await submit(restored, { restoredFrom: version }))) return;
+	showSavedSkill(restored);
+	selectedPath.value = SKILL_FILE;
+	submitted.value = false;
+	serverNameError.value = '';
+	await reloadVersions();
 }
 
 function onSkillUploaded(importedSkill: AgentSkill) {
@@ -1053,28 +1089,30 @@ async function onSave() {
 	});
 
 	const targetChanged = !isEditing.value || availableTo.value !== savedTarget.value;
-	await submit(payload, {
+	const saved = await submit(payload, {
 		...(showAvailabilitySelect.value && targetChanged ? { availableTo: availableTo.value } : {}),
 		...(canChangeScope.value ? { scope: scope.value } : {}),
 		...(assistantAvailabilityChanged.value
 			? { availableToAssistant: availableToAssistant.value }
 			: {}),
+		...(availableToMCPChanged.value ? { availableToMCP: availableToMCP.value } : {}),
 		...(isEditing.value ? {} : { method: createMethod.value }),
 	});
+	if (saved) closeModal();
 }
 
 /** Hands the skill to the caller. A refused save keeps the modal open with the user's edits. */
 async function submit(
 	payload: AgentSkill,
 	extras: Omit<Parameters<AgentSkillModalData['onConfirm']>[0], 'id' | 'skill'>,
-) {
+): Promise<boolean> {
 	isSaving.value = true;
 	let result: AgentSkillConfirmResult;
 	try {
 		result = await props.data.onConfirm({ id: props.data.skillId, skill: payload, ...extras });
 	} catch {
 		// The caller reports its own errors. Keep the modal open with the user's edits.
-		return;
+		return false;
 	} finally {
 		isSaving.value = false;
 	}
@@ -1083,9 +1121,9 @@ async function submit(
 			serverNameError.value = result.nameError;
 			await focusName();
 		}
-		return;
+		return false;
 	}
-	closeModal();
+	return true;
 }
 
 const nameField = useTemplateRef<HTMLElement>('nameField');
@@ -1107,20 +1145,25 @@ function onUseLatestVersion() {
 	props.data.onUseLatestVersion?.(props.data.skillId);
 }
 
+/** Shows a saved skill in place of the editor content, as the state to compare edits with. */
+function showSavedSkill(saved: AgentSkill) {
+	initialSkill.value = toFormSkill(saved);
+	skill.value = cloneDeep(initialSkill.value);
+	viewedVersion.value = null;
+	comparison.value = null;
+	if (!(saved.references ?? []).some((file) => file.path === selectedPath.value)) {
+		selectedPath.value = SKILL_FILE;
+	}
+}
+
 // After a version change the builder sends the saved skill to the open editor. Show it in place,
 // so the editor does not close and open again.
 watch(
 	() => props.data.skill,
 	(next) => {
 		if (!next || !isEditing.value) return;
-		initialSkill.value = toFormSkill(next);
-		skill.value = cloneDeep(initialSkill.value);
-		viewedVersion.value = null;
-		comparison.value = null;
+		showSavedSkill(next);
 		if (props.data.initialVersionsOpen) versionsOpen.value = true;
-		if (!(next.references ?? []).some((file) => file.path === selectedPath.value)) {
-			selectedPath.value = SKILL_FILE;
-		}
 	},
 );
 
@@ -1219,7 +1262,10 @@ function onRemove() {
 				</template>
 			</N8nActionDropdown>
 		</template>
-		<template v-if="isFormStep && (showAssistantToggle || latestVersion)" #headerActions>
+		<template
+			v-if="isFormStep && (showAssistantToggle || showMcpToggle || latestVersion)"
+			#headerActions
+		>
 			<N8nSwitch
 				v-if="showAssistantToggle"
 				id="skill-assistant-availability"
@@ -1228,6 +1274,21 @@ function onRemove() {
 				:disabled="editorLocked"
 				data-testid="skill-assistant-availability"
 			/>
+			<N8nSwitch
+				v-if="showMcpToggle"
+				id="skill-available-to-mcp"
+				v-model="availableToMCP"
+				:label="i18n.baseText('settings.context.skills.modal.mcp.toggle')"
+				:disabled="editorLocked"
+				data-testid="skill-available-to-mcp"
+			>
+				<template #label="{ label }">
+					{{ label }}
+					<N8nTooltip :content="i18n.baseText('settings.context.skills.modal.mcp.tooltip')">
+						<N8nIcon icon="circle-help" size="small" data-testid="skill-available-to-mcp-help" />
+					</N8nTooltip>
+				</template>
+			</N8nSwitch>
 			<N8nButton
 				v-if="latestVersion"
 				variant="ghost"

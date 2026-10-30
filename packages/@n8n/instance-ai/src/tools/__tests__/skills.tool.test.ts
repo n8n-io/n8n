@@ -21,9 +21,12 @@ const listItem: SkillListItem = {
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
 	latestVersion: 2,
 	usedByAgents: 3,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
 	canStopSyncing: false,
+	syncState: null,
+	canCheckForUpdates: false,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 };

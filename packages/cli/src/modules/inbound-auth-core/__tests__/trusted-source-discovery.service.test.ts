@@ -1,5 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
-import type { Jwk, OAuthDiscoveryClient } from '@n8n/backend-services';
+import type { EventService, Jwk, OAuthDiscoveryClient } from '@n8n/backend-services';
 import {
 	migrateToLatest,
 	trustedSourceConfigSchemaFor,
@@ -41,6 +41,7 @@ const logger = mock<Logger>({ scoped: vi.fn().mockReturnThis() });
 const store = mock<TrustedSourceDbStore>();
 const client = mock<OAuthDiscoveryClient>();
 const localServer = mock<LocalAuthorizationServer>();
+const eventService = mock<EventService>();
 
 let service: TrustedSourceDiscoveryService;
 let counter = 0;
@@ -62,6 +63,7 @@ function source(overrides: SourceOverrides = {}): TrustedSource {
 		status: 'unchecked',
 		lastError: null,
 		lastCheckedAt: null,
+		firstAuthenticatedAt: null,
 		createdAt: '2026-09-30T10:00:00.000Z',
 		updatedAt: '2026-09-30T10:00:00.000Z',
 		config: migrateToLatest(
@@ -102,7 +104,7 @@ beforeEach(() => {
 	client.fetchOpenIdConfiguration.mockResolvedValue(fetched(oidcMetadata));
 	client.fetchOAuth2ServerMetadata.mockResolvedValue(fetched(oauth2Metadata));
 	client.fetchJwks.mockResolvedValue(fetchedJwks);
-	service = new TrustedSourceDiscoveryService(logger, store, client, localServer);
+	service = new TrustedSourceDiscoveryService(logger, store, client, localServer, eventService);
 });
 
 afterEach(() => {
@@ -326,6 +328,134 @@ describe('TrustedSourceDiscoveryService', () => {
 			expect(client.fetchOAuth2ServerMetadata).not.toHaveBeenCalled();
 			expect(client.fetchJwks).not.toHaveBeenCalled();
 			expect(store.recordDiscovery).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('healthy event', () => {
+		const refresh = async (src: TrustedSource) => {
+			store.getById.mockResolvedValue(src);
+			await service.refresh(src.id);
+		};
+		const local = { issuer: 'http://localhost:5678', jwks_uri: 'http://localhost:5678/jwks' };
+
+		it.each(['unchecked', 'error'] as const)(
+			'emits trusted-source-healthy once when a %s admin source becomes healthy',
+			async (status) => {
+				const src = source({ status });
+
+				await refresh(src);
+
+				expect(eventService.emit).toHaveBeenCalledTimes(1);
+				expect(eventService.emit).toHaveBeenCalledWith('trusted-source-healthy', {
+					sourceId: src.id,
+				});
+			},
+		);
+
+		// `recorded` pins that the run reached the write, so a silent case cannot pass by accident.
+		const silent: {
+			when: string;
+			recorded: TrustedSource['status'];
+			arrange: () => TrustedSource;
+		}[] = [
+			{
+				when: 'the source was already healthy',
+				recorded: 'healthy',
+				arrange: () => source({ status: 'healthy' }),
+			},
+			{
+				when: 'discovery fails',
+				recorded: 'error',
+				arrange: () => {
+					client.fetchJwks.mockRejectedValue(new Error('JWKS unreachable'));
+					return source();
+				},
+			},
+			{
+				when: 'the lease was lost before the result was written',
+				recorded: 'healthy',
+				arrange: () => {
+					store.recordDiscovery.mockResolvedValue(false);
+					return source();
+				},
+			},
+			{
+				when: 'the source is system-managed',
+				recorded: 'healthy',
+				arrange: () => {
+					localServer.getMetadata.mockResolvedValue(local);
+					localServer.getJwks.mockResolvedValue({ keys });
+					return source({
+						managedBy: 'system',
+						issuer: local.issuer,
+						authentication: { keys: { kind: 'local-keystore' } },
+					});
+				},
+			},
+		];
+
+		it.each(silent)('emits nothing when $when', async ({ arrange, recorded: status }) => {
+			const src = arrange();
+
+			await refresh(src);
+
+			expect(recorded().status).toBe(status);
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		// The listed row can be a minute old; the status that counts is the one read from the
+		// database under the lease, never the cached one, which an in-flight read can re-populate.
+		it('emits nothing when another run already recorded healthy since the source was listed', async () => {
+			const listed = source({ status: 'unchecked' });
+			store.getById.mockResolvedValue(listed);
+			store.getStatus.mockResolvedValue('healthy');
+
+			await service.refresh(listed.id);
+
+			expect(store.getStatus).toHaveBeenCalledWith(listed.id);
+			expect(recorded().status).toBe('healthy');
+			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+
+		it('emits when another run recorded an error since the source was listed as healthy', async () => {
+			const listed = source({ status: 'healthy' });
+			store.getById.mockResolvedValue(listed);
+			store.getStatus.mockResolvedValue('error');
+
+			await service.refresh(listed.id);
+
+			expect(recorded().status).toBe('healthy');
+			expect(eventService.emit).toHaveBeenCalledWith('trusted-source-healthy', {
+				sourceId: listed.id,
+			});
+		});
+
+		it('falls back to the listed status and still refreshes when the row cannot be re-read', async () => {
+			const listed = source({ status: 'unchecked' });
+			store.getById.mockResolvedValue(listed);
+			store.getStatus.mockResolvedValue(undefined);
+
+			await service.refresh(listed.id);
+
+			expect(recorded().status).toBe('healthy');
+			expect(eventService.emit).toHaveBeenCalledWith('trusted-source-healthy', {
+				sourceId: listed.id,
+			});
+		});
+
+		it('logs the failed write with the source id and emits nothing when the write throws', async () => {
+			const error = new Error('database unavailable');
+			store.recordDiscovery.mockRejectedValue(error);
+			const src = source();
+
+			await refresh(src);
+
+			expect(recorded().status).toBe('healthy');
+			expect(logger.error).toHaveBeenCalledWith(
+				'Could not write the discovery result of a trusted source',
+				{ id: src.id, error },
+			);
+			expect(eventService.emit).not.toHaveBeenCalled();
 		});
 	});
 

@@ -36,6 +36,8 @@ import {
 	type FindOptionsRelations,
 	type FindOptionsWhere,
 } from '@n8n/typeorm';
+import cloneDeep from 'lodash/cloneDeep';
+import isEqual from 'lodash/isEqual';
 import { CredentialDataError, Credentials, ErrorReporter } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -913,12 +915,11 @@ export class CredentialsService {
 				updateData.data as unknown as ICredentialDataDecryptedObject,
 				decryptedData,
 			);
+			const dataToSave = updateData.data as unknown as ICredentialDataDecryptedObject;
 			if (
 				decryptedData.oauthTokenData &&
-				!this.reissuesClientCredentialsToken(
-					updateData.data as unknown as ICredentialDataDecryptedObject,
-					decryptedData,
-				)
+				!this.reissuesClientCredentialsToken(dataToSave, decryptedData) &&
+				!this.changesOAuthApp(dataToSave, decryptedData)
 			) {
 				// @ts-expect-error data is typed as encrypted string
 				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
@@ -959,6 +960,21 @@ export class CredentialsService {
 			(field) =>
 				comparableCredentialField(dataToSave[field]) !==
 				comparableCredentialField(storedData[field]),
+		);
+	}
+
+	/**
+	 * Whether the update points the credential at another OAuth app, for example
+	 * from a custom app to the managed one. The stored token does not refresh with
+	 * another app, so the user must connect again. A new secret alone keeps the app.
+	 */
+	private changesOAuthApp(
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): boolean {
+		return (
+			comparableCredentialField(dataToSave.clientId) !==
+			comparableCredentialField(storedData.clientId)
 		);
 	}
 
@@ -1112,6 +1128,70 @@ export class CredentialsService {
 	 */
 	async decryptOrFail(credential: CredentialsEntity): Promise<ICredentialDataDecryptedObject> {
 		return await createCredentialsFromCredentialsEntity(credential).getData();
+	}
+
+	async updateDescription(
+		user: User,
+		credentialId: string,
+		description: string | null,
+	): Promise<void> {
+		if (!(await this.credentialDescriptions.isEnabled())) {
+			throw new BadRequestError('Credential descriptions are not enabled');
+		}
+		const normalizedDescription = parseCredentialDescription(description);
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:update'],
+			{ includeInstanceCredentials: true },
+		);
+		if (!credential) throw new CredentialNotFoundError(credentialId);
+
+		const owningProject =
+			await this.sharedCredentialsRepository.findCredentialOwningProject(credentialId);
+		const policyCleared = await this.policyEnforcementService.enforceCredentialSave(
+			{
+				credential: { id: credentialId, type: credential.type },
+				storedCredential: { id: credentialId, type: credential.type },
+				projectId: owningProject?.id ?? null,
+			},
+			{ kind: 'user', user },
+		);
+
+		// Keep the encrypted hook contract without allowing a metadata edit to change other fields.
+		const hookPayload: ICredentialsDb = {
+			...cloneDeep(credential),
+			description: normalizedDescription,
+		};
+		const baseline = { ...credential, description: undefined };
+		await this.externalHooks.run('credentials.update', [hookPayload]);
+		if (!isEqual({ ...hookPayload, description: undefined }, baseline)) {
+			throw new BadRequestError(
+				'Credential update hooks can only change the description for this operation',
+			);
+		}
+		if (hookPayload.description === undefined) {
+			throw new BadRequestError(
+				'Credential update hooks must keep the description field. Use null to clear it.',
+			);
+		}
+		const savedDescription = parseCredentialDescription(hookPayload.description);
+		const updated = await this.credentialsRepository.updateDescription(
+			credentialId,
+			savedDescription,
+			{ policyCleared },
+		);
+		if (!updated) throw new CredentialNotFoundError(credentialId);
+
+		this.eventService.emit('credentials-updated', {
+			user,
+			credentialId,
+			credentialName: credential.name,
+			credentialType: credential.type,
+			credentialDescriptionLength: savedDescription?.length ?? 0,
+			isDynamic: credential.isResolvable,
+			descriptionOnly: true,
+		});
 	}
 
 	async update(

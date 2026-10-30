@@ -19,6 +19,7 @@ import {
 	N8nSettingsRowGroup,
 	N8nSettingsSection,
 	N8nText,
+	useMessage,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -27,6 +28,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { onBeforeRouteLeave, useRouter } from 'vue-router';
 
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { MODAL_CONFIRM } from '@/app/constants';
 import PromotionGitHostSelect from '../components/PromotionGitHostSelect.vue';
 import PromotionProviderDialog from '../components/PromotionProviderDialog.vue';
 import { invalidateInstancePromotionConnection } from '../composables/useInstancePromotionConnection';
@@ -55,6 +57,7 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const toast = useToast();
+const message = useMessage();
 const router = useRouter();
 const rootStore = useRootStore();
 const documentTitle = useDocumentTitle();
@@ -196,6 +199,31 @@ function selectRepository(repository: PromotionRepository) {
 	if (!isSameRepository) form.branch = repository.defaultBranch ?? '';
 }
 
+// The API closes the open reviews of a Promote environment on the old repository. Git host paths
+// ignore case.
+const changesReviewRepository = (current: PromotionEnvironment) =>
+	current.direction === 'promote' &&
+	hasHostApi.value &&
+	form.repositoryPath?.toLowerCase() !== current.remote.repositoryPath?.toLowerCase();
+
+async function confirmRepositoryChange(name: string) {
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.promotions.environment.changeRepository.confirm.message', {
+			interpolate: { name },
+		}),
+		i18n.baseText('settings.promotions.environment.changeRepository.confirm.title'),
+		{
+			confirmButtonText: i18n.baseText(
+				'settings.promotions.environment.changeRepository.confirm.button',
+			),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+			customClass: 'el-message-box--destructive',
+			showClose: true,
+		},
+	);
+	return confirmed === MODAL_CONFIRM;
+}
+
 async function save() {
 	const selectedProviderId = providerId.value;
 	const selectedDirection = direction.value;
@@ -204,6 +232,13 @@ async function save() {
 	const name = form.name.trim();
 	const remote = { schemaVersion: 1 as const, remoteUrl: form.remoteUrl.trim() };
 	const current = loaded.value;
+	if (
+		current &&
+		changesReviewRepository(current) &&
+		!(await confirmRepositoryChange(current.name))
+	) {
+		return;
+	}
 	const directionFields = promotionEnvironmentDirectionFields(
 		selectedDirection,
 		form.branch.trim(),

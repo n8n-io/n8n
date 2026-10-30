@@ -253,23 +253,21 @@ export class GitLabMergeRequestClient {
 			path,
 			status: response.statusCode,
 		});
-		throw statusError(response.statusCode, response.body);
+		throw statusError(response.statusCode, response.body, path);
 	}
 }
 
-function statusError(status: number, body: unknown) {
+function statusError(status: number, body: unknown, path: string) {
 	if (status >= 300 && status < 400) {
 		return new BadRequestError('GitLab redirected the request. Use the final GitLab URL.');
 	}
 	// A GitLab 401 or 403 stays a 400, so it does not look like an n8n session failure.
-	if (status === 401) {
+	if (status === 401 || status === 403) {
+		// Protected branches allow only Maintainers to merge by default.
 		return new BadRequestError(
-			'GitLab rejected the access token for this action. The token needs the api scope and the Developer role or higher.',
-		);
-	}
-	if (status === 403) {
-		return new BadRequestError(
-			'The access token may not perform this merge request action. Check the token scopes and role.',
+			path.endsWith('/merge')
+				? 'The access token may not merge this merge request. The token needs the `api` scope and the Maintainer role or higher.'
+				: 'The access token may not perform this merge request action. The token needs the `api` scope and the Developer role or higher.',
 		);
 	}
 	if (status === 404) {

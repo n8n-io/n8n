@@ -14,7 +14,10 @@ export function registerAgentUsageProvider(): void {
 	Container.get(AgentUsageProviderProxy).registerProvider({
 		async findAgentUsages(resourceType, resourceIds) {
 			if (resourceType === 'credential') {
-				const dependencies = await credentialDependencyRepository.findByCredentialIds(resourceIds);
+				const dependencies = await credentialDependencyRepository.findByCredentialIds(
+					resourceIds,
+					{},
+				);
 				return dependencies.map(({ agentId, credentialId }) => ({
 					agentId,
 					resourceId: credentialId,

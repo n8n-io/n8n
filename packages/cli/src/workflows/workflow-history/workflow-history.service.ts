@@ -3,6 +3,7 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import type { OperationContext, PublishHistoryScope, User } from '@n8n/db';
 import {
+	accountFullName,
 	WorkflowHistory,
 	WorkflowHistoryRepository,
 	WorkflowPublishHistoryRepository,
@@ -248,7 +249,7 @@ export class WorkflowHistoryService {
 			);
 		}
 
-		const name = typeof user === 'string' ? user : `${user.firstName} ${user.lastName}`;
+		const name = typeof user === 'string' ? user : accountFullName(user);
 		const authors =
 			source === 'n8n-mcp'
 				? `${name} (via MCP)`

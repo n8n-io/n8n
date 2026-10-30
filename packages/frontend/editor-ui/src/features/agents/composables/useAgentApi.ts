@@ -1,7 +1,9 @@
+import type { AgentTaskCancellationState } from '@n8n/api-types';
 import type {
 	AgentHitlChannelDescriptor,
 	AgentHitlOptionsPage,
 	AgentHitlOptionsQuery,
+	AgentPlanSnapshotDto,
 	AgentApproval,
 	AgentBudgetSpend,
 	AgentBackgroundJobsResponse,
@@ -1145,6 +1147,7 @@ export const cancelAgentChatRun = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/runs/${encodeURIComponent(runId)}`,
+		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1160,6 +1163,7 @@ export const cancelAgentChatExecution = async (
 		context,
 		'DELETE',
 		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}`,
+		...(channel === 'chat' ? [{ scope: 'foreground' }] : []),
 	);
 };
 
@@ -1236,3 +1240,28 @@ export async function getAgentHitlChannelOptions(
 		query,
 	);
 }
+
+export const getAgentTaskCancellation = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+): Promise<AgentTaskCancellationState | null> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`/projects/${encodeURIComponent(projectId)}/agents/v2/${encodeURIComponent(agentId)}/chat/${encodeURIComponent(threadId)}/task-cancellation`,
+	);
+
+export const getAgentPlan = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	channel: AgentChatChannel = 'chat',
+): Promise<AgentPlanSnapshotDto | null> =>
+	await makeRestApiRequest(
+		context,
+		'GET',
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/plan`,
+	);

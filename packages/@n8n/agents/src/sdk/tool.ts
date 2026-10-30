@@ -247,6 +247,8 @@ export class Tool<
 
 	private outputTrustValue?: BuiltTool['outputTrust'];
 
+	private requiresWorkspaceValue?: true;
+
 	private endsTurnFn?: (output: OutputType<TOutput>) => boolean;
 
 	private providerOptionsValue?: Record<string, JSONObject>;
@@ -390,6 +392,12 @@ export class Tool<
 		return this;
 	}
 
+	/** Mark the handler as one that uses the agent's workspace, so the runtime prepares it early. */
+	requiresWorkspace(): this {
+		this.requiresWorkspaceValue = true;
+		return this;
+	}
+
 	/**
 	 * Opt in to handle cancellations in the tool handler (`ctx.cancellation`).
 	 * By default, the runtime bypasses the handler and injects the steering message directly.
@@ -476,6 +484,7 @@ export class Tool<
 			toModelOutput: this.toModelOutputFn as ((output: unknown) => unknown) | undefined,
 			toTraceOutput: this.toTraceOutputFn as ((output: unknown) => unknown) | undefined,
 			outputTrust: this.outputTrustValue,
+			...(this.requiresWorkspaceValue ? { requiresWorkspace: true } : {}),
 			endsTurn: this.endsTurnFn as ((output: unknown) => boolean) | undefined,
 			handler: this.handlerFn as (
 				input: unknown,

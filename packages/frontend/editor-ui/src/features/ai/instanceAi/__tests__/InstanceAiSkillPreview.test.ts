@@ -22,9 +22,12 @@ const detail: SkillDetail = {
 	latestVersion: 2,
 	usedByAgents: 0,
 	availableToAssistant: true,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
 	canStopSyncing: false,
+	syncState: null,
+	canCheckForUpdates: false,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 	skill: {

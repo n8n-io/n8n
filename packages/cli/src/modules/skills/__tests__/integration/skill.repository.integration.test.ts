@@ -247,6 +247,46 @@ describe('SkillRepository', () => {
 		expect((await skills.findByIds([id]))[0].availableToAssistant).toBe(false);
 	});
 
+	it('refuses an MCP availability update when the checked scope changed', async () => {
+		const id = await createSkill({ projectId: project.id });
+		await expect(
+			txRunner.run(
+				{},
+				async (ctx) =>
+					await Container.get(SkillService).setMcpAvailability(
+						id,
+						true,
+						{ projectId: otherProject.id, agentId: null },
+						ctx,
+					),
+			),
+		).rejects.toThrow('The skill scope changed');
+		expect((await skills.findByIds([id]))[0].availableToMCP).toBe(false);
+	});
+
+	it('refuses MCP availability for an agent skill', async () => {
+		const agent = await createAgent('Support');
+		const id = await createSkill({ agentId: agent.id });
+
+		await expect(
+			Container.get(SkillService).setMcpAvailability(id, true, {
+				projectId: null,
+				agentId: agent.id,
+			}),
+		).rejects.toThrow("MCP clients can't get skills scoped to an agent");
+		expect((await skills.findByIds([id]))[0].availableToMCP).toBe(false);
+	});
+
+	it('clears MCP availability when a skill moves to an agent', async () => {
+		const id = await createSkill();
+		const agent = await createAgent('Private scope');
+		await skills.updateAvailableToMCP(id, true);
+		await skills.updateTarget(id, { projectId: project.id, agentId: null });
+		expect((await skills.findByIds([id]))[0].availableToMCP).toBe(true);
+		await skills.updateTarget(id, { projectId: null, agentId: agent.id });
+		expect((await skills.findByIds([id]))[0].availableToMCP).toBe(false);
+	});
+
 	it('clears Assistant availability only when a skill moves to an agent', async () => {
 		const id = await createSkill();
 		const agent = await createAgent('Private scope');
@@ -567,6 +607,19 @@ describe('SkillRepository', () => {
 			const page = await skills.findVisiblePage(visibility, { skip: 0, search: '100%' });
 
 			expect(ids(page)).toEqual([percent]);
+		});
+
+		it('lists only the skills that are available to MCP when the filter asks for them', async () => {
+			const available = await createSkill();
+			const unavailable = await createSkill();
+			await skills.updateAvailableToMCP(available, true);
+			const visibility = { projectIds: [], agentIds: [] };
+
+			const page = await skills.findVisiblePage(visibility, { skip: 0, availableToMCP: true });
+
+			expect(ids(page)).toEqual([available]);
+			expect(page.count).toBe(1);
+			expect(ids(await skills.findVisiblePage(visibility, firstPage))).toContain(unavailable);
 		});
 
 		it('filters by the skills an agent uses and its own skills, with the other filters', async () => {

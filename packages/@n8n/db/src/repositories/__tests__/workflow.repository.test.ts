@@ -659,6 +659,45 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findMigrationScanPage', () => {
+		it('should return the scan fields of the workflows after the cursor', async () => {
+			const page = [Object.assign(new WorkflowEntity(), { id: 'b', name: 'B' })];
+			const findSpy = vi.spyOn(workflowRepository, 'find').mockResolvedValue(page);
+			const select = ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'];
+
+			const first = await workflowRepository.findMigrationScanPage(undefined, 100);
+			const next = await workflowRepository.findMigrationScanPage('a', 100);
+
+			expect(first).toBe(page);
+			expect(next).toBe(page);
+			expect(findSpy).toHaveBeenNthCalledWith(1, {
+				select,
+				where: {},
+				take: 100,
+				order: { id: 'ASC' },
+			});
+			expect(findSpy).toHaveBeenNthCalledWith(2, {
+				select,
+				where: { id: MoreThan('a') },
+				take: 100,
+				order: { id: 'ASC' },
+			});
+		});
+	});
+
+	describe('findMigrationScanWorkflow', () => {
+		it('should return the workflow with the scan fields', async () => {
+			const workflow = Object.assign(new WorkflowEntity(), { id: 'a' });
+			const findOneSpy = vi.spyOn(workflowRepository, 'findOne').mockResolvedValue(workflow);
+
+			expect(await workflowRepository.findMigrationScanWorkflow('a')).toBe(workflow);
+			expect(findOneSpy).toHaveBeenCalledWith({
+				select: ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'],
+				where: { id: 'a' },
+			});
+		});
+	});
+
 	describe('findExistingIds', () => {
 		it('returns only the ids that still exist', async () => {
 			entityManager.find.mockResolvedValue([
