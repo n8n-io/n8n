@@ -21,6 +21,8 @@ export const OTEL_ENV_VARS = {
 
 export const CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR = 'N8N_OTEL_TRACES_CUSTOM_ATTRIBUTE_PREFIXES';
 
+export const PROPAGATE_BAGGAGE_ENV_VAR = 'N8N_OTEL_TRACES_PROPAGATE_BAGGAGE';
+
 export const DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES = {
 	project: 'n8n.project.custom.',
 	workflow: 'n8n.workflow.custom.',

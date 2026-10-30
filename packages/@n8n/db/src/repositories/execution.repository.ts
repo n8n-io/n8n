@@ -83,7 +83,12 @@ export type CrashedExecution = {
 	mode: WorkflowExecuteMode;
 	startedAt: Date | null;
 	stoppedAt: Date;
-	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
+	tracingContext?: {
+		traceparent?: string;
+		tracestate?: string;
+		identity?: Record<string, string>;
+		baggage?: string;
+	};
 	workflowVersionId?: string;
 	retryOf?: string;
 	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];

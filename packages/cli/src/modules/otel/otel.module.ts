@@ -30,10 +30,20 @@ export class OtelModule implements ModuleInterface {
 
 	async context(): Promise<ModuleContext> {
 		const { ExecutionLevelTracer } = await import('./execution-level-tracer.js');
+		const { OtelBaggageConfig } = await import('./otel.config.js');
 		const tracer = Container.get(ExecutionLevelTracer);
+		const baggageConfig = Container.get(OtelBaggageConfig);
 
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
+			extractInboundBaggage: (header: unknown) => {
+				if (!baggageConfig.propagate) return undefined;
+				if (typeof header === 'string') return header;
+				if (Array.isArray(header) && header.every((value) => typeof value === 'string')) {
+					return header.join(',');
+				}
+				return undefined;
+			},
 		};
 	}
 

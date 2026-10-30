@@ -56,9 +56,9 @@ There are two ways to add the headers:
   helper is public, so a community node can use it too.
 
 `getTraceHeaders()` returns `traceparent`, `tracestate` when the trace has one, and `baggage`
-when the `otel.configure` hook adds entries (see below). It returns an empty object when
-OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is off, or when no execution
-runs. Use the result without a guard.
+when the execution has caller baggage or the `otel.configure` hook adds entries (see below). It
+returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
+off, or when no execution runs. Use the result without a guard.
 
 Both ways write the headers with the global propagator. `OtelService` installs it from the
 settings: W3C trace context and baggage when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is on, nothing
@@ -70,7 +70,6 @@ Both ways obey these rules:
 
 - **Read the headers for each request.** They name the span that is active now. A transport
   that stays open serves many spans, so a value read at connect names the wrong span later.
-- **The trace context replaces** a header of the same name on the request.
 - **The headers follow a redirect**, also across origins. A trace id is not a credential. On
   the MCP path, n8n first checks each hop against the credential allowlist and the egress
   filter.
@@ -96,8 +95,33 @@ project name holds the user's name and email.
   when the project lookup fails. A reconstructed crash span reads it, so it shows the
   identity of the last segment.
 
-This key is n8n's single source of truth for the execution identity. Inbound and outbound
-baggage (GOV-143) decides what it reads from this key and what it adds to baggage.
+This key is n8n's single source of truth for the execution identity. n8n never puts the
+identity in outbound baggage.
+
+### Caller baggage
+
+n8n can forward the W3C `baggage` header of a webhook call to the requests that the execution
+sends. A downstream service can then put the same entries (for example a tenant id) on its own
+telemetry.
+
+| Environment variable                | Default | Effect                                         |
+| ----------------------------------- | ------- | ---------------------------------------------- |
+| `N8N_OTEL_TRACES_PROPAGATE_BAGGAGE` | `false` | Read caller baggage on webhooks and send it on |
+
+- The variable is env-only for now. It is not on the OTel settings page or in the public API. Set it on all main, worker and webhook instances. A restart applies a change.
+- The caller baggage goes out through the same propagator as `traceparent`, so it also needs
+  OTel on and `N8N_OTEL_TRACES_INJECT_OUTBOUND` on, and it takes the same paths: `httpRequest`,
+  `request` and `getTraceHeaders()`. Caller entries and `otel.configure` hook entries go out in
+  one header. A hook entry wins over a caller entry with the same key.
+- **Inbound.** When this setting is on, the webhook reads `baggage` next to `traceparent`, even
+  when no `traceparent` is sent. The otel module reads it through its module context
+  (`extractInboundBaggage`), so the webhook code does not load the module. When the workflow
+  span starts, n8n parses the header with the OTel `W3CBaggagePropagator`, which applies the W3C
+  limits, and drops entries whose key starts with `n8n.` (in any case), because n8n owns that
+  prefix. It logs one warning with the count when it drops entries.
+- **Persistence.** The parsed result is saved in `tracingContext.baggage` on the execution. Each
+  segment saves it again, so a queue-mode worker and a resume after a Wait node send the same
+  baggage. The public API does not return it.
 
 ### Start marker spans
 

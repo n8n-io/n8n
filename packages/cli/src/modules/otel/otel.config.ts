@@ -7,6 +7,7 @@ import {
 	CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR,
 	DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES,
 	OTEL_ENV_VARS,
+	PROPAGATE_BAGGAGE_ENV_VAR,
 } from './otel.constants';
 
 @Config
@@ -81,4 +82,13 @@ export class OtelCustomAttributesConfig {
 	 */
 	@Env(CUSTOM_ATTRIBUTE_PREFIXES_ENV_VAR, customAttributePrefixesSchema)
 	prefixes: CustomAttributePrefixes = { ...DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES };
+}
+
+@Config
+export class OtelBaggageConfig {
+	/**
+	 * Whether n8n forwards the W3C `baggage` header of an incoming webhook call to the HTTP requests that the execution sends, including requests to third-party services. It needs OpenTelemetry and the "Inject outbound traceparent" setting on. n8n drops entries with keys that start with `n8n.` and applies the W3C size limits. Set the same value on all main, worker and webhook instances.
+	 */
+	@Env(PROPAGATE_BAGGAGE_ENV_VAR)
+	propagate: boolean = false;
 }
