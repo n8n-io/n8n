@@ -11,6 +11,8 @@ import {
 	ExecutionRepository,
 	SharedWorkflowRepository,
 	TransactionRunner,
+	WorkflowEntity,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ExecutionListItem } from '@n8n/engine';
@@ -198,28 +200,41 @@ describe('execution list workflow reads', () => {
 	});
 
 	it('reads workflow ids and names through the transaction carried by ctx', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflow({ isArchived: true }, owner);
 		const sharingOptions =
 			await Container.get(ExecutionListService).buildSharingOptions('workflow:read');
 		const workflows = Container.get(ExecutionListRepository);
+		const query: ExecutionSummaries.RangeQuery = {
+			kind: 'range',
+			range: { limit: 2 },
+			user: owner,
+			sharingOptions,
+			workflowId: workflow.id,
+			isArchived: false,
+		};
+		const updatedName = 'Workflow renamed in transaction';
+		const rollback = new Error('Roll back workflow changes');
 
-		await Container.get(TransactionRunner).run({}, async (ctx) => {
-			expect(
-				await workflows.findWorkflowIdsForExecutionList(
-					{
-						kind: 'range',
-						range: { limit: 2 },
-						user: owner,
-						sharingOptions,
-						workflowId: workflow.id,
-					},
-					ctx,
-				),
-			).toEqual([workflow.id]);
-			expect(await workflows.findNamesForExecutionList([workflow.id], ctx)).toEqual([
-				{ id: workflow.id, name: workflow.name },
-			]);
-		});
+		expect(await workflows.findWorkflowIdsForExecutionList(query, {})).toEqual([]);
+
+		await expect(
+			Container.get(TransactionRunner).run({}, async (ctx) => {
+				await Container.get(WorkflowRepository)
+					.managerFor(ctx)
+					.update(WorkflowEntity, workflow.id, { isArchived: false, name: updatedName });
+
+				expect(await workflows.findWorkflowIdsForExecutionList(query, ctx)).toEqual([workflow.id]);
+				expect(await workflows.findNamesForExecutionList([workflow.id], ctx)).toEqual([
+					{ id: workflow.id, name: updatedName },
+				]);
+				throw rollback;
+			}),
+		).rejects.toBe(rollback);
+
+		expect(await workflows.findWorkflowIdsForExecutionList(query, {})).toEqual([]);
+		expect(await workflows.findNamesForExecutionList([workflow.id], {})).toEqual([
+			{ id: workflow.id, name: workflow.name },
+		]);
 	});
 });
 
