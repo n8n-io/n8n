@@ -69,6 +69,7 @@ export interface ModelCallContext {
 	onInputRejected?: (error: unknown) => Promise<void>;
 	aiSdkOptions: {
 		telemetry?: TelemetryOptions;
+		toolChoice?: 'none';
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 	};
 }

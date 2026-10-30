@@ -1070,8 +1070,9 @@ describe('workflow tool → background job handoff', () => {
 		return tool;
 	}
 
-	function makeParentCtx() {
+	function makeParentCtx(resourceId = 'resource-1') {
 		const suspend = vi.fn().mockResolvedValue(undefined);
+
 		return {
 			ctx: {
 				suspend,
@@ -1079,7 +1080,7 @@ describe('workflow tool → background job handoff', () => {
 				toolCallId: 'call-1',
 				persistence: {
 					threadId: 'thread-1',
-					resourceId: 'resource-1',
+					resourceId,
 					hostMetadata: encodeAgentSandboxHostMetadata({
 						projectId: 'p1',
 						principalHash: parentPrincipalHash,
@@ -1093,6 +1094,24 @@ describe('workflow tool → background job handoff', () => {
 	afterEach(() => {
 		vi.restoreAllMocks();
 		Container.reset();
+	});
+
+	it('registers a draft workflow only when it becomes a background task', async () => {
+		setPersistence({ status: 'waiting' });
+		const jobService = setJobService();
+		const tool = await buildBackgroundTool();
+		const { ctx } = makeParentCtx('draft-chat:user-1');
+		await tool.handler?.({}, ctx);
+
+		expect(jobService.registerWorkflowJob).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({
+				executionId: 'exec-1',
+				parentThreadId: 'thread-1',
+				parentResourceId: 'draft-chat:user-1',
+			}),
+		);
+		expect(jobService.registerWorkflowJob).toHaveBeenCalledTimes(1);
 	});
 
 	it('returns a receipt for a waiting execution instead of polling or suspending', async () => {
