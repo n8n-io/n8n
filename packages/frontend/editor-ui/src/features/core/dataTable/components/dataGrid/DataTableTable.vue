@@ -377,11 +377,6 @@ defineExpose({
 		border: none !important;
 		background-color: transparent !important;
 		padding: 0;
-
-		button {
-			position: relative;
-			left: calc(var(--spacing--4xs) * -1);
-		}
 	}
 
 	:global(.ag-header-cell[col-id='add-column']) {

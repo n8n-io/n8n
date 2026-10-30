@@ -113,14 +113,19 @@ function createDeferredHubSource(
 			id.startsWith(HUB_SKILL_ID_PREFIX) &&
 			!builtIns.registry.skills.some((entry) => entry.id === id),
 		loadSkill: async (id) => (hubSkills.has(id) ? await load(id) : await builtIns.loadSkill(id)),
-		loadFile: async (id, path) => {
+		loadFile: async (id, path, onError) => {
 			const selected = hubSkills.get(id);
-			if (!selected) return (await builtIns.loadFile?.(id, path)) ?? null;
+			if (!selected) return (await builtIns.loadFile?.(id, path, onError)) ?? null;
 			const skill = await load(id);
-			if (!skill?.linkedFiles.references.some((file) => file.path === path)) return null;
+			if (!skill?.linkedFiles.references.some((file) => file.path === path)) {
+				const error = errors.get(id);
+				if (error) onError?.(error);
+				return null;
+			}
 			const file = await readHubReference(provider, context, selected.summary, id, path);
 			if ('message' in file) {
 				errors.set(id, file);
+				onError?.(file);
 				return null;
 			}
 			errors.delete(id);

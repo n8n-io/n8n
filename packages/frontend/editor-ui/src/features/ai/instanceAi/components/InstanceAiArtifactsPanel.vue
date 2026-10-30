@@ -12,7 +12,8 @@ import {
 import { useI18n } from '@n8n/i18n';
 import { computed, inject, type Ref } from 'vue';
 import { useBuildingArtifactIds } from '../composables/useBuildingArtifactIds';
-import { useInstanceAiStore, useThread } from '../instanceAi.store';
+import { useArtifactThread } from '../artifactThread';
+import { useInstanceAiStore } from '../instanceAi.store';
 import type { ResourceEntry } from '../useResourceRegistry';
 import { skillsHubHref } from '../canvasPreview.utils';
 import {
@@ -27,7 +28,7 @@ const projectsStore = useProjectsStore();
 const store = useInstanceAiStore();
 
 const i18n = useI18n();
-const thread = useThread();
+const thread = useArtifactThread();
 const project = computed(() => {
 	// The project id arrives with thread hydration. Until then the lookup is
 	// pending, not unknown, so the template shows a skeleton instead.

@@ -56,6 +56,7 @@ import {
 	TagConflictPolicy,
 	ImportConflictPolicy,
 	WorkflowIdPolicy,
+	WorkflowPublishingPolicy,
 	type ExportPackageEventCounts,
 	type ExportPackageRequest,
 	type ExportPackageDirectoryResult,
@@ -102,13 +103,12 @@ type DirectoryProjectPackage =
  * left to the caller (`overwriteDeletionPolicy`): promotion passes `hard-delete` for diff convergence,
  * while the public selection import defaults to the safe `archive`. The caller also sets
  * `dataTableSchemaConflictPolicy`, which defaults to `fail`, `tagConflictPolicy`, which defaults to
- * `skip`, `credentialConflictPolicy`, which defaults to `keep-existing`, and `layoutConflictPolicy`,
- * which defaults to `fail`.
+ * `skip`, `credentialConflictPolicy`, which defaults to `keep-existing`, `layoutConflictPolicy`,
+ * which defaults to `fail`, and `publishingPolicy`, which defaults to `match-source`.
  */
 const CHERRY_PICK_IMPORT_POLICY = {
 	projectConflictPolicy: 'merge',
 	folderConflictPolicy: 'merge',
-	publishingPolicy: 'match-source',
 	missingNodeTypeMode: 'fail',
 	credentialMatchingMode: 'id-only',
 	credentialMissingMode: 'must-preexist',
@@ -132,6 +132,7 @@ const CHERRY_PICK_IMPORT_POLICY = {
 	| 'tagConflictPolicy'
 	| 'credentialConflictPolicy'
 	| 'layoutConflictPolicy'
+	| 'publishingPolicy'
 >;
 
 @Service()
@@ -715,6 +716,7 @@ export class N8nPackagesService {
 			...(request.credentialPersonalRoute !== undefined
 				? { credentialPersonalRoute: request.credentialPersonalRoute }
 				: {}),
+			publishingPolicy: request.publishingPolicy ?? WorkflowPublishingPolicy.MatchSource,
 			selection,
 		};
 	}

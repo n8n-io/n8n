@@ -5,6 +5,7 @@ import {
 	N8nActionToggle,
 	N8nBadge,
 	N8nDataTableServer,
+	N8nIcon,
 	N8nText,
 	N8nTooltip,
 	N8nUserInfo,
@@ -20,7 +21,7 @@ import SkillScopeBadge from './SkillScopeBadge.vue';
 import { PREFERENCES_PAGE_SIZES } from '../context.constants';
 import { useSkillDeleteRule } from '../skills.utils';
 
-type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'delete';
+type SkillAction = 'edit' | 'timeline' | 'compare' | 'download' | 'stopSyncing' | 'delete';
 
 /** The fields of the action toggle item that this menu uses. */
 type SkillActionItem = {
@@ -39,6 +40,7 @@ const props = defineProps<{
 	showAssistantAvailability?: boolean;
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
+	showMcpAvailability?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -46,6 +48,7 @@ const emit = defineEmits<{
 	timeline: [skill: SkillListItem];
 	compare: [skill: SkillListItem];
 	download: [skill: SkillListItem];
+	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
 	'update:options': [payload: TableOptions];
 }>();
@@ -86,6 +89,16 @@ function actionsFor(skill: SkillListItem): SkillActionItem[] {
 			label: i18n.baseText('settings.context.skills.actions.download'),
 			icon: 'download',
 		},
+		// Only a synced skill that the user may stop syncing.
+		...(skill.canStopSyncing
+			? [
+					{
+						value: 'stopSyncing' as const,
+						label: i18n.baseText('settings.context.skills.stopSyncing.action'),
+						icon: 'unlink' as const,
+					},
+				]
+			: []),
 		{
 			value: 'delete',
 			label: i18n.baseText('settings.context.skills.actions.delete'),
@@ -102,6 +115,7 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else if (action === 'timeline') emit('timeline', skill);
 	else if (action === 'compare') emit('compare', skill);
 	else if (action === 'download') emit('download', skill);
+	else if (action === 'stopSyncing') emit('stopSyncing', skill);
 	else emit('delete', skill);
 }
 
@@ -192,6 +206,19 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 							>
 								{{ i18n.baseText('settings.context.skills.assistant.badge') }}
 							</N8nBadge>
+						</N8nTooltip>
+						<N8nTooltip
+							v-if="props.showMcpAvailability && item.scope !== 'agent' && item.availableToMCP"
+							placement="right"
+							:content="i18n.baseText('settings.context.skills.modal.mcp.label')"
+						>
+							<span
+								role="img"
+								:aria-label="i18n.baseText('settings.context.skills.modal.mcp.label')"
+								data-test-id="skill-available-to-mcp-icon"
+							>
+								<N8nIcon icon="mcp" size="medium" color="text-light" />
+							</span>
 						</N8nTooltip>
 					</div>
 					<N8nText size="small" color="text-light" :class="$style.description">

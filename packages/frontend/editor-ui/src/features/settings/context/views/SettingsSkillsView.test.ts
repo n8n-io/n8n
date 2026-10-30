@@ -4,6 +4,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import {
 	SKILL_NAME_TAKEN_MESSAGE,
+	SKILL_SYNC_FLAG,
 	type SkillDetail,
 	type SkillListItem,
 	type SkillUserDto,
@@ -69,8 +70,10 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		latestVersion: 1,
 		availableToAssistant: false,
 		usedByAgents: 0,
+		availableToMCP: false,
 		canEdit: true,
 		canDelete: true,
+		canStopSyncing: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -87,6 +90,7 @@ function detail(overrides: Partial<SkillDetail> = {}): SkillDetail {
 		},
 		skillHash: 'hash-1',
 		usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+		syncedFrom: null,
 		...overrides,
 	};
 }
@@ -816,6 +820,70 @@ describe('SettingsSkillsView', () => {
 		});
 	});
 
+	describe('MCP availability', () => {
+		async function openSkill(item: SkillDetail) {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(item);
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+		}
+
+		it('hides the toggle while the MCP skills extension is off', async () => {
+			await openSkill(detail({ availableToMCP: true }));
+
+			expect(lastModalData().availableToMCP).toBeUndefined();
+		});
+
+		it('passes the MCP availability of an agent skill, so a move can turn it on', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			await openSkill(detail({ scope: 'agent', agentId: 'a1', availableToMCP: false }));
+
+			expect(lastModalData().availableToMCP).toBe(false);
+		});
+
+		it('marks the skills that MCP clients get in the table', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			skillsStore.skills = [
+				skill({ id: 's1', name: 'Served', availableToMCP: true }),
+				skill({ id: 's2', name: 'Hidden', availableToMCP: false }),
+			];
+			skillsStore.count = 2;
+			const { getAllByTestId } = renderView();
+			await new Promise(process.nextTick);
+
+			const icons = getAllByTestId('skill-available-to-mcp-icon');
+			expect(icons).toHaveLength(1);
+			expect(icons[0].closest('tr')).toHaveTextContent('Served');
+		});
+
+		it('saves a change of the toggle without new content and reloads the list', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(true);
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v1',
+				version: 1,
+				created: false,
+				skill: detail().skill,
+				skillHash: 'hash-1',
+			});
+			await openSkill(detail({ availableToMCP: false }));
+
+			expect(lastModalData().availableToMCP).toBe(false);
+			lastModalData().onConfirm({ id: 's1', skill: detail().skill, availableToMCP: true });
+			await new Promise(process.nextTick);
+
+			expect(skillsStore.saveSkill).toHaveBeenCalledWith(
+				's1',
+				expect.objectContaining({ availableToMCP: true, baseSkillHash: 'hash-1' }),
+			);
+			expect(showMessageMock).not.toHaveBeenCalled();
+			expect(skillsStore.fetchSkills).toHaveBeenCalledTimes(2);
+		});
+	});
+
 	it('keeps the modal open and shows a toast when a save fails for another reason', async () => {
 		skillsStore.skills = [skill()];
 		skillsStore.count = 1;
@@ -946,6 +1014,213 @@ describe('SettingsSkillsView', () => {
 
 			expect(lastModalData().skillId).toBeUndefined();
 			expect(lastModalData().scopeOptions).not.toHaveLength(0);
+		});
+	});
+
+	describe('Skill Sync', () => {
+		/** Stands in for the connect dialog, which has its own tests. */
+		const connected = {
+			response: {
+				sourceId: 'src-1',
+				imported: [
+					{ key: 'a', skillId: 'k1', name: 'brand-voice' },
+					{ key: 'b', skillId: 'k2', name: 'seo-check' },
+				],
+				failed: [{ key: 'c', name: 'web-scraper', reason: 'parse_error' }],
+			},
+			sourceLabel: 'acme/skills',
+			scopeLabel: 'Global',
+		};
+		const ConnectDialogStub = {
+			name: 'SkillSourceConnectDialog',
+			props: ['open', 'scopeOptions'],
+			emits: ['update:open', 'connected'],
+			setup: () => ({ connected }),
+			template: `
+				<div v-if="open" data-test-id="connect-dialog-stub" />
+				<button data-test-id="connect-dialog-done" @click="$emit('connected', connected)" />
+			`,
+		};
+
+		function enableSkillSync() {
+			mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+				(flag) => String(flag) === SKILL_SYNC_FLAG,
+			);
+		}
+
+		function renderWithDialogStub() {
+			return renderView({ global: { stubs: { SkillSourceConnectDialog: ConnectDialogStub } } });
+		}
+
+		it('shows only "Create skill" when the flag is off', () => {
+			const { getByTestId, queryByTestId } = renderView();
+
+			expect(getByTestId('skills-create-button')).toBeInTheDocument();
+			expect(queryByTestId('skills-create-menu-button')).not.toBeInTheDocument();
+		});
+
+		it('offers "Connect to GitHub" in the "Create skills" menu when the flag is on', async () => {
+			enableSkillSync();
+			const { getByTestId, queryByTestId, findByTestId } = renderWithDialogStub();
+
+			expect(queryByTestId('skills-create-button')).not.toBeInTheDocument();
+			await userEvent.click(getByTestId('skills-create-menu-button'));
+			expect(await findByTestId('skills-create-manual')).toHaveTextContent('Create manually');
+			await userEvent.click(await findByTestId('skills-create-github'));
+
+			expect(await findByTestId('connect-dialog-stub')).toBeInTheDocument();
+		});
+
+		it('reloads the list and names the imported and failed skills', async () => {
+			enableSkillSync();
+			const view = renderWithDialogStub();
+			await new Promise(process.nextTick);
+			skillsStore.fetchSkills.mockClear();
+
+			await userEvent.click(view.getByTestId('connect-dialog-done'));
+
+			await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+			expect(showMessageMock).toHaveBeenCalledWith({
+				title: 'Added 2 skills to Global from acme/skills',
+				message: 'Could not add web-scraper (n8n cannot read its SKILL.md).',
+				type: 'warning',
+			});
+		});
+
+		it('opens a synced skill read-only with where it comes from', async () => {
+			const syncedFrom = {
+				sourceId: 'src-1',
+				type: 'github' as const,
+				label: 'acme/skills',
+				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
+				canStopSyncing: false,
+			};
+			skillsStore.skills = [skill({ source: 'github', canEdit: false })];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(
+				detail({ source: 'github', canEdit: false, syncedFrom }),
+			);
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+
+			await userEvent.click(getByText('research-search'));
+			await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+
+			expect(lastModalData().readOnly).toBe(true);
+			expect(lastModalData().syncedFrom).toEqual(syncedFrom);
+		});
+
+		describe('stop syncing', () => {
+			const syncedFrom = {
+				sourceId: 'src-1',
+				type: 'github' as const,
+				label: 'acme/skills',
+				webUrl: 'https://github.com/acme/skills/tree/main/research-search',
+				canStopSyncing: true,
+			};
+
+			async function openSynced(overrides: Partial<SkillDetail> = {}) {
+				skillsStore.skills = [skill({ source: 'github', canEdit: false })];
+				skillsStore.count = 1;
+				skillsStore.fetchSkill.mockResolvedValue(
+					detail({ source: 'github', canEdit: false, latestVersion: 3, syncedFrom, ...overrides }),
+				);
+				const view = renderView();
+				await new Promise(process.nextTick);
+				await userEvent.click(view.getByText('research-search'));
+				await waitFor(() => expect(uiStore.openModalWithData).toHaveBeenCalled());
+				skillsStore.fetchSkills.mockClear();
+				return view;
+			}
+
+			it('stops syncing from the row menu with the same confirmation', async () => {
+				skillsStore.skills = [
+					skill({ source: 'github', canEdit: false, canStopSyncing: true, latestVersion: 3 }),
+				];
+				skillsStore.count = 1;
+				skillsStore.stopSyncingSkill.mockResolvedValue(undefined);
+				const { getByTestId } = renderView();
+				await new Promise(process.nextTick);
+				skillsStore.fetchSkills.mockClear();
+
+				await userEvent.click(getByTestId('skill-actions').querySelector('button')!);
+				await waitFor(() =>
+					expect(document.querySelector('[data-test-id="action-stopSyncing"]')).toBeInTheDocument(),
+				);
+				await userEvent.click(document.querySelector('[data-test-id="action-stopSyncing"]')!);
+				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+
+				expect(confirmMock).toHaveBeenCalledWith(
+					expect.stringContaining('You cannot undo this.'),
+					'Stop syncing research-search?',
+					expect.anything(),
+				);
+				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
+				expect(showMessageMock).toHaveBeenCalledWith({
+					title: 'research-search stopped syncing. You can edit it now.',
+					type: 'success',
+				});
+			});
+
+			it('locks the scope of a synced skill to its source', async () => {
+				await openSynced();
+
+				expect(lastModalData().scopeLockedReason).toBe(
+					'Set by the source acme/skills. The skill moves only with its source. To move this skill on its own, stop syncing it first.',
+				);
+			});
+
+			it('offers Stop syncing only when the user may stop syncing the skill', async () => {
+				await openSynced({ syncedFrom: { ...syncedFrom, canStopSyncing: false } });
+
+				expect(lastModalData().onStopSyncing).toBeUndefined();
+			});
+
+			it('asks first and says the action cannot be undone', async () => {
+				await openSynced();
+				confirmMock.mockResolvedValue('cancel');
+
+				await lastModalData().onStopSyncing?.('s1');
+
+				expect(confirmMock).toHaveBeenCalledWith(
+					'The skill stays in Global with all 3 versions. Agents keep using it. You can edit it in n8n after this, and move it to another scope on its own. It no longer gets updates from GitHub. You cannot undo this.',
+					'Stop syncing research-search?',
+					expect.objectContaining({
+						confirmButtonText: 'Stop syncing',
+						cancelButtonText: 'Cancel',
+					}),
+				);
+				expect(skillsStore.stopSyncingSkill).not.toHaveBeenCalled();
+				expect(uiStore.closeModal).not.toHaveBeenCalled();
+				expect(skillsStore.fetchSkills).not.toHaveBeenCalled();
+			});
+
+			it('stops syncing on confirm, closes the modal and reloads the list', async () => {
+				await openSynced();
+				skillsStore.stopSyncingSkill.mockResolvedValue(undefined);
+
+				await lastModalData().onStopSyncing?.('s1');
+
+				expect(skillsStore.stopSyncingSkill).toHaveBeenCalledWith('s1');
+				expect(uiStore.closeModal).toHaveBeenCalled();
+				expect(showMessageMock).toHaveBeenCalledWith({
+					title: 'research-search stopped syncing. You can edit it now.',
+					type: 'success',
+				});
+				expect(skillsStore.fetchSkills).toHaveBeenCalled();
+			});
+
+			it('shows an error and keeps the modal open when the request fails', async () => {
+				await openSynced();
+				const error = new Error('Forbidden');
+				skillsStore.stopSyncingSkill.mockRejectedValue(error);
+
+				await lastModalData().onStopSyncing?.('s1');
+
+				expect(showErrorMock).toHaveBeenCalledWith(error, 'Could not stop syncing the skill');
+				expect(uiStore.closeModal).not.toHaveBeenCalled();
+				expect(showMessageMock).not.toHaveBeenCalled();
+			});
 		});
 	});
 

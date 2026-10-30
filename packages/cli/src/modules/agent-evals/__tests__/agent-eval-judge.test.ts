@@ -7,7 +7,7 @@ import type { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentConfigService } from '@/modules/agents/agent-config.service';
 
 import { createAgentCredentialProvider } from '@/modules/agents/utils/agent-credential-provider';
-import { judgeAgentAnswer } from '../agent-eval-judge';
+import { INCONCLUSIVE_REASONING, judgeAgentAnswer } from '../agent-eval-judge';
 
 // The SDK is heavy and its judges call a real model: stub both, and let each
 // test drive the verdict through the run mocks.
@@ -126,6 +126,31 @@ describe('judgeAgentAnswer', () => {
 			judgeAgentAnswer(deps, { input: 'q', output: 'a', criteria: 'r', expectedOutput: null }, ctx),
 		).resolves.toEqual({ status: 'completed', outcome: 'fail', reasoning: 'Shared the number.' });
 	});
+
+	it.each([
+		['a rule', { criteria: 'r', expectedOutput: null }],
+		['a gold answer', { criteria: null, expectedOutput: 'gold' }],
+	])(
+		'returns an error verdict, not a fail, when the judge gives no readable verdict on %s',
+		async (_, subject) => {
+			const inconclusive = {
+				pass: false,
+				reasoning: "I'm sorry, but I can't help with evaluating this content.",
+				inconclusive: true,
+			};
+			criteriaRunMock.mockResolvedValue(inconclusive);
+			correctnessRunMock.mockResolvedValue(inconclusive);
+
+			const verdict = await judgeAgentAnswer(deps, { input: 'q', output: 'a', ...subject }, ctx);
+
+			expect(verdict).toEqual({
+				status: 'error',
+				outcome: null,
+				reasoning: INCONCLUSIVE_REASONING,
+			});
+			expect(logger.warn).toHaveBeenCalledWith(expect.any(String), { agentId: 'agent-1' });
+		},
+	);
 
 	it('skips, without resolving a model, when there is nothing to grade against', async () => {
 		const verdict = await judgeAgentAnswer(

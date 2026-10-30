@@ -7,6 +7,8 @@ import {
 	WORKFLOW_TOOL_TRIGGER_DISPLAY_NAME,
 	WORKFLOW_WAIT_SUSPEND_TYPE,
 	type AgentJsonToolConfig,
+	type AgentToolOutputFile,
+	type AgentToolSkippedFile,
 	type SUPPORTED_WORKFLOW_TOOL_TRIGGERS,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -18,9 +20,11 @@ import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { sleep } from '@n8n/utils/sleep';
 import { DateTime } from 'luxon';
 import type {
+	IBinaryKeyData,
 	IDataObject,
 	IExecuteResponsePromiseData,
 	INode,
+	INodeExecutionData,
 	IPinData,
 	IRun,
 	IWorkflowExecutionDataProcess,
@@ -47,6 +51,7 @@ import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
 
 import type { InstrumentToolAdditionalData } from '../evaluation/agent-evaluation.contracts';
+import { AgentFileBridge, FILES_INPUT_SCHEMA } from '../agent-file-bridge.service';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
 import { WorkflowToolUnavailableError } from './workflow-tool-unavailable-error';
@@ -57,9 +62,11 @@ import type {
 import {
 	AgentBackgroundJobService,
 	collectResultData,
+	collectResultItems,
 	EXECUTION_OUTCOME_UNKNOWN_ERROR,
 	serializeWorkflowJobResult,
 	settlementStatusForExecution,
+	toResultData,
 } from '../background/agent-background-job.service';
 import { sanitizeToolName } from '../json-config/agent-config-composition';
 
@@ -114,7 +121,21 @@ const WAIT_RESUME_SCHEMA = z.object({
 });
 
 /** Private state carried across the suspension; never shown to the model. */
-const WAIT_CONTINUATION_SCHEMA = z.object({ executionId: z.string() });
+const WAIT_CONTINUATION_SCHEMA = z.object({
+	executionId: z.string(),
+	/** Input files by binaryDataId, so an unchanged input file keeps its file ID on resume. */
+	inputFiles: z
+		.record(
+			z.string(),
+			z.object({
+				fileId: z.string(),
+				fileName: z.string(),
+				mimeType: z.string(),
+				sizeBytes: z.number(),
+			}),
+		)
+		.optional(),
+});
 
 type WaitSuspendPayload = z.infer<typeof WAIT_SUSPEND_SCHEMA>;
 type WaitToolContext = InterruptibleToolContext<
@@ -135,11 +156,18 @@ interface WorkflowToolResult {
 	error?: string;
 	/** Explains a non-obvious outcome to the model, e.g. that the user stopped waiting. */
 	note?: string;
+	jobId?: string;
+	/** Binary output, stored as agent files. The model gets this metadata, not the bytes. */
+	files?: AgentToolOutputFile[];
+	/** Binary output that was not stored, with the reason. */
+	skippedFiles?: AgentToolSkippedFile[];
 }
 
-/** Internal result, carrying wait details that are stripped before the model sees them. */
+/** Internal result, carrying details that are stripped before the model sees them. */
 export interface WorkflowToolExecutionResult extends WorkflowToolResult {
 	wait?: WorkflowWaitState;
+	/** Set only when the output has binary data, for {@link finishResult} to store. */
+	items?: Record<string, INodeExecutionData[]>;
 }
 
 function isWorkflowToolResponse(value: unknown): value is IExecuteResponsePromiseData {
@@ -457,6 +485,8 @@ export async function executeWorkflow(
 	allOutputs = false,
 	/** Sanitized tool name for eval instrumentation; set only on instrumented runs. */
 	instrumentedToolName?: string,
+	/** Files the model passed to the tool, as binary of the trigger item. */
+	binary?: IBinaryKeyData,
 ): Promise<WorkflowToolExecutionResult> {
 	const { workflowRunner, subworkflowPolicyChecker, activeExecutions } = context;
 
@@ -466,7 +496,7 @@ export async function executeWorkflow(
 
 	// Build pin data for the trigger
 	const triggerPinData: IPinData = {
-		[triggerNode.name]: [{ json: inputData as IDataObject }],
+		[triggerNode.name]: [{ json: inputData as IDataObject, ...(binary && { binary }) }],
 	};
 	const workflowData =
 		workflow.pinData === undefined ? workflow : { ...workflow, pinData: undefined };
@@ -643,7 +673,9 @@ function formatResult(
 	allOutputs: boolean,
 ): WorkflowToolExecutionResult {
 	const runData = data?.resultData?.runData;
-	const resultData = runData ? collectResultData(runData, allOutputs) : {};
+	const items = runData ? collectResultItems(runData, allOutputs) : {};
+	const resultData = toResultData(items);
+	const hasBinary = Object.values(items).some((nodeItems) => nodeItems.some((item) => item.binary));
 	const normalisedStatus = normaliseExecutionStatus(status);
 	const wait = normalisedStatus === 'waiting' ? extractWaitState(data) : undefined;
 
@@ -653,6 +685,7 @@ function formatResult(
 		data: Object.keys(resultData).length > 0 ? resultData : undefined,
 		error: data?.resultData?.error?.message,
 		...(wait ? { wait } : {}),
+		...(hasBinary ? { items } : {}),
 	};
 }
 
@@ -741,9 +774,37 @@ function extractWaitState(data: IRun['data'] | undefined): WorkflowWaitState | u
 	return bounded ? { waitTill } : {};
 }
 
-function withoutWaitState(result: WorkflowToolExecutionResult): WorkflowToolResult {
-	const { wait: _wait, ...rest } = result;
-	return rest;
+/**
+ * Strip the internal details and store binary output as agent files. In the
+ * data, each binary entry becomes its file ID, and `files` lists the metadata.
+ * `skippedFiles` lists the files that are too large to store.
+ * Without a thread there is no scope for the files, so the binary is dropped.
+ */
+async function finishResult(
+	result: WorkflowToolExecutionResult,
+	context: Pick<WorkflowToolContext, 'agentId' | 'projectId'>,
+	ctx: WaitToolContext,
+	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
+	inputFiles = new Map<string, AgentToolOutputFile>(),
+): Promise<WorkflowToolResult> {
+	const { wait: _wait, items, ...rest } = result;
+	const threadId = ctx.persistence?.threadId;
+	if (!threadId || !items) return rest;
+
+	const bridge = Container.get(AgentFileBridge);
+	const scope = { agentId: context.agentId ?? null, projectId: context.projectId, threadId };
+	const data = { ...rest.data };
+	const files: AgentToolOutputFile[] = [];
+	const skippedFiles: AgentToolSkippedFile[] = [];
+	const stored = new Map(inputFiles);
+	const skipped = new Set<string>();
+	for (const [nodeName, nodeItems] of Object.entries(items)) {
+		const adopted = await bridge.adoptFromItems(nodeItems, scope, stored, skipped);
+		data[nodeName] = adopted.items.map(({ json, binary }) => (binary ? { ...json, binary } : json));
+		files.push(...adopted.files);
+		skippedFiles.push(...adopted.skippedFiles);
+	}
+	return { ...rest, data, files, ...(skippedFiles.length > 0 && { skippedFiles }) };
 }
 
 /**
@@ -773,6 +834,8 @@ async function backgroundWaitingExecution(
 	ctx: WaitToolContext,
 	reference: WorkflowToolWorkflowReference,
 	allOutputs: boolean,
+	/** Input files of the tool call, so an unchanged input file keeps its file ID. */
+	inputFiles?: Map<string, AgentToolOutputFile>,
 ): Promise<(WorkflowToolResult & { jobId: string }) | undefined> {
 	const agentRun = context.agentRun ?? agentRunOf(context, ctx);
 	const parentResourceId = ctx.persistence?.resourceId;
@@ -841,7 +904,7 @@ async function backgroundWaitingExecution(
 			// even if another writer settled the job.
 			await consumeInlineMail(jobService, agentRun.threadId, jobId);
 
-			return { ...withoutWaitState(fresh), jobId };
+			return { ...(await finishResult(fresh, context, ctx, inputFiles)), jobId };
 		}
 
 		const continuesAt = result.wait?.waitTill
@@ -1095,7 +1158,7 @@ function assembleWorkflowTool(
 	context: WorkflowToolContext,
 	tool: {
 		reference: WorkflowToolWorkflowReference;
-		inputSchema: z.ZodTypeAny;
+		inputSchema: z.AnyZodObject;
 		triggerType?: string;
 	},
 ): BuiltTool {
@@ -1114,9 +1177,11 @@ function assembleWorkflowTool(
 	// where a suspension can be resumed; elsewhere it reports the waiting status
 	// instead of parking forever.
 	const supportsHitl = context.supportsHitl ?? true;
+	// A workflow input named `files` keeps its meaning, so the tool then takes no files.
+	const acceptsFiles = !Object.hasOwn(inputSchema.shape, 'files');
 	const builder = new Tool(toolName)
 		.description(toolDescription)
-		.input(inputSchema)
+		.input(acceptsFiles ? inputSchema.extend({ files: FILES_INPUT_SCHEMA }) : inputSchema)
 		.output(
 			z.object({
 				executionId: z.string(),
@@ -1125,6 +1190,8 @@ function assembleWorkflowTool(
 				error: z.string().optional(),
 				note: z.string().optional(),
 				jobId: z.string().optional(),
+				files: z.array(z.custom<AgentToolOutputFile>()).optional(),
+				skippedFiles: z.array(z.custom<AgentToolSkippedFile>()).optional(),
 			}),
 		)
 		.suspend(WAIT_SUSPEND_SCHEMA)
@@ -1137,14 +1204,26 @@ function assembleWorkflowTool(
 			const pending = WAIT_CONTINUATION_SCHEMA.safeParse(ctx.continuation);
 			let current: Awaited<ReturnType<typeof loadCurrentWorkflow>> | undefined;
 			let result: WorkflowToolExecutionResult;
+			let inputFiles: Map<string, AgentToolOutputFile> | undefined;
 
 			if (pending.success) {
 				result = await extractResult(pending.data.executionId, allOutputs);
+				inputFiles = new Map(Object.entries(pending.data.inputFiles ?? {}));
 			} else {
 				current = await loadCurrentWorkflow(context, reference);
 				const currentFullSchema = inferInputSchema(current.triggerNode, current.triggerType);
+				const { files, ...rest } = input;
+				const modelInput = acceptsFiles ? rest : input;
+				const resolved =
+					acceptsFiles && files
+						? await Container.get(AgentFileBridge).toBinary(files, {
+								projectId: context.projectId,
+								threadId: ctx.persistence?.threadId,
+							})
+						: undefined;
+				inputFiles = resolved?.stored;
 				const parsedInput = await resolveWorkflowToolInput(
-					input,
+					modelInput,
 					toolInputs,
 					currentFullSchema,
 					context,
@@ -1161,6 +1240,7 @@ function assembleWorkflowTool(
 					},
 					allOutputs,
 					toolName,
+					resolved?.binary,
 				);
 			}
 
@@ -1169,14 +1249,16 @@ function assembleWorkflowTool(
 			// second execution, so say so.
 			if (result.status === 'waiting' && isWaitCancelled(ctx.resumeData)) {
 				return {
-					...withoutWaitState(result),
+					...(await finishResult(result, context, ctx, inputFiles)),
 					note: 'The user stopped waiting for this workflow. It is still paused — do not start it again.',
 				};
 			}
 
 			// A wait due within the poll window resolves inline. Only a wait the poll
 			// did not settle is handed to the background.
-			if (result.status !== 'waiting') return withoutWaitState(result);
+			if (result.status !== 'waiting') {
+				return await finishResult(result, context, ctx, inputFiles);
+			}
 
 			const waiting = result;
 			return await withWorkflowCancellation(
@@ -1193,17 +1275,29 @@ function assembleWorkflowTool(
 							ctx,
 							reference,
 							allOutputs,
+							inputFiles,
 						);
 						ctx.abortSignal?.throwIfAborted();
 						if (backgrounded) return backgrounded;
 					}
 
-					if (result.status !== 'waiting' || !supportsHitl) return withoutWaitState(result);
+					if (result.status !== 'waiting' || !supportsHitl) {
+						return await finishResult(result, context, ctx, inputFiles);
+					}
 
 					current ??= await loadCurrentWorkflow(context, reference);
 					ctx.abortSignal?.throwIfAborted();
 					return await ctx.suspend(buildWaitCard(current.workflow.name, result.wait), {
-						continuation: { executionId: result.executionId },
+						continuation: {
+							executionId: result.executionId,
+							// Spread copies are plain objects, which the JSON continuation accepts.
+							...(inputFiles &&
+								inputFiles.size > 0 && {
+									inputFiles: Object.fromEntries(
+										Array.from(inputFiles, ([id, file]) => [id, { ...file }]),
+									),
+								}),
+						},
 					});
 				},
 			);

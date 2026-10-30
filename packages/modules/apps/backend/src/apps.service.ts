@@ -112,7 +112,7 @@ export class AppsService {
 	}
 
 	private assertValidNamespace(namespace: string) {
-		if (!this.hosts.origin(namespace)) {
+		if (!this.hosts.origin(namespace) || !this.hosts.previewOrigin(namespace)) {
 			throw new BadRequestError(
 				'This namespace produces an invalid app URL for this instance. Choose another namespace.',
 			);

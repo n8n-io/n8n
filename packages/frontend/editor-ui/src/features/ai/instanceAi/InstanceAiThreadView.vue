@@ -8,18 +8,12 @@ import {
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import {
-	onClickOutside,
-	useDebounceFn,
-	useElementSize,
-	useLocalStorage,
-	useWindowSize,
-} from '@vueuse/core';
+import { useDebounceFn, useElementSize, useWindowSize } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 import type { InstanceAiAgentAttachment } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@n8n/stores/settings.store';
-import { DEBOUNCE_TIME, LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO } from '@/app/constants';
+import { DEBOUNCE_TIME } from '@/app/constants';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { COLLAPSED_MAIN_SIDEBAR_WIDTH, useSidebarLayout } from '@/app/composables/useSidebarLayout';
 import { getDebounceTime } from '@n8n/composables/useDebounce';
@@ -36,6 +30,12 @@ import { useCanvasPreview } from './useCanvasPreview';
 import { fetchThreadTabs, saveThreadTabs } from './instanceAi.memory.api';
 import { buildInstanceAiAgentPreviewHandoffContext } from './composables/useInstanceAiHandoff';
 import type { AgentTestHandoffParams } from './composables/useInstanceAiAgentTestHandoff';
+import {
+	MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
+	useArtifactsPanelToggle,
+	usePreviewPanelWidth,
+	usePreviewToggle,
+} from './composables/useArtifactsLayout';
 import { useTransitionGate } from './useTransitionGate';
 import { INSTANCE_AI_VIEW } from './constants';
 import { getDismissedContextKeys } from './instanceAi.handoffContext';
@@ -64,7 +64,6 @@ import { useAgentCapabilitySummary } from '@/features/agents/composables/useAgen
 import { useAgentEvalsStore } from '@/features/agents/agentEvals.store';
 import { useIsAgentWorking } from './composables/useIsAgentWorking';
 import { useAgentReturnContextStore } from '@/features/agents/agentReturnContext.store';
-import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { useIsAssistantAtMentionsEnabled } from '@/features/ai/assistant-at-mentions/composables/useIsAssistantAtMentionsEnabled';
 import { useTestAgentPreviewFlag } from '@/features/agents/composables/useTestAgentPreviewFlag';
 
@@ -80,7 +79,6 @@ const router = useRouter();
 const { width: windowWidth } = useWindowSize();
 const { isCollapsed: isMainSidebarCollapsed, sidebarWidth: mainSidebarWidth } = useSidebarLayout();
 const toast = useToast();
-const recentWorkflowsStore = useRecentWorkflowsStore();
 const mentionsEnabled = useIsAssistantAtMentionsEnabled();
 
 const conversationRef = useTemplateRef<InstanceType<typeof InstanceAiConversation>>('conversation');
@@ -310,20 +308,6 @@ function openAgentChatPreview(agentId: string, projectId: string): boolean {
 	return true;
 }
 
-function openWorkflowPreview(workflowId: string): boolean {
-	const artifact = thread.producedArtifacts.get(workflowId);
-	recentWorkflowsStore.registerWorkflowOpen(workflowId, artifact?.projectId ?? thread.projectId);
-	return preview.openWorkflowPreview(workflowId);
-}
-
-function selectArtifactTab(tabId: string): void {
-	const artifact = thread.producedArtifacts.get(tabId);
-	if (artifact?.type === 'workflow') {
-		recentWorkflowsStore.registerWorkflowOpen(tabId, artifact.projectId ?? thread.projectId);
-	}
-	preview.selectTab(tabId);
-}
-
 const activeAgentPreviewSessionId = computed(() => {
 	const context = handoffContext.value;
 	if (context?.source === 'agent-preview' && context.agentId === preview.activeAgentId.value) {
@@ -337,7 +321,7 @@ const activeAgentPreviewSessionId = computed(() => {
 	return persisted?.agentId === preview.activeAgentId.value ? persisted.threadId : undefined;
 });
 
-provide('openWorkflowPreview', openWorkflowPreview);
+provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAgentPreview', preview.openAgentPreview);
 provide('openAgentChatPreview', openAgentChatPreview);
@@ -352,9 +336,6 @@ provide(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
-const isArtifactsPanelRevealed = ref(false);
-const isArtifactsPanelDismissedInLayout = ref(false);
-const MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL = 900;
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
 });
@@ -364,58 +345,11 @@ const previewPanelTransitionGate = useTransitionGate({
 const isArtifactsPanelTransitionEnabled = artifactsPanelTransitionGate.isEnabled;
 const isPreviewPanelTransitionEnabled = previewPanelTransitionGate.isEnabled;
 const isPreviewPanelTransitioning = ref(false);
-const artifactsPreviewToggleLabel = computed(() =>
-	i18n.baseText(
-		preview.isPreviewVisible.value
-			? 'instanceAi.artifactsPanel.hidePreview'
-			: 'instanceAi.artifactsPanel.showPreview',
-	),
-);
-const artifactsPanelToggleLabel = computed(() =>
-	i18n.baseText(
-		showArtifactsPanel.value
-			? 'instanceAi.artifactsPanel.hidePanel'
-			: 'instanceAi.artifactsPanel.showPanel',
-	),
-);
+const { previewToggleLabel: artifactsPreviewToggleLabel, togglePreview: toggleArtifactsPreview } =
+	usePreviewToggle(preview);
 const artifactsPanelTransitionName = computed(() =>
 	isPreviewPanelTransitioning.value ? 'artifacts-panel-preview' : 'artifacts-panel-fade',
 );
-
-function toggleArtifactsPreview() {
-	if (preview.isPreviewVisible.value) {
-		preview.closePreview();
-		return;
-	}
-
-	const selectedTab = preview.openTabs.value.find((tab) => tab.id === preview.activeTabId.value);
-	const tabToOpen = selectedTab ?? preview.openTabs.value[0];
-	if (tabToOpen) {
-		selectArtifactTab(tabToOpen.id);
-	}
-}
-
-function toggleArtifactsPanel() {
-	if (!canShowArtifactsPanel.value || preview.isPreviewVisible.value) {
-		return;
-	}
-
-	if (showArtifactsPanel.value) {
-		if (isArtifactsPanelInLayout.value) {
-			isArtifactsPanelDismissedInLayout.value = true;
-			return;
-		}
-		isArtifactsPanelRevealed.value = false;
-		return;
-	}
-
-	if (isArtifactsPanelInLayout.value) {
-		isArtifactsPanelDismissedInLayout.value = false;
-		return;
-	}
-
-	isArtifactsPanelRevealed.value = true;
-}
 
 function enablePanelTransitionsAfterStableRender() {
 	artifactsPanelTransitionGate.enableAfterStableRender();
@@ -437,8 +371,7 @@ const availableWidthForPinnedArtifactsPanel = computed(
 	() => windowWidth.value - mainSidebarOccupiedWidth.value,
 );
 const isArtifactsPanelInLayout = computed(
-	() =>
-		availableWidthForPinnedArtifactsPanel.value >= MIN_AVAILABLE_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
+	() => availableWidthForPinnedArtifactsPanel.value >= MIN_WIDTH_FOR_PINNED_ARTIFACTS_PANEL,
 );
 const canShowArtifactsPanel = computed(
 	() =>
@@ -446,15 +379,15 @@ const canShowArtifactsPanel = computed(
 		preview.openTabs.value.length > 0 ||
 		(Boolean(props.threadId) && thread.isHydratingThread),
 );
-const showArtifactsPanel = computed(
-	() =>
-		canShowArtifactsPanel.value &&
-		!isOnboardingChromeHidden.value &&
-		!preview.isPreviewVisible.value &&
-		(isArtifactsPanelInLayout.value
-			? !isArtifactsPanelDismissedInLayout.value
-			: isArtifactsPanelRevealed.value),
-);
+const { showArtifactsPanel, artifactsPanelToggleLabel, toggleArtifactsPanel } =
+	useArtifactsPanelToggle({
+		isInLayout: () => isArtifactsPanelInLayout.value,
+		canShow: () => canShowArtifactsPanel.value,
+		isPreviewVisible: () => preview.isPreviewVisible.value,
+		isHidden: () => isOnboardingChromeHidden.value,
+		panelSlot: useTemplateRef<HTMLElement>('artifactsPanelSlot'),
+		toggleSelector: '[data-test-id="instance-ai-artifacts-panel-toggle"]',
+	});
 const showArtifactsPanelToggle = computed(
 	() => canShowArtifactsPanel.value && !preview.isPreviewVisible.value,
 );
@@ -467,18 +400,11 @@ const shouldAnimateArtifactsPanel = computed(
 const shouldSuppressContentLayoutTransitions = computed(
 	() => !isPreviewPanelTransitionEnabled.value,
 );
-const artifactsPanelSlotRef = useTemplateRef<HTMLElement>('artifactsPanelSlot');
 const isResizingPreview = ref(false);
 const isThreadAreaResizing = ref(false);
 const isPreviewExpanded = ref(false);
 const isAgentTestDockOpen = ref(false);
 const agentPreviewChatTarget = useTemplateRef<HTMLElement>('agentPreviewChatTarget');
-const MIN_SPLIT_PANEL_WIDTH = 400;
-const DEFAULT_CHAT_PANEL_CONTENT_WIDTH = 800;
-// Share of the thread area, so the split survives window and sidebar resizes. -1 = no preference yet.
-const chatPanelWidthRatio = useLocalStorage(LOCAL_STORAGE_INSTANCE_AI_CHAT_PANEL_WIDTH_RATIO, -1, {
-	writeDefaults: false,
-});
 
 // The composer requesting focus (e.g. after a canvas action) reads as the user
 // wanting the chat back — collapse the expanded preview so it's visible again.
@@ -500,26 +426,13 @@ watch(
 	{ flush: 'sync' },
 );
 
-// Below two panel minimums the limits meet at half, so both panels share the space evenly.
-const halfThreadAreaWidth = computed(() => Math.round(threadAreaWidth.value / 2));
-const previewMinWidth = computed(() => Math.min(MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value));
-const previewMaxWidth = computed(() =>
-	Math.max(threadAreaWidth.value - MIN_SPLIT_PANEL_WIDTH, halfThreadAreaWidth.value),
-);
-const previewPanelWidth = computed(() => {
-	const ratio = chatPanelWidthRatio.value;
-	const chatPanelWidth =
-		ratio >= 0 && ratio <= 1 ? threadAreaWidth.value * ratio : DEFAULT_CHAT_PANEL_CONTENT_WIDTH;
-	return Math.round(
-		Math.min(
-			Math.max(threadAreaWidth.value - chatPanelWidth, previewMinWidth.value),
-			previewMaxWidth.value,
-		),
-	);
-});
-const isPreviewResizeEnabled = computed(
-	() => !isPreviewExpanded.value && previewMinWidth.value < previewMaxWidth.value,
-);
+const {
+	previewMinWidth,
+	previewMaxWidth,
+	previewPanelWidth,
+	isPreviewResizeEnabled,
+	handlePreviewResize,
+} = usePreviewPanelWidth({ threadAreaWidth, isExpanded: () => isPreviewExpanded.value });
 const shouldAnimatePreviewLayout = computed(
 	() =>
 		isPreviewPanelTransitionEnabled.value &&
@@ -545,12 +458,6 @@ function handleAgentTestDockOpenChange(open: boolean) {
 	}
 }
 
-function handlePreviewResize({ width }: { width: number }) {
-	// The wrapper clamps the width, so an unchanged value means the drag hit a limit: keep the stored ratio.
-	if (Math.round(width) === previewPanelWidth.value) return;
-	chatPanelWidthRatio.value = (threadAreaWidth.value - width) / threadAreaWidth.value;
-}
-
 function handlePreviewPanelAfterEnter() {
 	isPreviewPanelTransitioning.value = false;
 	// The slide-in animates the panel width from 0 to its target, so any
@@ -571,11 +478,7 @@ watch(
 			isPreviewPanelTransitioning.value = isPreviewPanelTransitionEnabled.value;
 		}
 
-		if (!visible) {
-			isAgentTestDockOpen.value = false;
-		} else {
-			isArtifactsPanelRevealed.value = false;
-		}
+		if (!visible) isAgentTestDockOpen.value = false;
 	},
 	{ flush: 'sync' },
 );
@@ -598,30 +501,6 @@ watch(
 		}
 	},
 	{ immediate: true },
-);
-
-watch(isArtifactsPanelInLayout, (isInLayout) => {
-	isArtifactsPanelRevealed.value = false;
-
-	if (isInLayout) {
-		isArtifactsPanelDismissedInLayout.value = false;
-	}
-});
-
-watch(canShowArtifactsPanel, (canShow) => {
-	if (!canShow) {
-		isArtifactsPanelRevealed.value = false;
-		isArtifactsPanelDismissedInLayout.value = false;
-	}
-});
-
-onClickOutside(
-	artifactsPanelSlotRef,
-	() => {
-		if (isArtifactsPanelInLayout.value) return;
-		isArtifactsPanelRevealed.value = false;
-	},
-	{ ignore: ['[data-test-id="instance-ai-artifacts-panel-toggle"]', '.n8n-tooltip'] },
 );
 
 watch(
@@ -682,6 +561,16 @@ function handleFixWithAiFromOffer() {
 		{
 			authorship: { kind: 'prefill', prefillType: 'handoff_fix_with_ai' },
 			pushRef: rootStore.pushRef,
+			// Names the failed run, so the agent reads that execution instead of
+			// guessing from the list. A run that n8n did not save has no list entry.
+			attachments: [
+				{
+					type: 'workflow',
+					id: offer.workflowId,
+					...(offer.workflowName ? { name: offer.workflowName } : {}),
+					executionId: offer.executionId,
+				},
+			],
 		},
 	);
 }
@@ -1040,7 +929,7 @@ function handleNewThreadClick() {
 						:model-value="preview.activeTabId.value"
 						orientation="horizontal"
 						:class="$style.previewPanel"
-						@update:model-value="selectArtifactTab"
+						@update:model-value="preview.selectTab"
 					>
 						<InstanceAiPreviewTabBar
 							:tabs="preview.openTabs.value"

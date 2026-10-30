@@ -8,6 +8,7 @@ import {
 	uniqueStrings,
 	type EpisodicMemoryReflectionApply,
 	type EpisodicMemoryReflectionApplyMerge,
+	type EpisodicMemoryStatus,
 	type NewEpisodicMemoryEntry,
 	type NewEpisodicMemoryEntrySourceForEntry,
 } from '@n8n/agents';
@@ -82,6 +83,32 @@ export class AgentMemoryEntryRepository extends BaseRepository<AgentMemoryEntryE
 	): Promise<AgentMemoryEntryEntity[]> {
 		if (contentHashes.length === 0) return [];
 		return await this.find({ where: { agentId, resourceId, contentHash: In(contentHashes) } });
+	}
+
+	/**
+	 * Only the fields that ranking reads. A search ranks every entry of the scope,
+	 * so it reads content and metadata only for the entries it returns.
+	 */
+	async findRankableEntries(
+		agentId: string,
+		resourceIds: string[],
+		statuses: EpisodicMemoryStatus[],
+	): Promise<AgentMemoryEntryEntity[]> {
+		if (resourceIds.length === 0) return [];
+		return await this.find({
+			select: [
+				'id',
+				'resourceId',
+				'contentHash',
+				'status',
+				'supersededBy',
+				'embedding',
+				'createdAt',
+				'updatedAt',
+				'lastSeenAt',
+			],
+			where: { agentId, resourceId: In(resourceIds), status: In(statuses) },
+		});
 	}
 
 	/** Entries in any status, e.g. to show what a past run recalled. */

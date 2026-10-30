@@ -1,6 +1,8 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ref, reactive, nextTick, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import { createTestingPinia } from '@pinia/testing';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
@@ -82,8 +84,13 @@ type MockThread = ReturnType<typeof createMockThread>;
 // activeWorkflowId / activeDataTableId can derive values from tabs.
 // ---------------------------------------------------------------------------
 
-function registerWorkflow(thread: MockThread, id: string, name = `Workflow ${id}`) {
-	const entry: ResourceEntry = { type: 'workflow', id, name };
+function registerWorkflow(
+	thread: MockThread,
+	id: string,
+	name = `Workflow ${id}`,
+	projectId?: string,
+) {
+	const entry: ResourceEntry = { type: 'workflow', id, name, projectId };
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
@@ -173,6 +180,7 @@ function setup(options?: {
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		createTestingPinia();
 	});
 
 	describe('openTabs', () => {
@@ -288,6 +296,34 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 			expect(ctx.activeWorkflowId.value).toBe('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('records a workflow that the user opens in the recent workflows', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			registerDataTable(ctx.thread, 'dt-1', 'Orders table', 'proj-1');
+
+			ctx.selectTab('wf-1');
+			ctx.selectTab('dt-1');
+
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				'proj-1',
+			);
+		});
+
+		test('records a workflow that the user opens while it is already on screen', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			ctx.selectTab('wf-1');
+			vi.mocked(useRecentWorkflowsStore().registerWorkflowOpen).mockClear();
+
+			expect(ctx.openWorkflowPreview('wf-1')).toBe(false);
+
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				'proj-1',
+			);
 		});
 
 		test('closePreview hides the preview without clearing the selected tab', () => {
@@ -505,6 +541,8 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeWorkflowId.value).toBe('wf-new');
+			// The agent opened it, not the user.
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).not.toHaveBeenCalled();
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 

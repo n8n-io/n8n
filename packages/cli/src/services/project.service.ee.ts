@@ -1,6 +1,6 @@
 import type { CreateProjectDto, ProjectType, UpdateProjectDto } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
+import { EventService, ProjectNotFoundError, RoleService } from '@n8n/backend-services';
 import {
 	type User,
 	FolderRepository,
@@ -56,20 +56,7 @@ export class UnlicensedProjectRoleError extends UserError {
 	}
 }
 
-export class ProjectNotFoundError extends NotFoundError {
-	constructor(readonly projectId: string) {
-		super(`Could not find project with ID: ${projectId}`);
-	}
-
-	static isDefinedAndNotNull<T>(
-		value: T | undefined | null,
-		projectId: string,
-	): asserts value is T {
-		if (value === undefined || value === null) {
-			throw new ProjectNotFoundError(projectId);
-		}
-	}
-}
+export { ProjectNotFoundError } from '@n8n/backend-services';
 
 export interface ProjectCreateOverrides {
 	id?: string;

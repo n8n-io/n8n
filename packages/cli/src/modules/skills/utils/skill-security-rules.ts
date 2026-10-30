@@ -1,4 +1,4 @@
-import { agentSkillSchema } from '@n8n/api-types';
+import { agentSkillSchema, type SkillScanFinding } from '@n8n/api-types';
 import { kebabCase } from 'change-case';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
@@ -12,27 +12,6 @@ import type { SkillSourceFidelityWarning } from '../sources/skill-source-client'
  * every key of a synced skill.
  */
 const FRONTMATTER_MAX_LENGTH = 16_384;
-
-export type SkillScanRule =
-	| 'invalid_skill'
-	| 'over_limit'
-	| 'file_skipped'
-	| 'hidden_unicode'
-	| 'new_url'
-	| 'permission_change'
-	| 'suspicious_phrase'
-	| 'lossy_conversion';
-
-export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
-
-export type SkillScanFinding = {
-	rule: SkillScanRule;
-	severity: SkillScanSeverity;
-	/** `SKILL.md`, or the path of a file in the skill folder. */
-	file?: string;
-	/** English text for logs and for a reviewer. Telemetry sends only the rule. */
-	detail: string;
-};
 
 /** What one rule reads: a fetched skill, and the latest version for an update. */
 export type SkillScanInput = {
@@ -159,9 +138,16 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 						rule: 'new_url',
 						severity: 'needs_review',
 						file,
+						domain,
 						detail: `The update links to ${domain}, a domain that the current version does not use.`,
 					}
-				: { rule: 'new_url', severity: 'info', file, detail: `The skill links to ${domain}.` },
+				: {
+						rule: 'new_url',
+						severity: 'info',
+						file,
+						domain,
+						detail: `The skill links to ${domain}.`,
+					},
 		);
 }
 

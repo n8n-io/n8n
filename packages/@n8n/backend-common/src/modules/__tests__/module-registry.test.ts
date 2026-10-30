@@ -74,6 +74,7 @@ describe('eligibleModules', () => {
 		'agents',
 		'agent-evals',
 		'inbox',
+		'promotions',
 		'type-availability-policies',
 	])('should include %s by default', (moduleName) => {
 		expect(Container.get(ModuleRegistry).eligibleModules).toContain(moduleName);
@@ -85,6 +86,7 @@ describe('eligibleModules', () => {
 		'agents',
 		'agent-evals',
 		'inbox',
+		'promotions',
 		'type-availability-policies',
 	])('should allow opting out of the default %s module via env var', (moduleName) => {
 		process.env.N8N_DISABLED_MODULES = moduleName;
@@ -170,6 +172,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'promotions',
 			'skills',
 			'instance-ai',
 			'knowledge',
@@ -217,6 +220,7 @@ describe('eligibleModules', () => {
 			'mcp-registry',
 			'workflow-reviews',
 			'inbox',
+			'promotions',
 			'skills',
 			'instance-ai',
 			'knowledge',
