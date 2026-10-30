@@ -36,8 +36,7 @@ import z, { ZodType } from 'zod';
 import { StructuredToolkit, type SupplyDataToolResponse } from './ai-tool-types';
 import { createNodeAsTool, getSchema } from './create-node-as-tool';
 import type { ExecuteContext, WebhookContext } from '../../node-execution-context';
-// eslint-disable-next-line import-x/no-cycle
-import { SupplyDataContext } from '../../node-execution-context/supply-data-context';
+import type { SupplyDataContext } from '../../node-execution-context/supply-data-context';
 import { isEngineRequest } from '../../requests-response';
 
 /**
@@ -116,6 +115,7 @@ export function createHitlToolkit(
  * 5. If denied: denial message → Agent knows not to retry
  */
 export async function createHitlToolSupplyData(
+	supplyDataContextClass: typeof SupplyDataContext,
 	hitlNode: INode,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
@@ -130,7 +130,7 @@ export async function createHitlToolSupplyData(
 	abortSignal?: AbortSignal,
 	parentNode?: INode,
 ): Promise<SupplyData> {
-	const context = new SupplyDataContext(
+	const context = new supplyDataContextClass(
 		workflow,
 		hitlNode,
 		additionalData,
@@ -394,6 +394,7 @@ export function extendResponseMetadata(response: unknown, connectedNode: INode) 
 
 export async function getInputConnectionData(
 	this: ExecuteContext | WebhookContext | SupplyDataContext,
+	supplyDataContextClass: typeof SupplyDataContext,
 	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
 	parentRunIndex: number,
@@ -448,6 +449,7 @@ export async function getInputConnectionData(
 		// HITL tools need special handling to create the middleware tool
 		if (isHitlToolType(connectedNode?.type)) {
 			const supplyData = await createHitlToolSupplyData(
+				supplyDataContextClass,
 				connectedNode,
 				workflow,
 				runExecutionData,
@@ -471,7 +473,7 @@ export async function getInputConnectionData(
 			connectedNode.typeVersion,
 		);
 		const contextFactory = (runIndex: number, inputData: ITaskDataConnections) =>
-			new SupplyDataContext(
+			new supplyDataContextClass(
 				workflow,
 				connectedNode,
 				additionalData,
@@ -559,7 +561,7 @@ export async function getInputConnectionData(
 				// The `subRun` entry is merged onto `runData[parent][parentRunCount]` at the end
 				// of the execution, so the parent must get a record there. A top-level parent gets
 				// one appended right after this failure; a sub-node parent never does.
-				if (!(this instanceof SupplyDataContext)) {
+				if (!(this instanceof supplyDataContextClass)) {
 					let parentRunCount = 0;
 					if (runExecutionData.resultData.runData.hasOwnProperty(parentNode.name)) {
 						parentRunCount = runExecutionData.resultData.runData[parentNode.name].length;
