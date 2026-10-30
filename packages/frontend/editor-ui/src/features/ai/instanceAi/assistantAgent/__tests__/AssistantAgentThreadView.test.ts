@@ -1,4 +1,8 @@
-import { WORKFLOW_BUILDER_TOOL_NAMES, type InstanceAiNodesAttachment } from '@n8n/api-types';
+import {
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	type AssistantThreadTabsState,
+	type InstanceAiNodesAttachment,
+} from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -39,6 +43,15 @@ const {
 	appPreviewProps: { current: undefined as Record<string, unknown> | undefined },
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
+}));
+
+const { fetchTabs, saveTabs } = vi.hoisted(() => ({
+	fetchTabs: vi.fn(),
+	saveTabs: vi.fn(),
+}));
+vi.mock('../assistantAgentTabs.api', () => ({
+	fetchAssistantAgentThreadTabs: fetchTabs,
+	saveAssistantAgentThreadTabs: saveTabs,
 }));
 
 vi.mock('@n8n/composables/useTelemetry', () => ({
@@ -267,6 +280,8 @@ describe('AssistantAgentThreadView', () => {
 		chatMessages.value = [];
 		isLoadingHistory.value = true;
 		if (threadArea.width) threadArea.width.value = 0;
+		fetchTabs.mockReset().mockResolvedValue({ state: null });
+		saveTabs.mockReset().mockResolvedValue({ state: null });
 	});
 
 	it('opens the chat of the Assistant agent on the system channel', async () => {
@@ -282,6 +297,8 @@ describe('AssistantAgentThreadView', () => {
 		});
 		expect(panelProps.current['interaction-extensions']).toEqual([
 			expect.objectContaining({ key: 'assistant_confirmation' }),
+			expect.objectContaining({ key: 'assistant_instance_context' }),
+			expect.objectContaining({ key: 'assistant_status' }),
 		]);
 		expect(sendMessageFromOutside).not.toHaveBeenCalled();
 	});
@@ -558,6 +575,90 @@ describe('AssistantAgentThreadView', () => {
 
 			expect(getByTestId('assistant-agent-trace-button')).toBeInTheDocument();
 			expect(panelProps.current.onStreamEvent).toEqual(expect.any(Function));
+		});
+	});
+
+	describe('stored tabs', () => {
+		const storedState: AssistantThreadTabsState = {
+			tabs: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+			closedTabs: [],
+			activeTab: { type: 'workflow', id: 'wf-9' },
+			previewOpen: true,
+		};
+
+		afterEach(() => {
+			sessionStorage.removeItem('N8N_DEBOUNCE_MULTIPLIER');
+		});
+
+		it('shows the stored tabs and the open preview of a thread opened by URL', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			expect(fetchTabs).toHaveBeenCalledWith(expect.anything(), 'thread-1');
+			expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+			expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-9' });
+		});
+
+		it('does not load stored tabs for a new thread', async () => {
+			stashPendingAssistantAgentMessage({
+				threadId: 'thread-new',
+				text: 'Build a digest',
+				files: [],
+				references: [],
+			});
+
+			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
+			await flushPromises();
+
+			expect(fetchTabs).not.toHaveBeenCalled();
+		});
+
+		it('stores the tabs when the user closes the preview', async () => {
+			sessionStorage.setItem('N8N_DEBOUNCE_MULTIPLIER', '0');
+			fetchTabs.mockResolvedValue({ state: storedState });
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(saveTabs).toHaveBeenLastCalledWith(expect.anything(), 'thread-1', {
+				...storedState,
+				previewOpen: false,
+			});
+		});
+
+		it('sends the open tabs to the Assistant with each message', async () => {
+			fetchTabs.mockResolvedValue({ state: storedState });
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+			isLoadingHistory.value = false;
+			await flushPromises();
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext().threadArtifacts).toEqual({
+				artifacts: [{ type: 'workflow', id: 'wf-9', name: 'Opened by hand' }],
+				activeId: 'wf-9',
+			});
+		});
+
+		it('sends no tabs until the stored tabs load', async () => {
+			fetchTabs.mockReturnValue(new Promise(() => {}));
+			renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+			await flushPromises();
+
+			const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
+			expect(clientContext()).not.toHaveProperty('threadArtifacts');
 		});
 	});
 

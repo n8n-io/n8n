@@ -803,15 +803,10 @@ describe('AgentSkillModal', () => {
 		const projectSkill = makeListItem({ id: 'tone', name: 'Support tone', scope: 'project' });
 		const instanceSkill = makeListItem({ id: 'sql', name: 'SQL helper', scope: 'instance' });
 		const similarSkill = makeListItem({ id: 'voice', name: 'brand-voice', scope: 'instance' });
-		const agentSkill = makeListItem({
-			id: 'notes',
-			name: 'Call notes',
-			scope: 'project',
-			agentId: 'a1',
-		});
+		const secondProjectSkill = makeListItem({ id: 'notes', name: 'Call notes', scope: 'project' });
 
-		it('lists attachable skills in project, agent and global tabs and attaches one without closing', async () => {
-			listAttachableSkills.mockResolvedValue([projectSkill, agentSkill, instanceSkill]);
+		it('lists attachable skills in project and global tabs and attaches one without closing', async () => {
+			listAttachableSkills.mockResolvedValue([projectSkill, secondProjectSkill, instanceSkill]);
 			const onAttach = vi.fn().mockResolvedValue(undefined);
 			const { findAllByTestId, getAllByTestId, getByTestId, queryByTestId } = renderModal({
 				skillRefsEnabled: true,
@@ -823,7 +818,7 @@ describe('AgentSkillModal', () => {
 			expect(await findAllByTestId('agent-skill-picker-row')).toHaveLength(3);
 			const picker = getByTestId('agent-skill-picker');
 			expect(getAllByTestId('agent-skill-picker-category').map((node) => node.textContent)).toEqual(
-				['project', 'this-agent', 'global'],
+				['project', 'project', 'global'],
 			);
 			expect(queryByTestId('agent-skill-upload')).not.toBeInTheDocument();
 			expect(queryByTestId('agent-skill-create-save')).not.toBeInTheDocument();
@@ -861,7 +856,7 @@ describe('AgentSkillModal', () => {
 			});
 
 			expect(getByTestId('agent-skill-picker-tabs')).toHaveTextContent(
-				'all,project,this-agent,global Marketing',
+				'all,project,global Marketing',
 			);
 		});
 
@@ -968,11 +963,11 @@ describe('AgentSkillModal', () => {
 				getDefaultName,
 			});
 
-			// "Create" from the "This agent" tab makes the skill available to this agent only.
-			await fireEvent.click(getByTestId('agent-skill-picker-create-this-agent'));
+			// "Create" from the project tab makes the skill available to the project.
+			await fireEvent.click(getByTestId('agent-skill-picker-create-project'));
 			await fireEvent.click(getByTestId('agent-skill-add-manually'));
 
-			expect(getDefaultName).toHaveBeenCalledWith('agent');
+			expect(getDefaultName).toHaveBeenCalledWith('project');
 			await waitFor(() => expect(getTitleInput(document.body)).toHaveValue('New skill 3'));
 		});
 
@@ -1125,11 +1120,10 @@ describe('AgentSkillModal', () => {
 		});
 
 		it.each([
-			['all', true, 'agent'],
+			['all', true, 'project'],
 			['project', true, 'project'],
-			['this-agent', true, 'agent'],
 			['global', true, 'instance'],
-			['global', false, 'agent'],
+			['global', false, 'project'],
 		] as const)(
 			'starts a new skill from the %s tab with a matching target (global allowed: %s)',
 			async (category, canCreateInstanceSkills, availableTo) => {
@@ -1184,7 +1178,7 @@ describe('AgentSkillModal', () => {
 			);
 		});
 
-		it('offers only this project and this agent to a user who may not create global skills', async () => {
+		it('offers only this project to a user who may not create global skills', async () => {
 			listAttachableSkills.mockResolvedValue([]);
 			const { getByTestId, findByTestId, queryByTestId } = renderModal({
 				skillRefsEnabled: true,
@@ -1194,7 +1188,7 @@ describe('AgentSkillModal', () => {
 			await fireEvent.click(getByTestId('agent-skill-picker-create'));
 			await fireEvent.click(getByTestId('agent-skill-add-manually'));
 
-			expect(await findByTestId('agent-skill-scope-option-agent')).toBeInTheDocument();
+			expect(await findByTestId('agent-skill-scope-option-project')).toBeInTheDocument();
 			expect(queryByTestId('agent-skill-scope-option-instance')).not.toBeInTheDocument();
 		});
 
@@ -1301,20 +1295,21 @@ describe('AgentSkillModal', () => {
 						},
 					},
 					onConfirm,
+					{ canCreateInstanceSkills: true },
 				);
 
-				await fireEvent.click(getByTestId('agent-skill-scope-option-agent'));
+				await fireEvent.click(getByTestId('agent-skill-scope-option-instance'));
 				await fireEvent.click(getByTestId('agent-skill-create-save'));
 
 				expect(onConfirm).toHaveBeenCalledWith(
-					expect.objectContaining({ id: 'tone', availableTo: 'agent' }),
+					expect.objectContaining({ id: 'tone', availableTo: 'instance' }),
 				);
 			});
 
 			it('does not send a target when the user keeps it', async () => {
 				const onConfirm = vi.fn();
 				const { getByTestId } = await renderEdit(
-					makeDetail({ id: 'tone', name: 'Support tone', scope: 'project', agentId: 'a1' }),
+					makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }),
 					onConfirm,
 				);
 
@@ -1341,21 +1336,21 @@ describe('AgentSkillModal', () => {
 					'a draft of another agent',
 					{
 						drafts: [
-							{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: 1, pinned: false },
+							{ agentId: 'a2', agentName: 'Other', projectId: 'p2', version: 1, pinned: false },
 						],
 						pins: [],
 						hiddenAgents: 0,
 					},
-					'agents.builder.skills.loseAccess.agentOnly',
+					'agents.builder.skills.loseAccess',
 				],
 				[
 					'a pin of another agent',
 					{
 						drafts: [],
-						pins: [{ agentId: 'a2', agentName: 'Other', projectId: 'p1', version: null }],
+						pins: [{ agentId: 'a2', agentName: 'Other', projectId: 'p2', version: null }],
 						hiddenAgents: 0,
 					},
-					'agents.builder.skills.loseAccess.agentOnly',
+					'agents.builder.skills.loseAccess',
 				],
 				[
 					'an agent the user cannot see',
@@ -1365,11 +1360,11 @@ describe('AgentSkillModal', () => {
 			])('warns and blocks save when the target drops %s', async (_case, usedBy, message) => {
 				const onConfirm = vi.fn();
 				const result = await renderEdit(
-					{ ...makeDetail({ id: 'tone', name: 'Support tone', scope: 'project' }), usedBy },
+					{ ...makeDetail({ id: 'tone', name: 'Support tone', scope: 'instance' }), usedBy },
 					onConfirm,
 				);
 
-				await pickTarget(result, 'agents.builder.skills.availableTo.agent');
+				await pickTarget(result, 'agents.builder.skills.availableTo.project');
 
 				expect(result.getByTestId('agent-skill-access-warning')).toHaveTextContent(message);
 				expect(result.getByTestId('agent-skill-create-save')).toBeDisabled();
@@ -1403,11 +1398,11 @@ describe('AgentSkillModal', () => {
 				);
 			});
 
-			it('lets the user narrow an agent skill to the project of every agent that uses it', async () => {
+			it('lets the user narrow a skill to the project of every agent that uses it', async () => {
 				const onConfirm = vi.fn();
 				const result = await renderEdit(
 					{
-						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'agent', agentId: 'a1' }),
+						...makeDetail({ id: 'tone', name: 'Support tone', scope: 'instance' }),
 						usedBy: {
 							drafts: [
 								{
@@ -1701,14 +1696,14 @@ describe('AgentSkillModal from Settings', () => {
 			skillId: 's1',
 			skill: SAVED_SKILL,
 			settings: {
-				scopeOptions: [{ value: 'agent', label: 'FirstClassDarwin only', icon: 'bot' }],
-				initialScope: 'agent',
+				scopeOptions: [{ value: 'instance', label: 'Global', icon: 'globe' }],
+				initialScope: 'instance',
 				scopeLockedReason: 'You cannot change it.',
 			},
 		});
 
 		const badge = getByTestId('agent-skill-scope-badge');
-		expect(badge).toHaveTextContent('FirstClassDarwin only');
+		expect(badge).toHaveTextContent('Global');
 		// A locked scope is a plain badge, not a button that opens the scope menu.
 		expect(badge.tagName).toBe('SPAN');
 	});
@@ -1720,19 +1715,19 @@ describe('AgentSkillModal from Settings', () => {
 					value: 'project:p1',
 					label: 'Marketing',
 					icon: 'layers' as const,
-					target: { projectId: 'p1', agentId: null },
+					target: { projectId: 'p1' },
 				},
 				{
 					value: 'project:p2',
 					label: 'Personal project',
 					icon: 'user' as const,
-					target: { projectId: 'p2', agentId: null },
+					target: { projectId: 'p2' },
 				},
 				{
 					value: 'instance',
 					label: 'Global',
 					icon: 'globe' as const,
-					target: { projectId: null, agentId: null },
+					target: { projectId: null },
 				},
 			],
 			initialScope: 'project:p1',
@@ -1915,8 +1910,6 @@ function makeListItem(
 		projectId: overrides.scope === 'project' ? 'p1' : null,
 		projectName: overrides.scope === 'project' ? 'Marketing' : null,
 		projectType: overrides.scope === 'project' ? 'team' : null,
-		agentId: null,
-		agentName: null,
 		source: 'ui',
 		createdBy: null,
 		latestVersion: 1,
@@ -1926,6 +1919,8 @@ function makeListItem(
 		canEdit: true,
 		canDelete: true,
 		canStopSyncing: false,
+		syncState: null,
+		canCheckForUpdates: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -1976,33 +1971,27 @@ describe('Assistant availability', () => {
 		initialScope: 'instance',
 	};
 
-	const agentSettings = {
-		scopeOptions: [
-			{ value: 'agent', label: 'This agent only', icon: 'bot' as const },
-			{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
-			{ value: 'instance', label: 'Global', icon: 'globe' as const },
-		],
-		initialScope: 'agent',
-		availableToAssistant: false,
-	};
-
 	const selectScope = chooseScopeOption;
 
 	it.each([
-		['Marketing', 'project:p1'],
-		['Global', 'instance'],
-	])('shows the toggle before saving a move to %s', async (label, scope) => {
+		['instance', 'Marketing', 'project:p1'],
+		['project:p1', 'Global', 'instance'],
+	])('sends the toggle with a move from %s to %s', async (initialScope, label, scope) => {
 		const onConfirm = vi.fn();
-		const { getByTestId, queryByTestId } = renderModal({
+		const { getByTestId } = renderModal({
 			skill: savedSkill,
 			skillId: 'skill-1',
 			onConfirm,
-			settings: agentSettings,
+			settings: {
+				scopeOptions: [
+					{ value: 'instance', label: 'Global', icon: 'globe' as const },
+					{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
+				],
+				initialScope,
+				availableToAssistant: false,
+			},
 		});
-		expect(queryByTestId('skill-assistant-availability')).not.toBeInTheDocument();
 		await selectScope(label);
-		expect(getByTestId('skill-assistant-availability')).toBeInTheDocument();
-		expect(onConfirm).not.toHaveBeenCalled();
 		await userEvent.click(getByTestId('skill-assistant-availability'));
 		await userEvent.click(getByTestId('agent-skill-create-save'));
 		await waitFor(() =>
@@ -2013,17 +2002,23 @@ describe('Assistant availability', () => {
 	});
 
 	it.each([
-		['Marketing', 'project:p1'],
-		['Global', 'instance'],
-	])('shows the MCP toggle before saving a move to %s', async (label, scope) => {
+		['instance', 'Marketing', 'project:p1'],
+		['project:p1', 'Global', 'instance'],
+	])('sends the MCP toggle with a move from %s to %s', async (initialScope, label, scope) => {
 		const onConfirm = vi.fn();
-		const { getByTestId, queryByTestId } = renderModal({
+		const { getByTestId } = renderModal({
 			skill: savedSkill,
 			skillId: 'skill-1',
 			onConfirm,
-			settings: { ...agentSettings, availableToMCP: false },
+			settings: {
+				scopeOptions: [
+					{ value: 'instance', label: 'Global', icon: 'globe' as const },
+					{ value: 'project:p1', label: 'Marketing', icon: 'layers' as const },
+				],
+				initialScope,
+				availableToMCP: false,
+			},
 		});
-		expect(queryByTestId('skill-available-to-mcp')).not.toBeInTheDocument();
 		await selectScope(label);
 		await userEvent.click(getByTestId('skill-available-to-mcp'));
 		await userEvent.click(getByTestId('agent-skill-create-save'));

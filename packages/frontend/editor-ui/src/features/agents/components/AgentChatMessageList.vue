@@ -320,9 +320,12 @@ const retryErrorMessageId = computed(() => {
 	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
 });
 
-const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [] };
+const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [], thinking: [] };
 
-/** Host event components of each assistant group. `transient` events show only before text. */
+/**
+ * Host event components of each assistant group. `transient` events show only
+ * before text. `thinking` events need the thinking block of the group.
+ */
 const hostEventItems = computed(() => {
 	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
 	const extensions = interactionExtensions?.value ?? [];
@@ -330,10 +333,12 @@ const hostEventItems = computed(() => {
 		switch (group.kind) {
 			case DISPLAY_GROUP_KIND.TOOL_RUN: {
 				if (!group.hostEvents) break;
-				const showTransient = !group.finalMessage?.content.trim();
 				itemsByGroupId.set(
 					group.id,
-					getHostEventItems(group.hostEvents, extensions, showTransient),
+					getHostEventItems(group.hostEvents, extensions, {
+						showTransient: !group.finalMessage?.content.trim(),
+						hasThinkingBlock: group.thinkingSegments.length > 0,
+					}),
 				);
 				break;
 			}
@@ -341,8 +346,13 @@ const hostEventItems = computed(() => {
 				const { message } = group;
 				if (!message.hostEvents) break;
 				const sources = appendHostEventSources([], message);
-				const showTransient = !message.content.trim();
-				itemsByGroupId.set(group.id, getHostEventItems(sources, extensions, showTransient));
+				itemsByGroupId.set(
+					group.id,
+					getHostEventItems(sources, extensions, {
+						showTransient: !message.content.trim(),
+						hasThinkingBlock: group.thinkingSegments.length > 0,
+					}),
+				);
 				break;
 			}
 			case DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL:
@@ -709,7 +719,12 @@ watch(
 				v-if="group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL"
 				:class="[$style.message, $style.assistant]"
 			>
-				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+				<AgentChatBackgroundJobSignal
+					:class="$style.content"
+					:signal="group.signal"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</div>
 			<div
 				v-else-if="group.kind === DISPLAY_GROUP_KIND.TOOL_RUN"
@@ -812,6 +827,7 @@ watch(
 						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
 						test-id="agent-chat-thinking-block"
 					>
+						<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
 						<AiReasoningBlock
 							v-for="segment in group.thinkingSegments"
 							:key="segment.id"
@@ -1052,6 +1068,7 @@ watch(
 						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
 						test-id="agent-chat-thinking-block"
 					>
+						<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
 						<AiReasoningBlock
 							v-for="segment in group.thinkingSegments"
 							:key="segment.id"

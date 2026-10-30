@@ -44,7 +44,12 @@ import { INSTANCE_AI_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { firstMessageTitle } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
+import { buildThreadArtifactsContext } from '../threadArtifacts';
 import { useCanvasPreview } from '../useCanvasPreview';
+import {
+	fetchAssistantAgentThreadTabs,
+	saveAssistantAgentThreadTabs,
+} from './assistantAgentTabs.api';
 import {
 	ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES,
 	ASSISTANT_AGENT_ID,
@@ -53,6 +58,7 @@ import {
 	consumePendingAssistantAgentMessage,
 } from './assistantAgentThreads';
 import { assistantConfirmationExtension } from './assistantConfirmation';
+import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
 import {
 	countSentNodes,
@@ -97,7 +103,23 @@ function clientContext(): Record<string, unknown> {
 		...(rootStore.pushRef ? { pushRef: rootStore.pushRef } : {}),
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
+		...threadArtifactsContext(),
 	};
+}
+
+/**
+ * The agent sees the open tabs, not every artifact the thread produced. Until the
+ * stored tabs load, the default tabs can still hold closed ones, so send none.
+ */
+function threadArtifactsContext(): Record<string, unknown> {
+	if (!preview.tabsLoaded.value) return {};
+	const activeId = preview.isPreviewVisible.value ? preview.activeTabId.value : undefined;
+	const threadArtifacts = buildThreadArtifactsContext(
+		thread.producedArtifacts.values(),
+		activeId,
+		preview.openTabs.value,
+	);
+	return threadArtifacts ? { threadArtifacts } : {};
 }
 
 /** The references go with the first message, so a retry of a refused send keeps them. */
@@ -114,7 +136,7 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 	pendingReferences = [];
 }
 
-const interactionExtensions = [assistantConfirmationExtension];
+const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
@@ -160,7 +182,20 @@ const thread = useAssistantArtifactThread({
 });
 provideArtifactThread(thread);
 
-const preview = useCanvasPreview({ thread, threadId: () => props.threadId });
+const preview = useCanvasPreview({
+	thread,
+	threadId: () => props.threadId,
+	tabsStorage: {
+		// A new thread has no stored tabs, and the server does not know it before its first message.
+		load: async () =>
+			pendingMessage
+				? null
+				: (await fetchAssistantAgentThreadTabs(rootStore.restApiContext, props.threadId)).state,
+		save: async (state) => {
+			await saveAssistantAgentThreadTabs(rootStore.restApiContext, props.threadId, state);
+		},
+	},
+});
 provide('openWorkflowPreview', preview.openWorkflowPreview);
 provide('openDataTablePreview', preview.openDataTablePreview);
 provide('openAppPreview', preview.openAppPreview);

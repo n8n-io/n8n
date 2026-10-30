@@ -1045,4 +1045,34 @@ describe('AgentChatToolSteps — output files', () => {
 			{ fileId: 'aid-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 },
 		]);
 	});
+
+	it('renders the files that a delegated sub-agent returned below the delegate step', () => {
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
+		const wrapper = mount(AgentChatToolSteps, {
+			props: {
+				toolCalls: [
+					{
+						tool: DELEGATE_SUB_AGENT_TOOL_NAME,
+						toolCallId: 'tc-delegate',
+						state: TOOL_CALL_STATE.DONE,
+						input: { subAgentId: 'inline', taskName: 'draw_chart' },
+						output: { status: 'completed', answer: 'Done', files: [file] },
+					},
+				],
+				projectId: 'p1',
+				agentId: 'a1',
+			},
+			global: {
+				stubs: {
+					AgentChatMessageAttachments: {
+						props: ['attachments'],
+						template:
+							'<div data-test-id="tool-output-files">{{ JSON.stringify(attachments) }}</div>',
+					},
+				},
+			},
+		});
+
+		expect(JSON.parse(wrapper.get('[data-test-id="tool-output-files"]').text())).toEqual([file]);
+	});
 });

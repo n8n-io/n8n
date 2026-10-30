@@ -56,12 +56,16 @@ export interface EscapedTransferValue {
 }
 
 /**
- * Rebuild a real instance from a marker.
+ * Rebuild a real instance from a marker. Use `decodeChild` to keep its contents
+ * in the same walk and reuse objects that the walk has already decoded.
  *
  * Only the guest walk writes the type key, and it escapes any user object that
  * carries one, so a decoder only ever sees a type its own encoder wrote.
  */
-export type SentinelDecoder = (sentinel: TransferSentinel) => unknown;
+export type SentinelDecoder = (
+	sentinel: TransferSentinel,
+	decodeChild: (value: unknown) => unknown,
+) => unknown;
 
 /** Give back a sentinel for a value the decoder owns, or nothing for any other. */
 export type SentinelEncoder = (value: object) => TransferSentinel | undefined;
@@ -91,6 +95,46 @@ export function isEscapedTransferValue(value: unknown): value is EscapedTransfer
  */
 export function isOpaqueTransferValue(value: unknown): boolean {
 	return readKey(value, TRANSFER_OPAQUE_KEY) === true;
+}
+
+/** Define an own data key. Unlike assignment, a `__proto__` key stays an own key. */
+export function defineOwnValue(
+	target: object,
+	key: string,
+	value: unknown,
+	enumerable = true,
+): void {
+	Object.defineProperty(target, key, { value, writable: true, enumerable, configurable: true });
+}
+
+/** The objects a walk has finished, and the ones it is inside. */
+export interface ObjectWalk {
+	done: Map<object, unknown>;
+	open: Set<object>;
+}
+
+export function newObjectWalk(): ObjectWalk {
+	return { done: new Map(), open: new Set() };
+}
+
+/**
+ * Encode each object once in a walk, so a shared object stays shared. A
+ * reference back to an object the walk is inside gives undefined.
+ */
+export function encodeOnce(
+	value: object,
+	walk: ObjectWalk,
+	encodeObject: (value: object) => unknown,
+): unknown {
+	if (walk.open.has(value)) {
+		return undefined;
+	}
+	if (!walk.done.has(value)) {
+		walk.open.add(value);
+		walk.done.set(value, encodeObject(value));
+		walk.open.delete(value);
+	}
+	return walk.done.get(value);
 }
 
 /** Type guard: plain object with Object.prototype or null prototype. */
@@ -123,7 +167,7 @@ function unwrapPlainObject(
 	// resolves to the same object.
 	seen.set(value, result);
 	for (const key of Object.keys(value)) {
-		result[key] = unwrapValue(value[key], decode, seen);
+		defineOwnValue(result, key, unwrapValue(value[key], decode, seen));
 	}
 	return result;
 }
@@ -142,7 +186,11 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		return result;
 	}
 	if (!isPlainObject(value)) return value;
-	if (isTransferSentinel(value)) return decode(value);
+	if (isTransferSentinel(value)) {
+		const result = decode(value, (child) => unwrapValue(child, decode, seen));
+		seen.set(value, result);
+		return result;
+	}
 	if (isEscapedTransferValue(value)) {
 		const inner: unknown = value[TRANSFER_VALUE_KEY];
 		// An opaque payload is a value the guest could not walk, so nothing in it
@@ -150,6 +198,7 @@ function unwrapValue(value: unknown, decode: SentinelDecoder, seen: Map<object, 
 		// keys collide, so the walk goes on below and rebuilds markers deeper in.
 		if (isOpaqueTransferValue(value)) return inner;
 		if (typeof inner !== 'object' || inner === null) return inner;
+		if (seen.has(inner)) return seen.get(inner);
 		// An array payload is walked as an array. Its own entries carry no framing,
 		// so reading it as a marker is never right.
 		if (Array.isArray(inner)) return unwrapValue(inner, decode, seen);

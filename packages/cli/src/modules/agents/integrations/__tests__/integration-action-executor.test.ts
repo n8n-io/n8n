@@ -55,15 +55,21 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
+import { inheritIntegrationMessageContext } from '../integration-message-context';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import type { IntegrationMessageContext } from '../integration-tool-types';
 import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
+import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
+import type { UrlService } from '@n8n/backend-services';
+import type { InstanceSettings } from 'n8n-core';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { RichCardComponentType } from '@n8n/api-types';
+import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import { AgentOutboundFiles } from '../agent-outbound-files.service';
 
 const slack: AgentIntegrationConfig = {
 	type: 'slack',
@@ -149,6 +155,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -204,6 +211,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				service,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const settled = vi.fn();
 			const result = executor.execute({
@@ -248,6 +256,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -294,6 +303,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -339,6 +349,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors(
 			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
@@ -375,6 +386,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors(
 			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
@@ -402,6 +414,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
 
@@ -437,6 +450,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -473,6 +487,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -513,6 +528,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -587,6 +603,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
 
@@ -654,6 +671,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -699,6 +717,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -739,6 +758,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -790,6 +810,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1', () => ({
 			actions: ['respond', 'send_dm', 'edit_message'],
@@ -858,6 +879,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -913,6 +935,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -963,6 +986,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
 		const inboundThreadId = 'discord:800000000000000001:700000000000000001:600000000000000001';
@@ -1033,6 +1057,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([discord], 'agent-1')[0];
 		const explicitThreadId = 'discord:800000000000000001:700000000000000002:600000000000000001';
@@ -1096,6 +1121,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1123,6 +1149,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1179,6 +1206,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -1283,6 +1311,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -1354,6 +1383,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([linear], 'agent-1')[0];
 
@@ -1439,6 +1469,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				registry,
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 			return { executor, descriptor, thread };
@@ -1538,6 +1569,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1563,6 +1595,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1588,6 +1621,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1612,6 +1646,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1654,6 +1689,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			guard,
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1700,6 +1736,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			guard,
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1759,6 +1796,7 @@ describe('ChatIntegrationActionExecutor — rate-limit handling', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			guard,
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
@@ -1805,6 +1843,7 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 			chatIntegrationService,
 			registry,
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([teams], 'agent-1')[0];
 		return { chat, executor, descriptor };
@@ -1875,6 +1914,418 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 		expect(result).toEqual({
 			ok: false,
 			error: { code: 'PERMISSION_NOT_GRANTED', message: expect.stringContaining('installed') },
+		});
+	});
+
+	describe('files', () => {
+		const fileScope = { projectId: 'project-1', threadId: 'thread-1' };
+		const currentMessageContext: IntegrationMessageContext = {
+			integrationConnectionId: 'slack:cred-a',
+			platform: 'slack',
+			target: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			replyExpectation: 'required',
+			replyTarget: { type: 'thread', threadId: 'slack:C123:123.456', channelId: 'slack:C123' },
+			updatedAt: '2026-05-18T10:00:00.000Z',
+		};
+		const chartFile = {
+			id: 'file-1',
+			binaryDataId: 'filesystem-v2:agents/a/attachments/file-1',
+			fileName: 'chart.png',
+			mimeType: 'image/png',
+			fileSizeBytes: 3,
+		};
+
+		function buildExecutor(integration: AgentIntegrationConfig = slack, files = [chartFile]) {
+			const sent = { id: '123.457', threadId: 'slack:C123:123.457' };
+			const thread = { post: vi.fn().mockResolvedValue(sent), subscribe: vi.fn() };
+			const channel = { post: vi.fn().mockResolvedValue(sent) };
+			const chat = mock<ChatInstance>();
+			chat.thread.mockReturnValue(thread as never);
+			chat.channel.mockReturnValue(channel as never);
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+			const attachmentService = mock<AgentChatAttachmentService>();
+			attachmentService.getReadable.mockImplementation(
+				async (fileId) => (files.find((file) => file.id === fileId) as never) ?? null,
+			);
+			attachmentService.getBuffer.mockResolvedValue(Buffer.from('png'));
+			const registry = buildRegistry();
+			registry.register(
+				new TelegramIntegration(
+					mock<Logger>(),
+					mock<UrlService>(),
+					mock<AgentRepository>(),
+					mock<InstanceSettings>(),
+					mock<OutboundHttp>(),
+				),
+			);
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				registry,
+				new ChannelRateLimitGuard(),
+				new AgentOutboundFiles(attachmentService, registry),
+			);
+			const descriptor = getIntegrationToolConnectionDescriptors([integration], 'agent-1')[0];
+			return { executor, descriptor, thread, channel, attachmentService };
+		}
+
+		it('queues the files of a respond in a chat-triggered turn for the final reply', async () => {
+			const { executor, descriptor, thread, attachmentService } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				queuedFileIds: ['file-1'],
+				note: expect.stringContaining('final reply'),
+			});
+			expect(attachmentService.getReadable).toHaveBeenCalledWith('file-1', fileScope);
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('records the queued files of the run in the message context', async () => {
+			const { executor, descriptor } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				runId: 'run-1',
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				queuedFileIds: ['file-1'],
+				messageContext: { queuedFiles: { runId: 'run-1', fileIds: ['file-1'] } },
+			});
+		});
+
+		it('returns the limit error when the files of all responds of the run are too many', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor, thread } = buildExecutor(slack, files);
+			const earlierFileIds = files.slice(0, 30).map((file) => file.id);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'run-1',
+				currentMessageContext: {
+					...currentMessageContext,
+					queuedFiles: { runId: 'run-1', fileIds: earlierFileIds },
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+					message: expect.stringContaining('the 30 files that you queued before'),
+				},
+			});
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('counts the files that the run queued before a resume', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor, thread } = buildExecutor(slack, files);
+			// The click on an approval card gives a new context without queued files.
+			const resumeContext = inheritIntegrationMessageContext(currentMessageContext, {
+				...currentMessageContext,
+				queuedFiles: { runId: 'r1', fileIds: files.slice(0, 30).map((file) => file.id) },
+			});
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'r1',
+				currentMessageContext: resumeContext,
+				fileScope,
+			});
+
+			expect(result).toMatchObject({ ok: false, error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED' } });
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('ignores files that another run queued', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor } = buildExecutor(slack, files);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'run-2',
+				currentMessageContext: {
+					...currentMessageContext,
+					queuedFiles: { runId: 'run-1', fileIds: files.slice(0, 30).map((file) => file.id) },
+				},
+				fileScope,
+			});
+
+			expect(result).toMatchObject({
+				ok: true,
+				messageContext: { queuedFiles: { runId: 'run-2', fileIds: ['file-30'] } },
+			});
+		});
+
+		it('posts the files of a respond outside chat-triggered turns at once', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: { ...currentMessageContext, replyExpectation: undefined },
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith({
+				raw: 'Here is the chart',
+				files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
+			});
+		});
+
+		it('uploads files with a channel message card', async () => {
+			const { executor, descriptor, channel } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'send_channel_message',
+				input: {
+					channelId: 'C123',
+					message: { card: { components: [{ type: 'section', text: 'Weekly report' }] } },
+					fileIds: ['file-1'],
+				},
+				awaitResponse: false,
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(channel.post).toHaveBeenCalledWith({
+				card: expect.objectContaining({ type: 'card' }),
+				files: [expect.objectContaining({ filename: 'chart.png' })],
+			});
+		});
+
+		it('posts a respond card with files at once in a chat-triggered turn', async () => {
+			const { executor, descriptor, thread } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: {
+					message: { card: { components: [{ type: 'section', text: 'Chart' }] } },
+					fileIds: ['file-1'],
+				},
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual(
+				expect.objectContaining({ ok: true, messageContext: expect.anything() }),
+			);
+			expect(thread.post).toHaveBeenCalledWith({
+				card: expect.objectContaining({ type: 'card' }),
+				files: [expect.objectContaining({ filename: 'chart.png' })],
+			});
+		});
+
+		it('posts Telegram files as attachments typed by MIME type', async () => {
+			const { executor, descriptor, thread } = buildExecutor(telegram);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Here is the chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'telegram:cred-telegram',
+					platform: 'telegram',
+					replyExpectation: undefined,
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledWith({
+				raw: 'Here is the chart',
+				attachments: [
+					{ type: 'image', data: Buffer.from('png'), name: 'chart.png', mimeType: 'image/png' },
+				],
+			});
+		});
+
+		it('posts Telegram images and documents as separate messages with the text on the first', async () => {
+			const report = {
+				...chartFile,
+				id: 'file-2',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+			};
+			const { executor, descriptor, thread } = buildExecutor(telegram, [chartFile, report]);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Files' }, fileIds: ['file-1', 'file-2'] },
+				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'telegram:cred-telegram',
+					platform: 'telegram',
+					replyExpectation: undefined,
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual(expect.objectContaining({ ok: true }));
+			expect(thread.post).toHaveBeenCalledTimes(2);
+			expect(thread.post).toHaveBeenNthCalledWith(1, {
+				raw: 'Files',
+				attachments: [expect.objectContaining({ type: 'image', name: 'chart.png' })],
+			});
+			expect(thread.post).toHaveBeenNthCalledWith(2, {
+				raw: '',
+				attachments: [expect.objectContaining({ type: 'file', name: 'report.pdf' })],
+			});
+		});
+
+		it('returns FILE_NOT_FOUND when the thread cannot read a file', async () => {
+			const { executor, descriptor, thread, attachmentService } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1', 'other-file'] },
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'FILE_NOT_FOUND', message: expect.stringContaining('other-file') },
+			});
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for a Slack file above the send cap', async () => {
+			const { executor, descriptor, thread, attachmentService } = buildExecutor();
+			attachmentService.getReadable.mockResolvedValue({
+				...chartFile,
+				fileSizeBytes: 60 * 1024 * 1024,
+			} as never);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: {
+					code: 'FILE_UPLOAD_LIMIT_EXCEEDED',
+					message: 'File "chart.png" is 60 MB. The slack integration sends files up to 50 MB.',
+				},
+			});
+			expect(attachmentService.getBuffer).not.toHaveBeenCalled();
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('returns FILE_UPLOAD_LIMIT_EXCEEDED for more files than one action sends', async () => {
+			const { executor, descriptor, attachmentService } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'send_dm',
+				input: {
+					userId: 'U123',
+					message: { text: 'Charts' },
+					fileIds: Array.from({ length: 31 }, (_, index) => `file-${index}`),
+				},
+				awaitResponse: false,
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED', message: expect.stringContaining('30 files') },
+			});
+			expect(attachmentService.getReadable).not.toHaveBeenCalled();
+		});
+
+		it('returns UNSUPPORTED_ACTION on a platform that cannot send files', async () => {
+			const { executor, descriptor, attachmentService } = buildExecutor(linear);
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext: {
+					...currentMessageContext,
+					integrationConnectionId: 'linear:cred-linear',
+				},
+				fileScope,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'UNSUPPORTED_ACTION', message: expect.stringContaining("can't send files") },
+			});
+			expect(attachmentService.getReadable).not.toHaveBeenCalled();
+		});
+
+		it('returns NO_THREAD_CONTEXT when the run has no thread', async () => {
+			const { executor, descriptor } = buildExecutor();
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'Chart' }, fileIds: ['file-1'] },
+				awaitResponse: false,
+				currentMessageContext,
+			});
+
+			expect(result).toEqual({
+				ok: false,
+				error: { code: 'NO_THREAD_CONTEXT', message: expect.any(String) },
+			});
 		});
 	});
 });

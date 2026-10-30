@@ -1550,6 +1550,66 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
+	describe('pagination', () => {
+		// Mounting controls and tooltips in all 25 rows can exceed the test timeout.
+		// Other test groups cover these components. Keep the real table and filters here.
+		const renderPaginationComponent = () =>
+			renderComponent({
+				props: { migrationRuleId: 'rule-1' },
+				global: {
+					stubs: {
+						N8nUserSelect: true,
+						FindingStateSelect: true,
+						TimeAgo: true,
+						N8nTooltip: { template: '<slot />' },
+					},
+				},
+			});
+
+		const manyWorkflows = Array.from({ length: 30 }, (_, index) => ({
+			...mockWorkflowWithIssue,
+			id: `wf-${index}`,
+			name: `Paged workflow ${String(index).padStart(2, '0')}`,
+			numberOfExecutions: 100 - index,
+		}));
+
+		it('should render one page of rows and show the next page on request', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
+			);
+			renderPaginationComponent();
+
+			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+			// The header row plus 25 workflow rows.
+			expect(screen.getAllByRole('row')).toHaveLength(26);
+			expect(screen.queryByText('Paged workflow 25')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('pagination-next'));
+
+			await waitFor(() => expect(screen.getByText('Paged workflow 25')).toBeInTheDocument());
+			expect(screen.getAllByRole('row')).toHaveLength(6);
+			expect(screen.queryByText('Paged workflow 00')).not.toBeInTheDocument();
+		});
+
+		it('should go back to the first page when a filter changes', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
+			);
+			renderPaginationComponent();
+			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+			await userEvent.click(screen.getByTestId('pagination-next'));
+			await waitFor(() => expect(screen.getByText('Paged workflow 25')).toBeInTheDocument());
+
+			const content = await openFilters();
+			const status = within(content).getByTestId('migration-rule-filter-status');
+			await userEvent.click(within(status).getByRole('radio', { name: 'Published' }));
+
+			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+			expect(screen.getAllByRole('row')).toHaveLength(26);
+			expect(screen.queryByText('Paged workflow 25')).not.toBeInTheDocument();
+		});
+	});
+
 	describe('filters popover', () => {
 		it('should filter workflows by publish state and show the number of active filters', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });

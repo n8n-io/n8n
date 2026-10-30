@@ -359,6 +359,39 @@ describe('AgentChatController background tasks', () => {
 		expect(response.tasks[0].title).toBe('Check [REDACTED]');
 	});
 
+	it('returns the files of a job with scrubbed file names', async () => {
+		const { controller, agentsService, agentExecutionService, backgroundJobService } =
+			makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-1' } as never);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		backgroundJobService.listCurrentGroupForThread.mockResolvedValue([
+			{
+				id: 'job-1',
+				title: 'Make report',
+				kind: 'subagent',
+				status: 'completed',
+				createdAt: new Date(),
+				files: [
+					{
+						fileId: 'file-1',
+						fileName: 'api_key=example-value.pdf',
+						mimeType: 'application/pdf',
+						sizeBytes: 3,
+					},
+				],
+			},
+		] as never);
+		const response = await controller.getBackgroundJobs(request as never);
+		expect(response.tasks[0].files).toEqual([
+			{
+				fileId: 'file-1',
+				fileName: '[REDACTED]',
+				mimeType: 'application/pdf',
+				sizeBytes: 3,
+			},
+		]);
+	});
+
 	it('returns current group statuses without consuming results', async () => {
 		const { controller, agentsService, agentExecutionService, backgroundJobService } =
 			makeController();
@@ -1206,6 +1239,7 @@ describe('AgentChatController attachment download', () => {
 
 		const req = {
 			params: { projectId: 'p1', agentId: 'agent-1', attachmentId: 'att-1' },
+			query: {},
 			user: { id: 'user-1' },
 		} as never;
 		const res = { setHeader: vi.fn() } as never;
@@ -1213,6 +1247,26 @@ describe('AgentChatController attachment download', () => {
 		await expect(controller.getChatAttachment(req, res)).rejects.toThrow(NotFoundError);
 		// Headers must not be written for a failed stream open.
 		expect((res as { setHeader: ReturnType<typeof vi.fn> }).setHeader).not.toHaveBeenCalled();
+	});
+
+	it('passes the session thread so a sub-agent session can read granted files', async () => {
+		const { controller, agentsService, agentChatAttachmentService } = makeController();
+		agentsService.findById.mockResolvedValue({ id: 'agent-2' } as never);
+		agentChatAttachmentService.getForAgent.mockResolvedValue(null);
+
+		const req = {
+			params: { projectId: 'p1', agentId: 'agent-2', attachmentId: 'att-1' },
+			query: { threadId: 'child' },
+			user: { id: 'user-1' },
+		} as never;
+
+		await expect(controller.getChatAttachment(req, {} as never)).rejects.toThrow(NotFoundError);
+		expect(agentChatAttachmentService.getForAgent).toHaveBeenCalledWith('att-1', {
+			agentId: 'agent-2',
+			projectId: 'p1',
+			userId: 'user-1',
+			threadId: 'child',
+		});
 	});
 
 	describe('over a real connection', () => {
@@ -1249,6 +1303,7 @@ describe('AgentChatController attachment download', () => {
 				res.once('close', () => responseClosed.resolve());
 				const req = {
 					params: { projectId: 'p1', agentId: 'agent-1', attachmentId: 'att-1' },
+					query: {},
 					user: { id: 'user-1' },
 				} as never;
 				handled.push(controller.getChatAttachment(req, res));
@@ -1764,6 +1819,51 @@ describe('AgentChatController n8n Chat read-route ownership', () => {
 
 			await controller.getProductionChatAttachment(req, res);
 			expect(agentChatAttachmentService.getStream).toHaveBeenCalled();
+		});
+
+		it("streams an agent output file from the user's own thread", async () => {
+			const { controller, agentsService, agentChatAttachmentService, agentExecutionService } =
+				makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentChatAttachmentService.getForAgent.mockResolvedValue(
+				makeAttachment({ source: 'tool', resourceId: null }) as never,
+			);
+			agentChatAttachmentService.getStream.mockResolvedValue(Readable.from(['hi']) as never);
+
+			const req = {
+				params: { projectId, agentId, attachmentId: 'att-1' },
+				user: { id: userId },
+			} as never;
+			const res = Object.assign(new PassThrough(), { setHeader: vi.fn() }) as never;
+
+			await controller.getProductionChatAttachment(req, res);
+			expect(agentExecutionService.canUseProductionChatThread).toHaveBeenCalledWith(
+				'thread-1',
+				projectId,
+				agentId,
+				userId,
+				'existing',
+			);
+			expect(agentChatAttachmentService.getStream).toHaveBeenCalled();
+		});
+
+		it("404s an agent output file from a thread that isn't the user's own", async () => {
+			const { controller, agentsService, agentChatAttachmentService, agentExecutionService } =
+				makeController();
+			agentsService.isN8nChatPublished.mockResolvedValue(true);
+			agentChatAttachmentService.getForAgent.mockResolvedValue(
+				makeAttachment({ source: 'tool', resourceId: null }) as never,
+			);
+			agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+
+			const req = {
+				params: { projectId, agentId, attachmentId: 'att-1' },
+				user: { id: userId },
+			} as never;
+			const res = { setHeader: vi.fn() } as never;
+
+			await expect(controller.getProductionChatAttachment(req, res)).rejects.toThrow(NotFoundError);
+			expect(agentChatAttachmentService.getStream).not.toHaveBeenCalled();
 		});
 
 		it("404s another user's attachment instead of streaming it", async () => {

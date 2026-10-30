@@ -147,6 +147,8 @@ describe('getToolIcon', () => {
 
 	test('returns folder for workspace tools', () => {
 		expect(getToolIcon('workspace')).toBe('folder');
+		expect(getToolIcon('list_projects')).toBe('folder');
+		expect(getToolIcon('move_workflow_to_folder')).toBe('folder');
 		expect(getToolIcon('workspace_execute_command')).toBe('folder');
 		expect(getToolIcon('workspace_read_file')).toBe('folder');
 	});

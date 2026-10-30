@@ -302,6 +302,7 @@ export class ErrorReporter {
 			dataCollection: DATA_COLLECTION_WITHOUT_PII,
 			enableRuntimeChannelInjection: shouldInjectChannels,
 			enableOpenTelemetrySetup: false,
+			tracePropagationTargets: [],
 			...(isTracingEnabled
 				? {
 						traceLifecycle: 'static',

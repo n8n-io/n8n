@@ -234,7 +234,7 @@ const FOLDER_PATH_PLACEMENT_DESCRIPTION =
 	'Folder to create the NEW workflow in, named the way the user named it — "Clients/Acme", "Acme". ' +
 	'Pass it whenever the workflow has a clear home: the user named a folder, or the related workflows you read live there. ' +
 	'Resolved strictly (exact path, then folder name, then path suffix), never fuzzy: an unresolved folder fails the build before anything is saved and lists the real folders, so retry with one of those or ask the user. ' +
-	'New workflows only — to move an existing workflow use `workspace(action="move-workflow-to-folder")`.';
+	'New workflows only — to move an existing workflow use `move_workflow_to_folder`.';
 
 /** Same contract plus a folder target; advertised only while folder exploration is on for the run. */
 export const buildWorkflowInputSchemaWithFolderPlacement = buildWorkflowInputSchema
@@ -796,7 +796,7 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 					shouldEdit: false,
 					reason: 'folder_placement_on_update',
 					guidance:
-						'`folderPath` only applies when creating a new workflow. Nothing was saved. Re-run without `folderPath` to update the workflow, and move it with `workspace(action="move-workflow-to-folder")` if the user asked for that.',
+						'`folderPath` only applies when creating a new workflow. Nothing was saved. Re-run without `folderPath` to update the workflow, and move it with `move_workflow_to_folder` if the user asked for that.',
 				});
 				trackWorkflowSourceBuild(context, {
 					result: 'blocked',

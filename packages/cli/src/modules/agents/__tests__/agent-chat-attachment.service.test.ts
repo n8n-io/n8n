@@ -78,6 +78,34 @@ describe('AgentChatAttachmentService', () => {
 		expect(await service.getForAgent('att-1', { ...scope, userId: 'user-2' })).toEqual(attachment);
 	});
 
+	it('checks the read grants of a sub-agent session for a file of the root agent', async () => {
+		const scope = { agentId: 'agent-2', projectId: 'project-1', userId: 'user-1' };
+		const attachment = mock<AgentChatAttachment>({ id: 'att-1', createdByThreadId: 'root' });
+		repository.findByIdForAgent.mockResolvedValue(null);
+		repository.findByIdInThread.mockResolvedValue(attachment);
+		const session = mock<AgentExecutionThread>({
+			agentId: 'agent-2',
+			projectId: 'project-1',
+			accessScope: 'user',
+			ownerId: 'user-1',
+		});
+		threadRepository.findOneBy.mockResolvedValue(session);
+
+		expect(await service.getForAgent('att-1', scope)).toBeNull();
+		grantRepository.isGranted.mockResolvedValue(false);
+		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toBeNull();
+		grantRepository.isGranted.mockResolvedValue(true);
+		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toEqual(attachment);
+		expect(repository.findByIdInThread).toHaveBeenCalledWith(
+			'att-1',
+			{ projectId: 'project-1', threadId: 'root' },
+			{},
+		);
+		expect(
+			await service.getForAgent('att-1', { ...scope, userId: 'user-2', threadId: 'child' }),
+		).toBeNull();
+	});
+
 	describe('storeInbound', () => {
 		it('stores bytes via BinaryDataService and persists a scoped row', async () => {
 			binaryDataService.store.mockResolvedValue({
@@ -271,6 +299,57 @@ describe('AgentChatAttachmentService', () => {
 			).rejects.toThrow('File "att-1" not found in this conversation');
 			expect(grantRepository.findGrantedIds).toHaveBeenCalledWith(['att-1'], 'child');
 			expect(grantRepository.grant).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('returnToParent', () => {
+		const made = {
+			id: 'att-2',
+			fileName: 'out.png',
+			mimeType: 'image/png',
+			fileSizeBytes: 3,
+		} as AgentChatAttachment;
+
+		it('lists the files that the child made and grants them to a parent that is not the root', async () => {
+			repository.findCreatedByThread.mockResolvedValue([made]);
+
+			const files = await service.returnToParent({
+				projectId: 'project-1',
+				parentThreadId: 'child',
+				childThreadId: 'grandchild',
+			});
+
+			expect(repository.findCreatedByThread).toHaveBeenCalledWith(
+				'grandchild',
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
+			expect(grantRepository.grant).toHaveBeenCalledWith(['att-2'], 'child');
+			expect(files).toEqual([
+				{ fileId: 'att-2', fileName: 'out.png', mimeType: 'image/png', sizeBytes: 3 },
+			]);
+		});
+
+		it('does not grant to the root, which reads every file', async () => {
+			repository.findCreatedByThread.mockResolvedValue([made]);
+
+			await service.returnToParent({
+				projectId: 'project-1',
+				parentThreadId: 'root',
+				childThreadId: 'child',
+			});
+
+			expect(grantRepository.grant).not.toHaveBeenCalled();
+		});
+
+		it('rejects a thread that is not the parent', async () => {
+			await expect(
+				service.returnToParent({
+					projectId: 'project-1',
+					parentThreadId: 'root',
+					childThreadId: 'grandchild',
+				}),
+			).rejects.toThrow('parent of a sub-agent');
 		});
 	});
 

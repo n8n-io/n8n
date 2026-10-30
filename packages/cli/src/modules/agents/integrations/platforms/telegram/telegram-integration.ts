@@ -25,6 +25,7 @@ import {
 import type { SuspendComponent } from '../../component-mapper';
 import { assertCredentialNotClaimed } from '../../credential-claim';
 import { loadTelegramAdapter } from '../../esm-loader';
+import { outboundAttachmentType } from '../../integration-helpers';
 import { resolveIntegrationActionDefinitions } from '../../integration-tool-definitions';
 import {
 	createTelegramBridgeExecutionContext,
@@ -101,6 +102,19 @@ export class TelegramIntegration extends AgentChatIntegration {
 		'For edit_message, pass the messageId returned by a previous Telegram action or get_current_message_context. The current Telegram conversation is selected automatically.',
 	];
 
+	// The Bot API sends up to 50 MB for each file, and up to 10 files as one media group.
+	// The adapter cuts a caption at 1024 characters, but a text message can have 4096.
+	readonly fileUploadLimits = {
+		maxFiles: 10,
+		maxFileBytes: 50 * 1024 * 1024,
+		maxCaptionLength: 1024,
+		// sendPhoto accepts up to 10 MB. sendDocument sends a larger image.
+		maxImageBytes: 10 * 1024 * 1024,
+	};
+
+	// sendDocument shows an image as a generic file. Typed attachments use sendPhoto, sendVideo and sendAudio.
+	readonly sendFilesAsAttachments = true;
+
 	readonly needsShortCallbackData = true;
 
 	readonly deleteActionMessageBeforeResume = false;
@@ -110,6 +124,17 @@ export class TelegramIntegration extends AgentChatIntegration {
 	// Telegram rich messages hold up to 32,768 characters. A bot without rich
 	// messages falls back to the 4,096-character format, which the adapter cuts.
 	readonly maxMessageLength = 30_000;
+
+	/** A media group can mix photos and videos, but documents and audio go only with their own type. */
+	groupOutboundFiles<T extends { mimeType: string; fileSizeBytes: number }>(files: T[]): T[][] {
+		const groups = new Map<string, T[]>();
+		for (const file of files) {
+			const type = outboundAttachmentType(file, this.fileUploadLimits.maxImageBytes);
+			const key = type === 'image' || type === 'video' ? 'visual' : type;
+			groups.set(key, [...(groups.get(key) ?? []), file]);
+		}
+		return [...groups.values()];
+	}
 
 	formatActionDecisionMessage({
 		approved,

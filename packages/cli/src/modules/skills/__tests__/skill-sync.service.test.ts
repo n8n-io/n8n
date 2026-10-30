@@ -15,7 +15,18 @@ describe('SkillSyncService', () => {
 	const access = mock<SkillAccessService>();
 	const sources = mock<SkillSourceRepository>();
 	const telemetry = mock<SkillsTelemetry>();
-	const service = new SkillSyncService(flagGate, access, sources, telemetry);
+	const service = new SkillSyncService(
+		mock(),
+		flagGate,
+		access,
+		sources,
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		mock(),
+		telemetry,
+	);
 	const user = mock<User>({ id: 'user-1' });
 	const source = mock<SkillSourceConnection>({ id: 'source-1', type: 'github', projectId: 'p1' });
 

@@ -9,7 +9,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | Name | Columns | Comment | Type |
 | ---- | ------- | ------- | ---- |
 | [public.activity_event](public.activity_event.md) | 11 |  | BASE TABLE |
-| [public.agent_background_job](public.agent_background_job.md) | 23 |  | BASE TABLE |
+| [public.agent_background_job](public.agent_background_job.md) | 25 |  | BASE TABLE |
 | [public.agent_budget_applied_call](public.agent_budget_applied_call.md) | 2 |  | BASE TABLE |
 | [public.agent_budget_spend](public.agent_budget_spend.md) | 4 |  | BASE TABLE |
 | [public.agent_channel_status](public.agent_channel_status.md) | 11 |  | BASE TABLE |
@@ -144,7 +144,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.settings](public.settings.md) | 3 |  | BASE TABLE |
 | [public.shared_credentials](public.shared_credentials.md) | 5 |  | BASE TABLE |
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
-| [public.skill](public.skill.md) | 9 |  | BASE TABLE |
+| [public.skill](public.skill.md) | 8 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
 | [public.skill_source](public.skill_source.md) | 13 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
@@ -426,7 +426,6 @@ erDiagram
 "public.shared_workflow" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
 "public.skill" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.skill" }o--o| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
-"public.skill" }o--o| "public.agents" : "FOREIGN KEY (#quot;agentId#quot;) REFERENCES agents(id) ON DELETE CASCADE"
 "public.skill_file" }o--|| "public.skill_version" : "FOREIGN KEY (#quot;skillVersionId#quot;) REFERENCES skill_version(id) ON DELETE CASCADE"
 "public.skill_source" }o--o| "public.user" : "FOREIGN KEY (#quot;createdById#quot;) REFERENCES #quot;user#quot;(id) ON DELETE SET NULL"
 "public.skill_source" }o--o| "public.credentials_entity" : "FOREIGN KEY (#quot;credentialId#quot;) REFERENCES credentials_entity(id) ON DELETE SET NULL"
@@ -507,6 +506,7 @@ erDiagram
   varchar_128_ childThreadId
   timestamp_3__with_time_zone createdAt
   text error
+  json files
   varchar_36_ id
   varchar_16_ kind
   timestamp_3__with_time_zone notifiedAt
@@ -519,6 +519,7 @@ erDiagram
   uuid planTaskId
   text result
   timestamp_3__with_time_zone settledAt
+  json skippedFiles
   varchar_36_ sourceExecutionId FK
   varchar_16_ status
   varchar_36_ subAgentId
@@ -1860,7 +1861,6 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.skill" {
-  varchar_36_ agentId FK
   boolean availableToAssistant
   boolean availableToMCP
   timestamp_3__with_time_zone createdAt

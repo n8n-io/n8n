@@ -37,6 +37,7 @@ import type { AgentMessageRepository } from '@/modules/agents/repositories/agent
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentCheckpointRepository } from '@/modules/agents/repositories/agent-checkpoint.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import type { AgentFileBridge } from '@/modules/agents/agent-file-bridge.service';
 import { AgentExecution } from '@/modules/agents/entities/agent-execution.entity';
 
 import { createOwner } from '../../shared/db/users';
@@ -305,6 +306,7 @@ describe('AgentBackgroundJobRepository', () => {
 			Container.get(N8NCheckpointStorage),
 			mock<AgentMessageRepository>(),
 			mock<AgentPlanRepository>(),
+			mock<AgentFileBridge>(),
 		);
 
 		if (recover) {
@@ -458,6 +460,7 @@ describe('AgentBackgroundJobRepository', () => {
 			settledAt,
 			notifiedAt: null,
 			pauseRequestId: null,
+			files: null,
 		});
 	});
 
@@ -796,6 +799,43 @@ describe('AgentBackgroundJobRepository', () => {
 		}
 	});
 
+	it('stores the files of a settled job', async () => {
+		const id = uuid();
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		await insertJob({ id, parentThreadId: 'thread-1', status: 'running' });
+
+		await repository.settleIfActive(id, { status: 'completed', files: [file] });
+
+		expect((await repository.findById(id))?.files).toEqual([file]);
+	});
+
+	it('returns the files of a settled job as group candidates', async () => {
+		const id = uuid();
+		const otherId = uuid();
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		await insertJob({ id, parentThreadId: 'thread-1', status: 'running' });
+		await insertJob({ id: otherId, parentThreadId: 'thread-1' });
+
+		await repository.settleIfActive(id, { status: 'completed', files: [file] });
+
+		const jobs = await repository.findGroupCandidates(agentId, 'thread-1');
+		expect(jobs.find((job) => job.id === id)?.files).toEqual([file]);
+		expect(jobs.find((job) => job.id === otherId)?.files ?? null).toBeNull();
+	});
+
+	it('stores the skipped files of a settled job and reads a job without them', async () => {
+		const id = uuid();
+		const olderId = uuid();
+		const skipped = { fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' };
+		await insertJob({ id, parentThreadId: 'thread-1', status: 'running' });
+		await insertJob({ id: olderId, parentThreadId: 'thread-1' });
+
+		await repository.settleIfActive(id, { status: 'completed', skippedFiles: [skipped] });
+
+		expect((await repository.findById(id))?.skippedFiles).toEqual([skipped]);
+		expect((await repository.findById(olderId))?.skippedFiles).toBeNull();
+	});
+
 	it('deletes old settled jobs only if their results are marked as delivered', async () => {
 		const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
 		const consumedId = uuid();
@@ -885,6 +925,7 @@ describe('AgentBackgroundJobRepository', () => {
 				checkpointStorage,
 				mock<AgentMessageRepository>(),
 				mock<AgentPlanRepository>(),
+				mock<AgentFileBridge>(),
 			);
 
 			const planService = mock<AgentPlanService>();

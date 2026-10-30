@@ -12,6 +12,7 @@ import {
 	throwIfErrorSentinel,
 } from './lazy-proxy';
 import { jmesPath } from './jmespath';
+import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
 import type { BridgeMessage } from '../bridge/bridge-messages';
 
@@ -107,7 +108,9 @@ export function buildContext(
 	}
 	Settings.defaultZone = timezone ?? 'system';
 
-	const callHost = (message: unknown) => readHostResult(callbacks.callHost(message));
+	// Check the error flag before decoding. Decoded data can hold the flag as user data.
+	const callHost = (message: unknown) =>
+		decodeHostValue(readHostResult(callbacks.callHost(message)));
 
 	const target: Record<string, unknown> = {};
 
@@ -366,8 +369,8 @@ export function buildContext(
 			return true;
 		}
 
-		// Primitive or null — store directly
-		target[key] = value;
+		// Decode after the metadata checks. User data can hold the same keys.
+		target[key] = decodeHostValue(value);
 		return true;
 	}
 

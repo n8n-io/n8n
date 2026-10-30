@@ -1,4 +1,5 @@
 import { getEncoding } from '@n8n/ai-utilities/tokenizer';
+import { setTimeout as delay } from 'node:timers/promises';
 import { describe, expect, it } from 'vitest';
 
 import { createModelTokenCounter } from '../model/model-token-counter';
@@ -26,6 +27,65 @@ describe('createModelTokenCounter', () => {
 
 		expect(Math.abs(count - 2503) / 2503).toBeLessThan(0.01);
 	});
+
+	it.each([
+		{ model: 'openai/gpt-5', encoding: 'o200k_base' },
+		{ model: 'anthropic/claude-haiku-4-5', encoding: 'cl100k_base' },
+	] as const)('counts uniform spaces accurately for $encoding', async ({ model, encoding }) => {
+		const text = ' '.repeat(8_000);
+		const encoder = await getEncoding(encoding);
+		const expected = encoder.encode(text, [], []).length;
+
+		expect(await createModelTokenCounter(model)(text)).toBe(expected);
+	});
+
+	it.each([
+		{
+			name: 'ordinary prose',
+			text: 'ordinary synthetic text. '.repeat(334).slice(0, 8_000),
+			expectedTokens: 1_281,
+		},
+		{
+			name: 'alternating spaces and tabs',
+			text: ' \t'.repeat(4_000),
+			expectedTokens: 3_999,
+		},
+		{
+			name: 'uniform spaces',
+			text: ' '.repeat(8_000),
+			expectedTokens: 63,
+		},
+	])(
+		'keeps the maximum event-loop pause below 500 ms for $name',
+		async ({ text, expectedTokens }) => {
+			// AGENT-1442: A final synchronous encode must not hide behind an eventual yield.
+			const countTokens = createModelTokenCounter('openai/gpt-5');
+			await countTokens('warm up');
+			let lastHeartbeat = performance.now();
+			let maxPauseMs = 0;
+			let heartbeats = 0;
+			const heartbeat = setInterval(() => {
+				const now = performance.now();
+				maxPauseMs = Math.max(maxPauseMs, now - lastHeartbeat);
+				lastHeartbeat = now;
+				heartbeats++;
+			}, 1);
+
+			try {
+				const count = await countTokens(text);
+				// Include the last encode even if the counter returns without yielding.
+				await delay(0);
+
+				expect(heartbeats).toBeGreaterThan(0);
+				expect(Math.abs(count - expectedTokens) / expectedTokens).toBeLessThan(0.01);
+				// Allow ample CI headroom above the counter's 10 ms yield interval.
+				expect(maxPauseMs).toBeLessThan(500);
+			} finally {
+				clearInterval(heartbeat);
+			}
+		},
+		35_000,
+	);
 
 	it('yields to the event loop while counting a large text', async () => {
 		const words = ['alpha', 'beta,', 'gamma\n', '"delta"', '{epsilon:', '42}', 'ζήτα'];

@@ -39,19 +39,16 @@ export function isNameTaken(
 }
 
 /**
- * The agents that cannot add the skill in `target`. An agent can add an instance skill, a
- * skill of its own project and its own agent skills. An agent without a project loses any
- * scoped skill.
+ * The agents that cannot add the skill in `target`. An agent can add an instance skill and a
+ * skill of its own project. An agent without a project loses any project skill.
  */
 export function findLosingAgents(
 	agentIds: string[],
 	target: SkillTarget,
 	agents: ReadonlyMap<string, SkillAgent>,
 ): string[] {
-	if (target.projectId === null && target.agentId === null) return [];
-	return agentIds.filter((id) =>
-		target.agentId ? id !== target.agentId : agents.get(id)?.projectId !== target.projectId,
-	);
+	if (target.projectId === null) return [];
+	return agentIds.filter((id) => agents.get(id)?.projectId !== target.projectId);
 }
 
 /** The refusal of a move that takes the skill away from `losing`. */

@@ -8,7 +8,11 @@ import type {
 	TextMapPropagator,
 	TextMapSetter,
 } from '@opentelemetry/api';
-import { CompositePropagator } from '@opentelemetry/core';
+import {
+	CompositePropagator,
+	W3CBaggagePropagator,
+	W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import {
 	AlwaysOffSampler,
 	type ReadableSpan,
@@ -31,6 +35,10 @@ export const TRACING_OFF: TracingPipeline = {
 	sampler: new AlwaysOffSampler(),
 	propagator: new CompositePropagator(),
 };
+
+export const OUTBOUND_HEADERS_PROPAGATOR: TextMapPropagator = new CompositePropagator({
+	propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+});
 
 export class SwappableSpanProcessor implements SpanProcessor {
 	private processors = TRACING_OFF.spanProcessors;

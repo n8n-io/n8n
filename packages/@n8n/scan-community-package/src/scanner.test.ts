@@ -1,6 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import os from 'os';
+import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
@@ -8,15 +8,17 @@ import {
 	buildScanConfig,
 	findPackageRoot,
 	parseSourceRepo,
+	resolvePackage,
+	resolveVersion,
 	SOURCE_FILE_PATTERNS,
-} from './scanner.mjs';
+} from './scanner.js';
 
 /**
  * Build a temporary package directory on disk so we can hand it to
  * `analyzePackage` exactly the way the scanner would after extracting a
  * tarball from npm.
  */
-function makeFixturePackage(files) {
+const makeFixturePackage = (files: Record<string, string | object>) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-fixture-'));
 	for (const [relativePath, contents] of Object.entries(files)) {
 		const fullPath = path.join(dir, relativePath);
@@ -27,7 +29,7 @@ function makeFixturePackage(files) {
 		);
 	}
 	return dir;
-}
+};
 
 describe('buildScanConfig', () => {
 	// CE-1606: the scan gate must register the external eslint-plugin-n8n-nodes-base
@@ -41,14 +43,14 @@ describe('buildScanConfig', () => {
 		const pluginBlock = config.find((block) => block.plugins?.['n8n-nodes-base']);
 
 		expect(pluginBlock).toBeDefined();
-		expect(pluginBlock.plugins['n8n-nodes-base'].configs).toHaveProperty('community');
-		expect(pluginBlock.plugins['n8n-nodes-base'].configs).toHaveProperty('credentials');
-		expect(pluginBlock.plugins['n8n-nodes-base'].configs).toHaveProperty('nodes');
+		expect(pluginBlock?.plugins?.['n8n-nodes-base']?.configs).toHaveProperty('community');
+		expect(pluginBlock?.plugins?.['n8n-nodes-base']?.configs).toHaveProperty('credentials');
+		expect(pluginBlock?.plugins?.['n8n-nodes-base']?.configs).toHaveProperty('nodes');
 	});
 
 	it('applies each external ruleset with the correct file scoping', async () => {
 		const config = await buildScanConfig();
-		const ruleBlockFor = (glob) =>
+		const ruleBlockFor = (glob: string) =>
 			config.find(
 				(block) =>
 					block.files?.includes(glob) &&
@@ -80,7 +82,7 @@ describe('buildScanConfig', () => {
 });
 
 describe('parseSourceRepo', () => {
-	const makeAttestation = (predicate) => [
+	const makeAttestation = (predicate: object) => [
 		{
 			predicateType: 'https://slsa.dev/provenance/v1',
 			bundle: {
@@ -168,8 +170,49 @@ describe('parseSourceRepo', () => {
 	});
 });
 
+describe('resolvePackage', () => {
+	it.each([
+		['n8n-nodes-foo', { packageName: 'n8n-nodes-foo', version: null }],
+		['n8n-nodes-foo@1.x', { packageName: 'n8n-nodes-foo', version: '1.x' }],
+		['@acme/n8n-nodes-foo', { packageName: '@acme/n8n-nodes-foo', version: null }],
+		['@acme/n8n-nodes-foo@beta', { packageName: '@acme/n8n-nodes-foo', version: 'beta' }],
+	])('resolves %s', (spec, expected) => {
+		expect(resolvePackage(spec)).toEqual(expected);
+	});
+
+	it('rejects characters outside the allowed set', () => {
+		expect(() => resolvePackage('n8n-nodes-foo;rm')).toThrow('Invalid package specification');
+	});
+});
+
+describe('resolveVersion', () => {
+	const metadata = {
+		'dist-tags': { latest: '1.2.0', beta: '2.0.0-beta.1' },
+		versions: { '1.0.0': {}, '1.2.0': {}, '2.0.0-beta.1': {} },
+	};
+
+	it.each([
+		[null, '1.2.0'],
+		['1.x', '1.2.0'],
+		['beta', '2.0.0-beta.1'],
+		['1.0.0', '1.0.0'],
+	])('resolves %s to %s', (version, expected) => {
+		expect(resolveVersion(metadata, version)).toBe(expected);
+	});
+
+	it('throws when no version matches the range', () => {
+		expect(() => resolveVersion(metadata, '3.x')).toThrow('No version found matching 3.x');
+	});
+
+	it('throws when there is no latest dist-tag', () => {
+		expect(() => resolveVersion({ ...metadata, 'dist-tags': {} }, null)).toThrow(
+			'No latest version found',
+		);
+	});
+});
+
 describe('findPackageRoot', () => {
-	let fixtureDir;
+	let fixtureDir: string | undefined;
 
 	afterEach(() => {
 		if (fixtureDir) {
@@ -199,7 +242,7 @@ describe('findPackageRoot', () => {
 });
 
 describe('analyzePackage', () => {
-	let fixtureDir;
+	let fixtureDir: string | undefined;
 
 	afterEach(() => {
 		if (fixtureDir) {

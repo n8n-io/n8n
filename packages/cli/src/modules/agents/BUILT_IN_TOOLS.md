@@ -38,7 +38,7 @@ These local tools stay eager when they are attached:
 - `read_plan`
 - `update_plan`
 - `close_plan`
-- `resume_background_jobs`
+- `background_jobs`
 
 Planning and Continue must not depend on tool discovery. Their schemas stay
 in model context when the tools are attached. The existing feature flags and
@@ -121,7 +121,7 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 
 ### `delegate_subagent`
 
-- Purpose: Delegates a task to a configured sub-agent or to an inline copy of the agent. Foreground is the default. It waits for the child result. When background tasks are on, `mode: "background"` starts a detached job and returns a receipt.
+- Purpose: Delegates a task to a configured sub-agent or to an inline copy of the agent. The input requires `subAgentId`, `taskName` and `goal`. Foreground is the default. It waits for the child result. When background tasks are on, `mode: "background"` starts a detached job and returns a receipt.
 - Attach condition: Top-level agent.
 - Background mode requires `AgentsConfig.backgroundTasksEnabled` and a caller that permits background tasks. The runtime omits the mode input when background tasks are off.
 - Source: [`sub-agents/delegate-sub-agent-tool.ts`](./sub-agents/delegate-sub-agent-tool.ts).
@@ -203,27 +203,31 @@ It preserves chat messages, executions, background jobs, job outcomes, and unrel
 It does not convert old plans. New plans use format 2, including plans in existing conversations.
 Use a coordinated restart for this development upgrade. Restart completion remains best effort.
 
-## Background job tools
+## `background_jobs`
 
 Attach condition: Top-level agent and background tasks on. Background tasks are on when `AgentsConfig.backgroundTasksEnabled` is set and the caller does not pass `allowBackgroundTasks: false`. Scheduled and manually started task runs pass `false`. Human-in-the-loop resume support does not change this condition. It only controls whether workflow tools move waiting workflows to the background.
 
 Source: [`background/background-job-tools.ts`](./background/background-job-tools.ts).
 
-| Tool | Purpose |
+One tool covers all background job operations. The `action` input selects the operation:
+
+| Action | Purpose |
 | --- | --- |
-| `check_background_jobs` | Lists the background jobs of the conversation with their status and results. |
-| `cancel_background_job` | Cancels a running background job by its job id. |
-| `resume_background_jobs` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
+| `check` | Lists the background jobs of the conversation with their status, results and output files. `jobIds` limits the list. |
+| `cancel` | Cancels a running background job. `jobId` is required. |
+| `resume` | Resumes selected stopped plan tasks, or the latest stop group outside a plan. |
+
+Do not add a separate tool for a new background job operation. Add an action to this tool.
 
 Use `delegate_subagent` with `mode: "background"` to start a background sub-agent.
-In Agent Preview, pass `planTask: { planId, planTaskId }` for work in an active plan.
+Pass `planTask: { planId, planTaskId }` for work in an active plan. This applies to every run that has the plan tools.
 The host checks the leaf task and its prerequisites before dispatch.
 Children inherit this link from host metadata. They cannot change it through tool input.
 Waiting workflow jobs retain the same link. Foreground workflows do not get background job rows.
 
-To continue a plan, pass `planId` to `resume_background_jobs`.
-Pass `taskIds` to continue only those tasks. A group selects its unfinished children.
-An empty `taskIds` list is invalid. Omit it to select the whole plan.
+To continue a plan, call `background_jobs` with `action: "resume"` and `planId`.
+Pass `planTaskIds` to continue only those tasks. A group selects its unfinished children.
+An empty `planTaskIds` list is invalid. Omit it to select the whole plan.
 The tool does not resume prerequisites or approve pending tools.
 It reports blocked tasks, failed resumes, and workflows that need a new execution.
 Stop sets unfinished parent-run tasks to `paused`. Continue restores selected tasks to `pending`
