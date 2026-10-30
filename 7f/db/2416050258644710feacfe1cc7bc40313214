@@ -1,0 +1,33 @@
+packages/cli/src/modules/agents/integrations/integration-action-executor.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 448-449,426-427
+  s_be7f812aa784b6::t_80dfcf2c39dd0c 254,276,301,369,428,432,435,437
+packages/cli/src/modules/agents/integrations/agent-outbound-files.service.ts
+  s_be7f812aa784b6::t_86b0eeddd25d09 164-165,133,136,138
+  s_be7f812aa784b6::t_9567a276b34856 34,60-61,185-187
+  s_be7f812aa784b6::t_8a9b0d99516dd5 149-151,154,160-161
+packages/cli/src/modules/agents/integrations/__tests__/agent-outbound-files.service.test.ts
+  s_be7f812aa784b6::t_10ce5f312a449d 98-99,102,104-105,107-109,114,118-120,124,126,135-136,166,168,170-172,180-181,140,142,148-150,154,156,161-163
+  ai_agent 101,110,113,115,122,127,165,173-174,138,143,145,147,152,157-158,160
+  s_be7f812aa784b6::t_a8bda00e4d3efb 116,146
+  s_be7f812aa784b6::t_8a9b0d99516dd5 131
+  s_be7f812aa784b6::t_030f9be0f81641 176,179
+  s_be7f812aa784b6::t_e9b173fdfffe52 141,155
+packages/cli/src/modules/agents/integrations/agent-chat-integration.ts
+  s_be7f812aa784b6::t_cb68d5c6cf2c1f 127,344,351
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7fdb2416050258644710feacfe1cc7bc40313214",
+  "prompts": {},
+  "sessions": {
+    "s_be7f812aa784b6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7a523437-47b6-4d93-bbf3-78999ede724e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

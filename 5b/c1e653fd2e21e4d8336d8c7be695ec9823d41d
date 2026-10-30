@@ -1,0 +1,21 @@
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-trace.ts
+  s_1d8d00f9e46fea::t_fc7f24f037cd48 22-25,133-134,236-238,247-282,337-338
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-turn-trace.test.ts
+  s_1d8d00f9e46fea::t_a6686719dd3a5e 55,68,70-78,204-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5bc1e653fd2e21e4d8336d8c7be695ec9823d41d",
+  "prompts": {},
+  "sessions": {
+    "s_1d8d00f9e46fea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5c751726-482f-4fdc-908f-f781e0199418",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}

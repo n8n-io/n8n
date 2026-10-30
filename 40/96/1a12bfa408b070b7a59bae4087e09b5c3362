@@ -1,0 +1,21 @@
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_ad4048d9318efd::t_5d3e8cffe84801 172
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_ad4048d9318efd::t_9ab1cbb3dbe180 175-176
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "40961a12bfa408b070b7a59bae4087e09b5c3362",
+  "prompts": {},
+  "sessions": {
+    "s_ad4048d9318efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12bb0cf1-e91b-4d36-b23c-d7206add2b9c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
