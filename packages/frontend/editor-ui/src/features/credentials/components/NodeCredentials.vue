@@ -74,6 +74,12 @@ import {
 } from '@n8n/api-types';
 import CredentialIcon from './CredentialIcon.vue';
 import CredentialPrivateConnectionRow from './CredentialPrivateConnectionRow.vue';
+import CredentialTypeRestrictedMarker from './CredentialTypeRestrictedMarker.vue';
+import {
+	ContactAdminModal,
+	getCredentialTypeRestriction,
+	type ContactAudience,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useAiGateway } from '@/app/composables/useAiGateway';
 import { useAiGatewayTopUp } from '@/app/composables/useAiGatewayTopUp';
 
@@ -242,6 +248,46 @@ const canCreateCredentials = computed(
 			projectsStore.currentProject?.scopes ?? projectsStore.personalProject?.scopes,
 		).credential.create,
 );
+
+/** A policy that blocks a credential type also blocks creating credentials of it. */
+function canCreateCredentialType(credentialType: string): boolean {
+	return canCreateCredentials.value && !getCredentialTypeRestriction(credentialType);
+}
+
+const isContactAdminOpen = ref(false);
+// The dialog keeps showing this copy while it fades out, so it stays set after the close.
+const contactAdmin = ref<{ subject: string; audience: ContactAudience }>({
+	subject: '',
+	audience: 'instance',
+});
+// The select mounts every option while closed, so the row popovers mount on the first open only.
+// They stay mounted: the select closes on the release in a popover, before its click arrives.
+const openedCredentialSelectTypes = ref(new Set<string>());
+
+function requestContactAdmin(credentialType: string, audience: ContactAudience) {
+	// The dialog opens on top of the page, so the list must not stay open behind it.
+	for (const select of selectRefs.value) select?.blur();
+	contactAdmin.value = {
+		subject:
+			credentialsStore.getCredentialTypeByName(credentialType)?.displayName ?? credentialType,
+		audience,
+	};
+	isContactAdminOpen.value = true;
+}
+
+/** The restriction of the selected credential's type, which can differ from the slot's in a mixed list. */
+function getSelectedTypeRestriction(credentialType: string) {
+	const id = selected.value[credentialType]?.id;
+	if (!id) return null;
+
+	const selectedType = credentialsStore.getCredentialById(id)?.type ?? credentialType;
+	const restriction = getCredentialTypeRestriction(selectedType);
+	if (!restriction) return null;
+
+	const displayName =
+		credentialsStore.getCredentialTypeByName(selectedType)?.displayName ?? selectedType;
+	return { credentialType: selectedType, displayName, restriction };
+}
 
 const nodeHelpers = useNodeHelpers();
 const toast = useToast();
@@ -1161,6 +1207,7 @@ function setFilter(newFilter = '') {
 
 function onSelectVisibleChange(credentialType: string, isVisible: boolean) {
 	openCredentialSelectType.value = isVisible ? credentialType : null;
+	if (isVisible) openedCredentialSelectTypes.value.add(credentialType);
 	if (!isVisible) {
 		setFilter();
 		return;
@@ -1345,8 +1392,13 @@ function buildUsableRows(
 	const isYours = (option: CredentialDropdownOption) =>
 		option.sharedRoute === 'personal' || (isPersonalSpace.value && !option.isGlobal);
 
-	const yours: CredentialRow[] = visible.filter(isYours).map(toRow);
-	const shared = visible.filter((option) => !isYours(option));
+	// Restricted types sink to the end of their group, so the group headings stay true.
+	const sorted = [
+		...visible.filter((option) => !getCredentialTypeRestriction(option.type)),
+		...visible.filter((option) => getCredentialTypeRestriction(option.type)),
+	];
+	const yours: CredentialRow[] = sorted.filter(isYours).map(toRow);
+	const shared = sorted.filter((option) => !isYours(option));
 	const rows: CredentialRow[] = [];
 
 	// An owner or admin can use the current credential through an instance-wide
@@ -1454,6 +1506,7 @@ function showQuickConnectSlot(
 		options.length === 0 &&
 		!getUnlistedSelected(type.name) &&
 		showQuickConnectEmptyState(type) &&
+		!getCredentialTypeRestriction(getQuickConnectCredentialType(type) ?? type.name) &&
 		!isAiGatewayManagedCredentials(type.name)
 	);
 }
@@ -1630,7 +1683,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						v-if="!showN8nCreditsOption(type.name)"
 						type="button"
 						:class="$style.emptySelectButton"
-						:disabled="!canCreateCredentials"
+						:disabled="!canCreateCredentialType(type.name)"
 						@click="onClickCreateCredential(type)"
 					>
 						<CredentialIcon :credential-type-name="type.name" :size="16" />
@@ -1682,7 +1735,7 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 								type="button"
 								data-test-id="node-credentials-select-item-new"
 								:class="[$style.newCredential, $style.entryCreate]"
-								:disabled="!canCreateCredentials"
+								:disabled="!canCreateCredentialType(type.name)"
 								@click="onClickCreateCredential(type)"
 							>
 								<N8nIcon size="large" icon="key-round" :class="$style.optionIcon" />
@@ -1706,6 +1759,14 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 					>
 						{{ entryPlaceholder(type.name) }}
 					</span>
+					<CredentialTypeRestrictedMarker
+						v-if="getCredentialTypeRestriction(type.name)"
+						placement="field"
+						:name="credentialTypeNames[type.name]"
+						:restriction="getCredentialTypeRestriction(type.name)!"
+						data-test-id="node-credentials-type-restricted"
+						@contact-admin="(audience) => requestContactAdmin(type.name, audience)"
+					/>
 				</div>
 				<div
 					v-else
@@ -1830,11 +1891,20 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 										</div>
 									</N8nTooltip>
 								</N8nOption>
+								<!-- A press on a disabled row would move the focus out of the search input, so typing would stop filtering. -->
 								<N8nOption
 									v-else
 									:data-test-id="`node-credentials-select-item-${row.option.id}`"
+									:class="{
+										[$style.restrictedOption]: getCredentialTypeRestriction(row.option.type),
+									}"
 									:label="row.option.name"
 									:value="row.option.id"
+									:disabled="getCredentialTypeRestriction(row.option.type) !== null"
+									@mousedown="
+										(event: MouseEvent) =>
+											getCredentialTypeRestriction(row.option.type) && event.preventDefault()
+									"
 								>
 									<div :class="$style.credentialOption">
 										<N8nIcon
@@ -1867,6 +1937,15 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 													: row.option.typeDisplayName
 											}}
 										</N8nText>
+										<CredentialTypeRestrictedMarker
+											v-if="
+												openedCredentialSelectTypes.has(type.name) &&
+												getCredentialTypeRestriction(row.option.type)
+											"
+											:name="row.option.typeDisplayName"
+											:restriction="getCredentialTypeRestriction(row.option.type)!"
+											@contact-admin="(audience) => requestContactAdmin(row.option.type, audience)"
+										/>
 										<N8nIcon
 											v-if="getSelectedId(type) === row.option.id"
 											icon="check"
@@ -1882,11 +1961,18 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 									type="button"
 									data-test-id="node-credentials-select-item-new"
 									:class="[$style.newCredential]"
-									:disabled="!canCreateCredentials"
+									:disabled="!canCreateCredentialType(type.name)"
 									@click="onClickCreateCredential(type)"
 								>
 									<N8nIcon size="large" icon="plus" :class="$style.optionIcon" />
 									{{ NEW_CREDENTIALS_TEXT }}
+									<N8nIcon
+										v-if="getCredentialTypeRestriction(type.name)"
+										icon="lock"
+										size="xsmall"
+										:class="$style.newCredentialLock"
+										data-test-id="node-credentials-select-item-new-restricted"
+									/>
 								</button>
 							</template>
 						</N8nSelect>
@@ -1923,6 +2009,20 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 						</div>
 					</div>
 
+					<CredentialTypeRestrictedMarker
+						v-if="getSelectedTypeRestriction(type.name)"
+						placement="field"
+						:name="getSelectedTypeRestriction(type.name)!.displayName"
+						:restriction="getSelectedTypeRestriction(type.name)!.restriction"
+						data-test-id="node-credentials-selected-restricted"
+						@contact-admin="
+							(audience) =>
+								requestContactAdmin(
+									getSelectedTypeRestriction(type.name)?.credentialType ?? type.name,
+									audience,
+								)
+						"
+					/>
 					<div
 						v-if="getUnusableSelected(type.name)"
 						:class="[$style.warning, $style.unusableWarning]"
@@ -1993,6 +2093,12 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 				/>
 			</N8nInputLabel>
 		</div>
+		<ContactAdminModal
+			v-model:open="isContactAdminOpen"
+			kind="credential"
+			:node-type-name="contactAdmin.subject"
+			:audience="contactAdmin.audience"
+		/>
 	</div>
 </template>
 
@@ -2064,6 +2170,15 @@ async function onQuickConnectSignIn(credentialTypeName: string) {
 .unusableOption:global(.is-disabled) {
 	cursor: default;
 	color: var(--color--text--shade-1);
+}
+
+// The disabled row keeps the editor's readable disabled color, as in the predefined type list.
+.restrictedOption:global(.is-disabled) .optionName {
+	color: var(--text-color--disabled);
+}
+
+.newCredentialLock {
+	margin-left: auto;
 }
 
 .edit {

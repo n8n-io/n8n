@@ -33,6 +33,9 @@ const props = withDefaults(
 		align?: 'start' | 'center' | 'end';
 		sideOffset?: number;
 		markerSize?: 'small' | 'xsmall';
+		/** Replace the scope line and the description, for a type that is unusable for another reason. */
+		scopeLabel?: string;
+		description?: string;
 	}>(),
 	{
 		kind: 'node',
@@ -43,6 +46,8 @@ const props = withDefaults(
 		align: 'center',
 		sideOffset: 24,
 		markerSize: 'small',
+		scopeLabel: undefined,
+		description: undefined,
 	},
 );
 
@@ -183,9 +188,11 @@ function onContentKeydown(event: KeyboardEvent) {
 					@keydown="onContentKeydown"
 				>
 					<N8nText tag="p" size="large" color="text-dark">{{ nodeTypeName }}</N8nText>
-					<N8nText tag="p" size="small" color="text-light">{{ i18n.baseText(scopeKey) }}</N8nText>
+					<N8nText tag="p" size="small" color="text-light">
+						{{ scopeLabel ?? i18n.baseText(scopeKey) }}
+					</N8nText>
 					<N8nText tag="p" size="small" color="text-base" :class="$style.description">
-						{{ i18n.baseText(contactCopy.popoverDescription[kind]) }}
+						{{ description ?? i18n.baseText(contactCopy.popoverDescription[kind]) }}
 					</N8nText>
 					<N8nButton
 						variant="outline"
