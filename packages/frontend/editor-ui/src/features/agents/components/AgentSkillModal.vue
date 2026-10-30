@@ -1719,7 +1719,7 @@ function onRemove() {
 	align-items: center;
 	gap: var(--spacing--2xs);
 	padding: var(--spacing--xs) var(--spacing--lg);
-	border-bottom: var(--border-width) var(--border-style) var(--callout--border-color--secondary);
+	border-bottom: var(--border);
 	background-color: var(--callout--color--background--secondary);
 	color: var(--callout--color--text--secondary);
 }
