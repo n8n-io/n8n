@@ -544,6 +544,25 @@ const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
+			displayName: 'Output Encoding',
+			name: 'outputEncoding',
+			type: 'options',
+			options: [
+				{ name: 'Base64', value: 'base64' },
+				{ name: 'Hex', value: 'hex' },
+				{ name: 'UTF-8', value: 'utf8' },
+			],
+			default: 'utf8',
+			description: 'Encoding to use for the decrypted data',
+			displayOptions: {
+				show: {
+					action: ['decrypt'],
+					mode: ['asymmetric'],
+				},
+			},
+			required: true,
+		},
+		{
 			displayName: 'Value',
 			name: 'value',
 			type: 'string',
@@ -812,6 +831,11 @@ export class CryptoV2 implements INodeType {
 							newValue = plaintext.toString('utf8');
 						} else {
 							const oaepHash = this.getNodeParameter('oaepHash', i, 'sha256') as string;
+							const outputEncoding = this.getNodeParameter(
+								'outputEncoding',
+								i,
+								'utf8',
+							) as BufferEncoding;
 							const decrypted = privateDecrypt(
 								{
 									key: encryptionPrivateKey,
@@ -820,7 +844,7 @@ export class CryptoV2 implements INodeType {
 								},
 								Buffer.from(value, 'base64'),
 							);
-							newValue = decrypted.toString('utf8');
+							newValue = decrypted.toString(outputEncoding);
 						}
 					} catch (error) {
 						if (error instanceof NodeOperationError) throw error;
