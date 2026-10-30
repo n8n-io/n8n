@@ -13,6 +13,45 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval modes
+
+Each user picks an approval mode in the chat. Auto needs the PostHog flag
+`137_instance_ai_approval_modes`. Without it, every run is Manual and the chat
+shows no selector. With it, a user without a saved choice gets Auto. The judge
+uses `N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL`, or the main model when that is
+empty or can't be resolved. The mode is stored in `user.settings.instanceAi.approvalMode` through
+`PUT /assistant/preferences`. Auto mode is not part of the Agent Builder: a
+thread that builds or edits an agent, or a message that attaches an agent,
+runs in Manual mode.
+
+Every action passes two checks in order:
+
+1. **Rules.** The admin value in Settings applies first. Block stops the
+   action, Allow runs it, and a thread grant from "Always allow" counts as
+   Allow. Tools behind the SDK approval gate (MCP tools) save their "Always
+   allow" grants as thread grants too (`createThreadApprovalContext`). In Auto, a user's MCP tool permissions can only make the admin's MCP
+   permissions stricter. Manual keeps a user's MCP permissions as they are.
+2. **Mode.** An action set to Ask first suspends for approval. Manual shows the
+   card. Auto reviews the suspension first, in `src/approval-review/`:
+   - fixed rules in `pending-approval.ts` decide first: actions that remove,
+     stop or replace something always show the card, small additions run, and
+     an MCP call too long for the judge to read in full shows the card;
+   - every other plain approval, including web fetches, web searches and MCP
+     tool calls, goes to the judge model, which approves or asks. An error or
+     a timeout shows the card.
+
+Tools need no code for Auto mode. The wrapper in `approval-review.ts` calls a
+tool with a probe `suspend()` and, when the review approves, again with
+`{ approved: true }`. Cards that need input (setup, credentials, questions,
+resource decisions) always show. An approved call emits `auto-approval`, its
+judge tokens are claimed from the user's credits, and a tool keeps the grant
+that its approval gives, as "Allow once" does in Manual mode. Telemetry that
+the probe tracks is sent only when the card shows. `approval-judge.ts`
+describes what the judge reads and how it cuts long input.
+
+The judge sees the user's messages, the user's answers in question cards, and
+the Assistant's text.
+
 ### Approval copy
 
 An approval card has a title and a description. The title names the asset without

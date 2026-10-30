@@ -47,6 +47,7 @@ function createSetupFactory() {
 				setupPanelVariant: 'control',
 				folderExplorationEnabled: false,
 				credentialDescriptionsEnabled: false,
+				approvalModesEnabled: false,
 				instanceContextEnabled: false,
 				nodeUsageEnabled: false,
 			})),
@@ -66,6 +67,7 @@ function createSetupFactory() {
 			getCredits: vi.fn(async () => ({ creditsQuota: -1, creditsClaimed: 0 })),
 			resolveAgentModelConfig: vi.fn(async () => 'anthropic/claude-sonnet'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
+			resolveApprovalJudgeModelConfig: vi.fn(async () => 'anthropic/claude-haiku'),
 			getModelFetch: vi.fn(() => undefined),
 		},
 		creditService: { claimRunUsage: vi.fn() },
@@ -79,6 +81,10 @@ function createSetupFactory() {
 				source: { registry: { skillsHash: 'hash', skills: [] }, loadSkill: vi.fn() },
 				disabledTools: [],
 			})),
+		},
+		approvalModeService: { resolveMode: vi.fn(() => 'manual') },
+		approvalReviewerFactory: {
+			create: vi.fn(() => ({ judge: vi.fn(), onReviewed: vi.fn() })),
 		},
 		areMcpConnectionsAvailable: () => false,
 	};
@@ -269,6 +275,113 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(runtime.syncWorkflowTasks).toHaveBeenCalledTimes(1);
 		});
 
+		it('keeps Manual mode and the MCP settings as they are while approval modes are off', async () => {
+			const { factory, fields } = createSetupFactory();
+
+			const { context } = await factory.create(params, createRuntime());
+
+			expect(context.enforceAdminMcpPermissions).toBe(false);
+			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, false);
+			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+		});
+
+		it('keeps the MCP settings of a user who picked Manual', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				approvalModesEnabled: true,
+			});
+			fields.approvalModeService.resolveMode.mockReturnValue('manual');
+
+			const { context } = await factory.create(params, createRuntime());
+
+			expect(fields.approvalModeService.resolveMode).toHaveBeenCalledWith(user, true);
+			expect(context.enforceAdminMcpPermissions).toBe(false);
+			expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+		});
+
+		it('creates the Auto mode reviewer for a user in Auto mode', async () => {
+			const { factory, fields } = createSetupFactory();
+			fields.adapterService.resolveExperimentGates.mockResolvedValue({
+				...(await fields.adapterService.resolveExperimentGates()),
+				approvalModesEnabled: true,
+			});
+			fields.approvalModeService.resolveMode.mockReturnValue('auto');
+			const runtime = createRuntime();
+
+			const { context } = await factory.create(params, runtime);
+
+			expect(context.enforceAdminMcpPermissions).toBe(true);
+			expect(context.approvalReviewer).toBe(
+				fields.approvalReviewerFactory.create.mock.results[0].value,
+			);
+			const [reviewerParams] = fields.approvalReviewerFactory.create.mock.calls[0] as unknown as [
+				{ resolveJudgeModel: () => Promise<unknown> } & Record<string, unknown>,
+			];
+			expect(reviewerParams).toMatchObject({
+				user,
+				threadId: 'thread-1',
+				runId: 'run-1',
+				resourceId: 'user-1',
+				memory: runtime.memory,
+				eventBus: runtime.eventBus,
+			});
+			// The judge model resolves on the first review, not at turn setup.
+			expect(fields.modelService.resolveApprovalJudgeModelConfig).not.toHaveBeenCalled();
+			await expect(reviewerParams.resolveJudgeModel()).resolves.toBe('anthropic/claude-haiku');
+			expect(fields.modelService.resolveApprovalJudgeModelConfig).toHaveBeenCalledWith(
+				user,
+				'anthropic/claude-sonnet',
+				expect.anything(),
+			);
+		});
+
+		describe('in the Agent Builder', () => {
+			async function autoModeSetup() {
+				const setup = createSetupFactory();
+				setup.fields.adapterService.resolveExperimentGates.mockResolvedValue({
+					...(await setup.fields.adapterService.resolveExperimentGates()),
+					approvalModesEnabled: true,
+				});
+				setup.fields.approvalModeService.resolveMode.mockReturnValue('auto');
+				return setup;
+			}
+
+			it('keeps every card in a thread that builds an agent', async () => {
+				const { factory, fields } = await autoModeSetup();
+				const runtime = createRuntime({
+					memory: mock<AssistantTurnRuntime['memory']>({
+						getThread: vi.fn(
+							async () =>
+								({
+									resourceId: 'user-1',
+									metadata: {
+										instanceAiAgentBuilderTarget: { agentId: 'agent-1', projectId: 'project-1' },
+									},
+								}) as never,
+						),
+					}),
+				});
+
+				const { context } = await factory.create(params, runtime);
+
+				expect(context.enforceAdminMcpPermissions).toBe(false);
+				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+			});
+
+			it('keeps every card when the message attaches an agent', async () => {
+				const { factory, fields } = await autoModeSetup();
+
+				const { context } = await factory.create(
+					{ ...params, attachesAgent: true },
+					createRuntime(),
+				);
+
+				expect(context.enforceAdminMcpPermissions).toBe(false);
+				expect(fields.approvalReviewerFactory.create).not.toHaveBeenCalled();
+			});
+		});
+
 		it('refuses a thread that another user owns', async () => {
 			const { factory, fields } = createSetupFactory();
 			const runtime = createRuntime({
@@ -372,6 +485,8 @@ describe('AssistantTurnEnvironmentFactory', () => {
 					editorBaseUrl: '',
 				}),
 				mock<UrlService>({ getInstanceBaseUrl: vi.fn(() => 'https://acme.example.com') }),
+				mock(),
+				mock(),
 				mock(),
 				mock(),
 				mock(),

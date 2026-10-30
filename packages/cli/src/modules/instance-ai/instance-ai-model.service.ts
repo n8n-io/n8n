@@ -24,6 +24,13 @@ import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 import { InstanceAiSettingsService } from './instance-ai-settings.service';
 import { modelNameForProvider, withModelName } from './model-config-name';
 
+/** The run that a side model (memory tasks, approval judge) serves. */
+interface SideModelRun {
+	proxyBaseUrl?: string;
+	tokenManager?: ProxyTokenManager;
+	proxyContext?: ProxyContext;
+}
+
 /**
  * Resolves the language model the Instance AI agent runs against and reports
  * the credit balance for the current user.
@@ -121,10 +128,38 @@ export class InstanceAiModelService {
 	async resolveMemoryModelConfig(
 		user: User,
 		mainModel: ModelConfig,
-		run: { proxyBaseUrl?: string; tokenManager?: ProxyTokenManager; proxyContext?: ProxyContext },
+		run: SideModelRun,
 	): Promise<ModelConfig | undefined> {
 		const modelName = this.settingsService.getConfiguredMemoryModelName();
 		if (!modelName) return undefined;
+		return await this.resolveSideModelConfig(user, mainModel, run, modelName, 'memory');
+	}
+
+	/**
+	 * Model for the judge of Auto approval mode. It runs the configured judge
+	 * model name on the main model's provider and credentials, and falls back to
+	 * the main model when no judge model is set or it can't be resolved.
+	 */
+	async resolveApprovalJudgeModelConfig(
+		user: User,
+		mainModel: ModelConfig,
+		run: SideModelRun,
+	): Promise<ModelConfig> {
+		const modelName = this.settingsService.getConfiguredApprovalJudgeModelName();
+		if (!modelName) return mainModel;
+		return (
+			(await this.resolveSideModelConfig(user, mainModel, run, modelName, 'approval judge')) ??
+			mainModel
+		);
+	}
+
+	private async resolveSideModelConfig(
+		user: User,
+		mainModel: ModelConfig,
+		run: SideModelRun,
+		modelName: string,
+		purpose: 'memory' | 'approval judge',
+	): Promise<ModelConfig | undefined> {
 		try {
 			if (run.proxyBaseUrl && run.tokenManager) {
 				return await this.resolveProxyModel(
@@ -137,14 +172,14 @@ export class InstanceAiModelService {
 			}
 			// withModelName renames configs that carry a `provider/model` id. Outside the
 			// AI service proxy, the only main model without one is the pre-built Anthropic
-			// client used when HTTP(S)_PROXY is set, so build that client again with the memory model.
+			// client used when HTTP(S)_PROXY is set, so build that client again with the side model.
 			return (
 				withModelName(mainModel, modelName, { dropMainProviderPrefix: true }) ??
 				(await this.resolveHttpProxyModel(user, run.proxyContext, modelName))
 			);
 		} catch (error) {
-			// A memory model must never fail the user's run; the main model still works.
-			this.logger.warn('Failed to resolve the Instance AI memory model, using the main model', {
+			// A side model must never fail the user's run; the main model still works.
+			this.logger.warn(`Failed to resolve the Instance AI ${purpose} model, using the main model`, {
 				modelName,
 				error: getErrorMessage(error),
 			});

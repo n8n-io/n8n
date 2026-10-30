@@ -97,6 +97,14 @@ export class InstanceAiConfig {
 	memoryModel: string = '';
 
 	/**
+	 * Model that checks actions in the n8n Assistant's Auto approval mode, in the same `provider/model` format as `N8N_INSTANCE_AI_MODEL`, for example `anthropic/claude-haiku-5-5`.
+	 * It uses the same provider and credentials as the main model, so set a fast model that provider offers.
+	 * When unset, or when n8n can't use this model, Auto mode uses the main model.
+	 */
+	@Env('N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL')
+	approvalJudgeModel: string = '';
+
+	/**
 	 * Token threshold for the Reflector to condense observations.
 	 * When unset, the threshold is a share of the model's window or of the max window, whichever is smaller.
 	 * When set, this fixed value replaces that share.

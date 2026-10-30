@@ -21,6 +21,7 @@ import {
 	createSetupItemsEmitter,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
+	threadTargetsAgent,
 	type InstanceAiContext,
 	type InstanceAiTraceContext,
 	type ModelConfig,
@@ -41,6 +42,8 @@ import { AiUsageService } from '@/services/ai-usage.service';
 import { AiService } from '@/services/ai.service';
 import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { Telemetry } from '@/telemetry';
+import { InstanceAiApprovalModeService } from '../approval-review/approval-mode.service';
+import { InstanceAiApprovalReviewerFactory } from '../approval-review/approval-reviewer.factory';
 import { resolveBrowserUseState } from '../browser/browser-use-availability';
 import { InstanceAiBrowserSessionService } from '../browser/instance-ai-browser-session.service';
 import { EvalThreadCredentialAllowlistService } from '../eval/thread-credential-allowlist.service';
@@ -110,6 +113,8 @@ export interface AssistantTurnEnvironmentParams {
 	instanceContextGates?: InstanceContextGates;
 	experimentGates?: InstanceAiFeatureFlags;
 	tracing?: InstanceAiTraceContext;
+	/** The message attaches an agent, as the Agent Builder panel does before it binds its thread. */
+	attachesAgent?: boolean;
 }
 
 export type AssistantProxyRunConfig = Awaited<
@@ -156,6 +161,8 @@ export class AssistantTurnEnvironmentFactory {
 		private readonly conversationHistoryService: InstanceAiConversationHistoryService,
 		private readonly aiUsageService: AiUsageService,
 		private readonly skillsService: InstanceAiSkillsService,
+		private readonly approvalModeService: InstanceAiApprovalModeService,
+		private readonly approvalReviewerFactory: InstanceAiApprovalReviewerFactory,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.instanceAiConfig = globalConfig.instanceAi;
@@ -356,6 +363,35 @@ export class AssistantTurnEnvironmentFactory {
 		}
 
 		context.runId = runId;
+
+		// Auto mode reviews an approval before its card shows. Manual mode keeps every card,
+		// and keeps a user's MCP settings as they are. In Auto, a user's MCP settings can only
+		// make the admin's stricter, so an admin's Ask first still reaches the review.
+		// Auto mode is not part of the Agent Builder: a thread that builds or edits an agent
+		// keeps every card.
+		const buildsAgent = params.attachesAgent === true || threadTargetsAgent(thread?.metadata);
+		const approvalMode = buildsAgent
+			? 'manual'
+			: this.approvalModeService.resolveMode(user, gates.approvalModesEnabled);
+		context.enforceAdminMcpPermissions = approvalMode === 'auto';
+		if (approvalMode === 'auto') {
+			context.approvalReviewer = this.approvalReviewerFactory.create({
+				user,
+				threadId,
+				runId,
+				resourceId: runtime.resourceId,
+				abortSignal,
+				memory,
+				eventBus: runtime.eventBus,
+				resolveJudgeModel: async () =>
+					await this.modelService.resolveApprovalJudgeModelConfig(user, modelId, {
+						proxyBaseUrl,
+						tokenManager,
+						proxyContext,
+					}),
+				modelFetch: this.modelService.getModelFetch(),
+			});
+		}
 
 		// Setup panel v2: wire the durable `setup-items` sink only while the flag
 		// is on — its presence is the package-side gate. Seeded with the thread's
