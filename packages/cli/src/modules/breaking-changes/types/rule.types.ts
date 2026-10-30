@@ -39,7 +39,7 @@ export interface IBreakingChangeInstanceRule {
 
 /**
  * Data that lives for one scan, so a rule loads it once and not once per workflow.
- * ponytail: one typed field per need. Make it generic when a third rule needs a cache.
+ * It has one typed field for each need. Make it generic when more rules need a cache.
  */
 export interface WorkflowScanContext {
 	/** Slack API credential ID to whether its signature secret is missing. */
