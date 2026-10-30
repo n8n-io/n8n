@@ -72,6 +72,7 @@ type PairedItemLink = {
 };
 
 type PairedItemState = {
+	key: string;
 	sourceData: ISourceData;
 	pairedItem: IPairedItemData;
 };
@@ -1107,17 +1108,17 @@ export class WorkflowDataProxy {
 							throw createPairedItemNotFound(destinationNodeName, link.nodeBeforeLast);
 						}
 
-						const cached = memo.get(sourceData, pairedItem);
+						const key = pairedItemStateKey(sourceData, pairedItem);
+						const cached = memo.get(key);
 						if (cached) {
 							frame.parentResults.push(cached);
 							continue;
 						}
-						const key = pairedItemStateKey(sourceData, pairedItem);
 						if (active.has(key)) {
 							throw new UnexpectedError('Paired item ancestry contains a cycle');
 						}
 
-						state = { sourceData, pairedItem };
+						state = { key, sourceData, pairedItem };
 						const step = resolvePairedItemStep(
 							destinationNodeName,
 							sourceData,
@@ -1147,8 +1148,8 @@ export class WorkflowDataProxy {
 				}
 
 				if (state) {
-					memo.set(state.sourceData, state.pairedItem, result);
-					active.delete(pairedItemStateKey(state.sourceData, state.pairedItem));
+					memo.set(state.key, result);
+					active.delete(state.key);
 				}
 				frame.parentResults.push(result);
 			}

@@ -16,12 +16,12 @@ export class PairedItemMemo {
 	private readonly entries = new Map<string, PairedItemMemoResult>();
 
 	/** The memoized result for the state, or undefined when there is none. */
-	get(sourceData: ISourceData, pairedItem: IPairedItemData): PairedItemMemoResult | undefined {
-		return this.entries.get(pairedItemStateKey(sourceData, pairedItem));
+	get(key: string): PairedItemMemoResult | undefined {
+		return this.entries.get(key);
 	}
 
 	/** Memoizes the result for the state. */
-	set(sourceData: ISourceData, pairedItem: IPairedItemData, result: PairedItemMemoResult): void {
-		this.entries.set(pairedItemStateKey(sourceData, pairedItem), result);
+	set(key: string, result: PairedItemMemoResult): void {
+		this.entries.set(key, result);
 	}
 }
