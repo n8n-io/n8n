@@ -16,12 +16,14 @@ const PREVIEW_MARKER = '--preview';
 export class AppHostService {
 	readonly baseUrl: URL;
 	private readonly hostSuffix: string = '';
+	private readonly hostHeader: string;
 
 	constructor(
 		config: AppsConfig,
 		private readonly globalConfig: GlobalConfig,
 		urls: UrlService,
 	) {
+		this.hostHeader = config.hostHeader.toLowerCase();
 		if (!config.baseUrl) {
 			throw new BadRequestError('Set N8N_APPS_BASE_URL before enabling the apps module.');
 		}
@@ -78,6 +80,8 @@ export class AppHostService {
 
 	/** Express trusts the immediate peer when the configured proxy hop count is positive. */
 	requestHost(req: IncomingMessage): string | undefined {
+		const appsHost = this.hostHeader ? req.headers[this.hostHeader] : undefined;
+		if (typeof appsHost === 'string') return appsHost;
 		const forwarded = req.headers['x-forwarded-host'];
 		if (
 			this.globalConfig.proxy_hops > 0 &&

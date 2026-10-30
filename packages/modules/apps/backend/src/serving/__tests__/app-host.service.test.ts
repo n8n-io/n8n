@@ -11,9 +11,11 @@ function setup({
 	proxyHops = 0,
 	deploymentType = 'default',
 	host = 'n8n.example.net',
+	hostHeader = '',
 } = {}) {
 	const config = new AppsConfig();
 	config.baseUrl = baseUrl;
+	config.hostHeader = hostHeader;
 	return new AppHostService(
 		config,
 		mock<GlobalConfig>({
@@ -28,9 +30,9 @@ function setup({
 	);
 }
 
-function request(host: string, forwarded?: string) {
+function request(host: string, forwarded?: string, appsHost?: string) {
 	return mock<IncomingMessage>({
-		headers: { host, 'x-forwarded-host': forwarded },
+		headers: { host, 'x-forwarded-host': forwarded, 'x-n8n-apps-host': appsHost },
 		socket: { remoteAddress: '127.0.0.1' },
 	});
 }
@@ -116,6 +118,46 @@ describe('AppHostService', () => {
 		expect(hosts.validRequestHost(invalid)).toBe(false);
 		expect(hosts.ownsRequest(invalid)).toBe(false);
 		expect(hosts.namespace(invalid)).toBeUndefined();
+	});
+
+	describe('configured host header', () => {
+		it('ignores the header when no header name is configured', () => {
+			const hosts = setup();
+			const appRequest = request('n8n.example.net', undefined, 'sales.apps.example.com');
+
+			expect(hosts.requestHost(appRequest)).toBe('n8n.example.net');
+			expect(hosts.ownsRequest(appRequest)).toBe(false);
+		});
+
+		it('uses the header over the host and the forwarded host', () => {
+			const hosts = setup({ proxyHops: 1, hostHeader: 'X-N8N-Apps-Host' });
+			const appRequest = request('n8n.example.net', 'n8n.example.net', 'sales.apps.example.com');
+
+			expect(hosts.requestHost(appRequest)).toBe('sales.apps.example.com');
+			expect(hosts.validRequestHost(appRequest)).toBe(true);
+			expect(hosts.ownsRequest(appRequest)).toBe(true);
+			expect(hosts.namespace(appRequest)).toBe('sales');
+		});
+
+		it('falls back to the request host without the header', () => {
+			const hosts = setup({ hostHeader: 'x-n8n-apps-host' });
+
+			expect(hosts.ownsRequest(request('n8n.example.net'))).toBe(false);
+			expect(hosts.namespace(request('sales.apps.example.com'))).toBe('sales');
+		});
+
+		it('resolves Cloud preview hosts only for the configured instance', () => {
+			const hosts = setup({
+				deploymentType: 'cloud',
+				host: 'foo.app.n8n.cloud',
+				hostHeader: 'x-n8n-apps-host',
+			});
+			const proxied = (appsHost: string) => request('foo.app.n8n.cloud', undefined, appsHost);
+
+			expect(hosts.previewNamespace(proxied('sales--preview--foo.apps.example.com'))).toBe('sales');
+			expect(hosts.ownsRequest(proxied('sales--bar.apps.example.com'))).toBe(true);
+			expect(hosts.namespace(proxied('sales--bar.apps.example.com'))).toBeUndefined();
+		});
 	});
 
 	describe('Cloud hosts', () => {
