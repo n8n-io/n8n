@@ -10,12 +10,7 @@ import {
 	SpanStatusCode,
 	trace,
 } from '@opentelemetry/api';
-import {
-	CompositePropagator,
-	isTimeInputHrTime,
-	W3CBaggagePropagator,
-	W3CTraceContextPropagator,
-} from '@opentelemetry/core';
+import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ReadableSpan } from '@opentelemetry/sdk-trace-base';
 import type { ExecutionStatus } from 'n8n-workflow';
 
@@ -37,16 +32,12 @@ import {
 	type EndNodeParams,
 	isEndNodeError,
 } from './execution-level-tracer.types';
-import { OtelSettingsService } from './otel-settings.service';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
 import { OtelConfigureHook } from './otel-configure-hook';
 import type { TracingContext } from './tracing-context';
 
 const propagator = new W3CTraceContextPropagator();
-const outboundPropagator = new CompositePropagator({
-	propagators: [propagator, new W3CBaggagePropagator()],
-});
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -66,7 +57,6 @@ export class ExecutionLevelTracer {
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 
 	constructor(
-		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
 		private readonly configureHook: OtelConfigureHook,
@@ -317,8 +307,6 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			if (!this.otelSettingsService.getSettings().injectOutbound) return;
-
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
@@ -326,7 +314,7 @@ export class ExecutionLevelTracer {
 				trace.setSpan(ROOT_CONTEXT, span),
 				this.buildOutboundBaggage(span),
 			);
-			outboundPropagator.inject(ctx, headers, defaultTextMapSetter);
+			propagation.inject(ctx, headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,

@@ -3,7 +3,11 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 import { raceAbort } from '@n8n/utils/race-abort';
-import { W3CTraceContextPropagator } from '@opentelemetry/core';
+import {
+	CompositePropagator,
+	W3CBaggagePropagator,
+	W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
 	BasicTracerProvider,
@@ -217,7 +221,9 @@ export class OtelService {
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
 			propagator: settings.injectOutbound
-				? new W3CTraceContextPropagator()
+				? new CompositePropagator({
+						propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+					})
 				: TRACING_OFF.propagator,
 		};
 	}
