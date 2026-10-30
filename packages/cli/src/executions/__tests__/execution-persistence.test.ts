@@ -2045,16 +2045,29 @@ describe('ExecutionPersistence', () => {
 			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 
-		it('should delete binaries, then the payload, then the rows', async () => {
+		it('should soft-delete the rows, then delete binaries, then the payload, then the rows', async () => {
 			const target = { ...baseTarget, storedAt: 'fs' as const };
 
 			await executionPersistence.hardDelete(target);
 
+			const [softDelete] = executionRepository.update.mock.invocationCallOrder;
 			const [rows] = executionRepository.deleteByIds.mock.invocationCallOrder;
 			const [binary] = binaryDataService.deleteMany.mock.invocationCallOrder;
 			const [blobs] = jsonStore.delete.mock.invocationCallOrder;
+			expect(softDelete).toBeLessThan(binary);
 			expect(binary).toBeLessThan(blobs);
 			expect(blobs).toBeLessThan(rows);
+		});
+
+		it('should not delete binaries, the payload or the rows when the soft-delete rejects', async () => {
+			const target = { ...baseTarget, storedAt: 'fs' as const };
+			executionRepository.update.mockRejectedValueOnce(new Error('db down'));
+
+			await expect(executionPersistence.hardDelete(target)).rejects.toThrow('db down');
+
+			expect(binaryDataService.deleteMany).not.toHaveBeenCalled();
+			expect(jsonStore.delete).not.toHaveBeenCalled();
+			expect(executionRepository.deleteByIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -2284,7 +2297,10 @@ describe('ExecutionPersistence', () => {
 			await executionPersistence.deleteInFlightExecution(target, outcome);
 
 			expect(executionRepository.deleteByIds).toHaveBeenCalledWith(['exec-1']);
-			expect(executionRepository.update).not.toHaveBeenCalled();
+			expect(executionRepository.update).toHaveBeenCalledTimes(1);
+			expect(executionRepository.update).toHaveBeenCalledWith(expect.anything(), {
+				deletedAt: expect.any(Date),
+			});
 		});
 	});
 

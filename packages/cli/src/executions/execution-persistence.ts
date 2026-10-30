@@ -17,6 +17,7 @@ import type {
 } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository, In, Not } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { IsNull } from '@n8n/typeorm';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
@@ -687,8 +688,7 @@ export class ExecutionPersistence {
 	 */
 	async deleteInFlightExecution(target: DeletionTarget, outcome: InFlightExecutionOutcome) {
 		if (this.executionsConfig.pruneData) {
-			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
-			const deletedAt = new Date(Date.now() - bufferMs);
+			const deletedAt = this.prunableDeletedAt();
 			const { affected } = await this.executionRepository.update(
 				this.buildEntityWhereCondition(target.executionId, { requireNotCanceled: true }),
 				{
@@ -708,15 +708,27 @@ export class ExecutionPersistence {
 	async hardDelete(target: DeletionTarget | DeletionTarget[]) {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
+		const executionIds = targets.map((t) => t.executionId);
 
-		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
+		// Soft-delete first, so a failure below leaves a hidden row for the next prune, not one without data.
+		await this.executionRepository.update(
+			{ id: In(executionIds), deletedAt: IsNull() },
+			{ deletedAt: this.prunableDeletedAt() },
+		);
+		// Binaries next. A failure leaves the payload and the rows, so the next prune retries them.
 		await this.binaryDataService.deleteMany(
 			targets.map((t) => ({ type: 'execution' as const, ...t })),
 		);
-		// Payload next. A failure leaves the rows, so the next run retries them.
+		// Payload next. A failure leaves the rows, so the next prune retries them.
 		await this.jsonStore.delete(this.toBlobRefs(targets));
 
-		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
+		await this.executionRepository.deleteByIds(executionIds);
+	}
+
+	/** Backdated past the hard-delete buffer, so the next pruning hard-delete run picks the row up. */
+	private prunableDeletedAt() {
+		const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+		return new Date(Date.now() - bufferMs);
 	}
 
 	/** Resolve and remove one execution together with every storage-backed payload it owns. */
@@ -739,7 +751,7 @@ export class ExecutionPersistence {
 		const refs = await this.executionRepository.findExecutionsToDelete(criteria);
 
 		// Batches keep each row delete under the SQLite expression-depth limit.
-		// Each batch deletes binaries, then the payload, then the rows.
+		// Each batch soft-deletes the rows, then deletes binaries, the payload and the rows.
 		for (const batch of chunk(refs, this.executionRepository.hardDeletionBatchSize)) {
 			await this.hardDelete(batch);
 		}
