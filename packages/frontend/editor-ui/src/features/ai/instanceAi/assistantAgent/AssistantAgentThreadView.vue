@@ -292,10 +292,10 @@ function removeStagedNodes(chipId: string): void {
 						/>
 					</N8nTooltip>
 					<!-- With no tabs to show, the toggle opens a resource in a new tab. It waits for
-					the stored tabs: a resource opened before they load replaces them. -->
+					the history, which can open tabs for past builds. -->
 					<InstanceAiResourcePicker
 						v-if="
-							preview.tabsLoaded.value &&
+							!thread.isHydratingThread &&
 							!preview.isPreviewVisible.value &&
 							preview.openTabs.value.length === 0
 						"

@@ -449,6 +449,9 @@ describe('AssistantAgentThreadView', () => {
 			props: { threadId: 'thread-1', projectId: 'project-1' },
 		});
 		await flushPromises();
+		// The history can open tabs for past builds, so the picker waits for it.
+		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+
 		isLoadingHistory.value = false;
 		await flushPromises();
 
