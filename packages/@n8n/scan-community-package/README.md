@@ -28,13 +28,7 @@ The scanner runs these steps in sequence. It stops at the first step that fails.
    - the attested source: `package.json` and the files in `nodes/` and `credentials/`
    - the published npm tarball: all `.js` files and `package.json`
 
-The lint rules are the same rules that `n8n-node lint` applies. If `n8n-node lint` passes on your package, this scan usually passes too. The rules come from:
-
-- the recommended config of `@n8n/eslint-plugin-community-nodes`
-- the `community`, `nodes`, and `credentials` rulesets of `eslint-plugin-n8n-nodes-base`
-- `no-console`
-
-The scanner ignores inline `eslint-disable` comments.
+The lint rules are the same rules that `n8n-node lint` applies. If `n8n-node lint` passes on your package, this scan usually passes too. The scanner ignores inline `eslint-disable` comments.
 
 ### Requirements
 
