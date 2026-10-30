@@ -665,6 +665,7 @@ describe('SourceControlService', () => {
 			remoteSettings?: IWorkflowSettings | null;
 			expectedSettings: IWorkflowSettings;
 			changeVersion?: boolean;
+			expectModified?: boolean;
 		}> = [
 			{
 				name: 'preserves the local resolver binding when other settings change',
@@ -689,6 +690,12 @@ describe('SourceControlService', () => {
 				localSettings: { timezone: 'UTC', redactionPolicy: 'none' },
 				remoteSettings: { timezone: 'Europe/Berlin', redactionPolicy: 'none' },
 				expectedSettings: { timezone: 'Europe/Berlin', redactionPolicy: 'none' },
+			},
+			{
+				name: 'ignores omitted remote settings when workflow versions match',
+				localSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				expectedSettings: { timezone: 'UTC', credentialResolverId: 'local-resolver' },
+				expectModified: false,
 			},
 			{
 				name: 'preserves local settings when the remote file omits settings',
@@ -718,7 +725,13 @@ describe('SourceControlService', () => {
 
 		test.each(cases)(
 			'$name',
-			async ({ localSettings, remoteSettings, expectedSettings, changeVersion }) => {
+			async ({
+				localSettings,
+				remoteSettings,
+				expectedSettings,
+				changeVersion,
+				expectModified = true,
+			}) => {
 				const workflow = await createWorkflow({ settings: localSettings }, projectA);
 				const versionId = changeVersion ? randomUUID() : workflow.versionId;
 				const workflowRepository = Container.get(WorkflowRepository);
@@ -736,9 +749,17 @@ describe('SourceControlService', () => {
 					const options = { direction: 'pull', preferLocalVersion: false, verbose: false } as const;
 					const initialStatus = await statusService.getStatus(globalAdmin, options);
 					const candidates = initialStatus.filter((file) => file.id === workflow.id);
-					expect(candidates).toEqual([
-						expect.objectContaining({ type: 'workflow', status: 'modified', location: 'remote' }),
-					]);
+					expect(candidates).toEqual(
+						expectModified
+							? [
+									expect.objectContaining({
+										type: 'workflow',
+										status: 'modified',
+										location: 'remote',
+									}),
+								]
+							: [],
+					);
 					await Container.get(SourceControlImportService).importWorkflowFromWorkFolder(
 						candidates,
 						globalAdmin.id,
