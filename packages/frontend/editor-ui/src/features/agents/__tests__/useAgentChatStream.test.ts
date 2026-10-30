@@ -235,6 +235,7 @@ function buildHook(
 		budgetCards?: boolean;
 		channel?: Ref<'chat' | 'n8n-chat' | 'system'>;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
+		onStreamEvent?: UseAgentChatStreamParams['onStreamEvent'];
 	} = {},
 ) {
 	const scope = effectScope();
@@ -397,6 +398,24 @@ describe('useAgentChatStream — SDK-aligned event handling', () => {
 			usage: undefined,
 			complete: true,
 		});
+	});
+
+	it('passes on every received stream event, in order', async () => {
+		const onStreamEvent = vi.fn();
+		const events: AgentSseEvent[] = [
+			{ type: 'execution-started', executionId: 'execution-1', sessionId: 'thread-1' },
+			{ type: 'text-delta', id: 'text-1', delta: 'Hel' },
+			{ type: 'text-delta', id: 'text-1', delta: 'lo' },
+			{ type: 'finish', finishReason: 'stop' },
+			{ type: 'done', executionId: 'execution-1' },
+		];
+		globalThis.fetch = vi.fn(async () => makeSseResponse(events));
+		const hook = buildHook('thread-1', { onStreamEvent });
+
+		await hook.sendMessage('hello');
+		await flushPromises();
+
+		expect(onStreamEvent.mock.calls.map(([event]) => event)).toEqual(events);
 	});
 
 	it('renders nested approval while preserving delegated tool input', async () => {

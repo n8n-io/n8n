@@ -98,6 +98,8 @@ export interface UseAgentChatStreamParams {
 	budgetCards?: boolean;
 	/** Card types of the chat host. The stream maps suspended tool calls with them. */
 	interactionExtensions?: readonly AgentsChatInteractionExtension[];
+	/** Called with each event of the chat stream, as received. */
+	onStreamEvent?: (event: AgentSseEvent) => void;
 }
 
 type ResumePayload =
@@ -1480,6 +1482,7 @@ export function useAgentChatStream(params: UseAgentChatStreamParams) {
 					} catch {
 						continue;
 					}
+					params.onStreamEvent?.(event);
 					const result =
 						event.type === 'execution-started' && session.needsStartValidation
 							? await handleDelayedExecutionStart(event, session)

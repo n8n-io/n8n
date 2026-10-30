@@ -470,6 +470,32 @@ describe('AssistantAgentThreadView', () => {
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
 	});
 
+	describe('trace export', () => {
+		afterEach(() => {
+			localStorage.removeItem('instanceAi.debugMode');
+		});
+
+		it('hides the trace menu without the debug flag', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-trace-button')).not.toBeInTheDocument();
+		});
+
+		it('shows the trace menu and listens to the chat stream with the debug flag', async () => {
+			localStorage.setItem('instanceAi.debugMode', 'true');
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-trace-button')).toBeInTheDocument();
+			expect(panelProps.current.onStreamEvent).toEqual(expect.any(Function));
+		});
+	});
+
 	describe('artifacts panel', () => {
 		const userMessage: ChatMessage = { id: 'u1', role: 'user', content: 'Build a digest' };
 
