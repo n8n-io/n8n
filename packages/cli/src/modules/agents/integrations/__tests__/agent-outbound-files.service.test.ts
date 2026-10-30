@@ -210,6 +210,27 @@ describe('AgentOutboundFiles.postReplyFiles', () => {
 		});
 	});
 
+	it('posts Discord reply text over the message limit as its own messages before the files', async () => {
+		const { service, thread } = createService();
+		// 2,500 characters in lines, more than the Discord message limit of 1,900.
+		const caption = 'line of reply text\n'.repeat(132).slice(0, 2500);
+
+		await service.postReplyFiles(thread, 'discord', { fileIds: ['file-1'], caption, scope });
+
+		const posts = thread.post.mock.calls.map(([message]) => message);
+		expect(posts).toHaveLength(3);
+		expect(
+			posts
+				.slice(0, 2)
+				.map((post) => (post as { markdown: string }).markdown)
+				.join(''),
+		).toBe(caption);
+		expect(posts[2]).toEqual({
+			raw: '',
+			files: [{ data: Buffer.from('png'), filename: 'chart.png', mimeType: 'image/png' }],
+		});
+	});
+
 	it('posts mixed Slack files in one message', async () => {
 		const { service, thread } = createService();
 

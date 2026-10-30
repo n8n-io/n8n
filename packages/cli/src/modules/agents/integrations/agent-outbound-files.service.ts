@@ -39,9 +39,10 @@ export type OutboundFileGroup = () => Promise<OutboundFileFields>;
 
 /**
  * Post a message with its files, one message for each file group. The text
- * or card goes with the first group. Text longer than `maxCaptionLength` is
- * posted on its own before the files, split at `maxMessageLength`, so the
- * platform does not cut it. Return the result of the first post.
+ * or card goes with the first group. Text longer than `maxCaptionLength` or
+ * `maxMessageLength` is posted on its own before the files, split at
+ * `maxMessageLength`, so the platform does not cut it. Return the result of
+ * the first post.
  */
 export async function postWithFileGroups<T>(
 	post: (message: OutboundPostable) => Promise<T>,
@@ -53,7 +54,8 @@ export async function postWithFileGroups<T>(
 	if (!loadFirstGroup) return await post(message);
 	const text = postableText(message);
 	const { maxCaptionLength, maxMessageLength } = limits;
-	if (maxCaptionLength !== undefined && text !== undefined && text.length > maxCaptionLength) {
+	const captionLimit = Math.min(maxCaptionLength ?? Infinity, maxMessageLength ?? Infinity);
+	if (text !== undefined && text.length > captionLimit) {
 		const parts = maxMessageLength === undefined ? [text] : splitMessage(text, maxMessageLength);
 		let first: T | undefined;
 		for (const part of parts) {
