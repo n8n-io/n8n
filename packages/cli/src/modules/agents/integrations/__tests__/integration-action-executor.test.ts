@@ -348,6 +348,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors(
 			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
@@ -384,6 +385,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors(
 			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
@@ -411,6 +413,7 @@ describe('ChatIntegrationActionExecutor', () => {
 			chatIntegrationService,
 			buildRegistry(),
 			new ChannelRateLimitGuard(),
+			mock<AgentOutboundFiles>(),
 		);
 		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
 
@@ -1591,6 +1594,7 @@ describe('ChatIntegrationActionExecutor', () => {
 				chatIntegrationService,
 				buildRegistry(),
 				new ChannelRateLimitGuard(),
+				mock<AgentOutboundFiles>(),
 			);
 			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
 
