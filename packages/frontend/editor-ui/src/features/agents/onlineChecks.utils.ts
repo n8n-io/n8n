@@ -19,3 +19,11 @@ export function onlineScore(result: { rubric: AgentOnlineRubric; verdicts: Agent
 		total: result.rubric.checks.filter((check) => status(check.id) !== 'not_applicable').length,
 	};
 }
+
+export type OnlineConfidence = 'high' | 'medium' | 'low';
+
+/** How sure we are that a run met its checks: all passed, most passed, or fewer. */
+export function onlineConfidence(score: { passed: number; total: number }): OnlineConfidence {
+	if (score.total === 0 || score.passed === score.total) return 'high';
+	return score.passed / score.total >= 0.8 ? 'medium' : 'low';
+}

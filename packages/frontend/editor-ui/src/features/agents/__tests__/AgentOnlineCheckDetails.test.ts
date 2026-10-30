@@ -159,3 +159,35 @@ it('shows the recorded conversation for a human review', async () => {
 	expect(getByText('Sent the fortune')).toBeVisible();
 	expect(recheck).not.toHaveBeenCalled();
 });
+it('lists the checks that ran, failures first, apart from the checks this session skipped', async () => {
+	const check = (id: string, question: string) => ({ ...rubric.checks[0], id, question });
+	const wide: AgentOnlineRubric = {
+		...rubric,
+		checks: [
+			check('reply', 'Did the agent reply?'),
+			check('tone', 'Was the tone playful?'),
+			check('refuse', 'Did the agent refuse other tasks?'),
+		],
+	};
+	const result: AgentOnlineCaseResult = {
+		...latest,
+		rubric: wide,
+		verdicts: [
+			{ checkId: 'reply', status: 'pass', reason: 'It replied' },
+			{ checkId: 'tone', status: 'fail', reason: 'It was too formal' },
+			{ checkId: 'refuse', status: 'not_applicable', reason: 'The user asked for a translation' },
+		],
+	};
+	listResults.mockResolvedValue({ items: [result], hasMore: false });
+	const { getByTestId } = renderComponent({
+		pinia: createTestingPinia(),
+		props: { rubric: wide, testCase: { ...testCase, latestResult: result } },
+	});
+	await flushPromises();
+	const ran = getByTestId('agent-online-details-ran').textContent ?? '';
+	expect(ran.indexOf('Was the tone playful?')).toBeLessThan(ran.indexOf('Did the agent reply?'));
+	expect(ran).not.toContain('Did the agent refuse other tasks?');
+	expect(getByTestId('agent-online-details-skipped')).toHaveTextContent(
+		'Did the agent refuse other tasks?',
+	);
+});

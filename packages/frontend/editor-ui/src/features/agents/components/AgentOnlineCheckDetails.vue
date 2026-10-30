@@ -25,14 +25,18 @@ const props = defineProps<{
 	testCase: AgentOnlineCase | null;
 	rubric: AgentOnlineRubric | null;
 	disabled?: boolean;
+	/** A narrow sidebar with only this assessment, for reading a session at a glance. */
+	compact?: boolean;
 }>();
 const emit = defineEmits<{ close: []; updated: [] }>();
 const i18n = useI18n();
 const root = useRootStore();
 const wideViewport = useMediaQuery('(min-width: 80rem)');
-const drawerWidth = computed(() =>
-	wideViewport.value ? 'min(40vw, calc(var(--spacing--5xl) * 3))' : '100%',
-);
+const drawerWidth = computed(() => {
+	// Compact stays a sidebar at every width. On wide screens the editor column reserves the same width.
+	if (props.compact) return 'min(90vw, 28rem)';
+	return wideViewport.value ? 'min(40vw, calc(var(--spacing--5xl) * 3))' : '100%';
+});
 const { APP_Z_INDEXES } = useStyles();
 const history = ref<AgentOnlineCaseResult[]>([]);
 const conversation = ref<NonNullable<AgentOnlineResultPage['conversation']>>([]);
@@ -114,9 +118,23 @@ const rows = computed(
 			verdict: selected.value?.verdicts.find((verdict) => verdict.checkId === check.id),
 		})) ?? [],
 );
+// Checks that ran come first, failures at the top, then the checks this run skipped.
+const statusOrder = ['fail', 'unsure', 'not_run', 'pass'];
 const groups = computed(() => [
-	{ key: 'always', rows: rows.value.filter((row) => row.check.kind !== 'promise') },
-	{ key: 'specific', rows: rows.value.filter((row) => row.check.kind === 'promise') },
+	{
+		key: 'ran' as const,
+		rows: rows.value
+			.filter((row) => row.verdict?.status !== 'not_applicable')
+			.sort(
+				(a, b) =>
+					statusOrder.indexOf(a.verdict?.status ?? 'not_run') -
+					statusOrder.indexOf(b.verdict?.status ?? 'not_run'),
+			),
+	},
+	{
+		key: 'skipped' as const,
+		rows: rows.value.filter((row) => row.verdict?.status === 'not_applicable'),
+	},
 ]);
 const passed = computed(() => rows.value.filter((row) => row.verdict?.status === 'pass').length);
 const applicable = computed(
@@ -226,12 +244,18 @@ watch(
 			</template>
 			<N8nSpinner v-if="loading" size="small" />
 			<template v-if="shownRubric">
-				<section v-for="group in groups" :key="group.key" :class="$style.group">
+				<section
+					v-for="group in groups.filter((item) => item.rows.length > 0)"
+					:key="group.key"
+					:class="$style.group"
+					:data-testid="`agent-online-details-${group.key}`"
+				>
 					<N8nText tag="h3" size="small" color="text-base" bold>{{
 						i18n.baseText(
-							group.key === 'always'
-								? 'agents.builder.agentEvals.onlineChecks.review.alwaysHeading'
-								: 'agents.builder.agentEvals.onlineChecks.review.specificHeading',
+							group.key === 'ran'
+								? 'agents.monitoring.sessionChecks.ran'
+								: 'agents.monitoring.sessionChecks.skipped',
+							{ interpolate: { count: String(group.rows.length) } },
 						)
 					}}</N8nText>
 					<details
@@ -333,7 +357,7 @@ watch(
 						</div>
 					</details>
 				</section>
-				<N8nText size="xsmall" color="text-base">{{
+				<N8nText v-if="!compact" size="xsmall" color="text-base">{{
 					i18n.baseText('agents.builder.agentEvals.onlineChecks.history.rubricDate', {
 						interpolate: { date: formatDate(shownRubric.generatedAt) },
 					})
@@ -359,7 +383,7 @@ watch(
 				</div>
 			</details>
 
-			<template v-if="testCase">
+			<template v-if="testCase && !compact">
 				<N8nText tag="h3" size="medium" bold>{{
 					i18n.baseText('agents.builder.agentEvals.onlineChecks.history.results')
 				}}</N8nText>

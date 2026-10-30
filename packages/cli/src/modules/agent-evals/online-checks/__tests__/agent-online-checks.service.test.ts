@@ -393,3 +393,34 @@ describe('rubric review', () => {
 		expect(result.verdicts[0].status).toBe('fail');
 	});
 });
+
+describe('monitoring approval', () => {
+	const context = mock<AgentContextService>();
+	const user = mock<User>({ id: 'builder' });
+	const service = new AgentOnlineChecksService(
+		context,
+		mock<CredentialsService>(),
+		mock<Logger>(),
+		mock<AgentOnlineCheckHistoryRepository>(),
+		mock<EvalAgentExecutionService>(),
+	);
+	beforeEach(() => {
+		vi.clearAllMocks();
+	});
+
+	it('saves the checks with an approval date and keeps them unchanged', async () => {
+		const rubric = { checks: [], generatedAt: '2026-10-29T12:00:00Z' };
+		context.readOnlineRubric.mockResolvedValue(rubric);
+		const approved = await service.approveRubric(user, 'project', 'agent');
+		expect(approved).toEqual({ ...rubric, approvedAt: expect.any(String) });
+		expect(context.saveOnlineRubric).toHaveBeenCalledWith(user, 'project', 'agent', approved);
+	});
+
+	it('refuses approval before checks exist', async () => {
+		context.readOnlineRubric.mockResolvedValue(null);
+		await expect(service.approveRubric(user, 'project', 'agent')).rejects.toThrow(
+			'Write checks for this agent before you approve them.',
+		);
+		expect(context.saveOnlineRubric).not.toHaveBeenCalled();
+	});
+});

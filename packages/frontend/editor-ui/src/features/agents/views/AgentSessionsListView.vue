@@ -4,6 +4,8 @@ import { useToast } from '@n8n/composables/useToast';
 import { MODAL_CONFIRM } from '@/app/constants';
 import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import { useAgentSessionsStore } from '@/features/agents/agentSessions.store';
+import { useAgentMonitoringStore } from '@/features/agents/agentMonitoring.store';
+import { onlineConfidence, onlineScore } from '@/features/agents/onlineChecks.utils';
 import { AGENT_SESSION_DETAIL_VIEW } from '@/features/agents/constants';
 import { useThreadTitle } from '@/features/agents/utils/thread-title';
 import {
@@ -16,8 +18,9 @@ import type {
 	AgentSessionStatus,
 } from '@/features/agents/composables/useAgentThreadsApi';
 import AgentSessionsFilter from '@/features/agents/components/AgentSessionsFilter.vue';
+import AgentOnlineCheckDetails from '@/features/agents/components/AgentOnlineCheckDetails.vue';
 import { useI18n } from '@n8n/i18n';
-import { computed, onBeforeUnmount, onMounted } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import {
@@ -41,6 +44,8 @@ const sessionFilterFields: Array<[keyof AgentSessionFilters, AgentSessionFilterN
 	['endDate', 'end_date'],
 ];
 
+const emit = defineEmits<{ 'details-open': [open: boolean] }>();
+
 const props = withDefaults(
 	defineProps<{
 		embedded?: boolean;
@@ -63,6 +68,7 @@ const router = useRouter();
 const toast = useToast();
 const message = useMessage();
 const sessionsStore = useAgentSessionsStore();
+const monitoringStore = useAgentMonitoringStore();
 const agentTelemetry = useAgentTelemetry();
 let disposed = false;
 let managesStoreLifecycle = false;
@@ -73,6 +79,72 @@ const hasActiveFilters = computed(() => {
 	const { status, origin, startDate, endDate } = sessionsStore.filters;
 	return status !== 'all' || origin !== 'all' || Boolean(startDate) || Boolean(endDate);
 });
+
+const monitoring = computed(() =>
+	agentId.value ? monitoringStore.byAgent[agentId.value] : undefined,
+);
+const monitoringOn = computed(() => Boolean(monitoring.value?.rubric?.approvedAt));
+const columnCount = computed(() => (monitoringOn.value ? 6 : 5));
+/** The session whose checks show in the details sidebar. */
+const checksFor = ref<AgentExecutionThread | null>(null);
+watch(
+	() => checksFor.value !== null,
+	(open) => emit('details-open', open),
+);
+const checksCase = computed(() => {
+	const thread = checksFor.value;
+	const result = thread ? monitoring.value?.results[thread.id] : undefined;
+	if (!thread || !result) return null;
+	return {
+		id: result.caseId,
+		title: threadTitleOf(thread),
+		threadId: thread.id,
+		createdAt: result.checkedAt,
+		latestResult: result,
+		recentResults: [],
+	};
+});
+
+type ConfidenceCell = {
+	kind: 'scored' | 'checking' | 'notChecked' | 'pending';
+	level?: 'high' | 'medium' | 'low';
+	passed?: number;
+	total?: number;
+};
+/** Confidence that a session met its checks. A failed run has no answer to check. */
+function confidenceOf(thread: AgentExecutionThread): ConfidenceCell {
+	const result = monitoring.value?.results[thread.id];
+	if (result) {
+		const score = onlineScore(result);
+		return { kind: 'scored', level: onlineConfidence(score), ...score };
+	}
+	if (thread.status === 'error' || thread.status === 'cancelled') return { kind: 'notChecked' };
+	if (monitoring.value?.checking.includes(thread.id)) return { kind: 'checking' };
+	return { kind: 'pending' };
+}
+
+// Monitoring checks finished sessions that have no result yet, so new runs get checked over time.
+watch(
+	agentId,
+	async (id) => {
+		if (!id || !projectId.value) return;
+		await monitoringStore.load(projectId.value, id);
+		void monitoringStore.checkUnchecked(projectId.value, id);
+	},
+	{ immediate: true },
+);
+// A run that finishes while this tab is open gets checked too.
+watch(
+	() =>
+		sessionsStore.threads
+			.filter((thread) => thread.status === 'succeeded' && !monitoring.value?.results[thread.id])
+			.map((thread) => thread.id)
+			.join(),
+	(unchecked) => {
+		if (!unchecked || !monitoringOn.value || !projectId.value || !agentId.value) return;
+		void monitoringStore.checkUnchecked(projectId.value, agentId.value);
+	},
+);
 
 function onVisibilityChange() {
 	// Refresh as soon as the user returns to the tab — auto-refresh is
@@ -103,6 +175,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
 	disposed = true;
+	if (checksFor.value) emit('details-open', false);
 	if (!managesStoreLifecycle) return;
 
 	document.removeEventListener('visibilitychange', onVisibilityChange);
@@ -296,6 +369,13 @@ async function onFiltersChange(value: AgentSessionFilters) {
 			/>
 			<AgentSessionsFilter :model-value="sessionsStore.filters" @filter-changed="onFiltersChange" />
 		</div>
+		<N8nText
+			v-if="monitoringOn"
+			size="small"
+			color="text-base"
+			data-testid="agent-sessions-confidence-note"
+			>{{ i18n.baseText('agents.monitoring.sessions.note') }}</N8nText
+		>
 		<div :class="$style.tableContainer">
 			<N8nTableBase :class="$style.sessionsTable">
 				<tbody>
@@ -345,6 +425,37 @@ async function onFiltersChange(value: AgentSessionFilters) {
 								{{ originPresentation(thread).label }}
 							</N8nBadge>
 						</td>
+						<td
+							v-if="monitoringOn"
+							:class="$style.confidenceCell"
+							data-testid="agent-session-confidence"
+							@click.stop
+						>
+							<button
+								v-if="confidenceOf(thread).kind === 'scored'"
+								type="button"
+								:class="[$style.confidence, $style[`confidence-${confidenceOf(thread).level}`]]"
+								:aria-pressed="checksFor?.id === thread.id"
+								:aria-label="i18n.baseText('agents.monitoring.sessionChecks.toggle')"
+								data-testid="agent-session-confidence-toggle"
+								@click="checksFor = thread"
+							>
+								<span :class="$style.confidenceDot" aria-hidden="true" /><b>{{
+									i18n.baseText(`agents.monitoring.confidence.${confidenceOf(thread).level}`)
+								}}</b
+								><N8nText size="small" color="text-base">{{
+									i18n.baseText('agents.monitoring.confidence.checks', {
+										interpolate: {
+											passed: String(confidenceOf(thread).passed),
+											total: String(confidenceOf(thread).total),
+										},
+									})
+								}}</N8nText>
+							</button>
+							<N8nText v-else size="small" color="text-light">{{
+								i18n.baseText(`agents.monitoring.confidence.${confidenceOf(thread).kind}`)
+							}}</N8nText>
+						</td>
 						<td :class="$style.dateCell" data-test-id="agent-session-updated-at">
 							{{ formatDate(thread.updatedAt) }}
 						</td>
@@ -364,7 +475,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 					</tr>
 					<template v-if="sessionsStore.loading && !sessionsStore.threads.length">
 						<tr v-for="item in 5" :key="item" :class="$style.skeletonRow">
-							<td v-for="col in 5" :key="col">
+							<td v-for="col in columnCount" :key="col">
 								<ElSkeletonItem />
 							</td>
 						</tr>
@@ -373,7 +484,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 						v-if="!sessionsStore.loading && !sessionsStore.threads.length"
 						:class="$style.lastRow"
 					>
-						<td :colspan="5" style="text-align: center; padding: var(--spacing--lg)">
+						<td :colspan="columnCount" style="text-align: center; padding: var(--spacing--lg)">
 							<template v-if="!sessionsStore.threads.length && !sessionsStore.loading">
 								<div :class="$style.emptyState">
 									<span data-test-id="agent-sessions-empty">
@@ -395,7 +506,7 @@ async function onFiltersChange(value: AgentSessionFilters) {
 						</td>
 					</tr>
 					<tr :class="$style.lastRow" v-if="sessionsStore.nextCursor">
-						<td :colspan="5">
+						<td :colspan="columnCount">
 							<N8nButton
 								icon="refresh-cw"
 								variant="ghost"
@@ -410,11 +521,61 @@ async function onFiltersChange(value: AgentSessionFilters) {
 				</tbody>
 			</N8nTableBase>
 		</div>
+		<AgentOnlineCheckDetails
+			v-if="monitoringOn && projectId && agentId"
+			:open="checksCase !== null"
+			:project-id="projectId"
+			:agent-id="agentId"
+			:test-case="checksCase"
+			:initial-result-id="checksCase?.latestResult.id"
+			:initial-assessment="checksCase?.latestResult"
+			:rubric="monitoring?.rubric ?? null"
+			compact
+			@close="checksFor = null"
+		/>
 	</div>
 </template>
 
 <style module lang="scss">
 @use '@n8n/design-system/css/mixins/_focus.scss' as focus;
+
+.confidenceCell {
+	white-space: nowrap;
+}
+.confidence {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs) var(--spacing--3xs);
+	border: 0;
+	border-radius: var(--radius);
+	background: transparent;
+	font: inherit;
+	font-size: var(--font-size--sm);
+	cursor: pointer;
+
+	&:hover {
+		background: var(--background--subtle);
+	}
+	&:focus-visible {
+		outline: var(--border-width) solid var(--color--primary);
+	}
+}
+.confidenceDot {
+	width: var(--spacing--2xs);
+	height: var(--spacing--2xs);
+	border-radius: var(--radius--full);
+	background: currentColor;
+}
+.confidence-high {
+	color: var(--color--success);
+}
+.confidence-medium {
+	color: var(--color--warning);
+}
+.confidence-low {
+	color: var(--color--danger);
+}
 
 .wrapper {
 	display: flex;

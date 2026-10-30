@@ -534,6 +534,14 @@ export class AgentEvalsController {
 		return id;
 	}
 
+	@Post('/:agentId/evals/online-checks/rubric/approve')
+	@ProjectScope('agent:update')
+	async approveOnlineRubric(req: AuthenticatedRequest<AgentParam>): Promise<AgentOnlineRubric> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.approveRubric(req.user, projectId, agentId);
+	}
+
 	@Post('/:agentId/evals/online-checks/rubric')
 	@ProjectScope('agent:update')
 	async generateOnlineRubric(req: AuthenticatedRequest<AgentParam>): Promise<AgentOnlineRubric> {

@@ -15,6 +15,8 @@ export interface AgentOnlineRubric {
 	checks: AgentOnlineCheck[];
 	generatedAt: string;
 	updatedAt?: string;
+	/** When a person approved these checks for live monitoring. */
+	approvedAt?: string;
 }
 export const MAX_AGENT_ONLINE_SESSIONS = 10;
 

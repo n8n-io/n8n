@@ -26,6 +26,7 @@ import {
 	runOnlineChecks,
 } from '../agentEvals.api';
 import { onlineResultStatus, onlineScore } from '../onlineChecks.utils';
+import AgentOnlineChecksTable from './AgentOnlineChecksTable.vue';
 
 /**
  * Prototype of evals for a change to a published agent. The Rubric view shows
@@ -42,6 +43,7 @@ const props = defineProps<{
 }>();
 const emit = defineEmits<{
 	publish: [];
+	close: [];
 	'details-open': [open: boolean];
 	'data-opened': [];
 }>();
@@ -120,28 +122,6 @@ const finished = computed(() =>
 		.filter((comparison): comparison is AgentOnlineReplayComparison => comparison !== undefined),
 );
 const hasReplayed = computed(() => Object.keys(replays.value).length > 0);
-
-/** The question without the "Did the agent" the column header already says. */
-const checkText = (question: string) => question.replace(/^did the agent\s+/i, '…');
-
-type DotStatus = 'good' | 'bad' | 'review' | 'none';
-/** This check's verdicts in the five latest assessments, oldest first. */
-function lastFive(checkId: string): DotStatus[] {
-	return activity.value
-		.map((item) => item.result.verdicts.find((verdict) => verdict.checkId === checkId)?.status)
-		.filter((status) => status !== undefined)
-		.slice(0, 5)
-		.reverse()
-		.map((status) =>
-			status === 'pass'
-				? 'good'
-				: status === 'fail'
-					? 'bad'
-					: status === 'not_applicable'
-						? 'none'
-						: 'review',
-		);
-}
 
 type Trend = 'better' | 'same' | 'worse';
 function trend(comparison: AgentOnlineReplayComparison): Trend {
@@ -303,6 +283,14 @@ watch(() => [props.projectId, props.agentId], load, { immediate: true });
 					})
 				}}</N8nButton
 			>
+			<N8nButton
+				variant="ghost"
+				size="small"
+				:disabled="replaying"
+				data-testid="agent-online-replay-close"
+				@click="emit('close')"
+				>{{ i18n.baseText('agents.builder.agentEvals.replay.backToMonitoring') }}</N8nButton
+			>
 		</nav>
 
 		<N8nCallout v-if="error" theme="danger">{{ error }}</N8nCallout>
@@ -330,42 +318,7 @@ watch(() => [props.projectId, props.agentId], load, { immediate: true });
 					>{{ i18n.baseText('agents.builder.agentEvals.replay.addMore') }}</N8nButton
 				>
 			</div>
-			<div v-if="rubric" :class="$style.tableWrap">
-				<table :class="[$style.table, $style.checks]" data-testid="agent-online-replay-rubric">
-					<thead>
-						<tr>
-							<th>{{ i18n.baseText('agents.builder.agentEvals.replay.table.check') }}</th>
-							<th>{{ i18n.baseText('agents.builder.agentEvals.replay.table.appliesWhen') }}</th>
-							<th>{{ i18n.baseText('agents.builder.agentEvals.replay.table.lastFive') }}</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr v-for="check in rubric.checks" :key="check.id">
-							<td>
-								<N8nText size="small" color="text-dark" bold>{{
-									checkText(check.question)
-								}}</N8nText>
-							</td>
-							<td>
-								<N8nText size="small" color="text-base">{{
-									check.appliesWhen ||
-									i18n.baseText('agents.builder.agentEvals.replay.table.always')
-								}}</N8nText>
-							</td>
-							<td>
-								<span :class="$style.dots">
-									<span
-										v-for="(status, index) in lastFive(check.id)"
-										:key="index"
-										:class="[$style.dot, $style[status]]"
-										aria-hidden="true"
-									/>
-								</span>
-							</td>
-						</tr>
-					</tbody>
-				</table>
-			</div>
+			<AgentOnlineChecksTable v-if="rubric" :rubric="rubric" :activity="activity" />
 		</template>
 
 		<template v-else>
@@ -654,20 +607,6 @@ watch(() => [props.projectId, props.agentId], load, { immediate: true });
 		border-top: var(--border-width) var(--border-style) var(--border-color);
 	}
 }
-.checks {
-	td:first-child {
-		width: 55%;
-	}
-	th:last-child,
-	td:last-child {
-		white-space: nowrap;
-	}
-}
-.dots {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
 .score {
 	display: inline-flex;
 	align-items: center;
@@ -690,9 +629,6 @@ watch(() => [props.projectId, props.agentId], load, { immediate: true });
 }
 .bad {
 	color: var(--color--danger);
-}
-.none {
-	color: var(--text-color--subtler);
 }
 .drawer {
 	:global(.el-drawer__header) {

@@ -210,12 +210,13 @@ async function mountColumn(
 					emits: ['update:config'],
 				},
 				AgentAdvancedPanel: true,
-				AgentOnlineChecksPanel: {
-					name: 'AgentOnlineChecksPanel',
+				AgentMonitoringPanel: {
+					name: 'AgentMonitoringPanel',
 					props: ['projectId', 'agentId', 'disabled'],
-					emits: ['details-open'],
+					emits: ['view-sessions'],
 					template: '<div />',
 				},
+				AgentOnlineReplayPanel: true,
 				AgentSessionsListView: true,
 			},
 		},
@@ -374,13 +375,19 @@ describe('AgentBuilderEditorColumn', () => {
 
 	it('reserves editor space while assessment details are open', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals' });
-		wrapper.getComponent({ name: 'AgentOnlineChecksPanel' }).vm.$emit('details-open', true);
+		wrapper.getComponent({ name: 'AgentEvalsSection' }).vm.$emit('details-open', true);
 		await flushPromises();
 		expect(wrapper.classes().some((name) => name.includes('evalReviewOpen'))).toBe(true);
-		wrapper.getComponent({ name: 'AgentOnlineChecksPanel' }).vm.$emit('details-open', false);
+		wrapper.getComponent({ name: 'AgentEvalsSection' }).vm.$emit('details-open', false);
 		await flushPromises();
 		expect(wrapper.classes().some((name) => name.includes('evalReviewOpen'))).toBe(false);
 	});
+	it('opens the Sessions tab when monitoring asks to view sessions', async () => {
+		const wrapper = await mountColumn({ activeMainTab: 'evals' });
+		wrapper.getComponent({ name: 'AgentMonitoringPanel' }).vm.$emit('view-sessions');
+		expect(wrapper.emitted('update:activeMainTab')?.at(-1)).toEqual(['sessions']);
+	});
+
 	it('gives the evals section the agent it should read', async () => {
 		const wrapper = await mountColumn({ activeMainTab: 'evals' });
 		const section = wrapper.getComponent({ name: 'AgentEvalsSection' });

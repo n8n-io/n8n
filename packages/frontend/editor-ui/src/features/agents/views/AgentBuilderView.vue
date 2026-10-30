@@ -105,6 +105,7 @@ import {
 	AGENT_DEFAULT_PANEL_WIDTH,
 	AGENT_DEFAULT_PANEL_WIDTH_RATIO,
 	AGENT_PREVIEW_VIEW,
+	AGENT_PUBLISHED_MODAL_KEY,
 	AGENT_SESSION_DETAIL_VIEW,
 	AGENT_JSON_IMPORT_MODAL_KEY,
 	AGENT_DESCRIPTION_MODAL_KEY,
@@ -140,6 +141,8 @@ import {
 import AgentBuilderHeader from '../components/AgentBuilderHeader.vue';
 import AgentCollaborationBanner from '../components/AgentCollaborationBanner.vue';
 import AgentBuilderEditorColumn from '../components/AgentBuilderEditorColumn.vue';
+import AgentMonitoringPopover from '../components/AgentMonitoringPopover.vue';
+import { useAgentMonitoringStore } from '../agentMonitoring.store';
 import AgentBuilderIntro from '../components/AgentBuilderIntro.vue';
 import type { SetupTask } from '../components/AgentSetupTasks/agentSetupTasks.registry';
 import AgentPreviewHeader from '../components/AgentPreviewHeader.vue';
@@ -236,6 +239,7 @@ const instanceAiAvailable = useInstanceAiAvailable();
 const instanceAiReady = useInstanceAiReady();
 const sessionsStore = useAgentSessionsStore();
 const agentEvalsStore = useAgentEvalsStore();
+const agentMonitoringStore = useAgentMonitoringStore();
 const credentialsStore = useCredentialsStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
@@ -1308,9 +1312,28 @@ function onPreviewDockResize({ width }: ResizeData) {
 	previewDockWidth.value = width;
 }
 
+/** Shows the live monitoring offer (E1.1) after the first publish. */
+const monitoringPromptOpen = ref(false);
+
 function onPublished(updated: AgentResource) {
+	const firstPublish = !agent.value?.activeVersionId && Boolean(updated.activeVersionId);
 	agent.value = updated;
 	void versionHistoryPanel.value?.refresh();
+	if (
+		firstPublish &&
+		visibleMainTabOptions.value.some((option) => option.value === 'evals') &&
+		!agentMonitoringStore.isMonitoring(updated.id)
+	) {
+		// The offer already says the agent is published, so it replaces that confirmation.
+		uiStore.closeModal(AGENT_PUBLISHED_MODAL_KEY);
+		monitoringPromptOpen.value = true;
+	}
+}
+
+function onSetUpMonitoring() {
+	monitoringPromptOpen.value = false;
+	agentMonitoringStore.setupRequestedFor = agentId.value;
+	agentEvalsStore.requestEvalsFocus(agentId.value);
 }
 
 function onUnpublished(updated: AgentResource) {
@@ -3271,6 +3294,12 @@ useKeybindings({
 			@setup-task-action="onSetupTaskAction"
 		/>
 		<AgentCollaborationBanner v-if="!isArtifactMode" />
+		<AgentMonitoringPopover
+			v-if="monitoringPromptOpen"
+			:agent-name="agent?.name ?? ''"
+			@set-up="onSetUpMonitoring"
+			@dismiss="monitoringPromptOpen = false"
+		/>
 		<div
 			v-if="
 				!isArtifactMode &&

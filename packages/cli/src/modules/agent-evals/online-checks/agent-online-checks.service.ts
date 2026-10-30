@@ -256,6 +256,15 @@ export class AgentOnlineChecksService {
 		};
 	}
 
+	/** Approves the saved checks for live monitoring. */
+	async approveRubric(user: User, projectId: string, agentId: string) {
+		const rubric = await this.getRubric(user, projectId, agentId);
+		if (!rubric) throw new NotFoundError('Write checks for this agent before you approve them.');
+		const approved = { ...rubric, approvedAt: new Date().toISOString() };
+		await this.agentContextService.saveOnlineRubric(user, projectId, agentId, approved);
+		return approved;
+	}
+
 	async updateCheck(
 		user: User,
 		projectId: string,

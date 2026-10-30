@@ -368,6 +368,51 @@ export const generateOnlineRubric = async (
 		`${evalsPath(projectId, agentId)}/online-checks/rubric`,
 	);
 
+// Approve the saved checks for live monitoring.
+export const approveOnlineRubric = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	rubric: AgentOnlineRubric,
+): Promise<AgentOnlineRubric> => {
+	try {
+		return await makeRestApiRequest<AgentOnlineRubric>(
+			context,
+			'POST',
+			`${evalsPath(projectId, agentId)}/online-checks/rubric/approve`,
+		);
+	} catch (error) {
+		if (!isNotFound(error)) throw error;
+		// Prototype stand-in for a backend without the approve route: keep the approval in this browser.
+		const approved = { ...rubric, approvedAt: new Date().toISOString() };
+		localApprovals.set(agentId, rubric.generatedAt);
+		return approved;
+	}
+};
+
+/** Approvals kept in this browser when the backend has no approve route. */
+export const localApprovals = {
+	key: (agentId: string) => `n8n-agent-monitoring-approved:${agentId}`,
+	set(agentId: string, generatedAt: string) {
+		try {
+			localStorage.setItem(this.key(agentId), generatedAt);
+		} catch {
+			// Storage can be unavailable. The approval then lasts for this page only.
+		}
+	},
+	/** Adds a local approval to a rubric that the backend returned without one. */
+	apply(agentId: string, rubric: AgentOnlineRubric | null): AgentOnlineRubric | null {
+		if (!rubric || rubric.approvedAt) return rubric;
+		try {
+			return localStorage.getItem(this.key(agentId)) === rubric.generatedAt
+				? { ...rubric, approvedAt: rubric.generatedAt }
+				: rubric;
+		} catch {
+			return rubric;
+		}
+	},
+};
+
 export const listOnlineSessions = async (
 	context: IRestApiContext,
 	projectId: string,

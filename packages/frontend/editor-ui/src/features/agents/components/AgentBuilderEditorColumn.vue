@@ -70,6 +70,7 @@ const props = defineProps<{
 }>();
 
 const evalReviewOpen = ref(false);
+const sessionChecksOpen = ref(false);
 const childrenDisabled = computed(() => !props.canEditAgent);
 provideAgentPersonalisation(
 	() => props.localConfig?.personalisation ?? props.agent?.schema?.personalisation,
@@ -173,6 +174,8 @@ defineExpose({ onSetupTaskAction });
 			{
 				[$style.embeddedAiBuilding]: props.embeddedAiBuilding,
 				[$style.evalReviewOpen]: evalReviewOpen && activeMainTab === 'evals' && !artifactMode,
+				[$style.sessionChecksOpen]:
+					sessionChecksOpen && activeMainTab === 'sessions' && !artifactMode,
 			},
 		]"
 		:aria-label="i18n.baseText('agents.builder.editorColumn.ariaLabel')"
@@ -367,6 +370,7 @@ defineExpose({ onSetupTaskAction });
 						:project-id="projectId"
 						:agent-id="agentId"
 						:manage-store-lifecycle="false"
+						@details-open="sessionChecksOpen = $event"
 						data-testid="agent-executions-panel"
 					/>
 				</AgentBuilderTabPanel>
@@ -424,6 +428,7 @@ defineExpose({ onSetupTaskAction });
 						:generating="generatingEvalCases"
 						@generate="emit('generate-eval-cases')"
 						@publish-changes="emit('publish-changes')"
+						@view-sessions="onMainTabSelect('sessions')"
 						@details-open="evalReviewOpen = $event"
 					/>
 				</AgentBuilderTabPanel>
@@ -485,6 +490,10 @@ defineExpose({ onSetupTaskAction });
 @media (min-width: 80rem) {
 	.evalReviewOpen {
 		margin-right: min(40vw, calc(var(--spacing--5xl) * 3));
+	}
+	// Matches the compact width of AgentOnlineCheckDetails.
+	.sessionChecksOpen {
+		margin-right: min(90vw, 28rem);
 	}
 }
 
