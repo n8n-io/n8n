@@ -109,7 +109,9 @@ vi.mock('../workflows.tool', () => ({
 }));
 
 vi.mock('../workspace.tool', () => ({
-	createWorkspaceTool: vi.fn(() => ({ id: 'workspace' })),
+	createWorkspaceActionTool: vi.fn((_context: unknown, action: string) => ({
+		id: `workspace:${action}`,
+	})),
 }));
 
 vi.mock('../create-tools-from-mcp-server', () => ({
@@ -160,7 +162,8 @@ describe('domain tool construction', () => {
 			list_data_tables: { id: 'data-table:list' },
 			query_data_table: { id: 'data-table:query' },
 			delete_data_table_rows: { id: 'data-table:delete-rows' },
-			workspace: { id: 'workspace' },
+			list_projects: { id: 'workspace:list-projects' },
+			tag_workflow: { id: 'workspace:tag-workflow' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
 			search_nodes: { id: 'search_nodes' },
@@ -173,6 +176,7 @@ describe('domain tool construction', () => {
 		});
 		expect(orchestratorTools.has('workflow_builder_workflows')).toBe(false);
 		expect(orchestratorTools.has('workflows')).toBe(false);
+		expect(orchestratorTools.has('workspace')).toBe(false);
 		expect(orchestratorTools.has('workflow_builder_nodes')).toBe(false);
 		expect(orchestratorTools.has('templates')).toBe(false);
 		expect(orchestratorTools.has('evals')).toBe(false);

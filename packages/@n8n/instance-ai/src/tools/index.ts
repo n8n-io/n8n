@@ -6,6 +6,9 @@ import {
 	EXECUTION_TOOL_ACTIONS,
 	EXECUTION_TOOL_NAME_BY_ACTION,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
+	WORKSPACE_FOLDER_TOOL_ACTIONS,
+	WORKSPACE_TOOL_ACTIONS,
+	WORKSPACE_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
@@ -146,7 +149,15 @@ function getOrchestratorDomainToolFactories(
 			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
 			() => loadDataTablesTool().createDataTableTool(context, action),
 		]),
-		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
+		// Folder tools need a workspace service that supports folders.
+		...WORKSPACE_TOOL_ACTIONS.filter(
+			(action) =>
+				context.workspaceService?.listFolders !== undefined ||
+				!WORKSPACE_FOLDER_TOOL_ACTIONS.includes(action),
+		).map((action): [string, DomainToolFactory] => [
+			WORKSPACE_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
 		[DOMAIN_TOOL_IDS.SEARCH_NODES, () => loadNodesTool().createSearchNodesTool(context)],
