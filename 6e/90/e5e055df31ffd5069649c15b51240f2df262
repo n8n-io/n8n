@@ -1,0 +1,20 @@
+packages/@n8n/expression-runtime/src/runtime/transfer.ts
+  s_4632be3df540f4::t_5b266b3c37e755 98-103
+  s_4632be3df540f4::t_b3bb379f1bca55 97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "6e90e5e055df31ffd5069649c15b51240f2df262",
+  "prompts": {},
+  "sessions": {
+    "s_4632be3df540f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9547e767-69db-4251-9968-5b15aa5a2396",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
