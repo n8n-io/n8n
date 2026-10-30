@@ -16,7 +16,7 @@ A single-select list. Arrow keys move a highlight over the whole item. Enter or 
 - `selectionBehavior?: 'replace' | 'toggle'` `replace` keeps one value. A second activation of the selected item does not clear it. `toggle` clears the value when the user activates the selected item. | `default: 'replace'`
 - `orientation?: 'vertical' | 'horizontal'` Up and Down, or Left and Right, move the highlight. Items sit in a row when this is `horizontal`. | `default: 'vertical'`
 - `dir?: 'ltr' | 'rtl'` Reading direction. Omit it to inherit the page direction.
-- `highlightOnHover?: boolean` Pointer movement moves the highlight. The highlight fill follows `data-highlighted`. Arrow keys take the highlight from the item under the pointer. | `default: true`
+- `highlightOnHover?: boolean` Pointer movement moves the highlight. The highlight fill follows `data-highlighted`. | `default: true`
 
 **Item props**
 
@@ -33,17 +33,11 @@ Omit `modelValue` and pass `defaultValue` when the list owns the value. `default
 
 One item in the list has the highlight. Arrow keys move it. Home and End move it to the ends. `orientation="vertical"` uses Up and Down. `orientation="horizontal"` uses Left and Right. Items sit in a row in a horizontal list.
 
-The list does not take focus when it mounts. It does not scroll the page.
-
-Tab moves through the controls inside the focused item, then to the next item. Shift+Tab moves back. Tab leaves the list at either end.
-
-Up and Down (or Left and Right) move the highlight when the item has focus. A control inside the item keeps those keys.
-
-The highlight paints the whole item. The item has no padding. The slot content sets its own padding. The focus ring follows the same box and paints above a track that overlaps the item. The highlight fill follows `data-highlighted`.
+The highlight paints the whole item. The item has no padding. The slot content sets its own padding. The focus ring follows the same box. The highlight fill follows `data-highlighted`.
 
 The selected item uses a stronger background than the highlight. The highlight can move to another item. The selected background stays.
 
-Pointer movement moves the highlight. The highlight fill follows `data-highlighted`. Arrow keys take the highlight from the item under the pointer. That item loses the highlight fill. Set `highlightOnHover` to `false` when pointer movement should leave the highlight in place.
+Pointer movement moves the highlight when `highlightOnHover` is `true`. Set it to `false` when pointer movement should leave the highlight in place.
 
 **Selection**
 

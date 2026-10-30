@@ -1,36 +1,9 @@
 import userEvent from '@testing-library/user-event';
 import { render } from '@testing-library/vue';
-import { vi } from 'vitest';
 import { defineComponent, nextTick, ref } from 'vue';
 
 import N8nListbox from './Listbox.vue';
 import N8nListboxItem from './ListboxItem.vue';
-
-// The list releases focus on the second tick after mount.
-async function afterMount() {
-	await nextTick();
-	await nextTick();
-}
-
-const HarnessWithButton = defineComponent({
-	components: { N8nListbox, N8nListboxItem },
-	props: {
-		modelValue: { type: String, required: false },
-	},
-	setup(props) {
-		const value = ref(props.modelValue);
-		return { value };
-	},
-	template: `
-		<N8nListbox :model-value="value" label="Versions" @update:model-value="value = $event">
-			<N8nListboxItem value="v2" aria-label="v2">
-				<span>v2</span>
-				<button type="button">Compare</button>
-			</N8nListboxItem>
-			<N8nListboxItem value="v1" aria-label="v1">v1</N8nListboxItem>
-		</N8nListbox>
-	`,
-});
 
 const Harness = defineComponent({
 	components: { N8nListbox, N8nListboxItem },
@@ -166,54 +139,9 @@ describe('N8nListbox', () => {
 		expect(current).toHaveAttribute('data-highlighted');
 	});
 
-	it('tabs through a control inside the item before the next item', async () => {
-		const { getByRole } = render(HarnessWithButton, { props: { modelValue: 'v2' } });
-		await afterMount();
-		const current = getByRole('option', { name: 'v2' });
-		current.focus();
-
-		await userEvent.tab();
-
-		const compare = getByRole('button', { name: 'Compare' });
-		expect(compare).toHaveFocus();
-		expect(current).toHaveAttribute('data-highlighted');
-
-		await userEvent.keyboard('{ArrowDown}');
-
-		expect(current).toHaveAttribute('data-highlighted');
-		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
-
-		await userEvent.tab();
-
-		const next = getByRole('option', { name: 'v1' });
-		expect(next).toHaveFocus();
-		expect(next).toHaveAttribute('data-highlighted');
-
-		await userEvent.tab({ shift: true });
-
-		expect(compare).toHaveFocus();
-	});
-
-	it('moves the highlight with Tab and then with the arrow keys', async () => {
-		const { getByRole } = render(Harness, { props: { modelValue: 'v2' } });
-		await afterMount();
-		getByRole('option', { name: 'v2' }).focus();
-
-		await userEvent.tab();
-
-		const next = getByRole('option', { name: 'v1' });
-		expect(next).toHaveAttribute('data-highlighted');
-		expect(next).toHaveFocus();
-
-		await userEvent.tab({ shift: true });
-
-		expect(getByRole('option', { name: 'v2' })).toHaveFocus();
-		expect(getByRole('option', { name: 'v1' })).not.toHaveAttribute('data-highlighted');
-	});
-
 	it('moves the highlight with the arrow keys and selects on Enter', async () => {
 		const { getByRole, emitted } = render(Harness, { props: { modelValue: 'v2' } });
-		await afterMount();
+		await nextTick();
 		const current = getByRole('option', { name: 'v2' });
 		current.focus();
 
@@ -296,7 +224,7 @@ describe('N8nListbox', () => {
 
 	it('moves the highlight with the pointer when highlightOnHover is set', async () => {
 		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
-		await afterMount();
+		await nextTick();
 
 		await userEvent.hover(getByRole('option', { name: 'v1' }));
 
@@ -304,55 +232,9 @@ describe('N8nListbox', () => {
 		expect(getByRole('option', { name: 'v2' })).not.toHaveAttribute('data-highlighted');
 	});
 
-	it('clears the hovered row when arrow keys move and the pointer stays', async () => {
-		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: true } });
-		await afterMount();
-		const current = getByRole('option', { name: 'v2' });
-		const next = getByRole('option', { name: 'v1' });
-
-		await userEvent.hover(next);
-
-		expect(next).toHaveAttribute('data-highlighted');
-		expect(current).not.toHaveAttribute('data-highlighted');
-
-		next.focus();
-		await userEvent.keyboard('{ArrowUp}');
-
-		expect(current).toHaveAttribute('data-highlighted');
-		expect(next).not.toHaveAttribute('data-highlighted');
-
-		await userEvent.hover(next);
-
-		expect(current).toHaveAttribute('data-highlighted');
-		expect(next).not.toHaveAttribute('data-highlighted');
-	});
-
-	it('does not scroll the page when the list mounts', async () => {
-		const scrolling = document.documentElement;
-		scrolling.scrollTop = 180;
-		const scrollIntoView = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {
-			scrolling.scrollTop = 480;
-		});
-		const focus = vi.spyOn(HTMLElement.prototype, 'focus').mockImplementation(() => {
-			scrolling.scrollTop = 480;
-		});
-
-		try {
-			render(HoverHarness, { props: { highlightOnHover: false } });
-			await nextTick();
-			await nextTick();
-
-			expect(focus).toHaveBeenCalled();
-			expect(scrolling.scrollTop).toBe(180);
-		} finally {
-			scrollIntoView.mockRestore();
-			focus.mockRestore();
-		}
-	});
-
 	it('does not move the highlight on hover when highlightOnHover is off', async () => {
 		const { getByRole } = render(HoverHarness, { props: { highlightOnHover: false } });
-		await afterMount();
+		await nextTick();
 		const current = getByRole('option', { name: 'v2' });
 		current.focus();
 
@@ -364,7 +246,7 @@ describe('N8nListbox', () => {
 
 	it('moves the highlight with Left and Right when orientation is horizontal', async () => {
 		const { getByRole } = render(HorizontalHarness);
-		await afterMount();
+		await nextTick();
 		const list = getByRole('listbox', { name: 'Density' });
 
 		expect(list).toHaveAttribute('aria-orientation', 'horizontal');

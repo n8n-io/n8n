@@ -35,7 +35,6 @@ export type ListboxProps = {
 	/**
 	 * Pointer movement moves the highlight.
 	 * The highlight fill follows `data-highlighted`.
-	 * Arrow keys take the highlight from the item under the pointer.
 	 */
 	highlightOnHover?: boolean;
 };
