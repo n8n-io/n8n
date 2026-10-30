@@ -32,7 +32,11 @@ export const INSTANCE_AI_PENDING_AGENT_METADATA_KEY = 'instanceAiPendingAgentTar
 /** Every agent the model has addressed in this conversation. Mirrors `REGISTRY_METADATA_KEY` in `agent-target-binding.ts` (backend-only). */
 export const INSTANCE_AI_AGENT_BUILDER_TARGETS_METADATA_KEY = 'instanceAiAgentBuilderTargets';
 export const NEW_CONVERSATION_TITLE = 'New conversation';
-export { AI_GATEWAY_MANAGED_TAG } from '@n8n/api-types';
+export {
+	AI_GATEWAY_MANAGED_TAG,
+	INSTANCE_AI_APP_TARGETS_METADATA_KEY,
+	INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY,
+} from '@n8n/api-types';
 export const BROWSER_USE_CONNECTION_TYPE = 'browser-use';
 
 export const BROWSER_USE_EXTENSION_ID = 'cegmdpndekdfpnafgacidejijecomlhh';
