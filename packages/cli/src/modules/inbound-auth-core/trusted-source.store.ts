@@ -121,7 +121,15 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		if (source.firstAuthenticatedAt) return false;
 		const first = await this.trustedSourceRepository.markFirstAuthenticated(source.id, {});
 		// Win or loss, the snapshot is stale: the next read must carry the stamp to short-circuit.
-		await this.invalidateCache(source);
+		// The stamp is committed; a failed invalidation must not hide the win from the caller.
+		try {
+			await this.invalidateCache(source);
+		} catch (error) {
+			this.logger.warn('First authentication stamped but the cache could not be invalidated', {
+				id: source.id,
+				error,
+			});
+		}
 		return first;
 	}
 

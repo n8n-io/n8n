@@ -10,7 +10,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const MIGRATION_NAME = 'AddFirstAuthenticatedAtToTrustedSource1793267886562';
+const MIGRATION_NAME = 'AddFirstAuthenticatedAtToTrustedSource1793354377949';
 
 const SOURCE_TABLE = 'trusted_source';
 const IDENTITY_TABLE = 'trusted_source_identity';

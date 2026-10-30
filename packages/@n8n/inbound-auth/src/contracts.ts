@@ -198,7 +198,10 @@ export abstract class IdentityService {
 	abstract identify(verified: Verified): Promise<Result<SecurityContext>>;
 }
 
-/** Read-only: writes stay on the module's own store. Extend here when a second consumer needs one. */
+/**
+ * Reads, plus the one write the authentication pipeline needs. Admin writes stay on the module's
+ * own store. Extend here when a second consumer needs one.
+ */
 export abstract class TrustedSourceStore {
 	abstract getById(id: string): Promise<TrustedSource | undefined>;
 
@@ -206,6 +209,7 @@ export abstract class TrustedSourceStore {
 
 	abstract listBySurface(surface: SurfaceId): Promise<TrustedSource[]>;
 
+	/** Stamps the source's first authentication; `true` only for the caller that stamped it. */
 	abstract recordFirstAuthentication(source: TrustedSource): Promise<boolean>;
 }
 

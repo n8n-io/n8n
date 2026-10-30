@@ -458,6 +458,23 @@ describe('TrustedSourceStore (integration)', () => {
 				Date,
 			);
 		});
+
+		it('reports the win when the cache invalidation fails after the stamp', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			expect(await store.recordFirstAuthentication(source)).toBe(true);
+
+			expect((await rows.findOneByOrFail({ id: row.id })).firstAuthenticatedAt).toBeInstanceOf(
+				Date,
+			);
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: row.id }),
+			);
+		});
 	});
 
 	describe('discovery lease', () => {
