@@ -28,8 +28,9 @@ export type WebhookEndpoints = {
 type WebhookCredentialRequirement =
 	| { type: 'none' }
 	| { type: 'basic' }
-	| { type: 'header'; headerName: string }
-	| { type: 'jwt'; variant: 'secret' | 'pem-key' };
+	// headerName and variant are unset when the credential cannot be read.
+	| { type: 'header'; headerName?: string }
+	| { type: 'jwt'; variant?: 'secret' | 'pem-key' };
 
 type WebhookNodeDetails = {
 	nodeName: string;
@@ -278,8 +279,14 @@ const formatCredentialRequirement = (requirement: WebhookCredentialRequirement):
 		case 'basic':
 			return '\t - Credentials: \n\t - This webhook requires basic authentication with a username and password that should be provided by the user.';
 		case 'header':
+			if (!requirement.headerName) {
+				return '\t - Credentials: \n\t - This webhook requires header authentication. The header name and value should be provided by the user.';
+			}
 			return `\t - Credentials: \n\t - This webhook requires a header with name "${requirement.headerName}" and a value that should be provided by the user.`;
 		case 'jwt':
+			if (!requirement.variant) {
+				return '\t - Credentials: \n\t - This webhook requires JWT authentication. The JWT credentials should be provided by the user.';
+			}
 			if (requirement.variant === 'secret') {
 				return '\t - Credentials: \n\t - This webhook requires a JWT secret that should be provided by the user.';
 			}
@@ -302,19 +309,15 @@ const resolveCredentialRequirement = async (
 	switch (authType) {
 		case 'basicAuth':
 			return { type: 'basic' };
+		// Keep the auth requirement when the credential cannot be read, so the
+		// webhook is not reported as open.
 		case 'headerAuth': {
 			const headerName = await getHeaderAuthName(user, node, credentialsService);
-			if (headerName) {
-				return { type: 'header', headerName };
-			}
-			break;
+			return headerName ? { type: 'header', headerName } : { type: 'header' };
 		}
 		case 'jwtAuth': {
 			const variant = await getJWTAuthVariant(user, node, credentialsService);
-			if (variant) {
-				return { type: 'jwt', variant };
-			}
-			break;
+			return variant ? { type: 'jwt', variant } : { type: 'jwt' };
 		}
 	}
 
@@ -329,9 +332,14 @@ const getHeaderAuthName = async (
 	const id = node.credentials?.httpHeaderAuth?.id;
 	if (!id) return null;
 
-	const creds = await credentialsService.getOne(user, id, true);
-	if (hasHttpHeaderAuthDecryptedData(creds)) {
-		return creds.data.name;
+	// A failed lookup must not fail the whole workflow details read.
+	try {
+		const creds = await credentialsService.getOne(user, id, true);
+		if (hasHttpHeaderAuthDecryptedData(creds)) {
+			return creds.data.name;
+		}
+	} catch {
+		return null;
 	}
 	return null;
 };
