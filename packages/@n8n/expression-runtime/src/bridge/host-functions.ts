@@ -108,58 +108,9 @@ export function getArrayElement(
 	return toHostMetadata(arr[index]);
 }
 
-<<<<<<< HEAD
-/**
- * Navigate the data object by path and return metadata or a primitive value.
- *
- * Used by createDeepLazyProxy when accessing properties. Returns metadata
- * markers for arrays and objects, or the primitive value directly.
- *
- * Special-case: paths starting with ['$item', index] call data.$item(index)
- * to get the sub-proxy for that item, then continue navigating the rest;
- * likewise ['$', nodeName] calls data.$(nodeName).
- *
- * Function-typed values are returned as `undefined` — every callable on
- * the host data surface (`$('Foo').first()`, `$items()`, `$fromAI()`,
- * `$evaluateExpression()`) is wired guest-side via
- * the typed-RPC dispatcher (`callHost`). No expression form should
- * reach a function through this path (invariant:
- * __tests__/host-fn-shadowing.test.ts).
- */
-export function getValueAtPath(data: WorkflowData, pathArr: string[]): unknown {
-	let value: unknown = data;
-	let startIndex = 0;
-	const itemFn = (data as Record<string, unknown>).$item;
-	if (pathArr.length >= 2 && pathArr[0] === '$item' && typeof itemFn === 'function') {
-		const itemIndex = parseInt(pathArr[1], 10);
-		if (!isNaN(itemIndex)) {
-			value = (itemFn as (i: number) => unknown)(itemIndex);
-			startIndex = 2;
-		}
-	} else {
-		const dollarFn = (data as Record<string, unknown>).$;
-		if (pathArr.length >= 2 && pathArr[0] === '$' && typeof dollarFn === 'function') {
-			value = (dollarFn as (name: string) => unknown)(pathArr[1]);
-			startIndex = 2;
-		}
-	}
-	for (let i = startIndex; i < pathArr.length; i++) {
-		value = (value as Record<string, unknown>)?.[pathArr[i]];
-		if (value === undefined || value === null) {
-			return value;
-		}
-	}
-
-	// Functions are not reachable via the lazy-proxy data path —
-	// every callable on the host data surface routes through the
-	// typed-RPC dispatcher. Return undefined so any residual
-	// access surfaces as missing rather than as a stale metadata
-	// marker the runtime no longer knows how to interpret.
-=======
 /** Describe objects and arrays without reading their contents. */
 function toHostMetadata(value: unknown): unknown {
 	// Host functions use the callHost channel, not the lazy data path.
->>>>>>> 990ca84c230eba462708d18f04c091d352b2a1da
 	if (typeof value === 'function') {
 		return undefined;
 	}
