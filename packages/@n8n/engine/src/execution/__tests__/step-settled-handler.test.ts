@@ -701,6 +701,20 @@ describe('StepSettledHandler sub-executions', () => {
 		);
 	});
 
+	it('cancels the pending steps even when the parent resume throws', async () => {
+		const stepStore = makeStepStore(
+			{ status: 'failed', error: { name: 'TypeError', message: 'boom' } },
+			{ resumeStep: vi.fn().mockRejectedValue(new Error('db down')) },
+		);
+		const { handler } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ parent }),
+		});
+
+		await expect(handler.handle(event)).rejects.toThrow('db down');
+
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
+	});
+
 	it('resumes the awaiting parent with the error the moment a step fails', async () => {
 		const error = { name: 'TypeError', message: 'boom' };
 		const stepStore = makeStepStore({ status: 'failed', error });

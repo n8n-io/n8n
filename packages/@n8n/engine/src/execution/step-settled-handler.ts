@@ -98,7 +98,6 @@ export class StepSettledHandler {
 	): Promise<void> {
 		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
-		// Before anything that can throw, so the rows never stay behind.
 		await this.stepStore.cancelPendingSteps(execution.id);
 		if (finished) {
 			this.lifecycleEventPublisher.publish({
