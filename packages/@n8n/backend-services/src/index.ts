@@ -103,6 +103,10 @@ export {
 	type WorkflowPublishGuard,
 } from './workflows/workflow-publish-guard-proxy.service';
 export {
+	WorkflowEngineDefaultProviderProxy,
+	type WorkflowEngineDefaultProvider,
+} from './workflows/workflow-engine-default-provider-proxy.service';
+export {
 	RestrictedNodeTypesProviderProxy,
 	type RestrictedNodeTypesProvider,
 } from './workflows/restricted-node-types-provider-proxy.service';

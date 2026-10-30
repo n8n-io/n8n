@@ -1956,6 +1956,7 @@ import {
 	type RoleService,
 	AiPreferenceScopeFullError,
 	type AiPreferenceService,
+	WorkflowEngineDefaultProviderProxy,
 } from '@n8n/backend-services';
 import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import type { DataTableService } from '@/modules/data-table/data-table.service';
@@ -4432,22 +4433,71 @@ describe('createWorkflowAdapter', () => {
 				.spyOn(Container.get(ModuleRegistry), 'isActive')
 				.mockImplementation((name) => name === 'engine-v2');
 
+		const setEnvDefault = (defaultType: 'v1' | 'v2') =>
+			Object.assign(Container.get(EngineConfig), { defaultType, defaultTypeSetByEnv: true });
+
+		const storeDefault = (stored: 'v1' | 'v2' | undefined) =>
+			vi
+				.spyOn(Container.get(WorkflowEngineDefaultProviderProxy), 'getDefaultEngine')
+				.mockResolvedValue(stored);
+
+		const expectCreatedSettings = (
+			mockWorkflowRepository: ReturnType<
+				typeof createWorkflowAdapterForTests
+			>['mockWorkflowRepository'],
+			settings: object,
+		) =>
+			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
+				1,
+				expect.objectContaining({ settings }),
+			);
+
+		beforeEach(() => {
+			Object.assign(Container.get(EngineConfig), {
+				defaultType: 'v1',
+				defaultTypeSetByEnv: false,
+			});
+			storeDefault(undefined);
+		});
+
 		afterEach(() => {
-			Container.get(EngineConfig).defaultType = 'v1';
+			Object.assign(Container.get(EngineConfig), {
+				defaultType: 'v1',
+				defaultTypeSetByEnv: false,
+			});
 			vi.restoreAllMocks();
 		});
 
-		it('saves a workflow without an engine on v2 when the default is v2 and the module is active', async () => {
-			Container.get(EngineConfig).defaultType = 'v2';
+		it('saves a workflow without an engine on v2 when the env default is v2 and the module is active', async () => {
+			setEnvDefault('v2');
 			activateEngineV2Module();
 			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
 
 			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
-				1,
-				expect.objectContaining({ settings: { executionOrder: 'v1', engineType: 'v2' } }),
-			);
+			expectCreatedSettings(mockWorkflowRepository, { executionOrder: 'v1', engineType: 'v2' });
+		});
+
+		it('saves a workflow without an engine on v2 when the stored default is v2, the env sets none, and the module is active', async () => {
+			storeDefault('v2');
+			activateEngineV2Module();
+			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+			expectCreatedSettings(mockWorkflowRepository, { executionOrder: 'v1', engineType: 'v2' });
+		});
+
+		it('writes no engine when the env default is v1, even when the stored default is v2', async () => {
+			setEnvDefault('v1');
+			const getDefaultEngine = storeDefault('v2');
+			activateEngineV2Module();
+			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
+
+			expectCreatedSettings(mockWorkflowRepository, { executionOrder: 'v1' });
+			expect(getDefaultEngine).not.toHaveBeenCalled();
 		});
 
 		it.each([
@@ -4456,29 +4506,35 @@ describe('createWorkflowAdapter', () => {
 		])(
 			'keeps an explicit $engineType when the default is $defaultType',
 			async ({ engineType, defaultType }) => {
-				Container.get(EngineConfig).defaultType = defaultType;
+				setEnvDefault(defaultType);
 				activateEngineV2Module();
 				const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
 
 				await adapter.createFromWorkflowJSON(withEngine(engineType));
 
-				expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
-					1,
-					expect.objectContaining({ settings: { executionOrder: 'v1', engineType } }),
-				);
+				expectCreatedSettings(mockWorkflowRepository, { executionOrder: 'v1', engineType });
 			},
 		);
 
-		it('writes no engine when the default is v2 but the module is not active', async () => {
-			Container.get(EngineConfig).defaultType = 'v2';
+		it('keeps an explicit v1 when the stored default is v2', async () => {
+			storeDefault('v2');
+			activateEngineV2Module();
+			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
+
+			await adapter.createFromWorkflowJSON(withEngine('v1'));
+
+			expectCreatedSettings(mockWorkflowRepository, { executionOrder: 'v1', engineType: 'v1' });
+		});
+
+		it('writes no engine when the defaults are v2 but the module is not active', async () => {
+			setEnvDefault('v2');
+			const getDefaultEngine = storeDefault('v2');
 			const { adapter, mockWorkflowRepository } = createWorkflowAdapterForTests();
 
 			await adapter.createFromWorkflowJSON(minimalWorkflowJSON);
 
-			expect(mockWorkflowRepository.create).toHaveBeenNthCalledWith(
-				1,
-				expect.objectContaining({ settings: { executionOrder: 'v1' } }),
-			);
+			expectCreatedSettings(mockWorkflowRepository, { executionOrder: 'v1' });
+			expect(getDefaultEngine).not.toHaveBeenCalled();
 		});
 	});
 
