@@ -34,7 +34,15 @@ export type ApprovalDecision = 'a' | 'd';
  */
 export type ResumeTokenClaims =
 	| { kind: 'execution-bound'; executionId: string }
-	| { kind: 'step-bound'; stepId: string; binding: string }
+	| {
+			kind: 'step-bound';
+			stepId: string;
+			/**
+			 * The path and query of the URL, without the token parameter. A request
+			 * must send the same string.
+			 */
+			binding: string;
+	  }
 	| { kind: 'approval-callback'; stepId: string; decision: ApprovalDecision };
 
 /**
@@ -67,8 +75,8 @@ export function mintResumeToken(secret: string, executionId: string): string {
 
 /**
  * Mints a step-bound token for a resume URL of `stepId`. `binding` is the path
- * and query of the URL as the node built it, without the token parameter. The
- * request must arrive with the same string (token record, decision 5).
+ * and query of the URL as the node built it, without the token parameter
+ * (token record, decision 5). The request must arrive with the same string.
  */
 export function mintStepBoundResumeToken(secret: string, stepId: string, binding: string): string {
 	return signSharedSecretToken(RESUME_TOKEN_SPEC, secret, {
@@ -92,7 +100,8 @@ const encodeStepId = (stepId: string) =>
 function decodeStepId(encoded: string): string | undefined {
 	const hex = Buffer.from(encoded, 'base64url').toString('hex');
 	const stepId = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
-	// The last character carries four unused bits. Encoding again refuses every second spelling.
+	// Accept only the string that `encodeStepId` builds. The last of the 22 characters has 4 unused
+	// bits, so 16 strings decode to the same id, but we only accept the one we produce.
 	return UUID_V7_PATTERN.test(stepId) && encodeStepId(stepId) === encoded ? stepId : undefined;
 }
 
@@ -133,8 +142,7 @@ function readApprovalCallback(
 
 /**
  * The step and the decision of an approval callback, without verification.
- * The control plane reads the step id to pick the engine, and forwards the
- * callback unread.
+ * The control plane reads the step id to pick the engine.
  */
 export function parseApprovalCallback(
 	reference: string,
@@ -144,7 +152,6 @@ export function parseApprovalCallback(
 }
 
 function verifyApprovalCallback(secret: string, reference: string): ResumeTokenClaims | undefined {
-	// As for a JWT, an under-length secret rejects everything.
 	if (secret.length < MIN_SECRET_LENGTH) return undefined;
 	const parsed = readApprovalCallback(reference);
 	if (!parsed) return undefined;

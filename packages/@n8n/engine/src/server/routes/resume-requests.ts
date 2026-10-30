@@ -53,7 +53,6 @@ function sendRejection(res: Response, error: unknown): boolean {
 	return true;
 }
 
-/** Answers phase one with the execution and its waiting step, or with the refusal. */
 async function sendLocation(
 	res: Response,
 	executionQuery: ExecutionQueryService,

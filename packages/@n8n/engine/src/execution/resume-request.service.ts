@@ -32,7 +32,7 @@ export interface ResumeTarget {
 	nodeId: string;
 }
 
-/** What `locateByToken` found: the execution of the id, and its waiting step if any. */
+/** The execution of a resume request, and the wait that its token can end, if any. */
 export interface ResumeLocation {
 	executionId: string;
 	target: ResumeTarget | null;
@@ -56,7 +56,6 @@ const DEFAULT_RESUME_HOLD: ResumeHold = { attempts: 10, delayMs: 100 };
  */
 const isLive = (status: ExecutionStatus) => status === 'queued' || isLiveExecutionStatus(status);
 
-/** A step that waits for a request bound to `binding`. */
 const waitsFor =
 	(binding: ResumeBinding) =>
 	({ status, waitDeclaration }: StepRecord) =>
@@ -69,7 +68,6 @@ const BINDING_OF_KIND: Record<ResumeTokenClaims['kind'], ResumeBinding> = {
 	'approval-callback': 'step',
 };
 
-/** The id a token names: an execution for an execution-bound token, else a step. */
 const idOf = (claims: ResumeTokenClaims) =>
 	claims.kind === 'execution-bound' ? claims.executionId : claims.stepId;
 
@@ -107,7 +105,7 @@ export class ResumeRequestService {
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous`
 	 * when a live execution has two execution-bound waits, or `step_bound_only`
-	 * when the hold runs out and the execution has only step-bound waits.
+	 * when the hold runs out and the execution has a step-bound wait.
 	 */
 	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
 		const claims = verifyResumeToken(this.secret, token);
@@ -119,9 +117,8 @@ export class ResumeRequestService {
 
 	/**
 	 * Verifies the token and returns the wait it can end, for every kind of
-	 * token. The control plane cannot tell an execution id from a step id, and
-	 * it does not read the token, so the kind of the token decides what `id`
-	 * names. An execution-bound token gets the answer of `locate`.
+	 * token. The kind of the token decides whether `id` names an execution or a
+	 * step. An execution-bound token gets the answer of `locate`.
 	 *
 	 * @throws {ResumeRejectedError} `invalid_token` when the token does not
 	 * name `id`, or a step-bound token binds another path and query; else as
@@ -166,9 +163,10 @@ export class ResumeRequestService {
 	}
 
 	/**
-	 * The step row exists before its node runs, so a request can arrive while
-	 * the step still runs: hold as `locate` does. A settled step never waits
-	 * again, because a loop runs its next iteration as a new step.
+	 * The node sends its URL or button while its step runs, and the step waits
+	 * only after the node returns. A request can arrive in between: hold as
+	 * `locate` does. A settled step never waits again, because a loop runs its
+	 * next iteration as a new step.
 	 */
 	private async locateStepBoundWait(stepId: string): Promise<ResumeLocation> {
 		for (let attempt = 1; ; attempt++) {
