@@ -1,5 +1,4 @@
 import type {
-	WorkflowSuggestionActionResult,
 	WorkflowSuggestionAppliedVersion,
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
@@ -94,18 +93,6 @@ export class WorkflowSuggestionActionsService {
 			suggestions.push(await this.service.getProposal(user, projectId, workflowId, id));
 		}
 		return { suggestions, ...(publishError !== undefined ? { publishError } : {}) };
-	}
-
-	async discard(
-		actor: User,
-		projectId: string,
-		workflowId: string,
-		suggestionId: string,
-	): Promise<WorkflowSuggestionActionResult> {
-		const outcome = await this.discardPending(actor, projectId, [{ id: suggestionId, workflowId }]);
-		// Commit the outdated closure before rejecting the old project.
-		if (outcome === 'unavailable') throw new NotFoundError('Suggestion not found.');
-		return await this.service.getProposal(actor, projectId, workflowId, suggestionId);
 	}
 
 	// Result dismissal joins this write so the result and its suggestions commit together.

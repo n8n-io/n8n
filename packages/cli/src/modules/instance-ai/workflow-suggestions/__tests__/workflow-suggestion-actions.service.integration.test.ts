@@ -1,4 +1,7 @@
-import type { WorkflowSuggestionAction } from '@n8n/api-types';
+import type {
+	WorkflowSuggestionAppliedVersion,
+	WorkflowSuggestionProposalDetail,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -121,9 +124,13 @@ async function prepareFixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready
 async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	const { user, workflow, original, project, graph, prepared } = await prepareFixture(resultKind);
 	const suggestion = await suggestionService.createSuggestion(prepared);
-	const act = async (action: WorkflowSuggestionAction, actor = user) => {
+	const act = async (
+		action: WorkflowSuggestionAppliedVersion['action'] | 'discard',
+		actor = user,
+	): Promise<WorkflowSuggestionProposalDetail & { publishError?: string }> => {
 		if (action === 'discard') {
-			return await actions.discard(actor, project.id, workflow.id, suggestion.id);
+			await actions.discardPending(actor, project.id, [suggestion]);
+			return await suggestionService.getProposal(actor, project.id, workflow.id, suggestion.id);
 		}
 		const { suggestions: proposals, publishError } = await actions.apply(
 			actor,
@@ -343,14 +350,14 @@ it('rolls back discard when its activity cannot be saved', async () => {
 });
 
 it('keeps a moved proposal outdated when discard rejects the old project', async () => {
-	const { user, original, project, suggestion, act } = await fixture();
+	const { user, original, project, suggestion } = await fixture();
 	const destination = await createTeamProject(undefined, user);
 	await Container.get(SharedWorkflowRepository).update(
 		{ workflowId: original.id, projectId: project.id },
 		{ projectId: destination.id },
 	);
 
-	await expect(act('discard')).rejects.toThrow('Suggestion not found.');
+	expect(await actions.discardPending(user, project.id, [suggestion])).toBe('unavailable');
 
 	expect(await suggestions.findOneByOrFail({ id: suggestion.id })).toMatchObject({
 		state: 'closed',

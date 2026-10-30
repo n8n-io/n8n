@@ -1140,7 +1140,9 @@ it.each([
 			true,
 		);
 		if (reason === 'discarded') {
-			await actions.discard(user, project.id, original.id, suggestionId!);
+			await actions.discardPending(user, project.id, [
+				{ id: suggestionId!, workflowId: original.id },
+			]);
 		} else if (reason === 'applied') {
 			await actions.apply(
 				user,
@@ -1978,7 +1980,9 @@ describe('Inbox source reads', () => {
 					'apply',
 				);
 			else if (state === 'discarded')
-				await actions.discard(user, project.id, original.id, suggestionId!);
+				await actions.discardPending(user, project.id, [
+					{ id: suggestionId!, workflowId: original.id },
+				]);
 			else {
 				await workflows.update(original.id, { settings: { executionTimeout: 90 } });
 				await suggestionService.reconcileWorkflow(original.id);

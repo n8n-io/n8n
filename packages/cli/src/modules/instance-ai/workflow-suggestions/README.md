@@ -24,12 +24,12 @@ The detail includes the original and proposed snapshots. Stored proposal content
 
 ## Review actions
 
-Call the matching method on `WorkflowSuggestionActionsService` with the acting user and project. `apply()` takes a group of suggestions and the action. `discard()` takes one workflow and suggestion. Supply the editor client ID (`push-ref`) for Apply actions. The caller owns editor navigation and the review UI state.
+Call the matching method on `WorkflowSuggestionActionsService` with the acting user and project. `apply()` takes a group of suggestions and the action. `discardPending()` takes a group of suggestions and an optional operation context. Supply the editor client ID (`push-ref`) for Apply actions. The caller owns editor navigation and the review UI state.
 
-| Method      | Behavior                                                                                                                                                                           |
-| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `apply()`   | Save every reviewed fix of the group once. With `approve-and-publish`, request normal publication of each saved version. Otherwise, the caller decides whether to open the editor. |
-| `discard()` | Close a pending suggestion without changing the workflow.                                                                                                                          |
+| Method             | Behavior                                                                                                                                                                           |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apply()`          | Save every reviewed fix of the group once. With `approve-and-publish`, request normal publication of each saved version. Otherwise, the caller decides whether to open the editor. |
+| `discardPending()` | Close every pending suggestion of the group without changing the workflows.                                                                                                        |
 
 Use **Apply and publish** as the action label for `approve-and-publish`. `apply` accepts `fix_ready` and `needs_you` suggestions. `approve-and-publish` accepts only `fix_ready`. All actions require current edit access to every workflow of the group. Approval also requires publish access to every workflow. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
 
@@ -45,7 +45,7 @@ After either Apply action, the caller must check `closedReason` before opening t
 
 Only the request that applies the fix can start publication. Apply and Approve and publish return a conflict for an applied or discarded suggestion. They do not save or publish again. An outdated suggestion still returns its closure. After a failed request or lost response, use the editor to check publication status and publish the saved fix if needed. Proposal reads do not retry publication.
 
-`discard()` commits the suggestion closure and activity in its own transaction.
+`discardPending()` closes the group and adds activity in one transaction. It joins the caller's transaction when one is supplied. If one suggestion is outdated, it closes the group as outdated and discards none. It returns `discarded`, `outdated`, `already_closed`, or `unavailable` when a workflow moved to another project.
 
 ## Storage and limits
 
