@@ -158,6 +158,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
+				settings: null,
 			});
 		});
 
@@ -182,6 +183,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
+				settings: null,
 			});
 		});
 
@@ -205,6 +207,7 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: true,
+				settings: null,
 			});
 		});
 
@@ -228,7 +231,34 @@ describe('WorkflowHistoryService', () => {
 				versionId: workflow.versionId,
 				workflowId,
 				autosaved: false,
+				settings: null,
 			});
+		});
+
+		it('should store only the version-scoped settings', async () => {
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.connections = {};
+			workflow.versionId = '456';
+			workflow.settings = { engineType: 'v2', timezone: 'Europe/Berlin', callerPolicy: 'any' };
+
+			await workflowHistoryService.saveVersion(testUser, workflow, '123');
+
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ settings: { engineType: 'v2' } }),
+			);
+		});
+
+		it('should store null settings when no version-scoped setting is set', async () => {
+			const workflow = getWorkflow({ addNodeWithoutCreds: true });
+			workflow.connections = {};
+			workflow.versionId = '456';
+			workflow.settings = { timezone: 'Europe/Berlin' };
+
+			await workflowHistoryService.saveVersion(testUser, workflow, '123');
+
+			expect(workflowHistoryRepository.insert).toHaveBeenCalledWith(
+				expect.objectContaining({ settings: null }),
+			);
 		});
 
 		it('should annotate authors with "(via MCP)" when source is n8n-mcp', async () => {
@@ -715,6 +745,7 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = 'wfv-fresh';
 			workflow.connections = {};
 			workflow.nodeGroups = [{ id: 'g1', name: 'Group 1', nodeIds: ['uuid-1234'] }];
+			workflow.settings = { engineType: 'v2' };
 			workflowRepository.findOneBy.mockResolvedValueOnce(workflow);
 			// First findOne: no existing history row → insert path.
 			// Second findOne: post-save verification that the row now exists.
@@ -734,6 +765,7 @@ describe('WorkflowHistoryService', () => {
 					nodes: workflow.nodes,
 					connections: workflow.connections,
 					nodeGroups: workflow.nodeGroups,
+					settings: { engineType: 'v2' },
 				}),
 			);
 		});

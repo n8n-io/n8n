@@ -610,7 +610,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				user,
-				prepared.changes,
+				{ ...prepared.changes, settings: prepared.workflow.settings },
 				original.id,
 				false,
 				'n8n-ai',
@@ -664,7 +664,7 @@ describe('WorkflowService', () => {
 			).rejects.toBe(error);
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				prepared.user,
-				prepared.changes,
+				{ ...prepared.changes, settings: prepared.workflow.settings },
 				original.id,
 				false,
 				'ui',
@@ -700,7 +700,7 @@ describe('WorkflowService', () => {
 
 			expect(workflowHistoryServiceMock.saveVersion).toHaveBeenCalledWith(
 				prepared.user,
-				prepared.changes,
+				{ ...prepared.changes, settings: prepared.workflow.settings },
 				original.id,
 				false,
 				'ui',
