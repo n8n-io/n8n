@@ -38,6 +38,7 @@ if not lock then             -- or (lock == ARGV[2])) then
   local jobId = ARGV[1]
   rcall("LREM", KEYS[1], 0, jobId)
   rcall("LREM", KEYS[2], 0, jobId)
+  rcall("LREM", KEYS[11] .. "claiming", 0, jobId) -- n8n patch: a job a worker took but has not claimed yet
   rcall("ZREM", KEYS[3], jobId)
   rcall("LREM", KEYS[4], 0, jobId)
   rcall("ZREM", KEYS[5], jobId)

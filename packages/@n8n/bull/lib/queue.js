@@ -268,6 +268,7 @@ const Queue = function Queue(name, url, opts) {
       'id',
       'delayed',
       'priority',
+      'claiming',
       'stalled-check',
       'completed',
       'failed',
@@ -1049,8 +1050,17 @@ Queue.prototype.moveUnlockedJobsToWait = function() {
     return Promise.resolve();
   }
 
-  return scripts
-    .moveUnlockedJobsToWait(this)
+  // n8n patch: a worker that froze or stopped after it took a job leaves the job
+  // in claiming. Move such jobs to the front of wait, so another worker runs them.
+  // A worker whose claim comes later finds claiming empty and claims nothing.
+  return this.client
+    .eval(
+      "local id = redis.call('LPOP', KEYS[1]) while id do redis.call('RPUSH', KEYS[2], id) id = redis.call('LPOP', KEYS[1]) end",
+      2,
+      this.keys.claiming,
+      this.keys.wait
+    )
+    .then(() => scripts.moveUnlockedJobsToWait(this))
     .then(([failed, stalled]) => {
       const handleFailedJobs = failed.map(jobId => {
         return this.getJobFromId(jobId).then(job => {
@@ -1112,12 +1122,15 @@ Queue.prototype._processJobOnNextTick = function(
   job
 ) {
   if (!this.closing) {
-    (this.paused || Promise.resolve())
+    // A job fetched by a completion before a local pause still goes to the handler.
+    Promise.resolve(job ? undefined : this.paused)
       .then(() => {
         const gettingNextJob = job ? Promise.resolve(job) : this.getNextJob();
 
         return (this.processing[index] = gettingNextJob
           .then(this.processJob)
+          // Keeps that job in this chain, so whenCurrentJobsFinished waits for it.
+          .then(next => (next && this.paused ? this.processJob(next) : next))
           .then(processJobs, err => {
             if (!(this.closing && err.message === 'Connection is closed.')) {
               utils.emitSafe(this, 'error', err, 'Error processing job');
@@ -1243,15 +1256,19 @@ Queue.prototype.getNextJob = async function() {
     //
     try {
       this.bclient.blocked = true;
+      // n8n patch: a job moved to active waits for its lock until moveToActive
+      // runs. If the event loop blocks in between, the stall check fails a job
+      // that never ran. So the job waits in claiming, which the stall check does
+      // not fail, and moveToActive moves it to active and locks it in one script.
       const jobId = await this.bclient.brpoplpush(
         this.keys.wait,
-        this.keys.active,
+        this.keys.claiming,
         this.settings.drainDelay
       );
       this.bclient.blocked = false;
 
       if (jobId) {
-        return this.moveToActive(jobId);
+        return this.moveToActive(undefined, this.keys.claiming);
       }
     } catch (err) {
       // Swallow error if locally paused since we did force a disconnection
@@ -1264,11 +1281,11 @@ Queue.prototype.getNextJob = async function() {
   }
 };
 
-Queue.prototype.moveToActive = async function(jobId) {
+Queue.prototype.moveToActive = async function(jobId, fromKey) {
   // For manual retrieving jobs we need to wait for the queue to be ready.
   await this.isReady();
 
-  return scripts.moveToActive(this, jobId).then(([jobData, jobId]) => {
+  return scripts.moveToActive(this, jobId, fromKey).then(([jobData, jobId]) => {
     return this.nextJobFromJobData(jobData, jobId);
   });
 };

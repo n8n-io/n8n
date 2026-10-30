@@ -1095,7 +1095,8 @@ describe('Job', () => {
             done(Error('should have been rejected'));
           },
           err => {
-            expect(err.message).equal('test error');
+            // n8n patch: finished() wraps the failure reason in a second Error.
+            expect(err.message).equal('Error: test error');
             done();
           }
         );

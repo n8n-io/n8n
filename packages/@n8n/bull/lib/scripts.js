@@ -106,9 +106,9 @@ const scripts = {
     return client.getCountsPerPriority(args);
   },
 
-  moveToActive(queue, jobId) {
+  moveToActive(queue, jobId, fromKey = queue.keys.wait) {
     const queueKeys = queue.keys;
-    const keys = [queueKeys.wait, queueKeys.active, queueKeys.priority];
+    const keys = [fromKey, queueKeys.active, queueKeys.priority];
 
     keys[3] = keys[1] + '@' + queue.token;
     keys[4] = queueKeys.stalled;

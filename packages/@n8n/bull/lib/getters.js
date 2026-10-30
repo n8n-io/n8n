@@ -40,6 +40,11 @@ module.exports = function(Queue) {
         case 'active':
         case 'wait':
         case 'paused':
+          // n8n patch: a job in claiming has not started, so a read of waiting jobs
+          // includes it. Counts keep one result for each type, so they do not.
+          if (type === 'wait' && !count) {
+            callback(this.toKey('claiming'), 'lrange');
+          }
           return callback(key, count ? 'llen' : 'lrange');
       }
     });

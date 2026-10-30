@@ -361,7 +361,8 @@ describe('sandboxed process', () => {
       })
       .then(inspection => {
         expect(inspection.isRejected).to.be.eql(true);
-        expect(inspection.reason.message).to.be.eql('boom!');
+        // n8n patch: finished() wraps the failure reason in a second Error.
+        expect(inspection.reason.message).to.be.eql('Error: boom!');
       });
   });
 
@@ -375,8 +376,9 @@ describe('sandboxed process', () => {
       })
       .then(inspection => {
         expect(inspection.isRejected).to.be.eql(true);
+        // n8n patch: finished() wraps the failure reason in a second Error.
         expect(inspection.reason.message).to.be.eql(
-          'Unexpected exit code: 0 signal: null'
+          'Error: Unexpected exit code: 0 signal: null'
         );
       });
   });
@@ -391,8 +393,9 @@ describe('sandboxed process', () => {
       })
       .then(inspection => {
         expect(inspection.isRejected).to.be.eql(true);
+        // n8n patch: finished() wraps the failure reason in a second Error.
         expect(inspection.reason.message).to.be.eql(
-          'Unexpected exit code: 1 signal: null'
+          'Error: Unexpected exit code: 1 signal: null'
         );
       });
   });
