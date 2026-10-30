@@ -48,20 +48,23 @@ describe('n8n Chat page HTTP routes', () => {
 			}),
 		);
 		const versionId = randomUUID();
-		await Container.get(AgentHistoryRepository).saveVersion({
-			versionId,
-			agentId: agent.id,
-			schema: {
-				name,
-				description: 'Answers support questions',
-				model,
-				instructions: 'Help',
-				integrations: withChat ? [chatIntegration] : [],
-				...(subAgents ? { subAgents: { agents: subAgents } } : {}),
+		await Container.get(AgentHistoryRepository).saveVersion(
+			{
+				versionId,
+				agentId: agent.id,
+				schema: {
+					name,
+					description: 'Answers support questions',
+					model,
+					instructions: 'Help',
+					integrations: withChat ? [chatIntegration] : [],
+					...(subAgents ? { subAgents: { agents: subAgents } } : {}),
+				},
+				tools: {},
+				publishedBy: 'test',
 			},
-			tools: {},
-			publishedBy: 'test',
-		});
+			{},
+		);
 		await agentRepository.update({ id: agent.id }, { activeVersionId: versionId });
 		return agent;
 	}
