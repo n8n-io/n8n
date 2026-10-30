@@ -14,6 +14,11 @@
       "types": "./dist/execution-ledger.module.d.ts",
       "import": "./dist/execution-ledger.module.js",
       "require": "./dist/execution-ledger.module.js"
+    },
+    "./testing": {
+      "types": "./dist/testing.d.ts",
+      "import": "./dist/testing.js",
+      "require": "./dist/testing.js"
     }
   },
   "files": [

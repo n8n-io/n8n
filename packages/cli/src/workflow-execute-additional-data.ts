@@ -5,8 +5,10 @@ import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { SsrfProtectionService } from '@n8n/backend-network';
 import {
 	EventService,
+	ExecutionLedger,
 	UrlService,
 	RuntimeCredentialProxyService,
+	toEndedFactsFromRun,
 	WorkflowPublishedDataService,
 } from '@n8n/backend-services';
 import { ExecutionsConfig, GlobalConfig, SsrfProtectionConfig, WorkflowsConfig } from '@n8n/config';
@@ -804,6 +806,18 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, fullRunData);
 
+		// The engine's own save may have finished the run already. Only the write that did records `ended`.
+		const saveFailure = async () => {
+			const { ended } = await Container.get(ExecutionPersistence).saveExecutionOutcome(
+				executionId,
+				fullExecutionData,
+			);
+			const facts = ended
+				? toEndedFactsFromRun({ executionId, workflow: workflowData, run: fullRunData })
+				: undefined;
+			if (facts) void Container.get(ExecutionLedger).recordEnded(facts);
+		};
+
 		// Nothing else records this failure, and a detached caller never sees the error.
 		const logUnrecordedFailure = (recordError: unknown) =>
 			Container.get(Logger).error('Failed to record a failed sub-workflow execution', {
@@ -835,16 +849,10 @@ async function startExecution(
 							workflowId: workflowData.id,
 							error: hookError,
 						});
-						await Container.get(ExecutionPersistence).updateExistingExecution(
-							executionId,
-							fullExecutionData,
-						);
+						await saveFailure();
 					});
 			} else {
-				await Container.get(ExecutionPersistence).updateExistingExecution(
-					executionId,
-					fullExecutionData,
-				);
+				await saveFailure();
 			}
 		} catch (recordError) {
 			logUnrecordedFailure(recordError);

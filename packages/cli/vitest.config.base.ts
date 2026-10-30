@@ -42,6 +42,14 @@ const alias = {
 		__dirname,
 		'../modules/insights/backend/src/index.ts',
 	),
+	'@n8n/backend-module-execution-ledger/testing': path.resolve(
+		__dirname,
+		'../modules/execution-ledger/backend/src/testing.ts',
+	),
+	'@n8n/backend-module-execution-ledger/module': path.resolve(
+		__dirname,
+		'../modules/execution-ledger/backend/src/execution-ledger.module.ts',
+	),
 	'@n8n/backend-module-workflow-builder/module': path.resolve(
 		__dirname,
 		'../modules/workflow-builder/backend/src/workflow-builder.module.ts',

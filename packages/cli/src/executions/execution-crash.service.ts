@@ -1,4 +1,4 @@
-import { EventService } from '@n8n/backend-services';
+import { EventService, ExecutionLedger, toEndedFactsFromCrash } from '@n8n/backend-services';
 import type { CrashedExecution, ResumableExecutionStatus } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -9,8 +9,8 @@ import { WorkflowStatisticsService } from '@/services/workflow-statistics.servic
 
 /**
  * Marks executions as `crashed`. A crash transition runs no execution lifecycle
- * hooks, so the workflow statistics are counted from here instead, and every
- * claimed row is announced as `execution-crashed` from here.
+ * hooks, so the workflow statistics and the ledger `ended` rows are recorded from
+ * here instead, and every claimed row is announced as `execution-crashed` from here.
  */
 @Service()
 export class ExecutionCrashService {
@@ -19,6 +19,7 @@ export class ExecutionCrashService {
 		private readonly workflowStatisticsService: WorkflowStatisticsService,
 		private readonly eventService: EventService,
 		private readonly instanceSettings: InstanceSettings,
+		private readonly executionLedger: ExecutionLedger,
 	) {}
 
 	async markAsCrashed(
@@ -28,6 +29,7 @@ export class ExecutionCrashService {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
 			this.count(batch);
 			this.announce(batch, detector);
+			this.recordEnded(batch);
 		});
 	}
 
@@ -57,9 +59,11 @@ export class ExecutionCrashService {
 		detector: CrashDetector,
 		options: { stoppedAt?: Date } = {},
 	): Promise<CrashedExecution[]> {
-		return await this.executionRepository.markAsCrashed(executionIds, (batch) =>
-			this.announce(batch, detector, options.stoppedAt),
-		);
+		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
+			this.announce(batch, detector, options.stoppedAt);
+			// The caller's hooks find the run already crashed, so they record no `ended` row.
+			this.recordEnded(batch, options.stoppedAt);
+		});
 	}
 
 	/**
@@ -94,8 +98,20 @@ export class ExecutionCrashService {
 
 		this.count(crashed);
 		this.announce(crashed, 'workflow-deactivation');
+		this.recordEnded(crashed);
 
 		return crashed;
+	}
+
+	/** One insert at a time, so a large sweep does not take the whole connection pool. */
+	private recordEnded(executions: CrashedExecution[], stoppedAtOverride?: Date) {
+		if (!this.executionLedger.isEnabled || executions.length === 0) return;
+
+		void (async () => {
+			for (const execution of executions) {
+				await this.executionLedger.recordEnded(toEndedFactsFromCrash(execution, stoppedAtOverride));
+			}
+		})();
 	}
 
 	private count(executions: CrashedExecution[]) {
