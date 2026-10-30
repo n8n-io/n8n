@@ -666,6 +666,8 @@ describe('AssistantAgentThreadView', () => {
 				text: 'Build a digest',
 				files: [],
 				references: [],
+				authorship: USER_TYPED_MESSAGE,
+				mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 			});
 
 			renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
