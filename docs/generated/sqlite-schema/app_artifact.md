@@ -57,6 +57,7 @@ erDiagram
   datetime_3_ buildStatusUpdatedAt
   INTEGER bundleArtifactId FK
   datetime_3_ createdAt
+  TEXT description
   varchar id PK
   varchar_255_ label
   INTEGER sourceArtifactId FK

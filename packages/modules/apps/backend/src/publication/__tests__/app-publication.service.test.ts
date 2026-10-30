@@ -26,6 +26,7 @@ function setup() {
 		apps,
 		versions,
 		hosts,
+		locks,
 		service: new AppPublicationService(apps, versions, hosts, locks),
 	};
 }
@@ -34,8 +35,58 @@ describe('AppPublicationService', () => {
 	it('publishes an explicitly selected version without advancing the draft', async () => {
 		const { service, apps } = setup();
 		await service.publish('project', appId, versionId);
-		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, versionId, {});
+		expect(apps.setPublishedVersion).toHaveBeenCalledWith(
+			'project',
+			appId,
+			versionId,
+			undefined,
+			{},
+		);
 		expect(apps.advanceDraft).not.toHaveBeenCalled();
+	});
+
+	it('saves the version details and the visibility in the publication lock', async () => {
+		const { service, apps, versions, locks } = setup();
+		await service.publish('project', appId, versionId, {
+			label: 'Launch',
+			description: 'Adds charts',
+			visibility: 'public',
+		});
+		expect(locks.withLockContext).toHaveBeenCalledOnce();
+		expect(versions.setDetails).toHaveBeenCalledWith(
+			versionId,
+			{ label: 'Launch', description: 'Adds charts' },
+			{},
+		);
+		expect(apps.setPublishedVersion).toHaveBeenCalledWith(
+			'project',
+			appId,
+			versionId,
+			'public',
+			{},
+		);
+	});
+
+	it('stores an empty description as null', async () => {
+		const { service, versions } = setup();
+		await service.publish('project', appId, versionId, { label: 'Launch', description: '' });
+		expect(versions.setDetails).toHaveBeenCalledWith(
+			versionId,
+			{ label: 'Launch', description: null },
+			{},
+		);
+	});
+
+	it('saves nothing when the version is not built', async () => {
+		const { service, apps, versions } = setup();
+		versions.findVersionById.mockResolvedValue(
+			mock<AppVersion>({ id: versionId, appId, buildStatus: 'failed', bundleArtifactId: null }),
+		);
+		await expect(
+			service.publish('project', appId, versionId, { label: 'Launch', visibility: 'public' }),
+		).rejects.toThrow('successful app version');
+		expect(versions.setDetails).not.toHaveBeenCalled();
+		expect(apps.setPublishedVersion).not.toHaveBeenCalled();
 	});
 
 	it('rejects publication without a valid app namespace', async () => {
@@ -82,6 +133,7 @@ describe('AppPublicationService', () => {
 		const { service, versions, apps } = setup();
 		await service.publish('project', appId, null);
 		expect(versions.findVersionById).not.toHaveBeenCalled();
-		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, null, {});
+		expect(versions.setDetails).not.toHaveBeenCalled();
+		expect(apps.setPublishedVersion).toHaveBeenCalledWith('project', appId, null, undefined, {});
 	});
 });

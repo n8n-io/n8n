@@ -164,6 +164,14 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 		});
 	}
 
+	async setDetails(
+		versionId: string,
+		details: Pick<AppVersion, 'label' | 'description'>,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.managerFor(ctx).update(AppVersion, { id: versionId }, details);
+	}
+
 	async clearBundles(versionIds: string[], ctx: OperationContext): Promise<void> {
 		for (const ids of chunkIds(versionIds)) {
 			await this.managerFor(ctx).update(AppVersion, { id: In(ids) }, { bundleArtifactId: null });

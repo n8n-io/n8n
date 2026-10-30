@@ -22,6 +22,7 @@ import { listApps } from '../apps.api';
 import { APP_DETAIL_VIEW, PROJECT_APPS, type AppViewTab } from '../apps.constants';
 import AppActions from './AppActions.vue';
 import AppPublishButton from './AppPublishButton.vue';
+import AppSharePopover from './publish/AppSharePopover.vue';
 
 const PERSONAL_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'user' };
 const DEFAULT_PROJECT_ICON: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -163,6 +164,12 @@ watch(
 			data-test-id="app-header-tabs"
 		/>
 		<div :class="$style.right">
+			<AppSharePopover
+				v-if="app?.publishedUrl"
+				:app="app"
+				:url="app.publishedUrl"
+				@updated="emit('updated', $event)"
+			/>
 			<AppPublishButton
 				v-if="app"
 				:app="app"

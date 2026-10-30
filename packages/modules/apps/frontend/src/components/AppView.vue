@@ -14,11 +14,6 @@ import { useAppVersions } from '../composables/useAppVersions';
 import AppHeader from './AppHeader.vue';
 import AppPreview from './AppPreview.vue';
 import AppConfigure from './configure/AppConfigure.vue';
-import {
-	DEFAULT_APP_CONFIGURE_TAB,
-	isAppConfigureTab,
-	type AppConfigureTab,
-} from './configure/appConfigureTabs';
 
 const props = defineProps<{ projectId: string; appId: string }>();
 
@@ -35,22 +30,11 @@ const versions = useAppVersions(
 	() => props.projectId,
 	() => app.value?.id,
 );
-// `<tab>` or `<tab>.<sub-tab>`, for example `configure.authentication`.
 const section = defineModel<string>('section', { default: 'preview' });
-const sectionParts = computed(() => section.value.split('.'));
 const activeTab = computed<AppViewTab>({
-	get: () => (sectionParts.value[0] === 'configure' ? 'configure' : 'preview'),
+	get: () => (section.value === 'configure' ? 'configure' : 'preview'),
 	set: (tab) => {
 		section.value = tab;
-	},
-});
-const configureTab = computed<AppConfigureTab>({
-	get: () => {
-		const subTab = sectionParts.value[1];
-		return isAppConfigureTab(subTab) ? subTab : DEFAULT_APP_CONFIGURE_TAB;
-	},
-	set: (tab) => {
-		section.value = `configure.${tab}`;
 	},
 });
 
@@ -117,13 +101,7 @@ defineExpose({ refresh });
 					:app="app"
 					:versions="versions"
 				/>
-				<AppConfigure
-					v-else
-					v-model:tab="configureTab"
-					:app="app"
-					:versions="versions"
-					@updated="app = $event"
-				/>
+				<AppConfigure v-else :app="app" @updated="app = $event" />
 			</template>
 		</main>
 	</div>

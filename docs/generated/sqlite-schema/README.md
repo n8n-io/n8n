@@ -54,7 +54,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [annotation_tag_entity](annotation_tag_entity.md) | 4 |  | table |
 | [app](app.md) | 9 |  | table |
 | [app_artifact](app_artifact.md) | 8 |  | table |
-| [app_version](app_version.md) | 10 |  | table |
+| [app_version](app_version.md) | 11 |  | table |
 | [auth_identity](auth_identity.md) | 5 |  | table |
 | [auth_provider_sync_history](auth_provider_sync_history.md) | 11 |  | table |
 | [binary_data](binary_data.md) | 9 |  | table |
@@ -988,6 +988,7 @@ erDiagram
   datetime_3_ buildStatusUpdatedAt
   INTEGER bundleArtifactId FK
   datetime_3_ createdAt
+  TEXT description
   varchar id PK
   varchar_255_ label
   INTEGER sourceArtifactId FK
