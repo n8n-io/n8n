@@ -101,23 +101,67 @@ export interface TaskRun {
 	remainingMs(): number;
 }
 
+/** How a holder tells the executor its resource is armed. */
+export interface HoldReporter {
+	/**
+	 * The resource is armed. Stamps `heldSince` and resets the attempt count, so a
+	 * later loss of the task costs no attempt. Call it once the resource works. A
+	 * second call is a no-op. When the claim is already gone, the run's signal aborts.
+	 */
+	ready(): Promise<void>;
+}
+
+/** The lifetime of one hold. */
+export interface HoldRun {
+	/**
+	 * Aborts when the holder must let go: a `LeaseLostError` when the claim is gone or
+	 * about to expire, a `TaskTimeoutError` when `ready()` did not come in time, and a
+	 * `HolderShutdownError` when the executor stops.
+	 */
+	readonly signal: AbortSignal;
+}
+
+/**
+ * Keeps one held task for as long as the work runs. Registered against a `taskType`
+ * like a {@link TaskHandler}, but runs tasks whose `mode` is `hold`.
+ *
+ * The handler arms its resource, calls `holder.ready()`, waits on `run.signal`,
+ * disarms and returns. A clean return releases the task back to `pending` with no
+ * attempt counted, so another instance, or this one, claims it again. A throw or a
+ * return before `ready()` is a failed start: it counts an attempt and backs off. A
+ * throw after `ready()` releases with a backoff and counts no attempt.
+ *
+ * Held tasks have no run timeout: the job's `timeoutSeconds` bounds only the time
+ * from the claim to `ready()`.
+ */
+export interface HoldTaskHandler {
+	readonly mode: 'hold';
+	hold(task: ClaimedTask, holder: HoldReporter, run: HoldRun): Promise<void>;
+}
+
+export type AnyTaskHandler = TaskHandler | HoldTaskHandler;
+
+export function isHoldTaskHandler(handler: AnyTaskHandler): handler is HoldTaskHandler {
+	return 'mode' in handler && handler.mode === 'hold';
+}
+
 /**
  * Where handlers register themselves by `taskType`. The executor claims only the
  * types present here (`registeredTypes`), so an instance never picks up work it
  * has no handler for.
  */
 export class TaskHandlerRegistry {
-	private readonly handlers = new Map<string, TaskHandler>();
+	private readonly handlers = new Map<string, AnyTaskHandler>();
 
 	/** Register `handler` for `taskType`. Throws if one is already registered. */
-	register(taskType: string, handler: TaskHandler): void {
+	register(taskType: string, handler: AnyTaskHandler): void {
 		if (this.handlers.has(taskType)) {
 			throw new DuplicateTaskHandlerError(taskType);
 		}
 		this.handlers.set(taskType, handler);
 	}
 
-	resolve(taskType: string): TaskHandler | undefined {
+	resolve(taskType: string): AnyTaskHandler | undefined {
 		return this.handlers.get(taskType);
 	}
 

@@ -464,6 +464,7 @@ function nextRunAtFor(
 	defaultTimezone: string,
 	hooks: ReconciliationHooks,
 ): Date | null {
+	if (job.kind === 'hold') return null;
 	try {
 		return computeFirstRunAt(resolveSchedule(job, defaultTimezone), from);
 	} catch (error) {

@@ -13,12 +13,18 @@ import type { ClaimedTask } from '../types';
  *   instance. Either nothing ran, or the handler did run but this instance no
  *   longer owned the task when it tried to record the result.
  *
+ * - `released`: a holder let go of its held task, which went back to `pending`
+ *   without counting an attempt.
+ *
  * `errorMessage` is present whenever the handler ran and failed, including a
  * `skipped-not-owned` fire whose failure could not be recorded.
  */
 export type FireResult =
-	| { outcome: 'completed' | 'skipped-no-handler' | 'skipped-not-owned' }
-	| { outcome: 'rescheduled' | 'dead-lettered' | 'skipped-not-owned'; errorMessage: string };
+	| { outcome: 'completed' | 'skipped-no-handler' | 'skipped-not-owned' | 'released' }
+	| {
+			outcome: 'rescheduled' | 'dead-lettered' | 'skipped-not-owned' | 'released';
+			errorMessage: string;
+	  };
 
 /**
  * Lets an observer wrap the execution of one fire, typically to record a
