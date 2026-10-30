@@ -58,7 +58,7 @@ test.describe(
 			expect(childExecutions[0].status).toMatch(/running|waiting/);
 		});
 
-		// Engine v2 runs the sub-execution in the parent's mode, not in `integrated`.
+		// TODO(CET-583): engine v2 runs the sub-execution in the parent's mode, not in `integrated`.
 		test('CAT-1445 should not be restarted by the child workflow finishing @engine:v2-pending', async ({
 			api,
 		}) => {
@@ -111,7 +111,7 @@ test.describe(
 );
 
 test.describe('CAT-1801: Parent receives correct data from child with wait node', () => {
-	// Engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
+	// TODO(CET-584): engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
 	test('should return child final output to parent after wait completes @engine:v2-pending', async ({
 		api,
 	}) => {
@@ -177,7 +177,7 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 });
 
 test.describe('CAT-3263: Parent receives error from child with wait node', () => {
-	// Engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
+	// TODO(CET-584): engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
 	test('should fail the Execute Workflow node when the child errors after wait completes @engine:v2-pending', async ({
 		api,
 	}) => {
@@ -223,7 +223,7 @@ test.describe('CAT-3263: Parent receives error from child with wait node', () =>
 });
 
 test.describe('CAT-1929: Parent should not resume until child with multiple waits completes', () => {
-	// Engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
+	// TODO(CET-584): engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
 	test('should keep parent waiting after first wait node is resumed, only completing after second wait @engine:v2-pending', async ({
 		api,
 	}) => {
