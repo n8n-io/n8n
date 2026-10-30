@@ -11,6 +11,7 @@ import { MIGRATION_REPORT_TELEMETRY } from './events/migration-report';
 import { PLATFORM_TELEMETRY } from './events/platform';
 import { POLICIES_TELEMETRY } from './events/policies';
 import { PROMOTIONS_TELEMETRY } from './events/promotions';
+import { TRUSTED_SOURCES_TELEMETRY } from './events/trusted-sources';
 import { TYPE_AVAILABILITY_POLICIES_TELEMETRY } from './events/type-availability-policies';
 import { WORKFLOW_TELEMETRY } from './events/workflow';
 import { WORKFLOW_REVIEWS_TELEMETRY } from './events/workflow-reviews';
@@ -28,6 +29,7 @@ export const TELEMETRY_EVENT = {
 	INSTANCE_AI: INSTANCE_AI_TELEMETRY,
 	MCP: MCP_TELEMETRY,
 	MIGRATION_REPORT: MIGRATION_REPORT_TELEMETRY,
+	TRUSTED_SOURCES: TRUSTED_SOURCES_TELEMETRY,
 	TYPE_AVAILABILITY_POLICIES: TYPE_AVAILABILITY_POLICIES_TELEMETRY,
 	WORKFLOW: WORKFLOW_TELEMETRY,
 	WORKFLOW_REVIEWS: WORKFLOW_REVIEWS_TELEMETRY,

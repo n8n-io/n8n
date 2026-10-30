@@ -66,6 +66,7 @@ import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime'
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
+import { toTrustedSourceTelemetryFacets } from '@n8n/inbound-auth';
 
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
@@ -380,6 +381,10 @@ export class TelemetryEventRelay extends EventRelay {
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
 			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
+			'trusted-source-created': (event) => this.trustedSourceCreated(event),
+			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
+			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
+			'trusted-source-healthy': (event) => this.trustedSourceHealthy(event),
 		});
 	}
 
@@ -570,6 +575,47 @@ export class TelemetryEventRelay extends EventRelay {
 			creds_pushed: credsPushed,
 			variables_pushed: variablesPushed,
 			public_api: publicApi,
+		});
+	}
+
+	// #endregion
+
+	// #region Trusted sources
+
+	private trustedSourceCreated({
+		user,
+		sourceId,
+		facets,
+	}: RelayEventMap['trusted-source-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE, {
+			user_id: user.id,
+			source_id: sourceId,
+			...toTrustedSourceTelemetryFacets(facets),
+		});
+	}
+
+	private trustedSourceUpdated({
+		user,
+		sourceId,
+		facets,
+	}: RelayEventMap['trusted-source-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE, {
+			user_id: user.id,
+			source_id: sourceId,
+			...toTrustedSourceTelemetryFacets(facets),
+		});
+	}
+
+	private trustedSourceDeleted({ sourceId, user }: RelayEventMap['trusted-source-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE, {
+			source_id: sourceId,
+			user_id: user.id,
+		});
+	}
+
+	private trustedSourceHealthy({ sourceId }: RelayEventMap['trusted-source-healthy']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY, {
+			source_id: sourceId,
 		});
 	}
 

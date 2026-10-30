@@ -1,11 +1,11 @@
 import isEqual from 'lodash/isEqual';
+import { derivePlanGroups, isFinal } from './agent-plan-state';
 
 import {
 	AgentPlanValidationError,
 	parseAgentPlan,
 	type AgentPlanDocument,
 	type AgentPlanItem,
-	type AgentPlanStatus,
 } from './agent-plan.schema';
 
 type Entry = { item: AgentPlanItem; parentId: string | null };
@@ -15,8 +15,7 @@ export type AgentPlanReadiness = {
 	blocked: Array<{ id: string; blockedBy: string[] }>;
 };
 
-export const isFinal = (status: AgentPlanStatus) =>
-	status !== 'pending' && status !== 'in_progress';
+export { isFinal };
 
 function fail(id: string, message: string): never {
 	throw new AgentPlanValidationError(`Plan item ${id}: ${message}`);
@@ -112,7 +111,11 @@ function validateGraph(index: PlanIndex) {
 		) {
 			fail(item.id, 'Every task must have a final status before the group has a final status');
 		}
-		if (!['pending', 'cancelled'].includes(item.status) && blockedBy(entry, index).length) {
+
+		if (
+			!['pending', 'paused', 'cancelled'].includes(item.status) &&
+			blockedBy(entry, index).length
+		) {
 			fail(item.id, 'Prerequisites must be Done before work starts or completes');
 		}
 	}
@@ -127,8 +130,10 @@ export function getAgentPlanReadiness(document: AgentPlanDocument): AgentPlanRea
 	const readiness: AgentPlanReadiness = { ready: [], blocked: [] };
 
 	for (const entry of index.values()) {
-		if (entry.item.status !== 'pending') continue;
+		if (!['pending', 'paused'].includes(entry.item.status)) continue;
+
 		const dependencies = blockedBy(entry, index);
+
 		if (dependencies.length) readiness.blocked.push({ id: entry.item.id, blockedBy: dependencies });
 		else readiness.ready.push(entry.item.id);
 	}
@@ -142,13 +147,14 @@ export function prepareAgentPlan(
 	previous: AgentPlanDocument | null,
 	now: Date,
 ): AgentPlanDocument {
-	const document = parseAgentPlan(data, formatVersion);
+	const document = derivePlanGroups(parseAgentPlan(data, formatVersion));
 	const index = indexPlan(document);
 	const previousIndex = previous ? indexPlan(previous) : new Map<string, Entry>();
 	const replacements = getReplacements(index);
 
 	for (const { item } of index.values()) {
-		if (item.status !== 'pending') continue;
+		if (!['pending', 'paused'].includes(item.status)) continue;
+
 		if (new Set(item.dependsOn).size !== item.dependsOn.length) {
 			fail(item.id, 'Dependencies must be unique');
 		}
@@ -158,10 +164,12 @@ export function prepareAgentPlan(
 				item.dependsOn.map((id) => {
 					let replacement = id;
 					let next = replacements.get(replacement);
+
 					while (next) {
 						replacement = next;
 						next = replacements.get(replacement);
 					}
+
 					return replacement;
 				}),
 			),
@@ -180,24 +188,80 @@ export function prepareAgentPlan(
 
 	for (const [id, { item, parentId }] of index) {
 		const old = previousIndex.get(id);
+
 		if (
-			item.startedAt !== (old?.item.startedAt ?? null) ||
-			item.endedAt !== (old?.item.endedAt ?? null)
+			item.kind === 'task' &&
+			(item.startedAt !== (old?.item.startedAt ?? null) ||
+				item.endedAt !== (old?.item.endedAt ?? null))
 		) {
 			fail(id, 'Timestamps are managed by the service');
 		}
+
 		if (!old) {
+			if (item.kind === 'task' && item.jobId) fail(id, 'Only job registration can bind a task');
+
 			if (item.status !== 'pending') fail(id, 'New items must be Pending');
+
 			continue;
 		}
+
 		if (old.parentId !== parentId || old.item.kind !== item.kind) {
 			fail(id, 'Existing items cannot change their type or group');
 		}
-		if (isFinal(old.item.status) && !isEqual(old.item, item)) {
-			fail(id, 'Final items cannot change');
+
+		if (item.kind === 'task' && old.item.kind === 'task') {
+			if (item.jobId !== old.item.jobId) fail(id, 'Only job registration can bind a task');
+
+			if (item.jobId && item.status !== old.item.status)
+				fail(id, 'The background job controls this task status');
+
+			if (
+				item.jobId &&
+				(item.description !== old.item.description ||
+					!isEqual(item.dependsOn, old.item.dependsOn) ||
+					item.fallbackFor !== old.item.fallbackFor)
+			)
+				fail(id, 'Delegated task definitions cannot change');
+
+			if (old.item.status === 'paused' && item.status !== 'paused')
+				fail(id, 'Use resume_background_jobs to continue this task');
+
+			// Only Stop pauses parent-run work. No model edit can resume it, so the task stays stuck.
+			if (old.item.status !== 'paused' && item.status === 'paused')
+				fail(id, 'Only Stop can pause a task. Keep it Pending or In progress, or cancel it');
+
+			if (isFinal(old.item.status) && item.status !== old.item.status) {
+				if (old.item.status !== 'done' || item.status !== 'in_progress')
+					fail(id, 'Create a new task for further work');
+
+				const dependencies = new Set([id, ...(parentId ? [parentId] : [])]);
+
+				if (
+					[...previousIndex.values()].some(
+						({ item: dependent }) =>
+							dependent.startedAt &&
+							dependent.dependsOn.some((dependency) => dependencies.has(dependency)),
+					)
+				) {
+					fail(id, 'A task that depends on this work has already started');
+				}
+
+				item.endedAt = null;
+			}
+
+			if (
+				isFinal(old.item.status) &&
+				(item.description !== old.item.description ||
+					!isEqual(item.dependsOn, old.item.dependsOn) ||
+					item.fallbackFor !== old.item.fallbackFor)
+			) {
+				fail(id, 'Final task definitions cannot change');
+			}
 		}
-		if (old.item.status === 'in_progress') {
+
+		if (item.kind === 'task' && old.item.status === 'in_progress') {
 			if (item.status === 'pending') fail(id, 'In progress items cannot become Pending');
+
 			if (
 				item.kind === 'task' &&
 				old.item.kind === 'task' &&
@@ -205,6 +269,7 @@ export function prepareAgentPlan(
 			) {
 				fail(id, 'An In progress task cannot change its fallbackFor');
 			}
+
 			if (
 				item.kind === 'task' &&
 				(item.description !== old.item.description || !isEqual(item.dependsOn, old.item.dependsOn))
@@ -212,13 +277,22 @@ export function prepareAgentPlan(
 				fail(id, 'An In progress task cannot change its description or dependencies');
 			}
 		}
-		if (old.item.status === 'pending' && item.status !== 'pending' && item.status !== 'cancelled') {
+
+		if (
+			item.kind === 'task' &&
+			old.item.status === 'pending' &&
+			item.status !== 'pending' &&
+			item.status !== 'cancelled'
+		) {
 			item.startedAt = now.toISOString();
 		}
-		if (!isFinal(old.item.status) && isFinal(item.status)) item.endedAt = now.toISOString();
+
+		if (item.kind === 'task' && !isFinal(old.item.status) && isFinal(item.status))
+			item.endedAt = now.toISOString();
 	}
 
-	validateGraph(index);
+	const resolved = derivePlanGroups(document);
+	validateGraph(indexPlan(resolved));
 
-	return document;
+	return resolved;
 }

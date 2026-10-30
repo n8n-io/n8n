@@ -722,6 +722,7 @@ export class AgentRuntime {
 		options?: ExecutionOptions,
 	): {
 		telemetry?: TelemetryOptions;
+		toolChoice?: 'none';
 		headers?: Record<string, string>;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 		onStepStart?: ExecutionOptions['onStepStart'];
@@ -729,6 +730,7 @@ export class AgentRuntime {
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
+			...(options?.toolsEnabled === false ? { toolChoice: 'none' as const } : {}),
 			...buildFunctionIdHeaders(this.config.functionId),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
 			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
@@ -1095,7 +1097,8 @@ export class AgentRuntime {
 			system: prompt.system,
 			messages: prompt.messages,
 			abortSignal: abortScope.signal,
-			hasTools: options?.toolsEnabled !== false && tools.hasTools,
+			// Provider tools are also needed to replay their earlier calls and results.
+			hasTools: tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
 			providerOptions: prompt.providerOptions,
@@ -1104,6 +1107,7 @@ export class AgentRuntime {
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
 			onInputRejected: this.createInputRejectionHandler(ctx),
 		};
+
 		return { toolMap: tools.toolMap, modelCallContext };
 	}
 

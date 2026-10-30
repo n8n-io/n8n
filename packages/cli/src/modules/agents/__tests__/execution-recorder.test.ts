@@ -108,18 +108,22 @@ describe('ExecutionRecorder', () => {
 	it('keeps the initial background signal in snapshots and final storage', () => {
 		const onSnapshot = vi.fn();
 		const recorder = new ExecutionRecorder(undefined, onSnapshot, {
+			isFinal: true,
 			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 		});
 		const initial = structuredClone(recorder.getMessageRecord().timeline);
+
 		expect(initial).toEqual([
 			{
 				type: 'background-task-signal',
 				timestamp: recorder.startedAt.getTime(),
 				signal: {
+					isFinal: true,
 					tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
 				},
 			},
 		]);
+
 		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Done' });
 		recorder.record({ type: 'finish', finishReason: 'stop' });
 		expect(onSnapshot.mock.lastCall?.[0][0]).toEqual(initial[0]);

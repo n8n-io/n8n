@@ -1063,6 +1063,7 @@ const { tasks: setupTasks, isVisible: isSetupChecklistVisible } =
 const areSetupTasksVisible = computed(
 	() =>
 		isSetupChecklistVisible.value &&
+		!agent.value?.activeVersionId &&
 		!isUnsaved.value &&
 		!props.artifactEditingLocked &&
 		!embeddedAiBuilding.value,

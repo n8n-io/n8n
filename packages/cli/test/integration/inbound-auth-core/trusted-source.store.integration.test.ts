@@ -443,6 +443,41 @@ describe('TrustedSourceStore (integration)', () => {
 			expect(await loadSource(row.id)).toMatchObject({ metadata: null, status: 'unchecked' });
 		});
 
+		it('getStatus reads the database and bypasses the cache', async () => {
+			const row = await seedRow();
+			expect((await loadSource(row.id)).status).toBe('unchecked');
+
+			await rows.update({ id: row.id }, { status: 'healthy' });
+
+			expect(await store.getStatus(row.id)).toBe('healthy');
+			expect((await loadSource(row.id)).status).toBe('unchecked');
+			expect(await store.getStatus('missing')).toBeUndefined();
+		});
+
+		it('reports the committed write when the cache invalidation fails afterwards', async () => {
+			const warn = vi.spyOn(Container.get(Logger), 'warn');
+			const row = await seedRow();
+			const source = await loadSource(row.id);
+			const token = await claim(source);
+			vi.spyOn(cacheService, 'deleteMany').mockRejectedValueOnce(new Error('redis down'));
+
+			const recorded = await store.recordDiscovery(source, token, {
+				metadata,
+				status: 'healthy',
+				lastError: null,
+			});
+
+			expect(recorded).toBe(true);
+			expect(await rows.findOneByOrFail({ id: row.id })).toMatchObject({
+				status: 'healthy',
+				discoveryClaimToken: null,
+			});
+			expect(warn).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ id: row.id }),
+			);
+		});
+
 		it('records a healthy result, releases the lease and stamps lastCheckedAt from the database', async () => {
 			const row = await seedRow();
 			const source = await loadSource(row.id);

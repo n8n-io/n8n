@@ -107,6 +107,11 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return all.filter((source) => source.config.surfaces[surface] !== undefined);
 	}
 
+	/** Uncached: the status as the database holds it now, for a run that holds the lease. */
+	async getStatus(id: string): Promise<TrustedSourceStatus | undefined> {
+		return (await this.trustedSourceRepository.findById(id, {}))?.status;
+	}
+
 	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
 	async listDue(limit: number): Promise<TrustedSource[]> {
 		const rows = await this.trustedSourceRepository.findDue(
@@ -152,7 +157,18 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			},
 			{},
 		);
-		if (recorded) await this.invalidateCache(source);
+		// The write is committed at this point. A failed invalidation leaves stale reads for at most
+		// CACHE_TTL; it must not turn the write into a failure for the caller.
+		if (recorded) {
+			try {
+				await this.invalidateCache(source);
+			} catch (error) {
+				this.logger.warn('Discovery result written but the cache could not be invalidated', {
+					id: source.id,
+					error,
+				});
+			}
+		}
 		return recorded;
 	}
 
