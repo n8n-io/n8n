@@ -103,12 +103,12 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 ### `import_files`
 
 - Purpose: Copies conversation files by fileId into `inputs/` of the workspace. The tool checks that the thread can read each file. Paths must stay in `inputs/`. One call copies up to `N8N_AGENTS_FILES_MAX_IMPORT_MB`.
-- Attach condition: The same as the workspace tools. The runtime attaches it next to them, and adds the instructions about `outputs/`, `sandbox:<path>` references and `import_files` to the workspace instructions.
+- Attach condition: The same as the workspace tools, and the instance flag `137_agent_sandbox_files` is on. The runtime attaches it next to them, and adds the instructions about `outputs/`, `sandbox:<path>` references and `import_files` to the workspace instructions.
 - Source: [`tools/import-files.tool.ts`](./tools/import-files.tool.ts).
 
 ### Sandbox output files
 
-Files in `outputs/` become conversation files with source `sandbox`. A turn that used a workspace tool stores the new files when it ends, and a sub-agent stores them before it returns its files. Where a tool takes a fileId, the model can also give `sandbox:<path>` to store one file of `outputs/` at once. Source: [`agent-sandbox-files.service.ts`](./agent-sandbox-files.service.ts).
+Files in `outputs/` become conversation files with source `sandbox`. A turn that used a workspace tool stores the new files when it ends, and a sub-agent stores them before it returns its files. Where a tool takes a fileId, the model can also give `sandbox:<path>` to store one file of `outputs/` at once. When the instance flag `137_agent_sandbox_files` is off, n8n stores no sandbox files and rejects `sandbox:<path>`. Source: [`agent-sandbox-files.service.ts`](./agent-sandbox-files.service.ts).
 
 ### Knowledge retrieval tools
 

@@ -10,6 +10,8 @@ import {
 import { AgentSandboxFilesService, normalizeOutputPath } from '../agent-sandbox-files.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 
+import type { PostHogClient } from '@/posthog';
+
 const HASH = 'a'.repeat(64);
 const scope = { agentId: 'agent-1', projectId: 'project-1', threadId: 'thread-1' };
 
@@ -20,10 +22,17 @@ describe('AgentSandboxFilesService', () => {
 	const sandbox = mock<WorkspaceSandbox>({ executeCommand });
 	const workspace = mock<Workspace>({ filesystem, sandbox });
 	const agentsConfig = mock<AgentsConfig>({ maxImportMb: 1 });
-	const service = new AgentSandboxFilesService(mock<Logger>(), attachmentService, agentsConfig);
+	const postHogClient = mock<PostHogClient>();
+	const service = new AgentSandboxFilesService(
+		mock<Logger>(),
+		attachmentService,
+		agentsConfig,
+		postHogClient,
+	);
 
 	beforeEach(() => {
 		vi.clearAllMocks();
+		postHogClient.getFeatureFlagForInstance.mockResolvedValue(true);
 		attachmentService.findReadableByHashes.mockResolvedValue(new Map());
 		attachmentService.storeInbound.mockImplementation(
 			async (params) => ({ ...params }) as unknown as AgentChatAttachment,
@@ -142,6 +151,14 @@ describe('AgentSandboxFilesService', () => {
 			expect(attachmentService.storeInbound).toHaveBeenCalledTimes(1);
 		});
 
+		it('does nothing when the flag is off', async () => {
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+
+			await service.syncOutputs(workspace, scope);
+
+			expect(executeCommand).not.toHaveBeenCalled();
+		});
+
 		it('does not throw when the listing fails', async () => {
 			executeCommand.mockRejectedValue(new Error('sandbox down'));
 
@@ -179,6 +196,18 @@ describe('AgentSandboxFilesService', () => {
 			await expect(service.resolveFileRefs(['sandbox:out.txt'], readScope)).rejects.toThrow(
 				'this run has no sandbox',
 			);
+		});
+
+		it('rejects a sandbox path when the flag is off', async () => {
+			postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
+			const run = { agentId: 'agent-1', getWorkspace: () => workspace };
+			service.trackRun('thread-1', run);
+
+			await expect(service.resolveFileRefs(['sandbox:out.txt'], readScope)).rejects.toThrow(
+				'not found in this conversation',
+			);
+			service.untrackRun('thread-1', run);
+			expect(attachmentService.storeInbound).not.toHaveBeenCalled();
 		});
 
 		it('reports a file that the sandbox cannot read in words the model can act on', async () => {
