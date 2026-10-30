@@ -45,18 +45,21 @@ describe('production n8n Chat HTTP route', () => {
 
 	async function activateChat(agentId: string, enabled = true) {
 		const versionId = randomUUID();
-		await Container.get(AgentHistoryRepository).saveVersion({
-			versionId,
-			agentId,
-			schema: {
-				name: 'Agent',
-				model: 'openai:gpt-4o-mini',
-				instructions: 'Help',
-				integrations: enabled ? [chatIntegration] : [],
+		await Container.get(AgentHistoryRepository).saveVersion(
+			{
+				versionId,
+				agentId,
+				schema: {
+					name: 'Agent',
+					model: 'openai:gpt-4o-mini',
+					instructions: 'Help',
+					integrations: enabled ? [chatIntegration] : [],
+				},
+				tools: {},
+				publishedBy: 'test',
 			},
-			tools: {},
-			publishedBy: 'test',
-		});
+			{},
+		);
 		await Container.get(AgentRepository).update({ id: agentId }, { activeVersionId: versionId });
 	}
 
