@@ -1121,10 +1121,12 @@ export class CredentialsService {
 		decryptedCredentialData?: ICredentialDataDecryptedObject,
 		options?: UpdateOptions,
 	) {
-		// One flag decision for the whole update, reused for the write payload and the response.
+		// One flag lookup for the whole update, reused for the write payload and the response.
 		const descriptionsEnabled = await this.credentialDescriptions.isEnabled();
 		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 		await this.externalHooks.run('credentials.update', [newCredentialData]);
+		// The hook can set the field, so filter again before the write. This reuses the cached flag.
+		if (!descriptionsEnabled) this.credentialDescriptions.strip(newCredentialData);
 
 		const cleared = await this.enforceCredentialUpdate(credentialId, newCredentialData.type, actor);
 		if (cleared === null) return null;

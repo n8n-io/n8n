@@ -2065,23 +2065,23 @@ describe('CredentialsService', () => {
 				},
 			);
 
-			// The flag filters caller input before the hook only. A hook that sets the field owns that write.
-			it('writes a hook-added description but keeps it out of the response when the flag is disabled', async () => {
-				postHogClient.getFeatureFlagForInstance.mockResolvedValue(false);
-				const stored = setUpUpdate();
-				hookSetsDescription('From hook');
+			it.each([false, undefined])(
+				'keeps a hook-added description out of the write and the response when the flag is %s',
+				async (enabled) => {
+					postHogClient.getFeatureFlagForInstance.mockResolvedValue(enabled);
+					const stored = setUpUpdate();
+					hookSetsDescription('From hook');
 
-				const result = await service.update(stored.id, buildPayload(stored), ownerActor);
+					const result = await service.update(stored.id, buildPayload(stored), ownerActor);
 
-				expect(credentialsRepository.updateContent).toHaveBeenCalledWith(
-					stored.id,
-					expect.objectContaining({ description: 'From hook' }),
-					expect.anything(),
-				);
-				expect(result).not.toBeNull();
-				expect(result).not.toHaveProperty('description');
-				expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
-			});
+					const [, written] = credentialsRepository.updateContent.mock.calls[0];
+					expect(written).not.toHaveProperty('description');
+					expect(result).not.toBeNull();
+					expect(result).not.toHaveProperty('description');
+					expect(stored.description).toBe(storedDescription);
+					expect(postHogClient.getFeatureFlagForInstance).toHaveBeenCalledOnce();
+				},
+			);
 		});
 	});
 
