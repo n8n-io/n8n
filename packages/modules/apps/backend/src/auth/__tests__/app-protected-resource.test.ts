@@ -15,7 +15,7 @@ import { AppHostService } from '../../serving/app-host.service';
 const id = '11111111-1111-4111-8111-111111111111';
 const url = `https://sales.apps.example.com/_n8n/auth/${id}/callback`;
 
-function setup(deploymentType = 'default') {
+function setup(deploymentType = 'default', sameOrigin = false) {
 	const app = mock<App>({
 		id,
 		namespace: 'sales',
@@ -26,7 +26,7 @@ function setup(deploymentType = 'default') {
 	const apps = mock<AppRepository>();
 	apps.findById.mockResolvedValue(app);
 	const hosts = new AppHostService(
-		mock<AppsConfig>({ baseUrl: 'https://apps.example.com' }),
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com', unsafeSameOrigin: sameOrigin }),
 		mock<GlobalConfig>({
 			host: 'foo.app.n8n.cloud',
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
@@ -54,6 +54,22 @@ function setup(deploymentType = 'default') {
 }
 
 describe('AppProtectedResource', () => {
+	it('resolves same-origin apps only by their canonical callback URL', async () => {
+		const { registry, resource, apps } = setup('default', true);
+		const callbackUrl = `https://foo.app.n8n.cloud/apps/${id}/_n8n/auth/${id}/callback`;
+		expect((await registry.getByResourceUrl(callbackUrl))?.getResourceUrl()).toBe(callbackUrl);
+		expect(apps.findById).toHaveBeenCalledWith(id);
+		for (const value of [
+			callbackUrl.replace('foo.app.n8n.cloud', 'other.example.com'),
+			callbackUrl.replace(`/apps/${id}/`, '/apps/other/'),
+			callbackUrl.replace('/_n8n/', '/_preview/_n8n/'),
+			callbackUrl + '?extra=1',
+			url,
+		]) {
+			expect(resource.matchesVirtualClientUrl(value)).toBe(false);
+		}
+	});
+
 	it('does not resolve app resources by path', async () => {
 		const { registry, apps } = setup();
 

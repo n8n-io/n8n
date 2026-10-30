@@ -1,4 +1,4 @@
-import { appNamespaceSchema } from '@n8n/api-types';
+import { appNamespaceSchema, appSchema } from '@n8n/api-types';
 import { UrlService } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
@@ -15,6 +15,7 @@ const PREVIEW_MARKER = '--preview';
 @Service()
 export class AppHostService {
 	readonly baseUrl: URL;
+	readonly sameOrigin: boolean;
 	private readonly hostSuffix: string = '';
 
 	constructor(
@@ -22,6 +23,11 @@ export class AppHostService {
 		private readonly globalConfig: GlobalConfig,
 		urls: UrlService,
 	) {
+		this.sameOrigin = config.unsafeSameOrigin;
+		if (this.sameOrigin) {
+			this.baseUrl = new URL(`${urls.getInstanceBaseUrl()}/`);
+			return;
+		}
 		if (!config.baseUrl) {
 			throw new BadRequestError('Set N8N_APPS_BASE_URL before enabling the apps module.');
 		}
@@ -70,10 +76,52 @@ export class AppHostService {
 		return this.originForLabel(namespace, PREVIEW_MARKER);
 	}
 
+	appPath(appId: string, preview = false): string {
+		return `${this.baseUrl.pathname}apps/${appId}/${preview ? '_preview/' : ''}`;
+	}
+
+	appUrl(app: { id: string; namespace: string }, preview = false): string | null {
+		if (this.sameOrigin) {
+			if (!appSchema.shape.id.safeParse(app.id).success) return null;
+			return new URL(this.appPath(app.id, preview), this.baseUrl).href;
+		}
+		return preview ? this.previewOrigin(app.namespace) : this.origin(app.namespace);
+	}
+
 	callbackUrl(app: { id: string; namespace: string }): string {
-		const origin = this.origin(app.namespace);
-		if (!origin) throw new BadRequestError('Use a valid app namespace before publishing this app.');
-		return `${origin}/_n8n/auth/${app.id}/callback`;
+		const appUrl = this.appUrl(app);
+		if (!appUrl) throw new BadRequestError('Use a valid app namespace before publishing this app.');
+		return `${appUrl.replace(/\/$/, '')}/_n8n/auth/${app.id}/callback`;
+	}
+
+	callbackAppId(url: URL): string | undefined {
+		const match = /\/_n8n\/auth\/([^/]+)\/callback$/.exec(url.pathname);
+		const id = match?.[1];
+		if (!id || !appSchema.shape.id.safeParse(id).success) return undefined;
+		if (this.sameOrigin) {
+			return url.origin === this.baseUrl.origin &&
+				url.pathname === `${this.appPath(id)}_n8n/auth/${id}/callback`
+				? id
+				: undefined;
+		}
+		return url.pathname === `/_n8n/auth/${id}/callback` && this.namespaceFromUrl(url)
+			? id
+			: undefined;
+	}
+
+	requestAppId(req: IncomingMessage): string | undefined {
+		if (!this.sameOrigin || !this.ownsRequest(req)) return undefined;
+		const id = this.requestPath(req).slice(`${this.baseUrl.pathname}apps/`.length).split('/')[0];
+		return appSchema.shape.id.safeParse(id).success ? id : undefined;
+	}
+
+	isPreview(req: IncomingMessage): boolean {
+		if (!this.sameOrigin) return !!this.previewNamespace(req);
+		const id = this.requestAppId(req);
+		if (!id) return false;
+		const root = this.appPath(id, true);
+		const pathname = this.requestPath(req);
+		return pathname === root.slice(0, -1) || pathname.startsWith(root);
 	}
 
 	/** Express trusts the immediate peer when the configured proxy hop count is positive. */
@@ -90,6 +138,15 @@ export class AppHostService {
 	}
 
 	ownsRequest(req: IncomingMessage): boolean {
+		if (this.sameOrigin) {
+			const host = this.parseHost(this.requestHost(req));
+			const prefix = `${this.baseUrl.pathname}apps`;
+			const pathname = this.requestPath(req);
+			return (
+				host?.origin === this.baseUrl.origin &&
+				(pathname === prefix || pathname.startsWith(`${prefix}/`))
+			);
+		}
 		return this.isAppsHostRange(this.requestHost(req));
 	}
 
@@ -119,6 +176,7 @@ export class AppHostService {
 
 	private originForLabel(namespace: string, marker: string): string | null {
 		if (!appNamespaceSchema.safeParse(namespace).success) return null;
+		if (this.sameOrigin) return this.baseUrl.origin;
 		const label = `${namespace}${marker}${this.hostSuffix}`;
 		if (label.length > 63 || label.length + this.baseUrl.hostname.length + 1 > FQDN_MAX_LENGTH)
 			return null;
@@ -147,5 +205,11 @@ export class AppHostService {
 		} catch {
 			return undefined;
 		}
+	}
+
+	private requestPath(req: IncomingMessage): string {
+		const url =
+			'originalUrl' in req && typeof req.originalUrl === 'string' ? req.originalUrl : req.url;
+		return (url ?? '').split('?')[0];
 	}
 }

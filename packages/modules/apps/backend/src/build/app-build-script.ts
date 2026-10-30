@@ -7,6 +7,7 @@ key="$3"
 deadline="$4"
 max_log_bytes="$5"
 staging_retention_ms="$6"
+asset_base="$7"
 cd "$root"
 printf sandbox > "$stage/stage"
 node_version=$(node --version)
@@ -40,6 +41,6 @@ if [ ! -d node_modules ] || [ ! -f "$root/dependencies" ] || [ "$(cat "$root/dep
 fi
 printf build > "$stage/stage"
 ulimit -c 0
-npm run build -- --base=/ 2>&1 | tail -c "$max_log_bytes"
+npm run build -- --base="$asset_base" 2>&1 | tail -c "$max_log_bytes"
 tar -czf "$stage/bundle.tgz" -C dist .
 `;

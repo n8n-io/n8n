@@ -10,11 +10,19 @@ import { AppHostService } from './app-host.service';
 @Service()
 export class AppsHostingService {
 	readonly router: Router = Router();
+	private readonly dispatchRouter: Router;
 
 	constructor(
 		readonly hosts: AppHostService,
 		private readonly logger: Logger,
-	) {}
+	) {
+		this.dispatchRouter = hosts.sameOrigin ? Router() : this.router;
+		if (hosts.sameOrigin) {
+			const prefix = `${hosts.baseUrl.pathname}apps/:appId`;
+			this.dispatchRouter.use(`${prefix}/_preview`, this.router);
+			this.dispatchRouter.use(prefix, this.router);
+		}
+	}
 
 	readonly dispatch: RequestHandler = (req, res, next) => {
 		if (!this.hosts.ownsRequest(req)) {
@@ -22,11 +30,15 @@ export class AppsHostingService {
 			return;
 		}
 		res.set('Cache-Control', 'no-store');
-		if (!this.hosts.namespace(req) && !this.hosts.previewNamespace(req)) {
+		if (
+			!this.hosts.requestAppId(req) &&
+			!this.hosts.namespace(req) &&
+			!this.hosts.previewNamespace(req)
+		) {
 			res.sendStatus(404);
 			return;
 		}
-		void this.router(req, res, (error?: unknown) => {
+		void this.dispatchRouter(req, res, (error?: unknown) => {
 			if (!error) {
 				if (!res.headersSent) res.sendStatus(404);
 				return;

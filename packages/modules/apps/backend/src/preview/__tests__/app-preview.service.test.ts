@@ -19,17 +19,18 @@ const appId = '11111111-1111-4111-8111-111111111111';
 const versionId = '22222222-2222-4222-8222-222222222222';
 const now = Math.floor(Date.now() / 1000);
 
-function setup(baseUrl = 'https://apps.example.com') {
+function setup(baseUrl = 'https://apps.example.com', sameOrigin = false) {
 	const app = mock<App>({ id: appId, namespace: 'sales', projectId: 'project-1' });
 	const apps = mock<AppRepository>();
 	apps.findInProject.mockResolvedValue(app);
 	apps.findByNamespace.mockResolvedValue(app);
+	apps.findById.mockResolvedValue(app);
 	const versions = mock<AppVersionRepository>();
 	versions.findVersionById.mockResolvedValue(
 		mock<AppVersion>({ id: versionId, appId, buildStatus: 'succeeded', bundleArtifactId: 1 }),
 	);
 	const hosts = new AppHostService(
-		mock<AppsConfig>({ baseUrl }),
+		mock<AppsConfig>({ baseUrl, unsafeSameOrigin: sameOrigin }),
 		mock<GlobalConfig>({ deployment: mock<GlobalConfig['deployment']>({ type: 'default' }) }),
 		mock<UrlService>({
 			getInstanceBaseUrl: () => 'https://n8n.example.net',
@@ -84,6 +85,37 @@ async function grantCode(service: AppPreviewService) {
 }
 
 describe('AppPreviewService', () => {
+	it('grants and serves a same-origin preview without a published version', async () => {
+		const { service, res, apps } = setup('', true);
+		const root = `/apps/${appId}/_preview/`;
+		const { url } = await service.createGrant('user-1', 'project-1', appId, versionId);
+		const parsed = new URL(url);
+		expect(parsed.origin).toBe('https://n8n.example.net');
+		expect(parsed.pathname).toBe(`${root}_n8n/preview`);
+		const req = previewRequest({ code: parsed.searchParams.get('code')! });
+		req.headers.host = 'n8n.example.net';
+		req.originalUrl = parsed.pathname + parsed.search;
+
+		await service.exchange(req, res);
+
+		expect(res.redirect).toHaveBeenCalledWith(root);
+		const [name, token] = res.cookie.mock.calls[0];
+		expect(name).toBe(`__Host-n8n-app-${appId}-preview`);
+		req.cookies = { [name]: token };
+		req.originalUrl = `${root}assets/main.js`;
+		const next = vi.fn();
+		await service.authenticate(req, res, next);
+		expect(next).toHaveBeenCalledOnce();
+		expect(req.appContext).toMatchObject({ versionId, preview: true, app: { id: appId } });
+		expect(apps.findByNamespace).not.toHaveBeenCalled();
+
+		req.originalUrl = root.replace(appId, '33333333-3333-4333-8333-333333333333');
+		next.mockClear();
+		await service.authenticate(req, res, next);
+		expect(next).not.toHaveBeenCalled();
+		expect(res.status).toHaveBeenCalledWith(401);
+	});
+
 	it('exposes the editor origin for frame-ancestors', () => {
 		expect(setup().service.editorOrigin).toBe('https://n8n.example.net');
 	});

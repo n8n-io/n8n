@@ -1,8 +1,8 @@
 import { isRecord } from '@n8n/utils/is-record';
 import type { CookieOptions, Request } from 'express';
 
-export function appCookieName(baseUrl: URL, suffix: string): string {
-	return `${baseUrl.protocol === 'https:' ? '__Host-' : ''}n8n-app-${suffix}`;
+export function appCookieName(baseUrl: URL, suffix: string, appId?: string): string {
+	return `${baseUrl.protocol === 'https:' ? '__Host-' : ''}n8n-app-${appId ? `${appId}-` : ''}${suffix}`;
 }
 
 export function appCookieOptions(baseUrl: URL): CookieOptions {

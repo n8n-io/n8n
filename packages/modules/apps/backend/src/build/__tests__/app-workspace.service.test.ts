@@ -63,6 +63,15 @@ function setup(provider: 'daytona' | 'n8n-sandbox' = 'n8n-sandbox') {
 }
 
 describe('AppWorkspaceService', () => {
+	it.each([false, true])('builds with the asset base for same-origin mode: %s', async (enabled) => {
+		const { build, sandbox, config } = setup();
+		config.unsafeSameOrigin = enabled;
+
+		await build();
+
+		expect(vi.mocked(sandbox.executeCommand!).mock.calls[0][1]?.at(-1)).toBe(enabled ? './' : '/');
+	});
+
 	it.each(['daytona', 'n8n-sandbox'] as const)(
 		'reconnects to the same app identity through %s',
 		async (provider) => {

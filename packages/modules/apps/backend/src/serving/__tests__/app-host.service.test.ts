@@ -11,9 +11,12 @@ function setup({
 	proxyHops = 0,
 	deploymentType = 'default',
 	host = 'n8n.example.net',
+	sameOrigin = false,
+	instanceUrl = 'https://n8n.example.net',
 } = {}) {
 	const config = new AppsConfig();
 	config.baseUrl = baseUrl;
+	config.unsafeSameOrigin = sameOrigin;
 	return new AppHostService(
 		config,
 		mock<GlobalConfig>({
@@ -22,7 +25,7 @@ function setup({
 			deployment: mock<GlobalConfig['deployment']>({ type: deploymentType }),
 		}),
 		mock<UrlService>({
-			getInstanceBaseUrl: () => 'https://n8n.example.net',
+			getInstanceBaseUrl: () => instanceUrl,
 			getWebhookBaseUrl: () => 'https://hooks.example.net',
 		}),
 	);
@@ -36,6 +39,62 @@ function request(host: string, forwarded?: string) {
 }
 
 describe('AppHostService', () => {
+	describe('same-origin hosting', () => {
+		const id = '11111111-1111-4111-8111-111111111111';
+		const app = { id, namespace: 'sales' };
+
+		it.each(['https://n8n.example.net', 'http://127.0.0.1:5678/n8n'])(
+			'uses the instance URL without an apps domain: %s',
+			(instanceUrl) => {
+				const hosts = setup({ sameOrigin: true, baseUrl: '', instanceUrl });
+				expect(hosts.appUrl(app)).toBe(`${instanceUrl}/apps/${id}/`);
+				expect(hosts.appUrl(app, true)).toBe(`${instanceUrl}/apps/${id}/_preview/`);
+				const callbackUrl = `${instanceUrl}/apps/${id}/_n8n/auth/${id}/callback`;
+				expect(hosts.callbackUrl(app)).toBe(callbackUrl);
+				expect(hosts.callbackAppId(new URL(callbackUrl))).toBe(id);
+				expect(
+					hosts.callbackAppId(new URL(callbackUrl.replace('/callback', '/login'))),
+				).toBeUndefined();
+				expect(
+					hosts.callbackAppId(new URL(callbackUrl.replace(`/apps/${id}/`, '/apps/other/'))),
+				).toBeUndefined();
+			},
+		);
+
+		it('reserves only the apps path on the instance host', () => {
+			const hosts = setup({ sameOrigin: true });
+			for (const url of ['/apps', '/apps/', '/apps/not-an-id']) {
+				const req = request('n8n.example.net');
+				req.url = url;
+				expect(hosts.ownsRequest(req)).toBe(true);
+				expect(hosts.requestAppId(req)).toBeUndefined();
+			}
+			for (const [host, url] of [
+				['n8n.example.net', '/rest/apps'],
+				['n8n.example.net', '/home/apps'],
+				['other.example.net', `/apps/${id}/`],
+				['n8n.example.net:1234', `/apps/${id}/`],
+			]) {
+				const req = request(host);
+				req.url = url;
+				expect(hosts.ownsRequest(req)).toBe(false);
+			}
+		});
+
+		it('resolves the original app path after router mounting and behind a proxy', () => {
+			const hosts = setup({ sameOrigin: true, proxyHops: 1 });
+			const req = Object.assign(request('internal:5678', 'n8n.example.net'), {
+				url: '/assets/main.js',
+				originalUrl: `/apps/${id}/_preview/assets/main.js?test=1`,
+			});
+			expect(hosts.requestAppId(req)).toBe(id);
+			expect(hosts.isPreview(req)).toBe(true);
+			req.originalUrl = `/apps/${id}/orders/123`;
+			expect(hosts.requestAppId(req)).toBe(id);
+			expect(hosts.isPreview(req)).toBe(false);
+		});
+	});
+
 	it('requires a parent URL', () => {
 		expect(() => setup({ baseUrl: '' })).toThrow('Set N8N_APPS_BASE_URL');
 	});

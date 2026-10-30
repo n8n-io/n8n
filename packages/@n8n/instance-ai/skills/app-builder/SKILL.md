@@ -11,7 +11,7 @@ recommended_tools:
 # App Builder
 
 An n8n App is a static browser app (Vue 3 and Vite). n8n stores its source,
-builds it in a sandbox and hosts the build on the apps domain. The `apps` tool
+builds it in a sandbox and hosts the compiled files. The `apps` tool
 puts the source of an app into your sandbox workspace and saves it back. You
 edit the files with the workspace tools.
 
@@ -22,9 +22,28 @@ edit the files with the workspace tools.
 - Use only the dependencies of the scaffold: `vue`, `vite` and
   `@vitejs/plugin-vue`. You cannot change `package.json` or
   `package-lock.json`. Write routing, state and UI components yourself.
-- Use relative URLs or `location.origin`. Never hardcode a host: the preview
-  and the published app run on different hosts.
+- Use app-relative URLs for internal links and assets. Never hardcode a host
+  or an app path prefix. Follow the URL and routing rules below.
 - Do not add page or theme configuration. Put styling in the source.
+
+## URLs and routing
+
+Apps can run at a domain root or under a path prefix. Preview and published
+apps can have different hosts or path prefixes. Read the app root at runtime:
+
+```js
+const appRoot = new URL(document.querySelector('base')?.href ?? '/', location.href);
+```
+
+- Use `new URL('history', appRoot)` for an internal URL. A leading `/`, such as
+  `/history`, points to the domain root. `location.origin` omits the app prefix.
+- For path-based routing, remove `appRoot.pathname` before matching a route.
+  Include the app root when you call `history.pushState` or `history.replaceState`.
+  Handle `popstate` so the browser Back and Forward buttons update the view.
+- Do not derive the app root from the current route. A direct visit to a nested
+  page must use the same root as a visit to the home page.
+- Keep the supplied base element. Do not hardcode a separate base for previews.
+  Use only the scaffold dependencies for routing.
 
 ## Scaffold
 
@@ -40,9 +59,9 @@ Add components under `src/`. Keep files small and focused.
 ## Workflow
 
 1. **Create or open the app.**
-   - New app: call `create` with a name and a namespace. The namespace is the
-     subdomain label of the app URL: lowercase letters, digits and single
-     hyphens. Derive it from the name.
+   - New app: call `create` with a name and a namespace. Use lowercase letters,
+     digits and single hyphens for the namespace. Derive it from the name. The
+     namespace is the subdomain label when n8n uses subdomain hosting.
    - If the conversation lists a pending app, create it with `create`. n8n
      reuses the pending id.
    - Existing app: use the `appId` from the conversation context. If the
