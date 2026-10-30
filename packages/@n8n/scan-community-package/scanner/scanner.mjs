@@ -440,22 +440,16 @@ export const analyzePackageByName = async (packageName, version) => {
 		if (!sourceDir) {
 			const reason = sourceError?.message ?? 'unsupported or unlocatable source repository';
 			stdout.write(`❌ Could not fetch source for ${label} \n`);
-
-			if (sourceError && !isSourceUnavailable(sourceError)) {
-				return {
-					packageName,
-					version: exactVersion,
-					passed: false,
-					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
-					error: sourceError,
-				};
-			}
+			const error = sourceError && !isSourceUnavailable(sourceError) ? sourceError : undefined;
 
 			return {
 				packageName,
 				version: exactVersion,
 				passed: false,
-				message: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
+				message: error
+					? `Analysis failed: could not fetch the attested source repository (${reason})`
+					: `Could not fetch the source repository recorded in the package's npm provenance (${reason}). The scan lints the attested source, so it must be reachable — publish with provenance from a public GitHub repository.`,
+				error,
 			};
 		}
 

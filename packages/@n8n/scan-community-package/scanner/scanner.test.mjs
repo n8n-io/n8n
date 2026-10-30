@@ -387,28 +387,24 @@ describe('analyzePackage', () => {
 });
 
 describe('getExitCode', () => {
-	it('returns 0 when all checks passed', () => {
-		expect(getExitCode({ passed: true })).toBe(0);
-	});
-
-	it('returns 2 when the scan ran and the package failed a check', () => {
-		expect(getExitCode({ passed: false, message: 'ESLint violations found' })).toBe(2);
-	});
-
-	it('returns 1 when the scan could not complete', () => {
-		expect(getExitCode({ passed: false, error: new Error('npm pack failed') })).toBe(1);
+	it.each([
+		['passed', { passed: true }, 0],
+		['could not complete', { passed: false, error: new Error('npm pack failed') }, 1],
+		['failed a check', { passed: false, message: 'ESLint violations found' }, 2],
+	])('returns the code for a scan that %s', (_, result, code) => {
+		expect(getExitCode(result)).toBe(code);
 	});
 });
 
 describe('isSourceUnavailable', () => {
-	it('treats 4xx responses as the package being unreachable', () => {
-		expect(isSourceUnavailable({ response: { status: 404 } })).toBe(true);
-		expect(isSourceUnavailable({ response: { status: 403 } })).toBe(true);
-	});
-
-	it('treats server errors, timeouts and other failures as scanner errors', () => {
-		expect(isSourceUnavailable({ response: { status: 502 } })).toBe(false);
-		expect(isSourceUnavailable({ code: 'ECONNABORTED' })).toBe(false);
-		expect(isSourceUnavailable(new Error('tar extraction failed'))).toBe(false);
+	// 4xx is on the package author; everything else is a scanner-side error
+	it.each([
+		[{ response: { status: 404 } }, true],
+		[{ response: { status: 403 } }, true],
+		[{ response: { status: 502 } }, false],
+		[{ code: 'ECONNABORTED' }, false],
+		[new Error('tar extraction failed'), false],
+	])('classifies %o as %s', (error, expected) => {
+		expect(isSourceUnavailable(error)).toBe(expected);
 	});
 });

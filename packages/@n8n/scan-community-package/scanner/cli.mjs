@@ -15,11 +15,13 @@ try {
 
 	if (result.passed) {
 		console.log(`✅ Package ${packageName}@${result.version} has passed all security checks`);
-	} else if (result.error) {
-		console.log(`❌ Could not complete the scan of ${packageName}@${result.version}`);
-		console.log(`Reason: ${result.message}`);
 	} else {
-		console.log(`❌ Package ${packageName}@${result.version} has failed security checks`);
+		const label = `${packageName}@${result.version}`;
+		console.log(
+			result.error
+				? `❌ Could not complete the scan of ${label}`
+				: `❌ Package ${label} has failed security checks`,
+		);
 		console.log(`Reason: ${result.message}`);
 
 		if (result.details) {
