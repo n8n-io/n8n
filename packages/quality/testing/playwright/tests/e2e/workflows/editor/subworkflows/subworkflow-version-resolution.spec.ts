@@ -52,7 +52,9 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('manual execution should use draft version of sub-workflow', async ({ api }) => {
+		test('manual execution should use draft version of sub-workflow @engine:v2', async ({
+			api,
+		}) => {
 			const { workflowId: childWorkflowId, createdWorkflow: childWorkflow } =
 				await api.workflows.importWorkflowFromFile('subworkflow-version-child.json');
 
@@ -125,7 +127,7 @@ test.describe(
 			expect(executionDetails.data).toContain('draft-version');
 		});
 
-		test('production execution should use published version of sub-workflow @engine:v2-pending', async ({
+		test('production execution should use published version of sub-workflow @engine:v2', async ({
 			api,
 		}) => {
 			const childFilePath = resolveFromRoot('workflows', 'subworkflow-version-child.json');
@@ -172,7 +174,7 @@ test.describe(
 			expect(responseData['wf-version']).toBe('published-version');
 		});
 
-		test('should prevent publishing parent workflow when sub-workflow is not published', async ({
+		test('should prevent publishing parent workflow when sub-workflow is not published @engine:v2', async ({
 			api,
 		}) => {
 			const childWorkflowId = (
@@ -232,7 +234,7 @@ test.describe(
 			}
 		});
 
-		test('should allow self-referencing workflows', async ({ api }) => {
+		test('should allow self-referencing workflows @engine:v2', async ({ api }) => {
 			const { workflowId, createdWorkflow: workflow } =
 				await api.workflows.createWorkflowFromDefinition({
 					name: 'Self-Referencing Workflow',

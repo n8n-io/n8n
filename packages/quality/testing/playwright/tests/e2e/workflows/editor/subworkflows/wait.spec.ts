@@ -28,7 +28,7 @@ test.describe(
 		annotation: [{ type: 'owner', description: 'Catalysts' }],
 	},
 	() => {
-		test('should not wait for the sub-workflow', async ({ api }) => {
+		test('should not wait for the sub-workflow @engine:v2', async ({ api }) => {
 			const childWorkflowId = (
 				await api.workflows.importWorkflowFromFile('subworkflow-wait-child.json')
 			).workflowId;
@@ -58,7 +58,10 @@ test.describe(
 			expect(childExecutions[0].status).toMatch(/running|waiting/);
 		});
 
-		test('CAT-1445 should not be restarted by the child workflow finishing', async ({ api }) => {
+		// Engine v2 runs the sub-execution in the parent's mode, not in `integrated`.
+		test('CAT-1445 should not be restarted by the child workflow finishing @engine:v2-pending', async ({
+			api,
+		}) => {
 			// The child is a no-op that returns immediately.
 			const childWorkflowId = (
 				await api.workflows.importWorkflowFromFile('subworkflow-noop-child.json')
@@ -108,7 +111,10 @@ test.describe(
 );
 
 test.describe('CAT-1801: Parent receives correct data from child with wait node', () => {
-	test('should return child final output to parent after wait completes', async ({ api }) => {
+	// Engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
+	test('should return child final output to parent after wait completes @engine:v2-pending', async ({
+		api,
+	}) => {
 		// Import child workflow (has Wait node with webhook)
 		const { workflowId: childWorkflowId } =
 			await api.workflows.importWorkflowFromFile('cat-1801-child.json');
@@ -171,7 +177,8 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 });
 
 test.describe('CAT-3263: Parent receives error from child with wait node', () => {
-	test('should fail the Execute Workflow node when the child errors after wait completes', async ({
+	// Engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
+	test('should fail the Execute Workflow node when the child errors after wait completes @engine:v2-pending', async ({
 		api,
 	}) => {
 		// Child waits on a webhook, then errors (Stop and Error) once resumed.
@@ -216,7 +223,8 @@ test.describe('CAT-3263: Parent receives error from child with wait node', () =>
 });
 
 test.describe('CAT-1929: Parent should not resume until child with multiple waits completes', () => {
-	test('should keep parent waiting after first wait node is resumed, only completing after second wait', async ({
+	// Engine v2 answers a `lastNode` webhook when the run ends, not when it waits.
+	test('should keep parent waiting after first wait node is resumed, only completing after second wait @engine:v2-pending', async ({
 		api,
 	}) => {
 		// Import child workflow with two Wait nodes (auto-activated via "active": true in JSON)
