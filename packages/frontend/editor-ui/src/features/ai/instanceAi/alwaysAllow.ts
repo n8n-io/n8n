@@ -9,6 +9,7 @@ import {
 	buildWorkspaceSessionGrantKey,
 	getDataTableCallAction,
 	getExecutionCallAction,
+	getWorkspaceCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 	REMOVED_BUILDER_TOOL_NAMES,
@@ -109,13 +110,15 @@ export function buildAlwaysAllowKey(
 		if (!workflowId) return null;
 		return buildWorkflowActionSessionGrantKey(grantAction, workflowId);
 	}
-	if (toolName === 'workspace' && action === 'cleanup-test-executions') {
+	// Workspace grants keep the action key, for the split tools and the former tool.
+	const workspaceAction = getWorkspaceCallAction(rawToolName, action);
+	if (workspaceAction === 'cleanup-test-executions') {
 		// Deleting test executions is per-workflow, matching the backend thread grant.
 		if (!workflowId) return null;
 		return buildCleanupTestExecutionsSessionGrantKey(workflowId);
 	}
-	if (toolName === 'workspace') {
-		return buildWorkspaceSessionGrantKey(action);
+	if (workspaceAction) {
+		return buildWorkspaceSessionGrantKey(workspaceAction);
 	}
 	// Data table grants keep the action key, for the split tools and the former tool.
 	const dataTableAction = getDataTableCallAction(rawToolName, action);
