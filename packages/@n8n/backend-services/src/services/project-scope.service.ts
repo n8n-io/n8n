@@ -22,9 +22,17 @@ export class ProjectScopeService {
 	}
 
 	async getProjectIds(user: User, scopes: Scope[]): Promise<string[] | null> {
-		const roles = await this.getProjectRoleSlugs(user, scopes);
-		if (roles === null) return null;
+		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) return null;
 
+		return await this.getMemberProjectIds(user, scopes);
+	}
+
+	/**
+	 * Like {@link getProjectIds}, but ignores the global role: only projects the
+	 * user is a member of with a role that grants all `scopes`.
+	 */
+	async getMemberProjectIds(user: User, scopes: Scope[]): Promise<string[]> {
+		const roles = await this.roleService.rolesWithScope('project', scopes);
 		return await this.projectRelationRepository.getAccessibleProjectsByRoles(user.id, roles);
 	}
 }

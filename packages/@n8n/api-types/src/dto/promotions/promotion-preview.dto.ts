@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
 import { promotionChangesSchema } from './promotable-resource.dto';
-import { promotionDataTableChangeSchema } from './promotion-binding-preflight.dto';
+import {
+	promotionBindingProjectSchema,
+	promotionDataTableChangeSchema,
+	promotionInstanceProjectSchema,
+	promotionPreviewCheckSchema,
+} from './promotion-apply-check.dto';
 import { Z } from '../../zod-class';
 import { serializedCredentialSchema } from '../packages/credential.schema';
 import { serializedDataTableSchema } from '../packages/data-table.schema';
@@ -47,12 +52,24 @@ export const promotionResourceSchema = z.object({
 	id: z.string(),
 	name: z.string(),
 	previousName: z.string().optional(),
+	/** Only for tags on Apply: the local tag with this name that Apply moves to the branch id. */
+	previousId: z.string().optional(),
 	/** The project or folder that holds the resource. `null` for instance-wide resources. */
 	parentKey: z.string().nullable(),
 	previousParentKey: z.string().nullable().optional(),
 	change: promotionResourceChangeSchema,
 	/** Whether the user can select the resource directly. Only workflows can be selected for now. */
 	selectable: z.boolean(),
+	/**
+	 * Only for deleted workflows on Promote: the project that owns the workflow on this instance now.
+	 * Promote refuses the workflow, because the destination would delete it.
+	 */
+	movedToProject: promotionInstanceProjectSchema.optional(),
+	/**
+	 * Only for added workflows on Promote: the project that holds the workflow on the branch. It moved
+	 * into this project on this instance, and a project promote refuses it.
+	 */
+	movedFromProject: promotionBindingProjectSchema.optional(),
 	revision: revisionSchema,
 });
 
@@ -67,9 +84,25 @@ export const promotionResourceDependencySchema = z.object({
 
 export type PromotionResourceDependency = z.infer<typeof promotionResourceDependencySchema>;
 
+/** Why a promote preview shows no changes. `reviewId` is the open review that holds them. */
+export const promotionBlockerSchema = z.object({
+	code: z.literal('reviewOpen'),
+	reviewId: z.string(),
+});
+
+export type PromotionBlocker = z.infer<typeof promotionBlockerSchema>;
+
 export const promotionPreviewSchema = promotionChangesSchema.extend({
 	resources: z.array(promotionResourceSchema),
 	dependencies: z.array(promotionResourceDependencySchema),
+	blocker: promotionBlockerSchema.optional(),
+	/** Apply only: what stops the Apply of each workflow, from the same plan as the resources. */
+	check: promotionPreviewCheckSchema.optional(),
+	/**
+	 * Apply only: a hash of the resources and the check. Apply compares it with a fresh preview
+	 * and stops when the instance changed after the preview was loaded.
+	 */
+	revision: z.string().optional(),
 });
 
 export type PromotionPreview = z.infer<typeof promotionPreviewSchema>;

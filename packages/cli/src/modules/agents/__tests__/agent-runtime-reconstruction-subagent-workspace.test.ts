@@ -12,11 +12,13 @@ import type { OauthService } from '@/oauth/oauth.service';
 import type { AiService } from '@/services/ai.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 import type { WorkflowRepository } from '@n8n/db';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
@@ -82,6 +84,8 @@ function makeService() {
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
+		makeKnowledgeAvailabilityService(),
 	);
 
 	return { service, workspaceService };
@@ -127,7 +131,12 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 				'workspace_read_file',
 				'load_skill',
 				'mark_session_failed',
+				'delegate_subagent',
 			]),
+		});
+		// Sub-agents get no background job tools, so their names are not eager.
+		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining(['background_jobs']),
 		});
 	});
 

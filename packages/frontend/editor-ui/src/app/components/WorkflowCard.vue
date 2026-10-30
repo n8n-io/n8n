@@ -822,6 +822,7 @@ const tags = computed(
 					:actions="actions"
 					placement="bottom-end"
 					theme="dark"
+					icon-size="medium"
 					data-test-id="workflow-card-actions"
 					@action="onAction"
 				/>

@@ -1,3 +1,4 @@
+import { ENVIRONMENTS_VERSIONS, type EnvironmentsVersion } from '@n8n/api-types';
 import { IsBoolean, IsHexColor, IsOptional, IsString, IsIn, Matches } from 'class-validator';
 
 import { KeyPairType } from './key-pair-type';
@@ -49,6 +50,10 @@ export class SourceControlPreferences {
 	@IsString()
 	httpsPassword?: string;
 
+	@IsOptional()
+	@IsIn(ENVIRONMENTS_VERSIONS)
+	environmentsVersion?: EnvironmentsVersion;
+
 	static fromJSON(json: Partial<SourceControlPreferences>): SourceControlPreferences {
 		return new SourceControlPreferences(json);
 	}
@@ -67,6 +72,8 @@ export class SourceControlPreferences {
 			connectionType: preferences.connectionType ?? defaultPreferences.connectionType,
 			httpsUsername: preferences.httpsUsername ?? defaultPreferences.httpsUsername,
 			httpsPassword: preferences.httpsPassword ?? defaultPreferences.httpsPassword,
+			environmentsVersion:
+				preferences.environmentsVersion ?? defaultPreferences.environmentsVersion,
 		});
 	}
 }

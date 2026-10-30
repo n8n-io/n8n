@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-apps",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -14,6 +14,11 @@
       "types": "./dist/apps.module.d.ts",
       "import": "./dist/apps.module.js",
       "require": "./dist/apps.module.js"
+    },
+    "./hosting": {
+      "types": "./dist/serving/apps-hosting.service.d.ts",
+      "import": "./dist/serving/apps-hosting.service.js",
+      "require": "./dist/serving/apps-hosting.service.js"
     }
   },
   "files": [
@@ -35,27 +40,47 @@
     "test:dev": "vitest --silent=false"
   },
   "dependencies": {
+    "@n8n/agents": "workspace:*",
     "@n8n/api-types": "workspace:*",
     "@n8n/backend-common": "workspace:*",
     "@n8n/backend-services": "workspace:*",
+    "@n8n/blob-storage": "workspace:*",
+    "@n8n/config": "workspace:*",
     "@n8n/db": "workspace:*",
     "@n8n/decorators": "workspace:*",
     "@n8n/di": "workspace:*",
     "@n8n/errors": "workspace:*",
+    "@n8n/inbound-auth": "workspace:*",
+    "@n8n/permissions": "workspace:*",
     "@n8n/typeorm": "workspace:*",
+    "@n8n/utils": "workspace:*",
+    "compression": "catalog:",
+    "cookie-parser": "catalog:",
+    "express": "catalog:",
+    "lru-cache": "catalog:",
+    "mime-types": "catalog:",
+    "n8n-core": "workspace:*",
+    "tar": "catalog:",
     "uuid": "catalog:"
+  },
+  "peerDependencies": {
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@n8n/oxlint-config": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@n8n/vitest-config": "workspace:*",
+    "@types/compression": "catalog:",
+    "@types/cookie-parser": "catalog:",
     "@types/express": "catalog:",
+    "@types/mime-types": "catalog:",
     "oxlint": "catalog:",
     "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:typescript",
     "vite": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "zod": "catalog:"
   },
   "license": "LicenseRef-n8n-sustainable-use"
 }

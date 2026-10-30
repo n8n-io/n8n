@@ -7,6 +7,10 @@ import {
 	N8nIcon,
 	N8nMarkdownEditor,
 } from '@n8n/design-system';
+import {
+	getViolationVerdict,
+	SCOPE_LABEL_KEY,
+} from '@n8n/frontend-module-type-availability-policies';
 import { useI18n } from '@n8n/i18n';
 import { computed, toRef } from 'vue';
 import type { ToolCall } from '@/features/ai/shared/agentsChat/types';
@@ -31,10 +35,13 @@ import {
 import { TOOL_CALL_STATE } from '../constants';
 import { parseToolPolicyRefusal } from '@/features/ai/shared/agentsChat/toolPolicyRefusal';
 import AgentChatToolPolicyRefusal from './AgentChatToolPolicyRefusal.vue';
+import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
+import { getToolOutputAttachments } from '../utils/tool-output-files';
 
 const props = defineProps<{
 	toolCalls: ToolCall[];
 	projectId?: string;
+	agentId?: string;
 	canFixWithAssistant?: boolean;
 	dismissedToolCallIds?: string[];
 	executionId?: string;
@@ -50,13 +57,25 @@ const showFix = computed(() => Boolean(props.canFixWithAssistant && props.execut
 
 const dismissedToolCallIds = computed(() => new Set(props.dismissedToolCallIds ?? []));
 
+const outputFilesByToolCallId = computed(
+	() => new Map(props.toolCalls.map((tc) => [tc.toolCallId, getToolOutputAttachments(tc.output)])),
+);
+
+function outputFiles(tc: ToolCall) {
+	return outputFilesByToolCallId.value.get(tc.toolCallId) ?? [];
+}
+
 const fixableFailures = computed<AgentFixWithAssistantFailure[]>(() => {
 	if (!showFix.value) return [];
 
 	const dismissed = dismissedToolCallIds.value;
 	const failures: AgentFixWithAssistantFailure[] = [];
+
 	for (const toolCall of props.toolCalls) {
 		if (dismissed.has(toolCall.toolCallId)) continue;
+
+		if (isCanceledToolCall(toolCall)) continue;
+
 		if (toolCall.state !== TOOL_CALL_STATE.ERROR) continue;
 		if (isRecoverablePlanError(toolCall)) continue;
 		// The assistant cannot lift a policy.
@@ -117,6 +136,8 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 }
 
 function toolStepMetadata(tc: ToolCall): string[] {
+	if (isCanceledToolCall(tc)) return [i18n.baseText('agentSessions.status.cancelled')];
+
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),
@@ -183,11 +204,25 @@ function toolStepRefusal(tc: ToolCall) {
 	return parseToolPolicyRefusal(tc.output);
 }
 
+function isCanceledToolCall(tc: ToolCall): boolean {
+	return (
+		tc.canceled === true ||
+		tc.state === TOOL_CALL_STATE.CANCELLED ||
+		// Older saved cancellations used the tool-error path.
+		(tc.state === TOOL_CALL_STATE.ERROR &&
+			tc.output === 'Error: Tool call stopped by guardrail: tasks-cancelled')
+	);
+}
+
 function toolStepError(tc: ToolCall): string | undefined {
+	if (isCanceledToolCall(tc)) return undefined;
+
 	if (isRecoverablePlanError(tc)) return i18n.baseText('agents.chat.plan.error.rejected');
 	if (tc.state !== TOOL_CALL_STATE.ERROR) return undefined;
-	if (toolStepRefusal(tc)) {
-		return i18n.baseText('typeAvailabilityPolicies.restrictedNode.scope.instance');
+	const refusal = toolStepRefusal(tc);
+	if (refusal) {
+		const { scope } = getViolationVerdict(refusal.violations[0]);
+		return i18n.baseText(SCOPE_LABEL_KEY[scope ?? 'instance']);
 	}
 	if (isEmptyToolErrorPayload(tc.output)) {
 		return i18n.baseText('agents.chat.toolError.generic');
@@ -303,6 +338,13 @@ function hasActiveToolCall(): boolean {
 							</div>
 						</div>
 					</N8nAiActivityStep>
+					<AgentChatMessageAttachments
+						v-if="outputFiles(tc).length && projectId && agentId"
+						:class="$style.outputFiles"
+						:attachments="outputFiles(tc)"
+						:project-id="projectId"
+						:agent-id="agentId"
+					/>
 				</template>
 			</N8nAiActivityStepGroup>
 		</template>
@@ -375,6 +417,13 @@ function hasActiveToolCall(): boolean {
 						</div>
 					</template>
 				</N8nAiActivityStep>
+				<AgentChatMessageAttachments
+					v-if="outputFiles(tc).length && projectId && agentId"
+					:class="$style.outputFiles"
+					:attachments="outputFiles(tc)"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</template>
 		</template>
 
@@ -440,6 +489,10 @@ function hasActiveToolCall(): boolean {
 
 .errorList li + li {
 	margin-top: var(--spacing--4xs);
+}
+
+.outputFiles {
+	margin: var(--spacing--4xs) 0 var(--spacing--2xs);
 }
 
 .childProgress {

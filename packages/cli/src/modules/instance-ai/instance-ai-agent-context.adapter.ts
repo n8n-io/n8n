@@ -3,8 +3,7 @@ import { Service } from '@n8n/di';
 import type { InstanceAiAgentContextReader } from '@n8n/instance-ai';
 
 import { AgentContextService } from '@/modules/agents/agent-context.service';
-
-import { formatPreviewSessionContext } from './format-agent-session-context';
+import { formatPreviewSessionContext } from '@/modules/agents/format-agent-session-context';
 
 @Service()
 export class InstanceAiAgentContextAdapterService {

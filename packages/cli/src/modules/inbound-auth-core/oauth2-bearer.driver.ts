@@ -200,7 +200,8 @@ export class Oauth2BearerDriver extends AuthenticationDriver {
 			const path = url.pathname === '/' ? '' : url.pathname;
 			return {
 				authorizationServers: sources.filter((s) => s.type === 'oauth2').map((s) => s.issuer),
-				challenge: `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource${path}"`,
+				// The query selects among resources sharing a path (a webhook's `?method=`), so it stays.
+				challenge: `Bearer resource_metadata="${url.origin}/.well-known/oauth-protected-resource${path}${url.search}"`,
 			};
 		} catch (error) {
 			this.logger.warn('Failed to advertise resource', { error });

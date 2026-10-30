@@ -82,9 +82,9 @@ export function getDateRangesSelectQuery({
 	// SQLite can work with string literals in comparisons
 	if (dbType === 'postgresdb') {
 		return sql`SELECT
-			CAST('${prevStartStr}' AS TIMESTAMP) AS prev_start_date,
-			CAST('${startStr}' AS TIMESTAMP) AS start_date,
-			CAST('${endStr}' AS TIMESTAMP) AS end_date
+			CAST('${prevStartStr}' AS TIMESTAMP) AT TIME ZONE 'UTC' AS prev_start_date,
+			CAST('${startStr}' AS TIMESTAMP) AT TIME ZONE 'UTC' AS start_date,
+			CAST('${endStr}' AS TIMESTAMP) AT TIME ZONE 'UTC' AS end_date
 		`;
 	}
 

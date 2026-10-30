@@ -23,6 +23,7 @@ import { bigintStringToNumber, idStringifier } from '../utils/transformers';
 export type ExecutionDataStorageLocation = 'db' | 'fs' | 's3' | 'az';
 
 @Entity()
+@Index(['workflowId'])
 @Index(['workflowId', 'id'])
 @Index(['waitTill', 'id'])
 @Index(['finished', 'id'])

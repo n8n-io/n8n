@@ -172,12 +172,16 @@ describe('TELEMETRY_EVENT', () => {
 	it.each([
 		TELEMETRY_EVENT.AGENTS.USER_REVERTED_CHANGES_ON_AGENT,
 		TELEMETRY_EVENT.AGENTS.USER_CLICKED_TRACE_DETAILS_FROM_TEST_PANEL,
-	])('requires agent and editor session ids for $name', (event) => {
-		const payload = { agent_id: 'agent-1', session_id: 'editor-session' };
+	])('requires an agent id and editor push ref for $name', (event) => {
+		const payload = { agent_id: 'agent-1', push_ref: 'editor-session' };
 		expect(event.properties.parse(payload)).toEqual(payload);
 		expect(event.properties.safeParse({ agent_id: 'agent-1' }).success).toBe(false);
-		expect(event.properties.safeParse({ session_id: 'editor-session' }).success).toBe(false);
-		expect(event.properties.safeParse({ ...payload, session_id: 42 }).success).toBe(false);
+		expect(event.properties.safeParse({ push_ref: 'editor-session' }).success).toBe(false);
+		expect(event.properties.safeParse({ ...payload, push_ref: 42 }).success).toBe(false);
+		expect(
+			event.properties.safeParse({ agent_id: 'agent-1', session_id: 'editor-session' }).success,
+		).toBe(false);
+		expect(event.getValidationError({ ...payload, session_id: 'editor-session' })).not.toBeNull();
 	});
 
 	it.each([

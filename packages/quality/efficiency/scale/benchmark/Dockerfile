@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:24.18.1 AS base
+FROM node:24.22.1 AS base
 
 # Install required dependencies
 RUN apt-get update && apt-get install -y gnupg2 curl
@@ -24,8 +24,7 @@ RUN apt-get update && \
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 
-# Pin pnpm to the repo's packageManager version. pnpm 12 installs a standalone
-# native executable, so the image does not need Corepack.
+# Pin pnpm to the repo's packageManager version.
 ARG PNPM_VERSION=12.4.2
 RUN npm i -g "pnpm@${PNPM_VERSION}"
 

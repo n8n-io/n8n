@@ -5,10 +5,19 @@ import type {
 	PromotionResourceDetail,
 	SerializedDataTableColumn,
 } from '@n8n/api-types';
+import type { InjectionKey } from 'vue';
 
 /** Turns the package files of a resource into what its change card shows. */
 
 export type DetailSide = 'before' | 'after';
+
+/**
+ * What a side without a file says. The preview pages compare a branch with this instance.
+ * A page that compares other sides, such as two commits of a review, provides its own text.
+ */
+export const PromotionAbsentSideLabelsKey: InjectionKey<Record<DetailSide, string>> = Symbol(
+	'PromotionAbsentSideLabels',
+);
 
 /**
  * The content of one side. `absent` means that side has no file, so the resource is added or
@@ -106,32 +115,50 @@ export function describeFieldChanges(
 	detail: PromotionResourceDetail,
 	context: FieldContext,
 ): FieldChange[] {
-	const { direction, resource } = context;
+	const { resource } = context;
 	if (resource.change === 'unchanged') return [];
 
 	const before = { ...fieldsOf(detail, 'before'), ...locationOf(context, 'before') };
 	const after = { ...fieldsOf(detail, 'after'), ...locationOf(context, 'after') };
-	// Apply keeps the name of an existing folder, so only its move remains.
-	const locationOnly =
-		direction === 'apply' && resource.change === 'modified' && detail.type === 'folder';
 
-	return FIELD_IDS.filter((field) => !locationOnly || field === 'location')
-		.filter((field) => before[field] !== after[field])
-		.map((field) => ({ field, before: before[field], after: after[field] }));
+	return FIELD_IDS.filter((field) => before[field] !== after[field]).map((field) => ({
+		field,
+		before: before[field],
+		after: after[field],
+	}));
+}
+
+/** The rename and move of a workflow. The workflow diff shows the rest. */
+export function describeWorkflowFieldChanges(context: FieldContext): FieldChange[] {
+	const { resource } = context;
+	const changes: FieldChange[] = [];
+	if (resource.previousName !== undefined) {
+		changes.push({ field: 'name', before: resource.previousName, after: resource.name });
+	}
+	if (resource.previousParentKey !== undefined) {
+		const before = locationOf(context, 'before').location;
+		const after = locationOf(context, 'after').location;
+		changes.push({ field: 'location', before, after });
+	}
+	return changes;
 }
 
 export type DataTableDescription = {
 	/** Column changes of a table that exists on both sides. */
 	changes: PromotionDataTableChange[];
+	/**
+	 * True when the card warns about changes that remove data. Promote cannot know the table on the
+	 * instance that applies the branch, so only Apply warns.
+	 */
+	warnsAboutDataLoss: boolean;
 	/** The columns of a table that the operation creates. */
 	addedColumns: SerializedDataTableColumn[];
-	/** True when a change removes stored values, such as a removed column or a new column type. */
-	hasDataLoss: boolean;
 };
 
 export function describeDataTable(
 	detail: Extract<PromotionResourceDetail, { type: 'dataTable' }>,
 	resource: PromotionResource,
+	direction: PromotionDirection,
 ): DataTableDescription {
 	const changes = resource.change === 'modified' ? (detail.dataTableChanges ?? []) : [];
 	const after = sideState(detail, 'after');
@@ -139,7 +166,7 @@ export function describeDataTable(
 		resource.change === 'added' && after.kind === 'content'
 			? [...after.content.columns].sort((a, b) => a.index - b.index)
 			: [];
-	return { changes, addedColumns, hasDataLoss: changes.some((change) => change.destructive) };
+	return { changes, warnsAboutDataLoss: direction === 'apply', addedColumns };
 }
 
 /** True when the files changed after the preview loaded, so the card can be out of date. */

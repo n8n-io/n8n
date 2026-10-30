@@ -84,6 +84,25 @@ describe('AgentsBuilderService', () => {
 		},
 	);
 
+	it('reads credential defaults only with agent:read', async () => {
+		const { service, tools } = setup();
+		const defaults = { channelCredentialIds: ['cred-1'], managedCredentialAvailable: true };
+		tools.getCredentialDefaults.mockResolvedValue(defaults);
+
+		await expect(service.getCredentialDefaults(user, 'project-1', 'agent-1')).resolves.toBe(
+			defaults,
+		);
+		expect(userHasScopes).toHaveBeenCalledWith(user, ['agent:read'], false, {
+			projectId: 'project-1',
+		});
+		expect(tools.getCredentialDefaults).toHaveBeenCalledWith('agent-1', 'project-1');
+
+		vi.mocked(userHasScopes).mockResolvedValue(false);
+		await expect(service.getCredentialDefaults(user, 'project-1', 'agent-1')).rejects.toThrow(
+			ForbiddenError,
+		);
+	});
+
 	it('rejects the next tool call when Agents are disabled', async () => {
 		const { service, tools, settings, providerFor, credentials } = setup();
 		const target = vi.fn(async () => 'agent-1');

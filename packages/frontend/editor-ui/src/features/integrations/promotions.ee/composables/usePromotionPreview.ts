@@ -2,9 +2,10 @@ import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, ref, shallowRef, watch, type Ref } from 'vue';
 
-import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 
 import { getPromotionPreview } from '../promotions.api';
+import type { ApplyCheckResult } from '../promotions.types';
 import { buildSelectionGraph } from '../promotionPreview.selection';
 import { repositoryDisplayName } from '../promotionsSettings.utils';
 import { useInstancePromotionConnection } from './useInstancePromotionConnection';
@@ -16,10 +17,15 @@ type PromotionPreviewState =
 	/** The instance has no environment for this direction. */
 	| 'disconnected'
 	| 'error'
+	/** An open review holds the changes, so the preview lists none. */
+	| 'blocked'
 	| 'empty'
 	| 'ready';
 
-/** Loads the preview of one project and direction for the preview page. */
+/**
+ * Loads the preview of one project and direction for the preview page. On Apply, the preview
+ * also holds the blockers, so both describe the same source.
+ */
 export function usePromotionPreview(projectId: Ref<string>, direction: Ref<PromotionDirection>) {
 	const rootStore = useRootStore();
 	const { next } = useLatestFetch();
@@ -35,6 +41,17 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 	/** True when a refresh failed. The page keeps the last preview and says so. */
 	const refreshFailed = ref(false);
 	const lastRefreshedAt = ref<Date | null>(null);
+	/** The Apply check. `null` on Promote, and when the branch has no commit yet. */
+	const check = computed<ApplyCheckResult | null>(() => {
+		const result = preview.value;
+		return result?.check && result.commitSha
+			? {
+					environmentId: result.source.environmentId,
+					git: { commitSha: result.commitSha, branchName: result.source.branchName },
+					...result.check,
+				}
+			: null;
+	});
 	const graph = computed(() =>
 		preview.value ? buildSelectionGraph(preview.value, direction.value) : null,
 	);
@@ -69,7 +86,7 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 			if (!isLatest()) return;
 			preview.value = result;
 			lastRefreshedAt.value = new Date();
-			state.value = result.resources.length === 0 ? 'empty' : 'ready';
+			state.value = result.blocker ? 'blocked' : result.resources.length === 0 ? 'empty' : 'ready';
 		} catch {
 			if (!isLatest()) return;
 			// Only the changes view shows the refresh warning. Other states show the error.
@@ -97,7 +114,9 @@ export function usePromotionPreview(projectId: Ref<string>, direction: Ref<Promo
 	return {
 		state,
 		preview,
+		check,
 		graph,
+		environment,
 		repositoryName,
 		refreshing,
 		refreshFailed,

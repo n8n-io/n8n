@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { InboxItem, InboxSelfHealingItem } from '@n8n/api-types';
+import type { InboxItem, InboxSelfHealingItem, PromotionReviewType } from '@n8n/api-types';
 import {
 	N8nAssistantAvatar,
 	N8nBadge,
 	N8nCard,
-	N8nIcon,
 	N8nText,
 	N8nTimeAgo,
+	type IconName,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -17,6 +17,20 @@ defineProps<{ item: InboxItem; selected: boolean }>();
 const emit = defineEmits<{ select: [] }>();
 const i18n = useI18n();
 const rootStore = useRootStore();
+
+// A promotion review shows the icon of its Git host. A new host needs an icon here.
+const reviewTypeIcon = { gitlab: 'gitlab' } satisfies Record<PromotionReviewType, IconName>;
+
+function itemTitle(item: InboxItem) {
+	switch (item.type) {
+		case 'workflow_review':
+			return item.title;
+		case 'self_healing_result':
+			return item.summary;
+		case 'promotion_review':
+			return item.title ?? item.branchName ?? i18n.baseText('inbox.promotionReview.untitled');
+	}
+}
 
 function outcomeLabel(item: InboxSelfHealingItem) {
 	switch (item.outcome) {
@@ -57,12 +71,19 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 						$style.cardTitle,
 						{ [$style.assistantTitle]: item.type === 'self_healing_result' },
 					]"
-					>{{ item.type === 'workflow_review' ? item.title : item.summary }}</N8nText
+					>{{ itemTitle(item) }}</N8nText
 				>
 				<WorkflowReviewStatusDot
 					v-if="item.type === 'workflow_review'"
 					:state="item.state"
 					:decision="item.decision"
+				/>
+				<span
+					v-else-if="item.type === 'promotion_review'"
+					:class="[$style.statusDot, $style[item.reviewState]]"
+					role="img"
+					:aria-label="i18n.baseText(`inbox.promotionReview.state.${item.reviewState}`)"
+					data-test-id="inbox-promotion-status"
 				/>
 				<span
 					v-else
@@ -80,12 +101,28 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 				/>
 			</div>
 			<div :class="$style.meta">
-				<N8nBadge v-if="item.workflowName" variant="outline" :class="$style.workflowBadge">
-					<span :class="$style.workflowBadgeText" :title="item.workflowName"
-						><N8nIcon icon="workflow" size="small" /><span>{{ item.workflowName }}</span></span
-					>
-				</N8nBadge>
+				<N8nBadge
+					v-if="item.type === 'promotion_review'"
+					variant="outline"
+					:leading-icon="reviewTypeIcon[item.reviewType]"
+					:class="$style.workflowBadge"
+					>{{ i18n.baseText('inbox.promotionReview.badge') }}</N8nBadge
+				>
+				<N8nBadge
+					v-else-if="item.workflowName"
+					variant="outline"
+					leading-icon="workflow"
+					:class="$style.workflowBadge"
+					:title="item.workflowName"
+					>{{ item.workflowName }}</N8nBadge
+				>
 				<div :class="$style.metaActions">
+					<N8nText
+						v-if="item.type === 'promotion_review' && item.remoteError"
+						size="xsmall"
+						color="warning"
+						>{{ i18n.baseText(`inbox.promotionReview.remoteError.${item.remoteError}`) }}</N8nText
+					>
 					<N8nText :class="$style.time" size="xsmall" color="text-light">
 						<N8nTimeAgo :date="item.updatedAt" :locale="rootStore.defaultLocale" />
 					</N8nText>
@@ -165,20 +202,6 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 		max-width: 100%;
 	}
 }
-.workflowBadgeText {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--3xs);
-	max-width: 100%;
-	min-width: 0;
-	line-height: calc(var(--font-size--sm) + var(--border-width));
-	> span {
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		min-width: 0;
-	}
-}
 .metaActions {
 	display: flex;
 	align-items: center;
@@ -204,5 +227,14 @@ function outcomeLabel(item: InboxSelfHealingItem) {
 }
 .closed {
 	background-color: var(--color--neutral-500);
+}
+.open {
+	background-color: var(--color--blue-500);
+}
+.changes_requested {
+	background-color: var(--color--yellow-500);
+}
+.merged {
+	background-color: var(--color--green-500);
 }
 </style>

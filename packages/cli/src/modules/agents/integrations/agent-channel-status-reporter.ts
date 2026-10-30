@@ -53,13 +53,17 @@ export class AgentChannelStatusReporter {
 	/** This process has the channel running. */
 	async recordConnected(ref: AgentChannelRef): Promise<void> {
 		await this.swallow('record a running channel', ref, async () => {
-			await this.repository.saveOwn(ref, {
-				status: 'connected',
-				errorMessage: null,
-				attempts: 0,
-				backoffUntil: null,
-				expiresAt: this.leaseExpiresAt(),
-			});
+			await this.repository.saveOwn(
+				ref,
+				{
+					status: 'connected',
+					errorMessage: null,
+					attempts: 0,
+					backoffUntil: null,
+					expiresAt: this.leaseExpiresAt(),
+				},
+				{},
+			);
 		});
 	}
 
@@ -70,34 +74,38 @@ export class AgentChannelStatusReporter {
 	 */
 	async recordFailure(ref: AgentChannelRef, cause: unknown): Promise<void> {
 		await this.swallow('record a failed channel startup', ref, async () => {
-			const existing = await this.repository.findOwnChannel(ref);
+			const existing = await this.repository.findOwnChannel(ref, {});
 			const attempts = (existing?.status === 'error' ? existing.attempts : 0) + 1;
 
-			await this.repository.saveOwn(ref, {
-				status: 'error',
-				// A platform or adapter error can carry the credential it failed with —
-				// a failed Telegram request quotes the API URL, and the bot token is in
-				// that path. This message is persisted and served to the UI, so it is
-				// scrubbed the same way recorded execution errors are.
-				errorMessage: scrubSecretsInText(cause instanceof Error ? cause.message : String(cause)),
-				attempts,
-				backoffUntil: this.backoffUntil(attempts),
-				expiresAt: this.leaseExpiresAt(),
-			});
+			await this.repository.saveOwn(
+				ref,
+				{
+					status: 'error',
+					// A platform or adapter error can carry the credential it failed with —
+					// a failed Telegram request quotes the API URL, and the bot token is in
+					// that path. This message is persisted and served to the UI, so it is
+					// scrubbed the same way recorded execution errors are.
+					errorMessage: scrubSecretsInText(cause instanceof Error ? cause.message : String(cause)),
+					attempts,
+					backoffUntil: this.backoffUntil(attempts),
+					expiresAt: this.leaseExpiresAt(),
+				},
+				{},
+			);
 		});
 	}
 
 	/** Keep standing behind what this process already said. */
 	async refreshLease(ref: AgentChannelRef): Promise<void> {
 		await this.swallow('refresh a channel status lease', ref, async () => {
-			await this.repository.refreshOwnLease(ref, this.leaseExpiresAt());
+			await this.repository.refreshOwnLease(ref, this.leaseExpiresAt(), {});
 		});
 	}
 
 	/** This process no longer runs the channel, so it has nothing to say about it. */
 	async withdraw(ref: AgentChannelRef): Promise<void> {
 		await this.swallow('withdraw a channel status', ref, async () => {
-			await this.repository.clearOwnChannel(ref);
+			await this.repository.clearOwnChannel(ref, {});
 		});
 	}
 
@@ -108,7 +116,7 @@ export class AgentChannelStatusReporter {
 		this.hasWithdrawn = true;
 
 		try {
-			await this.repository.clearOwnHost();
+			await this.repository.clearOwnHost({});
 		} catch (error) {
 			this.logger.warn(
 				`[AgentChannelStatusReporter] Could not withdraw this instance's channel statuses on shutdown: ${this.describe(error)}`,

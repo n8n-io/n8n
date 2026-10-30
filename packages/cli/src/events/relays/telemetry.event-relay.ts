@@ -66,6 +66,7 @@ import { detectKubernetesProvider, detectRuntime } from '@/utils/detect-runtime'
 
 import { EventRelay } from './event-relay';
 import { Telemetry } from '../../telemetry';
+import { toTrustedSourceTelemetryFacets } from '@n8n/inbound-auth';
 
 // Max size for node_graph_string to avoid exceeding telemetry payload limits (32 KB), leaving room for other fields
 const MAX_NODE_GRAPH_STRING_SIZE = 24 * 1024;
@@ -235,10 +236,18 @@ export class TelemetryEventRelay extends EventRelay {
 		await this.telemetry.init();
 
 		this.setupListeners({
+			'data-table-storage-limit-reached': ({ totalBytes, maxBytes }) => {
+				this.telemetry.track('User hit data table storage limit', {
+					total_bytes: totalBytes,
+					max_bytes: maxBytes,
+				});
+			},
 			'team-project-updated': (event) => this.teamProjectUpdated(event),
 			'team-project-deleted': (event) => this.teamProjectDeleted(event),
 			'team-project-created': (event) => this.teamProjectCreated(event),
 			'source-control-settings-updated': (event) => this.sourceControlSettingsUpdated(event),
+			'source-control-environments-version-switched': (event) =>
+				this.sourceControlEnvironmentsVersionSwitched(event),
 			'source-control-user-started-pull-ui': (event) => this.sourceControlUserStartedPullUi(event),
 			'source-control-user-finished-pull-ui': (event) =>
 				this.sourceControlUserFinishedPullUi(event),
@@ -333,6 +342,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-deleted': (event) => this.userDeleted(event),
 			'user-invited': (event) => this.userInvited(event),
 			'user-signed-up': (event) => this.userSignedUp(event),
+			'user-mfa-enabled': (event) => this.userMfaEnabled(event),
+			'user-mfa-disabled': (event) => this.userMfaDisabled(event),
 			'user-submitted-personalization-survey': (event) =>
 				this.userSubmittedPersonalizationSurvey(event),
 			'email-failed': (event) => this.emailFailed(event),
@@ -349,6 +360,17 @@ export class TelemetryEventRelay extends EventRelay {
 			'workflow-review-decided': (event) => this.workflowReviewDecided(event),
 			'workflow-review-closed': (event) => this.workflowReviewClosed(event),
 			'workflow-review-comment-created': (event) => this.workflowReviewCommentCreated(event),
+			'promotion-provider-created': (event) => this.promotionProviderCreated(event),
+			'promotion-environment-created': (event) => this.promotionEnvironmentCreated(event),
+			'promotion-provider-updated': (event) => this.promotionProviderUpdated(event),
+			'promotion-provider-deleted': (event) => this.promotionProviderDeleted(event),
+			'promotion-environment-updated': (event) => this.promotionEnvironmentUpdated(event),
+			'promotion-environment-deleted': (event) => this.promotionEnvironmentDeleted(event),
+			'promotion-environment-connected': (event) => this.promotionEnvironmentConnected(event),
+			'promotion-promoted': (event) => this.promotionPromoted(event),
+			'promotion-applied': (event) => this.promotionApplied(event),
+			'promotion-merge-request-opened': (event) => this.promotionMergeRequestOpened(event),
+			'promotion-review-approved': (event) => this.promotionReviewApproved(event),
 			'custom-role-created': (event) => this.customRoleCreated(event),
 			'custom-role-updated': (event) => this.customRoleUpdated(event),
 			'custom-role-deleted': (event) => this.customRoleDeleted(event),
@@ -358,6 +380,12 @@ export class TelemetryEventRelay extends EventRelay {
 				this.instanceAiMcpRegistryConnectionDeleted(event),
 			'hitl-response-actioned': (event) => this.hitlResponseActioned(event),
 			'runner-disconnected': (event) => this.runnerDisconnected(event),
+			'memory-guard-execution-stopped': (event) => this.memoryGuardExecutionStopped(event),
+			'trusted-source-created': (event) => this.trustedSourceCreated(event),
+			'trusted-source-updated': (event) => this.trustedSourceUpdated(event),
+			'trusted-source-deleted': (event) => this.trustedSourceDeleted(event),
+			'trusted-source-healthy': (event) => this.trustedSourceHealthy(event),
+			'trusted-source-first-authenticated': (event) => this.trustedSourceFirstAuthenticated(event),
 		});
 	}
 
@@ -465,6 +493,18 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 	}
 
+	private sourceControlEnvironmentsVersionSwitched({
+		userId,
+		version,
+	}: RelayEventMap['source-control-environments-version-switched']) {
+		this.telemetry.track(
+			version === 'v2'
+				? TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_TO_ENVIRONMENTS_V2
+				: TELEMETRY_EVENT.PROMOTIONS.USER_SWITCHED_BACK_TO_ENVIRONMENTS_V1,
+			{ user_id: userId },
+		);
+	}
+
 	private sourceControlUserStartedPullUi({
 		userId,
 		workflowUpdates,
@@ -537,6 +577,60 @@ export class TelemetryEventRelay extends EventRelay {
 			variables_pushed: variablesPushed,
 			public_api: publicApi,
 		});
+	}
+
+	// #endregion
+
+	// #region Trusted sources
+
+	private trustedSourceCreated({
+		user,
+		sourceId,
+		facets,
+	}: RelayEventMap['trusted-source-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE, {
+			user_id: user.id,
+			source_id: sourceId,
+			...toTrustedSourceTelemetryFacets(facets),
+		});
+	}
+
+	private trustedSourceUpdated({
+		user,
+		sourceId,
+		facets,
+	}: RelayEventMap['trusted-source-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE, {
+			user_id: user.id,
+			source_id: sourceId,
+			...toTrustedSourceTelemetryFacets(facets),
+		});
+	}
+
+	private trustedSourceDeleted({ sourceId, user }: RelayEventMap['trusted-source-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE, {
+			source_id: sourceId,
+			user_id: user.id,
+		});
+	}
+
+	private trustedSourceHealthy({ sourceId }: RelayEventMap['trusted-source-healthy']) {
+		this.telemetry.track(TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY, {
+			source_id: sourceId,
+		});
+	}
+
+	private trustedSourceFirstAuthenticated({
+		sourceId,
+		surface,
+	}: RelayEventMap['trusted-source-first-authenticated']) {
+		this.telemetry.track(
+			TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+			{
+				source_id: sourceId,
+				surface,
+			},
+		);
 	}
 
 	// #endregion
@@ -966,6 +1060,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-created']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && {
@@ -988,6 +1083,7 @@ export class TelemetryEventRelay extends EventRelay {
 			jwe_enabled: jweEnabled ?? false,
 			credential_supports_managed_auth: supportsManagedAuth ?? false,
 			credential_uses_managed_auth: usesManagedAuth ?? false,
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 
@@ -1011,6 +1107,7 @@ export class TelemetryEventRelay extends EventRelay {
 	}
 
 	private credentialsUpdated({
+		descriptionOnly,
 		user,
 		credentialId,
 		credentialType,
@@ -1020,6 +1117,7 @@ export class TelemetryEventRelay extends EventRelay {
 		jweEnabled,
 		supportsManagedAuth,
 		usesManagedAuth,
+		managedAppVersion,
 	}: RelayEventMap['credentials-updated']) {
 		this.telemetry.track(TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS, {
 			...(credentialDescriptionLength !== undefined && { source: 'backend' }),
@@ -1032,10 +1130,17 @@ export class TelemetryEventRelay extends EventRelay {
 				description_length: credentialDescriptionLength,
 			}),
 			is_private: isDynamic ?? false,
-			uses_external_secrets: usesExternalSecrets ?? false,
-			jwe_enabled: jweEnabled ?? false,
-			credential_supports_managed_auth: supportsManagedAuth ?? false,
-			credential_uses_managed_auth: usesManagedAuth ?? false,
+			...(!descriptionOnly || usesExternalSecrets !== undefined
+				? { uses_external_secrets: usesExternalSecrets ?? false }
+				: {}),
+			...(!descriptionOnly || jweEnabled !== undefined ? { jwe_enabled: jweEnabled ?? false } : {}),
+			...(!descriptionOnly || supportsManagedAuth !== undefined
+				? { credential_supports_managed_auth: supportsManagedAuth ?? false }
+				: {}),
+			...(!descriptionOnly || usesManagedAuth !== undefined
+				? { credential_uses_managed_auth: usesManagedAuth ?? false }
+				: {}),
+			credential_managed_app_version: managedAppVersion,
 		});
 	}
 
@@ -1407,6 +1512,12 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('User imported n8n package', {
 			user_id: user.id,
 			workflow_conflict_policy: options.workflowConflictPolicy,
+			conflict_policy: options.conflictPolicy,
+			agent_id_policy: options.agentIdPolicy,
+			agent_publishing_policy: options.agentPublishingPolicy,
+			agents_created: counts.agents.created,
+			agents_updated: counts.agents.updated,
+			agents_skipped: counts.agents.skipped,
 			workflow_id_policy: options.workflowIdPolicy,
 			credential_matching_mode: options.credentialMatchingMode,
 			credential_missing_mode: options.credentialMissingMode,
@@ -1432,6 +1543,7 @@ export class TelemetryEventRelay extends EventRelay {
 			folders_removed: counts.folders.removed,
 			credentials_matched: counts.credentials.matched,
 			credentials_created: counts.credentials.created,
+			credentials_updated: counts.credentials.updated,
 			credentials_required: counts.credentials.requirements,
 			data_tables_matched: counts.dataTables.matched,
 			data_tables_created: counts.dataTables.created,
@@ -2107,6 +2219,23 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.TASK_RUNNER_DISCONNECTED, { reason, mode });
 	}
 
+	private memoryGuardExecutionStopped(event: RelayEventMap['memory-guard-execution-stopped']) {
+		this.telemetry.track(TELEMETRY_EVENT.PLATFORM.MEMORY_GUARD_STOPPED_EXECUTION, {
+			workflow_id: event.workflowId,
+			execution_mode: event.mode,
+			reason: event.reason,
+			running_node_type: event.runningNodeType,
+			largest_data_node_type: event.largestDataNodeType,
+			estimated_bytes: event.estimatedBytes,
+			memory_used_bytes: event.memoryUsedBytes,
+			memory_limit_bytes: event.memoryLimitBytes,
+			freed_memory: event.freedMemory,
+			workflow_deactivation_started: event.workflowDeactivationStarted,
+		});
+		// An OOM kill can follow a stop within the flush interval, so send the event now.
+		void this.telemetry.flushQueue();
+	}
+
 	private async instanceOwnerSetup({ userId }: RelayEventMap['instance-owner-setup']) {
 		// Attach owner to instance group on telemetry. PostHog also gets the instance
 		// facts now: the startup update skipped them while no owner existed.
@@ -2260,6 +2389,7 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userDeleted({
 		user,
+		source,
 		publicApi,
 		targetUserOldStatus,
 		migrationStrategy,
@@ -2267,7 +2397,11 @@ export class TelemetryEventRelay extends EventRelay {
 		migrationUserId,
 	}: RelayEventMap['user-deleted']) {
 		this.telemetry.track('User deleted user', {
-			user_id: user.id,
+			// A system deletion, for example by SCIM, has no acting user.
+			// RudderStack then gets the event under the instance id, PostHog
+			// drops it, and `source` names the system.
+			user_id: user?.id,
+			...(source && { source }),
 			public_api: publicApi,
 			target_user_old_status: targetUserOldStatus,
 			migration_strategy: migrationStrategy,
@@ -2318,6 +2452,14 @@ export class TelemetryEventRelay extends EventRelay {
 		});
 
 		this.telemetry.track('User signed up', payload);
+	}
+
+	private userMfaEnabled({ user }: RelayEventMap['user-mfa-enabled']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_ENABLED_MFA, { user_id: user.id });
+	}
+
+	private userMfaDisabled({ user }: RelayEventMap['user-mfa-disabled']) {
+		this.telemetry.track(TELEMETRY_EVENT.AUTH.USER_DISABLED_MFA, { user_id: user.id });
 	}
 
 	private userSubmittedPersonalizationSurvey({
@@ -2630,6 +2772,217 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track(TELEMETRY_EVENT.WORKFLOW_REVIEWS.USER_COMMENTED_ON_WORKFLOW_REVIEW, {
 			user_id: user.id,
 			workflow_review_request_id: workflowReviewRequestId,
+		});
+	}
+
+	// #endregion
+
+	// #region Promotions
+
+	private promotionProviderCreated({
+		user,
+		providerId,
+		providerType,
+		authType,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-provider-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+			auth_type: authType,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionEnvironmentCreated({
+		user,
+		environmentId,
+		providerType,
+		direction,
+		environmentScope,
+		createBranchOnPromotion,
+	}: RelayEventMap['promotion-environment-created']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CREATED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			provider_type: providerType,
+			direction,
+			environment_scope: environmentScope,
+			create_branch_on_promotion: createBranchOnPromotion,
+		});
+	}
+
+	private promotionProviderUpdated({
+		user,
+		providerId,
+		providerType,
+		changedFields,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-provider-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+			changed_fields: changedFields,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionProviderDeleted({
+		user,
+		providerId,
+		providerType,
+	}: RelayEventMap['promotion-provider-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_PROVIDER, {
+			user_id: user.id,
+			provider_id: providerId,
+			provider_type: providerType,
+		});
+	}
+
+	private promotionEnvironmentUpdated({
+		user,
+		environmentId,
+		direction,
+		changedFields,
+	}: RelayEventMap['promotion-environment-updated']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_UPDATED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			changed_fields: changedFields,
+		});
+	}
+
+	private promotionEnvironmentDeleted({
+		user,
+		environmentId,
+		direction,
+		environmentScope,
+	}: RelayEventMap['promotion-environment-deleted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_DELETED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			environment_scope: environmentScope,
+		});
+	}
+
+	private promotionEnvironmentConnected({
+		user,
+		environmentId,
+		direction,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-environment-connected']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_CONNECTED_PROMOTION_ENVIRONMENT, {
+			user_id: user.id,
+			environment_id: environmentId,
+			direction,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+		});
+	}
+
+	private promotionPromoted({
+		user,
+		environmentId,
+		scope,
+		projectId,
+		outcome,
+		failureKind,
+		durationMs,
+		counts,
+		selectedWorkflowCount,
+		openedReview,
+	}: RelayEventMap['promotion-promoted']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_PROMOTED_CHANGES, {
+			user_id: user.id,
+			environment_id: environmentId,
+			scope,
+			project_id: projectId,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+			workflow_count: counts?.workflows,
+			folder_count: counts?.folders,
+			credential_count: counts?.credentials,
+			data_table_count: counts?.dataTables,
+			variable_count: counts?.variables,
+			tag_count: counts?.tags,
+			selected_workflow_count: selectedWorkflowCount,
+			opened_review: openedReview,
+		});
+	}
+
+	private promotionApplied({
+		user,
+		environmentId,
+		scope,
+		projectId,
+		outcome,
+		failureKind,
+		durationMs,
+		workflowsChanged,
+		workflowsFailedToPublish,
+	}: RelayEventMap['promotion-applied']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES, {
+			user_id: user.id,
+			environment_id: environmentId,
+			scope,
+			project_id: projectId,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
+			workflows_changed: workflowsChanged,
+			workflows_failed_to_publish: workflowsFailedToPublish,
+		});
+	}
+
+	private promotionMergeRequestOpened({
+		user,
+		environmentId,
+		reviewType,
+		hasConflicts,
+	}: RelayEventMap['promotion-merge-request-opened']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_OPENED_PROMOTION_MERGE_REQUEST, {
+			user_id: user.id,
+			environment_id: environmentId,
+			review_type: reviewType,
+			has_conflicts: hasConflicts,
+		});
+	}
+
+	private promotionReviewApproved({
+		user,
+		reviewId,
+		environmentId,
+		reviewType,
+		reviewAgeMs,
+		outcome,
+		failureKind,
+		durationMs,
+	}: RelayEventMap['promotion-review-approved']) {
+		this.telemetry.track(TELEMETRY_EVENT.PROMOTIONS.USER_APPROVED_PROMOTION_REVIEW, {
+			user_id: user.id,
+			promotion_review_id: reviewId,
+			environment_id: environmentId,
+			review_type: reviewType,
+			review_age_ms: reviewAgeMs,
+			outcome,
+			failure_kind: failureKind,
+			duration_ms: durationMs,
 		});
 	}
 

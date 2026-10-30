@@ -110,7 +110,12 @@ export class SqliteWriteConnection implements SqliteConnectionPool, DbLeaseOwner
 			throw error;
 		}
 
-		this.dbLease = await this.createAndGetConnection(dbLeaseHolder);
+		try {
+			this.dbLease = await this.createAndGetConnection(dbLeaseHolder);
+		} catch (error) {
+			this.writeConnectionMutex.release();
+			throw error;
+		}
 		return this.dbLease;
 	}
 
@@ -148,7 +153,13 @@ export class SqliteWriteConnection implements SqliteConnectionPool, DbLeaseOwner
 			this.writeConnectionPromise = this.sqliteLibrary.createDatabaseConnection();
 		}
 
-		const dbConnection = await this.writeConnectionPromise;
+		let dbConnection: Sqlite3Database;
+		try {
+			dbConnection = await this.writeConnectionPromise;
+		} catch (error) {
+			this.writeConnectionPromise = null;
+			throw error;
+		}
 
 		assert(!this.dbLease);
 		return new LeasedDbConnection(dbConnection, this, dbLeaseHolder);

@@ -85,6 +85,7 @@ async function prepare(
 	};
 	let analyzedRequests: Awaited<ReturnType<typeof analyzeWorkflow>> | undefined;
 	if (workflowId) {
+		await context.assertInThreadProject?.({ kind: 'workflow', id: workflowId });
 		// Validate access before publishing a workflow-scoped announcement.
 		const saved = await context.workflowService.get(workflowId);
 		if (!binding?.setupPending) {

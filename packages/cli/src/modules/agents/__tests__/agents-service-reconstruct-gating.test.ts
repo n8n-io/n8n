@@ -17,7 +17,7 @@ import {
 import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import { AgentsConfig } from '@n8n/config';
-import type { UserRepository, WorkflowRepository } from '@n8n/db';
+import type { PersonRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { mock } from 'vitest-mock-extended';
@@ -30,6 +30,9 @@ import type { AiService } from '@/services/ai.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import type { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
+import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
+
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentPlanService } from '../agent-plan.service';
@@ -37,6 +40,7 @@ import { AgentWakeService } from '../background/agent-wake.service';
 import { AgentBackgroundJobService } from '../background/agent-background-job.service';
 import { SubAgentBackgroundRunner } from '../background/sub-agent-background-runner';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import {
 	encodeAgentSandboxHostMetadata,
 	hashAgentSandboxPrincipal,
@@ -53,7 +57,7 @@ import { ChatIntegrationContextQueryExecutor } from '../integrations/integration
 import { IntegrationMessageContextService } from '../integrations/integration-message-context.service';
 import type { N8NCheckpointStorage } from '../integrations/n8n-checkpoint-storage';
 import type { N8nMemory } from '../integrations/n8n-memory';
-import { N8nChatIntegration } from '../integrations/platforms/n8n-chat-integration';
+import { N8nChatIntegration } from '../integrations/platforms/n8n-chat/n8n-chat-integration';
 import type * as FromJsonConfig from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
 import type { AgentFileRepository } from '../repositories/agent-file.repository';
@@ -109,6 +113,7 @@ function makeReconstructionService(
 		agentFileRepository?: AgentFileRepository;
 		agentWorkspaceService?: AgentWorkspaceService;
 		agentKnowledgeMirrorService?: AgentKnowledgeMirrorService;
+		knowledgeAvailabilityService?: KnowledgeAvailabilityService;
 	} = {},
 ): AgentRuntimeReconstructionService {
 	const secureRuntime = mock<AgentSecureRuntime>();
@@ -144,6 +149,8 @@ function makeReconstructionService(
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
+		overrides.knowledgeAvailabilityService ?? makeKnowledgeAvailabilityService(),
 	);
 }
 
@@ -390,6 +397,35 @@ describe('AgentRuntimeReconstructionService — workspace attachment', () => {
 		expect(getInjectedToolNames()).toEqual(
 			expect.arrayContaining(['find_file', 'search_text', 'read_file']),
 		);
+	});
+
+	it('keeps the workspace but skips knowledge tools when the knowledge module is inactive', async () => {
+		const agentFileRepository = mock<AgentFileRepository>();
+		const agentSandboxRuntimeService = mock<AgentSandboxRuntimeService>({
+			isEnabled: () => true,
+		});
+		const agentWorkspaceService = mock<AgentWorkspaceService>();
+		const workspace = new Workspace({});
+		agentFileRepository.hasFilesForAgent.mockResolvedValue(true);
+		agentWorkspaceService.getAgentWorkspace.mockResolvedValue({
+			workspace,
+			handle: mock<AgentSandboxRuntime>(),
+		});
+		const service = makeReconstructionService({
+			agentSandboxRuntimeService,
+			agentFileRepository,
+			agentWorkspaceService,
+			knowledgeAvailabilityService: makeKnowledgeAvailabilityService({ isKnowledgeActive: false }),
+		});
+
+		await reconstructWithWorkspace(service);
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(workspace);
+		// The file repository is never asked while knowledge is off.
+		expect(agentFileRepository.hasFilesForAgent).not.toHaveBeenCalled();
+		for (const toolName of ['find_file', 'search_text', 'read_file']) {
+			expect(getInjectedToolNames()).not.toContain(toolName);
+		}
 	});
 
 	it.each(['runtime', 'workspace'])(
@@ -902,7 +938,7 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — n8n c
 
 		// Provide real ChatIntegrationRegistry with N8nChatIntegration registered.
 		const registry = new ChatIntegrationRegistry();
-		registry.register(new N8nChatIntegration(mock<UserRepository>()));
+		registry.register(new N8nChatIntegration(mock<PersonRepository>()));
 		Container.set(ChatIntegrationRegistry, registry);
 
 		// Provide mocked integration services required when the integration block runs.
@@ -1075,8 +1111,10 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 			);
 			expect(getInjectedToolNames()).toEqual(expect.arrayContaining(planToolNames));
 			expect(getInjectedToolNames()).not.toContain(WRITE_TODOS_TOOL_NAME);
+			const eagerToolNames = builtAgent.nativeToolDeferral.mock.calls[0][0].eagerToolNames;
+			expect(eagerToolNames.includes('background_jobs')).toBe(backgroundTasksEnabled);
 			if (backgroundTasksEnabled) {
-				expect(getInjectedToolNames()).toContain('check_background_jobs');
+				expect(getInjectedToolNames()).toContain('background_jobs');
 				expect(builtAgent.volatileInstructionsProvider).toHaveBeenCalledTimes(1);
 				const provider = builtAgent.volatileInstructionsProvider.mock.calls[0][0];
 				wakeService.getBackgroundUpdates.mockResolvedValue('Background result');
@@ -1129,11 +1167,7 @@ describe('AgentRuntimeReconstructionService — plan tools gating', () => {
 });
 
 describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — background job tools gating', () => {
-	const BACKGROUND_TOOL_NAMES = [
-		'resume_background_jobs',
-		'check_background_jobs',
-		'cancel_background_job',
-	];
+	const BACKGROUND_TOOL_NAMES = ['background_jobs'];
 	const subAgents = { agents: [{ agentId: 'agent-2', useWhen: 'Use for research tasks.' }] };
 
 	beforeEach(() => {
@@ -1196,6 +1230,63 @@ describe('AgentRuntimeReconstructionService.reconstructFromAgentEntity — backg
 			getInjectedToolNames().filter((name) => name === DELEGATE_SUB_AGENT_TOOL_NAME),
 		).toHaveLength(1);
 	});
+
+	it.each([
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: false, allowPlanTools: true, planToolsEnabled: true, expected: true },
+		{ previewChat: true, allowPlanTools: false, planToolsEnabled: true, expected: false },
+		{ previewChat: true, allowPlanTools: true, planToolsEnabled: false, expected: false },
+	])(
+		'validates plan tasks in every run that has plan tools: %j',
+		async ({ previewChat, allowPlanTools, planToolsEnabled, expected }) => {
+			Container.get(AgentsConfig).backgroundTasksEnabled = true;
+			Container.get(AgentsConfig).planToolsEnabled = planToolsEnabled;
+			Container.set(AgentPlanService, mock<AgentPlanService>());
+
+			const backgroundRunner = mock<SubAgentBackgroundRunner>();
+			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+			Container.set(SubAgentBackgroundRunner, backgroundRunner);
+
+			try {
+				await makeReconstructionService().reconstructFromAgentEntity(
+					storedRunSource(makeAgentEntity()),
+					mock<CredentialProvider>(),
+					'test',
+					undefined,
+					undefined,
+					undefined,
+					'manual',
+					undefined,
+					{ previewChat, allowPlanTools },
+				);
+
+				const delegate = getInjectedDelegateTool();
+
+				if (!delegate?.handler) throw new Error('Expected delegation tool');
+
+				await delegate.handler(
+					{ mode: 'background', subAgentId: 'inline', taskName: 'Research', goal: 'Review notes' },
+					{
+						persistence: {
+							threadId: 'thread-1',
+							resourceId: 'resource-1',
+							hostMetadata: encodeAgentSandboxHostMetadata({
+								projectId: 'project-1',
+								principalHash: hashAgentSandboxPrincipal({ type: 'n8n-user', userId: 'user-1' }),
+							}),
+						},
+					},
+				);
+
+				expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+					expect.objectContaining({ validatePlanTask: expected }),
+					expect.any(Object),
+				);
+			} finally {
+				Container.get(AgentsConfig).planToolsEnabled = false;
+			}
+		},
+	);
 
 	it('excludes disabled sub-agents from foreground and background delegation', async () => {
 		Container.get(AgentsConfig).backgroundTasksEnabled = true;

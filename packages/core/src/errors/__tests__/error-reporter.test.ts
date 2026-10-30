@@ -1,7 +1,8 @@
 import type { Logger } from '@n8n/backend-common';
 import { QueryFailedError } from '@n8n/typeorm';
 import type { ErrorEvent } from '@sentry/core';
-import { captureException, withIsolationScope } from '@sentry/node';
+import { captureException, init, withIsolationScope } from '@sentry/node';
+import type { NodeOptions } from '@sentry/node';
 import { AxiosError } from 'axios';
 import { ApplicationError, BaseError, ExpressionError, NodeOperationError } from 'n8n-workflow';
 import type { INode } from 'n8n-workflow';
@@ -23,9 +24,17 @@ vi.mock('@sentry/node', () => ({
 	setUser: vi.fn(),
 	captureException: vi.fn(),
 	withIsolationScope: vi.fn((fn: (scope: unknown) => unknown) => fn(isolationScopeMock)),
-	requestDataIntegration: vi.fn(),
-	rewriteFramesIntegration: vi.fn(),
-	httpIntegration: vi.fn(),
+	eventFiltersIntegration: () => ({ name: 'EventFilters' }),
+	functionToStringIntegration: () => ({ name: 'FunctionToString' }),
+	linkedErrorsIntegration: () => ({ name: 'LinkedErrors' }),
+	onUnhandledRejectionIntegration: () => ({ name: 'OnUnhandledRejection' }),
+	contextLinesIntegration: () => ({ name: 'ContextLines' }),
+	httpIntegration: () => ({ name: 'Http' }),
+	postgresIntegration: () => ({ name: 'Postgres' }),
+	redisIntegration: () => ({ name: 'Redis' }),
+	expressIntegration: () => ({ name: 'Express' }),
+	rewriteFramesIntegration: () => ({ name: 'RewriteFrames' }),
+	requestDataIntegration: () => ({ name: 'RequestData' }),
 	Integrations: {},
 }));
 
@@ -41,6 +50,10 @@ const eventLoopBlockIntegrationMock = vi.fn((opts: unknown) => ({
 }));
 vi.mock('@sentry/node-native', () => ({
 	eventLoopBlockIntegration: (opts: unknown) => eventLoopBlockIntegrationMock(opts),
+}));
+
+vi.mock('@sentry/profiling-node', () => ({
+	nodeProfilingIntegration: () => ({ name: 'ProfilingIntegration' }),
 }));
 
 vi.spyOn(process, 'on');
@@ -410,6 +423,143 @@ describe('ErrorReporter', () => {
 		});
 	});
 
+	describe('isSentryActive', () => {
+		it('is inactive without a DSN', async () => {
+			const reporter = new ErrorReporter(mock(), mock());
+			await reporter.init({ serverType: 'main', release: '1.0.0' } as never);
+
+			expect(reporter.isSentryActive()).toBe(false);
+		});
+
+		it('is inactive when the release is older than six weeks', async () => {
+			const reporter = new ErrorReporter(mock(), mock());
+			await reporter.init({
+				serverType: 'main',
+				dsn: 'https://fake@sentry.example.com/1',
+				release: '1.0.0',
+				releaseDate: new Date('2020-01-01'),
+			} as never);
+
+			expect(reporter.isSentryActive()).toBe(false);
+		});
+
+		it('turns inactive when the release expires while running', async () => {
+			vi.useFakeTimers();
+			try {
+				const reporter = new ErrorReporter(mock(), mock());
+				await reporter.init({
+					serverType: 'main',
+					dsn: 'https://fake@sentry.example.com/1',
+					release: '1.0.0',
+					releaseDate: new Date(Date.now() - 6 * 7 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000),
+				} as never);
+				expect(reporter.isSentryActive()).toBe(true);
+
+				vi.advanceTimersByTime(24 * 60 * 60 * 1000);
+
+				expect(reporter.isSentryActive()).toBe(false);
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+	});
+
+	describe('init', () => {
+		const initSentry = async (
+			options: Partial<Parameters<ErrorReporter['init']>[0]> = {},
+		): Promise<NodeOptions> => {
+			await new ErrorReporter(mock(), mock()).init({
+				serverType: 'main',
+				dsn: 'https://fake@sentry.example.com/1',
+				release: '1.0.0',
+				environment: 'test',
+				serverName: 'test-server',
+				withEventLoopBlockDetection: false,
+				tracesSampleRate: 0,
+				profilingEnabled: false,
+				...options,
+			});
+			const [sentryOptions] = vi.mocked(init).mock.lastCall ?? [];
+			if (!sentryOptions) throw new Error('Expected Sentry init to be called');
+			return sentryOptions;
+		};
+
+		const allEligible = { Http: true, Postgres: true, Redis: true, Express: true };
+
+		it.each([
+			{
+				tracesSampleRate: 0,
+				eligibleIntegrations: allEligible,
+				expected: [],
+				injectsChannels: false,
+			},
+			{ tracesSampleRate: 0.5, eligibleIntegrations: {}, expected: [], injectsChannels: false },
+			{
+				tracesSampleRate: 0.5,
+				eligibleIntegrations: { Http: true },
+				expected: ['Http'],
+				injectsChannels: false,
+			},
+			{
+				tracesSampleRate: 0.5,
+				eligibleIntegrations: { Postgres: true, Redis: false },
+				expected: ['Postgres'],
+				injectsChannels: true,
+			},
+			{
+				tracesSampleRate: 0.5,
+				eligibleIntegrations: allEligible,
+				expected: ['Http', 'Postgres', 'Redis', 'Express'],
+				injectsChannels: true,
+			},
+		])(
+			'turns on tracing $expected and runtime channel injection $injectsChannels for traces $tracesSampleRate and $eligibleIntegrations',
+			async ({ expected, injectsChannels, ...options }) => {
+				const { defaultIntegrations, integrations, enableRuntimeChannelInjection } =
+					await initSentry(options);
+
+				expect(defaultIntegrations).toBe(false);
+				expect((integrations as Array<{ name: string }>).map(({ name }) => name)).toEqual([
+					'EventFilters',
+					'FunctionToString',
+					'LinkedErrors',
+					'OnUnhandledRejection',
+					'ContextLines',
+					...expected,
+					'RewriteFrames',
+					'RequestData',
+				]);
+				expect(enableRuntimeChannelInjection).toBe(injectsChannels);
+			},
+		);
+
+		it('collects no personal data', async () => {
+			const { dataCollection } = await initSentry();
+
+			expect(dataCollection?.userInfo).toBe(false);
+			expect(dataCollection?.httpBodies).toEqual([]);
+			expect(dataCollection?.httpHeaders).toMatchObject({
+				request: { deny: expect.arrayContaining(['forwarded']) },
+			});
+		});
+
+		it('does not keep the process alive for the release expiry check', async () => {
+			const setTimeoutSpy = vi.spyOn(global, 'setTimeout');
+
+			await initSentry({ releaseDate: new Date() });
+
+			const timer = setTimeoutSpy.mock.results.at(-1)?.value as unknown as NodeJS.Timeout;
+			clearTimeout(timer);
+			expect(timer.hasRef()).toBe(false);
+		});
+
+		it('profiles every traced request in every process when profiling is on', async () => {
+			const options = await initSentry({ tracesSampleRate: 0.5, profilingEnabled: true });
+
+			expect(options).toMatchObject({ profileSessionSampleRate: 1, profileLifecycle: 'trace' });
+		});
+	});
+
 	describe('error with Sentry initialized', () => {
 		const sentryErrorReporter = new ErrorReporter(mock(), mock());
 
@@ -422,7 +572,7 @@ describe('ErrorReporter', () => {
 				serverName: 'test-server',
 				withEventLoopBlockDetection: false,
 				tracesSampleRate: 0,
-				profilesSampleRate: 0,
+				profilingEnabled: false,
 			});
 		});
 
@@ -431,6 +581,10 @@ describe('ErrorReporter', () => {
 			vi.mocked(withIsolationScope).mockClear();
 			isolationScopeMock.clearBreadcrumbs.mockClear();
 			isolationScopeMock.setSDKProcessingMetadata.mockClear();
+		});
+
+		it('is active once Sentry is set up', () => {
+			expect(sentryErrorReporter.isSentryActive()).toBe(true);
 		});
 
 		it('captures on the ambient scope by default', () => {
@@ -454,6 +608,26 @@ describe('ErrorReporter', () => {
 				ipAddress: undefined,
 			});
 			expect(captureException).toHaveBeenCalledWith(error, { shouldIsolate: true });
+		});
+
+		it('captures an info message in a forked isolation scope when shouldIsolate is set', () => {
+			sentryErrorReporter.info('message', { shouldIsolate: true });
+
+			expect(withIsolationScope).toHaveBeenCalledTimes(1);
+			expect(isolationScopeMock.clearBreadcrumbs).toHaveBeenCalledTimes(1);
+			expect(captureException).toHaveBeenCalledWith('message', {
+				shouldIsolate: true,
+				level: 'info',
+			});
+		});
+
+		it('passes the fingerprint to Sentry', () => {
+			sentryErrorReporter.info('message', { fingerprint: ['group', 'key'] });
+
+			expect(captureException).toHaveBeenCalledWith('message', {
+				fingerprint: ['group', 'key'],
+				level: 'info',
+			});
 		});
 	});
 });

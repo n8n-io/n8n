@@ -4,12 +4,7 @@ export {
 	listJobRuns,
 	type ListJobRunsParams,
 } from './jobRuns';
-export {
-	assertLakebaseOAuth,
-	explainLakebaseSchemaError,
-	lakebaseApiRequest,
-	lakebaseErrorBody,
-} from './lakebase';
+export { explainLakebaseSchemaError, lakebaseApiRequest, lakebaseErrorBody } from './lakebase';
 export { resolveLakebaseRestBase } from './lakebaseEndpoint';
 export { collectPages, DEFAULT_MAX_PAGES, toPage, type Page, type PageLimits } from './pagination';
 export {

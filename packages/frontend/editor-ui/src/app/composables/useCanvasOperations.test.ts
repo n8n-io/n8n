@@ -664,6 +664,25 @@ describe('useCanvasOperations', () => {
 			expect(uiStore.lastCancelledConnectionPosition).toBeUndefined();
 		});
 
+		it('should snap a main output connection drop to the nearest grid line', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			uiStore.lastInteractedWithNodeId = node.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node as INodeUi);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+
+			uiStore.lastInteractedWithNodeHandle = 'outputs/main/0';
+			uiStore.lastCancelledConnectionPosition = [1000, 163];
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position).toEqual([1008, 112]);
+		});
+
 		it('should place the node to the right of the last interacted with node', () => {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -855,9 +874,9 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			// Configuration node size is [200, 80], so customOffset = 200 * 2 = 400
-			// Expected position: [100 + (200/1) * 1 - 200/2 - 400, 100 + 220] = [-200, 320]
+			// Expected position: [100 + (200/1) * 1 - 200/2 - 400, 100 + 208] = [-200, 308], y snaps to 304
 			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
-			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+			expect(position[1]).toEqual(304); // Standard Y position for configuration nodes
 		});
 
 		it('should apply custom Y offset for AI Memory connection type', () => {
@@ -894,7 +913,7 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
-			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+			expect(position[1]).toEqual(304); // Standard Y position for configuration nodes
 		});
 
 		it('should not apply custom offset for regular connection types', () => {
@@ -933,7 +952,7 @@ describe('useCanvasOperations', () => {
 			// No custom offset applied, allowing for some wiggle room when tests are run on different environments
 			expect(position[0]).toBeGreaterThanOrEqual(40);
 			expect(position[0]).toBeLessThanOrEqual(80);
-			expect(position[1]).toBe(320);
+			expect(position[1]).toBe(304);
 		});
 
 		it('should handle missing connection type gracefully', () => {
@@ -972,7 +991,7 @@ describe('useCanvasOperations', () => {
 			// No custom offset applied, allowing for some wiggle room when tests are run on different environments
 			expect(position[0]).toBeGreaterThanOrEqual(40);
 			expect(position[0]).toBeLessThanOrEqual(80);
-			expect(position[1]).toBe(320);
+			expect(position[1]).toBe(304);
 		});
 
 		it('should position HITL node vertically between main node and tool node when inserted via connection', () => {
@@ -1867,6 +1886,88 @@ describe('useCanvasOperations', () => {
 		});
 	});
 
+	describe('deprecated nodes', () => {
+		const deprecatedType = 'n8n-nodes-base.function';
+		const replacementType = 'n8n-nodes-base.code';
+
+		const setupDeprecatedNode = () => {
+			useNodeTypesStore().nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({ name: deprecatedType, deprecated: true }),
+				},
+			};
+			const node = createTestNode({ id: 'deprecated', name: 'Function', type: deprecatedType });
+			workflowDocumentStoreInstance.allNodes = [node];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue([node]);
+			return node;
+		};
+
+		it('should not toggle a deprecated node', () => {
+			const node = setupDeprecatedNode();
+			const updateNodePropertiesSpy = vi.spyOn(
+				workflowDocumentStoreInstance,
+				'updateNodeProperties',
+			);
+
+			useCanvasOperations().toggleNodesDisabled([node.id]);
+
+			expect(updateNodePropertiesSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not duplicate a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			expect(await useCanvasOperations().duplicateNodes([node.id])).toEqual([]);
+			expect(addNodeSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not rename a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeByName').mockReturnValue(node);
+			const cloneSpy = vi.spyOn(workflowDocumentStoreInstance, 'cloneWorkflowObject');
+
+			expect(await useCanvasOperations().renameNode(node.name, 'Renamed')).toBe(false);
+			expect(cloneSpy).not.toHaveBeenCalled();
+		});
+
+		it('should not cut a deprecated node', async () => {
+			const node = setupDeprecatedNode();
+			const startRecordingUndoSpy = vi.spyOn(useHistoryStore(), 'startRecordingUndo');
+
+			await useCanvasOperations().cutNodes([node.id]);
+
+			expect(useClipboard().copy).not.toHaveBeenCalled();
+			expect(startRecordingUndoSpy).not.toHaveBeenCalled();
+		});
+
+		it('should add a deprecated node unchanged', async () => {
+			const toast = useToast();
+			const nodeTypesStore = useNodeTypesStore();
+
+			nodeTypesStore.nodeTypes = {
+				[deprecatedType]: {
+					1: mockNodeTypeDescription({
+						name: deprecatedType,
+						deprecated: true,
+						replacedByNodeType: replacementType,
+					}),
+				},
+				[replacementType]: { 1: mockNodeTypeDescription({ name: replacementType }) },
+			};
+
+			const addNodeSpy = vi.spyOn(workflowDocumentStoreInstance, 'addNode');
+
+			const { addNodes } = useCanvasOperations();
+			const added = await addNodes([{ type: deprecatedType }], {});
+
+			expect(addNodeSpy).toHaveBeenCalledTimes(1);
+			expect(addNodeSpy.mock.calls[0][0].type).toBe(deprecatedType);
+			expect(added[0].type).toBe(deprecatedType);
+			expect(toast.showMessage).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('revertAddNode', () => {
 		it('deletes node if it exists', async () => {
 			const node = createTestNode();
@@ -2617,6 +2718,31 @@ describe('useCanvasOperations', () => {
 					disabled: true,
 				},
 			});
+		});
+		it('should not toggle a selection that contains a restricted node type', () => {
+			const toast = useToast();
+			const nodes = [
+				createTestNode({ id: '1', name: 'A', type: 'n8n-nodes-base.slack' }),
+				createTestNode({ id: '2', name: 'B' }),
+			];
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodesByIds').mockReturnValue(nodes);
+			const updateNodePropertiesSpy = vi.spyOn(
+				workflowDocumentStoreInstance,
+				'updateNodeProperties',
+			);
+			mockedStore(useTypeAvailabilityPoliciesStore).getNodeTypeAvailability.mockImplementation(
+				(name) => ({ name, available: name !== 'n8n-nodes-base.slack' }),
+			);
+
+			useCanvasOperations().toggleNodesDisabled(['1', '2']);
+
+			expect(updateNodePropertiesSpy).not.toHaveBeenCalled();
+			expect(toast.showMessage).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'warning',
+					message: expect.stringContaining('n8n-nodes-base.slack'),
+				}),
+			);
 		});
 	});
 
@@ -6335,7 +6461,7 @@ describe('useCanvasOperations', () => {
 				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
 			);
 
-			expect(result.nodes?.[0].position).toEqual([464, 464]);
+			expect(result.nodes?.[0].position).toEqual([448, 448]);
 		});
 
 		it('centers the bounding box when pasting nodes with different leftmost and topmost nodes', async () => {

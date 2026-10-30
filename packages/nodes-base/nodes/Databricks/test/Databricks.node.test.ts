@@ -274,21 +274,39 @@ describe('Databricks', () => {
 				expect(result?.toolAttribution).toBe(expected);
 			},
 		);
+	});
 
-		it('should keep the Lakebase locators scoped to the lakebase resource', () => {
+	describe('Lakebase -> resource switch', () => {
+		it('should list Lakebase in the resource dropdown', () => {
 			const { description } = new Databricks();
+			const resource = description.properties.find((property) => property.name === 'resource');
 
-			const result = NodeHelpers.getNodeParameters(
-				description.properties,
-				{ resource: 'job', operation: 'run' },
-				true,
-				false,
-				node,
-				description,
+			expect(resource?.options).toContainEqual(
+				expect.objectContaining({ name: 'Lakebase', value: 'lakebase' }),
 			);
-
-			expect(result).not.toHaveProperty('lakebaseProject');
 		});
+
+		it.each([
+			['lakebase', 'getAll', true],
+			['job', 'run', false],
+		])(
+			'should scope the Lakebase operations and locators to the lakebase resource (%s)',
+			(resource, operation, expected) => {
+				const { description } = new Databricks();
+
+				const result = NodeHelpers.getNodeParameters(
+					description.properties,
+					{ resource },
+					true,
+					false,
+					node,
+					description,
+				);
+
+				expect(result?.operation).toBe(operation);
+				expect(Object.hasOwn(result ?? {}, 'lakebaseProject')).toBe(expected);
+			},
+		);
 	});
 
 	describe('Model Serving -> Query Endpoint', () => {

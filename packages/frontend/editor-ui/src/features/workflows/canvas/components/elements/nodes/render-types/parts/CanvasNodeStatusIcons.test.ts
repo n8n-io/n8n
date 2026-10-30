@@ -14,11 +14,15 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
 import { createTestingPinia } from '@pinia/testing';
+import { getActivePinia, setActivePinia } from 'pinia';
 import { computed, type ComputedRef } from 'vue';
 import type { IPinData } from 'n8n-workflow';
+import type { Scope } from '@n8n/permissions';
 import type * as actualVueRouter from 'vue-router';
 import { type RouteLocationNormalizedLoadedGeneric, useRoute } from 'vue-router';
 import CanvasNodeStatusIcons from './CanvasNodeStatusIcons.vue';
+import userEvent from '@testing-library/user-event';
+import { screen } from '@testing-library/vue';
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal();
@@ -295,6 +299,42 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(queryByTestId('canvas-node-status-success')).not.toBeInTheDocument();
 	});
 
+	describe('deprecated node', () => {
+		const renderDeprecated = () =>
+			renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							data: {
+								issues: { visible: true, validation: ['Parameter "Code" is required.'] },
+								render: { type: CanvasNodeRenderType.Default, options: { deprecated: true } },
+							},
+						}),
+					},
+				},
+			});
+
+		it('should render the deprecated icon ahead of validation issues', () => {
+			const { getByTestId, queryByTestId } = renderDeprecated();
+
+			expect(getByTestId('canvas-node-status-deprecated')).toBeInTheDocument();
+			expect(queryByTestId('node-issues')).not.toBeInTheDocument();
+		});
+
+		it('should render execution errors ahead of the deprecated icon', () => {
+			executionIssuesByNodeId.set(
+				'node',
+				computed(() => ['Request failed']),
+			);
+
+			const { getByTestId, queryByTestId } = renderDeprecated();
+
+			expect(getByTestId('node-issues')).toBeInTheDocument();
+			expect(queryByTestId('canvas-node-status-deprecated')).not.toBeInTheDocument();
+		});
+	});
+
 	it('should render correctly for a dirty node that has run successfully', () => {
 		const { getByTestId } = renderComponent({
 			global: {
@@ -381,6 +421,87 @@ describe('CanvasNodeStatusIcons', () => {
 
 			expect(queryByTestId('node-restricted')).toBeInTheDocument();
 			expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('sub-workflow with a restricted node type', () => {
+		beforeEach(() => {
+			typeAvailabilityPoliciesStore.getNodeTypeAvailability.mockReturnValue({
+				name: 'n8n-nodes-base.executeWorkflow',
+				available: true,
+			});
+		});
+
+		function renderExecuteWorkflowNode(scopes: Scope[]) {
+			// The testing pinia stubs actions, so the document gets a pinia of its own to set scopes.
+			const canvasPinia = getActivePinia();
+			setActivePinia(createTestingPinia({ stubActions: false }));
+			const document = useWorkflowDocumentStore(createWorkflowDocumentId('parent'));
+			document.setScopes(scopes);
+			setActivePinia(canvasPinia);
+			vi.spyOn(document, 'getNodeById').mockReturnValue(
+				createTestNode({
+					id: 'node',
+					type: 'n8n-nodes-base.executeWorkflow',
+					parameters: { workflowId: { __rl: true, mode: 'list', value: 'child' } },
+				}),
+			);
+			typeAvailabilityPoliciesStore.getSubWorkflowCheck.mockReturnValue({
+				draft: [
+					{
+						kind: 'node-type-unavailable',
+						checkId: 'node-type-availability',
+						message: 'blocked',
+						subject: 'n8n-nodes-base.set',
+						subjectType: 'nodeType',
+						scope: 'project',
+					},
+				],
+				published: null,
+			});
+
+			return renderComponent({
+				global: {
+					provide: {
+						...createCanvasProvide(),
+						...createCanvasNodeProvide({
+							id: 'node',
+							data: { type: 'n8n-nodes-base.executeWorkflow' },
+						}),
+						[WorkflowDocumentStoreKey]: computed(() => document),
+					},
+				},
+			});
+		}
+
+		it('should render the warning badge for a builder of the parent', () => {
+			const { queryByTestId } = renderExecuteWorkflowNode(['workflow:update']);
+
+			expect(typeAvailabilityPoliciesStore.fetchSubWorkflowCheck).toHaveBeenCalledWith(
+				'parent',
+				'child',
+				{ force: false },
+			);
+			expect(queryByTestId('node-sub-workflow-restricted')).toBeInTheDocument();
+		});
+
+		it('should name the blocked node types and the scope in the tooltip', async () => {
+			const { getByTestId } = renderExecuteWorkflowNode(['workflow:update']);
+
+			await userEvent.hover(getByTestId('node-sub-workflow-restricted').firstElementChild!);
+
+			expect(
+				await screen.findByText("Restricted in the sub-workflow's project: 'n8n-nodes-base.set'.", {
+					exact: false,
+				}),
+			).toBeInTheDocument();
+		});
+
+		it('should not check for a user who cannot update the parent', () => {
+			const { queryByTestId } = renderExecuteWorkflowNode(['workflow:read']);
+
+			expect(typeAvailabilityPoliciesStore.fetchSubWorkflowCheck).not.toHaveBeenCalled();
+			expect(queryByTestId('node-sub-workflow-restricted')).not.toBeInTheDocument();
 		});
 	});
 });

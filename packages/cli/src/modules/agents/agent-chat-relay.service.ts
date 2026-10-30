@@ -10,11 +10,12 @@ import { BadRequestError, NotFoundError } from '@n8n/errors';
 import { sanitizeFilename } from '@n8n/utils/files/sanitize-filename';
 import type { Response } from 'express';
 import { FileNotFoundError, getHtmlSandboxCSP } from 'n8n-core';
-import { pipeline } from 'node:stream/promises';
+
+import { sendStreamToResponse } from '@/response-helper';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
 import { AgentMessageQueueService } from './agent-message-queue.service';
-import { AgentQueuedPreviewStreamService } from './agent-queued-preview-stream.service';
+import { AgentQueuedTestStreamService } from './agent-queued-test-stream.service';
 import { type FlushableResponse, initSseStream, toChatErrorEvent } from './agent-sse-stream';
 import type { AgentChatAttachment } from './entities/agent-chat-attachment.entity';
 import type { StoredAttachmentRef } from './types/agent-chat-attachment';
@@ -31,7 +32,7 @@ export type AgentChatStream = ReturnType<AgentChatRelayService['createChatStream
 export class AgentChatRelayService {
 	constructor(
 		private readonly messageQueue: AgentMessageQueueService,
-		private readonly queuedPreviewStreams: AgentQueuedPreviewStreamService,
+		private readonly queuedPreviewStreams: AgentQueuedTestStreamService,
 		private readonly agentChatAttachmentService: AgentChatAttachmentService,
 	) {}
 
@@ -127,7 +128,7 @@ export class AgentChatRelayService {
 		const delivery = initSseStream(res);
 		const { send, abortSignal } = delivery;
 		let accepted = false;
-		let subscription: ReturnType<AgentQueuedPreviewStreamService['subscribe']> | undefined;
+		let subscription: ReturnType<AgentQueuedTestStreamService['subscribe']> | undefined;
 		let attachments: StoredAttachmentRef[] | undefined;
 		try {
 			const input = await accept(send, abortSignal);
@@ -159,6 +160,35 @@ export class AgentChatRelayService {
 		}
 	}
 
+	/** Subscribe before the transaction commits so the report cannot outrun the browser. */
+	async relayQueuedStop(
+		res: FlushableResponse,
+		threadId: string,
+		request: (onQueued: (id: string) => void) => Promise<unknown>,
+	) {
+		const delivery = initSseStream(res);
+		let queueId: string | undefined;
+		let subscription: ReturnType<AgentQueuedTestStreamService['subscribe']> | undefined;
+
+		try {
+			await request((id) => {
+				queueId = id;
+				subscription = this.queuedPreviewStreams.subscribe(id, delivery);
+			});
+
+			if (subscription && queueId) {
+				subscription.accepted();
+				delivery.send({ type: 'message-queued', queueId, sessionId: threadId });
+				await subscription.done;
+			} else delivery.send({ type: 'done', sessionId: threadId });
+		} catch (error) {
+			delivery.send(toChatErrorEvent(error, 'Stop failed'));
+		} finally {
+			subscription?.close();
+			delivery.close();
+		}
+	}
+
 	async streamAttachment(attachment: AgentChatAttachment, res: Response) {
 		const attachmentId = attachment.id;
 		// Open the stream before writing headers: bytes can be gone while the row
@@ -174,34 +204,21 @@ export class AgentChatRelayService {
 			throw error;
 		}
 
-		res.setHeader('Content-Type', attachment.mimeType);
-		res.setHeader('Content-Length', attachment.fileSizeBytes);
-		res.setHeader('X-Content-Type-Options', 'nosniff');
-		// Sandbox anything rendered inline: attachments are user-supplied content
-		// served same-origin, so active content in them must never script against
-		// the n8n session (same posture as the binary-data controller).
-		res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
-		// Non-viewable types must not render inline in the browser.
-		if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
-			res.setHeader(
-				'Content-Disposition',
-				`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
-			);
-		}
-
-		// pipeline destroys the source when the client disconnects mid-transfer,
-		// so aborted downloads don't leak file descriptors or object-store sockets.
-		try {
-			await pipeline(stream, res);
-		} catch (error) {
-			if (
-				error instanceof Error &&
-				'code' in error &&
-				error.code === 'ERR_STREAM_PREMATURE_CLOSE'
-			) {
-				return;
+		await sendStreamToResponse(res, stream, () => {
+			res.setHeader('Content-Type', attachment.mimeType);
+			res.setHeader('Content-Length', attachment.fileSizeBytes);
+			res.setHeader('X-Content-Type-Options', 'nosniff');
+			// Sandbox anything rendered inline: attachments are user-supplied content
+			// served same-origin, so active content in them must never script against
+			// the n8n session (same posture as the binary-data controller).
+			res.setHeader('Content-Security-Policy', getHtmlSandboxCSP());
+			// Non-viewable types must not render inline in the browser.
+			if (!ViewableMimeTypes.includes(attachment.mimeType.toLowerCase())) {
+				res.setHeader(
+					'Content-Disposition',
+					`attachment; filename="${sanitizeFilename(attachment.fileName)}"`,
+				);
 			}
-			throw error;
-		}
+		});
 	}
 }

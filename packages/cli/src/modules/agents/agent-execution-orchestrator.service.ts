@@ -1,4 +1,9 @@
-import { type Agent as RuntimeAgent, type SerializableAgentState } from '@n8n/agents';
+import {
+	readEpisodicScopeDecision,
+	type Agent as RuntimeAgent,
+	type EpisodicScopeDecision,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import type {
 	AgentBackgroundJobSignal,
 	AgentMessageAuthor,
@@ -30,6 +35,7 @@ import {
 	userIdFromDraftChatMemoryResourceId,
 	userIdFromProductionChatMemoryResourceId,
 } from './utils/agent-memory-scope';
+import { episodicScopeHostMetadata } from './utils/episodic-scope-metadata';
 import {
 	chatSurfaceMemoryResourceId,
 	N8N_CHAT_PRODUCTION_SOURCE,
@@ -111,6 +117,8 @@ interface ChatExecutionCallbacks {
 }
 
 export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionCallbacks {
+	pauseReport?: boolean;
+	hideUserMessageFromTranscript?: boolean;
 	/**
 	 * The calling n8n user — used to gate node/workflow tools by their access,
 	 * and for RBAC / credential resolution and telemetry attribution. Always
@@ -133,6 +141,8 @@ export interface ExecuteForChatConfig extends ChatExecutionInput, ChatExecutionC
 
 export interface ExecuteForChatPublishedConfig extends ChatExecutionInput {
 	messageContext?: IntegrationMessageContext | null;
+	/** The channel's episodic scope decision. Absent on an integration resource means off. */
+	episodicScope?: EpisodicScopeDecision;
 	/** Platform conversation metadata scope. Execution memory can belong to a task. */
 	contextConversation?: SessionBinding;
 	/** What the model receives when it differs from `message`, e.g. with an author label or thread history. */
@@ -230,6 +240,8 @@ export interface StreamChatResponseConfig extends ChatExecutionInput, ChatExecut
 	onAdmitted?: () => Promise<void>;
 	access: AgentThreadAccess;
 	messageContext?: IntegrationMessageContext | null;
+	/** The channel's episodic scope decision. Absent on an integration resource means off. */
+	episodicScope?: EpisodicScopeDecision;
 	agentInstance: RuntimeAgent;
 	toolRegistry: ToolRegistry;
 	/** Saved budget from the reconstructed runtime. Absent when the config has none. */
@@ -760,6 +772,7 @@ export class AgentExecutionOrchestratorService {
 									)
 							: undefined,
 					messageContext,
+					episodicScope: config.episodicScope,
 					access: { accessScope: 'project', ownerId: null },
 					agentInstance: runtime.agent,
 					toolRegistry: runtime.toolRegistry,
@@ -1106,6 +1119,7 @@ export class AgentExecutionOrchestratorService {
 		if (!config.admittedExecution && !config.isWakeRun) {
 			await this.settingsService.assertEnabled();
 		}
+
 		yield* this.turnExecutionService.execute({
 			admittedExecution: config.admittedExecution,
 			onAdmitted: config.onAdmitted,
@@ -1120,6 +1134,7 @@ export class AgentExecutionOrchestratorService {
 			backgroundJobSignal: config.backgroundJobSignal,
 			onExecutionRecorded: config.onExecutionRecorded,
 			chatSurface: config.chatSurface,
+			acceptsSteering: !config.pauseReport,
 			onExecutionStarted: config.onExecutionStarted,
 			onSettled: config.isWakeRun
 				? undefined
@@ -1367,7 +1382,14 @@ export class AgentExecutionOrchestratorService {
 		return {
 			runId,
 			toolCallId,
-			hostMetadata: encodeIntegrationMessageContext(selectedContext),
+			hostMetadata: {
+				...encodeIntegrationMessageContext(selectedContext),
+				// The resume merge lets this metadata win, so it must not replace a stored decision.
+				// A checkpoint from before channels resolved a scope gets the integration fallback.
+				...(readEpisodicScopeDecision(memoryScope.hostMetadata)
+					? {}
+					: episodicScopeHostMetadata(memoryScope.resourceId)),
+			},
 			...(selectedContext && conversation
 				? {
 						onResumeClaimed: async () =>
@@ -1592,7 +1614,10 @@ export class AgentExecutionOrchestratorService {
 			sessionMode,
 		} = config;
 		const messageContext = this.createN8nChatMessageContext(memory, user.id);
+
 		return this.streamChatResponse({
+			pauseReport: config.pauseReport,
+			hideUserMessageFromTranscript: config.hideUserMessageFromTranscript,
 			admittedExecution: config.admittedExecution,
 			onAdmitted: async () =>
 				await this.integrationMessageContextService.setLatest(
@@ -1674,6 +1699,7 @@ export class AgentExecutionOrchestratorService {
 				principalHash: sandboxPrincipalHash,
 			}),
 			...encodeIntegrationMessageContext(messageContext),
+			...episodicScopeHostMetadata(resourceId, config.episodicScope),
 			...(config.chatSurface !== undefined &&
 			!config.isWakeRun &&
 			!config.hideUserMessageFromTranscript
@@ -1810,6 +1836,9 @@ export class AgentExecutionOrchestratorService {
 		messageContext: IntegrationMessageContext | null,
 	) {
 		const { agentId, message, memory, identity, abortSignal } = config;
+
+		// A wake carries no `episodicScope`: the background job record does not store the
+		// originating turn's decision, so a wake on an integration thread runs without episodic memory.
 		return this.streamChatResponse({
 			access,
 			messageContext,
@@ -1834,7 +1863,7 @@ export class AgentExecutionOrchestratorService {
 			isWakeRun: true,
 			pauseReport: config.pauseReport,
 			sessionMode: 'existing',
-			backgroundJobSignal: config.backgroundJobSignal,
+			backgroundJobSignal: config.pauseReport ? undefined : config.backgroundJobSignal,
 		});
 	}
 }

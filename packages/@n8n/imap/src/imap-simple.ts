@@ -24,6 +24,9 @@ const RESTORE_ATTEMPTS = 6;
 /** Doubled per try, so the attempts span roughly the half minute a restarting server is away. */
 const RESTORE_BACKOFF = 1000;
 
+/** A transport that stays up this long counts as restored, so the next drop starts a fresh budget. */
+const STABLE_PERIOD = 10_000;
+
 /**
  * Why a connection stopped for good:
  * - `ended`  the caller asked for it, through `end()`
@@ -142,6 +145,14 @@ export class ImapSimple {
 	private attempt = 0;
 
 	private timer: NodeJS.Timeout | undefined;
+
+	private installedAt = 0;
+
+	/** Tries the last restore spent, carried into the next when its transport did not stay up. */
+	private spentTries = 0;
+
+	/** What the transport in service died of, for a restore that gives up before it dials. */
+	private transportError: Error | undefined;
 
 	/** Cuts short a wait between tries, so an unreachable server cannot hold up `end`. */
 	private readonly aborter = new AbortController();
@@ -279,6 +290,8 @@ export class ImapSimple {
 	private install(client: ImapTransport): void {
 		this.client = client;
 		this.installed = true;
+		this.installedAt = Date.now();
+		this.transportError = undefined;
 
 		// An `exists` that only reports expunged messages is not an arrival.
 		client.on('exists', ({ count, prevCount }) => {
@@ -295,6 +308,7 @@ export class ImapSimple {
 		// imapflow rejects its in-flight commands as the connection dies, and that reaches a
 		// handler before the `close` does, so the transport is spent from this first error.
 		this.lose();
+		this.transportError = error;
 
 		// A connection that restores itself reports the failure it could not recover from, not
 		// every one on the way there — `restore` reports if it runs out of road.
@@ -332,38 +346,45 @@ export class ImapSimple {
 	 * is only briefly away costs the caller nothing. Reports and closes once the tries run out,
 	 * because a caller that is never told has no way to know its mail stopped arriving.
 	 */
-	private async restore(): Promise<void> {
-		for (let tries = 0; ; tries++) {
+	private async restore(planned = false): Promise<void> {
+		// A server that accepts the login and then hangs up makes every reopen a success, so a
+		// drop soon after one is the same outage and keeps spending its budget.
+		const resumeAt =
+			!planned && Date.now() - this.installedAt < STABLE_PERIOD ? this.spentTries : 0;
+		let lastError: unknown = this.transportError ?? new ConnectionLostError();
+
+		for (let tries = resumeAt; tries < RESTORE_ATTEMPTS; tries++) {
 			this.attempt += 1;
 			const attempt = this.attempt;
 
+			if (tries > 0 && !(await this.waitToTryAgain(tries, attempt))) return;
+
 			try {
 				await withTimeout(this.reopen(attempt), this.reconnectTimeout);
+				// A superseded attempt installed nothing; the restore that took over owns the budget.
+				// A planned replace that held is no sign of an outage; only its failed dials count.
+				if (attempt === this.attempt) this.spentTries = planned ? tries : tries + 1;
 				return;
 			} catch (error) {
 				// Another restore has taken over, or the caller is gone: either way this one is
 				// no longer the connection anyone is waiting on.
 				if (attempt !== this.attempt || !this.canRestore()) return;
-
-				if (tries + 1 < RESTORE_ATTEMPTS) {
-					if (await this.waitToTryAgain(tries, attempt)) continue;
-					return;
-				}
-
-				// A drop nothing could be done about, so the close carries `dropped` and the
-				// attempt that failed. Reporting an error first would relabel it as one the
-				// caller can read.
-				this.dropCause = error instanceof Error ? error : new Error(String(error));
-				this.reportClose();
-				return;
+				lastError = error;
 			}
 		}
+
+		// A drop nothing could be done about, so the close carries `dropped` and the last failure
+		// seen. Reporting an error first would relabel it as one the caller can read.
+		this.dropCause = lastError instanceof Error ? lastError : new Error(String(lastError));
+		this.reportClose();
 	}
 
-	/** Waits out the backoff, answering whether another try is still wanted once it is over. */
+	/** Waits out the backoff before try `tries`, answering whether it is still wanted once over. */
 	private async waitToTryAgain(tries: number, attempt: number): Promise<boolean> {
 		try {
-			await sleep(RESTORE_BACKOFF * 2 ** tries, this.aborter.signal);
+			// ±25 %, so connections that dropped together do not all dial back at the same moment.
+			const jitter = 0.75 + Math.random() / 2;
+			await sleep(RESTORE_BACKOFF * 2 ** (tries - 1) * jitter, this.aborter.signal);
 		} catch {
 			return false;
 		}
@@ -405,7 +426,7 @@ export class ImapSimple {
 	/** Rearmed only once an attempt has settled, so a slow one can never stack up behind the next. */
 	private scheduleReplace(interval: number): void {
 		this.timer = setTimeout(() => {
-			void this.restore().then(() => {
+			void this.restore(true).then(() => {
 				if (this.canRestore()) this.scheduleReplace(interval);
 			});
 		}, interval);

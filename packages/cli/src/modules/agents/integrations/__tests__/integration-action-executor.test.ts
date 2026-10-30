@@ -58,7 +58,7 @@ import { ChatIntegrationActionExecutor } from '../integration-action-executor';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import type { IntegrationMessageContext } from '../integration-tool-types';
-import { LinearIntegration } from '../platforms/linear-integration';
+import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { SlackIntegration } from '../platforms/slack/slack-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import type { ChatIntegrationService, ChatInstance } from '../chat-integration.service';
@@ -102,6 +102,14 @@ class ShortCallbackTelegramIntegration extends AgentChatIntegration {
 	];
 
 	readonly needsShortCallbackData = true;
+
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
 
 	async createAdapter(_ctx: AgentChatIntegrationContext): Promise<unknown> {
 		return {};
@@ -173,6 +181,52 @@ describe('ChatIntegrationActionExecutor', () => {
 				updatedAt: expect.any(String),
 			},
 		});
+	});
+
+	it('lets a slow Slack message finish after the context query deadline', async () => {
+		vi.useFakeTimers();
+		try {
+			const sentMessage = { id: '123.456', threadId: 'slack:C123:123.456' };
+			const channel = {
+				post: vi.fn().mockImplementation(
+					async () =>
+						await new Promise((resolve) => {
+							setTimeout(() => resolve(sentMessage), 35_000);
+						}),
+				),
+			};
+			const chat = mock<ChatInstance>();
+			chat.channel.mockReturnValue(channel as never);
+			chat.thread.mockReturnValue({ subscribe: vi.fn().mockResolvedValue(undefined) } as never);
+			const service = mock<ChatIntegrationService>();
+			service.getChatInstanceForTools.mockResolvedValue(chat);
+			const executor = new ChatIntegrationActionExecutor(
+				service,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
+			const settled = vi.fn();
+			const result = executor.execute({
+				descriptor: getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0],
+				action: 'send_channel_message',
+				input: { channelId: 'C123', message: { text: 'Hello channel' } },
+				awaitResponse: false,
+			});
+			void result.then(settled, settled);
+
+			await vi.advanceTimersByTimeAsync(31_000);
+			expect(channel.post).toHaveBeenCalledTimes(1);
+			expect(settled).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(4_000);
+			await expect(result).resolves.toMatchObject({
+				ok: true,
+				messageContext: { messageId: sentMessage.id },
+			});
+			expect(channel.post).toHaveBeenCalledTimes(1);
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('does not subscribe channel message threads for non-Slack integrations', async () => {
@@ -267,6 +321,99 @@ describe('ChatIntegrationActionExecutor', () => {
 				updatedAt: expect.any(String),
 			},
 		});
+	});
+
+	it('opens a WhatsApp DM on the WhatsApp adapter instead of inferring it from the user ID', async () => {
+		const sentMessage = { id: 'wamid.1', threadId: 'whatsapp:111:447700900123' };
+		const thread = {
+			id: 'whatsapp:111:447700900123',
+			post: vi.fn().mockResolvedValue(sentMessage),
+		};
+		const adapter = { openDM: vi.fn().mockResolvedValue('whatsapp:111:447700900123') };
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue(adapter);
+		chat.thread.mockReturnValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors(
+			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
+			'agent-1',
+		)[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '447700900123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('whatsapp');
+		expect(adapter.openDM).toHaveBeenCalledWith('447700900123');
+		expect(chat.openDM).not.toHaveBeenCalled();
+		expect(chat.thread).toHaveBeenCalledWith('whatsapp:111:447700900123');
+		expect(thread.post).toHaveBeenCalledWith('Hello');
+		expect(result).toMatchObject({
+			ok: true,
+			messageContext: {
+				target: { type: 'dm', userId: '447700900123', threadId: 'whatsapp:111:447700900123' },
+				messageId: 'wamid.1',
+			},
+		});
+	});
+
+	it('returns an unsupported-action error when the WhatsApp adapter cannot open a DM', async () => {
+		const chat = mock<ChatInstance>();
+		chat.getAdapter.mockReturnValue({});
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors(
+			[{ type: 'whatsapp', credentialId: 'cred-whatsapp' }],
+			'agent-1',
+		)[0];
+
+		const result = await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '447700900123', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(result).toMatchObject({ ok: false });
+		expect(chat.openDM).not.toHaveBeenCalled();
+	});
+
+	it('falls back to chat.openDM when a non-WhatsApp adapter cannot open a DM', async () => {
+		const thread = { id: 'telegram:42', post: vi.fn().mockResolvedValue({ id: '1' }) };
+		const chat = mock<ChatInstance>();
+		chat.openDM.mockResolvedValue(thread as never);
+		const chatIntegrationService = mock<ChatIntegrationService>();
+		chatIntegrationService.getChatInstanceForTools.mockResolvedValue(chat);
+		const executor = new ChatIntegrationActionExecutor(
+			chatIntegrationService,
+			buildRegistry(),
+			new ChannelRateLimitGuard(),
+		);
+		const descriptor = getIntegrationToolConnectionDescriptors([telegram], 'agent-1')[0];
+
+		await executor.execute({
+			descriptor,
+			action: 'send_dm',
+			input: { userId: '42', message: { text: 'Hello' } },
+			awaitResponse: false,
+		});
+
+		expect(chat.getAdapter).toHaveBeenCalledWith('telegram');
+		expect(chat.openDM).toHaveBeenCalledWith('42');
 	});
 
 	it('re-anchors a Slack DM at the sent message ts when openDM returns the channel pseudo-thread', async () => {
@@ -1408,6 +1555,31 @@ describe('ChatIntegrationActionExecutor', () => {
 				note: expect.stringContaining('No reply will be sent'),
 			});
 			expect(chatIntegrationService.getChatInstanceForTools).not.toHaveBeenCalled();
+		});
+
+		it('returns the reason for the run record', async () => {
+			const chatIntegrationService = mock<ChatIntegrationService>();
+			const executor = new ChatIntegrationActionExecutor(
+				chatIntegrationService,
+				buildRegistry(),
+				new ChannelRateLimitGuard(),
+			);
+			const descriptor = getIntegrationToolConnectionDescriptors([slack], 'agent-1')[0];
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'do_not_respond',
+				input: { reason: 'not delivered, no suitable template' },
+				awaitResponse: false,
+				currentMessageContext: { ...slackMessageContext, replyExpectation: 'optional' },
+			});
+
+			expect(result).toEqual({
+				ok: true,
+				silent: true,
+				reason: 'not delivered, no suitable template',
+				note: expect.stringContaining('No reply will be sent'),
+			});
 		});
 
 		it('rejects when the reply expectation is required', async () => {

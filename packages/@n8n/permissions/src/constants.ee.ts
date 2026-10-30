@@ -1,7 +1,15 @@
 export const DEFAULT_OPERATIONS = ['create', 'read', 'update', 'delete', 'list'] as const;
 
 export const RESOURCES = {
-	agent: [...DEFAULT_OPERATIONS, 'execute', 'publish', 'unpublish', 'manage', 'export'] as const,
+	agent: [
+		...DEFAULT_OPERATIONS,
+		'execute',
+		'publish',
+		'unpublish',
+		'manage',
+		'export',
+		'import',
+	] as const,
 	aiAssistant: ['manage'] as const,
 	// AI prompt preferences. `aiPreference`: instance-wide rows and other users' rows.
 	// `projectAiPreference`: rows of a project. A user's own rows need no scope.
@@ -50,13 +58,15 @@ export const RESOURCES = {
 	securityAudit: ['generate'] as const,
 	securitySettings: ['manage'] as const,
 	sourceControl: ['pull', 'push', 'manage', 'read'] as const,
-	gitConnection: [
+	promotions: [
 		...DEFAULT_OPERATIONS,
 		'discover',
-		'clone',
-		'push',
+		'connect',
+		'promote',
 		'manageProjects',
-		'pull',
+		'apply',
+		'readReviews',
+		'approveReviews',
 	] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	user: [
@@ -110,14 +120,15 @@ export const RESOURCES = {
 	apiKey: ['manage', 'create', 'update'] as const,
 	encryptionKey: ['manage'] as const,
 	credentialResolver: [...DEFAULT_OPERATIONS] as const,
-	instanceAi: ['message', 'manage', 'gateway', 'eval'] as const,
+	instanceAi: ['message', 'manage', 'gateway'] as const,
 	roleMappingRule: [...DEFAULT_OPERATIONS] as const,
 	otel: ['manage'] as const,
 	trustedSource: [...DEFAULT_OPERATIONS] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {
-	agent: ['export'] as const,
+	agent: ['export', 'import', 'read', 'create', 'update', 'publish', 'unpublish'] as const,
+	skill: ['create', 'update'] as const,
 	tag: [...DEFAULT_OPERATIONS] as const,
 	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'export', 'import'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
@@ -134,13 +145,13 @@ export const API_KEY_RESOURCES = {
 	credential: ['create', 'read', 'update', 'move', 'delete', 'list'] as const,
 	eventBusDestination: ['test', 'create', 'read', 'update', 'delete', 'list'] as const,
 	sourceControl: ['pull', 'push', 'read'] as const,
-	gitConnection: [
+	promotions: [
 		...DEFAULT_OPERATIONS,
 		'discover',
-		'clone',
-		'push',
+		'connect',
+		'promote',
 		'manageProjects',
-		'pull',
+		'apply',
 	] as const,
 	workflowTags: ['update', 'list'] as const,
 	executionTags: ['update', 'list'] as const,
@@ -165,6 +176,11 @@ export const PROJECT_ADMIN_ROLE_SLUG = 'project:admin';
 export const PROJECT_EDITOR_ROLE_SLUG = 'project:editor';
 export const PROJECT_VIEWER_ROLE_SLUG = 'project:viewer';
 export const PROJECT_CHAT_USER_ROLE_SLUG = 'project:chatUser';
+/** Global roles that make a user an implicit member of every team project. */
+export const IMPLICIT_TEAM_PROJECT_MEMBER_ROLE_SLUGS = [
+	GLOBAL_OWNER_ROLE_SLUG,
+	GLOBAL_ADMIN_ROLE_SLUG,
+];
 export const PERSONAL_SPACE_PUBLISHING_SETTING = {
 	key: 'security.personalSpacePublishing',
 	scopes: ['workflow:publish', 'agent:publish'],

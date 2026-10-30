@@ -38,12 +38,12 @@ function claimedRunIds(service: InstanceAiCreditService) {
 }
 
 function createMockThreadRepo(
-	thread?: { id: string; metadata: Record<string, unknown> | null } | null,
+	thread?: { id: string; resourceId?: string; metadata: Record<string, unknown> | null } | null,
 ) {
 	let current: Thread | null = thread
 		? {
 				id: thread.id,
-				resourceId: 'user-1',
+				resourceId: thread.resourceId ?? 'user-1',
 				metadata: thread.metadata ?? undefined,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -120,6 +120,7 @@ async function callClaim(
 		dedupeId?: string;
 		usage?: BuilderUsageItem[];
 		status?: 'completed' | 'cancelled' | 'errored';
+		source?: 'chat' | 'self_healing';
 	} = {},
 ) {
 	return await service.claimRunUsage(
@@ -128,6 +129,7 @@ async function callClaim(
 		args.dedupeId ?? 'run-1',
 		args.usage ?? usage,
 		args.status ?? 'completed',
+		args.source,
 	);
 }
 
@@ -136,6 +138,31 @@ async function callClaim(
 // ---------------------------------------------------------------------------
 
 describe('claimRunUsage', () => {
+	it('returns the measured delta without sending internal thread fields to the browser', async () => {
+		const threadRepo = createMockThreadRepo({
+			id: 'internal-thread',
+			resourceId: 'ia-self-healing:user-1',
+			metadata: { creditsUsed: 2 },
+		});
+		const push = { sendToUsers: vi.fn() };
+		const service = createService({
+			threadRepo,
+			aiService: createMockAiService(),
+			push,
+			telemetry: { track: vi.fn() },
+		});
+
+		expect(await callClaim(service, { threadId: 'internal-thread' })).toBe(0.5);
+		expect(threadRepo.getCurrent()?.metadata?.creditsUsed).toBe(2.5);
+		expect(push.sendToUsers).toHaveBeenCalledWith(
+			{
+				type: 'updateInstanceAiCredits',
+				data: { creditsClaimed: 5.5, creditsQuota: 100 },
+			},
+			['user-1'],
+		);
+	});
+
 	it('claims token usage and accumulates the delta into thread metadata', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: { creditsUsed: 2 } });
 		const ai = createMockAiService({
@@ -169,14 +196,14 @@ describe('claimRunUsage', () => {
 		expect(delta).toBe(0.5);
 	});
 
-	it('fires the "Builder credits claimed" event with success true on the happy path', async () => {
+	it('labels successful self-healing credit claims', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService();
 		const push = { sendToUsers: vi.fn() };
 		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
-		await callClaim(service, { status: 'completed' });
+		await callClaim(service, { status: 'completed', source: 'self_healing' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
@@ -186,6 +213,7 @@ describe('claimRunUsage', () => {
 				thread_id: 't1',
 				agent_run_id: 'run-1',
 				status: 'completed',
+				source: 'self_healing',
 				success: true,
 				credits_used: 0.5,
 			}),
@@ -268,7 +296,7 @@ describe('claimRunUsage', () => {
 		expect(delta).toBe(0.5);
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
-			expect.objectContaining({ success: true }),
+			expect.objectContaining({ success: true, source: 'chat' }),
 		);
 	});
 
@@ -285,7 +313,7 @@ describe('claimRunUsage', () => {
 		expect(delta).toBeUndefined();
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
-			expect.objectContaining({ success: false }),
+			expect.objectContaining({ success: false, source: 'chat' }),
 		);
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 	});
@@ -323,18 +351,18 @@ describe('claimRunUsage', () => {
 		);
 	});
 
-	it('fires the "Builder credits claimed" event with success false when the claim throws', async () => {
+	it('labels failed self-healing credit claims', async () => {
 		const threadRepo = createMockThreadRepo({ id: 't1', metadata: {} });
 		const ai = createMockAiService({ claimError: new Error('network') });
 		const push = { sendToUsers: vi.fn() };
 		const telemetry = { track: vi.fn() };
 
 		const service = createService({ threadRepo, aiService: ai, push, telemetry });
-		await callClaim(service);
+		await callClaim(service, { source: 'self_healing' });
 
 		expect(telemetry.track).toHaveBeenCalledWith(
 			'Builder credits claimed',
-			expect.objectContaining({ success: false }),
+			expect.objectContaining({ success: false, source: 'self_healing' }),
 		);
 		expect(push.sendToUsers).not.toHaveBeenCalled();
 	});

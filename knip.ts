@@ -68,6 +68,9 @@ const config: KnipConfig = {
 		'.github/scripts': {
 			entry: ['**/*.mjs'],
 			ignoreDependencies: [
+				// docker/edit-image-native-smoke-check.mjs requires these from the n8n install under test.
+				'@napi-rs/canvas',
+				'@napi-rs/image',
 				// docker/kafka-native-smoke-check.mjs requires it from the n8n install under test.
 				'@confluentinc/kafka-javascript',
 				// The generate-sbom script runs the cdxgen binary; the package is not installed here.
@@ -109,8 +112,10 @@ const config: KnipConfig = {
 			// The exported config names these plugins as strings.
 			ignoreDependencies: [
 				'@n8n/eslint-config',
+				'@n8n/eslint-plugin-design-system',
 				'@stylistic/eslint-plugin',
 				'eslint-plugin-lodash',
+				'eslint-plugin-n8n-nodes-base',
 				'eslint-plugin-unused-imports',
 			],
 		}),
@@ -128,8 +133,15 @@ const config: KnipConfig = {
 			ignoreDependencies: ['@langchain/langgraph-checkpoint'],
 		}),
 		'packages/nodes-base': pkg({
-			// Pins the pg version that pg-promise resolves for npm installs of the published package.
-			ignoreDependencies: ['pg'],
+			ignoreDependencies: [
+				// napi-rs wrappers load these platform bindings dynamically at runtime.
+				'@napi-rs/canvas-linux-arm64-musl',
+				'@napi-rs/canvas-linux-x64-musl',
+				'@napi-rs/image-linux-arm64-musl',
+				'@napi-rs/image-linux-x64-musl',
+				// Pins the pg version that pg-promise resolves for npm installs of the published package.
+				'pg',
+			],
 		}),
 		'packages/@n8n/create-node': pkg({
 			// bin/create-node.cjs spawns the n8n-node binary through require.resolve.

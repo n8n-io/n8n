@@ -7,6 +7,8 @@ import SecuritySettings from './SecuritySettings.vue';
 import { EnterpriseEditionFeature } from '@/app/constants';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useUsersStore } from '@n8n/stores/users.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG } from './rateLimits/rateLimits';
 
 const getSecuritySettings = vi.fn();
 const updateSecuritySettings = vi.fn();
@@ -15,6 +17,25 @@ vi.mock('@n8n/rest-api-client/api/security-settings', () => ({
 	getSecuritySettings: (...args: unknown[]) => getSecuritySettings(...args),
 	updateSecuritySettings: (...args: unknown[]) => updateSecuritySettings(...args),
 }));
+
+vi.mock('@n8n/rest-api-client/api/public-api-rate-limit-settings', () => {
+	const limits = {
+		globalReadLimit: 1200,
+		globalReadWindowSeconds: 60,
+		globalWriteLimit: 600,
+		globalWriteWindowSeconds: 60,
+		endpointReadLimit: 1000,
+		endpointReadWindowSeconds: 60,
+		endpointWriteLimit: 500,
+		endpointWriteWindowSeconds: 60,
+	};
+	return {
+		getPublicApiRateLimitSettings: vi
+			.fn()
+			.mockResolvedValue({ enabled: false, ...limits, defaults: limits, envManagedFields: [] }),
+		updatePublicApiRateLimitSettings: vi.fn(),
+	};
+});
 
 const showToast = vi.fn();
 const showError = vi.fn();
@@ -70,6 +91,27 @@ describe('SecuritySettings', () => {
 		usersStore.updateEnforceMfa = vi.fn().mockResolvedValue(undefined);
 	});
 
+	describe('API key rate limits', () => {
+		it('does not show the section while its feature flag is off', async () => {
+			mockedStore(usePostHog).isFeatureEnabled.mockReturnValue(false);
+			const { queryByTestId } = renderView();
+
+			await waitFor(() => expect(getSecuritySettings).toHaveBeenCalled());
+
+			expect(queryByTestId('rate-limits-section')).not.toBeInTheDocument();
+		});
+
+		it('shows the section while its feature flag is on', async () => {
+			const posthogStore = mockedStore(usePostHog);
+			posthogStore.isFeatureEnabled.mockImplementation(
+				(flag) => flag === PUBLIC_API_RATE_LIMIT_SETTINGS_FLAG,
+			);
+			const { findByTestId } = renderView();
+
+			expect(await findByTestId('rate-limits-section')).toBeInTheDocument();
+		});
+	});
+
 	it('should render security heading and personal space section', async () => {
 		const { getByText } = renderView();
 
@@ -77,7 +119,7 @@ describe('SecuritySettings', () => {
 			expect(getSecuritySettings).toHaveBeenCalled();
 		});
 
-		expect(getByText('Security & policies')).toBeInTheDocument();
+		expect(getByText('Policies')).toBeInTheDocument();
 		expect(getByText('Personal space')).toBeInTheDocument();
 	});
 

@@ -71,6 +71,10 @@ export interface IntegrationMessageSubject {
 	description?: string;
 	url?: string;
 	status?: string;
+	/** The project the subject belongs to, when the platform reports one. */
+	projectId?: string;
+	/** The team the subject belongs to, when the platform reports one. */
+	teamId?: string;
 	labels?: string[];
 	assignee?: IntegrationSubjectPerson;
 	author?: IntegrationSubjectPerson;
@@ -105,7 +109,8 @@ export type IntegrationContextQuery =
 	| 'search_labels'
 	| 'search_issue_states'
 	| 'get_issue'
-	| 'search_issues';
+	| 'search_issues'
+	| 'list_templates';
 
 export type IntegrationAction =
 	| 'respond'
@@ -116,7 +121,8 @@ export type IntegrationAction =
 	| 'add_reaction'
 	| 'create_issue'
 	| 'update_issue'
-	| 'create_comment';
+	| 'create_comment'
+	| 'send_template';
 
 export interface IntegrationToolOperationDefinition<Name extends string = string> {
 	name: Name;
@@ -162,6 +168,13 @@ export interface IntegrationMessageContextStore {
 	resolveSession(derivedThreadId: string): Promise<SessionBinding | null>;
 	unbindSession(derivedThreadId: string): Promise<void>;
 	clearSessionBindings(originThreadId: string): Promise<void>;
+	/** Remembers which session sent a message, so a later delivery failure reaches that session. */
+	recordSentMessage(
+		derivedThreadId: string,
+		messageId: string,
+		origin: SessionBinding,
+	): Promise<void>;
+	resolveSentMessage(derivedThreadId: string, messageId: string): Promise<SessionBinding | null>;
 }
 
 export interface SessionBinding {
@@ -170,6 +183,7 @@ export interface SessionBinding {
 }
 
 export interface IntegrationContextQueryParams {
+	abortSignal?: AbortSignal;
 	descriptor: IntegrationToolConnectionDescriptor;
 	query: IntegrationContextQuery;
 	input: Record<string, unknown>;

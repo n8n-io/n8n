@@ -1,5 +1,6 @@
+import type { PackagePolicyRestrictions } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { EventService } from '@n8n/backend-services';
+import { EventService, InstalledTypeRestrictionsProxy } from '@n8n/backend-services';
 import { InstanceSettingsLoaderConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -55,6 +56,7 @@ export class CommunityPackagesLifecycleService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly communityPackagesConfig: CommunityPackagesConfig,
 		private readonly instanceSettingsLoaderConfig: InstanceSettingsLoaderConfig,
+		private readonly installedTypeRestrictions: InstalledTypeRestrictionsProxy,
 	) {}
 
 	private assertNotManagedByEnv() {
@@ -248,6 +250,27 @@ export class CommunityPackagesLifecycleService {
 		});
 
 		return installedPackage;
+	}
+
+	/**
+	 * `undefined` when no policy was evaluated. The package is already installed when this runs,
+	 * so an evaluation error must not fail the install request.
+	 */
+	async describePolicyRestrictions(
+		installedPackage: Pick<InstalledPackages, 'packageName' | 'installedNodes'>,
+	): Promise<PackagePolicyRestrictions | undefined> {
+		try {
+			const restrictions = await this.installedTypeRestrictions.describeRestrictions({
+				nodeTypes: installedPackage.installedNodes.map((node) => node.type),
+			});
+			return restrictions ?? undefined;
+		} catch (error) {
+			this.logger.warn('Failed to evaluate policy restrictions for an installed package', {
+				packageName: installedPackage.packageName,
+				error: ensureError(error),
+			});
+			return undefined;
+		}
 	}
 
 	async update(

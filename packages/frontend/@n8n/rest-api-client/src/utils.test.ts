@@ -1,8 +1,11 @@
+import { BaseError } from 'n8n-workflow';
+
 import {
 	MfaRequiredError,
 	ResponseError,
 	STREAM_SEPARATOR,
 	request,
+	requestResponse,
 	setUnauthorizedHandler,
 	streamRequest,
 } from './utils';
@@ -61,6 +64,62 @@ describe('request', () => {
 		await expect(request(baseConfig)).rejects.toThrow(MfaRequiredError);
 
 		expect(handler).not.toHaveBeenCalled();
+	});
+});
+
+describe('requestResponse', () => {
+	afterEach(() => {
+		setUnauthorizedHandler(() => {});
+	});
+
+	const baseConfig = {
+		method: 'GET' as const,
+		baseURL: 'https://api.example.com',
+		endpoint: '/export',
+	};
+
+	it('returns the whole response and passes the response type to axios', async () => {
+		const blob = new Blob(['a,b\r\n']);
+		const response = { data: blob, headers: { 'content-disposition': 'attachment' }, status: 200 };
+		axiosRequest.mockResolvedValueOnce(response);
+
+		const result = await requestResponse({ ...baseConfig, responseType: 'blob' });
+
+		expect(result).toBe(response);
+		expect(axiosRequest).toHaveBeenCalledWith(expect.objectContaining({ responseType: 'blob' }));
+	});
+
+	/** A JSON error body as a Blob. jsdom's Blob has no `text()`, which every browser has. */
+	function jsonBlob(body: object): Blob {
+		const text = JSON.stringify(body);
+		const blob = new Blob([text]);
+		Object.defineProperty(blob, 'text', { value: async () => text });
+		return blob;
+	}
+
+	it('reads a blob error body, so an MFA-required 401 on a blob request is still recognised', async () => {
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 401, data: jsonBlob({ message: 'Unauthorized', mfaRequired: true }) },
+		});
+		const handler = vi.fn();
+		setUnauthorizedHandler(handler);
+
+		await expect(requestResponse({ ...baseConfig, responseType: 'blob' })).rejects.toThrow(
+			MfaRequiredError,
+		);
+
+		expect(handler).not.toHaveBeenCalled();
+	});
+
+	it('throws the server message from a blob error body', async () => {
+		axiosRequest.mockRejectedValueOnce({
+			response: { status: 403, data: jsonBlob({ message: 'Forbidden' }) },
+		});
+
+		await expect(requestResponse({ ...baseConfig, responseType: 'blob' })).rejects.toMatchObject({
+			message: 'Forbidden',
+			httpStatusCode: 403,
+		});
 	});
 });
 
@@ -347,5 +406,51 @@ describe('streamRequest', () => {
 
 		expect(onDoneMock).toHaveBeenCalledTimes(1);
 		expect(onErrorMock).not.toHaveBeenCalled();
+	});
+});
+
+describe('ResponseError', () => {
+	it('is a BaseError with the response fields', () => {
+		const error = new ResponseError('Not found', {
+			errorCode: 4040,
+			httpStatusCode: 404,
+			stack: 'server stack',
+			meta: { url: 'https://example.com' },
+			hint: 'Check the ID',
+		});
+
+		expect(error).toBeInstanceOf(Error);
+		expect(error).toBeInstanceOf(BaseError);
+		expect(error.name).toBe('ResponseError');
+		expect(error.message).toBe('Not found');
+		expect(error.errorCode).toBe(4040);
+		expect(error.httpStatusCode).toBe(404);
+		expect(error.serverStackTrace).toBe('server stack');
+		expect(error.stack).not.toBe('server stack');
+		expect(error.meta).toEqual({ url: 'https://example.com' });
+		expect(error.hint).toBe('Check the ID');
+		expect(error.level).toBe('error');
+		expect(error.description).toBeUndefined();
+	});
+
+	it('leaves the optional fields undefined when they are not given', () => {
+		const error = new ResponseError('Failed');
+
+		expect(error.errorCode).toBeUndefined();
+		expect(error.httpStatusCode).toBeUndefined();
+		expect(error.serverStackTrace).toBeUndefined();
+		expect(error.meta).toBeUndefined();
+		expect(error.hint).toBeUndefined();
+	});
+
+	it('keeps its name when the class name is changed by minification', () => {
+		const originalName = Object.getOwnPropertyDescriptor(ResponseError, 'name');
+		Object.defineProperty(ResponseError, 'name', { value: 'e', configurable: true });
+
+		try {
+			expect(new ResponseError('Failed').name).toBe('ResponseError');
+		} finally {
+			if (originalName) Object.defineProperty(ResponseError, 'name', originalName);
+		}
 	});
 });

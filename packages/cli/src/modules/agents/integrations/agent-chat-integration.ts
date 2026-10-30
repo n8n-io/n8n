@@ -1,11 +1,14 @@
 import {
 	AgentIntegrationConfig,
 	type AgentIntegrationDisconnectWarning,
+	type AgentMessageAuthor,
+	type AgentMessageIntegrationOrigin,
 	type RichCardComponentType,
 } from '@n8n/api-types';
+import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Attachment, Thread, Author, Message } from 'chat';
+import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
@@ -28,6 +31,12 @@ import type {
 	IntegrationPlatformMessageContext,
 	ReplyExpectation,
 } from './integration-tools';
+import type {
+	DecodedThread,
+	OriginDraft,
+	OriginInput,
+	OriginNames,
+} from './integration-origin-support';
 
 /**
  * The platform refused an attachment download for a reason the user can fix.
@@ -43,6 +52,17 @@ export interface AgentChannelPreconditionContext {
 	agentId: string;
 	projectId: string;
 	credentialId: string;
+}
+
+/** Trusted source context of one incoming chat turn. */
+export interface EpisodicScopeContext {
+	agentId: string;
+	credentialId: string;
+	integrationType: string;
+	/** The platform conversation of the incoming message. */
+	threadId: string;
+	author: AgentMessageAuthor;
+	origin?: AgentMessageIntegrationOrigin;
 }
 
 /** Per-connection context handed to AgentChatIntegration hooks. */
@@ -351,6 +371,12 @@ export abstract class AgentChatIntegration {
 	readonly singleStreamedRunPerTurn: boolean = false;
 
 	/**
+	 * Most characters of reply text in one platform message. Longer replies
+	 * continue in a new message. `undefined` (default) means no limit.
+	 */
+	readonly maxMessageLength: number | undefined = undefined;
+
+	/**
 	 * True when this integration is an internal channel (e.g. the in-app n8n
 	 * chat) that must not appear in the public integrations catalog or the
 	 * add-trigger UI.
@@ -392,6 +418,39 @@ export abstract class AgentChatIntegration {
 
 	/** Build the Chat SDK adapter for this platform. */
 	abstract createAdapter(ctx: AgentChatIntegrationContext): Promise<unknown>;
+
+	/**
+	 * Builds the typed origin fields of an inbound message from the decoded adapter
+	 * thread ID and the message. Every channel must decide what it records. Return
+	 * `undefined` when the channel has no platform context to store. The result is
+	 * validated against `AgentMessageIntegrationOriginSchema`, so a new channel also
+	 * needs a variant there.
+	 */
+	abstract buildOriginDraft(
+		input: OriginInput,
+		decoded: DecodedThread,
+	): Promise<OriginDraft | undefined> | OriginDraft | undefined;
+
+	/**
+	 * Looks up the display names of a built origin. The bridge calls it after the
+	 * message is enqueued, so a slow lookup never delays the turn. A failed or slow
+	 * lookup may reject. Channels without names leave this undefined.
+	 */
+	fetchOriginNames?(
+		input: OriginInput,
+		origin: AgentMessageIntegrationOrigin,
+	): Promise<OriginNames | undefined>;
+
+	/**
+	 * Decides who owns the episodic memories of an incoming chat turn. Every
+	 * channel must decide. Build identifiers from trusted source context and
+	 * namespace them by agent, platform, and workspace or account. Return `null`
+	 * when the channel has no policy or the required identity is missing: the turn
+	 * then runs without episodic memory. There is no shared fallback.
+	 */
+	abstract resolveEpisodicScope(
+		context: EpisodicScopeContext,
+	): Promise<ResolvedEpisodicScope | null> | ResolvedEpisodicScope | null;
 
 	/** Validate platform settings before credentials or persistence are touched. */
 	validateConfig?(integration: AgentIntegrationConfig): void;
@@ -532,7 +591,14 @@ export abstract class AgentChatIntegration {
 	normalizeComponents?(
 		components: SuspendComponent[],
 		context: NormalizeComponentsContext,
-	): SuspendComponent[];
+	): SuspendComponent[] | Promise<SuspendComponent[]>;
+
+	/**
+	 * Optional: handle a button or list tap that is not a resume. Return `true`
+	 * to claim the tap, so the bridge does not try to resume the run. WhatsApp
+	 * uses this for its "More…" list row.
+	 */
+	claimAction?(event: ActionEvent): Promise<boolean>;
 
 	/**
 	 * Optional per-platform thread ID formatting.
@@ -598,6 +664,15 @@ export abstract class AgentChatIntegration {
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
 
+	/**
+	 * For a synthetic message that reports a failed send: the platform ID of
+	 * the message that failed, and the text to give a chat that sent it. The
+	 * bridge sends the report to the session that sent the message.
+	 */
+	getFailedSendReport?(
+		message: Message<unknown>,
+	): { messageId: string; chatNotice: string } | undefined;
+
 	/** Replacement text for action cards preserved after a user responds. */
 	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;
 
@@ -607,6 +682,12 @@ export abstract class AgentChatIntegration {
 	 * the adapter's `editMessage()`.
 	 */
 	settleActionMessage?(params: SettleActionMessageParams): Promise<void>;
+
+	/** Filter inbound messages before attachments, session resets, or agent work. */
+	shouldHandleInboundMessage?(params: {
+		message: Message<unknown>;
+		integration: AgentIntegrationConfig;
+	}): boolean;
 
 	/**
 	 * Whether a new mention should subscribe the thread for follow-ups.

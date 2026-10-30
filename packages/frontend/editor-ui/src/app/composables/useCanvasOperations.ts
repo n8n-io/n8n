@@ -199,7 +199,6 @@ type AddNodesBaseOptions = {
 	trackHistory?: boolean;
 	keepPristine?: boolean;
 	telemetry?: boolean;
-	forcePosition?: boolean;
 	viewport?: ViewportBoundaries;
 };
 
@@ -539,7 +538,8 @@ export function useCanvasOperations() {
 		newName: string,
 		{ trackHistory = false, trackBulk = true, showErrorToast = true } = {},
 	): Promise<string | false> {
-		if (currentName === newName) {
+		const node = workflowDocumentStore.value.getNodeByName(currentName);
+		if (currentName === newName || (node && nodeTypesStore.isNodeDeprecated(node))) {
 			return false;
 		}
 
@@ -723,7 +723,6 @@ export function useCanvasOperations() {
 				},
 				anchorNodeType,
 				{
-					forcePosition: true,
 					isAutoAdd: true,
 					openNDV: false,
 					trackHistory,
@@ -1115,11 +1114,14 @@ export function useCanvasOperations() {
 	}
 
 	function toggleNodesDisabled(ids: string[], { trackHistory = true, trackBulk = true } = {}) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
+		if (refuseRestrictedNodes(nodes)) return;
+
 		if (trackHistory && trackBulk) {
 			historyStore.startRecordingUndo();
 		}
 
-		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
 		nodeHelpers.disableNodes(nodes, { trackHistory, trackBulk: false });
 
 		if (trackHistory && trackBulk) {
@@ -1603,7 +1605,7 @@ export function useCanvasOperations() {
 	function resolveNodeData(
 		node: AddNodeDataWithTypeVersion,
 		nodeTypeDescription: INodeTypeDescription,
-		options: { viewport?: ViewportBoundaries; forcePosition?: boolean } = {},
+		options: { viewport?: ViewportBoundaries } = {},
 	) {
 		const id = node.id ?? nodeHelpers.assignNodeId(node as INodeUi);
 		const name =
@@ -1613,12 +1615,9 @@ export function useCanvasOperations() {
 			(nodeTypeDescription.defaults.name as string);
 		const type = node.type ?? nodeTypeDescription.name;
 		const typeVersion = node.typeVersion;
-		const position =
-			options.forcePosition && node.position
-				? node.position
-				: resolveNodePosition(node as INodeUi, nodeTypeDescription, {
-						viewport: options.viewport,
-					});
+		const position = resolveNodePosition(node as INodeUi, nodeTypeDescription, {
+			viewport: options.viewport,
+		});
 		const disabled = node.disabled ?? false;
 		const parameters = node.parameters ?? {};
 
@@ -3685,6 +3684,7 @@ export function useCanvasOperations() {
 
 	async function duplicateNodes(ids: string[], options: { viewport?: ViewportBoundaries } = {}) {
 		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return [];
 		if (refuseRestrictedNodes(nodes)) return [];
 
 		const workflowData = deepCopy(getNodesToSave(nodes));
@@ -3717,6 +3717,8 @@ export function useCanvasOperations() {
 	}
 
 	async function cutNodes(ids: string[], deleteWholeGroupIds: string[] = []) {
+		const nodes = workflowDocumentStore.value.getNodesByIds(ids);
+		if (nodes.some(nodeTypesStore.isNodeDeprecated)) return;
 		await copyNodes(ids);
 		deleteNodes(ids, { deleteWholeGroupIds });
 	}

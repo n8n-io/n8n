@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, waitFor } from '@testing-library/vue';
+import { render, waitFor, within } from '@testing-library/vue';
 
 import ActionToggle from './ActionToggle.vue';
 
@@ -29,7 +29,27 @@ describe('N8nActionToggle', () => {
 		expect(getByText('Duplicate')).toBeInTheDocument();
 		expect(getByText('Delete')).toBeInTheDocument();
 	});
-	it('defaults icon to horizontal orientation and is ellipsis', function () {
+	it('renders an icon before the label of an item that has one', async () => {
+		const { container } = render(ActionToggle, {
+			props: {
+				actions: [
+					{ label: 'Edit', value: 'edit', icon: 'pencil' },
+					{ label: 'Duplicate', value: 'duplicate' },
+				],
+			},
+		});
+
+		await openMenu(container);
+
+		const items = document.querySelectorAll('[role="menuitem"]');
+		const icon = items[0]?.querySelector('[data-icon="pencil"]');
+		const label = within(items[0] as HTMLElement).getByText('Edit');
+		expect(icon).not.toBeNull();
+		expect(icon?.compareDocumentPosition(label)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+		expect(items[1]?.querySelector('[data-icon]')).toBeNull();
+	});
+
+	it('renders the horizontal ellipsis icon', function () {
 		const { getByRole } = render(ActionToggle, {
 			props: {
 				actions: [{ label: 'Duplicate', value: 'duplicate' }],
@@ -37,6 +57,48 @@ describe('N8nActionToggle', () => {
 		});
 
 		expect(getByRole('button').querySelector('svg')).toHaveAttribute('data-icon', 'ellipsis-12');
+	});
+	it('renders the icon at the default size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('width', '12px');
+	});
+	it('renders the icon at the given iconSize', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+				iconSize: 'medium',
+			},
+		});
+
+		expect(getByRole('button').querySelector('svg')).toHaveAttribute('width', '14px');
+	});
+	it('renders the button at the default size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+			},
+		});
+
+		const button = getByRole('button');
+		expect(button.className).toMatch(/small/);
+		expect(button.className).not.toMatch(/xsmall/);
+	});
+	it('renders the button at the given size and keeps the icon size', function () {
+		const { getByRole } = render(ActionToggle, {
+			props: {
+				actions: [{ label: 'Duplicate', value: 'duplicate' }],
+				size: 'xsmall',
+			},
+		});
+
+		const button = getByRole('button');
+		expect(button.className).toMatch(/xsmall/);
+		expect(button.querySelector('svg')).toHaveAttribute('width', '12px');
 	});
 	it('should have bottom-end as default placement', async function () {
 		const { container, getByRole } = render(ActionToggle, {

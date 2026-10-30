@@ -1,4 +1,8 @@
-import { resolveAgentPersonalisation, type AgentPersonalisation } from '@n8n/api-types';
+import {
+	DEFAULT_AGENT_PERSONALISATION,
+	resolveAgentPersonalisation,
+	type AgentPersonalisation,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import { oklchMixer, rgbToHex, type Rgb } from '@n8n/utils/color/oklch';
@@ -52,14 +56,13 @@ type Gradient = AgentPersonalisation['gradient'];
 
 const renders = new Map<string, Promise<unknown>>();
 
-/** Returns undefined for an icon that cannot be drawn, so the caller keeps the bundled icons. */
+/** Returns undefined when rendering fails, so the caller keeps the bundled icons. */
 export async function renderTeamsAppIcons(
 	personalisation?: AgentPersonalisation | null,
 ): Promise<TeamsAppIcons | undefined> {
 	const { icon, gradient } = resolveAgentPersonalisation(personalisation);
 	try {
 		const svgs = await buildTeamsIconSvgs(icon, gradient);
-		if (!svgs) return undefined;
 
 		// Downloads at the same time would otherwise each hold a worker and its wasm memory.
 		const { color, outline } = await runSerially(
@@ -78,17 +81,17 @@ export async function renderTeamsAppIcons(
 	}
 }
 
-/** Returns undefined for an icon name Lucide does not have. */
-export async function buildTeamsIconSvgs(
-	iconName: string,
-	gradient: Gradient,
-): Promise<IconSvgs | undefined> {
+/** An icon name Lucide does not have gets the default agent icon. */
+export async function buildTeamsIconSvgs(iconName: string, gradient: Gradient): Promise<IconSvgs> {
 	// Loaded once and cached. Parsing the set again on each call grows the V8
 	// heap far more than the parsed set costs to keep.
 	const { icons: lucide } = await import('@iconify-json/lucide');
 	// Aliases are skipped, as the editor's icon loader skips them.
-	if (!Object.hasOwn(lucide.icons, iconName)) return undefined;
-	const icon = lucide.icons[iconName];
+	const name = Object.hasOwn(lucide.icons, iconName)
+		? iconName
+		: DEFAULT_AGENT_PERSONALISATION.icon;
+	const icon = lucide.icons[name];
+	if (!icon) throw new UnexpectedError('The default agent icon is missing from Lucide');
 	const viewBox = `0 0 ${icon.width ?? lucide.width ?? 24} ${icon.height ?? lucide.height ?? 24}`;
 	const glyph = icon.body.replaceAll('currentColor', '#FFFFFF');
 

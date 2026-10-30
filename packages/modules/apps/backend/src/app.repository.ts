@@ -11,7 +11,7 @@ import {
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
-import { DataSource, In, Raw, type FindOptionsWhere } from '@n8n/typeorm';
+import { DataSource, In, IsNull, Raw, type FindOptionsWhere } from '@n8n/typeorm';
 import { v7 as uuidv7 } from 'uuid';
 
 import { App } from './app.entity';
@@ -22,19 +22,84 @@ export class AppRepository extends BaseRepository<App> {
 		super(App, dataSource.manager, transactionRunner);
 	}
 
-	async projectExists(projectId: string) {
-		return await this.manager.existsBy(Project, { id: projectId });
+	async findInProject(projectId: string, appId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(App, { id: appId, projectId });
 	}
 
-	async createApp(projectId: string, dto: CreateAppDto): Promise<App> {
+	async findById(appId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(App, { id: appId });
+	}
+
+	async findByNamespace(namespace: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).findOneBy(App, { namespace });
+	}
+
+	async setPublishedVersion(
+		projectId: string,
+		appId: string,
+		versionId: string | null,
+		ctx: OperationContext,
+	) {
+		await this.managerFor(ctx).update(
+			App,
+			{ id: appId, projectId },
+			{ publishedVersionId: versionId },
+		);
+		return await this.findInProject(projectId, appId, ctx);
+	}
+
+	async advanceDraft(
+		appId: string,
+		expectedVersionId: string | null,
+		versionId: string,
+		ctx: OperationContext,
+	) {
+		const result = await this.managerFor(ctx).update(
+			App,
+			{
+				id: appId,
+				draftVersionId: expectedVersionId ?? IsNull(),
+			},
+			{ draftVersionId: versionId },
+		);
+		return result.affected === 1;
+	}
+
+	async listIdsAfter(after: string | undefined, ctx: OperationContext = {}): Promise<string[]> {
+		const query = this.managerFor(ctx)
+			.createQueryBuilder(App, 'app')
+			.select(['app.id'])
+			.orderBy('app.id', 'ASC')
+			.take(100);
+		if (after) query.where('app.id > :after', { after });
+		return (await query.getMany()).map((app) => app.id);
+	}
+
+	async deleteInProject(projectId: string, appId: string, ctx: OperationContext): Promise<boolean> {
+		const result = await this.managerFor(ctx).delete(App, { id: appId, projectId });
+		return result.affected === 1;
+	}
+
+	async projectExists(projectId: string, ctx: OperationContext = {}) {
+		return await this.managerFor(ctx).existsBy(Project, { id: projectId });
+	}
+
+	async createApp(
+		projectId: string,
+		dto: CreateAppDto & { id?: string },
+		ctx: OperationContext = {},
+	): Promise<App> {
 		try {
-			return await this.save({
+			const manager = this.managerFor(ctx);
+			const app = manager.create(App, {
 				...dto,
-				id: uuidv7(),
+				id: dto.id ?? uuidv7(),
 				projectId,
 				draftVersionId: null,
 				publishedVersionId: null,
 			});
+			await manager.insert(App, app);
+			return app;
 		} catch (error) {
 			if (isUniqueConstraintError(error)) {
 				throw new ConflictError('An app already uses this namespace. Choose another namespace.');
@@ -43,7 +108,11 @@ export class AppRepository extends BaseRepository<App> {
 		}
 	}
 
-	async list(projectIds: string[] | null, { skip, take, name, sortBy }: ListAppsQueryDto) {
+	async list(
+		projectIds: string[] | null,
+		{ skip, take, name, sortBy }: ListAppsQueryDto,
+		ctx: OperationContext = {},
+	) {
 		if (projectIds?.length === 0) return { data: [], count: 0 };
 
 		const where: FindOptionsWhere<App> = {};
@@ -54,9 +123,10 @@ export class AppRepository extends BaseRepository<App> {
 			});
 		}
 		const { column, direction } = parseListQuerySortBy(sortBy);
-		if (take === 0) return { data: [], count: await this.countBy(where) };
+		const manager = this.managerFor(ctx);
+		if (take === 0) return { data: [], count: await manager.countBy(App, where) };
 
-		const [data, count] = await this.findAndCount({
+		const [data, count] = await manager.findAndCount(App, {
 			where,
 			order: { [column]: direction, id: 'ASC' },
 			skip,

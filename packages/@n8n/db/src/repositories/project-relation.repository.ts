@@ -13,8 +13,8 @@ import { chunkIds } from '../utils/chunk-ids';
 
 @Service()
 export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
-	constructor(dataSource: DataSource, txRunner: TransactionRunner) {
-		super(ProjectRelation, dataSource.manager, txRunner);
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		super(ProjectRelation, dataSource.manager, transactionRunner);
 	}
 
 	async findSharedProjectRelationsForUser(userId: string, ctx: OperationContext) {
@@ -50,6 +50,13 @@ export class ProjectRelationRepository extends BaseRepository<ProjectRelation> {
 			{ userId, projectId, role: { slug: fromRole } },
 			{ role: { slug: toRole } },
 		);
+	}
+
+	async findByUserAndProjects(userId: string, projectIds: string[]): Promise<ProjectRelation[]> {
+		return await this.find({
+			where: { userId, projectId: In(projectIds) },
+			relations: ['role'],
+		});
 	}
 
 	async findPersonalOwnerEmails(projectIds: string[]): Promise<Map<string, string>> {

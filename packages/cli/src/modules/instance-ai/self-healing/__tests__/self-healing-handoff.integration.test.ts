@@ -1,8 +1,9 @@
 import type { InstanceAiWorkflowAttachment, SelfHealingResultDetail } from '@n8n/api-types';
 import {
+	createTeamProject,
 	createWorkflowWithHistory,
+	linkUserToProject,
 	mockInstance,
-	shareWorkflowWithUsers,
 } from '@n8n/backend-test-utils';
 import { ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -23,7 +24,7 @@ import { InstanceAiThreadGrantRepository } from '../../repositories/instance-ai-
 import { InstanceAiThreadRepository } from '../../repositories/instance-ai-thread.repository';
 import { TypeORMAgentMemory } from '../../storage/typeorm-agent-memory';
 import { SelfHealingResultRepository } from '../database/self-healing-result.repository';
-import { SelfHealingResultService } from '../self-healing-result.service';
+import { createConfiguration, addReviewer } from './support/configuration';
 
 mockInstance(ActiveWorkflowManager);
 mockInstance(WorkflowPublicationNotifier);
@@ -59,39 +60,42 @@ beforeEach(() => {
 
 async function savedResult() {
 	const backgroundUser = await createUser();
-	const workflow = await createWorkflowWithHistory({}, backgroundUser);
-	const ownerProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-		backgroundUser.id,
-	);
+	const ownerProject = await createTeamProject(undefined, backgroundUser);
+	const workflow = await createWorkflowWithHistory({}, ownerProject);
 	const execution = await createExecution({ status: 'error' }, workflow);
-	const service = Container.get(SelfHealingResultService);
-	const result = await service.complete({
-		workflowId: workflow.id,
-		projectId: ownerProject.id,
-		backgroundUserId: backgroundUser.id,
-		executionId: execution.id,
-		usage: {
-			credits: 1,
-			turns: 2,
-			durationSeconds: 30,
-			promptTokens: 1000,
-			completionTokens: 200,
-			totalTokens: 1200,
+	const configuration = await createConfiguration(ownerProject.id, backgroundUser.id);
+	const result = await Container.get(SelfHealingResultRepository).createResult(
+		{
+			configurationId: configuration.id,
+			workflowId: workflow.id,
+			projectId: ownerProject.id,
+			backgroundUserId: backgroundUser.id,
+			executionId: execution.id,
+			suggestionId: null,
+			usage: {
+				credits: 1,
+				turns: 2,
+				durationSeconds: 30,
+			},
+			outcome: 'needs_you',
+			summary: 'Review the failed request.',
+			report: 'The request failed. Check the connection settings, then retry the workflow.',
+			completedAt: new Date(),
 		},
-		outcome: 'needs_you',
-		summary: 'Review the failed request.',
-		report: 'The request failed. Check the connection settings, then retry the workflow.',
-	});
+		{},
+	);
 	const url = `/projects/${ownerProject.id}/workflows/${workflow.id}/self-healing-results/${result.id}`;
 	return { backgroundUser, workflow, ownerProject, execution, result, url };
 }
 
 it('continues a saved report in a new private chat owned by the current editor', async () => {
-	testServer.license.enable('feat:sharing');
 	const { backgroundUser, workflow, ownerProject, execution, result, url } = await savedResult();
 	const editor = await createUser();
 	const otherEditor = await createUser();
-	await shareWorkflowWithUsers(workflow, [editor, otherEditor]);
+	await linkUserToProject(editor, ownerProject, 'project:editor');
+	await linkUserToProject(otherEditor, ownerProject, 'project:editor');
+	await addReviewer(result.configurationId, editor.id);
+	await addReviewer(result.configurationId, otherEditor.id);
 	const editorProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		editor.id,
 	);

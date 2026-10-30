@@ -392,7 +392,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		filter,
 	}: { take?: number; skip?: number; filter?: UsersListFilterDto['filter'] } = {}) => {
 		if (!canListUsers.value()) {
-			return;
+			return [];
 		}
 
 		const { items } = await usersApi.getUsers(rootStore.restApiContext, {
@@ -401,6 +401,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 			filter,
 		});
 		addUsers(items);
+		return items.map((item) => usersById.value[item.id]);
 	};
 
 	const inviteUsers = async (params: Array<{ email: string; role: AssignableGlobalRole }>) => {

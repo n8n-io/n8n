@@ -262,6 +262,38 @@ describe('EngineDataPlaneClient', () => {
 		});
 	});
 
+	describe('findLatestExecution', () => {
+		const filter = { workflowIds: ['wf-1'], status: ['completed' as const] };
+
+		it('posts the filter and returns the newest execution with its steps', async () => {
+			const snapshot = { id: EXECUTION_ID, workflowId: 'wf-1', status: 'completed', steps: [] };
+			respondWith(200, snapshot);
+
+			await expect(client.findLatestExecution(filter)).resolves.toEqual(snapshot);
+
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: '/api/workflow-executions/search/latest',
+					method: 'POST',
+					body: filter,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it('returns undefined when no execution matches', async () => {
+			respondWith(404, { error: 'not_found' });
+
+			await expect(client.findLatestExecution(filter)).resolves.toBeUndefined();
+		});
+
+		it('throws on any other engine failure', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.findLatestExecution(filter)).rejects.toThrow(OperationalError);
+		});
+	});
+
 	describe('cancelExecution', () => {
 		it('reports a cancelled execution', async () => {
 			respondWith(200, {
@@ -317,6 +349,87 @@ describe('EngineDataPlaneClient', () => {
 			respondWith(500, { error: 'internal' });
 
 			await expect(client.cancelExecution(EXECUTION_ID)).rejects.toThrow(OperationalError);
+		});
+	});
+
+	describe('resume requests', () => {
+		it("posts `locateResumeTarget` to the execution's resume-target route", async () => {
+			const value = {
+				execution: { id: EXECUTION_ID },
+				target: { stepId: 'step-1', nodeId: 'wait' },
+			};
+			respondWith(200, value);
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+				ok: true,
+				value,
+			});
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: `/api/workflow-executions/${EXECUTION_ID}/resume-target`,
+					method: 'POST',
+					body: { token: 't' },
+					returnFullResponse: true,
+					ignoreHttpStatusErrors: true,
+					disableFollowRedirect: true,
+				}),
+			);
+		});
+
+		it("posts `resolveStep` to the step's resolve route", async () => {
+			respondWith(200, { executionId: EXECUTION_ID, stepId: 'step-1' });
+
+			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).resolves.toEqual({
+				ok: true,
+				value: { executionId: EXECUTION_ID, stepId: 'step-1' },
+			});
+			expect(http.request).toHaveBeenCalledWith(
+				expect.objectContaining({
+					url: '/api/step-executions/step-1/resolve',
+					body: { token: 't', outputs: [[]] },
+				}),
+			);
+		});
+
+		it.each([
+			[401, 'invalid_token'],
+			[404, 'not_found'],
+			[409, 'not_waiting'],
+			[501, 'unimplemented'],
+		])("relays a %s refusal with the engine's reason", async (status, error) => {
+			respondWith(status, { error });
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+				ok: false,
+				status,
+				error,
+			});
+		});
+
+		it('relays a 300 without a reason as an engine error', async () => {
+			respondWith(300, {});
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).resolves.toEqual({
+				ok: false,
+				status: 300,
+				error: 'engine_error',
+			});
+		});
+
+		it("throws on a 401 for this plane's own identity, which is a failure and not a refusal", async () => {
+			respondWith(401, { error: 'unauthenticated' });
+
+			await expect(client.locateResumeTarget(EXECUTION_ID, { token: 't' })).rejects.toThrow(
+				'Engine responded with 401',
+			);
+		});
+
+		it('throws on a 500, which is a failure and not a refusal', async () => {
+			respondWith(500, { error: 'internal' });
+
+			await expect(client.resolveStep('step-1', { token: 't', outputs: [[]] })).rejects.toThrow(
+				'Engine responded with 500',
+			);
 		});
 	});
 });

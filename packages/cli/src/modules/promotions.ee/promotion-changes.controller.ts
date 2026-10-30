@@ -29,8 +29,8 @@ export class PromotionChangesController {
 	constructor(private readonly changeService: PromotionChangeService) {}
 
 	@Get('/:projectId/changes/:direction')
-	@GlobalScope('gitConnection:read')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@GlobalScope('promotions:read')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getChanges(
 		req: AuthenticatedRequest,
 		_res: Response,
@@ -47,8 +47,8 @@ export class PromotionChangesController {
 	}
 
 	@Post('/:projectId/changes/:direction/details')
-	@GlobalScope('gitConnection:read')
-	@Licensed(LICENSE_FEATURES.GIT_CONNECTIONS)
+	@GlobalScope('promotions:read')
+	@Licensed(LICENSE_FEATURES.PROMOTIONS)
 	async getDetails(
 		req: AuthenticatedRequest,
 		_res: Response,

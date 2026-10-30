@@ -5,9 +5,19 @@ import { concurrencyLimitSchema } from '../schemas';
 
 @Config
 export class InstanceAiConfig {
-	/** Enable workflow suggestion runtime integrations at startup. */
+	/**
+	 * Enable workflow suggestions, self-healing investigations, and result review.
+	 */
 	@Env('N8N_INSTANCE_AI_WORKFLOW_SUGGESTIONS_ENABLED')
 	workflowSuggestionsEnabled: boolean = false;
+
+	/**
+	 * Whether n8n runs the n8n Assistant on the agents runtime as well. This is an
+	 * experimental preview for development and evaluation. Don't turn it on in
+	 * production.
+	 */
+	@Env('N8N_INSTANCE_AI_ASSISTANT_AGENT_ENABLED')
+	assistantAgentEnabled: boolean = false;
 
 	/** LLM model in provider/model format, or a bare model name for a custom endpoint. */
 	@Env('N8N_INSTANCE_AI_MODEL')
@@ -16,6 +26,17 @@ export class InstanceAiConfig {
 	/** Base URL for an OpenAI-compatible endpoint (e.g. "http://localhost:1234/v1" for LM Studio). */
 	@Env('N8N_INSTANCE_AI_MODEL_URL')
 	modelUrl: string = '';
+
+	/**
+	 * Add `x-n8n-*` request labels to the Assistant's model calls. When on, a directly
+	 * configured model provider gets `x-n8n-feature`, `x-n8n-version`, `x-n8n-run-id`,
+	 * `x-n8n-thread-id` and `x-n8n-function-id` (which part of the Assistant made the call),
+	 * and n8n's AI service also gets `x-n8n-function-id`. When off, a direct provider gets
+	 * no `x-n8n-*` headers, and n8n's AI service gets only the feature, version, run and
+	 * thread headers it always gets.
+	 */
+	@Env('N8N_INSTANCE_AI_MODEL_REQUEST_LABELS')
+	modelRequestLabels: boolean = false;
 
 	/** API key for the custom model endpoint (optional — some local servers don't require one). */
 	@Env('N8N_INSTANCE_AI_MODEL_API_KEY')
@@ -69,10 +90,6 @@ export class InstanceAiConfig {
 	 */
 	@Env('N8N_INSTANCE_AI_MID_RUN_OBSERVATION')
 	midRunObservation: boolean = false;
-
-	/** Disable the local gateway (filesystem, shell, browser, etc.) for all users. */
-	@Env('N8N_INSTANCE_AI_LOCAL_GATEWAY_DISABLED')
-	localGatewayDisabled: boolean = false;
 
 	@Env('N8N_INSTANCE_AI_BROWSER_USE_ENABLED')
 	browserUseEnabled: boolean = true;
@@ -130,10 +147,9 @@ export class InstanceAiConfig {
 	sandboxEphemeral: boolean = false;
 
 	/**
-	 * Marks an instance that serves the Instance AI eval harness. Only then may an eval run
-	 * reset per-workflow state (Remove Duplicates history) around a scenario: on a normal
-	 * instance an eval pointed at a real workflow must leave its history alone. An eval
-	 * instance also skips PostHog, so feature flags resolve from their defaults plus env overrides.
+	 * Set to true only on a throwaway instance that runs n8n Assistant evaluations. It turns on
+	 * the evaluation API routes and lets an evaluation reset Remove Duplicates history between
+	 * scenarios. Feature flags then come only from their defaults and environment overrides.
 	 */
 	@Env('N8N_INSTANCE_AI_EVAL_INSTANCE')
 	evalInstance: boolean = false;
@@ -178,10 +194,6 @@ export class InstanceAiConfig {
 	/** SearXNG instance URL for web search (e.g. "http://searxng:8080"). Empty = disabled. No API key needed. */
 	@Env('N8N_INSTANCE_AI_SEARXNG_URL')
 	searxngUrl: string = '';
-
-	/** Optional static API key for the filesystem gateway. When set, accepted alongside per-user pairing/session keys. */
-	@Env('N8N_INSTANCE_AI_GATEWAY_API_KEY')
-	gatewayApiKey: string = '';
 
 	/** Conversation thread TTL in days. Threads older than this are auto-expired. 0 = no expiration. */
 	@Env('N8N_INSTANCE_AI_THREAD_TTL_DAYS')
@@ -238,7 +250,7 @@ export class InstanceAiConfig {
 
 	/**
 	 * Force-enable the node-usage context surface for Instance AI — the `node-usage` action and
-	 * the `nodeTypes` filter on `workflows(action="list")`.
+	 * the `nodeTypes` filter on `list_workflows`.
 	 *
 	 * Operator-level override of the PostHog rollout flag (`109_instance_ai_node_usage`). Cannot
 	 * force-disable: setting this to `false` falls back to PostHog. Gated on its own rather than

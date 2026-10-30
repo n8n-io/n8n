@@ -4,6 +4,7 @@ import { billingResources, resource } from './__tests__/preview.fixtures';
 import {
 	describeDataTable,
 	describeFieldChanges,
+	describeWorkflowFieldChanges,
 	sideState,
 	type FieldContext,
 } from './promotionPreview.content';
@@ -49,10 +50,11 @@ describe('promotion preview content', () => {
 	});
 
 	it('should show only the changes that Apply makes', () => {
-		// The branch renamed and moved the folder. Apply keeps the local name and reports the move.
+		// The branch renamed and moved the folder. Apply makes both changes.
 		const moved = resource({
 			key: 'folder:f3',
-			name: 'Archive',
+			name: 'Old invoices',
+			previousName: 'Archive',
 			parentKey: 'folder:f2',
 			previousParentKey: 'folder:f1',
 			change: 'modified',
@@ -62,6 +64,7 @@ describe('promotion preview content', () => {
 			{ name: 'Old invoices', parentFolderId: 'f2' },
 		);
 		expect(describeFieldChanges(detail, context({ direction: 'apply', resource: moved }))).toEqual([
+			{ field: 'name', before: 'Archive', after: 'Old invoices' },
 			{ field: 'location', before: 'Payments', after: 'Reports' },
 		]);
 
@@ -105,22 +108,39 @@ describe('promotion preview content', () => {
 		]);
 	});
 
-	it('should flag a removed column as data loss and list the columns of a new table', () => {
-		const modified = describeDataTable(
-			{
-				key: 'dataTable:t1',
-				type: 'dataTable',
-				before: null,
-				after: null,
-				revision: { before: 'b', after: 'a' },
-				dataTableChanges: [
-					{ kind: 'rename-column', from: 'amount', to: 'total', destructive: false },
-					{ kind: 'remove-column', column: 'notes', type: 'string', destructive: true },
-				],
-			},
-			billingResources.invoicesTable,
-		);
-		expect(modified.hasDataLoss).toBe(true);
+	it('should show the rename and move of a workflow from the preview resource', () => {
+		// The workflow was renamed and moved on this instance. Apply restores the branch state.
+		const workflow = resource({
+			key: 'workflow:w1',
+			name: 'Invoice sync',
+			previousName: 'Invoice sync (local)',
+			parentKey: 'project:p1',
+			previousParentKey: 'folder:f1',
+			change: 'modified',
+		});
+
+		expect(
+			describeWorkflowFieldChanges(context({ direction: 'apply', resource: workflow })),
+		).toEqual([
+			{ field: 'name', before: 'Invoice sync (local)', after: 'Invoice sync' },
+			{ field: 'location', before: 'Payments', after: 'Billing' },
+		]);
+	});
+
+	const changedTable: Extract<PromotionResourceDetail, { type: 'dataTable' }> = {
+		key: 'dataTable:t1',
+		type: 'dataTable',
+		before: null,
+		after: null,
+		revision: { before: 'b', after: 'a' },
+		dataTableChanges: [
+			{ kind: 'rename-column', from: 'amount', to: 'total', destructive: false },
+			{ kind: 'remove-column', column: 'notes', type: 'string', destructive: true },
+		],
+	};
+
+	it('should list the column changes of a changed table and the columns of a new table', () => {
+		const modified = describeDataTable(changedTable, billingResources.invoicesTable, 'apply');
 		expect(modified.changes).toHaveLength(2);
 
 		const added = describeDataTable(
@@ -139,8 +159,8 @@ describe('promotion preview content', () => {
 				revision: { before: null, after: 'a' },
 			},
 			resource({ key: 'dataTable:t2', name: 'Refunds', change: 'added' }),
+			'apply',
 		);
 		expect(added.addedColumns.map((column) => column.name)).toEqual(['amount', 'reason']);
-		expect(added.hasDataLoss).toBe(false);
 	});
 });

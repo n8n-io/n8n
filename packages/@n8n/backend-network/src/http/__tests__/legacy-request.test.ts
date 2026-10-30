@@ -1,11 +1,11 @@
 import type { Logger } from '@n8n/backend-common';
 import { HttpRequestConfig, type SsrfProtectionConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, type IHttpRequestOptions, type IRequestOptions } from 'n8n-workflow';
 import nock from 'nock';
 import { createServer, type Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { Readable } from 'node:stream';
+import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import type { SsrfBridge, SsrfProtectionService } from '../../ssrf';
@@ -110,7 +110,7 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			return this.req.headers;
 		};
 
-		it.each([[undefined], [true]])(
+		it.each([[true]])(
 			'forwards the authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
 			async (sendCredentialsOnCrossOriginRedirect) => {
 				nock(baseUrl)
@@ -134,26 +134,88 @@ describe('OutboundHttp.requests requestLegacy', () => {
 			},
 		);
 
-		it('does not forward the authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is false', async () => {
-			nock(baseUrl)
-				.get('/redirect')
-				.reply(301, '', { Location: `${otherOrigin}/test` });
-			nock(otherOrigin).get('/test').reply(200, reflectHeaders);
-			const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+		it.each([[undefined], [false]])(
+			'does not forward the authorization header on cross-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
+			async (sendCredentialsOnCrossOriginRedirect) => {
+				nock(baseUrl)
+					.get('/redirect')
+					.reply(301, '', { Location: `${otherOrigin}/test` });
+				nock(otherOrigin).get('/test').reply(200, reflectHeaders);
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
 
-			const response = (await client.requestLegacy({
-				url: `${baseUrl}/redirect`,
-				auth: { username: 'testuser', password: 'testpassword' },
-				headers: { 'X-Other-Header': 'otherHeaderContent' },
-				resolveWithFullResponse: true,
-				sendCredentialsOnCrossOriginRedirect: false,
-			})) as { statusCode: number; body: string };
+				const response = (await client.requestLegacy({
+					url: `${baseUrl}/redirect`,
+					auth: { username: 'testuser', password: 'testpassword' },
+					headers: { 'X-Other-Header': 'otherHeaderContent' },
+					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect,
+				})) as { statusCode: number; body: string };
 
-			expect(response.statusCode).toBe(200);
-			const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
-			expect(forwardedHeaders.authorization).toBeUndefined();
-			expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
-		});
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
+				expect(forwardedHeaders.authorization).toBeUndefined();
+				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+			},
+		);
+
+		it.each([
+			['https://example.test', 'http://example.test', undefined],
+			['http://example.test', 'https://example.test:8443', undefined],
+			['https://example.test', 'https://sub.example.test', undefined],
+			['https://example.test', 'https://sub.example.test', false],
+		])(
+			'does not forward credential headers on a redirect from %s to %s when sendCredentialsOnCrossOriginRedirect is %s',
+			async (fromOrigin, toOrigin, sendCredentialsOnCrossOriginRedirect) => {
+				nock(fromOrigin)
+					.get('/redirect')
+					.reply(301, '', { Location: `${toOrigin}/test` });
+				nock(toOrigin).get('/test').reply(200, reflectHeaders);
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const response = (await client.requestLegacy({
+					url: `${fromOrigin}/redirect`,
+					headers: {
+						authorization: 'Bearer secret',
+						Cookie: 'session=secret',
+						'X-Other-Header': 'otherHeaderContent',
+					},
+					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect,
+				})) as { statusCode: number; body: string };
+
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
+				expect(forwardedHeaders.authorization).toBeUndefined();
+				expect(forwardedHeaders.cookie).toBeUndefined();
+				expect(forwardedHeaders['x-other-header']).toBe('otherHeaderContent');
+			},
+		);
+
+		it.each([[undefined], [false]])(
+			'forwards credential headers on a redirect from http to https on the same host when sendCredentialsOnCrossOriginRedirect is %s',
+			async (sendCredentialsOnCrossOriginRedirect) => {
+				nock('http://example.test')
+					.get('/redirect')
+					.reply(301, '', { Location: 'https://example.test/test' });
+				nock('https://example.test').get('/test').reply(200, reflectHeaders);
+				const client = makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' });
+
+				const response = (await client.requestLegacy({
+					url: 'http://example.test/redirect',
+					headers: {
+						authorization: 'Bearer secret',
+						Cookie: 'session=secret',
+					},
+					resolveWithFullResponse: true,
+					sendCredentialsOnCrossOriginRedirect,
+				})) as { statusCode: number; body: string };
+
+				expect(response.statusCode).toBe(200);
+				const forwardedHeaders = jsonParse<Record<string, string>>(response.body);
+				expect(forwardedHeaders.authorization).toBe('Bearer secret');
+				expect(forwardedHeaders.cookie).toBe('session=secret');
+			},
+		);
 
 		it.each([[undefined], [true], [false]])(
 			'forwards the authorization header on same-origin redirects when sendCredentialsOnCrossOriginRedirect is %s',
@@ -485,5 +547,153 @@ describe('OutboundHttp.requests requestLegacy', () => {
 				expect(Date.now() - start).toBeLessThan(3000);
 			},
 		);
+	});
+
+	describe('stream request bodies', () => {
+		let refusedUrl: string;
+		let okServer: Server;
+		let okUrl: string;
+
+		beforeAll(async () => {
+			nock.enableNetConnect('127.0.0.1');
+			const closed = createServer();
+			await new Promise<void>((resolve) => closed.listen(0, '127.0.0.1', resolve));
+			refusedUrl = `http://127.0.0.1:${(closed.address() as AddressInfo).port}/upload`;
+			await new Promise<void>((resolve) => closed.close(() => resolve()));
+
+			// Answers before it reads the whole body, so the body is still open after the request.
+			okServer = createServer((_req, res) => res.end('ok'));
+			await new Promise<void>((resolve) => okServer.listen(0, '127.0.0.1', resolve));
+			okUrl = `http://127.0.0.1:${(okServer.address() as AddressInfo).port}/upload`;
+		});
+
+		afterAll(async () => {
+			nock.disableNetConnect();
+			okServer.closeAllConnections();
+			await new Promise<void>((resolve) => okServer.close(() => resolve()));
+		});
+
+		/** Sends one chunk and then waits, like a large file that is still being read when the request fails. */
+		const pendingStream = () => {
+			let sent = false;
+			return new Readable({
+				read() {
+					if (sent) return;
+					sent = true;
+					this.push(Buffer.alloc(1024));
+				},
+			});
+		};
+
+		/** Blocks every URL except the local test server. */
+		const blockingBridge = () =>
+			({
+				validateUrl: vi.fn(async (url: URL) =>
+					url.hostname === '127.0.0.1'
+						? { ok: true, result: undefined }
+						: { ok: false, error: new Error('Blocked') },
+				),
+				validateIp: vi.fn().mockReturnValue({ ok: true, result: undefined }),
+				validateRedirectSync: vi.fn(),
+				createSecureLookup: vi.fn().mockReturnValue(undefined),
+			}) as unknown as SsrfBridge;
+
+		const sendLegacy = async (options: IRequestOptions) =>
+			await makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' }).requestLegacy(options);
+
+		const sendHttpRequest = async (options: IHttpRequestOptions) =>
+			await makeFacade().requests({ useDefaultSsrfPolicy: 'unsafe' }).request(options);
+
+		const multipart = (stream: Readable) => ({
+			file: { value: stream, options: { filename: 'file.bin', knownLength: 1024 } },
+		});
+
+		it.each([
+			{
+				name: 'a binary body when the connection is refused',
+				error: /ECONNREFUSED/,
+				send: async (stream: Readable) =>
+					await sendLegacy({ url: refusedUrl, method: 'POST', body: stream }),
+			},
+			{
+				name: 'a multipart body when the connection is refused',
+				error: /ECONNREFUSED/,
+				send: async (stream: Readable) =>
+					await sendLegacy({ url: refusedUrl, method: 'POST', formData: multipart(stream) }),
+			},
+			{
+				name: 'a binary body of httpRequest when the connection is refused',
+				error: /ECONNREFUSED/,
+				send: async (stream: Readable) =>
+					await sendHttpRequest({ url: refusedUrl, method: 'POST', body: stream }),
+			},
+			{
+				name: 'a binary body when the domain is not allowed',
+				error: 'Domain not allowed',
+				send: async (stream: Readable) =>
+					await sendLegacy({
+						url: refusedUrl,
+						method: 'POST',
+						body: stream,
+						allowedDomains: 'example.com',
+					}),
+			},
+			{
+				name: 'a multipart body when the domain is not allowed',
+				error: 'Domain not allowed',
+				send: async (stream: Readable) =>
+					await sendLegacy({
+						url: refusedUrl,
+						method: 'POST',
+						formData: multipart(stream),
+						allowedDomains: 'example.com',
+					}),
+			},
+			{
+				name: 'a binary body of httpRequest when the domain is not allowed',
+				error: 'Domain not allowed',
+				send: async (stream: Readable) =>
+					await sendHttpRequest({
+						url: refusedUrl,
+						method: 'POST',
+						body: stream,
+						allowedDomains: 'example.com',
+					}),
+			},
+			{
+				name: 'a binary body when the URL is blocked',
+				error: 'Blocked',
+				send: async (stream: Readable) =>
+					await makeFacade(blockingBridge())
+						.requests()
+						.requestLegacy({ url: 'https://blocked.test/upload', method: 'POST', body: stream }),
+			},
+		])('should destroy the stream of $name', async ({ send, error }) => {
+			const stream = pendingStream();
+
+			await expect(send(stream)).rejects.toThrow(error);
+
+			expect(stream.destroyed).toBe(true);
+		});
+
+		it.each([
+			{
+				name: 'requestLegacy',
+				send: async (stream: Readable) =>
+					await sendLegacy({ url: okUrl, method: 'POST', body: stream }),
+			},
+			{
+				name: 'request',
+				send: async (stream: Readable) =>
+					await sendHttpRequest({ url: okUrl, method: 'POST', body: stream }),
+			},
+		])('should not destroy the stream when $name succeeds', async ({ send }) => {
+			const stream = pendingStream();
+
+			await expect(send(stream)).resolves.toBe('ok');
+
+			expect(stream.destroyed).toBe(false);
+			stream.destroy();
+		});
 	});
 });
