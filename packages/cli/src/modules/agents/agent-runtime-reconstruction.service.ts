@@ -95,7 +95,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
 import { AGENT_PLAN_TOOL_NAMES } from './plans/agent-plan.schema';
-import { BACKGROUND_JOB_TOOL_NAMES } from './background/background-job-messages';
+import { BACKGROUND_JOBS_TOOL_NAME } from './background/background-job-messages';
 import { createGetEnvironmentTool, GET_ENVIRONMENT_TOOL_NAME } from './tools/environment-tool';
 import {
 	createMarkSessionFailedTool,
@@ -1058,7 +1058,7 @@ export class AgentRuntimeReconstructionService {
 				FLAG_MEMORY_TOOL_NAME,
 				...Object.values(AGENT_PLAN_TOOL_NAMES),
 				// Only top-level runs with background tasks get these tools.
-				...(params.backgroundTasksEnabled ? Object.values(BACKGROUND_JOB_TOOL_NAMES) : []),
+				...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
 			],
 		});
 
@@ -1265,10 +1265,9 @@ export class AgentRuntimeReconstructionService {
 			const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
 			runBackgroundSubAgent = await this.attachBackgroundJobTools({
 				...delegationParams,
+				// Same condition as the plan tools: a run with plans can link background jobs to them.
 				planTasksEnabled:
-					params.previewChat === true &&
-					params.allowPlanTools !== false &&
-					Container.get(AgentsConfig).planToolsEnabled,
+					params.allowPlanTools !== false && Container.get(AgentsConfig).planToolsEnabled,
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
 			});
@@ -1428,12 +1427,9 @@ export class AgentRuntimeReconstructionService {
 			abortSignal,
 			...runContext
 		} = params;
-		const {
-			createBackgroundSubAgentHandler,
-			createCheckBackgroundJobsTool,
-			createCancelBackgroundJobTool,
-			createResumeBackgroundJobsTool,
-		} = await import('./background/background-job-tools.js');
+		const { createBackgroundSubAgentHandler, createBackgroundJobsTool } = await import(
+			'./background/background-job-tools.js'
+		);
 		const { AgentBackgroundJobService } = await import(
 			'./background/agent-background-job.service.js'
 		);
@@ -1443,10 +1439,8 @@ export class AgentRuntimeReconstructionService {
 		throwIfAborted(abortSignal);
 		const jobService = Container.get(AgentBackgroundJobService);
 
-		agent.tool(createCheckBackgroundJobsTool(jobService));
-		agent.tool(createCancelBackgroundJobTool(jobService));
 		agent.tool(
-			createResumeBackgroundJobsTool({
+			createBackgroundJobsTool({
 				jobService,
 				backgroundRunner: Container.get(SubAgentBackgroundRunner),
 				projectId,
@@ -1455,7 +1449,7 @@ export class AgentRuntimeReconstructionService {
 			}),
 		);
 
-		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
+		this.logger.debug('Injected background jobs tool', { agentId: parentAgentId });
 
 		return createBackgroundSubAgentHandler({
 			planTasksEnabled,
