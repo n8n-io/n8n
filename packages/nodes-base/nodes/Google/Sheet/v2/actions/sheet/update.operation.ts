@@ -1,5 +1,6 @@
 import type { IExecuteFunctions, IDataObject, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import {
 	cellFormat,

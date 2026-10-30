@@ -12,9 +12,9 @@ import {
 	createRunExecutionData,
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
-	UserError,
 	Workflow,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { MockProxy } from 'vitest-mock-extended';
 import { mock } from 'vitest-mock-extended';
 

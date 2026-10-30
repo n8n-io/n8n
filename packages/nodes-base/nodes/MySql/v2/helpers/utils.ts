@@ -6,7 +6,8 @@ import type {
 	IPairedItemData,
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
-import { NodeOperationError, UserError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { isInsideQuotes } from '@utils/sql-query-parameters';
 

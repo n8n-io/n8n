@@ -1,10 +1,10 @@
 import {
-	UserError,
 	NodeOperationError,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	EVALUATION_TRIGGER_METADATA_FIELDS,
 	jsonStringify,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	INodeParameters,
 	IDataObject,

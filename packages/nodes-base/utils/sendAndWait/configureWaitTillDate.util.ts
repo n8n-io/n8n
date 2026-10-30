@@ -1,4 +1,5 @@
-import { NodeOperationError, UserError, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { NodeOperationError, WAIT_INDEFINITELY } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type { IExecuteFunctions, IDataObject } from 'n8n-workflow';
 
 export function configureWaitTillDate(

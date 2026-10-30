@@ -1,14 +1,14 @@
 import { type Response } from 'express';
 import { getHtmlSandboxCSP, isFormHtmlSandboxingDisabled } from 'n8n-core';
-import {
-	type NodeTypeAndVersion,
-	type IUser,
-	type IWebhookFunctions,
-	type IWebhookResponseData,
-	type IBinaryData,
-	type IDataObject,
-	OperationalError,
+import type {
+	NodeTypeAndVersion,
+	IUser,
+	IWebhookFunctions,
+	IWebhookResponseData,
+	IBinaryData,
+	IDataObject,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import {
 	generateFormUserAuthToken,

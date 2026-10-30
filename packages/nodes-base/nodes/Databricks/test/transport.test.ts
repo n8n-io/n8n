@@ -1,5 +1,6 @@
 import type { INode, IPollFunctions } from 'n8n-workflow';
-import { NodeOperationError, UnexpectedError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock, mockDeep } from 'vitest-mock-extended';
 
 import { DATABRICKS_PARTNER_USER_AGENT } from '../constants';

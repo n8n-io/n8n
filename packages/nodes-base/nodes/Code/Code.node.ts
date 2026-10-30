@@ -3,14 +3,13 @@ import { NodesConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import {
 	NodeConnectionTypes,
-	UnexpectedError,
-	UserError,
 	type CodeExecutionMode,
 	type CodeNodeEditorLanguage,
 	type IExecuteFunctions,
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 type CodeNodeLanguageOption = CodeNodeEditorLanguage | 'pythonNative';
 

@@ -13,8 +13,8 @@ import {
 	type IDataObject,
 	type IHttpRequestOptions,
 	type IRequestOptions,
-	UserError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { getAwsDomain, regions, type AWSRegion } from './regions';
 import { getSystemCredentials } from './system-credentials-utils';
