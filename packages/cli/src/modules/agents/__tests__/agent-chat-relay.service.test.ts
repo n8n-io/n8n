@@ -1,6 +1,7 @@
 import { jsonParse } from 'n8n-workflow';
 import { UserError } from '@n8n/errors';
 import { EventEmitter } from 'node:events';
+import { Readable } from 'node:stream';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -9,6 +10,8 @@ import type { AgentMessageQueueService } from '../agent-message-queue.service';
 import type { AgentQueuedTestStreamService } from '../agent-queued-test-stream.service';
 import type { FlushableResponse } from '../agent-sse-stream';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
+
+import { sendStreamToResponse } from '@/response-helper';
 
 vi.mock('@/response-helper', () => ({
 	sendStreamToResponse: vi.fn(async (_res: unknown, _stream: unknown, setHeaders?: () => void) =>
@@ -46,10 +49,11 @@ function sentEvents(writes: string[]): unknown[] {
 }
 
 describe('AgentChatRelayService', () => {
+	const attachmentService = mock<AgentChatAttachmentService>();
 	const relay = new AgentChatRelayService(
 		mock<AgentMessageQueueService>(),
 		mock<AgentQueuedTestStreamService>(),
-		mock<AgentChatAttachmentService>(),
+		attachmentService,
 	);
 
 	describe('relayQueuedStop', () => {
@@ -109,16 +113,19 @@ describe('AgentChatRelayService', () => {
 	describe('streamAttachment', () => {
 		it('downloads a sandbox file under its base name', async () => {
 			const res = { setHeader: vi.fn() };
+			const attachment = mock<AgentChatAttachment>({
+				id: 'att-1',
+				fileName: 'reports/q1.zip',
+				mimeType: 'application/zip',
+				fileSizeBytes: 3,
+			});
+			const stream = Readable.from(['abc']);
+			attachmentService.getStream.mockResolvedValue(stream);
 
-			await relay.streamAttachment(
-				mock<AgentChatAttachment>({
-					id: 'att-1',
-					fileName: 'reports/q1.zip',
-					mimeType: 'application/zip',
-					fileSizeBytes: 3,
-				}),
-				res as never,
-			);
+			await relay.streamAttachment(attachment, res as never);
+
+			expect(attachmentService.getStream).toHaveBeenCalledWith(attachment);
+			expect(sendStreamToResponse).toHaveBeenCalledWith(res, stream, expect.any(Function));
 
 			expect(res.setHeader).toHaveBeenCalledWith(
 				'Content-Disposition',
