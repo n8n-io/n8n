@@ -1,4 +1,5 @@
 import { defaultTextMapSetter, propagation, ROOT_CONTEXT } from '@opentelemetry/api';
+import { W3CBaggagePropagator } from '@opentelemetry/core';
 
 import {
 	DEFAULT_OUTBOUND_PROPAGATOR,
@@ -59,22 +60,23 @@ describe('outbound header propagators', () => {
 			]);
 		});
 
-		// The spec asks for a propagator to be registered once, whatever the list repeats.
 		it('registers a repeated name once', () => {
-			const once = propagatorFor(['baggage']);
-			const twice = propagatorFor(['baggage', 'BAGGAGE', 'baggage']);
+			const inject = vi.spyOn(W3CBaggagePropagator.prototype, 'inject');
+			const ctx = propagation.setBaggage(
+				ROOT_CONTEXT,
+				propagation.createBaggage({ tenant: { value: 'acme' } }),
+			);
 
-			const write = (propagator: typeof once) => {
-				const carrier: Record<string, string> = {};
-				const ctx = propagation.setBaggage(
-					ROOT_CONTEXT,
-					propagation.createBaggage({ tenant: { value: 'acme' } }),
-				);
-				propagator.inject(ctx, carrier, defaultTextMapSetter);
-				return carrier;
-			};
+			propagatorFor(['baggage', 'BAGGAGE', 'baggage']).inject(ctx, {}, defaultTextMapSetter);
 
-			expect(write(twice)).toEqual(write(once));
+			expect(inject).toHaveBeenCalledTimes(1);
+			inject.mockRestore();
+		});
+
+		it.each(['constructor', '__proto__', 'toString'])('carries no name for %s', (name) => {
+			expect(unknownPropagatorNames([name])).toEqual([name]);
+			expect(() => propagatorFor([name, 'tracecontext'])).not.toThrow();
+			expect(propagatorFor([name, 'tracecontext']).fields()).toEqual(['traceparent', 'tracestate']);
 		});
 	});
 

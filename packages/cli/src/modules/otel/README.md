@@ -38,7 +38,8 @@ Only these tracers export spans:
 `OTEL_*` env vars fill in what the n8n settings do not set:
 
 - n8n ignores `OTEL_SERVICE_NAME`, `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_EXPORTER`,
-  `OTEL_PROPAGATORS`, `OTEL_METRICS_EXPORTER` and `OTEL_LOGS_EXPORTER`.
+  `OTEL_METRICS_EXPORTER` and `OTEL_LOGS_EXPORTER`. `OTEL_PROPAGATORS` applies: see
+  [Outbound propagation](#outbound-propagation).
 - These apply: `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_NODE_RESOURCE_DETECTORS`, the
   `OTEL_EXPORTER_OTLP_*` certificate, timeout and compression variables, `OTEL_BSP_*`, extra
   header keys from `OTEL_EXPORTER_OTLP_HEADERS`, and `OTEL_LOG_LEVEL` (default `warn`).
@@ -144,23 +145,25 @@ and `getTraceHeaders()`.
   so they send the caller baggage as the parent does. Both handle the run that the caller
   started, and both already keep the parent's `traceparent`, so a downstream service would
   otherwise see the trace without the entries that explain it.
-- **Inbound.** When `N8N_OTEL_TRACES_INJECT_OUTBOUND` is on, the webhook reads
+- **Inbound.** When OTel and `N8N_OTEL_TRACES_INJECT_OUTBOUND` are both on, the webhook reads
   `baggage` next to `traceparent`, even when no `traceparent` is sent. The otel module reads it
   through its module context (`extractInboundBaggage`), so the webhook code does not load the
   module. n8n drops an entry in three cases: the key starts with `n8n.` (in any case, and after
   percent-decoding, because n8n owns that prefix), the entry has no key, no value, or a key or
   value that does not percent-decode, so it reaches no receiver, or the entry does not fit the
-  W3C limits of 4096 bytes for an entry, 180 entries and 8192 bytes in total, which the receiving
-  parser applies as well. n8n forwards every other entry byte for byte, whatever its characters:
+  limits of 4096 bytes for an entry, 180 entries and 8192 bytes in total. Those three are the
+  limits the OpenTelemetry SDK applies, which the receiving parser applies as well. W3C sets
+  only a minimum: 64 entries and 8192 bytes in total, and no limit for one entry. n8n forwards every other entry byte for byte, whatever its characters:
   the HTTP server rejects a header value that n8n could not send again, and a stricter check would
   only drop entries that the receiving parser reads anyway. When n8n drops an entry, it logs one
   warning for each header, with counts only and no entry content.
 - **Persistence.** The result is saved in `tracingContext.baggage` on the execution. Each
   segment saves it again, so a queue-mode worker and a resume after a Wait node send the same
   baggage. The saved string is the W3C form of the parsed entries, so a percent-encoded value
-  can come back normalized. n8n reads the header only when outbound injection is on, so an
-  execution row never holds caller data that nothing forwards. The public API does not return
-  it.
+  can come back normalized. n8n reads the header only when OTel and outbound injection are both
+  on. `OTEL_PROPAGATORS` is read later, when the headers go out, so a row saved with
+  `OTEL_PROPAGATORS=tracecontext` holds baggage that nothing sends. The public API does not
+  return it.
 
 ### Start marker spans
 

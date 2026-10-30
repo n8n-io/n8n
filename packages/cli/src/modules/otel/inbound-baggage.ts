@@ -2,10 +2,10 @@ import type { Logger } from '@n8n/backend-common';
 
 const RESERVED_KEY_PREFIX = 'n8n.';
 
-// The limits the receiving parser applies. It skips an entry past the member size and stops
-// reading past the entry count or the total, so n8n keeps to them as well: one webhook call feeds
-// every request the execution sends, and the header is saved on the execution row.
-// https://www.w3.org/TR/baggage/#limits
+// The limits the OpenTelemetry SDK applies, on the way in and on the way out, so n8n keeps
+// to them as well: one webhook call feeds every request the execution sends, and the header
+// is saved on the execution row. W3C sets only a minimum, 64 entries and 8192 bytes in
+// total, and no limit for one entry. https://www.w3.org/TR/baggage/#limits
 const MAX_ENTRIES = 180;
 const MAX_ENTRY_BYTES = 4096;
 const MAX_TOTAL_BYTES = 8192;

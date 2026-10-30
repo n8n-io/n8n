@@ -4125,7 +4125,7 @@
 	"settings.opentelemetry.emitNodeStartSpan.label": "Send node start spans",
 	"settings.opentelemetry.emitNodeStartSpan.description": "Send a 0 ms span when each node starts.",
 	"settings.opentelemetry.injectOutbound.label": "Send outbound trace headers",
-	"settings.opentelemetry.injectOutbound.description": "Add W3C trace headers to the HTTP requests that n8n sends, so the services it calls join the same trace. n8n sends the traceparent and the caller baggage.",
+	"settings.opentelemetry.injectOutbound.description": "Add W3C trace headers to the HTTP requests that n8n sends, so the services it calls join the same trace. n8n sends the traceparent, and the caller baggage when it has some and the propagators include it.",
 	"settings.opentelemetry.productionExecutionsOnly.label": "Track published workflows only",
 	"settings.opentelemetry.productionExecutionsOnly.description": "Skip manual canvas runs. Less noise in production.",
 	"settings.opentelemetry.save": "Save settings",

@@ -39,10 +39,11 @@ export class OtelModule implements ModuleInterface {
 
 		return {
 			injectTraceHeaders: tracer.injectTraceHeaders.bind(tracer),
-			extractInboundBaggage: (header: unknown) =>
-				settingsService.getSettings().injectOutbound
-					? sanitizeInboundBaggage(header, logger)
-					: undefined,
+			extractInboundBaggage: (header: unknown) => {
+				const { enabled, injectOutbound } = settingsService.getSettings();
+
+				return enabled && injectOutbound ? sanitizeInboundBaggage(header, logger) : undefined;
+			},
 		};
 	}
 

@@ -597,15 +597,20 @@ describe('OtelService', () => {
 				expect(propagator?.fields()).toEqual([]);
 			});
 
-			it('warns once about a name n8n does not carry', async () => {
+			it('warns once about a name n8n does not carry, and not again on a reload', async () => {
 				process.env.OTEL_PROPAGATORS = 'tracecontext,b3';
 				otelSettingsService.loadSettings.mockResolvedValue(enabledSettings);
+				const started = createService(otelSdk);
 
-				await createService(otelSdk).init();
+				await started.init();
+				await started.applySavedSettings();
 
-				expect(logger.warn).toHaveBeenCalledWith(expect.stringContaining('OTEL_PROPAGATORS'), {
-					unknown: ['b3'],
-				});
+				const warnings = logger.warn.mock.calls.filter(([message]) =>
+					message.includes('OTEL_PROPAGATORS'),
+				);
+				expect(warnings).toEqual([
+					[expect.stringContaining('OTEL_PROPAGATORS'), { unknown: ['b3'] }],
+				]);
 			});
 		});
 

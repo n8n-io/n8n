@@ -37,30 +37,26 @@ export const TRACING_OFF: TracingPipeline = {
 	propagator: new CompositePropagator(),
 };
 
-const PROPAGATORS_BY_NAME: Record<string, () => TextMapPropagator> = {
-	tracecontext: () => new W3CTraceContextPropagator(),
-	baggage: () => new W3CBaggagePropagator(),
-};
+const PROPAGATORS_BY_NAME = new Map<string, () => TextMapPropagator>([
+	['tracecontext', () => new W3CTraceContextPropagator()],
+	['baggage', () => new W3CBaggagePropagator()],
+]);
 
 export const PROPAGATORS_ENV_VAR = 'OTEL_PROPAGATORS';
 
 export const DEFAULT_PROPAGATOR_NAMES = ['tracecontext', 'baggage'];
 
-// The names n8n does not carry. The spec asks for a warning for each one.
 export function unknownPropagatorNames(names: string[]): string[] {
-	return names.filter((name) => !(name.toLowerCase() in PROPAGATORS_BY_NAME));
+	return names.filter((name) => !PROPAGATORS_BY_NAME.has(name.toLowerCase()));
 }
 
-// A name n8n does not carry is left out, so `none` and a name from another vendor both give a
-// propagator that writes nothing. A repeated name registers its propagator once, as the spec
-// asks, and the match ignores case.
 export function propagatorFor(names: string[]): TextMapPropagator {
 	const seen = new Set<string>();
 	const propagators: TextMapPropagator[] = [];
 
 	for (const name of names) {
 		const key = name.toLowerCase();
-		const make = PROPAGATORS_BY_NAME[key];
+		const make = PROPAGATORS_BY_NAME.get(key);
 		if (!make || seen.has(key)) continue;
 
 		seen.add(key);
@@ -70,19 +66,15 @@ export function propagatorFor(names: string[]): TextMapPropagator {
 	return new CompositePropagator({ propagators });
 }
 
-// The names in `OTEL_PROPAGATORS`, or undefined when the variable is not set.
 export function propagatorNamesFromEnv(): string[] | undefined {
 	return getStringListFromEnv(PROPAGATORS_ENV_VAR);
 }
 
-// Set, the variable names the outbound headers. The switch still decides whether n8n sends
-// any, so this only narrows the set.
 export function propagatorFromEnv(): TextMapPropagator | undefined {
 	const names = propagatorNamesFromEnv();
 	return names && propagatorFor(names);
 }
 
-// What n8n sends when `OTEL_PROPAGATORS` is not set, the same default the spec gives.
 export const DEFAULT_OUTBOUND_PROPAGATOR = propagatorFor(DEFAULT_PROPAGATOR_NAMES);
 
 export class SwappableSpanProcessor implements SpanProcessor {

@@ -59,12 +59,6 @@ export async function initOtelTestEnvironment() {
 	await testModules.loadModules(['otel']);
 	await testDb.init();
 
-	// Set before the settings load, so the pipeline that init installs is the one that
-	// sends outbound headers. It is the only setting the outbound header set obeys.
-	const config = Container.get(OtelConfig);
-	config.includeNodeSpans = true;
-	config.injectOutbound = true;
-
 	await Container.get(OtelSettingsService).loadSettings();
 	await Container.get(ModuleRegistry).initModules('main');
 	Container.get(LicenseState).setLicenseProvider({
@@ -85,6 +79,10 @@ export async function initOtelTestEnvironment() {
 	await utils.initBinaryDataService();
 
 	Container.get(InstanceSettings).markAsLeader();
+
+	const config = Container.get(OtelConfig);
+	config.includeNodeSpans = true;
+	config.injectOutbound = true;
 
 	// The test provider holds the global tracer provider, so n8n skips its own SDK and
 	// never installs a propagator. Install the one the settings ask for, so the outbound
