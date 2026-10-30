@@ -53,7 +53,10 @@ function createSetupFactory() {
 			})),
 		},
 		settingsService: {
-			getAdminSettings: vi.fn(async () => ({ browserUseEnabled: false })),
+			getAdminSettings: vi.fn(async () => ({
+				browserUseEnabled: false,
+				cloudBrowserEnabled: false,
+			})),
 			getPermissions: vi.fn(() => ({})),
 			getSandboxStatus: vi.fn(() => ({ workflowBuilderAvailable: true })),
 			isMcpAccessEnabled: vi.fn(() => false),
@@ -162,6 +165,46 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			expect(context.sessionApprovedToolKeys).toEqual(new Set(['tool:run']));
 			expect(runtime.onDomainAccessTracker).toHaveBeenCalledWith(context.domainAccessTracker);
 		});
+
+		it.each([
+			{ cloudBrowserEnabled: true, isAvailable: true, wired: true },
+			{ cloudBrowserEnabled: true, isAvailable: false, wired: false },
+			{ cloudBrowserEnabled: false, isAvailable: true, wired: false },
+		])(
+			'sets startCloudBrowserTask only when the cloud browser is enabled and available (%j)',
+			async ({ cloudBrowserEnabled, isAvailable, wired }) => {
+				const { factory, fields } = createSetupFactory();
+				fields.settingsService.getAdminSettings.mockResolvedValue({
+					browserUseEnabled: false,
+					cloudBrowserEnabled,
+				});
+				const cloudBrowser = {
+					isAvailable: vi.fn(async () => isAvailable),
+					startTask: vi.fn(async () => ({ status: 'started' as const, taskId: 'task-1' })),
+				};
+
+				const { orchestrationContext } = await factory.create(
+					params,
+					createRuntime({ cloudBrowser }),
+				);
+
+				if (cloudBrowserEnabled) expect(cloudBrowser.isAvailable).toHaveBeenCalled();
+				else expect(cloudBrowser.isAvailable).not.toHaveBeenCalled();
+				if (!wired) {
+					expect(orchestrationContext.startCloudBrowserTask).toBeUndefined();
+					return;
+				}
+				const input = { title: 'Find the price', goal: 'Find the price of the Pro plan' };
+				await expect(orchestrationContext.startCloudBrowserTask?.(input)).resolves.toEqual({
+					status: 'started',
+					taskId: 'task-1',
+				});
+				expect(cloudBrowser.startTask).toHaveBeenCalledWith(
+					input,
+					expect.objectContaining({ runId: 'run-1', user, threadId: 'thread-1' }),
+				);
+			},
+		);
 
 		it('leaves out the optional hooks that a runtime does not supply', async () => {
 			const { factory } = createSetupFactory();

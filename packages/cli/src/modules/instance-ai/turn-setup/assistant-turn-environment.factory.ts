@@ -565,6 +565,27 @@ export class AssistantTurnEnvironmentFactory {
 			domainContext: context,
 		};
 
+		const { cloudBrowser } = runtime;
+		if (adminSettings.cloudBrowserEnabled && cloudBrowser && (await cloudBrowser.isAvailable())) {
+			orchestrationContext.startCloudBrowserTask = async (input) =>
+				await cloudBrowser.startTask(input, {
+					runId,
+					user,
+					threadId,
+					messageGroupId,
+					modelId,
+					modelStreamStallOptions: orchestrationContext.modelStreamStallOptions,
+					tracing: orchestrationContext.tracing,
+					domainGate: {
+						tracker: domainTracker,
+						runId,
+						permissionMode: context.permissions?.fetchUrl,
+						createCredentialPermissionMode: context.permissions?.createCredential,
+					},
+					getCredentialFields: context.credentialService.getCredentialFields,
+				});
+		}
+
 		return {
 			context,
 			memory,

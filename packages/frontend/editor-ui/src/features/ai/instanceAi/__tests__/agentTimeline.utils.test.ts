@@ -806,6 +806,21 @@ describe('buildTimelineBlocks', () => {
 		]);
 	});
 
+	test('leaves out a cloud browser sub-agent', () => {
+		const backgroundChild = makeAgentNode({
+			agentId: 'browser-1',
+			role: 'cloud-browser',
+			kind: 'cloud-browser',
+			taskId: 'task-1',
+		});
+
+		const blocks = blocksOf([{ type: 'child', agentId: 'browser-1' }], [], 'completed', [
+			backgroundChild,
+		]);
+
+		expect(blocks).toEqual([]);
+	});
+
 	test('does not hide unrelated trace tools when child is not a builder', () => {
 		const childEntry = (agentId: string, responseId?: string): InstanceAiTimelineEntry => ({
 			type: 'child',

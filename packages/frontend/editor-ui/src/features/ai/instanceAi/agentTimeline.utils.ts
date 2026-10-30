@@ -10,6 +10,7 @@ import type {
 } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { firstNonBlank, isActiveBuilderAgent, isBuilderAgent } from './builderAgents';
+import { isCloudBrowserAgent } from './cloudBrowserAgents';
 import { isPreferenceWriteOutcome, SAVE_USER_PREFERENCE_TOOL_NAME } from './preferenceCard.utils';
 
 /** Tool calls that are internal bookkeeping and should not be shown to the user.
@@ -227,8 +228,9 @@ export function buildTimelineBlocks(
 			const child = childrenById[entry.agentId];
 			// Running builder sub-agents are extracted and rendered at the bottom
 			// of the conversation by InstanceAiView; once a builder finishes it
-			// reappears here in its chronological slot.
-			if (child && !isActiveBuilderAgent(child)) {
+			// reappears here in its chronological slot. A cloud browser sub-agent is never
+			// drawn here since it runs in the background
+			if (child && !isCloudBrowserAgent(child) && !isActiveBuilderAgent(child)) {
 				pushStandalone({ type: 'child', key: `child-${idx}`, child });
 			}
 			return;

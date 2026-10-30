@@ -135,6 +135,7 @@ vi.mock('@n8n/instance-ai', async () => {
 		WorkflowTaskCoordinator: class {},
 		WorkflowLoopStorage: class {},
 		ThreadTaskStorage: class {},
+		CloudBrowserTaskStorage: class {},
 		InstanceAiTerminalResponseGuard: class {
 			constructor(private readonly options: { runId: string; rootAgentId: string }) {}
 
@@ -541,6 +542,7 @@ type ShutdownServiceInternals = {
 		>;
 	};
 	backgroundTasks: { cancelAll: MockedFunction<() => ManagedBackgroundTask[]> };
+	cloudBrowserTaskService: { shutdown: Mock };
 	tracing: {
 		finalizeRunTracing: MockedFunction<
 			(
@@ -661,6 +663,7 @@ type TerminalGuardOrderServiceInternals = {
 	failedInternalFollowUpStreaks: Map<string, number>;
 	taskProjector: { syncFromWorkflowLoop: Mock };
 	maybeStartWorkflowSetupFollowUp: Mock;
+	cloudBrowserTaskService: { startTask: Mock; deliverPendingResults: Mock; shutdown: Mock };
 	finalizeRun: Mock;
 	preserveHitlOnShutdown: Set<string>;
 	inFlightExecutions: Set<Promise<unknown>>;
@@ -785,6 +788,10 @@ function createTerminalGuardOrderService(): TerminalGuardOrderServiceInternals {
 	return service;
 }
 
+function stubCloudBrowserTaskService() {
+	return { startTask: vi.fn(), deliverPendingResults: vi.fn(async () => {}), shutdown: vi.fn() };
+}
+
 function stubInitialRunSurface(
 	service: TerminalGuardOrderServiceInternals,
 	instanceContextEnabled = false,
@@ -814,6 +821,10 @@ function stubInitialRunSurface(
 		resolveProjectContextSection: vi.fn(async () => ''),
 		createAgentFromEnvironment: vi.fn(async () => ({})),
 		buildOrchestratorAgentStreamOptions: vi.fn(() => ({})),
+		cloudBrowserTaskService: stubCloudBrowserTaskService(),
+		// Off by default, so the end of a run never reaches the cloud browser.
+		settingsService: { isCloudBrowserEnabled: () => false },
+		cloudBrowserService: { isAvailable: async () => false },
 		domainAccessTrackersByThread: new Map(),
 	});
 	const { backgroundTasks } = service as { backgroundTasks?: object };
@@ -1031,6 +1042,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.backgroundTasks = { touchTask: vi.fn() };
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1394,6 +1406,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 		service.backgroundTasks = { touchTask: vi.fn() };
 		service.sendCorrectionToTask = vi.fn();
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.browserSessionService = { findMcpServer: vi.fn(() => undefined) };
 		service.threadGrantRepo = { findKeys: vi.fn(async () => new Set<string>()) };
 		service.sandboxService = new InstanceAiSandboxService({
@@ -1475,7 +1488,8 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.inFlightExecutions.size).toBe(0);
 	});
 
-	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+	/** A service with only what `shutdown()` touches. */
+	function createShutdownService() {
 		const service = Object.create(
 			InstanceAiService.prototype,
 		) as unknown as ShutdownServiceInternals;
@@ -1502,12 +1516,18 @@ describe('InstanceAiService — shutdown', () => {
 		service.sandboxService = { stopSandboxExpiryTimers: vi.fn() };
 		service.browserSessionService = { shutdown: vi.fn(async () => {}) };
 		service.domainAccessTrackersByThread = new Map();
+		service.cloudBrowserTaskService = stubCloudBrowserTaskService();
 		service.eventBus = { clear: vi.fn() };
 		service.eventLog = { flushAll: vi.fn(async () => {}) };
 		service.agentFactory = { disconnectMcpClients: vi.fn(async () => {}) };
 		service.inFlightExecutions = new Set();
 		service.logger = { debug: vi.fn(), warn: vi.fn() };
 		service.instanceAiErrorReporter = createInstanceAiErrorReporterMock();
+		return service;
+	}
+
+	it('does not destroy thread-scoped sandboxes on service shutdown', async () => {
+		const service = createShutdownService();
 
 		await service.shutdown();
 
@@ -1530,6 +1550,20 @@ describe('InstanceAiService — shutdown', () => {
 		expect(service.eventBus.clear.mock.invocationCallOrder[0]).toBeLessThan(
 			vi.mocked(shutdownProductTelemetryProviders).mock.invocationCallOrder[0],
 		);
+	});
+
+	it('stops cloud browser task delivery before it cancels the background tasks', async () => {
+		const service = createShutdownService();
+		const calls: string[] = [];
+		service.cloudBrowserTaskService.shutdown.mockImplementation(() => calls.push('taskService'));
+		service.backgroundTasks.cancelAll.mockImplementation(() => {
+			calls.push('cancelAll');
+			return [];
+		});
+
+		await service.shutdown();
+
+		expect(calls).toEqual(['taskService', 'cancelAll']);
 	});
 });
 
@@ -1610,6 +1644,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 					cancelThread: vi.fn(() => []),
 					listRunningTasks: vi.fn(() => []),
 				},
+				cloudBrowserTaskService: stubCloudBrowserTaskService(),
 				cancelAwaitingApprovalPlan: vi.fn(),
 				suspendedThreads: { dropPendingConfirmationsForThread: vi.fn() },
 				gatewayService: { disconnectAll: vi.fn() },
@@ -4023,6 +4058,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 			inFlightExecutions: new Set<Promise<unknown>>(),
 			browserSessionService: { shutdown: vi.fn(async () => {}) },
 			sandboxService: { stopSandboxExpiryTimers: vi.fn() },
+			cloudBrowserTaskService: stubCloudBrowserTaskService(),
 			domainAccessTrackersByThread: new Map(),
 			eventLog: { flushAll: vi.fn(async () => {}) },
 		});
@@ -5011,6 +5047,16 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {
 			callOrder.push('maybeStartWorkflowSetupFollowUp');
 		});
+		Object.assign(service, {
+			settingsService: { isCloudBrowserEnabled: () => true },
+			cloudBrowserService: { isAvailable: async () => true },
+		});
+		service.cloudBrowserTaskService = {
+			...stubCloudBrowserTaskService(),
+			deliverPendingResults: vi.fn(async () => {
+				callOrder.push('deliverPendingResults');
+			}),
+		};
 		service.finalizeRun = vi.fn(async () => {
 			callOrder.push('finalizeRun');
 		});
@@ -5035,8 +5081,128 @@ describe('InstanceAiService — run error reporter lifecycle', () => {
 			'finalizeRun',
 			'syncFromWorkflowLoop',
 			'maybeStartWorkflowSetupFollowUp',
+			'deliverPendingResults',
 			'endRun',
 		]);
+	});
+
+	it.each([
+		{ cloudBrowserEnabled: false, isAvailable: true },
+		{ cloudBrowserEnabled: true, isAvailable: false },
+	])(
+		'does not deliver cloud browser task results when the cloud browser is off (%j)',
+		async ({ cloudBrowserEnabled, isAvailable }) => {
+			const service = createTerminalGuardOrderService();
+			const abortController = new AbortController();
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+			Object.assign(service, {
+				settingsService: { isCloudBrowserEnabled: () => cloudBrowserEnabled },
+				cloudBrowserService: { isAvailable: async () => isAvailable },
+			});
+			service.cloudBrowserTaskService = stubCloudBrowserTaskService();
+			mockClaimedResumeResult({
+				status: 'completed',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve('done'),
+				workSummary: emptyWorkSummary(),
+			});
+
+			await service.processResumedStream({}, {}, resumedStreamOpts(abortController));
+
+			expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+			expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith(
+				'run-1',
+				service.instanceAiErrorReporter.beginRun.mock.results[0].value,
+			);
+		},
+	);
+
+	it.each([
+		{ stopped: false, delivered: true },
+		{ stopped: true, delivered: false },
+	])(
+		'delivers cloud browser task results when a chat run ends, unless it was stopped (%j)',
+		async ({ stopped, delivered }) => {
+			const service = createTerminalGuardOrderService();
+			stubInitialRunSurface(service);
+			service.runState.hasSuspendedRun = vi.fn(() => false);
+			service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+			service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+			service.finalizeRun = vi.fn(async () => {});
+			Object.assign(service, {
+				settingsService: { isCloudBrowserEnabled: () => true },
+				cloudBrowserService: { isAvailable: async () => true },
+			});
+			const abortController = new AbortController();
+			if (stopped) abortController.abort();
+			vi.mocked(streamAgentRun).mockResolvedValueOnce({
+				status: stopped ? 'cancelled' : 'completed',
+				agentRunId: 'agent-run-1',
+				text: Promise.resolve('done'),
+				workSummary: emptyWorkSummary(),
+			});
+
+			await service.executeRun(fakeUser, 'thread-a', 'run-1', 'Hello', abortController);
+
+			if (delivered) {
+				expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+					fakeUser,
+					'thread-a',
+				);
+			} else {
+				expect(service.cloudBrowserTaskService.deliverPendingResults).not.toHaveBeenCalled();
+			}
+		},
+	);
+
+	it('logs a failed cloud browser result delivery and still finishes the run', async () => {
+		const service = createTerminalGuardOrderService();
+		const abortController = new AbortController();
+		service.runState.hasSuspendedRun = vi.fn(() => false);
+		service.taskProjector = { syncFromWorkflowLoop: vi.fn(async () => {}) };
+		service.maybeStartWorkflowSetupFollowUp = vi.fn(async () => {});
+		service.finalizeRun = vi.fn(async () => {});
+		Object.assign(service, {
+			settingsService: { isCloudBrowserEnabled: () => true },
+			cloudBrowserService: { isAvailable: async () => true },
+		});
+		service.cloudBrowserTaskService = {
+			...stubCloudBrowserTaskService(),
+			deliverPendingResults: vi.fn(async () => {
+				throw new Error('Store unavailable');
+			}),
+		};
+		mockClaimedResumeResult({
+			status: 'completed',
+			agentRunId: 'agent-run-1',
+			text: Promise.resolve('done'),
+			workSummary: emptyWorkSummary(),
+		});
+
+		await expect(
+			service.processResumedStream({}, {}, resumedStreamOpts(abortController)),
+		).resolves.toBeUndefined();
+
+		expect(service.cloudBrowserTaskService.deliverPendingResults).toHaveBeenCalledWith(
+			fakeUser,
+			'thread-a',
+		);
+		expect(service.logger.error).toHaveBeenCalledWith(
+			'Failed to deliver the cloud browser task results',
+			{ threadId: 'thread-a', error: 'Store unavailable' },
+		);
+		expect(service.finalizeRun).toHaveBeenCalledWith(
+			'thread-a',
+			'run-1',
+			'completed',
+			expect.any(Object),
+		);
+		expect(service.instanceAiErrorReporter.endRun).toHaveBeenCalledWith(
+			'run-1',
+			service.instanceAiErrorReporter.beginRun.mock.results[0].value,
+		);
 	});
 
 	it('still projects tasks when the resumed run was cancelled', async () => {
@@ -5110,6 +5276,7 @@ describe('InstanceAiService run input gates', () => {
 			shouldPreserveHitlOnShutdown: vi.fn(() => true),
 			runState: { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) },
 			telemetry: { track: vi.fn() },
+			cloudBrowserTaskService: stubCloudBrowserTaskService(),
 			domainAccessTrackersByThread: new Map(),
 			updateInternalFollowUpFailureStreak: vi.fn(),
 		}) as {
@@ -5234,6 +5401,7 @@ describe('InstanceAiService — user message persistence on cancel', () => {
 		// hasSuspendedRun → true short-circuits the finally's post-run scheduling
 		service.runState = { clearActiveRun: vi.fn(), hasSuspendedRun: vi.fn(() => true) };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.instanceAiErrorReporter = {
 			beginRun: vi.fn(() => Symbol('error-reporter-execution')),
 			endRun: vi.fn(),
@@ -6226,6 +6394,7 @@ describe('InstanceAiService — clearThreadState agent-builder cleanup', () => {
 		service.failedInternalFollowUpStreaks = new Map();
 		service.liveness = { clearThreadState: vi.fn() };
 		service.domainAccessTrackersByThread = new Map();
+		Object.assign(service, { cloudBrowserTaskService: stubCloudBrowserTaskService() });
 		service.evalCredentialAllowlists = new EvalThreadCredentialAllowlistService();
 		service.eventBus = { clearThread: vi.fn() };
 		service.tracing = {
