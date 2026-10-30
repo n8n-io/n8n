@@ -1630,9 +1630,12 @@ describe('Promotions in Public API', () => {
 				schemaVersion: 1 as const,
 				remoteUrl: 'https://other.example.com/platform/workflows.git',
 			};
-			await Container.get(PromotionEnvironmentRepository).updateEnvironment(id, providerId, {
-				remote,
-			});
+			await Container.get(PromotionEnvironmentRepository).updateEnvironment(
+				id,
+				providerId,
+				{ remote },
+				{},
+			);
 			await expect(
 				Container.get(PromotionEnvironmentResolver).resolveForEnvironment(id),
 			).rejects.toThrow('Select the repository again');
@@ -1646,7 +1649,7 @@ describe('Promotions in Public API', () => {
 			const id = await selectedEnvironment(providerId);
 			const repository = Container.get(PromotionEnvironmentRepository);
 			const remote = { schemaVersion: 1 as const, remoteUrl: project.http_url_to_repo };
-			await repository.updateEnvironment(id, providerId, { remote });
+			await repository.updateEnvironment(id, providerId, { remote }, {});
 			const agent = testServer.publicApiAgentFor(owner);
 			const root = `/promotions/environments/${id}`;
 			expect((await agent.get(root)).body.remote).toEqual(remote);

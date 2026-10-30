@@ -70,7 +70,7 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 		id: string,
 		expectedProviderId: string,
 		changes: Partial<Pick<PromotionEnvironment, 'name' | 'providerId' | 'remote' | 'settings'>>,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<boolean> {
 		const result = await this.managerFor(ctx).update(
 			PromotionEnvironment,
@@ -82,7 +82,7 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 
 	/** Cascades to this environment's project links only. */
 	/** Returns false when no row was deleted, for example after a concurrent delete. */
-	async deleteEnvironment(id: string, ctx: OperationContext = {}): Promise<boolean> {
+	async deleteEnvironment(id: string, ctx: OperationContext): Promise<boolean> {
 		const result = await this.managerFor(ctx).delete(PromotionEnvironment, { id });
 		return (result.affected ?? 0) > 0;
 	}

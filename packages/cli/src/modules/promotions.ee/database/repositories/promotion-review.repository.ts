@@ -72,7 +72,7 @@ export class PromotionReviewRepository extends BaseRepository<PromotionReview> {
 	async closeOpenByEnvironmentId(
 		environmentId: string,
 		at: Date,
-		ctx: OperationContext = {},
+		ctx: OperationContext,
 	): Promise<number> {
 		const result = await this.managerFor(ctx).update(
 			PromotionReview,
