@@ -1,0 +1,21 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_3eab3bd25bb557::t_2afad2cf9641e3 187
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_3eab3bd25bb557::t_2afad2cf9641e3 451
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1c55e41182d501e35eacb550eeb60350591ac110",
+  "prompts": {},
+  "sessions": {
+    "s_3eab3bd25bb557": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64d85eea-f944-4df3-942d-345f5e1cd860",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
