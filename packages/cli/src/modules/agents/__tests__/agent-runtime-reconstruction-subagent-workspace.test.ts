@@ -161,6 +161,9 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 		expect(builtAgent.tool).not.toHaveBeenCalledWith(
 			expect.objectContaining({ name: 'import_files' }),
 		);
+		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining(['import_files']),
+		});
 	});
 
 	it('attaches no workspace for sub-agent runs without a parent handle', async () => {
