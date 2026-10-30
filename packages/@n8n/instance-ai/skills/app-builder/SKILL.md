@@ -46,17 +46,18 @@ Add components under `src/`. Keep files small and focused.
      default. Do not ask about minor styling or details with safe defaults.
    - New app: call `apps` with `action: "create"` and a short blueprint. The
      user can review the description and edit the name, namespace, visibility,
-     and theme before approval. Approval creates and opens the app. Build from
-     the blueprint returned by the tool, not from your proposal. If the user
-     cancels, do not create or edit app files.
+     and theme before approval. Approval creates the app. Build from the
+     blueprint returned by the tool, not from your proposal. Then call `apps`
+     with `action: "open"` and the returned `app.id` before you edit files. If the
+     user cancels, do not create, open, or edit app files.
    - If the conversation lists a pending app, use `create`. n8n reuses the
      pending id after approval.
    - Existing app: use the `appId` from the conversation context. If the
      conversation has no id, call `list` (optionally with a `search` text) and
      pick the app by name. If several apps match, ask the user which one. Then
      call `open`.
-   - An approved blueprint and `open` return the app folder, `apps/<appId>`.
-     `open` keeps a folder that is already open, with your uncommitted edits.
+   - `open` returns the app folder, `apps/<appId>`. It keeps a folder that is
+     already open, with your uncommitted edits.
 2. **Apply the selected theme.**
    - For `light`, build only a light theme.
    - For `dark`, build only a dark theme.

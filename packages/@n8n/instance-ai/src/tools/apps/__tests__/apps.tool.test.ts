@@ -170,7 +170,7 @@ describe('apps tool', () => {
 		});
 	});
 
-	it('creates the first app under the pending id, opens it and adds it to the thread', async () => {
+	it('creates the first app under the pending id without opening it', async () => {
 		const { tool, appService, thread, onArtifactChanged } = setup({
 			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: { appId: PENDING_ID, projectId: 'project-1' },
 		});
@@ -179,13 +179,54 @@ describe('apps tool', () => {
 
 		const result = await approveCreate(tool);
 
-		expect(result).toMatchObject({ path: `apps/${PENDING_ID}` });
+		expect(result).toMatchObject({ app: { id: PENDING_ID } });
+		expect(result).not.toHaveProperty('path');
 		expect(appService.createApp).toHaveBeenCalledWith({
 			name: 'Todos',
 			namespace: 'todos',
 			visibility: 'project',
 			id: PENDING_ID,
 		});
+		expect(readBaseVersion).not.toHaveBeenCalled();
+		expect(checkOutDraft).not.toHaveBeenCalled();
+		expect(thread.metadata).toEqual({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: {
+				appId: PENDING_ID,
+				projectId: 'project-1',
+			},
+		});
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+	});
+
+	it('keeps the pending id when opening the new app fails', async () => {
+		const pendingTarget = { appId: PENDING_ID, projectId: 'project-1' };
+		const { tool, thread, onArtifactChanged } = setup({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
+		});
+		vi.mocked(checkOutDraft).mockRejectedValue(new Error('Sandbox command failed'));
+
+		const result = await executeTool(tool, { action: 'open', appId: PENDING_ID });
+
+		expect(result).toEqual({ error: 'Sandbox command failed' });
+
+		expect(thread.metadata).toEqual({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
+		});
+		expect(onArtifactChanged).not.toHaveBeenCalled();
+	});
+
+	it('checks out an app when it is opened and adds it to the thread', async () => {
+		const { tool, appService, thread, onArtifactChanged } = setup({
+			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: {
+				appId: PENDING_ID,
+				projectId: 'project-1',
+			},
+		});
+		appService.getApp.mockResolvedValue(app(PENDING_ID));
+
+		const result = await executeTool(tool, { action: 'open', appId: PENDING_ID });
+
+		expect(result).toEqual({ path: `apps/${PENDING_ID}`, baseVersionId: null });
 		expect(checkOutDraft).toHaveBeenCalledWith({}, appService, PENDING_ID);
 		expect(thread.metadata).toEqual({
 			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],
@@ -198,26 +239,7 @@ describe('apps tool', () => {
 		});
 	});
 
-	it('keeps the pending id when the checkout of a new app fails', async () => {
-		const pendingTarget = { appId: PENDING_ID, projectId: 'project-1' };
-		const { tool, appService, thread, onArtifactChanged } = setup({
-			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
-		});
-		appService.findApp.mockResolvedValue(undefined);
-		appService.createApp.mockResolvedValue(app(PENDING_ID));
-		vi.mocked(checkOutDraft).mockRejectedValue(new Error('Sandbox command failed'));
-
-		const result = await approveCreate(tool);
-
-		expect(result).toEqual({ error: 'Sandbox command failed' });
-
-		expect(thread.metadata).toEqual({
-			[INSTANCE_AI_PENDING_APP_TARGET_METADATA_KEY]: pendingTarget,
-		});
-		expect(onArtifactChanged).not.toHaveBeenCalled();
-	});
-
-	it('gives a second app a server id and keeps both targets', async () => {
+	it('does not bind a second app until it is opened', async () => {
 		const { tool, appService, thread } = setup({
 			[INSTANCE_AI_APP_TARGETS_METADATA_KEY]: [{ appId: PENDING_ID, projectId: 'project-1' }],
 		});
@@ -233,8 +255,8 @@ describe('apps tool', () => {
 		});
 		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
 			{ appId: PENDING_ID, projectId: 'project-1' },
-			{ appId: SERVER_ID, projectId: 'project-1' },
 		]);
+		expect(checkOutDraft).not.toHaveBeenCalled();
 	});
 
 	it('ignores a pending id from another project', async () => {
@@ -273,14 +295,24 @@ describe('apps tool', () => {
 		expect(appService.createApp).not.toHaveBeenCalled();
 	});
 
-	it('keeps an open app folder and its uncommitted edits', async () => {
-		const { tool } = setup();
+	it('keeps an open app folder, binds it to the thread and preserves uncommitted edits', async () => {
+		const { tool, appService, thread, onArtifactChanged } = setup();
 		vi.mocked(readBaseVersion).mockResolvedValue('v1');
+		appService.getApp.mockResolvedValue(app(SERVER_ID));
 
 		const result = await executeTool(tool, { action: 'open', appId: SERVER_ID });
 
 		expect(result).toEqual({ path: `apps/${SERVER_ID}`, baseVersionId: 'v1', alreadyOpen: true });
 		expect(checkOutDraft).not.toHaveBeenCalled();
+		expect(thread.metadata?.[INSTANCE_AI_APP_TARGETS_METADATA_KEY]).toEqual([
+			{ appId: SERVER_ID, projectId: 'project-1' },
+		]);
+		expect(onArtifactChanged).toHaveBeenCalledWith({
+			type: 'app',
+			id: SERVER_ID,
+			name: 'Todos',
+			projectId: 'project-1',
+		});
 	});
 
 	it('refuses to commit an app that is not open', async () => {
@@ -353,14 +385,14 @@ describe('apps tool', () => {
 		});
 	});
 
-	it('returns a created app when the artifact report fails', async () => {
+	it('returns an open app when the artifact report fails', async () => {
 		const { tool, appService, onArtifactChanged, logger } = setup();
-		appService.createApp.mockResolvedValue(app(SERVER_ID));
+		appService.getApp.mockResolvedValue(app(SERVER_ID));
 		onArtifactChanged.mockRejectedValue(new Error('Event bus unavailable'));
 
-		const result = await approveCreate(tool);
+		const result = await executeTool(tool, { action: 'open', appId: SERVER_ID });
 
-		expect(result).toMatchObject({ app: { id: SERVER_ID }, path: `apps/${SERVER_ID}` });
+		expect(result).toEqual({ path: `apps/${SERVER_ID}`, baseVersionId: null });
 		expect(logger.warn).toHaveBeenCalled();
 	});
 
