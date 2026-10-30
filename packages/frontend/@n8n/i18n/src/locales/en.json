@@ -10391,6 +10391,7 @@
 	"agents.channels.approval.action.create_issue": "Create an issue",
 	"agents.channels.approval.action.update_issue": "Update an issue",
 	"agents.channels.approval.action.create_comment": "Comment on an issue",
+	"agents.channels.approval.action.send_template": "Send a template message",
 	"nodeCreator.sectionNames.includedInN8n": "Included in n8n",
 	"contextMenu.nodeGroup": "group",
 	"contextMenu.group": "Group node | Group nodes",
