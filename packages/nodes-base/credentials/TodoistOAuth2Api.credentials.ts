@@ -1,5 +1,7 @@
 import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
+import { dynamicClientRegistrationProperties } from './common/dynamic-client-registration';
+
 export class TodoistOAuth2Api implements ICredentialType {
 	name = 'todoistOAuth2Api';
 
@@ -10,6 +12,7 @@ export class TodoistOAuth2Api implements ICredentialType {
 	documentationUrl = 'todoist';
 
 	properties: INodeProperties[] = [
+		...dynamicClientRegistrationProperties('https://todoist.com'),
 		{
 			displayName: 'Grant Type',
 			name: 'grantType',
