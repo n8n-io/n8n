@@ -183,7 +183,7 @@ describe('MemoryGuardService', () => {
 		});
 		tracker.getEstimate.mockImplementation((id) => estimates.get(id));
 
-		productionHold = new ProductionHold();
+		productionHold = new ProductionHold(mock<EventService>());
 		concurrencyControl = new ConcurrencyControlService(
 			mockLogger(),
 			mock<ExecutionRepository>(),
@@ -743,6 +743,8 @@ describe('MemoryGuardService', () => {
 			await sample();
 			expect(eventService.emit).toHaveBeenCalledWith('memory-guard-hold-ended', {
 				heldMs: expect.any(Number),
+				heldExecutions: 0,
+				longestWaitMs: 0,
 			});
 		});
 
