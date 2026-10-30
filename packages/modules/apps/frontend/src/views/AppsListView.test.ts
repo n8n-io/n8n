@@ -56,6 +56,7 @@ const app = (id: string): AppResponse => ({
 	visibility: 'project',
 	draftVersionId: null,
 	publishedVersionId: null,
+	publishedUrl: null,
 	createdAt: '2026-10-01T10:00:00.000Z',
 	updatedAt: '2026-10-02T10:00:00.000Z',
 });

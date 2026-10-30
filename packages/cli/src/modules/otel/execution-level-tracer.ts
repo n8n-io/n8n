@@ -5,6 +5,7 @@ import {
 	context,
 	defaultTextMapGetter,
 	defaultTextMapSetter,
+	propagation,
 	ROOT_CONTEXT,
 	SpanStatusCode,
 	trace,
@@ -30,7 +31,6 @@ import {
 	type EndNodeParams,
 	isEndNodeError,
 } from './execution-level-tracer.types';
-import { OtelSettingsService } from './otel-settings.service';
 import {
 	type CustomAttributePrefixes,
 	OtelBaggageConfig,
@@ -60,7 +60,6 @@ export class ExecutionLevelTracer {
 	private readonly activeNodeSpansByExecutionId = new Map<string, Map<string, TrackedSpan>>();
 
 	constructor(
-		private readonly otelSettingsService: OtelSettingsService,
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
 		private readonly baggageConfig: OtelBaggageConfig,
@@ -313,15 +312,15 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
+			// The caller's baggage has its own setting, so it is sent even when
+			// outbound trace headers are off.
 			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
 			if (baggage) headers.baggage = baggage;
-
-			if (!this.otelSettingsService.getSettings().injectOutbound) return;
 
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			propagator.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
+			propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,

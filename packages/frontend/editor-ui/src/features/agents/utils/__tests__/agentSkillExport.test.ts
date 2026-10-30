@@ -22,13 +22,11 @@ async function blobBytes(blob: Blob): Promise<Uint8Array> {
 
 describe('agentSkillExport', () => {
 	it('writes frontmatter and the instructions', () => {
-		expect(agentSkillToMarkdown({ ...base, allowedTools: ['search'] })).toBe(
+		expect(agentSkillToMarkdown(base)).toBe(
 			[
 				'---',
 				'name: research-search',
 				'description: "Find research: cite the evidence."',
-				'allowed_tools:',
-				'  - search',
 				'---',
 				'',
 				base.instructions,

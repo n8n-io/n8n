@@ -92,6 +92,7 @@ export class McpConnection {
 	private client: McpClient | undefined;
 
 	private config: McpServerConfig;
+	private httpFetch: typeof fetch | undefined;
 
 	private connectionPromise: Promise<void> | undefined = undefined;
 	private disconnectPromise: Promise<void> | undefined = undefined;
@@ -124,6 +125,15 @@ export class McpConnection {
 
 	private async doConnect(): Promise<void> {
 		const sdk = await loadMcpSdk();
+		this.httpFetch = this.config.fetch;
+		// Custom fetches can manage auth across redirects when no extra headers are configured.
+		if (this.config.url && (!this.httpFetch || this.config.headers)) {
+			const { createRefreshingAuthFetch } = await import('@n8n/ai-utilities/refreshing-auth-fetch');
+			this.httpFetch = createRefreshingAuthFetch({
+				baseFetch: this.httpFetch ?? globalThis.fetch,
+				initialHeaders: this.config.headers,
+			});
+		}
 		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 		await this.connectPreferredTransport(sdk);
 	}
@@ -149,7 +159,7 @@ export class McpConnection {
 			await this.client?.close();
 			this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
 			await this.connectWithTransport(
-				this.createSseTransport(new URL(this.config.url), this.config, sdk),
+				this.createSseTransport(new URL(this.config.url), sdk),
 				deadline,
 			);
 		}
@@ -319,24 +329,21 @@ export class McpConnection {
 			});
 		} else if (config.url) {
 			const url = new URL(config.url);
-			const requestInit: RequestInit | undefined = config.headers
-				? { headers: config.headers }
-				: undefined;
 
-			if (config.transport === 'sse') return this.createSseTransport(url, config, sdk);
+			if (config.transport === 'sse') return this.createSseTransport(url, sdk);
 			return new sdk.StreamableHTTPClientTransport(url, {
-				requestInit,
-				fetch: config.fetch,
+				fetch: this.httpFetch,
+				redirectPolicy: 'follow',
 			});
 		}
 		throw new Error(`MCP server "${config.name}": provide either "url" or "command"`);
 	}
 
-	private createSseTransport(url: URL, config: McpServerConfig, sdk: McpSdkModule): McpTransport {
+	private createSseTransport(url: URL, sdk: McpSdkModule): McpTransport {
 		return new sdk.SSEClientTransport(url, {
-			requestInit: config.headers ? { headers: config.headers } : undefined,
-			fetch: config.fetch,
-			eventSourceInit: config.fetch ? { fetch: config.fetch } : undefined,
+			fetch: this.httpFetch,
+			eventSourceInit: { fetch: this.httpFetch },
+			redirectPolicy: 'follow',
 		});
 	}
 }

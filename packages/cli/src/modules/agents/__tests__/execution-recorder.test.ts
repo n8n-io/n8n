@@ -36,6 +36,24 @@ describe('ExecutionRecorder', () => {
 		},
 	);
 
+	it.each([true, false])('keeps tool trace output on the timeline (started: %s)', (started) => {
+		const recorder = new ExecutionRecorder();
+		if (started) recorder.record(makeToolCallChunk('recall_memory', {}, 'tc-recall'));
+		recorder.record({
+			type: 'tool-result',
+			toolCallId: 'tc-recall',
+			toolName: 'recall_memory',
+			output: { entries: [] },
+			traceOutput: { entryIds: ['entry-1'] },
+		});
+
+		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
+			type: 'tool-call',
+			toolCallId: 'tc-recall',
+			traceOutput: { entryIds: ['entry-1'] },
+		});
+	});
+
 	it.each([true, false])(
 		'keeps canceled tool state in saved chat messages (started: %s)',
 		(started) => {
@@ -71,7 +89,7 @@ describe('ExecutionRecorder', () => {
 		},
 	);
 
-	it('scrubs titles in the initial signal', () => {
+	it('scrubs titles and file names in the initial signal', () => {
 		const recorder = new ExecutionRecorder(undefined, undefined, {
 			tasks: [
 				{
@@ -79,29 +97,54 @@ describe('ExecutionRecorder', () => {
 					title: 'Check api_key=example-value',
 					kind: 'subagent',
 					status: 'completed',
+					files: [
+						{
+							fileId: 'f-1',
+							fileName: 'api_key=example-value',
+							mimeType: 'text/plain',
+							sizeBytes: 9,
+						},
+					],
 				},
 			],
 		});
 		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
-			signal: { tasks: [{ title: 'Check [REDACTED]' }] },
+			signal: {
+				tasks: [{ title: 'Check [REDACTED]', files: [{ fileId: 'f-1', fileName: '[REDACTED]' }] }],
+			},
 		});
 	});
 
 	it('keeps the initial background signal in snapshots and final storage', () => {
 		const onSnapshot = vi.fn();
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
 		const recorder = new ExecutionRecorder(undefined, onSnapshot, {
-			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			isFinal: true,
+			tasks: [
+				{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed', files: [file] },
+			],
 		});
 		const initial = structuredClone(recorder.getMessageRecord().timeline);
+
 		expect(initial).toEqual([
 			{
 				type: 'background-task-signal',
 				timestamp: recorder.startedAt.getTime(),
 				signal: {
-					tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+					isFinal: true,
+					tasks: [
+						{
+							id: 'job-1',
+							title: 'Research',
+							kind: 'subagent',
+							status: 'completed',
+							files: [file],
+						},
+					],
 				},
 			},
 		]);
+
 		recorder.record({ type: 'text-delta', id: 'text-1', delta: 'Done' });
 		recorder.record({ type: 'finish', finishReason: 'stop' });
 		expect(onSnapshot.mock.lastCall?.[0][0]).toEqual(initial[0]);

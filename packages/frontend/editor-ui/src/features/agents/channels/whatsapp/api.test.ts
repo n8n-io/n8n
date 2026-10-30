@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
-import { checkWhatsAppCredential, getWhatsAppWebhookStatus } from './api';
+import { checkWhatsAppCredential, getWhatsAppMetaStatus, getWhatsAppWebhookStatus } from './api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -57,5 +57,20 @@ describe('WhatsApp channel API', () => {
 			'GET',
 			'/projects/p%2F1/agents/v2/a%3F2/integrations/whatsapp/webhook-status',
 		);
+	});
+});
+
+describe('getWhatsAppMetaStatus', () => {
+	it('reads the Meta status for the agent and credential', async () => {
+		vi.mocked(makeRestApiRequest).mockResolvedValueOnce({ state: 'dailyLimit' });
+
+		const result = await getWhatsAppMetaStatus(context, 'p', 'a', 'cred 1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/p/agents/v2/a/integrations/whatsapp/meta-status/cred%201',
+		);
+		expect(result).toEqual({ state: 'dailyLimit' });
 	});
 });

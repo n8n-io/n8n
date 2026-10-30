@@ -1,6 +1,16 @@
 import { getFullApiResponse, makeRestApiRequest, type IRestApiContext } from '@n8n/rest-api-client';
 
-import { deleteApp, listApps } from './apps.api';
+import {
+	createAppPreview,
+	deleteApp,
+	getApp,
+	getAppBuild,
+	listApps,
+	listAppVersions,
+	publishApp,
+	unpublishApp,
+	updateApp,
+} from './apps.api';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	getFullApiResponse: vi.fn(),
@@ -28,6 +38,27 @@ describe('apps.api', () => {
 		expect(getFullApiResponse).toHaveBeenCalledWith(context, 'GET', '/apps', options);
 	});
 
+	it('gets one app of a project', async () => {
+		await getApp(context, 'project-1', 'app-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'GET',
+			'/projects/project-1/apps/app-1',
+		);
+	});
+
+	it('updates an app in its project', async () => {
+		await updateApp(context, 'project-1', 'app-1', { name: 'Sales' });
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'PATCH',
+			'/projects/project-1/apps/app-1',
+			{ name: 'Sales' },
+		);
+	});
+
 	it('deletes an app in its project', async () => {
 		await deleteApp(context, 'project-1', 'app-1');
 
@@ -35,6 +66,39 @@ describe('apps.api', () => {
 			context,
 			'DELETE',
 			'/projects/project-1/apps/app-1',
+		);
+	});
+
+	it.each([
+		['lists the versions', listAppVersions, 'GET', '/projects/project-1/apps/app-1/versions'],
+		[
+			'gets the build of a version',
+			async (ctx: IRestApiContext, p: string, a: string) => await getAppBuild(ctx, p, a, 'v-1'),
+			'GET',
+			'/projects/project-1/apps/app-1/versions/v-1/build',
+		],
+		['unpublishes an app', unpublishApp, 'POST', '/projects/project-1/apps/app-1/unpublish'],
+		[
+			'creates a preview grant for a version',
+			async (ctx: IRestApiContext, p: string, a: string) =>
+				await createAppPreview(ctx, p, a, 'v-1'),
+			'POST',
+			'/projects/project-1/apps/app-1/versions/v-1/preview',
+		],
+	])('%s', async (_name, request, method, endpoint) => {
+		await request(context, 'project-1', 'app-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(context, method, endpoint);
+	});
+
+	it('publishes a version of an app', async () => {
+		await publishApp(context, 'project-1', 'app-1', 'v-1');
+
+		expect(makeRestApiRequest).toHaveBeenCalledWith(
+			context,
+			'POST',
+			'/projects/project-1/apps/app-1/publish',
+			{ versionId: 'v-1' },
 		);
 	});
 });

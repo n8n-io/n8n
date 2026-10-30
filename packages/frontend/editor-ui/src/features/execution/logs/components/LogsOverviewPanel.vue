@@ -97,7 +97,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 					:content="locale.baseText('logs.overview.header.actions.clearExecution.tooltip')"
 				>
 					<N8nButton
-						variant="outline"
+						variant="ghost"
 						size="xsmall"
 						icon="trash-2"
 						icon-size="medium"
@@ -180,7 +180,6 @@ function handleSwitchView(value: 'overview' | 'details') {
 }
 
 .clearButton {
-	border: none;
 	color: var(--color--text--tint-1);
 	gap: var(--spacing--5xs);
 }

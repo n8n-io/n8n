@@ -11,8 +11,6 @@ import {
 	analyzeWorkflow,
 	applyCredentialHints,
 	applyNodeChanges,
-	applyNodeCredentials,
-	applyNodeParameters,
 	buildCompletedReport,
 	createCredentialCache,
 	stripStaleCredentialsFromWorkflow,
@@ -59,6 +57,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 		credentialService: {
 			list: vi.fn(),
 			get: vi.fn(),
+			updateDescription: vi.fn(),
 			delete: vi.fn(),
 			test: vi.fn(),
 		},
@@ -1262,16 +1261,6 @@ describe('analyzeWorkflow', () => {
 
 describe.each([
 	{
-		name: 'applyNodeCredentials',
-		apply: async (context: InstanceAiContext) =>
-			await applyNodeCredentials(context, 'wf-1', { Slack: { slackApi: 'cred-1' } }),
-	},
-	{
-		name: 'applyNodeParameters',
-		apply: async (context: InstanceAiContext) =>
-			await applyNodeParameters(context, 'wf-1', { Slack: { channel: 'updated' } }),
-	},
-	{
 		name: 'applyNodeChanges',
 		apply: async (context: InstanceAiContext) =>
 			await applyNodeChanges(context, 'wf-1', { Slack: { slackApi: 'cred-1' } }),
@@ -1962,7 +1951,7 @@ describe('stripStaleCredentialsFromWorkflow', () => {
 });
 
 // ---------------------------------------------------------------------------
-// applyNodeCredentials — credential ownership revalidation (IDOR boundary)
+// applyNodeChanges — credential ownership revalidation (IDOR boundary)
 //
 // `nodeCredentials` arrives in the confirmation payload from the client and
 // can carry arbitrary credential IDs. Each ID must be resolved through
@@ -1971,7 +1960,7 @@ describe('stripStaleCredentialsFromWorkflow', () => {
 // failures rather than being silently written to the workflow.
 // ---------------------------------------------------------------------------
 
-describe('applyNodeCredentials — credential ownership revalidation', () => {
+describe('applyNodeChanges — credential ownership revalidation', () => {
 	let context: InstanceAiContext;
 
 	beforeEach(() => {
@@ -1988,7 +1977,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			type: 'slackApi',
 		});
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'cred-mine' },
 		});
 
@@ -2004,7 +1993,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		const wfJson = makeWorkflowJSON([node]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Gemini: { googlePalmApi: AI_GATEWAY_MANAGED_TAG },
 		});
 
@@ -2024,7 +2013,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			new Error('Credential with ID "cred-other" could not be found.'),
 		);
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'cred-other' },
 		});
 
@@ -2047,7 +2036,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			throw new Error(`Credential with ID "${credId}" could not be found.`);
 		});
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			Slack: { slackApi: 'cred-mine' },
 			GitHub: { githubApi: 'cred-other' },
 		});
@@ -2070,7 +2059,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 			throw new Error(`Credential with ID "${credId}" could not be found.`);
 		});
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			HTTP: { httpHeaderAuth: 'cred-mine', httpQueryAuth: 'cred-other' },
 		});
 
@@ -2087,7 +2076,7 @@ describe('applyNodeCredentials — credential ownership revalidation', () => {
 		const wfJson = makeWorkflowJSON([node]);
 		(context.workflowService.getAsWorkflowJSON as Mock).mockResolvedValue(wfJson);
 
-		const result = await applyNodeCredentials(context, 'wf-1', {
+		const result = await applyNodeChanges(context, 'wf-1', {
 			GhostNode: { slackApi: 'cred-other' },
 		});
 

@@ -6,7 +6,7 @@ import {
 	type PromotionReviewRemoteError,
 	type PromotionReviewState,
 } from '@n8n/api-types';
-import { LicenseState, Logger, isEnvFeatureEnabled } from '@n8n/backend-common';
+import { LicenseState, Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { LICENSE_FEATURES } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -41,6 +41,7 @@ import type { GitLabMergeRequest, MergeRequestRef } from './git-hosts/gitlab-mer
 import { PromotionReviewHostResolver } from './promotion-review-host.resolver';
 import { observePromotion } from './promotion-telemetry';
 import { approvalNote } from './promotion-review.utils';
+import type { PromotionReviewCloseReason } from './promotions.types';
 
 /** One live look at a review on the host. A failed read says why, and never a state. */
 export type LiveReviewState =
@@ -66,8 +67,9 @@ const UNCONFIRMED_MERGE =
 
 /**
  * Promotion Reviews as an Inbox source, and their approval. The first page of each tab and
- * the counters share one sync of the open reviews with the Git host. An Inbox sync failure
- * never changes the review state.
+ * the counters share one sync of the open reviews with the Git host. A failed host read
+ * never changes the review state. A review whose environment is gone, or no longer uses its
+ * host, can never merge, so the sync closes it.
  */
 @Service()
 export class PromotionReviewInboxService {
@@ -91,7 +93,6 @@ export class PromotionReviewInboxService {
 	isEnabled() {
 		return (
 			this.licenseState.isLicensed(LICENSE_FEATURES.PROMOTIONS) &&
-			isEnvFeatureEnabled('N8N_ENV_FEAT_PROMOTIONS') &&
 			this.sourceControlPreferences.getPreferences().environmentsVersion === 'v2'
 		);
 	}
@@ -291,8 +292,9 @@ export class PromotionReviewInboxService {
 		const reviews = await this.reviewRepository.findOpenReviews();
 		const views = await this.readRemote(reviews, await this.newestRuns(reviews));
 		for (const review of reviews) {
-			const mergeRequest = views.get(review.id)?.mergeRequest;
-			if (mergeRequest) await this.applyHostState(review, mergeRequest);
+			const view = views.get(review.id);
+			if (view?.mergeRequest) await this.applyHostState(review, view.mergeRequest);
+			else if (view?.remoteError === 'no_connection') await this.closeUnreachable(review);
 		}
 		return views;
 	}
@@ -357,6 +359,23 @@ export class PromotionReviewInboxService {
 			throw new NotFoundError("GitLab couldn't find the merge request of this promotion.");
 		}
 		return { access, ref, mergeRequest };
+	}
+
+	/** Only a review on a host can lose it. A review that lives in n8n stays open. */
+	private async closeUnreachable(review: PromotionReview) {
+		if (!review.remoteReviewId) return;
+		const at = new Date();
+		if (!(await this.reviewRepository.recordHostState(review.id, 'closed', at))) return;
+		review.state = 'closed';
+		review.lastStateChangeAt = at;
+		const reason: PromotionReviewCloseReason = review.environment
+			? 'environment_host_changed'
+			: 'environment_deleted';
+		this.logger.info('Closed a promotion review that can no longer reach its host', {
+			reviewId: review.id,
+			environmentId: review.environmentId,
+			reason,
+		});
 	}
 
 	private async applyHostState(review: PromotionReview, mergeRequest: GitLabMergeRequest) {

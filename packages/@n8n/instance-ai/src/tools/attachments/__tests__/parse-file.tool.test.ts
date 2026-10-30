@@ -41,6 +41,7 @@ function createMockContext(overrides?: Partial<InstanceAiContext>): InstanceAiCo
 		credentialService: {
 			list: vi.fn(),
 			get: vi.fn(),
+			updateDescription: vi.fn(),
 			delete: vi.fn(),
 			test: vi.fn(),
 		},

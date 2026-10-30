@@ -728,7 +728,8 @@ Rules:
 
 - **The run's workflow must match the seed.** The agent reads the seeded workflow and
   the run side by side, so node names must agree. Export after the last change to the
-  seed workflow, and export again when you change it.
+  seed workflow, and export again when you change it. The harness logs a warning when
+  the run has nodes the seed workflow does not.
 - **Only a failed run exports** (`error` or `crashed`). Export refuses engine-v2 runs,
   retries, sub-workflow and agent sub-runs, credentials in the run data, and binary
   files stored outside the run. Keep the failing workflow small and self-contained.

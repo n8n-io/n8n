@@ -9,6 +9,7 @@ import type { UrlService } from '@n8n/backend-services';
 import type { InviteEmailData, PasswordResetData } from '@/user-management/email/interfaces';
 import { NodeMailer } from '@/user-management/email/node-mailer';
 import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
+import { mockServiceAccount } from '@test/mock-objects';
 
 // This suite renders real email templates from disk; opt out of the global fs mocks.
 vi.unmock('node:fs/promises');
@@ -130,6 +131,47 @@ describe('UserManagementMailer', () => {
 				expect(callBody).toContain('Test Workflow');
 				expect(callBody).toContain('A workflow has been shared with you');
 			});
+		});
+
+		it.each([
+			[
+				'a workflow',
+				async (sharer: User) =>
+					await userManagementMailer.notifyWorkflowShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						workflow: mock<IWorkflowBase>({ id: 'workflow1', name: 'Test Workflow' }),
+					}),
+				'Deploy bot has shared an n8n workflow with you',
+			],
+			[
+				'a credential',
+				async (sharer: User) =>
+					await userManagementMailer.notifyCredentialsShared({
+						sharer,
+						newShareeIds: ['recipient1'],
+						credentialsName: 'Test Credentials',
+					}),
+				'Deploy bot has shared an n8n credential with you',
+			],
+			[
+				'a project',
+				async (sharer: User) =>
+					await userManagementMailer.notifyProjectShared({
+						sharer,
+						newSharees: [{ userId: 'recipient1', role: PROJECT_EDITOR_ROLE_SLUG }],
+						project: { id: 'project1', name: 'Test Project' },
+					}),
+				'Deploy bot has invited you to a project',
+			],
+		])('should name a service account that shares %s by its name', async (_, share, subject) => {
+			personRepository.getEmailsByIds.mockResolvedValue([
+				{ id: 'recipient1', email: 'recipient1@user.com' },
+			] as User[]);
+
+			await share(mockServiceAccount());
+
+			expect(nodeMailer.sendMail).toHaveBeenCalledWith(expect.objectContaining({ subject }));
 		});
 
 		it('should send credentials share notifications', async () => {

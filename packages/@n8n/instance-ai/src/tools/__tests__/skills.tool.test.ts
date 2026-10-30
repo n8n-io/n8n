@@ -14,15 +14,17 @@ const listItem: SkillListItem = {
 	projectId: 'project-1',
 	projectName: 'Marketing',
 	projectType: 'team',
-	agentId: null,
-	agentName: null,
 	availableToAssistant: false,
 	source: 'ui',
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
 	latestVersion: 2,
 	usedByAgents: 3,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
+	canStopSyncing: false,
+	syncState: null,
+	canCheckForUpdates: false,
 	createdAt: '2026-10-01T00:00:00.000Z',
 	updatedAt: '2026-10-02T00:00:00.000Z',
 };
@@ -32,6 +34,7 @@ const detail: SkillDetail = {
 	skill: { name: 'Brand voice', description: 'Write in the brand voice', instructions: 'Be kind.' },
 	skillHash: 'hash-2',
 	usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+	syncedFrom: null,
 };
 
 const skill = { name: 'Brand voice', description: 'd', instructions: 'Be kind.' };
@@ -321,6 +324,28 @@ describe('skills tool', () => {
 			expect(result).toMatchObject({ success: true, skill: { id: 'skill_a' } });
 		});
 
+		it('reports the created skill so its tab opens', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'skill',
+				id: 'skill_a',
+				name: 'Brand voice',
+			});
+		});
+
+		it('reports nothing when the user denies the create', async () => {
+			const onArtifactChanged = vi.fn();
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(false));
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
 		it('creates nothing when the user denies', async () => {
 			const tool = createSkillsTool(createContext(service));
 
@@ -412,12 +437,45 @@ describe('skills tool', () => {
 				success: true,
 				saved: {
 					id: 'skill_a',
+					name: 'Brand voice',
 					versionId: 'version-3',
 					version: 3,
 					created: true,
 					skillHash: 'hash-3',
 				},
 			});
+		});
+
+		it('reports the saved skill so its tab opens', async () => {
+			const onArtifactChanged = vi.fn().mockResolvedValue(undefined);
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(onArtifactChanged).toHaveBeenCalledWith({
+				type: 'skill',
+				id: 'skill_a',
+				name: 'Brand voice',
+			});
+		});
+
+		it('reports nothing when the user denies the update', async () => {
+			const onArtifactChanged = vi.fn();
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(false));
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
+		});
+
+		it('reports nothing when the update is refused', async () => {
+			service.get.mockResolvedValue({ ...detail, canEdit: false });
+			const onArtifactChanged = vi.fn();
+			const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+			await executeTool(tool, input, resumeCtx(true));
+
+			expect(onArtifactChanged).not.toHaveBeenCalled();
 		});
 
 		it('names the new place on the card when the update moves the skill', async () => {
@@ -642,6 +700,18 @@ describe('skills tool', () => {
 			expect(service.delete).toHaveBeenCalledWith('skill_a');
 			expect(result).toEqual({ success: true, skillId: 'skill_a' });
 		});
+	});
+
+	it('reports no artifact when it only reads, lists or deletes a skill', async () => {
+		service.get.mockResolvedValue({ ...detail, usedByAgents: 0 });
+		const onArtifactChanged = vi.fn();
+		const tool = createSkillsTool(createContext(service, { onArtifactChanged }));
+
+		await executeTool(tool, { action: 'list' });
+		await executeTool(tool, { action: 'get', skillId: 'skill_a' });
+		await executeTool(tool, { action: 'delete', skillId: 'skill_a' }, resumeCtx(true));
+
+		expect(onArtifactChanged).not.toHaveBeenCalled();
 	});
 
 	it('marks its output as untrusted data', () => {

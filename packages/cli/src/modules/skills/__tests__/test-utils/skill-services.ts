@@ -8,12 +8,16 @@ import type { Skill } from '../../database/entities/skill.entity';
 import type { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillAccessService } from '../../services/skill-access.service';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
-import type { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
+import { SkillUsageProxy } from '../../services/skill-usage-proxy.service';
 import { SkillService } from '../../services/skill.service';
 import type { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import type { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
+import type { SkillSyncedFromService } from '../../services/skill-synced-from.service';
+import type { SkillSyncFlagGate } from '../../services/skill-sync-flag-gate';
+import type { SkillSourceRepository } from '../../database/repositories/skill-source.repository';
 import type { ResolvedSkillRow } from '../../utils/skill-content';
 import { skillContentHash } from '../../utils/skill-content-hash';
+import { FakeSkillUsage } from '../../testing';
 
 export const PROJECT = 'project-1';
 
@@ -32,11 +36,8 @@ export async function expectError(
 	expect(error).toHaveProperty('message', message);
 }
 
-export function skillRow(
-	id: string,
-	target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {},
-): Skill {
-	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });
+export function skillRow(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skill {
+	return mock<Skill>({ id, projectId: target.projectId ?? null });
 }
 
 export function versionRow(
@@ -74,16 +75,24 @@ export function versionRow(
 	};
 }
 
-/** The three skills services, real, over mocked repository, agents and transactions. */
+/**
+ * The three skills services, real, over a mocked repository and transactions. The agents
+ * side is `FakeSkillUsage` behind a real `SkillUsageProxy`: seed it with `usage.seed`.
+ */
 export function createSkillServices() {
 	const skills = mock<SkillRepository>();
-	const skillUsage = mock<SkillUsageProxy>();
+	const usage = new FakeSkillUsage();
+	const skillUsage = new SkillUsageProxy();
+	skillUsage.register(usage);
 	const txRunner = mock<TransactionRunner>();
 	const projectScope = mock<ProjectScopeService>();
 	const telemetry = mock<SkillsTelemetry>();
 	const users = mock<UserRepository>();
 	const assistantGate = mock<AssistantSkillsFlagGate>();
-	const access = new SkillAccessService(skills, projectScope, skillUsage);
+	const syncedFrom = mock<SkillSyncedFromService>();
+	const links = mock<SkillSourceRepository>();
+	const skillSyncGate = mock<SkillSyncFlagGate>();
+	const access = new SkillAccessService(skills, projectScope);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
 		mock(),
@@ -96,34 +105,49 @@ export function createSkillServices() {
 		runtime,
 		telemetry,
 		assistantGate,
+		syncedFrom,
+		links,
+		skillSyncGate,
 	);
 	return {
 		skills,
+		usage,
 		skillUsage,
 		txRunner,
 		projectScope,
 		telemetry,
 		users,
 		assistantGate,
+		syncedFrom,
+		links,
+		skillSyncGate,
 		access,
 		runtime,
 		service,
 	};
 }
 
-/** The mock answers that most skills tests start from. */
-export function resetSkillMocks({
+/** The mock answers that most skills tests start from, and no agents. */
+export async function resetSkillMocks({
 	skills,
-	skillUsage,
+	usage,
 	txRunner,
-}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'skillUsage' | 'txRunner'>) {
+	links,
+	skillSyncGate,
+}: Pick<ReturnType<typeof createSkillServices>, 'skills' | 'usage' | 'txRunner'> &
+	Partial<Pick<ReturnType<typeof createSkillServices>, 'links' | 'skillSyncGate'>>) {
+	vi.restoreAllMocks();
 	vi.resetAllMocks();
+	await usage.seed({ agents: [], skills: [] });
 	txRunner.run.mockImplementation(async (_ctx, fn) => await fn(TX_CTX));
 	skills.findLatestSaved.mockResolvedValue(new Map());
 	skills.findLatestNamesInTarget.mockResolvedValue([]);
 	skills.findLatestSummaries.mockResolvedValue(new Map());
 	skills.findVersionsByIds.mockResolvedValue(new Map());
 	skills.findByIds.mockResolvedValue([]);
-	skillUsage.markFollowersChanged.mockResolvedValue([]);
-	skillUsage.findUsingAgentIds.mockResolvedValue([]);
+	// No skill is synced unless a test links it.
+	links?.isLinked.mockResolvedValue(false);
+	links?.findSyncStates.mockResolvedValue(new Map());
+	// Skill Sync is off unless a test turns it on.
+	skillSyncGate?.isEnabled.mockResolvedValue(false);
 }

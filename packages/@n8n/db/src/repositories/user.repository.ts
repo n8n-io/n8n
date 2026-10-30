@@ -15,6 +15,40 @@ import { GLOBAL_OWNER_ROLE } from '../constants';
 import { ApiKey, Project, ProjectRelation, User } from '../entities';
 import { type OperationContext, TransactionRunner } from '../services/transaction';
 
+export type EligibleAccountsQuery = {
+	projectId: string;
+	projectRoleSlugs: string[];
+	globalRoleSlugs: string[];
+	userIds?: string[];
+};
+
+/**
+ * The `where` of `findEligibleByProjectOrGlobalRoles` in `UserRepository` and
+ * `PersonRepository`, or `null` when no account can match.
+ */
+export function eligibleAccountsWhere({
+	projectId,
+	projectRoleSlugs,
+	globalRoleSlugs,
+	userIds,
+}: EligibleAccountsQuery): Array<FindOptionsWhere<User>> | null {
+	if (userIds?.length === 0) return null;
+
+	const requestedUsers = userIds ? { id: In(userIds) } : {};
+	const where: Array<FindOptionsWhere<User>> = [];
+	if (globalRoleSlugs.length > 0) {
+		where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
+	}
+	if (projectRoleSlugs.length > 0) {
+		where.push({
+			...requestedUsers,
+			disabled: false,
+			projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
+		});
+	}
+	return where.length > 0 ? where : null;
+}
+
 /**
  * SQL condition for a user in the `deactivated` status of the users list.
  * Open question Q21 (IAM-1552) decides if the status covers every disabled
@@ -75,7 +109,11 @@ export class UserRepository extends BaseRepository<User> {
 	 * and so has no password would read as pending.
 	 */
 	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
-		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
+		return await this.find({
+			relations: ['role', 'authIdentities'],
+			order: { id: 'ASC' },
+			loadEagerRelations: false,
+		});
 	}
 
 	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {
@@ -92,8 +130,9 @@ export class UserRepository extends BaseRepository<User> {
 		});
 	}
 
-	async findOneByProjectIdOrFail(projectId: string): Promise<User> {
-		return await this.findOneByOrFail({
+	/** A member of the project, or null when the project has no members. */
+	async findOneByProjectId(projectId: string): Promise<User | null> {
+		return await this.findOneBy({
 			projectRelations: { projectId },
 		});
 	}
@@ -228,34 +267,9 @@ export class UserRepository extends BaseRepository<User> {
 	 * both to compute `isPending` (a raw `password IS NOT NULL` filter would
 	 * wrongly drop SSO/LDAP users).
 	 */
-	async findEligibleByProjectOrGlobalRoles({
-		projectId,
-		projectRoleSlugs,
-		globalRoleSlugs,
-		userIds,
-	}: {
-		projectId: string;
-		projectRoleSlugs: string[];
-		globalRoleSlugs: string[];
-		userIds?: string[];
-	}): Promise<User[]> {
-		if (userIds?.length === 0) return [];
-
-		const requestedUsers = userIds ? { id: In(userIds) } : {};
-		const where: Array<FindOptionsWhere<User>> = [];
-		if (globalRoleSlugs.length > 0) {
-			where.push({ ...requestedUsers, disabled: false, role: { slug: In(globalRoleSlugs) } });
-		}
-		if (projectRoleSlugs.length > 0) {
-			where.push({
-				...requestedUsers,
-				disabled: false,
-				projectRelations: { projectId, role: { slug: In(projectRoleSlugs) } },
-			});
-		}
-		if (where.length === 0) {
-			return [];
-		}
+	async findEligibleByProjectOrGlobalRoles(query: EligibleAccountsQuery): Promise<User[]> {
+		const where = eligibleAccountsWhere(query);
+		if (!where) return [];
 
 		return await this.find({
 			where,
@@ -318,8 +332,11 @@ export class UserRepository extends BaseRepository<User> {
 	 *
 	 * Returns null if the project does not exist or is not a personal project.
 	 */
-	async findPersonalOwnerForProject(projectId: string): Promise<User | null> {
-		return await this.findOne({
+	async findPersonalOwnerForProject(
+		projectId: string,
+		ctx: OperationContext = {},
+	): Promise<User | null> {
+		return await this.managerFor(ctx).findOne(User, {
 			where: {
 				projectRelations: {
 					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },

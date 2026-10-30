@@ -18,6 +18,7 @@ import {
 	In,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import type { TrustedSourceFacets } from '@n8n/inbound-auth';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
@@ -254,6 +255,66 @@ describe('TelemetryEventRelay', () => {
 
 			expect(telemetry.init).toHaveBeenCalled();
 			expect(setupListenersSpy).toHaveBeenCalled();
+		});
+
+		// On its own emitter, so only the listeners this relay registered can answer.
+		it('registers a listener for every trusted-source event', async () => {
+			globalConfig.diagnostics.enabled = true;
+			const ownEventService = new EventService();
+			const telemetryEventRelay = new TelemetryEventRelay(
+				ownEventService,
+				telemetry,
+				license,
+				licenseState,
+				globalConfig,
+				instanceSettings,
+				binaryDataConfig,
+				workflowRepository,
+				nodeTypes,
+				sharedWorkflowRepository,
+				projectRelationRepository,
+				credentialsRepository,
+				dynamicCredentialsProxy,
+				dbConnection,
+				loadNodesAndCredentials,
+				postHogClient,
+				ownershipService,
+			);
+			await telemetryEventRelay.init();
+			const user = {
+				id: 'user-1',
+				email: 'owner@n8n.io',
+				firstName: 'Own',
+				lastName: 'Er',
+				role: { slug: GLOBAL_OWNER_ROLE.slug },
+			};
+			const facets: TrustedSourceFacets = {
+				discoveryMode: 'auto',
+				clientKind: null,
+				surfaces: ['public-api'],
+				identitySubject: 'binding',
+				linkByEmail: 'verified-only',
+				provisionHuman: 'off',
+				roleMappingMode: 'off',
+			};
+
+			ownEventService.emit('trusted-source-created', { user, sourceId: 's', issuer: 'i', facets });
+			ownEventService.emit('trusted-source-updated', { user, sourceId: 's', issuer: 'i', facets });
+			ownEventService.emit('trusted-source-deleted', { user, sourceId: 's', issuer: 'i' });
+			ownEventService.emit('trusted-source-healthy', { sourceId: 's' });
+			ownEventService.emit('trusted-source-first-authenticated', {
+				sourceId: 's',
+				surface: 'public-api',
+			});
+
+			const tracked = telemetry.track.mock.calls.map(([entry]) => entry);
+			expect(tracked).toEqual([
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+			]);
 		});
 
 		it('with diagnostics disabled, should neither init telemetry nor register listeners', async () => {
@@ -2064,6 +2125,31 @@ describe('TelemetryEventRelay', () => {
 			}
 		});
 
+		it('omits unknown secret properties for a description-only update', () => {
+			eventService.emit('credentials-updated', {
+				user: { id: 'user123' },
+				credentialId: 'cred123',
+				credentialName: 'Reporting',
+				credentialType: 'postgres',
+				credentialDescriptionLength: 9,
+				isDynamic: false,
+				descriptionOnly: true,
+			});
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+				{
+					source: 'backend',
+					user_id: 'user123',
+					user_role: undefined,
+					credential_id: 'cred123',
+					credential_type: 'postgres',
+					has_description: true,
+					description_length: 9,
+					is_private: false,
+				},
+			);
+		});
+
 		it.each([
 			{ descriptionLength: 0, publicApi: false },
 			{ descriptionLength: 18, publicApi: false },
@@ -2113,6 +2199,35 @@ describe('TelemetryEventRelay', () => {
 						credential_supports_managed_auth: true,
 						credential_uses_managed_auth: true,
 					},
+				);
+			},
+		);
+
+		it.each(['credentials-created', 'credentials-updated'] as const)(
+			'reports the managed app version on `%s`',
+			(eventName) => {
+				eventService.emit(eventName, {
+					credentialName: 'My Notion account',
+					user: {
+						id: 'user123',
+						email: 'user@example.com',
+						firstName: 'John',
+						lastName: 'Doe',
+						role: { slug: GLOBAL_OWNER_ROLE.slug },
+					},
+					credentialType: 'notionOAuth2Api',
+					credentialId: 'cred123',
+					publicApi: false,
+					supportsManagedAuth: true,
+					usesManagedAuth: true,
+					managedAppVersion: 2,
+				});
+
+				expect(telemetry.track).toHaveBeenCalledWith(
+					eventName === 'credentials-created'
+						? TELEMETRY_EVENT.CREDENTIALS.USER_CREATED_CREDENTIALS
+						: TELEMETRY_EVENT.CREDENTIALS.USER_UPDATED_CREDENTIALS,
+					expect.objectContaining({ credential_managed_app_version: 2 }),
 				);
 			},
 		);
@@ -3785,6 +3900,29 @@ describe('TelemetryEventRelay', () => {
 				},
 				'user456',
 			);
+		});
+
+		it('tracks a `user-deleted` event without a user with the source', () => {
+			const event: RelayEventMap['user-deleted'] = {
+				user: null,
+				source: 'scim',
+				publicApi: false,
+				targetUserOldStatus: 'active',
+				migrationStrategy: 'delete_data',
+				targetUserId: 'user456',
+			};
+
+			eventService.emit('user-deleted', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('User deleted user', {
+				user_id: undefined,
+				source: 'scim',
+				public_api: false,
+				target_user_old_status: 'active',
+				migration_strategy: 'delete_data',
+				target_user_id: 'user456',
+				migration_user_id: undefined,
+			});
 		});
 
 		it('should track on `user-invited` event', () => {
@@ -5597,6 +5735,36 @@ describe('TelemetryEventRelay', () => {
 			).toBeNull();
 		});
 
+		it('should track a changed Apply preview without workflow totals', () => {
+			eventService.emit('promotion-applied', {
+				user,
+				environmentId: 'env-1',
+				scope: 'project',
+				projectId: 'project-1',
+				outcome: 'preview_changed',
+				durationMs: 20,
+			});
+
+			const payload = {
+				user_id: 'user123',
+				environment_id: 'env-1',
+				scope: 'project',
+				project_id: 'project-1',
+				outcome: 'preview_changed',
+				failure_kind: undefined,
+				duration_ms: 20,
+				workflows_changed: undefined,
+				workflows_failed_to_publish: undefined,
+			};
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES,
+				payload,
+			);
+			expect(
+				TELEMETRY_EVENT.PROMOTIONS.USER_APPLIED_PROMOTION_CHANGES.getValidationError(payload),
+			).toBeNull();
+		});
+
 		it('should track an opened merge request', () => {
 			eventService.emit('promotion-merge-request-opened', {
 				user,
@@ -5923,6 +6091,17 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('data table events', () => {
+		it('tracks the storage limit with the existing event name and properties', () => {
+			eventService.emit('data-table-storage-limit-reached', { totalBytes: 200, maxBytes: 100 });
+
+			expect(telemetry.track).toHaveBeenCalledWith('User hit data table storage limit', {
+				total_bytes: 200,
+				max_bytes: 100,
+			});
+		});
+	});
+
 	describe('runner events', () => {
 		it('should track on `runner-disconnected` event', () => {
 			const event: RelayEventMap['runner-disconnected'] = {
@@ -5939,6 +6118,88 @@ describe('TelemetryEventRelay', () => {
 					mode: 'internal',
 				},
 			);
+		});
+	});
+
+	describe('trusted source events', () => {
+		const user = {
+			id: 'user-1',
+			email: 'owner@n8n.io',
+			firstName: 'Own',
+			lastName: 'Er',
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		};
+		const issuer = 'https://idp.example.com';
+		const facets: TrustedSourceFacets = {
+			discoveryMode: 'manual',
+			clientKind: 'registered',
+			surfaces: ['public-api', 'instance-mcp'],
+			identitySubject: 'binding',
+			linkByEmail: 'verified-only',
+			provisionHuman: 'jit',
+			roleMappingMode: 'on-provision',
+		};
+		const trackedFacets = {
+			discovery_mode: 'manual',
+			client_kind: 'registered',
+			surfaces: ['public-api', 'instance-mcp'],
+			identity_subject: 'binding',
+			link_by_email: 'verified-only',
+			provision_human: 'jit',
+			role_mapping_mode: 'on-provision',
+		};
+
+		it.each([
+			['trusted-source-created', TELEMETRY_EVENT.TRUSTED_SOURCES.USER_CREATED_TRUSTED_SOURCE],
+			['trusted-source-updated', TELEMETRY_EVENT.TRUSTED_SOURCES.USER_UPDATED_TRUSTED_SOURCE],
+		] as const)('should track on `%s` event with the config facets', (eventName, entry) => {
+			eventService.emit(eventName, { user, sourceId: 'source-1', issuer, facets });
+
+			expect(telemetry.track).toHaveBeenCalledWith(entry, {
+				user_id: 'user-1',
+				source_id: 'source-1',
+				...trackedFacets,
+			});
+		});
+
+		it('should track on `trusted-source-deleted` event', () => {
+			eventService.emit('trusted-source-deleted', { user, sourceId: 'source-1', issuer });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.USER_DELETED_TRUSTED_SOURCE,
+				{ user_id: 'user-1', source_id: 'source-1' },
+			);
+		});
+
+		it('should track on `trusted-source-healthy` event', () => {
+			eventService.emit('trusted-source-healthy', { sourceId: 'source-1' });
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_BECAME_HEALTHY,
+				{ source_id: 'source-1' },
+			);
+		});
+
+		it('should track on `trusted-source-first-authenticated` event with the surface', () => {
+			eventService.emit('trusted-source-first-authenticated', {
+				sourceId: 'source-1',
+				surface: 'instance-mcp',
+			});
+
+			expect(telemetry.track).toHaveBeenCalledWith(
+				TELEMETRY_EVENT.TRUSTED_SOURCES.TRUSTED_SOURCE_AUTHENTICATED_FIRST_REQUEST,
+				{ source_id: 'source-1', surface: 'instance-mcp' },
+			);
+		});
+
+		it('never sends the issuer of a trusted source', () => {
+			eventService.emit('trusted-source-created', { user, sourceId: 'source-1', issuer, facets });
+			eventService.emit('trusted-source-updated', { user, sourceId: 'source-1', issuer, facets });
+			eventService.emit('trusted-source-deleted', { user, sourceId: 'source-1', issuer });
+
+			// The `init` tests above leave extra relays listening, so the call count is not asserted.
+			expect(telemetry.track).toHaveBeenCalled();
+			expect(JSON.stringify(telemetry.track.mock.calls)).not.toContain('idp.example.com');
 		});
 	});
 });

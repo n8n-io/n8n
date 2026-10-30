@@ -27,6 +27,7 @@ const ACTION_LABEL_KEYS = {
 	create_issue: 'agents.channels.approval.action.create_issue',
 	update_issue: 'agents.channels.approval.action.update_issue',
 	create_comment: 'agents.channels.approval.action.create_comment',
+	send_template: 'agents.channels.approval.action.send_template',
 } as const satisfies Record<string, BaseTextKey>;
 
 const props = defineProps<{

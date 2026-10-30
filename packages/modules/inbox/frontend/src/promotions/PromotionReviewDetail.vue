@@ -11,6 +11,7 @@ import {
 	N8nDialogFooter,
 	N8nDialogHeader,
 	N8nDialogTitle,
+	N8nEmptyState,
 	N8nExternalLink,
 	N8nHeading,
 	N8nTabs,
@@ -64,6 +65,8 @@ const hasNewCommits = computed(
 		!!props.item.headCommitSha &&
 		changes.value.headCommitSha !== props.item.headCommitSha,
 );
+const withoutEnvironment = computed(() => props.item.remoteError === 'no_connection');
+const endedAs = computed(() => (props.item.reviewState === 'merged' ? 'merged' : 'closed'));
 // A new key mounts the Changes tab again, so it loads the newest head.
 const changesKey = ref(0);
 
@@ -188,7 +191,7 @@ async function onApprove() {
 			</div>
 		</header>
 		<N8nCallout
-			v-if="item.remoteError"
+			v-if="item.remoteError && !withoutEnvironment"
 			:class="$style.gutter"
 			theme="warning"
 			data-test-id="inbox-promotion-review-remote-error"
@@ -248,8 +251,17 @@ async function onApprove() {
 					</N8nButton>
 				</template>
 			</N8nCallout>
+			<N8nEmptyState
+				v-if="withoutEnvironment"
+				:class="$style.changes"
+				:icon="{ type: 'icon', value: endedAs === 'merged' ? 'check' : 'circle-check' }"
+				:heading="i18n.baseText(`promotions.review.outcome.${endedAs}.title`)"
+				:description="i18n.baseText('inbox.promotionReview.changes.withoutEnvironment')"
+				data-test-id="inbox-promotion-review-without-environment"
+			/>
 			<component
 				:is="PromotionChanges"
+				v-else
 				:key="changesKey"
 				:class="$style.changes"
 				:review-id="item.id"

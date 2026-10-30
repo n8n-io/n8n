@@ -34,6 +34,14 @@ import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-hist
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { NodeTypes } from '@/node-types';
+import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
+import {
+	createSkill,
+	deleteAllSkills,
+	deleteSkill,
+	findLatestSkillVersion,
+	toSkillContent,
+} from '@/modules/skills/testing';
 import { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { createCustomRoleWithScopeSlugs } from '@test-integration/db/roles';
 import { createCredentials } from '@test-integration/db/credentials';
@@ -51,6 +59,7 @@ import { TarPackageWriter } from '../io/tar/tar-package-writer';
 import { PackageImportConfig } from '../n8n-packages.config';
 import type { ImportConflictPolicy, WorkflowPublishingPolicy } from '../n8n-packages.types';
 import { serializedAgentSchema } from '../spec/serialized/agent.schema';
+import type { SerializedSkill } from '../spec/serialized/skill.schema';
 
 const license = new LicenseMocker();
 mockInstance(ActiveWorkflowManager);
@@ -75,6 +84,8 @@ beforeAll(async () => {
 }, 60_000);
 beforeEach(async () => {
 	await agents.delete({});
+	// Skills belong to projects and outlive their Agents.
+	await deleteAllSkills();
 	await testDb.truncate([
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -97,7 +108,6 @@ function agent(sourceAgentId: string, config: Partial<AgentJsonConfig> = {}): Pr
 			...config,
 		}),
 		availableInMCP: false,
-		skills: {},
 		tools: {},
 		tasks: {},
 		metadata: { versionId: 'source-version', publishedVersionId: null },
@@ -260,7 +270,6 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 		],
 		tasks: [{ type: 'task', id: 'task_source', enabled: false }],
 	});
-	first.skills.skill_review = { name: 'Review', description: 'Review.', instructions: 'Review.' };
 	first.tools.custom_review = {
 		code: 'return { agentId: "second", credential: "model-credential" };',
 		descriptor: {
@@ -289,6 +298,8 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 		subAgents: { agents: [{ agentId: 'shared' }] },
 	});
 	const request = input([first, second]);
+	const review = sharedSkill('skill_review', 'project');
+	request.skills = [review];
 	request.workflows = [
 		{
 			entity: Object.assign(new WorkflowEntity(), {
@@ -331,7 +342,9 @@ it('plans cycles, typed bindings and task IDs without changing definitions or de
 	});
 	expect(a.config?.credential).toBe(plan.credentialPlan.stubIds.get('model-credential'));
 	expect(b.config?.credential).toBe(AI_GATEWAY_MANAGED_TAG);
-	expect(a.skills).toEqual(first.skills);
+	expect(plan.agentPlan!.skills?.shared).toEqual([
+		expect.objectContaining({ skill: review, target: { projectId: project.id } }),
+	]);
 	expect(a.tools).toEqual(first.tools);
 	expect(a.config?.skills).toEqual(first.config?.skills);
 	expect(a.tasks).toEqual(first.tasks);
@@ -617,20 +630,21 @@ it('blocks unavailable Agent tool node types without changing destination record
 });
 
 it.each([
-	['skills', /hard to tell apart|skill name/i],
+	['skills', /hard to tell apart|same name/i],
 	['self-reference', /itself/],
 	['Teams connections', /only one Microsoft Teams connection/],
 ] as const)('uses the UI validation rule for %s', async (invalid, errorPattern) => {
 	const source = agent('source');
+	const request = input([source]);
 	if (invalid === 'skills') {
-		source.skills = {
-			skill_first: { name: 'Review', description: 'Review.', instructions: 'Review the change.' },
-			skill_second: {
-				name: 'review',
-				description: 'Review.',
-				instructions: 'Review the change.',
-			},
-		};
+		source.config!.skills = [
+			{ type: 'skill', id: 'skill_first' },
+			{ type: 'skill', id: 'skill_second' },
+		];
+		request.skills = [
+			sharedSkill('skill_first', 'project'),
+			sharedSkill('skill_second', 'project', 'review'),
+		];
 	} else if (invalid === 'self-reference') {
 		source.config!.subAgents = { agents: [{ agentId: 'source' }] };
 	} else {
@@ -640,7 +654,7 @@ it.each([
 		];
 	}
 	const before = await records();
-	const plan = await planner.plan(input([source]));
+	const plan = await planner.plan(request);
 	expect(plan.blockingIssues).toContainEqual(
 		expect.objectContaining({
 			type: 'agent-invalid',
@@ -648,6 +662,227 @@ it.each([
 		}),
 	);
 	expect(await records()).toEqual(before);
+});
+
+function sharedSkill(id: string, scope: 'project' | 'instance', name = 'Review'): SerializedSkill {
+	return {
+		id,
+		scope,
+		skill: { name, description: 'Review.', instructions: 'Review the change.' },
+		frontmatter: null,
+	};
+}
+
+it.each([
+	['project', 'projectSkill:create'],
+	['instance', 'skill:create'],
+] as const)('requires the skills UI permission to create a %s skill', async (scope, missing) => {
+	const member = await createMember();
+	const scopes = ['agent:import', 'agent:read', 'workflow:import', 'agent:create'];
+	const role = await createCustomRoleWithScopeSlugs(scopes, { roleType: 'project' });
+	await linkUserToProject(member, project, role.slug);
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.context.user = member;
+	request.skills = [sharedSkill('skill_shared', scope)];
+	const before = await records();
+	await expect(planner.plan(request)).rejects.toThrow(
+		'You are not allowed to create or edit skills "Review" (skill_shared).',
+	);
+	expect(await records()).toEqual(before);
+	if (missing === 'skill:create') return;
+	const permitted = await createCustomRoleWithScopeSlugs([...scopes, missing], {
+		roleType: 'project',
+	});
+	await linkUserToProject(member, project, permitted.slug);
+	expect((await planner.plan(request)).blockingIssues).toEqual([]);
+});
+
+it.each([
+	['a skill ID in another scope', 'skill_shared', 'Other', 'already belongs to another'],
+	['another skill with the same name', 'skill_other', 'REVIEW', 'already named "Review"'],
+	['changed content under fail', 'skill_shared', 'Review', 'already exists with different content'],
+] as const)('reports %s in the preview', async (_case, existingId, existingName, message) => {
+	await createSkill({
+		id: existingId,
+		projectId: _case === 'a skill ID in another scope' ? null : project.id,
+		content: toSkillContent({ name: existingName, description: 'Other.', instructions: 'Other.' }),
+	});
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.options.conflictPolicy = 'fail';
+	request.skills = [sharedSkill('skill_shared', 'project')];
+	const before = await findLatestSkillVersion(existingId);
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			sourceAgentId: 'source',
+			path: 'skills.skill_shared',
+			message: expect.stringContaining(message),
+		}),
+	]);
+	expect(await findLatestSkillVersion(existingId)).toEqual(before);
+	await deleteSkill(existingId);
+});
+
+it('reimports a changed instance skill across two projects', async () => {
+	const skill = sharedSkill('skill_revision_regression', 'instance');
+	const refs = [{ type: 'skill' as const, id: skill.id }];
+	const requests = [
+		input([agent('first', { skills: refs })]),
+		input([agent('second', { skills: refs })], otherProject.id),
+	];
+	for (const request of requests) request.skills = [skill];
+	async function applyPackage() {
+		const plans = await planner.planPackage(requests);
+		expect(plans.flatMap((plan) => plan.blockingIssues)).toEqual([]);
+		for (const plan of plans) await planner.apply(plan);
+	}
+	try {
+		await applyPackage();
+		skill.skill.instructions = 'Updated shared instructions.';
+		await expect(applyPackage()).resolves.toBeUndefined();
+		expect(await findLatestSkillVersion(skill.id)).toMatchObject({
+			version: 2,
+			instructions: 'Updated shared instructions.',
+		});
+	} finally {
+		await agents.delete({});
+		await deleteSkill(skill.id);
+	}
+});
+
+it('checks the names that the Agent keeps after a skipped skill', async () => {
+	await createSkill({
+		id: 'skill_support',
+		projectId: project.id,
+		content: toSkillContent({ name: 'Review', description: 'Kept.', instructions: 'Kept.' }),
+	});
+	const request = input([
+		agent('source', {
+			skills: [
+				{ type: 'skill', id: 'skill_support' },
+				{ type: 'skill', id: 'skill_review' },
+			],
+		}),
+	]);
+	request.options.conflictPolicy = 'skip';
+	request.skills = [
+		sharedSkill('skill_support', 'project', 'Support'),
+		sharedSkill('skill_review', 'project'),
+	];
+	const plan = await planner.plan(request);
+	// The kept skill is a project skill, so the project already has the name.
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			path: 'skills.skill_review',
+			message: expect.stringContaining('already named "Review"'),
+		}),
+	]);
+	await deleteSkill('skill_support');
+});
+
+it('reports two instance skills with names like each other in different project scopes', async () => {
+	const first = input([agent('first', { skills: [{ type: 'skill', id: 'skill_one' }] })]);
+	const second = input(
+		[agent('second', { skills: [{ type: 'skill', id: 'skill_two' }] })],
+		otherProject.id,
+	);
+	first.skills = second.skills = [
+		sharedSkill('skill_one', 'instance'),
+		sharedSkill('skill_two', 'instance', 'review'),
+	];
+	const [firstPlan, secondPlan] = await planner.planPackage([first, second]);
+	expect(firstPlan.blockingIssues).toEqual([]);
+	expect(secondPlan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			sourceAgentId: 'second',
+			path: 'skills.skill_two',
+			message: expect.stringContaining('same name "review"'),
+		}),
+	]);
+});
+
+it('reports a rename that clashes with a skill of another Agent that follows the skill', async () => {
+	await agents.save({ id: 'follower', name: 'Follower', projectId: project.id });
+	// The follower's other skill is in another scope, so only the follower check sees the clash.
+	for (const [id, target] of [
+		['skill_shared', { projectId: project.id }],
+		['skill_pricing', { projectId: null }],
+	] as const) {
+		await createSkill({
+			id,
+			...target,
+			content: toSkillContent({
+				name: id === 'skill_shared' ? 'Review' : 'Pricing',
+				description: 'Existing.',
+				instructions: 'Existing.',
+			}),
+		});
+	}
+	await Container.get(AgentSkillRepository).replaceDependencies('follower', [
+		{ skillId: 'skill_shared' },
+		{ skillId: 'skill_pricing' },
+	]);
+	const request = input([agent('source', { skills: [{ type: 'skill', id: 'skill_shared' }] })]);
+	request.skills = [sharedSkill('skill_shared', 'project', 'Pricing')];
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			path: 'skills.skill_shared',
+			message: expect.stringContaining('Cannot rename to "Pricing"'),
+		}),
+	]);
+	await agents.delete({ id: 'follower' });
+	await deleteSkill('skill_shared');
+});
+
+it('keeps a name clash that the Agent already has', async () => {
+	await agents.save({ id: 'source', name: 'Existing', projectId: project.id });
+	const skills = [
+		sharedSkill('skill_first', 'project'),
+		sharedSkill('skill_second', 'project', 'review'),
+	];
+	for (const { id, skill } of skills) {
+		await createSkill({ id, projectId: project.id, content: toSkillContent(skill) });
+	}
+	await Container.get(AgentSkillRepository).replaceDependencies(
+		'source',
+		skills.map(({ id }) => ({ skillId: id })),
+	);
+	const request = input([
+		agent('source', {
+			skills: skills.map(({ id }) => ({ type: 'skill' as const, id })),
+		}),
+	]);
+	request.skills = skills;
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).not.toContainEqual(
+		expect.objectContaining({ path: expect.stringMatching(/^skills\./) }),
+	);
+	await agents.delete({ id: 'source' });
+});
+
+it('reports two package skills with names that are hard to tell apart in one scope', async () => {
+	const request = input([
+		agent('first', { skills: [{ type: 'skill', id: 'skill_one' }] }),
+		agent('second', { skills: [{ type: 'skill', id: 'skill_two' }] }),
+	]);
+	request.skills = [
+		sharedSkill('skill_one', 'project'),
+		sharedSkill('skill_two', 'project', 'review'),
+	];
+	const plan = await planner.plan(request);
+	expect(plan.blockingIssues).toEqual([
+		expect.objectContaining({
+			type: 'agent-invalid',
+			sourceAgentId: 'second',
+			path: 'skills.skill_two',
+			message: expect.stringContaining('same name "review"'),
+		}),
+	]);
 });
 
 it.each(['create', 'update', 'publish', 'unpublish'] as const)(

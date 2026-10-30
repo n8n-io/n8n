@@ -87,6 +87,21 @@ describe('execution-to-message-mapper', () => {
 		]);
 	});
 
+	it.each(['success', 'error', 'cancelled', 'interrupted'] as const)(
+		'keeps an empty Stop reply in history when its execution ends with %s',
+		(status) => {
+			const messages = executionsToMessagesDto([
+				execution({ userMessage: null, inputMessages: [], stopReport: true, status }),
+				execution({ id: 'later', userMessage: 'Continue' }),
+			]);
+
+			expect(messages).toMatchObject([
+				{ role: 'assistant', stopReport: true, content: [], executionId: 'execution-1' },
+				{ role: 'user', content: [{ type: 'text', text: 'Continue' }] },
+			]);
+		},
+	);
+
 	it('splits assistant output around stable additional user messages', () => {
 		const inputD = {
 			id: 'steer-d',

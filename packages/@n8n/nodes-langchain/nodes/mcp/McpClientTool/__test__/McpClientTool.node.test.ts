@@ -327,6 +327,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
 				fetch: expect.any(Function),
+				redirectPolicy: 'follow',
 			});
 
 			// Verify the eventSourceInit fetch injects auth headers and Accept header
@@ -383,6 +384,7 @@ describe('McpClientTool', () => {
 			expect(SSEClientTransport).toHaveBeenCalledWith(url, {
 				eventSourceInit: { fetch: expect.any(Function) },
 				fetch: expect.any(Function),
+				redirectPolicy: 'follow',
 			});
 
 			// Verify the eventSourceInit fetch injects auth headers and Accept header
