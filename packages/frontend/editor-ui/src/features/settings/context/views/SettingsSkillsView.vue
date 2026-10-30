@@ -511,6 +511,8 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
+		// A restore keeps the modal open, so the next save must send the hash it produced.
+		let baseSkillHash = detail.skillHash;
 		openModal({
 			skill: detail.skill,
 			skillId: detail.id,
@@ -540,10 +542,11 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 				await onSave(
 					detail.id,
 					skill,
-					detail.skillHash,
+					baseSkillHash,
 					scope !== currentValue ? scope : undefined,
 					availableToAssistant,
 					availableToMCP,
+					(skillHash) => (baseSkillHash = skillHash),
 				),
 		});
 	} catch (error) {
@@ -560,10 +563,11 @@ async function onSave(
 	newScope?: string,
 	availableToAssistant?: boolean,
 	availableToMCP?: boolean,
+	onSaved?: (skillHash: string) => void,
 ): Promise<AgentSkillConfirmFailure | undefined> {
 	let created: boolean;
 	try {
-		({ created } = await skillsStore.saveSkill(id, {
+		const saved = await skillsStore.saveSkill(id, {
 			name: skill.name,
 			description: skill.description,
 			instructions: skill.instructions,
@@ -573,7 +577,9 @@ async function onSave(
 			...(newScope ? parseScope(newScope) : {}),
 			...(availableToAssistant !== undefined ? { availableToAssistant } : {}),
 			availableToMCP,
-		}));
+		});
+		created = saved.created;
+		onSaved?.(saved.skillHash);
 	} catch (error) {
 		return saveFailed(error);
 	}

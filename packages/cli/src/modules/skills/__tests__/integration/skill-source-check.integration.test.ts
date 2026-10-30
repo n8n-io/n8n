@@ -11,7 +11,7 @@ import {
 	mockInstance,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
@@ -118,6 +118,10 @@ describe('Skill source checks', () => {
 	const pushChange = (files: Record<string, string>) =>
 		github.push('acme/skills', { ...github.files('acme/skills'), ...files });
 
+	/** The instance owner, as the check task reads it: a user with the owner role. */
+	const isOwner = (user: Pick<User, 'id'> & { role?: { slug: string } }) =>
+		user.role?.slug === GLOBAL_OWNER_ROLE.slug;
+
 	const linkOf = async (skillId: string) =>
 		await db().findOneByOrFail(SkillSourceLink, { skillId });
 
@@ -188,6 +192,33 @@ describe('Skill source checks', () => {
 				baseRevision: sha,
 				pendingContentHash: null,
 			});
+			expect(updateFound).not.toHaveBeenCalled();
+		});
+
+		// The import and the check hash a skill on two paths, so a skill that the import
+		// normalizes must still compare equal after an unrelated push.
+		it.each([
+			[
+				'a padded name',
+				'---\nname: "  docx  "\ndescription: docx description\n---\n\nFollow docx.\n',
+			],
+			[
+				'allowed-tools',
+				'---\nname: docx\ndescription: docx description\nallowed-tools: Bash\n---\n\nFollow docx.\n',
+			],
+			[
+				'an extra frontmatter key',
+				'---\nname: docx\ndescription: docx description\nlicense: MIT\n---\n\nFollow docx.\n',
+			],
+		])('shows no update for a skill with %s after a push of other files', async (_, skill) => {
+			github.push('acme/skills', { ...FILES, 'skills/docx/SKILL.md': skill });
+			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
+			const { docx } = await importAll();
+			pushChange({ 'README.md': '# Changed\n' });
+
+			await sync().checkAll();
+
+			expect(await linkOf(docx)).toMatchObject({ state: 'up_to_date', pendingContentHash: null });
 			expect(updateFound).not.toHaveBeenCalled();
 		});
 
@@ -388,6 +419,21 @@ describe('Skill source checks', () => {
 			expect(retryAt.get('public:github')).toBe(until);
 		});
 
+		it('keeps the check time of a source that waits, so it goes first next time', async () => {
+			const { sourceId } = await importAll();
+			github.failWith = { status: 429, headers: { 'retry-after': '3600' } };
+			await sync().checkAll();
+			github.failWith = undefined;
+			await age(sourceId);
+
+			await sync().checkAll();
+
+			expect(await sourceOf(sourceId)).toMatchObject({
+				lastCheckedAt: new Date(0),
+				lastErrorReason: 'rate_limited',
+			});
+		});
+
 		it('keeps the cursor when the source refuses a skill read after the probe', async () => {
 			const updateFound = vi.spyOn(Container.get(SkillsTelemetry), 'updateFound');
 			const { sourceId, docx } = await importAll();
@@ -536,13 +582,45 @@ describe('Skill source checks', () => {
 			expect((await sourceOf(sourceId)).lastCheckedAt).toEqual(before.lastCheckedAt);
 		});
 
-		it('skips a source whose creator is gone', async () => {
+		it('checks a source whose creator is gone with the flag of the instance owner', async () => {
+			const { sourceId, docx } = await importAll();
+			await db().update(SkillSourceConnection, { id: sourceId }, { createdById: null });
+			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			// The test database has more than one owner, so the flag goes by role, not by one id.
+			postHog.getFeatureFlags.mockImplementation(async (user) =>
+				isOwner(user) ? { [SKILL_SYNC_FLAG]: true } : {},
+			);
+
+			await sync().checkAll();
+
+			expect(github.requests.refs).toBe(1);
+			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
+		});
+
+		it('skips a source whose creator is gone when the instance owner does not have Skill Sync', async () => {
 			const { sourceId } = await importAll();
 			await db().update(SkillSourceConnection, { id: sourceId }, { createdById: null });
+			postHog.getFeatureFlags.mockImplementation(async (user) =>
+				isOwner(user) ? {} : { [SKILL_SYNC_FLAG]: true },
+			);
 
 			await sync().checkAll();
 
 			expect(github.requests.refs).toBe(0);
+		});
+
+		it('checks the source as it is now, not as the run read it at the start', async () => {
+			const { sourceId } = await importAll();
+			const current = await sourceOf(sourceId);
+			// The run read the source before a Check now moved its cursor.
+			vi.spyOn(Container.get(SkillSourceRepository), 'findAllSources').mockResolvedValue([
+				{ ...current, probeCursor: 'c'.repeat(40) },
+			]);
+
+			await sync().checkAll();
+
+			expect(github.requests).toEqual({ refs: 1, archives: 0 });
+			expect((await sourceOf(sourceId)).probeCursor).toBe(current.probeCursor);
 		});
 
 		it('runs from the system task, on one main, every hour by default', async () => {

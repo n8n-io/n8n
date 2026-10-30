@@ -722,6 +722,7 @@ export class AgentRuntime {
 		options?: ExecutionOptions,
 	): {
 		telemetry?: TelemetryOptions;
+		toolChoice?: 'none';
 		headers?: Record<string, string>;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 		onStepStart?: ExecutionOptions['onStepStart'];
@@ -729,6 +730,7 @@ export class AgentRuntime {
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
+			...(options?.toolsEnabled === false ? { toolChoice: 'none' as const } : {}),
 			...buildFunctionIdHeaders(this.config.functionId),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
 			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
@@ -1095,7 +1097,8 @@ export class AgentRuntime {
 			system: prompt.system,
 			messages: prompt.messages,
 			abortSignal: abortScope.signal,
-			hasTools: options?.toolsEnabled !== false && tools.hasTools,
+			// Provider tools are also needed to replay their earlier calls and results.
+			hasTools: tools.hasTools,
 			aiTools: prompt.aiTools,
 			reasoning: staticContext.reasoning,
 			providerOptions: prompt.providerOptions,
@@ -1103,8 +1106,31 @@ export class AgentRuntime {
 			maxOutputTokens: staticContext.maxOutputTokens,
 			aiSdkOptions: this.buildAiSdkOptions(tools.toolMap, options),
 			onInputRejected: this.createInputRejectionHandler(ctx),
+			onToolInputStart: this.createWorkspacePrewarmHandler(tools.toolMap),
 		};
+
 		return { toolMap: tools.toolMap, modelCallContext };
+	}
+
+	/** Prepare the workspace while the model streams the input of a tool that uses it. */
+	private createWorkspacePrewarmHandler(
+		toolMap: Map<string, BuiltTool>,
+	): ModelCallContext['onToolInputStart'] {
+		const prewarm = this.config.prewarmWorkspace;
+		if (!prewarm) return undefined;
+		return (toolName) => {
+			if (!toolMap.get(toolName)?.requiresWorkspace) return;
+			try {
+				prewarm();
+			} catch (error) {
+				// Best effort: the tool call prepares the workspace itself if this fails.
+				logger.warn('Failed to start preparing the workspace', {
+					runId: this.runId,
+					toolName,
+					error,
+				});
+			}
+		};
 	}
 
 	private createInputRejectionHandler(

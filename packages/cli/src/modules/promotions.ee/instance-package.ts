@@ -5,6 +5,7 @@ import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.ser
 import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
+	type ExportPackageRequest,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
@@ -18,6 +19,32 @@ export type InstancePackage = {
 	/** File content by package path, for the files that the caller asked to keep. */
 	contents: ReadonlyMap<string, string>;
 };
+
+/** What an instance Promote exports to the branch. */
+export function instancePromotionExportRequest({
+	user,
+	projectIds,
+	canExportVariableValues,
+}: {
+	user: User;
+	projectIds: string[];
+	canExportVariableValues: boolean;
+}): ExportPackageRequest {
+	return {
+		user,
+		projectIds,
+		includeAgents: false,
+		includeVariableValues: true,
+		canExportVariableValues,
+		includeTags: true,
+		// Archived workflows travel too, so the target archives them instead of removing them.
+		includeArchivedWorkflows: true,
+		// personal projects are excluded, so a team workflow calling a personal
+		// sub-workflow blocks the whole promotion; intended for now, see LIGO-1089
+		dependencyPolicy: ExportDependencyPolicy.Fail,
+		versionPolicy: ExportVersionPolicy.Latest,
+	};
+}
 
 export async function exportInstancePackage(
 	packagesService: N8nPackagesService,

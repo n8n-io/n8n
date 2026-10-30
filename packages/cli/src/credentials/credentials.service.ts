@@ -915,12 +915,11 @@ export class CredentialsService {
 				updateData.data as unknown as ICredentialDataDecryptedObject,
 				decryptedData,
 			);
+			const dataToSave = updateData.data as unknown as ICredentialDataDecryptedObject;
 			if (
 				decryptedData.oauthTokenData &&
-				!this.reissuesClientCredentialsToken(
-					updateData.data as unknown as ICredentialDataDecryptedObject,
-					decryptedData,
-				)
+				!this.reissuesClientCredentialsToken(dataToSave, decryptedData) &&
+				!this.changesOAuthApp(dataToSave, decryptedData)
 			) {
 				// @ts-expect-error data is typed as encrypted string
 				updateData.data.oauthTokenData = decryptedData.oauthTokenData;
@@ -961,6 +960,21 @@ export class CredentialsService {
 			(field) =>
 				comparableCredentialField(dataToSave[field]) !==
 				comparableCredentialField(storedData[field]),
+		);
+	}
+
+	/**
+	 * Whether the update points the credential at another OAuth app, for example
+	 * from a custom app to the managed one. The stored token does not refresh with
+	 * another app, so the user must connect again. A new secret alone keeps the app.
+	 */
+	private changesOAuthApp(
+		dataToSave: ICredentialDataDecryptedObject,
+		storedData: ICredentialDataDecryptedObject,
+	): boolean {
+		return (
+			comparableCredentialField(dataToSave.clientId) !==
+			comparableCredentialField(storedData.clientId)
 		);
 	}
 

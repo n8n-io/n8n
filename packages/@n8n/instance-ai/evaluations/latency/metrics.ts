@@ -2,16 +2,18 @@
 // Latency metrics for one first-build run, read from captured SSE events
 // ---------------------------------------------------------------------------
 
+import { CORE_WORKSPACE_TOOL_NAMES } from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
 
+import { DOMAIN_TOOL_IDS } from '../../src/tools/tool-ids';
 import { WORKFLOW_TOOLS, extractOutcomeFromEvents } from '../outcome/event-parser';
 import type { CapturedEvent, CapturedToolCall } from '../types';
 import { getNestedRecord, getString } from '../utils/safe-extract';
 
 const latencyMetricsSchema = z.object({
-	/** Duration of the first `workspace_*` tool call. A cold sandbox is set up
-	 *  inside it, so this isolates the setup the user waits for. */
+	/** Duration of the first tool call that uses the sandbox. A cold sandbox is
+	 *  set up inside it, so this isolates the setup the user waits for. */
 	firstWorkspaceToolMs: z.number().nullable(),
 	/** From message send to the first successful workflow save. */
 	timeToFirstWorkflowMs: z.number().nullable(),
@@ -46,13 +48,21 @@ const MISSING_REASONS: Record<LatencyMetricName, string> = {
 	turnMs: 'no run-finish or confirmation-request',
 };
 
+/** Tools that set up a cold sandbox on first use. Keep in step with the tools
+ *  that call `.requiresWorkspace()`; a test fails when a domain tool is missing. */
+const SANDBOX_TOOL_NAMES = new Set<string>([
+	...CORE_WORKSPACE_TOOL_NAMES,
+	DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
+	DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
+]);
+
 export const STOP_EVENT_TYPES = new Set(['run-finish', 'confirmation-request']);
 
 export function computeLatencyMetrics(events: CapturedEvent[], sentAt: number): LatencyMetrics {
 	const { toolCalls } = extractOutcomeFromEvents(events);
 	const stopAt = events.find((event) => STOP_EVENT_TYPES.has(event.type))?.timestamp;
 	const values: Record<LatencyMetricName, number | null> = {
-		firstWorkspaceToolMs: firstStartedWorkspaceCall(events, toolCalls)?.durationMs ?? null,
+		firstWorkspaceToolMs: firstStartedSandboxCall(events, toolCalls)?.durationMs ?? null,
 		timeToFirstWorkflowMs: elapsedSince(sentAt, firstSaveAt(events, toolCalls)),
 		turnMs: elapsedSince(sentAt, stopAt),
 	};
@@ -65,7 +75,7 @@ function elapsedSince(sentAt: number, timestamp: number | undefined): number | n
 }
 
 /** Tool calls finish in any order. Setup runs inside the call that started first. */
-function firstStartedWorkspaceCall(
+function firstStartedSandboxCall(
 	events: CapturedEvent[],
 	toolCalls: CapturedToolCall[],
 ): CapturedToolCall | undefined {
@@ -73,7 +83,7 @@ function firstStartedWorkspaceCall(
 		if (event.type !== 'tool-call') continue;
 		const toolCallId = eventToolCallId(event);
 		const call = toolCalls.find((candidate) => candidate.toolCallId === toolCallId);
-		if (call?.toolName.startsWith('workspace_')) return call;
+		if (call && SANDBOX_TOOL_NAMES.has(call.toolName)) return call;
 	}
 	return undefined;
 }

@@ -13,7 +13,13 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
-import { TransactionRunner, UserRepository, type OperationContext, type User } from '@n8n/db';
+import {
+	GLOBAL_OWNER_ROLE,
+	TransactionRunner,
+	UserRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -224,29 +230,32 @@ export class SkillSyncService {
 
 	/**
 	 * The hourly check: each source in turn. A source whose type has no client on this build,
-	 * or whose creator does not have Skill Sync, is skipped. A failed source does not stop the
-	 * others: its reason is stored on the source.
+	 * or whose creator (the instance owner when the creator is gone) does not have Skill Sync,
+	 * is skipped. A failed source does not stop the others: its reason is stored on the source.
 	 */
 	async checkAll(signal?: AbortSignal): Promise<void> {
 		const sources = await this.sourceRepository.findAllSources();
 		const creators = await this.findCreators(sources);
-		for (const source of sources) {
+		const owner = sources.some((source) => !source.createdById)
+			? await this.findInstanceOwner()
+			: null;
+		for (const { id, type, createdById } of sources) {
 			if (signal?.aborted) return;
-			if (!this.clients.get(source.type)) continue;
-			// The check has no user, so it reads the flag of the user who connected the source.
-			const creator = source.createdById ? creators.get(source.createdById) : undefined;
-			if (!creator) {
-				this.logger.debug('Skill source check skipped: its creator is gone', {
-					sourceId: source.id,
-				});
-				continue;
-			}
+			if (!this.clients.get(type)) continue;
+			// The check has no user, so it reads the flag of the user who connected the source. A
+			// source whose creator is gone reads the flag of the instance owner, so its checks go on.
+			const flagUser = (createdById ? creators.get(createdById) : undefined) ?? owner;
+			if (!flagUser) continue;
 			try {
-				if (!(await this.flagGate.isEnabled(creator))) continue;
+				if (!(await this.flagGate.isEnabled(flagUser))) continue;
+				// A run can take half an hour, so the row read at the start can be stale: a Check now
+				// meanwhile moves the cursor, and the stale one would download the source again.
+				const source = await this.sourceRepository.findById(id);
+				if (!source) continue;
 				await this.check(source, 'background');
 			} catch (error) {
 				this.logger.debug('Skill source check failed', {
-					sourceId: source.id,
+					sourceId: id,
 					reason: skillSourceReasonOf(error),
 					error: ensureError(error).message,
 				});
@@ -714,12 +723,10 @@ export class SkillSyncService {
 		if (!client) return;
 		const access = accessKey(source);
 		const checkedAt = new Date();
-		// Still waiting after a rate limit: no request, and the wait does not grow.
+		// Still waiting after a rate limit: no request, and the wait does not grow. The check time
+		// stays, because n8n did not read the source, so the task still checks it first next time.
 		if ((this.retryAt.get(access) ?? 0) > checkedAt.getTime()) {
-			await this.sourceRepository.recordCheck(source.id, {
-				checkedAt,
-				errorReason: 'rate_limited',
-			});
+			await this.sourceRepository.recordDelayed(source.id);
 			throw new SkillSourceReadError(
 				'rate_limited',
 				'The source limits how often n8n can read it. n8n checks again later.',
@@ -978,6 +985,13 @@ export class SkillSyncService {
 		if (ids.length === 0) return new Map();
 		const users = await this.userRepository.findManyByIds(ids);
 		return new Map(users.map((user) => [user.id, user]));
+	}
+
+	private async findInstanceOwner(): Promise<User | null> {
+		return await this.userRepository.findOne({
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
+		});
 	}
 }
 

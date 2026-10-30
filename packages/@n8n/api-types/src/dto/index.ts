@@ -721,6 +721,11 @@ export {
 	type PublicApiRateLimitSettings,
 	type PublicApiRateLimitSettingsResponse,
 } from './public-api-rate-limit-settings/update-public-api-rate-limit-settings.dto';
+export {
+	RateLimitSettingsPublicDto,
+	RateLimitSettingsQueryPublicDto,
+	UpdateRateLimitSettingsPublicDto,
+} from './public-api-rate-limit-settings/rate-limit-settings-public.dto';
 
 export {
 	PromotionChangesDto,

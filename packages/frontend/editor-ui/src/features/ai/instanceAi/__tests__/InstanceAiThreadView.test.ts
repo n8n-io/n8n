@@ -17,6 +17,7 @@ import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { fetchThreadTabs } from '../instanceAi.memory.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
@@ -357,6 +358,30 @@ const InstanceAiDataTablePreviewStub = {
 	template: '<div data-test-id="data-table-preview-stub" />',
 };
 
+// Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
+const InstanceAiResourcePickerStub = defineComponent({
+	props: {
+		projectId: { type: String, required: true },
+		contentTestId: { type: String, default: 'instance-ai-tab-picker' },
+	},
+	emits: ['select'],
+	setup:
+		(props, { emit }) =>
+		() =>
+			h('button', {
+				'data-test-id': props.contentTestId,
+				'data-project-id': props.projectId,
+				onClick: () =>
+					emit('select', {
+						type: 'workflow',
+						id: 'wf-picked',
+						name: 'Picked workflow',
+						icon: 'workflow',
+						projectId: props.projectId,
+					}),
+			}),
+});
+
 // Reused by tests that need to override one stub (e.g. swap in a controllable
 // `InstanceAiTestAgentPreviewPanel`) without losing the rest — the renderer's
 // per-call `global.stubs` replaces the whole map rather than merging into it.
@@ -369,6 +394,7 @@ const defaultViewStubs = {
 	AgentSection: AgentSectionStub,
 	InstanceAiDataTablePreview: InstanceAiDataTablePreviewStub,
 	InstanceAiArtifactsPanel: InstanceAiArtifactsPanelStub,
+	InstanceAiResourcePicker: InstanceAiResourcePickerStub,
 };
 
 const renderView = createComponentRenderer(InstanceAiThreadView, {
@@ -545,6 +571,61 @@ describe('InstanceAiThreadView', () => {
 			'workflow-1',
 			'thread-project',
 		);
+	});
+
+	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+		const user = userEvent.setup();
+		const { findByTestId, queryAllByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		// The header toggle opens the preview. The tab bar has its own, which closes it.
+		const headerToggles = () =>
+			queryAllByTestId('instance-ai-artifacts-preview-toggle').filter(
+				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+			);
+
+		const picker = await findByTestId('instance-ai-open-resource-picker');
+		expect(picker).toHaveAttribute('data-project-id', 'thread-project');
+		expect(headerToggles()).toHaveLength(0);
+
+		await user.click(picker);
+
+		expect(await findByTestId('instance-ai-workflow-preview-stub')).toHaveAttribute(
+			'data-workflow-id',
+			'wf-picked',
+		);
+	});
+
+	it('shows no resource picker until the stored tabs load', async () => {
+		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
+		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
+		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
+		expect(
+			toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false'),
+		).toBeDisabled();
+	});
+
+	it('shows the preview toggle, not the picker, while tabs are open', async () => {
+		seedWorkflowArtifact();
+		const user = userEvent.setup();
+		const { findByTestId, getAllByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1' },
+		});
+		await findByTestId('instance-ai-workflow-preview-stub');
+
+		const closeToggle = getAllByTestId('instance-ai-artifacts-preview-toggle').find(
+			(toggle) => toggle.getAttribute('aria-pressed') === 'true',
+		);
+		await user.click(closeToggle!);
+
+		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
+		expect(
+			getAllByTestId('instance-ai-artifacts-preview-toggle').some(
+				(toggle) => toggle.getAttribute('aria-pressed') === 'false',
+			),
+		).toBe(true);
 	});
 
 	it('uses the message-circle-plus icon for the new chat button', function () {

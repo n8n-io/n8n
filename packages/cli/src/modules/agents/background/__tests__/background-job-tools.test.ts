@@ -1,3 +1,6 @@
+import { AgentPlanValidationError } from '../../plans/agent-plan.schema';
+import { randomUUID } from 'node:crypto';
+import { PLAN_TASK_METADATA_KEY } from '../../plans/agent-plan-task-context';
 import type { CredentialProvider } from '@n8n/agents';
 import { mock } from 'vitest-mock-extended';
 
@@ -32,6 +35,8 @@ const persistence = {
 
 function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView {
 	return {
+		planId: null,
+		planTaskId: null,
 		id: 'job-1',
 		kind: 'subagent',
 		title: 'research',
@@ -76,6 +81,94 @@ function createBackgroundDelegateTool(options: BackgroundJobToolsOptions) {
 }
 
 describe('delegate_subagent background mode', () => {
+	it('returns a recoverable task-reference error without dispatching replacement work', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockRejectedValue(new AgentPlanValidationError('Read the plan again.'));
+		const tool = createBackgroundDelegateTool(options);
+
+		expect(
+			await tool.handler!(
+				{ mode: 'background', subAgentId: 'sub-1', taskName: 'Research', goal: 'Research' },
+				{ persistence },
+			),
+		).toEqual({ status: 'rejected', note: 'Read the plan again.' });
+		expect(backgroundRunner.spawn).toHaveBeenCalledTimes(1);
+	});
+
+	it('uses the inherited task instead of a descendant override', async () => {
+		const { backgroundRunner, options } = setup();
+		const inherited = { planId: randomUUID(), planTaskId: randomUUID() };
+		const override = { planId: randomUUID(), planTaskId: randomUUID() };
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createBackgroundDelegateTool(options);
+
+		await tool.handler!(
+			{
+				mode: 'background',
+				subAgentId: 'sub-1',
+				taskName: 'Research',
+				goal: 'Research',
+				planTask: override,
+			},
+			{
+				persistence: {
+					...persistence,
+					hostMetadata: { ...persistence.hostMetadata, [PLAN_TASK_METADATA_KEY]: inherited },
+				},
+			},
+		);
+
+		expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+			expect.objectContaining({ planTask: inherited, inheritedPlanTask: true }),
+			expect.anything(),
+		);
+	});
+
+	it.each([
+		[true, true],
+		[false, false],
+	])('forwards a model task reference only with plan tasks enabled: %s', async (enabled, sent) => {
+		const { backgroundRunner, options } = setup();
+		const planTask = { planId: randomUUID(), planTaskId: randomUUID() };
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createBackgroundDelegateTool({ ...options, planTasksEnabled: enabled });
+
+		const receipt = await tool.handler!(
+			{ mode: 'background', subAgentId: 'sub-1', taskName: 'Research', goal: 'Research', planTask },
+			{ persistence },
+		);
+
+		expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+			expect.objectContaining({ planTask: sent ? planTask : undefined }),
+			expect.anything(),
+		);
+		expect(receipt).toMatchObject({ status: 'started', planTask: sent ? planTask : undefined });
+	});
+
+	it.each(['execution-1', 42, undefined])(
+		'forwards string source execution metadata: %s',
+		async (id) => {
+			const { backgroundRunner, options } = setup();
+			backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+			const tool = createBackgroundDelegateTool(options);
+
+			await tool.handler!(
+				{ mode: 'background', subAgentId: 'sub-1', taskName: 'Research', goal: 'Research' },
+				{
+					persistence: {
+						...persistence,
+						hostMetadata: { ...persistence.hostMetadata, [EXECUTION_METADATA_KEY]: id },
+					},
+				} as never,
+			);
+
+			expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+				expect.objectContaining({ sourceExecutionId: typeof id === 'string' ? id : undefined }),
+				expect.anything(),
+			);
+		},
+	);
+
 	it.each([255, 256])('enforces the stored job title limit (%s characters)', async (length) => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
@@ -113,19 +206,25 @@ describe('delegate_subagent background mode', () => {
 		},
 	);
 
-	it('reads the parent thread from ctx.persistence at call time', async () => {
+	it('reads the parent thread and execution from ctx.persistence at call time', async () => {
 		const { backgroundRunner, options } = setup();
 		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
 		const tool = createBackgroundDelegateTool(options);
 
 		const output = await tool.handler!(
 			{ mode: 'background', subAgentId: 'sub-1', taskName: 'research', goal: 'find things' },
-			{ persistence },
+			{
+				persistence: {
+					...persistence,
+					hostMetadata: { ...persistence.hostMetadata, [EXECUTION_METADATA_KEY]: 'execution-1' },
+				},
+			},
 		);
 
 		expect(output).toMatchObject({ status: 'started', jobId: 'job-1' });
 		expect(backgroundRunner.spawn.mock.calls[0][0]).toMatchObject({
 			parentThreadId: 'thread-1',
+			sourceExecutionId: 'execution-1',
 			parentResourceId: 'resource-1',
 		});
 	});
@@ -407,6 +506,42 @@ describe('check_background_jobs', () => {
 });
 
 describe('resume_background_jobs', () => {
+	it('passes only the requested plan tasks and finalizes their outcome', async () => {
+		const { options, jobService } = setup();
+		const planId = randomUUID();
+		const taskIds = [randomUUID()];
+		const selection = { planId, taskIds, stopId: randomUUID() };
+		const tool = createResumeBackgroundJobsTool(options);
+		jobService.preparePausedResume.mockResolvedValue({
+			status: 'ready',
+			jobs: [],
+			timeoutAt: new Date(),
+			workflowsToRestart: [],
+			selection,
+			blocked: [],
+			failed: [],
+		});
+		const userPersistence = {
+			...persistence,
+			hostMetadata: {
+				...persistence.hostMetadata,
+				[BACKGROUND_PAUSE_USER_TURN_KEY]: true,
+				[EXECUTION_METADATA_KEY]: 'execution-1',
+			},
+		};
+
+		await tool.handler!({ planId, taskIds }, { persistence: userPersistence });
+
+		expect(jobService.preparePausedResume).toHaveBeenCalledWith(
+			'agent-1',
+			'thread-1',
+			'resource-1',
+			'execution-1',
+			{ planId, taskIds },
+		);
+		expect(jobService.finishPlanResume).toHaveBeenCalledWith('agent-1', 'thread-1', selection);
+	});
+
 	it('requires a user turn, rejects early continuation, and reports each admitted resume', async () => {
 		const { options, jobService, backgroundRunner } = setup();
 		const tool = createResumeBackgroundJobsTool(options);
@@ -448,8 +583,9 @@ describe('resume_background_jobs', () => {
 		backgroundRunner.resumePaused
 			.mockResolvedValueOnce(undefined)
 			.mockRejectedValueOnce(new Error('checkpoint has expired'));
+
 		expect(await tool.handler!({}, { persistence: userPersistence })).toMatchObject({
-			status: 'resumed',
+			status: 'partial',
 			jobs: [
 				{ jobId: 'job-1', status: 'resumed' },
 				{
@@ -465,6 +601,7 @@ describe('resume_background_jobs', () => {
 			'thread-1',
 			'resource-1',
 			'execution-1',
+			undefined,
 		);
 		expect(backgroundRunner.resumePaused).toHaveBeenCalledTimes(2);
 		expect(jobService.releaseResumeReservations).toHaveBeenCalledWith(jobs, timeoutAt);
