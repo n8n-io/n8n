@@ -24,6 +24,7 @@ import { SkillSourceConnection } from '../../database/entities/skill-source-conn
 import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillSyncService } from '../../services/skill-sync.service';
+import { SkillService } from '../../services/skill.service';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
@@ -250,6 +251,8 @@ describe('Review of skill updates', () => {
 				impact: { nextVersion: 2, followingAgents: 0, publishedAgents: 0 },
 			});
 			expect(docxUpdate.current.instructions).toBe('Follow docx.');
+			expect(docxUpdate.currentFrontmatter).toBeNull();
+			expect(docxUpdate.updateFrontmatter).toBeNull();
 			expect(docxUpdate.update?.instructions).toBe('See https://evil.example.com.');
 			expect(docxUpdate.update?.references).toEqual([
 				{ path: 'references/style.md', content: '# Style\n' },
@@ -415,7 +418,7 @@ describe('Review of skill updates', () => {
 			await pushAndCheck({ 'skills/docx/SKILL.md': skillMd('taken-name', 'v2') });
 
 			const { update } = (await reviewOf(editor, docx)).data;
-			expect(update.nameClash).toEqual({ name: 'taken-name' });
+			expect(update.nameClash).toEqual({ name: 'taken-name', where: 'scope' });
 
 			const body = await decide(editor, 'accept', docx, { contentHash: update.contentHash }, 409);
 			expect(body.meta).toEqual({ reason: 'name_clash' });
@@ -444,6 +447,9 @@ describe('Review of skill updates', () => {
 			]);
 
 			expect(statuses.map(({ status }) => status).sort()).toEqual([200, 409]);
+			// The second one names why, so the editor shows the latest change.
+			const refused = statuses.find(({ status }) => status === 409);
+			expect(refused?.body.meta).toEqual({ reason: 'stale' });
 			expect((await findLatestSkillVersion(docx))?.version).toBe(2);
 		});
 
@@ -536,6 +542,29 @@ describe('Review of skill updates', () => {
 				reviewedWarnings: true,
 			});
 			expect(again.data.accepted).toEqual([{ skillId: xlsx, name: 'xlsx', version: 2 }]);
+		});
+
+		it('lists an update that fails for an unknown reason, and keeps the others', async () => {
+			const { sourceId, docx, xlsx } = await importAll();
+			await pushAndCheck({
+				'skills/docx/SKILL.md': skillMd('docx', 'v2'),
+				'skills/xlsx/SKILL.md': skillMd('xlsx', 'v2'),
+			});
+			const { updates } = (await updatesOf(editor, sourceId)).data;
+			const saveTrusted = Container.get(SkillService).saveTrusted.bind(Container.get(SkillService));
+			vi.spyOn(Container.get(SkillService), 'saveTrusted').mockImplementation(
+				async (skillId, ...rest) => {
+					if (skillId === docx) throw new Error('Database is gone');
+					return await saveTrusted(skillId, ...rest);
+				},
+			);
+
+			const { data } = await acceptAll(editor, sourceId, {
+				updates: updates.map(({ skillId, contentHash }) => ({ skillId, contentHash })),
+			});
+
+			expect(data.failed).toEqual([{ skillId: docx, reason: 'unexpected' }]);
+			expect(data.accepted).toEqual([{ skillId: xlsx, name: 'xlsx', version: 2 }]);
 		});
 
 		it('refuses a skill of another source as stale, and a viewer', async () => {

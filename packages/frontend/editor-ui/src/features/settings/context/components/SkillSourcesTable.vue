@@ -137,6 +137,14 @@ const headers = computed<Array<TableHeader<SkillSourceListItem>>>(() => [
 			:row-props="{ class: $style.row }"
 			@click:row="onRowClick"
 		>
+			<template v-if="!props.loading && props.sources.length === 0" #cover>
+				<div :class="$style.empty" data-test-id="skill-sources-empty">
+					<N8nText bold>{{ i18n.baseText('settings.context.skills.sources.empty.title') }}</N8nText>
+					<N8nText color="text-light">
+						{{ i18n.baseText('settings.context.skills.sources.empty.description') }}
+					</N8nText>
+				</div>
+			</template>
 			<template #[`item.label`]="{ item }">
 				<div :class="$style.source">
 					<N8nIcon icon="github" size="medium" />
@@ -229,5 +237,13 @@ const headers = computed<Array<TableHeader<SkillSourceListItem>>>(() => [
 
 .row {
 	cursor: pointer;
+}
+
+.empty {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--2xl) var(--spacing--md);
 }
 </style>

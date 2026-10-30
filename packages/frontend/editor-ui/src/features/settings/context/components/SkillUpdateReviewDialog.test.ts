@@ -169,12 +169,58 @@ describe('SkillUpdateReviewDialog', () => {
 	});
 
 	it('names an upstream rename that clashes and disables Accept', async () => {
-		const { getByTestId } = await open(updateReview({ nameClash: { name: 'release-notes' } }));
+		const { getByTestId } = await open(
+			updateReview({ nameClash: { name: 'release-notes', where: 'scope' } }),
+		);
 
 		expect(getByTestId('skill-update-name-clash')).toHaveTextContent(
 			'GitHub renamed this skill to release-notes, and Marketing already has a skill with that name. Rename the other skill, or stop syncing this one.',
 		);
 		expect(getByTestId('skill-update-accept')).toBeDisabled();
+	});
+
+	it('names an agent that already uses the new name', async () => {
+		const { getByTestId } = await open(
+			updateReview({ nameClash: { name: 'release-notes', where: 'agent' } }),
+		);
+
+		expect(getByTestId('skill-update-name-clash')).toHaveTextContent(
+			'GitHub renamed this skill to release-notes, and an agent that uses it already has a skill with that name.',
+		);
+	});
+
+	it('shows a change to the frontmatter as its own entry', async () => {
+		const { getByTestId, getByText } = await open(
+			updateReview({
+				currentFrontmatter: { license: 'MIT' },
+				updateFrontmatter: { license: 'MIT', 'allowed-tools': 'Bash' },
+			}),
+		);
+
+		expect(getByTestId('skill-update-files')).toHaveTextContent('Frontmatter');
+		await userEvent.click(getByText('Frontmatter'));
+		expect(getByTestId('skill-update-diff')).toHaveTextContent('allowed-tools: "Bash"');
+	});
+
+	it('lists no frontmatter entry when the frontmatter did not change', async () => {
+		const { getByTestId } = await open(
+			updateReview({
+				currentFrontmatter: { license: 'MIT' },
+				updateFrontmatter: { license: 'MIT' },
+			}),
+		);
+
+		expect(getByTestId('skill-update-files')).not.toHaveTextContent('Frontmatter');
+	});
+
+	it('tells the lists to reload when the update is gone', async () => {
+		skillsStore.fetchSkillUpdate.mockRejectedValue(
+			new ResponseError('Server text', { meta: { reason: 'stale' } }),
+		);
+		const { emitted } = render({ props: { open: true, skillId: 'skill-1' } });
+
+		await waitFor(() => expect(emitted('changed')).toHaveLength(1));
+		expect(emitted('update:open')).toEqual([[false]]);
 	});
 
 	it('skips the update', async () => {

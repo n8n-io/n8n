@@ -69,7 +69,9 @@ watch(
 
 /** The updates that can come in: every update the security check did not block. */
 const ready = computed(() =>
-	(data.value?.updates ?? []).filter((update) => update.check.verdict !== 'blocked'),
+	(data.value?.updates ?? []).filter(
+		(update) => update.check.verdict !== 'blocked' && update.nameClash === null,
+	),
 );
 const needsReview = computed(() =>
 	ready.value.some((update) => update.check.verdict === 'needs_review'),
@@ -87,7 +89,11 @@ const readOnlyText = computed(() => {
 	});
 });
 
-/** The lines that the update adds and removes, over every file. */
+/** The lines that each update adds and removes, over every file, worked out once per load. */
+const counts = computed(
+	() => new Map((data.value?.updates ?? []).map((update) => [update.skillId, countOf(update)])),
+);
+
 function countOf(update: SkillPendingUpdate) {
 	if (!update.update) return undefined;
 	return diffSkills(update.current, update.update).reduce(
@@ -186,6 +192,19 @@ function openInGitHub() {
 						}"
 					/>
 				</div>
+				<N8nText
+					v-if="commitLine"
+					size="small"
+					color="text-light"
+					data-test-id="skill-source-updates-commit"
+				>
+					{{
+						i18n.baseText('settings.context.skills.updates.latestCommit', {
+							interpolate: { commit: commitLine },
+						})
+					}}
+					<template v-if="data.commit?.date"> · <TimeAgo :date="data.commit.date" /></template>
+				</N8nText>
 				<N8nText v-if="canReview" tag="p" size="small">
 					{{ i18n.baseText('settings.context.skills.updates.description') }}
 				</N8nText>
@@ -206,12 +225,7 @@ function openInGitHub() {
 					>
 						<div :class="$style.rowText">
 							<N8nText size="medium" color="text-dark">{{ update.name }}</N8nText>
-							<N8nText v-if="commitLine" size="small" color="text-light">
-								{{ commitLine }}
-								<template v-if="data.commit?.date">
-									· <TimeAgo :date="data.commit.date" />
-								</template>
-							</N8nText>
+							<N8nText size="small" color="text-light">{{ update.location }}</N8nText>
 						</div>
 						<N8nBadge v-if="update.check.verdict === 'needs_review'" variant="warning">
 							{{ i18n.baseText('settings.context.skills.updates.tag.needsReview') }}
@@ -219,7 +233,7 @@ function openInGitHub() {
 						<N8nBadge v-else-if="update.check.verdict === 'blocked'" variant="danger">
 							{{ i18n.baseText('settings.context.skills.updates.tag.blocked') }}
 						</N8nBadge>
-						<SkillDiffCount :count="countOf(update)" hide-zero />
+						<SkillDiffCount :count="counts.get(update.skillId)" hide-zero />
 						<N8nIcon icon="chevron-right" size="small" />
 					</li>
 				</ul>

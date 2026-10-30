@@ -13,9 +13,9 @@ import type {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
-import { TransactionRunner, UserRepository, type User } from '@n8n/db';
+import { TransactionRunner, UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
+import { ConflictError, ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 
@@ -143,7 +143,11 @@ export class SkillSyncService {
 	async checkNowBySource(user: User, sourceId: string): Promise<SkillSourceCheckResponse> {
 		await this.flagGate.assertEnabled(user);
 		const source = await this.sourceRepository.findById(sourceId);
-		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+		if (
+			!source ||
+			!this.clients.get(source.type) ||
+			!(await this.skillAccess.canOnSource(user, source, 'view'))
+		) {
 			throw new NotFoundError('Source not found');
 		}
 		if (!(await this.skillAccess.canOnSource(user, source, 'checkNow'))) {
@@ -264,19 +268,22 @@ export class SkillSyncService {
 		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
 			throw new NotFoundError('Source not found');
 		}
-		const [described] = await this.sourceService.describeSources(user, [source]);
+		const [summary] = await this.sourceService.describeSources(user, [source]);
 		const links = await this.sourceRepository.findPendingLinks(source.id);
-		const latest = await this.skillRepository.findLatestSaved(links.map((link) => link.skillId));
-		const updates = (
-			await Promise.all(
-				links.map(async (link) => await this.describeUpdate(source, client, link, latest)),
-			)
-		).flatMap((update) => update ?? []);
-		// The rows of the dialog name the newest commit of the source.
-		const newest = links.find((link) => link.pendingRevision !== null);
+		const updates: SkillPendingUpdate[] = [];
+		// In batches, as each update reads its agents and its rename rules.
+		for (let start = 0; start < links.length; start += FETCH_CONCURRENCY) {
+			const batch = links.slice(start, start + FETCH_CONCURRENCY);
+			const latest = await this.skillRepository.findLatestSaved(batch.map((link) => link.skillId));
+			const described = await Promise.all(
+				batch.map(async (link) => await this.describeUpdate(source, client, link, latest)),
+			);
+			updates.push(...described.flatMap((update) => update ?? []));
+		}
 		return {
-			source: described,
-			commit: newest ? await this.commitOf(source, client, newest) : null,
+			source: summary,
+			// The newest revision that the check read, so the dialog names the latest commit.
+			commit: await this.newestCommitOf(source, client, links),
 			updates: updates.sort((a, b) => a.name.localeCompare(b.name)),
 		};
 	}
@@ -357,9 +364,15 @@ export class SkillSyncService {
 					),
 				);
 			} catch (error) {
+				// Earlier updates already came in, so a failure of one never fails the answer.
 				const reason = skillSourceReasonOf(error);
-				if (!reason) throw error;
-				response.failed.push({ skillId, reason });
+				if (!reason) {
+					this.logger.warn('An update of Update all failed', {
+						skillId,
+						error: ensureError(error).message,
+					});
+				}
+				response.failed.push({ skillId, reason: reason ?? 'unexpected' });
 			}
 		}
 		return response;
@@ -392,12 +405,14 @@ export class SkillSyncService {
 			}
 			const update = contentToAgentSkill(content);
 			const saved = await this.txRunner.run({}, async (ctx) => {
+				// Locked before the read, so a second accept waits and then finds the link moved on.
+				await this.skillRepository.lockForEdit([link.skillId], ctx);
 				const latest = (await this.skillRepository.findLatestSaved([link.skillId], ctx)).get(
 					link.skillId,
 				);
 				if (!latest) throw skillDeletedError();
-				const clash = await this.nameClashOf(latest, update.name);
-				if (clash) throw nameClashError(clash);
+				const clash = await this.nameClashOf(latest, update.name, ctx);
+				if (clash) throw nameClashError(clash.name);
 				let result;
 				try {
 					result = await this.skillService.saveTrusted(
@@ -417,7 +432,11 @@ export class SkillSyncService {
 						{ allowSynced: true, sourceRevision: revision },
 					);
 				} catch (error) {
+					// The rename rules ran again under the lock: a name taken since the check.
 					if (error instanceof SkillNameTakenError) throw nameClashError(update.name);
+					// Another save of the skill got there first.
+					if (error instanceof ConflictError) throw staleError();
+					if (error instanceof NotFoundError) throw skillDeletedError();
 					throw error;
 				}
 				// The link must still hold the reviewed update, or another review won.
@@ -428,7 +447,7 @@ export class SkillSyncService {
 				}
 				return result;
 			});
-			await this.skillService.refreshFollowingAgents(saved.followingAgentIds);
+			await this.refreshAfterCommit(saved.followingAgentIds);
 			if (saved.created) {
 				await this.skillService.trackUpdated(user.id, link.skillId, 'github', saved.version, false);
 			}
@@ -440,7 +459,21 @@ export class SkillSyncService {
 		}
 	}
 
-	/** One event for each decision, also a failed one. */
+	/** The version is stored: a failed push to the editors of following agents does not fail it. */
+	private async refreshAfterCommit(agentIds: string[]): Promise<void> {
+		try {
+			await this.skillService.refreshFollowingAgents(agentIds);
+		} catch (error) {
+			this.logger.warn('Could not refresh the agents that follow a skill', {
+				error: ensureError(error).message,
+			});
+		}
+	}
+
+	/**
+	 * One event for each accept or skip that reached a pending update, also a failed one. A
+	 * request refused before, such as for a hidden skill, sends none.
+	 */
 	private reviewTracker(
 		user: User,
 		source: SkillSourceConnection,
@@ -493,7 +526,9 @@ export class SkillSyncService {
 			check: scan,
 			current: toAgentSkill(row),
 			update,
-			nameClash: clash ? { name: clash } : null,
+			currentFrontmatter: row.version.frontmatter,
+			updateFrontmatter: content?.frontmatter ?? null,
+			nameClash: clash,
 			impact: {
 				nextVersion: row.version.version + 1,
 				followingAgents: new Set(
@@ -505,20 +540,28 @@ export class SkillSyncService {
 	}
 
 	/**
-	 * The new name when the update renames the skill to a name that its scope or one of its
-	 * agents already uses, else null. Accept refuses it with `name_clash`.
+	 * The clash when the update renames the skill to a name that its scope (`scope`) or one of
+	 * its agents (`agent`) already uses, else null. Accept refuses it with `name_clash`.
 	 */
-	private async nameClashOf(row: ResolvedSkillRow, newName: string): Promise<string | null> {
+	private async nameClashOf(
+		row: ResolvedSkillRow,
+		newName: string,
+		ctx: OperationContext = {},
+	): Promise<{ name: string; where: 'scope' | 'agent' } | null> {
+		const name = newName.trim();
 		try {
 			await this.skillService.assertCanRename(
 				row.skill.id,
 				{ projectId: row.skill.projectId, agentId: row.skill.agentId },
 				row.version.name,
-				newName.trim(),
+				name,
+				ctx,
 			);
 			return null;
 		} catch (error) {
-			if (error instanceof SkillNameTakenError || error instanceof UserError) return newName.trim();
+			if (error instanceof SkillNameTakenError) return { name, where: 'scope' };
+			// The only other refusal of a rename: an agent that uses the skill has the name.
+			if (error instanceof UserError) return { name, where: 'agent' };
 			throw error;
 		}
 	}
@@ -534,12 +577,41 @@ export class SkillSyncService {
 	): Promise<SkillUpdateCommit | null> {
 		const revision = link.pendingRevision;
 		if (revision === null) return null;
-		const known = { revision, baseRevision: link.baseRevision };
+		return await this.describeCommits(source, client, link.baseRevision, revision, link.remoteRef);
+	}
+
+	/** The latest commit that the check read, for the header of "Updates from". */
+	private async newestCommitOf(
+		source: SkillSourceConnection,
+		client: SkillSourceClient,
+		links: SkillSourceLink[],
+	): Promise<SkillUpdateCommit | null> {
+		const newest =
+			source.probeCursor ?? links.find((link) => link.pendingRevision)?.pendingRevision;
+		const base = links[0]?.baseRevision;
+		if (!newest || !base) return null;
+		return await this.describeCommits(source, client, base, newest);
+	}
+
+	/**
+	 * The commits between two revisions, and the latest one that touched the skill when
+	 * `ref` is given. Only the revisions when the source cannot describe them, such as while
+	 * it rate-limits n8n or with a credential that is gone.
+	 */
+	private async describeCommits(
+		source: SkillSourceConnection,
+		client: SkillSourceClient,
+		from: string,
+		to: string,
+		ref?: SkillSourceLink['remoteRef'],
+	): Promise<SkillUpdateCommit> {
+		const known = { revision: to, baseRevision: from };
 		let provenance = null;
-		if (client.provenance) {
+		const waiting = (this.retryAt.get(accessKey(source)) ?? 0) > Date.now();
+		if (client.provenance && !waiting) {
 			const auth = await this.authOf(source, client).catch(() => undefined);
 			if (!source.credentialId || auth) {
-				provenance = await client.provenance(source.locator, link.baseRevision, revision, auth);
+				provenance = await client.provenance(source.locator, from, to, auth, ref);
 			}
 		}
 		return {
@@ -548,7 +620,7 @@ export class SkillSyncService {
 			author: provenance?.author ?? null,
 			date: provenance?.date ?? null,
 			commits: provenance?.commits ?? null,
-			webUrl: provenance?.webUrl ?? client.webUrl(source.locator, link.remoteRef),
+			webUrl: provenance?.webUrl ?? client.webUrl(source.locator, ref),
 		};
 	}
 

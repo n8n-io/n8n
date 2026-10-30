@@ -42,6 +42,8 @@ export function pendingUpdate(overrides: Partial<SkillPendingUpdate> = {}): Skil
 			instructions: 'Use short sentences.\nPrefer active voice.',
 			references: [{ path: 'references/tone.md', content: '# Tone\n' }],
 		},
+		currentFrontmatter: null,
+		updateFrontmatter: null,
 		nameClash: null,
 		impact: { nextVersion: 3, followingAgents: 2, publishedAgents: 1 },
 		...overrides,

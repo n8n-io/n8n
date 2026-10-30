@@ -799,7 +799,8 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	// The filter options are not needed for the first page or the deep links below.
 	void loadFilterOptions();
-	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	// The sources load too, so the Sources tab shows its dot before the user opens it.
+	await Promise.all([load(), loadSources(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {

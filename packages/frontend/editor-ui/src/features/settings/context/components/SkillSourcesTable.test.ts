@@ -36,6 +36,12 @@ describe('SkillSourcesTable', () => {
 		]);
 	});
 
+	it('says when there is no source yet', () => {
+		const { getByTestId } = render({ props: { sources: [] } });
+
+		expect(getByTestId('skill-sources-empty')).toHaveTextContent('No sources yet');
+	});
+
 	it('opens the updates of a source with updates on a row click, and not of one without', async () => {
 		const withUpdates = sourceItem({ id: 'src-2', updatesAvailable: 1 });
 		const { getAllByTestId, emitted } = render({

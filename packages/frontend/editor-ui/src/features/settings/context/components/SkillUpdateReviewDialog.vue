@@ -20,6 +20,7 @@ import SkillVersionDiff from '@/features/agents/components/skillVersions/SkillVe
 import {
 	SKILL_FILE,
 	countsByFile,
+	diffLines,
 	diffSkills,
 } from '@/features/agents/components/skillVersions/skillVersionDiff';
 
@@ -46,18 +47,26 @@ const acting = ref<'accept' | 'skip' | null>(null);
 const reviewedWarnings = ref(false);
 const selectedPath = ref(SKILL_FILE);
 
+/** Counts the loads, so an answer that arrives after a newer load is dropped. */
+let loadId = 0;
+
 async function load() {
 	if (!props.skillId) return;
+	const id = ++loadId;
 	loading.value = true;
 	reviewedWarnings.value = false;
 	selectedPath.value = SKILL_FILE;
 	try {
-		review.value = await skillsStore.fetchSkillUpdate(props.skillId);
+		const loaded = await skillsStore.fetchSkillUpdate(props.skillId);
+		if (id === loadId) review.value = loaded;
 	} catch (error) {
+		if (id !== loadId) return;
 		showError(errorOf(error), i18n.baseText('settings.context.skills.review.error.load'));
+		// The update can be gone, decided by another user: the lists catch up.
+		emit('changed');
 		emit('update:open', false);
 	} finally {
-		loading.value = false;
+		if (id === loadId) loading.value = false;
 	}
 }
 
@@ -74,9 +83,31 @@ const update = computed(() => review.value?.update);
 const verdict = computed(() => update.value?.check.verdict);
 const canReview = computed(() => review.value?.source.canReview === true);
 
-const sections = computed(() =>
-	update.value?.update ? diffSkills(update.value.current, update.value.update) : [],
-);
+const FRONTMATTER = 'frontmatter';
+
+/** The frontmatter as one `key: value` line per key, sorted, so a diff shows each change. */
+function frontmatterText(frontmatter: Record<string, unknown> | null): string {
+	return Object.keys(frontmatter ?? {})
+		.sort()
+		.map((key) => `${key}: ${JSON.stringify(frontmatter?.[key])}`)
+		.join('\n');
+}
+
+const sections = computed(() => {
+	const current = update.value;
+	if (!current?.update) return [];
+	const lines = diffLines(
+		frontmatterText(current.currentFrontmatter),
+		frontmatterText(current.updateFrontmatter),
+	);
+	const added = lines.filter((line) => line.type === 'added').length;
+	const removed = lines.filter((line) => line.type === 'removed').length;
+	return [
+		...diffSkills(current.current, current.update),
+		// Accept stores the frontmatter too, so a change to it shows as its own entry.
+		...(added + removed > 0 ? [{ key: FRONTMATTER, lines, added, removed }] : []),
+	];
+});
 const counts = computed(() => countsByFile(sections.value));
 /** SKILL.md, then the references of the current version and of the update. */
 const files = computed(() => [
@@ -202,7 +233,7 @@ function openInGitHub() {
 	<N8nDialog
 		:open="open"
 		:header="update?.name ?? ''"
-		size="xlarge"
+		size="2xlarge"
 		data-test-id="skill-update-review-dialog"
 		@update:open="emit('update:open', $event)"
 	>
@@ -224,7 +255,11 @@ function openInGitHub() {
 						:class="[$style.file, { [$style.selected]: path === selectedPath }]"
 						@click="selectedPath = path"
 					>
-						<N8nText size="small">{{ path }}</N8nText>
+						<N8nText size="small">{{
+							path === FRONTMATTER
+								? i18n.baseText('settings.context.skills.review.frontmatter')
+								: path
+						}}</N8nText>
 						<SkillDiffCount :count="counts[path]" hide-zero />
 					</button>
 				</nav>
@@ -271,9 +306,12 @@ function openInGitHub() {
 
 					<N8nCallout v-if="update.nameClash" theme="danger" data-test-id="skill-update-name-clash">
 						{{
-							i18n.baseText('settings.context.skills.review.nameClash', {
-								interpolate: { name: update.nameClash.name, scope: scopeLabel },
-							})
+							i18n.baseText(
+								update.nameClash.where === 'agent'
+									? 'settings.context.skills.review.nameClash.agent'
+									: 'settings.context.skills.review.nameClash',
+								{ interpolate: { name: update.nameClash.name, scope: scopeLabel } },
+							)
 						}}
 					</N8nCallout>
 

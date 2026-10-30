@@ -163,15 +163,16 @@ export abstract class SkillSourceClient {
 	probe?(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<string>;
 
 	/**
-	 * Who changed the source between two revisions, and why. Optional: the review shows only
-	 * the revision without it. A failure, such as a rate limit, answers null, so it never
-	 * fails a review.
+	 * Who changed the source between two revisions, and why. With `ref`, the latest commit is
+	 * the latest one that touched that skill. Optional: the review shows only the revisions
+	 * without it. A failure, such as a rate limit, answers null, so it never fails a review.
 	 */
 	provenance?(
 		locator: SkillSourceLocator,
 		from: string,
 		to: string,
 		auth?: SkillSourceAuth,
+		ref?: RemoteSkillRef,
 	): Promise<SkillSourceProvenance | null>;
 
 	/**

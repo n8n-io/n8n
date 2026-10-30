@@ -70,7 +70,10 @@ describe('SkillSourceUpdatesDialog', () => {
 		const rows = getAllByTestId('skill-source-update-row');
 		expect(rows).toHaveLength(3);
 		expect(rows[0]).toHaveTextContent('brand-voice');
-		expect(rows[0]).toHaveTextContent('brand-voice: add tone examples · lena');
+		expect(rows[0]).toHaveTextContent('skills/brand-voice');
+		expect(getByTestId('skill-source-updates-commit')).toHaveTextContent(
+			'Latest commit: brand-voice: add tone examples · lena',
+		);
 		expect(rows[0]).toHaveTextContent('+3');
 		expect(rows[0]).not.toHaveTextContent('−0');
 		expect(rows[1]).toHaveTextContent('Needs review');
@@ -129,6 +132,23 @@ describe('SkillSourceUpdatesDialog', () => {
 			type: 'warning',
 		});
 		expect(emitted('changed')).toHaveLength(1);
+	});
+
+	it('leaves an update with a name clash out of Update all', async () => {
+		const { getByTestId } = await open(
+			sourceUpdates({
+				updates: [
+					pendingUpdate(),
+					pendingUpdate({
+						skillId: 'skill-2',
+						name: 'campaign-brief',
+						nameClash: { name: 'brand-voice', where: 'scope' },
+					}),
+				],
+			}),
+		);
+
+		expect(getByTestId('skill-source-updates-update-all')).toHaveTextContent('Update all (1)');
 	});
 
 	it('opens the review of one update', async () => {

@@ -292,11 +292,18 @@ export type SkillPendingUpdate = {
 	current: AgentSkill;
 	/** The update. Null when n8n cannot read its SKILL.md: the check then blocks it. */
 	update: AgentSkill | null;
+	/** The frontmatter of SKILL.md in the latest version and in the update. Accept stores it too. */
+	currentFrontmatter: Record<string, unknown> | null;
+	updateFrontmatter: Record<string, unknown> | null;
 	/**
 	 * Set when the update renames the skill to a name that the scope or an agent already uses.
 	 * Accept is refused (`name_clash`) until the name is free.
 	 */
-	nameClash: { name: string } | null;
+	nameClash: {
+		name: string;
+		/** `scope`: a skill in the same scope has the name. `agent`: an agent that uses the skill has a skill with that name. */
+		where: 'scope' | 'agent';
+	} | null;
 	impact: SkillUpdateImpact;
 };
 
@@ -340,6 +347,6 @@ export type SkillUpdateAcceptResponse = {
 
 export type SkillUpdatesAcceptResponse = {
 	accepted: SkillUpdateAcceptResponse[];
-	/** Updates that did not come in. The others did. */
-	failed: Array<{ skillId: string; reason: SkillSourceReason }>;
+	/** Updates that did not come in. The others did. `unexpected` is a failure with no known reason. */
+	failed: Array<{ skillId: string; reason: SkillSourceReason | 'unexpected' }>;
 };
