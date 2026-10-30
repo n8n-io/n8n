@@ -72,6 +72,7 @@ import {
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
 import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -183,12 +184,15 @@ beforeEach(async () => {
 	const instanceSettings = mock<InstanceSettings>({
 		n8nFolder: path.join(testRoot, 'instance'),
 		instanceId: 'inst-test',
+		isMultiMain: false,
 	});
 	workingDirectory = new PromotionWorkingDirectoryService(instanceSettings);
 	const checkoutCleanup = new PromotionCheckoutCleanupService(
 		workingDirectory,
 		environmentRepository,
 		logger,
+		mock<Publisher>(),
+		instanceSettings,
 	);
 	service = new PromotionsService(
 		new PromotionEnvironmentResolver(environmentRepository, linkRepository, projectRepository),

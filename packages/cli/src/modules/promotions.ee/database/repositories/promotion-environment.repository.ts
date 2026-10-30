@@ -82,19 +82,15 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 		return await this.count({ where: { providerId } });
 	}
 
-	/** Returns the IDs from the list that still have a row. */
 	async findExistingIds(ids: string[]): Promise<Set<string>> {
 		if (ids.length === 0) return new Set();
 		const rows = await this.find({ select: { id: true }, where: { id: In(ids) } });
 		return new Set(rows.map((row) => row.id));
 	}
 
-	/**
-	 * Environments on this provider that store a repository path. Their remote URL
-	 * is built from the provider's host URL, so a host change also changes it.
-	 */
 	async findIdsWithRepositoryPathByProvider(providerId: string): Promise<string[]> {
-		const rows = await this.find({ select: { id: true, remote: true }, where: { providerId } });
+		// The object form of `select` does not accept a JSON column, so use the list form.
+		const rows = await this.find({ select: ['id', 'remote'], where: { providerId } });
 		return rows
 			.filter((row) => isRecord(row.remote) && 'repositoryPath' in row.remote)
 			.map((row) => row.id);

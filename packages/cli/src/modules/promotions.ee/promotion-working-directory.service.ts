@@ -90,7 +90,6 @@ export class PromotionWorkingDirectoryService {
 		await rm(this.paths(environmentId).rootFolder, { recursive: true, force: true });
 	}
 
-	/** IDs of the environment folders on this machine. Skips names that are not generated IDs. */
 	async listEnvironmentIds(): Promise<string[]> {
 		try {
 			const entries = await readdir(this.environmentsFolder(), { withFileTypes: true });

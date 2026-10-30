@@ -165,7 +165,7 @@ export class PromotionEnvironmentsService {
 			(changesRemote && !isDeepStrictEqual(remote, current.remote)) ||
 			provider.id !== current.providerId ||
 			(settings !== undefined && this.changesCheckoutBranch(current, settings));
-		if (changesCheckout) await this.checkoutCleanup.resetCheckouts([id]);
+		if (changesCheckout) await this.checkoutCleanup.resetCheckoutAfterSettingsChange(id);
 		const changedFields = [
 			...(input.name !== undefined ? ['name' as const] : []),
 			...(input.remote !== undefined ? ['remote' as const] : []),
@@ -308,7 +308,7 @@ export class PromotionEnvironmentsService {
 		return { hasCheckout, matchesEnvironment };
 	}
 
-	/** Settings this version cannot read count as a change. */
+	/** Settings this version cannot read count as a change, because no checkout can match them. */
 	private changesCheckoutBranch(
 		current: PromotionEnvironment,
 		settings: PromotionEnvironmentSettings,

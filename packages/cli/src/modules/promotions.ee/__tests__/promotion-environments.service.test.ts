@@ -11,6 +11,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { userHasScopes } from '@/permissions.ee/check-access';
+import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import type { PromotionEnvironment } from '../database/entities/promotion-environment.entity';
 import type { PromotionProvider } from '../database/entities/promotion-provider.entity';
@@ -41,6 +42,7 @@ describe('PromotionEnvironmentsService', () => {
 	const actor = mock<User>({ id: 'user-1' });
 	const logger = mock<Logger>();
 	logger.scoped.mockReturnValue(logger);
+	const publisher = mock<Publisher>();
 
 	let n8nFolder: string;
 	let workingDirectory: PromotionWorkingDirectoryService;
@@ -84,6 +86,7 @@ describe('PromotionEnvironmentsService', () => {
 		userHasScopesMock.mockResolvedValue(true);
 		providersService.getEntity.mockResolvedValue(provider());
 		environmentRepository.findByIdWithProvider.mockResolvedValue(environment());
+		publisher.publishCommand.mockResolvedValue();
 
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-environments-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
@@ -94,7 +97,13 @@ describe('PromotionEnvironmentsService', () => {
 			providersService,
 			gitService,
 			workingDirectory,
-			new PromotionCheckoutCleanupService(workingDirectory, environmentRepository, logger),
+			new PromotionCheckoutCleanupService(
+				workingDirectory,
+				environmentRepository,
+				logger,
+				publisher,
+				mock<InstanceSettings>({ isMultiMain: true }),
+			),
 			eventService,
 		);
 	});
@@ -121,6 +130,17 @@ describe('PromotionEnvironmentsService', () => {
 		expect(logger.warn).toHaveBeenCalledWith('Failed to remove the local promotion checkout', {
 			environmentId: ENVIRONMENT_ID,
 			error: 'EBUSY',
+		});
+	});
+
+	it('asks the other mains to remove the checkout of the environment it deletes', async () => {
+		environmentRepository.deleteEnvironment.mockResolvedValue(true);
+
+		await service.delete(ENVIRONMENT_ID, actor);
+
+		expect(publisher.publishCommand).toHaveBeenCalledWith({
+			command: 'promotion-checkout-cleanup',
+			payload: { environmentIds: [ENVIRONMENT_ID], reason: 'deleted' },
 		});
 	});
 
@@ -206,6 +226,10 @@ describe('PromotionEnvironmentsService', () => {
 
 				expect(await exists(paths.repositoryFolder)).toBe(false);
 				expect(await exists(paths.sshDir)).toBe(true);
+				expect(publisher.publishCommand).toHaveBeenCalledWith({
+					command: 'promotion-checkout-cleanup',
+					payload: { environmentIds: [ENVIRONMENT_ID], reason: 'settings-changed' },
+				});
 			},
 		);
 
@@ -245,6 +269,7 @@ describe('PromotionEnvironmentsService', () => {
 			await service.update(ENVIRONMENT_ID, input, actor);
 
 			expect(await exists(paths.repositoryFolder)).toBe(true);
+			expect(publisher.publishCommand).not.toHaveBeenCalled();
 		});
 
 		it('keeps the checkout when the update loses a race', async () => {

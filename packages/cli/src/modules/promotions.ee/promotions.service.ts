@@ -206,7 +206,7 @@ export class PromotionsService {
 	 */
 	async disconnect(environmentId: string): Promise<PromotionCheckoutPublicDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId);
-		await this.checkoutCleanup.resetCheckouts([input.environmentId]);
+		await this.checkoutCleanup.resetCheckoutAfterDisconnect(input.environmentId);
 		return {
 			...this.checkoutIdentity(input),
 			branchName: checkoutBranchName(input.config),
