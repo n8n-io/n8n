@@ -96,10 +96,11 @@ describe('AgentChatAttachmentService', () => {
 		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toBeNull();
 		grantRepository.isGranted.mockResolvedValue(true);
 		expect(await service.getForAgent('att-1', { ...scope, threadId: 'child' })).toEqual(attachment);
-		expect(repository.findByIdInThread).toHaveBeenCalledWith('att-1', {
-			projectId: 'project-1',
-			threadId: 'root',
-		});
+		expect(repository.findByIdInThread).toHaveBeenCalledWith(
+			'att-1',
+			{ projectId: 'project-1', threadId: 'root' },
+			{},
+		);
 		expect(
 			await service.getForAgent('att-1', { ...scope, userId: 'user-2', threadId: 'child' }),
 		).toBeNull();
