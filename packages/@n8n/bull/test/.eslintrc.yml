@@ -1,0 +1,9 @@
+extends:
+  - ../.eslintrc.yml
+
+env:
+  mocha: true
+
+rules:
+  no-console: 2
+  no-process-exit: 0
