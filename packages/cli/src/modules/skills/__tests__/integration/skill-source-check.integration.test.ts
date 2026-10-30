@@ -11,7 +11,7 @@ import {
 	mockInstance,
 	testModules,
 } from '@n8n/backend-test-utils';
-import type { Project, User } from '@n8n/db';
+import { GLOBAL_OWNER_ROLE, type Project, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import nock from 'nock';
@@ -117,6 +117,10 @@ describe('Skill source checks', () => {
 
 	const pushChange = (files: Record<string, string>) =>
 		github.push('acme/skills', { ...github.files('acme/skills'), ...files });
+
+	/** The instance owner, as the check task reads it: a user with the owner role. */
+	const isOwner = (user: Pick<User, 'id'> & { role?: { slug: string } }) =>
+		user.role?.slug === GLOBAL_OWNER_ROLE.slug;
 
 	const linkOf = async (skillId: string) =>
 		await db().findOneByOrFail(SkillSourceLink, { skillId });
@@ -582,8 +586,9 @@ describe('Skill source checks', () => {
 			const { sourceId, docx } = await importAll();
 			await db().update(SkillSourceConnection, { id: sourceId }, { createdById: null });
 			pushChange({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			// The test database has more than one owner, so the flag goes by role, not by one id.
 			postHog.getFeatureFlags.mockImplementation(async (user) =>
-				user.id === ownerUser.id ? { [SKILL_SYNC_FLAG]: true } : {},
+				isOwner(user) ? { [SKILL_SYNC_FLAG]: true } : {},
 			);
 
 			await sync().checkAll();
@@ -596,7 +601,7 @@ describe('Skill source checks', () => {
 			const { sourceId } = await importAll();
 			await db().update(SkillSourceConnection, { id: sourceId }, { createdById: null });
 			postHog.getFeatureFlags.mockImplementation(async (user) =>
-				user.id === ownerUser.id ? {} : { [SKILL_SYNC_FLAG]: true },
+				isOwner(user) ? {} : { [SKILL_SYNC_FLAG]: true },
 			);
 
 			await sync().checkAll();

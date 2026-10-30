@@ -139,22 +139,15 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 }
 
 /** The badge of a synced skill whose source has new content that waits for review. */
-function syncBadgeOf(skill: SkillListItem) {
-	if (skill.syncState === 'update_available') {
-		return {
-			variant: 'info' as const,
-			label: i18n.baseText('settings.context.skills.sync.updateAvailable'),
-			tooltip: i18n.baseText('settings.context.skills.sync.updateAvailable.tooltip'),
-		};
-	}
-	if (skill.syncState === 'update_blocked') {
-		return {
-			variant: 'danger' as const,
-			label: i18n.baseText('settings.context.skills.sync.updateBlocked'),
-			tooltip: i18n.baseText('settings.context.skills.sync.updateBlocked.tooltip'),
-		};
-	}
-	return undefined;
+const SYNC_BADGES = {
+	update_available: { variant: 'info', key: 'settings.context.skills.sync.updateAvailable' },
+	update_blocked: { variant: 'danger', key: 'settings.context.skills.sync.updateBlocked' },
+} as const;
+
+function syncBadgeOf({ syncState }: SkillListItem) {
+	if (syncState !== 'update_available' && syncState !== 'update_blocked') return undefined;
+	const { variant, key } = SYNC_BADGES[syncState];
+	return { variant, label: i18n.baseText(key), tooltip: i18n.baseText(`${key}.tooltip`) };
 }
 
 function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
