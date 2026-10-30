@@ -1,0 +1,108 @@
+packages/frontend/editor-ui/src/features/agents/views/AgentBuilderView.vue
+  s_3eab3bd25bb557::t_bd01fa2218a6bb 187,1727-1728
+packages/@n8n/api-types/src/agents/types.ts
+  s_3eab3bd25bb557::t_e7c92cffb6391a 723-724
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/__tests__/InstanceAiThreadList.test.ts
+  s_3eab3bd25bb557::t_199f032f478460 429-442,444-461
+  s_3eab3bd25bb557::t_138f1732f44b9f 443
+  s_3eab3bd25bb557::t_b2ea579d07afd9 248
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/AssistantAgentPanelThread.test.ts
+  s_3eab3bd25bb557::t_b2d9a7afa6bf25 7,72-75,77,124-125,128-129,131-133,137
+  s_3eab3bd25bb557::t_f0475215008a31 1-6,8-71,76,78-123,126-127,130,134-136,138-152
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/assistantAgentThreads.ts
+  s_3eab3bd25bb557::t_fe5b64d01eb57c 45-48
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/AssistantAgentPanelThread.vue
+  s_3eab3bd25bb557::t_b2ea579d07afd9 15,73,184
+  s_3eab3bd25bb557::t_2ee4bf5dc915c8 1-14,16-72,74-183,185-221
+packages/cli/src/modules/agents/integrations/n8n-memory.ts
+  s_3eab3bd25bb557::t_8bc5c4a3037378 47-48,111-115,117-120
+  s_3eab3bd25bb557::t_6f64b9d59f3f9e 116
+  s_3eab3bd25bb557::t_c67744ff6e35f3 121
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_3eab3bd25bb557::t_e7c92cffb6391a 32,60,120,122,133-135,379-382,388
+packages/cli/src/modules/agents/repositories/agent-thread.repository.ts
+  s_3eab3bd25bb557::t_8bc5c4a3037378 4,28,32-33
+  s_3eab3bd25bb557::t_a04d061a24806a 29-31
+  s_3eab3bd25bb557::t_090b5a501e28cc 34-35
+packages/@n8n/instance-ai/src/tools/orchestration/agent-target-binding.ts
+  s_3eab3bd25bb557::t_a487a34fe80b4e 302-304,306-311,315,318-326
+  s_3eab3bd25bb557::t_6470f0a318291a 305,312-314,316-317
+  s_3eab3bd25bb557::t_6582638affad03 301
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/InstanceAiChatPanel.vue
+  s_3eab3bd25bb557::t_6c352ec5408014 377-380,382,391-393
+  s_3eab3bd25bb557::t_61e39ee7e5b974 407-409,430-446,451,453
+  s_3eab3bd25bb557::t_1f3543b31c9a21 289
+  s_3eab3bd25bb557::t_4a89fc9207f9cf 113-115,120-137,140-159
+  s_3eab3bd25bb557::t_18eff2807d59d5 280
+  s_3eab3bd25bb557::t_7d72e422848bcd 336-346
+  s_3eab3bd25bb557::t_fd3647324c75cb 410-429,447-450,452,471
+  s_3eab3bd25bb557::t_aff518afbb1076 251
+  s_3eab3bd25bb557::t_dbf4def5ccfd3e 173,181-183,189
+  s_3eab3bd25bb557::t_a2476e14af29e5 138-139
+  s_3eab3bd25bb557::t_882cf4b3b9f467 513-516,716,718,720,723
+  s_3eab3bd25bb557::t_2bd55a49a377ae 559-561
+  s_3eab3bd25bb557::t_1d65b057d25f0a 211-212
+  s_3eab3bd25bb557::t_6a1a8c8610b693 27,32,38,40,44-53
+  s_3eab3bd25bb557::t_a566114b2049ba 465-468,473-474
+  s_3eab3bd25bb557::t_f004a4dd8a80ea 470
+  s_3eab3bd25bb557::t_0dda0207d73c2f 529-531
+  s_3eab3bd25bb557::t_0b6efefc4e43d7 702-715,717,719,721-722,724-725,727
+  s_3eab3bd25bb557::t_76116929dbd529 160
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_3eab3bd25bb557::t_c6ee42cae6b580 17,37-38,51,62,252,254-257,260,265,273-279,337-338,355
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-agent.provider.ts
+  s_3eab3bd25bb557::t_97e6d53363b3a9 20,238,377-394
+  s_3eab3bd25bb557::t_ee08ce9c3465ed 395-396
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.provider.test.ts
+  s_3eab3bd25bb557::t_a04d061a24806a 283-285
+  s_3eab3bd25bb557::t_81d6c296bf647d 286,298,301,311,315,318,321,323-325,328-331,333-367,370,373,376
+  s_3eab3bd25bb557::t_8a088e72dc7c27 280-282
+  s_3eab3bd25bb557::t_e2ace81df21fa3 287-289,295-297
+  s_3eab3bd25bb557::t_4d44d8a447beaa 299-300
+  s_3eab3bd25bb557::t_21ebc118c10715 302-304,308-310
+  s_3eab3bd25bb557::t_aa10ae7c92cc4c 312-314
+  s_3eab3bd25bb557::t_6a1529cbc96985 316-317
+  s_3eab3bd25bb557::t_0b11abf6bd1727 319-320
+  s_3eab3bd25bb557::t_841d2549a2966b 322
+  s_3eab3bd25bb557::t_853796dd8a3eb0 326-327
+  s_3eab3bd25bb557::t_1e7327ac79d924 332
+  s_3eab3bd25bb557::t_f1445cd5c1b23a 368-369
+  s_3eab3bd25bb557::t_e72d7ee093bd54 371-372
+  s_3eab3bd25bb557::t_97540831114caf 374-375
+  s_3eab3bd25bb557::t_17b99fbb4fecc4 377-378
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
+  s_3eab3bd25bb557::t_199f032f478460 1060-1074
+  s_3eab3bd25bb557::t_34af9b2cfc76eb 16-19
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiViewHeader.vue
+  s_3eab3bd25bb557::t_bb93f5db3549a3 6,22
+packages/frontend/editor-ui/src/features/ai/instanceAi/embed/__tests__/InstanceAiChatPanel.test.ts
+  s_3eab3bd25bb557::t_cd66d46a348c59 971-974
+  s_3eab3bd25bb557::t_3b4a74164e7590 1048-1062,1073
+  s_3eab3bd25bb557::t_a5150492430f1c 7,12-14,45-53,108-122,126,951-954,960-970,975-1005,1013-1047,1063-1072
+  s_3eab3bd25bb557::t_a04d061a24806a 955-959,1006-1012
+  s_3eab3bd25bb557::t_207da78f9d51dc 1074
+packages/@n8n/instance-ai/src/index.ts
+  s_3eab3bd25bb557::t_99d76b92b8af73 287
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_3eab3bd25bb557::t_c4866e4ed33625 37-39
+  s_3eab3bd25bb557::t_eaa500f16489f5 178,182-191
+  s_3eab3bd25bb557::t_1dbb0f76b3ca21 179-181,378-382,389-390,392-393
+packages/cli/src/modules/agents/integrations/__tests__/n8n-memory.test.ts
+  s_3eab3bd25bb557::t_097fc7bc192d91 343-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62d8ea67838a5637cbc49fabe4bad0a3a5765907",
+  "prompts": {},
+  "sessions": {
+    "s_3eab3bd25bb557": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64d85eea-f944-4df3-942d-345f5e1cd860",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
