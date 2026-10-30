@@ -7,6 +7,13 @@ import { checkConditions } from '../validation/display-options';
 // Other fields like authentication, trigger, agent, promptType are treated as regular properties
 const DISCRIMINATOR_FIELDS = ['resource', 'operation', 'mode'];
 
+/** Custom API Call operations don't have fixed schemas - skip them */
+const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
+
+export function isCustomApiCall(operation: string): boolean {
+	return operation === CUSTOM_API_CALL_KEY;
+}
+
 /**
  * Property types that render UI affordances but carry no data in the saved
  * workflow JSON. They are skipped entirely from generated types/schemas.

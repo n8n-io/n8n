@@ -35,6 +35,7 @@ import {
 	extractDiscriminatorCombinations,
 	filterPropertiesForVersion,
 	getPropertiesForCombination,
+	isCustomApiCall,
 	narrowDisplayOptionsByDisabled,
 	type AIInputTypeInfo,
 	type BuilderHintVariation,
@@ -55,6 +56,7 @@ export {
 	extractDiscriminatorCombinations,
 	filterPropertiesForVersion,
 	getPropertiesForCombination,
+	isCustomApiCall,
 	narrowDisplayOptionsByDisabled,
 	propertyAppliesToVersion,
 	type AIInputTypeInfo,
@@ -87,12 +89,6 @@ const DEV_OUTPUT_PATH = path.resolve(__dirname, '../../dist/node-definitions');
 
 // Path to nodes-base dist for finding output schemas
 const NODES_BASE_DIST = path.resolve(__dirname, '../../../../nodes-base/dist/nodes');
-
-// Discriminator fields that create operation-specific parameter sets
-// Only fields that truly benefit from splitting the type are included here
-// Other fields like authentication, trigger, agent, promptType are treated as regular properties
-/** Custom API Call operations don't have fixed schemas - skip them */
-const CUSTOM_API_CALL_KEY = '__CUSTOM_API_CALL__';
 
 function buildNodeConfigType(
 	paramsTypeName: string,
@@ -161,10 +157,6 @@ function generateResourceMapperTypeDeclaration(exported: boolean): string {
 	return `${prefix} ResourceMapperField = { id?: string; displayName?: string; required?: boolean; defaultMatch?: boolean; display?: boolean; type?: string; canBeUsedToMatch?: boolean; [key: string]: unknown };
 ${prefix} ResourceMapperCommon = { matchingColumns?: string[]; cachedResultName?: string; [key: string]: unknown };
 ${prefix} ResourceMapperValue = ResourceMapperCommon & { mappingMode: string; value?: null | Record<string, unknown>; schema?: ResourceMapperField[] };`;
-}
-
-export function isCustomApiCall(operation: string): boolean {
-	return operation === CUSTOM_API_CALL_KEY;
 }
 
 // TypeScript reserved words that need quoting
@@ -3862,8 +3854,6 @@ const AI_SUBNODE_TYPES: Array<{
 // =============================================================================
 // AI Input Type Extraction and Narrowed Subnode Config Generation
 // =============================================================================
-// Types for builderHint.inputs
-
 /**
  * Format displayOptions as a JSDoc annotation string.
  * Format: @displayOptions.show { key: [values] }
