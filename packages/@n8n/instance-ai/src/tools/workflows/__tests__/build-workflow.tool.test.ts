@@ -284,6 +284,12 @@ describe('createBuildWorkflowTool', () => {
 		).toThrow(/projectId/);
 	});
 
+	it('needs the workspace, since it reads and compiles the source file there', () => {
+		const { context } = makeContext({ source: 'workflow source' });
+
+		expect(createBuildWorkflowTool(context).requiresWorkspace).toBe(true);
+	});
+
 	it('requires workflow-builder and data-table-manager skill loads in its description', () => {
 		const { context } = makeContext({ source: 'workflow source' });
 		const tool = createBuildWorkflowTool(context);
