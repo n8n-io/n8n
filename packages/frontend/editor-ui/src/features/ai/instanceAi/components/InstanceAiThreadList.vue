@@ -179,9 +179,13 @@ const scopedItems = computed<RecentChatItem[]>(() => {
 	if (!filter) {
 		return history.value.threads.map((thread) => ({ kind: 'assistant' as const, thread }));
 	}
-	// The host loads the Assistant agent threads of its subject into the store.
+	// The host loads the Assistant agent threads of its subject into the store, so the
+	// search runs here, while the server searches the Assistant history.
+	const searchTerm = history.value.search.trim().toLowerCase();
 	const agentThreads = instanceAiSettingsStore.isAssistantAgentEnabled
-		? assistantAgentThreadsStore.knownThreads.filter(filter)
+		? assistantAgentThreadsStore.knownThreads.filter(
+				(thread) => filter(thread) && thread.title.toLowerCase().includes(searchTerm),
+			)
 		: [];
 	return [
 		...history.value.threads

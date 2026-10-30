@@ -444,6 +444,22 @@ describe('InstanceAiThreadList', () => {
 			expect(routerPush).not.toHaveBeenCalled();
 		});
 
+		it('applies the search to the threads of the scope', async () => {
+			mockedStore(useAssistantAgentThreadsStore).openedThreads = [
+				agentRuntimeThread,
+				{ ...agentRuntimeThread, id: 'aa2', title: 'Invoice follow-up' },
+			];
+			mockedStore(useInstanceAiStore).threadHistory.search = ' INVOICE ';
+
+			const { findAllByTestId } = await renderList({
+				props: { navigate: false, filter: () => true },
+			});
+
+			const agentRows = await findAllByTestId('instance-ai-assistant-agent-thread-item');
+			expect(agentRows).toHaveLength(1);
+			expect(agentRows[0]).toHaveTextContent('Invoice follow-up');
+		});
+
 		it('tells a host that scopes the list when it deletes the open thread', async () => {
 			const agentStore = mockedStore(useAssistantAgentThreadsStore);
 			agentStore.openedThreads = [agentRuntimeThread];
