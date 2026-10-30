@@ -1,89 +1,77 @@
 import { isRecord } from '@n8n/utils/is-record';
 
-import type { EndpointCredential } from './types';
+import type { EndpointCredential, LoginMethod } from './types';
 
-/** Long enough for a gateway's own wording, short enough not to paste a page into a toast. */
 const MAX_MESSAGE_LENGTH = 500;
-
+const SHORTEST_PLAUSIBLE_CREDENTIAL = 8;
 const REDACTED = '[redacted]';
+const UNPARSED = Symbol('unparsed');
 
-/**
- * Redaction is a substring match, so a short value censors ordinary words - a
- * two-letter key would blank every "key" in the sentence. Nothing this short is
- * a real gateway credential, and a mangled message helps nobody.
- */
-const MIN_REDACTABLE_LENGTH = 8;
+function loginSecrets(login: LoginMethod): string[] {
+	switch (login.type) {
+		case 'bearer':
+			return [login.token];
+		case 'header':
+			return [login.key];
+		case 'basic':
+			return [
+				login.password,
+				Buffer.from(`${login.username}:${login.password}`).toString('base64'),
+			];
+		case 'none':
+			return [];
+	}
+}
 
-/** Every value the user typed as a secret, so none of it can be echoed back into an error. */
 export function endpointSecrets(endpoint: EndpointCredential): string[] {
-	const { login } = endpoint;
-	const loginSecrets =
-		login.type === 'bearer'
-			? [login.token]
-			: login.type === 'header'
-				? [login.key]
-				: login.type === 'basic'
-					? [login.password, Buffer.from(`${login.username}:${login.password}`).toString('base64')]
-					: [];
-
-	return [...loginSecrets, ...Object.values(endpoint.gatewayHeaders)].filter(
-		(secret) => secret.length > 0,
+	return [...loginSecrets(endpoint.login), ...Object.values(endpoint.gatewayHeaders)].filter(
+		(secret) => secret.length >= SHORTEST_PLAUSIBLE_CREDENTIAL,
 	);
 }
 
 function redact(text: string, secrets: string[]): string {
-	return secrets
-		.filter((secret) => secret.length >= MIN_REDACTABLE_LENGTH)
-		.reduce((redacted, secret) => redacted.split(secret).join(REDACTED), text);
+	return secrets.reduce((redacted, secret) => redacted.split(secret).join(REDACTED), text);
 }
 
 function truncate(text: string): string {
 	return text.length > MAX_MESSAGE_LENGTH ? `${text.slice(0, MAX_MESSAGE_LENGTH)}…` : text;
 }
 
-/** Tags carry no meaning once flattened, and an error page is mostly tags. */
+function asClientError(message: string): string {
+	return JSON.stringify({ error: { message } });
+}
+
+function parseJson(text: string): unknown {
+	try {
+		return JSON.parse(text);
+	} catch {
+		return UNPARSED;
+	}
+}
+
+function isAlreadyClientShaped(body: Record<string, unknown>): boolean {
+	return isRecord(body.error) && typeof body.error.message === 'string';
+}
+
 function messageFromHtml(text: string): string | undefined {
 	const title = /<title[^>]*>([^<]+)<\/title>/i.exec(text)?.[1];
-	const body = (title ?? text.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
-	return body.length > 0 ? body : undefined;
+	const flattened = (title ?? text.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+	return flattened.length > 0 ? flattened : undefined;
 }
 
-/**
- * Gateways disagree on the shape of an error. OpenAI-style bodies already reach
- * the user; the rest arrive as `{ message }` (Azure API Management, Databricks),
- * `{ error: "..." }`, an OAuth `{ error_description }`, plain text, or an HTML
- * error page. `undefined` means the body needs no reshaping.
- */
 function messageFromBody(text: string): string | undefined {
-	const trimmed = text.trim();
-	if (trimmed.length === 0) return undefined;
+	if (text.length === 0) return undefined;
+	if (text.startsWith('<')) return messageFromHtml(text);
 
-	try {
-		const parsed: unknown = JSON.parse(trimmed);
-		if (!isRecord(parsed)) return undefined;
-		// Already the shape the OpenAI client reads
-		if (isRecord(parsed.error) && typeof parsed.error.message === 'string') return undefined;
-		// OAuth sends a code in `error` and the sentence in `error_description`
-		if (typeof parsed.error_description === 'string') return parsed.error_description;
-		if (typeof parsed.error === 'string') return parsed.error;
-		if (typeof parsed.message === 'string') return parsed.message;
-		return undefined;
-	} catch {}
+	const parsed = parseJson(text);
+	if (parsed === UNPARSED) return text;
+	if (!isRecord(parsed) || isAlreadyClientShaped(parsed)) return undefined;
 
-	if (trimmed.startsWith('<')) return messageFromHtml(trimmed);
-	return trimmed;
+	return [parsed.error_description, parsed.error, parsed.message].find(
+		(value): value is string => typeof value === 'string',
+	);
 }
 
-/**
- * Puts the gateway's own words in front of the user. The AI library reports
- * `<status> status code (no body)` for anything it cannot read as an OpenAI
- * error, which loses the one sentence that says what went wrong - a missing
- * subscription key, a disabled deployment, a quota.
- *
- * A 401 is reshaped like any other status rather than being swapped for advice
- * about checking credentials: the gateway usually knows which of several login
- * problems it was.
- */
 export function wrapCustomModelEndpointErrorFetch(
 	baseFetch: typeof fetch,
 	options: { secrets: string[] },
@@ -92,21 +80,18 @@ export function wrapCustomModelEndpointErrorFetch(
 		const response = await baseFetch(input, init);
 		if (response.ok) return response;
 
-		const text = await response.text();
+		const text = (await response.text()).trim();
 		const message = messageFromBody(text);
-		// A body already in the client's shape is passed through whole so the fields
-		// beside the message survive, but it is still redacted: an OpenAI-compatible
-		// gateway is exactly the kind that echoes a rejected key back. It is not
-		// truncated, because cutting JSON short would leave it unparseable.
-		const body =
-			message === undefined
-				? redact(text, options.secrets)
-				: JSON.stringify({ error: { message: truncate(redact(message, options.secrets)) } });
 
 		const headers = new Headers(response.headers);
 		headers.delete('content-length');
-		// The reshaped body is JSON whatever the gateway sent
 		if (message !== undefined) headers.set('content-type', 'application/json');
+
+		// Truncating the untouched branch would leave its JSON unparseable
+		const body =
+			message === undefined
+				? redact(text, options.secrets)
+				: asClientError(truncate(redact(message, options.secrets)));
 
 		return new Response(body, {
 			status: response.status,
