@@ -1,3 +1,19 @@
+## [2.46.3](https://github.com/n8n-io/n8n/compare/n8n@2.46.2...n8n@2.46.3) (2026-10-30)
+
+
+### Bug Fixes
+
+* **core:** Add a cooldown before resending migration owner reminders ([#42567](https://github.com/n8n-io/n8n/issues/42567)) ([724efc3](https://github.com/n8n-io/n8n/commit/724efc352f51a52910924789b79cf66770807e09))
+* **core:** Resolve IMAP trigger expressions after activation ([#42612](https://github.com/n8n-io/n8n/issues/42612)) ([17594a7](https://github.com/n8n-io/n8n/commit/17594a7eefa42bc37f532af35c4f38eb1986bbc5))
+* **core:** Return user data with an __isError key as data in expressions ([#42490](https://github.com/n8n-io/n8n/issues/42490)) ([9fe595e](https://github.com/n8n-io/n8n/commit/9fe595e1b83179b54ac5768d03c5f90f9c409f16))
+* **editor:** Show the workflow project under its name in the migration report ([#42619](https://github.com/n8n-io/n8n/issues/42619)) ([b6639bb](https://github.com/n8n-io/n8n/commit/b6639bb377438b3e6d84b4412bb182d61bad447a))
+
+
+### Features
+
+* **editor:** Add resolution guidance to the migration rule detail page ([#42615](https://github.com/n8n-io/n8n/issues/42615)) ([4e2bb85](https://github.com/n8n-io/n8n/commit/4e2bb8549160de4eb0542976e42d6bf9fca6d678))
+
+
 ## [2.46.2](https://github.com/n8n-io/n8n/compare/n8n@2.46.1...n8n@2.46.2) (2026-10-29)
 
 
