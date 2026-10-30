@@ -18,6 +18,8 @@ function loginSecrets(login: LoginMethod): string[] {
 				login.password,
 				Buffer.from(`${login.username}:${login.password}`).toString('base64'),
 			];
+		case 'oauth2':
+			return [login.clientSecret];
 		case 'none':
 			return [];
 	}
