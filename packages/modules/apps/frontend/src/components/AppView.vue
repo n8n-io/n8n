@@ -10,6 +10,7 @@ import { computed, ref, watch } from 'vue';
 
 import { getApp } from '../apps.api';
 import type { AppViewTab } from '../apps.constants';
+import { useAppVersions } from '../composables/useAppVersions';
 import AppHeader from './AppHeader.vue';
 import AppPreview from './AppPreview.vue';
 
@@ -24,6 +25,10 @@ const latestFetch = useLatestFetch();
 
 const app = ref<AppResponse | null>(null);
 const loading = ref(true);
+const versions = useAppVersions(
+	() => props.projectId,
+	() => app.value?.id,
+);
 // `<tab>` or `<tab>.<sub-tab>`, for example `configure.authentication`.
 const section = defineModel<string>('section', { default: 'preview' });
 const activeTab = computed<AppViewTab>({
@@ -33,25 +38,38 @@ const activeTab = computed<AppViewTab>({
 	},
 });
 
-async function loadApp() {
+async function loadApp(keepView = false) {
 	const isLatest = latestFetch.next();
-	app.value = null;
-	loading.value = true;
+	if (!keepView) {
+		app.value = null;
+		loading.value = true;
+	}
 	try {
 		const result = await getApp(rootStore.restApiContext, props.projectId, props.appId);
 		if (!isLatest()) return;
 		app.value = result;
 	} catch (error) {
 		if (!isLatest()) return;
-		app.value = null;
-		if (!(error instanceof ResponseError && error.httpStatusCode === 404)) {
+		if (error instanceof ResponseError && error.httpStatusCode === 404) {
+			app.value = null;
+		} else {
 			toast.showError(error, i18n.baseText('apps.detail.loadError'));
 		}
 	}
 	loading.value = false;
 }
 
-watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
+async function refresh() {
+	await Promise.all([loadApp(true), versions.refresh()]);
+}
+
+watch(
+	() => [props.projectId, props.appId],
+	async () => await loadApp(),
+	{ immediate: true },
+);
+
+defineExpose({ refresh });
 </script>
 
 <template>
@@ -61,6 +79,8 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 			v-model:tab="activeTab"
 			:project-id="projectId"
 			:app="app"
+			:publishable-version="versions.latestBuilt.value"
+			@updated="app = $event"
 			@deleted="emit('deleted', $event)"
 		/>
 
@@ -75,7 +95,12 @@ watch(() => [props.projectId, props.appId], loadApp, { immediate: true });
 			/>
 
 			<template v-else>
-				<AppPreview v-if="activeTab === 'preview'" :project-id="projectId" :app="app" />
+				<AppPreview
+					v-if="activeTab === 'preview'"
+					:project-id="projectId"
+					:app="app"
+					:versions="versions"
+				/>
 				<div v-else :class="$style.configure" data-test-id="app-view-configure">
 					<N8nEmptyState
 						:icon="{ type: 'icon', value: 'settings' }"

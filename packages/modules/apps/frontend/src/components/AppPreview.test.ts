@@ -2,8 +2,10 @@ import type { AppBuildStatus, AppResponse, AppVersionResponse } from '@n8n/api-t
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
+import { defineComponent, h, type PropType } from 'vue';
 
 import { createAppPreview, getAppBuild, listAppVersions } from '../apps.api';
+import { useAppVersions, type AppVersions } from '../composables/useAppVersions';
 import AppPreview from './AppPreview.vue';
 
 vi.mock('../apps.api');
@@ -36,9 +38,18 @@ const version = (id: string, buildStatus: AppBuildStatus): AppVersionResponse =>
 });
 
 let grants = 0;
+let versions: AppVersions;
 
-const renderComponent = createComponentRenderer(AppPreview, {
-	props: { projectId: 'project-1', app: app() },
+const AppPreviewHost = defineComponent({
+	props: { app: { type: Object as PropType<AppResponse>, required: true } },
+	setup(props) {
+		versions = useAppVersions('project-1', () => props.app.id);
+		return () => h(AppPreview, { projectId: 'project-1', app: props.app, versions });
+	},
+});
+
+const renderComponent = createComponentRenderer(AppPreviewHost, {
+	props: { app: app() },
 });
 
 describe('AppPreview', () => {
@@ -130,16 +141,16 @@ describe('AppPreview', () => {
 		expect(getByTestId('app-preview-status')).toHaveTextContent('Building');
 	});
 
-	it('keeps the frame when a new draft does not change the shown version', async () => {
+	it('keeps the frame when a refresh does not change the shown version', async () => {
 		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
-		const { findByTestId, getByTestId, rerender } = renderComponent();
+		const { findByTestId, getByTestId } = renderComponent();
 		const frame = await findByTestId('app-preview-frame');
 
 		vi.mocked(listAppVersions).mockResolvedValue([
 			version('v3', 'failed'),
 			version('v2', 'succeeded'),
 		]);
-		await rerender({ app: app('v3') });
+		await versions.refresh();
 
 		await waitFor(() =>
 			expect(getByTestId('app-preview-status')).toHaveTextContent('Build failed'),
@@ -148,16 +159,16 @@ describe('AppPreview', () => {
 		expect(createAppPreview).toHaveBeenCalledOnce();
 	});
 
-	it('shows a new draft version with a new grant', async () => {
+	it('shows a newer built version after a refresh with a new grant', async () => {
 		vi.mocked(listAppVersions).mockResolvedValue([version('v2', 'succeeded')]);
-		const { findByTestId, getByTestId, rerender } = renderComponent();
+		const { findByTestId, getByTestId } = renderComponent();
 		await findByTestId('app-preview-frame');
 
 		vi.mocked(listAppVersions).mockResolvedValue([
 			version('v3', 'succeeded'),
 			version('v2', 'succeeded'),
 		]);
-		await rerender({ app: app('v3') });
+		await versions.refresh();
 
 		await waitFor(() =>
 			expect(getByTestId('app-preview-frame')).toHaveAttribute(
@@ -207,7 +218,7 @@ describe('AppPreview', () => {
 		await userEvent.click(getByTestId('app-preview-reload'));
 
 		await waitFor(() =>
-			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not load the preview'),
+			expect(showError).toHaveBeenCalledWith(expect.any(Error), 'Could not load the app versions'),
 		);
 		expect(getByTestId('app-preview-frame')).toBe(frame);
 		expect(queryByTestId('app-preview-error')).not.toBeInTheDocument();
