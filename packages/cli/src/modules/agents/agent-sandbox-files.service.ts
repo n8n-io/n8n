@@ -42,7 +42,7 @@ export const SANDBOX_FILE_REF_PREFIX = 'sandbox:';
 /** Workspace instructions about files. Only runs with a workspace get them. */
 export const SANDBOX_FILES_INSTRUCTIONS = [
 	`Put each file that you make for the user in ${SANDBOX_OUTPUTS_DIR}/ of your workspace, for example ${SANDBOX_OUTPUTS_DIR}/report.pdf. When your turn ends, n8n stores the new files of ${SANDBOX_OUTPUTS_DIR}/ as conversation files.`,
-	`To use a file of ${SANDBOX_OUTPUTS_DIR}/ in this turn where a tool takes a fileId, give ${SANDBOX_FILE_REF_PREFIX}<path relative to ${SANDBOX_OUTPUTS_DIR}/>, for example ${SANDBOX_FILE_REF_PREFIX}report.pdf.`,
+	`To use a file of ${SANDBOX_OUTPUTS_DIR}/ in this turn where another tool takes a fileId, give ${SANDBOX_FILE_REF_PREFIX}<path relative to ${SANDBOX_OUTPUTS_DIR}/>, for example ${SANDBOX_FILE_REF_PREFIX}report.pdf.`,
 	`To use a conversation file, such as a user upload, in your workspace, copy it to ${SANDBOX_INPUTS_DIR}/ with import_files.`,
 ].join(' ');
 
@@ -147,6 +147,12 @@ export class AgentSandboxFilesService {
 			Object.entries(files).map(async ([path, fileId]) => {
 				const relativePath = normalizeOutputPath(path);
 				if (!relativePath) throw new UserError(`"${path}" is not a path in ${SANDBOX_INPUTS_DIR}/`);
+				if (fileId.startsWith(SANDBOX_FILE_REF_PREFIX)) {
+					const outputPath = fileId.slice(SANDBOX_FILE_REF_PREFIX.length);
+					throw new UserError(
+						`"${fileId}" is already in your workspace at ${SANDBOX_OUTPUTS_DIR}/${outputPath}`,
+					);
+				}
 				const file = await this.attachmentService.getReadable(fileId, scope);
 				if (!file) throw new UserError(`File "${fileId}" not found in this conversation`);
 				return { path: posix.join(SANDBOX_INPUTS_DIR, relativePath), file };
