@@ -16,6 +16,10 @@
       "types": "./dist/configs/frontend.d.js",
       "default": "./dist/configs/frontend.js"
     },
+    "./frontend-oxlint-residual": {
+      "types": "./dist/configs/frontend-oxlint-residual.d.ts",
+      "default": "./dist/configs/frontend-oxlint-residual.js"
+    },
     "./nodes": {
       "types": "./dist/configs/nodes.d.js",
       "default": "./dist/configs/nodes.js"

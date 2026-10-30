@@ -18,7 +18,7 @@ const CONFIG_FILENAMES = ['eslint.config.mjs', 'eslint.config.js', 'eslint.confi
  */
 const OXLINT_CONFIG_FILENAMES = ['oxlint.config.mts', 'oxlint.config.ts'];
 
-const LAYERS = ['base', 'backend', 'frontend', 'nodes'];
+const LAYERS = ['base', 'backend', 'frontend', 'frontend-oxlint-residual', 'nodes'];
 const LAYER_IMPORT = /^@n8n\/eslint-config\/([a-z-]+)$/;
 const OXLINT_LAYER_IMPORT = /^@n8n\/oxlint-config\/([a-z-]+)$/;
 

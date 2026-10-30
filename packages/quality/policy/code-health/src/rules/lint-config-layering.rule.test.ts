@@ -51,6 +51,19 @@ describe('LintConfigLayeringRule', () => {
 			expect(await analyze()).toEqual([]);
 		});
 
+		it('a frontend config that extends the oxlint residual layer', async () => {
+			writePackage(
+				'packages/a',
+				`import { defineConfig } from 'eslint/config';
+import { frontendOxlintResidualConfig } from '@n8n/eslint-config/frontend-oxlint-residual';
+
+export default defineConfig(frontendOxlintResidualConfig);
+`,
+			);
+
+			expect(await analyze()).toEqual([]);
+		});
+
 		it('ignores and an additive plugin config', async () => {
 			writePackage(
 				'packages/a',

@@ -1,7 +1,7 @@
-import { frontendConfig } from '@n8n/eslint-config/frontend';
+import { frontendOxlintResidualConfig } from '@n8n/eslint-config/frontend-oxlint-residual';
 import { defineConfig } from 'eslint/config';
 
-export default defineConfig(frontendConfig, {
+export default defineConfig(frontendOxlintResidualConfig, {
 	/**
 	 * Suppressions inherited with the code, not granted to it.
 	 *
@@ -27,7 +27,6 @@ export default defineConfig(frontendConfig, {
 		'@typescript-eslint/no-unsafe-call': 'warn',
 		'@typescript-eslint/no-unsafe-member-access': 'warn',
 		'@typescript-eslint/no-unsafe-return': 'warn',
-		'@typescript-eslint/await-thenable': 'warn',
 		'@typescript-eslint/require-await': 'warn',
 	},
 });

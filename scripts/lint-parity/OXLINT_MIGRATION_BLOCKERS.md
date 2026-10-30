@@ -149,6 +149,8 @@ Suggested direction:
 2. Run Oxlint for `.ts`, `.tsx`, and the SFC script section.
 3. Do not rewrite 60 template rules as source-text checks.
 
+Frontend modules use `@n8n/oxlint-config/frontend` with `@n8n/eslint-config/frontend-oxlint-residual`. The residual config keeps Vue template checks and documented script-rule gaps in ESLint.
+
 ## Node package blockers
 
 The `n8n-nodes-base` plugin contributes 94 enforced rules:
