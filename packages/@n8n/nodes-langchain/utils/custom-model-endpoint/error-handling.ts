@@ -3,7 +3,7 @@ import { isRecord } from '@n8n/utils/is-record';
 const MAX_MESSAGE_LENGTH = 500;
 const UNPARSED = Symbol('unparsed');
 
-function truncate(text: string): string {
+export function truncateMessage(text: string): string {
 	return text.length > MAX_MESSAGE_LENGTH ? `${text.slice(0, MAX_MESSAGE_LENGTH)}…` : text;
 }
 
@@ -75,7 +75,7 @@ export function wrapCustomModelEndpointErrorFetch(baseFetch: typeof fetch): type
 		headers.delete('content-length');
 		if (message !== undefined) headers.set('content-type', 'application/json');
 
-		return new Response(message === undefined ? text : asClientError(truncate(message)), {
+		return new Response(message === undefined ? text : asClientError(truncateMessage(message)), {
 			status: response.status,
 			statusText: response.statusText,
 			headers,
