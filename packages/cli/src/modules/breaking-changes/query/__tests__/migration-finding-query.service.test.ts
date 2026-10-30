@@ -104,11 +104,18 @@ function instanceRule(id: string): IBreakingChangeInstanceRule {
 function triageableFinding(
 	id: number,
 	ruleId: string,
-	workflow: TriageableMigrationFinding['workflow'],
+	workflow: Omit<TriageableMigrationFinding['workflow'], 'isArchived'> & { isArchived?: boolean },
 	status: MigrationFindingListedStatus = 'open',
 	notifiedAt: Date | null = null,
 ): TriageableMigrationFinding {
-	return { id, ruleId, workflowId: workflow.id, status, notifiedAt, workflow };
+	return {
+		id,
+		ruleId,
+		workflowId: workflow.id,
+		status,
+		notifiedAt,
+		workflow: { isArchived: false, ...workflow },
+	};
 }
 
 function workflowWithNodes(id: string, nodeTypes: string[]): WorkflowEntity {
@@ -164,7 +171,7 @@ describe('MigrationFindingQueryService', () => {
 		migrationRegistry.has.mockImplementation((id) => id === 'rule-b');
 		breakingChangeService.getAllInstanceRulesResults.mockResolvedValue([]);
 		breakingChangeService.loadPublishedNodes.mockResolvedValue(new Map());
-		workflowRepository.count.mockResolvedValue(0);
+		workflowRepository.countUnarchived.mockResolvedValue(0);
 		workflowRepository.findByIds.mockResolvedValue([]);
 		workflowStatisticsRepository.findByWorkflowIds.mockResolvedValue([]);
 		findingRepository.countUnresolvedByRule.mockResolvedValue([]);
@@ -195,7 +202,7 @@ describe('MigrationFindingQueryService', () => {
 	describe('getLightReport', () => {
 		it('lists each workflow rule with open findings, with its metadata and count from the table', async () => {
 			findingRepository.countUnresolvedByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 3 }]);
-			workflowRepository.count.mockResolvedValue(10);
+			workflowRepository.countUnarchived.mockResolvedValue(10);
 
 			const result = await service.getLightReport(TARGET_VERSION, INSTANCE);
 
@@ -298,6 +305,8 @@ describe('MigrationFindingQueryService', () => {
 			const scope: ReportScope = { kind: 'workflows', workflowIds: ['wf-1', 'wf-2', 'wf-3'] };
 			findingRepository.countUnresolvedByRule.mockResolvedValue([{ ruleId: 'rule-a', count: 2 }]);
 			findingRepository.countDistinctUnresolvedWorkflows.mockResolvedValue(2);
+			// One of the three workflows in scope is archived.
+			workflowRepository.countUnarchived.mockResolvedValue(2);
 			breakingChangeService.getAllInstanceRulesResults.mockResolvedValue([
 				mock<BreakingChangeInstanceRuleResult>({ ruleId: 'instance-rule' }),
 			]);
@@ -319,12 +328,12 @@ describe('MigrationFindingQueryService', () => {
 				scope.workflowIds,
 				expect.anything(),
 			);
-			expect(result.totalWorkflows).toBe(3);
+			expect(workflowRepository.countUnarchived).toHaveBeenCalledWith(scope.workflowIds);
+			expect(result.totalWorkflows).toBe(2);
 			expect(result.totalAffectedWorkflows).toBe(2);
 			expect(result.report.workflowResults.map((r) => r.nbAffectedWorkflows)).toEqual([2]);
 			expect(result.report.instanceResults).toEqual([]);
 			expect(breakingChangeService.getAllInstanceRulesResults).not.toHaveBeenCalled();
-			expect(workflowRepository.count).not.toHaveBeenCalled();
 		});
 
 		it('reports no generatedAt when no sync ran yet', async () => {
@@ -382,6 +391,7 @@ describe('MigrationFindingQueryService', () => {
 						name: 'Second',
 						activeVersionId: null,
 						updatedAt: UPDATED_AT,
+						isArchived: true,
 					},
 					'wont_fix',
 				),
@@ -422,6 +432,7 @@ describe('MigrationFindingQueryService', () => {
 					id: 'wf-1',
 					name: 'First',
 					active: true,
+					isArchived: false,
 					numberOfExecutions: 12,
 					lastExecutedAt: new Date('2026-04-01T00:00:00.000Z'),
 					lastUpdatedAt: UPDATED_AT,
@@ -435,6 +446,7 @@ describe('MigrationFindingQueryService', () => {
 					id: 'wf-2',
 					name: 'Second',
 					active: false,
+					isArchived: true,
 					numberOfExecutions: 0,
 					lastExecutedAt: undefined,
 					lastUpdatedAt: UPDATED_AT,

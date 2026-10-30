@@ -63,6 +63,7 @@ const mockWorkflowWithIssue = {
 	lastUpdatedAt: new Date('2024-01-15'),
 	lastExecutedAt: new Date('2024-01-14'),
 	status: 'open' as const,
+	isArchived: false,
 	owner: {
 		id: 'user-1',
 		firstName: 'Ada',
@@ -88,6 +89,7 @@ const mockWorkflowWithMultipleNodes = {
 	numberOfExecutions: 50,
 	lastUpdatedAt: new Date('2024-01-10'),
 	status: 'open' as const,
+	isArchived: false,
 	issues: [
 		{
 			nodeId: 'node-2',
@@ -1563,6 +1565,28 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
 				expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
 			});
+			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
+		});
+
+		it('should hide archived workflows until the filter shows them', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						mockWorkflowWithIssue,
+						{ ...mockWorkflowWithMultipleNodes, isArchived: true },
+					],
+				}),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getByText('Test Workflow 1')).toBeInTheDocument());
+			expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
+
+			const content = await openFilters();
+			await userEvent.click(
+				within(content).getByRole('checkbox', { name: 'Show archived workflows' }),
+			);
+
+			await waitFor(() => expect(screen.getByText('Test Workflow 2')).toBeInTheDocument());
 			expect(screen.getByTestId('migration-rule-filters-count')).toHaveTextContent('1');
 		});
 
