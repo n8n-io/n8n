@@ -1,0 +1,36 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiAppPreview.vue
+  s_5631b188ce818f::t_060e1b4ac588ca 3,5,10-15,20-21
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/InstanceAiAppPreview.test.ts
+  s_5631b188ce818f::t_21a2b99768471d 1-14,16-27,29-49
+  s_5631b188ce818f::t_b9670ed5fdfd2d 15,28
+packages/@n8n/instance-ai/src/tools/apps/__tests__/apps.tool.test.ts
+  s_5631b188ce818f::t_4fbf349704763f 68,78,83-90,267-299
+packages/@n8n/instance-ai/src/tools/apps/apps.tool.ts
+  s_5631b188ce818f::t_c8519315f50410 55-56,59-78,101,123,131-134
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_5631b188ce818f::t_551a516df6e907 8655-8661,8899,8904
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/toolLabels.coverage.test.ts
+  s_5631b188ce818f::t_9810ad384fa36d 34,46,50
+packages/frontend/editor-ui/src/features/ai/instanceAi/__tests__/useCanvasPreview.test.ts
+  s_5631b188ce818f::t_0cbd671b145edb 1306-1312
+packages/frontend/editor-ui/src/features/ai/instanceAi/composables/useOpenArtifactTabs.ts
+  s_5631b188ce818f::t_02d370cced84e7 138-141,305
+packages/frontend/editor-ui/src/features/ai/instanceAi/useCanvasPreview.ts
+  s_5631b188ce818f::t_42f803415478e3 402,405
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7c094c8e64931b1b5ff06c315bf46224f06d097d",
+  "prompts": {},
+  "sessions": {
+    "s_5631b188ce818f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "84992bfe-521e-4b79-80af-ca4ae976b51f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Dimitri Lavrenük <dimitri.lavrenuek@n8n.io>"
+    }
+  }
+}
