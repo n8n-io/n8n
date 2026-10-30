@@ -93,6 +93,16 @@ export function isOpaqueTransferValue(value: unknown): boolean {
 	return readKey(value, TRANSFER_OPAQUE_KEY) === true;
 }
 
+/** Define an own data key. Unlike assignment, a `__proto__` key stays an own key. */
+export function defineOwnValue(target: object, key: string, value: unknown): void {
+	Object.defineProperty(target, key, {
+		value,
+		writable: true,
+		enumerable: true,
+		configurable: true,
+	});
+}
+
 /** Type guard: plain object with Object.prototype or null prototype. */
 export function isPlainObject(value: object): value is Record<string, unknown> {
 	const proto = Object.getPrototypeOf(value);
@@ -123,7 +133,7 @@ function unwrapPlainObject(
 	// resolves to the same object.
 	seen.set(value, result);
 	for (const key of Object.keys(value)) {
-		result[key] = unwrapValue(value[key], decode, seen);
+		defineOwnValue(result, key, unwrapValue(value[key], decode, seen));
 	}
 	return result;
 }
