@@ -311,6 +311,28 @@ describe('ApplyInstanceDialog', () => {
 		);
 	});
 
+	it('says that nothing was applied when the environment is busy with a 423', async () => {
+		const busy = new ResponseError(
+			'Another promotion operation is running for this environment. Try again when it finishes.',
+			{ httpStatusCode: 423 },
+		);
+		api.applyPromotion.mockRejectedValueOnce(busy);
+		const { findByTestId } = renderComponent();
+
+		await userEvent.click(await findByTestId('apply-confirm-button'));
+
+		await waitFor(() =>
+			expect(mockShowError).toHaveBeenCalledWith(busy, "Couldn't apply to the instance", {
+				message: 'Nothing was applied. Resolve the issue in the message, then try again.',
+			}),
+		);
+		expect(mockShowError).not.toHaveBeenCalledWith(
+			busy,
+			expect.anything(),
+			expect.objectContaining({ message: expect.stringContaining('may already be applied') }),
+		);
+	});
+
 	it('reloads the project list when the apply fails', async () => {
 		// A failed apply can still have created or deleted projects.
 		api.applyPromotion.mockRejectedValueOnce(new Error('import failed'));

@@ -1,6 +1,7 @@
 import type { PromotionProviderAuthType, PromotionSshKeyType } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
+import type { Dirent } from 'node:fs';
 import { chmod, mkdir, mkdtemp, readdir, rename, rm, unlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -967,7 +968,7 @@ async function listWriterLockFiles(gitDir: string): Promise<string[]> {
 	const refEntries = await readdir(path.join(gitDir, LOCAL_BRANCH_REFS), {
 		recursive: true,
 		withFileTypes: true,
-	}).catch((error: unknown) => {
+	}).catch((error: unknown): Dirent[] => {
 		if (isMissing(error)) return [];
 		throw error;
 	});
