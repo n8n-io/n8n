@@ -10,6 +10,7 @@ import {
 	normalizeLegacyRequest,
 	resolveEvalMockRequestUrl,
 	serializeMockToHttpResponse,
+	withEvalEgressProxy,
 } from '../eval-mock-helpers';
 import type { EvalLlmMockHandler, EvalMockHttpResponse } from '../index';
 
@@ -947,5 +948,23 @@ describe('eval-mock-helpers', () => {
 				expect(err.isAxiosError).toBe(true);
 			}
 		});
+	});
+});
+
+describe('withEvalEgressProxy', () => {
+	it('sets the run egress proxy on the request', () => {
+		const request = withEvalEgressProxy<IHttpRequestOptions>(
+			{ url: 'https://api.example.test/x' },
+			{ evalEgressProxy: 'http://127.0.0.1:4567' },
+		);
+
+		expect(request.proxy).toEqual({ host: '127.0.0.1', port: 4567, protocol: 'http' });
+	});
+
+	it('leaves a request untouched outside a simulated-services run', () => {
+		const request: IHttpRequestOptions = { url: 'https://api.example.test/x' };
+
+		expect(withEvalEgressProxy(request, {})).toBe(request);
+		expect(request).not.toHaveProperty('proxy');
 	});
 });

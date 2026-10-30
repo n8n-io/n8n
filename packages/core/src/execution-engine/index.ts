@@ -61,6 +61,13 @@ declare module 'n8n-workflow' {
 		evalLlmMockHandler?: EvalLlmMockHandler;
 		/** Eval only: answers for non-HTTP nodes at run time. Never present in normal executions. */
 		evalNodeMockHandler?: EvalNodeMockHandler;
+		/**
+		 * Eval only: the proxy (`http://host:port`) that every outbound HTTP request of a
+		 * simulated-services eval run goes through, so its vendor calls reach the sim
+		 * server. Applied after credential auth and signing, so the request is the one
+		 * production sends. Never present in normal executions.
+		 */
+		evalEgressProxy?: string;
 		'data-table'?: { dataTableProxyProvider: DataTableProxyProvider };
 		'dynamic-credentials'?: { credentialCheckProxy: DynamicCredentialCheckProxyProvider };
 		'oauth-jwe'?: { oauthJweProxyProvider: OauthJweProxyProvider };

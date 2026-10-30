@@ -722,6 +722,8 @@ async function startExecution(
 			additionalData.rootExecutionMode ?? options.executionMode;
 		// Propagate the eval run id so sub-workflows of an eval run expose `$evaluation.runId`
 		additionalDataIntegrated.evaluationRunId = additionalData.evaluationRunId;
+		// A simulated-services eval run sends its sub-workflows' requests to the sim server too
+		additionalDataIntegrated.evalEgressProxy = additionalData.evalEgressProxy;
 		if (additionalData.httpResponse) {
 			additionalDataIntegrated.httpResponse = additionalData.httpResponse;
 		}

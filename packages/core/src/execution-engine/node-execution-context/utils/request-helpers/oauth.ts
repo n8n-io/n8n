@@ -43,11 +43,14 @@ import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import { Stream } from 'stream';
 
+import { getEvalEgressProxy } from '@/execution-engine/eval-mock-helpers';
 import type { IResponseError } from '@/interfaces';
 
 function createOAuth2Client(
 	credentials: OAuth2CredentialData,
 	ssrfBridge?: SsrfBridge,
+	/** Eval simulated-services runs: token requests go through the run's egress proxy. */
+	proxy?: string,
 ): ClientOAuth2 {
 	// Split and trim scopes; empty scope tokens are not RFC 6749-compliant and may be rejected by authorization servers
 	const scopes = credentials.scope
@@ -66,6 +69,7 @@ function createOAuth2Client(
 		ignoreSSLIssues: credentials.ignoreSSLIssues,
 		authentication: credentials.authentication ?? 'header',
 		ssrfBridge,
+		...(proxy ? { proxy } : {}),
 		...(credentials.additionalBodyProperties && {
 			additionalBodyProperties: jsonParse(credentials.additionalBodyProperties, {
 				fallbackValue: {},
@@ -417,7 +421,11 @@ export async function requestOAuth2(
 		throw new UserError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
+	const oAuthClient = createOAuth2Client(
+		credentials,
+		additionalData.ssrfBridge,
+		getEvalEgressProxy(additionalData),
+	);
 
 	let oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	// if it's the first time using the credentials, get the access token and save it into the DB.
@@ -684,7 +692,11 @@ export async function refreshOAuth2Token(
 		throw new UserError('OAuth credentials not connected');
 	}
 
-	const oAuthClient = createOAuth2Client(credentials, additionalData.ssrfBridge);
+	const oAuthClient = createOAuth2Client(
+		credentials,
+		additionalData.ssrfBridge,
+		getEvalEgressProxy(additionalData),
+	);
 	const oauthTokenData = credentials.oauthTokenData as ClientOAuth2TokenData;
 	const token = buildSigningToken(oAuthClient, oauthTokenData, oAuth2Options);
 
