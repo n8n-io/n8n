@@ -44,8 +44,8 @@ import { SystemAgentExecutionService } from './system-agent-execution.service';
  * `SystemAgentExecutionService` checks access on every route: thread
  * ownership, and for routes that read or continue a conversation also the
  * runtime floor (`project:read` on the working project) and the provider's
- * own checks. Listing threads, stopping a turn, and renaming or deleting a
- * thread need thread ownership only.
+ * own checks. Listing threads, stopping a turn and deleting a thread need
+ * thread ownership only.
  */
 @RestController('/agents/system')
 export class SystemAgentChatController {
@@ -131,10 +131,7 @@ export class SystemAgentChatController {
 		return toThreadSummary(await this.systemAgents.getUsableThread(agentId, req.user, threadId));
 	}
 
-	/**
-	 * Rename one of the user's own threads with the agent. Like a delete, it
-	 * needs thread ownership only.
-	 */
+	/** Rename one of the user's own threads with the agent. Renaming runs the access floor. */
 	@Patch('/:agentId/threads/:threadId')
 	async renameThread(
 		req: AuthenticatedRequest,

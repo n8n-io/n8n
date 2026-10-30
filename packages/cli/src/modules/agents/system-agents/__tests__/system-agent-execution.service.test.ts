@@ -2336,6 +2336,26 @@ describe('SystemAgentExecutionService', () => {
 			expect(updated).toMatchObject({ title: 'Renamed', projectId: 'project-2' });
 		});
 
+		it('refuses to rename a thread that the user can no longer use', async () => {
+			const { service, provider, threadRepository } = setup();
+			provider.authorize.mockResolvedValue(false);
+
+			await expect(
+				service.updateThread(AGENT_ID, user, 'thread-1', { title: 'Renamed' }),
+			).rejects.toThrow(NotFoundError);
+			expect(threadRepository.renameOwned).not.toHaveBeenCalled();
+		});
+
+		it('refuses to rename a thread in a project that the user cannot read', async () => {
+			const { service, threadRepository } = setup();
+			vi.mocked(userHasScopes).mockResolvedValue(false);
+
+			await expect(
+				service.updateThread(AGENT_ID, user, 'thread-1', { title: 'Renamed' }),
+			).rejects.toThrow(NotFoundError);
+			expect(threadRepository.renameOwned).not.toHaveBeenCalled();
+		});
+
 		it('reports a thread that was deleted during the update as not found', async () => {
 			const { service, threadRepository, txRunner } = setup();
 			txRunner.run.mockImplementation(async (ctx, fn) => await fn(ctx));
