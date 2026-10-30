@@ -403,17 +403,15 @@ jobs:
           if [ -n "$MERGE_BASE" ] && ! git cat-file -e "$MERGE_BASE^{commit}" 2>/dev/null; then
             git fetch --no-tags --depth=1 origin "$MERGE_BASE"
           fi
-          # Line-level selection reads the commit the impact map was built from.
-          # Without it, selection stays file-level.
-          MAP_SHA=$(jq -r '.sha // empty' .github/test-metrics/e2e-impact-map.json 2>/dev/null || true)
-          if [ -n "$MAP_SHA" ] && ! git cat-file -e "$MAP_SHA^{commit}" 2>/dev/null; then
-            git fetch --no-tags --depth=1 origin "$MAP_SHA" || echo "::warning::Could not fetch the impact map commit $MAP_SHA"
-          fi
 
       - name: Setup Node.js
         uses: ./.github/actions/setup-nodejs
         with:
           build-command: pnpm turbo run build --filter=@n8n/playwright-janitor --filter=@n8n/workflow-sdk...
+
+      # Line-level selection reads the commit the impact map was built from.
+      - name: Fetch impact map commit
+        run: node packages/quality/testing/playwright/scripts/fetch-impact-map-commit.mjs
 
       - name: Generate shard matrix
         id: generate-matrix
