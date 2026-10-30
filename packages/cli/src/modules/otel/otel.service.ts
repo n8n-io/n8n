@@ -3,11 +3,6 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { latestWins } from '@n8n/utils/promise/latest-wins';
 import { raceAbort } from '@n8n/utils/race-abort';
-import {
-	CompositePropagator,
-	W3CBaggagePropagator,
-	W3CTraceContextPropagator,
-} from '@opentelemetry/core';
 import { resourceFromAttributes } from '@opentelemetry/resources';
 import {
 	BasicTracerProvider,
@@ -30,13 +25,14 @@ import type { OtelConnectionParams } from './otel-settings.service';
 import { OtelSettingsService } from './otel-settings.service';
 import type { OtelConfig } from './otel.config';
 import { ATTR, OTEL_TEST_SPAN_NAME } from './otel.constants';
-import { mapResourceAttributes, mergeResourceAttributes } from './otel-span-exporter';
+import { withResourceAttributes } from './otel-span-exporter';
 
 import { N8N_VERSION } from '@/constants';
 import { ExternalHooks } from '@/external-hooks';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
+	OUTBOUND_HEADERS_PROPAGATOR,
 	TRACING_OFF,
 	type ShutdownErrors,
 	type TracingPipeline,
@@ -220,11 +216,7 @@ export class OtelService {
 			sampler: new ParentBasedSampler({
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
-			propagator: settings.injectOutbound
-				? new CompositePropagator({
-						propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
-					})
-				: TRACING_OFF.propagator,
+			propagator: settings.injectOutbound ? OUTBOUND_HEADERS_PROPAGATOR : TRACING_OFF.propagator,
 		};
 	}
 
@@ -248,16 +240,12 @@ export class OtelService {
 		settings: ExportSettings,
 	): Promise<SpanProcessor[] | undefined> {
 		try {
-			const exporter = mergeResourceAttributes(
+			const exporter = withResourceAttributes(
 				await this.exporterFactory.createTraceExporter(settings),
 				this.resourceAttributes(settings.exporterServiceName),
+				(spanAttributes) => this.configureHook.mapResourceAttributes(spanAttributes),
 			);
-			const hookedExporter = this.configureHook.hasResourceAttributeMappers
-				? mapResourceAttributes(exporter, (spanAttributes) =>
-						this.configureHook.mapResourceAttributes(spanAttributes),
-					)
-				: exporter;
-			return [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(hookedExporter)];
+			return [new ExecutionIdentitySpanProcessor(), new BatchSpanProcessor(exporter)];
 		} catch (error) {
 			this.logger.error('Failed to start OpenTelemetry tracing, so tracing stays off', {
 				error: getErrorMessage(error),

@@ -1,6 +1,14 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Attributes, Baggage, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
+import type {
+	Attributes,
+	Baggage,
+	BaggageEntry,
+	Context,
+	Exception,
+	Span,
+	TimeInput,
+} from '@opentelemetry/api';
 import {
 	context,
 	defaultTextMapGetter,
@@ -310,10 +318,11 @@ export class ExecutionLevelTracer {
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			const ctx = propagation.setBaggage(
-				trace.setSpan(ROOT_CONTEXT, span),
-				this.buildOutboundBaggage(span),
+			let ctx = trace.setSpan(ROOT_CONTEXT, span);
+			const entries = this.configureHook.buildOutboundBaggage(
+				hasAttributes(span) ? span.attributes : {},
 			);
+			if (Object.keys(entries).length > 0) ctx = propagation.setBaggage(ctx, toBaggage(entries));
 			propagation.inject(ctx, headers, defaultTextMapSetter);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
@@ -321,15 +330,6 @@ export class ExecutionLevelTracer {
 				error: error instanceof Error ? error.message : String(error),
 			});
 		}
-	}
-
-	private buildOutboundBaggage(span: Span): Baggage {
-		const entries = this.configureHook.buildOutboundBaggage(
-			hasAttributes(span) ? span.attributes : {},
-		);
-		return propagation.createBaggage(
-			Object.fromEntries(Object.entries(entries).map(([key, value]) => [key, { value }])),
-		);
 	}
 
 	private emitStartMarker(
@@ -427,6 +427,12 @@ function toTracingParentContext(span: Span, identity: ExecutionIdentity): Tracin
 	const carrier: Record<string, string> = {};
 	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
 	return { traceparent: carrier.traceparent, tracestate: carrier.tracestate, identity };
+}
+
+function toBaggage(entries: Record<string, string>): Baggage {
+	const baggageEntries: Record<string, BaggageEntry> = {};
+	for (const [key, value] of Object.entries(entries)) baggageEntries[key] = { value };
+	return propagation.createBaggage(baggageEntries);
 }
 
 function hasAttributes(span: Span): span is Span & Pick<ReadableSpan, 'attributes'> {

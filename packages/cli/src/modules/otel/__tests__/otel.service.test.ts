@@ -15,7 +15,7 @@ import { OtelService } from '../otel.service';
 
 import type { ExternalHooks } from '@/external-hooks';
 import type { OtelSdk } from '@/observability/otel-sdk';
-import { TRACING_OFF } from '@/observability/swappable-pipeline';
+import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 // The connectivity-check fetch, obtained via outboundHttp.transport().asCustomFetch().
@@ -569,7 +569,7 @@ describe('OtelService', () => {
 			await service.applySavedSettings();
 			const withoutHeaders = otelSdk.apply.mock.lastCall?.[0].propagator;
 
-			expect(withHeaders.fields()).toEqual(['traceparent', 'tracestate', 'baggage']);
+			expect(withHeaders).toBe(OUTBOUND_HEADERS_PROPAGATOR);
 			expect(withoutHeaders).toBe(TRACING_OFF.propagator);
 		});
 

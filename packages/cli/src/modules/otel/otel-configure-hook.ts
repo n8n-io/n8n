@@ -3,7 +3,6 @@ import { Service } from '@n8n/di';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { isRecord } from '@n8n/utils/is-record';
 import type { Attributes } from '@opentelemetry/api';
-import { UserError } from 'n8n-workflow';
 
 export type OtelAttributeMapper = (spanAttributes: Attributes) => Record<string, string>;
 
@@ -31,10 +30,6 @@ export class OtelConfigureHook {
 
 	constructor(private readonly logger: Logger) {}
 
-	get hasResourceAttributeMappers(): boolean {
-		return this.resourceAttributeMappers.length > 0;
-	}
-
 	mapResourceAttributes(spanAttributes: Attributes): Record<string, string> {
 		return this.runMappers(this.resourceAttributeMappers, spanAttributes, 'resource attribute');
 	}
@@ -50,22 +45,29 @@ export class OtelConfigureHook {
 	): Record<string, string> {
 		const merged: Record<string, string> = {};
 		for (const mapper of mappers) {
+			let result: unknown;
 			try {
-				const result: unknown = mapper(spanAttributes);
-				if (result instanceof Promise) {
-					void result.catch(() => {});
-					throw new UserError('An OpenTelemetry mapper must be synchronous');
-				}
-				if (!isRecord(result)) continue;
-				for (const [key, value] of Object.entries(result)) {
-					if (typeof value === 'string') merged[key] = value;
-				}
+				result = mapper(spanAttributes);
 			} catch (error) {
-				if (this.warnedMappers.has(mapper)) continue;
-				this.warnedMappers.add(mapper);
-				this.logger.warn(`OpenTelemetry ${label} mapper failed`, { error: getErrorMessage(error) });
+				this.warnOnce(mapper, label, getErrorMessage(error));
+				continue;
+			}
+			if (result instanceof Promise) {
+				void result.catch(() => {});
+				this.warnOnce(mapper, label, 'An OpenTelemetry mapper must be synchronous');
+				continue;
+			}
+			if (!isRecord(result)) continue;
+			for (const [key, value] of Object.entries(result)) {
+				if (typeof value === 'string') merged[key] = value;
 			}
 		}
 		return merged;
+	}
+
+	private warnOnce(mapper: OtelAttributeMapper, label: string, error: string): void {
+		if (this.warnedMappers.has(mapper)) return;
+		this.warnedMappers.add(mapper);
+		this.logger.warn(`OpenTelemetry ${label} mapper failed`, { error });
 	}
 }

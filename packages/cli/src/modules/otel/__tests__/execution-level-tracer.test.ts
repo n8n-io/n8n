@@ -1,12 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator, Tracer } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
-import {
-	CompositePropagator,
-	hrTimeToMilliseconds,
-	W3CBaggagePropagator,
-	W3CTraceContextPropagator,
-} from '@opentelemetry/core';
+import { hrTimeToMilliseconds, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -14,9 +9,11 @@ import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { StartWorkflowParams } from '../execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from '../otel.config';
-import type { OtelConfigureHook } from '../otel-configure-hook';
+import { OtelConfigureHook } from '../otel-configure-hook';
 import type { TracingContext } from '../tracing-context';
 import { OtelTestProvider } from './support/otel-test-provider';
+
+import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
@@ -25,18 +22,11 @@ describe('ExecutionLevelTracer', () => {
 
 	const makeTracer = ({
 		prefixes,
-		buildOutboundBaggage = () => ({}),
-	}: {
-		prefixes?: CustomAttributePrefixes;
-		buildOutboundBaggage?: OtelConfigureHook['buildOutboundBaggage'];
-	} = {}) => {
+		configureHook = new OtelConfigureHook(logger),
+	}: { prefixes?: CustomAttributePrefixes; configureHook?: OtelConfigureHook } = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
-		return new ExecutionLevelTracer(
-			logger,
-			customAttributesConfig,
-			mock<OtelConfigureHook>({ buildOutboundBaggage }),
-		);
+		return new ExecutionLevelTracer(logger, customAttributesConfig, configureHook);
 	};
 
 	const withGlobalPropagator = (propagator: TextMapPropagator, run: () => void) => {
@@ -898,10 +888,12 @@ describe('ExecutionLevelTracer', () => {
 		});
 
 		it('should write a baggage header from the node span attributes next to traceparent', () => {
-			const buildOutboundBaggage = vi.fn((attrs: Record<string, unknown>) => ({
+			const baggageMapper = vi.fn((attrs: Record<string, unknown>) => ({
 				'project.id': String(attrs['n8n.project.id']),
 			}));
-			const baggageTracer = makeTracer({ buildOutboundBaggage });
+			const configureHook = new OtelConfigureHook(logger);
+			configureHook.api.registerOutboundBaggageMapper(baggageMapper);
+			const baggageTracer = makeTracer({ configureHook });
 			baggageTracer.startWorkflow({
 				executionId: 'exec-baggage',
 				workflow: defaultWorkflow,
@@ -911,16 +903,13 @@ describe('ExecutionLevelTracer', () => {
 			baggageTracer.startNode({ executionId: 'exec-baggage', node: httpNode });
 
 			const headers: Record<string, string> = {};
-			const outboundPropagator = new CompositePropagator({
-				propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
-			});
-			withGlobalPropagator(outboundPropagator, () => {
+			withGlobalPropagator(OUTBOUND_HEADERS_PROPAGATOR, () => {
 				baggageTracer.injectTraceHeaders('exec-baggage', 'HTTP', headers);
 			});
 
 			expect(headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
 			expect(headers.baggage).toBe('project.id=project-1');
-			expect(buildOutboundBaggage).toHaveBeenCalledWith(
+			expect(baggageMapper).toHaveBeenCalledWith(
 				expect.objectContaining({ 'n8n.project.id': 'project-1', 'n8n.node.name': 'HTTP' }),
 			);
 
@@ -1042,7 +1031,7 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const headers: Record<string, string> = {};
-			withGlobalPropagator(new CompositePropagator(), () => {
+			withGlobalPropagator(TRACING_OFF.propagator, () => {
 				tracer.injectTraceHeaders('exec-12', undefined, headers);
 			});
 

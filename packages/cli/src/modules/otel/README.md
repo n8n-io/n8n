@@ -33,8 +33,7 @@ Only these tracers export spans:
 - Workflow spans never join a trace that is active in the process. An inbound `traceparent`
   header still sets the parent.
 - n8n sends `traceparent` on outbound requests only when OTel is on and
-  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. It sends `baggage` next to it only when an
-  `otel.configure` external hook registers an outbound baggage mapper (see below).
+  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`.
 
 `OTEL_*` env vars fill in what the n8n settings do not set:
 
@@ -56,9 +55,10 @@ There are two ways to add the headers:
   its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
   helper is public, so a community node can use it too.
 
-`getTraceHeaders()` returns `traceparent`, and also `tracestate` when the trace has one. It
-returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
-off, or when no execution runs. Use the result without a guard.
+`getTraceHeaders()` returns `traceparent`, `tracestate` when the trace has one, and `baggage`
+when the `otel.configure` hook adds entries (see below). It returns an empty object when
+OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is off, or when no execution
+runs. Use the result without a guard.
 
 Both ways write the headers with the global propagator. `OtelService` installs it from the
 settings: W3C trace context and baggage when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is on, nothing
@@ -147,8 +147,7 @@ object. n8n keeps only string values.
 
 - `registerResourceAttributeMapper((spanAttributes) => attributes)`: the result is merged into
   the resource of each exported span. n8n's own resource attributes (`service.name`,
-  `service.version`, `n8n.instance.*`) win over the hook. Without a mapper, n8n adds no hook
-  wrapper around the exporter.
+  `service.version`, `n8n.instance.*`) win over the hook.
 - `registerOutboundBaggageMapper((spanAttributes) => entries)`: the result is sent as a
   `baggage` header next to `traceparent` on outbound requests. Without a mapper, n8n sends no
   `baggage` header.
