@@ -8,6 +8,7 @@ import {
 	InstanceAiSendMessageRequest,
 	InstanceAiEventsQuery,
 	InstanceAiCorrectTaskRequest,
+	InstanceAiCloudBrowserReturnControlRequest,
 	InstanceAiEnsureThreadRequest,
 	InstanceAiPersistPendingAgentRequest,
 	InstanceAiThreadMessagesQuery,
@@ -656,6 +657,44 @@ export class InstanceAiController {
 		this.requireInstanceAiEnabled();
 		await this.assertThreadAccess(req.user.id, threadId);
 		return await this.cloudBrowserService.getLiveView(req.user.id, threadId, taskId);
+	}
+
+	/** The user takes control of a cloud browser task's browser. The agent's calls wait for them. */
+	@Post('/chat/:threadId/tasks/:taskId/cloud-browser-take-over')
+	@GlobalScope('instanceAi:message')
+	async takeOverCloudBrowser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const error = this.cloudBrowserService.giveControlToUser(req.user.id, threadId, taskId);
+		if (error) throw new ConflictError(error);
+		return { ok: true };
+	}
+
+	/** The user gives control of a cloud browser task's browser back to its agent. */
+	@Post('/chat/:threadId/tasks/:taskId/cloud-browser-return-control')
+	@GlobalScope('instanceAi:message')
+	async returnCloudBrowserControl(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('threadId') threadId: string,
+		@Param('taskId') taskId: string,
+		@Body payload: InstanceAiCloudBrowserReturnControlRequest,
+	) {
+		this.requireInstanceAiEnabled();
+		await this.assertThreadAccess(req.user.id, threadId);
+		const error = this.cloudBrowserService.returnControlToAgent(
+			req.user.id,
+			threadId,
+			taskId,
+			payload.note || undefined,
+		);
+		if (error) throw new ConflictError(error);
+		return { ok: true };
 	}
 
 	@Post('/chat/:threadId/tasks/:taskId/correct')

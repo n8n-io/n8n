@@ -29,6 +29,7 @@ import { useInstanceAiSettingsStore } from './instanceAiSettings.store';
 import { isArtifactTab, useCanvasPreview } from './useCanvasPreview';
 import { CloudBrowserTasksKey } from './composables/useCloudBrowserTasks';
 import {
+	CloudBrowserLiveViewRefreshKey,
 	CloudBrowserLiveViewsKey,
 	useCloudBrowserLiveViews,
 } from './composables/useCloudBrowserLiveViews';
@@ -63,6 +64,7 @@ import { isAgentWorthTesting, testAgentOfferKey } from './testAgentOffer';
 import InstanceAiDataTablePreview from './components/InstanceAiDataTablePreview.vue';
 import InstanceAiAgentPreview from './components/InstanceAiAgentPreview.vue';
 import InstanceAiBrowserPreview from './components/InstanceAiBrowserPreview.vue';
+import InstanceAiCloudBrowserUserActionPanel from './components/InstanceAiCloudBrowserUserActionPanel.vue';
 import InstanceAiSkillPreview from './components/InstanceAiSkillPreview.vue';
 import { TabsRoot } from 'reka-ui';
 import { useAgentEvalsFlag } from '@/features/ai/evaluation.ee/composables/useAgentEvalsFlag';
@@ -338,10 +340,12 @@ provide(CloudBrowserTasksKey, preview.cloudBrowserTasks);
 const runningCloudBrowserTasks = computed(() =>
 	preview.cloudBrowserTasks.value.filter((task) => task.state === 'running'),
 );
-provide(
-	CloudBrowserLiveViewsKey,
-	useCloudBrowserLiveViews(runningCloudBrowserTasks, () => props.threadId),
+const cloudBrowserLiveViews = useCloudBrowserLiveViews(
+	runningCloudBrowserTasks,
+	() => props.threadId,
 );
+provide(CloudBrowserLiveViewsKey, cloudBrowserLiveViews.views);
+provide(CloudBrowserLiveViewRefreshKey, cloudBrowserLiveViews.refresh);
 provide('openAgentChatPreview', openAgentChatPreview);
 provide('openSkillPreview', preview.openSkillPreview);
 provide('pendingComposerContext', handoffContext);
@@ -846,6 +850,7 @@ function handleNewThreadClick() {
 					@agent-attachment-restored="onAgentAttachmentRestored"
 				>
 					<template #above-input>
+						<InstanceAiCloudBrowserUserActionPanel />
 						<InstanceAiSetupPanel
 							v-if="setupPanelWorkflowId"
 							ref="setupPanel"
@@ -1014,6 +1019,7 @@ function handleNewThreadClick() {
 								:key="browserTab.id"
 								:class="$style.previewSlot"
 								:task-id="browserTab.taskId"
+								:user-action="browserTab.userAction"
 							/>
 							<InstanceAiSkillPreview
 								v-if="preview.isPreviewVisible.value && preview.activeSkillId.value"

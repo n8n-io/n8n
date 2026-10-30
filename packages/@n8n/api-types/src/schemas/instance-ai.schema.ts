@@ -1151,7 +1151,8 @@ export interface InstanceAiBrowserCreateLinkResponse {
  * The live view of a cloud browser task:
  * - `live`: a session is open. The link lets anyone who has it control the browser, so the
  *   client keeps it in memory only. `windowId` names the window the link shows, so the client
- *   can tell a new window from a new link to the same one.
+ *   can tell a new window from a new link to the same one. `userHasTakenOver` is set after the
+ *   user clicked "Take over", until they give control back.
  * - `starting`: a session is opening.
  * - `no-session`: the task runs, but the agent has not opened a session yet.
  * - `disconnected`: the session closed while the task runs. The agent can open a new one.
@@ -1159,10 +1160,10 @@ export interface InstanceAiBrowserCreateLinkResponse {
  *   task runs on another main, or it is not the user's.
  */
 export type InstanceAiCloudBrowserLiveViewResponse =
-	| { status: 'live'; liveViewUrl: string; windowId: string }
+	| { status: 'live'; liveViewUrl: string; windowId: string; userHasTakenOver?: boolean }
 	| { status: 'starting' }
 	| { status: 'no-session' }
-	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' }
+	| { status: 'disconnected'; reason: 'connectionLost' | 'idleTimeout' | 'userControlTimeout' }
 	| { status: 'not-found' };
 
 export interface InstanceAiBrowserStatusResponse {
@@ -1783,6 +1784,11 @@ export class InstanceAiSendMessageRequest extends Z.class({
 
 export class InstanceAiCorrectTaskRequest extends Z.class({
 	message: z.string().min(1),
+}) {}
+
+/** The user hands a cloud browser back to its agent, with what they changed. */
+export class InstanceAiCloudBrowserReturnControlRequest extends Z.class({
+	note: z.string().trim().max(2000).optional(),
 }) {}
 
 /**
