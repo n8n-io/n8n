@@ -368,8 +368,6 @@ export class CredentialImporter {
 		if (!credentialDiffers({ name: credential.name, data: stored }, update)) return null;
 
 		const merged = mergeIntoStored(stored, update.data ?? {});
-		// `prepareUpdateData` adds the stored token back, except when the update points a
-		// client-credentials grant at another client. A token in the input skips that decision.
 		delete merged.oauthTokenData;
 
 		// The default merge, not `partial`: `partial` adds all stored values back, which also

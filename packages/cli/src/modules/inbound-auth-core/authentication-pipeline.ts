@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 import { Logger } from '@n8n/backend-common';
+import { EventService } from '@n8n/backend-services';
 import {
 	AuthenticationService,
 	AuthenticationPipeline,
@@ -7,6 +8,9 @@ import {
 	IdentityService,
 	type Reject,
 	type Result,
+	type SurfaceId,
+	type TrustedSource,
+	TrustedSourceStore,
 } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 
@@ -16,6 +20,8 @@ export class InboundAuthPipeline extends AuthenticationPipeline {
 		private readonly logger: Logger,
 		private readonly authenticationService: AuthenticationService,
 		private readonly identityService: IdentityService,
+		private readonly trustedSourceStore: TrustedSourceStore,
+		private readonly eventService: EventService,
 	) {
 		super();
 	}
@@ -30,6 +36,11 @@ export class InboundAuthPipeline extends AuthenticationPipeline {
 		if (!context.ok) {
 			return this.reject(extracted, context, verified.value.source.id);
 		}
+
+		if (verified.value.source.managedBy === 'admin') {
+			await this.recordFirstAuthentication(verified.value.source, extracted.surface);
+		}
+
 		this.logger.info('Inbound authentication accepted', {
 			surface: extracted.surface,
 			resource: extracted.resource.url,
@@ -49,5 +60,21 @@ export class InboundAuthPipeline extends AuthenticationPipeline {
 			sourceId,
 		});
 		return rejection;
+	}
+
+	private async recordFirstAuthentication(source: TrustedSource, surface: SurfaceId) {
+		try {
+			if (await this.trustedSourceStore.recordFirstAuthentication(source)) {
+				this.eventService.emit('trusted-source-first-authenticated', {
+					sourceId: source.id,
+					surface,
+				});
+			}
+		} catch (error) {
+			this.logger.warn('Could not record the first authentication of a trusted source', {
+				sourceId: source.id,
+				error,
+			});
+		}
 	}
 }

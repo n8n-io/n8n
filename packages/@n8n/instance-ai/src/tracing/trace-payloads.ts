@@ -4,6 +4,7 @@ import {
 	type RedactionOptions,
 	type RuntimeSkillRegistry,
 } from '@n8n/agents';
+import { DATA_TABLE_TOOL_NAMES, getDataTableToolAction } from '@n8n/api-types';
 import type { InstanceAiPromptConfiguration } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { SUPPORTED_PII_CATEGORIES } from '@n8n/utils/redaction/pii-patterns';
@@ -1120,7 +1121,7 @@ function unprefixedToolName(name: string): string {
 }
 
 function classifyToolCategory(name: string): string {
-	if (name === DOMAIN_TOOL_IDS.DATA_TABLES) return 'data-table';
+	if (DATA_TABLE_TOOL_NAMES.includes(name)) return 'data-table';
 	if (
 		name === DOMAIN_TOOL_IDS.NODES ||
 		name === DOMAIN_TOOL_IDS.SEARCH_NODES ||
@@ -1148,6 +1149,11 @@ function classifyToolSideEffect(name: string): string {
 	if (name === DOMAIN_TOOL_IDS.EXECUTIONS) return 'execute';
 	if (name === DOMAIN_TOOL_IDS.ASK_USER) return 'none';
 	const baseName = unprefixedToolName(name);
+	// Names like `insert_data_table_rows` match no keyword below, so classify by action.
+	const dataTableAction = getDataTableToolAction(baseName);
+	if (dataTableAction) {
+		return ['list', 'schema', 'query'].includes(dataTableAction) ? 'read' : 'write';
+	}
 	if (baseName.includes('browser')) return 'browser';
 	if (baseName.includes('research')) return 'network';
 	if (baseName.includes('execute') || baseName.includes('run')) {

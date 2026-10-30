@@ -43,6 +43,7 @@ export function useProjectResourceSearch({
 			'data-table': 0,
 			agent: 0,
 			skill: 0,
+			app: 0,
 		};
 		return visible
 			.filter((resource) => ++counts[resource.type] <= RESULTS_PER_TYPE)

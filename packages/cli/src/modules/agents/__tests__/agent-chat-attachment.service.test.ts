@@ -85,8 +85,9 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockImplementation(async (input) => input as AgentChatAttachment);
+			repository.saveInboundAttachment.mockImplementation(
+				async (input) => input as AgentChatAttachment,
+			);
 
 			const stored = await service.storeInbound({
 				agentId: 'agent-1',
@@ -109,7 +110,10 @@ describe('AgentChatAttachmentService', () => {
 				expect.anything(),
 			);
 
-			expect(repository.save).toHaveBeenCalledTimes(1);
+			expect(repository.saveInboundAttachment).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ binaryDataId: stored.binaryDataId, fileSizeBytes: 3 }),
+				{},
+			);
 			expect(stored.binaryDataId).toBe('filesystem-v2:agents/agent-1/attachments/att-1/x');
 			expect(stored.fileSizeBytes).toBe(3);
 			expect(stored.source).toBe('chat');
@@ -123,8 +127,9 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockImplementation(async (input) => input as AgentChatAttachment);
+			repository.saveInboundAttachment.mockImplementation(
+				async (input) => input as AgentChatAttachment,
+			);
 
 			const stored = await service.storeInbound({
 				agentId: 'agent-3',
@@ -173,8 +178,7 @@ describe('AgentChatAttachmentService', () => {
 				data: 'filesystem-v2',
 				mimeType: 'image/png',
 			});
-			repository.create.mockImplementation((input) => input as AgentChatAttachment);
-			repository.save.mockRejectedValue(new Error('db down'));
+			repository.saveInboundAttachment.mockRejectedValue(new Error('db down'));
 
 			await expect(
 				service.storeInbound({
@@ -207,10 +211,11 @@ describe('AgentChatAttachmentService', () => {
 				childThreadId: 'child',
 			});
 
-			expect(repository.findByIdsInThread).toHaveBeenCalledWith(['att-1'], {
-				projectId: 'project-1',
-				threadId: 'root',
-			});
+			expect(repository.findByIdsInThread).toHaveBeenCalledWith(
+				['att-1'],
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
 			expect(grantRepository.findGrantedIds).not.toHaveBeenCalled();
 			expect(grantRepository.grant).toHaveBeenCalledWith(['att-1'], 'child');
 		});
@@ -284,10 +289,11 @@ describe('AgentChatAttachmentService', () => {
 			);
 			const bytes = await store.load({ id: 'att-1' });
 
-			expect(repository.findByIdForAgent).toHaveBeenCalledWith('att-1', {
-				agentId: 'agent-1',
-				projectId: 'project-1',
-			});
+			expect(repository.findByIdForAgent).toHaveBeenCalledWith(
+				'att-1',
+				{ agentId: 'agent-1', projectId: 'project-1' },
+				{},
+			);
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
 
@@ -305,10 +311,11 @@ describe('AgentChatAttachmentService', () => {
 			);
 			const bytes = await store.load({ id: 'att-1' }, { threadId: 'thread-1' });
 
-			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-1', {
-				projectId: 'project-1',
-				threadId: 'thread-1',
-			});
+			expect(repository.findByIdInThread).toHaveBeenCalledWith(
+				'att-1',
+				{ projectId: 'project-1', threadId: 'thread-1' },
+				{},
+			);
 			expect(repository.findByIdForAgent).not.toHaveBeenCalled();
 			expect(bytes).toEqual(Buffer.from([1, 2]));
 		});
@@ -337,10 +344,11 @@ describe('AgentChatAttachmentService', () => {
 			await store.load({ id: 'att-4' }, { threadId: 'grandchild' });
 
 			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(1);
-			expect(repository.findByIdInThread).toHaveBeenCalledWith('att-4', {
-				projectId: 'project-1',
-				threadId: 'root',
-			});
+			expect(repository.findByIdInThread).toHaveBeenCalledWith(
+				'att-4',
+				{ projectId: 'project-1', threadId: 'root' },
+				{},
+			);
 
 			await store.load({ id: 'att-1' }, { threadId: 'root' });
 			expect(threadRepository.findDelegationChain).toHaveBeenCalledTimes(2);
@@ -440,10 +448,12 @@ describe('AgentChatAttachmentService', () => {
 
 			await service.deleteByThread('thread-1', { projectId: 'project-1' });
 
-			expect(repository.findByThread).toHaveBeenCalledWith('thread-1', {
-				projectId: 'project-1',
-			});
-			expect(repository.delete).toHaveBeenCalledWith(['att-1', 'att-2']);
+			expect(repository.findByThread).toHaveBeenCalledWith(
+				'thread-1',
+				{ projectId: 'project-1' },
+				{},
+			);
+			expect(repository.deleteByIds).toHaveBeenCalledWith(['att-1', 'att-2'], {});
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenCalledWith([
 				'filesystem-v2:a',
 				'filesystem-v2:b',
@@ -453,7 +463,7 @@ describe('AgentChatAttachmentService', () => {
 		it('is a no-op for threads without attachments', async () => {
 			repository.findByThread.mockResolvedValue([]);
 			await service.deleteByThread('thread-1', { agentId: 'agent-1' });
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 		});
 	});
 
@@ -486,9 +496,10 @@ describe('AgentChatAttachmentService', () => {
 				scope,
 				before,
 				BATCH_SIZE,
+				{},
 			);
-			expect(repository.delete).toHaveBeenCalledTimes(3);
-			expect(repository.delete).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2']);
+			expect(repository.deleteByIds).toHaveBeenCalledTimes(3);
+			expect(repository.deleteByIds).toHaveBeenLastCalledWith(['c-0', 'c-1', 'c-2'], {});
 			expect(binaryDataService.deleteManyByBinaryDataId).toHaveBeenLastCalledWith([
 				'filesystem-v2:c-0',
 				'filesystem-v2:c-1',
@@ -503,7 +514,7 @@ describe('AgentChatAttachmentService', () => {
 
 			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(BATCH_SIZE);
 			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(2);
-			expect(repository.delete).toHaveBeenCalledTimes(1);
+			expect(repository.deleteByIds).toHaveBeenCalledTimes(1);
 		});
 
 		it('returns 0 and deletes nothing when no file is overdue', async () => {
@@ -511,7 +522,7 @@ describe('AgentChatAttachmentService', () => {
 
 			expect(await service.deleteFromSourceCreatedBefore(scope, before)).toBe(0);
 			expect(repository.findFromSourceCreatedBefore).toHaveBeenCalledTimes(1);
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 			expect(binaryDataService.deleteManyByBinaryDataId).not.toHaveBeenCalled();
 		});
 
@@ -521,7 +532,7 @@ describe('AgentChatAttachmentService', () => {
 			await service.deleteFromSourceCreatedBefore(scope, before);
 
 			expect(binaryDataService.deleteManyByBinaryDataId.mock.invocationCallOrder[0]).toBeLessThan(
-				repository.delete.mock.invocationCallOrder[0],
+				repository.deleteByIds.mock.invocationCallOrder[0],
 			);
 		});
 
@@ -532,7 +543,7 @@ describe('AgentChatAttachmentService', () => {
 			await expect(service.deleteFromSourceCreatedBefore(scope, before)).rejects.toThrow(
 				'storage down',
 			);
-			expect(repository.delete).not.toHaveBeenCalled();
+			expect(repository.deleteByIds).not.toHaveBeenCalled();
 		});
 
 		it('stops between batches when the signal aborts', async () => {

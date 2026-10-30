@@ -11,8 +11,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { CustomFetch, HttpTransport, OutboundHttp } from '@n8n/backend-network';
 import type {
 	CredentialsEntity,
+	PersonRepository,
 	User,
-	UserRepository,
 	WorkflowEntity,
 	WorkflowRepository,
 } from '@n8n/db';
@@ -219,7 +219,7 @@ function buildFromJsonResolvingTools(resolved: Array<agents.BuiltTool | null | u
 
 function setupN8nChatToolDependencies() {
 	const registry = new ChatIntegrationRegistry();
-	registry.register(new N8nChatIntegration(mock<UserRepository>()));
+	registry.register(new N8nChatIntegration(mock<PersonRepository>()));
 	Container.set(ChatIntegrationRegistry, registry);
 	Container.set(IntegrationMessageContextService, mock<IntegrationMessageContextService>());
 	Container.set(ChatIntegrationActionExecutor, mock<ChatIntegrationActionExecutor>());

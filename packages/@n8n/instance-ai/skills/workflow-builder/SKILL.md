@@ -28,7 +28,10 @@ recommended_tools:
   - get_node_types
   - get_node_parameter_options
   - execute_node
-  - data_tables
+  - list_data_tables
+  - get_data_table_schema
+  - query_data_table
+  - create_data_table
   - list_credentials
   - search_credential_types
   - setup_credentials
@@ -492,16 +495,16 @@ workflows stay in one workflow. Before writing multi-workflow code, load the
 ## Data Tables
 
 n8n normalizes Data Table column names to snake_case, for example `dayName`
-becomes `day_name`. Always call `data_tables(action="schema")` before using a
+becomes `day_name`. Always call `get_data_table_schema` before using a
 Data Table in workflow code so you use real column names.
 
 When building workflows that create or use tables, load `data-table-manager`
 via `load_skill` first (if not already loaded this turn), then follow that
 skill for schema/row guidance. Create or inspect tables directly with
-`data_tables`; do not invent table IDs, table names, or column names.
+the data table tools; do not invent table IDs, table names, or column names.
 
-When diagnosing why a workflow's table lookup misses, keep every `data_tables`
-query targeted: filter on the column under investigation (`ilike` for
+When diagnosing why a workflow's table lookup misses, keep every `query_data_table`
+call targeted: filter on the column under investigation (`ilike` for
 case-insensitive partial matches; `like` is case-sensitive) with `limit` of 5
 or fewer. Never pull a table unfiltered — rows can carry very large values
 (inline base64 images, raw payloads), and a filter that matches every row

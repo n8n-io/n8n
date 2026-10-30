@@ -27,6 +27,7 @@ const {
 	telemetryTrack,
 	previewProps,
 	previewThread,
+	appPreviewProps,
 	routerPush,
 	focusInput,
 } = vi.hoisted(() => ({
@@ -35,6 +36,7 @@ const {
 	telemetryTrack: vi.fn(),
 	previewProps: { current: undefined as Record<string, unknown> | undefined },
 	previewThread: { current: undefined as ArtifactThread | undefined },
+	appPreviewProps: { current: undefined as Record<string, unknown> | undefined },
 	routerPush: vi.fn(),
 	focusInput: vi.fn(),
 }));
@@ -113,6 +115,44 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 		}),
 	};
 });
+
+// Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
+vi.mock('../../components/InstanceAiResourcePicker.vue', () => ({
+	default: defineComponent({
+		props: {
+			projectId: { type: String, required: true },
+			contentTestId: { type: String, default: 'instance-ai-tab-picker' },
+		},
+		emits: ['select'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h('button', {
+					'data-test-id': props.contentTestId,
+					'data-project-id': props.projectId,
+					onClick: () =>
+						emit('select', {
+							type: 'workflow',
+							id: 'wf-picked',
+							name: 'Picked workflow',
+							icon: 'workflow',
+							projectId: props.projectId,
+						}),
+				}),
+	}),
+}));
+
+vi.mock('../../components/InstanceAiAppPreview.vue', () => ({
+	default: defineComponent({
+		inheritAttrs: false,
+		setup(_props, { attrs }) {
+			return () => {
+				appPreviewProps.current = { ...attrs };
+				return h('div', { 'data-test-id': 'app-preview-stub' });
+			};
+		},
+	}),
+}));
 
 vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	default: defineComponent({
@@ -220,6 +260,7 @@ describe('AssistantAgentThreadView', () => {
 		panelProps.current = {};
 		previewProps.current = undefined;
 		previewThread.current = undefined;
+		appPreviewProps.current = undefined;
 		routerPush.mockReset();
 		focusInput.mockReset();
 		composerAttachments.value = [];
@@ -351,6 +392,46 @@ describe('AssistantAgentThreadView', () => {
 		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-1' });
 	});
 
+	it('opens the app that the Assistant commits and reloads it on the next commit', async () => {
+		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+		const commitMessage = (toolCallId: string): ChatMessage => ({
+			id: `a-${toolCallId}`,
+			role: 'assistant',
+			content: '',
+			toolCalls: [
+				{
+					tool: 'apps',
+					toolCallId,
+					input: { action: 'commit', appId: 'app-1', label: 'Change' },
+					output: {
+						app: { id: 'app-1', name: 'Todos', projectId: 'project-1' },
+						versionId: toolCallId,
+						buildStatus: 'succeeded',
+					},
+					state: 'done',
+				},
+			],
+		});
+
+		chatMessages.value = [commitMessage('tc-1')];
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+		expect(appPreviewProps.current).toMatchObject({
+			'project-id': 'project-1',
+			'app-id': 'app-1',
+		});
+		const firstKey = appPreviewProps.current?.['refresh-key'];
+
+		chatMessages.value = [...chatMessages.value, commitMessage('tc-2')];
+		await flushPromises();
+
+		expect(appPreviewProps.current?.['refresh-key']).toBe(Number(firstKey) + 1);
+	});
+
 	it('does not open the preview for a workflow built before the thread loaded', async () => {
 		const { getByTestId } = renderView({ props: { threadId: 'thread-1', projectId: 'project-1' } });
 		await flushPromises();
@@ -361,6 +442,45 @@ describe('AssistantAgentThreadView', () => {
 
 		expect(getByTestId('assistant-agent-preview-panel')).not.toBeVisible();
 		expect(previewProps.current).toBeUndefined();
+	});
+
+	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		// The history can open tabs for past builds, so the picker waits for it.
+		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-open-resource-picker')).toHaveAttribute(
+			'data-project-id',
+			'project-1',
+		);
+		expect(queryByTestId('assistant-agent-preview-toggle')).toBeNull();
+
+		await fireEvent.click(getByTestId('assistant-agent-open-resource-picker'));
+
+		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-picked' });
+	});
+
+	it('shows the preview toggle, not the picker, while tabs are open', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+		chatMessages.value = [buildMessage('tc-1')];
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
+
+		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+		expect(getByTestId('assistant-agent-preview-toggle')).toBeEnabled();
 	});
 
 	it('sends a question from a preview with its context for that message only', async () => {
@@ -413,6 +533,32 @@ describe('AssistantAgentThreadView', () => {
 		await fireEvent.click(getByTestId('assistant-agent-new-thread'));
 
 		expect(routerPush).toHaveBeenCalledWith({ name: INSTANCE_AI_VIEW });
+	});
+
+	describe('trace export', () => {
+		afterEach(() => {
+			localStorage.removeItem('instanceAi.debugMode');
+		});
+
+		it('hides the trace menu without the debug flag', async () => {
+			const { queryByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(queryByTestId('assistant-agent-trace-button')).not.toBeInTheDocument();
+		});
+
+		it('shows the trace menu and listens to the chat stream with the debug flag', async () => {
+			localStorage.setItem('instanceAi.debugMode', 'true');
+			const { getByTestId } = renderView({
+				props: { threadId: 'thread-1', projectId: 'project-1' },
+			});
+			await flushPromises();
+
+			expect(getByTestId('assistant-agent-trace-button')).toBeInTheDocument();
+			expect(panelProps.current.onStreamEvent).toEqual(expect.any(Function));
+		});
 	});
 
 	describe('artifacts panel', () => {

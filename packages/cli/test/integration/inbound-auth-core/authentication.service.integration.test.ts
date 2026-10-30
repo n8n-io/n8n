@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { CacheService, type OAuthDiscoveryClient, UrlService } from '@n8n/backend-services';
+import {
+	CacheService,
+	EventService,
+	type OAuthDiscoveryClient,
+	UrlService,
+} from '@n8n/backend-services';
 import { testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
 import {
@@ -111,6 +116,7 @@ async function seedSystemSource(): Promise<Row> {
 		Container.get(TrustedSourceDbStore),
 		client,
 		localServer,
+		Container.get(EventService),
 	);
 	await discovery.refresh('n8n-internal');
 	return { id: 'n8n-internal', issuer: baseUrl };

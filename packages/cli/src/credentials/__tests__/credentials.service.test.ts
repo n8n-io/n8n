@@ -321,6 +321,10 @@ describe('CredentialsService', () => {
 			);
 
 			expect(prepared.data).toMatchObject(DCR_FIELDS);
+			// The restored client ID counts as unchanged, so the token stays.
+			expect((prepared.data as unknown as ICredentialDataDecryptedObject).oauthTokenData).toEqual(
+				oauthTokenData,
+			);
 		});
 
 		it('drops them along with the token when the caller clears it', async () => {
@@ -449,13 +453,40 @@ describe('CredentialsService', () => {
 			expect(preparedData.oauthTokenData).toBeUndefined();
 		});
 
-		it('leaves the authorization code grant alone, which reconnects through its own flow', async () => {
-			const preparedData = await prepare(
-				{ ...storedClient, grantType: 'authorizationCode', clientId: 'new-client-id' },
-				{ ...storedClient, grantType: 'authorizationCode', oauthTokenData },
-			);
+		describe('with the authorization code grant', () => {
+			const storedAuthorizationCode = { ...storedClient, grantType: 'authorizationCode' };
 
-			expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+			it('drops the stored token when the client ID changes', async () => {
+				const preparedData = await prepare(
+					{ ...storedAuthorizationCode, clientId: 'new-client-id' },
+					{ ...storedAuthorizationCode, oauthTokenData },
+				);
+
+				expect(preparedData.oauthTokenData).toBeUndefined();
+			});
+
+			it('drops the stored token when the managed app replaces a custom app', async () => {
+				// Managed mode sends no client fields, so the instance overwrite supplies them.
+				const { clientId, clientSecret, ...managedData } = storedAuthorizationCode;
+				const preparedData = await prepare(managedData, {
+					...storedAuthorizationCode,
+					oauthTokenData,
+				});
+
+				expect(preparedData.oauthTokenData).toBeUndefined();
+				// The default merge does not add omitted fields back from the stored data.
+				expect(preparedData).not.toHaveProperty('clientId');
+				expect(preparedData).not.toHaveProperty('clientSecret');
+			});
+
+			it('keeps the stored token when only the client secret changes', async () => {
+				const preparedData = await prepare(
+					{ ...storedAuthorizationCode, clientSecret: 'rotated-client-secret' },
+					{ ...storedAuthorizationCode, oauthTokenData },
+				);
+
+				expect(preparedData.oauthTokenData).toEqual(oauthTokenData);
+			});
 		});
 	});
 

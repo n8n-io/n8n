@@ -19,7 +19,9 @@ recommended_tools:
   - agent_builder_finish_setup
   - agent_builder_call_agent
   - workflow_builder_build_workflow
-  - data_tables
+  - list_data_tables
+  - get_data_table_schema
+  - create_data_table
 ---
 
 # Agent Builder
@@ -115,7 +117,7 @@ them with your own tools:
   `agent-context({ type: "attachable-workflows" })` and reference it as
   `{ "type": "workflow", "workflowId": "<id>", "workflow": "<name>" }`.
 - When the Agent will store or query tabular data, follow `data-table-manager`
-  and create the required tables with `data_tables`.
+  and create the required tables with `create_data_table`.
 - Never ask the user to create prerequisites manually.
 
 For an unsupported chat channel that the user explicitly wants as the

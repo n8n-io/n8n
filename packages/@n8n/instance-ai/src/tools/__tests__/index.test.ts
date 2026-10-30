@@ -27,9 +27,8 @@ vi.mock('../credentials.tool', () => ({
 }));
 
 vi.mock('../data-tables.tool', () => ({
-	DATA_TABLES_TOOL_ID: 'data_tables',
-	createDataTablesTool: vi.fn((_context: unknown, scope?: string) => ({
-		id: scope ? `data_tables-${scope}` : 'data_tables',
+	createDataTableTool: vi.fn((_context: unknown, action: string) => ({
+		id: `data-table:${action}`,
 	})),
 }));
 
@@ -154,7 +153,9 @@ describe('domain tool construction', () => {
 			setup_credentials: { id: 'setup_credentials' },
 			test_credential: { id: 'test_credential' },
 			delete_credential: { id: 'delete_credential' },
-			data_tables: { id: 'data_tables' },
+			list_data_tables: { id: 'data-table:list' },
+			query_data_table: { id: 'data-table:query' },
+			delete_data_table_rows: { id: 'data-table:delete-rows' },
 			workspace: { id: 'workspace' },
 			research: { id: 'research' },
 			'n8n-docs': { id: 'n8n-docs' },
@@ -180,7 +181,7 @@ describe('domain tool construction', () => {
 			createExecuteNodeTool,
 		} = await import('../nodes.tool.js');
 		const { createSearchModelsTool } = await import('../search-models.tool.js');
-		const { createDataTablesTool } = await import('../data-tables.tool.js');
+		const { createDataTableTool } = await import('../data-tables.tool.js');
 		expect(createWorkflowTool).toHaveBeenCalledWith(context, 'list');
 		// Version and node-usage tools need host methods this context does not provide.
 		expect(orchestratorTools.has('list_workflow_versions')).toBe(false);
@@ -190,7 +191,9 @@ describe('domain tool construction', () => {
 		expect(createGetNodeParameterOptionsTool).toHaveBeenCalledWith(context);
 		expect(createExecuteNodeTool).toHaveBeenCalledWith(context);
 		expect(createSearchModelsTool).toHaveBeenCalledOnce();
-		expect(createDataTablesTool).toHaveBeenCalledWith(context);
+		expect(createDataTableTool).toHaveBeenCalledWith(context, 'list');
+		expect(createDataTableTool).toHaveBeenCalledWith(context, 'delete-rows');
+		expect(orchestratorTools.has('data_tables')).toBe(false);
 	});
 
 	it('never defers model catalog search behind search_tools', () => {

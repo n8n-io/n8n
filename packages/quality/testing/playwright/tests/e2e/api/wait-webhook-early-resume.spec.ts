@@ -55,15 +55,11 @@ test.describe(
 			await services.proxy.clearAllExpectations();
 		});
 
-		test('should hold a resume request that arrives just before the wait and then resume @engine:v2', async ({
+		// Engine v1 refuses a request for a running execution at once, so only engine v2 can run this.
+		test('should hold a resume request that arrives just before the wait and then resume @engine:v2-only', async ({
 			api,
 			services,
-			n8nStackConfig,
 		}) => {
-			test.skip(
-				!n8nStackConfig.engine,
-				'Engine v1 refuses a request for a running execution at once',
-			);
 			// Passes only while DEFAULT_RESUME_HOLD in @n8n/engine (about 1 s) outlasts this delay.
 			await delaySlowNode(services.proxy, 600);
 			const { workflowId } = await api.workflows.importWorkflowFromFile(WORKFLOW_FILE);

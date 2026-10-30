@@ -59,6 +59,8 @@ export interface AgentRuntimeConfig {
 	tools?: BuiltTool[];
 	deferredTools?: BuiltTool[];
 	workspaceFilesystem?: WorkspaceFilesystem;
+	/** Starts preparing the agent's workspace. Called for tools with `requiresWorkspace`. */
+	prewarmWorkspace?: () => void;
 	nativeToolDeferral?: NativeToolDeferralConfig;
 	toolSearch?: {
 		topK?: number;
