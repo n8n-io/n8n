@@ -25,6 +25,20 @@ describe('prepareForGuest', () => {
 		expect(Object.keys(result.error)).toEqual(['description', 'name']);
 	});
 
+	it('keeps the name inherited from an Error subclass prototype', () => {
+		class ProtoError extends Error {}
+		Object.defineProperty(ProtoError.prototype, 'name', { value: 'ProtoError' });
+		const error = new ProtoError('m');
+		expect(Object.hasOwn(error, 'name')).toBe(false);
+
+		const result = roundTrip(error) as Error;
+
+		expect(result).toBeInstanceOf(Error);
+		expect(result.name).toBe('ProtoError');
+		expect(result.message).toBe('m');
+		expect(String(result)).toBe('ProtoError: m');
+	});
+
 	it('keeps the JSON form of an Error that has toJSON', () => {
 		class ShortError extends Error {
 			toJSON() {
