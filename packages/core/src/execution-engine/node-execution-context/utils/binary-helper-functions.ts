@@ -16,13 +16,12 @@ import type {
 import {
 	NodeOperationError,
 	fileTypeFromMimeType,
-	UserError,
-	UnexpectedError,
 	isBinaryValue,
 	BINARY_MODE_COMBINED,
 	BINARY_MODE_SEPARATE,
 	sanitizeFilename,
 } from 'n8n-workflow';
+import { UserError, UnexpectedError } from '@n8n/errors';
 import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';

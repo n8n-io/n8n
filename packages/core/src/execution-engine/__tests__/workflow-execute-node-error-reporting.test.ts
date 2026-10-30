@@ -11,14 +11,8 @@ vi.mock('@n8n/di', () => ({
 
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
-import {
-	ApplicationError,
-	NodeConnectionTypes,
-	OperationalError,
-	UnexpectedError,
-	UserError,
-	Workflow,
-} from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, Workflow } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import type { INodeType, INodeTypes, IWorkflowExecuteAdditionalData, IRun } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
 import { mock } from 'vitest-mock-extended';

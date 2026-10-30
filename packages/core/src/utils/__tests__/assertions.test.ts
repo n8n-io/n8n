@@ -1,5 +1,5 @@
 import type { IRunExecutionData, IWorkflowExecuteAdditionalData, Workflow } from 'n8n-workflow';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { assertExecutionDataExists } from '../assertions';

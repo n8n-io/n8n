@@ -32,13 +32,8 @@ import type {
 	WorkflowExecuteMode,
 	Logger as WorkflowLogger,
 } from 'n8n-workflow';
-import {
-	OperationalError,
-	jsonParse,
-	NodeOperationError,
-	UserError,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { jsonParse, NodeOperationError } from 'n8n-workflow';
+import { OperationalError, UserError, UnexpectedError } from '@n8n/errors';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
 import { Stream } from 'stream';

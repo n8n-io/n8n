@@ -12,7 +12,8 @@ import type {
 	WorkflowTestData,
 	INodeTypeData,
 } from 'n8n-workflow';
-import { NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import { NodeHelpers } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import path from 'path';
 import { mock } from 'vitest-mock-extended';
 
