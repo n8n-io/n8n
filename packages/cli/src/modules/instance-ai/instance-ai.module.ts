@@ -52,7 +52,6 @@ export class InstanceAiModule implements ModuleInterface {
 		);
 		await Container.get(InstanceAiSetupTelemetryService).recordSetupCompletedIfNeeded();
 		await import('./instance-ai.controller.js');
-		await import('./assistant-agent/assistant.controller.js');
 		await import('./mcp/instance-ai-mcp-connection.controller.js');
 		const { InstanceAiConfig } = await import('@n8n/config');
 		if (Container.get(InstanceAiConfig).evalInstance) {
@@ -120,6 +119,8 @@ export class InstanceAiModule implements ModuleInterface {
 		await Container.get(SystemAgentRegistrationService).register(
 			Container.get(AssistantAgentProvider),
 		);
+		// Its routes serve Assistant agent threads, so they exist only with the agent.
+		await import('./assistant-agent/assistant.controller.js');
 		this.assistantAgentRegistered = true;
 	}
 

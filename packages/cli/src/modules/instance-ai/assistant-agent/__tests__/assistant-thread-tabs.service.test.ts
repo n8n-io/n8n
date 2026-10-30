@@ -159,15 +159,14 @@ describe('AssistantThreadTabsService', () => {
 		});
 
 		it('writes nothing when the tab is already shown with the same details', async () => {
-			const { memory, row } = useMemory({
-				exists: true,
-				metadata: { [ASSISTANT_TABS_METADATA_KEY]: state },
-			});
+			const metadata = { [ASSISTANT_TABS_METADATA_KEY]: state };
+			const { memory, row } = useMemory({ exists: true, metadata });
 
 			await service.showArtifactTab(THREAD_ID, { type: 'agent', id: 'agent-1' });
 
 			expect(memory.patchThread).toHaveBeenCalled();
-			expect(row.metadata).toEqual({ [ASSISTANT_TABS_METADATA_KEY]: state });
+			// A write would replace the metadata object, even with equal content.
+			expect(row.metadata).toBe(metadata);
 		});
 	});
 
@@ -261,6 +260,12 @@ describe('withShownTab', () => {
 	});
 
 	it('falls back to the stored name, then the id, when the change has no name', () => {
+		const result = withShownTab(
+			{ ...stored, tabs: [...stored.tabs, { type: 'agent', id: 'agent-2', name: 'Bot' }] },
+			{ type: 'agent', id: 'agent-2' },
+		);
+		expect(result?.tabs.at(-1)).toEqual({ type: 'agent', id: 'agent-2', name: 'Bot' });
+
 		expect(withShownTab(null, { type: 'workflow', id: 'wf-9' })?.tabs).toEqual([
 			{ type: 'workflow', id: 'wf-9', name: 'wf-9' },
 		]);
