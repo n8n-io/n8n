@@ -1,0 +1,68 @@
+type: object
+properties:
+  enabled:
+    type: boolean
+    description: Whether Public API rate limiting is enabled.
+  globalReadLimit:
+    type: integer
+    minimum: 0
+    description: Read requests allowed for one API key across all endpoints. Set 0 for no limit.
+  globalReadWindowSeconds:
+    type: integer
+    minimum: 0
+    exclusiveMinimum: true
+    description: The window for the global read limit, in seconds.
+  globalWriteLimit:
+    type: integer
+    minimum: 0
+    description: Write requests allowed for one API key across all endpoints. Set 0 for no limit.
+  globalWriteWindowSeconds:
+    type: integer
+    minimum: 0
+    exclusiveMinimum: true
+    description: The window for the global write limit, in seconds.
+  endpointReadLimit:
+    type: integer
+    minimum: 0
+    description: Read requests allowed for one API key on one endpoint. Set 0 for no limit.
+  endpointReadWindowSeconds:
+    type: integer
+    minimum: 0
+    exclusiveMinimum: true
+    description: The window for the endpoint read limit, in seconds.
+  endpointWriteLimit:
+    type: integer
+    minimum: 0
+    description: Write requests allowed for one API key on one endpoint. Set 0 for no limit.
+  endpointWriteWindowSeconds:
+    type: integer
+    minimum: 0
+    exclusiveMinimum: true
+    description: The window for the endpoint write limit, in seconds.
+  envManagedFields:
+    type: array
+    items:
+      type: string
+      enum:
+        - enabled
+        - globalReadLimit
+        - globalReadWindowSeconds
+        - globalWriteLimit
+        - globalWriteWindowSeconds
+        - endpointReadLimit
+        - endpointReadWindowSeconds
+        - endpointWriteLimit
+        - endpointWriteWindowSeconds
+    description: Fields controlled by environment variables, including _FILE variables. These fields return their effective values. A PUT can repeat these values but cannot change them.
+    readOnly: true
+required:
+  - enabled
+  - globalReadLimit
+  - globalReadWindowSeconds
+  - globalWriteLimit
+  - globalWriteWindowSeconds
+  - endpointReadLimit
+  - endpointReadWindowSeconds
+  - endpointWriteLimit
+  - endpointWriteWindowSeconds
+  - envManagedFields

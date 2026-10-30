@@ -15,10 +15,10 @@ import type {
 	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 
-import { getSkillArtifactFromToolCall } from './canvasPreview.utils';
+import { getAppArtifactFromToolCall, getSkillArtifactFromToolCall } from './canvasPreview.utils';
 
 export type ResourceEntry = {
-	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill';
+	type: 'workflow' | 'credential' | 'data-table' | 'agent' | 'skill' | 'app';
 	id: string;
 	name: string;
 	createdAt?: string;
@@ -261,9 +261,17 @@ function extractFromSkillsResult(tc: InstanceAiToolCallState, col: Collections):
 	});
 }
 
+/** Apps results: a successful `apps` create or commit. Reads and opens do not count. */
+function extractFromAppsResult(tc: InstanceAiToolCallState, col: Collections): void {
+	const app = getAppArtifactFromToolCall(tc);
+	if (!app) return;
+	recordProduced(col, { type: 'app', id: app.appId, name: app.name, projectId: app.projectId });
+}
+
 function extractFromToolCall(tc: InstanceAiToolCallState, col: Collections): void {
 	extractFromAgentBuilderResult(tc, col);
 	extractFromSkillsResult(tc, col);
+	extractFromAppsResult(tc, col);
 	const isFormerWorkflowsCall = isFormerWorkflowsTool(tc.toolName);
 	if (
 		!isFormerWorkflowsCall &&

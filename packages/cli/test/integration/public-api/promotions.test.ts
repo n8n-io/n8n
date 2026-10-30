@@ -34,6 +34,7 @@ import { setupTestServer } from '@test-integration/utils';
 
 describe('Promotions in Public API', () => {
 	const testServer = setupTestServer({
+		reuseServer: true,
 		endpointGroups: ['publicApi'],
 		enabledFeatures: ['feat:promotions'],
 		modules: ['promotions'],
@@ -539,7 +540,7 @@ describe('Promotions in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('read_api scope');
+			expect(response.body.message).toContain('api scope');
 			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
 			api.done();
 		});
@@ -1252,7 +1253,7 @@ describe('Promotions in Public API', () => {
 
 		it.each([
 			{ route: 'repositories', status: 401, message: 'rejected the access token' },
-			{ route: 'repositories', status: 403, message: 'read_api scope' },
+			{ route: 'repositories', status: 403, message: 'api scope' },
 			{ route: 'repositories', status: 503, message: 'not available' },
 			{ route: 'repositories/42/branches', status: 403, message: 'repository access' },
 		])(
@@ -2500,19 +2501,27 @@ describe('Promotions in Public API', () => {
 			},
 		);
 
-		it('rejects an empty selection with 400 on both routes', async () => {
-			const agent = testServer.publicApiAgentFor(owner);
-			expect(
-				(await agent.post('/promotions/projects/proj1/apply').send({ workflowIds: [] })).status,
-			).toBe(400);
-			expect(
-				(
-					await agent
-						.post('/promotions/projects/proj1/apply/continue')
-						.send({ workflowIds: [], expectedSource: selectionBody.expectedSource })
-				).status,
-			).toBe(400);
-		});
+		it.each([
+			{ selection: 'an empty', workflowIds: [] },
+			{ selection: 'a duplicate', workflowIds: ['w1', 'w1'] },
+		])(
+			'rejects $selection selection before calling either Apply service',
+			async ({ workflowIds }) => {
+				const service = Container.get(PromotionsService);
+				const initial = vi.spyOn(service, 'applyProjectSelection');
+				const continuation = vi.spyOn(service, 'continueApplyProjectSelection');
+				const agent = testServer.publicApiAgentFor(owner);
+				for (const route of ['apply', 'apply/continue']) {
+					const response = await agent.post(`/promotions/projects/proj1/${route}`).send({
+						workflowIds,
+						expectedSource: selectionBody.expectedSource,
+					});
+					expect(response.status, JSON.stringify(response.body)).toBe(400);
+				}
+				expect(initial).not.toHaveBeenCalled();
+				expect(continuation).not.toHaveBeenCalled();
+			},
+		);
 
 		it('requires workflowIds and a supported source on Continue', async () => {
 			const agent = testServer.publicApiAgentFor(owner);

@@ -521,10 +521,7 @@ export interface SkillArtifact {
 	name?: string;
 }
 
-export interface SkillArtifactResult extends SkillArtifact {
-	/** Unique per operation — changes even when the same skill is saved again. */
-	toolCallId: string;
-}
+export type SkillArtifactResult = ToolArtifactResult<SkillArtifact>;
 
 /**
  * The skill that a finished `skills` call created or saved. Only a successful
@@ -555,23 +552,74 @@ export function getSkillArtifactFromToolCall(
 	return { skillId, ...(name ? { name } : {}) };
 }
 
+export type ToolArtifactResult<T> = T & {
+	/** Unique per operation — changes even when the same artifact is saved again. */
+	toolCallId: string;
+};
+
 /**
  * Walks an agent tree depth-first (most recent last) and returns the latest
- * skill that the assistant created or saved with the `skills` tool.
+ * artifact that `extract` finds in a tool call.
  */
-export function getLatestSkillArtifactResult(
+function getLatestToolArtifactResult<T extends object>(
 	node: InstanceAiAgentNode,
-): SkillArtifactResult | undefined {
+	extract: (tc: InstanceAiToolCallState) => T | undefined,
+): ToolArtifactResult<T> | undefined {
 	for (let i = node.children.length - 1; i >= 0; i--) {
-		const childResult = getLatestSkillArtifactResult(node.children[i]);
+		const childResult = getLatestToolArtifactResult(node.children[i], extract);
 		if (childResult) return childResult;
 	}
 	for (let i = node.toolCalls.length - 1; i >= 0; i--) {
 		const tc = node.toolCalls[i];
-		const skill = getSkillArtifactFromToolCall(tc);
-		if (skill) return { ...skill, toolCallId: tc.toolCallId };
+		const artifact = extract(tc);
+		if (artifact) return { ...artifact, toolCallId: tc.toolCallId };
 	}
 	return undefined;
+}
+
+/** The latest skill that the assistant created or saved with the `skills` tool. */
+export function getLatestSkillArtifactResult(
+	node: InstanceAiAgentNode,
+): SkillArtifactResult | undefined {
+	return getLatestToolArtifactResult(node, getSkillArtifactFromToolCall);
+}
+
+/** The app detail page of one app. */
+export function appHref(projectId: string, appId: string): string {
+	return `/projects/${projectId}/apps/${appId}`;
+}
+
+/** Name of the n8n Assistant tool that builds n8n Apps. */
+export const APPS_TOOL_NAME = 'apps';
+
+/** `get` and `open` only read the app. */
+const APP_WRITE_ACTIONS = new Set(['create', 'commit']);
+
+export interface AppArtifact {
+	appId: string;
+	name: string;
+	projectId: string;
+}
+
+/** The app that a finished `apps` call created or committed. */
+export function getAppArtifactFromToolCall(tc: InstanceAiToolCallState): AppArtifact | undefined {
+	if (tc.toolName !== APPS_TOOL_NAME || tc.isLoading) return undefined;
+	const action = tc.args?.action;
+	if (typeof action !== 'string' || !APP_WRITE_ACTIONS.has(action)) return undefined;
+	const result = unwrapUntrustedToolResult(tc.result);
+	if (!isRecord(result) || !isRecord(result.app)) return undefined;
+	const { id, name, projectId } = result.app;
+	if (typeof id !== 'string' || typeof name !== 'string' || typeof projectId !== 'string') {
+		return undefined;
+	}
+	return { appId: id, name, projectId };
+}
+
+/** The latest app that the assistant created or committed with the `apps` tool. */
+export function getLatestAppArtifactResult(
+	node: InstanceAiAgentNode,
+): ToolArtifactResult<AppArtifact> | undefined {
+	return getLatestToolArtifactResult(node, getAppArtifactFromToolCall);
 }
 
 function getAgentTarget(node: InstanceAiAgentNode): AgentArtifactTarget | undefined {

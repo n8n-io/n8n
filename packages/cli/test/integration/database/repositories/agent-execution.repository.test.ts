@@ -14,7 +14,7 @@ import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend
 import { AgentsConfig, AiConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
@@ -113,6 +113,7 @@ describe('AgentExecutionRepository', () => {
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
 	let attachmentRepo: AgentChatAttachmentRepository;
+	let attachmentTable: Repository<AgentChatAttachment>;
 	let peer: DataSource;
 	let projectId: string;
 	let agentId: string;
@@ -124,6 +125,7 @@ describe('AgentExecutionRepository', () => {
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		agentRepo = Container.get(AgentRepository);
 		attachmentRepo = Container.get(AgentChatAttachmentRepository);
+		attachmentTable = Container.get(DataSource).getRepository(AgentChatAttachment);
 		peer = await new DataSource({
 			...repository.manager.connection.options,
 			synchronize: false,
@@ -318,7 +320,7 @@ describe('AgentExecutionRepository', () => {
 	}
 
 	function buildAttachment(threadId: string) {
-		return attachmentRepo.create({
+		return attachmentTable.create({
 			id: generateNanoId(),
 			agentId,
 			projectId,
@@ -1171,7 +1173,7 @@ describe('AgentExecutionRepository', () => {
 		const captured = Array.from({ length: count }, () => buildAttachment(thread.id));
 		const late = buildAttachment(thread.id);
 		const unrelated = buildAttachment(otherThread.id);
-		await attachmentRepo.save([...captured, unrelated]);
+		await attachmentTable.save([...captured, unrelated]);
 		const { executionService, attachmentService } = recordingServices();
 		const interceptor = insertAttachmentAfterSnapshot(late);
 
@@ -1181,10 +1183,10 @@ describe('AgentExecutionRepository', () => {
 			interceptor.mockRestore();
 		}
 
-		expect(await attachmentRepo.findByThread(thread.id, { projectId })).toMatchObject([
+		expect(await attachmentRepo.findByThread(thread.id, { projectId }, {})).toMatchObject([
 			{ id: late.id, binaryDataId: late.binaryDataId },
 		]);
-		expect(await attachmentRepo.findOneBy({ id: unrelated.id })).toEqual(unrelated);
+		expect(await attachmentTable.findOneBy({ id: unrelated.id })).toEqual(unrelated);
 		expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
 		expect(attachmentService.deleteStoredData).toHaveBeenCalledExactlyOnceWith(
 			captured.map(({ binaryDataId }) => binaryDataId),
@@ -1194,7 +1196,7 @@ describe('AgentExecutionRepository', () => {
 
 	it('rolls back session database cleanup when memory cleanup fails', async () => {
 		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
-		const attachment = await attachmentRepo.save(buildAttachment(threadId));
+		const attachment = await attachmentTable.save(buildAttachment(threadId));
 		const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
 		memoryBackend.deleteThread.mockRejectedValue(new Error('Memory cleanup failed'));
 		const { executionService, attachmentService, executionLogStore } =
@@ -1208,14 +1210,14 @@ describe('AgentExecutionRepository', () => {
 		expect(await checkpointRepo.findByRunId(suspension.runId)).not.toBeNull();
 		expect(await threadRepo.findOneBy({ id: threadId })).not.toBeNull();
 		expect(await repository.findByThreadIdOrdered(threadId)).toEqual(executionsBefore);
-		expect(await attachmentRepo.findOneBy({ id: attachment.id })).toEqual(attachment);
+		expect(await attachmentTable.findOneBy({ id: attachment.id })).toEqual(attachment);
 		expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
 		expect(executionLogStore.delete).not.toHaveBeenCalled();
 	});
 
 	it('keeps session data when admission wins deletion on another connection', async () => {
 		const thread = await createThread();
-		const attachment = await attachmentRepo.save(buildAttachment(thread.id));
+		const attachment = await attachmentTable.save(buildAttachment(thread.id));
 		const checkpointRepo = Container.get(AgentCheckpointRepository);
 		const checkpoint = await checkpointRepo.save({
 			runId: uuid(),
@@ -1269,7 +1271,7 @@ describe('AgentExecutionRepository', () => {
 				expect.objectContaining({ id: executionId, status: 'running' }),
 			]);
 			expect(await checkpointRepo.findByRunId(checkpoint.runId)).toEqual(checkpoint);
-			expect(await attachmentRepo.findOneBy({ id: attachment.id })).toEqual(attachment);
+			expect(await attachmentTable.findOneBy({ id: attachment.id })).toEqual(attachment);
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
 			expect(executionLogStore.delete).not.toHaveBeenCalled();
@@ -3414,7 +3416,7 @@ describe('AgentExecutionRepository', () => {
 		it('removes pending input, attachments, and acceptance identity on session deletion', async () => {
 			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
-			const attachment = await attachmentRepo.save(buildAttachment(threadId));
+			const attachment = await attachmentTable.save(buildAttachment(threadId));
 			const accepted = input(threadId, 'pending', 'new', uuid());
 			accepted.payload.attachments = [
 				{
@@ -3429,7 +3431,7 @@ describe('AgentExecutionRepository', () => {
 				await services.executionService.deleteThread(projectId, agentId, threadId, owner.id),
 			).toBe(true);
 			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
-			expect(await attachmentRepo.findOneBy({ id: attachment.id })).toBeNull();
+			expect(await attachmentTable.findOneBy({ id: attachment.id })).toBeNull();
 			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
 			expect(services.attachmentService.deleteStoredData).toHaveBeenCalledWith(
 				[attachment.binaryDataId],
@@ -3515,7 +3517,7 @@ describe('AgentExecutionRepository', () => {
 				},
 			],
 		});
-		const attachment = await attachmentRepo.save(buildAttachment(threadId));
+		const attachment = await attachmentTable.save(buildAttachment(threadId));
 		const attachments = [
 			{
 				id: attachment.id,

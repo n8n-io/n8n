@@ -32,6 +32,8 @@ import {
 	isSetupPanelEnabled,
 	observeWorkflowSetupStates,
 	orchestratorAgentId,
+	parseAppTargets,
+	parsePendingAppTarget,
 	saveAgentBuilderTarget,
 	type InstanceAiContext,
 	type ManagedBackgroundTask,
@@ -58,6 +60,7 @@ import {
 import { InstanceAiSkillsService, SKILLS } from '../instance-ai-skills.service';
 import {
 	asStoredThreadContextSection,
+	buildAppTargetsBlock,
 	buildCurrentDateTimeBlock,
 	buildInstanceUrlsBlock,
 	buildOnboardingSkillBlock,
@@ -455,6 +458,10 @@ export class AssistantTurnInputBuilder {
 						loadReplayedHistory,
 					)
 				: '';
+		const appTargetsBlock =
+			resumeReason === undefined
+				? await this.resolveAppTargetsBlock(context, thread?.metadata ?? {})
+				: '';
 		const [boundProject, pastConversationsSection] = await Promise.all([
 			this.resolveBoundProject(context),
 			isOpeningTurn ? conversationHistory?.getPastConversationsSection() : undefined,
@@ -474,6 +481,7 @@ export class AssistantTurnInputBuilder {
 			// and stays in the history for the later turns.
 			onboardingSkill ? buildOnboardingSkillBlock(onboardingSkill) : undefined,
 			threadArtifactsBlock,
+			appTargetsBlock,
 			projectSection ? buildProjectContextBlock(projectSection) : undefined,
 			resumeReason === undefined
 				? buildInstanceUrlsBlock({
@@ -571,6 +579,23 @@ export class AssistantTurnInputBuilder {
 			});
 			return '';
 		}
+	}
+
+	private async resolveAppTargetsBlock(
+		context: InstanceAiContext,
+		metadata: Record<string, unknown>,
+	): Promise<string> {
+		const appService = context.appService;
+		if (!appService) return '';
+		const apps = await Promise.all(
+			parseAppTargets(metadata).map(
+				async ({ appId }) => await appService.getApp(appId).catch(() => undefined),
+			),
+		);
+		return buildAppTargetsBlock(
+			apps.flatMap((app) => (app ? [app] : [])),
+			parsePendingAppTarget(metadata) !== undefined,
+		);
 	}
 
 	/**

@@ -22,6 +22,7 @@ export const ARTIFACT_TAB_ICONS: Record<ArtifactTab['type'], IconName> = {
 	'data-table': 'table',
 	agent: 'robot',
 	skill: 'book-open',
+	app: 'layout-template',
 };
 
 type TabsLayout = Pick<InstanceAiThreadTabsState, 'tabs' | 'closedTabs'>;
@@ -132,6 +133,10 @@ export function useOpenArtifactTabs({
 			openTabs.value.find((tab) => tab.id === tabId) ??
 			artifactTabs().find((tab) => tab.id === tabId)
 		);
+	}
+
+	function hasTab(tabId: string) {
+		return findTab(tabId) !== undefined;
 	}
 
 	/**
@@ -297,6 +302,7 @@ export function useOpenArtifactTabs({
 		isLoaded,
 		storedActiveTab,
 		storedPreviewOpen,
+		hasTab,
 		closeTab,
 		reopenTab,
 		openTab,

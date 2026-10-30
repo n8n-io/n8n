@@ -545,6 +545,28 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V2' });
 	});
 
+	it('replays dollar signs in a replacement as plain text', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'PRICE' }),
+			tool('e1', 3, 'workspace_str_replace_file', {
+				path: FILE,
+				replacements: [{ old_str: 'PRICE', new_str: '$& costs $1' }],
+			}),
+			tool(
+				'b1',
+				4,
+				'workflow_builder_build_workflow',
+				{ filePath: FILE, name: 'Main' },
+				{ success: true, workflowId: 'WF1', workflowName: 'Main' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: '$& costs $1' });
+	});
+
 	it('skips a failed edit so the replay matches the unchanged sandbox file', async () => {
 		const runs: FakeRun[] = [
 			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
@@ -568,6 +590,35 @@ describe('reconstructSeedFromThread — filesystem-based builds (post-#32545)', 
 		];
 		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
 		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'GOOD' });
+	});
+
+	it('replays the successful operations of a batch edit and skips the failed ones', async () => {
+		const runs: FakeRun[] = [
+			{ ...turn('r1', 1, 'Build it'), outputs: { response: '…' } },
+			tool('w1', 2, 'workspace_write_file', { path: FILE, content: 'CODE_V1' }),
+			tool(
+				'e1',
+				3,
+				'workspace_edit_files',
+				{
+					operations: [
+						{ type: 'replace', path: FILE, replacements: [{ old_str: 'V1', new_str: 'V2' }] },
+						{ type: 'replace', path: FILE, replacements: [{ old_str: 'CODE', new_str: 'BAD' }] },
+					],
+				},
+				{ success: false, results: [{ success: true }, { success: false }] },
+			),
+			tool(
+				'b1',
+				4,
+				'workflow_builder_build_workflow',
+				{ filePath: FILE },
+				{ success: true, workflowId: 'WF1' },
+			),
+			turn('r2', 30, 'change'),
+		];
+		const result = await reconstructSeedFromThread({ threadId: 'th1' }, fakeClient(runs));
+		expect(result.seed.workflows[0].nodes[0]).toMatchObject({ __code: 'CODE_V2' });
 	});
 
 	it('falls back to a get-as-code capture when a successful edit cannot be replayed', async () => {
