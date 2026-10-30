@@ -227,7 +227,7 @@ describe('with the workflow publication service off in regular mode', () => {
 		// import that nothing awaits. If that import ends after the flag is off,
 		// the next command start cannot build the consumer. Build it now.
 		const { WorkflowPublicationOutboxConsumer } = await import(
-			'@/workflows/publication/workflow-publication-outbox-consumer'
+			'@/workflows/publication/workflow-publication-outbox-consumer.js'
 		);
 		Container.get(WorkflowPublicationOutboxConsumer);
 
