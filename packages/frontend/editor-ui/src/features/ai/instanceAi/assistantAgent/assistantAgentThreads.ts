@@ -64,6 +64,10 @@ const launchKey = (threadId: string) => `n8n-assistant-agent-launch:${threadId}`
  * Marks a new thread as an Assistant agent thread. The server knows the thread
  * only after its first message, so the marker is in localStorage: a hand-off
  * can open the thread in a new tab, or before the user sends anything.
+ *
+ * Temporary: the marker exists because both Assistant runtimes share the thread
+ * URL. When the current runtime is removed, move the project and the launch
+ * fields into the hand-off stash and remove the marker (AST-1898).
  */
 export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAgentThreadLaunch) {
 	rememberAssistantAgentThread(threadId, launch.projectId);
