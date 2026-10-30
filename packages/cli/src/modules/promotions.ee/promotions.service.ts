@@ -269,7 +269,7 @@ export class PromotionsService {
 		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
-		await this.assertCheckoutReady(input, 'promoting');
+		await this.ensureCheckout(input, signal);
 
 		const branchName = checkoutBranchName(input.config);
 		await this.removeLeftoverLockFiles(input, branchName);
@@ -469,7 +469,7 @@ export class PromotionsService {
 
 		this.workingCopy.validateSelection(selection);
 		const project = await this.assertTeamProject(selection.projectId);
-		await this.assertCheckoutReady(input, 'promoting');
+		await this.ensureCheckout(input, signal);
 
 		const branchName = checkoutBranchName(input.config);
 		await this.removeLeftoverLockFiles(input, branchName);
@@ -919,8 +919,8 @@ export class PromotionsService {
 		projectId: string,
 		commitSha: string,
 	): Promise<Map<string, Buffer>> {
-		const input = await this.resolver.resolveForProject(projectId, 'apply');
-		await this.assertCheckoutReady(input, 'reading the Apply branch');
+		const resolve = async () => await this.resolver.resolveForProject(projectId, 'apply');
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
 		return await this.gitService.readTreeAtCommit({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
@@ -985,7 +985,7 @@ export class PromotionsService {
 		signal: AbortSignal,
 		expectedPreviewRevision?: string,
 	): Promise<ApplyPackageResultDto> {
-		await this.assertCheckoutReady(input, 'applying');
+		await this.ensureCheckout(input, signal);
 
 		const tip = await this.readApplyTip(input, expectedSource);
 		if (tip.status === 'source-changed') return tip;
@@ -1094,7 +1094,7 @@ export class PromotionsService {
 		signal: AbortSignal,
 	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
-		await this.assertCheckoutReady(input, 'applying');
+		await this.ensureCheckout(input, signal);
 
 		const tip = await this.readApplyTip(input, expectedSource);
 		if (tip.status === 'source-changed') return tip;
@@ -1147,10 +1147,11 @@ export class PromotionsService {
 	 * before they apply changes to them from the project page.
 	 */
 	async listMissingProjects(environmentId: string): Promise<PromotionMissingProjectListPublicDto> {
-		const input = await this.resolver.resolveForEnvironment(environmentId, 'apply');
+		const resolve = async () => await this.resolver.resolveForEnvironment(environmentId, 'apply');
 		// A new project has no environment link, so its project Apply reads the instance environment.
-		this.assertInstanceScope(input, 'Listing missing projects');
-		await this.assertCheckoutReady(input, 'reading its package');
+		const resolved = await resolve();
+		this.assertInstanceScope(resolved, 'Listing missing projects');
+		const input = await this.ensureCheckoutForRead(resolved, resolve);
 
 		const head = await this.fetchApplyHead(input);
 		const files = head && (await this.readApplyTree(head));
@@ -1281,8 +1282,8 @@ export class PromotionsService {
 		projectId: string,
 		direction: PromotionDirection,
 	): Promise<BranchPackage> {
-		const input = await this.resolver.resolveForProject(projectId, direction);
-		await this.assertCheckoutReady(input, 'listing branch files');
+		const resolve = async () => await this.resolver.resolveForProject(projectId, direction);
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
 
 		const paths = this.workingDirectory.paths(input.environmentId);
 		const branchName = checkoutBranchName(input.config);
@@ -1334,8 +1335,8 @@ export class PromotionsService {
 		commitSha: string,
 		filePaths: readonly string[],
 	): Promise<Map<string, string>> {
-		const input = await this.resolver.resolveForProject(projectId, direction);
-		await this.assertCheckoutReady(input, 'reading branch files');
+		const resolve = async () => await this.resolver.resolveForProject(projectId, direction);
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
 		return await this.readExistingFiles(
 			{
 				paths: this.workingDirectory.paths(input.environmentId),
@@ -1359,8 +1360,8 @@ export class PromotionsService {
 			baseline: { targetBranchName: string } | { commitSha: string; targetBranchName?: string };
 		},
 	): Promise<{ baseline: PackageCommit; head: PackageCommit }> {
-		const input = await this.resolver.resolveForEnvironment(environmentId, 'promote');
-		await this.assertCheckoutReady(input, 'reading a review');
+		const resolve = async () => await this.resolver.resolveForEnvironment(environmentId, 'promote');
+		const input = await this.ensureCheckoutForRead(await resolve(), resolve);
 		const operation = {
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName: checkoutBranchName(input.config),
@@ -1598,16 +1599,46 @@ export class PromotionsService {
 	 * environment we just resolved. Another process may have changed the remote or
 	 * the branch, which cannot invalidate this machine's cache.
 	 */
-	private async assertCheckoutReady(input: PromotionOperationInput, gerund: string) {
+	private async hasReadyCheckout(input: PromotionOperationInput): Promise<boolean> {
 		const { repositoryFolder } = this.workingDirectory.paths(input.environmentId);
-		const cloned = await this.gitService.hasCheckout(repositoryFolder);
-		const current =
-			cloned && (await this.workingDirectory.matchesDescriptor(this.descriptorFor(input)));
-		if (!current) {
-			throw new BadRequestError(
-				`This ${input.config.direction} environment is not connected. Connect it before ${gerund}.`,
-			);
-		}
+		return (
+			(await this.gitService.hasCheckout(repositoryFolder)) &&
+			(await this.workingDirectory.matchesDescriptor(this.descriptorFor(input)))
+		);
+	}
+
+	/**
+	 * Clones the branch when this main has no ready checkout. Each main keeps its own
+	 * checkout, so the first operation on a main clones, whichever main ran Connect.
+	 * Call it inside the environment lock. The lock is not reentrant, so this does not take it.
+	 */
+	private async ensureCheckout(input: PromotionOperationInput, signal: AbortSignal) {
+		if (await this.hasReadyCheckout(input)) return;
+
+		const startedAt = Date.now();
+		await this.cloneResolved(input, signal);
+		this.logger.info('Cloned a promotion branch on demand', {
+			environmentId: input.environmentId,
+			direction: input.config.direction,
+			durationMs: Date.now() - startedAt,
+		});
+	}
+
+	/**
+	 * Read paths run without the environment lock. Only a clone writes the folder, so take
+	 * the lock just for the clone. Returns the environment to read: the one read again inside
+	 * the lock when this cloned, so the read matches the clone.
+	 */
+	private async ensureCheckoutForRead(
+		input: PromotionOperationInput,
+		resolveAgain: () => Promise<PromotionOperationInput>,
+	): Promise<PromotionOperationInput> {
+		if (await this.hasReadyCheckout(input)) return input;
+
+		return await this.withEnvironmentLock(input, resolveAgain, async (current, signal) => {
+			await this.ensureCheckout(current, signal);
+			return current;
+		});
 	}
 
 	private descriptorFor(input: PromotionOperationInput): PromotionCacheDescriptor {

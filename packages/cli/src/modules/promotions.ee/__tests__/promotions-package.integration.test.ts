@@ -995,7 +995,7 @@ describe('Promote and Apply', () => {
 		).toEqual([result.git.commitSha, movedCommit]);
 	});
 
-	it('requires a clone after a branched promotion cannot restore its checkout', async () => {
+	it('clones again after a branched promotion cannot restore its checkout', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(
 			remote.bareDir,
@@ -1037,23 +1037,12 @@ describe('Promote and Apply', () => {
 		await environmentRepository.update(environmentId, {
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: false },
 		});
-		const exportSpy = vi.spyOn(packagesService, 'exportPackageToDirectory');
-		try {
-			await expect(service.promote(environments.promote.id, owner, request)).rejects.toThrow(
-				'not connected',
-			);
-			expect(exportSpy).not.toHaveBeenCalled();
-			await service.clone(environments.promote.id, owner);
-			await expect(service.promote(environments.promote.id, owner, request)).resolves.toMatchObject(
-				{
-					git: { branchName: 'main' },
-				},
-			);
-			const remoteGit = createFixtureGit(remote.bareDir);
-			expect((await remoteGit.revparse(['main^'])).trim()).toBe(baseCommit);
-		} finally {
-			exportSpy.mockRestore();
-		}
+		// No Connect: the next Promote replaces the untrusted checkout by itself.
+		await expect(service.promote(environments.promote.id, owner, request)).resolves.toMatchObject({
+			git: { branchName: 'main' },
+		});
+		const remoteGit = createFixtureGit(remote.bareDir);
+		expect((await remoteGit.revparse(['main^'])).trim()).toBe(baseCommit);
 	});
 
 	it('requires the configured base branch for a branched promotion', async () => {
@@ -1450,6 +1439,56 @@ describe('Promote and Apply', () => {
 		const before = await snapshotApplyState();
 		await expect(service.apply(environments.apply.id, owner)).rejects.toThrow(/manifest/i);
 		expect(await snapshotApplyState()).toEqual(before);
+	});
+
+	it('promotes and applies on a main that never ran Connect', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		const project = await createTeamProject('Orders', owner);
+		const workflow = await createWorkflow(
+			{ name: 'Process order', nodes: [], connections: {} },
+			project,
+		);
+
+		const promoteResult = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Promote from a main without a checkout',
+		});
+		await Container.get(WorkflowRepository).delete({ id: workflow.id });
+		const applyResult = await service.apply(environments.apply.id, owner);
+
+		expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
+			promoteResult.git.commitSha,
+		);
+		assert(applyResult.status === 'applied');
+		expect(applyResult.git.commitSha).toBe(promoteResult.git.commitSha);
+		expect(await Container.get(WorkflowRepository).findOneBy({ id: workflow.id })).toMatchObject({
+			name: 'Process order',
+		});
+		for (const environment of [environments.promote, environments.apply]) {
+			await expect(workingDirectory.readDescriptor(environment.id)).resolves.not.toBeNull();
+		}
+	});
+
+	it('promotes after a restart removed the checkout', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		await createTeamProject('Orders', owner);
+		// A main without a persistent volume starts with an empty n8n folder.
+		await rm(workingDirectory.paths(environments.promote.id).rootFolder, {
+			recursive: true,
+			force: true,
+		});
+
+		const result = await service.promote(environments.promote.id, owner, {
+			canExportVariableValues: true,
+			commitMessage: 'Promote after a restart',
+		});
+
+		expect((await createFixtureGit(remote.bareDir).revparse(['main'])).trim()).toBe(
+			result.git.commitSha,
+		);
 	});
 
 	it('promotes an archived workflow and archives it on apply instead of removing it', async () => {
@@ -4255,7 +4294,7 @@ describe('Promotion base branch listing', () => {
 		await expect(listBaseBranchFiles(project.id)).rejects.toThrow(BadRequestError);
 	});
 
-	it('requires a fresh clone after a base-branch change and reports a deleted branch', async () => {
+	it('clones again after a base-branch change and reports a deleted branch', async () => {
 		const remote = await createRemote();
 		const environments = await createInstanceEnvironments(remote.bareDir);
 		await service.clone(environments.promote.id, owner);
@@ -4268,9 +4307,8 @@ describe('Promotion base branch listing', () => {
 		await environmentRepository.update(environments.promote.id, {
 			settings: { schemaVersion: 1, baseBranchName: 'production', createBranchOnPromotion: false },
 		});
-		await expect(listBaseBranchFiles(project.id)).rejects.toThrow('not connected');
-		await service.clone(environments.promote.id, owner);
 
+		// No Connect: the listing replaces the checkout of the old branch by itself.
 		const files = await listBaseBranchFiles(project.id);
 
 		expect(files).toEqual([
