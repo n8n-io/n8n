@@ -54,7 +54,7 @@ export class ExecutionLevelTracer {
 		return trace.getTracer(WORKFLOW_TRACER_NAME);
 	}
 
-	startWorkflow(params: StartWorkflowParams) {
+	startWorkflow(params: StartWorkflowParams): TracingContext {
 		try {
 			const identity = resolveWorkflowIdentity(params);
 			const parentCtx = withExecutionIdentity(fromTracingContext(params.tracingContext), identity);
