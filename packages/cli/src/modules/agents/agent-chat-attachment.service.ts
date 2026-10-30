@@ -1,5 +1,6 @@
 import {
 	isAttachmentMediaTypeSupported,
+	MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES,
 	type AgentSessionFile,
 	type AgentToolOutputFile,
 } from '@n8n/api-types';
@@ -99,6 +100,11 @@ export class AgentChatAttachmentService {
 	/** Largest file that a tool or the sandbox can store. */
 	get maxGeneratedFileBytes(): number {
 		return this.agentsConfig.maxGeneratedFileSizeMb * BYTES_PER_MB;
+	}
+
+	/** Largest file of any source, an upload or a generated file. */
+	get maxStoredFileBytes(): number {
+		return Math.max(MAX_AGENT_CHAT_ATTACHMENT_SIZE_BYTES, this.maxGeneratedFileBytes);
 	}
 
 	/** @throws {AgentFileLimitError} when the file would go over a cap. */
