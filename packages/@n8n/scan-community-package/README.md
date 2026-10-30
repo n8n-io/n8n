@@ -7,3 +7,40 @@ Checks npm provenance and runs static analysis for n8n community packages.
 ```
 $ npx @n8n/scan-community-package n8n-nodes-PACKAGE
 ```
+
+You can also specify a version, a version range, or a dist-tag. Scoped packages are supported:
+
+```
+$ npx @n8n/scan-community-package n8n-nodes-PACKAGE@1.2.3
+$ npx @n8n/scan-community-package n8n-nodes-PACKAGE@^1.0.0
+$ npx @n8n/scan-community-package @SCOPE/n8n-nodes-PACKAGE@beta
+```
+
+Without a version, the scanner checks the `latest` dist-tag.
+
+### What it checks
+
+The scanner runs these steps in sequence. It stops at the first step that fails.
+
+1. **npm provenance.** The package version must have an npm provenance attestation (SLSA v1). See [Submit community nodes](https://docs.n8n.io/integrations/creating-nodes/deploy/submit-community-nodes/) to publish with provenance.
+2. **Attested source.** The scanner reads the source repository and commit from the attestation. Then it downloads that commit from GitHub. The repository must be public and on GitHub. If the scanner cannot download the source, the scan fails.
+3. **Static analysis.** The scanner lints two sets of files with ESLint. Both must pass:
+   - the attested source: `package.json` and the files in `nodes/` and `credentials/`
+   - the published npm tarball: all `.js` files and `package.json`
+
+The lint rules are the same rules that `n8n-node lint` applies. If `n8n-node lint` passes on your package, this scan usually passes too. The rules come from:
+
+- the recommended config of `@n8n/eslint-plugin-community-nodes`
+- the `community`, `nodes`, and `credentials` rulesets of `eslint-plugin-n8n-nodes-base`
+- `no-console`
+
+The scanner ignores inline `eslint-disable` comments.
+
+### Requirements
+
+- `npm` and `tar` must be on the `PATH`.
+- The scanner needs network access to `registry.npmjs.org` and `codeload.github.com`.
+
+### Exit codes
+
+The exit code is `1` only when the scanner itself fails, for example on an invalid package name. A package that fails the checks gives exit code `0`. To use the scanner in CI, check the output for the `❌` result line.
