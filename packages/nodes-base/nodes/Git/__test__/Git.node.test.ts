@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 import type { IExecuteFunctions, ResolvedFilePath } from 'n8n-workflow';
 import type { PathLike } from 'node:fs';
 import type { SimpleGit } from 'simple-git';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 
 import { Git } from '../Git.node';
 

@@ -483,6 +483,7 @@ describe('SourceControlGitService', () => {
 						'credential.useHttpPath=true',
 					],
 					unsafe: { allowUnsafeCredentialHelper: true },
+					allowEnvironment: ['GIT_TERMINAL_PROMPT'],
 				}),
 			);
 		});
@@ -532,6 +533,7 @@ describe('SourceControlGitService', () => {
 				expect.objectContaining({
 					config: ['core.symlinks=false'],
 					unsafe: { allowUnsafeSshCommand: true },
+					allowEnvironment: ['GIT_SSH_COMMAND', 'GIT_TERMINAL_PROMPT'],
 				}),
 			);
 			expect(mockGitInstance.env).toHaveBeenCalledWith(

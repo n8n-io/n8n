@@ -19,7 +19,7 @@ import { mkdir, rename, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { basename, dirname, isAbsolute, join, resolve, sep } from 'path';
 import type { ConfigListSummary, LogOptions, SimpleGit, SimpleGitOptions } from 'simple-git';
-import simpleGit from 'simple-git';
+import { simpleGit } from 'simple-git';
 import { URL } from 'url';
 
 import {
@@ -110,7 +110,13 @@ const resolveGitDirWithGit = async (candidate: string): Promise<string | undefin
 	env.GIT_TERMINAL_PROMPT = '0';
 	try {
 		// `--resolve-git-dir` takes an absolute path, so git's cwd does not steer resolution.
-		const resolver = simpleGit({ baseDir: tmpdir(), config, unsafe }).env(env);
+		// simple-git rejects GIT_* variables set with `.env()` unless they are listed here.
+		const resolver = simpleGit({
+			baseDir: tmpdir(),
+			config,
+			unsafe,
+			allowEnvironment: ['GIT_TERMINAL_PROMPT'],
+		}).env(env);
 		const output = await resolver.raw(['rev-parse', '--resolve-git-dir', candidate]);
 		// git prints the path and a single terminator. Strip only that terminator: a trailing
 		// space, or an embedded newline, is a real byte of a POSIX directory name. Windows
@@ -736,6 +742,8 @@ export class Git implements INodeType {
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: operation === 'clone' ? cloneStagingBase : resolvedRepositoryPath,
 					config: gitConfig,
+					// simple-git rejects GIT_* variables set with `.env()` unless they are listed here.
+					allowEnvironment: ['GIT_TERMINAL_PROMPT', 'GIT_ALLOW_PROTOCOL'],
 					...(Object.keys(unsafe).length > 0 && { unsafe }),
 				};
 
