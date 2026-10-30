@@ -15,6 +15,7 @@ import {
 	isLiveExecutionStatus,
 	isSettledStatus,
 	stepKeyId,
+	type StepError,
 	type StepKey,
 	type StepKeyId,
 	type StepSlots,
@@ -22,6 +23,7 @@ import {
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
+import { collectSubExecutionResult, resumeAwaitingParent } from './sub-execution-resume';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -100,9 +102,27 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, 'failed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
+					status: 'failed',
+					error: await this.failureOf(execution, step),
+				});
+			}
 		}
 
 		await this.stepStore.cancelPendingSteps(execution.id);
+	}
+
+	/** The error to report for a failed execution. */
+	private async failureOf(execution: ExecutionRecord, step: StepRecord): Promise<StepError> {
+		if (step.status === 'failed' && step.error) return step.error;
+		// If a different step failed, find it. Note: it's possible multiple steps
+		// may have failed - we choose any for now.
+		const failed = (await this.stepStore.loadAllSteps(execution.id)).find(
+			(row) => row.status === 'failed' && row.error,
+		);
+		return failed?.error ?? { name: 'Error', message: `Execution ${execution.id} failed` };
 	}
 
 	/** Plans the settled step's direct successors, returning how many were queued. */
@@ -220,6 +240,22 @@ export class StepSettledHandler {
 				at: finished.finishedAt.toISOString(),
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
+			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent(
+					{ executionStore, stepStore, stepQueue },
+					execution,
+					failed
+						? { status: 'failed', error: await this.failureOf(execution, step) }
+						: {
+								status: 'completed',
+								result: collectSubExecutionResult(
+									execution.graph,
+									await this.stepStore.loadAllSteps(execution.id),
+								),
+							},
+				);
+			}
 		}
 	}
 

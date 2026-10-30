@@ -9,6 +9,8 @@ export type {
 export { stepKeyId } from './execution.types';
 export type {
 	CallerContext,
+	SubExecutionResult,
+	SubExecutionResumeCause,
 	ExecutionMode,
 	ExecutionStatus,
 	ExecutorWaitDeclaration,
