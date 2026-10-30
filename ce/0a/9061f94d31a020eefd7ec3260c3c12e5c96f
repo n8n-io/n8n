@@ -1,0 +1,27 @@
+packages/@n8n/expression-runtime/src/__tests__/integration.test.ts
+  s_6179f4113943a1::t_11451634b2250f 208
+  s_6179f4113943a1::t_43f1e9f04e49a5 202-207,209-230,235-247
+  s_6179f4113943a1::t_7d195154c414e6 231-234
+packages/@n8n/expression-runtime/src/runtime/serialize.ts
+  s_6179f4113943a1::t_6056fe899aae81 5,90
+packages/workflow/test/native-evaluation-parity.test.ts
+  s_6179f4113943a1::t_11451634b2250f 473-477
+packages/workflow/test/expression-error-item-engine-parity.test.ts
+  s_6179f4113943a1::t_11451634b2250f 193-199
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "ce0a9061f94d31a020eefd7ec3260c3c12e5c96f",
+  "prompts": {},
+  "sessions": {
+    "s_6179f4113943a1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18c77-2d6a-77d3-b69f-81e10ca6bea2",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}
