@@ -23,6 +23,7 @@ import {
 	isSettledStatus,
 	hasResumeCondition,
 	type ResumeCause,
+	type SubExecutionResumeCause,
 	type StepError,
 	type StepKey,
 	type StepKeyId,
@@ -36,6 +37,19 @@ import { InvalidParentLinkError, type StartExecutionService } from './start-exec
 import type { StepRecord, StepStore } from './step-store';
 import { createStoreLoopReader } from './store-loop-reader';
 import { validateStepContext } from './validate-step-context';
+
+/** A resume that emits outputs the engine already holds, so no node code runs. */
+type ReplayCause = Exclude<ResumeCause, SubExecutionResumeCause>;
+
+/**
+ * How a step produces its result. A replay emits recorded outputs. A batch pass
+ * the engine runs itself. A run goes through an executor: a first run, or a
+ * sub-execution resume, which runs the node again with the outcome.
+ */
+type Dispatch =
+	| { kind: 'replay'; cause: ReplayCause }
+	| { kind: 'batch' }
+	| { kind: 'run'; executor: IStepExecutor; inputs: StepSlots; resume?: SubExecutionResumeCause };
 
 /**
  * Handles the `step:ready` step event: claims the step (`queued -> running`),
@@ -75,17 +89,6 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, so that needs no executor. Nor does
-		// a wait resume: a deadline or a request resume only emits outputs that
-		// already exist, and looking an executor up would fail a step that this
-		// worker can serve, since a resume is announced to every worker, including
-		// one that carries no shim. A sub-execution resume is different: the node
-		// runs again, so it needs one.
-		const emitsRecordedOutputs =
-			step.resumeCause !== null && step.resumeCause.kind !== 'subExecution';
-		const executor =
-			node.type === 'batch' || emitsRecordedOutputs ? undefined : this.executorFor(step, node);
-
 		if (!isLiveExecutionStatus(execution.status)) {
 			// The execution ended after this step was announced, or after it was
 			// claimed. Settle the row here, where both facts are known, so no
@@ -98,19 +101,12 @@ export class StepReadyHandler {
 		// This worker won the claim, so it is the one that announces the start.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// A wait resume replays recorded outputs, so there are no inputs to gather.
-		// A sub-execution resume runs the node again, so it gathers like a first run.
-		//
-		// The gather stays outside the `try` below on purpose. Its errors are the
-		// engine's own bookkeeping, not the node's, so they leave the step
-		// `running` instead of recording it failed. In the future one of these
-		// resolves that:
+		// Decided outside the `try` below on purpose. Its errors are the engine's
+		// own bookkeeping, not the node's, so they leave the step `running`
+		// instead of recording it failed. In the future one of these resolves that:
 		// - Reconciliation (CAT-2938) taking over the step and retrying it for transient errors
 		// - Internal consistency checks (CAT-3930) detecting a misconfigured graph and failing the execution
-		const dispatch: { kind: 'resume'; cause: ResumeCause } | { kind: 'run'; inputs: StepSlots } =
-			emitsRecordedOutputs && step.resumeCause
-				? { kind: 'resume', cause: step.resumeCause }
-				: { kind: 'run', inputs: await this.gatherInputs(execution, step) };
+		const dispatch = await this.dispatchFor(step, node, execution);
 
 		// Only a failure to run the step fails it. A store error propagates instead —
 		// recording `failed` on a step whose side effects happened would be a lie.
@@ -121,12 +117,12 @@ export class StepReadyHandler {
 			| { kind: 'error'; error: unknown };
 		try {
 			let result: StepExecutionResult;
-			if (dispatch.kind === 'resume') {
-				result = { outputs: resumedOutputs(step, dispatch.cause) };
-			} else if (executor) {
-				result = await this.runStep(step, execution, node, dispatch.inputs, executor);
-			} else {
+			if (dispatch.kind === 'replay') {
+				result = { outputs: recordedOutputs(step, dispatch.cause) };
+			} else if (dispatch.kind === 'batch') {
 				result = { outputs: await this.runBatchNode(step, execution, node) };
+			} else {
+				result = await this.runStep(step, execution, node, dispatch);
 			}
 			if (result.wait) {
 				run = { kind: 'wait', wait: result.wait };
@@ -278,12 +274,34 @@ export class StepReadyHandler {
 		return { kind: 'started' };
 	}
 
+	/**
+	 * How the step produces its result. A replay needs no executor: looking one
+	 * up would fail a step this worker can serve, since a resume is announced to
+	 * every worker, including one that carries no shim.
+	 */
+	private async dispatchFor(
+		step: StepRecord,
+		node: GraphNode,
+		execution: ExecutionRecord,
+	): Promise<Dispatch> {
+		const { resumeCause } = step;
+		if (resumeCause !== null && resumeCause.kind !== 'subExecution') {
+			return { kind: 'replay', cause: resumeCause };
+		}
+		if (node.type === 'batch') return { kind: 'batch' };
+		return {
+			kind: 'run',
+			executor: this.executorFor(step, node),
+			inputs: await this.gatherInputs(execution, step),
+			...(resumeCause ? { resume: resumeCause } : {}),
+		};
+	}
+
 	private async runStep(
 		step: StepRecord,
 		execution: ExecutionRecord,
 		node: GraphNode,
-		inputs: StepSlots,
-		executor: IStepExecutor,
+		{ executor, inputs, resume }: Extract<Dispatch, { kind: 'run' }>,
 	): Promise<StepExecutionResult> {
 		// The slots are stored without inspection: which ones fired is the
 		// settlement handler's concern. A declaration is not opaque in the same
@@ -293,9 +311,7 @@ export class StepReadyHandler {
 		const result = await executor.execute({
 			node,
 			inputs,
-			// Only a sub-execution resume reaches the executor; the other causes emit
-			// recorded outputs without it.
-			...(step.resumeCause?.kind === 'subExecution' ? { resume: step.resumeCause } : {}),
+			...(resume ? { resume } : {}),
 			context: {
 				executionId: execution.id,
 				stepId: step.id,
@@ -505,22 +521,15 @@ function toStepError(error: unknown): StepError {
 }
 
 /**
- * The outputs a resume emits. No node code runs on a resume: a request's
- * outputs were produced where the request arrived, and a deadline's were
- * captured when the step suspended.
+ * The outputs a replay emits. A request's were produced where the request
+ * arrived, and a deadline's were captured when the step suspended.
  *
  * `WaitDeclaration` pairs a deadline with its outputs, so an absent one means
  * the row disagrees with the contract — and a row is a write from outside the
  * type system.
  */
-function resumedOutputs(step: StepRecord, cause: ResumeCause): StepSlots {
+function recordedOutputs(step: StepRecord, cause: ReplayCause): StepSlots {
 	if (cause.kind === 'request') return cause.outputs;
-	if (cause.kind === 'subExecution') {
-		// The dispatch above sends a sub-execution resume through the executor.
-		throw new UnexpectedError(
-			`step ${step.id} resumes on a sub-execution but was dispatched as a replay`,
-		);
-	}
 
 	const outputs = step.waitDeclaration?.outputsAtDeadline;
 	if (!outputs) {
