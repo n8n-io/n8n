@@ -1,6 +1,7 @@
 import { In, type Repository } from '@n8n/typeorm';
 
 import { WorkflowSeededStep, type WorkflowExecution } from './entities';
+import { parentLinkSql, toParentColumns } from './parent-link-columns';
 import {
 	ExecutionNotFoundError,
 	type ExecutionRecord,
@@ -26,8 +27,8 @@ type InsertValues = Parameters<Repository<WorkflowExecution>['insert']>[0];
 export class TypeOrmExecutionStore implements ExecutionStore {
 	constructor(private readonly repo: Repository<WorkflowExecution>) {}
 
-	async createExecution({ seededSteps, ...record }: NewExecutionRecord): Promise<void> {
-		const execution = this.repo.create({ ...record, finishedAt: null });
+	async createExecution({ seededSteps, parent, ...record }: NewExecutionRecord): Promise<void> {
+		const execution = this.repo.create({ ...record, ...toParentColumns(parent), finishedAt: null });
 		const seeded = Object.entries(seededSteps ?? {}).flatMap(([nodeId, passes]) =>
 			passes.map((outputs, iteration) => ({ executionId: record.id, nodeId, iteration, outputs })),
 		);
@@ -75,6 +76,7 @@ export class TypeOrmExecutionStore implements ExecutionStore {
 			.addSelect('execution.trigger_outputs', 'triggerOutputs')
 			.addSelect('execution.caller_context', 'callerContext')
 			.addSelect('execution.response_expectation', 'responseExpectation')
+			.addSelect(parentLinkSql('execution'), 'parent')
 			.addSelect('execution.finished_at', 'finishedAt')
 			.where('execution.id = :id', { id })
 			.getRawOne();

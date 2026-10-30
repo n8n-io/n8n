@@ -889,7 +889,11 @@ export class McpService {
 
 		if (Container.get(SkillsGate).isEnabled) {
 			const { McpSkillToolsService } = await import('./tools/skills/skill-tools.service.js');
-			await Container.get(McpSkillToolsService).registerTools(registerIfAllowed, user);
+			await Container.get(McpSkillToolsService).registerTools(
+				registerIfAllowed,
+				user,
+				featureFlags.skillsExtensionEnabled === true,
+			);
 			if (featureFlags.skillsExtensionEnabled && (allowedToolNames?.has('get_skill') ?? true)) {
 				const { McpSkillExtensionService } = await import(
 					'./tools/skills/skill-extension.service.js'

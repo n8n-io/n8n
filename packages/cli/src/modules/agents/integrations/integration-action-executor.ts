@@ -39,6 +39,7 @@ const sendDmInputSchema = z.object({
 	userId: z.string().min(1),
 	message: messageSchema,
 });
+const doNotRespondInputSchema = z.object({ reason: z.string().optional() });
 const sendChannelMessageInputSchema = z.object({
 	channelId: z.string().min(1),
 	message: messageSchema,
@@ -176,9 +177,11 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 		}
 
+		const { reason } = doNotRespondInputSchema.parse(params.input);
 		return {
 			ok: true,
 			silent: true,
+			...(reason ? { reason } : {}),
 			note: 'No reply will be sent. End your turn now without writing any text.',
 		};
 	}
@@ -280,6 +283,10 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		// The Chat SDK guesses the adapter from the user ID's shape and knows one
 		// shape per platform, so a Teams Entra object ID would not reach Teams.
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
+		// It has no shape for a WhatsApp phone number at all, so there is nothing to fall back to.
+		if (!supportsOpenDM(adapter) && params.descriptor.integration.type === 'whatsapp') {
+			return unsupportedAction(params.descriptor.integration.type, 'send_dm');
+		}
 		const thread = supportsOpenDM(adapter)
 			? chat.thread(await adapter.openDM(input.userId))
 			: await chat.openDM(input.userId);

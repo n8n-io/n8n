@@ -46,6 +46,7 @@ import {
 import { AssistantAgentFactory } from '../turn-setup/assistant-agent.factory';
 import {
 	AssistantTurnEnvironmentFactory,
+	type AssistantProxyRunConfig,
 	type AssistantTurnEnvironment,
 } from '../turn-setup/assistant-turn-environment.factory';
 import {
@@ -55,6 +56,7 @@ import {
 import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
 import { AssistantEventSink } from './assistant-event-sink';
 import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
+import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_NAME,
@@ -116,6 +118,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly turnEnvironment: AssistantTurnEnvironmentFactory,
 		private readonly turnInput: AssistantTurnInputBuilder,
 		private readonly agentFactory: AssistantAgentFactory,
+		private readonly tracer: AssistantTurnTracer,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -156,10 +159,58 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				: turn.checkpointHostMetadata[ASSISTANT_TURN_METADATA_KEY],
 			this.logger,
 		);
+		const { user } = turn;
+		const { request } = options;
+		const experimentGates = await this.adapterService.resolveExperimentGates(user);
+		const fileAttachments = turn.type === 'start' ? await this.readFileAttachments(turn) : [];
+		const contextAttachments = contextAttachmentsOf(
+			request.attachments,
+			experimentGates.nodeContextEnabled,
+		);
+		// One token manager backs the run and its trace.
+		const proxyRunConfig = await this.turnEnvironment.createProxyRunConfig(user);
+		const trace = await this.tracer.startForTurn(turn, {
+			runId: options.runId,
+			messageGroupId: options.messageGroupId,
+			...(proxyRunConfig.tracingProxyConfig
+				? { proxyConfig: proxyRunConfig.tracingProxyConfig }
+				: {}),
+			fileAttachments,
+			contextAttachments,
+			threadArtifacts: request.threadArtifacts,
+		});
+		try {
+			return await this.prepareTracedTurn(turn, options, {
+				trace,
+				experimentGates,
+				fileAttachments,
+				contextAttachments,
+				proxyRunConfig,
+			});
+		} catch (error) {
+			await trace?.finish({
+				status: turn.abortSignal.aborted ? 'cancelled' : 'errored',
+				error,
+			});
+			throw error;
+		}
+	}
+
+	private async prepareTracedTurn(
+		turn: SystemAgentTurn<AssistantSandboxLease>,
+		options: AssistantTurnOptions,
+		setup: {
+			trace: AssistantTurnTrace | undefined;
+			experimentGates: Awaited<ReturnType<InstanceAiAdapterService['resolveExperimentGates']>>;
+			fileAttachments: InstanceAiFileAttachment[];
+			contextAttachments: InstanceAiResourceAttachment[];
+			proxyRunConfig: AssistantProxyRunConfig;
+		},
+	): Promise<SystemAgentTurnHandle> {
 		const { user, thread } = turn;
 		const { runId, request } = options;
-		const runtime = this.createTurnRuntime(turn, options);
-		const experimentGates = await this.adapterService.resolveExperimentGates(user);
+		const { trace, experimentGates, fileAttachments, contextAttachments, proxyRunConfig } = setup;
+		const runtime = this.createTurnRuntime(turn, options, trace);
 		const environment = await this.turnEnvironment.create(
 			{
 				user,
@@ -168,11 +219,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				abortSignal: turn.abortSignal,
 				messageGroupId: options.messageGroupId,
 				pushRef: request.pushRef,
+				proxyRunConfig,
 				experimentGates,
 			},
 			runtime,
 		);
-		const fileAttachments = turn.type === 'start' ? await this.readFileAttachments(turn) : [];
 		this.turnInput.applyTurnScope(environment, {
 			threadId: thread.id,
 			runId,
@@ -183,28 +234,35 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
-			turnInput = await this.turnInput.buildInput(environment, runtime, {
-				user,
-				threadId: thread.id,
-				runId,
-				message: turn.message,
-				fileAttachments,
-				contextAttachments: contextAttachmentsOf(
-					request.attachments,
-					experimentGates.nodeContextEnabled,
-				),
-				handoffContext: request.context,
-				timeZone: request.timeZone,
-				threadArtifacts: request.threadArtifacts,
-				titledByRuntime: true,
-			});
+			const buildInput = async () =>
+				await this.turnInput.buildInput(environment, runtime, {
+					user,
+					threadId: thread.id,
+					runId,
+					message: turn.message,
+					fileAttachments,
+					contextAttachments,
+					handoffContext: request.context,
+					timeZone: request.timeZone,
+					threadArtifacts: request.threadArtifacts,
+					titledByRuntime: true,
+				});
+			turnInput = trace
+				? await trace.tracePromptBuild(
+						{ message: turn.message, attachmentCount: fileAttachments.length },
+						buildInput,
+						(built) => ({ fullMessage: built.fullMessage }),
+					)
+				: await buildInput();
 		}
 
+		await trace?.startOrchestratorRun();
 		const agent = await this.agentFactory.createAgent(environment, runtime, {
 			user,
 			threadId: thread.id,
 			runId,
 			generateTitle: true,
+			...(trace ? { tracing: trace.context } : {}),
 		});
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
@@ -214,7 +272,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// The runtime adds the files to the model input as stored references, so the
 			// input keeps only the text. The file content is for the file tools.
 			...(turnInput ? { input: turnInput.fullMessage } : {}),
-			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode),
+			hostMetadata: this.hostMetadataOf(options, environment.skillScope.profile.mode, trace),
 			runOptions: {
 				maxIterations: MAX_STEPS.ORCHESTRATOR,
 				// Recover token usage from raw provider events, so a stopped run is still billed.
@@ -224,7 +282,11 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				// The input carries context blocks before the user's words, so title the words only.
 				...(turn.type === 'start' ? { titleText: turn.message } : {}),
 			},
+			...(trace
+				? { withTurnContext: async <T>(run: () => Promise<T>) => await trace.withContext(run) }
+				: {}),
 			onChunk: (chunk) => {
+				trace?.observeChunk(chunk);
 				// The SDK stores the input when it receives it, so the first chunk means it is accepted.
 				if (!inputAccepted && turnInput) {
 					inputAccepted = this.turnInput
@@ -244,13 +306,17 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 				}
 			},
 			onSettled: async (outcome) => {
-				// Finish before the host events close and the next queued turn reads the cursor.
-				await inputAccepted;
-				await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
-				// A suspended turn can still be building the workflows it marked.
-				if (outcome.status !== 'suspended') {
-					const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
-					this.emitArchivedWorkflows(turn, thread.id, archived);
+				try {
+					// Finish before the host events close and the next queued turn reads the cursor.
+					await inputAccepted;
+					await this.claimTurnUsage(user, thread.id, runId, outcome, usage);
+					// A suspended turn can still be building the workflows it marked.
+					if (outcome.status !== 'suspended') {
+						const archived = await this.archiveTemporaryWorkflows(environment, runtime, thread.id);
+						this.emitArchivedWorkflows(turn, thread.id, archived);
+					}
+				} finally {
+					await trace?.finish(outcome, environment.modelId);
 				}
 			},
 			onSideCallUsage: async (report) =>
@@ -263,6 +329,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 	private createTurnRuntime(
 		turn: SystemAgentTurn<AssistantSandboxLease>,
 		options: AssistantTurnOptions,
+		trace: AssistantTurnTrace | undefined,
 	): AssistantTurnRuntime {
 		const { request } = options;
 		const lease = turn.workspace;
@@ -271,7 +338,15 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			resourceId: turn.resourceId,
 			temporaryWorkflowMarkers: createThreadTemporaryWorkflowMarkers(turn.memory, turn.thread.id),
 			getProjectId: async () => turn.thread.projectId,
-			eventBus: new AssistantEventSink(turn.emitHostEvent, this.logger),
+			eventBus: new AssistantEventSink(
+				turn.emitHostEvent,
+				this.logger,
+				trace ? (event) => trace.observeEvent(event) : undefined,
+			),
+			// Keeps the trace open until the observer and reflector of the turn finish.
+			...(trace?.context.onMemoryTaskEvent
+				? { onMemoryTaskEvent: trace.context.onMemoryTaskEvent }
+				: {}),
 			checkpointStore: turn.checkpointStore,
 			turnState: {
 				getBuildMode: () => request.mode,
@@ -315,11 +390,16 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		return files;
 	}
 
-	private hostMetadataOf(options: AssistantTurnOptions, buildMode: string | undefined): JSONObject {
+	private hostMetadataOf(
+		options: AssistantTurnOptions,
+		buildMode: string | undefined,
+		trace: AssistantTurnTrace | undefined,
+	): JSONObject {
 		return {
 			[ASSISTANT_TURN_METADATA_KEY]: serializeAssistantTurnOptions(options),
 			buildMode: buildMode ?? null,
 			promptVersion: options.request.promptVersion ?? null,
+			...trace?.hostMetadata(),
 		};
 	}
 

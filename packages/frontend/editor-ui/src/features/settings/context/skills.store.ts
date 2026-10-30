@@ -8,6 +8,8 @@ import type {
 	SkillSaveResponse,
 	SkillSourceConnectResponse,
 	SkillSourceDiscovery,
+	ListSkillSourceCredentialsQueryDto,
+	ListSkillSourceRepositoriesQueryDto,
 } from '@n8n/api-types';
 import { defineStore } from 'pinia';
 import { ref } from 'vue';
@@ -79,6 +81,16 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.deleteSkill(rootStore.restApiContext, id);
 	}
 
+	/** The credentials that can read a private source in the scope. */
+	async function fetchSourceCredentials(query: ListSkillSourceCredentialsQueryDto) {
+		return await api.getSkillSourceCredentials(rootStore.restApiContext, query);
+	}
+
+	/** The repositories that a credential can read, to pick one in place of a link. */
+	async function fetchSourceRepositories(query: ListSkillSourceRepositoriesQueryDto) {
+		return await api.getSkillSourceRepositories(rootStore.restApiContext, query);
+	}
+
 	/** Lists the skills that a GitHub link holds, for the "Choose skills" picker. */
 	async function discoverSource(payload: DiscoverSkillSourceDto): Promise<SkillSourceDiscovery> {
 		return await api.discoverSkillSource(rootStore.restApiContext, payload);
@@ -109,6 +121,8 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		createSkill,
 		saveSkill,
 		deleteSkill,
+		fetchSourceCredentials,
+		fetchSourceRepositories,
 		discoverSource,
 		connectSource,
 		stopSyncingSkill,

@@ -19,6 +19,7 @@ export async function linkSkill(
 		locator: { owner: 'acme', repository: `skills-${sourceId}`, branch: 'main', path: '' },
 		identityKey: `github:github.com/acme/skills-${sourceId}`,
 		projectId: scope.projectId,
+		credentialId: null,
 		createdById: scope.createdById,
 	});
 	await Container.get(SkillSourceRepository).insertImported({

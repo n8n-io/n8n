@@ -22,6 +22,7 @@ const detail: SkillDetail = {
 	latestVersion: 2,
 	usedByAgents: 0,
 	availableToAssistant: true,
+	availableToMCP: false,
 	canEdit: true,
 	canDelete: true,
 	canStopSyncing: false,
