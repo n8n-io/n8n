@@ -6,7 +6,10 @@ import { UserError } from 'n8n-workflow';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentChatAttachmentService } from '../../agent-chat-attachment.service';
+import {
+	AgentFileLimitError,
+	type AgentChatAttachmentService,
+} from '../../agent-chat-attachment.service';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { ChatIntegrationRegistry } from '../agent-chat-integration';
 import { AgentOutboundFiles } from '../agent-outbound-files.service';
@@ -385,6 +388,23 @@ describe('AgentOutboundFiles.check', () => {
 				code: 'FILE_NOT_FOUND',
 				message: '"sandbox:x" could not be read from outputs/',
 			},
+		});
+	});
+
+	it('returns FILE_UPLOAD_LIMIT_EXCEEDED when a sandbox file is over a cap', async () => {
+		const service = new AgentOutboundFiles(
+			mock<AgentChatAttachmentService>(),
+			createService().service['integrationRegistry'],
+			{
+				resolveFileRefs: async () => {
+					throw new AgentFileLimitError('"x" is larger than 50 MB');
+				},
+			} as unknown as AgentSandboxFilesService,
+		);
+
+		await expect(service.check('slack', ['sandbox:x'], scope)).resolves.toEqual({
+			ok: false,
+			error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED', message: '"x" is larger than 50 MB' },
 		});
 	});
 });

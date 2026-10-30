@@ -3,7 +3,7 @@ import type { Attachment, PostableCard, PostableMarkdown, PostableRaw, Thread } 
 import { OperationalError, UserError } from 'n8n-workflow';
 import { posix } from 'node:path';
 
-import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
+import { AgentChatAttachmentService, AgentFileLimitError } from '../agent-chat-attachment.service';
 import { AgentSandboxFilesService } from '../agent-sandbox-files.service';
 import type { AgentChatAttachment } from '../entities/agent-chat-attachment.entity';
 import {
@@ -138,7 +138,12 @@ export class AgentOutboundFiles {
 			resolvedIds = await this.sandboxFiles.resolveFileRefs(fileIds, scope);
 		} catch (error) {
 			if (!(error instanceof UserError)) throw error;
-			return integrationError(INTEGRATION_ERROR_CODES.FILE_NOT_FOUND, error.message);
+			// The file exists but is too large to store, so the model must not look for it again.
+			const code =
+				error instanceof AgentFileLimitError
+					? INTEGRATION_ERROR_CODES.FILE_UPLOAD_LIMIT_EXCEEDED
+					: INTEGRATION_ERROR_CODES.FILE_NOT_FOUND;
+			return integrationError(code, error.message);
 		}
 		const attachments: AgentChatAttachment[] = [];
 		for (const fileId of resolvedIds) {
