@@ -54,7 +54,7 @@ $ npm create @n8n/node
 │ n8n-nodes-my-app
 │
 ◇ What kind of node are you building?
-│ HTTP API
+│ Declarative
 │
 ◇ What template do you want to use?
 │ Start from scratch

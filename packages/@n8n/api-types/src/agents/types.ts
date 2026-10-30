@@ -560,6 +560,8 @@ export interface AgentMessageAuthor {
 }
 
 export interface AgentPersistedMessageDto {
+	/** A saved acknowledgement of Stop all tasks. */
+	stopReport?: boolean;
 	/** Background results that started this turn. */
 	backgroundTaskSignal?: AgentBackgroundJobSignal;
 	id: string;

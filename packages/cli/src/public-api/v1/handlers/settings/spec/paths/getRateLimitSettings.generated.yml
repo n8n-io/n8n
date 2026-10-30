@@ -1,0 +1,19 @@
+operationId: getRateLimitSettings
+tags:
+  - SettingsRateLimits
+summary: Retrieve the Public API rate-limit settings
+description: Retrieve the Public API rate-limit settings. `envManagedFields` lists the fields that are set by environment variables and can't be changed through the API. Requires the `securitySettings:manage` scope. Requests to this route count against the rate limits.
+x-required-scope: securitySettings:manage
+responses:
+  '200':
+    description: Operation successful.
+    content:
+      application/json:
+        schema:
+          $ref: ../../../../shared/spec/schemas/rateLimitSettingsPublicDto.generated.yml
+  '400':
+    $ref: ../../../../shared/spec/responses/badRequest.yml
+  '401':
+    $ref: ../../../../shared/spec/responses/unauthorized.yml
+  '403':
+    $ref: ../../../../shared/spec/responses/forbidden.yml
