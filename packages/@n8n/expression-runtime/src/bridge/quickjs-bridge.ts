@@ -912,6 +912,8 @@ export class QuickJsBridge implements RuntimeBridge {
 
 		const wrapperCode = `
 (function() {
+	// Host data uses the parser from context setup.
+	var parseJSON = JSON.parse;
 	// Define own data keys so a JSON __proto__ key stays part of the data.
 	function defineOwnValue(target, key, value) {
 		Object.defineProperty(target, key, { value: value, writable: true, enumerable: true, configurable: true });
@@ -1047,7 +1049,10 @@ export class QuickJsBridge implements RuntimeBridge {
 
 	// Reverse direction: rebuild real instances from the sentinels the host's
 	// wrapSpecialValuesForGuest() produces for callback results.
-	globalThis.__unwrapFromHost = function unwrapFromHost(v) {
+	globalThis.__unwrapFromHost = function(json) {
+		return unwrapFromHost(parseJSON(json));
+	};
+	function unwrapFromHost(v) {
 		if (v === null || typeof v !== 'object') return v;
 		if (v.__isDate === true) return new Date(v.__isoString);
 		if (v.__isNaN === true) return NaN;
@@ -1075,7 +1080,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		var keys = Object.keys(v);
 		for (var n = 0; n < keys.length; n++) defineOwnValue(result, keys[n], unwrapFromHost(v[keys[n]]));
 		return result;
-	};
+	}
 })();
 `;
 
@@ -1258,7 +1263,7 @@ export class QuickJsBridge implements RuntimeBridge {
 		if (json === 'undefined') return this.vm.undefined;
 
 		// JSON keys must keep their data meaning, including __proto__.
-		const result = this.vm.evalCode(`__unwrapFromHost(JSON.parse(${safeStringify(json)}))`);
+		const result = this.vm.evalCode(`__unwrapFromHost(${safeStringify(json)})`);
 		if (result.error) {
 			result.error.dispose();
 			return this.vm.undefined;

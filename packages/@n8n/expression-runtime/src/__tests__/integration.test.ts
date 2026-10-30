@@ -200,6 +200,27 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 
 	describe('Value types at the transfer boundary', () => {
 		describe.each([
+			{ label: 'returns a custom result', parser: '() => ({ name: "custom" })' },
+			{ label: 'throws', parser: '() => { throw new Error("custom parser"); }' },
+		])('host data with a JSON parser that $label', ({ parser }) => {
+			it.each(['$json.profile.name', '$json.rows[0].name', '$input.first().json.profile.name'])(
+				'reads %s',
+				(access) => {
+					const json = { profile: { name: 'from host' }, rows: [{ name: 'from host' }] };
+					const data = { $json: json, $input: { first: () => ({ json }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const original = JSON.parse; JSON.parse = ${parser}; try { return ${access}; } finally { JSON.parse = original; } })() }}`,
+							data,
+							caller,
+						),
+					).toBe('from host');
+				},
+			);
+		});
+
+		describe.each([
 			{ label: 'plain', properties: {} },
 			{ label: 'transfer marker', properties: { __n8nType: 'user data' } },
 			{ label: 'bridge marker', properties: { __isDate: true } },
