@@ -1,4 +1,5 @@
 import { isEscapedTransferValue, TRANSFER_VALUE_KEY } from './transfer';
+import { decodeHostValue } from './transfer-codec';
 import { isKeyOf } from './utils';
 
 // ============================================================================
@@ -177,7 +178,8 @@ export function createDeepLazyProxy(
 			const path = [...basePath, propOrIdx];
 			return createDeepLazyProxy(path, { kind: 'object', keys: value.__keys }, callbacks);
 		}
-		return value;
+		// Decoded data can hold the same keys as metadata or callback errors.
+		return decodeHostValue(value);
 	}
 
 	const target: object = isArray ? [] : {};
