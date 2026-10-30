@@ -366,7 +366,7 @@ describe('formatWorkflowLoopGuidance', () => {
 				workflowId: 'wf-789',
 			};
 			const result = formatWorkflowLoopGuidance(action);
-			expect(result).toContain('workflow_builder_executions(action="debug")');
+			expect(result).toContain('debug_execution');
 			expect(result).toContain('needs_patch');
 			expect(result).toContain('needs_rebuild');
 			expect(result).toContain('workflow_builder_report_verification_verdict');

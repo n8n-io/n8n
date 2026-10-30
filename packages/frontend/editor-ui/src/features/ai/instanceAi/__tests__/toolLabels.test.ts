@@ -50,6 +50,8 @@ vi.mock('@n8n/i18n', () => ({
 				'instanceAi.tools.load_skill.scriptFallback': 'script',
 				'instanceAi.tools.load_skill.template': 'Reading',
 				'instanceAi.tools.load_skill.templateFallback': 'template',
+				'instanceAi.tools.data_tables.query': 'Querying data table',
+				'instanceAi.tools.data_tables.insert-rows': 'Inserting rows',
 				'instanceAi.stepTimeline.showData': 'Show data',
 				'instanceAi.stepTimeline.hideData': 'Hide data',
 				'instanceAi.stepTimeline.showBrief': 'Show brief',
@@ -85,6 +87,8 @@ describe('getToolIcon', () => {
 
 	test('returns table for data-table tools', () => {
 		expect(getToolIcon('data_tables')).toBe('table');
+		expect(getToolIcon('list_data_tables')).toBe('table');
+		expect(getToolIcon('insert_data_table_rows')).toBe('table');
 	});
 
 	test('returns workflow for workflow-related tools', () => {
@@ -274,6 +278,13 @@ describe('useToolLabel', () => {
 		const { getToolLabel } = useToolLabel();
 		expect(getToolLabel('search_models')).toBe('Search models');
 		expect(getToolLabel('finish_setup')).toBe('Finish setup');
+	});
+
+	test('getToolLabel resolves split data table tools to the action label', () => {
+		const { getToolLabel } = useToolLabel();
+		expect(getToolLabel('query_data_table')).toBe('Querying data table');
+		expect(getToolLabel('insert_data_table_rows')).toBe('Inserting rows');
+		expect(getToolLabel('data_tables', { action: 'insert-rows' })).toBe('Inserting rows');
 	});
 
 	test('getToolLabel returns action-specific n8n docs labels', () => {

@@ -57,7 +57,7 @@ export function classifyRestError(error: Error): RestErrorDescriptor {
 		if (error.hint) {
 			descriptor.hint = error.hint;
 		}
-		if (error.meta) {
+		if (error.meta && error.metaIsInternal !== true) {
 			descriptor.meta = error.meta;
 		}
 		return descriptor;

@@ -46,10 +46,17 @@ export class AppsService {
 		private readonly hosts: AppHostService,
 	) {}
 
-	async createApp(projectId: string, dto: CreateAppDto): Promise<AppResponse> {
+	async createApp(
+		projectId: string,
+		dto: CreateAppDto,
+		options: { id?: string } = {},
+	): Promise<AppResponse> {
+		if (options.id && !appSchema.shape.id.safeParse(options.id).success) {
+			throw new BadRequestError('App IDs must be UUIDs.');
+		}
 		await this.assertProjectExists(projectId);
 		this.assertValidNamespace(dto.namespace);
-		const app = await this.appRepository.createApp(projectId, dto);
+		const app = await this.appRepository.createApp(projectId, { ...dto, id: options.id });
 		this.logger.debug('Created app.', { projectId, appId: app.id });
 		return toResponse(app, this.hosts);
 	}

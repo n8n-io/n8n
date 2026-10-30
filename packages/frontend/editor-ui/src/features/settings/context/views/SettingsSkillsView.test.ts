@@ -818,6 +818,32 @@ describe('SettingsSkillsView', () => {
 			});
 			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Nothing to save', type: 'info' });
 		});
+
+		it('sends the hash of the last save when the modal saves again', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v2',
+				version: 2,
+				created: true,
+				skill: detail().skill,
+				skillHash: 'hash-2',
+			});
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+
+			await lastModalData().onConfirm({ id: 's1', skill: detail().skill, restoredFrom: 1 });
+			await lastModalData().onConfirm({ id: 's1', skill: detail().skill });
+
+			expect(skillsStore.saveSkill).toHaveBeenLastCalledWith(
+				's1',
+				expect.objectContaining({ baseSkillHash: 'hash-2' }),
+			);
+		});
 	});
 
 	describe('MCP availability', () => {

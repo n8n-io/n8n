@@ -292,6 +292,7 @@ export {
 	withBoundAgentTarget,
 } from './tools/orchestration/agent-target-binding';
 export type { AgentBuilderTarget } from './tools/orchestration/agent-target-binding';
+export { parseAppTargets, parsePendingAppTarget } from './tools/apps/app-target-binding';
 export {
 	resolveAgentPreviewSession,
 	saveAgentPreviewSession,
@@ -719,6 +720,7 @@ export type {
 	ExecuteNodeResult,
 	InstanceAiCredentialService,
 	InstanceAiNodeService,
+	InstanceAiAppService,
 	InstanceAiDataTableService,
 	DataTableSummary,
 	DataTableColumnInfo,

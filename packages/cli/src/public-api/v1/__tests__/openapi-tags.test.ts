@@ -51,6 +51,7 @@ const EXPECTED_GROUPS: Record<string, string[]> = {
 		'SecurityPolicy',
 		'SettingsLdap',
 		'SettingsOtel',
+		'SettingsRateLimits',
 		'SettingsSsoOidc',
 		'SettingsSsoSaml',
 	],

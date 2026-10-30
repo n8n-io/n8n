@@ -1,26 +1,26 @@
 /**
- * Consolidated data_tables tool — list, schema, query, create, delete,
- * add-column, delete-column, rename-column, insert-rows, update-rows, delete-rows.
+ * Data table tools — one tool for each action of the former multi-action
+ * `data_tables` tool. The handlers keep the action so session grant keys and
+ * stored calls of the former tool still resolve.
  */
 import {
-	getLegacyBuilderToolNames,
+	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	getLegacyBuilderToolActions,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	buildDataTablesSessionGrantKey,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
-import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import type { DataTableToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
 import type { InstanceAiContext } from '../types';
-import { restrictToolActions } from './restrict-tool-actions';
-import { DATA_TABLES_TOOL_ID } from './tool-ids';
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 
 // ── Shared schemas ─────────────────────────────────────────────────────────
-
-export { DATA_TABLES_TOOL_ID };
 
 const columnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
 
@@ -348,21 +348,23 @@ const deleteRowsAction = z.object({
 	filter: filterSchemaWithMinOne.describe(filterDescribe),
 });
 
-const allActions = [
-	listAction,
-	schemaAction,
-	queryAction,
-	createAction,
-	deleteAction,
-	addColumnAction,
-	deleteColumnAction,
-	renameColumnAction,
-	insertRowsAction,
-	updateRowsAction,
-	deleteRowsAction,
-] as const;
+const ACTION_SCHEMAS = {
+	list: listAction,
+	schema: schemaAction,
+	query: queryAction,
+	create: createAction,
+	delete: deleteAction,
+	'add-column': addColumnAction,
+	'delete-column': deleteColumnAction,
+	'rename-column': renameColumnAction,
+	'insert-rows': insertRowsAction,
+	'update-rows': updateRowsAction,
+	'delete-rows': deleteRowsAction,
+} as const satisfies Record<DataTableToolAction, z.ZodDiscriminatedUnionOption<'action'>>;
 
-type FullInput = z.infer<z.ZodDiscriminatedUnion<'action', typeof allActions>>;
+type FullInput = {
+	[A in DataTableToolAction]: z.infer<(typeof ACTION_SCHEMAS)[A]>;
+}[DataTableToolAction];
 
 type DataTableReferenceInput = {
 	dataTableId: string;
@@ -510,7 +512,7 @@ async function handleQuery(
 	}
 	if (remaining > 0) {
 		hints.push(
-			`${remaining} more rows available. Use additional paginated data_tables queries for bulk operations.`,
+			`${remaining} more rows available. Use additional paginated query_data_table calls for bulk operations.`,
 		);
 	}
 
@@ -567,7 +569,7 @@ async function handleCreate(
 		if (isNameConflictError(error)) {
 			return {
 				denied: true,
-				reason: `Table "${input.name}" already exists. Use data_tables(action="list") to find it and data_tables(action="schema") to check its columns.`,
+				reason: `Table "${input.name}" already exists. Use list_data_tables to find it and get_data_table_schema to check its columns.`,
 			};
 		}
 		throw error;
@@ -922,58 +924,119 @@ async function handleDeleteRows(
 
 // ── Tool factory ───────────────────────────────────────────────────────────
 
-interface DataTablesToolOptions {
-	allowedActions?: ReadonlyArray<FullInput['action']>;
-	description?: string;
+export interface DataTablesToolOptions {
+	allowedActions?: readonly DataTableToolAction[];
+	/** Set to false for agents without `load_skill`, so descriptions do not point to skills. */
+	skillGuidance?: boolean;
 }
 
-export function createDataTablesTool(
+/** Actions whose extra guidance tells the model to load a skill. */
+const SKILL_GUIDANCE_ACTIONS = new Set<DataTableToolAction>(['list']);
+
+const READ_ACTIONS = new Set<DataTableToolAction>(['list', 'schema', 'query']);
+
+/** Guidance that the former single tool carried, placed on the tool where it applies. */
+const EXTRA_DESCRIPTIONS: Partial<Record<DataTableToolAction, string>> = {
+	list:
+		'Load `data-table-manager` via `load_skill` before working with data tables, including ' +
+		'natural requests like "what data tables do I have?". For workflow builds that create or ' +
+		'write Data Tables, load `data-table-manager` then `workflow-builder` before ' +
+		'`workflow_builder_build_workflow`.',
+	query:
+		'Keep queries targeted (column filter and/or limit ≤ 5), especially when diagnosing. Never ' +
+		'pull a table unfiltered. After a failed or 0-row query, only retry strictly narrower.',
+	create: 'Call get_data_table_schema before you reference the new table in SDK code.',
+};
+
+function getActionDescription(action: DataTableToolAction, skillGuidance: boolean): string {
+	const base = ACTION_SCHEMAS[action].shape.action.description ?? '';
+	const extra =
+		!skillGuidance && SKILL_GUIDANCE_ACTIONS.has(action) ? undefined : EXTRA_DESCRIPTIONS[action];
+	return extra ? `${base}. ${extra}` : base;
+}
+
+const NON_SUSPENDING_CONTEXT: ConfirmationToolContext = {
+	resumeData: undefined,
+	suspend: async () => {
+		throw new Error('This data table tool cannot suspend');
+	},
+};
+
+/**
+ * Build the tool that owns one data table action. A suspended call of the
+ * former multi-action tool resumes here through its legacy action mapping.
+ */
+export function createDataTableTool(
+	context: InstanceAiContext,
+	action: DataTableToolAction,
+	{ skillGuidance = true }: Pick<DataTablesToolOptions, 'skillGuidance'> = {},
+) {
+	const name = DATA_TABLE_TOOL_NAME_BY_ACTION[action];
+	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
+	const tool = new Tool(name)
+		.description(getActionDescription(action, skillGuidance))
+		.input(sanitizeInputSchema(schema.omit({ action: true })));
+	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
+		tool.legacyActions(legacyName, ...actions);
+	}
+	// The input schema omits `action`, so restore it for the shared handlers.
+	const withAction = (input: unknown) =>
+		({ ...(typeof input === 'object' && input !== null ? input : {}), action }) as FullInput;
+
+	if (READ_ACTIONS.has(action)) {
+		return tool
+			.handler(
+				async (input) =>
+					await runDataTableAction(context, withAction(input), NON_SUSPENDING_CONTEXT),
+			)
+			.build();
+	}
+
+	return tool
+		.suspend(confirmationSuspendSchema)
+		.resume(confirmationResumeSchema)
+		.handler(async (input, ctx) => await runDataTableAction(context, withAction(input), ctx))
+		.build();
+}
+
+/** Build one tool for each data table action the caller allows. */
+export function createDataTableTools(
 	context: InstanceAiContext,
 	options: DataTablesToolOptions = {},
 ) {
-	const inputSchema = restrictToolActions(allActions, options.allowedActions);
+	const allowed = new Set(options.allowedActions ?? DATA_TABLE_TOOL_ACTIONS);
+	return DATA_TABLE_TOOL_ACTIONS.filter((action) => allowed.has(action)).map((action) =>
+		createDataTableTool(context, action, options),
+	);
+}
 
-	return new Tool(DATA_TABLES_TOOL_ID)
-		.legacyNames(...getLegacyBuilderToolNames(DATA_TABLES_TOOL_ID))
-		.description(
-			options.description ??
-				'Manage data tables — list, query, create, modify columns, and manage rows. ' +
-					'Load `data-table-manager` via `load_skill` before calling this tool — including natural ' +
-					'list/show requests like "what data tables do I have?" or "show/list my tables". ' +
-					'For workflow builds that create or write Data Tables, load `data-table-manager` then ' +
-					'`workflow-builder` before `workflow_builder_build_workflow`. Use list, create, and schema before ' +
-					'referencing tables in SDK code. Keep queries targeted (column filter and/or limit ≤ 5), ' +
-					'especially when diagnosing — never pull a table unfiltered, and after a failed or 0-row ' +
-					'query only retry strictly narrower.',
-		)
-		.input(inputSchema)
-		.suspend(confirmationSuspendSchema)
-		.resume(confirmationResumeSchema)
-		.handler(async (input: FullInput, ctx) => {
-			switch (input.action) {
-				case 'list':
-					return await handleList(context, input);
-				case 'schema':
-					return await handleSchema(context, input);
-				case 'query':
-					return await handleQuery(context, input);
-				case 'create':
-					return await handleCreate(context, input, ctx);
-				case 'delete':
-					return await handleDelete(context, input, ctx);
-				case 'add-column':
-					return await handleAddColumn(context, input, ctx);
-				case 'delete-column':
-					return await handleDeleteColumn(context, input, ctx);
-				case 'rename-column':
-					return await handleRenameColumn(context, input, ctx);
-				case 'insert-rows':
-					return await handleInsertRows(context, input, ctx);
-				case 'update-rows':
-					return await handleUpdateRows(context, input, ctx);
-				case 'delete-rows':
-					return await handleDeleteRows(context, input, ctx);
-			}
-		})
-		.build();
+async function runDataTableAction(
+	context: InstanceAiContext,
+	input: FullInput,
+	ctx: ConfirmationToolContext,
+) {
+	switch (input.action) {
+		case 'list':
+			return await handleList(context, input);
+		case 'schema':
+			return await handleSchema(context, input);
+		case 'query':
+			return await handleQuery(context, input);
+		case 'create':
+			return await handleCreate(context, input, ctx);
+		case 'delete':
+			return await handleDelete(context, input, ctx);
+		case 'add-column':
+			return await handleAddColumn(context, input, ctx);
+		case 'delete-column':
+			return await handleDeleteColumn(context, input, ctx);
+		case 'rename-column':
+			return await handleRenameColumn(context, input, ctx);
+		case 'insert-rows':
+			return await handleInsertRows(context, input, ctx);
+		case 'update-rows':
+			return await handleUpdateRows(context, input, ctx);
+		case 'delete-rows':
+			return await handleDeleteRows(context, input, ctx);
+	}
 }

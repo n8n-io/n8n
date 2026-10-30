@@ -664,6 +664,25 @@ describe('useCanvasOperations', () => {
 			expect(uiStore.lastCancelledConnectionPosition).toBeUndefined();
 		});
 
+		it('should snap a main output connection drop to the nearest grid line', () => {
+			const uiStore = mockedStore(useUIStore);
+			const nodeTypesStore = mockedStore(useNodeTypesStore);
+			const node = createTestNode({ id: '0' });
+			const nodeTypeDescription = mockNodeTypeDescription();
+
+			uiStore.lastInteractedWithNodeId = node.id;
+			vi.spyOn(workflowDocumentStoreInstance, 'getNodeById').mockReturnValue(node as INodeUi);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(nodeTypeDescription);
+
+			uiStore.lastInteractedWithNodeHandle = 'outputs/main/0';
+			uiStore.lastCancelledConnectionPosition = [1000, 163];
+
+			const { resolveNodePosition } = useCanvasOperations();
+			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
+
+			expect(position).toEqual([1008, 112]);
+		});
+
 		it('should place the node to the right of the last interacted with node', () => {
 			const uiStore = mockedStore(useUIStore);
 			const nodeTypesStore = mockedStore(useNodeTypesStore);
@@ -855,9 +874,9 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			// Configuration node size is [200, 80], so customOffset = 200 * 2 = 400
-			// Expected position: [100 + (200/1) * 1 - 200/2 - 400, 100 + 220] = [-200, 320]
+			// Expected position: [100 + (200/1) * 1 - 200/2 - 400, 100 + 208] = [-200, 308], y snaps to 304
 			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
-			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+			expect(position[1]).toEqual(304); // Standard Y position for configuration nodes
 		});
 
 		it('should apply custom Y offset for AI Memory connection type', () => {
@@ -894,7 +913,7 @@ describe('useCanvasOperations', () => {
 			const position = resolveNodePosition({ ...node, position: undefined }, nodeTypeDescription);
 
 			expect(position[0]).toBeLessThan(100); // Node should be moved left due to custom offset
-			expect(position[1]).toEqual(320); // Standard Y position for configuration nodes
+			expect(position[1]).toEqual(304); // Standard Y position for configuration nodes
 		});
 
 		it('should not apply custom offset for regular connection types', () => {
@@ -933,7 +952,7 @@ describe('useCanvasOperations', () => {
 			// No custom offset applied, allowing for some wiggle room when tests are run on different environments
 			expect(position[0]).toBeGreaterThanOrEqual(40);
 			expect(position[0]).toBeLessThanOrEqual(80);
-			expect(position[1]).toBe(320);
+			expect(position[1]).toBe(304);
 		});
 
 		it('should handle missing connection type gracefully', () => {
@@ -972,7 +991,7 @@ describe('useCanvasOperations', () => {
 			// No custom offset applied, allowing for some wiggle room when tests are run on different environments
 			expect(position[0]).toBeGreaterThanOrEqual(40);
 			expect(position[0]).toBeLessThanOrEqual(80);
-			expect(position[1]).toBe(320);
+			expect(position[1]).toBe(304);
 		});
 
 		it('should position HITL node vertically between main node and tool node when inserted via connection', () => {
@@ -6442,7 +6461,7 @@ describe('useCanvasOperations', () => {
 				{ viewport: { xMin: 0, yMin: 0, xMax: 1000, yMax: 1000 }, trackEvents: false },
 			);
 
-			expect(result.nodes?.[0].position).toEqual([464, 464]);
+			expect(result.nodes?.[0].position).toEqual([448, 448]);
 		});
 
 		it('centers the bounding box when pasting nodes with different leftmost and topmost nodes', async () => {

@@ -1,4 +1,9 @@
-import { resolveBuilderToolName, type InstanceAiApprovalDetails } from '@n8n/api-types';
+import {
+	getDataTableCallAction,
+	getExecutionCallAction,
+	resolveBuilderToolName,
+	type InstanceAiApprovalDetails,
+} from '@n8n/api-types';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 
 import { useToolLabel } from './toolLabels';
@@ -328,9 +333,17 @@ export function formatApprovalTitle(params: {
 	// A former multi-action tool resolves to a single-action tool, which takes no action suffix.
 	const actionSelectsTool = toolName !== resolveBuilderToolName(params.toolName);
 	const action = typeof args?.action === 'string' && !actionSelectsTool ? args.action : undefined;
-	const keyBase = action
-		? `instanceAi.tools.${toolName}.${action}`
-		: `instanceAi.tools.${toolName}`;
+	// Data table tools share the phrases of the former multi-action tool, keyed by action.
+	const dataTableAction = getDataTableCallAction(toolName);
+	// Execution tools do the same with the former executions tool.
+	const executionAction = getExecutionCallAction(toolName);
+	const keyBase = dataTableAction
+		? `instanceAi.tools.data_tables.${dataTableAction}`
+		: executionAction
+			? `instanceAi.tools.workflow_builder_executions.${executionAction}`
+			: action
+				? `instanceAi.tools.${toolName}.${action}`
+				: `instanceAi.tools.${toolName}`;
 	if (resourceName) {
 		const namedKey = approvalTitleKeys.get(`${keyBase}.imperativeWithResource`);
 		if (namedKey) {

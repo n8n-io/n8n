@@ -27,6 +27,7 @@ import type { AssistantTurnRuntime } from '../../turn-setup/assistant-turn-runti
 import { QuotaExhaustedStreamError } from '../../turn-setup/assistant-credits';
 import { QUOTA_EXHAUSTED_USER_MESSAGE } from '../../user-facing-errors';
 import { AssistantAgentProvider } from '../assistant-agent.provider';
+import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import type { AssistantTurnTrace, AssistantTurnTracer } from '../assistant-turn-trace';
 import type {
 	AssistantSandboxLease,
@@ -80,6 +81,7 @@ function setup() {
 	);
 	const tracer = mock<AssistantTurnTracer>();
 	tracer.startForTurn.mockResolvedValue(undefined);
+	const threadTabs = mock<AssistantThreadTabsService>();
 	const provider = new AssistantAgentProvider(
 		logger,
 		mock<GlobalConfig>({ ai: {} }),
@@ -91,10 +93,13 @@ function setup() {
 		turnInput,
 		agentFactory,
 		tracer,
+		threadTabs,
 	);
 	return {
 		provider,
+		logger,
 		tracer,
+		threadTabs,
 		workspace,
 		settingsService,
 		creditService,
@@ -191,6 +196,36 @@ describe('AssistantAgentProvider', () => {
 	});
 
 	describe('prepareTurn', () => {
+		it('stores the tab of an artifact that the turn changes', async () => {
+			const { provider, turnEnvironment, threadTabs } = setup();
+			const turn = startTurn();
+			await provider.prepareTurn(turn);
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			await runtime.onArtifactChanged?.({ type: 'workflow', id: 'wf-1', name: 'Digest' });
+
+			expect(threadTabs.showArtifactTab).toHaveBeenCalledWith(turn.memory, 'thread-1', {
+				type: 'workflow',
+				id: 'wf-1',
+				name: 'Digest',
+			});
+		});
+
+		it('logs and continues when the artifact tab cannot be stored', async () => {
+			const { provider, turnEnvironment, threadTabs, logger } = setup();
+			threadTabs.showArtifactTab.mockRejectedValue(new Error('db down'));
+			await provider.prepareTurn(startTurn());
+
+			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
+			await expect(
+				runtime.onArtifactChanged?.({ type: 'workflow', id: 'wf-1' }),
+			).resolves.toBeUndefined();
+			expect(logger.warn).toHaveBeenCalledWith('Failed to show an Assistant artifact tab', {
+				threadId: 'thread-1',
+				error: 'db down',
+			});
+		});
+
 		it('builds a start turn with the runtime state of the Agents turn', async () => {
 			const { provider, turnEnvironment, turnInput, agentFactory, agent } = setup();
 			const turn = startTurn();

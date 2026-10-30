@@ -1,4 +1,5 @@
 import type { TransactionRunner } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 
 import { ConflictError, NotFoundError } from '@n8n/errors';
@@ -9,6 +10,7 @@ import type { AgentMessageSteeringService } from '../agent-message-steering.serv
 import type { AgentsSettingsService } from '../agents-settings.service';
 import type { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentExecutionService } from '../agent-execution.service';
+import { AgentWakeService } from '../background/agent-wake.service';
 import type { ProjectAgent } from '../entities/agent.entity';
 import type { AgentExecution } from '../entities/agent-execution.entity';
 import type { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -183,6 +185,143 @@ describe('AgentMessageQueueService', () => {
 			// A running turn blocks the claim, but only after the setting check let the thread through.
 			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
 			expect(steering.releaseInactive).toHaveBeenCalled();
+		});
+	});
+
+	describe('queued stop reports', () => {
+		const stop = () => ({
+			threadId: 'thread-1',
+			planId: null,
+			requestedAt: new Date().toISOString(),
+			generation: { executionIds: [], jobIds: ['job-1'], threadIds: [] },
+			failures: [],
+			pause: { id: 'stop-1', requestsCompleted: true },
+		});
+
+		beforeEach(() => {
+			settingsService.getEnabled.mockResolvedValue(true);
+			threadRepository.lockById.mockResolvedValue(makeThread());
+			threadRepository.findTaskStop.mockResolvedValue(stop());
+			threadRepository.findStopTargetsStillActive.mockResolvedValue([]);
+			threadRepository.findJobsCapturedByStop.mockResolvedValue([]);
+			executionRepository.existsRunningByThread.mockResolvedValue(false);
+			checkpointStorage.findSuspendedForThread.mockResolvedValue(null);
+			repository.findActive.mockResolvedValue(null);
+			repository.findHead.mockResolvedValue(
+				mock<AgentMessageQueue>({
+					id: 'queue-1',
+					steeringExecutionId: null,
+					payload: { kind: 'preview', stopReportId: 'stop-1' },
+					message: mock<AgentMessageEntity>({
+						resourceId: 'draft-chat:user-1',
+						content: { role: 'user', content: [{ type: 'text', text: 'Summarize the stop' }] },
+						origin: { source: 'chat', hidden: true },
+					}),
+				}),
+			);
+			executionService.reserveExecution.mockResolvedValue(
+				mock<Awaited<ReturnType<AgentExecutionService['reserveExecution']>>>({
+					execution: mock<AgentExecution>({ id: 'report-1', startedAt: new Date() }),
+					inputMessageIds: ['message-1'],
+				}),
+			);
+		});
+
+		it('holds the head while captured work runs and claims it after settlement', async () => {
+			threadRepository.findStopTargetsStillActive.mockResolvedValueOnce([
+				{ jobId: 'job-1', title: 'Research' },
+			]);
+
+			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
+			expect(executionService.reserveExecution).not.toHaveBeenCalled();
+
+			const claimed = await service.claimNext('thread-1', async () => true);
+
+			expect(claimed?.recording).toMatchObject({
+				acceptsSteering: false,
+				hideUserMessageFromTranscript: true,
+				queueItemId: 'queue-1',
+			});
+			expect(threadRepository.saveStop).toHaveBeenCalledWith(
+				expect.objectContaining({
+					pause: expect.objectContaining({ reportExecutionId: 'report-1' }),
+				}),
+				expect.anything(),
+			);
+		});
+
+		it('waits until cancellation requests finish even when the captured set is empty', async () => {
+			threadRepository.findTaskStop.mockResolvedValue({ ...stop(), pause: { id: 'stop-1' } });
+
+			expect(await service.claimNext('thread-1', async () => true)).toBeNull();
+		});
+
+		it('reports a known cancellation failure instead of waiting indefinitely for that job', async () => {
+			const failure = { jobId: 'job-1', title: 'Research' };
+			threadRepository.findTaskStop.mockResolvedValue({ ...stop(), failures: [failure] });
+			threadRepository.findStopTargetsStillActive.mockResolvedValue([failure]);
+
+			const claimed = await service.claimNext('thread-1', async () => true);
+
+			expect(claimed?.payload.message).toContain('Research');
+			expect(claimed?.payload.message).toContain('failures');
+		});
+
+		it('runs the report after the deadline and records work that did not stop as failures', async () => {
+			const waiting = { jobId: 'job-1', title: 'Research' };
+			threadRepository.findTaskStop.mockResolvedValue({
+				...stop(),
+				requestedAt: new Date(Date.now() - 6 * 60_000).toISOString(),
+				pause: { id: 'stop-1' },
+			});
+			threadRepository.findStopTargetsStillActive.mockResolvedValue([waiting]);
+
+			const claimed = await service.claimNext('thread-1', async () => true);
+
+			expect(claimed?.payload.message).toContain('Research');
+			expect(threadRepository.saveStop).toHaveBeenCalledWith(
+				expect.objectContaining({ failures: [waiting] }),
+				expect.anything(),
+			);
+		});
+
+		it('requests a wake for held background results after the report settles', async () => {
+			const wake = mock<AgentWakeService>();
+			Container.set(AgentWakeService, wake);
+			repository.findActive.mockResolvedValue(
+				mock<AgentMessageQueue>({
+					threadId: 'thread-1',
+					executionId: 'report-1',
+					payload: { kind: 'preview', stopReportId: 'stop-1' },
+				}),
+			);
+
+			await service.settle('thread-1', 'report-1');
+
+			expect(threadRepository.finalizeStopReport).toHaveBeenCalledWith(
+				'thread-1',
+				'stop-1',
+				'report-1',
+				expect.anything(),
+			);
+			expect(wake.requestWake).toHaveBeenCalledWith('thread-1');
+		});
+
+		it('stores the report as hidden internal input in the caller transaction', async () => {
+			messages.createInput.mockResolvedValue(mock({ id: 'message-1' }));
+
+			await service.enqueueStopReport(makeThread(), 'stop-1', 'Summarize the stop', {});
+
+			expect(messages.createInput).toHaveBeenCalledWith(
+				expect.objectContaining({ origin: { source: 'chat', hidden: true, stopReport: true } }),
+				expect.anything(),
+			);
+			expect(repository.enqueue).toHaveBeenCalledWith(
+				'thread-1',
+				'message-1',
+				{ kind: 'preview', stopReportId: 'stop-1' },
+				expect.anything(),
+			);
 		});
 	});
 

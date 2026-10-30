@@ -98,6 +98,8 @@ export interface SetupProps {
 	modules?: ModuleName[];
 	/** Override the default test timeout (ms) for the shared `beforeAll` setup hook. */
 	setupTimeout?: number;
+	/** Reuse the bound HTTP server across agents. */
+	reuseServer?: boolean;
 }
 
 export type SuperAgentTest = TestAgent;
