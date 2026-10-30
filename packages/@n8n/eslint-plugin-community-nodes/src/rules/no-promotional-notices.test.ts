@@ -50,15 +50,32 @@ export class TestApi implements ICredentialType {
 
 const promotionalNotices = [
 	{ name: 'plan-tier sales copy', displayName: 'Needs the Starter plan or above' },
+	{ name: 'a required plan', displayName: 'Requires the Business Plus plan' },
+	{ name: 'an upgrade message', displayName: 'Upgrade to unlock more features' },
+	{ name: 'a premium offer', displayName: 'Premium features are available' },
+	{ name: 'a Pro plan offer', displayName: 'Try the Pro plan' },
+	{ name: 'an enterprise offer', displayName: 'Explore our Enterprise features' },
+	{ name: 'pricing copy', displayName: 'See our pricing for details' },
+	{ name: 'sign-up copy', displayName: 'Sign up for an account' },
+	{ name: 'a free trial', displayName: 'Start your free trial today' },
+	{ name: 'a monthly price', displayName: 'Available for $10 per month' },
+	{ name: 'a discount code', displayName: 'Use discount code EXAMPLE' },
+	{ name: 'a contact offer', displayName: 'Contact us for more credits' },
+	{ name: 'a sales contact', displayName: 'Contact sales for details' },
 	{
 		name: 'a pricing link',
 		displayName: 'View <a href="https://example.com/pricing">available plans</a>.',
 	},
+	...['signup', 'upgrade', 'billing'].map((path) => ({
+		name: `a ${path} link`,
+		displayName: `Visit <a href="https://example.com/account/${path}">your account</a>.`,
+	})),
 ];
 
 const allowedNotices = [
 	'Activating this workflow registers a webhook. Deactivating removes only its own subscription.',
 	'Events may be delivered more than once. Deduplicate by eventId before performing side effects.',
+	'Webhook setup instructions are at https://billing.example.com/webhooks?next=signup.',
 ];
 
 describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
@@ -130,6 +147,26 @@ describe.each(['recommended', 'recommendedWithoutN8nCloudSupport'] as const)(
 
 				expect(messages.filter((message) => message.ruleId === ruleId)).toEqual([]);
 			});
+
+			it('checks static template literals', () => {
+				const messages = lint(
+					createCode(
+						"{ displayName: `Start your free trial`, name: 'notice', type: 'notice', default: '' }",
+					),
+					filename,
+				);
+
+				expect(messages.filter((message) => message.ruleId === ruleId)).toHaveLength(1);
+			});
+		});
+
+		it('excludes unrelated files without exported node properties', () => {
+			const messages = lint(
+				`const properties = [${createNotice('Upgrade to the Pro plan')}];`,
+				'helpers.ts',
+			);
+
+			expect(messages.filter((message) => message.ruleId === ruleId)).toEqual([]);
 		});
 
 		it.each(promotionalNotices)('excludes credential notices with $name', ({ displayName }) => {
