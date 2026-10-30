@@ -32,7 +32,3 @@ The scanner runs these steps in sequence. It stops at the first step that fails.
 
 - `npm` and `tar` must be on the `PATH`.
 - The scanner needs network access to `registry.npmjs.org` and `codeload.github.com`.
-
-### Exit codes
-
-The exit code is `1` only when the scanner itself fails, for example on an invalid package name. A package that fails the checks gives exit code `0`. To use the scanner in CI, check the output for the `❌` result line.
