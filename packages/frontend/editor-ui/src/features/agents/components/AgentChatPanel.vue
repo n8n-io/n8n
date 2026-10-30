@@ -1389,9 +1389,12 @@ function removeComposerAttachment(id: string) {
 	composerAttachments.value = composerAttachments.value.filter((item) => item.chip.id !== id);
 }
 
-// Session files: only the preview chat has the list route.
+// Session files: the preview chat and n8n Chat have the list route.
+const sessionFilesChannel = computed(() =>
+	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
+);
 const showSessionFilesToggle = computed(
-	() => props.channel === 'chat' && Boolean(props.continueSessionId),
+	() => sessionFilesChannel.value !== undefined && Boolean(props.continueSessionId),
 );
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
@@ -1411,7 +1414,8 @@ function sessionFileHref(fileId: string) {
 
 async function loadSessionFiles() {
 	const threadId = props.continueSessionId;
-	if (!threadId) return;
+	const channel = sessionFilesChannel.value;
+	if (!threadId || !channel) return;
 	sessionFilesLoading.value = true;
 	sessionFilesError.value = false;
 	try {
@@ -1420,6 +1424,7 @@ async function loadSessionFiles() {
 			props.projectId,
 			props.agentId,
 			threadId,
+			channel,
 		);
 		if (props.continueSessionId === threadId) sessionFiles.value = files;
 	} catch {

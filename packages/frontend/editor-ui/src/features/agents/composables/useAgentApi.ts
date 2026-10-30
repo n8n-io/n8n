@@ -1099,17 +1099,18 @@ export const deleteSystemAgentThread = async (
 	);
 };
 
-/** Files of a preview chat session, for the session files list. */
+/** Files of a preview or n8n Chat session, for the session files list. */
 export const getSessionFiles = async (
 	context: IRestApiContext,
 	projectId: string,
 	agentId: string,
 	threadId: string,
+	channel: 'chat' | 'n8n-chat' = 'chat',
 ): Promise<AgentSessionFilesResponse> =>
 	await makeRestApiRequest<AgentSessionFilesResponse>(
 		context,
 		'GET',
-		`${agentChatPath(projectId, agentId)}/${encodeURIComponent(threadId)}/files`,
+		`${agentChatPath(projectId, agentId, channel)}/${encodeURIComponent(threadId)}/files`,
 	);
 
 /**

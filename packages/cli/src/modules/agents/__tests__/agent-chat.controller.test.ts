@@ -199,6 +199,7 @@ describe('AgentChatController route access scopes', () => {
 		// their own thread. See the ownership tests below `requireProductionThread`.
 		['getProductionChatMessages', 'agent:execute'],
 		['getProductionChatAttachment', 'agent:execute'],
+		['getProductionSessionFiles', 'agent:execute'],
 		['getProductionQueuedMessages', 'agent:execute'],
 		['updateProductionQueuedMessage', 'agent:execute'],
 		['reorderProductionQueuedMessage', 'agent:execute'],
@@ -565,6 +566,86 @@ describe('AgentChatController session files', () => {
 
 		agentExecutionService.findThreadById.mockResolvedValue({ ...thread, ownerId: 'other-user' });
 		await expect(controller.getSessionFiles(request as never)).rejects.toThrow(NotFoundError);
+		expect(agentChatAttachmentService.listForSession).not.toHaveBeenCalled();
+	});
+});
+
+describe('AgentChatController n8n Chat session files', () => {
+	const request = {
+		params: { projectId: 'project-1', agentId: 'agent-1', threadId: 'thread-1' },
+		user: { id: 'user-1' },
+	};
+	const thread = mock<AgentExecutionThread>({ id: 'thread-1' });
+
+	beforeEach(() => vi.clearAllMocks());
+
+	it('lists all files of the own production session', async () => {
+		const { controller, agentsService, agentExecutionService, agentChatAttachmentService } =
+			makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(true);
+		const files = [
+			{
+				fileId: 'f-1',
+				fileName: 'report.pdf',
+				mimeType: 'application/pdf',
+				sizeBytes: 3,
+				source: 'sandbox',
+				createdAt: '2026-10-29T10:00:00.000Z',
+			},
+		];
+		agentChatAttachmentService.listForSession.mockResolvedValue(files);
+
+		await expect(controller.getProductionSessionFiles(request as never)).resolves.toEqual({
+			files,
+		});
+		expect(agentExecutionService.canUseProductionChatThread).toHaveBeenCalledWith(
+			'thread-1',
+			'project-1',
+			'agent-1',
+			'user-1',
+			'existing',
+		);
+		expect(agentChatAttachmentService.listForSession).toHaveBeenCalledWith({
+			projectId: 'project-1',
+			threadId: 'thread-1',
+		});
+	});
+
+	it('returns no files for a new session', async () => {
+		const { controller, agentsService, agentExecutionService, agentChatAttachmentService } =
+			makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.findThreadById.mockResolvedValue(null);
+
+		await expect(controller.getProductionSessionFiles(request as never)).resolves.toEqual({
+			files: [],
+		});
+		expect(agentChatAttachmentService.listForSession).not.toHaveBeenCalled();
+	});
+
+	// The production thread check fails for the thread of another user and for a builder session.
+	it('404s a thread that is not an own production session', async () => {
+		const { controller, agentsService, agentExecutionService, agentChatAttachmentService } =
+			makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(true);
+		agentExecutionService.findThreadById.mockResolvedValue(thread);
+		agentExecutionService.canUseProductionChatThread.mockResolvedValue(false);
+
+		await expect(controller.getProductionSessionFiles(request as never)).rejects.toThrow(
+			NotFoundError,
+		);
+		expect(agentChatAttachmentService.listForSession).not.toHaveBeenCalled();
+	});
+
+	it('404s when the agent is not in n8n Chat', async () => {
+		const { controller, agentsService, agentChatAttachmentService } = makeController();
+		agentsService.isN8nChatPublished.mockResolvedValue(false);
+
+		await expect(controller.getProductionSessionFiles(request as never)).rejects.toThrow(
+			NotFoundError,
+		);
 		expect(agentChatAttachmentService.listForSession).not.toHaveBeenCalled();
 	});
 });

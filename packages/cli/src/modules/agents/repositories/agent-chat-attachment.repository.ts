@@ -156,11 +156,11 @@ export class AgentChatAttachmentRepository {
 	/** Files of one delegation tree, newest first, without the given source. */
 	async findInThreadNewestFirst(
 		scope: { projectId: string; threadId: string },
-		excludeSource: string,
+		excludeSource: string | undefined,
 		ctx: OperationContext,
 	): Promise<AgentChatAttachment[]> {
 		return await this.table.managerFor(ctx).find(AgentChatAttachment, {
-			where: { ...scope, source: Not(excludeSource) },
+			where: { ...scope, ...(excludeSource ? { source: Not(excludeSource) } : {}) },
 			order: { createdAt: 'DESC' },
 		});
 	}

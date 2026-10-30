@@ -460,6 +460,22 @@ export class AgentChatController {
 		await this.chatRelay.streamAttachment(attachment, res);
 	}
 
+	// Same reasoning as `getProductionChatAttachment`: `requireProductionThread`
+	// 404s a thread that isn't this user's own, so `agent:execute` is safe.
+	@Get('/:agentId/n8n-chat/:threadId/files')
+	@ProjectScope('agent:execute')
+	async getProductionSessionFiles(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentSessionFilesResponse> {
+		const { projectId, agentId, threadId } = req.params;
+		await this.requireProductionChat(agentId, projectId);
+		// A new session has no thread until its first execution starts.
+		if (!(await this.agentExecutionService.findThreadById(threadId))) return { files: [] };
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+		const files = await this.agentChatAttachmentService.listForSession({ projectId, threadId });
+		return { files };
+	}
+
 	// Same reasoning as `getProductionChatMessages`: `messageQueue.listPending`
 	// calls `assertUserChatAccess`, which 404s a thread that isn't this user's
 	// own, so `agent:execute` is safe for a chat-only member.
