@@ -12,7 +12,7 @@ import { installGlobalProxyAgent } from '@n8n/backend-network';
 import { AzureBlobConfig, AzureByteStore, ObjectStoreConfig, S3ByteStore } from '@n8n/blob-storage';
 import { GlobalConfig } from '@n8n/config';
 import { LICENSE_FEATURES } from '@n8n/constants';
-import { DbConnection, DeploymentKeyRepository } from '@n8n/db';
+import { DbConnection, DeploymentKeyRepository, ExecutionLedger } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import type { SystemTaskClass } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -354,7 +354,7 @@ export abstract class BaseCommand<F = never> {
 		try {
 			await Promise.all([
 				CrashJournal.cleanup(),
-				this.dbConnection.close(),
+				this.closeDbConnection(),
 				Expression.disposeExpressionEngine(),
 			]);
 		} finally {
@@ -583,6 +583,17 @@ export abstract class BaseCommand<F = never> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, POLICY_MODULES);
 	}
 
+	/** One-off commands that run workflows init only the modules they need. */
+	async initExecutionLedger() {
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType, ['execution-ledger']);
+	}
+
+	/** Shutdown hooks run before active executions finish, so their ledger inserts drain here. */
+	protected async closeDbConnection() {
+		await Container.get(ExecutionLedger).drain();
+		await this.dbConnection.close();
+	}
+
 	async cleanupTestRunner() {
 		await Container.get(TestRunCleanupService).cleanupIncompleteRuns();
 	}
@@ -592,7 +603,7 @@ export abstract class BaseCommand<F = never> {
 		if (inTest || this.constructor.name === 'Start') return;
 		if (this.dbConnection.connectionState.connected) {
 			await sleep(100); // give any in-flight query some time to finish
-			await this.dbConnection.close();
+			await this.closeDbConnection();
 		}
 		const exitCode = error ? 1 : 0;
 		process.exit(exitCode);

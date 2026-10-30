@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
+import { DbConnection, ExecutionLedger } from '@n8n/db';
 import { SystemTaskMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
@@ -115,5 +116,27 @@ describe('initSystemTasks', () => {
 
 		expect(metadata.register.mock.calls.flat()).toEqual([DummySystemTask]);
 		expect(runner.init).toHaveBeenCalledTimes(1);
+	});
+});
+
+describe('closeDbConnection', () => {
+	it('should wait for pending ledger inserts before closing the connection', async () => {
+		const calls: string[] = [];
+		const ledger = mockInstance(ExecutionLedger);
+		ledger.drain.mockImplementation(async () => {
+			calls.push('drain');
+		});
+		const dbConnection = mockInstance(DbConnection);
+		dbConnection.close.mockImplementation(async () => {
+			calls.push('close');
+		});
+		const command = new TestCommand();
+		// @ts-expect-error Protected property
+		command.dbConnection = dbConnection;
+
+		// @ts-expect-error Protected method
+		await command.closeDbConnection();
+
+		expect(calls).toEqual(['drain', 'close']);
 	});
 });
