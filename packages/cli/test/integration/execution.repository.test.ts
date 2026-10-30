@@ -398,4 +398,32 @@ describe('UserRepository', () => {
 			expect(await executionRepository.findUnsavedManualExecution(webhook.id)).toBeNull();
 		});
 	});
+
+	describe('findForDeletionByWorkflowId', () => {
+		test('should return live and soft-deleted executions of the workflow, up to the limit', async () => {
+			const workflow = await createWorkflow({}, owner);
+			const otherWorkflow = await createWorkflow({}, owner);
+			const live = await createExecution({ status: 'success' }, workflow);
+			const softDeleted = await createExecution(
+				{ status: 'success', deletedAt: new Date() },
+				workflow,
+			);
+			const onFilesystem = await createExecution({ status: 'success' }, workflow);
+			await executionRepository.update(onFilesystem.id, { storedAt: 'fs' });
+			await createExecution({ status: 'success' }, otherWorkflow);
+
+			const targets = await executionRepository.findForDeletionByWorkflowId(workflow.id, 500);
+
+			expect(targets).toHaveLength(3);
+			expect(targets).toEqual(
+				expect.arrayContaining([
+					{ executionId: live.id, workflowId: workflow.id, storedAt: 'db' },
+					{ executionId: softDeleted.id, workflowId: workflow.id, storedAt: 'db' },
+					{ executionId: onFilesystem.id, workflowId: workflow.id, storedAt: 'fs' },
+				]),
+			);
+			expect(await executionRepository.findForDeletionByWorkflowId(workflow.id, 2)).toHaveLength(2);
+			expect(await executionRepository.findForDeletionByWorkflowId('missing', 500)).toEqual([]);
+		});
+	});
 });

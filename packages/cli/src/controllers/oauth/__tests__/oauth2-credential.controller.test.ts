@@ -69,6 +69,20 @@ describe('OAuth2CredentialController', () => {
 		});
 	});
 
+	describe('getClientMetadata', () => {
+		it('should send the client ID metadata document as JSON', () => {
+			const document = {
+				client_id: 'https://n8n.example.com/rest/oauth2-credential/client-metadata.json',
+			};
+			oauthService.getClientMetadataDocument.mockReturnValue(document as any);
+			const res = mock<Response>();
+
+			controller.getClientMetadata(mock(), res);
+
+			expect(res.json).toHaveBeenCalledWith(document);
+		});
+	});
+
 	describe('handleCallback', () => {
 		const validState = Buffer.from(
 			JSON.stringify({
@@ -158,6 +172,56 @@ describe('OAuth2CredentialController', () => {
 				'The administrator did not approve the requested permissions.',
 			);
 			expect(res.render).not.toHaveBeenCalled();
+		});
+
+		it('should render the error and its description when the authorization server refuses the request', async () => {
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'invalid_client',
+				error_description: 'Unknown client',
+				state: 'state',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				'invalid_client: Unknown client',
+			);
+			expect(oauthService.resolveCredential).not.toHaveBeenCalled();
+		});
+
+		it('should render only the error when the description is missing', async () => {
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'access_denied',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				'access_denied',
+			);
+		});
+
+		it('should hide the error details when the response carries an issuer', async () => {
+			const errorReq = mock<OAuthRequest.OAuth2Credential.Callback>();
+			errorReq.query = {
+				error: 'invalid_client',
+				error_description: 'Unknown client',
+				iss: 'https://auth.example.com',
+			} as OAuthRequest.OAuth2Credential.Callback['query'];
+
+			await controller.handleCallback(errorReq, res);
+
+			expect(oauthService.renderCallbackError).toHaveBeenCalledWith(
+				res,
+				'The OAuth2 server returned an error.',
+				undefined,
+			);
 		});
 
 		it('should exchange the code for a valid token, and save it to DB for static credential', async () => {

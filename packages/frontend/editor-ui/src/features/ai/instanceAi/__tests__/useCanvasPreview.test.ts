@@ -1144,6 +1144,57 @@ describe('useCanvasPreview', () => {
 		});
 	});
 
+	describe('auto-open app preview', () => {
+		const app = { id: 'app-1', name: 'Todos', projectId: 'project-1' };
+
+		function appsCall(toolCallId: string, args: Record<string, unknown>) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({ toolCallId, toolName: 'apps', args, result: { app, versionId: 'v1' } }),
+					],
+				}),
+			});
+		}
+
+		function registerApp(thread: MockThread) {
+			const nextProduced = new Map(thread.producedArtifacts);
+			nextProduced.set(app.id, { type: 'app', ...app });
+			thread.producedArtifacts = nextProduced;
+		}
+
+		test('opens an app the assistant created and reloads it on each commit', async () => {
+			const ctx = setup();
+			registerApp(ctx.thread);
+
+			ctx.thread.messages = [appsCall('tc-create', { action: 'create' })];
+			await nextTick();
+
+			expect(ctx.activeApp.value).toEqual({ id: 'app-1', projectId: 'project-1' });
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			const initialKey = ctx.appRefreshKey.value;
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				appsCall('tc-commit', { action: 'commit', appId: 'app-1' }),
+			];
+			await nextTick();
+
+			expect(ctx.appRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('does not open an app the assistant only read', async () => {
+			const ctx = setup();
+			registerApp(ctx.thread);
+
+			ctx.thread.messages = [appsCall('tc-get', { action: 'get', appId: 'app-1' })];
+			await nextTick();
+
+			expect(ctx.activeApp.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+	});
+
 	describe('auto-open skill preview', () => {
 		function skillsCall(
 			toolCallId: string,
@@ -1251,6 +1302,13 @@ describe('useCanvasPreview', () => {
 			expect(ctx.openSkillPreview('skill-1')).toBe(true);
 			expect(ctx.activeSkillId.value).toBe('skill-1');
 			expect(ctx.openSkillPreview('skill-1')).toBe(false);
+		});
+
+		test('openAppPreview does not switch to an app without a tab', () => {
+			const ctx = setup();
+
+			expect(ctx.openAppPreview('app-unknown')).toBe(false);
+			expect(ctx.activeTabId.value).toBeUndefined();
 		});
 	});
 

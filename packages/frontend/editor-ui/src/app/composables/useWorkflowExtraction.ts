@@ -426,10 +426,7 @@ export function useWorkflowExtraction() {
 		uiStore.resetLastInteractedWith();
 
 		const executeWorkflowNode = (
-			await canvasOperations.addNodes([executeWorkflowNodeData], {
-				...CANVAS_HISTORY_OPTIONS,
-				forcePosition: true,
-			})
+			await canvasOperations.addNodes([executeWorkflowNodeData], CANVAS_HISTORY_OPTIONS)
 		)[0];
 
 		addReplacementNodeToCanvasGroup(

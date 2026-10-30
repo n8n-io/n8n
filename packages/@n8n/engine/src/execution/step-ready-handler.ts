@@ -235,7 +235,7 @@ export class StepReadyHandler {
 		if (
 			started.kind === 'error' &&
 			started.error instanceof InvalidParentLinkError &&
-			started.error.reason === 'execution-ended'
+			started.error.reason === 'execution-not-live'
 		) {
 			return { kind: 'parent-ended' };
 		}

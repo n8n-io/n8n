@@ -1,3 +1,5 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
+
 import type { AgentSseEvent } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { TransactionRunner, User } from '@n8n/db';
@@ -648,6 +650,50 @@ describe('SystemAgentExecutionService', () => {
 				expect.objectContaining({ status: 'errored', error: failure }),
 			);
 			expect(send).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'done' }));
+		});
+
+		it('runs the whole turn inside the turn context of the handle', async () => {
+			const { service, handle, turnExecutionService, onSettled } = setup([textChunk], {
+				status: 'completed',
+			});
+			const storage = new AsyncLocalStorage<string>();
+			const seen: Array<string | undefined> = [];
+			const withTurnContext = vi.fn(async (run: () => Promise<unknown>) => {
+				return await storage.run('turn-span', run);
+			});
+			handle.withTurnContext = async <T>(run: () => Promise<T>) =>
+				(await withTurnContext(run)) as T;
+			turnExecutionService.execute.mockImplementation(async function* (config) {
+				seen.push(storage.getStore());
+				await config.prepare();
+				yield textChunk;
+				await config.onBeforeFinalize?.({ executionId: 'exec-1', status: 'completed' });
+			});
+			onSettled.mockImplementation(async () => {
+				seen.push(storage.getStore());
+			});
+
+			await service.consume(claimFor(), user, new AbortController().signal, vi.fn());
+
+			expect(withTurnContext).toHaveBeenCalledTimes(1);
+			expect(seen).toEqual(['turn-span', 'turn-span']);
+		});
+
+		it('settles as errored and rethrows when the turn throws through withTurnContext', async () => {
+			const { service, handle, onSettled, turnExecutionService } = setup();
+			handle.withTurnContext = async <T>(run: () => Promise<T>) => await run();
+			const failure = new Error('stream broke');
+			// eslint-disable-next-line require-yield
+			turnExecutionService.execute.mockImplementation(async function* () {
+				throw failure;
+			});
+
+			await expect(
+				service.consume(claimFor(), user, new AbortController().signal, vi.fn()),
+			).rejects.toThrow('stream broke');
+			expect(onSettled).toHaveBeenCalledWith(
+				expect.objectContaining({ status: 'errored', error: failure }),
+			);
 		});
 
 		it('gives the provider the session grants of the thread', async () => {

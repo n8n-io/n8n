@@ -83,4 +83,36 @@ describe('ExecutionRecoveryService auto-deactivation', () => {
 			).toMatchObject({ count: 1, rootCount: 1, workflowName: workflow.name });
 		});
 	});
+
+	describe('crash sweep', () => {
+		it('does not count a crashed execution that never started in `rootCount`', async () => {
+			const { id } = await createExecution(
+				{ status: 'new', finished: false, stoppedAt: null, mode: 'trigger', startedAt: null },
+				workflow,
+			);
+
+			await Container.get(ExecutionCrashService).markAsCrashed(id, 'queue-recovery');
+
+			await vi.waitFor(async () => {
+				expect(
+					await findWorkflowStatistic(workflow.id, StatisticsNames.productionError),
+				).toMatchObject({ count: 1, rootCount: 0 });
+			});
+		});
+
+		it('counts a crashed execution that started in `rootCount`', async () => {
+			const { id } = await createExecution(
+				{ status: 'running', finished: false, stoppedAt: null, mode: 'trigger' },
+				workflow,
+			);
+
+			await Container.get(ExecutionCrashService).markAsCrashed(id, 'queue-recovery');
+
+			await vi.waitFor(async () => {
+				expect(
+					await findWorkflowStatistic(workflow.id, StatisticsNames.productionError),
+				).toMatchObject({ count: 1, rootCount: 1 });
+			});
+		});
+	});
 });

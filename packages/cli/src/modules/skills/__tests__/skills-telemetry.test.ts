@@ -125,14 +125,33 @@ describe('SkillsTelemetry', () => {
 		);
 	});
 
+	it('reports a flagged skill with the user at import, and without one in the background', async () => {
+		const props = {
+			provider: 'github' as const,
+			stage: 'import' as const,
+			verdict: 'needs_review' as const,
+			rule_codes: ['hidden_unicode' as const],
+		};
+
+		await service.flaggedSkill(props, 'user-1');
+		await service.flaggedSkill({ ...props, stage: 'update' });
+
+		expect(telemetry.track.mock.calls).toEqual([
+			[TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL, { user_id: 'user-1', ...props }],
+			[TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_CHECK_FLAGGED_SKILL, { ...props, stage: 'update' }],
+		]);
+	});
+
 	it('reports a Skill Sync import with its counts', async () => {
 		const props = {
 			provider: 'github' as const,
 			scope_type: 'global' as const,
 			first_or_more: 'first' as const,
-			selected: 3,
+			selected: 4,
 			imported: 2,
 			name_taken: 1,
+			blocked: 1,
+			needs_review: 1,
 			skipped_files: 4,
 			status: 'success' as const,
 		};

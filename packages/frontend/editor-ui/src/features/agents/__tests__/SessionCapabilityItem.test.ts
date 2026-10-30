@@ -22,6 +22,14 @@ vi.mock('../utils/toolDisplayName', () => ({
 	resolveToolNameForDisplay: (name: string) => name,
 }));
 
+// Reads useRootStore for download URLs; shows the file ids and thread instead.
+vi.mock('../components/AgentChatMessageAttachments.vue', () => ({
+	default: {
+		props: ['attachments', 'threadId'],
+		template: '<div :data-thread-id="threadId">{{ attachments.map((a) => a.fileId).join() }}</div>',
+	},
+}));
+
 enableAutoUnmount(afterEach);
 
 function item(overrides: Partial<TimelineItem> = {}): TimelineItem {
@@ -36,9 +44,12 @@ function item(overrides: Partial<TimelineItem> = {}): TimelineItem {
 	};
 }
 
-function renderItem(overrides: Partial<TimelineItem> = {}) {
+function renderItem(
+	overrides: Partial<TimelineItem> = {},
+	scope: { projectId?: string; agentId?: string; threadId?: string } = {},
+) {
 	return mount(SessionCapabilityItem, {
-		props: { item: item(overrides), selected: false },
+		props: { item: item(overrides), selected: false, ...scope },
 		global: {
 			stubs: {
 				N8nTooltip: {
@@ -117,5 +128,19 @@ describe('SessionCapabilityItem activity status', () => {
 		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
 		expect(wrapper.get('button').attributes('aria-disabled')).toBe('true');
 		expect(wrapper.findComponent(N8nAnimatedCollapsibleContent).exists()).toBe(false);
+	});
+});
+
+describe('SessionCapabilityItem output files', () => {
+	it('shows the files of a tool output without expanding the step', async () => {
+		const file = { fileId: 'f-1', fileName: 'cat.png', mimeType: 'image/png', sizeBytes: 3 };
+		const wrapper = renderItem(
+			{ toolOutput: JSON.stringify({ status: 'success', files: [file] }) },
+			{ projectId: 'p1', agentId: 'a2', threadId: 'child' },
+		);
+		expect(wrapper.get('button').attributes('aria-expanded')).toBe('false');
+		const files = wrapper.get('[data-test-id="timeline-tool-output-files"]');
+		expect(files.text()).toBe('f-1');
+		expect(files.attributes('data-thread-id')).toBe('child');
 	});
 });

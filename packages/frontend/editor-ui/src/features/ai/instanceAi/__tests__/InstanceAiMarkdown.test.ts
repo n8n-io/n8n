@@ -334,6 +334,28 @@ describe('InstanceAiMarkdown', () => {
 			expect(event.defaultPrevented).toBe(true);
 		});
 
+		it('should enhance app links and open the app preview on left-click', () => {
+			thread.resourceNameIndex = makeRegistry([
+				{ type: 'app', id: 'app-1', name: 'Order Tracker', projectId: 'project-1' },
+			]);
+			const openAppPreview = vi.fn(() => true);
+			const { getByTestId } = renderComponent({
+				props: { content: '<a href="n8n-resource://app/app-1">Order Tracker</a>' },
+				global: { provide: { openAppPreview } },
+			});
+			const link = getByTestId('markdown-output').querySelector('a');
+			if (!link) throw new Error('expected enhanced anchor');
+
+			expect(link.dataset.resourceChip).toBe('app');
+			expect(link.getAttribute('href')).toBe('/projects/project-1/apps/app-1');
+
+			const event = clickEvent();
+			link.dispatchEvent(event);
+
+			expect(openAppPreview).toHaveBeenCalledExactlyOnceWith('app-1');
+			expect(event.defaultPrevented).toBe(true);
+		});
+
 		it.each(agentPreviewLinks)(
 			'should open $label agent Preview links in the embedded chat panel',
 			({ content: agentPreviewContent }) => {

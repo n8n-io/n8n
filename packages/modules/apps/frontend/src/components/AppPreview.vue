@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AppBuildStatus, AppResponse, AppVersionResponse } from '@n8n/api-types';
+import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { useLatestFetch } from '@n8n/composables/useLatestFetch';
 import { useToast } from '@n8n/composables/useToast';
 import {
@@ -17,7 +17,8 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 
-import { createAppPreview, getAppBuild, listAppVersions } from '../apps.api';
+import { createAppPreview } from '../apps.api';
+import type { AppVersions } from '../composables/useAppVersions';
 
 const SCREEN_SIZES = ['desktop', 'tablet', 'mobile'] as const;
 type ScreenSize = (typeof SCREEN_SIZES)[number];
@@ -37,7 +38,6 @@ const OPTION_ICONS: Record<ScreenSize | PreviewTheme, IconName> = {
 	light: 'sun',
 	dark: 'moon',
 };
-const POLL_INTERVAL_MS = 3000;
 const GRANT_REFRESH_MS = 55 * 60 * 1000;
 
 function editorTheme(): PreviewTheme {
@@ -46,22 +46,22 @@ function editorTheme(): PreviewTheme {
 	return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
-const props = defineProps<{ projectId: string; app: AppResponse }>();
+const props = defineProps<{ projectId: string; app: AppResponse; versions: AppVersions }>();
 
 const i18n = useI18n();
 const toast = useToast();
 const rootStore = useRootStore();
 const latestFetch = useLatestFetch();
 
-const head = ref<AppVersionResponse | null>(null);
+const { head, latestBuilt, building } = props.versions;
+
 type Preview = { version: AppVersionResponse; url: string };
 
 const preview = ref<Preview | null>(null);
-const loading = ref(true);
-const failed = ref(false);
+const granting = ref(false);
+const grantFailed = ref(false);
 const screenSize = ref<ScreenSize>('desktop');
 const theme = ref<PreviewTheme>(editorTheme());
-let pollTimer: ReturnType<typeof setTimeout> | undefined;
 let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 
 const sizeOptions = computed(() =>
@@ -70,86 +70,51 @@ const sizeOptions = computed(() =>
 const themeOptions = computed(() =>
 	THEMES.map((value) => ({ value, label: i18n.baseText(`apps.preview.theme.${value}`) })),
 );
-const building = computed(() => isBuilding(head.value?.buildStatus));
+const loading = computed(() => props.versions.loading.value || granting.value);
+const failed = computed(() => props.versions.failed.value || grantFailed.value);
 const buildFailed = computed(() => head.value?.buildStatus === 'failed');
 const versionLabel = computed(() => {
 	const version = preview.value?.version;
 	return version ? (version.label ?? version.id.slice(-8)) : null;
 });
 
-function isBuilding(status: AppBuildStatus | undefined) {
-	return status === 'queued' || status === 'running';
-}
-
-function isBuilt(version: AppVersionResponse) {
-	return version.buildStatus === 'succeeded' && version.bundleArtifactId !== null;
-}
-
 async function grant(versionId: string) {
 	return await createAppPreview(rootStore.restApiContext, props.projectId, props.app.id, versionId);
 }
 
-function stopPolling() {
-	clearTimeout(pollTimer);
-	pollTimer = undefined;
-}
-
 function showPreview(next: Preview | null) {
-	if (next === preview.value) return;
 	clearTimeout(refreshTimer);
 	preview.value = next;
-	if (next) refreshTimer = setTimeout(async () => await reload(true), GRANT_REFRESH_MS);
+	if (next) refreshTimer = setTimeout(async () => await show(true), GRANT_REFRESH_MS);
 }
 
-function poll(versionId: string) {
-	pollTimer = setTimeout(async () => {
-		const isLatest = latestFetch.next();
-		try {
-			const build = await getAppBuild(
-				rootStore.restApiContext,
-				props.projectId,
-				props.app.id,
-				versionId,
-			);
-			if (!isLatest()) return;
-			if (isBuilding(build.status)) {
-				poll(versionId);
-				return;
-			}
-		} catch {
-			if (!isLatest()) return;
-		}
-		await reload();
-	}, POLL_INTERVAL_MS);
-}
-
-async function reload(force = false) {
-	stopPolling();
+async function show(force = false) {
+	const version = latestBuilt.value;
+	if (!force && version?.id === preview.value?.version.id) return;
 	const isLatest = latestFetch.next();
-	loading.value = true;
+	if (!version) {
+		granting.value = false;
+		showPreview(null);
+		return;
+	}
+	granting.value = true;
 	try {
-		const versions = await listAppVersions(rootStore.restApiContext, props.projectId, props.app.id);
+		const { url } = await grant(version.id);
 		if (!isLatest()) return;
-		const version = versions.find(isBuilt);
-		const current = preview.value;
-		const next =
-			!force && current && version?.id === current.version.id
-				? current
-				: version
-					? { version, url: (await grant(version.id)).url }
-					: null;
-		if (!isLatest()) return;
-		head.value = versions[0] ?? null;
-		showPreview(next);
-		failed.value = false;
-		if (head.value && isBuilding(head.value.buildStatus)) poll(head.value.id);
+		showPreview({ version, url });
+		grantFailed.value = false;
 	} catch (error) {
 		if (!isLatest()) return;
-		failed.value = true;
+		grantFailed.value = true;
 		toast.showError(error, i18n.baseText('apps.preview.loadError'));
 	} finally {
-		if (isLatest()) loading.value = false;
+		if (isLatest()) granting.value = false;
 	}
+}
+
+async function reload() {
+	await props.versions.refresh();
+	if (!props.versions.failed.value) await show(true);
 }
 
 async function openInNewTab() {
@@ -167,18 +132,15 @@ async function openInNewTab() {
 }
 
 watch(
-	() => [props.app.id, props.app.draftVersionId],
-	async () => await reload(),
+	() => latestBuilt.value?.id,
+	async () => await show(),
 	{ immediate: true },
 );
 
 onBeforeUnmount(() => {
-	stopPolling();
 	clearTimeout(refreshTimer);
 	latestFetch.invalidate();
 });
-
-defineExpose({ reload });
 </script>
 
 <template>
@@ -193,7 +155,7 @@ defineExpose({ reload });
 						:aria-label="i18n.baseText('apps.preview.reload')"
 						:loading="loading"
 						data-test-id="app-preview-reload"
-						@click="reload(true)"
+						@click="reload"
 					/>
 				</N8nTooltip>
 				<N8nText
