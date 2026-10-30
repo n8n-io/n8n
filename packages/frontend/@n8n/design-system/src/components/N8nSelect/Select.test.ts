@@ -110,14 +110,25 @@ describe('components', () => {
 		});
 
 		it.each([
-			{ insideDialogBody: true, teleported: false, position: 'fixed' },
-			{ insideDialogBody: false, teleported: false, position: 'absolute' },
-			{ insideDialogBody: true, teleported: true, position: 'absolute' },
+			{ insideDialogBody: true, teleported: false, popperOptions: undefined, position: 'fixed' },
+			{
+				insideDialogBody: false,
+				teleported: false,
+				popperOptions: undefined,
+				position: 'absolute',
+			},
+			{ insideDialogBody: true, teleported: true, popperOptions: undefined, position: 'absolute' },
+			{
+				insideDialogBody: true,
+				teleported: false,
+				popperOptions: { strategy: 'absolute' as const },
+				position: 'absolute',
+			},
 		])(
-			'should position the dropdown as $position when inside dialog body is $insideDialogBody and teleported is $teleported',
-			async ({ insideDialogBody, teleported, position }) => {
+			'should position the dropdown as $position when inside dialog body is $insideDialogBody, teleported is $teleported and popperOptions is $popperOptions',
+			async ({ insideDialogBody, teleported, popperOptions, position }) => {
 				const { container } = render(N8nSelect, {
-					props: { teleported },
+					props: { teleported, popperOptions },
 					global: {
 						components: { 'n8n-option': N8nOption },
 						provide: { [insideDialogBodyKey]: insideDialogBody },
