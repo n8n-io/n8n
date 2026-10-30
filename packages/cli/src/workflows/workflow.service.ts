@@ -628,7 +628,8 @@ export class WorkflowService {
 
 		// Central credential guard for every workflow write path. With sharing
 		// enabled, reject new nodes that reference credentials the acting user
-		// cannot access and revert edits to existing read-only credential nodes.
+		// cannot access and revert edits to existing read-only credential nodes. Public
+		// API saves fail instead of reverting, because the caller cannot see the restore.
 		// Runs after replaceInvalidCredentials so old-format/name references are
 		// already resolved to IDs before the check.
 		// Loaded lazily to avoid a circular import (workflow.service.ee pulls in
@@ -660,6 +661,7 @@ export class WorkflowService {
 				workflowId,
 				user,
 				restoredNodes,
+				{ rejectReadOnlyNodeEdits: publicApi },
 			);
 		}
 

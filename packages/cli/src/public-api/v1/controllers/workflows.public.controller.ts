@@ -402,7 +402,10 @@ export class WorkflowsPublicController {
 			'API key scope and the `workflow:publish` project permission. A caller without either can ' +
 			'still save: the new version is stored as a draft and the response is a `403` naming the ' +
 			'missing permission, leaving the published version live. Saving an unpublished workflow, ' +
-			'or saving with `publishIfActive=false`, only needs `workflow:update`.',
+			'or saving with `publishIfActive=false`, only needs `workflow:update`. ' +
+			'A node can use a credential that the caller cannot use. For that node, the caller ' +
+			'can change only `name`, `position` and `disabled`. Other changes to that node return ' +
+			'a `400` that names the node.',
 	)
 	@ApiTags(['Workflow'])
 	@ApiResponse(200, UpdatedWorkflowPublicDto)

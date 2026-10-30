@@ -3656,6 +3656,21 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	describe('credential access on shared workflows', () => {
+		// The shared httpRequest stub declares no parameters, so the guard cannot see a
+		// parameter edit. Declare the URL for this block only.
+		beforeAll(async () => {
+			await utils.initNodeTypes({
+				...utils.buildDefaultNodes(),
+				'n8n-nodes-base.httpRequest': utils.minimalNodeType('n8n-nodes-base.httpRequest', [
+					{ displayName: 'URL', name: 'url', type: 'string', default: '' },
+				]),
+			});
+		});
+
+		afterAll(async () => {
+			await utils.initNodeTypes();
+		});
+
 		const ownerCredentialPayload = {
 			name: 'Owner Header Auth',
 			type: 'httpHeaderAuth',
@@ -3788,7 +3803,7 @@ describe('PUT /workflows/:id', () => {
 			expect(httpNode?.credentials?.httpHeaderAuth?.name).toBe(ownerCredential.name);
 		});
 
-		test('should revert edits to a read-only credential node when a sharee updates the workflow', async () => {
+		test('should reject an edit to a node whose credential the sharee cannot use', async () => {
 			license.enable('feat:sharing');
 
 			const ownerCredential = await saveCredential(ownerCredentialPayload, {
@@ -3813,9 +3828,8 @@ describe('PUT /workflows/:id', () => {
 			const historyCountBeforeUpdate = await workflowHistoryRepository.count({
 				where: { workflowId: workflow.id },
 			});
+			const storedBeforeUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
 
-			// Sharee renames the workflow (allowed) and changes the
-			// owner-credential node URL (must be reverted).
 			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
 				name: 'renamed by sharee',
 				nodes: [
@@ -3830,24 +3844,157 @@ describe('PUT /workflows/:id', () => {
 				settings: {},
 			});
 
-			expect(response.statusCode).toBe(200);
-			const { name, nodes, versionId } = response.body as {
-				name: string;
-				nodes: INode[];
-				versionId: string;
-			};
-			// The sharee can still edit the workflow...
-			expect(name).toBe('renamed by sharee');
-			const httpNode = nodes.find((node) => node.id === 'http-node');
-			// ...but parameter edits to the read-only credential node are reverted
-			expect(httpNode?.parameters?.url).toBe(originalUrl);
-			expect(httpNode?.credentials?.httpHeaderAuth?.id).toBe(ownerCredential.id);
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain("'HTTP Request' node");
 
-			// Reverted node edits should not create a new workflow version
-			expect(versionId).toBe(workflow.versionId);
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			const httpNode = storedAfterUpdate.nodes.find((node) => node.id === 'http-node');
+			expect(storedAfterUpdate.name).toBe(storedBeforeUpdate.name);
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
+			expect(storedAfterUpdate.versionId).toBe(storedBeforeUpdate.versionId);
+			expect(storedAfterUpdate.updatedAt).toEqual(storedBeforeUpdate.updatedAt);
 			await expect(
 				workflowHistoryRepository.count({ where: { workflowId: workflow.id } }),
 			).resolves.toBe(historyCountBeforeUpdate);
+		});
+
+		test('should reject an edit to a node whose credential the sharee cannot use when publishing', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const originalUrl = 'https://original.example.com';
+			const workflow = await createActiveWorkflow(
+				{
+					nodes: [
+						triggerNode,
+						httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+					],
+					connections: {},
+				},
+				owner,
+			);
+			await shareWorkflowWithUsers(workflow, [member]);
+
+			const response = await authMemberAgent
+				.put(`/workflows/${workflow.id}?publishIfActive=true`)
+				.send({
+					name: workflow.name,
+					nodes: [
+						triggerNode,
+						httpNodeWithCredential(
+							ownerCredential.id,
+							ownerCredential.name,
+							'https://changed.example.com',
+						),
+					],
+					connections: {},
+					settings: {},
+				});
+
+			expect(response.statusCode).toBe(400);
+			expect(response.body.message).toContain("'HTTP Request' node");
+
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(storedAfterUpdate.versionId).toBe(workflow.versionId);
+			expect(storedAfterUpdate.activeVersionId).toBe(workflow.versionId);
+		});
+
+		test('should save an edit to another node when the read-only credential node is sent unchanged', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const originalUrl = 'https://original.example.com';
+			const workflow = await createWorkflow(
+				{
+					nodes: [
+						triggerNode,
+						httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+					],
+					connections: {},
+				},
+				owner,
+			);
+			await shareWorkflowWithUsers(workflow, [member]);
+
+			const addedNoOpNode: INode = {
+				id: 'noop-node',
+				name: 'No Op',
+				type: 'n8n-nodes-base.noOp',
+				typeVersion: 1,
+				position: [400, 0],
+				parameters: {},
+			};
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+				name: workflow.name,
+				nodes: [
+					triggerNode,
+					httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+					addedNoOpNode,
+				],
+				connections: {},
+				settings: {},
+			});
+
+			expect(response.statusCode).toBe(200);
+			const { nodes, versionId } = response.body as { nodes: INode[]; versionId: string };
+			expect(versionId).not.toBe(workflow.versionId);
+			expect(nodes.some((node) => node.id === 'noop-node')).toBe(true);
+
+			const httpNode = nodes.find((node) => node.id === 'http-node');
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
+			expect(httpNode?.credentials?.httpHeaderAuth?.id).toBe(ownerCredential.id);
+		});
+
+		test('should save a rename and a move of a read-only credential node', async () => {
+			license.enable('feat:sharing');
+
+			const ownerCredential = await saveCredential(ownerCredentialPayload, {
+				user: owner,
+				role: 'credential:owner',
+			});
+
+			const originalUrl = 'https://original.example.com';
+			const workflow = await createWorkflow(
+				{
+					nodes: [
+						triggerNode,
+						httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+					],
+					connections: {},
+				},
+				owner,
+			);
+			await shareWorkflowWithUsers(workflow, [member]);
+
+			const renamedAndMovedNode: INode = {
+				...httpNodeWithCredential(ownerCredential.id, ownerCredential.name, originalUrl),
+				name: 'Renamed HTTP',
+				position: [300, 150],
+			};
+
+			const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send({
+				name: workflow.name,
+				nodes: [triggerNode, renamedAndMovedNode],
+				connections: {},
+				settings: {},
+			});
+
+			expect(response.statusCode).toBe(200);
+
+			const storedAfterUpdate = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			const httpNode = storedAfterUpdate.nodes.find((node) => node.id === 'http-node');
+			expect(httpNode?.name).toBe('Renamed HTTP');
+			expect(httpNode?.position).toEqual([300, 150]);
+			expect(httpNode?.parameters?.url).toBe(originalUrl);
 		});
 	});
 

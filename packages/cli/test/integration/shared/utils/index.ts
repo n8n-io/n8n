@@ -89,7 +89,10 @@ export async function initCredentialsTypes(): Promise<void> {
  * its credentials — and every one of those iterates a field on the description. `properties` must
  * declare any parameter a test relies on: parameter resolution drops what the type doesn't declare.
  */
-function minimalNodeType(name: string, properties: INodeProperties[] = []): INodeTypeData[string] {
+export function minimalNodeType(
+	name: string,
+	properties: INodeProperties[] = [],
+): INodeTypeData[string] {
 	// A plain object, not `mock<INodeType>`: vitest-mock-extended deep-wraps `properties` in
 	// proxies, and parameter dependency resolution then fails to converge on them.
 	return {

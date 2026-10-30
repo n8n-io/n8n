@@ -96,6 +96,12 @@ type CredentialReferences = {
 export type CredentialGuardOptions = {
 	/** Allow content loaded at runtime only for users who can use every credential. */
 	allowUninspectableSource?: boolean;
+	/**
+	 * Fail the save when a read-only node has other edits than name, position and
+	 * disabled state. A caller that cannot see which nodes are read only would lose
+	 * those edits to the restore without notice.
+	 */
+	rejectReadOnlyNodeEdits?: boolean;
 };
 
 const EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled'] as const;
@@ -287,6 +293,7 @@ export class EnterpriseWorkflowService {
 		workflowId: string,
 		user: User,
 		restoredNodes: INode[] = [],
+		guardOptions: Pick<CredentialGuardOptions, 'rejectReadOnlyNodeEdits'> = {},
 	) {
 		const previousVersion = await this.workflowRepository.get({ id: workflowId });
 
@@ -299,7 +306,10 @@ export class EnterpriseWorkflowService {
 			{ workflowId },
 		);
 
-		const options = { allowUninspectableSource: this.canUseEveryCredential(user) };
+		const options = {
+			allowUninspectableSource: this.canUseEveryCredential(user),
+			...guardOptions,
+		};
 
 		// A node switched back to a credential the user cannot use is saved as the
 		// version that last stored it did, the same as a restore of that version.
@@ -410,9 +420,10 @@ export class EnterpriseWorkflowService {
 			return newWorkflowVersion;
 		}
 
-		// A node the user could not use before stays read only and is restored. A node
-		// the user could edit that now carries a credential they cannot use fails the
-		// save like a new node does; restoring it would drop the other edits silently.
+		// A node the user could not use before stays read only and is restored, or the
+		// save fails when the caller sets `rejectReadOnlyNodeEdits`. A node the user could
+		// edit that now carries a credential they cannot use fails the save like a new
+		// node does; restoring it would drop the other edits silently.
 		const readOnlyNodeIds = new Set(
 			this.getNodesWithInaccessibleCreds(
 				previousWorkflowVersion,
@@ -465,19 +476,16 @@ export class EnterpriseWorkflowService {
 					nodeCredentials: node.credentials,
 				});
 				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
-				throw new NodeOperationError(
-					node,
-					`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
-				);
+				throw this.inaccessibleCredentialsError(node);
 			}
 
-			// The editor allows these source settings to be edited. Reject changes
-			// instead of silently discarding them when we restore the stored node.
-			if (
-				blockedBySource &&
-				!isEqual(this.getNodeDefinition(node), this.getNodeDefinition(previousNode))
-			) {
-				throw new UninspectableSubworkflowSourceError(node);
+			// Reject changes instead of silently discarding them when we restore the stored
+			// node. The editor allows these source settings to be edited, and a Public API
+			// caller cannot see that a node is read only.
+			const mustMatchStoredNode = blockedBySource || options.rejectReadOnlyNodeEdits;
+			if (mustMatchStoredNode && this.hasDefinitionChanged(node, previousNode)) {
+				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
+				throw this.inaccessibleCredentialsError(node);
 			}
 
 			this.logger.debug('Replacing node with previous version when saving updated workflow', {
@@ -549,6 +557,25 @@ export class EnterpriseWorkflowService {
 	private isBlockedByUninspectableSource(node: INode, options: CredentialGuardOptions): boolean {
 		if (options.allowUninspectableSource) return false;
 		return this.getNodeCredentialRefs(node).hasUninspectableSource;
+	}
+
+	private inaccessibleCredentialsError(node: INode): NodeOperationError {
+		return new NodeOperationError(
+			node,
+			`You don't have access to the credentials in the '${node.name}' node. Ask the owner to share them with you.`,
+		);
+	}
+
+	/**
+	 * Compare node behavior. The Public API drops `extendsCredential` on write, but the
+	 * restore keeps the stored value, so that field is not compared.
+	 */
+	private hasDefinitionChanged(submitted: INode, stored: INode): boolean {
+		const withoutCredentialExtension = (node: INode) => omit(node, 'extendsCredential');
+		return !isEqual(
+			this.getNodeDefinition(withoutCredentialExtension(submitted)),
+			this.getNodeDefinition(withoutCredentialExtension(stored)),
+		);
 	}
 
 	/**
