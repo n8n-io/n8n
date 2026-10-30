@@ -11,7 +11,10 @@ export type PersonalResourceOwner = {
 	 * The personal project name (usually the user name)
 	 */
 	projectName?: string; // Optional for retrocompatibility
-	personalEmail: string;
+	/**
+	 * Null when the owner has no email, for example a service account
+	 */
+	personalEmail: string | null;
 };
 
 /**

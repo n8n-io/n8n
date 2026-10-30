@@ -946,6 +946,30 @@ describe('GET /users/:id/password-reset-link', () => {
 	});
 });
 
+describe('PATCH /users/:id/settings', () => {
+	let owner: User;
+	let member: User;
+
+	beforeAll(async () => {
+		await testDb.truncate(['User']);
+
+		[owner, member] = await Promise.all([createOwner(), createMember()]);
+	});
+
+	it('should update the settings of another user and return them', async () => {
+		const response = await testServer
+			.authAgentFor(owner)
+			.patch(`/users/${member.id}/settings`)
+			.send({ allowSSOManualLogin: true })
+			.expect(200);
+
+		expect(response.body.data.allowSSOManualLogin).toBe(true);
+
+		const storedMember = await getUserById(member.id);
+		expect(storedMember.settings?.allowSSOManualLogin).toBe(true);
+	});
+});
+
 describe('DELETE /users/:id', () => {
 	let owner: User;
 	let ownerAgent: SuperAgentTest;
