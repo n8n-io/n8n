@@ -365,7 +365,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			// turn. Storing it here also covers a closed browser tab.
 			onArtifactChanged: async (artifact) => {
 				try {
-					await this.threadTabs.showArtifactTab(turn.thread.id, artifact);
+					await this.threadTabs.showArtifactTab(turn.memory, turn.thread.id, artifact);
 				} catch (error) {
 					this.logger.warn('Failed to show an Assistant artifact tab', {
 						threadId: turn.thread.id,

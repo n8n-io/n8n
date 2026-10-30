@@ -6,19 +6,14 @@ import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
 
-import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
-import type { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
-
 import { AssistantAgentController } from '../assistant-agent.controller';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
-import { ASSISTANT_AGENT_ID } from '../assistant-turn-options';
 
 const THREAD_ID = 'thread-1';
 
 describe('AssistantAgentController', () => {
-	const systemAgents = mock<SystemAgentExecutionService>();
 	const threadTabs = mock<AssistantThreadTabsService>();
-	const controller = new AssistantAgentController(systemAgents, threadTabs);
+	const controller = new AssistantAgentController(threadTabs);
 
 	const user = mock<User>({ id: 'user-1' });
 	const req = mock<AuthenticatedRequest>({ user });
@@ -33,7 +28,6 @@ describe('AssistantAgentController', () => {
 
 	beforeEach(() => {
 		vi.clearAllMocks();
-		systemAgents.getUsableThread.mockResolvedValue(mock<AgentExecutionThread>({ id: THREAD_ID }));
 	});
 
 	it('serves the routes under /assistant with the instanceAi:message scope', () => {
@@ -53,48 +47,37 @@ describe('AssistantAgentController', () => {
 	});
 
 	describe('getThreadTabs', () => {
-		it('checks access to the Assistant thread and returns the stored tabs', async () => {
+		it('returns the stored tabs of the user', async () => {
 			threadTabs.getState.mockResolvedValue(state);
 
 			await expect(controller.getThreadTabs(req, res, THREAD_ID)).resolves.toEqual({ state });
-			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(
-				ASSISTANT_AGENT_ID,
-				user,
-				THREAD_ID,
-			);
-			expect(threadTabs.getState).toHaveBeenCalledWith(THREAD_ID);
+			expect(threadTabs.getState).toHaveBeenCalledWith(user, THREAD_ID);
 		});
 
-		it('does not read the tabs when the user cannot use the thread', async () => {
-			systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+		// The thread metadata service runs the access checks of the thread routes.
+		it('rejects a thread that the user cannot use', async () => {
+			threadTabs.getState.mockRejectedValue(new NotFoundError('Session not found'));
 
 			await expect(controller.getThreadTabs(req, res, THREAD_ID)).rejects.toThrow(NotFoundError);
-			expect(threadTabs.getState).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('saveThreadTabs', () => {
-		it('checks access to the Assistant thread and stores the tabs', async () => {
+		it('stores the tabs of the user', async () => {
 			const payload = new AssistantThreadTabsRequestDto(state);
 
 			await expect(controller.saveThreadTabs(req, res, THREAD_ID, payload)).resolves.toEqual({
 				state,
 			});
-			expect(systemAgents.getUsableThread).toHaveBeenCalledWith(
-				ASSISTANT_AGENT_ID,
-				user,
-				THREAD_ID,
-			);
-			expect(threadTabs.saveState).toHaveBeenCalledWith(THREAD_ID, state);
+			expect(threadTabs.saveState).toHaveBeenCalledWith(user, THREAD_ID, state);
 		});
 
-		it('does not store the tabs when the user cannot use the thread', async () => {
-			systemAgents.getUsableThread.mockRejectedValue(new NotFoundError('Session not found'));
+		it('rejects a thread that the user cannot use', async () => {
+			threadTabs.saveState.mockRejectedValue(new NotFoundError('Session not found'));
 
 			await expect(
 				controller.saveThreadTabs(req, res, THREAD_ID, new AssistantThreadTabsRequestDto(state)),
 			).rejects.toThrow(NotFoundError);
-			expect(threadTabs.saveState).not.toHaveBeenCalled();
 		});
 	});
 });

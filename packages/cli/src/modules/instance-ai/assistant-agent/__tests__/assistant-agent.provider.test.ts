@@ -198,12 +198,13 @@ describe('AssistantAgentProvider', () => {
 	describe('prepareTurn', () => {
 		it('stores the tab of an artifact that the turn changes', async () => {
 			const { provider, turnEnvironment, threadTabs } = setup();
-			await provider.prepareTurn(startTurn());
+			const turn = startTurn();
+			await provider.prepareTurn(turn);
 
 			const runtime: AssistantTurnRuntime = turnEnvironment.create.mock.calls[0][1];
 			await runtime.onArtifactChanged?.({ type: 'workflow', id: 'wf-1', name: 'Digest' });
 
-			expect(threadTabs.showArtifactTab).toHaveBeenCalledWith('thread-1', {
+			expect(threadTabs.showArtifactTab).toHaveBeenCalledWith(turn.memory, 'thread-1', {
 				type: 'workflow',
 				id: 'wf-1',
 				name: 'Digest',

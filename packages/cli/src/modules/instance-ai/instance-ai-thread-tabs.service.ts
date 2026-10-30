@@ -3,10 +3,8 @@ import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import type { InstanceAiChangedArtifact } from '@n8n/instance-ai';
 
-import {
-	AssistantThreadTabsService,
-	withShownTab,
-} from './assistant-agent/assistant-thread-tabs.service';
+import { AssistantArtifactNamesService } from './assistant-agent/assistant-artifact-names.service';
+import { withShownTab } from './assistant-agent/assistant-thread-tabs';
 import { InstanceAiThreadTabsRepository } from './repositories/instance-ai-thread-tabs.repository';
 
 /** Saves and loads the tabs that each user has open in a thread. */
@@ -15,7 +13,7 @@ export class InstanceAiThreadTabsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly threadTabsRepository: InstanceAiThreadTabsRepository,
-		private readonly assistantThreadTabs: AssistantThreadTabsService,
+		private readonly artifactNames: AssistantArtifactNamesService,
 	) {}
 
 	async getState(threadId: string, userId: string): Promise<AssistantThreadTabsState | null> {
@@ -41,7 +39,7 @@ export class InstanceAiThreadTabsService {
 		userId: string,
 		artifact: InstanceAiChangedArtifact,
 	): Promise<void> {
-		const tab = await this.assistantThreadTabs.withCurrentName(artifact);
+		const tab = await this.artifactNames.withCurrentName(artifact);
 		await this.threadTabsRepository.updateState(threadId, userId, (stored) =>
 			withShownTab(this.parseStored(threadId, stored), tab),
 		);

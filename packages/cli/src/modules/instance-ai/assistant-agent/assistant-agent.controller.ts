@@ -3,10 +3,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, GlobalScope, Param, Put, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
-
 import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
-import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
 /**
  * Routes that only the Assistant agent uses: the n8n Assistant on the Agents
@@ -20,10 +17,7 @@ import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
  */
 @RestController('/assistant')
 export class AssistantAgentController {
-	constructor(
-		private readonly systemAgents: SystemAgentExecutionService,
-		private readonly threadTabs: AssistantThreadTabsService,
-	) {}
+	constructor(private readonly threadTabs: AssistantThreadTabsService) {}
 
 	@Get('/threads/:threadId/tabs')
 	@GlobalScope('instanceAi:message')
@@ -32,8 +26,7 @@ export class AssistantAgentController {
 		_res: Response,
 		@Param('threadId') threadId: string,
 	): Promise<AssistantThreadTabsResponse> {
-		await this.systemAgents.getUsableThread(ASSISTANT_AGENT_ID, req.user, threadId);
-		return { state: await this.threadTabs.getState(threadId) };
+		return { state: await this.threadTabs.getState(req.user, threadId) };
 	}
 
 	@Put('/threads/:threadId/tabs')
@@ -44,10 +37,9 @@ export class AssistantAgentController {
 		@Param('threadId') threadId: string,
 		@Body payload: AssistantThreadTabsRequestDto,
 	): Promise<AssistantThreadTabsResponse> {
-		await this.systemAgents.getUsableThread(ASSISTANT_AGENT_ID, req.user, threadId);
 		// The DTO strips unknown keys, so the payload is the state to save.
 		const state = { ...payload };
-		await this.threadTabs.saveState(threadId, state);
+		await this.threadTabs.saveState(req.user, threadId, state);
 		return { state };
 	}
 }
