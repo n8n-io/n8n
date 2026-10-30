@@ -65,6 +65,42 @@ describe('plugin grouping', () => {
 		]);
 	});
 
+	it.each([
+		{
+			manifest: 'plugin/.cursor-plugin/plugin.json',
+			value: { name: 'writing', skills: './custom' },
+		},
+		{
+			manifest: '.cursor-plugin/marketplace.json',
+			value: { plugins: [{ name: 'writing', source: './plugin', skills: './custom' }] },
+		},
+	])('uses only explicit Cursor skill paths from $manifest', ({ manifest, value }) => {
+		const result = discover({ [manifest]: value }, ['plugin/custom/brand', 'plugin/skills/legacy']);
+		expect(result.groups).toEqual([
+			expect.objectContaining({ name: 'writing', paths: ['plugin/custom/brand'] }),
+		]);
+		expect(result.groupingWarnings).toEqual([]);
+	});
+
+	it.each(['.', './'])(
+		'keeps Claude source %s at the marketplace root with pluginRoot',
+		(source) => {
+			const result = discover(
+				{
+					'.claude-plugin/marketplace.json': {
+						metadata: { pluginRoot: './plugins' },
+						plugins: [{ name: 'documents', source, skills: ['./skills/pdf'] }],
+					},
+				},
+				['skills/pdf', 'plugins/skills/pdf'],
+			);
+			expect(result.groups).toEqual([
+				expect.objectContaining({ name: 'documents', paths: ['skills/pdf'] }),
+			]);
+			expect(result.groupingWarnings).toEqual([]);
+		},
+	);
+
 	it('uses explicit skill paths to distinguish plugins sharing the repository root', () => {
 		const result = discover(
 			{

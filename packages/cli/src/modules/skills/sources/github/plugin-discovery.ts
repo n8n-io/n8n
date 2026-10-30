@@ -61,7 +61,7 @@ export function discoverPluginGroups(
 		base: string,
 		id: string,
 		manifest: string,
-		includeDefault = true,
+		includeDefault: boolean,
 	) {
 		const parsed = pluginSchema.safeParse(value);
 		if (!parsed.success) {
@@ -83,6 +83,7 @@ export function discoverPluginGroups(
 
 	for (const manifest of manifests) {
 		const parent = posix.dirname(manifest);
+		const isCursorPlugin = posix.basename(parent) === '.cursor-plugin';
 		const base = ['.claude-plugin', '.cursor-plugin'].includes(posix.basename(parent))
 			? posix.dirname(parent)
 			: parent;
@@ -100,7 +101,8 @@ export function discoverPluginGroups(
 			continue;
 		}
 		if (!manifest.endsWith('/marketplace.json')) {
-			addPlugin(value, manifestRoot, manifest, manifest);
+			// Cursor's explicit skill paths replace its default skills directory.
+			addPlugin(value, manifestRoot, manifest, manifest, !isCursorPlugin);
 			continue;
 		}
 		const marketplace = marketplaceSchema.safeParse(value);
@@ -134,16 +136,22 @@ export function discoverPluginGroups(
 				continue;
 			}
 			const prefix = marketplace.data.metadata?.pluginRoot;
-			// Claude's explicit ./ sources are relative to the marketplace, not pluginRoot.
+			// Claude's . and ./ sources are relative to the marketplace, not pluginRoot.
 			const usePrefix =
-				prefix !== undefined && (manifest.includes('.cursor-plugin/') || !path.startsWith('./'));
+				prefix !== undefined && (isCursorPlugin || (path !== '.' && !path.startsWith('./')));
 			const sourceRoot = usePrefix ? localPath(manifestRoot, prefix) : manifestRoot;
 			const pluginRoot = sourceRoot === undefined ? undefined : localPath(sourceRoot, path);
 			if (pluginRoot === undefined || !isInside(pluginRoot, root)) {
 				warnings.add(manifest);
 				continue;
 			}
-			addPlugin(entry, pluginRoot, `${manifest}#${index}`, manifest, pluginRoot !== manifestRoot);
+			addPlugin(
+				entry,
+				pluginRoot,
+				`${manifest}#${index}`,
+				manifest,
+				!isCursorPlugin && pluginRoot !== manifestRoot,
+			);
 		}
 	}
 

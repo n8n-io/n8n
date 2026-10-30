@@ -176,6 +176,26 @@ describe('GitHubSkillSourceClient', () => {
 		});
 	});
 
+	it('keeps skills outside explicit Cursor paths available without a plugin group', async () => {
+		github.push('acme/skills', {
+			'.cursor-plugin/plugin.json': JSON.stringify({ name: 'writing', skills: './custom' }),
+			'custom/brand/SKILL.md': skillMd('brand'),
+			'skills/legacy/SKILL.md': skillMd('legacy'),
+		});
+		const locator = await client.parseLocator('https://github.com/acme/skills');
+		const { items, groups, revision } = await client.discover(locator);
+		expect(items).toEqual([{ path: 'custom/brand' }, { path: 'skills/legacy' }]);
+		expect(groups).toEqual([
+			{
+				id: '.cursor-plugin/plugin.json',
+				name: 'writing',
+				refs: [{ path: 'custom/brand' }],
+			},
+		]);
+		const fetched = await client.fetchLatest(locator, items[1], undefined, revision);
+		expect(fetched.content.name).toBe('legacy');
+	});
+
 	it('lists excluded nested skill and dependency files as skipped', async () => {
 		github.push('acme/skills', {
 			'pdf/SKILL.md': skillMd('pdf'),
