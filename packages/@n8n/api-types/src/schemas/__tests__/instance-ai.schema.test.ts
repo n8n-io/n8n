@@ -240,6 +240,11 @@ describe('instanceAiEventSchema', () => {
 		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('preferences-applied')).toBe(false);
 	});
 
+	it('keeps cloud-browser-window-changed durable, so a reconnect still moves the live view', () => {
+		// A live-only frame missed during a reconnect would leave the live view on the old window.
+		expect(INSTANCE_AI_EPHEMERAL_EVENT_TYPES.has('cloud-browser-window-changed')).toBe(false);
+	});
+
 	it('drops malformed or unknown-kind items individually instead of failing the event', () => {
 		const event = {
 			type: 'setup-items',

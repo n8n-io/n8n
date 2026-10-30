@@ -26,6 +26,7 @@ export type {
 	Cookie,
 	CreateCredentialPayload,
 	ElementTarget,
+	PageChangeDetails,
 	PageInfo,
 	ResolvedConfig,
 	SecretsBuffer,

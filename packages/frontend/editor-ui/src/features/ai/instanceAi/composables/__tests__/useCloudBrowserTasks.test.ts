@@ -82,13 +82,31 @@ describe('useCloudBrowserTasks', () => {
 		expect(tasks.value[0].sessionKey).toBe('');
 
 		runtime.messages[0].agentTree!.children[0].toolCalls = [startSession('tc-1')];
-		expect(tasks.value[0].sessionKey).toBe('tc-1');
+		expect(tasks.value[0].sessionKey).toBe('tc-1:0');
 
 		runtime.messages[0].agentTree!.children[0].toolCalls = [
 			startSession('tc-1'),
 			{ toolCallId: 'tc-2', toolName: 'browser_navigate', args: {}, isLoading: false },
 			startSession('tc-3'),
 		];
-		expect(tasks.value[0].sessionKey).toBe('tc-3');
+		expect(tasks.value[0].sessionKey).toBe('tc-3:0');
+	});
+
+	it('changes the session key when the current window of the session changes', () => {
+		const runtime = makeRuntime([makeNode({ toolCalls: [startSession('tc-1')] })]);
+		const tasks = useCloudBrowserTasks(runtime);
+		expect(tasks.value[0].sessionKey).toBe('tc-1:0');
+
+		runtime.messages[0].agentTree!.children[0].cloudBrowserWindowChanges = 1;
+		expect(tasks.value[0].sessionKey).toBe('tc-1:1');
+
+		runtime.messages[0].agentTree!.children[0].cloudBrowserWindowChanges = 2;
+		expect(tasks.value[0].sessionKey).toBe('tc-1:2');
+	});
+
+	it('has no session key before a session opens, even after a window change', () => {
+		const tasks = useCloudBrowserTasks(makeRuntime([makeNode({ cloudBrowserWindowChanges: 1 })]));
+
+		expect(tasks.value[0].sessionKey).toBe('');
 	});
 });

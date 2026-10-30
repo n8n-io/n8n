@@ -10,6 +10,7 @@ import type { LocalMcpServer } from '@n8n/instance-ai';
 import type {
 	AffectedResource,
 	BrowserToolkit,
+	PageChangeDetails,
 	ToolContext,
 	ToolDefinition,
 } from '@n8n/mcp-browser';
@@ -49,6 +50,9 @@ export const CLOUD_BROWSER_TOOLS: ReadonlySet<string> = new Set([
 	'browser_scroll',
 	'browser_dialog',
 	'browser_wait',
+	// Windows. Only a window that a site opened can be closed.
+	'browser_tab_list',
+	'browser_tab_close',
 	// Page inspection
 	'browser_snapshot',
 	'browser_screenshot',
@@ -93,7 +97,10 @@ type SessionUnavailableReason = 'notStarted' | 'connectionLost' | 'idleTimeout';
 const RELEASED_MESSAGE = 'The browser task has ended. No browser tools can run.';
 
 const OTHER_TAB_MESSAGE =
-	'Browser tools work only in the current tab. To use a page that opened in a new tab, open its URL in this tab with browser_navigate.';
+	'Browser tools work only in the current window. When a site opens a new window, the tools move to it.';
+
+const CLOSE_FIRST_WINDOW_MESSAGE =
+	'This is the first window of the session, so it cannot be closed. Only a window that a site opened can be closed.';
 
 const NO_HOST_MESSAGE = 'This browser action only works on websites. Use a website address.';
 
@@ -124,6 +131,16 @@ interface ActiveSession {
 	id: string;
 	connection: BrowserToolkit['connection'];
 	toolsByName: Map<string, ToolDefinition>;
+	/**
+	 * The open windows, oldest first. The last one is the current window: the tools act on it and
+	 * the live view shows it. A window a site opens goes on top, as in a normal browser, and when it
+	 * closes the window below it is current again.
+	 */
+	windows: string[];
+	/** The current window when the agent's last call returned. Its next result notes any change since then. */
+	windowSeenByAgent?: string;
+	/** The browser tools that run right now. Calls can run in parallel. See `executeBrowserToolOnSession`. */
+	runningBrowserTools: number;
 }
 
 /** Browser tools on a Browserbase session, for one background task. */
@@ -158,6 +175,9 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	/** Read on every call, so a replaced gate applies from the next call on. */
 	private domainGate: BrowserDomainGate;
 
+	/** Called when the current window changes, so the live view can show the new one. */
+	private onCurrentWindowChange?: () => void;
+
 	constructor(private readonly options: CloudBrowserLocalMcpServerOptions) {
 		this.domainGate = options.domainGate;
 
@@ -171,6 +191,11 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 	/** Replaces the gate, for example when a new run of the task brings new permissions. */
 	setDomainGate(domainGate: BrowserDomainGate): void {
 		this.domainGate = domainGate;
+	}
+
+	/** Sets what to call when the current window changes, also while the user has control. */
+	setCurrentWindowListener(listener: () => void): void {
+		this.onCurrentWindowChange = listener;
 	}
 
 	getAvailableTools(): McpTool[] {
@@ -224,12 +249,16 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		}
 
 		const { scope, sessionProvider } = this.options;
-		// The agent has no tab tools, so it always works in the session's first tab.
-		const liveViewUrl = await sessionProvider.getSessionLiveViewUrl(scope, session.id);
+		// With one window, the session's own live view shows it, so the window needs no lookup.
+		const currentWindow = session.windows.length > 1 ? session.windows.at(-1) : undefined;
+		const targetId = currentWindow
+			? await adapterOf(session)?.getTargetId?.(currentWindow)
+			: undefined;
+		const liveViewUrl = await sessionProvider.getSessionLiveViewUrl(scope, session.id, targetId);
 		// The session can end or change before we get the live url response.
 		// Then this link is old, and we need the client to ask again.
 		if (this.activeSession?.id !== session.id) return { status: 'starting' };
-		return { status: 'live', liveViewUrl };
+		return { status: 'live', liveViewUrl, windowId: session.windows.at(-1) ?? '' };
 	}
 
 	/** A new session only loads its URL, so it touches the URL's host. */
@@ -302,7 +331,7 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 				return browserErrorResult('Unknown browser tool: browser_navigate');
 			}
 			// No access check: the URL was checked before the session opened.
-			return await executeBrowserTool(navigate, { url: args.data.url }, this.options.toolContext);
+			return await this.executeBrowserToolOnSession(session, navigate, { url: args.data.url });
 		});
 	}
 
@@ -325,24 +354,69 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 			return browserErrorResult(`Unknown browser tool: ${toolName}`);
 		}
 
-		// The agent works in the session's active tab: the live view shows it, and site approvals
-		// check its host. Other tabs are not supported.
+		// The agent works in the current window: the live view shows it, and site approvals
+		// check its host. Other windows are not supported.
 		if (args.pageId !== undefined && args.pageId !== activePageIdOf(session)) {
 			return browserErrorResult(OTHER_TAB_MESSAGE);
+		}
+		if (toolName === 'browser_tab_close' && session.windows.length <= 1) {
+			return browserErrorResult(CLOSE_FIRST_WINDOW_MESSAGE);
 		}
 
 		// The check runs here, after the session lock, so it reads the session the tool runs on.
 		// If `getAffectedResources` throws, the helper returns an error and the tool does not run.
-		return await executeBrowserTool(
+		const result = await this.executeBrowserToolOnSession(
+			session,
 			tool,
 			args,
-			this.options.toolContext,
 			async (parsedArgs) =>
 				await this.gateAccess(
 					await tool.getAffectedResources(parsedArgs, this.options.toolContext),
 					confirmation,
 				),
 		);
+		// Compared with what the agent last saw, so a window that opened while the user had control,
+		// or after the call that opened it returned, is noted too.
+		const noted = withWindowChangeNote(result, session, session.windowSeenByAgent);
+		session.windowSeenByAgent = session.windows.at(-1);
+		return noted;
+	}
+
+	/**
+	 * Keeps the session's windows in order and points the tools at the current one. Runs for every
+	 * window the browser opens or closes, also while the user has control.
+	 */
+	private onPageChange(session: ActiveSession, { type, pageId }: PageChangeDetails): void {
+		const { windows } = session;
+		const before = windows.at(-1);
+		const index = windows.indexOf(pageId);
+		if (type === 'opened' && index === -1) windows.push(pageId);
+		if (type === 'closed' && index !== -1) windows.splice(index, 1);
+
+		const current = windows.at(-1);
+		if (current === before) return;
+		// While a tool runs, the tools move to the new window after the last running one returns.
+		if (session.runningBrowserTools === 0) {
+			const isConnected = setActivePageToCurrentWindow(session);
+			// The next tool call releases a session whose connection is gone.
+			if (!isConnected) return;
+		}
+		if (session === this.activeSession) this.onCurrentWindowChange?.();
+	}
+
+	private async executeBrowserToolOnSession(
+		session: ActiveSession,
+		tool: ToolDefinition,
+		args: Record<string, unknown>,
+		checkAccess?: (args: unknown) => Promise<McpToolCallResult | undefined>,
+	): Promise<McpToolCallResult> {
+		session.runningBrowserTools++;
+		try {
+			return await executeBrowserTool(tool, args, this.options.toolContext, checkAccess);
+		} finally {
+			session.runningBrowserTools--;
+			if (session.runningBrowserTools === 0) setActivePageToCurrentWindow(session);
+		}
 	}
 
 	/**
@@ -400,11 +474,17 @@ export class CloudBrowserLocalMcpServer implements LocalMcpServer {
 		}
 
 		logger.info('Cloud browser session started', { taskId: scope.taskId, sessionId: id });
-		return {
+		const { adapter, activePageId } = toolkit.connection.getConnection();
+		const session: ActiveSession = {
 			id,
 			connection: toolkit.connection,
 			toolsByName: new Map(this.getAvailableToolsFromToolkit(toolkit).map((t) => [t.name, t])),
+			windows: activePageId ? [activePageId] : [],
+			windowSeenByAgent: activePageId || undefined,
+			runningBrowserTools: 0,
 		};
+		adapter.onPageChange = (change) => this.onPageChange(session, change);
+		return session;
 	}
 
 	/** Disconnects the tools and releases the active session, if one is open. */
@@ -485,6 +565,16 @@ function isNoHostResource(resource: AffectedResource): boolean {
 	return resource.kind === 'host' && resource.resource === 'browser';
 }
 
+/** Makes the current window the page the tools act on. Returns false when the connection is gone. */
+function setActivePageToCurrentWindow(session: ActiveSession): boolean {
+	try {
+		session.connection.getConnection().activePageId = session.windows.at(-1) ?? '';
+		return true;
+	} catch {
+		return false;
+	}
+}
+
 /** The tab the session's tools act on by default, or `undefined` when the connection is gone. */
 function activePageIdOf(session: ActiveSession): string | undefined {
 	try {
@@ -492,4 +582,53 @@ function activePageIdOf(session: ActiveSession): string | undefined {
 	} catch {
 		return undefined;
 	}
+}
+
+function adapterOf(session: ActiveSession) {
+	try {
+		return session.connection.getConnection().adapter;
+	} catch {
+		return undefined;
+	}
+}
+
+function hostOfWindow(session: ActiveSession, pageId: string | undefined): string | undefined {
+	if (!pageId) return undefined;
+	const url = adapterOf(session)?.getPageUrl(pageId);
+	if (!url) return undefined;
+	try {
+		return new URL(url).hostname || undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
+ * Tells the model when the current window changed since its last call, for example when a click or
+ * the user opened a popup.
+ * The model reads structuredContent when there is one, so the note goes there first, and in the text.
+ */
+function withWindowChangeNote(
+	result: McpToolCallResult,
+	session: ActiveSession,
+	windowSeen: string | undefined,
+): McpToolCallResult {
+	const current = session.windows.at(-1);
+	if (current === windowSeen) return result;
+
+	const host = hostOfWindow(session, current);
+	// The window the agent last saw is still open, so a new one opened on top of it.
+	const opened = windowSeen !== undefined && session.windows.includes(windowSeen);
+	const windowChange = opened
+		? `A new window opened${host ? ` on ${host}` : ''}. Browser tools now act in it. ` +
+			`If you do not need it, close it with browser_tab_close and pageId "${current}". ` +
+			'When it closes, the tools act on the previous window again.'
+		: `The window closed. Browser tools act on the previous window${host ? ` on ${host}` : ''} again.`;
+	return {
+		...result,
+		content: [...result.content, { type: 'text', text: windowChange }],
+		...(result.structuredContent && {
+			structuredContent: { windowChange, ...result.structuredContent },
+		}),
+	};
 }
