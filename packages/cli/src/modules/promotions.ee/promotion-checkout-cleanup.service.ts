@@ -136,6 +136,9 @@ export class PromotionCheckoutCleanupService {
 				await this.purge(environmentId);
 				return;
 			}
+			// No descriptor means that a clone is in progress or that no operation trusts the
+			// checkout, so a reset could remove a clone that still runs.
+			if (!(await this.workingDirectory.readDescriptor(environmentId))) return;
 			if (!(await this.matchesCurrentSettings(environment))) await this.reset([environmentId]);
 		} catch (error) {
 			this.warn('Failed to check the local promotion checkout', { environmentId }, error);
