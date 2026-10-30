@@ -527,7 +527,7 @@ jobs:
               -d '{"emailOrLdapLoginId":"nathan@n8n.io","password":"PlaywrightTest123"}' \
               -c "/tmp/cookies-$port.txt" -o /dev/null
             cfg=$(curl -sf -b "/tmp/cookies-$port.txt" \
-              "http://localhost:$port/rest/instance-ai/settings" \
+              "http://localhost:$port/rest/assistant/settings" \
               | jq -r '.data | "\(.sandboxEnabled) \(.sandboxProvider)"')
             if [ "$cfg" != "true $SANDBOX_PROVIDER" ]; then
               echo "::error::lane $lane (port $port): expected 'true $SANDBOX_PROVIDER', got '$cfg'"
