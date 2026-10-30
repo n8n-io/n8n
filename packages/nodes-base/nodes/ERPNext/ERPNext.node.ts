@@ -66,7 +66,7 @@ export class ERPNext implements INodeType {
 					{},
 				);
 				const docTypes = data.map(({ name }: { name: string }) => {
-					return { name, value: encodeURI(name) };
+					return { name, value: name };
 				});
 
 				return processNames(docTypes);
