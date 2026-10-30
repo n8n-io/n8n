@@ -237,6 +237,7 @@ describe('PostHog', () => {
 					mockEvaluatedFlags({
 						[CREDENTIAL_DESCRIPTIONS_FLAG]: distinctId === `company_${instanceId}`,
 						[ASSISTANT_SKILLS_FLAG]: distinctId === `company_${instanceId}`,
+						[AGENT_SANDBOX_FILES_FLAG]: distinctId === `company_${instanceId}`,
 					}),
 				);
 				const ph = new PostHogClient(instanceSettings, globalConfig);
@@ -249,9 +250,11 @@ describe('PostHog', () => {
 					const flags = await ph.getFeatureFlags({ id, createdAt });
 					expect(flags[CREDENTIAL_DESCRIPTIONS_FLAG]).toBe(true);
 					expect(flags[ASSISTANT_SKILLS_FLAG]).toBe(true);
+					expect(flags[AGENT_SANDBOX_FILES_FLAG]).toBe(true);
 				}
 				expect(await ph.getFeatureFlagForInstance(CREDENTIAL_DESCRIPTIONS_FLAG)).toBe(true);
 				expect(await ph.getFeatureFlagForInstance(ASSISTANT_SKILLS_FLAG)).toBe(true);
+				expect(await ph.getFeatureFlagForInstance(AGENT_SANDBOX_FILES_FLAG)).toBe(true);
 				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledTimes(3);
 				expect(PostHog.prototype.evaluateFlags).toHaveBeenCalledWith(`company_${instanceId}`, {
 					groups: { company: instanceId },
