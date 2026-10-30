@@ -8,6 +8,9 @@ import {
 	WORKFLOW_BUILDER_TOOL_NAMES,
 	WORKFLOW_TOOL_NAMES,
 	getDataTableCallAction,
+	getExecutionCallAction,
+	isFormerExecutionsTool,
+	EXECUTION_TOOL_NAMES,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 } from '@n8n/api-types';
@@ -146,6 +149,8 @@ function getBuildAgentOperationKey(operation: unknown): BaseTextKey | undefined 
 const REMOVED_WORKFLOWS_TOOL_LABEL_NAME = 'workflow_builder_workflows';
 /** Data table tools share the labels of the former multi-action tool, keyed by action. */
 const DATA_TABLE_LABEL_TOOL_NAME = 'data_tables';
+/** Execution tools reuse the per-action labels of the former executions tool. */
+const EXECUTION_LABEL_TOOL_NAME = 'workflow_builder_executions';
 
 export function getToolIcon(rawToolName: string): IconName {
 	const toolName = resolveBuilderToolName(rawToolName);
@@ -159,7 +164,8 @@ export function getToolIcon(rawToolName: string): IconName {
 	if (toolName === 'mcp-servers') return 'plug';
 	if (
 		WORKFLOW_TOOL_NAMES.includes(toolName) ||
-		toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS ||
+		EXECUTION_TOOL_NAMES.includes(toolName) ||
+		isFormerExecutionsTool(rawToolName) ||
 		toolName === WORKFLOW_BUILDER_TOOL_NAMES.NODES ||
 		toolName === SHARED_BUILDER_TOOL_NAMES.SEARCH_NODES ||
 		toolName === SHARED_BUILDER_TOOL_NAMES.GET_NODE_TYPES ||
@@ -243,13 +249,19 @@ export function useToolLabel() {
 		}
 
 		const dataTableAction = getDataTableCallAction(toolName, args?.action);
+		const executionAction = getExecutionCallAction(toolName, args?.action);
 		// Stored calls of removed workflows actions keep the former tool's labels.
 		const labelToolName = isFormerWorkflowsTool(toolName)
 			? REMOVED_WORKFLOWS_TOOL_LABEL_NAME
 			: dataTableAction
 				? DATA_TABLE_LABEL_TOOL_NAME
-				: toolName;
-		const action = dataTableAction ?? (typeof args?.action === 'string' ? args.action : undefined);
+				: executionAction
+					? EXECUTION_LABEL_TOOL_NAME
+					: toolName;
+		const action =
+			dataTableAction ??
+			executionAction ??
+			(typeof args?.action === 'string' ? args.action : undefined);
 		if (action) {
 			const actionKey = `instanceAi.tools.${labelToolName}.${action}` as BaseTextKey;
 			const actionTranslated = i18n.baseText(actionKey);

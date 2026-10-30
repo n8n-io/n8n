@@ -37,7 +37,9 @@ vi.mock('../agent-context.tool', () => ({
 }));
 
 vi.mock('../executions.tool', () => ({
-	createExecutionsTool: vi.fn(() => ({ id: 'workflow_builder_executions' })),
+	createExecutionTool: vi.fn((_context: unknown, action: string) => ({
+		id: `execution:${action}`,
+	})),
 }));
 
 vi.mock('../nodes.tool', () => ({
@@ -147,7 +149,9 @@ describe('domain tool construction', () => {
 			validate_workflow: { id: 'workflow:validate' },
 			publish_workflow: { id: 'workflow:publish' },
 			unpublish_workflow: { id: 'workflow:unpublish' },
-			workflow_builder_executions: { id: 'workflow_builder_executions' },
+			list_executions: { id: 'execution:list' },
+			run_workflow: { id: 'execution:run' },
+			get_resolved_node_parameters: { id: 'execution:get-resolved-node-parameters' },
 			list_credentials: { id: 'list_credentials' },
 			search_credential_types: { id: 'search_credential_types' },
 			setup_credentials: { id: 'setup_credentials' },
@@ -194,6 +198,7 @@ describe('domain tool construction', () => {
 		expect(createDataTableTool).toHaveBeenCalledWith(context, 'list');
 		expect(createDataTableTool).toHaveBeenCalledWith(context, 'delete-rows');
 		expect(orchestratorTools.has('data_tables')).toBe(false);
+		expect(orchestratorTools.has('workflow_builder_executions')).toBe(false);
 	});
 
 	it('never defers model catalog search behind search_tools', () => {

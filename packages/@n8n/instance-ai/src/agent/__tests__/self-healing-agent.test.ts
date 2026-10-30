@@ -110,8 +110,8 @@ describe('createSelfHealingAgent', () => {
 					{
 						type: 'tool-call',
 						toolCallId: 'read',
-						toolName: DOMAIN_TOOL_IDS.EXECUTIONS,
-						input: JSON.stringify({ action: 'get', executionId: 'execution' }),
+						toolName: DOMAIN_TOOL_IDS.GET_EXECUTION,
+						input: JSON.stringify({ executionId: 'execution' }),
 					},
 				],
 				true,
@@ -256,7 +256,11 @@ describe('createSelfHealingAgent', () => {
 			[
 				DOMAIN_TOOL_IDS.GET_WORKFLOW,
 				DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE,
-				DOMAIN_TOOL_IDS.EXECUTIONS,
+				DOMAIN_TOOL_IDS.LIST_EXECUTIONS,
+				DOMAIN_TOOL_IDS.GET_EXECUTION,
+				DOMAIN_TOOL_IDS.DEBUG_EXECUTION,
+				DOMAIN_TOOL_IDS.GET_EXECUTION_NODE_OUTPUT,
+				DOMAIN_TOOL_IDS.GET_RESOLVED_NODE_PARAMETERS,
 				DOMAIN_TOOL_IDS.LIST_DATA_TABLES,
 				DOMAIN_TOOL_IDS.GET_DATA_TABLE_SCHEMA,
 				DOMAIN_TOOL_IDS.QUERY_DATA_TABLE,
@@ -283,18 +287,11 @@ describe('createSelfHealingAgent', () => {
 		expect(await loadInstanceAiSkills().loadSkill('self-healing')).toBeNull();
 	});
 
-	it.each([
-		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run', workflowId: 'workflow' }],
-		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'run-step', workflowId: 'workflow', nodeName: 'Read' }],
-		[DOMAIN_TOOL_IDS.EXECUTIONS, { action: 'stop', executionId: 'execution' }],
-	])('rejects unavailable %s actions in the schema', async (name, input) => {
-		const agent = await createAgent();
-		const tool = findTool(agent.declaredTools, name);
-		expect(parseToolInput(tool, input).success).toBe(false);
-	});
-
 	it('does not declare workflow tools that change a workflow', async () => {
 		const names = (await createAgent()).declaredTools.map((tool) => tool.name);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.RUN_WORKFLOW_STEP);
+		expect(names).not.toContain(DOMAIN_TOOL_IDS.STOP_EXECUTION);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.CREATE_DATA_TABLE);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.INSERT_DATA_TABLE_ROWS);
 		expect(names).not.toContain(DOMAIN_TOOL_IDS.PUBLISH_WORKFLOW);
@@ -307,14 +304,15 @@ describe('createSelfHealingAgent', () => {
 			executionId: 'execution',
 			status: 'error',
 		});
-		const tool = findTool((await createAgent(context)).declaredTools, DOMAIN_TOOL_IDS.EXECUTIONS);
-		await expect(
-			executeTool(tool, { action: 'get', executionId: 'execution' }),
-		).resolves.toMatchObject({ status: 'error' });
-		vi.mocked(context.executionService.getStatus).mockRejectedValue(new Error('Access denied'));
-		await expect(executeTool(tool, { action: 'get', executionId: 'other' })).rejects.toThrow(
-			'Access denied',
+		const tool = findTool(
+			(await createAgent(context)).declaredTools,
+			DOMAIN_TOOL_IDS.GET_EXECUTION,
 		);
+		await expect(executeTool(tool, { executionId: 'execution' })).resolves.toMatchObject({
+			status: 'error',
+		});
+		vi.mocked(context.executionService.getStatus).mockRejectedValue(new Error('Access denied'));
+		await expect(executeTool(tool, { executionId: 'other' })).rejects.toThrow('Access denied');
 	});
 
 	it('keeps the candidate unchanged when a live workflow is read as source', async () => {

@@ -2663,7 +2663,7 @@ export class InstanceAiAdapterService {
 						throw new UserError(
 							`Node "${nodeName}" holds several tools, and a step run cannot pick one of them. ` +
 								`Run ${roots} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
@@ -2678,7 +2678,7 @@ export class InstanceAiAdapterService {
 							`Node "${nodeName}" runs through ${roots}, and ${upper} runs above another of them, ` +
 								`so a step run would run ${upper} and the nodes after it again. ` +
 								`Run ${upper} instead, then read this node with ` +
-								'workflow_builder_executions(action="get-node-output") on that execution: it holds what every ' +
+								'get_execution_node_output on that execution: it holds what every ' +
 								'tool call returned.',
 						);
 					}
