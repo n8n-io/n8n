@@ -98,13 +98,13 @@ export function isOpaqueTransferValue(value: unknown): boolean {
 }
 
 /** Define an own data key. Unlike assignment, a `__proto__` key stays an own key. */
-export function defineOwnValue(target: object, key: string, value: unknown): void {
-	Object.defineProperty(target, key, {
-		value,
-		writable: true,
-		enumerable: true,
-		configurable: true,
-	});
+export function defineOwnValue(
+	target: object,
+	key: string,
+	value: unknown,
+	enumerable = true,
+): void {
+	Object.defineProperty(target, key, { value, writable: true, enumerable, configurable: true });
 }
 
 /** The objects a walk has finished, and the ones it is inside. */
