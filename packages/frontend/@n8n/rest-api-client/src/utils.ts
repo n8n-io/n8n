@@ -259,19 +259,21 @@ export async function makeRestApiRequest<T>(
 	return response.data as T;
 }
 
-export async function makePublicApiRequest(
+export async function makePublicApiRequest<T>(
 	context: PublicApiContext,
 	method: Method,
 	endpoint: string,
 	data?: GenericValue | GenericValue[],
 ) {
-	return await request({
+	const response = await request({
 		method,
 		baseURL: context.baseUrl,
 		endpoint,
 		headers: context.headers,
 		data,
 	});
+
+	return response as T;
 }
 
 export async function get(
