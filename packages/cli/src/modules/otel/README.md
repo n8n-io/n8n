@@ -61,8 +61,9 @@ off, or when no execution runs. Use the result without a guard.
 
 Both ways write the headers with the global propagator. `OtelService` installs it from the
 settings: W3C trace context and baggage when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is on, nothing
-when it is off. `ExecutionLevelTracer` keeps a private trace context propagator only to save
-the trace context on the execution, which must work when outbound headers are off.
+when it is off. When another OTel setup is already registered, its propagator stays in
+control. `ExecutionLevelTracer` keeps a private trace context propagator only to save the
+trace context on the execution, which must work when outbound headers are off.
 
 Both ways obey these rules:
 
