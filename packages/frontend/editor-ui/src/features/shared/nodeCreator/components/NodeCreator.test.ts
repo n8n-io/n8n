@@ -116,7 +116,7 @@ describe('NodeCreator', () => {
 		handler(event);
 	}
 
-	it('stays open on a click inside an overlay layer, whatever the pointerdown before it', () => {
+	it('stays open on a click inside an overlay layer', () => {
 		const { emitted } = renderComponent();
 		const layer = document.body.appendChild(document.createElement('div'));
 		layer.setAttribute('data-dismissable-layer', '');
