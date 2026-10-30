@@ -1,29 +1,31 @@
 /**
- * Consolidated workflow_builder_executions tool — list, get, run, debug, get-node-output,
- * get-resolved-node-parameters, stop.
+ * Execution tools: one tool for each action of the former multi-action
+ * `workflow_builder_executions` tool (list, get, run, run-step, debug,
+ * get-node-output, get-resolved-node-parameters, stop).
  */
 import {
-	getLegacyBuilderToolNames,
+	EXECUTION_TOOL_ACTIONS,
+	EXECUTION_TOOL_NAME_BY_ACTION,
+	getLegacyBuilderToolActions,
 	buildRunStepSessionGrantKey,
 	buildRunWorkflowSessionGrantKey,
 	instanceAiApprovalDetailsSchema,
 	instanceAiApprovalResumeSchema,
 	instanceAiConfirmationSeveritySchema,
 } from '@n8n/api-types';
-import type { InstanceAiApprovalDetails } from '@n8n/api-types';
+import type { ExecutionToolAction, InstanceAiApprovalDetails } from '@n8n/api-types';
 import { Tool } from '@n8n/agents';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 
+import { sanitizeInputSchema } from '../agent/sanitize-mcp-schemas';
 import type { InstanceAiContext } from '../types';
 import { approvalSummarySchema, formatApprovalMessage } from './approval-copy';
-import { restrictToolActions } from './restrict-tool-actions';
 import {
 	TRIGGER_INPUT_DATA_DESCRIPTION,
 	TRIGGER_NODE_NAME_DESCRIPTION,
 } from './shared/trigger-input-descriptions';
 import { recordLiveRunVerification } from './orchestration/verification/record-live-run';
-import { DOMAIN_TOOL_IDS } from './tool-ids';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -96,8 +98,8 @@ const runStepAction = z.object({
 				"This is a REAL run with the user's real credentials against their real " +
 				'systems. Use it on reads and transforms. Do not use it to debug a node ' +
 				'that writes (create/update/delete/send/append, non-GET HTTP) — that ' +
-				'performs the effect again. Read the failed execution with action="debug" ' +
-				'and action="get-resolved-node-parameters" instead. When unsure, treat the ' +
+				'performs the effect again. Read the failed execution with debug_execution ' +
+				'and get_resolved_node_parameters instead. When unsure, treat the ' +
 				'node as a write. A tool runs through the node that owns it (the Agent), so ' +
 				"mockInput and reuseExecutionId feed that node and the tool's own " +
 				'arguments come from toolArguments. No other sub-node kind can run.',
@@ -208,22 +210,21 @@ const stopAction = z.object({
 	executionId: z.string().describe('Execution ID'),
 });
 
-const actions = [
-	listAction,
-	getAction,
-	runAction,
-	runStepAction,
-	debugAction,
-	getNodeOutputAction,
-	getResolvedNodeParametersAction,
-	stopAction,
-] as const;
+const ACTION_SCHEMAS = {
+	list: listAction,
+	get: getAction,
+	run: runAction,
+	'run-step': runStepAction,
+	debug: debugAction,
+	'get-node-output': getNodeOutputAction,
+	'get-resolved-node-parameters': getResolvedNodeParametersAction,
+	stop: stopAction,
+} as const satisfies Record<ExecutionToolAction, z.ZodDiscriminatedUnionOption<'action'>>;
 
-type Input = z.infer<(typeof actions)[number]>;
+type Input = z.infer<(typeof ACTION_SCHEMAS)[ExecutionToolAction]>;
 
 interface ExecutionsToolOptions {
-	allowedActions?: ReadonlyArray<Input['action']>;
-	description?: string;
+	allowedActions?: readonly ExecutionToolAction[];
 }
 
 // ── Suspend / resume schemas (used by `run`) ───────────────────────────────
@@ -488,8 +489,8 @@ async function handleStop(context: InstanceAiContext, input: Extract<Input, { ac
 // ── Tool factory ───────────────────────────────────────────────────────────
 
 /**
- * Appended to every description, a custom one too: each caller reads
- * executions redacted for its user.
+ * Appended to the description of each tool that reads execution data: each
+ * caller reads executions redacted for its user.
  */
 const REDACTED_RESULT_GUIDANCE =
 	' A result with `redaction` set carries no output items: n8n hides that ' +
@@ -498,65 +499,134 @@ const REDACTED_RESULT_GUIDANCE =
 	'and do not try to get the data another way.';
 
 /**
- * Appended to every description: the user's own canvas runs are often not
- * saved, and `list` does not show them.
+ * Appended to the description of each tool that reads execution data: the
+ * user's own canvas runs are often not saved, and `list_executions` does not show them.
  */
 const UNSAVED_EXECUTION_GUIDANCE =
 	' When saving manual executions is turned off, n8n can keep a finished manual run ' +
-	'for a short time, only for the user who ran it, and `list` does not show it. ' +
+	'for a short time, only for the user who ran it, and list_executions does not show it. ' +
 	'Read such a run by its execution id. When the execution the user means is not ' +
 	'found, tell the user that you cannot read that run. Do not debug a different ' +
-	'execution from `list` in its place.';
+	'execution from list_executions in its place.';
 
-export function createExecutionsTool(
+const EXTRA_DESCRIPTIONS: Partial<Record<ExecutionToolAction, string>> = {
+	run:
+		' This is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
+		"list_workflows, then run it here with the user's values as inputData. " +
+		'Do not treat such a request as a request to build something. ' +
+		'To verify a workflow you built, use workflow_builder_verify_built_workflow, not this tool. ' +
+		'Reserve this tool for runs the user explicitly asked for: it runs the workflow live ' +
+		'with no pin data and prompts the user for approval.',
+	'run-step':
+		' Use it to see what one node really returns. When debugging a read node that failed ' +
+		'a real execution, pass reuseExecutionId so the node re-runs on the data it actually received.',
+};
+
+/** Actions whose result carries execution data, so redaction and unsaved runs apply. */
+const DATA_READING_ACTIONS = new Set<ExecutionToolAction>([
+	'list',
+	'get',
+	'run',
+	'run-step',
+	'debug',
+	'get-node-output',
+	'get-resolved-node-parameters',
+]);
+
+function getActionDescription(action: ExecutionToolAction): string {
+	const base = ACTION_SCHEMAS[action].shape.action.description ?? '';
+	const guidance = DATA_READING_ACTIONS.has(action)
+		? REDACTED_RESULT_GUIDANCE + UNSAVED_EXECUTION_GUIDANCE
+		: '';
+	return base + (EXTRA_DESCRIPTIONS[action] ?? '') + guidance;
+}
+
+async function runExecutionAction(
+	context: InstanceAiContext,
+	input: Input,
+	resumeData: z.infer<typeof resumeSchema> | undefined,
+	suspend: (payload: z.infer<typeof suspendSchema>) => Promise<never>,
+	abortSignal?: AbortSignal,
+) {
+	switch (input.action) {
+		case 'list':
+			return await handleList(context, input);
+		case 'get':
+			return await handleGet(context, input);
+		case 'run':
+			return await handleRun(context, input, resumeData, suspend, abortSignal);
+		case 'run-step':
+			return await handleRunStep(context, input, resumeData, suspend, abortSignal);
+		case 'debug':
+			return await handleDebug(context, input);
+		case 'get-node-output':
+			return await handleGetNodeOutput(context, input);
+		case 'get-resolved-node-parameters':
+			return await handleGetResolvedNodeParameters(context, input);
+		case 'stop':
+			return await handleStop(context, input);
+	}
+}
+
+/** Actions that can ask the user for approval. */
+const SUSPENDING_ACTIONS = new Set<ExecutionToolAction>(['run', 'run-step']);
+
+const neverSuspend = async (): Promise<never> => {
+	throw new Error('This execution tool cannot ask for approval');
+};
+
+/** Builds the tool for one execution action. */
+export function createExecutionTool(context: InstanceAiContext, action: ExecutionToolAction) {
+	const name = EXECUTION_TOOL_NAME_BY_ACTION[action];
+	const schema: z.ZodDiscriminatedUnionOption<'action'> = ACTION_SCHEMAS[action];
+	const tool = new Tool(name)
+		.description(getActionDescription(action))
+		.input(sanitizeInputSchema(schema.omit({ action: true })));
+	for (const [legacyName, actions] of getLegacyBuilderToolActions(name)) {
+		tool.legacyActions(legacyName, ...actions);
+	}
+	// The input schema omits `action`, so restore it for the shared handlers.
+	const withAction = (input: unknown) =>
+		({ ...(typeof input === 'object' && input !== null ? input : {}), action }) as Input;
+
+	if (!SUSPENDING_ACTIONS.has(action)) {
+		return tool
+			.handler(
+				async (input, ctx) =>
+					await runExecutionAction(
+						context,
+						withAction(input),
+						undefined,
+						neverSuspend,
+						ctx.abortSignal,
+					),
+			)
+			.build();
+	}
+
+	return tool
+		.suspend(suspendSchema)
+		.resume(resumeSchema)
+		.handler(
+			async (input, ctx) =>
+				await runExecutionAction(
+					context,
+					withAction(input),
+					ctx.resumeData,
+					ctx.suspend,
+					ctx.abortSignal,
+				),
+		)
+		.build();
+}
+
+/** Builds the execution tools, optionally only for some actions. */
+export function createExecutionTools(
 	context: InstanceAiContext,
 	options: ExecutionsToolOptions = {},
 ) {
-	const inputSchema = restrictToolActions(actions, options.allowedActions);
-
-	return new Tool(DOMAIN_TOOL_IDS.EXECUTIONS)
-		.legacyNames(...getLegacyBuilderToolNames(DOMAIN_TOOL_IDS.EXECUTIONS))
-		.description(
-			(options.description ??
-				'Manage workflow executions — list, inspect, run, run one node, debug, ' +
-					'get node output, get resolved node parameters for a past run, and stop. ' +
-					'action="run" is how you satisfy "trigger/run my <workflow>": find the workflow with ' +
-					"list_workflows, then run it here with the user's values as inputData — " +
-					'do not treat such a request as a request to build something. ' +
-					'To verify a workflow you built, use workflow_builder_verify_built_workflow, not action="run". ' +
-					'Reserve action="run" for runs the user explicitly asked for: it runs the workflow live with no pin data and prompts the user for approval. ' +
-					'action="run-step" runs a single node of the saved workflow, like the canvas ' +
-					'"Execute step" button. Use it to see what one node really returns — when ' +
-					'debugging a read node that failed a real execution, pass reuseExecutionId so ' +
-					'the node re-runs on the data it actually received. It runs for real, so do ' +
-					'not point it at a node that writes.') +
-				REDACTED_RESULT_GUIDANCE +
-				UNSAVED_EXECUTION_GUIDANCE,
-		)
-		.input(inputSchema)
-		.suspend(suspendSchema)
-		.resume(resumeSchema)
-		.handler(async (input: Input, ctx) => {
-			switch (input.action) {
-				case 'list':
-					return await handleList(context, input);
-				case 'get':
-					return await handleGet(context, input);
-				case 'run': {
-					return await handleRun(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
-				}
-				case 'run-step': {
-					return await handleRunStep(context, input, ctx.resumeData, ctx.suspend, ctx.abortSignal);
-				}
-				case 'debug':
-					return await handleDebug(context, input);
-				case 'get-node-output':
-					return await handleGetNodeOutput(context, input);
-				case 'get-resolved-node-parameters':
-					return await handleGetResolvedNodeParameters(context, input);
-				case 'stop':
-					return await handleStop(context, input);
-			}
-		})
-		.build();
+	const allowed = new Set(options.allowedActions ?? EXECUTION_TOOL_ACTIONS);
+	return EXECUTION_TOOL_ACTIONS.filter((action) => allowed.has(action)).map((action) =>
+		createExecutionTool(context, action),
+	);
 }

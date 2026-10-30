@@ -27,7 +27,7 @@ export const reportVerificationVerdictInputSchema = z.object({
 	executionId: z
 		.string()
 		.optional()
-		.describe('The execution ID from `workflow_builder_executions(action="run")`, if available'),
+		.describe('The execution ID from `run_workflow`, if available'),
 	verdict: verificationVerdictSchema.describe(
 		'Your assessment: "verified" if the workflow ran correctly, ' +
 			'"needs_patch" if a specific node needs fixing, ' +

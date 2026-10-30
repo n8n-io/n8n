@@ -8,6 +8,7 @@ import {
 	buildCleanupTestExecutionsSessionGrantKey,
 	buildWorkspaceSessionGrantKey,
 	getDataTableCallAction,
+	getExecutionCallAction,
 	isFormerWorkflowsTool,
 	resolveBuilderToolName,
 	REMOVED_BUILDER_TOOL_NAMES,
@@ -77,14 +78,15 @@ export function buildAlwaysAllowKey(
 	const workflowId = resolveAlwaysAllowWorkflowId(args, confirmationWorkflowId);
 	// Running a workflow grants "always allow" per workflow, so the grant applies only to the
 	// workflow the user approved. Without a workflow ID, refuse to store a key (fail closed).
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run') {
+	const executionAction = getExecutionCallAction(rawToolName, action);
+	if (executionAction === 'run') {
 		if (!workflowId) return null;
 		return buildRunWorkflowSessionGrantKey(workflowId);
 	}
 	// Running one node grants "always allow" per node, so a debug loop on one
 	// node stops prompting while the rest of the workflow still asks. Without
 	// a node name the key cannot be scoped — refuse to store one (fail closed).
-	if (toolName === WORKFLOW_BUILDER_TOOL_NAMES.EXECUTIONS && action === 'run-step') {
+	if (executionAction === 'run-step') {
 		const nodeName = typeof args.nodeName === 'string' ? args.nodeName : '';
 		if (!workflowId || !nodeName) return null;
 		return buildRunStepSessionGrantKey(workflowId, nodeName);

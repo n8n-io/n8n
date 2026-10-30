@@ -37,7 +37,10 @@ recommended_tools:
   - setup_credentials
   - test_credential
   - workflow_builder_verify_built_workflow
-  - workflow_builder_executions
+  - list_executions
+  - get_execution
+  - run_workflow
+  - debug_execution
 ---
 
 # Workflow Builder
@@ -343,7 +346,7 @@ rebuild with the same `filePath`, then inspect and verify again.
 
 Never tell the user a workflow is fixed, verified, tested, or working from a
 build/save or its static checks alone — only from a `workflow_builder_verify_built_workflow`
-or `workflow_builder_executions` run that exercised the claimed path; otherwise say explicitly
+or `run_workflow` run that exercised the claimed path; otherwise say explicitly
 what you could not verify and why. Never dismiss a live execution error as a
 harness or stale-state artifact without re-running.
 
@@ -359,7 +362,7 @@ save. The job is done when one of these is true:
 Prefer `workflow_builder_verify_built_workflow` for workflows saved by `workflow_builder_build_workflow`; it can
 be called again with `workflowId` if the original `workItemId` is no longer in
 context. For alternate deterministic scenarios, pass `fixtureOverrides` for
-nodes already classified as simulated. Use raw `workflow_builder_executions(action="run")` only
+nodes already classified as simulated. Use raw `run_workflow` only
 for ad hoc non-build verification or when the user explicitly wants a live run.
 If live connectivity also matters for a branch-controlled workflow, verify the
 fixture-backed branch coverage first and run a separate live smoke check, or
