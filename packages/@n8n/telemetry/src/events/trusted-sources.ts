@@ -71,7 +71,7 @@ export const TRUSTED_SOURCES_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			source_id: z.string(),
 			surface: z
-				.enum(['public-api', 'instance-mcp', 'trigger'])
+				.enum(['public-api', 'instance-mcp', 'trigger', 'apps'])
 				.describe('The surface the first authenticated request arrived on'),
 		}),
 	},
