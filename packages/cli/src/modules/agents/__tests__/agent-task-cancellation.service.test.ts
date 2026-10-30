@@ -18,6 +18,7 @@ import { AgentExecutionThreadRepository } from '../repositories/agent-execution-
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
 import { AgentMessageQueueRepository } from '../repositories/agent-message-queue.repository';
 import { AgentPlanRepository } from '../repositories/agent-plan.repository';
+import { productionChatMemoryResourceId } from '../utils/agent-memory-scope';
 
 function setup() {
 	const repository = mock<AgentExecutionThreadRepository>();
@@ -146,6 +147,36 @@ it('interrupts the current response through runtime coordination after saving th
 	});
 	expect(repository.saveStop.mock.invocationCallOrder[0]).toBeLessThan(
 		chat.requestCancel.mock.invocationCallOrder[0],
+	);
+});
+
+it('stops an n8n Chat conversation with its own surface, memory and report kind', async () => {
+	const { service, repository, executions, chat, jobs, messages } = setup();
+	repository.captureStopTargets.mockResolvedValue({
+		executionIds: ['response'],
+		jobIds: [],
+		threadIds: [],
+	});
+	executions.findLatestByThreadId.mockResolvedValue(
+		mock<AgentExecution>({ id: 'response', status: 'running' }),
+	);
+
+	await service.request('thread', null, undefined, 'n8n-chat');
+
+	expect(chat.requestCancel).toHaveBeenCalledWith(expect.objectContaining({ surface: 'n8n-chat' }));
+	expect(jobs.requestPause).toHaveBeenCalledWith(
+		'agent',
+		'thread',
+		productionChatMemoryResourceId('user'),
+		expect.any(String),
+		expect.any(Array),
+	);
+	expect(messages.enqueueStopReport).toHaveBeenCalledWith(
+		expect.anything(),
+		expect.any(String),
+		expect.any(String),
+		expect.anything(),
+		'n8n-chat',
 	);
 });
 

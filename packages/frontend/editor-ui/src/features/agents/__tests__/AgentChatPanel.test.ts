@@ -2128,14 +2128,18 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it('keeps plan stopping available only in Preview', async () => {
+		it('keeps plan stopping available in Preview and n8n Chat, not in the system chat', async () => {
 			messagesMock.value = [publishPlan(planView())];
 			const wrapper = mountPanel({ backgroundJobsActive: true, continueSessionId: 't1' });
 
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(true);
 
-			backgroundJobsMock.value = [{ ...job, status: 'paused', pauseRequested: true }];
 			await wrapper.setProps({ channel: 'n8n-chat' });
+
+			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(true);
+
+			backgroundJobsMock.value = [{ ...job, status: 'paused', pauseRequested: true }];
+			await wrapper.setProps({ channel: 'system' });
 
 			expect(wrapper.getComponent(AgentChatPlan).props('stopped')).toBe(false);
 			expect(wrapper.getComponent(AgentChatPlan).props('canStop')).toBe(false);
@@ -2852,32 +2856,26 @@ describe('AgentChatPanel', () => {
 			wrapper.unmount();
 		});
 
-		it.each([false, true])(
-			'keeps n8n Chat background controls without a trace link, plan=%s',
-			async (hasPlan) => {
-				if (hasPlan) messagesMock.value = [publishPlan(planView())];
+		it('keeps n8n Chat background controls without a trace link and stops through Stop all tasks', async () => {
+			backgroundJobsMock.value = [job];
+			const wrapper = mountPanel({
+				backgroundJobsActive: true,
+				continueSessionId: 't1',
+				channel: 'n8n-chat',
+			});
+			const panel = wrapper.get('[data-testid="agent-background-jobs"]');
+			await panel.get('button').trigger('click');
 
-				backgroundJobsMock.value = [job];
-				const wrapper = mountPanel({
-					backgroundJobsActive: true,
-					continueSessionId: 't1',
-					channel: 'n8n-chat',
-				});
-				const panel = wrapper.get('[data-testid="agent-background-jobs"]');
-				await panel.get('button').trigger('click');
+			// `/sessions/<threadId>` is the builder's session view, which needs
+			// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
+			expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
 
-				// `/sessions/<threadId>` is the builder's session view, which needs
-				// `agent:read` — a chat-only n8n Chat member only has `agent:execute`.
-				expect(wrapper.find('[data-testid="agent-background-jobs-trace"]').exists()).toBe(false);
+			await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
 
-				await wrapper.get('[data-testid="agent-background-jobs-stop"]').trigger('click');
+			expect(stopPlanMock).toHaveBeenCalledOnce();
 
-				expect(stopAllMock).toHaveBeenCalledOnce();
-				expect(stopPlanMock).not.toHaveBeenCalled();
-
-				wrapper.unmount();
-			},
-		);
+			wrapper.unmount();
+		});
 
 		it.each([
 			['completed', 'Completed', 'circle-check'],

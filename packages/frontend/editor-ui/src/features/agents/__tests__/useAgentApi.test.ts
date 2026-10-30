@@ -416,8 +416,13 @@ describe('useAgentApi', () => {
 				],
 				[restApiContext, 'POST', `${path}/queue/queue-1/steer`, { executionId: 'execution-1' }],
 				[restApiContext, 'GET', `${path}/messages`],
-				[restApiContext, 'DELETE', `${path}/executions/execution-1`],
-				[restApiContext, 'DELETE', '/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1'],
+				[restApiContext, 'DELETE', `${path}/executions/execution-1`, { scope: 'foreground' }],
+				[
+					restApiContext,
+					'DELETE',
+					'/projects/project-1/agents/v2/agent-1/n8n-chat/runs/run-1',
+					{ scope: 'foreground' },
+				],
 			]);
 		});
 	});
