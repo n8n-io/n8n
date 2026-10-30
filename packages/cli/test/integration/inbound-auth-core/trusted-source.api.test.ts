@@ -281,7 +281,7 @@ describe('POST /trusted-sources', () => {
 				surfaces: ['public-api'],
 				identitySubject: 'binding',
 				linkByEmail: 'verified-only',
-				provisionHuman: 'off',
+				provisionPerson: 'off',
 				roleMappingMode: 'off',
 			},
 		});
@@ -443,7 +443,7 @@ describe('PATCH /trusted-sources/:id', () => {
 				surfaces: ['public-api'],
 				identitySubject: 'binding',
 				linkByEmail: 'verified-only',
-				provisionHuman: 'off',
+				provisionPerson: 'off',
 				roleMappingMode: 'off',
 			},
 		});

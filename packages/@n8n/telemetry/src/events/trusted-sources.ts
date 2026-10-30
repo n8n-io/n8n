@@ -25,7 +25,7 @@ const configFacets = {
 	link_by_email: z
 		.enum(['off', 'verified-only', 'any'])
 		.describe('Whether an unbound subject may be linked to an existing user by email claim'),
-	provision_human: z
+	provision_person: z
 		.enum(['off', 'jit'])
 		.describe("'jit' creates a user on first authentication when no binding or email match exists"),
 	role_mapping_mode: z

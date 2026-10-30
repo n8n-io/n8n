@@ -23,7 +23,7 @@ describe('trustedSourceFacetsOf', () => {
 			surfaces: ['public-api'],
 			identitySubject: 'binding',
 			linkByEmail: 'verified-only',
-			provisionHuman: 'off',
+			provisionPerson: 'off',
 			roleMappingMode: 'off',
 		});
 	});
@@ -56,7 +56,7 @@ describe('trustedSourceFacetsOf', () => {
 			surfaces: ['public-api', 'instance-mcp', 'trigger', 'apps'],
 			identitySubject: 'binding',
 			linkByEmail: 'any',
-			provisionHuman: 'jit',
+			provisionPerson: 'jit',
 			roleMappingMode: 'continuous',
 		});
 	});
@@ -110,7 +110,7 @@ describe('toTrustedSourceTelemetryFacets', () => {
 				surfaces: ['public-api', 'trigger'],
 				identitySubject: 'binding',
 				linkByEmail: 'any',
-				provisionHuman: 'jit',
+				provisionPerson: 'jit',
 				roleMappingMode: 'on-provision',
 			}),
 		).toEqual({
@@ -119,7 +119,7 @@ describe('toTrustedSourceTelemetryFacets', () => {
 			surfaces: ['public-api', 'trigger'],
 			identity_subject: 'binding',
 			link_by_email: 'any',
-			provision_human: 'jit',
+			provision_person: 'jit',
 			role_mapping_mode: 'on-provision',
 		});
 	});

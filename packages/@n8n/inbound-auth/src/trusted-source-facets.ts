@@ -10,7 +10,7 @@ export type TrustedSourceFacets = {
 	surfaces: SurfaceId[];
 	identitySubject: TrustedSourceConfigLatest['identity']['subject'];
 	linkByEmail: TrustedSourceConfigLatest['identity']['linkByEmail'];
-	provisionHuman: TrustedSourceConfigLatest['identity']['provision']['person'];
+	provisionPerson: TrustedSourceConfigLatest['identity']['provision']['person'];
 	roleMappingMode: TrustedSourceConfigLatest['identity']['roleMapping']['mode'];
 };
 
@@ -20,7 +20,7 @@ export type TrustedSourceTelemetryFacets = {
 	surfaces: SurfaceId[];
 	identity_subject: TrustedSourceConfigLatest['identity']['subject'];
 	link_by_email: TrustedSourceConfigLatest['identity']['linkByEmail'];
-	provision_human: TrustedSourceConfigLatest['identity']['provision']['person'];
+	provision_person: TrustedSourceConfigLatest['identity']['provision']['person'];
 	role_mapping_mode: TrustedSourceConfigLatest['identity']['roleMapping']['mode'];
 };
 
@@ -33,7 +33,7 @@ export function toTrustedSourceTelemetryFacets(
 		surfaces: facets.surfaces,
 		identity_subject: facets.identitySubject,
 		link_by_email: facets.linkByEmail,
-		provision_human: facets.provisionHuman,
+		provision_person: facets.provisionPerson,
 		role_mapping_mode: facets.roleMappingMode,
 	};
 }
@@ -47,7 +47,7 @@ export function trustedSourceFacetsOf(config: TrustedSourceConfigLatest): Truste
 		surfaces: SurfaceIdSchema.options.filter((surface) => surfaces[surface] !== undefined),
 		identitySubject: identity.subject,
 		linkByEmail: identity.linkByEmail,
-		provisionHuman: identity.provision.person,
+		provisionPerson: identity.provision.person,
 		roleMappingMode: identity.roleMapping.mode,
 	};
 }
