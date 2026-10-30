@@ -6,7 +6,6 @@ import type { PostgresType } from './node.type';
 import { addExecutionHints } from '../../../../utils/utilities';
 import { configurePostgres } from '../../transport';
 import type {
-	ConnectionsData,
 	PostgresNodeCredentials,
 	PostgresNodeOptions,
 	QueriesRunner,
@@ -26,45 +25,43 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	options.nodeVersion = node.typeVersion;
 	options.operation = operation;
 
-	let connection: ConnectionsData;
 	try {
-		connection = await configurePostgres.call(this, credentials, options);
+		const { db, pgp } = await configurePostgres.call(this, credentials, options);
+
+		const runQueries: QueriesRunner = configureQueryRunner.call(
+			this,
+			this.getNode(),
+			this.continueOnFail(),
+			pgp,
+			db,
+		);
+
+		const postgresNodeData = {
+			resource,
+			operation,
+		} as PostgresType;
+
+		switch (postgresNodeData.resource) {
+			case 'database':
+				returnData = await database[postgresNodeData.operation].execute.call(
+					this,
+					runQueries,
+					items,
+					options,
+					db,
+					pgp,
+				);
+				break;
+			default:
+				throw new NodeOperationError(
+					this.getNode(),
+					`The operation "${operation}" is not supported!`,
+				);
+		}
 	} catch (err) {
 		if (!this.continueOnFail()) throw err;
 		const error = parsePostgresError(node, err, []);
 		return [items.map((_, index) => prepareErrorItem({ ...error, message: error.message }, index))];
-	}
-	const { db, pgp } = connection;
-
-	const runQueries: QueriesRunner = configureQueryRunner.call(
-		this,
-		this.getNode(),
-		this.continueOnFail(),
-		pgp,
-		db,
-	);
-
-	const postgresNodeData = {
-		resource,
-		operation,
-	} as PostgresType;
-
-	switch (postgresNodeData.resource) {
-		case 'database':
-			returnData = await database[postgresNodeData.operation].execute.call(
-				this,
-				runQueries,
-				items,
-				options,
-				db,
-				pgp,
-			);
-			break;
-		default:
-			throw new NodeOperationError(
-				this.getNode(),
-				`The operation "${operation}" is not supported!`,
-			);
 	}
 
 	addExecutionHints(this, node, items, operation, node.executeOnce);
