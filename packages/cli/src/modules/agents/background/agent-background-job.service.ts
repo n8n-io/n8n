@@ -34,7 +34,6 @@ import {
 } from '../repositories/agent-background-job.repository';
 import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '../repositories/agent-execution.repository';
-import { AgentExecutionThreadRepository } from '../repositories/agent-execution-thread.repository';
 import { AgentMessageRepository } from '../repositories/agent-message.repository';
 import { AgentPlanRepository } from '../repositories/agent-plan.repository';
 import { formatPauseHandoff, REPLACED_PAUSE_GROUP_NOTICE } from './background-job-messages';

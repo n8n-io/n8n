@@ -19,7 +19,6 @@ import { AgentChatExecutionService } from '../../agent-chat-execution.service';
 import type { AgentBackgroundJobRepository } from '../../repositories/agent-background-job.repository';
 import type { AgentExecutionRepository } from '../../repositories/agent-execution.repository';
 import type { AgentMessageRepository } from '../../repositories/agent-message.repository';
-import type { AgentExecutionThreadRepository } from '../../repositories/agent-execution-thread.repository';
 import type { AgentFileBridge } from '../../agent-file-bridge.service';
 import type { AgentMessageEntity } from '../../entities/agent-message.entity';
 import type { AgentExecution } from '../../entities/agent-execution.entity';
