@@ -75,16 +75,6 @@ export interface WorkflowHitsResult {
 	failedChecks: FailedRuleCheck[];
 }
 
-const WORKFLOW_FIELDS: Array<keyof WorkflowEntity> = [
-	'id',
-	'name',
-	'active',
-	'activeVersionId',
-	'versionId',
-	'nodes',
-	'updatedAt',
-];
-
 interface WorkflowMetadata {
 	name: string;
 	active: boolean;
@@ -249,14 +239,16 @@ export class BreakingChangeService {
 
 		// Keyset paging: an offset makes the database read past every earlier row for each page.
 		let afterId: string | undefined;
-		for (;;) {
+		let pageIsFull = true;
+		while (pageIsFull) {
 			const workflows = await this.workflowRepository.findMigrationScanPage(
 				afterId,
 				this.batchSize,
 			);
-			if (workflows.length === 0) break;
+			pageIsFull = workflows.length === this.batchSize;
 
 			this.logger.debug('Processing batch', { afterId, workflowsInBatch: workflows.length });
+			afterId = workflows.at(-1)?.id;
 
 			// Load statistics separately for all workflows in this batch
 			const workflowIds = workflows.map((w) => w.id);
@@ -334,9 +326,6 @@ export class BreakingChangeService {
 					);
 				}
 			}
-
-			if (workflows.length < this.batchSize) break;
-			afterId = workflows[workflows.length - 1].id;
 		}
 
 		const regularResults = await this.aggregateRegularRuleResults(
@@ -455,10 +444,7 @@ export class BreakingChangeService {
 		targetVersion: BreakingChangeVersion,
 		workflowId: string,
 	): Promise<WorkflowHitsResult> {
-		const workflow = await this.workflowRepository.findOne({
-			select: WORKFLOW_FIELDS,
-			where: { id: workflowId },
-		});
+		const workflow = await this.workflowRepository.findMigrationScanWorkflow(workflowId);
 		if (!workflow) return { hits: [], publishedHits: [], failedChecks: [] };
 
 		const workflowLevelRules = this.ruleRegistry

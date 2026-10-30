@@ -192,7 +192,10 @@ describe('BreakingChangeService', () => {
 		it('should pass one scan context to the rules for every workflow of a scan', async () => {
 			const first = createWorkflow('wf-1', 'First', []);
 			const second = createWorkflow('wf-2', 'Second', []);
-			workflowRepository.findPageAfter.mockResolvedValue([first.workflow, second.workflow] as never);
+			workflowRepository.findMigrationScanPage.mockResolvedValue([
+				first.workflow,
+				second.workflow,
+			] as never);
 			workflowRepository.count.mockResolvedValue(2);
 			const rule = ruleRegistry.getRule(
 				'file-access-restriction-v2',
@@ -224,6 +227,22 @@ describe('BreakingChangeService', () => {
 
 			expect(workflowRepository.findMigrationScanPage).toHaveBeenCalledTimes(2);
 			expect(workflowRepository.findMigrationScanPage.mock.calls[0][0]).toBeUndefined();
+			expect(workflowRepository.findMigrationScanPage.mock.calls[1][0]).toBe('wf-099');
+		});
+
+		it('should stop after an empty page when the last page was full', async () => {
+			const workflows = Array.from(
+				{ length: 100 },
+				(_, i) => createWorkflow(`wf-${String(i).padStart(3, '0')}`, `Workflow ${i}`, []).workflow,
+			);
+			workflowRepository.findMigrationScanPage
+				.mockResolvedValueOnce(workflows)
+				.mockResolvedValueOnce([]);
+			workflowRepository.count.mockResolvedValue(100);
+
+			await service.detect('v2');
+
+			expect(workflowRepository.findMigrationScanPage).toHaveBeenCalledTimes(2);
 			expect(workflowRepository.findMigrationScanPage.mock.calls[1][0]).toBe('wf-099');
 		});
 
@@ -416,13 +435,11 @@ describe('BreakingChangeService', () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
-			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
 
 			const result = await service.detectWorkflowHits('v2', 'wf-1');
 
-			expect(workflowRepository.findOne).toHaveBeenCalledWith(
-				expect.objectContaining({ where: { id: 'wf-1' } }),
-			);
+			expect(workflowRepository.findMigrationScanWorkflow).toHaveBeenCalledWith('wf-1');
 			expect(result).toEqual({
 				hits: [{ ruleId: 'removed-nodes-v2', workflowId: 'wf-1' }],
 				publishedHits: [],
@@ -436,7 +453,7 @@ describe('BreakingChangeService', () => {
 			const { workflow } = createWorkflow('wf-1', 'Test Workflow', [
 				createNode('Spontit Node', 'n8n-nodes-base.spontit'),
 			]);
-			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
 			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
 			vi.spyOn(throwingRule, 'detectWorkflow').mockRejectedValue(new Error('boom'));
 
@@ -454,7 +471,7 @@ describe('BreakingChangeService', () => {
 		});
 
 		it('returns no hits when the workflow no longer exists', async () => {
-			workflowRepository.findOne.mockResolvedValue(null);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(null);
 
 			const result = await service.detectWorkflowHits('v2', 'wf-gone');
 
@@ -508,7 +525,7 @@ describe('BreakingChangeService', () => {
 
 		it('checks the published version only against the rules the latest version passed', async () => {
 			const workflow = draftAheadOfPublished('wf-1', [removedNode()], [removedNode(), fileNode()]);
-			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
 			const removedNodesRule = ruleRegistry.getRule('removed-nodes-v2') as RemovedNodesRule;
 			const detectSpy = vi.spyOn(removedNodesRule, 'detectWorkflow');
 
@@ -524,7 +541,7 @@ describe('BreakingChangeService', () => {
 
 		it('does not check the published version against a rule that threw on the latest version', async () => {
 			const workflow = draftAheadOfPublished('wf-1', [], [fileNode()]);
-			workflowRepository.findOne.mockResolvedValue(workflow as never);
+			workflowRepository.findMigrationScanWorkflow.mockResolvedValue(workflow as never);
 			const throwingRule = ruleRegistry.getRule('file-access-restriction-v2') as FileAccessRule;
 			const detectSpy = vi
 				.spyOn(throwingRule, 'detectWorkflow')

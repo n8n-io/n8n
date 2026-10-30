@@ -685,6 +685,19 @@ describe('WorkflowRepository', () => {
 		});
 	});
 
+	describe('findMigrationScanWorkflow', () => {
+		it('should return the workflow with the scan fields', async () => {
+			const workflow = Object.assign(new WorkflowEntity(), { id: 'a' });
+			const findOneSpy = vi.spyOn(workflowRepository, 'findOne').mockResolvedValue(workflow);
+
+			expect(await workflowRepository.findMigrationScanWorkflow('a')).toBe(workflow);
+			expect(findOneSpy).toHaveBeenCalledWith({
+				select: ['id', 'name', 'active', 'activeVersionId', 'versionId', 'nodes', 'updatedAt'],
+				where: { id: 'a' },
+			});
+		});
+	});
+
 	describe('findExistingIds', () => {
 		it('returns only the ids that still exist', async () => {
 			entityManager.find.mockResolvedValue([
