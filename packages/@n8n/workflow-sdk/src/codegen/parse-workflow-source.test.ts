@@ -40,6 +40,17 @@ describe('parseWorkflowSource', () => {
 		expect(parseWorkflowSource(typed).nodes).toHaveLength(2);
 	});
 
+	it('should keep object properties that follow a comma', () => {
+		const withProperties = SOURCE.replace(
+			"config: { name: 'Set Fields', parameters: {} },",
+			"config: { name: 'Set Fields', parameters: { mode: expr('{{ 1 }}'), keepOnlySet: true, includeBinary: false } },",
+		).replace('import { workflow, node, trigger }', 'import { workflow, node, trigger, expr }');
+
+		const setFields = parseWorkflowSource(withProperties).nodes[1];
+
+		expect(setFields.parameters).toMatchObject({ keepOnlySet: true, includeBinary: false });
+	});
+
 	it('should throw when the source is not a complete workflow', () => {
 		expect(() => parseWorkflowSource(SOURCE.slice(0, SOURCE.length / 2))).toThrow();
 	});
