@@ -404,6 +404,7 @@ export class NodeResourceExplorerService {
 			params.credentialId,
 			user,
 			['credential:read'],
+			{ excludeSeeOnlyRoles: true },
 		);
 		if (!credential || credential.type !== params.credentialType) {
 			throw new Error(`Credential ${params.credentialId} not found or not accessible`);

@@ -272,7 +272,7 @@ workflow, load the `error-workflows` reference and follow its build → publish
    saved and lists the real folders, so retry with one of those or ask the user.
    Never leave a workflow at the project root when its place was already clear.
    `folderPath` is for new workflows only; move an existing one with
-   `workspace(action="move-workflow-to-folder")`.
+   `move_workflow_to_folder`.
    Do not run a separate validation command before the build. The build is
    the validation step. It runs the SDK graph checks, the SDK source lint, and
    the node schema checks, and it returns the findings. Apply these rules to
