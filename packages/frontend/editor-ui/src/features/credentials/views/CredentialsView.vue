@@ -2,6 +2,11 @@
 import CredentialCard from '../components/CredentialCard.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import {
+	RESOURCE_LIST_COLUMN_WIDTH,
+	type ResourceListColumn,
+	useResourceListColumns,
+} from '@/app/components/layouts/resourceListColumns';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import type { BaseFilters, Resource } from '@/Interface';
 import type { ICredentialsResponse, ICredentialTypeMap } from '../credentials.types';
@@ -55,6 +60,23 @@ const route = useRoute();
 const router = useRouter();
 const telemetry = useTelemetry();
 const i18n = useI18n();
+const resourceListColumns = useResourceListColumns();
+
+const listColumns = computed<ResourceListColumn[]>(() => [
+	resourceListColumns.name(),
+	{
+		key: 'type',
+		label: i18n.baseText('resourcesList.column.type'),
+		width: RESOURCE_LIST_COLUMN_WIDTH.medium,
+		priority: 2,
+	},
+	// Credentials show a project badge without a folder path, so a medium column fits.
+	{ ...resourceListColumns.location(), width: RESOURCE_LIST_COLUMN_WIDTH.medium, priority: 3 },
+	resourceListColumns.updated(),
+	resourceListColumns.created(),
+	resourceListColumns.dependencies(),
+	resourceListColumns.actions(),
+]);
 const overview = useProjectPages();
 
 type Filters = BaseFilters & {
@@ -308,7 +330,8 @@ onMounted(() => {
 		:resources="allCredentials"
 		:initialize="initialize"
 		:additional-filters-handler="onFilter"
-		:type-props="{ itemSize: 77 }"
+		:type-props="{ itemSize: 54 }"
+		:list-columns="listColumns"
 		:loading="loading"
 		:disabled="readOnlyEnv || !projectPermissions.credential.create"
 		@update:filters="updateFilter"
@@ -327,7 +350,6 @@ onMounted(() => {
 		<template #default="{ data }">
 			<CredentialCard
 				data-test-id="resources-list-item"
-				class="mb-2xs"
 				:data="data"
 				:read-only="data.readOnly"
 				:needs-setup="data.needsSetup"

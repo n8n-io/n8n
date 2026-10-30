@@ -15,6 +15,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { MODAL_CONFIRM } from '@/app/constants';
 import PublicationIndicator from '@/app/components/PublicationIndicator.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import ResourceListRow from '@/app/components/layouts/ResourceListRow.vue';
 import { useToast } from '@n8n/composables/useToast';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
@@ -192,16 +193,19 @@ async function toggleMCPAccess(enabled: boolean) {
 </script>
 
 <template>
-	<N8nCard :class="$style.cardLink" data-test-id="agent-card" @click="emit('select', agent.id)">
-		<template #header>
-			<N8nText
-				tag="h2"
-				:bold="!isUntitled"
-				:color="isUntitled ? 'text-light' : undefined"
-				:class="[$style.cardHeading, { [$style.untitledName]: isUntitled }]"
-				data-test-id="agent-card-name"
-			>
-				{{ agent.name }}
+	<N8nCard data-test-id="agent-card" @click="emit('select', agent.id)">
+		<ResourceListRow>
+			<template #name>
+				<N8nIcon :class="$style.cardIcon" icon="bot" size="large" data-test-id="agent-card-icon" />
+				<N8nText
+					tag="h2"
+					:bold="!isUntitled"
+					:color="isUntitled ? 'text-light' : undefined"
+					:class="[$style.cardHeading, { [$style.untitledName]: isUntitled }]"
+					data-test-id="agent-card-name"
+				>
+					{{ agent.name }}
+				</N8nText>
 				<N8nBadge
 					v-if="!canUpdate"
 					:class="$style.readonlyBadge"
@@ -210,71 +214,75 @@ async function toggleMCPAccess(enabled: boolean) {
 				>
 					{{ locale.baseText('agents.list.readonly') }}
 				</N8nBadge>
-			</N8nText>
-		</template>
-		<div :class="$style.cardDescription">
-			<span>
-				{{ locale.baseText('agents.list.updated') }}
-				<TimeAgo :date="String(agent.updatedAt)" /> |
-			</span>
-			<span> {{ locale.baseText('agents.list.created') }} {{ formattedCreatedAtDate }} </span>
-			<span v-if="showMcpIndicator">|</span>
-			<span v-if="showMcpIndicator" :class="$style.mcpIndicator" data-test-id="agent-card-mcp">
-				<N8nTooltip placement="right" :content="locale.baseText('agents.list.availableInMCP')">
-					<N8nIcon icon="mcp" size="medium" />
-				</N8nTooltip>
-			</span>
-		</div>
-		<template #append>
-			<div :class="$style.cardActions" @click.stop>
-				<PublicationIndicator
-					v-if="isPublished"
-					:label="
-						locale.baseText(
-							hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
-						)
-					"
-					:variant="hasUnpublishedChanges ? 'warning' : 'success'"
-					:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
-					data-test-id="agent-card-publish-indicator"
-				/>
-				<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
-					<N8nIconButton
-						icon="message-circle-plus"
-						variant="ghost"
-						size="medium"
-						:aria-label="locale.baseText('agents.list.actions.newChat')"
-						data-test-id="agent-card-new-chat"
-						@click="emit('new-chat', agent.id, projectId)"
+				<span v-if="showMcpIndicator" :class="$style.mcpIndicator" data-test-id="agent-card-mcp">
+					<N8nTooltip placement="right" :content="locale.baseText('agents.list.availableInMCP')">
+						<N8nIcon icon="mcp" size="medium" />
+					</N8nTooltip>
+				</span>
+			</template>
+			<template #updated>
+				<N8nText size="small" color="text-light" :class="$style.meta">
+					<TimeAgo :date="String(agent.updatedAt)" />
+				</N8nText>
+			</template>
+			<template #created>
+				<N8nText size="small" color="text-light" :class="$style.meta">
+					{{ formattedCreatedAtDate }}
+				</N8nText>
+			</template>
+			<template #status>
+				<span :class="$style.cellContent" @click.stop>
+					<PublicationIndicator
+						v-if="isPublished"
+						:label="
+							locale.baseText(
+								hasUnpublishedChanges ? 'agents.list.changesToPublish' : 'agents.list.published',
+							)
+						"
+						:variant="hasUnpublishedChanges ? 'warning' : 'success'"
+						:data-state="hasUnpublishedChanges ? 'changes-to-publish' : 'published'"
+						data-test-id="agent-card-publish-indicator"
 					/>
-				</N8nTooltip>
-				<N8nActionToggle
-					v-if="showActions"
-					:actions="actions"
-					theme="dark"
-					data-test-id="agent-card-actions"
-					@action="onAction"
-				/>
-			</div>
-		</template>
+				</span>
+			</template>
+			<template #actions>
+				<span :class="$style.cellContent" @click.stop>
+					<N8nTooltip :content="locale.baseText('agents.list.actions.newChat')">
+						<N8nIconButton
+							icon="message-circle-plus"
+							variant="ghost"
+							size="medium"
+							:aria-label="locale.baseText('agents.list.actions.newChat')"
+							data-test-id="agent-card-new-chat"
+							@click="emit('new-chat', agent.id, projectId)"
+						/>
+					</N8nTooltip>
+					<span v-if="showActions" data-row-menu>
+						<N8nActionToggle
+							:actions="actions"
+							theme="dark"
+							data-test-id="agent-card-actions"
+							@action="onAction"
+						/>
+					</span>
+				</span>
+			</template>
+		</ResourceListRow>
 	</N8nCard>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
-.cardLink {
-	cursor: pointer;
-	padding: 0;
-	align-items: stretch;
+.cardIcon {
+	flex-shrink: 0;
+	color: var(--icon-color);
 }
 
 .cardHeading {
-	display: flex;
-	align-items: center;
+	min-width: 0;
 	font-size: var(--font-size--sm);
-	word-break: break-word;
-	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .untitledName {
@@ -282,47 +290,23 @@ async function toggleMCPAccess(enabled: boolean) {
 }
 
 .readonlyBadge {
-	margin-left: var(--spacing--3xs);
-}
-
-.cardDescription {
-	min-height: var(--spacing--xl);
-	display: flex;
-	align-items: center;
-	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	gap: var(--spacing--2xs);
+	flex-shrink: 0;
 }
 
 .mcpIndicator {
 	display: inline-flex;
+	flex-shrink: 0;
 	align-items: center;
 }
 
-.cardActions {
-	display: flex;
-	gap: var(--spacing--4xs);
-	flex-direction: row;
-	justify-content: center;
-	align-items: center;
-	align-self: stretch;
-	padding: 0 var(--spacing--sm) 0 0;
-	cursor: default;
+.meta {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-@include breakpoints.breakpoint('sm-and-down') {
-	.cardLink {
-		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
-		--card--append--width: 100%;
-
-		flex-direction: column;
-	}
-
-	.cardActions {
-		width: 100%;
-		padding: 0 var(--spacing--sm) var(--spacing--sm);
-		justify-content: end;
-	}
+// Controls in a cell must not open the agent.
+.cellContent {
+	display: contents;
 }
 </style>

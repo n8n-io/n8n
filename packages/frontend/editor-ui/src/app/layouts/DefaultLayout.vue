@@ -4,7 +4,7 @@ import AppSidebar from '@/app/components/app/AppSidebar.vue';
 </script>
 
 <template>
-	<BaseLayout>
+	<BaseLayout inset>
 		<template #sidebar>
 			<AppSidebar />
 		</template>

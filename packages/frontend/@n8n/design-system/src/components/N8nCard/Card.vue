@@ -54,10 +54,11 @@ function getClasses() {
 
 <style lang="scss" module>
 .card {
-	border-radius: var(--radius);
-	border: var(--border);
-	box-shadow: var(--shadow--xs);
-	background-color: var(--background--surface);
+	// Lists override these to render cards as flat rows.
+	border-radius: var(--card--radius, var(--radius));
+	border: var(--border-width, 1px) solid var(--card--border-color, var(--border-color));
+	box-shadow: var(--card--shadow, var(--shadow--xs));
+	background-color: var(--card--color--background, var(--background--surface));
 	padding: var(--card--padding, var(--spacing--sm));
 	display: flex;
 	flex-direction: row;
@@ -104,7 +105,12 @@ function getClasses() {
 
 	&:hover,
 	&:focus {
-		border-color: var(--border-color--strong);
+		border-color: var(--card--border-color--hover, var(--border-color--strong));
+		box-shadow: var(--card--shadow--hover, var(--card--shadow, var(--shadow--xs)));
+		background-color: var(
+			--card--color--background--hover,
+			var(--card--color--background, var(--background--surface))
+		);
 	}
 }
 

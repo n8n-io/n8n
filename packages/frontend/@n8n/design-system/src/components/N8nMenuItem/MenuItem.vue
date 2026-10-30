@@ -227,13 +227,14 @@ const tooltipPlacement = computed(() => {
 		color: var(--color--text--shade-1);
 	}
 
+	// Alpha fills stay visible on any surface, including the gray app sidebar.
 	&:global(.router-link-active),
 	&.active {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--active);
 	}
 
 	&:hover:not(.active):not(:global(.router-link-active)):not(.disabled) {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 		color: var(--color--text--shade-1);
 	}
 

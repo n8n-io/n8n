@@ -1,15 +1,19 @@
 <script lang="ts" setup generic="Key extends string, Item extends ItemWithKey<Key>">
 import type { ComponentPublicInstance } from 'vue';
-import { computed, onMounted, onBeforeMount, ref, nextTick, watch } from 'vue';
+import { computed, onMounted, onBeforeMount, onBeforeUnmount, ref, nextTick, watch } from 'vue';
 
 import type { RecycleScrollerProps } from './RecycleScroller.types';
 import type { ItemWithKey } from '../../types';
+import { getScrollParent } from '../../utils/scrollParent';
 
 const props = withDefaults(defineProps<RecycleScrollerProps<Key, Item>>(), {
 	offset: 2,
+	useScrollParent: false,
 });
 
 const wrapperRef = ref<HTMLElement | null>(null);
+// The element that scrolls: the wrapper itself, or an ancestor with `useScrollParent`.
+const scrollContainer = ref<HTMLElement | null>(null);
 const scrollerRef = ref<HTMLElement | null>(null);
 const itemsRef = ref<HTMLElement | null>(null);
 const itemRefs = ref<Record<string, Element | ComponentPublicInstance | null>>({});
@@ -116,14 +120,50 @@ onBeforeMount(() => {
 });
 
 onMounted(() => {
-	if (wrapperRef.value) {
-		wrapperRef.value.addEventListener('scroll', onScroll);
+	scrollContainer.value = props.useScrollParent
+		? getScrollParent(wrapperRef.value)
+		: wrapperRef.value;
+	getScrollEventTarget()?.addEventListener('scroll', onScroll);
+	if (scrollContainer.value) {
 		updateItemSizeCache(visibleItems.value);
 	}
 
 	window.addEventListener('resize', onWindowResize);
 	onWindowResize();
 });
+
+onBeforeUnmount(() => {
+	getScrollEventTarget()?.removeEventListener('scroll', onScroll);
+	window.removeEventListener('resize', onWindowResize);
+});
+
+/** Scroll position helpers */
+
+// The document scroller fires its scroll events on the window.
+function getScrollEventTarget(): HTMLElement | Window | null {
+	return scrollContainer.value === document.scrollingElement ? window : scrollContainer.value;
+}
+
+// Distance from the top of the scroll container content to the top of the list.
+function getListOffset(): number {
+	if (!props.useScrollParent || !scrollContainer.value || !scrollerRef.value) {
+		return 0;
+	}
+
+	return (
+		scrollerRef.value.getBoundingClientRect().top -
+		scrollContainer.value.getBoundingClientRect().top +
+		scrollContainer.value.scrollTop
+	);
+}
+
+function readScrollTop(): number {
+	if (!scrollContainer.value) {
+		return 0;
+	}
+
+	return Math.max(0, scrollContainer.value.scrollTop - getListOffset());
+}
 
 /** Event handlers */
 
@@ -157,16 +197,18 @@ function onUpdateItemSize(item: { [key: string]: string }) {
 
 		itemSizeCache.value[itemId] = size;
 
-		if (wrapperRef.value && scrollTop.value) {
-			wrapperRef.value.scrollTop = wrapperRef.value.scrollTop + difference;
-			scrollTop.value = wrapperRef.value.scrollTop;
+		if (scrollContainer.value && scrollTop.value) {
+			scrollContainer.value.scrollTop = scrollContainer.value.scrollTop + difference;
+			scrollTop.value = readScrollTop();
 		}
 	});
 }
 
 function onWindowResize() {
-	if (wrapperRef.value) {
-		wrapperHeight.value = wrapperRef.value.offsetHeight;
+	if (scrollContainer.value) {
+		wrapperHeight.value = props.useScrollParent
+			? scrollContainer.value.clientHeight
+			: scrollContainer.value.offsetHeight;
 		void nextTick(() => {
 			updateItemSizeCache(visibleItems.value);
 		});
@@ -176,20 +218,16 @@ function onWindowResize() {
 }
 
 function onScroll() {
-	if (!wrapperRef.value) {
-		return;
-	}
-
-	scrollTop.value = wrapperRef.value.scrollTop;
+	scrollTop.value = readScrollTop();
 }
 
 function scrollTo(position: number) {
-	if (!wrapperRef.value) {
+	if (!scrollContainer.value) {
 		return;
 	}
 
-	wrapperRef.value.scrollTop = position;
-	scrollTop.value = wrapperRef.value.scrollTop;
+	scrollContainer.value.scrollTop = position + getListOffset();
+	scrollTop.value = readScrollTop();
 }
 
 function scrollToKey(key: Item[Key]) {
@@ -205,7 +243,13 @@ defineExpose({ scrollToKey, scrollTo, scrollTop });
 </script>
 
 <template>
-	<div ref="wrapperRef" class="recycle-scroller-wrapper">
+	<div
+		ref="wrapperRef"
+		:class="[
+			'recycle-scroller-wrapper',
+			{ 'recycle-scroller-wrapper--scroll-parent': useScrollParent },
+		]"
+	>
 		<div ref="scrollerRef" class="recycle-scroller" :style="scrollerStyles">
 			<div ref="itemsRef" class="recycle-scroller-items-wrapper" :style="itemsStyles">
 				<div
@@ -227,6 +271,11 @@ defineExpose({ scrollToKey, scrollTo, scrollTop });
 	width: 100%;
 	overflow: auto;
 	flex: 1 1 auto;
+}
+
+.recycle-scroller-wrapper--scroll-parent {
+	height: auto;
+	overflow: visible;
 }
 
 .recycle-scroller {

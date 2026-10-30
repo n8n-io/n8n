@@ -9,4 +9,6 @@ export interface RecycleScrollerProps<
 	items: Item[];
 	itemKey: Key;
 	offset?: number;
+	/** Scroll with the nearest scrollable ancestor instead of an own scroll area */
+	useScrollParent?: boolean;
 }

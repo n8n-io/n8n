@@ -1,8 +1,14 @@
 <script lang="ts" setup generic="ResourceType extends Resource = Resource">
-import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount } from 'vue';
+import { computed, nextTick, ref, onMounted, watch, onBeforeUnmount, provide } from 'vue';
 
 import PageViewLayout from '@/app/components/layouts/PageViewLayout.vue';
 import PageViewLayoutList from '@/app/components/layouts/PageViewLayoutList.vue';
+import ResourceListHeader from '@/app/components/layouts/ResourceListHeader.vue';
+import {
+	type ResourceListColumn,
+	ResourceListColumnsKey,
+} from '@/app/components/layouts/resourceListColumns';
+import { ResourceListToolbarTargetKey } from '@/app/components/layouts/resourceListToolbar';
 import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropdown.vue';
 import ResourcesListEmptyState, {
 	isEmptyStateResourceKey,
@@ -11,6 +17,7 @@ import type { DatatableColumn } from '@n8n/design-system';
 import { useDebounce } from '@n8n/composables/useDebounce';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useRoute, useRouter } from 'vue-router';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 import type { BaseFilters, Resource, SortingAndPaginationUpdates } from '@/Interface';
 import { isSharedResource, isResourceSortableByDate } from '@/app/utils/typeGuards';
@@ -18,17 +25,19 @@ import { type LocalStorageTabKey, useN8nLocalStorage } from '@/app/composables/u
 import { useResourcesListI18n } from '@/app/composables/useResourcesListI18n';
 
 import {
+	N8nButton,
 	N8nDatatable,
+	N8nDropdownMenu,
+	N8nTooltip,
+	type DropdownMenuItemProps,
 	N8nIcon,
 	N8nInfoTip,
 	N8nInput,
 	N8nLink,
 	N8nLoading,
-	N8nOption,
-	N8nPagination,
 	N8nRecycleScroller,
-	N8nSelect,
 	N8nText,
+	getScrollParent,
 } from '@n8n/design-system';
 type UIConfig = {
 	searchEnabled: boolean;
@@ -58,11 +67,15 @@ const props = withDefaults(
 		shareable?: boolean;
 		sortFns?: Record<string, (a: ResourceType, b: ResourceType) => number>;
 		sortOptions?: string[];
+		/**
+		 * - `list-full`: the component gets every resource, and sorts and filters them
+		 * - `list-paginated`: the parent fetches the resources in batches, and appends the next
+		 *   batch on `load-more`
+		 */
 		type?: 'datatable' | 'list-full' | 'list-paginated';
 		typeProps: { itemSize: number } | { columns: DatatableColumn[] };
 		loading: boolean;
 		customPageSize?: number;
-		availablePageSizeOptions?: number[];
 		totalItems?: number;
 		resourcesRefreshing?: boolean;
 		// Set to true if sorting and filtering is done outside of the component
@@ -71,6 +84,8 @@ const props = withDefaults(
 		uiConfig?: UIConfig;
 		tabKey?: LocalStorageTabKey;
 		persistKeyExclusions?: string[];
+		/** Show the list as columns under a header. The row cells must use the same keys */
+		listColumns?: ResourceListColumn[];
 	}>(),
 	{
 		displayName: (resource: ResourceType) => resource.name || '',
@@ -84,7 +99,6 @@ const props = withDefaults(
 		additionalFiltersHandler: undefined,
 		shareable: true,
 		customPageSize: 25,
-		availablePageSizeOptions: () => [10, 25, 50, 100],
 		totalItems: 0,
 		dontPerformSortingAndFiltering: false,
 		resourcesRefreshing: false,
@@ -96,8 +110,20 @@ const props = withDefaults(
 		}),
 		tabKey: 'workflows',
 		persistKeyExclusions: () => [],
+		listColumns: undefined,
 	},
 );
+
+provide(
+	ResourceListColumnsKey,
+	computed(() => props.listColumns),
+);
+
+// The page header can host search, sort and filters in its tab row. Without one, they show above the list.
+const toolbarTarget = ref<HTMLElement | null>(null);
+provide(ResourceListToolbarTargetKey, (element) => {
+	toolbarTarget.value = element;
+});
 
 const { getResourceText } = useResourcesListI18n(props.resourceKey);
 
@@ -108,11 +134,8 @@ const rowsPerPage = ref<number>(props.customPageSize);
 const resettingFilters = ref(false);
 const search = ref<HTMLElement | null>(null);
 const listWrapperRef = ref<HTMLElement | null>(null);
-const listItemsRef = ref<HTMLElement | null>(null);
 
-// Preferred sorting and page size
-// These refs store the values that are set by the user and preserved in local storage
-const preferredPageSize = ref<number>(props.customPageSize);
+// Preferred sorting, set by the user and preserved in local storage
 const preferredSort = ref<string>(props.sortOptions[0]);
 
 const emit = defineEmits<{
@@ -120,6 +143,8 @@ const emit = defineEmits<{
 	'click:add': [event: Event];
 	'update:pagination-and-sort': [value: SortingAndPaginationUpdates];
 	'update:search': [value: string];
+	/** The user scrolled near the end of a `list-paginated` list that has more resources */
+	'load-more': [];
 }>();
 
 const slots = defineSlots<{
@@ -173,6 +198,19 @@ const showLoadingState = computed(() => {
 			!filtersModel.value.search)
 	);
 });
+
+const sortMenuItems = computed<Array<DropdownMenuItemProps<string>>>(() =>
+	props.sortOptions.map((sortOption) => ({
+		id: sortOption,
+		label: getResourceText(`sort.${sortOption}`, `sort.${sortOption}`),
+		checked: sortOption === sortBy.value,
+		testId: 'resources-list-sort-item',
+	})),
+);
+
+const currentSortLabel = computed(() =>
+	getResourceText(`sort.${sortBy.value}`, `sort.${sortBy.value}`),
+);
 
 const filterKeys = computed(() => {
 	return Object.keys(filtersModel.value);
@@ -378,6 +416,7 @@ const setRowsPerPage = async (numberOfRowsPerPage: number) => {
 const setSorting = async (sort: string, persistUpdate = true) => {
 	sortBy.value = sort;
 	if (persistUpdate) {
+		scrollToTop();
 		await savePaginationPreferences();
 		sendSortingTelemetry();
 	}
@@ -387,7 +426,11 @@ const setSorting = async (sort: string, persistUpdate = true) => {
 };
 
 const setCurrentPage = async (page: number, persistUpdate = true) => {
+	const pageChanged = currentPage.value !== page;
 	currentPage.value = page;
+	if (pageChanged) {
+		scrollToTop();
+	}
 	if (persistUpdate) {
 		await savePaginationPreferences();
 	}
@@ -431,6 +474,7 @@ const onAddButtonClick = (e: Event) => {
 };
 
 const onUpdateFilters = (e: BaseFilters) => {
+	scrollToTop();
 	emit('update:filters', e);
 };
 
@@ -473,18 +517,14 @@ const onUpdateFiltersLength = (length: number) => {
 };
 
 const onSearch = (s: string) => {
+	scrollToTop();
 	filtersModel.value.search = s;
 	emit('update:search', s);
 };
 
-const findNearestPageSize = (size: number): number => {
-	return props.availablePageSizeOptions.reduce((prev, curr) =>
-		Math.abs(curr - size) < Math.abs(prev - size) ? curr : prev,
-	);
-};
-
 /**
- * Saves the current pagination preferences to local storage and updates the URL query parameters.
+ * Saves the sort to local storage and to the URL query parameters.
+ * A `list-paginated` list loads more resources as the user scrolls, so it saves no page.
  */
 const savePaginationPreferences = async () => {
 	// For now, only available for paginated lists
@@ -493,22 +533,11 @@ const savePaginationPreferences = async () => {
 	}
 	const currentQuery = { ...route.query };
 
-	// Update pagination parameters
-	if (currentPage.value !== 1) {
-		currentQuery.page = currentPage.value.toString();
-	} else {
-		delete currentQuery.page;
-	}
+	// Older links can still have these parameters
+	delete currentQuery.page;
+	delete currentQuery.pageSize;
 
-	// Only update sort & page size if they are different from the default values
-	// otherwise, remove them from the query
-	if (rowsPerPage.value !== preferredPageSize.value) {
-		currentQuery.pageSize = rowsPerPage.value.toString();
-		preferredPageSize.value = rowsPerPage.value;
-	} else {
-		delete currentQuery.pageSize;
-	}
-
+	// Only add the sort if it is different from the default value
 	if (sortBy.value !== preferredSort.value && !props.persistKeyExclusions.includes(sortBy.value)) {
 		currentQuery.sort = sortBy.value;
 		preferredSort.value = sortBy.value;
@@ -521,7 +550,6 @@ const savePaginationPreferences = async () => {
 		props.tabKey,
 		{
 			sort: props.persistKeyExclusions.includes(sortBy.value) ? preferredSort.value : sortBy.value,
-			pageSize: rowsPerPage.value,
 		},
 	);
 
@@ -531,9 +559,8 @@ const savePaginationPreferences = async () => {
 };
 
 /**
- * Loads the pagination preferences from local storage or URL query parameter
- * Current page is only saved in the URL query parameters
- * Page size and sort are saved both in local storage and URL query parameters, with query parameters taking precedence
+ * Loads the sort from the URL query parameters or local storage.
+ * The query parameter takes precedence.
  */
 const loadPaginationPreferences = async () => {
 	// For now, only available for paginated lists
@@ -549,29 +576,6 @@ const loadPaginationPreferences = async () => {
 
 	const emitPayload: SortingAndPaginationUpdates = {};
 
-	if (query.page) {
-		const newPage = parseInt(query.page as string, 10);
-		if (newPage > 1) {
-			currentPage.value = newPage;
-			emitPayload.page = newPage;
-		}
-	}
-
-	if (query.pageSize ?? localStorageValues.pageSize) {
-		const parsedSize = parseInt(
-			(query.pageSize as string) || String(localStorageValues.pageSize),
-			10,
-		);
-		// Round to the nearest available page size, this will prevent users from passing arbitrary values
-		const newPageSize = findNearestPageSize(parsedSize);
-		rowsPerPage.value = newPageSize;
-		emitPayload.pageSize = newPageSize;
-		preferredPageSize.value = newPageSize;
-	} else {
-		rowsPerPage.value = props.customPageSize;
-		emitPayload.pageSize = props.customPageSize;
-	}
-
 	if (query.sort) {
 		// Update the sortBy value and emit the event based on the query parameter
 		sortBy.value = emitPayload.sort = preferredSort.value = query.sort as string;
@@ -585,12 +589,48 @@ const loadPaginationPreferences = async () => {
 	emit('update:pagination-and-sort', emitPayload);
 };
 
-const getScrollContainer = () => {
-	if (props.type === 'list-paginated') {
-		return listItemsRef.value ?? null;
-	}
-	return listWrapperRef.value ?? null;
+// The list has no scroll area of its own: it scrolls with the page.
+const getScrollContainer = () => getScrollParent(listWrapperRef.value);
+
+const scrollToTop = () => {
+	getScrollContainer()?.scrollTo({ top: 0 });
 };
+
+const hasMoreResources = computed(
+	() => props.type === 'list-paginated' && props.resources.length < props.totalItems,
+);
+
+// Shown in the column header. A paginated list counts all resources, not only the loaded ones.
+const resourceCount = computed(() =>
+	props.type === 'list-paginated' ? props.totalItems : filteredAndSortedResources.value.length,
+);
+
+const loadMoreRef = ref<HTMLElement | null>(null);
+const loadMoreRoot = ref<Element | null>(null);
+
+const { observe: observeLoadMore, disconnect: disconnectLoadMore } = useIntersectionObserver({
+	root: loadMoreRoot,
+	// Start to load when the end of the list is one screen away
+	rootMargin: '0px 0px 100% 0px',
+	onIntersect: () => emit('load-more'),
+	once: false,
+});
+
+// Observe again after each batch: a new observer reports at once if the end is still near,
+// for example on a tall screen.
+watch(
+	[loadMoreRef, () => props.resources, () => props.resourcesRefreshing],
+	([element, , refreshing]) => {
+		if (!element || refreshing) {
+			disconnectLoadMore();
+			return;
+		}
+		const scrollParent = getScrollParent(element);
+		loadMoreRoot.value = scrollParent === document.scrollingElement ? null : scrollParent;
+		observeLoadMore(element);
+	},
+	{ flush: 'post' },
+);
 
 defineExpose({
 	currentPage,
@@ -600,9 +640,95 @@ defineExpose({
 </script>
 
 <template>
-	<PageViewLayout>
+	<PageViewLayout page-scroll :class="$style.columnContainer">
 		<template #header>
 			<slot name="header" />
+			<template v-if="!showLoadingState && !showEmptyState">
+				<div v-if="$slots.breadcrumbs" :class="$style.breadcrumbsRow">
+					<slot name="breadcrumbs"></slot>
+				</div>
+
+				<Teleport :to="toolbarTarget" :disabled="!toolbarTarget">
+					<div :class="$style.toolbar" data-test-id="resources-list-toolbar">
+						<N8nInput
+							v-if="props.uiConfig.searchEnabled"
+							ref="search"
+							:model-value="filtersModel.search"
+							:class="$style.search"
+							:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
+							size="medium"
+							clearable
+							data-test-id="resources-list-search"
+							@update:model-value="onSearch"
+						>
+							<template #prefix>
+								<N8nIcon icon="search" />
+							</template>
+						</N8nInput>
+						<N8nTooltip v-if="props.uiConfig.sortEnabled" :content="currentSortLabel">
+							<span>
+								<N8nDropdownMenu
+									:items="sortMenuItems"
+									placement="bottom-end"
+									data-test-id="resources-list-sort"
+									@select="setSorting"
+								>
+									<template #trigger>
+										<N8nButton
+											variant="outline"
+											icon="arrow-up-down"
+											size="medium"
+											icon-only
+											:aria-label="currentSortLabel"
+										/>
+									</template>
+								</N8nDropdownMenu>
+							</span>
+						</N8nTooltip>
+						<ResourceFiltersDropdown
+							v-if="props.uiConfig.showFiltersDropdown"
+							:keys="filterKeys"
+							:reset="resetFilters"
+							:model-value="filtersModel"
+							:shareable="shareable"
+							:just-icon="true"
+							@update:model-value="onUpdateFilters"
+							@update:filters-length="onUpdateFiltersLength"
+						>
+							<template #default="resourceFiltersSlotProps">
+								<slot name="filters" v-bind="resourceFiltersSlotProps" />
+							</template>
+						</ResourceFiltersDropdown>
+						<slot name="add-button"></slot>
+					</div>
+				</Teleport>
+
+				<div
+					v-if="props.uiConfig.showFiltersDropdown"
+					v-show="hasFilters"
+					class="mt-xs"
+					data-test-id="resources-list-filters-applied-info"
+				>
+					<N8nInfoTip :bold="false">
+						{{
+							hasOnlyFiltersThatShowMoreResults
+								? getResourceText('filters.active.shortText', 'filters.active.shortText')
+								: getResourceText('filters.active', 'filters.active')
+						}}
+						<N8nLink data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
+							{{ getResourceText('filters.active.reset', 'filters.active.reset') }}
+						</N8nLink>
+					</N8nInfoTip>
+				</div>
+
+				<div v-if="$slots.breadcrumbs" class="pb-xs" />
+
+				<ResourceListHeader
+					v-if="listColumns && !resourcesRefreshing && filteredAndSortedResources.length > 0"
+					:class="$style.columnHeader"
+					:count="resourceCount"
+				/>
+			</template>
 		</template>
 		<div v-if="showLoadingState" class="resource-list-loading">
 			<N8nLoading :rows="25" :shrink-last="false" />
@@ -619,83 +745,7 @@ defineExpose({
 				</slot>
 			</div>
 			<PageViewLayoutList v-else>
-				<template #header>
-					<div :class="$style['filters-row']">
-						<div :class="$style.filters">
-							<slot name="breadcrumbs"></slot>
-							<N8nInput
-								v-if="props.uiConfig.searchEnabled"
-								ref="search"
-								:model-value="filtersModel.search"
-								:class="$style.search"
-								:placeholder="getResourceText('search.placeholder', 'search.placeholder')"
-								size="medium"
-								clearable
-								data-test-id="resources-list-search"
-								@update:model-value="onSearch"
-							>
-								<template #prefix>
-									<N8nIcon icon="search" />
-								</template>
-							</N8nInput>
-							<div v-if="props.uiConfig.sortEnabled" :class="$style['sort-and-filter']">
-								<N8nSelect
-									v-model="sortBy"
-									size="small"
-									:class="$style.resourceList"
-									data-test-id="resources-list-sort"
-									@change="setSorting(sortBy)"
-								>
-									<N8nOption
-										v-for="sortOption in sortOptions"
-										:key="sortOption"
-										data-test-id="resources-list-sort-item"
-										:value="sortOption"
-										:label="getResourceText(`sort.${sortOption}`, `sort.${sortOption}`)"
-									/>
-								</N8nSelect>
-							</div>
-							<div v-if="props.uiConfig.showFiltersDropdown" :class="$style['sort-and-filter']">
-								<ResourceFiltersDropdown
-									:keys="filterKeys"
-									:reset="resetFilters"
-									:model-value="filtersModel"
-									:shareable="shareable"
-									:just-icon="true"
-									@update:model-value="onUpdateFilters"
-									@update:filters-length="onUpdateFiltersLength"
-								>
-									<template #default="resourceFiltersSlotProps">
-										<slot name="filters" v-bind="resourceFiltersSlotProps" />
-									</template>
-								</ResourceFiltersDropdown>
-								<slot name="add-button"></slot>
-							</div>
-						</div>
-					</div>
-
-					<slot name="callout"></slot>
-
-					<div
-						v-if="props.uiConfig.showFiltersDropdown"
-						v-show="hasFilters"
-						class="mt-xs"
-						data-test-id="resources-list-filters-applied-info"
-					>
-						<N8nInfoTip :bold="false">
-							{{
-								hasOnlyFiltersThatShowMoreResults
-									? getResourceText('filters.active.shortText', 'filters.active.shortText')
-									: getResourceText('filters.active', 'filters.active')
-							}}
-							<N8nLink data-test-id="workflows-filter-reset" size="small" @click="resetFilters">
-								{{ getResourceText('filters.active.reset', 'filters.active.reset') }}
-							</N8nLink>
-						</N8nInfoTip>
-					</div>
-
-					<div class="pb-xs" />
-				</template>
+				<slot name="callout"></slot>
 
 				<slot name="preamble" />
 
@@ -715,6 +765,7 @@ defineExpose({
 						:items="filteredAndSortedResources"
 						:item-size="itemSize()"
 						:item-key="'id'"
+						use-scroll-parent
 					>
 						<template #default="{ item, updateItemSize }">
 							<slot :data="item" :update-item-size="updateItemSize" />
@@ -726,23 +777,20 @@ defineExpose({
 						:class="$style.paginatedListWrapper"
 						data-test-id="paginated-list"
 					>
-						<div ref="listItemsRef" :class="$style.listItems">
+						<div :class="$style.listItems">
 							<div v-for="(item, index) in resources" :key="index" :class="$style.listItem">
 								<slot name="item" :item="item" :index="index">
 									{{ item }}
 								</slot>
 							</div>
 						</div>
-						<div :class="$style.listPagination">
-							<N8nPagination
-								:page="currentPage"
-								:items-per-page="rowsPerPage"
-								:total="totalItems"
-								:page-sizes="availablePageSizeOptions"
-								data-test-id="resources-list-pagination"
-								@update:page="setCurrentPage"
-								@update:items-per-page="setRowsPerPage"
-							/>
+						<div
+							v-if="hasMoreResources"
+							ref="loadMoreRef"
+							:class="$style.loadMore"
+							data-test-id="resources-list-load-more"
+						>
+							<N8nLoading :rows="3" :shrink-last="false" />
 						</div>
 					</div>
 					<!-- DATATABLE -->
@@ -784,88 +832,110 @@ defineExpose({
 
 <style lang="scss" module>
 @use '@n8n/design-system/css/mixins/breakpoints';
-@use '@n8n/design-system/css/mixins/mixins' as mixins;
 
-.filters-row {
-	display: flex;
-	flex-direction: row;
-	align-items: center;
-	justify-content: space-between;
-	width: 100%;
-	gap: var(--spacing--2xs);
+// Column breakpoints follow the list width, not the window, because the sidebar takes space.
+.columnContainer {
+	container: resource-list / inline-size;
 }
 
-.filters {
-	display: grid;
-	grid-auto-flow: column;
-	grid-auto-columns: 1fr max-content max-content max-content;
-	gap: var(--spacing--4xs);
+@container resource-list (width < 960px) {
+	:global([data-column-priority='3']) {
+		display: none;
+	}
+}
+
+@container resource-list (width < 768px) {
+	:global([data-column-priority='2']) {
+		display: none;
+	}
+}
+
+@container resource-list (width < 576px) {
+	:global([data-column-priority='1']) {
+		display: none;
+	}
+}
+
+// Line the header cells up with the row cells below.
+.columnHeader {
+	margin-inline: var(--spacing--4xs);
+}
+
+.columnContainer:has(
+		.listItem:first-child :global(.card:hover),
+		:global(.recycle-scroller-item:first-child .card:hover)
+	)
+	.columnHeader {
+	border-bottom-color: transparent;
+}
+
+.breadcrumbsRow {
+	display: flex;
 	align-items: center;
-	justify-content: end;
-	width: 100%;
+	min-height: var(--spacing--xl);
+}
 
-	.sort-and-filter {
-		display: flex;
-		gap: var(--spacing--4xs);
-		align-items: center;
-
-		input {
-			min-height: 0;
-			width: 196px;
-			height: 32px;
-		}
-	}
-
-	@include breakpoints.breakpoint('xs-only') {
-		grid-auto-flow: row;
-		grid-auto-columns: unset;
-		grid-template-columns: 1fr;
-	}
+.toolbar {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: var(--spacing--4xs);
 }
 
 .search {
-	max-width: 196px;
-	justify-self: end;
+	width: 196px;
 
 	@include breakpoints.breakpoint('sm-and-down') {
-		max-width: 100%;
+		width: 140px;
 	}
 }
 
 .listWrapper {
-	position: absolute;
-	height: 100%;
+	// Render resource cards as flat rows: no frame, a hairline divider, a fill on hover.
+	--card--border-color: transparent;
+	--card--border-color--hover: transparent;
+	--card--shadow: inset 0 -1px 0 var(--border-color--subtle);
+	--card--shadow--hover: none;
+	--card--color--background: transparent;
+	--card--color--background--hover: var(--background--hover);
+	--card--padding: var(--spacing--xs) var(--spacing--sm);
+
 	width: 100%;
+	// The page has no bottom padding, so keep the last row off the panel edge.
+	padding-bottom: var(--spacing--sm);
+
+	// A hovered row has a rounded fill. Hide the dividers that touch it, so no line curves around the fill.
+	.listItem:has(+ .listItem :global(.card:hover)) :global(.card),
+	:global(.recycle-scroller-item:has(+ .recycle-scroller-item .card:hover) .card) {
+		--card--shadow: none;
+	}
+
+	// Show a row menu only on hover, keyboard focus, or while it is open. Touch screens always show it.
+	@media (hover: hover) {
+		:global([data-row-menu]) {
+			opacity: 0;
+			transition: opacity var(--duration--snappy) var(--easing--ease-out);
+		}
+
+		:global(.card:hover [data-row-menu]),
+		:global(.card:focus-within [data-row-menu]),
+		:global([data-row-menu]:has([aria-expanded='true'])) {
+			opacity: 1;
+		}
+	}
 }
 
 .paginatedListWrapper {
 	display: flex;
 	flex-direction: column;
-	height: 100%;
-	overflow: auto;
-	gap: var(--spacing--md);
 }
 
 .listItems {
-	overflow-y: auto;
 	padding-inline: var(--spacing--4xs);
-
-	@include mixins.scroll-bar;
-	scrollbar-gutter: stable;
 }
 
-.listPagination {
-	display: flex;
-	justify-content: flex-end;
-	margin-bottom: var(--spacing--lg);
-}
-
-.sort-and-filter {
-	white-space: nowrap;
-
-	@include breakpoints.breakpoint('sm-and-down') {
-		width: 100%;
-	}
+.loadMore {
+	padding: var(--spacing--xs) var(--spacing--sm);
 }
 
 .datatable {
@@ -876,18 +946,17 @@ defineExpose({
 <style lang="scss" scoped>
 .resource-list-loading {
 	position: relative;
-	height: 0;
 	width: 100%;
+	// The list scrolls with the page, so cap the skeleton at one screen.
+	max-height: 100vh;
 	overflow: hidden;
+	visibility: hidden;
 	/*
 	Show the loading skeleton only if the loading takes longer than 300ms
 	*/
 	animation: 0.01s linear 0.3s forwards changeVisibility;
 	:deep(.el-skeleton) {
-		position: absolute;
-		height: 100%;
 		width: 100%;
-		overflow: hidden;
 
 		> div {
 			> div:first-child {
@@ -908,11 +977,8 @@ defineExpose({
 }
 
 @keyframes changeVisibility {
-	from {
-		height: 0;
-	}
 	to {
-		height: 100%;
+		visibility: visible;
 	}
 }
 </style>

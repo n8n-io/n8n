@@ -10,6 +10,12 @@ import {
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import ResourcesListLoadingState from '@/app/components/layouts/ResourcesListLoadingState.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import {
+	RESOURCE_LIST_COLUMN_WIDTH,
+	type ResourceListColumn,
+	useResourceListColumns,
+} from '@/app/components/layouts/resourceListColumns';
+import { useOpenWorkflowInAssistantStore } from '@/experiments/openWorkflowInAssistant/stores/openWorkflowInAssistant.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
@@ -17,6 +23,7 @@ import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useLatestFetch } from '@/app/composables/useLatestFetch';
+import { type BatchRange, useLoadMoreBatches } from '@/app/composables/useLoadMoreBatches';
 import type {
 	DragTarget,
 	DropTarget,
@@ -225,8 +232,7 @@ const resourcesListLayoutRef = useTemplateRef('resourcesListLayout');
 
 const workflowsAndFolders = ref<WorkflowListResource[]>([]);
 
-const currentPage = ref(1);
-const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
+const batches = useLoadMoreBatches(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref('updatedAt:desc');
 
 const currentFolderId = ref<string | null>(null);
@@ -323,6 +329,30 @@ const isWorkflowCardMcpToggleEnabled = computed(() =>
 	),
 );
 
+const resourceListColumns = useResourceListColumns();
+const openWorkflowInAssistantStore = useOpenWorkflowInAssistantStore();
+
+const listColumns = computed<ResourceListColumn[]>(() => [
+	resourceListColumns.name(),
+	...(showCardsBadge.value ? [resourceListColumns.location()] : []),
+	resourceListColumns.updated(),
+	resourceListColumns.created(),
+	resourceListColumns.status(),
+	...(isWorkflowCardMcpToggleEnabled.value && mcpModuleActive.value
+		? [
+				{
+					key: 'mcp',
+					label: i18n.baseText('resourcesList.column.mcp'),
+					width: RESOURCE_LIST_COLUMN_WIDTH.narrow,
+					priority: 2 as const,
+				},
+			]
+		: []),
+	resourceListColumns.dependencies(),
+	// Experiment cleanup: the second button belongs to openWorkflowInAssistant.
+	resourceListColumns.actions(openWorkflowInAssistantStore.showsOptedOutCardButton ? 2 : 1),
+]);
+
 const showFolders = computed(() => {
 	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
 });
@@ -337,8 +367,9 @@ const currentFolderParent = computed(() => {
 		: null;
 });
 
+// The page title already names the project, so show the path only inside a folder
 const showMainBreadcrumbs = computed(() => {
-	return showFolders.value && (!currentFolderId.value || currentFolder.value !== null);
+	return showFolders.value && !!currentFolderId.value && currentFolder.value !== null;
 });
 
 const isDragging = computed(() => {
@@ -855,21 +886,8 @@ const initialize = async () => {
 	}
 };
 
-/**
- * Fetches:
- * - Current workflows and folders page
- * - Total count of workflows and folders in the current project
- * - Path to the current folder (if not cached)
- */
-const fetchWorkflows = async () => {
-	const isCurrent = nextFetch();
-
-	// We debounce here so that fast enough fetches don't trigger
-	// the placeholder graphics for a few milliseconds, which would cause a flicker
-	const delayedLoading = debounce(() => {
-		loading.value = true;
-	}, 300);
-
+/** The project, filters and sort of the current list */
+const getWorkflowsListQuery = () => {
 	const routeProjectId = route.params?.projectId as string | undefined;
 	const homeProjectFilter = filters.value.homeProject || undefined;
 	const parentFolder = (route.params?.folderId as string) || undefined;
@@ -885,33 +903,87 @@ const fetchWorkflows = async () => {
 
 	const archivedFilter = filters.value.showArchived ? undefined : false;
 
-	// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
-	const fetchFolders = showFolders.value && !tags.length && activeFilter === undefined;
+	return {
+		projectId: routeProjectId ?? homeProjectFilter,
+		sortBy: currentSort.value,
+		filters: {
+			query: filters.value.search || undefined,
+			active: activeFilter,
+			isArchived: archivedFilter,
+			tags: tags.length ? tags : undefined,
+			parentFolderId: getParentFolderId(parentFolder),
+		},
+		// Only fetch folders if showFolders is enabled and there are not tags or active filter applied
+		includeFolders: showFolders.value && !tags.length && activeFilter === undefined,
+		onlySharedWithMe: projectPages.isSharedSubPage,
+	};
+};
+
+/** Fetches the batch after the loaded rows */
+const fetchWorkflowsBatch = async (range: BatchRange) => {
+	const query = getWorkflowsListQuery();
+	const { data } = await workflowsListStore.fetchWorkflowsRange(
+		query.projectId,
+		range,
+		query.sortBy,
+		query.filters,
+		query.includeFolders,
+		query.onlySharedWithMe,
+	);
+	return data;
+};
+
+const onResourcesFetched = (resources: WorkflowListResource[]) => {
+	foldersStore.cacheFolders(
+		resources
+			.filter((resource) => resource.resource === 'folder')
+			.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
+	);
+
+	// Async-fetch dependency counts for visible workflows (fire-and-forget)
+	// in the overview page we don't have a resource type
+	const workflowIds = resources
+		.filter((r) => r.resource === 'workflow' || r.resource === undefined)
+		.map((r) => r.id);
+	if (workflowIds.length > 0) {
+		void fetchDependencyCounts(workflowIds, 'workflow');
+	}
+};
+
+/**
+ * Fetches:
+ * - All loaded batches of workflows and folders, in one request
+ * - Total count of workflows and folders in the current project
+ * - Path to the current folder (if not cached)
+ */
+const fetchWorkflows = async () => {
+	const isCurrent = nextFetch();
+	const range = batches.startRefresh();
+
+	// We debounce here so that fast enough fetches don't trigger
+	// the placeholder graphics for a few milliseconds, which would cause a flicker
+	const delayedLoading = debounce(() => {
+		loading.value = true;
+	}, 300);
+
+	const routeProjectId = route.params?.projectId as string | undefined;
+	const parentFolder = (route.params?.folderId as string) || undefined;
 
 	try {
+		const query = getWorkflowsListQuery();
 		const fetchedResources = await workflowsListStore.fetchWorkflowsPage(
-			routeProjectId ?? homeProjectFilter,
-			currentPage.value,
-			pageSize.value,
-			currentSort.value,
-			{
-				query: filters.value.search || undefined,
-				active: activeFilter,
-				isArchived: archivedFilter,
-				tags: tags.length ? tags : undefined,
-				parentFolderId: getParentFolderId(parentFolder),
-			},
-			fetchFolders,
-			projectPages.isSharedSubPage,
+			query.projectId,
+			1,
+			range.take,
+			query.sortBy,
+			query.filters,
+			query.includeFolders,
+			query.onlySharedWithMe,
 		);
 
 		if (!isCurrent()) return [];
 
-		foldersStore.cacheFolders(
-			fetchedResources
-				.filter((resource) => resource.resource === 'folder')
-				.map((r) => ({ id: r.id, name: r.name, parentFolder: r.parentFolder?.id })),
-		);
+		onResourcesFetched(fetchedResources);
 
 		// This is for the case when user lands straight on a folder page
 		const isCurrentFolderCached = foldersStore.breadcrumbsCache[parentFolder ?? ''] !== undefined;
@@ -924,15 +996,6 @@ const fetchWorkflows = async () => {
 		}
 
 		workflowsAndFolders.value = fetchedResources;
-
-		// Async-fetch dependency counts for visible workflows (fire-and-forget)
-		// in the overview page we don't have a resource type
-		const workflowIds = fetchedResources
-			.filter((r) => r.resource === 'workflow' || r.resource === undefined)
-			.map((r) => r.id);
-		if (workflowIds.length > 0) {
-			void fetchDependencyCounts(workflowIds, 'workflow');
-		}
 
 		// Toggle ownership cards visibility only after we have fetched the workflows
 		showCardsBadge.value =
@@ -949,6 +1012,7 @@ const fetchWorkflows = async () => {
 		void router.push({ name: VIEWS.PROJECTS_FOLDERS, params: { projectId: routeProjectId } });
 		return [];
 	} finally {
+		batches.endRefresh();
 		delayedLoading.cancel();
 		if (isCurrent()) {
 			loading.value = false;
@@ -956,6 +1020,28 @@ const fetchWorkflows = async () => {
 				breadcrumbsLoading.value = false;
 			}
 		}
+	}
+};
+
+const loadMoreWorkflows = async () => {
+	try {
+		await batches.loadMore(
+			workflowsAndFolders.value.length,
+			fetchWorkflowsBatch,
+			(fetchedResources) => {
+				// A row can move between batches if it changed since the last request
+				const loadedKeys = new Set(workflowsAndFolders.value.map((r) => `${r.resource}:${r.id}`));
+				const newResources = fetchedResources.filter(
+					(r) => !loadedKeys.has(`${r.resource}:${r.id}`),
+				);
+				// Leave the list as it is when nothing is new, so the list does not request again
+				if (newResources.length === 0) return;
+				workflowsAndFolders.value = [...workflowsAndFolders.value, ...newResources];
+				onResourcesFetched(newResources);
+			},
+		);
+	} catch (error) {
+		toast.showError(error, i18n.baseText('resourcesList.loadMore.error'));
 	}
 };
 
@@ -984,7 +1070,7 @@ const getParentFolderId = (routeId?: string) => {
 
 // Filter and sort methods
 const onFiltersUpdated = async () => {
-	currentPage.value = 1;
+	batches.reset();
 	saveFiltersOnQueryString();
 	if (!loading.value) {
 		await callDebounced(fetchWorkflows, { debounceTime: FILTERS_DEBOUNCE_TIME, trailing: true });
@@ -992,7 +1078,7 @@ const onFiltersUpdated = async () => {
 };
 
 const onSearchUpdated = async (search: string) => {
-	currentPage.value = 1;
+	batches.reset();
 	saveFiltersOnQueryString();
 	if (search) {
 		await callDebounced(fetchWorkflows, { debounceTime: SEARCH_DEBOUNCE_TIME, trailing: true });
@@ -1003,13 +1089,8 @@ const onSearchUpdated = async (search: string) => {
 };
 
 const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
-	if (payload.page) {
-		currentPage.value = payload.page;
-	}
-	if (payload.pageSize) {
-		pageSize.value = payload.pageSize;
-	}
 	if (payload.sort) {
+		batches.reset();
 		currentSort.value =
 			WORKFLOWS_SORT_MAP[payload.sort as keyof typeof WORKFLOWS_SORT_MAP] ?? 'updatedAt:desc';
 	}
@@ -1024,7 +1105,7 @@ const setPaginationAndSort = async (payload: SortingAndPaginationUpdates) => {
 const onClickTag = async (tagId: string) => {
 	if (!filters.value.tags.includes(tagId)) {
 		filters.value.tags.push(tagId);
-		currentPage.value = 1;
+		batches.reset();
 		saveFiltersOnQueryString();
 		await fetchWorkflows();
 	}
@@ -2240,6 +2321,7 @@ const onNameSubmit = async (name: string) => {
 		type="list-paginated"
 		:resources="workflowListResources"
 		:type-props="{ itemSize: 80 }"
+		:list-columns="listColumns"
 		:shareable="isShareable"
 		:initialize="initialize"
 		:disabled="readOnlyEnv || !projectPermissions.workflow.create"
@@ -2253,6 +2335,7 @@ const onNameSubmit = async (name: string) => {
 		@update:search="onSearchUpdated"
 		@update:filters="onFiltersUpdated"
 		@update:pagination-and-sort="setPaginationAndSort"
+		@load-more="loadMoreWorkflows"
 		@mouseleave="folderHelpers.resetDropTarget"
 	>
 		<template #header>
@@ -2335,7 +2418,7 @@ const onNameSubmit = async (name: string) => {
 				</template>
 			</N8nCallout>
 		</template>
-		<template #breadcrumbs>
+		<template v-if="breadcrumbsLoading || showMainBreadcrumbs" #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
 				<N8nLoading :loading="breadcrumbsLoading" :rows="1" variant="p" />
 			</div>
@@ -2398,7 +2481,6 @@ const onNameSubmit = async (name: string) => {
 					:data-resourceid="(data as FolderResource).id"
 					:data-resourcename="(data as FolderResource).name"
 					:class="{
-						['mb-2xs']: true,
 						[$style['drag-active']]: isDragging,
 						[$style.dragging]:
 							foldersStore.draggedElement?.type === 'folder' &&
@@ -2410,7 +2492,6 @@ const onNameSubmit = async (name: string) => {
 					:show-mcp-access-actions="showMcpAccessActions"
 					data-target="folder"
 					data-droppable
-					class="mb-2xs"
 					@action="onFolderCardAction"
 					@mouseenter="folderHelpers.onDragEnter"
 					@mouseup="onFolderCardDrop"
@@ -2436,7 +2517,6 @@ const onNameSubmit = async (name: string) => {
 					data-test-id="resources-list-item-workflow"
 					data-target="workflow"
 					:class="{
-						['mb-2xs']: true,
 						[$style['drag-active']]: isDragging,
 						[$style.dragging]:
 							foldersStore.draggedElement?.type === 'workflow' &&

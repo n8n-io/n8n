@@ -30,7 +30,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<BaseLayout>
+	<BaseLayout inset>
 		<template #sidebar>
 			<SettingsSidebar @return="onReturn" />
 		</template>
@@ -52,7 +52,6 @@ onMounted(() => {
 	justify-content: center;
 	padding-top: 70.5px;
 	overflow: auto;
-	background-color: var(--color--background--light-2);
 	position: relative;
 }
 

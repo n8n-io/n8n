@@ -469,7 +469,7 @@ onBeforeUnmount(() => {
 	}
 
 	:global(.router-link-active:hover) {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 		color: var(--color--text--shade-1);
 	}
 }
@@ -484,7 +484,7 @@ onBeforeUnmount(() => {
 	color: inherit;
 
 	&:hover {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 		color: var(--color--text--shade-1);
 
 		.chevron {
@@ -560,7 +560,7 @@ onBeforeUnmount(() => {
 	color: inherit;
 
 	&:hover {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 		color: var(--color--text--shade-1);
 
 		.chevron {
@@ -640,7 +640,7 @@ onBeforeUnmount(() => {
 	}
 
 	&:not(.collapsed):hover a[role='menuitem'] {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 		color: var(--color--text--shade-1);
 		padding-right: var(--spacing--lg);
 	}

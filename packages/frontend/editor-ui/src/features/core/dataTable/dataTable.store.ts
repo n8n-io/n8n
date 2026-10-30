@@ -73,29 +73,49 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		hasPermission(['rbac'], { rbac: { scope: 'dataTable:list' } }),
 	);
 
+	type DataTableListFilter = {
+		id?: string | string[];
+		name?: string | string[];
+		projectId?: string | string[];
+	};
+
+	/** Fetches a range of data tables. It does not change the store */
+	const fetchDataTablesRange = async (
+		projectId: string,
+		range: { skip: number; take: number },
+		filter?: DataTableListFilter,
+		sortBy?: DataTableListSortBy,
+	) => {
+		return await fetchDataTablesApi(rootStore.restApiContext, projectId, range, filter, sortBy);
+	};
+
 	const fetchDataTables = async (
 		projectId: string,
 		page: number,
 		pageSize: number,
-		filter?: {
-			id?: string | string[];
-			name?: string | string[];
-			projectId?: string | string[];
-		},
+		filter?: DataTableListFilter,
 		sortBy?: DataTableListSortBy,
 	) => {
-		const response = await fetchDataTablesApi(
-			rootStore.restApiContext,
+		const response = await fetchDataTablesRange(
 			projectId,
-			{
-				skip: (page - 1) * pageSize,
-				take: pageSize,
-			},
+			{ skip: (page - 1) * pageSize, take: pageSize },
 			filter,
 			sortBy,
 		);
 		dataTables.value = response.data;
 		totalCount.value = response.count;
+	};
+
+	/** Adds the next range of a list that loads more as the user scrolls */
+	const appendDataTables = (response: Awaited<ReturnType<typeof fetchDataTablesRange>>) => {
+		totalCount.value = response.count;
+		// A data table can move between pages if it changed since the last request
+		const loadedIds = new Set(dataTables.value.map(({ id }) => id));
+		const newTables = response.data.filter(({ id }) => !loadedIds.has(id));
+		if (newTables.length > 0) {
+			dataTables.value = [...dataTables.value, ...newTables];
+		}
+		return newTables;
 	};
 
 	const createDataTable = async (
@@ -441,6 +461,8 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		dataTables,
 		totalCount,
 		fetchDataTables,
+		fetchDataTablesRange,
+		appendDataTables,
 		fetchDataTableSize,
 		dataTableSize: computed(() => dataTableSize.value),
 		dataTableSizeLimitState: computed(() => dataTableSizeLimitState.value),

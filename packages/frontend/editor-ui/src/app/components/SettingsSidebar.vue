@@ -77,8 +77,8 @@ onMounted(() => {
 .container {
 	min-width: $sidebar-expanded-width;
 	height: 100%;
-	background-color: var(--color--background--light-3);
-	border-right: var(--border);
+	background-color: var(--menu--color--background);
+	border-right: var(--border-width, 1px) solid var(--sidebar--border-color, var(--border-color));
 	position: relative;
 	/* Grid rows are definite once sized, so the scroll area can fill the rest and scroll. */
 	display: grid;
@@ -114,7 +114,7 @@ onMounted(() => {
 	}
 
 	&:hover {
-		background-color: var(--color--background--light-1);
+		background-color: var(--background--hover);
 		color: var(--color--text--shade-1);
 	}
 }

@@ -13,6 +13,13 @@ export interface UseIntersectionObserverOptions {
 	threshold?: number;
 
 	/**
+	 * Grows the root bounds, so the callback runs before the element scrolls into view.
+	 * Uses the CSS margin syntax, for example `'0px 0px 100% 0px'`
+	 * @default '0px'
+	 */
+	rootMargin?: string;
+
+	/**
 	 * Callback to execute when element intersects
 	 */
 	onIntersect: () => void;
@@ -73,6 +80,7 @@ export function useIntersectionObserver(options: UseIntersectionObserverOptions)
 			{
 				root: options.root.value,
 				threshold: options.threshold ?? 0.01,
+				rootMargin: options.rootMargin ?? '0px',
 			},
 		);
 

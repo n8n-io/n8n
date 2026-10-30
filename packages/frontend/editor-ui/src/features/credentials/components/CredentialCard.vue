@@ -13,6 +13,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '../credentials.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import ResourceListRow from '@/app/components/layouts/ResourceListRow.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
 import { useI18n } from '@n8n/i18n';
@@ -233,172 +234,178 @@ function moveResource() {
 </script>
 
 <template>
-	<N8nCard :class="$style.cardLink" @click.stop="onClick">
-		<template #prepend>
-			<CredentialIcon :credential-type-name="credentialType?.name ?? ''" />
-		</template>
-		<template #header>
-			<N8nText tag="h2" bold :class="$style.cardHeading">
-				{{ data.name }}
-				<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
-					{{ locale.baseText('credentials.item.readonly') }}
-				</N8nBadge>
-				<N8nBadge v-if="needsSetup" class="ml-3xs" variant="warning">
-					{{ locale.baseText('credentials.item.needsSetup') }}
-				</N8nBadge>
-			</N8nText>
-		</template>
-		<div :class="[$style.cardDescription, { [$style.hasDescription]: data.description }]">
-			<N8nText color="text-light" size="small">
-				<span v-if="credentialType">{{ credentialType.displayName }} | </span>
-				<span v-show="data"
-					>{{ locale.baseText('credentials.item.updated') }} <TimeAgo :date="data.updatedAt" /> |
-				</span>
-				<span v-show="data"
-					>{{ locale.baseText('credentials.item.created') }} {{ formattedCreatedAtDate }}
-				</span>
-			</N8nText>
-			<span
-				v-if="isPrivateCredentialsEnabled && data.isResolvable"
-				:class="$style.privateCredentialIndicator"
-				data-test-id="credential-card-dynamic"
-			>
-				<PrivateCredentialIcon
-					:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
-					:tooltip-text="locale.baseText('credentials.private.tooltip')"
-					size="small"
-				/>
-			</span>
-		</div>
-		<N8nTooltip v-if="credentialDescriptionsEnabled && data.description" placement="top" as-child>
-			<template #content>{{ data.description }}</template>
-			<N8nText
-				tag="p"
-				size="small"
-				color="text-light"
-				:class="$style.credentialDescription"
-				data-test-id="credential-card-description"
-			>
-				{{ data.description }}
-			</N8nText>
-		</N8nTooltip>
-		<template #append>
-			<div :class="$style.cardActions" @click.stop>
-				<DependencyPill
-					v-if="credentialHasDependents"
-					resource-type="credential"
-					:resource-id="data.id"
-					source="credential_card"
-					data-test-id="credential-card-dependents"
-				/>
-				<ProjectCardBadge
-					:class="$style.cardBadge"
-					:resource="data"
-					:resource-type="ResourceType.Credential"
-					:resource-type-label="resourceTypeLabel"
-					:personal-project="projectsStore.personalProject"
-					:show-badge-border="false"
-					:global="data.isGlobal"
-				/>
-				<N8nTooltip v-if="isPrivateUnconnected" placement="top">
-					<template #content>
-						{{ locale.baseText('credentials.item.connect.tooltip') }}
-					</template>
-					<N8nButton
-						size="mini"
-						:loading="isConnecting"
-						data-test-id="credential-card-connect"
-						@click="onConnect"
+	<N8nCard @click.stop="onClick">
+		<ResourceListRow>
+			<template #name>
+				<CredentialIcon :credential-type-name="credentialType?.name ?? ''" :size="16" />
+				<div :class="$style.nameBlock">
+					<div :class="$style.nameLine">
+						<N8nText tag="h2" bold :class="$style.cardHeading">
+							{{ data.name }}
+						</N8nText>
+						<N8nBadge v-if="readOnly" variant="outline">
+							{{ locale.baseText('credentials.item.readonly') }}
+						</N8nBadge>
+						<N8nBadge v-if="needsSetup" variant="warning">
+							{{ locale.baseText('credentials.item.needsSetup') }}
+						</N8nBadge>
+						<span
+							v-if="isPrivateCredentialsEnabled && data.isResolvable"
+							:class="$style.indicator"
+							data-test-id="credential-card-dynamic"
+						>
+							<PrivateCredentialIcon
+								:tooltip-title="locale.baseText('credentials.private.tooltipTitle')"
+								:tooltip-text="locale.baseText('credentials.private.tooltip')"
+								size="small"
+							/>
+						</span>
+					</div>
+					<N8nTooltip
+						v-if="credentialDescriptionsEnabled && data.description"
+						placement="top"
+						as-child
 					>
-						{{ locale.baseText('credentials.item.connect') }}
-					</N8nButton>
-				</N8nTooltip>
-				<N8nActionToggle
-					data-test-id="credential-card-actions"
-					:actions="actions"
-					theme="dark"
-					@action="onAction"
-				/>
-			</div>
-		</template>
+						<template #content>{{ data.description }}</template>
+						<N8nText
+							tag="p"
+							size="small"
+							color="text-light"
+							:class="$style.credentialDescription"
+							data-test-id="credential-card-description"
+						>
+							{{ data.description }}
+						</N8nText>
+					</N8nTooltip>
+				</div>
+				<span v-if="isPrivateUnconnected" :class="$style.nameActions" @click.stop>
+					<N8nTooltip placement="top">
+						<template #content>
+							{{ locale.baseText('credentials.item.connect.tooltip') }}
+						</template>
+						<N8nButton
+							size="mini"
+							:loading="isConnecting"
+							data-test-id="credential-card-connect"
+							@click="onConnect"
+						>
+							{{ locale.baseText('credentials.item.connect') }}
+						</N8nButton>
+					</N8nTooltip>
+				</span>
+			</template>
+			<template #type>
+				<N8nText v-if="credentialType" size="small" color="text-light" :class="$style.meta">
+					{{ credentialType.displayName }}
+				</N8nText>
+			</template>
+			<template #location>
+				<span :class="$style.cellContent" @click.stop>
+					<ProjectCardBadge
+						:class="$style.cardBadge"
+						:resource="data"
+						:resource-type="ResourceType.Credential"
+						:resource-type-label="resourceTypeLabel"
+						:personal-project="projectsStore.personalProject"
+						:show-badge-border="false"
+						:global="data.isGlobal"
+					/>
+				</span>
+			</template>
+			<template #updated>
+				<N8nText size="small" color="text-light" :class="$style.meta">
+					<TimeAgo :date="data.updatedAt" />
+				</N8nText>
+			</template>
+			<template #created>
+				<N8nText size="small" color="text-light" :class="$style.meta">
+					{{ formattedCreatedAtDate }}
+				</N8nText>
+			</template>
+			<template #dependencies>
+				<span :class="$style.cellContent" @click.stop>
+					<DependencyPill
+						v-if="credentialHasDependents"
+						resource-type="credential"
+						:resource-id="data.id"
+						source="credential_card"
+						data-test-id="credential-card-dependents"
+					/>
+				</span>
+			</template>
+			<template #actions>
+				<span :class="$style.cellContent" @click.stop>
+					<span data-row-menu>
+						<N8nActionToggle
+							data-test-id="credential-card-actions"
+							:actions="actions"
+							theme="dark"
+							@action="onAction"
+						/>
+					</span>
+				</span>
+			</template>
+		</ResourceListRow>
 	</N8nCard>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
+.nameBlock {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
 
-.cardLink {
-	--card--padding: 0 0 0 var(--spacing--sm);
-
-	transition: box-shadow 0.3s ease;
-	cursor: pointer;
-	align-items: stretch;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
+.nameLine {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	min-width: 0;
 }
 
 .cardHeading {
-	display: flex;
-	align-items: center;
+	min-width: 0;
 	font-size: var(--font-size--sm);
-	padding: var(--spacing--sm) 0 0;
-}
-
-.cardDescription {
-	min-height: 19px;
-	display: flex;
-	align-items: center;
-	padding: 0 0 var(--spacing--sm);
-}
-
-.hasDescription {
-	padding-bottom: var(--spacing--3xs);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .credentialDescription {
-	display: block;
-	width: 0;
-	min-width: 100%;
+	white-space: nowrap;
 	overflow: hidden;
 	text-overflow: ellipsis;
-	white-space: nowrap;
-	padding-bottom: var(--spacing--sm);
 }
 
-.privateCredentialIndicator {
+.indicator {
 	display: inline-flex;
+	flex-shrink: 0;
 	align-items: center;
-	margin-left: var(--spacing--2xs);
 }
 
-.cardActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-direction: row;
-	justify-content: center;
+// Row-specific controls sit at the end of the name column.
+.nameActions {
+	display: inline-flex;
+	flex-shrink: 0;
 	align-items: center;
-	align-self: stretch;
-	padding: 0 var(--spacing--sm) 0 0;
+	gap: var(--spacing--2xs);
+	margin-left: auto;
 	cursor: default;
 }
 
-@include breakpoints.breakpoint('sm-and-down') {
-	.cardLink {
-		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
-		--card--append--width: 100%;
+.meta {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
 
-		flex-wrap: wrap;
-	}
+.cardBadge {
+	min-width: 0;
+	max-width: 100%;
+}
 
-	.cardActions {
-		width: 100%;
-		padding: 0;
-	}
-
-	.cardBadge {
-		margin-right: auto;
-	}
+// Controls in a cell must not open the credential.
+.cellContent {
+	display: contents;
 }
 </style>

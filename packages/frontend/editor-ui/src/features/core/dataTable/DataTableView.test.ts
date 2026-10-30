@@ -155,7 +155,7 @@ describe('DataTableView', () => {
 			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
 				'',
 				1,
-				25,
+				50,
 				{ name: undefined, projectId: undefined },
 				'updatedAt:desc',
 			);
@@ -176,7 +176,7 @@ describe('DataTableView', () => {
 			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
 				'test-project',
 				1,
-				25,
+				50,
 				{ name: undefined, projectId: undefined },
 				'updatedAt:desc',
 			);
@@ -346,7 +346,7 @@ describe('DataTableView', () => {
 			await waitAllPromises();
 
 			// Check if DataTableCard components are rendered
-			const cards = container.querySelectorAll('.mb-2xs');
+			const cards = container.querySelectorAll('[data-test-id="data-table-card"]');
 			expect(cards.length).toBeGreaterThan(0);
 		});
 	});
@@ -367,7 +367,7 @@ describe('DataTableView', () => {
 			expect(mockDebounce.callDebounced).toBeDefined();
 		});
 
-		it('should update page size on pagination change', async () => {
+		it('should fetch the first batch of 50 data tables', async () => {
 			dataTableStore.dataTables = Array.from({ length: 20 }, (_, i) => ({
 				...TEST_DATA_TABLE,
 				id: `${i + 1}`,
@@ -378,11 +378,11 @@ describe('DataTableView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 
-			// Initial call should use default page size of 25 with default sort and empty filters
+			// The list loads more as the user scrolls, so it starts with one batch
 			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
 				'',
 				1,
-				25,
+				50,
 				{ name: undefined, projectId: undefined },
 				'updatedAt:desc',
 			);
@@ -403,7 +403,7 @@ describe('DataTableView', () => {
 			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
 				'',
 				1,
-				25,
+				50,
 				{ name: 'my table', projectId: undefined },
 				'updatedAt:desc',
 			);
@@ -424,7 +424,7 @@ describe('DataTableView', () => {
 			expect(dataTableStore.fetchDataTables).toHaveBeenCalledWith(
 				'',
 				1,
-				25,
+				50,
 				{ name: undefined, projectId: undefined },
 				'updatedAt:desc',
 			);

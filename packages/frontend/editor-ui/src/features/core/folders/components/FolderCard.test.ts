@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { formatResourceListDate } from '@/app/components/layouts/resourceListColumns';
 import userEvent from '@testing-library/user-event';
 import type { Mock } from 'vitest';
 import { useRouter } from 'vue-router';
@@ -80,8 +81,10 @@ describe('FolderCard', () => {
 		expect(getByTestId('folder-card-name')).toHaveTextContent(DEFAULT_FOLDER.name);
 		expect(getByTestId('folder-card-workflow-count')).toHaveTextContent('2');
 		expect(getByTestId('folder-card-folder-count')).toHaveTextContent('2');
-		expect(getByTestId('folder-card-last-updated')).toHaveTextContent('Last updated just now');
-		expect(getByTestId('folder-card-created')).toHaveTextContent('Created just now');
+		expect(getByTestId('folder-card-last-updated')).toHaveTextContent('just now');
+		expect(getByTestId('folder-card-created')).toHaveTextContent(
+			formatResourceListDate(DEFAULT_FOLDER.createdAt),
+		);
 	});
 
 	it('should not render workflow & folder count if they are 0', () => {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, inject, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useElementSize, useResizeObserver } from '@vueuse/core';
 import type { TabOptions, UserAction } from '@n8n/design-system';
@@ -7,6 +7,7 @@ import { useI18n } from '@n8n/i18n';
 import { ProjectTypes } from '../projects.types';
 import { useProjectsStore } from '../projects.store';
 import ProjectTabs from './ProjectTabs.vue';
+import { ResourceListToolbarTargetKey } from '@/app/components/layouts/resourceListToolbar';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
@@ -30,6 +31,12 @@ import { useTelemetry } from '@n8n/composables/useTelemetry';
 import { useCreateAgent } from '@/features/agents/composables/useCreateAgent';
 import { useUsersStore } from '@n8n/stores/users.store';
 import { useFavoritesStore } from '@/app/stores/favorites.store';
+
+// A list page puts its search, sort and filters at the end of the tab row
+const setListToolbarTarget = inject(ResourceListToolbarTargetKey, undefined);
+const onListToolbarTargetRef = (element: unknown) => {
+	setListToolbarTarget?.(element instanceof HTMLElement ? element : null);
+};
 
 const route = useRoute();
 const router = useRouter();
@@ -391,26 +398,6 @@ const actions: Record<ActionTypes, (projectId: string, source: CreateSource) => 
 	},
 } as const;
 
-const sectionDescription = computed(() => {
-	if (projectPages.isSharedSubPage) {
-		return i18n.baseText('projects.header.shared.subtitle');
-	} else if (projectPages.isOverviewSubPage) {
-		return i18n.baseText(
-			settingsStore.isDataTableFeatureEnabled
-				? 'projects.header.overview.subtitleWithDataTables'
-				: 'projects.header.overview.subtitle',
-		);
-	} else if (isPersonalProject.value) {
-		return i18n.baseText(
-			settingsStore.isDataTableFeatureEnabled
-				? 'projects.header.personal.subtitleWithDataTables'
-				: 'projects.header.personal.subtitle',
-		);
-	}
-
-	return null;
-});
-
 const projectDescription = computed(() => {
 	if (projectPages.isProjectsSubPage) {
 		return projectsStore.currentProject?.description;
@@ -481,19 +468,14 @@ const onSelect = (action: string, source: CreateSource) => {
 						>
 						<PromotionPreviewBadges />
 					</div>
-					<N8nText v-if="sectionDescription" color="text-light" data-test-id="project-subtitle">
-						{{ sectionDescription }}
-					</N8nText>
-					<template v-else-if="projectDescription">
-						<div :class="$style.projectDescriptionWrapper">
-							<N8nText color="text-light" data-test-id="project-subtitle">
-								{{ projectDescriptionTruncated || projectDescription }}
-							</N8nText>
-							<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
-								<N8nText color="text-light">{{ projectDescription }}</N8nText>
-							</div>
+					<div v-if="projectDescription" :class="$style.projectDescriptionWrapper">
+						<N8nText color="text-light" data-test-id="project-subtitle">
+							{{ projectDescriptionTruncated || projectDescription }}
+						</N8nText>
+						<div v-if="projectDescriptionTruncated" :class="$style.tooltip">
+							<N8nText color="text-light">{{ projectDescription }}</N8nText>
 						</div>
-					</template>
+					</div>
 				</div>
 				<N8nIconButton
 					v-if="isTeamProject"
@@ -539,10 +521,17 @@ const onSelect = (action: string, source: CreateSource) => {
 		<slot></slot>
 		<div :class="$style.actions">
 			<ProjectTabs
+				:class="$style.tabs"
 				:page-type="pageType"
 				:show-executions="!projectPages.isSharedSubPage"
 				:show-settings="showSettings"
 				:additional-tabs="customProjectTabs"
+			/>
+			<div
+				v-if="setListToolbarTarget"
+				:ref="onListToolbarTargetRef"
+				:class="$style.listToolbar"
+				data-test-id="project-header-list-toolbar"
 			/>
 		</div>
 	</div>
@@ -555,7 +544,7 @@ const onSelect = (action: string, source: CreateSource) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	min-height: var(--spacing--3xl);
+	min-height: var(--spacing--2xl);
 }
 
 .projectDetails {
@@ -564,7 +553,42 @@ const onSelect = (action: string, source: CreateSource) => {
 }
 
 .actions {
-	padding: var(--spacing--2xs) 0 var(--spacing--xs);
+	display: flex;
+	align-items: flex-end;
+	gap: var(--spacing--sm);
+	margin: var(--spacing--2xs) 0 var(--spacing--xs);
+	// A hairline under the whole tab row; the active tab underline paints over it.
+	box-shadow: inset 0 calc(-1 * var(--border-width, 1px)) 0 var(--border-color);
+
+	:global(.n8n-tabs) {
+		--tabs--tab--padding-bottom: var(--spacing--xs);
+	}
+
+	// Bottom-align the tabs so every underline lands on the hairline.
+	:global(.n8n-tabs [role='tablist']) {
+		align-items: flex-end;
+	}
+
+	// The badge is taller than a label. Trim it to the label height so its tab label stays in line.
+	:global(.n8n-tabs [role='tablist'] .n8n-badge) {
+		margin-block: calc(var(--spacing--3xs) / -2);
+	}
+}
+
+.tabs {
+	flex: 1;
+	min-width: 0;
+}
+
+// Center the controls on the tab labels, above the hairline
+.listToolbar {
+	display: flex;
+	align-items: center;
+	padding-bottom: var(--spacing--3xs);
+
+	&:empty {
+		display: none;
+	}
 }
 
 .projectDescriptionWrapper {

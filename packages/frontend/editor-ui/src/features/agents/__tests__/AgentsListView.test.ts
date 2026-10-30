@@ -324,7 +324,7 @@ describe('AgentsListView — project page', () => {
 		});
 	});
 
-	it('refetches with backend search, pagination, and sorting parameters', async () => {
+	it('refetches with backend search and sorting parameters', async () => {
 		vi.useFakeTimers();
 		mocks.listAgentsPage
 			.mockResolvedValueOnce({ count: 2, data: [agent('agent-1', 'Support Agent')] })
@@ -350,7 +350,7 @@ describe('AgentsListView — project page', () => {
 			}),
 		);
 
-		layout.vm.$emit('update:pagination-and-sort', { page: 2, pageSize: 10, sort: 'nameAsc' });
+		layout.vm.$emit('update:pagination-and-sort', { sort: 'nameAsc' });
 		await flushPromises();
 		vi.advanceTimersByTime(500);
 		await flushPromises();
@@ -359,12 +359,42 @@ describe('AgentsListView — project page', () => {
 			expect.any(Object),
 			'project-1',
 			expect.objectContaining({
-				skip: 10,
-				take: 10,
+				skip: 0,
+				take: 50,
 				sortBy: 'name:asc',
 				filter: { query: 'Support' },
 			}),
 		);
+	});
+
+	it('appends the next batch after the loaded agents on load-more', async () => {
+		mocks.listAgentsPage
+			.mockResolvedValueOnce({
+				count: 3,
+				data: [agent('agent-1', 'First'), agent('agent-2', 'Second')],
+			})
+			.mockResolvedValueOnce({
+				count: 3,
+				data: [agent('agent-2', 'Second'), agent('agent-3', 'Third')],
+			});
+
+		const wrapper = await mountView();
+		const layout = wrapper.findComponent({ name: 'ResourcesListLayout' });
+
+		layout.vm.$emit('load-more');
+		await flushPromises();
+
+		expect(mocks.listAgentsPage).toHaveBeenLastCalledWith(
+			expect.any(Object),
+			'project-1',
+			expect.objectContaining({ skip: 2, take: 50 }),
+		);
+		// A repeated agent is not added twice
+		expect((layout.props('resources') as AgentResource[]).map(({ id }) => id)).toEqual([
+			'agent-1',
+			'agent-2',
+			'agent-3',
+		]);
 	});
 
 	it('keeps the rendered list visible for fast search refreshes', async () => {

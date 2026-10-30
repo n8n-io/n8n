@@ -130,12 +130,27 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		includeFolders = false,
 		onlySharedWithMe = false,
 	): Promise<{ data: WorkflowListResource[]; count: number }> {
-		const filter = { ...filters, projectId };
-		const options = {
-			skip: (page - 1) * pageSize,
-			take: pageSize,
+		return await fetchWorkflowsRange(
+			projectId,
+			{ skip: (page - 1) * pageSize, take: pageSize },
 			sortBy,
-		};
+			filters,
+			includeFolders,
+			onlySharedWithMe,
+		);
+	}
+
+	/** Like `fetchWorkflowsPageWithCount`, but starts at any row, for lists that load more on scroll */
+	async function fetchWorkflowsRange(
+		projectId: string | undefined,
+		range: { skip: number; take: number },
+		sortBy?: string,
+		filters: WorkflowListFilters = {},
+		includeFolders = false,
+		onlySharedWithMe = false,
+	): Promise<{ data: WorkflowListResource[]; count: number }> {
+		const filter = { ...filters, projectId };
+		const options = { ...range, sortBy };
 
 		const { count, data } = await workflowsApi.getWorkflowsAndFolders(
 			rootStore.restApiContext,
@@ -342,6 +357,7 @@ export const useWorkflowsListStore = defineStore(STORES.WORKFLOWS_LIST, () => {
 		// Fetching
 		fetchWorkflowsPageWithCount,
 		fetchWorkflowsPage,
+		fetchWorkflowsRange,
 		fetchCallableSubworkflowsPage,
 		searchWorkflows,
 		fetchAllWorkflows,

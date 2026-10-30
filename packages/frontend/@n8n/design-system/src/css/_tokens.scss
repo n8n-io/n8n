@@ -628,7 +628,8 @@
 	--link--color--secondary--hover: var(--color--secondary--shade-1);
 
 	// Menu
-	--menu--color--background: var(--color--neutral-white);
+	// The app sidebar sits a step below the main content surface.
+	--menu--color--background: var(--color--neutral-100);
 	--menu--color--background--hover: var(--color--neutral-200);
 	--menu--color--background--active: var(--color--neutral-200);
 
@@ -1232,7 +1233,7 @@
 	--icon--color: var(--color--text--tint-1);
 	--icon--color--hover: var(--color--pink-500);
 
-	--menu--color--background: var(--color--neutral-900);
+	--menu--color--background: var(--color--neutral-950);
 	--menu--color--background--hover: var(--color--neutral-700);
 	--menu--color--background--active: var(--color--neutral-700);
 

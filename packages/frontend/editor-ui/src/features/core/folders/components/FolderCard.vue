@@ -13,6 +13,8 @@ import { useFavoritesStore } from '@/app/stores/favorites.store';
 import { type IUser } from 'n8n-workflow';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
+import ResourceListRow from '@/app/components/layouts/ResourceListRow.vue';
+import { formatResourceListDate } from '@/app/components/layouts/resourceListColumns';
 
 import {
 	N8nBadge,
@@ -218,74 +220,57 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	<div data-test-id="folder-card">
 		<RouterLink :to="cardUrl" @click="() => emit('folderOpened', { folder: props.data })">
 			<N8nCard :class="$style.card" hoverable>
-				<template #prepend>
-					<N8nIcon
-						data-test-id="folder-card-icon"
-						size="xlarge"
-						:class="$style['folder-icon']"
-						icon="folder"
-					/>
-				</template>
-				<template #header>
-					<div :class="$style['card-header']">
-						<N8nHeading tag="h2" bold size="small" data-test-id="folder-card-name">
+				<ResourceListRow>
+					<template #name>
+						<N8nIcon
+							data-test-id="folder-card-icon"
+							size="large"
+							:class="$style['folder-icon']"
+							icon="folder"
+						/>
+						<N8nHeading
+							tag="h2"
+							bold
+							size="small"
+							:class="$style.name"
+							data-test-id="folder-card-name"
+						>
 							{{ data.name }}
 						</N8nHeading>
-						<N8nBadge v-if="readOnly" class="ml-3xs" variant="outline">
+						<N8nBadge v-if="readOnly" variant="outline">
 							{{ i18n.baseText('workflows.item.readonly') }}
 						</N8nBadge>
-					</div>
-				</template>
-				<template #footer>
-					<div :class="$style['card-footer']">
-						<N8nText
-							v-if="data.workflowCount > 0"
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-folder-count"
-						>
-							{{
-								i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
-							}}
-						</N8nText>
-						<N8nText
-							v-if="data.subFolderCount > 0"
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
-							data-test-id="folder-card-workflow-count"
-						>
-							{{
-								i18n.baseText('generic.folderCount', {
-									interpolate: { count: data.subFolderCount },
-								})
-							}}
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--updated']]"
-							data-test-id="folder-card-last-updated"
-						>
-							{{ i18n.baseText('workerList.item.lastUpdated') }}
-							<TimeAgo :date="String(data.updatedAt)" />
-						</N8nText>
-						<N8nText
-							size="small"
-							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--created']]"
-							data-test-id="folder-card-created"
-						>
-							{{ i18n.baseText('workflows.item.created') }}
-							<TimeAgo :date="String(data.createdAt)" />
-						</N8nText>
-					</div>
-				</template>
-				<template #append>
-					<div :class="$style['card-actions']" @click.stop.prevent>
-						<div v-if="data.homeProject && showOwnershipBadge">
+						<span :class="$style.counts">
+							<N8nText
+								v-if="data.workflowCount > 0"
+								size="small"
+								color="text-light"
+								:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
+								data-test-id="folder-card-folder-count"
+							>
+								{{
+									i18n.baseText('generic.workflow', { interpolate: { count: data.workflowCount } })
+								}}
+							</N8nText>
+							<N8nText
+								v-if="data.subFolderCount > 0"
+								size="small"
+								color="text-light"
+								:class="[$style['info-cell'], $style['info-cell--workflow-count']]"
+								data-test-id="folder-card-workflow-count"
+							>
+								{{
+									i18n.baseText('generic.folderCount', {
+										interpolate: { count: data.subFolderCount },
+									})
+								}}
+							</N8nText>
+						</span>
+					</template>
+					<template #location>
+						<span :class="$style.cellContent" @click.stop.prevent>
 							<ProjectCardBadge
+								v-if="data.homeProject && showOwnershipBadge"
 								:class="{
 									[$style.cardBadge]: true,
 									[$style['with-breadcrumbs']]: showCardBreadcrumbs,
@@ -316,89 +301,121 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 									</N8nBreadcrumbs>
 								</div>
 							</ProjectCardBadge>
-						</div>
-						<span data-test-id="folder-card-actions">
-							<N8nDropdownMenu
-								:id="dropdownId"
-								:items="menuItems"
-								placement="bottom-end"
-								:extra-popper-class="$style['actions-menu-dropdown']"
-								@select="onAction"
-							>
-								<template #trigger>
-									<N8nIconButton
-										:class="['action-toggle', $style['actions-menu']]"
-										variant="ghost"
-										icon="ellipsis-12"
-										size="small"
-										icon-size="medium"
-										role="button"
-										:aria-controls="dropdownId"
-									/>
-								</template>
-								<template #item-label="{ item, ui }">
-									<N8nTooltip
-										v-if="item.data?.tooltip"
-										:content="item.data.tooltip"
-										placement="left"
-										:show-after="300"
-										teleported
-									>
+						</span>
+					</template>
+					<template #updated>
+						<N8nText
+							size="small"
+							color="text-light"
+							:class="$style.meta"
+							data-test-id="folder-card-last-updated"
+						>
+							<TimeAgo :date="String(data.updatedAt)" />
+						</N8nText>
+					</template>
+					<template #created>
+						<N8nText
+							size="small"
+							color="text-light"
+							:class="$style.meta"
+							data-test-id="folder-card-created"
+						>
+							{{ formatResourceListDate(data.createdAt) }}
+						</N8nText>
+					</template>
+					<template #actions>
+						<span :class="$style.cellContent" @click.stop.prevent>
+							<span data-test-id="folder-card-actions" data-row-menu>
+								<N8nDropdownMenu
+									:id="dropdownId"
+									:items="menuItems"
+									placement="bottom-end"
+									:extra-popper-class="$style['actions-menu-dropdown']"
+									@select="onAction"
+								>
+									<template #trigger>
+										<N8nIconButton
+											:class="['action-toggle', $style['actions-menu']]"
+											variant="ghost"
+											icon="ellipsis-12"
+											size="small"
+											icon-size="medium"
+											role="button"
+											:aria-controls="dropdownId"
+										/>
+									</template>
+									<template #item-label="{ item, ui }">
+										<N8nTooltip
+											v-if="item.data?.tooltip"
+											:content="item.data.tooltip"
+											placement="left"
+											:show-after="300"
+											teleported
+										>
+											<N8nText
+												:class="ui.class"
+												size="medium"
+												:color="item.disabled ? 'text-light' : 'text-dark'"
+											>
+												{{ item.label }}
+											</N8nText>
+										</N8nTooltip>
 										<N8nText
+											v-else
 											:class="ui.class"
 											size="medium"
 											:color="item.disabled ? 'text-light' : 'text-dark'"
 										>
 											{{ item.label }}
 										</N8nText>
-									</N8nTooltip>
-									<N8nText
-										v-else
-										:class="ui.class"
-										size="medium"
-										:color="item.disabled ? 'text-light' : 'text-dark'"
-									>
-										{{ item.label }}
-									</N8nText>
-								</template>
-							</N8nDropdownMenu>
+									</template>
+								</N8nDropdownMenu>
+							</span>
 						</span>
-					</div>
-				</template>
+					</template>
+				</ResourceListRow>
 			</N8nCard>
 		</RouterLink>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .folder-icon {
 	flex-shrink: 0;
-	color: var(--color--text);
-	align-content: center;
-	text-align: center;
+	color: var(--icon-color);
 }
 
-.card-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding-right: var(--spacing--xs);
-	margin-bottom: var(--spacing--5xs);
+.name {
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.card-footer {
-	display: flex;
+.counts {
+	display: inline-flex;
+	flex-shrink: 0;
+	white-space: nowrap;
+}
+
+.meta {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .info-cell {
 	& + & {
 		&::before {
-			content: '|';
+			content: '·';
 			margin: 0 var(--spacing--4xs);
 		}
 	}
+}
+
+.cardBadge {
+	min-width: 0;
+	max-width: 100%;
 }
 
 .cardBadge.with-breadcrumbs {
@@ -410,31 +427,16 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 	}
 }
 
-.card-actions {
-	display: flex;
-	gap: var(--spacing--xs);
+.breadcrumbs {
+	min-width: 0;
+}
+
+// Controls in a cell must not open the folder.
+.cellContent {
+	display: contents;
 }
 
 .actions-menu-dropdown {
 	width: 200px;
-}
-
-@include breakpoints.breakpoint('sm-and-down') {
-	.card {
-		flex-wrap: wrap;
-
-		:global(.n8n-card-append) {
-			width: 100%;
-			margin-top: var(--spacing--3xs);
-			padding-left: 40px;
-		}
-		.card-actions {
-			width: 100%;
-			justify-content: space-between;
-		}
-	}
-	.info-cell--created {
-		display: none;
-	}
 }
 </style>

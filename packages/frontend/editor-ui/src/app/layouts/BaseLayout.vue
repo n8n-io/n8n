@@ -1,6 +1,11 @@
 <script setup lang="ts">
 import { onMounted, useTemplateRef } from 'vue';
 
+const { inset = false } = defineProps<{
+	/** Render the content as a raised panel next to the sidebar */
+	inset?: boolean;
+}>();
+
 const layoutRef = useTemplateRef('layout');
 
 const emit = defineEmits<{
@@ -13,7 +18,7 @@ onMounted(() => {
 </script>
 
 <template>
-	<div ref="layout" class="app-grid" :class="$style.appGrid">
+	<div ref="layout" class="app-grid" :class="[$style.appGrid, { [$style.inset]: inset }]">
 		<div v-if="!!$slots.banners" id="banners" :class="$style.banners">
 			<slot name="banners" />
 		</div>
@@ -39,6 +44,8 @@ onMounted(() => {
 </template>
 
 <style lang="scss" module>
+@use '@n8n/design-system/css/mixins/mixins';
+
 // App grid is the main app layout including modals and other absolute positioned elements
 .appGrid {
 	position: relative;
@@ -105,6 +112,32 @@ onMounted(() => {
 	main {
 		width: 100%;
 		height: 100%;
+	}
+}
+
+.inset {
+	// The sidebar and the gutter share one background, so the panel reads as the foreground.
+	--sidebar--border-color: transparent;
+
+	background-color: var(--menu--color--background);
+
+	.content {
+		// An outer layout sizes every nested `main` to 100%, which would push the margins out of view.
+		width: auto;
+		height: auto;
+		min-width: 0;
+		min-height: 0;
+		margin: var(--spacing--2xs) var(--spacing--2xs) var(--spacing--2xs) 0;
+		border: var(--border-width, 1px) solid var(--border-color--subtle);
+		border-radius: var(--radius--sm);
+		background-color: var(--background--surface);
+		box-shadow: var(--shadow--2xs);
+		overflow: hidden;
+	}
+
+	// A thin thumb on a clear track, so the scrollbar blends into the panel.
+	.contentWrapper {
+		@include mixins.scroll-bar;
 	}
 }
 

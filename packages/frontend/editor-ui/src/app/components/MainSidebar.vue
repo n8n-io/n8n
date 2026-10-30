@@ -422,8 +422,8 @@ useKeybindings({
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	border-right: var(--border);
-	background-color: var(--menu--color--background, var(--color--background--light-2));
+	border-right: var(--border-width, 1px) solid var(--sidebar--border-color, var(--border-color));
+	background-color: var(--menu--color--background);
 	transition: width var(--duration--snappy) var(--easing--ease-out);
 	will-change: width;
 

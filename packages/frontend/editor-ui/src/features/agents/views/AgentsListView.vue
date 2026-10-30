@@ -6,11 +6,16 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useToast } from '@n8n/composables/useToast';
 import { DEBOUNCE_TIME, DEFAULT_WORKFLOW_PAGE_SIZE } from '@/app/constants';
+import { type BatchRange, useLoadMoreBatches } from '@/app/composables/useLoadMoreBatches';
 import { getDebounceTime, useDebounce } from '@n8n/composables/useDebounce';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import {
+	type ResourceListColumn,
+	useResourceListColumns,
+} from '@/app/components/layouts/resourceListColumns';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import { InsightsSummary, useInsightsStore } from '@n8n/frontend-module-insights';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
@@ -46,6 +51,16 @@ const AGENTS_SORT_MAP = {
 } as const;
 
 const locale = useI18n();
+const resourceListColumns = useResourceListColumns();
+
+const listColumns = computed<ResourceListColumn[]>(() => [
+	resourceListColumns.name(),
+	resourceListColumns.updated(),
+	resourceListColumns.created(),
+	resourceListColumns.status(),
+	// New chat and the row menu
+	resourceListColumns.actions(2),
+]);
 const documentTitle = useDocumentTitle();
 
 const route = useRoute();
@@ -74,8 +89,7 @@ const { canCreate: canCreateAgent } = useAgentPermissions(
 
 const allAgents = ref<AgentResource[]>([]);
 const filters = ref<BaseFilters>({ search: '', homeProject: '' });
-const currentPage = ref(1);
-const pageSize = ref(DEFAULT_WORKFLOW_PAGE_SIZE);
+const batches = useLoadMoreBatches(DEFAULT_WORKFLOW_PAGE_SIZE);
 const currentSort = ref<ListAgentsSortBy>('updatedAt:desc');
 const totalAgents = ref(0);
 const loading = ref(true);
@@ -103,21 +117,43 @@ async function fetchAgents() {
 		loading.value = true;
 	}
 
+	const range = batches.startRefresh();
 	try {
-		const fetchOptions = {
-			skip: (currentPage.value - 1) * pageSize.value,
-			take: pageSize.value,
-			sortBy: currentSort.value,
-			filter: filters.value.search ? { query: filters.value.search } : undefined,
-		};
-		const { count, data } = projectId.value
-			? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
-			: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
+		const { count, data } = await fetchAgentsRange(range);
 		allAgents.value = data;
 		totalAgents.value = count;
 	} finally {
+		batches.endRefresh();
 		delayedLoading.cancel();
 		loading.value = false;
+	}
+}
+
+async function fetchAgentsRange(range: BatchRange) {
+	const fetchOptions = {
+		...range,
+		sortBy: currentSort.value,
+		filter: filters.value.search ? { query: filters.value.search } : undefined,
+	};
+	return projectId.value
+		? await listAgentsPage(rootStore.restApiContext, projectId.value, fetchOptions)
+		: await listAgentsPageGlobal(rootStore.restApiContext, fetchOptions);
+}
+
+async function loadMoreAgents() {
+	try {
+		await batches.loadMore(allAgents.value.length, fetchAgentsRange, ({ count, data }) => {
+			totalAgents.value = count;
+			// An agent can move between batches if it changed since the last request
+			const loadedIds = new Set(allAgents.value.map(({ id }) => id));
+			const newAgents = data.filter(({ id }) => !loadedIds.has(id));
+			// Leave the list as it is when nothing is new, so the list does not request again
+			if (newAgents.length > 0) {
+				allAgents.value = [...allAgents.value, ...newAgents];
+			}
+		});
+	} catch (error) {
+		toast.showError(error, locale.baseText('resourcesList.loadMore.error'));
 	}
 }
 
@@ -198,15 +234,12 @@ function onAgentUnpublished(updated: AgentResource) {
 function onAgentDeleted(agentId: string) {
 	allAgents.value = allAgents.value.filter((a) => a.id !== agentId);
 	totalAgents.value = Math.max(0, totalAgents.value - 1);
-	if (allAgents.value.length === 0 && currentPage.value > 1) {
-		currentPage.value -= 1;
-	}
 	void fetchAgents();
 }
 
 async function onSearchUpdated(search: string) {
 	filters.value = { ...filters.value, search };
-	currentPage.value = 1;
+	batches.reset();
 	if (search) {
 		await callDebounced(fetchAgents, {
 			debounceTime: DEBOUNCE_TIME.INPUT.SEARCH,
@@ -218,13 +251,8 @@ async function onSearchUpdated(search: string) {
 }
 
 async function setPaginationAndSort(payload: SortingAndPaginationUpdates) {
-	if (payload.page) {
-		currentPage.value = payload.page;
-	}
-	if (payload.pageSize) {
-		pageSize.value = payload.pageSize;
-	}
 	if (payload.sort) {
+		batches.reset();
 		currentSort.value =
 			AGENTS_SORT_MAP[payload.sort as keyof typeof AGENTS_SORT_MAP] ?? 'updatedAt:desc';
 	}
@@ -277,6 +305,7 @@ onMounted(async () => {
 		:sort-fns="sortFns"
 		:sort-options="['lastUpdated', 'lastCreated', 'nameAsc', 'nameDesc']"
 		:type-props="{ itemSize: 80 }"
+		:list-columns="listColumns"
 		:custom-page-size="DEFAULT_WORKFLOW_PAGE_SIZE"
 		:total-items="totalAgents"
 		:dont-perform-sorting-and-filtering="true"
@@ -286,6 +315,7 @@ onMounted(async () => {
 		tab-key="agents"
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="setPaginationAndSort"
+		@load-more="loadMoreAgents"
 	>
 		<template #header>
 			<ProjectHeader main-button="agent">
@@ -317,7 +347,6 @@ onMounted(async () => {
 		<template #item="{ item: data }">
 			<AgentCard
 				v-if="isAgentResource(data)"
-				class="mb-2xs"
 				:agent="data"
 				:project-id="data.projectId"
 				@select="onSelectAgent(data.id, data.projectId)"

@@ -269,7 +269,9 @@ function scroll(direction: 'left' | 'right') {
 	align-items: center;
 	gap: var(--spacing--4xs);
 	padding: 0 var(--spacing--sm);
-	padding-bottom: calc(var(--spacing--2xs) + var(--tabs--tab--border-width--active));
+	padding-bottom: calc(
+		var(--tabs--tab--padding-bottom, var(--spacing--2xs)) + var(--tabs--tab--border-width--active)
+	);
 	font-size: var(--font-size--sm);
 
 	cursor: pointer;
@@ -319,7 +321,7 @@ function scroll(direction: 'left' | 'right') {
 
 .activeTab {
 	color: var(--color--primary);
-	padding-bottom: var(--spacing--2xs);
+	padding-bottom: var(--tabs--tab--padding-bottom, var(--spacing--2xs));
 	border-bottom: var(--color--primary) var(--tabs--tab--border-width--active) solid;
 
 	.modern & {

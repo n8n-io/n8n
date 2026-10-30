@@ -6,7 +6,7 @@ export const PROJECT_DATA_TABLES = 'project-data-tables';
 export const DATA_TABLE_DETAILS = 'data-table-details';
 export const DATA_TABLE_STORE = 'dataTableStore';
 
-export const DEFAULT_DATA_TABLE_PAGE_SIZE = 10;
+export const DEFAULT_DATA_TABLE_PAGE_SIZE = 50;
 
 export const DATA_TABLE_ID_COLUMN_WIDTH = 60;
 

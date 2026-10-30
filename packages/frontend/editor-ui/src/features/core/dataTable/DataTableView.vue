@@ -25,14 +25,43 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 
 import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import {
+	RESOURCE_LIST_COLUMN_WIDTH,
+	type ResourceListColumn,
+	useResourceListColumns,
+} from '@/app/components/layouts/resourceListColumns';
 import ResourcesListEmptyState from '@/app/components/layouts/ResourcesListEmptyState.vue';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import { useDependencies } from '@/app/composables/useDependencies';
+import { type BatchRange, useLoadMoreBatches } from '@/app/composables/useLoadMoreBatches';
 
 const i18n = useI18n();
 const route = useRoute();
 const router = useRouter();
 const projectPages = useProjectPages();
+
+const resourceListColumns = useResourceListColumns();
+
+const listColumns = computed<ResourceListColumn[]>(() => [
+	resourceListColumns.name(),
+	{
+		key: 'size',
+		label: i18n.baseText('resourcesList.column.size'),
+		width: RESOURCE_LIST_COLUMN_WIDTH.narrow,
+		priority: 2,
+	},
+	{
+		key: 'columns',
+		label: i18n.baseText('resourcesList.column.columns'),
+		width: RESOURCE_LIST_COLUMN_WIDTH.narrow,
+		priority: 3,
+	},
+	...(projectPages.isOverviewSubPage ? [resourceListColumns.location()] : []),
+	resourceListColumns.updated(),
+	resourceListColumns.created(),
+	resourceListColumns.dependencies(),
+	resourceListColumns.actions(),
+]);
 const { callDebounced } = useDebounce();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
@@ -46,8 +75,7 @@ const { fetchDependencyCounts } = useDependencies();
 
 const loading = ref(true);
 
-const currentPage = ref(1);
-const pageSize = ref(DEFAULT_DATA_TABLE_PAGE_SIZE);
+const batches = useLoadMoreBatches(DEFAULT_DATA_TABLE_PAGE_SIZE);
 
 const SEARCH_DEBOUNCE_TIME = getDebounceTime(DEBOUNCE_TIME.INPUT.SEARCH);
 // Sorting by size involves potentially expensive extra DB queries so we
@@ -107,23 +135,31 @@ const delayedLoading = debounce(() => {
 	loading.value = true;
 }, 300);
 
+// The project, filters and sort of the current list
+const getListQuery = () => ({
+	projectId: (projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId) ?? '',
+	filter: {
+		name: filters.value.search === '' ? undefined : filters.value.search,
+		projectId: filters.value.homeProject === '' ? undefined : filters.value.homeProject,
+	},
+	sortBy: currentSort.value,
+});
+
+const fetchDataTablesRange = async (range: BatchRange) => {
+	const { projectId, filter, sortBy } = getListQuery();
+	return await dataTableStore.fetchDataTablesRange(projectId, range, filter, sortBy);
+};
+
 const fetchDataTables = async () => {
-	const projectIdFilter = projectPages.isOverviewSubPage ? '' : projectsStore.currentProjectId;
+	const range = batches.startRefresh();
 	try {
 		delayedLoading();
-		await dataTableStore.fetchDataTables(
-			projectIdFilter ?? '',
-			currentPage.value,
-			pageSize.value,
-			{
-				name: filters.value.search === '' ? undefined : filters.value.search,
-				projectId: filters.value.homeProject === '' ? undefined : filters.value.homeProject,
-			},
-			currentSort.value,
-		);
+		const { projectId, filter, sortBy } = getListQuery();
+		await dataTableStore.fetchDataTables(projectId, 1, range.take, filter, sortBy);
 	} catch (error) {
 		toast.showError(error, 'Error loading data tables');
 	} finally {
+		batches.endRefresh();
 		delayedLoading.cancel();
 		loading.value = false;
 
@@ -132,14 +168,25 @@ const fetchDataTables = async () => {
 	}
 };
 
+const loadMoreDataTables = async () => {
+	try {
+		await batches.loadMore(dataTableStore.dataTables.length, fetchDataTablesRange, (response) => {
+			const newTables = dataTableStore.appendDataTables(response);
+			if (newTables.length > 0) {
+				void fetchDependencyCounts(
+					newTables.map((dt) => dt.id),
+					'dataTable',
+				);
+			}
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('resourcesList.loadMore.error'));
+	}
+};
+
 const onPaginationUpdate = async (payload: SortingAndPaginationUpdates) => {
-	if (payload.page) {
-		currentPage.value = payload.page;
-	}
-	if (payload.pageSize) {
-		pageSize.value = payload.pageSize;
-	}
 	if (payload.sort) {
+		batches.reset();
 		currentSort.value =
 			DATA_TABLE_SORT_MAP[payload.sort as keyof typeof DATA_TABLE_SORT_MAP] ?? 'updatedAt:desc';
 	}
@@ -157,7 +204,7 @@ const onAddModalClick = () => {
 };
 
 const onSearchUpdated = async (search: string) => {
-	currentPage.value = 1;
+	batches.reset();
 	filters.value.search = search;
 
 	if (search) {
@@ -203,9 +250,11 @@ watch(
 		:resources="dataTableResources"
 		:initialize="fetchDataTables"
 		:type-props="{ itemSize: 80 }"
+		:list-columns="listColumns"
 		:loading="false"
 		:disabled="false"
 		:total-items="totalCount"
+		:custom-page-size="DEFAULT_DATA_TABLE_PAGE_SIZE"
 		:resources-refreshing="loading"
 		:sort-options="Object.keys(DATA_TABLE_SORT_MAP)"
 		:dont-perform-sorting-and-filtering="true"
@@ -218,6 +267,7 @@ watch(
 		:persist-key-exclusions="PERSIST_KEY_EXCLUSIONS"
 		@update:search="onSearchUpdated"
 		@update:pagination-and-sort="onPaginationUpdate"
+		@load-more="loadMoreDataTables"
 	>
 		<template #header>
 			<ProjectHeader main-button="dataTable">
@@ -239,7 +289,6 @@ watch(
 		</template>
 		<template #item="{ item: data }">
 			<DataTableCard
-				class="mb-2xs"
 				:data-table="data as DataTableResource"
 				:show-ownership-badge="projectPages.isOverviewSubPage"
 				:schema-read-only="readOnlyEnv"

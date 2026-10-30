@@ -134,29 +134,24 @@ test.describe(
 			await expect(n8n.dataTable.getDataTableCardByName(TEST_DATA_TABLE_NAME)).toBeHidden();
 		});
 
-		test('Should paginate data table list correctly', async ({ n8n }) => {
-			const TEST_PROJECT_NAME = `Project ${nanoid(8)}`;
-			const TOTAL_DATA_TABLES = 11;
-			const PAGE_SIZE = 10;
+		test('Should load more data tables on scroll', async ({ n8n }) => {
+			const BATCH_SIZE = 50;
+			const TOTAL_DATA_TABLES = BATCH_SIZE + 5;
 
-			const { projectId } = await n8n.projectComposer.createProject(TEST_PROJECT_NAME);
+			const { id: projectId } = await n8n.api.projects.createProject();
+			for (let i = 0; i < TOTAL_DATA_TABLES; i++) {
+				const response = await n8n.api.request.post(`/rest/projects/${projectId}/data-tables`, {
+					data: { name: `Data Table ${i + 1}`, columns: [] },
+				});
+				expect(response.ok()).toBe(true);
+			}
+
 			await n8n.navigate.toDatatables(projectId);
 
-			// Create just enough data tables to require pagination
-			for (let i = 0; i < TOTAL_DATA_TABLES; i++) {
-				await n8n.dataTable.clickAddDataTableAction();
-				await n8n.dataTableComposer.createNewDataTable(`Data Table ${i + 1}`);
-				await n8n.sideBar.clickProjectMenuItem(TEST_PROJECT_NAME);
-				await n8n.dataTable.clickDataTableProjectTab();
-			}
-			// Change page size to PAGE_SIZE
-			await n8n.dataTable.selectDataTablePageSize(PAGE_SIZE.toString());
-			// First page should only have PAGE_SIZE items
-			await expect(n8n.dataTable.getDataTableCards()).toHaveCount(PAGE_SIZE);
-
-			// Forward to next page, should show the rest
-			await n8n.dataTable.getPaginationNextButton().click();
-			await expect(n8n.dataTable.getDataTableCards()).toHaveCount(TOTAL_DATA_TABLES - PAGE_SIZE);
+			// The list shows the first batch, then loads the rest near the end of the list
+			await expect(n8n.dataTable.getDataTableCards()).toHaveCount(BATCH_SIZE);
+			await n8n.dataTable.getDataTableCards().last().scrollIntoViewIfNeeded();
+			await expect(n8n.dataTable.getDataTableCards()).toHaveCount(TOTAL_DATA_TABLES);
 		});
 	},
 );

@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
+import { ResourceListToolbarTargetKey } from '@/app/components/layouts/resourceListToolbar';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestProject } from '../__tests__/utils';
 import * as router from 'vue-router';
@@ -115,6 +116,21 @@ describe('ProjectHeader', () => {
 		vi.clearAllMocks();
 	});
 
+	it('should give a list layout a place for its toolbar in the tab row', async () => {
+		const setToolbarTarget = vi.fn();
+		const { getByTestId } = renderComponent({
+			global: { provide: { [ResourceListToolbarTargetKey]: setToolbarTarget } },
+		});
+
+		expect(setToolbarTarget).toHaveBeenCalledWith(getByTestId('project-header-list-toolbar'));
+	});
+
+	it('should not render a toolbar place outside a list layout', async () => {
+		const { queryByTestId } = renderComponent();
+
+		expect(queryByTestId('project-header-list-toolbar')).not.toBeInTheDocument();
+	});
+
 	it('should not render title icon on overview page', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
 		const { container } = renderComponent();
@@ -137,51 +153,47 @@ describe('ProjectHeader', () => {
 		expect(container.querySelector('svg[data-icon=layers]')).toBeVisible();
 	});
 
-	it('Overview: should render the correct title and subtitle', async () => {
+	it('Overview: should render the correct title and no subtitle', async () => {
 		settingsStore.isDataTableFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(true);
-		const { getByTestId, rerender } = renderComponent();
-		const overviewSubtitle = 'All the workflows, credentials and executions you have access to';
+		const { getByTestId, queryByTestId, rerender } = renderComponent();
 
 		await rerender({});
 
 		expect(getByTestId('project-name')).toHaveTextContent('Overview');
-		expect(getByTestId('project-subtitle')).toHaveTextContent(overviewSubtitle);
+		expect(queryByTestId('project-subtitle')).not.toBeInTheDocument();
 	});
 
-	it('Shared with you: should render the correct title and subtitle', async () => {
+	it('Shared with you: should render the correct title and no subtitle', async () => {
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(true);
-		const { getByTestId, rerender } = renderComponent();
-		const sharedSubtitle = 'Workflows and credentials other users have shared with you';
+		const { getByTestId, queryByTestId, rerender } = renderComponent();
 
 		await rerender({});
 
 		expect(getByTestId('project-name')).toHaveTextContent('Shared with you');
-		expect(getByTestId('project-subtitle')).toHaveTextContent(sharedSubtitle);
+		expect(queryByTestId('project-subtitle')).not.toBeInTheDocument();
 	});
 
-	it('Personal: should render the correct title and subtitle', async () => {
+	it('Personal: should render the correct title and no subtitle', async () => {
 		settingsStore.isDataTableFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
-		const { getByTestId, rerender } = renderComponent();
-		const personalSubtitle = 'Workflows and credentials owned by you';
+		const { getByTestId, queryByTestId, rerender } = renderComponent();
 
 		projectsStore.currentProject = { type: ProjectTypes.Personal } as Project;
 
 		await rerender({});
 
 		expect(getByTestId('project-name')).toHaveTextContent('Personal');
-		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
+		expect(queryByTestId('project-subtitle')).not.toBeInTheDocument();
 	});
 
 	it('Personal: should render the correct title when currentProject is null but personalProject exists', async () => {
 		settingsStore.isDataTableFeatureEnabled = false;
 		vi.spyOn(projectPages, 'isOverviewSubPage', 'get').mockReturnValue(false);
 		vi.spyOn(projectPages, 'isSharedSubPage', 'get').mockReturnValue(false);
-		const { getByTestId, rerender } = renderComponent();
-		const personalSubtitle = 'Workflows and credentials owned by you';
+		const { getByTestId, queryByTestId, rerender } = renderComponent();
 
 		projectsStore.currentProject = null;
 		projectsStore.personalProject = { type: ProjectTypes.Personal } as Project;
@@ -189,7 +201,7 @@ describe('ProjectHeader', () => {
 		await rerender({});
 
 		expect(getByTestId('project-name')).toHaveTextContent('Personal');
-		expect(getByTestId('project-subtitle')).toHaveTextContent(personalSubtitle);
+		expect(queryByTestId('project-subtitle')).not.toBeInTheDocument();
 	});
 
 	it('Team project: should render the correct title and no subtitle if there is no description', async () => {

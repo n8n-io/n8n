@@ -5,6 +5,7 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import type { Resource } from '@/Interface';
 import type router from 'vue-router';
 import { waitAllPromises } from '@/__tests__/utils';
+import userEvent from '@testing-library/user-event';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 
 const TEST_HOME_PROJECT: ProjectSharingData = vi.hoisted(() => ({
@@ -166,7 +167,7 @@ describe('ResourcesListLayout', () => {
 		expect(getByTestId('resources-table')).toBeTruthy();
 	});
 
-	it('should load sort & page size from local storage', async () => {
+	it('should load the sort from local storage', async () => {
 		const { emitted } = renderComponent({
 			props: {
 				resources: TEST_WORKFLOWS,
@@ -175,7 +176,118 @@ describe('ResourcesListLayout', () => {
 		});
 		await waitAllPromises();
 		expect(emitted()['update:pagination-and-sort']).toBeTruthy();
-		expect(emitted()['update:pagination-and-sort'].pop()).toEqual([TEST_LOCAL_STORAGE_VALUES]);
+		// The list loads more on scroll, so a saved page size does not apply
+		expect(emitted()['update:pagination-and-sort'].pop()).toEqual([
+			{ sort: TEST_LOCAL_STORAGE_VALUES.sort },
+		]);
+	});
+
+	it('should change the sort from the sort menu', async () => {
+		const { getByTestId, findAllByTestId, emitted } = renderComponent({
+			props: {
+				resources: TEST_WORKFLOWS,
+				// A full list does not save the sort to the URL, which needs a real router
+				type: 'list-full',
+			},
+		});
+		await waitAllPromises();
+
+		await userEvent.click(getByTestId('resources-list-sort'));
+		const items = await findAllByTestId('resources-list-sort-item');
+		expect(items.map((item) => item.textContent?.trim())).toEqual([
+			'Sort by last updated',
+			'Sort by last created',
+			'Sort by name (A-Z)',
+			'Sort by name (Z-A)',
+		]);
+
+		await userEvent.click(items[2]);
+		await waitAllPromises();
+
+		expect(emitted()['update:pagination-and-sort'].pop()).toEqual([{ sort: 'nameAsc' }]);
+	});
+
+	describe('load more', () => {
+		let observerCallback: IntersectionObserverCallback | undefined;
+		const observe = vi.fn();
+
+		beforeEach(() => {
+			observerCallback = undefined;
+			observe.mockClear();
+			vi.stubGlobal(
+				'IntersectionObserver',
+				vi.fn(function (callback: IntersectionObserverCallback) {
+					observerCallback = callback;
+					return { observe, disconnect: vi.fn(), unobserve: vi.fn() };
+				}),
+			);
+		});
+
+		afterEach(() => {
+			vi.unstubAllGlobals();
+		});
+
+		it('should show a placeholder instead of pagination while more resources exist', async () => {
+			const { queryByTestId, getByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					totalItems: TEST_WORKFLOWS.length + 10,
+				},
+			});
+			await waitAllPromises();
+
+			expect(queryByTestId('resources-list-pagination')).not.toBeInTheDocument();
+			expect(getByTestId('resources-list-load-more')).toBeInTheDocument();
+		});
+
+		it('should not show the placeholder when all resources are loaded', async () => {
+			const { queryByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					totalItems: TEST_WORKFLOWS.length,
+				},
+			});
+			await waitAllPromises();
+
+			expect(queryByTestId('resources-list-load-more')).not.toBeInTheDocument();
+		});
+
+		it('should emit load-more when the end of the list is near', async () => {
+			const { emitted, getByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					totalItems: TEST_WORKFLOWS.length + 10,
+				},
+			});
+			await waitAllPromises();
+
+			expect(observe).toHaveBeenCalledWith(getByTestId('resources-list-load-more'));
+			expect(emitted()['load-more']).toBeUndefined();
+
+			observerCallback?.(
+				[{ isIntersecting: true } as IntersectionObserverEntry],
+				{} as IntersectionObserver,
+			);
+
+			expect(emitted()['load-more']).toHaveLength(1);
+		});
+
+		it('should show the total count in the column header', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					resources: TEST_WORKFLOWS,
+					type: 'list-paginated',
+					totalItems: 123,
+					listColumns: [{ key: 'name', label: 'Name' }],
+				},
+			});
+			await waitAllPromises();
+
+			expect(getByTestId('resources-list-count')).toHaveTextContent('123');
+		});
 	});
 
 	it('should display info text if filters are applied', async () => {

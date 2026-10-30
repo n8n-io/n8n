@@ -60,18 +60,6 @@ export class DataTableView extends BasePage {
 		return new MessageBox(this.getDeleteDataTableModal()).confirmButton;
 	}
 
-	getDataTablePageSizeSelect() {
-		return this.page.getByTestId('resources-list-pagination').getByTestId('pagination-sizes');
-	}
-
-	getDataTablePageOption(pageSize: string) {
-		return this.getVisiblePopoverOption(`${pageSize}/page`, { exact: true });
-	}
-
-	getPaginationNextButton() {
-		return this.page.getByTestId('resources-list-pagination').getByTestId('pagination-next');
-	}
-
 	async clickDataTableProjectTab() {
 		await this.clickByTestId('tab-project-data-tables');
 	}
@@ -90,10 +78,5 @@ export class DataTableView extends BasePage {
 
 	async clickDeleteDataTableConfirmButton() {
 		await this.getDeleteDataTableConfirmButton().click();
-	}
-
-	async selectDataTablePageSize(pageSize: string) {
-		await this.getDataTablePageSizeSelect().click();
-		await this.getDataTablePageOption(pageSize).click();
 	}
 }

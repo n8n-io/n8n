@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { formatResourceListDate } from '@/app/components/layouts/resourceListColumns';
 import DataTableCard from '@/features/core/dataTable/components/DataTableCard.vue';
 import type { DataTableResource } from '@/features/core/dataTable/types';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
@@ -96,8 +97,10 @@ describe('DataTableCard', () => {
 		expect(getByTestId('data-table-card-icon')).toBeInTheDocument();
 		expect(getByTestId('data-table-card-name')).toHaveTextContent(DEFAULT_DATA_TABLE.name);
 		expect(getByTestId('data-table-card-column-count')).toBeInTheDocument();
-		expect(getByTestId('data-table-card-last-updated')).toHaveTextContent('Last updated');
-		expect(getByTestId('data-table-card-created')).toHaveTextContent('Created');
+		expect(getByTestId('data-table-card-last-updated')).toHaveTextContent('just now');
+		expect(getByTestId('data-table-card-created')).toHaveTextContent(
+			formatResourceListDate(DEFAULT_DATA_TABLE.createdAt),
+		);
 	});
 
 	it('should not render a read-only badge when the table structure is locked', () => {

@@ -7,6 +7,8 @@ import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import ProjectCardBadge from '@/features/collaboration/projects/components/ProjectCardBadge.vue';
 import DependencyPill from '@/app/components/DependencyPill.vue';
+import ResourceListRow from '@/app/components/layouts/ResourceListRow.vue';
+import { formatResourceListDate } from '@/app/components/layouts/resourceListColumns';
 
 import { N8nCard, N8nIcon, N8nLink, N8nText } from '@n8n/design-system';
 import type { DataTableResource } from '../types';
@@ -58,28 +60,24 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 			data-test-id="data-table-card-link"
 		>
 			<N8nCard :class="$style.card">
-				<template #prepend>
-					<N8nIcon
-						data-test-id="data-table-card-icon"
-						:class="$style['card-icon']"
-						icon="table"
-						size="xlarge"
-						:stroke-width="1.5"
-					/>
-				</template>
-				<template #header>
-					<div :class="$style['card-header']">
-						<N8nText tag="h2" bold data-test-id="data-table-card-name">
+				<ResourceListRow>
+					<template #name>
+						<N8nIcon
+							data-test-id="data-table-card-icon"
+							:class="$style['card-icon']"
+							icon="table"
+							size="large"
+							:stroke-width="1.5"
+						/>
+						<N8nText tag="h2" bold :class="$style.name" data-test-id="data-table-card-name">
 							{{ props.dataTable.name }}
 						</N8nText>
-					</div>
-				</template>
-				<template #footer>
-					<div :class="$style['card-footer']">
+					</template>
+					<template #size>
 						<N8nText
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--size']]"
+							:class="$style.meta"
 							data-test-id="data-table-card-size"
 						>
 							{{
@@ -88,131 +86,108 @@ const dataTableHasDependents = computed(() => hasDependencies(props.dataTable.id
 								})
 							}}
 						</N8nText>
+					</template>
+					<template #columns>
 						<N8nText
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--column-count']]"
+							:class="$style.meta"
 							data-test-id="data-table-card-column-count"
 						>
-							{{
-								i18n.baseText('dataTable.card.column.count', {
-									interpolate: { count: props.dataTable.columns.length + 1 },
-								})
-							}}
+							{{ props.dataTable.columns.length + 1 }}
 						</N8nText>
+					</template>
+					<template #location>
+						<span :class="$style.cellContent" @click.stop>
+							<ProjectCardBadge
+								v-if="props.showOwnershipBadge"
+								:class="$style['card-badge']"
+								:resource="dataTable"
+								:resource-type="ResourceType.DataTable"
+								:resource-type-label="'Data Table'"
+								:personal-project="projectsStore.personalProject"
+								:show-badge-border="false"
+							/>
+						</span>
+					</template>
+					<template #updated>
 						<N8nText
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--updated']]"
+							:class="$style.meta"
 							data-test-id="data-table-card-last-updated"
 						>
-							{{ i18n.baseText('workerList.item.lastUpdated') }}
 							<TimeAgo :date="String(props.dataTable.updatedAt)" />
 						</N8nText>
+					</template>
+					<template #created>
 						<N8nText
 							size="small"
 							color="text-light"
-							:class="[$style['info-cell'], $style['info-cell--created']]"
+							:class="$style.meta"
 							data-test-id="data-table-card-created"
 						>
-							{{ i18n.baseText('workflows.item.created') }}
-							<TimeAgo :date="String(props.dataTable.createdAt)" />
+							{{ formatResourceListDate(props.dataTable.createdAt) }}
 						</N8nText>
-					</div>
-				</template>
-				<template #append>
-					<div :class="$style['card-actions']" @click.stop>
-						<DependencyPill
-							v-if="dataTableHasDependents"
-							resource-type="dataTable"
-							:resource-id="props.dataTable.id"
-							source="data_table_card"
-							data-test-id="data-table-card-dependents"
-						/>
-						<ProjectCardBadge
-							v-if="props.showOwnershipBadge"
-							:class="$style['card-badge']"
-							:resource="dataTable"
-							:resource-type="ResourceType.DataTable"
-							:resource-type-label="'Data Table'"
-							:personal-project="projectsStore.personalProject"
-							:show-badge-border="false"
-						/>
-						<DataTableActions
-							:data-table="props.dataTable"
-							:schema-read-only="props.schemaReadOnly"
-							location="card"
-						/>
-					</div>
-				</template>
+					</template>
+					<template #dependencies>
+						<span :class="$style.cellContent" @click.stop>
+							<DependencyPill
+								v-if="dataTableHasDependents"
+								resource-type="dataTable"
+								:resource-id="props.dataTable.id"
+								source="data_table_card"
+								data-test-id="data-table-card-dependents"
+							/>
+						</span>
+					</template>
+					<template #actions>
+						<span :class="$style.cellContent" @click.stop>
+							<span data-row-menu>
+								<DataTableActions
+									:data-table="props.dataTable"
+									:schema-read-only="props.schemaReadOnly"
+									location="card"
+								/>
+							</span>
+						</span>
+					</template>
+				</ResourceListRow>
 			</N8nCard>
 		</N8nLink>
 	</div>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
 .card {
-	transition: box-shadow 0.3s ease;
 	cursor: pointer;
-
-	&:hover {
-		box-shadow: var(--shadow--card-hover);
-	}
 }
 
 .card-icon {
 	flex-shrink: 0;
-	color: var(--color--text);
-	align-content: center;
-	text-align: center;
+	color: var(--icon-color);
 }
 
-.card-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding-right: var(--spacing--xs);
-	margin-bottom: var(--spacing--5xs);
+.name {
+	min-width: 0;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
-.card-footer {
-	display: flex;
-}
-
-.info-cell {
-	& + & {
-		&::before {
-			content: '|';
-			margin: 0 var(--spacing--4xs);
-		}
-	}
-}
-
-.card-actions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-direction: row;
-	justify-content: center;
-	align-items: center;
-	align-self: stretch;
-	padding: 0 var(--spacing--sm) 0 0;
-	cursor: default;
+.meta {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .card-badge {
-	background-color: var(--color--background--light-3);
+	min-width: 0;
+	max-width: 100%;
 }
 
-@include breakpoints.breakpoint('sm-and-down') {
-	.card {
-		flex-wrap: wrap;
-	}
-	.info-cell--created,
-	.info-cell--column-count,
-	.info-cell--size {
-		display: none;
-	}
+// Controls in a cell must not open the data table.
+.cellContent {
+	display: contents;
 }
 </style>

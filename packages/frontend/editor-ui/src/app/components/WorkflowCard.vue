@@ -51,6 +51,7 @@ import {
 import OpenInAssistantCardButton from '@/experiments/openWorkflowInAssistant/components/OpenInAssistantCardButton.vue';
 import { useOpenInAssistantCard } from '@/experiments/openWorkflowInAssistant/composables/useOpenInAssistantCard';
 import WorkflowCardMcpToggle from '@/app/components/WorkflowCardMcpToggle.vue';
+import ResourceListRow from '@/app/components/layouts/ResourceListRow.vue';
 import { useMCPStore, useMcp } from '@n8n/frontend-module-mcp';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -683,168 +684,187 @@ const tags = computed(
 
 <template>
 	<N8nCard
-		:class="{
-			[$style.cardLink]: true,
-			[$style.cardArchived]: data.isArchived,
-		}"
+		:class="{ [$style.cardArchived]: data.isArchived }"
 		data-test-id="workflow-card"
 		hoverable
 		@click="onClick"
 	>
-		<template #header>
-			<N8nText
-				tag="h2"
-				bold
-				:class="{
-					[$style.cardHeading]: true,
-					[$style.cardHeadingArchived]: data.isArchived,
-				}"
-				data-test-id="workflow-card-name"
-			>
-				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" variant="outline">
+		<ResourceListRow>
+			<template #name>
+				<N8nIcon
+					:class="$style.cardIcon"
+					icon="workflow"
+					size="large"
+					data-test-id="workflow-card-icon"
+				/>
+				<N8nText
+					tag="h2"
+					bold
+					:class="{
+						[$style.cardHeading]: true,
+						[$style.cardHeadingArchived]: data.isArchived,
+					}"
+					data-test-id="workflow-card-name"
+				>
+					{{ data.name }}
+				</N8nText>
+				<N8nBadge v-if="!workflowPermissions.update" variant="outline">
 					{{ locale.baseText('workflows.item.readonly') }}
 				</N8nBadge>
-			</N8nText>
-		</template>
-		<div :class="$style.cardDescription">
-			<span v-show="data">
-				{{ locale.baseText('workflows.item.updated') }}
-				<TimeAgo :date="String(data.updatedAt)" />
-			</span>
-			<span v-show="data" :class="$style.divider">|</span>
-			<span v-show="data">
-				{{ locale.baseText('workflows.item.created') }} {{ formattedCreatedAtDate }}
-			</span>
-			<span v-if="showLegacyMcpIndicator" :class="$style.divider">|</span>
-			<span
-				v-show="showLegacyMcpIndicator"
-				:class="$style.legacyMcpIndicator"
-				data-test-id="workflow-card-mcp"
-			>
-				<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
-					<N8nIcon icon="mcp" size="medium" />
-				</N8nTooltip>
-			</span>
-			<span v-if="hasDynamicCredentials" :class="$style.divider">|</span>
-			<span
-				v-if="hasDynamicCredentials"
-				:class="$style.privateCredentialIndicator"
-				data-test-id="workflow-card-private-credential"
-			>
-				<PrivateCredentialIcon
-					:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
-					:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
-					size="small"
-				/>
-			</span>
-			<span
-				v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
-				v-show="data"
-				:class="$style.cardTags"
-			>
-				<N8nTags
-					:tags="tags"
-					:truncate-at="3"
-					truncate
-					data-test-id="workflow-card-tags"
-					@click:tag="onClickTag"
-					@expand="onExpandTags"
-				/>
-			</span>
-		</div>
-		<template #append>
-			<div :class="$style.cardActions" @click.stop>
-				<DependencyPill
-					v-if="workflowHasDependencies"
-					resource-type="workflow"
-					:resource-id="data.id"
-					source="workflow_card"
-					data-test-id="workflow-card-dependencies"
-				/>
-				<ProjectCardBadge
-					v-if="showOwnershipBadge"
-					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
-					:resource="data"
-					:resource-type="ResourceType.Workflow"
-					:resource-type-label="resourceTypeLabel"
-					:personal-project="projectsStore.personalProject"
-					:show-badge-border="false"
+				<span
+					v-if="showLegacyMcpIndicator"
+					:class="$style.indicator"
+					data-test-id="workflow-card-mcp"
 				>
-					<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
-						<N8nBreadcrumbs
-							:items="cardBreadcrumbs"
-							:hidden-items="
-								data.parentFolder?.parentFolderId !== null ? hiddenBreadcrumbsItemsAsync : undefined
-							"
-							:path-truncated="data.parentFolder?.parentFolderId !== null"
-							:highlight-last-item="false"
-							hidden-items-trigger="hover"
-							theme="small"
-							data-test-id="workflow-card-breadcrumbs"
-							@tooltip-opened="fetchHiddenBreadCrumbsItems"
-							@item-selected="onBreadcrumbItemClick"
-						>
-							<template #prepend></template>
-						</N8nBreadcrumbs>
-					</div>
-				</ProjectCardBadge>
-				<N8nText
-					v-if="data.isArchived"
-					color="text-light"
-					size="small"
-					bold
-					class="ml-s mr-s"
-					data-test-id="workflow-card-archived"
+					<N8nTooltip placement="right" :content="locale.baseText('workflows.item.availableInMCP')">
+						<N8nIcon icon="mcp" size="medium" />
+					</N8nTooltip>
+				</span>
+				<span
+					v-if="hasDynamicCredentials"
+					:class="$style.indicator"
+					data-test-id="workflow-card-private-credential"
 				>
-					{{ locale.baseText('workflows.item.archived') }}
+					<PrivateCredentialIcon
+						:tooltip-title="locale.baseText('workflows.dynamic.tooltipTitle')"
+						:tooltip-text="locale.baseText('workflows.dynamic.tooltip')"
+						size="small"
+					/>
+				</span>
+				<span
+					v-if="props.areTagsEnabled && data.tags && data.tags.length > 0"
+					:class="$style.cardTags"
+				>
+					<N8nTags
+						:tags="tags"
+						:truncate-at="3"
+						truncate
+						data-test-id="workflow-card-tags"
+						@click:tag="onClickTag"
+						@expand="onExpandTags"
+					/>
+				</span>
+			</template>
+			<template #location>
+				<span :class="$style.cellContent" @click.stop>
+					<ProjectCardBadge
+						v-if="showOwnershipBadge"
+						:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
+						:resource="data"
+						:resource-type="ResourceType.Workflow"
+						:resource-type-label="resourceTypeLabel"
+						:personal-project="projectsStore.personalProject"
+						:show-badge-border="false"
+					>
+						<div v-if="showCardBreadcrumbs" :class="$style.breadcrumbs">
+							<N8nBreadcrumbs
+								:items="cardBreadcrumbs"
+								:hidden-items="
+									data.parentFolder?.parentFolderId !== null
+										? hiddenBreadcrumbsItemsAsync
+										: undefined
+								"
+								:path-truncated="data.parentFolder?.parentFolderId !== null"
+								:highlight-last-item="false"
+								hidden-items-trigger="hover"
+								theme="small"
+								data-test-id="workflow-card-breadcrumbs"
+								@tooltip-opened="fetchHiddenBreadCrumbsItems"
+								@item-selected="onBreadcrumbItemClick"
+							>
+								<template #prepend></template>
+							</N8nBreadcrumbs>
+						</div>
+					</ProjectCardBadge>
+				</span>
+			</template>
+			<template #updated>
+				<N8nText size="small" color="text-light" :class="$style.meta">
+					<TimeAgo :date="String(data.updatedAt)" />
 				</N8nText>
-				<PublicationIndicator
-					v-else-if="publicationIndicator"
-					:variant="publicationIndicator.variant"
-					:label="publicationIndicator.label"
-					:tooltip="publicationIndicator.tooltip"
-					:data-state="publicationIndicator.state"
-					data-test-id="workflow-card-publish-indicator"
-				/>
-				<WorkflowCardMcpToggle
-					v-if="props.isWorkflowCardMcpToggleEnabled"
-					:workflow-id="data.id"
-					:available-in-mcp="data.settings?.availableInMCP ?? false"
-					:can-edit="canEditMcp"
-					:is-mcp-enabled="props.isMcpEnabled"
-					:is-mcp-module-active="props.isMcpModuleActive"
-					:can-manage-instance-mcp="props.canManageInstanceMcp"
-				/>
-				<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
-				<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
-				<N8nActionToggle
-					:actions="actions"
-					placement="bottom-end"
-					theme="dark"
-					icon-size="medium"
-					data-test-id="workflow-card-actions"
-					@action="onAction"
-				/>
-			</div>
-		</template>
+			</template>
+			<template #created>
+				<N8nText size="small" color="text-light" :class="$style.meta">
+					{{ formattedCreatedAtDate }}
+				</N8nText>
+			</template>
+			<template #status>
+				<span :class="$style.cellContent" @click.stop>
+					<N8nText
+						v-if="data.isArchived"
+						color="text-light"
+						size="small"
+						bold
+						data-test-id="workflow-card-archived"
+					>
+						{{ locale.baseText('workflows.item.archived') }}
+					</N8nText>
+					<PublicationIndicator
+						v-else-if="publicationIndicator"
+						:variant="publicationIndicator.variant"
+						:label="publicationIndicator.label"
+						:tooltip="publicationIndicator.tooltip"
+						:data-state="publicationIndicator.state"
+						data-test-id="workflow-card-publish-indicator"
+					/>
+				</span>
+			</template>
+			<template #mcp>
+				<span :class="$style.cellContent" @click.stop>
+					<WorkflowCardMcpToggle
+						v-if="props.isWorkflowCardMcpToggleEnabled"
+						:workflow-id="data.id"
+						:available-in-mcp="data.settings?.availableInMCP ?? false"
+						:can-edit="canEditMcp"
+						:is-mcp-enabled="props.isMcpEnabled"
+						:is-mcp-module-active="props.isMcpModuleActive"
+						:can-manage-instance-mcp="props.canManageInstanceMcp"
+					/>
+				</span>
+			</template>
+			<template #dependencies>
+				<span :class="$style.cellContent" @click.stop>
+					<DependencyPill
+						v-if="workflowHasDependencies"
+						resource-type="workflow"
+						:resource-id="data.id"
+						source="workflow_card"
+						data-test-id="workflow-card-dependencies"
+					/>
+				</span>
+			</template>
+			<template #actions>
+				<span :class="$style.cellContent" @click.stop>
+					<!-- Experiment cleanup: remove with openWorkflowInAssistant. -->
+					<OpenInAssistantCardButton :workflow="data" :read-only="readOnly" />
+					<span data-row-menu>
+						<N8nActionToggle
+							:actions="actions"
+							placement="bottom-end"
+							theme="dark"
+							icon-size="medium"
+							data-test-id="workflow-card-actions"
+							@action="onAction"
+						/>
+					</span>
+				</span>
+			</template>
+		</ResourceListRow>
 	</N8nCard>
 </template>
 
 <style lang="scss" module>
-@use '@n8n/design-system/css/mixins/breakpoints';
-
-.cardLink {
-	padding: 0;
-	align-items: stretch;
+.cardIcon {
+	flex-shrink: 0;
+	color: var(--icon-color);
 }
 
 .cardHeading {
-	display: flex;
-	align-items: center;
+	min-width: 0;
 	font-size: var(--font-size--sm);
-	word-break: break-word;
-	padding: var(--spacing--sm) 0 0 var(--spacing--sm);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .cardHeadingArchived {
@@ -855,49 +875,36 @@ const tags = computed(
 	min-width: 300px;
 }
 
-.cardDescription {
-	min-height: var(--spacing--xl);
-	display: flex;
-	align-items: center;
-	padding: 0 0 var(--spacing--sm) var(--spacing--sm);
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
-	gap: var(--spacing--2xs);
+.meta {
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
 }
 
 .cardTags {
-	display: inline-block;
-	margin-top: var(--spacing--4xs);
-}
-
-.legacyMcpIndicator {
 	display: inline-flex;
-	align-items: center;
+	min-width: 0;
+	overflow: hidden;
 }
 
-.divider {
-	// Standalone flex item so the row `gap` applies evenly on both sides.
-	user-select: none;
-}
-
-.privateCredentialIndicator {
+.indicator {
 	display: inline-flex;
+	flex-shrink: 0;
 	align-items: center;
 }
 
-.cardActions {
-	display: flex;
-	gap: var(--spacing--2xs);
-	flex-direction: row;
-	justify-content: center;
-	align-items: center;
-	align-self: stretch;
-	padding: 0 var(--spacing--sm) 0 0;
-	cursor: default;
+.breadcrumbs {
+	min-width: 0;
+}
+
+// Controls in a cell must not open the workflow.
+.cellContent {
+	display: contents;
 }
 
 .cardBadge {
-	background-color: var(--color--background--light-3);
+	min-width: 0;
+	max-width: 100%;
 	border-radius: var(--radius--full);
 }
 
@@ -911,34 +918,6 @@ const tags = computed(
 }
 
 .cardArchived {
-	background-color: var(--color--background--light-2);
-	border-color: var(--color--foreground--tint-1);
 	color: var(--color--text);
-}
-
-@include breakpoints.breakpoint('sm-and-down') {
-	.cardLink {
-		--card--padding: 0 var(--spacing--sm) var(--spacing--sm);
-		--card--append--width: 100%;
-
-		flex-direction: column;
-	}
-
-	.cardActions {
-		width: 100%;
-		padding: 0 var(--spacing--sm) var(--spacing--sm);
-		justify-content: end;
-	}
-
-	.cardBadge,
-	.breadcrumbs {
-		margin-right: auto;
-	}
-}
-
-@include breakpoints.breakpoint('xs-only') {
-	.breadcrumbs > div {
-		flex-direction: column;
-	}
 }
 </style>
