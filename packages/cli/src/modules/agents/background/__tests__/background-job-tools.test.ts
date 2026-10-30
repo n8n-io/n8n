@@ -43,6 +43,8 @@ function jobView(overrides: Partial<BackgroundJobView> = {}): BackgroundJobView 
 		status: 'running',
 		result: null,
 		error: null,
+		files: null,
+		skippedFiles: null,
 		createdAt: new Date('2026-08-26T10:00:00Z'),
 		timeoutAt: null,
 		settledAt: null,
@@ -240,6 +242,29 @@ describe('delegate_subagent background mode', () => {
 
 		expect(output).toMatchObject({ status: 'rejected' });
 		expect(backgroundRunner.spawn).not.toHaveBeenCalled();
+	});
+
+	it('passes files to the background sub-agent', async () => {
+		const { backgroundRunner, options } = setup();
+		backgroundRunner.spawn.mockResolvedValue({ status: 'started', jobId: 'job-1' });
+		const tool = createBackgroundDelegateTool(options);
+
+		const output = await tool.handler!(
+			{
+				mode: 'background',
+				subAgentId: 'sub-1',
+				taskName: 'research',
+				goal: 'find things',
+				fileIds: ['file-1'],
+			},
+			{ persistence },
+		);
+
+		expect(output).toMatchObject({ status: 'started' });
+		expect(backgroundRunner.spawn).toHaveBeenCalledWith(
+			expect.objectContaining({ fileIds: ['file-1'] }),
+			expect.anything(),
+		);
 	});
 
 	it('rejects when the thread carries no host metadata', async () => {
@@ -447,6 +472,42 @@ describe('check_background_jobs', () => {
 
 		expect(output).toMatchObject({
 			jobs: [expect.objectContaining({ executionId: 'exec-1' })],
+		});
+	});
+
+	it('lists the output files of a job', async () => {
+		const { jobService, options } = setup();
+		const file = { fileId: 'file-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 3 };
+		jobService.listForThread.mockResolvedValue([
+			jobView({
+				kind: 'workflow',
+				status: 'completed',
+				files: [file],
+				skippedFiles: [{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' }],
+			}),
+			jobView({ id: 'job-2' }),
+		]);
+		const tool = createCheckBackgroundJobsTool(options.jobService);
+
+		const output = await tool.handler!({}, { persistence });
+
+		expect(output).toMatchObject({
+			jobs: [
+				expect.objectContaining({
+					files: [file],
+					skippedFiles: [{ fileName: 'video.mp4', reason: 'The file is larger than 50 MB.' }],
+				}),
+				expect.anything(),
+			],
+		});
+		expect(output).toMatchObject({
+			jobs: [
+				{},
+				expect.not.objectContaining({
+					files: expect.anything(),
+					skippedFiles: expect.anything(),
+				}),
+			],
 		});
 	});
 
