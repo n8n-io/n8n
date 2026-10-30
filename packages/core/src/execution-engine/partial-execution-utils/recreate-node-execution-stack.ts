@@ -13,7 +13,7 @@ import {
 	type IWaitingForExecutionSource,
 } from 'n8n-workflow';
 
-import type { DirectedGraph } from './directed-graph';
+import type { DirectedGraph, GraphConnection } from './directed-graph';
 import { getIncomingDataFromAnyRun } from './get-incoming-data';
 import { getSourceDataGroups } from './get-source-data-groups';
 
@@ -53,6 +53,25 @@ export function addWaitingExecutionSource(
 	taskDataConnectionsSource[inputType] = sourceDataList;
 	waitingExecutionSourceObject[runIndex] = taskDataConnectionsSource;
 	waitingExecutionSource[nodeName] = waitingExecutionSourceObject;
+}
+
+function getIncomingDataFromPinOrAnyRun(
+	connection: GraphConnection,
+	runData: IRunData,
+	pinData: IPinData,
+): { data: INodeExecutionData[]; runIndex: number } | undefined {
+	const pinnedData = pinData[connection.from.name];
+
+	if (pinnedData) {
+		return { data: pinnedData, runIndex: 0 };
+	}
+
+	return getIncomingDataFromAnyRun(
+		runData,
+		connection.from.name,
+		connection.type,
+		connection.outputIndex,
+	);
 }
 
 /**
@@ -127,34 +146,27 @@ export function recreateNodeExecutionStack(
 					incomingSourceData = { main: [] };
 
 					for (const incomingConnection of sourceData.connections) {
-						let runIndex = 0;
 						const sourceNode = incomingConnection.from;
 
-						if (pinData[sourceNode.name]) {
-							incomingData.push(pinData[sourceNode.name]);
-						} else {
-							a.ok(
-								runData[sourceNode.name],
-								`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${sourceNode.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
-							);
+						a.ok(
+							pinData[sourceNode.name] ?? runData[sourceNode.name],
+							`Start node(${incomingConnection.to.name}) has an incoming connection with no run or pinned data. This is not supported. The connection in question is "${sourceNode.name}->${startNode.name}". Are you sure the start nodes come from the "findStartNodes" function?`,
+						);
 
-							const nodeIncomingData = getIncomingDataFromAnyRun(
-								runData,
-								sourceNode.name,
-								incomingConnection.type,
-								incomingConnection.outputIndex,
-							);
+						const nodeIncomingData = getIncomingDataFromPinOrAnyRun(
+							incomingConnection,
+							runData,
+							pinData,
+						);
 
-							if (nodeIncomingData) {
-								runIndex = nodeIncomingData.runIndex;
-								incomingData.push(nodeIncomingData.data);
-							}
+						if (nodeIncomingData) {
+							incomingData.push(nodeIncomingData.data);
 						}
 
 						incomingSourceData.main.push({
 							previousNode: incomingConnection.from.name,
 							previousNodeOutput: incomingConnection.outputIndex,
-							previousNodeRun: runIndex,
+							previousNodeRun: nodeIncomingData?.runIndex ?? 0,
 						});
 					}
 
@@ -172,14 +184,11 @@ export function recreateNodeExecutionStack(
 						: 0;
 
 					for (const incomingConnection of sourceData.connections) {
-						const sourceNode = incomingConnection.from;
-						const maybeNodeIncomingData = getIncomingDataFromAnyRun(
+						const nodeIncomingData = getIncomingDataFromPinOrAnyRun(
+							incomingConnection,
 							runData,
-							sourceNode.name,
-							incomingConnection.type,
-							incomingConnection.outputIndex,
+							pinData,
 						);
-						const nodeIncomingData = maybeNodeIncomingData?.data ?? null;
 
 						if (nodeIncomingData) {
 							addWaitingExecution(
@@ -188,7 +197,7 @@ export function recreateNodeExecutionStack(
 								nextRunIndex,
 								incomingConnection.type,
 								incomingConnection.inputIndex,
-								nodeIncomingData,
+								nodeIncomingData.data,
 							);
 
 							addWaitingExecutionSource(
@@ -197,13 +206,11 @@ export function recreateNodeExecutionStack(
 								nextRunIndex,
 								incomingConnection.type,
 								incomingConnection.inputIndex,
-								nodeIncomingData
-									? {
-											previousNode: incomingConnection.from.name,
-											previousNodeRun: nextRunIndex,
-											previousNodeOutput: incomingConnection.outputIndex,
-										}
-									: null,
+								{
+									previousNode: incomingConnection.from.name,
+									previousNodeRun: nodeIncomingData.runIndex,
+									previousNodeOutput: incomingConnection.outputIndex,
+								},
 							);
 						}
 					}
