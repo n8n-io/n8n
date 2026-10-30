@@ -376,11 +376,11 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 				);
 				expect(
 					evaluator.evaluate(
-						`{{ (() => { const error = ${access}; return [error.message, error instanceof Error, Array.isArray(error), error.${key}]; })() }}`,
+						`{{ (() => { const error = ${access}; return [error.message, error.name, error instanceof Error, Array.isArray(error), error.${key}]; })() }}`,
 						data,
 						caller,
 					),
-				).toEqual(['from data', true, false, true]);
+				).toEqual(['from data', 'Error', true, false, true]);
 			});
 		});
 
