@@ -1,0 +1,52 @@
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_a249e6f33c4077::t_06c15e3163ea54 327-346
+  s_a249e6f33c4077::t_b6e2af2818a304 29
+packages/cli/src/modules/agents/__tests__/agent-chat.controller.test.ts
+  s_a249e6f33c4077::t_f8972da5765ac4 226-228,2056-2084
+  s_a249e6f33c4077::t_dcd37c32e05f24 934-964,996-1017
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_a249e6f33c4077::t_19baa1f24b031a 21
+  s_a249e6f33c4077::t_96025547f0a2fb 153-182
+packages/cli/src/modules/agents/agent-chat.controller.ts
+  s_a249e6f33c4077::t_05dc5881f72af7 373,385,397,405
+  s_a249e6f33c4077::t_4660ce74717cbe 876-937
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_a249e6f33c4077::t_6e63df7be04a57 2131,2139-2143,2859-2867,2869-2871,2873,2875,2877-2878
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentApi.test.ts
+  s_a249e6f33c4077::t_6e97f2b6f1d65e 419-425
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentTaskCancellation.test.ts
+  s_a249e6f33c4077::t_6649112f5742e2 8,39,49,60,64-84
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatTaskControls.ts
+  s_a249e6f33c4077::t_30899a0cdddd3c 33-35,66,145-147,151,402
+packages/frontend/editor-ui/src/features/agents/composables/useAgentTaskCancellation.ts
+  s_a249e6f33c4077::t_9844d3e8960d21 7,13,64,106
+packages/cli/src/modules/agents/types/agent-task-stop.ts
+  s_a249e6f33c4077::t_5b545edcb72187 3-7
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_a249e6f33c4077::t_05dc5881f72af7 1151,1167
+  s_a249e6f33c4077::t_9844d3e8960d21 1225,1230
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_a249e6f33c4077::t_e6952d24a3260e 158,162,164,167,175
+  s_a249e6f33c4077::t_d0d5324e941463 16,40-41
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_a249e6f33c4077::t_d0d5324e941463 21-22
+  s_a249e6f33c4077::t_e6952d24a3260e 59,68,131,178,191,211,226,245
+  s_a249e6f33c4077::t_e2f13857b03393 69
+  s_a249e6f33c4077::t_354ccd5f19e3ac 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d3657cb447e2289b5d7fa30e62bdeb4be99b741d",
+  "prompts": {},
+  "sessions": {
+    "s_a249e6f33c4077": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0806737e-72df-4f4e-a32e-078f753a686d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
