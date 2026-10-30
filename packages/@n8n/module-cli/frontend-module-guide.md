@@ -257,7 +257,8 @@ runDataDisplayModes: [
   release. The ids in `BUILT_IN_DISPLAY_MODES` are reserved.
 - `canRender` decides if the select offers the mode. It gets all items of the selected run, not
   filtered by search. It must be synchronous and cheap, because it runs on every data change.
-- `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run.
+- `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,
+  if `canRender` is true.
 - `supports.search: true` shows the search field. Without it, the search field is hidden and
   `search` is always `''`.
 
