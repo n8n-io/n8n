@@ -1345,6 +1345,11 @@ function setDraft(text: string) {
 	inputText.value = text;
 }
 
+/** Clears the composer only while it still holds this text, so the user's edits stay. */
+function clearDraftIfMatches(text: string) {
+	if (inputText.value === text) inputText.value = '';
+}
+
 function openFilePicker() {
 	chatInput.value?.openFilePicker();
 }
@@ -1404,6 +1409,7 @@ defineExpose({
 	clearBudgetStops,
 	isDirty,
 	setDraft,
+	clearDraftIfMatches,
 	openFilePicker,
 	getInputElement,
 	insertText,

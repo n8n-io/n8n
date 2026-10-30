@@ -16,7 +16,9 @@ import { Service } from '@n8n/di';
 import {
 	MAX_STEPS,
 	modelConfigId,
+	snapshotAgent,
 	tokenUsageToBuilderUsageItems,
+	withAttachedAgentTarget,
 	type ModelConfig,
 } from '@n8n/instance-ai';
 import { buildResumeData, toConfirmationData } from '@n8n/instance-ai/confirmation-payload';
@@ -234,6 +236,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 
 		let turnInput: AssistantTurnInput | undefined;
 		if (turn.type === 'start') {
+			await this.bindAttachedAgent(turn, request.attachments);
 			const buildInput = async () =>
 				await this.turnInput.buildInput(environment, runtime, {
 					user,
@@ -264,6 +267,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			generateTitle: true,
 			...(trace ? { tracing: trace.context } : {}),
 		});
+		if (turn.type === 'start') await this.snapshotAttachedAgents(environment, contextAttachments);
 
 		let usage: { model: string; usage: TokenUsage } | undefined;
 		let inputAccepted: Promise<void> | undefined;
@@ -370,6 +374,42 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 					lease ? await this.workspace.getWorkspace(lease, context) : undefined,
 			},
 		};
+	}
+
+	/**
+	 * Binds the agent that the Agent Builder panel attached, like the editor binds
+	 * a thread on the current runtime before its first message. The builder tools
+	 * then edit that agent, and the panel lists the thread under it.
+	 */
+	private async bindAttachedAgent(
+		turn: SystemAgentStartTurn<AssistantSandboxLease>,
+		attachments: InstanceAiAttachment[] | undefined,
+	): Promise<void> {
+		const attached = attachments?.find(
+			(attachment): attachment is InstanceAiAgentAttachment => attachment.type === 'agent',
+		);
+		if (!attached || attached.projectId !== turn.thread.projectId) return;
+		const current = await turn.memory.getThread(turn.thread.id);
+		const metadata = withAttachedAgentTarget(current?.metadata ?? {}, attached);
+		if (!metadata) return;
+		// The first turn saves its messages after this, so the thread row can be missing here.
+		await turn.memory.saveThread({ id: turn.thread.id, resourceId: turn.resourceId, metadata });
+	}
+
+	/** Records each attached agent as the turn opens on it. The builder never sees a
+	 *  turn that only asks about the agent, so nothing else records this state. */
+	private async snapshotAttachedAgents(
+		environment: AssistantTurnEnvironment,
+		attachments: InstanceAiResourceAttachment[],
+	): Promise<void> {
+		const context = environment.orchestrationContext;
+		const delegate = context.domainContext?.builderDelegate;
+		if (!delegate) return;
+		for (const attachment of attachments) {
+			if (attachment.type !== 'agent') continue;
+			const target = { agentId: attachment.id, projectId: attachment.projectId };
+			await snapshotAgent(context, delegate, target, 'attached');
+		}
 	}
 
 	/** The content of the turn's files, for the file tools of the turn. */

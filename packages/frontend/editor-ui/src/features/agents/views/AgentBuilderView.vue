@@ -184,6 +184,7 @@ import {
 import { INSTANCE_AI_VIEW } from '@/features/ai/instanceAi/constants';
 import InstanceAiChatPanel from '@/features/ai/instanceAi/embed/InstanceAiChatPanel.vue';
 import { persistPendingAgent } from '@/features/ai/instanceAi/instanceAi.memory.api';
+import { isKnownAssistantAgentThread } from '@/features/ai/instanceAi/assistantAgent/assistantAgentThreads';
 import type { InstanceAiEmbedSubject } from '@/features/ai/instanceAi/embed/instanceAiEmbed.types';
 import AgentBuildingIndicator from '@/features/ai/instanceAi/components/AgentBuildingIndicator.vue';
 import { useMcp, useMCPStore } from '@n8n/frontend-module-mcp';
@@ -1723,7 +1724,8 @@ async function createPendingAgent(
 	if (props.artifactPersistAgent) {
 		return await props.artifactPersistAgent(request);
 	}
-	if (aiThreadId.value) {
+	// An Assistant agent thread binds the saved agent with its next message.
+	if (aiThreadId.value && !isKnownAssistantAgentThread(aiThreadId.value)) {
 		const result = await persistPendingAgent(rootStore.restApiContext, aiThreadId.value, request);
 		return result.agent;
 	}

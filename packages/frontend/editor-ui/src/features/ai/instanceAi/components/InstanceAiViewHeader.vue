@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { N8nCallout } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import type { InstanceAiThreadSummary } from '@n8n/api-types';
+import type { InstanceAiThreadSummary, SystemAgentThreadSummary } from '@n8n/api-types';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useInstanceAiStore } from '../instanceAi.store';
@@ -19,7 +19,7 @@ const props = withDefaults(
 		/** Passed through to `InstanceAiThreadList` — an embedding host scopes
 		 * and disables the shared history instead of routing through it. */
 		threadList?: {
-			filter?: (thread: InstanceAiThreadSummary) => boolean;
+			filter?: (thread: InstanceAiThreadSummary | SystemAgentThreadSummary) => boolean;
 			navigate?: boolean;
 			disabled?: boolean;
 		};

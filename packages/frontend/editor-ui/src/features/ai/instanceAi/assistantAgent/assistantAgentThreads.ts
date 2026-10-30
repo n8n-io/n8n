@@ -42,6 +42,10 @@ export function forgetAssistantAgentThread(threadId: string): void {
 	knownAgentThreads.delete(threadId);
 }
 
+export function isKnownAssistantAgentThread(threadId: string): boolean {
+	return knownAgentThreads.has(threadId);
+}
+
 /** The runtime of a thread when it is known without a request, else `undefined`. */
 export function knownAssistantThreadRuntime(
 	threadId: string,
