@@ -31,8 +31,10 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionRun } from '../database/entities/promotion-run.entity';
+import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import type { PromotionReviewsService } from '../promotion-reviews.service';
+import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
@@ -167,6 +169,11 @@ describe('PromotionsService', () => {
 			resolver,
 			providersService,
 			workingDirectory,
+			new PromotionCheckoutCleanupService(
+				workingDirectory,
+				mock<PromotionEnvironmentRepository>(),
+				logger,
+			),
 			new WorkingCopyUpdater(
 				mock<InstanceSettings>({ n8nFolder, instanceId: 'inst-test' }),
 				logger,
@@ -286,6 +293,19 @@ describe('PromotionsService', () => {
 				'github.com ssh-ed25519 AAAA',
 			);
 			expect(result.hasCheckout).toBe(false);
+		});
+
+		it('logs a warning and does not fail when the checkout removal fails', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			vi.spyOn(workingDirectory, 'resetCheckout').mockRejectedValueOnce(new Error('EBUSY'));
+
+			const result = await service.disconnect(ENVIRONMENT_ID);
+
+			expect(result.hasCheckout).toBe(false);
+			expect(logger.warn).toHaveBeenCalledWith('Failed to reset the local promotion checkout', {
+				environmentId: ENVIRONMENT_ID,
+				error: 'EBUSY',
+			});
 		});
 	});
 

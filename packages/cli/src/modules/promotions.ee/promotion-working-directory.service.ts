@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { PromotionCacheDescriptor } from './promotions.types';
@@ -26,12 +26,7 @@ export class PromotionWorkingDirectoryService {
 		if (!SAFE_ID.test(environmentId)) {
 			throw new UnexpectedError('Promotion environment ID is not a generated ID');
 		}
-		const rootFolder = path.join(
-			this.instanceSettings.n8nFolder,
-			'promotions',
-			'environments',
-			environmentId,
-		);
+		const rootFolder = path.join(this.environmentsFolder(), environmentId);
 		return {
 			rootFolder,
 			repositoryFolder: path.join(rootFolder, 'repository'),
@@ -93,5 +88,22 @@ export class PromotionWorkingDirectoryService {
 	/** Removes everything for an environment, host keys included. */
 	async purge(environmentId: string): Promise<void> {
 		await rm(this.paths(environmentId).rootFolder, { recursive: true, force: true });
+	}
+
+	/** IDs of the environment folders on this machine. Skips names that are not generated IDs. */
+	async listEnvironmentIds(): Promise<string[]> {
+		try {
+			const entries = await readdir(this.environmentsFolder(), { withFileTypes: true });
+			return entries
+				.filter((entry) => entry.isDirectory() && SAFE_ID.test(entry.name))
+				.map((entry) => entry.name);
+		} catch (error) {
+			if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return [];
+			throw error;
+		}
+	}
+
+	private environmentsFolder() {
+		return path.join(this.instanceSettings.n8nFolder, 'promotions', 'environments');
 	}
 }

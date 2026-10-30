@@ -74,6 +74,7 @@ import { applySelectionRequest, ApplyPreviewService } from './apply-preview.serv
 import { GitCommitPackageReader } from './git-commit-package-reader';
 import { exportInstancePackage } from './instance-package';
 import { compare } from './package-references';
+import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
@@ -147,6 +148,7 @@ export class PromotionsService {
 		private readonly resolver: PromotionEnvironmentResolver,
 		private readonly providersService: PromotionProvidersService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
+		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
 		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
@@ -204,7 +206,7 @@ export class PromotionsService {
 	 */
 	async disconnect(environmentId: string): Promise<PromotionCheckoutPublicDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId);
-		await this.workingDirectory.resetCheckout(input.environmentId);
+		await this.checkoutCleanup.resetCheckouts([input.environmentId]);
 		return {
 			...this.checkoutIdentity(input),
 			branchName: checkoutBranchName(input.config),

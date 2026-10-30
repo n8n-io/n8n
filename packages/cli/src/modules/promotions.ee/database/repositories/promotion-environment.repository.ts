@@ -1,7 +1,8 @@
 import type { PromotionDirection, PromotionEnvironmentScope } from '@n8n/api-types';
 import { BaseRepository, isUniqueConstraintError, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type FindOptionsWhere } from '@n8n/typeorm';
+import { isRecord } from '@n8n/utils/is-record';
+import { DataSource, In, type FindOptionsWhere } from '@n8n/typeorm';
 
 import { PromotionEnvironment } from '../entities/promotion-environment.entity';
 import { PromotionConflictError } from '../promotion-conflict.error';
@@ -79,6 +80,24 @@ export class PromotionEnvironmentRepository extends BaseRepository<PromotionEnvi
 
 	async countByProviderId(providerId: string): Promise<number> {
 		return await this.count({ where: { providerId } });
+	}
+
+	/** Returns the IDs from the list that still have a row. */
+	async findExistingIds(ids: string[]): Promise<Set<string>> {
+		if (ids.length === 0) return new Set();
+		const rows = await this.find({ select: { id: true }, where: { id: In(ids) } });
+		return new Set(rows.map((row) => row.id));
+	}
+
+	/**
+	 * Environments on this provider that store a repository path. Their remote URL
+	 * is built from the provider's host URL, so a host change also changes it.
+	 */
+	async findIdsWithRepositoryPathByProvider(providerId: string): Promise<string[]> {
+		const rows = await this.find({ select: { id: true, remote: true }, where: { providerId } });
+		return rows
+			.filter((row) => isRecord(row.remote) && 'repositoryPath' in row.remote)
+			.map((row) => row.id);
 	}
 
 	async listEnvironments(options: {
