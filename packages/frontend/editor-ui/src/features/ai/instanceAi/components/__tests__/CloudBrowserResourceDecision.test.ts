@@ -48,9 +48,7 @@ describe('CloudBrowserResourceDecision', () => {
 		const { getByText, queryByText, getByRole } = renderComponent({ props: hostProps });
 
 		expect(
-			getByText(
-				'Allow n8n Assistant to open example.com in the "Compare plan prices" cloud browser?',
-			),
+			getByText('Allow n8n Assistant to open example.com in the "Compare plan prices" browser?'),
 		).toBeInTheDocument();
 		expect(getByRole('region')).toHaveTextContent(/^example\.com$/);
 		expect(queryByText(/Browser: example\.com/)).not.toBeInTheDocument();
@@ -60,9 +58,7 @@ describe('CloudBrowserResourceDecision', () => {
 		const { getByText } = renderComponent({ props: { ...hostProps, kind: undefined } });
 
 		expect(
-			getByText(
-				'Allow n8n Assistant to open example.com in the "Compare plan prices" cloud browser?',
-			),
+			getByText('Allow n8n Assistant to open example.com in the "Compare plan prices" browser?'),
 		).toBeInTheDocument();
 	});
 
@@ -82,9 +78,7 @@ describe('CloudBrowserResourceDecision', () => {
 		const { getByText, queryByTestId, getByTestId } = renderComponent({ props: credentialProps });
 
 		expect(
-			getByText(
-				'Allow n8n Assistant to save a credential from the "Get the API key" cloud browser?',
-			),
+			getByText('Allow n8n Assistant to save a credential from the "Get the API key" browser?'),
 		).toBeInTheDocument();
 		expect(getByText('Create credential "Acme API" (acmeApi)')).toBeInTheDocument();
 		expect(queryByTestId('cloud-browser-decision-allow-session')).not.toBeInTheDocument();
