@@ -13,6 +13,64 @@ union when the host has not wired them. Some tools instead keep an unavailable
 action or fallback tool surface and return an error or empty result. Tool ids
 live in `src/tools/tool-ids.ts`.
 
+### Approval modes
+
+Each user picks an approval mode in the chat. Auto needs the PostHog flag
+`137_instance_ai_approval_modes`. Without it, every run is Manual and the chat
+shows no selector. With it, a user without a saved choice gets Auto. The judge
+uses `N8N_INSTANCE_AI_APPROVAL_JUDGE_MODEL`, or the main model when that is
+empty or can't be resolved. The mode is stored in `user.settings.instanceAi.approvalMode` through
+`PUT /assistant/preferences`. Auto mode is not part of the Agent Builder: a
+thread that builds or edits an agent, or a message that attaches an agent,
+runs in Manual mode.
+
+Every action passes two checks in order:
+
+1. **Rules.** The admin value in Settings applies first. Block stops the
+   action, Allow runs it, and a thread grant from "Always allow" counts as
+   Allow. Tools behind the SDK approval gate (MCP tools) save their "Always
+   allow" grants as thread grants too (`createThreadApprovalContext`). In Auto, a user's MCP tool permissions can only make the admin's MCP
+   permissions stricter. Manual keeps a user's MCP permissions as they are.
+2. **Mode.** An action set to Ask first suspends for approval. Manual shows the
+   card. Auto reviews the suspension first, in `src/approval-review/`:
+   - `delete_credential`, `delete_data_table`, `delete_folder`,
+     `archive_workflow`, `unpublish_workflow` and `restore_workflow_version`
+     always show the card;
+   - `create_data_table`, `add_data_table_column`, `create_folder` and
+     `tag_workflow` run without the judge (low risk);
+   - an MCP tool call that is too long for the judge to read in full shows
+     the card;
+   - every other plain approval, including web fetches, web searches and MCP
+     tool calls, goes to the judge model. The judge reads the user's messages
+     and the Assistant's text, never tool results. It approves or asks. An
+     error or a timeout shows the card.
+
+The judge gets the conversation and the action as JSON in which `<` is
+escaped, so a message cannot close its block. Stored user messages lose the
+blocks that the host adds (`cleanStoredUserMessage`), and host follow-ups such
+as `(continue)` are left out. Long argument values are cut one by one, so the
+keys after them stay in view. An action that is still too long is cut at its
+end: the judge still decides a built-in tool call, and an MCP call shows its
+card.
+
+A tool asks for approval by calling `suspend()` and acts when it is called again
+with `{ approved: true }`. Auto mode uses that contract: the first call runs
+with a probe `suspend()` that records the payload, and an approved review calls
+the tool again at once with `{ approved: true }`. Tools need no code for Auto
+mode. Cards that need input (setup, credentials, questions, resource
+decisions) always show. An approved call emits `auto-approval`, so the thread
+shows it, and the judge's tokens are claimed from the user's credits. An
+approved call runs as if the user had approved the card, so a tool keeps the
+grant that its approval gives: an approved web fetch allows its host, and an
+approved web search allows searches, for the rest of the run, as "Allow once"
+does in Manual mode.
+Telemetry that a tool tracks during the probe is held: it is sent when the
+card shows and dropped when the review approves, so it counts the same as in
+Manual mode.
+
+The judge sees the user's messages, the user's answers in question cards, and
+the Assistant's text.
+
 ### Approval copy
 
 An approval card has a title and a description. The title names the asset without

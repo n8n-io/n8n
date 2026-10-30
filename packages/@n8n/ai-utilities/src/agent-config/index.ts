@@ -23,7 +23,9 @@ export {
 export {
 	classifyMcpTool,
 	compileMcpToolPermissions,
+	compileStricterMcpToolPermissions,
 	resolveMcpToolPermission,
+	stricterMcpToolPermission,
 	type CompiledMcpToolPermissions,
 	type McpToolAnnotations,
 	type McpToolDescriptor,

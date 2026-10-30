@@ -1413,6 +1413,48 @@ describe('agent-run-reducer', () => {
 		});
 	});
 
+	describe('auto-approval', () => {
+		it('folds the auto-approval onto its tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+			reduceEvent(state, makeToolCall('run-1', 'root', 'tc-1', 'publish_workflow'));
+
+			reduceEvent(state, {
+				type: 'auto-approval',
+				runId: 'run-1',
+				agentId: 'root',
+				payload: {
+					toolCallId: 'tc-1',
+					message: 'Publish "Lead router"',
+					reason: 'The user asked to publish it.',
+					decidedBy: 'judge',
+				},
+			});
+
+			expect(state.toolCallsById['tc-1'].autoApproval).toEqual({
+				message: 'Publish "Lead router"',
+				reason: 'The user asked to publish it.',
+				decidedBy: 'judge',
+			});
+		});
+
+		it('ignores an auto-approval for an unknown or unsafe tool call', () => {
+			const state = stateWithRun('run-1', 'root');
+
+			for (const toolCallId of ['missing', '__proto__']) {
+				reduceEvent(state, {
+					type: 'auto-approval',
+					runId: 'run-1',
+					agentId: 'root',
+					payload: { toolCallId, message: 'Publish', reason: 'Asked for.', decidedBy: 'rule' },
+				});
+			}
+
+			expect(Object.keys(state.toolCallsById)).toEqual([]);
+			expect('autoApproval' in Object.prototype).toBe(false);
+			expectStateMapsNotPolluted(state);
+		});
+	});
+
 	describe('preference-card', () => {
 		function savedPreferenceState(): AgentRunState {
 			const state = stateWithRun('run-1', 'root');

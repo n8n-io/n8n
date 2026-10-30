@@ -1342,6 +1342,11 @@ export class InstanceAiSettingsService {
 		return this.config.memoryModel.trim();
 	}
 
+	/** Model name for the judge of Auto approval mode; empty when unset. */
+	getConfiguredApprovalJudgeModelName(): string {
+		return this.config.approvalJudgeModel.trim();
+	}
+
 	/** Resolve just the model name (e.g. 'claude-sonnet-4-20250514') for proxy routing. */
 	resolveModelName(user: User): string {
 		const prefs = this.readUserPreferences(user);

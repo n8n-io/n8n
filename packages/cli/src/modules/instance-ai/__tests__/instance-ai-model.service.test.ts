@@ -443,4 +443,61 @@ describe('InstanceAiModelService', () => {
 			).resolves.toBeUndefined();
 		});
 	});
+
+	describe('resolveApprovalJudgeModelConfig', () => {
+		const tokenManager = { getAuthHeaders: vi.fn() } as never;
+		const proxyRun = { proxyBaseUrl: 'https://proxy.base', tokenManager };
+		const mainModel = { provider: 'anthropic.messages', modelId: 'claude-opus-5-5' } as never;
+
+		beforeEach(() => {
+			aiService.isProxyEnabled.mockReturnValue(false);
+			// The proxy path reads the main model id, so set it here instead of relying on an earlier test.
+			settingsService.getConfiguredModelId.mockReturnValue('anthropic/claude-opus-5-5');
+		});
+
+		it('uses the main model when no judge model is configured', async () => {
+			settingsService.getConfiguredApprovalJudgeModelName.mockReturnValue('');
+
+			await expect(
+				service.resolveApprovalJudgeModelConfig(fakeUser, mainModel, proxyRun),
+			).resolves.toBe(mainModel);
+			expect(createProxyLanguageModel).not.toHaveBeenCalled();
+		});
+
+		it('routes the judge model name through the run proxy', async () => {
+			settingsService.getConfiguredApprovalJudgeModelName.mockReturnValue('claude-haiku-5-5');
+			const judgeModel = { provider: 'anthropic.messages', modelId: 'claude-haiku-5-5' };
+			createProxyLanguageModel.mockResolvedValue(judgeModel);
+
+			await expect(
+				service.resolveApprovalJudgeModelConfig(fakeUser, mainModel, proxyRun),
+			).resolves.toBe(judgeModel);
+			expect(createProxyLanguageModel).toHaveBeenCalledWith(
+				expect.objectContaining({ modelId: 'claude-haiku-5-5', tokenManager }),
+			);
+		});
+
+		it('renames a provider/model main model on the direct path', async () => {
+			settingsService.getConfiguredApprovalJudgeModelName.mockReturnValue(
+				'anthropic/claude-haiku-5-5',
+			);
+
+			await expect(
+				service.resolveApprovalJudgeModelConfig(fakeUser, 'anthropic/claude-opus-5-5', {}),
+			).resolves.toBe('anthropic/claude-haiku-5-5');
+		});
+
+		it('uses the main model when the judge model cannot be resolved', async () => {
+			settingsService.getConfiguredApprovalJudgeModelName.mockReturnValue('claude-haiku-5-5');
+			createProxyLanguageModel.mockRejectedValue(new Error('unknown model'));
+
+			await expect(
+				service.resolveApprovalJudgeModelConfig(fakeUser, mainModel, proxyRun),
+			).resolves.toBe(mainModel);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to resolve the Instance AI approval judge model, using the main model',
+				expect.objectContaining({ modelName: 'claude-haiku-5-5' }),
+			);
+		});
+	});
 });
