@@ -2,6 +2,9 @@ import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
 	agentSkillSchema,
 	type AgentSkill,
+	type AddSkillSourceSkillsDto,
+	type SkillSourceListItem,
+	type SkillSourceMoreDiscovery,
 	type ConnectSkillSourceDto,
 	type DiscoverSkillSourceDto,
 	type DiscoveredSkill,
@@ -13,12 +16,16 @@ import {
 } from '@n8n/api-types';
 import { TransactionRunner, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
 import { z } from 'zod';
 
-import type { SkillSourceType } from '../database/entities/skill-source-connection.entity';
+import type {
+	SkillSourceConnection,
+	SkillSourceType,
+} from '../database/entities/skill-source-connection.entity';
 import {
 	DuplicateSkillSourceError,
 	SkillSourceRepository,
@@ -128,32 +135,27 @@ export class SkillSourceService {
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
-			const discovered = await this.discoverAll(source);
-			const skills = await this.readAll(source, discovered);
-			const names = await this.skillRepository.findLatestNamesInTarget(target);
 			const { client, locator } = source;
+			const summary = {
+				type: source.type,
+				...client.describe(locator),
+				webUrl: client.webUrl(locator),
+			};
 			if (duplicate.kind === 'blocked') {
 				await this.skillsTelemetry.connectedSource(
 					{ ...report, status: 'failure', reason: 'duplicate_source' },
 					user.id,
 				);
+				// Add more reads the saved source. The submitted branch or folder may have no skills.
+				return { source: summary, duplicate, skills: [], truncated: false, tooDeep: 0 };
 			}
+			const discovered = await this.discoverAll(source);
+			const skills = await this.readAll(source, discovered);
+			const names = await this.skillRepository.findLatestNamesInTarget(target);
 			return {
-				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
+				source: summary,
 				duplicate,
-				skills: skills.map(
-					(read): DiscoveredSkill => ({
-						key: read.key,
-						location: client.location(read.ref),
-						name: read.skill?.name ?? read.fetched?.content.name ?? null,
-						description: read.skill?.description ?? read.fetched?.content.description ?? null,
-						skippedFiles: read.fetched?.skippedFiles ?? [],
-						nameTaken: read.skill !== undefined && isNameTaken(read.skill.name, names),
-						error: read.error ?? null,
-						webUrl: client.webUrl(locator, read.ref),
-						...(discovered.groups.has(read.key) ? { group: discovered.groups.get(read.key) } : {}),
-					}),
-				),
+				skills: this.pickerSkills(source, skills, names, discovered.groups),
 				truncated: discovered.truncated,
 				tooDeep: discovered.tooDeep,
 				...(discovered.groupingWarnings.length > 0
@@ -208,6 +210,141 @@ export class SkillSourceService {
 		}
 	}
 
+	/** The minimal Sources tab. All filtering happens before source data leaves the service. */
+	async list(user: User): Promise<SkillSourceListItem[]> {
+		await this.flagGate.assertEnabled(user);
+		const sources = await this.sourceRepository.findVisible(
+			await this.skillAccess.visibleSourceProjects(user),
+		);
+		const counts = await this.sourceRepository.countSkills(sources.map((source) => source.id));
+		const projects = await this.skillRepository.findProjects(
+			sources.flatMap((source) => (source.projectId ? [source.projectId] : [])),
+		);
+		const canAdd = await this.skillAccess.sourceAccessCheck(user, 'addSkills');
+		return sources.map((source) => {
+			const project = source.projectId ? projects.get(source.projectId) : undefined;
+			return this.sourceItem(source, counts.get(source.id) ?? 0, project, canAdd(source));
+		});
+	}
+
+	/** Lists only remote skills that are not linked to this source. */
+	async discoverMore(user: User, sourceId: string): Promise<SkillSourceMoreDiscovery> {
+		const stored = await this.requireAddAccess(user, sourceId);
+		const source = this.connectedSource(stored);
+		const linked = await this.sourceRepository.findImportedRefs(sourceId);
+		const linkedKeys = new Set(linked.map(refKey));
+		const discovered = await this.discoverAll(source);
+		const reads = await this.readAll(source, {
+			...discovered,
+			refs: discovered.refs.filter((ref) => !linkedKeys.has(refKey(ref))),
+		});
+		const names = await this.skillRepository.findLatestNamesInTarget({
+			projectId: stored.projectId,
+			agentId: null,
+		});
+		const project = stored.projectId
+			? (await this.skillRepository.findProjects([stored.projectId])).get(stored.projectId)
+			: undefined;
+		return {
+			source: this.sourceItem(stored, linked.length, project, true),
+			skills: this.pickerSkills(source, reads, names, discovered.groups),
+			...(discovered.groupingWarnings.length > 0
+				? { groupingWarnings: discovered.groupingWarnings }
+				: {}),
+			...(discovered.externalPlugins.length > 0
+				? { externalPlugins: discovered.externalPlugins }
+				: {}),
+			truncated: discovered.truncated,
+			tooDeep: discovered.tooDeep,
+		};
+	}
+
+	async addSkills(
+		user: User,
+		sourceId: string,
+		payload: AddSkillSourceSkillsDto,
+	): Promise<SkillSourceConnectResponse> {
+		const stored = await this.requireAddAccess(user, sourceId);
+		const project = stored.projectId
+			? (await this.skillRepository.findProjects([stored.projectId])).get(stored.projectId)
+			: undefined;
+		const scopeType =
+			stored.projectId === null ? 'global' : project?.type === 'personal' ? 'personal' : 'team';
+		const { response } = await this.importSkills(
+			user,
+			this.connectedSource(stored),
+			{ projectId: stored.projectId, agentId: null },
+			payload.skillKeys,
+			scopeType,
+			sourceId,
+		);
+		return response;
+	}
+
+	private async requireAddAccess(user: User, sourceId: string): Promise<SkillSourceConnection> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.sourceRepository.findById(sourceId);
+		if (!source) throw new NotFoundError('Skill source not found');
+		if (!(await this.skillAccess.canOnSource(user, source, 'addSkills'))) {
+			if (!(await this.skillAccess.canOnSource(user, source, 'view'))) {
+				throw new NotFoundError('Skill source not found');
+			}
+			throw new ForbiddenError('You are not allowed to add skills to this source.');
+		}
+		return source;
+	}
+
+	private connectedSource(source: SkillSourceConnection): ParsedSource {
+		const client = this.clients.get(source.type);
+		if (!client) throw new UnexpectedError('Skill source client not registered');
+		return {
+			client,
+			type: source.type,
+			identityKey: source.identityKey,
+			locator: client.sourceLocator(source.locator),
+		};
+	}
+
+	private sourceItem(
+		source: SkillSourceConnection,
+		skillCount: number,
+		project: { name: string; type: 'personal' | 'team' } | undefined,
+		canAddSkills: boolean,
+	): SkillSourceListItem {
+		const { client, locator } = this.connectedSource(source);
+		return {
+			id: source.id,
+			type: source.type,
+			...client.describe(locator),
+			webUrl: client.webUrl(locator),
+			scope: source.projectId === null ? 'instance' : 'project',
+			projectId: source.projectId,
+			projectName: project?.name ?? null,
+			projectType: project?.type ?? null,
+			skillCount,
+			canAddSkills,
+		};
+	}
+
+	private pickerSkills(
+		source: ParsedSource,
+		reads: ReadSkill[],
+		names: { skillId: string; name: string }[],
+		groups: Map<string, SkillSourceGroup>,
+	): DiscoveredSkill[] {
+		return reads.map((read) => ({
+			key: read.key,
+			location: source.client.location(read.ref),
+			name: read.skill?.name ?? read.fetched?.content.name ?? null,
+			description: read.skill?.description ?? read.fetched?.content.description ?? null,
+			skippedFiles: read.fetched?.skippedFiles ?? [],
+			nameTaken: read.skill !== undefined && isNameTaken(read.skill.name, names),
+			error: read.error ?? null,
+			webUrl: source.client.webUrl(source.locator, read.ref),
+			...(groups.has(read.key) ? { group: groups.get(read.key) } : {}),
+		}));
+	}
+
 	// ---------------------------------------------------------------- steps
 
 	private async importSkills(
@@ -216,6 +353,7 @@ export class SkillSourceService {
 		target: SkillTarget,
 		skillKeys: string[],
 		scopeType: ScopeType,
+		existingSourceId?: string,
 	): Promise<{ response: SkillSourceConnectResponse; warning?: SkillSourceReason }> {
 		const keys = [...new Set(skillKeys)];
 		const failed: SkillSourceConnectResponse['failed'] = [];
@@ -226,7 +364,7 @@ export class SkillSourceService {
 				{
 					provider: source.type,
 					scope_type: scopeType,
-					first_or_more: 'first',
+					first_or_more: existingSourceId ? 'more' : 'first',
 					selected: keys.length,
 					imported: imported.length,
 					name_taken: failed.filter((failure) => failure.reason === 'name_taken').length,
@@ -237,7 +375,7 @@ export class SkillSourceService {
 				user.id,
 			);
 
-		const sourceId = uuidv7();
+		const sourceId = existingSourceId ?? uuidv7();
 		let discovered: Discovered;
 		try {
 			discovered = await this.discoverAll(source);
@@ -254,28 +392,45 @@ export class SkillSourceService {
 			}
 
 			await this.txRunner.run({}, async (ctx) => {
-				try {
-					await this.sourceRepository.insertConnected(
-						{
-							id: sourceId,
-							type: source.type,
-							locator: source.locator,
-							identityKey: source.identityKey,
-							projectId: target.projectId,
-							createdById: user.id,
-						},
-						ctx,
-					);
-				} catch (error) {
-					if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
-					throw error;
+				if (existingSourceId) {
+					const current = await this.sourceRepository.lockForImport(existingSourceId, ctx);
+					if (!current) throw new NotFoundError('Skill source not found');
+					if (current.projectId !== target.projectId) {
+						throw new ConflictError('The source scope changed. Open Add more skills again.');
+					}
+				} else {
+					try {
+						await this.sourceRepository.insertConnected(
+							{
+								id: sourceId,
+								type: source.type,
+								locator: source.locator,
+								identityKey: source.identityKey,
+								projectId: target.projectId,
+								createdById: user.id,
+							},
+							ctx,
+						);
+					} catch (error) {
+						if (error instanceof DuplicateSkillSourceError) throw duplicateError('scope');
+						throw error;
+					}
 				}
+				const linked = existingSourceId
+					? new Set(
+							(await this.sourceRepository.findImportedRefs(existingSourceId, ctx)).map(refKey),
+						)
+					: new Set<string>();
 				// Read in the transaction, so a skill created meanwhile is not shadowed. Each import
 				// adds its name, so two picked skills with one name do not both come in.
 				const names = await this.skillRepository.findLatestNamesInTarget(target, ctx);
 				for (const read of reads) {
 					const { skill, fetched } = read;
 					if (!skill || !fetched) continue;
+					if (linked.has(read.key)) {
+						failed.push({ key: read.key, name: skill.name, reason: 'duplicate_source' });
+						continue;
+					}
 					if (isNameTaken(skill.name, names)) {
 						failed.push({ key: read.key, name: skill.name, reason: 'name_taken' });
 						continue;
@@ -304,6 +459,7 @@ export class SkillSourceService {
 						},
 						ctx,
 					);
+					linked.add(read.key);
 					names.push({ skillId, name: skill.name });
 					imported.push({ key: read.key, skillId, name: skill.name });
 					skippedFiles += fetched.skippedFiles.length;

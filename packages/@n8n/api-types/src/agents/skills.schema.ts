@@ -156,6 +156,8 @@ export const SKILLS_SORT_OPTIONS = [
 export type SkillSortOption = (typeof SKILLS_SORT_OPTIONS)[number];
 
 export class ListSkillsQueryDto extends Z.class({
+	/** Only skills that remain linked to this connected source. */
+	sourceId: z.string().uuid().optional(),
 	skip: paginationSchema.skip,
 	take: optionalTake,
 	search: z.string().trim().max(200).optional(),

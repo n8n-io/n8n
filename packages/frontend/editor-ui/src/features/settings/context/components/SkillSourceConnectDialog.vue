@@ -3,6 +3,7 @@ import type {
 	DiscoveredSkill,
 	SkillSourceConnectResponse,
 	SkillSourceDiscovery,
+	SkillSourceMoreDiscovery,
 } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
@@ -27,7 +28,7 @@ import { ResponseError } from '@n8n/rest-api-client';
 import type { AgentSkillModalScopeOption } from '@/features/agents/components/AgentSkillModal.vue';
 
 import { useSkillsStore } from '../skills.store';
-import { parseScope, useSkillSourceReasons } from '../skills.utils';
+import { parseScope, useSkillScopeDisplay, useSkillSourceReasons } from '../skills.utils';
 
 /** What the page needs to confirm an import: the answer, and the names it shows in the toast. */
 export type SkillSourceConnected = {
@@ -38,6 +39,7 @@ export type SkillSourceConnected = {
 
 const props = defineProps<{
 	open: boolean;
+	sourceId?: string;
 	/** The scopes where the user may create skills, as the create modal lists them. */
 	scopeOptions: AgentSkillModalScopeOption[];
 }>();
@@ -56,6 +58,8 @@ const i18n = useI18n();
 const { showError } = useToast();
 const skillsStore = useSkillsStore();
 const { reasonText } = useSkillSourceReasons();
+const { scopeDisplay } = useSkillScopeDisplay();
+const activeSourceId = ref<string>();
 
 const step = ref<'link' | 'choose'>('link');
 const url = ref('');
@@ -63,36 +67,28 @@ const scope = ref('');
 const discovering = ref(false);
 const connecting = ref(false);
 const linkError = ref('');
-const discovery = ref<SkillSourceDiscovery | null>(null);
+const discovery = ref<SkillSourceDiscovery | SkillSourceMoreDiscovery | null>(null);
 const selected = ref<string[]>([]);
 /** Counts the reads of a link, so the answer of a read from before a close is dropped. */
 let discoverRun = 0;
 
-watch(
-	() => props.open,
-	(open) => {
-		if (!open) return;
-		discoverRun += 1;
-		discovering.value = false;
-		step.value = 'link';
-		url.value = '';
-		scope.value = props.scopeOptions[0]?.value ?? '';
-		linkError.value = '';
-		discovery.value = null;
-		selected.value = [];
-	},
-	{ immediate: true },
-);
-
 // A new link or scope needs a new read, so the old answer and its messages go.
 watch([url, scope], () => {
+	if (activeSourceId.value) return;
 	linkError.value = '';
 	discovery.value = null;
 });
 
-const selectedScope = computed(() =>
-	props.scopeOptions.find((option) => option.value === scope.value),
-);
+const selectedScope = computed(() => {
+	const source = discovery.value?.source;
+	if (source && 'scope' in source) {
+		return {
+			value: source.scope === 'instance' ? 'instance' : `project:${source.projectId}`,
+			...scopeDisplay({ ...source, agentName: null }),
+		};
+	}
+	return props.scopeOptions.find((option) => option.value === scope.value);
+});
 
 const scopeHint = computed(() => {
 	const option = selectedScope.value;
@@ -115,7 +111,11 @@ function discoverErrorText(error: unknown, link: string): string {
 	return reasonText(error instanceof ResponseError ? error.meta?.reason : undefined, link);
 }
 
-const duplicate = computed(() => discovery.value?.duplicate ?? { kind: 'none' as const });
+const duplicate = computed(() =>
+	discovery.value && 'duplicate' in discovery.value
+		? discovery.value.duplicate
+		: { kind: 'none' as const },
+);
 
 const duplicateMessage = computed(() => {
 	const dup = duplicate.value;
@@ -174,6 +174,31 @@ async function onNext() {
 		if (run === discoverRun) discovering.value = false;
 	}
 }
+
+async function openMore(sourceId: string) {
+	activeSourceId.value = sourceId;
+	step.value = 'choose';
+	discovery.value = null;
+	selected.value = [];
+	linkError.value = '';
+	const run = ++discoverRun;
+	discovering.value = true;
+	try {
+		const result = await skillsStore.discoverMore(sourceId);
+		if (run !== discoverRun || !props.open) return;
+		discovery.value = result;
+		selected.value = result.skills.filter(isSelectable).map((skill) => skill.key);
+	} catch (error) {
+		if (run === discoverRun && props.open) linkError.value = discoverErrorText(error, '');
+	} finally {
+		if (run === discoverRun) discovering.value = false;
+	}
+}
+
+const alreadyAdded = computed(() => {
+	const source = discovery.value?.source;
+	return source && 'skillCount' in source ? source.skillCount : 0;
+});
 
 function onBack() {
 	step.value = 'link';
@@ -239,11 +264,13 @@ async function onAdd() {
 	if (!source || selected.value.length === 0) return;
 	connecting.value = true;
 	try {
-		const response = await skillsStore.connectSource({
-			url: url.value.trim(),
-			...parseScope(scope.value),
-			skillKeys: selected.value,
-		});
+		const response = activeSourceId.value
+			? await skillsStore.addSourceSkills(activeSourceId.value, { skillKeys: selected.value })
+			: await skillsStore.connectSource({
+					url: url.value.trim(),
+					...parseScope(scope.value),
+					skillKeys: selected.value,
+				});
 		emit('connected', {
 			response: { ...response, failed: response.failed.map(withSkillName) },
 			sourceLabel: source.label,
@@ -264,9 +291,28 @@ function onOpenChange(open: boolean) {
 }
 
 const title = computed(() =>
-	step.value === 'link'
-		? i18n.baseText('settings.context.skills.connect.link.title')
-		: i18n.baseText('settings.context.skills.connect.choose.title'),
+	activeSourceId.value
+		? i18n.baseText('settings.context.skills.more.title')
+		: step.value === 'link'
+			? i18n.baseText('settings.context.skills.connect.link.title')
+			: i18n.baseText('settings.context.skills.connect.choose.title'),
+);
+watch(
+	() => [props.open, props.sourceId] as const,
+	([open, sourceId]) => {
+		discoverRun += 1;
+		if (!open) return;
+		discovering.value = false;
+		activeSourceId.value = undefined;
+		step.value = 'link';
+		url.value = '';
+		scope.value = props.scopeOptions[0]?.value ?? '';
+		linkError.value = '';
+		discovery.value = null;
+		selected.value = [];
+		if (sourceId) void openMore(sourceId);
+	},
+	{ immediate: true, flush: 'post' },
 );
 </script>
 
@@ -337,13 +383,39 @@ const title = computed(() =>
 				data-test-id="skill-source-duplicate"
 			>
 				{{ duplicateMessage }}
+				<N8nButton
+					v-if="duplicate.kind === 'blocked' && duplicate.sourceId"
+					variant="ghost"
+					:label="i18n.baseText('settings.context.skills.more.title')"
+					data-test-id="skill-source-duplicate-add-more"
+					@click="openMore(duplicate.sourceId)"
+				/>
 			</N8nCallout>
 		</N8nDialogBody>
 
+		<N8nDialogBody v-else-if="discovering || linkError" :class="$style.body">
+			<N8nText v-if="discovering">{{
+				i18n.baseText('settings.context.skills.more.loading')
+			}}</N8nText>
+			<N8nCallout v-else theme="danger">{{ linkError }}</N8nCallout>
+			<N8nButton
+				v-if="linkError && activeSourceId"
+				variant="outline"
+				:label="i18n.baseText('generic.retry')"
+				@click="openMore(activeSourceId)"
+			/>
+		</N8nDialogBody>
 		<N8nDialogBody v-else-if="discovery" :class="$style.body">
 			<div :class="$style.source" data-test-id="skill-source-summary">
 				<N8nIcon icon="git-branch" size="small" />
 				<N8nText size="small" color="text-light">{{ sourceLine }}</N8nText>
+				<N8nText v-if="activeSourceId" size="small" color="text-light">
+					{{
+						i18n.baseText('settings.context.skills.more.alreadyAdded', {
+							interpolate: { count: alreadyAdded },
+						})
+					}}
+				</N8nText>
 			</div>
 			<N8nCallout v-if="duplicateMessage" theme="warning" data-test-id="skill-source-duplicate">
 				{{ duplicateMessage }}
@@ -365,7 +437,19 @@ const title = computed(() =>
 					</ul>
 				</details>
 			</N8nCallout>
-			<div :class="$style.list" data-test-id="skill-source-skills">
+			<N8nText
+				v-if="activeSourceId && discovery.skills.length === 0"
+				data-test-id="skill-source-more-empty"
+			>
+				{{
+					i18n.baseText(
+						discovery.truncated || discovery.tooDeep
+							? 'settings.context.skills.more.emptyLimited'
+							: 'settings.context.skills.more.empty',
+					)
+				}}
+			</N8nText>
+			<div v-else :class="$style.list" data-test-id="skill-source-skills">
 				<section v-for="group in skillGroups" :key="group.id" :aria-label="group.name || undefined">
 					<N8nText v-if="group.name" tag="h3" size="small" bold :class="$style.groupName">{{
 						group.name
@@ -441,9 +525,12 @@ const title = computed(() =>
 					</ul>
 				</section>
 			</div>
-			<N8nText v-if="discovery.skills.length === 0" size="small" color="text-light">{{
-				i18n.baseText('settings.context.skills.connect.noLocalSkills')
-			}}</N8nText>
+			<N8nText
+				v-if="!activeSourceId && discovery.skills.length === 0"
+				size="small"
+				color="text-light"
+				>{{ i18n.baseText('settings.context.skills.connect.noLocalSkills') }}</N8nText
+			>
 			<div v-if="discovery.externalPlugins?.length" data-test-id="skill-source-external-plugins">
 				<N8nText bold size="small">{{
 					i18n.baseText('settings.context.skills.connect.externalPlugins')
@@ -487,14 +574,20 @@ const title = computed(() =>
 					{{ selectedScope.label }}
 				</N8nBadge>
 				<N8nText size="small" color="text-light">
-					{{ i18n.baseText('settings.context.skills.connect.addTo.hint') }}
+					{{
+						i18n.baseText(
+							activeSourceId
+								? 'settings.context.skills.more.scopeHint'
+								: 'settings.context.skills.connect.addTo.hint',
+						)
+					}}
 				</N8nText>
 			</div>
 		</N8nDialogBody>
 
 		<N8nDialogFooter>
 			<N8nButton
-				v-if="step === 'choose'"
+				v-if="step === 'choose' && !activeSourceId"
 				variant="ghost"
 				:label="i18n.baseText('generic.back')"
 				:disabled="connecting"
@@ -520,7 +613,7 @@ const title = computed(() =>
 			<N8nButton
 				v-else
 				:label="addLabel"
-				:disabled="selected.length === 0"
+				:disabled="selected.length === 0 || discovering || !!linkError"
 				:loading="connecting"
 				data-test-id="skill-source-add"
 				@click="onAdd"

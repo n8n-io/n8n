@@ -6,7 +6,8 @@ import {
 	type OperationContext,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, In } from '@n8n/typeorm';
+import { UnexpectedError } from '@n8n/errors';
+import { DataSource, In, IsNull } from '@n8n/typeorm';
 
 import {
 	SkillSourceConnection,
@@ -125,6 +126,59 @@ export class SkillSourceRepository {
 
 	async findById(id: string, ctx: OperationContext = {}): Promise<SkillSourceConnection | null> {
 		return await this.sources.managerFor(ctx).findOneBy(SkillSourceConnection, { id });
+	}
+
+	/** Global sources and sources in projects the user can list. */
+	async findVisible(projectIds: string[] | 'all'): Promise<SkillSourceConnection[]> {
+		return await this.sources.manager.find(SkillSourceConnection, {
+			where:
+				projectIds === 'all'
+					? {}
+					: [
+							{ projectId: IsNull() },
+							...(projectIds.length ? [{ projectId: In(projectIds) }] : []),
+						],
+			order: { createdAt: 'DESC' },
+		});
+	}
+
+	/** Counts links without loading skill content or remote refs. */
+	async countSkills(sourceIds: string[]): Promise<Map<string, number>> {
+		const counts = new Map<string, number>();
+		for (const ids of chunkIds(sourceIds)) {
+			const rows = await this.links.manager
+				.createQueryBuilder(SkillSourceLink, 'link')
+				.select('link.sourceId', 'sourceId')
+				.addSelect('COUNT(*)', 'count')
+				.where('link.sourceId IN (:...ids)', { ids })
+				.groupBy('link.sourceId')
+				.getRawMany<{ sourceId: string; count: string | number }>();
+			for (const row of rows) counts.set(row.sourceId, Number(row.count));
+		}
+		return counts;
+	}
+
+	async findImportedRefs(
+		sourceId: string,
+		ctx: OperationContext = {},
+	): Promise<Record<string, unknown>[]> {
+		const links = await this.links.managerFor(ctx).find(SkillSourceLink, {
+			select: ['remoteRef'],
+			where: { sourceId },
+		});
+		return links.map((link) => link.remoteRef);
+	}
+
+	/** Serializes imports of one source before they check its links. */
+	async lockForImport(id: string, ctx: OperationContext): Promise<SkillSourceConnection | null> {
+		if (!ctx.trx) throw new UnexpectedError('Source row locks need a transaction');
+		return await this.sources.managerFor(ctx).findOne(SkillSourceConnection, {
+			where: { id },
+			// SQLite serializes write transactions. PostgreSQL needs a row lock.
+			...(this.sources.manager.connection.options.type === 'postgres'
+				? { lock: { mode: 'pessimistic_write' as const } }
+				: {}),
+		});
 	}
 
 	/** The source of a synced skill, in one query. Null for a skill without a source. */

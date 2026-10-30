@@ -5,6 +5,7 @@ import type {
 	DiscoveredSkill,
 	SkillSourceConnectResponse,
 	SkillSourceDiscovery,
+	SkillSourceMoreDiscovery,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import userEvent from '@testing-library/user-event';
@@ -627,5 +628,150 @@ describe('SkillSourceConnectDialog', () => {
 			),
 		);
 		expect(view.emitted('update:open')).toBeUndefined();
+	});
+});
+
+function moreDiscovery(
+	overrides: Partial<SkillSourceMoreDiscovery> = {},
+): SkillSourceMoreDiscovery {
+	return {
+		source: {
+			...discovery().source,
+			id: 'src-1',
+			scope: 'project',
+			projectId: 'team-1',
+			projectName: 'Marketing',
+			projectType: 'team',
+			skillCount: 2,
+			canAddSkills: true,
+		},
+		skills: [discovered()],
+		truncated: false,
+		...overrides,
+	};
+}
+
+describe('Add more skills', () => {
+	beforeEach(() => {
+		createTestingPinia();
+		skillsStore = mockedStore(useSkillsStore);
+		showErrorMock.mockClear();
+	});
+
+	it('uses the existing source and fixed scope without a link or scope picker', async () => {
+		skillsStore.discoverMore.mockResolvedValue(moreDiscovery());
+		skillsStore.addSourceSkills.mockResolvedValue({
+			sourceId: 'src-1',
+			imported: [{ key: 'skills/brand-voice', skillId: 'skill-1', name: 'brand-voice' }],
+			failed: [],
+		});
+		const view = renderDialog({ props: { open: true, sourceId: 'src-1', scopeOptions: [] } });
+		await waitFor(() => expect(view.getByTestId('skill-source-add')).toBeEnabled());
+		expect(view.getByTestId('dialog-title')).toHaveTextContent('Add more skills');
+		expect(view.queryByTestId('skill-source-url-input')).not.toBeInTheDocument();
+		expect(view.queryByTestId('skill-source-scope-select')).not.toBeInTheDocument();
+		expect(view.queryByTestId('skill-source-back')).not.toBeInTheDocument();
+		expect(view.getByTestId('skill-source-add-to')).toHaveTextContent('Marketing');
+		expect(view.getByText('2 already added')).toBeInTheDocument();
+		await userEvent.click(view.getByTestId('skill-source-add'));
+		expect(skillsStore.addSourceSkills).toHaveBeenCalledWith('src-1', {
+			skillKeys: ['skills/brand-voice'],
+		});
+		expect(skillsStore.connectSource).not.toHaveBeenCalled();
+		expect(view.emitted('connected')?.[0]).toEqual([
+			expect.objectContaining({ scopeLabel: 'Marketing' }),
+		]);
+	});
+
+	it('opens Add more from a duplicate message and uses the existing source destination', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({ duplicate: { kind: 'blocked', where: 'global', sourceId: 'src-1' } }),
+		);
+		skillsStore.discoverMore.mockResolvedValue(
+			moreDiscovery({
+				source: {
+					...moreDiscovery().source,
+					scope: 'instance',
+					projectId: null,
+					projectName: null,
+					projectType: null,
+				},
+			}),
+		);
+		const view = render();
+		await pasteLink(view, 'https://github.com/acme/skills');
+		await userEvent.click(view.getByTestId('skill-source-duplicate-add-more'));
+		await waitFor(() =>
+			expect(view.getByTestId('skill-source-add-to')).toHaveTextContent('Global'),
+		);
+		expect(skillsStore.discoverMore).toHaveBeenCalledWith('src-1');
+	});
+
+	it('does not offer Add more for a duplicate the user cannot change', async () => {
+		skillsStore.discoverSource.mockResolvedValue(
+			discovery({ duplicate: { kind: 'blocked', where: 'global', sourceId: null } }),
+		);
+		const view = render();
+		await pasteLink(view, 'https://github.com/acme/skills');
+		expect(view.queryByTestId('skill-source-duplicate-add-more')).not.toBeInTheDocument();
+	});
+
+	it.each([false, true])('shows an empty result with truncated=%s', async (truncated) => {
+		skillsStore.discoverMore.mockResolvedValue(moreDiscovery({ skills: [], truncated }));
+		const view = renderDialog({ props: { open: true, sourceId: 'src-1', scopeOptions: [] } });
+		await waitFor(() =>
+			expect(view.getByTestId('skill-source-more-empty')).toHaveTextContent(
+				truncated
+					? 'No remaining skills in the results shown'
+					: 'All available skills from this source have been added',
+			),
+		);
+		expect(view.getByTestId('skill-source-add')).toBeDisabled();
+		expect(!!view.queryByTestId('skill-source-truncated')).toBe(truncated);
+	});
+
+	it('shows plugin groups when adding more skills', async () => {
+		skillsStore.discoverMore.mockResolvedValue(
+			moreDiscovery({ skills: [discovered({ group: { id: 'writing', name: 'Writing' } })] }),
+		);
+		const view = renderDialog({ props: { open: true, sourceId: 'src-1', scopeOptions: [] } });
+		expect(await view.findByRole('heading', { name: 'Writing' })).toBeInTheDocument();
+		expect(view.getByTestId('skill-source-add')).toBeEnabled();
+	});
+
+	it('keeps the fallback warning when adding more skills', async () => {
+		skillsStore.discoverMore.mockResolvedValue(
+			moreDiscovery({ groupingWarnings: ['.claude-plugin/marketplace.json'] }),
+		);
+		const view = renderDialog({ props: { open: true, sourceId: 'src-1', scopeOptions: [] } });
+		expect(await view.findByTestId('skill-source-grouping-warning')).toHaveTextContent(
+			"Skills couldn't be grouped by plugin",
+		);
+		expect(view.getByTestId('skill-source-add')).toBeEnabled();
+	});
+
+	it('can retry a failed discovery', async () => {
+		skillsStore.discoverMore
+			.mockRejectedValueOnce(new Error('offline'))
+			.mockResolvedValueOnce(moreDiscovery());
+		const view = renderDialog({ props: { open: true, sourceId: 'src-1', scopeOptions: [] } });
+		await userEvent.click(await view.findByRole('button', { name: 'Retry' }));
+		await waitFor(() => expect(view.getByTestId('skill-source-add')).toBeEnabled());
+	});
+
+	it('ignores an earlier response after the source changes', async () => {
+		let resolveFirst!: (value: SkillSourceMoreDiscovery) => void;
+		skillsStore.discoverMore
+			.mockReturnValueOnce(
+				new Promise((resolve) => {
+					resolveFirst = resolve;
+				}),
+			)
+			.mockResolvedValueOnce(moreDiscovery({ skills: [discovered({ name: 'second' })] }));
+		const view = renderDialog({ props: { open: true, sourceId: 'src-1', scopeOptions: [] } });
+		await view.rerender({ sourceId: 'src-2' });
+		await view.findByText('second');
+		resolveFirst(moreDiscovery());
+		await waitFor(() => expect(view.queryByText('brand-voice')).not.toBeInTheDocument());
 	});
 });

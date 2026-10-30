@@ -96,7 +96,11 @@ describe('skill source access', () => {
 	async function allowedActions(role: Role, scope: ScopeName): Promise<SkillSourceAction[]> {
 		const allowed: SkillSourceAction[] = [];
 		for (const action of ALL) {
-			if (await access.canOnSource(users[role], { projectId: projectIds[scope] }, action)) {
+			const source = { projectId: projectIds[scope] };
+			const canAct = await access.canOnSource(users[role], source, action);
+			const batchCheck = await access.sourceAccessCheck(users[role], action);
+			expect(batchCheck(source)).toBe(canAct);
+			if (canAct) {
 				allowed.push(action);
 			}
 		}

@@ -179,6 +179,22 @@ export class SkillAccessService {
 			: hasGlobalScope(user, scope);
 	}
 
+	/** Resolves source permissions once for a list, instead of querying for each source. */
+	async sourceAccessCheck(
+		user: User,
+		action: SkillSourceAction,
+	): Promise<(source: { projectId: string | null }) => boolean> {
+		const projectScope = requiredSourceScope(action, 'project');
+		const projectIds = projectScope
+			? await this.projectScopeService.getProjectIds(user, [projectScope])
+			: null;
+		const allowed = projectIds === null ? null : new Set(projectIds);
+		const globalScope = requiredSourceScope(action, 'global');
+		const globalAllowed = globalScope === null || hasGlobalScope(user, globalScope);
+		return ({ projectId }) =>
+			projectId ? allowed === null || allowed.has(projectId) : globalAllowed;
+	}
+
 	/**
 	 * Change scope takes the source and its skills out of their scope, as a disconnect does,
 	 * and puts them into another scope, as a connect does.

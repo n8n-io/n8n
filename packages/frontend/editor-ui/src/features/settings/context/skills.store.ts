@@ -1,5 +1,7 @@
 import type {
 	ConnectSkillSourceDto,
+	AddSkillSourceSkillsDto,
+	SkillSourceListItem,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
 	SaveSkillDto,
@@ -22,6 +24,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	const rootStore = useRootStore();
 
 	const skills = ref<SkillListItem[]>([]);
+	const sources = ref<SkillSourceListItem[]>([]);
 	const count = ref(0);
 	const loading = ref(false);
 
@@ -96,7 +99,36 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		await api.stopSyncingSkill(rootStore.restApiContext, id);
 	}
 
+	async function fetchSources() {
+		const result = await api.getSkillSources(rootStore.restApiContext);
+		sources.value = result;
+		return result;
+	}
+
+	/** Reads source details without replacing the main skills table. */
+	async function fetchSourceSkills(sourceId: string, skip: number, take: number) {
+		return await api.getSkills(rootStore.restApiContext, {
+			sourceId,
+			skip,
+			take,
+			sortBy: 'name:asc',
+		});
+	}
+
+	async function discoverMore(sourceId: string) {
+		return await api.discoverMoreSkills(rootStore.restApiContext, sourceId);
+	}
+
+	async function addSourceSkills(sourceId: string, payload: AddSkillSourceSkillsDto) {
+		return await api.addSourceSkills(rootStore.restApiContext, sourceId, payload);
+	}
+
 	return {
+		sources,
+		fetchSources,
+		fetchSourceSkills,
+		discoverMore,
+		addSourceSkills,
 		skills,
 		count,
 		loading,

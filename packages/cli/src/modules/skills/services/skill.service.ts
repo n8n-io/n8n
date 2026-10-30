@@ -170,6 +170,7 @@ export class SkillService {
 				? { id: query.projectId, agentIds: projectAgentIds }
 				: undefined;
 		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+			sourceId: query.sourceId,
 			scope: query.scope,
 			project,
 			attachableTo,

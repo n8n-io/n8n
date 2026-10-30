@@ -17,6 +17,7 @@ import { VIEWS } from '@/app/constants';
 
 import { useContextStore } from '../context.store';
 import { isContextPreferencesEnabled, isContextSkillsEnabled } from '../context.utils';
+import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { useSkillsStore } from '../skills.store';
 
 const i18n = useI18n();
@@ -27,6 +28,7 @@ const skillsStore = useSkillsStore();
 // The overview opens when either flag is on, so each row follows its own flag.
 const preferencesEnabled = isContextPreferencesEnabled();
 const skillsEnabled = isContextSkillsEnabled();
+const skillSyncEnabled = useSkillSyncFlag();
 const { showError } = useToast();
 
 const preferenceCount = computed(() =>
@@ -123,6 +125,19 @@ onMounted(async () => {
 			/>
 
 			<N8nSettingsRow
+				v-if="skillsEnabled && skillSyncEnabled"
+				clickable
+				:title="i18n.baseText('settings.context.sources.title')"
+				:description="i18n.baseText('settings.context.sources.description')"
+				data-test-id="settings-context-sources-row"
+				@click="router.push({ name: VIEWS.SETTINGS_CONTEXT_SKILLS, query: { tab: 'sources' } })"
+			>
+				<template #action
+					><N8nSettingsRowConfigure :value="i18n.baseText('settings.context.sources.view')"
+				/></template>
+			</N8nSettingsRow>
+			<N8nSettingsRow
+				v-else
 				:title="i18n.baseText('settings.context.sources.title')"
 				:description="i18n.baseText('settings.context.comingSoon')"
 				data-test-id="settings-context-sources-row"
