@@ -1096,7 +1096,7 @@ export class AgentRuntimeReconstructionService {
 		// Module check first, so the file repository is not touched while knowledge is off.
 		const hasFiles =
 			this.knowledgeAvailabilityService.isModuleActive() &&
-			(await this.agentFileRepository.hasFilesForAgent(agentId));
+			(await this.agentFileRepository.hasFilesForAgent(agentId, {}));
 		throwIfAborted(params.abortSignal);
 		if (hasFiles) {
 			const { createKnowledgeRetrievalTools } = await import(

@@ -114,14 +114,14 @@ export class AgentKnowledgeService {
 	async listFiles(agentId: string, projectId: string): Promise<AgentFileDto[]> {
 		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
-		const files = await this.agentFileRepository.findByAgentId(agentId);
+		const files = await this.agentFileRepository.findByAgentId(agentId, {});
 		return files.map((file) => toAgentFileDto(file));
 	}
 
 	async warmKnowledgeSandbox(agentId: string, projectId: string): Promise<void> {
 		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
-		if (!(await this.agentFileRepository.hasFilesForAgent(agentId))) return;
+		if (!(await this.agentFileRepository.hasFilesForAgent(agentId, {}))) return;
 
 		await this.agentSandboxRuntimeService.warmKnowledgeSandbox(projectId, agentId);
 	}
@@ -131,12 +131,12 @@ export class AgentKnowledgeService {
 		this.knowledgeAvailabilityService.assertModuleActive();
 		await getAgentOrThrow(this.agentRepository, agentId, projectId);
 
-		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId);
+		const file = await this.agentFileRepository.findByIdAndAgentId(fileId, agentId, {});
 		if (!file) {
 			return false;
 		}
 
-		await this.agentFileRepository.delete({ id: fileId, agentId });
+		await this.agentFileRepository.deleteByIdAndAgentId(fileId, agentId, {});
 		await this.agentKnowledgeFileStore
 			.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 			.catch((error) => {
@@ -146,7 +146,7 @@ export class AgentKnowledgeService {
 					error: error instanceof Error ? error.message : error,
 				});
 			});
-		if (await this.agentFileRepository.hasFilesForAgent(agentId)) {
+		if (await this.agentFileRepository.hasFilesForAgent(agentId, {})) {
 			this.agentKnowledgeMirrorService.prewarmMirrorInBackground(projectId, agentId);
 		} else {
 			await this.agentSandboxRuntimeService.destroyKnowledgeSandbox(projectId, agentId);
@@ -160,8 +160,8 @@ export class AgentKnowledgeService {
 	 * knowledge module: skipping it would leave stored bytes that no row points at.
 	 */
 	async deleteAllFilesForAgent(_projectId: string, agentId: string): Promise<void> {
-		const files = await this.agentFileRepository.findByAgentId(agentId);
-		await this.agentFileRepository.delete({ agentId });
+		const files = await this.agentFileRepository.findByAgentId(agentId, {});
+		await this.agentFileRepository.deleteByAgentId(agentId, {});
 		if (files.length > 0) {
 			await this.agentKnowledgeFileStore
 				.delete(
@@ -212,17 +212,18 @@ export class AgentKnowledgeService {
 		file: Express.Multer.File,
 		stored: StoredAgentKnowledgeFile,
 	): Promise<AgentFile> {
-		const agentFile = this.agentFileRepository.create({
-			id: fileId,
-			agentId,
-			storedAt: stored.storedAt,
-			storageKey: stored.storageKey,
-			fileName: file.originalname,
-			mimeType: file.mimetype,
-			fileSizeBytes: file.size,
-		});
-
-		return await this.agentFileRepository.save(agentFile);
+		return await this.agentFileRepository.saveUploadedFile(
+			{
+				id: fileId,
+				agentId,
+				storedAt: stored.storedAt,
+				storageKey: stored.storageKey,
+				fileName: file.originalname,
+				mimeType: file.mimetype,
+				fileSizeBytes: file.size,
+			},
+			{},
+		);
 	}
 
 	private async prepareUploadContent(file: Express.Multer.File): Promise<Buffer | Readable> {
@@ -251,7 +252,9 @@ export class AgentKnowledgeService {
 			await this.agentKnowledgeFileStore
 				.delete([{ storedAt: file.storedAt, storageKey: file.storageKey }])
 				.catch(() => {});
-			await this.agentFileRepository.delete({ id: file.id, agentId: file.agentId }).catch(() => {});
+			await this.agentFileRepository
+				.deleteByIdAndAgentId(file.id, file.agentId, {})
+				.catch(() => {});
 		}
 	}
 
@@ -283,7 +286,7 @@ export class AgentKnowledgeService {
 	}
 
 	private async validateUploadBatch(agentId: string, files: Express.Multer.File[]) {
-		const existingFiles = await this.agentFileRepository.findByAgentId(agentId);
+		const existingFiles = await this.agentFileRepository.findByAgentId(agentId, {});
 		const existingTotalSizeBytes = existingFiles.reduce(
 			(total, file) => total + file.fileSizeBytes,
 			0,
