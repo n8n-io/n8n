@@ -96,8 +96,13 @@ test.describe(
 	'Sub-workflow output contract',
 	{ annotation: [{ type: 'owner', description: 'Catalysts' }] },
 	() => {
-		for (const mode of ['once', 'each']) {
-			test(`returns the reported false-branch items in ${mode} mode`, async ({ api }) => {
+		// TODO(CET-315): the child's branches converge on one input, which engine v2
+		// refuses. Engine v2 does not run `each` mode at all.
+		for (const { mode, engine } of [
+			{ mode: 'once', engine: '@engine:v2-pending' },
+			{ mode: 'each', engine: '@engine:v1-only' },
+		]) {
+			test(`returns the reported false-branch items in ${mode} mode ${engine}`, async ({ api }) => {
 				const child = await api.workflows.importWorkflowFromDefinition(
 					definition('ado-5857-child.json'),
 				);
@@ -110,14 +115,16 @@ test.describe(
 			});
 		}
 
-		for (const { kind, ids } of [
-			{ kind: 'filter', ids: [56] },
-			{ kind: 'emptyFilter', ids: [] },
-			{ kind: 'switch', ids: [55, 56, 57] },
-			{ kind: 'inputSwitch', ids: [55, 56, 57] },
-			{ kind: 'if', ids: [56, 55, 57] },
+		// TODO(CET-581): engine v2 returns the last node's first output, so a declared
+		// output contract over several outputs does not hold there yet.
+		for (const { kind, ids, engine } of [
+			{ kind: 'filter', ids: [56], engine: '@engine:v2-pending' },
+			{ kind: 'emptyFilter', ids: [], engine: '@engine:v2' },
+			{ kind: 'switch', ids: [55, 56, 57], engine: '@engine:v2-pending' },
+			{ kind: 'inputSwitch', ids: [55, 56, 57], engine: '@engine:v2' },
+			{ kind: 'if', ids: [56, 55, 57], engine: '@engine:v2-pending' },
 		] as const) {
-			test(`returns declared ${kind} outputs with parent item links`, async ({ api }) => {
+			test(`returns declared ${kind} outputs with parent item links ${engine}`, async ({ api }) => {
 				const child = await api.workflows.importWorkflowFromDefinition(childWithOutput(kind));
 				await api.workflows.activate(child.workflowId, child.createdWorkflow.versionId!);
 				const parent = await publishParent(api, child.workflowId);
@@ -128,7 +135,10 @@ test.describe(
 			});
 		}
 
-		test('keeps the v1.2 output contract for an existing workflow', async ({ api }) => {
+		// TODO(CET-315): the child's branches converge on one input, which engine v2 refuses.
+		test('keeps the v1.2 output contract for an existing workflow @engine:v2-pending', async ({
+			api,
+		}) => {
 			const childDefinition = definition('ado-5857-child.json');
 			requiredNode(childDefinition, 'Start').typeVersion = 1.2;
 			const child = await api.workflows.importWorkflowFromDefinition(childDefinition);
@@ -144,7 +154,8 @@ test.describe(
 			{ kind: 'switch', ids: [56] },
 			{ kind: 'inputSwitch', ids: [56] },
 		] as const) {
-			test(`returns ${kind} output after a persisted wait and an unpublished draft edit`, async ({
+			// TODO(CET-582): engine v2 does not record `subWorkflowOutput` on the sub-execution.
+			test(`returns ${kind} output after a persisted wait and an unpublished draft edit @engine:v2-pending`, async ({
 				api,
 			}) => {
 				const childDefinition = childWithOutput(kind);
