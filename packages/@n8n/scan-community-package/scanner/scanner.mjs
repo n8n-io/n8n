@@ -23,6 +23,18 @@ const TEMP_DIR = tmp.dirSync({ unsafeCleanup: true }).name;
 const registry = 'https://registry.npmjs.org/';
 
 /**
+ * CLI exit codes. A scan that ran and found problems is kept apart from one
+ * that could not finish, so callers never report a scanner-side error (network,
+ * registry, ESLint crash) as a verdict on the package.
+ */
+export const EXIT_CODES = { PASSED: 0, ERROR: 1, FAILED: 2 };
+
+export const getExitCode = (result) => {
+	if (result.error) return EXIT_CODES.ERROR;
+	return result.passed ? EXIT_CODES.PASSED : EXIT_CODES.FAILED;
+};
+
+/**
  * Checks if the given childPath is contained within the parentPath. Resolves
  * the paths before comparing them, so that relative paths are also supported.
  */
@@ -157,6 +169,16 @@ export const parseSourceRepo = (attestations) => {
 // A source fetch failure fails the scan outright, so bound the requests —
 // a stalled connection must not hang the gate.
 const SOURCE_FETCH_TIMEOUT_MS = 30_000;
+
+/**
+ * A 4xx means the attested repository or commit is not publicly reachable,
+ * which the package author has to fix. Anything else (timeouts, 5xx, a broken
+ * archive) is a scanner-side error and says nothing about the package.
+ */
+export const isSourceUnavailable = (error) => {
+	const status = error?.response?.status;
+	return status >= 400 && status < 500;
+};
 
 const fetchSourceInfo = async (packageName, version) => {
 	const { data } = await axios.get(`${registry}-/npm/v1/attestations/${packageName}@${version}`, {
@@ -419,6 +441,16 @@ export const analyzePackageByName = async (packageName, version) => {
 			const reason = sourceError?.message ?? 'unsupported or unlocatable source repository';
 			stdout.write(`❌ Could not fetch source for ${label} \n`);
 
+			if (sourceError && !isSourceUnavailable(sourceError)) {
+				return {
+					packageName,
+					version: exactVersion,
+					passed: false,
+					message: `Analysis failed: could not fetch the attested source repository (${reason})`,
+					error: sourceError,
+				};
+			}
+
 			return {
 				packageName,
 				version: exactVersion,
@@ -449,16 +481,20 @@ export const analyzePackageByName = async (packageName, version) => {
 		// by the source scan and only false-positive on filename rules here.
 		const sourceResult = await analyzePackage(sourceDir, SOURCE_FILE_PATTERNS);
 		const distResult = await analyzePackage(packageDir, ['**/*.js', 'package.json']);
+		// An errored leg makes the whole scan inconclusive, so its message wins
+		// over a violation found by the other leg.
+		const errored = [sourceResult, distResult].find((r) => r.error);
 		const analysisResult = {
 			passed: sourceResult.passed && distResult.passed,
-			message: [sourceResult, distResult].find((r) => !r.passed)?.message,
+			message: (errored ?? [sourceResult, distResult].find((r) => !r.passed))?.message,
 			details: [sourceResult.details, distResult.details].filter(Boolean).join('\n') || undefined,
+			error: errored?.error,
 		};
 		if (stdout.TTY) {
 			stdout.clearLine(0);
 			stdout.cursorTo(0);
 		}
-		stdout.write(`✅ Analyzed ${label} \n`);
+		stdout.write(errored ? `❌ Could not analyze ${label} \n` : `✅ Analyzed ${label} \n`);
 
 		return {
 			packageName,
@@ -472,6 +508,7 @@ export const analyzePackageByName = async (packageName, version) => {
 			version,
 			passed: false,
 			message: `Analysis failed: ${error.message}`,
+			error,
 		};
 	}
 };

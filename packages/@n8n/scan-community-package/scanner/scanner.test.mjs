@@ -6,7 +6,10 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
 	analyzePackage,
 	buildScanConfig,
+	EXIT_CODES,
 	findPackageRoot,
+	getExitCode,
+	isSourceUnavailable,
 	parseSourceRepo,
 	SOURCE_FILE_PATTERNS,
 } from './scanner.mjs';
@@ -368,5 +371,44 @@ describe('analyzePackage', () => {
 
 		expect(result.passed).toBe(true);
 		expect(result.message).toBe('No files found to analyze');
+	});
+
+	it('marks a crash during analysis as an error, not a failed check', async () => {
+		fixtureDir = makeFixturePackage({ 'index.js': 'module.exports = {};\n' });
+
+		// fast-glob rejects non-string patterns, which throws inside the try
+		const result = await analyzePackage(fixtureDir, [42]);
+
+		expect(result.passed).toBe(false);
+		expect(result.error).toBeInstanceOf(Error);
+		expect(result.message).toMatch(/^Analysis failed: /);
+		expect(getExitCode(result)).toBe(EXIT_CODES.ERROR);
+	});
+});
+
+describe('getExitCode', () => {
+	it('returns 0 when all checks passed', () => {
+		expect(getExitCode({ passed: true })).toBe(0);
+	});
+
+	it('returns 2 when the scan ran and the package failed a check', () => {
+		expect(getExitCode({ passed: false, message: 'ESLint violations found' })).toBe(2);
+	});
+
+	it('returns 1 when the scan could not complete', () => {
+		expect(getExitCode({ passed: false, error: new Error('npm pack failed') })).toBe(1);
+	});
+});
+
+describe('isSourceUnavailable', () => {
+	it('treats 4xx responses as the package being unreachable', () => {
+		expect(isSourceUnavailable({ response: { status: 404 } })).toBe(true);
+		expect(isSourceUnavailable({ response: { status: 403 } })).toBe(true);
+	});
+
+	it('treats server errors, timeouts and other failures as scanner errors', () => {
+		expect(isSourceUnavailable({ response: { status: 502 } })).toBe(false);
+		expect(isSourceUnavailable({ code: 'ECONNABORTED' })).toBe(false);
+		expect(isSourceUnavailable(new Error('tar extraction failed'))).toBe(false);
 	});
 });
