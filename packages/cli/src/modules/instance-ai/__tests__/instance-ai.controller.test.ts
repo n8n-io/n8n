@@ -1344,15 +1344,6 @@ describe('InstanceAiController', () => {
 		});
 	});
 
-	describe('getUserPreferences', () => {
-		it('should require instanceAi:message scope', () => {
-			expect(scopeOf('getUserPreferences')).toEqual({
-				scope: 'instanceAi:message',
-				globalOnly: true,
-			});
-		});
-	});
-
 	describe('listThreads', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('listThreads')).toEqual({ scope: 'instanceAi:message', globalOnly: true });

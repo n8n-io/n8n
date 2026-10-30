@@ -508,14 +508,13 @@ jobs:
               }'
           done
 
-      # Belt-and-suspenders: env vars set sandbox/model config but persisted
+      # Belt-and-suspenders: env vars set sandbox config but persisted
       # settings can override. Per-lane assertion catches env-injection hiccups
       # or unexpected DB-side state. A single misconfigured lane would silently
-      # route some builds through tool mode or the wrong model and pollute results.
-      - name: Assert sandbox and model config on every lane
+      # route some builds through tool mode and pollute results.
+      - name: Assert sandbox config on every lane
         env:
           SANDBOX_PROVIDER: ${{ inputs.sandbox-provider || 'n8n-sandbox' }}
-          INSTANCE_AI_MODEL: ${{ inputs.model }}
         run: |
           read -ra PORTS <<< "$LANE_PORTS"
           bad=0
@@ -538,21 +537,6 @@ jobs:
               bad=$((bad+1))
             else
               echo "  lane $lane: sandboxEnabled=true sandboxProvider=$SANDBOX_PROVIDER ok"
-            fi
-            # /preferences returns the effective model name (user pref || config),
-            # i.e. everything after the first provider/ segment (openrouter/moonshotai/kimi-k3
-            # → moonshotai/kimi-k3). Use #*/ not ##*/ so nested OpenRouter ids match.
-            if [ -n "$INSTANCE_AI_MODEL" ]; then
-              expected_model="${INSTANCE_AI_MODEL#*/}"
-              effective=$(curl -sf -b "/tmp/cookies-$port.txt" \
-                "http://localhost:$port/rest/instance-ai/preferences" \
-                | jq -r '.data.modelName')
-              if [ "$effective" != "$expected_model" ]; then
-                echo "::error::lane $lane (port $port): expected model '$expected_model', got '$effective'"
-                bad=$((bad+1))
-              else
-                echo "  lane $lane: model=$effective ok"
-              fi
             fi
           done
           if [ "$bad" -gt 0 ]; then

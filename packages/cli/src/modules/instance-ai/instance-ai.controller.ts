@@ -681,14 +681,6 @@ export class InstanceAiController {
 		return await this.preferenceCardService.edit(req.user, threadId, preferenceId, payload);
 	}
 
-	// ── User preferences (per-user, self-service) ──────────────────────────
-
-	@Get('/preferences')
-	@GlobalScope('instanceAi:message')
-	async getUserPreferences(req: AuthenticatedRequest) {
-		return await this.settingsService.getUserPreferences(req.user);
-	}
-
 	@Get('/threads')
 	@GlobalScope('instanceAi:message')
 	async listThreads(req: AuthenticatedRequest) {
