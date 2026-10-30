@@ -4,6 +4,7 @@ import {
 	type SkillSourceDiscovery,
 	type SkillSourceMoreDiscovery,
 	type SkillSourceListItem,
+	type SkillListResponse,
 } from '@n8n/api-types';
 import {
 	createTeamProject,
@@ -507,6 +508,53 @@ describe('SkillSourceController', () => {
 			await owner.get('/skill-sources').expect(404);
 			await more(owner, 'missing', 404);
 			await owner.post('/skill-sources/missing/skills').send({}).expect(404);
+		});
+	});
+
+	describe('imported skills in source details', () => {
+		it('pages saved imports after upstream changes and excludes unlinked skills', async () => {
+			const { data: discovery } = await discover(owner, { url: REPO, scope: 'instance' });
+			const { data: connected } = await connect(owner, {
+				url: REPO,
+				scope: 'instance',
+				skillKeys: keysOf(discovery, ['pdf', 'docx']),
+			});
+			await createSkill({ content: { name: 'unrelated', description: 'Other skill' } });
+			github.push('acme/skills', { 'skills/new/SKILL.md': skillMd('new-name') });
+			const query = { sourceId: connected.sourceId, take: 1, sortBy: 'name:asc' };
+			const first = await owner.get('/skills').query(query).expect(200);
+			const firstPage = first.body as Body<SkillListResponse>;
+			expect(firstPage.data.count).toBe(2);
+			expect(firstPage.data.data.map((skill) => skill.name)).toEqual(['docx']);
+			const second = await owner
+				.get('/skills')
+				.query({ ...query, skip: 1 })
+				.expect(200);
+			expect((second.body as Body<SkillListResponse>).data.data.map((skill) => skill.name)).toEqual(
+				['pdf'],
+			);
+			await owner
+				.post(`/skill-sources/skills/${firstPage.data.data[0].id}/stop-syncing`)
+				.send()
+				.expect(200);
+			const remaining = await owner.get('/skills').query(query).expect(200);
+			expect((remaining.body as Body<SkillListResponse>).data.count).toBe(1);
+			expect((remaining.body as Body<SkillListResponse>).data.data[0].name).toBe('pdf');
+		});
+
+		it('allows project viewers to list imports and hides them from outsiders', async () => {
+			const scope = { scope: 'project', projectId: team.id };
+			const { data: discovery } = await discover(editor, { url: REPO, ...scope });
+			const { data: connected } = await connect(editor, {
+				url: REPO,
+				...scope,
+				skillKeys: keysOf(discovery, ['pdf']),
+			});
+			const query = { sourceId: connected.sourceId };
+			const visible = await viewer.get('/skills').query(query).expect(200);
+			expect((visible.body as Body<SkillListResponse>).data.data[0].name).toBe('pdf');
+			const hidden = await member.get('/skills').query(query).expect(200);
+			expect((hidden.body as Body<SkillListResponse>).data).toEqual({ count: 0, data: [] });
 		});
 	});
 

@@ -7,9 +7,6 @@ import {
 	N8nButton,
 	N8nCallout,
 	N8nDataTableServer,
-	N8nDialog,
-	N8nDialogBody,
-	N8nDialogFooter,
 	N8nIcon,
 	N8nIconButton,
 	N8nInput,
@@ -17,6 +14,8 @@ import {
 } from '@n8n/design-system';
 import type { TableHeader, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+
+import SkillSourceDetails from './SkillSourceDetails.vue';
 
 import { useSkillsStore } from '../skills.store';
 import { useSkillScopeDisplay } from '../skills.utils';
@@ -42,19 +41,27 @@ const page = computed(() => {
 	const start = (options.value.page ?? 0) * size;
 	return filtered.value.slice(start, start + size);
 });
+// The table header API takes pixel widths. Give source names most of the available space.
 const headers = computed<Array<TableHeader<SkillSourceListItem>>>(() => [
 	{
 		title: i18n.baseText('settings.context.sources.columns.source'),
 		key: 'label',
+		width: 560,
 		disableSort: true,
 	},
 	{
 		title: i18n.baseText('settings.context.skills.columns.scope'),
 		key: 'scope',
+		width: 200,
 		disableSort: true,
 	},
-	{ title: i18n.baseText('settings.context.skills.title'), key: 'skillCount', disableSort: true },
-	{ title: '', key: 'actions', align: 'end', disableSort: true, value: () => undefined },
+	{
+		title: i18n.baseText('settings.context.skills.title'),
+		key: 'skillCount',
+		width: 96,
+		disableSort: true,
+	},
+	{ title: '', key: 'actions', width: 64, align: 'end', disableSort: true, value: () => undefined },
 ]);
 
 function display(source: SkillSourceListItem) {
@@ -182,40 +189,12 @@ onMounted(load);
 		<N8nText size="small" color="text-light">{{
 			i18n.baseText('settings.context.sources.visibility')
 		}}</N8nText>
-		<N8nDialog
-			:open="!!selected"
-			:header="selected?.label"
-			data-test-id="skill-source-details"
-			@update:open="!$event && (selectedId = undefined)"
-		>
-			<N8nDialogBody v-if="selected" :class="$style.content">
-				<N8nText>{{ [selected.label, selected.ref].filter(Boolean).join(' · ') }}</N8nText>
-				<N8nBadge variant="outline" :class="$style.scopeBadge">{{
-					display(selected).label
-				}}</N8nBadge>
-				<N8nText>{{
-					i18n.baseText('settings.context.skills.count', {
-						interpolate: { count: selected.skillCount },
-						adjustToNumber: selected.skillCount,
-					})
-				}}</N8nText>
-			</N8nDialogBody>
-			<N8nDialogFooter v-if="selected">
-				<N8nButton
-					variant="outline"
-					:href="selected.webUrl"
-					target="_blank"
-					rel="noopener noreferrer"
-					:label="i18n.baseText('settings.context.sources.openGithub')"
-				/>
-				<N8nButton
-					v-if="selected.canAddSkills"
-					:label="i18n.baseText('settings.context.skills.more.title')"
-					data-test-id="skill-source-details-add-more"
-					@click="addMore(selected)"
-				/>
-			</N8nDialogFooter>
-		</N8nDialog>
+		<SkillSourceDetails
+			v-if="selected"
+			:source="selected"
+			@close="selectedId = undefined"
+			@add-more="addMore(selected)"
+		/>
 	</div>
 </template>
 
@@ -246,9 +225,6 @@ onMounted(load);
 	background: none;
 	text-align: left;
 	cursor: pointer;
-}
-.scopeBadge {
-	align-self: flex-start;
 }
 .empty {
 	display: block;

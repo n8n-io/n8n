@@ -105,6 +105,16 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return result;
 	}
 
+	/** Reads source details without replacing the main skills table. */
+	async function fetchSourceSkills(sourceId: string, skip: number, take: number) {
+		return await api.getSkills(rootStore.restApiContext, {
+			sourceId,
+			skip,
+			take,
+			sortBy: 'name:asc',
+		});
+	}
+
 	async function discoverMore(sourceId: string) {
 		return await api.discoverMoreSkills(rootStore.restApiContext, sourceId);
 	}
@@ -116,6 +126,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	return {
 		sources,
 		fetchSources,
+		fetchSourceSkills,
 		discoverMore,
 		addSourceSkills,
 		skills,

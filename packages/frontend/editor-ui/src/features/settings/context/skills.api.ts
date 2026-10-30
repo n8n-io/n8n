@@ -24,6 +24,7 @@ const SOURCES_ENDPOINT = '/skill-sources';
 
 /** The request side of `ListSkillsQueryDto`, with numbers as the client holds them. */
 export type SkillListQuery = {
+	sourceId?: string;
 	skip?: number;
 	take?: number;
 	search?: string;

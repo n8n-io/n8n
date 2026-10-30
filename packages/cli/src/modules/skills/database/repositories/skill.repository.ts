@@ -22,6 +22,7 @@ import type {
 	ResolvedSkillRow,
 	SkillTarget,
 } from '../../utils/skill-content';
+import { SkillSourceLink } from '../entities/skill-source-link.entity';
 import { SkillFile } from '../entities/skill-file.entity';
 import { SkillVersion } from '../entities/skill-version.entity';
 import { Skill, type SkillSource } from '../entities/skill.entity';
@@ -49,6 +50,7 @@ export type SkillVisibility = {
 
 /** Narrows the visible skills of `findVisiblePage` and cuts one page. */
 export type SkillListFilter = {
+	sourceId?: string;
 	scope?: 'project' | 'agent' | 'instance';
 	/** The skills of this project and of its agents. */
 	project?: { id: string; agentIds: string[] };
@@ -117,6 +119,14 @@ export class SkillRepository {
 					if (skillIds.length > 0) qb.orWhere('skill.id IN (:...usedSkillIds)');
 				}),
 				{ usedByAgentId: agentId, usedSkillIds: skillIds },
+			);
+		}
+		if (filter.sourceId !== undefined) {
+			query.innerJoin(
+				SkillSourceLink,
+				'sourceLink',
+				'sourceLink.skillId = skill.id AND sourceLink.sourceId = :sourceId',
+				{ sourceId: filter.sourceId },
 			);
 		}
 		if (filter.createdById !== undefined) {
