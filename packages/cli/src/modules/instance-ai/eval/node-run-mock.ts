@@ -29,6 +29,7 @@ Rules:
 - Return an empty items list when the scenario says the service holds nothing that matches.
 - When the scenario says the service fails for this run, set error to the message the service returns and leave items empty.
 - A send-and-wait node (operation sendAndWait) sends a message and waits for a person to answer. Return ONE item with inputIndex 0, in the layout the node emits when the answer arrives: {"data": {"approved": true, "respondedAt": "<ISO date>"}} for responseType approval (the default), {"data": {"text": "<the answer>", "respondedAt": "<ISO date>"}} for freeText, and the form fields with respondedAt inside data for customForm. The person approves, or answers in favor, unless the scenario says otherwise. When the parameters turn on responder capture (captureResponder), add data.responder: {"id", "name", "source": "<service, e.g. slack>"} for a person from the scenario.
+- The Chat node (@n8n/n8n-nodes-langchain.chat) with operation sendAndWait waits for the person's next chat message, so the layout above does not apply. Return ONE item with inputIndex 0 that carries the reply at the top level for version 1.2 or later: {"chatInput": "<the message>", "sessionId": "<id>"}. For version 1.1, nest the same fields under data. When responseType is not freeText, a typed reply means the person did not approve: add "approved": false under data.
 - Derive every date from the Date anchors.`;
 
 const submitOutputSchema = z.object({
@@ -140,7 +141,7 @@ async function generateOutput(
 	request: NodeRunRequest,
 	options: NodeRunMockOptions,
 ): Promise<SubmitOutput | undefined> {
-	const shownItems = itemsForPrompt(request.items);
+	const { sharedParameters, shownItems } = itemsForPrompt(request.items);
 	let captured: SubmitOutput | undefined;
 	const agent = createEvalAgent('eval-node-mock', {
 		instructions: NODE_MOCK_PROMPT,
@@ -165,28 +166,56 @@ async function generateOutput(
 	);
 
 	const timeout = AbortSignal.timeout(LLM_CALL_TIMEOUT_MS);
-	await agent.generate(buildUserPrompt(node, request.items.length, shownItems, options), {
-		abortSignal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
-	});
+	await agent.generate(
+		buildUserPrompt(node, request.items.length, sharedParameters, shownItems, options),
+		{
+			abortSignal: options.signal ? AbortSignal.any([options.signal, timeout]) : timeout,
+		},
+	);
 	return captured;
 }
 
-/** Whole items, in order, while they fit: every inputIndex the model can use names an item it saw. */
-function itemsForPrompt(items: NodeRunRequest['items']): string[] {
-	const shown: string[] = [];
+const forPrompt = (value: unknown) =>
+	redactSecretValuePatterns(JSON.stringify(redactSecretKeys(value)));
+
+/**
+ * Whole items, in order, while they fit: every inputIndex the model can use names an item it saw.
+ * Parameters that resolve the same for every item go once in `sharedParameters`, so a long
+ * email body does not push most recipients out of the message.
+ */
+function itemsForPrompt(items: NodeRunRequest['items']): {
+	sharedParameters: string | undefined;
+	shownItems: string[];
+} {
+	const [first, ...rest] = items;
+	const shared: Record<string, unknown> = {};
+	for (const [name, value] of Object.entries(first?.parameters ?? {})) {
+		const json = JSON.stringify(value);
+		if (rest.length > 0 && rest.every((item) => JSON.stringify(item.parameters[name]) === json)) {
+			shared[name] = value;
+		}
+	}
+
+	const shownItems: string[] = [];
 	let size = 0;
-	for (const item of items) {
-		const line = redactSecretValuePatterns(JSON.stringify(redactSecretKeys(item)));
-		if (shown.length > 0 && size + line.length > MAX_ITEMS_CHARS) break;
-		shown.push(truncateForLlm(line, MAX_ITEMS_CHARS));
+	for (const { json, parameters } of items) {
+		const own = Object.fromEntries(
+			Object.entries(parameters).filter(([name]) => !Object.hasOwn(shared, name)),
+		);
+		const line = forPrompt({ json, parameters: own });
+		if (shownItems.length > 0 && size + line.length > MAX_ITEMS_CHARS) break;
+		shownItems.push(truncateForLlm(line, MAX_ITEMS_CHARS));
 		size += line.length;
 	}
-	return shown;
+	const sharedParameters =
+		Object.keys(shared).length > 0 ? truncateForLlm(forPrompt(shared), MAX_ITEMS_CHARS) : undefined;
+	return { sharedParameters, shownItems };
 }
 
 function buildUserPrompt(
 	node: INode,
 	inputCount: number,
+	sharedParameters: string | undefined,
 	shownItems: string[],
 	options: NodeRunMockOptions,
 ): string {
@@ -199,13 +228,15 @@ function buildUserPrompt(
 		parameters,
 	});
 
-	const sections = [
-		'## Node',
-		`${node.name} (${node.type}, version ${node.typeVersion})`,
+	const sections = ['## Node', `${node.name} (${node.type}, version ${node.typeVersion})`];
+	if (sharedParameters) {
+		sections.push('', '## Parameters (the same for every item)', sharedParameters);
+	}
+	sections.push(
 		'',
 		`## Input items (${inputCount})`,
 		...shownItems.map((item, index) => `${index}: ${item}`),
-	];
+	);
 	if (shownItems.length < inputCount) {
 		sections.push(
 			`Only items 0-${shownItems.length - 1} fit in this message. Output items for these only.`,
