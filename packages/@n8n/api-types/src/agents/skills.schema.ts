@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
 	AGENT_SKILL_NAME_MAX_LENGTH,
+	agentSkillAvailabilitySchema,
 	agentSkillSchema,
 	agentSkillShape,
 	skillCreateMethodSchema,
@@ -28,8 +29,8 @@ const optionalTake = z
 	})
 	.transform((value) => (value === undefined ? undefined : Math.min(value, SKILLS_MAX_PAGE_SIZE)));
 
-/** Who owns a skill: one project, one agent (only that agent can use it), or the instance. */
-export const skillScopeSchema = z.enum(['project', 'agent', 'instance']);
+/** Who owns a skill: one project, or the instance. */
+export const skillScopeSchema = agentSkillAvailabilitySchema;
 
 export type SkillScope = z.infer<typeof skillScopeSchema>;
 
@@ -54,14 +55,11 @@ export type SkillListItem = {
 	name: string;
 	description: string;
 	scope: SkillScope;
-	/** The project of a project skill, or the project of the agent of an agent skill. */
+	/** The project of a project skill. */
 	projectId: string | null;
 	projectName: string | null;
 	/** Lets the editor name another member's personal project, which it does not list. */
 	projectType: ProjectType | null;
-	/** Set for an agent skill: the only agent that can use it. */
-	agentId: string | null;
-	agentName: string | null;
 	source: SkillSource;
 	/** Null when the creator is unknown or the user no longer exists. */
 	createdBy: SkillUserDto | null;
@@ -168,15 +166,15 @@ export class ListSkillsQueryDto extends Z.class({
 	scope: skillScopeSchema.optional(),
 	projectId: z.string().max(36).optional(),
 	/**
-	 * The id of an agent: the skills it uses (a draft ref or a published pin) and its own
-	 * agent skills. Not combined with `attachableTo`.
+	 * The id of an agent: the skills it uses (a draft ref or a published pin). Not combined
+	 * with `attachableTo`.
 	 */
 	agentId: z.string().max(36).optional(),
 	/** The id of the user who created the skill. User ids are UUIDs. */
 	createdById: z.string().uuid().optional(),
 	/**
-	 * The id of an agent: the skills it may attach, which are its project's skills, its own
-	 * agent skills and instance skills. Not combined with `scope`, `projectId` or `agentId`.
+	 * The id of an agent: the skills it may attach, which are its project's skills and
+	 * instance skills. Not combined with `scope`, `projectId` or `agentId`.
 	 */
 	attachableTo: z.string().max(36).optional(),
 	sortBy: z
@@ -220,8 +218,6 @@ export class SkillNewNameQueryDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
 	projectId: z.string().max(36).optional(),
-	/** Required for an agent skill, absent otherwise. */
-	agentId: z.string().max(36).optional(),
 	name: skillNameSchema,
 }) {}
 
@@ -234,8 +230,6 @@ export class CreateSkillDto extends Z.class({
 	scope: skillScopeSchema,
 	/** Required for a project skill, absent otherwise. */
 	projectId: z.string().max(36).optional(),
-	/** Required for an agent skill, absent otherwise. */
-	agentId: z.string().max(36).optional(),
 	availableToAssistant: z.boolean().optional(),
 	/** Skills ignore `allowedTools`, so a create that sends it is refused. */
 	skill: agentSkillSchema.omit({ allowedTools: true }).extend({ name: skillNameSchema }),
@@ -257,10 +251,9 @@ export class SaveSkillDto extends Z.class({
 	baseSkillHash: z.string().min(1),
 	/**
 	 * Moves the skill to the instance or to a project. Refused with 409 when an agent that
-	 * uses the skill cannot use it there. An agent skill is made from inside its agent, so
-	 * `agent` is not a choice.
+	 * uses the skill cannot use it there.
 	 */
-	scope: z.enum(['project', 'instance']).optional(),
+	scope: skillScopeSchema.optional(),
 	/** Required when `scope` is `project`, absent otherwise. */
 	projectId: z.string().max(36).optional(),
 	availableToMCP: z.boolean().optional(),

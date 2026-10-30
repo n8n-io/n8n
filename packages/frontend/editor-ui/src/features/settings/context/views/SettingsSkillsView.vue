@@ -6,6 +6,7 @@ import { saveAs } from 'file-saver';
 import {
 	MCP_SKILLS_EXTENSION_FLAG,
 	SKILLS_SORT_OPTIONS,
+	skillScopeSchema,
 	type AgentSkill,
 	type SkillCreateMethod,
 	type SkillAgentOption,
@@ -144,7 +145,6 @@ const scopeFilterOptions = computed(() =>
 		[
 			['instance', 'settings.context.skills.filter.instance'],
 			['project', 'settings.context.skills.filter.project'],
-			['agent', 'settings.context.skills.filter.agent'],
 		] as const
 	).map(([value, key]) => ({ value, label: i18n.baseText(key) })),
 );
@@ -155,7 +155,8 @@ function creatorLabel(creator: SkillUserDto): string {
 }
 
 function scopeQuery(scope: string): Pick<SkillListQuery, 'scope'> {
-	return scope === 'instance' || scope === 'project' || scope === 'agent' ? { scope } : {};
+	const parsed = skillScopeSchema.safeParse(scope);
+	return parsed.success ? { scope: parsed.data } : {};
 }
 
 // Paging, sort, search and filters run on the server: the count and the page both
@@ -177,7 +178,7 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 
 /**
  * Where a new skill can live: the instance, the personal project and the team projects
- * that the user may write to. An agent skill is made from inside its agent, not here.
+ * that the user may write to.
  */
 const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 	const options: AgentSkillModalScopeOption[] = [];
@@ -186,7 +187,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: INSTANCE_SCOPE,
 			label: i18n.baseText('settings.context.skills.scope.instance'),
 			icon: 'globe',
-			target: { projectId: null, agentId: null },
+			target: { projectId: null },
 		});
 	}
 	const personalProject = projectsStore.personalProject;
@@ -195,7 +196,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${personalProject.id}`,
 			label: i18n.baseText('settings.context.skills.scope.personalProject'),
 			icon: 'user',
-			target: { projectId: personalProject.id, agentId: null },
+			target: { projectId: personalProject.id },
 		});
 	}
 	for (const project of projectsStore.myProjects) {
@@ -204,7 +205,7 @@ const scopeOptions = computed<AgentSkillModalScopeOption[]>(() => {
 			value: `${PROJECT_SCOPE_PREFIX}${project.id}`,
 			label: project.name ?? project.id,
 			icon: 'layers',
-			target: { projectId: project.id, agentId: null },
+			target: { projectId: project.id },
 		});
 	}
 	return options;
@@ -460,7 +461,7 @@ async function onCreate(
 	return undefined;
 }
 
-/** The value of the scope picker for a saved skill. An agent skill has no picker value of its own. */
+/** The value of the scope picker for a saved skill. */
 function scopeValueOf(skill: Pick<SkillListItem, 'scope' | 'projectId'>): string {
 	if (skill.scope === 'project' && skill.projectId)
 		return `${PROJECT_SCOPE_PREFIX}${skill.projectId}`;
@@ -500,8 +501,7 @@ async function openEditModal(item: Pick<SkillListItem, 'id'>, show?: 'versions' 
 			read_only: !detail.canEdit,
 		});
 		const currentValue = scopeValueOf(detail);
-		// The current scope is listed even when the user could not create a skill there,
-		// such as an agent skill, which is only made from inside its agent.
+		// The current scope is listed even when the user could not create a skill there.
 		const options = scopeOptions.value.some((option) => option.value === currentValue)
 			? scopeOptions.value
 			: [{ value: currentValue, ...scopeDisplay(detail) }, ...scopeOptions.value];
