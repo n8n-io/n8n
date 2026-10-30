@@ -9,16 +9,16 @@ import { mock } from 'vitest-mock-extended';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import type { SystemAgentExecutionService } from '@/modules/agents/system-agents/system-agent-execution.service';
 
-import { AssistantController } from '../assistant.controller';
+import { AssistantAgentController } from '../assistant-agent.controller';
 import type { AssistantThreadTabsService } from '../assistant-thread-tabs.service';
 import { ASSISTANT_AGENT_ID } from '../assistant-turn-options';
 
 const THREAD_ID = 'thread-1';
 
-describe('AssistantController', () => {
+describe('AssistantAgentController', () => {
 	const systemAgents = mock<SystemAgentExecutionService>();
 	const threadTabs = mock<AssistantThreadTabsService>();
-	const controller = new AssistantController(systemAgents, threadTabs);
+	const controller = new AssistantAgentController(systemAgents, threadTabs);
 
 	const user = mock<User>({ id: 'user-1' });
 	const req = mock<AuthenticatedRequest>({ user });
@@ -39,12 +39,12 @@ describe('AssistantController', () => {
 	it('serves the routes under /assistant with the instanceAi:message scope', () => {
 		const registry = Container.get(ControllerRegistryMetadata);
 		const metadata = registry.getControllerMetadata(
-			AssistantController as unknown as Parameters<typeof registry.getControllerMetadata>[0],
+			AssistantAgentController as unknown as Parameters<typeof registry.getControllerMetadata>[0],
 		);
 
 		expect(metadata.basePath).toBe('/assistant');
 		for (const handler of ['getThreadTabs', 'saveThreadTabs']) {
-			expect(metadata.routes.get(handler)?.path).toBe('/agent-threads/:threadId/tabs');
+			expect(metadata.routes.get(handler)?.path).toBe('/threads/:threadId/tabs');
 			expect(metadata.routes.get(handler)?.accessScope).toEqual({
 				scope: 'instanceAi:message',
 				globalOnly: true,

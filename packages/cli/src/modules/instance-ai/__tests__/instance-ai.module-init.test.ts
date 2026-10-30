@@ -30,14 +30,14 @@ const {
 	loadResultController,
 	loadConfigurationController,
 	loadEvalController,
-	loadAssistantController,
+	loadAssistantAgentController,
 } = vi.hoisted(() => ({
 	loadSuggestionEventRelay: vi.fn(),
 	createSuggestionEventRelay: vi.fn(),
 	loadResultController: vi.fn(),
 	loadConfigurationController: vi.fn(),
 	loadEvalController: vi.fn(),
-	loadAssistantController: vi.fn(),
+	loadAssistantAgentController: vi.fn(),
 }));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
@@ -80,8 +80,8 @@ vi.mock('../self-healing/self-healing-configurations.controller', () => {
 	loadConfigurationController();
 	return {};
 });
-vi.mock('../assistant-agent/assistant.controller', () => {
-	loadAssistantController();
+vi.mock('../assistant-agent/assistant-agent.controller', () => {
+	loadAssistantAgentController();
 	return {};
 });
 vi.mock('../eval/eval.controller', () => {
@@ -272,14 +272,14 @@ describe('InstanceAiModule.init', () => {
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
 		expect(systemAgents.register).not.toHaveBeenCalled();
-		// The Assistant routes serve agent threads, so they load only with the agent.
-		expect(loadAssistantController).not.toHaveBeenCalled();
+		// The Assistant agent routes load only with the agent.
+		expect(loadAssistantAgentController).not.toHaveBeenCalled();
 
 		config.assistantAgentEnabled = true;
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
 		expect(systemAgents.register).toHaveBeenCalledWith(provider);
-		expect(loadAssistantController).toHaveBeenCalledOnce();
+		expect(loadAssistantAgentController).toHaveBeenCalledOnce();
 
 		eligibleModules = ['instance-ai'];
 		systemAgents.register.mockClear();

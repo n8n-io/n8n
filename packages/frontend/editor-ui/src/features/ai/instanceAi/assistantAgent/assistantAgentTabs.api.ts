@@ -6,7 +6,7 @@ export async function fetchAssistantAgentThreadTabs(
 	context: IRestApiContext,
 	threadId: string,
 ): Promise<AssistantThreadTabsResponse> {
-	return await makeRestApiRequest(context, 'GET', `/assistant/agent-threads/${threadId}/tabs`);
+	return await makeRestApiRequest(context, 'GET', `/assistant/threads/${threadId}/tabs`);
 }
 
 export async function saveAssistantAgentThreadTabs(
@@ -14,10 +14,5 @@ export async function saveAssistantAgentThreadTabs(
 	threadId: string,
 	state: AssistantThreadTabsState,
 ): Promise<AssistantThreadTabsResponse> {
-	return await makeRestApiRequest(
-		context,
-		'PUT',
-		`/assistant/agent-threads/${threadId}/tabs`,
-		state,
-	);
+	return await makeRestApiRequest(context, 'PUT', `/assistant/threads/${threadId}/tabs`, state);
 }

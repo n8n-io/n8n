@@ -9,20 +9,23 @@ import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
 import { ASSISTANT_AGENT_ID } from './assistant-turn-options';
 
 /**
- * Routes of the Assistant that stay when the current runtime is removed.
- * The routes of `InstanceAiController` go with the current runtime.
+ * Routes that only the Assistant agent uses: the n8n Assistant on the Agents
+ * runtime. This controller loads only when the Assistant agent registers, so
+ * it can depend on the agents module. Routes that must also work without the
+ * agent go in the shared Assistant controller, which must not depend on it.
+ * When the current Assistant runtime is removed, these routes move there.
  *
  * Each thread route checks access like the system-agent routes: thread
  * ownership, `project:read` on the working project, and the provider's checks.
  */
 @RestController('/assistant')
-export class AssistantController {
+export class AssistantAgentController {
 	constructor(
 		private readonly systemAgents: SystemAgentExecutionService,
 		private readonly threadTabs: AssistantThreadTabsService,
 	) {}
 
-	@Get('/agent-threads/:threadId/tabs')
+	@Get('/threads/:threadId/tabs')
 	@GlobalScope('instanceAi:message')
 	async getThreadTabs(
 		req: AuthenticatedRequest,
@@ -33,7 +36,7 @@ export class AssistantController {
 		return { state: await this.threadTabs.getState(threadId) };
 	}
 
-	@Put('/agent-threads/:threadId/tabs')
+	@Put('/threads/:threadId/tabs')
 	@GlobalScope('instanceAi:message')
 	async saveThreadTabs(
 		req: AuthenticatedRequest,
