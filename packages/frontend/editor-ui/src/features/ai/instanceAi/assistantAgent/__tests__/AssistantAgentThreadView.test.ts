@@ -22,6 +22,8 @@ import { USER_TYPED_MESSAGE } from '../../prefills';
 import { createComponentRenderer } from '@/__tests__/render';
 
 import {
+	getPendingComposerDraft,
+	getPendingWorkflowAttachment,
 	stashPendingDraftAttachment,
 	stashPendingComposerDraft,
 	stashPendingFirstMessage,
@@ -977,7 +979,7 @@ describe('AssistantAgentThreadView', () => {
 			]);
 		});
 
-		it('reads a hand-off once', async () => {
+		it('sends a handed-off opening message once', async () => {
 			stashPendingFirstMessage('thread-new', {
 				message: 'Adjust template 42',
 				authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
@@ -989,6 +991,26 @@ describe('AssistantAgentThreadView', () => {
 			await renderNewThread();
 
 			expect(sendMessageFromOutside).not.toHaveBeenCalled();
+		});
+
+		it('keeps a handed-off workflow and draft until the server accepts the first message', async () => {
+			stashPendingWorkflowAttachment('thread-new', { type: 'workflow', id: 'wf-7' });
+			stashPendingComposerDraft('thread-new', {
+				text: 'Suggest my preferences',
+				prefillType: 'preferences_suggestion',
+			});
+			const { unmount } = await renderNewThread();
+			unmount();
+			setDraft.mockReset();
+
+			await renderNewThread();
+			expect(setDraft).toHaveBeenCalledWith('Suggest my preferences');
+			expect(clientContext()).toMatchObject({ attachments: [{ type: 'workflow', id: 'wf-7' }] });
+
+			const onSessionCreated = panelProps.current.onSessionCreated as () => void;
+			onSessionCreated();
+			expect(getPendingWorkflowAttachment('thread-new')).toBeNull();
+			expect(getPendingComposerDraft('thread-new')).toBeNull();
 		});
 
 		it('tracks the launch once the server accepts the first message', async () => {

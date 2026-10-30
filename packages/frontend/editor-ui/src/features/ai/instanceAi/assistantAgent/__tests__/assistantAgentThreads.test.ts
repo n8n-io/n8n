@@ -1,6 +1,7 @@
 import {
 	consumePendingAssistantAgentMessage,
 	discardPendingAssistantAgentMessage,
+	getAssistantAgentLaunch,
 	knownAssistantThreadRuntime,
 	lookUpAssistantThreadRuntime,
 	rememberAssistantAgentThread,
@@ -34,6 +35,13 @@ describe('assistantAgentThreads', () => {
 
 		it('needs a lookup for an unknown thread while the Assistant agent is on', () => {
 			expect(knownAssistantThreadRuntime('unknown-thread', options)).toBeUndefined();
+		});
+
+		it('ignores a launch marker that is not valid JSON', () => {
+			localStorage.setItem('n8n-assistant-agent-launch:broken-thread', '{not json');
+
+			expect(getAssistantAgentLaunch('broken-thread')).toBeUndefined();
+			expect(knownAssistantThreadRuntime('broken-thread', options)).toBeUndefined();
 		});
 	});
 

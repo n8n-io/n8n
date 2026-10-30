@@ -102,8 +102,9 @@ const launch = getAssistantAgentLaunch(props.threadId);
 const pendingMessage = consumePendingAssistantAgentMessage(props.threadId);
 const isNewThread = launch !== undefined || pendingMessage !== undefined;
 const isNewSession = ref(isNewThread);
-// What a hand-off from another page left for this thread. Read once: the
-// thread exists only in this view until its first message.
+// What a hand-off from another page left for this thread. The opening message
+// and the nodes are read once, so a reload cannot send them again. The rest
+// stays until the server accepts the first message.
 const handoff = readPendingHandoff();
 let pendingReferences: InstanceAiAttachment[] = [
 	...(pendingMessage?.references ?? []),
@@ -119,9 +120,6 @@ function readPendingHandoff() {
 	const draft = getPendingComposerDraft(props.threadId);
 	const nodes = consumePendingDraftAttachment(props.threadId);
 	const context = firstMessage?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
-	clearPendingWorkflowAttachment(props.threadId);
-	clearPendingComposerDraft(props.threadId);
-	clearPendingHandoffContext(props.threadId);
 	const references: InstanceAiAttachment[] = [
 		...(firstMessage?.attachments ?? []),
 		...(workflow ? [workflow] : []),
@@ -208,7 +206,11 @@ watch(panel, (current) => {
 	}
 });
 
-function trackLaunch(): void {
+/** The server has the thread now, so drop what only a new thread needs. */
+function finishLaunch(): void {
+	clearPendingWorkflowAttachment(props.threadId);
+	clearPendingComposerDraft(props.threadId);
+	clearPendingHandoffContext(props.threadId);
 	if (!launch) return;
 	clearAssistantAgentLaunch(props.threadId);
 	telemetry.track('User launched Instance AI thread', {
@@ -223,7 +225,7 @@ function trackLaunch(): void {
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
-	trackLaunch();
+	finishLaunch();
 	// The thread exists once the server accepts its first message. Show it in the lists
 	// now, not only after the first reply ends.
 	void threadsStore.loadThread(props.threadId);

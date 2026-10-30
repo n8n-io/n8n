@@ -73,7 +73,7 @@ export function stashAssistantAgentLaunch(threadId: string, launch: AssistantAge
 export function getAssistantAgentLaunch(threadId: string): AssistantAgentThreadLaunch | undefined {
 	const raw = localStorage.getItem(launchKey(threadId));
 	if (!raw) return undefined;
-	const parsed = launchSchema.safeParse(jsonParse(raw, { fallbackValue: undefined }));
+	const parsed = launchSchema.safeParse(jsonParse(raw, { fallbackValue: null }));
 	return parsed.success ? parsed.data : undefined;
 }
 
