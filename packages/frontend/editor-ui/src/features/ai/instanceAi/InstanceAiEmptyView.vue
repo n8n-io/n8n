@@ -831,6 +831,8 @@ async function handleSubmit(
 			attachments,
 			restoreDraft,
 			acceptDraft,
+			authorship,
+			mentionCounts,
 		);
 		return;
 	}
@@ -925,6 +927,8 @@ async function startAssistantAgentThread(
 	attachments: InstanceAiAttachment[] | undefined,
 	restoreDraft: () => boolean,
 	acceptDraft: () => void,
+	authorship: InstanceAiMessageAuthorship,
+	mentionCounts: AssistantMentionCounts,
 ) {
 	const acceptString = acceptedMimeTypesFromCapabilities(ASSISTANT_AGENT_ATTACHMENT_CAPABILITIES);
 	const fileAttachments: InstanceAiFileAttachment[] = [];
@@ -954,6 +958,8 @@ async function startAssistantAgentThread(
 			base64ToFile(attachment.data, attachment.fileName, attachment.mimeType),
 		),
 		references: (attachments ?? []).filter((attachment) => attachment.type !== 'file'),
+		authorship,
+		mentionCounts,
 	};
 	stashPendingAssistantAgentMessage(pendingMessage);
 	rememberAssistantAgentThread(pendingMessage.threadId, projectId);

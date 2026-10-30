@@ -55,6 +55,23 @@ export type InstanceAiPrefillDeclaration = { prefillType: InstanceAiPrefillType 
 
 export const USER_TYPED_MESSAGE: InstanceAiMessageAuthorship = { kind: 'user_typed' };
 
+/**
+ * A composer is the only place that knows whether the text came from a
+ * pre-fill, so it resolves authorship for every send that leaves it.
+ */
+export function resolveAuthorship(
+	message: string,
+	prefill: InstanceAiPrefillPayload | null,
+): InstanceAiMessageAuthorship {
+	if (!prefill) return USER_TYPED_MESSAGE;
+	return {
+		kind: 'prefill',
+		prefillType: prefill.prefillType,
+		...(prefill.prefillId ? { prefillId: prefill.prefillId } : {}),
+		promptModified: message !== prefill.text.trim(),
+	};
+}
+
 const INSTANCE_AI_PREFILL_TYPE_SET: ReadonlySet<string> = new Set(INSTANCE_AI_PREFILL_TYPES);
 
 export function isInstanceAiPrefillType(value: unknown): value is InstanceAiPrefillType {

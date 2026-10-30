@@ -192,6 +192,18 @@ const emit = defineEmits<{
 	'message-accepted': [
 		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
 	];
+	/**
+	 * The chat posts a new message now, before the server answers, so a refused
+	 * send emits this too. Answers to an open card do not emit this.
+	 */
+	'message-sending': [
+		payload: {
+			text: string;
+			files: File[];
+			clientContext?: Record<string, unknown>;
+			isFirstMessage: boolean;
+		},
+	];
 }>();
 
 defineSlots<{
@@ -1223,6 +1235,12 @@ async function submitDraft(text: string, files: File[]): Promise<SubmitResult> {
 			consumeQueuedExternalMessage(text);
 			trackSentToN8nChat(hadNoMessagesBeforeSend);
 		};
+		emit('message-sending', {
+			text,
+			files,
+			clientContext,
+			isFirstMessage: !messages.value.some((message) => message.role === 'user'),
+		});
 		const sending = sendMessage(text, sentFiles, onAccepted, clientContext);
 		isPreparingToSend.value = false;
 		const result = await sending;

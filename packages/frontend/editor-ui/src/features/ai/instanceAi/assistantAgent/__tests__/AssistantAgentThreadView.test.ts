@@ -8,6 +8,7 @@ import { setActivePinia } from 'pinia';
 import { defineComponent, h, ref, type Ref } from 'vue';
 
 import type { AgentChatComposerAttachment } from '@/features/agents/utils/composer-attachments';
+import { EMPTY_ASSISTANT_MENTION_COUNTS } from '@/features/ai/assistant-at-mentions/assistantAtMentions.types';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 
 import type { ArtifactThread } from '../../artifactThread';
@@ -258,6 +259,8 @@ describe('AssistantAgentThreadView', () => {
 			text: 'Build a digest',
 			files: [],
 			references: [],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 		renderView({ props: { threadId: 'thread-new', projectId: 'project-1' } });
 		await flushPromises();
@@ -279,6 +282,8 @@ describe('AssistantAgentThreadView', () => {
 			text: 'Build a digest',
 			files: [file],
 			references: [reference],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 
 		renderView({ props: { threadId: 'thread-2', projectId: 'project-1' } });
@@ -301,6 +306,50 @@ describe('AssistantAgentThreadView', () => {
 		expect(telemetryTrack).not.toHaveBeenCalled();
 	});
 
+	it('reports who wrote each message on send, starting with the first message of the empty view', async () => {
+		const mentionCounts = { ...EMPTY_ASSISTANT_MENTION_COUNTS, workflow: 1, total: 1 };
+		stashPendingAssistantAgentMessage({
+			threadId: 'thread-4',
+			text: 'Build a digest',
+			files: [],
+			references: [],
+			authorship: { kind: 'prefill', prefillType: 'suggestion_catalog', prefillId: 's-1' },
+			mentionCounts,
+		});
+		renderView({ props: { threadId: 'thread-4', projectId: 'project-1' } });
+		await flushPromises();
+
+		const onMessageSending = panelProps.current.onMessageSending as (payload: {
+			text: string;
+			files: File[];
+			isFirstMessage: boolean;
+		}) => void;
+		onMessageSending({ text: 'Build a digest', files: [], isFirstMessage: true });
+		onMessageSending({ text: 'Add Slack', files: [], isFirstMessage: false });
+
+		expect(telemetryTrack.mock.calls).toEqual([
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					thread_id: 'thread-4',
+					is_first_message: true,
+					prefill_type: 'suggestion_catalog',
+					prefill_id: 's-1',
+					mention_counts: mentionCounts,
+					runtime: 'agents',
+				}),
+			],
+			[
+				TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+				expect.objectContaining({
+					is_first_message: false,
+					prefill_type: null,
+					mention_counts: EMPTY_ASSISTANT_MENTION_COUNTS,
+				}),
+			],
+		]);
+	});
+
 	it('tracks the attached nodes of the first message once the server accepts it', async () => {
 		stashPendingAssistantAgentMessage({
 			threadId: 'thread-3',
@@ -320,6 +369,8 @@ describe('AssistantAgentThreadView', () => {
 					],
 				},
 			],
+			authorship: USER_TYPED_MESSAGE,
+			mentionCounts: EMPTY_ASSISTANT_MENTION_COUNTS,
 		});
 
 		renderView({ props: { threadId: 'thread-3', projectId: 'project-1' } });
@@ -373,11 +424,17 @@ describe('AssistantAgentThreadView', () => {
 
 		const context = { source: 'setup-panel-execute' as const, workflowId: 'wf-1' };
 		await previewThread.current?.sendMessage('Test the workflow', {
-			authorship: USER_TYPED_MESSAGE,
+			authorship: { kind: 'prefill', prefillType: 'handoff_setup_panel_execute' },
 			handoffContext: context,
 		});
 
 		expect(sendMessageFromOutside).toHaveBeenCalledWith('Test the workflow', [], { context });
+		const onMessageSending = panelProps.current.onMessageSending as (payload: unknown) => void;
+		onMessageSending({ text: 'Test the workflow', files: [], isFirstMessage: false });
+		expect(telemetryTrack).toHaveBeenCalledWith(
+			TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_BUILDER_MESSAGE,
+			expect.objectContaining({ prefill_type: 'handoff_setup_panel_execute' }),
+		);
 		const clientContext = panelProps.current['client-context'] as () => Record<string, unknown>;
 		expect(clientContext()).not.toHaveProperty('context');
 	});
