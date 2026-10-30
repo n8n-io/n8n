@@ -1,0 +1,48 @@
+packages/cli/src/modules/agents/approval/agent-decision-workflow.service.ts
+  s_dfe3f914c8bb46::t_622d3f1dfa4b60 3,238-253,323-331
+  s_dfe3f914c8bb46::t_90eb0026384bcf 294-298
+packages/@n8n/agents/src/types/runtime/event.ts
+  s_dfe3f914c8bb46::t_b56788667ccd88 65-72,80,101
+packages/frontend/editor-ui/src/features/agents/components/timeline-items/SessionHitlItem.vue
+  s_dfe3f914c8bb46::t_ef4b76155a8424 2,10,17,34-42,154-164
+packages/frontend/editor-ui/src/features/agents/__tests__/session-timeline.utils.spec.ts
+  s_dfe3f914c8bb46::t_90eb0026384bcf 760-800
+  s_dfe3f914c8bb46::t_746faacd3297fb 801-821
+packages/@n8n/agents/src/types/sdk/agent.ts
+  s_dfe3f914c8bb46::t_b56788667ccd88 19,179
+packages/cli/src/modules/agents/execution-recorder.ts
+  s_dfe3f914c8bb46::t_90eb0026384bcf 6,565,576-577
+  s_dfe3f914c8bb46::t_ef4b76155a8424 564,566-568
+  s_dfe3f914c8bb46::t_622d3f1dfa4b60 390-400,482-496,563,569-575
+packages/frontend/editor-ui/src/features/agents/session-timeline.utils.ts
+  s_dfe3f914c8bb46::t_90eb0026384bcf 511-515,876,914
+  s_dfe3f914c8bb46::t_ef4b76155a8424 599-600,703-704,864-873,891-892,905-906
+packages/@n8n/agents/src/runtime/streaming/stream-session.ts
+  s_dfe3f914c8bb46::t_b56788667ccd88 77-81,96,131
+packages/frontend/editor-ui/src/features/agents/session-timeline.types.ts
+  s_dfe3f914c8bb46::t_ef4b76155a8424 73-75
+packages/@n8n/agents/src/runtime/streaming/__tests__/stream-session.test.ts
+  s_dfe3f914c8bb46::t_a77d7d353bfe30 3,20-58
+packages/cli/src/modules/agents/__tests__/execution-recorder.test.ts
+  s_dfe3f914c8bb46::t_d708b3eda38d5f 16-107
+packages/cli/src/modules/agents/approval/__tests__/agent-decision-workflow.service.test.ts
+  s_dfe3f914c8bb46::t_bf262d422c2b6d 2,61-62,87-91,93-94,105,114-115,146-167,307-312,331-337,470,525-528
+packages/frontend/editor-ui/src/features/agents/__tests__/SessionHitlItem.test.ts
+  s_dfe3f914c8bb46::t_e18e59d2a3a386 7-9,74-94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "45440ebd9ac6652553700697c7d5b017042330c3",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
