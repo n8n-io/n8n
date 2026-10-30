@@ -28,6 +28,7 @@ import { useN8nAssistantIdentity } from '@/features/agents/n8nChatPage/composabl
 
 import { provideArtifactAgentTargets } from '../artifactAgentTargets';
 import { provideArtifactThread } from '../artifactThread';
+import ApprovalModeSelector from '../components/ApprovalModeSelector.vue';
 import InstanceAiAgentPreview from '../components/InstanceAiAgentPreview.vue';
 import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue';
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
@@ -64,7 +65,7 @@ import { INSTANCE_AI_VIEW } from '../constants';
 import { buildFixWithAiPrompt } from '../fixWithAi';
 import { formatAgentPreviewContextLabel } from '../instanceAi.handoffContext';
 import { useInstanceAiStore } from '../instanceAi.store';
-import { firstMessageTitle } from '../instanceAi.threadRuntime';
+import { firstMessageTitle, threadTargetsAgent } from '../instanceAi.threadRuntime';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
 import { buildThreadArtifactsContext } from '../threadArtifacts';
 import { useCanvasPreview } from '../useCanvasPreview';
@@ -83,6 +84,7 @@ import {
 	getAssistantAgentLaunch,
 	type PendingAssistantAgentMessage,
 } from './assistantAgentThreads';
+import { assistantAutoApprovalExtension } from './assistantAutoApproval';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
 import { useAssistantAgentThreadsStore } from './assistantAgentThreads.store';
@@ -215,7 +217,11 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 	pendingHandoffContext = undefined;
 }
 
-const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
+const interactionExtensions = [
+	assistantConfirmationExtension,
+	assistantAutoApprovalExtension,
+	...assistantHostEventExtensions,
+];
 
 const panel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('panel');
 
@@ -727,6 +733,11 @@ function removeStagedNodes(chipId: string): void {
 								:disabled="disabled"
 								:project-id="props.projectId"
 								@attach-files="panel?.openFilePicker()"
+							/>
+							<!-- A thread that builds an agent always runs in Manual mode. -->
+							<ApprovalModeSelector
+								v-if="!threadTargetsAgent(threadsStore.threadsById.get(props.threadId)?.metadata)"
+								:thread-id="props.threadId"
 							/>
 						</template>
 					</AgentChatPanel>

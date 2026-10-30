@@ -123,6 +123,8 @@ const emit = defineEmits<{
 defineSlots<{
 	'above-input'?: () => unknown;
 	'composer-start'?: () => unknown;
+	/** Controls to the right of the composer's add menu. */
+	'composer-controls'?: () => unknown;
 	'composer-footer'?: () => unknown;
 	'inline-offers'?: () => unknown;
 	/** A host's welcome state, rendered until the thread has its first message. */
@@ -1122,6 +1124,9 @@ defineExpose({
 											#footer-start
 										>
 											<slot name="composer-start" />
+										</template>
+										<template v-if="$slots['composer-controls']" #footer-after-menu>
+											<slot name="composer-controls" />
 										</template>
 									</InstanceAiInput>
 								</Transition>

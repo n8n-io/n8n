@@ -76,6 +76,15 @@ describe('findHostEventRenderer', () => {
 		).toEqual({ placement: 'start', component: TestHostEvent });
 	});
 
+	it('returns the call of a tool-call event', () => {
+		expect(
+			findHostEventRenderer(
+				{ id: 'e1', name: TEST_HOST_EVENT.TOOL_CALL, payload: { toolCallId: 'tc-1' } },
+				testHostEventExtensions,
+			),
+		).toEqual({ placement: 'tool-call', component: TestHostEvent, toolCallId: 'tc-1' });
+	});
+
 	it('uses the first extension that matches', () => {
 		const second: AgentsChatInteractionExtension = {
 			key: 'second',
@@ -139,7 +148,33 @@ describe('getHostEventItems', () => {
 			start: [],
 			end: [],
 			thinking: [],
+			toolCalls: new Map(),
 		});
+	});
+
+	it('shows tool-call events at the step of their call, and at the start when the message shows no step for it', () => {
+		const toolCallEvent = (id: string, toolCallId?: string): AgentsChatHostEvent => ({
+			id,
+			name: TEST_HOST_EVENT.TOOL_CALL,
+			payload: { id, toolCallId },
+		});
+
+		const items = getHostEventItems(
+			sources(
+				toolCallEvent('first', 'tc-1'),
+				toolCallEvent('no-step', 'tc-2'),
+				toolCallEvent('second', 'tc-1'),
+				toolCallEvent('no-call'),
+			),
+			testHostEventExtensions,
+			{ showTransient: true, hasThinkingBlock: true, stepToolCallIds: new Set(['tc-1']) },
+		);
+
+		expect([...items.toolCalls.keys()]).toEqual(['tc-1']);
+		expect(ids(items.toolCalls.get('tc-1') ?? [])).toEqual(['first', 'second']);
+		expect(items.toolCalls.get('tc-1')?.[0]).toMatchObject({ placement: 'tool-call', message });
+		expect(ids(items.start)).toEqual(['no-step', 'no-call']);
+		expect(items.start.map((item) => item.placement)).toEqual(['start', 'start']);
 	});
 });
 

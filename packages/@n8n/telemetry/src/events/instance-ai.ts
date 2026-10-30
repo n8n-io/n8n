@@ -1,5 +1,6 @@
 import {
 	INSTANCE_AI_PREFILL_TYPES,
+	instanceAiApprovalModeSchema,
 	instanceAiAutoApprovalDeciderSchema,
 	instanceAiConfirmationSeveritySchema,
 	instanceContextAbsenceReasonSchema,
@@ -382,6 +383,16 @@ export const INSTANCE_AI_TELEMETRY = defineTelemetryEvents({
 			method: z.enum(['got_it', 'never_show_again', 'close', 'settings_link']),
 			variant: openWorkflowInAssistantVariant,
 			'$feature/108_open_workflow_in_assistant': openWorkflowInAssistantVariant,
+		}),
+	},
+	APPROVAL_MODE_CHANGED: {
+		name: 'User changed AI Assistant approval mode',
+		description:
+			'The user picked an approval mode in the n8n Assistant chat. Manual shows an approval card for each action set to Ask first. Auto lets a judge model run the action or show the card.',
+		properties: z.object({
+			mode: z.enum(instanceAiApprovalModeSchema.options),
+			previous_mode: z.enum(instanceAiApprovalModeSchema.options),
+			thread_id: z.string().optional(),
 		}),
 	},
 	APPROVAL_DECIDED_IN_AUTO_MODE: {

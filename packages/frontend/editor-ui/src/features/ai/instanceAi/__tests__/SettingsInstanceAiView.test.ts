@@ -1039,6 +1039,32 @@ describe('SettingsInstanceAiView', () => {
 			}
 		});
 
+		it('shows the Delete data tables permission when the Data tables group is expanded', async () => {
+			const { getByTestId, getByLabelText } = renderComponent();
+
+			await fireEvent.click(
+				getByLabelText('Toggle settings.n8nAgent.permissions.group.dataTables'),
+			);
+
+			await waitFor(() =>
+				expect(getByTestId('n8n-agent-permission-deleteDataTable')).toBeVisible(),
+			);
+		});
+
+		it('explains who confirms Ask first only while approval modes are available', async () => {
+			const first = renderComponent();
+			await first.findByText(/settings.n8nAgent.permissions.description/);
+			expect(first.queryByText(/settings.n8nAgent.permissions.askFirst.description/)).toBeNull();
+			first.unmount();
+
+			store.$patch({ approvalModesAvailable: true });
+			const { findByText } = renderComponent();
+
+			await expect(
+				findByText(/settings.n8nAgent.permissions.askFirst.description/),
+			).resolves.toBeTruthy();
+		});
+
 		it('shows the Execute a node permission when the Nodes group is expanded', async () => {
 			const { getByTestId, getByLabelText } = renderComponent();
 

@@ -943,7 +943,11 @@ const resizable = computed(() => {
 				</div>
 			</template>
 			<template
-				v-if="$slots['footer-start'] || props.attachOnlyMimeTypes === undefined"
+				v-if="
+					$slots['footer-start'] ||
+					$slots['footer-after-menu'] ||
+					props.attachOnlyMimeTypes === undefined
+				"
 				#footer-start
 			>
 				<slot name="footer-start" />
@@ -954,6 +958,8 @@ const resizable = computed(() => {
 					:project-id="props.mentionProjectId"
 					@attach-files="chatInputRef?.openFilePicker()"
 				/>
+				<!-- Controls that sit to the right of the add menu, such as the approval mode. -->
+				<slot name="footer-after-menu" />
 			</template>
 			<template v-if="shouldShowMentions" #right-actions>
 				<AssistantAtMentionPicker

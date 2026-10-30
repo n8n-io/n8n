@@ -321,11 +321,22 @@ const retryErrorMessageId = computed(() => {
 	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
 });
 
-const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [], thinking: [] };
+const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = {
+	start: [],
+	end: [],
+	thinking: [],
+	toolCalls: new Map(),
+};
+
+/** The calls that a group shows as tool steps, for host events that show next to their call. */
+function getStepToolCallIds(groupId: string): Set<string> {
+	return new Set(getGroupToolCalls(groupId).steps.map((toolCall) => toolCall.toolCallId));
+}
 
 /**
  * Host event components of each assistant group. `transient` events show only
  * before text. `thinking` events need the thinking block of the group.
+ * `tool-call` events need the tool step of their call.
  */
 const hostEventItems = computed(() => {
 	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
@@ -339,6 +350,7 @@ const hostEventItems = computed(() => {
 					getHostEventItems(group.hostEvents, extensions, {
 						showTransient: !group.finalMessage?.content.trim(),
 						hasThinkingBlock: group.thinkingSegments.length > 0,
+						stepToolCallIds: getStepToolCallIds(group.id),
 					}),
 				);
 				break;
@@ -352,6 +364,7 @@ const hostEventItems = computed(() => {
 					getHostEventItems(sources, extensions, {
 						showTransient: !message.content.trim(),
 						hasThinkingBlock: group.thinkingSegments.length > 0,
+						stepToolCallIds: getStepToolCallIds(group.id),
 					}),
 				);
 				break;
@@ -744,6 +757,7 @@ watch(
 						:can-fix-with-assistant="canSendToAssistant"
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.executionId"
+						:host-events="getGroupHostEventItems(group.id).toolCalls"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div
@@ -904,6 +918,7 @@ watch(
 						:can-fix-with-assistant="canSendToAssistant"
 						:dismissed-tool-call-ids="dismissedFixToolCallIds"
 						:execution-id="group.message.executionId"
+						:host-events="getGroupHostEventItems(group.id).toolCalls"
 						@fix-with-assistant="onFixWithAssistant(group, $event)"
 					/>
 					<div

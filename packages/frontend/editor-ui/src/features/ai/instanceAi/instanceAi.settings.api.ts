@@ -3,8 +3,10 @@ import type { IRestApiContext } from '@n8n/rest-api-client';
 import type {
 	InstanceAiAdminSettingsResponse,
 	InstanceAiAdminSettingsUpdateRequest,
+	InstanceAiApprovalPreferences,
 	InstanceAiModelCatalogResponse,
 	InstanceAiProviderConnection,
+	InstanceAiUserPreferencesUpdateRequestDto,
 	InstanceAiVerificationResponse,
 	InstanceAiVerifyModelRequest,
 	InstanceAiVerifySandboxRequest,
@@ -61,4 +63,17 @@ export async function verifySearch(
 	body: InstanceAiVerifySearchRequest,
 ): Promise<InstanceAiVerificationResponse> {
 	return await makeRestApiRequest(context, 'POST', '/assistant/settings/verify/search', body);
+}
+
+export async function fetchUserPreferences(
+	context: IRestApiContext,
+): Promise<InstanceAiApprovalPreferences> {
+	return await makeRestApiRequest(context, 'GET', '/assistant/preferences');
+}
+
+export async function updateUserPreferences(
+	context: IRestApiContext,
+	body: InstanceAiUserPreferencesUpdateRequestDto,
+): Promise<InstanceAiApprovalPreferences> {
+	return await makeRestApiRequest(context, 'PUT', '/assistant/preferences', body);
 }
