@@ -71,6 +71,7 @@ export const channelRLC: INodeProperties = {
 			placeholder: 'e.g. my-channel',
 			typeOptions: {
 				searchListMethod: 'channelSearch',
+				searchable: true,
 			},
 		},
 		{
@@ -125,6 +126,7 @@ export const textChannelRLC: INodeProperties = {
 			placeholder: 'e.g. my-channel',
 			typeOptions: {
 				searchListMethod: 'textChannelSearch',
+				searchable: true,
 			},
 		},
 		{
