@@ -112,6 +112,8 @@ export type AppBindingWarning = {
 };
 
 export type AppBindingsResponse = {
+	/** The draft version that owns the bindings. `null` before the first source save. */
+	versionId: string | null;
 	bindings: AppDescribedBinding[];
 	warnings: AppBindingWarning[];
 };

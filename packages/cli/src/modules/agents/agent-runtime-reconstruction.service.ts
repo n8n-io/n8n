@@ -52,6 +52,8 @@ import { ProxyTokenManager } from '@/services/proxy-token-manager';
 import { createAiMcpFetch, createAiProxyFetch, createWebSearchFetch } from '@/utils/ai-proxy-fetch';
 import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 import { WorkflowRunner } from '@/workflow-runner';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 import { AgentChatAttachmentService } from './agent-chat-attachment.service';
@@ -93,9 +95,7 @@ import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from '.
 import { createGetEnvironmentTool } from './tools/environment-tool';
 import { createMarkSessionFailedTool } from './tools/mark-session-failed.tool';
 import type { WorkflowToolExecutionMode } from './tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from './tools/workflow-tool-unavailable-error';
 import { findWorkflowToolWorkflow } from './tools/workflow-tool-workflow-resolver';
-import { WorkflowToolWorkflowLoader } from './tools/workflow-tool-workflow-loader.service';
 import type { AgentRunSource } from './utils/agent-published-snapshot';
 import { getAgentRuntimeAssets, type AgentRuntimeAssets } from './utils/agent-runtime-assets';
 import { resolveUniqueSubAgents } from './utils/sub-agent-resolver';
@@ -993,7 +993,7 @@ export class AgentRuntimeReconstructionService {
 			'./tools/workflow-tool-factory.js'
 		);
 		const context = {
-			workflowLoader: Container.get(WorkflowToolWorkflowLoader),
+			workflowLoader: Container.get(CallableWorkflowLoader),
 			executor: this.ephemeralNodeExecutor,
 			workflowRunner: await getWorkflowRunner(),
 			subworkflowPolicyChecker: Container.get(SubworkflowPolicyChecker),
@@ -1015,7 +1015,7 @@ export class AgentRuntimeReconstructionService {
 		} catch (error) {
 			// A missing or incompatible workflow costs the agent one tool call, not
 			// the whole run: the stub keeps the tool listed and reports the reason.
-			if (!(error instanceof WorkflowToolUnavailableError)) throw error;
+			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
 			unavailable.push({
 				toolName: toolRefName(ref),
 				toolType: 'workflow',

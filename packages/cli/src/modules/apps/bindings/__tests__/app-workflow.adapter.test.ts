@@ -3,14 +3,16 @@ import type { AppCallContext, AppsConfig } from '@n8n/backend-module-apps';
 import type { GlobalConfig } from '@n8n/config';
 import type { WorkflowEntity } from '@n8n/db';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { IRun } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
-import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
-import type { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
+import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowRunner } from '@/workflow-runner';
 
@@ -56,8 +58,8 @@ function execution(overrides: {
 	};
 }
 
-function setup() {
-	const loader = mock<WorkflowToolWorkflowLoader>();
+function setup({ maxRuns = 20, waitMs = 60_000 } = {}) {
+	const loader = mock<CallableWorkflowLoader>();
 	const executions = mock<ExecutionPersistence>();
 	const runner = mock<WorkflowRunner>();
 	const finder = mock<WorkflowFinderService>();
@@ -70,11 +72,11 @@ function setup() {
 		runner,
 		activeExecutions,
 		executions,
-		mock<AppsConfig>({ apiMaxConcurrentRuns: 20, apiRunWaitMs: 60_000 }),
+		mock<AppsConfig>({ apiMaxConcurrentRuns: maxRuns, apiRunWaitMs: waitMs }),
 		mock<GlobalConfig>(),
 		mock<Logger>(),
 	);
-	return { adapter, loader, executions, runner, finder };
+	return { adapter, loader, executions, runner, finder, activeExecutions };
 }
 
 const passthroughTrigger = {
@@ -165,12 +167,28 @@ describe('AppWorkflowAdapter', () => {
 		it('refuses an unpublished workflow', async () => {
 			const { adapter, loader } = setup();
 			loader.loadWorkflow.mockRejectedValue(
-				new WorkflowToolUnavailableError('not_published', 'Not published'),
+				new CallableWorkflowUnavailableError('not_published', 'Not published'),
 			);
 
 			await expect(adapter.run(ctx, 'workflow-1', {})).rejects.toMatchObject({
 				code: 'workflow_not_published',
 			});
+		});
+
+		it.each([
+			['not_published', 409, 'workflow_not_published'],
+			['not_found', 404, 'resource_missing'],
+			['incompatible', 409, 'workflow_incompatible'],
+		] as const)('answers a workflow that is %s with %i %s', async (reason, status, code) => {
+			const { adapter, loader } = setup();
+			loader.loadWorkflow.mockRejectedValue(
+				new CallableWorkflowUnavailableError(reason, 'Workflow "Private flow" is unavailable'),
+			);
+
+			const error: unknown = await adapter.run(ctx, 'workflow-1', {}).catch((e) => e);
+
+			expect(error).toMatchObject({ status, code });
+			expect(String((error as Error).message)).not.toContain('Private flow');
 		});
 
 		it('refuses a workflow that left the project', async () => {
@@ -240,6 +258,44 @@ describe('AppWorkflowAdapter', () => {
 			});
 			expect(runner.run.mock.calls[0][0].pinData).toEqual({
 				Start: [{ json: { email: 'a@b.c' } }],
+			});
+		});
+	});
+
+	describe('concurrency limit', () => {
+		it('counts a run until the execution ends, also after the request stops waiting', async () => {
+			const { adapter, loader, runner, activeExecutions } = setup({ maxRuns: 1, waitMs: 5 });
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			runner.run.mockResolvedValueOnce('12').mockResolvedValueOnce('13');
+			const finished = createDeferredPromise<IRun | undefined>();
+			activeExecutions.has.mockReturnValue(true);
+			activeExecutions.getPostExecutePromise.mockReturnValue(finished.promise);
+
+			expect(await adapter.run(ctx, 'workflow-1', {})).toEqual({
+				executionId: '12',
+				status: 'running',
+			});
+			await expect(adapter.run(ctx, 'workflow-1', {})).rejects.toMatchObject({
+				status: 429,
+				code: 'too_many_requests',
+			});
+			expect(runner.run).toHaveBeenCalledTimes(1);
+
+			finished.resolve(undefined);
+			await finished.promise;
+			await expect(adapter.run(ctx, 'workflow-1', {})).resolves.toMatchObject({
+				executionId: '13',
+			});
+		});
+
+		it('frees the slot when the execution does not start', async () => {
+			const { adapter, loader, runner } = setup({ maxRuns: 1 });
+			loader.loadWorkflow.mockResolvedValue(workflow());
+			runner.run.mockRejectedValueOnce(new Error('queue full')).mockResolvedValueOnce('12');
+
+			await expect(adapter.run(ctx, 'workflow-1', {})).rejects.toThrow('queue full');
+			await expect(adapter.run(ctx, 'workflow-1', {})).resolves.toMatchObject({
+				executionId: '12',
 			});
 		});
 	});
@@ -367,12 +423,26 @@ describe('AppWorkflowAdapter', () => {
 		it('describes the draft of an unpublished workflow', async () => {
 			const { adapter, loader, executions } = setup();
 			loader.loadWorkflow
-				.mockRejectedValueOnce(new WorkflowToolUnavailableError('not_published', 'Not published'))
+				.mockRejectedValueOnce(
+					new CallableWorkflowUnavailableError('not_published', 'Not published'),
+				)
 				.mockResolvedValueOnce(workflow());
 			executions.findMultipleExecutions.mockResolvedValue([]);
 
 			expect(await adapter.describe('project-1', binding)).toMatchObject({ published: false });
 		});
+
+		it.each(['not_found', 'incompatible'] as const)(
+			'describes a workflow that the loader reports as %s as null',
+			async (reason) => {
+				const { adapter, loader } = setup();
+				loader.loadWorkflow.mockRejectedValue(
+					new CallableWorkflowUnavailableError(reason, 'Unavailable'),
+				);
+
+				expect(await adapter.describe('project-1', binding)).toBeNull();
+			},
+		);
 
 		it('describes a missing or incompatible workflow as null', async () => {
 			const { adapter, loader } = setup();

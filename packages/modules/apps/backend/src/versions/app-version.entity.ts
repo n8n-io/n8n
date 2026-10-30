@@ -1,5 +1,5 @@
-import type { AppBuildStatus } from '@n8n/api-types';
-import { DateTimeColumn, WithTimestamps } from '@n8n/db';
+import type { AppBinding, AppBuildStatus } from '@n8n/api-types';
+import { DateTimeColumn, JsonColumn, WithTimestamps } from '@n8n/db';
 import { Column, Entity, Index, PrimaryColumn } from '@n8n/typeorm';
 
 @Entity({ name: 'app_version' })
@@ -30,4 +30,7 @@ export class AppVersion extends WithTimestamps {
 
 	@DateTimeColumn({ precision: 3, nullable: true })
 	buildStatusUpdatedAt: Date | null;
+
+	@JsonColumn({ default: '[]' })
+	bindings: AppBinding[];
 }

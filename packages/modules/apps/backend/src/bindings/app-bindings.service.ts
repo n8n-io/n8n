@@ -9,12 +9,13 @@ import {
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { NotFoundError } from '@n8n/errors';
+import { ConflictError, NotFoundError } from '@n8n/errors';
 
 import { AppAgentPort, AppDataTablePort, AppWorkflowPort } from './app-binding-ports';
 import { renderBindingTypes } from './app-binding-types';
 import type { App } from '../app.entity';
 import { AppRepository } from '../app.repository';
+import { AppVersionRepository } from '../versions/app-version.repository';
 
 const WRITE_TABLE_PERMISSIONS = new Set(['insert', 'update', 'delete']);
 
@@ -33,10 +34,16 @@ export function toRuntimeBinding(binding: AppBinding): AppRuntimeBinding {
 	return { key: binding.key, kind: binding.kind, permissions: binding.permissions };
 }
 
+/**
+ * Bindings belong to an app version, like its code. The editor reads and
+ * changes the bindings of the draft version. A published version keeps its
+ * bindings, so a change reaches the live app only when a version is published.
+ */
 @Service()
 export class AppBindingsService {
 	constructor(
 		private readonly apps: AppRepository,
+		private readonly versions: AppVersionRepository,
 		private readonly dataTables: AppDataTablePort,
 		private readonly workflows: AppWorkflowPort,
 		private readonly agents: AppAgentPort,
@@ -44,12 +51,17 @@ export class AppBindingsService {
 	) {}
 
 	async getBindings(projectId: string, appId: string): Promise<AppBindingsResponse> {
-		return await this.describe(await this.requireApp(projectId, appId));
+		const app = await this.requireApp(projectId, appId);
+		const draft = app.draftVersionId
+			? await this.versions.findVersionById(app.draftVersionId)
+			: null;
+		return await this.describe(app, draft?.id ?? null, draft?.bindings ?? []);
 	}
 
 	/**
-	 * Replaces the whole binding list. The acting user must be able to use each
-	 * resource now, because the app later acts as its project without a user check.
+	 * Replaces the whole binding list of the draft version. The acting user must
+	 * be able to use each resource now, because the app later acts as its
+	 * project without a user check.
 	 */
 	async setBindings(
 		user: User,
@@ -57,14 +69,30 @@ export class AppBindingsService {
 		appId: string,
 		bindings: AppBinding[],
 	): Promise<AppBindingsResponse> {
-		await this.requireApp(projectId, appId);
+		const app = await this.requireApp(projectId, appId);
+		const versionId = app.draftVersionId;
+		if (!versionId) {
+			throw new ConflictError('Save the app source before you set its bindings.');
+		}
+		if (versionId === app.publishedVersionId) {
+			throw new ConflictError(
+				'The draft version is published. Save a new version before you change its bindings.',
+			);
+		}
 		for (const binding of bindings) {
 			await this.assertCanBind(user, projectId, binding);
 		}
-		const updated = await this.apps.setBindings(projectId, appId, bindings);
-		if (!updated) throw new NotFoundError('App not found');
-		this.logger.debug('Updated app bindings.', { projectId, appId, count: bindings.length });
-		return await this.describe(updated);
+		const updated = await this.versions.setDraftBindings(appId, versionId, bindings);
+		if (!updated) {
+			throw new ConflictError('The app draft changed. Reload the app before you set its bindings.');
+		}
+		this.logger.debug('Updated app bindings.', {
+			projectId,
+			appId,
+			versionId,
+			count: bindings.length,
+		});
+		return await this.describe(app, versionId, updated.bindings);
 	}
 
 	async getTypes(projectId: string, appId: string): Promise<string> {
@@ -73,12 +101,14 @@ export class AppBindingsService {
 	}
 
 	async describe(
-		app: Pick<App, 'projectId' | 'visibility' | 'bindings'>,
+		app: Pick<App, 'projectId' | 'visibility'>,
+		versionId: string | null,
+		versionBindings: AppBinding[],
 	): Promise<AppBindingsResponse> {
 		const bindings: AppDescribedBinding[] = [];
 		const warnings: AppBindingWarning[] = [];
 
-		for (const binding of app.bindings) {
+		for (const binding of versionBindings) {
 			const described = await this.describeOne(app.projectId, binding);
 			if (!described) {
 				bindings.push({ ...binding, name: binding.key, missing: true });
@@ -106,7 +136,7 @@ export class AppBindingsService {
 			}
 		}
 
-		return { bindings, warnings };
+		return { versionId, bindings, warnings };
 	}
 
 	private async describeOne(

@@ -44,6 +44,7 @@ export class SnapshotAppSourceVersionStore extends AppSourceVersionStore {
 							appId: version.appId,
 							label: version.label,
 							sourceArtifactId: artifact.id,
+							bindings: version.bindings,
 						},
 						ctx,
 					);

@@ -29,6 +29,8 @@ import type { AiService } from '@/services/ai.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { makeKnowledgeAvailabilityService } from '@/modules/knowledge/__tests__/test-utils/knowledge-availability.service';
 
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
@@ -55,8 +57,6 @@ import type { AgentRepository } from '../repositories/agent.repository';
 import type { AgentSecureRuntime } from '../runtime/agent-secure-runtime';
 import { SubAgentRunner } from '../sub-agents/sub-agent-runner';
 import type * as WorkflowToolFactory from '../tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from '../tools/workflow-tool-unavailable-error';
-import { WorkflowToolWorkflowLoader } from '../tools/workflow-tool-workflow-loader.service';
 
 vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
@@ -206,7 +206,7 @@ function makeService(overrides: {
 /** Routes every tool ref through `resolveTool`, as the real `buildFromJson` does. */
 function buildFromJsonResolvingTools(resolved: Array<agents.BuiltTool | null | undefined>) {
 	// The workflow tool context is assembled from the container.
-	Container.set(WorkflowToolWorkflowLoader, mock<WorkflowToolWorkflowLoader>());
+	Container.set(CallableWorkflowLoader, mock<CallableWorkflowLoader>());
 	Container.set(WorkflowRunner, mock<WorkflowRunner>());
 	Container.set(SubworkflowPolicyChecker, mock<SubworkflowPolicyChecker>());
 	buildFromJsonMock.mockImplementationOnce(
@@ -630,7 +630,7 @@ describe('AgentRuntimeReconstructionService — per-user tool filtering', () => 
 	it('stubs a workflow tool that cannot be built so a call reports the reason', async () => {
 		const { service } = makeService({});
 		resolveWorkflowToolMock.mockRejectedValue(
-			new WorkflowToolUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
+			new CallableWorkflowUnavailableError('not_found', 'Workflow "Lookup customer" not found'),
 		);
 		const resolved: Array<agents.BuiltTool | null | undefined> = [];
 		buildFromJsonResolvingTools(resolved);

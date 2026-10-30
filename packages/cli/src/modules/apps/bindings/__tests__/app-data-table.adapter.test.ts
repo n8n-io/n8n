@@ -1,15 +1,18 @@
 import type { ModuleRegistry } from '@n8n/backend-common';
 import type { AppCallContext } from '@n8n/backend-module-apps';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { BadRequestError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableNotFoundError } from '@/modules/data-table/errors/data-table-not-found.error';
 import { DataTableValidationError } from '@/modules/data-table/errors/data-table-validation.error';
 
 import { AppDataTableAdapter } from '../app-data-table.adapter';
+
+vi.mock('@/modules/data-table/data-table.service', () => ({ DataTableService: class {} }));
 
 const ctx: AppCallContext = {
 	appId: 'app-1',
@@ -22,12 +25,15 @@ const user = mock<User>();
 
 function setup({ active = true } = {}) {
 	const service = mock<DataTableService>();
+	Container.set(DataTableService, service);
 	const moduleRegistry = mock<ModuleRegistry>();
 	moduleRegistry.isActive.mockReturnValue(active);
-	return { adapter: new AppDataTableAdapter(service, moduleRegistry), service, moduleRegistry };
+	return { adapter: new AppDataTableAdapter(moduleRegistry), service, moduleRegistry };
 }
 
 describe('AppDataTableAdapter', () => {
+	afterEach(() => Container.reset());
+
 	describe('assertCanBind', () => {
 		it('needs the write scope for a write permission', async () => {
 			const { adapter, service } = setup();

@@ -6,11 +6,12 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { createHash } from 'node:crypto';
 import { v7 as uuidv7 } from 'uuid';
-import type { ExecutionStatus, IRunData, ITaskData, TerminalExecutionStatus } from 'n8n-workflow';
+import type { ExecutionStatus, IRunData, TerminalExecutionStatus } from 'n8n-workflow';
 import { isTerminalExecutionStatus, WorkflowOperationError } from 'n8n-workflow';
 
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { collectResultData } from '@/workflows/callable/callable-workflow-result';
 
 import { AgentExecutionUpdateBroadcaster } from '../agent-execution-update-broadcaster';
 import type { AgentBackgroundJob } from '../entities/agent-background-job.entity';
@@ -77,38 +78,6 @@ export function settlementStatusForExecution(
 	if (status === 'success') return 'completed';
 	if (status === 'canceled') return 'cancelled';
 	return 'failed';
-}
-
-/** Extract the JSON items produced by the last run of a node. */
-function outputItemsFromNodeRuns(nodeRuns: ITaskData[]): unknown[] {
-	const lastRun = nodeRuns[nodeRuns.length - 1];
-	if (!lastRun?.data?.main) return [];
-	return lastRun.data.main.flatMap((items) => items ?? []).map((item) => item.json);
-}
-
-/** Build the resultData map from an execution's runData. */
-export function collectResultData(runData: IRunData, allOutputs: boolean): Record<string, unknown> {
-	const resultData: Record<string, unknown> = {};
-
-	if (allOutputs) {
-		for (const [nodeName, nodeRuns] of Object.entries(runData)) {
-			const outputItems = outputItemsFromNodeRuns(nodeRuns);
-			if (outputItems.length > 0) {
-				resultData[nodeName] = outputItems;
-			}
-		}
-		return resultData;
-	}
-
-	const nodeNames = Object.keys(runData);
-	const lastNodeName = nodeNames[nodeNames.length - 1];
-	if (lastNodeName) {
-		const outputItems = outputItemsFromNodeRuns(runData[lastNodeName]);
-		if (outputItems.length > 0) {
-			resultData[lastNodeName] = outputItems;
-		}
-	}
-	return resultData;
 }
 
 /**

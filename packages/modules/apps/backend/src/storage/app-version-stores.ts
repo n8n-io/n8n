@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 import type { AppBuildAttempt } from '../build/app-build.types';
 
@@ -8,6 +9,7 @@ export type NewSourceVersion = {
 	appId: string;
 	expectedDraftVersionId: string | null;
 	label: string | null;
+	bindings: AppBinding[];
 };
 
 export abstract class AppSourceVersionStore {

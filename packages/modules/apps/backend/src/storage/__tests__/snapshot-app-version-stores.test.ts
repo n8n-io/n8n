@@ -22,6 +22,7 @@ const version: NewSourceVersion = {
 	appId: 'app',
 	expectedDraftVersionId: 'draft',
 	label: 'Snapshot',
+	bindings: [{ key: 'submit', kind: 'workflow', workflowId: 'w1' }],
 };
 const files = new Map([['index.html', Buffer.from('<html/>')]]);
 const attempt = { attemptNumber: 1, startedAt: new Date() };
@@ -71,7 +72,13 @@ describe('SnapshotAppSourceVersionStore', () => {
 		});
 		expect(artifacts.completeUpload).toHaveBeenCalledWith(artifact, ctx);
 		expect(versions.insertVersion).toHaveBeenCalledWith(
-			{ id: version.id, appId: version.appId, label: version.label, sourceArtifactId: artifact.id },
+			{
+				id: version.id,
+				appId: version.appId,
+				label: version.label,
+				sourceArtifactId: artifact.id,
+				bindings: version.bindings,
+			},
 			ctx,
 		);
 		expect(apps.advanceDraft).toHaveBeenCalledWith(

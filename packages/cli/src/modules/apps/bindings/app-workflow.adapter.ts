@@ -18,6 +18,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { User, WorkflowEntity } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { ensureError } from '@n8n/utils/errors/ensure-error';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	createRunExecutionData,
@@ -35,17 +36,20 @@ import { ActiveExecutions } from '@/active-executions';
 import { SubworkflowPolicyDenialError } from '@/errors/subworkflow-policy-denial.error';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
+import { WorkflowRunner } from '@/workflow-runner';
 import {
 	detectTriggerNode,
-	formatResult,
 	inferInputSchema,
 	listWorkflowInputFields,
 	validateCompatibility,
-} from '@/modules/agents/tools/workflow-tool-factory';
-import { WorkflowToolUnavailableError } from '@/modules/agents/tools/workflow-tool-unavailable-error';
-import { WorkflowToolWorkflowLoader } from '@/modules/agents/tools/workflow-tool-workflow-loader.service';
+} from '@/workflows/callable/callable-workflow-input';
+import { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
+import {
+	collectResultData,
+	normaliseExecutionStatus,
+} from '@/workflows/callable/callable-workflow-result';
+import { CallableWorkflowUnavailableError } from '@/workflows/callable/callable-workflow-unavailable.error';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowRunner } from '@/workflow-runner';
 
 import { inferOutputSchema, sampleOutputItems, UNKNOWN_OUTPUT_SCHEMA } from './infer-output-schema';
 
@@ -83,14 +87,45 @@ function isDataObject(value: unknown): value is IDataObject {
 	return isRecord(value);
 }
 
+/**
+ * Maps every reason a bound workflow cannot run to a visitor-safe refusal.
+ * The original messages name the nodes of a private workflow, so they stay on the server.
+ */
+function toRuntimeError(error: unknown): Error {
+	if (!(error instanceof CallableWorkflowUnavailableError)) return ensureError(error);
+	switch (error.reason) {
+		case 'not_published':
+			return new AppRuntimeError(
+				409,
+				'workflow_not_published',
+				'The bound workflow is not published. Publish it so the app can run it.',
+			);
+		case 'not_found':
+			return new AppRuntimeError(
+				404,
+				'resource_missing',
+				'The bound workflow is no longer in the app project.',
+			);
+		case 'incompatible':
+			return new AppRuntimeError(
+				409,
+				'workflow_incompatible',
+				'The bound workflow cannot run from an app. Check its trigger and nodes in n8n.',
+			);
+	}
+}
+
 /** Workflow runs for app bindings. Runs act as the app project, like an agent workflow tool. */
 @Service()
 export class AppWorkflowAdapter extends AppWorkflowPort {
-	/** `integrated` runs skip the instance concurrency queue, so app runs need their own cap. */
+	/**
+	 * Executions that app requests started and that still run. `integrated` runs
+	 * skip the instance concurrency queue, so app runs need their own cap.
+	 */
 	private inFlight = 0;
 
 	constructor(
-		private readonly workflowLoader: WorkflowToolWorkflowLoader,
+		private readonly workflowLoader: CallableWorkflowLoader,
 		private readonly workflowFinder: WorkflowFinderService,
 		private readonly subworkflowPolicyChecker: SubworkflowPolicyChecker,
 		private readonly workflowRunner: WorkflowRunner,
@@ -156,15 +191,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		try {
 			validateCompatibility(workflow);
 		} catch (error) {
-			if (error instanceof WorkflowToolUnavailableError) {
-				// The original message names the nodes of a private workflow.
-				throw new AppRuntimeError(
-					409,
-					'workflow_incompatible',
-					'The bound workflow cannot run from an app. Check its trigger and nodes in n8n.',
-				);
-			}
-			throw error;
+			throw toRuntimeError(error);
 		}
 
 		try {
@@ -268,10 +295,16 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			}),
 		};
 
-		const { executionId, run } = await this.holdRun(async () => {
-			const executionId = await this.workflowRunner.run(runData);
-			return { executionId, run: await this.waitForRun(executionId) };
-		});
+		const release = this.claimRunSlot();
+		let executionId: string;
+		try {
+			executionId = await this.workflowRunner.run(runData);
+		} catch (error) {
+			release();
+			throw error;
+		}
+		this.releaseWhenFinished(executionId, release);
+		const run = await this.waitForRun(executionId);
 		if (run === 'running') return { executionId, status: 'running' };
 
 		const execution =
@@ -292,28 +325,30 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		data: IRunExecutionData | undefined,
 		nodes: INode[],
 	): AppWorkflowRunResult {
-		const result = formatResult(executionId, status, data, false);
-		const runStatus = isRunStatus(result.status) ? result.status : 'unknown';
+		const normalised = normaliseExecutionStatus(status);
+		const runStatus = isRunStatus(normalised) ? normalised : 'unknown';
 		if (runStatus === 'success') {
-			// The last node's items, keyed by its name.
-			const output = result.data ? Object.values(result.data)[0] : [];
+			// The last node's items, from all of its main outputs.
+			const runData = data?.resultData?.runData;
+			const output = runData ? (Object.values(collectResultData(runData, false))[0] ?? []) : [];
 			return { executionId, status: runStatus, output };
 		}
 
+		const rawError = data?.resultData?.error?.message;
 		// The raw error can name hosts, tables, and credentials of a private workflow.
 		this.logger.warn('App workflow run did not succeed.', {
 			appId: ctx.appId,
 			bindingKey: ctx.bindingKey,
 			executionId,
 			status: runStatus,
-			error: result.error,
+			error: rawError,
 		});
 		const failure: AppWorkflowRunResult = { executionId, status: runStatus, output: [] };
 		if (runStatus !== 'error') return failure;
 		const failedNode = nodes.find((node) => node.name === data?.resultData.lastNodeExecuted);
 		const error =
-			failedNode?.type === STOP_AND_ERROR_NODE_TYPE && result.error
-				? result.error
+			failedNode?.type === STOP_AND_ERROR_NODE_TYPE && rawError
+				? rawError
 				: GENERIC_FAILURE_MESSAGE;
 		return { ...failure, error };
 	}
@@ -334,14 +369,7 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			}
 			return workflow;
 		} catch (error) {
-			if (error instanceof WorkflowToolUnavailableError && error.reason === 'not_published') {
-				throw new AppRuntimeError(
-					409,
-					'workflow_not_published',
-					'The bound workflow is not published. Publish it so the app can run it.',
-				);
-			}
-			throw error;
+			throw toRuntimeError(error);
 		}
 	}
 
@@ -357,9 +385,9 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			});
 			return workflow && { workflow, published: true };
 		} catch (error) {
-			if (!(error instanceof WorkflowToolUnavailableError) || error.reason !== 'not_published') {
-				throw error;
-			}
+			if (!(error instanceof CallableWorkflowUnavailableError)) throw error;
+			// A workflow that cannot run is described as missing, with a warning for the editor.
+			if (error.reason !== 'not_published') return null;
 			const draft = await this.workflowLoader.loadWorkflow(projectId, reference);
 			return draft && { workflow: draft, published: false };
 		}
@@ -395,7 +423,8 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 		);
 	}
 
-	private async holdRun<T>(runAndWait: () => Promise<T>): Promise<T> {
+	/** Returns a release function. Calling it more than once frees the slot once. */
+	private claimRunSlot(): () => void {
 		const max = this.appsConfig.apiMaxConcurrentRuns;
 		if (max > 0 && this.inFlight >= max) {
 			throw new AppRuntimeError(
@@ -405,11 +434,24 @@ export class AppWorkflowAdapter extends AppWorkflowPort {
 			);
 		}
 		this.inFlight++;
-		try {
-			return await runAndWait();
-		} finally {
+		let released = false;
+		return () => {
+			if (released) return;
+			released = true;
 			this.inFlight--;
+		};
+	}
+
+	/**
+	 * The slot belongs to the execution, not to the request. A request can stop
+	 * waiting after `apiRunWaitMs` while the execution keeps running.
+	 */
+	private releaseWhenFinished(executionId: string, release: () => void) {
+		if (!this.activeExecutions.has(executionId)) {
+			release();
+			return;
 		}
+		this.activeExecutions.getPostExecutePromise(executionId).then(release, release);
 	}
 
 	/** Returns `undefined` when the execution already left the active set. */

@@ -1,4 +1,4 @@
-import type { AppBuildResponse } from '@n8n/api-types';
+import type { AppBinding, AppBuildResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
@@ -22,6 +22,7 @@ export class AppChangeService {
 		expectedDraftVersionId: string | null,
 		files: AppFiles,
 		label: string | null = null,
+		bindings?: AppBinding[],
 	): Promise<AppBuildResponse> {
 		this.builds.assertNotStopping();
 		const version = await this.versions.saveSource(
@@ -30,6 +31,7 @@ export class AppChangeService {
 			expectedDraftVersionId,
 			files,
 			label,
+			bindings,
 		);
 		try {
 			return await this.builds.build(projectId, appId, version.id);
@@ -70,6 +72,13 @@ export class AppChangeService {
 			sourceVersionId: versionId,
 			expectedDraftVersionId,
 		});
-		return await this.commit(projectId, appId, expectedDraftVersionId, files, version.label);
+		return await this.commit(
+			projectId,
+			appId,
+			expectedDraftVersionId,
+			files,
+			version.label,
+			version.bindings,
+		);
 	}
 }

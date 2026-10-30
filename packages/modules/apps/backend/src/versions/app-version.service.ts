@@ -1,4 +1,4 @@
-import { appSchema, appVersionSchema } from '@n8n/api-types';
+import { appSchema, appVersionSchema, type AppBinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -27,20 +27,30 @@ export class AppVersionService {
 		private readonly logger: Logger,
 	) {}
 
-	/** Stores source metadata. Use AppChangeService for changes that must also build. */
+	/**
+	 * Stores source metadata. Use AppChangeService for changes that must also build.
+	 * Without `bindings`, the new version keeps the bindings of the draft it replaces.
+	 */
 	async saveSource(
 		projectId: string,
 		appId: string,
 		expectedDraftVersionId: string | null,
 		files: AppFiles,
 		label: string | null = null,
+		bindings?: AppBinding[],
 	): Promise<AppVersion> {
 		const app = await this.requireApp(projectId, appId);
 		this.checkDraft(app.draftVersionId, expectedDraftVersionId);
 		this.checkLabel(label);
 		const versionId = uuidv7();
 		await this.sourceVersions.createVersion(
-			{ id: versionId, appId, expectedDraftVersionId, label },
+			{
+				id: versionId,
+				appId,
+				expectedDraftVersionId,
+				label,
+				bindings: bindings ?? (await this.draftBindings(expectedDraftVersionId)),
+			},
 			files,
 		);
 		const version = await this.requireVersion(versionId);
@@ -115,7 +125,14 @@ export class AppVersionService {
 	): Promise<AppVersion> {
 		const version = await this.getVersion(projectId, appId, versionId);
 		const files = await this.sourceVersions.readSource(version.id);
-		return await this.saveSource(projectId, appId, expectedDraftVersionId, files, version.label);
+		return await this.saveSource(
+			projectId,
+			appId,
+			expectedDraftVersionId,
+			files,
+			version.label,
+			version.bindings,
+		);
 	}
 
 	async setLabel(
@@ -130,6 +147,11 @@ export class AppVersionService {
 		if (!version) throw new NotFoundError('App version not found.');
 		this.logger.debug('Updated app version label.', { projectId, appId, versionId });
 		return version;
+	}
+
+	private async draftBindings(draftVersionId: string | null): Promise<AppBinding[]> {
+		if (draftVersionId === null) return [];
+		return (await this.versions.findVersionById(draftVersionId))?.bindings ?? [];
 	}
 
 	private async requireApp(projectId: string, appId: string, ctx: OperationContext = {}) {

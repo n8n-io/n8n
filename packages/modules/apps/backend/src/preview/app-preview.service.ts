@@ -1,6 +1,6 @@
 import { appSchema, appVersionSchema, type AppPreviewResponse } from '@n8n/api-types';
 import { CacheService, JwtService, UrlService } from '@n8n/backend-services';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
 import type { NextFunction, Request, Response } from 'express';
@@ -29,6 +29,13 @@ const sessionSchema = z.object({
 	versionId: z.string(),
 });
 type PreviewSession = z.infer<typeof sessionSchema>;
+
+export interface AppPreviewAdmission {
+	app: App;
+	/** The version that the preview session shows. It can be an unpublished draft. */
+	versionId: string;
+	user: User;
+}
 
 @Service()
 export class AppPreviewService {
@@ -88,25 +95,30 @@ export class AppPreviewService {
 	}
 
 	async authenticate(req: AppRequest, res: Response, next: NextFunction): Promise<void> {
-		const session = this.verifySession(readCookie(req, this.cookieName()));
-		const app = session ? await this.findSessionApp(req, session) : null;
-		if (!session || !app) {
+		const admitted = await this.admit(req);
+		if (!admitted) {
 			res.set('Cache-Control', 'no-store').status(401).json({
 				message: 'This preview session ended. Open the preview again.',
 			});
 			return;
 		}
-		req.appContext = { app, versionId: session.versionId, preview: true };
+		req.appContext = { app: admitted.app, versionId: admitted.versionId, preview: true };
 		next();
 	}
 
-	private async findSessionApp(req: Request, session: PreviewSession): Promise<App | null> {
+	/**
+	 * Resolves the preview session of the request. The session user must still
+	 * be able to read the app. Returns `null` when the session is missing or ended.
+	 */
+	async admit(req: Request): Promise<AppPreviewAdmission | null> {
+		const session = this.verifySession(readCookie(req, this.cookieName()));
+		if (!session) return null;
 		const namespace = this.hosts.previewNamespace(req);
 		const app = namespace ? await this.apps.findByNamespace(namespace) : null;
-		if (app?.id !== session.appId) return null;
+		if (!app || app.id !== session.appId) return null;
 		const user = await this.users.findByIdWithRole(session.sub);
 		if (!user || user.disabled || !(await this.resources.canRead(app, user))) return null;
-		return app;
+		return { app, versionId: session.versionId, user };
 	}
 
 	private setSession(res: Response, { sub, appId, versionId }: PreviewSession) {

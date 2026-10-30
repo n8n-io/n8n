@@ -1,5 +1,6 @@
 import type { AgentSseEvent, AppBinding } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
+import type { User } from '@n8n/db';
 import { NotFoundError } from '@n8n/errors';
 import type { Response } from 'express';
 import { mock } from 'vitest-mock-extended';
@@ -12,7 +13,10 @@ import type {
 	AppWorkflowPort,
 } from '../../bindings/app-binding-ports';
 import { AppRuntimeError } from '../../bindings/app-runtime.error';
+import type { AppPreviewService } from '../../preview/app-preview.service';
 import type { AppHostService } from '../../serving/app-host.service';
+import type { AppVersion } from '../../versions/app-version.entity';
+import type { AppVersionRepository } from '../../versions/app-version.repository';
 import { AppRuntimeController, type AppRuntimeRequest } from '../app-runtime.controller';
 
 const ORIGIN = 'https://crm.apps.example.com';
@@ -29,13 +33,24 @@ const bindings: AppBinding[] = [
 	{ key: 'support', kind: 'agent', agentId: 'agent-1', permissions: ['chat'] },
 ];
 
+const PUBLISHED_ID = 'version-published';
+const DRAFT_ID = 'version-draft';
+const PREVIEW_ORIGIN = 'https://crm--preview.apps.example.com';
+
 const app = {
 	id: 'app-1',
 	namespace: 'crm',
 	projectId: 'project-1',
 	visibility: 'project',
-	bindings,
+	draftVersionId: DRAFT_ID,
+	publishedVersionId: PUBLISHED_ID,
 } as App;
+
+/** The draft binds one more workflow than the published version. */
+const draftBindings: AppBinding[] = [
+	...bindings,
+	{ key: 'draftOnly', kind: 'workflow', workflowId: 'workflow-2' },
+];
 
 const user = { id: 'user-1', email: 'a@b.c', firstName: 'Ada', lastName: undefined };
 
@@ -63,7 +78,7 @@ function request(
 		appRuntime:
 			options.runtime === false
 				? undefined
-				: { app, user, visitor: { type: 'user', userId: 'user-1' } },
+				: { app, bindings, user, visitor: { type: 'user', userId: 'user-1' } },
 	} as unknown as AppRuntimeRequest<{ key: string; executionId: string }>;
 }
 
@@ -82,25 +97,46 @@ function response() {
 	return res;
 }
 
-function setup() {
+function setup({ host = 'published' }: { host?: 'published' | 'preview' } = {}) {
 	const auth = mock<AppAuthService>();
 	auth.admit.mockResolvedValue({ ok: true, app, security: { subject: user } as never });
 	auth.anonymousVisitorId.mockReturnValue('visitor-1');
+	const preview = mock<AppPreviewService>();
+	preview.admit.mockResolvedValue({
+		app,
+		versionId: DRAFT_ID,
+		user: { id: 'editor-1', email: 'e@b.c', firstName: 'Eve', lastName: null } as unknown as User,
+	});
+	const versions = mock<AppVersionRepository>();
+	// Plain objects: `mock()` does not keep arrays such as `bindings`.
+	versions.findVersionById.mockImplementation(async (id) =>
+		id === PUBLISHED_ID || id === DRAFT_ID
+			? ({
+					id,
+					appId: app.id,
+					bindings: id === DRAFT_ID ? draftBindings : bindings,
+				} as AppVersion)
+			: null,
+	);
 	const hosts = mock<AppHostService>();
-	hosts.namespace.mockReturnValue('crm');
+	hosts.previewNamespace.mockReturnValue(host === 'preview' ? 'crm' : undefined);
+	hosts.namespace.mockReturnValue(host === 'published' ? 'crm' : undefined);
 	hosts.origin.mockReturnValue(ORIGIN);
+	hosts.previewOrigin.mockReturnValue(PREVIEW_ORIGIN);
 	const dataTables = mock<AppDataTablePort>();
 	const workflows = mock<AppWorkflowPort>();
 	const agents = mock<AppAgentPort>();
 	const controller = new AppRuntimeController(
 		auth,
+		preview,
+		versions,
 		hosts,
 		dataTables,
 		workflows,
 		agents,
 		mock<Logger>(),
 	);
-	return { controller, auth, dataTables, workflows, agents };
+	return { controller, auth, preview, versions, dataTables, workflows, agents };
 }
 
 describe('AppRuntimeController', () => {
@@ -206,6 +242,121 @@ describe('AppRuntimeController', () => {
 			await controller.prepare(req, response(), vi.fn());
 
 			expect(req.appRuntime?.visitor).toEqual({ type: 'anonymous', id: 'visitor-1' });
+		});
+
+		it('serves the bindings of the published version', async () => {
+			const { controller, versions, preview } = setup();
+			const req = request({ runtime: false });
+
+			await controller.prepare(req, response(), vi.fn());
+
+			expect(versions.findVersionById).toHaveBeenCalledWith(PUBLISHED_ID);
+			expect(req.appRuntime?.bindings).toEqual(bindings);
+			expect(preview.admit).not.toHaveBeenCalled();
+		});
+
+		it('answers 404 when the published version belongs to another app', async () => {
+			const { controller, versions } = setup();
+			versions.findVersionById.mockResolvedValue({
+				id: PUBLISHED_ID,
+				appId: 'app-2',
+				bindings,
+			} as AppVersion);
+			const res = response();
+			const next = vi.fn();
+
+			await controller.prepare(request({ runtime: false }), res, next);
+
+			expect(res.status).toHaveBeenCalledWith(404);
+			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'app_not_found' }));
+			expect(next).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('prepare on a preview host', () => {
+		const sameOrigin = { origin: PREVIEW_ORIGIN, 'sec-fetch-site': 'same-origin' };
+
+		it('serves the bindings of the previewed version to the preview user', async () => {
+			const { controller, auth, versions } = setup({ host: 'preview' });
+			const req = request({ headers: sameOrigin, runtime: false });
+			const next = vi.fn();
+
+			await controller.prepare(req, response(), next);
+
+			expect(next).toHaveBeenCalled();
+			expect(auth.admit).not.toHaveBeenCalled();
+			expect(versions.findVersionById).toHaveBeenCalledWith(DRAFT_ID);
+			expect(req.appRuntime?.bindings).toEqual(draftBindings);
+			expect(req.appRuntime?.visitor).toEqual({ type: 'user', userId: 'editor-1' });
+			expect(req.appRuntime?.user).toEqual({
+				id: 'editor-1',
+				email: 'e@b.c',
+				firstName: 'Eve',
+				lastName: undefined,
+			});
+		});
+
+		it('works for an app that was never published', async () => {
+			const { controller, preview } = setup({ host: 'preview' });
+			preview.admit.mockResolvedValue({
+				app: { ...app, publishedVersionId: null } as App,
+				versionId: DRAFT_ID,
+				user: { id: 'editor-1', email: 'e@b.c' } as User,
+			});
+			const req = request({ headers: sameOrigin, runtime: false });
+			const next = vi.fn();
+
+			await controller.prepare(req, response(), next);
+
+			expect(next).toHaveBeenCalled();
+			expect(req.appRuntime?.bindings).toEqual(draftBindings);
+		});
+
+		it('resolves a binding that only the previewed draft has', async () => {
+			const { controller, workflows } = setup({ host: 'preview' });
+			workflows.run.mockResolvedValue({ executionId: '1', status: 'success', output: [] });
+			const req = request({ method: 'POST', headers: sameOrigin, runtime: false });
+			await controller.prepare(req, response(), vi.fn());
+			const res = response();
+
+			await controller.runWorkflow(
+				Object.assign(req, { params: { key: 'draftOnly' }, body: {} }),
+				res,
+			);
+
+			expect(workflows.run).toHaveBeenCalledWith(
+				expect.objectContaining({ bindingKey: 'draftOnly' }),
+				'workflow-2',
+				{},
+			);
+		});
+
+		it('rejects the origin of the published host', async () => {
+			const { controller, preview } = setup({ host: 'preview' });
+			const res = response();
+
+			await controller.prepare(
+				request({ headers: { origin: ORIGIN }, runtime: false }),
+				res,
+				vi.fn(),
+			);
+
+			expect(res.status).toHaveBeenCalledWith(403);
+			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'forbidden_origin' }));
+			expect(preview.admit).not.toHaveBeenCalled();
+		});
+
+		it('answers 401 when the preview session ended', async () => {
+			const { controller, preview } = setup({ host: 'preview' });
+			preview.admit.mockResolvedValue(null);
+			const res = response();
+			const next = vi.fn();
+
+			await controller.prepare(request({ headers: sameOrigin, runtime: false }), res, next);
+
+			expect(res.status).toHaveBeenCalledWith(401);
+			expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ code: 'unauthenticated' }));
+			expect(next).not.toHaveBeenCalled();
 		});
 	});
 

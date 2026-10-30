@@ -18,7 +18,7 @@ export class AppsConfig {
 	@Env('N8N_APPS_API_RATE_LIMIT', rateLimit)
 	rateLimitApi: number = 120;
 
-	/** Maximum workflow runs that app API requests can wait for at the same time in each main process. Requests above this limit get a "too many requests" error. Set to 0 to disable it. */
+	/** Maximum workflow executions that app API requests start and that run at the same time in each main process. An execution counts until it finishes, also after the request stops waiting for it. Requests above this limit get a "too many requests" error. Set to 0 to disable it. */
 	@Env('N8N_APPS_API_MAX_CONCURRENT_RUNS', rateLimit)
 	apiMaxConcurrentRuns: number = 20;
 

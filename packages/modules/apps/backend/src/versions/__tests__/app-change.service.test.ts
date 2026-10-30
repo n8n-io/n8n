@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
@@ -31,7 +32,14 @@ describe('AppChangeService', () => {
 			status: 'failed',
 			diagnostics: { message: 'Fix the source.' },
 		});
-		expect(versions.saveSource).toHaveBeenCalledWith('project', 'app', 'draft', files, null);
+		expect(versions.saveSource).toHaveBeenCalledWith(
+			'project',
+			'app',
+			'draft',
+			files,
+			null,
+			undefined,
+		);
 		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version');
 	});
 
@@ -111,13 +119,15 @@ describe('AppChangeService', () => {
 			null,
 			createAppScaffold(),
 			null,
+			undefined,
 		);
 		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version');
 	});
 
 	it('restores source and its label into a new version and builds that version', async () => {
 		const { service, versions, builds } = setup();
-		versions.getVersion.mockResolvedValue(mock<AppVersion>({ label: 'Restore' }));
+		const bindings: AppBinding[] = [{ key: 'submit', kind: 'workflow', workflowId: 'w1' }];
+		versions.getVersion.mockResolvedValue({ label: 'Restore', bindings } as AppVersion);
 		versions.readSource.mockResolvedValue(createAppScaffold());
 		await service.restore('project', 'app', 'old-version', 'draft');
 		expect(versions.saveSource).toHaveBeenCalledWith(
@@ -126,6 +136,7 @@ describe('AppChangeService', () => {
 			'draft',
 			createAppScaffold(),
 			'Restore',
+			bindings,
 		);
 		expect(builds.build).toHaveBeenCalledWith('project', 'app', 'new-version');
 	});

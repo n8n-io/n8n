@@ -4,8 +4,8 @@ import { mock } from 'vitest-mock-extended';
 
 import type { WorkflowPublishedDataService } from '@n8n/backend-services';
 
-import { WorkflowToolUnavailableError } from '../workflow-tool-unavailable-error';
-import { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
+import { CallableWorkflowLoader } from '../callable-workflow-loader.service';
+import { CallableWorkflowUnavailableError } from '../callable-workflow-unavailable.error';
 
 const reference = { workflowId: 'workflow-1', workflowName: 'Workflow' };
 
@@ -24,7 +24,7 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}) {
 function makeService({ useWorkflowPublicationService = false } = {}) {
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
-	const service = new WorkflowToolWorkflowLoader(
+	const service = new CallableWorkflowLoader(
 		workflowRepository,
 		{ useWorkflowPublicationService } as WorkflowsConfig,
 		workflowPublishedDataService,
@@ -33,7 +33,7 @@ function makeService({ useWorkflowPublicationService = false } = {}) {
 	return { service, workflowRepository, workflowPublishedDataService };
 }
 
-describe('WorkflowToolWorkflowLoader', () => {
+describe('CallableWorkflowLoader', () => {
 	it('loads the current draft without requiring a published version', async () => {
 		const { service, workflowRepository } = makeService();
 		workflowRepository.findOneByAgentToolReference.mockResolvedValue(
@@ -104,7 +104,7 @@ describe('WorkflowToolWorkflowLoader', () => {
 			.loadWorkflow('project-1', reference, { usePublishedVersion: true })
 			.catch((e: unknown) => e);
 
-		expect(error).toBeInstanceOf(WorkflowToolUnavailableError);
+		expect(error).toBeInstanceOf(CallableWorkflowUnavailableError);
 		expect(error).toMatchObject({
 			reason: 'not_published',
 			message:

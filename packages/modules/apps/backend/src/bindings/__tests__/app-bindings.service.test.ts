@@ -1,10 +1,13 @@
 import type { AppBinding } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
+import { ConflictError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { App } from '../../app.entity';
 import type { AppRepository } from '../../app.repository';
+import type { AppVersion } from '../../versions/app-version.entity';
+import type { AppVersionRepository } from '../../versions/app-version.repository';
 import type { AppAgentPort, AppDataTablePort, AppWorkflowPort } from '../app-binding-ports';
 import { AppBindingsService } from '../app-bindings.service';
 
@@ -27,17 +30,29 @@ const agentChat: AppBinding = {
 };
 const agentHistory: AppBinding = { ...agentChat, key: 'archive', permissions: ['history'] };
 
-function setup(app: Partial<App> = {}) {
+const DRAFT_ID = '0190a8d6-4a2e-7000-8000-0000000000d1';
+
+function setup({ bindings = [], ...app }: Partial<App> & { bindings?: AppBinding[] } = {}) {
 	const apps = mock<AppRepository>();
 	const stored = {
 		id: APP_ID,
 		projectId: 'p1',
 		visibility: 'project',
-		bindings: [],
+		draftVersionId: DRAFT_ID,
+		publishedVersionId: null,
 		...app,
 	} as App;
 	apps.findInProject.mockResolvedValue(stored);
-	apps.setBindings.mockImplementation(async (_p, _a, bindings) => ({ ...stored, bindings }));
+	const versions = mock<AppVersionRepository>();
+	// Plain objects: `mock()` does not keep arrays such as `bindings`.
+	versions.findVersionById.mockResolvedValue({
+		id: DRAFT_ID,
+		appId: APP_ID,
+		bindings,
+	} as AppVersion);
+	versions.setDraftBindings.mockImplementation(
+		async (_a, versionId, next) => ({ id: versionId, appId: APP_ID, bindings: next }) as AppVersion,
+	);
 	const dataTables = mock<AppDataTablePort>();
 	dataTables.describe.mockImplementation(async (_p, binding) => ({
 		...binding,
@@ -59,27 +74,82 @@ function setup(app: Partial<App> = {}) {
 		name: 'Support',
 		published: true,
 	}));
-	const service = new AppBindingsService(apps, dataTables, workflows, agents, mock<Logger>());
-	return { service, apps, dataTables, workflows, agents };
+	const service = new AppBindingsService(
+		apps,
+		versions,
+		dataTables,
+		workflows,
+		agents,
+		mock<Logger>(),
+	);
+	return { service, apps, versions, dataTables, workflows, agents };
 }
 
 describe('AppBindingsService', () => {
-	it('checks every binding with the acting user before it saves the list', async () => {
-		const { service, apps, dataTables, workflows } = setup();
+	it('checks every binding with the acting user before it saves the draft version', async () => {
+		const { service, versions, dataTables, workflows } = setup();
 
-		await service.setBindings(user, 'p1', APP_ID, [tableRead, workflow]);
+		const result = await service.setBindings(user, 'p1', APP_ID, [tableRead, workflow]);
 
 		expect(dataTables.assertCanBind).toHaveBeenCalledWith(user, 'p1', tableRead);
 		expect(workflows.assertCanBind).toHaveBeenCalledWith(user, 'p1', workflow);
-		expect(apps.setBindings).toHaveBeenCalledWith('p1', APP_ID, [tableRead, workflow]);
+		expect(versions.setDraftBindings).toHaveBeenCalledWith(APP_ID, DRAFT_ID, [tableRead, workflow]);
+		expect(result.versionId).toBe(DRAFT_ID);
 	});
 
 	it('does not save when the user cannot grant a binding', async () => {
-		const { service, apps, workflows } = setup();
+		const { service, versions, workflows } = setup();
 		workflows.assertCanBind.mockRejectedValue(new Error('no access'));
 
 		await expect(service.setBindings(user, 'p1', APP_ID, [workflow])).rejects.toThrow('no access');
-		expect(apps.setBindings).not.toHaveBeenCalled();
+		expect(versions.setDraftBindings).not.toHaveBeenCalled();
+	});
+
+	it('keeps the bindings of a published version', async () => {
+		const { service, versions } = setup({ publishedVersionId: DRAFT_ID });
+
+		await expect(service.setBindings(user, 'p1', APP_ID, [workflow])).rejects.toThrow(
+			ConflictError,
+		);
+		expect(versions.setDraftBindings).not.toHaveBeenCalled();
+	});
+
+	it('needs a saved version before it stores bindings', async () => {
+		const { service, versions } = setup({ draftVersionId: null });
+
+		await expect(service.setBindings(user, 'p1', APP_ID, [workflow])).rejects.toThrow(
+			ConflictError,
+		);
+		expect(versions.setDraftBindings).not.toHaveBeenCalled();
+	});
+
+	it('refuses when the draft changed while the bindings were checked', async () => {
+		const { service, versions } = setup();
+		versions.setDraftBindings.mockResolvedValue(null);
+
+		await expect(service.setBindings(user, 'p1', APP_ID, [workflow])).rejects.toThrow(
+			ConflictError,
+		);
+	});
+
+	it('reads the bindings of the draft version', async () => {
+		const { service, versions } = setup({ bindings: [workflow] });
+
+		const result = await service.getBindings('p1', APP_ID);
+
+		expect(versions.findVersionById).toHaveBeenCalledWith(DRAFT_ID);
+		expect(result).toMatchObject({ versionId: DRAFT_ID, bindings: [{ key: 'submit' }] });
+	});
+
+	it('reads no bindings before the first source save', async () => {
+		const { service, versions } = setup({ draftVersionId: null });
+
+		expect(await service.getBindings('p1', APP_ID)).toEqual({
+			versionId: null,
+			bindings: [],
+			warnings: [],
+		});
+		expect(versions.findVersionById).not.toHaveBeenCalled();
 	});
 
 	it('rejects an app from another project', async () => {
@@ -112,11 +182,11 @@ describe('AppBindingsService', () => {
 	});
 
 	it('checks and describes an agent binding through the agent port', async () => {
-		const { service, agents, apps } = setup({ bindings: [agentChat] });
+		const { service, agents, versions } = setup({ bindings: [agentChat] });
 
 		await service.setBindings(user, 'p1', APP_ID, [agentChat]);
 		expect(agents.assertCanBind).toHaveBeenCalledWith(user, 'p1', agentChat);
-		expect(apps.setBindings).toHaveBeenCalledWith('p1', APP_ID, [agentChat]);
+		expect(versions.setDraftBindings).toHaveBeenCalledWith(APP_ID, DRAFT_ID, [agentChat]);
 
 		const { bindings } = await service.getBindings('p1', APP_ID);
 		expect(agents.describe).toHaveBeenCalledWith('p1', agentChat);

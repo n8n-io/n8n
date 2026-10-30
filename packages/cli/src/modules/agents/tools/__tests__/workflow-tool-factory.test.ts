@@ -21,6 +21,7 @@ import type { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks
 import type { EphemeralNodeExecutor } from '@/node-execution/ephemeral-node-executor';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import type { WorkflowRunner } from '@/workflow-runner';
+import type { CallableWorkflowLoader } from '@/workflows/callable/callable-workflow-loader.service';
 
 import {
 	encodeAgentSandboxHostMetadata,
@@ -32,7 +33,6 @@ import {
 	resolveWorkflowTool,
 	type WorkflowToolContext,
 } from '../workflow-tool-factory';
-import type { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
 
 vi.mock('@n8n/utils/sleep', () => ({ sleep: vi.fn().mockResolvedValue(undefined) }));
 
@@ -551,7 +551,7 @@ describe('workflow tool → Wait-node handoff', () => {
 	}
 
 	async function buildWaitTool(activeExecutions: ActiveExecutions) {
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
 		const run = vi.fn().mockResolvedValue('exec-1');
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
@@ -617,7 +617,7 @@ describe('workflow tool → Wait-node handoff', () => {
 	// No resumable checkpoint (inline, sub-agent) or a context that throws on suspend.
 	it('reports the waiting status instead of parking when the run cannot be resumed', async () => {
 		setPersistence(parkedInDb(WAIT_INDEFINITELY));
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
 			...buildContext(vi.fn().mockResolvedValue('exec-1'), {
@@ -818,7 +818,7 @@ describe('workflow tool → parentAgentRun stamping', () => {
 	};
 
 	async function runToolWith(contextExtras: Partial<WorkflowToolContext>, ctx: object) {
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(workflow);
 		const run = vi.fn().mockResolvedValue('exec-1');
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Lookup workflow' }, {
@@ -981,7 +981,7 @@ describe('workflow tool → background job handoff', () => {
 	}
 
 	async function buildBackgroundTool(waitTill = WAIT_INDEFINITELY) {
-		const workflowLoader = mock<WorkflowToolWorkflowLoader>();
+		const workflowLoader = mock<CallableWorkflowLoader>();
 		workflowLoader.loadWorkflow.mockResolvedValue(waitWorkflow);
 		const tool = await resolveWorkflowTool({ type: 'workflow', workflow: 'Approval workflow' }, {
 			...buildContext(vi.fn().mockResolvedValue('exec-1'), {

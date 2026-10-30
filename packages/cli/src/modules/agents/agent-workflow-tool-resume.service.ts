@@ -9,6 +9,7 @@ import type { RelatedAgentRun } from 'n8n-workflow';
 import { isTerminalExecutionStatus } from 'n8n-workflow';
 
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { collectResultData } from '@/workflows/callable/callable-workflow-result';
 
 import { AgentExecutionUpdateBroadcaster } from './agent-execution-update-broadcaster';
 import { AgentExecutionOrchestratorService } from './agent-execution-orchestrator.service';
@@ -17,7 +18,6 @@ import { productionChatMemoryResourceId } from './utils/agent-memory-scope';
 import { AgentTestRunService } from './agent-test-run.service';
 import {
 	AgentBackgroundJobService,
-	collectResultData,
 	serializeWorkflowJobResult,
 	settlementStatusForExecution,
 } from './background/agent-background-job.service';

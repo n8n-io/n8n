@@ -1,3 +1,4 @@
+import type { AppBinding } from '@n8n/api-types';
 import {
 	BaseRepository,
 	chunkIds,
@@ -9,6 +10,7 @@ import { Service } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
 import { DataSource, In, IsNull, LessThan } from '@n8n/typeorm';
 
+import { App } from '../app.entity';
 import type { AppBuildAttempt } from '../build/app-build.types';
 import { AppVersion } from './app-version.entity';
 
@@ -19,7 +21,7 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 	}
 
 	async insertVersion(
-		data: Pick<AppVersion, 'id' | 'appId' | 'sourceArtifactId' | 'label'>,
+		data: Pick<AppVersion, 'id' | 'appId' | 'sourceArtifactId' | 'label' | 'bindings'>,
 		ctx: OperationContext,
 	): Promise<void> {
 		try {
@@ -159,6 +161,23 @@ export class AppVersionRepository extends BaseRepository<AppVersion> {
 		return await this.runInTransaction(ctx, async (manager) => {
 			const where = { id: versionId };
 			const result = await manager.update(AppVersion, where, { label });
+			if (!result.affected) return null;
+			return await manager.findOneBy(AppVersion, where);
+		});
+	}
+
+	/** Changes only a version that the app does not publish, so a live app keeps its bindings. */
+	async setDraftBindings(
+		appId: string,
+		versionId: string,
+		bindings: AppBinding[],
+		ctx: OperationContext = {},
+	): Promise<AppVersion | null> {
+		return await this.runInTransaction(ctx, async (manager) => {
+			const app = await manager.findOneBy(App, { id: appId, draftVersionId: versionId });
+			if (!app || app.publishedVersionId === versionId) return null;
+			const where = { id: versionId, appId };
+			const result = await manager.update(AppVersion, where, { bindings });
 			if (!result.affected) return null;
 			return await manager.findOneBy(AppVersion, where);
 		});
