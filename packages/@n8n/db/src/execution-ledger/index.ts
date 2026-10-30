@@ -1,4 +1,6 @@
 export * from './execution-ledger-row';
+export type * from './execution-ledger-writer';
+export { ExecutionLedger } from './execution-ledger.service';
 export type { AfterFoldCommit, ExecutionLedgerFoldStep } from './fold-step';
 export { FoldStepRegistry } from './fold-step.registry';
 export { FoldTransactionLostError } from './fold-transaction-lost.error';
