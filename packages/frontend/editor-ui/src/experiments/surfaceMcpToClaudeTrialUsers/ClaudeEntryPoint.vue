@@ -1,16 +1,18 @@
 <script setup lang="ts">
 import { useId } from 'vue';
-import { N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon } from '@n8n/design-system';
 import ClaudeLogo from './ClaudeLogo.vue';
 withDefaults(
 	defineProps<{
 		placement: 'canvas' | 'sidebar' | 'footer';
 		collapsed?: boolean;
 		label: string;
+		title?: string;
 		description?: string;
 	}>(),
 	{
 		collapsed: false,
+		title: undefined,
 		description: undefined,
 	},
 );
@@ -19,7 +21,24 @@ const emit = defineEmits<{ click: [] }>();
 </script>
 
 <template>
+	<span v-if="placement === 'sidebar' && !collapsed && title" :class="$style.card">
+		<span :class="$style.cardTitle">
+			<span :class="$style.mark"><ClaudeLogo /></span>
+			<span>{{ title }}</span>
+		</span>
+		<span :id="descriptionId" :class="$style.description">{{ description }}</span>
+		<N8nButton
+			variant="outline"
+			size="small"
+			:aria-describedby="descriptionId"
+			data-test-id="claude-entry-sidebar"
+			@click.stop="emit('click')"
+		>
+			{{ label }}
+		</N8nButton>
+	</span>
 	<button
+		v-else
 		type="button"
 		:class="[$style.entry, $style[placement], { [$style.collapsed]: collapsed }]"
 		:aria-label="label"
@@ -84,6 +103,29 @@ const emit = defineEmits<{ click: [] }>();
 .description {
 	color: var(--text-color--subtler);
 }
+.card {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+	min-width: 0;
+	padding: var(--spacing--xs);
+	border: var(--border);
+	border-radius: var(--radius--lg);
+	background: var(--background--surface);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--md);
+}
+.cardTitle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--medium);
+}
+.cardTitle .mark {
+	flex-shrink: 0;
+}
 .sidebar {
 	flex: 1;
 	min-width: 0;
@@ -138,15 +180,12 @@ const emit = defineEmits<{ click: [] }>();
 }
 .canvas .mark {
 	padding: var(--spacing--lg);
-	border: calc(var(--border-width) * 2) dashed var(--border-color--strong);
+	border: calc(var(--border-width) * 2) dashed var(--color--foreground--shade-2);
 	border-radius: var(--radius--lg);
 	align-items: center;
 	justify-content: center;
-	background: var(--background--surface);
+	background: var(--color--foreground--tint-2);
 	--mcp-agent-logo-size: var(--spacing--2xl);
 	--mcp-agent-logo-icon-size: calc(var(--spacing--2xl) - var(--spacing--4xs));
-}
-.canvas:hover .mark {
-	border-color: var(--background--brand);
 }
 </style>

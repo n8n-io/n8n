@@ -6,6 +6,9 @@ import { InstanceSettings } from 'n8n-core';
 
 @BackendModule({ name: 'instance-ai', instanceTypes: ['main', 'worker', 'webhook'] })
 export class InstanceAiModule implements ModuleInterface {
+	/** Whether this main registered the n8n Assistant agent on the agents runtime. */
+	private assistantAgentRegistered = false;
+
 	private isMain(): boolean {
 		return Container.get(InstanceSettings).instanceType === 'main';
 	}
@@ -91,6 +94,10 @@ export class InstanceAiModule implements ModuleInterface {
 			);
 		}
 
+		if (Container.get(InstanceAiConfig).assistantAgentEnabled) {
+			await this.registerAssistantAgent();
+		}
+
 		// Instantiating the relay registers its `user-deleted` listener, which
 		// cleans up Instance AI data owned by the deleted user.
 		const { InstanceAiEventRelay } = await import('./instance-ai-event-relay.service.js');
@@ -105,6 +112,31 @@ export class InstanceAiModule implements ModuleInterface {
 		if (process.env.E2E_TESTS === 'true' && process.env.NODE_ENV !== 'production') {
 			await import('./instance-ai-test.controller.js');
 		}
+	}
+
+	/** Run the n8n Assistant as a system agent on the Agents runtime, next to its own runtime. */
+	private async registerAssistantAgent(): Promise<void> {
+		const { ModuleRegistry } = await import('@n8n/backend-common');
+		// This module starts before the agents module, so check that agents will start, not
+		// that it is active. Registration needs only the agents tables.
+		if (!Container.get(ModuleRegistry).eligibleModules.includes('agents')) {
+			Container.get(Logger)
+				.scoped('instance-ai')
+				.warn('The Assistant agent needs the agents module, so it is not registered');
+			return;
+		}
+		const { SystemAgentRegistrationService } = await import(
+			'@/modules/agents/system-agents/system-agent-registration.service.js'
+		);
+		const { AssistantAgentProvider } = await import(
+			'./assistant-agent/assistant-agent.provider.js'
+		);
+		await Container.get(SystemAgentRegistrationService).register(
+			Container.get(AssistantAgentProvider),
+		);
+		// Its routes depend on the agents module, so they load only with the agent.
+		await import('./assistant-agent/assistant-agent.controller.js');
+		this.assistantAgentRegistered = true;
 	}
 
 	private async reconcileInterruptedRuns(): Promise<void> {
@@ -161,6 +193,7 @@ export class InstanceAiModule implements ModuleInterface {
 			sandboxUnavailableReason: sandboxStatus.unavailableReason,
 			runDebugEnabled: globalConfig.instanceAi.runDebugEnabled,
 			workflowSuggestionsEnabled: globalConfig.instanceAi.workflowSuggestionsEnabled,
+			assistantAgentEnabled: this.assistantAgentRegistered,
 		};
 	}
 
@@ -168,9 +201,6 @@ export class InstanceAiModule implements ModuleInterface {
 		const { InstanceAiThread } = await import('./entities/instance-ai-thread.entity.js');
 		const { InstanceAiMessage } = await import('./entities/instance-ai-message.entity.js');
 		const { InstanceAiResource } = await import('./entities/instance-ai-resource.entity.js');
-		const { InstanceAiIterationLog } = await import(
-			'./entities/instance-ai-iteration-log.entity.js'
-		);
 		const { InstanceAiCheckpoint } = await import('./entities/instance-ai-checkpoint.entity.js');
 		const { InstanceAiPendingConfirmation } = await import(
 			'./entities/instance-ai-pending-confirmation.entity.js'
@@ -219,7 +249,6 @@ export class InstanceAiModule implements ModuleInterface {
 			InstanceAiThread,
 			InstanceAiMessage,
 			InstanceAiResource,
-			InstanceAiIterationLog,
 			InstanceAiCheckpoint,
 			InstanceAiPendingConfirmation,
 			InstanceAiObservation,
@@ -242,6 +271,19 @@ export class InstanceAiModule implements ModuleInterface {
 	@OnShutdown()
 	async shutdown() {
 		if (!this.isMain()) return;
+
+		if (this.assistantAgentRegistered) {
+			// Before the service shutdown, whose final flush exports these trace roots.
+			// A failure here must not stop the shutdown of the current Assistant runtime.
+			try {
+				const { AssistantTurnTracer } = await import('./assistant-agent/assistant-turn-trace.js');
+				await Container.get(AssistantTurnTracer).finishOpenTraces();
+			} catch (error) {
+				Container.get(Logger)
+					.scoped('instance-ai')
+					.warn('Failed to close the Assistant agent traces at shutdown', { error });
+			}
+		}
 
 		const { InstanceAiService } = await import('./instance-ai.service.js');
 		await Container.get(InstanceAiService).shutdown();

@@ -1,33 +1,36 @@
-import type { Logger, ModuleRegistry } from '@n8n/backend-common';
+import type { Logger } from '@n8n/backend-common';
 import type {
-	CredentialsRepository,
 	Role,
 	Scope as DbScope,
+	SharedWorkflowRepository,
 	User,
-	VariablesRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { ForbiddenError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
 import { mock } from 'vitest-mock-extended';
 
-import type { DataTableService } from '@/modules/data-table/data-table.service';
-import type { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
-import type { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import type { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 
+import type { ApplyPreviewService } from '../apply-preview.service';
+import type { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import type { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
 import type { PromotionReviewGateService } from '../promotion-review-gate.service';
 import type { PromotionsService } from '../promotions.service';
 import type { PromotionOperationInput } from '../promotions.types';
 
+vi.mock('@/modules/n8n-packages/n8n-packages.service', () => ({
+	N8nPackagesService: class {},
+}));
+vi.mock('@/services/folder.service', () => ({ FolderService: class {} }));
+
 const userWith = (...scopes: Scope[]) =>
 	mock<User>({
 		role: mock<Role>({ scopes: scopes.map((slug) => mock<DbScope>({ slug })) }),
 	});
-const pusher = userWith('gitConnection:push');
-const puller = userWith('gitConnection:pull');
+const pusher = userWith('promotions:promote');
+const puller = userWith('promotions:apply');
 const nobody = userWith();
 
 const branched = (createBranchOnPromotion: boolean) =>
@@ -49,13 +52,10 @@ describe('PromotionChangeService.getPreview review gate', () => {
 	const service = new PromotionChangeService(
 		promotionsService,
 		mock<N8nPackagesService>(),
+		mock<ApplyPreviewService>(),
 		mock<WorkflowRepository>(),
-		mock<VariablesRepository>(),
-		mock<CredentialsRepository>(),
-		mock<TagImporter>(),
-		mock<DataTableService>(),
-		mock<DataTableSerializer>(),
-		mock<ModuleRegistry>(),
+		mock<SharedWorkflowRepository>(),
+		mock<LocalPackageEntities>(),
 		environmentResolver,
 		reviewGate,
 		logger,

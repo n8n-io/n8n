@@ -3,7 +3,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
-import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import SettingsInstanceAiView from '../views/SettingsInstanceAiView.vue';
 import ConnectionDialog from '../components/settings/ConnectionDialog.vue';
 import { useInstanceAiSettingsStore } from '../instanceAiSettings.store';
@@ -51,13 +51,11 @@ vi.mock('@/app/utils/rbac/permissions', () => ({
 const {
 	contextPreferencesEnabledMock,
 	contextSkillsEnabledMock,
-	routerPushMock,
 	confirmMock,
 	testSavedCredentialMock,
 } = vi.hoisted(() => ({
 	contextPreferencesEnabledMock: vi.fn(() => true),
 	contextSkillsEnabledMock: vi.fn(() => true),
-	routerPushMock: vi.fn(),
 	confirmMock: vi.fn(),
 	testSavedCredentialMock: vi.fn(),
 }));
@@ -74,11 +72,6 @@ vi.mock('../composables/useInstanceCredentialTest', async (importOriginal) => {
 
 vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: () => ({ confirm: confirmMock }),
-}));
-
-vi.mock('vue-router', async (importOriginal) => ({
-	...(await importOriginal()),
-	useRouter: () => ({ push: routerPushMock }),
 }));
 
 vi.mock('@/features/settings/context/context.utils', () => ({
@@ -597,8 +590,15 @@ describe('SettingsInstanceAiView', () => {
 			store.$patch({ settings: { ...store.settings!, enabled: false, ...fullyConfigured } });
 			setModuleSettings(settingsStore, { ...defaultModuleSettings, enabled: false });
 
+			settingsStore.settings.ai = { allowSendingParameterValues: true };
+
 			const { getByTestId } = renderComponent();
-			for (const testId of ['n8n-agent-browser-use-toggle', 'n8n-agent-mcp-access-toggle']) {
+			for (const testId of [
+				'n8n-agent-browser-use-toggle',
+				'n8n-agent-mcp-access-toggle',
+				'n8n-agent-data-sharing-schema-toggle',
+				'n8n-agent-data-sharing-values-toggle',
+			]) {
 				expect(getByTestId(testId)).toBeDisabled();
 				expect(getByTestId(testId)).toHaveAttribute('aria-checked', 'false');
 			}
@@ -848,23 +848,67 @@ describe('SettingsInstanceAiView', () => {
 	});
 
 	describe('data sharing', () => {
-		it('links to the AI usage settings instead of duplicating its controls', async () => {
+		const setDataSharing = (allowSendingParameterValues: boolean) => {
+			settingsStore.settings.ai = { allowSendingParameterValues };
+		};
+
+		it('shows the AI usage controls inline with a docs link', () => {
 			const { getByTestId } = renderComponent();
 
-			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
-
-			expect(routerPushMock).toHaveBeenCalledWith({ name: VIEWS.AI_SETTINGS });
+			expect(getByTestId('n8n-agent-data-sharing-schema-row')).toBeVisible();
+			expect(getByTestId('n8n-agent-data-sharing-values-row')).toBeVisible();
+			expect(getByTestId('n8n-agent-data-sharing-docs-link')).toHaveAttribute(
+				'href',
+				'https://docs.n8n.io/build/ways-of-building-workflows/use-the-ai-assistant#ai-usage-settings',
+			);
 		});
 
-		it('does not link without permission to manage AI usage', async () => {
+		it('keeps the schema switch on and locked', () => {
+			const { getByTestId } = renderComponent();
+
+			const schemaToggle = getByTestId('n8n-agent-data-sharing-schema-toggle');
+			expect(schemaToggle).toHaveAttribute('aria-checked', 'true');
+			expect(schemaToggle).toBeDisabled();
+		});
+
+		it('locks the values switch once data sharing is on and hides the notice', () => {
+			setDataSharing(true);
+
+			const { getByTestId, queryByTestId } = renderComponent();
+
+			const valuesToggle = getByTestId('n8n-agent-data-sharing-values-toggle');
+			expect(valuesToggle).toHaveAttribute('aria-checked', 'true');
+			expect(valuesToggle).toBeDisabled();
+			expect(queryByTestId('n8n-agent-data-sharing-deprecation-notice')).toBeNull();
+		});
+
+		it('turns data sharing on from the values switch', async () => {
+			setDataSharing(false);
+			const updateSpy = vi
+				.spyOn(settingsStore, 'updateAiDataSharingSettings')
+				.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent();
+
+			expect(getByTestId('n8n-agent-data-sharing-deprecation-notice')).toBeVisible();
+			const valuesToggle = getByTestId('n8n-agent-data-sharing-values-toggle');
+			expect(valuesToggle).toHaveAttribute('aria-checked', 'false');
+			expect(valuesToggle).not.toBeDisabled();
+
+			await fireEvent.click(valuesToggle);
+
+			expect(updateSpy).toHaveBeenCalledWith(true);
+		});
+
+		it('locks the values switch without permission to manage AI usage', () => {
+			setDataSharing(false);
 			vi.mocked(hasPermission).mockImplementation(
 				(_permissionNames, options) => options?.rbac?.scope !== 'aiAssistant:manage',
 			);
+
 			const { getByTestId } = renderComponent();
 
-			await fireEvent.click(getByTestId('n8n-agent-data-sharing-row'));
-
-			expect(routerPushMock).not.toHaveBeenCalled();
+			expect(getByTestId('n8n-agent-data-sharing-values-toggle')).toBeDisabled();
 		});
 	});
 
@@ -1036,7 +1080,7 @@ describe('SettingsInstanceAiView', () => {
 			expect(getByTestId('n8n-agent-permission-group-workflows')).toBeVisible();
 		});
 
-		it('shows the Skills group while the skills hub is on', () => {
+		it('shows the Skills group while context skills are enabled', () => {
 			const { getByTestId } = renderComponent();
 
 			expect(getByTestId('n8n-agent-permission-group-skills').textContent).toContain(
@@ -1044,7 +1088,7 @@ describe('SettingsInstanceAiView', () => {
 			);
 		});
 
-		it('hides the Skills group while the skills hub is off', () => {
+		it('hides the Skills group while context skills are disabled', () => {
 			contextSkillsEnabledMock.mockReturnValueOnce(false);
 
 			const { queryByTestId } = renderComponent();

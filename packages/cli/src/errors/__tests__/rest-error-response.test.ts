@@ -30,14 +30,14 @@ describe('rest-error-response', () => {
 
 	it('serializePublicApiError: exposes cross-project moved workflow ids for selective promote', () => {
 		const descriptor = classifyRestError(
-			new PromotionsWorkflowsMovedCrossProjectError(['wf-moved']),
+			new PromotionsWorkflowsMovedCrossProjectError([{ id: 'wf-moved' }]),
 		);
 
 		expect(serializePublicApiError(descriptor)).toEqual({
 			status: 400,
 			body: {
 				message:
-					'These workflows moved to another project: wf-moved. A selective push cannot move them. Push all projects instead.',
+					"These workflows moved between projects: wf-moved. Promote can't move a workflow between projects. Move them back on this instance, then promote again.",
 				meta: {
 					code: 'promotions-workflows-moved-cross-project',
 					workflowIds: ['wf-moved'],

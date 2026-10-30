@@ -27,6 +27,7 @@ import * as moduleInitializer from '@/app/moduleInitializer/moduleInitializer';
 import { initializeExpressionEngine } from '@/app/init/expressionEngine';
 import {
 	initializeQuickJsExpressionShadow,
+	notifyQuickJsShadowEditorReady,
 	stopQuickJsExpressionShadow,
 } from '@/experiments/quickjsExpressionShadow/init';
 import { flushPromises } from '@vue/test-utils';
@@ -84,6 +85,7 @@ vi.mock('@/app/init/expressionEngine', () => ({
 // The real one waits for feature flags and loads the QuickJS runtime bundle.
 vi.mock('@/experiments/quickjsExpressionShadow/init', () => ({
 	initializeQuickJsExpressionShadow: vi.fn(async () => {}),
+	notifyQuickJsShadowEditorReady: vi.fn(),
 	stopQuickJsExpressionShadow: vi.fn(),
 }));
 
@@ -375,6 +377,7 @@ describe('Init', () => {
 			expect(sourceControlSpy).not.toHaveBeenCalled();
 			expect(nodeTranslationSpy).not.toHaveBeenCalled();
 			expect(versionsSpy).not.toHaveBeenCalled();
+			expect(notifyQuickJsShadowEditorReady).not.toHaveBeenCalled();
 			expect(nodeTypesStore.loadNodeTypesIfNotLoaded).not.toHaveBeenCalled();
 			expect(credentialsStore.fetchAllCredentials).not.toHaveBeenCalled();
 			expect(credentialsStore.fetchCredentialTypes).not.toHaveBeenCalled();
@@ -499,6 +502,7 @@ describe('Init', () => {
 			// Modal openers are provided to the decoupled stores at bootstrap.
 			expect(usersStore.registerModalOpeners).toHaveBeenCalled();
 			expect(versionsStore.registerModalOpeners).toHaveBeenCalled();
+			expect(notifyQuickJsShadowEditorReady).toHaveBeenCalledTimes(1);
 
 			await initializeAuthenticatedFeatures();
 

@@ -14,8 +14,9 @@ withDefaults(
 
 <template>
 	<N8nIcon
-		icon="chevron-right-12"
+		icon="chevron-right"
 		size="small"
+		color="text-light"
 		:class="[$style.chevron, direction === 'down' && $style.down, open && $style.open]"
 		aria-hidden="true"
 	/>
@@ -25,6 +26,8 @@ withDefaults(
 .chevron {
 	transition: transform var(--duration--snappy) var(--easing--ease-out);
 	transform-origin: center;
+	/** Keep the optical offset when the transform rotates the icon. */
+	translate: 0 1px;
 }
 
 .open {

@@ -3,12 +3,17 @@ import { z } from 'zod/v4';
 export const oAuthAuthorizationServerMetadataSchema = z.object({
 	authorization_endpoint: z.url({ protocol: /^https?$/ }),
 	token_endpoint: z.url({ protocol: /^https?$/ }),
-	registration_endpoint: z.url({ protocol: /^https?$/ }),
+	registration_endpoint: z.url({ protocol: /^https?$/ }).optional(),
+	client_id_metadata_document_supported: z.boolean().optional(),
 	grant_types_supported: z.array(z.string()).optional(),
 	token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
 	code_challenge_methods_supported: z.array(z.string()).optional(),
 	scopes_supported: z.array(z.string()).optional(),
 });
+
+export type OAuthAuthorizationServerMetadata = z.infer<
+	typeof oAuthAuthorizationServerMetadataSchema
+>;
 
 export const dynamicClientRegistrationResponseSchema = z.object({
 	client_id: z.string(),

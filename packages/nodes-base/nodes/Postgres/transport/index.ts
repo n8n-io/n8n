@@ -85,6 +85,27 @@ const getPostgresConfig = (
 		dbConfig.sslmode = credentials.ssl || 'disable';
 	}
 
+	if (
+		dbConfig.ssl &&
+		(credentials.caCertificate || credentials.clientCertificate || credentials.clientPrivateKey)
+	) {
+		const ssl = typeof dbConfig.ssl === 'object' ? dbConfig.ssl : {};
+
+		if (credentials.caCertificate) {
+			ssl.ca = formatPemBlock(credentials.caCertificate);
+		}
+
+		if (credentials.clientCertificate) {
+			ssl.cert = formatPemBlock(credentials.clientCertificate);
+		}
+
+		if (credentials.clientPrivateKey) {
+			ssl.key = formatPemBlock(credentials.clientPrivateKey);
+		}
+
+		dbConfig.ssl = ssl;
+	}
+
 	return dbConfig;
 };
 
@@ -187,6 +208,18 @@ export async function configurePostgres(
 					onForwardError(error);
 				}
 			});
+
+			// Only for custom certificates, so existing SSH + SSL setups keep verifying against the tunnel address
+			if (
+				dbConfig.ssl &&
+				(credentials.caCertificate || credentials.clientCertificate || credentials.clientPrivateKey)
+			) {
+				const ssl = {
+					...(typeof dbConfig.ssl === 'object' ? dbConfig.ssl : {}),
+					servername: credentials.host,
+				};
+				dbConfig.ssl = ssl;
+			}
 
 			const db = pgp({
 				...dbConfig,

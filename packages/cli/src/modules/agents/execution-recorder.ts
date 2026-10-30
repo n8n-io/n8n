@@ -251,6 +251,8 @@ export type TimelineEvent =
 			 */
 			nodeParameters?: Record<string, unknown>;
 			childTrace?: PersistedChildTrace;
+			/** Host-only data from the tool's `toTraceOutput`, e.g. recalled memory entry ids. */
+			traceOutput?: unknown;
 	  }
 	| {
 			type: 'suspension';
@@ -313,11 +315,13 @@ export class ExecutionRecorder {
 	) {
 		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
+
 		if (backgroundJobSignal) {
 			this.timeline.push({
 				type: 'background-task-signal',
 				timestamp: this.startTime,
 				signal: {
+					...(backgroundJobSignal.isFinal ? { isFinal: true } : {}),
 					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
 						id,
 						title: scrubSecretsInText(title),
@@ -394,9 +398,10 @@ export class ExecutionRecorder {
 
 	/**
 	 * Record a custom host event at its position in the turn. The payload is
-	 * sanitized like other recorded values, because history returns it to the
-	 * client as it is stored. When the turn already has an event with the same
-	 * name and key, the new payload replaces the old one in its position.
+	 * stored as the host sent it. Host code builds it, not the model, and the
+	 * secret heuristics of the other recorded values damage ordinary fields
+	 * such as `credentialType`. When the turn already has an event with the
+	 * same name and key, the new payload replaces the old one in its position.
 	 * Returns the recorded event, so that the live stream can send the same
 	 * payload.
 	 */
@@ -405,14 +410,15 @@ export class ExecutionRecorder {
 		payload: unknown,
 		key?: string,
 	): Extract<TimelineEvent, { type: 'host-event' }> {
-		const sanitized = sanitizeExecutionLogValue(payload);
+		// Copy, so a host that changes the object later does not change the record.
+		const recorded = structuredClone(payload);
 		if (key !== undefined) {
 			const index = this.timeline.findIndex(
 				(item) => item.type === 'host-event' && item.name === name && item.key === key,
 			);
 			const existing = this.timeline[index];
 			if (existing?.type === 'host-event') {
-				const replaced = { ...existing, payload: sanitized };
+				const replaced = { ...existing, payload: recorded };
 				this.timeline[index] = replaced;
 				// Text or reasoning can still stream here, so keep it in the snapshot.
 				this.emitTimelineSnapshot(this.activeBlock());
@@ -425,7 +431,7 @@ export class ExecutionRecorder {
 			type: 'host-event',
 			name,
 			...(key !== undefined ? { key } : {}),
-			payload: sanitized,
+			payload: recorded,
 			timestamp: Date.now(),
 		};
 		this.appendCompletedEvent(event);
@@ -490,13 +496,16 @@ export class ExecutionRecorder {
 				break;
 			}
 			case 'tool-result':
-				this.recordToolResult(
-					chunk.toolCallId,
-					chunk.toolName,
-					chunk.output,
-					chunk.isError === true,
-					chunk.canceled === true,
-				);
+				this.recordToolResult(chunk);
+				break;
+			case 'usage':
+				this.usage = {
+					promptTokens: chunk.usage.promptTokens,
+					completionTokens: chunk.usage.completionTokens,
+					totalTokens: chunk.usage.totalTokens,
+				};
+				this.model = chunk.model;
+				this.totalCost = chunk.usage.cost ?? null;
 				break;
 			case 'finish':
 				this.flushReasoningBuffer();
@@ -516,11 +525,11 @@ export class ExecutionRecorder {
 						completionTokens: chunk.usage.completionTokens,
 						totalTokens: chunk.usage.totalTokens,
 					};
+					this.totalCost = chunk.usage.cost ?? null;
 					this.cacheReadTokens = chunk.usage.inputTokenDetails?.cacheRead ?? null;
 					this.cacheWriteTokens = chunk.usage.inputTokenDetails?.cacheWrite ?? null;
 				}
-				this.model = chunk.model ?? null;
-				this.totalCost = chunk.usage?.cost ?? null;
+				this.model = chunk.model ?? this.model;
 				break;
 			case 'tool-call-suspended':
 				this.flushReasoningBuffer();
@@ -731,16 +740,15 @@ export class ExecutionRecorder {
 	 * timeline entry to close. In that case we synthesize one from the
 	 * registry so workflow rows and execution-log links still render.
 	 */
-	private recordToolResult(
-		toolCallId: string,
-		name: string,
-		output: unknown,
-		isError: boolean,
-		canceled: boolean,
-	): void {
+	private recordToolResult(chunk: StreamChunk & { type: 'tool-result' }): void {
+		const { toolCallId, toolName: name, output } = chunk;
+		const isError = chunk.isError === true;
+		const canceled = chunk.canceled === true;
 		const recordedOutput = sanitizeExecutionLogValue(
 			isError ? normaliseToolErrorOutput(output) : output,
 		);
+		const traceOutput =
+			chunk.traceOutput !== undefined ? sanitizeExecutionLogValue(chunk.traceOutput) : undefined;
 
 		const pendingTimeline = [...this.timeline]
 			.reverse()
@@ -753,6 +761,7 @@ export class ExecutionRecorder {
 			pendingTimeline.output = recordedOutput;
 			pendingTimeline.success = !isError;
 			if (canceled) pendingTimeline.canceled = true;
+			if (traceOutput !== undefined) pendingTimeline.traceOutput = traceOutput;
 			// `tool-execution-end` (real per-tool finish) normally closed this entry
 			// already; only fall back to the batched result time if it never fired.
 			if (pendingTimeline.endTime === 0) {
@@ -785,6 +794,7 @@ export class ExecutionRecorder {
 			endTime: now,
 			success: !isError,
 			...(canceled ? { canceled: true } : {}),
+			...(traceOutput !== undefined ? { traceOutput } : {}),
 			workflowId: entry?.workflowId,
 			workflowName: entry?.workflowName,
 			triggerType: entry?.triggerType,

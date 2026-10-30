@@ -1,0 +1,179 @@
+services:
+  mockapi:
+    image: wiremock/wiremock:3.9.1
+    ports:
+      - '8088:8080'
+    volumes:
+      - ${MOCK_API_DATA_PATH}/mappings:/home/wiremock/mappings
+
+  # The data plane sends execution responses to the main over Redis
+  redis:
+    image: redis:6.2.14-alpine
+    ports:
+      - 6379:6379
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 1s
+      timeout: 3s
+
+  postgres:
+    image: postgres:18.4
+    user: root:root
+    restart: always
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ${RUN_DIR}/postgres:/var/lib/postgresql/data
+      # Creates the separate engine v2 database on the first start
+      - ./init-engine-db.sql:/docker-entrypoint-initdb.d/init-engine-db.sql:ro
+    healthcheck:
+      # Check over TCP. On the first start, a socket-only temporary server runs the
+      # init script, so a socket check would pass before n8n_engine exists
+      test: ['CMD-SHELL', 'pg_isready -U postgres -h 127.0.0.1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # The engine v2 data plane. It must not get the control plane DB config (DB_*)
+  # or the encryption key, and it does not run task runners.
+  n8n_engine1:
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    user: root:root
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_FOLDER=/n8n/engine1
+      # For binary data test to work
+      - N8N_RESTRICT_FILE_ACCESS_TO=''
+      - N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
+      # The main and the engines share one binary data store
+      - N8N_STORAGE_PATH=/n8n-storage
+      - QUEUE_BULL_REDIS_HOST=redis
+      # Engine config
+      - N8N_ENGINE_DATABASE_URL=postgres://postgres:password@postgres:5432/n8n_engine
+      - N8N_ENGINE_AUTH_SECRET=benchmark-engine-v2-shared-auth-secret
+      - N8N_ENGINE_HOST=0.0.0.0
+      - N8N_ENGINE_PORT=3000
+      - N8N_ENGINE_CONTROL_PLANE_BASE_URL=http://n8n:3001
+    command: engine
+    volumes:
+      - ${RUN_DIR}/n8n-engine1:/n8n
+      - ${RUN_DIR}/storage:/n8n-storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n_engine1:3000/healthz || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  n8n_engine2:
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    user: root:root
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_FOLDER=/n8n/engine2
+      # For binary data test to work
+      - N8N_RESTRICT_FILE_ACCESS_TO=''
+      - N8N_BLOCK_FILE_ACCESS_TO_N8N_FILES=false
+      # The main and the engines share one binary data store
+      - N8N_STORAGE_PATH=/n8n-storage
+      - QUEUE_BULL_REDIS_HOST=redis
+      # Engine config
+      - N8N_ENGINE_DATABASE_URL=postgres://postgres:password@postgres:5432/n8n_engine
+      - N8N_ENGINE_AUTH_SECRET=benchmark-engine-v2-shared-auth-secret
+      - N8N_ENGINE_HOST=0.0.0.0
+      - N8N_ENGINE_PORT=3000
+      - N8N_ENGINE_CONTROL_PLANE_BASE_URL=http://n8n:3001
+    command: engine
+    volumes:
+      - ${RUN_DIR}/n8n-engine2:/n8n
+      - ${RUN_DIR}/storage:/n8n-storage
+    depends_on:
+      # We let the engine 1 start first so it can run the engine DB migrations
+      n8n_engine1:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n_engine2:3000/healthz || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Spreads the executions of the main across both engines
+  n8n_engine_lb:
+    image: nginx:1.27.2
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      n8n_engine1:
+        condition: service_healthy
+      n8n_engine2:
+        condition: service_healthy
+
+  # The control plane. Engine v2 does not support queue mode, so the main runs
+  # in regular mode.
+  n8n:
+    image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
+    user: root:root
+    environment:
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_USER_FOLDER=/n8n/main
+      - N8N_ENCRYPTION_KEY=${N8N_ENCRYPTION_KEY}
+      # The main and the engines share one binary data store
+      - N8N_STORAGE_PATH=/n8n-storage
+      - QUEUE_BULL_REDIS_HOST=redis
+      # DB config
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PASSWORD=password
+      - N8N_METRICS=true
+      # Engine config
+      - N8N_ENABLED_MODULES=engine-v2
+      - N8N_ENGINE_MODE=remote
+      - N8N_ENGINE_BASE_URL=http://n8n_engine_lb:3000
+      - N8N_ENGINE_AUTH_SECRET=benchmark-engine-v2-shared-auth-secret
+      - N8N_ENGINE_CONTROL_PLANE_HOST=0.0.0.0
+      - N8N_ENGINE_CONTROL_PLANE_PORT=3001
+    ports:
+      - 5678:5678
+    volumes:
+      - ${RUN_DIR}/n8n-main:/n8n
+      - ${RUN_DIR}/storage:/n8n-storage
+    depends_on:
+      n8n_engine_lb:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mockapi:
+        condition: service_started
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --spider -q http://n8n:5678/healthz || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  benchmark:
+    image: ghcr.io/n8n-io/n8n-benchmark:${N8N_BENCHMARK_VERSION:-latest}
+    depends_on:
+      n8n:
+        condition: service_healthy
+    environment:
+      - N8N_BASE_URL=http://n8n:5678
+      - K6_API_TOKEN=${K6_API_TOKEN}
+      - BENCHMARK_RESULT_WEBHOOK_URL=${BENCHMARK_RESULT_WEBHOOK_URL}
+      - BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER=${BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER}
+      - COLLECT_APP_METRICS=true
+      # Every imported workflow runs on engine v2. Scenarios without v2 in
+      # their supportedEngines are skipped
+      - BENCHMARK_ENGINE_TYPE=v2

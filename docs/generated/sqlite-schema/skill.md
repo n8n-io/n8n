@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36), "agentId" varchar(36), "source" varchar(16) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "availableToAssistant" boolean NOT NULL DEFAULT false, CONSTRAINT "CHK_skill_single_target" CHECK ("agentId" IS NULL OR "projectId" IS NULL), CONSTRAINT "FK_402ed37bff0d3134f6e782455ed" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_7d4fb6af107e507d9a86293cf9d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4de4501583cd1fcd6f5ea85f547" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar(36), "agentId" varchar(36), "source" varchar(16) NOT NULL, "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "availableToAssistant" boolean NOT NULL DEFAULT false, "availableToMCP" boolean NOT NULL DEFAULT false, CONSTRAINT "CHK_skill_single_target" CHECK ("agentId" IS NULL OR "projectId" IS NULL), CONSTRAINT "FK_402ed37bff0d3134f6e782455ed" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_7d4fb6af107e507d9a86293cf9d" FOREIGN KEY ("agentId") REFERENCES "agents" ("id") ON DELETE CASCADE, CONSTRAINT "FK_4de4501583cd1fcd6f5ea85f547" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -17,9 +17,10 @@ CREATE TABLE "skill" ("id" varchar(36) PRIMARY KEY NOT NULL, "projectId" varchar
 | ---- | ---- | ------- | -------- | -------- | ------- | ------- |
 | agentId | varchar(36) |  | true |  | [agents](agents.md) |  |
 | availableToAssistant | boolean | false | false |  |  |  |
+| availableToMCP | boolean | false | false |  |  |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
 | createdById | varchar |  | true |  | [user](user.md) |  |
-| id | varchar(36) |  | false | [agent_skill_dependency](agent_skill_dependency.md) [agent_version_skill_dependency](agent_version_skill_dependency.md) [skill_version](skill_version.md) |  |  |
+| id | varchar(36) |  | false | [agent_skill_dependency](agent_skill_dependency.md) [agent_version_skill_dependency](agent_version_skill_dependency.md) [skill_source_link](skill_source_link.md) [skill_version](skill_version.md) |  |  |
 | projectId | varchar(36) |  | true |  | [project](project.md) |  |
 | source | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -52,12 +53,14 @@ erDiagram
 "skill" }o--o| "user" : "FOREIGN KEY (createdById) REFERENCES user (id) ON UPDATE NO ACTION ON DELETE SET NULL MATCH NONE"
 "agent_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "agent_version_skill_dependency" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
+"skill_source_link" |o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill_version" }o--|| "skill" : "FOREIGN KEY (skillId) REFERENCES skill (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 "skill" }o--o| "project" : "FOREIGN KEY (projectId) REFERENCES project (id) ON UPDATE NO ACTION ON DELETE CASCADE MATCH NONE"
 
 "skill" {
   varchar_36_ agentId FK
   boolean availableToAssistant
+  boolean availableToMCP
   datetime_3_ createdAt
   varchar createdById FK
   varchar_36_ id PK
@@ -73,6 +76,7 @@ erDiagram
   TEXT integrations
   varchar_128_ name
   varchar_255_ projectId FK
+  INTEGER publicationRevision
   INTEGER revision
   TEXT schema
   varchar_16_ scope
@@ -112,6 +116,22 @@ erDiagram
   varchar_36_ skillId PK
   varchar skillVersionId FK
 }
+"skill_source_link" {
+  varchar_64_ baseContentHash
+  varchar_255_ baseRevision
+  datetime_3_ createdAt
+  TEXT pendingContent
+  varchar_64_ pendingContentHash
+  varchar_255_ pendingRevision
+  TEXT pendingScan
+  TEXT remoteRef
+  varchar_36_ skillId PK
+  varchar_64_ skippedContentHash
+  TEXT skippedFiles
+  varchar sourceId FK
+  varchar_32_ state
+  datetime_3_ updatedAt
+}
 "skill_version" {
   varchar_64_ contentHash
   datetime_3_ createdAt
@@ -122,6 +142,7 @@ erDiagram
   TEXT instructions
   varchar_128_ name
   varchar_36_ skillId FK
+  varchar_255_ sourceRevision
   datetime_3_ updatedAt
   INTEGER version
 }

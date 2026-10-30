@@ -47,8 +47,18 @@ type AccessibleCredential = Awaited<
 >[number];
 
 const credentials = [
-	mock<CredentialsEntity>({ id: 'postgres-cred', name: 'Documents', type: 'postgres' }),
-	mock<CredentialsEntity>({ id: 'embed-cred', name: 'Embedding model', type: 'openAiApi' }),
+	mock<CredentialsEntity>({
+		id: 'postgres-cred',
+		name: 'Documents',
+		type: 'postgres',
+		isResolvable: false,
+	}),
+	mock<CredentialsEntity>({
+		id: 'embed-cred',
+		name: 'Embedding model',
+		type: 'openAiApi',
+		isResolvable: false,
+	}),
 ];
 const accessibleCredentials = credentials.map(({ id }) => mock<AccessibleCredential>({ id }));
 const user = mock<User>({ id: 'user-1' });
@@ -94,6 +104,7 @@ describe('Agent vector-store connection tests', () => {
 		expect(credentialsService.getCredentialsAUserCanUseInAWorkflow).toHaveBeenCalledWith(user, {
 			projectId: 'project-1',
 			excludePersonalRoute: true,
+			excludeResolvable: true,
 		});
 		expect(credentialsService.findAllCredentialIdsForProject).toHaveBeenCalledWith('project-1');
 		expect(getBase).toHaveBeenCalledWith({ projectId: 'project-1', userId: 'user-1' });

@@ -1,10 +1,11 @@
 import type {
 	IExecuteFunctions,
+	INode,
 	IHookFunctions,
 	ILoadOptionsFunctions,
 	IWebhookFunctions,
 } from 'n8n-workflow';
-import { NodeApiError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import { capitalizeFirstLetter, linearApiRequest, sort } from '../GenericFunctions';
 
@@ -85,6 +86,19 @@ describe('Linear -> GenericFunctions', () => {
 					body: { query: '{ viewer { id } }' },
 				}),
 			);
+		});
+
+		it('should keep the original message when the error has no response data', async () => {
+			mockHttpRequestWithAuthentication.mockRejectedValue(
+				new NodeOperationError(
+					{} as INode,
+					'Node "Linear" does not have any credentials of type "linearApi" set',
+				),
+			);
+
+			await expect(
+				linearApiRequest.call(mockExecuteFunctions, { query: '{ viewer { id } }' }),
+			).rejects.toThrow('Node "Linear" does not have any credentials of type "linearApi" set');
 		});
 	});
 

@@ -1,3 +1,5 @@
+import './data-table-events';
+
 import type {
 	AddDataTableColumnDto,
 	CreateDataTableDto,
@@ -10,12 +12,23 @@ import type {
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 } from '@n8n/api-types';
-import { Logger } from '@n8n/backend-common';
-import { EventService, RoleService } from '@n8n/backend-services';
-import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import { Logger, ModuleRegistry } from '@n8n/backend-common';
+import {
+	EventService,
+	ProjectNotFoundError,
+	ProjectScopeService,
+	RoleService,
+} from '@n8n/backend-services';
+import { MISSING_SCOPE_ERROR_MESSAGE } from '@n8n/constants';
+import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
+import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
-import { In, type EntityManager } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 import type {
 	DataTableColumnJsType,
@@ -47,8 +60,6 @@ import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
 
-import { ProjectNotFoundError, ProjectService } from '@/services/project.service.ee';
-
 @Service()
 export class DataTableService {
 	constructor(
@@ -62,7 +73,9 @@ export class DataTableService {
 		private readonly csvImportService: DataTableCsvImportService,
 		private readonly eventService: EventService,
 		private readonly projectRepository: ProjectRepository,
-		private readonly projectService: ProjectService,
+		private readonly projectScopeService: ProjectScopeService,
+		private readonly moduleRegistry: ModuleRegistry,
+		private readonly transactionRunner: TransactionRunner,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -96,20 +109,56 @@ export class DataTableService {
 		return dataTable;
 	}
 
+	/**
+	 * The flag pair mirrors `shouldReturnData` in `DataTableRowsRepository`: a dry run
+	 * returns rows whether or not `returnData` was asked for. Keyed on the data table
+	 * so the check resolves the same project the `dataTable:writeRow` guard resolved.
+	 */
+	async assertRowReadAccessIfReturningRows(
+		user: User,
+		dataTableId: string,
+		{ dryRun, returnData }: { dryRun?: boolean; returnData?: boolean },
+	): Promise<void> {
+		if (!dryRun && !returnData) return;
+
+		const projectIds = await this.projectScopeService.getProjectIds(user, ['dataTable:readRow']);
+		if (projectIds === null) return;
+
+		if (!this.moduleRegistry.isActive('data-table')) {
+			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+		}
+
+		const projectId = await this.dataTableRepository.findProjectIdForScope(dataTableId);
+		if (projectId === null) {
+			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
+		}
+
+		if (!projectIds.includes(projectId)) {
+			throw new ForbiddenError(MISSING_SCOPE_ERROR_MESSAGE);
+		}
+	}
+
+	async assertProjectExists(projectId: string): Promise<void> {
+		const existingProjectIds = await this.projectRepository.findExistingIds([projectId]);
+		if (existingProjectIds.length === 0) {
+			throw new ProjectNotFoundError(projectId);
+		}
+	}
+
 	async resolveOwningProjectId(user: User, projectId?: string): Promise<string> {
 		if (!projectId) {
 			const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(user.id);
 			return personalProject.id;
 		}
 
-		const existingProject = await this.projectService.findProject(projectId);
-		if (!existingProject) {
-			throw new ProjectNotFoundError(projectId);
-		}
+		await this.assertProjectExists(projectId);
 
-		const project = await this.projectService.getProjectWithScope(user, projectId, [
-			'dataTable:create',
-		]);
+		const roles = await this.projectScopeService.getProjectRoleSlugs(user, ['dataTable:create']);
+		const project = await this.projectRepository.findOneWithUserRoles(
+			projectId,
+			user.id,
+			roles ?? undefined,
+		);
 		if (!project) throw new DataTableAccessDeniedError('create');
 
 		return project.id;
@@ -177,10 +226,7 @@ export class DataTableService {
 	async findDataTablesByIds(dataTableIds: string[]): Promise<DataTable[]> {
 		if (dataTableIds.length === 0) return [];
 
-		return await this.dataTableRepository.find({
-			where: { id: In(dataTableIds) },
-			relations: { columns: true },
-		});
+		return await this.dataTableRepository.findWithColumnsByIds(dataTableIds);
 	}
 
 	/** Instance-wide column id lookup used by package import to detect column ids that another table uses. */
@@ -197,10 +243,7 @@ export class DataTableService {
 	): Promise<Array<Pick<DataTable, 'id' | 'name'>>> {
 		if (names.length === 0) return [];
 
-		return await this.dataTableRepository.find({
-			select: ['id', 'name'],
-			where: { projectId, name: In(names) },
-		});
+		return await this.dataTableRepository.findNamesInProject(projectId, names);
 	}
 
 	async importCsvToExistingTable(
@@ -239,16 +282,8 @@ export class DataTableService {
 		return true;
 	}
 
-	async transferDataTablesByProjectId(
-		fromProjectId: string,
-		toProjectId: string,
-		trx?: EntityManager,
-	) {
-		return await this.dataTableRepository.transferDataTableByProjectId(
-			fromProjectId,
-			toProjectId,
-			trx,
-		);
+	async transferDataTablesByProjectId(fromProjectId: string, toProjectId: string) {
+		return await this.dataTableRepository.transferDataTableByProjectId(fromProjectId, toProjectId);
 	}
 
 	async deleteDataTableByProjectId(projectId: string) {
@@ -359,31 +394,38 @@ export class DataTableService {
 	) {
 		await this.validateDataTableExists(dataTableId, projectId);
 
-		return await this.dataTableColumnRepository.manager.transaction(async (em) => {
-			const columns = await this.dataTableColumnRepository.getColumns(dataTableId, em);
-			const sortColumn = dto.sortBy?.[0];
-			if (
-				sortColumn &&
-				!Object.hasOwn(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, sortColumn) &&
-				!columns.some((column) => column.name === sortColumn)
-			) {
-				throw new DataTableValidationError(`unknown column name '${sortColumn}'`);
-			}
+		// Read-only, so the pooled SQLite driver serves it from the read pool instead of
+		// the single write connection. Under WAL that also pins columns and rows to one
+		// snapshot. Postgres runs at READ COMMITTED and gives no such guarantee.
+		return await this.transactionRunner.run(
+			{},
+			async (ctx) => {
+				const columns = await this.dataTableColumnRepository.getColumnsInContext(dataTableId, ctx);
+				const sortColumn = dto.sortBy?.[0];
+				if (
+					sortColumn &&
+					!Object.hasOwn(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, sortColumn) &&
+					!columns.some((column) => column.name === sortColumn)
+				) {
+					throw new DataTableValidationError(`unknown column name '${sortColumn}'`);
+				}
 
-			const transformedDto = dto.filter
-				? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
-				: dto;
-			const result = await this.dataTableRowsRepository.getManyAndCount(
-				dataTableId,
-				transformedDto,
-				columns,
-				em,
-			);
-			return {
-				count: result.count,
-				data: normalizeRows(result.data, columns),
-			};
-		});
+				const transformedDto = dto.filter
+					? { ...dto, filter: this.validateAndTransformFilters(dto.filter, columns) }
+					: dto;
+				const result = await this.dataTableRowsRepository.getManyAndCount(
+					dataTableId,
+					transformedDto,
+					columns,
+					ctx,
+				);
+				return {
+					count: result.count,
+					data: normalizeRows(result.data, columns),
+				};
+			},
+			{ readOnly: true },
+		);
 	}
 
 	async getColumns(dataTableId: string, projectId: string) {
@@ -952,10 +994,7 @@ export class DataTableService {
 		if (dataTableIds.length === 0) return [];
 
 		if (hasGlobalScope(user, scopes, { mode: 'allOf' })) {
-			return await this.dataTableRepository.find({
-				where: { id: In(dataTableIds) },
-				relations: { columns: true, project: true },
-			});
+			return await this.dataTableRepository.findWithProjectsByIds(dataTableIds);
 		}
 
 		const roles = await this.roleService.rolesWithScope('project', scopes);
@@ -966,10 +1005,7 @@ export class DataTableService {
 
 		if (accessibleProjectIds.length === 0) return [];
 
-		return await this.dataTableRepository.find({
-			where: { id: In(dataTableIds), projectId: In(accessibleProjectIds) },
-			relations: { columns: true, project: true },
-		});
+		return await this.dataTableRepository.findWithProjectsByIds(dataTableIds, accessibleProjectIds);
 	}
 
 	async generateDataTableCsv(
@@ -987,6 +1023,7 @@ export class DataTableService {
 				skip: 0,
 			},
 			columns,
+			{},
 		);
 
 		const csvContent = this.buildCsvContent(rows, columns, includeSystemColumns);

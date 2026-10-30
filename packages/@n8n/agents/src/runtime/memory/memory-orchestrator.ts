@@ -38,7 +38,7 @@ import type {
 	SideCallUsageReport,
 	TokenUsage,
 } from '../../types/sdk/agent';
-import type { AgentDbMessage } from '../../types/sdk/message';
+import { stripHydratedFileData, type AgentDbMessage } from '../../types/sdk/message';
 import type { ObservationLogScope, ObservationLogTaskKind } from '../../types/sdk/observation-log';
 import type { AgentRuntimeConfig } from '../../types/runtime/agent-runtime';
 import { computeSideCallCost } from '../loop/side-call-cost';
@@ -73,7 +73,8 @@ function stringifyForBudget(value: unknown): string {
 function serializeMessageForBudget(message: AgentDbMessage): string {
 	if (!('role' in message) || !Array.isArray(message.content)) return '';
 	const parts: string[] = [];
-	for (const content of message.content) {
+	// File bytes are not text tokens, so count only the text around them.
+	for (const content of stripHydratedFileData(message).content) {
 		if (content.type === 'text') {
 			parts.push(content.text);
 		} else if (content.type === 'tool-call') {
@@ -128,6 +129,32 @@ function hasObservationLogObserverMemory(
 		hasFunctionProperty(memory, 'getMessagesForObservationScope') &&
 		hasFunctionProperty(memory, 'getCursor')
 	);
+}
+
+/**
+ * The persisted messages that the runtime replays to the model on the next turn.
+ * With observational memory, the messages before the observation cursor are
+ * replaced by the observation log, so only the messages after it are replayed.
+ * A host that checks what the model already sees must read the same window.
+ */
+export async function loadReplayedMessages(
+	memory: BuiltMemory,
+	persistence: Pick<AgentPersistenceOptions, 'threadId' | 'resourceId'>,
+	options: { observationalMemory: boolean },
+): Promise<AgentDbMessage[]> {
+	const { threadId, resourceId } = persistence;
+	if (options.observationalMemory && hasObservationLogObserverMemory(memory)) {
+		const { cursor } = await readObservationState(memory, threadId);
+		if (cursor) {
+			return await memory.getMessagesForObservationScope(threadId, {
+				since: {
+					sinceCreatedAt: cursor.lastObservedAt,
+					sinceMessageId: cursor.lastObservedMessageId,
+				},
+			});
+		}
+	}
+	return await memory.getMessages(threadId, { resourceId });
 }
 
 /**
@@ -193,20 +220,11 @@ export class MemoryOrchestrator {
 			telemetry,
 			() => ({ types: ['session'], owners: [resourceId], ...inferMemoryStoreAttributes(memory) }),
 			async () => {
-				if (this.config.observationalMemory && hasObservationLogObserverMemory(memory)) {
-					const { cursor } = await readObservationState(memory, threadId);
-					if (cursor) {
-						const messages = await memory.getMessagesForObservationScope(threadId, {
-							since: {
-								sinceCreatedAt: cursor.lastObservedAt,
-								sinceMessageId: cursor.lastObservedMessageId,
-							},
-						});
-						return { result: messages, attributes: this.queryResultAttributes(messages) };
-					}
-				}
-
-				const messages = await memory.getMessages(threadId, { resourceId });
+				const messages = await loadReplayedMessages(
+					memory,
+					{ threadId, resourceId },
+					{ observationalMemory: Boolean(this.config.observationalMemory) },
+				);
 				return { result: messages, attributes: this.queryResultAttributes(messages) };
 			},
 		);
@@ -698,6 +716,8 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					// Usage is forwarded inside the observer right after the model
 					// call (before persistence), so a billed observer turn is
 					// priced even when post-processing throws.
@@ -767,6 +787,8 @@ export class MemoryOrchestrator {
 					tokenCounter: this.tokenCounter,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					// Usage is forwarded inside the reflector right after the model
 					// call (before persistence), so a billed reflector turn is
 					// priced even when post-processing throws.
@@ -817,11 +839,13 @@ export class MemoryOrchestrator {
 					...capture,
 					executionCounter,
 					telemetry,
+					modelFetch: this.config.modelFetch,
+					functionId: this.config.functionId,
 					agentName: this.config.name,
-					// Each embed/reflect usage is forwarded inside the processor
+					// Each embed/consolidate usage is forwarded inside the processor
 					// the moment its model call resolves, before persistence, so a
-					// billed turn is priced even when a later save or applyReflection
-					// throws. Returning usageReports here would double-count.
+					// billed turn is priced even when a later write throws.
+					// Returning usageReports here would double-count.
 					onUsage: onSideCallUsage
 						? (model, usage) => {
 								void this.forwardSideCallUsage(onSideCallUsage, 'episodic', model, usage);
@@ -954,7 +978,12 @@ export class MemoryOrchestrator {
 	): Promise<void> {
 		if (!onSideCallUsage || !usage || !model) return;
 		try {
-			const cost = await computeSideCallCost(model, usage, this.config.promptCaching);
+			const cost = await computeSideCallCost(
+				model,
+				usage,
+				this.config.promptCaching,
+				this.config.modelFetch,
+			);
 			await onSideCallUsage({
 				task,
 				model,

@@ -60,6 +60,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -76,6 +78,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -89,6 +93,7 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
+	'credential:update': ['update_credential_description'],
 	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [

@@ -67,8 +67,11 @@ export interface ModelCallContext {
 	outputSpec?: ReturnType<typeof Output.object>;
 	maxOutputTokens?: number;
 	onInputRejected?: (error: unknown) => Promise<void>;
+	/** Called when the model begins to stream a tool call's input. Must not throw. */
+	onToolInputStart?: (toolName: string) => void;
 	aiSdkOptions: {
 		telemetry?: TelemetryOptions;
+		toolChoice?: 'none';
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 	};
 }
@@ -119,6 +122,8 @@ export interface RunOutputSink<TResult> {
 	/** Wait until the host has recorded preceding output before it commits input. */
 	inputBoundary?(signal: AbortSignal): Promise<void>;
 	emitInput?(message: AgentDbMessage): Promise<void>;
+	/** Emit runtime-generated context without treating it as user input. */
+	emitMessage?(message: AgentMessage): Promise<void>;
 	/** Run one LLM turn. Streaming implementations also emit text/tool chunks here. */
 	callModel(ctx: ModelCallContext): Promise<ModelTurnResult>;
 	/**
@@ -126,7 +131,7 @@ export interface RunOutputSink<TResult> {
 	 * implementations keep it so an aborted run can still emit a terminal
 	 * finish chunk carrying the tokens consumed before the stop.
 	 */
-	reportUsage(usage: TokenUsage | undefined): void;
+	reportUsage(usage: TokenUsage | undefined): void | Promise<void>;
 	/**
 	 * Signal that the just-returned turn's messages have been folded into the list.
 	 * Streaming implementations drop the retained streamed text here so a later abort

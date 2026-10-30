@@ -4,7 +4,12 @@
 // reconstruct each seed workflow from its source at the build boundary. Transient:
 // traces retain ~14 days.
 
-import { REMOVED_BUILDER_TOOL_NAMES, resolveBuilderToolName } from '@n8n/api-types';
+import {
+	DATA_TABLE_TOOL_NAMES,
+	isFormerDataTablesTool,
+	REMOVED_BUILDER_TOOL_NAMES,
+	resolveBuilderToolName,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 import { Client } from 'langsmith';
 import type { Run } from 'langsmith/schemas';
@@ -25,11 +30,18 @@ const WORKFLOW_BUILD_TOOLS = new Set<string>([
 	REMOVED_BUILDER_TOOL_NAMES.SUBMIT_WORKFLOW,
 ]);
 
-/** Resolves a former tool name in a trace run name and keeps an `[action]` suffix. */
+/**
+ * Resolves a former tool name in a trace run name. Keeps an `[action]` suffix,
+ * unless the action now has its own tool.
+ */
 function resolveTraceToolName(name: string): string {
 	const bracket = name.indexOf('[');
 	if (bracket === -1) return resolveBuilderToolName(name);
-	return resolveBuilderToolName(name.slice(0, bracket)) + name.slice(bracket);
+	const base = resolveBuilderToolName(name.slice(0, bracket));
+	const action = name.slice(bracket + 1, name.indexOf(']', bracket));
+	// A split tool names the action, so the bracket is no longer needed.
+	const split = resolveBuilderToolName(base, action);
+	return split !== base ? split : base + name.slice(bracket);
 }
 
 // Workspace tools (@n8n/agents) whose ops mutate file content we replay. The names
@@ -40,6 +52,7 @@ const WORKSPACE_TOOL = {
 	WRITE: 'workspace_write_file',
 	APPEND: 'workspace_append_file',
 	STR_REPLACE: 'workspace_str_replace_file',
+	EDIT_FILES: 'workspace_edit_files',
 	MOVE: 'workspace_move_file',
 	COPY: 'workspace_copy_file',
 	DELETE: 'workspace_delete_file',
@@ -50,6 +63,7 @@ export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
 	[WORKSPACE_TOOL.WRITE]: ['path', 'content'],
 	[WORKSPACE_TOOL.APPEND]: ['path', 'content'],
 	[WORKSPACE_TOOL.STR_REPLACE]: ['path', 'replacements'],
+	[WORKSPACE_TOOL.EDIT_FILES]: ['operations'],
 	[WORKSPACE_TOOL.MOVE]: ['src', 'dest'],
 	[WORKSPACE_TOOL.COPY]: ['src', 'dest'],
 	[WORKSPACE_TOOL.DELETE]: ['path'],
@@ -59,6 +73,7 @@ export const REPLAYED_WORKSPACE_TOOL_ARGS: Record<string, readonly string[]> = {
  *  the contract test can prove every live filesystem tool is classified. */
 export const IGNORED_WORKSPACE_TOOLS: readonly string[] = [
 	'workspace_read_file',
+	'workspace_read_files',
 	'workspace_read_tool_result',
 	'workspace_list_files',
 	'workspace_file_stat',
@@ -238,7 +253,7 @@ function isSuspendArtifact(output: unknown): boolean {
 }
 
 /** A HITL request envelope: `{ payload: { requestId, … } }` — emitted by both the
- *  suspend and resume halves of workflow_builder_ask_user / setup-card. Used (with the absence of
+ *  suspend and resume halves of ask_user / setup-card. Used (with the absence of
  *  a pending id) to identify the suspend half to drop. */
 function isHitlRequestEnvelope(output: unknown): boolean {
 	return (
@@ -479,7 +494,9 @@ function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number)
 			// Redact data-table row payloads: seeded messages are written to the eval
 			// instance + shown to the judge, so real (PII) rows must not ride along.
 			const toolName = resolveTraceToolName(tool.name);
-			const isDataTable = toolName.split('[')[0] === DOMAIN_TOOL_IDS.DATA_TABLES;
+			const baseToolName = toolName.split('[')[0];
+			const isDataTable =
+				DATA_TABLE_TOOL_NAMES.includes(baseToolName) || isFormerDataTablesTool(baseToolName);
 			content.push({
 				type: 'tool-call',
 				toolCallId,
@@ -505,6 +522,53 @@ function buildSeedMessages(rootRuns: Run[], toolRuns: Run[], boundaryMs: number)
 	return messages;
 }
 
+function applyWrite(files: Map<string, string>, input: Record<string, unknown>) {
+	const path = asString(input.path);
+	const content = asString(input.content);
+	if (path && content !== undefined) files.set(path, content);
+}
+
+/** Returns false when an anchor is absent: the reconstruction has diverged. */
+function applyReplace(files: Map<string, string>, input: Record<string, unknown>): boolean {
+	// The real tool is atomic — it validates every anchor up front and applies
+	// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch).
+	const path = asString(input.path);
+	const current = path !== undefined ? files.get(path) : undefined;
+	if (path === undefined || current === undefined) return true;
+	const replacements = Array.isArray(input.replacements) ? input.replacements : [];
+	let next = current;
+	for (const replacement of replacements) {
+		if (!isRecord(replacement)) continue;
+		const oldStr = asString(replacement.old_str);
+		const newStr = asString(replacement.new_str);
+		if (!oldStr || newStr === undefined) continue;
+		if (!next.includes(oldStr)) return false;
+		next = next.replace(oldStr, () => newStr);
+	}
+	files.set(path, next);
+	return true;
+}
+
+/** Replay a batch edit. Each operation reports its own result, and a failed one left its file unchanged. */
+function replayEditFiles(files: Map<string, string>, divergedPaths: Set<string>, tool: Run) {
+	const input = isRecord(tool.inputs) ? tool.inputs : {};
+	const operations = Array.isArray(input.operations) ? input.operations : [];
+	const results =
+		isRecord(tool.outputs) && Array.isArray(tool.outputs.results) ? tool.outputs.results : [];
+	operations.forEach((operation: unknown, index) => {
+		const result: unknown = results[index];
+		if (!isRecord(operation) || (isRecord(result) && result.success === false)) return;
+		const path = asString(operation.path);
+		if (path === undefined) return;
+		if (operation.type === 'write') {
+			applyWrite(files, operation);
+			divergedPaths.delete(path);
+		} else if (operation.type === 'replace' && !applyReplace(files, operation)) {
+			divergedPaths.add(path);
+		}
+	});
+}
+
 /** Replay one content-mutating workspace tool onto the reconstructed file map.
  *  Returns false when an edit can't be applied faithfully (a str-replace whose
  *  anchor is absent) — the reconstruction has diverged from the real sandbox. */
@@ -513,9 +577,7 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 	// A failed edit left the real file unchanged — treat as a no-op (no divergence).
 	if (isRecord(tool.outputs) && tool.outputs.success === false) return true;
 	if (tool.name === WORKSPACE_TOOL.WRITE) {
-		const path = asString(input.path);
-		const content = asString(input.content);
-		if (path && content !== undefined) files.set(path, content);
+		applyWrite(files, input);
 		return true;
 	}
 	if (tool.name === WORKSPACE_TOOL.APPEND) {
@@ -523,25 +585,7 @@ function applyFileMutation(files: Map<string, string>, tool: Run): boolean {
 		if (path) files.set(path, (files.get(path) ?? '') + (asString(input.content) ?? ''));
 		return true;
 	}
-	if (tool.name === WORKSPACE_TOOL.STR_REPLACE) {
-		// The real tool is atomic — it validates every anchor up front and applies
-		// all or nothing (@n8n/ai-utilities TextEditorDocument.executeBatch).
-		const path = asString(input.path);
-		const current = path !== undefined ? files.get(path) : undefined;
-		if (path === undefined || current === undefined) return true;
-		const replacements = Array.isArray(input.replacements) ? input.replacements : [];
-		let next = current;
-		for (const replacement of replacements) {
-			if (!isRecord(replacement)) continue;
-			const oldStr = asString(replacement.old_str);
-			const newStr = asString(replacement.new_str);
-			if (!oldStr || newStr === undefined) continue;
-			if (!next.includes(oldStr)) return false;
-			next = next.replace(oldStr, newStr);
-		}
-		files.set(path, next);
-		return true;
-	}
+	if (tool.name === WORKSPACE_TOOL.STR_REPLACE) return applyReplace(files, input);
 	if (tool.name === WORKSPACE_TOOL.MOVE || tool.name === WORKSPACE_TOOL.COPY) {
 		const src = asString(input.src);
 		const dest = asString(input.dest);
@@ -620,6 +664,11 @@ function buildSeedWorkflows(
 			continue;
 		}
 
+		if (tool.name === WORKSPACE_TOOL.EDIT_FILES) {
+			replayEditFiles(files, divergedPaths, tool);
+			continue;
+		}
+
 		if (tool.name.startsWith('workspace_')) {
 			const path = asString((isRecord(tool.inputs) ? tool.inputs : {}).path);
 			const applied = applyFileMutation(files, tool);
@@ -632,15 +681,18 @@ function buildSeedWorkflows(
 			continue;
 		}
 
-		// A `workflow_builder_workflows`-tool delete (traced as `workflow_builder_workflows[delete]`, or `workflows[delete]` in older traces) drops that id's prior
-		// reconstruction. Gated to the `workflow_builder_workflows` tool so an unrelated delete-shaped input
-		// can't evict a seed workflow, and to success === true so a suspended (HITL) or denied
-		// delete keeps it. Chronological loop ⇒ a later rebuild re-adds it.
-		if (
-			resolveTraceToolName(tool.name).split('[')[0] === DOMAIN_TOOL_IDS.WORKFLOWS &&
-			isRecord(tool.inputs) &&
-			tool.inputs.action === 'delete'
-		) {
+		// Older traces name the multi-action workflows tool, with the action in the
+		// name (`workflows[delete]`) or in the inputs.
+		const toolName = resolveBuilderToolName(
+			resolveTraceToolName(tool.name),
+			isRecord(tool.inputs) ? tool.inputs.action : undefined,
+		);
+
+		// An archive drops that id's prior reconstruction. Gated to the archive tool so an
+		// unrelated delete-shaped input can't evict a seed workflow, and to success === true so
+		// a suspended (HITL) or denied archive keeps it. Chronological loop ⇒ a later rebuild
+		// re-adds it.
+		if (toolName === DOMAIN_TOOL_IDS.ARCHIVE_WORKFLOW && isRecord(tool.inputs)) {
 			const deletedId = asString(tool.inputs.workflowId);
 			const deleteSucceeded = isRecord(tool.outputs) && tool.outputs.success === true;
 			if (deletedId !== undefined && deleteSucceeded) {
@@ -653,7 +705,7 @@ function buildSeedWorkflows(
 		}
 
 		const out = isRecord(tool.outputs) ? tool.outputs : {};
-		if (tool.name.includes('get-as-code')) {
+		if (toolName === DOMAIN_TOOL_IDS.GET_WORKFLOW_AS_CODE || tool.name.includes('get-as-code')) {
 			const code = asString(out.code);
 			const workflowId = asString(out.workflowId);
 			if (code && workflowId) getAsCodeByWorkflowId.set(workflowId, code);

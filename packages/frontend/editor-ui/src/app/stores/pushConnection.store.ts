@@ -9,6 +9,7 @@ import { useSettingsStore } from '@n8n/stores/settings.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useWebSocketClient } from '@/app/push-connection/useWebSocketClient';
 import { useEventSourceClient } from '@/app/push-connection/useEventSourceClient';
+import { useBackendConnectionStore } from '@/app/stores/backendConnection.store';
 
 export type OnPushMessageHandler = (event: PushMessage) => void;
 
@@ -18,6 +19,7 @@ export type OnPushMessageHandler = (event: PushMessage) => void;
 export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
+	const backendConnectionStore = useBackendConnectionStore();
 
 	/**
 	 * Queue of messages to be sent to the server. Messages are queued if
@@ -126,6 +128,11 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 	/** Number of active pushConnect owners; disconnect only when this reaches zero. */
 	let connectionOwnerCount = 0;
 
+	const openConnection = () => {
+		isConnecting.value = true;
+		client.value.connect();
+	};
+
 	const pushConnect = () => {
 		recentConnectIntent = true;
 
@@ -150,8 +157,7 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 		}
 
 		isConnectionRequested.value = true;
-		isConnecting.value = true;
-		client.value.connect();
+		openConnection();
 	};
 
 	const pushDisconnect = () => {
@@ -210,6 +216,16 @@ export const usePushConnectionStore = defineStore(STORES.PUSH, () => {
 					serializeAndSend(message);
 				}
 				outgoingQueue.value = [];
+			}
+		},
+	);
+
+	// A socket that looks open after a backend outage may be dead on the server side.
+	watch(
+		() => backendConnectionStore.isOnline,
+		(isOnline) => {
+			if (isOnline && isConnectionRequested.value && client.value.isConnected.value) {
+				openConnection();
 			}
 		},
 	);

@@ -15,9 +15,50 @@ export const EXPRESSIONS_TELEMETRY = defineTelemetryEvents({
 			quickjs_fe_init_status: z
 				.enum(['ready', 'failed'])
 				.describe('Whether the QuickJS shadow engine started'),
+			quickjs_fe_startup_report: z
+				.boolean()
+				.describe(
+					'True for the one report that each start sends when the engine is ready or failed. It has no evaluations. Use it to count each start once',
+				),
 			quickjs_fe_init_duration_ms: z
 				.number()
 				.describe('Time to load and start the QuickJS shadow engine'),
+			quickjs_fe_start_variant: z
+				.enum(['boot', 'idle', 'boot_only'])
+				.describe(
+					'When the shadow engine started: during the editor boot, or after the editor start when the browser was first idle. A browser that cannot wait for idle time sends boot_only and is not part of the boot and idle comparison',
+				),
+			quickjs_fe_idle_wait_ms: z
+				.number()
+				.optional()
+				.describe(
+					'Time the idle variant waited for the editor start and then for the browser, before the start. Not set for the other variants',
+				),
+			quickjs_fe_bundle_import_ms: z
+				.number()
+				.optional()
+				.describe('Time to import the runtime bundle. Not set when the start failed before it'),
+			quickjs_fe_wasm_ready_ms: z
+				.number()
+				.optional()
+				.describe(
+					'Time to load the QuickJS loader code, then load and instantiate the WASM module, after the bundle import',
+				),
+			quickjs_fe_bridge_ready_ms: z
+				.number()
+				.optional()
+				.describe('Time to create the runtime and load the bundle into it, after the WASM load'),
+			quickjs_fe_startup_visible: z
+				.boolean()
+				.describe(
+					'Whether the tab stayed visible for the whole start of the shadow engine, the idle wait included',
+				),
+			quickjs_fe_wasm_source: z
+				.enum(['cache', 'revalidated', 'network'])
+				.optional()
+				.describe(
+					'Where the browser got the WASM file: its cache, its cache after a check with the server, or the network. Not set when the start did not load the file, or the browser has no size for it',
+				),
 			quickjs_fe_sample_rate: z
 				.number()
 				.describe('One in this many legacy evaluations also runs in QuickJS'),

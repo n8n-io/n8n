@@ -1,3 +1,4 @@
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { WebhookEntity } from '@n8n/db';
 import type { WebhookRepository } from '@n8n/db';
 import type {
@@ -439,6 +440,22 @@ describe('WebhookService', () => {
 			await webhookService.deleteWorkflowWebhooks(workflowId);
 
 			expect(webhookRepository.remove).toHaveBeenCalledWith([]);
+		});
+
+		test('resolves only after the cache delete resolves', async () => {
+			webhookRepository.findBy.mockResolvedValue([createWebhook('POST', 'users')]);
+			const cacheDelete = createDeferredPromise();
+			cacheService.deleteMany.mockReturnValue(cacheDelete.promise);
+			let settled = false;
+
+			const deletion = webhookService.deleteWorkflowWebhooks(uuid()).then(() => {
+				settled = true;
+			});
+			await new Promise((resolve) => setTimeout(resolve, 0));
+
+			expect(settled).toBe(false);
+			cacheDelete.resolve();
+			await deletion;
 		});
 	});
 

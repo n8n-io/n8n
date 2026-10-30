@@ -1,6 +1,8 @@
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { ref, reactive, nextTick, type Ref } from 'vue';
 import { flushPromises } from '@vue/test-utils';
+import { createTestingPinia } from '@pinia/testing';
+import { useRecentWorkflowsStore } from '@/app/stores/recentWorkflows.store';
 import { DEBOUNCE_TIME } from '@/app/constants';
 import {
 	AGENT_BUILDER_TOOL_NAMES,
@@ -82,8 +84,13 @@ type MockThread = ReturnType<typeof createMockThread>;
 // activeWorkflowId / activeDataTableId can derive values from tabs.
 // ---------------------------------------------------------------------------
 
-function registerWorkflow(thread: MockThread, id: string, name = `Workflow ${id}`) {
-	const entry: ResourceEntry = { type: 'workflow', id, name };
+function registerWorkflow(
+	thread: MockThread,
+	id: string,
+	name = `Workflow ${id}`,
+	projectId?: string,
+) {
+	const entry: ResourceEntry = { type: 'workflow', id, name, projectId };
 	const nextProduced = new Map(thread.producedArtifacts);
 	nextProduced.set(id, entry);
 	thread.producedArtifacts = nextProduced;
@@ -115,6 +122,13 @@ function registerAgent(thread: MockThread, id: string, name = `Agent ${id}`, pro
 	const nextByName = new Map(thread.resourceNameIndex);
 	nextByName.set(name.toLowerCase(), entry);
 	thread.resourceNameIndex = nextByName;
+}
+
+function registerSkill(thread: MockThread, id: string, name = `Skill ${id}`) {
+	const entry: ResourceEntry = { type: 'skill', id, name };
+	const nextProduced = new Map(thread.producedArtifacts);
+	nextProduced.set(id, entry);
+	thread.producedArtifacts = nextProduced;
 }
 
 // ---------------------------------------------------------------------------
@@ -166,6 +180,7 @@ function setup(options?: {
 describe('useCanvasPreview', () => {
 	beforeEach(() => {
 		vi.restoreAllMocks();
+		createTestingPinia();
 	});
 
 	describe('openTabs', () => {
@@ -281,6 +296,34 @@ describe('useCanvasPreview', () => {
 			expect(ctx.activeTabId.value).toBe('wf-1');
 			expect(ctx.activeWorkflowId.value).toBe('wf-1');
 			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('records a workflow that the user opens in the recent workflows', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			registerDataTable(ctx.thread, 'dt-1', 'Orders table', 'proj-1');
+
+			ctx.selectTab('wf-1');
+			ctx.selectTab('dt-1');
+
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				'proj-1',
+			);
+		});
+
+		test('records a workflow that the user opens while it is already on screen', () => {
+			const ctx = setup();
+			registerWorkflow(ctx.thread, 'wf-1', 'Orders', 'proj-1');
+			ctx.selectTab('wf-1');
+			vi.mocked(useRecentWorkflowsStore().registerWorkflowOpen).mockClear();
+
+			expect(ctx.openWorkflowPreview('wf-1')).toBe(false);
+
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).toHaveBeenCalledExactlyOnceWith(
+				'wf-1',
+				'proj-1',
+			);
 		});
 
 		test('closePreview hides the preview without clearing the selected tab', () => {
@@ -498,6 +541,8 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.activeWorkflowId.value).toBe('wf-new');
+			// The agent opened it, not the user.
+			expect(useRecentWorkflowsStore().registerWorkflowOpen).not.toHaveBeenCalled();
 			expect(ctx.isPreviewVisible.value).toBe(true);
 		});
 
@@ -1096,6 +1141,174 @@ describe('useCanvasPreview', () => {
 			await nextTick();
 
 			expect(ctx.dataTableRefreshKey.value).toBe(initialKey + 1);
+		});
+	});
+
+	describe('auto-open app preview', () => {
+		const app = { id: 'app-1', name: 'Todos', projectId: 'project-1' };
+
+		function appsCall(toolCallId: string, args: Record<string, unknown>) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [
+						makeToolCall({ toolCallId, toolName: 'apps', args, result: { app, versionId: 'v1' } }),
+					],
+				}),
+			});
+		}
+
+		function registerApp(thread: MockThread) {
+			const nextProduced = new Map(thread.producedArtifacts);
+			nextProduced.set(app.id, { type: 'app', ...app });
+			thread.producedArtifacts = nextProduced;
+		}
+
+		test('opens an app the assistant created and reloads it on each commit', async () => {
+			const ctx = setup();
+			registerApp(ctx.thread);
+
+			ctx.thread.messages = [appsCall('tc-create', { action: 'create' })];
+			await nextTick();
+
+			expect(ctx.activeApp.value).toEqual({ id: 'app-1', projectId: 'project-1' });
+			expect(ctx.isPreviewVisible.value).toBe(true);
+			const initialKey = ctx.appRefreshKey.value;
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				appsCall('tc-commit', { action: 'commit', appId: 'app-1' }),
+			];
+			await nextTick();
+
+			expect(ctx.appRefreshKey.value).toBe(initialKey + 1);
+		});
+
+		test('does not open an app the assistant only read', async () => {
+			const ctx = setup();
+			registerApp(ctx.thread);
+
+			ctx.thread.messages = [appsCall('tc-get', { action: 'get', appId: 'app-1' })];
+			await nextTick();
+
+			expect(ctx.activeApp.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+	});
+
+	describe('auto-open skill preview', () => {
+		function skillsCall(
+			toolCallId: string,
+			args: Record<string, unknown>,
+			result: Record<string, unknown>,
+		) {
+			return makeMessage({
+				agentTree: makeAgentNode({
+					toolCalls: [makeToolCall({ toolCallId, toolName: 'skills', args, result })],
+				}),
+			});
+		}
+
+		test('opens a skill the assistant created', async () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-create-skill',
+					{ action: 'create', scope: 'instance' },
+					{ success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				),
+			];
+			await nextTick();
+
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.isPreviewVisible.value).toBe(true);
+		});
+
+		test('opens a skill the assistant saved and reloads it on the next save', async () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+			const initialKey = ctx.skillRefreshKey.value;
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-update-1',
+					{ action: 'update', skillId: 'skill-1' },
+					{ success: true, saved: { id: 'skill-1', name: 'Brand voice', created: true } },
+				),
+			];
+			await nextTick();
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 1);
+
+			ctx.thread.messages = [
+				...ctx.thread.messages,
+				skillsCall(
+					'tc-update-2',
+					{ action: 'update', skillId: 'skill-1' },
+					{ success: true, saved: { id: 'skill-1', name: 'Brand voice', created: true } },
+				),
+			];
+			await nextTick();
+			expect(ctx.skillRefreshKey.value).toBe(initialKey + 2);
+		});
+
+		test.each([
+			['list', { action: 'list' }, { count: 1, skills: [{ id: 'skill-1', name: 'Brand voice' }] }],
+			['get', { action: 'get', skillId: 'skill-1' }, { id: 'skill-1', name: 'Brand voice' }],
+			[
+				'denied create',
+				{ action: 'create' },
+				{ success: false, denied: true, reason: 'User denied the action' },
+			],
+			[
+				'refused update',
+				{ action: 'update', skillId: 'skill-1' },
+				{ success: false, refused: true, reason: 'No permission' },
+			],
+			['delete', { action: 'delete', skillId: 'skill-1' }, { success: true, skillId: 'skill-1' }],
+		])('does not open a skill after a %s call', async (_label, args, result) => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [skillsCall('tc-skill', args, result)];
+			await nextTick();
+
+			expect(ctx.activeSkillId.value).toBeNull();
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('does not open a skill while hydrating', async () => {
+			const ctx = setup();
+			ctx.thread.isHydratingThread = true;
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			ctx.thread.messages = [
+				skillsCall(
+					'tc-create-skill',
+					{ action: 'create' },
+					{ success: true, skill: { id: 'skill-1', name: 'Brand voice' } },
+				),
+			];
+			await nextTick();
+
+			expect(ctx.isPreviewVisible.value).toBe(false);
+		});
+
+		test('openSkillPreview shows the skill tab', () => {
+			const ctx = setup();
+			registerSkill(ctx.thread, 'skill-1', 'Brand voice');
+
+			expect(ctx.openSkillPreview('skill-1')).toBe(true);
+			expect(ctx.activeSkillId.value).toBe('skill-1');
+			expect(ctx.openSkillPreview('skill-1')).toBe(false);
+		});
+
+		test('openAppPreview does not switch to an app without a tab', () => {
+			const ctx = setup();
+
+			expect(ctx.openAppPreview('app-unknown')).toBe(false);
+			expect(ctx.activeTabId.value).toBeUndefined();
 		});
 	});
 

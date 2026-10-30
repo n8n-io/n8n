@@ -1,6 +1,8 @@
 name: 'Test: Image Efficiency'
 
 on:
+  schedule:
+    - cron: '30 4 * * *'
   workflow_dispatch:
 
 permissions:

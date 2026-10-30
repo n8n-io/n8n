@@ -17,6 +17,20 @@ Show the project icon before the project name in Agent builder and session
 timeline breadcrumbs. Use the same icon as the owning project. Show the user
 icon for a personal project.
 
+## History entry points
+
+Put `Version history` in the Agent actions menu. Put `View timeline` in the
+Publish dropdown. Each action opens its tab, including when the panel is already
+open. Keep history available for saved Agents during edits and with read-only access.
+Hide these entry points in embedded Agent artifacts.
+
+## Configuration add actions
+
+Show a leading `plus` icon beside empty-state configuration add labels. Use
+the ghost button variant for skills, channels, schedules, and capabilities.
+Keep the icon visible before hover so users can identify each action.
+Use the existing icon-only add button when the row contains items.
+
 ## Narrow builder panels
 
 Keep a chip and its adjacent add action inside the available row width. Truncate
@@ -33,6 +47,14 @@ column.
 
 Reduce the editor column side padding when the column is narrow.
 
+## Builder Assistant default
+
+Open the Assistant on each visit to an unpublished Agent when the user can edit
+the Agent and Assistant setup is complete. Let users close it during the visit.
+Keep the panel state when the Agent is saved or published. For published or
+read-only Agents, use the saved panel preference. Apply these defaults in the
+control layout. Keep the experiment layouts unchanged.
+
 ## Builder side panel widths
 
 Start the Assistant and Preview panels at 30% of the builder container width.
@@ -43,7 +65,79 @@ Reserve 480 pixels for the editor. When both panels are open, share the
 remaining width in proportion to each panel's requested extra width above
 320 pixels. Do not save automatic layout adjustments as user resize choices.
 
+Disable Test entry points while the Assistant works. Show the same working
+warning beside the Agent title, in the Triggers section, and in the task modal. Keep the action to close
+an open preview available. Restore Test availability when the Assistant finishes.
+
+## Chat-first builder
+
+The Build/Test experiment variants use one chat area in the standalone Agents UI.
+Keep the full Assistant and its Agent artifacts unchanged. Users outside the experiments keep the
+current layout. Keep each chat mounted when the mode changes. Preserve each
+draft, session, and active response.
+Put the grouped Build/Test selector first in the composer toolbar. Use wrench
+and flask icons. Show a purple active state in both themes. Stop the discovery
+pulse after the first message. Disable the pulse for reduced motion.
+
+In the wide variants, start chat at 65% and configuration at 35% of the
+workspace beside the sidebar. Apply this ratio only to the standalone Agents UI.
+Save manual resize choices as a ratio. Keep this preference separate from the
+saved Assistant dock width and the previous fixed configuration width. Keep the
+ratio when the window or sidebar changes size. Double-click the standalone
+divider to reset to 65/35. Reserve at least 360 pixels for configuration and 320 pixels for chat.
+When the ratio would break a minimum, the minimum wins.
+Do not cap configuration at a fixed maximum width. Below 680 pixels of available
+workspace, fill the viewport with one panel at a time, above the sidebar. Measure
+the original workspace to keep this layout stable when the sidebar is open.
+Close either chat to show the full-width configuration. Use Chat to reopen the
+selected mode. Keep both panels mounted. Keep the mode selector and composer
+actions inside the input at narrow widths. Show the same preview disclaimer
+below both composers, including empty chats. Use the same footer spacing.
+
+Keep both composers at the same fixed height. Put the placeholder and prompt text
+at the top left. Show the attachment row only when it has content. Put attached
+agents and files above the text. Scroll long prompts and attachment lists inside
+the composer. Use a plus icon for the Test file picker, in the same position as
+the Build menu.
+
+Keep chat width and test placement independent. The control layout keeps its
+existing docks. In toggle variants, always show the selector in the standalone
+builder. Test readiness does not control visibility. Disable Test when the Agent cannot run. Use the
+same validation tooltip as the Test button beside the Agent title to explain the setup issues.
+Show one readiness heading. Put missing instructions, model, and credential in a
+bulleted list under `Add:`. Put other blockers in a bulleted list under `Fix:`.
+Keep the selector visible during later Assistant work, with both modes disabled.
+Do not show a link from the standalone build chat to the full Assistant.
+Test links and task previews select Test. An accepted Fix with Assistant request selects Build.
+Keep Test selected if the Assistant refuses the request to preserve a draft.
+
+## Session controls
+
+Show `Stop session` for a running session, including a child session, when the
+user can access the session and execute the Agent.
+Put it in the session list menu and beside Close in the session detail header.
+Use a red, icon-only ghost control in the header. Match the Preview control's
+size. Disable the action while the request runs. Keep the session running until
+the server reports its final status. Then remove the stop icon and show
+`Session stopped` in the conversation. Keep the notice after a reload. Send the same
+notice to a user who talks to the Agent through a channel.
+Stop discards queued input, including steered messages, before it aborts the active
+execution. Clear the chat queue and close its waiting connections. Keep unsent
+composer drafts. Stop also cancels active background child jobs and clears suspensions for the
+stopped execution. Keep checkpoints from later executions.
+Wrap the header breadcrumbs and actions on narrow screens. Keep Stop and Close
+inside the available width.
+
 ## Preview history
+
+Show token usage after a model turn reports it. Hide the cost when pricing is
+unavailable. Keep known token counts visible. Show a positive cost below the
+display precision as `<$0.0001`. Replace live totals with saved session totals
+after the execution completes. Show server-measured duration with each model
+turn update and when execution ends. Hide duration until a positive server value
+is available. Keep the last confirmed duration between updates. Exclude time
+spent waiting for human approval. Keep progress visible in the session trace
+when the Preview panel is closed.
 
 Use the shared `ChatHistoryDropdownTrigger` in the Preview dock and the Assistant.
 The shared button shows the history icon and the chat title. Click the title or
@@ -51,6 +145,15 @@ the icon to open history. Show only “Chat history” when no chat title exists
 not show “New session” before the Preview session starts. Truncate long titles
 inside the shared button. Keep the header actions visible.
 Use the `x` icon for the Preview close action, as the Assistant does.
+
+## Session trace actions
+
+Put the session actions menu after `Edit in builder` in the trace header.
+Use the same copy-link, LangSmith export, and delete labels as Preview.
+Show export only when debug export is enabled. Show delete only when the user
+can update the Agent. Confirm session deletion and return to the session list.
+Disable session actions until the current session loads. Disable export and
+delete while their request runs.
 
 ## Fix with Assistant
 
@@ -68,6 +171,7 @@ Agent artifacts inside an Assistant chat keep the handoff in that chat.
 ## Setup checklist
 
 Show `Finish setup` after the Agent exists and the Assistant finishes building it.
+Hide it when the Agent is published, including when the draft has pending changes.
 Keep the checklist hidden while the Assistant builds or updates the Agent.
 Use this behavior in Agent artifacts and the standalone Agent Builder.
 
@@ -179,6 +283,8 @@ The workspace must then own all of its edge spacing.
 Keep the shell's bottom body padding when a footer is present. Leave
 `--spacing--md` between the last form control and the footer divider, including
 after scrolling to the end. Do not add this space again in individual forms.
+Stretch footer action buttons on narrow screens. Keep checkbox controls at their
+normal size.
 
 When a nested credential or parameter editor dialog is open, release the parent
 focus trap and block parent dismissal. The nested dialog owns Escape until it
@@ -271,7 +377,7 @@ a direct pill edit. Save, Cancel, and Close exit the complete flow.
 | Channel platform setup    | A platform-owned setup action can stay in the inline modal content. The Agent shell still owns navigation and dismissal.                                                                                       |
 | Memory                    | Do not migrate Memory into this pattern in this change.                                                                                                                                                        |
 
-When the skills hub is on, `Add skill` starts with the `Skills` picker. The
+When the skills module is on, `Add skill` starts with the `Skills` picker. The
 picker shows only skills that the Agent can use: skills of its project, skills
 of this Agent only, and global skills. Group them in the tabs All, the project
 name, This agent, and Global. Do not
@@ -290,8 +396,9 @@ the Global tab at `Global`, and the other tabs at `This agent only`. Only a
 user who can create global skills sees `Global`. An existing skill that the
 user can edit shows the same field. Disable it, with a tooltip that gives the
 reason, when another Agent uses the skill. `Save skill` stays disabled until
-the user changes the skill or its target. Do not show the field when the
-skills hub is off. Then `Add skill` creates the skill on the Agent, without the picker.
+the user changes the skill or its target. Do not show the field for an inline
+Agent, which keeps its skills in the node. Then `Add skill` creates the skill on
+the Agent, without the picker.
 
 Show a read-only skill as a document, not as a disabled form. Show each label
 in muted text without the required mark, the description as text, and the
@@ -340,6 +447,67 @@ and output in the collapsed details and the trace. Keep earlier failed calls
 visible after a successful retry. Unexpected failures keep the existing error
 treatment.
 
+## Plan progress
+
+Read the current plan from the server. Historical tool results do not define the card.
+Refresh on conversation load, job updates, plan-tool completion, and reconnection.
+Accept status changes with an unchanged plan revision. Discard superseded requests.
+
+Use calculated task statuses for progress, the spinner, timing, and visibility.
+Count each standalone task and empty group as one task. An empty group stays Pending.
+When a group has subtasks, count those subtasks instead of the group.
+Show `paused` as **Stopped**. A capacity reservation does not start the spinner.
+Hide the card when all leaves have final statuses or the plan is closed.
+Parent-run tasks need explicit updates. Delegated tasks follow their owning job.
+
+## Stop tasks in Agent Preview
+
+Place **Stop all tasks** beside **View trace** in the expanded plan card.
+Use the same action in the background task card when there is no plan.
+Hide the stack during the request and show the inline stop status.
+Keep the user's expansion choice. Restore focus when the action disappears.
+Keep the action available while the plan has unfinished work. This includes
+planning and result review between tasks. Hide it after the plan stops or ends.
+
+Hide the stack immediately when the user selects **Stop all tasks**. Show an
+inline **Stopping all tasks…** status and **This may take a while** at the end
+of the scrollable transcript. Keep stop, summary, and retry statuses in the
+chat flow. Do not attach them to the composer. After the captured work settles,
+show **Preparing a summary…** until the reply appears.
+Keep the stopped stack hidden. Explain the outcome in a brief chat reply.
+Keep this reply and its **View trace** link in message history. Later messages,
+continuation, and reloads must not remove it. Each Stop keeps its own reply.
+Use plain reply text, as the paused wireframe shows. Do not add a collapsed card.
+If the summary has no text, keep a factual fallback in that same history entry.
+Keep results and **View trace** available. Do not claim that external actions
+were undone or that late work cannot run.
+
+Hide the stack when work finishes. Show **Preparing the summary…** in the
+scrollable transcript while the final reply has no text. Replace that status
+with the model's reply as text arrives. Keep **View trace** below the status
+and the reply. Keep the reply and link after later messages and reloads. Use
+plain chat text with a link row below it. Do not show a second loading indicator
+or a collapsed result card for the final batch. Keep partial result cards while
+other tasks continue. Keep a factual fallback and trace access if no summary
+text arrives. Do not add artifact links until that feature is available.
+A result batch is not final while the plan has unfinished tasks. Keep the
+partial result card if the reply starts another background job or adds more
+plan work. Do not attach the final-summary trace link to that progress reply.
+Keep the stack visible after a recovered tool error if work is
+still active. A failure to stop shows an inline explanation and **Retry stopping**.
+Keep the stack hidden during that failure. A report failure shows a factual
+fallback with trace access.
+
+Stop remains resumable in the same chat. The user names tasks in a message for
+selective continuation. Show the stack again after continuation succeeds or
+new work starts. A new message alone does not resume stopped tasks. Keep the
+paused task states and completed results. Do not add row controls.
+
+The acknowledgement uses the normal message queue. Disable tools and steering
+for this reply. Composer Stop controls only the current response, including
+the acknowledgement. Discard older queued input when Stop starts. Process later
+messages after the acknowledgement. Restart completion is best effort.
+
 ## Extend this document
 
 Add a section when an Agent-specific pattern applies to two or more Agent
@@ -361,6 +529,9 @@ Use `N8nApprovalCard` for Preview tool approvals, including background child
 approvals. It owns the shared layout, keyboard controls, and standard choices
 for the Assistant and Agent Preview. Pass the app catalog labels through
 `useApprovalCardLabels`.
+Use the description slot to show the Agent name and the requested tool name.
+Show a node icon only when configured tool metadata identifies its node type.
+Use the localized Agent label when no name is available.
 Pass the sanitized display arguments from the backend to the shared card.
 For node tools, include the resolved node parameters and any model input.
 The card formats and shows these values inline for both surfaces. Leave space
@@ -374,6 +545,17 @@ each response. Use the existing child task order for background approvals.
 Focus each approval as it appears. Return focus to the composer after the last
 decision. Keep tool steps, questions, and display cards in the conversation.
 If a surface keeps a resolved card, show the decision without active actions.
+
+Attach the plan card directly above the approval card. Keep both in one stack
+without a gap. Use the standard approval header with the Agent and tool names.
+For background tasks, show **Approval for [task title]** above these names inside
+the approval header.
+Keep the approval card in front of the plan card's overlapping lower edge.
+
+In the session timeline, show pending background tool approvals below their
+job row. Use the shared approval card and disable automatic focus so rows do
+not take focus as the user scrolls. Keep each card disabled while its response
+is pending. Remove its choices when the approval is resolved.
 
 ## Preview composer queue
 
@@ -408,3 +590,20 @@ failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.
 Disable resend while a draft, queued message, active turn, or blocked send exists.
 Keep the message unchanged if an attachment cannot load.
+
+## Versions and publication
+
+Use separate Versions and Publish Timeline tabs. Versions show saved drafts,
+including versions that have never been published. Show the current draft and
+the published version with separate status markers. The timeline keeps each
+publication and unpublication event, including repeated publication of a version.
+Show unknown durations for incomplete legacy records.
+
+Use the small Agent modal shell for version details and publication. Reuse the
+workflow version name and description fields. Both fields are optional. Keep
+Cancel before Save or Publish. Keep entered values when the request fails.
+
+Flush pending editor changes before opening the publish dialog. Keep the selected
+saved version fixed while the dialog is open. Later edits remain in the draft.
+Editing version details does not create another saved version. Restoring a version
+creates a new draft without copying the version name or description.
