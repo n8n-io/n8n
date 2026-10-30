@@ -128,10 +128,18 @@ The file falls back to file-level when:
 
 - the map has no `sha`, or CI cannot fetch that commit;
 - a changed line also changed between the map commit and the merge base;
-- a change is outside every function, for example an import, a class field, a
-  decorator, or other module-level code;
+- a change is outside every function, for example a class field, a decorator,
+  or other module-level code;
 - the map has no entry at the start line of the function that contains the
   change.
+
+A module-level change that only touches imports, comments, or blank lines has
+no runtime effect of its own. It resolves to the lines that use the changed
+imports' value bindings, and each of those lines resolves as above. Type-only
+uses do not count, except in the signatures of a decorated class: with
+`emitDecoratorMetadata`, TypeScript emits those types when the module loads, so
+the file falls back to file-level. A side-effect import (`import './x'`) also
+falls back.
 
 Frontend and `.vue` files always use file-level selection.
 
@@ -142,7 +150,7 @@ Frontend and `.vue` files always use file-level selection.
 | Committed map | `.github/test-metrics/e2e-impact-map.json` |
 | Build + encode the map | `scripts/aggregate-coverage.mjs`, janitor `coverage-map.ts` (`mergeCoverage`, `encodeImpactMap`) |
 | Pick specs for a change | `scripts/select-affected-e2e.mjs` → janitor `select-e2e` |
-| Line-level scopes | janitor `core/read-line-scopes.ts`, test-impact `line-scope.ts` |
+| Line-level scopes | janitor `core/read-line-scopes.ts` and `core/import-scopes.ts`, test-impact `line-scope.ts` |
 | Backend per-spec capture | `fixtures/backend-v8-coverage.ts`, `scripts/emit-spec-backend-lcovs.ts` |
 | Full pipeline notes | `scripts/coverage-workflow.md` |
 
