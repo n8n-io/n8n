@@ -13,8 +13,9 @@ const configFacets = {
 		.enum(['registered', 'virtual'])
 		.nullable()
 		.describe('Null when the source has no OAuth2 client configured'),
+	// Keep in sync with `SurfaceIdSchema` in @n8n/inbound-auth; the typed `track` call fails otherwise.
 	surfaces: z
-		.array(z.enum(['public-api', 'instance-mcp', 'trigger']))
+		.array(z.enum(['public-api', 'instance-mcp', 'trigger', 'apps']))
 		.describe('The surfaces the source may authenticate on'),
 	identity_subject: z
 		.enum(['n8n-user-id', 'binding'])

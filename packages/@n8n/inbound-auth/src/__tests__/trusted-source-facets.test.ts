@@ -36,7 +36,12 @@ describe('trustedSourceFacetsOf', () => {
 				discovery: { mode: 'manual', jwksUri: 'https://idp.example.com/jwks' },
 				client: { kind: 'registered', clientId: 'n8n-client', clientSecret: 'top-secret' },
 			},
-			surfaces: { 'public-api': {}, 'instance-mcp': {}, trigger: { audiences: ['hooks'] } },
+			surfaces: {
+				'public-api': {},
+				'instance-mcp': {},
+				trigger: { audiences: ['hooks'] },
+				apps: {},
+			},
 			identity: {
 				linkByEmail: 'any',
 				provision: { human: 'jit' },
@@ -47,7 +52,7 @@ describe('trustedSourceFacetsOf', () => {
 		expect(trustedSourceFacetsOf(config)).toEqual({
 			discoveryMode: 'manual',
 			clientKind: 'registered',
-			surfaces: ['public-api', 'instance-mcp', 'trigger'],
+			surfaces: ['public-api', 'instance-mcp', 'trigger', 'apps'],
 			identitySubject: 'binding',
 			linkByEmail: 'any',
 			provisionHuman: 'jit',
