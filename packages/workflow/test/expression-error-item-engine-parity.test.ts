@@ -194,7 +194,7 @@ describe('Expression - Error instances in item data (engine parity)', () => {
 			it('keeps the own JSON key and its value', () => {
 				const result = evaluate("={{ $('Source').item.json.body }}", item, native);
 
-				expect(Object.hasOwn(result, '__proto__')).toBe(true);
+				expect(Object.hasOwn(result as object, '__proto__')).toBe(true);
 				expect(result).toStrictEqual(item.json.body);
 			});
 		});
@@ -238,7 +238,7 @@ describe('Expression - Error instances in item data (engine parity)', () => {
 					context: { attempt: 2 },
 				};
 				const item = { json: { error }, pairedItem: { item: 0 } };
-				const result = evaluate('={{ $json.error }}', item, native) as NodeApiError;
+				const result = evaluate('={{ $json.error }}', item, native) as unknown as NodeApiError;
 
 				result.message = 'changed';
 				result.description = 'x';
