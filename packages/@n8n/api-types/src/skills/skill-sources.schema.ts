@@ -108,6 +108,24 @@ export type SkillScanSeverity = 'blocked' | 'needs_review' | 'info';
 
 export type SkillScanVerdict = 'pass' | 'needs_review' | 'blocked';
 
+/** The part of SKILL.md that holds a finding. A reference file has one text, so it has no part. */
+export type SkillScanPart = 'name' | 'description' | 'frontmatter' | 'instructions';
+
+/**
+ * Where a finding is, so a reviewer can read it in place. The snippet is for display only: it
+ * shortens long lines and shows each hidden character as a visible marker such as `⟦U+200B⟧`.
+ */
+export type SkillScanLocation = {
+	part?: SkillScanPart;
+	/** The line of the finding, from 1, in its part or file. */
+	line: number;
+	/** The lines around the finding. */
+	snippet: Array<{ line: number; text: string }>;
+	/** Where the finding is in the snippet line with the number `line`, as string offsets. */
+	start: number;
+	end: number;
+};
+
 export type SkillScanFinding = {
 	rule: SkillScanRule;
 	severity: SkillScanSeverity;
@@ -117,6 +135,8 @@ export type SkillScanFinding = {
 	detail: string;
 	/** The linked domain of a `new_url` finding. */
 	domain?: string;
+	/** Set for the rules that find a place in the text. */
+	location?: SkillScanLocation;
 };
 
 /** The most severe finding gives the verdict. No one can override `blocked`. */

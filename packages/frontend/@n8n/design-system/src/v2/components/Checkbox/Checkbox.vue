@@ -115,7 +115,6 @@ function onUpdate(value: boolean | 'indeterminate') {
 
 .label {
 	flex: 1;
-	padding-top: 1px;
 	font-size: var(--checkbox--label--font-size, var(--font-size--sm));
 	line-height: 1;
 	color: var(--color--text--shade-1);

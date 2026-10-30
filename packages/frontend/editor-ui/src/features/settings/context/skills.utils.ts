@@ -221,5 +221,10 @@ export function useSkillSourceReasons() {
 		});
 	}
 
-	return { reasonText, failedSkillReason, findingsText, linkedDomainsText };
+	/** The short name of one rule of the security check. */
+	function ruleText(rule: SkillScanRule): string {
+		return i18n.baseText(SKILL_SCAN_RULE_KEYS[rule]);
+	}
+
+	return { reasonText, failedSkillReason, findingsText, linkedDomainsText, ruleText };
 }

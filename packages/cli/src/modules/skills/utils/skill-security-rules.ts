@@ -1,4 +1,9 @@
-import { agentSkillSchema, type SkillScanFinding } from '@n8n/api-types';
+import {
+	agentSkillSchema,
+	type SkillScanFinding,
+	type SkillScanLocation,
+	type SkillScanPart,
+} from '@n8n/api-types';
 import { kebabCase } from 'change-case';
 import { isDeepStrictEqual } from 'node:util';
 import type { ZodIssue } from 'zod';
@@ -101,16 +106,22 @@ const toClassRange = ([first, last]: [number, number]) =>
 /** The ranges as one character class, so a scan collects only the hidden characters. */
 const HIDDEN_PATTERN = new RegExp(`[${HIDDEN_RANGES.map(toClassRange).join('')}]`, 'gu');
 
+/** One hidden character, to test a single character or to find the first one. */
+const HIDDEN_CHARACTER = new RegExp(`[${HIDDEN_RANGES.map(toClassRange).join('')}]`, 'u');
+
 export function findHiddenUnicode(input: SkillScanInput): SkillScanFinding[] {
 	return textsByFile(input.content).flatMap(({ file, texts }) => {
-		const found = texts.flatMap((text) => text.match(HIDDEN_PATTERN) ?? []);
+		const found = texts.flatMap(({ text }) => text.match(HIDDEN_PATTERN) ?? []);
 		if (found.length === 0) return [];
+		const first = texts.find(({ text }) => HIDDEN_CHARACTER.test(text));
+		const index = first?.text.search(HIDDEN_CHARACTER) ?? -1;
 		return [
 			{
 				rule: 'hidden_unicode',
 				severity: 'needs_review',
 				file,
 				detail: `${found.length} invisible or control characters. The first is ${codePointOf(found[0])}.`,
+				...(first && index >= 0 ? { location: locate(first, index, index + found[0].length) } : {}),
 			},
 		];
 	});
@@ -132,7 +143,7 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 	const known = previous ? new Set(domainsByFile(previous).keys()) : new Set<string>();
 	return [...domainsByFile(content)]
 		.filter(([domain]) => !known.has(domain))
-		.map(([domain, file]) =>
+		.map(([domain, { file, location }]) =>
 			previous
 				? {
 						rule: 'new_url',
@@ -140,6 +151,7 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 						file,
 						domain,
 						detail: `The update links to ${domain}, a domain that the current version does not use.`,
+						location,
 					}
 				: {
 						rule: 'new_url',
@@ -147,17 +159,24 @@ export function findNewUrls({ content, previous }: SkillScanInput): SkillScanFin
 						file,
 						domain,
 						detail: `The skill links to ${domain}.`,
+						location,
 					},
 		);
 }
 
-/** Each domain that the skill links to, with the first file that has it. */
-function domainsByFile(content: SkillContent): Map<string, string> {
-	const domains = new Map<string, string>();
+/** Each domain that the skill links to, with the first file and place that has it. */
+function domainsByFile(
+	content: SkillContent,
+): Map<string, { file: string; location: SkillScanLocation }> {
+	const domains = new Map<string, { file: string; location: SkillScanLocation }>();
 	for (const { file, texts } of textsByFile(content)) {
-		for (const match of texts.flatMap((text) => text.match(URL_PATTERN) ?? [])) {
-			const domain = domainOf(match);
-			if (domain && !domains.has(domain)) domains.set(domain, file);
+		for (const entry of texts) {
+			for (const match of entry.text.matchAll(URL_PATTERN)) {
+				const domain = domainOf(match[0]);
+				if (!domain || domains.has(domain)) continue;
+				const index = match.index ?? 0;
+				domains.set(domain, { file, location: locate(entry, index, index + match[0].length) });
+			}
 		}
 	}
 	return domains;
@@ -198,11 +217,12 @@ const PERMISSION_KEYS = new Set([
 export function findPermissionChanges({ content, previous }: SkillScanInput): SkillScanFinding[] {
 	const current = permissionKeys(content);
 	if (!previous) {
-		return [...current.keys()].map((key) => ({
+		return [...current.entries()].map(([key, value]) => ({
 			rule: 'permission_change',
 			severity: 'info',
 			file: SKILL_MD,
 			detail: `The skill sets the frontmatter key ${key}.`,
+			location: locateKey(key, value),
 		}));
 	}
 	const before = permissionKeys(previous);
@@ -219,7 +239,15 @@ export function findPermissionChanges({ content, previous }: SkillScanInput): Sk
 			: !current.has(key)
 				? `The update removes the frontmatter key ${key}.`
 				: `The update changes the frontmatter key ${key}.`;
-		return [{ rule: 'permission_change', severity: 'needs_review', file: SKILL_MD, detail }];
+		return [
+			{
+				rule: 'permission_change',
+				severity: 'needs_review',
+				file: SKILL_MD,
+				detail,
+				...(current.has(key) ? { location: locateKey(key, current.get(key)) } : {}),
+			},
+		];
 	});
 }
 
@@ -337,18 +365,24 @@ function findDataImageLink(text: string): string | undefined {
  */
 export function findSuspiciousPhrases({ content }: SkillScanInput): SkillScanFinding[] {
 	return textsByFile(content).flatMap(({ file, texts }) => {
-		const joined = texts.map(joinSoftBreaks);
+		// Joining keeps the length, so an offset in the joined text is an offset in the text.
+		const joined = texts.map((entry) => ({ entry, text: joinSoftBreaks(entry.text) }));
 		return SUSPICIOUS_PHRASES.flatMap(({ label, find }) => {
-			const match = joined.map((text) => find(text)).find((found) => found !== undefined);
-			if (match === undefined) return [];
-			return [
-				{
-					rule: 'suspicious_phrase',
-					severity: 'needs_review',
-					file,
-					detail: `The text has ${label}: "${excerpt(match)}".`,
-				},
-			];
+			for (const { entry, text } of joined) {
+				const match = find(text);
+				if (match === undefined) continue;
+				const index = text.indexOf(match);
+				return [
+					{
+						rule: 'suspicious_phrase',
+						severity: 'needs_review',
+						file,
+						detail: `The text has ${label}: "${excerpt(match)}".`,
+						location: locate(entry, index, index + match.length),
+					} satisfies SkillScanFinding,
+				];
+			}
+			return [];
 		});
 	});
 }
@@ -375,20 +409,98 @@ export function listFidelityWarnings({ fidelity }: SkillScanInput): SkillScanFin
 	}));
 }
 
+/** One text that the rules read, with the part of SKILL.md that holds it. */
+type ScanText = { part?: SkillScanPart; text: string };
+
 /** Every text of a skill, by file. SKILL.md holds the name, description, frontmatter and instructions. */
-function textsByFile(content: SkillContent): Array<{ file: string; texts: string[] }> {
+function textsByFile(content: SkillContent): Array<{ file: string; texts: ScanText[] }> {
 	return [
 		{
 			file: SKILL_MD,
 			texts: [
-				content.name,
-				content.description,
-				...stringsIn(content.frontmatter),
-				content.instructions,
+				{ part: 'name', text: content.name },
+				{ part: 'description', text: content.description },
+				...stringsIn(content.frontmatter).map((text) => ({ part: 'frontmatter' as const, text })),
+				{ part: 'instructions', text: content.instructions },
 			],
 		},
-		...content.files.map((file) => ({ file: file.path, texts: [file.content] })),
+		...content.files.map((file) => ({ file: file.path, texts: [{ text: file.content }] })),
 	];
+}
+
+/** The lines that a snippet shows before and after the line of a finding. */
+const SNIPPET_CONTEXT_LINES = 2;
+/** A longer snippet line is cut around the finding, so one long paragraph stays readable. */
+const SNIPPET_LINE_MAX = 160;
+const SNIPPET_LEAD = 60;
+
+type MarkedLine = { text: string; start: number; end: number };
+
+/** The place of `text.slice(start, end)`, with the lines around it. */
+function locate({ part, text }: ScanText, start: number, end: number): SkillScanLocation {
+	const lines = text.split('\n');
+	let offset = 0;
+	let index = 0;
+	while (index < lines.length - 1 && offset + lines[index].length < start) {
+		offset += lines[index].length + 1;
+		index += 1;
+	}
+	const lineStart = start - offset;
+	const lineEnd = Math.max(lineStart, Math.min(end - offset, lines[index].length));
+	const marked = shorten(escapeHidden(lines[index], lineStart, lineEnd));
+	const first = Math.max(0, index - SNIPPET_CONTEXT_LINES);
+	const last = Math.min(lines.length - 1, index + SNIPPET_CONTEXT_LINES);
+	const snippet: SkillScanLocation['snippet'] = [];
+	for (let line = first; line <= last; line += 1) {
+		snippet.push({
+			line: line + 1,
+			text: line === index ? marked.text : shorten(escapeHidden(lines[line], 0, 0)).text,
+		});
+	}
+	return {
+		...(part ? { part } : {}),
+		line: index + 1,
+		snippet,
+		start: marked.start,
+		end: marked.end,
+	};
+}
+
+/** A frontmatter key as one line, such as `allowed-tools: ["Bash"]`, with the key marked. */
+function locateKey(key: string, value: unknown): SkillScanLocation {
+	return locate({ part: 'frontmatter', text: `${key}: ${JSON.stringify(value)}` }, 0, key.length);
+}
+
+/** Shows each hidden character as a marker such as `\u27e6U+200B\u27e7`, and moves the mark with it. */
+function escapeHidden(line: string, start: number, end: number): MarkedLine {
+	let text = '';
+	let markStart = -1;
+	let markEnd = -1;
+	for (let at = 0; at < line.length; ) {
+		if (at >= start && markStart < 0) markStart = text.length;
+		if (at >= end && markEnd < 0) markEnd = text.length;
+		const character = String.fromCodePoint(line.codePointAt(at) ?? 0);
+		text += HIDDEN_CHARACTER.test(character) ? `\u27e6${codePointOf(character)}\u27e7` : character;
+		at += character.length;
+	}
+	return {
+		text,
+		start: markStart < 0 ? text.length : markStart,
+		end: markEnd < 0 ? text.length : markEnd,
+	};
+}
+
+function shorten({ text, start, end }: MarkedLine): MarkedLine {
+	if (text.length <= SNIPPET_LINE_MAX) return { text, start, end };
+	const from = Math.max(0, start - SNIPPET_LEAD);
+	const to = Math.min(text.length, Math.max(from + SNIPPET_LINE_MAX, end));
+	const prefix = from > 0 ? '\u2026' : '';
+	const suffix = to < text.length ? '\u2026' : '';
+	return {
+		text: `${prefix}${text.slice(from, to)}${suffix}`,
+		start: start - from + prefix.length,
+		end: Math.min(end, to) - from + prefix.length,
+	};
 }
 
 /** The keys and string values of a frontmatter value, at every level. */
