@@ -672,7 +672,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 		describe('pre-run check failure', () => {
 			const nodeTypes = mockInstance(NodeTypes);
 			const executionPersistence = Container.get(ExecutionPersistence);
-			const executionLedger = mockInstance(ExecutionLedger);
+			const executionLedger = mockInstance(ExecutionLedger, { isEnabled: true });
 			const subWorkflowData = () =>
 				mock<IWorkflowBase>({
 					id: 'sub-id',

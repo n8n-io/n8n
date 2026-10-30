@@ -1,8 +1,7 @@
 import { createTeamProject, createWorkflow, testDb, testModules } from '@n8n/backend-test-utils';
 import { isBillableExecution } from '@n8n/backend-services';
-import { GlobalConfig } from '@n8n/config';
 import type { ExecutionLedgerRow, Project, WorkflowEntity } from '@n8n/db';
-import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import { StatisticsNames } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ExecutionStatus, IRun, WorkflowExecuteMode } from 'n8n-workflow';
 import { createEmptyRunExecutionData, createRunExecutionData } from 'n8n-workflow';
@@ -20,16 +19,20 @@ import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { packagedModules } from '@/modules/modules.manifest';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
 
+import { retryUntil } from '../shared/retry-until';
+import { findWorkflowStatistics, useWorkflowStatisticsEvents } from '../shared/workflow-statistics';
 import { createSimpleWorkflowFixture } from '../shared/workflow-fixtures';
 
 /** The ledger inserts run in the background, so the rows are collected until they stop changing. */
 async function collectEndedRows(expectedCount: number): Promise<ExecutionLedgerRow[]> {
 	const rows: ExecutionLedgerRow[] = [];
-	const deadline = Date.now() + 10_000;
-	while (rows.length < expectedCount && Date.now() < deadline) {
-		rows.push(...(await claimAllLedgerRows()));
-		await new Promise((resolve) => setTimeout(resolve, 50));
-	}
+	await retryUntil(
+		async () => {
+			rows.push(...(await claimAllLedgerRows()));
+			expect(rows.length).toBeGreaterThanOrEqual(expectedCount);
+		},
+		{ intervalMs: 50, timeoutMs: 10_000 },
+	);
 	// A second row for the same run would arrive late, so look once more.
 	await new Promise((resolve) => setTimeout(resolve, 300));
 	rows.push(...(await claimAllLedgerRows()));
@@ -37,11 +40,12 @@ async function collectEndedRows(expectedCount: number): Promise<ExecutionLedgerR
 }
 
 describe('execution ledger ended rows', () => {
+	useWorkflowStatisticsEvents();
+
 	let project: Project;
 	let workflow: WorkflowEntity;
 
 	beforeAll(async () => {
-		delete process.env.SKIP_STATISTICS_EVENTS;
 		await testModules.loadModules(['execution-ledger'], packagedModules);
 		await testDb.init();
 		await new ExecutionLedgerModule().init();
@@ -183,19 +187,14 @@ describe('execution ledger ended rows', () => {
 	});
 
 	describe('parity with workflow statistics', () => {
-		const rootProductionCount = async () => {
-			const repository = Container.get(WorkflowStatisticsRepository);
-			if (Container.get(GlobalConfig).database.type === 'postgresdb') {
-				await repository.rollupIncrements(repository.manager, 10_000);
-			}
-			const stats = await repository.find({
-				where: [
-					{ workflowId: workflow.id, name: StatisticsNames.productionSuccess },
-					{ workflowId: workflow.id, name: StatisticsNames.productionError },
-				],
-			});
-			return stats.reduce((sum, { rootCount }) => sum + rootCount, 0);
-		};
+		const productionNames: string[] = [
+			StatisticsNames.productionSuccess,
+			StatisticsNames.productionError,
+		];
+		const rootProductionCount = async () =>
+			(await findWorkflowStatistics(workflow.id))
+				.filter(({ name }) => productionNames.includes(name))
+				.reduce((sum, { rootCount }) => sum + rootCount, 0);
 
 		const finish = async (mode: WorkflowExecuteMode, status: ExecutionStatus) => {
 			const executionId = await createRunningExecution(mode);
