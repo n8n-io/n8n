@@ -26,9 +26,24 @@ describe('EnterpriseReadinessBadge', () => {
 		expect(getByText('Limited enterprise support').closest('.n8n-badge')).toHaveFocus();
 
 		expect(
-			await findAllByText(
-				"Some enterprise capabilities don't cover this feature yet. See docs for details.",
-			),
+			await findAllByText("Some enterprise capabilities don't cover this feature yet."),
 		).not.toHaveLength(0);
+	});
+
+	it('links the tooltip to the feature docs', async () => {
+		const { findByRole } = render(EnterpriseReadinessBadge, {
+			props: { docsUrl: 'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant' },
+		});
+
+		await userEvent.tab();
+
+		const link = await findByRole('link', { name: 'Learn more' });
+		expect(link).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
+		);
+		expect(link.closest('p')).toHaveTextContent(
+			"Some enterprise capabilities don't cover this feature yet. Learn more",
+		);
 	});
 });

@@ -3,6 +3,7 @@ import { useI18n } from '../../composables/useI18n';
 import N8nBadge from '../N8nBadge';
 import type { BadgeSize } from '../N8nBadge/Badge.type';
 
+// `N8nFeatureMaturityBadges` is the only caller. A lint rule blocks other Vue files.
 defineOptions({ name: 'N8nPreviewBadge' });
 
 withDefaults(
@@ -17,15 +18,7 @@ const { t } = useI18n();
 </script>
 
 <template>
-	<N8nBadge :size="size" :class="$style.badge">
+	<N8nBadge variant="pink" :size="size" leading-icon="flask-conical">
 		{{ text ?? t('previewBadge.preview') }}
 	</N8nBadge>
 </template>
-
-<style lang="scss" module>
-.badge {
-	border-style: dashed;
-	border-width: 1.5px;
-	--n8n-badge--text-color: var(--text-color--subtle);
-}
-</style>

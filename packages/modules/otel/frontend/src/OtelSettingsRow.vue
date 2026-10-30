@@ -42,6 +42,7 @@ withDefaults(
 					<N8nText bold size="medium" color="text-dark">
 						{{ title }}
 					</N8nText>
+					<slot name="titleTrailing" />
 					<N8nTooltip v-if="envTooltip" :content="envTooltip" placement="top">
 						<span :class="$style.envInfo" role="img" tabindex="0" :aria-label="envTooltip">
 							<N8nIcon icon="circle-help" size="small" />

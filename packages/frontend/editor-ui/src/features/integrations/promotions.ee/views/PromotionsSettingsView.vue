@@ -6,7 +6,6 @@ import {
 	N8nEmptyState,
 	N8nExternalLink,
 	N8nLoading2,
-	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -152,14 +151,12 @@ async function remove(environment: PromotionEnvironment) {
 <template>
 	<N8nSettingsLayout :class="$style.layout">
 		<N8nSettingsPageHeader
+			feature="n8nPackages"
+			show-badges
 			:title="i18n.baseText('settings.promotions.title')"
 			:description="i18n.baseText('settings.promotions.description')"
 			:show-docs-link="false"
-		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
-			</template>
-		</N8nSettingsPageHeader>
+		/>
 
 		<N8nSettingsSection :title="i18n.baseText('settings.promotions.environments.title')">
 			<template #description>

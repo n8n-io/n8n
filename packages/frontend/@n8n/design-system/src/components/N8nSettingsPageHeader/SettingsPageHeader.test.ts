@@ -1,6 +1,16 @@
 import { render, screen } from '@testing-library/vue';
+import { computed } from 'vue';
 
+import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
+
+const enterprisePlan = {
+	global: {
+		provide: {
+			[EnterprisePlanKey as symbol]: computed(() => true),
+		},
+	},
+};
 
 describe('N8nSettingsPageHeader', () => {
 	it('renders the title as an h1 by default', () => {
@@ -9,6 +19,36 @@ describe('N8nSettingsPageHeader', () => {
 		const title = screen.getByText('This instance');
 		expect(title).toBeInTheDocument();
 		expect(title.tagName).toBe('H1');
+	});
+
+	it('renders feature badges beside the title', () => {
+		render(N8nSettingsPageHeader, {
+			props: { title: 'Context', feature: 'context', showBadges: true, showDocsLink: false },
+		});
+
+		const title = screen.getByRole('heading', { name: 'Context' });
+		const badge = screen.getByTestId('settings-context-preview-badge');
+		expect(title.parentElement).toContainElement(badge);
+		expect(
+			screen.queryByTestId('settings-context-enterprise-readiness-badge'),
+		).not.toBeInTheDocument();
+	});
+
+	it('uses the feature docs page when the header has no docsUrl', () => {
+		render(N8nSettingsPageHeader, {
+			...enterprisePlan,
+			props: {
+				title: 'Assistant',
+				description: 'Help people build workflows.',
+				feature: 'assistant',
+			},
+		});
+
+		expect(screen.getByRole('link', { name: 'documentation' })).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/deploy/host-n8n/configure-n8n/set-up-n8n-assistant',
+		);
+		expect(screen.queryByTestId('n8n-agent-enterprise-readiness-badge')).not.toBeInTheDocument();
 	});
 
 	it('renders the titleTrailing slot alongside the title', () => {

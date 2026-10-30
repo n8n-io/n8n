@@ -5,7 +5,7 @@ import { useI18n } from '../../composables/useI18n';
 import type { NodeCreatorTag } from '../../types/node-creator-node';
 import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
-import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
 import N8nNewBadge from '../NewBadge/NewBadge.vue';
 
 export interface Props {
@@ -48,11 +48,12 @@ const { t } = useI18n();
 		<div :class="$style.body">
 			<div :class="$style.details">
 				<span :class="$style.name" data-test-id="node-creator-item-name" v-text="title" />
-				<PreviewBadge
+				<N8nFeatureMaturityBadges
 					v-if="tag?.preview"
+					preview
 					size="xxsmall"
 					:class="$style.previewBadge"
-					:text="tag.text"
+					:preview-text="tag.text"
 				/>
 				<N8nBadge
 					v-else-if="tag?.pill"

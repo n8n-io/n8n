@@ -5701,6 +5701,9 @@ importers:
       '@n8n/composables':
         specifier: workspace:*
         version: link:../composables
+      '@n8n/frontend-constants':
+        specifier: workspace:*
+        version: link:../frontend-constants
       '@n8n/frontend-utils':
         specifier: workspace:*
         version: link:../frontend-utils

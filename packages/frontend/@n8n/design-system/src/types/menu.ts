@@ -38,8 +38,9 @@ export type IMenuItem = {
 	disabledReason?: string;
 	notification?: boolean;
 	size?: 'medium' | 'small';
-	preview?: boolean;
 	new?: boolean;
+	/** Show the Preview badge next to the label. */
+	preview?: boolean;
 	creditsTag?: string;
 };
 

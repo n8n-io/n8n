@@ -4,7 +4,6 @@ import { useRouter } from 'vue-router';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
 import {
-	N8nPreviewBadge,
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nSettingsRow,
@@ -80,14 +79,12 @@ onMounted(async () => {
 <template>
 	<N8nSettingsLayout :class="$style.layout" data-test-id="settings-context-view">
 		<N8nSettingsPageHeader
+			feature="context"
+			show-badges
 			:title="i18n.baseText('settings.context.title')"
 			:description="i18n.baseText('settings.context.description')"
 			:show-docs-link="false"
-		>
-			<template #titleTrailing>
-				<N8nPreviewBadge size="xsmall" />
-			</template>
-		</N8nSettingsPageHeader>
+		/>
 
 		<N8nSettingsRowGroup>
 			<N8nSettingsRow

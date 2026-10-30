@@ -14,10 +14,9 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import {
-	N8nEnterpriseReadinessBadge,
-	N8nHeading,
-	N8nPreviewBadge,
 	N8nSettingsEnableRow,
+	N8nSettingsPageHeader,
+	N8nSettingsRowGroup,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -128,28 +127,23 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<div :class="$style.titleWithTag">
-			<N8nHeading size="2xlarge">
-				{{ i18n.baseText('settings.chatHub') }}
-			</N8nHeading>
-			<N8nPreviewBadge size="xsmall" data-test-id="chat-hub-preview-badge" />
-			<N8nEnterpriseReadinessBadge
-				v-if="settingsStore.isEnterprisePlan"
-				size="xsmall"
-				data-test-id="chat-hub-enterprise-readiness-badge"
-			/>
-		</div>
+		<N8nSettingsPageHeader feature="chat" :title="i18n.baseText('settings.chatHub')" />
 
-		<N8nSettingsEnableRow
-			data-test-id="chat-hub-enabled-row"
-			:title="i18n.baseText('settings.chatHub.enabled.label')"
-			:description="i18n.baseText('settings.chatHub.enabled.description')"
-			:model-value="isChatEnabled"
-			:disabled="disabled"
-			:disabled-tooltip="i18n.baseText('settings.chatHub.enabled.disabled.tooltip')"
-			switch-test-id="chat-hub-enabled-switch"
-			@update:model-value="onToggleEnabled"
-		/>
+		<N8nSettingsRowGroup>
+			<N8nSettingsEnableRow
+				feature="chat"
+				show-badges
+				:title="i18n.baseText('settings.chatHub.enabled.label')"
+				:description="i18n.baseText('settings.chatHub.enabled.description')"
+				:max-description-lines="3"
+				:model-value="isChatEnabled"
+				:disabled="disabled"
+				:disabled-tooltip="i18n.baseText('settings.chatHub.enabled.disabled.tooltip')"
+				switch-test-id="chat-hub-enabled-switch"
+				data-test-id="chat-hub-enabled-row"
+				@update:model-value="onToggleEnabled"
+			/>
+		</N8nSettingsRowGroup>
 
 		<template v-if="settingsStore.isChatFeatureEnabled">
 			<ChatProvidersTable
@@ -174,11 +168,5 @@ onMounted(async () => {
 	flex-direction: column;
 	gap: var(--spacing--2xl);
 	padding-bottom: var(--spacing--2xl);
-}
-
-.titleWithTag {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
 }
 </style>

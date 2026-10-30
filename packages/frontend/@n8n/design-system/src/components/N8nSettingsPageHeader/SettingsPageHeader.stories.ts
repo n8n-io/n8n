@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
+import { computed, provide } from 'vue';
 
+import { EnterprisePlanKey } from '../FeatureMaturityBadges/featureMaturityState';
 import N8nExternalLink from '../N8nExternalLink';
 import N8nText from '../N8nText';
 import N8nSettingsPageHeader from './SettingsPageHeader.vue';
@@ -96,6 +98,27 @@ export const WithoutDocsLink: Story = {
 	args: {
 		title: 'Members',
 		description: 'People with access to this instance.',
+		showDocsLink: false,
+	},
+};
+
+export const WithFeatureBadges: Story = {
+	render: (args) => ({
+		components: { N8nSettingsPageHeader },
+		setup: () => {
+			provide(
+				EnterprisePlanKey,
+				computed(() => true),
+			);
+			return { args };
+		},
+		template: frame('<N8nSettingsPageHeader v-bind="args" />'),
+	}),
+	args: {
+		title: 'Context',
+		description: 'Preferences and skills the assistant can use.',
+		feature: 'context',
+		showBadges: true,
 		showDocsLink: false,
 	},
 };

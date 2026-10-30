@@ -227,6 +227,12 @@ const effectiveTextSize = computed(function getEffectiveTextSize() {
 	--n8n-badge--text-color: var(--color--blue-900);
 }
 
+.pink {
+	--n8n-badge--background: var(--color--pink-200);
+	--n8n-badge--border-color: var(--color--pink-400);
+	--n8n-badge--text-color: var(--color--pink-900);
+}
+
 .leadingIcon,
 .trailingIcon {
 	flex-shrink: 0;

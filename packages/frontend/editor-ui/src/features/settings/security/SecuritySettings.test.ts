@@ -950,6 +950,22 @@ describe('SecuritySettings', () => {
 			});
 		});
 
+		it('keeps the workflow reviews row as the last row of its settings card', async () => {
+			const { getByTestId } = renderView();
+
+			await waitFor(() => {
+				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
+			});
+
+			const group = getByTestId('security-workflow-reviews-section').querySelector(
+				'[data-test-id="settings-row-group"]',
+			);
+			const lastRow = group?.lastElementChild;
+			const divider = lastRow?.querySelector('[data-test-id="settings-row-divider"]');
+
+			expect(divider?.parentElement).toBe(lastRow);
+		});
+
 		it('should show a Preview tag on the workflow reviews toggle', async () => {
 			const { getByTestId } = renderView();
 
@@ -957,7 +973,7 @@ describe('SecuritySettings', () => {
 				expect(getByTestId('security-workflow-reviews-toggle')).toBeInTheDocument();
 			});
 
-			expect(getByTestId('security-workflow-reviews-preview-tag')).toHaveTextContent('Preview');
+			expect(getByTestId('security-workflow-reviews-preview-badge')).toHaveTextContent('Preview');
 		});
 
 		it('should persist workflow reviews toggle changes', async () => {

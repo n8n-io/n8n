@@ -169,7 +169,6 @@ export const AgentsModule = defineFrontendModule({
 			label: i18n.baseText('settings.agents'),
 			position: 'top',
 			route: { to: { name: AGENTS_SETTINGS_VIEW } },
-			preview: true,
 			get available() {
 				return hasPermission(['rbac'], { rbac: { scope: 'agent:manage' } });
 			},

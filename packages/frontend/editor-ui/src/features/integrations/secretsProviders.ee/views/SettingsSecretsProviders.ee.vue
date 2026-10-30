@@ -19,9 +19,8 @@ import {
 	N8nIcon,
 	N8nLink,
 	N8nLoading,
-	N8nSettingsRow,
+	N8nSettingsEnableRow,
 	N8nSettingsRowGroup,
-	N8nSwitch,
 	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -257,22 +256,16 @@ function goToUpgrade() {
 					</N8nLink>
 				</N8nText>
 				<N8nSettingsRowGroup v-if="isRoleBasedAccessEnabled" class="mt-xl">
-					<N8nSettingsRow
+					<N8nSettingsEnableRow
 						:title="i18n.baseText('settings.externalSecrets.systemRoles.title')"
 						:description="i18n.baseText('settings.externalSecrets.systemRoles.description')"
 						:max-description-lines="3"
+						:model-value="systemRolesEnabled"
+						:disabled="systemRolesToggleLoading"
+						switch-test-id="external-secrets-system-roles-switch"
 						data-test-id="external-secrets-system-roles-toggle"
-					>
-						<template #action>
-							<N8nSwitch
-								:model-value="systemRolesEnabled"
-								:disabled="systemRolesToggleLoading"
-								:aria-label="i18n.baseText('settings.externalSecrets.systemRoles.title')"
-								data-test-id="external-secrets-system-roles-switch"
-								@update:model-value="onSystemRolesToggle"
-							/>
-						</template>
-					</N8nSettingsRow>
+						@update:model-value="onSystemRolesToggle"
+					/>
 				</N8nSettingsRowGroup>
 				<N8nButton
 					v-if="hasActiveProviders && secretsProviders.canCreate.value"

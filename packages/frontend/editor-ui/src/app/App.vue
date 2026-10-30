@@ -24,7 +24,7 @@ import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID, HIRING_BANNER, VIEWS } from '@
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useSettingsStore } from '@n8n/stores/settings.store';
 import LoadingView from '@/app/views/LoadingView.vue';
-import { locale } from '@n8n/design-system';
+import { EnterprisePlanKey, locale } from '@n8n/design-system';
 import { registerTimeAgoLocale } from '@/app/utils/timeAgoLocale';
 import { setLanguage } from '@n8n/i18n';
 // Note: no need to import en.json here; default 'en' is handled via setLanguage
@@ -52,6 +52,10 @@ const currentWorkflowDocumentStore = shallowRef<WorkflowDocumentStore | null>(nu
 
 provide(WorkflowIdKey, workflowId);
 provide(WorkflowDocumentStoreKey, currentWorkflowDocumentStore);
+provide(
+	EnterprisePlanKey,
+	computed(() => settingsStore.isEnterprisePlan),
+);
 
 // App.vue provides WorkflowDocumentStoreKey, so it cannot inject it. Expose the
 // current workflow document id (null when no workflow is loaded, e.g.

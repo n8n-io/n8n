@@ -115,14 +115,35 @@ describe('SettingsOpenTelemetryView', () => {
 		expect(queryByTestId('otel-exporter-endpoint')).not.toBeInTheDocument();
 	});
 
+	it('shows the Preview badge on the status row', async () => {
+		const { getByTestId, getByRole, queryByRole } = render();
+
+		await waitFor(() => {
+			expect(getByTestId('open-telemetry-preview-badge')).toBeInTheDocument();
+		});
+		expect(getByRole('heading', { name: 'OpenTelemetry' })).not.toContainElement(
+			getByTestId('open-telemetry-preview-badge'),
+		);
+		expect(queryByRole('img', { name: /N8N_OTEL_ENABLED/ })).not.toBeInTheDocument();
+	});
+
 	it('hides collector and tracing settings until OpenTelemetry is enabled', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
 
 		const { getByTestId, queryByTestId } = render();
 
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 		expect(queryByTestId('otel-exporter-endpoint')).not.toBeInTheDocument();
 		expect(queryByTestId('otel-sample-rate')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => {
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument();
+			expect(getByTestId('otel-sample-rate')).toBeInTheDocument();
+		});
 	});
 
 	it('renders all settings fields after fetch completes', async () => {

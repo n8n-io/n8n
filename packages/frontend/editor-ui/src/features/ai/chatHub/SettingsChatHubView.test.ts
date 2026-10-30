@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -119,6 +120,30 @@ describe('SettingsChatHubView', () => {
 		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
 	});
 
+	it('toggles Chat from the title and the description', async () => {
+		const { getByText } = renderComponent();
+
+		// fireEvent uses the label's native activation. user-event cannot click these labels in jsdom.
+		await fireEvent.click(getByText('Enable Chat'));
+		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
+
+		await fireEvent.click(
+			getByText(
+				'When disabled, Chat is hidden across the app and its API endpoints are turned off. You can re-enable it here at any time.',
+			),
+		);
+		expect(setChatEnabledMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not toggle Chat from a maturity badge', async () => {
+		const { getByTestId } = renderComponent();
+
+		await fireEvent.click(getByTestId('chat-hub-preview-badge'));
+		await fireEvent.click(getByTestId('chat-hub-enterprise-readiness-badge'));
+
+		expect(setChatEnabledMock).not.toHaveBeenCalled();
+	});
+
 	it('treats an unset enabled value as off (fail closed)', async () => {
 		settingsState.enabled = undefined;
 		settingsState.isChatFeatureEnabled = false;
@@ -131,14 +156,23 @@ describe('SettingsChatHubView', () => {
 		expect(setChatEnabledMock).toHaveBeenCalledWith(true);
 	});
 
-	it('shows the Preview and limited enterprise support badges next to the title on enterprise', () => {
-		const { getByText, getByTestId } = renderComponent();
-		const titleRow = getByText('Chat').parentElement;
+	it('shows the Preview and limited enterprise support badges on the enable row on enterprise', () => {
+		const { getByRole, getByTestId } = renderComponent();
 
-		expect(titleRow).toContainElement(getByTestId('chat-hub-preview-badge'));
-		expect(titleRow).toContainElement(getByTestId('chat-hub-enterprise-readiness-badge'));
+		const enableRow = getByTestId('chat-hub-enabled-row');
+
+		expect(enableRow.closest('[data-test-id="settings-row-group"]')).not.toBeNull();
+		expect(enableRow).toContainElement(getByTestId('chat-hub-preview-badge'));
+		expect(enableRow).toContainElement(getByTestId('chat-hub-enterprise-readiness-badge'));
+		expect(getByRole('heading', { name: 'Chat' })).not.toContainElement(
+			getByTestId('chat-hub-preview-badge'),
+		);
 		expect(getByTestId('chat-hub-enterprise-readiness-badge')).toHaveTextContent(
 			'Limited enterprise support',
+		);
+		expect(getByTestId('settings-page-header-docs')).toHaveAttribute(
+			'href',
+			'https://docs.n8n.io/advanced-ai/chat-hub/',
 		);
 	});
 

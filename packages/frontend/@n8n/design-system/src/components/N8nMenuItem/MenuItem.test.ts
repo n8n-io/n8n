@@ -189,15 +189,15 @@ describe('N8nMenuItem', () => {
 			expect(menuItem.textContent).not.toContain('Hidden Label');
 		});
 
-		it('should not render PreviewBadge when compact is true', () => {
+		it('should not render the maturity badges when compact is true', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
 					item: createMenuItem({ preview: true }),
 					compact: true,
 				},
-				global: { stubs: { ...stubs, PreviewBadge: true } },
+				global: { stubs: { ...stubs, N8nFeatureMaturityBadges: true } },
 			});
-			expect(html()).not.toContain('preview-badge');
+			expect(html()).not.toContain('feature-maturity-badges');
 		});
 	});
 
@@ -252,24 +252,24 @@ describe('N8nMenuItem', () => {
 	});
 
 	describe('preview prop', () => {
-		it('should render PreviewBadge when preview is true', () => {
+		it('should render the maturity badges when preview is true', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
 					item: createMenuItem({ preview: true }),
 				},
-				global: { stubs: { ...stubs, PreviewBadge: true } },
+				global: { stubs: { ...stubs, N8nFeatureMaturityBadges: true } },
 			});
-			expect(html()).toContain('preview-badge-stub');
+			expect(html()).toContain('n8n-feature-maturity-badges-stub');
 		});
 
-		it('should not render PreviewBadge when preview is false', () => {
+		it('should not render the maturity badges when preview is false', () => {
 			const { html } = render(N8nMenuItem, {
 				props: {
 					item: createMenuItem({ preview: false }),
 				},
-				global: { stubs: { ...stubs, PreviewBadge: true } },
+				global: { stubs: { ...stubs, N8nFeatureMaturityBadges: true } },
 			});
-			expect(html()).not.toContain('preview-badge-stub');
+			expect(html()).not.toContain('n8n-feature-maturity-badges-stub');
 		});
 	});
 

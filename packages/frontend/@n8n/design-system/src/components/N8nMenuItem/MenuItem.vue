@@ -10,7 +10,7 @@ import type { IconName } from '../N8nIcon/icons';
 import N8nRoute from '../N8nRoute';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
-import PreviewBadge from '../PreviewBadge/PreviewBadge.vue';
+import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
 import NewBadge from '../NewBadge/NewBadge.vue';
 
 const props = defineProps<{
@@ -178,7 +178,7 @@ const tooltipPlacement = computed(() => {
 							{{ item.label }}
 						</N8nText>
 					</div>
-					<PreviewBadge v-if="!compact && item.preview" />
+					<N8nFeatureMaturityBadges v-if="!compact && item.preview" preview />
 					<NewBadge v-if="!compact && item.new" :class="$style.newBadge" />
 					<N8nBadge v-if="!compact && item.creditsTag" size="xxsmall" variant="success">
 						{{ item.creditsTag }}

@@ -6,6 +6,15 @@ import { computed, ref } from 'vue';
 import { STORES } from './constants';
 import { getConfigFromMetaTag } from './metaTagConfig';
 
+// The server sets this property before the app starts.
+// Keep the declaration in this file. Other packages typecheck this source
+// without the stores global shim.
+declare global {
+	interface Window {
+		BASE_PATH: string;
+	}
+}
+
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
 export type RootStoreState = {

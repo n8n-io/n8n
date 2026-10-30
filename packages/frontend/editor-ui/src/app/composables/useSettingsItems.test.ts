@@ -374,14 +374,6 @@ describe('useSettingsItems', () => {
 
 			expect(idsOf()).not.toContain('settings-context');
 		});
-
-		it('carries the preview label', () => {
-			const item = useSettingsItems().settingsItems.value.find(
-				({ id }) => id === 'settings-context',
-			);
-
-			expect(item?.preview).toBe(true);
-		});
 	});
 
 	describe('Environments v2', () => {

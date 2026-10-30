@@ -8,7 +8,6 @@ import {
 	N8nMenuItem,
 	N8nNewBadge,
 	N8nPopover,
-	N8nPreviewBadge,
 	N8nScrollArea,
 	N8nText,
 	isCustomMenuItem,
@@ -233,7 +232,6 @@ function onLogout() {
 									@select="handleSettingsSelect"
 								>
 									<template #item-trailing="{ item: row, ui }">
-										<N8nPreviewBadge v-if="row.data?.preview" :class="ui.class" />
 										<N8nNewBadge v-if="row.data?.new" :class="ui.class" />
 										<N8nBadge
 											v-if="row.data?.creditsTag"

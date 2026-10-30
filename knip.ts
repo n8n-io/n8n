@@ -167,7 +167,7 @@ const config: KnipConfig = {
 		}),
 		'packages/core': pkg({
 			// bin/generate-node-defs and bin/copy-static-files have no extension, so knip does not parse them.
-			ignoreDependencies: ['@n8n/workflow-sdk', 'p-limit'],
+			ignoreDependencies: ['@n8n/workflow-sdk'],
 		}),
 		'packages/@n8n/node-cli': pkg({
 			// Scaffold templates carry their own package.json and are not workspaces.
