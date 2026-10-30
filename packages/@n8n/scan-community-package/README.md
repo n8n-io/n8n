@@ -8,7 +8,7 @@ Checks [npm provenance](https://docs.npmjs.com/generating-provenance-statements/
 $ npx @n8n/scan-community-package n8n-nodes-PACKAGE
 ```
 
-You can also specify a version, a version range, or a dist-tag. Scoped packages are supported:
+The package name can include a version, a version range, or a dist-tag. Scoped packages are supported:
 
 ```
 $ npx @n8n/scan-community-package n8n-nodes-PACKAGE@1.2.3
@@ -28,7 +28,7 @@ The scanner runs these steps in sequence. It stops at the first step that fails.
    - the attested source: `package.json` and the files in `nodes/` and `credentials/`
    - the published npm tarball: all `.js` files and `package.json`
 
-The lint rules are the same rules that `n8n-node lint` applies. If `n8n-node lint` passes on your package, this scan usually passes too. The scanner ignores inline `eslint-disable` comments.
+The lint rules are the same rules that `n8n-node lint` applies. A package that passes `n8n-node lint` usually passes this scan too. The scanner ignores inline `eslint-disable` comments.
 
 ### Requirements
 
