@@ -44,6 +44,11 @@ enableAutoUnmount(afterEach);
 
 type PanelVm = { sendMessageFromOutside: (message: string, files?: File[]) => void };
 const isMacOsMock = ref(false);
+const sessionFilesFlag = vi.hoisted(() => ({ value: true }));
+vi.mock('@/app/stores/posthog.store', () => ({
+	usePostHog: () => ({ isFeatureEnabled: () => sessionFilesFlag.value }),
+}));
+
 vi.mock('@n8n/composables/useDeviceSupport', () => ({
 	useDeviceSupport: () => ({ isMacOs: isMacOsMock.value }),
 }));
@@ -1393,6 +1398,7 @@ describe('AgentChatPanel', () => {
 		};
 
 		beforeEach(() => {
+			sessionFilesFlag.value = true;
 			getSessionFilesMock.mockReset();
 			getSessionFilesMock.mockResolvedValue({ files: [file] });
 		});
@@ -1406,6 +1412,12 @@ describe('AgentChatPanel', () => {
 			expect(mountPanel({ continueSessionId: 't1', channel: 'system' }).find(toggle).exists()).toBe(
 				false,
 			);
+		});
+
+		it('hides the toggle when the flag is off', () => {
+			sessionFilesFlag.value = false;
+
+			expect(mountPanel({ continueSessionId: 't1' }).find(toggle).exists()).toBe(false);
 		});
 
 		it('lists the files with a download link when opened', async () => {

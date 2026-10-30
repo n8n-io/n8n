@@ -1,5 +1,8 @@
 import { CORE_WORKSPACE_TOOL_NAMES, type Workspace } from '@n8n/agents';
-import { MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH } from '@n8n/api-types';
+import {
+	AGENT_SANDBOX_FILES_FLAG,
+	MAX_AGENT_CHAT_ATTACHMENT_FILENAME_LENGTH,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AgentsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
@@ -8,6 +11,8 @@ import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { extension, lookup } from 'mime-types';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { posix } from 'node:path';
+
+import { PostHogClient } from '@/posthog';
 
 import {
 	AgentChatAttachmentService,
@@ -117,7 +122,13 @@ export class AgentSandboxFilesService {
 		private readonly logger: Logger,
 		private readonly attachmentService: AgentChatAttachmentService,
 		private readonly agentsConfig: AgentsConfig,
+		private readonly postHogClient: PostHogClient,
 	) {}
+
+	/** The sandbox files feature waits for its UX. Off by default. */
+	async isEnabled(): Promise<boolean> {
+		return (await this.postHogClient.getFeatureFlagForInstance(AGENT_SANDBOX_FILES_FLAG)) === true;
+	}
 
 	/**
 	 * Copy conversation files into `inputs/` of the workspace. Each key is a
@@ -188,6 +199,9 @@ export class AgentSandboxFilesService {
 		scope: { projectId: string; threadId: string },
 	): Promise<string> {
 		if (!ref.startsWith(SANDBOX_FILE_REF_PREFIX)) return ref;
+		if (!(await this.isEnabled())) {
+			throw new UserError(`File "${ref}" not found in this conversation`);
+		}
 		const run = this.activeRuns.get(scope.threadId);
 		const workspace = run?.getWorkspace();
 		if (!run || !workspace) {
@@ -209,6 +223,7 @@ export class AgentSandboxFilesService {
 	 * a file that fails is logged, and the next turn tries it again.
 	 */
 	async syncOutputs(workspace: Workspace, scope: SandboxFileScope): Promise<void> {
+		if (!(await this.isEnabled())) return;
 		const signal = AbortSignal.timeout(SYNC_BUDGET_MS);
 		try {
 			const files = await this.list(workspace, signal);

@@ -50,7 +50,7 @@ const config: AgentJsonConfig = {
 	instructions: 'Help with delegated work.',
 };
 
-function makeService() {
+function makeService(sandboxFilesEnabled = true) {
 	const secureRuntime = mock<AgentSecureRuntime>();
 	secureRuntime.createToolExecutor.mockReturnValue(mock<ToolExecutor>());
 	const transport = mock<HttpTransport>();
@@ -87,7 +87,9 @@ function makeService() {
 		mock<CredentialsService>(),
 		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
-		mock<AgentSandboxFilesService>(),
+		mock<AgentSandboxFilesService>({
+			isEnabled: vi.fn().mockResolvedValue(sandboxFilesEnabled),
+		}),
 	);
 
 	return { service, workspaceService };
@@ -143,6 +145,22 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
 			eagerToolNames: expect.arrayContaining(['background_jobs']),
 		});
+	});
+
+	it('attaches the workspace without the sandbox file tools when the flag is off', async () => {
+		const { service, workspaceService } = makeService(false);
+		const delegatedWorkspace = mock<agents.Workspace>();
+		workspaceService.getDelegatedAgentWorkspace.mockReturnValue(delegatedWorkspace);
+
+		await reconstructSubAgent(service, {
+			handle: mock<AgentSandboxRuntime>(),
+			delegationThreadId: 't',
+		});
+
+		expect(builtAgent.workspace).toHaveBeenCalledWith(delegatedWorkspace);
+		expect(builtAgent.tool).not.toHaveBeenCalledWith(
+			expect.objectContaining({ name: 'import_files' }),
+		);
 	});
 
 	it('attaches no workspace for sub-agent runs without a parent handle', async () => {

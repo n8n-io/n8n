@@ -1124,11 +1124,15 @@ export class AgentRuntimeReconstructionService {
 		return parentWorkspaceHandle;
 	}
 
-	private attachWorkspaceTools({ agent, projectId }: RuntimeDependencies, workspace: Workspace) {
+	private async attachWorkspaceTools(
+		{ agent, projectId }: RuntimeDependencies,
+		workspace: Workspace,
+	) {
+		agent.workspace(workspace);
+		if (!(await this.sandboxFiles.isEnabled())) return;
 		const getInstructions = workspace.getInstructions.bind(workspace);
 		workspace.getInstructions = () =>
 			[getInstructions(), SANDBOX_FILES_INSTRUCTIONS].filter(Boolean).join('\n\n');
-		agent.workspace(workspace);
 		agent.tool(createImportFilesTool({ projectId, workspace, sandboxFiles: this.sandboxFiles }));
 	}
 
@@ -1139,7 +1143,7 @@ export class AgentRuntimeReconstructionService {
 		if (runtimeProfile === 'sub-agent') {
 			// Delegated runs use the parent's sandbox only.
 			if (parentWorkspace) {
-				this.attachWorkspaceTools(
+				await this.attachWorkspaceTools(
 					params,
 					this.agentWorkspaceService.getDelegatedAgentWorkspace(
 						parentWorkspace.handle,
@@ -1161,7 +1165,7 @@ export class AgentRuntimeReconstructionService {
 				sandboxPrincipalHash,
 			);
 			throwIfAborted(params.abortSignal);
-			this.attachWorkspaceTools(params, workspace);
+			await this.attachWorkspaceTools(params, workspace);
 			return handle;
 		} catch (error) {
 			throwIfAborted(params.abortSignal);

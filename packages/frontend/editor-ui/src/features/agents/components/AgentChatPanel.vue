@@ -38,8 +38,10 @@ import {
 	getProviderAttachmentCapabilities,
 	acceptedMimeTypesFromCapabilities,
 	AGENT_CHAT_DATA_ATTACHMENT_ACCEPT,
+	AGENT_SANDBOX_FILES_FLAG,
 } from '@n8n/api-types';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useToast } from '@n8n/composables/useToast';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import ChatInputBase from '@/features/ai/shared/components/ChatInputBase.vue';
@@ -1393,8 +1395,12 @@ function removeComposerAttachment(id: string) {
 const sessionFilesChannel = computed(() =>
 	props.channel === 'chat' || props.channel === 'n8n-chat' ? props.channel : undefined,
 );
+const posthog = usePostHog();
 const showSessionFilesToggle = computed(
-	() => sessionFilesChannel.value !== undefined && Boolean(props.continueSessionId),
+	() =>
+		posthog.isFeatureEnabled(AGENT_SANDBOX_FILES_FLAG) === true &&
+		sessionFilesChannel.value !== undefined &&
+		Boolean(props.continueSessionId),
 );
 const sessionFilesOpen = ref(false);
 const sessionFiles = ref<AgentSessionFile[]>([]);
