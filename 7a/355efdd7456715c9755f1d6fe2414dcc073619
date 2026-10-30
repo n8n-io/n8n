@@ -1,0 +1,22 @@
+packages/@n8n/config/test/config.test.ts
+  s_f6ecac1d27039d::t_4230f22cf43d30 8
+  s_f6ecac1d27039d::t_f2b1008e3d0f27 1277-1289
+packages/@n8n/config/src/configs/agents.config.ts
+  s_f6ecac1d27039d::t_8bf04b0a37378f 2,7-9,116,123,130,138,145
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "7a355efdd7456715c9755f1d6fe2414dcc073619",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

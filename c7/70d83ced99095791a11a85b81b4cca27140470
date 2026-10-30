@@ -1,0 +1,22 @@
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_f6ecac1d27039d::t_195ab5613dda77 164-166
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f6ecac1d27039d::t_a9186f054da7e0 1235
+  s_f6ecac1d27039d::t_5740095778b5a9 241-261,1075,1130-1131,1138-1141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "c770d83ced99095791a11a85b81b4cca27140470",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}
