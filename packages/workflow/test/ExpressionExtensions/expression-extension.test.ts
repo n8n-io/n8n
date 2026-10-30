@@ -190,6 +190,9 @@ describe('Expression Parser', () => {
 			expect(evaluate('={{ numberList(1, -10) }}')).toEqual([
 				1, 0, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10,
 			]);
+			expect(evaluate('={{ numberList(1.7, 4.2) }}')).toEqual([1, 2, 3, 4]);
+			expect(() => evaluate('={{ numberList(1, Infinity) }}')).toThrow();
+			expect(() => evaluate('={{ numberList(NaN, 5) }}')).toThrow();
 		});
 
 		test('zip', () => {
