@@ -1,3 +1,4 @@
+import type { DataTableEventMap } from '@/modules/data-table/data-table-events';
 import type {
 	AuthenticationMethod,
 	BreakingChangeLightReportResult,
@@ -52,6 +53,7 @@ import type { McpCallerAuth } from '@n8n/backend-services/auth';
 import type { UserLike } from '@/types/user-like.types';
 
 import type { AiEventMap } from './ai.event-map';
+import type { SurfaceId, TrustedSourceFacets } from '@n8n/inbound-auth';
 
 export type WorkflowActionSource =
 	| 'ui'
@@ -59,7 +61,8 @@ export type WorkflowActionSource =
 	| 'n8n-mcp'
 	| 'n8n-ai'
 	| 'import'
-	| 'review-approval';
+	| 'review-approval'
+	| 'cli';
 
 export type { UserLike };
 
@@ -82,7 +85,7 @@ export type ProjectSummary = {
 	name: string;
 };
 
-export type RelayEventMap = {
+export type RelayEventMap = DataTableEventMap & {
 	// #region Lifecycle
 
 	'server-started': {};
@@ -527,6 +530,8 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
 	};
 
 	'credentials-shared': {
@@ -539,6 +544,7 @@ export type RelayEventMap = {
 	};
 
 	'credentials-updated': {
+		descriptionOnly?: boolean;
 		user: UserLike;
 		credentialType: string;
 		credentialId: string;
@@ -549,6 +555,8 @@ export type RelayEventMap = {
 		jweEnabled?: boolean;
 		supportsManagedAuth?: boolean;
 		usesManagedAuth?: boolean;
+		/** Version of the managed app that the credential uses. Unset when it uses none. */
+		managedAppVersion?: number;
 	};
 
 	'credentials-deleted': {
@@ -1051,12 +1059,14 @@ export type RelayEventMap = {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-updated': {
 		user: UserLike;
 		sourceId: string;
 		issuer: string;
+		facets: TrustedSourceFacets;
 	};
 
 	'trusted-source-deleted': {
@@ -1064,6 +1074,12 @@ export type RelayEventMap = {
 		sourceId: string;
 		issuer: string;
 	};
+
+	'trusted-source-healthy': {
+		sourceId: string;
+	};
+
+	'trusted-source-first-authenticated': { sourceId: string; surface: SurfaceId };
 
 	// #endregion
 
@@ -1238,15 +1254,6 @@ export type RelayEventMap = {
 		windowEndIso: string;
 		compactionStartTime: Date;
 	};
-	// #endregion
-
-	// #region Data Tables
-
-	'data-table-deleted': {
-		dataTableId: string;
-		projectId: string;
-	};
-
 	// #endregion
 
 	// #region Folders

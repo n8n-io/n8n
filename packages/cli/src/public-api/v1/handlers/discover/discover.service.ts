@@ -7,9 +7,7 @@ import {
 	scopesInRequirement,
 	toOpenApiPathTemplate,
 } from '../../../public-api-route-resolver';
-import { buildRequestBodyJsonSchema } from '../../openapi-gen/decorator-routes';
-
-import '../../controllers';
+import { buildRequestBodyJsonSchema } from '../../openapi-gen/request-body-json-schema';
 
 interface EndpointInfo {
 	method: string;

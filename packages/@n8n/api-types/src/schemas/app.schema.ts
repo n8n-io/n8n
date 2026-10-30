@@ -6,7 +6,8 @@ export const appNamespaceSchema = z
 	.string()
 	.trim()
 	.min(1)
-	.max(63)
+	// max subdomain length minus length of `--preview`
+	.max(54)
 	.regex(
 		/^[a-z0-9]+(-[a-z0-9]+)*$/,
 		'Use lowercase letters, numbers, and single hyphens between them.',
@@ -43,6 +44,9 @@ export const appVersionSchema = z.object({
 	updatedAt: z.string().datetime(),
 });
 export type AppVersionResponse = z.infer<typeof appVersionSchema>;
+
+export const appPreviewResponseSchema = z.object({ url: z.string().url() });
+export type AppPreviewResponse = z.infer<typeof appPreviewResponseSchema>;
 
 export const appBuildResponseSchema = z.object({
 	versionId: z.string().uuid(),

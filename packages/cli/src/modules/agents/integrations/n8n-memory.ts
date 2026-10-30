@@ -615,11 +615,14 @@ export class N8nMemoryImpl
 		const resourceId = episodicWriteScopeId(candidate);
 		await this.resourceRepository.ensureExists(resourceId);
 		const { episodic: _episodic, ...candidateData } = candidate;
-		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate({
-			agentId: this.agentId,
-			...candidateData,
-			resourceId,
-		});
+		const entity = await this.memoryEntryCandidateRepository.enqueueCandidate(
+			{
+				agentId: this.agentId,
+				...candidateData,
+				resourceId,
+			},
+			{},
+		);
 		return this.toEpisodicMemoryCaptureCandidate(entity);
 	}
 
@@ -631,12 +634,13 @@ export class N8nMemoryImpl
 			this.agentId,
 			episodicWriteScopeId(scope),
 			opts?.limit ?? 100,
+			{},
 		);
 		return entities.map((entity) => this.toEpisodicMemoryCaptureCandidate(entity));
 	}
 
 	private async completeEpisodicMemoryCaptureCandidates(ids: string[]): Promise<void> {
-		await this.memoryEntryCandidateRepository.markCandidatesCompleted(this.agentId, ids);
+		await this.memoryEntryCandidateRepository.markCandidatesCompleted(this.agentId, ids, {});
 	}
 
 	private async recordEpisodicMemoryCaptureCandidateFailure(
@@ -647,6 +651,7 @@ export class N8nMemoryImpl
 			this.agentId,
 			ids,
 			maxAttempts,
+			{},
 		);
 	}
 
@@ -741,46 +746,70 @@ export class N8nMemoryImpl
 		const resourceIds = opts?.writeScopeOnly
 			? episodicWriteScopeIds(scope)
 			: episodicReadScopeIds(scope);
-		const entries = await this.loadNewestEpisodicMemoryEntries(
+		const entries = await this.loadRankableEpisodicMemoryEntries(
 			resourceIds,
 			opts?.includeStatuses ?? ['active'],
 		);
-		return rankEpisodicMemoryEntries(entries, opts);
+		const [ranked] = await this.withFullEntries([rankEpisodicMemoryEntries(entries, opts)]);
+		return ranked;
 	}
 
 	private async findSimilarEpisodicMemoryEntries(
 		scope: EpisodicMemoryScope,
-		embeddings: number[][],
+		embeddings: Array<ArrayLike<number>>,
 		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
 	): Promise<RetrievedEpisodicMemoryEntry[][]> {
-		const entries = await this.loadNewestEpisodicMemoryEntries(episodicWriteScopeIds(scope), [
+		const entries = await this.loadRankableEpisodicMemoryEntries(episodicWriteScopeIds(scope), [
 			'active',
 		]);
-		return embeddings.map((queryEmbedding) =>
-			rankEpisodicMemoryEntries(entries, { ...opts, queryEmbedding }),
+		return await this.withFullEntries(
+			embeddings.map((queryEmbedding) =>
+				rankEpisodicMemoryEntries(entries, { ...opts, queryEmbedding }),
+			),
 		);
 	}
 
-	/** The same fact told in two threads is one memory to the reader. */
-	private async loadNewestEpisodicMemoryEntries(
+	/**
+	 * Ranking needs no content, so these entries have an empty one. The same fact
+	 * told in two threads is one memory to the reader.
+	 */
+	private async loadRankableEpisodicMemoryEntries(
 		resourceIds: string[],
 		statuses: EpisodicMemoryStatus[],
 	): Promise<EpisodicMemoryEntry[]> {
-		if (resourceIds.length === 0) return [];
-		const entities = await this.memoryEntryRepository.find({
-			where: {
-				agentId: this.agentId,
-				resourceId: In(resourceIds),
-				status: In(statuses),
-			},
-		});
+		const entities = await this.memoryEntryRepository.findRankableEntries(
+			this.agentId,
+			resourceIds,
+			statuses,
+		);
 		const newestByContent = new Map<string, AgentMemoryEntryEntity>();
 		for (const entity of entities) {
 			const key = `${entity.status}\n${entity.contentHash}`;
 			const seen = newestByContent.get(key);
 			if (!seen || entity.lastSeenAt > seen.lastSeenAt) newestByContent.set(key, entity);
 		}
-		return [...newestByContent.values()].map((entity) => this.toEpisodicMemoryEntry(entity));
+		return [...newestByContent.values()].map((entity) =>
+			this.toEpisodicMemoryEntry({ ...entity, content: '', metadata: null }),
+		);
+	}
+
+	/**
+	 * Replaces ranked entries with their full rows and keeps their scores. Drops
+	 * an entry whose row was deleted or changed status since it was ranked.
+	 */
+	private async withFullEntries(
+		rankings: RetrievedEpisodicMemoryEntry[][],
+	): Promise<RetrievedEpisodicMemoryEntry[][]> {
+		const ids = [...new Set(rankings.flat().map(({ id }) => id))];
+		const rows = await this.memoryEntryRepository.findInAnyStatus(this.agentId, ids);
+		const rowsById = new Map(rows.map((row) => [row.id, row]));
+		return rankings.map((ranked) =>
+			ranked.flatMap(({ id, status, vectorScore, finalScore }) => {
+				const row = rowsById.get(id);
+				if (row?.status !== status) return [];
+				return [{ ...this.toEpisodicMemoryEntry(row), vectorScore, finalScore }];
+			}),
+		);
 	}
 
 	private async addEpisodicMemoryEntrySources(
@@ -820,6 +849,7 @@ export class N8nMemoryImpl
 		const sourceMessages = await this.memoryEntryCandidateRepository.findSourceMessages(
 			this.agentId,
 			sources.flatMap(({ candidateId }) => candidateId ?? []),
+			{},
 		);
 		return sources.map((source) => {
 			const message = source.candidateId ? sourceMessages.get(source.candidateId) : undefined;

@@ -35,6 +35,7 @@ function createService({ deploymentType = 'default', host = 'n8n.example.net' } 
 	);
 	const hosts = mock<AppHostService>();
 	hosts.origin.mockImplementation((namespace) => configuredHosts.origin(namespace));
+	hosts.previewOrigin.mockImplementation((namespace) => configuredHosts.previewOrigin(namespace));
 	locks.withLockContext.mockImplementation(async (_key, fn) => await fn({}));
 	appVersions.hasRunningBuild.mockResolvedValue(false);
 	const service = new AppsService(
@@ -96,6 +97,30 @@ describe('AppsService', () => {
 			expect.objectContaining({ visibility: 'project' }),
 		);
 		expect(response.visibility).toBe('project');
+	});
+
+	it('creates an app with a caller-provided id', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+		const id = '0190a5d2-6f4b-7c3e-8a1d-2b3c4d5e6f70';
+		appRepository.projectExists.mockResolvedValue(true);
+		appRepository.createApp.mockResolvedValue(
+			mock<App>({ id, namespace: 'app', createdAt: new Date(), updatedAt: new Date() }),
+		);
+
+		await service.createApp('project-1', dto, { id });
+
+		expect(appRepository.createApp).toHaveBeenCalledExactlyOnceWith('project-1', { ...dto, id });
+	});
+
+	it('rejects a caller-provided id that is not a UUID', async () => {
+		const { service, appRepository } = createService();
+		const dto = CreateAppDto.parse({ name: 'App', namespace: 'app' });
+
+		await expect(service.createApp('project-1', dto, { id: 'not-a-uuid' })).rejects.toThrow(
+			BadRequestError,
+		);
+		expect(appRepository.createApp).not.toHaveBeenCalled();
 	});
 
 	it('returns not found when creating an app in a missing project', async () => {
@@ -161,9 +186,9 @@ describe('AppsService', () => {
 	});
 
 	it.each([
-		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 57 },
-		{ deploymentType: 'cloud', host: 'foo--bar.app.n8n.cloud', maxLength: 53 },
-		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 63 },
+		{ deploymentType: 'cloud', host: 'test.app.n8n.cloud', maxLength: 48 },
+		{ deploymentType: 'cloud', host: 'foo-bar1.app.n8n.cloud', maxLength: 44 },
+		{ deploymentType: 'default', host: 'test.app.n8n.cloud', maxLength: 54 },
 	])('accepts namespaces at the limit for $deploymentType host $host', async (config) => {
 		const { service, appRepository } = createService(config);
 		const appId = '11111111-1111-4111-8111-111111111111';
@@ -191,8 +216,8 @@ describe('AppsService', () => {
 	});
 
 	it.each([
-		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(58) },
-		{ host: 'foo--bar.app.n8n.cloud', namespace: 'a'.repeat(54) },
+		{ host: 'test.app.n8n.cloud', namespace: 'a'.repeat(49) },
+		{ host: 'foo-bar1.app.n8n.cloud', namespace: 'a'.repeat(45) },
 	])(
 		'rejects namespace "$namespace" before writing for Cloud host $host',
 		async ({ host, namespace }) => {

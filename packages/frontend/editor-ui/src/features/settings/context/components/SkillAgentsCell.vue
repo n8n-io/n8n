@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { SkillListItem, SkillUsedBy } from '@n8n/api-types';
-import { N8nDropdownMenu, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nBadge, N8nDropdownMenu, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import type { DropdownMenuItemProps } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@n8n/composables/useToast';
@@ -26,24 +26,57 @@ const { showError } = useToast();
 const usage = ref<SkillUsedBy | null>(null);
 const loading = ref(false);
 
-type AgentRow = { agentName: string; projectId: string; caption?: string };
+/** The version an agent draft runs, as the design shows it. */
+type VersionBadge = {
+	label: string;
+	variant: 'success' | 'warning' | 'outline';
+	/** Only a pinned version has an icon. */
+	pinned: boolean;
+	/** Set when the published agent runs another version than the draft. */
+	tooltip?: string;
+};
 
-/**
- * A draft and a published version of the same agent count once, as `usedByAgents` does.
- * The caption is the version the draft runs.
- */
+type AgentRow = { agentName: string; projectId: string; badge?: VersionBadge };
+
+function versionBadge(
+	draft: SkillUsedBy['drafts'][number],
+	published: number | null | undefined,
+): VersionBadge {
+	if (draft.pinned) {
+		return {
+			label: i18n.baseText('settings.context.skills.versions.agents.pinned', {
+				interpolate: { version: draft.version },
+			}),
+			variant: 'outline',
+			pinned: true,
+		};
+	}
+	const label = i18n.baseText('settings.context.skills.versions.agents.latest', {
+		interpolate: { version: draft.version },
+	});
+	// Amber: the draft follows the latest version, but the published agent still runs an older one.
+	if (published !== null && published !== undefined && published !== draft.version) {
+		return {
+			label,
+			variant: 'warning',
+			pinned: false,
+			tooltip: i18n.baseText('settings.context.skills.versions.agents.publishedUses', {
+				interpolate: { version: published },
+			}),
+		};
+	}
+	return { label, variant: 'success', pinned: false };
+}
+
+/** A draft and a published version of the same agent count once, as `usedByAgents` does. */
 const agents = computed(() => {
+	const published = new Map((usage.value?.pins ?? []).map((pin) => [pin.agentId, pin.version]));
 	const byId = new Map<string, AgentRow>();
 	for (const draft of usage.value?.drafts ?? []) {
 		byId.set(draft.agentId, {
 			agentName: draft.agentName,
 			projectId: draft.projectId,
-			caption: i18n.baseText(
-				draft.pinned
-					? 'settings.context.skills.versions.agents.pinned'
-					: 'settings.context.skills.versions.agents.latest',
-				{ interpolate: { version: draft.version } },
-			),
+			badge: versionBadge(draft, published.get(draft.agentId)),
 		});
 	}
 	for (const pin of usage.value?.pins ?? []) {
@@ -129,14 +162,22 @@ function onSelect(agentId: string) {
 			@select="onSelect"
 		>
 			<template #item-trailing="{ item }">
-				<N8nText
-					v-if="item.data?.caption"
-					size="small"
-					color="text-light"
-					data-test-id="skill-agents-version"
+				<N8nTooltip
+					v-if="item.data?.badge"
+					:content="item.data.badge.tooltip"
+					:disabled="!item.data.badge.tooltip"
+					placement="top"
 				>
-					{{ item.data.caption }}
-				</N8nText>
+					<N8nBadge
+						:variant="item.data.badge.variant"
+						:leading-icon="item.data.badge.pinned ? 'pin' : undefined"
+						size="xsmall"
+						:data-variant="item.data.badge.variant"
+						data-test-id="skill-agents-version"
+					>
+						{{ item.data.badge.label }}
+					</N8nBadge>
+				</N8nTooltip>
 			</template>
 			<template #trigger>
 				<button

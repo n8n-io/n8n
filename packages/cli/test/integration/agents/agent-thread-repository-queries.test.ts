@@ -1,8 +1,10 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
+import { AgentChatAttachment } from '@/modules/agents/entities/agent-chat-attachment.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
@@ -22,6 +24,7 @@ describe('Agent thread repository queries for system agents', () => {
 	let messageRepo: AgentMessageRepository;
 	let executionRepo: AgentExecutionRepository;
 	let attachmentRepo: AgentChatAttachmentRepository;
+	let attachmentTable: Repository<AgentChatAttachment>;
 	let projectId: string;
 	let agentId: string;
 	let otherAgentId: string;
@@ -38,6 +41,7 @@ describe('Agent thread repository queries for system agents', () => {
 		messageRepo = Container.get(AgentMessageRepository);
 		executionRepo = Container.get(AgentExecutionRepository);
 		attachmentRepo = Container.get(AgentChatAttachmentRepository);
+		attachmentTable = Container.get(DataSource).getRepository(AgentChatAttachment);
 		ownerId = (await createMember()).id;
 		otherUserId = (await createMember()).id;
 	});
@@ -49,7 +53,7 @@ describe('Agent thread repository queries for system agents', () => {
 	});
 
 	afterEach(async () => {
-		await attachmentRepo.delete({});
+		await attachmentTable.delete({});
 		await queueRepo.delete({});
 		await executionRepo.delete({});
 		await threadRepo.delete({});
@@ -210,8 +214,8 @@ describe('Agent thread repository queries for system agents', () => {
 			const other = await createThread();
 			const otherProjectId = (await createTeamProject()).id;
 			const attach = async (threadId: string) =>
-				await attachmentRepo.save(
-					attachmentRepo.create({
+				await attachmentTable.save(
+					attachmentTable.create({
 						agentId,
 						projectId,
 						threadId,
@@ -229,12 +233,13 @@ describe('Agent thread repository queries for system agents', () => {
 			await threadRepo.moveOwned(agentId, ownerId, thread.id, otherProjectId, {});
 
 			expect(
-				await attachmentRepo.findByIdInThread(moved.id, {
-					projectId: otherProjectId,
-					threadId: thread.id,
-				}),
+				await attachmentRepo.findByIdInThread(
+					moved.id,
+					{ projectId: otherProjectId, threadId: thread.id },
+					{},
+				),
 			).toMatchObject({ id: moved.id });
-			expect(await attachmentRepo.findOneByOrFail({ id: kept.id })).toMatchObject({ projectId });
+			expect(await attachmentTable.findOneByOrFail({ id: kept.id })).toMatchObject({ projectId });
 		});
 
 		it('does not move a session of another owner, another agent or a parent session', async () => {

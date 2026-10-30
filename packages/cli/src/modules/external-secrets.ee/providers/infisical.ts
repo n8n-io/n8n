@@ -17,6 +17,7 @@ import {
 	type LogContext,
 	type SecretsProviderOperationFailureParams,
 } from '../errors/secrets-provider-errors';
+import { formatSecretPath } from '../secret-path';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
@@ -372,7 +373,7 @@ export class InfisicalProvider extends SecretsProvider {
 	}
 
 	getSecretNames(): string[] {
-		return Object.keys(this.cachedSecrets);
+		return Object.keys(this.cachedSecrets).map((name) => formatSecretPath([name]));
 	}
 
 	hasSecret(name: string): boolean {

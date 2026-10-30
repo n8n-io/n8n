@@ -27,6 +27,7 @@ jobs:
       frontend_declarations: ${{ fromJSON(steps.ci-filter.outputs.results)['frontend-declarations'] == true }}
       workflows: ${{ fromJSON(steps.ci-filter.outputs.results).workflows == true }}
       workflow_scripts: ${{ fromJSON(steps.ci-filter.outputs.results)['workflow-scripts'] == true }}
+      sbom: ${{ fromJSON(steps.ci-filter.outputs.results).sbom == true }}
       db: ${{ fromJSON(steps.ci-filter.outputs.results).db == true }}
       db_migrations: ${{ fromJSON(steps.ci-filter.outputs.results)['db-migrations'] == true }}
       e2e_performance: ${{ fromJSON(steps.ci-filter.outputs.results)['e2e-performance'] == true }}
@@ -136,6 +137,8 @@ jobs:
             workflows: .github/**
             workflow-scripts:
               .github/scripts/**
+              .github/workflows/ci-pull-requests.yml
+              .github/workflows/sbom-validation-callable.yml
               .devcontainer/codespaces/*.mjs
               OWNERS
               scripts/*.test.mjs
@@ -147,6 +150,17 @@ jobs:
               scripts/telemetry/**
               cubic.yaml
               .agents/review-rules/**
+            sbom:
+              package.json
+              pnpm-lock.yaml
+              pnpm-workspace.yaml
+              .github/scripts/package.json
+              .github/scripts/pnpm-lock.yaml
+              scripts/licenses/**
+              scripts/build-n8n.mjs
+              .github/actions/setup-nodejs/**
+              .github/workflows/ci-pull-requests.yml
+              .github/workflows/sbom-validation-callable.yml
             e2e-performance:
               packages/quality/efficiency/memory/idle/**
               packages/quality/efficiency/playwright.config.ts
@@ -292,6 +306,7 @@ jobs:
     with:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
       collectCoverage: ${{ github.event_name != 'merge_group' }}
+      testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
     secrets: inherit
@@ -520,6 +535,16 @@ jobs:
       ref: ${{ needs.install-and-build.outputs.commit_sha }}
     secrets: inherit
 
+  validate-sbom:
+    name: Release SBOM
+    needs: [install-and-build, format-check]
+    if: needs.install-and-build.outputs.sbom == 'true'
+    permissions:
+      contents: read
+    uses: ./.github/workflows/sbom-validation-callable.yml
+    with:
+      sha: ${{ needs.install-and-build.outputs.commit_sha }}
+
   # In-process discovery eval — asserts the orchestrator reaches for Browser Use
   # tools at OAuth/screenshot moments. Lightweight (no Docker), runs in parallel with the
   # heavy workflow eval. Non-blocking initially; promote to required after stability.
@@ -559,6 +584,7 @@ jobs:
         db-tests,
         security-checks,
         workflow-scripts,
+        validate-sbom,
       ]
     if: always()
     runs-on: ubuntu-slim

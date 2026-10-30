@@ -30,6 +30,7 @@ export class AgentExecution extends WithTimestampsAndStringId {
 	/** Read projections. Absent for executions recorded before message references. */
 	inputMessageIds?: string[];
 	inputMessages?: AgentPersistedMessageDto[];
+	stopReport?: boolean;
 
 	@ManyToOne(() => AgentExecutionThread, { onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'threadId' })

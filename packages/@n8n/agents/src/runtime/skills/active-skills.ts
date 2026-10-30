@@ -5,6 +5,7 @@ import { findReferenceByPath, formatActiveSkill } from '../../skills/tools';
 import {
 	SKILL_LOAD_TOOL_NAME,
 	type RuntimeSkillContent,
+	type RuntimeSkillContextUsage,
 	type RuntimeSkillSource,
 	type RuntimeSkillStateScope,
 	type RuntimeSkillStateStore,
@@ -47,6 +48,8 @@ export class ActiveSkills {
 	private scope?: RuntimeSkillStateScope;
 	private pendingSave = Promise.resolve();
 	private pendingUpdates: CustomAgentMessage[] = [];
+	private restoredIds = new Set<string>();
+	private unavailableIds = new Set<string>();
 
 	constructor(
 		private readonly source: RuntimeSkillSource,
@@ -71,6 +74,7 @@ export class ActiveSkills {
 	): Promise<void> {
 		this.loaded.clear();
 		this.pendingUpdates = [];
+		this.unavailableIds.clear();
 		this.list = list;
 		this.scope = persistence
 			? {
@@ -92,6 +96,7 @@ export class ActiveSkills {
 		}
 		const versions = { ...this.previousVersions };
 		const expired = options.freshRun ? this.expiredTurnSkills(list, options) : new Set<string>();
+		this.restoredIds = new Set(ids.filter((id) => versions[id] !== null && !expired.has(id)));
 		const registered = new Set(
 			this.source.registry.skills.filter(({ id }) => !expired.has(id)).map(({ id }) => id),
 		);
@@ -100,6 +105,7 @@ export class ActiveSkills {
 			// An expired skill keeps its version: expiry is not a revocation.
 			if (versions[id] === null || expired.has(id)) continue;
 			const skill = registered.has(id) ? await this.source.loadSkill(id) : null;
+			if (!skill && this.source.getLoadError?.(id)?.retryable) this.unavailableIds.add(id);
 			if (skill) this.loaded.set(id, skill);
 			if (skill || this.source.getLoadError?.(id)?.retryable) retainedIds.add(id);
 			const entry = this.source.registry.skills.find((candidate) => candidate.id === id);
@@ -117,6 +123,11 @@ export class ActiveSkills {
 			Object.keys(stored.versions ?? {}).length === Object.keys(versions).length &&
 			Object.entries(versions).every(([id, version]) => stored.versions?.[id] === version);
 		if (!storeIsCurrent && (ids.length > 0 || stored !== undefined)) await this.persist();
+		// Revocations remain applied even if cancellation prevents the next model call.
+		const revocations: RuntimeSkillContextUsage[] = [...this.restoredIds]
+			.filter((id) => !retainedIds.has(id))
+			.map((skillId) => ({ skillId, kind: 'revoked' }));
+		if (revocations.length > 0) this.source.onContext?.(revocations);
 	}
 
 	/** Turn-lifetime skills whose expiry costs no extra cache write on this run. */
@@ -176,6 +187,28 @@ export class ActiveSkills {
 			await this.persist();
 		}
 		return skill;
+	}
+
+	/** Report eligible context only after model-call guards accept the request. */
+	reportContext(): void {
+		if (!this.source.onContext) return;
+		const usage: RuntimeSkillContextUsage[] = [];
+		for (const skillId of this.restoredIds) {
+			const skill = this.loaded.get(skillId);
+			if (!skill && !this.unavailableIds.has(skillId)) continue;
+			const version = this.list?.activeSkillVersions?.[skillId] ?? undefined;
+			const previous = this.previousVersions[skillId];
+			usage.push({
+				skillId,
+				version,
+				kind: skill
+					? previous !== undefined && previous !== version
+						? 'refreshed'
+						: 'carried'
+					: 'unavailable',
+			});
+		}
+		this.source.onContext(usage);
 	}
 
 	/** Stream each new notice once. The message list owns its persisted copy. */

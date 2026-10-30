@@ -158,6 +158,31 @@ describe('JobProcessor', () => {
 		expect(result).toEqual({ success: false });
 	});
 
+	it('should refrain from processing an execution canceled while queued', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		const executionPersistence = mock<ExecutionPersistence>();
+		executionPersistence.findSingleExecution.mockResolvedValue(
+			mock<IExecutionResponse>({ status: 'canceled' }),
+		);
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			executionPersistence,
+			mock(),
+			mock(),
+			mock(),
+			mock(),
+			executionsConfig,
+			mock(),
+			mock(),
+		);
+
+		const result = await jobProcessor.processJob(mock<Job>());
+
+		expect(result).toEqual({ success: false });
+		expect(executionRepository.setRunning).not.toHaveBeenCalled();
+	});
+
 	it('should throw a descriptive error when the execution has no run data', async () => {
 		const executionRepository = mock<ExecutionRepository>();
 		const executionPersistence = mock<ExecutionPersistence>();
@@ -738,6 +763,54 @@ describe('JobProcessor', () => {
 			}),
 		);
 	});
+
+	// A plain run, since a deep mock answers every flag with a truthy function.
+	test.each([true as const, undefined])(
+		'should report failedBeforeStart=%s in job-finished',
+		async (flag) => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+			const run: IRun = {
+				mode: 'trigger',
+				status: 'error',
+				startedAt: new Date(),
+				stoppedAt: new Date(),
+				storedAt: 'db',
+				data: createRunExecutionData({
+					resultData: { error: mock<ExecutionError>(), failedBeforeStart: flag },
+					executionData: null,
+				}),
+			};
+
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				createManualExecutionServiceMock(run),
+				executionsConfig,
+				mock(),
+				mock(),
+			);
+
+			const job = mock<Job>();
+
+			await jobProcessor.processJob(job);
+
+			const finished = job.progress.mock.calls
+				.map(([msg]) => msg as { kind: string; failedBeforeStart?: true })
+				.find((msg) => msg.kind === 'job-finished');
+			expect(finished?.failedBeforeStart).toBe(flag);
+		},
+	);
 
 	it('should pass additional data for partial executions to run', async () => {
 		const executionRepository = mock<ExecutionRepository>();
@@ -2754,6 +2827,86 @@ describe('JobProcessor', () => {
 			});
 			run.waitTill = undefined;
 			expect(jobProcessor['deriveJobFinishedProps'](run, new Date()).waitTill).toBeNull();
+		});
+	});
+
+	describe('stopJobByExecutionId', () => {
+		const createRunningJob = () => {
+			const executionPersistence = mock<ExecutionPersistence>();
+			executionPersistence.findSingleExecution.mockResolvedValueOnce(
+				mock<IExecutionResponse>({
+					mode: 'manual',
+					workflowData: { id: 'workflow-id', nodes: [], staticData: {} },
+					data: mock<IRunExecutionData>({ executionData: undefined }),
+				}),
+			);
+
+			const cancel = vi.fn();
+			let resolveRun!: (run: IRun) => void;
+			const runPromise = new Promise<IRun>((resolve) => {
+				resolveRun = resolve;
+			});
+			cancel.mockImplementation(() => resolveRun(mock<IRun>({ status: 'canceled' })));
+			const workflowRun = Object.assign(runPromise, { cancel }) as unknown as PCancelable<IRun>;
+
+			const manualExecutionService = mock<ManualExecutionService>();
+			manualExecutionService.runManually.mockReturnValue(workflowRun);
+
+			const eventService = mock<EventService>();
+			const jobProcessor = new JobProcessor(
+				logger,
+				mock<ExecutionRepository>(),
+				executionPersistence,
+				mock(),
+				mock(),
+				mock(),
+				manualExecutionService,
+				executionsConfig,
+				eventService,
+				mock(),
+			);
+
+			const job = mock<Job>({
+				id: 'job-1',
+				data: { executionId: 'exec-1', loadStaticData: false },
+			});
+
+			return { jobProcessor, job, cancel, eventService, resolveRun };
+		};
+
+		it('cancels the running job that belongs to the execution', async () => {
+			const { jobProcessor, job, cancel, eventService } = createRunningJob();
+
+			const processing = jobProcessor.processJob(job);
+			const assertion = expect(processing).rejects.toThrow(ManualExecutionCancelledError);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).toHaveLength(1));
+
+			expect(jobProcessor.stopJobByExecutionId('exec-1')).toBe(true);
+
+			// The stop itself frees the job, before the cleanup in processJob runs.
+			expect(cancel).toHaveBeenCalledTimes(1);
+			expect(jobProcessor.getRunningJobsSummary()).toEqual([]);
+			expect(jobProcessor.getTrackedJobIds()).toEqual([]);
+
+			await assertion;
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'execution-cancelled',
+				expect.objectContaining({ executionId: 'exec-1', reason: 'manual' }),
+			);
+		});
+
+		it('returns false and cancels nothing when no running job belongs to the execution', async () => {
+			const { jobProcessor, job, cancel, resolveRun } = createRunningJob();
+
+			const processing = jobProcessor.processJob(job);
+			await vi.waitFor(() => expect(jobProcessor.getRunningJobsSummary()).toHaveLength(1));
+
+			expect(jobProcessor.stopJobByExecutionId('other-exec')).toBe(false);
+			expect(cancel).not.toHaveBeenCalled();
+			expect(jobProcessor.getRunningJobsSummary()).toHaveLength(1);
+
+			resolveRun(successRun());
+			await processing;
 		});
 	});
 

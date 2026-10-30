@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       sha:
-        description: 'Trusted full commit SHA to validate'
+        description: 'Full commit SHA to validate'
         required: true
         type: string
 
@@ -22,9 +22,8 @@ jobs:
         with:
           persist-credentials: false
 
-      # Poutine flags all runtime-selected checkouts. The only caller gets this
-      # value from GitHub's scheduled-run response or GITHUB_SHA, and this step
-      # independently rejects non-SHA values before fetch.
+      # Callers pass the nightly source SHA or the PR merge SHA.
+      # Reject refs before fetching the source.
       # poutine: untrusted_checkout_exec
       - name: Checkout SBOM source
         env:

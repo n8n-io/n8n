@@ -61,6 +61,7 @@ function handleClick() {
 	flex-shrink: 0;
 	display: flex;
 	align-items: center;
+	gap: var(--spacing--4xs);
 	color: var(--color--text);
 	max-width: 70%;
 }

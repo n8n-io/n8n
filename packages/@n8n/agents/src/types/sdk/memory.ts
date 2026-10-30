@@ -152,7 +152,8 @@ export interface EpisodicMemoryEntry {
 	contentHash: string;
 	status: EpisodicMemoryStatus;
 	supersededBy: string | null;
-	embedding?: number[];
+	/** float32 values, so a store can keep them as bytes without converting them. */
+	embedding?: Float32Array;
 	embeddingModel?: string;
 	metadata?: JSONObject | null;
 	createdAt: Date;
@@ -204,7 +205,7 @@ export interface RetrievedEpisodicMemoryEntry extends EpisodicMemoryEntry {
 
 export interface EpisodicMemorySearchOptions {
 	topK?: number;
-	queryEmbedding?: number[];
+	queryEmbedding?: ArrayLike<number>;
 	includeStatuses?: EpisodicMemoryStatus[];
 	/** Search only entries a write from this scope would supersede or merge. Shared backends must not widen this search. */
 	writeScopeOnly?: boolean;
@@ -268,7 +269,7 @@ export interface EpisodicMemoryCaptureMethods {
 	 */
 	findSimilarEntries(
 		scope: EpisodicMemoryScope,
-		embeddings: number[][],
+		embeddings: Array<ArrayLike<number>>,
 		opts: Pick<EpisodicMemorySearchOptions, 'topK' | 'minSimilarity'>,
 	): Promise<RetrievedEpisodicMemoryEntry[][]>;
 	/**
@@ -316,6 +317,8 @@ export interface EpisodicMemoryConsolidatorInput {
 	executionCounter?: AgentExecutionCounter;
 	/** The agent's model transport (`AgentRuntimeConfig.modelFetch`), for the task's own model call. */
 	modelFetch?: typeof globalThis.fetch;
+	/** The agent's caller identity (`AgentRuntimeConfig.functionId`), for the task's request header. */
+	functionId?: string;
 }
 
 export interface EpisodicMemoryConsolidation {

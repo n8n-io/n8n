@@ -14,6 +14,7 @@ interface MessageItem {
 	item: TimelineItem;
 	projectId?: string;
 	agentId?: string;
+	threadId?: string;
 	senderName: string;
 	messageMarkdown: string;
 	personalisation?: AgentJsonConfig['personalisation'] | null;
@@ -80,6 +81,7 @@ const time = computed(() => formatTimelineTime(props.item.timestamp));
 						:attachments="attachments"
 						:project-id="projectId"
 						:agent-id="agentId"
+						:thread-id="threadId"
 					/>
 					<N8nMarkdown :content="props.messageMarkdown" />
 				</div>

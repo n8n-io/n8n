@@ -8,7 +8,7 @@ import {
 import type { ResolvedEpisodicScope } from '@n8n/agents';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import type { Attachment, Thread, Author, Message } from 'chat';
+import type { ActionEvent, Attachment, Thread, Author, Message } from 'chat';
 import { UserError, type Logger } from 'n8n-workflow';
 
 import type { ChatInstance } from './chat-integration.service';
@@ -591,7 +591,14 @@ export abstract class AgentChatIntegration {
 	normalizeComponents?(
 		components: SuspendComponent[],
 		context: NormalizeComponentsContext,
-	): SuspendComponent[];
+	): SuspendComponent[] | Promise<SuspendComponent[]>;
+
+	/**
+	 * Optional: handle a button or list tap that is not a resume. Return `true`
+	 * to claim the tap, so the bridge does not try to resume the run. WhatsApp
+	 * uses this for its "More…" list row.
+	 */
+	claimAction?(event: ActionEvent): Promise<boolean>;
 
 	/**
 	 * Optional per-platform thread ID formatting.
@@ -656,6 +663,15 @@ export abstract class AgentChatIntegration {
 		isNewMention: boolean;
 		platformAgentContext: PlatformAgentContext;
 	}): ReplyExpectation;
+
+	/**
+	 * For a synthetic message that reports a failed send: the platform ID of
+	 * the message that failed, and the text to give a chat that sent it. The
+	 * bridge sends the report to the session that sent the message.
+	 */
+	getFailedSendReport?(
+		message: Message<unknown>,
+	): { messageId: string; chatNotice: string } | undefined;
 
 	/** Replacement text for action cards preserved after a user responds. */
 	formatActionDecisionMessage?(params: ActionDecisionMessageParams): string | undefined;

@@ -300,6 +300,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
+		// The skills module reads the credentials of its sources through cli.
+		const { registerSkillSourceCredentials } = await import(
+			'@/credentials/skill-source-credentials.js'
+		);
+		registerSkillSourceCredentials();
+
 		// Initialize auth handler registry after modules are loaded
 		const { AuthHandlerRegistry } = await import('@/auth/auth-handler.registry.js');
 		await Container.get(AuthHandlerRegistry).init();

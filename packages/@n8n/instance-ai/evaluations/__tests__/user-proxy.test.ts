@@ -123,7 +123,7 @@ function questionEvent(
 			payload: {
 				requestId,
 				toolCallId: 'tc-x',
-				toolName: 'workflow_builder_ask_user',
+				toolName: 'ask_user',
 				args: {},
 				severity: 'info',
 				message: 'Please answer',
@@ -334,7 +334,7 @@ describe('UserProxyLlm.respondToConfirmation', () => {
 		expect(agent.modes[0]).toBe('confirmation');
 	});
 
-	it('routes workflow_builder_ask_user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
+	it('routes ask_user questions to the agent even when scripted user turns remain (no deterministic shortcut)', async () => {
 		const agent = new FakeAgent();
 		agent.enqueue({
 			action: 'answer_questions',

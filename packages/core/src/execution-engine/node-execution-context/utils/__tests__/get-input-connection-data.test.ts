@@ -1608,6 +1608,7 @@ describe('createHitlToolSupplyData', () => {
 
 		(SupplyDataContext.prototype.getInputConnectionData as Mock).mockResolvedValue(originalTool);
 		const result = await createHitlToolSupplyData(
+			SupplyDataContext,
 			hitlNode,
 			workflow,
 			runExecutionData,
