@@ -87,7 +87,10 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { ApplyPreviewService } from '../apply-preview.service';
+import type { ManifestEntry, PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
+import { instancePromotionExportRequest } from '../instance-package';
 import { manifestFromFiles } from '../package-manifest';
+import { writeWorkflowRequirementFiles } from '../workflow-requirements';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
@@ -422,8 +425,13 @@ async function inspectBranch(
 async function readBranchManifest(inspectionDir: string) {
 	const root = path.join(inspectionDir, 'n8n');
 	await expect(readFile(path.join(root, 'manifest.json'))).rejects.toThrow();
+	return manifestFromFiles(await readTreeFiles(root));
+}
+
+/** Every file under a folder, by path relative to it. */
+async function readTreeFiles(root: string): Promise<Array<[string, string]>> {
 	const entries = await readdir(root, { recursive: true, withFileTypes: true });
-	const files = await Promise.all(
+	return await Promise.all(
 		entries
 			.filter((entry) => entry.isFile())
 			.map(async (entry): Promise<[string, string]> => {
@@ -431,7 +439,38 @@ async function readBranchManifest(inspectionDir: string) {
 				return [path.relative(root, full).split(path.sep).join('/'), await readFile(full, 'utf-8')];
 			}),
 	);
-	return manifestFromFiles(files);
+}
+
+/** The lists and requirements of a manifest in a fixed order, without the header and node types. */
+function normalizeManifest(manifest: PackageManifest) {
+	const byKey = <T>(rows: T[] | undefined, keyOf: (row: T) => string) =>
+		[...(rows ?? [])].sort((a, b) => (keyOf(a) < keyOf(b) ? -1 : 1));
+	const entries = (rows: ManifestEntry[] | undefined) => byKey(rows, ({ target }) => target);
+	const requirement = <T extends { usedBy: Array<{ kind: string; id: string }> }>(
+		rows: T[] | undefined,
+		keyOf: (row: T) => string,
+	) =>
+		byKey(
+			(rows ?? []).map((row) => ({ ...row, usedBy: byKey(row.usedBy, ({ id }) => id) })),
+			keyOf,
+		);
+	const { requirements } = manifest;
+	return {
+		projects: entries(manifest.projects),
+		folders: entries(manifest.folders),
+		workflows: entries(manifest.workflows),
+		credentials: entries(manifest.credentials),
+		dataTables: entries(manifest.dataTables),
+		variables: entries(manifest.variables),
+		tags: entries(manifest.tags),
+		requirements: {
+			credentials: requirement(requirements?.credentials, ({ id }) => id),
+			dataTables: requirement(requirements?.dataTables, ({ id }) => id),
+			workflows: requirement(requirements?.workflows, ({ id }) => id),
+			variables: requirement(requirements?.variables, ({ name }) => name),
+			tags: requirement(requirements?.tags, ({ id }) => id),
+		},
+	};
 }
 
 async function readBranchEntities(
@@ -3419,6 +3458,74 @@ describe('Promotion base branch listing', () => {
 
 	beforeEach(async () => {
 		project = await createTeamProject('Orders', owner);
+	});
+
+	it('rebuilds the manifest of the exporter from the files that a promote writes', async () => {
+		const dataTable = await Container.get(DataTableService).createDataTable(project.id, {
+			name: 'Orders',
+			columns: [{ name: 'email', type: 'string' }],
+		});
+		const credential = await saveCredential(
+			{ name: 'Header credential', type: 'httpHeaderAuth', data: { name: 'X-Auth', value: 'x' } },
+			{ user: owner, role: 'credential:owner' },
+		);
+		await createVariable('API_URL', 'https://api.example.com');
+		const folder = await createFolder(project, { name: 'Operations' });
+		const errorWorkflow = await createWorkflow(
+			{ name: 'Alert', nodes: [], connections: {} },
+			project,
+		);
+		const workflow = await createWorkflow(
+			{
+				name: 'Process order',
+				parentFolder: folder,
+				settings: { errorWorkflow: errorWorkflow.id },
+				nodes: [
+					{
+						id: 'n1',
+						name: 'HTTP',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [0, 0],
+						parameters: { url: '={{ $vars.API_URL }}' },
+						credentials: { httpHeaderAuth: { id: credential.id, name: credential.name } },
+					},
+					{
+						id: 'n2',
+						name: 'Table',
+						type: 'n8n-nodes-base.dataTable',
+						typeVersion: 1,
+						position: [200, 0],
+						parameters: { dataTableId: { __rl: true, mode: 'id', value: dataTable.id } },
+					},
+				],
+				connections: {},
+			},
+			project,
+		);
+		await createTag({ name: 'prod' }, workflow);
+		const targetDir = path.join(testRoot, 'parity-export');
+
+		const { manifest } = await packagesService.exportPackageToDirectory(
+			instancePromotionExportRequest({
+				user: owner,
+				projectIds: [project.id],
+				canExportVariableValues: true,
+			}),
+			{ targetDir },
+		);
+		await writeWorkflowRequirementFiles(targetDir, manifest);
+		const rebuilt = manifestFromFiles(await readTreeFiles(targetDir));
+
+		// The fixture must cover each kind of requirement, so that the comparison means something.
+		expect(manifest.requirements).toMatchObject({
+			credentials: [expect.anything()],
+			dataTables: [expect.anything()],
+			variables: [expect.anything()],
+			tags: [expect.anything()],
+			workflows: [expect.anything()],
+		});
+		expect(normalizeManifest(rebuilt)).toEqual(normalizeManifest(manifest));
 	});
 
 	it('lists the exported project and its top-level dependencies', async () => {
