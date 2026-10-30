@@ -1,0 +1,22 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotions-git.service.test.ts
+  s_b3123eaa9590ea::t_24818f97f6702e 28,617-627,631-634,637-645,647-648,656,669,673,685,689
+packages/cli/src/modules/promotions.ee/promotions-git.service.ts
+  s_b3123eaa9590ea::t_150027daee7db6 594-599,602-604,940-962,966-969
+  s_b3123eaa9590ea::t_24818f97f6702e 20,963-965
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "4d0811885455298dc4c285f35efb2d6bf1e83031",
+  "prompts": {},
+  "sessions": {
+    "s_b3123eaa9590ea": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca14baa9-48c7-4b9c-8882-614adc7aee20",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}
