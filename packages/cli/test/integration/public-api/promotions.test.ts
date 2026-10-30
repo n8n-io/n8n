@@ -21,6 +21,7 @@ import { PromotionProviderRepository } from '@/modules/promotions.ee/database/re
 import { GitHostClients } from '@/modules/promotions.ee/git-hosts/git-host-clients';
 import { GitLabHostClient } from '@/modules/promotions.ee/git-hosts/gitlab-host.client';
 import { PromotionChangeService } from '@/modules/promotions.ee/promotion-change.service';
+import { PromotionEnvironmentLockService } from '@/modules/promotions.ee/promotion-environment-lock.service';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
 import { PromotionProvidersService } from '@/modules/promotions.ee/promotion-providers.service';
 import { PromotionsGitService } from '@/modules/promotions.ee/promotions-git.service';
@@ -1675,16 +1676,29 @@ describe('Promotions in Public API', () => {
 				const plainProviderId = await createProvider(agent);
 				const repository = Container.get(PromotionEnvironmentRepository);
 				// Pause before the write transaction opens. SQLite runs one write transaction at a
-				// time, so a pause inside it would also hold back the winning update.
-				const transactions = Container.get(TransactionRunner);
-				const run = transactions.run.bind(transactions);
+				// time, so a pause inside it would also hold back the winning update. A new remote
+				// changes the checkout, so that write runs inside the environment lock: pause it
+				// before it takes the lock, so the winning update can take it.
 				const paused = createDeferredPromise();
 				const resume = createDeferredPromise();
-				const write = vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+				const pause = async () => {
 					paused.resolve();
 					await resume.promise;
-					return await run(...args);
-				});
+				};
+				const transactions = Container.get(TransactionRunner);
+				const environmentLock = Container.get(PromotionEnvironmentLockService);
+				const run = transactions.run.bind(transactions);
+				const lock = environmentLock.run.bind(environmentLock);
+				const write =
+					field === 'remote'
+						? vi.spyOn(environmentLock, 'run').mockImplementationOnce(async (...args) => {
+								await pause();
+								return await lock(...args);
+							})
+						: vi.spyOn(transactions, 'run').mockImplementationOnce(async (...args) => {
+								await pause();
+								return await run(...args);
+							});
 				const root = `/promotions/environments/${id}`;
 				const changes =
 					field === 'remote'

@@ -11,6 +11,10 @@ import type { PromotionEnvironment } from './database/entities/promotion-environ
 import { PromotionEnvironmentRepository } from './database/repositories/promotion-environment.repository';
 import { resolvePromotionGitRemote } from './git-hosts/git-host-remote';
 import { resolveStoredConfig } from './promotion-config-settings';
+import {
+	PromotionEnvironmentLockService,
+	throwIfLockLost,
+} from './promotion-environment-lock.service';
 import { PromotionWorkingDirectoryService } from './promotion-working-directory.service';
 import { buildCacheDescriptor } from './promotions-git.utils';
 
@@ -19,11 +23,19 @@ type CleanupCommand = PubSubCommandMap['promotion-checkout-cleanup'];
 type CleanupReason = CleanupCommand['reason'];
 
 /**
- * The one place that removes local checkouts, so that the environment lock
- * ([LIGO-1129](https://linear.app/n8n/issue/LIGO-1129)) can be added here only.
+ * The one place that removes local checkouts.
+ *
+ * A request that cleans up runs its database change through this service. The service
+ * takes the environment lock before the change, removes the descriptor and moves the
+ * folders to trash inside the lock. It deletes the trash and publishes to the other
+ * mains after it releases the lock, so the environment is not busy when the other
+ * mains get the message.
+ *
+ * The startup check and the messages from other mains take no lock: with a lock that
+ * does not wait, mains that get the same message would skip each other's cleanup.
  *
  * A checkout is a disposable cache, and no operation uses one that does not match
- * the stored configuration. A failed cleanup only leaves disk in use, so it logs
+ * the stored configuration. A failed removal only leaves disk in use, so it logs
  * a warning and never fails the request.
  */
 @Service()
@@ -31,6 +43,7 @@ export class PromotionCheckoutCleanupService {
 	constructor(
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
 		private readonly environmentRepository: PromotionEnvironmentRepository,
+		private readonly environmentLock: PromotionEnvironmentLockService,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
 		private readonly instanceSettings: InstanceSettings,
@@ -38,43 +51,55 @@ export class PromotionCheckoutCleanupService {
 		this.logger = this.logger.scoped('promotions');
 	}
 
-	/** Also removes the host keys, because a deleted environment cannot connect again. */
-	async removeDeletedEnvironment(environmentId: string): Promise<void> {
-		await this.purge(environmentId);
-		this.publishToOtherMains([environmentId], 'deleted');
-	}
-
-	async resetCheckoutAfterDisconnect(environmentId: string): Promise<void> {
-		await this.reset([environmentId]);
-		this.publishToOtherMains([environmentId], 'disconnected');
-	}
-
-	async resetCheckoutAfterSettingsChange(environmentId: string): Promise<void> {
-		await this.reset([environmentId]);
-		this.publishToOtherMains([environmentId], 'settings-changed');
-	}
-
-	/** A new host URL changes the remote URL of every environment that stores a repository path. */
-	async resetCheckoutsForHostChange(providerId: string): Promise<void> {
-		let environmentIds: string[];
-		try {
-			environmentIds =
-				await this.environmentRepository.findIdsWithRepositoryPathByProvider(providerId);
-		} catch (error) {
-			this.warn('Failed to find the promotion checkouts to reset', { providerId }, error);
-			return;
-		}
-		await this.reset(environmentIds);
-		this.publishToOtherMains(environmentIds, 'settings-changed');
+	/**
+	 * Runs `deleteRows` inside the environment lock, then removes the whole folder. Also
+	 * removes the host keys, because a deleted environment cannot connect again.
+	 */
+	async deleteEnvironment<T>(environmentId: string, deleteRows: () => Promise<T>): Promise<T> {
+		return await this.changeThenRemove([environmentId], 'deleted', deleteRows);
 	}
 
 	/**
-	 * Catches the folders that a failed removal or a lost message leaves behind.
-	 * Lists the folders before it reads the database, so a folder that a new
-	 * environment creates during the check is never removed. Every main runs it, so
-	 * it does not publish.
+	 * Runs `resolveAgain` inside the environment lock, then resets the checkout. Nothing
+	 * changes in the database, so a lost lock stops the request before the removal.
+	 */
+	async disconnect<T>(environmentId: string, resolveAgain: () => Promise<T>): Promise<T> {
+		const { result, trashed } = await this.holdLocks([environmentId], async ([signal]) => {
+			const resolved = await resolveAgain();
+			throwIfLockLost(signal);
+			return { result: resolved, trashed: await this.removeLocally([environmentId], 'reset') };
+		});
+		await this.finish(trashed, [environmentId], 'disconnected');
+		return result;
+	}
+
+	/** Runs `update` inside the environment lock, then resets the checkout. */
+	async changeCheckoutSettings<T>(environmentId: string, update: () => Promise<T>): Promise<T> {
+		return await this.changeThenRemove([environmentId], 'settings-changed', update);
+	}
+
+	/**
+	 * A new host URL changes the remote URL of every environment that stores a repository
+	 * path. Takes one lock for each of them, then runs `update` and resets their checkouts.
+	 */
+	async changeHostUrl<T>(providerId: string, update: () => Promise<T>): Promise<T> {
+		const environmentIds =
+			await this.environmentRepository.findIdsWithRepositoryPathByProvider(providerId);
+		return await this.changeThenRemove(environmentIds, 'settings-changed', update);
+	}
+
+	/**
+	 * Catches the folders that a failed removal, a crash, or a lost message leaves
+	 * behind: the trash, and the folders of deleted environments. Lists the folders
+	 * before it reads the database, so a folder that a new environment creates during
+	 * the check is never removed. Every main runs it, so it does not publish.
 	 */
 	async removeOrphanedCheckouts(): Promise<void> {
+		try {
+			await this.workingDirectory.emptyTrash();
+		} catch (error) {
+			this.warn('Failed to delete the promotion checkouts in the trash', {}, error);
+		}
 		try {
 			const folderIds = await this.workingDirectory.listEnvironmentIds();
 			const existingIds = await this.environmentRepository.findExistingIds(folderIds);
@@ -164,24 +189,99 @@ export class PromotionCheckoutCleanupService {
 		);
 	}
 
-	private async purge(environmentId: string) {
-		try {
-			await this.workingDirectory.purge(environmentId);
-		} catch (error) {
-			this.warn('Failed to remove the local promotion checkout', { environmentId }, error);
-		}
+	/**
+	 * A lost lock before the change stops the request, so nothing changes. After the
+	 * change, the request finishes. It keeps the folder of an environment whose lock it
+	 * lost, because another operation can now hold that lock on the new settings.
+	 */
+	private async changeThenRemove<T>(
+		environmentIds: string[],
+		reason: CleanupReason,
+		change: () => Promise<T>,
+	): Promise<T> {
+		const removal = reason === 'deleted' ? 'purge' : 'reset';
+		const { result, trashed } = await this.holdLocks(environmentIds, async (signals) => {
+			signals.forEach(throwIfLockLost);
+			const changed = await change();
+			const keptIds = environmentIds.filter((_, index) => signals[index].aborted);
+			if (keptIds.length > 0) {
+				this.logger.warn(
+					'Kept the local promotion checkout because n8n lost its lock on the environment',
+					{ environmentIds: keptIds },
+				);
+			}
+			const removableIds = environmentIds.filter((_, index) => !signals[index].aborted);
+			return { result: changed, trashed: await this.removeLocally(removableIds, removal) };
+		});
+		await this.finish(trashed, environmentIds, reason);
+		return result;
 	}
 
+	/**
+	 * Takes the locks one after the other. A busy lock fails at once with 423 and releases
+	 * the locks already held, so the order cannot deadlock.
+	 */
+	private async holdLocks<T>(
+		environmentIds: string[],
+		fn: (signals: AbortSignal[]) => Promise<T>,
+		signals: AbortSignal[] = [],
+	): Promise<T> {
+		if (signals.length === environmentIds.length) return await fn(signals);
+		return await this.environmentLock.run(
+			environmentIds[signals.length],
+			async (signal) => await this.holdLocks(environmentIds, fn, [...signals, signal]),
+		);
+	}
+
+	/** Runs after the locks are released. */
+	private async finish(trashed: string[], environmentIds: string[], reason: CleanupReason) {
+		await this.deleteTrash(trashed);
+		this.publishToOtherMains(environmentIds, reason);
+	}
+
+	/** For the paths without a lock. */
+	private async purge(environmentId: string) {
+		await this.deleteTrash(await this.removeLocally([environmentId], 'purge'));
+	}
+
+	/** For the paths without a lock. */
 	private async reset(environmentIds: string[]) {
-		await Promise.all(
+		await this.deleteTrash(await this.removeLocally(environmentIds, 'reset'));
+	}
+
+	/** Removes the descriptors and moves the folders to trash. Returns the trash folders. */
+	private async removeLocally(
+		environmentIds: string[],
+		removal: 'purge' | 'reset',
+	): Promise<string[]> {
+		const trashed = await Promise.all(
 			environmentIds.map(async (environmentId) => {
 				try {
-					await this.workingDirectory.resetCheckout(environmentId);
+					return removal === 'purge'
+						? await this.workingDirectory.purge(environmentId)
+						: await this.workingDirectory.resetCheckout(environmentId);
 				} catch (error) {
-					this.warn('Failed to reset the local promotion checkout', { environmentId }, error);
+					this.warn(
+						removal === 'purge'
+							? 'Failed to remove the local promotion checkout'
+							: 'Failed to reset the local promotion checkout',
+						{ environmentId },
+						error,
+					);
+					return [];
 				}
 			}),
 		);
+		return trashed.flat();
+	}
+
+	private async deleteTrash(trashed: string[]) {
+		if (trashed.length === 0) return;
+		try {
+			await this.workingDirectory.deleteTrash(trashed);
+		} catch (error) {
+			this.warn('Failed to delete the promotion checkouts in the trash', { trashed }, error);
+		}
 	}
 
 	/**

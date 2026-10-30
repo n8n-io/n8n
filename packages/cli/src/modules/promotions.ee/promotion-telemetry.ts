@@ -1,12 +1,21 @@
-import { ResponseError, ServiceUnavailableError, TooManyRequestsError } from '@n8n/errors';
+import {
+	LockedError,
+	ResponseError,
+	ServiceUnavailableError,
+	TooManyRequestsError,
+} from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
 
+import { PromotionLockLostError } from './promotion-environment-lock.service';
 import { PromotionGitError, PromotionLocalGitError } from './promotions-git.error';
 
-export type PromotionFailureKind = 'user' | 'git_remote' | 'unexpected';
+export type PromotionFailureKind = 'user' | 'git_remote' | 'unexpected' | 'busy';
 
 /** Maps a thrown error to a coarse kind. It never reads the message, which can hold secrets. */
 export function classifyPromotionFailure(error: unknown): PromotionFailureKind {
+	// Before the 4xx and 503 rules, which would otherwise match these first.
+	if (error instanceof LockedError) return 'busy';
+	if (error instanceof PromotionLockLostError) return 'unexpected';
 	if (
 		error instanceof PromotionGitError ||
 		error instanceof ServiceUnavailableError ||
