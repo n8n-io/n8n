@@ -2,7 +2,9 @@
 import type {
 	AgentJsonConfig,
 	InstanceAiAttachment,
+	InstanceAiHandoffContext,
 	InstanceAiNodesAttachment,
+	InstanceAiWorkflowAttachment,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
 import {
@@ -40,6 +42,16 @@ import {
 	usePreviewPanelWidth,
 	usePreviewToggle,
 } from '../composables/useArtifactsLayout';
+import {
+	clearPendingComposerDraft,
+	clearPendingHandoffContext,
+	clearPendingWorkflowAttachment,
+	consumePendingDraftAttachment,
+	consumePendingFirstMessage,
+	getPendingComposerDraft,
+	getPendingHandoffContext,
+	getPendingWorkflowAttachment,
+} from '../composables/useInstanceAiHandoff';
 import { INSTANCE_AI_VIEW } from '../constants';
 import { useInstanceAiStore } from '../instanceAi.store';
 import { firstMessageTitle } from '../instanceAi.threadRuntime';
@@ -55,7 +67,9 @@ import {
 	ASSISTANT_AGENT_ID,
 	ASSISTANT_AGENT_PROJECT_ID,
 	ASSISTANT_AGENT_THREAD_ID,
+	clearAssistantAgentLaunch,
 	consumePendingAssistantAgentMessage,
+	getAssistantAgentLaunch,
 } from './assistantAgentThreads';
 import { assistantConfirmationExtension } from './assistantConfirmation';
 import { assistantHostEventExtensions } from './assistantHostEvents';
@@ -81,13 +95,49 @@ const settingsStore = useInstanceAiSettingsStore();
 const identity = useN8nAssistantIdentity();
 const threadsStore = useAssistantAgentThreadsStore();
 
-// A thread that the empty view just created has its first message waiting. Until
-// the server accepts it, the thread does not exist there yet.
+// A new thread has a launch marker until the server accepts its first message.
+// The server does not know the thread before then.
+const launch = getAssistantAgentLaunch(props.threadId);
+// The first message from the empty view, which can carry files.
 const pendingMessage = consumePendingAssistantAgentMessage(props.threadId);
-const isNewSession = ref(pendingMessage !== undefined);
-let pendingReferences: InstanceAiAttachment[] = pendingMessage?.references ?? [];
+const isNewThread = launch !== undefined || pendingMessage !== undefined;
+const isNewSession = ref(isNewThread);
+// What a hand-off from another page left for this thread. Read once: the
+// thread exists only in this view until its first message.
+const handoff = readPendingHandoff();
+let pendingReferences: InstanceAiAttachment[] = [
+	...(pendingMessage?.references ?? []),
+	...handoff.references,
+];
+let pendingHandoffContext: InstanceAiHandoffContext | undefined = handoff.context;
 // The lists show a thread opened by URL even when it is older than the recent page.
-if (!pendingMessage) void threadsStore.loadThread(props.threadId);
+if (!isNewThread) void threadsStore.loadThread(props.threadId);
+
+function readPendingHandoff() {
+	const firstMessage = consumePendingFirstMessage(props.threadId);
+	const workflow = getPendingWorkflowAttachment(props.threadId);
+	const draft = getPendingComposerDraft(props.threadId);
+	const nodes = consumePendingDraftAttachment(props.threadId);
+	const context = firstMessage?.context ?? getPendingHandoffContext(props.threadId) ?? undefined;
+	clearPendingWorkflowAttachment(props.threadId);
+	clearPendingComposerDraft(props.threadId);
+	clearPendingHandoffContext(props.threadId);
+	const references: InstanceAiAttachment[] = [
+		...(firstMessage?.attachments ?? []),
+		...(workflow ? [workflow] : []),
+	];
+	return {
+		message: firstMessage?.message,
+		draft: draft?.text,
+		nodes,
+		context,
+		references,
+		// The preview opens the handed-off workflow before the first message.
+		workflow: references.find(
+			(reference): reference is InstanceAiWorkflowAttachment => reference.type === 'workflow',
+		),
+	};
+}
 
 const agentConfig = computed<AgentJsonConfig>(() => ({
 	name: identity.name.value,
@@ -103,6 +153,7 @@ function clientContext(): Record<string, unknown> {
 		...(rootStore.pushRef ? { pushRef: rootStore.pushRef } : {}),
 		browserUseAvailable: settingsStore.isBrowserUseAvailable,
 		...(pendingReferences.length > 0 ? { attachments: pendingReferences } : {}),
+		...(pendingHandoffContext ? { context: pendingHandoffContext } : {}),
 		...threadArtifactsContext(),
 	};
 }
@@ -134,6 +185,7 @@ function onMessageAccepted({ clientContext }: { clientContext?: Record<string, u
 		});
 	}
 	pendingReferences = [];
+	pendingHandoffContext = undefined;
 }
 
 const interactionExtensions = [assistantConfirmationExtension, ...assistantHostEventExtensions];
@@ -146,12 +198,32 @@ const trace = useAssistantAgentTrace({
 });
 
 watch(panel, (current) => {
-	if (!current || !pendingMessage) return;
-	current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
+	if (!current) return;
+	if (pendingMessage) {
+		current.sendMessageFromOutside(pendingMessage.text, pendingMessage.files);
+	} else if (handoff.message !== undefined) {
+		current.sendMessageFromOutside(handoff.message, []);
+	} else if (handoff.draft) {
+		current.setDraft(handoff.draft);
+	}
 });
+
+function trackLaunch(): void {
+	if (!launch) return;
+	clearAssistantAgentLaunch(props.threadId);
+	telemetry.track('User launched Instance AI thread', {
+		thread_id: props.threadId,
+		instance_id: rootStore.instanceId,
+		source: launch.source,
+		origin: launch.origin,
+		...(launch.templateId ? { template_id: launch.templateId } : {}),
+		runtime: 'agents',
+	});
+}
 
 function onSessionCreated(): void {
 	isNewSession.value = false;
+	trackLaunch();
 	// The thread exists once the server accepts its first message. Show it in the lists
 	// now, not only after the first reply ends.
 	void threadsStore.loadThread(props.threadId);
@@ -179,6 +251,7 @@ const thread = useAssistantArtifactThread({
 			[],
 			handoffContext ? { context: handoffContext } : undefined,
 		),
+	pendingWorkflowAttachment: handoff.workflow,
 });
 provideArtifactThread(thread);
 
@@ -188,7 +261,7 @@ const preview = useCanvasPreview({
 	tabsStorage: {
 		// A new thread has no stored tabs, and the server does not know it before its first message.
 		load: async () =>
-			pendingMessage
+			isNewThread
 				? null
 				: (await fetchAssistantAgentThreadTabs(rootStore.restApiContext, props.threadId)).state,
 		save: async (state) => {
@@ -254,6 +327,8 @@ const {
 // "Add to chat" on the preview canvas stages the nodes in the Assistant store. Move them to
 // the composer of this chat, one chip for each workflow, so they go with the next message.
 const instanceAiStore = useInstanceAiStore();
+// Canvas nodes from a hand-off go to the composer like nodes added in this thread.
+if (handoff.nodes) instanceAiStore.stageNodeSets(handoff.nodes.workflowId, handoff.nodes.sets);
 watch(
 	[panel, () => instanceAiStore.pendingComposerAttachments],
 	([current, pending]) => {
