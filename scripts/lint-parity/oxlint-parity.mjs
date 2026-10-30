@@ -65,6 +65,7 @@ const JS_PLUGIN_NAMESPACES = new Set([
 	'unused-imports',
 	'n8n-local-rules',
 	'n8n-nodes-base',
+	'@n8n/design-system',
 	'playwright',
 	'@n8n/community-nodes',
 ]);

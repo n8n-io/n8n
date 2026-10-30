@@ -79,6 +79,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [execution_annotations](execution_annotations.md) | 6 |  | table |
 | [execution_data](execution_data.md) | 4 |  | table |
 | [execution_entity](execution_entity.md) | 19 |  | table |
+| [execution_ledger](execution_ledger.md) | 16 |  | table |
 | [execution_metadata](execution_metadata.md) | 4 |  | table |
 | [folder](folder.md) | 6 |  | table |
 | [folder_tag](folder_tag.md) | 2 |  | table |
@@ -1232,6 +1233,24 @@ erDiagram
   datetime waitTill
   varchar_36_ workflowId FK
   varchar_36_ workflowVersionId
+}
+"execution_ledger" {
+  varchar_32_ blockedBy
+  varchar_36_ entityId
+  varchar_128_ entityName
+  varchar_16_ entityType
+  varchar_16_ event
+  varchar eventId
+  varchar_36_ executionId
+  INTEGER id
+  varchar_32_ mode
+  datetime_3_ occurredAt
+  varchar_8_ origin
+  varchar_16_ outcome
+  varchar_36_ projectId
+  INTEGER runtimeMs
+  varchar_32_ source
+  INTEGER timeSavedMin
 }
 "execution_metadata" {
   INTEGER executionId FK

@@ -15,6 +15,13 @@ export const WorkflowPublishingPolicy = {
 	PublishAll: 'publish-all',
 	/** Leaves new workflows inactive; unpublishes updated workflows that were published. */
 	UnpublishAll: 'unpublish-all',
+	/**
+	 * Never publishes or unpublishes an imported workflow or Agent, whatever the source published.
+	 * New entities stay inactive. Updated entities keep the target's published state.
+	 * Exception: an archived workflow that is published in the target is still unpublished.
+	 * Only promotions use it, so the public API and CLI do not offer it.
+	 */
+	PreserveTargetState: 'preserve-target-state',
 } as const;
 /* eslint-enable @typescript-eslint/naming-convention */
 

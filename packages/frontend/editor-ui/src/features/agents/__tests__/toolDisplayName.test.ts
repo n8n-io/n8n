@@ -67,14 +67,12 @@ describe('formatToolNameForDisplay', () => {
 
 	it('resolves legacy builder tool names to the current translation key', () => {
 		expect(getToolNameTranslationKey('agent_builder_get_node_types')).toBe(
-			'instanceAi.tools.get_node_types',
+			'instanceAi.tools.agent_builder_get_node_types',
 		);
 		expect(getToolNameTranslationKey('write_config')).toBe(
 			'instanceAi.tools.agent_builder_write_config',
 		);
-		expect(getToolNameTranslationKey(' ask_questions ')).toBe(
-			'instanceAi.tools.agent_builder_ask_questions',
-		);
+		expect(getToolNameTranslationKey(' ask_questions ')).toBe('instanceAi.tools.ask_user');
 
 		const translator = {
 			baseText: (key: BaseTextKey) =>
@@ -84,6 +82,23 @@ describe('formatToolNameForDisplay', () => {
 		expect(resolveToolNameForDisplay('agent_builder_write_config', translator)).toBe(
 			'Writing agent config',
 		);
+	});
+
+	it('resolves legacy question tools to the ask_user label', () => {
+		expect(getToolNameTranslationKey('agent_builder_ask_questions')).toBe(
+			'instanceAi.tools.ask_user',
+		);
+		expect(getToolNameTranslationKey(' ask_questions ')).toBe('instanceAi.tools.ask_user');
+
+		const translations: Partial<Record<BaseTextKey, string>> = {
+			'instanceAi.tools.ask_user': 'Asking user',
+		};
+		const translator = { baseText: (key: BaseTextKey) => translations[key] ?? key };
+		expect(resolveToolNameForDisplay('agent_builder_ask_questions', translator)).toBe(
+			'Asking user',
+		);
+		expect(resolveToolNameForDisplay('ask_user', translator)).toBe('Asking user');
+		expect(resolveToolNameForDisplay('ask-user', translator)).toBe('Asking user');
 	});
 
 	it('drops the builder prefix from a fallback label', () => {

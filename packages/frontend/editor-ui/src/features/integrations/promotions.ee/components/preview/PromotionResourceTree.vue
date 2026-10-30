@@ -47,16 +47,15 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const { changeLabel, blockerMessage, selectLabel } = usePromotionPreviewLabels();
+const { blockerMessage, selectLabel } = usePromotionPreviewLabels();
 
 function markers(resource: PromotionResource) {
 	const blockers = blockersOf(props.blockers, resource);
 	const blocked = blockerMessage(resource, blockers);
-	// A variable warning replaces the change label, as the variable itself does not change.
 	const meta =
 		resource.type !== 'workflow' && blockers?.some(({ kind }) => kind === 'warning')
 			? i18n.baseText('promotions.preview.marker.warning')
-			: changeLabel(resource, props.direction);
+			: undefined;
 	return { blocked, meta: blocked ? undefined : meta };
 }
 

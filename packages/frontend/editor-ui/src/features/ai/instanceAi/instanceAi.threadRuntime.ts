@@ -65,7 +65,8 @@ import {
 	createRunStateFromTree,
 	normalizeAgentTreeToolNames,
 } from './instanceAi.reducer';
-import { getLatestBuildResult, type RememberedManualExecution } from './canvasPreview.utils';
+import { createArtifactPreviewMemory } from './artifactPreviewMemory';
+import { getLatestBuildResult } from './canvasPreview.utils';
 import {
 	useResourceRegistry,
 	type TransientWorkflowArtifactReference,
@@ -578,35 +579,14 @@ export function createThreadRuntime(
 		transientWorkflowReferences.delete(referenceId);
 	}
 
-	// Latest user-triggered (non-agent) preview run per workflow. Lives on the
-	// thread runtime so it survives the preview canvas unmounting on a tab switch
-	// and is re-seeded on remount; a fresh runtime per thread resets it (INS-611).
-	// Plain Map: only read imperatively (on push events / remount), never rendered.
-	const rememberedManualExecutions = new Map<string, RememberedManualExecution>();
-	function rememberManualExecution(
-		workflowId: string,
-		executionId: string,
-		agentExecutionId: string | undefined,
-	): void {
-		rememberedManualExecutions.set(workflowId, { executionId, agentExecutionId });
-	}
-	function getRememberedManualExecution(workflowId: string): RememberedManualExecution | undefined {
-		return rememberedManualExecutions.get(workflowId);
-	}
-	function forgetManualExecution(workflowId: string): void {
-		rememberedManualExecutions.delete(workflowId);
-	}
-
-	// Artifact logs panel auto-open bookkeeping. It lives here because the preview
-	// remounts on every tab switch. A fresh runtime per thread resets it (INS-1192).
-	const logsPanelMemory = {
-		// The user collapsed the panel in this thread, so later runs do not open it again.
-		collapsedByUser: false,
-		// Only a panel that opened automatically collapses after a successful run.
-		autoOpened: false,
-		// Latest started run per workflow id. Only the success of that run collapses the panel.
-		latestStartedExecutionIds: new Map<string, string>(),
-	};
+	// Preview state that survives the preview canvas unmounting on a tab switch.
+	// A fresh runtime per thread resets it (INS-611, INS-1192).
+	const {
+		rememberManualExecution,
+		getRememberedManualExecution,
+		forgetManualExecution,
+		logsPanelMemory,
+	} = createArtifactPreviewMemory();
 
 	// --- Reducer routing state ---
 	// Plain Maps: the routing tables themselves are never rendered. The run

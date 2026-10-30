@@ -75,7 +75,11 @@ export class UserRepository extends BaseRepository<User> {
 	 * and so has no password would read as pending.
 	 */
 	async findAllWithRoleAndAuthIdentities(): Promise<User[]> {
-		return await this.find({ relations: ['role', 'authIdentities'], order: { id: 'ASC' } });
+		return await this.find({
+			relations: ['role', 'authIdentities'],
+			order: { id: 'ASC' },
+			loadEagerRelations: false,
+		});
 	}
 
 	async findByIdWithRole(id: string, ctx: OperationContext = {}): Promise<User | null> {

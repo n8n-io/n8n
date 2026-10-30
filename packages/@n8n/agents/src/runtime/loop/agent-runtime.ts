@@ -69,6 +69,7 @@ import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
 import { startStreamSession } from '../streaming/stream-session';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
@@ -721,12 +722,14 @@ export class AgentRuntime {
 		options?: ExecutionOptions,
 	): {
 		telemetry?: TelemetryOptions;
+		headers?: Record<string, string>;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 		onStepStart?: ExecutionOptions['onStepStart'];
 		onStepEnd?: ExecutionOptions['onStepEnd'];
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
+			...buildFunctionIdHeaders(this.config.functionId),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
 			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
 			repairToolCall: async (options) => {
@@ -781,6 +784,7 @@ export class AgentRuntime {
 			telemetry: this.telemetry.resolve(options),
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
+			functionId: this.config.functionId,
 			turnDelta: list.turnDelta(),
 			...(options.titleText !== undefined ? { titleText: options.titleText } : {}),
 			executionCounter: options.executionCounter,
@@ -1015,6 +1019,10 @@ export class AgentRuntime {
 	): Promise<ToolBatchSettlement<T>> {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
+		// Load the files of tool results from the last step.
+		await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
+			threadId: ctx.options?.persistence?.threadId,
+		});
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
 		for (const update of this.activeSkills?.takeUpdates() ?? []) {
 			await sink.emitMessage?.(update);
@@ -1127,6 +1135,7 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
+			this.activeSkills?.reportContext();
 			const turn = await sink.callModel(modelCallContext);
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.

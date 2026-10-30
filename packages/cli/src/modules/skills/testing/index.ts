@@ -85,9 +85,9 @@ export async function findSkillIds(filter: { source?: SkillSource } = {}): Promi
 export async function findLatestSkillVersion(skillId: string) {
 	const row = (await Container.get(SkillRepository).findLatestSaved([skillId])).get(skillId);
 	if (!row) return null;
-	const { id, version, name, description, instructions, frontmatter } = row.version;
+	const { id, version, name, description, instructions, frontmatter, sourceRevision } = row.version;
 	const files = row.files.map(({ path, content }) => ({ path, content }));
-	return { id, version, name, description, instructions, frontmatter, files };
+	return { id, version, name, description, instructions, frontmatter, sourceRevision, files };
 }
 
 /** Every row of the skill tables, in a fixed order, to compare before and after a run. */

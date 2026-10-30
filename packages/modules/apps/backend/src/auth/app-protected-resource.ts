@@ -52,7 +52,11 @@ export class AppProtectedResource implements ProtectedResourceResolver {
 	}
 
 	async canAccess(app: App, user: ResourcePrincipal): Promise<boolean> {
-		if (app.visibility !== 'project' || hasGlobalScope(user, 'app:read')) return true;
+		return app.visibility !== 'project' || (await this.canRead(app, user));
+	}
+
+	async canRead(app: App, user: ResourcePrincipal): Promise<boolean> {
+		if (hasGlobalScope(user, 'app:read')) return true;
 		const roles = await this.roles.rolesWithScope('project', ['app:read']);
 		const projects = await this.projects.getAccessibleProjectsByRoles(user.id, roles);
 		return projects.includes(app.projectId);

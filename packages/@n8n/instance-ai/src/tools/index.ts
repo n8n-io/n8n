@@ -152,6 +152,13 @@ function getOrchestratorDomainToolFactories(
 		],
 	];
 
+	if (context.credentialDescriptionsEnabled === true) {
+		tools.push([
+			DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION,
+			() => loadCredentialsTool().createUpdateCredentialDescriptionTool(context),
+		]);
+	}
+
 	// Onboarding threads only: the tool ends the flow the host seeded, and the frontend restores
 	// the chat chrome when it sees the call.
 	if (context.onboardingThread) {

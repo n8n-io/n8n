@@ -8,7 +8,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { AGENT_TOOLS_MODAL_KEY, AGENT_SKILL_MODAL_KEY } from '../constants';
 import { useAgentCapabilitiesActions } from '../composables/useAgentCapabilitiesActions';
 import { createAgentSkill, getSkillDetail, getNewSkillName } from '../composables/useAgentApi';
-import { SKILL_NAME_TAKEN_MESSAGE, type SkillDetail, type SkillListItem } from '@n8n/api-types';
+import {
+	SKILL_NAME_TAKEN_MESSAGE,
+	type SkillDetail,
+	type SkillListItem,
+	type SkillVersionDetail,
+} from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
 import type {
 	AgentJsonConfig,
@@ -175,6 +180,8 @@ type SkillModalData = {
 	skillRefsEnabled?: boolean;
 	outdated?: boolean;
 	onUseLatestVersion?: (skillId: string) => void;
+	agentVersions?: { draft: number; published: number | null; pinned: boolean; latest: number };
+	onUseVersion?: (skillId: string, version: SkillVersionDetail) => void;
 	getAttachedSkills?: () => Array<{ id: string; name: string }>;
 	canCreateInstanceSkills?: boolean;
 	getDefaultName?: (availableTo: string) => Promise<string>;
@@ -632,13 +639,16 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			latestVersion: 1,
 			availableToAssistant: false,
 			usedByAgents: 0,
+			availableToMCP: false,
 			canEdit: false,
 			canDelete: false,
+			canStopSyncing: false,
 			createdAt: '2026-10-01T00:00:00.000Z',
 			updatedAt: '2026-10-01T00:00:00.000Z',
 			skill,
 			skillHash: `hash-${id}`,
 			usedBy: { drafts: [], pins: [], hiddenAgents: 0 },
+			syncedFrom: null,
 		};
 	}
 
@@ -912,6 +922,219 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 		const editData = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
 		expect(editData.skill).toEqual(latest);
 		expect(editData.outdated).toBe(false);
+	});
+
+	it('pins the draft to a saved version and reopens the editor on it', async () => {
+		const older: AgentSkill = { ...supportTone, instructions: 'Be brief.' };
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+			skillVersions: { tone: { draft: 3, published: 2, latest: 3, pinned: false } },
+		} as unknown as AgentResource);
+		const { actions, uiStore, localConfig, scheduleConfigUpdate } = setup({
+			agent,
+			agentId: ref('agent-1'),
+		});
+		localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
+		actions.onOpenSkillFromList('tone');
+		const data = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(data.agentVersions).toEqual({ draft: 3, published: 2, latest: 3, pinned: false });
+
+		data.onUseVersion?.('tone', {
+			id: 'version-1',
+			version: 1,
+			createdBy: null,
+			createdAt: '2026-10-20T00:00:00.000Z',
+			skill: older,
+		});
+		await flushPromises();
+
+		expect(scheduleConfigUpdate).toHaveBeenCalledWith({
+			skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+		});
+		expect(agent.value?.skills.tone).toEqual(older);
+		expect(agent.value?.skillVersions?.tone).toEqual({
+			draft: 1,
+			published: 2,
+			latest: 3,
+			pinned: true,
+		});
+		const reopened = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+		expect(reopened.agentVersions?.pinned).toBe(true);
+	});
+
+	it('does not open the editor again when the user closed it during the save', async () => {
+		const latest: AgentSkill = { ...supportTone, instructions: 'Be kind and brief.' };
+		vi.mocked(getSkillDetail).mockResolvedValue({
+			...makeDetail('tone', latest),
+			skillHash: 'hash-latest',
+		});
+		let finishSave: (value?: unknown) => void = () => {};
+		const save = new Promise((resolve) => {
+			finishSave = resolve;
+		});
+		const agent = ref<AgentResource | null>({
+			id: 'agent-1',
+			skills: { tone: supportTone },
+			skillHashes: { tone: 'hash-tone' },
+			skillVersions: { tone: { draft: 1, published: 2, latest: 3, pinned: true } },
+		} as unknown as AgentResource);
+		const { actions, uiStore, localConfig } = setup({
+			agent,
+			agentId: ref('agent-1'),
+			flushConfigSave: async () => await save,
+		});
+		localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone', versionId: 'v1' }] });
+		actions.onOpenSkillFromList('tone');
+		const data = uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data as unknown as SkillModalData;
+
+		data.onUseLatestVersion?.('tone');
+		await flushPromises();
+		uiStore.closeModal(AGENT_SKILL_MODAL_KEY);
+		finishSave(undefined);
+		await flushPromises();
+
+		expect(agent.value?.skillVersions?.tone?.pinned).toBe(false);
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.open).toBe(false);
+		expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY]?.data).toBe(data);
+	});
+
+	describe('when the agent refuses the config save', () => {
+		function setupPinned(outcome: unknown = Promise.reject(new Error('refused'))) {
+			const agent = ref<AgentResource | null>({
+				id: 'agent-1',
+				skills: { tone: supportTone },
+				skillHashes: { tone: 'hash-tone' },
+				skillVersions: { tone: { draft: 3, published: 2, latest: 3, pinned: false } },
+			} as unknown as AgentResource);
+			const result = setup({
+				agent,
+				agentId: ref('agent-1'),
+				flushConfigSave: async () => await outcome,
+			});
+			result.localConfig.value = makeConfig({ skills: [{ type: 'skill', id: 'tone' }] });
+			result.actions.onOpenSkillFromList('tone');
+			const data = result.uiStore.modalsById[AGENT_SKILL_MODAL_KEY]
+				.data as unknown as SkillModalData;
+			return { ...result, agent, data };
+		}
+
+		it('puts back the version the agent ran and does not reopen the editor on a pin', async () => {
+			const { agent, data, scheduleConfigUpdate, uiStore } = setupPinned();
+
+			data.onUseVersion?.('tone', {
+				id: 'version-1',
+				version: 1,
+				createdBy: null,
+				createdAt: '2026-10-20T00:00:00.000Z',
+				skill: { ...supportTone, instructions: 'Be brief.' },
+			});
+			await flushPromises();
+
+			// The refused ref is gone, so later saves do not send it again.
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone' }],
+			});
+			expect(agent.value?.skills.tone).toEqual(supportTone);
+			expect(agent.value?.skillVersions?.tone).toEqual({
+				draft: 3,
+				published: 2,
+				latest: 3,
+				pinned: false,
+			});
+			// A reopen would replace the modal data.
+			expect(uiStore.modalsById[AGENT_SKILL_MODAL_KEY].data).toBe(data);
+		});
+
+		it('puts back the pin when Use latest is refused', async () => {
+			const latest: AgentSkill = { ...supportTone, instructions: 'Be kind and brief.' };
+			vi.mocked(getSkillDetail).mockResolvedValue({
+				...makeDetail('tone', latest),
+				skillHash: 'hash-latest',
+			});
+			const { agent, data, scheduleConfigUpdate, localConfig } = setupPinned();
+			agent.value = {
+				...agent.value,
+				outdatedSkillIds: ['tone'],
+				skillVersions: { tone: { draft: 1, published: 1, latest: 3, pinned: true } },
+			} as unknown as AgentResource;
+			localConfig.value = makeConfig({
+				skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+			});
+
+			data.onUseLatestVersion?.('tone');
+			await flushPromises();
+
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+			});
+			expect(agent.value?.skills.tone).toEqual(supportTone);
+			expect(agent.value?.skillHashes?.tone).toBe('hash-tone');
+			// The pin and its markers come back too.
+			expect(agent.value?.skillVersions?.tone).toEqual({
+				draft: 1,
+				published: 1,
+				latest: 3,
+				pinned: true,
+			});
+			expect(agent.value?.outdatedSkillIds).toEqual(['tone']);
+		});
+
+		it('puts back the version when the save resolves without persisting', async () => {
+			const { agent, data, scheduleConfigUpdate } = setupPinned('skipped');
+
+			data.onUseVersion?.('tone', {
+				id: 'version-1',
+				version: 1,
+				createdBy: null,
+				createdAt: '2026-10-20T00:00:00.000Z',
+				skill: { ...supportTone, instructions: 'Be brief.' },
+			});
+			await flushPromises();
+
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone' }],
+			});
+			expect(agent.value?.skillVersions?.tone?.pinned).toBe(false);
+		});
+
+		it('keeps edits to other skills made while the save ran', async () => {
+			let refuse: (reason: Error) => void = () => {};
+			const { agent, data, localConfig, scheduleConfigUpdate } = setupPinned(
+				new Promise((_resolve, reject) => (refuse = reject)),
+			);
+			localConfig.value = makeConfig({
+				skills: [
+					{ type: 'skill', id: 'tone' },
+					{ type: 'skill', id: 'sql' },
+				],
+			});
+
+			data.onUseVersion?.('tone', {
+				id: 'version-1',
+				version: 1,
+				createdBy: null,
+				createdAt: '2026-10-20T00:00:00.000Z',
+				skill: { ...supportTone, instructions: 'Be brief.' },
+			});
+			await flushPromises();
+			// The user detaches another skill while the save runs.
+			localConfig.value = makeConfig({
+				skills: [{ type: 'skill', id: 'tone', versionId: 'version-1' }],
+			});
+			agent.value = {
+				...agent.value,
+				skills: { ...agent.value?.skills, extra: sqlHelper },
+			} as unknown as AgentResource;
+			refuse(new Error('refused'));
+			await flushPromises();
+
+			expect(scheduleConfigUpdate).toHaveBeenLastCalledWith({
+				skills: [{ type: 'skill', id: 'tone' }],
+			});
+			expect(agent.value?.skills.extra).toEqual(sqlHelper);
+		});
 	});
 
 	function openEdit() {
