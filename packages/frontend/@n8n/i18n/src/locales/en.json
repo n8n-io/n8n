@@ -8114,6 +8114,7 @@
 	"instanceAi.artifactsPanel.title": "Artifacts",
 	"instanceAi.artifactsPanel.showPreview": "Show artifacts preview",
 	"instanceAi.artifactsPanel.hidePreview": "Hide artifacts preview",
+	"instanceAi.artifactsPanel.openResource": "Open a workflow, data table or agent",
 	"instanceAi.artifactsPanel.showPanel": "Show lists panel",
 	"instanceAi.artifactsPanel.hidePanel": "Hide lists panel",
 	"instanceAi.artifactsPanel.noArtifacts": "No artifacts yet",

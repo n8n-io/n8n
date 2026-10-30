@@ -46,6 +46,7 @@ import InstanceAiSetupPanel from './components/setupPanel/InstanceAiSetupPanel.v
 import InstanceAiTestAgentPanel from './components/InstanceAiTestAgentPanel.vue';
 import InstanceAiTestAgentPreviewPanel from './components/InstanceAiTestAgentPreviewPanel.vue';
 import InstanceAiPreviewTabBar from './components/InstanceAiPreviewTabBar.vue';
+import InstanceAiResourcePicker from './components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from './components/InstanceAiViewHeader.vue';
 import InstanceAiConversation from './components/InstanceAiConversation.vue';
 // Experiment cleanup: remove with openWorkflowInAssistant.
@@ -336,6 +337,9 @@ provide(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
+const showOpenResourcePicker = computed(
+	() => !preview.isPreviewVisible.value && !hasPreviewTabs.value,
+);
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,
 });
@@ -782,7 +786,35 @@ function handleNewThreadClick() {
 								/>
 							</Transition>
 						</N8nTooltip>
+						<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
+						<InstanceAiResourcePicker
+							v-if="showOpenResourcePicker && thread.projectId"
+							:project-id="thread.projectId"
+							:excluded-tabs="preview.openTabs.value"
+							placement="bottom-end"
+							content-test-id="instance-ai-open-resource-picker"
+							@select="preview.openTab"
+						>
+							<template #trigger>
+								<N8nTooltip
+									:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+									placement="bottom"
+									:show-after="TOOLTIP_DELAY_MS"
+									as-child
+								>
+									<N8nIconButton
+										icon="square-plus"
+										variant="ghost"
+										size="small"
+										icon-size="large"
+										data-test-id="instance-ai-open-resource"
+										:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+									/>
+								</N8nTooltip>
+							</template>
+						</InstanceAiResourcePicker>
 						<N8nTooltip
+							v-else
 							:content="artifactsPreviewToggleLabel"
 							placement="bottom"
 							:show-after="TOOLTIP_DELAY_MS"

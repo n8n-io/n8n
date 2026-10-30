@@ -114,6 +114,32 @@ vi.mock('../../components/InstanceAiWorkflowPreview.vue', async () => {
 	};
 });
 
+// Picking a resource emits a fixed workflow, so the tests do not depend on the resource search.
+vi.mock('../../components/InstanceAiResourcePicker.vue', () => ({
+	default: defineComponent({
+		props: {
+			projectId: { type: String, required: true },
+			contentTestId: { type: String, default: 'instance-ai-tab-picker' },
+		},
+		emits: ['select'],
+		setup:
+			(props, { emit }) =>
+			() =>
+				h('button', {
+					'data-test-id': props.contentTestId,
+					'data-project-id': props.projectId,
+					onClick: () =>
+						emit('select', {
+							type: 'workflow',
+							id: 'wf-picked',
+							name: 'Picked workflow',
+							icon: 'workflow',
+							projectId: props.projectId,
+						}),
+				}),
+	}),
+}));
+
 vi.mock('../../components/InstanceAiPreviewTabBar.vue', () => ({
 	default: defineComponent({
 		emits: ['togglePreview', 'toggleExpanded'],
@@ -361,6 +387,42 @@ describe('AssistantAgentThreadView', () => {
 
 		expect(getByTestId('assistant-agent-preview-panel')).not.toBeVisible();
 		expect(previewProps.current).toBeUndefined();
+	});
+
+	it('offers a resource picker in the header while no tabs are open, and opens the picked resource', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+
+		expect(getByTestId('assistant-agent-open-resource-picker')).toHaveAttribute(
+			'data-project-id',
+			'project-1',
+		);
+		expect(queryByTestId('assistant-agent-preview-toggle')).toBeNull();
+
+		await fireEvent.click(getByTestId('assistant-agent-open-resource-picker'));
+
+		expect(getByTestId('assistant-agent-preview-panel')).toBeVisible();
+		expect(previewProps.current).toMatchObject({ 'workflow-id': 'wf-picked' });
+	});
+
+	it('shows the preview toggle, not the picker, while tabs are open', async () => {
+		const { getByTestId, queryByTestId } = renderView({
+			props: { threadId: 'thread-1', projectId: 'project-1' },
+		});
+		await flushPromises();
+		isLoadingHistory.value = false;
+		await flushPromises();
+		chatMessages.value = [buildMessage('tc-1')];
+		await flushPromises();
+
+		await fireEvent.click(getByTestId('tab-bar-preview-toggle'));
+
+		expect(queryByTestId('assistant-agent-open-resource-picker')).toBeNull();
+		expect(getByTestId('assistant-agent-preview-toggle')).toBeEnabled();
 	});
 
 	it('sends a question from a preview with its context for that message only', async () => {
