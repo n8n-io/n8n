@@ -77,15 +77,15 @@ const ids = ({ subWorkflows }: { subWorkflows: Array<{ id: string }> }) =>
 	subWorkflows.map(({ id }) => id).sort();
 
 describe('SubWorkflowDiscoveryService', () => {
-	it('includes nested sub-workflows, not only direct ones, sorted by name', async () => {
+	it('includes nested sub-workflows, nearest first', async () => {
 		const grandchild = await publish([], { name: 'A grandchild' });
 		const child = await publish([call(grandchild.id)], { name: 'B child' });
 		const root = await publish([call(child.id)]);
 
 		expect(await discover(root.id)).toEqual({
 			subWorkflows: [
-				{ id: grandchild.id, name: grandchild.name, otherProject: false },
 				{ id: child.id, name: child.name, otherProject: false },
+				{ id: grandchild.id, name: grandchild.name, otherProject: false },
 			],
 			inaccessible: 0,
 		});

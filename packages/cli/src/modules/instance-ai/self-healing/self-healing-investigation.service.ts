@@ -106,12 +106,14 @@ export class SelfHealingInvestigationService {
 			if (!claimed || 'kind' in claimed) return claimed;
 
 			// Return the investigation ID without waiting for the agent to finish.
-			void this.run(claimed, baseline, actor).catch((error: unknown) => {
-				this.logger.error('Self-healing investigation failed.', {
-					investigationId: claimed.id,
-					error,
-				});
-			});
+			void this.run(claimed, baseline, actor, configuration.includeSubWorkflows).catch(
+				(error: unknown) => {
+					this.logger.error('Self-healing investigation failed.', {
+						investigationId: claimed.id,
+						error,
+					});
+				},
+			);
 			return { kind: 'investigation', investigationId: claimed.id };
 		} catch (error) {
 			if (error instanceof ForbiddenError) {
@@ -204,12 +206,14 @@ export class SelfHealingInvestigationService {
 		investigation: SelfHealingInvestigation,
 		baseline: WorkflowSuggestionBaseline,
 		user: User,
+		includeSubWorkflows: boolean,
 	) {
 		try {
 			await this.runtime.startSelfHealingRun(
 				{
 					user,
 					baseline,
+					includeSubWorkflows,
 					executionId: investigation.executionId,
 				},
 				{

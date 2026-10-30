@@ -83,7 +83,6 @@ export class SubWorkflowDiscoveryService {
 				subWorkflows.push(workflow);
 				pending.push(...(calls.get(workflowId) ?? []));
 			}
-			subWorkflows.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
 			result[rootId] = { subWorkflows, inaccessible };
 		}
 		return result;

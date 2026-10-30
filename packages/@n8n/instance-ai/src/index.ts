@@ -41,6 +41,7 @@ import type * as ResolveCredentialsMod from './tools/workflows/resolve-credentia
 import type * as SetupWorkflowMod from './tools/workflows/setup-workflow.service';
 import type * as WorkflowSourceCompilerMod from './tools/workflows/workflow-source-compiler';
 import type * as WorkflowSourceGeneratorMod from './tools/workflows/workflow-source-generator';
+import type * as WorkflowSourceMaterializerMod from './tools/workflows/workflow-source-materializer';
 import type * as WorkflowNodeDiffMod from './tools/workflows/workflow-node-diff';
 import type * as ChatModelValidationMod from './tools/workflows/chat-model-validation';
 import type * as WorkflowValidationWarningsMod from './tools/workflows/workflow-validation-warnings';
@@ -174,6 +175,9 @@ const loadWorkflowSourceCompiler = lazyModule<typeof WorkflowSourceCompilerMod>(
 );
 const loadWorkflowSourceGenerator = lazyModule<typeof WorkflowSourceGeneratorMod>(() =>
 	require('./tools/workflows/workflow-source-generator'),
+);
+const loadWorkflowSourceMaterializer = lazyModule<typeof WorkflowSourceMaterializerMod>(() =>
+	require('./tools/workflows/workflow-source-materializer'),
 );
 const loadWorkflowNodeDiff = lazyModule<typeof WorkflowNodeDiffMod>(() =>
 	require('./tools/workflows/workflow-node-diff'),
@@ -652,6 +656,9 @@ export const compileWorkflowSource: typeof WorkflowSourceCompilerMod.compileWork
 	lazyFunction(() => loadWorkflowSourceCompiler().compileWorkflowSource);
 export const generateWorkflowSource: typeof WorkflowSourceGeneratorMod.generateWorkflowSource =
 	lazyFunction(() => loadWorkflowSourceGenerator().generateWorkflowSource);
+export const workflowSourceFileSlug: typeof WorkflowSourceMaterializerMod.workflowSourceFileSlug =
+	lazyFunction(() => loadWorkflowSourceMaterializer().workflowSourceFileSlug);
+export { normalizeWorkspaceRelativePath } from './workspace/workspace-paths';
 export const prepareWorkflowForSave: typeof PrepareWorkflowForSaveMod.prepareWorkflowForSave =
 	lazyFunction(() => loadPrepareWorkflowForSave().prepareWorkflowForSave);
 export const buildCredentialMap: typeof ResolveCredentialsMod.buildCredentialMap = lazyFunction(

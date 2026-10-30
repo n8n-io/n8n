@@ -69,13 +69,17 @@ This uses the existing Assistant run lifecycle. It does not create another job r
 
 The backend binds `verify_candidate({ filePath, validationOnly?, triggerNodeName?, inputData? })` to this investigation.
 It checks current access before it reads and compiles the candidate against the captured baseline.
+The file path selects the baseline. A file that the investigation did not prepare fails validation.
 With `validationOnly: true`, it returns structural checks without execution.
 For execution checks, the agent selects the failed trigger and supplies its test input.
 The tool passes these options to the existing verification runner. Each call tests one trigger.
 
-`SelfHealingAgentService` creates `self-healing/candidate.workflow.ts` from the captured baseline.
-It uses the same workflow converter as ordinary workflow reads.
-Workflow reads return the captured baseline. The agent cannot select another workflow or version.
+`SelfHealingAgentService` creates `self-healing/<name-slug>-<workflowId>.workflow.ts` from each
+captured baseline: the triggering workflow and its sub-workflows. All files use one sandbox.
+It uses the same workflow converter as ordinary workflow reads. The starting message lists each
+file with its workflow name and ID.
+Reads of a prepared workflow return its captured baseline. The agent cannot select another version.
+The output candidate must be the file of the triggering workflow.
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
 It can read and edit workspace files, run sandbox commands, and call `verify_candidate`.
@@ -157,7 +161,8 @@ deduplicated. There is no retry cap for runs that finish without a result.
 `SubWorkflowDiscoveryService` finds the published sub-workflows that each given workflow calls,
 at every depth. It reads `workflowCall` rows of the dependency index for published versions only.
 It stops at workflows that the user cannot read, update, and see executions of, and at workflows
-in another project. The result is not stored. Investigation preparation still checks each target.
+in another project. It returns the nearest sub-workflows first. The result is not stored.
+Investigation preparation still checks each target.
 
 ## Configure self-healing
 
@@ -182,6 +187,10 @@ Enabling a configuration records the user whose access authorizes subsequent inv
 
 `includeSubWorkflows` lets investigations repair sub-workflows of covered workflows. It does not
 start investigations for sub-workflow failures. It defaults to `false`.
+When it is set, the agent run discovers the sub-workflows of the triggering workflow and
+captures their baselines before it prepares the files. It keeps the nearest sub-workflows in the
+same project that pass the baseline checks, up to `MAX_SUB_WORKFLOW_TARGETS`. Sub-workflows without
+edit access or with unpublished changes are left out. Sub-workflows get no admission reservation.
 `POST .../self-healing-configurations/sub-workflows/preview` returns the discovery result for
 each selected workflow, so the form can show it.
 

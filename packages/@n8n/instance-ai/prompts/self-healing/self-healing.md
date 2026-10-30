@@ -1,8 +1,9 @@
 # Self-healing
 
 Investigate one failed execution and prepare a candidate workflow for review.
-Work without user interaction. Keep edits in the supplied candidate file.
-Reads of the target workflow return its captured baseline.
+Work without user interaction.
+Keep edits in the prepared file of the triggering workflow.
+Reads of a prepared workflow return its captured baseline.
 You can read other accessible workflows for context, including sub-workflows.
 
 ## Step 1: Diagnose the failure
@@ -16,9 +17,9 @@ to remove that diagnostic. Report missing evidence when it blocks diagnosis.
 
 ## Step 2: Inspect and edit the candidate
 
-Read the supplied candidate source before editing. Before changing connections
-or item references, use `workspace_read_file` to read the source-data and list
-sections in `knowledge-base/reference/workflow-builder-guardrails.md`.
+Read the prepared source of the triggering workflow before editing. Before
+changing connections or item references, use `workspace_read_file` to read the
+source-data and list sections in `knowledge-base/reference/workflow-builder-guardrails.md`.
 
 When you need SDK syntax, read `knowledge-base/reference/workflow-sdk-language.md`.
 Use `search_nodes` and `get_node_types` for metadata and follow `@builderHint` annotations in type definitions.

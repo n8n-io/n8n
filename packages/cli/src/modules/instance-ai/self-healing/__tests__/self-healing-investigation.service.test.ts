@@ -60,6 +60,7 @@ describe('SelfHealingInvestigationService', () => {
 		id: 1,
 		enabled: true,
 		enabledById: user.id,
+		includeSubWorkflows: false,
 	});
 	const service = new SelfHealingInvestigationService(
 		investigations,
@@ -86,6 +87,7 @@ describe('SelfHealingInvestigationService', () => {
 	beforeEach(() => {
 		vi.resetAllMocks();
 		config.workflowSuggestionsEnabled = true;
+		configuration.includeSubWorkflows = false;
 		configurations.findForWorkflow.mockResolvedValue(configuration);
 		configurations.findForUpdate.mockResolvedValue(configuration);
 		configurationService.resolveActorOrPause.mockResolvedValue(user);
@@ -160,6 +162,7 @@ describe('SelfHealingInvestigationService', () => {
 			{
 				user,
 				baseline,
+				includeSubWorkflows: false,
 				executionId: input.executionId,
 			},
 			expect.objectContaining({ threadId: investigation.threadId, runId: investigation.runId }),
@@ -171,6 +174,17 @@ describe('SelfHealingInvestigationService', () => {
 				output: run.output,
 				usage: run.usage,
 			}),
+		);
+	});
+
+	it('passes the sub-workflow setting to the run', async () => {
+		configuration.includeSubWorkflows = true;
+
+		await startAndFinish();
+
+		expect(runtime.startSelfHealingRun).toHaveBeenCalledWith(
+			expect.objectContaining({ includeSubWorkflows: true }),
+			expect.anything(),
 		);
 	});
 

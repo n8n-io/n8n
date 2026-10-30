@@ -1564,6 +1564,7 @@ describe('InstanceAiService — self-healing launcher', () => {
 			workflowId: 'workflow-1',
 			projectId: 'project-1',
 		}),
+		includeSubWorkflows: false,
 		executionId: 'execution-1',
 	};
 	const lifecycle = {
