@@ -70,6 +70,7 @@ packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-agent.p
   s_3eab3bd25bb557::t_e72d7ee093bd54 371-372
   s_3eab3bd25bb557::t_97540831114caf 374-375
   s_3eab3bd25bb557::t_17b99fbb4fecc4 377-378
+  s_3eab3bd25bb557::t_cde9a7e0266d33 276-279,290-294,305-307
 packages/frontend/editor-ui/src/features/agents/__tests__/AgentBuilderView.test.ts
   s_3eab3bd25bb557::t_199f032f478460 1060-1074
   s_3eab3bd25bb557::t_34af9b2cfc76eb 16-19
