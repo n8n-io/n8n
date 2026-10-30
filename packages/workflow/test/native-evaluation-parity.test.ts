@@ -462,8 +462,6 @@ describe('Expression - fast native evaluation parity', () => {
 			});
 		});
 
-		// The vm and quickjs serialiser drops an own `__proto__` key; legacy
-		// keeps it. Native hands the copy to the engine, whichever it is.
 		test('an own __proto__ key on a whole-value read hands off to the engine', () => {
 			const payload = { json: { item: JSON.parse('{"__proto__":1,"safe":2}') as object } };
 			const data = runDataFor([payload as never]);
@@ -473,8 +471,11 @@ describe('Expression - fast native evaluation parity', () => {
 				handled: false,
 				fallbackReason: 'unsupported_type',
 			});
-			expect(run(true)).toStrictEqual(run(false));
-			expect(Object.keys(run(true)).includes('__proto__')).toBe(isLegacy());
+			for (const native of [true, false]) {
+				const result = run(native);
+				expect(Object.hasOwn(result, '__proto__')).toBe(true);
+				expect(result).toStrictEqual(payload.json.item);
+			}
 		});
 	});
 

@@ -214,6 +214,17 @@ describe('transfer framing', () => {
 			expect(result.date).toBe(date);
 			expect(result.map).toBe(map);
 		});
+
+		it('should keep a __proto__ key as an own key', () => {
+			const body = JSON.parse('{"__proto__":{"a":1}}') as Record<string, unknown>;
+
+			const result = unwrap({ marker: { [TRANSFER_TYPE_KEY]: 'tag' }, body }) as {
+				body: Record<string, unknown>;
+			};
+
+			expect(Object.keys(result.body)).toEqual(['__proto__']);
+			expect(result.body.a).toBeUndefined();
+		});
 	});
 
 	describe('the walk over an escaped payload', () => {
