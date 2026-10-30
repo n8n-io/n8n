@@ -73,11 +73,12 @@ export class StepReadyHandler {
 		const execution = await this.executionStore.loadExecution(event.executionId);
 		const node = validateStepContext(step, execution);
 
-		// The engine runs a batch step itself, and a deadline or request resume
-		// emits outputs that already exist, so neither needs an executor. Looking
-		// one up for either would fail a step that this worker can serve: a resume
-		// is announced to every worker, including one that carries no shim. A
-		// sub-execution resume runs the node again, so it needs one.
+		// The engine runs a batch step itself, so that needs no executor. Nor does
+		// a wait resume: a deadline or a request resume only emits outputs that
+		// already exist, and looking an executor up would fail a step that this
+		// worker can serve, since a resume is announced to every worker, including
+		// one that carries no shim. A sub-execution resume is different: the node
+		// runs again, so it needs one.
 		const emitsRecordedOutputs =
 			step.resumeCause !== null && step.resumeCause.kind !== 'subExecution';
 		const executor =
@@ -95,9 +96,8 @@ export class StepReadyHandler {
 		// This worker won the claim, so it is the one that announces the start.
 		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
-		// A deadline or request resume emits outputs that already exist. The node
-		// does not run again, so it has no inputs to gather. Every other dispatch
-		// gathers, including a sub-execution resume, which runs the node again.
+		// A wait resume replays recorded outputs, so there are no inputs to gather.
+		// A sub-execution resume runs the node again, so it gathers like a first run.
 		//
 		// The gather stays outside the `try` below on purpose. Its errors are the
 		// engine's own bookkeeping, not the node's, so they leave the step
