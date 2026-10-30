@@ -46,6 +46,9 @@ export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
 export const AGENT_EXTERNAL_UPDATE_NOTICE_DURATION = 5 * TIME.MINUTE;
 
+/** Shows the summary fallback if background results never reach the agent. */
+export const AGENT_SUMMARY_WAIT_TIMEOUT = 2 * TIME.MINUTE;
+
 /** Keeps short agent tool and skill calls perceptible without adding continuous motion. */
 export const AGENT_CAPABILITY_ACTIVE_MIN_DURATION = 300;
 

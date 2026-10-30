@@ -15,14 +15,30 @@
 // ---------------------------------------------------------------------------
 
 import { spawn } from 'child_process';
-import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'fs';
+import {
+	appendFileSync,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	rmSync,
+	unlinkSync,
+	writeFileSync,
+} from 'fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { homedir, tmpdir } from 'os';
 import { join } from 'path';
 import { z } from 'zod';
 
+import {
+	type ClaudeSession,
+	type ClaudeTurnCapture,
+	type CreatedAgent,
+	parseClaudeStream,
+} from './claude-stream';
 import { isTransientProviderError, providerRetryBackoffMs } from '../harness/transient-error';
-import type { ConversationTurn, WorkflowTestCase } from '../types';
+import type { BuildTimeout, ConversationTurn, TranscriptTurn, WorkflowTestCase } from '../types';
 
 // ---------------------------------------------------------------------------
 // MCP config staging — the `--mcp-config` file `claude -p` is pointed at
@@ -158,7 +174,7 @@ type McpBuildKeySupport = 'supported' | 'orchestrator-only';
  * build path (the standalone manifest builder does not consult this filter).
  * `orchestrator-only` keys are build-side setup the orchestrator seeds
  * before driving the in-product agent (conversation/thread seeding), while
- * `claude` receives only the flattened conversation prompt — a case relying on
+ * `claude` receives only the conversation — a case relying on
  * them would build without its prerequisites and fail misleadingly, so callers
  * skip cases that declare them.
  *
@@ -178,8 +194,8 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	tags: 'supported',
 	triggerType: 'supported',
 	executionScenarios: 'supported',
-	// Caps user-proxy follow-ups in the orchestrator chat loop — simply doesn't
-	// apply to a single-shot `claude` build, so it is NOT flagged.
+	// Caps simulated-user follow-ups, in the orchestrator chat loop and in the
+	// multi-turn `claude` loop alike.
 	messageBudget: 'supported',
 	// Drives the Instance AI orchestrator's progressive-building loop; a
 	// single-shot `claude` build has no mode to set, so a case that pins it
@@ -188,8 +204,8 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	promptVersion: 'orchestrator-only',
 	allowUserExecution: 'orchestrator-only',
 	requiresMemoryCompaction: 'orchestrator-only',
-	// Judged by the harness after the build (processExpectations are skipped for
-	// transcript-less MCP builds there); declaring them needs no build-side setup.
+	// Judged by the harness after the build, against the `claude` transcript;
+	// declaring them needs no build-side setup.
 	processExpectations: 'supported',
 	outcomeExpectations: 'supported',
 	// Forbidden legacy key — the schema rejects it at load, so it can never
@@ -200,9 +216,11 @@ export const MCP_BUILD_KEY_SUPPORT: Record<
 	// no n8n session).
 	credentials: 'supported',
 	// The fixture server, Chromium and the relay are booted around the build;
-	// `claude` gets a flattened prompt and no browser.
+	// `claude` gets the conversation only and no browser.
 	credentialFixture: 'orchestrator-only',
-	seed: 'orchestrator-only',
+	// Restored into the build user's project before `claude` starts; the earlier
+	// conversation goes to `claude` as text (see run/mcp-seed.ts).
+	seed: 'supported',
 	datasets: 'supported',
 };
 
@@ -229,20 +247,21 @@ export function unsupportedMcpBuildSetupFields(testCase: WorkflowTestCase): stri
 	});
 }
 
+const CLAUDE_ENV_AUTH = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'CLAUDE_CODE_OAUTH_TOKEN'];
+
+/**
+ * Why an MCP build cannot authenticate, or undefined when it can. Without a build
+ * cwd every attempt runs with an empty CLAUDE_CONFIG_DIR, so a stored `claude`
+ * login is not visible and auth must come from the environment.
+ */
+export function isolatedClaudeAuthError(buildCwd: string | undefined): string | undefined {
+	if (buildCwd || CLAUDE_ENV_AUTH.some((name) => process.env[name])) return undefined;
+	return `MCP builds without --build-cwd run claude isolated from ~/.claude — set one of ${CLAUDE_ENV_AUTH.join(', ')}, or pass --build-cwd to use the host claude setup.`;
+}
+
 // ---------------------------------------------------------------------------
 // `claude -p` subprocess invocation
 // ---------------------------------------------------------------------------
-
-const claudeSessionSchema = z
-	.object({
-		result: z.string().optional(),
-		num_turns: z.number().optional(),
-		total_cost_usd: z.number().optional(),
-		duration_ms: z.number().optional(),
-		subtype: z.string().optional(),
-	})
-	.passthrough();
-export type ClaudeSession = z.infer<typeof claudeSessionSchema>;
 
 /** Default per-attempt wall-clock cap for a `claude` build. Generous enough for
  *  legitimately slow builds (the heaviest mcp cases average ~18 min) while still
@@ -267,47 +286,126 @@ export interface McpBuildSettings {
 	 *  Omit or set 0 to disable (e.g. the standalone batch builder, which can't
 	 *  deadlock a lane). Distinct from `mcpTimeoutMs`, which is per MCP call. */
 	buildTimeoutMs?: number;
-	/** Working directory for the subprocess (loads that project's Claude config/skills). */
+	/** Working directory for the subprocess (loads that project's Claude config/skills).
+	 *  When omitted, every build attempt runs isolated: an empty temp config dir and
+	 *  cwd, no built-in tools, and auth from the environment only. */
 	buildCwd?: string;
 	/** When set, instruct the model to create the workflow in this n8n project. */
 	projectId?: string;
 }
 
-interface BuildAttempt {
-	session: ClaudeSession | undefined;
+/** Throwaway Claude home for one build attempt, shared by its turns so
+ *  `--resume` finds the session. */
+interface IsolatedClaudeHome {
+	root: string;
+	configDir: string;
+	workDir: string;
+}
+
+function createIsolatedClaudeHome(): IsolatedClaudeHome {
+	const root = mkdtempSync(join(tmpdir(), 'n8n-mcp-build-'));
+	const configDir = join(root, 'config');
+	const workDir = join(root, 'work');
+	mkdirSync(configDir);
+	mkdirSync(workDir);
+	return { root, configDir, workDir };
+}
+
+function removeIsolatedClaudeHome(home: IsolatedClaudeHome): void {
+	try {
+		rmSync(home.root, { recursive: true, force: true });
+	} catch {
+		// best-effort
+	}
+}
+
+/** Per-attempt context shared by every turn of one conversation. */
+interface ClaudeRunContext {
+	settings: McpBuildSettings;
+	mcpConfigPath: string;
+	allowedTools: readonly string[];
+	isolation?: IsolatedClaudeHome;
+}
+
+interface ClaudeTurnOptions {
+	userMessage: string;
 	logFile: string;
-	/** True when the attempt was killed by the build timeout rather than exiting. */
+	/** Continue this `claude` session instead of starting a new one. */
+	resumeSessionId?: string;
+	/** Wall-clock cap for this turn; 0 or undefined disables it. */
+	timeoutMs?: number;
+}
+
+interface TurnAttempt {
+	capture: ClaudeTurnCapture;
+	/** True when the turn was killed by the build timeout rather than exiting. */
 	timedOut: boolean;
 	/** Set when the subprocess never spawned (e.g. `claude` missing from PATH).
 	 *  Deterministic for this environment — callers should not retry. */
 	spawnError?: string;
 }
 
-async function runClaude(
-	userMessage: string,
-	settings: McpBuildSettings,
-	mcpConfigPath: string,
-	allowedTools: readonly string[],
-	logFile: string,
-): Promise<BuildAttempt> {
+function emptyCapture(): ClaudeTurnCapture {
+	return {
+		session: undefined,
+		sessionId: undefined,
+		steps: [],
+		agentText: '',
+		createdWorkflowIds: [],
+		createdAgents: [],
+		updatedWorkflowIds: [],
+		updatedAgentIds: [],
+	};
+}
+
+/** `claude` saves a large MCP tool result in its config dir and gives the model only a
+ *  preview, so the model needs `Read` there. Both spellings: macOS resolves `/var` to `/private/var`. */
+function isolatedReadRules(home: IsolatedClaudeHome): string[] {
+	const dirs = uniqueDefined([home.configDir, realpathSync(home.configDir)]);
+	return dirs.map((dir) => `Read(/${dir}/**)`);
+}
+
+function claudeArgs(context: ClaudeRunContext, turn: ClaudeTurnOptions): string[] {
+	const { isolation } = context;
+	return [
+		'-p',
+		turn.userMessage,
+		'--model',
+		context.settings.model,
+		'--mcp-config',
+		context.mcpConfigPath,
+		'--strict-mcp-config',
+		'--allowedTools',
+		...context.allowedTools,
+		...(isolation ? isolatedReadRules(isolation) : []),
+		'--output-format',
+		'stream-json',
+		'--verbose',
+		...(turn.resumeSessionId ? ['--resume', turn.resumeSessionId] : []),
+		// The MCP server's tools plus `Read` of saved tool results: no other host access.
+		...(isolation ? ['--tools', 'Read', '--permission-mode', 'dontAsk'] : []),
+	];
+}
+
+async function runClaude(context: ClaudeRunContext, turn: ClaudeTurnOptions): Promise<TurnAttempt> {
+	const { settings, isolation } = context;
+	const { logFile } = turn;
 	return await new Promise((resolve) => {
-		const claudeArgs = [
-			'-p',
-			userMessage,
-			'--model',
-			settings.model,
-			'--mcp-config',
-			mcpConfigPath,
-			'--strict-mcp-config',
-			'--allowedTools',
-			...allowedTools,
-			'--output-format',
-			'json',
-		];
-		const child = spawn('claude', claudeArgs, {
-			env: { ...process.env, MCP_TIMEOUT: String(settings.mcpTimeoutMs) },
+		const child = spawn('claude', claudeArgs(context, turn), {
+			env: {
+				...process.env,
+				MCP_TIMEOUT: String(settings.mcpTimeoutMs),
+				...(isolation
+					? {
+							CLAUDE_CONFIG_DIR: isolation.configDir,
+							CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+							// An empty home has no memory: without this, `claude` spends a call reading it.
+							CLAUDE_CODE_DISABLE_AUTO_MEMORY: '1',
+						}
+					: {}),
+			},
 			stdio: ['ignore', 'pipe', 'pipe'],
-			cwd: settings.buildCwd,
+			cwd: isolation?.workDir ?? settings.buildCwd,
 		});
 		let stdout = '';
 		let stderr = '';
@@ -324,11 +422,11 @@ async function runClaude(
 
 		// Resolve only once, and only after the process is actually dead (so the
 		// caller — and the lane allocator — never overlaps with a live subprocess).
-		const settle = (session: ClaudeSession | undefined) => {
+		const settle = (capture: ClaudeTurnCapture) => {
 			if (settled) return;
 			settled = true;
 			clearTimers();
-			resolve({ session, logFile, timedOut, spawnError: spawnError?.message });
+			resolve({ capture, timedOut, spawnError: spawnError?.message });
 		};
 
 		child.stdout.on('data', (chunk: Buffer) => {
@@ -346,17 +444,15 @@ async function runClaude(
 				: timedOut
 					? '{"subtype":"timeout"}'
 					: '{}';
-			writeFileSync(logFile, stdout || stderr || fallback);
-			let session: ClaudeSession | undefined;
-			if (!timedOut && !spawnError) {
-				try {
-					const parsed = claudeSessionSchema.safeParse(JSON.parse(stdout));
-					if (parsed.success) session = parsed.data;
-				} catch {
-					// stdout wasn't JSON — caller treats undefined session as failure.
-				}
-			}
-			settle(session);
+			// Appended: every turn of one attempt shares the log file.
+			appendFileSync(logFile, `${(stdout || stderr || fallback).trimEnd()}\n`);
+			// A killed turn still keeps its partial transcript; only the session
+			// summary is dropped, so the caller treats it as unfinished.
+			const capture = spawnError
+				? emptyCapture()
+				: parseClaudeStream(stdout, sanitizeServerName(settings.serverName));
+			if (timedOut) capture.session = undefined;
+			settle(capture);
 		});
 		child.on('error', (error) => {
 			// No pid = the process never spawned (e.g. `claude` not on PATH). Node
@@ -368,10 +464,10 @@ async function runClaude(
 				spawnError = error;
 				return;
 			}
-			settle(undefined);
+			settle(emptyCapture());
 		});
 
-		if (settings.buildTimeoutMs && settings.buildTimeoutMs > 0) {
+		if (turn.timeoutMs && turn.timeoutMs > 0) {
 			timeoutTimer = setTimeout(() => {
 				// Mark first so the eventual 'close' is reported as a timeout, then kill
 				// (escalating to SIGKILL). We settle from 'close' once the process dies.
@@ -384,7 +480,7 @@ async function runClaude(
 						// process may already be gone
 					}
 				}, KILL_GRACE_MS);
-			}, settings.buildTimeoutMs);
+			}, turn.timeoutMs);
 		}
 	});
 }
@@ -422,14 +518,20 @@ export function tailWorkflowId(text: string): string | null {
 	return matches.length > 0 ? matches[matches.length - 1][1] : null;
 }
 
-/** The full instruction appended to every build prompt: create the workflow,
- *  then echo its id in a machine-parseable trailer. */
-function buildUserMessage(conversation: ConversationTurn[], settings: McpBuildSettings): string {
+/** Append the harness instructions to a build prompt: create the workflow in
+ *  the right project, then (unless `withTrailer` is false) echo its id in a
+ *  machine-parseable trailer. */
+function withHarnessInstructions(
+	prompt: string,
+	settings: McpBuildSettings,
+	withTrailer = true,
+): string {
 	const projectInstruction = settings.projectId
 		? `\n\nWhen calling create_workflow_from_code, pass projectId: '${settings.projectId}' so the workflow is created in that n8n project.`
 		: '';
+	if (!withTrailer) return `${prompt}${projectInstruction}`;
 
-	return `${buildPromptFromConversation(conversation)}${projectInstruction}
+	return `${prompt}${projectInstruction}
 
 ---
 After you have created the workflow with create_workflow_from_code, print a final line of the exact form:
@@ -446,6 +548,8 @@ where <id> is the workflowId returned by create_workflow_from_code. Emit it verb
 export interface McpBuildResult {
 	/** The created workflow's id, or null if every attempt failed. */
 	workflowId: string | null;
+	/** The n8n Agent `claude` created, when the request asked for an Agent. */
+	agent?: CreatedAgent;
 	/** Anthropic spend summed across every attempt (USD) — failed attempts cost money too. */
 	cost: number;
 	/** Assistant turns summed across every attempt. */
@@ -456,16 +560,157 @@ export interface McpBuildResult {
 	logFile: string | null;
 	/** Short reason for the final failure (e.g. `no-stdout`, a claude subtype). */
 	failureReason?: string;
+	/** The last attempt's conversation: user messages, narration and MCP tool calls. */
+	transcript: TranscriptTurn[];
+	/** Set when the build timeout ended the conversation. Anything saved before
+	 *  is graded, but its verdicts are kept out of the rate. */
+	timeout?: BuildTimeout;
+	/** True when the last attempt's conversation ran to its end, so a missing
+	 *  workflow is the builder's answer rather than a crash or a timeout. */
+	finished?: boolean;
+}
+
+/** The simulated user of a multi-turn MCP build. `UserProxyLlm` satisfies it. */
+export interface McpConversationDriver {
+	recordAssistantMessage(text: string): void;
+	decideFollowUp(): Promise<
+		| { kind: 'followUp'; message: string; renameWorkflowTo?: string; runWorkflowId?: string }
+		| { kind: 'done' }
+	>;
+}
+
+interface ConversationAttempt {
+	workflowId: string | null;
+	agent?: CreatedAgent;
+	transcript: TranscriptTurn[];
+	cost: number;
+	turns: number;
+	durationMs: number;
+	/** The last turn's session; undefined when that turn never finished. */
+	lastSession: ClaudeSession | undefined;
+	timedOut: boolean;
+	/** The user turn (1-based) in flight, or about to start, when time ran out. */
+	timeoutTurn?: number;
+	spawnError?: string;
 }
 
 /**
- * Build one workflow via `claude -p` against a staged MCP config, retrying up to
- * `settings.maxAttempts` until the model emits a `WORKFLOW_ID`. Never throws —
- * a failed build resolves with `workflowId: null` so a batch can continue.
- *
- * The log lines are surfaced through `log` (defaults to `console.log`) so the
- * standalone builder and the eval CLI can route them to their own sinks.
+ * Run one conversation with `claude`: the opening message, then (with a driver)
+ * simulated follow-ups through `--resume` until the driver is done. The build
+ * timeout bounds the whole conversation.
  */
+async function runConversationAttempt(opts: {
+	context: ClaudeRunContext;
+	opening: { text: string; sent: string };
+	driver?: McpConversationDriver;
+	logFile: string;
+	label: string;
+	log: (message: string) => void;
+	seededWorkflowIds?: string[];
+	seededAgentIds?: string[];
+}): Promise<ConversationAttempt> {
+	const { context, driver, logFile, label, log } = opts;
+	const timeoutMs = context.settings.buildTimeoutMs ?? 0;
+	const deadline = timeoutMs > 0 ? Date.now() + timeoutMs : undefined;
+	const attempt: ConversationAttempt = {
+		workflowId: null,
+		transcript: [],
+		cost: 0,
+		turns: 0,
+		durationMs: 0,
+		lastSession: undefined,
+		timedOut: false,
+	};
+	const createdWorkflowIds: string[] = [];
+	const updatedWorkflowIds: string[] = [];
+	const updatedAgentIds: string[] = [];
+	let trailerWorkflowId: string | null = null;
+	let sessionId: string | undefined;
+	let next: { text: string; sent: string } | undefined = opts.opening;
+
+	while (next) {
+		const remainingMs = deadline === undefined ? undefined : deadline - Date.now();
+		if (remainingMs !== undefined && remainingMs <= 0) {
+			attempt.timedOut = true;
+			attempt.timeoutTurn = attempt.transcript.length + 1;
+			break;
+		}
+		const turn = await runClaude(context, {
+			userMessage: next.sent,
+			logFile,
+			resumeSessionId: sessionId,
+			timeoutMs: remainingMs,
+		});
+		const { capture } = turn;
+		attempt.transcript.push({ userMessage: next.text, steps: capture.steps });
+		// `total_cost_usd` covers the whole session, including turns before `--resume`;
+		// `num_turns` and `duration_ms` cover only this run.
+		attempt.cost = capture.session?.total_cost_usd ?? attempt.cost;
+		attempt.turns += capture.session?.num_turns ?? 0;
+		attempt.durationMs += capture.session?.duration_ms ?? 0;
+		attempt.lastSession = capture.session;
+		createdWorkflowIds.push(...capture.createdWorkflowIds);
+		updatedWorkflowIds.push(...capture.updatedWorkflowIds);
+		updatedAgentIds.push(...capture.updatedAgentIds);
+		attempt.agent = capture.createdAgents.at(-1) ?? attempt.agent;
+		trailerWorkflowId =
+			tailWorkflowId(`${capture.agentText}\n${capture.session?.result ?? ''}`) ?? trailerWorkflowId;
+		sessionId = capture.sessionId ?? sessionId;
+		attempt.timedOut = turn.timedOut;
+		if (turn.timedOut) attempt.timeoutTurn = attempt.transcript.length;
+		attempt.spawnError = turn.spawnError;
+
+		if (!driver || turn.timedOut || turn.spawnError) break;
+		if (capture.session?.subtype !== 'success' || !sessionId) break;
+
+		driver.recordAssistantMessage(capture.agentText);
+		const decision = await beforeDeadline(driver.decideFollowUp(), deadline);
+		if (decision === undefined) {
+			// The simulated user did not answer in time: the conversation is unfinished.
+			// The proxy's model call may still settle later; it no longer holds the lane.
+			attempt.timedOut = true;
+			attempt.timeoutTurn = attempt.transcript.length + 1;
+			attempt.lastSession = undefined;
+			break;
+		}
+		if (decision.kind === 'done') break;
+		if (decision.renameWorkflowTo !== undefined || decision.runWorkflowId !== undefined) {
+			log(
+				`  [${label}] simulated user asked for a rename or run — not supported over MCP, ignored`,
+			);
+		}
+		next = { text: decision.message, sent: decision.message };
+	}
+
+	// The tool result is authoritative; the trailer covers a missed or unparsable result.
+	// A seeded case may edit an existing workflow, or only inspect one: a finished
+	// conversation then builds that workflow, as on the Instance AI arm.
+	const finished = attempt.lastSession?.subtype === 'success';
+	const agentId = updatedAgentIds.at(-1) ?? (finished ? opts.seededAgentIds?.[0] : undefined);
+	attempt.agent ??= agentId === undefined ? undefined : { id: agentId };
+	attempt.workflowId =
+		createdWorkflowIds.at(-1) ??
+		trailerWorkflowId ??
+		updatedWorkflowIds.at(-1) ??
+		(finished ? (opts.seededWorkflowIds?.[0] ?? null) : null);
+	return attempt;
+}
+
+/** Resolve with `promise`, or with undefined once `deadline` (epoch ms) passes. */
+async function beforeDeadline<T>(promise: Promise<T>, deadline: number | undefined) {
+	if (deadline === undefined) return await promise;
+	const timer = new AbortController();
+	try {
+		return await Promise.race([
+			promise,
+			delay(Math.max(0, deadline - Date.now()), undefined, { signal: timer.signal }).catch(
+				() => undefined,
+			),
+		]);
+	} finally {
+		timer.abort();
+	}
+}
 
 /** Provider-outage evidence lives in the session's free-text result; keep enough
  *  of it to classify on without dragging a whole transcript into an error. */
@@ -476,6 +721,19 @@ function truncateForReason(result: unknown): string | undefined {
 	return text.length > 300 ? `${text.slice(0, 300)}…` : text;
 }
 
+/**
+ * Build one workflow via `claude -p` against a staged MCP config. Never throws —
+ * a failed build resolves with `workflowId: null` so a batch can continue.
+ *
+ * Without `createDriver`, the whole conversation is flattened into one prompt and
+ * an attempt is retried (up to `settings.maxAttempts`) when it yields no workflow.
+ * With `createDriver`, only the first user turn is sent and a fresh simulated user
+ * drives the follow-ups of each attempt. A conversation that completes without a
+ * workflow is a build failure and is not retried; only an unfinished one is.
+ *
+ * The log lines are surfaced through `log` (defaults to `console.log`) so the
+ * standalone builder and the eval CLI can route them to their own sinks.
+ */
 export async function buildWorkflowViaMcp(opts: {
 	conversation: ConversationTurn[];
 	slug: string;
@@ -484,39 +742,93 @@ export async function buildWorkflowViaMcp(opts: {
 	settings: McpBuildSettings;
 	logDir: string;
 	log?: (message: string) => void;
+	createDriver?: () => McpConversationDriver;
+	/** Harness context sent before the opening message but kept out of the transcript. */
+	openingMessagePrefix?: string;
+	/** Sent and recorded ahead of the opening message, e.g. the attached workflow. */
+	openingNote?: string;
+	/** Harness context sent with the opening message but kept out of the transcript. */
+	openingMessageSuffix?: string;
+	/** Workflows the case seeded, the attached one first. */
+	seededWorkflowIds?: string[];
+	/** Agents the case seeded, the attached one first. */
+	seededAgentIds?: string[];
 }): Promise<McpBuildResult> {
-	const { conversation, slug, iteration, mcpConfigPath, settings, logDir } = opts;
+	const { conversation, slug, iteration, mcpConfigPath, settings, logDir, createDriver } = opts;
 	const log = opts.log ?? ((message: string) => console.log(message));
 	const allowedTools = buildAllowedTools(settings.serverName);
-	const userMessage = buildUserMessage(conversation, settings);
+	const label = `${slug}#${String(iteration)}`;
+	const openingText = [
+		opts.openingNote,
+		createDriver
+			? (conversation.find((turn) => turn.role === 'user')?.text ?? '')
+			: buildPromptFromConversation(conversation),
+	]
+		.filter(Boolean)
+		.join(' ');
+	// The trailer tells `claude` to build in its first reply, which would keep it
+	// from asking a clarifying question. With a driver, the tool result gives the id.
+	const opening = {
+		text: openingText,
+		sent: withHarnessInstructions(
+			`${[opts.openingMessagePrefix, openingText].filter(Boolean).join('\n\n')}${opts.openingMessageSuffix ?? ''}`,
+			settings,
+			!createDriver,
+		),
+	};
 
 	let workflowId: string | null = null;
+	let agent: CreatedAgent | undefined;
 	let lastLogFile: string | null = null;
 	let failureReason: string | undefined;
+	let transcript: TranscriptTurn[] = [];
 	let totalCostUsd = 0;
 	let totalTurns = 0;
 	let totalDurationMs = 0;
+	let attemptsUsed = 0;
+	let timeout: BuildTimeout | undefined;
+	let finished = false;
 
 	for (let attempt = 1; attempt <= settings.maxAttempts; attempt++) {
+		attemptsUsed = attempt;
 		const ts = new Date().toISOString().replace(/[:.]/g, '-');
 		const logFile = join(
 			logDir,
-			`${slug}-iter${String(iteration)}-attempt${String(attempt)}-${ts}.json`,
+			`${slug}-iter${String(iteration)}-attempt${String(attempt)}-${ts}.jsonl`,
 		);
 		lastLogFile = logFile;
-		const { session, timedOut, spawnError } = await runClaude(
-			userMessage,
-			settings,
-			mcpConfigPath,
-			allowedTools,
-			logFile,
-		);
-		totalCostUsd += session?.total_cost_usd ?? 0;
-		totalTurns += session?.num_turns ?? 0;
-		totalDurationMs += session?.duration_ms ?? 0;
-		const id = session?.result ? tailWorkflowId(session.result) : null;
-		if (id) {
-			workflowId = id;
+		const isolation = settings.buildCwd ? undefined : createIsolatedClaudeHome();
+		let result: ConversationAttempt;
+		try {
+			result = await runConversationAttempt({
+				context: { settings, mcpConfigPath, allowedTools, isolation },
+				opening,
+				driver: createDriver?.(),
+				logFile,
+				label,
+				log,
+				seededWorkflowIds: opts.seededWorkflowIds,
+				seededAgentIds: opts.seededAgentIds,
+			});
+		} finally {
+			if (isolation) removeIsolatedClaudeHome(isolation);
+		}
+		const { lastSession: session, timedOut, spawnError } = result;
+		totalCostUsd += result.cost;
+		totalTurns += result.turns;
+		totalDurationMs += result.durationMs;
+		transcript = result.transcript;
+		agent = result.agent;
+		finished = session?.subtype === 'success' && !timedOut;
+		timeout = timedOut
+			? {
+					kind: 'conversation',
+					turn: result.timeoutTurn ?? result.transcript.length,
+					elapsedMs: settings.buildTimeoutMs ?? 0,
+				}
+			: undefined;
+		if (result.workflowId || result.agent) {
+			workflowId = result.workflowId;
 			failureReason = undefined;
 			break;
 		}
@@ -548,6 +860,15 @@ export async function buildWorkflowViaMcp(opts: {
 		failureReason = [session?.subtype ?? 'no-stdout', truncateForReason(session?.result)]
 			.filter(Boolean)
 			.join(': ');
+		if (createDriver && session?.subtype === 'success') {
+			// The conversation ran to its end: retrying would give the builder a
+			// second chance that the Instance AI arm does not get.
+			failureReason = ['no-workflow', truncateForReason(session.result)].filter(Boolean).join(': ');
+			log(
+				`  [${label}] attempt ${String(attempt)}: conversation ended without a workflow — not retrying (log: ${logFile})`,
+			);
+			break;
+		}
 		log(
 			`  [${slug}#${String(iteration)}] attempt ${String(attempt)}: no WORKFLOW_ID (${failureReason}, log: ${logFile})`,
 		);
@@ -563,18 +884,24 @@ export async function buildWorkflowViaMcp(opts: {
 		}
 	}
 
-	if (!workflowId) {
-		log(`  [${slug}#${String(iteration)}] FAILED after ${String(settings.maxAttempts)} attempts`);
+	const built = [workflowId, agent ? `agent ${agent.id}` : undefined].filter(Boolean).join(', ');
+	if (!built) {
+		const attempts = attemptsUsed === 1 ? '1 attempt' : `${String(attemptsUsed)} attempts`;
+		log(`  [${slug}#${String(iteration)}] FAILED after ${attempts}`);
 	} else {
-		log(`  [${slug}#${String(iteration)}] ok → ${workflowId}`);
+		log(`  [${slug}#${String(iteration)}] ok → ${built}`);
 	}
 
 	return {
 		workflowId,
+		...(agent ? { agent } : {}),
 		cost: totalCostUsd,
 		turns: totalTurns,
 		durationMs: totalDurationMs,
 		logFile: lastLogFile,
-		failureReason: workflowId ? undefined : failureReason,
+		failureReason: built ? undefined : failureReason,
+		transcript,
+		...(timeout ? { timeout } : {}),
+		finished,
 	};
 }

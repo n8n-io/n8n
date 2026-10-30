@@ -1,6 +1,12 @@
-import type { AgentSkill, SkillScope } from '@n8n/api-types';
+import {
+	AGENT_SKILL_NAME_MAX_LENGTH,
+	agentSkillSchema,
+	type AgentSkill,
+	type SkillScope,
+} from '@n8n/api-types';
 import type { User } from '@n8n/db';
 import { UserError } from '@n8n/errors';
+import { z } from 'zod';
 
 import { skillContentHash, type SkillContent } from './skill-content-hash';
 import type { SkillFile } from '../database/entities/skill-file.entity';
@@ -224,4 +230,23 @@ export function trimmedName(name: string): string {
  */
 export function withTrimmedName<T extends { name: string }>(skill: T): T {
 	return { ...skill, name: trimmedName(skill.name) };
+}
+
+/**
+ * What a skill from a source must be to come in. Skills ignore `allowedTools`, as a create does.
+ * The name is trimmed as a create stores it, so the name checks and the hashes match the stored
+ * skill.
+ */
+export const importableSkillSchema = agentSkillSchema
+	.omit({ allowedTools: true })
+	.extend({ name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH) });
+
+/**
+ * The content of a skill from a source as a version would store it, so its hash compares with
+ * the hash of the stored version. Content that n8n cannot store stays as the source sent it:
+ * the security check blocks it anyway.
+ */
+export function storedContentOf(content: SkillContent): SkillContent {
+	const parsed = importableSkillSchema.safeParse(contentToAgentSkill(content));
+	return parsed.success ? toSkillContent(parsed.data, content.frontmatter) : content;
 }

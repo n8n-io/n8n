@@ -1,10 +1,12 @@
 import type { InstanceAiPermissions } from '@n8n/api-types';
 import type { Mock } from 'vitest';
+import { z } from 'zod';
 
 import { executeTool } from '../../__tests__/tool-test-utils';
 import { OutsideThreadProjectError } from '../../errors/outside-thread-project.error';
 import type { InstanceAiContext } from '../../types';
-import { createWorkspaceTool } from '../workspace.tool';
+import { createWorkspaceTools } from '../workspace.tool';
+import { createWorkspaceToolRouter as createWorkspaceTool } from './workspace-tools-test-utils';
 
 function createMockContext(
 	overrides: Partial<Omit<InstanceAiContext, 'permissions'>> & {
@@ -78,7 +80,42 @@ function contextWithFolderActions(overrides: Parameters<typeof createMockContext
 	return context;
 }
 
-describe('workspace tool', () => {
+describe('workspace tools', () => {
+	describe('createWorkspaceTools', () => {
+		it('builds one tool for each action, without the action field', () => {
+			const tools = createWorkspaceTools(contextWithFolderActions());
+
+			expect(tools.map((tool) => tool.name)).toEqual([
+				'list_projects',
+				'list_tags',
+				'tag_workflow',
+				'cleanup_test_executions',
+				'list_folders',
+				'create_folder',
+				'delete_folder',
+				'move_workflow_to_folder',
+			]);
+		});
+
+		it('gives no tool an action field in its input schema', () => {
+			for (const tool of createWorkspaceTools(contextWithFolderActions())) {
+				expect(tool.inputSchema).toBeInstanceOf(z.ZodObject);
+				expect((tool.inputSchema as z.AnyZodObject).shape).not.toHaveProperty('action');
+			}
+		});
+
+		it('omits the folder tools when the workspace service has no folder support', () => {
+			const tools = createWorkspaceTools(createMockContext());
+
+			expect(tools.map((tool) => tool.name)).toEqual([
+				'list_projects',
+				'list_tags',
+				'tag_workflow',
+				'cleanup_test_executions',
+			]);
+		});
+	});
+
 	describe('when workspaceService is missing', () => {
 		it('should return an error tool', async () => {
 			const context = createMockContext({ workspaceService: undefined });

@@ -13,6 +13,12 @@ import type { AppViewTab } from '../apps.constants';
 import { useAppVersions } from '../composables/useAppVersions';
 import AppHeader from './AppHeader.vue';
 import AppPreview from './AppPreview.vue';
+import AppConfigure from './configure/AppConfigure.vue';
+import {
+	DEFAULT_APP_CONFIGURE_TAB,
+	isAppConfigureTab,
+	type AppConfigureTab,
+} from './configure/appConfigureTabs';
 
 const props = defineProps<{ projectId: string; appId: string }>();
 
@@ -31,10 +37,20 @@ const versions = useAppVersions(
 );
 // `<tab>` or `<tab>.<sub-tab>`, for example `configure.authentication`.
 const section = defineModel<string>('section', { default: 'preview' });
+const sectionParts = computed(() => section.value.split('.'));
 const activeTab = computed<AppViewTab>({
-	get: () => (section.value.split('.')[0] === 'configure' ? 'configure' : 'preview'),
+	get: () => (sectionParts.value[0] === 'configure' ? 'configure' : 'preview'),
 	set: (tab) => {
 		section.value = tab;
+	},
+});
+const configureTab = computed<AppConfigureTab>({
+	get: () => {
+		const subTab = sectionParts.value[1];
+		return isAppConfigureTab(subTab) ? subTab : DEFAULT_APP_CONFIGURE_TAB;
+	},
+	set: (tab) => {
+		section.value = `configure.${tab}`;
 	},
 });
 
@@ -101,13 +117,13 @@ defineExpose({ refresh });
 					:app="app"
 					:versions="versions"
 				/>
-				<div v-else :class="$style.configure" data-test-id="app-view-configure">
-					<N8nEmptyState
-						:icon="{ type: 'icon', value: 'settings' }"
-						:heading="i18n.baseText('apps.detail.configure.heading')"
-						:description="i18n.baseText('apps.detail.configure.description')"
-					/>
-				</div>
+				<AppConfigure
+					v-else
+					v-model:tab="configureTab"
+					:app="app"
+					:versions="versions"
+					@updated="app = $event"
+				/>
 			</template>
 		</main>
 	</div>
@@ -133,12 +149,5 @@ defineExpose({ refresh });
 .flush {
 	padding: 0;
 	overflow: hidden;
-}
-
-.configure {
-	width: 100%;
-	max-width: 56rem;
-	margin-inline: auto;
-	padding-block: var(--spacing--xl);
 }
 </style>

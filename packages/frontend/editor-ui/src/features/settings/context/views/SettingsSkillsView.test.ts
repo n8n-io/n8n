@@ -74,6 +74,8 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		canEdit: true,
 		canDelete: true,
 		canStopSyncing: false,
+		syncState: null,
+		canCheckForUpdates: false,
 		createdAt: '2026-10-01T00:00:00.000Z',
 		updatedAt: '2026-10-01T00:00:00.000Z',
 		...overrides,
@@ -818,6 +820,32 @@ describe('SettingsSkillsView', () => {
 			});
 			expect(showMessageMock).toHaveBeenCalledWith({ title: 'Nothing to save', type: 'info' });
 		});
+
+		it('sends the hash of the last save when the modal saves again', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			skillsStore.fetchSkill.mockResolvedValue(detail());
+			skillsStore.saveSkill.mockResolvedValue({
+				id: 's1',
+				versionId: 'v2',
+				version: 2,
+				created: true,
+				skill: detail().skill,
+				skillHash: 'hash-2',
+			});
+			const { getByText } = renderView();
+			await new Promise(process.nextTick);
+			await userEvent.click(getByText('research-search'));
+			await new Promise(process.nextTick);
+
+			await lastModalData().onConfirm({ id: 's1', skill: detail().skill, restoredFrom: 1 });
+			await lastModalData().onConfirm({ id: 's1', skill: detail().skill });
+
+			expect(skillsStore.saveSkill).toHaveBeenLastCalledWith(
+				's1',
+				expect.objectContaining({ baseSkillHash: 'hash-2' }),
+			);
+		});
 	});
 
 	describe('MCP availability', () => {
@@ -1108,6 +1136,93 @@ describe('SettingsSkillsView', () => {
 
 			expect(lastModalData().readOnly).toBe(true);
 			expect(lastModalData().syncedFrom).toEqual(syncedFrom);
+		});
+
+		describe('check for updates', () => {
+			async function clickCheck() {
+				skillsStore.skills = [
+					skill({ source: 'github', canEdit: false, canCheckForUpdates: true }),
+				];
+				skillsStore.count = 1;
+				const view = renderView();
+				await new Promise(process.nextTick);
+				skillsStore.fetchSkills.mockClear();
+				await userEvent.click(view.getByTestId('skill-actions').querySelector('button')!);
+				await waitFor(() =>
+					expect(
+						document.querySelector('[data-test-id="action-checkForUpdates"]'),
+					).toBeInTheDocument(),
+				);
+				await userEvent.click(document.querySelector('[data-test-id="action-checkForUpdates"]')!);
+			}
+
+			it.each([
+				{
+					updatesFound: 0,
+					throttled: false,
+					title: 'Checked acme/skills',
+					message: 'No new changes.',
+				},
+				{
+					updatesFound: 2,
+					throttled: false,
+					title: 'Checked acme/skills',
+					message: '2 skills have updates.',
+				},
+				{
+					updatesFound: 1,
+					throttled: true,
+					title: 'acme/skills was checked less than a minute ago',
+					message: '1 skill has an update.',
+				},
+			])(
+				'says what the check found ($updatesFound, throttled $throttled) and reloads the list',
+				async ({ updatesFound, throttled, title, message }) => {
+					skillsStore.checkForUpdates.mockResolvedValue({
+						label: 'acme/skills',
+						updatesFound,
+						throttled,
+						lastCheckedAt: '2026-10-29T12:00:00.000Z',
+					});
+
+					await clickCheck();
+					await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+
+					expect(skillsStore.checkForUpdates).toHaveBeenCalledWith('s1');
+					expect(showMessageMock).toHaveBeenCalledWith({ title, message, type: 'success' });
+				},
+			);
+
+			it.each([
+				{
+					reason: 'rate_limited',
+					text: 'GitHub limits how often n8n can read it. Try again in a few minutes.',
+				},
+				{
+					reason: 'credential_missing',
+					text: 'The credential of this source no longer exists, or this scope can no longer use it.',
+				},
+			])('shows the text of $reason when the check fails', async ({ reason, text }) => {
+				skillsStore.checkForUpdates.mockRejectedValue(
+					new ResponseError('Server text', { meta: { reason } }),
+				);
+
+				await clickCheck();
+				await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+
+				expect(showErrorMock).toHaveBeenCalledWith(new Error(text), 'Could not check for updates');
+				expect(showMessageMock).not.toHaveBeenCalled();
+			});
+
+			it('keeps the error of a failure without a reason', async () => {
+				const error = new Error('Network down');
+				skillsStore.checkForUpdates.mockRejectedValue(error);
+
+				await clickCheck();
+				await waitFor(() => expect(showErrorMock).toHaveBeenCalled());
+
+				expect(showErrorMock).toHaveBeenCalledWith(error, 'Could not check for updates');
+			});
 		});
 
 		describe('stop syncing', () => {

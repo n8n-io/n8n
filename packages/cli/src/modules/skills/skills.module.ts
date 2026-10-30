@@ -22,6 +22,11 @@ export class SkillsModule implements ModuleInterface {
 		Container.get(SkillSourceClientRegistry).register(Container.get(GitHubSkillSourceClient));
 	}
 
+	async systemTasks() {
+		const { SkillSourceCheckTask } = await import('./services/skill-source-check.task.js');
+		return [SkillSourceCheckTask];
+	}
+
 	async entities() {
 		const { Skill } = await import('./database/entities/skill.entity.js');
 		const { SkillVersion } = await import('./database/entities/skill-version.entity.js');
