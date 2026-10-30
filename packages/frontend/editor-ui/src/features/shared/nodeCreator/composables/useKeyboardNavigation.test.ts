@@ -204,6 +204,7 @@ describe('shouldAllowNativeInputBehavior', () => {
 describe('keys pressed inside a dialog', () => {
 	const hookSpy = vi.fn();
 	const dialogButtonSpy = vi.fn();
+	const dialogEscapeSpy = vi.fn();
 
 	const DialogTestComponent = defineComponent({
 		setup() {
@@ -218,7 +219,13 @@ describe('keys pressed inside a dialog', () => {
 				handler: hookSpy,
 			});
 
-			return { attachKeydownEvent, detachKeydownEvent, activeItemId, dialogButtonSpy };
+			return {
+				attachKeydownEvent,
+				detachKeydownEvent,
+				activeItemId,
+				dialogButtonSpy,
+				dialogEscapeSpy,
+			};
 		},
 		mounted() {
 			this.attachKeydownEvent();
@@ -235,7 +242,7 @@ describe('keys pressed inside a dialog', () => {
 					:data-keyboard-nav-id="'item' + item"
 					data-keyboard-nav-type="node"
 				/>
-				<div role="dialog">
+				<div role="dialog" @keydown.esc="dialogEscapeSpy">
 					<button data-test-id="dialog-button" @click="dialogButtonSpy">Close</button>
 				</div>
 			</div>
@@ -249,6 +256,7 @@ describe('keys pressed inside a dialog', () => {
 	beforeEach(() => {
 		hookSpy.mockReset();
 		dialogButtonSpy.mockReset();
+		dialogEscapeSpy.mockReset();
 	});
 
 	test('lets Enter activate the focused dialog button', async () => {
@@ -268,6 +276,16 @@ describe('keys pressed inside a dialog', () => {
 		await userEvent.keyboard('{arrowdown}');
 
 		expect(container.querySelector('[data-keyboard-nav-id="item1"]')).toHaveClass('active');
+		expect(hookSpy).not.toHaveBeenCalled();
+	});
+
+	test('leaves Escape to the dialog', async () => {
+		const { getByTestId } = renderDialogComponent();
+
+		getByTestId('dialog-button').focus();
+		await userEvent.keyboard('{escape}');
+
+		expect(dialogEscapeSpy).toHaveBeenCalledTimes(1);
 		expect(hookSpy).not.toHaveBeenCalled();
 	});
 });
