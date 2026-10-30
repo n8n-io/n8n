@@ -1,0 +1,19 @@
+packages/@n8n/cli/skills/n8n-cli/SKILL.md
+  s_9b3ab1793f84f3::t_7b8d6674520038 303-305
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "d9a03063f72a8537296f92f66d30f81512c6c24b",
+  "prompts": {},
+  "sessions": {
+    "s_9b3ab1793f84f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8ad9e54-9fe6-4baa-afd1-59d74a65f84d",
+        "model": "claude-sonnet-5-5"
+      },
+      "human_author": "Sandra Zollner <sandra.zollner@n8n.io>"
+    }
+  }
+}

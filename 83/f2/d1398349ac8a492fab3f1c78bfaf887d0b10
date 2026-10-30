@@ -1,0 +1,82 @@
+packages/@n8n/expression-runtime/src/bridge/host-functions.ts
+  s_62183957d60dd0::t_ed1b23ea20ace3 9,119-122,170-171,174-177
+packages/@n8n/expression-runtime/src/runtime/serialize.ts
+  s_62183957d60dd0::t_ee791814657bc4 55
+  s_62183957d60dd0::t_1bb999cab73c66 43-45,48,51,56-59,62
+  s_62183957d60dd0::t_07877ecc6713b0 3,5,12,49,52-54,60,63,68,71,89
+  s_62183957d60dd0::t_ed1b23ea20ace3 1,67,69
+packages/workflow/vitest.config.ts
+  s_62183957d60dd0::t_ed1b23ea20ace3 13
+packages/@n8n/expression-runtime/src/bridge/isolated-vm-bridge.ts
+  s_62183957d60dd0::t_ed1b23ea20ace3 7,471-472
+packages/@n8n/expression-runtime/src/bridge/__tests__/guest-transfer.test.ts
+  s_62183957d60dd0::t_9f2ea69e076447 68-93
+  s_62183957d60dd0::t_ed1b23ea20ace3 1-67,94
+packages/@n8n/expression-runtime/src/runtime/transfer.ts
+  s_62183957d60dd0::t_07877ecc6713b0 106-135
+  s_62183957d60dd0::t_1bb999cab73c66 96-105
+  s_62183957d60dd0::t_ee791814657bc4 166
+packages/@n8n/expression-runtime/src/runtime/transfer-codec.ts
+  s_62183957d60dd0::t_ed1b23ea20ace3 1-36
+packages/@n8n/expression-runtime/src/runtime/context.ts
+  s_62183957d60dd0::t_ed1b23ea20ace3 15,88-91,93-95,111,114
+  s_62183957d60dd0::t_3a27469c119514 120-122
+  s_62183957d60dd0::t_1fed0f0b1aeee6 92
+packages/@n8n/expression-runtime/src/runtime/error-transfer.ts
+  s_62183957d60dd0::t_1bb999cab73c66 11
+  s_62183957d60dd0::t_7f77b140a3a867 50
+  s_62183957d60dd0::t_a6d75d41a0ce69 79
+  s_62183957d60dd0::t_ed1b23ea20ace3 1-10,12-28,30-45,55-78,80-97,101-107
+  s_62183957d60dd0::t_0db5efefdc05d0 98-100
+  s_62183957d60dd0::t_0feeae77f3f65f 29
+  s_62183957d60dd0::t_6bae32124a24cb 46-49,51-54
+packages/workflow/test/expression-error-item-engine-parity.test.ts
+  s_62183957d60dd0::t_7f874ac20deb03 195-196,200-204
+  s_9657be543da9ce::t_31ccbe247ccc97 147
+  s_62183957d60dd0::t_ed1b23ea20ace3 1-48,61-140,205-213,238-246
+  s_62183957d60dd0::t_448f4e4fe02514 190-191
+  s_62183957d60dd0::t_717a34bb4cad3f 151-153,155-159
+  s_62183957d60dd0::t_12f46b057b09b1 154,175,180
+  s_62183957d60dd0::t_2a0ea601ed88a7 197-199
+  s_62183957d60dd0::t_e6c42912336f20 141-146,148-150,182-183
+  s_62183957d60dd0::t_9002f73ab310e5 214-225,236-237
+  s_62183957d60dd0::t_8f4ef27057b2d6 53-60
+  s_62183957d60dd0::t_fbdbb48681230a 49-52
+  s_62183957d60dd0::t_6e29cdba73209a 184-189,192-194
+  s_62183957d60dd0::t_9f2ea69e076447 160-174,176-179,181,226-235
+packages/@n8n/expression-runtime/src/runtime/__tests__/transfer.test.ts
+  s_62183957d60dd0::t_6e29cdba73209a 325-335
+  s_62183957d60dd0::t_57eb19a15eecc3 217-227
+  s_62183957d60dd0::t_9f2ea69e076447 313-324,336-344
+packages/@n8n/expression-runtime/src/bridge/guest-transfer.ts
+  s_62183957d60dd0::t_07877ecc6713b0 3,6,9,16-17,24-26,31,36-53,73-74,80-87,99,101,120
+  s_62183957d60dd0::t_1bb999cab73c66 1,5
+  s_62183957d60dd0::t_8ba01536684c3f 95-96
+  s_62183957d60dd0::t_ed1b23ea20ace3 2,4,7,10-15,19-23,27-30,32-35,54-61,63,67-70,72,75-76,78,100,102-119,121-124
+  s_62183957d60dd0::t_b44e943cddee22 98
+  s_62183957d60dd0::t_390ca0342d9a06 8,18,62,64-66,71,77,79,88-94,97
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "83f2d1398349ac8a492fab3f1c78bfaf887d0b10",
+  "prompts": {},
+  "sessions": {
+    "s_62183957d60dd0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1f7ff0a0-5e3b-4aec-b940-cf697bd9826e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    },
+    "s_9657be543da9ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9d48c2ac-1db9-42c1-9614-685281c308c2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

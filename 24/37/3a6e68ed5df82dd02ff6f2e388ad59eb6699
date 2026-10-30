@@ -1,0 +1,25 @@
+packages/cli/src/modules/agents/tools/__tests__/workflow-tool-factory.test.ts
+  ai_agent 1420-1421,1423-1431,1433-1435,1437-1442,1444-1445,1447-1451,1453-1454,1456-1458,1460-1463,1471,1477-1481,1483-1484,1489-1490,1492-1503,1505-1508,1510-1514,1516,1518-1519,1521-1523,1525,1196,1201-1202,1205,1208,1210,1212-1215
+  s_ef2fe8491daaf9::t_150fdd83020a14 1432,1195,1203-1204,1206-1207,1209,1211
+  s_ef2fe8491daaf9::t_01b5423b4735c0 1455,1459,1464-1470,1472-1476,1482,1485-1488
+  s_ef2fe8491daaf9::t_a5b76e76d4452a 1197-1200
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_ef2fe8491daaf9::t_c7518f5e0e6a8a 787,837-838,907,1278
+  s_ef2fe8491daaf9::t_87440c7ecf58a1 1180-1181,1184,1215-1223
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "24373a6e68ed5df82dd02ff6f2e388ad59eb6699",
+  "prompts": {},
+  "sessions": {
+    "s_ef2fe8491daaf9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edf1e92c-e697-4d8b-aab2-6ee47b01b00a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

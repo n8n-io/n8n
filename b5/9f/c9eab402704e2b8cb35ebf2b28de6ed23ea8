@@ -1,0 +1,19 @@
+packages/cli/test/integration/folder/folder.controller.test.ts
+  s_1846b2775c62ad::t_eb4d25a57a6a6d 1891-1896
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b59fc9eab402704e2b8cb35ebf2b28de6ed23ea8",
+  "prompts": {},
+  "sessions": {
+    "s_1846b2775c62ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ba7efea-ee8f-4ee1-b780-73cd9b83ced1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Yuliia Pominchuk <yuliia.pominchuk@n8n.io>"
+    }
+  }
+}
