@@ -347,6 +347,46 @@ describe('SystemAgentChatController', () => {
 		});
 	});
 
+	describe('renameThread', () => {
+		it('renames an owned thread and returns its summary', async () => {
+			const { controller, systemAgents } = setup();
+			systemAgents.updateThread.mockResolvedValue({
+				...thread,
+				title: 'Weekly digest',
+				updatedAt: new Date('2026-10-19T10:00:00.000Z'),
+			} as AgentExecutionThread);
+
+			const result = await controller.renameThread(
+				request({}),
+				mock<Response>(),
+				AGENT_ID,
+				'thread-1',
+				{ title: 'Weekly digest' },
+			);
+
+			expect(systemAgents.updateThread).toHaveBeenCalledWith(AGENT_ID, user, 'thread-1', {
+				title: 'Weekly digest',
+			});
+			expect(result).toEqual({
+				id: 'thread-1',
+				title: 'Weekly digest',
+				updatedAt: '2026-10-19T10:00:00.000Z',
+				projectId: 'project-1',
+			});
+		});
+
+		it('refuses to rename a thread the user does not own', async () => {
+			const { controller, systemAgents } = setup();
+			systemAgents.updateThread.mockRejectedValue(new NotFoundError('Session not found'));
+
+			await expect(
+				controller.renameThread(request({}), mock<Response>(), AGENT_ID, 'thread-2', {
+					title: 'Weekly digest',
+				}),
+			).rejects.toThrow(NotFoundError);
+		});
+	});
+
 	it('deletes an owned thread through the execution service', async () => {
 		const { controller, systemAgents } = setup();
 

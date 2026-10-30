@@ -6,6 +6,7 @@ import {
 	deleteSystemAgentThread,
 	getSystemAgentThread,
 	listSystemAgentThreads,
+	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
 import { knownAssistantThreadRuntime } from '../assistantAgentThreads';
@@ -15,6 +16,7 @@ vi.mock('@/features/agents/composables/useAgentApi', () => ({
 	listSystemAgentThreads: vi.fn(),
 	getSystemAgentThread: vi.fn(),
 	deleteSystemAgentThread: vi.fn(),
+	renameSystemAgentThread: vi.fn(),
 }));
 
 const { showError } = vi.hoisted(() => ({ showError: vi.fn() }));
@@ -39,6 +41,7 @@ describe('useAssistantAgentThreadsStore', () => {
 		vi.mocked(listSystemAgentThreads).mockReset();
 		vi.mocked(getSystemAgentThread).mockReset();
 		vi.mocked(deleteSystemAgentThread).mockReset();
+		vi.mocked(renameSystemAgentThread).mockReset();
 		showError.mockReset();
 	});
 
@@ -67,6 +70,40 @@ describe('useAssistantAgentThreadsStore', () => {
 			kind: 'assistant-agent',
 			projectId: 'project-opened-old',
 		});
+	});
+
+	it('renames a thread and keeps the new title over a response that the rename overtook', async () => {
+		vi.mocked(listSystemAgentThreads).mockResolvedValue({
+			data: [thread('a', '2026-01-02T00:00:00.000Z')],
+			nextCursor: null,
+		});
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		await store.renameThread('a', 'Invoices');
+		await store.fetchRecent();
+
+		expect(renameSystemAgentThread).toHaveBeenCalledWith(
+			expect.anything(),
+			'assistant',
+			'a',
+			'Invoices',
+		);
+		expect(store.threadsById.get('a')?.title).toBe('Invoices');
+	});
+
+	it('restores the old title and rethrows when the rename fails', async () => {
+		vi.mocked(listSystemAgentThreads).mockResolvedValue({
+			data: [thread('a', '2026-01-02T00:00:00.000Z')],
+			nextCursor: null,
+		});
+		vi.mocked(renameSystemAgentThread).mockRejectedValue(new Error('Request failed'));
+		const store = useAssistantAgentThreadsStore();
+		await store.fetchRecent();
+
+		await expect(store.renameThread('a', 'Invoices')).rejects.toThrow('Request failed');
+
+		expect(store.threadsById.get('a')?.title).toBe('Chat a');
 	});
 
 	it('deletes a thread and keeps it out of the lists', async () => {

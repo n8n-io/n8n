@@ -161,6 +161,11 @@ export class ListSystemAgentThreadsQueryDto extends Z.class({
 	search: threadTitleSearchSchema,
 }) {}
 
+/** A new title for a thread of a system agent. */
+export class RenameSystemAgentThreadDto extends Z.class({
+	title: z.string().trim().min(1).max(255),
+}) {}
+
 /** A message to a system agent. `projectId` is the working project of a new session. */
 export class SystemAgentChatQueryDto extends Z.class({
 	projectId: z.string().min(1).max(128).optional(),

@@ -212,7 +212,10 @@ const menuItems = computed<Array<DropdownMenuItemProps<string, ChatHistoryItemDa
 				item.kind === 'agent'
 					? 'instance-ai-agent-thread-item'
 					: 'instance-ai-assistant-agent-thread-item',
-			data: { updatedAt: item.thread.updatedAt, actions: agentActions },
+			data: {
+				updatedAt: item.thread.updatedAt,
+				actions: item.kind === 'agent' ? agentActions : threadActions,
+			},
 		};
 	}),
 );
@@ -312,26 +315,49 @@ function setRenameInput(element: unknown) {
 	renameInput.value = element instanceof HTMLInputElement ? element : null;
 }
 
-function startRename(threadId: string) {
+/**
+ * The current title of a row the user can rename, and how to rename it. n8n Chat agent
+ * threads have no rename.
+ */
+function renameTarget(itemId: string) {
+	if (!isPrefixedRowId(itemId)) {
+		const thread = history.value.threads.find((t) => t.id === itemId);
+		if (!thread) return undefined;
+		return {
+			title: thread.title,
+			rename: async (title: string) => await store.renameThread(itemId, title),
+		};
+	}
+	const item = itemsById.value.get(itemId);
+	if (item?.kind !== 'assistant-agent') return undefined;
+	return {
+		title: item.thread.title ?? '',
+		rename: async (title: string) =>
+			await assistantAgentThreadsStore.renameThread(item.thread.id, title),
+	};
+}
+
+function startRename(itemId: string) {
 	if (props.disabled) return;
-	const currentTitle = history.value.threads.find((thread) => thread.id === threadId)?.title;
-	if (!currentTitle) return;
-	editingThreadId.value = threadId;
-	editingTitle.value = currentTitle;
+	const target = renameTarget(itemId);
+	if (!target) return;
+	editingThreadId.value = itemId;
+	editingTitle.value = target.title;
 	void nextTick(() => {
 		renameInput.value?.focus();
 		renameInput.value?.select();
 	});
 }
 
-async function confirmRename(threadId: string) {
+async function confirmRename(itemId: string) {
 	// Enter and the blur it causes both call this; leaving edit mode first keeps one request.
-	if (editingThreadId.value !== threadId) return;
+	if (editingThreadId.value !== itemId) return;
 	editingThreadId.value = null;
 	const title = editingTitle.value.trim();
-	if (!title || title === history.value.threads.find((t) => t.id === threadId)?.title) return;
+	const target = renameTarget(itemId);
+	if (!title || !target || title === target.title) return;
 	try {
-		await store.renameThread(threadId, title);
+		await target.rename(title);
 		toast.showMessage({
 			type: 'success',
 			title: i18n.baseText('instanceAi.threads.renameSuccess'),
@@ -376,21 +402,21 @@ async function handleDeleteAssistantAgentThread(thread: SystemAgentThreadSummary
 
 function handleThreadAction(action: string, itemId: string) {
 	if (props.disabled) return;
+	if (action === 'rename') {
+		// Wait for the action menu to unmount before the rename input takes focus.
+		requestAnimationFrame(() => startRename(itemId));
+		return;
+	}
+	if (action !== 'delete') return;
 	if (isPrefixedRowId(itemId)) {
 		const item = itemsById.value.get(itemId);
-		if (action !== 'delete') return;
 		// This dropdown is Assistant-only (never open on an agent's own chat page), so
 		// deleting an agent thread here never needs to navigate away.
 		if (item?.kind === 'agent') void agentThreadsStore.deleteThread(item.thread);
 		if (item?.kind === 'assistant-agent') void handleDeleteAssistantAgentThread(item.thread);
 		return;
 	}
-	if (action === 'delete') {
-		void handleDeleteThread(itemId);
-	} else if (action === 'rename') {
-		// Wait for the action menu to unmount before the rename input takes focus.
-		requestAnimationFrame(() => startRename(itemId));
-	}
+	void handleDeleteThread(itemId);
 }
 </script>
 
@@ -463,7 +489,8 @@ function handleThreadAction(action: string, itemId: string) {
 		</template>
 
 		<template #item-edit="{ item, ui }">
-			<div :class="[$style.renameContainer, ui.class]" @pointerdown.stop @click.stop>
+			<!-- Keys stay in the input: on the menu, Space or Enter selects the row and letters jump between rows. -->
+			<div :class="[$style.renameContainer, ui.class]" @pointerdown.stop @click.stop @keydown.stop>
 				<input
 					:ref="setRenameInput"
 					v-model="editingTitle"

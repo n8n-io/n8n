@@ -191,6 +191,16 @@ useEventListener(
 	{ capture: true },
 );
 
+// Hovering a row, the edited one too, moves focus to that row or to the search input.
+// That blurs the rename input and ends the rename, so rows get no hover while editing.
+function keepEditFocus(event: PointerEvent) {
+	if (!props.editingItemId || !(event.target instanceof Element)) return;
+	if (event.target.closest('[data-menu-content]')?.id !== contentId.value) return;
+	event.stopPropagation();
+}
+useEventListener(document, 'pointermove', keepEditFocus, { capture: true });
+useEventListener(document, 'pointerleave', keepEditFocus, { capture: true });
+
 const highlightFirstItem = () => {
 	dropdownRef.value?.highlightFirstItem();
 };

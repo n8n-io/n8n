@@ -2,6 +2,7 @@
 import { mock } from 'vitest-mock-extended';
 
 import type { TransactionRunner } from '@n8n/db';
+import { IsNull } from '@n8n/typeorm';
 import { mockEntityManager } from '@test/mocking';
 
 import { AgentExecutionThread } from '../entities/agent-execution-thread.entity';
@@ -22,6 +23,32 @@ describe('AgentExecutionThreadRepository', () => {
 			mockDataSource as never,
 			mock<TransactionRunner>(),
 		);
+	});
+
+	describe('setGeneratedTitle', () => {
+		it('writes the title and emoji only to a thread without a title', async () => {
+			entityManager.update.mockResolvedValue({ affected: 1, raw: [], generatedMaps: [] });
+
+			await repository.setGeneratedTitle('thread-1', 'Weekly digest', '📰');
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentExecutionThread,
+				{ id: 'thread-1', title: IsNull() },
+				{ title: 'Weekly digest', emoji: '📰' },
+			);
+		});
+
+		it('leaves the emoji alone when there is none', async () => {
+			entityManager.update.mockResolvedValue({ affected: 0, raw: [], generatedMaps: [] });
+
+			await repository.setGeneratedTitle('thread-1', 'Weekly digest', null);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				AgentExecutionThread,
+				{ id: 'thread-1', title: IsNull() },
+				{ title: 'Weekly digest' },
+			);
+		});
 	});
 
 	describe('findOrCreate', () => {
