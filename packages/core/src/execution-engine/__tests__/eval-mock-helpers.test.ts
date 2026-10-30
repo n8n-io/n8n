@@ -967,4 +967,18 @@ describe('withEvalEgressProxy', () => {
 		expect(withEvalEgressProxy(request, {})).toBe(request);
 		expect(request).not.toHaveProperty('proxy');
 	});
+
+	it("uses the protocol's default port, and keeps the proxy's credentials", () => {
+		const request = withEvalEgressProxy<IHttpRequestOptions>(
+			{ url: 'https://api.example.test/x' },
+			{ evalEgressProxy: 'http://run%401:s%3Acret@proxy.internal' },
+		);
+
+		expect(request.proxy).toEqual({
+			host: 'proxy.internal',
+			port: 80,
+			protocol: 'http',
+			auth: { username: 'run@1', password: 's:cret' },
+		});
+	});
 });

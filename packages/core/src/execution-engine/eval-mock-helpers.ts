@@ -350,11 +350,14 @@ export function withEvalEgressProxy<T extends IHttpRequestOptions>(
 ): T {
 	const proxy = getEvalEgressProxy(additionalData);
 	if (!proxy) return requestOptions;
-	const { hostname, port, protocol } = new URL(proxy);
+	const { hostname, port, protocol, username, password } = new URL(proxy);
 	requestOptions.proxy = {
 		host: hostname,
-		port: Number(port),
+		port: Number(port) || (protocol === 'https:' ? 443 : 80),
 		protocol: protocol.replace(/:$/, ''),
+		...(username
+			? { auth: { username: decodeURIComponent(username), password: decodeURIComponent(password) } }
+			: {}),
 	};
 	return requestOptions;
 }
