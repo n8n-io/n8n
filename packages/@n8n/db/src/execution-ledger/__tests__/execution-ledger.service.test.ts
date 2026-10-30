@@ -99,13 +99,16 @@ describe('ExecutionLedger', () => {
 
 			await ledger.recordStarted(startedFacts, txCtx);
 
-			expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('no owner project'), {
-				executionId: 'exec-1',
-				workflowId: 'wf-1',
-			});
-			expect(errorReporter.error).toHaveBeenCalledWith(expect.any(Error), {
-				shouldBeLogged: false,
-			});
+			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+				'Workflow wf-1 has no owner project, so execution exec-1 is not in the execution ledger',
+				{ executionId: 'exec-1', workflowId: 'wf-1' },
+			);
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({
+					message: 'The workflow has no owner project, so the run is not in the execution ledger',
+				}),
+				{ shouldBeLogged: false },
+			);
 		});
 	});
 
@@ -124,11 +127,11 @@ describe('ExecutionLedger', () => {
 
 			await expect(ledger.recordEnded(endedFacts)).resolves.toBeUndefined();
 
-			expect(logger.error).toHaveBeenCalledWith(
-				'Failed to record a run end in the execution ledger',
-				{ executionId: 'exec-1', workflowId: 'wf-1', error: 'insert failed' },
+			expect(logger.error).toHaveBeenCalledExactlyOnceWith(
+				'Failed to record the end of execution exec-1 in the execution ledger: insert failed',
+				{ executionId: 'exec-1', workflowId: 'wf-1', error },
 			);
-			expect(errorReporter.error).toHaveBeenCalledWith(error, {
+			expect(errorReporter.error).toHaveBeenCalledExactlyOnceWith(error, {
 				extra: { executionId: 'exec-1', workflowId: 'wf-1' },
 				shouldBeLogged: false,
 			});
