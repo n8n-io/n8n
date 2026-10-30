@@ -41,10 +41,7 @@ exposes this core workspace tool set:
 - `workspace_execute_command`
 
 The underlying `Workspace` supports more filesystem operations. The lazy
-runtime filters the model-facing set to `CORE_WORKSPACE_TOOL_NAMES` and adds
-the two batch tools (`createReadFilesTool`, `createEditFilesTool` from
-`@n8n/agents`). They are not part of `createWorkspaceTools`, so standalone
-Agents do not get them.
+runtime filters the model-facing set to `CORE_WORKSPACE_TOOL_NAMES`.
 
 ## Providers
 

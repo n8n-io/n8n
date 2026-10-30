@@ -65,9 +65,11 @@ describe('createWorkspaceTools', () => {
 
 		expect(names).toEqual([
 			'workspace_read_file',
+			'workspace_read_files',
 			'workspace_read_tool_result',
 			'workspace_str_replace_file',
 			'workspace_write_file',
+			'workspace_edit_files',
 			'workspace_list_files',
 			'workspace_file_stat',
 			'workspace_mkdir',
@@ -105,7 +107,7 @@ describe('createWorkspaceTools', () => {
 		expect(names).toContain('workspace_read_tool_result');
 		expect(names).toContain('workspace_str_replace_file');
 		expect(names).toContain('workspace_execute_command');
-		expect(names).toHaveLength(13);
+		expect(names).toHaveLength(15);
 		expect(tools.find((tool) => tool.name === 'workspace_read_tool_result')?.outputTrust).toBe(
 			'untrusted',
 		);

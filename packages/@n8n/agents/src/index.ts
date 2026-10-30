@@ -508,8 +508,6 @@ export { BaseFilesystem } from './workspace';
 export { BaseSandbox } from './workspace';
 export {
 	CORE_WORKSPACE_TOOL_NAMES,
-	createEditFilesTool,
-	createReadFilesTool,
 	createScopedWorkspace,
 	createWorkspaceTools,
 	reconcileToolResultRuns,

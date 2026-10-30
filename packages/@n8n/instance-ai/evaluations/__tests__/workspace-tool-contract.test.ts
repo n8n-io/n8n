@@ -1,9 +1,4 @@
-import {
-	CORE_WORKSPACE_TOOL_NAMES,
-	createEditFilesTool,
-	createReadFilesTool,
-	createWorkspaceTools,
-} from '@n8n/agents';
+import { CORE_WORKSPACE_TOOL_NAMES, createWorkspaceTools } from '@n8n/agents';
 
 import { IGNORED_WORKSPACE_TOOLS, REPLAYED_WORKSPACE_TOOL_ARGS } from '../harness/langsmith-seed';
 
@@ -12,13 +7,10 @@ import { IGNORED_WORKSPACE_TOOLS, REPLAYED_WORKSPACE_TOOL_ARGS } from '../harnes
 // the duplicated names/keys against the live factory here — a rename or new tool
 // there fails this test instead of silently turning a replayed mutation into a no-op.
 describe('workspace tool contract (@n8n/agents drift guard)', () => {
-	const filesystem = {} as unknown as Parameters<typeof createReadFilesTool>[0];
 	const liveByName = new Map(
-		[
-			...createWorkspaceTools({ filesystem }),
-			createReadFilesTool(filesystem),
-			createEditFilesTool(filesystem),
-		].map((tool) => [tool.name, tool] as const),
+		createWorkspaceTools({ filesystem: {} } as unknown as Parameters<
+			typeof createWorkspaceTools
+		>[0]).map((tool) => [tool.name, tool] as const),
 	);
 
 	it('classifies every live filesystem tool as replayed or intentionally ignored', () => {

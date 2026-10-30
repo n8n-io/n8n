@@ -89,9 +89,7 @@ describe('createLazyRuntimeWorkspace', () => {
 		lazyWorkspace.getInstructions();
 
 		expect(ensureWorkspace).not.toHaveBeenCalled();
-		expect(tools.map((tool) => tool.name).sort()).toEqual(
-			[...CORE_WORKSPACE_TOOL_NAMES, 'workspace_read_files', 'workspace_edit_files'].sort(),
-		);
+		expect(tools.map((tool) => tool.name).sort()).toEqual([...CORE_WORKSPACE_TOOL_NAMES].sort());
 		expect(tools.some((tool) => tool.name === 'workspace_list_files')).toBe(false);
 		expect(tools.some((tool) => tool.name === 'workspace_append_file')).toBe(false);
 

@@ -3,8 +3,6 @@ import {
 	BaseSandbox,
 	CORE_WORKSPACE_TOOL_NAMES,
 	Workspace,
-	createEditFilesTool,
-	createReadFilesTool,
 	raceWithAbort,
 	type AbortableOptions,
 	type AppendOptions,
@@ -61,20 +59,16 @@ export function createLazyRuntimeWorkspace({
 }: LazyRuntimeWorkspaceOptions): Workspace {
 	const resolver = new LazyRuntimeWorkspaceResolver(ensureWorkspace);
 
-	const filesystem = new LazyRuntimeFilesystem(resolver, filesystemInstructions);
 	const workspace = new Workspace({
 		id,
 		name,
-		filesystem,
+		filesystem: new LazyRuntimeFilesystem(resolver, filesystemInstructions),
 		sandbox: new LazyRuntimeSandbox(resolver, sandboxInstructions),
 	});
 
 	const baseGetTools = workspace.getTools.bind(workspace);
-	workspace.getTools = () => [
-		...baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name)),
-		createReadFilesTool(filesystem),
-		createEditFilesTool(filesystem),
-	];
+	workspace.getTools = () =>
+		baseGetTools().filter((tool) => CORE_WORKSPACE_TOOL_NAMES.has(tool.name));
 
 	return workspace;
 }

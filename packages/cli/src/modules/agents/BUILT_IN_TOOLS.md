@@ -26,9 +26,11 @@ custom endpoints, and Gateway credits use the complete eager catalog.
 These local tools stay eager when they are attached:
 
 - `workspace_read_file`
+- `workspace_read_files`
 - `workspace_read_tool_result`
 - `workspace_write_file`
 - `workspace_str_replace_file`
+- `workspace_edit_files`
 - `workspace_execute_command`
 - `load_skill`
 - `mark_session_failed`
@@ -72,9 +74,11 @@ Source: [`packages/@n8n/agents/src/workspace/tools/`](../../../../@n8n/agents/sr
 | Tool | Purpose |
 | --- | --- |
 | `workspace_read_file` | Reads a file from the workspace. |
+| `workspace_read_files` | Reads several files, or line ranges of them, in one call. |
 | `workspace_read_tool_result` | Reads the full result of an earlier tool call. |
 | `workspace_write_file` | Writes a file to the workspace. |
 | `workspace_str_replace_file` | Replaces a string in a workspace file. |
+| `workspace_edit_files` | Applies several writes and replacements in one call, and reports each result. |
 | `workspace_append_file` | Appends content to a workspace file. |
 | `workspace_list_files` | Lists the files in the workspace. |
 | `workspace_file_stat` | Returns metadata for a workspace file. |
