@@ -115,11 +115,12 @@ telemetry.
   `baggage` next to `traceparent`, even when no `traceparent` is sent. The otel module reads it
   through its module context (`extractInboundBaggage`), so the webhook code does not load the
   module. n8n drops an entry in three cases: the key starts with `n8n.` (in any case, and after
-  percent-decoding, because n8n owns that prefix), the entry has no key and so reaches no
-  receiver, or the entry does not fit the W3C total of 8192 bytes, where the receiving parser
-  stops reading. n8n forwards every other entry byte for byte, whatever its characters: the HTTP
-  server rejects a header value that n8n could not send again, and a stricter check would only
-  drop entries that the receiving parser reads anyway. When n8n drops an entry, it logs one
+  percent-decoding, because n8n owns that prefix), the entry has no key, no value, or a key or
+  value that does not percent-decode, so it reaches no receiver, or the entry does not fit the
+  W3C limits of 4096 bytes for an entry, 180 entries and 8192 bytes in total, which the receiving
+  parser applies as well. n8n forwards every other entry byte for byte, whatever its characters:
+  the HTTP server rejects a header value that n8n could not send again, and a stricter check would
+  only drop entries that the receiving parser reads anyway. When n8n drops an entry, it logs one
   warning for each header, with counts only and no entry content.
 - **Persistence.** The result is saved in `tracingContext.baggage` on the execution. Each
   segment saves it again, so a queue-mode worker and a resume after a Wait node send the same

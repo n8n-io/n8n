@@ -2,15 +2,17 @@ import type { Logger } from '@n8n/backend-common';
 
 const RESERVED_KEY_PREFIX = 'n8n.';
 
-// The total the receiving parser accepts, counted the way it counts it. Past this point the
-// parser stops reading, so n8n stops here instead: one webhook call feeds every request the
-// execution sends, and the header is saved on the execution row.
+// The limits the receiving parser applies. It skips an entry past the member size and stops
+// reading past the entry count or the total, so n8n keeps to them as well: one webhook call feeds
+// every request the execution sends, and the header is saved on the execution row.
 // https://www.w3.org/TR/baggage/#limits
+const MAX_ENTRIES = 180;
+const MAX_ENTRY_BYTES = 4096;
 const MAX_TOTAL_BYTES = 8192;
 
 /**
  * Returns the caller's `baggage` header without `n8n.` entries, entries that reach no receiver
- * and entries past the W3C total size.
+ * and entries past the W3C size limits.
  */
 export function sanitizeInboundBaggage(header: unknown, logger: Logger): string | undefined {
 	const raw = toHeaderString(header);
@@ -24,6 +26,12 @@ export function sanitizeInboundBaggage(header: unknown, logger: Logger): string 
 		const entry = part.trim();
 		if (!entry) continue;
 
+		const entryBytes = Buffer.byteLength(entry);
+		if (entryBytes > MAX_ENTRY_BYTES) {
+			dropped.overLimit++;
+			continue;
+		}
+
 		const key = keyOf(entry);
 		if (key === undefined) {
 			dropped.invalid++;
@@ -35,14 +43,14 @@ export function sanitizeInboundBaggage(header: unknown, logger: Logger): string 
 			continue;
 		}
 
-		const entryBytes = Buffer.byteLength(entry) + (kept.length > 0 ? 1 : 0);
-		if (totalBytes + entryBytes > MAX_TOTAL_BYTES) {
+		const entryTotalBytes = entryBytes + (kept.length > 0 ? 1 : 0);
+		if (kept.length >= MAX_ENTRIES || totalBytes + entryTotalBytes > MAX_TOTAL_BYTES) {
 			dropped.overLimit++;
 			continue;
 		}
 
 		kept.push(entry);
-		totalBytes += entryBytes;
+		totalBytes += entryTotalBytes;
 	}
 
 	if (dropped.reservedPrefix + dropped.invalid + dropped.overLimit > 0) {
@@ -57,8 +65,9 @@ export function sanitizeInboundBaggage(header: unknown, logger: Logger): string 
 
 /**
  * Returns the key of a `key=value;property` entry, read as the receiving parser reads it: the
- * part before the first `;`, then before the first `=`, percent-decoded. Undefined when the
- * entry has no key, because the receiver then ignores the entry.
+ * part before the first `;`, then the trimmed key and value around the first `=`, both
+ * percent-decoded. Undefined when the receiver ignores the entry: the key or the value is empty,
+ * or one of them does not decode.
  *
  * The key is decoded before the caller compares it, so `n8n%2Efoo` cannot hide the reserved
  * prefix that the receiver sees.
@@ -68,8 +77,13 @@ function keyOf(entry: string): string | undefined {
 	const separator = member.indexOf('=');
 	if (separator <= 0) return undefined;
 
+	const rawKey = member.slice(0, separator).trim();
+	const rawValue = member.slice(separator + 1).trim();
+	if (!rawKey || !rawValue) return undefined;
+
 	try {
-		return decodeURIComponent(member.slice(0, separator).trim());
+		decodeURIComponent(rawValue);
+		return decodeURIComponent(rawKey);
 	} catch {
 		return undefined;
 	}

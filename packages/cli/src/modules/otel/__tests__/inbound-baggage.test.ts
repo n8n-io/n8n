@@ -50,8 +50,30 @@ describe('sanitizeInboundBaggage', () => {
 		expect(logger.warn).not.toHaveBeenCalled();
 	});
 
-	it('keeps an entry with an empty value', () => {
-		expect(sanitizeInboundBaggage('empty-value=', logger)).toBe('empty-value=');
+	it('drops an entry with an empty value, so it reaches no receiver', () => {
+		expect(sanitizeInboundBaggage('tenant=acme,empty-value=,blank= ;ttl=60', logger)).toBe(
+			'tenant=acme',
+		);
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+			kept: 1,
+			reservedPrefix: 0,
+			invalid: 2,
+			overLimit: 0,
+		});
+	});
+
+	it('drops an entry with a blank key', () => {
+		expect(sanitizeInboundBaggage('tenant=acme, =blank-key', logger)).toBe('tenant=acme');
+	});
+
+	it('drops an entry whose value does not decode, as the receiver does', () => {
+		expect(sanitizeInboundBaggage('tenant=acme,bad=%zz,worse=%', logger)).toBe('tenant=acme');
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+			kept: 1,
+			reservedPrefix: 0,
+			invalid: 2,
+			overLimit: 0,
+		});
 	});
 
 	it('trims whitespace around entries', () => {
@@ -127,14 +149,53 @@ describe('sanitizeInboundBaggage', () => {
 		expect(sanitizeInboundBaggage('tenant=acme,%zz=1', logger)).toBe('tenant=acme');
 	});
 
-	it('keeps a long entry and many entries while they fit the total', () => {
-		const long = `big=${'v'.repeat(4096)},tenant=acme`;
+	it('keeps an entry of 4096 bytes and 180 entries', () => {
+		const long = `big=${'v'.repeat(4096 - 'big='.length)},tenant=acme`;
 		expect(sanitizeInboundBaggage(long, logger)).toBe(long);
 
-		const many = Array.from({ length: 181 }, (_, i) => `k${i}=v`).join(',');
+		const many = Array.from({ length: 180 }, (_, i) => `k${i}=v`).join(',');
 		expect(sanitizeInboundBaggage(many, logger)).toBe(many);
 
 		expect(logger.warn).not.toHaveBeenCalled();
+	});
+
+	it('drops an entry past 4096 bytes and keeps the entries around it', () => {
+		const header = `tenant=acme,big=${'v'.repeat(4096 - 'big='.length + 1)},region=eu`;
+
+		expect(sanitizeInboundBaggage(header, logger)).toBe('tenant=acme,region=eu');
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+			kept: 2,
+			reservedPrefix: 0,
+			invalid: 0,
+			overLimit: 1,
+		});
+	});
+
+	it('counts the size of an entry in UTF-8 bytes', () => {
+		const header = `big=${'ÿ'.repeat(2048)}`;
+
+		expect(sanitizeInboundBaggage(header, logger)).toBeUndefined();
+	});
+
+	it('drops entries past the 180th', () => {
+		const entries = Array.from({ length: 182 }, (_, i) => `k${i}=v`);
+
+		expect(sanitizeInboundBaggage(entries.join(','), logger)).toBe(entries.slice(0, 180).join(','));
+		expect(logger.warn).toHaveBeenCalledWith(expect.any(String), {
+			kept: 180,
+			reservedPrefix: 0,
+			invalid: 0,
+			overLimit: 2,
+		});
+	});
+
+	it('counts only the entries it keeps toward the 180', () => {
+		const dropped = ['n8n.id=forged', 'novalue', 'empty=', 'bad=%zz'];
+		const entries = Array.from({ length: 180 }, (_, i) => `k${i}=v`);
+
+		expect(sanitizeInboundBaggage([...dropped, ...entries].join(','), logger)).toBe(
+			entries.join(','),
+		);
 	});
 
 	it('stops at 8192 bytes in total', () => {
