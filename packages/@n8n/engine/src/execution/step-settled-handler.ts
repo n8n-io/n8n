@@ -23,11 +23,7 @@ import {
 import { exitSourcesInto, loadTerminalIterations } from './loop-ledger';
 import { decideSuccessors, decisionKeys } from './settlement';
 import type { StepRecord, StepStore } from './step-store';
-import {
-	collectSubExecutionResult,
-	resumeAwaitingParent,
-	type SubExecutionResumeDeps,
-} from './sub-execution-resume';
+import { collectSubExecutionResult, resumeAwaitingParent } from './sub-execution-resume';
 import { validateStepContext } from './validate-step-context';
 
 /**
@@ -107,7 +103,8 @@ export class StepSettledHandler {
 			});
 			this.announceEnd(execution, step, node, 'failed');
 			if (execution.parent?.awaited) {
-				await resumeAwaitingParent(this.resumeDeps(), execution, {
+				const { executionStore, stepStore, stepQueue } = this;
+				await resumeAwaitingParent({ executionStore, stepStore, stepQueue }, execution, {
 					status: 'failed',
 					error: await this.failureOf(execution, step),
 				});
@@ -115,11 +112,6 @@ export class StepSettledHandler {
 		}
 
 		await this.stepStore.cancelPendingSteps(execution.id);
-	}
-
-	private resumeDeps(): SubExecutionResumeDeps {
-		const { executionStore, stepStore, stepQueue } = this;
-		return { executionStore, stepStore, stepQueue };
 	}
 
 	/** The error of the step that failed the execution: this one, or the one the count found. */
@@ -247,8 +239,9 @@ export class StepSettledHandler {
 			});
 			this.announceEnd(execution, step, node, failed ? 'failed' : 'completed');
 			if (execution.parent?.awaited) {
+				const { executionStore, stepStore, stepQueue } = this;
 				await resumeAwaitingParent(
-					this.resumeDeps(),
+					{ executionStore, stepStore, stepQueue },
 					execution,
 					failed
 						? { status: 'failed', error: await this.failureOf(execution, step) }
