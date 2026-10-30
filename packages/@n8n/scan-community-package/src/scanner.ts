@@ -89,22 +89,47 @@ export const resolvePackage = (
 		throw new Error('Invalid package specification');
 	}
 
-	if (packageSpec.startsWith('@')) {
-		if (packageSpec.includes('@', 1)) {
-			// Handle scoped packages with versions
+	const isScoped = packageSpec.startsWith('@');
+	const hasScopedVersion = isScoped && packageSpec.includes('@', 1);
+
+	switch (true) {
+		case hasScopedVersion: {
 			const lastAtIndex = packageSpec.lastIndexOf('@');
 			return {
 				packageName: packageSpec.substring(0, lastAtIndex),
 				version: packageSpec.substring(lastAtIndex + 1),
 			};
-		} else {
-			// Handle scoped packages without version
+		}
+		case isScoped && !hasScopedVersion:
 			return { packageName: packageSpec, version: null };
+		default: {
+			const [packageName = '', version] = packageSpec.split('@');
+			return { packageName, version: version || null };
 		}
 	}
-	// Handle regular packages
-	const [packageName = '', version] = packageSpec.split('@');
-	return { packageName, version: version || null };
+};
+
+/**
+ * Picks the exact version to scan: the latest one without a spec, the highest
+ * match for a range, and otherwise the version a dist-tag points to.
+ */
+export const resolveVersion = (metadata: PackageMetadata, version: string | null): string => {
+	const isRange = version !== null && semver.validRange(version) !== null && !semver.valid(version);
+
+	switch (true) {
+		case !version: {
+			const latest = metadata['dist-tags'].latest;
+			if (!latest) throw new Error('No latest version found');
+			return latest;
+		}
+		case isRange: {
+			const match = semver.maxSatisfying(Object.keys(metadata.versions), version);
+			if (!match) throw new Error(`No version found matching ${version}`);
+			return match;
+		}
+		default:
+			return metadata['dist-tags'][version] ?? version;
+	}
 };
 
 const downloadAndExtractPackage = async (packageName: string, version: string) => {
@@ -386,34 +411,10 @@ export const analyzePackageByName = async (
 	version: string | null,
 ): Promise<AnalysisResult & { packageName: string; version: string | null }> => {
 	try {
-		let exactVersion = version;
-		let packageMetadata: PackageMetadata | undefined;
-
-		// If version is a range, get the latest matching version
-		if (version && semver.validRange(version) && !semver.valid(version)) {
-			const { data } = await axios.get<PackageMetadata>(`${registry}/${packageName}`);
-			packageMetadata = data;
-			const versions = Object.keys(data.versions);
-			exactVersion = semver.maxSatisfying(versions, version);
-
-			if (!exactVersion) {
-				throw new Error(`No version found matching ${version}`);
-			}
-		}
-
-		// If no version specified, get the latest
-		if (!exactVersion) {
-			const { data } = await axios.get<PackageMetadata>(`${registry}/${packageName}`);
-			packageMetadata = data;
-			exactVersion = data['dist-tags'].latest ?? null;
-		}
-
-		if (!exactVersion) {
-			throw new Error('No latest version found');
-		}
-
-		packageMetadata ??= (await axios.get<PackageMetadata>(`${registry}/${packageName}`)).data;
-		exactVersion = packageMetadata['dist-tags']?.[exactVersion] ?? exactVersion;
+		const { data: packageMetadata } = await axios.get<PackageMetadata>(
+			`${registry}/${packageName}`,
+		);
+		const exactVersion = resolveVersion(packageMetadata, version);
 		const label = `${packageName}@${exactVersion}`;
 
 		stdout.write(`Checking provenance for ${label}...`);
