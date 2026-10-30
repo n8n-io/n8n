@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import { prepareForGuest } from '../../bridge/guest-transfer';
 import { __prepareForTransfer } from '../serialize';
-import { unwrapTransferredValue } from '../transfer-codec';
+import { decodeHostValue, unwrapTransferredValue } from '../transfer-codec';
 
 describe.each([
+	{
+		name: 'host to guest',
+		roundTrip: (value: unknown) => decodeHostValue(structuredClone(prepareForGuest(value))),
+	},
 	{
 		name: 'guest to host',
 		roundTrip: (value: unknown) =>

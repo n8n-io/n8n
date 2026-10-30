@@ -230,6 +230,22 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 				...properties,
 			};
 
+			it.each(['$json.error', '$input.first().json.error'])(
+				'keeps own JSON keys when reading %s',
+				(access) => {
+					const error = Object.assign(new Error('from host'), { payload });
+					const data = { $json: { error }, $input: { first: () => ({ json: { error } }) } };
+
+					expect(
+						evaluator.evaluate(
+							`{{ (() => { const value = ${access}.payload; return [Object.hasOwn(value, "__proto__"), Object.entries(value)]; })() }}`,
+							data,
+							caller,
+						),
+					).toEqual([true, Object.entries(payload)]);
+				},
+			);
+
 			it.each([
 				{ label: 'plain object', expression: '({ payload })' },
 				{ label: 'Error', expression: 'Object.assign(new Error("from guest"), { payload })' },
@@ -345,34 +361,33 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			});
 		});
 
-		it('should convert the values inside an object with an __isError key in a Map or a Set', () => {
-			const data = { $json: {} };
-			const flagged =
-				'{ __isError: true, when: new Date("2024-01-15T00:00:00.000Z"), n: NaN, tags: new Set([1]) }';
-			const expected = {
-				__isError: true,
-				when: new Date('2024-01-15T00:00:00.000Z'),
-				n: NaN,
-				tags: new Set([1]),
-			};
+		describe.each([
+			{ key: '__isError', properties: { __isError: true } },
+			{ key: '__isArray', properties: { __isArray: true, __length: 2 } },
+			{ key: '__isObject', properties: { __isObject: true, __keys: ['message'] } },
+		])('Error data with $key', ({ key, properties }) => {
+			it.each(['$error', '$json.error', '$json.errors[0]'])('reads %s as an Error', (access) => {
+				const error = Object.assign(new Error('from data'), properties);
+				const json = { error, errors: [error] };
+				const data = { $error: error, $json: json, $input: { first: () => ({ json }) } };
 
-			const fromMap = evaluator.evaluate(`{{ new Map([["k", ${flagged}]]) }}`, data, caller);
-			const fromSet = evaluator.evaluate(`{{ new Set([${flagged}]) }}`, data, caller);
-
-			expect((fromMap as Map<string, unknown>).get('k')).toEqual(expected);
-			expect([...(fromSet as Set<unknown>)]).toEqual([expected]);
+				expect(evaluator.evaluate('{{ $input.first().json.error.message }}', data, caller)).toBe(
+					'from data',
+				);
+				expect(
+					evaluator.evaluate(
+						`{{ (() => { const error = ${access}; return [error.message, error instanceof Error, Array.isArray(error), error.${key}]; })() }}`,
+						data,
+						caller,
+					),
+				).toEqual(['from data', true, false, true]);
+			});
 		});
 
-		it('should return a user object with an __isError key as data', () => {
-			const data = { $json: { flag: { __isError: true, message: 'from data' } } };
+		it('finds Error data with an __isError key through the in operator', () => {
+			const error = Object.assign(new Error('from data'), { __isError: true });
 
-			expect(
-				evaluator.evaluate('{{ ({ __isError: true, message: "hi" }) }}', data, caller),
-			).toEqual({ __isError: true, message: 'hi' });
-			expect(evaluator.evaluate('{{ $json.flag }}', data, caller)).toEqual({
-				__isError: true,
-				message: 'from data',
-			});
+			expect(evaluator.evaluate('{{ "error" in $json }}', { $json: { error } }, caller)).toBe(true);
 		});
 
 		it('should convert the values inside an object with an __isError key in an object or an array', () => {
