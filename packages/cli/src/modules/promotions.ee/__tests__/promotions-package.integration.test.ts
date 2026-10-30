@@ -50,7 +50,7 @@ import { CredentialTypes } from '@/credential-types';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, LockedError } from '@n8n/errors';
 import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
 import { DataTableRepository } from '@/modules/data-table/data-table.repository';
 import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
@@ -98,6 +98,7 @@ import { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import { PromotionsGitService } from '../promotions-git.service';
+import { PromotionEnvironmentLockService } from '../promotion-environment-lock.service';
 import { PromotionsService } from '../promotions.service';
 import { WorkingCopyUpdater } from '../working-copy-updater';
 import { storedAgentConfig } from '@/modules/agents/__tests__/test-utils/stored-agent-config';
@@ -220,6 +221,7 @@ beforeEach(async () => {
 		),
 		workingDirectory,
 		checkoutCleanup,
+		Container.get(PromotionEnvironmentLockService),
 		new WorkingCopyUpdater(instanceSettings, logger),
 		gitService,
 		projectRepository,
@@ -757,6 +759,55 @@ describe('Promote and Apply', () => {
 			}
 		},
 	);
+
+	it('rejects a second Promote on the same environment with 423 while the first runs', async () => {
+		const remote = await createRemote();
+		const environments = await createInstanceEnvironments(remote.bareDir);
+		await service.clone(environments.promote.id, owner);
+		await createTeamProject('Orders', owner);
+
+		// Pause the first Promote inside the lock, so the second one overlaps it.
+		let exportStarted!: () => void;
+		const started = new Promise<void>((resolve) => (exportStarted = resolve));
+		let resume!: () => void;
+		const paused = new Promise<void>((resolve) => (resume = resolve));
+		const exportPackage = packagesService.exportPackageToDirectory.bind(packagesService);
+		const exportSpy = vi
+			.spyOn(packagesService, 'exportPackageToDirectory')
+			.mockImplementationOnce(async (...args) => {
+				exportStarted();
+				await paused;
+				return await exportPackage(...args);
+			});
+
+		try {
+			const first = service.promote(environments.promote.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'First promote',
+			});
+			await started;
+
+			const second = service.promote(environments.promote.id, owner, {
+				canExportVariableValues: false,
+				commitMessage: 'Second promote',
+			});
+			await expect(second).rejects.toThrow(LockedError);
+			await expect(second).rejects.toMatchObject({ httpStatusCode: 423 });
+
+			resume();
+			const result = await first;
+
+			const remoteGit = createFixtureGit(remote.bareDir);
+			expect((await remoteGit.revparse(['main'])).trim()).toBe(result.git.commitSha);
+			expect((await remoteGit.raw(['log', '-1', '--format=%s', 'main'])).trim()).toBe(
+				'First promote',
+			);
+			expect(exportSpy).toHaveBeenCalledOnce();
+		} finally {
+			resume();
+			exportSpy.mockRestore();
+		}
+	});
 
 	it('exports all team projects and pushes to the base branch', async () => {
 		const remote = await createRemote();

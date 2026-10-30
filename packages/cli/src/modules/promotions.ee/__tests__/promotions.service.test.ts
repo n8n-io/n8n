@@ -1,7 +1,8 @@
 import type { PromotionApplyCheck } from '@n8n/api-types';
-import type { Logger } from '@n8n/backend-common';
+import { LockService, type Logger } from '@n8n/backend-common';
 import type { EventService } from '@n8n/backend-services';
 import type { Project, ProjectRepository, SharedWorkflowRepository, User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { InstanceSettings } from 'n8n-core';
 import assert from 'node:assert';
 import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
@@ -10,7 +11,13 @@ import path from 'node:path';
 import type { MockInstance } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
-import { BadRequestError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
+import {
+	BadRequestError,
+	ConflictError,
+	LockedError,
+	NotFoundError,
+	ServiceUnavailableError,
+} from '@n8n/errors';
 
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import type {
@@ -36,6 +43,10 @@ import type { PromotionEnvironmentRepository } from '../database/repositories/pr
 import type { PromotionRunRepository } from '../database/repositories/promotion-run.repository';
 import type { PromotionReviewsService } from '../promotion-reviews.service';
 import { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
+import {
+	PromotionEnvironmentLockService,
+	PromotionLockLostError,
+} from '../promotion-environment-lock.service';
 import { PromotionWorkingDirectoryService } from '../promotion-working-directory.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 import { ApplyPreviewService } from '../apply-preview.service';
@@ -104,6 +115,7 @@ describe('PromotionsService', () => {
 
 	let n8nFolder: string;
 	let workingDirectory: PromotionWorkingDirectoryService;
+	let environmentLock: PromotionEnvironmentLockService;
 	let service: PromotionsService;
 	let applyPreviewService: ApplyPreviewService;
 
@@ -146,6 +158,30 @@ describe('PromotionsService', () => {
 		gitService.hasCheckout.mockResolvedValue(true);
 	};
 
+	/** Runs the locked part with a signal that already fired, as after a lost Redis lease. */
+	const loseLock = () =>
+		vi.spyOn(environmentLock, 'run').mockImplementation(async (_environmentId, fn) => {
+			const controller = new AbortController();
+			controller.abort();
+			return await fn(controller.signal);
+		});
+
+	/** Holds the environment lock until `release` is called. */
+	const holdLock = async () => {
+		let release!: () => void;
+		let acquired!: () => void;
+		const held = new Promise<void>((resolve) => (acquired = resolve));
+		const done = environmentLock.run(ENVIRONMENT_ID, async () => {
+			acquired();
+			await new Promise<void>((resolve) => (release = resolve));
+		});
+		await held;
+		return async () => {
+			release();
+			await done;
+		};
+	};
+
 	beforeEach(async () => {
 		vi.clearAllMocks();
 		logger.scoped.mockReturnValue(logger);
@@ -164,6 +200,7 @@ describe('PromotionsService', () => {
 		gitService.findPathsAtCommit.mockResolvedValue(new Set());
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
+		environmentLock = new PromotionEnvironmentLockService(Container.get(LockService));
 		// Real, so that the move checks read the repository and folder mocks above.
 		applyPreviewService = new ApplyPreviewService(
 			n8nPackagesService,
@@ -185,6 +222,7 @@ describe('PromotionsService', () => {
 				publisher,
 				mock<InstanceSettings>({ isMultiMain: true }),
 			),
+			environmentLock,
 			new WorkingCopyUpdater(
 				mock<InstanceSettings>({ n8nFolder, instanceId: 'inst-test' }),
 				logger,
@@ -367,6 +405,31 @@ describe('PromotionsService', () => {
 				},
 			);
 		});
+
+		it.each([false, true])(
+			'stops before the commit and keeps the checkout trusted when the lock is lost (branch on promotion: %s)',
+			async (createBranchOnPromotion) => {
+				const input = operationInput({
+					direction: 'promote',
+					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion },
+				});
+				resolver.resolveForEnvironment.mockResolvedValue(input);
+				loseLock();
+
+				await expect(
+					service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
+				).rejects.toThrow(PromotionLockLostError);
+
+				expect(n8nPackagesService.exportPackageToDirectory).toHaveBeenCalled();
+				expect(gitService.commitAndPush).not.toHaveBeenCalled();
+				expect(runRepository.insertRun).not.toHaveBeenCalled();
+				await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+				expect(eventService.emit).toHaveBeenCalledWith(
+					'promotion-promoted',
+					expect.objectContaining({ outcome: 'failed', failureKind: 'unexpected' }),
+				);
+			},
+		);
 
 		describe('workflows on the branch that moved to another project', () => {
 			const manifest = {
@@ -1670,6 +1733,37 @@ describe('PromotionsService', () => {
 			]);
 		});
 
+		it('stops before the commit and restores the package when the lock is lost', async () => {
+			await writeExportTree(packageFolder, {
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w1/workflow.json': workflowFile('w1'),
+			});
+			mockExport({
+				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w2')] }),
+				'projects/alpha/project.json': JSON.stringify({ id: alpha.id, name: alpha.name }),
+				'projects/alpha/workflows/w2/workflow.json': workflowFile('w2'),
+			});
+			ownedByP1('w2');
+			loseLock();
+
+			await expect(
+				service.promoteProjectSelection('p1', actor, {
+					workflowIds: ['w2'],
+					commitMessage: 'm',
+					canExportVariableValues: true,
+				}),
+			).rejects.toThrow(PromotionLockLostError);
+
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			expect(await readExported('projects/alpha/workflows/w1/workflow.json')).toBe(
+				workflowFile('w1'),
+			);
+			await expect(readExported('projects/alpha/workflows/w2/workflow.json')).rejects.toThrow();
+			await expect(stat(`${packageFolder}.pre-selection`)).rejects.toThrow();
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.not.toBeNull();
+		});
+
 		it('restores the package and keeps the push error when staging cleanup fails', async () => {
 			await writeExportTree(packageFolder, {
 				'manifest.json': buildManifest({ projects: [alpha], workflows: [wf('w1')] }),
@@ -1829,6 +1923,7 @@ describe('PromotionsService', () => {
 				}),
 				{ projectId: 'p1', workflowIds: ['w1', 'w2', 'w4'], deletedWorkflowIds: ['w3'] },
 				new Map(),
+				expect.any(AbortSignal),
 			);
 			expect(eventService.emit).toHaveBeenCalledWith(
 				'promotion-promoted',
@@ -1858,6 +1953,7 @@ describe('PromotionsService', () => {
 				expect.objectContaining({ commitMessage: 'Promote checkout flow' }),
 				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: [] },
 				new Map(),
+				expect.any(AbortSignal),
 			);
 		});
 
@@ -1880,6 +1976,7 @@ describe('PromotionsService', () => {
 				expect.anything(),
 				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
 				new Map(),
+				expect.any(AbortSignal),
 			);
 		});
 
@@ -1904,6 +2001,7 @@ describe('PromotionsService', () => {
 				expect.anything(),
 				{ projectId: 'p1', workflowIds: ['w1'], deletedWorkflowIds: ['w9'] },
 				new Map([['w9', 'project "Ops"']]),
+				expect.any(AbortSignal),
 			);
 		});
 
@@ -2299,6 +2397,24 @@ describe('PromotionsService', () => {
 			expectedSource: { environmentId: ENVIRONMENT_ID, branchName: 'dev', commitSha: 'remotesha' },
 		};
 
+		it.each(['apply', 'continueApply'] as const)(
+			'%s stops before the import when the lock is lost',
+			async (method) => {
+				loseLock();
+
+				const attempt =
+					method === 'apply'
+						? service.apply(ENVIRONMENT_ID, actor, request.expectedSource)
+						: service.continueApply(ENVIRONMENT_ID, actor, request);
+
+				await expect(attempt).rejects.toThrow(PromotionLockLostError);
+
+				expect(n8nPackagesService.planPackage).toHaveBeenCalled();
+				expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
+				expect(projectService.deleteProject).not.toHaveBeenCalled();
+			},
+		);
+
 		it('imports when only projects are missing', async () => {
 			check.mockReturnValueOnce(
 				checked({
@@ -2649,6 +2765,17 @@ describe('PromotionsService', () => {
 			describe.each(['applyProjectSelection', 'continueApplyProjectSelection'] as const)(
 				'%s',
 				(method) => {
+					it('stops before the import when the lock is lost', async () => {
+						loseLock();
+
+						await expect(
+							service[method]('p1', actor, { workflowIds: ['w1'], ...request }),
+						).rejects.toThrow(PromotionLockLostError);
+
+						expect(n8nPackagesService.planPackageSelection).toHaveBeenCalled();
+						expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
+					});
+
 					it.each([{ commitSha: 'older' }, { branchName: 'older' }, { environmentId: 'older' }])(
 						'stops before classification when source differs: %j',
 						async (change) => {
@@ -2750,6 +2877,231 @@ describe('PromotionsService', () => {
 					});
 				},
 			);
+		});
+	});
+
+	describe('environment lock', () => {
+		const source = { environmentId: ENVIRONMENT_ID, branchName: 'dev', commitSha: 'a'.repeat(40) };
+
+		type EntryPoint = {
+			name: string;
+			route: 'environment' | 'project';
+			input: (over?: Partial<PromotionOperationInput>) => PromotionOperationInput;
+			event: string;
+			call: () => Promise<unknown>;
+		};
+
+		const entryPoints: EntryPoint[] = [
+			{
+				name: 'clone',
+				route: 'environment',
+				input: promoteInput,
+				event: 'promotion-environment-connected',
+				call: async () => await service.clone(ENVIRONMENT_ID, actor),
+			},
+			{
+				name: 'promote',
+				route: 'environment',
+				input: promoteInput,
+				event: 'promotion-promoted',
+				call: async () =>
+					await service.promote(ENVIRONMENT_ID, actor, { canExportVariableValues: true }),
+			},
+			{
+				name: 'promoteProjectSelection',
+				route: 'project',
+				input: promoteInput,
+				event: 'promotion-promoted',
+				call: async () =>
+					await service.promoteProjectSelection('p1', actor, {
+						workflowIds: ['w1'],
+						canExportVariableValues: true,
+					}),
+			},
+			{
+				name: 'apply',
+				route: 'environment',
+				input: applyInput,
+				event: 'promotion-applied',
+				call: async () => await service.apply(ENVIRONMENT_ID, actor),
+			},
+			{
+				name: 'continueApply',
+				route: 'environment',
+				input: applyInput,
+				event: 'promotion-applied',
+				call: async () =>
+					await service.continueApply(ENVIRONMENT_ID, actor, {
+						expectedSource: source,
+						confirmDestructiveChanges: true,
+					}),
+			},
+			{
+				name: 'applyProjectSelection',
+				route: 'project',
+				input: applyInput,
+				event: 'promotion-applied',
+				call: async () => await service.applyProjectSelection('p1', actor, { workflowIds: ['w1'] }),
+			},
+			{
+				name: 'continueApplyProjectSelection',
+				route: 'project',
+				input: applyInput,
+				event: 'promotion-applied',
+				call: async () =>
+					await service.continueApplyProjectSelection('p1', actor, {
+						workflowIds: ['w1'],
+						expectedSource: source,
+						confirmDestructiveChanges: true,
+					}),
+			},
+		];
+
+		const resolveMock = (route: EntryPoint['route']) =>
+			(route === 'environment'
+				? resolver.resolveForEnvironment
+				: resolver.resolveForProject) as unknown as MockInstance<
+				() => Promise<PromotionOperationInput>
+			>;
+
+		const expectNothingRan = () => {
+			expect(gitService.clone).not.toHaveBeenCalled();
+			expect(gitService.hasCheckout).not.toHaveBeenCalled();
+			expect(gitService.listBranchTree).not.toHaveBeenCalled();
+			expect(gitService.prepareCheckoutForPromotion).not.toHaveBeenCalled();
+			expect(gitService.commitAndPush).not.toHaveBeenCalled();
+			expect(gitService.readTreeAtCommit).not.toHaveBeenCalled();
+			expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
+			expect(n8nPackagesService.planPackage).not.toHaveBeenCalled();
+			expect(n8nPackagesService.planPackageSelection).not.toHaveBeenCalled();
+			expect(n8nPackagesService.applyPackagePlan).not.toHaveBeenCalled();
+		};
+
+		it.each(entryPoints)(
+			'$name takes the lock for its environment and reads the environment again inside it',
+			async (entry) => {
+				const resolve = resolveMock(entry.route);
+				resolve
+					.mockResolvedValueOnce(entry.input())
+					.mockRejectedValueOnce(new NotFoundError('Promotion environment not found'));
+				const run = vi.spyOn(environmentLock, 'run');
+
+				await expect(entry.call()).rejects.toThrow(NotFoundError);
+
+				expect(run).toHaveBeenCalledExactlyOnceWith(ENVIRONMENT_ID, expect.any(Function));
+				expect(resolve).toHaveBeenCalledTimes(2);
+				const [firstResolve, secondResolve] = resolve.mock.invocationCallOrder;
+				expect(firstResolve).toBeLessThan(run.mock.invocationCallOrder[0]);
+				expect(secondResolve).toBeGreaterThan(run.mock.invocationCallOrder[0]);
+				expectNothingRan();
+			},
+		);
+
+		it.each(entryPoints)(
+			'$name fails with 423 and runs nothing while another operation holds the lock',
+			async (entry) => {
+				resolveMock(entry.route).mockResolvedValue(entry.input());
+				const release = await holdLock();
+
+				try {
+					await expect(entry.call()).rejects.toThrow(LockedError);
+				} finally {
+					await release();
+				}
+
+				expect(resolveMock(entry.route)).toHaveBeenCalledOnce();
+				expectNothingRan();
+				expect(eventService.emit).toHaveBeenCalledExactlyOnceWith(
+					entry.event,
+					expect.objectContaining({
+						environmentId: ENVIRONMENT_ID,
+						outcome: 'failed',
+						failureKind: 'busy',
+					}),
+				);
+			},
+		);
+
+		it.each(entryPoints.filter(({ route }) => route === 'project'))(
+			"$name fails with 409 when the project's environment changed before the lock",
+			async (entry) => {
+				resolveMock(entry.route)
+					.mockResolvedValueOnce(entry.input())
+					.mockResolvedValueOnce(entry.input({ environmentId: 'other-environment' }));
+
+				const attempt = entry.call();
+
+				await expect(attempt).rejects.toThrow(ConflictError);
+				await expect(attempt).rejects.toThrow(
+					'The promotion environment of this project changed. Reload and try again.',
+				);
+				expectNothingRan();
+			},
+		);
+
+		it('connects with the environment read inside the lock', async () => {
+			const newRemoteUrl = 'git@github.com:o/new.git';
+			resolver.resolveForEnvironment
+				.mockResolvedValueOnce(promoteInput())
+				.mockResolvedValueOnce(
+					promoteInput({ remote: { schemaVersion: 1, remoteUrl: newRemoteUrl } }),
+				);
+
+			await service.clone(ENVIRONMENT_ID, actor);
+
+			expect(gitService.clone).toHaveBeenCalledWith(
+				expect.objectContaining({ remoteUrl: newRemoteUrl }),
+			);
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toMatchObject({
+				remoteUrl: newRemoteUrl,
+			});
+		});
+
+		it('stops a connect before the folder swap when the lock is lost', async () => {
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			const swap = vi.fn();
+			gitService.clone.mockImplementation(async ({ beforeSwap }) => {
+				beforeSwap?.();
+				swap();
+			});
+			loseLock();
+
+			await expect(service.clone(ENVIRONMENT_ID, actor)).rejects.toThrow(PromotionLockLostError);
+
+			expect(swap).not.toHaveBeenCalled();
+			await expect(workingDirectory.readDescriptor(ENVIRONMENT_ID)).resolves.toBeNull();
+			expect(eventService.emit).toHaveBeenCalledWith(
+				'promotion-environment-connected',
+				expect.objectContaining({ outcome: 'failed', failureKind: 'unexpected' }),
+			);
+		});
+
+		it('reads branch files, review commits, and the Apply package without the lock', async () => {
+			const run = vi.spyOn(environmentLock, 'run');
+			const commitSha = 'c'.repeat(40);
+			resolver.resolveForProject.mockImplementation(async (_projectId, direction) =>
+				direction === 'apply' ? applyInput() : promoteInput(),
+			);
+			resolver.resolveForEnvironment.mockResolvedValue(promoteInput());
+			await markCloned(promoteInput(), 'staging');
+			gitService.fetchReviewCommits.mockResolvedValue({ baselineCommitSha: commitSha });
+			gitService.readFilesAtCommit.mockResolvedValue(new Map());
+			gitService.readTreeAtCommit.mockResolvedValue(new Map());
+
+			await service.readBranchPackage('p1', 'promote');
+			await service.readBranchFilesAtCommit('p1', 'promote', commitSha, ['n8n/manifest.json']);
+			await service.readReviewCommits(ENVIRONMENT_ID, {
+				headRef: 'refs/heads/promotion',
+				headCommitSha: commitSha,
+				baseline: { targetBranchName: 'staging' },
+			});
+			await markCloned(applyInput(), 'dev');
+			await service.readApplyPackageAtCommit('p1', commitSha);
+
+			expect(gitService.listBranchTree).toHaveBeenCalled();
+			expect(gitService.fetchReviewCommits).toHaveBeenCalled();
+			expect(gitService.readTreeAtCommit).toHaveBeenCalled();
+			expect(run).not.toHaveBeenCalled();
 		});
 	});
 });

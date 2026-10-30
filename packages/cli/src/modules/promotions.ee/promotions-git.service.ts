@@ -161,7 +161,15 @@ export class PromotionsGitService {
 		return await generateSshKeyPair(keyType, PROMOTION_KEY_COMMENT);
 	}
 
-	async clone({ remoteUrl, credentials, paths, branchName, environmentId }: GitOperation) {
+	/** `beforeSwap` runs just before the new clone replaces the checkout, and can stop it by throwing. */
+	async clone({
+		remoteUrl,
+		credentials,
+		paths,
+		branchName,
+		environmentId,
+		beforeSwap,
+	}: GitOperation & { beforeSwap?: () => void }) {
 		await this.validateBranchName(branchName);
 		await mkdir(paths.rootFolder, { recursive: true });
 		const { repositoryFolder, nextRepositoryFolder, sshDir } = paths;
@@ -202,6 +210,7 @@ export class PromotionsGitService {
 									'--progress',
 								]);
 							}
+							beforeSwap?.();
 							await rm(repositoryFolder, { recursive: true, force: true });
 							await rename(nextRepositoryFolder, repositoryFolder);
 						},

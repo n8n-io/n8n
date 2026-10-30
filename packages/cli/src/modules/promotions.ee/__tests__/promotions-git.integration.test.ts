@@ -1,6 +1,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import { execFile, execFileSync } from 'node:child_process';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -8,6 +8,7 @@ import { promisify } from 'node:util';
 
 import { startSelfSignedGitServer, TLS_VERIFICATION_ERROR } from '@test/self-signed-git-server';
 
+import { PromotionLockLostError } from '../promotion-environment-lock.service';
 import { PromotionsGitService } from '../promotions-git.service';
 import { buildHttpsGitConfig } from '../promotions-git.utils';
 
@@ -121,6 +122,41 @@ describe('Promotion Git checkout', () => {
 			execFileSync('git', ['-C', paths.repositoryFolder, ...args], { encoding: 'utf8' }).trim();
 		expect(git('remote', 'get-url', 'origin')).toBe(remoteUrl);
 		expect(git('symbolic-ref', '--short', 'HEAD')).toBe('main');
+	});
+
+	it('keeps the current checkout when the check before the swap throws', async () => {
+		const remotePath = path.join(tmpRoot, 'remote.git');
+		execFileSync('git', ['init', '--bare', '--quiet', remotePath]);
+		const rootFolder = path.join(tmpRoot, 'checkout');
+		const paths = {
+			rootFolder,
+			repositoryFolder: path.join(rootFolder, 'repository'),
+			nextRepositoryFolder: path.join(rootFolder, 'repository-next'),
+			sshDir: path.join(rootFolder, 'ssh'),
+		};
+		const operation = {
+			remoteUrl: pathToFileURL(remotePath).href,
+			credentials: { authType: 'token', username: 'git-user', password: 'git-password' } as const,
+			paths,
+			branchName: 'main',
+			environmentId: 'environment-1',
+		};
+		const gitService = new PromotionsGitService(mockLogger());
+		await gitService.clone(operation);
+		const marker = path.join(paths.repositoryFolder, 'marker');
+		await writeFile(marker, 'current');
+
+		await expect(
+			gitService.clone({
+				...operation,
+				beforeSwap: () => {
+					throw new PromotionLockLostError();
+				},
+			}),
+		).rejects.toThrow(PromotionLockLostError);
+
+		expect(await readFile(marker, 'utf8')).toBe('current');
+		await expect(stat(paths.nextRepositoryFolder)).rejects.toThrow();
 	});
 });
 

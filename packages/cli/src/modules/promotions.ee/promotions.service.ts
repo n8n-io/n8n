@@ -26,7 +26,7 @@ import path from 'node:path';
 import { jsonParse } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, ConflictError, NotFoundError } from '@n8n/errors';
 
 import {
 	PackageDirectoryInventoryReader,
@@ -75,6 +75,10 @@ import { GitCommitPackageReader } from './git-commit-package-reader';
 import { exportInstancePackage, instancePromotionExportRequest } from './instance-package';
 import { compare } from './package-references';
 import { PromotionCheckoutCleanupService } from './promotion-checkout-cleanup.service';
+import {
+	PromotionEnvironmentLockService,
+	throwIfLockLost,
+} from './promotion-environment-lock.service';
 import { PromotionEnvironmentResolver } from './promotion-environment.resolver';
 import { PromotionProvidersService } from './promotion-providers.service';
 import { PromotionRunRepository } from './database/repositories/promotion-run.repository';
@@ -149,6 +153,7 @@ export class PromotionsService {
 		private readonly providersService: PromotionProvidersService,
 		private readonly workingDirectory: PromotionWorkingDirectoryService,
 		private readonly checkoutCleanup: PromotionCheckoutCleanupService,
+		private readonly environmentLock: PromotionEnvironmentLockService,
 		private readonly workingCopy: WorkingCopyUpdater,
 		private readonly gitService: PromotionsGitService,
 		private readonly projectRepository: ProjectRepository,
@@ -171,7 +176,12 @@ export class PromotionsService {
 	async clone(environmentId: string, actor: User): Promise<PromotionCheckoutPublicDto> {
 		const input = await this.resolver.resolveForEnvironment(environmentId);
 		return await observePromotion(
-			async () => await this.cloneResolved(input),
+			async () =>
+				await this.withEnvironmentLock(
+					input,
+					async () => await this.resolver.resolveForEnvironment(environmentId),
+					async (current, signal) => await this.cloneResolved(current, signal),
+				),
 			(observed) =>
 				this.eventService.emit('promotion-environment-connected', {
 					user: actor,
@@ -184,7 +194,10 @@ export class PromotionsService {
 		);
 	}
 
-	private async cloneResolved(input: PromotionOperationInput): Promise<PromotionCheckoutPublicDto> {
+	private async cloneResolved(
+		input: PromotionOperationInput,
+		signal: AbortSignal,
+	): Promise<PromotionCheckoutPublicDto> {
 		const branchName = checkoutBranchName(input.config);
 
 		await this.gitService.clone({
@@ -193,6 +206,7 @@ export class PromotionsService {
 			paths: this.workingDirectory.paths(input.environmentId),
 			branchName,
 			environmentId: input.environmentId,
+			beforeSwap: () => throwIfLockLost(signal),
 		});
 		// Only a finished clone gets a descriptor, so a failed one stays unusable.
 		await this.workingDirectory.writeDescriptor(this.descriptorFor(input));
@@ -225,7 +239,12 @@ export class PromotionsService {
 			input,
 			actor,
 			{},
-			async () => await this.promoteResolved(input, actor, request),
+			async () =>
+				await this.withEnvironmentLock(
+					input,
+					async () => await this.resolver.resolveForEnvironment(environmentId, 'promote'),
+					async (current, signal) => await this.promoteResolved(current, actor, request, signal),
+				),
 		);
 	}
 
@@ -233,6 +252,7 @@ export class PromotionsService {
 		input: PromotionOperationInput,
 		actor: User,
 		request: PromotePackageDto & { canExportVariableValues: boolean },
+		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		this.assertInstanceScope(input, 'Promote');
 		await this.assertCheckoutReady(input, 'promoting');
@@ -277,6 +297,8 @@ export class PromotionsService {
 			await rm(packageFolder, { recursive: true, force: true });
 			await rename(stagingFolder, packageFolder);
 
+			// Before the descriptor goes, so a stop here leaves the checkout usable.
+			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
@@ -423,6 +445,7 @@ export class PromotionsService {
 		request: { commitMessage?: string; canExportVariableValues: boolean },
 		selection: SelectivePushOptions,
 		movedTo: ReadonlyMap<string, string>,
+		signal: AbortSignal,
 	): Promise<PromotePackageResultDto> {
 		// NOTE: This assertion needs adjusting once we add full support for project-scoped promotions.
 		this.assertInstanceScope(input, 'Promote');
@@ -506,6 +529,9 @@ export class PromotionsService {
 				branch,
 			);
 
+			// Before the descriptor goes, so a stop here leaves the checkout usable. The catch
+			// below restores the package.
+			throwIfLockLost(signal);
 			if (targetBranchName) {
 				// The commit moves the local base branch. Remove trust before it moves, and
 				// restore trust only after the base branch is back on its own commit.
@@ -606,20 +632,50 @@ export class PromotionsService {
 			input,
 			actor,
 			{ projectId, selectedWorkflowCount: request.workflowIds.length },
-			async () => {
-				const { selection, movedTo } = await this.classifySelection(projectId, request.workflowIds);
-				return await this.promoteSelectionResolved(
+			async () =>
+				await this.withEnvironmentLock(
 					input,
-					actor,
-					{
-						commitMessage: request.commitMessage,
-						canExportVariableValues: request.canExportVariableValues,
+					async () => await this.resolver.resolveForProject(projectId, 'promote'),
+					async (current, signal) => {
+						const { selection, movedTo } = await this.classifySelection(
+							projectId,
+							request.workflowIds,
+						);
+						return await this.promoteSelectionResolved(
+							current,
+							actor,
+							{
+								commitMessage: request.commitMessage,
+								canExportVariableValues: request.canExportVariableValues,
+							},
+							selection,
+							movedTo,
+							signal,
+						);
 					},
-					selection,
-					movedTo,
-				);
-			},
+				),
 		);
+	}
+
+	/**
+	 * Runs `run` under the environment lock, on the environment read again inside the lock, so a
+	 * Delete or settings change that finished before the lock counts. A project route that now
+	 * resolves to another environment is refused, because this lock does not cover that one.
+	 */
+	private async withEnvironmentLock<T>(
+		input: PromotionOperationInput,
+		resolveAgain: () => Promise<PromotionOperationInput>,
+		run: (current: PromotionOperationInput, signal: AbortSignal) => Promise<T>,
+	): Promise<T> {
+		return await this.environmentLock.run(input.environmentId, async (signal) => {
+			const current = await resolveAgain();
+			if (current.environmentId !== input.environmentId) {
+				throw new ConflictError(
+					'The promotion environment of this project changed. Reload and try again.',
+				);
+			}
+			return await run(current, signal);
+		});
 	}
 
 	private async trackPromote(
@@ -830,14 +886,20 @@ export class PromotionsService {
 			actor,
 			{ projectId },
 			async () =>
-				await this.applySelectionResolved(
+				await this.withEnvironmentLock(
 					input,
-					projectId,
-					actor,
-					workflowIds,
-					expectedSource,
-					confirmDestructiveChanges,
-					expectedPreviewRevision,
+					async () => await this.resolver.resolveForProject(projectId, 'apply'),
+					async (current, signal) =>
+						await this.applySelectionResolved(
+							current,
+							projectId,
+							actor,
+							workflowIds,
+							expectedSource,
+							confirmDestructiveChanges,
+							signal,
+							expectedPreviewRevision,
+						),
 				),
 		);
 	}
@@ -849,6 +911,7 @@ export class PromotionsService {
 		workflowIds: string[],
 		expectedSource: ApplySelectionDto['expectedSource'],
 		confirmDestructiveChanges: boolean,
+		signal: AbortSignal,
 		expectedPreviewRevision?: string,
 	): Promise<ApplyPackageResultDto> {
 		await this.assertCheckoutReady(input, 'applying');
@@ -908,6 +971,7 @@ export class PromotionsService {
 			deletedCount: selection.deletedWorkflowIds?.length ?? 0,
 			confirmDestructiveChanges,
 		});
+		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
 
 		return {
@@ -932,7 +996,19 @@ export class PromotionsService {
 			input,
 			actor,
 			{},
-			async () => await this.applyResolved(input, actor, expectedSource, confirmDestructiveChanges),
+			async () =>
+				await this.withEnvironmentLock(
+					input,
+					async () => await this.resolver.resolveForEnvironment(environmentId, 'apply'),
+					async (current, signal) =>
+						await this.applyResolved(
+							current,
+							actor,
+							expectedSource,
+							confirmDestructiveChanges,
+							signal,
+						),
+				),
 		);
 	}
 
@@ -941,6 +1017,7 @@ export class PromotionsService {
 		actor: User,
 		expectedSource: ApplyPackageDto['expectedSource'],
 		confirmDestructiveChanges: boolean,
+		signal: AbortSignal,
 	): Promise<ApplyPackageResultDto> {
 		this.assertInstanceScope(input, 'Apply');
 		await this.assertCheckoutReady(input, 'applying');
@@ -970,6 +1047,7 @@ export class PromotionsService {
 			environmentId: input.environmentId,
 			confirmDestructiveChanges,
 		});
+		throwIfLockLost(signal);
 		const result = await this.n8nPackagesService.applyPackagePlan(plan);
 		const importedProjectIds = result.projects.map((project) => project.localId);
 		const confirmedProjectIds = check.conflicts.flatMap((conflict) =>

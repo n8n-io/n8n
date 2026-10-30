@@ -3,10 +3,10 @@ import { z } from 'zod/v4';
 import { defineTelemetryEvents } from '../define';
 
 const failureKind = z
-	.enum(['user', 'git_remote', 'unexpected'])
+	.enum(['user', 'git_remote', 'unexpected', 'busy'])
 	.optional()
 	.describe(
-		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a Git call to the remote failed (clone, fetch, push, pull or ls-remote), or the Git host timed out, was unreachable or rate-limited the request; 'unexpected' = anything else, such as a failed local Git step. A Git host that rejects the token, and a TLS, DNS or network-policy failure report as 'user', because the provider settings need a fix. A malformed merge request response from the Git host reports as 'unexpected'",
+		"Set only when the outcome is 'failed'. 'user' = the request or state was wrong (4xx or promotion conflict); 'git_remote' = a Git call to the remote failed (clone, fetch, push, pull or ls-remote), or the Git host timed out, was unreachable or rate-limited the request; 'unexpected' = anything else, such as a failed local Git step. A Git host that rejects the token, and a TLS, DNS or network-policy failure report as 'user', because the provider settings need a fix. A malformed merge request response from the Git host reports as 'unexpected'. 'busy' = another operation held the environment lock, so nothing ran",
 	);
 
 const scope = z
