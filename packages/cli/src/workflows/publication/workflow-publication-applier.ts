@@ -695,6 +695,7 @@ export class WorkflowPublicationApplier {
 				nodes: healed.nodes,
 				connections: newVersion.connections,
 				nodeGroups: newVersion.nodeGroups,
+				settings: newVersion.settings,
 			},
 			newVersion.versionId,
 		);

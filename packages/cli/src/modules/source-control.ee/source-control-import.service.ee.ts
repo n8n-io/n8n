@@ -33,6 +33,8 @@ import type { AutoPublishMode, INode } from 'n8n-workflow';
 import {
 	shouldAutoPublishWorkflow,
 	jsonParse,
+	pickVersionedSettings,
+	versionedSettingsEqual,
 	OperationalError,
 	UnexpectedError,
 	UserError,
@@ -866,7 +868,7 @@ export class SourceControlImportService {
 			this.logger.warn(`Workflow file ${candidate.file}: ${warning}`);
 		}
 
-		const { versionId, nodes, connections, id, owner, nodeGroups } = importedWorkflow;
+		const { versionId, nodes, connections, id, owner, nodeGroups, settings } = importedWorkflow;
 
 		if (!id || !versionId || !nodes || !connections) {
 			this.logger.error(
@@ -965,7 +967,7 @@ export class SourceControlImportService {
 
 		try {
 			await this.saveOrUpdateWorkflowHistory(
-				{ id, versionId, nodes, connections, nodeGroups },
+				{ id, versionId, nodes, connections, nodeGroups, settings },
 				userId,
 			);
 		} catch (error) {
@@ -2322,11 +2324,12 @@ export class SourceControlImportService {
 			nodes: IWorkflowToImport['nodes'];
 			connections: IWorkflowToImport['connections'];
 			nodeGroups: IWorkflowToImport['nodeGroups'];
+			settings: IWorkflowToImport['settings'];
 			id: string;
 		},
 		userId: string,
 	): Promise<void> {
-		const { versionId, nodes, connections, nodeGroups, id } = importedWorkflow;
+		const { versionId, nodes, connections, nodeGroups, settings, id } = importedWorkflow;
 
 		// Fetch user for author info
 		const user = await this.userRepository.findOne({ where: { id: userId } });
@@ -2339,12 +2342,14 @@ export class SourceControlImportService {
 			const nodesChanged = !isEqual(existingVersion.nodes, nodes);
 			const connectionsChanged = !isEqual(existingVersion.connections, connections);
 			const nodeGroupsChanged = !isEqual(existingVersion.nodeGroups, nodeGroups);
+			const settingsChanged = !versionedSettingsEqual(existingVersion.settings, settings);
 
-			if (nodesChanged || connectionsChanged || nodeGroupsChanged) {
+			if (nodesChanged || connectionsChanged || nodeGroupsChanged || settingsChanged) {
 				await this.workflowHistoryService.updateVersion(id, versionId, {
 					nodes,
 					connections,
 					nodeGroups,
+					settings: pickVersionedSettings(settings),
 					authors,
 				});
 			}
@@ -2352,7 +2357,7 @@ export class SourceControlImportService {
 			// Create new version history record
 			await this.workflowHistoryService.saveVersion(
 				authors,
-				{ versionId, nodes, connections, nodeGroups },
+				{ versionId, nodes, connections, nodeGroups, settings },
 				id,
 			);
 		}
