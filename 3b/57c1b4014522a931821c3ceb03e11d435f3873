@@ -1,0 +1,30 @@
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.test.ts
+  s_ab5e1eee0c772b::t_831a2a0b1812f3 295-324
+packages/frontend/editor-ui/src/features/ai/shared/components/ChatHistoryDropdown.vue
+  s_ab5e1eee0c772b::t_c2457985fc9b28 251,253-259,308-311
+  s_ab5e1eee0c772b::t_831a2a0b1812f3 250
+packages/cli/src/modules/agents/system-agents/__tests__/system-agent-chat.controller.test.ts
+  s_ab5e1eee0c772b::t_aebb2f5bb8209b 351,365
+packages/cli/src/modules/agents/system-agents/system-agent-chat.controller.ts
+  s_ab5e1eee0c772b::t_aebb2f5bb8209b 145-147
+packages/frontend/editor-ui/src/features/ai/instanceAi/components/InstanceAiThreadList.vue
+  s_ab5e1eee0c772b::t_c2457985fc9b28 492
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_ab5e1eee0c772b::t_aebb2f5bb8209b 1094-1095,1101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "3b57c1b4014522a931821c3ceb03e11d435f3873",
+  "prompts": {},
+  "sessions": {
+    "s_ab5e1eee0c772b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c7dda971-8eb3-4e75-b5e4-fbc2f355a358",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
