@@ -1,4 +1,5 @@
 import { createComponentRenderer } from '@/__tests__/render';
+import { fireEvent } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { createPinia, setActivePinia } from 'pinia';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -117,6 +118,30 @@ describe('SettingsChatHubView', () => {
 		await userEvent.click(getByTestId('chat-hub-enabled-switch'));
 
 		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
+	});
+
+	it('toggles Chat from the title and the description', async () => {
+		const { getByText } = renderComponent();
+
+		// fireEvent uses the label's native activation. user-event cannot click these labels in jsdom.
+		await fireEvent.click(getByText('Enable Chat'));
+		expect(setChatEnabledMock).toHaveBeenCalledWith(false);
+
+		await fireEvent.click(
+			getByText(
+				'When disabled, Chat is hidden across the app and its API endpoints are turned off. You can re-enable it here at any time.',
+			),
+		);
+		expect(setChatEnabledMock).toHaveBeenCalledTimes(2);
+	});
+
+	it('does not toggle Chat from a maturity badge', async () => {
+		const { getByTestId } = renderComponent();
+
+		await fireEvent.click(getByTestId('chat-hub-preview-badge'));
+		await fireEvent.click(getByTestId('chat-hub-enterprise-readiness-badge'));
+
+		expect(setChatEnabledMock).not.toHaveBeenCalled();
 	});
 
 	it('treats an unset enabled value as off (fail closed)', async () => {

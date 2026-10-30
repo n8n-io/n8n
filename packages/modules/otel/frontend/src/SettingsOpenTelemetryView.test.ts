@@ -129,12 +129,21 @@ describe('SettingsOpenTelemetryView', () => {
 
 	it('hides collector and tracing settings until OpenTelemetry is enabled', async () => {
 		getOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: false }));
+		updateOtelSettingsMock.mockResolvedValue(makeSettings({ enabled: true }));
 
 		const { getByTestId, queryByTestId } = render();
 
 		await waitFor(() => expect(getByTestId('otel-enabled-toggle')).toBeInTheDocument());
 		expect(queryByTestId('otel-exporter-endpoint')).not.toBeInTheDocument();
 		expect(queryByTestId('otel-sample-rate')).not.toBeInTheDocument();
+
+		await userEvent.click(getByTestId('otel-enabled-toggle'));
+
+		await waitFor(() => {
+			expect(showMessage).toHaveBeenCalledWith(expect.objectContaining({ type: 'success' }));
+			expect(getByTestId('otel-exporter-endpoint')).toBeInTheDocument();
+			expect(getByTestId('otel-sample-rate')).toBeInTheDocument();
+		});
 	});
 
 	it('renders all settings fields after fetch completes', async () => {

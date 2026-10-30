@@ -12,7 +12,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					"The enable control for a settings feature. It renders the title, the description, and the switch. Pass a `feature` id and `show-badges` to render that feature's badges beside the title. The row reads the feature list and the instance plan.",
+					"The enable control for a settings feature. It renders the title, the description, and the switch. Clicking the title or the description toggles the switch. Pass a `feature` id and `show-badges` to render that feature's badges beside the title. The badges stay outside the label, so they do not toggle the switch. The row reads the feature list and the instance plan.",
 			},
 		},
 	},

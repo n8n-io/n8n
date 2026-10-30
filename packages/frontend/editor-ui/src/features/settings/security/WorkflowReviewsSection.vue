@@ -64,32 +64,24 @@ function onToggle(value: boolean) {
 </script>
 
 <template>
-	<!-- `display: contents` keeps the enable row a direct child of the settings card. -->
-	<div :class="$style.root">
-		<N8nSettingsEnableRow
-			feature="workflowReviews"
-			show-badges
-			:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
-			:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
-			:max-description-lines="3"
-			:model-value="enabled"
-			:disabled="managedByEnv || isSaving"
-			switch-test-id="security-workflow-reviews-toggle"
-			@update:model-value="onToggle"
-		/>
-		<N8nAlertDialog
-			:open="showDisableDialog"
-			:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
-			:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
-			@action="confirmDisable"
-			@cancel="showDisableDialog = false"
-			@update:open="showDisableDialog = $event"
-		/>
-	</div>
+	<!-- Keep this row a root node. The settings card hides the divider of its last row. -->
+	<N8nSettingsEnableRow
+		feature="workflowReviews"
+		show-badges
+		:title="i18n.baseText('settings.security.workflowReviews.enable.title')"
+		:description="i18n.baseText('settings.security.workflowReviews.enable.description')"
+		:max-description-lines="3"
+		:model-value="enabled"
+		:disabled="managedByEnv || isSaving"
+		switch-test-id="security-workflow-reviews-toggle"
+		@update:model-value="onToggle"
+	/>
+	<N8nAlertDialog
+		:open="showDisableDialog"
+		:title="i18n.baseText('settings.security.workflowReviews.confirmDisable.headline')"
+		:description="i18n.baseText('settings.security.workflowReviews.confirmDisable.message')"
+		@action="confirmDisable"
+		@cancel="showDisableDialog = false"
+		@update:open="showDisableDialog = $event"
+	/>
 </template>
-
-<style module>
-.root {
-	display: contents;
-}
-</style>

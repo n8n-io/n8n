@@ -3,7 +3,7 @@ import {
 	showsFeatureMaturityBadges,
 	type FeatureMaturityId,
 } from '@n8n/frontend-constants/feature-maturity';
-import { computed } from 'vue';
+import { computed, useId } from 'vue';
 
 import N8nFeatureMaturityBadges from '../FeatureMaturityBadges/FeatureMaturityBadges.vue';
 import {
@@ -48,8 +48,25 @@ const props = withDefaults(defineProps<SettingsEnableRowProps>(), {
 	maxDescriptionLines: undefined,
 });
 
+const slots = defineSlots<{
+	/** Replaces the switch. The title stays plain text, because this slot is not a switch. */
+	action?: () => unknown;
+}>();
+
 const enabled = defineModel<boolean>({ default: false });
 const enterprisePlan = useEnterprisePlan();
+// The title and the description label this switch. A custom action keeps the text plain.
+const switchId = `settings-enable-switch-${useId()}`;
+const labelFor = computed(() => (slots.action ? undefined : switchId));
+const fixedSwitchProps = {
+	/** Use the settings size. The default size is the parameter control. */
+	size: 'large' as const,
+};
+const switchBindings = computed(() => ({
+	...fixedSwitchProps,
+	id: switchId,
+	...(props.switchTestId ? { 'data-test-id': props.switchTestId } : {}),
+}));
 // Skip the trailing slot when nothing would render, so the title does not keep an empty gap.
 const renderBadges = computed(
 	() =>
@@ -65,6 +82,7 @@ const renderBadges = computed(
 		:title="title"
 		:description="description"
 		:max-description-lines="maxDescriptionLines"
+		:label-for="labelFor"
 	>
 		<template v-if="renderBadges" #titleTrailing>
 			<N8nFeatureMaturityBadges :feature="feature" placement="enable" />
@@ -79,17 +97,17 @@ const renderBadges = computed(
 				>
 					<N8nSwitch
 						v-model="enabled"
+						v-bind="switchBindings"
 						:disabled="disabled"
 						:aria-label="title"
-						v-bind="switchTestId ? { 'data-test-id': switchTestId } : {}"
 					/>
 				</N8nTooltip>
 				<N8nSwitch
 					v-else
 					v-model="enabled"
+					v-bind="switchBindings"
 					:disabled="disabled"
 					:aria-label="title"
-					v-bind="switchTestId ? { 'data-test-id': switchTestId } : {}"
 				/>
 			</slot>
 		</template>
