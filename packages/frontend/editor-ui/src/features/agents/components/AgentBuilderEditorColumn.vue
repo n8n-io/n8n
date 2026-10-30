@@ -34,6 +34,7 @@ import AgentBuilderTabPanel from './AgentBuilderTabPanel.vue';
 import AgentPanel from './AgentPanel.vue';
 import AgentEvalsSection from './AgentEvalsSection.vue';
 import AgentTestButton from './AgentTestButton.vue';
+import AgentSetupTasks from './AgentSetupTasks/AgentSetupTasks.vue';
 import AgentSkillsSection from './AgentSkillsSection.vue';
 
 const props = defineProps<{
@@ -57,6 +58,7 @@ const props = defineProps<{
 	executionsDescription: string;
 	generatingEvalCases?: boolean;
 	tasksReloadKey?: number;
+	tasks?: SetupTask[];
 	artifactMode?: boolean;
 	chatFirst?: boolean;
 	isPreviewOpen?: boolean;
@@ -201,16 +203,23 @@ defineExpose({ onSetupTaskAction });
 						:disabled="childrenDisabled"
 						@update:config="emit('update:config', $event)"
 					/>
-					<AgentTestButton
-						v-if="!props.hidePreviewButton"
-						:disabled-reason="props.previewDisabledReason"
-						:is-runnable="props.agent?.isRunnable === true"
-						:is-preview-open="props.isPreviewOpen"
-						:validation-issues="props.configValidationIssues ?? []"
-						test-id="agent-header-preview-btn"
-						@open-preview="emit('open-preview', 'primary')"
-						@close-preview="emit('close-preview')"
-					/>
+					<div :class="$style.identityActions" data-testid="agent-identity-actions">
+						<AgentSetupTasks
+							v-if="tasks && tasks.length > 0"
+							:tasks="tasks"
+							@action="emit('setup-task-action', $event)"
+						/>
+						<AgentTestButton
+							v-if="!props.hidePreviewButton"
+							:disabled-reason="props.previewDisabledReason"
+							:is-runnable="props.agent?.isRunnable === true"
+							:is-preview-open="props.isPreviewOpen"
+							:validation-issues="props.configValidationIssues ?? []"
+							test-id="agent-header-preview-btn"
+							@open-preview="emit('open-preview', 'primary')"
+							@close-preview="emit('close-preview')"
+						/>
+					</div>
 				</div>
 			</div>
 			<div :class="$style.tabsRow" data-testid="agent-tabs-row">
@@ -588,6 +597,17 @@ defineExpose({ onSetupTaskAction });
 	max-width: var(--agent-builder-content-max-width);
 	margin: 0 auto;
 	padding: var(--spacing--2xl) var(--agent-builder-content-padding-inline) var(--spacing--xl);
+}
+
+.identityContent {
+	flex-basis: var(--spacing--5xl);
+}
+
+.identityActions {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: var(--spacing--sm);
 }
 
 .chatFirst .identityContent {
