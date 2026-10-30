@@ -138,6 +138,7 @@ describe('Instance AI skills', () => {
 
 		expect(topLevel.sort()).toEqual([
 			'agent-builder',
+			'app-builder',
 			'data-table-manager',
 			'debugging-executions',
 			'instance-awareness',

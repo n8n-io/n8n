@@ -6,14 +6,18 @@ import {
 	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
+	Project,
+	ProjectRelation,
 	type Role,
+	type ServiceAccount,
+	ServiceAccountRepository,
 	UserRepository,
 	type User,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { getApiKeyScopesForRole } from '@n8n/permissions';
-import type { DeepPartial } from '@n8n/typeorm';
+import { getApiKeyScopesForRole, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { DataSource, type DeepPartial } from '@n8n/typeorm';
 import { hash } from 'bcryptjs';
 
 import { MfaService } from '@/mfa/mfa.service';
@@ -167,6 +171,30 @@ export async function createUserShell(role: Role): Promise<User> {
 
 	const { user } = await Container.get(UserRepository).createUserWithProject(shell);
 	return user;
+}
+
+/** A service account with its own personal project, as the user setup gives a person. */
+export async function createServiceAccountWithProject(
+	role: Role = GLOBAL_MEMBER_ROLE,
+	name = 'Deploy bot',
+): Promise<ServiceAccount> {
+	const manager = Container.get(DataSource).manager;
+	const serviceAccount = await Container.get(ServiceAccountRepository).create({ name, role });
+	const project = await manager.save(
+		manager.create(Project, {
+			type: 'personal',
+			name: 'Service account project',
+			creatorId: serviceAccount.id,
+		}),
+	);
+	await manager.save(
+		manager.create(ProjectRelation, {
+			projectId: project.id,
+			userId: serviceAccount.id,
+			role: { slug: PROJECT_OWNER_ROLE_SLUG },
+		}),
+	);
+	return serviceAccount;
 }
 
 /**

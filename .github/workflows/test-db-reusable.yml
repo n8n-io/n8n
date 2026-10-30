@@ -8,7 +8,7 @@ on:
         type: string
         default: ''
       matrix:
-        description: 'Job matrix JSON, from .github/scripts/db-test-matrix.mjs.'
+        description: 'Job matrices JSON ({ integration, migration }), from .github/scripts/db-test-matrix.mjs.'
         required: true
         type: string
       run-migrations:
@@ -26,14 +26,16 @@ env:
   NODE_OPTIONS: '--max-old-space-size=6144'
 
 jobs:
+  # Shards, commands and per-shard steps come from db-test-matrix.mjs.
+  # This job runs each entry as given.
   integration:
-    name: ${{ matrix.name }} Integration
+    name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.matrix) }}
+        include: ${{ fromJSON(inputs.matrix).integration }}
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
       COVERAGE_ENABLED: ${{ matrix.collectCoverage }}
@@ -57,10 +59,10 @@ jobs:
 
       # A packaged backend module opts in by defining `test:postgres`.
       - name: Run packaged backend module PostgreSQL tests
-        if: matrix.TEST_IMAGE_POSTGRES != ''
+        if: matrix.packaged-modules-cmd != ''
         env:
           COVERAGE_ENABLED: 'false'
-        run: pnpm --filter './packages/modules/*/backend' --if-present run test:postgres --maxWorkers=100%
+        run: ${{ matrix.packaged-modules-cmd }}
 
       # Regenerates the schema docs for this leg's database (sqlite temp file /
       # postgres testcontainer) and fails if they differ from what's committed.
@@ -81,14 +83,14 @@ jobs:
           fail_ci_if_error: false
 
   migration:
-    name: ${{ matrix.name }} Migrations
+    name: ${{ matrix.name }}
     if: inputs.run-migrations
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.matrix) }}
+        include: ${{ fromJSON(inputs.matrix).migration }}
     env:
       TEST_IMAGE_POSTGRES: ${{ matrix.TEST_IMAGE_POSTGRES }}
     steps:

@@ -10,10 +10,13 @@ import {
 	publishOutcome,
 	saveMovedNodes,
 	headerAuthCredential,
+	HTTP_REQUEST_NAME,
+	httpRequestWorkflow,
 	loadPostgresColumns,
 	POSTGRES_CREDENTIAL,
 	postgresCredential,
 	postgresWorkflow,
+	SLACK_CREDENTIAL,
 	violationsOf,
 } from './policy-helpers';
 import { expect, test } from '../../../fixtures/base';
@@ -173,6 +176,50 @@ test.describe(
 				expect(response.ok()).toBe(false);
 				expect((await response.json()).message).toBe(
 					`Credential type "${POSTGRES_CREDENTIAL}" is blocked by an instance policy`,
+				);
+			});
+		});
+
+		test.describe('the HTTP Request credential type list', () => {
+			test('should list a blocked type last, disabled and explained, and keep it on a saved node', async ({
+				api,
+				n8n,
+			}) => {
+				const { id: projectId } = await api.projects.createProject();
+				// Saved before the block: the policy refuses a workflow that adds a blocked type.
+				const workflow = await api.workflows.createWorkflow(
+					httpRequestWorkflow(SLACK_CREDENTIAL.type),
+					projectId,
+				);
+				await policies.setInstancePolicy({
+					rules: [rule('deny', SLACK_CREDENTIAL.type)],
+					defaultAction: 'allow',
+				});
+
+				await n8n.start.fromExistingWorkflow(workflow.id);
+				await n8n.canvas.openNode(HTTP_REQUEST_NAME);
+
+				await expect(n8n.ndv.getParameterInputField('nodeCredentialType')).toHaveValue(
+					SLACK_CREDENTIAL.displayName,
+				);
+				await expect(n8n.ndv.getRestrictedCredentialTypeMarker('nodeCredentialType')).toBeVisible();
+
+				await n8n.ndv.openCredentialTypeList('nodeCredentialType');
+				await expect(n8n.ndv.getCredentialTypeOption('githubApi')).toBeVisible();
+				await n8n.page.keyboard.type('sl');
+				await expect(n8n.ndv.getCredentialTypeOption('githubApi')).toBeHidden();
+
+				const blocked = n8n.ndv.getCredentialTypeOption(SLACK_CREDENTIAL.type);
+				await expect(n8n.ndv.getCredentialTypeOptions().last()).toHaveAttribute(
+					'data-credential-name',
+					SLACK_CREDENTIAL.type,
+				);
+				await expect(blocked).toHaveClass(/is-disabled/);
+				await expect(blocked).toContainText('Restricted on this instance');
+
+				await blocked.hover();
+				await expect(n8n.ndv.getRestrictedTypePopover()).toContainText(
+					SLACK_CREDENTIAL.displayName,
 				);
 			});
 		});

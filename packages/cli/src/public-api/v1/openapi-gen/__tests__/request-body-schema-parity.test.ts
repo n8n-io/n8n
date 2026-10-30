@@ -4,7 +4,8 @@ import { parse } from 'yaml';
 
 import { resolvePublicApiRoutes } from '@/public-api/public-api-route-resolver';
 
-import { buildRequestBodyJsonSchema, getDecoratorGeneratedOperations } from '../decorator-routes';
+import { getDecoratorGeneratedOperations } from '../decorator-routes';
+import { buildRequestBodyJsonSchema } from '../request-body-json-schema';
 
 /**
  * The build writes a request body schema into the spec. `/discover` builds the same schema at

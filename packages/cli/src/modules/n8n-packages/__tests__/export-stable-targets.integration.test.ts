@@ -2,6 +2,7 @@ import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
 	createWorkflow,
+	linkUserToProject,
 	mockInstance,
 	testDb,
 	testModules,
@@ -25,6 +26,7 @@ import { createVariable } from '@test-integration/db/variables';
 import { LicenseMocker } from '@test-integration/license';
 import { initCredentialsTypes, initNodeTypes } from '@test-integration/utils';
 
+import { entityIdOfSegment } from '../io/manifest-entry';
 import { N8nPackagesService } from '../n8n-packages.service';
 import type { ImportRequest } from '../n8n-packages.types';
 import type { ManifestEntry, PackageManifest } from '../spec/manifest.schema';
@@ -165,11 +167,14 @@ afterEach(async () => {
 	await rm(exportDir, { recursive: true, force: true });
 });
 
-async function exportTo(targetDir: string): Promise<PackageManifest> {
+async function exportTo(
+	targetDir: string,
+	projectIds: string[] = [project.id],
+): Promise<PackageManifest> {
 	await service.exportPackageToDirectory(
 		{
 			user: owner,
-			projectIds: [project.id],
+			projectIds,
 			includeTags: true,
 			includeVariableValues: true,
 			canExportVariableValues: true,
@@ -197,9 +202,9 @@ function targetsById(manifest: PackageManifest): Map<string, string> {
 	return new Map(allEntries(manifest).map((entry) => [entry.id, entry.target]));
 }
 
-/** Entity ids carry no hyphen, so the id is the leaf's final hyphen-separated segment. */
+/** The id follows the leaf's last hyphen, with unsafe characters escaped. */
 function idFromTarget(target: string): string {
-	return target.split('/').at(-1)!.split('-').at(-1)!;
+	return entityIdOfSegment(target.split('/').at(-1)!);
 }
 
 async function parentFolderIdOf(workflowId: string): Promise<string | null> {
@@ -314,5 +319,50 @@ describe('stable export targets', () => {
 		expect(await parentFolderIdOf(tableWorkflow.id)).toBe(siblingFolder.id);
 		expect(await parentFolderIdOf(rootWorkflow.id)).toBeNull();
 		expect(await parentFolderIdOf(duplicateRootWorkflow.id)).toBeNull();
+	});
+
+	it('escapes ids that are not path safe and reads them back on import', async () => {
+		const projectRepository = Container.get(ProjectRepository);
+		const unsafeProject = await projectRepository.save(
+			projectRepository.create({
+				id: 'Equipo AI&ó1',
+				name: 'Equipo AI',
+				type: 'team',
+				creatorId: owner.id,
+			}),
+		);
+		await linkUserToProject(owner, unsafeProject, 'project:admin');
+		const folder = await createFolder(unsafeProject, { name: 'Ops' });
+		const workflow = await createWorkflow({ name: 'Sync', parentFolder: folder }, unsafeProject);
+
+		const manifest = await exportTo(exportDir, [unsafeProject.id]);
+		const targets = targetsById(manifest);
+
+		expect(targets.get(unsafeProject.id)).toBe('projects/equipo-ai-Equipo.20AI.26.C3.B31');
+		expect(targets.get(workflow.id)).toBe(
+			`projects/equipo-ai-Equipo.20AI.26.C3.B31/folders/ops-${folder.id}/workflows/sync-${workflow.id}`,
+		);
+		for (const entry of allEntries(manifest)) {
+			expect(idFromTarget(entry.target)).toBe(entry.id);
+		}
+
+		await Container.get(WorkflowRepository).delete(workflow.id);
+		await Container.get(FolderRepository).delete(folder.id);
+		await projectRepository.delete(unsafeProject.id);
+
+		const result = await service.importPackageFromDirectory(
+			{ user: owner, ...importPolicy },
+			{ sourceDir: exportDir },
+		);
+
+		expect(result.projects).toEqual([
+			{
+				sourceProjectId: unsafeProject.id,
+				localId: unsafeProject.id,
+				name: 'Equipo AI',
+				status: 'created',
+			},
+		]);
+		expect(await parentFolderIdOf(workflow.id)).toBe(folder.id);
 	});
 });

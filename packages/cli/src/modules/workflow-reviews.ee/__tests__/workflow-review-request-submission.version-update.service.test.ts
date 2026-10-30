@@ -4,10 +4,10 @@ import { type EventService, type RoleService } from '@n8n/backend-services';
 import { DbLock } from '@n8n/db';
 import type {
 	DbLockService,
+	PersonRepository,
 	Project,
 	SharedWorkflowRepository,
 	User,
-	UserRepository,
 	WorkflowEntity,
 	WorkflowHistory,
 	WorkflowHistoryRepository,
@@ -57,7 +57,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const activityRepository = mock<WorkflowReviewActivityRepository>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
@@ -78,7 +78,7 @@ describe('WorkflowReviewRequestSubmissionService.updateVersion', () => {
 		authorRepository,
 		reviewerRepository,
 		activityRepository,
-		userRepository,
+		personRepository,
 		roleService,
 		dbLockService,
 		eventService,

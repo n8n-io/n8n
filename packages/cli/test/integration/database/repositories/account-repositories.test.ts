@@ -1,5 +1,6 @@
 import { createTeamProject, testDb } from '@n8n/backend-test-utils';
 import {
+	accountFullName,
 	AiPreferenceRepository,
 	User,
 	UserRepository,
@@ -11,6 +12,7 @@ import {
 	ServiceAccountRepository,
 	Person,
 	PersonRepository,
+	ProjectRelationRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
@@ -159,6 +161,31 @@ describe('UserRepository (both kinds)', () => {
 		});
 	});
 
+	describe('service account details', () => {
+		it('loads the details of a service account without asking for them', async () => {
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+
+			const users = await userRepository.find({ relations: ['role'] });
+			const byId = new Map(users.map((user) => [user.id, user]));
+
+			expect(accountFullName(byId.get(serviceAccount.id)!)).toBe('Deploy bot');
+			expect(accountFullName(byId.get(person.id)!)).toBe(`${person.firstName} ${person.lastName}`);
+		});
+
+		it('loads the details of a service account reached through a relation', async () => {
+			const serviceAccount = await createServiceAccount();
+			const project = await createTeamProject(undefined, serviceAccount);
+
+			const relations = await Container.get(ProjectRelationRepository).find({
+				where: { projectId: project.id },
+				relations: { user: true },
+			});
+
+			expect(relations.map(({ user }) => accountFullName(user))).toEqual(['Deploy bot']);
+		});
+	});
+
 	describe('PersonRepository', () => {
 		it('finds a person by id, but not a service account', async () => {
 			const personRepository = Container.get(PersonRepository);
@@ -177,6 +204,23 @@ describe('UserRepository (both kinds)', () => {
 			const found = await personRepository.findManyByIds([person.id, serviceAccount.id]);
 
 			expect(found.map(({ id }) => id)).toEqual([person.id]);
+		});
+
+		it('finds the people with an eligible role, but not a service account with it', async () => {
+			const personRepository = Container.get(PersonRepository);
+			const person = await createMember();
+			const serviceAccount = await createServiceAccount();
+			const query = {
+				projectId: 'no-project',
+				projectRoleSlugs: [],
+				globalRoleSlugs: [GLOBAL_MEMBER_ROLE.slug],
+			};
+
+			const accounts = await userRepository.findEligibleByProjectOrGlobalRoles(query);
+			const people = await personRepository.findEligibleByProjectOrGlobalRoles(query);
+
+			expect(accounts.map(({ id }) => id).sort()).toEqual([person.id, serviceAccount.id].sort());
+			expect(people.map(({ id }) => id)).toEqual([person.id]);
 		});
 	});
 

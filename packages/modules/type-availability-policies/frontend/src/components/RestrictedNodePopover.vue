@@ -1,8 +1,14 @@
 <script setup lang="ts">
 import { N8nButton, N8nIcon, N8nPopover, N8nText } from '@n8n/design-system';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
-import { unrefElement, useActiveElement, useElementHover, type MaybeElement } from '@vueuse/core';
-import { computed, getCurrentInstance, ref, watch } from 'vue';
+import {
+	unrefElement,
+	useActiveElement,
+	useElementHover,
+	useEventListener,
+	type MaybeElement,
+} from '@vueuse/core';
+import { computed, getCurrentInstance, nextTick, ref, watch } from 'vue';
 
 import { useExclusiveOpen } from '../composables/useExclusiveOpen';
 import { useRestrictionContact, type OptionalVerdict } from '../composables/useNodeTypeRestriction';
@@ -50,6 +56,7 @@ const HOVER_GRACE_MS = 200;
 const i18n = useI18n();
 
 const anchorElement = computed(() => unrefElement(props.anchor) ?? undefined);
+const markerRef = ref<HTMLElement | null>(null);
 const contentRef = ref<HTMLElement | null>(null);
 const anchorHovered = useElementHover(anchorElement, { delayLeave: HOVER_GRACE_MS });
 const contentHovered = useElementHover(contentRef, { delayLeave: HOVER_GRACE_MS });
@@ -64,16 +71,33 @@ const anchorFocused = computed(() =>
 const contentFocused = computed(() =>
 	Boolean(contentRef.value?.contains(activeElement.value ?? null)),
 );
-const wantsOpen = computed(
+const hasIntent = computed(
 	() =>
-		!isContactAdminOpen.value &&
-		(anchorHovered.value ||
-			contentHovered.value ||
-			anchorFocused.value ||
-			contentFocused.value ||
-			props.active),
+		anchorHovered.value ||
+		contentHovered.value ||
+		anchorFocused.value ||
+		contentFocused.value ||
+		props.active,
 );
-const open = useExclusiveOpen(wantsOpen);
+/**
+ * A dismissed card stays closed until the pointer and the focus leave, so it cannot open again at once.
+ * A new pointer entry or a press on the lock also opens it, because a focused lock keeps the intent.
+ */
+const isDismissed = ref(false);
+watch(hasIntent, (intent) => {
+	if (!intent) isDismissed.value = false;
+});
+const wantsOpen = computed(
+	() => !isContactAdminOpen.value && !isDismissed.value && hasIntent.value,
+);
+const { open, claim } = useExclusiveOpen(wantsOpen);
+
+// The leave grace keeps wantsOpen true when the pointer comes back fast, so each entry claims the card.
+function reopen() {
+	isDismissed.value = false;
+	claim();
+}
+useEventListener(anchorElement, 'mouseenter', reopen, { passive: true });
 
 const { copy: contactCopy } = useRestrictionContact(() => props.restriction);
 const scopeKey = computed<BaseTextKey>(() => {
@@ -81,9 +105,41 @@ const scopeKey = computed<BaseTextKey>(() => {
 	return scope ? SCOPE_LABEL_KEY[scope] : RESTRICTED_TYPE_COPY[props.kind].title;
 });
 
+function dismiss() {
+	if (hasIntent.value) isDismissed.value = true;
+}
+
 function requestContactAdmin() {
+	// The dialog gives the focus back to the element that had it when it opened. The button closes with the card.
+	if (contentFocused.value) markerRef.value?.focus();
+	// The card closes before the dialog opens. An active row would otherwise show it again when the dialog closes.
+	dismiss();
 	if (parentHandlesContactAdmin) emit('contactAdmin', contactCopy.value.audience);
 	else isContactAdminOpen.value = true;
+}
+
+function onMarkerKeydown(event: KeyboardEvent) {
+	if (event.key === 'Enter' || event.key === ' ') {
+		event.preventDefault();
+		event.stopPropagation();
+		isDismissed.value = false;
+		void nextTick(() => contentRef.value?.querySelector<HTMLElement>('button')?.focus());
+	} else if (event.key === 'Escape' && open.value) {
+		event.stopPropagation();
+		dismiss();
+	}
+}
+
+function onContentKeydown(event: KeyboardEvent) {
+	if (event.key === 'Escape') {
+		event.stopPropagation();
+		dismiss();
+		markerRef.value?.focus();
+	} else if (event.key === 'Tab') {
+		// The card is teleported to the end of the page. Tab continues from the lock, Shift+Tab stops on it.
+		markerRef.value?.focus();
+		if (event.shiftKey) event.preventDefault();
+	}
 }
 </script>
 
@@ -97,27 +153,34 @@ function requestContactAdmin() {
 			:side-offset="sideOffset"
 			:reference="anchorElement"
 			:suppress-auto-focus="true"
+			:hide-when-detached="true"
 			:content-class="$style.card"
 			width="254px"
 			z-index="var(--floating-ui--z)"
 		>
 			<template #trigger>
 				<span
+					ref="markerRef"
 					:class="$style.marker"
 					tabindex="0"
 					role="img"
-					:aria-label="i18n.baseText('typeAvailabilityPolicies.restrictedNode.title')"
+					:aria-label="i18n.baseText(RESTRICTED_TYPE_COPY[kind].title)"
+					@keydown="onMarkerKeydown"
+					@pointerdown="reopen"
 				>
 					<N8nIcon icon="lock" :size="markerSize" data-test-id="node-restricted-icon" />
 				</span>
 			</template>
 			<template #content>
-				<!-- A menu around the anchor dismisses on any pointer-down it sees outside itself; keep ours from reaching it. -->
+				<!-- A menu around the anchor dismisses on any pointer-down it sees outside itself; keep ours from reaching it.
+				     A press also keeps the focus. Otherwise a select around the anchor closes on the press and moves the card away before the click. -->
 				<div
 					ref="contentRef"
 					:class="$style.popover"
 					data-test-id="node-restricted-popover"
 					@pointerdown.stop
+					@mousedown.prevent
+					@keydown="onContentKeydown"
 				>
 					<N8nText tag="p" size="large" color="text-dark">{{ nodeTypeName }}</N8nText>
 					<N8nText tag="p" size="small" color="text-light">{{ i18n.baseText(scopeKey) }}</N8nText>

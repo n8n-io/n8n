@@ -14,7 +14,7 @@ import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend
 import { AgentsConfig, AiConfig } from '@n8n/config';
 import { SettingsRepository, UserRepository, type OperationContext, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { DataSource, EntityManager } from '@n8n/typeorm';
+import { DataSource, EntityManager, type Repository } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { convertArrayToReadableStream, MockLanguageModelV3 } from 'ai/test';
@@ -94,6 +94,7 @@ import type { AgentExecution } from '@/modules/agents/entities/agent-execution.e
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import { AgentChatAttachmentRepository } from '@/modules/agents/repositories/agent-chat-attachment.repository';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
+import { AgentPlanRepository } from '@/modules/agents/repositories/agent-plan.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import type { SystemAgentUsageRelay } from '@/modules/agents/system-agents/system-agent-usage-relay';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -113,6 +114,7 @@ describe('AgentExecutionRepository', () => {
 	let threadRepo: AgentExecutionThreadRepository;
 	let agentRepo: AgentRepository;
 	let attachmentRepo: AgentChatAttachmentRepository;
+	let attachmentTable: Repository<AgentChatAttachment>;
 	let peer: DataSource;
 	let projectId: string;
 	let agentId: string;
@@ -124,6 +126,7 @@ describe('AgentExecutionRepository', () => {
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		agentRepo = Container.get(AgentRepository);
 		attachmentRepo = Container.get(AgentChatAttachmentRepository);
+		attachmentTable = Container.get(DataSource).getRepository(AgentChatAttachment);
 		peer = await new DataSource({
 			...repository.manager.connection.options,
 			synchronize: false,
@@ -318,7 +321,7 @@ describe('AgentExecutionRepository', () => {
 	}
 
 	function buildAttachment(threadId: string) {
-		return attachmentRepo.create({
+		return attachmentTable.create({
 			id: generateNanoId(),
 			agentId,
 			projectId,
@@ -490,6 +493,7 @@ describe('AgentExecutionRepository', () => {
 			};
 			const createMain = () => {
 				const service = new AgentBackgroundJobService(
+					threadRepo,
 					jobs,
 					repository,
 					mock<ExecutionPersistence>(),
@@ -502,6 +506,7 @@ describe('AgentExecutionRepository', () => {
 					mock<AgentExecutionUpdateBroadcaster>(),
 					storage,
 					Container.get(AgentMessageRepository),
+					Container.get(AgentPlanRepository),
 				);
 				const runner = new SubAgentBackgroundRunner(
 					new SubAgentRunner(
@@ -1171,7 +1176,7 @@ describe('AgentExecutionRepository', () => {
 		const captured = Array.from({ length: count }, () => buildAttachment(thread.id));
 		const late = buildAttachment(thread.id);
 		const unrelated = buildAttachment(otherThread.id);
-		await attachmentRepo.save([...captured, unrelated]);
+		await attachmentTable.save([...captured, unrelated]);
 		const { executionService, attachmentService } = recordingServices();
 		const interceptor = insertAttachmentAfterSnapshot(late);
 
@@ -1181,10 +1186,10 @@ describe('AgentExecutionRepository', () => {
 			interceptor.mockRestore();
 		}
 
-		expect(await attachmentRepo.findByThread(thread.id, { projectId })).toMatchObject([
+		expect(await attachmentRepo.findByThread(thread.id, { projectId }, {})).toMatchObject([
 			{ id: late.id, binaryDataId: late.binaryDataId },
 		]);
-		expect(await attachmentRepo.findOneBy({ id: unrelated.id })).toEqual(unrelated);
+		expect(await attachmentTable.findOneBy({ id: unrelated.id })).toEqual(unrelated);
 		expect(await threadRepo.findOneBy({ id: thread.id })).toBeNull();
 		expect(attachmentService.deleteStoredData).toHaveBeenCalledExactlyOnceWith(
 			captured.map(({ binaryDataId }) => binaryDataId),
@@ -1194,7 +1199,7 @@ describe('AgentExecutionRepository', () => {
 
 	it('rolls back session database cleanup when memory cleanup fails', async () => {
 		const { threadId, suspension, checkpointRepo } = await startSuspendedApprovalRun();
-		const attachment = await attachmentRepo.save(buildAttachment(threadId));
+		const attachment = await attachmentTable.save(buildAttachment(threadId));
 		const memoryBackend = mock<ReturnType<N8nMemory['getImplementation']>>();
 		memoryBackend.deleteThread.mockRejectedValue(new Error('Memory cleanup failed'));
 		const { executionService, attachmentService, executionLogStore } =
@@ -1208,14 +1213,14 @@ describe('AgentExecutionRepository', () => {
 		expect(await checkpointRepo.findByRunId(suspension.runId)).not.toBeNull();
 		expect(await threadRepo.findOneBy({ id: threadId })).not.toBeNull();
 		expect(await repository.findByThreadIdOrdered(threadId)).toEqual(executionsBefore);
-		expect(await attachmentRepo.findOneBy({ id: attachment.id })).toEqual(attachment);
+		expect(await attachmentTable.findOneBy({ id: attachment.id })).toEqual(attachment);
 		expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
 		expect(executionLogStore.delete).not.toHaveBeenCalled();
 	});
 
 	it('keeps session data when admission wins deletion on another connection', async () => {
 		const thread = await createThread();
-		const attachment = await attachmentRepo.save(buildAttachment(thread.id));
+		const attachment = await attachmentTable.save(buildAttachment(thread.id));
 		const checkpointRepo = Container.get(AgentCheckpointRepository);
 		const checkpoint = await checkpointRepo.save({
 			runId: uuid(),
@@ -1269,7 +1274,7 @@ describe('AgentExecutionRepository', () => {
 				expect.objectContaining({ id: executionId, status: 'running' }),
 			]);
 			expect(await checkpointRepo.findByRunId(checkpoint.runId)).toEqual(checkpoint);
-			expect(await attachmentRepo.findOneBy({ id: attachment.id })).toEqual(attachment);
+			expect(await attachmentTable.findOneBy({ id: attachment.id })).toEqual(attachment);
 			expect(memoryBackend.deleteThread).not.toHaveBeenCalled();
 			expect(attachmentService.deleteStoredData).not.toHaveBeenCalled();
 			expect(executionLogStore.delete).not.toHaveBeenCalled();
@@ -1683,13 +1688,15 @@ describe('AgentExecutionRepository', () => {
 			item: ClaimedAgentMessage,
 			finishReason: 'stop' | 'error' | 'cancelled' = 'stop',
 			recorder = new ExecutionRecorder(),
+			settle = true,
 		) {
 			if (finishReason === 'error') recorder.record({ type: 'error', error: new Error('Failed') });
 			await services.executionService.finalizeExecution(item.admission.executionId, {
 				...item.recording,
 				record: { ...recorder.getMessageRecord(), finishReason },
 			});
-			await services.queue.settle(item.thread.id, item.admission.executionId);
+
+			if (settle) await services.queue.settle(item.thread.id, item.admission.executionId);
 		}
 
 		it('discards pending session input and keeps the active turn and other sessions', async () => {
@@ -1748,6 +1755,202 @@ describe('AgentExecutionRepository', () => {
 			await finish(services, active, 'cancelled');
 			expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
 		});
+
+		it.each(
+			(['stop', 'error', 'cancelled'] as const).flatMap((result) =>
+				[true, false].map((settle) => ({ result, settle })),
+			),
+		)(
+			'queues a hidden stop report before later input ($result, settle: $settle)',
+			async ({ result, settle }) => {
+				const services = recordingServices();
+				const remote = recordingServices(undefined, peer);
+				const threadId = uuid();
+
+				await enqueue(services, input(threadId, 'Start', 'new'));
+				const first = await claim(services, threadId);
+				await finish(services, first);
+
+				const stopId = uuid();
+				await services.txRunner.run({}, async (ctx) => {
+					const thread = await services.threads.lockById(threadId, ctx);
+
+					if (!thread) throw new Error('Missing thread');
+
+					await services.threads.saveStop(
+						{
+							threadId,
+							planId: null,
+							requestedAt: new Date().toISOString(),
+							generation: await services.threads.captureStopTargets(threadId, ctx),
+							failures: [],
+							pause: { id: stopId, requestsCompleted: true },
+						},
+						ctx,
+					);
+					await services.queue.enqueueStopReport(thread, stopId, 'Summarize the stop', ctx);
+				});
+
+				const pending = await enqueue(remote, input(threadId, 'Continue'));
+				const report = await claim(remote, threadId);
+
+				expect(report.payload).toMatchObject({ hidden: true, stopReportId: stopId });
+				expect(report.recording.acceptsSteering).toBe(false);
+				expect(report.recording.hideUserMessageFromTranscript).toBe(true);
+				expect(await services.queue.claimNext(threadId, async () => true)).toBeNull();
+				expect((await services.threads.findTaskStop(threadId))?.pause.resumedAt).toBeUndefined();
+
+				const recorder = new ExecutionRecorder();
+
+				if (result === 'stop') {
+					recorder.record({
+						type: 'text-delta',
+						id: 'report-text',
+						delta: 'I stopped. You can continue or change the task.',
+					});
+				}
+
+				await finish(remote, report, result, recorder, settle);
+				const next = await claim(services, threadId);
+
+				expect((await services.threads.findTaskStop(threadId))?.pause).toMatchObject({
+					reportFailed: result !== 'stop',
+					reportedAt: expect.any(String),
+				});
+				expect(next.admission.inputMessageIds).toEqual([pending.messageId]);
+				expect((await services.threads.findTaskStop(threadId))?.pause.resumedAt).toEqual(
+					expect.any(String),
+				);
+
+				await finish(services, next);
+				const detail = await remote.executionService.getThreadDetail(
+					threadId,
+					projectId,
+					agentId,
+					owner.id,
+				);
+
+				expect(detail).not.toBeNull();
+
+				const history = executionsToMessagesDto(detail!.executions);
+				const savedReply = history.find((message) => message.stopReport);
+
+				expect(savedReply).toMatchObject({
+					role: 'assistant',
+					executionId: report.admission.executionId,
+					content:
+						result === 'stop'
+							? [{ type: 'text', text: 'I stopped. You can continue or change the task.' }]
+							: [],
+				});
+				expect(history.map(({ role }) => role)).toEqual(['user', 'assistant', 'user']);
+				expect(JSON.stringify(history)).not.toContain('Summarize the stop');
+			},
+		);
+
+		it.each([false, true])(
+			'runs a queued stop report while later input stays queued (cancel: %s)',
+			async (cancel) => {
+				const services = recordingServices();
+				const threadId = uuid();
+
+				await enqueue(services, input(threadId, 'Start', 'new'));
+				await finish(services, await claim(services, threadId));
+
+				const stopId = uuid();
+				await services.txRunner.run({}, async (ctx) => {
+					const thread = await services.threads.lockById(threadId, ctx);
+
+					if (!thread) throw new Error('Missing thread');
+
+					await services.threads.saveStop(
+						{
+							threadId,
+							planId: null,
+							requestedAt: new Date().toISOString(),
+							generation: await services.threads.captureStopTargets(threadId, ctx),
+							failures: [],
+							pause: { id: stopId, requestsCompleted: true },
+						},
+						ctx,
+					);
+					await services.queue.enqueueStopReport(thread, stopId, 'Summarize the stop', ctx);
+				});
+
+				const pending = await enqueue(services, input(threadId, 'Continue'));
+				const report = await claim(services, threadId);
+				const target = { projectId, agentId, threadId, userId: owner.id, kind: 'preview' as const };
+
+				await expect(
+					services.queue.steer({
+						...target,
+						queueId: pending.id,
+						executionId: report.admission.executionId,
+					}),
+				).rejects.toThrow('This message cannot be added to that execution');
+
+				const { makeAgent, model } = createApprovalAgentFactory(threadId, owner.id, 0);
+				const agent = makeAgent(services.checkpointStorage.getStorage(agentId));
+				const controller = new AbortController();
+
+				try {
+					const chunks = await collect(
+						services.turns.execute({
+							agentInstance: agent,
+							toolRegistry: new Map(),
+							mcpServerAttributions: new Map(),
+							context: { projectId, agentId, threadId },
+							chatSurface: 'preview',
+							chatController: controller,
+							acceptsSteering: false,
+							onExecutionStarted: () => {
+								if (cancel) controller.abort();
+							},
+							admittedExecution: report.admission,
+							prepare: async () => ({
+								type: 'start',
+								input: report.payload.message,
+								options: {
+									toolsEnabled: false,
+									persistence: { threadId, resourceId: report.payload.resourceId },
+								},
+								recording: report.recording,
+							}),
+						}),
+					);
+
+					if (cancel) {
+						expect(chunks).toEqual([{ type: 'finish', finishReason: 'cancelled' }]);
+						expect(model.doStreamCalls).toHaveLength(0);
+					} else {
+						expect(chunks).toContainEqual(
+							expect.objectContaining({ type: 'text-delta', delta: 'Done' }),
+						);
+						expect(model.doStreamCalls).toHaveLength(1);
+						expect(JSON.stringify(model.doStreamCalls[0].prompt)).not.toContain('Continue');
+					}
+
+					expect(await repository.findExecution(report.admission.executionId)).toMatchObject({
+						status: cancel ? 'cancelled' : 'success',
+					});
+					expect((await services.threads.findTaskStop(threadId))?.pause).toMatchObject({
+						reportFailed: cancel,
+						reportedAt: expect.any(String),
+					});
+					expect((await services.queue.listPending(target)).items.map(({ id }) => id)).toEqual([
+						pending.id,
+					]);
+
+					const next = await claim(services, threadId);
+
+					expect(next.admission.inputMessageIds).toEqual([pending.messageId]);
+
+					await finish(services, next);
+				} finally {
+					await agent.close();
+				}
+			},
+		);
 
 		it.each([false, true])(
 			'finishes active work and cancels pending messages when Agents turns off (attachment cleanup fails: %s)',
@@ -3414,7 +3617,7 @@ describe('AgentExecutionRepository', () => {
 		it('removes pending input, attachments, and acceptance identity on session deletion', async () => {
 			const services = recordingServices(Container.get(N8nMemory).getImplementation(agentId));
 			const threadId = uuid();
-			const attachment = await attachmentRepo.save(buildAttachment(threadId));
+			const attachment = await attachmentTable.save(buildAttachment(threadId));
 			const accepted = input(threadId, 'pending', 'new', uuid());
 			accepted.payload.attachments = [
 				{
@@ -3429,7 +3632,7 @@ describe('AgentExecutionRepository', () => {
 				await services.executionService.deleteThread(projectId, agentId, threadId, owner.id),
 			).toBe(true);
 			expect(await services.queueRepository.countBy({ threadId })).toBe(0);
-			expect(await attachmentRepo.findOneBy({ id: attachment.id })).toBeNull();
+			expect(await attachmentTable.findOneBy({ id: attachment.id })).toBeNull();
 			expect(await services.messageRepository.countBy({ threadId })).toBe(0);
 			expect(services.attachmentService.deleteStoredData).toHaveBeenCalledWith(
 				[attachment.binaryDataId],
@@ -3515,7 +3718,7 @@ describe('AgentExecutionRepository', () => {
 				},
 			],
 		});
-		const attachment = await attachmentRepo.save(buildAttachment(threadId));
+		const attachment = await attachmentTable.save(buildAttachment(threadId));
 		const attachments = [
 			{
 				id: attachment.id,
