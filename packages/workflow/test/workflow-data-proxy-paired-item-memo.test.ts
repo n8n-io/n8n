@@ -5,38 +5,32 @@ describe('PairedItemMemo', () => {
 	const source = { previousNode: 'A', previousNodeRun: 1, previousNodeOutput: 2 };
 	const item: INodeExecutionData = { json: {} };
 
-	test('computes once per state and replays the result', () => {
+	test('replays a memoized result', () => {
 		const memo = new PairedItemMemo();
-		const compute = vi.fn(() => item);
 
-		expect(memo.resolve(source, { item: 0 }, compute)).toBe(item);
-		expect(memo.resolve(source, { item: 0 }, compute)).toBe(item);
-		expect(compute).toHaveBeenCalledTimes(1);
+		memo.set(source, { item: 0 }, { ok: true, result: item });
+		expect(memo.get(source, { item: 0 })).toEqual({ ok: true, result: item });
 	});
 
-	test('replays the same error without recomputing', () => {
+	test('replays a memoized error', () => {
 		const memo = new PairedItemMemo();
 		const error = new Error('boom');
-		const compute = vi.fn(() => {
-			throw error;
-		});
 
-		expect(() => memo.resolve(source, { item: 0 }, compute)).toThrow(error);
-		expect(() => memo.resolve(source, { item: 0 }, compute)).toThrow(error);
-		expect(compute).toHaveBeenCalledTimes(1);
+		memo.set(source, { item: 0 }, { ok: false, error });
+		expect(memo.get(source, { item: 0 })).toEqual({ ok: false, error });
+	});
+
+	test('returns undefined for a state it has not seen', () => {
+		expect(new PairedItemMemo().get(source, { item: 0 })).toBeUndefined();
 	});
 
 	test('treats omitted run and output as 0', () => {
 		const memo = new PairedItemMemo();
-		const compute = vi.fn(() => item);
 
-		memo.resolve({ previousNode: 'A' }, { item: 0 }, compute);
-		memo.resolve(
-			{ previousNode: 'A', previousNodeRun: 0, previousNodeOutput: 0 },
-			{ item: 0 },
-			compute,
-		);
-		expect(compute).toHaveBeenCalledTimes(1);
+		memo.set({ previousNode: 'A' }, { item: 0 }, { ok: true, result: item });
+		expect(
+			memo.get({ previousNode: 'A', previousNodeRun: 0, previousNodeOutput: 0 }, { item: 0 }),
+		).toBeDefined();
 	});
 
 	test.each([
@@ -46,10 +40,8 @@ describe('PairedItemMemo', () => {
 		['item', source, { item: 1 }],
 	])('keys a different %s as a distinct state', (_, otherSource, otherItem) => {
 		const memo = new PairedItemMemo();
-		const compute = vi.fn(() => item);
 
-		memo.resolve(source, { item: 0 }, compute);
-		memo.resolve(otherSource, otherItem, compute);
-		expect(compute).toHaveBeenCalledTimes(2);
+		memo.set(source, { item: 0 }, { ok: true, result: item });
+		expect(memo.get(otherSource, otherItem)).toBeUndefined();
 	});
 });
