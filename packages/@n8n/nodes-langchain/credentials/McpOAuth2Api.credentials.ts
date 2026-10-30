@@ -15,6 +15,8 @@ export class McpOAuth2Api implements ICredentialType {
 			name: 'useDynamicClientRegistration',
 			type: 'boolean',
 			default: true,
+			description:
+				"When on, n8n registers itself with the server for you, so you don't need to set anything up. Most servers support this. Turn it off if the provider gives you a fixed client ID and secret, requires you to register a redirect URL, or doesn't support automatic registration.",
 		},
 		{
 			displayName: 'Resource URL',
