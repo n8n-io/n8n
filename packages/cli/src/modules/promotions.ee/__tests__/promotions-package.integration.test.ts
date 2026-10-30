@@ -51,10 +51,12 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import { BadRequestError } from '@n8n/errors';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableRepository } from '@/modules/data-table/data-table.repository';
-import { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import {
+	DataTableRepository,
+	DataTableColumnRepository,
+	DataTableService,
+} from '@n8n/backend-module-data-table';
 import {
 	PACKAGE_ENTITY_LAYOUT,
 	entityFilePath,

@@ -1,4 +1,4 @@
-import type { DataTable } from '@/modules/data-table/data-table.entity';
+import type { DataTable } from '@n8n/backend-module-data-table';
 
 import type { DataTableMatchingMode } from '../../n8n-packages.types';
 import type { PackageDataTableRequirement } from '../../spec/requirements.schema';

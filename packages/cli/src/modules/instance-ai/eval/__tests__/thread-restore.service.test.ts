@@ -17,8 +17,8 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError } from '@n8n/errors';
 import { AgentDraftService } from '@/modules/agents/agent-draft.service';
-import type { DataTable } from '@/modules/data-table/data-table.entity';
-import type { DataTableService } from '@/modules/data-table/data-table.service';
+import { type DataTable, type DataTableService } from '@n8n/backend-module-data-table';
+
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import type { FolderService } from '@/services/folder.service';

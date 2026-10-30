@@ -20,20 +20,22 @@ describe('DataTableDDLService', () => {
 	let mockEntityManager: Mocked<EntityManager>;
 
 	beforeAll(async () => {
-		await testModules.loadModules(['data-table']);
+		await testModules.loadModules(['data-table'], {
+			'data-table': async () => await import('../data-table.module.js'),
+		});
 	});
 
 	beforeEach(() => {
 		mockEntityManager = mock<EntityManager>({
 			connection: {
 				options: { type: 'postgres' },
-			} as any,
+			} as DataSource,
 		});
 
-		// Mock the transaction method to execute the callback immediately
+		// Mock the transaction method to execute the runInTransaction immediately
 		(mockEntityManager.transaction as Mock) = vi.fn(
-			async (callback: (em: EntityManager) => Promise<any>) => {
-				return await callback(mockEntityManager);
+			async (runInTransaction: (em: EntityManager) => Promise<unknown>) => {
+				return await runInTransaction(mockEntityManager);
 			},
 		);
 
@@ -84,7 +86,10 @@ describe('DataTableDDLService', () => {
 		it('should check the physical table via the query runner', async () => {
 			(sqlUtils.toTableName as Mock).mockReturnValue('n8n_data_table_user_dt1');
 			const hasTable = vi.fn().mockResolvedValue(true);
-			(mockEntityManager as any).queryRunner = { hasTable };
+			Object.defineProperty(mockEntityManager, 'queryRunner', {
+				value: { hasTable },
+				configurable: true,
+			});
 
 			await expect(ddlService.tableExists('dt1')).resolves.toBe(true);
 			expect(hasTable).toHaveBeenCalledWith('n8n_data_table_user_dt1');
@@ -183,7 +188,7 @@ describe('DataTableDDLService', () => {
 					'ALTER TABLE "n8n_data_table_user_test-table-id" RENAME COLUMN "old_column" TO "new_column"';
 				const customTrx = mock<EntityManager>();
 
-				customTrx.query = vi.fn().mockResolvedValue(undefined) as any;
+				customTrx.query.mockResolvedValue(undefined);
 
 				(sqlUtils.renameColumnQuery as Mock).mockReturnValue(expectedQuery);
 

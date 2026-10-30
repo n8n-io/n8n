@@ -1,3 +1,4 @@
+import { packagedModules } from '@/modules/modules.manifest';
 import { LicenseState } from '@n8n/backend-common';
 import {
 	createTeamProject,
@@ -15,8 +16,8 @@ import path from 'node:path';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
-import { mockDataTableSizeValidator } from '@/modules/data-table/__tests__/test-helpers';
-import { DataTableService } from '@/modules/data-table/data-table.service';
+import { mockDataTableSizeValidator } from '@n8n/backend-module-data-table/testing';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { saveCredential } from '@test-integration/db/credentials';
 import { createFolder } from '@test-integration/db/folders';
 import { createTag } from '@test-integration/db/tags';
@@ -79,7 +80,7 @@ let dataTableId: string;
 let tagId: string;
 
 beforeAll(async () => {
-	await testModules.loadModules(['n8n-packages', 'data-table']);
+	await testModules.loadModules(['n8n-packages', 'data-table'], packagedModules);
 	await testDb.init();
 	await initNodeTypes();
 	await initCredentialsTypes();

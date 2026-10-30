@@ -4,12 +4,14 @@ import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils'
 import { Project } from '@n8n/db';
 import { Container } from '@n8n/di';
 
-import { mockDataTableSizeValidator } from './test-helpers';
+import { mockDataTableSizeValidator } from '../testing';
 import { DataTableService } from '../data-table.service';
 import { DataTableValidationError } from '../errors/data-table-validation.error';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], {
+		'data-table': async () => await import('../data-table.module.js'),
+	});
 	await testDb.init();
 	mockDataTableSizeValidator();
 });

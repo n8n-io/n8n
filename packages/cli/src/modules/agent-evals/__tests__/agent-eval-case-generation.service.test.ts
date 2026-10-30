@@ -10,9 +10,12 @@ import type { InstanceWriteAccessService } from '@n8n/backend-services';
 
 import type { AgentConfigService } from '../../agents/agent-config.service';
 import type { EvalAgentExecutionService } from '../../instance-ai/eval/agent-execution.service';
-import type { DataTable } from '../../data-table/data-table.entity';
-import type { DataTableService } from '../../data-table/data-table.service';
-import { DataTableNameConflictError } from '../../data-table/errors/data-table-name-conflict.error';
+import {
+	type DataTable,
+	type DataTableService,
+	DataTableNameConflictError,
+} from '@n8n/backend-module-data-table';
+
 import { AgentEvalCaseGenerationService } from '../agent-eval-case-generation.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 

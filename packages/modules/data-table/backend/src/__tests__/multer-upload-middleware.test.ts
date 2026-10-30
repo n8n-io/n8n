@@ -77,9 +77,9 @@ const stubUploadDir = (files: Array<{ name: string; size: number }>) => {
 		const name = filePath.split('/').pop();
 		const found = files.find((f) => f.name === name);
 		if (!found) {
-			const err = new Error('ENOENT') as NodeJS.ErrnoException;
-			err.code = 'ENOENT';
-			throw err;
+			const error = new Error('ENOENT') as NodeJS.ErrnoException;
+			error.code = 'ENOENT';
+			throw error;
 		}
 		return { isFile: () => true, size: found.size };
 	});
@@ -111,12 +111,12 @@ describe('MulterUploadMiddleware', () => {
 
 	describe('single() — post-stream quota enforcement', () => {
 		const stubMulterSuccess = (filePath: string, size: number) => {
-			multerSingleMiddleware.mockImplementation((req, _res, cb) => {
+			multerSingleMiddleware.mockImplementation((req, _res, next) => {
 				(req as AuthenticatedRequestWithFile).file = {
 					path: filePath,
 					size,
 				} as Express.Multer.File;
-				cb(null);
+				next(null);
 			});
 		};
 
@@ -192,9 +192,9 @@ describe('MulterUploadMiddleware', () => {
 			fs.readdir.mockResolvedValue(['ghost', 'just-written']);
 			fs.stat.mockImplementation(async (filePath: string) => {
 				if (filePath.endsWith('ghost')) {
-					const err = new Error('ENOENT') as NodeJS.ErrnoException;
-					err.code = 'ENOENT';
-					throw err;
+					const error = new Error('ENOENT') as NodeJS.ErrnoException;
+					error.code = 'ENOENT';
+					throw error;
 				}
 				return { isFile: () => true, size: 100 };
 			});
@@ -255,14 +255,14 @@ describe('MulterUploadMiddleware', () => {
 			});
 
 			let callIndex = 0;
-			multerSingleMiddleware.mockImplementation((req, _res, cb) => {
+			multerSingleMiddleware.mockImplementation((req, _res, next) => {
 				const name = callIndex++ === 0 ? 'upload-a' : 'upload-b';
 				present.add(name);
 				(req as AuthenticatedRequestWithFile).file = {
 					path: `${UPLOAD_DIR}/${name}`,
 					size: 15 * 1024 * 1024,
 				} as Express.Multer.File;
-				cb(null);
+				next(null);
 			});
 
 			const [first, second] = await Promise.all([runHandler(middleware), runHandler(middleware)]);
@@ -278,8 +278,8 @@ describe('MulterUploadMiddleware', () => {
 		test('forwards multer errors without running the quota check', async () => {
 			const { middleware, sizeValidator } = buildMiddleware();
 			const multerErr = new multer.MulterError('LIMIT_FILE_SIZE');
-			multerSingleMiddleware.mockImplementation((_req, _res, cb) => {
-				cb(multerErr);
+			multerSingleMiddleware.mockImplementation((_req, _res, next) => {
+				next(multerErr);
 			});
 
 			const req = await runHandler(middleware);

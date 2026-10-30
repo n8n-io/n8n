@@ -1,8 +1,8 @@
 import { ModuleRegistry } from '@n8n/backend-common';
+import { DataTableService } from '@n8n/backend-module-data-table';
 import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { DataTableService } from '@/modules/data-table/data-table.service';
 import { DataTableSerializer } from '@/modules/n8n-packages/entities/data-table/data-table.serializer';
 import { TagImporter } from '@/modules/n8n-packages/entities/tag/tag-importer';
 import { serializeTag } from '@/modules/n8n-packages/entities/tag/tag.exporter';

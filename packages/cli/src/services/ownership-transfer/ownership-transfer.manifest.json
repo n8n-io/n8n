@@ -15,7 +15,7 @@
 		},
 		{
 			"name": "DataTable",
-			"path": "packages/cli/src/modules/data-table/data-table.entity.ts"
+			"path": "packages/modules/data-table/backend/src/data-table.entity.ts"
 		}
 	],
 	"notTransferred": [

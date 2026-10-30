@@ -8,7 +8,9 @@ import { mock } from 'vitest-mock-extended';
 import { CsvParserService } from '../csv-parser.service';
 
 beforeAll(async () => {
-	await testModules.loadModules(['data-table']);
+	await testModules.loadModules(['data-table'], {
+		'data-table': async () => await import('../data-table.module.js'),
+	});
 });
 
 describe('CsvParserService', () => {

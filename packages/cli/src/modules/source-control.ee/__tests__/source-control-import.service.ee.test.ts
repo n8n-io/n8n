@@ -40,10 +40,13 @@ import type { VariablesService } from '@/environments.ee/variables/variables.ser
 import type { ExecutionPersistence } from '@/executions/execution-persistence';
 import { DeprecatedNodesError } from '@/errors/response-errors/deprecated-nodes.error';
 import { WorkflowPublishBlockedError } from '@/errors/response-errors/workflow-publish-blocked.error';
-import type { DataTableColumnRepository } from '@/modules/data-table/data-table-column.repository';
-import type { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
-import type { DataTableSizeValidator } from '@/modules/data-table/data-table-size-validator.service';
-import type { DataTableRepository } from '@/modules/data-table/data-table.repository';
+import {
+	type DataTableColumnRepository,
+	type DataTableDDLService,
+	type DataTableSizeValidator,
+	type DataTableRepository,
+} from '@n8n/backend-module-data-table';
+
 import type { RedactionEnforcementService } from '@/modules/redaction/redaction-enforcement.service';
 import type { PolicyEnforcementService } from '@/policy/policy-enforcement.service';
 import { PolicyViolationError } from '@/policy/policy-violation.error';

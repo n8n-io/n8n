@@ -28,7 +28,7 @@ shrink-only Code Health baseline. Do not add new baseline entries.
 Distinct from that shrink-only ratchet, `src/commands/db/revert.ts` is an exact
 exception for CLI migration tooling. Adapters with no `Repository` or
 `BaseRepository` subclass in the file at all (for example
-`src/modules/data-table/data-table-rows.repository.ts`) also need an exact
+`packages/modules/data-table/backend/src/data-table-rows.repository.ts`) also need an exact
 `allowedFiles` entry in the rule. A repository with a file-private table class
 needs none.
 

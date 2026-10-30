@@ -170,7 +170,7 @@ export async function userHasScopes(
 			throw new NotFoundError(`Data table with ID "${dataTableId}" not found.`);
 		}
 
-		const { DataTableRepository } = await import('@/modules/data-table/data-table.repository.js');
+		const { DataTableRepository } = await import('@n8n/backend-module-data-table');
 		const dataTable = await Container.get(DataTableRepository).findOne({
 			where: { id: dataTableId },
 			relations: ['project'],
