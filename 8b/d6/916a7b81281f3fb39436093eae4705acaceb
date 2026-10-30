@@ -1,0 +1,23 @@
+packages/workflow/src/workflow-data-proxy-paired-item-memo.ts
+  s_f1fd824e9e17c1::t_ecc9cf250a3d79 19-20,24-25
+packages/workflow/src/workflow-data-proxy.ts
+  s_f1fd824e9e17c1::t_ecc9cf250a3d79 75,1111-1112,1121,1151-1152
+packages/workflow/test/workflow-data-proxy-paired-item-memo.test.ts
+  s_f1fd824e9e17c1::t_ea7ab7161720f5 2,7,12-13,20-21,25,27,29-30,32-35,37-38,47-49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "8bd6916a7b81281f3fb39436093eae4705acaceb",
+  "prompts": {},
+  "sessions": {
+    "s_f1fd824e9e17c1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fc2a6456-5ef2-476d-acd2-e18b344a0eb3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Lorent Lempereur <lorent.lempereur@n8n.io>"
+    }
+  }
+}

@@ -1,0 +1,41 @@
+packages/quality/testing/playwright/pages/InstanceAiPage.ts
+  s_86a963c4aad335::t_946d19bcf8c12a 84
+packages/@n8n/api-types/src/schemas/instance-ai.schema.ts
+  s_86a963c4aad335::t_946d19bcf8c12a 30,36
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.settings.api.ts
+  s_86a963c4aad335::t_946d19bcf8c12a 17,24,30,36,42,49,56,63
+packages/cli/src/modules/instance-ai/instance-ai.module.ts
+  s_86a963c4aad335::t_00798c95ce1d35 55
+packages/cli/src/modules/instance-ai/assistant.controller.ts
+  s_86a963c4aad335::t_876f25f34678b9 11
+  s_86a963c4aad335::t_62303989e8d1ff 1-10,12-166
+packages/frontend/editor-ui/src/features/ai/instanceAi/instanceAi.api.ts
+  s_86a963c4aad335::t_946d19bcf8c12a 130,134
+packages/@n8n/telemetry/src/events/instance-ai.ts
+  s_86a963c4aad335::t_946d19bcf8c12a 570,588,602,616
+packages/quality/testing/playwright/services/api-helper.ts
+  s_86a963c4aad335::t_946d19bcf8c12a 577,582,588,591
+packages/cli/src/modules/instance-ai/instance-ai.controller.ts
+  s_86a963c4aad335::t_00798c95ce1d35 63-68
+  s_86a963c4aad335::t_59ef6905b22e75 16
+packages/cli/src/modules/instance-ai/__tests__/assistant.controller.test.ts
+  s_86a963c4aad335::t_3b7de2ba4f7e7c 1-198
+packages/cli/src/modules/instance-ai/__tests__/instance-ai.module-init.test.ts
+  s_86a963c4aad335::t_e393a674455345 78
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "2da8c88da364a8f874e933d27ed747a216af0668",
+  "prompts": {},
+  "sessions": {
+    "s_86a963c4aad335": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a8dba9e5-b2a5-4ba5-9e3e-65930509b55f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
