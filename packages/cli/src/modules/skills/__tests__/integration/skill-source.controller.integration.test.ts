@@ -869,6 +869,41 @@ describe('SkillSourceController', () => {
 			expect(body.meta).toEqual({ reason: 'duplicate_source' });
 		});
 
+		it.each(['tree/main/empty', 'tree/main/missing', 'tree/empty-branch'])(
+			'offers the saved source without reading skills from %s',
+			async (path) => {
+				const { data: first } = await connectPdf(owner, { scope: 'instance' });
+				github.push('acme/skills', { ...FILES, 'empty/README.md': '# No skills' });
+				github.push('acme/skills', { 'README.md': '# No skills' }, 'empty-branch');
+				const archives = github.requests.archives;
+				const connected = vi.spyOn(Container.get(SkillsTelemetry), 'connectedSource');
+
+				const { data } = await discover(owner, { url: `${REPO}/${path}`, scope: 'instance' });
+
+				expect(data.duplicate).toEqual({
+					kind: 'blocked',
+					where: 'global',
+					sourceId: first.sourceId,
+				});
+				expect(data.skills).toEqual([]);
+				expect(github.requests.archives).toBe(archives);
+				expect(connected).toHaveBeenCalledExactlyOnceWith(
+					expect.objectContaining({ status: 'failure', reason: 'duplicate_source' }),
+					ownerUser.id,
+				);
+				connected.mockRestore();
+
+				const remaining = await owner
+					.post(`/skill-sources/${first.sourceId}/discover`)
+					.send()
+					.expect(200);
+				expect(remaining.body.data.source.ref).toBe('main');
+				expect(remaining.body.data.skills).toEqual(
+					expect.arrayContaining([expect.objectContaining({ name: 'docx' })]),
+				);
+			},
+		);
+
 		it('blocks a project source when Global has the repository, without the source for a member', async () => {
 			await connectPdf(owner, { scope: 'instance' });
 

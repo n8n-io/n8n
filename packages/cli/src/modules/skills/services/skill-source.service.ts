@@ -130,18 +130,25 @@ export class SkillSourceService {
 			report.provider = source.type;
 			const duplicate = await this.duplicateOf(user, source.identityKey, target.projectId);
 			report.duplicate_result = duplicate.kind;
-			const discovered = await this.discoverAll(source);
-			const skills = await this.readAll(source, discovered);
-			const names = await this.skillRepository.findLatestNamesInTarget(target);
 			const { client, locator } = source;
+			const summary = {
+				type: source.type,
+				...client.describe(locator),
+				webUrl: client.webUrl(locator),
+			};
 			if (duplicate.kind === 'blocked') {
 				await this.skillsTelemetry.connectedSource(
 					{ ...report, status: 'failure', reason: 'duplicate_source' },
 					user.id,
 				);
+				// Add more reads the saved source. The submitted branch or folder may have no skills.
+				return { source: summary, duplicate, skills: [], truncated: false, tooDeep: 0 };
 			}
+			const discovered = await this.discoverAll(source);
+			const skills = await this.readAll(source, discovered);
+			const names = await this.skillRepository.findLatestNamesInTarget(target);
 			return {
-				source: { type: source.type, ...client.describe(locator), webUrl: client.webUrl(locator) },
+				source: summary,
 				duplicate,
 				skills: this.pickerSkills(source, skills, names),
 				truncated: discovered.truncated,
@@ -202,17 +209,11 @@ export class SkillSourceService {
 		const projects = await this.skillRepository.findProjects(
 			sources.flatMap((source) => (source.projectId ? [source.projectId] : [])),
 		);
-		return await Promise.all(
-			sources.map(async (source) => {
-				const project = source.projectId ? projects.get(source.projectId) : undefined;
-				return this.sourceItem(
-					source,
-					counts.get(source.id) ?? 0,
-					project,
-					await this.skillAccess.canOnSource(user, source, 'addSkills'),
-				);
-			}),
-		);
+		const canAdd = await this.skillAccess.sourceAccessCheck(user, 'addSkills');
+		return sources.map((source) => {
+			const project = source.projectId ? projects.get(source.projectId) : undefined;
+			return this.sourceItem(source, counts.get(source.id) ?? 0, project, canAdd(source));
+		});
 	}
 
 	/** Lists only remote skills that are not linked to this source. */
