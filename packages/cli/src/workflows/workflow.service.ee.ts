@@ -78,6 +78,12 @@ const INSPECTABLE_SUBWORKFLOW_SOURCES = new Set(['database', 'parameter']);
 /** Exclude allowed edits and temporary editor state from the definition comparison. */
 const FREELY_EDITABLE_NODE_FIELDS = ['name', 'position', 'disabled', 'color', 'issues', 'status'];
 
+// Fields on a stored node that some callers DTOs do not support.
+// These must be stripped from stored nodes prior to comparison with update DTOs.
+const STORED_ONLY_NODE_FIELDS = [
+	'extendsCredential', // public API
+] as const;
+
 /** Tool and HITL tool variants use the same source rules as their base node. */
 function isWorkflowSelectorNode(node: INode): boolean {
 	if (typeof node.type !== 'string') return false;
@@ -475,7 +481,10 @@ export class EnterpriseWorkflowService {
 					nodeId: node.id,
 					nodeCredentials: node.credentials,
 				});
-				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
+
+				if (blockedBySource) {
+					throw new UninspectableSubworkflowSourceError(node);
+				}
 				throw this.inaccessibleCredentialsError(node);
 			}
 
@@ -483,7 +492,15 @@ export class EnterpriseWorkflowService {
 			// node. The editor allows these source settings to be edited, and a Public API
 			// caller cannot see that a node is read only.
 			const mustMatchStoredNode = blockedBySource || options.rejectReadOnlyNodeEdits;
-			if (mustMatchStoredNode && this.hasDefinitionChanged(node, previousNode)) {
+			// An absent stored-only field means the caller did not send it, so it is unchanged.
+			const sentStoredOnlyFieldChanged = STORED_ONLY_NODE_FIELDS.some(
+				(field) => node[field] !== undefined && !isEqual(node[field], previousNode[field]),
+			);
+			const definitionChanged = !isEqual(
+				this.getNodeDefinition(node),
+				this.getNodeDefinition(previousNode),
+			);
+			if (mustMatchStoredNode && (sentStoredOnlyFieldChanged || definitionChanged)) {
 				if (blockedBySource) throw new UninspectableSubworkflowSourceError(node);
 				throw this.inaccessibleCredentialsError(node);
 			}
@@ -567,22 +584,13 @@ export class EnterpriseWorkflowService {
 	}
 
 	/**
-	 * Compare node behavior. The Public API drops `extendsCredential` on write, but the
-	 * restore keeps the stored value, so that field is not compared.
-	 */
-	private hasDefinitionChanged(submitted: INode, stored: INode): boolean {
-		const withoutCredentialExtension = (node: INode) => omit(node, 'extendsCredential');
-		return !isEqual(
-			this.getNodeDefinition(withoutCredentialExtension(submitted)),
-			this.getNodeDefinition(withoutCredentialExtension(stored)),
-		);
-	}
-
-	/**
 	 * Compare node behavior without treating editor formatting or allowed edits as changes.
 	 */
 	private getNodeDefinition(node: INode): Record<string, unknown> {
-		const definition: Record<string, unknown> = omit(node, FREELY_EDITABLE_NODE_FIELDS);
+		const definition: Record<string, unknown> = omit(node, [
+			...FREELY_EDITABLE_NODE_FIELDS,
+			...STORED_ONLY_NODE_FIELDS,
+		]);
 		definition.parameters = this.getDisplayedParameters(node);
 
 		const credentials = node.credentials ?? {};

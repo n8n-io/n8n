@@ -969,6 +969,42 @@ describe('EnterpriseWorkflowService', () => {
 				).not.toThrow();
 			});
 
+			it('keeps a read-only node whose submitted extendsCredential matches the stored one', () => {
+				const previous = { ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' };
+				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [{ ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' }],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectReadOnlyNodeEdits,
+					),
+				).not.toThrow();
+			});
+
+			it('rejects a read-only node whose submitted extendsCredential differs from the stored one', () => {
+				const previous = { ...httpNode(foreignCredential), extendsCredential: 'httpHeaderAuth' };
+				const previousVersion = { nodes: [previous] } as unknown as IWorkflowBase;
+				const newVersion = {
+					nodes: [{ ...httpNode(foreignCredential), extendsCredential: 'httpBasicAuth' }],
+				} as unknown as IWorkflowBase;
+
+				expect(() =>
+					service.validateWorkflowCredentialUsage(
+						newVersion,
+						previousVersion,
+						accessible,
+						[],
+						rejectReadOnlyNodeEdits,
+					),
+				).toThrow(/credentials in the 'Call' node/);
+			});
+
 			describe('with parameter defaults from the node type', () => {
 				beforeEach(() => {
 					nodeTypes.getByNameAndVersion.mockReturnValue({

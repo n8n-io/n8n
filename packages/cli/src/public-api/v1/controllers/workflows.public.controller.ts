@@ -445,6 +445,7 @@ export class WorkflowsPublicController {
 					forceSave: true, // Skip version conflict check for public API
 					publicApi: true,
 					publishIfActive: query.publishIfActive,
+					rejectReadOnlyNodeEdits: true,
 					// A save can publish, so the key's publish scope has to be enforced too
 					apiKeyScopes: req.tokenGrant?.apiKeyScopes ?? [],
 					source: 'api',
