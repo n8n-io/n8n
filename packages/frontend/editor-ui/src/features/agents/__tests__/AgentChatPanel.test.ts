@@ -14,8 +14,8 @@ import type {
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
-import AgentPreviewDock from '../components/AgentPreviewDock.vue';
-import AgentPreviewChatPage from '../components/AgentPreviewChatPage.vue';
+import AgentTestDock from '../components/AgentTestDock.vue';
+import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 import {
 	buildAgentConfigFingerprint,
 	type AgentConfigFingerprint,
@@ -208,7 +208,7 @@ vi.mock('../agentSessions.store', function mockAgentSessionsStore() {
 	};
 });
 
-vi.mock('../components/AgentPreviewMoreMenu.vue', function mockPreviewMoreMenu() {
+vi.mock('../components/AgentTestMoreMenu.vue', function mockPreviewMoreMenu() {
 	return { default: { template: '<button />' } };
 });
 
@@ -522,7 +522,7 @@ describe('AgentChatPanel', () => {
 					history: createMemoryHistory(),
 					routes: [{ path: '/', component: { template: '<div />' } }],
 				});
-				const wrapper = mount(AgentPreviewChatPage, {
+				const wrapper = mount(AgentTestChatPage, {
 					global: { plugins: [router, i18nInstance] },
 					props: {
 						initialized: true,
@@ -2361,6 +2361,31 @@ describe('AgentChatPanel', () => {
 			]);
 			wrapper.unmount();
 		});
+
+		it('sends the client context of an outside message with that message only', async () => {
+			const clientContext = vi.fn(() => ({ timeZone: 'Europe/Helsinki' }));
+			sendMessageMock.mockResolvedValue('sent');
+			const wrapper = mountPanel({ clientContext });
+			const vm = wrapper.vm as unknown as {
+				sendMessageFromOutside: (
+					message: string,
+					files?: File[],
+					clientContext?: Record<string, unknown>,
+				) => void;
+			};
+
+			vm.sendMessageFromOutside('first', [], { context: { workflowId: 'wf-1' } });
+			await flushPromises();
+			sendMessageMock.mock.lastCall?.[2]?.();
+			vm.sendMessageFromOutside('second');
+			await flushPromises();
+
+			expect(sendMessageMock.mock.calls.map((call) => call[3])).toEqual([
+				{ timeZone: 'Europe/Helsinki', context: { workflowId: 'wf-1' } },
+				{ timeZone: 'Europe/Helsinki' },
+			]);
+			wrapper.unmount();
+		});
 	});
 
 	it('retains an outside prompt during initial loading and consumes it only after acceptance', async () => {
@@ -3410,7 +3435,9 @@ describe('AgentChatPanel', () => {
 			const chatInput = wrapper.findComponent({ name: 'ChatInputBase' });
 
 			expect(chatInput.props('showAttach')).toBe(true);
-			expect(chatInput.props('acceptedMimeTypes')).toBe('image/*,application/pdf');
+			expect(chatInput.props('acceptedMimeTypes')).toBe(
+				'image/png,image/jpeg,image/gif,image/webp,application/pdf',
+			);
 		});
 
 		it('hides the attach button when every family in the prop is false', () => {
@@ -3480,7 +3507,9 @@ describe('AgentChatPanel', () => {
 			expect(input.props('placeholder')).toBe('Message Agent…');
 			expect(wrapper.find('[data-test-id="chat-input-attach-button"]').exists()).toBe(true);
 			expect(input.props('showAttach')).toBe(true);
-			expect(input.props('acceptedMimeTypes')).toBe('image/*,application/pdf');
+			expect(input.props('acceptedMimeTypes')).toBe(
+				'image/png,image/jpeg,image/gif,image/webp,application/pdf',
+			);
 		});
 
 		describe('slots', () => {
@@ -3895,7 +3924,7 @@ describe('AgentChatPanel', () => {
 	});
 });
 
-describe('AgentPreviewDock stream lifecycle', () => {
+describe('AgentTestDock stream lifecycle', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		messagesMock.value = [];
@@ -3912,7 +3941,7 @@ describe('AgentPreviewDock stream lifecycle', () => {
 					const sessionId = ref('session-1');
 					return () =>
 						open.value
-							? h(AgentPreviewDock, {
+							? h(AgentTestDock, {
 									isOpen: true,
 									sessionTitle: 'Session',
 									sessionOptions: [],

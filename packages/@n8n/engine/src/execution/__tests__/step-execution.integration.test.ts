@@ -22,7 +22,7 @@ import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../../runtime';
 import type { SeededSteps, TriggerOutputs } from '../execution.types';
 import type { CancelExecutionService } from '../cancel-execution.service';
-import type { StartExecutionResult } from '../start-execution.service';
+import type { StartExecutionResult, StartExecutionService } from '../start-execution.service';
 import { StepReadyHandler } from '../step-ready-handler';
 
 const graph: WorkflowGraph = {
@@ -652,6 +652,7 @@ describe('step execution (integration)', () => {
 							graph: subWorkflowGraph,
 							workflow: { id: 'wf-sub' },
 							triggerOutputs: [[{ json: { in: 1 } }]],
+							awaited: true,
 						},
 					};
 				}
@@ -673,7 +674,7 @@ describe('step execution (integration)', () => {
 		const call = steps.find(({ nodeId }) => nodeId === 'call');
 		expect(call?.status).toBe('completed');
 		expect(call?.waitDeclaration).toEqual({
-			subExecutionId: subExecutionId,
+			subExecutionId,
 		});
 		expect(call?.resumeCause).toEqual({
 			kind: 'subExecution',
@@ -737,6 +738,7 @@ describe('step execution (integration)', () => {
 						graph: subWorkflowGraph,
 						workflow: { id: 'wf-sub' },
 						triggerOutputs: [[{ json: { in: 1 } }]],
+						awaited: true,
 					},
 				};
 			},
@@ -792,16 +794,15 @@ describe('step execution (integration)', () => {
 				await Promise.resolve();
 				if (request.node.id === 'fire') {
 					return {
-						outputs: [[{ json: { startedSubExecution: subExecutionId } }]],
-						detached: [
-							{
-								executionId: subExecutionId,
-								workflowId: 'wf-sub',
-								graph: subWorkflowGraph,
-								workflow: { id: 'wf-sub' },
-								triggerOutputs: [[{ json: { in: 1 } }]],
-							},
-						],
+						subExecution: {
+							executionId: subExecutionId,
+							workflowId: 'wf-sub',
+							graph: subWorkflowGraph,
+							workflow: { id: 'wf-sub' },
+							triggerOutputs: [[{ json: { in: 1 } }]],
+							awaited: false,
+							outputs: [[{ json: { startedSubExecution: subExecutionId } }]],
+						},
 					};
 				}
 				return { outputs: [[{ json: { ran: request.node.id } }]] };
@@ -844,7 +845,7 @@ describe('step execution (integration)', () => {
 			{ v1StepExecutor: { execute } },
 			noopLifecycleEventPublisher,
 			noopExecutionResponseSender,
-			{ start: vi.fn() },
+			{ start: vi.fn() } as unknown as StartExecutionService,
 			{ cancelSubExecutions: vi.fn() } as unknown as CancelExecutionService,
 		);
 

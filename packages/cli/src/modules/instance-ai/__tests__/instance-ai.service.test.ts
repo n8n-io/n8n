@@ -232,7 +232,11 @@ vi.mock('@/permissions.ee/check-access', () => ({
 	userHasScopes: vi.fn(),
 }));
 
-import type { ScopedMemoryTaskEvent, SerializableAgentState } from '@n8n/agents';
+import {
+	createRuntimeSkillSource,
+	type ScopedMemoryTaskEvent,
+	type SerializableAgentState,
+} from '@n8n/agents';
 import type {
 	InstanceAiEvent,
 	InstanceContextInjection,
@@ -907,6 +911,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
+				getLabeledModelFetch: Mock;
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
@@ -983,6 +988,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
+			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -1273,6 +1279,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 				resolveMemoryModelConfig: Mock;
 				getCredits: Mock;
 				getModelFetch: Mock;
+				getLabeledModelFetch: Mock;
 			};
 			ensureThreadExists: Mock;
 			agentMemory: unknown;
@@ -1348,6 +1355,7 @@ describe('InstanceAiService — runtime workspace setup', () => {
 			resolveProxyModel: vi.fn(async () => 'model-1'),
 			resolveMemoryModelConfig: vi.fn(async () => undefined),
 			getModelFetch: vi.fn(),
+			getLabeledModelFetch: vi.fn(),
 			getCredits: vi.fn(async () => ({
 				creditsQuota: UNLIMITED_CREDITS,
 				creditsClaimed: 0,
@@ -3986,6 +3994,7 @@ describe('InstanceAiService — terminal response guard wiring', () => {
 				persistence: expect.objectContaining({
 					hostMetadata: {
 						instanceContext: {
+							hubSkills: { sequence: 1, calls: [], context: [] },
 							injection: { state: 'absent', reason: 'disabled' },
 							instanceContextEnabled: false,
 							nodeUsageEnabled: false,
@@ -6625,6 +6634,84 @@ describe('InstanceAiService — instance-context turn event', () => {
 		};
 	}
 
+	it.each(['completed', 'suspended', 'errored'] as const)(
+		'captures failed skill intent when the run is %s',
+		async (status) => {
+			const run = createContextRun('whole');
+			const runtimeSkillId = `hub-${'a'.repeat(64)}`;
+			const skills = createRuntimeSkillSource([
+				{
+					id: runtimeSkillId,
+					name: 'Private name',
+					description: 'Private description',
+					instructions: 'Private instructions',
+					metadata: { hubSkillId: 'skill-1' },
+				},
+			]);
+			const createEnvironment = Reflect.get(run.service, 'createExecutionEnvironment');
+			const environment = await createEnvironment();
+			environment.orchestrationContext.skills = skills;
+			createEnvironment.mockResolvedValue(environment);
+			vi.mocked(streamAgentRun).mockImplementationOnce(async (_agent, _input, _stream, options) => {
+				options.eventBus.publish(options.threadId, {
+					type: 'tool-call',
+					runId: options.runId,
+					agentId: options.agentId,
+					payload: {
+						toolCallId: 'load-1',
+						toolName: 'load_skill',
+						args: { skillId: runtimeSkillId },
+					},
+				});
+				options.eventBus.publish(options.threadId, {
+					type: 'tool-result',
+					runId: options.runId,
+					agentId: options.agentId,
+					payload: { toolCallId: 'load-1', result: { success: false, error: 'Private error' } },
+				});
+				if (status === 'errored') throw new Error('Stream stopped');
+				return {
+					status,
+					agentRunId: 'agent-run-1',
+					text: Promise.resolve('Done'),
+					workSummary: emptyWorkSummary(),
+					...(status === 'suspended'
+						? { suspension: { toolCallId: 'ask-1', requestId: 'req-1', suspendPayload: {} } }
+						: {}),
+				};
+			});
+			await run.start();
+			expect(run.rows()).toHaveLength(1);
+			expect(run.rows()[0]).toMatchObject({
+				thread_id: 'thread-1',
+				run_id: 'run-1',
+				status,
+				hub_skill_attempt_count: 1,
+				hub_skill_attempted_ids: ['skill-1'],
+				hub_skill_failure_count: 1,
+				hub_skill_load_count: 0,
+				hub_skill_snapshot_sequence: 1,
+			});
+			expect(JSON.stringify(run.rows())).not.toContain('Private');
+			expect(
+				TELEMETRY_EVENT.INSTANCE_AI.INSTANCE_CONTEXT_TURN.getValidationError(run.rows()[0]),
+			).toBeNull();
+			if (status === 'suspended') {
+				expect(run.service.runState.suspendRun).toHaveBeenCalledWith(
+					'thread-1',
+					expect.objectContaining({
+						instanceContext: expect.objectContaining({
+							hubSkills: expect.objectContaining({
+								sequence: 1,
+								calls: [expect.objectContaining({ key: 'load-1', outcome: 'failure' })],
+							}),
+						}),
+					}),
+				);
+			}
+		},
+	);
+
 	function mockContextStream(
 		mode: 'whole' | 'resumed',
 		result: () => Awaited<ReturnType<typeof streamAgentRun>>,
@@ -6877,6 +6964,7 @@ describe('InstanceAiService — instance-context turn event', () => {
 				const saved = service.runState.suspendRun.mock.lastCall?.[1] as SuspendedRunState<User>;
 				expect(saved.instanceContext).toEqual({
 					...instanceContext,
+					hubSkills: { sequence: 1, calls: [], context: [] },
 					reachSoFar: {
 						surfaces: enabled
 							? ['activity-list', 'activity-expand']

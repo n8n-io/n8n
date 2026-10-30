@@ -245,6 +245,9 @@ export interface StepStore {
 	 */
 	loadAllSteps(executionId: string): Promise<StepRecord[]>;
 
+	/** The steps of the given nodes, every pass of each, with their outputs. */
+	loadStepsByNodeIds(executionId: string, nodeIds: string[]): Promise<StepRecord[]>;
+
 	/**
 	 * Every step of the execution in the `waiting` status, with its wait
 	 * declaration, whatever that declaration says. The caller decides which

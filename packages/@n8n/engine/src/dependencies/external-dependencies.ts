@@ -4,7 +4,7 @@ import type {
 	ExecutionMode,
 	StepSlots,
 	TriggerOutputs,
-	WaitDeclaration,
+	ExecutorWaitDeclaration,
 	WorkflowDocument,
 } from '../execution';
 import type { GraphNode, WorkflowGraph } from '../graph';
@@ -70,22 +70,35 @@ export interface StepExecutionRequest {
 
 /**
  * A sub-execution the step asks for. The executor minted the id and had the
- * workflow resolved; the engine starts the sub-execution and suspends the step on it.
+ * workflow resolved; the engine starts it. One run of a step asks for at most
+ * one.
  */
-export interface SubExecutionDeclaration {
+export type SubExecutionDeclaration = {
 	executionId: string;
 	workflowId: string;
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs?: TriggerOutputs | null;
-}
+} & SubExecutionMode;
+
+/** Whether the step waits for the sub-execution, and what it completes with if not. */
+export type SubExecutionMode =
+	| {
+			/** The step suspends until the sub-execution ends, and has no outputs yet. */
+			awaited: true;
+			outputs?: never;
+	  }
+	| {
+			/** Nothing waits for the sub-execution. It ends with the parent. */
+			awaited: false;
+			/** The step completes with these once the sub-execution has started. */
+			outputs: StepSlots;
+	  };
 
 /**
- * What running a step produced: its output slots, or a declaration that it is
- * not done. Exclusive — a step that waits has no outputs yet, and the outputs
- * a deadline would emit ride inside the declaration. A sub-execution declaration is a
- * wait too: the step suspends until the sub-execution ends. Detached sub-executions ride on outputs
- * instead: the step completes, and they run on their own.
+ * What running a step produced: its output slots, a wait, or a sub-execution.
+ * Exclusive — a step that waits has no outputs yet, and the outputs a deadline
+ * or a detached sub-execution would emit ride inside the declaration.
  *
  * The `?: never` members give every branch the same keys, so `result.wait`
  * reads on the union and narrows it — without them a caller could only test
@@ -95,21 +108,17 @@ export type StepExecutionResult =
 	| {
 			/** Output slots; persisted by the engine without inspecting slot contents. */
 			outputs: StepSlots;
-			/** Sub-executions the step started without waiting for them. They end with the parent. */
-			detached?: SubExecutionDeclaration[];
 			wait?: never;
 			subExecution?: never;
 	  }
 	| {
-			wait: WaitDeclaration;
+			wait: ExecutorWaitDeclaration;
 			outputs?: never;
-			detached?: never;
 			subExecution?: never;
 	  }
 	| {
 			subExecution: SubExecutionDeclaration;
 			outputs?: never;
-			detached?: never;
 			wait?: never;
 	  };
 

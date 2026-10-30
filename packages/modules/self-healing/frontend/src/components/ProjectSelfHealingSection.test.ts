@@ -193,3 +193,37 @@ describe('personal tab', () => {
 		expect(view.queryByTestId('self-healing-create')).not.toBeInTheDocument();
 	});
 });
+
+it('shows a one-line placeholder until the first load finishes', async () => {
+	const store = useSelfHealingStore();
+	const pending = Promise.withResolvers<undefined>();
+	vi.spyOn(store, 'load').mockReturnValueOnce(pending.promise);
+	const router = createRouter({
+		history: createMemoryHistory(),
+		routes: [{ path: '/projects/:projectId/settings', component: { render: () => null } }],
+	});
+	await router.push('/projects/project/settings');
+	const view = render(ProjectSelfHealingSection, {
+		props: { projectId: 'project' },
+		global: { plugins: [router] },
+	});
+
+	expect(await view.findByTestId('self-healing-config-loading')).toBeInTheDocument();
+	expect(view.queryByText('Scope')).not.toBeInTheDocument();
+	expect(view.queryByText(/No self-healing configuration/)).not.toBeInTheDocument();
+
+	pending.resolve(undefined);
+	expect(await view.findByText(/No self-healing configuration/)).toBeVisible();
+	expect(view.queryByTestId('self-healing-config-loading')).not.toBeInTheDocument();
+});
+
+it('shows cached configurations instead of the placeholder while they reload', async () => {
+	const { view, store } = await renderSection();
+	store.configurations.other = [{ ...configuration, id: 2, projectId: 'other' }];
+	vi.mocked(store.load).mockReturnValueOnce(new Promise(() => {}));
+	await view.rerender({ projectId: 'other' });
+
+	expect(store.load).toHaveBeenLastCalledWith('other');
+	expect(view.getByText('All workflows')).toBeVisible();
+	expect(view.queryByTestId('self-healing-config-loading')).not.toBeInTheDocument();
+});

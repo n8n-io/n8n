@@ -33,7 +33,7 @@ export type BreakingChangeVersion = z.infer<typeof breakingChangeVersionSchema>;
  *
  * - `open`: the scan found the issue and nobody acted on it yet.
  * - `notified`: the owner received a notification about the finding.
- * - `fixed`: the scan no longer detects the issue in the published version.
+ * - `fixed`: the scan finds the issue in neither the draft nor the published version. A workflow with nothing published needs only a clean draft.
  * - `fixed_unpublished`: the scan no longer detects the issue in the draft, but the fix is not published.
  * - `wont_fix`: a user dismissed the finding.
  */
@@ -55,11 +55,13 @@ export type MigrationFindingTriageStatus = z.infer<typeof migrationFindingTriage
 
 /**
  * The statuses the rule detail lists. A `notified` finding is still unresolved:
- * only the notification sets it apart from `open`.
+ * only the notification sets it apart from `open`. A `fixed_unpublished` finding
+ * is unresolved too, because the published version still has the issue.
  */
 export const migrationFindingListedStatusSchema = migrationFindingStatusSchema.extract([
 	'open',
 	'notified',
+	'fixed_unpublished',
 	'wont_fix',
 ]);
 export type MigrationFindingListedStatus = z.infer<typeof migrationFindingListedStatusSchema>;
@@ -235,9 +237,15 @@ export type WorkflowMigrationResult = z.infer<typeof workflowMigrationResultSche
 
 /**
  * Why a workflow was left out of a notification: it has no owner with an email,
- * its finding is no longer open, or the email could not be sent.
+ * its finding is no longer open, the email could not be sent, or its owner was
+ * notified less than a minute ago.
  */
-export const migrationNotifySkipReasonSchema = z.enum(['no_owner', 'no_finding', 'send_failed']);
+export const migrationNotifySkipReasonSchema = z.enum([
+	'no_owner',
+	'no_finding',
+	'send_failed',
+	'recently_notified',
+]);
 export type MigrationNotifySkipReason = z.infer<typeof migrationNotifySkipReasonSchema>;
 
 /** The outcome of notifying the owners of the findings of one rule. */

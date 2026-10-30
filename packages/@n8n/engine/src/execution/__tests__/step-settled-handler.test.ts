@@ -126,6 +126,7 @@ function makeStepStore(
 		loadStepsByKeys: vi.fn().mockResolvedValue({}),
 		loadLatestStepSummaries: vi.fn().mockResolvedValue({}),
 		loadAllSteps: vi.fn().mockResolvedValue([]),
+		loadStepsByNodeIds: vi.fn().mockResolvedValue([]),
 		loadWaitingSteps: vi.fn().mockResolvedValue([]),
 		// far from settled, so finish tests opt in explicitly
 		countSettledSteps: vi.fn().mockResolvedValue(0),
@@ -631,15 +632,9 @@ describe('StepSettledHandler sub-executions', () => {
 			{ id: 'step-m', nodeId: 'm' },
 			{
 				countSettledSteps: vi.fn().mockResolvedValue(5),
-				loadAllSteps: vi
+				loadStepsByNodeIds: vi
 					.fn()
-					.mockResolvedValue([
-						row('trigger', 'completed', [[]]),
-						row('a', 'completed', [[{ json: { a: 1 } }]]),
-						row('b', 'completed', [[{ json: { b: 1 } }]]),
-						row('c', 'completed', [[{ json: { c: 1 } }]]),
-						row('m', 'completed', [[{ json: { done: true } }]]),
-					]),
+					.mockResolvedValue([row('m', 'completed', [[{ json: { done: true } }]])]),
 			},
 		);
 		const { handler, executionStore, stepQueue } = makeHandler(stepStore, {
@@ -648,7 +643,9 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle({ ...event, stepId: 'step-m' });
 
-		// Only `m` has no outgoing edge, so only its outputs are the sub-execution's result.
+		// Only `m` has no outgoing edge, so only its steps are read and only its
+		// outputs are the sub-execution's result.
+		expect(stepStore.loadStepsByNodeIds).toHaveBeenCalledWith('exec-1', ['m']);
 		expect(stepStore.resumeStep).toHaveBeenCalledWith('step-call', {
 			kind: 'subExecution',
 			executionId: 'exec-1',
@@ -682,7 +679,7 @@ describe('StepSettledHandler sub-executions', () => {
 			{ id: 'step-c-1', nodeId: 'c', iteration: 1 },
 			{
 				countSettledSteps: vi.fn().mockResolvedValue(5),
-				loadAllSteps: vi
+				loadStepsByNodeIds: vi
 					.fn()
 					// Out of graph order, and with a pass of `b` that did not complete.
 					.mockResolvedValue([
@@ -690,8 +687,6 @@ describe('StepSettledHandler sub-executions', () => {
 						row('b', 'skipped', null, 1),
 						row('c', 'completed', [[{ json: { c: 0 } }]], 0),
 						row('b', 'completed', [[{ json: { b: 0 } }]], 0),
-						row('a', 'completed', [[{ json: { a: 1 } }]]),
-						row('trigger', 'completed', [[]]),
 					]),
 			},
 		);
@@ -701,6 +696,7 @@ describe('StepSettledHandler sub-executions', () => {
 
 		await handler.handle({ ...event, stepId: 'step-c-1' });
 
+		expect(stepStore.loadStepsByNodeIds).toHaveBeenCalledWith('exec-1', ['b', 'c']);
 		expect(stepStore.resumeStep).toHaveBeenCalledWith(
 			'step-call',
 			expect.objectContaining({
@@ -711,6 +707,20 @@ describe('StepSettledHandler sub-executions', () => {
 				],
 			}),
 		);
+	});
+
+	it('cancels the pending steps even when the parent resume throws', async () => {
+		const stepStore = makeStepStore(
+			{ status: 'failed', error: { name: 'TypeError', message: 'boom' } },
+			{ resumeStep: vi.fn().mockRejectedValue(new Error('db down')) },
+		);
+		const { handler } = makeHandler(stepStore, {
+			executionStore: makeExecutionStore({ parent }),
+		});
+
+		await expect(handler.handle(event)).rejects.toThrow('db down');
+
+		expect(stepStore.cancelPendingSteps).toHaveBeenCalledExactlyOnceWith('exec-1');
 	});
 
 	it('cancels the sub-executions and resumes the awaiting parent with the error the moment a step fails', async () => {

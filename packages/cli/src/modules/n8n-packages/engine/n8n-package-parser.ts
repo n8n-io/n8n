@@ -46,6 +46,7 @@ import {
 	serializedAgentMetadataSchema,
 	type SerializedAgent,
 } from '../spec/serialized/agent.schema';
+import { serializedSkillSchema, type SerializedSkill } from '../spec/serialized/skill.schema';
 
 /**
  * Parses the typed entities out of a `.n8np` package — the read-side counterpart
@@ -92,6 +93,23 @@ export class N8nPackageParser {
 			agents.push(await this.readAgent(reader, entry));
 		}
 		return agents;
+	}
+
+	/** Reads every skill of the package. Agents in any scope can reference an instance skill. */
+	async getSkills(reader: PackageReader): Promise<SerializedSkill[]> {
+		const manifest = await this.getManifest(reader);
+		const skills: SerializedSkill[] = [];
+		for (const entry of manifest.skills ?? []) {
+			const path = entityFilePath('skills', entry.target);
+			const skill = await this.readEntityFile(reader, path, 'skill', serializedSkillSchema);
+			if (skill.id !== entry.id) {
+				throw new UserError(
+					`Package skill at ${path} declares id "${skill.id}" but the manifest lists "${entry.id}".`,
+				);
+			}
+			skills.push(skill);
+		}
+		return skills;
 	}
 
 	async getFolders(reader: PackageReader, basePrefix = ''): Promise<PreparedFolder[]> {
@@ -172,7 +190,7 @@ export class N8nPackageParser {
 
 	private async readAgent(reader: PackageReader, entry: ManifestEntry): Promise<PreparedAgent> {
 		const path = entityFilePath('agents', entry.target);
-		const agent = await this.readAgentFile(reader, path, serializedAgentSchema);
+		const agent = await this.readEntityFile(reader, path, 'Agent', serializedAgentSchema);
 		if (agent.id !== entry.id) {
 			throw new UserError(
 				`Package Agent at ${path} declares id "${agent.id}" but the manifest lists "${entry.id}".`,
@@ -180,9 +198,10 @@ export class N8nPackageParser {
 		}
 		this.assertAgentBodiesPresent(agent, path);
 
-		const metadata = await this.readAgentFile(
+		const metadata = await this.readEntityFile(
 			reader,
 			agentMetadataFilePath(entry.target),
+			'Agent',
 			serializedAgentMetadataSchema,
 		);
 		await this.validateAgentTaskCrons(agent.id, agent.tasks);
@@ -193,7 +212,6 @@ export class N8nPackageParser {
 			config: agent.config,
 			availableInMCP: agent.availableInMCP,
 			metadata,
-			skills: agent.skills,
 			tools: agent.tools,
 			tasks: agent.tasks,
 		};
@@ -225,15 +243,16 @@ export class N8nPackageParser {
 		}
 	}
 
-	private async readAgentFile<T>(
+	private async readEntityFile<T>(
 		reader: PackageReader,
 		path: string,
+		label: 'Agent' | 'skill',
 		schema: ZodType<T, ZodTypeDef, unknown>,
 	): Promise<T> {
-		const wire = await this.readJson(reader, path, 'Agent');
+		const wire = await this.readJson(reader, path, label);
 		const result = schema.safeParse(wire);
 		if (!result.success) {
-			throw new UserError(`Package Agent file at ${path} failed schema validation.`, {
+			throw new UserError(`Package ${label} file at ${path} failed schema validation.`, {
 				cause: result.error,
 			});
 		}

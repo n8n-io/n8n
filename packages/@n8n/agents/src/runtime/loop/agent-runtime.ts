@@ -61,7 +61,7 @@ import { sanitizeOffloadedToolResultsForMemory } from '../memory/tool-result-mem
 import { generateThreadTitle } from '../memory/title-generation';
 import { AgentMessageList, type SerializedMessageList } from '../model/message-list';
 import { createModelTokenCounter } from '../model/model-token-counter';
-import { getEffectiveAnthropicCacheTtl } from '../model/prompt-cache';
+import { getEffectiveAnthropicCacheTtl, getPromptCacheRetentionMs } from '../model/prompt-cache';
 import { ActiveSkills } from '../skills/active-skills';
 import { activateSkillDependencyTools } from '../skills/skill-dependency-tools';
 import { BackgroundTaskTracker } from '../state/background-task-tracker';
@@ -69,10 +69,11 @@ import { AgentEventBus, type AgentAbortScope } from '../state/event-bus';
 import { generateRunId, RunStateManager, StaleResumeError } from '../state/run-state';
 import { startStreamSession } from '../streaming/stream-session';
 import type { StreamWriterGuard } from '../streaming/stream-writer-guard';
+import { buildFunctionIdHeaders } from '../telemetry/function-id';
 import { RuntimeTelemetry } from '../telemetry/runtime-telemetry';
 import { DeferredToolManager } from '../tools/deferred-tool-manager';
 import { fixToolCall } from '../tools/fix-tool-call';
-import { buildToolMap } from '../tools/tool-adapter';
+import { buildToolMap, resolveToolForCall } from '../tools/tool-adapter';
 import { ToolCallExecutor } from '../tools/tool-call-executor';
 import type {
 	PendingResume,
@@ -90,7 +91,8 @@ const MAX_LOOP_ITERATIONS = 100;
 
 function endsTurn(batch: ToolCallBatchResult, toolMap: Map<string, BuiltTool>): boolean {
 	return batch.results.some(
-		({ toolName, toolEntry }) => toolMap.get(toolName)?.endsTurn?.(toolEntry.output) === true,
+		({ toolName, input, toolEntry }) =>
+			resolveToolForCall(toolMap, toolName, input)?.endsTurn?.(toolEntry.output) === true,
 	);
 }
 
@@ -113,7 +115,7 @@ function resumedTurnEnds(
 			(c) =>
 				c.type === 'tool-call' &&
 				c.state === 'resolved' &&
-				toolMap.get(c.toolName)?.endsTurn?.(c.output) === true,
+				resolveToolForCall(toolMap, c.toolName, c.input)?.endsTurn?.(c.output) === true,
 		) ?? false
 	);
 }
@@ -545,8 +547,11 @@ export class AgentRuntime {
 		// A skill dependency loads a deferred tool without a `load_tool` record, and
 		// skills restore only when the loop starts. Accept any registered deferred tool.
 		const tool =
-			buildToolMap(this.context.getCurrentTools(state.persistence)).get(toolCall.toolName) ??
-			this.deferredToolManager?.getTool(toolCall.toolName);
+			resolveToolForCall(
+				buildToolMap(this.context.getCurrentTools(state.persistence)),
+				toolCall.toolName,
+				toolCall.input,
+			) ?? this.deferredToolManager?.getTool(toolCall.toolName, toolCall.input);
 		if (!tool) throw new Error(`Tool ${toolCall.toolName} not found`);
 
 		const resumeSchema = toolCall.suspended ? toolCall.resumeSchema : tool.resumeSchema;
@@ -717,12 +722,14 @@ export class AgentRuntime {
 		options?: ExecutionOptions,
 	): {
 		telemetry?: TelemetryOptions;
+		headers?: Record<string, string>;
 		repairToolCall?: ToolCallRepairFunction<NoInfer<ToolSet>>;
 		onStepStart?: ExecutionOptions['onStepStart'];
 		onStepEnd?: ExecutionOptions['onStepEnd'];
 	} {
 		return {
 			...this.telemetry.buildTelemetryOptions(options),
+			...buildFunctionIdHeaders(this.config.functionId),
 			...(options?.onStepStart ? { onStepStart: options.onStepStart } : {}),
 			...(options?.onStepEnd ? { onStepEnd: options.onStepEnd } : {}),
 			repairToolCall: async (options) => {
@@ -777,6 +784,7 @@ export class AgentRuntime {
 			telemetry: this.telemetry.resolve(options),
 			agentModel: this.config.model,
 			modelFetch: this.config.modelFetch,
+			functionId: this.config.functionId,
 			turnDelta: list.turnDelta(),
 			...(options.titleText !== undefined ? { titleText: options.titleText } : {}),
 			executionCounter: options.executionCounter,
@@ -896,7 +904,10 @@ export class AgentRuntime {
 		state: LoopState;
 	}> {
 		const { list, options } = ctx;
-		await this.activeSkills?.restore(list, options?.persistence);
+		await this.activeSkills?.restore(list, options?.persistence, {
+			freshRun: ctx.isFreshRun,
+			cacheTtlMs: getPromptCacheRetentionMs(this.config.promptCaching, this.context.modelId),
+		});
 		this.context.hydrateDeferredToolsFromList(list);
 		// This note reaches the model but is not stored in conversation history.
 		list.mcpConnectionNote = formatMcpConnectionNote(this.config.mcpConnectionFailures ?? []);
@@ -1008,6 +1019,10 @@ export class AgentRuntime {
 	): Promise<ToolBatchSettlement<T>> {
 		this.assertNotAborted(ctx.abortScope);
 		this.eventBus.emit({ type: AgentEvent.TurnStart });
+		// Load the files of tool results from the last step.
+		await hydrateFileParts(ctx.list.messages(), this.config.fileStore, {
+			threadId: ctx.options?.persistence?.threadId,
+		});
 		const { toolMap, modelCallContext } = await this.prepareModelCall(ctx);
 		for (const update of this.activeSkills?.takeUpdates() ?? []) {
 			await sink.emitMessage?.(update);
@@ -1120,6 +1135,7 @@ export class AgentRuntime {
 					return undefined;
 				}
 			}
+			this.activeSkills?.reportContext();
 			const turn = await sink.callModel(modelCallContext);
 			// Price the turn before guardrails see it. The finish chunk prices
 			// the summed tokens later; mergeUsage drops per-turn cost.

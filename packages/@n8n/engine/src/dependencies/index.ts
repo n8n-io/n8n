@@ -4,6 +4,7 @@ export type {
 	ExternalDependencies,
 	IStepExecutor,
 	SubExecutionDeclaration,
+	SubExecutionMode,
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,

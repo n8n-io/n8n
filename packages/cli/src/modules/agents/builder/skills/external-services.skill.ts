@@ -1,6 +1,6 @@
 import type { RuntimeSkill } from '@n8n/agents';
 import { zodSchemaToJsonSchema } from '@n8n/ai-utilities/json-schema';
-import { ASK_QUESTIONS_TOOL_NAME, McpServerConfigSchema } from '@n8n/api-types';
+import { McpServerConfigSchema, SHARED_BUILDER_TOOL_NAMES } from '@n8n/api-types';
 
 import { jsonSchemaToCompactText } from '../../json-config/schema-text-serializer';
 import { INITIAL_BUILD_NOTE } from '../prompts/initial-build.prompt';
@@ -25,7 +25,7 @@ export function externalServicesSkill(): RuntimeSkill {
 			'agent_builder_configure_channel',
 			'setup_credentials',
 			'agent_builder_verify_mcp_server',
-			'agent_builder_ask_questions',
+			'ask_user',
 			'agent_builder_patch_config',
 			'agent_builder_write_config',
 			'report_required_artifact',
@@ -197,18 +197,18 @@ search terms for that service.
 - If it returns \`kind: "node"\` but the user explicitly requested an MCP server,
   do not silently substitute a node tool. Continue with manual MCP setup by
   asking for the URL and transport/authentication decision through
-  \`${ASK_QUESTIONS_TOOL_NAME}\`.
+  \`${SHARED_BUILDER_TOOL_NAMES.ASK_USER}\`.
 - For MCP matches, the \`context\` data contains
   \`{ kind: "mcp", results: [...] }\`. Select a result first:
   - If \`results[]\` contains one entry, use it as \`selectedResult\`.
   - If the request uniquely identifies one entry by \`name\` or \`title\`, use
     that entry as \`selectedResult\`.
-  - If multiple candidates remain, call \`agent_builder_ask_questions\` with the candidate
+  - If multiple candidates remain, call \`ask_user\` with the candidate
     titles and descriptions; never choose by array order. During an initial
-    build, do not call \`agent_builder_ask_questions\` for this: pick the best candidate by
+    build, do not call \`ask_user\` for this: pick the best candidate by
     title/description relevance yourself, and list the pick as an assumption
     in your summary. Use the chosen entry as \`selectedResult\`. If
-    \`agent_builder_ask_questions\` returns \`{ answered: false }\`, stop MCP setup without
+    \`ask_user\` returns \`{ answered: false }\`, stop MCP setup without
     selecting a server, asking for credentials, verifying a connection, or
     mutating config. Do not re-present the question.
 - Use \`name\`, \`url\`, \`transport\`, \`authentication\`, \`credentialType\`,
@@ -333,7 +333,7 @@ by \`selectedResult\`.
 
 For custom MCP servers, if credential type is unknown, ask the user which
 credential type to use (OAuth2, Bearer Token, Header Auth, Multiple Headers
-Auth, or None) via \`${ASK_QUESTIONS_TOOL_NAME}\`. Then map to:
+Auth, or None) via \`${SHARED_BUILDER_TOOL_NAMES.ASK_USER}\`. Then map to:
 
 - \`bearerAuth\` -> \`setup_credentials(target: "agent")\` with \`credentialType: "httpBearerAuth"\`
 - \`headerAuth\` -> \`setup_credentials(target: "agent")\` with \`credentialType: "httpHeaderAuth"\`

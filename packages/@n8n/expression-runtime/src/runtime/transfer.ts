@@ -25,12 +25,16 @@ export const TRANSFER_OPAQUE_KEY = '__n8nOpaque';
 /** Holds the payload of an escaped wrapper. */
 export const TRANSFER_VALUE_KEY = '__value';
 
+/** Marks the error sentinel that a bridge sends in place of a thrown error. */
+export const ERROR_SENTINEL_KEY = '__isError';
+
 /**
  * Keys that make an object look like our framing.
  *
  * An object with one of these own keys is escaped, so the host reads it as
  * data. The opaque flag is in the set for the same reason. If it were not, user
- * data that holds it would make the host return an object without a walk.
+ * data that holds it would make the host return an object without a walk. The
+ * error flag is in the set because the host throws a result that carries it.
  *
  * One type key covers every marker, so a new type does not grow this set.
  */
@@ -38,6 +42,7 @@ export const TRANSFER_FRAMING_KEYS: readonly string[] = [
 	TRANSFER_TYPE_KEY,
 	TRANSFER_ESCAPED_KEY,
 	TRANSFER_OPAQUE_KEY,
+	ERROR_SENTINEL_KEY,
 ];
 
 export interface TransferSentinel {
