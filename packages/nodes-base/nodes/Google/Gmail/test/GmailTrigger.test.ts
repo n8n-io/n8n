@@ -75,9 +75,10 @@ describe('GmailTrigger', () => {
 				{ cursor: 'new', nodeStaticData: {} },
 				{ cursor: 'existing', nodeStaticData: { lastTimeChecked: 1727777957 } },
 			])('with $cursor cursor state', ({ nodeStaticData }) => {
-				it.each(['trigger', 'manual'] as const)(
-					'should reject in %s mode with the API error metadata',
-					async (mode) => {
+				for (const mode of ['trigger', 'manual'] as const) {
+					// NODE-6293: Only scheduled polls still swallow errors.
+					const test = mode === 'trigger' ? it.fails : it;
+					test(`should reject in ${mode} mode with the API error metadata`, async () => {
 						const api = nock(baseUrl)
 							.get('/gmail/v1/users/me/messages')
 							.query(true)
@@ -106,8 +107,8 @@ describe('GmailTrigger', () => {
 						} finally {
 							api.done();
 						}
-					},
-				);
+					});
+				}
 			});
 		});
 
