@@ -135,8 +135,16 @@ function onTab(event: KeyboardEvent) {
 	focusStop(next);
 }
 
+// The mount blur has no next target. Reka treats that as leaving the list and
+// clears the highlight. Stop that event so the selected row stays highlighted.
+let releaseMountFocus = false;
+
 // A menu opened from a row sits outside the list. Keep the row highlighted.
 function onFocusOut(event: FocusEvent) {
+	if (releaseMountFocus) {
+		event.stopPropagation();
+		return;
+	}
 	const next = event.relatedTarget;
 	if (!(next instanceof Element) || !next.closest('[role="menu"]')) return;
 	event.stopPropagation();
@@ -186,7 +194,9 @@ onMounted(() => {
 			restoreScroll(marks);
 			const active = document.activeElement;
 			if (active instanceof HTMLElement && content.contains(active)) {
+				releaseMountFocus = true;
 				active.blur();
+				releaseMountFocus = false;
 			}
 		});
 	});
