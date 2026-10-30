@@ -216,7 +216,7 @@ function outcomeOf(
 ): PromotionReviewOutcome | null {
 	const { state, web_url: webUrl } = mergeRequest;
 	// A close by n8n is final, whatever the host does later.
-	if (review.state === 'closed' && !closedOnHostFirst(review, mergeRequest)) {
+	if (review.state === 'closed' && !endedOnHostFirst(review, mergeRequest)) {
 		return {
 			state: 'closed',
 			at: review.lastStateChangeAt?.toISOString() ?? null,
@@ -242,11 +242,13 @@ function outcomeOf(
 	};
 }
 
-/** n8n records a host close only after the host made it. */
-function closedOnHostFirst(review: PromotionReview, mergeRequest: GitLabMergeRequest): boolean {
-	if (mergeRequest.state !== 'closed') return false;
-	if (!mergeRequest.closed_at || !review.lastStateChangeAt) return true;
-	return new Date(mergeRequest.closed_at) <= review.lastStateChangeAt;
+/** n8n records a host merge or close only after the host made it. */
+function endedOnHostFirst(review: PromotionReview, mergeRequest: GitLabMergeRequest): boolean {
+	const { state } = mergeRequest;
+	if (state !== 'merged' && state !== 'closed') return false;
+	const endedAt = state === 'merged' ? mergeRequest.merged_at : mergeRequest.closed_at;
+	if (!endedAt || !review.lastStateChangeAt) return true;
+	return new Date(endedAt) <= review.lastStateChangeAt;
 }
 
 function newestBranchName({ runs }: PromotionReview): string | null {

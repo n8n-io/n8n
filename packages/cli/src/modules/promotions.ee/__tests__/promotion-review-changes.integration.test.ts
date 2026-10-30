@@ -460,26 +460,40 @@ describe('when the host dropped the commits of a finished review', () => {
 		expect((await changesOf(review.reviewId)).outcome).toEqual(closedByN8n);
 	}, 60_000);
 
-	it('names the host user when the host closed the review before n8n recorded it', async () => {
-		const { review, headSha, baseSha } = await promoteAndLose();
-		await Container.get(PromotionReviewRepository).update(review.reviewId, {
-			state: 'closed',
-			lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
-		});
-		finishOnHost(review.iid, {
-			state: 'closed',
-			closed_at: '2026-10-04T10:00:00.000Z',
-			closed_by: { name: 'Grace Hopper' },
-			diff_refs: { base_sha: baseSha, head_sha: headSha },
-		});
-
-		expect((await changesOf(review.reviewId)).outcome).toEqual({
-			state: 'closed',
-			at: '2026-10-04T10:00:00.000Z',
+	it.each([
+		{
+			state: 'closed' as const,
+			host: { closed_at: '2026-10-04T10:00:00.000Z', closed_by: { name: 'Grace Hopper' } },
 			by: 'Grace Hopper',
-			webUrl: hostMergeRequests.get(review.iid)?.web_url,
-		});
-	}, 60_000);
+		},
+		{
+			state: 'merged' as const,
+			host: { merged_at: '2026-10-04T10:00:00.000Z', merge_user: { name: 'Ada Lovelace' } },
+			by: 'Ada Lovelace',
+		},
+	])(
+		'names the host user when the host $state the review before n8n closed it',
+		async ({ state, host, by }) => {
+			const { review, headSha, baseSha } = await promoteAndLose();
+			await Container.get(PromotionReviewRepository).update(review.reviewId, {
+				state: 'closed',
+				lastStateChangeAt: new Date('2026-10-05T10:00:00.000Z'),
+			});
+			finishOnHost(review.iid, {
+				state,
+				...host,
+				diff_refs: { base_sha: baseSha, head_sha: headSha },
+			});
+
+			expect((await changesOf(review.reviewId)).outcome).toEqual({
+				state,
+				at: '2026-10-04T10:00:00.000Z',
+				by,
+				webUrl: hostMergeRequests.get(review.iid)?.web_url,
+			});
+		},
+		60_000,
+	);
 
 	it('still fails for an open review, which has no outcome to show', async () => {
 		const { review } = await promoteAndLose();
