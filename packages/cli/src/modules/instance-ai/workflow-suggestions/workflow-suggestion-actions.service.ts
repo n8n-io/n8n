@@ -1,6 +1,7 @@
 import type {
 	WorkflowSuggestionActionResult,
 	WorkflowSuggestionAppliedVersion,
+	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, WorkflowEntity, type OperationContext, type User } from '@n8n/db';
@@ -8,20 +9,34 @@ import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import isEqual from 'lodash/isEqual';
+import sortBy from 'lodash/sortBy';
 import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
-import { WorkflowService } from '@/workflows/workflow.service';
+import { WorkflowService, type PreparedWorkflowUpdate } from '@/workflows/workflow.service';
 
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
 import { WorkflowSuggestionRepository } from './database/workflow-suggestion.repository';
 import { WorkflowSuggestionService } from './workflow-suggestion.service';
 
-type ApplyResult =
-	| { status: 'applied'; version: WorkflowSuggestionAppliedVersion }
-	| { status: 'outdated' };
+type SuggestionGroup = Array<Pick<WorkflowSuggestion, 'id' | 'workflowId'>>;
+
+type AppliedMember = {
+	suggestion: WorkflowSuggestion;
+	update: PreparedWorkflowUpdate;
+	workflow: WorkflowEntity;
+	version: WorkflowSuggestionAppliedVersion;
+};
+
+type ApplyResult = { status: 'applied'; saved: AppliedMember[] } | { status: 'outdated' };
+
+type GroupActionResult = {
+	suggestions: WorkflowSuggestionProposalDetail[];
+	/** A publish request error does not establish whether the versions are live. */
+	publishError?: string;
+};
 
 @Service()
 export class WorkflowSuggestionActionsService {
@@ -38,59 +53,47 @@ export class WorkflowSuggestionActionsService {
 	async apply(
 		actor: User,
 		projectId: string,
-		workflowId: string,
-		suggestionId: string,
+		group: SuggestionGroup,
+		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId?: string,
-	): Promise<WorkflowSuggestionActionResult> {
-		const user = await this.service.requireEditor(actor.id, workflowId);
-		const result = await this.applySuggestion(
-			user,
-			{ workflowId, projectId },
-			suggestionId,
-			'apply',
-			clientId,
+	): Promise<GroupActionResult> {
+		const [user] = await Promise.all(
+			group.map(async ({ workflowId }) => {
+				const editor = await this.service.requireEditor(actor.id, workflowId);
+				if (
+					action === 'approve-and-publish' &&
+					!(await userHasScopes(editor, ['workflow:publish'], false, { workflowId }))
+				) {
+					throw new ForbiddenError('Workflow publish access is required.');
+				}
+				return editor;
+			}),
 		);
-		if (result.status === 'applied') await this.notifyEditors(workflowId, user.id);
-		return await this.service.getProposal(user, projectId, workflowId, suggestionId);
-	}
-
-	async approveAndPublish(
-		actor: User,
-		projectId: string,
-		workflowId: string,
-		suggestionId: string,
-		clientId?: string,
-	): Promise<WorkflowSuggestionActionResult> {
-		const user = await this.service.requireEditor(actor.id, workflowId);
-		if (!(await userHasScopes(user, ['workflow:publish'], false, { workflowId }))) {
-			throw new ForbiddenError('Workflow publish access is required.');
-		}
-		const result = await this.applySuggestion(
-			user,
-			{ workflowId, projectId },
-			suggestionId,
-			'approve-and-publish',
-			clientId,
-		);
+		const result = await this.applyGroup(user, projectId, group, action, clientId);
 		let publishError: string | undefined;
 		if (result.status === 'applied') {
-			try {
-				await this.publishAppliedVersion(
-					user,
-					workflowId,
-					result.version,
-					clientId ?? suggestionId,
-				);
-			} catch (error) {
-				// Apply is committed. The editor owns publication status and recovery.
-				publishError = ensureError(error).message;
+			if (action === 'approve-and-publish') {
+				try {
+					for (const { suggestion, version } of result.saved) {
+						await this.publishAppliedVersion(
+							user,
+							suggestion.workflowId,
+							version,
+							clientId ?? suggestion.id,
+						);
+					}
+				} catch (error) {
+					// Apply is committed. The editor owns publication status and recovery.
+					publishError = ensureError(error).message;
+				}
 			}
-			await this.notifyEditors(workflowId, user.id);
+			for (const { workflowId } of group) await this.notifyEditors(workflowId, user.id);
 		}
-		return {
-			...(await this.service.getProposal(user, projectId, workflowId, suggestionId)),
-			...(publishError !== undefined ? { publishError } : {}),
-		};
+		const suggestions: WorkflowSuggestionProposalDetail[] = [];
+		for (const { id, workflowId } of group) {
+			suggestions.push(await this.service.getProposal(user, projectId, workflowId, id));
+		}
+		return { suggestions, ...(publishError !== undefined ? { publishError } : {}) };
 	}
 
 	async discard(
@@ -109,7 +112,7 @@ export class WorkflowSuggestionActionsService {
 	async discardPending(
 		actor: User,
 		projectId: string,
-		group: Array<Pick<WorkflowSuggestion, 'id' | 'workflowId'>>,
+		group: SuggestionGroup,
 		ctx: OperationContext = {},
 	): Promise<'discarded' | 'outdated' | 'already_closed' | 'unavailable'> {
 		return await this.txRunner.run(ctx, async (ctx) => {
@@ -142,82 +145,100 @@ export class WorkflowSuggestionActionsService {
 		});
 	}
 
-	private async applySuggestion(
+	private async applyGroup(
 		user: User,
-		scope: Pick<WorkflowSuggestion, 'workflowId' | 'projectId'>,
-		suggestionId: string,
+		projectId: string,
+		group: SuggestionGroup,
 		action: WorkflowSuggestionAppliedVersion['action'],
 		clientId: string | undefined,
 	): Promise<ApplyResult> {
-		const { workflowId, projectId } = scope;
-		const { suggestion, target } = await this.service.reconcilePending(suggestionId, scope);
-
-		if (!target.workflow || target.projectId !== projectId)
-			throw new NotFoundError('Suggestion not found.');
-
-		if (suggestion.state !== 'pending') {
-			if (suggestion.closedReason !== 'outdated') {
-				throw new ConflictError('This suggestion is already closed.');
-			}
-
-			return { status: 'outdated' };
+		const suggestions: WorkflowSuggestion[] = [];
+		for (const { id, workflowId } of group) {
+			const { suggestion, target } = await this.service.reconcilePending(id, {
+				workflowId,
+				projectId,
+			});
+			if (!target.workflow || target.projectId !== projectId)
+				throw new NotFoundError('Suggestion not found.');
+			suggestions.push(suggestion);
 		}
 
-		if (action === 'approve-and-publish' && suggestion.resultKind !== 'fix_ready') {
+		if (suggestions.some(({ closedReason }) => closedReason === 'outdated')) {
+			return { status: 'outdated' };
+		}
+		if (suggestions.some(({ state }) => state !== 'pending')) {
+			throw new ConflictError('This suggestion is already closed.');
+		}
+		if (
+			action === 'approve-and-publish' &&
+			suggestions.some(({ resultKind }) => resultKind !== 'fix_ready')
+		) {
 			throw new ConflictError('Only a Fix ready suggestion can be approved and published.');
 		}
 
-		await this.collaboration.validateWriteLock(
-			user.id,
-			clientId ?? suggestion.id,
-			workflowId,
-			'update',
-		);
-
-		const prepared = await this.workflows.prepareUpdate(
-			user,
-			Object.assign(new WorkflowEntity(), structuredClone(suggestion.payload.candidate)),
-			workflowId,
-			{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
-		);
-
-		const { saved, appliedVersion } = await this.txRunner.run({}, async (ctx) => {
-			await this.validatePreparedWorkflow(suggestion, prepared.workflow, ctx);
-			await this.service.requireEditor(user.id, workflowId, ctx);
-
-			const saved = await this.workflows.savePreparedUpdate(prepared, ctx, {
-				propagateVersionHistoryErrors: true,
-			});
-
-			const appliedVersion: WorkflowSuggestionAppliedVersion = {
-				versionId: saved.versionId,
-				checksum: await calculateWorkflowChecksum(saved),
-				action,
-				actorId: user.id,
-			};
-
-			const closed = await this.suggestions.closePending(
-				suggestion,
-				'applied',
-				{ author: 'human', actorId: user.id },
-				ctx,
-				appliedVersion,
+		const prepared: Array<{ suggestion: WorkflowSuggestion; update: PreparedWorkflowUpdate }> = [];
+		for (const suggestion of sortBy(suggestions, 'workflowId')) {
+			const { workflowId } = suggestion;
+			await this.collaboration.validateWriteLock(
+				user.id,
+				clientId ?? suggestion.id,
+				workflowId,
+				'update',
 			);
-			if (!closed) throw new ConflictError('The suggestion has already closed.');
-
-			return { saved, appliedVersion };
-		});
-
-		try {
-			await this.workflows.finishUpdate(prepared, saved);
-		} catch (error) {
-			this.logger.warn('Could not finish the workflow update after Apply committed', {
-				suggestionId,
-				error,
-			});
+			const update = await this.workflows.prepareUpdate(
+				user,
+				Object.assign(new WorkflowEntity(), structuredClone(suggestion.payload.candidate)),
+				workflowId,
+				{ expectedChecksum: suggestion.expectedBaseline.checksum, source: 'n8n-ai' },
+			);
+			prepared.push({ suggestion, update });
 		}
 
-		return { status: 'applied', version: appliedVersion };
+		const saved = await this.txRunner.run({}, async (ctx) => {
+			for (const { suggestion, update } of prepared) {
+				await this.validatePreparedWorkflow(suggestion, update.workflow, ctx);
+				await this.service.requireEditor(user.id, suggestion.workflowId, ctx);
+			}
+
+			const saved: AppliedMember[] = [];
+			for (const { suggestion, update } of prepared) {
+				const workflow = await this.workflows.savePreparedUpdate(update, ctx, {
+					propagateVersionHistoryErrors: true,
+				});
+
+				const version: WorkflowSuggestionAppliedVersion = {
+					versionId: workflow.versionId,
+					checksum: await calculateWorkflowChecksum(workflow),
+					action,
+					actorId: user.id,
+				};
+
+				const closed = await this.suggestions.closePending(
+					suggestion,
+					'applied',
+					{ author: 'human', actorId: user.id },
+					ctx,
+					version,
+				);
+				if (!closed) throw new ConflictError('The suggestion has already closed.');
+
+				saved.push({ suggestion, update, workflow, version });
+			}
+			return saved;
+		});
+
+		for (const { suggestion, update, workflow } of saved) {
+			try {
+				await this.workflows.finishUpdate(update, workflow);
+			} catch (error) {
+				this.logger.warn('Could not finish the workflow update after Apply committed', {
+					suggestionId: suggestion.id,
+					error,
+				});
+			}
+		}
+
+		return { status: 'applied', saved };
 	}
 
 	private async validatePreparedWorkflow(

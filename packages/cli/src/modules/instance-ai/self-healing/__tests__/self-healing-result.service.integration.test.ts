@@ -554,7 +554,12 @@ describe('investigation eligibility after a result', () => {
 		const { input, user, project, original, suggestionId } = await fixture('fix_ready', true);
 		const producer = Container.get(SelfHealingInvestigationService);
 
-		await actions.apply(user, project.id, original.id, suggestionId!);
+		await actions.apply(
+			user,
+			project.id,
+			[{ id: suggestionId!, workflowId: original.id }],
+			'apply',
+		);
 		const failureAfterApply = await nextFailure(input);
 
 		await expect(producer.start(failureAfterApply)).rejects.toThrow('fully published');
@@ -1137,7 +1142,12 @@ it.each([
 		if (reason === 'discarded') {
 			await actions.discard(user, project.id, original.id, suggestionId!);
 		} else if (reason === 'applied') {
-			await actions.apply(user, project.id, original.id, suggestionId!);
+			await actions.apply(
+				user,
+				project.id,
+				[{ id: suggestionId!, workflowId: original.id }],
+				'apply',
+			);
 		} else {
 			await workflows.update(original.id, { settings: { executionTimeout: 60 } });
 		}
@@ -1174,7 +1184,7 @@ it('preserves outdated reconciliation when shared dismissal rejects a moved work
 
 it('reflects internal suggestion actions without a separate result update', async () => {
 	const { user, project, original, suggestionId, getDetail } = await fixture('fix_ready', true);
-	await actions.apply(user, project.id, original.id, suggestionId!);
+	await actions.apply(user, project.id, [{ id: suggestionId!, workflowId: original.id }], 'apply');
 	expect(await getDetail()).toMatchObject({
 		reviewState: 'applied',
 		dismissedAt: null,
@@ -1365,18 +1375,72 @@ describe('suggestion groups', () => {
 		]);
 	});
 
-	it('does not apply a group with more than one suggestion', async () => {
+	it.each(['apply', 'approve-and-publish'] as const)(
+		'saves every workflow in the group through %s',
+		async (action) => {
+			const { user, project, original, member, result, states } = await groupFixture();
+			const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
+
+			const detail = await service.act(user, project.id, original.id, result.id, action);
+
+			expect(detail).toMatchObject({
+				reviewState: 'applied',
+				suggestions: [{ appliedVersion: { action } }, { appliedVersion: { action } }],
+			});
+			expect(await states()).toEqual([
+				{ state: 'closed', closedReason: 'applied' },
+				{ state: 'closed', closedReason: 'applied' },
+			]);
+			const read = async () =>
+				await Promise.all(
+					[original.id, member.workflow.id].map(
+						async (id) => await workflows.findOneByOrFail({ id }),
+					),
+				);
+			const saved = await read();
+			expect(saved.map(({ versionId }) => versionId)).not.toContain(original.versionId);
+			expect(saved[1].versionId).not.toBe(member.workflow.versionId);
+			expect(publish).toHaveBeenCalledTimes(action === 'approve-and-publish' ? 2 : 0);
+
+			await expect(
+				service.act(user, project.id, original.id, result.id, action),
+			).rejects.toBeInstanceOf(ConflictError);
+			expect(await read()).toEqual(saved);
+		},
+	);
+
+	it('saves nothing when a later suggestion cannot close', async () => {
 		const { user, project, original, member, result, states } = await groupFixture();
+		const closePending = suggestions.closePending.bind(suggestions);
+		const close = vi
+			.spyOn(suggestions, 'closePending')
+			.mockImplementationOnce(closePending)
+			.mockResolvedValueOnce(false);
 
 		await expect(service.act(user, project.id, original.id, result.id, 'apply')).rejects.toThrow(
 			ConflictError,
 		);
+		expect(close).toHaveBeenCalledTimes(2);
 
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 		expect(await workflows.findOneByOrFail({ id: member.workflow.id })).toEqual(member.workflow);
 		expect(await states()).toEqual([
 			{ state: 'pending', closedReason: null },
 			{ state: 'pending', closedReason: null },
+		]);
+	});
+
+	it('saves nothing when one workflow changed after the review', async () => {
+		const { user, project, original, member, result, states } = await groupFixture();
+		await workflows.update(member.workflow.id, { settings: { executionTimeout: 60 } });
+
+		const detail = await service.act(user, project.id, original.id, result.id, 'apply');
+
+		expect(detail.reviewState).toBe('outdated');
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+		expect(await states()).toEqual([
+			{ state: 'closed', closedReason: 'outdated' },
+			{ state: 'closed', closedReason: 'outdated' },
 		]);
 	});
 });
@@ -1907,7 +1971,12 @@ describe('Inbox source reads', () => {
 			);
 			if (state === 'dismissed') await service.dismiss(user, project.id, original.id, result.id);
 			else if (state === 'applied')
-				await actions.apply(user, project.id, original.id, suggestionId!);
+				await actions.apply(
+					user,
+					project.id,
+					[{ id: suggestionId!, workflowId: original.id }],
+					'apply',
+				);
 			else if (state === 'discarded')
 				await actions.discard(user, project.id, original.id, suggestionId!);
 			else {

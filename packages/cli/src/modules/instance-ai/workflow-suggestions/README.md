@@ -24,23 +24,22 @@ The detail includes the original and proposed snapshots. Stored proposal content
 
 ## Review actions
 
-Call the matching method on `WorkflowSuggestionActionsService` with the acting user, project, workflow, and suggestion. Supply the editor client ID (`push-ref`) for Apply actions. The caller owns editor navigation and the review UI state.
+Call the matching method on `WorkflowSuggestionActionsService` with the acting user and project. `apply()` takes a group of suggestions and the action. `discard()` takes one workflow and suggestion. Supply the editor client ID (`push-ref`) for Apply actions. The caller owns editor navigation and the review UI state.
 
-| Method                | Behavior                                                                                       |
-| --------------------- | ---------------------------------------------------------------------------------------------- |
-| `approveAndPublish()` | Save the reviewed fix once. Request normal publication of that saved version.                  |
-| `apply()`             | Save the reviewed fix once without publication. The caller decides whether to open the editor. |
-| `discard()`           | Close a pending suggestion without changing the workflow.                                      |
+| Method      | Behavior                                                                                                                                                                           |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `apply()`   | Save every reviewed fix of the group once. With `approve-and-publish`, request normal publication of each saved version. Otherwise, the caller decides whether to open the editor. |
+| `discard()` | Close a pending suggestion without changing the workflow.                                                                                                                          |
 
-Use **Apply and publish** as the action label for `approveAndPublish()`. Apply accepts `fix_ready` and `needs_you` suggestions. `approveAndPublish()` accepts only `fix_ready`. All actions require current edit access. Approval also requires publish access. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
+Use **Apply and publish** as the action label for `approve-and-publish`. `apply` accepts `fix_ready` and `needs_you` suggestions. `approve-and-publish` accepts only `fix_ready`. All actions require current edit access to every workflow of the group. Approval also requires publish access to every workflow. Save and publication respect editor write locks. Publication runs credential checks and enterprise review guards.
 
-Apply calls `WorkflowService.prepareUpdate()` for normal save validation and preparation. Inside a transaction, it locks the workflow and rechecks the baseline and edit access. `savePreparedUpdate()` saves the workflow and required history. The action records the applied version, closes the suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events after commit.
+Apply calls `WorkflowService.prepareUpdate()` for each suggestion before the transaction. Inside one transaction, it locks the workflows in ID order and rechecks each baseline and edit access before it saves a workflow. `savePreparedUpdate()` saves each workflow and required history. The action records each applied version, closes each suggestion, and adds human activity before commit. `finishUpdate()` runs after-save hooks and events for each workflow after commit.
 
 Apply passes `propagateVersionHistoryErrors: true` to `savePreparedUpdate()`. A history error then fails the transaction. By default, history write errors are logged and do not stop the save.
 
-A failed transaction rolls back the workflow, history, suggestion closure, and activity. Apply returns the save error to the caller. A save error does not close the suggestion as outdated. Workflow events and later actions update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
+A failed transaction rolls back every workflow, history entry, suggestion closure, and activity of the group. If one suggestion is outdated, Apply closes the group as outdated and saves nothing. Apply returns the save error to the caller. A save error does not close the suggestion as outdated. Workflow events and later actions update that state. A competing action can cause Apply to return a conflict. After-save hook failures are logged and leave the committed application intact.
 
-`approveAndPublish()` calls the normal publisher with the saved version and checksum. A publish failure leaves the suggestion applied and returns `publishError`. Applied means saved, not published or verified fixed. The editor owns publication status, errors, and retries.
+`approve-and-publish` calls the normal publisher with each saved version and checksum. The first publish failure stops later requests, leaves the suggestions applied, and returns `publishError`. Applied means saved, not published or verified fixed. The editor owns publication status, errors, and retries.
 
 After either Apply action, the caller must check `closedReason` before opening the editor or showing success. Open the editor only when it is `applied`. If it is `outdated`, keep the review open and explain that the workflow has changed. If the save fails, keep the review open and show the error.
 

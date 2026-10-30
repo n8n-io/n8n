@@ -6,7 +6,6 @@ import {
 	type SelfHealingExecutionReference,
 	type SelfHealingResultDetail,
 	type SelfHealingResultActionResponse,
-	type WorkflowSuggestionActionResult,
 	type WorkflowSuggestionAppliedVersion,
 	type WorkflowSuggestionBaseline,
 	type WorkflowSuggestionProposalDetail,
@@ -316,38 +315,21 @@ export class SelfHealingResultService {
 		if (suggestions.length === 0 || !allowedOutcomes.includes(result.outcome)) {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
-		if (suggestions.length > 1) {
-			throw new ConflictError('A fix that changes more than one workflow cannot be applied yet.');
-		}
-		const [target] = suggestions;
+		const { suggestions: proposals, publishError } = await this.actions.apply(
+			reviewer,
+			projectId,
+			suggestions,
+			action,
+			clientId,
+		);
 
-		let actionResult: WorkflowSuggestionActionResult;
-		if (action === 'approve-and-publish') {
-			actionResult = await this.actions.approveAndPublish(
-				reviewer,
-				projectId,
-				target.workflowId,
-				target.id,
-				clientId,
-			);
-		} else {
-			actionResult = await this.actions.apply(
-				reviewer,
-				projectId,
-				target.workflowId,
-				target.id,
-				clientId,
-			);
-		}
-
-		const { publishError, ...suggestion } = actionResult;
 		const execution = await this.executionReferences.getReference(
 			reviewer,
 			workflowId,
 			result.executionId,
 		);
 		return {
-			...this.toDetail(result, [suggestion], execution),
+			...this.toDetail(result, proposals, execution),
 			...(publishError !== undefined ? { publishError } : {}),
 		};
 	}

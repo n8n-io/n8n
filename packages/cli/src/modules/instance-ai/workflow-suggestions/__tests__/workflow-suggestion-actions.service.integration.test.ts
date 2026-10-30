@@ -122,14 +122,16 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	const { user, workflow, original, project, graph, prepared } = await prepareFixture(resultKind);
 	const suggestion = await suggestionService.createSuggestion(prepared);
 	const act = async (action: WorkflowSuggestionAction, actor = user) => {
-		switch (action) {
-			case 'apply':
-				return await actions.apply(actor, project.id, workflow.id, suggestion.id);
-			case 'approve-and-publish':
-				return await actions.approveAndPublish(actor, project.id, workflow.id, suggestion.id);
-			case 'discard':
-				return await actions.discard(actor, project.id, workflow.id, suggestion.id);
+		if (action === 'discard') {
+			return await actions.discard(actor, project.id, workflow.id, suggestion.id);
 		}
+		const { suggestions: proposals, publishError } = await actions.apply(
+			actor,
+			project.id,
+			[suggestion],
+			action,
+		);
+		return { ...proposals[0], publishError };
 	};
 	return { user, workflow, original, project, graph, suggestion, act };
 }

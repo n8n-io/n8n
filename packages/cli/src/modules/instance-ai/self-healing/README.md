@@ -339,8 +339,9 @@ Routes use `/projects/:projectId/workflows/:workflowId/self-healing-results`:
 Project members who are assigned reviewers or, when selected, part of the project members group
 can review results with current edit access to the triggering workflow and every suggestion
 workflow. Approval also requires publish access. Approval accepts only Fix ready results. Apply
-accepts Fix ready and Needs attention results that have a suggestion. Apply and approval reject a
-result with more than one suggestion. Reviewer filtering applies to Inbox lists, counts, details,
+accepts Fix ready and Needs attention results that have a suggestion. Apply and approval save every
+suggestion of the result in one transaction. Approval then requests publication of each saved
+workflow and stops at the first request error. Reviewer filtering applies to Inbox lists, counts, details,
 and actions. Each action resolves its suggestions from the result and returns the updated review.
 The detail lists the suggestions with the triggering workflow first.
 Send the editor client ID in `push-ref` for Apply actions.
@@ -362,7 +363,7 @@ A dismissal recorded before automatic closure still returns `dismissed`.
 Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. `publishError` describes that request only. The response includes the workflow
-ID and the suggestion's recorded applied version. Open the normal editor for publication status
+ID and the recorded applied version of each suggestion. Open the normal editor for publication status
 and recovery.
 
 Continuation applies a suggestion to the workflow draft, or dismisses a result without one.
