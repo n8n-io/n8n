@@ -7,6 +7,7 @@ import type {
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
+	SkillSourceMoreDiscovery,
 	SkillSourceRepositoryOption,
 } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
@@ -41,7 +42,12 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 
 import { useSkillsStore } from '../skills.store';
-import { parseScope, useSkillSourceReasons } from '../skills.utils';
+import {
+	PROJECT_SCOPE_PREFIX,
+	parseScope,
+	useSkillScopeDisplay,
+	useSkillSourceReasons,
+} from '../skills.utils';
 
 /** What the page needs to confirm an import: the answer, and the names it shows in the toast. */
 export type SkillSourceConnected = {
@@ -52,6 +58,8 @@ export type SkillSourceConnected = {
 
 const props = defineProps<{
 	open: boolean;
+	/** A connected source: the dialog adds more skills from it, in its own scope. */
+	sourceId?: string;
 	/** The scopes where the user may create skills, as the create modal lists them. */
 	scopeOptions: AgentSkillModalScopeOption[];
 }>();
@@ -91,7 +99,10 @@ const scope = ref('');
 const discovering = ref(false);
 const connecting = ref(false);
 const linkError = ref('');
-const discovery = ref<SkillSourceDiscovery | null>(null);
+const discovery = ref<SkillSourceDiscovery | SkillSourceMoreDiscovery | null>(null);
+/** Set while the dialog adds more skills from a connected source. */
+const activeSourceId = ref<string>();
+const { scopeDisplay } = useSkillScopeDisplay();
 const selected = ref<string[]>([]);
 /** The link and credential that the shown discovery read, which connect sends again. */
 const discovered = ref<{ url: string; credentialId?: string } | null>(null);
@@ -129,9 +140,10 @@ function resetRepositories() {
 }
 
 watch(
-	() => props.open,
-	(open) => {
+	() => [props.open, props.sourceId] as const,
+	([open, sourceId]) => {
 		if (!open) return;
+		activeSourceId.value = undefined;
 		discoverRun += 1;
 		credentialsRun += 1;
 		discovering.value = false;
@@ -150,7 +162,8 @@ watch(
 		resetRepositories();
 		reviewed.value = false;
 		previewKey.value = null;
-		void loadCredentials();
+		if (sourceId) void openMore(sourceId);
+		else void loadCredentials();
 	},
 	{ immediate: true },
 );
@@ -158,13 +171,23 @@ watch(
 // A new link, scope, credential or repository needs a new read, so the old answer and its
 // messages go.
 watch([url, scope, credentialId, owner, repositoryName, mode], () => {
+	// Add more keeps the scope of its source, which it sets itself.
+	if (activeSourceId.value) return;
 	linkError.value = '';
 	discovery.value = null;
 });
 
-const selectedScope = computed(() =>
-	props.scopeOptions.find((option) => option.value === scope.value),
-);
+/** The chosen scope. Add more shows the scope of its source, which the user may not create in. */
+const selectedScope = computed(() => {
+	const source = discovery.value?.source;
+	if (source && 'scope' in source) {
+		return {
+			value: scope.value,
+			...scopeDisplay({ ...source, agentName: null }),
+		};
+	}
+	return props.scopeOptions.find((option) => option.value === scope.value);
+});
 
 const scopeHint = computed(() => {
 	const option = selectedScope.value;
@@ -437,7 +460,11 @@ function onCredentialSelect(value: string) {
 	createdCredential.value = null;
 }
 
-const duplicate = computed(() => discovery.value?.duplicate ?? { kind: 'none' as const });
+const duplicate = computed(() =>
+	discovery.value && 'duplicate' in discovery.value
+		? discovery.value.duplicate
+		: { kind: 'none' as const },
+);
 
 const duplicateMessage = computed(() => {
 	const dup = duplicate.value;
@@ -609,18 +636,56 @@ function withSkillName(
 	return { ...failure, name: skill ? (skill.name ?? skill.location) : null };
 }
 
+/** Lists the skills of a connected source that are not imported yet. */
+async function openMore(sourceId: string) {
+	activeSourceId.value = sourceId;
+	step.value = 'choose';
+	discovery.value = null;
+	selected.value = [];
+	reviewed.value = false;
+	linkError.value = '';
+	const run = ++discoverRun;
+	discovering.value = true;
+	try {
+		const result = await skillsStore.discoverMore(sourceId);
+		if (run !== discoverRun || !props.open) return;
+		const { source } = result;
+		scope.value =
+			source.scope === 'instance' ? 'instance' : `${PROJECT_SCOPE_PREFIX}${source.projectId}`;
+		discovery.value = result;
+		selected.value = result.skills.filter(isSelectable).map((skill) => skill.key);
+		selectTab(PICKER_TABS.find((tab) => skillsByTab.value[tab].length > 0) ?? 'ready');
+	} catch (error) {
+		if (run === discoverRun && props.open) linkError.value = discoverErrorText(error);
+	} finally {
+		if (run === discoverRun) discovering.value = false;
+	}
+}
+
+/** How many skills of the connected source are imported already. */
+const alreadyAdded = computed(() => {
+	const source = discovery.value?.source;
+	return source && 'skillCount' in source ? source.skillCount : 0;
+});
+
 async function onAdd() {
 	const source = discovery.value?.source;
 	const target = discovered.value;
-	if (!source || !target || !canAdd.value) return;
+	const sourceId = activeSourceId.value;
+	if (!source || (!target && !sourceId) || !canAdd.value) return;
+	const picked = {
+		skillKeys: selected.value,
+		...(needsReview.value ? { reviewedSkillKeys: needsReviewKeys.value } : {}),
+	};
 	connecting.value = true;
 	try {
-		const response = await skillsStore.connectSource({
-			...target,
-			...parseScope(scope.value),
-			skillKeys: selected.value,
-			...(needsReview.value ? { reviewedSkillKeys: needsReviewKeys.value } : {}),
-		});
+		// A connected source adds to itself. A new link connects first.
+		const response = sourceId
+			? await skillsStore.addSourceSkills(sourceId, picked)
+			: target
+				? await skillsStore.connectSource({ ...target, ...parseScope(scope.value), ...picked })
+				: null;
+		if (!response) return;
 		emit('connected', {
 			response: { ...response, failed: response.failed.map(withSkillName) },
 			sourceLabel: source.label,
@@ -652,11 +717,12 @@ function onInteractOutside(event: Event) {
 	if (credentialModalOpen.value) event.preventDefault();
 }
 
-const title = computed(() =>
-	step.value === 'choose'
+const title = computed(() => {
+	if (activeSourceId.value) return i18n.baseText('settings.context.skills.more.title');
+	return step.value === 'choose'
 		? i18n.baseText('settings.context.skills.connect.choose.title')
-		: i18n.baseText('settings.context.skills.connect.start.title'),
-);
+		: i18n.baseText('settings.context.skills.connect.start.title');
+});
 
 type PickerTab = 'review' | 'ready' | 'unavailable';
 
@@ -856,6 +922,16 @@ function unavailableReason(skill: DiscoveredSkill): string {
 					<N8nDialogDescription :class="[$style.description, $style.source]">
 						<N8nIcon icon="git-branch" size="small" />
 						<span data-test-id="skill-source-summary">{{ sourceLine }}</span>
+						<template v-if="activeSourceId">
+							<span aria-hidden="true">·</span>
+							<span data-test-id="skill-source-already-added">
+								{{
+									i18n.baseText('settings.context.skills.more.alreadyAdded', {
+										interpolate: { count: alreadyAdded },
+									})
+								}}
+							</span>
+						</template>
 					</N8nDialogDescription>
 					<N8nTabs
 						:model-value="activeTab"
@@ -1023,7 +1099,39 @@ function unavailableReason(skill: DiscoveredSkill): string {
 				data-test-id="skill-source-duplicate"
 			>
 				{{ duplicateMessage }}
+				<template v-if="duplicate.kind === 'blocked' && duplicate.sourceId" #trailingContent>
+					<N8nButton
+						variant="outline"
+						size="small"
+						:label="i18n.baseText('settings.context.skills.more.title')"
+						data-test-id="skill-source-duplicate-add-more"
+						@click="openMore(duplicate.sourceId)"
+					/>
+				</template>
 			</N8nCallout>
+		</N8nDialogBody>
+
+		<!-- Add more reads the connected source before the picker can show. -->
+		<N8nDialogBody
+			v-else-if="activeSourceId && (discovering || linkError)"
+			:class="[$style.body, $style.bodyWithTabs]"
+		>
+			<N8nText v-if="discovering" color="text-light" data-test-id="skill-source-more-loading">
+				{{ i18n.baseText('settings.context.skills.more.loading') }}
+			</N8nText>
+			<template v-else>
+				<N8nCallout theme="danger" data-test-id="skill-source-link-error">{{
+					linkError
+				}}</N8nCallout>
+				<div>
+					<N8nButton
+						variant="outline"
+						:label="i18n.baseText('generic.retry')"
+						data-test-id="skill-source-more-retry"
+						@click="openMore(activeSourceId)"
+					/>
+				</div>
+			</template>
 		</N8nDialogBody>
 
 		<N8nDialogBody v-else-if="discovery" :class="[$style.body, $style.bodyWithTabs]">
@@ -1067,7 +1175,15 @@ function unavailableReason(skill: DiscoveredSkill): string {
 						data-test-id="skill-source-no-skills"
 					>
 						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('settings.context.skills.connect.noLocalSkills') }}
+							{{
+								i18n.baseText(
+									!activeSourceId
+										? 'settings.context.skills.connect.noLocalSkills'
+										: discovery.truncated || discovery.tooDeep
+											? 'settings.context.skills.more.emptyLimited'
+											: 'settings.context.skills.more.empty',
+								)
+							}}
 						</N8nText>
 					</li>
 					<template v-for="group in tabGroups" :key="group.id || '__other__'">
@@ -1301,7 +1417,7 @@ function unavailableReason(skill: DiscoveredSkill): string {
 
 		<N8nDialogFooter>
 			<N8nButton
-				v-if="step === 'choose'"
+				v-if="step === 'choose' && !activeSourceId"
 				variant="ghost"
 				:label="i18n.baseText('generic.back')"
 				:disabled="connecting"

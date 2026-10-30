@@ -55,18 +55,25 @@ export class DiscoverSkillSourceDto extends Z.class(skillSourceTarget) {}
 
 export const SKILL_SOURCE_MAX_SKILLS = 200;
 
-/** Connects the source in the scope and imports the picked skills. */
-export class ConnectSkillSourceDto extends Z.class({
-	...skillSourceTarget,
+const skillSourceSelection = {
 	/** The `key` of each picked skill, as discover answered it. */
 	skillKeys: z.array(z.string().min(1).max(2048)).min(1).max(SKILL_SOURCE_MAX_SKILLS),
 	/**
 	 * The `key` of each picked skill that the picker showed as needing review, when the user
-	 * ticked "I reviewed the warnings". Connect imports a skill that needs review only when its
-	 * key is in this list.
+	 * ticked "I reviewed the warnings". A skill that needs review comes in only when its key is
+	 * in this list.
 	 */
 	reviewedSkillKeys: z.array(z.string().min(1).max(2048)).max(SKILL_SOURCE_MAX_SKILLS).optional(),
+};
+
+/** Connects the source in the scope and imports the picked skills. */
+export class ConnectSkillSourceDto extends Z.class({
+	...skillSourceTarget,
+	...skillSourceSelection,
 }) {}
+
+/** Adds picked skills to an existing source. Its stored scope and branch apply. */
+export class AddSkillSourceSkillsDto extends Z.class(skillSourceSelection) {}
 
 /** The source that a link points to. */
 export type SkillSourceSummary = {
@@ -225,4 +232,20 @@ export type SkillSourceRepositoryList = {
 	repositories: SkillSourceRepositoryOption[];
 	/** True when the credential can read more repositories than n8n lists. */
 	truncated: boolean;
+};
+
+/** A connected source that the user can see. Credential data stays on the server. */
+export type SkillSourceListItem = SkillSourceSummary & {
+	id: string;
+	scope: 'instance' | 'project';
+	projectId: string | null;
+	projectName: string | null;
+	projectType: 'personal' | 'team' | null;
+	skillCount: number;
+	canAddSkills: boolean;
+};
+
+/** Remaining remote skills and the fixed destination for Add more. */
+export type SkillSourceMoreDiscovery = Omit<SkillSourceDiscovery, 'source' | 'duplicate'> & {
+	source: SkillSourceListItem;
 };

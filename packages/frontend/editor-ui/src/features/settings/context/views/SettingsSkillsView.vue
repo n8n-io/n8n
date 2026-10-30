@@ -30,6 +30,7 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
+	N8nTabs,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
@@ -58,6 +59,7 @@ import type {
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
+import SkillSources from '../components/SkillSources.vue';
 import SkillsTable from '../components/SkillsTable.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
@@ -108,6 +110,18 @@ const { scopeDisplay } = useSkillScopeDisplay();
 const { failedSkillReason } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
+const connectSourceId = ref<string>();
+const selectedTab = ref(route.query.tab === 'sources' ? 'sources' : 'skills');
+const showingSources = computed(() => skillSyncEnabled.value && selectedTab.value === 'sources');
+const tabs = computed(() => [
+	{ value: 'skills', label: i18n.baseText('settings.context.skills.title') },
+	{ value: 'sources', label: i18n.baseText('settings.context.sources.title') },
+]);
+
+function openAddMore(sourceId: string) {
+	connectSourceId.value = sourceId;
+	connectOpen.value = true;
+}
 
 const tableOptions = ref<TableOptions>({
 	page: 0,
@@ -379,8 +393,10 @@ const skillFileInput = useTemplateRef<HTMLInputElement>('skillFileInput');
 const { importSkillFiles } = useAgentSkillImport();
 
 function onCreateMenuSelect(action: CreateAction) {
-	if (action === 'github') connectOpen.value = true;
-	else if (action === 'uploadFolder') skillFolderInput.value?.click();
+	if (action === 'github') {
+		connectSourceId.value = undefined;
+		connectOpen.value = true;
+	} else if (action === 'uploadFolder') skillFolderInput.value?.click();
 	else if (action === 'uploadFile') skillFileInput.value?.click();
 	else openCreateModal({ initialStep: 'manual' });
 }
@@ -449,6 +465,13 @@ async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSou
 	}
 	void loadCreators();
 	await load();
+	if (showingSources.value) {
+		try {
+			await skillsStore.fetchSources();
+		} catch (error) {
+			showError(error, i18n.baseText('settings.context.sources.error'));
+		}
+	}
 }
 
 /**
@@ -751,7 +774,20 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<div :class="$style.toolbar">
+		<N8nTabs
+			v-if="skillSyncEnabled"
+			v-model="selectedTab"
+			:options="tabs"
+			variant="modern"
+			data-test-id="skill-source-tabs"
+		/>
+		<SkillSources
+			v-if="showingSources"
+			:can-connect="scopeOptions.length > 0"
+			@add-more="openAddMore"
+			@connect="onCreateMenuSelect('github')"
+		/>
+		<div v-else :class="$style.toolbar">
 			<N8nInput
 				v-model="search"
 				:class="$style.search"
@@ -871,6 +907,7 @@ onMounted(async () => {
 		</div>
 
 		<SkillsTable
+			v-if="!showingSources"
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
@@ -916,6 +953,7 @@ onMounted(async () => {
 		<SkillSourceConnectDialog
 			v-if="skillSyncEnabled"
 			v-model:open="connectOpen"
+			:source-id="connectSourceId"
 			:scope-options="scopeOptions"
 			@connected="onSourceConnected"
 		/>

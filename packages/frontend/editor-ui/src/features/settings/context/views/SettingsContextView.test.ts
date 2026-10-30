@@ -1,3 +1,5 @@
+import { SKILL_SYNC_FLAG } from '@n8n/api-types';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -51,6 +53,16 @@ describe('SettingsContextView', () => {
 		const { getByText } = renderView();
 
 		expect(getByText('Preview')).toBeInTheDocument();
+	});
+
+	it('opens the source tab when skills and Skill Sync are enabled', async () => {
+		flags.skills = true;
+		mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
+			(flag) => String(flag) === SKILL_SYNC_FLAG,
+		);
+		const view = renderView();
+		await userEvent.click(view.getByTestId('settings-context-sources-row'));
+		expect(push).toHaveBeenCalledWith({ name: 'SettingsContextSkills', query: { tab: 'sources' } });
 	});
 
 	it('lists Preferences, Skills and Sources', () => {

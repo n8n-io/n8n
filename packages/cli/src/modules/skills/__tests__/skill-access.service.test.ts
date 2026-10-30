@@ -27,6 +27,34 @@ describe('SkillAccessService', () => {
 
 	beforeEach(async () => await resetSkillMocks({ skills, usage, txRunner }));
 
+	describe('sourceAccessCheck', () => {
+		it('resolves project permissions once for all sources and checks Global separately', async () => {
+			projectScope.getProjectIds.mockResolvedValue([PROJECT]);
+			vi.mocked(hasGlobalScope).mockReturnValue(false);
+
+			const canAdd = await access.sourceAccessCheck(user, 'addSkills');
+
+			for (let i = 0; i < 100; i++) expect(canAdd({ projectId: PROJECT })).toBe(true);
+			expect(canAdd({ projectId: 'other-project' })).toBe(false);
+			expect(canAdd({ projectId: null })).toBe(false);
+			expect(projectScope.getProjectIds).toHaveBeenCalledExactlyOnceWith(user, [
+				'projectSkill:create',
+			]);
+			expect(hasGlobalScope).toHaveBeenCalledExactlyOnceWith(user, 'skill:create');
+			expect(userHasScopes).not.toHaveBeenCalled();
+		});
+
+		it('allows all projects when the global role grants project create', async () => {
+			projectScope.getProjectIds.mockResolvedValue(null);
+			vi.mocked(hasGlobalScope).mockReturnValue(true);
+
+			const canAdd = await access.sourceAccessCheck(user, 'addSkills');
+
+			expect(canAdd({ projectId: 'any-project' })).toBe(true);
+			expect(canAdd({ projectId: null })).toBe(true);
+		});
+	});
+
 	describe('canAccess for update', () => {
 		it('checks projectSkill:update on the project of a project skill', async () => {
 			vi.mocked(userHasScopes).mockResolvedValue(true);
