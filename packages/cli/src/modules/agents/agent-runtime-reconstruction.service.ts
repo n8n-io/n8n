@@ -80,6 +80,7 @@ import {
 	type ManagedEmbeddingProviderOptions,
 	type ToolResolver,
 } from './json-config/from-json-config';
+import type { HeldResult } from './json-config/test-sandbox';
 import { toAgentDocument } from './json-config/agent-document';
 import { buildMcpClientForServer } from './json-config/mcp-client-factory';
 import { resolveCredentialAwareModelConfig } from './json-config/model-config';
@@ -186,6 +187,8 @@ interface RuntimeReconstructionOptions extends ReconstructAgentRuntimeParams {
 	unavailableTools?: UnavailableTool[];
 	/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
 	previewChat?: boolean;
+	/** Test-chat sandbox only — see `BuildFromJsonOptions.heldTools`. */
+	heldTools?: ReadonlyMap<string, HeldResult>;
 }
 
 interface RuntimeDependencies
@@ -197,6 +200,7 @@ interface RuntimeDependencies
 		| 'allowBackgroundTasks'
 		| 'unavailableTools'
 		| 'previewChat'
+		| 'heldTools'
 	> {
 	agent: RuntimeAgent;
 	agentId: string;
@@ -310,6 +314,7 @@ export class AgentRuntimeReconstructionService {
 		{
 			supportsHitl,
 			previewChat,
+			heldTools,
 			allowBackgroundTasks = true,
 			allowPlanTools = true,
 			attributionUserId,
@@ -319,6 +324,8 @@ export class AgentRuntimeReconstructionService {
 			supportsHitl?: boolean;
 			/** Set by the in-app preview chat only — see `BuildFromJsonOptions.previewChat`. */
 			previewChat?: boolean;
+			/** Test-chat sandbox only — see `BuildFromJsonOptions.heldTools`. */
+			heldTools?: ReadonlyMap<string, HeldResult>;
 			/** Disable background jobs for task-triggered runtimes. */
 			allowBackgroundTasks?: boolean;
 			allowPlanTools?: boolean;
@@ -380,6 +387,7 @@ export class AgentRuntimeReconstructionService {
 			allowBackgroundTasks,
 			allowPlanTools,
 			previewChat,
+			heldTools,
 		});
 		return {
 			...runtime,
@@ -677,6 +685,7 @@ export class AgentRuntimeReconstructionService {
 			skills,
 			instrumentation,
 			previewChat,
+			heldTools,
 		} = options;
 		const toolExecutor = this.secureRuntime.createToolExecutor(toolCodeByName);
 		const toolResolver = this.createRuntimeToolResolver(
@@ -709,6 +718,7 @@ export class AgentRuntimeReconstructionService {
 			attachAuthPendingMcpServers: instrumentation?.mcpFetch !== undefined,
 			webSearchFetch,
 			previewChat,
+			heldTools,
 		});
 		return { agent: reconstructed, resolvedTools, mcpServerAttributions };
 	}

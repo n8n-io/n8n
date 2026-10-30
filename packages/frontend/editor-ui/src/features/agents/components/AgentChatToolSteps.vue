@@ -120,7 +120,14 @@ function toolStepLabel(tc: ToolCall, isCompact = false): string {
 	return getToolDisplayName(tc.tool, isCompact ? tc.output : undefined);
 }
 
+/** A call the test chat held instead of running: see `json-config/test-sandbox.ts`. */
+function isHeldInTest(tc: ToolCall): boolean {
+	const output = tc.output as { testMode?: unknown; status?: unknown } | null | undefined;
+	return output?.testMode === true && output.status === 'held';
+}
+
 function toolStepMetadata(tc: ToolCall): string[] {
+	if (isHeldInTest(tc)) return [i18n.baseText('agents.chat.toolHeld')];
 	if (isDelegateSubAgentTool(tc.tool)) {
 		return [
 			resolveSubAgentName(tc.input, subAgentNameById.value),

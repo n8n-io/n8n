@@ -28,6 +28,10 @@ vi.mock('@n8n/i18n', () => ({
 	useI18n: () => ({ baseText: (key: string) => key }),
 }));
 
+// The test-chat review rides the agent evals flag, which reads the settings store.
+vi.mock('../composables/useTestAgentPreviewFlag', () => ({
+	useTestAgentPreviewFlag: () => ({ isFeatureEnabled: { value: false } }),
+}));
 vi.mock('../agentSessions.store', () => ({
 	useAgentSessionsStore: () => ({ loading: false }),
 }));

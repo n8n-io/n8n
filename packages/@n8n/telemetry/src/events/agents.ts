@@ -747,6 +747,40 @@ export const AGENTS_TELEMETRY = defineTelemetryEvents({
 			push_ref: pushRef,
 		}),
 	},
+	USER_ASKED_FOR_AGENT_TEST_IDEAS: {
+		name: 'User asked for agent test ideas',
+		description:
+			'The user asked for suggested messages to try in an empty test chat. Fires when the ideas arrive.',
+		properties: z.object({
+			agent_id: z.string(),
+			idea_count: z.number().describe('Number of ideas shown, 0 to 3'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_PICKED_AGENT_TEST_IDEA: {
+		name: 'User picked agent test idea',
+		description: 'The user sent a suggested message in the test chat.',
+		properties: z.object({
+			agent_id: z.string(),
+			kind: z
+				.enum(['everyday', 'rule', 'action'])
+				.describe('What the idea tries: a common request, a written rule, or a tool that acts'),
+			push_ref: pushRef,
+		}),
+	},
+	USER_JUDGED_AGENT_TEST_REPLY: {
+		name: 'User judged agent test reply',
+		description:
+			'The user marked a test chat reply as right, or as not right with a note. The note text is not sent.',
+		properties: z.object({
+			agent_id: z.string(),
+			execution_id: z.string(),
+			verdict: z.enum(['looks-right', 'not-right']),
+			note_length: z.number().describe('Characters in the note, 0 when there is none'),
+			had_check_issues: z.boolean().describe('Whether code checks flagged the reply'),
+			push_ref: pushRef,
+		}),
+	},
 	USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL: {
 		name: 'User clicked more options from test panel',
 		description:

@@ -60,6 +60,13 @@ describe('AgentEvalsController', () => {
 	const datasetReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, datasetId: 'ds-1' });
 	const runReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, runId: 'run-1' });
 	const resultReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, resultId: 'res-1' });
+	const replyReq = () =>
+		makeReq({
+			projectId: PROJECT_ID,
+			agentId: AGENT_ID,
+			threadId: 'thread-1',
+			executionId: 'exec-1',
+		});
 
 	beforeEach(() => {
 		service = mock<AgentEvalService>();
@@ -128,6 +135,9 @@ describe('AgentEvalsController', () => {
 			applySuggestions: 'agent:update',
 			applyPreviewSuggestion: 'agent:update',
 			runOnlineChecks: 'agent:update',
+			// Ideas spend model credits like the test chat they feed, so the same scope.
+			suggestPromptIdeas: 'agent:execute',
+			getReplyChecks: 'agent:read',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -207,6 +217,8 @@ describe('AgentEvalsController', () => {
 			['listRatingsForResult', async () => await controller.listRatingsForResult(resultReq())],
 			['listLatestRatingsForRun', async () => await controller.listLatestRatingsForRun(runReq())],
 			['runOnlineChecks', async () => await controller.runOnlineChecks(agentReq())],
+			['suggestPromptIdeas', async () => await controller.suggestPromptIdeas(agentReq())],
+			['getReplyChecks', async () => await controller.getReplyChecks(replyReq())],
 		];
 
 		it.each(calls)('%s 404s when the flag is off for the user', async (_name, call) => {
@@ -223,6 +235,24 @@ describe('AgentEvalsController', () => {
 	});
 
 	describe('delegation', () => {
+		it('suggests prompt ideas for the path agent as the caller', async () => {
+			await controller.suggestPromptIdeas(agentReq());
+
+			expect(onlineChecksService.promptIdeas).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID);
+		});
+
+		it('checks the reply of the path execution as the caller', async () => {
+			await controller.getReplyChecks(replyReq());
+
+			expect(onlineChecksService.replyChecks).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				'thread-1',
+				'exec-1',
+			);
+		});
+
 		it('runs online checks for the path agent as the caller', async () => {
 			await controller.runOnlineChecks(agentReq());
 

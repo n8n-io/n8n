@@ -79,6 +79,8 @@ const emit = defineEmits<{
 defineSlots<{
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/** Host content under a finished agent reply, always visible (the footer shows on hover). */
+	'message-review'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 }>();
 
 const i18n = useI18n();
@@ -761,6 +763,12 @@ watch(
 							</template>
 						</AgentChatMessageActions>
 					</div>
+					<slot
+						v-if="group.finalMessage && shouldShowAssistantFooter(group.id)"
+						name="message-review"
+						:message="group.finalMessage"
+						:execution-id="group.executionId ?? group.finalMessage.executionId"
+					/>
 					<AgentTypingIndicator
 						v-if="
 							group.id === streamingGroupId &&
@@ -951,6 +959,12 @@ watch(
 							@update:open="setMemoryFooterOpen(group.id, $event)"
 						/>
 					</div>
+					<slot
+						v-if="shouldShowAssistantFooter(group.id)"
+						name="message-review"
+						:message="group.message"
+						:execution-id="group.message.executionId"
+					/>
 					<AgentTypingIndicator
 						v-if="
 							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&

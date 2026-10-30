@@ -214,6 +214,8 @@ defineSlots<{
 	 * `executionId` is the agent execution of the turn, when it is known.
 	 */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
+	/** Content under a finished agent reply, always visible. */
+	'message-review'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 	/** Content below the composer. */
 	'input-footer'?: () => unknown;
 }>();
@@ -1278,7 +1280,9 @@ async function submitQueuedExternalMessage() {
 	let result: SubmitResult = 'rejected';
 	try {
 		inputText.value = message;
-		result = await onSubmit();
+		// Send the message itself: when the host owns the draft, `inputText` reads
+		// the host's prop, which still holds the old draft until the host re-renders.
+		result = await submitDraft(message.trim(), [...attachedFiles.value]);
 	} finally {
 		submittingQueuedExternalMessage = false;
 	}
@@ -1491,6 +1495,9 @@ onBeforeUnmount(() => {
 		>
 			<template v-if="$slots['message-actions']" #message-actions="actionProps">
 				<slot name="message-actions" v-bind="actionProps" />
+			</template>
+			<template v-if="$slots['message-review']" #message-review="reviewProps">
+				<slot name="message-review" v-bind="reviewProps" />
 			</template>
 		</AgentChatMessageList>
 

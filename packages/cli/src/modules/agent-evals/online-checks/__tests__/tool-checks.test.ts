@@ -1,4 +1,4 @@
-import { generateToolChecks, runToolChecks } from '../tool-checks';
+import { generateToolChecks, replyIssues, runToolChecks } from '../tool-checks';
 import type { AgentToolProfile, ChatTurn, TimelineEvent } from '../types';
 
 const reads: AgentToolProfile = {
@@ -207,5 +207,35 @@ describe('runToolChecks', () => {
 		]);
 
 		expect(verdict?.reason).toBe('The run failed and the person got no reply.');
+	});
+});
+
+describe('replyIssues', () => {
+	it('does not report a turn that waits for an approval as a turn with no reply', () => {
+		const waiting = turn(
+			[
+				toolCall('refund_order', 'c1', { success: false, endTime: 0 }),
+				{ type: 'suspension', toolName: 'refund_order', toolCallId: 'c1', timestamp: 1 },
+			],
+			'',
+		);
+
+		expect(replyIssues([actsWithApproval], waiting)).toEqual([]);
+	});
+
+	it('returns nothing for a reply whose checks all pass', () => {
+		expect(replyIssues([reads], turn([toolCall('list_orders', 'c1')]))).toEqual([]);
+	});
+
+	it('returns each failed check with its plain reason', () => {
+		const failed = turn(
+			[toolCall('list_orders', 'c1', { output: { status: 'error', error: 'Timeout' } })],
+			'',
+		);
+
+		expect(replyIssues([reads], failed)).toEqual([
+			{ checkId: 'tool:empty_reply', reason: expect.any(String) },
+			{ checkId: 'tool:tool_failed', reason: 'The tool "list_orders" failed: Timeout' },
+		]);
 	});
 });

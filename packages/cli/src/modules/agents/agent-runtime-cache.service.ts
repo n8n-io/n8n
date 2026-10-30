@@ -1,4 +1,5 @@
 import type { Agent as RuntimeAgent } from '@n8n/agents';
+import { AGENT_EVALS_FLAG, type AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
@@ -8,6 +9,9 @@ import { UserError } from 'n8n-workflow';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IAgentConfigurationTelemetryProperties } from '@/interfaces';
+// A pure helper shared with the agent checks; it reads only the agent config.
+import { profileAgentTools } from '@/modules/agent-evals/online-checks/tool-profile';
+import { PostHogClient } from '@/posthog';
 import type { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { TtlMap } from '@/utils/ttl-map';
 
@@ -17,6 +21,7 @@ import {
 } from './agent-sandbox-principal';
 import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 import { AgentChangePublisher } from './agent-change-publisher.service';
+import { AgentExecutionService } from './agent-execution.service';
 import { AgentSkillRefsService } from './agent-skill-refs.service';
 import { buildAgentConfigurationTelemetry } from './agent-telemetry';
 import { AgentRuntimeReconstructionService } from './agent-runtime-reconstruction.service';
@@ -24,6 +29,12 @@ import type {
 	ReconstructedAgentRuntime,
 	UserToolAccessSnapshot,
 } from './agent-runtime-reconstruction.service';
+import {
+	heldResult,
+	lastRealOutputs,
+	standInFromOutput,
+	type HeldResult,
+} from './json-config/test-sandbox';
 import { AgentRepository } from './repositories/agent.repository';
 import { getAgentOrThrow } from './utils/get-agent-or-throw';
 import { createAgentCredentialProvider } from './utils/agent-credential-provider';
@@ -52,6 +63,11 @@ export interface GetRuntimeParams {
 	 * every other surface, so it is part of the cache key.
 	 */
 	previewChat?: boolean;
+	/**
+	 * Set by this service, never by a caller: the test chat of a user with
+	 * agent evals on holds the tools that act. Part of the cache key.
+	 */
+	holdActingTools?: boolean;
 }
 
 /**
@@ -123,6 +139,8 @@ export class AgentRuntimeCacheService {
 		private readonly credentialsService: CredentialsService,
 		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
 		private readonly agentSkillRefs: AgentSkillRefsService,
+		private readonly postHogClient: PostHogClient,
+		private readonly agentExecutionService: AgentExecutionService,
 	) {}
 
 	private computeRuntimeCacheKey(params: GetRuntimeParams): string {
@@ -132,6 +150,7 @@ export class AgentRuntimeCacheService {
 		// instruction paragraph. Move to a per-run instruction override if
 		// runtime count becomes a problem — `@n8n/agents` has no such option yet.
 		if (params.previewChat) parts.push('preview');
+		if (params.holdActingTools) parts.push('hold-actions');
 		if (params.integrationType) parts.push(params.integrationType);
 		if (params.allowBackgroundTasks === false) parts.push('no-background-tasks');
 		if (params.attributionUserId) parts.push(`attribution:${params.attributionUserId}`);
@@ -233,7 +252,13 @@ export class AgentRuntimeCacheService {
 	 * Return a leased cached runtime, or reconstruct one from the DB.
 	 * Callers must release the lease in a `finally` block.
 	 */
-	async getRuntime(params: GetRuntimeParams): Promise<AgentRuntime> {
+	async getRuntime(requested: GetRuntimeParams): Promise<AgentRuntime> {
+		// Only the test chat waits for the flag, so every other caller reaches the
+		// cache in the same tick as before.
+		const params =
+			requested.previewChat && requested.user
+				? await this.withTestHolds(requested, requested.user)
+				: requested;
 		if (this.agentSandboxRuntimeService.isEnabled() && !params.sandboxPrincipalHash) {
 			throw new UserError(
 				'Agent workspace scope is missing and the runtime cannot be reconstructed',
@@ -251,6 +276,42 @@ export class AgentRuntimeCacheService {
 		if (initialization) return this.acquireRuntimeLease(await initialization.promise);
 
 		return this.acquireRuntimeLease(await this.initializeRuntime(cacheKey, params).promise);
+	}
+
+	/**
+	 * The test chat holds the tools that act for users with agent evals on.
+	 * A failed flag read leaves the chat as it always was.
+	 */
+	private async withTestHolds(params: GetRuntimeParams, user: User): Promise<GetRuntimeParams> {
+		try {
+			const flags = await this.postHogClient.getFeatureFlags(user);
+			return flags?.[AGENT_EVALS_FLAG] === true ? { ...params, holdActingTools: true } : params;
+		} catch {
+			return params;
+		}
+	}
+
+	/**
+	 * A held result for each tool that acts. The stand-in copies the shape of the
+	 * tool's last real output, with every value replaced. MCP tools are not held
+	 * yet: they are built per server, not per tool.
+	 */
+	private async heldToolsFor(
+		agentId: string,
+		config: Pick<AgentJsonConfig, 'tools' | 'mcpServers'> | null | undefined,
+	): Promise<Map<string, HeldResult>> {
+		const held = new Map<string, HeldResult>();
+		if (!config) return held;
+		const acting = profileAgentTools(config).filter(
+			(tool) => tool.action === 'acts' && tool.source !== 'mcp',
+		);
+		if (acting.length === 0) return held;
+		const outputs = lastRealOutputs(await this.agentExecutionService.recentTimelines(agentId));
+		for (const tool of acting) {
+			const output = outputs.get(tool.name);
+			held.set(tool.name, heldResult(output === undefined ? undefined : standInFromOutput(output)));
+		}
+		return held;
 	}
 
 	/**
@@ -313,6 +374,7 @@ export class AgentRuntimeCacheService {
 			allowBackgroundTasks,
 			previewChat,
 			attributionUserId,
+			holdActingTools,
 		} = params;
 
 		const agentEntity = await getAgentOrThrow(
@@ -328,6 +390,9 @@ export class AgentRuntimeCacheService {
 			this.agentSkillRefs,
 			{},
 		);
+		const heldTools = holdActingTools
+			? await this.heldToolsFor(agentId, runSource.agent.schema)
+			: undefined;
 
 		// `user` here is whatever `computeRuntimeCacheKey` above already keyed
 		// this build on — undefined for published/integration runs, set for
@@ -350,7 +415,12 @@ export class AgentRuntimeCacheService {
 			undefined,
 			usePublishedVersion ? 'integrated' : 'manual',
 			sandboxPrincipalHash,
-			{ previewChat, allowBackgroundTasks, attributionUserId },
+			{
+				previewChat,
+				allowBackgroundTasks,
+				attributionUserId,
+				...(heldTools ? { heldTools } : {}),
+			},
 		);
 		const {
 			agent: agentInstance,

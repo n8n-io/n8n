@@ -46,12 +46,15 @@ import { AgentEvalsFlagGate } from './agent-evals-flag-gate';
 import {
 	AgentOnlineChecksService,
 	type OnlineChecksReport,
+	type PromptIdeasResponse,
+	type ReplyChecksResponse,
 } from './online-checks/agent-online-checks.service';
 
 type AgentParam = { projectId: string; agentId: string };
 type DatasetParam = AgentParam & { datasetId: string };
 type RunParam = AgentParam & { runId: string };
 type ResultParam = AgentParam & { resultId: string };
+type ReplyParam = AgentParam & { threadId: string; executionId: string };
 
 /**
  * REST surface for agent evals: generation, datasets, runs, per-case results and
@@ -411,5 +414,33 @@ export class AgentEvalsController {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId } = req.params;
 		return await this.onlineChecksService.run(req.user, projectId, agentId);
+	}
+
+	/**
+	 * Messages the author can send to try the agent in the test chat. One model
+	 * call per agent setup, so the same scope as the test chat it feeds. Asked
+	 * for by a click, never on page load.
+	 */
+	@Post('/:agentId/evals/prompt-ideas')
+	@ProjectScope('agent:execute')
+	async suggestPromptIdeas(req: AuthenticatedRequest<AgentParam>): Promise<PromptIdeasResponse> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.onlineChecksService.promptIdeas(req.user, projectId, agentId);
+	}
+
+	/** The code checks that failed on one test-chat reply. No model call. */
+	@Get('/:agentId/evals/chat/:threadId/executions/:executionId/checks')
+	@ProjectScope('agent:read')
+	async getReplyChecks(req: AuthenticatedRequest<ReplyParam>): Promise<ReplyChecksResponse> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, threadId, executionId } = req.params;
+		return await this.onlineChecksService.replyChecks(
+			req.user,
+			projectId,
+			agentId,
+			threadId,
+			executionId,
+		);
 	}
 }

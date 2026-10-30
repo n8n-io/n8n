@@ -21,6 +21,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'vitest-mock-extended';
 import type { AgentsSettingsService } from '../agents-settings.service';
 
+import type { PostHogClient } from '@/posthog';
 import type { ActiveExecutions } from '@/active-executions';
 import type { ExternalHooks } from '@/external-hooks';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -262,6 +263,8 @@ describe('AgentRuntimeReconstructionService integration tools', () => {
 			credentialsService,
 			agentSandboxRuntimeService,
 			skillRefs,
+			mock<PostHogClient>(),
+			mock<AgentExecutionService>(),
 		);
 		Container.set(AgentRuntimeCacheService, runtimeCacheService);
 		const modificationTelemetry = mock<AgentModificationTelemetryService>();

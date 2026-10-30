@@ -376,3 +376,18 @@ failures. Send the original message and its attachments through the normal send
 action. Keep the failed turn visible. Move the button below the text when needed.
 Disable resend while a draft, queued message, active turn, or blocked send exists.
 Keep the message unchanged if an attachment cannot load.
+
+## Preview reply review
+
+Put content that the person must see under a finished reply in the
+`message-review` slot, not in `message-actions`. The reply footer shows only on
+hover. The review slot is always visible.
+Show one quiet line for each code check that failed on the reply. Use the
+warning icon and the check's plain reason. Show nothing when every check
+passes. Do not show counts, scores, or rates.
+Show "Looks right" as an outline button and "Not right? Add a note" as a ghost
+button. A note opens inline under the reply. Save is disabled until the note
+has text. After a verdict, show it in one line with a Change action.
+In an empty Preview, ask for prompt ideas only after a click, because ideas cost
+a model call. Show the ideas as outline chips. A chip sends its prompt through
+the normal send path.

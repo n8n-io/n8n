@@ -168,6 +168,44 @@ describe('AgentExecutionService', () => {
 		return await service.finalizeExecution(executionId, params);
 	}
 
+	describe('recentTimelines', () => {
+		const event = (name: string) =>
+			({
+				type: 'tool-call',
+				kind: 'workflow',
+				name,
+				toolCallId: name,
+				input: {},
+				output: {},
+				startTime: 0,
+				endTime: 1,
+				success: true,
+			}) as const;
+
+		it("returns the timelines of the agent's latest threads, oldest first, blobs included", async () => {
+			agentExecutionThreadRepository.find.mockResolvedValue([
+				makeThread({ id: 'thread-new' }),
+				makeThread({ id: 'thread-old' }),
+			]);
+			agentExecutionRepository.findByThreadIdOrdered.mockImplementation(async (threadId) =>
+				threadId === 'thread-old'
+					? ([{ id: 'e-old', storedAt: 'db', timeline: [event('old')] }] as AgentExecution[])
+					: ([{ id: 'e-new', storedAt: 'fs', timeline: null }] as AgentExecution[]),
+			);
+			agentExecutionLogStore.hasLocation.mockReturnValue(true);
+			agentExecutionLogStore.readMany.mockResolvedValue(
+				new Map([['e-new', { timeline: [event('new')], version: 1 }]]),
+			);
+
+			const timelines = await service.recentTimelines('agent-1', 5);
+
+			expect(agentExecutionThreadRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { agentId: 'agent-1' }, take: 5 }),
+			);
+			expect(timelines).toEqual([[event('old')], [event('new')]]);
+		});
+	});
+
 	describe('recordSideCallUsage', () => {
 		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {

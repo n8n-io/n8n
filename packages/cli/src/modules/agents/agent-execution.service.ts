@@ -909,6 +909,27 @@ export class AgentExecutionService {
 	 * always opens. Corruption, unregistered locations, and read failures are
 	 * reported; missing blobs degrade silently.
 	 */
+	/**
+	 * Timelines of the agent's latest threads, oldest first. The test-chat sandbox
+	 * copies the shape of each tool's last real output from them.
+	 */
+	async recentTimelines(agentId: string, threadLimit = 10): Promise<TimelineEvent[][]> {
+		const threads = await this.agentExecutionThreadRepository.find({
+			where: { agentId },
+			order: { updatedAt: 'DESC' },
+			take: threadLimit,
+		});
+		const timelines: TimelineEvent[][] = [];
+		for (const thread of [...threads].reverse()) {
+			const executions = await this.agentExecutionRepository.findByThreadIdOrdered(thread.id);
+			await this.hydrateTimelines(agentId, thread.id, executions);
+			for (const execution of executions) {
+				if (execution.timeline) timelines.push(execution.timeline);
+			}
+		}
+		return timelines;
+	}
+
 	private async hydrateTimelines(
 		agentId: string,
 		threadId: string,

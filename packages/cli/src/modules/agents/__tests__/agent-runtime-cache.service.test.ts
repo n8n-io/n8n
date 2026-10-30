@@ -7,15 +7,18 @@ import { mock } from 'vitest-mock-extended';
 import { OperationalError } from 'n8n-workflow';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { PostHogClient } from '@/posthog';
 import type { Publisher } from '@/scaling/pubsub/publisher.service';
 
 import { AgentChangePublisher } from '../agent-change-publisher.service';
+import type { AgentExecutionService } from '../agent-execution.service';
 import type { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
 import { AgentRuntimeCacheService } from '../agent-runtime-cache.service';
 import { hashAgentSandboxPrincipal } from '../agent-sandbox-principal';
 import type { AgentSandboxRuntimeService } from '../agent-sandbox-runtime.service';
 import type { Agent, ProjectAgent } from '../entities/agent.entity';
 import type { AgentRepository } from '../repositories/agent.repository';
+import { heldResult } from '../json-config/test-sandbox';
 import type { ToolRegistry } from '../tool-registry';
 import { createAgentSkillRefsService, storedRunSource } from './test-utils/stored-agent-config';
 
@@ -49,7 +52,8 @@ function makeRuntime() {
 function makeService({
 	multiMain = false,
 	sandboxEnabled = false,
-}: { multiMain?: boolean; sandboxEnabled?: boolean } = {}) {
+	agentEvalsEnabled = false,
+}: { multiMain?: boolean; sandboxEnabled?: boolean; agentEvalsEnabled?: boolean } = {}) {
 	const agentRepository = mock<AgentRepository>();
 	const publisher = mock<Publisher>();
 	const reconstructionService = mock<AgentRuntimeReconstructionService>();
@@ -58,6 +62,10 @@ function makeService({
 		isEnabled: () => sandboxEnabled,
 	});
 	const globalConfig = { multiMainSetup: { enabled: multiMain } } as GlobalConfig;
+	const postHogClient = mock<PostHogClient>();
+	postHogClient.getFeatureFlags.mockResolvedValue({ '101_agent_evals': agentEvalsEnabled });
+	const executionService = mock<AgentExecutionService>();
+	executionService.recentTimelines.mockResolvedValue([]);
 
 	publisher.publishCommand.mockResolvedValue();
 
@@ -69,9 +77,11 @@ function makeService({
 		credentialsService,
 		sandboxRuntimeService,
 		createAgentSkillRefsService(),
+		postHogClient,
+		executionService,
 	);
 
-	return { service, agentRepository, publisher, reconstructionService };
+	return { service, agentRepository, publisher, reconstructionService, executionService };
 }
 
 describe('AgentRuntimeCacheService', () => {
@@ -368,6 +378,83 @@ describe('AgentRuntimeCacheService', () => {
 			undefined,
 			{ previewChat: true },
 		);
+	});
+
+	describe('test-chat sandbox', () => {
+		const user = mock<User>({ id: 'user-1' });
+		const agentWithTools = () =>
+			makeAgent({
+				schema: {
+					name: 'Booker',
+					model: 'openai:gpt-4o',
+					instructions: 'Help',
+					tools: [
+						{ type: 'workflow', workflow: 'w-book', name: 'book_meeting' },
+						{ type: 'workflow', workflow: 'w-lookup', name: 'lookup_order' },
+					],
+					skills: [],
+				},
+			} as never);
+
+		const reconstructOptions = (
+			reconstructionService: ReturnType<typeof makeService>['reconstructionService'],
+		) => reconstructionService.reconstructFromAgentEntity.mock.calls[0][8];
+
+		it('holds the tools that act, with a stand-in shaped like their last real output', async () => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService({
+				agentEvalsEnabled: true,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agentWithTools());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+			executionService.recentTimelines.mockResolvedValue([
+				[
+					{
+						type: 'tool-call',
+						kind: 'workflow',
+						name: 'book_meeting',
+						toolCallId: 'c1',
+						input: {},
+						output: { eventId: 'evt_9f2c' },
+						startTime: 0,
+						endTime: 1,
+						success: true,
+					},
+				],
+			]);
+
+			await service.getRuntime({ agentId, projectId, previewChat: true, user });
+
+			expect(executionService.recentTimelines).toHaveBeenCalledWith(agentId);
+			expect(reconstructOptions(reconstructionService)).toEqual(
+				expect.objectContaining({
+					previewChat: true,
+					heldTools: new Map([['book_meeting', heldResult({ eventId: 'test-eventId' })]]),
+				}),
+			);
+		});
+
+		it('holds nothing when agent evals is off for the user', async () => {
+			const { service, agentRepository, reconstructionService, executionService } = makeService();
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agentWithTools());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.getRuntime({ agentId, projectId, previewChat: true, user });
+
+			expect(reconstructOptions(reconstructionService)).not.toHaveProperty('heldTools');
+			expect(executionService.recentTimelines).not.toHaveBeenCalled();
+		});
+
+		it('holds nothing outside the test chat', async () => {
+			const { service, agentRepository, reconstructionService } = makeService({
+				agentEvalsEnabled: true,
+			});
+			agentRepository.findByIdAndProjectId.mockResolvedValue(agentWithTools());
+			reconstructionService.reconstructFromAgentEntity.mockResolvedValue(makeRuntime());
+
+			await service.getRuntime({ agentId, projectId, user });
+
+			expect(reconstructOptions(reconstructionService)).not.toHaveProperty('heldTools');
+		});
 	});
 
 	it('keeps draft runtimes separate by integration type', async () => {

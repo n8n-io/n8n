@@ -20,7 +20,7 @@ import type {
 	RerunResultOptions,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { OnlineChecksReport } from './agentEvals.types';
+import type { AgentReplyIssue, AgentTestIdea, OnlineChecksReport } from './agentEvals.types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 // REST path helper, kept inline so callers can't build a URL that drifts from
@@ -334,5 +334,33 @@ export const runOnlineChecks = async (
 		context,
 		'POST',
 		`${evalsPath(projectId, agentId)}/online-checks`,
+	);
+};
+
+/** Up to three messages to try the agent with. One model call per agent setup. */
+export const suggestTestIdeas = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+) => {
+	return await makeRestApiRequest<{ ideas: AgentTestIdea[] }>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/prompt-ideas`,
+	);
+};
+
+/** The code checks that failed on one test-chat reply. No model call. */
+export const fetchReplyChecks = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+	executionId: string,
+) => {
+	return await makeRestApiRequest<{ issues: AgentReplyIssue[] }>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}/checks`,
 	);
 };

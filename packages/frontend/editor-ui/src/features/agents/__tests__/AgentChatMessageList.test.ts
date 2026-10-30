@@ -849,6 +849,80 @@ describe('AgentChatMessageList', () => {
 		});
 	});
 
+	describe('message-review slot', () => {
+		const reviewSlot = (props: { message: ChatMessage; executionId?: string }) =>
+			h('div', {
+				'data-test-id': 'host-message-review',
+				'data-message-id': props.message.id,
+				'data-execution-id': props.executionId,
+			});
+
+		it('renders below a finished reply, outside the hover-only footer', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'a-1',
+							role: 'assistant',
+							content: 'Reply',
+							status: 'success',
+							executionId: 'exec-1',
+						},
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+				slots: { 'message-review': reviewSlot },
+			});
+
+			const review = wrapper.find('[data-test-id="host-message-review"]');
+			expect(review.attributes('data-execution-id')).toBe('exec-1');
+			expect(
+				wrapper
+					.find('[data-test-id="agent-chat-message-actions"] [data-test-id="host-message-review"]')
+					.exists(),
+			).toBe(false);
+		});
+
+		it('renders once for a tool run, with the turn execution id', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{
+							id: 'a-tools',
+							role: 'assistant',
+							content: '',
+							status: 'success',
+							executionId: 'exec-2',
+							toolCalls: [{ tool: 'search', toolCallId: 'tc-1', state: 'done', output: {} }],
+						},
+						{ id: 'a-final', role: 'assistant', content: 'Done', status: 'success' },
+					] satisfies ChatMessage[],
+					messagingState: 'idle',
+				},
+				slots: { 'message-review': reviewSlot },
+			});
+
+			const reviews = wrapper.findAll('[data-test-id="host-message-review"]');
+			expect(reviews).toHaveLength(1);
+			expect(reviews[0].attributes('data-message-id')).toBe('a-final');
+			expect(reviews[0].attributes('data-execution-id')).toBe('exec-2');
+		});
+
+		it('does not render while the reply streams', () => {
+			const wrapper = mount(AgentChatMessageList, {
+				props: {
+					messages: [
+						{ id: 'a-1', role: 'assistant', content: 'Repl', status: 'streaming' },
+					] satisfies ChatMessage[],
+					messagingState: 'receiving',
+				},
+				slots: { 'message-review': reviewSlot },
+			});
+
+			expect(wrapper.find('[data-test-id="host-message-review"]').exists()).toBe(false);
+		});
+	});
+
 	it('does not render actions for user text messages', () => {
 		const wrapper = mount(AgentChatMessageList, {
 			props: {

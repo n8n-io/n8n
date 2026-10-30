@@ -102,6 +102,40 @@ export function useAgentTelemetry() {
 		});
 	}
 
+	function trackAskedForTestIdeas(params: { agentId: string; ideaCount: number }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_ASKED_FOR_AGENT_TEST_IDEAS, {
+			agent_id: params.agentId,
+			idea_count: params.ideaCount,
+			...common(),
+		});
+	}
+
+	function trackPickedTestIdea(params: { agentId: string; kind: 'everyday' | 'rule' | 'action' }) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_PICKED_AGENT_TEST_IDEA, {
+			agent_id: params.agentId,
+			kind: params.kind,
+			...common(),
+		});
+	}
+
+	/** The note text stays in the browser; only its length is sent. */
+	function trackJudgedTestReply(params: {
+		agentId: string;
+		executionId: string;
+		verdict: 'looks-right' | 'not-right';
+		noteLength: number;
+		hadCheckIssues: boolean;
+	}) {
+		safeTrack(TELEMETRY_EVENT.AGENTS.USER_JUDGED_AGENT_TEST_REPLY, {
+			agent_id: params.agentId,
+			execution_id: params.executionId,
+			verdict: params.verdict,
+			note_length: params.noteLength,
+			had_check_issues: params.hadCheckIssues,
+			...common(),
+		});
+	}
+
 	function trackClickedPreviewMoreOptions(params: { agentId: string }) {
 		safeTrack(TELEMETRY_EVENT.AGENTS.USER_CLICKED_MORE_OPTIONS_FROM_TEST_PANEL, {
 			agent_id: params.agentId,
@@ -348,6 +382,9 @@ export function useAgentTelemetry() {
 	}
 
 	return {
+		trackAskedForTestIdeas,
+		trackPickedTestIdea,
+		trackJudgedTestReply,
 		trackClickedAgentsTab,
 		trackClickedKnowledgeUpload,
 		trackClickedTraceItem,

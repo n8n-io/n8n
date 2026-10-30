@@ -103,6 +103,7 @@ vi.mock('@n8n/i18n', () => {
 			'agents.chat.plan.error.rejected':
 				'The plan change was rejected. Expand this step for details.',
 			'agents.chat.toolNames.webSearch': 'Web search',
+			'agents.chat.toolHeld': 'Not run while testing',
 			'agents.chat.toolNames.flagMemory': 'Memory noted',
 			'instanceAi.tools.agent_builder_search_nodes': 'Search nodes',
 			'agents.chat.difficulty.low': 'Low',
@@ -329,6 +330,32 @@ describe('AgentChatToolSteps', () => {
 		await wrapper.find('button').trigger('click');
 		expect(wrapper.text()).toContain('n8n agents');
 		expect(wrapper.text()).toContain('Agents documentation');
+	});
+
+	it('marks a call the test chat held as not run', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'book_meeting',
+				toolCallId: 'tc-1',
+				state: TOOL_CALL_STATE.DONE,
+				output: { testMode: true, status: 'held', message: 'Not run: test mode.' },
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="tool-step-summary"]').text()).toBe('Not run while testing');
+	});
+
+	it('adds no held mark to a call that ran', () => {
+		const wrapper = mountSteps([
+			{
+				tool: 'book_meeting',
+				toolCallId: 'tc-1',
+				state: TOOL_CALL_STATE.DONE,
+				output: { status: 'held' },
+			},
+		]);
+
+		expect(wrapper.find('[data-testid="tool-step-summary"]').exists()).toBe(false);
 	});
 
 	it('makes generic tool steps with output data expandable', async () => {

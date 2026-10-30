@@ -119,3 +119,19 @@ export type OnlineChecksReport = {
 		verdicts: OnlineCheckVerdict[];
 	}>;
 };
+
+/**
+ * Test-chat ideas and reply checks. Mirror `PromptIdea` and `ReplyChecksResponse`
+ * in `cli/src/modules/agent-evals/online-checks`.
+ */
+export type AgentTestIdeaKind = 'everyday' | 'rule' | 'action';
+
+export type AgentTestIdea = {
+	kind: AgentTestIdeaKind;
+	prompt: string;
+	why: string;
+	source?: { field: 'instructions' | 'skills'; quote: string };
+	tool?: string;
+};
+
+export type AgentReplyIssue = { checkId: string; reason: string };

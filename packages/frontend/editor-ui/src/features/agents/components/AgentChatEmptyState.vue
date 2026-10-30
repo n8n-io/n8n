@@ -23,6 +23,7 @@ defineProps<{
 		<N8nText step="sm" color="text-light">
 			{{ i18n.baseText('agents.chat.emptyState.description') }}
 		</N8nText>
+		<slot />
 	</div>
 </template>
 
@@ -48,6 +49,10 @@ defineProps<{
 
 	> :nth-child(3) {
 		animation-delay: 0.4s;
+	}
+
+	> :nth-child(4) {
+		animation-delay: 0.6s;
 	}
 }
 

@@ -50,6 +50,7 @@ import {
 	resolveWebSearchGatewayProxyConfig,
 	type AiGatewaySearchCredentialResolver,
 } from './web-search-credential';
+import { wrapToolForTestSandbox, type HeldResult } from './test-sandbox';
 import { buildVectorStore } from './vector-store-factory';
 
 export type { ManagedEmbeddingProviderOptions, ManagedEmbeddingProviderOptionsResolver };
@@ -147,6 +148,11 @@ export interface BuildFromJsonOptions {
 	 * them on their own cache key.
 	 */
 	previewChat?: boolean;
+	/**
+	 * Test-chat sandbox only: tools named here are not run. Each answers with its
+	 * held result. Approval still applies first.
+	 */
+	heldTools?: ReadonlyMap<string, HeldResult>;
 }
 
 /**
@@ -448,6 +454,11 @@ function linkedFilesForSkill(skill: AgentSkill): RuntimeSkillLinkedFiles {
 	};
 }
 
+function holdForTest(tool: BuiltTool, options: BuildFromJsonOptions): BuiltTool {
+	const held = options.heldTools?.get(tool.name);
+	return held && tool.handler ? wrapToolForTestSandbox(tool, held) : tool;
+}
+
 async function resolveToolRef(
 	ref: AgentJsonToolConfig,
 	descriptors: Record<string, ToolDescriptor>,
@@ -480,10 +491,11 @@ async function resolveToolRef(
 				providerOptions: descriptor.providerOptions as Record<string, JSONObject> | undefined,
 			};
 
+			const tool = holdForTest(builtTool, options);
 			if (ref.requireApproval) {
-				return wrapToolForApproval(builtTool, { requireApproval: true });
+				return wrapToolForApproval(tool, { requireApproval: true });
 			}
-			return builtTool;
+			return tool;
 		}
 
 		case 'workflow': {
@@ -499,7 +511,7 @@ async function resolveToolRef(
 			};
 			const resolved = await options.resolveTool?.(ref);
 			if (resolved === null) return null;
-			const tool = resolved ?? marker;
+			const tool = holdForTest(resolved ?? marker, options);
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}
@@ -515,7 +527,7 @@ async function resolveToolRef(
 			};
 			const resolved = await options.resolveTool?.(ref);
 			if (resolved === null) return null;
-			const tool = resolved ?? marker;
+			const tool = holdForTest(resolved ?? marker, options);
 			if (ref.requireApproval) {
 				return wrapToolForApproval(tool, { requireApproval: true });
 			}

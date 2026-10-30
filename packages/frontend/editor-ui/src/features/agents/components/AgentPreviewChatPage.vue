@@ -2,6 +2,7 @@
 import { ref, useTemplateRef, watch } from 'vue';
 
 import { deriveAgentStatus } from '../composables/agentTelemetry.utils';
+import { useTestAgentPreviewFlag } from '../composables/useTestAgentPreviewFlag';
 import type {
 	AgentContinueLoadedEvent,
 	AgentSendToAssistantEvent,
@@ -9,7 +10,10 @@ import type {
 	AgentResource,
 } from '../types';
 import type { BudgetAmountField } from '../utils/budget-config';
+import AgentChatEmptyState from './AgentChatEmptyState.vue';
 import AgentChatPanel from './AgentChatPanel.vue';
+import AgentTestChatIdeas from './AgentTestChatIdeas.vue';
+import AgentTestReplyReview from './AgentTestReplyReview.vue';
 
 const props = withDefaults(
 	defineProps<{
@@ -50,10 +54,16 @@ const emit = defineEmits<{
 }>();
 
 const inputDraft = ref('');
+// Prompt ideas and the per-reply review ride the agent evals rollout.
+const { isFeatureEnabled: showTestReview } = useTestAgentPreviewFlag();
 const chatPanel = useTemplateRef<InstanceType<typeof AgentChatPanel>>('chatPanel');
 
 function focusInput(options?: FocusOptions) {
 	chatPanel.value?.focusInput(options);
+}
+
+function onPickIdea(prompt: string) {
+	chatPanel.value?.sendMessageFromOutside(prompt);
 }
 
 function getConversationMarkdown(): string {
@@ -108,7 +118,23 @@ defineExpose({ focusInput, getConversationMarkdown, clearBudgetStops });
 				@initial-consumed="emit('initial-consumed')"
 				@open-build="emit('open-build')"
 				@send-to-assistant="emit('send-to-assistant', $event)"
-			/>
+			>
+				<template v-if="showTestReview" #empty-state>
+					<AgentChatEmptyState :agent-config="localConfig">
+						<AgentTestChatIdeas :project-id="projectId" :agent-id="agentId" @select="onPickIdea" />
+					</AgentChatEmptyState>
+				</template>
+				<template v-if="showTestReview" #message-review="{ executionId }">
+					<AgentTestReplyReview
+						v-if="executionId && effectiveSessionId"
+						:key="executionId"
+						:project-id="projectId"
+						:agent-id="agentId"
+						:thread-id="effectiveSessionId"
+						:execution-id="executionId"
+					/>
+				</template>
+			</AgentChatPanel>
 		</div>
 	</component>
 </template>

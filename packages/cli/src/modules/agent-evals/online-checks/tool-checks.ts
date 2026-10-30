@@ -74,8 +74,17 @@ function toolCalls(timeline: TimelineEvent[]): ToolCallEvent[] {
 	return timeline.filter((e): e is ToolCallEvent => e.type === 'tool-call');
 }
 
+/** A turn that stopped for an approval nobody has answered yet: it waits for the person. */
+function waitsForApproval(turn: ChatTurn): boolean {
+	const timeline = turn.timeline ?? [];
+	const answered = new Set(
+		timeline.flatMap((e) => (e.type === 'hitl-response' ? [e.toolCallId] : [])),
+	);
+	return timeline.some((e) => e.type === 'suspension' && !answered.has(e.toolCallId));
+}
+
 function runEmptyReply(turns: ChatTurn[]): CheckVerdict {
-	const index = turns.findIndex((t) => t.reply.trim().length === 0);
+	const index = turns.findIndex((t) => t.reply.trim().length === 0 && !waitsForApproval(t));
 	if (index === -1) return verdict(EMPTY_REPLY, 'pass', 'Every turn has a reply.');
 	const reason = turns[index].runFailed
 		? 'The run failed and the person got no reply.'
@@ -216,4 +225,17 @@ export function runToolChecks(checks: AgentCheck[], turns: ChatTurn[]): CheckVer
 			}
 			return run(turns);
 		});
+}
+
+/**
+ * The code checks that failed on one reply, for the quiet line under it in the
+ * test chat. A pass shows nothing, so only failures come back.
+ */
+export function replyIssues(
+	profiles: AgentToolProfile[],
+	turn: ChatTurn,
+): Array<{ checkId: string; reason: string }> {
+	return runToolChecks(generateToolChecks(profiles), [turn])
+		.filter((v) => v.status === 'fail')
+		.map((v) => ({ checkId: v.checkId, reason: v.reason }));
 }

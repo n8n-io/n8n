@@ -79,6 +79,10 @@ const respondToApprovalMock = vi.fn();
 const stopAllMock = vi.fn();
 const isStoppingMock = ref(false);
 const showErrorMock = vi.fn();
+// The test-chat review rides the agent evals flag, which reads the settings store.
+vi.mock('../composables/useTestAgentPreviewFlag', () => ({
+	useTestAgentPreviewFlag: () => ({ isFeatureEnabled: { value: false } }),
+}));
 vi.mock('../composables/useAgentBackgroundJobs', () => ({
 	useAgentBackgroundJobs: () => ({
 		jobs: backgroundJobsMock,
@@ -409,6 +413,7 @@ describe('AgentChatPanel', () => {
 			placeholder: string;
 			showAttachButton: boolean;
 			interactionExtensions: readonly AgentsChatInteractionExtension[];
+			inputDraft: string;
 		}> = {},
 		attachTo?: HTMLElement,
 		slots?: Record<string, string | ((props: Record<string, unknown>) => unknown)>,
@@ -855,6 +860,20 @@ describe('AgentChatPanel', () => {
 		it('stops centering once the chat has messages', () => {
 			messagesMock.value = [{ id: 'm1', role: 'user', content: 'hi' } as ChatMessage];
 			expect(isCentered(mountPanel({ centerEmptyState: true, newSession: true }))).toBe(false);
+		});
+
+		// The host owns the draft (`v-model:input-draft`), so the panel's copy only
+		// changes when the host re-renders, after the send already read it.
+		it('sends a handed-off message when the host owns the draft', async () => {
+			sendMessageMock.mockReturnValue(new Promise(() => {}));
+			const wrapper = mountPanel({ inputDraft: '' });
+
+			(wrapper.vm as unknown as PanelVm).sendMessageFromOutside('Where is my order?');
+			await flushPromises();
+
+			expect(sendMessageMock).toHaveBeenCalledTimes(1);
+			expect(sendMessageMock.mock.calls[0][0]).toBe('Where is my order?');
+			wrapper.unmount();
 		});
 
 		describe('first message preview', () => {

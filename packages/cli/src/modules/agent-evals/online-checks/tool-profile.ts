@@ -53,7 +53,9 @@ function sortNodeTool(nodeParameters: Record<string, unknown> | undefined) {
  * appears once: its tools are only known after connecting, so it counts as
  * acting unless its writes are blocked.
  */
-export function profileAgentTools(config: AgentJsonConfig): AgentToolProfile[] {
+export function profileAgentTools(
+	config: Pick<AgentJsonConfig, 'tools' | 'mcpServers'>,
+): AgentToolProfile[] {
 	const profiles: AgentToolProfile[] = [];
 
 	for (const tool of config.tools ?? []) {

@@ -12,6 +12,7 @@ import { UserError } from 'n8n-workflow';
 
 import { buildFromJson, buildProviderToolsForModel } from '../json-config/from-json-config';
 import type { ToolExecutor } from '../json-config/from-json-config';
+import { heldResult } from '../json-config/test-sandbox';
 import { buildVectorStore } from '../json-config/vector-store-factory';
 
 const { getCachedCatalog } = vi.hoisted(() => ({ getCachedCatalog: vi.fn() }));
@@ -632,6 +633,54 @@ describe('buildFromJson()', () => {
 		const tool = agent.declaredTools.find((t) => t.name === 'my_node_tool');
 		expect(tool).toBeDefined();
 		expect(tool!.approval?.required).toBe(true);
+	});
+
+	describe('test sandbox', () => {
+		const heldTools = new Map([['run_workflow', heldResult({ eventId: 'test-eventId' })]]);
+
+		async function buildWith(requireApproval: boolean, held = heldTools) {
+			const resolvedTool = {
+				name: 'run_workflow',
+				description: 'Run My Workflow',
+				handler: vi.fn().mockResolvedValue({ eventId: 'real' }),
+			};
+			const agent = await buildFromJson(
+				makeConfig({
+					tools: [
+						{ type: 'workflow', workflow: 'My Workflow', name: 'run_workflow', requireApproval },
+					],
+				}),
+				{},
+				{
+					toolExecutor: makeMockToolExecutor(),
+					credentialProvider: makeMockCredentialProvider(),
+					memoryFactory: makeMockMemoryFactory(),
+					resolveTool: vi.fn().mockResolvedValue(resolvedTool),
+					heldTools: held,
+				},
+			);
+			return { tool: agent.declaredTools.find((t) => t.name === 'run_workflow')!, resolvedTool };
+		}
+
+		it('answers a held tool with its held result and never runs it', async () => {
+			const { tool, resolvedTool } = await buildWith(false);
+
+			await expect(tool.handler!({}, {} as never)).resolves.toEqual(heldTools.get('run_workflow'));
+			expect(resolvedTool.handler).not.toHaveBeenCalled();
+		});
+
+		it('keeps the approval step on a held tool, so testing shows the real flow', async () => {
+			const { tool } = await buildWith(true);
+
+			expect(tool.approval?.required).toBe(true);
+		});
+
+		it('runs a tool that is not held', async () => {
+			const { tool, resolvedTool } = await buildWith(false, new Map());
+
+			await expect(tool.handler!({}, {} as never)).resolves.toEqual({ eventId: 'real' });
+			expect(resolvedTool.handler).toHaveBeenCalled();
+		});
 	});
 
 	it('does not wrap workflow tool with approval when requireApproval is not set', async () => {

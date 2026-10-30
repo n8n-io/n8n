@@ -1,7 +1,10 @@
+import { createHash } from 'node:crypto';
+
 import type { AgentJsonConfig } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { NotFoundError } from '@n8n/errors';
 import { UserError } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -13,9 +16,11 @@ import { resolveCredentialAwareModelConfig } from '../../agents/json-config/mode
 import { createAgentCredentialProvider } from '../../agents/utils/agent-credential-provider';
 import { batchChecks, buildJudgePrompt, parseJudgeAnswers } from './judged-checks';
 import { BASE_CHECK, buildPromiseCheckPrompt, parsePromiseChecks } from './promise-checks';
-import type { DroppedCheck } from './promise-checks';
-import { mergeResumedTurns } from './session-turns';
-import { generateToolChecks, runToolChecks } from './tool-checks';
+import type { DroppedCheck, SkillText } from './promise-checks';
+import { buildPromptIdeasPrompt, parsePromptIdeas } from './prompt-ideas';
+import type { PromptIdea } from './prompt-ideas';
+import { mergeResumedTurns, turnForExecution } from './session-turns';
+import { generateToolChecks, replyIssues, runToolChecks } from './tool-checks';
 import { profileAgentTools, summarizeStakes } from './tool-profile';
 import type { AgentCheck, AgentStakes, AgentToolProfile, ChatTurn, CheckVerdict } from './types';
 
@@ -30,6 +35,18 @@ const promiseOutputSchema = z.object({
 			reason: z.string().optional(),
 			quote: z.string().optional(),
 			appliesWhen: z.string().optional(),
+		}),
+	),
+});
+
+const ideasOutputSchema = z.object({
+	ideas: z.array(
+		z.object({
+			kind: z.string().optional(),
+			prompt: z.string().optional(),
+			why: z.string().optional(),
+			quote: z.string().optional(),
+			tool: z.string().optional(),
 		}),
 	),
 });
@@ -64,6 +81,33 @@ export interface OnlineChecksReport {
 	sessions: OnlineCheckSession[];
 }
 
+export interface PromptIdeasResponse {
+	ideas: PromptIdea[];
+}
+
+export interface ReplyChecksResponse {
+	issues: Array<{ checkId: string; reason: string }>;
+}
+
+/** Ideas for the same agent setup are reused, so a second click costs nothing. */
+const MAX_CACHED_IDEAS = 500;
+
+function setupKey(agentId: string, config: AgentJsonConfig, skills: SkillText[]): string {
+	return createHash('sha256')
+		.update(
+			JSON.stringify([
+				agentId,
+				config.name,
+				config.description,
+				config.instructions,
+				config.tools,
+				config.mcpServers,
+				skills,
+			]),
+		)
+		.digest('hex');
+}
+
 function replyText(turn: AgentSessionTurn): string {
 	return (turn.timeline ?? [])
 		.filter((event) => event.type === 'text')
@@ -88,6 +132,8 @@ function toChatTurn(turn: AgentSessionTurn): ChatTurn {
  */
 @Service()
 export class AgentOnlineChecksService {
+	private readonly ideasCache = new Map<string, PromptIdea[]>();
+
 	constructor(
 		private readonly agentContextService: AgentContextService,
 		private readonly credentialsService: CredentialsService,
@@ -103,11 +149,7 @@ export class AgentOnlineChecksService {
 		const artifact = await this.agentContextService.readArtifact(user, projectId, agentId);
 		if (!artifact) throw new UserError('Agent not found');
 		const config = artifact.config;
-		const skills = Object.values(artifact.skills).map((skill) => ({
-			name: skill.name,
-			description: skill.description,
-			instructions: skill.instructions,
-		}));
+		const skills = this.skillsOf(artifact.skills);
 
 		const ask = await this.modelFor(config, projectId, user);
 		const tools = profileAgentTools(config);
@@ -173,6 +215,75 @@ export class AgentOnlineChecksService {
 			dropped: promise.dropped,
 			sessions,
 		};
+	}
+
+	/**
+	 * Up to three messages to try the agent with: an everyday request, one that
+	 * tests a written rule, and one that makes it use a tool that acts. One model
+	 * call per agent setup; an empty list when the model gives nothing usable.
+	 */
+	async promptIdeas(user: User, projectId: string, agentId: string): Promise<PromptIdeasResponse> {
+		const artifact = await this.agentContextService.readArtifact(user, projectId, agentId);
+		if (!artifact) throw new NotFoundError('Agent not found');
+		const config = artifact.config;
+		const skills = this.skillsOf(artifact.skills);
+
+		const key = setupKey(agentId, config, skills);
+		const cached = this.ideasCache.get(key);
+		if (cached) return { ideas: cached };
+
+		const tools = profileAgentTools(config);
+		const ask = await this.modelFor(config, projectId, user);
+		const prompt = buildPromptIdeasPrompt({ config, skills, tools });
+		const parsed = parsePromptIdeas(await ask(prompt.system, prompt.user, ideasOutputSchema), {
+			instructions: config.instructions ?? '',
+			skills,
+			tools,
+		});
+		if (parsed.dropped.length > 0 || parsed.unreadable) {
+			this.logger.debug('[AgentOnlineChecks] Dropped prompt ideas', {
+				dropped: parsed.dropped.map((d) => d.why),
+				unreadable: parsed.unreadable === true,
+			});
+		}
+		// An unreadable answer is not cached, so the next click tries again.
+		if (!parsed.unreadable) {
+			if (this.ideasCache.size >= MAX_CACHED_IDEAS) {
+				const oldest = this.ideasCache.keys().next().value;
+				if (oldest !== undefined) this.ideasCache.delete(oldest);
+			}
+			this.ideasCache.set(key, parsed.ideas);
+		}
+		return { ideas: parsed.ideas };
+	}
+
+	/** The code checks that failed on the turn one execution belongs to. */
+	async replyChecks(
+		user: User,
+		projectId: string,
+		agentId: string,
+		threadId: string,
+		executionId: string,
+	): Promise<ReplyChecksResponse> {
+		const artifact = await this.agentContextService.readArtifact(user, projectId, agentId);
+		if (!artifact) throw new NotFoundError('Agent not found');
+		const detail = await this.agentContextService.readSession(user, projectId, agentId, threadId);
+		const turn = detail
+			? turnForExecution(
+					detail.executions.map((execution) => ({ id: execution.id, turn: toChatTurn(execution) })),
+					executionId,
+				)
+			: undefined;
+		if (!turn) throw new NotFoundError('Execution not found');
+		return { issues: replyIssues(profileAgentTools(artifact.config), turn) };
+	}
+
+	private skillsOf(skills: Record<string, SkillText>): SkillText[] {
+		return Object.values(skills).map((skill) => ({
+			name: skill.name,
+			description: skill.description,
+			instructions: skill.instructions,
+		}));
 	}
 
 	/** One model call per prompt, with the agent's own model and credential. Returns JSON text. */
