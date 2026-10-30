@@ -1709,3 +1709,74 @@ describe('delete() and the workflowsFromAList caller policy', () => {
 		});
 	});
 });
+
+describe('version-scoped settings in workflow history', () => {
+	const changedNodes = (): INode[] => [
+		{
+			id: uuid(),
+			name: 'Changed',
+			type: 'n8n-nodes-base.manualTrigger',
+			typeVersion: 1,
+			position: [0, 0],
+			parameters: {},
+		},
+	];
+
+	const versionSettings = async (versionId: string) =>
+		(await Container.get(WorkflowHistoryRepository).findOneByOrFail({ versionId })).settings;
+
+	test('stores the new engine of an update', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v1' } }, owner);
+
+		const updated = await workflowService.update(
+			owner,
+			Object.assign(workflowRepository.create(), {
+				nodes: changedNodes(),
+				connections: {},
+				settings: { engineType: 'v2', timezone: 'Europe/Berlin' },
+			}),
+			workflow.id,
+			{ forceSave: true },
+		);
+
+		expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+	});
+
+	test('keeps the draft engine when an update has no settings', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+
+		const updated = await workflowService.update(
+			owner,
+			Object.assign(workflowRepository.create(), { nodes: changedNodes(), connections: {} }),
+			workflow.id,
+			{ forceSave: true },
+		);
+
+		expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+	});
+
+	test('stores the settings of the published version on a system publish, not the draft settings', async () => {
+		const owner = await createOwner();
+		const workflow = await createActiveWorkflow({ settings: { engineType: 'v2' } }, owner);
+
+		const result = await workflowService.publishAsSystem(
+			workflow.id,
+			{ nodes: changedNodes(), connections: {}, settings: { engineType: 'v1' } },
+			workflow.activeVersionId as string,
+		);
+
+		if (!result.published) throw new Error('expected a publish');
+		expect(await versionSettings(result.versionId)).toEqual({ engineType: 'v1' });
+	});
+
+	test('stores the engine on archive', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+
+		const archived = await workflowService.archive(owner, workflow.id);
+
+		expect(await versionSettings(archived!.versionId)).toEqual({ engineType: 'v2' });
+	});
+});
