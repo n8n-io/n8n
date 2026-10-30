@@ -231,6 +231,31 @@ describe('getWebhookDetails', () => {
 			'Production URL: https://example.com/webhook/wf-1/secured%20webhook/secured',
 		);
 		expect(res).toContain('HTTP Method: POST');
+		expect(res).toContain('requires header authentication');
+		expect(res).not.toContain('No credentials required');
+	});
+
+	it('keeps the jwtAuth requirement when the credential lookup fails', async () => {
+		const node = createWebhookNode({
+			parameters: { authentication: 'jwtAuth', path: 'a' },
+			credentials: { jwtAuth: { id: 'cred-unreadable', name: 'JwtAuth' } },
+		});
+		const credsService = mockCredentialsService((id) => {
+			throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
+		});
+
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			credsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain('requires JWT authentication');
+		expect(res).not.toContain('No credentials required');
 	});
 
 	it('describes jwtAuth with shared secret', async () => {
