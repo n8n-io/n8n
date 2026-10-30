@@ -2768,6 +2768,8 @@ export interface InstanceAiEvalNodeResult {
 	configIssues?: Record<string, string[]>;
 	/** Epoch ms when the node started executing — used to sort the execution trace chronologically */
 	startTime?: number;
+	/** Start (epoch ms) and duration (ms) of each run, oldest first, up to the last 100. */
+	runTimes?: Array<{ startTime: number; executionTime: number }>;
 }
 
 export interface InstanceAiEvalMockHints {
@@ -2924,6 +2926,67 @@ export class InstanceAiEvalExecutionRequest extends Z.class({
 	 *  their rows, and fills every other table the workflow uses itself. */
 	seededDataTableIds: z.array(z.string().min(1)).max(20).optional(),
 }) {}
+
+const simRunFields = {
+	/** The trigger node the scenario starts from. */
+	startNodeName: z.string().min(1).max(256),
+	/** Node name → the parameters to run with (setup fields bound to simulated resources). */
+	nodeParameters: z.record(z.string(), z.record(z.string(), z.unknown())).optional(),
+	/** The credentials the sim server issued for this run; the server stores them only while it runs. */
+	credentials: z
+		.array(
+			z.object({
+				nodeName: z.string().min(1).max(256),
+				type: z.string().min(1).max(256),
+				data: z.record(z.string(), z.unknown()),
+			}),
+		)
+		.max(100)
+		.optional(),
+	/** Host patterns the sim server serves (`api.slack.com`, `*.myshopify.com`); requests to other hosts are refused. */
+	simHosts: z.array(z.string().min(1).max(256)).max(10_000),
+};
+
+/**
+ * Run a built workflow against simulated services: the eval instance sends the run's
+ * vendor requests to the sim server instead of answering them with the LLM mock. The
+ * workflow runs as stored, with the node parameters and credentials given here in
+ * place of the stored ones, for this run only.
+ */
+export class InstanceAiEvalSimExecutionRequest extends Z.class({
+	...simRunFields,
+	/**
+	 * The start node's output items. A file is declared as metadata, as in mock mode:
+	 * `binary: { <key>: { mimeType, fileName, text? } }`, and the server writes its bytes.
+	 */
+	triggerItems: z.array(z.record(z.string(), z.unknown())).max(200),
+	/**
+	 * The polling start node's static data from its first poll (`poll-with-sim`). The node
+	 * polls again with it, as an active workflow does, and the run starts from what it
+	 * returns instead of `triggerItems`.
+	 */
+	pollState: z.record(z.string(), z.unknown()).optional(),
+	/** The scenario's data setup, for the Data Table rows. */
+	scenarioHints: z.string().max(10_000).optional(),
+	/** The simulated services' starting data, so the Data Table rows agree with it. */
+	dataContext: z.string().max(20_000).optional(),
+	/** Data tables the caller reseeded with this scenario's rows; the server fills the others. */
+	seededDataTableIds: z.array(z.string().min(1)).max(20).optional(),
+	timeoutMs: z.number().int().min(30_000).max(3_600_000).optional(),
+}) {}
+
+/**
+ * The first poll of a polling start node against simulated services, as when its workflow
+ * is published: the node records where it starts reading. The caller then adds the records
+ * that arrive, and runs the workflow with the returned state (`pollState`).
+ */
+export class InstanceAiEvalSimPollRequest extends Z.class(simRunFields) {}
+
+export interface InstanceAiEvalSimPollResult {
+	/** The workflow's static data after the poll; empty when the poll failed. */
+	pollState: Record<string, unknown>;
+	error?: string;
+}
 
 // ---------------------------------------------------------------------------
 // Eval agent execution — run a built first-class Agent for one scenario turn.

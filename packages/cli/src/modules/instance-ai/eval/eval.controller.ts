@@ -7,6 +7,8 @@ import {
 	InstanceAiEvalRestoreExecutionRequest,
 	InstanceAiEvalRestoreThreadRequest,
 	InstanceAiEvalSeedDataTableRowsRequest,
+	InstanceAiEvalSimExecutionRequest,
+	InstanceAiEvalSimPollRequest,
 	findSeedFolderIssues,
 	findUnbackedSeedWorkflowTools,
 } from '@n8n/api-types';
@@ -74,6 +76,33 @@ export class InstanceAiEvalController {
 			async () => await this.evalExecutionService.executeWithLlmMock(workflowId, req.user, payload),
 		);
 		return { ...result, llmUsage: usage };
+	}
+
+	// Runs for minutes; same client timeout handling as the mock variant.
+	@Post('/eval/execute-with-sim/:workflowId')
+	@GlobalScope('instanceAi:manage')
+	async executeWithSim(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body payload: InstanceAiEvalSimExecutionRequest,
+	) {
+		// Data Table rows run on the eval model; the caller adds their usage to the case's cost.
+		const { result, usage } = await meterEvalUsage(
+			async () => await this.evalExecutionService.executeWithSim(workflowId, req.user, payload),
+		);
+		return { ...result, llmUsage: usage };
+	}
+
+	@Post('/eval/poll-with-sim/:workflowId')
+	@GlobalScope('instanceAi:manage')
+	async pollWithSim(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('workflowId') workflowId: string,
+		@Body payload: InstanceAiEvalSimPollRequest,
+	) {
+		return await this.evalExecutionService.pollWithSim(workflowId, req.user, payload);
 	}
 
 	// Runs for minutes; same client timeout handling as the workflow variant.
