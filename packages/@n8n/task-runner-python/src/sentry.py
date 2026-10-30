@@ -53,6 +53,7 @@ class TaskRunnerSentry:
             "auto_enabling_integrations": False,
             "default_integrations": True,
             "integrations": integrations,
+            "trace_propagation_targets": [],
         }
 
         if self.config.traces_sample_rate > 0:
