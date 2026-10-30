@@ -17,6 +17,7 @@ import {
 	formatMetricRawScore,
 	formatMetricRawScoreSum,
 	formatMetricValue,
+	formatMetricValueExact,
 	formatTokens,
 	getDefaultOrderedColumns,
 	getDeltaTone,
@@ -1338,6 +1339,15 @@ describe('utils', () => {
 			expect(formatMetricValue(value, { category: 'custom' })).toBe(expected);
 		});
 
+		it.each([
+			[0.728333, '0.7283'],
+			[0.8333333, '0.8333'],
+			[42.56789, '42.568'],
+			[0.000123456, '0.0001235'],
+		])('caps an unscaled custom value of %s to %s', (value, expected) => {
+			expect(formatMetricValue(value, { category: 'custom' })).toBe(expected);
+		});
+
 		it('renders a metric with no source or scale as a number', () => {
 			expect(formatMetricValue(0.73, { key: 'metricFromDeletedNode' })).toBe('0.73');
 		});
@@ -1460,9 +1470,34 @@ describe('utils', () => {
 			expect(formatMetricDelta(0.004, { category: 'custom' })).toBe('+0.004');
 		});
 
+		it('caps a long custom-metric delta the same way as the value', () => {
+			expect(formatMetricDelta(0.084333, { category: 'custom' })).toBe('+0.08433');
+			expect(formatMetricDelta(-0.0372222, { category: 'custom' })).toBe('-0.03722');
+		});
+
 		it('preserves percentage-point formatting for score deltas', () => {
 			expect(formatMetricDelta(0.04, { key: 'stringSimilarity' })).toBe('+4%');
 			expect(formatMetricDelta(1, { category: 'aiBased' })).toBe('+20%');
+		});
+	});
+
+	describe('formatMetricValueExact', () => {
+		it('returns the digits the card had to drop', () => {
+			expect(formatMetricValueExact(0.728333, { category: 'custom' })).toBe('0.728333');
+			expect(formatMetricValueExact(1234567.8915, { category: 'custom' })).toBe('1,234,567.8915');
+		});
+
+		it('returns an empty string when the card already shows the value in full', () => {
+			expect(formatMetricValueExact(0.7, { category: 'custom' })).toBe('');
+			expect(formatMetricValueExact(1694, { category: 'custom' })).toBe('');
+		});
+
+		it('returns an empty string for a scaled metric, which is never capped', () => {
+			expect(formatMetricValueExact(0.728333, { key: 'stringSimilarity' })).toBe('');
+		});
+
+		it('returns an empty string when there is no value', () => {
+			expect(formatMetricValueExact(undefined, { category: 'custom' })).toBe('');
 		});
 	});
 
