@@ -41,6 +41,19 @@ export type SkillSourceRepository = {
 	url: string;
 };
 
+/** Who changed a source between two revisions, and why, for the review of an update. */
+export type SkillSourceProvenance = {
+	/** The message of the latest commit. */
+	message: string | null;
+	author: string | null;
+	/** ISO date of the latest commit. */
+	date: string | null;
+	/** Commits between the two revisions. Null when unknown. */
+	commits: number | null;
+	/** A page in the source that shows the change. */
+	webUrl: string;
+};
+
 /** A part of the remote skill that the content of an n8n skill cannot hold. */
 export type SkillSourceFidelityWarning = { code: string; detail: string };
 
@@ -148,6 +161,18 @@ export abstract class SkillSourceClient {
 	 * check fetches no skill. A new cursor is also a revision that `fetchLatest` reads.
 	 */
 	probe?(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<string>;
+
+	/**
+	 * Who changed the source between two revisions, and why. Optional: the review shows only
+	 * the revision without it. A failure, such as a rate limit, answers null, so it never
+	 * fails a review.
+	 */
+	provenance?(
+		locator: SkillSourceLocator,
+		from: string,
+		to: string,
+		auth?: SkillSourceAuth,
+	): Promise<SkillSourceProvenance | null>;
 
 	/**
 	 * One page of the skills in the source. Call again with `next` until it is undefined.

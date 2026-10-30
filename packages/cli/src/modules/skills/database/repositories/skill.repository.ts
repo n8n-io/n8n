@@ -442,9 +442,17 @@ export class SkillRepository {
 		content: SkillContent,
 		createdById: string | null,
 		ctx: OperationContext = {},
+		sourceRevision: string | null = null,
 	): Promise<string> {
 		return await this.table.runInTransaction(ctx, async (manager) => {
-			const id = await insertVersion(manager, skillId, version, content, createdById, null);
+			const id = await insertVersion(
+				manager,
+				skillId,
+				version,
+				content,
+				createdById,
+				sourceRevision,
+			);
 			await manager.update(Skill, { id: skillId }, { updatedAt: new Date() });
 			return id;
 		});

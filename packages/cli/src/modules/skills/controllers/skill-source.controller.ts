@@ -1,5 +1,7 @@
 import {
+	AcceptSkillUpdatesDto,
 	ConnectSkillSourceDto,
+	ReviewSkillUpdateDto,
 	DiscoverSkillSourceDto,
 	ListSkillSourceCredentialsQueryDto,
 	ListSkillSourceRepositoriesQueryDto,
@@ -57,6 +59,58 @@ export class SkillSourceController {
 		@Query query: ListSkillSourceRepositoriesQueryDto,
 	) {
 		return await this.skillSourceService.listRepositories(req.user, query);
+	}
+
+	/** The sources that the user can see, for the Sources tab. */
+	@Get('/')
+	async list(req: AuthenticatedRequest) {
+		return await this.skillSourceService.list(req.user);
+	}
+
+	/** The "Updates from" dialog: the updates of one source that wait for review. */
+	@Get('/:sourceId/updates')
+	async updates(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		return await this.skillSyncService.listUpdates(req.user, sourceId);
+	}
+
+	/** Update all: accepts each reviewed update of the source that is not blocked. */
+	@Post('/:sourceId/updates/accept')
+	async acceptAll(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('sourceId') sourceId: string,
+		@Body payload: AcceptSkillUpdatesDto,
+	) {
+		return await this.skillSyncService.acceptAll(req.user, sourceId, payload);
+	}
+
+	/** The review of the update of one synced skill. */
+	@Get('/skills/:skillId/update')
+	async update(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
+		return await this.skillSyncService.getUpdate(req.user, skillId);
+	}
+
+	/** Accept: the reviewed update becomes the next version of the skill. */
+	@Post('/skills/:skillId/update/accept')
+	async accept(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+		@Body payload: ReviewSkillUpdateDto,
+	) {
+		return await this.skillSyncService.accept(req.user, skillId, payload);
+	}
+
+	/** Skip: hides the update until the source changes again. */
+	@Post('/skills/:skillId/update/skip')
+	async skip(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Param('skillId') skillId: string,
+		@Body payload: ReviewSkillUpdateDto,
+	) {
+		await this.skillSyncService.skip(req.user, skillId, payload);
+		return { ok: true };
 	}
 
 	/** Reads a link and lists its skills for the picker. Writes nothing. */

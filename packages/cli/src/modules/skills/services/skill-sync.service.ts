@@ -1,10 +1,23 @@
-import type { SkillScanResult, SkillSourceCheckResponse } from '@n8n/api-types';
+import type {
+	AcceptSkillUpdatesDto,
+	ReviewSkillUpdateDto,
+	SkillPendingUpdate,
+	SkillScanFinding,
+	SkillScanResult,
+	SkillSourceCheckResponse,
+	SkillSourceUpdates,
+	SkillUpdateAcceptResponse,
+	SkillUpdateCommit,
+	SkillUpdateReview,
+	SkillUpdatesAcceptResponse,
+} from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { createHash } from 'node:crypto';
-import { UserRepository, type User } from '@n8n/db';
+import { TransactionRunner, UserRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
+import { isRecord } from '@n8n/utils/is-record';
 
 import type {
 	SkillSourceConnection,
@@ -27,11 +40,23 @@ import type {
 	SkillSourceAuth,
 	SkillSourceClient,
 } from '../sources/skill-source-client';
-import { rowContent, storedContentOf } from '../utils/skill-content';
+import { SkillNameTakenError } from '../errors/skill-name-taken.error';
+import {
+	contentToAgentSkill,
+	rowContent,
+	storedContentFrom,
+	storedContentOf,
+	toAgentSkill,
+	type ResolvedSkillRow,
+} from '../utils/skill-content';
+import { getSkillHash } from '../utils/skill-hash';
 import { skillContentHash, type SkillContent } from '../utils/skill-content-hash';
 import { SkillAccessService } from './skill-access.service';
 import { SkillSecurityScanner } from './skill-security-scanner.service';
 import { SkillSourceCredentialsProxy } from './skill-source-credentials-proxy.service';
+import { SkillSourceService } from './skill-source.service';
+import { SkillUsageProxy } from './skill-usage-proxy.service';
+import { SkillService } from './skill.service';
 import { SkillSyncFlagGate } from './skill-sync-flag-gate';
 import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telemetry.service';
 
@@ -82,6 +107,10 @@ export class SkillSyncService {
 		private readonly credentials: SkillSourceCredentialsProxy,
 		private readonly scanner: SkillSecurityScanner,
 		private readonly skillsTelemetry: SkillsTelemetry,
+		private readonly skillService: SkillService,
+		private readonly sourceService: SkillSourceService,
+		private readonly skillUsage: SkillUsageProxy,
+		private readonly txRunner: TransactionRunner,
 	) {}
 
 	/**
@@ -199,6 +228,344 @@ export class SkillSyncService {
 				});
 			}
 		}
+	}
+
+	// ---------------------------------------------------------------- review
+
+	/**
+	 * The "Updates from" dialog: every update of the source that waits for review, blocked ones
+	 * included. Everyone who sees the source sees its updates. Only users who may review get
+	 * `canReview`, as an update to a Global source waits for an admin.
+	 */
+	async listUpdates(user: User, sourceId: string): Promise<SkillSourceUpdates> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.sourceRepository.findById(sourceId);
+		const client = source && this.clients.get(source.type);
+		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		const [described] = await this.sourceService.describeSources(user, [source]);
+		const links = await this.sourceRepository.findPendingLinks(source.id);
+		const latest = await this.skillRepository.findLatestSaved(links.map((link) => link.skillId));
+		const updates = (
+			await Promise.all(
+				links.map(async (link) => await this.describeUpdate(source, client, link, latest)),
+			)
+		).flatMap((update) => update ?? []);
+		// The rows of the dialog name the newest commit of the source.
+		const newest = links.find((link) => link.pendingRevision !== null);
+		return {
+			source: described,
+			commit: newest ? await this.commitOf(source, client, newest) : null,
+			updates: updates.sort((a, b) => a.name.localeCompare(b.name)),
+		};
+	}
+
+	/** The review of one update: the diff, the check, the commit and what happens next. */
+	async getUpdate(user: User, skillId: string): Promise<SkillUpdateReview> {
+		const { link, source, client } = await this.requirePending(user, skillId, 'view');
+		const latest = await this.skillRepository.findLatestSaved([skillId]);
+		const update = await this.describeUpdate(source, client, link, latest);
+		if (!update) throw staleError();
+		const [described] = await this.sourceService.describeSources(user, [source]);
+		return { source: described, commit: await this.commitOf(source, client, link), update };
+	}
+
+	/**
+	 * Accept: the reviewed update becomes the next version of the skill. Following agents get
+	 * unpublished changes, and published agents keep their pinned version.
+	 */
+	async accept(
+		user: User,
+		skillId: string,
+		review: ReviewSkillUpdateDto,
+	): Promise<SkillUpdateAcceptResponse> {
+		const { link, source } = await this.requirePending(user, skillId, 'review', {
+			action: 'accept',
+		});
+		return await this.acceptOne(user, source, link, review, false);
+	}
+
+	/** Skip: hides the update until the source changes again. */
+	async skip(user: User, skillId: string, review: ReviewSkillUpdateDto): Promise<void> {
+		const { link, source } = await this.requirePending(user, skillId, 'review', {
+			action: 'skip',
+		});
+		const track = this.reviewTracker(user, source, link, 'skip', false);
+		try {
+			if (link.pendingContentHash !== review.contentHash) throw staleError();
+			if (!(await this.sourceRepository.skipPending(skillId, review.contentHash))) {
+				throw staleError();
+			}
+		} catch (error) {
+			await track(error);
+			throw toSkillSourceRequestError(error);
+		}
+		await track();
+	}
+
+	/**
+	 * Update all: accepts each reviewed update of the source, each in its own transaction, so
+	 * one update that cannot come in, such as a renamed skill whose name is taken, does not
+	 * stop the others. The answer lists the updates that did not come in, with their reason.
+	 */
+	async acceptAll(
+		user: User,
+		sourceId: string,
+		request: AcceptSkillUpdatesDto,
+	): Promise<SkillUpdatesAcceptResponse> {
+		await this.flagGate.assertEnabled(user);
+		const source = await this.sourceRepository.findById(sourceId);
+		if (!source || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
+			throw new NotFoundError('Source not found');
+		}
+		if (!(await this.skillAccess.canOnSource(user, source, 'review'))) {
+			throw new ForbiddenError('You are not allowed to review the updates of this source.');
+		}
+		const response: SkillUpdatesAcceptResponse = { accepted: [], failed: [] };
+		for (const { skillId, contentHash } of uniqueBy(request.updates, (update) => update.skillId)) {
+			const link = await this.sourceRepository.findLinkBySkillId(skillId);
+			try {
+				if (!link || link.sourceId !== source.id) throw staleError();
+				response.accepted.push(
+					await this.acceptOne(
+						user,
+						source,
+						link,
+						{ contentHash, reviewedWarnings: request.reviewedWarnings },
+						true,
+					),
+				);
+			} catch (error) {
+				const reason = skillSourceReasonOf(error);
+				if (!reason) throw error;
+				response.failed.push({ skillId, reason });
+			}
+		}
+		return response;
+	}
+
+	private async acceptOne(
+		user: User,
+		source: SkillSourceConnection,
+		link: SkillSourceLink,
+		{ contentHash, reviewedWarnings }: ReviewSkillUpdateDto,
+		bulk: boolean,
+	): Promise<SkillUpdateAcceptResponse> {
+		const track = this.reviewTracker(user, source, link, 'accept', bulk);
+		try {
+			const verdict = scanOf(link)?.verdict;
+			const revision = link.pendingRevision;
+			if (link.pendingContentHash !== contentHash || revision === null) throw staleError();
+			const content = storedContentFrom(link.pendingContent);
+			if (verdict === 'blocked' || !content) {
+				throw new SkillSourceRequestError(
+					'blocked_by_check',
+					'The security check blocked this update. Nobody can accept it.',
+				);
+			}
+			if (verdict === 'needs_review' && reviewedWarnings !== true) {
+				throw new SkillSourceRequestError(
+					'review_required',
+					'This update needs a review of its warnings before it can come in.',
+				);
+			}
+			const update = contentToAgentSkill(content);
+			const saved = await this.txRunner.run({}, async (ctx) => {
+				const latest = (await this.skillRepository.findLatestSaved([link.skillId], ctx)).get(
+					link.skillId,
+				);
+				if (!latest) throw skillDeletedError();
+				const clash = await this.nameClashOf(latest, update.name);
+				if (clash) throw nameClashError(clash);
+				let result;
+				try {
+					result = await this.skillService.saveTrusted(
+						link.skillId,
+						{
+							baseSkillHash: getSkillHash(toAgentSkill(latest)),
+							baseVersionId: latest.version.id,
+							name: update.name,
+							description: update.description,
+							instructions: update.instructions,
+							// An empty list removes every file, as the update has none.
+							references: update.references ?? [],
+							frontmatter: content.frontmatter,
+						},
+						user.id,
+						ctx,
+						{ allowSynced: true, sourceRevision: revision },
+					);
+				} catch (error) {
+					if (error instanceof SkillNameTakenError) throw nameClashError(update.name);
+					throw error;
+				}
+				// The link must still hold the reviewed update, or another review won.
+				if (
+					!(await this.sourceRepository.acceptPending(link.skillId, contentHash, revision, ctx))
+				) {
+					throw staleError();
+				}
+				return result;
+			});
+			await this.skillService.refreshFollowingAgents(saved.followingAgentIds);
+			if (saved.created) {
+				await this.skillService.trackUpdated(user.id, link.skillId, 'github', saved.version, false);
+			}
+			await track();
+			return { skillId: link.skillId, name: saved.skill.name, version: saved.version };
+		} catch (error) {
+			await track(error);
+			throw toSkillSourceRequestError(error);
+		}
+	}
+
+	/** One event for each decision, also a failed one. */
+	private reviewTracker(
+		user: User,
+		source: SkillSourceConnection,
+		link: SkillSourceLink | undefined,
+		action: 'accept' | 'skip',
+		bulk: boolean,
+	) {
+		const verdict = link ? scanOf(link)?.verdict : undefined;
+		return async (error?: unknown) =>
+			await this.skillsTelemetry.reviewedUpdate(
+				{
+					provider: source.type,
+					action,
+					...(verdict ? { verdict } : {}),
+					bulk,
+					status: error === undefined ? 'success' : 'failure',
+					...(error === undefined ? {} : { reason: skillSourceReasonOf(error) ?? 'unexpected' }),
+				},
+				user.id,
+			);
+	}
+
+	/**
+	 * The update of one link for the dialog and the review. Undefined when the skill is gone,
+	 * such as after a delete at the same time.
+	 */
+	private async describeUpdate(
+		source: SkillSourceConnection,
+		client: SkillSourceClient,
+		link: SkillSourceLink,
+		latest: Map<string, ResolvedSkillRow>,
+	): Promise<SkillPendingUpdate | undefined> {
+		const row = latest.get(link.skillId);
+		const scan = scanOf(link);
+		if (!row || !scan || link.pendingContentHash === null || link.pendingRevision === null) {
+			return undefined;
+		}
+		const content = storedContentFrom(link.pendingContent);
+		const update = content ? contentToAgentSkill(content) : null;
+		const usage = await this.skillUsage.findUsage(link.skillId, 'all', {});
+		const clash =
+			update && scan.verdict !== 'blocked' ? await this.nameClashOf(row, update.name) : null;
+		return {
+			skillId: link.skillId,
+			name: row.version.name,
+			location: client.location(link.remoteRef),
+			webUrl: client.webUrl(source.locator, link.remoteRef),
+			contentHash: link.pendingContentHash,
+			revision: link.pendingRevision,
+			check: scan,
+			current: toAgentSkill(row),
+			update,
+			nameClash: clash ? { name: clash } : null,
+			impact: {
+				nextVersion: row.version.version + 1,
+				followingAgents: new Set(
+					usage.drafts.filter((draft) => !draft.pinned).map((draft) => draft.agentId),
+				).size,
+				publishedAgents: new Set(usage.pins.map((pin) => pin.agentId)).size,
+			},
+		};
+	}
+
+	/**
+	 * The new name when the update renames the skill to a name that its scope or one of its
+	 * agents already uses, else null. Accept refuses it with `name_clash`.
+	 */
+	private async nameClashOf(row: ResolvedSkillRow, newName: string): Promise<string | null> {
+		try {
+			await this.skillService.assertCanRename(
+				row.skill.id,
+				{ projectId: row.skill.projectId, agentId: row.skill.agentId },
+				row.version.name,
+				newName.trim(),
+			);
+			return null;
+		} catch (error) {
+			if (error instanceof SkillNameTakenError || error instanceof UserError) return newName.trim();
+			throw error;
+		}
+	}
+
+	/**
+	 * The commits between the content in n8n and the update. Only the revisions when the
+	 * source cannot describe them, such as on a rate limit or with a credential that is gone.
+	 */
+	private async commitOf(
+		source: SkillSourceConnection,
+		client: SkillSourceClient,
+		link: SkillSourceLink,
+	): Promise<SkillUpdateCommit | null> {
+		const revision = link.pendingRevision;
+		if (revision === null) return null;
+		const known = { revision, baseRevision: link.baseRevision };
+		let provenance = null;
+		if (client.provenance) {
+			const auth = await this.authOf(source, client).catch(() => undefined);
+			if (!source.credentialId || auth) {
+				provenance = await client.provenance(source.locator, link.baseRevision, revision, auth);
+			}
+		}
+		return {
+			...known,
+			message: provenance?.message ?? null,
+			author: provenance?.author ?? null,
+			date: provenance?.date ?? null,
+			commits: provenance?.commits ?? null,
+			webUrl: provenance?.webUrl ?? client.webUrl(source.locator, link.remoteRef),
+		};
+	}
+
+	/**
+	 * The link and source of a synced skill with an update, for a user who may do `action`.
+	 * A skill that the user cannot read answers `skill_deleted`, the same for a hidden and a
+	 * deleted skill, so the answer reveals nothing. A skill with no update, such as after a
+	 * review by another user or Stop syncing, answers `stale`.
+	 */
+	private async requirePending(
+		user: User,
+		skillId: string,
+		action: 'view' | 'review',
+		tracked?: { action: 'accept' | 'skip' },
+	): Promise<{ link: SkillSourceLink; source: SkillSourceConnection; client: SkillSourceClient }> {
+		await this.flagGate.assertEnabled(user);
+		const fail = async (error: unknown, source?: SkillSourceConnection): Promise<never> => {
+			if (tracked && source) {
+				await this.reviewTracker(user, source, undefined, tracked.action, false)(error);
+			}
+			throw error;
+		};
+		try {
+			await this.skillAccess.requireAccess(user, skillId, 'read');
+		} catch (error) {
+			if (error instanceof NotFoundError) throw skillDeletedError();
+			throw error;
+		}
+		const link = await this.sourceRepository.findLinkBySkillId(skillId);
+		const source = link && (await this.sourceRepository.findById(link.sourceId));
+		const client = source && this.clients.get(source.type);
+		if (!link || !source || !client) throw staleError();
+		if (!(await this.skillAccess.canOnSource(user, source, action))) {
+			throw new ForbiddenError('You are not allowed to review the updates of this source.');
+		}
+		if (link.pendingContentHash === null) await fail(staleError(), source);
+		return { link, source, client };
 	}
 
 	// ---------------------------------------------------------------- check
@@ -492,4 +859,46 @@ export class SkillSyncService {
 /** A credential, or the public access of a source type, as a rate limit applies to it. */
 function accessKey(source: SkillSourceConnection): string {
 	return source.credentialId ? `credential:${source.credentialId}` : `public:${source.type}`;
+}
+
+/** The security check of the pending update, as the check stored it. */
+function scanOf(link: SkillSourceLink): SkillScanResult | null {
+	const scan = link.pendingScan;
+	const verdict = scan?.verdict;
+	if (verdict !== 'pass' && verdict !== 'needs_review' && verdict !== 'blocked') return null;
+	const findings = Array.isArray(scan?.findings) ? scan.findings.filter(isFinding) : [];
+	return { verdict, findings };
+}
+
+function isFinding(value: unknown): value is SkillScanFinding {
+	return (
+		isRecord(value) &&
+		typeof value.rule === 'string' &&
+		typeof value.severity === 'string' &&
+		typeof value.detail === 'string'
+	);
+}
+
+function staleError(): SkillSourceRequestError {
+	return new SkillSourceRequestError(
+		'stale',
+		'This update changed since you opened it. Review the latest change.',
+	);
+}
+
+function skillDeletedError(): SkillSourceRequestError {
+	return new SkillSourceRequestError('skill_deleted', 'This skill was deleted.');
+}
+
+function nameClashError(name: string): SkillSourceRequestError {
+	return new SkillSourceRequestError(
+		'name_clash',
+		`The source renamed this skill to ${name}, and that name is taken.`,
+	);
+}
+
+/** The first item for each key, in order. */
+function uniqueBy<T>(items: T[], key: (item: T) => string): T[] {
+	const seen = new Set<string>();
+	return items.filter((item) => !seen.has(key(item)) && seen.add(key(item)) !== undefined);
 }

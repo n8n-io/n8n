@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import type { AgentSkill } from '../agents/types';
+
 import { Z } from '../zod-class';
 
 /**
@@ -25,6 +27,9 @@ export const SKILL_SOURCE_REASONS = [
 	'credential_missing',
 	'credential_out_of_scope',
 	'host_blocked',
+	'stale',
+	'name_clash',
+	'skill_deleted',
 ] as const;
 
 export type SkillSourceReason = (typeof SKILL_SOURCE_REASONS)[number];
@@ -216,4 +221,125 @@ export type SkillSourceRepositoryList = {
 	repositories: SkillSourceRepositoryOption[];
 	/** True when the credential can read more repositories than n8n lists. */
 	truncated: boolean;
+};
+
+/** One source in the Sources tab. */
+export type SkillSourceListItem = {
+	id: string;
+	type: 'github';
+	/** Such as `owner/repository`. */
+	label: string;
+	/** The branch, or null for a source type without branches. */
+	ref: string | null;
+	/** The folder in the source that the source reads. Empty for the whole source. */
+	path: string;
+	webUrl: string;
+	/** Null for a Global source. */
+	projectId: string | null;
+	projectName: string | null;
+	projectType: 'personal' | 'team' | null;
+	/** Synced skills of the source. */
+	skillCount: number;
+	/** Updates that wait for review and that the security check did not block. */
+	updatesAvailable: number;
+	/** Updates that the security check blocked. */
+	updatesBlocked: number;
+	lastCheckedAt: string | null;
+	/** Whether the user may review updates and check the source now. */
+	canReview: boolean;
+};
+
+/** The commits between the content of a skill in n8n and its update, from the source. */
+export type SkillUpdateCommit = {
+	/** The revision of the update, such as a commit SHA. */
+	revision: string;
+	/** The revision of the content that n8n has. */
+	baseRevision: string;
+	/** The latest commit. Null when the source could not describe it, such as on a rate limit. */
+	message: string | null;
+	author: string | null;
+	/** ISO date of the latest commit. */
+	date: string | null;
+	/** Commits between the two revisions. Null when unknown. */
+	commits: number | null;
+	/** A page in the source that shows the change. */
+	webUrl: string;
+};
+
+/** What Accept changes for agents. */
+export type SkillUpdateImpact = {
+	/** The version that Accept creates. */
+	nextVersion: number;
+	/** Agents whose draft follows the latest version: they get unpublished changes. */
+	followingAgents: number;
+	/** Agents with a published version that pins the skill: they do not change. */
+	publishedAgents: number;
+};
+
+/** An update from the source that waits for review. */
+export type SkillPendingUpdate = {
+	skillId: string;
+	/** The name of the skill in n8n. */
+	name: string;
+	/** Where the skill is in the source, such as its folder. */
+	location: string;
+	webUrl: string;
+	/** The hash of the update. Send it back to accept or skip exactly this content. */
+	contentHash: string;
+	revision: string;
+	check: SkillScanResult;
+	/** The latest version in n8n. */
+	current: AgentSkill;
+	/** The update. Null when n8n cannot read its SKILL.md: the check then blocks it. */
+	update: AgentSkill | null;
+	/**
+	 * Set when the update renames the skill to a name that the scope or an agent already uses.
+	 * Accept is refused (`name_clash`) until the name is free.
+	 */
+	nameClash: { name: string } | null;
+	impact: SkillUpdateImpact;
+};
+
+/** The "Updates from" dialog of one source. */
+export type SkillSourceUpdates = {
+	source: SkillSourceListItem;
+	/** The commits of the newest update, for the rows of the dialog. Null when unknown. */
+	commit: SkillUpdateCommit | null;
+	updates: SkillPendingUpdate[];
+};
+
+/** The review of one update. */
+export type SkillUpdateReview = {
+	source: SkillSourceListItem;
+	commit: SkillUpdateCommit | null;
+	update: SkillPendingUpdate;
+};
+
+/** Accepts or skips the update with exactly the content that the user reviewed. */
+export class ReviewSkillUpdateDto extends Z.class({
+	/** `contentHash` of the reviewed update. A newer update gives `stale`. */
+	contentHash: z.string().min(1).max(64),
+	/** True when the user ticked "I reviewed the warnings". Accept of a `needs_review` update needs it. */
+	reviewedWarnings: z.boolean().optional(),
+}) {}
+
+/** Update all: accepts each reviewed update of the source that is not blocked. */
+export class AcceptSkillUpdatesDto extends Z.class({
+	updates: z
+		.array(z.object({ skillId: z.string().min(1).max(36), contentHash: z.string().min(1).max(64) }))
+		.min(1)
+		.max(SKILL_SOURCE_MAX_SKILLS),
+	reviewedWarnings: z.boolean().optional(),
+}) {}
+
+export type SkillUpdateAcceptResponse = {
+	skillId: string;
+	name: string;
+	version: number;
+};
+
+export type SkillUpdatesAcceptResponse = {
+	accepted: SkillUpdateAcceptResponse[];
+	/** Updates that did not come in. The others did. */
+	failed: Array<{ skillId: string; reason: SkillSourceReason }>;
 };

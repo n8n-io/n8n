@@ -541,6 +541,27 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			reason: skillSourceReason,
 		}),
 	},
+	USER_REVIEWED_SKILL_UPDATE: {
+		name: 'User reviewed skill update',
+		description:
+			'A user accepted or skipped an update from a Skill Sync source. Fires once per skill, also when it fails, with the reason code. Update all fires one event for each skill with `bulk: true`. Later changes nothing and fires nothing.',
+		properties: z.object({
+			user_id: userId,
+			provider: skillSourceProvider,
+			action: z
+				.enum(['accept', 'skip'])
+				.describe(
+					'`accept` makes the update the next version. `skip` hides it until the next change',
+				),
+			verdict: z
+				.enum(['pass', 'needs_review', 'blocked'])
+				.optional()
+				.describe('The security check of the update. Absent when the update was already gone'),
+			bulk: z.boolean().describe('True for Update all, false for the review of one skill'),
+			status: skillSourceStatus,
+			reason: skillSourceReason,
+		}),
+	},
 	USER_STOPPED_SKILL_SYNC: {
 		name: 'User stopped skill sync',
 		description:

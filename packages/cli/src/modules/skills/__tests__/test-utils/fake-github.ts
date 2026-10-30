@@ -27,8 +27,18 @@ type Repository = {
 export class FakeGitHub {
 	private readonly repositories = new Map<string, Repository>();
 
-	/** Commits by SHA, for the tarball host. */
-	private readonly commits = new Map<string, { repository: string; files: Files }>();
+	/** Commits by SHA, for the tarball host and the REST commit list. */
+	private readonly commits = new Map<
+		string,
+		{
+			repository: string;
+			files: Files;
+			key: string;
+			index: number;
+			message: string;
+			author: string;
+		}
+	>();
 
 	/** Requests per host, for tests that count them. */
 	readonly requests = { refs: 0, archives: 0 };
@@ -80,6 +90,14 @@ export class FakeGitHub {
 			.reply(function (this: nock.ReplyFnContext, uri) {
 				return github.apiTarballReply(uri, bearerToken(this.req.headers.authorization));
 			})
+			.get(/^\/repos\/([^/]+)\/([^/]+)\/commits\?/)
+			.reply(function (this: nock.ReplyFnContext, uri) {
+				return github.commitsReply(uri, bearerToken(this.req.headers.authorization));
+			})
+			.get(/^\/repos\/([^/]+)\/([^/]+)\/compare\/([0-9a-f]+)\.\.\.([0-9a-f]+)/)
+			.reply(function (this: nock.ReplyFnContext, uri) {
+				return github.compareReply(uri, bearerToken(this.req.headers.authorization));
+			})
 			.get(/^\/(user\/repos|installation\/repositories)\?/)
 			.reply(function (this: nock.ReplyFnContext, uri) {
 				return github.listReply(uri, bearerToken(this.req.headers.authorization));
@@ -115,6 +133,45 @@ export class FakeGitHub {
 		if (status !== 200) return [status, ''];
 		const location = `https://codeload.github.com/${owner}/${repository}/legacy.tar.gz/${sha}?token=temp-${sha}`;
 		return [302, '', { Location: location }];
+	}
+
+	/** The latest commit of `sha`, as `GET /repos/o/r/commits?sha=…&per_page=1` lists it. */
+	private commitsReply(uri: string, token: string | undefined): nock.ReplyFnResult {
+		const failure = this.failure();
+		if (failure) return failure;
+		const [, owner, repository] = /^\/repos\/([^/]+)\/([^/]+)\//.exec(uri) ?? [];
+		const status = this.access(`${owner}/${repository}`.toLowerCase(), token);
+		if (status !== 200) return [status, ''];
+		const sha = new URL(uri, 'https://api.github.com').searchParams.get('sha') ?? '';
+		const commit = this.commits.get(sha);
+		if (!commit) return [404, ''];
+		return [
+			200,
+			[
+				{
+					sha,
+					commit: {
+						message: `${commit.message}\n\nMore detail.`,
+						author: { name: commit.author, date: '2026-10-29T12:00:00Z' },
+					},
+					author: { login: commit.author },
+				},
+			],
+		];
+	}
+
+	/** The number of commits between two SHAs of one repository. */
+	private compareReply(uri: string, token: string | undefined): nock.ReplyFnResult {
+		const failure = this.failure();
+		if (failure) return failure;
+		const [, owner, repository, base, head] =
+			/^\/repos\/([^/]+)\/([^/]+)\/compare\/([0-9a-f]+)\.\.\.([0-9a-f]+)/.exec(uri) ?? [];
+		const status = this.access(`${owner}/${repository}`.toLowerCase(), token);
+		if (status !== 200) return [status, ''];
+		const from = this.commits.get(base);
+		const to = this.commits.get(head);
+		if (!from || !to) return [404, ''];
+		return [200, { total_commits: Math.max(0, to.index - from.index), files: [] }];
 	}
 
 	private codeloadReply(uri: string): nock.ReplyFnResult {
@@ -172,7 +229,7 @@ export class FakeGitHub {
 		fullName: string,
 		files: Files,
 		branch = 'main',
-		options: { private?: boolean } = {},
+		options: { private?: boolean; message?: string; author?: string } = {},
 	): string {
 		const key = fullName.toLowerCase();
 		const repo = this.repositories.get(key) ?? {
@@ -185,7 +242,14 @@ export class FakeGitHub {
 			.update(`${key}@${branch}#${this.commits.size}:${JSON.stringify(files)}`)
 			.digest('hex');
 		repo.branches.set(branch, { sha, files: { ...files } });
-		this.commits.set(sha, { repository: fullName.split('/')[1], files: { ...files } });
+		this.commits.set(sha, {
+			repository: fullName.split('/')[1],
+			files: { ...files },
+			key,
+			index: this.commits.size,
+			message: options.message ?? `Commit ${this.commits.size + 1}`,
+			author: options.author ?? 'octocat',
+		});
 		return sha;
 	}
 

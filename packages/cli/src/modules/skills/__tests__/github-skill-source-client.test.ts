@@ -74,6 +74,51 @@ describe('GitHubSkillSourceClient', () => {
 	const TOKEN = 'ghp_reader';
 	const tokenAuth = { token: TOKEN, credentialType: 'githubApi' };
 
+	describe('provenance', () => {
+		const locator = { owner: 'acme', repository: 'skills', branch: 'main', path: '' };
+
+		it('names the latest commit and counts the commits between two revisions', async () => {
+			const from = github.push('acme/skills', { 'a.md': 'a' });
+			github.push('acme/skills', { 'a.md': 'b' });
+			const to = github.push('acme/skills', { 'a.md': 'c' }, 'main', {
+				message: 'docs: add tone examples',
+				author: 'lena',
+			});
+
+			expect(await client.provenance(locator, from, to)).toEqual({
+				message: 'docs: add tone examples',
+				author: 'lena',
+				date: '2026-10-29T12:00:00Z',
+				commits: 2,
+				webUrl: `https://github.com/acme/skills/compare/${from}...${to}`,
+			});
+		});
+
+		it('reads a private repository with the token', async () => {
+			const from = github.push('acme/private', { 'a.md': 'a' }, 'main', { private: true });
+			const to = github.push('acme/private', { 'a.md': 'b' }, 'main', { private: true });
+			github.grant(TOKEN, ['acme/private']);
+			const privateLocator = { ...locator, repository: 'private' };
+
+			expect(await client.provenance(privateLocator, from, to)).toBeNull();
+			expect(await client.provenance(privateLocator, from, to, tokenAuth)).toMatchObject({
+				commits: 1,
+			});
+		});
+
+		it('answers null when GitHub refuses, and caches an answer', async () => {
+			const from = github.push('acme/skills', { 'a.md': 'a' });
+			const to = github.push('acme/skills', { 'a.md': 'b' });
+			github.failWith = { status: 403, headers: { 'x-ratelimit-remaining': '0' } };
+			expect(await client.provenance(locator, from, to)).toBeNull();
+
+			github.failWith = undefined;
+			const first = await client.provenance(locator, from, to);
+			github.failWith = 500;
+			expect(await client.provenance(locator, from, to)).toEqual(first);
+		});
+	});
+
 	/** The contract subject on public repositories, or on private ones that a token reads. */
 	const contractSubject = (privately: boolean) => ({
 		client,
