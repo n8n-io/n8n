@@ -1141,6 +1141,14 @@ export function createBuildWorkflowTool(context: InstanceAiContext) {
 				};
 			}
 
+			// Show the compiled workflow before validation, which can block the save
+			// for several build attempts.
+			await context.workflowDraftPublisher?.publish({
+				filePath,
+				workflowId: targetWorkflowId,
+				workflow: compiled.workflow,
+			});
+
 			// Snapshot of the previously saved workflow, used to tell nodes this
 			// build actually touched apart from pre-existing ones it round-tripped.
 			let savedWorkflowSnapshot: WorkflowJSON | undefined;

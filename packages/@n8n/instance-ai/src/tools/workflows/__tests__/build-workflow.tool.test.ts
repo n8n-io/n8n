@@ -1688,6 +1688,67 @@ describe('createBuildWorkflowTool', () => {
 		});
 	});
 
+	describe('workflow drafts', () => {
+		function withDraftPublisher(source = 'workflow source') {
+			const publish = vi.fn(async () => await Promise.resolve());
+			const made = makeContext({
+				source,
+				overrides: { workflowDraftPublisher: { publish } },
+			});
+			return { ...made, publish };
+		}
+
+		it('publishes the compiled workflow as a draft even when validation blocks the save', async () => {
+			vi.mocked(partitionWarnings).mockImplementation((warnings: ValidationWarning[]) => ({
+				blocking: warnings,
+				informational: [],
+			}));
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce({
+				success: true,
+				workflow: structuredClone(generatedWorkflow),
+				warnings: [{ code: 'SET_INVALID_ASSIGNMENT', message: 'Missing id', nodeName: 'Webhook' }],
+				compiler: 'sandbox-tsx',
+			});
+			const { context, filePath, publish } = withDraftPublisher();
+
+			const result = await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+			});
+
+			expect(result.success).toBe(false);
+			expect(context.workflowService.createFromWorkflowJSON).not.toHaveBeenCalled();
+			expect(publish).toHaveBeenCalledWith({
+				filePath,
+				workflowId: undefined,
+				workflow: generatedWorkflow,
+			});
+		});
+
+		it('names the bound workflow on the draft of an edit', async () => {
+			const { context, filePath, publish } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), {
+				filePath,
+				workflowId: 'wf-bound',
+			});
+
+			expect(publish).toHaveBeenCalledWith(
+				expect.objectContaining({ filePath, workflowId: 'wf-bound' }),
+			);
+		});
+
+		it('publishes no draft when the source does not compile', async () => {
+			vi.mocked(compileWorkflowSource).mockResolvedValueOnce(
+				workflowSourceBuildFailure('SyntaxError: Unexpected token'),
+			);
+			const { context, filePath, publish } = withDraftPublisher();
+
+			await executeTool<BuildToolOutput>(createBuildWorkflowTool(context), { filePath });
+
+			expect(publish).not.toHaveBeenCalled();
+		});
+	});
+
 	it('does not require setup for pending nodes the build did not change', async () => {
 		vi.mocked(analyzeWorkflow).mockResolvedValueOnce([
 			{

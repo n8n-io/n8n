@@ -28,7 +28,8 @@ function createFactory(fields: FactoryFields): AssistantTurnEnvironmentFactory {
 }
 
 function createSetupFactory() {
-	const createContext = vi.fn((): InstanceAiContext => mock<InstanceAiContext>({}));
+	// A plain object, so the test can see which optional hooks the factory sets.
+	const createContext = vi.fn((): InstanceAiContext => ({ ...mock<InstanceAiContext>({}) }));
 	const fields = {
 		logger: { warn: vi.fn(), debug: vi.fn() },
 		instanceAiConfig: {},
@@ -190,15 +191,15 @@ describe('AssistantTurnEnvironmentFactory', () => {
 			);
 		});
 
-		it('creates no workflow draft previewer when the draft preview gate is off', async () => {
+		it('creates no workflow draft publisher when the draft preview gate is off', async () => {
 			const { factory } = createSetupFactory();
 
-			const { orchestrationContext } = await factory.create(params, createRuntime());
+			const { context } = await factory.create(params, createRuntime());
 
-			expect(orchestrationContext.workflowDraftPreviewer).toBeUndefined();
+			expect(context.workflowDraftPublisher).toBeUndefined();
 		});
 
-		it('creates a workflow draft previewer when the draft preview gate is on', async () => {
+		it('creates a workflow draft publisher when the draft preview gate is on', async () => {
 			const { factory, fields } = createSetupFactory();
 			const gates = await fields.adapterService.resolveExperimentGates();
 			fields.adapterService.resolveExperimentGates.mockResolvedValue({
@@ -206,10 +207,10 @@ describe('AssistantTurnEnvironmentFactory', () => {
 				draftWorkflowPreviewEnabled: true,
 			});
 
-			const { orchestrationContext } = await factory.create(params, createRuntime());
+			const { context } = await factory.create(params, createRuntime());
 
-			expect(orchestrationContext.workflowDraftPreviewer).toEqual(
-				expect.objectContaining({ observe: expect.any(Function) }),
+			expect(context.workflowDraftPublisher).toEqual(
+				expect.objectContaining({ publish: expect.any(Function) }),
 			);
 		});
 

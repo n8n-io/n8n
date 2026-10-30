@@ -19,8 +19,7 @@ import {
 	describePromptProfile,
 	createDomainAccessTracker,
 	createSetupItemsEmitter,
-	createContextWorkflowDraftSources,
-	createWorkflowDraftPreviewer,
+	createWorkflowDraftPublisher,
 	isSetupPanelEnabled,
 	orchestratorAgentId,
 	type InstanceAiContext,
@@ -579,16 +578,13 @@ export class AssistantTurnEnvironmentFactory {
 			nodeDefinitionDirs: nodeDefDirs.length > 0 ? nodeDefDirs : undefined,
 			domainContext: context,
 		};
-		// Draft previews publish on the raw bus, so the run bus that feeds the
-		// previewer never sees its own events.
 		if (draftWorkflowPreviewEnabled) {
-			orchestrationContext.workflowDraftPreviewer = createWorkflowDraftPreviewer({
+			context.workflowDraftPublisher = createWorkflowDraftPublisher({
 				eventBus: runtime.eventBus,
 				threadId,
 				runId,
 				agentId: orchestratorAgentId(runId),
-				logger: this.logger,
-				sources: createContextWorkflowDraftSources(context),
+				context,
 			});
 		}
 

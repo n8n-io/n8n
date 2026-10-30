@@ -206,7 +206,6 @@ export {
 	type EmitInstanceAiOptions,
 } from './codegen/index';
 export { parseWorkflowCode, parseWorkflowCodeToBuilder } from './codegen/parse-workflow-code';
-export { parseWorkflowSource } from './codegen/parse-workflow-source';
 export {
 	locateNodeDeclarations,
 	type NodeDeclarationLocation,

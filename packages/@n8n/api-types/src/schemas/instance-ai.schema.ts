@@ -1289,7 +1289,7 @@ const workflowDraftConnectionSchema = z.object({
 	index: z.number(),
 });
 
-/** An unsaved workflow parsed from the builder's source file, shaped for the canvas. */
+/** An unsaved workflow compiled from the builder's source file, shaped for the canvas. */
 export const instanceAiWorkflowDraftSchema = z.object({
 	name: z.string(),
 	nodes: z.array(workflowDraftNodeSchema),

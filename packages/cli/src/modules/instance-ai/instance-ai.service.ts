@@ -119,7 +119,6 @@ import { dropRejectedAttachmentsFromHistory } from './drop-rejected-attachments'
 import { EvalThreadCredentialAllowlistService } from './eval/thread-credential-allowlist.service';
 import { DurableEventLog } from './event-bus/durable-event-log';
 import { InProcessEventBus } from './event-bus/in-process-event-bus';
-import { createRunEventBus } from './event-bus/run-event-bus';
 import { InterruptedRunSweeper } from './event-bus/interrupted-run-sweeper';
 import { InstanceAiCreditService } from './instance-ai-credit.service';
 import { InstanceAiErrorReporterService } from './instance-ai-error-reporter.service';
@@ -4985,10 +4984,14 @@ export class InstanceAiService {
 		context?: OrchestrationContext,
 		skills?: InstanceAiSkillTelemetry,
 	): InstanceAiEventBus {
-		return createRunEventBus(this.eventBus, {
-			observers: [workSummary, skills, context?.workflowDraftPreviewer],
-			mapEvent: context?.mapSkillEventForDisplay,
-		});
+		return {
+			publish: (threadId, event) => {
+				workSummary.observe(event);
+				skills?.observe(event);
+				this.eventBus.publish(threadId, context?.mapSkillEventForDisplay?.(event) ?? event);
+			},
+			subscribe: (threadId, handler) => this.eventBus.subscribe(threadId, handler),
+		};
 	}
 
 	private emitInstanceContextTurn(

@@ -3,8 +3,10 @@
 ## Goal
 
 Make workflow builds in the n8n Assistant feel faster. Show the workflow on the
-canvas as soon as the builder agent writes its source file. Do not wait for the
-sandbox compile and the save.
+canvas as soon as the sandbox compiles its source file. Do not wait for
+validation and the save. Validation often blocks the save for several build
+attempts: in one traced build, the first canvas came 18s after the first
+compile.
 
 ## Current behavior
 
@@ -23,11 +25,11 @@ sandbox compile and the save.
 
 | Topic | Decision |
 |---|---|
-| Trigger | Parse after each successful write to a workflow source file. This includes `workspace_write_file`, `workspace_str_replace_file`, and inline `sourceCode`. Do not parse partial (streaming) tool arguments. |
-| Parser location | Backend. `instance-ai` reads the full file and calls `parseWorkflowCode` from `@n8n/workflow-sdk`. It pushes the `WorkflowJSON` to the UI. |
+| Trigger | Each successful sandbox compile in `workflow_builder_build_workflow`, before validation. Validation and the save do not change. |
+| Draft source | The sandbox build output. A second parser on the host would differ from it (node groups, layout, source that the AST interpreter rejects), so no parser is used. |
 | UI | A read-only draft canvas (no iframe) in the workflow artifact tab, with a draft badge. The saved workflow replaces the draft when its canvas has loaded. |
 | Edits to saved workflows | The draft replaces the saved canvas. Node positions stay the same where node names match. No diff highlights. |
-| Failures | If the parse fails, keep the last good draft and show nothing to the user. The sandbox build result always wins. If the build fails, keep the draft and use the current error flow. |
+| Failures | If the compile fails, keep the last good draft and show nothing to the user. If validation blocks the save, keep the draft and use the current error flow. |
 | Rollout | PostHog experiment flag. Telemetry for exposure, first canvas render, and abandon. |
 | Abandon | (a) The user presses stop while the agent is responding. (b) The user leaves the thread while the agent is responding. |
 
@@ -40,50 +42,38 @@ This feature is independent of it, and the two can run at the same time.
 ```mermaid
 sequenceDiagram
   participant LLM as Builder agent
-  participant RB as Run event bus (cli)
-  participant P as WorkflowDraftPreviewer
+  participant B as build_workflow tool
+  participant P as WorkflowDraftPublisher
   participant BUS as Thread event bus
   participant UI as Thread runtime + preview pane
-  LLM->>RB: tool-call / tool-result events
-  RB->>P: observe(event)
-  RB->>BUS: publish(event)
-  P->>P: read source → parseWorkflowSource → align with saved workflow
+  LLM->>B: workflow_builder_build_workflow { filePath }
+  B->>B: compile in the sandbox
+  B->>P: publish(compiled workflow)
+  P->>P: copy → prepareWorkflowForSave
   P->>BUS: workflow-draft { filePath, workflowId?, revision, workflow } (ephemeral)
   BUS->>UI: draft tab + read-only draft canvas
-  LLM->>RB: workflow_builder_build_workflow result { filePath, workflowId }
-  RB->>BUS: tool-result
+  B->>B: validate → save (or block and return errors)
+  B->>BUS: tool-result { filePath, workflowId }
   BUS->>UI: settle draft → saved tab mounts under the draft
   UI->>UI: saved canvas emits workflow-loaded → dismiss draft
 ```
 
 ### Backend
 
-- **Parser** (`@n8n/workflow-sdk`): `parseWorkflowSource(source)` strips the SDK
-  imports and light TypeScript syntax with `prepareSourceForLint`, runs the AST
-  interpreter, and serializes with `toJSON({ tidyUp: true })`. This is the same
-  layout as the sandbox build, so nodes do not jump when the saved workflow
-  replaces the draft.
 - **Event** (`@n8n/api-types`): `workflow-draft` with `filePath`, an optional
   `workflowId`, a monotonic `revision` and the workflow. The event type is in
   `INSTANCE_AI_EPHEMERAL_EVENT_TYPES`, so it is never persisted or replayed.
 - **Flag**: `137_instance_ai_draft_workflow_preview`, resolved in
   `resolveExperimentGates` as `draftWorkflowPreviewEnabled`.
-- **Previewer** (`workflow-draft-previewer.ts`): `observe(event)` watches
-  `tool-call`, `tool-result` and `tool-error` events.
-  - `workspace_write_file` to a workflow source: parses the content from the
-    tool arguments after a successful result. No read is necessary.
-  - `workspace_str_replace_file`: reads the file after a successful result.
-  - `workflow_builder_build_workflow` with inline `sourceCode`: parses at the
-    tool call, before the sandbox compile starts.
-  - For a bound file, it runs the same ID and position passes as the save
-    (`preserveExistingNodeIds`, `preserveExistingNodePositions`).
-  - It drops a draft that a newer write of the same file overtook. Any error
-    produces no draft and a debug log only.
-- **Hook point**: `createRunEventBus` (cli, `event-bus/run-event-bus.ts`) gives
-  every published event to its observers: the work summary, the skill
-  telemetry and the previewer. An observer that throws never blocks the event.
-  The previewer exists on `OrchestrationContext` only when the flag is on. It
-  publishes on the raw thread bus, so it never observes its own events.
+- **Publisher** (`workflow-draft-publisher.ts`): `publish({ filePath,
+  workflowId?, workflow })`. It copies the compiled workflow and runs
+  `prepareWorkflowForSave` on the copy. This applies the same node ID, group
+  and position passes as the save, so the saved workflow matches the draft. It
+  numbers the drafts of each file and validates the payload. Any error
+  produces no draft and a debug log only. It never throws.
+- **Hook point**: the cli sets `InstanceAiContext.workflowDraftPublisher` only
+  when the flag is on. The build tool calls it right after a successful
+  compile, before validation.
 
 ### Frontend
 
@@ -128,14 +118,12 @@ the arms share a denominator.
 
 ## Edge cases
 
-- **Source that the interpreter cannot parse** (helper functions, loops,
-  imports it does not support): no draft. The user sees the current loading
-  behavior.
+- **Source that does not compile:** no draft. The user sees the current
+  loading behavior.
 - **Many files in one run:** each `filePath` has its own draft and tab.
-- **Parallel or out-of-order parses:** the revision check on both the backend
-  and the frontend drops the stale result.
+- **Out-of-order drafts:** the frontend drops a draft with a lower revision.
 - **Reload during a build:** drafts are ephemeral, so none are replayed. The
-  next write sends a new draft.
+  next compile sends a new draft.
 - **Large workflows:** a draft with all node parameters can be large. Log the
   payload size at debug level. If it is a problem, remove large parameters
   (for example, Code node source) from the draft payload. The canvas does not
@@ -151,7 +139,9 @@ and check the events with `pnpm telemetry:sink`.
 
 ## Out of scope
 
-- Parsing streaming tool arguments as they arrive.
+- A preview while the agent streams the source file. In the traced build the
+  write took 48s. A draft needs a complete file, so this needs another
+  approach.
 - Diff highlights between the draft and the saved workflow.
 - Parse errors shown to the user.
 - Drafts for agent, data table, or skill artifacts.
