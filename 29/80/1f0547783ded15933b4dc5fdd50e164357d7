@@ -1,0 +1,27 @@
+packages/cli/src/modules/instance-ai/instance-ai.service.ts
+  s_689aa937cfed26::t_474e1cd00f10d7 196,3625
+packages/cli/src/modules/instance-ai/assistant-agent/assistant-turn-trace.ts
+  s_689aa937cfed26::t_474e1cd00f10d7 42,456,458-463
+packages/cli/src/modules/instance-ai/tracing/__tests__/resume-trace-input.test.ts
+  s_689aa937cfed26::t_42a0e32bcfec7b 1-47
+packages/cli/src/modules/instance-ai/assistant-agent/__tests__/assistant-turn-trace.test.ts
+  s_689aa937cfed26::t_755d46a5909213 315,357,368-373,381
+packages/cli/src/modules/instance-ai/tracing/resume-trace-input.ts
+  s_689aa937cfed26::t_82e9017911bf75 1-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "29801f0547783ded15933b4dc5fdd50e164357d7",
+  "prompts": {},
+  "sessions": {
+    "s_689aa937cfed26": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "532e1da7-fada-43a1-b581-d153e5dc6d93",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Jaakko Husso <jaakko@n8n.io>"
+    }
+  }
+}
