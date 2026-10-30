@@ -42,6 +42,9 @@ export const AGENT_EVAL_RUN_POLL_TIMEOUT = 10 * TIME.MINUTE;
 /** One failed poll is a blip worth retrying; a sustained run of them means we've lost the run. */
 export const AGENT_EVAL_RUN_POLL_MAX_ERRORS = 3;
 
+/** How often to ask again for a cloud browser's live view until its browser is live. */
+export const CLOUD_BROWSER_LIVE_VIEW_RETRY_INTERVAL = 3 * TIME.SECOND;
+
 export const LOADING_ANIMATION_MIN_DURATION = 1000;
 
 export const AGENT_EXTERNAL_UPDATE_NOTICE_DURATION = 5 * TIME.MINUTE;

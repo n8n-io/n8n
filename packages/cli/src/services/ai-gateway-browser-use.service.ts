@@ -13,11 +13,22 @@ const BROWSERBASE_BROWSER_USE_PROVIDER = 'browserbaseBrowserUse';
 
 const BROWSERBASE_API_KEY_HEADER = 'X-BB-API-Key';
 
+/**
+ * The browser window size. The live view scales the window to fit its frame, so a large window
+ * looks zoomed out. 16:10 matches the frame in the UI, and 1280 wide still gets desktop layouts.
+ */
+export const BROWSER_VIEWPORT = { width: 1280, height: 800 };
+
 const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
 const createdSessionSchema = z.object({
 	id: z.string().min(1),
 	connectUrl: z.string().min(1),
+});
+
+/** The live view of a session's first tab. The response also lists each tab, which we do not need. */
+const liveViewSchema = z.object({
+	debuggerFullscreenUrl: z.string().min(1),
 });
 
 /** Errors from the gateway itself carry a message written for the user. */
@@ -30,6 +41,12 @@ const gatewayErrorSchema = z.object({
 
 /** A browser session. `connectUrl` carries a signing key, so it must never be logged. */
 export type AiGatewayBrowserSession = z.infer<typeof createdSessionSchema>;
+
+/**
+ * The live view link of a session. The link lets anyone who has it watch and control the
+ * browser, so it must never be logged or stored.
+ */
+export type AiGatewayBrowserLiveView = z.infer<typeof liveViewSchema>;
 
 /**
  * Manages Browserbase browser sessions through the gateway for a user. The
@@ -60,7 +77,7 @@ export class AiGatewayBrowserUseService {
 			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
 			method: 'POST',
 			path: '/v1/sessions',
-			body: { keepAlive: false },
+			body: { keepAlive: false, browserSettings: { viewport: BROWSER_VIEWPORT } },
 			userId,
 			attribution,
 			mapErrorResponse: toGatewayError,
@@ -69,6 +86,32 @@ export class AiGatewayBrowserUseService {
 		const parsed = createdSessionSchema.safeParse(body);
 		if (!parsed.success) {
 			throw new OperationalError('Gateway credits returned an invalid browser session.');
+		}
+		return parsed.data;
+	}
+
+	async getLiveView({
+		userId,
+		attribution,
+		sessionId,
+	}: {
+		userId: string;
+		attribution: AiGatewayRequestAttribution;
+		sessionId: string;
+	}): Promise<AiGatewayBrowserLiveView> {
+		const body = await this.aiGatewayService.sendProviderRequest<unknown>({
+			provider: BROWSERBASE_BROWSER_USE_PROVIDER,
+			authHeaderKey: BROWSERBASE_API_KEY_HEADER,
+			method: 'GET',
+			path: `/v1/sessions/${encodeURIComponent(sessionId)}/debug`,
+			userId,
+			attribution,
+			mapErrorResponse: toGatewayError,
+			timeoutMs: REQUEST_TIMEOUT_MS,
+		});
+		const parsed = liveViewSchema.safeParse(body);
+		if (!parsed.success) {
+			throw new OperationalError('Gateway credits returned an invalid browser live view.');
 		}
 		return parsed.data;
 	}

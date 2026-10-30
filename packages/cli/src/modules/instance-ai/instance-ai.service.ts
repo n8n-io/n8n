@@ -133,6 +133,7 @@ import {
 import {
 	AUTO_FOLLOW_UP_MESSAGE,
 	cleanStoredUserMessage,
+	buildRunStoppedMessage,
 	extractStoredMessageText,
 } from './internal-messages';
 import { INSTANCE_AI_RUN_TIMEOUT_REASON, InstanceAiLivenessService } from './liveness';
@@ -607,14 +608,18 @@ export class InstanceAiService {
 			agentMemory: this.agentMemory,
 			runState: this.runState,
 			suspendedThreads: this.suspendedThreads,
-			startFollowUpRun: async (user, threadId, message, messageGroupId) =>
-				await this.startInternalFollowUpRun(
-					user,
+			startFollowUpRun: async (user, threadId, message, messageGroupId) => {
+				// The task can end long after the user lost access. No run starts for that user.
+				const activeUser = await this.revalidateActiveUser(user.id);
+				if (!activeUser) return '';
+				return await this.startInternalFollowUpRun(
+					activeUser,
 					threadId,
 					message,
 					messageGroupId,
 					'background_task_completed',
-				),
+				);
+			},
 		});
 		this.terminalOutcome = new InstanceAiTerminalOutcomeService({
 			// The terminal guard and outcome-replay dedup must see the run's events
@@ -1288,10 +1293,14 @@ export class InstanceAiService {
 		}
 	}
 
-	cancelRun(threadId: string, reason = 'user_cancelled'): void {
+	cancelRun(
+		threadId: string,
+		reason = 'user_cancelled',
+		options: { skipTasksDetachedFromTurn?: boolean } = {},
+	): void {
 		const quotaStop = reason === 'quota_exhausted';
 		const abortReason = quotaStop ? assistantCreditsExhaustedError() : undefined;
-		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason);
+		const cancelledTasks = this.backgroundTasks.cancelThread(threadId, abortReason, options);
 		for (const task of cancelledTasks) {
 			void this.tracing.finalizeBackgroundTaskTracing(task, 'cancelled');
 			if (quotaStop) {
@@ -1323,6 +1332,7 @@ export class InstanceAiService {
 		const { active, suspended } = this.runState.cancelThread(threadId);
 		if (active) {
 			if (reason === INSTANCE_AI_RUN_TIMEOUT_REASON) this.liveness.markRunTimedOut(active.runId);
+			if (reason === 'user_cancelled') active.stoppedByUser = true;
 			active.abortController.abort(abortReason);
 			// inline-kind rows are dropped via the resolve-callback fired by
 			// runState.cancelThread; suspended-kind rows (no in-memory
@@ -1434,7 +1444,9 @@ export class InstanceAiService {
 			}
 			case 'cancel-thread':
 				// A thread's run + tasks can be spread across mains, so always fan out.
-				this.cancelRun(threadId);
+				// The user stopped the reply. A task detached from its turn runs next to the chat, and
+				// the user stops it from its own card.
+				this.cancelRun(threadId, 'user_cancelled', { skipTasksDetachedFromTurn: true });
 				return false;
 			case 'clear-thread':
 				await this.clearThreadState(threadId, userId);
@@ -2227,7 +2239,7 @@ export class InstanceAiService {
 	 * it ends, but the method skips delivery if the cloud browser is disabled or unavailable.
 	 * It logs errors without propagating them to the calling run.
 	 */
-	private async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
+	async maybeDeliverCloudBrowserTaskResults(user: User, threadId: string): Promise<void> {
 		try {
 			if (!this.settingsService.isCloudBrowserEnabled()) return;
 			if (!(await this.cloudBrowserService.isAvailable())) return;
@@ -2448,6 +2460,37 @@ export class InstanceAiService {
 			this.logger.warn('Failed to persist user message on cancel', {
 				threadId,
 				error: error instanceof Error ? error.message : String(error),
+			});
+		}
+	}
+
+	/**
+	 * Tell later runs that the user stopped this one, so the run that reports a finished cloud
+	 * browser task does not resume the stopped work. Only for threads with such a task: no other
+	 * run starts after a stop. Runs after the SDK has saved the partial reply, so the note comes
+	 * after it.
+	 */
+	private async persistRunStoppedNote(threadId: string, userId: string): Promise<void> {
+		try {
+			if (!this.settingsService.isCloudBrowserEnabled()) return;
+			if (!(await this.cloudBrowserTaskService.hasPendingTasks(threadId))) return;
+			await this.agentMemory.saveMessages({
+				threadId,
+				resourceId: userId,
+				messages: [
+					{
+						id: nanoid(),
+						createdAt: new Date(),
+						type: 'llm',
+						role: 'user',
+						content: [{ type: 'text', text: buildRunStoppedMessage() }],
+					},
+				],
+			});
+		} catch (error) {
+			this.logger.warn('Failed to persist the run-stopped note', {
+				threadId,
+				error: getErrorMessage(error),
 			});
 		}
 	}
@@ -3325,6 +3368,9 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(threadId);
+			const stoppedByUser = active?.runId === runId && active.stoppedByUser === true;
+			if (stoppedByUser) await this.persistRunStoppedNote(threadId, user.id);
 			this.runState.clearActiveRun(threadId);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// Note: don't delete threadPushRef here. Follow-up runs start later in
@@ -3350,13 +3396,15 @@ export class InstanceAiService {
 			// Post-run wiring (only when the run is actually ending, not when it
 			// merely suspended for HITL): project task states to the client even
 			// on a stop, and start a setup follow-up unless the run was stopped.
+			// Cloud browser results are delivered even on a stop, see below.
 			if (!segmentSuspended && !this.runState.hasSuspendedRun(threadId)) {
 				const reschedule = !signal.aborted && !blockedForQuota;
 				await this.taskProjector.syncFromWorkflowLoop(threadId, runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(user, threadId);
-					await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
-				}
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(user, threadId);
+				// Even after a stop: a stop does not stop cloud browser tasks, so their results
+				// still have to reach the user. The run-stopped note keeps the delivery run from
+				// resuming the stopped work.
+				if (!blockedForQuota) await this.maybeDeliverCloudBrowserTaskResults(user, threadId);
 			}
 			if (errorReporterExecutionToken) {
 				this.instanceAiErrorReporter.endRun(runId, errorReporterExecutionToken);
@@ -4466,6 +4514,11 @@ export class InstanceAiService {
 				},
 			);
 		} finally {
+			const active = this.runState.getActiveRun(opts.threadId);
+			const stoppedByUser = active?.runId === opts.runId && active.stoppedByUser === true;
+			if (stoppedByUser && !skipPostRunCleanup) {
+				await this.persistRunStoppedNote(opts.threadId, opts.user.id);
+			}
 			this.runState.clearActiveRun(opts.threadId, opts.resumeExecutionToken);
 			const segmentSuspended = messageTraceFinalization?.status === 'suspended';
 			// See note in executeRun's finally — keep threadPushRef alive for
@@ -4504,8 +4557,8 @@ export class InstanceAiService {
 					await this.markWorkflowSetupHandled(opts.threadId, completedSetupWorkflowId, opts.runId);
 				}
 				await this.taskProjector.syncFromWorkflowLoop(opts.threadId, opts.runId);
-				if (reschedule) {
-					await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (reschedule) await this.maybeStartWorkflowSetupFollowUp(opts.user, opts.threadId);
+				if (!blockedForQuota) {
 					await this.maybeDeliverCloudBrowserTaskResults(opts.user, opts.threadId);
 				}
 			}
@@ -4787,6 +4840,9 @@ export class InstanceAiService {
 		suspended: SuspendedRunState<User>,
 		reason = 'user_cancelled',
 	): Promise<void> {
+		if (reason === 'user_cancelled') {
+			await this.persistRunStoppedNote(suspended.threadId, suspended.user.id);
+		}
 		const runTimeout =
 			reason === INSTANCE_AI_RUN_TIMEOUT_REASON
 				? this.liveness.consumeRunTimeout(suspended.runId)
@@ -4830,6 +4886,8 @@ export class InstanceAiService {
 		});
 
 		void this.suspendedThreads.dropPendingConfirmation(suspended.requestId);
+		// Results that came in while the run waited at its card. No run end delivers them.
+		await this.maybeDeliverCloudBrowserTaskResults(suspended.user, suspended.threadId);
 	}
 
 	private publishRunFinish(

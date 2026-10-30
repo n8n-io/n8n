@@ -20,6 +20,16 @@ const cloudBrowserTaskRecordSchema = z.object({
 	title: z.string(),
 	status: z.enum(['running', 'finished']),
 	startedAt: z.string(),
+	/**
+	 * When the main that runs the task last said it is alive. A running task whose main stopped,
+	 * for example on a restart, stops updating it.
+	 */
+	aliveAt: z.string().optional(),
+	/**
+	 * The approval card the task waits on, or `null` once it closed. Another main closes it when the
+	 * task stops being marked alive, because the task's own main cannot.
+	 */
+	pendingConfirmationRequestId: z.string().nullish(),
 	/** How the task ended, in the agent's own words, for example "succeeded" or "blocked". */
 	outcome: z.string().optional(),
 	summary: z.string().optional(),
@@ -59,6 +69,60 @@ export class CloudBrowserTaskStorage {
 				[taskId]: { ...record, ...end, status: 'finished', finishedAt: new Date().toISOString() },
 			};
 		});
+	}
+
+	/** Records that the task's main is still running it. */
+	async markAlive(threadId: string, taskId: string): Promise<void> {
+		await this.patch(threadId, (records) => {
+			const record = records[taskId];
+			if (record?.status !== 'running') return null;
+			return { ...records, [taskId]: { ...record, aliveAt: new Date().toISOString() } };
+		});
+	}
+
+	/**
+	 * Saves the approval card the running task waits on, or `null` when it waits on none. Returns
+	 * false when the task is no longer running.
+	 */
+	async setPendingConfirmation(
+		threadId: string,
+		taskId: string,
+		requestId: string | null,
+	): Promise<boolean> {
+		let updated = false;
+		await this.patch(threadId, (records) => {
+			const record = records[taskId];
+			if (record?.status !== 'running') return null;
+			updated = true;
+			return { ...records, [taskId]: { ...record, pendingConfirmationRequestId: requestId } };
+		});
+		return updated;
+	}
+
+	/**
+	 * Marks a running task failed when its main has not said it is alive since `aliveBefore`, so
+	 * its result can be delivered. Returns the tasks it failed.
+	 */
+	async failStale(
+		threadId: string,
+		aliveBefore: Date,
+		end: { outcome: string; summary: string },
+	): Promise<CloudBrowserTaskRecord[]> {
+		let failed: CloudBrowserTaskRecord[] = [];
+		await this.patch(threadId, (records) => {
+			failed = Object.values(records).filter(
+				(record) =>
+					record.status === 'running' && new Date(record.aliveAt ?? record.startedAt) < aliveBefore,
+			);
+			if (failed.length === 0) return null;
+			const finishedAt = new Date().toISOString();
+			const next = { ...records };
+			for (const record of failed) {
+				next[record.taskId] = { ...record, ...end, status: 'finished', finishedAt };
+			}
+			return next;
+		});
+		return failed;
 	}
 
 	/**

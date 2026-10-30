@@ -6,10 +6,10 @@ import {
 	runCloudBrowserAgent,
 	type BackgroundTaskManager,
 	type CloudBrowserCredentialToCreate,
+	type ConfirmationData,
 	type InstanceAiEventBus,
 	type InstanceAiTraceContext,
 	type Logger,
-	type PatchableThreadMemory,
 	type RunStateRegistry,
 } from '@n8n/instance-ai';
 import { mock } from 'vitest-mock-extended';
@@ -60,7 +60,7 @@ function agentResult(overrides: Partial<AgentResult> = {}): AgentResult {
 }
 
 /** A thread memory that keeps one thread, so the task records go through the real storage. */
-function makeMemory(): PatchableThreadMemory {
+function makeMemory() {
 	let thread = {
 		id: THREAD_ID,
 		resourceId: 'user-1',
@@ -152,6 +152,8 @@ function setup() {
 		spawnOptions,
 		runSpawnedTask,
 		records,
+		taskStorage: new CloudBrowserTaskStorage(agentMemory),
+		agentMemory,
 	};
 }
 
@@ -371,6 +373,113 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 			expect(suspendedThreads.dropPendingConfirmation).toHaveBeenCalledWith('request-1');
 		});
 
+		it('records the card on the task while the agent waits on it, and clears it once answered', async () => {
+			const { service, run, runState, suspendedThreads, records, runSpawnedTask } = setup();
+			let answer = () => {};
+			runState.registerPendingConfirmation.mockImplementation((_requestId, pending) => {
+				answer = () => pending.resolve({ approved: true });
+			});
+			let whileWaiting: string | null | undefined;
+			suspendedThreads.persistPendingConfirmation.mockImplementation(async () => {
+				whileWaiting = (await records())[0].pendingConfirmationRequestId;
+				answer();
+			});
+			let afterAnswer: string | null | undefined = 'not read';
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				await waitForConfirmation('request-1');
+				afterAnswer = (await records())[0].pendingConfirmationRequestId;
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(whileWaiting).toBe('request-1');
+			expect(afterAnswer).toBeNull();
+		});
+
+		it('takes an answer to the card before it writes the card to the task record', async () => {
+			const { service, run, runState, agentMemory, runSpawnedTask } = setup();
+			const order: string[] = [];
+			const saveThread = agentMemory.saveThread;
+			agentMemory.saveThread = async (thread) => {
+				order.push('write');
+				return await saveThread(thread);
+			};
+			runState.registerPendingConfirmation.mockImplementation((_requestId, pending) => {
+				order.push('register');
+				pending.resolve({ approved: true });
+			});
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				order.length = 0;
+				await waitForConfirmation('request-1');
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(order.slice(0, 2)).toEqual(['register', 'write']);
+		});
+
+		it('declines the card of a task that another main failed as stale while it ran', async () => {
+			const { service, run, runState, suspendedThreads, taskStorage, runSpawnedTask } = setup();
+			let answer: ConfirmationData | undefined;
+			runState.registerPendingConfirmation.mockImplementation((requestId, pending) => {
+				runState.rejectPendingConfirmation.mockImplementation((rejected) => {
+					if (rejected === requestId) pending.resolve({ approved: false });
+					return true;
+				});
+			});
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				await taskStorage.failStale(THREAD_ID, new Date(Date.now() + 1000), {
+					outcome: 'failed',
+					summary: 'Stopped',
+				});
+				answer = await waitForConfirmation('request-1');
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(answer).toEqual({ approved: false });
+			expect(suspendedThreads.persistPendingConfirmation).not.toHaveBeenCalled();
+		});
+
+		it('keeps the card when the task record cannot be written', async () => {
+			const { service, run, runState, suspendedThreads, agentMemory, logger, runSpawnedTask } =
+				setup();
+			const saveThread = agentMemory.saveThread;
+			let failWrites = false;
+			agentMemory.saveThread = async (thread) => {
+				if (failWrites) throw new Error('DB down');
+				return await saveThread(thread);
+			};
+			runState.registerPendingConfirmation.mockImplementation((_requestId, pending) => {
+				pending.resolve({ approved: true });
+			});
+			let answer: ConfirmationData | undefined;
+			vi.mocked(runCloudBrowserAgent).mockImplementation(async ({ waitForConfirmation }) => {
+				failWrites = true;
+				answer = await waitForConfirmation('request-1');
+				failWrites = false;
+				return agentResult();
+			});
+			await service.startTask(task, run);
+
+			await runSpawnedTask();
+
+			expect(answer).toEqual({ approved: true });
+			expect(suspendedThreads.persistPendingConfirmation).toHaveBeenCalledWith(
+				expect.objectContaining({ requestId: 'request-1' }),
+			);
+			expect(logger.warn).toHaveBeenCalledWith(
+				'Failed to record the card of a cloud browser task',
+				expect.objectContaining({ error: 'DB down' }),
+			);
+		});
+
 		it('does not close a card the user answered', async () => {
 			const { service, run, runState, runSpawnedTask } = setup();
 			runState.registerPendingConfirmation.mockImplementation((_requestId, pending) => {
@@ -502,6 +611,35 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 				'Failed to deliver a stopped cloud browser task',
 				expect.objectContaining({ error: 'Run failed' }),
 			);
+		});
+
+		it('marks the task alive while it runs, and stops when it ends', async () => {
+			const { service, run, records, runSpawnedTask } = setup();
+			let finishAgent = () => {};
+			vi.mocked(runCloudBrowserAgent).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						finishAgent = () => resolve(agentResult());
+					}),
+			);
+			vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+			try {
+				await service.startTask(task, run);
+				const running = runSpawnedTask();
+				await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+
+				const [record] = await records();
+				expect(record.aliveAt).toBe(new Date().toISOString());
+
+				finishAgent();
+				await running;
+				await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+
+				expect((await records()).map((r) => r.status)).toEqual(['finished']);
+				expect(vi.getTimerCount()).toBe(0);
+			} finally {
+				vi.useRealTimers();
+			}
 		});
 
 		it('keeps the task alive on agent activity', async () => {
@@ -674,7 +812,112 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 		});
 	});
 
+	describe('hasPendingTasks', () => {
+		it('returns false when the thread has no task', async () => {
+			const { service } = setup();
+
+			expect(await service.hasPendingTasks(THREAD_ID)).toBe(false);
+		});
+
+		it('returns true while a task of the thread runs', async () => {
+			const { service, run } = setup();
+			await service.startTask(task, run);
+
+			expect(await service.hasPendingTasks(THREAD_ID)).toBe(true);
+		});
+
+		it('returns true while a finished task waits for delivery', async () => {
+			const { service, run, runSpawnedTask } = setup();
+			await service.startTask(task, run);
+			await runSpawnedTask();
+
+			expect(await service.hasPendingTasks(THREAD_ID)).toBe(true);
+		});
+
+		it('returns false after the result of the last task was delivered', async () => {
+			const { service, run, runSpawnedTask } = setup();
+			await service.startTask(task, run);
+			await runSpawnedTask();
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			expect(await service.hasPendingTasks(THREAD_ID)).toBe(false);
+		});
+	});
+
 	describe('deliverPendingResults', () => {
+		it('fails a running task that is no longer marked alive, closes its card, and reports it', async () => {
+			const {
+				service,
+				run,
+				eventBus,
+				startFollowUpRun,
+				records,
+				taskStorage,
+				runState,
+				suspendedThreads,
+			} = setup();
+			vi.useFakeTimers({ toFake: ['Date'] });
+			try {
+				// Its main stopped 20 minutes ago, so nothing marked it alive since.
+				vi.setSystemTime(Date.now() - 20 * 60 * 1000);
+				await service.startTask(task, run);
+			} finally {
+				vi.useRealTimers();
+			}
+			const [{ agentId, taskId }] = await records();
+			// Its main stopped while the task waited on a card.
+			await taskStorage.setPendingConfirmation(THREAD_ID, taskId, 'request-1');
+
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			expect(runState.rejectPendingConfirmation).toHaveBeenCalledWith('request-1');
+			expect(suspendedThreads.dropPendingConfirmation).toHaveBeenCalledWith('request-1');
+
+			expect(eventBus.publish).toHaveBeenCalledWith(THREAD_ID, {
+				type: 'agent-completed',
+				runId: 'run-1',
+				agentId,
+				detachedFromTurn: true,
+				payload: {
+					role: 'cloud-browser',
+					result: '',
+					error: 'The browser task stopped because n8n restarted.',
+					status: 'error',
+				},
+			});
+			const message = startFollowUpRun.mock.calls[0][2];
+			expect(message).toContain('outcome="failed"');
+			expect(message).toContain('The browser task stopped because n8n restarted.');
+			expect(await records()).toEqual([]);
+		});
+
+		it('leaves a running task that its main still marks alive', async () => {
+			const { service, run, startFollowUpRun, records, runSpawnedTask } = setup();
+			let finishAgent = () => {};
+			vi.mocked(runCloudBrowserAgent).mockImplementation(
+				async () =>
+					await new Promise((resolve) => {
+						finishAgent = () => resolve(agentResult());
+					}),
+			);
+			vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+			try {
+				await service.startTask(task, run);
+				const running = runSpawnedTask();
+				// Past the stale limit, so only the alive timer keeps the task from failing.
+				await vi.advanceTimersByTimeAsync(20 * 60 * 1000);
+
+				await service.deliverPendingResults(run.user, THREAD_ID);
+
+				expect(startFollowUpRun).not.toHaveBeenCalled();
+				expect((await records()).map((record) => record.status)).toEqual(['running']);
+				finishAgent();
+				await running;
+			} finally {
+				vi.useRealTimers();
+			}
+		});
+
 		it('starts no run when no task has finished', async () => {
 			const { service, run, startFollowUpRun } = setup();
 			await service.startTask(task, run);
@@ -857,6 +1100,68 @@ describe('InstanceAiCloudBrowserTaskService', () => {
 
 			expect(startFollowUpRun).toHaveBeenCalledTimes(2);
 			expect(startFollowUpRun.mock.calls[1][2]).toContain('$20 a month');
+		});
+
+		it("tells the UI each delivered task's result reached the orchestrator", async () => {
+			const { service, run, eventBus, spawnOptions, runSpawnedTask } = setup();
+			await service.startTask(task, run);
+			await runSpawnedTask();
+
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			expect(eventBus.publish).toHaveBeenCalledWith(THREAD_ID, {
+				type: 'agent-result-delivered',
+				runId: 'run-1',
+				agentId: spawnOptions().agentId,
+				payload: {},
+			});
+		});
+
+		it('tells the UI about each task when one run delivers several tasks', async () => {
+			const { service, run, eventBus, backgroundTaskManager } = setup();
+			await service.startTask({ ...task, title: 'First' }, run);
+			await service.startTask({ ...task, title: 'Second' }, run);
+			const spawned = backgroundTaskManager.spawn.mock.calls.map(([options]) => options);
+			for (const options of spawned) {
+				await options.run(
+					new AbortController().signal,
+					() => [],
+					async () => {},
+					{},
+				);
+			}
+
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			const delivered = eventBus.publish.mock.calls
+				.map(([, event]) => event)
+				.filter((event) => event.type === 'agent-result-delivered');
+			expect(delivered).toHaveLength(2);
+			expect(delivered).toEqual(
+				expect.arrayContaining(
+					spawned.map((options) => ({
+						type: 'agent-result-delivered',
+						runId: 'run-1',
+						agentId: options.agentId,
+						payload: {},
+					})),
+				),
+			);
+			expect(spawned[0].agentId).not.toBe(spawned[1].agentId);
+		});
+
+		it('does not tell the UI a result was delivered when no run can start', async () => {
+			const { service, run, eventBus, startFollowUpRun, runSpawnedTask } = setup();
+			await service.startTask(task, run);
+			await runSpawnedTask();
+			startFollowUpRun.mockResolvedValueOnce('');
+
+			await service.deliverPendingResults(run.user, THREAD_ID);
+
+			expect(eventBus.publish).not.toHaveBeenCalledWith(
+				THREAD_ID,
+				expect.objectContaining({ type: 'agent-result-delivered' }),
+			);
 		});
 	});
 });

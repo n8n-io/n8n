@@ -74,6 +74,7 @@ import type { InstanceAiSettingsService } from '../instance-ai-settings.service'
 import { InstanceAiController } from '../instance-ai.controller';
 import type { InstanceAiService } from '../instance-ai.service';
 import type { InstanceAiErrorReporterService } from '../instance-ai-error-reporter.service';
+import type { InstanceAiCloudBrowserService } from '../browser/instance-ai-cloud-browser.service';
 
 const USER_ID = 'user-1';
 const THREAD_ID = 'thread-1';
@@ -108,6 +109,7 @@ describe('InstanceAiController', () => {
 	const preferenceCardService = mock<InstanceAiPreferenceCardService>();
 	const onboarding = mock<InstanceAiOnboardingService>();
 	const threadTabsService = mock<InstanceAiThreadTabsService>();
+	const cloudBrowserService = mock<InstanceAiCloudBrowserService>();
 	const globalConfig = mock<GlobalConfig>({ instanceAi: { evalInstance: false } });
 
 	const controller = new InstanceAiController(
@@ -128,6 +130,7 @@ describe('InstanceAiController', () => {
 		preferenceCardService,
 		globalConfig,
 		threadTabsService,
+		cloudBrowserService,
 	);
 
 	const req = mock<AuthenticatedRequest>({ user: { id: USER_ID } });
@@ -1153,6 +1156,37 @@ describe('InstanceAiController', () => {
 		});
 	});
 
+	describe('cloudBrowserLiveView', () => {
+		it('should require instanceAi:message scope', () => {
+			expect(scopeOf('cloudBrowserLiveView')).toEqual({
+				scope: 'instanceAi:message',
+				globalOnly: true,
+			});
+		});
+
+		it("should return the task's live view for the thread's owner", async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('owned');
+			cloudBrowserService.getLiveView.mockResolvedValue({
+				status: 'live',
+				liveViewUrl: 'https://live.example.com/view',
+			});
+
+			const result = await controller.cloudBrowserLiveView(req, res, THREAD_ID, 'task-1');
+
+			expect(result).toEqual({ status: 'live', liveViewUrl: 'https://live.example.com/view' });
+			expect(cloudBrowserService.getLiveView).toHaveBeenCalledWith(USER_ID, THREAD_ID, 'task-1');
+		});
+
+		it('should not read the live view of a thread the user does not own', async () => {
+			memoryService.checkThreadOwnership.mockResolvedValue('other_user');
+
+			await expect(
+				controller.cloudBrowserLiveView(req, res, THREAD_ID, 'task-1'),
+			).rejects.toThrow();
+			expect(cloudBrowserService.getLiveView).not.toHaveBeenCalled();
+		});
+	});
+
 	describe('correctTask', () => {
 		it('should require instanceAi:message scope', () => {
 			expect(scopeOf('correctTask')).toEqual({ scope: 'instanceAi:message', globalOnly: true });
@@ -1846,6 +1880,32 @@ describe('InstanceAiController', () => {
 			});
 		});
 
+		it('should start delivering waiting cloud browser results without waiting for it', async () => {
+			memoryService.getRichMessages.mockResolvedValue(
+				mock<Omit<InstanceAiRichMessagesResponse, 'nextEventId'>>(),
+			);
+			eventLog.getNextEventId.mockResolvedValue(42);
+			instanceAiService.getActiveRunId.mockReturnValue(undefined);
+			instanceAiService.getThreadStatus.mockReturnValue({
+				hasActiveRun: false,
+				isSuspended: false,
+				backgroundTasks: [],
+			} as never);
+			// A delivery that never ends must not hold up the messages.
+			instanceAiService.maybeDeliverCloudBrowserTaskResults.mockReturnValue(
+				new Promise<void>(() => {}),
+			);
+			const query = mock<InstanceAiThreadMessagesQuery>({ limit: 50, page: 0, raw: undefined });
+
+			const result = await controller.getThreadMessages(req, res, THREAD_ID, query);
+
+			expect(result).toMatchObject({ nextEventId: 42 });
+			expect(instanceAiService.maybeDeliverCloudBrowserTaskResults).toHaveBeenCalledWith(
+				req.user,
+				THREAD_ID,
+			);
+		});
+
 		it("should leave out a background task's turn, but not the turn of one detached from it", async () => {
 			instanceAiService.getActiveRunId.mockReturnValue(undefined);
 			instanceAiService.getThreadStatus.mockReturnValue({
@@ -1976,6 +2036,7 @@ describe('InstanceAiController — durable-log SSE replay', () => {
 		mock<InstanceAiPreferenceCardService>(),
 		mock<GlobalConfig>(),
 		mock<InstanceAiThreadTabsService>(),
+		mock<InstanceAiCloudBrowserService>(),
 	);
 
 	beforeEach(() => {
