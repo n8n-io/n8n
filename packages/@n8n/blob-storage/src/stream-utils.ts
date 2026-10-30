@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { Transform } from 'node:stream';
 
 /** Throws unless `chunkSize` is a positive integer. */

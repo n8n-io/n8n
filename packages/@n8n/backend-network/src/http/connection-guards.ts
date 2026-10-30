@@ -1,5 +1,5 @@
 import type { HttpsProxyAgent } from 'https-proxy-agent';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type http from 'node:http';
 import type net from 'node:net';
 

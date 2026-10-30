@@ -159,6 +159,7 @@
     "oxlint-tsgolint": "catalog:"
   },
   "dependencies": {
+    "@n8n/errors": "workspace:*",
     "zod": "catalog:",
     "zod-to-json-schema": "catalog:",
     "@langchain/core": "catalog:",
