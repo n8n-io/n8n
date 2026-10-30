@@ -30,6 +30,7 @@ import InstanceAiArtifactsPanel from '../components/InstanceAiArtifactsPanel.vue
 import InstanceAiAppPreview from '../components/InstanceAiAppPreview.vue';
 import InstanceAiDataTablePreview from '../components/InstanceAiDataTablePreview.vue';
 import InstanceAiPreviewTabBar from '../components/InstanceAiPreviewTabBar.vue';
+import InstanceAiResourcePicker from '../components/InstanceAiResourcePicker.vue';
 import InstanceAiViewHeader from '../components/InstanceAiViewHeader.vue';
 import InstanceAiWorkflowPreview from '../components/InstanceAiWorkflowPreview.vue';
 import NodesAttachmentChips from '../components/NodesAttachmentChips.vue';
@@ -316,8 +317,40 @@ function removeStagedNodes(chipId: string): void {
 							@click="toggleArtifactsPanel"
 						/>
 					</N8nTooltip>
+					<!-- With no tabs to show, the toggle opens a resource in a new tab. It waits for
+					the history, which can open tabs for past builds. -->
+					<InstanceAiResourcePicker
+						v-if="
+							!thread.isHydratingThread &&
+							!preview.isPreviewVisible.value &&
+							preview.openTabs.value.length === 0
+						"
+						:project-id="props.projectId"
+						:excluded-tabs="preview.openTabs.value"
+						placement="bottom-end"
+						content-test-id="assistant-agent-open-resource-picker"
+						@select="preview.openTab"
+					>
+						<template #trigger>
+							<N8nTooltip
+								:content="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+								placement="bottom"
+								:show-after="TOOLTIP_DELAY_MS"
+								as-child
+							>
+								<N8nIconButton
+									icon="square-plus"
+									variant="ghost"
+									size="small"
+									icon-size="large"
+									data-test-id="assistant-agent-open-resource"
+									:aria-label="i18n.baseText('instanceAi.artifactsPanel.openResource')"
+								/>
+							</N8nTooltip>
+						</template>
+					</InstanceAiResourcePicker>
 					<N8nTooltip
-						v-if="!preview.isPreviewVisible.value"
+						v-else-if="!preview.isPreviewVisible.value"
 						:content="previewToggleLabel"
 						placement="bottom"
 						:show-after="TOOLTIP_DELAY_MS"
