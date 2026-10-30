@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { ServiceAccount, User } from '../entities';
 import { isServiceAccount } from './account-guards';

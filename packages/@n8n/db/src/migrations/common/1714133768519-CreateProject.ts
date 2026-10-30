@@ -1,6 +1,6 @@
 import type { ProjectRole } from '@n8n/permissions';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { User } from '../../entities';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';

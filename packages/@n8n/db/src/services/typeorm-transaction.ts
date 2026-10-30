@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager } from '@n8n/typeorm';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { IsolationLevel, OperationContext, RunOptions } from './transaction';
 import { Transaction, TransactionRunner } from './transaction';

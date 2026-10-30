@@ -3,7 +3,7 @@ import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager, FindOptionsWhere, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, Not } from '@n8n/typeorm';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
 import { Project, ProjectRelation } from '../entities';

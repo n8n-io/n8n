@@ -1,7 +1,7 @@
 import { Service } from '@n8n/di';
 import { DataSource, IsNull } from '@n8n/typeorm';
 import { Cipher } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { BaseRepository } from './base-repository';
 import {
