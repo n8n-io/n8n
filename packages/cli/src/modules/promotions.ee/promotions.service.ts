@@ -20,11 +20,8 @@ import { Logger } from '@n8n/backend-common';
 import { EventService } from '@n8n/backend-services';
 import { ProjectRepository, SharedWorkflowRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { isRecord } from '@n8n/utils/is-record';
 import { cp, mkdir, mkdtemp, rename, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { jsonParse } from 'n8n-workflow';
-import { z } from 'zod';
 
 import { BadRequestError, NotFoundError } from '@n8n/errors';
 
@@ -33,11 +30,9 @@ import {
 	type PackageDirectoryInventory,
 } from '@/modules/n8n-packages/io/directory/package-directory-inventory-reader';
 import { PackageImportConfig } from '@/modules/n8n-packages/n8n-packages.config';
-import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { PACKAGE_ENTITY_LAYOUT } from '@/modules/n8n-packages/io/manifest-entry';
-import { MANIFEST_FILE } from '@/modules/n8n-packages/spec/constants';
+import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service';
 import { writeWorkflowRequirementFiles } from './workflow-requirements';
-import { manifestEntrySchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 import {
 	CredentialConflictPolicy,
@@ -63,7 +58,12 @@ import {
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 
-import { BASE_BRANCH_DIRECTORIES, parseBaseBranchFiles } from './base-branch-files';
+import {
+	BASE_BRANCH_DIRECTORIES,
+	parseBaseBranchFiles,
+	parseLsTreeBlobs,
+} from './base-branch-files';
+import { readDerivedLists, type DerivedLists } from './branch-manifest';
 import { projectHolding } from './branch-placement';
 import { crossProjectMoves, describePromotedMoves } from './cross-project-moves';
 import { GIT_DEFAULT_COMMIT_EMAIL, GIT_DEFAULT_COMMIT_NAME, PACKAGE_SUBFOLDER } from './constants';
@@ -1016,7 +1016,7 @@ export class PromotionsService {
 		};
 		const { commitSha } = await this.gitService.listBranchTree({
 			...operation,
-			pathspecs: [`${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`],
+			pathspecs: [PACKAGE_SUBFOLDER],
 		});
 		if (commitSha === null) {
 			throw new BadRequestError(
@@ -1108,26 +1108,24 @@ export class PromotionsService {
 
 		const paths = this.workingDirectory.paths(input.environmentId);
 		const branchName = checkoutBranchName(input.config);
-		const manifestPath = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
 		const { commitSha, lsTreeOutput } = await this.gitService.listBranchTree({
 			remoteUrl: repositoryUrl(input),
 			credentials: await this.credentialsFor(input),
 			paths,
 			branchName,
 			environmentId: input.environmentId,
-			pathspecs: [
-				...BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
-				manifestPath,
-			],
+			pathspecs: BASE_BRANCH_DIRECTORIES.map((directory) => `${PACKAGE_SUBFOLDER}/${directory}/`),
 		});
+		const blobShaByPath = new Map(
+			parseLsTreeBlobs(lsTreeOutput).map(({ path, blobSha }) => [path, blobSha]),
+		);
 
 		return {
 			environmentId: input.environmentId,
 			branchName,
 			commitSha,
-			// The parser skips the manifest, which sits at the package root.
 			files: parseBaseBranchFiles(lsTreeOutput, { exportRoot: PACKAGE_SUBFOLDER, projectId }),
-			hasManifest: lsTreeOutput.split('\0').some((record) => record.endsWith(`\t${manifestPath}`)),
+			blobShaByPath,
 			readFiles: async (filePaths) => {
 				if (commitSha === null) {
 					throw new BadRequestError(
@@ -1167,6 +1165,23 @@ export class PromotionsService {
 			},
 			filePaths,
 		);
+	}
+
+	/** The blob SHA of each package file that a commit holds, by repository path. */
+	async listBranchFilesAtCommit(
+		projectId: string,
+		direction: PromotionDirection,
+		commitSha: string,
+	): Promise<ReadonlyMap<string, string>> {
+		const input = await this.resolver.resolveForProject(projectId, direction);
+		await this.assertCheckoutReady(input, 'listing branch files');
+		return await this.gitService.listFilesAtCommit({
+			paths: this.workingDirectory.paths(input.environmentId),
+			branchName: checkoutBranchName(input.config),
+			environmentId: input.environmentId,
+			commitSha,
+			directory: PACKAGE_SUBFOLDER,
+		});
 	}
 
 	/**
@@ -1267,9 +1282,9 @@ export class PromotionsService {
 		credentials: PromotionGitCredentials,
 		baseCommitSha?: string,
 	): Promise<void> {
-		const manifest = await this.readRemoteManifest(input, branchName, credentials, baseCommitSha);
-		if (manifest === null) return;
-		const branch = readBranchPlacements(manifest, BRANCH_MANIFEST_PATH);
+		const lists = await this.readRemoteLayout(input, branchName, credentials, baseCommitSha);
+		if (lists === null) return;
+		const branch = readBranchPlacements(lists);
 		if (branch.workflows.length === 0 && branch.folders.length === 0) return;
 
 		const [owners, folders, existingProjects] = await Promise.all([
@@ -1307,49 +1322,49 @@ export class PromotionsService {
 	}
 
 	/**
-	 * The branch manifest at the remote head, not the checkout on disk, which can be behind the
-	 * remote. It does not apply the import limits, which a promote never needed. `null` when the
-	 * branch holds nothing to check: the remote doesn't hold the branch (the push creates it), the
-	 * remote is empty, or the branch has no package. Any other read failure throws, so a transient
-	 * error never skips the check. With `knownHead`, a commit just fetched from the remote, it
-	 * reads that commit and skips a second fetch.
+	 * What the branch holds at the remote head: its projects, folders and workflows, from the entity
+	 * files. It reads the remote head, not the checkout on disk, which can be behind the remote.
+	 * `null` when the branch holds nothing to check: the remote doesn't hold the branch (the push
+	 * creates it), the remote is empty, or the branch has no package. Any other read failure throws,
+	 * so a transient error never skips the check. With `knownHead`, a commit just fetched from the
+	 * remote, it reads that commit and skips a second fetch.
 	 */
-	private async readRemoteManifest(
+	private async readRemoteLayout(
 		input: PromotionOperationInput,
 		branchName: string,
 		credentials: PromotionGitCredentials,
 		knownHead?: string,
-	): Promise<string | null> {
+	): Promise<DerivedLists | null> {
 		const paths = this.workingDirectory.paths(input.environmentId);
 		const local = { paths, branchName, environmentId: input.environmentId };
 		const commitSha =
 			knownHead ??
-			(await this.fetchManifestHead({ ...local, remoteUrl: repositoryUrl(input), credentials }));
+			(await this.fetchBranchHead({ ...local, remoteUrl: repositoryUrl(input), credentials }));
 		if (commitSha === null) return null;
 
-		const present = await this.gitService.findPathsAtCommit({
+		const listed = await this.gitService.listFilesAtCommit({
 			...local,
 			commitSha,
-			filePaths: [BRANCH_MANIFEST_PATH],
+			directory: PACKAGE_SUBFOLDER,
 		});
-		if (!present.has(BRANCH_MANIFEST_PATH)) return null;
-
-		const files = await this.gitService.readFilesAtCommit({
-			...local,
-			commitSha,
-			filePaths: [BRANCH_MANIFEST_PATH],
+		if (listed.size === 0) return null;
+		return await readDerivedLists({
+			paths: listed.keys(),
+			blobShaByPath: listed,
+			prefix: PACKAGE_SUBFOLDER,
+			readFiles: async (filePaths) =>
+				await this.readExistingFiles({ ...local, commitSha }, filePaths),
 		});
-		return files.get(BRANCH_MANIFEST_PATH) ?? '';
 	}
 
 	/** Fetches the branch and returns its head, or `null` when there is no branch or commit yet. */
-	private async fetchManifestHead(
+	private async fetchBranchHead(
 		operation: Parameters<PromotionsGitService['hasRemoteBranch']>[0],
 	): Promise<string | null> {
 		try {
 			const head = await this.gitService.listBranchTree({
 				...operation,
-				pathspecs: [BRANCH_MANIFEST_PATH],
+				pathspecs: [PACKAGE_SUBFOLDER],
 			});
 			return head.commitSha;
 		} catch (error) {
@@ -1561,10 +1576,6 @@ function appliedOutcome(
 	};
 }
 
-const PROJECTS_DIRECTORY = PACKAGE_ENTITY_LAYOUT.projects.directory;
-
-const BRANCH_MANIFEST_PATH = `${PACKAGE_SUBFOLDER}/${MANIFEST_FILE}`;
-
 /** Leaves out the personal project's name: it holds the owner's email, and error text reaches the UI and telemetry. */
 function describeWorkflowsMovedToPersonalProjects(moved: BranchPlacements['workflows']): string {
 	const items = moved.map(
@@ -1574,12 +1585,7 @@ function describeWorkflowsMovedToPersonalProjects(moved: BranchPlacements['workf
 	return `A promotion does not include personal projects, so these workflows would be deleted on the destination: ${items.join('; ')}. Move them back to the team project the branch holds them in, then promote again.`;
 }
 
-/** The parts of `manifest.json` that promote checks. The export leaves out an empty list. */
-const branchPlacementsSchema = z.object({
-	projects: z.array(manifestEntrySchema).optional(),
-	workflows: z.array(manifestEntrySchema).optional(),
-	folders: z.array(manifestEntrySchema).optional(),
-});
+const PROJECTS_DIRECTORY = PACKAGE_ENTITY_LAYOUT.projects.directory;
 
 type BranchPlacements = {
 	projects: Array<{ id: string; name: string }>;
@@ -1587,34 +1593,9 @@ type BranchPlacements = {
 	folders: Array<{ projectId: string; folder: { id: string; name: string } }>;
 };
 
-/**
- * The team project of every workflow and folder that the branch manifest lists. It fails closed
- * and names the broken entry: skipping it could hide a workflow that Apply would delete.
- */
-function readBranchPlacements(raw: string | undefined, manifestPath: string): BranchPlacements {
-	let json: unknown;
-	try {
-		json = raw === undefined ? undefined : jsonParse(raw);
-	} catch {
-		json = undefined;
-	}
-	const parsed = branchPlacementsSchema.safeParse(json);
-	if (!parsed.success) {
-		const [key, index] = parsed.error.issues[0]?.path ?? [];
-		const list = typeof key === 'string' && isRecord(json) ? json[key] : undefined;
-		const entry: unknown =
-			Array.isArray(list) && typeof index === 'number' ? list[index] : undefined;
-		const id = isRecord(entry) && typeof entry.id === 'string' ? ` (id "${entry.id}")` : '';
-		const part =
-			typeof key === 'string' && typeof index === 'number'
-				? `Entry ${index + 1} of "${key}" in "${manifestPath}"`
-				: `"${manifestPath}"`;
-		throw new BadRequestError(
-			`${part} on the branch is not readable${id}, so promote can't check it for workflows and folders that moved between projects. Fix the file on the branch, then promote again.`,
-		);
-	}
-
-	const { projects = [], workflows = [], folders = [] } = parsed.data;
+/** The team project of every workflow and folder that the branch holds. */
+function readBranchPlacements(lists: DerivedLists): BranchPlacements {
+	const { projects = [], workflows = [], folders = [] } = lists;
 	// An entry outside every project directory has no project to compare, so it is left out.
 	return {
 		projects: projects.map(({ id, name }) => ({ id, name })),

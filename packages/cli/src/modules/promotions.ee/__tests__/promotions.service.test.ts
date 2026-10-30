@@ -12,6 +12,7 @@ import { mock } from 'vitest-mock-extended';
 
 import { BadRequestError, NotFoundError, ServiceUnavailableError } from '@n8n/errors';
 
+import { gitBlobSha } from '@/modules/n8n-packages/io/hashing-package-writer';
 import type { PackageImportPlan } from '@/modules/n8n-packages/engine/project-package-importer';
 import type {
 	InventoryProject,
@@ -79,6 +80,39 @@ describe('PromotionsService', () => {
 	const resolver = mock<PromotionEnvironmentResolver>();
 	const providersService = mock<PromotionProvidersService>();
 	const gitService = mock<PromotionsGitService>();
+
+	type BranchLists = {
+		projects?: Array<{ id: string; name: string; target: string }>;
+		folders?: Array<{ id: string; name: string; target: string }>;
+		workflows?: Array<{ id: string; name: string; target: string }>;
+	};
+
+	/** The branch commit holds one entity file for each listed entity, and no manifest. */
+	const mockBranchPackage = ({ projects, folders, workflows }: BranchLists) => {
+		const files = new Map<string, string>();
+		const fileNames = {
+			projects: 'project.json',
+			folders: 'folder.json',
+			workflows: 'workflow.json',
+		};
+		const entityFiles = { projects, folders, workflows };
+		for (const kind of ['projects', 'folders', 'workflows'] as const) {
+			for (const { id, name, target } of entityFiles[kind] ?? []) {
+				files.set(`n8n/${target}/${fileNames[kind]}`, JSON.stringify({ id, name }));
+			}
+		}
+		// A blob SHA follows the content, as in Git.
+		gitService.listFilesAtCommit.mockResolvedValue(
+			new Map([...files].map(([path, content]) => [path, gitBlobSha(content)])),
+		);
+		gitService.findPathsAtCommit.mockImplementation(
+			async ({ filePaths }) => new Set(filePaths.filter((path) => files.has(path))),
+		);
+		gitService.readFilesAtCommit.mockImplementation(
+			async ({ filePaths }) =>
+				new Map(filePaths.flatMap((path) => (files.has(path) ? [[path, files.get(path)!]] : []))),
+		);
+	};
 	const projectRepository = mock<ProjectRepository>();
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const projectService = mock<ProjectService>();
@@ -157,6 +191,7 @@ describe('PromotionsService', () => {
 		// The base commit a promote resets to holds no package by default.
 		gitService.prepareCheckoutForPromotion.mockResolvedValue({ commitSha: 'b'.repeat(40) });
 		gitService.findPathsAtCommit.mockResolvedValue(new Set());
+		gitService.listFilesAtCommit.mockResolvedValue(new Map());
 		n8nFolder = await mkdtemp(path.join(tmpdir(), 'n8n-promotions-'));
 		workingDirectory = new PromotionWorkingDirectoryService(mock<InstanceSettings>({ n8nFolder }));
 		// Real, so that the move checks read the repository and folder mocks above.
@@ -344,10 +379,7 @@ describe('PromotionsService', () => {
 					commitSha: 'a'.repeat(40),
 					lsTreeOutput: 'n8n/manifest.json',
 				});
-				gitService.findPathsAtCommit.mockResolvedValue(new Set(['n8n/manifest.json']));
-				gitService.readFilesAtCommit.mockResolvedValue(
-					new Map([['n8n/manifest.json', JSON.stringify(manifest)]]),
-				);
+				mockBranchPackage(manifest);
 				projectRepository.findTypesByIds.mockResolvedValue([{ id: 'p-billing', type: 'team' }]);
 			});
 
@@ -374,12 +406,9 @@ describe('PromotionsService', () => {
 				await expect(refusal).rejects.not.toMatchObject({
 					message: expect.stringContaining('Ada Lovelace'),
 				});
-				// The check reads the manifest at the remote head, not the checkout on disk.
-				expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
-					expect.objectContaining({
-						commitSha: 'a'.repeat(40),
-						filePaths: ['n8n/manifest.json'],
-					}),
+				// The check reads the package at the remote head, not the checkout on disk.
+				expect(gitService.listFilesAtCommit).toHaveBeenCalledWith(
+					expect.objectContaining({ commitSha: 'a'.repeat(40), directory: 'n8n' }),
 				);
 				expect(gitService.readTreeAtCommit).not.toHaveBeenCalled();
 				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
@@ -410,17 +439,10 @@ describe('PromotionsService', () => {
 			});
 
 			it('refuses a promote while a branch folder belongs to another team project', async () => {
-				gitService.readFilesAtCommit.mockResolvedValue(
-					new Map([
-						[
-							'n8n/manifest.json',
-							JSON.stringify({
-								...manifest,
-								folders: [{ id: 'f1', name: 'Payments', target: 'projects/billing/folders/f' }],
-							}),
-						],
-					]),
-				);
+				mockBranchPackage({
+					...manifest,
+					folders: [{ id: 'f1', name: 'Payments', target: 'projects/billing/folders/f' }],
+				});
 				sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(new Map());
 				folderService.getFoldersByIds.mockResolvedValue([
 					{ id: 'f1', homeProject: { id: 'p-ops', name: 'Ops', type: 'team' } },
@@ -467,63 +489,9 @@ describe('PromotionsService', () => {
 				expect(gitService.commitAndPush).toHaveBeenCalled();
 			});
 
-			it('refuses a promote when the branch manifest cannot be read', async () => {
-				gitService.readFilesAtCommit.mockResolvedValue(
-					new Map([['n8n/manifest.json', 'not json {']]),
-				);
-
-				await expect(
-					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
-						commitMessage: 'sync projects',
-					}),
-				).rejects.toMatchObject({
-					httpStatusCode: 400,
-					message: expect.stringContaining('"n8n/manifest.json" on the branch is not readable'),
-				});
-				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
-			});
-
-			it.each([
-				{
-					title: 'a workflow entry without a target',
-					broken: { ...manifest, workflows: [manifest.workflows[0], { id: 'w9', name: 'Lost' }] },
-					expected:
-						'Entry 2 of "workflows" in "n8n/manifest.json" on the branch is not readable (id "w9")',
-				},
-				{
-					title: 'a workflow entry that is not an object',
-					broken: { ...manifest, workflows: ['w9'] },
-					expected: 'Entry 1 of "workflows" in "n8n/manifest.json" on the branch is not readable,',
-				},
-				{
-					title: 'a project entry without a name',
-					broken: { ...manifest, projects: [{ id: 'p-billing', target: 'projects/billing' }] },
-					expected:
-						'Entry 1 of "projects" in "n8n/manifest.json" on the branch is not readable (id "p-billing")',
-				},
-			])('refuses a promote when the branch manifest has $title', async ({ broken, expected }) => {
-				gitService.readFilesAtCommit.mockResolvedValue(
-					new Map([['n8n/manifest.json', JSON.stringify(broken)]]),
-				);
-
-				await expect(
-					service.promote(ENVIRONMENT_ID, actor, {
-						canExportVariableValues: true,
-						commitMessage: 'sync projects',
-					}),
-				).rejects.toMatchObject({
-					httpStatusCode: 400,
-					message: expect.stringContaining(expected),
-				});
-				expect(n8nPackagesService.exportPackageToDirectory).not.toHaveBeenCalled();
-			});
-
 			it('promotes when the branch package holds no workflows', async () => {
-				// The export leaves out an empty `workflows` list.
-				gitService.readFilesAtCommit.mockResolvedValue(
-					new Map([['n8n/manifest.json', JSON.stringify({ projects: manifest.projects })]]),
-				);
+				// The branch holds the project file, and no workflow file.
+				mockBranchPackage({ projects: manifest.projects });
 
 				await service.promote(ENVIRONMENT_ID, actor, {
 					canExportVariableValues: true,
@@ -792,18 +760,10 @@ describe('PromotionsService', () => {
 					settings: { schemaVersion: 1, baseBranchName: 'staging', createBranchOnPromotion: true },
 				}),
 			);
-			gitService.findPathsAtCommit.mockResolvedValue(new Set(['n8n/manifest.json']));
-			gitService.readFilesAtCommit.mockResolvedValue(
-				new Map([
-					[
-						'n8n/manifest.json',
-						JSON.stringify({
-							projects: [{ id: 'p-billing', name: 'Billing', target: 'projects/billing' }],
-							workflows: [{ id: 'w1', name: 'Invoices', target: 'projects/billing/workflows/w1' }],
-						}),
-					],
-				]),
-			);
+			mockBranchPackage({
+				projects: [{ id: 'p-billing', name: 'Billing', target: 'projects/billing' }],
+				workflows: [{ id: 'w1', name: 'Invoices', target: 'projects/billing/workflows/w1' }],
+			});
 			sharedWorkflowRepository.findOwnerProjectsByWorkflowIds.mockResolvedValue(
 				new Map([['w1', mock<Project>({ id: 'p9', type: 'personal' })]]),
 			);
@@ -815,8 +775,8 @@ describe('PromotionsService', () => {
 				}),
 			).rejects.toThrow('"Invoices" (w1) is in a personal project here');
 			expect(gitService.listBranchTree).not.toHaveBeenCalled();
-			expect(gitService.readFilesAtCommit).toHaveBeenCalledWith(
-				expect.objectContaining({ commitSha: 'b'.repeat(40), filePaths: ['n8n/manifest.json'] }),
+			expect(gitService.listFilesAtCommit).toHaveBeenCalledWith(
+				expect.objectContaining({ commitSha: 'b'.repeat(40), directory: 'n8n' }),
 			);
 			expect(gitService.commitAndPush).not.toHaveBeenCalled();
 		});
@@ -1902,7 +1862,6 @@ describe('PromotionsService', () => {
 				commitSha,
 				lsTreeOutput:
 					[
-						'100644 blob m1\tn8n/manifest.json',
 						'100644 blob p1\tn8n/projects/orders-p1/project.json',
 						`100644 blob w1\t${workflowPath}`,
 						'100644 blob x1\tn8n/projects/other-p2/project.json',
@@ -1925,7 +1884,6 @@ describe('PromotionsService', () => {
 						'n8n/data-tables/',
 						'n8n/variables/',
 						'n8n/tags/',
-						'n8n/manifest.json',
 					],
 				}),
 			);
@@ -1933,8 +1891,8 @@ describe('PromotionsService', () => {
 				environmentId: ENVIRONMENT_ID,
 				branchName: 'dev',
 				commitSha,
-				hasManifest: true,
 			});
+			expect([...branch.blobShaByPath.keys()]).toContain(workflowPath);
 			expect(branch.files.map(({ entityId, type }) => ({ entityId, type }))).toEqual([
 				{ entityId: 'p1', type: 'project' },
 				{ entityId: 'w1', type: 'workflow' },
@@ -1962,8 +1920,8 @@ describe('PromotionsService', () => {
 				branchName: 'dev',
 				commitSha: null,
 				files: [],
-				hasManifest: false,
 			});
+			expect(branch.blobShaByPath.size).toBe(0);
 			await expect(branch.readFiles(['n8n/manifest.json'])).rejects.toThrow('no exported package');
 			expect(gitService.readFilesAtCommit).not.toHaveBeenCalled();
 		});

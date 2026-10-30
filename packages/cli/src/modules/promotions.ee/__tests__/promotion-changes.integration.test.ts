@@ -361,7 +361,7 @@ it('marks a workflow that moved into a project that has no files on the branch y
 	);
 	const branch = await Container.get(PromotionsService).readBranchPackage(later.id, 'promote');
 	expect(branch.files).toEqual([]);
-	expect(branch.hasManifest).toBe(true);
+	expect(branch.blobShaByPath.size).toBeGreaterThan(0);
 
 	const preview = (
 		await server.authAgentFor(owner).get(`/promotions/${later.id}/changes/promote`).expect(200)

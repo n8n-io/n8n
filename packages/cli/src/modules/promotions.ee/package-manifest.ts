@@ -4,7 +4,8 @@ import { N8N_VERSION } from '@/constants';
 import { FORMAT_VERSION } from '@/modules/n8n-packages/spec/constants';
 import type { PackageManifest } from '@/modules/n8n-packages/spec/manifest.schema';
 
-import { deriveLists } from './branch-manifest';
+import { BlobCache } from './blob-cache';
+import { deriveLists, packageRoot, readDerivedLists, type ReadSource } from './branch-manifest';
 import {
 	joinWorkflowRequirements,
 	parseWorkflowRequirements,
@@ -41,6 +42,13 @@ export function manifestFromFiles(
 	}
 	const requirements = joinWorkflowRequirements(byWorkflow);
 
+	return withHeader(lists, requirements);
+}
+
+function withHeader(
+	lists: ReturnType<typeof deriveLists>,
+	requirements: PackageManifest['requirements'],
+): PackageManifest {
 	return {
 		packageFormatVersion: FORMAT_VERSION,
 		sourceN8nVersion: N8N_VERSION,
@@ -48,4 +56,43 @@ export function manifestFromFiles(
 		...lists,
 		...(requirements ? { requirements } : {}),
 	};
+}
+
+const READ_CHUNK_SIZE = 100;
+
+/** What each requirements file said, by the Git blob SHA of the file. */
+const requirementsCache = new BlobCache<WorkflowRequirements>(50_000);
+
+/**
+ * The manifest of a package at one commit, built like {@link manifestFromFiles} from a listing
+ * and a way to read files. `null` when a requirements file is not valid. The requirements of a
+ * workflow are read only when `readsContentOf` accepts its workflow file.
+ */
+export async function readBranchManifest(source: ReadSource): Promise<PackageManifest | null> {
+	const root = packageRoot(source.prefix);
+	const paths = [...source.paths];
+	const present = new Set(paths);
+	const lists = await readDerivedLists({ ...source, paths });
+
+	const byWorkflow = new Map<string, WorkflowRequirements>();
+	const toRead: Array<{ id: string; file: string }> = [];
+	for (const { id, target } of lists.workflows ?? []) {
+		const file = `${root}${workflowRequirementsPath(target)}`;
+		if (!present.has(file)) continue;
+		if (source.readsContentOf && !source.readsContentOf(`${root}${target}/workflow.json`)) continue;
+		const cached = requirementsCache.get(source.blobShaByPath?.get(file));
+		if (cached) byWorkflow.set(id, cached);
+		else toRead.push({ id, file });
+	}
+	for (let start = 0; start < toRead.length; start += READ_CHUNK_SIZE) {
+		const chunk = toRead.slice(start, start + READ_CHUNK_SIZE);
+		const contents = await source.readFiles(chunk.map(({ file }) => file));
+		for (const { id, file } of chunk) {
+			const requirements = parseWorkflowRequirements(contents.get(file));
+			if (!requirements) return null;
+			byWorkflow.set(id, requirements);
+			requirementsCache.set(source.blobShaByPath?.get(file), requirements);
+		}
+	}
+	return withHeader(lists, joinWorkflowRequirements(byWorkflow));
 }

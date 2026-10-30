@@ -71,7 +71,6 @@ import {
 	ExportDependencyPolicy,
 	ExportVersionPolicy,
 } from '@/modules/n8n-packages/n8n-packages.types';
-import { packageManifestSchema } from '@/modules/n8n-packages/spec/manifest.schema';
 import { FolderService } from '@/services/folder.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { TagService } from '@/services/tag.service';
@@ -88,6 +87,7 @@ import { PromotionRunRepository } from '../database/repositories/promotion-run.r
 import { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
 import { ApplyPreviewService } from '../apply-preview.service';
+import { manifestFromFiles } from '../package-manifest';
 import { LocalPackageEntities } from '../local-package-entities.service';
 import { PromotionChangeService } from '../promotion-change.service';
 import { PromotionEnvironmentResolver } from '../promotion-environment.resolver';
@@ -415,6 +415,25 @@ async function inspectBranch(
 	return { git: createFixtureGit(inspectionDir), dir: inspectionDir };
 }
 
+/**
+ * The manifest that a read from Git builds from a checked-out branch. The branch holds no
+ * `manifest.json`, so two merge requests that add entities do not conflict on it.
+ */
+async function readBranchManifest(inspectionDir: string) {
+	const root = path.join(inspectionDir, 'n8n');
+	await expect(readFile(path.join(root, 'manifest.json'))).rejects.toThrow();
+	const entries = await readdir(root, { recursive: true, withFileTypes: true });
+	const files = await Promise.all(
+		entries
+			.filter((entry) => entry.isFile())
+			.map(async (entry): Promise<[string, string]> => {
+				const full = path.join(entry.parentPath, entry.name);
+				return [path.relative(root, full).split(path.sep).join('/'), await readFile(full, 'utf-8')];
+			}),
+	);
+	return manifestFromFiles(files);
+}
+
 async function readBranchEntities(
 	inspectionDir: string,
 	fileName: (typeof PACKAGE_ENTITY_LAYOUT)[
@@ -628,15 +647,6 @@ async function changeBranchCredentials(
 		}
 	};
 	await walk(path.join(remote.workingDir, 'n8n'));
-	// The manifest lists each credential name too, and the reader checks that both agree.
-	const manifestPath = path.join(remote.workingDir, 'n8n', 'manifest.json');
-	const manifest = jsonParse<{ credentials?: Array<{ id: string; name: string }> }>(
-		await readFile(manifestPath, 'utf-8'),
-	);
-	for (const entry of manifest.credentials ?? []) {
-		entry.name = changes[entry.id]?.name ?? entry.name;
-	}
-	await writeFile(manifestPath, JSON.stringify(manifest, null, 2));
 	await commitAndPushRemote(remote, 'Change credentials');
 }
 
@@ -784,9 +794,7 @@ describe('Promote and Apply', () => {
 		const inspectionGit = createFixtureGit(inspectionDir);
 		const remoteHead = (await inspectionGit.revparse(['HEAD'])).trim();
 		const pushedCommit = (await inspectionGit.log({ maxCount: 1 })).latest;
-		const manifest = packageManifestSchema.parse(
-			jsonParse(await readFile(path.join(inspectionDir, 'n8n', 'manifest.json'), 'utf-8')),
-		);
+		const manifest = await readBranchManifest(inspectionDir);
 		const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
 		const workflowEntry = manifest.workflows?.find(({ id }) => id === workflow.id);
 
@@ -927,6 +935,8 @@ describe('Promote and Apply', () => {
 			true,
 		);
 		const { environmentId } = await service.clone(environments.promote.id, owner);
+		// The branch holds no manifest, so an instance without projects has nothing to commit.
+		await setupProjectWithWorkflows('Orders', ['w1']);
 		const { repositoryFolder, descriptorFile } = workingDirectory.paths(environmentId);
 		const checkoutGit = createFixtureGit(repositoryFolder);
 		const baseCommit = (await checkoutGit.revparse(['HEAD'])).trim();
@@ -1352,17 +1362,6 @@ describe('Promote and Apply', () => {
 
 		const current = await service.apply(environments.apply.id, owner, { ...source, ...moved.git });
 		expect(current.status).toBe('blocked');
-		expect(await snapshotApplyState()).toEqual(before);
-	});
-
-	it('keeps the missing-manifest import error after a clear check', async () => {
-		const remote = await createRemote();
-		const environments = await createInstanceEnvironments(remote.bareDir);
-		await service.clone(environments.apply.id, owner);
-		await writeRemoteFile(remote, 'n8n/.gitkeep', '');
-		await commitAndPushRemote(remote, 'Add package directory');
-		const before = await snapshotApplyState();
-		await expect(service.apply(environments.apply.id, owner)).rejects.toThrow(/manifest/i);
 		expect(await snapshotApplyState()).toEqual(before);
 	});
 
@@ -2876,7 +2875,7 @@ describe('Promote a project selection — branch effects', () => {
 		},
 	);
 
-	it.each(['n8n', 'n8n/manifest.json'])(
+	it.each(['n8n', 'n8n/projects'])(
 		'refuses a selection when the local copy lost committed %s and the remote branch is gone',
 		async (lostPath) => {
 			const remote = await createRemote();
@@ -3485,9 +3484,7 @@ describe('Promotion base branch listing', () => {
 			canExportVariableValues: true,
 			commitMessage: 'Export projects',
 		});
-		const manifest = packageManifestSchema.parse(
-			jsonParse(await createFixtureGit(remote.bareDir).show(['main:n8n/manifest.json'])),
-		);
+		const manifest = await readBranchManifest((await inspectBranch(remote.bareDir)).dir);
 		const projectEntry = manifest.projects?.find(({ id }) => id === project.id);
 		assert(projectEntry);
 		const collections = Object.keys(PACKAGE_ENTITY_LAYOUT) as ManifestEntityCollection[];

@@ -12,6 +12,7 @@ import { N8nPackagesService } from '@/modules/n8n-packages/n8n-packages.service'
 
 import { PromotionProviderRepository } from '../../database/repositories/promotion-provider.repository';
 import { instancePromotionExportRequest } from '../../instance-package';
+import { writeWorkflowRequirementFiles } from '../../workflow-requirements';
 
 /** Stores a token provider as the providers API does, without the checks against the host. */
 export async function insertTokenProvider({
@@ -45,7 +46,7 @@ export async function insertTokenProvider({
 /** Writes the package that an instance Promote exports, without the Git work of Promote. */
 export async function writeInstancePromotionPackage(user: User, targetDir: string) {
 	await rm(targetDir, { recursive: true, force: true });
-	await Container.get(N8nPackagesService).exportPackageToDirectory(
+	const { manifest } = await Container.get(N8nPackagesService).exportPackageToDirectory(
 		instancePromotionExportRequest({
 			user,
 			projectIds: await Container.get(ProjectRepository).findTeamProjectIds(),
@@ -53,4 +54,6 @@ export async function writeInstancePromotionPackage(user: User, targetDir: strin
 		}),
 		{ targetDir },
 	);
+	// A promote writes the same files: each workflow keeps its requirements, and no manifest.
+	await writeWorkflowRequirementFiles(targetDir, manifest);
 }
