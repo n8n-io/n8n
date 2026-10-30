@@ -1,0 +1,29 @@
+packages/@n8n/inbound-auth/src/contracts.ts
+  s_a073fa9d8a702c::t_df5a3d2d2629d8 201-204,212
+packages/@n8n/db/src/migrations/sqlite/1793354377949-AddFirstAuthenticatedAtToTrustedSource.ts
+  s_a073fa9d8a702c::t_dd9e2bd755438a 1-11
+packages/@n8n/db/src/migrations/common/1793354377949-AddFirstAuthenticatedAtToTrustedSource.ts
+  s_a073fa9d8a702c::t_dd9e2bd755438a 1-13
+packages/cli/test/migration/1793354377949-add-first-authenticated-at-to-trusted-source.test.ts
+  s_a073fa9d8a702c::t_dd9e2bd755438a 1-157
+packages/cli/src/modules/inbound-auth-core/trusted-source.store.ts
+  s_a073fa9d8a702c::t_55d7ac8af2d406 124-132
+packages/cli/test/integration/inbound-auth-core/trusted-source.store.integration.test.ts
+  s_a073fa9d8a702c::t_c33b509a7dcf78 461-477
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae40fb7c0d414a190ec7bedeb86a8e263c7d1c6a",
+  "prompts": {},
+  "sessions": {
+    "s_a073fa9d8a702c": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "809324ae-b7ec-4c6e-a695-c965041caa84",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Andreas Fitzek <andreas.fitzek@n8n.io>"
+    }
+  }
+}
