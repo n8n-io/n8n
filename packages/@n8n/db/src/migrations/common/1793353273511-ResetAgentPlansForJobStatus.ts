@@ -1,6 +1,6 @@
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
-export class ResetAgentPlansForJobStatus1793207494016 implements IrreversibleMigration {
+export class ResetAgentPlansForJobStatus1793353273511 implements IrreversibleMigration {
 	async up(ctx: MigrationContext) {
 		await this.clearStopReferences(ctx);
 		await this.clearResumeReferences(ctx);

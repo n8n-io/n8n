@@ -193,7 +193,7 @@ Job transitions can change a snapshot without changing its revision.
 
 ### Development data reset
 
-`ResetAgentPlansForJobStatus1793024571925` is irreversible. It removes format 1 plans and their history.
+`ResetAgentPlansForJobStatus1793353273511` is irreversible. It removes format 1 plans and their history.
 It clears their job links and obsolete plan references in Stop records and checkpoint resume metadata.
 It preserves chat messages, executions, background jobs, job outcomes, and unrelated checkpoint data.
 It does not convert old plans. New plans use format 2, including plans in existing conversations.

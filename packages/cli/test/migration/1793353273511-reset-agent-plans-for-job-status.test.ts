@@ -9,7 +9,7 @@ import { Container } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { randomUUID } from 'node:crypto';
 
-const migrationName = 'ResetAgentPlansForJobStatus1793207494016';
+const migrationName = 'ResetAgentPlansForJobStatus1793353273511';
 
 const oldPlanId = randomUUID();
 const newPlanId = randomUUID();
