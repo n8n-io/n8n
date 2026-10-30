@@ -1,11 +1,7 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator, Tracer } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
-import {
-	CompositePropagator,
-	hrTimeToMilliseconds,
-	W3CTraceContextPropagator,
-} from '@opentelemetry/core';
+import { hrTimeToMilliseconds, W3CTraceContextPropagator } from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -15,6 +11,8 @@ import type { StartWorkflowParams } from '../execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from '../otel.config';
 import type { TracingContext } from '../tracing-context';
 import { OtelTestProvider } from './support/otel-test-provider';
+
+import { TRACING_OFF } from '@/observability/swappable-pipeline';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
@@ -988,7 +986,7 @@ describe('ExecutionLevelTracer', () => {
 			});
 
 			const headers: Record<string, string> = {};
-			withGlobalPropagator(new CompositePropagator(), () => {
+			withGlobalPropagator(TRACING_OFF.propagator, () => {
 				tracer.injectTraceHeaders('exec-12', undefined, headers);
 			});
 
