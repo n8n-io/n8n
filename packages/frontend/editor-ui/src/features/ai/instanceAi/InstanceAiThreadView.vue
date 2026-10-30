@@ -337,8 +337,9 @@ provide(
 const showDebugPanel = ref(false);
 const isDebugEnabled = computed(() => localStorage.getItem('instanceAi.debugMode') === 'true');
 const hasPreviewTabs = computed(() => preview.openTabs.value.length > 0);
+// Wait for the stored tabs: a resource opened before they load replaces them.
 const showOpenResourcePicker = computed(
-	() => !preview.isPreviewVisible.value && !hasPreviewTabs.value,
+	() => preview.tabsLoaded.value && !preview.isPreviewVisible.value && !hasPreviewTabs.value,
 );
 const artifactsPanelTransitionGate = useTransitionGate({
 	isBlocked: () => thread.isHydratingThread,

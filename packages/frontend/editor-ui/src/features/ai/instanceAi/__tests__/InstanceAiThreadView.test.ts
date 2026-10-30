@@ -17,6 +17,7 @@ import { moveResize, startResize } from '@/__tests__/resize';
 import { mockedStore } from '@/__tests__/utils';
 import InstanceAiThreadView from '../InstanceAiThreadView.vue';
 import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { fetchThreadTabs } from '../instanceAi.memory.api';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { INSTANCE_AI_SETUP_PANEL_EXPERIMENT } from '@/app/constants/experiments';
@@ -593,6 +594,17 @@ describe('InstanceAiThreadView', () => {
 			'data-workflow-id',
 			'wf-picked',
 		);
+	});
+
+	it('shows no resource picker until the stored tabs load', async () => {
+		vi.mocked(fetchThreadTabs).mockReturnValueOnce(new Promise(() => {}));
+		const { findAllByTestId, queryByTestId } = renderView({ props: { threadId: 'thread-1' } });
+
+		const toggles = await findAllByTestId('instance-ai-artifacts-preview-toggle');
+		expect(queryByTestId('instance-ai-open-resource-picker')).toBeNull();
+		expect(
+			toggles.find((toggle) => toggle.getAttribute('aria-pressed') === 'false'),
+		).toBeDisabled();
 	});
 
 	it('shows the preview toggle, not the picker, while tabs are open', async () => {

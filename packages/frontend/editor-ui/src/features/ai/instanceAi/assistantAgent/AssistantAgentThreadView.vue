@@ -289,9 +289,14 @@ function removeStagedNodes(chipId: string): void {
 							@click="toggleArtifactsPanel"
 						/>
 					</N8nTooltip>
-					<!-- With no tabs to show, the toggle opens a resource in a new tab. -->
+					<!-- With no tabs to show, the toggle opens a resource in a new tab. It waits for
+					the stored tabs: a resource opened before they load replaces them. -->
 					<InstanceAiResourcePicker
-						v-if="!preview.isPreviewVisible.value && preview.openTabs.value.length === 0"
+						v-if="
+							preview.tabsLoaded.value &&
+							!preview.isPreviewVisible.value &&
+							preview.openTabs.value.length === 0
+						"
 						:project-id="props.projectId"
 						:excluded-tabs="preview.openTabs.value"
 						placement="bottom-end"
@@ -330,6 +335,7 @@ function removeStagedNodes(chipId: string): void {
 							data-test-id="assistant-agent-preview-toggle"
 							:aria-label="previewToggleLabel"
 							:aria-pressed="false"
+							:disabled="preview.openTabs.value.length === 0"
 							@click="togglePreview"
 						/>
 					</N8nTooltip>
