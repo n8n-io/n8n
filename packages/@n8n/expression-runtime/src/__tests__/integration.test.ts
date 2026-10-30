@@ -294,6 +294,35 @@ describe(`Integration: ExpressionEvaluator (${engineName})`, () => {
 			});
 		});
 
+		describe.each([
+			{ key: '__isError', properties: { __isError: true } },
+			{ key: '__isArray', properties: { __isArray: true, __length: 2 } },
+			{ key: '__isObject', properties: { __isObject: true, __keys: ['message'] } },
+		])('Error data with $key', ({ key, properties }) => {
+			it.each(['$error', '$json.error', '$json.errors[0]'])('reads %s as an Error', (access) => {
+				const error = Object.assign(new Error('from data'), properties);
+				const json = { error, errors: [error] };
+				const data = { $error: error, $json: json, $input: { first: () => ({ json }) } };
+
+				expect(evaluator.evaluate('{{ $input.first().json.error.message }}', data, caller)).toBe(
+					'from data',
+				);
+				expect(
+					evaluator.evaluate(
+						`{{ (() => { const error = ${access}; return [error.message, error instanceof Error, Array.isArray(error), error.${key}]; })() }}`,
+						data,
+						caller,
+					),
+				).toEqual(['from data', true, false, true]);
+			});
+		});
+
+		it('finds Error data with an __isError key through the in operator', () => {
+			const error = Object.assign(new Error('from data'), { __isError: true });
+
+			expect(evaluator.evaluate('{{ "error" in $json }}', { $json: { error } }, caller)).toBe(true);
+		});
+
 		it('should convert the values inside an object with an __isError key in an object or an array', () => {
 			const data = { $json: {} };
 			const flagged =

@@ -85,14 +85,6 @@ export interface BridgeCallbacks {
 	callHost: BridgeCallback;
 }
 
-function decodingHostValues(callbacks: BridgeCallbacks): BridgeCallbacks {
-	return {
-		getValueAtPath: (...args) => decodeHostValue(callbacks.getValueAtPath(...args)),
-		getArrayElement: (...args) => decodeHostValue(callbacks.getArrayElement(...args)),
-		callHost: callbacks.callHost,
-	};
-}
-
 /**
  * Build a fresh, closure-scoped evaluation context.
  *
@@ -108,10 +100,9 @@ function decodingHostValues(callbacks: BridgeCallbacks): BridgeCallbacks {
  * @returns A context object with all workflow data, proxies, and builtins
  */
 export function buildContext(
-	bridgeCallbacks: BridgeCallbacks,
+	callbacks: BridgeCallbacks,
 	timezone?: string,
 ): Record<string, unknown> {
-	const callbacks = decodingHostValues(bridgeCallbacks);
 	if (timezone && !IANAZone.isValidZone(timezone)) {
 		throw new Error(`Invalid timezone: "${timezone}"`);
 	}
@@ -378,8 +369,8 @@ export function buildContext(
 			return true;
 		}
 
-		// Primitive or null — store directly
-		target[key] = value;
+		// Decode after the metadata checks. User data can hold the same keys.
+		target[key] = decodeHostValue(value);
 		return true;
 	}
 
