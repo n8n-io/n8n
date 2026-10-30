@@ -228,8 +228,7 @@ export const HighlightOnHover: Story = {
 	parameters: {
 		docs: {
 			description: {
-				story:
-					'Pointer movement moves the highlight. Arrow keys take the highlight from the item under the pointer. That item loses the highlight fill.',
+				story: 'Pointer movement moves the highlight. The highlight fill follows the pointer.',
 			},
 		},
 	},
@@ -243,7 +242,6 @@ export const HighlightOnHover: Story = {
 			<div style="display: flex; flex-direction: column; gap: var(--spacing--xs); width: 20rem">
 				<p style="margin: 0; font-size: var(--font-size--sm); color: var(--text-color--subtler)">
 					Move the pointer over an item. The highlight follows the pointer.
-					Arrow keys take the highlight from the item under the pointer.
 				</p>
 				<N8nListbox v-model="value" highlight-on-hover label="Versions" style="flex: none">
 					<N8nListboxItem value="v2">

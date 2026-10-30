@@ -1,6 +1,4 @@
 <script setup lang="ts">
-import { getCurrentInstance, onBeforeUnmount, onMounted, onUpdated, useAttrs } from 'vue';
-
 import type { ListboxItemEmits, ListboxItemProps, ListboxItemSlots } from './ListboxItem.types';
 import { ListboxItem } from './reka-ui';
 
@@ -10,57 +8,6 @@ defineProps<ListboxItemProps>();
 defineSlots<ListboxItemSlots>();
 
 const emit = defineEmits<ListboxItemEmits>();
-const attrs = useAttrs();
-const instance = getCurrentInstance();
-
-// Reka memos the option and keeps the first attributes.
-// Copy the latest attributes after each render.
-function applyAttrs() {
-	const el = instance?.vnode.el;
-	if (!(el instanceof HTMLElement)) return;
-
-	for (const [key, value] of Object.entries(attrs)) {
-		if (key === 'class' || key === 'style' || key.startsWith('on')) continue;
-		if (value === undefined || value === null) {
-			el.removeAttribute(key);
-			continue;
-		}
-		if (value === false) {
-			if (key.startsWith('aria-') || key.startsWith('data-')) el.setAttribute(key, 'false');
-			else el.removeAttribute(key);
-			continue;
-		}
-		if (value === true) {
-			el.setAttribute(key, 'true');
-			continue;
-		}
-		if (typeof value === 'string' || typeof value === 'number') {
-			el.setAttribute(key, String(value));
-		}
-	}
-}
-
-// Up and Down move between items. They leave a button or an open menu alone.
-function onItemKeydown(event: KeyboardEvent) {
-	if (event.target === event.currentTarget || event.key === 'Tab') return;
-	event.stopPropagation();
-}
-
-function itemElement() {
-	const el = instance?.vnode.el;
-	return el instanceof HTMLElement ? el : null;
-}
-
-onMounted(() => {
-	applyAttrs();
-	itemElement()?.addEventListener('keydown', onItemKeydown);
-});
-
-onUpdated(applyAttrs);
-
-onBeforeUnmount(() => {
-	itemElement()?.removeEventListener('keydown', onItemKeydown);
-});
 
 function onSelect(event: Event) {
 	emit('select', event);
