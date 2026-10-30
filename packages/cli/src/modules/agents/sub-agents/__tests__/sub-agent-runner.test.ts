@@ -291,6 +291,36 @@ describe('SubAgentRunner', () => {
 		);
 	});
 
+	it('stores the outputs of a child that fails after it used the workspace', async () => {
+		const workspace = mock<Workspace>();
+		const chunks: StreamChunk[] = [
+			{ type: 'tool-call', toolCallId: 'c-1', toolName: 'workspace_write_file', input: {} },
+			{ type: 'tool-result', toolCallId: 'c-1', toolName: 'workspace_write_file', output: 'ok' },
+		];
+		(childAgent as unknown as Mocked<RuntimeAgent>).getWorkspace.mockReturnValue(workspace);
+		childAgent.stream.mockResolvedValue({
+			...makeStreamResult([]),
+			stream: new ReadableStream<StreamChunk>({
+				// Error on a later pull: an error in start() drops the queued chunks.
+				pull(controller) {
+					const chunk = chunks.shift();
+					if (chunk) controller.enqueue(chunk);
+					else controller.error(new Error('model down'));
+				},
+			}),
+		});
+
+		await expect(
+			runner.run(spawnRequest, { parentAgentId, projectId, credentialProvider, runType: 'test' }),
+		).rejects.toThrow('model down');
+
+		expect(sandboxFiles.syncOutputs).toHaveBeenCalledWith(
+			workspace,
+			expect.objectContaining({ projectId }),
+		);
+		expect(attachmentService.returnToParent).not.toHaveBeenCalled();
+	});
+
 	it('does not run the child when a passed file cannot be granted', async () => {
 		attachmentService.grantToSubAgent.mockRejectedValue(
 			new UserError('File "other" not found in this conversation'),
