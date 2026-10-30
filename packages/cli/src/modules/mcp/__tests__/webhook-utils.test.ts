@@ -1,6 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 import type { SharedCredentials } from '@n8n/db';
+import { NotFoundError } from '@n8n/errors';
 import type {
 	INode,
 	INodeCredentials,
@@ -201,6 +202,33 @@ describe('getWebhookDetails', () => {
 			workflowId,
 		);
 		expect(res).toContain('requires a header with name "X-API-Key"');
+	});
+
+	it('still describes a headerAuth webhook when the credential lookup fails', async () => {
+		// CONTEXT-276: a failed lookup of the Header Auth credential must not fail
+		// the whole get_workflow_details read. The JWT path already degrades.
+		const node = createWebhookNode({
+			name: 'Secured Webhook',
+			parameters: { authentication: 'headerAuth', path: 'secured', httpMethod: 'POST' },
+			credentials: { httpHeaderAuth: { id: 'cred-unreadable', name: 'HeaderAuth' } },
+		});
+		const credsService = mockCredentialsService((id) => {
+			throw new NotFoundError(`Credential with ID "${id}" could not be found.`);
+		});
+
+		const res = await getWebhookDetails(
+			user,
+			[node],
+			baseUrl,
+			credsService,
+			nodeTypes,
+			endpoints,
+			workflowId,
+		);
+
+		expect(res).toContain('Node name: Secured Webhook');
+		expect(res).toContain('Production URL: https://example.com/webhook/secured');
+		expect(res).toContain('HTTP Method: POST');
 	});
 
 	it('describes jwtAuth with shared secret', async () => {
