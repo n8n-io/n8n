@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/background/__tests__/agent-background-job.service.test.ts
+  s_dfe3f914c8bb46::t_502e4a2dcf5eab 1,11,88,109-110,112,122,124,126,128,175-192,244,345,356-361,419-440,963-989,1437-1449,2082-2170
+packages/cli/src/modules/agents/background/agent-background-job.service.ts
+  s_dfe3f914c8bb46::t_283e4eae63e621 7-14,22,25-26,35,38,70-71,93-94,97,100-109,111-112,114-128,172,182,288,292,294,297-306,308,367-368,371-388,390,394,421,424,428,440,442,450-515,522,529,534,547,554,557,565,567,569,573-587,823-824,836,850-853,866-868,874,877-881,885,1028
+packages/cli/src/modules/agents/tools/workflow-tool-factory.ts
+  s_dfe3f914c8bb46::t_71376fa37ab7f1 1-2,12-13,25,29,32,49,58,69,73,129-143,164-168,171,174-175,503-504,514,692-694,704,794-824,854-855,876,880,926,942-944,1182,1201-1202,1205,1214-1215,1228,1232,1236-1245,1247,1264,1273,1280-1282,1299,1305-1307,1312-1321
+packages/cli/test/integration/database/repositories/agent-background-job.repository.test.ts
+  s_dfe3f914c8bb46::t_19fb04f72548ac 1,17,86,176-192,271-278,361-368,374,384,386,405-412,528-529,606-614,623,680-687,700-702,912,954,964,966-969,971,984
+packages/frontend/editor-ui/src/features/agents/agents-design-language.md
+  s_dfe3f914c8bb46::t_80d4b0a4fcb7b2 174,456-516,597-602
+packages/frontend/editor-ui/src/features/agents/composables/useAgentApi.ts
+  s_dfe3f914c8bb46::t_c46f2935f42bb4 1,6,1150,1166,1243-1267
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7f42942fa7d2d9d2e60ad0f04722697521a4476f",
+  "prompts": {},
+  "sessions": {
+    "s_dfe3f914c8bb46": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a177de-1655-75e1-b502-74f6cb945148",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Michael Drury <michael.drury@n8n.io>"
+    }
+  }
+}
