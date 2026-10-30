@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/agents/__tests__/useAgentChatStream.test.ts
+  s_ee852ab0af0158::t_196a764c5906d6 283,286
+  s_ee852ab0af0158::t_91381f94b29344 282,284-285,287-294
+  s_ee852ab0af0158::t_0915d35d866f03 295-301
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentTestModeChat.test.ts
+  s_ee852ab0af0158::t_f5aec036a1b7c6 67-84
+  s_ee852ab0af0158::t_9fc35306b3270b 85-88
+packages/frontend/editor-ui/src/features/agents/components/AgentTestChatPage.vue
+  s_ee852ab0af0158::t_bc423f876b6a81 3,127
+packages/frontend/editor-ui/src/features/agents/composables/useAgentChatStream.ts
+  s_ee852ab0af0158::t_3379d50c87e416 3,668,708-712,723,1307,1395,1831,1915,2046
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5812aae2f7bfcf35c743143a06e061c8e7fa0c19",
+  "prompts": {},
+  "sessions": {
+    "s_ee852ab0af0158": {
+      "agent_id": {
+        "tool": "pi",
+        "id": "01a18e33-d963-71df-9e22-818fd31f4b32",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "Thiago Pacheco <hi@sudoish.com>"
+    }
+  }
+}
