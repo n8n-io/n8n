@@ -9,7 +9,8 @@ import type {
 	INodeType,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
+import { NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { NodeTypes } from '@test/helpers';
