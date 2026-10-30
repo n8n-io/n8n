@@ -1,4 +1,5 @@
 import type { Logger } from '@n8n/backend-common';
+import type { EventService } from '@n8n/backend-services';
 import type { TransactionRunner, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
@@ -19,6 +20,7 @@ describe('PromotionReviewsService', () => {
 	const hostResolver = mock<PromotionReviewHostResolver>();
 	const mergeRequests = mock<GitLabMergeRequestClient>();
 	const logger = mock<Logger>();
+	const eventService = mock<EventService>();
 	logger.scoped.mockReturnValue(logger);
 
 	const service = new PromotionReviewsService(
@@ -28,6 +30,7 @@ describe('PromotionReviewsService', () => {
 		hostResolver,
 		mergeRequests,
 		logger,
+		eventService,
 	);
 
 	const actor = mock<User>({
@@ -57,6 +60,7 @@ describe('PromotionReviewsService', () => {
 		iid: 3,
 		project_id: 7,
 		web_url: 'https://gitlab.example.com/platform/api/-/merge_requests/3',
+		has_conflicts: false,
 	});
 
 	beforeEach(() => {
@@ -84,6 +88,12 @@ describe('PromotionReviewsService', () => {
 		expect(result).toEqual({
 			review: { reviewId: expect.any(String), number: 3, webUrl: mergeRequest.web_url },
 			warnings: [],
+		});
+		expect(eventService.emit).toHaveBeenCalledWith('promotion-merge-request-opened', {
+			user: actor,
+			environmentId: 'env-1',
+			reviewType: 'gitlab',
+			hasConflicts: false,
 		});
 		const reviewId = result.review?.reviewId;
 		expect(mergeRequests.createMergeRequest).toHaveBeenCalledWith(host.access, {

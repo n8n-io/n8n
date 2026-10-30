@@ -237,18 +237,6 @@ export class InstanceAiEventLogRepository extends Repository<InstanceAiEventLogE
 	}
 
 	/**
-	 * The run that sent the ai-preferences block the conversation still carries, from the
-	 * thread's latest `preferences-applied` fact: an injecting turn names itself, a carrying
-	 * turn names the run it carried from. `undefined` when no turn has reported preferences
-	 * (which includes a block injected before the event existed).
-	 */
-	async getLastPreferencesInjectionRunId(threadId: string): Promise<string | undefined> {
-		const event = await this.findLastPreferencesApplied(threadId);
-		if (!event) return undefined;
-		return event.payload.injectedThisTurn ? event.runId : event.payload.carriedFromRunId;
-	}
-
-	/**
 	 * What the thread's latest turn reported as applied, for a reader that opens the thread
 	 * later. `undefined` when no turn has reported preferences, which differs from a turn
 	 * that reported an empty list.

@@ -34,9 +34,16 @@ export interface SubAgentSpawnRequest {
 	goal: string;
 	context?: string;
 	expectedOutput?: string;
+	/** Files of the parent that the child can read. The runner grants them; nothing is copied. */
+	fileIds?: string[];
 	source: SubAgentSource;
 	policy?: SubAgentRunPolicy;
 	parentThreadId?: string;
+	/**
+	 * Execution of the parent turn that delegates this run. The runner links the
+	 * child execution to it for usage reads. Absent when the parent records no execution.
+	 */
+	parentExecutionId?: string;
 	/** Parent's episodic-memory resource id, inherited so the child shares its scope. */
 	parentResourceId?: string;
 	/**

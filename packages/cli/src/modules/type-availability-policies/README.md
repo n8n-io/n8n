@@ -186,6 +186,26 @@ does not yet read `GET /projects/:projectId/available-types`, so a denied node l
 until the save is refused. That endpoint exists for the builder to gray the node out up front,
 and wiring it is a separate piece of work.
 
+## Previewing a sub-workflow's start
+
+`GET /workflows/:workflowId/sub-workflows/:subWorkflowId/policy-check` tells the builder of a
+parent workflow which violations a call to the sub-workflow would hit. It runs
+`evaluateWorkflowStart` against the sub-workflow's own project, as the execution path does. It
+judges the draft, which manual runs execute, and the published version, which production runs
+execute. `published` is `null` when the sub-workflow has no published version.
+
+- **Gate:** `workflow:update` on the parent. The caller does not need access to the
+  sub-workflow, because a parent can call a sub-workflow its builder cannot open.
+- **Disclosure:** the sub-workflow's caller policy is checked first. A missing sub-workflow
+  and a refused call both return 404, so neither the policy nor the existence of the
+  sub-workflow can be probed. `projectName` is present only for a team project that the user
+  can read.
+- **Failed checks:** when a check fails to run, the endpoint returns 500. The real start fails
+  closed, so the preview must not report "no violations".
+- **Limits:** the endpoint reads the parent's project for the caller policy, but not the parent
+  workflow's nodes. Inline sub-workflows (`source=parameter`) are out of scope: they run under
+  the parent's project, and their node types are not read (see Known limits).
+
 ## The store
 
 A policy lives in three tables:
@@ -327,4 +347,6 @@ through a sealed repository method, and the lint rule that guards that has no al
 | `credential-type-policy-instance.controller.ts`   | Instance scope, documents and attachments, `credential-types`                   |
 | `credential-type-policy-project.controller.ts`    | A project's own scope, for project admins, `credential-types`                   |
 | `available-types.controller.ts`                   | The effective type set for one project, for the builder                         |
+| `sub-workflow-policy-check.controller.ts`         | The start violations a parent's call to a sub-workflow would hit                |
+| `sub-workflow-policy-check.service.ts`            | Caller policy, draft and published evaluation, and project name disclosure      |
 | `database/`                                       | The scope, document and attachment entities and repositories                    |

@@ -21,7 +21,9 @@ import { AGENT_PERSONALISATION_KEY } from '../agentPersonalisation';
 vi.mock('file-saver', () => ({ saveAs: vi.fn() }));
 
 const confirm = vi.fn();
-vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+vi.mock('../../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirm }),
+}));
 
 vi.mock('./api', () => ({
 	fetchTeamsAppPackage: vi.fn().mockResolvedValue(new Blob()),
@@ -288,8 +290,8 @@ describe('AgentChannelTeamsManagedSetup', () => {
 			expect(emitted()).not.toHaveProperty('update:modelValue');
 		});
 
-		it('keeps the sign-in when the user cancels', async () => {
-			confirm.mockResolvedValue('cancel');
+		it.each(['cancel', 'close'])('keeps the sign-in on %s', async (result) => {
+			confirm.mockResolvedValue(result);
 			const { getByTestId, emitted } = renderSaved();
 
 			await fireEvent.click(getByTestId('pick-sign-in'));

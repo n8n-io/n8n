@@ -75,6 +75,10 @@ export class StreamSink implements RunOutputSink<void> {
 		await this.guard.write({ type: 'input', message });
 	}
 
+	async emitMessage(message: AgentMessage): Promise<void> {
+		await this.guard.write({ type: 'message', message });
+	}
+
 	private lastUsage: TokenUsage | undefined;
 	// Reads the in-flight turn's usage from the provider's raw stream events so an
 	// aborted run can still be billed (the SDK reports no usage on abort). The
@@ -95,11 +99,15 @@ export class StreamSink implements RunOutputSink<void> {
 		private readonly options: ExecutionOptions | undefined,
 	) {}
 
-	reportUsage(usage: TokenUsage | undefined): void {
+	async reportUsage(usage: TokenUsage | undefined): Promise<void> {
 		this.lastUsage = usage;
 		// The just-completed turn is now folded into `usage`; its raw capture is
 		// stale and must not be re-added to a later between-turns abort total.
 		this.rawUsageReader = undefined;
+		const pricedUsage = this.services.applyCost(usage);
+		if (pricedUsage) {
+			await this.guard.write({ type: 'usage', usage: pricedUsage, model: this.services.modelId });
+		}
 	}
 
 	/**
@@ -275,6 +283,8 @@ export class StreamSink implements RunOutputSink<void> {
 			// Result promises report this error. Do not forward it or count it as content before a retry.
 			if (chunk.type === 'error' && NoOutputGeneratedError.isInstance(chunk.error)) continue;
 			if (!this.captureStreamChunk(chunk, attemptState)) continue;
+			// Before the write, so preparation is not held up by a slow consumer.
+			if (chunk.type === 'tool-input-start') ctx.onToolInputStart?.(chunk.toolName);
 			await this.writeStreamChunk(chunk);
 		}
 
@@ -415,6 +425,7 @@ export class StreamSink implements RunOutputSink<void> {
 				output: r.modelOutput,
 				...(r.toolEntry.canceled ? { canceled: true } : {}),
 				...(r.mcpServerName !== undefined ? { mcpServerName: r.mcpServerName } : {}),
+				...(r.traceOutput !== undefined ? { traceOutput: r.traceOutput } : {}),
 			});
 			if (r.customMessage) {
 				await this.guard.write({ type: 'message', message: r.customMessage });

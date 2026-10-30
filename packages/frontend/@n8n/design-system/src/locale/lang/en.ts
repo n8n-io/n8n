@@ -2,6 +2,7 @@
 import type { N8nLocale } from '../../types';
 
 export default {
+	'approvalCard.awaitingApproval': 'Awaiting approval',
 	'approvalCard.alwaysAllow': 'Always allow',
 	'approvalCard.alwaysAllowSuffix': 'during this session',
 	'approvalCard.allowOnce': 'Allow once',
@@ -22,6 +23,8 @@ export default {
 	'generic.retry': 'Retry',
 	'generic.cancel': 'Cancel',
 	'generic.close': 'Close',
+	'generic.ignore': 'Ignore',
+	'generic.ignoreAll': 'Ignore all',
 	'dialog.close': 'Close dialog',
 	'generic.moreInfo': 'More info',
 	'generic.delete': 'Delete',

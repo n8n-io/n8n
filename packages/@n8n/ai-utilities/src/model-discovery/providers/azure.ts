@@ -25,10 +25,49 @@ export interface AzureOpenAiListModelsOptions {
 	fetch?: typeof globalThis.fetch;
 }
 
+/**
+ * A deployment and the API it answers on: `anthropic` for Claude deployments
+ * (Anthropic Messages API), `openai` for every other chat deployment.
+ */
+export interface AzureDeploymentModel extends ProviderModel {
+	modelFamily: 'openai' | 'anthropic';
+	/** The model the deployment serves, for example `gpt-4.1`, when Azure reports it. */
+	modelName?: string;
+}
+
+/**
+ * Audience of the Foundry deployments-list call. Entra ID grants access per
+ * audience, so only that call requests a token for it, not every inference call.
+ */
+export const AZURE_AI_FOUNDRY_AUDIENCE = 'https://ai.azure.com';
+
+/** The deployments API lives on the origin of the Foundry inference endpoint. */
+export function getAzureFoundryOrigin(endpoint: string): string {
+	return new URL(endpoint.trim()).origin;
+}
+
+/** The deployments call returned 404 for the requested project. */
+export class AzureProjectNotFoundError extends UserError {
+	constructor(project: string) {
+		super(`Project "${project}" was not found. Check the project name and try again.`, {
+			shouldReport: false,
+		});
+	}
+}
+
 interface AzureDeployment {
 	name?: unknown;
 	modelName?: unknown;
+	modelPublisher?: unknown;
 	capabilities?: Record<string, unknown>;
+}
+
+function isAnthropicDeployment(deployment: AzureDeployment): boolean {
+	const publisher =
+		typeof deployment.modelPublisher === 'string' ? deployment.modelPublisher.toLowerCase() : '';
+	const modelName =
+		typeof deployment.modelName === 'string' ? deployment.modelName.toLowerCase() : '';
+	return publisher === 'anthropic' || modelName.startsWith('claude');
 }
 
 /**
@@ -51,7 +90,7 @@ export function shouldIncludeAzureModel(
  */
 export async function listAzureOpenAiModels(
 	options: AzureOpenAiListModelsOptions,
-): Promise<ProviderModel[]> {
+): Promise<AzureDeploymentModel[]> {
 	const fetchFn = options.fetch ?? globalThis.fetch;
 	const apiVersion = options.apiVersion ?? 'v1';
 	const base = options.baseURL.replace(/\/+$/, '');
@@ -67,10 +106,7 @@ export async function listAzureOpenAiModels(
 			);
 		}
 		if (response.status === 404) {
-			throw new UserError(
-				`Project "${options.project}" was not found. Check the project name and try again.`,
-				{ shouldReport: false },
-			);
+			throw new AzureProjectNotFoundError(options.project);
 		}
 		const body = await response.text().catch(() => '');
 		throw new Error(
@@ -85,12 +121,16 @@ export async function listAzureOpenAiModels(
 			(deployment): deployment is AzureDeployment & { name: string } =>
 				typeof deployment.name === 'string' && shouldIncludeAzureModel(deployment.capabilities),
 		)
-		.map((deployment) => ({
-			id: deployment.name,
-			name:
-				typeof deployment.modelName === 'string'
-					? `${deployment.name} (${deployment.modelName})`
-					: deployment.name,
-		}))
+		.map(
+			(deployment): AzureDeploymentModel => ({
+				id: deployment.name,
+				name:
+					typeof deployment.modelName === 'string'
+						? `${deployment.name} (${deployment.modelName})`
+						: deployment.name,
+				modelFamily: isAnthropicDeployment(deployment) ? 'anthropic' : 'openai',
+				...(typeof deployment.modelName === 'string' ? { modelName: deployment.modelName } : {}),
+			}),
+		)
 		.sort(byName);
 }

@@ -167,6 +167,12 @@ ruleTester.run('credential-password-field', CredentialPasswordFieldRule, {
 			output: createCredentialCode([createProperty('API Key', 'apiKey', { password: true })]),
 		},
 		{
+			name: 'access key field missing typeOptions.password = true',
+			code: createCredentialCode([createProperty('Access Key', 'accessKey')]),
+			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'accessKey' } }],
+			output: createCredentialCode([createProperty('Access Key', 'accessKey', { password: true })]),
+		},
+		{
 			name: 'secret field missing typeOptions.password = true',
 			code: createCredentialCode([createProperty('Client Secret', 'clientSecret')]),
 			errors: [{ messageId: 'missingPasswordOption', data: { fieldName: 'clientSecret' } }],

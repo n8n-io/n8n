@@ -69,6 +69,14 @@ export function storePromotionRemote(
 	};
 }
 
+/**
+ * The repository a stored remote names, without the host's base URL: the path for a Git host
+ * and the remote URL for plain Git. Git host paths ignore case.
+ */
+export function repositoryIdentity(remote: PromotionStoredEnvironmentRemote): string {
+	return 'repositoryPath' in remote ? remote.repositoryPath.toLowerCase() : remote.remoteUrl;
+}
+
 export function resolvePromotionRemote(
 	provider: GitHostProvider,
 	stored: unknown,

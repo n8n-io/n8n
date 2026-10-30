@@ -182,7 +182,7 @@ describe('TrustedSourceIdentityService (integration)', () => {
 			const context = expectOk(await service.identify(input));
 
 			expect(context).toMatchObject({
-				subject: { id: member.id, type: 'human' },
+				subject: { id: member.id, type: 'person' },
 				authMethod: 'oauth-access-token',
 				subjectClaim: { sourceId: source.id, issuer: source.issuer, subject: 'alice' },
 				clientId: 'cli',

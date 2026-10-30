@@ -58,6 +58,21 @@ describe('dataTable', () => {
 		await dataTableService.deleteDataTableAll();
 	});
 
+	describe('findProjectIdForScope', () => {
+		it('returns the project that owns the table', async () => {
+			const table = await dataTableService.createDataTable(project1.id, {
+				name: 'project-lookup',
+				columns: [],
+			});
+
+			await expect(dataTableRepository.findProjectIdForScope(table.id)).resolves.toBe(project1.id);
+		});
+
+		it('returns null when the table does not exist', async () => {
+			await expect(dataTableRepository.findProjectIdForScope('missing-table')).resolves.toBeNull();
+		});
+	});
+
 	describe('createDataTable', () => {
 		it('should create a columns table and a user table if columns are provided', async () => {
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
@@ -1133,6 +1148,7 @@ describe('dataTable', () => {
 				dataTableId,
 				{},
 				columns,
+				{},
 			);
 
 			expect(count).toEqual(2);
@@ -1197,6 +1213,7 @@ describe('dataTable', () => {
 				dataTableId,
 				{},
 				columns,
+				{},
 			);
 
 			expect(count).toEqual(3);

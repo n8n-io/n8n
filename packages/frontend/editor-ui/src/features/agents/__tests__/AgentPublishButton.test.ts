@@ -4,6 +4,7 @@ import { mount, flushPromises } from '@vue/test-utils';
 import { ref } from 'vue';
 import type { AgentConfigValidationIssue } from '@n8n/api-types';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import type { AgentVersionMetadataModalData } from '../components/AgentVersionMetadataModal.vue';
 import type { AgentResource } from '../types';
 import type { AgentVersion } from '../agent.types';
 
@@ -14,8 +15,16 @@ vi.mock('@n8n/composables/useTelemetry', () => ({
 
 vi.mock('../composables/useAgentApi', () => ({
 	publishAgent: vi.fn(),
+	getAgentVersion: vi.fn().mockResolvedValue({ name: null, description: null }),
 	unpublishAgent: vi.fn(),
 	revertAgentToPublished: vi.fn(),
+}));
+
+vi.mock('../composables/useAgentVersionMetadataModal', () => ({
+	useAgentVersionMetadataModal: () => ({
+		openVersionMetadata: async (options: AgentVersionMetadataModalData) =>
+			await options.onSubmit({ name: null, description: null }),
+	}),
 }));
 
 const agentPermissionsMock = {
@@ -43,6 +52,10 @@ vi.mock('@n8n/composables/useToast', () => {
 	const showError = vi.fn();
 	return { useToast: () => ({ showMessage, showError }) };
 });
+
+vi.mock('../composables/useAgentsN8nChatFlag', () => ({
+	useAgentsN8nChatFlag: () => ({ value: false }),
+}));
 
 const openModalWithDataMock = vi.fn();
 const closeModalMock = vi.fn();
@@ -112,6 +125,8 @@ interface RenderProps {
 	projectId?: string;
 	agentId?: string;
 	isSaving?: boolean;
+	isUnsaved?: boolean;
+	showPublishTimeline?: boolean;
 	beforeRevertToPublished?: () => Promise<void> | void;
 	configValidationStatus?: 'valid' | 'invalid' | null;
 	configValidationIssues?: AgentConfigValidationIssue[];
@@ -122,6 +137,13 @@ const blockingIssue: AgentConfigValidationIssue = {
 	code: 'missing_required',
 	path: 'model',
 	capability: { kind: 'agent' },
+};
+
+const restrictedIssue: AgentConfigValidationIssue = {
+	code: 'restricted_node_type',
+	path: 'tools.0.node.nodeType',
+	capability: { kind: 'tool', toolType: 'node', id: 'Post message', index: 0 },
+	restriction: { nodeType: 'n8n-nodes-base.slackTool', scope: 'instance' },
 };
 
 const notPublishedIssue: AgentConfigValidationIssue = {
@@ -165,6 +187,52 @@ describe('AgentPublishButton', () => {
 		trackMock.mockReset();
 	});
 
+	it('opens the timeline from the publish menu while editing is unavailable', async () => {
+		const wrapper = await renderComponent({ showPublishTimeline: true, isSaving: true });
+		const action = wrapper.get('[data-action="publish-timeline"]');
+		expect(action.text()).toBe('workflowHistory.action.viewTimeline');
+		expect(action.attributes('disabled')).toBeUndefined();
+		await action.trigger('click');
+		expect(wrapper.emitted('open-publish-timeline')).toEqual([[]]);
+		wrapper.unmount();
+	});
+
+	it('keeps timeline access available for read-only viewers before the first publication', async () => {
+		agentPermissionsMock.canPublish.value = false;
+		agentPermissionsMock.canUpdate.value = false;
+		try {
+			const wrapper = await renderComponent({ showPublishTimeline: true });
+			await wrapper.get('[data-action="publish-timeline"]').trigger('click');
+			expect(wrapper.emitted('open-publish-timeline')).toEqual([[]]);
+			wrapper.unmount();
+		} finally {
+			agentPermissionsMock.canPublish.value = true;
+			agentPermissionsMock.canUpdate.value = true;
+		}
+	});
+
+	it.each([null, createAgent()])(
+		'disables timeline access before the agent is saved (%j)',
+		async (agent) => {
+			const wrapper = await renderComponent({
+				showPublishTimeline: true,
+				agent,
+				isUnsaved: agent !== null,
+			});
+			const action = wrapper.get('[data-action="publish-timeline"]');
+			expect(action.attributes('disabled')).toBeDefined();
+			await action.trigger('click');
+			expect(wrapper.emitted('open-publish-timeline')).toBeUndefined();
+			wrapper.unmount();
+		},
+	);
+
+	it('omits the timeline when its caller does not show history', async () => {
+		const wrapper = await renderComponent();
+		expect(wrapper.find('[data-action="publish-timeline"]').exists()).toBe(false);
+		wrapper.unmount();
+	});
+
 	it('publishes with Shift+P when Publish is enabled', async () => {
 		const { publishAgent } = await import('../composables/useAgentApi');
 		const updatedAgent = createAgent({ activeVersionId: 'v1', activeVersion });
@@ -188,9 +256,51 @@ describe('AgentPublishButton', () => {
 		);
 		await flushPromises();
 
-		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'v1', {
+			name: null,
+			description: null,
+		});
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		wrapper.unmount();
+	});
+
+	it('selects the version after pending edits finish saving', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		let finishSaving!: (saved: boolean) => void;
+		const beforePublish = vi.fn(
+			() =>
+				new Promise<boolean>((resolve) => {
+					finishSaving = resolve;
+				}),
+		);
+		const wrapper = await renderComponent({ beforePublish });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		expect(publishAgent).not.toHaveBeenCalled();
+		await wrapper.setProps({ agent: createAgent({ versionId: 'saved-after-flush' }) });
+		finishSaving(true);
+		await flushPromises();
+		expect(publishAgent).toHaveBeenCalledWith(
+			{},
+			'project-1',
+			'agent-1',
+			'saved-after-flush',
+			expect.anything(),
+		);
+	});
+
+	it('stops publishing if the editor switches agents during the save', async () => {
+		const { publishAgent } = await import('../composables/useAgentApi');
+		let finishSaving!: (saved: boolean) => void;
+		const beforePublish = () =>
+			new Promise<boolean>((resolve) => {
+				finishSaving = resolve;
+			});
+		const wrapper = await renderComponent({ beforePublish });
+		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
+		await wrapper.setProps({ agentId: 'different-agent' });
+		finishSaving(true);
+		await flushPromises();
+		expect(publishAgent).not.toHaveBeenCalled();
 	});
 
 	it('does not publish with Shift+P when Publish is disabled', async () => {
@@ -254,7 +364,10 @@ describe('AgentPublishButton', () => {
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
 
-		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'v1', {
+			name: null,
+			description: null,
+		});
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
@@ -272,7 +385,10 @@ describe('AgentPublishButton', () => {
 		await wrapper.find('[data-testid="publish-agent-button"]').trigger('click');
 		await flushPromises();
 
-		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'v2', {
+			name: null,
+			description: null,
+		});
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
@@ -298,7 +414,10 @@ describe('AgentPublishButton', () => {
 		await wrapper.find('[data-action="publish"]').trigger('click');
 		await flushPromises();
 
-		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+		expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'v1', {
+			name: null,
+			description: null,
+		});
 		expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 	});
 
@@ -499,6 +618,51 @@ describe('AgentPublishButton', () => {
 			).toBe('true');
 		});
 
+		it('blocks publishing while a policy restricts a tool node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [restrictedIssue],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([false]);
+		});
+
+		it('blocks publishing while a policy restricts an MCP server node type', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'invalid',
+				configValidationIssues: [
+					{
+						code: 'restricted_node_type',
+						path: 'mcpServers.0',
+						capability: { kind: 'mcpServer', id: 'Docs', index: 0 },
+						restriction: { nodeType: '@n8n/n8n-nodes-langchain.mcpClientTool', scope: 'project' },
+					},
+				],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeDefined();
+		});
+
+		it('allows publishing again once the restricted tool is removed', async () => {
+			const wrapper = await renderComponent({
+				agent: createAgent({ activeVersionId: null }),
+				configValidationStatus: 'valid',
+				configValidationIssues: [],
+			});
+
+			expect(
+				wrapper.find('[data-testid="publish-agent-button"]').attributes('disabled'),
+			).toBeUndefined();
+			expect(wrapper.emitted('publish-ready')?.at(-1)).toEqual([true]);
+		});
+
 		it('reports readiness when tool credentials and validation change', async () => {
 			const wrapper = await renderComponent({
 				configValidationStatus: 'invalid',
@@ -583,7 +747,10 @@ describe('AgentPublishButton', () => {
 			await flushPromises();
 
 			expect(beforePublish).toHaveBeenCalled();
-			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'v1', {
+				name: null,
+				description: null,
+			});
 			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 
@@ -603,7 +770,10 @@ describe('AgentPublishButton', () => {
 			await button.trigger('click');
 			await flushPromises();
 
-			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1');
+			expect(publishAgent).toHaveBeenCalledWith({}, 'project-1', 'agent-1', 'v1', {
+				name: null,
+				description: null,
+			});
 			expect(wrapper.emitted('published')?.[0]).toEqual([updatedAgent]);
 		});
 	});

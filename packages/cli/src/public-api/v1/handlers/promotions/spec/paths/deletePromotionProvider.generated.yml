@@ -3,7 +3,7 @@ tags:
   - Promotions
 summary: Delete a promotion provider
 description: A provider used by an environment cannot be deleted.
-x-required-scope: gitConnection:delete
+x-required-scope: promotions:delete
 parameters:
   - schema:
       type: string
@@ -22,5 +22,7 @@ responses:
     $ref: ../../../../shared/spec/responses/notFound.yml
   '409':
     $ref: ../../../../shared/spec/responses/conflict.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml
   '503':
     $ref: ../../../../shared/spec/responses/serviceUnavailable.yml

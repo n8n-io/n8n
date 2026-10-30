@@ -28,7 +28,9 @@ export class SidebarPage extends BasePage {
 	}
 
 	getVisibleNavigationSubmenu(label: string): Locator {
-		return this.visibleNavigationMenu.getByTestId('navigation-submenu').filter({ hasText: label });
+		return this.visibleNavigationMenu
+			.getByRole('menuitem', { name: label, exact: true })
+			.and(this.page.locator('[aria-haspopup="menu"]'));
 	}
 
 	getVisibleNavigationLink(label: string, hrefPart: string): Locator {
@@ -62,9 +64,7 @@ export class SidebarPage extends BasePage {
 	}
 
 	getProjectButtonInUniversalAdd(): Locator {
-		return this.visibleNavigationMenu
-			.getByTestId('navigation-menu-item')
-			.filter({ hasText: 'New project' });
+		return this.visibleNavigationMenu.getByRole('menuitem').filter({ hasText: 'New project' });
 	}
 
 	async addWorkflowFromUniversalAdd(projectName: string) {

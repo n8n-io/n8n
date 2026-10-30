@@ -114,10 +114,11 @@ vi.mock('@n8n/composables/useToast', () => ({
 
 vi.mock('@n8n/frontend-module-type-availability-policies', async (importOriginal) => ({
 	...(await importOriginal<typeof typeAvailabilityPolicies>()),
-	useTypeAvailabilityPoliciesStore: () => ({
-		getCredentialTypeAvailability: (name: string) => {
+	useTypeAvailability: () => ({
+		nodeTypeRestriction: () => null,
+		credentialTypeRestriction: (name: string) => {
 			const scope = restrictedCredentialTypes.value[name];
-			return scope ? { name, available: false, scope } : { name, available: true };
+			return scope ? { name, available: false, scope } : null;
 		},
 	}),
 	ContactAdminModal: {
@@ -275,6 +276,7 @@ async function mountSelector(
 		credentialModalAppendToBody?: boolean;
 		boundCredentialId?: string | null;
 		selectedModel?: AgentModelOption | null;
+		modelsByProvider?: AgentModelsByProvider;
 	} = {},
 ) {
 	const { default: AgentModelSelector } = await import('../components/AgentModelSelector.vue');
@@ -636,6 +638,30 @@ describe('AgentModelSelector', () => {
 		getDropdown(wrapper).vm.$emit('select', 'anthropic::n8nConnect::anthropicApi');
 
 		expect(wrapper.emitted('selectCredential')).toEqual([['anthropic', AI_GATEWAY_MANAGED_TAG]]);
+	});
+
+	it('says how to fix an Azure credential that lists no deployments', async () => {
+		credentialsByType.value = {
+			azureOpenAiApi: [{ id: 'azure-cred', name: 'Azure credential', type: 'azureOpenAiApi' }],
+		};
+
+		const wrapper = await mountSelector(
+			{ 'azure-openai': 'azure-cred' },
+			{
+				selectedModel: null,
+				modelsByProvider: {
+					'azure-openai': { models: [], unavailable: true, unavailableReason: 'project_missing' },
+				},
+			},
+		);
+		const azureItem = getProviderItem(wrapper, 'azure-openai');
+
+		expect(
+			getMenuItemByLabel(
+				azureItem?.children ?? [],
+				'agents.modelSelector.unavailable.projectMissing',
+			)?.data?.description,
+		).toBe('agents.modelSelector.unavailable.projectMissingHint');
 	});
 
 	it('lists models when the managed tag is the selected credential', async () => {

@@ -19,6 +19,7 @@ describe('isModalModelEndpoint', () => {
 
 describe('withModalSession', () => {
 	const modalConfig = {
+		kind: 'endpoint' as const,
 		id: 'custom/moonshotai/Kimi-K3' as const,
 		url: 'https://n8ngmbh--ep-kimi-k3-server.us-west.modal.direct/v1',
 		apiKey: 'wk-test.ws-test',
@@ -52,6 +53,7 @@ describe('withModalSession', () => {
 
 	it('is a no-op for non-Modal endpoints and non-endpoint configs', () => {
 		const databricks = {
+			kind: 'endpoint' as const,
 			id: 'custom/workspace.default.kimi-k3' as const,
 			url: 'https://dbc-a5846527-f2d2.cloud.databricks.com/ai-gateway/mlflow/v1',
 			apiKey: 'dapi-test',

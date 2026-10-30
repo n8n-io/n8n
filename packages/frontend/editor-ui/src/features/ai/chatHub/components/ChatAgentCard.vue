@@ -76,7 +76,7 @@ function handleSelectMenu(action: MenuAction) {
 				<template #activator>
 					<N8nIconButton
 						variant="ghost"
-						icon="ellipsis-vertical"
+						icon="ellipsis"
 						size="medium"
 						:title="i18n.baseText('chatHub.agent.card.button.moreOptions')"
 						:class="$style.actionDropdownTrigger"

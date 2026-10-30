@@ -180,7 +180,14 @@ onBeforeUnmount(() => {
 
 onClickOutside(
 	nodeCreator,
-	() => {
+	(event) => {
+		// vueuse checks `ignore` only on pointerdown, which a layer can stop (the restricted node popover does).
+		if (
+			event.target instanceof Element &&
+			event.target.closest(OUTSIDE_CLICK_WHITELIST.join(', '))
+		) {
+			return;
+		}
 		emit('closeNodeCreator');
 	},
 	{ ignore: OUTSIDE_CLICK_WHITELIST },

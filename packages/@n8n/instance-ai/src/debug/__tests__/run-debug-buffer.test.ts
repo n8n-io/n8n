@@ -277,6 +277,8 @@ describe('buildRunDebugLabel', () => {
 
 	it('maps resume reasons to action labels', () => {
 		expect(buildRunDebugLabel({ resumeReason: 'approval' })).toBe('Resume · approval');
-		expect(buildRunDebugLabel({ resumeReason: 'replan' })).toBe('Follow-up · replan');
+		expect(buildRunDebugLabel({ resumeReason: 'workflow_setup' })).toBe(
+			'Follow-up · workflow setup',
+		);
 	});
 });

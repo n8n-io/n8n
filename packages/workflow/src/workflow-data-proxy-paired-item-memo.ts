@@ -1,8 +1,12 @@
 import type { INodeExecutionData, IPairedItemData, ISourceData } from './interfaces';
 
-type PairedItemMemoResult =
+export type PairedItemMemoResult =
 	| { ok: true; result: INodeExecutionData }
 	| { ok: false; error: unknown };
+
+/** Identifies one paired item traversal state: an item of one node run output. */
+export const pairedItemStateKey = (sourceData: ISourceData, pairedItem: IPairedItemData): string =>
+	`${sourceData.previousNodeRun ?? 0}|${sourceData.previousNodeOutput ?? 0}|${pairedItem.item}|${sourceData.previousNode}`;
 
 /**
  * Memoizes one paired item traversal per (node run output, item) state.
@@ -11,32 +15,13 @@ type PairedItemMemoResult =
 export class PairedItemMemo {
 	private readonly entries = new Map<string, PairedItemMemoResult>();
 
-	/**
-	 * Resolves the memoized result for the given source data and paired item,
-	 * or computes and memoizes a new result if none exists.
-	 */
-	resolve(
-		sourceData: ISourceData,
-		pairedItem: IPairedItemData,
-		compute: () => INodeExecutionData,
-	): INodeExecutionData {
-		const key = this.toKey(sourceData, pairedItem);
-
-		let entry = this.entries.get(key);
-		if (!entry) {
-			try {
-				entry = { ok: true, result: compute() };
-			} catch (error) {
-				entry = { ok: false, error };
-			}
-			this.entries.set(key, entry);
-		}
-
-		if (entry.ok) return entry.result;
-		throw entry.error;
+	/** The memoized result for the state, or undefined when there is none. */
+	get(key: string): PairedItemMemoResult | undefined {
+		return this.entries.get(key);
 	}
 
-	private toKey(sourceData: ISourceData, pairedItem: IPairedItemData): string {
-		return `${sourceData.previousNodeRun ?? 0}|${sourceData.previousNodeOutput ?? 0}|${pairedItem.item}|${sourceData.previousNode}`;
+	/** Memoizes the result for the state. */
+	set(key: string, result: PairedItemMemoResult): void {
+		this.entries.set(key, result);
 	}
 }

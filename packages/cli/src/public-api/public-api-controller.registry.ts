@@ -336,11 +336,13 @@ export class PublicApiControllerRegistry {
 
 	private createAuthMiddleware(apiVersion: string, prefix: string): RequestHandler {
 		return async (req, res, next) => {
-			const authenticated = await this.authStrategyRegistry.authenticate(
-				req as AuthenticatedRequest,
-			);
+			const result = await this.authStrategyRegistry.authenticate(req as AuthenticatedRequest);
 
-			if (!authenticated) {
+			if (!result.authenticated) {
+				// RFC 7235 §4.1: one header, the challenges comma-separated.
+				if (result.challenges.length > 0) {
+					res.setHeader('WWW-Authenticate', result.challenges.join(', '));
+				}
 				res.status(401).json({ message: 'Unauthorized' });
 				return;
 			}

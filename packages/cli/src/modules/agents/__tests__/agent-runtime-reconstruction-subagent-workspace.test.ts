@@ -18,6 +18,7 @@ import type { WorkflowRepository } from '@n8n/db';
 import type { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import type { AgentKnowledgeMirrorService } from '../agent-knowledge-mirror.service';
 import { AgentRuntimeReconstructionService } from '../agent-runtime-reconstruction.service';
+import type { AgentKnowledgeUsageTracker } from '../agent-knowledge-usage-tracker';
 import type {
 	AgentSandboxRuntime,
 	AgentSandboxRuntimeService,
@@ -83,6 +84,7 @@ function makeService() {
 		mock<WorkflowFinderService>(),
 		mock<AgentChatAttachmentService>(),
 		mock<CredentialsService>(),
+		mock<AgentKnowledgeUsageTracker>(),
 		makeKnowledgeAvailabilityService(),
 	);
 
@@ -129,7 +131,12 @@ describe('AgentRuntimeReconstructionService — sub-agent workspace', () => {
 				'workspace_read_file',
 				'load_skill',
 				'mark_session_failed',
+				'delegate_subagent',
 			]),
+		});
+		// Sub-agents get no background job tools, so their names are not eager.
+		expect(builtAgent.nativeToolDeferral).not.toHaveBeenCalledWith({
+			eagerToolNames: expect.arrayContaining(['background_jobs']),
 		});
 	});
 

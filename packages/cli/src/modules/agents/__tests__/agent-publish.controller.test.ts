@@ -56,6 +56,9 @@ describe('AgentPublishController route access scopes', () => {
 		['revertToPublished', 'agent:update'],
 		['revertToVersion', 'agent:update'],
 		['listVersions', 'agent:read'],
+		['listPublishHistory', 'agent:read'],
+		['getVersion', 'agent:read'],
+		['updateVersion', 'agent:update'],
 	])('%s uses %s', (handlerName, scope) => {
 		expect(routes.get(handlerName)?.accessScope?.scope).toBe(scope);
 	});
@@ -64,7 +67,7 @@ describe('AgentPublishController route access scopes', () => {
 describe('AgentPublishController publish history', () => {
 	it('lists publish history with pagination forwarded from the query', async () => {
 		const { controller, agentPublishService } = makeController();
-		agentPublishService.listPublishHistory.mockResolvedValue([
+		agentPublishService.listVersions.mockResolvedValue([
 			{
 				versionId: 'v2',
 				agentId: 'agent-1',
@@ -82,12 +85,7 @@ describe('AgentPublishController publish history', () => {
 			{ take: 5, skip: 10 } as never,
 		);
 
-		expect(agentPublishService.listPublishHistory).toHaveBeenCalledWith(
-			'agent-1',
-			'project-1',
-			5,
-			10,
-		);
+		expect(agentPublishService.listVersions).toHaveBeenCalledWith('agent-1', 'project-1', 5, 10);
 		expect(result).toHaveLength(1);
 		expect(result[0].isActive).toBe(true);
 	});
@@ -184,5 +182,26 @@ describe('AgentPublishController revert to version', () => {
 		).rejects.toThrow(LockedError);
 
 		expect(agentPublishService.revertToVersion).not.toHaveBeenCalled();
+	});
+});
+
+describe('version metadata access', () => {
+	it('checks the Agent write lock before editing a version', async () => {
+		const { controller, collaborationService, agentPublishService } = makeController();
+		collaborationService.validateAgentWriteLock.mockRejectedValue(new LockedError('Locked'));
+		await expect(
+			controller.updateVersion(
+				{
+					user: { id: 'user' },
+					params: { projectId: 'project' },
+					headers: { 'push-ref': 'push' },
+				} as never,
+				undefined as never,
+				'agent',
+				'version',
+				{ name: 'Release' },
+			),
+		).rejects.toThrow(LockedError);
+		expect(agentPublishService.updateVersionMetadata).not.toHaveBeenCalled();
 	});
 });

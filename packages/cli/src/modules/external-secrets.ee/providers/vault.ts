@@ -25,6 +25,7 @@ import {
 } from '../errors/secrets-provider-errors';
 import { ExternalSecretsConfig } from '../external-secrets.config';
 import { ExternalSecretsRetryManager } from '../retry-manager.service';
+import { formatSecretPath } from '../secret-path';
 import type { SecretsProviderSettings } from '../types';
 import { SecretsProvider } from '../types';
 
@@ -793,22 +794,13 @@ export class VaultProvider extends SecretsProvider {
 	}
 
 	getSecretNames(): string[] {
-		const getKeys = ([k, v]: [string, IDataObject]): string[] => {
-			if (typeof v === 'object') {
-				const keys: string[] = [];
-				for (const key of Object.keys(v)) {
-					const value = v[key];
-					if (typeof value === 'object' && value !== null) {
-						keys.push(...getKeys([key, value as IDataObject]).map((ok) => `${k}.${ok}`));
-					} else {
-						keys.push(`${k}.${key}`);
-					}
-				}
-				return keys;
+		const getKeys = (value: unknown, path: string[]): string[] => {
+			if (typeof value === 'object' && value !== null) {
+				return Object.entries(value).flatMap(([key, nested]) => getKeys(nested, [...path, key]));
 			}
-			return [k];
+			return [formatSecretPath(path)];
 		};
-		return Object.entries(this.cachedSecrets).flatMap(getKeys);
+		return getKeys(this.cachedSecrets, []);
 	}
 
 	private buildAuthHeaders(): Record<string, string> {

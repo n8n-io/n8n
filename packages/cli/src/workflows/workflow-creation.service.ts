@@ -12,6 +12,7 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -36,6 +37,7 @@ import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
 import { dropRedactionPolicy } from './utils';
+import { WorkflowEngineDefaults } from './workflow-engine-defaults';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowValidationService } from './workflow-validation.service';
@@ -77,6 +79,7 @@ export class WorkflowCreationService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly nodeGroupRulesFlagGate: NodeGroupRulesFlagGate,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly workflowEngineDefaults: WorkflowEngineDefaults,
 	) {}
 
 	async prepareBatchContext(
@@ -353,6 +356,8 @@ export class WorkflowCreationService {
 					batchContext?.autoExposeNewWorkflows,
 				);
 
+				newWorkflow.settings = this.workflowEngineDefaults.applyTo(newWorkflow.settings);
+
 				if (parentFolderId && parentFolderId !== PROJECT_ROOT) {
 					newWorkflow.parentFolder = await this.findParentFolderInProjectOrFail(
 						parentFolderId,
@@ -448,7 +453,7 @@ export class WorkflowCreationService {
 			return await this.mcpSettingsService.getAutoExposeNewWorkflows();
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return false;
 		}
@@ -517,7 +522,7 @@ export class WorkflowCreationService {
 			if (!(await this.mcpSettingsService.getAutoExposeNewWorkflows(transactionManager))) return;
 		} catch (error) {
 			this.logger.warn('Failed to resolve auto-expose setting for new workflow', {
-				cause: error instanceof Error ? error.message : String(error),
+				cause: getErrorMessage(error),
 			});
 			return;
 		}

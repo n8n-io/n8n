@@ -586,7 +586,7 @@ function onRenameNode(value: string) {
 						size="large"
 					/>
 				</div>
-				<N8nIcon icon="ellipsis-vertical" size="small" color="text-base" />
+				<N8nIcon icon="ellipsis" size="small" color="text-base" />
 				<N8nSegmentControl
 					size="small"
 					:model-value="'expression'"

@@ -1,5 +1,5 @@
 import { computed, defineComponent, h, nextTick, provide } from 'vue';
-import { mount } from '@vue/test-utils';
+import { enableAutoUnmount, mount } from '@vue/test-utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { AutoSaveState, DEBOUNCE_TIME, MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import {
@@ -143,11 +143,16 @@ describe('useWorkflowSaving', () => {
 	let backendConnectionStore: ReturnType<typeof useBackendConnectionStore>;
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.clearAllMocks();
 		mockRoute.params = {};
 	});
 
+	enableAutoUnmount(afterEach);
+
 	beforeEach(() => {
+		// A real autosave timer can restore an earlier test's active Pinia when it fires.
+		vi.useFakeTimers();
 		setActivePinia(createTestingPinia({ stubActions: false }));
 
 		workflowsStore = mockedStore(useWorkflowsStore);
@@ -868,6 +873,36 @@ describe('useWorkflowSaving', () => {
 				expect.objectContaining({ tags: tagIds }),
 				false,
 			);
+		});
+
+		it('should send the engine type from the document settings', async () => {
+			const workflow = createTestWorkflow({
+				id: 'w-engine',
+				nodes: [createTestNode({ type: CHAT_TRIGGER_NODE_TYPE, disabled: false })],
+				settings: { executionOrder: 'v1', engineType: 'v1' },
+			});
+
+			vi.spyOn(workflowsStore, 'updateWorkflow').mockResolvedValue(workflow);
+
+			workflowsStore.setWorkflowId(workflow.id);
+			workflowsListStore.workflowsById = { [workflow.id]: workflow };
+			const documentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
+			documentStore.hydrate(workflow);
+
+			const { saveCurrentWorkflow } = useWorkflowSaving({ router });
+
+			// The run endpoint reads the stored settings, so the save before a run must carry the selection.
+			for (const engineType of ['v2', 'v1'] as const) {
+				documentStore.setSettings({ ...documentStore.getSettingsSnapshot(), engineType });
+
+				await saveCurrentWorkflow({ id: workflow.id }, true, false, false);
+
+				expect(workflowsStore.updateWorkflow).toHaveBeenLastCalledWith(
+					workflow.id,
+					expect.objectContaining({ settings: expect.objectContaining({ engineType }) }),
+					false,
+				);
+			}
 		});
 
 		it('should remove invalid node groups before saving and warn the user', async () => {

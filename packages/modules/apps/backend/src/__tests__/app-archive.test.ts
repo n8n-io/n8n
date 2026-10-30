@@ -3,7 +3,7 @@ import { gzipSync } from 'node:zlib';
 import { Header, type HeaderData } from 'tar';
 
 import { AppsConfig } from '../apps.config';
-import { AppArchive } from '../storage/app-archive';
+import { AppArchive } from '../app-archive';
 
 function archive(entries: Array<HeaderData & { content?: Buffer }>) {
 	const blocks: Buffer[] = [];

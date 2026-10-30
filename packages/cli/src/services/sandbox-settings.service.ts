@@ -1,12 +1,16 @@
 import type { InstanceAiSandboxProvider } from '@n8n/api-types';
-import { normalizeSandboxProvider as normalizeRuntimeSandboxProvider } from '@n8n/agents/sandbox';
+import {
+	normalizeSandboxProvider as normalizeRuntimeSandboxProvider,
+	type DaytonaSandboxConfig,
+} from '@n8n/agents/sandbox';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { AgentsConfig, DeploymentConfig, InstanceAiConfig } from '@n8n/config';
 import type { OperationContext } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { OperationalError, type ICredentialDataDecryptedObject } from 'n8n-workflow';
+import { nanoid } from 'nanoid';
 
 import {
 	InstanceCredentialBroker,
@@ -14,6 +18,9 @@ import {
 	type ResolvedInstanceCredential,
 } from '@/credentials/instance-credential-broker';
 import { UnprocessableRequestError } from '@n8n/errors';
+
+import { AiService } from './ai.service';
+import { callAiServiceWithRetry } from '@/utils/ai-service-retry';
 
 const N8N_SANDBOX_HEADER_NAME = 'x-api-key';
 
@@ -93,6 +100,7 @@ export class SandboxSettingsService {
 		globalConfig: GlobalConfig,
 		private readonly instanceCredentialBroker: InstanceCredentialBroker,
 		private readonly logger: Logger,
+		private readonly aiService: AiService,
 	) {
 		this.config = globalConfig.instanceAi;
 		this.agentsConfig = globalConfig.agents;
@@ -113,6 +121,48 @@ export class SandboxSettingsService {
 		this.instanceCredentialBroker.registerUse(INSTANCE_AI_DAYTONA_CREDENTIAL_POLICY);
 		this.instanceCredentialBroker.registerUse(INSTANCE_AI_N8N_SANDBOX_CREDENTIAL_POLICY);
 		this.credentialUsesRegistered = true;
+	}
+
+	async resolveDaytonaSandboxConfig(
+		projectId: string,
+		options: Pick<DaytonaSandboxConfig, 'image' | 'snapshot'> & { fallbackSnapshot?: string },
+	): Promise<
+		Pick<
+			DaytonaSandboxConfig,
+			'daytonaApiUrl' | 'daytonaApiKey' | 'image' | 'snapshot' | 'getAuthToken'
+		>
+	> {
+		const snapshot = options.snapshot?.trim() || undefined;
+		if (!this.aiService.isProxyEnabled()) {
+			const credentials = await this.resolveDaytonaConfig();
+			return {
+				daytonaApiUrl: credentials.apiUrl,
+				daytonaApiKey: credentials.apiKey,
+				image: options.image,
+				snapshot,
+			};
+		}
+
+		const proxySnapshot = snapshot || options.fallbackSnapshot?.trim() || undefined;
+		if (!proxySnapshot) {
+			throw new OperationalError(
+				'The Daytona proxy requires a sandbox snapshot. For Agent sandboxes, set N8N_AGENTS_AI_SANDBOX_SNAPSHOT. For app builds, set N8N_INSTANCE_AI_SANDBOX_SNAPSHOT.',
+			);
+		}
+		const client = await this.aiService.getClient();
+		return {
+			daytonaApiUrl: client.getSandboxProxyBaseUrl(),
+			snapshot: proxySnapshot,
+			getAuthToken: async () => {
+				const token = await callAiServiceWithRetry(
+					'Sandbox proxy token mint',
+					async () =>
+						await client.getBuilderApiProxyToken({ id: projectId }, { userMessageId: nanoid() }),
+					this.logger,
+				);
+				return token.accessToken;
+			},
+		};
 	}
 
 	async resolveDaytonaConfig(): Promise<{ apiUrl?: string; apiKey?: string }> {

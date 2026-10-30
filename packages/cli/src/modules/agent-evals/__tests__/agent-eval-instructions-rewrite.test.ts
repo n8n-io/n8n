@@ -138,25 +138,6 @@ describe('rewriteAgentInstructions', () => {
 		await expect(rewriteAgentInstructions(deps, subject, ctx)).resolves.toBe(rewritten);
 	});
 
-	it('passes the Azure deployment name to the model resolver', async () => {
-		agentConfigService.getConfig.mockResolvedValue({
-			model: 'azure-openai/gpt-4o',
-			credential: 'cred-1',
-			modelDeploymentName: 'my-deployment',
-			instructions: CURRENT,
-		} as never);
-		generateMock.mockResolvedValue(answer(BOTH_ADDED));
-
-		await rewriteAgentInstructions(deps, subject, ctx);
-
-		expect(resolveModelMock).toHaveBeenCalledWith(
-			'azure-openai/gpt-4o',
-			'cred-1',
-			expect.anything(),
-			'my-deployment',
-		);
-	});
-
 	it('rejects an answer that is far longer than the old text', async () => {
 		generateMock.mockResolvedValue(answer('x'.repeat(20_000)));
 
