@@ -1,6 +1,6 @@
 import { i18nInstance } from '@n8n/i18n';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { enableAutoUnmount, flushPromises, mount } from '@vue/test-utils';
+import { enableAutoUnmount, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { computed, defineComponent, h, isReadonly, ref, nextTick } from 'vue';
 import Draggable from 'vuedraggable';
 import { createMemoryHistory, createRouter } from 'vue-router';
@@ -21,6 +21,7 @@ import type {
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import type { ChatMessage } from '@/features/ai/shared/agentsChat/types';
 import AgentChatPanel from '../components/AgentChatPanel.vue';
+import type { AgentChatChannel } from '../composables/useAgentApi';
 import AgentTestDock from '../components/AgentTestDock.vue';
 import AgentTestChatPage from '../components/AgentTestChatPage.vue';
 import {
@@ -459,7 +460,7 @@ describe('AgentChatPanel', () => {
 				field: 'monthlyBudgetUsd' | 'sessionCostCapUsd';
 				amount: number;
 			}) => Promise<boolean>;
-			channel: 'chat' | 'n8n-chat';
+			channel: AgentChatChannel;
 			centerEmptyState: boolean;
 			newSession: boolean;
 			clientContext: () => Record<string, unknown> | undefined;
@@ -1393,7 +1394,7 @@ describe('AgentChatPanel', () => {
 
 		// The icon button is stubbed here, so emit its click event.
 		const open = async (wrapper: ReturnType<typeof mountPanel>) => {
-			wrapper.findComponent(toggle).vm.$emit('click', new MouseEvent('click'));
+			(wrapper.findComponent(toggle) as VueWrapper).vm.$emit('click', new MouseEvent('click'));
 			await flushPromises();
 		};
 
