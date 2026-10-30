@@ -24,7 +24,7 @@ import { z } from 'zod';
 
 import type { IWorkflowWithVersionMetadata } from '@/interfaces';
 import type { DataTableColumn } from '@/modules/data-table/data-table-column.entity';
-import { DataTableDDLService } from '@/modules/data-table/data-table-ddl.service';
+import { DataTableDDLService } from '@/modules/data-table/persistence/data-table-ddl';
 import {
 	normalizeUserRowValueForDatabase,
 	quoteIdentifier,

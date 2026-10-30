@@ -219,17 +219,59 @@ describe('MigrationRuleDetail', () => {
 					.getAllByRole('columnheader')
 					.map((th) => th.textContent?.replace(/[↑↓]/g, '').trim());
 				// The first column holds the select-all checkbox.
-				expect(titles).toEqual([
-					'',
-					'Name',
-					'Project',
-					'Nodes affected',
-					'Usage',
-					'Owner',
-					'State',
-					'',
-				]);
+				expect(titles).toEqual(['', 'Name', 'Nodes affected', 'Usage', 'Owner', 'State', '']);
 			});
+		});
+	});
+
+	describe('how to fix panel', () => {
+		it('renders the recommendations as resolution steps', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const panel = await screen.findByTestId('migration-rule-how-to-fix');
+			expect(panel).toHaveTextContent('How to fix');
+			expect(panel).toHaveTextContent('Update the node');
+			expect(panel).toHaveTextContent('Please update to the latest version');
+			expect(screen.queryByTestId('migration-rule-how-to-fix-docs-link')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('migration-rule-how-to-fix-migratable')).not.toBeInTheDocument();
+		});
+
+		it('links to the rule documentation when there are no recommendations', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', 'https://docs.example.com/rule-1');
+			expect(link).toHaveTextContent('documentation');
+			expect(screen.getByTestId('migration-rule-how-to-fix')).toHaveTextContent(
+				'Follow the steps in the documentation to resolve this change.',
+			);
+		});
+
+		it('links to the general breaking-changes docs when the rule has no documentation', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ recommendations: [], ruleDocumentationUrl: undefined }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			const link = await screen.findByTestId('migration-rule-how-to-fix-docs-link');
+			expect(link).toHaveAttribute('href', expect.stringContaining('breaking-changes'));
+		});
+
+		it('mentions the Migrate action when the rule is migratable', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ migratable: true, affectedWorkflows: [mockWorkflowWithIssue] }),
+			);
+
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			expect(await screen.findByTestId('migration-rule-how-to-fix-migratable')).toHaveTextContent(
+				'Use the Migrate action in the table',
+			);
 		});
 	});
 
@@ -1000,9 +1042,9 @@ describe('MigrationRuleDetail', () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
 
 			await waitFor(() => {
-				expect(screen.getByText(/^Published/)).toBeInTheDocument();
-				expect(screen.getByText(/^Not published/)).toBeInTheDocument();
+				expect(screen.getAllByTestId('migration-workflow-published')).toHaveLength(1);
 			});
+			expect(screen.getByTestId('migration-workflow-published')).toHaveAccessibleName('Published');
 		});
 
 		it('should display workflow run counts', async () => {
@@ -1508,6 +1550,49 @@ describe('MigrationRuleDetail', () => {
 		});
 	});
 
+	describe('pagination', () => {
+		const manyWorkflows = Array.from({ length: 30 }, (_, index) => ({
+			...mockWorkflowWithIssue,
+			id: `wf-${index}`,
+			name: `Paged workflow ${String(index).padStart(2, '0')}`,
+			numberOfExecutions: 100 - index,
+		}));
+
+		it('should render one page of rows and show the next page on request', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+
+			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+			// The header row plus 25 workflow rows.
+			expect(screen.getAllByRole('row')).toHaveLength(26);
+			expect(screen.queryByText('Paged workflow 25')).not.toBeInTheDocument();
+
+			await userEvent.click(screen.getByTestId('pagination-next'));
+
+			await waitFor(() => expect(screen.getByText('Paged workflow 25')).toBeInTheDocument());
+			expect(screen.getAllByRole('row')).toHaveLength(6);
+			expect(screen.queryByText('Paged workflow 00')).not.toBeInTheDocument();
+		});
+
+		it('should go back to the first page when a filter changes', async () => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({ affectedWorkflows: manyWorkflows }),
+			);
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+			await userEvent.click(screen.getByTestId('pagination-next'));
+			await waitFor(() => expect(screen.getByText('Paged workflow 25')).toBeInTheDocument());
+
+			const content = await openFilters();
+			const status = within(content).getByTestId('migration-rule-filter-status');
+			await userEvent.click(within(status).getByRole('radio', { name: 'Published' }));
+
+			await waitFor(() => expect(screen.getByText('Paged workflow 00')).toBeInTheDocument());
+		});
+	});
+
 	describe('filters popover', () => {
 		it('should filter workflows by publish state and show the number of active filters', async () => {
 			renderComponent({ props: { migrationRuleId: 'rule-1' } });
@@ -1660,6 +1745,52 @@ describe('MigrationRuleDetail', () => {
 			});
 		});
 	});
+	describe('fixed, not published', () => {
+		const getRow = (workflowName: string) => {
+			const row = screen.getByText(workflowName).closest('tr');
+			if (!row) throw new Error('Row not found');
+			return row;
+		};
+
+		beforeEach(() => {
+			vi.mocked(breakingChangesApi.getReportForRule).mockResolvedValue(
+				createMockRuleResult({
+					affectedWorkflows: [
+						{ ...mockWorkflowWithIssue, status: 'fixed_unpublished' },
+						mockWorkflowWithMultipleNodes,
+					],
+				}),
+			);
+		});
+
+		it('should show the state and count the row as affected', async () => {
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			expect(
+				within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+			).toHaveTextContent('Fixed, unpublished');
+		});
+
+		it('should keep the state after the email went out', async () => {
+			vi.mocked(breakingChangesApi.notifyFindingOwners).mockResolvedValue({
+				notifiedWorkflowIds: ['workflow-1'],
+				skipped: [],
+			});
+			renderComponent({ props: { migrationRuleId: 'rule-1' } });
+			await screen.findByText('2 affected');
+
+			await userEvent.click(
+				within(getRow('Test Workflow 1')).getByTestId('migration-notify-owner-button'),
+			);
+
+			await waitFor(() => expect(breakingChangesApi.notifyFindingOwners).toHaveBeenCalled());
+			expect(
+				within(getRow('Test Workflow 1')).getByTestId('migration-finding-state-select'),
+			).toHaveTextContent('Fixed, unpublished');
+		});
+	});
+
 	describe('notify owner', () => {
 		const getRow = (workflowName: string) => {
 			const row = screen.getByText(workflowName).closest('tr');

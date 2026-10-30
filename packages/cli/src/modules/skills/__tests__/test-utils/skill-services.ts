@@ -36,11 +36,8 @@ export async function expectError(
 	expect(error).toHaveProperty('message', message);
 }
 
-export function skillRow(
-	id: string,
-	target: Partial<Pick<Skill, 'projectId' | 'agentId'>> = {},
-): Skill {
-	return mock<Skill>({ id, projectId: target.projectId ?? null, agentId: target.agentId ?? null });
+export function skillRow(id: string, target: Partial<Pick<Skill, 'projectId'>> = {}): Skill {
+	return mock<Skill>({ id, projectId: target.projectId ?? null });
 }
 
 export function versionRow(
@@ -95,7 +92,7 @@ export function createSkillServices() {
 	const syncedFrom = mock<SkillSyncedFromService>();
 	const links = mock<SkillSourceRepository>();
 	const skillSyncGate = mock<SkillSyncFlagGate>();
-	const access = new SkillAccessService(skills, projectScope, skillUsage);
+	const access = new SkillAccessService(skills, projectScope);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
 		mock(),
@@ -150,7 +147,7 @@ export async function resetSkillMocks({
 	skills.findByIds.mockResolvedValue([]);
 	// No skill is synced unless a test links it.
 	links?.isLinked.mockResolvedValue(false);
-	links?.findLinkedSkillIds.mockResolvedValue(new Set());
+	links?.findSyncStates.mockResolvedValue(new Map());
 	// Skill Sync is off unless a test turns it on.
 	skillSyncGate?.isEnabled.mockResolvedValue(false);
 }

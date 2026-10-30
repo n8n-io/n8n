@@ -1,7 +1,7 @@
 import type { SkillAgentOption, SkillUsedBy } from '@n8n/api-types';
 import type { OperationContext } from '@n8n/db';
 
-/** An agent as the skills module sees it: an agent skill takes its project from its agent. */
+/** An agent as the skills module sees it: its name and project. */
 export type SkillAgent = { name: string; projectId: string };
 
 /**
@@ -12,9 +12,6 @@ export type SkillAgent = { name: string; projectId: string };
 export abstract class SkillUsage {
 	/** Name and project of each agent, keyed by agent id. An agent without a project is absent. */
 	abstract findAgents(agentIds: string[], ctx: OperationContext): Promise<Map<string, SkillAgent>>;
-
-	/** Ids of the agents in these projects. */
-	abstract findAgentIdsInProjects(projectIds: string[], ctx: OperationContext): Promise<string[]>;
 
 	/** "Used by": the agents that use the skill. Agents outside `projectIds` are only counted. */
 	abstract findUsage(

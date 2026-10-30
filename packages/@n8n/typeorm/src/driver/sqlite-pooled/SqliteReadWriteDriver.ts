@@ -4,6 +4,7 @@ import path, { isAbsolute } from 'path';
 import { DataSource } from '../../data-source/DataSource';
 import { AbstractSqliteDriver } from '../sqlite-abstract/AbstractSqliteDriver';
 import { ColumnType } from '../types/ColumnTypes';
+import { ReplicationMode } from '../types/ReplicationMode';
 import { filepathToName } from '../../util/PathUtils';
 import { SqlitePooledConnectionOptions } from './SqlitePooledConnectionOptions';
 import { SqliteWriteConnection } from './SqliteWriteConnection';
@@ -108,7 +109,7 @@ export class SqliteReadWriteDriver extends AbstractSqliteDriver {
 	/**
 	 * Creates a query runner used to execute database queries.
 	 */
-	createQueryRunner(): SqliteReadWriteQueryRunner {
+	createQueryRunner(mode: ReplicationMode = 'master'): SqliteReadWriteQueryRunner {
 		return new SqliteReadWriteQueryRunner(
 			this,
 			this.connection,
@@ -116,6 +117,7 @@ export class SqliteReadWriteDriver extends AbstractSqliteDriver {
 			this.writeConnection,
 			this.readonlyPool,
 			this.options,
+			mode,
 		);
 	}
 

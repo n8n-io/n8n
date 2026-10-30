@@ -1,4 +1,4 @@
-import type { AppResponse } from '@n8n/api-types';
+import type { AppResponse, AppVersionResponse } from '@n8n/api-types';
 import { createComponentRenderer } from '@n8n/frontend-test-utils';
 import { getProject, type Project } from '@n8n/rest-api-client/api/projects';
 import userEvent from '@testing-library/user-event';
@@ -28,10 +28,21 @@ const app: AppResponse = {
 	updatedAt: '2026-10-02T10:00:00.000Z',
 };
 
+const version: AppVersionResponse = {
+	id: 'v1',
+	appId: 'app-1',
+	label: null,
+	sourceArtifactId: 1,
+	bundleArtifactId: 2,
+	buildStatus: 'succeeded',
+	createdAt: '2026-10-01T10:00:00.000Z',
+	updatedAt: '2026-10-01T10:00:00.000Z',
+};
+
 const project = (overrides: Partial<Project>) => ({ id: 'project-1', ...overrides }) as Project;
 
 const renderComponent = createComponentRenderer(AppHeader, {
-	props: { projectId: 'project-1', app, tab: 'preview' },
+	props: { projectId: 'project-1', app, publishableVersion: version, tab: 'preview' },
 	global: {
 		stubs: {
 			N8nBreadcrumbs: {
@@ -52,6 +63,12 @@ const renderComponent = createComponentRenderer(AppHeader, {
 						@click="$emit('select', item.id)"
 					>{{ item.label }}</button>
 				</div>`,
+			},
+			AppPublishButton: {
+				props: ['app', 'version'],
+				emits: ['updated'],
+				template:
+					'<button data-test-id="app-publish" @click="$emit(\'updated\', { ...app, publishedVersionId: version.id })">Publish</button>',
 			},
 			AppActions: {
 				props: ['app'],
@@ -97,11 +114,13 @@ describe('AppHeader', () => {
 		expect(getByTestId('breadcrumb')).toHaveTextContent('Project');
 	});
 
-	it('shows a disabled publish button', () => {
+	it('publishes the publishable version and passes the updated app on', async () => {
 		vi.mocked(getProject).mockResolvedValue(project({ type: 'team', name: 'Marketing' }));
-		const { getByTestId } = renderComponent();
+		const { getByTestId, emitted } = renderComponent();
 
-		expect(getByTestId('app-header-publish')).toBeDisabled();
+		await userEvent.click(getByTestId('app-publish'));
+
+		expect(emitted('updated')).toEqual([[{ ...app, publishedVersionId: 'v1' }]]);
 	});
 
 	it('switches to the configure view', async () => {

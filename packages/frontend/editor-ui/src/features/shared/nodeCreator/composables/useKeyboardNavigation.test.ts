@@ -200,3 +200,92 @@ describe('shouldAllowNativeInputBehavior', () => {
 		expect(input.selectionStart).toBe(originalPosition);
 	});
 });
+
+describe('keys pressed inside a dialog', () => {
+	const hookSpy = vi.fn();
+	const dialogButtonSpy = vi.fn();
+	const dialogEscapeSpy = vi.fn();
+
+	const DialogTestComponent = defineComponent({
+		setup() {
+			const { attachKeydownEvent, detachKeydownEvent, setActiveItemId, registerKeyHook } =
+				useKeyboardNavigation();
+
+			setActiveItemId('item1');
+			const activeItemId = computed(() => useKeyboardNavigation().activeItemId);
+
+			registerKeyHook('dialogTestKeys', {
+				keyboardKeys: ['ArrowDown', 'Enter', 'Escape'],
+				handler: hookSpy,
+			});
+
+			return {
+				attachKeydownEvent,
+				detachKeydownEvent,
+				activeItemId,
+				dialogButtonSpy,
+				dialogEscapeSpy,
+			};
+		},
+		mounted() {
+			this.attachKeydownEvent();
+		},
+		unmounted() {
+			this.detachKeydownEvent();
+		},
+		template: `
+			<div>
+				<div
+					v-for="item in 2"
+					:key="'item' + item"
+					:class="{ active: activeItemId === 'item' + item }"
+					:data-keyboard-nav-id="'item' + item"
+					data-keyboard-nav-type="node"
+				/>
+				<div role="dialog" @keydown.esc="dialogEscapeSpy">
+					<button data-test-id="dialog-button" @click="dialogButtonSpy">Close</button>
+				</div>
+			</div>
+		`,
+	});
+
+	const renderDialogComponent = createComponentRenderer(DialogTestComponent, {
+		pinia: createPinia(),
+	});
+
+	beforeEach(() => {
+		hookSpy.mockReset();
+		dialogButtonSpy.mockReset();
+		dialogEscapeSpy.mockReset();
+	});
+
+	test('lets Enter activate the focused dialog button', async () => {
+		const { getByTestId } = renderDialogComponent();
+
+		getByTestId('dialog-button').focus();
+		await userEvent.keyboard('{enter}');
+
+		expect(dialogButtonSpy).toHaveBeenCalledTimes(1);
+		expect(hookSpy).not.toHaveBeenCalled();
+	});
+
+	test('leaves the active item unchanged on an arrow key', async () => {
+		const { container, getByTestId } = renderDialogComponent();
+
+		getByTestId('dialog-button').focus();
+		await userEvent.keyboard('{arrowdown}');
+
+		expect(container.querySelector('[data-keyboard-nav-id="item1"]')).toHaveClass('active');
+		expect(hookSpy).not.toHaveBeenCalled();
+	});
+
+	test('leaves Escape to the dialog', async () => {
+		const { getByTestId } = renderDialogComponent();
+
+		getByTestId('dialog-button').focus();
+		await userEvent.keyboard('{escape}');
+
+		expect(dialogEscapeSpy).toHaveBeenCalledTimes(1);
+		expect(hookSpy).not.toHaveBeenCalled();
+	});
+});

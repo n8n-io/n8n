@@ -410,17 +410,6 @@ describe('AgentSkillRepository', () => {
 	});
 
 	describe('findAgents', () => {
-		it('lists the agents of the given projects', async () => {
-			const support = await createAgent('Support');
-			const sales = await createAgent('Sales', { projectId: otherProject.id });
-
-			expect(await agentSkills.findAgentIdsInProjects([project.id])).toEqual([support.id]);
-			expect(
-				(await agentSkills.findAgentIdsInProjects([project.id, otherProject.id])).sort(),
-			).toEqual([support.id, sales.id].sort());
-			expect(await agentSkills.findAgentIdsInProjects([])).toEqual([]);
-		});
-
 		it('maps agent ids to their name and project, and skips unknown ids', async () => {
 			const support = await createAgent('Support');
 			const sales = await createAgent('Sales', { projectId: otherProject.id });

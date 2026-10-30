@@ -1,6 +1,21 @@
 export { EventService, type EventMap } from './events/event.service';
-export { isBillableExecution } from './executions/is-billable-execution';
-export { sumNodeTimeSavedMinutes } from './executions/time-saved';
+export {
+	countsTowardExecutionLimit,
+	executionLimitDelta,
+	isBillableExecution,
+	isInsightsProduction,
+	isLedgerFact,
+	savesTime,
+	toLedgerFact,
+	toLedgerOutcome,
+	type CompletedRun,
+	type LedgerEntityType,
+	type LedgerEvent,
+	type LedgerFact,
+	type LedgerOutcome,
+	type LedgerSource,
+} from './executions/counting-rules';
+export { computeTimeSavedMinutes, sumNodeTimeSavedMinutes } from './executions/time-saved';
 export {
 	CredentialsFinderService,
 	CREDENTIAL_USABILITY_SCOPES,
@@ -129,3 +144,4 @@ export {
 } from './services/ai-preference.service';
 export { AiPreferenceScopeFullError } from './errors/response-errors/ai-preference-scope-full.error';
 export * from './auth';
+export { ProjectNotFoundError } from './errors/project-not-found.error';

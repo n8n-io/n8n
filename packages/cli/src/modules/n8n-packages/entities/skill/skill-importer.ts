@@ -53,7 +53,6 @@ export class SkillImporter {
 	): Promise<{ plan: SkillImportPlan; issues: AgentImportIssue[] }> {
 		const plan: SkillImportPlan = {
 			shared: [],
-			owned: new Map(),
 			sharedUsers: new Set(),
 			raisedRevisions: new Map(),
 		};
@@ -69,7 +68,7 @@ export class SkillImporter {
 			if (decision.kind === 'write') addWrite(plan, decision.write, agentIds);
 		}
 		issues.push(...(await this.agentNameClashes(active, decisions)));
-		await this.assertCanWrite(context.user, allWrites(plan), context.projectPendingCreation);
+		await this.assertCanWrite(context.user, plan.shared, context.projectPendingCreation);
 		return { plan, issues };
 	}
 
@@ -99,11 +98,10 @@ export class SkillImporter {
 		const packaged = new Map(packageSkills.map((skill) => [skill.id, skill]));
 		const existing = await this.skillService.findLatest([...users.keys()]);
 		const plannedNames = new Set<string>();
-		for (const [skillId, agentIds] of users) {
+		for (const skillId of users.keys()) {
 			const decision = await this.decide(
 				projectId,
 				skillId,
-				agentIds,
 				packaged.get(skillId),
 				existing.get(skillId),
 				conflictPolicy,
@@ -121,7 +119,7 @@ export class SkillImporter {
 	 * Adds these raises to `plan.raisedRevisions`.
 	 */
 	async applyShared(user: User, plan: SkillImportPlan): Promise<void> {
-		await this.assertCanWrite(user, allWrites(plan));
+		await this.assertCanWrite(user, plan.shared);
 		if (plan.shared.length === 0) return;
 		const following = await this.transactionRunner.run({}, async (ctx) => {
 			const agentIds: string[] = [];
@@ -134,24 +132,18 @@ export class SkillImporter {
 	}
 
 	/**
-	 * The writer for the skills of one Agent, for that Agent's save transaction. Absent when
-	 * the import writes no skill that the Agent uses.
+	 * The writer for one Agent's save transaction. Absent when the import writes no skill
+	 * that the Agent uses. `applyShared` already wrote the skills, so the writer only tells
+	 * the save that the skills of the Agent changed.
 	 */
-	writerFor(user: User, plan: SkillImportPlan, agentId: string): AgentSkillWriter | undefined {
-		const writes = plan.owned.get(agentId) ?? [];
-		if (writes.length === 0 && !plan.sharedUsers.has(agentId)) return undefined;
-		const saved = writes.filter(({ base }) => base).map(({ skill }) => skill.id);
-		return async (ctx) => {
-			// The save transaction attaches the refs again after the writes.
-			await this.agentSkillRefs.detachDraftRefs(agentId, saved, ctx);
-			for (const write of writes) await this.write(user, write, ctx);
-		};
+	writerFor(plan: SkillImportPlan, agentId: string): AgentSkillWriter | undefined {
+		if (!plan.sharedUsers.has(agentId)) return undefined;
+		return async () => {};
 	}
 
 	private async decide(
 		projectId: string,
 		skillId: string,
-		agentIds: string[],
 		packaged: SerializedSkill | undefined,
 		row: LatestSkill | undefined,
 		conflictPolicy: ImportConflictPolicy,
@@ -163,17 +155,11 @@ export class SkillImporter {
 			};
 		}
 		const name = packaged.skill.name;
-		if (packaged.scope === 'agent' && agentIds.some((id) => id !== packaged.agentId)) {
-			return {
-				kind: 'issue',
-				message: `Only its own Agent can use skill "${name}". Remove the skill from the other Agents, then export again.`,
-			};
-		}
 		const target = targetOf(packaged, projectId);
 		if (row && !isSameSkillTarget(row.target, target)) {
 			return {
 				kind: 'issue',
-				message: `Skill ID "${skillId}" already belongs to another project, Agent or the instance. Change the skill ID in the package, or delete the existing skill.`,
+				message: `Skill ID "${skillId}" already belongs to another project or the instance. Change the skill ID in the package, or delete the existing skill.`,
 			};
 		}
 		const decision = decideWrite(packaged, target, row, conflictPolicy);
@@ -234,8 +220,6 @@ export class SkillImporter {
 		projectPendingCreation: boolean,
 	): Promise<boolean> {
 		if (write.base) return await this.skillAccess.canAccess(user, write.target, 'update');
-		// A skill of one Agent needs only the Agent permission, as in the Agent builder.
-		if (write.target.agentId) return true;
 		if (projectPendingCreation && write.target.projectId) return true;
 		return await this.skillAccess.canCreate(user, write.target.projectId);
 	}
@@ -308,33 +292,22 @@ function skillUsers(items: AgentPlanItem[]): Map<string, string[]> {
 	return users;
 }
 
-/** A project skill lands in the destination project. Agent IDs stay the same on import. */
+/** A project skill lands in the destination project. */
 function targetOf(skill: SerializedSkill, projectId: string): SkillTarget {
-	if (skill.scope === 'agent') return { projectId: null, agentId: skill.agentId ?? null };
-	if (skill.scope === 'project') return { projectId, agentId: null };
-	return { projectId: null, agentId: null };
+	return { projectId: skill.scope === 'project' ? projectId : null };
 }
 
 /** Records the name of a planned write. Returns false when another write in its scope has it. */
 function claimName(names: Set<string>, { skill, target }: SkillWrite): boolean {
-	const key = JSON.stringify([target.projectId, target.agentId, skillNameKey(skill.skill.name)]);
+	const key = JSON.stringify([target.projectId, skillNameKey(skill.skill.name)]);
 	if (names.has(key)) return false;
 	names.add(key);
 	return true;
 }
 
 function addWrite(plan: SkillImportPlan, write: SkillWrite, agentIds: string[]): void {
-	const agentId = write.target.agentId;
-	if (!agentId) {
-		plan.shared.push({ ...write, usedBy: agentIds });
-		for (const id of agentIds) plan.sharedUsers.add(id);
-		return;
-	}
-	plan.owned.set(agentId, [...(plan.owned.get(agentId) ?? []), write]);
-}
-
-function allWrites(plan: SkillImportPlan): SkillWrite[] {
-	return [...plan.shared, ...[...plan.owned.values()].flat()];
+	plan.shared.push({ ...write, usedBy: agentIds });
+	for (const id of agentIds) plan.sharedUsers.add(id);
 }
 
 function packageNameClash(name: string): SkillDecision {
