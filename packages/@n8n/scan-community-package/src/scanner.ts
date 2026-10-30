@@ -51,7 +51,7 @@ const field = (value: unknown, key: string): unknown => (isRecord(value) ? value
  * Checks if the given childPath is contained within the parentPath. Resolves
  * the paths before comparing them, so that relative paths are also supported.
  */
-export function isContainedWithin(parentPath: string, childPath: string): boolean {
+export const isContainedWithin = (parentPath: string, childPath: string): boolean => {
 	parentPath = path.resolve(parentPath);
 	childPath = path.resolve(childPath);
 
@@ -60,7 +60,7 @@ export function isContainedWithin(parentPath: string, childPath: string): boolea
 	}
 
 	return childPath.startsWith(parentPath + path.sep);
-}
+};
 
 /**
  * Joins the given paths to the parentPath, ensuring that the resulting path
@@ -69,7 +69,7 @@ export function isContainedWithin(parentPath: string, childPath: string): boolea
  *
  * @throws {UnexpectedError} If the resulting path is not contained within the parentPath.
  */
-export function safeJoinPath(parentPath: string, ...paths: string[]): string {
+export const safeJoinPath = (parentPath: string, ...paths: string[]): string => {
 	const candidate = path.join(parentPath, ...paths);
 
 	if (!isContainedWithin(parentPath, candidate)) {
@@ -79,7 +79,7 @@ export function safeJoinPath(parentPath: string, ...paths: string[]): string {
 	}
 
 	return candidate;
-}
+};
 
 export const resolvePackage = (
 	packageSpec: string,

@@ -18,7 +18,7 @@ import {
  * `analyzePackage` exactly the way the scanner would after extracting a
  * tarball from npm.
  */
-function makeFixturePackage(files: Record<string, string | object>) {
+const makeFixturePackage = (files: Record<string, string | object>) => {
 	const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'scan-fixture-'));
 	for (const [relativePath, contents] of Object.entries(files)) {
 		const fullPath = path.join(dir, relativePath);
@@ -29,7 +29,7 @@ function makeFixturePackage(files: Record<string, string | object>) {
 		);
 	}
 	return dir;
-}
+};
 
 describe('buildScanConfig', () => {
 	// CE-1606: the scan gate must register the external eslint-plugin-n8n-nodes-base
