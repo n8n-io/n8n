@@ -9,7 +9,7 @@ import {
 	type ExecutionStore,
 } from '../execution-store';
 import type { ExecutionStatus, StepStatus, WorkflowDocument } from '../execution.types';
-import { InvalidParentLinkError, StartExecutionService } from '../start-execution.service';
+import { StartExecutionService, type InvalidParentLinkReason } from '../start-execution.service';
 import { StepNotFoundError, type StepRecord, type StepStore } from '../step-store';
 
 const sampleGraph: WorkflowGraph = {
@@ -126,31 +126,36 @@ describe('StartExecutionService', () => {
 				name: 'the parent execution has ended',
 				executionStatus: 'completed',
 				stepStatus: 'waiting',
+				reason: 'execution-ended',
 			},
 			{
 				name: 'the parent execution has not started',
 				executionStatus: 'queued',
 				stepStatus: 'waiting',
+				reason: 'execution-ended',
 			},
 			{
 				name: 'an awaiting step is not waiting',
 				executionStatus: 'running',
 				stepStatus: 'running',
+				reason: 'step-not-waiting',
 			},
 			{
 				name: 'a non-awaiting step has already settled',
 				executionStatus: 'running',
 				stepStatus: 'completed',
 				awaited: false,
+				reason: 'step-not-running',
 			},
 		] as Array<{
 			name: string;
 			executionStatus: ExecutionStatus;
 			stepStatus: StepStatus;
 			awaited?: boolean;
+			reason: InvalidParentLinkReason;
 		}>)(
 			'rejects the link without persisting when $name',
-			async ({ executionStatus, stepStatus, awaited = true }) => {
+			async ({ executionStatus, stepStatus, awaited = true, reason }) => {
 				const { store, stepStore } = parentRows(executionStatus, stepStatus);
 				const queue = makeQueue();
 				const service = new StartExecutionService(admittance, store, stepStore, queue);
@@ -160,7 +165,7 @@ describe('StartExecutionService', () => {
 						...base,
 						parent: { executionId: 'exec-parent', stepId: 'step-1', awaited },
 					}),
-				).rejects.toBeInstanceOf(InvalidParentLinkError);
+				).rejects.toMatchObject({ name: 'InvalidParentLinkError', reason });
 				expect(store.createExecution).not.toHaveBeenCalled();
 				expect(queue.publish).not.toHaveBeenCalled();
 			},
@@ -178,13 +183,17 @@ describe('StartExecutionService', () => {
 					...base,
 					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
 				}),
-			).rejects.toThrow(/belongs to execution exec-other/);
+			).rejects.toMatchObject({ reason: 'step-of-another-execution' });
 		});
 
 		it.each([
-			{ name: 'parent execution', error: new ExecutionNotFoundError('exec-parent') },
-			{ name: 'parent step', error: new StepNotFoundError('step-1') },
-		])('rejects the link when the $name does not exist', async ({ error }) => {
+			{
+				name: 'parent execution',
+				error: new ExecutionNotFoundError('exec-parent'),
+				reason: 'execution-not-found',
+			},
+			{ name: 'parent step', error: new StepNotFoundError('step-1'), reason: 'step-not-found' },
+		])('rejects the link when the $name does not exist', async ({ error, reason }) => {
 			const { store, stepStore } = parentRows('running', 'waiting');
 			if (error instanceof ExecutionNotFoundError) {
 				vi.mocked(store.loadExecution).mockRejectedValue(error);
@@ -198,7 +207,7 @@ describe('StartExecutionService', () => {
 					...base,
 					parent: { executionId: 'exec-parent', stepId: 'step-1', awaited: true },
 				}),
-			).rejects.toBeInstanceOf(InvalidParentLinkError);
+			).rejects.toMatchObject({ name: 'InvalidParentLinkError', reason });
 			expect(store.createExecution).not.toHaveBeenCalled();
 		});
 	});

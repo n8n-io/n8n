@@ -290,6 +290,7 @@ export async function createStubServices(
 				}
 			);
 		},
+		async updateDescription() {},
 		async delete() {},
 		async test(credentialId: string) {
 			const seeded = seededCredential(credentialId);

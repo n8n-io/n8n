@@ -14,11 +14,12 @@ export type SkillDependencyRef = { skillId: string; versionId?: string | null };
 type UsingAgent = { agentId: string; agentName: string; projectId: string };
 
 /**
- * The agents that use a skill. A pin carries the skill version that the active published
- * version of its agent pins, or null.
+ * The agents that use a skill. A draft carries the skill version its ref pins, or null when
+ * it follows the latest. A pin carries the skill version that the active published version
+ * of its agent pins, or null.
  */
 export type SkillUsageRows = {
-	drafts: UsingAgent[];
+	drafts: Array<UsingAgent & { skillVersionId: string | null }>;
 	pins: Array<UsingAgent & { skillVersionId: string | null }>;
 	hiddenAgents: number;
 };
@@ -184,9 +185,17 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 			.createQueryBuilder(Agent, 'agent')
 			.innerJoin(AgentSkillDependency, 'dep', 'dep.agentId = agent.id')
 			.where('dep.skillId = :skillId', { skillId })
-			.select(['agent.id', 'agent.name', 'agent.projectId'])
-			.getMany()
-			.then((agents) => agents.filter(isProjectAgent));
+			.select('agent.id', 'id')
+			.addSelect('agent.name', 'name')
+			.addSelect('agent.projectId', 'projectId')
+			.addSelect('dep.skillVersionId', 'skillVersionId')
+			.getRawMany<{
+				id: string;
+				name: string;
+				projectId: string | null;
+				skillVersionId: string | null;
+			}>()
+			.then((rows) => rows.filter(isProjectAgent));
 		const published = await manager
 			.createQueryBuilder(Agent, 'agent')
 			.where((qb) => {
@@ -225,6 +234,7 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 				agentId: agent.id,
 				agentName: agent.name,
 				projectId: agent.projectId,
+				skillVersionId: agent.skillVersionId,
 			})),
 			pins: visiblePublished.map((agent) => ({
 				agentId: agent.id,

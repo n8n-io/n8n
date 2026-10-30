@@ -84,6 +84,8 @@ import CreditWarningBanner from '@/features/ai/assistant/components/Agent/Credit
 const props = defineProps<{
 	/** Runs before every send (e.g. flush a pending autosave). Rejecting cancels the send. */
 	beforeSend?: () => Promise<void>;
+	placeholder?: string;
+	composerHeight?: string;
 	/**
 	 * The live embed subject (an agent in the builder today). When it refers to
 	 * the same agent as the stashed `pendingAgentAttachment`, the chat-input
@@ -100,11 +102,14 @@ const props = defineProps<{
 
 const emit = defineEmits<{
 	'thread-missing': [];
+	'message-sent': [];
 	'agent-attachment-restored': [attachment: InstanceAiAgentAttachment];
 }>();
 
 defineSlots<{
 	'above-input'?: () => unknown;
+	'composer-start'?: () => unknown;
+	'composer-footer'?: () => unknown;
 	'inline-offers'?: () => unknown;
 	/** A host's welcome state, rendered until the thread has its first message. */
 	empty?: () => unknown;
@@ -119,6 +124,13 @@ const settingsStore = useInstanceAiSettingsStore();
 // `isCurrentThreadRuntime()` compares against `store.getRuntime(thread.id)` to detect a
 // disposed/recreated runtime, so an unregistered runtime object would never connect.
 const thread = useThread();
+watch(
+	() => thread.messages.some((message) => message.role === 'user'),
+	(hasMessages) => {
+		if (hasMessages) emit('message-sent');
+	},
+	{ immediate: true },
+);
 const openWorkflowPreview = inject<((workflowId: string) => boolean) | undefined>(
 	'openWorkflowPreview',
 	undefined,
@@ -688,6 +700,7 @@ async function handleSubmit(
 			if (nodeCount > 0) {
 				telemetry.track(TELEMETRY_EVENT.INSTANCE_AI.USER_SENT_CHAT_MESSAGE_WITH_NODES, {
 					node_count: nodeCount,
+					runtime: 'instance-ai',
 				});
 			}
 			// Clear the canvas selection only once the send succeeded — clearing it
@@ -834,6 +847,7 @@ function resetScroll() {
 }
 
 defineExpose({
+	focus: () => chatInputRef.value?.focus(),
 	isDirty,
 	applyHandoff,
 	dismissPendingComposerContext,
@@ -991,6 +1005,8 @@ defineExpose({
 										:current-thread-id="thread.id"
 										:amend-context="thread.amendContext"
 										:context-chip="composerContextChip"
+										:placeholder="props.placeholder"
+										:composer-height="props.composerHeight"
 										:placeholder-key="
 											isPendingAgentComposer ? 'instanceAi.input.newAgentPlaceholder' : undefined
 										"
@@ -1006,12 +1022,19 @@ defineExpose({
 										@mention-reference-added="addMentionReference"
 										@mention-reference-removed="removeMentionReference"
 										@mention-workflow-open="openMentionWorkflow"
-									/>
+									>
+										<template v-if="$slots['composer-start']" #footer-start>
+											<slot name="composer-start" />
+										</template>
+									</InstanceAiInput>
 								</Transition>
+								<slot v-if="hasFloatingConfirmation" name="composer-start" />
 							</div>
-							<p v-if="hasAssistantResponse" :class="$style.disclaimer">
-								{{ i18n.baseText('instanceAi.input.disclaimer') }}
-							</p>
+							<slot name="composer-footer">
+								<p v-if="hasAssistantResponse" :class="$style.disclaimer">
+									{{ i18n.baseText('instanceAi.input.disclaimer') }}
+								</p>
+							</slot>
 						</div>
 					</div>
 				</div>
@@ -1066,7 +1089,7 @@ defineExpose({
 
 .messageList {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: min(800px, 100%);
+	max-width: min(var(--instance-ai-chat-max-width, 800px), 100%);
 	margin: 0 auto;
 	padding: var(--spacing--sm) var(--spacing--lg);
 	display: flex;
@@ -1131,7 +1154,7 @@ defineExpose({
 }
 
 .inputContainer {
-	padding: 0 var(--spacing--lg) var(--spacing--sm);
+	padding: var(--instance-ai-input-padding, 0 var(--spacing--lg) var(--spacing--sm));
 	// Fades into the host's surface: the thread view paints `light-2`, an
 	// embedding panel overrides the variable with its own background.
 	background: linear-gradient(
@@ -1147,7 +1170,7 @@ defineExpose({
 
 .inputConstraint {
 	width: calc(100% - var(--instance-ai-artifacts-layout-width));
-	max-width: 750px;
+	max-width: var(--instance-ai-input-max-width, 750px);
 	margin: 0 auto;
 	transform: translateX(calc(var(--instance-ai-artifacts-layout-width) / -2));
 	display: flex;

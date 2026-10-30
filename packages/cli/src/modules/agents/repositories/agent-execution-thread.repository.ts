@@ -10,6 +10,7 @@ import {
 import { Service } from '@n8n/di';
 import {
 	DataSource,
+	In,
 	IsNull,
 	Not,
 	type EntityManager,
@@ -453,17 +454,9 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		}
 	}
 
-	/** Top-level private sessions of one user with one agent, newest first. */
-	async findOwnedByAgent(
-		agentId: string,
-		ownerId: string,
-		options: { limit?: number } = {},
-	): Promise<AgentExecutionThread[]> {
-		return await this.find({
-			where: { agentId, ownerId, accessScope: 'user', parentThreadId: IsNull() },
-			order: { updatedAt: 'DESC', id: 'DESC' },
-			...(options.limit ? { take: options.limit } : {}),
-		});
+	async findManyByIds(ids: string[]): Promise<AgentExecutionThread[]> {
+		if (ids.length === 0) return [];
+		return await this.findBy({ id: In(ids) });
 	}
 
 	/**
@@ -610,6 +603,28 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 			where: { parentThreadId, projectId },
 			order: { createdAt: 'ASC' },
 		});
+	}
+
+	/**
+	 * The thread and the threads that delegated to it, from `threadId` up to
+	 * the root. A thread without a row (an inline agent, or a thread that is
+	 * not created yet) ends the chain with `agentId: null`.
+	 */
+	async findDelegationChain(
+		threadId: string,
+	): Promise<Array<{ id: string; agentId: string | null }>> {
+		const chain: Array<{ id: string; agentId: string | null }> = [];
+		const seen = new Set<string>();
+		let id: string | null = threadId;
+		// ponytail: one query per level; use a recursive CTE if delegation trees get deep.
+		while (id !== null && !seen.has(id)) {
+			seen.add(id);
+			const thread: Pick<AgentExecutionThread, 'agentId' | 'parentThreadId'> | null =
+				await this.findOne({ select: ['agentId', 'parentThreadId'], where: { id } });
+			chain.push({ id, agentId: thread?.agentId ?? null });
+			id = thread?.parentThreadId ?? null;
+		}
+		return chain;
 	}
 
 	/** Bump updatedAt to now so the thread sorts to top of the list. */

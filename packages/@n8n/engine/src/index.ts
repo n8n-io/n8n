@@ -89,6 +89,7 @@ export type {
 	StepExecutionRequest,
 	StepExecutionResult,
 	SubExecutionDeclaration,
+	SubExecutionMode,
 } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
@@ -123,6 +124,7 @@ export type {
 	NewExecutionRecord,
 	NewStepRecord,
 	ParentLink,
+	InvalidParentLinkReason,
 	StartExecutionRequest,
 	StartExecutionResult,
 	StepError,

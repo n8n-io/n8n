@@ -53,14 +53,12 @@ let environmentId: string;
 let hostMergeRequests: Map<number, GitLabMergeRequest>;
 
 beforeAll(() => {
-	process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
 	Container.get(SourceControlPreferencesService).sourceControlPreferences = {
 		environmentsVersion: 'v2',
 	};
 });
 
 afterAll(async () => {
-	delete process.env.N8N_ENV_FEAT_PROMOTIONS;
 	await rm(instanceFolder, { recursive: true, force: true });
 });
 
@@ -127,7 +125,7 @@ beforeEach(async () => {
 		settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 	});
 	environmentId = environment.id;
-	await Container.get(PromotionsService).clone(environmentId);
+	await Container.get(PromotionsService).clone(environmentId, owner);
 });
 
 afterEach(async () => {
@@ -351,7 +349,7 @@ describe('when the host dropped the commits of a finished review', () => {
 		const baseSha = (await simpleGit(remoteFolder).revparse(['main'])).trim();
 		await dropReviewRefs(review.iid, review.branchName);
 		// A fresh checkout has none of the review commits, as after a reconnect.
-		await Container.get(PromotionsService).clone(environmentId);
+		await Container.get(PromotionsService).clone(environmentId, owner);
 		return { review, headSha, baseSha };
 	}
 

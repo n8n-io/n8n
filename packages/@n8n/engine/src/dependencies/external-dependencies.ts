@@ -79,18 +79,21 @@ export type SubExecutionDeclaration = {
 	graph: WorkflowGraph;
 	workflow: WorkflowDocument;
 	triggerOutputs?: TriggerOutputs | null;
-} & (
+} & SubExecutionMode;
+
+/** Whether the step waits for the sub-execution, and what it completes with if not. */
+export type SubExecutionMode =
 	| {
 			/** The step suspends until the sub-execution ends, and has no outputs yet. */
 			awaited: true;
+			outputs?: never;
 	  }
 	| {
 			/** Nothing waits for the sub-execution. It ends with the parent. */
 			awaited: false;
 			/** The step completes with these once the sub-execution has started. */
 			outputs: StepSlots;
-	  }
-);
+	  };
 
 /**
  * What running a step produced: its output slots, a wait, or a sub-execution.

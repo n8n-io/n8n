@@ -28,7 +28,7 @@ unchanged. Add locale translations for these keys; missing translations fall bac
 to English. The backend retains `message` for older clients and saved approvals
 that have no structured details.
 
-`workflow_builder_build_workflow`, `workflow_builder_workflows(action="publish")`,
+`workflow_builder_build_workflow`, `publish_workflow`,
 and `workflow_builder_executions(action="run")` accept `approvalSummary`. The agent supplies one
 line in the user’s language that describes the concrete change or effect of the
 call, for example `Add a Slack notification after the payment check`. Live execution summaries
@@ -48,11 +48,11 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 
 | Tool | Actions |
 |------|---------|
-| `workflow_builder_workflows` | 12 |
+| `list_workflows`, `get_workflow_node_usage`, `get_workflow`, `get_workflow_as_code`, `archive_workflow`, `unarchive_workflow`, `setup_workflow`, `validate_workflow`, `publish_workflow`, `unpublish_workflow`, `list_workflow_versions`, `restore_workflow_version`, `update_workflow_version` | single-purpose |
 | `data_tables` | 11 |
 | `workspace` | 8 |
 | `workflow_builder_executions` | 8 |
-| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential` | single-purpose |
+| `list_credentials`, `search_credential_types`, `setup_credentials`, `test_credential`, `delete_credential`, `update_credential_description` | single-purpose |
 | `mcp-servers` | 4 |
 | `conversation-history` | 2 |
 | `workflow_builder_task_control` | 3 |
@@ -61,7 +61,7 @@ keep their explicit pattern. `like` matches case; `ilike` ignores case.
 | `n8n-docs` | 3 |
 | `agent-context` | 13 lookup types |
 | `skills` | 5 |
-| `workflow_builder_build_workflow`, `workflow_builder_ask_user`, `parse-file`, `workflow_builder_search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
+| `workflow_builder_build_workflow`, `ask_user`, `parse-file`, `search_models`, `search_nodes`, `get_node_types`, `get_node_parameter_options`, `execute_node` | single-purpose |
 
 ## Orchestration Tools
 
@@ -236,16 +236,19 @@ Atomically apply real credentials to previously-mocked workflow nodes.
 
 **Returns**: `{ updatedNodes: string[] }`
 
-## `workflow_builder_workflows` (12 actions)
+## Workflow tools
 
-The domain surface has up to twelve actions. Version actions are registered only
-when their backend methods are available. Use `get` to inspect a workflow. Use
-`get-as-code`, workspace edits, and `workflow_builder_build_workflow` to change a workflow.
+Each supported action of the former `workflow_builder_workflows` tool is now its own tool.
+A suspended call of the former tool resumes in the tool that owns its action.
+Removed actions, such as `update`, have no replacement tool.
+`get_workflow_node_usage` and the version tools are registered only when their
+backend methods are available. Use `get_workflow` to inspect a workflow. Use
+`get_workflow_as_code`, workspace edits, and `workflow_builder_build_workflow` to change a workflow.
 The internal `getAsWorkflowJSON` and `updateFromWorkflowJSON` service methods
 remain available to compiler, setup, validation, credential, and verification
 flows. They are not model-facing actions.
 
-### `workflow_builder_workflows(action="list")`
+### `list_workflows`
 
 List workflows accessible to the current user.
 
@@ -295,7 +298,7 @@ so it cannot reach a project the user can't read (`scope: "instance"` already
 returns that whole readable set). Writes ignore it and stay locked to the thread's
 bound project.
 
-### `workflow_builder_workflows(action="get")`
+### `get_workflow`
 
 Inspect workflow metadata and structure. Small workflows return their full node
 data. Large workflows return a structural summary unless `full` is true.
@@ -311,7 +314,7 @@ or a structured not-found response.
 
 `activeVersionId` is `null` when the workflow is unpublished.
 
-### `workflow_builder_workflows(action="get-as-code")`
+### `get_workflow_as_code`
 
 Get a workflow as TypeScript SDK code. Used by the builder agent to inspect an
 existing workflow when no workspace source file is already available. Existing
@@ -378,10 +381,10 @@ do not prove runtime correctness. The sandbox CLI has no saved-workflow baseline
 so `workflow_builder_build_workflow` makes the final decision. Preserve unrelated nodes and report
 any remaining blocker instead of expanding the edit.
 
-### `workflow_builder_workflows(action="delete")`
+### `archive_workflow`
 
 Archive a workflow (soft delete, deactivates if needed). Reverse it with
-`workflow_builder_workflows(action="unarchive")`.
+`unarchive_workflow`.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
@@ -389,7 +392,7 @@ Archive a workflow (soft delete, deactivates if needed). Reverse it with
 
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_workflows(action="unarchive")`
+### `unarchive_workflow`
 
 Restore an archived workflow without publishing it.
 
@@ -399,7 +402,7 @@ Restore an archived workflow without publishing it.
 
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_workflows(action="setup")`
+### `setup_workflow`
 
 Open the inline UI for per-node credential and parameter setup. The tool uses a
 suspend/resume state machine and can present several node setup requests in one
@@ -452,7 +455,7 @@ without a run. Otherwise, it runs the saved workflow through `workflow_builder_e
 the output, and reports the test result in chat. Execution approval policy still
 applies. The new panel does not use the wizard's trigger-test resume loop.
 
-### `workflow_builder_workflows(action="publish")`
+### `publish_workflow`
 
 Publish a workflow version to production. Makes it active — it will run on triggers.
 
@@ -463,7 +466,7 @@ Publish a workflow version to production. Makes it active — it will run on tri
 
 **Returns**: `{ success: boolean, activeVersionId?: string }`
 
-### `workflow_builder_workflows(action="unpublish")`
+### `unpublish_workflow`
 
 Stop a workflow from running in production. The draft is preserved.
 
@@ -473,7 +476,7 @@ Stop a workflow from running in production. The draft is preserved.
 
 **Returns**: `{ success: boolean }`
 
-### `workflow_builder_workflows(action="list-versions")` *(conditional — requires license)*
+### `list_workflow_versions` *(conditional — requires license)*
 
 List version history for a workflow (metadata only).
 
@@ -485,7 +488,7 @@ List version history for a workflow (metadata only).
 
 **Returns**: `{ versions: [{ versionId, name, description, authors, createdAt, autosaved, isActive, isCurrentDraft }] }`
 
-### `workflow_builder_workflows(action="validate")`
+### `validate_workflow`
 
 Return the per-node configuration issues a human would see as red warning
 indicators on the canvas — missing credentials, parameter validation errors and
@@ -497,7 +500,7 @@ workflow is configured correctly before suggesting the user run or publish it.
 | `workflowId` | string | yes | Workflow ID |
 | `ignoreIssues` | array | no | Issue categories to skip: `parameters`, `credentials`, `input`, `execution`, `typeUnknown`, `aiGateway`, `chatModel` |
 
-### `workflow_builder_workflows(action="restore-version")` *(conditional — requires license)*
+### `restore_workflow_version` *(conditional — requires license)*
 
 Restore a workflow to a previous version (overwrites current draft). HITL
 approval required. This does not publish the restored draft. A production rollback
@@ -513,7 +516,7 @@ must also use the publish action and its normal approval flow.
 (`unpublished`, `current`, or `stale`). The note states whether publication is still
 required. Denied and failed restores retain their existing error responses.
 
-### `workflow_builder_workflows(action="update-version")` *(conditional — requires `feat:namedVersions` license)*
+### `update_workflow_version` *(conditional — requires `feat:namedVersions` license)*
 
 Update a version's name or description.
 
@@ -838,6 +841,19 @@ nodesWithAccess? }], notFound? }`. The description contains the full stored
 text, or `null` when unset. `notFound` lists the ids that did not resolve. The
 response never contains credential secret data.
 
+### `update_credential_description`
+
+Set or replace an existing credential description only when the user explicitly requests it.
+Describe its purpose and intended use from known context. Keep it concise and exclude secrets.
+Pass `credentialId` and `description`.
+The description is a required string. It is trimmed and limited to 512 characters. Pass a blank string to clear it.
+Returns `{ success: true }`.
+
+The tool is available when credential descriptions are enabled. The user must have
+`credential:update` permission, and the credential must belong to the conversation's project.
+Managed credentials allow description updates. Description updates remain available on protected instances.
+The operation keeps credential secrets, names, and types unchanged.
+
 ### `delete_credential`
 
 Permanently delete a credential. **Irreversible** — HITL confirmation required.
@@ -1047,7 +1063,7 @@ placeholder/new-credential forms have no stored row and cannot execute.
 
 ---
 
-## `workflow_builder_search_models`
+## `search_models`
 
 Preliminary models.dev catalog search when choosing a model without a relevant
 credential or a suitable named builder-hint recommendation. The orchestrator always loads this tool.
@@ -1235,19 +1251,20 @@ pagination, truncation state, and warnings. Text-like results contain extracted
 content and can include a title or page count. All results identify the source
 attachment and can contain an error.
 
-## `workflow_builder_ask_user`
+## `ask_user`
 
 Suspend the run for one or more human decisions.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `questions` | array | yes | Items with `id`, `question`, `type`, and optional `options` |
+| `questions` | array | yes | Items with `question`, `type`, and optional `id`, `options`, `required`, and `freeTextLabel` |
 | `introMessage` | string | no | Text shown above the first question |
 
-Question type is `single`, `multi`, or `text`. The UI adds its own free-text
-choice to select questions. The result is `{ answered: false }` when the user
-dismisses the request. Otherwise it is `{ answered: true, answers }`, with the
-question text added to every answer.
+Question type is `single`, `multi`, or `text`. A question without an `id` gets
+the first free `q1`, `q2`, ... id. Duplicate ids are rejected. The UI adds its
+own free-text choice to select questions. The result is `{ answered: false }`
+when the user dismisses the request or skips every question. Otherwise it is
+`{ answered: true, answers }`, with the question text added to every answer.
 
 A skipped question grants no additional permission. Defaults apply only to
 unspecified details within the requested task. A skipped request to expand scope
@@ -1477,7 +1494,7 @@ tool's relevance self-evident.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `action` | `'search' \| 'get-messages'` | yes | Discriminator |
-| `query` | string | no | Case-insensitive text matched against titles, user messages, and workflow_builder_ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
+| `query` | string | no | Case-insensitive text matched against titles, user messages, and ask_user answers (2–200 chars) as one exact phrase — the description steers the model toward fewer, short, distinctive terms. Omitted → `search` lists the most recent conversations instead |
 | `limit` | number | no | Max conversations to return (default 10 when searching, 5 when listing recent; max 10) |
 | `threadId` | string | `get-messages` | Conversation id from a search result |
 | `aroundMessageId` | string | no | Center the read on this message id (from a search excerpt) |
@@ -1499,14 +1516,14 @@ tail read to continue recent work.
 **`get-messages`** → `{ threadId, title, messages: [{ messageId, role, createdAt, text, userAnswers?: [{ question, answer }] }], hasMoreBefore, hasMoreAfter, error? }`,
 oldest-first. Defaults for the read window (tail/head/around sizing) are
 applied by the service, not the tool. The read is the conversation as the
-user experienced it: their messages, workflow_builder_ask_user Q&A, and each turn's final
+user experienced it: their messages, ask_user Q&A, and each turn's final
 text-only reply. Mid-turn assistant rows — the agent loop only continues on
 tool calls, so a row carrying them is working narration rather than the reply
 that ended the turn — are filtered out in SQL via structural markers
 (unescaped `"type":"tool-call"` can only be block structure — quotes inside
-text are escaped); workflow_builder_ask_user rows stay visible for their Q&A. Rows only
+text are escaped); ask_user rows stay visible for their Q&A. Rows only
 recognizable after parsing — internal auto-follow-up user rows, rows with no
-visible text, workflow_builder_ask_user rows still awaiting an answer, unreadable content — are
+visible text, ask_user rows still awaiting an answer, unreadable content — are
 dropped by the same visibility predicate the window fetch uses, so
 `before`/`after` count returned messages. The fetch over-reads to fill its
 slots; `hasMoreBefore`/`hasMoreAfter` may over-report after a long run of

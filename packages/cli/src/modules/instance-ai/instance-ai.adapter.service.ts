@@ -41,6 +41,7 @@ import { Time, TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import type { User, ExecutionSummaries, EvaluationConfig, IExecutionResponse } from '@n8n/db';
 import {
 	AiBuilderTemporaryWorkflowRepository,
+	CredentialsRepository,
 	ExecutionRepository,
 	FolderRepository,
 	ProjectRepository,
@@ -172,10 +173,12 @@ import { CollaborationService } from '@/collaboration/collaboration.service';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { ConflictError, LockedError, NotFoundError } from '@n8n/errors';
+import { CredentialNotFoundError } from '@/errors/credential-not-found.error';
 import { EvaluationConfigService } from '@/evaluation.ee/evaluation-config.service';
 import { LlmJudgeProviderRegistry } from '@/evaluation.ee/llm-judge-provider-registry';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import {
+	findUnsavedManualExecutionForViewer,
 	getExecutionRedaction,
 	loadExecutionForViewer,
 } from '@/executions/execution-viewer-reader';
@@ -233,6 +236,7 @@ import {
 	exceedsMaxExecutionTimeout,
 } from '@/workflows/execution-timeout-validation';
 import { getRequiredRedactionScopes } from '@/workflows/utils';
+import { WorkflowEngineDefaults } from '@/workflows/workflow-engine-defaults';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -1135,13 +1139,22 @@ export class InstanceAiAdapterService {
 			}
 		};
 
-		const assertCredentialInBoundProject = async (credentialId: string) => {
+		const assertCredentialInBoundProject = async (
+			credentialId: string,
+			{ requireOwner = false }: { requireOwner?: boolean } = {},
+		) => {
 			if (boundProjectId === undefined) return;
 			const owner = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
 				credentialId,
 			);
-			// A missing credential falls through to the caller's not-found path.
-			if (owner) assertInBoundProject(owner.id);
+			if (!owner && requireOwner) {
+				// An absent owner can mean a missing credential or an instance-wide credential.
+				const existingIds = await Container.get(CredentialsRepository).findExistingIds([
+					credentialId,
+				]);
+				if (existingIds.length === 0) throw new CredentialNotFoundError(credentialId);
+			}
+			if (owner || requireOwner) assertInBoundProject(owner?.id);
 		};
 
 		return {
@@ -1824,11 +1837,12 @@ export class InstanceAiAdapterService {
 				}
 
 				// Without an explicit order the engine falls back to legacy v0, which walks
-				// the graph breadth-first. Generated code still wins if it sets its own.
-				const settings = {
+				// the graph breadth-first. Generated code still wins if it sets its own order
+				// or engine.
+				const settings = Container.get(WorkflowEngineDefaults).applyTo({
 					executionOrder: 'v1',
 					...(json.settings ?? {}),
-				} as IWorkflowSettings;
+				} as IWorkflowSettings);
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —
@@ -2212,9 +2226,11 @@ export class InstanceAiAdapterService {
 			executionId: string,
 			scopes: Scope[] = ['workflow:read', 'execution:read'],
 		) => {
-			const execution = await executionRepository.findSingleExecution(executionId, {
-				includeData: false,
-			});
+			// A manual execution that n8n did not save stays readable only for the user who
+			// started it, until pruning hard-deletes it.
+			const execution =
+				(await executionRepository.findSingleExecution(executionId, { includeData: false })) ??
+				(await findUnsavedManualExecutionForViewer(executionId, user));
 			if (!execution) {
 				throw new Error(`Execution ${executionId} not found`);
 			}
@@ -2559,7 +2575,7 @@ export class InstanceAiAdapterService {
 				const target = nodes.find((node) => node.name === nodeName);
 				if (!target) {
 					throw new UserError(
-						`The workflow has no node named "${nodeName}". Use workflow_builder_workflows(action="get-as-code") to see the node names.`,
+						`The workflow has no node named "${nodeName}". Use get_workflow_as_code to see the node names.`,
 					);
 				}
 				if (target.disabled) {
@@ -3052,6 +3068,11 @@ export class InstanceAiAdapterService {
 					type: credential.type,
 					...(credential.description !== undefined && { description: credential.description }),
 				} satisfies CredentialDetail;
+			},
+
+			async updateDescription(credentialId, description) {
+				await assertCredentialInBoundProject(credentialId, { requireOwner: true });
+				await credentialsService.updateDescription(user, credentialId, description);
 			},
 
 			async delete(credentialId: string) {

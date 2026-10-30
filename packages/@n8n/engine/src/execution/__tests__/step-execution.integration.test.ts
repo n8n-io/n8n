@@ -673,7 +673,7 @@ describe('step execution (integration)', () => {
 		const call = steps.find(({ nodeId }) => nodeId === 'call');
 		expect(call?.status).toBe('completed');
 		expect(call?.waitDeclaration).toEqual({
-			subExecutionId: subExecutionId,
+			subExecutionId,
 		});
 		expect(call?.resumeCause).toEqual({
 			kind: 'subExecution',

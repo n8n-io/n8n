@@ -956,7 +956,7 @@ describe('POST /api/workflow-executions/:id/cancel (integration)', () => {
 				nodeId: 'call',
 				iteration: 0,
 				status: 'waiting',
-				waitDeclaration: { subExecutionId: subExecutionId },
+				waitDeclaration: { subExecutionId },
 			}),
 		);
 		await createStores(dataSource).executionStore.createExecution({
