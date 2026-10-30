@@ -39,6 +39,7 @@ import {
 	runTraceSignalOf,
 	type RunTraceSignal,
 } from '../run-trace-metadata';
+import { buildResumeTraceInput } from '../tracing/resume-trace-input';
 import {
 	buildSuspensionTraceMetadata,
 	buildSuspensionTraceOutputs,
@@ -118,20 +119,6 @@ function traceStatusOf(status: SystemAgentTurnOutcome['status']): TraceStatus {
  */
 function steeringMessageOf(turn: SystemAgentResumeTurn): string | undefined {
 	return isCancellation(turn.resumeData) ? turn.resumeData.message : undefined;
-}
-
-/** The resume input as the trace records it: the answer's shape, not its values. */
-function resumeTraceInput(turn: SystemAgentResumeTurn) {
-	const { resumeData } = turn;
-	return {
-		toolCallId: turn.toolCallId,
-		...(isRecord(resumeData)
-			? {
-					resumeFields: Object.keys(resumeData),
-					...(typeof resumeData.approved === 'boolean' ? { approved: resumeData.approved } : {}),
-				}
-			: {}),
-	};
 }
 
 interface AssistantTraceScope {
@@ -466,9 +453,14 @@ export class AssistantTurnTracer {
 			);
 		}
 		return await this.resumeTurn(scope, anchor, {
-			input: resumeTraceInput(turn),
+			input: { toolCallId: turn.toolCallId, ...buildResumeTraceInput(turn.resumeData) },
 			orchestratorInputs: { toolCallId: turn.toolCallId },
-			metadata: { pending_tool_call_id: turn.toolCallId },
+			metadata: {
+				pending_tool_call_id: turn.toolCallId,
+				...(isRecord(turn.resumeData) && typeof turn.resumeData.approved === 'boolean'
+					? { approved: turn.resumeData.approved }
+					: {}),
+			},
 		});
 	}
 

@@ -193,6 +193,7 @@ import {
 	type MessageTraceFinalization,
 	type OrchestratorResumeReason,
 } from './tracing';
+import { buildResumeTraceInput } from './tracing/resume-trace-input';
 import { buildSuspensionTraceOutputs } from './tracing/suspension-trace';
 import { WorkflowVerificationObligationService } from './workflow-verification-obligation-service';
 import { WorkflowVerificationTaskProjector } from './workflow-verification-task-projector';
@@ -3621,16 +3622,7 @@ export class InstanceAiService {
 			runId,
 			userId: activeUser.id,
 			modelId,
-			input: {
-				requestId,
-				toolCallId,
-				approved: data.approved,
-				resumeFields: Object.keys(resumeData),
-				...(data.userInput ? { userInput: data.userInput } : {}),
-				...(data.action ? { action: data.action } : {}),
-				...(data.resourceDecision ? { resourceDecision: data.resourceDecision } : {}),
-				...(data.answers ? { answers: data.answers } : {}),
-			},
+			input: { requestId, toolCallId, ...buildResumeTraceInput(resumeData) },
 			resumeReason: 'approval',
 			metadata: {
 				...(await this.readThreadProvenance(activeUser.id, threadId)),

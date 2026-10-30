@@ -312,7 +312,7 @@ describe('AssistantTurnTracer', () => {
 			runId: 'agent-run-1',
 			toolCallId: 'tc-1',
 			checkpointHostMetadata: { assistantTrace: storedAnchor },
-			resumeData: { approved: true, userInput: 'secret text' },
+			resumeData: { approved: true, userInput: 'Post it to #general' },
 			emitHostEvent: vi.fn(),
 			...overrides,
 		} as unknown as SystemAgentResumeTurn;
@@ -354,7 +354,7 @@ describe('AssistantTurnTracer', () => {
 		);
 	});
 
-	it('links a card answer to the beat it continues, without the answer values', async () => {
+	it('links a card answer to the beat it continues, with the answer values', async () => {
 		const { context } = traceContext();
 		vi.mocked(continueInstanceAiTraceContext).mockResolvedValue(context);
 
@@ -365,7 +365,12 @@ describe('AssistantTurnTracer', () => {
 			undefined,
 			expect.objectContaining({
 				messageGroupId: 'mg-1',
-				input: { toolCallId: 'tc-1', resumeFields: ['approved', 'userInput'], approved: true },
+				input: {
+					toolCallId: 'tc-1',
+					resumeFields: ['approved', 'userInput'],
+					approved: true,
+					userInput: 'Post it to #general',
+				},
 				metadata: expect.objectContaining({
 					resume_reason: 'approval',
 					continued_from_trace_id: 'otel-0',
@@ -373,6 +378,7 @@ describe('AssistantTurnTracer', () => {
 					resumed_from_span_id: 'span-0',
 					resumed_from_activation_id: 'actor-0',
 					pending_tool_call_id: 'tc-1',
+					approved: true,
 					assistant_runtime: 'agents',
 				}),
 			}),
