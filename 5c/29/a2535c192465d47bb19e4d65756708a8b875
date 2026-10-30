@@ -1,0 +1,47 @@
+packages/cli/src/modules/skills/database/repositories/skill.repository.ts
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 25,53,124-129
+packages/frontend/editor-ui/src/features/settings/context/skills.store.ts
+  s_6a6f6f627f5e7d::t_bed1d70e423c3b 110-115
+  s_6a6f6f627f5e7d::t_06747b72d79bd9 109
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 108,116-117,129
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSourceDetails.vue
+  s_6a6f6f627f5e7d::t_938f1f76449c99 1-67,74-80,84-85,89-91,97,107-117,130-132,146-168,170-206
+  s_6a6f6f627f5e7d::t_0cd300e221aad1 68,70-73,81-83,86-88,92-96,98-106,118-129,133-145
+  s_6a6f6f627f5e7d::t_f4cb6def0e7754 169
+  s_6a6f6f627f5e7d::t_bc5746076d9f0c 69
+packages/frontend/editor-ui/src/features/settings/context/skills.api.ts
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 27
+packages/cli/src/modules/skills/__tests__/integration/skill-source.controller.integration.test.ts
+  s_6a6f6f627f5e7d::t_bed1d70e423c3b 514,518-520,522,529-539,549-551
+  s_6a6f6f627f5e7d::t_06747b72d79bd9 7,515-517,521,523-528,540-548,552-557
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSources.test.ts
+  s_6a6f6f627f5e7d::t_06747b72d79bd9 1,16,39,59-61,72,87-90,126-155
+  s_6a6f6f627f5e7d::t_bed1d70e423c3b 40-58
+packages/@n8n/api-types/src/agents/skills.schema.ts
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 159-160
+packages/frontend/editor-ui/src/features/settings/context/components/SkillSources.vue
+  s_6a6f6f627f5e7d::t_f2c7d9384ea4bd 44,49,55-61,64
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 18-19,192-197
+packages/cli/src/modules/skills/services/skill.service.ts
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 173
+packages/frontend/@n8n/i18n/src/locales/en.json
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 3883-3888
+packages/frontend/editor-ui/src/features/settings/context/assets/github.svg
+  s_6a6f6f627f5e7d::t_100702ec5b62ea 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "5c29a2535c192465d47bb19e4d65756708a8b875",
+  "prompts": {},
+  "sessions": {
+    "s_6a6f6f627f5e7d": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a187bd-c891-7aa0-9976-5a07a1ef9b49",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Arvin Ansari <arvin.ansari@n8n.io>"
+    }
+  }
+}
