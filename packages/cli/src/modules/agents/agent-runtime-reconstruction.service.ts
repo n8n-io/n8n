@@ -38,7 +38,7 @@ import { AgentsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { nanoid } from 'nanoid';
 
 import { ActiveExecutions } from '@/active-executions';

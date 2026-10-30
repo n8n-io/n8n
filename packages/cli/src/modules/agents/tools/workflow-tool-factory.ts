@@ -35,9 +35,9 @@ import {
 	isTerminalExecutionStatus,
 	WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	TimeoutExecutionCancelledError,
-	OperationalError,
 	isIndefiniteWait,
 } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 

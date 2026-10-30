@@ -6,9 +6,9 @@ import {
 } from '@n8n/api-types';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
-import { jsonParse, UnexpectedError, UserError } from 'n8n-workflow';
+import { jsonParse } from 'n8n-workflow';
 
-import { NotFoundError } from '@n8n/errors';
+import { NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 
 import { AgentSkillRefsService } from '../agent-skill-refs.service';
 import { toAgentDocument } from '../json-config/agent-document';

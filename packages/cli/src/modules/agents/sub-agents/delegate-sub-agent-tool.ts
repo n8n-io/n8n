@@ -9,9 +9,8 @@ import {
 	type SubAgentTaskDifficulty,
 } from '@n8n/agents';
 import type { BudgetGuardrailConfig, SubAgentRunPolicy, SubAgentSource } from '@n8n/api-types';
-import { OperationalError, UserError } from 'n8n-workflow';
 
-import { ResponseError } from '@n8n/errors';
+import { ResponseError, OperationalError, UserError } from '@n8n/errors';
 
 import { AgentExecutionRecordingError } from '../agent-execution-recording.error';
 import { decodeAgentSandboxHostMetadata } from '../agent-sandbox-principal';
