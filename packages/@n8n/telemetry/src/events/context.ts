@@ -71,6 +71,13 @@ const skillMethod = z
 /** The type of a Skill Sync source. */
 const skillSourceProvider = z.enum(['github']).describe('The type of the source, such as GitHub');
 
+/** Whether n8n reads a source with a credential. */
+const skillSourceAccess = z
+	.enum(['public', 'credential'])
+	.describe(
+		'`public` reads a public source without a credential. `credential` is a private source',
+	);
+
 /** Where a source puts its skills. */
 const skillSourceScopeType = z
 	.enum(['global', 'team', 'personal'])
@@ -86,6 +93,16 @@ const skillSourceReason = z
 	.describe(
 		'Reason code of a failure, such as `not_found`, `duplicate_source` or `name_taken`. `unexpected` is a failure with no known reason. A success carries only `too_many_skills` or `too_deep`, when the source had skills that n8n did not list. Absent on other successes',
 	);
+
+/** Where a synced skill comes from. Both are absent for a skill that Skill Sync did not import. */
+const skillOrigin = {
+	source_provider: skillSourceProvider
+		.optional()
+		.describe('The type of the source of a synced skill, such as GitHub'),
+	source_access: skillSourceAccess
+		.optional()
+		.describe('Whether the source of a synced skill is public or private'),
+};
 
 const preferenceExampleId = z
 	.enum(['workflows', 'agents', 'credentials', 'answers'])
@@ -391,6 +408,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			project_id: skillProjectId,
 			source: skillSource,
 			method: skillMethod,
+			...skillOrigin,
 		}),
 	},
 	USER_UPDATED_SKILL: {
@@ -431,6 +449,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 			file: z
 				.enum(['skill_md', 'reference'])
 				.describe('`skill_md` is the SKILL.md file. `reference` is a file under `references/`'),
+			...skillOrigin,
 		}),
 	},
 	USER_CONNECTED_SKILL_SOURCE: {
@@ -440,9 +459,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
-			access: z
-				.enum(['public', 'credential'])
-				.describe('`public` reads a public source without a credential'),
+			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
 			duplicate_result: z
 				.enum(['none', 'warning', 'blocked'])
@@ -460,6 +477,7 @@ export const CONTEXT_TELEMETRY = defineTelemetryEvents({
 		properties: z.object({
 			user_id: userId,
 			provider: skillSourceProvider,
+			access: skillSourceAccess,
 			scope_type: skillSourceScopeType,
 			first_or_more: z
 				.enum(['first', 'more'])

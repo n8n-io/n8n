@@ -233,7 +233,13 @@ export class SkillService {
 		) {
 			return null;
 		}
-		return toMcpSkillContent(row);
+		const content = toMcpSkillContent(row);
+		const synced = await this.sourceRepository.findSyncedFrom(skillId);
+		if (!synced) return content;
+		return {
+			...content,
+			origin: { provider: synced.type, access: synced.credentialId ? 'credential' : 'public' },
+		};
 	}
 
 	async get(user: User, skillId: string): Promise<SkillDetail> {

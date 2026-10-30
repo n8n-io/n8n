@@ -31,7 +31,10 @@ class SkillSourceLinkTable extends BaseRepository<SkillSourceLink> {
 export type SameSource = Pick<SkillSourceConnection, 'id' | 'projectId'>;
 
 /** The source of a synced skill, and where the skill is in it. */
-export type SyncedFromRow = Pick<SkillSourceConnection, 'type' | 'locator' | 'projectId'> & {
+export type SyncedFromRow = Pick<
+	SkillSourceConnection,
+	'type' | 'locator' | 'projectId' | 'credentialId'
+> & {
 	sourceId: string;
 	remoteRef: Record<string, unknown>;
 };
@@ -149,6 +152,7 @@ export class SkillSourceRepository {
 			type: source.type,
 			locator: source.locator,
 			projectId: source.projectId,
+			credentialId: source.credentialId,
 			remoteRef: link.remoteRef,
 		};
 	}
