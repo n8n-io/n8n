@@ -12,6 +12,7 @@ import {
 } from './mcp.constants';
 import { isJSONRPCRequest } from './mcp.typeguards';
 import type { JSONRPCRequest, McpClientInfo } from './mcp.types';
+import { RENAMED_TOOLS } from './renamed-tools';
 
 type McpExecutionMode = 'manual' | 'production';
 
@@ -75,6 +76,38 @@ export const getToolName = (body: unknown): string => {
 	}
 
 	return 'unknown';
+};
+
+/**
+ * Rewrites a `tools/call` request that names a tool by a name this instance no
+ * longer exposes, so a client holding a cached tool list still reaches the
+ * tool after an upgrade. Scope filtering is unaffected: the request is served
+ * under the current name, which is the name `TOOLS_BY_SCOPE` gates.
+ *
+ * A call the current tool cannot answer faithfully is left alone, so it fails
+ * as it does today rather than returning something the client did not ask for.
+ *
+ * Returns the body to serve, and the old name when one was rewritten.
+ */
+export const resolveRenamedToolCall = (body: unknown): { body: unknown; renamedFrom?: string } => {
+	if (!isJSONRPCRequest(body) || body.method !== 'tools/call') return { body };
+
+	const requestedName = body.params?.name;
+	if (typeof requestedName !== 'string') return { body };
+
+	const renamed = RENAMED_TOOLS[requestedName];
+	if (renamed === undefined) return { body };
+
+	const args = body.params?.arguments;
+	const carriesDroppedArgument = renamed.droppedArguments?.some(
+		(argument) => isRecord(args) && argument in args,
+	);
+	if (carriesDroppedArgument) return { body };
+
+	return {
+		body: { ...body, params: { ...body.params, name: renamed.currentName } },
+		renamedFrom: requestedName,
+	};
 };
 
 /**
