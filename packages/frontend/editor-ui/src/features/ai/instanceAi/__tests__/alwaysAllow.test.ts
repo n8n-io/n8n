@@ -47,6 +47,22 @@ describe('buildAlwaysAllowKey', () => {
 		});
 	});
 
+	describe('split execution tools', () => {
+		it('maps run_workflow and run_workflow_step to the same keys as the former tool', () => {
+			expect(buildAlwaysAllowKey('run_workflow', { workflowId: 'wf-1' })).toBe(
+				'executions:run:wf-1',
+			);
+			expect(buildAlwaysAllowKey('run_workflow', {})).toBeNull();
+			expect(
+				buildAlwaysAllowKey('run_workflow_step', {
+					workflowId: 'wf-1',
+					nodeName: 'HTTP Request',
+				}),
+			).toBe('executions:run-step:wf-1:HTTP Request');
+			expect(buildAlwaysAllowKey('run_workflow_step', { workflowId: 'wf-1' })).toBeNull();
+		});
+	});
+
 	describe('workflow edits', () => {
 		it('scopes an update and a build to the workflow', () => {
 			expect(

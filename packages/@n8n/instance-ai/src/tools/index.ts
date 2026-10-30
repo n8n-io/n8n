@@ -3,6 +3,8 @@ import type { BuiltTool } from '@n8n/agents';
 import {
 	DATA_TABLE_TOOL_ACTIONS,
 	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	EXECUTION_TOOL_ACTIONS,
+	EXECUTION_TOOL_NAME_BY_ACTION,
 	WORKFLOW_TOOL_NAME_BY_ACTION,
 } from '@n8n/api-types';
 
@@ -116,7 +118,10 @@ function getOrchestratorDomainToolFactories(
 			WORKFLOW_TOOL_NAME_BY_ACTION[action],
 			() => loadWorkflowsTool().createWorkflowTool(context, action),
 		]),
-		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
+		...EXECUTION_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			EXECUTION_TOOL_NAME_BY_ACTION[action],
+			() => loadExecutionsTool().createExecutionTool(context, action),
+		]),
 		[
 			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
 			() => loadCredentialsTool().createListCredentialsTool(context),

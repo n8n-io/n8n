@@ -1,6 +1,6 @@
-import { InstanceAiThreadTabsRequestDto } from '../instance-ai-thread-tabs-request.dto';
+import { AssistantThreadTabsRequestDto } from '../assistant-thread-tabs-request.dto';
 
-describe('InstanceAiThreadTabsRequestDto', () => {
+describe('AssistantThreadTabsRequestDto', () => {
 	const state = {
 		tabs: [{ type: 'workflow' as const, id: 'wf-1', name: 'Digest' }],
 		closedTabs: [],
@@ -9,7 +9,7 @@ describe('InstanceAiThreadTabsRequestDto', () => {
 
 	// The save endpoint stores the parsed payload as it is, so it must hold only schema keys.
 	it('strips unknown keys, also inside the tabs', () => {
-		const result = InstanceAiThreadTabsRequestDto.safeParse({
+		const result = AssistantThreadTabsRequestDto.safeParse({
 			...state,
 			unknownKey: 'dropped',
 			tabs: [{ ...state.tabs[0], unknownKey: 'dropped' }],
@@ -20,12 +20,10 @@ describe('InstanceAiThreadTabsRequestDto', () => {
 	});
 
 	it('keeps previewOpen when it is sent, and leaves it out when it is not', () => {
-		expect(InstanceAiThreadTabsRequestDto.safeParse({ ...state, previewOpen: false }).data).toEqual(
-			{
-				...state,
-				previewOpen: false,
-			},
-		);
-		expect(InstanceAiThreadTabsRequestDto.safeParse(state).data).not.toHaveProperty('previewOpen');
+		expect(AssistantThreadTabsRequestDto.safeParse({ ...state, previewOpen: false }).data).toEqual({
+			...state,
+			previewOpen: false,
+		});
+		expect(AssistantThreadTabsRequestDto.safeParse(state).data).not.toHaveProperty('previewOpen');
 	});
 });

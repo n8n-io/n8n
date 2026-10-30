@@ -30,12 +30,14 @@ const {
 	loadResultController,
 	loadConfigurationController,
 	loadEvalController,
+	loadAssistantAgentController,
 } = vi.hoisted(() => ({
 	loadSuggestionEventRelay: vi.fn(),
 	createSuggestionEventRelay: vi.fn(),
 	loadResultController: vi.fn(),
 	loadConfigurationController: vi.fn(),
 	loadEvalController: vi.fn(),
+	loadAssistantAgentController: vi.fn(),
 }));
 
 vi.mock('@/credentials/instance-credential-broker', () => ({
@@ -76,6 +78,10 @@ vi.mock('../instance-ai.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
 vi.mock('../self-healing/self-healing-configurations.controller', () => {
 	loadConfigurationController();
+	return {};
+});
+vi.mock('../assistant-agent/assistant-agent.controller', () => {
+	loadAssistantAgentController();
 	return {};
 });
 vi.mock('../eval/eval.controller', () => {
@@ -137,6 +143,32 @@ describe('InstanceAiModule.init', () => {
 			tracer,
 		};
 	}
+
+	// The controller module is evaluated once in this file, so this test must run before
+	// any other test that registers the Assistant agent.
+	it('loads the Assistant agent routes only when the Assistant agent registers', async () => {
+		const { config, investigations } = setup();
+		mockInstance(SystemAgentRegistrationService).register.mockResolvedValue();
+		mockInstance(AssistantAgentProvider);
+		const modules = mockInstance(ModuleRegistry);
+		let eligibleModules = ['instance-ai', 'agents'];
+		Object.defineProperty(modules, 'eligibleModules', { get: () => eligibleModules });
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		expect(loadAssistantAgentController).not.toHaveBeenCalled();
+
+		config.assistantAgentEnabled = true;
+		eligibleModules = ['instance-ai'];
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+		expect(loadAssistantAgentController).not.toHaveBeenCalled();
+
+		eligibleModules = ['instance-ai', 'agents'];
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(3));
+		expect(loadAssistantAgentController).toHaveBeenCalledOnce();
+	});
 
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
 		const { config, sources, investigations, mutationHooks, configurations } = setup();
