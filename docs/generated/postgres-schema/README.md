@@ -78,7 +78,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.execution_annotation_tags](public.execution_annotation_tags.md) | 2 |  | BASE TABLE |
 | [public.execution_annotations](public.execution_annotations.md) | 6 |  | BASE TABLE |
 | [public.execution_data](public.execution_data.md) | 4 |  | BASE TABLE |
-| [public.execution_entity](public.execution_entity.md) | 19 |  | BASE TABLE |
+| [public.execution_entity](public.execution_entity.md) | 20 |  | BASE TABLE |
 | [public.execution_ledger](public.execution_ledger.md) | 16 |  | BASE TABLE |
 | [public.execution_metadata](public.execution_metadata.md) | 4 |  | BASE TABLE |
 | [public.folder](public.folder.md) | 6 |  | BASE TABLE |
@@ -1237,6 +1237,7 @@ erDiagram
   integer id
   bigint jsonSizeBytes
   varchar mode
+  smallint resumeAttempts
   varchar retryOf
   varchar retrySuccessId
   timestamp_3__with_time_zone startedAt

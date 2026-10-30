@@ -1,5 +1,5 @@
 import { EventService } from '@n8n/backend-services';
-import type { CrashedExecution } from '@n8n/db';
+import type { CrashedExecution, ResumableExecutionStatus } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
@@ -28,6 +28,22 @@ export class ExecutionCrashService {
 		return await this.executionRepository.markAsCrashed(executionIds, (batch) => {
 			this.count(batch);
 			this.announce(batch, detector);
+		});
+	}
+
+	/** Mark a `waiting` or `new` execution as `crashed`, which `markAsCrashed` skips. */
+	async markAsCrashedFrom(
+		executionId: string,
+		status: ResumableExecutionStatus,
+		detector: CrashDetector,
+		expectedAttempts?: number,
+	): Promise<CrashedExecution[]> {
+		return await this.executionRepository.markAsCrashedFrom(executionId, status, {
+			expectedAttempts,
+			onTransitioned: (batch) => {
+				this.count(batch);
+				this.announce(batch, detector);
+			},
 		});
 	}
 
