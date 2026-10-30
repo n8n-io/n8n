@@ -916,9 +916,12 @@ describe('NodeResourceExplorerService', () => {
 
 			await service.resolveParameterOptions(user, resolveParams);
 
-			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith('cred-1', user, [
-				'credential:read',
-			]);
+			expect(credentialsFinderService.findCredentialForUser).toHaveBeenCalledWith(
+				'cred-1',
+				user,
+				['credential:read'],
+				{ excludeSeeOnlyRoles: true },
+			);
 			expect(dynamicNodeParametersService.getResourceLocatorResults.mock.calls[0]?.[5]).toEqual({
 				slackApi: { id: 'cred-1', name: 'Stored Slack' },
 			});
