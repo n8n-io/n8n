@@ -115,7 +115,7 @@ it('reads escaped ids back from Git paths', async () => {
 		const directoryWriter = new DirectoryPackageWriter(root);
 		await directoryWriter.writeFile(entityFilePath('projects', project.target), 'project');
 		await directoryWriter.writeFile(entityFilePath('workflows', workflow.target), 'workflow');
-		const git = simpleGit(root);
+		const git = createFixtureGit(root);
 		await git.init(['--object-format=sha1']);
 		await git.add('.');
 		const tree = (await git.raw(['write-tree'])).trim();

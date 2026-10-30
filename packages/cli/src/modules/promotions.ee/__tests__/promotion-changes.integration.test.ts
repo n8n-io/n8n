@@ -1344,7 +1344,7 @@ describe('resources in the preview', () => {
 		await linkUserToProject(owner, project, 'project:admin');
 		await createWorkflow({ name: 'Invoice', nodes: [], connections: {} }, project);
 		const environments = await createInstanceEnvironments();
-		await promoteBaseline(environments.promote.id, owner);
+		await exportPreviewBaseline(environments.promote, owner);
 		await projects.update(project.id, { name: 'Finance EU' });
 		const agent = server.authAgentFor(owner);
 		const endpoint = `/promotions/${project.id}/changes/promote`;
