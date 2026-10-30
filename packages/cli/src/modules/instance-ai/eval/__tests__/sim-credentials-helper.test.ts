@@ -8,7 +8,6 @@ import { mock } from 'vitest-mock-extended';
 import { baseUrlProperty, SimCredentialsHelper } from '../sim-credentials-helper';
 
 const PROXY = 'http://127.0.0.1:4567';
-const SIM_HOSTS = ['api.openai.com', 'generativelanguage.googleapis.com'];
 
 const urlProperty = (name: string, defaultValue: string): INodeProperties => ({
 	displayName: name,
@@ -21,7 +20,7 @@ async function decrypt(data: Record<string, unknown>, properties: INodePropertie
 	const inner = mock<ICredentialsHelper>();
 	inner.getDecrypted.mockResolvedValue(data as never);
 	inner.getCredentialsProperties.mockReturnValue(properties);
-	return await new SimCredentialsHelper(inner, PROXY, SIM_HOSTS).getDecrypted(
+	return await new SimCredentialsHelper(inner, PROXY).getDecrypted(
 		mock<IWorkflowExecuteAdditionalData>(),
 		{ id: 'cred-1', name: 'cred' },
 		'someApi',
@@ -47,12 +46,12 @@ describe('SimCredentialsHelper', () => {
 		expect(data.host).toBe(`${PROXY}/sim/generativelanguage.googleapis.com`);
 	});
 
-	it('leaves a base URL the sim server does not serve alone', async () => {
-		const data = await decrypt({ apiKey: 'k', url: 'https://llm.internal.example/v1' }, [
+	it('points any other base URL at the proxy too, which refuses what the sim server does not serve', async () => {
+		const data = await decrypt({ apiKey: 'k', url: 'https://llm.internal.example:8443/v1' }, [
 			urlProperty('url', 'https://api.openai.com/v1'),
 		]);
 
-		expect(data.url).toBe('https://llm.internal.example/v1');
+		expect(data.url).toBe(`${PROXY}/sim/llm.internal.example:8443/v1`);
 	});
 
 	it('leaves a credential without a base URL alone', async () => {

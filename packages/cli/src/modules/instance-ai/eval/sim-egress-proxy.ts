@@ -22,16 +22,21 @@ export function parseSimGateway(value: string): SimGateway | undefined {
 }
 
 /**
- * Whether the sim server serves `host`. Patterns come from its manifests: exact
- * hosts, `*.suffix` wildcards and `{name}.suffix` templates.
+ * Whether the sim server serves `host`. Patterns come from its manifests: exact hosts,
+ * and hosts where `*` or a `{name}` template stands for one part of a DNS label
+ * (`*.myshopify.com`, `{subdomain}.zendesk.com`, `*-aiplatform.googleapis.com`).
  */
 export function isSimHost(host: string, patterns: readonly string[]): boolean {
 	const h = host.toLowerCase();
 	return patterns.some((raw) => {
 		const pattern = raw.toLowerCase();
-		if (pattern.startsWith('*.')) return h.endsWith(pattern.slice(1)) || h === pattern.slice(2);
-		if (pattern.includes('}')) return h.endsWith(pattern.slice(pattern.indexOf('}') + 1));
-		return h === pattern;
+		if (pattern.startsWith('*.') && h === pattern.slice(2)) return true;
+		if (!pattern.includes('.') || !/[*{]/.test(pattern)) return h === pattern;
+		const source = pattern
+			.split(/(\*|\{[^{}.]+\})/)
+			.map((part, i) => (i % 2 === 1 ? '[a-z0-9-]+' : part.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')))
+			.join('');
+		return new RegExp(`^${source}$`).test(h);
 	});
 }
 
@@ -47,8 +52,8 @@ const FORWARD_PREFIX = '/sim/';
  * run): a CONNECT to a host the sim server serves is tunnelled to it unchanged, so
  * Host, SNI and request signatures stay as in production. AI SDK calls arrive on
  * `/sim/<host>/...`, because the run points their credential's base URL here, and go
- * on to the sim server over TLS for that host. Loopback targets (the instance itself)
- * are reached directly. Any other host is refused and recorded: the run cannot
+ * on to the sim server over TLS for that host. The instance's own port on loopback is
+ * reached directly. Any other target is refused and recorded: the run cannot
  * simulate it.
  */
 export class SimEgressProxy {
@@ -60,6 +65,8 @@ export class SimEgressProxy {
 	constructor(
 		private readonly gateway: SimGateway,
 		private readonly simHosts: readonly string[],
+		/** Loopback ports the run may reach directly: the instance's own. */
+		private readonly loopbackPorts: readonly number[],
 		private readonly logger: Logger,
 	) {}
 
@@ -88,13 +95,17 @@ export class SimEgressProxy {
 
 	private handleConnect(req: IncomingMessage, client: Socket, head: Buffer): void {
 		const [host, portText] = splitHostPort(req.url ?? '');
-		const target = LOOPBACK.has(host)
-			? { host, port: Number(portText) || 443 }
+		const port = Number(portText) || 443;
+		const loopback = LOOPBACK.has(host);
+		const target = loopback
+			? this.loopbackPorts.includes(port)
+				? { host, port }
+				: undefined
 			: isSimHost(host, this.simHosts)
 				? this.gateway
 				: undefined;
 		if (!target) {
-			this.refuse(host);
+			this.refuse(loopback ? `${host}:${port}` : host);
 			client.end('HTTP/1.1 502 Not Served By The Simulation\r\n\r\n');
 			return;
 		}
@@ -119,25 +130,37 @@ export class SimEgressProxy {
 		if (/^https?:\/\//i.test(url)) {
 			const target = new URL(url);
 			if (LOOPBACK.has(target.hostname)) {
-				this.forwardDirect(target, req, res);
+				const port = Number(target.port) || 80;
+				if (this.loopbackPorts.includes(port)) {
+					this.forwardDirect(target, req, res);
+					return;
+				}
+				this.refuse(`${target.hostname}:${port}`);
+				res.writeHead(502).end(`${target.host} is not served by the simulated services`);
 				return;
 			}
-			this.forward(target.hostname, `${target.pathname}${target.search}`, req, res);
+			this.forward(target.host, `${target.pathname}${target.search}`, req, res);
 			return;
 		}
 		if (url.startsWith(FORWARD_PREFIX)) {
 			const rest = url.slice(FORWARD_PREFIX.length);
 			const slash = rest.search(/[/?]/);
-			const host = slash === -1 ? rest : rest.slice(0, slash);
+			const authority = slash === -1 ? rest : rest.slice(0, slash);
 			const path = slash === -1 ? '/' : rest.slice(slash);
-			this.forward(host, path.startsWith('/') ? path : `/${path}`, req, res);
+			this.forward(authority, path.startsWith('/') ? path : `/${path}`, req, res);
 			return;
 		}
 		res.writeHead(404).end();
 	}
 
-	/** Sends a request to the sim server over TLS for `host`, as `https://<host><path>`. */
-	private forward(host: string, path: string, req: IncomingMessage, res: ServerResponse): void {
+	/** Sends a request to the sim server over TLS for `authority` (`host[:port]`), as `https://<authority><path>`. */
+	private forward(
+		authority: string,
+		path: string,
+		req: IncomingMessage,
+		res: ServerResponse,
+	): void {
+		const [host] = splitHostPort(authority);
 		if (!isSimHost(host, this.simHosts)) {
 			this.refuse(host);
 			res.writeHead(502).end(`${host} is not served by the simulated services`);
@@ -145,7 +168,7 @@ export class SimEgressProxy {
 		}
 		// `proxy-connection` belongs to the hop into this proxy, not to the request.
 		const { 'proxy-connection': _hop, ...forwarded } = req.headers;
-		const headers = { ...forwarded, host };
+		const headers = { ...forwarded, host: authority };
 		const upstream = httpsRequest(
 			{
 				host: this.gateway.host,

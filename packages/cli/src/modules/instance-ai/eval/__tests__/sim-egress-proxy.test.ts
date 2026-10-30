@@ -39,12 +39,26 @@ async function tunnel(proxyUrl: string, target: string, payload: string): Promis
 
 describe('isSimHost', () => {
 	it('matches exact hosts, wildcards and templates, and nothing else', () => {
-		const patterns = ['slack.com', '*.myshopify.com', '{subdomain}.zendesk.com'];
+		const patterns = [
+			'slack.com',
+			'*.myshopify.com',
+			'{subdomain}.zendesk.com',
+			'*-aiplatform.googleapis.com',
+		];
 
 		expect(isSimHost('Slack.com', patterns)).toBe(true);
 		expect(isSimHost('acme.myshopify.com', patterns)).toBe(true);
 		expect(isSimHost('acme.zendesk.com', patterns)).toBe(true);
+		expect(isSimHost('us-central1-aiplatform.googleapis.com', patterns)).toBe(true);
 		expect(isSimHost('api.example.com', patterns)).toBe(false);
+		expect(isSimHost('evil.com.zendesk.com.example.com', patterns)).toBe(false);
+		expect(isSimHost('a.b.zendesk.com', patterns)).toBe(false);
+	});
+
+	it('never lets a malformed template match other hosts', () => {
+		expect(isSimHost('api.example.com', ['{broken.example.com'])).toBe(false);
+		expect(isSimHost('api.example.com', ['{name}'])).toBe(false);
+		expect(isSimHost('localhost', ['{name}'])).toBe(false);
 	});
 });
 
@@ -75,6 +89,7 @@ describe('SimEgressProxy', () => {
 		proxy = new SimEgressProxy(
 			{ host: '127.0.0.1', port: gateway.port },
 			['slack.com'],
+			[],
 			mock<Logger>(),
 		);
 		const proxyUrl = await proxy.start();
@@ -86,10 +101,10 @@ describe('SimEgressProxy', () => {
 		expect(proxy.refusedHosts.size).toBe(0);
 	});
 
-	it('reaches a loopback target directly', async () => {
+	it("reaches the instance's own loopback port directly", async () => {
 		const local = await startRecorder();
 		servers.push(local.server);
-		proxy = new SimEgressProxy({ host: '127.0.0.1', port: 1 }, [], mock<Logger>());
+		proxy = new SimEgressProxy({ host: '127.0.0.1', port: 1 }, [], [local.port], mock<Logger>());
 		const proxyUrl = await proxy.start();
 
 		const status = await tunnel(proxyUrl, `127.0.0.1:${local.port}`, 'to-the-instance');
@@ -98,8 +113,21 @@ describe('SimEgressProxy', () => {
 		await vi.waitFor(() => expect(local.received).toEqual(['to-the-instance']));
 	});
 
+	it('refuses any other loopback port', async () => {
+		const other = await startRecorder();
+		servers.push(other.server);
+		proxy = new SimEgressProxy({ host: '127.0.0.1', port: 1 }, [], [5678], mock<Logger>());
+		const proxyUrl = await proxy.start();
+
+		const status = await tunnel(proxyUrl, `127.0.0.1:${other.port}`, 'never-sent');
+
+		expect(status).toContain(' 502 ');
+		expect(other.received).toEqual([]);
+		expect([...proxy.refusedHosts]).toEqual([`127.0.0.1:${other.port}`]);
+	});
+
 	it('refuses and records a host the simulation does not serve', async () => {
-		proxy = new SimEgressProxy({ host: '127.0.0.1', port: 1 }, ['slack.com'], mock<Logger>());
+		proxy = new SimEgressProxy({ host: '127.0.0.1', port: 1 }, ['slack.com'], [], mock<Logger>());
 		const proxyUrl = await proxy.start();
 
 		const status = await tunnel(proxyUrl, 'api.example.com:443', 'never-sent');
@@ -109,12 +137,19 @@ describe('SimEgressProxy', () => {
 	});
 
 	it('refuses an AI SDK call to a host the simulation does not serve', async () => {
-		proxy = new SimEgressProxy({ host: '127.0.0.1', port: 1 }, ['api.openai.com'], mock<Logger>());
+		proxy = new SimEgressProxy(
+			{ host: '127.0.0.1', port: 1 },
+			['api.openai.com'],
+			[],
+			mock<Logger>(),
+		);
 		const proxyUrl = await proxy.start();
 
 		const status = await new Promise<number>((resolve) => {
-			request(`${proxyUrl}/sim/api.example.com/v1/chat/completions`, { method: 'POST' }, (res) =>
-				resolve(res.statusCode ?? 0),
+			request(
+				`${proxyUrl}/sim/api.example.com:8443/v1/chat/completions`,
+				{ method: 'POST' },
+				(res) => resolve(res.statusCode ?? 0),
 			).end();
 		});
 

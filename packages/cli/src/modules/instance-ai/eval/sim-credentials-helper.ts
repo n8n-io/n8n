@@ -16,8 +16,6 @@ import type {
 } from 'n8n-workflow';
 import { ICredentialsHelper } from 'n8n-workflow';
 
-import { isSimHost } from './sim-egress-proxy';
-
 const BASE_URL_FIELDS = new Set(['url', 'host', 'baseUrl', 'baseURL']);
 
 /** The credential property that holds an API base URL (`url`, `host`, ...), if the type has one. */
@@ -35,16 +33,15 @@ export function baseUrlProperty(
 /**
  * Credentials for a simulated-services eval run. The run's credentials are real n8n
  * credentials that hold what the sim server issued, so everything resolves as in
- * production. One change: a credential whose base URL is a host the sim server serves
- * gets that URL pointed at the run's egress proxy. Vendor SDKs (AI sub-nodes) send
- * their own requests, not through n8n's request helpers, so the base URL is the one
- * place to route them; helper-based nodes reach the proxy either way.
+ * production. One change: a credential's base URL points at the run's egress proxy,
+ * which forwards a host the sim server serves and refuses any other. Vendor SDKs
+ * (AI sub-nodes) send their own requests, not through n8n's request helpers, so the
+ * base URL is the one place to route them; helper-based nodes reach the proxy either way.
  */
 export class SimCredentialsHelper extends ICredentialsHelper {
 	constructor(
 		private readonly inner: ICredentialsHelper,
 		private readonly proxyUrl: string,
-		private readonly simHosts: readonly string[],
 	) {
 		super();
 	}
@@ -72,8 +69,9 @@ export class SimCredentialsHelper extends ICredentialsHelper {
 		const field = baseUrlProperty(this.inner.getCredentialsProperties(type));
 		if (!field) return credentials;
 		const current = credentials[field.name];
-		const target = new URL(typeof current === 'string' && current ? current : field.default);
-		if (!isSimHost(target.hostname, this.simHosts)) return credentials;
+		const value = typeof current === 'string' && current ? current : field.default;
+		if (!URL.canParse(value)) return credentials;
+		const target = new URL(value);
 		// `https://api.openai.com/v1` becomes `<proxy>/sim/api.openai.com/v1`.
 		const path = target.pathname.replace(/\/$/, '');
 		return { ...credentials, [field.name]: `${this.proxyUrl}/sim/${target.host}${path}` };

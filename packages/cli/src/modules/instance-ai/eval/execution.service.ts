@@ -11,7 +11,7 @@ import {
 } from '@n8n/api-types';
 import { Logger, ModuleRegistry } from '@n8n/backend-common';
 import { ensureHostsBypassProxy } from '@n8n/backend-network/proxy';
-import { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import { ExecutionsConfig, GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import { ProcessedDataRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { isRecord } from '@n8n/utils/is-record';
@@ -172,6 +172,7 @@ export class EvalExecutionService {
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly credentialsService: CredentialsService,
 		private readonly credentialTypes: CredentialTypes,
+		private readonly globalConfig: GlobalConfig,
 	) {}
 
 	async executeWithLlmMock(
@@ -350,7 +351,7 @@ export class EvalExecutionService {
 						workflowEntity,
 						startNode,
 						user,
-						this.routeToSim(proxyUrl, options.simHosts),
+						this.routeToSim(proxyUrl),
 					);
 				} finally {
 					await proxy.stop();
@@ -403,6 +404,8 @@ export class EvalExecutionService {
 			if (node && isNodeParameters(copy)) node.parameters = copy;
 		}
 
+		// Only what the sim server issued takes part in the run: a stored credential is never sent.
+		for (const node of workflowEntity.nodes) delete node.credentials;
 		const createdCredentials: string[] = [];
 		try {
 			const projectId = (await this.ownershipService.getWorkflowProjectCached(stored.id)).id;
@@ -427,9 +430,20 @@ export class EvalExecutionService {
 					idsByIssued.set(key, id);
 				}
 				const node = nodesByName.get(issued.nodeName);
-				if (node) node.credentials = { [issued.type]: { id, name: `[eval-sim] ${issued.type}` } };
+				if (node) {
+					node.credentials = {
+						...node.credentials,
+						[issued.type]: { id, name: `[eval-sim] ${issued.type}` },
+					};
+				}
 			}
-			return await run(workflowEntity, new SimEgressProxy(gateway, options.simHosts, this.logger));
+			const proxy = new SimEgressProxy(
+				gateway,
+				options.simHosts,
+				[this.globalConfig.port],
+				this.logger,
+			);
+			return await run(workflowEntity, proxy);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return failed(
@@ -750,10 +764,16 @@ export class EvalExecutionService {
 		this.prepareNodesForRun(workflowEntity);
 
 		const workflow = this.buildWorkflow(workflowEntity);
+		// The caller names the start node; never silently run another one.
+		const named = workflow.nodes[options.startNodeName];
 		const startNode =
-			this.asTriggerNode(workflow.nodes[options.startNodeName]) ?? this.findStartNode(workflow);
+			this.asTriggerNode(named) ??
+			(named && this.findStartNode(workflow)?.name === named.name ? named : undefined);
 		if (!startNode) {
-			return this.errorResult(randomUUID(), 'No trigger or start node found in the workflow');
+			return this.errorResult(
+				randomUUID(),
+				`FRAMEWORK ISSUE: "${options.startNodeName}" is not a start node of the workflow`,
+			);
 		}
 
 		// A vendor SDK reaches the sim server only through its credential's base URL; without
@@ -786,7 +806,7 @@ export class EvalExecutionService {
 				const baseURL = `${proxyUrl}/sim/${target.host}${target.pathname.replace(/\/$/, '')}`;
 				node.parameters = { ...node.parameters, options: { ...nodeOptions, baseURL } };
 			}
-			const routeToSim = this.routeToSim(proxyUrl, options.simHosts);
+			const routeToSim = this.routeToSim(proxyUrl);
 
 			let startItems: INodeExecutionData[];
 			if (options.pollState) {
@@ -896,12 +916,11 @@ export class EvalExecutionService {
 	 * data, ids included. An empty poll means the trigger emitted nothing.
 	 */
 	/** Every outbound request of the run goes to the sim server, through the run's proxy. */
-	private routeToSim(proxyUrl: string, simHosts: string[]) {
+	private routeToSim(proxyUrl: string) {
 		return (additionalData: IWorkflowExecuteAdditionalData) => {
 			additionalData.credentialsHelper = new SimCredentialsHelper(
 				additionalData.credentialsHelper,
 				proxyUrl,
-				simHosts,
 			);
 			additionalData.evalEgressProxy = proxyUrl;
 		};

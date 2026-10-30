@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
 import type { AgentJsonConfig, InstanceAiEvalSimExecutionRequest } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import type { ExecutionsConfig, GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
@@ -312,6 +312,7 @@ describe('EvalExecutionService', () => {
 			moduleRegistry,
 			credentialsService,
 			credentialTypes,
+			mock<GlobalConfig>({ port: 5678 }),
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -2787,7 +2788,21 @@ describe('EvalExecutionService', () => {
 			expect(result.nodeResults.Webhook?.runTimes?.[0]?.startTime).toEqual(expect.any(Number));
 		});
 
+		it('refuses a start node that is not a start node of the workflow', async () => {
+			const result = await service.executeWithSim(
+				'wf-1',
+				makeUser(),
+				simRequest({ startNodeName: 'HTTP Request' }),
+			);
+
+			expect(result.errors[0]).toContain('"HTTP Request" is not a start node');
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
 		it('runs the stored workflow with the issued credential, the bound parameters and the trigger items', async () => {
+			const stored = makeWorkflowEntity();
+			stored.nodes[1].credentials = { httpHeaderAuth: { id: 'real-1', name: 'Real header auth' } };
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(stored as never);
 			let configured: Record<string, unknown> = {};
 			workflowRunner.run.mockImplementation(async (data) => {
 				const ad = makeMockedAdditionalData() as Record<string, unknown>;
