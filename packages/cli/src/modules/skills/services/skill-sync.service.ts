@@ -303,20 +303,26 @@ export class SkillSyncService {
 		return { source: described, commit, update };
 	}
 
-	/** The links whose skill the user can read. */
+	/** The links whose skill the user can read, with one access query for the whole list. */
 	private async readableLinks(user: User, links: SkillSourceLink[]): Promise<SkillSourceLink[]> {
-		const readable = await Promise.all(
-			links.map(async (link) => {
-				try {
-					await this.skillAccess.requireAccess(user, link.skillId, 'read');
-					return true;
-				} catch (error) {
-					if (error instanceof NotFoundError) return false;
-					throw error;
-				}
-			}),
+		const skills = await this.skillRepository.findByIds(links.map((link) => link.skillId));
+		// An agent skill has no projectId: resolve its project through its agent.
+		const [agents, canRead] = await Promise.all([
+			this.skillUsage.findAgents(skills.flatMap((skill) => (skill.agentId ? [skill.agentId] : []))),
+			this.skillAccess.accessCheck(user, 'read'),
+		]);
+		const readable = new Set(
+			skills
+				.filter((skill) =>
+					canRead(
+						skill,
+						skill.projectId ??
+							(skill.agentId ? (agents.get(skill.agentId)?.projectId ?? null) : null),
+					),
+				)
+				.map((skill) => skill.id),
 		);
-		return links.filter((_link, index) => readable[index]);
+		return links.filter((link) => readable.has(link.skillId));
 	}
 
 	/** The updates of these links, by name. In batches, as each reads its agents and rename rules. */

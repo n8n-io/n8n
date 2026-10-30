@@ -6,6 +6,7 @@ import {
 	type SkillSourceReason,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { isRecord } from '@n8n/utils/is-record';
 
 import {
 	diffLines,
@@ -148,11 +149,25 @@ const SKILL_SCAN_RULE_KEYS = {
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
 
-/** The frontmatter as one `key: value` line per key, sorted, so a diff shows each change. */
+/** The value with the keys of every nested map sorted, as the content hash of a skill sorts them. */
+function sortKeys(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(sortKeys);
+	if (!isRecord(value)) return value;
+	return Object.fromEntries(
+		Object.keys(value)
+			.sort()
+			.map((key) => [key, sortKeys(value[key])]),
+	);
+}
+
+/**
+ * The frontmatter as one `key: value` line per key, sorted at every level, so a diff shows each
+ * change and not a new key order.
+ */
 function frontmatterText(frontmatter: Record<string, unknown> | null): string {
 	return Object.keys(frontmatter ?? {})
 		.sort()
-		.map((key) => `${key}: ${JSON.stringify(frontmatter?.[key])}`)
+		.map((key) => `${key}: ${JSON.stringify(sortKeys(frontmatter?.[key]))}`)
 		.join('\n');
 }
 

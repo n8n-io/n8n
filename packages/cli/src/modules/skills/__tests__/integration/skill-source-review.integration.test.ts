@@ -26,7 +26,6 @@ import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillService } from '../../services/skill.service';
 import { SkillAccessService } from '../../services/skill-access.service';
-import { NotFoundError } from '@n8n/errors';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
@@ -593,10 +592,11 @@ describe('Review of skill updates', () => {
 			const { updates } = (await updatesOf(editor, sourceId)).data;
 			// A custom role can list the skills of a scope without reading each one.
 			const access = Container.get(SkillAccessService);
-			const requireAccess = access.requireAccess.bind(access);
-			vi.spyOn(access, 'requireAccess').mockImplementation(async (user, skillId, operation) => {
-				if (skillId === xlsx) throw new NotFoundError('Skill not found');
-				return await requireAccess(user, skillId, operation);
+			const accessCheck = access.accessCheck.bind(access);
+			vi.spyOn(access, 'accessCheck').mockImplementation(async (user, operation) => {
+				const check = await accessCheck(user, operation);
+				return (skill, projectId) =>
+					!('id' in skill && skill.id === xlsx) && check(skill, projectId);
 			});
 
 			const listed = (await updatesOf(editor, sourceId)).data.updates;
