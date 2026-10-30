@@ -1,3 +1,13 @@
+## [2.45.7](https://github.com/n8n-io/n8n/compare/n8n@2.45.6...n8n@2.45.7) (2026-10-30)
+
+
+### Bug Fixes
+
+* **core:** Require execution:read when workflow-scoped routes read execution data ([#42446](https://github.com/n8n-io/n8n/issues/42446)) ([93638f4](https://github.com/n8n-io/n8n/commit/93638f48718d8b03ab0b8ae6e81f110f90e0e3a5))
+* **core:** Resolve IMAP trigger expressions after activation ([#42611](https://github.com/n8n-io/n8n/issues/42611)) ([50ef902](https://github.com/n8n-io/n8n/commit/50ef902a730dfd0d1b0962a60dd23a753c2a6db5))
+* **core:** Return user data with an __isError key as data in expressions ([#42491](https://github.com/n8n-io/n8n/issues/42491)) ([c422a6c](https://github.com/n8n-io/n8n/commit/c422a6cc82fce12b135b5b1b2f80508c38ef09fa))
+
+
 ## [2.45.6](https://github.com/n8n-io/n8n/compare/n8n@2.45.5...n8n@2.45.6) (2026-10-29)
 
 

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/backend-module-insights",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "main": "dist/index.js",
   "module": "dist/index.js",
   "types": "dist/index.d.ts",

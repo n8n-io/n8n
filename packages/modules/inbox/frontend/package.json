@@ -1,6 +1,6 @@
 {
   "name": "@n8n/frontend-module-inbox",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "type": "module",
   "main": "src/index.ts",
   "exports": {

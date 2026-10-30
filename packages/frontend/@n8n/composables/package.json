@@ -1,7 +1,7 @@
 {
   "name": "@n8n/composables",
   "type": "module",
-  "version": "1.35.5",
+  "version": "1.35.6",
   "files": [
     "dist"
   ],
