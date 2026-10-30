@@ -1,13 +1,18 @@
-import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
+import { createTestNode, createTestTaskData, createTestWorkflow } from '@/__tests__/mocks';
 import { createComponentRenderer } from '@/__tests__/render';
+import { mockedStore } from '@/__tests__/utils';
 import InputPanel, { type Props } from './InputPanel.vue';
 import { createTestingPinia } from '@pinia/testing';
+import type { IUser } from '@n8n/rest-api-client/api/users';
+import { useUsersStore } from '@n8n/stores/users.store';
+import { mock } from 'vitest-mock-extended';
 import {
 	createRunExecutionData,
 	NodeConnectionTypes,
 	type IConnections,
 	type INodeExecutionData,
 	type IRunData,
+	type RedactionInfo,
 } from 'n8n-workflow';
 import { setActivePinia } from 'pinia';
 import { computed, shallowRef } from 'vue';
@@ -40,7 +45,12 @@ const nodes = [
 	createTestNode({ name: 'Tool' }),
 ];
 
-const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runData?: IRunData) => {
+const render = (
+	props: Partial<Props> = {},
+	pinData?: INodeExecutionData[],
+	runData?: IRunData,
+	redaction?: { info: RedactionInfo; canShareCredential: boolean },
+) => {
 	const connections: IConnections = {
 		[nodes[0].name]: {
 			[NodeConnectionTypes.Main]: [
@@ -64,6 +74,12 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 	});
 	setActivePinia(pinia);
 
+	if (redaction) {
+		mockedStore(useUsersStore).currentUser = mock<IUser>({
+			globalScopes: redaction.canShareCredential ? ['credential:share'] : [],
+		});
+	}
+
 	const workflow = createTestWorkflow({ nodes, connections });
 
 	const workflowDocumentStore = useWorkflowDocumentStore(createWorkflowDocumentId(workflow.id));
@@ -80,7 +96,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 		// which resolves through the execution-state store keyed by the injected
 		// workflow document's id.
 		useWorkflowExecutionStateStore(createWorkflowDocumentId(workflow.id)).setWorkflowExecutionData({
-			id: '',
+			id: redaction ? 'redacted-execution' : '',
 			workflowData: {
 				id: '',
 				name: '',
@@ -100,6 +116,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 			createdAt: new Date(),
 			data: createRunExecutionData({
 				resultData: { runData },
+				redactionInfo: redaction?.info,
 			}),
 		});
 	}
@@ -166,4 +183,59 @@ describe('InputPanel', () => {
 		expect(await findByTestId('radio-button-mapping')).not.toBeChecked();
 		expect(await findByTestId('radio-button-debugging')).toBeChecked();
 	});
+
+	// IAM-1832: The redaction cause must remain visible without credential sharing permission.
+	it.each<{
+		reason: RedactionInfo['reason'];
+		canShareCredential: boolean;
+		description: string;
+	}>([
+		{
+			reason: 'credential_inaccessible',
+			canShareCredential: false,
+			description:
+				"This execution used a credential you don't have access to, so its data is hidden.",
+		},
+		{
+			reason: 'credential_inaccessible',
+			canShareCredential: true,
+			description:
+				"This execution used a credential you don't have access to, so its data is hidden.",
+		},
+		{
+			reason: 'workflow_redaction_policy',
+			canShareCredential: false,
+			description:
+				'Execution data has been redacted. You do not have the permissions to reveal it.',
+		},
+	])(
+		'shows the cause for $reason with credential sharing permission=$canShareCredential',
+		({ reason, canShareCredential, description }) => {
+			const { getByTestId, queryByTestId } = render(
+				{ displayMode: 'table', readOnly: true },
+				undefined,
+				{
+					[nodes[0].name]: [createTestTaskData()],
+					[nodes[1].name]: [createTestTaskData()],
+				},
+				{
+					info: {
+						isRedacted: true,
+						reason,
+						canReveal: false,
+						credentialIds: reason === 'credential_inaccessible' ? ['inaccessible-credential'] : [],
+					},
+					canShareCredential,
+				},
+			);
+
+			const shareLink = queryByTestId('redacted-data-share-credential');
+			if (canShareCredential) {
+				expect(shareLink).toHaveTextContent('Give yourself access');
+			} else {
+				expect(shareLink).not.toBeInTheDocument();
+			}
+			expect(getByTestId('ndv-data-redacted')).toHaveTextContent(description);
+		},
+	);
 });
