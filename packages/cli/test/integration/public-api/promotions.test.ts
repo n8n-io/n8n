@@ -540,7 +540,7 @@ describe('Promotions in Public API', () => {
 				.send(payload);
 
 			expect(response.status).toBe(400);
-			expect(response.body.message).toContain('read_api scope');
+			expect(response.body.message).toContain('api scope');
 			expect(await Container.get(PromotionProviderRepository).count()).toBe(0);
 			api.done();
 		});
@@ -1253,7 +1253,7 @@ describe('Promotions in Public API', () => {
 
 		it.each([
 			{ route: 'repositories', status: 401, message: 'rejected the access token' },
-			{ route: 'repositories', status: 403, message: 'read_api scope' },
+			{ route: 'repositories', status: 403, message: 'api scope' },
 			{ route: 'repositories', status: 503, message: 'not available' },
 			{ route: 'repositories/42/branches', status: 403, message: 'repository access' },
 		])(
