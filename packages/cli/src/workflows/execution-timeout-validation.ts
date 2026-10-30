@@ -1,4 +1,4 @@
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 /**
  * True when `executionTimeout` is above the instance maximum (`EXECUTIONS_TIMEOUT_MAX`).

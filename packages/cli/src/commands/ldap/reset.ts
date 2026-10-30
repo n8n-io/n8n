@@ -12,7 +12,7 @@ import {
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { UM_FIX_INSTRUCTION } from '@/constants';

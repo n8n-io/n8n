@@ -5,7 +5,8 @@ import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { AgentIntegrationConfig } from '@n8n/api-types';
 import type { Thread } from 'chat';
-import { OperationalError, UserError, type Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ChatIntegrationService } from '../../../chat-integration.service';

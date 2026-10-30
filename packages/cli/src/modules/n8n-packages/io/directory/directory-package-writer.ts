@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 

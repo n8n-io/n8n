@@ -14,11 +14,11 @@ import {
 	NodeOperationError,
 	TimeoutExecutionCancelledError,
 	Workflow,
-	UnexpectedError,
 	CHAT_TRIGGER_NODE_TYPE,
 	runDataAttemptedDynamicCredentials,
 	runDataUsedDynamicCredentials,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type {
 	CancellationReason,
 	ExecutionStatus,

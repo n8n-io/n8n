@@ -6,7 +6,8 @@ import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
 import { sleep } from '@n8n/utils/sleep';
-import { jsonStringify, UserError } from 'n8n-workflow';
+import { jsonStringify } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type WebSocket from 'ws';
 
 import { HIGHEST_SHUTDOWN_PRIORITY, WsStatusCodes } from '@/constants';

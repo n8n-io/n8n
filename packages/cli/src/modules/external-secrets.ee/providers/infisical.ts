@@ -7,7 +7,8 @@ import {
 } from '@n8n/backend-network';
 import { Time } from '@n8n/constants';
 import { Container } from '@n8n/di';
-import { type INodeProperties, UnexpectedError } from 'n8n-workflow';
+import type { INodeProperties } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { DOCS_HELP_NOTICE } from '../constants';
 import { ExternalSecretsConfig } from '../external-secrets.config';

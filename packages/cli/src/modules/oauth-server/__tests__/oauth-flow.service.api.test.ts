@@ -23,8 +23,8 @@ import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_TRIGGER_PATH_SUFFIX,
 	FORM_TRIGGER_NODE_TYPE,
-	UserError,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { randomUUID } from 'node:crypto';
 import { mock } from 'vitest-mock-extended';
 

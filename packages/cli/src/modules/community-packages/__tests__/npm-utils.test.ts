@@ -1,4 +1,4 @@
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import nock from 'nock';
 
 const { mockAsyncExec, mockAccess, mockExecFile } = vi.hoisted(() => ({

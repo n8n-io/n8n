@@ -13,12 +13,8 @@ import type {
 	IRunExecutionData,
 	ITaskData,
 } from 'n8n-workflow';
-import {
-	createRunExecutionData,
-	UnexpectedError,
-	WAIT_INDEFINITELY,
-	WAIT_FOR_SUB_EXECUTION,
-} from 'n8n-workflow';
+import { createRunExecutionData, WAIT_INDEFINITELY, WAIT_FOR_SUB_EXECUTION } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import type { Mock, MockInstance } from 'vitest';
 import { mock, captor } from 'vitest-mock-extended';
 

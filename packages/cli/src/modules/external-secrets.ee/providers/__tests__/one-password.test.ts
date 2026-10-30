@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import { OnePasswordProvider, type OnePasswordContext } from '../one-password';

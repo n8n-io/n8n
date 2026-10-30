@@ -14,12 +14,12 @@ import { PersonRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IHttpRequestMethods, INode } from 'n8n-workflow';
-import { isMcpAiGatewayAuthentication, OperationalError, UserError } from 'n8n-workflow';
+import { isMcpAiGatewayAuthentication } from 'n8n-workflow';
 
 import { N8N_VERSION, AI_ASSISTANT_SDK_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, OperationalError, UserError } from '@n8n/errors';
 import { License } from '@/license';
 import { MCP_REGISTRY_PACKAGE_NAME } from '@/modules/mcp-registry/mcp-registry-connection';
 import {

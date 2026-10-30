@@ -42,7 +42,6 @@ import {
 	NodeHelpers,
 	NodeOperationError,
 	PROJECT_ROOT,
-	UserError,
 	WorkflowActivationError,
 } from 'n8n-workflow';
 
@@ -52,7 +51,7 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks/credentials-permission-checker';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, UserError } from '@n8n/errors';
 import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflow.error';
 import { UninspectableSubworkflowSourceError } from '@/errors/uninspectable-subworkflow-source.error';
 import { extractAgentCredentialIds } from '@/modules/agents/utils/extract-agent-credential-ids';

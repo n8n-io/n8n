@@ -1,6 +1,7 @@
 import type { StreamChunk } from '@n8n/agents';
 import type { Thread } from 'chat';
-import { OperationalError, type Logger } from 'n8n-workflow';
+import type { Logger } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import type { AgentExecutionStreamChunk } from '../types/agent-steering';
 import type { BridgeStatusHandle } from './agent-chat-integration';

@@ -1,5 +1,5 @@
 import { safeJoinPath } from '@n8n/backend-common';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { existsSync, mkdirSync } from 'node:fs';
 import { dirname, isAbsolute } from 'node:path';
 

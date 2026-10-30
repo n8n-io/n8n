@@ -9,7 +9,7 @@ import { OpenAPIRegistry, OpenApiGeneratorV3 } from '@asteasolutions/zod-to-open
 import type { RouteConfig } from '@asteasolutions/zod-to-openapi';
 import type { BinaryResponse, ResponseDtoClass } from '@n8n/decorators';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { honorsIdempotencyKey } from '@/idempotency/idempotency-request';

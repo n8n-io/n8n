@@ -33,13 +33,12 @@ import {
 	MANAGED_VERSION_KEY,
 	NodeHelpers,
 	Workflow,
-	UnexpectedError,
-	UserError,
 	classifyTriggerIdentity,
 	getCredentialOwnRequestAllowedDomains,
 	isExpression,
 	jsonParse,
 } from 'n8n-workflow';
+import { UnexpectedError, UserError } from '@n8n/errors';
 
 import { CredentialTypes } from '@/credential-types';
 import { CredentialsOverwrites } from '@/credentials-overwrites';

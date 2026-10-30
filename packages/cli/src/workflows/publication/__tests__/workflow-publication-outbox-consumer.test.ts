@@ -4,7 +4,7 @@ import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowPublicationOutbox, WorkflowPublicationOutboxRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { ErrorReporter, InstanceSettings, Span, Tracing } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { PublicationResult } from '@/workflows/publication/publication-result';
 import type { PublicationStatusReporter } from '@/workflows/publication/publication-status-reporter';

@@ -11,7 +11,8 @@ import { createEvalAgent } from '@n8n/instance-ai';
 import type { OutputSchemaLookup } from '@n8n/workflow-sdk';
 import type { EvalNodeMockHandler } from 'n8n-core';
 import type { IDataObject, IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError, OperationalError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { z } from 'zod';
 
 import { buildDateAnchors } from './date-anchors';

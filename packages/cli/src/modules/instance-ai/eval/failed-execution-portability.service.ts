@@ -2,7 +2,7 @@ import type {
 	InstanceAiEvalFailedExecutionEnvelope,
 	InstanceAiEvalFailedExecutionSummary,
 } from '@n8n/api-types';
-import { BadRequestError, NotFoundError } from '@n8n/errors';
+import { BadRequestError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import { Logger, parseFlatted } from '@n8n/backend-common';
 import { SharedWorkflowRepository, type IExecutionBase, type User } from '@n8n/db';
 import type { Scope } from '@n8n/permissions';
@@ -10,7 +10,6 @@ import { Service } from '@n8n/di';
 import { stringify } from 'flatted';
 import {
 	generateSecureToken,
-	UnexpectedError,
 	migrateRunExecutionData,
 	type IConnections,
 	type INode,

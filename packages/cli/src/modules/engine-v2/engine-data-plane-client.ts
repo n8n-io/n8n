@@ -21,7 +21,7 @@ import type {
 } from '@n8n/engine';
 import { mintIdentityToken } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { z } from 'zod';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';

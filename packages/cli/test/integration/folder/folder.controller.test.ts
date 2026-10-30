@@ -16,7 +16,8 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PROJECT_EDITOR_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import { DateTime } from 'luxon';
-import { PROJECT_ROOT, UnexpectedError } from 'n8n-workflow';
+import { PROJECT_ROOT } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { OwnershipService } from '@/services/ownership.service';

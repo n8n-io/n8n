@@ -18,13 +18,12 @@ import { AiConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { context } from '@opentelemetry/api';
 import type { JSONSchema7 } from 'json-schema';
-import {
-	OperationalError,
-	type ExecuteAgentData,
-	type ExecuteAgentWorkflowContext,
-	type InlineAgentPayload,
-	UserError,
+import type {
+	ExecuteAgentData,
+	ExecuteAgentWorkflowContext,
+	InlineAgentPayload,
 } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { AgentRunTelemetryType } from '@/interfaces';

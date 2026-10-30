@@ -8,7 +8,7 @@ import { resolveSystemTask } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { computeFirstRunAt, scheduleFromDefinition } from '@n8n/scheduler';
 import { ErrorReporter } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { DurableJobProvisioner } from '../durable-job-provisioner';
 import type { ProvisionRequest } from '../durable-job-provisioner';

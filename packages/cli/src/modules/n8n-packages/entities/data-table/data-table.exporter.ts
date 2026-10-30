@@ -1,7 +1,7 @@
 import { ModuleRegistry } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { DataTableService } from '@/modules/data-table/data-table.service';
 

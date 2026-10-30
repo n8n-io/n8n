@@ -8,8 +8,7 @@ import {
 } from '@n8n/api-types';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { ConflictError } from '@n8n/errors';
-import { UnexpectedError, UserError } from 'n8n-workflow';
+import { ConflictError, UnexpectedError, UserError } from '@n8n/errors';
 
 import {
 	findIntroducedNameClashes,

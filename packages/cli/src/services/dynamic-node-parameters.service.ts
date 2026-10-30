@@ -21,15 +21,10 @@ import type {
 	ILocalLoadOptionsFunctions,
 	IExecuteData,
 } from 'n8n-workflow';
-import {
-	Workflow,
-	UnexpectedError,
-	createRunExecutionData,
-	findDisplayedProperty,
-} from 'n8n-workflow';
+import { Workflow, createRunExecutionData, findDisplayedProperty } from 'n8n-workflow';
 
 import { CredentialsFinderService } from '@n8n/backend-services';
-import { BadRequestError, ForbiddenError } from '@n8n/errors';
+import { BadRequestError, ForbiddenError, UnexpectedError } from '@n8n/errors';
 import { NodeTypes } from '@/node-types';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { withExpressionIsolate } from '@/utils';

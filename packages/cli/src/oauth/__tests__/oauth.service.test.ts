@@ -22,14 +22,13 @@ import type {
 	INodeProperties,
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
-import { UnexpectedError, UserError } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
 
 import { AuthService } from '@/auth/auth.service';
 import { DynamicCredentialsProxy } from '@/credentials/dynamic-credentials-proxy';
 import { CredentialsHelper } from '@/credentials-helper';
-import { AuthError, BadRequestError, NotFoundError } from '@n8n/errors';
+import { AuthError, BadRequestError, NotFoundError, UnexpectedError, UserError } from '@n8n/errors';
 import { ExternalHooks } from '@/external-hooks';
 import { OAuthBrowserBindingService } from '@/oauth/oauth-browser-binding.service';
 import {

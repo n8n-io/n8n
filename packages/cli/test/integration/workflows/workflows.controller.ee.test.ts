@@ -32,12 +32,8 @@ import {
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
-import {
-	UnexpectedError,
-	WorkflowActivationError,
-	calculateWorkflowChecksum,
-	type INode,
-} from 'n8n-workflow';
+import { WorkflowActivationError, calculateWorkflowChecksum, type INode } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { ExecuteWorkflow } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflow/ExecuteWorkflow.node';
 import { v4 as uuid } from 'uuid';
 

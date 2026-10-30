@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import { Telemetry } from '@/telemetry';
 

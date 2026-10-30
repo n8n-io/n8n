@@ -2,7 +2,7 @@ import { BaseRepository, dbNowLiteral, TransactionRunner } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DataSource, In, type EntityManager } from '@n8n/typeorm';
 import { isRecord } from '@n8n/utils/is-record';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { AgentBudgetAppliedCall } from '../entities/agent-budget-applied-call.entity';
 import { AgentBudgetSpend } from '../entities/agent-budget-spend.entity';

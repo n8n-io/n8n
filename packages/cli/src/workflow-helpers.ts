@@ -7,7 +7,6 @@ import {
 	escalateSubWorkflowRedaction,
 	getLastExecutedNodeData,
 	Workflow,
-	UnexpectedError,
 	dropInvalidWorkflowGroups,
 	formatWorkflowStructureIssuePath,
 	GROUP_DESCRIPTION_MAX_LENGTH,
@@ -34,7 +33,7 @@ import {
 } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { BadRequestError } from '@n8n/errors';
+import { BadRequestError, UnexpectedError } from '@n8n/errors';
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { ExecutionPersistence } from '@/executions/execution-persistence';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';

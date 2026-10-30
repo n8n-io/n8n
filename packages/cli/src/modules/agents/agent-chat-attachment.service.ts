@@ -5,7 +5,8 @@ import { Service } from '@n8n/di';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import type { BuiltFileStore, ContentFileRef } from '@n8n/agents';
 import { BinaryDataService, FileLocation, FileNotFoundError } from 'n8n-core';
-import { OperationalError, UserError, type IBinaryData } from 'n8n-workflow';
+import type { IBinaryData } from 'n8n-workflow';
+import { OperationalError, UserError } from '@n8n/errors';
 import type { Readable } from 'node:stream';
 
 import { AgentChatAttachment } from './entities/agent-chat-attachment.entity';

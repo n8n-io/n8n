@@ -8,7 +8,8 @@ import type {
 	IExecutionContext,
 	IWorkflowSettings,
 } from 'n8n-workflow';
-import { toCredentialContext, UnexpectedError } from 'n8n-workflow';
+import { toCredentialContext } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type {
 	CredentialResolutionResult,

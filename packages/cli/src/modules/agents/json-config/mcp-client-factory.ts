@@ -8,7 +8,8 @@ import { AI_GATEWAY_MANAGED_TAG, type AgentJsonMcpServerConfig } from '@n8n/api-
 import { compileMcpToolPermissions } from '@n8n/ai-utilities/agent-config';
 import type { CustomFetch } from '@n8n/backend-network';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { getMcpAuthHeaders, isMcpRegistryAuthentication, OperationalError } from 'n8n-workflow';
+import { getMcpAuthHeaders, isMcpRegistryAuthentication } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	McpAiGatewayCredentialType,

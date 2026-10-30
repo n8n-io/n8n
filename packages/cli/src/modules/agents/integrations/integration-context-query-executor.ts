@@ -1,6 +1,6 @@
 import { raceWithAbort } from '@n8n/agents';
 import { Service } from '@n8n/di';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ChatIntegrationRegistry } from './agent-chat-integration';
 import { ChatIntegrationService, type ChatInstance } from './chat-integration.service';

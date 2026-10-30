@@ -16,7 +16,8 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ICredentialsHelper, UnexpectedError } from 'n8n-workflow';
+import { ICredentialsHelper } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { EngineCredentialsClient } from './engine-credentials-client';
 import type { ResolveCredentialRequest } from './engine-credentials.contract';

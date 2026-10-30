@@ -1,6 +1,12 @@
 import { Service } from '@n8n/di';
 import type { SeededSteps, StartExecutionRequest, StepSlots, TriggerOutputs } from '@n8n/engine';
-import { ConflictError, NotFoundError, NotImplementedError } from '@n8n/errors';
+import {
+	ConflictError,
+	NotFoundError,
+	NotImplementedError,
+	UnexpectedError,
+	UserError,
+} from '@n8n/errors';
 import type {
 	INode,
 	INodeExecutionData,
@@ -8,12 +14,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import {
-	classifyTriggerIdentity,
-	isTriggerNodeType,
-	UnexpectedError,
-	UserError,
-} from 'n8n-workflow';
+import { classifyTriggerIdentity, isTriggerNodeType } from 'n8n-workflow';
 import assert from 'node:assert';
 
 import { toWorkflowDocument } from '@/executions/execution-data/types';

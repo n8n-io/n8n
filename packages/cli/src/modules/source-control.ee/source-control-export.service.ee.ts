@@ -15,7 +15,7 @@ import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import chunk from 'lodash/chunk';
 import { Credentials, InstanceSettings } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { rm as fsRm, writeFile as fsWriteFile } from 'node:fs/promises';
 import path from 'path';
 

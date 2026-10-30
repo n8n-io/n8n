@@ -1,7 +1,7 @@
 import type { JSONValue } from '@n8n/agents';
 import type { AgentSseEvent } from '@n8n/api-types';
 import { jsonSizeExceeds } from '@n8n/utils/json/json-size-exceeds';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import type { ExecutionRecorder } from '../execution-recorder';
 

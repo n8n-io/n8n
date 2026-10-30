@@ -13,7 +13,7 @@ import {
 } from '@opentelemetry/sdk-trace-base';
 import { ParentBasedSampler, TraceIdRatioBasedSampler } from '@opentelemetry/sdk-trace-node';
 import { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { ExecutionIdentitySpanProcessor } from './execution-identity';
 import {

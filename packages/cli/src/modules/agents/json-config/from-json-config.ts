@@ -35,7 +35,7 @@ import {
 	type AgentJsonToolConfig,
 	type AgentJsonSkillConfig,
 } from '@n8n/api-types';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { createHash } from 'crypto';
 import { z } from 'zod';
 

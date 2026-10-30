@@ -7,9 +7,8 @@ import { Logger } from '@n8n/backend-common';
 import { TransactionRunner, type OperationContext, type User } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import isEqual from 'lodash/isEqual';
-import { UserError } from 'n8n-workflow';
 
-import { ConflictError } from '@n8n/errors';
+import { ConflictError, UserError } from '@n8n/errors';
 
 import { AgentDefinitionService } from './agent-definition.service';
 import {

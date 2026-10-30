@@ -3,10 +3,15 @@ import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import express, { type Request, type Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
-import { UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
-import { ConflictError, ForbiddenError, InternalServerError, NotFoundError } from '@n8n/errors';
+import {
+	ConflictError,
+	ForbiddenError,
+	InternalServerError,
+	NotFoundError,
+	UserError,
+} from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
 import { PolicyViolationError } from '@/policy/policy-violation.error';
 import {

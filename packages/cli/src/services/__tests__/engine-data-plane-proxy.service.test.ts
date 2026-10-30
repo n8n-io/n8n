@@ -1,5 +1,5 @@
 import type { ExecutionSnapshot, StartExecutionRequest } from '@n8n/engine';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ExecutionIdV2 } from '@/executions/execution-id';

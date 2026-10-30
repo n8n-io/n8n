@@ -4,7 +4,7 @@ import { OutboundHttp } from '@n8n/backend-network';
 import { Service } from '@n8n/di';
 import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-proto';
 import type { SpanExporter } from '@opentelemetry/sdk-trace-base';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 
 import { parseOtlpHeaders, type OtelConnectionParams } from './otel-settings.service';
 

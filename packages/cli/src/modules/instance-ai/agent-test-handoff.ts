@@ -1,8 +1,7 @@
 import type { InstanceAiAgentPreviewHandoffContext } from '@n8n/api-types';
 import type { User } from '@n8n/db';
-import { ForbiddenError } from '@n8n/errors';
+import { ForbiddenError, UserError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { UserError } from 'n8n-workflow';
 
 import {
 	AGENT_PREVIEW_CONTEXT_CLOSE_TAG,

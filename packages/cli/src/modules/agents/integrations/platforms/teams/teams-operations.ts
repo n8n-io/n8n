@@ -1,6 +1,6 @@
 import { isRecord } from '@n8n/utils/is-record';
 import { z } from 'zod';
-import { UserError } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 import type { ChatInstance } from '../../chat-integration.service';
 import { INTEGRATION_ERROR_CODES } from '../../integration-error-codes';

@@ -52,7 +52,7 @@ import type {
 	WorkflowRepository,
 } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
-import { OperationalError } from 'n8n-workflow';
+import { OperationalError } from '@n8n/errors';
 import { mock } from 'vitest-mock-extended';
 
 import type { ActiveExecutions } from '@/active-executions';

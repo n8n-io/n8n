@@ -1,5 +1,6 @@
 import { NODE_ID_MAX_LENGTH } from '@n8n/constants';
-import { UserError, type INode } from 'n8n-workflow';
+import type { INode } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 
 export class TriggerNodeIdTooLongError extends UserError {
 	readonly affectedNodes: ReadonlyArray<Readonly<Pick<INode, 'id' | 'name'>>>;

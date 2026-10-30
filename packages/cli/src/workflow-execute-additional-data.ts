@@ -49,9 +49,6 @@ import type {
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
-	OperationalError,
-	UnexpectedError,
-	UserError,
 	Workflow,
 	createRunExecutionData,
 	mergeRunsPerBranch,
@@ -62,6 +59,7 @@ import {
 	attachSubWorkflowRedaction,
 	summarizeSubWorkflowRedaction,
 } from 'n8n-workflow';
+import { OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 
 import type { PrepareWorkflowAgentForEval } from './modules/agents/evaluation/agent-evaluation.contracts';
 import type { WorkflowAgentRunOptions } from './modules/agents/agent-workflow-execution.service';

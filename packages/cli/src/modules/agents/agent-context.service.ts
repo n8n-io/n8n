@@ -11,11 +11,10 @@ import type {
 	AgentContextResult,
 	AgentSessionDetail,
 } from './agent-context.contracts';
-import { UserError } from 'n8n-workflow';
 
 import { McpRegistryService } from '@/modules/mcp-registry/registry/mcp-registry.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
-import { ForbiddenError, NotFoundError } from '@n8n/errors';
+import { ForbiddenError, NotFoundError, UserError } from '@n8n/errors';
 
 import {
 	AgentExecutionService,

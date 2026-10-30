@@ -67,9 +67,6 @@ import {
 	SEND_AND_WAIT_OPERATION,
 	createRunExecutionData,
 	ExpressionError,
-	OperationalError,
-	UnexpectedError,
-	UserError,
 } from 'n8n-workflow';
 import { Readable } from 'stream';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -77,7 +74,7 @@ import { mock, type MockProxy } from 'vitest-mock-extended';
 import { ActiveExecutions } from '@/active-executions';
 import { AuthService } from '@/auth/auth.service';
 import type { EngineV2ResumeRequest } from '@/interfaces';
-import { type ResponseError } from '@n8n/errors';
+import { type ResponseError, OperationalError, UnexpectedError, UserError } from '@n8n/errors';
 import { WebhookResponseRelay } from '@/scaling/webhook-response-relay';
 import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { EngineV2Dispatcher } from '@/services/engine-v2-dispatcher.service';

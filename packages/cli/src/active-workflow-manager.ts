@@ -28,10 +28,10 @@ import {
 	Workflow,
 	WorkflowActivationError,
 	WebhookPathTakenError,
-	UnexpectedError,
 	IsolateError,
 	validateWorkflowHasTriggerLikeNode,
 } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';

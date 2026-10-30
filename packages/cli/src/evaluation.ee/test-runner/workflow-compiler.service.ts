@@ -10,9 +10,9 @@ import {
 	NODES_WITH_RENAMEABLE_TOPLEVEL_HTML_CONTENT,
 	NodeConnectionTypes,
 	NodeHelpers,
-	UserError,
 	deepCopy,
 } from 'n8n-workflow';
+import { UserError } from '@n8n/errors';
 import type {
 	IConnection,
 	IConnections,

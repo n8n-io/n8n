@@ -1,5 +1,5 @@
 import { WorkflowEntity } from '@n8n/db';
-import { UnexpectedError } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { ExportVersionPolicy } from '../../n8n-packages.types';
 import { PackageExportBlockedError } from '../package-export.errors';

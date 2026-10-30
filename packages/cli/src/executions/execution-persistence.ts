@@ -21,11 +21,8 @@ import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import { BinaryDataService, ErrorReporter, StorageConfig } from 'n8n-core';
 import type { ExecutionStatus, IRunExecutionData, IRunExecutionDataAll } from 'n8n-workflow';
-import {
-	createEmptyRunExecutionData,
-	migrateRunExecutionData,
-	UnexpectedError,
-} from 'n8n-workflow';
+import { createEmptyRunExecutionData, migrateRunExecutionData } from 'n8n-workflow';
+import { UnexpectedError } from '@n8n/errors';
 
 import { CorruptedExecutionDataError } from './execution-data/corrupted-execution-data.error';
 import { DbStore } from './execution-data/db-store';
