@@ -930,6 +930,25 @@ export class AgentExecutionService {
 		return timelines;
 	}
 
+	/**
+	 * The first user message of each of the agent's latest threads, by thread
+	 * id. The test chat compares a message with them to spot one the person
+	 * keeps asking.
+	 */
+	async firstMessagesOfRecentThreads(
+		agentId: string,
+		threadLimit = 50,
+	): Promise<Map<string, string>> {
+		const threads = await this.agentExecutionThreadRepository.find({
+			where: { agentId },
+			order: { updatedAt: 'DESC' },
+			take: threadLimit,
+		});
+		return await this.agentExecutionRepository.findFirstUserMessageByThreadIds(
+			threads.map((thread) => thread.id),
+		);
+	}
+
 	private async hydrateTimelines(
 		agentId: string,
 		threadId: string,

@@ -18,6 +18,7 @@ import type { AgentEvalService } from '../agent-eval.service';
 import type { AgentEvalsFlagGate } from '../agent-evals-flag-gate';
 import { AgentEvalsController } from '../agent-evals.controller';
 import type { AgentOnlineChecksService } from '../online-checks/agent-online-checks.service';
+import type { AgentTestCaseService } from '../online-checks/agent-test-cases.service';
 
 vi.mock('../agent-eval.service', () => ({ AgentEvalService: class AgentEvalService {} }));
 vi.mock('../agent-eval-rating.service', () => ({
@@ -27,6 +28,9 @@ vi.mock('@/collaboration/collaboration.service', () => ({
 	CollaborationService: class CollaborationService {},
 }));
 vi.mock('../agent-evals-flag-gate', () => ({ AgentEvalsFlagGate: class AgentEvalsFlagGate {} }));
+vi.mock('../online-checks/agent-test-cases.service', () => ({
+	AgentTestCaseService: class AgentTestCaseService {},
+}));
 vi.mock('../online-checks/agent-online-checks.service', () => ({
 	AgentOnlineChecksService: class AgentOnlineChecksService {},
 }));
@@ -46,6 +50,7 @@ describe('AgentEvalsController', () => {
 	let flagGate: MockProxy<AgentEvalsFlagGate>;
 	let collaborationService: MockProxy<CollaborationService>;
 	let onlineChecksService: MockProxy<AgentOnlineChecksService>;
+	let testCaseService: MockProxy<AgentTestCaseService>;
 	let controller: AgentEvalsController;
 
 	function makeReq<P extends Record<string, unknown>>(
@@ -60,6 +65,10 @@ describe('AgentEvalsController', () => {
 	const datasetReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, datasetId: 'ds-1' });
 	const runReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, runId: 'run-1' });
 	const resultReq = () => makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, resultId: 'res-1' });
+	const threadReq = () =>
+		makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, threadId: 'thread-1' });
+	const testCaseRowReq = (rowId = '7') =>
+		makeReq({ projectId: PROJECT_ID, agentId: AGENT_ID, datasetId: 'ds-1', rowId });
 	const replyReq = () =>
 		makeReq({
 			projectId: PROJECT_ID,
@@ -75,12 +84,14 @@ describe('AgentEvalsController', () => {
 		flagGate.assertEnabled.mockResolvedValue(undefined);
 		collaborationService = mock<CollaborationService>();
 		onlineChecksService = mock<AgentOnlineChecksService>();
+		testCaseService = mock<AgentTestCaseService>();
 		controller = new AgentEvalsController(
 			service,
 			ratingService,
 			flagGate,
 			collaborationService,
 			onlineChecksService,
+			testCaseService,
 		);
 	});
 
@@ -138,6 +149,10 @@ describe('AgentEvalsController', () => {
 			// Ideas spend model credits like the test chat they feed, so the same scope.
 			suggestPromptIdeas: 'agent:execute',
 			getReplyChecks: 'agent:read',
+			// Writes a case into the agent's eval dataset, like creating one.
+			saveTestCase: 'agent:update',
+			removeTestCase: 'agent:update',
+			listSavedTestCases: 'agent:read',
 		} as const;
 
 		it.each(Object.entries(expectedScopes))('%s uses %s', (handlerName, scope) => {
@@ -219,6 +234,17 @@ describe('AgentEvalsController', () => {
 			['runOnlineChecks', async () => await controller.runOnlineChecks(agentReq())],
 			['suggestPromptIdeas', async () => await controller.suggestPromptIdeas(agentReq())],
 			['getReplyChecks', async () => await controller.getReplyChecks(replyReq())],
+			[
+				'saveTestCase',
+				async () =>
+					await controller.saveTestCase(agentReq(), undefined, {
+						threadId: 'thread-1',
+						executionId: 'exec-1',
+						verdict: 'looks-right',
+					}),
+			],
+			['removeTestCase', async () => await controller.removeTestCase(testCaseRowReq())],
+			['listSavedTestCases', async () => await controller.listSavedTestCases(threadReq())],
 		];
 
 		it.each(calls)('%s 404s when the flag is off for the user', async (_name, call) => {
@@ -235,10 +261,64 @@ describe('AgentEvalsController', () => {
 	});
 
 	describe('delegation', () => {
+		it('saves a judged reply as a test case for the path agent', async () => {
+			const body = {
+				threadId: 'thread-1',
+				executionId: 'exec-1',
+				verdict: 'not-right' as const,
+				note: 'Say when it arrives.',
+			};
+
+			await controller.saveTestCase(agentReq(), undefined, body);
+
+			expect(testCaseService.save).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID, body);
+		});
+
+		it('removes a saved test case by row', async () => {
+			await controller.removeTestCase(testCaseRowReq());
+
+			expect(testCaseService.remove).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID, 'ds-1', 7);
+		});
+
+		it('400s for a row id that is not a number', async () => {
+			await expect(controller.removeTestCase(testCaseRowReq('abc'))).rejects.toThrow(
+				BadRequestError,
+			);
+		});
+
 		it('suggests prompt ideas for the path agent as the caller', async () => {
 			await controller.suggestPromptIdeas(agentReq());
 
 			expect(onlineChecksService.promptIdeas).toHaveBeenCalledWith(user, PROJECT_ID, AGENT_ID);
+		});
+
+		it('adds how many earlier chats asked the same message to the reply checks', async () => {
+			onlineChecksService.replyChecks.mockResolvedValue({ issues: [] });
+			testCaseService.askedBefore.mockResolvedValue(2);
+
+			await expect(controller.getReplyChecks(replyReq())).resolves.toEqual({
+				issues: [],
+				askedBefore: 2,
+			});
+			expect(testCaseService.askedBefore).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				'thread-1',
+				'exec-1',
+			);
+		});
+
+		it('lists the test cases saved from a chat', async () => {
+			testCaseService.savedForThread.mockResolvedValue([]);
+
+			await expect(controller.listSavedTestCases(threadReq())).resolves.toEqual({ cases: [] });
+			expect(testCaseService.savedForThread).toHaveBeenCalledWith(
+				user,
+				PROJECT_ID,
+				AGENT_ID,
+				'thread-1',
+			);
 		});
 
 		it('checks the reply of the path execution as the caller', async () => {

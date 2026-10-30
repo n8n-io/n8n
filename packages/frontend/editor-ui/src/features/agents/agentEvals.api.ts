@@ -20,7 +20,13 @@ import type {
 	RerunResultOptions,
 } from '@n8n/api-types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
-import type { AgentReplyIssue, AgentTestIdea, OnlineChecksReport } from './agentEvals.types';
+import type {
+	AgentReplyIssue,
+	AgentSavedTestCase,
+	AgentSavedTestCaseRecord,
+	AgentTestIdea,
+	OnlineChecksReport,
+} from './agentEvals.types';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 // REST path helper, kept inline so callers can't build a URL that drifts from
@@ -358,9 +364,58 @@ export const fetchReplyChecks = async (
 	threadId: string,
 	executionId: string,
 ) => {
-	return await makeRestApiRequest<{ issues: AgentReplyIssue[] }>(
+	return await makeRestApiRequest<{ issues: AgentReplyIssue[]; askedBefore: number }>(
 		context,
 		'GET',
 		`${evalsPath(projectId, agentId)}/chat/${encodeURIComponent(threadId)}/executions/${encodeURIComponent(executionId)}/checks`,
+	);
+};
+
+/** Saves a judged test-chat reply as a test case. The server reads the turn itself. */
+export const saveTestCase = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	body: {
+		threadId: string;
+		executionId: string;
+		verdict: 'looks-right' | 'not-right';
+		note?: string;
+	},
+) => {
+	return await makeRestApiRequest<AgentSavedTestCase>(
+		context,
+		'POST',
+		`${evalsPath(projectId, agentId)}/test-cases`,
+		body,
+	);
+};
+
+/** Undo for a saved test case. */
+export const removeTestCase = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	datasetId: string,
+	rowId: number,
+) => {
+	await makeRestApiRequest(
+		context,
+		'DELETE',
+		`${evalsPath(projectId, agentId)}/test-cases/${encodeURIComponent(datasetId)}/rows/${rowId}`,
+	);
+};
+
+/** The test cases saved from one chat, so its replies show as saved after a reload. */
+export const fetchSavedTestCases = async (
+	context: IRestApiContext,
+	projectId: string,
+	agentId: string,
+	threadId: string,
+) => {
+	return await makeRestApiRequest<{ cases: AgentSavedTestCaseRecord[] }>(
+		context,
+		'GET',
+		`${evalsPath(projectId, agentId)}/test-cases/threads/${encodeURIComponent(threadId)}`,
 	);
 };

@@ -416,3 +416,23 @@ export type ApplyPreviewSuggestionResult = {
 	/** The same case, run again against the rewritten instructions. */
 	preview: PreviewRunResult;
 };
+
+// Saves a judged test-chat reply as a test case. The server reads the turn, so
+// the body names it and never carries the reply or the tool data. The note is
+// required for `not-right`; the service enforces that.
+const saveAgentTestCaseShape = {
+	threadId: z.string().min(1).max(128),
+	executionId: z.string().min(1).max(36),
+	verdict: z.enum(['looks-right', 'not-right']),
+	note: z.string().max(10_000).optional(),
+};
+export const saveAgentTestCaseSchema = z.object(saveAgentTestCaseShape);
+export type SaveAgentTestCasePayload = z.infer<typeof saveAgentTestCaseSchema>;
+export class SaveAgentTestCaseDto extends Z.class(saveAgentTestCaseShape) {}
+
+export type SavedAgentTestCase = {
+	datasetId: string;
+	rowId: number;
+	/** How many tool calls were saved with the case. */
+	toolCalls: number;
+};

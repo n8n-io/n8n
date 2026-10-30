@@ -135,3 +135,13 @@ export type AgentTestIdea = {
 };
 
 export type AgentReplyIssue = { checkId: string; reason: string };
+
+/** Mirrors `SavedAgentTestCase` in `@n8n/api-types`. */
+export type AgentSavedTestCase = { datasetId: string; rowId: number; toolCalls: number };
+
+/** Mirrors `SavedTestCaseRecord` in `cli/src/modules/agent-evals/online-checks`. */
+export type AgentSavedTestCaseRecord = AgentSavedTestCase & {
+	executionId: string;
+	verdict: 'looks-right' | 'not-right';
+	note?: string;
+};

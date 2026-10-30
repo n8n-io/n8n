@@ -206,6 +206,29 @@ describe('AgentExecutionService', () => {
 		});
 	});
 
+	describe('firstMessagesOfRecentThreads', () => {
+		it("returns the first user message of each of the agent's latest threads", async () => {
+			agentExecutionThreadRepository.find.mockResolvedValue([
+				makeThread({ id: 'thread-a' }),
+				makeThread({ id: 'thread-b' }),
+			]);
+			agentExecutionRepository.findFirstUserMessageByThreadIds.mockResolvedValue(
+				new Map([['thread-a', 'Where is my order?']]),
+			);
+
+			const messages = await service.firstMessagesOfRecentThreads('agent-1', 20);
+
+			expect(agentExecutionThreadRepository.find).toHaveBeenCalledWith(
+				expect.objectContaining({ where: { agentId: 'agent-1' }, take: 20 }),
+			);
+			expect(agentExecutionRepository.findFirstUserMessageByThreadIds).toHaveBeenCalledWith([
+				'thread-a',
+				'thread-b',
+			]);
+			expect(messages).toEqual(new Map([['thread-a', 'Where is my order?']]));
+		});
+	});
+
 	describe('recordSideCallUsage', () => {
 		it('increments the execution cost and thread totalCost by the report cost in one transaction', async () => {
 			await service.recordSideCallUsage('execution-1', 'thread-1', {

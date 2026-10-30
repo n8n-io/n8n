@@ -9,6 +9,7 @@ import {
 	PaginationDto,
 	PreviewRunOptionsDto,
 	RerunResultOptionsDto,
+	SaveAgentTestCaseDto,
 	UpdateAgentEvalDatasetDto,
 	createAgentEvalDatasetSchema,
 	type AgentEvalDatasetRecord,
@@ -23,6 +24,7 @@ import {
 	type CreateDraftDatasetResult,
 	type GenerateDraftCasesResult,
 	type PreviewRunResult,
+	type SavedAgentTestCase,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -49,12 +51,16 @@ import {
 	type PromptIdeasResponse,
 	type ReplyChecksResponse,
 } from './online-checks/agent-online-checks.service';
+import { AgentTestCaseService } from './online-checks/agent-test-cases.service';
+import type { SavedTestCaseRecord } from './online-checks/saved-test-case';
 
 type AgentParam = { projectId: string; agentId: string };
 type DatasetParam = AgentParam & { datasetId: string };
 type RunParam = AgentParam & { runId: string };
 type ResultParam = AgentParam & { resultId: string };
 type ReplyParam = AgentParam & { threadId: string; executionId: string };
+type TestCaseRowParam = AgentParam & { datasetId: string; rowId: string };
+type ThreadParam = AgentParam & { threadId: string };
 
 /**
  * REST surface for agent evals: generation, datasets, runs, per-case results and
@@ -80,6 +86,7 @@ export class AgentEvalsController {
 		private readonly flagGate: AgentEvalsFlagGate,
 		private readonly collaborationService: CollaborationService,
 		private readonly onlineChecksService: AgentOnlineChecksService,
+		private readonly testCaseService: AgentTestCaseService,
 	) {}
 
 	// ---- datasets ----
@@ -429,18 +436,61 @@ export class AgentEvalsController {
 		return await this.onlineChecksService.promptIdeas(req.user, projectId, agentId);
 	}
 
-	/** The code checks that failed on one test-chat reply. No model call. */
+	/**
+	 * What the test chat shows under one reply: the code checks that failed, and
+	 * how many earlier chats started with the same message. No model call.
+	 */
 	@Get('/:agentId/evals/chat/:threadId/executions/:executionId/checks')
 	@ProjectScope('agent:read')
-	async getReplyChecks(req: AuthenticatedRequest<ReplyParam>): Promise<ReplyChecksResponse> {
+	async getReplyChecks(
+		req: AuthenticatedRequest<ReplyParam>,
+	): Promise<ReplyChecksResponse & { askedBefore: number }> {
 		await this.flagGate.assertEnabled(req.user);
 		const { agentId, projectId, threadId, executionId } = req.params;
-		return await this.onlineChecksService.replyChecks(
-			req.user,
-			projectId,
-			agentId,
-			threadId,
-			executionId,
-		);
+		const [checks, askedBefore] = await Promise.all([
+			this.onlineChecksService.replyChecks(req.user, projectId, agentId, threadId, executionId),
+			this.testCaseService.askedBefore(req.user, projectId, agentId, threadId, executionId),
+		]);
+		return { ...checks, askedBefore };
+	}
+
+	/**
+	 * Saves a judged test-chat reply as a test case in the agent's "Saved from
+	 * test chat" dataset. Writes eval data, so the same scope as creating one.
+	 */
+	@Post('/:agentId/evals/test-cases')
+	@ProjectScope('agent:update')
+	async saveTestCase(
+		req: AuthenticatedRequest<AgentParam>,
+		_res: unknown,
+		@Body payload: SaveAgentTestCaseDto,
+	): Promise<SavedAgentTestCase> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId } = req.params;
+		return await this.testCaseService.save(req.user, projectId, agentId, payload);
+	}
+
+	/** Undo for a saved test case: removes its row. */
+	@Delete('/:agentId/evals/test-cases/:datasetId/rows/:rowId')
+	@ProjectScope('agent:update')
+	async removeTestCase(req: AuthenticatedRequest<TestCaseRowParam>): Promise<void> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, datasetId, rowId } = req.params;
+		const row = Number(rowId);
+		if (!Number.isInteger(row) || row < 1) throw new BadRequestError('Invalid row id');
+		await this.testCaseService.remove(req.user, projectId, agentId, datasetId, row);
+	}
+
+	/** The test cases saved from one chat, so the chat shows them as saved after a reload. */
+	@Get('/:agentId/evals/test-cases/threads/:threadId')
+	@ProjectScope('agent:read')
+	async listSavedTestCases(
+		req: AuthenticatedRequest<ThreadParam>,
+	): Promise<{ cases: SavedTestCaseRecord[] }> {
+		await this.flagGate.assertEnabled(req.user);
+		const { agentId, projectId, threadId } = req.params;
+		return {
+			cases: await this.testCaseService.savedForThread(req.user, projectId, agentId, threadId),
+		};
 	}
 }

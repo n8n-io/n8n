@@ -876,6 +876,8 @@ export {
 	applyPreviewSuggestionSchema,
 	applyAgentEvalSuggestionsSchema,
 	MAX_APPLY_SUGGESTIONS,
+	SaveAgentTestCaseDto,
+	saveAgentTestCaseSchema,
 } from './schemas/agent-evals.schema';
 export type {
 	AgentEvalColumnMapping,
@@ -910,6 +912,8 @@ export type {
 	ApplyAgentEvalSuggestionsResult,
 	ApplyPreviewSuggestionOptions,
 	ApplyPreviewSuggestionResult,
+	SaveAgentTestCasePayload,
+	SavedAgentTestCase,
 } from './schemas/agent-evals.schema';
 
 export {

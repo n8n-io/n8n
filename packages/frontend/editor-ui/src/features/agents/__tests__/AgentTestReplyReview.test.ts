@@ -6,14 +6,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createComponentRenderer } from '@/__tests__/render';
 import AgentTestReplyReview from '../components/AgentTestReplyReview.vue';
+import { clearSavedTestCases } from '../composables/useSavedTestCases';
 
 configure({ testIdAttribute: 'data-testid' });
 
-const { fetchReplyChecksMock, trackJudgedMock } = vi.hoisted(() => ({
+const {
+	fetchReplyChecksMock,
+	trackJudgedMock,
+	saveTestCaseMock,
+	removeTestCaseMock,
+	fetchSavedTestCasesMock,
+} = vi.hoisted(() => ({
 	fetchReplyChecksMock: vi.fn(),
 	trackJudgedMock: vi.fn(),
+	saveTestCaseMock: vi.fn(),
+	removeTestCaseMock: vi.fn(),
+	fetchSavedTestCasesMock: vi.fn(),
 }));
-vi.mock('../agentEvals.api', () => ({ fetchReplyChecks: fetchReplyChecksMock }));
+vi.mock('../agentEvals.api', () => ({
+	fetchReplyChecks: fetchReplyChecksMock,
+	saveTestCase: saveTestCaseMock,
+	removeTestCase: removeTestCaseMock,
+	fetchSavedTestCases: fetchSavedTestCasesMock,
+}));
 vi.mock('../composables/useAgentTelemetry', () => ({
 	useAgentTelemetry: () => ({ trackJudgedTestReply: trackJudgedMock }),
 }));
@@ -36,8 +51,16 @@ const render = async (overrides: Record<string, unknown> = {}) => {
 describe('AgentTestReplyReview', () => {
 	beforeEach(() => {
 		fetchReplyChecksMock.mockReset();
-		fetchReplyChecksMock.mockResolvedValue({ issues: [] });
+		fetchReplyChecksMock.mockResolvedValue({ issues: [], askedBefore: 0 });
+		fetchSavedTestCasesMock.mockReset();
+		fetchSavedTestCasesMock.mockResolvedValue({ cases: [] });
+		clearSavedTestCases();
+		localStorage.clear();
 		trackJudgedMock.mockReset();
+		saveTestCaseMock.mockReset();
+		saveTestCaseMock.mockResolvedValue({ datasetId: 'ds-1', rowId: 7, toolCalls: 2 });
+		removeTestCaseMock.mockReset();
+		removeTestCaseMock.mockResolvedValue(undefined);
 	});
 
 	it('reads the checks of this reply', async () => {
@@ -118,6 +141,178 @@ describe('AgentTestReplyReview', () => {
 		await userEvent.click(rendered.getByTestId('agent-test-reply-not-right'));
 
 		expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' });
+	});
+
+	describe('after a reload', () => {
+		it('shows a reply saved as right as saved, without the buttons', async () => {
+			fetchSavedTestCasesMock.mockResolvedValue({
+				cases: [
+					{
+						datasetId: 'ds-1',
+						rowId: 7,
+						executionId: 'exec-1',
+						verdict: 'looks-right',
+						toolCalls: 1,
+					},
+				],
+			});
+
+			const rendered = await render();
+
+			expect(fetchSavedTestCasesMock).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				'thread-1',
+			);
+			expect(rendered.getByTestId('agent-test-reply-judged')).toBeInTheDocument();
+			expect(rendered.getByTestId('agent-test-reply-saved')).toHaveTextContent(
+				'Saved as a test, with data from 1 tool call',
+			);
+			expect(rendered.queryByTestId('agent-test-reply-looks-right')).not.toBeInTheDocument();
+		});
+
+		it('shows a reply saved as not right with its note', async () => {
+			fetchSavedTestCasesMock.mockResolvedValue({
+				cases: [
+					{
+						datasetId: 'ds-1',
+						rowId: 8,
+						executionId: 'exec-1',
+						verdict: 'not-right',
+						note: 'Name the day',
+						toolCalls: 0,
+					},
+				],
+			});
+
+			const rendered = await render();
+
+			expect(rendered.getByTestId('agent-test-reply-judged')).toHaveTextContent('Name the day');
+		});
+
+		it('reads the saved cases of a chat once for all its replies', async () => {
+			await render();
+			await render({ executionId: 'exec-2' });
+
+			expect(fetchSavedTestCasesMock).toHaveBeenCalledTimes(1);
+		});
+	});
+
+	describe('a message the person keeps asking', () => {
+		it('suggests saving it when earlier chats asked the same', async () => {
+			fetchReplyChecksMock.mockResolvedValue({ issues: [], askedBefore: 2 });
+
+			const rendered = await render();
+
+			expect(rendered.getByTestId('agent-test-reply-asked-before')).toHaveTextContent(
+				'You asked this in 2 earlier test chats',
+			);
+		});
+
+		it('says nothing for a message asked for the first time', async () => {
+			const rendered = await render();
+
+			expect(rendered.queryByTestId('agent-test-reply-asked-before')).not.toBeInTheDocument();
+		});
+
+		it('hides the suggestion on "Not now" and keeps it hidden after a reload', async () => {
+			fetchReplyChecksMock.mockResolvedValue({ issues: [], askedBefore: 1 });
+			const rendered = await render();
+
+			await userEvent.click(rendered.getByTestId('agent-test-reply-asked-before-dismiss'));
+			expect(rendered.queryByTestId('agent-test-reply-asked-before')).not.toBeInTheDocument();
+
+			rendered.unmount();
+			const again = await render();
+			expect(again.queryByTestId('agent-test-reply-asked-before')).not.toBeInTheDocument();
+		});
+
+		it('hides the suggestion once the reply has a verdict', async () => {
+			fetchReplyChecksMock.mockResolvedValue({ issues: [], askedBefore: 1 });
+			const rendered = await render();
+
+			await userEvent.click(rendered.getByTestId('agent-test-reply-looks-right'));
+			await flushPromises();
+
+			expect(rendered.queryByTestId('agent-test-reply-asked-before')).not.toBeInTheDocument();
+		});
+	});
+
+	describe('saving as a test', () => {
+		it('saves "Looks right" as a test and names the tool data it kept', async () => {
+			const rendered = await render();
+
+			await userEvent.click(rendered.getByTestId('agent-test-reply-looks-right'));
+			await flushPromises();
+
+			expect(saveTestCaseMock).toHaveBeenCalledWith(expect.anything(), 'project-1', 'agent-1', {
+				threadId: 'thread-1',
+				executionId: 'exec-1',
+				verdict: 'looks-right',
+			});
+			expect(rendered.getByTestId('agent-test-reply-saved')).toHaveTextContent(
+				'Saved as a test, with data from 2 tool calls',
+			);
+			expect(rendered.queryByTestId('agent-test-reply-looks-right')).not.toBeInTheDocument();
+		});
+
+		it('saves "Not right" with its note', async () => {
+			const rendered = await render();
+
+			await userEvent.click(rendered.getByTestId('agent-test-reply-not-right'));
+			await userEvent.type(rendered.getByTestId('agent-test-reply-note'), 'Name the day');
+			await userEvent.click(rendered.getByTestId('agent-test-reply-save-note'));
+			await flushPromises();
+
+			expect(saveTestCaseMock).toHaveBeenCalledWith(expect.anything(), 'project-1', 'agent-1', {
+				threadId: 'thread-1',
+				executionId: 'exec-1',
+				verdict: 'not-right',
+				note: 'Name the day',
+			});
+		});
+
+		it('removes the saved test on Undo and offers the choice again', async () => {
+			const rendered = await render();
+			await userEvent.click(rendered.getByTestId('agent-test-reply-looks-right'));
+			await flushPromises();
+
+			await userEvent.click(rendered.getByTestId('agent-test-reply-undo'));
+			await flushPromises();
+
+			expect(removeTestCaseMock).toHaveBeenCalledWith(
+				expect.anything(),
+				'project-1',
+				'agent-1',
+				'ds-1',
+				7,
+			);
+			expect(rendered.getByTestId('agent-test-reply-looks-right')).toBeInTheDocument();
+		});
+
+		it('removes the saved test when the person changes the verdict', async () => {
+			const rendered = await render();
+			await userEvent.click(rendered.getByTestId('agent-test-reply-looks-right'));
+			await flushPromises();
+
+			await userEvent.click(rendered.getByTestId('agent-test-reply-change'));
+			await flushPromises();
+
+			expect(removeTestCaseMock).toHaveBeenCalledTimes(1);
+		});
+
+		it('keeps the verdict and says so when saving fails', async () => {
+			saveTestCaseMock.mockRejectedValue(new Error('No access'));
+			const rendered = await render();
+
+			await userEvent.click(rendered.getByTestId('agent-test-reply-looks-right'));
+			await flushPromises();
+
+			expect(rendered.getByTestId('agent-test-reply-judged')).toBeInTheDocument();
+			expect(rendered.getByTestId('agent-test-reply-save-error')).toHaveTextContent('No access');
+			expect(rendered.queryByTestId('agent-test-reply-undo')).not.toBeInTheDocument();
+		});
 	});
 
 	it('records nothing when the person cancels the note', async () => {
