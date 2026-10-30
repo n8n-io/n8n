@@ -1,0 +1,29 @@
+packages/cli/src/modules/agents/agent-runtime-reconstruction.service.ts
+  s_f6ecac1d27039d::t_b1754916882ed9 15
+  s_f6ecac1d27039d::t_aa5901e62beebb 121,342,1064,1125,1129-1132,1136,1140-1141,1162
+packages/cli/src/modules/agents/agent-sandbox-files.service.ts
+  s_f6ecac1d27039d::t_b265ddb37a9401 2,7-17,19-23,27-31,49-56,66,89,92-99,245-255,258,260-265,292-316,69,82,85-88,121,206,210,238-240,242-244,80-81,107,113,115,164-165,168-170,175,184-185,195,200,203-205,26,90-91,122,127,129,133,148,155,157,159-160
+  s_f6ecac1d27039d::t_d3cba2da192fc1 57-64,256-257,259,266-291
+  s_f6ecac1d27039d::t_be93d5d86ab6d5 1,3,5,18,207-209,211-237,75-79,109-111,114,197,199,201-202
+  s_f6ecac1d27039d::t_0bfb2448159ae2 83-84,116-118,120,112,178,188,4,24-25,119,123-126,128,130-132,134-147,149-152
+  s_f6ecac1d27039d::t_6b524c146d1791 241
+packages/cli/src/modules/agents/__tests__/agent-runtime-reconstruction-subagent-workspace.test.ts
+  s_f6ecac1d27039d::t_b1754916882ed9 34,90
+  s_f6ecac1d27039d::t_41abc492f749ab 131,136,153-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "cfe92ac93c5739a29889800716cba07d5907333b",
+  "prompts": {},
+  "sessions": {
+    "s_f6ecac1d27039d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "89b89260-50b9-4dc9-b922-745d32a048d8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

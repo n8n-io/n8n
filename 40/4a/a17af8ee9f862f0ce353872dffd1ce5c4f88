@@ -1,0 +1,39 @@
+packages/cli/src/modules/agents/background/__tests__/agent-wake.service.test.ts
+  s_ad4048d9318efd::t_b114572c09a443 146
+packages/cli/src/modules/agents/background/agent-wake.service.ts
+  s_ad4048d9318efd::t_5d3e8cffe84801 177
+packages/cli/test/integration/database/repositories/agent-execution.repository.test.ts
+  s_82789c69de1855::t_aafdebdf5c22a0 1922
+packages/cli/src/modules/agents/__tests__/agent-message-queue.service.test.ts
+  s_ad4048d9318efd::t_42e9210b7c7151 198,232,235,237,253,261,263,270,272
+packages/cli/src/modules/agents/agent-message-queue.service.ts
+  s_ad4048d9318efd::t_3029bd6941673b 155,165,188,220,222,225,443,449,451,453,458,460,462,466,470,473,475,477,482,495,498,507,512,515,517,519,522,524,545,547,550,552,556,558,560,562
+packages/cli/src/modules/agents/agent-task-cancellation.service.ts
+  s_82789c69de1855::t_393425144b2600 49,52,54,56,59,78,80,83,88,102,105,108,110,113,116,133,139,150,156,159,180,182,185,188,190,194,197,201,204,212,214,223,227
+packages/cli/src/modules/agents/__tests__/agent-task-cancellation.service.test.ts
+  s_ad4048d9318efd::t_9ab1cbb3dbe180 193-194,205,207,209,224,229,233,251,256,258,265,267,276,281,284,290,305,317,319
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "404aa17af8ee9f862f0ce353872dffd1ce5c4f88",
+  "prompts": {},
+  "sessions": {
+    "s_82789c69de1855": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a159bb-d082-7922-91e3-bcc90434d8c6",
+        "model": "gpt-6-astra"
+      },
+      "human_author": null
+    },
+    "s_ad4048d9318efd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "12bb0cf1-e91b-4d36-b23c-d7206add2b9c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Benjamin Schroth <benjamin@n8n.io>"
+    }
+  }
+}

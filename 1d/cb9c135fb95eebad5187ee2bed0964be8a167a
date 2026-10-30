@@ -1,0 +1,27 @@
+packages/@n8n/db/src/repositories/workflow-dependency.repository.ts
+  s_7f67b52a2ab2a1::t_15f0b9768e1dcf 282
+packages/cli/src/modules/source-control.ee/__tests__/source-control-import.service.ee.test.ts
+  s_7f67b52a2ab2a1::t_2c7d170b71f131 150
+packages/cli/test/integration/workflows/workflow.service.test.ts
+  s_7f67b52a2ab2a1::t_2c7d170b71f131 147
+packages/cli/src/workflows/__tests__/workflow.service.test.ts
+  s_7f67b52a2ab2a1::t_2c7d170b71f131 153,539,1716,2482,2643,2957,3135,3326,3433
+packages/cli/src/modules/workflow-reviews.ee/__tests__/workflow-review-lifecycle.integration.test.ts
+  s_7f67b52a2ab2a1::t_2c7d170b71f131 645
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.5.2",
+  "base_commit_sha": "1dcb9c135fb95eebad5187ee2bed0964be8a167a",
+  "prompts": {},
+  "sessions": {
+    "s_7f67b52a2ab2a1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6fd03241-56e0-4929-823f-6be8983e127d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Svetoslav Dekov <svetoslav.dekov@n8n.io>"
+    }
+  }
+}
