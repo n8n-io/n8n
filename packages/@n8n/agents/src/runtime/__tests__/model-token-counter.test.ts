@@ -29,6 +29,17 @@ describe('createModelTokenCounter', () => {
 	});
 
 	it.each([
+		{ model: 'openai/gpt-5', encoding: 'o200k_base' },
+		{ model: 'anthropic/claude-haiku-4-5', encoding: 'cl100k_base' },
+	] as const)('counts uniform spaces accurately for $encoding', async ({ model, encoding }) => {
+		const text = ' '.repeat(8_000);
+		const encoder = await getEncoding(encoding);
+		const expected = encoder.encode(text, [], []).length;
+
+		expect(await createModelTokenCounter(model)(text)).toBe(expected);
+	});
+
+	it.each([
 		{
 			name: 'ordinary prose',
 			text: 'ordinary synthetic text. '.repeat(334).slice(0, 8_000),
@@ -38,6 +49,11 @@ describe('createModelTokenCounter', () => {
 			name: 'alternating spaces and tabs',
 			text: ' \t'.repeat(4_000),
 			expectedTokens: 3_999,
+		},
+		{
+			name: 'uniform spaces',
+			text: ' '.repeat(8_000),
+			expectedTokens: 63,
 		},
 	])(
 		'keeps the maximum event-loop pause below 500 ms for $name',

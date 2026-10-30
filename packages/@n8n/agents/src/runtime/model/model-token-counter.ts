@@ -41,6 +41,9 @@ async function countInChunks(text: string, countChunk: (chunk: string) => number
 // Bound both kinds of runs in each chunk.
 const MAX_UNBROKEN_RUN_CHARS = 200;
 
+// Both encodings have a token for 128 spaces. Split space runs at this token boundary.
+const SPACE_TOKEN_CHUNK = ' '.repeat(128);
+
 // Split before whitespace, where BPE pre-tokens begin, so chunk counts stay close to the full count.
 // Cut long runs into bounded pieces, but never split a surrogate pair.
 function findChunkEnd(text: string, start: number): number {
@@ -51,7 +54,10 @@ function findChunkEnd(text: string, start: number): number {
 		const boundary = /\s/.test(text[runStart]) ? runStart : runStart - 1;
 		if (boundary > start) return boundary;
 	}
-	return keepSurrogatePairWhole(text, start + MAX_UNBROKEN_RUN_CHARS);
+	const chunkChars = text.startsWith(SPACE_TOKEN_CHUNK, start)
+		? SPACE_TOKEN_CHUNK.length
+		: MAX_UNBROKEN_RUN_CHARS;
+	return keepSurrogatePairWhole(text, start + chunkChars);
 }
 
 function findLongRunStart(text: string, start: number, limit: number): number {
