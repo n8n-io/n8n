@@ -448,6 +448,7 @@ describe('InstanceAiThreadList', () => {
 			mockedStore(useAssistantAgentThreadsStore).openedThreads = [
 				agentRuntimeThread,
 				{ ...agentRuntimeThread, id: 'aa2', title: 'Invoice follow-up' },
+				{ ...agentRuntimeThread, id: 'aa3', title: null },
 			];
 			mockedStore(useInstanceAiStore).threadHistory.search = ' INVOICE ';
 
