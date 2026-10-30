@@ -46,6 +46,7 @@ import { AgentChatAttachmentService } from '../agent-chat-attachment.service';
 import {
 	type ActiveRun,
 	AgentSandboxFilesService,
+	type SandboxFileScope,
 	usedWorkspace,
 } from '../agent-sandbox-files.service';
 import type { StartExecutionParams } from '../agent-execution.service';
@@ -529,16 +530,11 @@ export class SubAgentRunner {
 			}
 
 			// The child has no next turn, so store its outputs/ before they go to the parent.
-			const workspace = usedWorkspace(recorder.getMessageRecord().timeline)
-				? reconstructed.agent.getWorkspace()
-				: undefined;
-			if (workspace) {
-				await this.sandboxFiles.syncOutputs(workspace, {
-					agentId: recording.agentId,
-					projectId: context.projectId,
-					threadId,
-				});
-			}
+			await this.syncChildOutputs(activeRun, recorder, {
+				agentId: recording.agentId,
+				projectId: context.projectId,
+				threadId,
+			});
 			const returned = await this.returnFilesToParent(
 				operation.request.parentThreadId,
 				threadId,
@@ -557,6 +553,12 @@ export class SubAgentRunner {
 			executionError = error;
 			recorder.record({ type: 'error', error });
 			recorder.record({ type: 'finish', finishReason: 'error' });
+			// A failed or cancelled child keeps the files that it made, as a parent turn does.
+			await this.syncChildOutputs(activeRun, recorder, {
+				agentId: recording.agentId,
+				projectId: context.projectId,
+				threadId,
+			});
 			throw error;
 		} finally {
 			if (activeRun) this.sandboxFiles.untrackRun(threadId, activeRun);
@@ -628,6 +630,17 @@ export class SubAgentRunner {
 			});
 			return { filesError: 'The files of the sub-agent could not be listed' };
 		}
+	}
+
+	/** Store the new files of the child's outputs/. Never throws. */
+	private async syncChildOutputs(
+		run: ActiveRun | undefined,
+		recorder: ExecutionRecorder,
+		scope: SandboxFileScope,
+	): Promise<void> {
+		if (!run || !usedWorkspace(recorder.getMessageRecord().timeline)) return;
+		const workspace = run.getWorkspace();
+		if (workspace) await this.sandboxFiles.syncOutputs(workspace, scope);
 	}
 
 	/**
