@@ -1,6 +1,6 @@
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import type { Attributes, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
+import type { Attributes, Baggage, Context, Exception, Span, TimeInput } from '@opentelemetry/api';
 import {
 	context,
 	defaultTextMapGetter,
@@ -10,7 +10,11 @@ import {
 	SpanStatusCode,
 	trace,
 } from '@opentelemetry/api';
-import { isTimeInputHrTime, W3CTraceContextPropagator } from '@opentelemetry/core';
+import {
+	isTimeInputHrTime,
+	W3CBaggagePropagator,
+	W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
@@ -31,15 +35,13 @@ import {
 	type EndNodeParams,
 	isEndNodeError,
 } from './execution-level-tracer.types';
-import {
-	type CustomAttributePrefixes,
-	OtelBaggageConfig,
-	OtelCustomAttributesConfig,
-} from './otel.config';
+import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from './otel.config';
 import { ATTR, BUILT_IN_ATTRIBUTE_KEYS } from './otel.constants';
 import type { TracingContext } from './tracing-context';
 
 const propagator = new W3CTraceContextPropagator();
+const baggagePropagator = new W3CBaggagePropagator();
+const RESERVED_BAGGAGE_KEY_PREFIX = 'n8n.';
 const UNKNOWN_ERROR_TYPE = 'UnknownError';
 const OBJECT_ERROR_TYPE = 'Object';
 
@@ -51,7 +53,7 @@ type TrackedSpan = { span: Span };
 type TrackedWorkflowSpan = TrackedSpan & {
 	context: Context;
 	projectCustomAttributes: Record<string, string>;
-	baggage?: string;
+	baggage?: Baggage;
 };
 
 @Service()
@@ -62,7 +64,6 @@ export class ExecutionLevelTracer {
 	constructor(
 		private readonly logger: Logger,
 		private readonly customAttributesConfig: OtelCustomAttributesConfig,
-		private readonly baggageConfig: OtelBaggageConfig,
 	) {}
 
 	private get tracer() {
@@ -94,7 +95,7 @@ export class ExecutionLevelTracer {
 
 			const span = this.tracer.startSpan('workflow.execute', { attributes, links }, parentCtx);
 			const workflowContext = trace.setSpan(parentCtx, span);
-			const baggage = this.baggageConfig.propagate ? params.tracingContext?.baggage : undefined;
+			const baggage = toBaggage(params.tracingContext?.baggage);
 
 			this.activeWorkflowSpans.set(params.executionId, {
 				span,
@@ -312,15 +313,17 @@ export class ExecutionLevelTracer {
 		headers: Record<string, string>,
 	): void {
 		try {
-			// The caller's baggage has its own setting, so it is sent even when
-			// outbound trace headers are off.
-			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
-			if (baggage) headers.baggage = baggage;
-
 			const span = this.findMostSpecificSpan(executionId, nodeName);
 			if (!span) return;
 
-			propagation.inject(trace.setSpan(ROOT_CONTEXT, span), headers, defaultTextMapSetter);
+			const baggage = this.activeWorkflowSpans.get(executionId)?.baggage;
+			const ctx = trace.setSpan(ROOT_CONTEXT, span);
+
+			propagation.inject(
+				baggage ? propagation.setBaggage(ctx, baggage) : ctx,
+				headers,
+				defaultTextMapSetter,
+			);
 		} catch (error) {
 			this.logger.warn('Failed to inject trace headers', {
 				executionId,
@@ -420,18 +423,51 @@ function resolveCrashedWorkflowIdentity(params: EndCrashedWorkflowParams): Execu
 	);
 }
 
+function toBaggage(header: string | undefined): Baggage | undefined {
+	if (!header) return undefined;
+	const extracted = baggagePropagator.extract(
+		ROOT_CONTEXT,
+		{ baggage: header },
+		defaultTextMapGetter,
+	);
+	const baggage = propagation.getBaggage(extracted);
+	if (!baggage) return undefined;
+
+	const kept = withoutReservedEntries(baggage);
+	return kept.getAllEntries().length ? kept : undefined;
+}
+
+// A caller must not pass itself off as n8n, so no entry under the prefix n8n owns goes out
+// or on to the execution row. The parser decodes the key first, so `n8n%2Efoo` cannot hide
+// the prefix, and the comparison ignores case because the parser keeps the case it was given.
+function withoutReservedEntries(baggage: Baggage): Baggage {
+	const reserved = baggage
+		.getAllEntries()
+		.map(([key]) => key)
+		.filter((key) => key.toLowerCase().startsWith(RESERVED_BAGGAGE_KEY_PREFIX));
+
+	return reserved.length ? baggage.removeEntries(...reserved) : baggage;
+}
+
 function toTracingParentContext(
 	span: Span,
 	identity: ExecutionIdentity,
-	baggage: string | undefined,
+	baggage: Baggage | undefined,
 ): TracingContext {
 	const carrier: Record<string, string> = {};
 	propagator.inject(trace.setSpan(ROOT_CONTEXT, span), carrier, defaultTextMapSetter);
+	if (baggage) {
+		baggagePropagator.inject(
+			propagation.setBaggage(ROOT_CONTEXT, baggage),
+			carrier,
+			defaultTextMapSetter,
+		);
+	}
 	return {
 		traceparent: carrier.traceparent,
 		tracestate: carrier.tracestate,
 		identity,
-		...(baggage && { baggage }),
+		...(carrier.baggage && { baggage: carrier.baggage }),
 	};
 }
 

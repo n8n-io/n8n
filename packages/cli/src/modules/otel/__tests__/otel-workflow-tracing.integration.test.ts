@@ -27,7 +27,7 @@ import {
 } from './support/otel-workflow-fixtures';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import { OtelSettingsService } from '../otel-settings.service';
-import { OtelBaggageConfig, OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
+import { OtelConfig, OtelCustomAttributesConfig } from '../otel.config';
 import { DEFAULT_CUSTOM_ATTRIBUTE_PREFIXES } from '../otel.constants';
 
 let otel: OtelTestProvider;
@@ -226,14 +226,6 @@ describe('OTEL Workflow Tracing Integration', () => {
 
 describe('Caller baggage', () => {
 	const tracingContext = { baggage: 'tenant=acme' };
-
-	const setBaggagePropagation = async (enabled: boolean) => {
-		Container.get(OtelBaggageConfig).propagate = enabled;
-		await Container.get(OtelSettingsService).loadSettings();
-	};
-
-	beforeAll(async () => await setBaggagePropagation(true));
-	afterAll(async () => await setBaggagePropagation(false));
 
 	// The headers that `injectTraceHeaders` gives each node while it runs, the same call that
 	// the HTTP request helpers and the MCP client make.

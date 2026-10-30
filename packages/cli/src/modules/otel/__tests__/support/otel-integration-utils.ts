@@ -4,6 +4,7 @@ import { LICENSE_FEATURES } from '@n8n/constants';
 import type { WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { propagation } from '@opentelemetry/api';
 import { readFileSync } from 'fs';
 import { InstanceSettings, UnrecognizedNodeTypeError } from 'n8n-core';
 import { DebugHelper } from 'n8n-nodes-base/nodes/DebugHelper/DebugHelper.node';
@@ -21,6 +22,7 @@ import path from 'path';
 import { ActiveExecutions } from '@/active-executions';
 import { JobProcessor } from '@/scaling/job-processor';
 import type { Job } from '@/scaling/scaling.types';
+import { DEFAULT_OUTBOUND_PROPAGATOR } from '@/observability/swappable-pipeline';
 import { WorkflowRunner } from '@/workflow-runner';
 import * as utils from '@test-integration/utils';
 
@@ -56,6 +58,13 @@ export async function initOtelTestEnvironment() {
 
 	await testModules.loadModules(['otel']);
 	await testDb.init();
+
+	// Set before the settings load, so the pipeline that init installs is the one that
+	// sends outbound headers. It is the only setting the outbound header set obeys.
+	const config = Container.get(OtelConfig);
+	config.includeNodeSpans = true;
+	config.injectOutbound = true;
+
 	await Container.get(OtelSettingsService).loadSettings();
 	await Container.get(ModuleRegistry).initModules('main');
 	Container.get(LicenseState).setLicenseProvider({
@@ -77,9 +86,10 @@ export async function initOtelTestEnvironment() {
 
 	Container.get(InstanceSettings).markAsLeader();
 
-	const config = Container.get(OtelConfig);
-	config.includeNodeSpans = true;
-	config.injectOutbound = true;
+	// The test provider holds the global tracer provider, so n8n skips its own SDK and
+	// never installs a propagator. Install the one the settings ask for, so the outbound
+	// headers are the ones a running instance sends.
+	propagation.setGlobalPropagator(DEFAULT_OUTBOUND_PROPAGATOR);
 
 	return {
 		otel,
@@ -89,6 +99,7 @@ export async function initOtelTestEnvironment() {
 }
 
 export async function terminateOtelTestEnvironment(otel: OtelTestProvider) {
+	propagation.disable();
 	await otel.shutdown();
 	await testDb.terminate();
 }

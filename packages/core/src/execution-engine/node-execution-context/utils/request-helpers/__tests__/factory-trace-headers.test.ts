@@ -97,27 +97,6 @@ describe('request helpers trace context', () => {
 			);
 		});
 
-		it('keeps a baggage header that the node set, in any case', async () => {
-			const request = captureRequest();
-			const writesBaggage = vi.fn(
-				(_executionId: string, _nodeName: string | undefined, headers: Record<string, string>) => {
-					Object.assign(headers, TRACE_HEADERS, { baggage: 'tenant=acme' });
-				},
-			);
-			const { helpers } = helpersWith({ executionId: 'exec-1', inject: writesBaggage });
-
-			await helpers.httpRequest({ url: 'https://example.com', headers: { Baggage: 'env=prod' } });
-			await helpers.httpRequest({ url: 'https://example.com', headers: { baggage: 'env=prod' } });
-			await helpers.httpRequest({ url: 'https://example.com' });
-
-			expect(request.mock.calls[0][0].headers).toEqual({ Baggage: 'env=prod', ...TRACE_HEADERS });
-			expect(request.mock.calls[1][0].headers).toEqual({ baggage: 'env=prod', ...TRACE_HEADERS });
-			expect(request.mock.calls[2][0].headers).toEqual({
-				...TRACE_HEADERS,
-				baggage: 'tenant=acme',
-			});
-		});
-
 		it('leaves the request untouched when there is no trace context', async () => {
 			const request = captureRequest();
 			const { helpers } = helpersWith({ executionId: 'exec-1' });

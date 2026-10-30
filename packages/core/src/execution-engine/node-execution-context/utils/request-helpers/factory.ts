@@ -89,7 +89,7 @@ export const getRequestHelperFunctions = (
 			}
 			const traceHeaders = getTraceHeaders();
 			if (Object.keys(traceHeaders).length) {
-				addTraceHeaders((requestOptions.headers ??= {}), traceHeaders);
+				Object.assign((requestOptions.headers ??= {}), traceHeaders);
 			}
 			return await Container.get(OutboundHttp).requests().request(requestOptions);
 		},
@@ -163,7 +163,7 @@ export const getRequestHelperFunctions = (
 			const traceHeaders = getTraceHeaders();
 			if (Object.keys(traceHeaders).length) {
 				const target = typeof uriOrObject === 'string' ? (options ??= {}) : uriOrObject;
-				addTraceHeaders((target.headers ??= {}), traceHeaders);
+				Object.assign((target.headers ??= {}), traceHeaders);
 			}
 			// oxlint-disable-next-line typescript/no-deprecated
 			return await proxyRequestToAxios(workflow, additionalData, node, uriOrObject, options);
@@ -241,16 +241,3 @@ export const getRequestHelperFunctions = (
 		},
 	};
 };
-
-/**
- * Adds the trace headers to the request headers. A `baggage` header that the node already set,
- * in any case, wins over the caller baggage, so n8n never replaces or duplicates it.
- */
-function addTraceHeaders(headers: Record<string, unknown>, traceHeaders: Record<string, string>) {
-	const { baggage, ...rest } = traceHeaders;
-	Object.assign(headers, rest);
-
-	if (baggage && !Object.keys(headers).some((name) => name.toLowerCase() === 'baggage')) {
-		headers.baggage = baggage;
-	}
-}
