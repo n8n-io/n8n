@@ -144,6 +144,32 @@ describe('InstanceAiModule.init', () => {
 		};
 	}
 
+	// The controller module is evaluated once in this file, so this test must run before
+	// any other test that registers the Assistant agent.
+	it('loads the Assistant agent routes only when the Assistant agent registers', async () => {
+		const { config, investigations } = setup();
+		mockInstance(SystemAgentRegistrationService).register.mockResolvedValue();
+		mockInstance(AssistantAgentProvider);
+		const modules = mockInstance(ModuleRegistry);
+		let eligibleModules = ['instance-ai', 'agents'];
+		Object.defineProperty(modules, 'eligibleModules', { get: () => eligibleModules });
+
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
+		expect(loadAssistantAgentController).not.toHaveBeenCalled();
+
+		config.assistantAgentEnabled = true;
+		eligibleModules = ['instance-ai'];
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
+		expect(loadAssistantAgentController).not.toHaveBeenCalled();
+
+		eligibleModules = ['instance-ai', 'agents'];
+		await new InstanceAiModule().init();
+		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(3));
+		expect(loadAssistantAgentController).toHaveBeenCalledOnce();
+	});
+
 	it('loads suggestion listeners only when workflow suggestions are enabled', async () => {
 		const { config, sources, investigations, mutationHooks, configurations } = setup();
 
@@ -272,14 +298,11 @@ describe('InstanceAiModule.init', () => {
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledOnce());
 		expect(systemAgents.register).not.toHaveBeenCalled();
-		// The Assistant agent routes load only with the agent.
-		expect(loadAssistantAgentController).not.toHaveBeenCalled();
 
 		config.assistantAgentEnabled = true;
 		await new InstanceAiModule().init();
 		await vi.waitFor(() => expect(investigations.reconcile).toHaveBeenCalledTimes(2));
 		expect(systemAgents.register).toHaveBeenCalledWith(provider);
-		expect(loadAssistantAgentController).toHaveBeenCalledOnce();
 
 		eligibleModules = ['instance-ai'];
 		systemAgents.register.mockClear();
