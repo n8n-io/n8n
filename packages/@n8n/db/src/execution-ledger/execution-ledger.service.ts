@@ -84,12 +84,16 @@ export class ExecutionLedger {
 			this.reportUnrecorded(await writer.writeEnded(facts, {}), facts);
 		} catch (e) {
 			const error = ensureError(e);
-			const meta = { executionId: facts.executionId, workflowId: facts.workflowId };
-			this.logger.error('Failed to record a run end in the execution ledger', {
-				...meta,
-				error: error.message,
+			const { executionId, workflowId } = facts;
+			// The text log format drops metadata, so the message carries the IDs and the cause.
+			this.logger.error(
+				`Failed to record the end of execution ${executionId} in the execution ledger: ${error.message}`,
+				{ executionId, workflowId, error },
+			);
+			this.errorReporter.error(error, {
+				extra: { executionId, workflowId },
+				shouldBeLogged: false,
 			});
-			this.errorReporter.error(error, { extra: meta, shouldBeLogged: false });
 		}
 	}
 
@@ -99,11 +103,16 @@ export class ExecutionLedger {
 	) {
 		if (result.recorded) return;
 
-		const message = 'The workflow has no owner project, so the run is not in the execution ledger';
-		this.logger.error(message, { executionId, workflowId });
-		this.errorReporter.error(new UnexpectedError(message, { extra: { executionId, workflowId } }), {
-			shouldBeLogged: false,
-		});
+		this.logger.error(
+			`Workflow ${workflowId} has no owner project, so execution ${executionId} is not in the execution ledger`,
+			{ executionId, workflowId },
+		);
+		// No IDs in the reported message, so Sentry groups every case in one issue.
+		const error = new UnexpectedError(
+			'The workflow has no owner project, so the run is not in the execution ledger',
+			{ extra: { executionId, workflowId } },
+		);
+		this.errorReporter.error(error, { shouldBeLogged: false });
 	}
 }
 
