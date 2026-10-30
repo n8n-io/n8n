@@ -19,6 +19,7 @@ import { NoErrorInstanceInToThrowRule } from './no-error-instance-in-to-throw.js
 import { NoAwsCredentialDiscoveryImportsRule } from './no-aws-credential-discovery-imports.js';
 import { NoUncentralizedHttpRule } from './no-uncentralized-http.js';
 import { NoApplicationErrorRule } from './no-application-error.js';
+import { NoBaseErrorImportFromWorkflowRule } from './no-base-error-import-from-workflow.js';
 import { NoDynamicRegExpRule } from './no-dynamic-regexp.js';
 import { ProjectOwnedEntityTransferRule } from './project-owned-entity-transfer.js';
 import { NoRestrictedSleepDefinitionRule } from './no-restricted-sleep-definition.js';
@@ -53,6 +54,7 @@ export const rules = {
 	'no-aws-credential-discovery-imports': NoAwsCredentialDiscoveryImportsRule,
 	'no-uncentralized-http': NoUncentralizedHttpRule,
 	'no-application-error': NoApplicationErrorRule,
+	'no-base-error-import-from-workflow': NoBaseErrorImportFromWorkflowRule,
 	'no-dynamic-regexp': NoDynamicRegExpRule,
 	'project-owned-entity-transfer': ProjectOwnedEntityTransferRule,
 	'no-restricted-sleep-definition': NoRestrictedSleepDefinitionRule,

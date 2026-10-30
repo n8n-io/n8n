@@ -218,6 +218,7 @@ export const baseConfig = defineConfig({
 		'unused-imports/no-unused-imports': 'error',
 
 		'n8n-local-rules/no-application-error': 'error',
+		'n8n-local-rules/no-base-error-import-from-workflow': 'error',
 		'n8n-local-rules/no-aws-credential-discovery-imports': 'error',
 		'n8n-local-rules/no-internal-package-import': 'error',
 		'n8n-local-rules/no-interpolation-in-regular-string': 'error',
