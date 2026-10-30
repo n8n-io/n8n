@@ -119,6 +119,13 @@ function redactSerialised(text: string, secrets: string[]): string {
 	});
 }
 
+/** Reads back what this module writes, for callers that handle a failure themselves. */
+export function clientErrorMessage(text: string): string | undefined {
+	const parsed = parseJson(text);
+	if (!isRecord(parsed) || !isRecord(parsed.error)) return undefined;
+	return typeof parsed.error.message === 'string' ? parsed.error.message : undefined;
+}
+
 function messageFromHtml(text: string): string | undefined {
 	const title = /<title[^>]*>([^<]+)<\/title>/i.exec(text)?.[1];
 	const flattened = (title ?? text.replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
