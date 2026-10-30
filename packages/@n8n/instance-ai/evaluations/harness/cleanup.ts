@@ -231,10 +231,14 @@ export async function cleanupBuild(
 
 	// Clears backend thread state (run-state registries, memory) that otherwise
 	// grows one entry per build for the container's lifetime.
-	if (build.threadId) {
+	// An MCP build has no thread of its own, but its seeding ran through one.
+	for (const threadId of [build.threadId, build.seedThreadId]) {
+		if (!threadId) continue;
 		try {
-			await client.deleteThread(build.threadId);
-		} catch {
+			await client.deleteThread(threadId);
+		} catch (error: unknown) {
+			// Already gone after an earlier pass: the state this wants.
+			if (error instanceof N8nApiError && error.status === 404) continue;
 			clean = false; // Best-effort cleanup
 		}
 	}

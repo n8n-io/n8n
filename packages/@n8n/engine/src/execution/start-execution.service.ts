@@ -52,11 +52,7 @@ export interface StartExecutionResult {
 	executionId: string;
 }
 
-/**
- * The parent link names an execution or a step that cannot have asked for
- * this one. The engine builds the link from rows it holds, so this is a bug
- * in the caller, not a request to refuse politely.
- */
+/** The parent link names a missing row, or a row that cannot start a sub-execution now. */
 export class InvalidParentLinkError extends Error {
 	constructor(
 		readonly reason: InvalidParentLinkReason,
@@ -69,7 +65,7 @@ export class InvalidParentLinkError extends Error {
 
 export type InvalidParentLinkReason =
 	| 'execution-not-found'
-	| 'execution-ended'
+	| 'execution-not-live'
 	| 'step-not-found'
 	| 'step-of-another-execution'
 	| 'step-not-waiting'
@@ -134,14 +130,14 @@ export class StartExecutionService {
 	 * running when it does not. A step starts nothing once it has settled.
 	 */
 	private async validateParent(parent: ParentLink): Promise<void> {
-		const [execution, step] = await Promise.all([
-			this.executionStore.loadExecution(parent.executionId).catch(absentAsInvalid),
+		const [status, step] = await Promise.all([
+			this.executionStore.loadExecutionStatus(parent.executionId).catch(absentAsInvalid),
 			this.stepStore.loadStep(parent.stepId).catch(absentAsInvalid),
 		]);
-		if (!isLiveExecutionStatus(execution.status)) {
+		if (!isLiveExecutionStatus(status)) {
 			throw new InvalidParentLinkError(
-				'execution-ended',
-				`execution ${parent.executionId} is ${execution.status}`,
+				'execution-not-live',
+				`execution ${parent.executionId} is ${status}`,
 			);
 		}
 		if (step.executionId !== parent.executionId) {

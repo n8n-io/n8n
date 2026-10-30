@@ -10,6 +10,7 @@ import type { ModalDefinition } from './modal';
 import type { ParameterInputContribution } from './parameterInput';
 import type { ModulePushHandlers } from './push';
 import type { ResourceMetadata } from './resource';
+import type { RunDataDisplayModeContribution } from './runDataDisplayMode';
 import type { ModuleSetupContext } from './setup';
 import type { ModuleShortcut } from './shortcut';
 import type { DynamicTabOptions } from './tabs';
@@ -100,6 +101,11 @@ export type FrontendModuleDescription = {
 	 * shell's built-in branch.
 	 */
 	parameterInputs?: ParameterInputContribution[];
+	/**
+	 * Display modes for run data in the NDV input and output panes and the Logs
+	 * panel. Each one appears in the display mode select when its `canRender` is true.
+	 */
+	runDataDisplayModes?: RunDataDisplayModeContribution[];
 	/** Banners the module can contribute to the banner stack. */
 	banners?: ModuleBanner[];
 	/** Runs post-login, after the module is confirmed active. */

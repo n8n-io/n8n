@@ -10,7 +10,12 @@ import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { DateTime } from 'luxon';
-import { type ExecutionStatus, type IRun, type WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	type ExecutionStatus,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 import assert from 'node:assert';
 import { mock } from 'vitest-mock-extended';
 
@@ -275,6 +280,27 @@ describe('workflowExecuteAfterHandler', () => {
 
 		expect(await insightsMetadataRepository.findOneBy({ workflowId: workflow.id })).toBeNull();
 		expect(await insightsRawRepository.find()).toHaveLength(0);
+	});
+
+	test('stores a failure but no billable event for a run that failed before start', async () => {
+		const ctx = mock<WorkflowExecuteAfterContext>({ workflow });
+		const data = createEmptyRunExecutionData();
+		data.resultData.failedBeforeStart = true;
+		ctx.runData = {
+			mode: 'webhook',
+			status: 'error',
+			startedAt: new Date(),
+			stoppedAt: new Date(),
+			storedAt: 'db',
+			data,
+		};
+
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
+		await insightsCollectionService.flushEvents();
+
+		const allInsights = await insightsRawRepository.find();
+		expect(allInsights).toContainEqual(expect.objectContaining({ type: 'failure', value: 1 }));
+		expect(allInsights).not.toContainEqual(expect.objectContaining({ type: 'billable' }));
 	});
 });
 

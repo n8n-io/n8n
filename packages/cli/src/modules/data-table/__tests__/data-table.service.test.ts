@@ -7,7 +7,14 @@ import {
 	RoleService,
 } from '@n8n/backend-services';
 import { mockInstance, testModules } from '@n8n/backend-test-utils';
-import { ProjectRelationRepository, ProjectRepository, type User } from '@n8n/db';
+import {
+	ProjectRelationRepository,
+	ProjectRepository,
+	type OperationContext,
+	type Transaction,
+	type TransactionRunner,
+	type User,
+} from '@n8n/db';
 import { ForbiddenError, NotFoundError } from '@n8n/errors';
 import type { DataTableInfoById, DataTablesSizeData } from 'n8n-workflow';
 import type { Mocked } from 'vitest';
@@ -31,6 +38,7 @@ describe('DataTableService', () => {
 	let mockDataTableRepository: Mocked<DataTableRepository>;
 	let mockDataTableColumnRepository: Mocked<DataTableColumnRepository>;
 	let mockDataTableRowsRepository: Mocked<DataTableRowsRepository>;
+	let mockTransactionRunner: ReturnType<typeof mock<TransactionRunner>>;
 	let mockLogger: Mocked<Logger>;
 	let mockDataTableSizeValidator: Mocked<DataTableSizeValidator>;
 	let mockProjectRelationRepository: Mocked<ProjectRelationRepository>;
@@ -58,6 +66,7 @@ describe('DataTableService', () => {
 		mockProjectRepository = mockInstance(ProjectRepository);
 		mockProjectScopeService = mockInstance(ProjectScopeService);
 		mockModuleRegistry = mockInstance(ModuleRegistry);
+		mockTransactionRunner = mock<TransactionRunner>();
 
 		// Mock the logger.scoped method to return the logger itself
 		mockLogger.scoped = vi.fn().mockReturnValue(mockLogger);
@@ -75,6 +84,7 @@ describe('DataTableService', () => {
 			mockProjectRepository,
 			mockProjectScopeService,
 			mockModuleRegistry,
+			mockTransactionRunner,
 		);
 
 		vi.clearAllMocks();
@@ -744,6 +754,43 @@ describe('DataTableService', () => {
 			).rejects.toThrow();
 
 			expect(mockCsvImportService.cleanupFile).toHaveBeenCalledWith(fileId);
+		});
+	});
+
+	describe('getManyRowsAndCount', () => {
+		const projectId = 'test-project-id';
+		const dataTableId = 'test-data-table-id';
+
+		it('reads columns and rows inside one read-only transaction', async () => {
+			// The runner hands the callback an enriched context. Both reads must receive
+			// that exact object, not the root context the service passed in.
+			const enrichedCtx: OperationContext = { trx: mock<Transaction>() };
+			mockDataTableRepository.findOneBy.mockResolvedValue({ id: dataTableId } as DataTable);
+			mockTransactionRunner.run.mockImplementation(async (_ctx, fn) => await fn(enrichedCtx));
+			mockDataTableColumnRepository.getColumnsInContext.mockResolvedValue([]);
+			mockDataTableRowsRepository.getManyAndCount.mockResolvedValue({ count: 0, data: [] });
+
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, projectId, {});
+
+			expect(result).toEqual({ count: 0, data: [] });
+			expect(mockTransactionRunner.run).toHaveBeenCalledTimes(1);
+			expect(mockTransactionRunner.run).toHaveBeenCalledWith({}, expect.any(Function), {
+				readOnly: true,
+			});
+			expect(mockDataTableColumnRepository.getColumnsInContext).toHaveBeenCalledTimes(1);
+			expect(mockDataTableColumnRepository.getColumnsInContext).toHaveBeenCalledWith(
+				dataTableId,
+				enrichedCtx,
+			);
+			expect(mockDataTableColumnRepository.getColumnsInContext.mock.calls[0][1]).toBe(enrichedCtx);
+			expect(mockDataTableRowsRepository.getManyAndCount).toHaveBeenCalledTimes(1);
+			expect(mockDataTableRowsRepository.getManyAndCount).toHaveBeenCalledWith(
+				dataTableId,
+				{},
+				[],
+				enrichedCtx,
+			);
+			expect(mockDataTableRowsRepository.getManyAndCount.mock.calls[0][3]).toBe(enrichedCtx);
 		});
 	});
 

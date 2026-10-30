@@ -35,6 +35,14 @@ type FlaggedSkillProps = InferTelemetryProps<
 
 type StoppedSyncProps = InferTelemetryProps<typeof TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC>;
 
+type UpdateFoundProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND
+>;
+
+type CheckedNowProps = InferTelemetryProps<
+	typeof TELEMETRY_EVENT.CONTEXT.USER_CHECKED_SKILL_SOURCE_NOW
+>;
+
 type SkillTelemetryTarget = Pick<Skill, 'id' | 'projectId' | 'agentId'>;
 
 /**
@@ -151,6 +159,23 @@ export class SkillsTelemetry {
 	async stoppedSync(props: Omit<StoppedSyncProps, 'user_id'>, userId: string) {
 		await this.safely(async () => {
 			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_STOPPED_SKILL_SYNC, {
+				user_id: userId,
+				...props,
+			});
+		});
+	}
+
+	/** A check of a source that stored new updates. It has no user, also for Check now. */
+	async updateFound(props: UpdateFoundProps) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.SKILL_SOURCE_UPDATE_FOUND, props);
+		});
+	}
+
+	/** One Check now, also a failed or a throttled one. */
+	async checkedNow(props: Omit<CheckedNowProps, 'user_id'>, userId: string) {
+		await this.safely(async () => {
+			this.telemetry.track(TELEMETRY_EVENT.CONTEXT.USER_CHECKED_SKILL_SOURCE_NOW, {
 				user_id: userId,
 				...props,
 			});

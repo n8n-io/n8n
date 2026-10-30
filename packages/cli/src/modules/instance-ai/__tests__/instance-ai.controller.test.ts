@@ -37,13 +37,13 @@ import type {
 	InstanceAiThreadInfo,
 	InstanceAiRichMessagesResponse,
 	InstanceAiThreadMessagesResponse,
-	InstanceAiThreadTabsState,
+	AssistantThreadTabsState,
 } from '@n8n/api-types';
 import type { ModuleRegistry } from '@n8n/backend-common';
 import { buildAgentTreeFromEvents } from '@n8n/instance-ai';
 import {
 	InstanceAiPersistPendingAgentRequest,
-	InstanceAiThreadTabsRequestDto,
+	AssistantThreadTabsRequestDto,
 	MAX_ATTACHMENT_BASE64_BYTES,
 	MAX_TOTAL_ATTACHMENT_BASE64_BYTES,
 } from '@n8n/api-types';
@@ -1708,7 +1708,7 @@ describe('InstanceAiController', () => {
 	});
 
 	describe('thread tabs', () => {
-		const tabsState: InstanceAiThreadTabsState = {
+		const tabsState: AssistantThreadTabsState = {
 			tabs: [{ type: 'workflow', id: 'wf-1', name: 'My Workflow', projectId: 'project-1' }],
 			closedTabs: [{ type: 'data-table', id: 'dt-1' }],
 			activeTab: { type: 'workflow', id: 'wf-1' },
@@ -1736,7 +1736,7 @@ describe('InstanceAiController', () => {
 
 		it('should save the tabs of the user', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = new InstanceAiThreadTabsRequestDto(tabsState);
+			const payload = new AssistantThreadTabsRequestDto(tabsState);
 
 			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
 
@@ -1746,7 +1746,7 @@ describe('InstanceAiController', () => {
 
 		it('should save whether the preview is open', async () => {
 			memoryService.checkThreadOwnership.mockResolvedValue('owned');
-			const payload = new InstanceAiThreadTabsRequestDto({ ...tabsState, previewOpen: false });
+			const payload = new AssistantThreadTabsRequestDto({ ...tabsState, previewOpen: false });
 
 			const result = await controller.saveThreadTabs(req, res, THREAD_ID, payload);
 
@@ -1766,7 +1766,7 @@ describe('InstanceAiController', () => {
 					req,
 					res,
 					THREAD_ID,
-					new InstanceAiThreadTabsRequestDto(tabsState),
+					new AssistantThreadTabsRequestDto(tabsState),
 				),
 			).rejects.toThrow(ForbiddenError);
 			expect(threadTabsService.getState).not.toHaveBeenCalled();

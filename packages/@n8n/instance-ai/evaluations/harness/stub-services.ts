@@ -7,7 +7,7 @@
 // `listNodeDiscriminators`) that the real adapter uses, so the agent sees
 // real node metadata — properties, type-definition source, discriminators
 // — rather than a stripped-down stub. Other services (workflows,
-// credentials, executions, data_tables) return minimal canned data — just
+// credentials, executions, data tables) return minimal canned data — just
 // enough for the `workflow_builder_build_workflow` tool path to succeed. The workflow JSON
 // is captured via `workflowService.createFromWorkflowJSON` and exposed on
 // the capture array returned from `createStubServices`.

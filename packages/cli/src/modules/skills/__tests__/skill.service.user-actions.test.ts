@@ -399,6 +399,8 @@ describe('SkillService user actions', () => {
 				canEdit: true,
 				canDelete: false,
 				canStopSyncing: false,
+				syncState: null,
+				canCheckForUpdates: false,
 				createdAt: DATE.toISOString(),
 				updatedAt: DATE.toISOString(),
 			});
@@ -430,12 +432,19 @@ describe('SkillService user actions', () => {
 		])('offers Stop syncing only for $case', async ({ on, linked, update, can }) => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 			skillSyncGate.isEnabled.mockResolvedValue(on);
-			links.findLinkedSkillIds.mockResolvedValue(new Set(linked ? ['skill_a'] : []));
+			links.findSyncStates.mockResolvedValue(
+				new Map(linked ? [['skill_a', 'up_to_date' as const]] : []),
+			);
 			accessCheck.mockImplementation(async (_user, op) => () => op === 'update' && update);
 
 			const [item] = (await service.list(user, query())).data;
 
-			expect(item).toMatchObject({ canStopSyncing: can, canEdit: update && !linked });
+			expect(item).toMatchObject({
+				canStopSyncing: can,
+				canCheckForUpdates: can,
+				syncState: linked ? 'up_to_date' : null,
+				canEdit: update && !linked,
+			});
 		});
 
 		it('describes an agent skill with its agent and the project of the agent', async () => {
