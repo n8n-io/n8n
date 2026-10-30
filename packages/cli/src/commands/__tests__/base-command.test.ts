@@ -120,23 +120,22 @@ describe('initSystemTasks', () => {
 });
 
 describe('closeDbConnection', () => {
-	it('should wait for pending ledger inserts before closing the connection', async () => {
-		const calls: string[] = [];
+	it('should close the connection only after the ledger drain settles', async () => {
+		let releaseDrain!: () => void;
 		const ledger = mockInstance(ExecutionLedger);
-		ledger.drain.mockImplementation(async () => {
-			calls.push('drain');
-		});
+		ledger.drain.mockReturnValue(new Promise<void>((resolve) => (releaseDrain = resolve)));
 		const dbConnection = mockInstance(DbConnection);
-		dbConnection.close.mockImplementation(async () => {
-			calls.push('close');
-		});
 		const command = new TestCommand();
 		// @ts-expect-error Protected property
 		command.dbConnection = dbConnection;
 
 		// @ts-expect-error Protected method
-		await command.closeDbConnection();
+		const closing: Promise<void> = command.closeDbConnection();
+		await new Promise(setImmediate);
+		expect(dbConnection.close).not.toHaveBeenCalled();
 
-		expect(calls).toEqual(['drain', 'close']);
+		releaseDrain();
+		await closing;
+		expect(dbConnection.close).toHaveBeenCalledTimes(1);
 	});
 });
