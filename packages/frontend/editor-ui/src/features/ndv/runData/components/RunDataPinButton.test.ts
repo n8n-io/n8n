@@ -141,6 +141,26 @@ describe('RunDataPinButton.vue', () => {
 		expect(emitted().togglePinData).toBeDefined();
 	});
 
+	it('switches between pin and unpin icons when pinned data changes', async () => {
+		const { getByTestId, rerender } = renderComponent();
+
+		expect(getByTestId('ndv-pin-data').querySelector('[data-icon]')).toHaveAttribute(
+			'data-icon',
+			'pin',
+		);
+
+		await rerender({
+			pinnedData: {
+				hasData: { value: true },
+			} as ReturnType<typeof usePinnedData>,
+		});
+
+		expect(getByTestId('ndv-pin-data').querySelector('[data-icon]')).toHaveAttribute(
+			'data-icon',
+			'pin-off',
+		);
+	});
+
 	it('should show correct tooltip and unpin data on button click', async () => {
 		const { getByTestId, emitted } = renderComponent({
 			props: {

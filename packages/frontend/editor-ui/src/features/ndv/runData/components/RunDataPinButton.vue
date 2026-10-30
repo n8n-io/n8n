@@ -24,6 +24,9 @@ const emit = defineEmits<{
 const visible = computed(() =>
 	props.tooltipContentsVisibility.pinDataDiscoveryTooltipContent ? true : undefined,
 );
+const icon = computed<'pin' | 'pin-off'>(() =>
+	props.pinnedData.hasData.value ? 'pin-off' : 'pin',
+);
 </script>
 
 <template>
@@ -54,9 +57,11 @@ const visible = computed(() =>
 		<N8nIconButton
 			variant="outline"
 			size="small"
+			icon-size="small"
+			icon-only
 			:class="$style.pinDataButton"
 			:active="props.pinnedData.hasData.value"
-			icon="pin"
+			:icon="icon"
 			:aria-label="
 				locale.baseText(
 					pinnedData.hasData.value ? 'ndv.pinData.unpin.title' : 'ndv.pinData.pin.title',
