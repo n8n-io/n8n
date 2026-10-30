@@ -19,6 +19,7 @@ describe('ScheduledTaskRepository executor methods', () => {
 	// Comfortably-past instant, computed per call (not at module load) so a slow suite
 	// can't drift it towards now().
 	const past = () => new Date(Date.now() - 60_000);
+	const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
 
 	let dataSource: DataSource;
 	let jobRepository: ScheduledJobRepository;
@@ -150,6 +151,28 @@ describe('ScheduledTaskRepository executor methods', () => {
 			const soon = await createTask({ runAt: new Date(Date.now() + 10_000) });
 			const claimed = await taskRepository.claimDueTasks(claimOpts({ lookaheadMs: 30_000 }));
 			expect(claimed.map((t) => t.id)).toEqual([soon.id]);
+		});
+
+		it('claims within a lookahead longer than 2^31 ms', async () => {
+			const inside = await createTask({ runAt: new Date(Date.now() + THIRTY_DAYS_MS - 60_000) });
+			await createTask({ runAt: new Date(Date.now() + THIRTY_DAYS_MS + 60_000) });
+
+			const claimed = await taskRepository.claimDueTasks(
+				claimOpts({ lookaheadMs: THIRTY_DAYS_MS }),
+			);
+
+			expect(claimed.map((t) => t.id)).toEqual([inside.id]);
+		});
+
+		it('sets a lease longer than 2^31 ms', async () => {
+			const task = await createTask();
+
+			const claimed = await taskRepository.claimDueTasks(claimOpts({ leaseMs: THIRTY_DAYS_MS }));
+
+			expect(claimed.map((t) => t.id)).toEqual([task.id]);
+			const leaseMs = (await reload(task.id)).leaseExpiresAt!.getTime() - Date.now();
+			expect(leaseMs).toBeGreaterThan(THIRTY_DAYS_MS - 60_000);
+			expect(leaseMs).toBeLessThan(THIRTY_DAYS_MS + 60_000);
 		});
 
 		it('does not claim an occurrence past its deadline', async () => {
