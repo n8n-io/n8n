@@ -22,7 +22,7 @@ import { diffSkills } from '@/features/agents/components/skillVersions/skillVers
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 import SkillScopeBadge from './SkillScopeBadge.vue';
-import { useSkillSourceReasons } from '../skills.utils';
+import { frontmatterDiff, useSkillSourceReasons } from '../skills.utils';
 import { useSkillsStore } from '../skills.store';
 
 const props = defineProps<{
@@ -50,17 +50,23 @@ const loading = ref(false);
 const accepting = ref(false);
 const reviewedWarnings = ref(false);
 
+/** Counts the loads, so an answer that arrives after a newer load is dropped. */
+let loadId = 0;
+
 async function load() {
 	if (!props.sourceId) return;
+	const id = ++loadId;
 	loading.value = true;
 	reviewedWarnings.value = false;
 	try {
-		data.value = await skillsStore.fetchSourceUpdates(props.sourceId);
+		const loaded = await skillsStore.fetchSourceUpdates(props.sourceId);
+		if (id === loadId) data.value = loaded;
 	} catch (error) {
+		if (id !== loadId) return;
 		showError(error, i18n.baseText('settings.context.skills.updates.error.load'));
 		emit('update:open', false);
 	} finally {
-		loading.value = false;
+		if (id === loadId) loading.value = false;
 	}
 }
 
@@ -102,7 +108,11 @@ const counts = computed(
 
 function countOf(update: SkillPendingUpdate) {
 	if (!update.update) return undefined;
-	return diffSkills(update.current, update.update).reduce(
+	const frontmatter = frontmatterDiff(update.currentFrontmatter, update.updateFrontmatter);
+	return [
+		...diffSkills(update.current, update.update),
+		...(frontmatter ? [frontmatter] : []),
+	].reduce(
 		(total, section) => ({
 			added: total.added + section.added,
 			removed: total.removed + section.removed,
@@ -227,25 +237,26 @@ function openInGitHub() {
 					{{ i18n.baseText('settings.context.skills.updates.empty') }}
 				</N8nText>
 				<ul :class="$style.rows">
-					<li
-						v-for="update in data.updates"
-						:key="update.skillId"
-						:class="$style.row"
-						data-test-id="skill-source-update-row"
-						@click="emit('review', update.skillId, update.name)"
-					>
-						<div :class="$style.rowText">
-							<N8nText size="medium" color="text-dark">{{ update.name }}</N8nText>
-							<N8nText size="small" color="text-light">{{ update.location }}</N8nText>
-						</div>
-						<N8nBadge v-if="update.check.verdict === 'needs_review'" variant="warning">
-							{{ i18n.baseText('settings.context.skills.updates.tag.needsReview') }}
-						</N8nBadge>
-						<N8nBadge v-else-if="update.check.verdict === 'blocked'" variant="danger">
-							{{ i18n.baseText('settings.context.skills.updates.tag.blocked') }}
-						</N8nBadge>
-						<SkillDiffCount :count="counts.get(update.skillId)" hide-zero />
-						<N8nIcon icon="chevron-right" size="small" />
+					<li v-for="update in data.updates" :key="update.skillId">
+						<button
+							type="button"
+							:class="$style.row"
+							data-test-id="skill-source-update-row"
+							@click="emit('review', update.skillId, update.name)"
+						>
+							<div :class="$style.rowText">
+								<N8nText size="medium" color="text-dark">{{ update.name }}</N8nText>
+								<N8nText size="small" color="text-light">{{ update.location }}</N8nText>
+							</div>
+							<N8nBadge v-if="update.check.verdict === 'needs_review'" variant="warning">
+								{{ i18n.baseText('settings.context.skills.updates.tag.needsReview') }}
+							</N8nBadge>
+							<N8nBadge v-else-if="update.check.verdict === 'blocked'" variant="danger">
+								{{ i18n.baseText('settings.context.skills.updates.tag.blocked') }}
+							</N8nBadge>
+							<SkillDiffCount :count="counts.get(update.skillId)" hide-zero />
+							<N8nIcon icon="chevron-right" size="small" />
+						</button>
 					</li>
 				</ul>
 
@@ -321,18 +332,26 @@ function openInGitHub() {
 	border-radius: var(--radius);
 }
 
+.rows > li + li {
+	border-top: var(--border);
+}
+
+/* A native button, so a keyboard user can open the review too. */
 .row {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
+	width: 100%;
 	padding: var(--spacing--xs) var(--spacing--sm);
+	border: none;
+	background: none;
+	color: inherit;
+	font: inherit;
+	text-align: left;
 	cursor: pointer;
 
-	& + & {
-		border-top: var(--border);
-	}
-
-	&:hover {
+	&:hover,
+	&:focus-visible {
 		background: var(--color--background--light-2);
 	}
 }

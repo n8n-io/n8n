@@ -34,7 +34,10 @@ export class FakeGitHub {
 			repository: string;
 			files: Files;
 			key: string;
+			/** The order of the commit in its repository. */
 			index: number;
+			/** Paths that the commit added, changed or removed. */
+			changed: string[];
 			message: string;
 			author: string;
 		}
@@ -142,9 +145,18 @@ export class FakeGitHub {
 		const [, owner, repository] = /^\/repos\/([^/]+)\/([^/]+)\//.exec(uri) ?? [];
 		const status = this.access(`${owner}/${repository}`.toLowerCase(), token);
 		if (status !== 200) return [status, ''];
-		const sha = new URL(uri, 'https://api.github.com').searchParams.get('sha') ?? '';
-		const commit = this.commits.get(sha);
-		if (!commit) return [404, ''];
+		const params = new URL(uri, 'https://api.github.com').searchParams;
+		const head = this.commits.get(params.get('sha') ?? '');
+		if (!head) return [404, ''];
+		// With `path`, the newest commit up to `sha` that touched a file under it, as GitHub does.
+		const path = params.get('path');
+		const touches = (changed: string[]) =>
+			!path || changed.some((file) => file === path || file.startsWith(`${path}/`));
+		const found = [...this.commits]
+			.filter(([, c]) => c.key === head.key && c.index <= head.index && touches(c.changed))
+			.sort(([, a], [, b]) => b.index - a.index)[0];
+		if (!found) return [200, []];
+		const [sha, commit] = found;
 		return [
 			200,
 			[
@@ -241,12 +253,15 @@ export class FakeGitHub {
 		const sha = createHash('sha1')
 			.update(`${key}@${branch}#${this.commits.size}:${JSON.stringify(files)}`)
 			.digest('hex');
+		const previous = repo.branches.get(branch)?.files ?? {};
+		const paths = new Set([...Object.keys(previous), ...Object.keys(files)]);
 		repo.branches.set(branch, { sha, files: { ...files } });
 		this.commits.set(sha, {
 			repository: fullName.split('/')[1],
 			files: { ...files },
 			key,
-			index: this.commits.size,
+			index: [...this.commits.values()].filter((commit) => commit.key === key).length,
+			changed: [...paths].filter((file) => previous[file] !== files[file]),
 			message: options.message ?? `Commit ${this.commits.size + 1}`,
 			author: options.author ?? 'octocat',
 		});

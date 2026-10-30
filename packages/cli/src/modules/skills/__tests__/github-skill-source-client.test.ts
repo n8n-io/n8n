@@ -94,6 +94,22 @@ describe('GitHubSkillSourceClient', () => {
 			});
 		});
 
+		it('names the latest commit that touched the skill, also for a skill at the root', async () => {
+			const from = github.push('acme/skills', { 'SKILL.md': 'a', 'docs/x.md': 'a' });
+			github.push('acme/skills', { 'SKILL.md': 'b', 'docs/x.md': 'a' }, 'main', {
+				message: 'root skill change',
+			});
+			const to = github.push('acme/skills', { 'SKILL.md': 'b', 'docs/x.md': 'b' }, 'main', {
+				message: 'docs only',
+			});
+
+			expect(await client.provenance(locator, from, to, undefined, { path: '' })).toMatchObject({
+				message: 'root skill change',
+				commits: 2,
+			});
+			expect(await client.provenance(locator, from, to)).toMatchObject({ message: 'docs only' });
+		});
+
 		it('reads a private repository with the token', async () => {
 			const from = github.push('acme/private', { 'a.md': 'a' }, 'main', { private: true });
 			const to = github.push('acme/private', { 'a.md': 'b' }, 'main', { private: true });
@@ -112,10 +128,16 @@ describe('GitHubSkillSourceClient', () => {
 			github.failWith = { status: 403, headers: { 'x-ratelimit-remaining': '0' } };
 			expect(await client.provenance(locator, from, to)).toBeNull();
 
+			// The refusal is kept for a moment, so GitHub is not asked again at once.
 			github.failWith = undefined;
-			const first = await client.provenance(locator, from, to);
+			expect(await client.provenance(locator, from, to)).toBeNull();
+
+			// A success is kept too.
+			const other = github.push('acme/skills', { 'a.md': 'c' });
+			const first = await client.provenance(locator, to, other);
+			expect(first).not.toBeNull();
 			github.failWith = 500;
-			expect(await client.provenance(locator, from, to)).toEqual(first);
+			expect(await client.provenance(locator, to, other)).toEqual(first);
 		});
 	});
 

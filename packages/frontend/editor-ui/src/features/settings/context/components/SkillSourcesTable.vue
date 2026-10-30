@@ -134,6 +134,7 @@ const headers = computed<Array<TableHeader<SkillSourceListItem>>>(() => [
 			:items-length="props.sources.length"
 			:loading="props.loading"
 			:items-per-page="props.sources.length || 1"
+			:pagination="false"
 			:row-props="{ class: $style.row }"
 			@click:row="onRowClick"
 		>

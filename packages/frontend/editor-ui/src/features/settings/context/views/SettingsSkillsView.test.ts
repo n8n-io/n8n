@@ -1224,9 +1224,11 @@ describe('SettingsSkillsView', () => {
 					expect(document.querySelector('[data-test-id="action-checkNow"]')).toBeInTheDocument(),
 				);
 				skillsStore.fetchSkills.mockClear();
+				skillsStore.fetchSources.mockClear();
 				await userEvent.click(document.querySelector('[data-test-id="action-checkNow"]')!);
 
 				await waitFor(() => expect(skillsStore.fetchSkills).toHaveBeenCalled());
+				expect(skillsStore.fetchSources).toHaveBeenCalled();
 				expect(skillsStore.checkSource).toHaveBeenCalledWith('src-1');
 				expect(showMessageMock).toHaveBeenCalledWith(
 					expect.objectContaining({

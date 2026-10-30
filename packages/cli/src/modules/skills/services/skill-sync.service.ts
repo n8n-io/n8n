@@ -268,7 +268,10 @@ export class SkillSyncService {
 		if (!source || !client || !(await this.skillAccess.canOnSource(user, source, 'view'))) {
 			throw new NotFoundError('Source not found');
 		}
-		const links = await this.sourceRepository.findPendingLinks(source.id);
+		const links = await this.readableLinks(
+			user,
+			await this.sourceRepository.findPendingLinks(source.id),
+		);
 		// The commit comes from the source over the network, so it loads while the updates do.
 		const [[summary], commit, updates] = await Promise.all([
 			this.sourceService.describeSources(user, [source]),
@@ -289,6 +292,22 @@ export class SkillSyncService {
 		]);
 		if (!update) throw staleError();
 		return { source: described, commit, update };
+	}
+
+	/** The links whose skill the user can read. */
+	private async readableLinks(user: User, links: SkillSourceLink[]): Promise<SkillSourceLink[]> {
+		const readable = await Promise.all(
+			links.map(async (link) => {
+				try {
+					await this.skillAccess.requireAccess(user, link.skillId, 'read');
+					return true;
+				} catch (error) {
+					if (error instanceof NotFoundError) return false;
+					throw error;
+				}
+			}),
+		);
+		return links.filter((_link, index) => readable[index]);
 	}
 
 	/** The updates of these links, by name. In batches, as each reads its agents and rename rules. */
@@ -365,6 +384,8 @@ export class SkillSyncService {
 			const link = await this.sourceRepository.findLinkBySkillId(skillId);
 			try {
 				if (link?.sourceId !== source.id) throw staleError();
+				// A role can see a source without reading each of its skills.
+				if ((await this.readableLinks(user, [link])).length === 0) throw skillDeletedError();
 				response.accepted.push(
 					await this.acceptOne(
 						user,
@@ -402,7 +423,8 @@ export class SkillSyncService {
 			const revision = link.pendingRevision;
 			if (link.pendingContentHash !== contentHash || revision === null) throw staleError();
 			const content = storedContentFrom(link.pendingContent);
-			if (verdict === 'blocked' || !content) {
+			// A missing or unreadable check counts as blocked: nothing comes in unchecked.
+			if ((verdict !== 'pass' && verdict !== 'needs_review') || !content) {
 				throw new SkillSourceRequestError(
 					'blocked_by_check',
 					'The security check blocked this update. Nobody can accept it.',

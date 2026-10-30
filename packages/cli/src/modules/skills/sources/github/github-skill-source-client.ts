@@ -242,7 +242,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	): Promise<SkillSourceProvenance | null> {
 		const { owner, repository } = readLocator(locator);
 		const [o, r] = [owner, repository].map(encodeURIComponent);
-		const path = ref ? readRef(ref).path : '';
+		// A skill at the root of the repository is its SKILL.md, so its commits are that file's.
+		const path = ref ? readRef(ref).path || SKILL_FILE : '';
 		const key =
 			`${owner}/${repository}@${from}...${to}`.toLowerCase() + `:${path}#${accessKey(auth)}`;
 		const cached = this.provenances.get(key);

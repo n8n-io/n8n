@@ -117,11 +117,14 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	}
 
 	const sources = ref<SkillSourceListItem[]>([]);
+	let latestSourcesRead = 0;
 
-	/** The sources that the user can see, for the Sources tab. */
+	/** The sources that the user can see, for the Sources tab. A newer read wins, as for skills. */
 	async function fetchSources() {
-		sources.value = await api.listSkillSources(rootStore.restApiContext);
-		return sources.value;
+		const read = ++latestSourcesRead;
+		const response = await api.listSkillSources(rootStore.restApiContext);
+		if (read === latestSourcesRead) sources.value = response;
+		return response;
 	}
 
 	async function checkSource(sourceId: string) {

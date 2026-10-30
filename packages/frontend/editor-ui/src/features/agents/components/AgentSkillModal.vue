@@ -1336,6 +1336,7 @@ function onRemove() {
 			<div
 				v-if="syncedFrom && step === 'edit'"
 				:class="$style.syncedBar"
+				role="alert"
 				data-testid="agent-skill-synced-banner"
 			>
 				<N8nIcon icon="git-branch" :size="14" />

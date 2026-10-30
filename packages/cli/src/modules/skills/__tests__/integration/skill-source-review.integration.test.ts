@@ -25,6 +25,8 @@ import { SkillSourceLink } from '../../database/entities/skill-source-link.entit
 import { SkillRepository } from '../../database/repositories/skill.repository';
 import { SkillSyncService } from '../../services/skill-sync.service';
 import { SkillService } from '../../services/skill.service';
+import { SkillAccessService } from '../../services/skill-access.service';
+import { NotFoundError } from '@n8n/errors';
 import { SkillsTelemetry } from '../../services/skills-telemetry.service';
 import { GitHubSkillSourceClient } from '../../sources/github/github-skill-source-client';
 import { FakeGitHub } from '../test-utils/fake-github';
@@ -425,6 +427,21 @@ describe('Review of skill updates', () => {
 			expect(await linkOf(docx)).toMatchObject({ state: 'update_available' });
 		});
 
+		it('refuses an update whose security check is missing, as blocked', async () => {
+			const { docx } = await importAll();
+			await pushAndCheck({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
+			const { contentHash } = (await reviewOf(editor, docx)).data.update;
+			await db().update(
+				SkillSourceLink,
+				{ skillId: docx },
+				{ pendingScan: { verdict: 'unknown' } },
+			);
+
+			const body = await decide(editor, 'accept', docx, { contentHash }, 422);
+
+			expect(body.meta).toEqual({ reason: 'blocked_by_check' });
+		});
+
 		it('answers skill_deleted for a skill that is gone', async () => {
 			const { docx } = await importAll();
 			await pushAndCheck({ 'skills/docx/SKILL.md': skillMd('docx', 'v2') });
@@ -565,6 +582,31 @@ describe('Review of skill updates', () => {
 
 			expect(data.failed).toEqual([{ skillId: docx, reason: 'unexpected' }]);
 			expect(data.accepted).toEqual([{ skillId: xlsx, name: 'xlsx', version: 2 }]);
+		});
+
+		it('leaves out the skills that the user cannot read, in the list and in Update all', async () => {
+			const { sourceId, docx, xlsx } = await importAll();
+			await pushAndCheck({
+				'skills/docx/SKILL.md': skillMd('docx', 'v2'),
+				'skills/xlsx/SKILL.md': skillMd('xlsx', 'v2'),
+			});
+			const { updates } = (await updatesOf(editor, sourceId)).data;
+			// A custom role can list the skills of a scope without reading each one.
+			const access = Container.get(SkillAccessService);
+			const requireAccess = access.requireAccess.bind(access);
+			vi.spyOn(access, 'requireAccess').mockImplementation(async (user, skillId, operation) => {
+				if (skillId === xlsx) throw new NotFoundError('Skill not found');
+				return await requireAccess(user, skillId, operation);
+			});
+
+			const listed = (await updatesOf(editor, sourceId)).data.updates;
+			const { data } = await acceptAll(editor, sourceId, {
+				updates: updates.map(({ skillId, contentHash }) => ({ skillId, contentHash })),
+			});
+
+			expect(listed.map(({ skillId }) => skillId)).toEqual([docx]);
+			expect(data.accepted.map(({ skillId }) => skillId)).toEqual([docx]);
+			expect(data.failed).toEqual([{ skillId: xlsx, reason: 'skill_deleted' }]);
 		});
 
 		it('refuses a skill of another source as stale, and a viewer', async () => {

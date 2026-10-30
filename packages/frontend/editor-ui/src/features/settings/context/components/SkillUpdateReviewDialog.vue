@@ -22,11 +22,10 @@ import SkillVersionDiff from '@/features/agents/components/skillVersions/SkillVe
 import {
 	SKILL_FILE,
 	countsByFile,
-	diffLines,
 	diffSkills,
 } from '@/features/agents/components/skillVersions/skillVersionDiff';
 
-import { useSkillScopeDisplay, useSkillSourceReasons } from '../skills.utils';
+import { frontmatterDiff, useSkillScopeDisplay, useSkillSourceReasons } from '../skills.utils';
 import { useSkillsStore } from '../skills.store';
 
 const props = defineProps<{
@@ -94,30 +93,17 @@ const canReview = computed(() => review.value?.source.canReview === true);
 
 const FRONTMATTER = 'frontmatter';
 
-/** The frontmatter as one `key: value` line per key, sorted, so a diff shows each change. */
-function frontmatterText(frontmatter: Record<string, unknown> | null): string {
-	return Object.keys(frontmatter ?? {})
-		.sort()
-		.map((key) => `${key}: ${JSON.stringify(frontmatter?.[key])}`)
-		.join('\n');
-}
-
 const sections = computed(() => {
 	const current = update.value;
 	if (!current?.update) return [];
-	const lines = diffLines(
-		frontmatterText(current.currentFrontmatter),
-		frontmatterText(current.updateFrontmatter),
-	);
-	const added = lines.filter((line) => line.type === 'added').length;
-	const removed = lines.filter((line) => line.type === 'removed').length;
+	const frontmatter = frontmatterDiff(current.currentFrontmatter, current.updateFrontmatter);
 	return [
 		// The title names the skill, so the name shows only when the update renames it.
 		...diffSkills(current.current, current.update).filter(
 			(section) => section.key !== 'name' || section.added + section.removed > 0,
 		),
 		// Accept stores the frontmatter too, so a change to it shows as its own entry.
-		...(added + removed > 0 ? [{ key: FRONTMATTER, lines, added, removed }] : []),
+		...(frontmatter ? [{ key: FRONTMATTER, ...frontmatter }] : []),
 	];
 });
 const counts = computed(() => countsByFile(sections.value));
@@ -254,7 +240,7 @@ function openInGitHub() {
 			<N8nLoading variant="p" :rows="8" data-test-id="skill-update-loading" />
 		</N8nDialogBody>
 		<N8nDialogBody v-else-if="review && update" :class="$style.body">
-			<div :class="$style.banner" data-test-id="skill-update-banner">
+			<div :class="$style.banner" role="alert" data-test-id="skill-update-banner">
 				<N8nIcon icon="git-branch" :size="14" />
 				<N8nText size="small" :class="$style.bannerText">
 					{{

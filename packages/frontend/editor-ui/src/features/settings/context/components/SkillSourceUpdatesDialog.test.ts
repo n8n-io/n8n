@@ -151,6 +151,31 @@ describe('SkillSourceUpdatesDialog', () => {
 		expect(getByTestId('skill-source-updates-update-all')).toHaveTextContent('Update all (1)');
 	});
 
+	it('counts a change to the frontmatter in the line counts', async () => {
+		const { getAllByTestId } = await open(
+			sourceUpdates({
+				updates: [
+					pendingUpdate({
+						update: pendingUpdate().current,
+						currentFrontmatter: { license: 'MIT' },
+						updateFrontmatter: { license: 'Apache-2.0' },
+					}),
+				],
+			}),
+		);
+
+		expect(getAllByTestId('skill-source-update-row')[0]).toHaveTextContent('+1');
+	});
+
+	it('opens the review of one update from the keyboard', async () => {
+		const { getAllByTestId, emitted } = await open();
+
+		getAllByTestId('skill-source-update-row')[0].focus();
+		await userEvent.keyboard('{Enter}');
+
+		expect(emitted('review')).toEqual([['skill-1', 'brand-voice']]);
+	});
+
 	it('opens the review of one update', async () => {
 		const { getAllByTestId, emitted } = await open();
 
