@@ -215,7 +215,6 @@ describe('ResumeRequestService.locate', () => {
 });
 
 describe('ResumeRequestService.locateByToken', () => {
-	const request = { pathname: `/webhook-waiting/${stepId}/node`, search: '?approved=true' };
 	const located = { executionId, target: { stepId, nodeId: `node-${stepId}` } };
 
 	it('locates the execution-bound wait of the execution that the id names', async () => {
@@ -230,10 +229,10 @@ describe('ResumeRequestService.locateByToken', () => {
 	it.each(stepTokens)('locates the step-bound wait that %s names', async (_, stepToken) => {
 		const { service } = setup({ step: stepBound() });
 
-		await expect(service.locateByToken(stepId, stepToken, request)).resolves.toEqual(located);
+		await expect(service.locateByToken(stepId, stepToken, binding)).resolves.toEqual(located);
 	});
 
-	it('locates an approval callback without a request shape', async () => {
+	it('locates an approval callback without a path and query', async () => {
 		const { service } = setup({ step: stepBound() });
 
 		await expect(
@@ -242,15 +241,16 @@ describe('ResumeRequestService.locateByToken', () => {
 	});
 
 	it.each([
-		['a changed parameter', { ...request, search: '?approved=false' }],
-		['an added parameter', { ...request, search: '?approved=true&extra=1' }],
-		['a removed parameter', { ...request, search: '' }],
-		['no request shape', undefined],
-	])('rejects a step-bound token with %s', async (_, shape) => {
+		['a changed parameter', `/webhook-waiting/${stepId}/node?approved=false`],
+		['an added parameter', `${binding}&extra=1`],
+		['a removed parameter', `/webhook-waiting/${stepId}/node`],
+		['another path', `/webhook-waiting/${otherStepId}/node?approved=true`],
+		['no path and query', undefined],
+	])('rejects a step-bound token with %s', async (_, pathAndQuery) => {
 		const { service, loadStep } = setup({ step: stepBound() });
 		const [, stepToken] = stepTokens[0];
 
-		const result = service.locateByToken(stepId, stepToken, shape);
+		const result = service.locateByToken(stepId, stepToken, pathAndQuery);
 
 		await expect(result).rejects.toEqual(rejection('invalid_token'));
 		expect(loadStep).not.toHaveBeenCalled();
@@ -267,7 +267,7 @@ describe('ResumeRequestService.locateByToken', () => {
 	])('rejects %s that does not name the id', async (_, id, anyToken) => {
 		const { service, loadStep, loadWaitingSteps } = setup({ step: stepBound() });
 
-		await expect(service.locateByToken(id, anyToken, request)).rejects.toEqual(
+		await expect(service.locateByToken(id, anyToken, binding)).rejects.toEqual(
 			rejection('invalid_token'),
 		);
 		expect(loadStep).not.toHaveBeenCalled();

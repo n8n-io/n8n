@@ -102,10 +102,12 @@ export interface ResumeLocateRequest {
 	id: string;
 	token: string;
 	/**
-	 * The path and query of a step-bound resume URL as the caller sent them,
-	 * without the token parameter. The token binds them as one literal string.
+	 * The path and query of the resume URL as the caller sent them, without the
+	 * token parameter, for example
+	 * `/webhook-waiting/<step id>/<node id>?approved=true`. A step-bound token
+	 * accepts the request only if this equals the string that it holds.
 	 */
-	request?: { pathname: string; search: string };
+	pathAndQuery?: string;
 }
 
 /**

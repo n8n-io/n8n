@@ -32,15 +32,6 @@ export interface ResumeTarget {
 	nodeId: string;
 }
 
-/**
- * The path and query of a resume URL as the caller sent them, without the
- * token parameter. A step-bound token binds them (token record, decision 5).
- */
-export interface ResumeRequestShape {
-	pathname: string;
-	search: string;
-}
-
 /** What `locateByToken` found: the execution of the id, and its waiting step if any. */
 export interface ResumeLocation {
 	executionId: string;
@@ -136,19 +127,12 @@ export class ResumeRequestService {
 	 * name `id`, or a step-bound token binds another path and query; else as
 	 * `locate`, and `not_found` for a step that does not exist.
 	 */
-	async locateByToken(
-		id: string,
-		token: string,
-		request?: ResumeRequestShape,
-	): Promise<ResumeLocation> {
+	async locateByToken(id: string, token: string, pathAndQuery?: string): Promise<ResumeLocation> {
 		const claims = verifyResumeToken(this.secret, token);
 		if (!claims || idOf(claims) !== id) throw new ResumeRejectedError('invalid_token');
 		// One literal string, never rebuilt from parsed values: two different
 		// queries can parse to the same values.
-		if (
-			claims.kind === 'step-bound' &&
-			(!request || `${request.pathname}${request.search}` !== claims.binding)
-		) {
+		if (claims.kind === 'step-bound' && pathAndQuery !== claims.binding) {
 			throw new ResumeRejectedError('invalid_token');
 		}
 

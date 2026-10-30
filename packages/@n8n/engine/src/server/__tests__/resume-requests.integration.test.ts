@@ -38,19 +38,11 @@ const graph: WorkflowGraph = {
 
 const acceptsRequest: WaitDeclaration = { resumeBinding: 'execution' };
 const stepBound: WaitDeclaration = { resumeBinding: 'step' };
-const shapeOf = (stepId: string) => ({
-	pathname: `/webhook-waiting/${stepId}/wait-a`,
-	search: '?approved=true',
-});
+const pathAndQueryOf = (stepId: string) => `/webhook-waiting/${stepId}/wait-a?approved=true`;
 const stepTokens = [
 	[
 		'a step-bound token',
-		(stepId: string) =>
-			mintStepBoundResumeToken(
-				resumeSecret,
-				stepId,
-				`${shapeOf(stepId).pathname}${shapeOf(stepId).search}`,
-			),
+		(stepId: string) => mintStepBoundResumeToken(resumeSecret, stepId, pathAndQueryOf(stepId)),
 	],
 	['an approval callback', (stepId: string) => mintApprovalCallback(resumeSecret, stepId, 'a')],
 ] as const;
@@ -248,7 +240,7 @@ describe('POST /api/resume-requests/locate (integration)', () => {
 		const response = await locate({
 			id: stepId,
 			token: mint(stepId),
-			request: shapeOf(stepId),
+			pathAndQuery: pathAndQueryOf(stepId),
 		}).expect(200);
 		const body = response.body as ResumeTargetResponse;
 
@@ -269,7 +261,7 @@ describe('POST /api/resume-requests/locate (integration)', () => {
 		await locate({
 			id: stepId,
 			token: mint(stepId),
-			request: { ...shapeOf(stepId), search },
+			pathAndQuery: `/webhook-waiting/${stepId}/wait-a${search}`,
 		}).expect(401, { error: 'invalid_token' });
 	});
 
@@ -280,7 +272,7 @@ describe('POST /api/resume-requests/locate (integration)', () => {
 		await locate({
 			id: executionId,
 			token: mint(stepIds['wait-a']),
-			request: shapeOf(stepIds['wait-a']),
+			pathAndQuery: pathAndQueryOf(stepIds['wait-a']),
 		}).expect(401, { error: 'invalid_token' });
 	});
 
@@ -319,7 +311,7 @@ describe('POST /api/resume-requests/locate (integration)', () => {
 	it.each([
 		['an unknown key', { extra: 1 }],
 		['an id that is not a UUID', { id: 'not-a-uuid' }],
-		['a request shape with an unknown key', { request: { pathname: '/', search: '', hash: '' } }],
+		['a path and query that is not a string', { pathAndQuery: { pathname: '/' } }],
 	])('rejects a body with %s with 400', async (_, change) => {
 		const { executionId, token } = await seed({ 'wait-a': acceptsRequest });
 

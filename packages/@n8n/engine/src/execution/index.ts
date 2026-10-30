@@ -50,6 +50,5 @@ export type {
 	ResumeHold,
 	ResumeLocation,
 	ResumeRejection,
-	ResumeRequestShape,
 	ResumeTarget,
 } from './resume-request.service';

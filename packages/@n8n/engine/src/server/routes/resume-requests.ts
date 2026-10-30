@@ -23,7 +23,7 @@ const ResumeLocateBody = z
 	.object({
 		id: z.string().uuid(),
 		token: z.string().min(1),
-		request: z.object({ pathname: z.string(), search: z.string() }).strict().optional(),
+		pathAndQuery: z.string().optional(),
 	})
 	.strict();
 
@@ -124,11 +124,11 @@ export function createResumeRequestsRouter(
 			return;
 		}
 
-		const { id, token, request } = body.data;
+		const { id, token, pathAndQuery } = body.data;
 		await sendLocation(
 			res,
 			executionQuery,
-			async () => await resumeRequests.locateByToken(id, token, request),
+			async () => await resumeRequests.locateByToken(id, token, pathAndQuery),
 		);
 	});
 
