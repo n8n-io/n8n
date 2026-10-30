@@ -17,6 +17,7 @@ function slackCredentialId(node: INode): string | null {
  * Nodes without a Slack credential, or whose credential no longer exists, are
  * not returned. A decryption error is left to the caller.
  * Each credential is read and decrypted once per scan: `secretMissing` keeps the result.
+ * A credential that fails to decrypt is read again for each workflow, so each one reports the error.
  */
 export async function findSlackNodesWithoutSignatureSecret(
 	credentialsRepository: CredentialsRepository,
