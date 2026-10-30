@@ -3,8 +3,8 @@ import { readFileSync } from 'node:fs';
 import * as path from 'node:path';
 import type { RuntimeBridge, BridgeConfig, ExecuteOptions, WorkflowData } from '../types';
 import { DEFAULT_BRIDGE_CONFIG, TimeoutError, MemoryLimitError } from '../types';
-import type { ErrorSentinel } from '../runtime/lazy-proxy';
 import { unwrapTransferredValue } from '../runtime/transfer-codec';
+import { copyProxies } from './copy-proxies';
 import { HostDataResolver } from './host-data-resolver';
 import {
 	dispatchHostCall,
@@ -48,6 +48,22 @@ let _bundleCachedData: ivm.ExternalCopy<ArrayBuffer> | null = null;
 function producedCachedData(script: ivm.Script): ivm.ExternalCopy<ArrayBuffer> | null {
 	const data: unknown = Reflect.get(script, 'cachedData');
 	return data instanceof getIvm().ExternalCopy ? data : null;
+}
+
+/**
+ * Let native copying handle ordinary values. Only rejected values need a
+ * proxy walk before the callback copies them into the isolate.
+ */
+function copyIntoIsolate(value: unknown): unknown {
+	if (typeof value !== 'object' || value === null) {
+		return value;
+	}
+	try {
+		// The callback consumes this transfer handle directly in the guest.
+		return new (getIvm().ExternalCopy)(value).copyInto({ release: true });
+	} catch {
+		return copyProxies(value);
+	}
 }
 
 /** Globals the runtime bundle must define. Verified after every bundle load. */
@@ -310,7 +326,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createGetValueAtPathRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[]) => {
 			try {
-				return getValueAtPath(resolver, pathArr);
+				return getValueAtPath(resolver, pathArr, copyIntoIsolate);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -329,7 +345,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createGetArrayElementRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((pathArr: string[], index: number) => {
 			try {
-				return getArrayElement(resolver, pathArr, index);
+				return getArrayElement(resolver, pathArr, index, copyIntoIsolate);
 			} catch (err) {
 				return serializeError(err);
 			}
@@ -355,7 +371,7 @@ export class IsolatedVmBridge implements RuntimeBridge {
 	private createCallHostRef(resolver: HostDataResolver): ivm.Callback {
 		return new (getIvm().Callback)((rawMsg: unknown) => {
 			try {
-				return escapeHostResult(dispatchHostCall(rawMsg, resolver.getData()));
+				return copyIntoIsolate(escapeHostResult(dispatchHostCall(rawMsg, resolver.getData())));
 			} catch (err) {
 				return serializeError(err);
 			}
