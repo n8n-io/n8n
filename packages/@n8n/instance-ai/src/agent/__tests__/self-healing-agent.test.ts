@@ -102,7 +102,7 @@ describe('createSelfHealingAgent', () => {
 			report:
 				'**What happened**\n\nThe node used the wrong field.\n\n' +
 				'**What changed**\n\nThe proposed mapping passed verification. Nothing has been applied.',
-			candidateFilePath: 'self-healing/candidate.workflow.ts',
+			candidateFilePaths: ['self-healing/candidate.workflow.ts'],
 		};
 		const turns = [
 			modelTurn(
@@ -122,7 +122,7 @@ describe('createSelfHealingAgent', () => {
 						type: 'tool-call',
 						toolCallId: 'verify',
 						toolName: 'verify_candidate',
-						input: JSON.stringify({ filePath: output.candidateFilePath }),
+						input: JSON.stringify({ filePath: output.candidateFilePaths[0] }),
 					},
 				],
 				true,
@@ -210,7 +210,7 @@ describe('createSelfHealingAgent', () => {
 					outcome: 'could_not_fix',
 					summary: 'No fix found',
 					report: 'No changes were made.',
-					candidateFilePath: null,
+					candidateFilePaths: [],
 				}),
 		});
 		const agent = await createSelfHealingAgent({
@@ -225,9 +225,9 @@ describe('createSelfHealingAgent', () => {
 		expect(request.responseFormat).toMatchObject({
 			type: 'json',
 			schema: {
-				required: ['outcome', 'summary', 'report', 'candidateFilePath'],
+				required: ['outcome', 'summary', 'report', 'candidateFilePaths'],
 				properties: {
-					candidateFilePath: { anyOf: [{ type: 'string', minLength: 1 }, { type: 'null' }] },
+					candidateFilePaths: { type: 'array', items: { type: 'string', minLength: 1 } },
 				},
 			},
 		});

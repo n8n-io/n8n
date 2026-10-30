@@ -213,6 +213,10 @@ export class WorkflowSuggestionService {
 	}
 
 	// Prepare immediately before the caller opens its completion transaction.
+	async hasPendingSuggestion(workflowId: string) {
+		return (await this.suggestions.getPendingForWorkflow(workflowId)) !== null;
+	}
+
 	async createSuggestion(
 		prepared: PreparedWorkflowSuggestion,
 		ctx: OperationContext = {},

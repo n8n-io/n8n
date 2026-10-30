@@ -23,6 +23,8 @@ import { Service } from '@n8n/di';
 import type { SelfHealingOutput } from '@n8n/instance-ai';
 import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@n8n/errors';
 import isEqual from 'lodash/isEqual';
+import sortBy from 'lodash/sortBy';
+import uniqBy from 'lodash/uniqBy';
 
 import type { InboxSourceQuery } from '../../inbox/inbox-source.registry';
 import { WorkflowSuggestionRepository } from '../workflow-suggestions/database/workflow-suggestion.repository';
@@ -45,9 +47,10 @@ import { SelfHealingExecutionReferenceService } from './self-healing-execution-r
 export type SelfHealingResultInput = {
 	output: SelfHealingOutput;
 	usage: SelfHealingResultUsage;
-	candidate?: {
+	candidates?: Array<{
+		baseline: WorkflowSuggestionBaseline;
 		graph: WorkflowSuggestionGraph;
-	};
+	}>;
 	completedAt: string;
 };
 
@@ -132,11 +135,7 @@ export class SelfHealingResultService {
 			throw new UnexpectedError('The baseline does not belong to the investigation.');
 		}
 
-		const { content, completedAt, suggestions } = await this.prepareResult(
-			investigation,
-			baseline,
-			input,
-		);
+		const { content, completedAt, suggestions } = await this.prepareResult(investigation, input);
 		signal?.throwIfAborted();
 
 		return await this.txRunner.run({}, async (ctx) => {
@@ -166,8 +165,11 @@ export class SelfHealingResultService {
 				return null;
 			}
 
-			await this.suggestions.readWorkflowTargetForApply(investigation.workflowId, ctx);
-			await this.suggestions.requireCurrentBaseline(baseline, ctx);
+			const targets = [baseline, ...suggestions.map((suggestion) => suggestion.baseline)];
+			for (const target of sortBy(uniqBy(targets, 'workflowId'), 'workflowId')) {
+				await this.suggestions.readWorkflowTargetForApply(target.workflowId, ctx);
+				await this.suggestions.requireCurrentBaseline(target, ctx);
+			}
 			signal?.throwIfAborted();
 
 			const result = await this.results.createResult(
@@ -195,14 +197,13 @@ export class SelfHealingResultService {
 
 	private async prepareResult(
 		investigation: SelfHealingInvestigation,
-		baseline: WorkflowSuggestionBaseline,
 		input: SelfHealingResultInput,
 	) {
 		if (investigation.finishedAt) {
 			throw new ConflictError('The self-healing investigation has already finished.');
 		}
 
-		const { output, candidate } = input;
+		const { output, candidates = [] } = input;
 
 		const content = selfHealingResultContentSchema.parse({
 			outcome: output.outcome,
@@ -211,16 +212,18 @@ export class SelfHealingResultService {
 			usage: input.usage,
 		});
 
-		const needsYouWithoutChanges =
-			output.outcome === 'needs_you' &&
-			candidate !== undefined &&
-			isEqual(baseline.original.nodes, candidate.graph.nodes) &&
-			isEqual(baseline.original.connections, candidate.graph.connections);
+		const changed = candidates.filter(
+			({ baseline: { original }, graph }) =>
+				!isEqual(original.nodes, graph.nodes) || !isEqual(original.connections, graph.connections),
+		);
+		if (output.outcome === 'fix_ready' && changed.length === 0) {
+			throw new ConflictError('The suggestion has no workflow changes.');
+		}
 
 		const suggestions: PreparedWorkflowSuggestion[] = [];
-		if (candidate && !needsYouWithoutChanges) {
+		for (const candidate of changed) {
 			suggestions.push(
-				await this.suggestions.prepareSuggestion(baseline, {
+				await this.suggestions.prepareSuggestion(candidate.baseline, {
 					graph: candidate.graph,
 					explanation: output.summary,
 					resultKind: output.outcome === 'fix_ready' ? 'fix_ready' : 'needs_you',

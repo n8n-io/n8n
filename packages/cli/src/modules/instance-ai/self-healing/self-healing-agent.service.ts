@@ -77,10 +77,11 @@ export type SelfHealingRunResult = {
 	validationError?: string;
 	error?: unknown;
 	usage: SelfHealingResultUsage;
-	candidate?: {
+	candidates?: Array<{
 		filePath: string;
+		baseline: WorkflowSuggestionBaseline;
 		compile: () => Promise<CandidateWorkflowResult>;
-	};
+	}>;
 };
 
 export type SelfHealingRunLifecycle = {
@@ -290,16 +291,22 @@ export class SelfHealingAgentService {
 			const output = selfHealingOutputSchema.safeParse(stream.structuredOutput);
 			if (output.success) result.output = output.data;
 			else result.validationError = output.error.message;
-			const filePath = output.success ? output.data.candidateFilePath : null;
-			if (filePath && resolveFile(filePath)?.workflowId === baseline.workflowId) {
-				result.candidate = {
-					filePath,
+			const filePaths = output.success ? output.data.candidateFilePaths : [];
+			const changed = filePaths.map(resolveFile);
+			if (
+				changed.length > 0 &&
+				changed.every((target) => target !== undefined) &&
+				new Set(changed).size === changed.length
+			) {
+				result.candidates = changed.map((target, index) => ({
+					filePath: filePaths[index],
+					baseline: target,
 					compile: async () =>
 						await this.candidates.compile(
-							{ baseline, context, filePath, abortSignal: signal },
-							await this.suggestions.requireEditor(baseline.backgroundUserId, baseline.workflowId),
+							{ baseline: target, context, filePath: filePaths[index], abortSignal: signal },
+							await this.suggestions.requireEditor(target.backgroundUserId, target.workflowId),
 						),
-				};
+				}));
 			}
 			if (stream.status === 'suspended') {
 				result.reason = 'unexpected_suspension';
@@ -380,7 +387,7 @@ export class SelfHealingAgentService {
 		result.status = 'cancelled';
 		result.reason = reason;
 		delete result.output;
-		delete result.candidate;
+		delete result.candidates;
 		delete result.finishReason;
 		delete result.validationError;
 	}
@@ -406,6 +413,7 @@ export class SelfHealingAgentService {
 		for (const { id, otherProject } of discovered[workflowId].subWorkflows) {
 			if (otherProject) continue;
 			signal.throwIfAborted();
+			if (await this.suggestions.hasPendingSuggestion(id)) continue;
 			try {
 				const subWorkflow = await this.suggestions.captureBaseline(id, user.id);
 				if (subWorkflow.projectId === projectId) subWorkflows.push(subWorkflow);

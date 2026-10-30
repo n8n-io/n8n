@@ -1117,8 +1117,8 @@ describe('sub-workflows', () => {
 			return workflow;
 		};
 		const second = await publish('Second');
-		const first = await publish('First');
-		const root = await publish('Root', [second.id, first.id]);
+		const first = await publish('First', [second.id]);
+		const root = await publish('Root', [first.id]);
 		const unpublished = await createWorkflow({ activeVersionId: null }, project);
 
 		const response = await server

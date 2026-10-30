@@ -101,11 +101,13 @@ const discovered = (...ids: string[]) => ({
 		inaccessible: 0,
 	},
 });
+const triggeringFile = 'self-healing/captured-workflow-workflow.workflow.ts';
+const subWorkflowFile = 'self-healing/captured-sub-workflow-sub-workflow.workflow.ts';
 const validOutput = {
 	outcome: 'fix_ready',
 	summary: 'Updated the node.',
 	report: 'The check passed.',
-	candidateFilePath: 'self-healing/captured-workflow-workflow.workflow.ts',
+	candidateFilePaths: [triggeringFile],
 };
 
 describe('SelfHealingAgentService', () => {
@@ -259,7 +261,7 @@ describe('SelfHealingAgentService', () => {
 
 	it('prepares the captured baseline and binds verification', async () => {
 		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {
-			await factoryOptions.verifyCandidate({ filePath: validOutput.candidateFilePath });
+			await factoryOptions.verifyCandidate({ filePath: triggeringFile });
 			return mock<Awaited<ReturnType<typeof createSelfHealingAgent>>>();
 		});
 		const result = await service.execute(input, options);
@@ -274,8 +276,8 @@ describe('SelfHealingAgentService', () => {
 			turns: null,
 			durationSeconds: expect.any(Number),
 		});
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('node-id');
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('original value');
+		expect(files.get(`/workspace/${triggeringFile}`)).toContain('node-id');
+		expect(files.get(`/workspace/${triggeringFile}`)).toContain('original value');
 		expect(candidates.verify).toHaveBeenCalledWith(
 			expect.objectContaining({
 				user,
@@ -325,7 +327,7 @@ describe('SelfHealingAgentService', () => {
 		);
 		expect(streamAgentRun).toHaveBeenCalledWith(
 			expect.anything(),
-			expect.stringContaining(validOutput.candidateFilePath),
+			expect.stringContaining(triggeringFile),
 			expect.objectContaining({
 				recoverUsageOnAbort: true,
 				maxIterations: 100,
@@ -341,10 +343,8 @@ describe('SelfHealingAgentService', () => {
 	it('applies parameter redaction to the captured candidate', async () => {
 		aiUsage.isParameterValueSharingAllowed.mockResolvedValue(false);
 		await service.execute(input, options);
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).not.toContain(
-			'original value',
-		);
-		expect(files.get(`/workspace/${validOutput.candidateFilePath}`)).toContain('node-id');
+		expect(files.get(`/workspace/${triggeringFile}`)).not.toContain('original value');
+		expect(files.get(`/workspace/${triggeringFile}`)).toContain('node-id');
 	});
 
 	it('waits for result storage with final usage and the original candidate context', async () => {
@@ -367,7 +367,7 @@ describe('SelfHealingAgentService', () => {
 		options.onComplete = vi.fn(async (result) => {
 			expect(result.usage).toMatchObject({ credits: 0.25 });
 			suggestions.requireEditor.mockResolvedValueOnce(currentUser);
-			expect(await result.candidate?.compile()).toEqual(candidate);
+			expect(await result.candidates?.[0].compile()).toEqual(candidate);
 			entered.resolve();
 			await persisted.promise;
 		});
@@ -378,7 +378,7 @@ describe('SelfHealingAgentService', () => {
 		expect(candidates.compile).toHaveBeenCalledWith(
 			expect.objectContaining({
 				baseline,
-				filePath: validOutput.candidateFilePath,
+				filePath: triggeringFile,
 				context: expect.objectContaining({ workspace: expect.anything() }),
 			}),
 			currentUser,
@@ -445,7 +445,7 @@ describe('SelfHealingAgentService', () => {
 			usage: { credits: 0.25 },
 		});
 		expect(result.output).toBeUndefined();
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(result.finishReason).toBeUndefined();
 		expect(options.onComplete).toHaveBeenCalledExactlyOnceWith(result, controller.signal);
 		expect(options.onFinish).toHaveBeenCalledWith(result, 'test/model', stream);
@@ -474,7 +474,7 @@ describe('SelfHealingAgentService', () => {
 		);
 		const finished = vi.mocked(options.onFinish).mock.calls[0][0];
 		expect(finished).not.toHaveProperty('output');
-		expect(finished).not.toHaveProperty('candidate');
+		expect(finished).not.toHaveProperty('candidates');
 		expect(finished.finishReason).toBeUndefined();
 	});
 
@@ -484,7 +484,7 @@ describe('SelfHealingAgentService', () => {
 			stream.structuredOutput = output;
 			const result = await service.execute(input, options);
 			expect(result.output).toBeUndefined();
-			expect(result.candidate).toBeUndefined();
+			expect(result.candidates).toBeUndefined();
 			expect(result.validationError).toBeTruthy();
 			expect(result.status).toBe('completed');
 			expect(credits.claimRunUsage).toHaveBeenCalledTimes(1);
@@ -498,13 +498,13 @@ describe('SelfHealingAgentService', () => {
 				outcome,
 				summary: 'The investigation needs follow-up.',
 				report: 'No candidate is ready.',
-				candidateFilePath: null,
+				candidateFilePaths: [],
 			};
 			stream.structuredOutput = output;
 			const result = await service.execute(input, options);
 
 			expect(result.output).toEqual(output);
-			expect(result.candidate).toBeUndefined();
+			expect(result.candidates).toBeUndefined();
 		},
 	);
 
@@ -513,12 +513,12 @@ describe('SelfHealingAgentService', () => {
 		stream.structuredOutput = {
 			...validOutput,
 			outcome: 'needs_you',
-			candidateFilePath: filePath,
+			candidateFilePaths: [filePath],
 		};
 		const result = await service.execute(input, options);
 
-		expect(result.candidate?.filePath).toBe(filePath);
-		await result.candidate?.compile();
+		expect(result.candidates?.[0].filePath).toBe(filePath);
+		await result.candidates?.[0].compile();
 		expect(candidates.compile).toHaveBeenCalledWith(expect.objectContaining({ filePath }), user);
 	});
 
@@ -647,7 +647,7 @@ describe('SelfHealingAgentService', () => {
 			usage: { credits: 0.25 },
 		});
 		expect(result.output).toBeUndefined();
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(result.finishReason).toBeUndefined();
 		expect(result.validationError).toBeUndefined();
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
@@ -673,7 +673,7 @@ describe('SelfHealingAgentService', () => {
 		stream.structuredOutput = undefined;
 		const result = await service.execute(input, options);
 		expect(result).toMatchObject({ status: 'suspended', reason: 'unexpected_suspension' });
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(options.onFinish).toHaveBeenCalledWith(
 			expect.objectContaining({ reason: 'unexpected_suspension' }),
 			'test/model',
@@ -741,7 +741,7 @@ describe('SelfHealingAgentService', () => {
 			usage: { credits: null, turns: null },
 		});
 		expect(result.output).toBeUndefined();
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toBeUndefined();
 		expect(credits.claimRunUsage).toHaveBeenCalledExactlyOnceWith(
 			user,
 			options.threadId,
@@ -848,12 +848,8 @@ describe('SelfHealingAgentService', () => {
 
 		await service.execute(includeSubWorkflow(), options);
 
-		expect(files.get('/workspace/self-healing/captured-workflow-workflow.workflow.ts')).toContain(
-			'node-id',
-		);
-		expect(
-			files.get('/workspace/self-healing/captured-sub-workflow-sub-workflow.workflow.ts'),
-		).toContain('sub-node-id');
+		expect(files.get(`/workspace/${triggeringFile}`)).toContain('node-id');
+		expect(files.get(`/workspace/${subWorkflowFile}`)).toContain('sub-node-id');
 		const message = vi.mocked(streamAgentRun).mock.calls[0][1];
 		expect(message).toContain('Triggering workflow: "Captured workflow" (workflow)');
 		expect(message).toContain(
@@ -889,7 +885,14 @@ describe('SelfHealingAgentService', () => {
 		});
 
 		it('prepares eligible sub-workflows in discovery order', async () => {
-			const preview = discovered('eligible', 'no-access', 'unpublished-changes', 'moved', 'second');
+			const preview = discovered(
+				'eligible',
+				'no-access',
+				'unpublished-changes',
+				'moved',
+				'pending',
+				'second',
+			);
 			preview[baseline.workflowId].subWorkflows.splice(1, 0, {
 				id: 'other-project',
 				name: 'other-project',
@@ -902,6 +905,9 @@ describe('SelfHealingAgentService', () => {
 				if (workflowId === 'moved') return subBaseline(workflowId, 'other-project');
 				return subBaseline(workflowId);
 			});
+			suggestions.hasPendingSuggestion.mockImplementation(
+				async (workflowId) => workflowId === 'pending',
+			);
 
 			await service.execute({ ...input, includeSubWorkflows: true }, options);
 
@@ -909,6 +915,7 @@ describe('SelfHealingAgentService', () => {
 				baseline.workflowId,
 			]);
 			expect(suggestions.captureBaseline).not.toHaveBeenCalledWith('other-project', user.id);
+			expect(suggestions.captureBaseline).not.toHaveBeenCalledWith('pending', user.id);
 			expect(preparedIds()).toEqual([baseline.workflowId, 'eligible', 'second']);
 		});
 
@@ -934,7 +941,7 @@ describe('SelfHealingAgentService', () => {
 		let unknownFile: unknown;
 		vi.mocked(createSelfHealingAgent).mockImplementationOnce(async (factoryOptions) => {
 			await factoryOptions.verifyCandidate({
-				filePath: '/workspace/self-healing/captured-sub-workflow-sub-workflow.workflow.ts',
+				filePath: `/workspace/${subWorkflowFile}`,
 			});
 			unknownFile = await factoryOptions.verifyCandidate({
 				filePath: 'self-healing/other.workflow.ts',
@@ -946,7 +953,7 @@ describe('SelfHealingAgentService', () => {
 
 		expect(candidates.verify).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({
-				filePath: '/workspace/self-healing/captured-sub-workflow-sub-workflow.workflow.ts',
+				filePath: `/workspace/${subWorkflowFile}`,
 				baseline: subWorkflow,
 			}),
 		);
@@ -955,17 +962,37 @@ describe('SelfHealingAgentService', () => {
 		});
 	});
 
-	it.each([
-		'self-healing/captured-sub-workflow-sub-workflow.workflow.ts',
-		'self-healing/other.workflow.ts',
-		'../self-healing/captured-workflow-workflow.workflow.ts',
-	])('returns no candidate when the output names %s', async (candidateFilePath) => {
-		stream.structuredOutput = { ...validOutput, candidateFilePath };
+	it('returns a candidate for each prepared output file', async () => {
+		stream.structuredOutput = {
+			...validOutput,
+			candidateFilePaths: [`/workspace/${subWorkflowFile}`, `./${triggeringFile}`],
+		};
 
 		const result = await service.execute(includeSubWorkflow(), options);
 
-		expect(result.output).toMatchObject({ candidateFilePath });
-		expect(result.candidate).toBeUndefined();
+		expect(result.candidates).toEqual([
+			expect.objectContaining({ filePath: `/workspace/${subWorkflowFile}`, baseline: subWorkflow }),
+			expect.objectContaining({ filePath: `./${triggeringFile}`, baseline }),
+		]);
+		await result.candidates?.[0].compile();
+		expect(candidates.compile).toHaveBeenCalledWith(
+			expect.objectContaining({ filePath: `/workspace/${subWorkflowFile}`, baseline: subWorkflow }),
+			user,
+		);
+	});
+
+	it.each([
+		[['self-healing/other.workflow.ts']],
+		[[triggeringFile, 'self-healing/other.workflow.ts']],
+		[[`../${triggeringFile}`]],
+		[[triggeringFile, `./${triggeringFile}`]],
+	])('returns no candidates when the output names %j', async (candidateFilePaths) => {
+		stream.structuredOutput = { ...validOutput, candidateFilePaths };
+
+		const result = await service.execute(includeSubWorkflow(), options);
+
+		expect(result.output).toMatchObject({ candidateFilePaths });
+		expect(result.candidates).toBeUndefined();
 	});
 
 	it('rejects a disabled gate at admission', () => {

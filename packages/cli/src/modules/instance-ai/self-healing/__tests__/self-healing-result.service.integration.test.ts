@@ -258,11 +258,11 @@ async function prepareInvestigation(
 			outcome,
 			summary: input.summary,
 			report: input.report,
-			candidateFilePath: withSuggestion ? 'candidate.workflow.ts' : null,
+			candidateFilePaths: withSuggestion ? ['candidate.workflow.ts'] : [],
 		},
 		usage: input.usage,
 		completedAt: new Date().toISOString(),
-		...(withSuggestion ? { candidate: { graph } } : {}),
+		...(withSuggestion ? { candidates: [{ baseline, graph }] } : {}),
 	};
 	return { ...fixture, graph, input, baseline, investigation, completion };
 }
@@ -763,7 +763,7 @@ it('rolls back all completion writes and releases the claim on failure', async (
 	const { input, original, graph } = await prepareFixture('fix_ready');
 	const value = ['xoxb', '1234567890', 'abcdefghij'].join('-');
 	let completedRun: Promise<SelfHealingRunResult> | undefined;
-	runtime.startSelfHealingRun.mockImplementation(async (_input, lifecycle) => {
+	runtime.startSelfHealingRun.mockImplementation(async (runInput, lifecycle) => {
 		const run: SelfHealingRunResult = {
 			threadId: lifecycle.threadId,
 			runId: lifecycle.runId,
@@ -773,24 +773,27 @@ it('rolls back all completion writes and releases the claim on failure', async (
 				outcome: 'fix_ready',
 				summary: `Updated the request using ${value}.`,
 				report: `Check the HTTP Request node. Authorization: Bearer ${value}`,
-				candidateFilePath: 'candidate.workflow.ts',
+				candidateFilePaths: ['candidate.workflow.ts'],
 			},
 			usage: input.usage,
-			candidate: {
-				filePath: 'candidate.workflow.ts',
-				compile: async () => ({
-					success: true,
-					workflow: { ...original, ...graph },
-					warnings: [],
-					credentialResolution: {
-						mockedNodeNames: [],
-						mockedCredentialTypes: [],
-						mockedCredentialsByNode: {},
-						heldForNewCredentialTypes: [],
-						resolvedCredentialsByNode: {},
-					},
-				}),
-			},
+			candidates: [
+				{
+					filePath: 'candidate.workflow.ts',
+					baseline: runInput.baseline,
+					compile: async () => ({
+						success: true,
+						workflow: { ...original, ...graph },
+						warnings: [],
+						credentialResolution: {
+							mockedNodeNames: [],
+							mockedCredentialTypes: [],
+							mockedCredentialsByNode: {},
+							heldForNewCredentialTypes: [],
+							resolvedCredentialsByNode: {},
+						},
+					}),
+				},
+			],
 		};
 		completedRun = lifecycle.onComplete(run, new AbortController().signal).then(() => run);
 		return await completedRun;
@@ -1375,6 +1378,90 @@ describe('suggestion groups', () => {
 			{ state: 'pending', closedReason: null },
 			{ state: 'pending', closedReason: null },
 		]);
+	});
+});
+
+describe('grouped completion', () => {
+	async function groupCompletion() {
+		const context = await prepareInvestigation('fix_ready', true, { inTeamProject: true });
+		const { user, project, completion } = context;
+		const subWorkflow = await createPublishedWorkflow(project);
+		const unchanged = await createPublishedWorkflow(project);
+		const candidate = async (workflow: WorkflowEntity, position?: [number, number]) => ({
+			baseline: await suggestionService.captureBaseline(workflow.id, user.id),
+			graph: {
+				nodes: position ? workflow.nodes.map((node) => ({ ...node, position })) : workflow.nodes,
+				connections: workflow.connections,
+			},
+		});
+		const candidates = [
+			...(completion.candidates ?? []),
+			await candidate(subWorkflow, [200, 200]),
+			await candidate(unchanged),
+		];
+		return { ...context, subWorkflow, completion: { ...completion, candidates } };
+	}
+
+	it('saves a suggestion for each changed workflow', async () => {
+		const { investigation, original, subWorkflow, completion } = await groupCompletion();
+
+		const result = await completeResult({ investigationId: investigation.id, ...completion });
+
+		const saved = await suggestions.getForResult(result.id);
+		expect(saved.map(({ workflowId }) => workflowId).sort()).toEqual(
+			[original.id, subWorkflow.id].sort(),
+		);
+	});
+
+	it('saves and applies a fix that changes only a sub-workflow', async () => {
+		const { investigation, user, project, original, subWorkflow, completion } =
+			await groupCompletion();
+		const [, member, unchanged] = completion.candidates;
+		const result = await completeResult({
+			investigationId: investigation.id,
+			...completion,
+			candidates: [{ ...completion.candidates[0], graph: original }, member, unchanged],
+		});
+
+		const detail = await service.getDetail(user, project.id, original.id, result.id);
+		expect(detail.reviewState).toBe('open');
+		expect(detail.suggestions.map(({ workflowId }) => workflowId)).toEqual([subWorkflow.id]);
+
+		await service.act(user, project.id, original.id, result.id, 'apply');
+		const applied = await workflows.findOneByOrFail({ id: subWorkflow.id });
+		expect(applied.nodes.map(({ position }) => position)).toEqual(
+			member.graph.nodes.map(({ position }) => position),
+		);
+		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
+	});
+
+	it('saves nothing when a member no longer matches its baseline', async () => {
+		const { investigation, subWorkflow, completion } = await groupCompletion();
+		await workflows.update(subWorkflow.id, { name: 'Changed before completion' });
+
+		await expect(
+			service.complete({ investigationId: investigation.id, ...completion }),
+		).rejects.toThrow('baseline');
+		expect(await results.count()).toBe(0);
+		expect(await suggestions.count()).toBe(0);
+	});
+
+	it('saves nothing when a member has a pending suggestion', async () => {
+		const { investigation, completion } = await groupCompletion();
+		const [, member] = completion.candidates;
+		await suggestionService.createSuggestion(
+			await suggestionService.prepareSuggestion(member.baseline, {
+				graph: member.graph,
+				explanation: 'Another fix.',
+				resultKind: 'fix_ready',
+			}),
+		);
+
+		await expect(
+			service.complete({ investigationId: investigation.id, ...completion }),
+		).rejects.toThrow('already has a pending proposal');
+		expect(await results.count()).toBe(0);
+		expect(await suggestions.count()).toBe(1);
 	});
 });
 
@@ -2298,7 +2385,7 @@ describe('configuration lifecycle', () => {
 					outcome: 'could_not_fix',
 					summary: 'No fix found.',
 					report: 'No fix found.',
-					candidateFilePath: null,
+					candidateFilePaths: [],
 				},
 				usage: { credits: null, turns: null, durationSeconds: null },
 			};

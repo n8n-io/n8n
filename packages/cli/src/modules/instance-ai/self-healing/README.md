@@ -79,7 +79,7 @@ captured baseline: the triggering workflow and its sub-workflows. All files use 
 It uses the same workflow converter as ordinary workflow reads. The starting message lists each
 file with its workflow name and ID.
 Reads of a prepared workflow return its captured baseline. The agent cannot select another version.
-The output candidate must be the file of the triggering workflow.
+The agent edits the workflow that causes the failure. This can be a sub-workflow.
 
 The dedicated `self-healing-v1` agent can read workflows, executions, data tables, and node metadata.
 It can read and edit workspace files, run sandbox commands, and call `verify_candidate`.
@@ -89,13 +89,20 @@ The agent has no save, publish, credential setup, MCP, browser, or delegation to
 It does not request user confirmation or start follow-up runs.
 
 The runtime returns technical `status`, finish information, `usage`, and validated `output`
-when available. Output requires `outcome`, `summary`, `report`, and `candidateFilePath`.
-Set `candidateFilePath` to `null` when there is no candidate.
-`fix_ready` requires a candidate path. `could_not_fix` excludes one.
-The result includes a candidate compiler when validated output names a candidate file.
-If final compilation reports mocked credential types, the producer changes `fix_ready` to `needs_you`.
-It keeps the candidate and replaces the report with credential setup instructions.
-An unchanged `needs_you` candidate produces a report without a workflow suggestion.
+when available. Output requires `outcome`, `summary`, `report`, and `candidateFilePaths`.
+`candidateFilePaths` lists the prepared files of the changed workflows. It is empty when there is no candidate.
+`fix_ready` requires at least one path. `could_not_fix` excludes them.
+The run maps each path to its prepared baseline and returns a candidate compiler for each.
+An unknown or duplicate path returns no candidates. The investigation then fails and stores no result.
+Final compilation compiles every candidate. One failure fails the whole investigation.
+If a candidate has mocked credentials or placeholders, the producer changes `fix_ready` to `needs_you`.
+It keeps the candidates and replaces the report with setup instructions for all of them.
+Each changed candidate becomes one suggestion of the result. Unchanged candidates are omitted
+and do not add setup instructions.
+A `fix_ready` result without a changed candidate is rejected.
+Before it saves the result, completion locks every target workflow in ID order.
+It rechecks each baseline and edit access in the same transaction.
+A stale member or a pending suggestion of another result rolls back the whole group.
 Unknown usage measurements stay null. The invocation claims measured credits once.
 Callers must not claim those credits again.
 
@@ -190,7 +197,7 @@ start investigations for sub-workflow failures. It defaults to `false`.
 When it is set, the agent run discovers the sub-workflows of the triggering workflow and
 captures their baselines before it prepares the files. It keeps the nearest sub-workflows in the
 same project that pass the baseline checks, up to `MAX_SUB_WORKFLOW_TARGETS`. Sub-workflows without
-edit access or with unpublished changes are left out. Sub-workflows get no admission reservation.
+edit access, with unpublished changes, or with a pending suggestion are left out. Sub-workflows get no admission reservation.
 `POST .../self-healing-configurations/sub-workflows/preview` returns the discovery result for
 each selected workflow, so the form can show it.
 

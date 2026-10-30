@@ -12,6 +12,7 @@ import { Service } from '@n8n/di';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { selfHealingOutputSchema } from '@n8n/instance-ai';
 import { scrubSecretsInText } from '@n8n/utils/scrub-secrets';
+import isEqual from 'lodash/isEqual';
 import { randomUUID } from 'node:crypto';
 
 import { DurableEventLog } from '../event-bus/durable-event-log';
@@ -256,28 +257,34 @@ export class SelfHealingInvestigationService {
 			completedAt: new Date().toISOString(),
 		};
 
-		if (output.candidateFilePath) {
-			if (!run.candidate || run.candidate.filePath !== output.candidateFilePath) {
-				throw new BadRequestError('The candidate file is unavailable.');
-			}
+		if (output.candidateFilePaths.length > 0) {
+			if (!run.candidates) throw new BadRequestError('The candidate files are unavailable.');
 
-			const candidate = await run.candidate.compile();
-			if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
+			const missingSetup: string[] = [];
+			result.candidates = [];
+			for (const { baseline, compile } of run.candidates) {
+				const candidate = await compile();
+				if (!candidate.success) throw new BadRequestError(candidate.errors.join('\n'));
+				const { nodes, connections } = candidate.workflow;
+				if (
+					isEqual(baseline.original.nodes, nodes) &&
+					isEqual(baseline.original.connections, connections)
+				) {
+					continue;
+				}
 
-			const placeholderWarnings = candidate.warnings.filter(
-				({ code }) => code === 'unresolved_placeholders',
-			);
-			if (
-				output.outcome === 'fix_ready' &&
-				(candidate.credentialResolution.mockedCredentialTypes.length > 0 ||
-					placeholderWarnings.length > 0)
-			) {
-				const missingSetup = [
+				missingSetup.push(
 					...Object.entries(candidate.credentialResolution.mockedCredentialsByNode).map(
 						([node, types]) => `- Connect credentials for ${node}: ${types.join(', ')}`,
 					),
-					...placeholderWarnings.map(({ message }) => `- ${message}`),
-				];
+					...candidate.warnings
+						.filter(({ code }) => code === 'unresolved_placeholders')
+						.map(({ message }) => `- ${message}`),
+				);
+				result.candidates.push({ baseline, graph: { nodes, connections } });
+			}
+
+			if (output.outcome === 'fix_ready' && missingSetup.length > 0) {
 				result.output = {
 					...output,
 					outcome: 'needs_you',
@@ -291,10 +298,6 @@ export class SelfHealingInvestigationService {
 						'Continue in chat to complete the setup and verify the repair.',
 				};
 			}
-
-			result.candidate = {
-				graph: { nodes: candidate.workflow.nodes, connections: candidate.workflow.connections },
-			};
 		}
 
 		const outputFields = selfHealingOutputSchema.innerType().shape;
