@@ -155,6 +155,14 @@ export class InstanceAiConfig {
 	evalInstance: boolean = false;
 
 	/**
+	 * Address of the simulated services server that n8n Assistant evaluations run workflows
+	 * against, as `host:port` of its HTTPS listener, for example `sim-server:443`. Only used on an
+	 * evaluation instance. Leave empty to turn off evaluation runs against simulated services.
+	 */
+	@Env('N8N_INSTANCE_AI_EVAL_SIM_GATEWAY')
+	evalSimGateway: string = '';
+
+	/**
 	 * Minutes an idle Daytona sandbox waits before it is stopped. Default 15 minutes.
 	 * `0` disables auto-stop (the sandbox stays running).
 	 */

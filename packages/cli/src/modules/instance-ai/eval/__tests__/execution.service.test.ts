@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest';
-import type { AgentJsonConfig } from '@n8n/api-types';
+import type { AgentJsonConfig, InstanceAiEvalSimExecutionRequest } from '@n8n/api-types';
 import type { Logger, ModuleRegistry } from '@n8n/backend-common';
-import type { ExecutionsConfig, InstanceAiConfig } from '@n8n/config';
+import type { ExecutionsConfig, GlobalConfig, InstanceAiConfig } from '@n8n/config';
 import type { ProcessedDataRepository, User } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 import type { BinaryDataService } from 'n8n-core';
@@ -12,10 +12,13 @@ import type {
 	IRun,
 	IWorkflowBase,
 	INodeTypeDescription,
+	IPollFunctions,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, TimeoutExecutionCancelledError, UserError } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { CredentialTypes } from '@/credential-types';
+import type { CredentialsService } from '@/credentials/credentials.service';
 import type { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import type { PrepareWorkflowAgentForEval } from '@/modules/agents/evaluation/agent-evaluation.contracts';
 import type { NodeTypes } from '@/node-types';
@@ -47,7 +50,9 @@ vi.mock('../mock-handler', () => ({
 vi.mock('../node-run-mock', () => ({
 	createNodeRunMockHandler: vi.fn(),
 }));
-vi.mock('../workflow-analysis', () => ({
+vi.mock('../workflow-analysis', async (importOriginal) => ({
+	isVendorSdkSubNode: (await importOriginal<typeof import('../workflow-analysis')>())
+		.isVendorSdkSubNode,
 	partitionAiRoots: vi.fn(),
 	buildVendorLlmRouting: vi.fn().mockReturnValue({
 		subNodeToRoot: new Map(),
@@ -94,13 +99,22 @@ vi.mock('n8n-workflow', async () => {
 	class MockWorkflow {
 		nodes: Record<string, unknown>;
 		connections: IConnections;
+		staticData: Record<string, Record<string, unknown>>;
 		getStartNode = mockGetStartNode;
-		constructor(options: { nodes?: Array<{ name: string }>; connections?: IConnections }) {
+		constructor(options: {
+			nodes?: Array<{ name: string }>;
+			connections?: IConnections;
+			staticData?: Record<string, Record<string, unknown>>;
+		}) {
 			mockWorkflowConstructed(options);
 			// Key the entity's node objects by name (same references, so the SUT's
 			// in-place parameter patching propagates to the executed workflow).
 			this.nodes = Object.fromEntries((options?.nodes ?? []).map((node) => [node.name, node]));
 			this.connections = options?.connections ?? {};
+			this.staticData = options?.staticData ?? {};
+		}
+		getStaticData(type: string, node?: { name: string }) {
+			return (this.staticData[type === 'node' ? `node:${node?.name}` : 'global'] ??= {});
 		}
 		getChildNodes(nodeName: string) {
 			return actual.getChildNodes(this.connections, nodeName);
@@ -113,9 +127,11 @@ vi.mock('n8n-workflow', async () => {
 });
 
 const mockExecuteAgent = vi.fn();
+const mockGetBase = vi.fn();
 vi.mock('@/workflow-execute-additional-data', async (importOriginal) => ({
 	...(await importOriginal<typeof import('@/workflow-execute-additional-data')>()),
 	executeAgent: async (...args: unknown[]) => await mockExecuteAgent(...args),
+	getBase: async (...args: unknown[]) => await mockGetBase(...args),
 }));
 vi.mock('../mcp-mock-fetch', () => ({ createMcpMockFetch: vi.fn() }));
 vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
@@ -126,6 +142,7 @@ vi.mock('../web-search-mock', () => ({ createWebSearchMock: vi.fn() }));
 
 import { generateDataTableRows } from '../data-table-rows';
 import { EvalExecutionService } from '../execution.service';
+import { SimCredentialsHelper } from '../sim-credentials-helper';
 import { createMcpMockFetch } from '../mcp-mock-fetch';
 import { createLlmMockHandler } from '../mock-handler';
 import { createNodeRunMockHandler } from '../node-run-mock';
@@ -252,6 +269,8 @@ describe('EvalExecutionService', () => {
 	const processedDataRepository = mock<ProcessedDataRepository>();
 	const instanceAiConfig = { evalInstance: true } as InstanceAiConfig;
 	const moduleRegistry = mock<ModuleRegistry>();
+	const credentialsService = mock<CredentialsService>();
+	const credentialTypes = mock<CredentialTypes>();
 
 	// Captured configureAdditionalData closure so tests can re-invoke it on a
 	// stub additionalData without booting the real runner.
@@ -291,6 +310,9 @@ describe('EvalExecutionService', () => {
 			processedDataRepository,
 			instanceAiConfig,
 			moduleRegistry,
+			credentialsService,
+			credentialTypes,
+			mock<GlobalConfig>({ port: 5678 }),
 		);
 		// Reset to safe default — tests that flip queue mode reassign in-test.
 		Object.assign(executionsConfig, { mode: 'regular' });
@@ -2658,6 +2680,164 @@ describe('EvalExecutionService', () => {
 	});
 
 	// ── reserved node names ──────────────────────────────────────────
+
+	describe('simulated-services runs', () => {
+		const simRequest = (overrides: Partial<InstanceAiEvalSimExecutionRequest> = {}) =>
+			({
+				startNodeName: 'Webhook',
+				triggerItems: [{ body: { email: 'ada@example.com' } }],
+				nodeParameters: { 'HTTP Request': { url: 'https://slack.com/api/chat.postMessage' } },
+				credentials: [
+					{ nodeName: 'HTTP Request', type: 'slackApi', data: { accessToken: 'xoxb-1' } },
+				],
+				simHosts: ['slack.com'],
+				...overrides,
+			}) as InstanceAiEvalSimExecutionRequest;
+
+		beforeEach(() => {
+			Object.assign(instanceAiConfig, { evalSimGateway: '127.0.0.1:9443' });
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(makeWorkflowEntity() as never);
+			ownershipService.getWorkflowProjectCached.mockResolvedValue({ id: 'proj-1' } as never);
+			credentialsService.createUnmanagedCredential.mockResolvedValue({ id: 'cred-1' } as never);
+			credentialsService.delete.mockResolvedValue(true);
+		});
+
+		afterEach(() => {
+			Object.assign(instanceAiConfig, { evalSimGateway: '' });
+		});
+
+		it('refuses to run without the sim gateway', async () => {
+			Object.assign(instanceAiConfig, { evalSimGateway: '' });
+
+			const result = await service.executeWithSim('wf-1', makeUser(), simRequest());
+
+			expect(result.success).toBe(false);
+			expect(result.errors[0]).toContain('N8N_INSTANCE_AI_EVAL_SIM_GATEWAY');
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('refuses a request that names nodes the workflow does not have', async () => {
+			const result = await service.executeWithSim(
+				'wf-1',
+				makeUser(),
+				simRequest({ nodeParameters: { Ghost: {} } }),
+			);
+
+			expect(result.errors[0]).toContain('Ghost');
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+			expect(credentialsService.createUnmanagedCredential).not.toHaveBeenCalled();
+		});
+
+		it("records a polling trigger's first poll, as when its workflow is published", async () => {
+			mockGetBase.mockResolvedValue({ credentialsHelper: { resolve: vi.fn() } });
+			const poll = vi.fn(async function (this: IPollFunctions) {
+				expect(this.getMode()).toBe('trigger');
+				this.getWorkflowStaticData('node').lastTimeChecked = 1_700_000_000;
+				return null;
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { properties: [] } as unknown as INodeTypeDescription,
+				poll,
+			} as never);
+
+			const result = await service.pollWithSim('wf-1', makeUser(), {
+				startNodeName: 'Webhook',
+				credentials: [{ nodeName: 'Webhook', type: 'gmailOAuth2', data: { oauthTokenData: {} } }],
+				simHosts: ['gmail.googleapis.com'],
+			});
+
+			expect(result).toEqual({ pollState: { 'node:Webhook': { lastTimeChecked: 1_700_000_000 } } });
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledTimes(1);
+			expect(credentialsService.delete).toHaveBeenCalledWith(expect.anything(), 'cred-1');
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('starts the run from what the polling trigger returns when it polls again with that state', async () => {
+			const pollData = { credentialsHelper: { resolve: vi.fn() } } as Record<string, unknown>;
+			mockGetBase.mockResolvedValue(pollData);
+			let seenState: unknown;
+			const poll = vi.fn(async function (this: IPollFunctions) {
+				seenState = { ...this.getWorkflowStaticData('node') };
+				return [[{ json: { id: 'msg-1', threadId: 'thr-1' } }]];
+			});
+			nodeTypes.getByNameAndVersion.mockReturnValue({
+				description: { properties: [] } as unknown as INodeTypeDescription,
+				poll,
+			} as never);
+
+			const result = await service.executeWithSim(
+				'wf-1',
+				makeUser(),
+				simRequest({
+					pollState: { 'node:Webhook': { lastTimeChecked: 1_700_000_000 } },
+					triggerItems: [],
+				}),
+			);
+
+			expect(result.errors).toEqual([]);
+			expect(seenState).toEqual({ lastTimeChecked: 1_700_000_000 });
+			expect(pollData.evalEgressProxy).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+			expect(pollData.credentialsHelper).toBeInstanceOf(SimCredentialsHelper);
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				pinData: Record<string, unknown[]>;
+				workflowData: { staticData?: unknown };
+			};
+			expect(runArg.pinData.Webhook).toEqual([{ json: { id: 'msg-1', threadId: 'thr-1' } }]);
+			expect(runArg.workflowData.staticData).toBeUndefined();
+			expect(result.hints.triggerContent).toEqual({ id: 'msg-1', threadId: 'thr-1' });
+			expect(result.nodeResults.Webhook?.runTimes?.[0]?.startTime).toEqual(expect.any(Number));
+		});
+
+		it('refuses a start node that is not a start node of the workflow', async () => {
+			const result = await service.executeWithSim(
+				'wf-1',
+				makeUser(),
+				simRequest({ startNodeName: 'HTTP Request' }),
+			);
+
+			expect(result.errors[0]).toContain('"HTTP Request" is not a start node');
+			expect(workflowRunner.run).not.toHaveBeenCalled();
+		});
+
+		it('runs the stored workflow with the issued credential, the bound parameters and the trigger items', async () => {
+			const stored = makeWorkflowEntity();
+			stored.nodes[1].credentials = { httpHeaderAuth: { id: 'real-1', name: 'Real header auth' } };
+			workflowFinderService.findWorkflowForUser.mockResolvedValue(stored as never);
+			let configured: Record<string, unknown> = {};
+			workflowRunner.run.mockImplementation(async (data) => {
+				const ad = makeMockedAdditionalData() as Record<string, unknown>;
+				await data.configureAdditionalData?.(ad as never);
+				configured = ad;
+				return DB_EXECUTION_ID;
+			});
+
+			const result = await service.executeWithSim('wf-1', makeUser(), simRequest());
+
+			expect(result.errors).toEqual([]);
+			expect(result.executionId).toBe(DB_EXECUTION_ID);
+			expect(credentialsService.createUnmanagedCredential).toHaveBeenCalledWith(
+				expect.objectContaining({
+					type: 'slackApi',
+					data: { accessToken: 'xoxb-1' },
+					projectId: 'proj-1',
+				}),
+				expect.anything(),
+			);
+			const runArg = workflowRunner.run.mock.calls[0][0] as unknown as {
+				workflowData: IWorkflowBase;
+				pinData: Record<string, unknown[]>;
+			};
+			const httpNode = runArg.workflowData.nodes.find((n) => n.name === 'HTTP Request');
+			expect(httpNode?.credentials).toEqual({
+				slackApi: { id: 'cred-1', name: '[eval-sim] slackApi' },
+			});
+			expect(httpNode?.parameters).toEqual({ url: 'https://slack.com/api/chat.postMessage' });
+			expect(runArg.pinData.Webhook).toEqual([{ json: { body: { email: 'ada@example.com' } } }]);
+			expect(configured.evalEgressProxy).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+			expect(configured.credentialsHelper).toBeInstanceOf(SimCredentialsHelper);
+			expect(credentialsService.delete).toHaveBeenCalledWith(expect.anything(), 'cred-1');
+		});
+	});
 
 	describe('reserved node names', () => {
 		// Object literals cannot express an own "__proto__" key; this mirrors the
