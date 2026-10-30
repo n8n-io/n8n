@@ -6,6 +6,7 @@ dependencies:
     - workflow_builder_verify_built_workflow
     - setup_workflow
     - get_execution
+    - run_workflow
     - debug_execution
     - get_execution_node_output
 description: >-

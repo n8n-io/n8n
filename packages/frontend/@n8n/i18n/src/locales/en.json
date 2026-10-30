@@ -8644,6 +8644,7 @@
 	"instanceAi.tools.workflow_builder_executions.get-node-output": "Reading node output",
 	"instanceAi.tools.workflow_builder_executions.get-resolved-node-parameters": "Inspecting node parameters",
 	"instanceAi.tools.workflow_builder_executions.stop": "Stopping execution",
+	"instanceAi.tools.workflow_builder_executions.run-step": "Running workflow step",
 	"instanceAi.tools.list_executions": "Checking executions",
 	"instanceAi.tools.get_execution": "Getting execution result",
 	"instanceAi.tools.run_workflow": "Running workflow",

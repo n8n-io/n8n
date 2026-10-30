@@ -308,11 +308,11 @@ describe('createSelfHealingAgent', () => {
 			(await createAgent(context)).declaredTools,
 			DOMAIN_TOOL_IDS.GET_EXECUTION,
 		);
-		await expect(executeTool(tool, { executionId: 'execution' })).resolves.toMatchObject({ status: 'error' });
+		await expect(executeTool(tool, { executionId: 'execution' })).resolves.toMatchObject({
+			status: 'error',
+		});
 		vi.mocked(context.executionService.getStatus).mockRejectedValue(new Error('Access denied'));
-		await expect(executeTool(tool, { executionId: 'other' })).rejects.toThrow(
-			'Access denied',
-		);
+		await expect(executeTool(tool, { executionId: 'other' })).rejects.toThrow('Access denied');
 	});
 
 	it('keeps the candidate unchanged when a live workflow is read as source', async () => {

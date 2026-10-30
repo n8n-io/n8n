@@ -641,9 +641,7 @@ describe('Instance AI skills', () => {
 
 		const loaded = await source.loadSkill('debugging-executions');
 		expect(loaded?.instructions).toContain('debug_execution');
-		expect(loaded?.instructions).toContain(
-			'get_resolved_node_parameters(executionId, nodeName)',
-		);
+		expect(loaded?.instructions).toContain('get_resolved_node_parameters(executionId, nodeName)');
 		expect(loaded?.instructions).toContain('unreconstructable-context');
 		expect(loaded?.instructions).toContain('do this unprompted');
 		expect(loaded?.instructions).toContain('## Before you name a cause');
