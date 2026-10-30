@@ -14,7 +14,7 @@ import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
 import { PERSONAL_SPACE_SHARING_SETTING } from '@n8n/permissions';
 import { In } from '@n8n/typeorm';
-import { mock } from 'vitest-mock-extended';
+import { mock, type MockProxy } from 'vitest-mock-extended';
 
 import config from '@/config';
 import { CredentialsService } from '@/credentials/credentials.service';
@@ -1787,6 +1787,72 @@ describe('instance role with credential visibility but not use', () => {
 				id: ownerCredential.id,
 				name: ownerCredential.name,
 				type: ownerCredential.type,
+				data: {},
+			},
+		});
+
+		expect(response.statusCode).toBe(200);
+		expect(mockCredentialsTester.testCredentials).toHaveBeenCalled();
+	});
+});
+
+// ----------------------------------------
+// A project viewer can see a credential but not drive it
+// ----------------------------------------
+
+describe('project role with credential visibility but not use', () => {
+	// The project-lane counterpart of the instance rung above: `project:viewer`
+	// holds `credential:read` and nothing beyond it, so the credential is listed
+	// and readable, but it cannot be tested or probed with the viewer's access.
+	const mockCredentialsTester = Container.get(CredentialsTester) as MockProxy<CredentialsTester>;
+
+	afterEach(() => {
+		mockCredentialsTester.testCredentials.mockClear();
+	});
+
+	const credentialInTeamProjectWith = async (role: ProjectRole) => {
+		const project = await createTeamProject();
+		const credential = await saveCredential(randomCredentialPayload(), { project });
+		await linkUserToProject(member, project, role);
+		return credential;
+	};
+
+	test('POST /credentials/test is refused for a project viewer', async () => {
+		const credential = await credentialInTeamProjectWith('project:viewer');
+
+		const response = await authMemberAgent.post('/credentials/test').send({
+			credentials: {
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
+				data: {},
+			},
+		});
+
+		expect(response.statusCode).toBe(403);
+		expect(mockCredentialsTester.testCredentials).not.toHaveBeenCalled();
+	});
+
+	test('POST /credentials/:id/probe is refused for a project viewer', async () => {
+		const credential = await credentialInTeamProjectWith('project:viewer');
+
+		const response = await authMemberAgent.post(`/credentials/${credential.id}/probe`).send({});
+
+		expect(response.statusCode).toBe(403);
+	});
+
+	test('POST /credentials/test still works for a project editor', async () => {
+		mockCredentialsTester.testCredentials.mockResolvedValue({
+			status: 'OK',
+			message: 'Credential tested successfully',
+		});
+		const credential = await credentialInTeamProjectWith('project:editor');
+
+		const response = await authMemberAgent.post('/credentials/test').send({
+			credentials: {
+				id: credential.id,
+				name: credential.name,
+				type: credential.type,
 				data: {},
 			},
 		});
