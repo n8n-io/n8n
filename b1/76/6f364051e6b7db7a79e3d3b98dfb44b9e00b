@@ -1,0 +1,28 @@
+packages/frontend/editor-ui/src/features/ai/instanceAi/prefills.ts
+  s_3eab3bd25bb557::t_eb74ed23417876 59-60,71
+packages/frontend/editor-ui/src/features/agents/components/AgentChatPanel.vue
+  s_3eab3bd25bb557::t_a2f6b66ffaaf71 197-198,1146-1156,1189-1190,1252
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/useAssistantAgentMessageTelemetry.ts
+  s_3eab3bd25bb557::t_7698a16041726c 45-50
+packages/frontend/editor-ui/src/features/agents/__tests__/AgentChatPanel.test.ts
+  s_3eab3bd25bb557::t_8d8a7c67ec2d28 3642-3659
+packages/frontend/editor-ui/src/features/ai/instanceAi/assistantAgent/__tests__/useAssistantAgentMessageTelemetry.test.ts
+  s_3eab3bd25bb557::t_8d8a7c67ec2d28 8,98-128
+  s_3eab3bd25bb557::t_26b3278983fe22 129
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b1766f364051e6b7db7a79e3d3b98dfb44b9e00b",
+  "prompts": {},
+  "sessions": {
+    "s_3eab3bd25bb557": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "64d85eea-f944-4df3-942d-345f5e1cd860",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "r00gm <raul00gm@gmail.com>"
+    }
+  }
+}
