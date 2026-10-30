@@ -10,20 +10,16 @@ import {
 	WorkflowReviewRequest,
 	type WorkflowReviewRequestState,
 } from '../entities/workflow-review-request.ee';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
-/** The cursor carries its boundary values so deleting the previous page's last row is safe. */
-export type InboxCursor = {
-	createdAt: Date;
-	id: string;
-};
+export type WorkflowReviewInboxBoundary =
+	| { mode: 'beforeTime'; updatedAt: Date }
+	| { mode: 'beforeOrAtTime'; updatedAt: Date }
+	| { mode: 'afterItem'; updatedAt: Date; id: string };
 
-/**
- * Reviewers belong in `waiting`, even when they are also authors. All other authors belong in
- * `authored`. The requester always has an author row, so this does not use `createdById`.
- */
 type InboxCategoryFilter = {
 	userId: string;
+	// Assigned reviewers belong in waiting, even when they also authored the review.
 	category: 'waiting' | 'authored';
 };
 
@@ -43,7 +39,7 @@ type FindInboxRequestsOptions = {
 	state?: WorkflowReviewRequestState;
 	category?: InboxCategoryFilter;
 	limit: number;
-	cursor?: InboxCursor;
+	boundary?: WorkflowReviewInboxBoundary;
 };
 
 export type InboxStateCounts = {
@@ -176,16 +172,29 @@ function applyCategoryFilter(
 	});
 }
 
-@Service()
-export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReviewRequest> {
+class WorkflowReviewInboxTable extends BaseRepository<WorkflowReviewRequest> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowReviewRequest, dataSource.manager, transactionRunner);
 	}
+}
 
-	async findRequests(options: FindInboxRequestsOptions): Promise<WorkflowReviewRequest[]> {
-		const { visibility, state, category, limit, cursor } = options;
-		const queryBuilder = this.createQueryBuilder('review')
-			.orderBy('review.createdAt', 'DESC')
+@Service()
+export class WorkflowReviewInboxRepository {
+	private readonly table: WorkflowReviewInboxTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new WorkflowReviewInboxTable(dataSource, transactionRunner);
+	}
+
+	async findRequests(
+		options: FindInboxRequestsOptions,
+		ctx: OperationContext,
+	): Promise<WorkflowReviewRequest[]> {
+		const { visibility, state, category, limit, boundary } = options;
+		const queryBuilder = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
+			.orderBy('review.updatedAt', 'DESC')
 			.addOrderBy('review.id', 'ASC');
 
 		applyInboxVisibility(queryBuilder, visibility);
@@ -193,19 +202,29 @@ export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReview
 		if (state !== undefined) {
 			queryBuilder.andWhere('review.state = :state', { state });
 		}
-		if (cursor) {
+		if (boundary?.mode === 'afterItem') {
 			queryBuilder.andWhere(
-				'(review.createdAt < :createdAt OR (review.createdAt = :createdAt AND review.id > :id))',
-				{ createdAt: cursor.createdAt, id: cursor.id },
+				'(review.updatedAt < :updatedAt OR (review.updatedAt = :updatedAt AND review.id > :id))',
+				{ updatedAt: boundary.updatedAt, id: boundary.id },
 			);
+		} else if (boundary) {
+			const operator = boundary.mode === 'beforeOrAtTime' ? '<=' : '<';
+			queryBuilder.andWhere(`review.updatedAt ${operator} :updatedAt`, {
+				updatedAt: boundary.updatedAt,
+			});
 		}
 
 		queryBuilder.take(limit);
 		return await queryBuilder.getMany();
 	}
 
-	async countRequestsByState(visibility: InboxVisibility): Promise<InboxStateCounts> {
-		const queryBuilder = this.createQueryBuilder('review')
+	async countRequestsByState(
+		visibility: InboxVisibility,
+		ctx: OperationContext,
+	): Promise<InboxStateCounts> {
+		const queryBuilder = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
 			.select('review.state', 'state')
 			.addSelect('COUNT(*)', 'count')
 			.groupBy('review.state');

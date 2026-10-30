@@ -4,7 +4,7 @@ import type { INode, INodeTypeDescription, INodeCredentialDescription } from 'n8
 import { validateWorkflowCredentialReferences } from '../tools/workflow-builder/credential-validation';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
 import type { NodeTypes } from '@/node-types';
 
 const user = { id: 'user-1' } as User;

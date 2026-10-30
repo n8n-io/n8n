@@ -25,11 +25,16 @@ import { useEvaluationsWizardSidepanelStore } from '@/features/ai/evaluation.ee/
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useAddExecutionToDataset } from '@/features/ai/evaluation.ee/composables/useAddExecutionToDataset';
 
-import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nButton, N8nIconButton, N8nSpinner, N8nText, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nDropdownMenu,
+	N8nIconButton,
+	N8nSpinner,
+	N8nText,
+	N8nTooltip,
+	type DropdownMenuExposed,
+} from '@n8n/design-system';
 import VoteButtons from './VoteButtons.vue';
-
-type RetryDropdownRef = InstanceType<typeof ElDropdown>;
 
 const props = defineProps<{
 	execution?: ExecutionSummary;
@@ -50,7 +55,7 @@ const message = useMessage();
 const executionDebugging = useExecutionDebugging();
 const workflowsListStore = useWorkflowsListStore();
 const settingsStore = useSettingsStore();
-const retryDropdownRef = ref<RetryDropdownRef | null>(null);
+const retryDropdownRef = ref<DropdownMenuExposed | null>(null);
 const workflowId = useInjectWorkflowId();
 const workflowPermissions = computed(
 	() =>
@@ -79,6 +84,16 @@ const debugButtonData = computed(() =>
 const isRetriable = computed(
 	() => !!props.execution && executionHelpers.isExecutionRetriable(props.execution),
 );
+const retryItems = computed(() => [
+	{
+		id: 'current-workflow',
+		label: locale.baseText('executionsList.retryWithCurrentlySavedWorkflow'),
+	},
+	{
+		id: 'original-workflow',
+		label: locale.baseText('executionsList.retryWithOriginalWorkflow'),
+	},
+]);
 
 // Read from the per-execution data store that ExecutionPreviewHost below already
 // fills, so no extra request is needed. Keyed by execution id, not by document scope.
@@ -260,7 +275,7 @@ function handleStopClick() {
 function onRetryButtonBlur(event: FocusEvent) {
 	// Hide dropdown when clicking outside of current document
 	if (retryDropdownRef.value && event.relatedTarget === null) {
-		retryDropdownRef.value.handleClose();
+		retryDropdownRef.value.close();
 	}
 }
 
@@ -284,7 +299,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 		<N8nText :class="$style.newMessage" color="text-light">
 			{{ locale.baseText('executionDetails.newMessage') }}
 		</N8nText>
-		<N8nButton variant="subtle" class="mt-l" @click="handleStopClick">
+		<N8nButton variant="outline" class="mt-l" @click="handleStopClick">
 			{{ locale.baseText('executionsList.stopExecution') }}
 		</N8nButton>
 	</div>
@@ -296,7 +311,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			{{ locale.baseText('executionDetails.runningMessage') }}
 		</N8nText>
 		<N8nButton
-			variant="subtle"
+			variant="outline"
 			data-test-id="stop-execution"
 			class="mt-l"
 			:disabled="!workflowPermissions.execute"
@@ -424,7 +439,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					>
 						<N8nButton
 							size="medium"
-							variant="subtle"
+							variant="outline"
 							:class="$style.debugLink"
 							:disabled="!workflowPermissions.update || pinBlockedByRedaction"
 						>
@@ -438,39 +453,31 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					</RouterLink>
 				</N8nTooltip>
 
-				<ElDropdown
+				<N8nDropdownMenu
 					v-if="isRetriable"
-					ref="retryDropdown"
-					trigger="click"
-					@command="handleRetryClick"
+					ref="retryDropdownRef"
+					:items="retryItems"
+					placement="bottom-end"
+					@select="handleRetryClick"
 				>
-					<span class="retry-button">
-						<N8nIconButton
-							variant="subtle"
-							size="medium"
-							:title="locale.baseText('executionsList.retryExecution')"
-							:disabled="!workflowPermissions.update"
-							icon="redo-2"
-							data-test-id="execution-preview-retry-button"
-							@blur="onRetryButtonBlur"
-						/>
-					</span>
-
-					<template #dropdown>
-						<ElDropdownMenu>
-							<ElDropdownItem command="current-workflow">
-								{{ locale.baseText('executionsList.retryWithCurrentlySavedWorkflow') }}
-							</ElDropdownItem>
-							<ElDropdownItem command="original-workflow">
-								{{ locale.baseText('executionsList.retryWithOriginalWorkflow') }}
-							</ElDropdownItem>
-						</ElDropdownMenu>
+					<template #trigger>
+						<span class="retry-button">
+							<N8nIconButton
+								variant="outline"
+								size="medium"
+								:title="locale.baseText('executionsList.retryExecution')"
+								:disabled="!workflowPermissions.update"
+								icon="redo-2"
+								data-test-id="execution-preview-retry-button"
+								@blur="onRetryButtonBlur"
+							/>
+						</span>
 					</template>
-				</ElDropdown>
+				</N8nDropdownMenu>
 
 				<N8nButton
 					v-if="showAddToDataset"
-					variant="subtle"
+					variant="outline"
 					size="medium"
 					icon="list-plus"
 					:disabled="!workflowPermissions.update"
@@ -486,7 +493,7 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				/>
 
 				<N8nIconButton
-					variant="subtle"
+					variant="outline"
 					:title="locale.baseText('executionDetails.deleteExecution')"
 					:disabled="!executionPermissions.delete"
 					icon="trash-2"
@@ -497,38 +504,41 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 			</div>
 		</div>
 
-		<ExecutionPreviewHost :workflow-id="workflowId" :execution-id="executionId" :node-id="nodeId" />
+		<ExecutionPreviewHost
+			:class="$style.previewHost"
+			:workflow-id="workflowId"
+			:execution-id="executionId"
+			:node-id="nodeId"
+		/>
 	</div>
 </template>
 
 <style module lang="scss">
 .previewContainer {
-	position: relative;
+	display: flex;
+	flex-direction: column;
 	height: 100%;
 	overflow: hidden;
 }
 
 .executionDetails {
-	position: absolute;
-	// Stack above the native canvas below it; the canvas owns its own stacking
-	// context, so without this its panes would intercept clicks on these actions.
-	z-index: 1;
+	flex-shrink: 0;
 	padding: var(--spacing--md);
 	width: 100%;
 	display: flex;
 	justify-content: space-between;
 	align-items: flex-start;
-	transition: all 150ms ease-in-out;
-	pointer-events: none;
+	background-color: var(--background--surface);
 
 	> div:last-child {
 		display: flex;
 		align-items: center;
 	}
+}
 
-	& * {
-		pointer-events: all;
-	}
+.previewHost {
+	flex: 1;
+	min-height: 0;
 }
 
 .executionDetailsLeft {

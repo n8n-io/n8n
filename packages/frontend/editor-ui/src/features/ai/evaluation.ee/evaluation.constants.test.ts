@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { resolveCompilationFailureReason } from './evaluation.constants';
+import { resolveCompilationFailureReason, isAiRootNodeType } from './evaluation.constants';
 
 describe('resolveCompilationFailureReason', () => {
 	it('returns the stored reason for a COMPILATION_FAILED run', () => {
@@ -31,5 +31,11 @@ describe('resolveCompilationFailureReason', () => {
 	it('returns undefined when reason is an empty string', () => {
 		const result = resolveCompilationFailureReason('COMPILATION_FAILED', { reason: '' });
 		expect(result).toBeUndefined();
+	});
+});
+
+describe('isAiRootNodeType', () => {
+	it('treats the Databricks AI Agent as an AI root node', () => {
+		expect(isAiRootNodeType('@n8n/n8n-nodes-langchain.databricksAiAgent')).toBe(true);
 	});
 });

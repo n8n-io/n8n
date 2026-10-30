@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { ProtectedResourceRegistry } from '@/services/protected-resource.registry';
+import { ProtectedResourceRegistry } from '@n8n/backend-services/auth';
 import { ChatTriggerResourceResolver } from './chat-trigger-resource.resolver';
 import { ChatTriggerTestResourceResolver } from './chat-trigger-test-resource.resolver';
 import { FormTriggerTestResourceResolver } from './form-trigger-test-resource.resolver';

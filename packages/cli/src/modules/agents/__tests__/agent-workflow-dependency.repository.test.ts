@@ -119,6 +119,26 @@ describe('AgentWorkflowDependencyRepository', () => {
 		expect(entityManager.insert).not.toHaveBeenCalled();
 	});
 
+	it.each(['sqlite', 'postgres'])(
+		'removes the rows of an instance agent and does not rebuild them on %s',
+		async (type) => {
+			Object.assign(entityManager.connection, { options: { type } });
+			entityManager.findOne.mockResolvedValue({
+				...makeAgent(),
+				scope: 'instance',
+				projectId: null,
+			} as Agent);
+
+			await repository.refreshForAgent('agent-1');
+
+			expect(entityManager.delete).toHaveBeenCalledWith(AgentWorkflowDependency, {
+				agentId: 'agent-1',
+			});
+			expect(entityManager.find).not.toHaveBeenCalled();
+			expect(entityManager.insert).not.toHaveBeenCalled();
+		},
+	);
+
 	it('locks the agent and the resolved workflows before replacing rows on Postgres', async () => {
 		Object.assign(entityManager.connection, { options: { type: 'postgres' } });
 		const agent = makeAgent();

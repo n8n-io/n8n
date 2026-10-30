@@ -3,17 +3,18 @@ import type { AuthenticatedRequest } from '@n8n/db';
 import { Param, Post, ProjectScope, RestController } from '@n8n/decorators';
 import type { Response } from 'express';
 
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { NotFoundError } from '@n8n/errors';
+
+import { KnowledgeAvailabilityService } from '@/modules/knowledge/knowledge-availability.service';
 
 import { AgentKnowledgeService } from './agent-knowledge.service';
-import { AgentSandboxRuntimeService } from './agent-sandbox-runtime.service';
 
 @RestController('/projects/:projectId/agents/v2')
 export class AgentSandboxController {
 	constructor(
 		private readonly agentKnowledgeService: AgentKnowledgeService,
 		private readonly logger: Logger,
-		private readonly agentSandboxRuntimeService: AgentSandboxRuntimeService,
+		private readonly knowledgeAvailabilityService: KnowledgeAvailabilityService,
 	) {}
 
 	@Post('/:agentId/sandbox/knowledge/warmup')
@@ -34,7 +35,7 @@ export class AgentSandboxController {
 	}
 
 	private assertKnowledgeBaseEnabled() {
-		if (!this.agentSandboxRuntimeService.isEnabled()) {
+		if (!this.knowledgeAvailabilityService.isFileKnowledgeEnabled()) {
 			throw new NotFoundError('Agent knowledge base is not enabled');
 		}
 	}

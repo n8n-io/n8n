@@ -51,8 +51,6 @@ export type CredentialAuthProbeResult = INodeCredentialTestResult & {
 	outcome: CredentialAuthProbeOutcome;
 };
 
-const { nodesData: mockNodesData, nodeTypes: mockNodeTypes } = createMockNodeTypes();
-
 @Service()
 export class CredentialsTester {
 	constructor(
@@ -449,7 +447,11 @@ export class CredentialsTester {
 			},
 		};
 
-		mockNodesData[nodeTypeCopy.description.name] = {
+		// One registry per test run. Request tests run concurrently and most of
+		// them register under the same `noOp` name, so a shared registry let one
+		// run overwrite another's node type and remove it before that run read it.
+		const { nodesData, nodeTypes } = createMockNodeTypes();
+		nodesData[nodeTypeCopy.description.name] = {
 			sourcePath: '',
 			type: nodeTypeCopy,
 		};
@@ -458,7 +460,7 @@ export class CredentialsTester {
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
 			active: false,
-			nodeTypes: mockNodeTypes,
+			nodeTypes,
 		});
 
 		const mode = 'internal';
@@ -576,7 +578,6 @@ export class CredentialsTester {
 			};
 		} finally {
 			await workflow.expression.releaseIsolate();
-			delete mockNodesData[nodeTypeCopy.description.name];
 		}
 
 		if (

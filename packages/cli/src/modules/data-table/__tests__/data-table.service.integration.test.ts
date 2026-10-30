@@ -58,6 +58,21 @@ describe('dataTable', () => {
 		await dataTableService.deleteDataTableAll();
 	});
 
+	describe('findProjectIdForScope', () => {
+		it('returns the project that owns the table', async () => {
+			const table = await dataTableService.createDataTable(project1.id, {
+				name: 'project-lookup',
+				columns: [],
+			});
+
+			await expect(dataTableRepository.findProjectIdForScope(table.id)).resolves.toBe(project1.id);
+		});
+
+		it('returns null when the table does not exist', async () => {
+			await expect(dataTableRepository.findProjectIdForScope('missing-table')).resolves.toBeNull();
+		});
+	});
+
 	describe('createDataTable', () => {
 		it('should create a columns table and a user table if columns are provided', async () => {
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
@@ -1133,6 +1148,7 @@ describe('dataTable', () => {
 				dataTableId,
 				{},
 				columns,
+				{},
 			);
 
 			expect(count).toEqual(2);
@@ -1197,6 +1213,7 @@ describe('dataTable', () => {
 				dataTableId,
 				{},
 				columns,
+				{},
 			);
 
 			expect(count).toEqual(3);
@@ -3475,6 +3492,40 @@ describe('dataTable', () => {
 	});
 
 	describe('getManyRowsAndCount', () => {
+		it('rejects a sort column that does not exist', async () => {
+			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+			await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+
+			const result = dataTableService.getManyRowsAndCount(dataTableId, project1.id, {
+				sortBy: ['bogusCol', 'ASC'],
+			});
+
+			await expect(result).rejects.toThrow(DataTableValidationError);
+			await expect(result).rejects.toThrow(
+				"Validation error with data table request: unknown column name 'bogusCol'",
+			);
+		});
+
+		it.each(['name', 'id', 'createdAt', 'updatedAt'])(
+			'sorts by existing column %s',
+			async (columnName) => {
+				const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+					name: 'dataTable',
+					columns: [{ name: 'name', type: 'string' }],
+				});
+				await dataTableService.insertRows(dataTableId, project1.id, [{ name: 'Alice' }]);
+
+				const result = await dataTableService.getManyRowsAndCount(dataTableId, project1.id, {
+					sortBy: [columnName, 'ASC'],
+				});
+				expect(result.count).toBe(1);
+				expect(result.data[0].name).toBe('Alice');
+			},
+		);
+
 		it('retrieves rows correctly', async () => {
 			// ARRANGE
 			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {

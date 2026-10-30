@@ -22,6 +22,7 @@ export interface ExpressionErrorOptions {
 		| 'paired_item_no_info'
 		| 'paired_item_multiple_matches'
 		| 'paired_item_no_connection'
+		| 'paired_item_not_on_branch'
 		| 'paired_item_intermediate_nodes';
 }
 
@@ -31,6 +32,13 @@ export interface ExpressionErrorOptions {
 export class ExpressionError extends ExecutionBaseError {
 	constructor(message: string, options?: ExpressionErrorOptions) {
 		super(message, { cause: options?.cause, level: 'warning' });
+
+		// The vm and quickjs engines rethrow a host error only when its name is
+		// `ExpressionError`, and a minified build renames the class. Subclasses keep
+		// their own name.
+		if (new.target === ExpressionError) {
+			this.name = 'ExpressionError';
+		}
 
 		if (options?.description !== undefined) {
 			this.description = options.description;

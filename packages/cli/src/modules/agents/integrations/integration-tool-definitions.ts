@@ -1,5 +1,6 @@
 import {
 	richMessageSchema,
+	type AgentApproval,
 	type RichCardComponent,
 	type RICH_CARD_BUTTON_STYLES,
 } from '@n8n/api-types';
@@ -9,7 +10,11 @@ import { z } from 'zod';
 import {
 	LINEAR_ACTION_TOOL_DEFINITIONS,
 	LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
-} from './platforms/linear-tool-definitions';
+} from './platforms/linear/linear-tool-definitions';
+import {
+	WHATSAPP_ACTION_TOOL_DEFINITIONS,
+	WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
+} from './platforms/whatsapp/whatsapp-tool-definitions';
 import type {
 	IntegrationAction,
 	IntegrationActionDefinition,
@@ -207,7 +212,16 @@ const addReactionActionInputSchema = z.object({
 
 const doNotRespondActionInputSchema = z.object({
 	action: z.literal('do_not_respond'),
-	input: noInputSchema,
+	input: z
+		.object({
+			reason: z
+				.string()
+				.min(1)
+				.max(200)
+				.optional()
+				.describe('Short reason for the run record. It is not sent to anyone.'),
+		})
+		.strict(),
 });
 
 export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
@@ -251,13 +265,13 @@ export const GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 		name: 'search_users',
 		inputSchema: searchUsersInputSchema,
 		description:
-			'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
+			'search_users: input.query or input.email is required. Returns matching platform user IDs for names, handles, or emails. Prefer get_user when the user ID is known. Use input.email for an exact email lookup. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Never conclude that a user does not exist from an incomplete search. Stop when the required person is found.',
 	},
 	{
 		name: 'search_channels',
 		inputSchema: searchChannelsInputSchema,
 		description:
-			'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. When the response includes nextCursor, pass it back as input.cursor to fetch the next page.',
+			'search_channels: input.query is required. Returns matching platform channel IDs for channel names or IDs. When the response includes nextCursor, pass it back as input.cursor with the same search inputs, even if the page is empty. Never conclude that a channel does not exist from an incomplete search. Stop when the required channel is found.',
 	},
 ] satisfies IntegrationContextQueryDefinition[];
 
@@ -271,12 +285,14 @@ export const GENERIC_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'send_dm',
 		inputSchema: sendDmActionInputSchema,
+		sensitive: true,
 		description:
 			'send_dm: input.userId and input.message are required. userId must be a platform user ID, not a name, handle, or email.',
 	},
 	{
 		name: 'send_channel_message',
 		inputSchema: sendChannelMessageActionInputSchema,
+		sensitive: true,
 		description:
 			'send_channel_message: input.channelId and input.message are required. channelId must be a platform channel ID, not a channel name.',
 	},
@@ -286,6 +302,7 @@ const EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS = [
 	{
 		name: 'edit_message',
 		inputSchema: editMessageActionInputSchema,
+		sensitive: true,
 		description:
 			"edit_message: input.messageId and input.message are required. Uses the latest message context to choose the conversation, so input.threadId isn't accepted.",
 	},
@@ -302,7 +319,7 @@ const OPT_IN_ACTION_TOOL_DEFINITIONS = [
 		name: 'do_not_respond',
 		inputSchema: doNotRespondActionInputSchema,
 		description:
-			'do_not_respond: no input. Ends the turn without sending any message. Use only for messages in subscribed group channels or threads that need no reaction from you, or when the user explicitly asked you not to reply. Never use it for direct messages or direct mentions. After calling it, stop immediately — do not write any text and never post a message saying you are staying silent.',
+			'do_not_respond: optional input.reason is a short note for the run record and is never sent. Ends the turn without sending any message. Use only for messages in subscribed group channels or threads that need no reaction from you, or when the user explicitly asked you not to reply. Never use it for direct messages or direct mentions. After calling it, stop immediately — do not write any text and never post a message saying you are staying silent.',
 	},
 ] satisfies IntegrationActionDefinition[];
 
@@ -313,6 +330,7 @@ export const DEFAULT_INTEGRATION_ACTION_TOOL_DEFINITIONS = GENERIC_ACTION_TOOL_D
 const ALL_CONTEXT_QUERY_TOOL_DEFINITIONS = [
 	...GENERIC_CONTEXT_QUERY_TOOL_DEFINITIONS,
 	...LINEAR_CONTEXT_QUERY_TOOL_DEFINITIONS,
+	...WHATSAPP_CONTEXT_QUERY_TOOL_DEFINITIONS,
 ] satisfies IntegrationContextQueryDefinition[];
 
 const ALL_ACTION_TOOL_DEFINITIONS = [
@@ -320,6 +338,7 @@ const ALL_ACTION_TOOL_DEFINITIONS = [
 	...EDIT_MESSAGE_ACTION_TOOL_DEFINITIONS,
 	...OPT_IN_ACTION_TOOL_DEFINITIONS,
 	...LINEAR_ACTION_TOOL_DEFINITIONS,
+	...WHATSAPP_ACTION_TOOL_DEFINITIONS,
 ] satisfies IntegrationActionDefinition[];
 
 // Compile-time: every operation union member must have a matching definition.
@@ -348,6 +367,27 @@ export function resolveIntegrationActionDefinitions(
 	actions: IntegrationAction[],
 ): IntegrationActionDefinition[] {
 	return actions.map((action) => requireDefinition(actionDefinitionsByName, action));
+}
+
+/** Whether a channel's approval config gates this action. */
+export function actionNeedsApproval(
+	approval: AgentApproval | undefined,
+	action: IntegrationAction,
+): boolean {
+	if (!approval) return false;
+	// Staying silent has no effect to approve; asking would post a card instead
+	// of the silence the model chose.
+	if (action === 'do_not_respond') return false;
+	if (approval.mode === 'global') return true;
+	return approvalToolsFor(action).some((tool) => approval.tools.includes(tool));
+}
+
+/**
+ * Configs saved before `send_template` existed cannot list it. A template is a
+ * message to the customer, so it follows the approval of the sends it replaces.
+ */
+function approvalToolsFor(action: IntegrationAction): IntegrationAction[] {
+	return action === 'send_template' ? [action, 'send_dm'] : [action];
 }
 
 function toDefinitionMap<

@@ -38,6 +38,7 @@ const mockCredentialsService = (
 				usageScope: 'project',
 				resolverId: null,
 				resolvableAllowFallback: false,
+				pendingAuthorizationExpiresAt: null,
 				id,
 				// Methods present on entities via WithTimestampsAndStringId mixin
 				generateId() {},

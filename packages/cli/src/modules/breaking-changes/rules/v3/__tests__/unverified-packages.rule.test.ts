@@ -56,4 +56,10 @@ describe('UnverifiedPackagesRule', () => {
 			expect(result.isAffected).toBe(false);
 		});
 	});
+
+	describe('getMetadata()', () => {
+		it('should report a behaviorChanges impact', () => {
+			expect(rule.getMetadata().impact).toBe('behaviorChanges');
+		});
+	});
 });

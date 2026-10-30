@@ -125,6 +125,7 @@ export async function testTriggerNode(
 				onTick,
 			);
 		},
+		...options.helpers,
 	});
 
 	const workflowMetadata = {

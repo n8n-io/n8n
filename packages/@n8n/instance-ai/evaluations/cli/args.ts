@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 
-import { DEFAULT_MCP_BUILD_TIMEOUT_MS } from './mcp-builder';
+import { DEFAULT_MCP_BUILD_TIMEOUT_MS, isolatedClaudeAuthError } from './mcp-builder';
 import { BASELINE_EXPERIMENT_PREFIX } from '../comparison/fetch-baseline';
 
 /** Default LangSmith dataset — the shared Instance AI cohort. */
@@ -34,7 +34,9 @@ function resolveBuildModel(env: NodeJS.ProcessEnv = process.env): string {
 // ---------------------------------------------------------------------------
 
 export interface CliArgs {
-	/** TimeoutMs is defined per iteration, not as the total timeout for all iterations */
+	/** Budget of one unit of work: one user turn of the build conversation, or one
+	 *  scenario execution attempt. A conversation may spend `CONVERSATION_BUDGET_TURNS`
+	 *  of these in total (harness/timeouts.ts). Not a total for all iterations. */
 	timeoutMs: number;
 	/** One or more n8n base URLs. Multi-lane runs use a work-stealing allocator
 	 *  that dispatches each build to a lane that isn't already running its
@@ -195,6 +197,8 @@ export function parseCliArgs(argv: string[]): CliArgs {
 			'--build-via-mcp requires LangSmith experiment tracking — set LANGSMITH_API_KEY. The no-LangSmith direct loop does not support MCP builds.',
 		);
 	}
+	const authError = validated.buildViaMcp ? isolatedClaudeAuthError(validated.buildCwd) : undefined;
+	if (authError) throw new Error(authError);
 	// Build knobs without --build-via-mcp would parse fine and then be silently
 	// ignored — the run would look like it honored them. Fail loudly instead.
 	if (!validated.buildViaMcp && raw.buildOnlyFlags.length > 0) {

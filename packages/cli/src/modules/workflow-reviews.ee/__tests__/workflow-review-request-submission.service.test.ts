@@ -3,15 +3,16 @@ import type {
 	GetWorkflowReviewEligibleReviewersQueryDto,
 } from '@n8n/api-types';
 import type { LicenseState, Logger } from '@n8n/backend-common';
-import { DbLock, User } from '@n8n/db';
+import { type EventService, type RoleService } from '@n8n/backend-services';
+import { DbLock, Person } from '@n8n/db';
 import type {
 	AuthIdentity,
 	DbLockService,
 	OperationContext,
+	PersonRepository,
 	Project,
 	SharedWorkflowRepository,
 	Transaction,
-	UserRepository,
 	WorkflowEntity,
 	WorkflowHistoryRepository,
 	WorkflowRepository,
@@ -21,16 +22,13 @@ import type {
 	WorkflowReviewRequestRepository,
 	WorkflowReviewRequestReviewerRepository,
 	WorkflowReviewRequestWorkflowRepository,
+	User,
 } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
 import type { CollaborationService } from '@/collaboration/collaboration.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import type { EventService } from '@/events/event.service';
-import type { RoleService } from '@/services/role.service';
+import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
+
 import type { WorkflowReviewPolicyService } from '@/services/workflow-review-policy.service';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import type { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -42,9 +40,9 @@ import { WorkflowReviewStateNotifier } from '../workflow-review-state-notifier.s
 
 const user = mock<User>({ id: 'user-1' });
 
-/** Build a loaded user with the computed pending state. */
-function loadedUser(fields: Partial<User> & { id: string; email: string }): User {
-	const loaded = Object.assign(new User(), { password: 'hashed', authIdentities: [], ...fields });
+/** Build a loaded person with the computed pending state. */
+function loadedUser(fields: Partial<User> & { id: string; email: string }): Person {
+	const loaded = Object.assign(new Person(), { password: 'hashed', authIdentities: [], ...fields });
 	loaded.computeIsPending();
 	return loaded;
 }
@@ -71,7 +69,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 	const authorRepository = mock<WorkflowReviewRequestAuthorRepository>();
 	const reviewerRepository = mock<WorkflowReviewRequestReviewerRepository>();
 	const activityRepository = mock<WorkflowReviewActivityRepository>();
-	const userRepository = mock<UserRepository>();
+	const personRepository = mock<PersonRepository>();
 	const roleService = mock<RoleService>();
 	const licenseState = mock<LicenseState>();
 	const dbLockService = mock<DbLockService>();
@@ -92,7 +90,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 		authorRepository,
 		reviewerRepository,
 		activityRepository,
-		userRepository,
+		personRepository,
 		roleService,
 		dbLockService,
 		eventService,
@@ -114,7 +112,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 		// Provide the required eligible reviewer by default.
 		beforeEach(() => {
 			roleService.rolesWithScope.mockResolvedValue(['some-role']);
-			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
+			personRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
 				loadedUser({ id: 'user-2', email: 'user-2@n8n.io' }),
 			]);
 		});
@@ -305,7 +303,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 		describe('assigning reviewers', () => {
 			const mockEligibleReviewers = (...ids: string[]) => {
 				roleService.rolesWithScope.mockResolvedValue(['some-role']);
-				userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue(
+				personRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue(
 					ids.map((id) => loadedUser({ id, email: `${id}@n8n.io` })),
 				);
 			};
@@ -332,7 +330,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 					BadRequestError,
 				);
 
-				expect(userRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
+				expect(personRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
 				expect(dbLockService.withLockContext).not.toHaveBeenCalled();
 			});
 
@@ -350,7 +348,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 			it('refuses someone who has not accepted their invitation yet, whatever their role', async () => {
 				mockSuccessfulCreatePath();
 				roleService.rolesWithScope.mockResolvedValue(['some-role']);
-				userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
+				personRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
 					loadedUser({ id: 'user-2', email: 'user-2@n8n.io', password: null }),
 				]);
 
@@ -489,7 +487,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 			expect(workflowFinderService.findWorkflowForUser).toHaveBeenCalledWith('wf-1', user, [
 				'workflow:publish',
 			]);
-			expect(userRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
+			expect(personRepository.findEligibleByProjectOrGlobalRoles).not.toHaveBeenCalled();
 		});
 
 		it('refuses a workflow that belongs to no project', async () => {
@@ -509,7 +507,7 @@ describe('WorkflowReviewRequestSubmissionService', () => {
 					? ['project:admin', 'project:editor', 'custom:reviewer']
 					: ['global:owner', 'global:admin'],
 			);
-			userRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
+			personRepository.findEligibleByProjectOrGlobalRoles.mockResolvedValue([
 				loadedUser({
 					id: 'user-sso',
 					email: 'sso@n8n.io',

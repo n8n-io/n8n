@@ -15,7 +15,7 @@ import { NodeTypes } from '@/node-types';
 
 describe('NodeTypes', () => {
 	const logger = mock<Logger>();
-	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>();
+	const loadNodesAndCredentials = mock<LoadNodesAndCredentials>({ excludeNodes: [] });
 
 	const nodeTypes: NodeTypes = new NodeTypes(logger, loadNodesAndCredentials);
 
@@ -278,6 +278,36 @@ describe('NodeTypes', () => {
 		loadNodesAndCredentials.loaded.nodes = {};
 	});
 
+	describe('resolveBaseName', () => {
+		it('resolves a synthetic Tool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNodeTool')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('resolves a synthetic HitlTool variant to the node it was generated from', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.hitlNodeHitlTool')).toEqual({
+				baseName: 'n8n-nodes-base.hitlNode',
+				isSyntheticTool: true,
+			});
+		});
+
+		it('leaves a real on-disk node whose name ends in Tool as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.realTool')).toEqual({
+				baseName: 'n8n-nodes-base.realTool',
+				isSyntheticTool: false,
+			});
+		});
+
+		it('leaves a name without a tool suffix as it is', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNode')).toEqual({
+				baseName: 'n8n-nodes-base.testNode',
+				isSyntheticTool: false,
+			});
+		});
+	});
+
 	describe('getByName', () => {
 		it('should return node type when it exists', () => {
 			const result = nodeTypes.getByName('n8n-nodes-base.nonVersioned');
@@ -400,6 +430,43 @@ describe('NodeTypes', () => {
 			const runNodeSpy = vi.spyOn(RoutingNode.prototype, 'runNode').mockResolvedValue([]);
 			await result.execute!.call(mock());
 			expect(runNodeSpy).toHaveBeenCalled();
+		});
+	});
+
+	describe('tool variants listed in NODES_EXCLUDE', () => {
+		beforeEach(() => {
+			loadNodesAndCredentials.excludeNodes = ['n8n-nodes-base.testNodeTool'];
+		});
+
+		afterEach(() => {
+			loadNodesAndCredentials.excludeNodes = [];
+		});
+
+		it('should not resolve the excluded tool variant', () => {
+			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-base.testNodeTool')).toThrow(
+				UnrecognizedNodeTypeError,
+			);
+		});
+
+		it('should still resolve the base node', () => {
+			expect(() => nodeTypes.getByNameAndVersion('n8n-nodes-base.testNode')).not.toThrow();
+		});
+
+		it('should not list versions for the excluded tool variant', () => {
+			expect(nodeTypes.getSupportedVersions('n8n-nodes-base.testNodeTool')).toBeUndefined();
+		});
+
+		it('should not describe the excluded tool variant', () => {
+			expect(() =>
+				nodeTypes.getNodeTypeDescriptions([{ name: 'n8n-nodes-base.testNodeTool', version: 1 }]),
+			).toThrow(UnrecognizedNodeTypeError);
+		});
+
+		it('should resolve the excluded tool variant to itself', () => {
+			expect(nodeTypes.resolveBaseName('n8n-nodes-base.testNodeTool')).toEqual({
+				baseName: 'n8n-nodes-base.testNodeTool',
+				isSyntheticTool: false,
+			});
 		});
 	});
 

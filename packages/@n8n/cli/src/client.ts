@@ -1,3 +1,11 @@
+// The root barrel pulls workflow types into the bundled client declarations.
+import type { ExportPackageRequestDto } from '@n8n/api-types/dist/dto/packages/export-package-request.dto';
+import type {
+	ImportPackageRequestDto,
+	ImportPackageSelectionRequestDto,
+} from '@n8n/api-types/dist/dto/packages/import-package-request.dto';
+import type { ImportResultDto } from '@n8n/api-types/dist/dto/packages/import-result.dto';
+
 export interface PaginatedResponse<T> {
 	data: T[];
 	nextCursor?: string;
@@ -9,43 +17,27 @@ export interface ClientOptions {
 	debug?: (message: string) => void;
 }
 
-export interface ImportPackageFields {
-	projectId?: string;
-	folderId?: string;
-	credentialMatchingMode?: string;
-	credentialMissingMode?: string;
-	bindings?: string;
-	workflowConflictPolicy: string;
-	workflowPublishingPolicy?: string;
-	workflowIdPolicy?: string;
-	missingNodeTypeMode?: string;
-	projectConflictPolicy?: string;
-	folderConflictPolicy?: string;
-	overwriteDeletionPolicy?: string;
-	dataTableMatchingMode?: string;
-	dataTableMissingMode?: string;
-	dataTableSchemaConflictPolicy?: string;
-	variableMissingMode?: string;
-	variableConflictPolicy?: string;
-	variableParentPolicy?: string;
-	tagMissingMode?: string;
-	tagConflictPolicy?: string;
-}
+export type ImportPackageFields = Pick<ImportPackageRequestDto, 'conflictPolicy'> &
+	Partial<Omit<ImportPackageRequestDto, 'package' | 'conflictPolicy' | 'bindings'>> & {
+		/** Multipart bindings remain JSON text until the API validates them. */
+		bindings?: string;
+	};
 
-export interface ExportPackageFields {
-	workflowIds?: string[];
-	folderIds?: string[];
-	projectIds?: string[];
-	includeVariableValues?: boolean;
-	includeTags?: boolean;
-	missingWorkflowDependencyPolicy?: string;
-	workflowVersionPolicy?: string;
-	credentialExportPolicy?: string;
-	includeArchivedWorkflows?: boolean;
-}
+export type ImportPackageSelectionFields = Pick<
+	ImportPackageSelectionRequestDto,
+	'selectedProjectId' | 'selectedWorkflowIds'
+> &
+	Partial<
+		Omit<ImportPackageSelectionRequestDto, 'package' | 'selectedProjectId' | 'selectedWorkflowIds'>
+	>;
+
+export type ExportPackageFields = Partial<ExportPackageRequestDto>;
 
 /** True per-entity counts of what ended up in an exported package. */
 export interface ExportPackageCounts {
+	/** Older servers can omit Agent and project counts. */
+	agents?: number;
+	projects?: number;
 	workflows: number;
 	folders: number;
 	credentials: number;
@@ -63,11 +55,22 @@ export interface ExportPackageResult {
 
 export interface ImportPackageCounts {
 	projects: { created: number; updated: number; skipped: number; deleted: number };
-	folders: { created: number; skipped: number; removed: number };
+	folders: {
+		created: number;
+		updated: number;
+		skipped: number;
+		/** Part of `updated`: folders that Apply moved under another parent of their project. */
+		moved: number;
+		/** Part of `updated`: folders that Apply gave the name on the branch. */
+		renamed: number;
+		removed: number;
+	};
 	workflows: {
 		created: number;
 		updated: number;
 		skipped: number;
+		/** Part of `updated`: workflows that Apply also moved to another folder of their project. */
+		moved: number;
 		archived: number;
 		deleted: number;
 		publishing: {
@@ -79,7 +82,7 @@ export interface ImportPackageCounts {
 		};
 	};
 	credentials: { matched: number; stubbed: number };
-	dataTables: { matched: number; created: number };
+	dataTables: { matched: number; created: number; updated: number };
 	variables: {
 		matched: number;
 		created: number;
@@ -90,7 +93,7 @@ export interface ImportPackageCounts {
 	tags: { matched: number; created: number; renamed: number; reconciled: number; skipped: number };
 }
 
-/** The direction a promotion config, checkout, or operation works in. */
+/** The direction a promotion environment, checkout, or operation works in. */
 export type PromotionDirection = 'apply' | 'promote';
 
 /** The Git part of a promotion operation result. */
@@ -100,26 +103,93 @@ export interface PromotionGitResult {
 	branchName: string;
 }
 
-/** Outcome of promoting the team projects of a connection. */
+/** Outcome of promoting the team projects through an environment. */
 export type PromotePackageResult = {
-	connectionId: string;
-	configId: string;
+	environmentId: string;
 	counts: ExportPackageCounts;
 	git: PromotionGitResult;
 };
 
-/** Outcome of applying a package to the instance. */
-export type ApplyPackageResult = {
-	connectionId: string;
-	configId: string;
-	counts: ImportPackageCounts;
+/** The reviewed source that Apply must still match. Any mismatch reports `source-changed`. */
+export interface PromotionExpectedSource {
+	environmentId: string;
+	branchName: string;
+	commitSha: string;
+}
+
+/** References in a package that must be set up on this instance before Apply can import it. */
+export interface PromotionApplyCheck {
+	missingProjects: Array<Record<string, unknown>>;
+	missingBindings: Array<Record<string, unknown>>;
+	accessRequirements: Array<Record<string, unknown>>;
+	conflicts: Array<Record<string, unknown>>;
+	warnings: Array<Record<string, unknown>>;
+}
+
+/** A team project that a full Apply deletes, because the package does not hold it. */
+export type PromotionProjectDeletion = {
+	kind: 'project';
+	code: 'project-deletion';
+	project: { id: string; name: string };
+};
+
+type ApplyPackageIdentity = {
+	environmentId: string;
 	git: PromotionGitResult;
 };
 
-/** State of one direction's local checkout, after a clone or a disconnect. */
+/** Outcome of applying a package to the instance. Only `applied` imported anything. */
+export type ApplyPackageResult =
+	| (ApplyPackageIdentity & {
+			status: 'applied';
+			counts: ImportPackageCounts;
+			warnings: Array<Record<string, unknown>>;
+	  })
+	| (ApplyPackageIdentity & { status: 'blocked'; check: PromotionApplyCheck })
+	| (ApplyPackageIdentity & { status: 'source-changed' });
+
+export interface PromotionChangesQuery {
+	search?: string;
+	sort?: 'name' | 'updatedAt' | 'status';
+	order?: 'asc' | 'desc';
+}
+
+/** One workflow that differs between a project and its configured branch. */
+export interface PromotableResourceSummary {
+	id: string;
+	name: string;
+	type: 'workflow';
+	status: 'new' | 'modified' | 'renamed' | 'renamed-and-modified' | 'archived' | 'deleted';
+	version: number | null;
+	updatedAt: string | null;
+	updatedBy: string | null;
+	dependencyCount: number;
+}
+
+/** The changes of a project in one direction, with the commit they were read from. */
+export interface ProjectPromotionChanges {
+	commitSha: string | null;
+	changes: PromotableResourceSummary[];
+}
+
+/** A repository that the token of a Git host provider can access. */
+export interface PromotionRepository {
+	id: string;
+	name: string;
+	fullPath: string;
+	remoteUrl: string;
+	defaultBranch: string | null;
+}
+
+/** A branch of a Git host repository. */
+export interface PromotionBranch {
+	name: string;
+	isDefault: boolean;
+}
+
+/** State of an environment's local checkout, after a connect or a disconnect. */
 export type PromotionCheckoutResult = {
-	connectionId: string;
-	configId: string;
+	environmentId: string;
 	direction: PromotionDirection;
 	branchName: string;
 	hasCheckout: boolean;
@@ -309,72 +379,140 @@ export class N8nClient {
 		return await this.del<undefined>(`/promotions/providers/${id}`);
 	}
 
-	// ─── Promotion connections ─────────────────────────────────────
-
-	async listPromotionConnections(query: Record<string, string> = {}, limit?: number) {
-		return await this.paginate<Record<string, unknown>>('/promotions/connections', query, limit);
-	}
-
-	async getPromotionConnection(id: string) {
-		return await this.get<Record<string, unknown>>(`/promotions/connections/${id}`);
-	}
-
-	async createPromotionConnection(body: unknown) {
-		return await this.post<Record<string, unknown>>('/promotions/connections', body);
-	}
-
-	async updatePromotionConnection(id: string, body: unknown) {
-		return await this.put<Record<string, unknown>>(`/promotions/connections/${id}`, body);
-	}
-
-	async deletePromotionConnection(id: string) {
-		return await this.del<undefined>(`/promotions/connections/${id}`);
-	}
-
-	/** Creates the config of one direction, or replaces it with the settings sent. */
-	async setPromotionConfig(id: string, direction: PromotionDirection, body: unknown) {
-		return await this.put<Record<string, unknown>>(
-			`/promotions/connections/${id}/configs/${direction}`,
-			body,
+	async listPromotionProviderRepositories(id: string, search?: string, limit?: number) {
+		return await this.paginate<PromotionRepository>(
+			`/promotions/providers/${id}/repositories`,
+			search ? { search } : {},
+			limit,
 		);
 	}
 
-	async deletePromotionConfig(id: string, direction: PromotionDirection) {
-		return await this.del<undefined>(`/promotions/connections/${id}/configs/${direction}`);
-	}
-
-	async clonePromotionCheckout(id: string, direction: PromotionDirection) {
-		return await this.post<PromotionCheckoutResult>(
-			`/promotions/connections/${id}/${direction}/clone`,
+	/**
+	 * `repositoryId` is a plain full path such as `group/repo`, or a Git host
+	 * project ID. A full path contains slashes, so it is encoded into one path
+	 * segment here.
+	 */
+	async listPromotionProviderBranches(
+		id: string,
+		repositoryId: string,
+		search?: string,
+		limit?: number,
+	) {
+		return await this.paginate<PromotionBranch>(
+			`/promotions/providers/${id}/repositories/${encodeURIComponent(repositoryId)}/branches`,
+			search ? { search } : {},
+			limit,
 		);
 	}
 
-	async disconnectPromotionCheckout(id: string, direction: PromotionDirection) {
-		return await this.post<PromotionCheckoutResult>(
-			`/promotions/connections/${id}/${direction}/disconnect`,
+	// ─── Promotion environments ────────────────────────────────────
+
+	async listPromotionEnvironments(query: Record<string, string> = {}, limit?: number) {
+		return await this.paginate<Record<string, unknown>>('/promotions/environments', query, limit);
+	}
+
+	async getPromotionEnvironment(id: string) {
+		return await this.get<Record<string, unknown>>(`/promotions/environments/${id}`);
+	}
+
+	async createPromotionEnvironment(body: unknown) {
+		return await this.post<Record<string, unknown>>('/promotions/environments', body);
+	}
+
+	async updatePromotionEnvironment(id: string, body: unknown) {
+		return await this.put<Record<string, unknown>>(`/promotions/environments/${id}`, body);
+	}
+
+	async deletePromotionEnvironment(id: string) {
+		return await this.del<undefined>(`/promotions/environments/${id}`);
+	}
+
+	async connectPromotionCheckout(id: string) {
+		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/connect`);
+	}
+
+	async disconnectPromotionCheckout(id: string) {
+		return await this.post<PromotionCheckoutResult>(`/promotions/environments/${id}/disconnect`);
+	}
+
+	async listPromotionEnvironmentProjects(id: string) {
+		return await this.get<{ projectIds: string[] }>(`/promotions/environments/${id}/projects`);
+	}
+
+	async addProjectToPromotionEnvironment(id: string, projectId: string) {
+		return await this.post<{ environmentId: string; projectId: string }>(
+			`/promotions/environments/${id}/projects/${projectId}`,
 		);
 	}
 
-	async listPromotionConnectionProjects(id: string) {
-		return await this.get<{ projectIds: string[] }>(`/promotions/connections/${id}/projects`);
+	async removeProjectFromPromotionEnvironment(id: string, projectId: string) {
+		return await this.del<undefined>(`/promotions/environments/${id}/projects/${projectId}`);
 	}
 
-	async addProjectToPromotionConnection(id: string, projectId: string) {
-		return await this.post<{ connectionId: string; projectId: string }>(
-			`/promotions/connections/${id}/projects/${projectId}`,
+	async promotePackage(id: string, body: { commitMessage?: string; force?: boolean }) {
+		return await this.post<PromotePackageResult>(`/promotions/environments/${id}/promote`, body);
+	}
+
+	async applyPackage(id: string, expectedSource?: PromotionExpectedSource) {
+		return await this.post<ApplyPackageResult>(
+			`/promotions/environments/${id}/apply`,
+			expectedSource ? { expectedSource } : undefined,
 		);
 	}
 
-	async removeProjectFromPromotionConnection(id: string, projectId: string) {
-		return await this.del<undefined>(`/promotions/connections/${id}/projects/${projectId}`);
+	async continueApplyPackage(
+		id: string,
+		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/environments/${id}/apply/continue`, {
+			expectedSource,
+			confirmDestructiveChanges,
+		});
 	}
 
-	async promotePackage(id: string, body: { commitMessage: string; force?: boolean }) {
-		return await this.post<PromotePackageResult>(`/promotions/connections/${id}/promote`, body);
+	async listProjectPromotionChanges(
+		projectId: string,
+		direction: PromotionDirection,
+		query: PromotionChangesQuery = {},
+	) {
+		return await this.get<ProjectPromotionChanges>(
+			`/promotions/projects/${projectId}/changes/${direction}`,
+			{ ...query },
+		);
 	}
 
-	async applyPackage(id: string) {
-		return await this.post<ApplyPackageResult>(`/promotions/connections/${id}/apply`);
+	async promoteProjectSelection(projectId: string, workflowIds: string[], commitMessage?: string) {
+		return await this.post<PromotePackageResult>(`/promotions/projects/${projectId}/promote`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the server default applies.
+			commitMessage,
+		});
+	}
+
+	async applyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource?: PromotionExpectedSource,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply`, {
+			workflowIds,
+			// Dropped by JSON serialization when undefined, so the branch tip is applied.
+			expectedSource,
+		});
+	}
+
+	async continueApplyProjectSelection(
+		projectId: string,
+		workflowIds: string[],
+		expectedSource: PromotionExpectedSource,
+		confirmDestructiveChanges?: boolean,
+	) {
+		return await this.post<ApplyPackageResult>(`/promotions/projects/${projectId}/apply/continue`, {
+			workflowIds,
+			expectedSource,
+			confirmDestructiveChanges,
+		});
 	}
 
 	// ─── Workflows ─────────────────────────────────────────────────
@@ -629,26 +767,16 @@ export class N8nClient {
 
 	async exportPackage(fields: ExportPackageFields): Promise<ExportPackageResult> {
 		// Empty collections are dropped so the API's per-field "at least one" rule isn't tripped.
-		const body: {
-			workflowIds?: string[];
-			folderIds?: string[];
-			projectIds?: string[];
-			includeVariableValues?: boolean;
-			includeTags?: boolean;
-			missingWorkflowDependencyPolicy?: string;
-			workflowVersionPolicy?: string;
-			credentialExportPolicy?: string;
-			includeArchivedWorkflows?: boolean;
-		} = {};
+		const body: ExportPackageFields = {};
+		if (fields.agentIds?.length) body.agentIds = fields.agentIds;
 		if (fields.workflowIds?.length) body.workflowIds = fields.workflowIds;
 		if (fields.folderIds?.length) body.folderIds = fields.folderIds;
 		if (fields.projectIds?.length) body.projectIds = fields.projectIds;
 		// `undefined` is dropped by JSON serialization, so the API's default applies.
 		body.includeVariableValues = fields.includeVariableValues;
 		body.includeTags = fields.includeTags;
-		if (fields.missingWorkflowDependencyPolicy)
-			body.missingWorkflowDependencyPolicy = fields.missingWorkflowDependencyPolicy;
-		if (fields.workflowVersionPolicy) body.workflowVersionPolicy = fields.workflowVersionPolicy;
+		if (fields.dependencyPolicy) body.dependencyPolicy = fields.dependencyPolicy;
+		if (fields.versionPolicy) body.versionPolicy = fields.versionPolicy;
 		// Only sent when set, so an older server without this field in its schema never sees it.
 		if (fields.credentialExportPolicy) body.credentialExportPolicy = fields.credentialExportPolicy;
 		if (fields.includeArchivedWorkflows) body.includeArchivedWorkflows = true;
@@ -678,13 +806,38 @@ export class N8nClient {
 	async importPackage(
 		file: { buffer: Buffer; filename: string },
 		fields: ImportPackageFields,
-	): Promise<Record<string, unknown>> {
+	): Promise<ImportResultDto> {
 		const form = new FormData();
 		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
 		for (const [key, value] of Object.entries(fields)) {
 			if (typeof value === 'string' && value !== '') form.append(key, value);
 		}
-		return await this.request<Record<string, unknown>>('POST', '/n8n-packages/import', {
+		return await this.request<ImportResultDto>('POST', '/n8n-packages/import', {
+			formData: form,
+		});
+	}
+
+	async importPackageSelection(
+		file: { buffer: Buffer; filename: string },
+		fields: ImportPackageSelectionFields,
+	): Promise<ImportResultDto> {
+		const form = new FormData();
+		form.append('package', new Blob([new Uint8Array(file.buffer)]), file.filename);
+		const stringFields: Record<string, string | undefined> = {
+			selectedProjectId: fields.selectedProjectId,
+			conflictPolicy: fields.conflictPolicy,
+			idPolicy: fields.idPolicy,
+			overwriteDeletionPolicy: fields.overwriteDeletionPolicy,
+		};
+		for (const [key, value] of Object.entries(stringFields)) {
+			if (typeof value === 'string' && value !== '') form.append(key, value);
+		}
+		// The endpoint expects ID arrays encoded as JSON in multipart text fields.
+		form.append('selectedWorkflowIds', JSON.stringify(fields.selectedWorkflowIds));
+		if (fields.deletedWorkflowIds !== undefined) {
+			form.append('deletedWorkflowIds', JSON.stringify(fields.deletedWorkflowIds));
+		}
+		return await this.request<ImportResultDto>('POST', '/n8n-packages/import-selection', {
 			formData: form,
 		});
 	}

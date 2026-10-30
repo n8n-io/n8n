@@ -1,3 +1,8 @@
+import {
+	resolveBuilderToolName,
+	WORKFLOW_BUILDER_TOOL_NAMES,
+	type InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { CaseSeed } from '../harness/schema';
@@ -110,12 +115,104 @@ export function conversationUserTurnsAsText(
 	return turns.map((text, i) => `Turn ${String(i + 1)}: ${text}`).join('\n\n');
 }
 
-/** Full transcript (agent narration + tool interactions, in order) as plain text for LLM-judged checks. */
-export function transcriptAsText(transcript: TranscriptTurn[]): string {
+export interface UsageTokens {
+	input: number;
+	output: number;
+	cacheRead: number;
+	cacheWrite: number;
+}
+
+function numberOr0(value: unknown): number {
+	return typeof value === 'number' ? value : 0;
+}
+
+/** A step's usage is one number for the whole LLM call — real granularity bottoms
+ *  out here, not at the individual tool-call/message level. `inputTokens`/`promptTokens`
+ *  naming varies by SDK version, matching `parseUsageSummary`'s own fallback; cache
+ *  fields nest under `inputTokenDetails` per the AI SDK's `LanguageModelUsage` shape. */
+export function usageTokens(usage: unknown, providerMetadata?: unknown): UsageTokens {
+	if (!isRecord(usage)) return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+	const details = isRecord(usage.inputTokenDetails) ? usage.inputTokenDetails : undefined;
+	const cacheRead = numberOr0(details?.cacheReadTokens);
+	const cacheWrite = numberOr0(details?.cacheWriteTokens);
+	return {
+		input: numberOr0(usage.inputTokens ?? usage.promptTokens),
+		output: numberOr0(usage.outputTokens ?? usage.completionTokens),
+		// OpenAI's provider reports cache hits only in `providerMetadata` and leaves
+		// the SDK's `inputTokenDetails` at zero, so an explicit zero there is not
+		// evidence of no cache. The provider figure is read only when the SDK fields
+		// carry nothing, the same fallback the runtime's `toTokenUsage`
+		// (`@n8n/agents`, `runtime/streaming/stream.ts`) applies, so the two agree.
+		cacheRead: cacheRead || cacheWrite ? cacheRead : openAiCachedPromptTokens(providerMetadata),
+		cacheWrite,
+	};
+}
+
+function openAiCachedPromptTokens(providerMetadata: unknown): number {
+	if (!isRecord(providerMetadata) || !isRecord(providerMetadata.openai)) return 0;
+	return numberOr0(providerMetadata.openai.cachedPromptTokens);
+}
+
+/** A run's usage plus its step count — totals sum ACROSS steps, so without the count
+ *  "76033 tokens in" reads as one huge prompt when it was two ordinary ones. */
+export type RunUsage = UsageTokens & { steps: number };
+
+/** The four usage fields summed over LLM steps, with the step count. The one
+ *  accumulator: the turn headings and the verifier's totals both read it, so the
+ *  two cannot drift. */
+export function sumUsage(steps: InstanceAiRunDebugResponse['steps']): RunUsage {
+	const total: RunUsage = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, steps: 0 };
+	for (const step of steps) {
+		const usage = usageTokens(step.output?.usage, step.output?.providerMetadata);
+		total.input += usage.input;
+		total.output += usage.output;
+		total.cacheRead += usage.cacheRead;
+		total.cacheWrite += usage.cacheWrite;
+		total.steps++;
+	}
+	return total;
+}
+
+/** Token usage per run-id, the join target for a turn's `runIds`. */
+function usageByRunId(runDebug: InstanceAiRunDebugResponse[] | undefined): Map<string, RunUsage> {
+	return new Map((runDebug ?? []).map((run) => [run.runId, sumUsage(run.steps)]));
+}
+
+/** `" (N steps, N tokens in [C cached], M tokens out)"` for a turn heading. The cached
+ *  clause is omitted when the provider reported none, and '' when nothing matched —
+ *  a plain heading beats a false zero. */
+function turnUsageSuffix(turn: TranscriptTurn, usageMap: Map<string, RunUsage>): string {
+	if (!turn.runIds || turn.runIds.length === 0) return '';
+	let input = 0;
+	let output = 0;
+	let cacheRead = 0;
+	let steps = 0;
+	let matched = false;
+	for (const runId of turn.runIds) {
+		const usage = usageMap.get(runId);
+		if (!usage) continue;
+		matched = true;
+		input += usage.input;
+		output += usage.output;
+		cacheRead += usage.cacheRead;
+		steps += usage.steps;
+	}
+	if (!matched) return '';
+	const cached = cacheRead > 0 ? ` [${String(cacheRead)} cached]` : '';
+	const stepWord = steps === 1 ? 'step' : 'steps';
+	return ` (${String(steps)} ${stepWord}, ${String(input)} tokens in${cached}, ${String(output)} tokens out)`;
+}
+
+/** Transcript as plain text for LLM-judged checks; `runDebug` inlines per-turn usage. */
+export function transcriptAsText(
+	transcript: TranscriptTurn[],
+	runDebug?: InstanceAiRunDebugResponse[],
+): string {
+	const usageMap = usageByRunId(runDebug);
 	return transcript
 		.map((turn, i) => {
 			// No seeded label: the judge evaluates the whole conversation as one.
-			const lines: string[] = [`### Turn ${String(i + 1)}`];
+			const lines: string[] = [`### Turn ${String(i + 1)}${turnUsageSuffix(turn, usageMap)}`];
 			if (turn.userMessage) lines.push(`User: ${turn.userMessage}`);
 			for (const step of turn.steps) {
 				const line = describeStep(step);
@@ -157,9 +254,9 @@ export function lastAgentText(transcript: TranscriptTurn[]): string {
 }
 
 /** Tool id the builder calls to create or modify the workflow graph. */
-export const BUILD_WORKFLOW_TOOL_NAME = 'build-workflow';
+export const BUILD_WORKFLOW_TOOL_NAME = WORKFLOW_BUILDER_TOOL_NAMES.BUILD_WORKFLOW;
 
-// Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: build-workflow×6") —
+// Per-turn, per-tool call counts the judge can cite verbatim ("Turn 33: workflow_builder_build_workflow×6") —
 // every tool, every turn; lets it reason from the counts instead of recounting prose.
 export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
 	const lines: string[] = [];
@@ -177,13 +274,21 @@ export function perTurnToolCallCounts(transcript: TranscriptTurn[]): string {
 	return lines.length > 0 ? lines.join('\n') : '(no tool calls in any turn)';
 }
 
-// build-workflow calls per turn that FAILED (errored, or success:false / non-empty errors) —
+/** The MCP server's tools that build a workflow — the MCP path's counterpart of
+ *  workflow_builder_build_workflow. */
+const MCP_BUILD_TOOL_NAMES = new Set(['create_workflow_from_code', 'update_workflow']);
+
+// Build calls per turn that FAILED (errored, or success:false / non-empty errors) —
 // error-forced rebuilds, which generalise across prompts better than the raw call count.
 export function failedBuildsPerTurn(transcript: TranscriptTurn[]): number[] {
 	return transcript.map(
 		(turn) =>
 			turn.steps.filter((step) => {
-				if (step.kind !== 'tool-call' || step.toolName !== BUILD_WORKFLOW_TOOL_NAME) {
+				if (
+					step.kind !== 'tool-call' ||
+					(resolveBuilderToolName(step.toolName) !== BUILD_WORKFLOW_TOOL_NAME &&
+						!MCP_BUILD_TOOL_NAMES.has(step.toolName))
+				) {
 					return false;
 				}
 				// step.error = the call threw; step.result.errors = it ran but returned errors — both are failed builds.
@@ -236,16 +341,6 @@ function describeStep(step: TranscriptStep): string | null {
 
 function describeInteraction(interaction: ToolInteraction): string | null {
 	switch (interaction.kind) {
-		case 'plan': {
-			if (interaction.tasks.length === 0) return null;
-			const items = interaction.tasks
-				.map((t, i) => {
-					const title = t.title ?? `Task ${String(i + 1)}`;
-					return t.description ? `${title}: ${t.description}` : title;
-				})
-				.join('; ');
-			return cap(`Plan (${String(interaction.tasks.length)}): ${items}`);
-		}
 		case 'ask-user': {
 			if (interaction.questions.length === 0) return null;
 			const answerByQId = new Map<string, string>();

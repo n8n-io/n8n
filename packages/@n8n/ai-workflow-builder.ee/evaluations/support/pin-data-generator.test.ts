@@ -416,6 +416,24 @@ describe('generateEvalPinData', () => {
 		expect(result.Slack).toHaveLength(1);
 	});
 
+	it('should read fenced JSON that the model explains afterwards', async () => {
+		const workflow: SimpleWorkflow = {
+			name: 'Test',
+			nodes: [makeNode({ name: 'Slack', type: 'n8n-nodes-base.slack' })],
+			connections: {},
+		};
+
+		const llmResponse =
+			'```json\n{"Slack": [{"json": {"ok": true}}]}\n```\n\n**Slack:** the post succeeds, so one item.';
+
+		const result = await generateEvalPinData(workflow, {
+			llm: createMockLLM(llmResponse),
+			nodeTypes,
+		});
+
+		expect(result.Slack).toHaveLength(1);
+	});
+
 	it('should wrap raw objects in { json: ... } format', async () => {
 		const workflow: SimpleWorkflow = {
 			name: 'Test',

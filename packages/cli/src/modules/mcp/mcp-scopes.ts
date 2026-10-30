@@ -1,7 +1,12 @@
 import type { McpScope } from '@n8n/api-types';
 import { MCP_INSTANCE_SCOPES } from '@n8n/api-types';
 
-import { MCP_GET_USER_PREFERENCES_TOOL_NAME } from './mcp.constants';
+import {
+	MCP_GET_USER_PREFERENCES_TOOL_NAME,
+	MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+	MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
+	MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
+} from './mcp.constants';
 
 /**
  * Maps each grantable OAuth scope to the MCP tools it unlocks. A tool is
@@ -55,6 +60,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -71,6 +78,8 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'search_agents',
 		'get_agent',
 		'list_agent_versions',
+		'list_agent_sessions',
+		'get_agent_session',
 		'discover_agent_assets',
 		'validate_agent',
 		'get_agent_builder_reference',
@@ -79,9 +88,12 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 		'unpublish_agent',
 	],
 	'agent:execute': ['call_agent'],
+	'skill:read': ['search_n8n_skills', 'get_skill'],
+	'skill:write': ['create_skill', 'update_skill', 'delete_skill', 'search_n8n_skills', 'get_skill'],
 	// explore_node_resources queries external services with stored credentials,
 	// so it must sit behind the credential scope rather than a workflow one.
 	'credential:read': ['list_credentials', 'list_n8n_gateway_services', 'explore_node_resources'],
+	'credential:update': ['update_credential_description'],
 	'dataTable:read': ['search_data_tables', 'get_data_table_rows'],
 	// Writing requires finding tables, so search rides along.
 	'dataTable:write': [
@@ -107,6 +119,14 @@ export const TOOLS_BY_SCOPE: Record<McpScope, readonly string[]> = {
 	// than an MCP-only string. Not builder-gated: preferences apply to Agents, data tables and
 	// folders too, none of which need the builder.
 	'aiPreference:read': [MCP_GET_USER_PREFERENCES_TOOL_NAME],
+	// The read tool does not ride along: a client that may write is expected to read first, and
+	// the consent screen shows that as two scopes. Undo is here rather than on a delete scope
+	// because it only removes what this surface wrote.
+	'aiPreference:write': [
+		MCP_SAVE_USER_PREFERENCE_TOOL_NAME,
+		MCP_UPDATE_USER_PREFERENCE_TOOL_NAME,
+		MCP_UNDO_USER_PREFERENCE_TOOL_NAME,
+	],
 };
 
 /**
@@ -174,6 +194,11 @@ export const AGENT_TOOLS: ReadonlySet<string> = new Set([
 	...TOOLS_BY_SCOPE['agent:read'],
 	...TOOLS_BY_SCOPE['agent:write'],
 	...TOOLS_BY_SCOPE['agent:execute'],
+]);
+
+export const SKILL_TOOLS: ReadonlySet<string> = new Set([
+	...TOOLS_BY_SCOPE['skill:read'],
+	...TOOLS_BY_SCOPE['skill:write'],
 ]);
 
 function isMcpScope(scope: string): scope is McpScope {

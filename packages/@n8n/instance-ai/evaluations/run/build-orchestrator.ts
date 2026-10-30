@@ -8,11 +8,15 @@
 // `LaneState`, so tracing stays a caller concern.
 // ---------------------------------------------------------------------------
 
-import type { InstanceAiRunDebugResponse } from '@n8n/api-types';
+import type {
+	InstanceAiEvalThreadMemoryResponse,
+	InstanceAiRunDebugResponse,
+} from '@n8n/api-types';
 import { sleep } from '@n8n/utils/sleep';
 
 import type { LaneAllocator } from './lane-allocator';
 import { provisionCaseBuildUser, type LaneUserPool } from './lane-users';
+import { prepareMcpBuildSeed, type McpBuildSeed } from './mcp-seed';
 import { collectExpectations } from '../build-expectations/collect';
 import { selectAuthorExpectations } from '../build-expectations/select';
 import { allFailVerdicts, verifyBuildExpectations } from '../build-expectations/verifier';
@@ -35,10 +39,12 @@ import { resolveArtifactContext } from '../harness/artifacts/artifact-context';
 import { attributionForExpectation } from '../harness/attribution';
 import {
 	buildFailedOnInfra,
+	harnessFault,
 	leakHaystackFor,
 	redactLocalRunSecrets,
 	searchableBuildText,
 	scrubLocalSecretsFromBuild,
+	workflowExpectedForCase,
 	type BuildResult,
 } from '../harness/build-workflow';
 import { captureThreadRunDebug } from '../harness/capture-run-debug';
@@ -64,13 +70,20 @@ import {
 	providerRetryBackoffMs,
 } from '../harness/transient-error';
 import type {
+	ArtifactRef,
 	BuildExpectationResult,
 	ExecutionScenario,
 	TestCaseCredential,
 	TranscriptTurn,
 	WorkflowTestCase,
 } from '../types';
-import { conversationUserTurnsAsText } from '../utils/conversation-text';
+import {
+	agentTurnsAsText,
+	conversationUserTurnsAsText,
+	failedBuildsPerTurn,
+	userTurnsAsText,
+} from '../utils/conversation-text';
+import { UserProxyLlm } from '../utils/user-proxy';
 
 /** Attempts (initial + retries) for a build hitting transient network errors. */
 export const MAX_BUILD_ATTEMPTS = 3;
@@ -93,9 +106,12 @@ export interface Lane {
 	 *  per-lane because prebuilt/MCP-built workflows only exist on their own lane —
 	 *  deleting them via another lane's client would 404. */
 	workflowIdsToDelete: Set<string>;
-	/** Pool of invited member users for `--build-via-mcp` — each build claims one
-	 *  so its MCP credential/workflow view is isolated to that user. */
-	mcpUserPool?: LaneUserPool;
+	/** Invited members, one per build: MCP builds act as it, and orchestrator builds use
+	 *  its project when the lane has no team projects. */
+	buildUserPool?: LaneUserPool;
+	/** The license allows team projects, so each orchestrator build gets one the owner
+	 *  administers. Without them, n8n hides execution output from the owner. */
+	teamBuildProjects?: boolean;
 }
 
 /** One `claude` build's Anthropic spend (`--build-via-mcp` only). Mirrors
@@ -123,6 +139,9 @@ export type BuildArgs = Pick<
 	// callback's parameter type, so tsc cannot catch a dropped field here; the
 	// orchestrator test pins it.
 	| 'credentialFixture'
+	// Same hazard: dropped, the case runs with the instance's own observer
+	// threshold, never compacts, and reads as an agent miss.
+	| 'requiresMemoryCompaction'
 > & {
 	timeoutMs: number;
 	/** Which case this build is, and which repeat of it. Not used by the build
@@ -157,6 +176,8 @@ export interface LaneState {
 		buildTrace?: BuildResult['buildTrace'];
 		timeoutMs: number;
 		testCaseName?: string;
+		seedContext?: ScenarioSeedContext;
+		projectId?: string;
 	}) => Promise<Awaited<ReturnType<typeof executeAgentScenario>>>;
 }
 
@@ -186,7 +207,13 @@ function mcpBuildSettingsFromArgs(args: CliArgs): McpBuildSettings {
 async function buildWorkflowViaMcpOnLane(config: {
 	lane: Lane;
 	conversation: WorkflowTestCase['conversation'];
+	messageBudget?: number;
 	credentials?: TestCaseCredential[];
+	seed?: WorkflowTestCase['seed'];
+	executionScenarios?: ExecutionScenario[];
+	/** False for answer-only cases: a finished conversation without a workflow
+	 *  is then graded on the conversation, as on the Instance AI arm. */
+	workflowExpected: boolean;
 	slug: string;
 	iteration: number;
 	args: CliArgs;
@@ -195,24 +222,37 @@ async function buildWorkflowViaMcpOnLane(config: {
 	/** Run-wide spend collector; every attempt is recorded, success or not. */
 	buildSpend: McpBuildSpend[];
 }): Promise<BuildResult> {
-	const { lane, conversation, credentials, slug, iteration, args, logDir, logger, buildSpend } =
-		config;
-	const failure = (error: string): BuildResult => ({
+	const {
+		lane,
+		messageBudget,
+		credentials,
+		seed,
+		executionScenarios,
+		slug,
+		iteration,
+		args,
+		logDir,
+		logger,
+		buildSpend,
+	} = config;
+	const failure = (error: string, transcript?: TranscriptTurn[]): BuildResult => ({
 		success: false,
 		error,
 		workflowJsons: [],
 		createdWorkflowIds: [],
 		createdDataTableIds: [],
+		...(transcript ? { transcript } : {}),
 	});
-	if (!lane.mcpUserPool) {
-		return failure(`Lane ${lane.baseUrl} has no MCP build user pool — cannot build via MCP`);
+	if (!lane.buildUserPool) {
+		return failure(`Lane ${lane.baseUrl} has no build user pool — cannot build via MCP`);
 	}
 
-	let mcpApiKey: string;
+	let buildUser: { mcpApiKey: string; userId: string };
+	const memberClient = new N8nClient(lane.baseUrl);
 	try {
-		mcpApiKey = await provisionCaseBuildUser({
-			pool: lane.mcpUserPool,
-			memberClient: new N8nClient(lane.baseUrl),
+		buildUser = await provisionCaseBuildUser({
+			pool: lane.buildUserPool,
+			memberClient,
 			credentials,
 			onCredentialCreated: (id) => lane.createdCredentialIds.add(id),
 			logger,
@@ -221,22 +261,49 @@ async function buildWorkflowViaMcpOnLane(config: {
 		return failure(`MCP build user/credential setup failed: ${extractErrorMessage(error)}`);
 	}
 
+	let prepared: McpBuildSeed | undefined;
+	try {
+		prepared = await prepareMcpBuildSeed({
+			ownerClient: lane.client,
+			memberClient,
+			memberUserId: buildUser.userId,
+			conversation: config.conversation ?? [],
+			seed,
+			executionScenarios,
+			logger,
+		});
+	} catch (error) {
+		// Not the builder's failure: `claude` never started.
+		return {
+			...failure(`MCP seeding failed: ${extractErrorMessage(error)}`),
+			seedingFailed: true,
+		};
+	}
+	const conversation = prepared?.conversation ?? config.conversation ?? [];
+
 	const mcpConfigPath = stageLaneMcpConfig({
 		serverName: args.mcpServerName,
 		url: `${lane.baseUrl}/mcp-server/http`,
-		apiKey: mcpApiKey,
+		apiKey: buildUser.mcpApiKey,
 	});
 
 	let result: McpBuildResult;
 	try {
 		result = await buildWorkflowViaMcp({
-			conversation: conversation ?? [],
+			conversation,
 			slug,
 			iteration,
 			mcpConfigPath,
 			settings: mcpBuildSettingsFromArgs(args),
 			logDir,
 			log: (message) => logger.info(message),
+			// Same simulated user as the Instance AI arm, so both arms get the same follow-ups.
+			createDriver: () => new UserProxyLlm({ conversation, messageBudget, logger }),
+			openingMessagePrefix: prepared?.openingPrefix,
+			openingNote: prepared?.openingNote,
+			openingMessageSuffix: prepared?.openingSuffix,
+			seededWorkflowIds: prepared?.workflowIds,
+			seededAgentIds: prepared?.agentRefs.map((ref) => ref.id),
 		});
 	} finally {
 		unlinkStagedMcpConfig(mcpConfigPath);
@@ -255,11 +322,77 @@ async function buildWorkflowViaMcpOnLane(config: {
 		lane.workflowIdsToDelete.add(result.workflowId);
 	}
 
+	// Agents live in the build user's project, so build-user cleanup deletes them.
+	// A seeded Agent's ref carries the project an edit result lacks.
+	const builtAgent = result.agent;
+	const artifactRefs: ArtifactRef[] = builtAgent
+		? [
+				prepared?.agentRefs.find((ref) => ref.id === builtAgent.id) ?? {
+					type: 'agent',
+					...builtAgent,
+				},
+			]
+		: [];
+	const transcript = prepared?.transcriptPrefix.length
+		? [...prepared.transcriptPrefix, ...result.transcript]
+		: result.transcript;
+	const seedFields: Pick<
+		BuildResult,
+		'seedThreadId' | 'seededScenarioTableIdsByName' | 'createdProjectIds' | 'priorRunFailed'
+	> = prepared
+		? {
+				seedThreadId: prepared.threadId,
+				seededScenarioTableIdsByName: prepared.scenarioTableIdsByName,
+				createdProjectIds: prepared.projectIds,
+				...(prepared.priorRunFailed ? { priorRunFailed: prepared.priorRunFailed } : {}),
+			}
+		: {};
+
+	// A conversation the build timeout ended is graded on what it saved, with its
+	// verdicts kept out of the rate, as on the Instance AI arm.
+	const timeoutField = result.timeout ? { timeout: result.timeout } : {};
+
 	if (!result.workflowId) {
-		return failure(`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`);
+		if (artifactRefs.length > 0) {
+			return {
+				success: true,
+				workflowJsons: [],
+				createdWorkflowIds: [],
+				createdDataTableIds: [],
+				artifactRefs,
+				...seedFields,
+				...timeoutField,
+				transcript,
+			};
+		}
+		if (!config.workflowExpected && result.finished) {
+			return {
+				success: true,
+				workflowJsons: [],
+				createdWorkflowIds: [],
+				createdDataTableIds: [],
+				...seedFields,
+				transcript,
+			};
+		}
+		return {
+			...failure(
+				`MCP build produced no workflow (${result.failureReason ?? 'unknown'})`,
+				transcript,
+			),
+			...seedFields,
+			...timeoutField,
+		};
 	}
 
-	return await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
+	const fetched = await fetchPrebuiltBuild(lane.client, result.workflowId, logger);
+	return {
+		...fetched,
+		...(artifactRefs.length > 0 ? { artifactRefs } : {}),
+		...seedFields,
+		...(fetched.success ? timeoutField : {}),
+		transcript,
+	};
 }
 
 // Direct fetch (not N8nClient) so a hung lane can't stall the probe.
@@ -298,6 +431,7 @@ export interface BuildOrchestratorDeps {
 	transcriptByThreadId: Map<string, TranscriptTurn[]>;
 	buildExpectationsByKey: Map<string, Promise<BuildExpectationResult[]>>;
 	runDebugByThreadId: Map<string, Promise<InstanceAiRunDebugResponse[]>>;
+	threadMemoryByThreadId: Map<string, Promise<InstanceAiEvalThreadMemoryResponse | undefined>>;
 	agentContextByKey: Map<string, Promise<AgentScenarioContext>>;
 	/** Injectable delay for the provider-outage retry backoff — tests pass a no-op. */
 	sleep?: (ms: number) => Promise<void>;
@@ -326,6 +460,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		transcriptByThreadId,
 		buildExpectationsByKey,
 		runDebugByThreadId,
+		threadMemoryByThreadId,
 		agentContextByKey,
 	} = deps;
 	const delay = deps.sleep ?? sleep;
@@ -377,10 +512,13 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	const orphanedBuilds: Array<{ build: BuildResult; client: N8nClient }> = [];
 	const buildDurations = new Map<string, number>();
 
-	function stashTranscript(build: BuildResult): void {
+	/** A build without a thread (MCP) is keyed by its `iteration:fileSlug` build
+	 *  key, which can't collide with a thread id. */
+	function stashTranscript(build: BuildResult, buildKey?: string): void {
 		scrubLocalSecretsFromBuild(build);
-		if (build.threadId && build.transcript) {
-			transcriptByThreadId.set(build.threadId, build.transcript);
+		const key = build.threadId ?? buildKey;
+		if (key && build.transcript) {
+			transcriptByThreadId.set(key, build.transcript);
 		}
 	}
 
@@ -390,6 +528,28 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		const agentRef = findAgentArtifactRef(build.artifactRefs);
 		if (!agentRef) return;
 		agentContextByKey.set(key, fetchAgentScenarioContext(client, agentRef, logger));
+	}
+
+	/** Only for a case that asserts on compaction: the read is a REST call plus two
+	 *  queries per build, and the nightly suite runs dozens of builds back to back
+	 *  on one instance. Undefined on failure — the premise check reads that as "no
+	 *  evidence", never as "it compacted". */
+	function stashThreadMemory(
+		client: N8nClient,
+		build: BuildResult,
+		wanted: boolean | undefined,
+	): void {
+		if (!wanted || !build.threadId) return;
+		const threadId = build.threadId;
+		threadMemoryByThreadId.set(
+			threadId,
+			client.getThreadMemory(threadId).catch((error: unknown) => {
+				logger.warn(
+					`  Dropped thread memory for ${threadId}: ${error instanceof Error ? error.message : String(error)}`,
+				);
+				return undefined;
+			}),
+		);
 	}
 
 	function stashRunDebug(client: N8nClient, build: BuildResult): void {
@@ -423,6 +583,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		client: N8nClient,
 		build: BuildResult,
 		isPrebuilt: boolean,
+		mcpBuild = false,
 	): void {
 		// `scrubLocalSecrets` (in stashTranscript, which always runs first) has
 		// already redacted a local run's transcript and kept the pre-scrub text
@@ -439,14 +600,29 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// separately and only a verdict's OWN `incomplete` excludes it — the row's flag
 		// does not reach them. A priorRuns case is usually expectation-only, so without
 		// this the single graded unit still lands in the builder's baseline as a red.
-		if (build.priorRunFailed) {
+		// A budget ended the conversation: every verdict of the iteration is kept
+		// for the record but counts neither way, same as its scenario rows (see
+		// `attachExpectations`). The deterministic ones too, or the iteration
+		// would still score on them.
+		const timedOut = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
+			verdicts.map((v) => ({ ...v, incomplete: true, attribution: 'timeout' as const }));
+		const fault = harnessFault(build);
+		if (fault) {
+			const unjudged = allFailVerdicts(
+				collectExpectations(testCase),
+				`not judged — ${fault.reason}`,
+			);
+			// The row for this build is re-stamped `timeout` too, so the two agree.
 			buildExpectationsByKey.set(
 				key,
 				Promise.resolve(
-					allFailVerdicts(
-						collectExpectations(testCase),
-						`not judged — prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
-					),
+					build.timeout
+						? timedOut(unjudged)
+						: unjudged.map((verdict) => ({
+								...verdict,
+								incomplete: !fault.counted,
+								attribution: 'framework_issue' as const,
+							})),
 				),
 			);
 			return;
@@ -476,6 +652,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			transcript: build.transcript,
 			buildSucceeded: build.success,
 			isPrebuilt,
+			mcpBuild,
 			logger,
 		});
 		// Attributed here, where we still know WHY the build ended: a build that
@@ -484,7 +661,14 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// and reshape's side band) then carry the same verdict (TRUST-375).
 		const infraFailed = buildFailedOnInfra(build);
 		const attribute = (verdicts: BuildExpectationResult[]): BuildExpectationResult[] =>
-			verdicts.map((v) => ({ ...v, attribution: attributionForExpectation(v, infraFailed) }));
+			build.timeout
+				? timedOut(verdicts)
+				: verdicts.map((v) => ({
+						// An attribution already set is a decision the caller made with more
+						// context than this closure has; don't overwrite it.
+						...v,
+						attribution: v.attribution ?? attributionForExpectation(v, infraFailed),
+					}));
 		// The lane's deterministic verdicts ride along on EVERY path, including the
 		// unjudged one: they describe what the run actually did to the provider and
 		// to n8n, which stays true whether or not the author expectations got judged.
@@ -492,26 +676,57 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 		// agent's miss or infra's", and these are measurements, not judgements.
 		const withInjected = async (
 			verdicts: BuildExpectationResult[] | Promise<BuildExpectationResult[]>,
-		): Promise<BuildExpectationResult[]> =>
-			injected ? [...(await verdicts), ...(await injected)] : await verdicts;
+		): Promise<BuildExpectationResult[]> => {
+			const own = await verdicts;
+			if (!injected) return own;
+			const measured = await injected;
+			return [...own, ...(build.timeout ? timedOut(measured) : measured)];
+		};
 		// Recorded as incomplete rather than dropped, so the case keeps its unit
 		// count and the report says why they weren't graded.
-		if (unjudged.length > 0) {
-			buildExpectationsByKey.set(key, withInjected(attribute(unjudged)));
-			return;
-		}
+		const unjudgedVerdicts = attribute(unjudged);
 		if (expectations.length === 0) {
-			if (injected) buildExpectationsByKey.set(key, injected);
+			if (unjudged.length > 0 || injected) {
+				buildExpectationsByKey.set(key, withInjected(unjudgedVerdicts));
+			}
 			return;
 		}
 		buildExpectationsByKey.set(
 			key,
 			withInjected(
-				(async () =>
-					await verifyBuildExpectations(expectations, {
+				(async () => {
+					const runDebug = build.threadId
+						? await runDebugByThreadId.get(build.threadId)
+						: undefined;
+					const threadMemory = build.threadId
+						? await threadMemoryByThreadId.get(build.threadId)
+						: undefined;
+					// Premise, not an expectation. `framework_issue`, not `verification_gap`:
+					// the judge was fine, the harness failed to set the scenario up, and
+					// that distinction is what tells triage where to look.
+					// A prebuilt run has no conversation to compact: only its outcome
+					// expectations are judged, and those grade the workflow, not memory.
+					// A build that died on infra never reached compaction either; `attribute`
+					// below names the outage, where this reason would blame the seed. The read
+					// itself is settled: `waitForAllActivity` polls the thread's memory tasks to
+					// a terminal state before the build returns (`waitForMemoryTasks`).
+					if (
+						testCase.requiresMemoryCompaction &&
+						!isPrebuilt &&
+						!infraFailed &&
+						!memoryWasCompacted(threadMemory)
+					) {
+						return allFailVerdicts(expectations, NOT_COMPACTED_REASON).map((verdict) => ({
+							...verdict,
+							attribution: 'framework_issue' as const,
+						}));
+					}
+					return await verifyBuildExpectations(expectations, {
 						transcript,
 						workflowJson: build.workflowJsons[0],
 						metrics: build.conversationMetrics,
+						runDebug,
+						threadMemory,
 						// Rendered non-workflow artifacts (agent AND config-eval), sectioned
 						// with "(no <type> produced)" fallbacks, so outcome expectations can
 						// judge artifact existence, absence and content — parity with the
@@ -521,14 +736,15 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 							client,
 							logger,
 						}),
-					}))()
+					});
+				})()
 					.catch((error: unknown) =>
 						allFailVerdicts(
 							expectations,
 							`judge error: ${error instanceof Error ? error.message : String(error)}`,
 						),
 					)
-					.then(attribute),
+					.then((verdicts) => [...attribute(verdicts), ...unjudgedVerdicts]),
 			),
 		);
 	}
@@ -557,7 +773,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 					build = await buildWorkflowViaMcpOnLane({
 						lane: lane.runner,
 						conversation: entry.conversation,
+						messageBudget: entry.messageBudget,
 						credentials: entry.credentials,
+						seed: entry.seed,
+						executionScenarios: entry.executionScenarios,
+						workflowExpected: workflowExpectedForCase(entry),
 						slug: fileSlug,
 						iteration,
 						args,
@@ -580,16 +800,28 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				// Cleanup registration happens inside buildWorkflowViaMcpOnLane (as soon
 				// as `claude` reports the id), so even a failed fetch-back is covered.
 				buildDurations.set(key, buildDurationMs);
-				stashTranscript(build);
-				// isPrebuilt=true: MCP builds have no build transcript, so only
-				// outcome expectations are judged (against the workflow), like prebuilt.
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				stashTranscript(build, key);
+				stashAgentContext(key, lane.runner.client, build);
+				// isPrebuilt=true skips the premise check only: the `claude` transcript
+				// still lets process expectations be judged.
+				// Ordered before stashBuildExpectations so runDebugByThreadId already has
+				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				// No premise check on this path (isPrebuilt), so memory is not read.
+				stashThreadMemory(lane.runner.client, build, false);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true, true);
 				if (build.success && !build.workflowChecks) {
 					build.workflowChecks = await runWorkflowChecks({
 						workflow: build.workflowJsons[0],
-						prompt: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
-						agentText: undefined,
+						// The turns that were sent, as on the Instance AI arm: the simulated user
+						// may end early, and a replay case's live turn is not authored.
+						prompt: build.transcript
+							? userTurnsAsText(build.transcript)
+							: conversationUserTurnsAsText(entry.conversation ?? [], entry.seed),
+						agentText: build.transcript ? agentTurnsAsText(build.transcript) : undefined,
+						...(build.transcript
+							? { failedBuildsPerTurn: failedBuildsPerTurn(build.transcript) }
+							: {}),
 						logger,
 					});
 				}
@@ -611,8 +843,12 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 				const buildDurationMs = Date.now() - start;
 				buildDurations.set(key, buildDurationMs);
 				stashTranscript(build);
-				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
+				// Ordered before stashBuildExpectations so runDebugByThreadId already has
+				// this build's promise stashed by the time that call reads it.
 				stashRunDebug(lane.runner.client, build);
+				// No premise check on this path (isPrebuilt), so memory is not read.
+				stashThreadMemory(lane.runner.client, build, false);
+				stashBuildExpectations(key, fileSlug, lane.runner.client, build, true);
 				if (build.success && !build.workflowChecks) {
 					// No transcript in prebuilt mode, but the authored conversation still
 					// carries the user's request — feed it so prompt-aware checks (e.g.
@@ -637,7 +873,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			const timeoutMs = effectiveTimeoutMs(entry.complexity, args.timeoutMs);
 			if (timeoutMs !== args.timeoutMs) {
 				logger.info(
-					`  Complex case: per-iteration budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
+					`  Complex case: per-turn budget ${String(Math.round(timeoutMs / 1000))}s [${fileSlug}]`,
 				);
 			}
 			// Transport failures are not agent verdicts — retry on a different lane
@@ -653,6 +889,7 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 						messageBudget: entry.messageBudget,
 						buildMode: entry.buildMode,
 						promptVersion: entry.promptVersion,
+						requiresMemoryCompaction: entry.requiresMemoryCompaction,
 						allowUserExecution: entry.allowUserExecution,
 						credentials: entry.credentials,
 						seed: entry.seed,
@@ -685,8 +922,11 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 			buildDurations.set(key, buildDurationMs);
 			stashTranscript(build);
 			stashAgentContext(key, lane.runner.client, build);
-			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
+			// Ordered before stashBuildExpectations so runDebugByThreadId already has
+			// this build's promise stashed by the time that call reads it.
 			stashRunDebug(lane.runner.client, build);
+			stashThreadMemory(lane.runner.client, build, entry.requiresMemoryCompaction);
+			stashBuildExpectations(key, fileSlug, lane.runner.client, build, false);
 			logger.info(
 				`[lane ${String(lane.laneNum)}] built ${fileSlug} (iteration ${String(iteration)}) thread=${build.threadId ?? 'none'} success=${String(build.success)}`,
 			);
@@ -714,4 +954,15 @@ export function createBuildOrchestrator(deps: BuildOrchestratorDeps): BuildOrche
 	}
 
 	return { getOrBuild, buildCache, orphanedBuilds, buildDurations };
+}
+
+const NOT_COMPACTED_REASON =
+	'not judged — observational memory never compacted this thread, so the case premise is ' +
+	'absent. Either the seed is too short to cross the observer threshold, or the compaction ' +
+	'the harness asked for never reached the run.';
+
+/** A cursor means the observer ran and everything up to it is masked out; the rows are
+ *  what replaced it. Both, or the case had nothing to test. */
+function memoryWasCompacted(memory: InstanceAiEvalThreadMemoryResponse | undefined): boolean {
+	return Boolean(memory?.cursor) && (memory?.observations.length ?? 0) > 0;
 }

@@ -1,16 +1,15 @@
 import { LicenseState, Logger } from '@n8n/backend-common';
 import { OutboundHttp, type HttpRequestClient, isHttpRequestError } from '@n8n/backend-network';
+import { EventService, UrlService } from '@n8n/backend-services';
 import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { BadRequestError } from '@n8n/errors';
 import { LicenseEulaRequiredError } from '@/errors/response-errors/license-eula-required.error';
-import { EventService } from '@/events/event.service';
 import { License } from '@/license';
-import { UrlService } from '@/services/url.service';
 
 const REQUEST_TIMEOUT_MS = 30 * Time.seconds.toMilliseconds;
 
@@ -52,6 +51,7 @@ export class LicenseService {
 			usage: {
 				activeWorkflowTriggers: {
 					value: triggerCount,
+					// oxlint-disable-next-line typescript/no-deprecated - Tech debt, tests fail if we move to this.licenseState.getMaxActiveWorkflows
 					limit: this.license.getTriggerLimit(),
 					warningThreshold: 0.8,
 				},

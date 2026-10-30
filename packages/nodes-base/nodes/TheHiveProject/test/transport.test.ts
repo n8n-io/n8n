@@ -95,7 +95,7 @@ describe('Test TheHiveProject, theHiveApiQuery', () => {
 			extraData,
 		);
 
-		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(2);
+		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', '/v1/query', {
 			query: [
 				{ _name: 'getTask', idOrName: '~368644136' },
@@ -128,7 +128,7 @@ describe('Test TheHiveProject, theHiveApiQuery', () => {
 			returnCount,
 		);
 
-		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(3);
+		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', '/v1/query', {
 			query: [{ _name: 'listOrganisationPage' }, { _name: 'count' }],
 		});
@@ -143,7 +143,7 @@ describe('Test TheHiveProject, theHiveApiQuery', () => {
 
 		await theHiveApiQuery.call(fakeExecuteFunction, scope, undefined, undefined, limit);
 
-		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(4);
+		expect(transport.theHiveApiRequest).toHaveBeenCalledTimes(1);
 		expect(transport.theHiveApiRequest).toHaveBeenCalledWith('POST', '/v1/query', {
 			query: [
 				{ _name: 'listOrganisationPage' },

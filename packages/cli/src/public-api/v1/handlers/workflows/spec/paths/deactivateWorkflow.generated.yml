@@ -5,9 +5,6 @@ summary: Deactivate a workflow
 description: 'Deprecated: use POST /workflows/{id}/unpublish instead. Deactivate a workflow.'
 x-required-scope: workflow:deactivate
 deprecated: true
-x-eov-operation-id: unreachable
-x-eov-operation-handler: v1/handlers/decorator-routed.handler
-x-decorator-routed: true
 parameters:
   - schema:
       type: string
@@ -28,3 +25,5 @@ responses:
     $ref: ../../../../shared/spec/responses/forbidden.yml
   '404':
     $ref: ../../../../shared/spec/responses/notFound.yml
+  '429':
+    $ref: ../../../../shared/spec/responses/tooManyRequests.yml

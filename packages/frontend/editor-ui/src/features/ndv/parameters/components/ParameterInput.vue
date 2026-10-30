@@ -1,10 +1,23 @@
 <script setup lang="ts">
-import { computed, inject, nextTick, onBeforeUnmount, onMounted, onUpdated, ref, watch } from 'vue';
+import {
+	computed,
+	inject,
+	nextTick,
+	onBeforeUnmount,
+	onMounted,
+	onUpdated,
+	ref,
+	useId,
+	watch,
+} from 'vue';
 import { computedAsync, useDebounceFn, useElementSize } from '@vueuse/core';
 
 import get from 'lodash/get';
 import truncate from 'lodash/truncate';
-import { CompactParameterHintsKey } from '@/app/constants/injectionKeys';
+import {
+	CompactParameterHintsKey,
+	ParameterInputModalContextKey,
+} from '@/app/constants/injectionKeys';
 
 import type { INodeUpdatePropertiesInformation, IUpdateInformation, InputSize } from '@/Interface';
 import type {
@@ -49,6 +62,7 @@ import {
 	formatAsExpression,
 	getParameterTypeOption,
 	isResourceLocatorParameterType,
+	isObjectInPlainParameter,
 	isValidParameterOption,
 	parseFromExpression,
 	shouldSkipParamValidation,
@@ -85,6 +99,7 @@ import { useWorkflowsListStore } from '@/app/stores/workflowsList.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { captureMessage } from '@sentry/vue';
 import { isCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import {
@@ -199,6 +214,8 @@ const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const onToolConfigCredentialSelected = inject(ToolConfigCredentialSelectedKey, undefined);
+const parameterModalContext = inject(ParameterInputModalContextKey, undefined);
+const parameterEditorId = useId();
 
 const inputField = ref<InstanceType<typeof N8nInput | typeof N8nSelect> | HTMLElement>();
 const wrapper = ref<HTMLDivElement>();
@@ -210,6 +227,14 @@ const remoteParameterOptions = ref<INodePropertyOptions[]>([]);
 const remoteParameterOptionsLoading = ref(false);
 const remoteParameterOptionsLoadingIssues = ref<string | null>(null);
 const textEditDialogVisible = ref(false);
+watch(
+	() =>
+		codeEditDialogVisible.value || expressionEditDialogVisible.value || textEditDialogVisible.value,
+	(open) => {
+		if (open) parameterModalContext?.openDialogs.value.add(parameterEditorId);
+		else parameterModalContext?.openDialogs.value.delete(parameterEditorId);
+	},
+);
 const editDialogClosing = ref(false);
 const tempValue = ref('');
 const jsonValidationError = ref<string | null>(null);
@@ -371,6 +396,28 @@ const parameterOptions = computed(() => {
 	);
 });
 
+// Search text typed into an options dropdown. The search matches the label or
+// the value, so a model shown by its product name is still found by its id.
+const optionsSearch = ref('');
+
+const searchedParameterOptions = computed(() => {
+	const search = optionsSearch.value.trim().toLocaleLowerCase();
+	if (!search) return parameterOptions.value;
+	return parameterOptions.value.filter(
+		(option) =>
+			getOptionsOptionDisplayName(option).toLocaleLowerCase().includes(search) ||
+			String(option.value).toLocaleLowerCase().includes(search),
+	);
+});
+
+function onOptionsSearch(search = '') {
+	optionsSearch.value = search;
+}
+
+function onOptionsVisibleChange(visible: boolean) {
+	if (!visible) optionsSearch.value = '';
+}
+
 const modelValueString = computed<string>(() => {
 	const value = props.modelValue;
 	// For json type parameters, stringify objects to prevent [object object] display
@@ -484,14 +531,15 @@ const displayValue = computed(() => {
 	}
 
 	let returnValue;
-	if (!isModelValueExpression.value) {
-		returnValue = isResourceLocatorParameter.value
-			? isResourceLocatorValue(props.modelValue)
-				? props.modelValue.value
-				: ''
-			: props.modelValue;
-	} else {
+	if (isModelValueExpression.value) {
 		returnValue = props.expressionEvaluated;
+	} else if (isResourceLocatorParameter.value) {
+		returnValue = isResourceLocatorValue(props.modelValue) ? props.modelValue.value : '';
+	} else if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		// Saved workflows can still hold a value carried over from a same-named parameter
+		returnValue = JSON.stringify(props.modelValue);
+	} else {
+		returnValue = props.modelValue;
 	}
 
 	if (props.parameter.type === 'credentialsSelect' && typeof props.modelValue === 'string') {
@@ -632,7 +680,10 @@ const getIssues = computed<string[]>(() => {
 		nodeTypesStore.getNodeType(node.value.type, node.value.typeVersion),
 	);
 
-	if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
+	if (isObjectInPlainParameter(props.parameter, props.modelValue)) {
+		issues.parameters = issues.parameters ?? {};
+		issues.parameters[props.parameter.name] = [i18n.baseText('parameterInput.valueTypeMismatch')];
+	} else if (props.parameter.type === 'credentialsSelect' && displayValue.value === '') {
 		issues.parameters = issues.parameters ?? {};
 
 		const issue = i18n.baseText('parameterInput.selectACredentialTypeFromTheDropdown');
@@ -895,7 +946,10 @@ function getOptionsOptionDescription(option: INodePropertyOptions): string {
 }
 
 async function loadRemoteParameterOptions() {
+	// A read-only view shows the stored value; it has no use for live options
+	// and may not be allowed to load them with the node's credential.
 	if (
+		props.isReadOnly ||
 		!node.value ||
 		!hasRemoteMethod.value ||
 		remoteParameterOptionsLoading.value ||
@@ -936,11 +990,7 @@ async function loadRemoteParameterOptions() {
 
 		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
 	} catch (error: unknown) {
-		if (error instanceof Error) {
-			remoteParameterOptionsLoadingIssues.value = error.message;
-		} else {
-			remoteParameterOptionsLoadingIssues.value = String(error);
-		}
+		remoteParameterOptionsLoadingIssues.value = getErrorMessage(error);
 	}
 
 	remoteParameterOptionsLoading.value = false;
@@ -1421,6 +1471,7 @@ defineExpose({
 });
 
 onBeforeUnmount(() => {
+	parameterModalContext?.openDialogs.value.delete(parameterEditorId);
 	valueChangedDebounced.flush();
 	onUpdateTextInputDebounced.flush();
 	props.eventBus.off('optionSelected', optionSelected);
@@ -1429,7 +1480,8 @@ onBeforeUnmount(() => {
 watch(
 	() => node.value?.credentials,
 	async (newCredentials, oldCredentials) => {
-		if (!hasRemoteMethod.value || !node.value) return;
+		// Read-only: no options are loaded, so there is nothing to validate the value against.
+		if (!hasRemoteMethod.value || !node.value || props.isReadOnly) return;
 		await loadRemoteParameterOptions();
 		// Credentials changed again while loading — a newer run will validate the fresh results.
 		if (!node.value || node.value.credentials !== newCredentials) return;
@@ -1682,7 +1734,8 @@ onUpdated(async () => {
 					width="calc(100% - var(--spacing--3xl))"
 					:class="$style.modal"
 					:model-value="codeEditDialogVisible"
-					:append-to="`#${APP_MODALS_ELEMENT_ID}`"
+					:append-to="parameterModalContext?.appendTo ?? `#${APP_MODALS_ELEMENT_ID}`"
+					:append-to-body="parameterModalContext?.appendTo === 'body'"
 					:title="`${i18n.baseText('codeEdit.edit')} ${i18n
 						.nodeText(ndvStore?.activeNode?.type)
 						.inputLabelDisplayName(parameter, path)}`"
@@ -2063,6 +2116,7 @@ onUpdated(async () => {
 				ref="inputField"
 				:size="inputSize"
 				filterable
+				:filter-method="onOptionsSearch"
 				:model-value="displayValue"
 				:placeholder="
 					parameter.placeholder ? getPlaceholder() : i18n.baseText('parameterInput.select')
@@ -2074,9 +2128,10 @@ onUpdated(async () => {
 				@keydown.stop
 				@focus="setFocus"
 				@blur="onBlur"
+				@visible-change="onOptionsVisibleChange"
 			>
 				<N8nOption
-					v-for="option in parameterOptions"
+					v-for="option in searchedParameterOptions"
 					:key="option.value.toString()"
 					:value="option.value"
 					:disabled="isOptionDisabled(option)"
@@ -2231,6 +2286,7 @@ onUpdated(async () => {
 .parameter-input {
 	display: inline-block;
 	position: relative;
+	min-width: 0;
 
 	:deep(.color-input) {
 		display: flex;
@@ -2301,10 +2357,6 @@ onUpdated(async () => {
 	}
 }
 
-.el-dropdown {
-	color: var(--color--text--tint-1);
-}
-
 .list-option {
 	margin: 6px 0;
 	white-space: normal;
@@ -2349,10 +2401,6 @@ onUpdated(async () => {
 
 .input-with-opener .el-input__suffix {
 	right: 0;
-}
-
-.el-input--suffix .el-input__inner {
-	padding-right: 0;
 }
 
 .textarea-modal-opener {

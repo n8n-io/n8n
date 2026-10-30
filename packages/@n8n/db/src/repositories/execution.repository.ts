@@ -1,5 +1,6 @@
 import { Logger, parseFlatted } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type {
@@ -20,18 +21,20 @@ import {
 	MoreThanOrEqual,
 	Not,
 	And,
+	Raw,
 } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import { stringify } from 'flatted';
 import chunk from 'lodash/chunk';
 import pick from 'lodash/pick';
-import { BinaryDataService, ErrorReporter } from 'n8n-core';
+import { ErrorReporter } from 'n8n-core';
 import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
 	IRunExecutionData,
 	IRunExecutionDataAll,
+	IWorkflowSettings,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
 import {
@@ -64,7 +67,7 @@ import type {
 import { TransactionRunner } from '../services/transaction';
 import { applyWorkflowBooleanSettingFilter } from '../utils/apply-workflow-boolean-setting-filter';
 import { chunkIds } from '../utils/chunk-ids';
-import { parseDbTime } from '../utils/dialect-time';
+import { dbNowLiteral, dbNowPlusMsLiteral, parseDbTime } from '../utils/dialect-time';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -78,12 +81,21 @@ export type CrashedExecution = {
 	workflowId: string;
 	workflowName?: string;
 	mode: WorkflowExecuteMode;
+	startedAt: Date | null;
+	stoppedAt: Date;
+	tracingContext?: { traceparent: string; tracestate?: string; identity?: Record<string, string> };
+	workflowVersionId?: string;
+	retryOf?: string;
+	workflowCustomTelemetryTags?: IWorkflowSettings['customTelemetryTags'];
+	project?: { id: string; customTelemetryTags: Array<{ key: string; value: string }> };
 };
 
 export interface UpdateExecutionConditions {
 	requireStatus?: ExecutionStatus;
 	requireNotFinished?: boolean;
 	requireNotCanceled?: boolean;
+	/** Also update a soft-deleted execution. */
+	includeDeleted?: boolean;
 }
 
 export interface IGetExecutionsQueryFilter {
@@ -173,14 +185,13 @@ const MAX_UPDATE_BATCH_SIZE = 900;
 
 @Service()
 export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
-	private hardDeletionBatchSize = 100;
+	readonly hardDeletionBatchSize = 100;
 
 	constructor(
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
-		private readonly binaryDataService: BinaryDataService,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		transactionRunner: TransactionRunner,
 	) {
@@ -400,7 +411,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		const crashed: CrashedExecution[] = [];
 
 		for (const batch of chunk(ids, MAX_UPDATE_BATCH_SIZE)) {
-			const transitioned = await this.transitionToCrashed({ id: In(batch) });
+			const transitioned = await this.withOwnerProjects(
+				await this.transitionToCrashed({ id: In(batch) }),
+			);
 
 			crashed.push(...transitioned);
 			// Report each batch as it commits, so a later batch that throws keeps the earlier reports.
@@ -413,7 +426,9 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 
 	/** Set the workflow's in-progress executions to `crashed`. */
 	async markWorkflowExecutionsAsCrashed(workflowId: string): Promise<CrashedExecution[]> {
-		const transitioned = await this.transitionToCrashed({ workflowId });
+		const transitioned = await this.withOwnerProjects(
+			await this.transitionToCrashed({ workflowId }),
+		);
 
 		if (transitioned.length > 0) {
 			this.logger.info('Marked executions as `crashed`', {
@@ -450,20 +465,74 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (updateResult?.affected === 0) return [];
 
 			const rows = await tx.find(ExecutionEntity, {
-				select: { id: true, workflowId: true, mode: true, workflow: { id: true, name: true } },
+				select: {
+					id: true,
+					workflowId: true,
+					workflowVersionId: true,
+					mode: true,
+					retryOf: true,
+					startedAt: true,
+					// TypeORM types a JSON column's select as a nested select, but any truthy
+					// value here selects the whole column.
+					tracingContext: { traceparent: true, tracestate: true },
+					workflow: { id: true, name: true, settings: { customTelemetryTags: true } },
+				},
 				relations: { workflow: true },
 				where: { ...where, status: 'crashed', stoppedAt },
 				// The UPDATE above also crashes soft-deleted rows, so keep them in the read.
 				withDeleted: true,
 			});
 
-			return rows.map(({ id, workflowId, mode, workflow }) => ({
-				id,
-				workflowId,
-				workflowName: workflow?.name,
-				mode,
-			}));
+			return rows.map(
+				({
+					id,
+					workflowId,
+					workflowVersionId,
+					mode,
+					retryOf,
+					startedAt,
+					tracingContext,
+					workflow,
+				}) => ({
+					id,
+					workflowId,
+					workflowName: workflow?.name,
+					workflowVersionId: workflowVersionId ?? undefined,
+					mode,
+					retryOf: retryOf ?? undefined,
+					startedAt,
+					stoppedAt,
+					tracingContext: tracingContext ?? undefined,
+					workflowCustomTelemetryTags: workflow?.settings?.customTelemetryTags,
+				}),
+			);
 		});
+	}
+
+	/** Add the owner project of each execution's workflow. */
+	private async withOwnerProjects(executions: CrashedExecution[]): Promise<CrashedExecution[]> {
+		if (executions.length === 0) return executions;
+
+		try {
+			const projects = await this.sharedWorkflowRepository.findOwnerProjectsByWorkflowIds([
+				...new Set(executions.map(({ workflowId }) => workflowId)),
+			]);
+
+			return executions.map((execution) => {
+				const project = projects.get(execution.workflowId);
+				if (!project) return execution;
+
+				return {
+					...execution,
+					project: { id: project.id, customTelemetryTags: project.customTelemetryTags },
+				};
+			});
+		} catch (error) {
+			// The project only decorates the report, so a failed lookup must still let the
+			// crash be counted and announced.
+			this.logger.warn('Failed to load owner projects for crashed executions', { error });
+			return executions;
+		}
 	}
 
 	async setRunning(executionId: string) {
@@ -526,6 +595,7 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: FindOptionsWhere<ExecutionEntity> = { id: executionId };
 				if (conditions?.requireStatus) whereCondition.status = conditions.requireStatus;
+				// oxlint-disable-next-line typescript/no-deprecated
 				if (conditions?.requireNotFinished) whereCondition.finished = false;
 				if (conditions?.requireNotCanceled) whereCondition.status = Not('canceled');
 
@@ -548,7 +618,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
-	async deleteExecutionsByFilter({
+	/** Deletion targets of a workflow, soft-deleted ones included. */
+	async findForDeletionByWorkflowId(workflowId: string, limit: number) {
+		const executions = await this.createQueryBuilder('execution')
+			.withDeleted()
+			.select(['execution.id', 'execution.workflowId', 'execution.storedAt'])
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.limit(limit)
+			.getMany();
+
+		return executions.map(({ id, workflowId, storedAt }) => ({
+			executionId: id,
+			workflowId,
+			storedAt,
+		}));
+	}
+
+	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
 		deleteConditions,
@@ -588,23 +674,11 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			return [];
 		}
 
-		const refs = executions.map(({ id, workflowId, storedAt }) => ({
+		return executions.map(({ id, workflowId, storedAt }) => ({
 			executionId: id,
 			workflowId,
 			storedAt,
 		}));
-
-		const toDelete = [...refs];
-		do {
-			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
-			const batch = toDelete.splice(0, this.hardDeletionBatchSize);
-			await Promise.all([
-				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch.map((b) => ({ type: 'execution' as const, ...b }))),
-			]);
-		} while (toDelete.length > 0);
-
-		return refs;
 	}
 
 	async getIdsSince(date: Date) {
@@ -626,34 +700,33 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.select('annotation.executionId')
 			.from(ExecutionAnnotation, 'annotation');
 
-		// Find ids of all executions that were stopped longer that pruneDataMaxAge ago
-		const date = new Date();
-		date.setHours(date.getHours() - pruneDataMaxAge);
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
 
-		const toPrune: Array<FindOptionsWhere<ExecutionEntity>> = [
-			// date reformatting needed - see https://github.com/typeorm/typeorm/issues/2286
-			{ stoppedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)) },
-		];
+		const pruningCriteria = new Brackets((qb) => {
+			// Find executions that stopped before the retention cutoff.
+			qb.where({
+				stoppedAt: Raw(
+					(column) =>
+						`${column} <= ${dbNowPlusMsLiteral(isPostgres, -pruneDataMaxAge * Time.hours.toMilliseconds)}`,
+				),
+			});
 
-		if (pruneDataMaxCount > 0) {
-			const executions = await this.createQueryBuilder('execution')
-				.select('execution.id')
-				.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-				.skip(pruneDataMaxCount)
-				.take(1)
-				.orderBy('execution.id', 'DESC')
-				.getMany();
+			if (pruneDataMaxCount > 0) {
+				// Compute the count cutoff in the same statement so it matches the rows it updates.
+				const countCutoff = this.createQueryBuilder('execution')
+					.select('execution.id')
+					.where('execution.id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
+					.orderBy('execution.id', 'DESC')
+					.offset(pruneDataMaxCount)
+					.limit(1);
 
-			if (executions[0]) {
-				toPrune.push({ id: LessThanOrEqual(executions[0].id) });
+				qb.orWhere(`id <= (${countCutoff.getQuery()})`);
 			}
-		}
-
-		const [timeBasedWhere, countBasedWhere] = toPrune;
+		});
 
 		return await this.createQueryBuilder()
 			.update(ExecutionEntity)
-			.set({ deletedAt: new Date() })
+			.set({ deletedAt: () => dbNowLiteral(isPostgres) })
 			.where({
 				deletedAt: IsNull(),
 				// Only mark executions as deleted if they are in an end state
@@ -661,25 +734,23 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			})
 			// Only mark executions as deleted if they are not annotated
 			.andWhere('id NOT IN ' + annotatedExecutionsSubQuery.getQuery())
-			.andWhere(
-				new Brackets((qb) =>
-					countBasedWhere
-						? qb.where(timeBasedWhere).orWhere(countBasedWhere)
-						: qb.where(timeBasedWhere),
-				),
-			)
+			.andWhere(pruningCriteria)
 			.execute();
 	}
 
-	async findSoftDeletedExecutions() {
-		const date = new Date();
-		date.setHours(date.getHours() - this.globalConfig.executions.pruneDataHardDeleteBuffer);
+	/** One batch of soft-deleted executions past the buffer, newest id first, below `before` when given. */
+	async findSoftDeletedExecutions(before?: string) {
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const bufferMs =
+			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
 
 		const results = await this.find({
 			select: ['workflowId', 'id', 'storedAt'],
 			where: {
-				deletedAt: LessThanOrEqual(DateUtils.mixedDateToUtcDatetimeString(date)),
+				deletedAt: Raw((column) => `${column} <= ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+				...(before === undefined ? {} : { id: LessThan(before) }),
 			},
+			order: { id: 'DESC' },
 			take: this.hardDeletionBatchSize,
 
 			/**
@@ -694,6 +765,30 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			executionId,
 			storedAt,
 		}));
+	}
+
+	/**
+	 * A finished manual execution that n8n did not save, until pruning hard-deletes it.
+	 * It is soft-deleted, so other reads do not return it. The caller must check that
+	 * the reader started it.
+	 */
+	async findUnsavedManualExecution(executionId: string): Promise<ExecutionEntity | null> {
+		const isPostgres = this.globalConfig.database.type === 'postgresdb';
+		const bufferMs =
+			this.globalConfig.executions.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+
+		return await this.findOne({
+			where: {
+				id: executionId,
+				mode: 'manual',
+				// A run whose final data was never written still has its start status.
+				status: In(['success', 'error', 'crashed', 'canceled']),
+				deletedAt: Raw((column) => `${column} > ${dbNowPlusMsLiteral(isPostgres, -bufferMs)}`),
+			},
+			relations: { metadata: true },
+			// An unsaved manual execution is soft-deleted when it finishes.
+			withDeleted: true,
+		});
 	}
 
 	async deleteByIds(executionIds: string[]) {
@@ -1358,6 +1453,15 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 			.getRawMany<{ workflowVersionId: string }>();
 
 		return result.map((r) => r.workflowVersionId);
+	}
+
+	/** IDs of executions still in progress (`running` or `unknown` status). */
+	async findUnfinishedIds(): Promise<string[]> {
+		const rows = await this.find({
+			select: ['id'],
+			where: { status: In(['running', 'unknown']) },
+		});
+		return rows.map(({ id }) => id);
 	}
 
 	async findStatusesByIds(ids: string[]): Promise<Array<Pick<ExecutionEntity, 'id' | 'status'>>> {

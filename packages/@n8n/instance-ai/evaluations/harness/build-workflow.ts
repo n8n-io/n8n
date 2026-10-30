@@ -10,6 +10,7 @@
 import type {
 	InstanceAiBuildMode,
 	InstanceAiConfirmRequest,
+	InstanceAiEvalSeedDataTable,
 	InstanceAiHandoffContext,
 	InstanceAiResourceAttachment,
 } from '@n8n/api-types';
@@ -25,6 +26,7 @@ import {
 	waitForAllActivity,
 	runMultiTurnConversation,
 	recordUserTurn,
+	buildAutoApprovePayload,
 	type ConfirmationStrategy,
 } from './chat-loop';
 import { runWorkflowChecks, summarizeMissingWorkflowError } from './cleanup';
@@ -52,6 +54,7 @@ import { loadProviderFixtures } from './fixture-server';
 import { reconstructSeedFromThread } from './langsmith-seed';
 import type { EvalLogger } from './logger';
 import { executePriorRuns } from './prior-runs';
+import { restoreRecordedRuns, seedNodeNamesById } from './recorded-runs';
 import { redactSecretsInTextDeep } from './redact';
 import type { CaseSeed } from './schema';
 import {
@@ -59,8 +62,9 @@ import {
 	dedupeScenarioSeedTables,
 	evictLeftoverSeedTables,
 	reseedScenarioTables,
-	uniquifyScenarioTableNames,
+	uniquifySeedTableNames,
 } from './seed-tables';
+import { CONVERSATION_BUDGET_TURNS, INACTIVITY_TIMEOUT_MS, RunTimeoutError } from './timeouts';
 import type { CheckOutcome } from '../binaryChecks/types';
 import { N8nApiError, type N8nClient, type WorkflowResponse } from '../clients/n8n-client';
 import { createDeclaredCredentials } from '../credentials/seeder';
@@ -69,12 +73,15 @@ import {
 	extractOutcomeFromEvents,
 	mergeSeededConversationMetrics,
 } from '../outcome/event-parser';
+import { findForeignWorkflowReads } from '../outcome/foreign-reads';
 import { buildTranscriptFromEvents } from '../outcome/transcript-from-events';
 import { buildAgentOutcome, extractWorkflowIdsFromMessages } from '../outcome/workflow-discovery';
 import type {
 	ArtifactRef,
+	BuildTimeout,
 	BuildTrace,
 	CapturedEvent,
+	CapturedToolCall,
 	ConversationMetrics,
 	ConversationTurn,
 	ExecutionScenario,
@@ -90,18 +97,23 @@ import {
 	lastAgentText,
 	userTurnsAsText,
 } from '../utils/conversation-text';
+import { getEventPayload } from '../utils/confirmation-payload';
 import { UserProxyLlm, type ProxyDecisionStats } from '../utils/user-proxy';
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-// 15 min. Lanes with heavy multi-agent scenarios (large mocked payloads)
-// legitimately need more — the MCP CI workflow passes --timeout-ms 1500000
-// explicitly (observed: trading-bot at 863s with a 15-row dataset, hard
-// timeouts at 32 rows). Do NOT raise this default: a timed-out attempt is
-// retried once, so under high-concurrency contention (the Instance AI
-// experiments suite runs ~4x the MCP lane's concurrency) a generous default
+// 15 min, the budget of ONE USER TURN of the build conversation (the whole
+// conversation gets CONVERSATION_BUDGET_TURNS of these, see harness/timeouts.ts)
+// and of one scenario execution attempt. No productive completed turn in the
+// 2026-09 model-comparison traces exceeded 744 s (medium) or 1304 s (complex,
+// which gets 1.5x). Lanes with heavy multi-agent scenarios (large mocked
+// payloads) legitimately need more for scenarios — the MCP CI workflow passes
+// --timeout-ms 1500000 explicitly (observed: trading-bot at 863s with a 15-row
+// dataset, hard timeouts at 32 rows). Do NOT raise this default: a timed-out
+// attempt is retried once, so under high-concurrency contention (the Instance
+// AI experiments suite runs ~4x the MCP lane's concurrency) a generous default
 // lets starved scenarios hold lane slots for 2x the budget and amplify the
 // very contention that starved them (observed: run 28779266673).
 const DEFAULT_TIMEOUT_MS = 900_000;
@@ -109,6 +121,10 @@ const DEFAULT_TIMEOUT_MS = 900_000;
 // ---------------------------------------------------------------------------
 // Multi-turn driver — wires UserProxyLlm into runMultiTurnConversation
 // ---------------------------------------------------------------------------
+
+/** The request field's floor, so the flag means "compact as soon as there is
+ *  anything to compact" — a case sized for the 30k default is unauthorable. */
+const COMPACTION_OBSERVER_THRESHOLD_TOKENS = 1_000;
 
 interface MultiTurnDriverConfig {
 	client: N8nClient;
@@ -118,12 +134,16 @@ interface MultiTurnDriverConfig {
 	/** Resolved wire value sent with every message (see `resolveEvalBuildMode`). */
 	buildMode?: InstanceAiBuildMode;
 	promptVersion?: string;
+	observerThresholdTokens?: number;
 	allowUserExecution?: boolean;
 	beforeUserExecution?: (deadline: number) => Promise<void>;
 	events: CapturedEvent[];
 	approvedRequests: Set<string>;
 	startTime: number;
+	/** Conversation budget, from `startTime`. */
 	timeoutMs: number;
+	/** Budget of each user turn. */
+	turnTimeoutMs: number;
 	logger: EvalLogger;
 	proxyResponses?: Map<string, InstanceAiConfirmRequest>;
 	followUpMessagesOut?: string[];
@@ -148,6 +168,8 @@ interface MultiTurnDriverConfig {
 	/** Shared with `createDeclaredCredentials`'s pre-run seeding — see
 	 *  `CredentialCreationConfig.nameCounts`. */
 	credentialNameCounts?: Map<string, number>;
+	/** The build's project, where a mid-run credential is created. */
+	credentialProjectId?: string;
 	/** Resource references sent with the FIRST message only — an attachment is a
 	 *  hand-off, not something a user re-sends every turn. */
 	openingAttachments?: InstanceAiResourceAttachment[];
@@ -164,7 +186,7 @@ function isMultiTurnConversation(conversation: ConversationTurn[]): boolean {
 
 async function driveMultiTurnConversation(
 	config: MultiTurnDriverConfig,
-): Promise<ProxyDecisionStats> {
+): Promise<{ proxyDecisionStats: ProxyDecisionStats; timeout?: BuildTimeout }> {
 	const openingMessage = config.conversation[0]?.text ?? '';
 	const recordedOpeningMessage = config.recordedOpeningMessage ?? openingMessage;
 	// The proxy renders both its script and its running transcript from `text` alone,
@@ -188,6 +210,7 @@ async function driveMultiTurnConversation(
 						bypassCredentialTestIds: config.bypassCredentialTestIds,
 						createdCredentialIds: config.createdCredentialIds,
 						nameCounts: config.credentialNameCounts,
+						projectId: config.credentialProjectId,
 					},
 				}
 			: {}),
@@ -212,26 +235,39 @@ async function driveMultiTurnConversation(
 		config.buildMode,
 		config.promptVersion,
 		config.openingHandoffContext,
+		config.observerThresholdTokens,
 	);
 
-	await runMultiTurnConversation({
-		client: config.client,
-		threadId: config.threadId,
-		events: config.events,
-		approvedRequests: config.approvedRequests,
-		startTime: config.startTime,
-		timeoutMs: config.timeoutMs,
-		logger: config.logger,
-		confirmationStrategy,
-		nextMessageDecider,
-		proxyResponses: config.proxyResponses,
-		buildMode: config.buildMode,
-		promptVersion: config.promptVersion,
-		allowUserExecution: config.allowUserExecution,
-		beforeUserExecution: config.beforeUserExecution,
-	});
+	let timeout: BuildTimeout | undefined;
+	try {
+		timeout = await runMultiTurnConversation({
+			client: config.client,
+			threadId: config.threadId,
+			events: config.events,
+			approvedRequests: config.approvedRequests,
+			startTime: config.startTime,
+			timeoutMs: config.timeoutMs,
+			turnTimeoutMs: config.turnTimeoutMs,
+			turnStartedAt: config.startTime,
+			inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
+			logger: config.logger,
+			confirmationStrategy,
+			nextMessageDecider,
+			proxyResponses: config.proxyResponses,
+			buildMode: config.buildMode,
+			promptVersion: config.promptVersion,
+			observerThresholdTokens: config.observerThresholdTokens,
+			allowUserExecution: config.allowUserExecution,
+			beforeUserExecution: config.beforeUserExecution,
+		});
+	} catch (error: unknown) {
+		// A budget that fires inside a run ends the conversation, not the build:
+		// what the agent saved before it is graded, stamped with the timeout.
+		if (!(error instanceof RunTimeoutError)) throw error;
+		timeout = error.timeout;
+	}
 
-	return { ...proxy.getDecisionStats() };
+	return { proxyDecisionStats: { ...proxy.getDecisionStats() }, timeout };
 }
 
 // ---------------------------------------------------------------------------
@@ -243,6 +279,9 @@ export interface BuildResult {
 	workflowId?: string;
 	workflowJsons: WorkflowResponse[];
 	error?: string;
+	/** Set when a budget ended the conversation (harness/timeouts.ts). `success`
+	 *  and the workflow fields describe what the agent had saved by then. */
+	timeout?: BuildTimeout;
 	buildTrace?: BuildTrace;
 	/** IDs to pass to cleanupBuild() */
 	createdWorkflowIds: string[];
@@ -255,17 +294,26 @@ export interface BuildResult {
 	 *  a regression ever did let the agent write into one, an early delete would
 	 *  destroy the workflow under grading and read as a build failure. */
 	createdProjectIds?: string[];
+	/** The build's own project. `cleanupBuild` deletes the user that owns it, or the
+	 *  project itself when no user is set (a team project). */
+	buildProjectId?: string;
+	buildUserId?: string;
 	/** The ROOT folders a seed created in the thread's project (a folder delete
 	 *  cascades to its subfolders). Deleted in `cleanupBuild` after the workflows,
 	 *  because a folder delete archives what it holds. */
 	createdFolderIds?: string[];
 	/** Maps each scenario seed table's declared NAME to the real id it was created
 	 *  under (empty) before the build turn, so each scenario can reset+seed its
-	 *  rows into the table the built workflow actually bound (TRUST-311 follow-up).
+	 *  rows into the table the built workflow actually bound.
 	 *  Absent when the case declares no scenario seed tables. */
 	seededScenarioTableIdsByName?: Record<string, string>;
+	/** The thread that seeds scenario table rows when the build has no Instance AI
+	 *  thread of its own (MCP builds). The server scopes row seeding to a thread's
+	 *  project. */
+	seedThreadId?: string;
 	/** Non-workflow artifact refs (agent, config-eval) captured from the SSE stream,
-	 *  fed to the build-expectations judge context. Empty/undefined for prebuilt runs. */
+	 *  or from `create_agent` results on MCP builds. Fed to the build-expectations
+	 *  judge context. Empty/undefined for prebuilt runs. */
 	artifactRefs?: ArtifactRef[];
 	/** Per-turn deterministic counters extracted from the captured event stream. */
 	conversationMetrics?: ConversationMetrics;
@@ -296,10 +344,12 @@ export interface BuildResult {
 	 *  one applies even when the BUILD SUCCEEDED, which is exactly the case that would
 	 *  otherwise be scored as an agent failure. */
 	priorRunFailed?: string;
+	/** Workflows the agent read that this build neither created nor seeded. Not scored. */
+	foreignWorkflowReads?: string[];
 	/** Evidence that the MODEL PROVIDER, not the builder, failed this build (a
 	 *  5xx/429 upstream of the n8n instance). Set only after the retry budget is
 	 *  spent. Routed to `framework_issue` with `PROVIDER_OUTAGE_ROOT_CAUSE`, so an
-	 *  outage never lands in the builder's baseline (TRUST-374). */
+	 *  outage never lands in the builder's baseline. */
 	providerOutage?: string;
 	/** Ledger from the credential-setup lane, when one ran. Absent for every
 	 *  ordinary case; present even on a failed build, so the deterministic checks
@@ -307,11 +357,29 @@ export interface BuildResult {
 	credentialSetup?: CredentialSetupRunFacts;
 }
 
+/** A harness fault that decides the iteration without grading. `counted` faults fail it as
+ *  `framework_issue`; the others keep it out of the pass rate. */
+export function harnessFault(build: BuildResult): { reason: string; counted: boolean } | undefined {
+	if (build.priorRunFailed) {
+		return {
+			reason: `prior run staging did not land, so the case premise is missing: ${build.priorRunFailed}`,
+			counted: false,
+		};
+	}
+	if (build.foreignWorkflowReads?.length) {
+		return {
+			reason: `the agent read workflows another build made (${build.foreignWorkflowReads.join(', ')})`,
+			counted: true,
+		};
+	}
+	return undefined;
+}
+
 /**
  * True when the build failed for a reason the agent doesn't own — seeding,
  * transport or the model provider. Everything downstream that has to attribute
  * a failure (the scenario row, the ungraded expectations) reads this one
- * predicate so the three answers can't drift apart (TRUST-375).
+ * predicate so the three answers can't drift apart.
  */
 export function buildFailedOnInfra(build: BuildResult): boolean {
 	if (build.success) return false;
@@ -462,17 +530,21 @@ export interface BuildWorkflowConfig {
 	/** Case-declared build style; resolved via `resolveEvalBuildMode` (absent → default). */
 	buildMode?: WorkflowTestCase['buildMode'];
 	promptVersion?: string;
+	requiresMemoryCompaction?: boolean;
 	allowUserExecution?: boolean;
 	/** Credentials this build should see (created for real, view pinned to them). */
 	credentials?: TestCaseCredential[];
 	/** Run-level registry the created credential IDs are added to for cleanup. */
 	createdCredentialIds?: Set<string>;
+	/** Gives the build a fresh project: a team project the owner administers, or a
+	 *  member's personal project (`userId` set). Absent: the owner's personal project. */
+	buildProject?: () => Promise<{ userId?: string; projectId: string }>;
 	/** History restored before the live message — carried in the case
 	 *  (`mode: 'inline'`) or reconstructed from a trace (`mode: 'replay'`, which
 	 *  also supplies the live turn). */
 	seed?: CaseSeed;
 	/** Execution scenarios whose declared `seedDataTables` are created + row-seeded
-	 *  after a successful build, before any scenario runs (TRUST-311). */
+	 *  after a successful build, before any scenario runs. */
 	executionScenarios?: ExecutionScenario[];
 	timeoutMs?: number;
 	preRunWorkflowIds: Set<string>;
@@ -529,9 +601,16 @@ export function workflowExpectedForCase(
 export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildResult> {
 	const { client, logger } = config;
 	const { buildMode, promptVersion } = resolveEvalPromptSettings(config);
+	const observerThresholdTokens = config.requiresMemoryCompaction
+		? COMPACTION_OBSERVER_THRESHOLD_TOKENS
+		: undefined;
 	const threadId = crypto.randomUUID();
-	const startTime = Date.now();
-	const timeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	// Restarted when the opening message goes out: seed restore, prior-run
+	// staging and table creation are the harness's time, not the agent's.
+	let startTime = Date.now();
+	const turnTimeoutMs = config.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+	const timeoutMs = turnTimeoutMs * CONVERSATION_BUDGET_TURNS;
+	let timeout: BuildTimeout | undefined;
 
 	const abortController = new AbortController();
 	const events: CapturedEvent[] = [];
@@ -546,13 +625,33 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 	/** Projects this run created, torn down after it — instance-level, so they
 	 *  outlive the thread and would otherwise pile up across runs. */
 	const seededProjectIds: string[] = [];
+	let buildProject: { userId?: string; projectId: string } | undefined;
+	// On every return path, so cleanup deletes the build project even after a failure.
+	const buildProjectFields = () =>
+		buildProject
+			? {
+					buildProjectId: buildProject.projectId,
+					...(buildProject.userId ? { buildUserId: buildProject.userId } : {}),
+				}
+			: {};
+	let parsedToolCalls: CapturedToolCall[] | undefined;
+	const foreignReadFields = () => {
+		const toolCalls = parsedToolCalls ?? extractOutcomeFromEvents(events).toolCalls;
+		const foreignWorkflowReads = findForeignWorkflowReads(toolCalls, restoredWorkflowIds);
+		if (foreignWorkflowReads.length === 0) return {};
+		logger.warn(
+			`  The agent read workflows another build made: ${foreignWorkflowReads.join(', ')}`,
+		);
+		return { foreignWorkflowReads };
+	};
 	/** The agent the seeded history last targeted — graded and executed first. */
 	let seedActiveAgentId: string | undefined;
-	// TRUST-311 follow-up: scenario seed tables are created empty before the build
+	// Scenario seed tables are created empty before the build
 	// turn (so the agent binds their real id); this maps declared name → real id
 	// for the per-scenario row seeding, and the note tells the agent they exist.
 	const scenarioTableIdsByName: Record<string, string> = {};
 	let scenarioSeedTablesNote = '';
+	let restoredSeedTables = new Map<string, { id: string; name: string }>();
 	// Ids the build itself produced (the agent's workflow + any data tables it
 	// made). Tracked here so a throw AFTER the build lands — scenario-table
 	// seeding, workflow checks — still hands them to the caller's cleanup rather
@@ -696,7 +795,17 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			`  Running case${isMultiTurn ? ' [multi-turn]' : ''}: "${truncate(openingMessage, 60)}"${config.laneTag ?? ''}`,
 		);
 
-		const projectId = await client.getPersonalProjectId();
+		if (config.buildProject) {
+			try {
+				buildProject = await config.buildProject();
+			} catch (error: unknown) {
+				seedingFailed = true;
+				throw new Error(
+					`Build project setup failed: ${error instanceof Error ? error.message : String(error)}`,
+				);
+			}
+		}
+		const projectId = buildProject?.projectId ?? (await client.getPersonalProjectId());
 		await client.ensureThread(
 			threadId,
 			projectId,
@@ -709,7 +818,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		);
 
 		// Pin the thread's credential view to the case's declared set (empty by
-		// default) before the first message, so every build-workflow call inside
+		// default) before the first message, so every workflow_builder_build_workflow call inside
 		// the build sees the same deterministic environment.
 		const declaredCredentials = config.credentials ?? [];
 		// Shared with UserProxyLlm's mid-run credential creation (if any) so a
@@ -720,6 +829,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			onCreated: (id) => config.createdCredentialIds?.add(id),
 			logger,
 			nameCounts: credentialNameCounts,
+			projectId: buildProject?.projectId,
 		});
 		const seededCredentialIds = createdCredentials.map((c) => c.id);
 		// `createDeclaredCredentials` returns one entry per `declaredCredentials`, in
@@ -774,12 +884,31 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 						'Add a fixture for it (evaluations/fixtures/providers/) before running this case locally.',
 				);
 			}
-			credentialSetupLane = await startCredentialSetupLane({
+			const lane = await startCredentialSetupLane({
 				client,
 				selection: config.credentialSetupSelection,
 				logger,
 				localCredentialType: config.credentialSetupType,
 			});
+			credentialSetupLane = lane;
+			// The agent tests the credential it saves. Without this, that test reaches
+			// the real provider and rejects every key the stand-in issued.
+			if (lane?.credentialType && lane.verifyBaseUrl && lane.credentialUrlField) {
+				try {
+					await client.setThreadCredentialTestTarget(threadId, {
+						credentialType: lane.credentialType,
+						baseUrl: lane.verifyBaseUrl,
+						urlField: lane.credentialUrlField,
+					});
+				} catch (error: unknown) {
+					// An older backend has no endpoint: the agent's own test then reaches the
+					// real provider, as before. Any other failure is a lane boot failure.
+					if (!(error instanceof N8nApiError && error.status === 404)) throw error;
+					logger.info(
+						`  Credential-test target endpoint unavailable, agent tests reach the real provider${config.laneTag ?? ''}`,
+					);
+				}
+			}
 			laneBootFailed = false;
 		}
 
@@ -836,18 +965,26 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					remapped.dataTables.length > 0 ||
 					remapped.agents.length > 0 ||
 					remapped.folders.length > 0;
+				// Named here, not by the server, so the note can name a reused seed table.
+				const seedDataTables = uniquifySeedTableNames(remapped.dataTables);
 				const restoreResult = hasThreadScopedSeed
 					? await client.restoreThread(
 							threadId,
 							remapped.messages,
 							remapped.workflows,
-							remapped.dataTables,
+							seedDataTables,
 							remapped.agents,
-							{ folders: remapped.folders },
+							{ folders: remapped.folders, uniquifyNames: false },
 						)
 					: { restored: 0, workflowIds: [], dataTableIds: [], agentIds: [], folderIds: [] };
 				restoredWorkflowIds = restoreResult.workflowIds;
 				restoredDataTableIds = restoreResult.dataTableIds;
+				restoredSeedTables = new Map(
+					remapped.dataTables.map((table, index) => [
+						table.name,
+						{ id: restoredDataTableIds[index], name: seedDataTables[index].name },
+					]),
+				);
 				restoredAgentIds = restoreResult.agentIds;
 				const restoredAgents: Array<[string, { id: string; name: string }]> = [];
 				for (const [index, agent] of seed.agents.entries()) {
@@ -895,6 +1032,26 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					`Seeding failed: ${error instanceof Error ? error.message : String(error)}`,
 				);
 			}
+			// Recorded runs replay exact history, so a failed restore is a harness fault:
+			// flag it like a seeding failure instead of grading the agent without its premise.
+			if (config.seed?.mode === 'inline' && config.seed.recordedRuns?.length) {
+				try {
+					await restoreRecordedRuns({
+						client,
+						threadId,
+						recordedRuns: config.seed.recordedRuns,
+						seedWorkflows: seedWorkflowsBySeedId,
+						seedNodeNames: seedNodeNamesById(config.seed.workflows),
+						logger,
+						laneTag: config.laneTag,
+					});
+				} catch (error: unknown) {
+					seedingFailed = true;
+					throw new Error(
+						`Seeding failed: recorded run restore: ${error instanceof Error ? error.message : String(error)}`,
+					);
+				}
+			}
 			// Run AFTER the seeding try/catch, so a prior-run problem is not reported as
 			// "Seeding failed" — the artifacts did land, it is the pre-turn history that did
 			// not. Before the live turn, so the agent's first look already sees it.
@@ -930,7 +1087,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			}
 		}
 
-		// TRUST-311 follow-up: create the case's execution-scenario data tables EMPTY
+		// Create the case's execution-scenario data tables EMPTY
 		// BEFORE the build turn, so the agent discovers the real table (Data Table
 		// list/schema) and binds its real id — the production-faithful flow where the
 		// user's table pre-exists. Rows are reset+seeded per scenario
@@ -949,31 +1106,44 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					logger,
 					config.laneTag,
 				);
+				// A seed table of the same name is the one the seeded workflow binds.
+				const toCreate = scenarioSeedTables.filter((table) => !restoredSeedTables.has(table.name));
 				// `uniquifyNames: false` stays — the harness mints the suffix so it knows
 				// which name to give the agent below.
-				const schemasOnly = uniquifyScenarioTableNames(scenarioSeedTables).map((table) => ({
+				const schemasOnly = uniquifySeedTableNames(toCreate).map((table) => ({
 					...table,
 					rows: undefined,
 				}));
-				const { dataTableIds } = await client.restoreThread(threadId, [], [], schemasOnly, [], {
-					uniquifyNames: false,
-				});
+				const { dataTableIds } =
+					schemasOnly.length > 0
+						? await client.restoreThread(threadId, [], [], schemasOnly, [], {
+								uniquifyNames: false,
+							})
+						: { dataTableIds: [] };
 				// restoreThread returns ids in input order; a length mismatch means we
 				// can't safely map names to ids, so fail rather than mis-seed.
-				if (dataTableIds.length !== scenarioSeedTables.length) {
+				if (dataTableIds.length !== toCreate.length) {
 					throw new Error(
-						`Pre-seeding created ${String(dataTableIds.length)} data table(s) but the case declares ${String(scenarioSeedTables.length)}; cannot map names to ids.`,
+						`Pre-seeding created ${String(dataTableIds.length)} data table(s) but the case declares ${String(toCreate.length)}; cannot map names to ids.`,
 					);
 				}
 				// Keyed by the DECLARED name — what a scenario writes.
-				scenarioSeedTables.forEach((table, index) => {
+				toCreate.forEach((table, index) => {
 					scenarioTableIdsByName[table.name] = dataTableIds[index];
 				});
+				const noteTables: InstanceAiEvalSeedDataTable[] = [...schemasOnly];
+				for (const table of scenarioSeedTables) {
+					const restored = restoredSeedTables.get(table.name);
+					if (!restored) continue;
+					scenarioTableIdsByName[table.name] = restored.id;
+					noteTables.push({ ...table, name: restored.name });
+				}
 				restoredDataTableIds = [...restoredDataTableIds, ...dataTableIds];
 				// The agent looks up the name that exists, not the declared one.
-				scenarioSeedTablesNote = buildSeededTablesNote(schemasOnly);
+				scenarioSeedTablesNote = buildSeededTablesNote(noteTables);
+				const reusedCount = scenarioSeedTables.length - toCreate.length;
 				logger.info(
-					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${config.laneTag ?? ''}`,
+					`  Pre-seeded ${String(dataTableIds.length)} scenario data table schema(s)${reusedCount > 0 ? `, reusing ${String(reusedCount)} seed table(s)` : ''}${config.laneTag ?? ''}`,
 				);
 			}
 		} catch (error: unknown) {
@@ -1055,8 +1225,9 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			.join(' ');
 
 		let proxyDecisionStats: ProxyDecisionStats | undefined;
+		startTime = Date.now();
 		if (isMultiTurn) {
-			proxyDecisionStats = await driveMultiTurnConversation({
+			const driven = await driveMultiTurnConversation({
 				client,
 				threadId,
 				conversation,
@@ -1087,8 +1258,10 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				approvedRequests,
 				startTime,
 				timeoutMs,
+				turnTimeoutMs,
 				logger,
 				proxyResponses,
+				observerThresholdTokens,
 				followUpMessagesOut: followUpMessages,
 				// Only wired when the credential view is actually pinned — the
 				// allowlist endpoint a mid-run creation depends on isn't available
@@ -1099,6 +1272,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 							bypassCredentialTestIds,
 							createdCredentialIds: config.createdCredentialIds,
 							credentialNameCounts,
+							credentialProjectId: buildProject?.projectId,
 						}
 					: {}),
 				// The pre-seeded-table note goes to the agent, but the recorded turn
@@ -1108,6 +1282,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				openingHandoffContext,
 				recordedOpeningMessage,
 			});
+			proxyDecisionStats = driven.proxyDecisionStats;
+			timeout = driven.timeout;
 		} else {
 			recordUserTurn(events, recordedOpeningMessage);
 			await client.sendMessage(
@@ -1117,21 +1293,49 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				buildMode,
 				promptVersion,
 				openingHandoffContext,
+				observerThresholdTokens,
 			);
-			await waitForAllActivity({
-				client,
-				threadId,
-				events,
-				approvedRequests,
-				startTime,
-				timeoutMs,
+			// An empty answer reads to the agent as "no preference", which steers it
+			// off the path a real user would pick, so questions still get the proxy.
+			const questionProxy = new UserProxyLlm({
+				conversation: [{ role: 'user', text: recordedOpeningMessage }],
 				logger,
-				proxyResponses,
 			});
+			try {
+				await waitForAllActivity({
+					client,
+					threadId,
+					events,
+					approvedRequests,
+					startTime,
+					timeoutMs,
+					turnTimeoutMs,
+					turnStartedAt: startTime,
+					inactivityTimeoutMs: INACTIVITY_TIMEOUT_MS,
+					logger,
+					proxyResponses,
+					confirmationStrategy: async (event) => {
+						if (getEventPayload(event).inputType !== 'questions') {
+							return buildAutoApprovePayload(event);
+						}
+						questionProxy.ingestEvents(events);
+						return await questionProxy.respondToConfirmation(event);
+					},
+				});
+			} catch (error: unknown) {
+				if (!(error instanceof RunTimeoutError)) throw error;
+				timeout = error.timeout;
+			}
 		}
 
 		abortController.abort();
 		await ssePromise.catch(() => {});
+
+		if (timeout) {
+			logger.info(
+				`  Conversation ended by the ${timeout.kind} budget after ${String(Math.round(timeout.elapsedMs / 1000))}s at user turn ${String(timeout.turn)}; grading what was saved${config.laneTag ?? ''} [thread ${threadId}]`,
+			);
+		}
 
 		const conversationMetrics = mergeSeededConversationMetrics(
 			seededTranscript,
@@ -1156,13 +1360,14 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 
 		const messageWorkflowIds = extractWorkflowIdsFromMessages(threadMessages.messages);
 		const eventOutcome = extractOutcomeFromEvents(events);
+		parsedToolCalls = eventOutcome.toolCalls;
 		// Restored workflows keep a seeded build scoreable/cleanable even if the
 		// live turn touches no workflow tool; live ids stay first (primary artifact).
 		const threadWorkflowIds = [
 			...new Set([...eventOutcome.workflowIds, ...messageWorkflowIds, ...restoredWorkflowIds]),
 		];
 		// Same for a restored agent, without which a live turn that never calls
-		// `build-agent` would grade against no agent at all — so a seeded agent alone
+		// `agent_builder_build_agent` would grade against no agent at all — so a seeded agent alone
 		// marks the case agent-anchored.
 		const seenAgentIds = new Set(
 			eventOutcome.artifactRefs.filter((ref) => ref.type === 'agent').map((ref) => ref.id),
@@ -1173,12 +1378,16 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			seedActiveAgentId && restoredAgentIds.includes(seedActiveAgentId)
 				? [seedActiveAgentId, ...restoredAgentIds.filter((id) => id !== seedActiveAgentId)]
 				: restoredAgentIds;
-		const artifactRefs: ArtifactRef[] = [
+		const builtRefs: ArtifactRef[] = [
 			...eventOutcome.artifactRefs,
 			...restoredAgentOrder
 				.filter((id) => !seenAgentIds.has(id))
 				.map((id) => ({ type: 'agent' as const, id })),
 		];
+		const buildProjectId = buildProject?.projectId;
+		const artifactRefs = buildProjectId
+			? builtRefs.map((ref) => ({ ...ref, projectId: buildProjectId }))
+			: builtRefs;
 		const buildTrace: BuildTrace = {
 			finalText:
 				eventOutcome.finalText.length > 0 ? eventOutcome.finalText : lastAgentText(transcript),
@@ -1215,6 +1424,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 				);
 				return {
 					success: true,
+					...(timeout ? { timeout } : {}),
 					workflowJsons: [],
 					buildTrace,
 					artifactRefs,
@@ -1222,6 +1432,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 					createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 					createdAgentIds: restoredAgentIds,
 					createdProjectIds: seededProjectIds,
+					...buildProjectFields(),
+					...foreignReadFields(),
 					createdFolderIds: restoredFolderIds,
 					conversationMetrics,
 					events,
@@ -1236,14 +1448,22 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			}
 			return {
 				success: false,
-				error: summarizeMissingWorkflowError(events),
+				// The budget is the reason nothing was saved; the event summary would
+				// only describe the cancelled run.
+				error: timeout
+					? new RunTimeoutError(timeout).message
+					: summarizeMissingWorkflowError(events),
+				...(timeout ? { timeout } : {}),
 				workflowJsons: [],
 				buildTrace,
 				createdWorkflowIds: restoredWorkflowIds,
 				createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 				createdAgentIds: restoredAgentIds,
 				createdProjectIds: seededProjectIds,
+				...buildProjectFields(),
+				...foreignReadFields(),
 				createdFolderIds: restoredFolderIds,
+				seededScenarioTableIdsByName: scenarioTableIdsByName,
 				artifactRefs,
 				conversationMetrics,
 				events,
@@ -1278,6 +1498,7 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 		// per-scenario rows are seeded in runScenario via seededScenarioTableIdsByName.
 		return {
 			success: true,
+			...(timeout ? { timeout } : {}),
 			// Carried on the SUCCESS path too. A staged run that never landed is the one
 			// infra signal that outlives a healthy build, and that is exactly the case
 			// `case-pipeline` has to catch — the graded turn answered a question the
@@ -1290,6 +1511,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...outcome.dataTablesCreated, ...restoredDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			seededScenarioTableIdsByName: scenarioTableIdsByName,
 			artifactRefs,
@@ -1314,6 +1537,8 @@ export async function buildWorkflow(config: BuildWorkflowConfig): Promise<BuildR
 			createdDataTableIds: [...restoredDataTableIds, ...builtDataTableIds],
 			createdAgentIds: restoredAgentIds,
 			createdProjectIds: seededProjectIds,
+			...buildProjectFields(),
+			...foreignReadFields(),
 			createdFolderIds: restoredFolderIds,
 			conversationMetrics,
 			events,

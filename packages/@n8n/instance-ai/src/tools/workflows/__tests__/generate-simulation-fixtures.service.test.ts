@@ -6,9 +6,11 @@ vi.mock('../../../utils/eval-agents', async () => {
 	return { ...actual, createEvalAgent: vi.fn(), extractText: vi.fn() };
 });
 
-import { SONNET_MODEL, createEvalAgent, extractText } from '../../../utils/eval-agents';
+import { createEvalAgent, extractText } from '../../../utils/eval-agents';
 import type { NodeSimulationVerdict } from '../../../workflow-loop/workflow-loop-state';
 import {
+	SIMULATION_FIXTURES_EFFORT,
+	SIMULATION_FIXTURES_MODEL,
 	buildPlaceholderFixtures,
 	generateSimulationFixtures,
 	withPassThroughFloor,
@@ -101,7 +103,10 @@ describe('generateSimulationFixtures', () => {
 		expect(result['Send Slack'][0]).toMatchObject({ ok: true });
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'verification-simulation-fixtures',
-			expect.objectContaining({ model: SONNET_MODEL }),
+			expect.objectContaining({
+				model: SIMULATION_FIXTURES_MODEL,
+				effort: SIMULATION_FIXTURES_EFFORT,
+			}),
 		);
 	});
 
@@ -160,18 +165,21 @@ describe('generateSimulationFixtures', () => {
 	it('forwards the fallback model config to the LLM call', async () => {
 		setupAgentMock(JSON.stringify({ A: [{ json: { ok: true } }] }));
 		const fallbackModelConfig = {
+			kind: 'endpoint' as const,
 			id: 'anthropic/claude-opus-4-8' as const,
 			url: 'https://proxy.example.com/anthropic/v1',
 			apiKey: 'proxy-token',
 		};
+		const modelFetch = vi.fn();
 		await generateSimulationFixtures({
 			workflow: wf([{ name: 'A', type: 'n8n-nodes-base.slack' }]),
 			plan: [simulateVerdict('A')],
 			fallbackModelConfig,
+			modelFetch,
 		});
 		expect(mockCreateEvalAgent).toHaveBeenCalledWith(
 			'verification-simulation-fixtures',
-			expect.objectContaining({ fallbackModelConfig }),
+			expect.objectContaining({ fallbackModelConfig, modelFetch }),
 		);
 	});
 
@@ -481,6 +489,7 @@ describe('generateSimulationFixtures', () => {
 			resource: 'message',
 			operation: 'post',
 			hasOutputParser: false,
+			parameters: { resource: 'message', operation: 'post' },
 		});
 		const promptText = (generate.mock.calls[0][0] as Array<{ content: Array<{ text: string }> }>)[0]
 			.content[0].text;
@@ -676,6 +685,25 @@ describe('withPassThroughFloor', () => {
 		);
 
 		expect(result.Hold).toEqual([{ email: 'ada@example.com' }]);
+	});
+
+	it('keeps the classification object when the classifier was asked for scores', () => {
+		const workflow = chain('@n8n/n8n-nodes-langchain.textClassifier');
+		const classifier = workflow.nodes.find((node) => node.name === 'Hold');
+		if (classifier) classifier.parameters = { options: { includeConfidenceScores: true } };
+
+		const result = withPassThroughFloor(
+			{
+				'Get Contact': [{ email: 'ada@example.com' }],
+				Hold: [{ classification: { category: 'Billing', confidence: 0.9 }, invented: true }],
+			},
+			workflow,
+			{ outputSchemaLookup: lookupBrevoOnly },
+		);
+
+		expect(result.Hold).toEqual([
+			{ email: 'ada@example.com', classification: { category: 'Billing', confidence: 0.9 } },
+		]);
 	});
 
 	it('keeps the marker object a partial pass-through adds on top', () => {

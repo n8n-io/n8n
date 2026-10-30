@@ -21,8 +21,8 @@ import {
 	rateLimitExceeded,
 } from './integration-helpers';
 import type {
-	IntegrationAction,
 	IntegrationActionExecutor,
+	IntegrationActionParams,
 	IntegrationActionResult,
 	IntegrationMessageContext,
 	IntegrationToolConnectionDescriptor,
@@ -39,6 +39,7 @@ const sendDmInputSchema = z.object({
 	userId: z.string().min(1),
 	message: messageSchema,
 });
+const doNotRespondInputSchema = z.object({ reason: z.string().optional() });
 const sendChannelMessageInputSchema = z.object({
 	channelId: z.string().min(1),
 	message: messageSchema,
@@ -73,15 +74,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		private readonly channelRateLimitGuard: ChannelRateLimitGuard,
 	) {}
 
-	async execute(params: {
-		descriptor: IntegrationToolConnectionDescriptor;
-		action: IntegrationAction;
-		input: Record<string, unknown>;
-		awaitResponse: boolean;
-		runId?: string;
-		toolCallId?: string;
-		currentMessageContext?: IntegrationMessageContext;
-	}): Promise<IntegrationActionResult> {
+	async execute(params: IntegrationActionParams): Promise<IntegrationActionResult> {
 		if (!params.descriptor.agentId) return connectionUnavailable();
 
 		if (params.action === 'do_not_respond') {
@@ -123,11 +116,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 		const { credentialId } = params.descriptor.integration;
 		if (!credentialId) return connectionUnavailable();
 
-		let chat = this.chatIntegrationService.getChatInstance(params.descriptor.agentId, {
-			type: params.descriptor.integration.type,
-			credentialId,
-		});
-		chat ??= await this.chatIntegrationService.getChatInstanceForTools(
+		const chat = await this.chatIntegrationService.getChatInstanceForTools(
 			params.descriptor.agentId,
 			params.descriptor.integration,
 		);
@@ -165,6 +154,8 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 			return unsupportedAction();
 		} catch (error) {
+			const described = integrationDef?.describeActionError?.(params.action, error);
+			if (described) return integrationError(described.code, described.message);
 			return caughtIntegrationError(error, {
 				connectionId: params.descriptor.integrationConnectionId,
 				platform: params.descriptor.integration.type,
@@ -178,7 +169,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 	 * End the turn without posting anything. Allowed only when the latest
 	 * inbound message marked the reply as optional.
 	 */
-	private doNotRespond(params: ExecuteParams): IntegrationActionResult {
+	private doNotRespond(params: IntegrationActionParams): IntegrationActionResult {
 		if (params.currentMessageContext?.replyExpectation !== 'optional') {
 			return integrationError(
 				INTEGRATION_ERROR_CODES.REPLY_REQUIRED,
@@ -186,16 +177,18 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 			);
 		}
 
+		const { reason } = doNotRespondInputSchema.parse(params.input);
 		return {
 			ok: true,
 			silent: true,
+			...(reason ? { reason } : {}),
 			note: 'No reply will be sent. End your turn now without writing any text.',
 		};
 	}
 
 	private async addReactionToMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const adapter = chat.getAdapter(params.descriptor.integration.type);
 		if (!supportsAddReaction(adapter)) {
@@ -246,7 +239,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async respondInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = respondInputSchema.parse(params.input);
 		const threadId = params.currentMessageContext?.target.threadId;
@@ -284,10 +277,19 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendDirectMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendDmInputSchema.parse(params.input);
-		const thread = await chat.openDM(input.userId);
+		// The Chat SDK guesses the adapter from the user ID's shape and knows one
+		// shape per platform, so a Teams Entra object ID would not reach Teams.
+		const adapter = chat.getAdapter(params.descriptor.integration.type);
+		// It has no shape for a WhatsApp phone number at all, so there is nothing to fall back to.
+		if (!supportsOpenDM(adapter) && params.descriptor.integration.type === 'whatsapp') {
+			return unsupportedAction(params.descriptor.integration.type, 'send_dm');
+		}
+		const thread = supportsOpenDM(adapter)
+			? chat.thread(await adapter.openDM(input.userId))
+			: await chat.openDM(input.userId);
 		const sent = await thread.post(await this.toPostable(params.descriptor, input.message, params));
 		// Re-anchor at the sent message ts on platforms where a top-level DM
 		// starts its own thread; otherwise keep the openDM thread.
@@ -308,7 +310,7 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async editMessageInCurrentThread(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = editMessageInputSchema.parse(params.input);
 		const currentMessageContext = params.currentMessageContext;
@@ -346,10 +348,15 @@ export class ChatIntegrationActionExecutor implements IntegrationActionExecutor 
 
 	private async sendChannelMessage(
 		chat: ChatInstance,
-		params: ExecuteParams,
+		params: IntegrationActionParams,
 	): Promise<IntegrationActionResult> {
 		const input = sendChannelMessageInputSchema.parse(params.input);
-		const channelId = normalizePlatformId(params.descriptor.integration.type, input.channelId);
+		const platform = params.descriptor.integration.type;
+		const channelId =
+			this.integrationRegistry
+				.get(platform)
+				?.normalizeChannelId(input.channelId, chat.getAdapter(platform)) ??
+			normalizePlatformId(platform, input.channelId);
 		const channel = chat.channel(channelId);
 		const sent = await channel.post(
 			await this.toPostable(params.descriptor, input.message, params),
@@ -449,18 +456,12 @@ function supportsMessageEditing(adapter: unknown): adapter is Pick<Adapter, 'edi
 	return isRecord(adapter) && typeof adapter.editMessage === 'function';
 }
 
-function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
-	return isRecord(adapter) && typeof adapter.addReaction === 'function';
+function supportsOpenDM(adapter: unknown): adapter is Required<Pick<Adapter, 'openDM'>> {
+	return isRecord(adapter) && typeof adapter.openDM === 'function';
 }
 
-interface ExecuteParams {
-	descriptor: IntegrationToolConnectionDescriptor;
-	action: IntegrationAction;
-	input: Record<string, unknown>;
-	awaitResponse: boolean;
-	runId?: string;
-	toolCallId?: string;
-	currentMessageContext?: IntegrationMessageContext;
+function supportsAddReaction(adapter: unknown): adapter is Pick<Adapter, 'addReaction'> {
+	return isRecord(adapter) && typeof adapter.addReaction === 'function';
 }
 
 function buildMessageContextFromSentMessage(params: {

@@ -1,6 +1,7 @@
 import type { DeleteExecutionsDto } from '@n8n/api-types';
 import { ExecutionRedactionQueryDtoSchema } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { EventService, ExecutionRedactionServiceProxy } from '@n8n/backend-services';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
@@ -45,15 +46,13 @@ import { ConcurrencyControlService } from '@/concurrency/concurrency-control.ser
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { InternalServerError } from '@/errors/response-errors/internal-server.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { EventService } from '@/events/event.service';
+import { BadRequestError, ConflictError, InternalServerError, NotFoundError } from '@n8n/errors';
 import type { IExecutionFlattedResponse } from '@/interfaces';
 import { License } from '@/license';
 import { NodeTypes } from '@/node-types';
+import { userHasScopes } from '@/permissions.ee/check-access';
 import { ExecutionStopService } from '@/scaling/execution-stop.service';
+import { EngineDataPlaneProxyService } from '@/services/engine-data-plane-proxy.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
@@ -61,10 +60,10 @@ import { getWorkflowProjectDetailsSafe } from '@/workflows/utils';
 
 import { EngineV2ExecutionReader } from './engine-v2-execution-reader.service';
 import { MissingExecutionDataError } from './execution-data/missing-execution-data.error';
-import { isExecutionIdV2 } from './execution-id';
+import { isExecutionIdV2, type ExecutionIdV2 } from './execution-id';
 import { ExecutionPersistence } from './execution-persistence';
-import { ExecutionRedactionServiceProxy } from './execution-redaction-proxy.service';
-import type { ExecutionRequest, StopResult } from './execution.types';
+
+import type { ExecutionRequest, RetriedExecution, StopResult } from './execution.types';
 
 export const schemaGetExecutionsQueryFilter = {
 	$id: '/IGetExecutionsQueryFilter',
@@ -128,6 +127,7 @@ export class ExecutionService {
 		private readonly executionStopService: ExecutionStopService,
 		private readonly ownershipService: OwnershipService,
 		private readonly engineV2ExecutionReader: EngineV2ExecutionReader,
+		private readonly engineDataPlane: EngineDataPlaneProxyService,
 	) {}
 
 	/**
@@ -205,6 +205,31 @@ export class ExecutionService {
 		user: User,
 		redactExecutionData?: boolean,
 	): Promise<IExecutionResponse | undefined> {
+		// Reading a workflow is not reading its runs: a custom project role can
+		// hold `workflow:read` without `execution:read`, as in the executions API.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId,
+		});
+		if (!canReadExecutions) return undefined;
+
+		// A workflow runs on one engine, and only that engine holds its executions.
+		const settings = await this.workflowRepository.findSettings(workflowId);
+		const execution =
+			settings?.engineType === 'v2'
+				? await this.engineV2ExecutionReader.findLatest({ status: ['success'] }, [workflowId])
+				: await this.lastSuccessfulV1Execution(workflowId);
+		if (!execution) return undefined;
+
+		await this.executionRedactionServiceProxy.processExecution(execution, {
+			user,
+			redactExecutionData,
+		});
+		return execution;
+	}
+
+	private async lastSuccessfulV1Execution(
+		workflowId: string,
+	): Promise<IExecutionResponse | undefined> {
 		const executions = await this.executionPersistence.findMultipleExecutions(
 			{
 				select: ['id', 'mode', 'startedAt', 'stoppedAt', 'workflowId', 'jsonSizeBytes'],
@@ -222,14 +247,7 @@ export class ExecutionService {
 			},
 		);
 
-		const execution = executions[0];
-		if (!execution) return undefined;
-
-		await this.executionRedactionServiceProxy.processExecution(execution, {
-			user,
-			redactExecutionData,
-		});
-		return execution;
+		return executions[0];
 	}
 
 	async retry({
@@ -242,7 +260,7 @@ export class ExecutionService {
 		options?: { loadWorkflow?: boolean; redactExecutionData?: boolean };
 		sharedWorkflowIds: string[];
 		user: User;
-	}): Promise<Omit<IExecutionResponse, 'createdAt'>> {
+	}): Promise<RetriedExecution> {
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -263,12 +281,14 @@ export class ExecutionService {
 
 		if (!execution.data.executionData) throw new AbortedExecutionRetryError();
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (execution.finished) {
 			throw new ConflictError('The execution succeeded, so it cannot be retried.');
 		}
 
 		const executionMode = 'retry';
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		execution.workflowData.active = false;
 		execution.workflowData.activeVersionId = null;
 
@@ -279,6 +299,8 @@ export class ExecutionService {
 			retryOf: executionId,
 			workflowData: execution.workflowData,
 			userId: user.id,
+			// The retry caller awaits the result below, so a worker must not park it.
+			callerAwaitsOutcome: 'completion',
 		};
 
 		const { lastNodeExecuted } = data.executionData!.resultData;
@@ -376,20 +398,32 @@ export class ExecutionService {
 			source: 'user-retry',
 		});
 
-		const response: Omit<IExecutionResponse, 'createdAt'> = {
+		const summary: RetriedExecution = {
 			id: retriedExecutionId,
 			mode: executionData.mode,
 			startedAt: executionData.startedAt,
 			workflowId: execution.workflowId,
+			// oxlint-disable-next-line typescript/no-deprecated
 			finished: executionData.finished ?? false,
 			retryOf: executionId,
 			status: executionData.status,
 			waitTill: executionData.waitTill,
+			storedAt: execution.storedAt,
+		};
+
+		// A retry carries over the data of the nodes that ran before, so the data
+		// is only returned to a user who may read the workflow's executions.
+		const canReadExecutions = await userHasScopes(user, ['execution:read'], false, {
+			workflowId: execution.workflowId,
+		});
+		if (!canReadExecutions) return summary;
+
+		const response: Omit<IExecutionResponse, 'createdAt'> = {
+			...summary,
 			data: executionData.data,
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
-			storedAt: execution.storedAt,
 		};
 
 		await this.executionRedactionServiceProxy.processExecution(response, {
@@ -417,6 +451,7 @@ export class ExecutionService {
 			}
 		}
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		if (requestFilters?.metadata && !this.license.isAdvancedExecutionFiltersEnabled()) {
 			delete requestFilters.metadata;
 		}
@@ -511,6 +546,10 @@ export class ExecutionService {
 	}
 
 	async stop(executionId: string, sharedWorkflowIds: string[]): Promise<StopResult> {
+		if (isExecutionIdV2(executionId)) {
+			return await this.stopEngineV2Execution(executionId, sharedWorkflowIds);
+		}
+
 		const execution = await this.executionPersistence.findWithUnflattenedData(
 			executionId,
 			sharedWorkflowIds,
@@ -529,6 +568,7 @@ export class ExecutionService {
 
 		this.assertStoppable(execution);
 
+		// oxlint-disable-next-line typescript/no-deprecated
 		const { mode, startedAt, stoppedAt, finished, status } =
 			this.globalConfig.executions.mode === 'regular'
 				? await this.stopInRegularMode(execution)
@@ -568,10 +608,47 @@ export class ExecutionService {
 		const STOPPABLE_STATUSES: ExecutionStatus[] = ['new', 'unknown', 'waiting', 'running'];
 
 		if (!STOPPABLE_STATUSES.includes(execution.status)) {
-			throw new WorkflowOperationError(
-				`Only running or waiting executions can be stopped and ${execution.id} is currently ${execution.status}`,
-			);
+			throw this.notStoppableError(execution.id, execution.status);
 		}
+	}
+
+	private notStoppableError(executionId: string, status: string) {
+		return new WorkflowOperationError(
+			`Only running or waiting executions can be stopped and ${executionId} is currently ${status}`,
+		);
+	}
+
+	/**
+	 * The data plane owns the run, so the cancel goes to the engine. The reader
+	 * answers the visibility check: absent and inaccessible read alike.
+	 */
+	private async stopEngineV2Execution(
+		executionId: ExecutionIdV2,
+		sharedWorkflowIds: string[],
+	): Promise<StopResult> {
+		const execution = await this.engineV2ExecutionReader.findOne(executionId, sharedWorkflowIds);
+		if (!execution) {
+			this.logger.info(
+				`Unable to stop execution "${executionId}" as it was not found or not accessible`,
+				{ executionId },
+			);
+			throw new MissingExecutionStopError(executionId);
+		}
+
+		this.assertStoppable(execution);
+
+		// The engine decides the race against completion, so its answer wins over the read above.
+		const outcome = await this.engineDataPlane.cancelExecution(executionId);
+		if (!outcome) throw new MissingExecutionStopError(executionId);
+		if (!outcome.cancelled) throw this.notStoppableError(executionId, outcome.status);
+
+		return {
+			mode: execution.mode,
+			startedAt: execution.startedAt,
+			stoppedAt: outcome.finishedAt,
+			finished: false,
+			status: 'canceled',
+		};
 	}
 
 	private async stopInRegularMode(execution: IExecutionResponse) {
@@ -606,17 +683,22 @@ export class ExecutionService {
 			this.waitTracker.stopExecution(execution.id);
 		}
 
-		// Broadcast a stop to whichever worker is running this execution; it cancels the execution
-		// from its own ActiveExecutions, and workers not running it ignore the command. This is the
-		// only way to reach a subworkflow execution, which runs inline in the parent's worker process
-		// and has no Bull job to abort. For a top-level execution this is redundant with the
-		// abort-job triggered above via ActiveExecutions, but both paths are idempotent.
-		await this.executionStopService.requestStop(execution.id);
-
-		return await this.stopDuringRun(execution);
+		// Mark the execution as canceled before the broadcast. A worker that dequeues the job after
+		// the update reads the canceled status and skips the job. The broadcast also runs when the
+		// update fails, so a worker does not keep running the execution.
+		try {
+			return await this.stopDuringRun(execution);
+		} finally {
+			// Broadcast a stop to whichever worker runs this execution. Workers not running it ignore
+			// the command. The abort-job triggered above only works on the main that enqueued the
+			// job, so the broadcast is the only stop path for a subworkflow execution and for a
+			// top-level job enqueued by another process. Both paths are idempotent.
+			await this.executionStopService.requestStop(execution.id);
+		}
 	}
 
-	private async stopDuringRun(execution: IExecutionResponse) {
+	private async stopDuringRun(execution: IExecutionResponse): Promise<IExecutionResponse> {
+		const expectedStatus = execution.status;
 		const error = new ManualExecutionCancelledError(execution.id);
 
 		execution.data = execution.data ?? createEmptyRunExecutionData();
@@ -629,7 +711,22 @@ export class ExecutionService {
 		execution.waitTill = null;
 		execution.status = 'canceled';
 
-		await this.executionPersistence.updateExistingExecution(execution.id, execution);
+		const stopped = await this.executionPersistence.updateExistingExecution(
+			execution.id,
+			execution,
+			{ requireStatus: expectedStatus },
+		);
+		if (!stopped) {
+			const current = await this.executionPersistence.findWithUnflattenedData(execution.id, [
+				execution.workflowId,
+			]);
+			if (!current) throw new MissingExecutionStopError(execution.id);
+			if (current.status === 'canceled') return current;
+			this.assertStoppable(current);
+			return this.globalConfig.executions.mode === 'regular'
+				? await this.stopInRegularMode(current)
+				: await this.stopInScalingMode(current);
+		}
 
 		return execution;
 	}

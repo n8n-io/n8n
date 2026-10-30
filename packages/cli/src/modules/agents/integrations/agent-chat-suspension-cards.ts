@@ -9,6 +9,7 @@ interface ApprovalSuspendPayload {
 	type: 'approval';
 	toolName: string;
 	displayName?: string;
+	supportsSessionApproval?: boolean;
 }
 
 export function isIntegrationActionSuspendPayload(value: unknown): boolean {
@@ -60,6 +61,9 @@ function buildApprovalCardPayload(payload: ApprovalSuspendPayload): {
 			{ type: 'section', text: `The agent wants to run this tool: ${toolLabel}` },
 			{ type: 'fields', fields },
 			{ type: 'button', label: 'Approve', value: 'true', style: 'primary' },
+			...(payload.supportsSessionApproval === true
+				? [{ type: 'button', label: 'Allow for this session', value: 'session' }]
+				: []),
 			{ type: 'button', label: 'Deny', value: 'false', style: 'danger' },
 		],
 	};

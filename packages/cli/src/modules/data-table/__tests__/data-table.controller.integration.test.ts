@@ -802,7 +802,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		});
 		expect(dataTableColumnInDb).toBeNull();
 
-		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {}, [])).rejects.toThrow(
+		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {}, [], {})).rejects.toThrow(
 			QueryFailedError,
 		);
 	});
@@ -2052,6 +2052,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2097,6 +2098,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2139,6 +2141,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2200,6 +2203,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
@@ -2239,6 +2243,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(0);
 	});
@@ -2639,6 +2644,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 	});
@@ -2679,6 +2685,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 	});
@@ -2731,6 +2738,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
@@ -2780,6 +2788,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
@@ -2828,6 +2837,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data.map((r) => r.first)).toEqual(['test value 1']);
@@ -2875,6 +2885,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
@@ -3108,6 +3119,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
@@ -3144,6 +3156,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
@@ -3177,6 +3190,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
@@ -3211,6 +3225,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			dataTable.id,
 			{},
 			dataTable.columns,
+			{},
 		);
 		expect(rowsInDb.count).toBe(0);
 	});
@@ -4662,7 +4677,7 @@ describe('Source Control read-only mode', () => {
 		await sourceControlPreferencesService.setPreferences(originalPreferences);
 	});
 
-	describe('mutating endpoints should return 403', () => {
+	describe('schema endpoints should return 403', () => {
 		test('POST /projects/:projectId/data-tables should fail', async () => {
 			const payload = {
 				name: 'New Table',
@@ -4754,50 +4769,113 @@ describe('Source Control read-only mode', () => {
 			expect(response.body.message).toContain('read-only mode');
 		});
 
-		test('POST /projects/:projectId/data-tables/:dataTableId/insert should fail', async () => {
-			const payload = {
-				data: [{ name: 'John', age: 30 }],
-				returnType: 'id',
-			};
+		test('POST /projects/:projectId/data-tables with a CSV file should fail', async () => {
+			const uploadResponse = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from('name,age\nJohn,30'), {
+					filename: 'rows.csv',
+					contentType: 'text/csv',
+				})
+				.expect(200);
 
 			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables`)
+				.send({
+					name: 'Imported Table',
+					columns: [
+						{ name: 'name', type: 'string' },
+						{ name: 'age', type: 'number' },
+					],
+					fileId: uploadResponse.body.data.id,
+				})
+				.expect(403);
+
+			expect(response.body.message).toContain('read-only mode');
+		});
+	});
+
+	describe('row endpoints should still work', () => {
+		const getRows = async () =>
+			await dataTableRowsRepository.getManyAndCount(
+				testDataTable.id,
+				{},
+				testDataTable.columns,
+				{},
+			);
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/insert should succeed', async () => {
+			await authOwnerAgent
 				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/insert`)
-				.send(payload)
-				.expect(403);
+				.send({ data: [{ name: 'John', age: 30 }], returnType: 'id' })
+				.expect(200);
 
-			expect(response.body.message).toContain('read-only mode');
+			const { data } = await getRows();
+			expect(data).toEqual([expect.objectContaining({ name: 'John', age: 30 })]);
 		});
 
-		test('POST /projects/:projectId/data-tables/:dataTableId/upsert should fail', async () => {
-			const payload = {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'John' }] },
-				data: { age: 30 },
-			};
+		test('POST /projects/:projectId/data-tables/:dataTableId/import-csv should succeed', async () => {
+			const uploadResponse = await authOwnerAgent
+				.post('/data-tables/uploads')
+				.attach('file', Buffer.from('name,age\nJohn,30'), {
+					filename: 'rows.csv',
+					contentType: 'text/csv',
+				})
+				.expect(200);
 
 			const response = await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/import-csv`)
+				.send({ fileId: uploadResponse.body.data.id })
+				.expect(200);
+
+			expect(response.body.data.importedRowCount).toBe(1);
+			const { data } = await getRows();
+			expect(data).toEqual([expect.objectContaining({ name: 'John', age: 30 })]);
+		});
+
+		test('POST /projects/:projectId/data-tables/:dataTableId/upsert should succeed', async () => {
+			await authOwnerAgent
 				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/upsert`)
-				.send(payload)
-				.expect(403);
+				.send({
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'John' }],
+					},
+					data: { name: 'John', age: 30 },
+				})
+				.expect(200);
 
-			expect(response.body.message).toContain('read-only mode');
+			const { data } = await getRows();
+			expect(data).toEqual([expect.objectContaining({ name: 'John', age: 30 })]);
 		});
 
-		test('PATCH /projects/:projectId/data-tables/:dataTableId/rows should fail', async () => {
-			const payload = {
-				filter: { type: 'and', filters: [{ columnName: 'name', condition: 'eq', value: 'John' }] },
-				data: { age: 31 },
-			};
+		test('PATCH /projects/:projectId/data-tables/:dataTableId/rows should succeed', async () => {
+			await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/insert`)
+				.send({ data: [{ name: 'John', age: 30 }], returnType: 'id' })
+				.expect(200);
 
-			const response = await authOwnerAgent
+			await authOwnerAgent
 				.patch(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
-				.send(payload)
-				.expect(403);
+				.send({
+					filter: {
+						type: 'and',
+						filters: [{ columnName: 'name', condition: 'eq', value: 'John' }],
+					},
+					data: { age: 31 },
+				})
+				.expect(200);
 
-			expect(response.body.message).toContain('read-only mode');
+			const { data } = await getRows();
+			expect(data).toEqual([expect.objectContaining({ name: 'John', age: 31 })]);
 		});
 
-		test('DELETE /projects/:projectId/data-tables/:dataTableId/rows should fail', async () => {
-			const response = await authOwnerAgent
+		test('DELETE /projects/:projectId/data-tables/:dataTableId/rows should succeed', async () => {
+			await authOwnerAgent
+				.post(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/insert`)
+				.send({ data: [{ name: 'John', age: 30 }], returnType: 'id' })
+				.expect(200);
+
+			await authOwnerAgent
 				.delete(`/projects/${ownerProject.id}/data-tables/${testDataTable.id}/rows`)
 				.query({
 					filter: JSON.stringify({
@@ -4805,9 +4883,10 @@ describe('Source Control read-only mode', () => {
 						filters: [{ columnName: 'name', condition: 'eq', value: 'John' }],
 					}),
 				})
-				.expect(403);
+				.expect(200);
 
-			expect(response.body.message).toContain('read-only mode');
+			const { count } = await getRows();
+			expect(count).toBe(0);
 		});
 	});
 

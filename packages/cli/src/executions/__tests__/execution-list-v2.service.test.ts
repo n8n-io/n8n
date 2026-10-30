@@ -59,6 +59,7 @@ describe('ExecutionListV2Service', () => {
 			workflowId: 'wf-a',
 			status,
 			mode: 'manual',
+			hostMode: 'manual',
 			createdAt: time,
 			updatedAt: time,
 			finishedAt: time,
@@ -112,7 +113,7 @@ describe('ExecutionListV2Service', () => {
 			const filtered = query({ user: owner, projectId: 'shared-project', isArchived: false });
 
 			expect(await service.resolveV2Scope(filtered)).toEqual(['wf-a']);
-			expect(workflows.findWorkflowIdsForExecutionList).toHaveBeenCalledWith(filtered);
+			expect(workflows.findWorkflowIdsForExecutionList).toHaveBeenCalledWith(filtered, {});
 		});
 
 		it('skips the DP for an inaccessible workflow', async () => {
@@ -218,8 +219,11 @@ describe('ExecutionListV2Service', () => {
 
 			expect(searchRequests()).toEqual(
 				expect.arrayContaining([
+					// `waiting` belongs to the completed block, not the current one, because
+					// v1 counts only `new` and `running` as current. The two engines must
+					// put a waiting execution in the same block.
 					expect.objectContaining({
-						status: ['completed', 'failed', 'cancelled'],
+						status: ['waiting', 'completed', 'failed', 'cancelled'],
 						includeTotal: true,
 					}),
 					expect.objectContaining({
@@ -287,12 +291,13 @@ describe('ExecutionListV2Service', () => {
 
 			const result = await service.findPageWithCount(query());
 
+			expect(workflows.findNamesForExecutionList).toHaveBeenCalledWith(['wf-a'], {});
 			expect(result.results).toEqual([expect.objectContaining({ workflowName: 'Workflow A' })]);
 		});
 	});
 
 	describe('scope wider than one data plane search', () => {
-		it('fails rather than reporting a list missing engine 2.0 rows', async () => {
+		it('fails rather than reporting a list missing engine v2 rows', async () => {
 			workflows.findWorkflowIdsForExecutionList.mockResolvedValue(
 				Array.from({ length: 10_001 }, (_, i) => `wf-${i}`),
 			);

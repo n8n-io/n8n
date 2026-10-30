@@ -39,6 +39,11 @@ export type LlmContext = {
  * cache breakpoint (and OpenAI's automatic prefix cache) on nearly every
  * call, for no future read. Providers that do not support multiple system
  * messages receive one merged message instead.
+ *
+ * `skillInstructions` (recovered active skills) sit between the two, in their
+ * own message with their own cache options. They change only when a skill
+ * moves out of the conversation, so the base instructions and the tools in
+ * front of them stay cached when that happens.
  */
 export function buildSystemMessages(
 	baseInstructions: string,
@@ -47,35 +52,53 @@ export function buildSystemMessages(
 	volatileInstructions?: string,
 	mcpConnectionNote?: string,
 	splitSystemMessages = true,
+	skillInstructions?: { content: string; providerOptions?: ProviderOptions },
 ): SystemModelMessage | SystemModelMessage[] {
 	const cacheOptions = instructionProviderOptions
 		? { providerOptions: instructionProviderOptions }
 		: {};
+	const skillContent = skillInstructions?.content.trim();
 	const volatileSections = [
 		volatileInstructions?.trim(),
 		mcpConnectionNote?.trim(),
 		observationLogMemory?.trim(),
 	].filter((s): s is string => Boolean(s));
 
-	if (volatileSections.length === 0 || !splitSystemMessages) {
+	if (!splitSystemMessages || (!skillContent && volatileSections.length === 0)) {
 		return {
 			role: 'system',
-			content: [baseInstructions, ...volatileSections].join('\n\n'),
+			content: [
+				baseInstructions,
+				...(skillContent ? [skillContent] : []),
+				...volatileSections,
+			].join('\n\n'),
 			...cacheOptions,
 		};
 	}
 
-	return [
+	const messages: SystemModelMessage[] = [
 		{
 			role: 'system',
 			content: baseInstructions,
 			...cacheOptions,
 		},
-		{
+	];
+	if (skillContent) {
+		messages.push({
+			role: 'system',
+			content: `\n\n${skillContent}`,
+			...(skillInstructions?.providerOptions
+				? { providerOptions: skillInstructions.providerOptions }
+				: {}),
+		});
+	}
+	if (volatileSections.length > 0) {
+		messages.push({
 			role: 'system',
 			content: `\n\n${volatileSections.join('\n\n')}`,
-		},
-	];
+		});
+	}
+	return messages;
 }
 
 type MessageSource = 'history' | 'input' | 'response';
@@ -97,6 +120,7 @@ type MessageSource = 'history' | 'input' | 'response';
  */
 export class AgentMessageList {
 	activeSkillIds?: string[];
+	activeSkillVersions?: Record<string, string | null>;
 
 	private all: AgentDbMessage[] = [];
 
@@ -295,6 +319,26 @@ export class AgentMessageList {
 		block.suspension = suspension;
 	}
 
+	/**
+	 * Record that a tool programmatically activated a skill on its own result, so
+	 * `ActiveSkills` can re-anchor the skill body there on a later turn instead
+	 * of falling back to the `<active_skills>` system prompt. The stamp rides on
+	 * the persisted message; it is metadata only and never reaches the model
+	 * (`toAiMessages` ignores it). No-op when the tool call is unknown.
+	 */
+	stampActivatedSkill(toolCallId: string, skillId: string, version?: string): void {
+		const host = this.findToolCallHost(toolCallId);
+		if (!host) return;
+		const block = this.findToolCallBlock(host, toolCallId);
+		if (!block) return;
+		const current = block.activatedSkillIds ?? [];
+		block.activatedSkillIds = [...new Set([...current, skillId])];
+		if (version !== undefined) {
+			block.activatedSkillVersions = { ...block.activatedSkillVersions, [skillId]: version };
+		}
+		this.responseSet.add(host);
+	}
+
 	private findToolCallHost(toolCallId: string): AgentDbMessage | undefined {
 		// Start from the last message and go backwards to find the host message
 		for (let i = this.all.length - 1; i >= 0; i--) {
@@ -329,9 +373,16 @@ export class AgentMessageList {
 		instructionProviderOptions?: ProviderOptions,
 		volatileInstructions?: string,
 		splitSystemMessages = true,
+		skillInstructions?: {
+			content: string;
+			/** Resolved from the conversation messages, which can hold caller breakpoints. */
+			cacheOptions?: (messages: ModelMessage[]) => ProviderOptions | undefined;
+		},
+		providerId?: string,
 	): LlmContext {
 		const messages = toAiMessages(
 			filterLlmMessages(stripOrphanedToolMessages(this.llmVisibleMessages())),
+			providerId,
 		);
 		// A masked window may be empty or start mid-exchange; anchor it with a
 		// synthetic user message so the model call stays valid.
@@ -346,6 +397,10 @@ export class AgentMessageList {
 				volatileInstructions,
 				this.mcpConnectionNote,
 				splitSystemMessages,
+				skillInstructions && {
+					content: skillInstructions.content,
+					providerOptions: skillInstructions.cacheOptions?.(messages),
+				},
 			),
 			messages,
 		};
@@ -408,9 +463,13 @@ export class AgentMessageList {
 		return this.all.filter((m) => this.inputSet.has(m));
 	}
 
-	removeInput(): void {
-		this.all = this.all.filter((message) => !this.inputSet.has(message));
-		this.inputSet.clear();
+	removeInput(messageIds: readonly string[]): void {
+		const ids = new Set(messageIds);
+		this.all = this.all.filter((message) => {
+			if (!this.inputSet.has(message) || !ids.has(message.id)) return true;
+			this.inputSet.delete(message);
+			return false;
+		});
 	}
 
 	/** All messages currently in the list, as live references. */
@@ -426,12 +485,16 @@ export class AgentMessageList {
 			inputIds: toIds(this.inputSet),
 			responseIds: toIds(this.responseSet),
 			...(this.activeSkillIds !== undefined ? { activeSkillIds: [...this.activeSkillIds] } : {}),
+			...(this.activeSkillVersions ? { activeSkillVersions: { ...this.activeSkillVersions } } : {}),
 		};
 	}
 
 	static deserialize(data: SerializedMessageList): AgentMessageList {
 		const list = new AgentMessageList();
 		list.activeSkillIds = data.activeSkillIds ? [...data.activeSkillIds] : undefined;
+		list.activeSkillVersions = data.activeSkillVersions
+			? { ...data.activeSkillVersions }
+			: undefined;
 		const historyIdSet = new Set(data.historyIds);
 		const inputIdSet = new Set(data.inputIds);
 		const responseIdSet = new Set(data.responseIds);

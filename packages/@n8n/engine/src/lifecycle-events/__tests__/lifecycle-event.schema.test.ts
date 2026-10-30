@@ -21,21 +21,27 @@ const stepEvent = {
 };
 
 const every: LifecycleEvent[] = [
-	{ type: 'execution:started', ...executionEvent, mode: 'manual' },
+	{ type: 'execution:started', ...executionEvent, mode: 'production', hostMode: 'webhook' },
+	{ type: 'execution:started', ...executionEvent, mode: 'manual', hostMode: 'manual' },
 	{ type: 'execution:completed', ...executionEvent },
 	{ type: 'execution:failed', ...executionEvent },
+	{ type: 'execution:cancelled', ...executionEvent },
 	{ type: 'step:started', ...stepEvent },
 	{ type: 'step:completed', ...stepEvent, outputs: [[{ json: { x: 1 } }], null] },
 	{ type: 'step:failed', ...stepEvent },
 ];
 
 describe('lifecycleEventSchema', () => {
-	// The union cannot drift, but a field the schema restates in its own
-	// vocabulary can. These pin those, in both directions.
-	it('keeps the mode enum in step with ExecutionMode', () => {
+	it('keeps the engine mode in step with ExecutionMode', () => {
 		expectTypeOf<
 			Extract<LifecycleEvent, { type: 'execution:started' }>['mode']
 		>().toEqualTypeOf<ExecutionMode>();
+	});
+
+	it('carries the host execution mode separately', () => {
+		expectTypeOf<
+			Extract<LifecycleEvent, { type: 'execution:started' }>['hostMode']
+		>().toEqualTypeOf<string>();
 	});
 
 	it('keeps the completed outputs in step with StepSlots', () => {
@@ -53,7 +59,7 @@ describe('lifecycleEventSchema', () => {
 
 	it('rejects an event type the engine cannot emit yet', () => {
 		expect(
-			lifecycleEventSchema.safeParse({ type: 'execution:cancelled', ...executionEvent }).success,
+			lifecycleEventSchema.safeParse({ type: 'execution:paused', ...executionEvent }).success,
 		).toBe(false);
 	});
 
@@ -76,6 +82,19 @@ describe('lifecycleEventSchema', () => {
 			lifecycleEventSchema.safeParse({ type: 'step:started', ...stepEvent, at: 'yesterday' })
 				.success,
 		).toBe(false);
+	});
+
+	it('treats the contents of an output slot as opaque', () => {
+		// Not JSON, so a schema that walked the slot would refuse it.
+		const outputs = [[{ json: { when: new Date(0), gap: undefined } }]];
+
+		const parsed = lifecycleEventSchema.safeParse({
+			type: 'step:completed',
+			...stepEvent,
+			outputs,
+		});
+
+		expect(parsed.success).toBe(true);
 	});
 
 	it('rejects a completed step without outputs', () => {

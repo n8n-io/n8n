@@ -20,6 +20,7 @@ mock.module('@actions/github', {
 
 const {
 	findCommentByMarker,
+	getPrEvents,
 	initGithub,
 	postOrUpdateComment,
 	setOctokit,
@@ -28,6 +29,33 @@ const {
 } = await import('./github-helpers.mjs');
 
 const ORIGINAL_ENV = { ...process.env };
+
+describe('getPrEvents', () => {
+	beforeEach(() => {
+		process.env.GITHUB_REPOSITORY = 'n8n-io/n8n';
+	});
+
+	afterEach(() => {
+		setOctokit(null);
+		process.env = { ...ORIGINAL_ENV };
+	});
+
+	it('paginates issue events for the pull request', async () => {
+		const events = [{ event: 'labeled', actor: { login: 'ana' } }];
+		const listEvents = {};
+		const paginate = mock.fn(async () => events);
+		setOctokit({ paginate, rest: { issues: { listEvents } } });
+
+		assert.equal(await getPrEvents(42), events);
+		assert.equal(paginate.mock.calls[0].arguments[0], listEvents);
+		assert.deepEqual(paginate.mock.calls[0].arguments[1], {
+			owner: 'n8n-io',
+			repo: 'n8n',
+			issue_number: 42,
+			per_page: 100,
+		});
+	});
+});
 
 describe('findCommentByMarker', () => {
 	beforeEach(() => {

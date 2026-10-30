@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { ref } from 'vue';
 import { createPinia } from 'pinia';
+import { waitFor } from '@testing-library/vue';
 import { onClickOutside } from '@vueuse/core';
 import { OVERLAY_LAYER_SELECTOR } from '@n8n/design-system';
 import { createComponentRenderer } from '@/__tests__/render';
+import { EmbeddedCanvasElementKey } from '@/app/constants/injectionKeys';
 import NodeCreator from './NodeCreator.vue';
 
 const mockFetchConfig = vi.fn();
@@ -51,7 +54,7 @@ vi.mock('@/app/stores/nodeTypes.store', () => ({
 }));
 
 vi.mock('@/app/stores/ui.store', () => ({
-	useUIStore: vi.fn(() => ({ headerHeight: 0 })),
+	useUIStore: vi.fn(() => ({ headerHeight: 65 })),
 }));
 
 vi.mock('@/features/shared/banners/banners.store', () => ({
@@ -70,7 +73,8 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	useCredentialsStore: vi.fn(() => ({})),
 }));
 
-vi.mock('@vueuse/core', () => ({
+vi.mock('@vueuse/core', async (importOriginal) => ({
+	...(await importOriginal<typeof import('@vueuse/core')>()),
 	onClickOutside: vi.fn(),
 }));
 
@@ -81,7 +85,7 @@ vi.mock('vue-router', () => ({
 }));
 
 const renderComponent = createComponentRenderer(NodeCreator, {
-	global: { plugins: [createPinia()] },
+	global: { plugins: [createPinia()], stubs: { NodesListPanel: true } },
 });
 
 describe('NodeCreator', () => {
@@ -103,5 +107,51 @@ describe('NodeCreator', () => {
 			expect.any(Function),
 			{ ignore: expect.arrayContaining(['.el-overlay-dialog', OVERLAY_LAYER_SELECTOR]) },
 		);
+	});
+
+	function clickOn(target: Element) {
+		const [[, handler]] = vi.mocked(onClickOutside).mock.calls;
+		const event = new PointerEvent('click');
+		Object.defineProperty(event, 'target', { value: target });
+		handler(event);
+	}
+
+	it('stays open on a click inside an overlay layer', () => {
+		const { emitted } = renderComponent();
+		const layer = document.body.appendChild(document.createElement('div'));
+		layer.setAttribute('data-dismissable-layer', '');
+
+		clickOn(layer.appendChild(document.createElement('button')));
+
+		expect(emitted('closeNodeCreator')).toBeUndefined();
+		layer.remove();
+	});
+
+	it('closes on a click outside it and outside any overlay layer', () => {
+		const { emitted } = renderComponent();
+		const outside = document.body.appendChild(document.createElement('div'));
+
+		clickOn(outside);
+
+		expect(emitted('closeNodeCreator')).toHaveLength(1);
+		outside.remove();
+	});
+
+	it('places the panel below the main header', () => {
+		const { getByTestId } = renderComponent({ props: { active: true } });
+
+		expect(getByTestId('node-creator')).toHaveStyle({ top: '65px' });
+	});
+
+	it('places the panel at the top of the embedded canvas', async () => {
+		const canvas = document.createElement('div');
+		canvas.getBoundingClientRect = () => new DOMRect(0, 120, 800, 600);
+
+		const { getByTestId } = renderComponent({
+			props: { active: true },
+			global: { provide: { [EmbeddedCanvasElementKey]: ref(canvas) } },
+		});
+
+		await waitFor(() => expect(getByTestId('node-creator')).toHaveStyle({ top: '120px' }));
 	});
 });

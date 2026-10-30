@@ -5,16 +5,18 @@ import { vi } from 'vitest';
 vi.mock('../../src/utils/eval-agents', () => ({
 	createEvalAgent: vi.fn(),
 	EPHEMERAL_CACHE: {},
-	SONNET_MODEL: 'test-sonnet-model',
+	JUDGE_MODEL: 'test-sonnet-model',
 }));
 
 import { createEvalAgent } from '../../src/utils/eval-agents';
-import { judgeExpectations } from '../build-expectations/assertion-judge';
+import { expectationResultSchema, judgeExpectations } from '../build-expectations/assertion-judge';
 
 const mockCreateEvalAgent = createEvalAgent as MockedFunction<typeof createEvalAgent>;
 
 type JudgeResponse = {
-	structuredOutput?: { results: Array<{ index: number; pass: boolean; reason: string }> };
+	structuredOutput?: {
+		results: Array<{ index: number; pass: boolean; reason: string; applicable?: boolean }>;
+	};
 };
 type GenerateFn = (messages: unknown, opts: unknown) => Promise<JudgeResponse>;
 type GenerateMock = Mock<GenerateFn>;
@@ -34,6 +36,16 @@ describe('judgeExpectations', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+	});
+
+	it('asks for the reason before the verdict', () => {
+		// Structured output writes keys in schema order, so `pass` must come after `reason`.
+		expect(Object.keys(expectationResultSchema.shape.results.element.shape)).toEqual([
+			'index',
+			'reason',
+			'pass',
+			'applicable',
+		]);
 	});
 
 	it('returns empty and never calls the agent when there are no assertions', async () => {
@@ -75,6 +87,32 @@ describe('judgeExpectations', () => {
 		expect(results).toEqual([
 			{ expectation: 'first', pass: true, reason: 'ok' },
 			{ expectation: 'second', pass: false, reason: 'no verdict returned', incomplete: true },
+		]);
+	});
+
+	it('keeps a not-applicable verdict out of the count, whatever its pass value', async () => {
+		const generate: GenerateMock = vi.fn<GenerateFn>().mockResolvedValue({
+			structuredOutput: {
+				results: [
+					{ index: 0, pass: true, reason: 'asked first' },
+					{ index: 1, pass: true, applicable: false, reason: 'no refinement turn came' },
+					{ index: 2, pass: false, applicable: true, reason: 'not edited' },
+				],
+			},
+		});
+		mockJudge(generate);
+
+		const results = await judgeExpectations(MESSAGES, ['asks', 'refines', 'edits']);
+
+		expect(results).toEqual([
+			{ expectation: 'asks', pass: true, reason: 'asked first' },
+			{
+				expectation: 'refines',
+				pass: false,
+				reason: 'not applicable: no refinement turn came',
+				incomplete: true,
+			},
+			{ expectation: 'edits', pass: false, reason: 'not edited' },
 		]);
 	});
 

@@ -1,4 +1,5 @@
 import { Logger, TypedEmitter } from '@n8n/backend-common';
+import { EventService, isBillableExecution } from '@n8n/backend-services';
 import { DatabaseConfig } from '@n8n/config';
 import type { CrashedExecution } from '@n8n/db';
 import {
@@ -19,11 +20,8 @@ import {
 	type WorkflowExecutionSource,
 } from 'n8n-workflow';
 
-import { EventService } from '@/events/event.service';
 import { UserService } from '@/services/user.service';
-import { isBillableExecution } from '@/utils/is-billable-execution';
 
-import { INSTANCE_ACTIVATED_SETTINGS_KEY } from './instance-activation.service';
 import { OwnershipService } from './ownership.service';
 
 type CompletedRunOutcome = {
@@ -91,8 +89,14 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		);
 		this.on('executionsCrashed', async ({ executions }) => {
 			// Record one at a time, to keep a large sweep within the database connection pool.
-			for (const { workflowId, workflowName, mode } of executions) {
-				await this.recordExecutionOutcome({ workflowId, workflowName, mode, status: 'crashed' });
+			for (const { workflowId, workflowName, mode, startedAt } of executions) {
+				await this.recordExecutionOutcome({
+					workflowId,
+					workflowName,
+					mode,
+					status: 'crashed',
+					startedAt,
+				});
 			}
 		});
 	}
@@ -125,7 +129,12 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		workflowName,
 		mode,
 		status,
-	}: { workflowId: string; workflowName?: string } & CompletedRunOutcome): Promise<void> {
+		startedAt,
+	}: {
+		workflowId: string;
+		workflowName?: string;
+		startedAt: Date | null;
+	} & CompletedRunOutcome): Promise<void> {
 		// Contain every failure: this runs from an emitter listener that captures
 		// rejections and has no `error` handler, so a rejection would end the process.
 		try {
@@ -138,7 +147,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				statisticsName,
 				workflowId,
 				workflowName,
-				isRoot: isBillableExecution(outcome),
+				isRoot: isBillableExecution({ ...outcome, startedAt }),
 				firstEventMs: Date.now(),
 			});
 		} catch (error) {
@@ -247,35 +256,6 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			workflowId,
 			userId,
 		});
-
-		await this.recordInstanceActivation(project.id, workflowId, userId, userActivatedAtMs);
-	}
-
-	/**
-	 * Record the instance's activation moment, exactly once, whatever the project type.
-	 *
-	 * The per-user `userActivated` flag above only covers personal projects, so an instance whose
-	 * first success happens in a team project would otherwise never look activated. Guarded by a
-	 * settings row, mirroring `instance.firstProductionFailure`. The row is the whole contract —
-	 * {@link InstanceActivationService} reads it — so there is no accompanying event.
-	 */
-	private async recordInstanceActivation(
-		projectId: string,
-		workflowId: string,
-		userId: string | null,
-		activatedAt: number,
-	): Promise<void> {
-		const alreadyActivated = await this.settingsRepository.findByKey(
-			INSTANCE_ACTIVATED_SETTINGS_KEY,
-		);
-
-		if (alreadyActivated) return;
-
-		await this.settingsRepository.save({
-			key: INSTANCE_ACTIVATED_SETTINGS_KEY,
-			value: JSON.stringify({ workflowId, projectId, userId, timestamp: activatedAt }),
-			loadOnStartup: false,
-		});
 	}
 
 	private async emitInstanceFirstProductionWorkflowFailed(
@@ -303,16 +283,18 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 
 		owner ??= await this.ownershipService.getInstanceOwner();
 
-		await this.settingsRepository.save({
-			key: 'instance.firstProductionFailure',
-			value: JSON.stringify({
+		const isFirstFailure = await this.settingsRepository.insertIfAbsent(
+			'instance.firstProductionFailure',
+			JSON.stringify({
 				workflowId,
 				projectId: project.id,
 				userId: owner.id,
 				timestamp: timestampMs,
 			}),
-			loadOnStartup: false,
-		});
+		);
+		if (!isFirstFailure) {
+			return;
+		}
 
 		this.eventService.emit('instance-first-production-workflow-failed', {
 			projectId: project.id,

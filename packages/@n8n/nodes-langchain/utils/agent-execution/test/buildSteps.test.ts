@@ -1,4 +1,5 @@
-import type { EngineResponse } from 'n8n-workflow';
+import fc from 'fast-check';
+import type { EngineResponse, IDataObject } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
 import { buildSteps } from '../buildSteps';
@@ -421,6 +422,96 @@ describe('buildSteps', () => {
 				});
 			});
 
+			it('should preserve a tool argument named id in reconstructed history', () => {
+				// AI-2805: The resource ID and the tool-call ID are separate values.
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Linear MCP Client',
+								input: { id: 'DEVP-1168' },
+								type: NodeConnectionTypes.AiTool,
+								id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+								metadata: {
+									itemIndex: 0,
+								},
+							},
+							data: {
+								data: {
+									ai_tool: [[{ json: { identifier: 'DEVP-1168' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+							},
+						},
+					],
+					metadata: {},
+				};
+
+				const result = buildSteps(response, itemIndex);
+
+				expect(result[0].action.messageLog?.[0]?.tool_calls?.[0]).toMatchObject({
+					id: 'call_TQdiKfJlpe8peHxrG1ilND2N',
+					args: { id: 'DEVP-1168' },
+				});
+			});
+
+			it('should keep user ID arguments separate from engine action IDs', () => {
+				const reservedFields = new Set(['id', 'log', 'type', 'tool', 'toolCallId']);
+				const toolArgumentsArbitrary = fc.dictionary(
+					fc.string({ minLength: 1, maxLength: 20 }).filter((key) => !reservedFields.has(key)),
+					fc.jsonValue(),
+					{ maxKeys: 8 },
+				);
+
+				fc.assert(
+					fc.property(
+						toolArgumentsArbitrary,
+						fc.uniqueArray(fc.string({ minLength: 1 }), { minLength: 3, maxLength: 3 }),
+						(toolArguments, [userId, actionId, changedActionId]) => {
+							const input = { ...toolArguments, id: userId };
+							const createResponse = (id: string): EngineResponse<RequestResponseMetadata> => ({
+								actionResponses: [
+									{
+										action: {
+											actionType: 'ExecutionNodeAction',
+											nodeName: 'Tool',
+											input,
+											type: NodeConnectionTypes.AiTool,
+											id,
+											metadata: { itemIndex },
+										},
+										data: {
+											data: { ai_tool: [[{ json: {} }]] },
+											executionTime: 0,
+											startTime: 0,
+											executionIndex: 0,
+											source: [],
+										},
+									},
+								],
+								metadata: {},
+							});
+
+							const [step] = buildSteps(createResponse(actionId), itemIndex);
+							const [changedIdStep] = buildSteps(createResponse(changedActionId), itemIndex);
+							const toolCall = step.action.messageLog?.[0]?.tool_calls?.[0];
+							const changedIdToolCall = changedIdStep.action.messageLog?.[0]?.tool_calls?.[0];
+
+							expect(toolCall?.args).toEqual(input);
+							expect(toolCall?.id).toBe(actionId);
+							expect(step.action.toolCallId).toBe(actionId);
+							expect(changedIdToolCall?.id).toBe(changedActionId);
+							expect(changedIdStep.action.toolCallId).toBe(changedActionId);
+							expect(changedIdToolCall?.args).toEqual(toolCall?.args);
+						},
+					),
+				);
+			});
+
 			it('should use custom log if provided', () => {
 				const response: EngineResponse<RequestResponseMetadata> = {
 					actionResponses: [
@@ -829,10 +920,7 @@ describe('buildSteps', () => {
 						action: {
 							actionType: 'ExecutionNodeAction',
 							nodeName: 'Calculator',
-							input: {
-								id: 'call_omitted_1',
-								input: { expression: '2+2' },
-							},
+							input: { expression: '2+2' },
 							type: NodeConnectionTypes.AiTool,
 							id: 'call_omitted_1',
 							metadata: {
@@ -1352,6 +1440,88 @@ describe('buildSteps', () => {
 				name: 'hitl_tool',
 			});
 		});
+
+		it('should mark a step that still carries HITL metadata as denied', () => {
+			const hitlAction = {
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName: 'HITL Node',
+				input: { id: 'call_123', input: { query: 'test' } },
+				type: NodeConnectionTypes.AiTool,
+				id: 'call_123',
+				metadata: {
+					itemIndex: 0,
+					hitl: {
+						toolName: 'hitl_tool',
+						gatedToolNodeName: 'Gated Tool',
+						originalInput: { query: 'test' },
+					},
+				},
+			};
+			const plainAction = {
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName: 'Calculator',
+				input: { id: 'call_456', input: '1+1' },
+				type: NodeConnectionTypes.AiTool,
+				id: 'call_456',
+				metadata: { itemIndex: 0 },
+			};
+			const data = {
+				data: { ai_tool: [[{ json: { output: 'done' } }]] },
+				executionTime: 0,
+				startTime: 0,
+				executionIndex: 0,
+				source: [],
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{ action: hitlAction, data },
+					{ action: plainAction, data },
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.hitlDenied).toBe(true);
+			expect(result[1].action).not.toHaveProperty('hitlDenied');
+		});
+
+		it('should mark a step whose tool run failed as errored', () => {
+			const action = (id: string, nodeName: string) => ({
+				actionType: 'ExecutionNodeAction' as const,
+				nodeName,
+				input: { id, input: { query: 'test' } },
+				type: NodeConnectionTypes.AiTool,
+				id,
+				metadata: { itemIndex: 0 },
+			});
+			const base = { executionTime: 0, startTime: 0, executionIndex: 0, source: [] };
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: action('call_123', 'Genie'),
+						data: {
+							...base,
+							data: {},
+							error: { message: 'Space not found', name: 'NodeOperationError' } as any,
+						},
+					},
+					{
+						action: action('call_456', 'Calculator'),
+						data: { ...base, data: { ai_tool: [[{ json: { output: '2' } }]] } },
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.errored).toBe(true);
+			expect(result[0].observation).toContain('Space not found');
+			expect(result[1].action).not.toHaveProperty('errored');
+		});
 	});
 
 	describe('Tool input extraction', () => {
@@ -1768,6 +1938,279 @@ describe('buildSteps', () => {
 			expect(
 				message.additional_kwargs?.__gemini_function_call_thought_signatures__,
 			).toBeUndefined();
+		});
+	});
+
+	describe('Anthropic parallel tool calls with a shared thinking block', () => {
+		const buildToolResponse = (
+			nodeName: string,
+			id: string,
+			input: IDataObject,
+			anthropic: RequestResponseMetadata['anthropic'] | undefined,
+			result: IDataObject,
+		): NonNullable<EngineResponse<RequestResponseMetadata>['actionResponses']>[number] => ({
+			action: {
+				actionType: 'ExecutionNodeAction',
+				nodeName,
+				input,
+				type: NodeConnectionTypes.AiTool,
+				id,
+				metadata: {
+					itemIndex: 0,
+					...(anthropic && { anthropic }),
+				},
+			},
+			data: {
+				data: {
+					ai_tool: [[{ json: result }]],
+				},
+				executionTime: 0,
+				startTime: 0,
+				executionIndex: 0,
+				source: [],
+			},
+		});
+
+		it('should group parallel tool calls that share one thinking block', () => {
+			// createEngineRequests copies one thinking block onto every tool call of the turn.
+			const sharedThinking = {
+				thinkingContent: '',
+				thinkingType: 'thinking' as const,
+				thinkingSignature: 'turn_signature_abc',
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse('Calculator', 'call_1', { expression: '2+2' }, sharedThinking, {
+						result: '4',
+					}),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, sharedThinking, {
+						temp: '72F',
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+
+			expect(result[0].action.messageLog).toHaveLength(1);
+			const sharedMessage = result[0].action.messageLog![0];
+			expect(sharedMessage.content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'turn_signature_abc' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+			// Array content is the Anthropic payload. tool_calls stays empty.
+			expect(sharedMessage.tool_calls).toEqual([]);
+
+			expect(result[1].action.messageLog).toEqual([]);
+
+			expect(result[0].action.toolCallId).toBe('call_1');
+			expect(result[1].action.toolCallId).toBe('call_2');
+			expect(result[0].observation).toBe(JSON.stringify([{ result: '4' }]));
+			expect(result[1].observation).toBe(JSON.stringify([{ temp: '72F' }]));
+		});
+
+		it('should group parallel tool calls that share one redacted_thinking block', () => {
+			const sharedThinking = {
+				thinkingContent: 'redacted_payload',
+				thinkingType: 'redacted_thinking' as const,
+			};
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse('Calculator', 'call_1', { expression: '2+2' }, sharedThinking, {
+						result: '4',
+					}),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, sharedThinking, {
+						temp: '72F',
+					}),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'redacted_thinking', data: 'redacted_payload' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+			expect(result[1].action.messageLog).toEqual([]);
+		});
+
+		it('should not group parallel tool calls whose thinking signatures differ', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+					buildToolResponse(
+						'Weather',
+						'call_2',
+						{ location: 'NYC' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_2' },
+						{ temp: '72F' },
+					),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog).toHaveLength(1);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_1' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+			]);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_2' },
+				{ type: 'tool_use', id: 'call_2', name: 'Weather', input: { location: 'NYC' } },
+			]);
+		});
+
+		it('should not group when only some parallel tool calls carry a thinking block', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+					buildToolResponse('Weather', 'call_2', { location: 'NYC' }, undefined, { temp: '72F' }),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(2);
+			expect(result[0].action.messageLog![0].content).toHaveLength(2);
+			expect(result[1].action.messageLog).toHaveLength(1);
+			expect(result[1].action.messageLog![0].content).toEqual([]);
+			expect(result[1].action.messageLog![0].tool_calls).toHaveLength(1);
+		});
+
+		it('should keep a single tool call with a thinking block as an individual AIMessage', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					buildToolResponse(
+						'Calculator',
+						'call_1',
+						{ expression: '2+2' },
+						{ thinkingContent: '', thinkingType: 'thinking', thinkingSignature: 'sig_1' },
+						{ result: '4' },
+					),
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result).toHaveLength(1);
+			expect(result[0].action.messageLog![0].content).toEqual([
+				{ type: 'thinking', thinking: '', signature: 'sig_1' },
+				{ type: 'tool_use', id: 'call_1', name: 'Calculator', input: { expression: '2+2' } },
+			]);
+		});
+	});
+
+	describe('Anthropic thinking block tool arguments', () => {
+		it('should replay the tool call arguments in the tool_use block', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'Research Agent',
+							input: { topic: 'solar panels', depth: 2 },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_args_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: 'I should research the topic.',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_args',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { result: 'done' } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			const message = result[0].action.messageLog![0];
+			expect(message.content[1]).toEqual({
+				type: 'tool_use',
+				id: 'call_args_1',
+				name: 'Research_Agent',
+				input: { topic: 'solar panels', depth: 2 },
+			});
+		});
+
+		it('should omit the toolkit routing field from the replayed tool arguments', () => {
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [
+					{
+						action: {
+							actionType: 'ExecutionNodeAction',
+							nodeName: 'MCP Client',
+							input: { query: 'open tickets', tool: 'list_tickets' },
+							type: NodeConnectionTypes.AiTool,
+							id: 'call_mcp_1',
+							metadata: {
+								itemIndex: 0,
+								anthropic: {
+									thinkingContent: '',
+									thinkingType: 'thinking',
+									thinkingSignature: 'sig_mcp',
+								},
+							},
+						},
+						data: {
+							data: {
+								ai_tool: [[{ json: { tickets: [] } }]],
+							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
+						},
+					},
+				],
+				metadata: {},
+			};
+
+			const result = buildSteps(response, itemIndex);
+
+			expect(result[0].action.tool).toBe('list_tickets');
+			expect(result[0].action.messageLog![0].content[1]).toEqual({
+				type: 'tool_use',
+				id: 'call_mcp_1',
+				name: 'list_tickets',
+				input: { query: 'open tickets' },
+			});
 		});
 	});
 });

@@ -2,7 +2,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useToast } from '@n8n/composables/useToast';
 import { useExposeAllWorkflowsToMcpStore } from '@/experiments/exposeAllWorkflowsToMcp/stores/exposeAllWorkflowsToMcp.store';
-import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
+import { useMCPStore } from '@n8n/frontend-module-mcp';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { defineComponent } from 'vue';
@@ -12,7 +12,8 @@ const { trackAutoExposeToggledSpy } = vi.hoisted(() => ({
 	trackAutoExposeToggledSpy: vi.fn(),
 }));
 
-vi.mock('@/features/ai/mcpAccess/composables/useMcp', () => ({
+vi.mock('@n8n/frontend-module-mcp', async (importOriginal) => ({
+	...(await importOriginal()),
 	useMcp: () => ({ trackAutoExposeToggled: trackAutoExposeToggledSpy }),
 }));
 
@@ -75,7 +76,7 @@ describe('ExposeAllWorkflowsToMcpModal', () => {
 	it('renders the copy and both actions', () => {
 		const { getByText, getByTestId } = renderComponent({ pinia, props: defaultProps });
 
-		expect(getByText('Expose all workflows to MCP?')).toBeInTheDocument();
+		expect(getByText('Enable MCP access for all workflows?')).toBeInTheDocument();
 		expect(getByTestId('expose-all-workflows-mcp-description')).toBeInTheDocument();
 		expect(getByTestId('expose-all-workflows-mcp-not-now-button')).toBeInTheDocument();
 		expect(getByTestId('expose-all-workflows-mcp-confirm-button')).toBeInTheDocument();

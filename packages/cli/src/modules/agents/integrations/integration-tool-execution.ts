@@ -1,9 +1,17 @@
-import type { InterruptibleToolContext, ToolContext } from '@n8n/agents';
+import {
+	APPROVAL_RESUME_SCHEMA,
+	type InterruptibleToolContext,
+	type ToolContext,
+} from '@n8n/agents';
 import { isRecord } from '@n8n/utils/is-record';
-import type { z } from 'zod';
+import { z } from 'zod';
 
 import { isTaskRunMemoryResourceId } from '../utils/agent-memory-scope';
-import { messageSchema, type IntegrationCardComponent } from './integration-tool-definitions';
+import {
+	actionNeedsApproval,
+	messageSchema,
+	type IntegrationCardComponent,
+} from './integration-tool-definitions';
 import { INTEGRATION_ERROR_CODES } from './integration-error-codes';
 import {
 	isIntegrationMessageContext,
@@ -22,13 +30,43 @@ import type {
 } from './integration-tool-types';
 import type { RawActionToolOperation, RawContextToolOperation } from './integration-tool-schema';
 
+/** Resume shape for the action tool, including a follow-up interactive card. */
+export const INTEGRATION_ACTION_RESUME_SCHEMA = z.record(z.string(), z.unknown());
+
+/**
+ * True when an action tool result reports that no reply will be sent
+ * (`do_not_respond`), on its own or inside a batch.
+ */
+export function isSilentActionOutput(output: unknown): boolean {
+	if (!isRecord(output)) return false;
+	if (output.silent === true) return true;
+	// Batched action calls nest per-operation results under `results`.
+	return (
+		Array.isArray(output.results) &&
+		output.results.some(
+			(entry) =>
+				isRecord(entry) &&
+				entry.action === 'do_not_respond' &&
+				isRecord(entry.result) &&
+				entry.result.ok === true &&
+				entry.result.silent === true,
+		)
+	);
+}
+
+export function integrationActionApprovalKey(connectionId: string, action: string): string {
+	return JSON.stringify(['integration_action', connectionId, action]);
+}
+
 export async function executeContextToolOperation(params: {
 	operation: RawContextToolOperation;
 	descriptor: IntegrationToolConnectionDescriptor;
 	queryExecutor: IntegrationContextQueryExecutor;
 	persistence: ToolContext['persistence'];
+	abortSignal?: AbortSignal;
 }): Promise<unknown> {
-	const { operation, descriptor, queryExecutor, persistence } = params;
+	const { operation, descriptor, queryExecutor, persistence, abortSignal } = params;
+	abortSignal?.throwIfAborted();
 
 	if (isCurrentContextQuery(operation.query)) {
 		if (!persistence) {
@@ -77,6 +115,7 @@ export async function executeContextToolOperation(params: {
 				query: 'get_user',
 				input: { userId: context.interactingUserId },
 				persistence,
+				abortSignal,
 			});
 		}
 
@@ -95,6 +134,7 @@ export async function executeContextToolOperation(params: {
 			query: 'get_channel_info',
 			input: { channelId },
 			persistence,
+			abortSignal,
 		});
 	}
 
@@ -103,6 +143,7 @@ export async function executeContextToolOperation(params: {
 		query: operation.query,
 		input: operation.input,
 		persistence,
+		abortSignal,
 	});
 }
 
@@ -149,6 +190,8 @@ export async function executeActionToolOperation(params: {
 	interruptCtx?: InterruptibleToolContext;
 	currentMessageContext?: IntegrationMessageContext;
 	allowSuspend: boolean;
+	/** Action the user just approved, so the gate below lets it through once. */
+	approvedAction?: string;
 }): Promise<unknown> {
 	const {
 		operation,
@@ -158,6 +201,7 @@ export async function executeActionToolOperation(params: {
 		ctx,
 		interruptCtx,
 		allowSuspend,
+		approvedAction,
 	} = params;
 	const persistence = ctx.persistence;
 	const message = parseMessage(operation.input.message);
@@ -173,6 +217,42 @@ export async function executeActionToolOperation(params: {
 					'Batch actions cannot include cards that wait for a user response. Send that action separately.',
 			},
 		};
+	}
+
+	const needsApproval =
+		operation.action !== approvedAction &&
+		actionNeedsApproval(descriptor.approval, operation.action) &&
+		!ctx.approvalContext?.approvedKeys.has(
+			integrationActionApprovalKey(descriptor.integrationConnectionId, operation.action),
+		);
+
+	if (needsApproval) {
+		// A batch cannot suspend, so a gated action inside one has to be refused
+		// rather than run — otherwise batching would be a way around the gate.
+		if (!allowSuspend || !interruptCtx) {
+			return {
+				ok: false,
+				error: {
+					code: INTEGRATION_ERROR_CODES.ACTION_NEEDS_APPROVAL,
+					message: `The action "${operation.action}" needs approval, which cannot be asked for here. Send that action on its own.`,
+				},
+			};
+		}
+
+		return await interruptCtx.suspend(
+			{
+				type: 'approval',
+				toolName: operation.action,
+				...(ctx.approvalContext ? { supportsSessionApproval: true } : {}),
+				displayName: describeActionForApproval(operation),
+				args: ctx.approvalContext?.getDisplayArgs
+					? ctx.approvalContext.getDisplayArgs(descriptor.actionToolName, actionInput)
+					: actionInput,
+			},
+			// The card's buttons are shaped from this schema, so the decision comes
+			// back as `{ approved }` rather than the tool's own resume shape.
+			{ resumeSchema: APPROVAL_RESUME_SCHEMA },
+		);
 	}
 
 	let currentMessageContext = params.currentMessageContext;
@@ -213,7 +293,9 @@ export async function executeActionToolOperation(params: {
 		// that task session. Chat mentions stay on their own thread.
 		// respond/edit/reaction operate on existing threads and do not bind.
 		if (
-			(operation.action === 'send_dm' || operation.action === 'send_channel_message') &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
 			descriptor.agentId &&
 			messageContext.target.threadId &&
 			isTaskRunMemoryResourceId(persistence.resourceId)
@@ -223,17 +305,57 @@ export async function executeActionToolOperation(params: {
 				{ threadId: persistence.threadId, resourceId: persistence.resourceId },
 			);
 		}
+		// A delivery failure arrives later and names only the message. This lets
+		// it reach the session that sent the message.
+		if (
+			descriptor.integration.type === 'whatsapp' &&
+			(operation.action === 'send_dm' ||
+				operation.action === 'send_channel_message' ||
+				operation.action === 'send_template') &&
+			descriptor.agentId &&
+			messageContext.messageId &&
+			messageContext.target.threadId
+		) {
+			try {
+				await messageContextStore.recordSentMessage(
+					`${descriptor.agentId}:${messageContext.target.threadId}`,
+					messageContext.messageId,
+					{ threadId: persistence.threadId, resourceId: persistence.resourceId },
+				);
+			} catch {
+				// The send worked. Without the record, a failure goes to the bound session.
+			}
+		}
 		actionResult = { ...result, messageContext };
 	}
 
 	if (!awaitsResponse) return actionResult;
 
-	return await interruptCtx?.suspend({
-		type: 'integration_action',
-		action: operation.action,
-		integrationConnectionId: descriptor.integrationConnectionId,
-		messageContext: actionResult.messageContext,
-	});
+	return await interruptCtx?.suspend(
+		{
+			type: 'integration_action',
+			action: operation.action,
+			integrationConnectionId: descriptor.integrationConnectionId,
+			messageContext: actionResult.messageContext,
+		},
+		// An approval resume leaves APPROVAL_RESUME_SCHEMA on this tool call. Name
+		// the action-tool schema here so a follow-up card is not still expecting
+		// `{ approved }`.
+		{ resumeSchema: INTEGRATION_ACTION_RESUME_SCHEMA },
+	);
+}
+
+/**
+ * Label for the approval card. The card only shows this line, so it has to name
+ * the destination — approving a bare `send_channel_message` tells the user
+ * nothing about where the message goes.
+ */
+function describeActionForApproval(operation: RawActionToolOperation): string {
+	const { channelId, userId, messageId, issueId } = operation.input;
+	const target = [channelId, userId, messageId, issueId].find(
+		(value) => typeof value === 'string' && value.length > 0,
+	);
+	return target ? `${operation.action} → ${String(target)}` : operation.action;
 }
 
 function isCurrentContextQuery(query: IntegrationContextQuery): boolean {

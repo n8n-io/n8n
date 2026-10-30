@@ -4,22 +4,33 @@ export type { EngineRuntime, EngineRuntimeOptions } from './runtime';
 export type { EngineLogger } from './logging';
 
 export {
-	ACTION_TOKEN,
-	IDENTITY_TOKEN,
+	ACTION_TOKEN_SPEC,
+	IDENTITY_TOKEN_SPEC,
 	InvalidActionTokenError,
 	InvalidIdentityTokenError,
 	mintActionToken,
 	mintIdentityToken,
+	mintResumeToken,
 	SharedSecretIdentityVerifier,
 	verifyActionToken,
 } from './auth';
 export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
 
-export type { EngineErrorResponse, ExecutionSnapshot, StepDetail } from './server';
 export type {
+	CancelExecutionResponse,
+	EngineErrorResponse,
+	ExecutionSnapshot,
+	StepDetail,
+} from './server';
+export type {
+	FindLatestExecutionRequest,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 	ExecutionListItem,
+	ResolveStepRequest,
+	ResolveStepResponse,
+	ResumeTargetRequest,
+	ResumeTargetResponse,
 } from './server';
 
 // The publisher stays internal: no host constructs or swaps one.
@@ -35,16 +46,23 @@ export type {
 } from './lifecycle-events';
 
 export {
-	ExecutionResponseChannel,
+	createResponseEmitter,
 	executionResponseSchema,
-	InMemoryResponseTransport,
-	noopResponseTransport,
+	noopExecutionResponseSender,
+	noopResponseEmitter,
+	RESPONSE_EXPECTATION_KINDS,
+	responseExpectationSchema,
 } from './response-channel';
 export type {
+	ChunkMessage,
 	EndedMessage,
 	ExecutionResponse,
-	ResponseTransport,
-	Unsubscribe,
+	ExecutionResponseSender,
+	ResponseEmitter,
+	ResponseExpectation,
+	ResponseExpectationKind,
+	ResponseMessage,
+	UndeliverableMessage,
 } from './response-channel';
 
 export { UnimplementedError } from './common';
@@ -57,16 +75,21 @@ export type {
 	GraphNode,
 	StepConfig,
 	StepType,
+	StoredWorkflowGraph,
 	WorkflowGraph,
 	WorkflowLoop,
 } from './graph';
 
 export type {
+	ExecutionFilesDeleter,
+	ExecutionLocation,
 	ExternalDependencies,
 	IStepExecutor,
 	StepExecutionContext,
 	StepExecutionRequest,
 	StepExecutionResult,
+	SubExecutionDeclaration,
+	SubExecutionMode,
 } from './dependencies';
 
 export { AllowAllAdmittance, AdmittanceRejectedError } from './admittance';
@@ -85,28 +108,35 @@ export type {
 	WorkQueue,
 } from './queue';
 
-export { ExecutionNotFoundError, StepNotFoundError } from './execution';
+export { ExecutionNotFoundError, InvalidParentLinkError, StepNotFoundError } from './execution';
 export type {
 	CallerContext,
 	ExecutionMode,
 	ExecutionViewStore,
 	ExecutionRecord,
 	ExecutionStatus,
+	DueStep,
 	ExecutionStore,
 	ExecutionView,
 	NewExecutionRecord,
 	NewStepRecord,
+	ParentLink,
+	InvalidParentLinkReason,
 	StartExecutionRequest,
 	StartExecutionResult,
 	StepError,
 	StepKey,
 	StepKeyId,
 	StepRecord,
+	ResumeCause,
 	StepSlots,
 	StepStatus,
 	StepStore,
 	StepView,
+	SeededSteps,
 	TriggerOutputs,
+	ExecutorWaitDeclaration,
+	WaitDeclaration,
 	WorkflowDocument,
 } from './execution';
 

@@ -122,7 +122,7 @@ watch(
 			<N8nButton
 				v-for="metric in selectedCannedMetrics"
 				:key="metric.key"
-				variant="subtle"
+				variant="outline"
 				size="small"
 				icon="x"
 				:aria-label="locale.baseText('evaluations.tests.detail.removeMetric')"

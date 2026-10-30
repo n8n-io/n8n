@@ -10,7 +10,8 @@ import { mock, mockDeep } from 'vitest-mock-extended';
 
 import type { DatabricksJobRun } from '../actions/interfaces';
 import { DEFAULT_MAX_PAGES, JOB_RUNS_MAX_PAGE_SIZE } from '../transport';
-import { OVERLAP_MS, pollJobRunEvents } from '../trigger/jobRunEvents';
+import { pollJobRunEvents } from '../trigger/jobRunEvents';
+import { OVERLAP_MS } from '../trigger/shared';
 
 const HOST = 'https://adb-example.cloud.databricks.com';
 const JOB_ID = 281874479417551;

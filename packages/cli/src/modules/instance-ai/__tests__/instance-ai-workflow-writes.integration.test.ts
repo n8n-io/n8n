@@ -16,7 +16,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { License } from '@/license';
 import { Push } from '@/push';
-import { CacheService } from '@/services/cache/cache.service';
+import { CacheService } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { createMember, createOwner } from '@test-integration/db/users';
 

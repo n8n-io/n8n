@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { screen, waitFor } from '@testing-library/vue';
+import { fireEvent, screen, waitFor } from '@testing-library/vue';
 
 import N8nUserSelect from '.';
 import { createComponentRenderer } from '../../__tests__/render';
@@ -15,7 +15,9 @@ const getRenderedOptions = async () => {
 
 const filterInput = async (filterText: string) => {
 	const input = screen.getByRole('combobox');
-	await userEvent.type(input, filterText);
+	await userEvent.click(input);
+	// Set the query in one input event. Per-character events repeat filtering and DOM updates.
+	await fireEvent.update(input, filterText);
 };
 
 const sampleUsers: IUser[] = [
@@ -141,35 +143,34 @@ describe('UserSelect', () => {
 		});
 	});
 
-	it('filters users by email (case-sensitive for filter term, if full name does not match)', async () => {
-		renderComponent({
-			props: {
-				users: sampleUsers,
-			},
-		});
+	it.each([
+		{ query: 'alice@example.com', expectedIds: ['u1'] },
+		{ query: 'Example.com', expectedIds: [] },
+		{ query: 'example.com', expectedIds: sampleUsers.map((user) => user.id) },
+	])(
+		'filters users by email with the case-sensitive query "$query"',
+		async ({ query, expectedIds }) => {
+			renderComponent({ props: { users: sampleUsers } });
 
-		await filterInput('alice@example.com');
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(1);
-			expect(options[0]).toHaveAttribute('id', 'user-select-option-id-u1');
-		});
+			await filterInput(query);
 
-		await userEvent.click(document.body);
+			if (expectedIds.length === 0) {
+				await waitFor(() => {
+					expect(screen.getByText('No matching users')).toBeVisible();
+					expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+				});
+				return;
+			}
 
-		await filterInput('Example.com'); // Email part of filter is case-sensitive in the component's logic
-		await waitFor(() => {
-			expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
-		});
-
-		await userEvent.click(document.body);
-
-		await filterInput('example.com'); // Matches all users with email containing 'example.com'
-		await waitFor(async () => {
-			const options = await getRenderedOptions();
-			expect(options.length).toBe(sampleUsers.length);
-		});
-	});
+			await waitFor(async () => {
+				const options = await getRenderedOptions();
+				expect(options).toHaveLength(expectedIds.length);
+				expect(Array.from(options, (option) => option.id)).toEqual(
+					expect.arrayContaining(expectedIds.map((id) => `user-select-option-id-${id}`)),
+				);
+			});
+		},
+	);
 
 	it('filters by full name and email and sorts by last name', async () => {
 		const specificUsers: IUser[] = [
@@ -415,5 +416,67 @@ describe('UserSelect', () => {
 			const optionIds = Array.from(options).map((o) => o.getAttribute('id'));
 			expect(optionIds).not.toContain('user-select-option-id-u1');
 		});
+	});
+
+	it('should show the name and the email of the selected user', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		await waitFor(() =>
+			expect(getByRole('combobox')).toHaveValue('Alice Smith (alice@example.com)'),
+		);
+	});
+
+	it('should show only the name of the selected user when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('Alice Smith'));
+	});
+
+	it('should show the email of a selected user without a name when hideEmailInLabel is set', async () => {
+		const { getByRole } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u5', hideEmailInLabel: true },
+		});
+
+		await waitFor(() => expect(getByRole('combobox')).toHaveValue('eve@example.com'));
+	});
+
+	it('should show the avatar of the selected user when showAvatar is set', async () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1', showAvatar: true },
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('AS'));
+	});
+
+	it('should take the avatar initials from the full name when the user has no first or last name', async () => {
+		const { getByTestId } = renderComponent({
+			props: {
+				users: [{ id: 'u9', email: 'nina@example.com', fullName: 'Nina Park' }],
+				modelValue: 'u9',
+				showAvatar: true,
+			},
+		});
+
+		await waitFor(() => expect(getByTestId('user-select-avatar')).toHaveTextContent('NP'));
+	});
+
+	it('should not show an avatar by default', () => {
+		const { queryByTestId } = renderComponent({
+			props: { users: sampleUsers, modelValue: 'u1' },
+		});
+
+		expect(queryByTestId('user-select-avatar')).not.toBeInTheDocument();
+	});
+
+	it('should mark the select as borderless when borderless is set', () => {
+		const { getByTestId } = renderComponent({
+			props: { users: sampleUsers, borderless: true },
+		});
+
+		expect(getByTestId('user-select-trigger')).toHaveClass('borderless');
 	});
 });

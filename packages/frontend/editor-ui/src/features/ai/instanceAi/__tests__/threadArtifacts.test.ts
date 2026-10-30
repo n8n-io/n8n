@@ -47,6 +47,18 @@ describe('buildThreadArtifactsContext', () => {
 		});
 	});
 
+	it('indexes skills', () => {
+		expect(
+			buildThreadArtifactsContext(
+				[entry({ type: 'skill', id: 'skill-1', name: 'Brand voice' })],
+				'skill-1',
+			),
+		).toEqual({
+			artifacts: [{ type: 'skill', id: 'skill-1', name: 'Brand voice' }],
+			activeId: 'skill-1',
+		});
+	});
+
 	it('keeps the newest tabs and the focused one when over the cap', () => {
 		const entries = Array.from({ length: 25 }, (_, index) =>
 			entry({ type: 'workflow', id: `wf-${index}`, name: `Workflow ${index}` }),
@@ -66,6 +78,61 @@ describe('buildThreadArtifactsContext', () => {
 			buildThreadArtifactsContext([entry({ type: 'workflow', id: 'wf-1', name: 'A' })], 'other'),
 		).toEqual({
 			artifacts: [{ type: 'workflow', id: 'wf-1', name: 'A' }],
+		});
+	});
+
+	describe('with the open tabs of the thread view', () => {
+		const produced = [
+			entry({ type: 'workflow', id: 'wf-1', name: 'First', archived: true }),
+			entry({ type: 'workflow', id: 'wf-2', name: 'Second' }),
+			entry({ type: 'agent', id: 'agent-1', name: 'Agent', projectId: 'proj-1', pending: true }),
+		];
+
+		it('sends the open tabs in tab order, not every produced artifact', () => {
+			expect(
+				buildThreadArtifactsContext(produced, 'wf-2', [
+					{ type: 'workflow', id: 'wf-2', name: 'Second' },
+					{ type: 'data-table', id: 'dt-9', name: 'Picked table', projectId: 'proj-1' },
+				]),
+			).toEqual({
+				artifacts: [
+					{ type: 'workflow', id: 'wf-2', name: 'Second' },
+					{ type: 'data-table', id: 'dt-9', name: 'Picked table', projectId: 'proj-1' },
+				],
+				activeId: 'wf-2',
+			});
+		});
+
+		it('sends an empty list when every tab is closed', () => {
+			expect(buildThreadArtifactsContext(produced, undefined, [])).toEqual({ artifacts: [] });
+		});
+
+		it('keeps the archived and pending flags of the produced artifacts', () => {
+			expect(
+				buildThreadArtifactsContext(produced, undefined, [
+					{ type: 'workflow', id: 'wf-1', name: 'First' },
+					{ type: 'agent', id: 'agent-1', name: 'Agent', projectId: 'proj-1' },
+				])?.artifacts,
+			).toEqual([
+				{ type: 'workflow', id: 'wf-1', name: 'First', archived: true },
+				{ type: 'agent', id: 'agent-1', name: 'Agent', projectId: 'proj-1', pending: true },
+			]);
+		});
+
+		it('keeps the first tabs and the focused one when over the cap', () => {
+			const tabs = Array.from({ length: 25 }, (_, index) => ({
+				type: 'workflow' as const,
+				id: `wf-${index}`,
+				name: `Workflow ${index}`,
+			}));
+
+			const result = buildThreadArtifactsContext([], 'wf-24', tabs);
+
+			expect(result?.artifacts).toHaveLength(20);
+			expect(result?.artifacts[0]?.id).toBe('wf-0');
+			expect(result?.artifacts.at(-1)?.id).toBe('wf-24');
+			expect(result?.artifacts.some((artifact) => artifact.id === 'wf-19')).toBe(false);
+			expect(result?.activeId).toBe('wf-24');
 		});
 	});
 });

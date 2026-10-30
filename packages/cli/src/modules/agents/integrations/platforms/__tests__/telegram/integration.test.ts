@@ -7,15 +7,14 @@ import { createHmac } from 'crypto';
 import { mock } from 'vitest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { ConflictError } from '@/errors/response-errors/conflict.error';
-import type { UrlService } from '@/services/url.service';
+import { BadRequestError, ConflictError } from '@n8n/errors';
+import type { UrlService } from '@n8n/backend-services';
 
-import type { Agent } from '../../../../entities/agent.entity';
+import type { ProjectAgent } from '../../../../entities/agent.entity';
 import type { AgentRepository } from '../../../../repositories/agent.repository';
 import type { AgentChatIntegrationContext } from '../../../agent-chat-integration';
 import { loadTelegramAdapter } from '../../../esm-loader';
-import { TelegramIntegration } from '../../telegram-integration';
+import { TelegramIntegration } from '../../telegram/telegram-integration';
 
 vi.mock('../../../esm-loader', () => ({
 	loadTelegramAdapter: vi.fn(),
@@ -30,7 +29,7 @@ const makeAgent = (
 	id: string,
 	name: string,
 	integrations: Array<{ type: string; credentialId: string }>,
-) => ({ id, name, integrations }) as Agent;
+) => ({ id, name, integrations }) as ProjectAgent;
 
 const makeContext = (
 	overrides: Partial<AgentChatIntegrationContext> = {},

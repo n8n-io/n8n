@@ -5,6 +5,7 @@ import type { APIRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
+import type { Server } from 'node:http';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
@@ -17,8 +18,9 @@ import { License } from '@/license';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
+import { packagedModules } from '@/modules/modules.manifest';
 import { ApiKeyAuthStrategy } from '@/services/api-key-auth.strategy';
-import { AuthStrategyRegistry } from '@/services/auth-strategy.registry';
+import { AuthStrategyRegistry } from '@n8n/backend-services/auth';
 import { SessionCookieAuthStrategy } from '@/services/session-cookie-auth.strategy';
 import { Telemetry } from '@/telemetry';
 import { resolveBackendHealthEndpointPath } from '@/utils/health-endpoint.util';
@@ -49,10 +51,10 @@ function prefix(pathSegment: string) {
 
 const browserId = 'test-browser-id';
 function createAgent(
-	app: express.Application,
+	target: express.Application | Server,
 	options?: { auth: boolean; user?: User; noRest?: boolean },
 ) {
-	const agent = request.agent(app);
+	const agent = request.agent(target);
 
 	const withRestSegment = !options?.noRest;
 
@@ -74,7 +76,7 @@ const userDoesNotHaveApiKey = (user: User) => {
 };
 
 const publicApiAgent = (
-	app: express.Application,
+	target: express.Application | Server,
 	{ user, apiKey, version = 1 }: { user?: User; apiKey?: string; version?: number },
 ) => {
 	if (user && apiKey) {
@@ -87,15 +89,19 @@ const publicApiAgent = (
 
 	const agentApiKey = apiKey ?? user?.apiKeys[0].apiKey;
 
-	const agent = request.agent(app);
+	const agent = request.agent(target);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
 	if (!user && !apiKey) return agent;
 	void agent.set({ 'X-N8N-API-KEY': agentApiKey });
 	return agent;
 };
 
-const publicApiAgentWithCookie = (app: express.Application, user: User, version = 1) => {
-	const agent = request.agent(app);
+const publicApiAgentWithCookie = (
+	target: express.Application | Server,
+	user: User,
+	version = 1,
+) => {
+	const agent = request.agent(target);
 	void agent.use(prefix(`${PUBLIC_API_REST_PATH_SEGMENT}/v${version}`));
 	// browser-id is needed for session cookie auth
 	void agent.use(async (req: superagent.SuperAgentRequest) => {
@@ -113,6 +119,7 @@ export const setupTestServer = ({
 	quotas,
 	modules,
 	setupTimeout,
+	reuseServer,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -126,6 +133,7 @@ export const setupTestServer = ({
 	// Mock all telemetry and logging
 	Container.set(Logger, mockLogger());
 	const postHog = mockInstance(PostHogClient);
+	postHog.getFeatureFlagForInstance.mockResolvedValue(undefined);
 	postHog.getFeatureFlagsAndPayloads.mockResolvedValue({
 		featureFlags: {},
 		featureFlagPayloads: {},
@@ -133,22 +141,24 @@ export const setupTestServer = ({
 	mockInstance(Push);
 	mockInstance(Telemetry);
 
+	const httpServer = app.listen(0);
+	const target = reuseServer ? httpServer : app;
 	const testServer: TestServer = {
 		app,
-		httpServer: app.listen(0),
-		authAgentFor: (user: User) => createAgent(app, { auth: true, user }),
-		authlessAgent: createAgent(app),
-		restlessAgent: createAgent(app, { auth: false, noRest: true }),
-		publicApiAgentFor: (user) => publicApiAgent(app, { user }),
-		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(app, { apiKey }),
-		publicApiAgentWithoutApiKey: () => publicApiAgent(app, {}),
-		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(app, user),
+		httpServer,
+		authAgentFor: (user: User) => createAgent(target, { auth: true, user }),
+		authlessAgent: createAgent(target),
+		restlessAgent: createAgent(target, { auth: false, noRest: true }),
+		publicApiAgentFor: (user) => publicApiAgent(target, { user }),
+		publicApiAgentWithApiKey: (apiKey) => publicApiAgent(target, { apiKey }),
+		publicApiAgentWithoutApiKey: () => publicApiAgent(target, {}),
+		publicApiAgentWithCookie: (user) => publicApiAgentWithCookie(target, user),
 		license: new LicenseMocker(),
 	};
 
 	// eslint-disable-next-line complexity
 	beforeAll(async () => {
-		if (modules) await testModules.loadModules(modules);
+		if (modules) await testModules.loadModules(modules, packagedModules);
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
@@ -234,6 +244,10 @@ export const setupTestServer = ({
 						await import('@/controllers/ai-preference.controller.js');
 						break;
 
+					case 'instance-ai':
+						await import('@/modules/instance-ai/instance-ai.controller.js');
+						break;
+
 					case 'license':
 						await import('@/license/license.controller.js');
 						break;
@@ -242,7 +256,7 @@ export const setupTestServer = ({
 						// CacheService must be initialized before PrometheusMetricsService
 						// because cache-metrics.service calls isRedis() during init, which
 						// reads this.cache.kind — only set after CacheService.init() resolves.
-						const { CacheService } = await import('@/services/cache/cache.service.js');
+						const { CacheService } = await import('@n8n/backend-services');
 						await Container.get(CacheService).init();
 						const { PrometheusMetricsService } = await import('@/metrics/prometheus/index.js');
 						Container.get(PrometheusMetricsService).init(app);
@@ -263,6 +277,10 @@ export const setupTestServer = ({
 
 					case 'oauth2':
 						await import('@/controllers/oauth/oauth2-credential.controller.js');
+						break;
+
+					case 'jwks':
+						await import('@/jwks/jwks.controller.js');
 						break;
 
 					case 'mfa':
@@ -388,7 +406,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'insights':
-						await import('@/modules/insights/insights.module.js');
+						await import('@n8n/backend-module-insights/module');
 						break;
 
 					case 'data-table':
@@ -411,12 +429,20 @@ export const setupTestServer = ({
 						await import('@/controllers/security-settings.controller.js');
 						break;
 
+					case 'public-api-rate-limit-settings':
+						await import('@/controllers/public-api-rate-limit-settings.controller.js');
+						break;
+
 					case 'third-party-licenses':
 						await import('@/controllers/third-party-licenses.controller.js');
 						break;
 
 					case 'encryption-keys':
 						await import('@/modules/encryption-key-manager/encryption-key.controller.js');
+						break;
+
+					case 'trusted-sources':
+						await import('@/modules/inbound-auth-core/trusted-source.controller.js');
 						break;
 
 					case 'test-webhooks':
@@ -432,6 +458,11 @@ export const setupTestServer = ({
 			}
 
 			await Container.get(ModuleRegistry).initModules('main');
+			// As `start` does: the skills module reads the credentials of its sources through cli.
+			const { registerSkillSourceCredentials } = await import(
+				'@/credentials/skill-source-credentials.js'
+			);
+			registerSkillSourceCredentials();
 			Container.get(ControllerRegistry).activate(app);
 
 			await Container.get(AuthHandlerRegistry).init();

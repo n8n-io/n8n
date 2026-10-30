@@ -18,7 +18,7 @@ import type { CreateCheckFn, CustomRegex } from '../types';
  * Includes global and region-specific types (US, UK, Spain, Italy, etc.).
  * These map to regex patterns for detection.
  */
-// eslint-disable-next-line no-restricted-syntax
+// eslint-disable-next-line n8n-local-rules/no-raw-enum
 export enum PIIEntity {
 	// Global
 	CREDIT_CARD = 'CREDIT_CARD',

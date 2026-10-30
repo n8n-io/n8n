@@ -6,12 +6,10 @@ import { Time } from '@n8n/constants';
 import type { ErrorReporter, InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
-import type { Agent } from '../../entities/agent.entity';
+import type { AgentChannelRef } from '../../utils/agent-channel';
+import type { ProjectAgent } from '../../entities/agent.entity';
 import type { AgentChannelStatus } from '../../entities/agent-channel-status.entity';
-import type {
-	AgentChannelRef,
-	AgentChannelStatusRepository,
-} from '../../repositories/agent-channel-status.repository';
+import type { AgentChannelStatusRepository } from '../../repositories/agent-channel-status.repository';
 import type { AgentRepository } from '../../repositories/agent.repository';
 import { AgentChannelReconciler } from '../agent-channel-reconciler.service';
 import { AgentChannelStatusReporter } from '../agent-channel-status-reporter';
@@ -39,6 +37,14 @@ class FakeIntegration extends AgentChatIntegration {
 		return this.leaderOnly;
 	}
 
+	buildOriginDraft() {
+		return undefined;
+	}
+
+	resolveEpisodicScope() {
+		return null;
+	}
+
 	async createAdapter(): Promise<unknown> {
 		return {};
 	}
@@ -47,8 +53,8 @@ class FakeIntegration extends AgentChatIntegration {
 const slack: AgentIntegrationConfig = { type: 'slack', credentialId: 'cred-slack' };
 const telegram: AgentIntegrationConfig = { type: 'telegram', credentialId: 'cred-telegram' };
 
-function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): Agent {
-	return { id, projectId: 'project-1', integrations } as unknown as Agent;
+function makeAgent(integrations: AgentIntegrationConfig[], id = 'agent-1'): ProjectAgent {
+	return { id, projectId: 'project-1', integrations } as unknown as ProjectAgent;
 }
 
 function refOf(integration: AgentIntegrationConfig, agentId = 'agent-1'): AgentChannelRef {
@@ -232,6 +238,7 @@ describe('AgentChannelReconciler', () => {
 			expect(channelStatusRepository.refreshOwnLease).toHaveBeenCalledWith(
 				refOf(slack),
 				expect.any(Date),
+				{},
 			);
 			expect(channelStatusRepository.saveOwn).not.toHaveBeenCalled();
 		});
@@ -249,6 +256,7 @@ describe('AgentChannelReconciler', () => {
 			expect(channelStatusRepository.saveOwn).toHaveBeenCalledWith(
 				refOf(slack),
 				expect.objectContaining({ status: 'connected', attempts: 0, backoffUntil: null }),
+				{},
 			);
 		});
 
@@ -264,6 +272,7 @@ describe('AgentChannelReconciler', () => {
 			expect(channelStatusRepository.saveOwn).toHaveBeenCalledWith(
 				refOf(slack),
 				expect.objectContaining({ status: 'connected', errorMessage: null }),
+				{},
 			);
 		});
 	});
@@ -289,6 +298,7 @@ describe('AgentChannelReconciler', () => {
 			expect(channelStatusRepository.refreshOwnLease).toHaveBeenCalledWith(
 				refOf(slack),
 				expect.any(Date),
+				{},
 			);
 			// Still a held-back retry, not a fresh attempt.
 			expect(channelStatusRepository.saveOwn).not.toHaveBeenCalled();
@@ -394,8 +404,7 @@ describe('AgentChannelReconciler', () => {
 
 			// Reads are scoped to this host; the only cross-host write is the
 			// expiry sweep.
-			expect(channelStatusRepository.findOwnAll).toHaveBeenCalled();
-			expect(channelStatusRepository.find).not.toHaveBeenCalled();
+			expect(channelStatusRepository.findOwnAll).toHaveBeenCalledWith({});
 			expect(channelStatusRepository.findByAgentId).not.toHaveBeenCalled();
 		});
 
@@ -413,7 +422,7 @@ describe('AgentChannelReconciler', () => {
 
 			await reconciler.reconcile('interval');
 
-			expect(channelStatusRepository.deleteExpired).toHaveBeenCalledWith(expect.any(Date));
+			expect(channelStatusRepository.deleteExpired).toHaveBeenCalledWith(expect.any(Date), {});
 		});
 	});
 
@@ -437,7 +446,7 @@ describe('AgentChannelReconciler', () => {
 
 			await reconciler.reconcile('interval');
 
-			expect(channelStatusRepository.clearOwnChannel).toHaveBeenCalledWith(refOf(slack));
+			expect(channelStatusRepository.clearOwnChannel).toHaveBeenCalledWith(refOf(slack), {});
 		});
 
 		it('keeps its own row for a channel it should still be running', async () => {
@@ -720,7 +729,7 @@ describe('AgentChannelReconciler — role changes while a pass is running', () =
 		await reconciler.reconcile('interval');
 
 		expect(chatIntegrationService.startChannel).not.toHaveBeenCalled();
-		expect(channelStatusRepository.clearOwnChannel).toHaveBeenCalledWith(refOf(telegram));
+		expect(channelStatusRepository.clearOwnChannel).toHaveBeenCalledWith(refOf(telegram), {});
 	});
 
 	it('does not report a startup that finished after shutdown stopped waiting', async () => {

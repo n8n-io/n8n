@@ -4,7 +4,12 @@ import type { CallToolResult } from '@modelcontextprotocol/sdk/types.js';
 
 import { McpToolResolver } from './mcp-tool-resolver';
 import { wrapToolForApproval } from '../../sdk/tool';
-import type { McpServerConfig, McpToolCallSettledEvent } from '../../types/sdk/mcp';
+import type {
+	McpServerConfig,
+	McpToolCallSettledEvent,
+	McpToolDescriptor,
+	McpRequireApproval,
+} from '../../types/sdk/mcp';
 import type { BuiltTool } from '../../types/sdk/tool';
 
 /** The raw result returned by an MCP tool call. */
@@ -22,9 +27,10 @@ export type McpCallToolResult = CallToolResult;
 async function importMcpSdk() {
 	const [
 		{ Client },
+		// oxlint-disable-next-line typescript/no-deprecated -- Explicit SSE keeps older servers available.
 		{ SSEClientTransport },
 		{ StdioClientTransport },
-		{ StreamableHTTPClientTransport },
+		{ StreamableHTTPClientTransport, StreamableHTTPError },
 		{ CallToolResultSchema },
 	] = await Promise.all([
 		import('@modelcontextprotocol/sdk/client/index.js'),
@@ -38,6 +44,7 @@ async function importMcpSdk() {
 		SSEClientTransport,
 		StdioClientTransport,
 		StreamableHTTPClientTransport,
+		StreamableHTTPError,
 		CallToolResultSchema,
 	};
 }
@@ -85,6 +92,7 @@ export class McpConnection {
 	private client: McpClient | undefined;
 
 	private config: McpServerConfig;
+	private httpFetch: typeof fetch | undefined;
 
 	private connectionPromise: Promise<void> | undefined = undefined;
 	private disconnectPromise: Promise<void> | undefined = undefined;
@@ -105,18 +113,59 @@ export class McpConnection {
 		// open (doDisconnect() no-ops while `closed` is true).
 		this.closed = false;
 		this.disconnectPromise = undefined;
-		const sdk = await loadMcpSdk();
-		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
-		this.connectionPromise = this.connectWithTransport(this.createTransport(this.config, sdk));
+		const connectionPromise = this.doConnect();
+		this.connectionPromise = connectionPromise;
 		try {
-			await this.connectionPromise;
+			await connectionPromise;
 		} catch (error) {
-			this.connectionPromise = undefined;
+			if (this.connectionPromise === connectionPromise) this.connectionPromise = undefined;
 			throw error;
 		}
 	}
 
-	private async connectWithTransport(transport: McpTransport): Promise<void> {
+	private async doConnect(): Promise<void> {
+		const sdk = await loadMcpSdk();
+		this.httpFetch = this.config.fetch;
+		// Custom fetches can manage auth across redirects when no extra headers are configured.
+		if (this.config.url && (!this.httpFetch || this.config.headers)) {
+			const { createRefreshingAuthFetch } = await import('@n8n/ai-utilities/refreshing-auth-fetch');
+			this.httpFetch = createRefreshingAuthFetch({
+				baseFetch: this.httpFetch ?? globalThis.fetch,
+				initialHeaders: this.config.headers,
+			});
+		}
+		this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
+		await this.connectPreferredTransport(sdk);
+	}
+
+	private async connectPreferredTransport(sdk: McpSdkModule): Promise<void> {
+		const deadline =
+			this.config.connectionTimeoutMs === undefined
+				? undefined
+				: Date.now() + this.config.connectionTimeoutMs;
+		try {
+			await this.connectWithTransport(this.createTransport(this.config, sdk), deadline);
+		} catch (error) {
+			// An unconfigured HTTP endpoint may still serve legacy SSE. Retry only when
+			// it rejects Streamable HTTP; explicit transport choices never fall back.
+			if (
+				!this.config.url ||
+				this.config.transport !== undefined ||
+				!(error instanceof sdk.StreamableHTTPError) ||
+				(error.code !== 404 && error.code !== 405)
+			) {
+				throw error;
+			}
+			await this.client?.close();
+			this.client = new sdk.Client({ name: '@n8n/agents', version: '0.1.0' }, { capabilities: {} });
+			await this.connectWithTransport(
+				this.createSseTransport(new URL(this.config.url), sdk),
+				deadline,
+			);
+		}
+	}
+
+	private async connectWithTransport(transport: McpTransport, deadline?: number): Promise<void> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const client = this.client;
 		const timeoutMs = this.config.connectionTimeoutMs;
@@ -129,8 +178,14 @@ export class McpConnection {
 				`MCP server "${this.config.name}": connectionTimeoutMs must be a positive finite number`,
 			);
 		}
+		const remainingMs = deadline === undefined ? timeoutMs : Math.max(0, deadline - Date.now());
 		let timeoutId: ReturnType<typeof setTimeout> | undefined;
 		try {
+			if (remainingMs === 0) {
+				throw new Error(
+					`MCP server "${this.config.name}": connection timed out after ${timeoutMs}ms`,
+				);
+			}
 			await Promise.race([
 				client.connect(transport),
 				new Promise<never>((_, reject) => {
@@ -140,7 +195,7 @@ export class McpConnection {
 								`MCP server "${this.config.name}": connection timed out after ${timeoutMs}ms`,
 							),
 						);
-					}, timeoutMs);
+					}, remainingMs);
 				}),
 			]);
 		} catch (error) {
@@ -155,11 +210,18 @@ export class McpConnection {
 	async listTools(): Promise<BuiltTool[]> {
 		if (!this.client) throw new Error('MCP client not initialized; connect() must be called first');
 		const result = await this.client.listTools();
+		const descriptors: McpToolDescriptor[] = result.tools.map((tool) => ({
+			name: tool.name,
+			...(tool.annotations ? { annotations: tool.annotations } : {}),
+		}));
+		const configured = this.config.configureTools?.(descriptors);
+		const toolFilter = configured?.toolFilter ?? this.config.toolFilter;
+		const requireApproval = configured?.requireApproval ?? this.config.requireApproval;
 		const resolver = new McpToolResolver();
-		const filteredRawTools = applyToolFilter(result.tools, this.config.toolFilter);
+		const filteredRawTools = applyToolFilter(result.tools, toolFilter);
 		const tools = resolver.resolve(this, filteredRawTools);
 		return tools.map((t) =>
-			t.suspendSchema || !this.shouldRequireToolApproval(t)
+			t.suspendSchema || !this.shouldRequireToolApproval(t, requireApproval)
 				? t
 				: wrapToolForApproval(t, { requireApproval: true }),
 		);
@@ -172,8 +234,10 @@ export class McpConnection {
 	 * - `config.requireApproval` is `true` (all tools on this server), OR
 	 * - `config.requireApproval` is a string array that includes the tool's original (un-prefixed) name.
 	 */
-	private shouldRequireToolApproval(tool: BuiltTool): boolean {
-		const { requireApproval } = this.config;
+	private shouldRequireToolApproval(
+		tool: BuiltTool,
+		requireApproval: McpRequireApproval | undefined,
+	): boolean {
 		if (requireApproval === true) return true;
 
 		if (Array.isArray(requireApproval) && requireApproval.length > 0) {
@@ -248,9 +312,11 @@ export class McpConnection {
 	 * without requiring a network connection.
 	 */
 	declaresApproval(): boolean {
-		const { requireApproval } = this.config;
+		const { configureTools, configureToolsNonInterrupting, requireApproval } = this.config;
 		return (
-			requireApproval === true || (Array.isArray(requireApproval) && requireApproval.length > 0)
+			(configureTools !== undefined && !configureToolsNonInterrupting) ||
+			requireApproval === true ||
+			(Array.isArray(requireApproval) && requireApproval.length > 0)
 		);
 	}
 
@@ -263,23 +329,21 @@ export class McpConnection {
 			});
 		} else if (config.url) {
 			const url = new URL(config.url);
-			const requestInit: RequestInit | undefined = config.headers
-				? { headers: config.headers }
-				: undefined;
 
-			if (config.transport === 'streamableHttp') {
-				return new sdk.StreamableHTTPClientTransport(url, {
-					requestInit,
-					fetch: config.fetch,
-				});
-			}
-
-			return new sdk.SSEClientTransport(url, {
-				requestInit,
-				fetch: config.fetch,
-				eventSourceInit: config.fetch ? { fetch: config.fetch } : undefined,
+			if (config.transport === 'sse') return this.createSseTransport(url, sdk);
+			return new sdk.StreamableHTTPClientTransport(url, {
+				fetch: this.httpFetch,
+				redirectPolicy: 'follow',
 			});
 		}
 		throw new Error(`MCP server "${config.name}": provide either "url" or "command"`);
+	}
+
+	private createSseTransport(url: URL, sdk: McpSdkModule): McpTransport {
+		return new sdk.SSEClientTransport(url, {
+			fetch: this.httpFetch,
+			eventSourceInit: { fetch: this.httpFetch },
+			redirectPolicy: 'follow',
+		});
 	}
 }

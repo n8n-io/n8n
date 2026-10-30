@@ -1,3 +1,4 @@
+import type { AgentExecutionStatus } from '@n8n/api-types';
 import { isRecord } from '@n8n/utils/is-record';
 
 import type { TimelineEvent } from '../execution-recorder';
@@ -47,7 +48,7 @@ export function computeExecutionFailureSummary({
 	stoppedAt,
 }: {
 	timeline: TimelineEvent[];
-	status: 'running' | 'success' | 'error' | 'cancelled' | 'interrupted';
+	status: AgentExecutionStatus;
 	error: string | null;
 	stoppedAt: number;
 }): AgentExecutionFailureSummary | null {

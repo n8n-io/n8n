@@ -9,7 +9,7 @@ import type { InstanceAiCredentialRequest } from '@n8n/api-types';
 
 import { createThreadComponentRenderer } from './createThreadComponentRenderer';
 import InstanceAiCredentialSetup from '../components/InstanceAiCredentialSetup.vue';
-import { useInstanceAiStore, type ThreadRuntime } from '../instanceAi.store';
+import { useInstanceAiStore } from '../instanceAi.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { AI_GATEWAY_MANAGED_TAG } from '../constants';
@@ -77,7 +77,21 @@ const existingCred2 = {
 } as ICredentialsResponse;
 const usableCreds = [existingCred, existingCred2];
 
-const renderComponent = createThreadComponentRenderer(InstanceAiCredentialSetup);
+const renderCard = createThreadComponentRenderer(InstanceAiCredentialSetup);
+
+/** The card emits its answer. These tests check the emitted body and resolution. */
+const decide = vi.fn();
+
+function renderComponent(options: Parameters<typeof renderCard>[0] = {}) {
+	return renderCard({
+		...options,
+		props: { threadId: 'thread-1', onDecide: decide, ...options.props },
+	});
+}
+
+beforeEach(() => {
+	decide.mockReset();
+});
 
 function makeRequest(): InstanceAiCredentialRequest[] {
 	// Two credentials prevent auto-selection on init.
@@ -91,13 +105,11 @@ function makeRequest(): InstanceAiCredentialRequest[] {
 }
 
 describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
-	let thread: ThreadRuntime;
-
 	beforeEach(() => {
 		const pinia = createTestingPinia({ stubActions: false });
 		setActivePinia(pinia);
 		const store = useInstanceAiStore();
-		thread = store.getOrCreateRuntime('thread-1');
+		store.getOrCreateRuntime('thread-1');
 
 		const credentialsStore = useCredentialsStore();
 		credentialsStore.state.credentialTypes = { openAiApi: openAiApiCredType };
@@ -125,11 +137,10 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 	});
 
 	it('registers n8n credits selection and submits the managed tag', async () => {
-		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+		const confirmSpy = decide;
 
 		renderComponent({
 			props: {
-				requestId: 'req-1',
 				credentialRequests: makeRequest(),
 				message: 'Set up credentials',
 				requireUserSelection: true,
@@ -148,7 +159,7 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 
 		expect(continueBtn).not.toBeDisabled();
 		await userEvent.click(continueBtn);
-		expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+		expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 			kind: 'credentialSelection',
 			credentials: { openAiApi: AI_GATEWAY_MANAGED_TAG },
 		});
@@ -172,11 +183,10 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 			configurable: true,
 			get: () => ({}),
 		});
-		const confirmSpy = vi.spyOn(thread, 'confirmAction').mockResolvedValue(true);
+		const confirmSpy = decide;
 
 		renderComponent({
 			props: {
-				requestId: 'req-1',
 				credentialRequests: makeRequest(),
 				message: 'Set up credentials',
 				requireUserSelection: true,
@@ -192,7 +202,7 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 		await userEvent.click(await screen.findByTestId('node-credentials-select-item-cred-1'));
 		await userEvent.click(screen.getByTestId('instance-ai-credential-continue-button'));
 
-		expect(confirmSpy).toHaveBeenCalledWith('req-1', {
+		expect(confirmSpy.mock.calls.map(([body]) => body)).toContainEqual({
 			kind: 'credentialSelection',
 			credentials: { openAiApi: 'cred-1' },
 		});
@@ -211,7 +221,6 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 
 		renderComponent({
 			props: {
-				requestId: 'req-1',
 				credentialRequests: [
 					{
 						credentialType: 'openAiApi',
@@ -240,7 +249,6 @@ describe('InstanceAiCredentialSetup - with real NodeCredentials', () => {
 	it('falls back to the store slice when the payload lists no credentials', async () => {
 		renderComponent({
 			props: {
-				requestId: 'req-1',
 				credentialRequests: [
 					{
 						credentialType: 'openAiApi',

@@ -23,10 +23,6 @@ export const folderProjectFieldDocs = {
 	type: { readOnly: true, example: 'team' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
 
-/**
- * `icon` is a JSON column, so the schema only guards the basic type and this metadata carries the
- * shape. Same reasoning as `projectIconOpenApi`, but the folder route returns a reduced project.
- */
 export const folderProjectIconOpenApi: ZodOpenAPIMetadata = alsoNullable({
 	type: 'object',
 	description: 'Icon of the project, or null when the project has none',
@@ -64,3 +60,28 @@ export const folderContentCountFieldDocs = {
 	totalSubFolders: { description: 'Total number of sub-folders (recursive).' },
 	totalWorkflows: { description: 'Total number of workflows (recursive).' },
 } as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const updateFolderFieldDocs = {
+	name: { type: 'string', example: 'Renamed Folder' },
+	parentFolderId: {
+		type: 'string',
+		description:
+			'ID of the parent folder to move this folder into. Set to "0" to move the folder to the project root.',
+		example: 'abc123',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const deleteFolderQueryFieldDocs = {
+	transferToFolderId: {
+		description:
+			'Optional target folder ID to move workflows and sub-folders into before deleting.',
+	},
+} as const satisfies Record<string, ZodOpenAPIMetadata>;
+
+export const folderProjectIdParamDocs = {
+	param: {
+		description:
+			"The ID of the project, or `personal` to create the folder in the calling user's own " +
+			'personal project.',
+	},
+} as const satisfies ZodOpenAPIMetadata;

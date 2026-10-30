@@ -2,9 +2,9 @@ import { nanoid } from 'nanoid';
 
 import type { InstanceAiTraceContext } from '../../types';
 import { InstanceAiLivenessPolicy } from '../liveness-policy';
+import type { ConfirmationData } from '../confirmation-payload';
 import type {
 	BackgroundTaskStatusSnapshot,
-	ConfirmationData,
 	PendingConfirmation,
 	SuspendedRunState,
 } from '../run-state-registry';
@@ -86,6 +86,28 @@ describe('RunStateRegistry', () => {
 		expect(registry.getBuildMode('thread-1')).toBeUndefined();
 	});
 
+	it('scopes the observer threshold override to its own thread and clears it', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		// A second thread on the same process keeps the instance default.
+		expect(registry.getObserverThresholdTokens('thread-1')).toBe(8000);
+		expect(registry.getObserverThresholdTokens('thread-2')).toBeUndefined();
+
+		registry.setObserverThresholdTokens('thread-1', undefined);
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
+	it('drops the observer threshold override when a thread is cleared', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		registry.clearThread('thread-1');
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
+	it('drops every observer threshold override on shutdown', () => {
+		registry.setObserverThresholdTokens('thread-1', 8000);
+		registry.shutdown();
+		expect(registry.getObserverThresholdTokens('thread-1')).toBeUndefined();
+	});
+
 	it('retains the selected prompt version and metadata until the next explicit selection', () => {
 		const metadata = {
 			version: 'progressive@1',
@@ -107,6 +129,16 @@ describe('RunStateRegistry', () => {
 	// ── startRun ──────────────────────────────────────────────────────────────
 
 	describe('startRun', () => {
+		it('keeps a persisted run identity', () => {
+			const result = registry.startRun({
+				threadId: 'thread-1',
+				runId: 'persisted-run',
+				user: { id: 'user-1', name: 'Alice' },
+			});
+			expect(result.runId).toBe('persisted-run');
+			expect(registry.getActiveRun('thread-1')?.runId).toBe('persisted-run');
+		});
+
 		it('creates run with generated runId and messageGroupId', () => {
 			const result = registry.startRun({
 				threadId: 'thread-1',
@@ -317,6 +349,35 @@ describe('RunStateRegistry', () => {
 
 			it('returns undefined for unknown thread', () => {
 				expect(registry.getThreadUser('unknown')).toBeUndefined();
+			});
+		});
+
+		describe('listLiveThreadIdsForUser', () => {
+			it('lists active threads before suspended threads and skips duplicates', () => {
+				registry.startRun({
+					threadId: 'thread-active',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.startRun({
+					threadId: 'thread-other',
+					user: { id: 'user-2', name: 'Bob' },
+				});
+				registry.startRun({
+					threadId: 'thread-suspended',
+					user: { id: 'user-1', name: 'Alice' },
+				});
+				registry.suspendRun(
+					'thread-suspended',
+					createSuspendedRunState({
+						threadId: 'thread-suspended',
+						user: { id: 'user-1', name: 'Alice' },
+					}),
+				);
+
+				expect(registry.listLiveThreadIdsForUser('user-1')).toEqual([
+					'thread-active',
+					'thread-suspended',
+				]);
 			});
 		});
 	});
@@ -1024,7 +1085,11 @@ describe('RunStateRegistry', () => {
 				createdAt: Date.now(),
 			});
 
+			registry.setSetupPanelEnabled('thread-1', true);
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(true);
+			expect(registry.isSetupPanelEnabled('thread-2')).toBe(false);
 			const result = registry.clearThread('thread-1');
+			expect(registry.isSetupPanelEnabled('thread-1')).toBe(false);
 
 			// Confirmations resolved
 			expect(resolve).toHaveBeenCalledWith({ approved: false });

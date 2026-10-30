@@ -1,0 +1,68 @@
+import type { AgentPlanSnapshotDto } from '@n8n/api-types';
+import type { ChatMessage, ToolCall } from '@/features/ai/shared/agentsChat/types';
+import type { AgentPlanItemStatus, AgentPlanView } from '../../utils/agent-plan';
+
+export function planTask(index: number, status: AgentPlanItemStatus = 'pending') {
+	return {
+		id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+		kind: 'task' as const,
+		title: `Task ${index}`,
+		status,
+	};
+}
+
+export function planView(overrides: Partial<AgentPlanView> = {}): AgentPlanView {
+	return {
+		planId: '11111111-1111-4111-8111-111111111111',
+		revision: 1,
+		closed: false,
+		document: {
+			title: 'Compare support platforms',
+			items: [
+				planTask(1),
+				{
+					...planTask(10, 'in_progress'),
+					kind: 'group',
+					title: 'Research',
+					tasks: [planTask(2, 'done'), planTask(3, 'in_progress')],
+				},
+			],
+		},
+		...overrides,
+	};
+}
+
+let nextMessageId = 0;
+
+export function planMessage(output: unknown, overrides: Partial<ToolCall> = {}): ChatMessage {
+	const id = ++nextMessageId;
+	return {
+		id: `assistant-${id}`,
+		role: 'assistant',
+		content: '',
+		toolCalls: [
+			{ tool: 'create_plan', toolCallId: `plan-call-${id}`, state: 'done', output, ...overrides },
+		],
+	};
+}
+
+export function planSnapshot(plan: AgentPlanView): AgentPlanSnapshotDto {
+	return {
+		...plan,
+		readiness: { ready: [], blocked: [] },
+		startedAt: plan.startedAt ?? null,
+		closedAt: plan.closedAt ?? null,
+		document: {
+			...plan.document,
+			items: plan.document.items.map((item) =>
+				item.kind === 'group'
+					? {
+							...item,
+							dependsOn: [],
+							tasks: item.tasks.map((task) => ({ ...task, dependsOn: [] })),
+						}
+					: { ...item, dependsOn: [] },
+			),
+		},
+	};
+}
