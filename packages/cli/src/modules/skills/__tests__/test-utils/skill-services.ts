@@ -1,3 +1,4 @@
+import type { Logger } from '@n8n/backend-common';
 import type { ProjectScopeService } from '@n8n/backend-services';
 import type { OperationContext, TransactionRunner, UserRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
@@ -83,6 +84,7 @@ export function versionRow(
  * side is `FakeSkillUsage` behind a real `SkillUsageProxy`: seed it with `usage.seed`.
  */
 export function createSkillServices() {
+	const logger = mock<Logger>();
 	const skills = mock<SkillRepository>();
 	const usage = new FakeSkillUsage();
 	const skillUsage = new SkillUsageProxy();
@@ -98,7 +100,7 @@ export function createSkillServices() {
 	const access = new SkillAccessService(skills, projectScope, skillUsage);
 	const runtime = new SkillRuntimeService(skills, projectScope, access);
 	const service = new SkillService(
-		mock(),
+		logger,
 		skills,
 		txRunner,
 		projectScope,
@@ -113,6 +115,7 @@ export function createSkillServices() {
 		skillSyncGate,
 	);
 	return {
+		logger,
 		skills,
 		usage,
 		skillUsage,
@@ -151,6 +154,7 @@ export async function resetSkillMocks({
 	// No skill is synced unless a test links it.
 	links?.isLinked.mockResolvedValue(false);
 	links?.findLinkedSkillIds.mockResolvedValue(new Set());
+	links?.findSyncedFrom.mockResolvedValue(null);
 	// Skill Sync is off unless a test turns it on.
 	skillSyncGate?.isEnabled.mockResolvedValue(false);
 }

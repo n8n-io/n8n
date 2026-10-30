@@ -75,7 +75,7 @@ const skillSourceProvider = z.enum(['github']).describe('The type of the source,
 const skillSourceAccess = z
 	.enum(['public', 'credential'])
 	.describe(
-		'`public` reads a public source without a credential. `credential` is a private source',
+		'Whether n8n reads the source with a credential. `public` reads it without one, also after its credential is deleted. `credential` does not mean the source is private',
 	);
 
 /** Where a source puts its skills. */
@@ -101,7 +101,7 @@ const skillOrigin = {
 		.describe('The type of the source of a synced skill, such as GitHub'),
 	source_access: skillSourceAccess
 		.optional()
-		.describe('Whether the source of a synced skill is public or private'),
+		.describe('Whether n8n reads the source of a synced skill with a credential'),
 };
 
 const preferenceExampleId = z
