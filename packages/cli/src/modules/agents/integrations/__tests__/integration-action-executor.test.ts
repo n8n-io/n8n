@@ -55,6 +55,7 @@ import {
 	type AgentChatIntegrationContext,
 } from '../agent-chat-integration';
 import { ChatIntegrationActionExecutor } from '../integration-action-executor';
+import { inheritIntegrationMessageContext } from '../integration-message-context';
 import { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { getIntegrationToolConnectionDescriptors } from '../integration-tools';
 import type { IntegrationMessageContext } from '../integration-tool-types';
@@ -2038,6 +2039,32 @@ describe('ChatIntegrationActionExecutor — Teams sends without an inbound messa
 					message: expect.stringContaining('the 30 files that you queued before'),
 				},
 			});
+			expect(thread.post).not.toHaveBeenCalled();
+		});
+
+		it('counts the files that the run queued before a resume', async () => {
+			const files = Array.from({ length: 31 }, (_, index) => ({
+				...chartFile,
+				id: `file-${index}`,
+			}));
+			const { executor, descriptor, thread } = buildExecutor(slack, files);
+			// The click on an approval card gives a new context without queued files.
+			const resumeContext = inheritIntegrationMessageContext(currentMessageContext, {
+				...currentMessageContext,
+				queuedFiles: { runId: 'r1', fileIds: files.slice(0, 30).map((file) => file.id) },
+			});
+
+			const result = await executor.execute({
+				descriptor,
+				action: 'respond',
+				input: { message: { text: 'One more' }, fileIds: ['file-30'] },
+				awaitResponse: false,
+				runId: 'r1',
+				currentMessageContext: resumeContext,
+				fileScope,
+			});
+
+			expect(result).toMatchObject({ ok: false, error: { code: 'FILE_UPLOAD_LIMIT_EXCEEDED' } });
 			expect(thread.post).not.toHaveBeenCalled();
 		});
 

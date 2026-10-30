@@ -47,6 +47,8 @@ export function inheritIntegrationMessageContext(
 		...context,
 		...(previous.subject && !context.subject ? { subject: previous.subject } : {}),
 		...(previous.agentUserId && !context.agentUserId ? { agentUserId: previous.agentUserId } : {}),
+		// A resumed run keeps counting the files that it queued before. Other runs ignore them.
+		...(previous.queuedFiles && !context.queuedFiles ? { queuedFiles: previous.queuedFiles } : {}),
 	};
 }
 
