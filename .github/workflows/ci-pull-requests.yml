@@ -138,7 +138,10 @@ jobs:
             workflow-scripts:
               .github/scripts/**
               .github/workflows/ci-pull-requests.yml
+              .github/workflows/ci-pr-quality.yml
+              .github/workflows/ci-owners-assign-reviewers.yml
               .github/workflows/sbom-validation-callable.yml
+              .github/workflows/util-codespace-preview.yml
               .devcontainer/codespaces/*.mjs
               OWNERS
               scripts/*.test.mjs
