@@ -1,0 +1,25 @@
+packages/cli/src/modules/promotions.ee/__tests__/promotion-reviews.controller.test.ts
+  s_ff45a7d9223bfa::t_0e4436462ec785 7-11
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change.service.test.ts
+  s_ff45a7d9223bfa::t_0e4436462ec785 16-20
+packages/cli/src/modules/promotions.ee/__tests__/promotions.service.test.ts
+  s_ff45a7d9223bfa::t_0e4436462ec785 45-50
+packages/cli/src/modules/promotions.ee/__tests__/promotion-change-gate.test.ts
+  s_ff45a7d9223bfa::t_0e4436462ec785 23-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "453ea03cce01103c4bab809961273049fc57e38f",
+  "prompts": {},
+  "sessions": {
+    "s_ff45a7d9223bfa": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a18394-cfb2-7020-b04f-e51e4e8b1a24",
+        "model": "gpt-6.1-sol"
+      },
+      "human_author": "kgrhartlage <kai.hartlage@n8n.io>"
+    }
+  }
+}
