@@ -102,6 +102,7 @@ function makeExecutionStore(
 	return {
 		createExecution: vi.fn(),
 		loadExecution: vi.fn().mockResolvedValue(execution),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn().mockResolvedValue(true),
 		finishExecution: vi.fn().mockResolvedValue(null),
 		cancelExecution: vi.fn().mockResolvedValue(null),
@@ -1279,7 +1280,7 @@ describe('StepReadyHandler sub-executions', () => {
 		const subExecutionStarter: SubExecutionStarter = {
 			start: vi
 				.fn()
-				.mockRejectedValue(new InvalidParentLinkError('execution-ended', 'exec-1 is cancelled')),
+				.mockRejectedValue(new InvalidParentLinkError('execution-not-live', 'exec-1 is cancelled')),
 		};
 		const handler = makeHandler(
 			makeExecutionStore(),
