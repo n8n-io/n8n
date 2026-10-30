@@ -120,6 +120,7 @@ async function onMenuSelect(action: MenuAction) {
 		<N8nActionDropdown
 			v-if="menuItems.length > 0"
 			:items="menuItems"
+			:disabled="busy"
 			placement="bottom-end"
 			data-test-id="app-publish-menu"
 			@select="onMenuSelect"
@@ -129,6 +130,7 @@ async function onMenuSelect(action: MenuAction) {
 					:class="$style.toggle"
 					variant="outline"
 					icon="chevron-down"
+					:disabled="busy"
 					:aria-label="i18n.baseText('apps.publish.menuAriaLabel')"
 					data-test-id="app-publish-menu-trigger"
 				/>

@@ -122,6 +122,17 @@ describe('AppPublishButton', () => {
 		expect(getByTestId('app-publish-button')).toHaveTextContent('Publish');
 	});
 
+	it('disables the menu while a publish runs', async () => {
+		providePermissions(['app:update']);
+		vi.mocked(publishApp).mockReturnValue(new Promise(() => {}));
+		const { getByTestId } = renderComponent({ props: { app: app('v1') } });
+		expect(getByTestId('app-publish-menu-trigger')).toBeEnabled();
+
+		await userEvent.click(getByTestId('app-publish-button'));
+
+		expect(getByTestId('app-publish-menu-trigger')).toBeDisabled();
+	});
+
 	it('hides the menu when the app is not published', () => {
 		providePermissions(['app:update']);
 		const { queryByTestId } = renderComponent();
