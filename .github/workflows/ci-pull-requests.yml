@@ -328,6 +328,7 @@ jobs:
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
       lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
+      fullCliIntegration: ${{ needs.install-and-build.outputs.db == 'true' }}
     secrets: inherit
 
   typecheck:
@@ -521,6 +522,7 @@ jobs:
       matrix: ${{ needs.install-and-build.outputs.db_test_matrix }}
       run-migrations: ${{ needs.install-and-build.outputs.db_migrations == 'true' }}
       changed-files: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfile-impacted-packages: ${{ needs.install-and-build.outputs.lockfile_impact }}
 
   e2e-performance:
     name: E2E Performance

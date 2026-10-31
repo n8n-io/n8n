@@ -112,6 +112,20 @@
 			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE"],
 			"passThroughEnv": ["CHANGED_FILES"]
 		},
+		// DB suites (testcontainers). The image is part of the hash, so each
+		// Postgres version caches its own result.
+		"test:postgres:integration:tc": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
+		},
+		"test:postgres": {
+			"dependsOn": ["^build", "build"],
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED", "COVERAGE_SCOPE", "TEST_IMAGE_POSTGRES"],
+			"passThroughEnv": ["CHANGED_FILES", "DOCKER_HOST", "TESTCONTAINERS_*"]
+		},
 		"test:integration:changed": {
 			"dependsOn": ["^build", "build"],
 			"outputs": ["coverage/**", "*.xml"],
