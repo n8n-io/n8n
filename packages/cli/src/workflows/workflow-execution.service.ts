@@ -3,6 +3,7 @@ import {
 	EventService,
 	InstanceWriteAccessService,
 	WorkflowPublishedDataService,
+	WorkflowVersionedSettings,
 } from '@n8n/backend-services';
 import { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -83,6 +84,7 @@ export class WorkflowExecutionService {
 		private readonly pollCursorService: PollCursorService,
 		private readonly executionCrashService: ExecutionCrashService,
 		private readonly instanceWriteAccess: InstanceWriteAccessService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
 	) {}
 
 	async runWorkflow(
@@ -600,6 +602,10 @@ export class WorkflowExecutionService {
 			const workflowData = publishedData.workflow;
 			workflowData.nodes = publishedData.publishedVersion.nodes;
 			workflowData.connections = publishedData.publishedVersion.connections;
+			workflowData.settings = this.workflowVersionedSettings.forPublishedRun(
+				workflowData.settings,
+				publishedData.publishedVersion,
+			);
 			return workflowData;
 		}
 
@@ -620,6 +626,10 @@ export class WorkflowExecutionService {
 		}
 		loaded.nodes = loaded.activeVersion.nodes;
 		loaded.connections = loaded.activeVersion.connections;
+		loaded.settings = this.workflowVersionedSettings.forPublishedRun(
+			loaded.settings,
+			loaded.activeVersion,
+		);
 		return loaded;
 	}
 

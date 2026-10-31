@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { DataSource, In } from '@n8n/typeorm';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, IWorkflowSettings } from 'n8n-workflow';
 
 import { BaseRepository } from './base-repository';
 import { WorkflowPublishedVersion } from '../entities';
@@ -27,6 +27,15 @@ export type PublishedWorkflowDataForExecution = Pick<
 	| 'nodeGroups'
 	| 'versionId'
 >;
+
+/**
+ * The run data of the published version, with the settings of that version kept
+ * apart from the workflow settings. `WorkflowPublishedDataService` merges them.
+ */
+export type PublishedVersionForExecution = PublishedWorkflowDataForExecution & {
+	/** The version-scoped settings of the published version, or `null` when it has none. */
+	versionSettings: IWorkflowSettings | null;
+};
 
 @Service()
 export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowPublishedVersion> {
@@ -93,7 +102,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 
 	async getPublishedVersionForExecution(
 		workflowId: string,
-	): Promise<PublishedWorkflowDataForExecution | null> {
+	): Promise<PublishedVersionForExecution | null> {
 		const record = await this.createQueryBuilder('mapping')
 			.innerJoinAndSelect('mapping.workflow', 'workflow')
 			.innerJoinAndSelect('mapping.publishedVersion', 'publishedVersion')
@@ -115,6 +124,7 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 				'publishedVersion.nodes',
 				'publishedVersion.connections',
 				'publishedVersion.nodeGroups',
+				'publishedVersion.settings',
 			])
 			.where('mapping.workflowId = :workflowId', { workflowId })
 			.getOne();
@@ -142,6 +152,8 @@ export class WorkflowPublishedVersionRepository extends BaseRepository<WorkflowP
 			connections: publishedVersion.connections,
 			nodeGroups: publishedVersion.nodeGroups,
 			versionId: publishedVersion.versionId,
+			// `null`, not `undefined`, so the field survives the JSON round trip of the cache.
+			versionSettings: publishedVersion.settings ?? null,
 		};
 	}
 }

@@ -1,8 +1,12 @@
+import type { ModuleRegistry } from '@n8n/backend-common';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { mock } from 'vitest-mock-extended';
 
-import type { WorkflowPublishedDataService } from '@n8n/backend-services';
+import {
+	type WorkflowPublishedDataService,
+	WorkflowVersionedSettings,
+} from '@n8n/backend-services';
 
 import { WorkflowToolUnavailableError } from '../workflow-tool-unavailable-error';
 import { WorkflowToolWorkflowLoader } from '../workflow-tool-workflow-loader.service';
@@ -21,13 +25,18 @@ function makeWorkflow(overrides: Partial<WorkflowEntity> = {}) {
 	} as unknown as WorkflowEntity;
 }
 
-function makeService({ useWorkflowPublicationService = false } = {}) {
+function makeService({ useWorkflowPublicationService = false, engineV2ModuleActive = false } = {}) {
 	const workflowRepository = mock<WorkflowRepository>();
 	const workflowPublishedDataService = mock<WorkflowPublishedDataService>();
+	const moduleRegistry = mock<ModuleRegistry>();
+	moduleRegistry.isActive.mockImplementation(
+		(name) => engineV2ModuleActive && name === 'engine-v2',
+	);
 	const service = new WorkflowToolWorkflowLoader(
 		workflowRepository,
 		{ useWorkflowPublicationService } as WorkflowsConfig,
 		workflowPublishedDataService,
+		new WorkflowVersionedSettings(moduleRegistry),
 	);
 
 	return { service, workflowRepository, workflowPublishedDataService };
@@ -63,6 +72,33 @@ describe('WorkflowToolWorkflowLoader', () => {
 
 		await expect(service.loadWorkflow('project-1', reference)).resolves.toBeNull();
 	});
+
+	it.each([
+		[true, 'v1'],
+		[false, 'v2'],
+	])(
+		'runs production with the published engine when the engine-v2 module is active: %s',
+		async (engineV2ModuleActive, expectedEngine) => {
+			const { service, workflowRepository } = makeService({ engineV2ModuleActive });
+			workflowRepository.findOneByAgentToolReference.mockResolvedValue(
+				makeWorkflow({
+					settings: { engineType: 'v2' },
+					activeVersion: {
+						versionId: 'published-version',
+						nodes: [],
+						connections: {},
+						settings: { engineType: 'v1' },
+					},
+				} as unknown as Partial<WorkflowEntity>),
+			);
+
+			const workflow = await service.loadWorkflow('project-1', reference, {
+				usePublishedVersion: true,
+			});
+
+			expect(workflow?.settings?.engineType).toBe(expectedEngine);
+		},
+	);
 
 	it('loads the published version content for production runs', async () => {
 		const { service, workflowRepository } = makeService();

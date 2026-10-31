@@ -19,7 +19,7 @@ import { NodeTypes } from '@/node-types';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
-import { WorkflowPublishedDataService } from '@n8n/backend-services';
+import { WorkflowPublishedDataService, WorkflowVersionedSettings } from '@n8n/backend-services';
 import { WorkflowPublisherService } from '@/workflows/workflow-publisher.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 
@@ -51,6 +51,7 @@ export class LiveWebhooks implements IWebhookManager {
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
 		private readonly expressionEngineConfig: ExpressionEngineConfig,
 		private readonly workflowPublisherService: WorkflowPublisherService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
 	) {}
 
 	async getWebhookMethods(path: string) {
@@ -118,9 +119,19 @@ export class LiveWebhooks implements IWebhookManager {
 			webhook.workflowId,
 		);
 		const { nodes, connections, versionId } = publishedVersion;
+		const settings = this.workflowVersionedSettings.forPublishedRun(
+			workflowData.settings,
+			publishedVersion,
+		);
 
-		// Use the published revision for both execution content and metadata.
-		const activeWorkflowData: IWorkflowBase = { ...workflowData, nodes, connections, versionId };
+		// Use the published revision for execution content, metadata and the version-scoped settings.
+		const activeWorkflowData: IWorkflowBase = {
+			...workflowData,
+			nodes,
+			connections,
+			versionId,
+			settings,
+		};
 
 		const workflow = new Workflow({
 			id: webhook.workflowId,
@@ -130,7 +141,7 @@ export class LiveWebhooks implements IWebhookManager {
 			active: workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
-			settings: workflowData.settings,
+			settings,
 		});
 
 		const ownerProjectId = workflowData.shared?.find(
