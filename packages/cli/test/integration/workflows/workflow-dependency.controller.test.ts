@@ -483,6 +483,7 @@ describe('POST /workflow-dependencies/details', () => {
 		expect(resp.body.data[credential.id]).toEqual({
 			dependencies: [],
 			inaccessibleCount: 1,
+			inaccessibleAffectedCount: 1,
 		});
 	});
 
@@ -731,6 +732,7 @@ describe('Workflow and credential ID collisions', () => {
 		expect.soft(details.body.data[workflow.id]).toEqual({
 			dependencies: [{ id: caller.id, name: caller.name, type: 'workflowParent' }],
 			inaccessibleCount: 1,
+			inaccessibleAffectedCount: 1,
 		});
 
 		if (batch) {
