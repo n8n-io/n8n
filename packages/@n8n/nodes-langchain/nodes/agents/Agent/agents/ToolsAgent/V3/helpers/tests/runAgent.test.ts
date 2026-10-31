@@ -1,6 +1,8 @@
 import type { AgentRunnableSequence } from '@langchain/classic/agents';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { Tool } from '@langchain/classic/tools';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { AIMessage, ToolMessage } from '@langchain/core/messages';
 import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 import type { Mock } from 'vitest';
 import { mock } from 'vitest-mock-extended';
@@ -582,6 +584,97 @@ describe('runAgent - intermediate steps', () => {
 		expect(result).toHaveProperty('intermediateSteps');
 		expect((result as any).intermediateSteps).toEqual([]);
 	});
+});
+
+describe('runAgent - memory persistence across tool rounds', () => {
+	const buildStep = (tool: string, callId: string): ToolCallData => {
+		const toolCallMessage = new AIMessage({
+			content: `Calling ${tool}`,
+			tool_calls: [{ id: callId, name: tool, args: {}, type: 'tool_call' }],
+		});
+
+		return {
+			action: {
+				tool,
+				toolInput: {},
+				log: `Calling ${tool}`,
+				messageLog: [toolCallMessage],
+				toolCallId: callId,
+				type: 'tool_call',
+			},
+			observation: `${tool} result`,
+		};
+	};
+
+	it.each(['non-streaming', 'streaming'] as const)(
+		'saves every tool round in %s mode',
+		async (mode) => {
+			const previousStep = buildStep('FirstTool', 'call_first');
+			const latestStep = buildStep('SecondTool', 'call_second');
+			const steps = [previousStep, latestStep];
+			const addMessages = vi.fn().mockResolvedValue(undefined);
+			const memory = mock<BaseChatMemory>({
+				chatHistory: { addMessages } as BaseChatMemory['chatHistory'],
+			});
+			const { saveToMemory: realSaveToMemory } =
+				await vi.importActual<typeof agentExecution>('@utils/agent-execution');
+			(agentExecution.saveToMemory as Mock).mockImplementation(realSaveToMemory);
+			vi.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+
+			const response: EngineResponse<RequestResponseMetadata> = {
+				actionResponses: [],
+				metadata: { itemIndex: 0, previousRequests: [previousStep], iterationCount: 2 },
+			};
+			const itemContext: ItemContext = {
+				itemIndex: 0,
+				input: 'Use both tools',
+				steps,
+				tools: [],
+				prompt: mock(),
+				options: {
+					maxIterations: 10,
+					returnIntermediateSteps: false,
+					...(mode === 'streaming' ? { enableStreaming: true } : {}),
+				},
+				outputParser: undefined,
+			};
+			const mockModel = mock<BaseChatModel>();
+			let context = mockContext;
+			let executor: AgentRunnableSequence;
+
+			if (mode === 'streaming') {
+				const eventStream = (async function* () {})();
+				executor = mock<AgentRunnableSequence>({
+					withConfig: vi.fn().mockReturnValue({
+						streamEvents: vi.fn().mockReturnValue(eventStream),
+					}),
+				});
+				context = mock<IExecuteFunctions>({
+					getNode: vi.fn().mockReturnValue({ ...mockNode, typeVersion: 3 }),
+					isStreaming: vi.fn().mockReturnValue(true),
+					getExecutionCancelSignal: vi.fn().mockReturnValue(new AbortController().signal),
+				});
+				vi.spyOn(agentExecution, 'processEventStream').mockResolvedValue({
+					output: 'Final answer',
+				});
+			} else {
+				executor = mock<AgentRunnableSequence>({
+					withConfig: vi.fn().mockReturnValue({
+						invoke: vi.fn().mockResolvedValue({ returnValues: { output: 'Final answer' } }),
+					}),
+				});
+				mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+			}
+
+			await runAgent(context, executor, itemContext, mockModel, memory, response);
+
+			const savedMessages = addMessages.mock.calls[0][0];
+			const savedToolMessages = savedMessages.filter(
+				(message: unknown): message is ToolMessage => message instanceof ToolMessage,
+			);
+			expect(savedToolMessages.map((message) => message.name)).toEqual(['FirstTool', 'SecondTool']);
+		},
+	);
 });
 
 describe('appendToolAttributions', () => {
