@@ -161,22 +161,20 @@ describe('affectedPackages', () => {
 		);
 	});
 
-	it('expands all packages when a universal sink (workflow/core) changes', () => {
+	it('limits a sink package change (workflow/core) to its dependents', () => {
 		const rootDir = makeFixture({
 			patterns: ['packages/*'],
 			packages: {
 				'packages/workflow': { name: 'n8n-workflow' },
-				'packages/core': { name: 'n8n-core' },
+				'packages/core': { name: 'n8n-core', deps: ['n8n-workflow'] },
 				'packages/unrelated': { name: 'unrelated' },
 			},
 		});
 		expect(
 			affectedPackages({ rootDir, changedFiles: ['packages/workflow/src/Workflow.ts'] }),
-		).toEqual(['n8n-core', 'n8n-workflow', 'unrelated']);
+		).toEqual(['n8n-core', 'n8n-workflow']);
 		expect(affectedPackages({ rootDir, changedFiles: ['packages/core/src/x.ts'] })).toEqual([
 			'n8n-core',
-			'n8n-workflow',
-			'unrelated',
 		]);
 	});
 
@@ -196,12 +194,12 @@ describe('affectedPackages', () => {
 		expect(affectedPackages({ rootDir, changedFiles: ['package.json'] })).toEqual(['a', 'b']);
 	});
 
-	it('expands all packages when packages/@n8n/db/** changes (runtime-coupled schema)', () => {
+	it('limits a packages/@n8n/db/** change to its dependents', () => {
 		const rootDir = makeFixture({
 			patterns: ['packages/*', 'packages/@n8n/*'],
 			packages: {
 				'packages/@n8n/db': { name: '@n8n/db' },
-				'packages/cli': { name: 'n8n' },
+				'packages/cli': { name: 'n8n', deps: ['@n8n/db'] },
 				'packages/unrelated': { name: 'unrelated' },
 			},
 		});
@@ -210,7 +208,7 @@ describe('affectedPackages', () => {
 				rootDir,
 				changedFiles: ['packages/@n8n/db/src/entities/user.entity.ts'],
 			}),
-		).toEqual(['@n8n/db', 'n8n', 'unrelated']);
+		).toEqual(['@n8n/db', 'n8n']);
 	});
 
 	it('handles turbo extra-inputs pointing at another package', () => {
