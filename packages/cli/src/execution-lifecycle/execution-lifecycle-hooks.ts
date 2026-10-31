@@ -36,7 +36,7 @@ import { saveExecutionProgress } from './save-execution-progress';
 import {
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
-	updateExistingExecution,
+	saveExecutionOutcome,
 	updateExistingExecutionMetadata,
 } from './shared/shared-hook-functions';
 import { type ExecutionSaveSettings, toSaveSettings } from './to-save-settings';
@@ -53,6 +53,9 @@ import { getItemCountByConnectionType } from '@/utils/get-item-count-by-connecti
 import { getLastExecutedNodeData, getLastExecutedNodeRuns } from '@/workflow-helpers';
 import { WorkflowHookContextService } from '@/workflow-hook-context.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
+
+/** Runs whose save, in this hook run, moved them from an unfinished to a terminal status. */
+const runsEndedBySave = new WeakSet<IRun>();
 
 @Service()
 class ModulesHooksRegistry {
@@ -84,6 +87,7 @@ class ModulesHooksRegistry {
 							retryOf: this.retryOf,
 							source,
 							executedInThisProcess,
+							endedByThisSave: runsEndedBySave.has(runData),
 						};
 
 						return await instance[methodName].call(instance, context);
@@ -628,6 +632,10 @@ function hookFunctionsSave(
 			executionId: this.executionId,
 			workflowId: this.workflowData.id,
 		});
+		runsEndedBySave.delete(fullRunData);
+		const markEnded = ({ ended }: { ended: boolean }) => {
+			if (ended) runsEndedBySave.add(fullRunData);
+		};
 
 		await restoreBinaryDataId(fullRunData, this.executionId, this.mode);
 
@@ -681,6 +689,13 @@ function hookFunctionsSave(
 			// the cancel and would otherwise write `success` over `canceled`.
 			const saveConditions = { requireNotCanceled: true };
 
+			const finalState = {
+				status: fullRunData.status,
+				// oxlint-disable-next-line typescript/no-deprecated
+				finished: fullRunData.finished ?? false,
+				stoppedAt: fullRunData.stoppedAt,
+			};
+
 			if (isManualMode && !saveSettings.manual && !fullRunData.waitTill) {
 				/**
 				 * When manual executions are not being saved, we only soft-delete
@@ -697,10 +712,18 @@ function hookFunctionsSave(
 				 * Known limit: in blob storage, a write that stalls for longer than the
 				 * buffer can leave its data behind after pruning removes the execution.
 				 */
+				if (!(await unsavedManualExecutionService.keep(this.executionId))) {
+					// The final status goes in the same write, so a crash sweep cannot finish the run again.
+					markEnded(await executionPersistence.softDeleteWithOutcome(this.executionId, finalState));
+					return;
+				}
+
+				// A kept run writes its status with its run data: readers take a start status as
+				// "no run data yet". A failed write leaves the run to a crash sweep.
 				await executionRepository.softDelete(this.executionId);
-				if (await unsavedManualExecutionService.keep(this.executionId)) {
-					try {
-						await updateExistingExecution({
+				try {
+					markEnded(
+						await saveExecutionOutcome({
 							executionId: this.executionId,
 							workflowId: this.workflowData.id,
 							executionData: prepareFullExecutionData(),
@@ -709,16 +732,16 @@ function hookFunctionsSave(
 								fullRunData.status === 'canceled'
 									? { includeDeleted: true }
 									: { ...saveConditions, includeDeleted: true },
-						});
-					} catch (error) {
-						// The run data is only kept for reading. Failing to keep it must not
-						// replace the run's own outcome.
-						logger.warn('Failed to keep the run data of an unsaved manual execution', {
-							executionId: this.executionId,
-							workflowId: this.workflowData.id,
-							error: ensureError(error),
-						});
-					}
+						}),
+					);
+				} catch (error) {
+					// The run data is only kept for reading. Failing to keep it must not
+					// replace the run's own outcome.
+					logger.warn('Failed to keep the run data of an unsaved manual execution', {
+						executionId: this.executionId,
+						workflowId: this.workflowData.id,
+						error: ensureError(error),
+					});
 				}
 
 				return;
@@ -739,18 +762,15 @@ function hookFunctionsSave(
 					);
 				}
 
-				await executionPersistence.deleteInFlightExecution(
-					{
-						workflowId: this.workflowData.id,
-						executionId: this.executionId,
-						storedAt: fullRunData.storedAt,
-					},
-					{
-						status: fullRunData.status,
-						// oxlint-disable-next-line typescript/no-deprecated
-						finished: fullRunData.finished ?? false,
-						stoppedAt: fullRunData.stoppedAt,
-					},
+				markEnded(
+					await executionPersistence.deleteInFlightExecution(
+						{
+							workflowId: this.workflowData.id,
+							executionId: this.executionId,
+							storedAt: fullRunData.storedAt,
+						},
+						finalState,
+					),
 				);
 
 				return;
@@ -763,12 +783,14 @@ function hookFunctionsSave(
 				fullExecutionData.data.pushRef = pushRef;
 			}
 
-			await updateExistingExecution({
-				executionId: this.executionId,
-				workflowId: this.workflowData.id,
-				executionData: fullExecutionData,
-				conditions: saveConditions,
-			});
+			markEnded(
+				await saveExecutionOutcome({
+					executionId: this.executionId,
+					workflowId: this.workflowData.id,
+					executionData: fullExecutionData,
+					conditions: saveConditions,
+				}),
+			);
 
 			await updateExistingExecutionMetadata(
 				this.executionId,
@@ -811,6 +833,7 @@ function hookFunctionsSaveWorker(
 			executionId: this.executionId,
 			workflowId: this.workflowData.id,
 		});
+		runsEndedBySave.delete(fullRunData);
 
 		const { parentExecution } = fullRunData.data;
 		if (parentExecution) {
@@ -879,12 +902,14 @@ function hookFunctionsSaveWorker(
 			// Main process will save metadata after deletion decisions to avoid FK violations
 			// The guard only applies for a non-canceled outcome. This run's own canceled
 			// completion must still persist its accumulated data.
-			wasUpdated = await updateExistingExecution({
+			const saved = await saveExecutionOutcome({
 				executionId: this.executionId,
 				workflowId: this.workflowData.id,
 				executionData,
 				conditions: fullRunData.status === 'canceled' ? undefined : { requireNotCanceled: true },
 			});
+			wasUpdated = saved.updated;
+			if (saved.ended) runsEndedBySave.add(fullRunData);
 		} finally {
 			// Counted only when the write above lands, so completions stay in sync with the database.
 			if (wasUpdated) {

@@ -136,7 +136,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 	Container.set(CredentialsHelper, credentialsHelper);
 	Container.set(ExternalSecretsProxy, externalSecretsProxy);
 	const executionRepository = mockInstance(ExecutionRepository);
-	mockInstance(ExecutionPersistence);
+	const executionPersistenceMock = mockInstance(ExecutionPersistence);
+	executionPersistenceMock.deleteInFlightExecution.mockResolvedValue({ ended: false });
+	executionPersistenceMock.saveExecutionOutcome.mockResolvedValue({ updated: true, ended: false });
 	mockInstance(ExecutionDataRepository);
 	mockInstance(Telemetry);
 	const workflowRepository = mockInstance(WorkflowRepository);

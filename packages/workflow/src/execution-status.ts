@@ -26,6 +26,9 @@ export function isCompletedExecutionStatus(
  */
 export const CRASHABLE_EXECUTION_STATUSES = ['new', 'running', 'unknown'] as const;
 
+/** Statuses of a run that has not finished yet. Every other status is terminal. */
+export const UNFINISHED_EXECUTION_STATUSES = ['new', 'running', 'unknown', 'waiting'] as const;
+
 export function isTerminalExecutionStatus(
 	status: ExecutionStatus | undefined,
 ): status is TerminalExecutionStatus {
