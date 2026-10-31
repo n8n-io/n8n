@@ -8,6 +8,17 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
 
+const NASA_API_BASE_URL = 'https://api.nasa.gov';
+const DONKI_API_BASE_URL = 'https://ccmc.gsfc.nasa.gov/DONKI-API/get';
+
+function getApiUrl(endpoint: string) {
+	if (endpoint.startsWith('/DONKI/')) {
+		return `${DONKI_API_BASE_URL}${endpoint.slice('/DONKI'.length)}`;
+	}
+
+	return `${NASA_API_BASE_URL}${endpoint}`;
+}
+
 export async function nasaApiRequest(
 	this: IHookFunctions | IExecuteFunctions,
 	method: IHttpRequestMethods,
@@ -23,7 +34,7 @@ export async function nasaApiRequest(
 	const options: IRequestOptions = {
 		method,
 		qs,
-		uri: uri || `https://api.nasa.gov${endpoint}`,
+		uri: uri || getApiUrl(endpoint),
 		json: true,
 	};
 
