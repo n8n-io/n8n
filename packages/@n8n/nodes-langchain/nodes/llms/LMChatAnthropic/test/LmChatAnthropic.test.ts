@@ -94,7 +94,7 @@ describe('LmChatAnthropic', () => {
 				name: 'lmChatAnthropic',
 				group: ['transform'],
 				version: [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6],
-				description: 'Language Model Anthropic',
+				description: 'Run Claude models, with optional adaptive thinking and streaming',
 			});
 		});
 

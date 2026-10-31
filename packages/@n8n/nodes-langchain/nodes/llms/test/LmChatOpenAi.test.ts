@@ -89,7 +89,8 @@ describe('LmChatOpenAi', () => {
 				name: 'lmChatOpenAi',
 				group: ['transform'],
 				version: [1, 1.1, 1.2, 1.3],
-				description: 'For advanced usage with an AI chain',
+				description:
+					'Run GPT models, with optional Responses API for web search, file search, and code execution',
 			});
 		});
 
