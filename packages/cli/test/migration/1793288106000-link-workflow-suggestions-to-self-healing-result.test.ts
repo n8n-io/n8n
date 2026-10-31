@@ -79,8 +79,8 @@ describe('LinkWorkflowSuggestionsToSelfHealingResult migration', () => {
 		} = context;
 		await runQuery(
 			`INSERT INTO ${t('self_healing_result')}
-			 (${c('id')}, ${c('configurationId')}, ${c('workflowId')}, ${c('projectId')}, ${c('backgroundUserId')}, ${c('outcome')}, ${c('summary')}, ${c('report')}, ${c('completedAt')}, ${c('executionId')}, ${c('usage')})
-			 VALUES ('result', 1, 'workflow', 'project', :userId, 'fix_ready', 'Summary', 'Report', :now, 'execution', '{}')`,
+			 (${c('id')}, ${c('configurationId')}, ${c('workflowId')}, ${c('projectId')}, ${c('backgroundUserId')}, ${c('outcome')}, ${c('summary')}, ${c('report')}, ${c('completedAt')}, ${c('executionId')}, ${c('usage')}, ${c('reviewState')})
+			 VALUES ('result', 1, 'workflow', 'project', :userId, 'fix_ready', 'Summary', 'Report', :now, 'execution', '{}', 'applied')`,
 			{ userId, now: new Date() },
 		);
 		await runQuery(

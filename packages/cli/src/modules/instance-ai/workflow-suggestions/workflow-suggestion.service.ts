@@ -219,8 +219,8 @@ export class WorkflowSuggestionService {
 
 	async createSuggestion(
 		prepared: PreparedWorkflowSuggestion,
+		selfHealingResultId: string,
 		ctx: OperationContext = {},
-		selfHealingResultId: string | null = null,
 	) {
 		const { baseline, payload } = prepared;
 		const { workflowId } = baseline;
@@ -238,9 +238,9 @@ export class WorkflowSuggestionService {
 			const suggestion = await this.suggestions.createPending(
 				baseline,
 				payload,
-				ctx,
 				prepared.resultKind,
 				selfHealingResultId,
+				ctx,
 			);
 			await this.suggestions.appendSubmittedActivity(suggestion.id, ctx);
 			return suggestion;
@@ -284,10 +284,7 @@ export class WorkflowSuggestionService {
 		if (suggestion.state !== 'pending' || (await this.matchesBaseline(suggestion, target))) {
 			return suggestion;
 		}
-		const group = suggestion.selfHealingResultId
-			? await this.suggestions.getForResult(suggestion.selfHealingResultId, ctx)
-			: [suggestion];
-		for (const member of group) {
+		for (const member of await this.suggestions.getForResult(suggestion.selfHealingResultId, ctx)) {
 			await this.suggestions.closePending(
 				member,
 				'outdated',

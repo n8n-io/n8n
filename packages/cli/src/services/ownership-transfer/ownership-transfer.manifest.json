@@ -117,7 +117,7 @@
 		{
 			"name": "SelfHealingResult",
 			"path": "packages/cli/src/modules/instance-ai/self-healing/database/self-healing-result.entity.ts",
-			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade when the configuration, original project, workflow, background user, or linked suggestion is deleted. Configuration removal explicitly deletes linked suggestions."
+			"reason": "Keeps the original project and investigation identity. Deleted via FK cascade, with its suggestions, when the configuration, original project, workflow, or background user is deleted."
 		},
 		{
 			"name": "SelfHealingInvestigation",

@@ -73,10 +73,10 @@ export class WorkflowSuggestion extends WithTimestampsAndStringId {
 	payload: WorkflowSuggestionContent;
 
 	@Index()
-	@Column({ type: 'varchar', length: 36, nullable: true })
-	selfHealingResultId: string | null;
+	@Column({ type: 'varchar', length: 36 })
+	selfHealingResultId: string;
 
-	@ManyToOne(() => SelfHealingResult, { nullable: true, onDelete: 'CASCADE' })
+	@ManyToOne(() => SelfHealingResult, { nullable: false, onDelete: 'CASCADE' })
 	@JoinColumn({ name: 'selfHealingResultId' })
-	selfHealingResult: Relation<SelfHealingResult> | null;
+	selfHealingResult: Relation<SelfHealingResult>;
 }

@@ -15,6 +15,7 @@ import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 
+import { SelfHealingResult } from '../../self-healing/database/self-healing-result.entity';
 import { WorkflowSuggestionActivity } from './workflow-suggestion-activity.entity';
 import { WorkflowSuggestion } from './workflow-suggestion.entity';
 
@@ -41,9 +42,9 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 	async createPending(
 		baseline: WorkflowSuggestionBaseline,
 		payload: WorkflowSuggestionContent,
-		ctx: OperationContext,
 		resultKind: WorkflowSuggestion['resultKind'],
-		selfHealingResultId: string | null = null,
+		selfHealingResultId: string,
+		ctx: OperationContext,
 	) {
 		const manager = this.managerFor(ctx);
 		const suggestion = manager.create(WorkflowSuggestion, {
@@ -126,6 +127,11 @@ export class WorkflowSuggestionRepository extends BaseRepository<WorkflowSuggest
 			},
 		);
 		if (result.affected !== 1) return false;
+		await this.managerFor(ctx).update(
+			SelfHealingResult,
+			{ id: suggestion.selfHealingResultId, reviewState: 'open' },
+			{ reviewState: reason === 'discarded' ? 'dismissed' : reason },
+		);
 		await this.appendActivity(suggestion.id, reason, actor, ctx);
 		return true;
 	}

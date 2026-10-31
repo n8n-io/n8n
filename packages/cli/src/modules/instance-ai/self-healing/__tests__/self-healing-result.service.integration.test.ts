@@ -232,7 +232,7 @@ async function addGroupMember(
 		explanation: 'Fix the sub-workflow.',
 		resultKind: 'fix_ready',
 	});
-	const suggestion = await suggestionService.createSuggestion(prepared, {}, result.id);
+	const suggestion = await suggestionService.createSuggestion(prepared, result.id);
 	return { workflow, suggestion };
 }
 
@@ -1028,7 +1028,7 @@ it.each([
 		expect(response.body.data.reviewState).toBe(reviewState);
 		const firstDismissal = await results.findOneByOrFail({ id: result.id });
 		if (outcome === 'could_not_fix') {
-			expect(firstDismissal).toEqual({ ...result, dismissedAt: null, dismissedById: null });
+			expect(firstDismissal).toEqual(result);
 		}
 		const repeated = service.dismiss(editor, project.id, original.id, result.id);
 		if (outcome === 'needs_you') {
@@ -1044,43 +1044,16 @@ it.each([
 	},
 );
 
-it('returns a recorded dismissal of a could_not_fix result as dismissed', async () => {
-	const { user, result, getDetail } = await fixture('could_not_fix');
-	await results.update(result.id, { dismissedAt: new Date(), dismissedById: user.id });
-
-	expect(await getDetail()).toMatchObject({ reviewState: 'dismissed', dismissedById: user.id });
-});
-
-it('rolls back shared dismissal when result storage fails', async () => {
-	const fixtureResult = await fixture('needs_you', true);
-	const { user, project, original, result } = fixtureResult;
-	const suggestionId = fixtureResult.suggestionId!;
-	const beforeActivity = await suggestions.getActivity(suggestionId);
-	vi.spyOn(results, 'dismissResult').mockRejectedValueOnce(new Error('Dismissal unavailable.'));
-	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow(
-		'Dismissal unavailable.',
-	);
-	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
-	expect(await suggestions.findOneByOrFail({ id: suggestionId })).toMatchObject({
-		state: 'pending',
-	});
-	expect(await suggestions.getActivity(suggestionId)).toEqual(beforeActivity);
-});
-
-it.each([
-	['fix_ready', 'discarded'],
-	['needs_you', 'dismissed'],
-] as const)(
+it.each(['fix_ready', 'needs_you'] as const)(
 	'closes a %s result and its pending suggestion together',
-	async (outcome, reviewState) => {
+	async (outcome) => {
 		const { user, project, original, result, suggestionId, getDetail } = await fixture(
 			outcome,
 			true,
 		);
 		await service.dismiss(user, project.id, original.id, result.id);
 		expect(await getDetail()).toMatchObject({
-			reviewState,
-			dismissedById: outcome === 'fix_ready' ? null : user.id,
+			reviewState: 'dismissed',
 			suggestions: [{ state: 'closed', closedReason: 'discarded' }],
 		});
 		expect((await suggestions.getActivity(suggestionId!)).map(({ action }) => action)).toEqual([
@@ -1104,13 +1077,8 @@ it.each(['before', 'after'] as const)(
 			return proposals;
 		});
 
-		const detail = await getDetail();
-		const saved = await results.findOneByOrFail({ id: result.id });
-		expect(saved.dismissedAt).not.toBeNull();
-		expect(detail).toMatchObject({
+		expect(await getDetail()).toMatchObject({
 			reviewState: 'dismissed',
-			dismissedAt: saved.dismissedAt!.toISOString(),
-			dismissedById: user.id,
 			suggestions: [{ state: 'closed', closedReason: 'discarded' }],
 		});
 	},
@@ -1131,9 +1099,7 @@ it('keeps the winner when informational dismissal races another discard', async 
 	if (dismissOutcome.status === 'rejected') {
 		expect(dismissOutcome.reason).toBeInstanceOf(ConflictError);
 	}
-	const detail = await getDetail();
-	expect(detail.reviewState).toBe(directlyDiscarded ? 'discarded' : 'dismissed');
-	expect(detail.dismissedAt === null).toBe(directlyDiscarded);
+	expect((await getDetail()).reviewState).toBe('dismissed');
 	expect((await suggestions.getActivity(suggestionId!)).map(({ action }) => action)).toEqual([
 		'submitted',
 		'discarded',
@@ -1174,7 +1140,7 @@ it.each([
 		} else {
 			await expect(dismissal).rejects.toBeInstanceOf(ConflictError);
 		}
-		expect(await getDetail()).toMatchObject({ reviewState: reason, dismissedAt: null });
+		expect((await getDetail()).reviewState).toBe(reason === 'discarded' ? 'dismissed' : reason);
 	},
 );
 
@@ -1188,7 +1154,9 @@ it('preserves outdated reconciliation when shared dismissal rejects a moved work
 	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow(
 		'This result is no longer available in this project. Refresh the page.',
 	);
-	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
+	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({
+		reviewState: 'outdated',
+	});
 	expect(await suggestions.findOneByOrFail({ id: suggestionId! })).toMatchObject({
 		state: 'closed',
 		closedReason: 'outdated',
@@ -1204,7 +1172,6 @@ it('reflects internal suggestion actions without a separate result update', asyn
 	await actions.apply(user, project.id, [{ id: suggestionId!, workflowId: original.id }], 'apply');
 	expect(await getDetail()).toMatchObject({
 		reviewState: 'applied',
-		dismissedAt: null,
 		suggestions: [{ appliedVersion: { action: 'apply' } }],
 	});
 });
@@ -1258,8 +1225,7 @@ it('dismisses Fix ready by discarding its suggestion without saving the graph', 
 	const response = await agent.post(`${url}/dismiss`);
 	expect(response.status).toBe(200);
 	expect(response.body.data).toMatchObject({
-		reviewState: 'discarded',
-		dismissedAt: null,
+		reviewState: 'dismissed',
 		suggestions: [{ state: 'closed', closedReason: 'discarded' }],
 	});
 	await agent.post(`${url}/dismiss`).expect(409);
@@ -1335,7 +1301,7 @@ describe('suggestion groups', () => {
 
 		const detail = await service.dismiss(user, project.id, original.id, result.id);
 
-		expect(detail.reviewState).toBe('discarded');
+		expect(detail.reviewState).toBe('dismissed');
 		expect(await states()).toEqual([
 			{ state: 'closed', closedReason: 'discarded' },
 			{ state: 'closed', closedReason: 'discarded' },
@@ -1354,6 +1320,23 @@ describe('suggestion groups', () => {
 		]);
 		expect((await getDetail()).reviewState).toBe('outdated');
 		expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 1 });
+	});
+
+	it('does not start an investigation for a member with a pending suggestion', async () => {
+		const { project, member, result } = await groupFixture();
+		const execution = await createExecution(
+			{ status: 'error', mode: 'trigger', workflowVersionId: member.workflow.versionId },
+			member.workflow,
+		);
+
+		await expect(
+			Container.get(SelfHealingInvestigationService).start({
+				workflowId: member.workflow.id,
+				projectId: project.id,
+				executionId: execution.id,
+			}),
+		).resolves.toEqual({ kind: 'result', resultId: result.id });
+		expect(runtime.startSelfHealingRun).not.toHaveBeenCalled();
 	});
 
 	it('does not discard a group with an outdated suggestion', async () => {
@@ -1689,6 +1672,24 @@ describe('grouped completion', () => {
 		expect(await workflows.findOneByOrFail({ id: original.id })).toEqual(original);
 	});
 
+	it('keeps a sub-workflow-only result applied after the sub-workflow is deleted', async () => {
+		const { investigation, user, project, original, subWorkflow, completion } =
+			await groupCompletion();
+		const result = await completeResult({
+			investigationId: investigation.id,
+			...completion,
+			candidates: [{ ...completion.candidates[0], graph: original }, completion.candidates[1]],
+		});
+		await service.act(user, project.id, original.id, result.id, 'apply');
+
+		await workflows.delete(subWorkflow.id);
+
+		const detail = await service.getDetail(user, project.id, original.id, result.id);
+		expect(detail.suggestions).toEqual([]);
+		expect(detail.reviewState).toBe('applied');
+		expect(await service.countForInbox(user)).toEqual({ open: 0, closed: 1 });
+	});
+
 	it('saves nothing when a member no longer matches its baseline', async () => {
 		const { investigation, subWorkflow, completion } = await groupCompletion();
 		await workflows.update(subWorkflow.id, { name: 'Changed before completion' });
@@ -1701,20 +1702,22 @@ describe('grouped completion', () => {
 	});
 
 	it('saves nothing when a member has a pending suggestion', async () => {
-		const { investigation, completion } = await groupCompletion();
+		const { investigation, input, completion } = await groupCompletion();
 		const [, member] = completion.candidates;
+		const other = await results.createResult({ ...input, completedAt: new Date() }, {});
 		await suggestionService.createSuggestion(
 			await suggestionService.prepareSuggestion(member.baseline, {
 				graph: member.graph,
 				explanation: 'Another fix.',
 				resultKind: 'fix_ready',
 			}),
+			other.id,
 		);
 
 		await expect(
 			service.complete({ investigationId: investigation.id, ...completion }),
 		).rejects.toThrow('already has a pending proposal');
-		expect(await results.count()).toBe(0);
+		expect(await results.count()).toBe(1);
 		expect(await suggestions.count()).toBe(1);
 	});
 });
@@ -1791,7 +1794,7 @@ describe('competing reviewers', () => {
 		await expect(review(user, 'dismiss')).rejects.toBeInstanceOf(ConflictError);
 
 		expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({
-			dismissedById: editor.id,
+			reviewState: 'dismissed',
 		});
 	});
 
@@ -1979,7 +1982,7 @@ it('checks enabled-user status again after a result has been created', async () 
 	await Container.get(UserRepository).update(user.id, { disabled: true });
 	await expect(service.getDetail(user, project.id, original.id, result.id)).rejects.toThrow();
 	await expect(service.dismiss(user, project.id, original.id, result.id)).rejects.toThrow();
-	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ dismissedAt: null });
+	expect(await results.findOneByOrFail({ id: result.id })).toMatchObject({ reviewState: 'open' });
 });
 
 it('rejects a result ID supplied under another workflow', async () => {

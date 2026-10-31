@@ -45,7 +45,6 @@
 	"inbox.selfHealing.needsAttention.body": "Read the report, then continue in Assistant or in the editor",
 	"inbox.selfHealing.couldNotFix.body": "The Assistant couldn't prepare a fix, so this result was closed automatically. The workflow can keep failing until the cause is resolved. Review the report for next steps.",
 	"inbox.selfHealing.state.applied": "Applied",
-	"inbox.selfHealing.state.discarded": "Discarded",
 	"inbox.selfHealing.state.outdated": "Outdated",
 	"inbox.selfHealing.state.dismissed": "Closed",
 	"inbox.selfHealing.state.outdated.body": "The workflow changed after this suggestion. Review the current workflow before you make changes.",

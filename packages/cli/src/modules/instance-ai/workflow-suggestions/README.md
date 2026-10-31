@@ -10,7 +10,7 @@ Use `WorkflowSuggestionService` from trusted backend code.
 
 1. Call `captureBaseline(workflowId, backgroundUserId)` before preparing a fix. Keep the returned baseline outside model control.
 2. Call `prepareSuggestion(baseline, { graph, explanation, errorContext, resultKind })` with the proposed changes. `graph` accepts only nodes and connections. Supply `fix_ready` or `needs_you` as `resultKind`.
-3. Call `createSuggestion(prepared, ctx, selfHealingResultId)`. Self-healing calls this in its completion transaction, after it saves the result. The result ID groups the suggestions of one fix. Use the prepared value, never raw model output. Creation rechecks the baseline and records the suggestion and submission activity together.
+3. Call `createSuggestion(prepared, selfHealingResultId, ctx)`. Self-healing calls this in its completion transaction, after it saves the result. The result ID groups the suggestions of one fix. Use the prepared value, never raw model output. Creation rechecks the baseline and records the suggestion and submission activity together.
 
 Storage checks current edit access and basic graph structure. Apply runs credential checks, workflow-save policies, and normal save preparation. It rejects preparation that changes the reviewed fix. A result without valid graph changes has no suggestion.
 

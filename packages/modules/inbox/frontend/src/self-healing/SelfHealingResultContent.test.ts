@@ -220,13 +220,11 @@ describe('SelfHealingResultContent', () => {
 				outcome: 'could_not_fix',
 				suggestions: [],
 				reviewState: 'dismissed',
-				dismissedAt: '2026-10-09T09:01:00.000Z',
-				dismissedById: 'human-1',
+				updatedAt: '2026-10-09T09:01:00.000Z',
 			}),
 		});
 
 		expect(getByTestId('self-healing-report')).toBeInTheDocument();
-		expect(getByTestId('self-healing-activity')).not.toHaveTextContent('human-1');
 		expect(getByTestId('self-healing-status-card')).toHaveTextContent('Closed');
 		expect(getAllByText('Closed', { exact: true })).toHaveLength(1);
 		expect(getByTestId('self-healing-activity')).toHaveTextContent('Completed the investigation');
@@ -273,7 +271,7 @@ describe('SelfHealingResultContent', () => {
 		expect(queryByTestId('self-healing-outdated-notice')).not.toBeInTheDocument();
 	});
 
-	it.each(['applied', 'outdated', 'discarded', 'dismissed'] as const)(
+	it.each(['applied', 'outdated', 'dismissed'] as const)(
 		'keeps %s results read-only',
 		(reviewState) => {
 			const { getByTestId, queryByTestId, queryByRole } = renderContent({

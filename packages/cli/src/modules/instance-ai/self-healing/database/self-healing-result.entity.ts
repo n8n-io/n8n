@@ -1,4 +1,8 @@
-import type { SelfHealingResultOutcome, SelfHealingResultUsage } from '@n8n/api-types';
+import type {
+	SelfHealingResultOutcome,
+	SelfHealingResultUsage,
+	SelfHealingReviewState,
+} from '@n8n/api-types';
 import {
 	DateTimeColumn,
 	JsonColumn,
@@ -64,14 +68,6 @@ export class SelfHealingResult extends WithTimestampsAndStringId {
 	@JsonColumn()
 	usage: SelfHealingResultUsage;
 
-	@DateTimeColumn({ nullable: true })
-	dismissedAt: Date | null;
-
-	@Index()
-	@Column({ type: 'uuid', nullable: true })
-	dismissedById: string | null;
-
-	@ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'dismissedById' })
-	dismissedBy: Relation<User> | null;
+	@Column({ type: 'varchar', length: 16, default: 'open' })
+	reviewState: SelfHealingReviewState;
 }

@@ -17,7 +17,7 @@
 | payload | json |  | false |  |  | Original workflow snapshot, candidate nodes and connections, explanation, and error context |
 | projectId | varchar(36) |  | false |  | [public.project](public.project.md) | Original owner project |
 | resultKind | varchar(16) |  | false |  |  | Investigation outcome; only fix_ready permits Apply |
-| selfHealingResultId | varchar(36) |  | true |  | [public.self_healing_result](public.self_healing_result.md) | Self-healing result that groups this suggestion |
+| selfHealingResultId | varchar(36) |  | false |  | [public.self_healing_result](public.self_healing_result.md) | Self-healing result that groups this suggestion |
 | state | varchar(16) |  | false |  |  | Suggestion lifecycle state |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
 | workflowId | varchar(36) |  | false |  | [public.workflow_entity](public.workflow_entity.md) | Target workflow |
@@ -42,6 +42,7 @@
 | workflow_suggestion_payload_not_null | n | NOT NULL payload |
 | workflow_suggestion_projectId_not_null | n | NOT NULL "projectId" |
 | workflow_suggestion_resultKind_not_null | n | NOT NULL "resultKind" |
+| workflow_suggestion_selfHealingResultId_not_null | n | NOT NULL "selfHealingResultId" |
 | workflow_suggestion_state_not_null | n | NOT NULL state |
 | workflow_suggestion_updatedAt_not_null | n | NOT NULL "updatedAt" |
 | workflow_suggestion_workflowId_not_null | n | NOT NULL "workflowId" |
@@ -65,7 +66,7 @@ erDiagram
 "public.workflow_suggestion" }o--|| "public.user" : "FOREIGN KEY (#quot;backgroundUserId#quot;) REFERENCES #quot;user#quot;(id) ON DELETE CASCADE"
 "public.workflow_suggestion_activity" }o--|| "public.workflow_suggestion" : "FOREIGN KEY (#quot;suggestionId#quot;) REFERENCES workflow_suggestion(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.project" : "FOREIGN KEY (#quot;projectId#quot;) REFERENCES project(id) ON DELETE CASCADE"
-"public.workflow_suggestion" }o--o| "public.self_healing_result" : "FOREIGN KEY (#quot;selfHealingResultId#quot;) REFERENCES self_healing_result(id) ON DELETE CASCADE"
+"public.workflow_suggestion" }o--|| "public.self_healing_result" : "FOREIGN KEY (#quot;selfHealingResultId#quot;) REFERENCES self_healing_result(id) ON DELETE CASCADE"
 "public.workflow_suggestion" }o--|| "public.workflow_entity" : "FOREIGN KEY (#quot;workflowId#quot;) REFERENCES workflow_entity(id) ON DELETE CASCADE"
 
 "public.workflow_suggestion" {
@@ -130,13 +131,12 @@ erDiagram
   timestamp_3__with_time_zone completedAt
   integer configurationId FK
   timestamp_3__with_time_zone createdAt
-  timestamp_3__with_time_zone dismissedAt
-  uuid dismissedById FK
   varchar_36_ executionId
   varchar_36_ id
   varchar_16_ outcome
   varchar_36_ projectId FK
   text report
+  varchar_16_ reviewState
   text summary
   timestamp_3__with_time_zone updatedAt
   json usage

@@ -53,15 +53,6 @@ export type SelfHealingResultInput = {
 	completedAt: string;
 };
 
-export function getSelfHealingReviewState(
-	result: Pick<SelfHealingResult, 'dismissedAt' | 'outcome'>,
-	suggestions: Array<Pick<WorkflowSuggestionProposalDetail, 'closedReason'>>,
-): SelfHealingResultDetail['reviewState'] {
-	if (result.dismissedAt) return 'dismissed';
-	if (result.outcome === 'could_not_fix') return 'closed';
-	return suggestions.find(({ closedReason }) => closedReason)?.closedReason ?? 'open';
-}
-
 @Service()
 export class SelfHealingResultService {
 	constructor(
@@ -184,7 +175,7 @@ export class SelfHealingResultService {
 				ctx,
 			);
 			for (const prepared of suggestions) {
-				await this.suggestions.createSuggestion(prepared, ctx, result.id);
+				await this.suggestions.createSuggestion(prepared, result.id, ctx);
 			}
 
 			await this.investigations.completeWithResult(investigationId, result.id, ctx);
@@ -256,9 +247,9 @@ export class SelfHealingResultService {
 
 		let proposals = await this.suggestions.getProposals(reviewer, projectId, suggestions);
 		if (proposals.length > 0) {
-			// A concurrent dismissal commits the result and its suggestions together.
+			// A concurrent closure commits the result and its suggestions together.
 			result = await this.results.getResult(resultId, { projectId, workflowId });
-			if (result.dismissedAt && proposals.some(({ state }) => state === 'pending')) {
+			if (result.reviewState !== 'open' && proposals.some(({ state }) => state === 'pending')) {
 				const current = await this.getSuggestions(result);
 				proposals = await this.suggestions.getProposals(reviewer, projectId, current);
 			}
@@ -289,9 +280,7 @@ export class SelfHealingResultService {
 			createdAt: result.createdAt.toISOString(),
 			updatedAt: result.updatedAt.toISOString(),
 			completedAt: result.completedAt.toISOString(),
-			dismissedAt: result.dismissedAt?.toISOString() ?? null,
-			dismissedById: result.dismissedById,
-			reviewState: getSelfHealingReviewState(result, suggestions),
+			reviewState: result.reviewState,
 			suggestions,
 			execution,
 		};
@@ -328,8 +317,9 @@ export class SelfHealingResultService {
 			workflowId,
 			result.executionId,
 		);
+		const current = await this.results.getResult(resultId, { projectId, workflowId });
 		return {
-			...this.toDetail(result, proposals, execution),
+			...this.toDetail(current, proposals, execution),
 			...publication,
 		};
 	}
@@ -343,26 +333,16 @@ export class SelfHealingResultService {
 				resultId,
 				ctx,
 			);
-			if (result.dismissedAt) return 'already_closed';
+			if (result.reviewState === 'dismissed') return 'already_closed';
 
 			if (!suggestions.some((suggestion) => suggestion.workflowId === workflowId)) {
 				await this.requireCurrentProject(workflowId, projectId, ctx);
 			}
 			if (suggestions.length > 0) {
-				const discardOutcome = await this.actions.discardPending(
-					reviewer,
-					projectId,
-					suggestions,
-					ctx,
-				);
-				if (discardOutcome !== 'discarded') return discardOutcome;
+				return await this.actions.discardPending(reviewer, projectId, suggestions, ctx);
 			}
-
-			if (
-				result.outcome === 'needs_you' &&
-				!(await this.results.dismissResult(result.id, user.id, ctx))
-			) {
-				throw new ConflictError('This result is already closed.');
+			if (result.reviewState !== 'closed' && !(await this.results.dismissResult(result.id, ctx))) {
+				return 'already_closed';
 			}
 			return 'dismissed';
 		});

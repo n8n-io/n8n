@@ -55,6 +55,7 @@ The call returns `{ kind: 'investigation', investigationId }` or
 A workflow can have one unfinished investigation or open result.
 An unfinished investigation blocks the workflow across projects and configurations.
 An open result blocks investigations only in the workflow's current project.
+An open result also blocks investigations of each workflow that has a pending suggestion in it.
 Repeated starts for the same failed execution return the original investigation, including after completion.
 Automatic triggers and eligibility for a new failure remain the caller's responsibility.
 When an access check fails, the producer pauses the configuration. Another eligible user must
@@ -136,8 +137,10 @@ There is no public launch endpoint.
 ## Investigate again
 
 Admission blocks new investigations while a Fix ready or Needs attention result is Open.
-An undismissed Fix ready or Needs attention result stays Open while none of its suggestions is closed. Could not fix results are Closed immediately and return the `closed`
-review state. Automatic closure leaves `dismissedAt` and `dismissedById` empty.
+The result stores its `reviewState`. A Fix ready or Needs attention result starts `open`. A Could
+not fix result starts `closed`. When the first suggestion of a result closes, the result gets the
+same state: `applied`, `outdated`, or `dismissed` for a discarded suggestion. The state stays when a
+workflow deletion removes the suggestions.
 
 For a Fix ready or Needs attention result, dismissal, discard, or outdated reconciliation permits
 another eligible production failure on the same published version. Apply saves a draft.
@@ -354,12 +357,11 @@ check the current workflow before writing. When one suggestion becomes outdated,
 suggestion of its result closes as outdated. If Apply fails, keep the review open and show the error.
 
 The Discard and close button calls `POST /:resultId/dismiss`.
-Dismissal discards every pending suggestion of the result in one transaction. If one suggestion is
-outdated, dismissal closes all of them as outdated and discards none. Fix-ready results derive
-their discarded state from the suggestions. Needs attention results also record dismissal in the
-same transaction.
+Dismissal discards every pending suggestion of the result in one transaction, and the result gets the
+`dismissed` state. If one suggestion is outdated, dismissal closes all of them as outdated and
+discards none, and the result gets the `outdated` state. An open result without a suggestion gets the
+`dismissed` state directly.
 Dismissal leaves automatically closed Could not fix results unchanged and returns `closed`.
-A dismissal recorded before automatic closure still returns `dismissed`.
 Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
 returns an error. After the first publication request error, approval stops. For a result with
@@ -391,6 +393,6 @@ The shared Inbox reads result rows through `SelfHealingResultService.listForInbo
 It reads counts through `countForInbox()`. Both use current reviewer membership, editor access, and original-project ownership.
 The source selects rows before applying the shared pagination boundary and limit.
 The shared API uses `GET /inbox` and `GET /inbox/summary`.
-Open and Closed derive from result outcome, dismissal, and suggestion closure.
+Open and Closed derive from `reviewState`.
 Could not fix results are Closed. Inbox reads do not change either state.
 The review UI will provide review screens and chat and editor navigation.

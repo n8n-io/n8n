@@ -10,7 +10,7 @@ import {
 import { Service } from '@n8n/di';
 import { NotFoundError } from '@n8n/errors';
 import type { Scope } from '@n8n/permissions';
-import { DataSource, IsNull } from '@n8n/typeorm';
+import { DataSource } from '@n8n/typeorm';
 
 import { WorkflowSuggestion } from '../../workflow-suggestions/database/workflow-suggestion.entity';
 import { whereReviewer } from './self-healing-configuration.repository';
@@ -65,19 +65,8 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		super(SelfHealingResult, dataSource.manager, transactionRunner);
 	}
 
-	// Keep in sync with getSelfHealingReviewState(), which returns 'open' for the same rows.
 	private inboxState() {
-		const closedSuggestion = this.createQueryBuilder()
-			.subQuery()
-			.select('1')
-			.from(WorkflowSuggestion, 'suggestion')
-			.where('suggestion.selfHealingResultId = result.id')
-			.andWhere("suggestion.state <> 'pending'")
-			.getQuery();
-		return `CASE WHEN result.dismissedAt IS NULL
-		AND result.outcome <> 'could_not_fix'
-		AND NOT EXISTS ${closedSuggestion}
-		THEN 'open' ELSE 'closed' END`;
+		return "CASE WHEN result.reviewState = 'open' THEN 'open' ELSE 'closed' END";
 	}
 
 	private inboxQuery({ user, ...roles }: SelfHealingInboxAccess) {
@@ -104,11 +93,20 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 	}
 
 	async getOpenForWorkflow(workflowId: string, projectId: string, ctx: OperationContext = {}) {
-		return await this.managerFor(ctx)
-			.createQueryBuilder(SelfHealingResult, 'result')
+		const query = this.managerFor(ctx).createQueryBuilder(SelfHealingResult, 'result');
+		const pendingSuggestion = query
+			.subQuery()
+			.select('1')
+			.from(WorkflowSuggestion, 'suggestion')
+			.where('suggestion.selfHealingResultId = result.id')
+			.andWhere('suggestion.workflowId = :workflowId')
+			.andWhere("suggestion.state = 'pending'")
+			.getQuery();
+		return await query
 			.select('result.id')
-			.where({ workflowId, projectId })
-			.andWhere(`(${this.inboxState()}) = :state`, { state: 'open' })
+			.where('result.projectId = :projectId', { projectId })
+			.andWhere(`(result.workflowId = :workflowId OR EXISTS ${pendingSuggestion})`, { workflowId })
+			.andWhere("result.reviewState = 'open'")
 			.getOne();
 	}
 
@@ -204,17 +202,16 @@ export class SelfHealingResultRepository extends BaseRepository<SelfHealingResul
 		return await manager.save(
 			manager.create(SelfHealingResult, {
 				...input,
-				dismissedAt: null,
-				dismissedById: null,
+				reviewState: input.outcome === 'could_not_fix' ? 'closed' : 'open',
 			}),
 		);
 	}
 
-	async dismissResult(id: string, userId: string, ctx: OperationContext) {
+	async dismissResult(id: string, ctx: OperationContext) {
 		const result = await this.managerFor(ctx).update(
 			SelfHealingResult,
-			{ id, dismissedAt: IsNull() },
-			{ dismissedAt: new Date(), dismissedById: userId },
+			{ id, reviewState: 'open' },
+			{ reviewState: 'dismissed' },
 		);
 		return result.affected === 1;
 	}

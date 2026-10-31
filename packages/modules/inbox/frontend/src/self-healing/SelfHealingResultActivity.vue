@@ -41,13 +41,13 @@ const entries = computed<Activity[]>(() => {
 		});
 	}
 
-	if (result.dismissedAt) {
+	if (!suggestion && result.reviewState === 'dismissed') {
 		activity.push({
 			id: `${result.resultId}:dismissed`,
 			action: 'dismissed',
 			author: 'human',
-			actorId: result.dismissedById,
-			createdAt: result.dismissedAt,
+			actorId: null,
+			createdAt: result.updatedAt,
 		});
 	}
 
