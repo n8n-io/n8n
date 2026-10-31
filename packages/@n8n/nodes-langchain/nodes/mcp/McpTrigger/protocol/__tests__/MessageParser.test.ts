@@ -214,9 +214,12 @@ describe('MessageParser', () => {
 			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
 		});
 
-		it('should return undefined when params.arguments is missing', () => {
+		it('should default to empty arguments when params.arguments is missing', () => {
 			const body = '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"test"}}';
-			expect(MessageParser.extractToolCallInfo(body)).toBeUndefined();
+			expect(MessageParser.extractToolCallInfo(body)).toEqual({
+				toolName: 'test',
+				arguments: {},
+			});
 		});
 
 		it('should return undefined when params.arguments is null', () => {
