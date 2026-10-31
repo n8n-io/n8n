@@ -393,6 +393,13 @@ export class TypeOrmStepStore implements StepStore {
 	async hasFailedSteps(executionId: string): Promise<boolean> {
 		return await this.repo.exists({ where: { executionId, status: 'failed' } });
 	}
+
+	async loadFailedSteps(executionId: string): Promise<StepRecord[]> {
+		return await this.repo.find({
+			where: { executionId, status: 'failed' },
+			order: { nodeId: 'ASC', iteration: 'ASC' },
+		});
+	}
 }
 
 const CREATION_STATUSES: readonly StepStatus[] = ['queued', 'completed', 'skipped'];
