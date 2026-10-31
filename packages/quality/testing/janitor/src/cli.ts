@@ -48,6 +48,7 @@ import {
 import { setConfig, getConfig, defineConfig, type JanitorConfig } from './config.js';
 import { affectedPackages, findWorkspaceRoot } from './core/affected-packages-analyzer.js';
 import { matchesSinkPackage } from './core/global-triggers.js';
+import { parseTestRunArgs, runTestRun, spawnDryRun, spawnRun } from './core/test-run.js';
 import {
 	LOCKFILE,
 	formatLockfileImpact,
@@ -710,6 +711,35 @@ function runAffectedPackages(options: CliOptions): void {
 	console.log(result.join('\n'));
 }
 
+/** test-run: cached results first, then janitor scoping. See core/test-run.ts. */
+function runTestRunCmd(options: CliOptions): void {
+	const args = parseTestRunArgs(process.argv.slice(3));
+	const rootDir = findWorkspaceRoot(process.cwd());
+	const changedFiles = readChangedFiles(options);
+	const lockfileImpactedPackages = readLockfileSignal(options, changedFiles);
+	const affected = resolveAffectedPackages(rootDir, changedFiles, lockfileImpactedPackages);
+	const sinkAffected = resolveAffectedPackages(
+		rootDir,
+		changedFiles?.filter(matchesSinkPackage) ?? null,
+	);
+	const exitCode = runTestRun(args, {
+		dryRun: spawnDryRun(rootDir),
+		run: spawnRun(rootDir),
+		decide: (task) =>
+			computeScope({
+				packageDir: task.directory,
+				rootDir,
+				changedFiles,
+				packageName: task.package,
+				affectedPackages: affected,
+				sinkAffectedPackages: sinkAffected,
+				lockfileImpactedPackages,
+			}),
+		log: (message) => console.log(message),
+	});
+	process.exit(exitCode);
+}
+
 /** lockfile-impact: print the `LOCKFILE_IMPACTED_PACKAGES` value for test jobs. */
 function runLockfileImpact(options: CliOptions): void {
 	const changedFiles = readChangedFiles(options);
@@ -876,6 +906,11 @@ async function main(): Promise<void> {
 	}
 
 	// Workspace-wide CI utilities: no config file required.
+	if (options.command === 'test-run') {
+		runTestRunCmd(options);
+		return;
+	}
+
 	if (options.command === 'lockfile-impact') {
 		runLockfileImpact(options);
 		return;
