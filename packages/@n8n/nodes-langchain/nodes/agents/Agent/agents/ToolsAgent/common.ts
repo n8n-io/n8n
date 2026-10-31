@@ -19,7 +19,7 @@ import type {
 import type { ZodObject } from 'zod';
 import { z } from 'zod';
 
-import { getConnectedTools } from '@utils/helpers';
+import { getConnectedTools, validateToolNames } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 /* -----------------------------------------------------------
@@ -535,8 +535,17 @@ export async function getOptionalMemory(
 export async function getTools(
 	ctx: IExecuteFunctions | ISupplyDataFunctions | IWebhookFunctions,
 	outputParser?: N8nOutputParser,
+	itemIndex?: number,
 ): Promise<Array<DynamicStructuredTool | Tool>> {
-	const tools = (await getConnectedTools(ctx, true, false)) as Array<DynamicStructuredTool | Tool>;
+	let tools: Array<DynamicStructuredTool | Tool> = await getConnectedTools(
+		ctx,
+		itemIndex === undefined || 'getRequestObject' in ctx,
+		false,
+	);
+	if (itemIndex !== undefined && !('getRequestObject' in ctx)) {
+		tools = filterToolsByAvailability(ctx, tools, itemIndex);
+		validateToolNames(ctx, tools);
+	}
 
 	// If an output parser is available, create a dynamic tool to validate the final output.
 	if (outputParser) {
@@ -552,6 +561,76 @@ export async function getTools(
 		tools.push(structuredOutputParserTool);
 	}
 	return tools;
+}
+
+function filterToolsByAvailability<T extends Tool | DynamicStructuredTool>(
+	ctx: IExecuteFunctions | ISupplyDataFunctions,
+	tools: T[],
+	itemIndex: number,
+): T[] {
+	const rules = z
+		.array(z.object({ sourceNodeId: z.string() }))
+		.parse(ctx.getNodeParameter('toolAvailability.rules', itemIndex, [], { rawExpressions: true }));
+	if (rules.length === 0) return tools;
+
+	// Disabled sources are still connected, but they supply no tools.
+	const connectedIds = new Set(
+		ctx
+			.getParentNodes(ctx.getNode().name, {
+				connectionType: NodeConnectionTypes.AiTool,
+				depth: 1,
+			})
+			.map((node) => node.id),
+	);
+	const seenIds = new Set<string>();
+	for (const { sourceNodeId } of rules) {
+		if (seenIds.has(sourceNodeId)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Tool Availability has multiple rules for source node "${sourceNodeId}"`,
+				{ itemIndex, description: 'Keep only one rule for each tool node.' },
+			);
+		}
+		if (!connectedIds.has(sourceNodeId)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Tool Availability source node "${sourceNodeId}" is not directly connected to this Agent`,
+				{ itemIndex, description: 'Connect the tool node or remove its availability rule.' },
+			);
+		}
+		seenIds.add(sourceNodeId);
+	}
+
+	const unavailableIds = new Set<string>();
+	for (const [ruleIndex, { sourceNodeId }] of rules.entries()) {
+		let available: unknown;
+		try {
+			available = ctx.getNodeParameter(`toolAvailability.rules[${ruleIndex}].available`, itemIndex);
+		} catch (error) {
+			throw new NodeOperationError(ctx.getNode(), error, {
+				message: `Could not evaluate Tool Availability for source node "${sourceNodeId}"`,
+				itemIndex,
+				description: "Check the Available expression in this tool's rule.",
+			});
+		}
+		if (typeof available !== 'boolean') {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`Tool Availability for source node "${sourceNodeId}" must resolve to a Boolean`,
+				{
+					itemIndex,
+					description:
+						'Set Available to true or false, or use an expression that returns a Boolean.',
+				},
+			);
+		}
+		if (!available) unavailableIds.add(sourceNodeId);
+	}
+
+	return tools.filter((tool) => {
+		const sourceNodeId: unknown = tool.metadata?.sourceNodeId;
+		return typeof sourceNodeId !== 'string' || !unavailableIds.has(sourceNodeId);
+	});
 }
 
 /**

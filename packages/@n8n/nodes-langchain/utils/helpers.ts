@@ -279,20 +279,11 @@ export const getConnectedTools = async (
 
 	if (!enforceUniqueNames) return connectedTools;
 
-	const seenNames = new Set<string>();
+	validateToolNames(ctx, connectedTools);
 
 	const finalTools: Tool[] = [];
 
 	for (const tool of connectedTools) {
-		const { name } = tool;
-		if (seenNames.has(name)) {
-			throw new NodeOperationError(
-				ctx.getNode(),
-				`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
-			);
-		}
-		seenNames.add(name);
-
 		if (escapeCurlyBrackets) {
 			tool.description = escapeSingleCurlyBrackets(tool.description) ?? tool.description;
 		}
@@ -306,6 +297,22 @@ export const getConnectedTools = async (
 
 	return finalTools;
 };
+
+export function validateToolNames(
+	ctx: IExecuteFunctions | IWebhookFunctions | ISupplyDataFunctions,
+	tools: Array<{ name: string }>,
+): void {
+	const seenNames = new Set<string>();
+	for (const { name } of tools) {
+		if (seenNames.has(name)) {
+			throw new NodeOperationError(
+				ctx.getNode(),
+				`You have multiple tools with the same name: '${name}', please rename them to avoid conflicts`,
+			);
+		}
+		seenNames.add(name);
+	}
+}
 
 /**
  * Reads the custom header configured on a credential, if present and valid.
