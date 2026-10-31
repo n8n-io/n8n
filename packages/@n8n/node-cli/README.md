@@ -99,21 +99,15 @@ rather run n8n yourself.
 | `--custom-user-folder <path>` | Only with `--external-n8n`: the `N8N_USER_FOLDER` of that instance (default: `~/.n8n-node-cli`) |
 
 This command:
-<<<<<<< HEAD
 - Starts n8n in a container on `http://localhost:5678` (unless using `--external-n8n`)
 - Mounts your project into the container's custom nodes directory
 - Persists workflows and credentials in a `n8n-node-cli-data-<image>` volume,
   one for each `--n8n-image`
 - Recompiles on change and pushes a reload to n8n, including for icons and JSON assets
+- Watches for changes in your `nodes/` and `credentials/` directories
 
 `CONTAINER_ENGINE=docker|podman` overrides engine detection. Colima, Rancher
 Desktop, OrbStack and a remote `DOCKER_HOST` all work.
-=======
-- Starts n8n on `http://localhost:5678` (unless using `--external-n8n`)
-- Links your node to n8n's custom nodes directory (`~/.n8n-node-cli/.n8n/custom`)
-- Rebuilds on file changes for live preview
-- Watches for changes in your `nodes/` and `credentials/` directories
->>>>>>> b5bab5af377ae4fd37e8b97b78b4770c49ac0125
 
 **Examples:**
 ```bash

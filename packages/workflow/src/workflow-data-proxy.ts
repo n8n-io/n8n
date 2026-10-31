@@ -65,8 +65,6 @@ const PAIRED_ITEM_METHOD = {
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
 
-<<<<<<< HEAD
-=======
 type PairedItemLink = {
 	sourceData: ISourceData | null;
 	pairedItem: IPairedItemData;
@@ -84,14 +82,6 @@ type PairedItemFrame = { parentResults: PairedItemMemoResult[] } & (
 	| (PairedItemState & { results: PairedItemMemoResult[] })
 );
 
-/**
- * Whether the runtime can compile expressions. The expression engine compiles
- * expressions via `new Function`, which throws when the process is started with
- * `--disallow-code-generation-from-strings` — as the secure-mode task runner is.
- * This is a process-wide invariant, so we probe once and cache the result.
- */
-let codeGenerationAllowed: boolean | undefined;
->>>>>>> b5bab5af377ae4fd37e8b97b78b4770c49ac0125
 // Reads a key from a placeholder source only when it is the source's own
 // property, so a lookup can never resolve to a value reached through the
 // prototype chain (e.g. `constructor` / `__proto__`).
@@ -1042,31 +1032,7 @@ export class WorkflowDataProxy {
 			destinationNodeName: string,
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
-<<<<<<< HEAD
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
-		): INodeExecutionData =>
-			resolvePairedItem(
-				destinationNodeName,
-				incomingSourceData,
-				initialPairedItem,
-				usedMethodName,
-				undefined,
-				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
-				// Aggregate output pairing to all its inputs), so without memoization
-				// the walk revisits the same item exponentially often.
-				new PairedItemMemo(),
-			);
-
-		const resolvePairedItem = (
-			destinationNodeName: string,
-			incomingSourceData: ISourceData | null,
-			initialPairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod,
-			nodeBeforeLast: string | undefined,
-			memo: PairedItemMemo,
-=======
-			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.$GET_PAIRED_ITEM,
->>>>>>> b5bab5af377ae4fd37e8b97b78b4770c49ac0125
 		): INodeExecutionData => {
 			// Shared ancestors must resolve once, even when branches recombine at every run.
 			const memo = new PairedItemMemo();
