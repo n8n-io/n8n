@@ -18,16 +18,21 @@ export type ListboxProps = {
 	defaultValue?: ListboxValue;
 	/** Accessible name for the list. */
 	label?: string;
-	/** The user cannot move the highlight or change the value. */
+	/**
+	 * The user cannot move the highlight or change the value.
+	 * @default false
+	 */
 	disabled?: boolean;
 	/**
 	 * `replace` keeps one value. A second activation does not clear it.
 	 * `toggle` clears the value when the user activates the selected item.
+	 * @default 'replace'
 	 */
 	selectionBehavior?: ListboxSelectionBehavior;
 	/**
 	 * Up and Down, or Left and Right, move the highlight.
 	 * Items sit in a row when this is `horizontal`.
+	 * @default 'vertical'
 	 */
 	orientation?: ListboxOrientation;
 	/** Reading direction. Omit it to inherit the page direction. */
@@ -35,6 +40,7 @@ export type ListboxProps = {
 	/**
 	 * Pointer movement moves the highlight.
 	 * The highlight fill follows `data-highlighted`.
+	 * @default true
 	 */
 	highlightOnHover?: boolean;
 };

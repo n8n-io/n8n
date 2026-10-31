@@ -3,7 +3,10 @@ import type { ListboxValue } from './Listbox.types';
 export type ListboxItemProps = {
 	/** Value this item selects. Unique among the items in the list. */
 	value: ListboxValue;
-	/** The user cannot highlight or select this item. Arrow keys skip it. */
+	/**
+	 * The user cannot highlight or select this item. Arrow keys skip it.
+	 * @default false
+	 */
 	disabled?: boolean;
 };
 

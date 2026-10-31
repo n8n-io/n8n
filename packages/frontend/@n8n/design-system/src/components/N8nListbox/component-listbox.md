@@ -96,15 +96,30 @@ type ListboxProps = {
   modelValue?: ListboxValue;
   defaultValue?: ListboxValue;
   label?: string;
+  /**
+   * @default false
+   */
   disabled?: boolean;
+  /**
+   * @default 'replace'
+   */
   selectionBehavior?: ListboxSelectionBehavior;
+  /**
+   * @default 'vertical'
+   */
   orientation?: ListboxOrientation;
   dir?: 'ltr' | 'rtl';
+  /**
+   * @default true
+   */
   highlightOnHover?: boolean;
 };
 
 type ListboxItemProps = {
   value: ListboxValue;
+  /**
+   * @default false
+   */
   disabled?: boolean;
 };
 ```
