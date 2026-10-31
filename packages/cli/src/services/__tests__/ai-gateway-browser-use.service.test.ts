@@ -1,3 +1,4 @@
+import type { LicenseState } from '@n8n/backend-common';
 import { OperationalError, UserError } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -11,18 +12,28 @@ const attribution = { instanceAiThreadId: 'thread-1', instanceAiTaskId: 'task-1'
 
 describe('AiGatewayBrowserUseService', () => {
 	let aiGatewayService: ReturnType<typeof mock<AiGatewayService>>;
+	let licenseState: ReturnType<typeof mock<LicenseState>>;
 	let service: AiGatewayBrowserUseService;
 
 	beforeEach(() => {
 		aiGatewayService = mock<AiGatewayService>();
-		service = new AiGatewayBrowserUseService(aiGatewayService);
+		licenseState = mock<LicenseState>();
+		service = new AiGatewayBrowserUseService(aiGatewayService, licenseState);
 	});
 
-	it.each([true, false])('is enabled when Gateway credits are enabled (%s)', (enabled) => {
-		aiGatewayService.isEnabled.mockReturnValue(enabled);
+	it.each([
+		[true, true, true],
+		[false, true, false],
+		[true, false, false],
+	])(
+		'is enabled only with Gateway credits enabled (%s) and Cloud usage-based billing (%s)',
+		(gatewayEnabled, cloudUbbLicensed, expected) => {
+			aiGatewayService.isEnabled.mockReturnValue(gatewayEnabled);
+			licenseState.isAiGatewayCloudUbbLicensed.mockReturnValue(cloudUbbLicensed);
 
-		expect(service.isGatewayBrowserUseEnabled()).toBe(enabled);
-	});
+			expect(service.isGatewayBrowserUseEnabled()).toBe(expected);
+		},
+	);
 
 	const sessionRequest = {
 		provider: 'browserbaseBrowserUse',

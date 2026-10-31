@@ -67,6 +67,7 @@ function sharedSettings(
 			search: { provider: false, apiKey: false, url: false },
 		},
 		browserUseEnabled: false,
+		cloudBrowserEnabled: false,
 		...overrides,
 	};
 }
