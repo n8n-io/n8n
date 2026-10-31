@@ -1,6 +1,11 @@
 /* eslint-disable @typescript-eslint/unbound-method */
 import type { Logger } from '@n8n/backend-common';
-import type { EventService, WorkflowSharingService, Publisher } from '@n8n/backend-services';
+import {
+	type EventService,
+	type WorkflowSharingService,
+	type Publisher,
+	WorkflowVersionedSettings,
+} from '@n8n/backend-services';
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowsConfig } from '@n8n/config';
 import type { Project, WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
@@ -73,6 +78,7 @@ describe('ActiveWorkflowManager', () => {
 	const ownershipService = mock<OwnershipService>();
 	const credentialsPermissionChecker = mock<CredentialsPermissionChecker>();
 	const workflowPublisherService = mock<WorkflowPublisherService>();
+	const workflowVersionedSettings = new WorkflowVersionedSettings(mock());
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -104,6 +110,7 @@ describe('ActiveWorkflowManager', () => {
 			ownershipService,
 			credentialsPermissionChecker,
 			workflowPublisherService,
+			workflowVersionedSettings,
 		);
 	});
 
@@ -256,6 +263,7 @@ describe('ActiveWorkflowManager', () => {
 				ownershipService,
 				credentialsPermissionChecker,
 				workflowPublisherService,
+				workflowVersionedSettings,
 			);
 
 		const makeWorkflow = (overrides: Partial<WorkflowEntity> = {}) =>
@@ -875,6 +883,7 @@ describe('ActiveWorkflowManager', () => {
 				ownershipService,
 				credentialsPermissionChecker,
 				workflowPublisherService,
+				workflowVersionedSettings,
 			);
 		});
 
@@ -1175,6 +1184,7 @@ describe('ActiveWorkflowManager', () => {
 				ownershipService,
 				credentialsPermissionChecker,
 				workflowPublisherService,
+				workflowVersionedSettings,
 			);
 		});
 
@@ -1411,6 +1421,7 @@ describe('ActiveWorkflowManager', () => {
 				ownershipService,
 				credentialsPermissionChecker,
 				workflowPublisherService,
+				workflowVersionedSettings,
 			);
 		});
 
@@ -1868,6 +1879,7 @@ describe('ActiveWorkflowManager', () => {
 				ownershipService,
 				credentialsPermissionChecker,
 				workflowPublisherService,
+				workflowVersionedSettings,
 			);
 		});
 
@@ -2058,6 +2070,7 @@ describe('ActiveWorkflowManager', () => {
 				ownershipService,
 				credentialsPermissionChecker,
 				workflowPublisherService,
+				workflowVersionedSettings,
 			);
 
 		beforeEach(() => vi.clearAllMocks());
@@ -2139,6 +2152,7 @@ describe('ActiveWorkflowManager', () => {
 				ownershipService,
 				credentialsPermissionChecker,
 				workflowPublisherService,
+				workflowVersionedSettings,
 			);
 
 		const makeWorkflow = () => {

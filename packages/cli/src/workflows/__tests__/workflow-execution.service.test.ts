@@ -1,8 +1,9 @@
 import type { Logger } from '@n8n/backend-common';
-import type {
-	EventService,
-	InstanceWriteAccessService,
-	WorkflowPublishedDataService,
+import {
+	type EventService,
+	type InstanceWriteAccessService,
+	type WorkflowPublishedDataService,
+	WorkflowVersionedSettings,
 } from '@n8n/backend-services';
 import type { GlobalConfig, WorkflowsConfig } from '@n8n/config';
 import type {
@@ -134,6 +135,7 @@ describe('WorkflowExecutionService', () => {
 		pollCursorService,
 		executionCrashService,
 		mock(),
+		new WorkflowVersionedSettings(mock()),
 	);
 
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
@@ -182,6 +184,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
+				new WorkflowVersionedSettings(mock()),
 			);
 			const node = mock<INode>();
 			const workflow = mock<IWorkflowBase>({
@@ -702,6 +705,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				executionCrashService,
 				instanceWriteAccess,
+				new WorkflowVersionedSettings(mock()),
 			);
 			const user = mock<User>({ id: 'user-id' });
 			const workflowData = mock<IWorkflowBase>({ nodes: [webhookNode], connections: {} });
@@ -1182,6 +1186,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 
 			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
@@ -1260,6 +1265,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 
 			const result = await service.executeManually(workflowData, runPayload, user);
@@ -1449,6 +1455,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 		});
 
@@ -1608,6 +1615,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1754,6 +1762,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1861,6 +1870,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1917,6 +1927,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 
 			await service.executeErrorWorkflow(
@@ -1960,6 +1971,7 @@ describe('WorkflowExecutionService', () => {
 				pollCursorService,
 				mock(),
 				mock(),
+				new WorkflowVersionedSettings(mock()),
 			);
 
 			const user = mock<User>({ id: 'user-id' });

@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import {
 	WorkflowPublishedVersionRepository,
+	type PublishedVersionForExecution,
 	type PublishedWorkflowDataForExecution,
 	type WorkflowEntity,
 	type WorkflowHistory,
@@ -8,6 +9,7 @@ import {
 import { Service } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 
+import { WorkflowVersionedSettings } from './workflow-versioned-settings.service';
 import { CacheService } from '../services/cache/cache.service';
 
 export type { PublishedWorkflowDataForExecution };
@@ -27,6 +29,7 @@ export class WorkflowPublishedDataService {
 		private readonly logger: Logger,
 		private readonly workflowPublishedVersionRepository: WorkflowPublishedVersionRepository,
 		private readonly cacheService: CacheService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
 	) {
 		this.logger = this.logger.scoped('poll-trigger');
 	}
@@ -50,9 +53,9 @@ export class WorkflowPublishedDataService {
 	async getPublishedWorkflowDataForExecution(
 		workflowId: string,
 	): Promise<PublishedWorkflowDataForExecution | null> {
-		return await this.workflowPublishedVersionRepository.getPublishedVersionForExecution(
-			workflowId,
-		);
+		const record =
+			await this.workflowPublishedVersionRepository.getPublishedVersionForExecution(workflowId);
+		return record && this.toRunData(record);
 	}
 
 	/**
@@ -65,10 +68,17 @@ export class WorkflowPublishedDataService {
 		workflowId: string,
 	): Promise<PublishedWorkflowDataForExecution | null> {
 		try {
-			const cached = await this.cacheService.get<PublishedWorkflowDataForExecution>(
+			const cached = await this.cacheService.get<PublishedVersionForExecution>(
 				cacheKey(workflowId),
 			);
-			if (cached) return cached;
+			// An entry written before the cache held the version settings has no `versionSettings`.
+			// It is still correct while version-scoped settings are off. The next publish replaces it.
+			if (
+				cached &&
+				(cached.versionSettings !== undefined || !this.workflowVersionedSettings.isEnabled())
+			) {
+				return this.toRunData(cached);
+			}
 		} catch (error) {
 			this.logger.warn('Failed to read published-version cache; falling back to the database', {
 				workflowId,
@@ -92,11 +102,26 @@ export class WorkflowPublishedDataService {
 	 */
 	async refreshCache(workflowId: string): Promise<void> {
 		const key = cacheKey(workflowId);
-		const data = await this.getPublishedWorkflowDataForExecution(workflowId);
+		// The cache holds the record as stored. The settings are merged on read, so the
+		// `engine-v2` module check is always current.
+		const data =
+			await this.workflowPublishedVersionRepository.getPublishedVersionForExecution(workflowId);
 		if (data) {
 			await this.cacheService.set(key, data, NO_EXPIRY);
 		} else {
 			await this.cacheService.delete(key);
 		}
+	}
+
+	private toRunData({
+		versionSettings,
+		...data
+	}: PublishedVersionForExecution): PublishedWorkflowDataForExecution {
+		return {
+			...data,
+			settings: this.workflowVersionedSettings.forPublishedRun(data.settings, {
+				settings: versionSettings,
+			}),
+		};
 	}
 }

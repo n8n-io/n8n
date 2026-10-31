@@ -1,5 +1,6 @@
 import type { WorkflowsConfig } from '@n8n/config';
 import type { User } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -40,7 +41,10 @@ import type { McpService } from '@/modules/mcp/mcp.service';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import type { WorkflowPublishedDataService } from '@n8n/backend-services';
+import {
+	type WorkflowPublishedDataService,
+	WorkflowVersionedSettings,
+} from '@n8n/backend-services';
 
 export { type FoundWorkflow };
 
@@ -228,8 +232,14 @@ const getVersionDataForExecution = async (
 	workflowPublishedDataService: WorkflowPublishedDataService,
 ) => {
 	if (executionMode !== 'production') {
-		return { nodes: workflow.nodes ?? [], connections: workflow.connections ?? {} };
+		return {
+			nodes: workflow.nodes ?? [],
+			connections: workflow.connections ?? {},
+			settings: workflow.settings,
+		};
 	}
+
+	const workflowVersionedSettings = Container.get(WorkflowVersionedSettings);
 
 	// Behind the flag, the workflow_published_version mapping is the source of
 	// truth — consult it directly rather than gating on activeVersionId. This
@@ -247,6 +257,10 @@ const getVersionDataForExecution = async (
 		return {
 			nodes: publishedData.publishedVersion.nodes,
 			connections: publishedData.publishedVersion.connections,
+			settings: workflowVersionedSettings.forPublishedRun(
+				workflow.settings,
+				publishedData.publishedVersion,
+			),
 		};
 	}
 
@@ -260,6 +274,9 @@ const getVersionDataForExecution = async (
 	return {
 		nodes: workflow.activeVersion?.nodes ?? [],
 		connections: workflow.activeVersion?.connections ?? {},
+		settings: workflow.activeVersion
+			? workflowVersionedSettings.forPublishedRun(workflow.settings, workflow.activeVersion)
+			: workflow.settings,
 	};
 };
 
@@ -274,7 +291,7 @@ const buildRunData = async (
 	workflowPublishedDataService: WorkflowPublishedDataService,
 	triggerNodeName?: string,
 ): Promise<IWorkflowExecutionDataProcess> => {
-	const { nodes, connections } = await getVersionDataForExecution(
+	const { nodes, connections, settings } = await getVersionDataForExecution(
 		workflow,
 		workflowId,
 		executionMode,
@@ -289,7 +306,7 @@ const buildRunData = async (
 	const isManualExecution = executionMode === 'manual';
 	const runData: IWorkflowExecutionDataProcess = {
 		executionMode: isManualExecution ? 'manual' : getExecutionModeForTrigger(triggerNode),
-		workflowData: { ...workflow, nodes, connections },
+		workflowData: { ...workflow, nodes, connections, settings },
 		userId,
 		// MCP metadata for queue mode support
 		isMcpExecution: mcpService.isQueueMode,

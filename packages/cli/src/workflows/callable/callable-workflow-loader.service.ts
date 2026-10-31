@@ -2,7 +2,7 @@ import { WorkflowsConfig } from '@n8n/config';
 import { type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
-import { WorkflowPublishedDataService } from '@n8n/backend-services';
+import { WorkflowPublishedDataService, WorkflowVersionedSettings } from '@n8n/backend-services';
 
 import { CallableWorkflowUnavailableError } from './callable-workflow-unavailable.error';
 
@@ -28,6 +28,7 @@ export class CallableWorkflowLoader {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly workflowPublishedDataService: WorkflowPublishedDataService,
+		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
 	) {}
 
 	async loadWorkflow(
@@ -54,6 +55,7 @@ export class CallableWorkflowLoader {
 				versionId: published.versionId,
 				nodes: published.nodes,
 				connections: published.connections,
+				settings: this.workflowVersionedSettings.forPublishedRun(workflow.settings, published),
 			});
 		}
 
