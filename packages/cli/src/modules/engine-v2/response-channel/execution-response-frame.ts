@@ -7,10 +7,23 @@ import {
 import { createResultError, createResultOk, toResult, type Result } from '@n8n/utils/result';
 import { UnexpectedError } from 'n8n-workflow';
 
-/** A response channel must be able to carry every frame this module produces. */
+import type { ExecutionChannelCodec, FrameResult } from './execution-channel';
+
+/** An execution channel must be able to carry every frame this module produces. */
 const MAX_FRAME_BYTES = 5 * 1024 * 1024;
 
-export type FrameResult = { ok: true; frame: string } | { ok: false; frame: string; error: Error };
+/** The codec of the `responses` topic. */
+export function createExecutionResponseCodec(
+	logger: Logger,
+	maxFrameBytes: number = MAX_FRAME_BYTES,
+): ExecutionChannelCodec<ExecutionResponse> {
+	return {
+		topic: 'responses',
+		executionIdOf: (response) => response.executionId,
+		serialize: (response) => serializeExecutionResponse(response, logger, maxFrameBytes),
+		deserialize: (frame) => deserializeExecutionResponse(frame, logger),
+	};
+}
 
 export function serializeExecutionResponse(
 	response: ExecutionResponse,
