@@ -395,6 +395,7 @@ export class WorkflowHistoryService {
 			createdAt: e.createdAt,
 			user: e.user,
 			versionName: e.workflowHistory?.name ?? null,
+			settings: e.workflowHistory?.settings ?? null,
 		}));
 	}
 }

@@ -96,6 +96,25 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			expect(createQueryBuilder).not.toHaveBeenCalled();
 		});
+
+		it('should return the version-scoped settings of each version', async () => {
+			const repository = Container.get(WorkflowPublishHistoryRepository);
+			const workflow = await createWorkflowWithHistory({});
+			await Container.get(WorkflowHistoryRepository).update(
+				{ versionId: workflow.versionId },
+				{ settings: { engineType: 'v2' } },
+			);
+			await repository.addRecord({
+				workflowId: workflow.id,
+				versionId: workflow.versionId,
+				event: 'activated',
+				userId: null,
+			});
+
+			const [event] = await repository.findTimelinePage(workflow.id, { offset: 0, limit: 10 });
+
+			expect(event.workflowHistory?.settings).toEqual({ engineType: 'v2' });
+		});
 	});
 
 	describe('addRecord', () => {

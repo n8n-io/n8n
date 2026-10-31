@@ -7,6 +7,7 @@ import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { WorkflowHistoryActionTypes } from '@n8n/rest-api-client/api/workflowHistory';
 import { workflowHistoryDataFactory } from '../__tests__/utils';
 import { type IUser } from 'n8n-workflow';
+import { useSettingsStore } from '@n8n/stores/settings.store';
 
 const actionTypes: WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
 const actions: Array<UserAction<IUser>> = actionTypes.map((value) => ({
@@ -58,6 +59,16 @@ describe('WorkflowHistoryListItem', () => {
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
 		expect(emitted().mounted).toEqual([[{ index: 2, isSelected: true, offsetTop: 0 }]]);
+	});
+
+	it('should show the engine of the version with the engine-v2 module', () => {
+		const settingsStore = useSettingsStore();
+		settingsStore.settings.activeModules = ['engine-v2'];
+		const item = { ...workflowHistoryDataFactory(), settings: { engineType: 'v2' as const } };
+
+		const { getByTestId } = renderComponent({ pinia, props: { item, index: 0, actions } });
+
+		expect(getByTestId('workflow-history-engine-badge')).toHaveTextContent('Engine v2');
 	});
 
 	it('should emit compare event when compare button is clicked', async () => {
