@@ -12,7 +12,7 @@ import {
 	type GraphNode,
 	type WorkflowLoop,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import { createResponseEmitter, type ExecutionResponseSender } from '../response-channel';
 import { runBatchStep } from './batch-step';
 import type { OrchestrationMessage, StepReadyEvent, WorkQueue } from '../queue';
@@ -56,7 +56,7 @@ export class StepReadyHandler {
 		private readonly stepStore: StepStore,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
 		private readonly dependencies: ExternalDependencies,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 		private readonly startExecution: StartExecutionService,
 		/** Called once a wait is on the row, so the sweeper can re-arm on its deadline. */
@@ -90,7 +90,8 @@ export class StepReadyHandler {
 		}
 
 		// This worker won the claim, so it is the one that announces the start.
-		this.lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
+		const lifecycleEventPublisher = this.lifecycleEventPublisherFactory.create(execution);
+		lifecycleEventPublisher.publish({ type: 'step:started', ...stepEventFields(step, node) });
 
 		// A resume emits outputs that already exist. The node does not run again,
 		// so it has no inputs to gather. Every other dispatch gathers.
@@ -174,7 +175,7 @@ export class StepReadyHandler {
 
 		// Before the settled event, or the execution could announce its end first.
 		// Outputs ride along so a consumer needs no read to render them.
-		this.lifecycleEventPublisher.publish(
+		lifecycleEventPublisher.publish(
 			run.kind === 'outputs'
 				? { type: 'step:completed', ...stepEventFields(step, node), outputs: run.outputs }
 				: { type: 'step:failed', ...stepEventFields(step, node) },
@@ -212,7 +213,9 @@ export class StepReadyHandler {
 
 		const failed = await this.stepStore.failWaitingStep(step.id, toStepError(started.error));
 		if (!failed) return;
-		this.lifecycleEventPublisher.publish({ type: 'step:failed', ...stepEventFields(step, node) });
+		this.lifecycleEventPublisherFactory
+			.create(execution)
+			.publish({ type: 'step:failed', ...stepEventFields(step, node) });
 		await this.orchestrationQueue.publish({
 			type: 'step:settled',
 			executionId: event.executionId,

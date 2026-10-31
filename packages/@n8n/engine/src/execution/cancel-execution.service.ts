@@ -1,4 +1,4 @@
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { ExecutionStore } from './execution-store';
 import type { ExecutionStatus } from './execution.types';
@@ -19,7 +19,7 @@ export class CancelExecutionService {
 	constructor(
 		private readonly executionStore: ExecutionStore,
 		private readonly stepStore: StepStore,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 	) {}
 
@@ -32,7 +32,7 @@ export class CancelExecutionService {
 		if (cancelled) {
 			await this.stepStore.cancelPendingSteps(executionId);
 			// Only the request whose write won announces the end.
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: 'execution:cancelled',
 				executionId,
 				workflowId: execution.workflowId,

@@ -20,7 +20,11 @@ import {
 	StepWorker,
 	WaitSweeper,
 } from '../execution';
-import { BatchingLifecycleEventPublisher, noopLifecycleEventPublisher } from '../lifecycle-events';
+import {
+	BatchingLifecycleEventPublisher,
+	LifecycleEventPublisherFactory,
+	noopLifecycleEventPublisher,
+} from '../lifecycle-events';
 import type { LifecycleEventPublisher } from '../lifecycle-events';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import { InMemoryWorkQueue } from '../queue';
@@ -107,6 +111,9 @@ export function createEngineRuntime({
 	const lifecycleEventPublisher: LifecycleEventPublisher = dependencies.lifecycleEventCallback
 		? new BatchingLifecycleEventPublisher(dependencies.lifecycleEventCallback)
 		: noopLifecycleEventPublisher;
+	const lifecycleEventPublisherFactory = new LifecycleEventPublisherFactory(
+		lifecycleEventPublisher,
+	);
 
 	const orchestrationWorker = new OrchestrationWorker(
 		orchestrationQueue,
@@ -114,14 +121,14 @@ export function createEngineRuntime({
 			executionStore,
 			stepStore,
 			orchestrationQueue,
-			lifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 		),
 		new StepSettledHandler(
 			executionStore,
 			stepStore,
 			stepQueue,
 			orchestrationQueue,
-			lifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 			responseSender,
 		),
 	);
@@ -141,7 +148,7 @@ export function createEngineRuntime({
 			stepStore,
 			orchestrationQueue,
 			dependencies,
-			lifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 			responseSender,
 			startExecution,
 			// A deadline set after the sweeper armed would otherwise wait for its next pass.
@@ -154,7 +161,7 @@ export function createEngineRuntime({
 		cancelExecution: new CancelExecutionService(
 			executionStore,
 			stepStore,
-			lifecycleEventPublisher,
+			lifecycleEventPublisherFactory,
 			responseSender,
 		),
 		executionQuery: new ExecutionQueryService(executionViewStore),

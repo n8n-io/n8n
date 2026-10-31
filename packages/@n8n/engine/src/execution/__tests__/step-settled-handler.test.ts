@@ -1,7 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import type { StoredWorkflowGraph, WorkflowGraph } from '../../graph';
-import type { LifecycleEventPublisher } from '../../lifecycle-events';
+import {
+	LifecycleEventPublisherFactory,
+	type LifecycleEventPublisher,
+} from '../../lifecycle-events';
 import type { OrchestrationMessage, StepMessage, WorkQueue } from '../../queue';
 import type { ExecutionResponseSender } from '../../response-channel';
 import type { ExecutionRecord, ExecutionStore } from '../execution-store';
@@ -59,6 +62,7 @@ function makeExecutionStore(
 		callerContext: { hostMode: 'trigger' },
 		responseExpectation: { kind: 'none' },
 		parent: null,
+		lifecycleEvents: { kind: 'all' },
 		finishedAt: null,
 		...overrides,
 		graph: { seeded: [], ...(overrides.graph ?? graph) },
@@ -167,7 +171,7 @@ function makeHandler(
 			stepStore,
 			stepQueue,
 			orchestrationQueue,
-			lifecycleEventPublisher,
+			new LifecycleEventPublisherFactory(lifecycleEventPublisher),
 			responseSender,
 		),
 		executionStore,
@@ -716,6 +720,61 @@ describe('StepSettledHandler lifecycle events', () => {
 						lastStep: expect.objectContaining({ nodeId: 'm', outputs: null }) as unknown,
 					}),
 				);
+			},
+		);
+	});
+
+	describe('when the caller does not subscribe to lifecycle events', () => {
+		const unsubscribed = [
+			['is missing', { lifecycleEvents: undefined }],
+			['is null', { lifecycleEvents: null }],
+			['is none', { lifecycleEvents: { kind: 'none' as const } }],
+		] as const;
+
+		it.each(unsubscribed)(
+			'announces no completion when the subscription %s',
+			async (_name, overrides) => {
+				const stepStore = makeStepStore(
+					{ id: 'step-m', nodeId: 'm' },
+					{ countSettledSteps: vi.fn().mockResolvedValue(5) },
+				);
+				const { handler, executionStore, lifecycleEventPublisher, responseSender } = makeHandler(
+					stepStore,
+					{
+						executionStore: makeExecutionStore({
+							...overrides,
+							responseExpectation: { kind: 'runEnd' },
+						}),
+					},
+				);
+
+				await handler.handle({ ...event, stepId: 'step-m' });
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				// The run still ends, and the response channel is not affected.
+				expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'completed');
+				expect(responseSender.send).toHaveBeenCalledOnce();
+			},
+		);
+
+		it.each(unsubscribed)(
+			'announces no failure when the subscription %s',
+			async (_name, overrides) => {
+				const { handler, executionStore, lifecycleEventPublisher, responseSender } = makeHandler(
+					makeStepStore({ status: 'failed' }),
+					{
+						executionStore: makeExecutionStore({
+							...overrides,
+							responseExpectation: { kind: 'runEnd' },
+						}),
+					},
+				);
+
+				await handler.handle(event);
+
+				expect(lifecycleEventPublisher.publish).not.toHaveBeenCalled();
+				expect(executionStore.finishExecution).toHaveBeenCalledWith('exec-1', 'failed');
+				expect(responseSender.send).toHaveBeenCalledOnce();
 			},
 		);
 	});

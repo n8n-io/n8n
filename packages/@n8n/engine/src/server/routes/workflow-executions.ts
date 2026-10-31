@@ -12,6 +12,7 @@ import { createResumeTargetHandler } from './resume-requests';
 import { AdmittanceRejectedError } from '../../admittance';
 import { jsonObjectSchema, jsonValueSchema, UnimplementedError } from '../../common';
 import { GraphValidationError, MAX_SLOT_INDEX } from '../../graph';
+import { lifecycleEventSubscriptionSchema } from '../../lifecycle-events';
 import { responseExpectationSchema } from '../../response-channel';
 import type { EngineServerDeps } from '../create-engine-server';
 import { fail } from '../error-response';
@@ -69,6 +70,8 @@ const StartExecutionBody = z.object({
 		.strict(),
 	/** What kind of a response the caller expects. */
 	responseExpectation: responseExpectationSchema.optional(),
+	/** Which lifecycle events the caller subscribes to. Missing means none. */
+	lifecycleEvents: lifecycleEventSubscriptionSchema.optional(),
 	/** The caller mints the id. v7 only, so ids stay time-ordered. */
 	executionId: z.string().regex(UUID_V7_PATTERN),
 });

@@ -6,7 +6,7 @@ import {
 	getSuccessorNodeIds,
 	type GraphNode,
 } from '../graph';
-import type { LifecycleEventPublisher } from '../lifecycle-events';
+import type { LifecycleEventPublisherFactory } from '../lifecycle-events';
 import type { ExecutionResponseSender } from '../response-channel';
 import type { OrchestrationMessage, StepMessage, StepSettledEvent, WorkQueue } from '../queue';
 import { countExpectedSettledSteps } from './completion';
@@ -42,7 +42,7 @@ export class StepSettledHandler {
 		private readonly stepStore: StepStore,
 		private readonly stepQueue: WorkQueue<StepMessage>,
 		private readonly orchestrationQueue: WorkQueue<OrchestrationMessage>,
-		private readonly lifecycleEventPublisher: LifecycleEventPublisher,
+		private readonly lifecycleEventPublisherFactory: LifecycleEventPublisherFactory,
 		private readonly responseSender: ExecutionResponseSender,
 	) {}
 
@@ -93,7 +93,7 @@ export class StepSettledHandler {
 		// Only the worker whose write won announces the outcome.
 		const finished = await this.executionStore.finishExecution(execution.id, 'failed');
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: 'execution:failed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
@@ -213,7 +213,7 @@ export class StepSettledHandler {
 			failed ? 'failed' : 'completed',
 		);
 		if (finished) {
-			this.lifecycleEventPublisher.publish({
+			this.lifecycleEventPublisherFactory.create(execution).publish({
 				type: failed ? 'execution:failed' : 'execution:completed',
 				executionId: execution.id,
 				workflowId: execution.workflowId,
