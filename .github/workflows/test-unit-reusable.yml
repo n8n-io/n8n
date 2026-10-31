@@ -96,8 +96,10 @@ jobs:
       # the in-CI per-suite cap (each vitest suite uses half the cores, see
       # @n8n/vitest-config/node), peak forks ≈ 2 × 50% ≈ the core count, instead
       # of ~10 concurrent suites each spawning a core-sized pool and pegging CPU.
+      # `janitor test-run` replays cached package results first, then runs the
+      # rest with janitor scoping: skip, scoped (vitest related), or full.
       - name: Test Unit (backend, except cli and nodes-base)
-        run: pnpm turbo test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --continue --concurrency=2 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --filter='!n8n-nodes-base' --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -146,7 +148,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Unit (cli, scoped)
-        run: pnpm turbo test:unit:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:unit --scoped-task=test:unit:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=100% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -201,7 +203,7 @@ jobs:
       # run serially to avoid cross-package interference. Unit jobs above
       # don't need this because they isolate per-process.
       - name: Test Integration (backend, except cli)
-        run: pnpm turbo test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --summarize
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:integration --continue --concurrency=1 --filter='!./packages/frontend/**' --filter='!./packages/modules/*/frontend' --filter='!n8n' --summarize
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -250,7 +252,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Integration (cli, scoped)
-        run: pnpm turbo test:integration:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:integration --scoped-task=test:integration:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -297,7 +299,7 @@ jobs:
       # One package runs on this runner, so use every CPU. The CI default
       # (half the CPUs) is for jobs that run many suites at once.
       - name: Test Nodes
-        run: pnpm turbo test:changed --filter=n8n-nodes-base --summarize -- --maxWorkers=100%
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test --scoped-task=test:changed --filter=n8n-nodes-base --summarize -- --maxWorkers=100%
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
@@ -346,7 +348,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test
-        run: pnpm test:ci:frontend:changed --only --summarize -- --shard=${{ matrix.shard }}/4
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test --scoped-task=test:changed --continue --filter='./packages/frontend/**' --filter='./packages/modules/*/frontend' --only --summarize -- --shard=${{ matrix.shard }}/4
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}
