@@ -8,6 +8,7 @@ import type {
 	IWebhookResponseData,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import jwt from 'jsonwebtoken';
 
 import {
 	allEvents,
@@ -22,6 +23,57 @@ import {
 	OAUTH2_SUPPORTED_WEBHOOK_EVENTS,
 } from './GenericFunctions';
 import type { JiraDynamicWebhook, JiraProject, JiraWebhook } from './types';
+
+/**
+ * Verifies the signed token that Atlassian sends with every Cloud (OAuth2) dynamic-webhook
+ * delivery. The token is a JWT signed with HS256 using the OAuth app client secret, with the
+ * app client id as the issuer.
+ *
+ * Returns a response that ends the request when the token is missing or invalid, or `undefined`
+ * when the request is verified and processing should continue. Fails closed: any error rejects.
+ */
+async function verifyCloudOAuth2Request(
+	this: IWebhookFunctions,
+): Promise<IWebhookResponseData | undefined> {
+	const reject = (statusCode: number): IWebhookResponseData => {
+		this.getResponseObject().status(statusCode).json({ message: 'Authorization failed' });
+		return { noWebhookResponse: true };
+	};
+
+	const authorization = this.getHeaderData().authorization;
+	const match = typeof authorization === 'string' ? authorization.match(/^Bearer\s+(.+)$/i) : null;
+	const token = match?.[1]?.trim();
+
+	if (!token) {
+		return reject(401);
+	}
+
+	let credentials: { clientId?: string; clientSecret?: string } | undefined;
+	try {
+		credentials = await this.getCredentials<{ clientId?: string; clientSecret?: string }>(
+			'jiraSoftwareCloudOAuth2Api',
+		);
+	} catch {}
+
+	const { clientId, clientSecret } = credentials ?? {};
+
+	if (!clientId || !clientSecret) {
+		return reject(403);
+	}
+
+	try {
+		// Pin the algorithm so a token's own `alg` (e.g. `none`) is never trusted.
+		jwt.verify(token, clientSecret, {
+			algorithms: ['HS256'],
+			issuer: clientId,
+			clockTolerance: 5,
+		});
+	} catch {
+		return reject(403);
+	}
+
+	return undefined;
+}
 
 export class JiraTrigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -786,6 +838,13 @@ export class JiraTrigger implements INodeType {
 		const jiraVersion = this.getNodeParameter('jiraVersion', 0) as string;
 
 		if (jiraVersion === 'cloudOAuth2') {
+			// Verify the signed token before any work, so an unverified request cannot
+			// reach the workflow or trigger the refresh below.
+			const verificationResult = await verifyCloudOAuth2Request.call(this);
+			if (verificationResult) {
+				return verificationResult;
+			}
+
 			const webhookData = this.getWorkflowStaticData('node');
 			const lastRefreshed = webhookData.lastRefreshed as number | undefined;
 
