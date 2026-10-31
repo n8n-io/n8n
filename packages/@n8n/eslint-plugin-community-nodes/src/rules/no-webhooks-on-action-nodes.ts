@@ -2,11 +2,11 @@ import { AST_NODE_TYPES, type TSESTree } from '@typescript-eslint/utils';
 
 import {
 	createRule,
-	findArrayLiteralProperty,
 	findClassProperty,
 	findNodeDescriptionObject,
 	findObjectProperty,
 	getPropertyKeyName,
+	hasTriggerGroup,
 	isFileType,
 	isNodeTypeClass,
 } from '../utils/index.js';
@@ -30,17 +30,31 @@ export const NoWebhooksOnActionNodesRule = createRule({
 			return {};
 		}
 
+		const actionNodes = new WeakSet<TSESTree.ClassDeclaration>();
+		const resumeUrlPattern = /\$execution\s*\.\s*resumeUrl\b/;
+		const reportResumeUrl = (node: TSESTree.Node) => {
+			const containingClass = context.sourceCode
+				.getAncestors(node)
+				.reverse()
+				.find(
+					(ancestor) =>
+						ancestor.type === AST_NODE_TYPES.ClassDeclaration ||
+						ancestor.type === AST_NODE_TYPES.ClassExpression,
+				);
+			if (
+				containingClass?.type === AST_NODE_TYPES.ClassDeclaration &&
+				actionNodes.has(containingClass)
+			) {
+				context.report({ node, messageId: 'webhookOnActionNode' });
+			}
+		};
+
 		return {
 			ClassDeclaration(node) {
 				if (!isNodeTypeClass(node)) return;
 
 				const description = findNodeDescriptionObject(node);
-				const group = description && findArrayLiteralProperty(description, 'group');
-				if (
-					group?.elements.some(
-						(element) => element?.type === AST_NODE_TYPES.Literal && element.value === 'trigger',
-					)
-				) {
+				if (description && hasTriggerGroup(description)) {
 					return;
 				}
 
@@ -54,6 +68,8 @@ export const NoWebhooksOnActionNodesRule = createRule({
 					return;
 				}
 
+				actionNodes.add(node);
+
 				const webhooks = description && findObjectProperty(description, 'webhooks');
 				const webhookMethods = findClassProperty(node, 'webhookMethods');
 				for (const property of [webhooks, webhookMethods]) {
@@ -66,6 +82,30 @@ export const NoWebhooksOnActionNodesRule = createRule({
 					if (getPropertyKeyName(method) === 'webhook' && method.value.async) {
 						context.report({ node: method.key, messageId: 'webhookOnActionNode' });
 					}
+				}
+			},
+			Literal(node) {
+				if (typeof node.value === 'string' && resumeUrlPattern.test(node.value)) {
+					reportResumeUrl(node);
+				}
+			},
+			TemplateElement(node) {
+				if (resumeUrlPattern.test(node.value.cooked ?? node.value.raw)) {
+					reportResumeUrl(node);
+				}
+			},
+			MemberExpression(node) {
+				if (
+					node.object.type === AST_NODE_TYPES.Identifier &&
+					node.object.name === '$execution' &&
+					((!node.computed &&
+						node.property.type === AST_NODE_TYPES.Identifier &&
+						node.property.name === 'resumeUrl') ||
+						(node.computed &&
+							node.property.type === AST_NODE_TYPES.Literal &&
+							node.property.value === 'resumeUrl'))
+				) {
+					reportResumeUrl(node);
 				}
 			},
 		};

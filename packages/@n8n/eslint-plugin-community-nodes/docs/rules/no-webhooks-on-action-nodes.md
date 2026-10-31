@@ -7,12 +7,14 @@
 ## Rule Details
 
 Webhook options are reserved for trigger nodes in community packages. This rule
-checks node classes in `*.node.ts` files. It reports each of these declarations
+checks node classes in `*.node.ts` files. It reports each of these patterns
 on an action node:
 
 - A `webhooks` property in the node description.
 - A `webhookMethods` class property.
 - An `async webhook()` method.
+- A `$execution.resumeUrl` reference in code or an expression string, even without
+  a `webhooks` declaration.
 
 The rule identifies a trigger when its description group includes `'trigger'`,
 its class defines `poll()` or `trigger()`, or its filename ends with

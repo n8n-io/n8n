@@ -135,6 +135,30 @@ describe.each([
 	});
 
 	it.each([
+		"this.evaluateExpression('{{ $execution.resumeUrl }}', 0)",
+		"this.evaluateExpression('{{ $execution . resumeUrl }}', 0)",
+		'this.evaluateExpression(`{{ $execution.resumeUrl }}`, 0)',
+		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+		'this.evaluateExpression(`{{ $execution.resumeUrl }}${suffix}`, 0)',
+		'$execution.resumeUrl',
+		"$execution['resumeUrl']",
+	])('reports a resume URL without webhook declarations: %s', (callbackUrl) => {
+		const code = createNodeCode({
+			members: `async execute() {
+				await this.helpers.httpRequest({
+					method: 'POST',
+					url: 'https://example.com/jobs',
+					body: { callbackUrl: ${callbackUrl} },
+				});
+				await this.putExecutionToWait(new Date(Date.now() + 300000));
+				return [this.getInputData()];
+			}`,
+		});
+
+		expect(lint(code)).toEqual([expect.objectContaining({ ruleId, severity: 2, message })]);
+	});
+
+	it.each([
 		{
 			name: 'an action node without webhook options',
 			code: createNodeCode(),
@@ -182,6 +206,54 @@ describe.each([
 				members: `${webhookMethods}\n${webhookHandler}`,
 			}),
 			filename: 'TestNode.ts',
+		},
+		{
+			name: 'a trigger that uses a resume URL',
+			code: createNodeCode({
+				group: "['trigger']",
+				members:
+					"async execute() { return this.evaluateExpression('{{ $execution.resumeUrl }}', 0); }",
+			}),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'a helper class that uses a resume URL',
+			code: 'class Helper { getUrl() { return $execution.resumeUrl; } }',
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'a polling trigger that uses a resume URL',
+			code: createNodeCode({ members: 'async poll() { return $execution.resumeUrl; }' }),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'a trigger method that uses a resume URL',
+			code: createNodeCode({ members: 'async trigger() { return $execution.resumeUrl; }' }),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'a nested helper class that uses a resume URL',
+			code: createNodeCode({
+				members: 'helper = class { getUrl() { return $execution.resumeUrl; } };',
+			}),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'an action node with a resume URL in a comment',
+			code: createNodeCode({ members: '// $execution.resumeUrl is not used.' }),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'an action node that uses other execution properties',
+			code: createNodeCode({
+				members: "async execute() { return this.evaluateExpression('{{ $execution.id }}', 0); }",
+			}),
+			filename: 'TestNode.node.ts',
+		},
+		{
+			name: 'an action node that reads a resume URL from a different object',
+			code: createNodeCode({ members: 'async execute() { return response.resumeUrl; }' }),
+			filename: 'TestNode.node.ts',
 		},
 	])('accepts $name', ({ code, filename }) => {
 		expect(lint(code, filename)).toEqual([]);
