@@ -14,7 +14,7 @@ import {
 	readLockfileImpact,
 } from './read-lockfile-impact.js';
 
-const lock = (zod: string, rootTurbo = '2.0.0') => `---
+const lock = (zod: string, rootTurbo = '2.0.0', turboDep = '1.0.0') => `---
 lockfileVersion: '9.0'
 
 importers:
@@ -36,10 +36,15 @@ packages:
     resolution: {integrity: z${zod}}
   turbo@${rootTurbo}:
     resolution: {integrity: t${rootTurbo}}
+  turbo-dep@${turboDep}:
+    resolution: {integrity: d${turboDep}}
 
 snapshots:
   zod@${zod}: {}
-  turbo@${rootTurbo}: {}
+  turbo@${rootTurbo}:
+    dependencies:
+      turbo-dep: ${turboDep}
+  turbo-dep@${turboDep}: {}
 `;
 
 describe('readLockfileImpact', () => {
@@ -70,9 +75,14 @@ describe('readLockfileImpact', () => {
 		expect(readLockfileImpact('HEAD')).toEqual(['a']);
 	});
 
-	it('returns null when the root package dependencies changed', () => {
+	it('returns null when a direct dependency of the root package changed', () => {
 		writeFileSync(join(dir, 'pnpm-lock.yaml'), lock('3.0.0', '2.1.0'));
 		expect(readLockfileImpact('HEAD')).toBeNull();
+	});
+
+	it('ignores a transitive change below the root package dependencies', () => {
+		writeFileSync(join(dir, 'pnpm-lock.yaml'), lock('3.0.0', '2.0.0', '1.0.1'));
+		expect(readLockfileImpact('HEAD')).toEqual([]);
 	});
 });
 

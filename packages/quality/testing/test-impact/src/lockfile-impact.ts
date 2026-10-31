@@ -126,6 +126,45 @@ function changedKeys(b: Lockfile, a: Lockfile): Set<string> {
 }
 
 /**
+ * True when a direct dependency of `dir` resolves to a different key, or its
+ * resolved entry changed. Transitive changes below those dependencies do not count.
+ */
+export function directDependenciesChanged(
+	before: unknown[],
+	after: unknown[],
+	dir: string,
+	sections: readonly string[],
+): boolean {
+	const b = before.at(-1);
+	const a = after.at(-1);
+	if (!isLockfile(b) || !isLockfile(a)) return true;
+	const direct = (lock: Lockfile) => {
+		const keys = new Map<string, string>();
+		for (const section of sections) {
+			for (const [name, entry] of Object.entries(lock.importers?.[dir]?.[section] ?? {})) {
+				keys.set(`${section}:${name}`, snapshotKey(name, versionOf(entry)));
+			}
+		}
+		return keys;
+	};
+	const keysBefore = direct(b);
+	const keysAfter = direct(a);
+	if (keysBefore.size !== keysAfter.size) return true;
+	for (const [dep, key] of keysAfter) {
+		// Compare the package entry only: the snapshot also lists the resolved
+		// versions of its own dependencies, which are transitive.
+		const packageKey = key.replace(/\(.*$/, '');
+		if (
+			keysBefore.get(dep) !== key ||
+			!sameJson(a.packages?.[packageKey], b.packages?.[packageKey])
+		) {
+			return true;
+		}
+	}
+	return false;
+}
+
+/**
  * Workspace package dirs whose resolved dependency closure differs between the
  * two lockfiles. `before` and `after` are every document of each file, in order;
  * the last one is the main document.
