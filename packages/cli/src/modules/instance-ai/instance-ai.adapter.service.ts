@@ -1843,10 +1843,14 @@ export class InstanceAiAdapterService {
 				// Without an explicit order the engine falls back to legacy v0, which walks
 				// the graph breadth-first. Generated code still wins if it sets its own order
 				// or engine.
-				const settings = Container.get(WorkflowEngineDefaults).applyTo({
-					executionOrder: 'v1',
-					...(json.settings ?? {}),
-				} as IWorkflowSettings);
+				const engineDefaults = Container.get(WorkflowEngineDefaults);
+				const settings = engineDefaults.applyTo(
+					{
+						executionOrder: 'v1',
+						...(json.settings ?? {}),
+					} as IWorkflowSettings,
+					await engineDefaults.resolveDefault(),
+				);
 				assertExecutionTimeoutWithinMax(settings.executionTimeout, maxExecutionTimeout);
 
 				// Strip redactionPolicy if the user lacks the required scope —

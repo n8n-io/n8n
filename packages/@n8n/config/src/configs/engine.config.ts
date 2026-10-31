@@ -40,6 +40,10 @@ export class EngineConfig {
 	@Env('N8N_ENGINE_DEFAULT_TYPE', engineDefaultTypeSchema)
 	defaultType: EngineDefaultType = 'v1';
 
+	/** True when the environment sets `defaultType`, even to an invalid value. Not read from its own variable. */
+	readonly defaultTypeSetByEnv: boolean =
+		'N8N_ENGINE_DEFAULT_TYPE' in process.env || !!process.env.N8N_ENGINE_DEFAULT_TYPE_FILE;
+
 	/** Port the engine HTTP server listens on. */
 	@Env('N8N_ENGINE_PORT')
 	port: number = 3000;
