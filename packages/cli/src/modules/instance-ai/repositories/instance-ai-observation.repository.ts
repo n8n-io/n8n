@@ -4,33 +4,58 @@ import {
 	type ObservationCursor,
 	type ObservationLogBatch,
 	type ObservationLogBatchCommitResult,
+	type ObservationLogReadOptions,
 } from '@n8n/agents';
-import { BaseRepository, TransactionRunner, isUniqueConstraintError } from '@n8n/db';
+import {
+	BaseRepository,
+	TransactionRunner,
+	isUniqueConstraintError,
+	type OperationContext,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
-import { DataSource, type EntityManager } from '@n8n/typeorm';
+import { DataSource, In, IsNull, type FindOptionsWhere } from '@n8n/typeorm';
 
 import { InstanceAiObservationCursor } from '../entities/instance-ai-observation-cursor.entity';
 import { InstanceAiObservation } from '../entities/instance-ai-observation.entity';
 
 class ObservationCursorInsertConflict extends Error {}
 
-@Service()
-export class InstanceAiObservationRepository extends BaseRepository<InstanceAiObservation> {
+type ObservationLifecycle = Pick<InstanceAiObservation, 'status' | 'supersededBy'>;
+type NewObservationRow = Pick<
+	InstanceAiObservation,
+	'observationScopeId' | 'marker' | 'text' | 'parentId' | 'tokenCount'
+> &
+	ObservationLifecycle & { createdAt?: Date };
+
+class InstanceAiObservationTable extends BaseRepository<InstanceAiObservation> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(InstanceAiObservation, dataSource.manager, transactionRunner);
+	}
+}
+
+@Service()
+export class InstanceAiObservationRepository {
+	private readonly table: InstanceAiObservationTable;
+
+	constructor(
+		dataSource: DataSource,
+		private readonly transactionRunner: TransactionRunner,
+	) {
+		this.table = new InstanceAiObservationTable(dataSource, transactionRunner);
 	}
 
 	async commitObservationLogBatch(
 		batch: ObservationLogBatch,
+		ctx: OperationContext,
 	): Promise<ObservationLogBatchCommitResult> {
 		const cursor = prepareObservationLogBatchCursor(batch);
 		if (!cursor) return 'stale';
 		try {
-			return await this.runInTransaction({}, async (manager) => {
-				if (!(await this.claimObservationCursor(manager, batch.expectedCursor, cursor))) {
+			return await this.transactionRunner.run(ctx, async (ctx) => {
+				if (!(await this.claimObservationCursor(batch.expectedCursor, cursor, ctx))) {
 					return 'stale';
 				}
-				await this.insertObservationBatch(manager, batch);
+				await this.insertObservationBatch(batch, ctx);
 				return 'committed';
 			});
 		} catch (error) {
@@ -40,10 +65,11 @@ export class InstanceAiObservationRepository extends BaseRepository<InstanceAiOb
 	}
 
 	private async claimObservationCursor(
-		manager: EntityManager,
 		expected: ObservationCursor | null,
 		cursor: ObservationCursor,
+		ctx: OperationContext,
 	): Promise<boolean> {
+		const manager = this.table.managerFor(ctx);
 		if (expected) {
 			const result = await manager.update(InstanceAiObservationCursor, expected, cursor);
 			return result.affected === 1;
@@ -58,9 +84,10 @@ export class InstanceAiObservationRepository extends BaseRepository<InstanceAiOb
 	}
 
 	private async insertObservationBatch(
-		manager: EntityManager,
 		batch: ObservationLogBatch,
+		ctx: OperationContext,
 	): Promise<void> {
+		const manager = this.table.managerFor(ctx);
 		const inserted: InstanceAiObservation[] = [];
 		for (const entry of batch.entries) {
 			const row = manager.create(InstanceAiObservation, {
@@ -78,10 +105,60 @@ export class InstanceAiObservationRepository extends BaseRepository<InstanceAiOb
 
 	/** Live observations for a thread, oldest first. Superseded and dropped rows are
 	 *  excluded: they are no longer what the agent remembers. */
-	async findActiveForThread(threadId: string): Promise<InstanceAiObservation[]> {
-		return await this.find({
+	async findActiveForThread(
+		threadId: string,
+		ctx: OperationContext,
+	): Promise<InstanceAiObservation[]> {
+		return await this.table.managerFor(ctx).find(InstanceAiObservation, {
 			where: { observationScopeId: threadId, status: 'active' },
 			order: { createdAt: 'ASC', id: 'ASC' },
 		});
+	}
+
+	async appendLogEntries(
+		rows: NewObservationRow[],
+		ctx: OperationContext,
+	): Promise<InstanceAiObservation[]> {
+		const manager = this.table.managerFor(ctx);
+		const entities = rows.map((row) => manager.create(InstanceAiObservation, row));
+		return await manager.save(InstanceAiObservation, entities);
+	}
+
+	async findLogEntries(
+		opts: ObservationLogReadOptions,
+		ctx: OperationContext,
+	): Promise<InstanceAiObservation[]> {
+		const baseWhere: FindOptionsWhere<InstanceAiObservation> = {
+			observationScopeId: opts.observationScopeId,
+			...(opts.status !== undefined && { status: opts.status }),
+			...(opts.parentId !== undefined && { parentId: opts.parentId ?? IsNull() }),
+		};
+		return await this.table.managerFor(ctx).find(InstanceAiObservation, {
+			where: [baseWhere],
+			order: {
+				createdAt: opts.order === 'desc' ? 'DESC' : 'ASC',
+				id: opts.order === 'desc' ? 'DESC' : 'ASC',
+			},
+			...(opts.limit !== undefined && { take: opts.limit }),
+		});
+	}
+
+	async updateLifecycleForEntries(
+		ids: string[],
+		lifecycle: ObservationLifecycle,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.table.managerFor(ctx).update(InstanceAiObservation, { id: In(ids) }, lifecycle);
+	}
+
+	async updateLifecycleForScopeEntries(
+		observationScopeId: string,
+		ids: string[],
+		lifecycle: ObservationLifecycle,
+		ctx: OperationContext,
+	): Promise<void> {
+		await this.table
+			.managerFor(ctx)
+			.update(InstanceAiObservation, { observationScopeId, id: In(ids) }, lifecycle);
 	}
 }

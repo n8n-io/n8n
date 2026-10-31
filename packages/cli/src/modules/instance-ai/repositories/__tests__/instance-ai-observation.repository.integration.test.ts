@@ -2,6 +2,7 @@ import type { ObservationCursor, ObservationLogBatch } from '@n8n/agents';
 import { getPersonalProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 
 import { createOwner } from '@test-integration/db/users';
 
@@ -18,6 +19,7 @@ import { InstanceAiObservation } from '../../entities/instance-ai-observation.en
  */
 describe('InstanceAiObservationRepository', () => {
 	let repository: InstanceAiObservationRepository;
+	let table: Repository<InstanceAiObservation>;
 	let memory: TypeORMAgentMemory;
 
 	const THREAD = '11111111-1111-4111-8111-111111111111';
@@ -28,6 +30,7 @@ describe('InstanceAiObservationRepository', () => {
 		await testModules.loadModules(['instance-ai']);
 		await testDb.init();
 		repository = Container.get(InstanceAiObservationRepository);
+		table = Container.get(DataSource).getRepository(InstanceAiObservation);
 		memory = Container.get(TypeORMAgentMemory);
 		// Observations hang off a thread, and a thread off a project.
 		const project = await getPersonalProject(await createOwner());
@@ -41,7 +44,7 @@ describe('InstanceAiObservationRepository', () => {
 
 	afterEach(async () => {
 		// Not in the shared truncate list; a module table cleans up through its repository.
-		await repository.delete({});
+		await table.delete({});
 		await Container.get(InstanceAiObservationCursorRepository).delete({});
 	});
 
@@ -55,7 +58,7 @@ describe('InstanceAiObservationRepository', () => {
 		createdAt: string,
 		scope = THREAD,
 	) {
-		return repository.create({
+		return table.create({
 			observationScopeId: scope,
 			marker: 'info' as const,
 			text,
@@ -68,7 +71,7 @@ describe('InstanceAiObservationRepository', () => {
 	}
 
 	it('returns only the live rows of the thread, oldest first', async () => {
-		await repository.save([
+		await table.save([
 			row('third', 'active', '2026-01-01T00:00:03.000Z'),
 			row('first', 'active', '2026-01-01T00:00:01.000Z'),
 			row('replaced', 'superseded', '2026-01-01T00:00:02.000Z'),
@@ -76,13 +79,87 @@ describe('InstanceAiObservationRepository', () => {
 			row('elsewhere', 'active', '2026-01-01T00:00:00.000Z', OTHER_THREAD),
 		]);
 
-		const rows = await repository.findActiveForThread(THREAD);
+		const rows = await repository.findActiveForThread(THREAD, {});
 
 		expect(rows.map((r) => r.text)).toEqual(['first', 'third']);
 	});
 
 	it('returns an empty list when the observer never ran', async () => {
-		expect(await repository.findActiveForThread(THREAD)).toEqual([]);
+		expect(await repository.findActiveForThread(THREAD, {})).toEqual([]);
+	});
+
+	it('generates log entry ids and preserves filters, ordering and lifecycle updates', async () => {
+		const scope = { observationScopeId: THREAD };
+		const [first, second] = await memory.appendObservationLogEntries(
+			['first', 'second'].map((text, index) => ({
+				...scope,
+				marker: 'info' as const,
+				text,
+				createdAt: new Date(index + 1),
+			})),
+		);
+		expect(first.id).toEqual(expect.any(String));
+		expect(second.id).not.toBe(first.id);
+		const [child] = await memory.appendObservationLogEntries([
+			{ ...scope, marker: 'info', text: 'child', parentId: first.id },
+		]);
+		expect(await memory.getObservationLog({ ...scope, parentId: first.id })).toEqual([child]);
+		expect(
+			await memory.getObservationLog({ ...scope, parentId: null, order: 'desc', limit: 1 }),
+		).toEqual([second]);
+		await memory.dropObservationLogEntries([first.id]);
+		await memory.supersedeObservationLogEntries([second.id], child.id);
+		expect(await memory.getActiveObservationLog(scope)).toEqual([child]);
+		expect(await memory.getObservationLog({ ...scope, status: 'superseded' })).toEqual([
+			{ ...second, status: 'superseded', supersededBy: child.id },
+		]);
+		expect(await memory.getObservationLog({ ...scope, status: 'dropped' })).toEqual([
+			{ ...first, status: 'dropped' },
+		]);
+	});
+
+	it.each([false, true])('applies reflection atomically with a write failure: %s', async (fail) => {
+		const saved = await table.save([
+			row('drop', 'active', '2026-01-01T00:00:01.000Z'),
+			row('replace', 'active', '2026-01-01T00:00:02.000Z'),
+			row('elsewhere', 'active', '2026-01-01T00:00:03.000Z', OTHER_THREAD),
+		]);
+		const scope = { observationScopeId: THREAD };
+		const before = await memory.getObservationLog(scope);
+		const update = repository.updateLifecycleForScopeEntries.bind(repository);
+		const write = vi.spyOn(repository, 'updateLifecycleForScopeEntries');
+		if (fail) {
+			write.mockImplementationOnce(async (...args) => {
+				await update(...args);
+				throw new Error('Write failed');
+			});
+		}
+		try {
+			const result = memory.applyObservationLogReflection(scope, {
+				drop: [saved[0].id, saved[2].id],
+				merge: [{ supersedes: [saved[1].id], marker: 'important', text: 'replacement' }],
+			});
+			if (fail) {
+				await expect(result).rejects.toThrow('Write failed');
+				expect(await memory.getObservationLog(scope)).toEqual(before);
+			} else {
+				const reflected = await result;
+				expect(reflected.droppedIds).toEqual([saved[0].id]);
+				expect(reflected.supersededIds).toEqual([saved[1].id]);
+				expect(reflected.inserted).toHaveLength(1);
+				expect(reflected.inserted[0].id).toEqual(expect.any(String));
+				expect(await memory.getActiveObservationLog(scope)).toEqual(reflected.inserted);
+				expect(await memory.getObservationLog({ ...scope, status: 'superseded' })).toEqual([
+					{ ...before[1], status: 'superseded', supersededBy: reflected.inserted[0].id },
+				]);
+				expect(await memory.getObservationLog({ ...scope, status: 'dropped' })).toEqual([
+					{ ...before[0], status: 'dropped' },
+				]);
+			}
+		} finally {
+			write.mockRestore();
+		}
+		expect(await repository.findActiveForThread(OTHER_THREAD, {})).toHaveLength(1);
 	});
 
 	describe('commitObservationLogBatch', () => {
@@ -198,7 +275,7 @@ describe('InstanceAiObservationRepository', () => {
 
 		it('rebuilds an unchanged boundary once with a monotonic cursor revision', async () => {
 			await memory.commitObservationLogBatch(batch());
-			await repository.delete({ observationScopeId: THREAD });
+			await table.delete({ observationScopeId: THREAD });
 			const input = batch(await memory.getCursor(THREAD));
 			expect(await memory.commitObservationLogBatch(input)).toBe('committed');
 			expect(await memory.getCursor(THREAD)).toEqual({
@@ -206,7 +283,7 @@ describe('InstanceAiObservationRepository', () => {
 				updatedAt: new Date(now.getTime() + 1),
 			});
 			expect(await memory.commitObservationLogBatch(input)).toBe('stale');
-			expect(await repository.findActiveForThread(THREAD)).toHaveLength(2);
+			expect(await repository.findActiveForThread(THREAD, {})).toHaveLength(2);
 		});
 
 		it.each([
