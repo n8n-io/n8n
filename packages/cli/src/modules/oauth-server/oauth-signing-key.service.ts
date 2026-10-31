@@ -217,20 +217,38 @@ export class OAuthSigningKeyService {
 	}
 
 	private async readPublishedKeyRows(): Promise<PublishedKeyList> {
-		const rows = await this.deploymentKeyRepository.findOAuthSigningKeys();
-		const keys = rows
-			.filter((row) => row.algorithm === OAUTH_SIGNING_ALGORITHM)
-			.map((row) => {
-				const publicJwk = toPublicJwk(this.readPrivateJwk(row));
-				const { kty, crv, x, y } = publicJwk;
-				return {
+		const rows = await this.deploymentKeyRepository.findPublishableOAuthSigningKeys(
+			new Date(Date.now() - RETIRED_SIGNING_KEY_GRACE_MS),
+		);
+		const keys: PublishedSigningKey[] = [];
+		for (const row of rows) {
+			if (row.algorithm !== OAUTH_SIGNING_ALGORITHM) continue;
+			const active = row.status === 'active';
+
+			let privateJwk: JsonWebKey;
+			try {
+				privateJwk = this.readPrivateJwk(row);
+			} catch (error) {
+				// Without the active key the instance can neither sign nor verify, so
+				// that stays fatal. A retired key only verifies its own old tokens.
+				if (active) throw error;
+				this.logger.warn('Skipping a retired OAuth signing key that cannot be read', {
 					kid: row.id,
-					publicJwk,
-					publicKey: createPublicKey({ key: { kty, crv, x, y }, format: 'jwk' }),
-					active: row.status === 'active',
-					updatedAt: new Date(row.updatedAt).getTime(),
-				};
+					error,
+				});
+				continue;
+			}
+
+			const publicJwk = toPublicJwk(privateJwk);
+			const { kty, crv, x, y } = publicJwk;
+			keys.push({
+				kid: row.id,
+				publicJwk,
+				publicKey: createPublicKey({ key: { kty, crv, x, y }, format: 'jwk' }),
+				active,
+				updatedAt: new Date(row.updatedAt).getTime(),
 			});
+		}
 
 		return { keys, readAt: Date.now() };
 	}
