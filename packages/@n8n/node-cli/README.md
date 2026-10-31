@@ -104,6 +104,7 @@ This command:
 - Persists workflows and credentials in a `n8n-node-cli-data-<image>` volume,
   one for each `--n8n-image`
 - Recompiles on change and pushes a reload to n8n, including for icons and JSON assets
+- Watches for changes in your `nodes/` and `credentials/` directories
 
 `CONTAINER_ENGINE=docker|podman` overrides engine detection. Colima, Rancher
 Desktop, OrbStack and a remote `DOCKER_HOST` all work.

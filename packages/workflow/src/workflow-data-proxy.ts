@@ -65,6 +65,23 @@ const PAIRED_ITEM_METHOD = {
 
 type PairedItemMethod = (typeof PAIRED_ITEM_METHOD)[keyof typeof PAIRED_ITEM_METHOD];
 
+type PairedItemLink = {
+	sourceData: ISourceData | null;
+	pairedItem: IPairedItemData;
+	nodeBeforeLast: string | undefined;
+};
+
+type PairedItemState = {
+	key: string;
+	sourceData: ISourceData;
+	pairedItem: IPairedItemData;
+};
+
+type PairedItemFrame = { parentResults: PairedItemMemoResult[] } & (
+	| { link: PairedItemLink }
+	| (PairedItemState & { results: PairedItemMemoResult[] })
+);
+
 // Reads a key from a placeholder source only when it is the source's own
 // property, so a lookup can never resolve to a value reached through the
 // prototype chain (e.g. `constructor` / `__proto__`).
@@ -1016,26 +1033,6 @@ export class WorkflowDataProxy {
 			incomingSourceData: ISourceData | null,
 			initialPairedItem: IPairedItemData,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
-		): INodeExecutionData =>
-			resolvePairedItem(
-				destinationNodeName,
-				incomingSourceData,
-				initialPairedItem,
-				usedMethodName,
-				undefined,
-				// Ancestry is a DAG: branches recombine on shared ancestors (e.g. an
-				// Aggregate output pairing to all its inputs), so without memoization
-				// the walk revisits the same item exponentially often.
-				new PairedItemMemo(),
-			);
-
-		const resolvePairedItem = (
-			destinationNodeName: string,
-			incomingSourceData: ISourceData | null,
-			initialPairedItem: IPairedItemData,
-			usedMethodName: PairedItemMethod,
-			nodeBeforeLast: string | undefined,
-			memo: PairedItemMemo,
 		): INodeExecutionData => {
 			// Shared ancestors must resolve once, even when branches recombine at every run.
 			const memo = new PairedItemMemo();
