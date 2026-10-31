@@ -33,6 +33,14 @@ on:
         required: false
         default: ''
         type: string
+      fullCliIntegration:
+        description: |
+          Run the CLI integration suite without scoping it to the changed files.
+          The caller sets it when DB files change, because a DB change can reach
+          any integration test. The DB workflow then skips its duplicate SQLite run.
+        required: false
+        default: false
+        type: boolean
       lockfileImpactedPackages:
         description: |
           Packages whose resolved dependencies changed in pnpm-lock.yaml, as
@@ -252,7 +260,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Integration (cli, scoped)
-        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:integration --scoped-task=test:integration:changed --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
+        run: node packages/quality/testing/janitor/dist/cli.js test-run --full-task=test:integration ${{ !inputs.fullCliIntegration && '--scoped-task=test:integration:changed' || '' }} --filter=n8n --only --summarize -- --shard=${{ matrix.shard }}/2 --maxWorkers=50% --passWithNoTests
 
       - name: Send Test Stats
         if: ${{ !cancelled() }}

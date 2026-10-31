@@ -209,6 +209,23 @@ describe('buildJobMatrices', () => {
 		);
 	});
 
+	it('drops the SQLite integration jobs in pr scope and moves their schema check', () => {
+		const { integration, migration } = buildJobMatrices(versions(), 'pr');
+
+		assert.deepEqual(
+			integration.map((job) => job.name),
+			['Postgres 18 Integration (1/2)', 'Postgres 18 Integration (2/2)'],
+		);
+		assert.equal(
+			integration[0]['schema-check-cmd'],
+			'pnpm --filter=@n8n/db schema:check:postgres && pnpm --filter=@n8n/db schema:check:sqlite',
+		);
+		assert.deepEqual(
+			migration.map((job) => job.name),
+			['SQLite Pooled Migrations', 'Postgres 18 Migrations'],
+		);
+	});
+
 	it('does not split the migration suite', () => {
 		const { migration } = buildJobMatrices(versions());
 
