@@ -703,6 +703,15 @@ describe('WorkflowSettingsVue', () => {
 			expect(queryByTestId('workflow-settings-engine-type')).not.toBeInTheDocument();
 		});
 
+		it('should say that an engine change applies on publish', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await flushPromises();
+
+			expect(getByTestId('workflow-settings-engine-type-hint')).toHaveTextContent(
+				'Applies on publish',
+			);
+		});
+
 		it('should offer v1 and v2 (Beta) as engine type options', async () => {
 			const { getByTestId } = createComponent({ pinia });
 			await flushPromises();
