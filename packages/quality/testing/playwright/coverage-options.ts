@@ -150,6 +150,15 @@ export function backendBySpecDir(
 
 export const BACKEND_BY_SPEC_DIR = backendBySpecDir();
 
+/**
+ * Backend code that ran at boot, one raw file for each n8n process. A spec
+ * folder links to its container's file with an empty `.boot-<file>` marker, so
+ * boot-only code is credited to every spec in that container. The folder has
+ * no `.spec` marker, so the per-spec emitter does not treat it as a spec.
+ */
+export const BACKEND_BOOT_DIR = `${BACKEND_BY_SPEC_DIR}/_boot`;
+export const BOOT_MARKER_PREFIX = '.boot-';
+
 /** Spec id = project-relative path — the id the runner and impact map key on.
  *  Shared by the frontend and backend per-spec coverage fixtures. */
 export function specId(testInfo: TestInfo): string {

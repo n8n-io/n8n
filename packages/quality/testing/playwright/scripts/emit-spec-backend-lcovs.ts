@@ -4,6 +4,7 @@
  *
  * Reads the per-spec backend raw V8 the coverage fixture wrote under
  * BACKEND_BY_SPEC_DIR (one `{result}` per test, tagged with a `.spec` marker),
+ * plus the boot raw of each container the spec ran in (`.boot-*` markers),
  * resolves each entry's dist URL to the checkout's `packages/<x>/src/*.ts` (the
  * same resolution the shard emitter uses), and emits one lcov per spec tagged
  * with the spec id in `TN:`. These join the frontend per-spec lcovs in
@@ -25,8 +26,14 @@ import {
 	createBackendResolveStats,
 	formatBackendStats,
 	resolveBackendEntries,
+	specBackendRawPaths,
 } from './backend-coverage-resolver';
-import { BACKEND_BY_SPEC_DIR, coverageOptions } from '../coverage-options';
+import {
+	BACKEND_BOOT_DIR,
+	BACKEND_BY_SPEC_DIR,
+	BOOT_MARKER_PREFIX,
+	coverageOptions,
+} from '../coverage-options';
 
 const OUT_DIR = join(coverageOptions.outputDir ?? './coverage', 'by-spec');
 
@@ -41,10 +48,10 @@ async function main() {
 		suffix: '-backend',
 		feedRaws: async (report: CoverageReport, rawFiles, dir) => {
 			let added = 0;
-			for (const rf of rawFiles) {
+			for (const file of specBackendRawPaths(dir, rawFiles, BACKEND_BOOT_DIR, BOOT_MARKER_PREFIX)) {
 				let parsed: { result?: Array<{ url: string }> };
 				try {
-					parsed = JSON.parse(readFileSync(join(dir, rf), 'utf8'));
+					parsed = JSON.parse(readFileSync(file, 'utf8'));
 				} catch {
 					continue;
 				}

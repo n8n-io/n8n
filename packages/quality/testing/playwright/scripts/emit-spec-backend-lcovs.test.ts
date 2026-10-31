@@ -1,4 +1,6 @@
-import { resolve } from 'node:path';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -7,6 +9,7 @@ import {
 	forceSpecTn,
 	resolveBackendEntries,
 	resolveBackendUrl,
+	specBackendRawPaths,
 } from './backend-coverage-resolver';
 import { backendBySpecDir, BACKEND_BY_SPEC_DIR, coverageOptions } from '../coverage-options';
 
@@ -89,6 +92,23 @@ describe('forceSpecTn', () => {
 		const lcov = 'SF:packages/core/src/x.ts\nDA:1,1\nend_of_record\n';
 		const out = forceSpecTn(lcov, spec);
 		expect(out.startsWith(`TN:${spec}\n`)).toBe(true);
+	});
+});
+
+describe('specBackendRawPaths', () => {
+	it("adds the boot raw of each container the spec ran in to the spec's own raws", () => {
+		const dir = mkdtempSync(join(tmpdir(), 'spec-'));
+		try {
+			for (const f of ['raw-a.json', '.spec', '.boot-c1.json', '.boot-c2.json']) {
+				writeFileSync(join(dir, f), '');
+			}
+			const paths = specBackendRawPaths(dir, ['raw-a.json'], '/boot', '.boot-');
+			expect(new Set(paths)).toEqual(
+				new Set([join(dir, 'raw-a.json'), '/boot/c1.json', '/boot/c2.json']),
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 

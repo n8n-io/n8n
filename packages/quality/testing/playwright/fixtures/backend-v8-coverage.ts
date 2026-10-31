@@ -3,13 +3,22 @@ import { request } from '@playwright/test';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { BACKEND_BY_SPEC_DIR, COVERAGE_ENABLED, slugify, specId } from '../coverage-options';
+import {
+	BACKEND_BOOT_DIR,
+	BACKEND_BY_SPEC_DIR,
+	BOOT_MARKER_PREFIX,
+	COVERAGE_ENABLED,
+	slugify,
+	specId,
+} from '../coverage-options';
 
 type BackendCoverageTestFixtures = { backendCoverage: undefined; mainUrls: string[] };
 type BackendCoverageWorkerFixtures = { n8nUrl: string };
 
 let warnedMultiMain = false;
 let warnedHookError = false;
+// n8n URL → its boot raw file name in BACKEND_BOOT_DIR.
+const bootFiles = new Map<string, string>();
 
 /**
  * Per-spec BACKEND V8 coverage (DEVP-370).
@@ -17,9 +26,11 @@ let warnedHookError = false;
  * The frontend fixture (`v8-coverage.ts`) collects the browser's `page.coverage`
  * per spec; this is its server-side counterpart. Around each test it brackets a
  * coverage window on the n8n main via the test-only `/rest/e2e/coverage` hook:
- * `start` (reset window) before the test, `take` (this spec's delta) after, then
+ * `start` (reset window) before the test, `take` (this spec's window) after, then
  * writes the raw V8 `{result}` to `BACKEND_BY_SPEC_DIR/<slug>/` exactly like the
- * frontend fixture writes browser raws. `emit-spec-backend-lcovs` later resolves
+ * frontend fixture writes browser raws. The first `start` on a container also
+ * returns its boot coverage, which is credited to every spec in that container.
+ * `emit-spec-backend-lcovs` later resolves
  * these to repo `.ts` source and the impact map gains backend rows, so a backend
  * change (e.g. an If-node edit) scopes E2E instead of running the whole suite.
  *
@@ -63,7 +74,16 @@ export const backendV8CoverageFixtures: Fixtures<
 
 			const ctx = await request.newContext({ baseURL: n8nUrl });
 			try {
-				await ctx.post('/rest/e2e/coverage/start');
+				const res = await ctx.post('/rest/e2e/coverage/start');
+				// The first start on an n8n process returns the code that ran at boot.
+				const body = (await res.json()) as { data?: { boot?: unknown[] } };
+				const boot = body?.data?.boot;
+				if (Array.isArray(boot) && boot.length) {
+					const name = `${slugify(n8nUrl)}-${Date.now()}.json`;
+					mkdirSync(BACKEND_BOOT_DIR, { recursive: true });
+					writeFileSync(join(BACKEND_BOOT_DIR, name), JSON.stringify({ result: boot }));
+					bootFiles.set(n8nUrl, name);
+				}
 			} catch {
 				// Hook unreachable — fall through; teardown take will no-op.
 			}
@@ -86,6 +106,8 @@ export const backendV8CoverageFixtures: Fixtures<
 						JSON.stringify({ result }),
 					);
 					writeFileSync(join(specDir, '.spec'), spec);
+					const bootFile = bootFiles.get(n8nUrl);
+					if (bootFile) writeFileSync(join(specDir, `${BOOT_MARKER_PREFIX}${bootFile}`), '');
 				} else if (!warnedHookError) {
 					warnedHookError = true;
 					console.warn(
