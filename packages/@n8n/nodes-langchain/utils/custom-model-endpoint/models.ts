@@ -1,4 +1,3 @@
-import { aiClientFetch } from '@n8n/ai-utilities';
 import { isRecord } from '@n8n/utils/is-record';
 import {
 	NodeOperationError,
@@ -7,16 +6,9 @@ import {
 	type INodeListSearchResult,
 } from 'n8n-workflow';
 
-import { createCustomModelEndpointAuthFetch } from './auth-fetch';
-import { readCustomModelEndpointCredential } from './credential-data';
-import {
-	clientErrorMessage,
-	endpointSecrets,
-	wrapCustomModelEndpointErrorFetch,
-} from './error-handling';
+import { clientErrorMessage } from './error-handling';
+import { createCustomModelEndpointConfig, pickCredentialType } from './gateway-config';
 import type { EndpointCredential } from './types';
-
-export const CUSTOM_MODEL_ENDPOINT_CREDENTIAL = 'customModelEndpointApi';
 
 const NO_LIST_HINT = 'Switch Model to "By ID" and type the model ID that your gateway expects.';
 
@@ -75,20 +67,14 @@ export async function searchModels(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const credential = await this.getCredentials(CUSTOM_MODEL_ENDPOINT_CREDENTIAL);
-	const endpoint = readCustomModelEndpointCredential(credential);
-
-	const fetchModels = wrapCustomModelEndpointErrorFetch(
-		createCustomModelEndpointAuthFetch(this, credential, {
-			endpoint,
-			egressFilter: this.helpers.getSecureEgressFilter(),
-			baseFetch: aiClientFetch,
-		}),
-		{ secrets: endpointSecrets(endpoint) },
-	);
+	const credentialType = pickCredentialType(this.getNode());
+	const credential = await this.getCredentials(credentialType);
+	const { configuration, endpoint } = createCustomModelEndpointConfig(this, credential, {
+		credentialType,
+	});
 
 	try {
-		const ids = await listGatewayModels(endpoint, fetchModels);
+		const ids = await listGatewayModels(endpoint, configuration.fetch as typeof fetch);
 		const wanted = filter
 			? ids.filter((id) => id.toLowerCase().includes(filter.toLowerCase()))
 			: ids;
