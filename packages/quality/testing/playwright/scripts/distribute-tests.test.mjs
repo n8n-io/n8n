@@ -38,6 +38,15 @@ const NON_APP_FILES = [
 	'packages/modules/inbox/frontend/src/types.d.ts',
 	'packages/modules/inbox/frontend/vitest.config.ts',
 	'packages/modules/inbox/frontend/scripts/build.mjs',
+	'packages/modules/apps/backend/src/apps.controller.test.ts',
+	'packages/modules/apps/backend/src/apps.controller.spec.ts',
+	'packages/modules/apps/backend/src/__tests__/helpers.ts',
+	'packages/modules/apps/backend/src/__mocks__/service.ts',
+	'packages/modules/apps/backend/src/__fixtures__/app.ts',
+	'packages/modules/apps/backend/src/types.d.ts',
+	'packages/modules/apps/backend/vitest.config.ts',
+	'packages/modules/apps/backend/scripts/build.mjs',
+	'packages/modules/apps/backend/dist/apps.controller.js',
 	'scripts/build.mjs',
 	'.github/scripts/check.ts',
 ];
@@ -89,7 +98,11 @@ describe('E2E coverage warning', () => {
 	it.each([
 		'packages/modules/inbox/frontend/src/components/InboxList.vue',
 		'packages/modules/insights/frontend/src/index.ts',
-	])('warns for uncovered frontend module source: %s', async (file) => {
+		'packages/modules/apps/backend/src/apps.controller.ts',
+		'packages/modules/insights/backend/src/insights.controller.ts',
+		'packages/modules/quick-connect/backend/src/quick-connect.controller.ts',
+		'packages/modules/workflow-builder/backend/src/workflow-builder.module.ts',
+	])('warns for uncovered app module source: %s', async (file) => {
 		process.argv[process.argv.length - 1] = `--files=${file}`;
 		await distribute({ mode: 'scoped', specs: [], uncovered: [...NON_APP_FILES, file] });
 
