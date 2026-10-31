@@ -177,6 +177,9 @@ function removeTags(value: string): string {
 	return value.replace(/<[^>]*>?/gm, '');
 }
 
+// A date-only ISO string ("2023-06-16", "2023-06", "2023") parses as UTC midnight.
+const ISO_DATE_ONLY_REGEXP = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/;
+
 function toDate(value: string): Date {
 	const date = new Date(Date.parse(value));
 
@@ -185,6 +188,14 @@ function toDate(value: string): Date {
 	}
 	// If time component is not specified, force 00:00h
 	if (!/:/.test(value)) {
+		if (ISO_DATE_ONLY_REGEXP.test(value)) {
+			// Take the day from the UTC fields: west of UTC, setHours() on the local
+			// fields would land on the day before the one written.
+			const localDay = new Date(0);
+			localDay.setFullYear(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+			localDay.setHours(0, 0, 0, 0);
+			return localDay;
+		}
 		date.setHours(0, 0, 0);
 	}
 	return date;

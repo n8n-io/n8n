@@ -9,6 +9,8 @@ const toSentenceCase = stringExtensions.functions.toSentenceCase as (value: stri
 
 const toFloat = stringExtensions.functions.toFloat as (value: string) => number;
 
+const toDate = stringExtensions.functions.toDate as (value: string) => Date;
+
 describe('extractUrlPath (imperative parser, no URL constructor)', () => {
 	it.each([
 		['https://example.com/path', '/path'],
@@ -79,4 +81,23 @@ describe('toFloat', () => {
 	it('should not accept a symbol that is not in the list', () => {
 		expect(() => toFloat('Rb5')).toThrow();
 	});
+});
+
+describe('toDate', () => {
+	it.each(['America/New_York', 'UTC', 'Asia/Seoul'])(
+		'keeps the written day of a date-only string in %s',
+		(timeZone) => {
+			const originalTimeZone = process.env.TZ;
+			process.env.TZ = timeZone;
+			try {
+				expect(toDate('2023-06-16')).toEqual(new Date(2023, 5, 16));
+				expect(toDate('2023-06')).toEqual(new Date(2023, 5, 1));
+				expect(toDate('2023')).toEqual(new Date(2023, 0, 1));
+				expect(toDate('June 16, 2023')).toEqual(new Date(2023, 5, 16));
+			} finally {
+				if (originalTimeZone === undefined) delete process.env.TZ;
+				else process.env.TZ = originalTimeZone;
+			}
+		},
+	);
 });
