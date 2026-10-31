@@ -229,6 +229,7 @@ describe('SkillService', () => {
 				}),
 				user.id,
 				TX_CTX,
+				null,
 			);
 		});
 
@@ -262,6 +263,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ name: 'Renamed' }),
 				user.id,
 				expect.anything(),
+				null,
 			);
 		});
 
@@ -306,6 +308,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'Apache-2.0' } }),
 				user.id,
 				TX_CTX,
+				null,
 			);
 		});
 
@@ -349,6 +352,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				null,
 			);
 		});
 
@@ -365,6 +369,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ frontmatter: { license: 'MIT', 'allowed-tools': 'Read' } }),
 				user.id,
 				TX_CTX,
+				null,
 			);
 		});
 
@@ -463,6 +468,7 @@ describe('SkillService', () => {
 					fetched,
 					user.id,
 					TX_CTX,
+					null,
 				);
 			});
 
@@ -493,6 +499,7 @@ describe('SkillService', () => {
 				expect.objectContaining({ instructions: 'new', frontmatter: { license: 'MIT' } }),
 				user.id,
 				TX_CTX,
+				null,
 			);
 		});
 

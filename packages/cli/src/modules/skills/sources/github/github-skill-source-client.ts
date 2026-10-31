@@ -40,6 +40,7 @@ import {
 	type SkillSourceCapabilities,
 	type SkillSourceIdentity,
 	type SkillSourceLocator,
+	type SkillSourceProvenance,
 	type SkillSourceRepository,
 } from '../skill-source-client';
 
@@ -69,6 +70,9 @@ const CREDENTIAL_INVALID = 'GitHub refused the credential. Its token is wrong or
 const API = 'https://api.github.com';
 /** The repositories that the repository select lists at most: 10 pages of 100. */
 const MAX_REPOSITORY_PAGES = 10;
+const PROVENANCE_CACHE_SIZE = 500;
+const PROVENANCE_CACHE_MS = 10 * 60_000;
+const PROVENANCE_FAILURE_CACHE_MS = 60_000;
 const TOKEN_CREDENTIAL = 'githubApi';
 const APP_CREDENTIAL = 'githubAppApi';
 
@@ -93,7 +97,8 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		discovery: 'listing',
 		changeDetection: 'source',
 		pinnedFetch: true,
-		history: false,
+		// `provenance` describes the commits between two revisions.
+		history: true,
 		// An import keeps SKILL.md and `references/*.md` only. It lists the other files in
 		// `skippedFiles`.
 		importFidelity: 'lossy',
@@ -115,6 +120,12 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	});
 
 	private readonly downloads = pLimit(MAX_ARCHIVE_DOWNLOADS);
+
+	/** Commit details by repository, revisions and access. Small entries, so a count limit. */
+	private readonly provenances = new LRUCache<string, { value: SkillSourceProvenance | null }>({
+		max: PROVENANCE_CACHE_SIZE,
+		ttl: PROVENANCE_CACHE_MS,
+	});
 
 	/** Protected so that tests can set small limits. */
 	protected readonly archiveLimits: ArchiveLimits = DEFAULT_ARCHIVE_LIMITS;
@@ -212,6 +223,68 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		const { folders, truncated, tooDeep } = findSkillFolders(archive.paths, path);
 		const items = folders.map((folder): GitHubSkillRef => ({ path: folder }));
 		return { items, truncated, tooDeep, revision: sha };
+	}
+
+	/**
+	 * The latest commit and the number of commits between two revisions, from the REST API:
+	 * the commit list of `to` (one item, no files), limited to the folder of `ref` when given,
+	 * and the compare of the two (its commit count, for the whole repository). The compare
+	 * also sends changed files, so its answer stays under the byte limit of REST answers, else
+	 * the count is unknown. Cached, a refusal for a short time. Null when GitHub does not
+	 * answer, such as on a rate limit, so a review still opens.
+	 */
+	async provenance(
+		locator: SkillSourceLocator,
+		from: string,
+		to: string,
+		auth?: SkillSourceAuth,
+		ref?: RemoteSkillRef,
+	): Promise<SkillSourceProvenance | null> {
+		const { owner, repository } = readLocator(locator);
+		const [o, r] = [owner, repository].map(encodeURIComponent);
+		// A skill at the root of the repository is its SKILL.md, so its commits are that file's.
+		const path = ref ? readRef(ref).path || SKILL_FILE : '';
+		const key =
+			`${owner}/${repository}@${from}...${to}`.toLowerCase() + `:${path}#${accessKey(auth)}`;
+		const cached = this.provenances.get(key);
+		if (cached) return cached.value;
+		const webUrl = `https://${GITHUB_HOST}/${o}/${r}/compare/${encodeURIComponent(from)}...${encodeURIComponent(to)}`;
+		const headers = auth ? bearer(auth) : API_HEADERS;
+		try {
+			const [list, compare] = await Promise.all([
+				this.sendJson(
+					`${API}/repos/${o}/${r}/commits?sha=${encodeURIComponent(to)}&per_page=1` +
+						(path ? `&path=${encodeURIComponent(path)}` : ''),
+					auth,
+					headers,
+				),
+				this.sendJson(
+					`${API}/repos/${o}/${r}/compare/${encodeURIComponent(from)}...${encodeURIComponent(to)}?per_page=1`,
+					auth,
+					headers,
+				).catch(() => undefined),
+			]);
+			const latest = Array.isArray(list) && isRecord(list[0]) ? list[0] : undefined;
+			const commit = isRecord(latest?.commit) ? latest.commit : undefined;
+			const author = isRecord(commit?.author) ? commit.author : undefined;
+			const login = isRecord(latest?.author) ? latest.author.login : undefined;
+			const total = isRecord(compare) ? compare.total_commits : undefined;
+			const result: SkillSourceProvenance = {
+				message: typeof commit?.message === 'string' ? commit.message.split('\n')[0] : null,
+				author:
+					typeof login === 'string' ? login : typeof author?.name === 'string' ? author.name : null,
+				date: typeof author?.date === 'string' ? author.date : null,
+				commits: typeof total === 'number' ? total : null,
+				webUrl,
+			};
+			this.provenances.set(key, { value: result });
+			return result;
+		} catch {
+			// A refusal, such as a rate limit, is kept for a short time, so a review that opens
+			// again does not ask GitHub again at once.
+			this.provenances.set(key, { value: null }, { ttl: PROVENANCE_FAILURE_CACHE_MS });
+			return null;
+		}
 	}
 
 	/** The commit at the head of the branch: one `ls-refs` request, no archive. */
@@ -427,8 +500,12 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 	}
 
 	/** One page of a REST answer as JSON. */
-	private async sendJson(url: string, auth: SkillSourceAuth): Promise<unknown> {
-		const body = await this.send({ url, method: 'GET', headers: bearer(auth) }, auth, {
+	private async sendJson(
+		url: string,
+		auth: SkillSourceAuth | undefined,
+		headers: Record<string, string> = auth ? bearer(auth) : API_HEADERS,
+	): Promise<unknown> {
+		const body = await this.send({ url, method: 'GET', headers }, auth, {
 			bytes: MAX_REFS_BYTES,
 			message: 'GitHub sent too much data.',
 			reason: 'unreachable',

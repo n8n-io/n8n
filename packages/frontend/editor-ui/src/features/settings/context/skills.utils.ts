@@ -7,6 +7,12 @@ import {
 	type SkillSourceReason,
 } from '@n8n/api-types';
 import type { IconName } from '@n8n/design-system';
+import { isRecord } from '@n8n/utils/is-record';
+
+import {
+	diffLines,
+	type DiffLine,
+} from '@/features/agents/components/skillVersions/skillVersionDiff';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -107,6 +113,9 @@ const SKILL_SOURCE_REASON_KEYS = {
 	credential_missing: 'settings.context.skills.connect.error.credentialMissing',
 	credential_out_of_scope: 'settings.context.skills.connect.error.credentialOutOfScope',
 	host_blocked: 'settings.context.skills.connect.error.hostBlocked',
+	stale: 'settings.context.skills.connect.error.stale',
+	name_clash: 'settings.context.skills.connect.error.nameClash',
+	skill_deleted: 'settings.context.skills.connect.error.skillDeleted',
 } satisfies Record<SkillSourceReason, BaseTextKey>;
 
 /** The short form in the import toast, as in "Could not add seo-check (reason)". */
@@ -131,6 +140,42 @@ const SKILL_SCAN_RULE_KEYS = {
 	suspicious_phrase: 'settings.context.skills.connect.check.rule.suspiciousPhrase',
 	lossy_conversion: 'settings.context.skills.connect.check.rule.lossyConversion',
 } satisfies Record<SkillScanRule, BaseTextKey>;
+
+/** The value with the keys of every nested map sorted, as the content hash of a skill sorts them. */
+function sortKeys(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(sortKeys);
+	if (!isRecord(value)) return value;
+	return Object.fromEntries(
+		Object.keys(value)
+			.sort()
+			.map((key) => [key, sortKeys(value[key])]),
+	);
+}
+
+/**
+ * The frontmatter as one `key: value` line per key, sorted at every level, so a diff shows each
+ * change and not a new key order.
+ */
+function frontmatterText(frontmatter: Record<string, unknown> | null): string {
+	return Object.keys(frontmatter ?? {})
+		.sort()
+		.map((key) => `${key}: ${JSON.stringify(sortKeys(frontmatter?.[key]))}`)
+		.join('\n');
+}
+
+/**
+ * The diff of two frontmatters of a skill update, or null when it did not change. Accept
+ * stores the frontmatter too, so the review and the line counts include it.
+ */
+export function frontmatterDiff(
+	from: Record<string, unknown> | null,
+	to: Record<string, unknown> | null,
+): { lines: DiffLine[]; added: number; removed: number } | null {
+	const lines = diffLines(frontmatterText(from), frontmatterText(to));
+	const added = lines.filter((line) => line.type === 'added').length;
+	const removed = lines.filter((line) => line.type === 'removed').length;
+	return added + removed > 0 ? { lines, added, removed } : null;
+}
 
 /** A link to a branch, a folder on a branch, or a file on a branch. */
 const GITHUB_BRANCH_LINK =
