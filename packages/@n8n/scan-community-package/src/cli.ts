@@ -15,6 +15,7 @@ try {
 	if (result.passed) {
 		console.log(`✅ Package ${packageName}@${result.version} has passed all security checks`);
 	} else {
+		process.exitCode = 1;
 		console.log(`❌ Package ${packageName}@${result.version} has failed security checks`);
 		console.log(`Reason: ${result.message}`);
 
