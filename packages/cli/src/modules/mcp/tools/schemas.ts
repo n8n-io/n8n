@@ -189,6 +189,11 @@ export const workflowDetailsOutputSchema = z.object({
 			active: z.boolean(),
 			isArchived: z.boolean(),
 			versionId: z.string().describe('The current workflow version ID'),
+			checksum: z
+				.string()
+				.describe(
+					'Checksum of the current workflow content. Pass it as expectedChecksum to update_workflow so the update is rejected if the workflow changed after this read.',
+				),
 			activeVersionId: z
 				.string()
 				.nullable()

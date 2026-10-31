@@ -11,6 +11,7 @@ import {
 	MCP_GET_USER_PREFERENCES_TOOL_NAME,
 	MCP_USER_PREFERENCES_TRIGGER_CLAUSE,
 } from '../../mcp.constants';
+import { WORKFLOW_CONFLICT_ERROR_CODE } from '../../mcp.errors';
 import { GET_INSTANCE_CONTEXT_TOOL_NAME } from '../get-instance-context.tool';
 import {
 	MCP_CREATE_WORKFLOW_FROM_CODE_TOOL,
@@ -131,7 +132,7 @@ To build n8n workflows${WORKFLOWS_ONLY_CLAUSE}, follow these steps in order:
 
 9. Create: Call ${MCP_CREATE_WORKFLOW_FROM_CODE_TOOL.toolName} with the validated code to save the workflow to n8n. Include a short \`description\` (1-2 sentences, max 255 chars) summarizing what the workflow does — this helps users find and understand their workflows.
 
-10. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata, setWorkflowSettings, setNodeGroups, addNodeGroup, removeNodeGroup, updateNodeGroup). The whole batch is atomic: if any op fails the workflow is unchanged, except node-group operations, which are skipped and reported in skippedOperations. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
+10. Update: Call ${MCP_UPDATE_WORKFLOW_TOOL.toolName} with the workflow ID, the expectedChecksum (the checksum from get_workflow_details or from the previous ${MCP_UPDATE_WORKFLOW_TOOL.toolName} result), and a list of operations (addNode, removeNode, updateNodeParameters, setNodeParameter, renameNode, addConnection, removeConnection, setNodeCredential, setNodePosition, setNodeDisabled, setNodeSettings, setWorkflowMetadata, setWorkflowSettings, setNodeGroups, addNodeGroup, removeNodeGroup, updateNodeGroup). The whole batch is atomic: if any op fails the workflow is unchanged, except node-group operations, which are skipped and reported in skippedOperations. If the call fails with errorCode "${WORKFLOW_CONFLICT_ERROR_CODE}", someone else changed the workflow and nothing was saved: call get_workflow_details again, re-apply your changes to the current workflow, and retry with the new checksum. To modify an existing node's configuration, use updateNodeParameters or setNodeParameter — do NOT use removeNode followed by addNode for the same node, as this disconnects any attached sub-nodes (LLM models, memory, tools) and they will not be re-attached automatically. Use setNodeSettings to change a node's execution behavior (onError, retryOnFail, maxTries, waitBetweenTries, alwaysOutputData, executeOnce); for sub-nodes (LLM model, memory, tools) this is the only way to set onError, because the canvas UI does not expose that setting for them.
 
 11. Archive: Call ${MCP_ARCHIVE_WORKFLOW_TOOL.toolName} with the workflow ID.
 
