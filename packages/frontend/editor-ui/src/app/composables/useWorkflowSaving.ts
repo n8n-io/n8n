@@ -22,7 +22,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb } from '@/Interface';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import { ResponseError } from '@n8n/rest-api-client';
-import { isExpression, type IDataObject } from 'n8n-workflow';
+import { isExpression, omitVersionedSettings, type IDataObject } from 'n8n-workflow';
 import { useToast } from '@n8n/composables/useToast';
 import { useExternalHooks } from './useExternalHooks';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -482,6 +482,11 @@ export function useWorkflowSaving({
 				const dirtyCountBeforeSave = uiStore.dirtyStateSetCount;
 
 				const workflowDataRequest: WorkflowDataUpdate = workflowDocumentStore.serialize();
+				// Only the settings modal saves the version-scoped settings, such as the engine. The backend
+				// keeps the stored value when the key is absent, so a stale editor can't overwrite it.
+				if (workflowDataRequest.settings) {
+					workflowDataRequest.settings = omitVersionedSettings(workflowDataRequest.settings);
+				}
 				// This can happen if the user has another workflow in the browser history and navigates
 				// via the browser back button, encountering our warning dialog with the new route already set
 				if (workflowDataRequest.id !== currentWorkflow) {
