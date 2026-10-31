@@ -51,6 +51,7 @@ const {
 	canReveal,
 	isDynamicCredentials,
 	isSubWorkflowRedaction,
+	isCredentialInaccessible,
 	revealData,
 	credentialToShare,
 	openCredentialSharing,
@@ -164,6 +165,7 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 				"
 				:is-dynamic-credentials="isDynamicCredentials"
 				:is-sub-workflow-redaction="isSubWorkflowRedaction"
+				:is-credential-inaccessible="isCredentialInaccessible"
 				:can-reveal="canReveal"
 				:credential-to-share="credentialToShare"
 				@share-credential="openCredentialSharing"
