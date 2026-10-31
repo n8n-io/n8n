@@ -33,6 +33,14 @@ on:
         required: false
         default: ''
         type: string
+      lockfileImpactedPackages:
+        description: |
+          Packages whose resolved dependencies changed in pnpm-lock.yaml, as
+          printed by `janitor lockfile-impact` in install-and-build. Empty means
+          no signal: a lockfile change then runs every package in full.
+        required: false
+        default: ''
+        type: string
       testRetries:
         description: |
           How many times vitest retries a failed test. The merge queue sets it,
@@ -49,6 +57,8 @@ env:
   COVERAGE_SCOPE: ${{ inputs.collectCoverage && inputs.changedFiles != '' && 'changed-files' || 'all' }}
   # Read by retry.ts in @n8n/vitest-config.
   VITEST_RETRY: ${{ inputs.testRetries }}
+  # Read by `janitor test-scoped` when pnpm-lock.yaml changed.
+  LOCKFILE_IMPACTED_PACKAGES: ${{ inputs.lockfileImpactedPackages }}
 
 jobs:
   unit-test-backend:
