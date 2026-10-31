@@ -3,9 +3,10 @@ import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 export type TracingContext = {
-	traceparent: string;
+	traceparent?: string;
 	tracestate?: string;
 	identity?: Record<string, string>;
+	baggage?: string;
 };
 
 @Service()

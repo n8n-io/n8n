@@ -30,8 +30,11 @@ import { N8N_VERSION } from '@/constants';
 import { OtelSdk } from '@/observability/otel-sdk';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import {
-	OUTBOUND_HEADERS_PROPAGATOR,
+	DEFAULT_PROPAGATOR_NAMES,
+	propagatorFor,
+	propagatorNamesFromEnv,
 	TRACING_OFF,
+	unknownPropagatorNames,
 	type ShutdownErrors,
 	type TracingPipeline,
 } from '@/observability/swappable-pipeline';
@@ -62,6 +65,13 @@ const stripEmptyResolutionNote = (message: string) =>
 
 @Service()
 export class OtelService {
+	// Read once: the propagator installed and the names warned about must agree.
+	private readonly propagatorNames = propagatorNamesFromEnv();
+
+	private readonly outboundPropagator = propagatorFor(
+		this.propagatorNames ?? DEFAULT_PROPAGATOR_NAMES,
+	);
+
 	private activeExport?: ActiveExport;
 
 	private isShutDown = false;
@@ -77,7 +87,18 @@ export class OtelService {
 	) {}
 
 	async init(): Promise<void> {
+		this.warnUnknownPropagators();
 		await this.applySavedSettings();
+	}
+
+	private warnUnknownPropagators(): void {
+		const unknown = unknownPropagatorNames(this.propagatorNames ?? []);
+		if (unknown.length === 0) return;
+
+		this.logger.warn(
+			'Ignored a propagator in OTEL_PROPAGATORS that n8n does not carry. n8n writes the W3C trace context and baggage only.',
+			{ unknown },
+		);
 	}
 
 	readonly applySavedSettings = latestWins(async () => {
@@ -211,7 +232,7 @@ export class OtelService {
 			sampler: new ParentBasedSampler({
 				root: new TraceIdRatioBasedSampler(settings.tracesSampleRate),
 			}),
-			propagator: settings.injectOutbound ? OUTBOUND_HEADERS_PROPAGATOR : TRACING_OFF.propagator,
+			propagator: settings.injectOutbound ? this.outboundPropagator : TRACING_OFF.propagator,
 		};
 	}
 

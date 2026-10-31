@@ -10,6 +10,7 @@ import type {
 } from '@opentelemetry/api';
 import {
 	CompositePropagator,
+	getStringListFromEnv,
 	W3CBaggagePropagator,
 	W3CTraceContextPropagator,
 } from '@opentelemetry/core';
@@ -36,9 +37,40 @@ export const TRACING_OFF: TracingPipeline = {
 	propagator: new CompositePropagator(),
 };
 
-export const OUTBOUND_HEADERS_PROPAGATOR: TextMapPropagator = new CompositePropagator({
-	propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
-});
+const PROPAGATORS_BY_NAME = new Map<string, () => TextMapPropagator>([
+	['tracecontext', () => new W3CTraceContextPropagator()],
+	['baggage', () => new W3CBaggagePropagator()],
+]);
+
+const PROPAGATORS_ENV_VAR = 'OTEL_PROPAGATORS';
+
+export const DEFAULT_PROPAGATOR_NAMES = ['tracecontext', 'baggage'];
+
+export function unknownPropagatorNames(names: string[]): string[] {
+	return names.filter((name) => !PROPAGATORS_BY_NAME.has(name.toLowerCase()));
+}
+
+export function propagatorFor(names: string[]): TextMapPropagator {
+	const seen = new Set<string>();
+	const propagators: TextMapPropagator[] = [];
+
+	for (const name of names) {
+		const key = name.toLowerCase();
+		const make = PROPAGATORS_BY_NAME.get(key);
+		if (!make || seen.has(key)) continue;
+
+		seen.add(key);
+		propagators.push(make());
+	}
+
+	return new CompositePropagator({ propagators });
+}
+
+export function propagatorNamesFromEnv(): string[] | undefined {
+	return getStringListFromEnv(PROPAGATORS_ENV_VAR);
+}
+
+export const DEFAULT_OUTBOUND_PROPAGATOR = propagatorFor(DEFAULT_PROPAGATOR_NAMES);
 
 export class SwappableSpanProcessor implements SpanProcessor {
 	private processors = TRACING_OFF.spanProcessors;

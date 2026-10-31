@@ -33,12 +33,13 @@ Only these tracers export spans:
 - Workflow spans never join a trace that is active in the process. An inbound `traceparent`
   header still sets the parent.
 - n8n sends `traceparent` on outbound requests only when OTel is on and
-  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`. It never sends `baggage`.
+  `N8N_OTEL_TRACES_INJECT_OUTBOUND=true`.
 
 `OTEL_*` env vars fill in what the n8n settings do not set:
 
 - n8n ignores `OTEL_SERVICE_NAME`, `OTEL_TRACES_SAMPLER`, `OTEL_TRACES_EXPORTER`,
-  `OTEL_PROPAGATORS`, `OTEL_METRICS_EXPORTER` and `OTEL_LOGS_EXPORTER`.
+  `OTEL_METRICS_EXPORTER` and `OTEL_LOGS_EXPORTER`. `OTEL_PROPAGATORS` applies: see
+  [Outbound propagation](#outbound-propagation).
 - These apply: `OTEL_RESOURCE_ATTRIBUTES`, `OTEL_NODE_RESOURCE_DETECTORS`, the
   `OTEL_EXPORTER_OTLP_*` certificate, timeout and compression variables, `OTEL_BSP_*`, extra
   header keys from `OTEL_EXPORTER_OTLP_HEADERS`, and `OTEL_LOG_LEVEL` (default `warn`).
@@ -55,21 +56,42 @@ There are two ways to add the headers:
   its request. The MCP client nodes do this, because the MCP SDK opens its own connection. The
   helper is public, so a community node can use it too.
 
-`getTraceHeaders()` returns `traceparent`, and also `tracestate` when the trace has one. It
-returns an empty object when OpenTelemetry is off, when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is
-off, or when no execution runs. Use the result without a guard.
+`getTraceHeaders()` returns the headers the propagator writes: `traceparent`, also `tracestate`
+when the trace has one, and `baggage` when the execution has caller baggage. It returns an
+empty object when the propagator writes nothing, and when no execution runs.
 
-Both ways write the headers with the global propagator. `OtelService` installs it from the
-settings: W3C trace context and baggage when `N8N_OTEL_TRACES_INJECT_OUTBOUND` is on, nothing
-when it is off. When another OTel setup is already registered, its propagator stays in
-control. `ExecutionLevelTracer` keeps a private trace context propagator only to save the
-trace context on the execution, which must work when outbound headers are off.
+Both ways write every outbound header with the global propagator. `ExecutionLevelTracer` puts
+the caller baggage on the context it hands that propagator, so one writer produces the whole
+header set. When another OTel setup is already registered, its propagator stays in control, and
+n8n sends the headers of that setup.
+
+`N8N_OTEL_TRACES_INJECT_OUTBOUND` decides whether n8n adds any header at all. It is the one
+switch an operator has for "n8n may put tracing headers on my outbound calls", so no header
+goes around it. `OTEL_PROPAGATORS` names the headers n8n writes while the switch is on:
+
+| `N8N_OTEL_TRACES_INJECT_OUTBOUND` | `OTEL_PROPAGATORS`      | Headers                                |
+| --------------------------------- | ----------------------- | -------------------------------------- |
+| off                               | anything                | none                                   |
+| on                                | not set                 | `traceparent`, `tracestate`, `baggage` |
+| on                                | `tracecontext`          | `traceparent`, `tracestate`            |
+| on                                | `baggage`               | `baggage`                              |
+| on                                | `none`                  | none                                   |
+
+`OTEL_PROPAGATORS` is the standard OpenTelemetry variable, and n8n takes the default the
+specification gives, `tracecontext,baggage`. It carries two names: `tracecontext` writes
+`traceparent` and `tracestate`, `baggage` writes `baggage`. n8n reads a name whatever its case,
+registers a repeated name once, and logs a warning for a name it does not carry, such as `b3`,
+before leaving it out. n8n reads the variable once at startup, so a change needs a restart.
+
+`ExecutionLevelTracer` keeps private W3C propagators only to read and write the trace context
+and the baggage saved on the execution row, which must work when outbound headers are off.
 
 Both ways obey these rules:
 
 - **Read the headers for each request.** They name the span that is active now. A transport
   that stays open serves many spans, so a value read at connect names the wrong span later.
-- **The trace context replaces** a header of the same name on the request.
+- **A trace header replaces a header of the same name**, whatever the node set. One rule covers
+  every path, so a new path does not have to repeat it.
 - **The headers follow a redirect**, also across origins. A trace id is not a credential. On
   the MCP path, n8n first checks each hop against the credential allowlist and the egress
   filter.
@@ -95,8 +117,53 @@ project name holds the user's name and email.
   when the project lookup fails. A reconstructed crash span reads it, so it shows the
   identity of the last segment.
 
-This key is n8n's single source of truth for the execution identity. Inbound and outbound
-baggage (GOV-143) decides what it reads from this key and what it adds to baggage.
+This key is n8n's single source of truth for the execution identity. n8n never puts the
+identity in outbound baggage.
+
+### Caller baggage
+
+n8n can forward the W3C `baggage` header of a webhook call to the requests that the execution
+sends. A downstream service can then put the same entries, for example a tenant id, on its own
+telemetry.
+
+Baggage has no setting of its own. It is one of the names in `OTEL_PROPAGATORS`, so
+[Outbound propagation](#outbound-propagation) decides whether it goes out. It also needs OTel
+on, because the entries are kept on the workflow span.
+
+**Inbound.** The webhook reads `baggage` next to `traceparent`, also when no `traceparent` is
+sent. The otel module reads it through its module context (`extractInboundBaggage`), so the
+webhook code does not load the module. n8n reads the header only when OTel and outbound
+injection are both on, so a row never holds caller data that this instance cannot send.
+
+`sanitizeInboundBaggage` drops an entry in three cases:
+
+| Case | Reason |
+| --- | --- |
+| The key starts with `n8n.` | n8n owns that prefix. The key is compared after percent-decoding and whatever its case, so `n8n%2Efoo` and `N8N.Foo` cannot hide it. |
+| The W3C parser cannot read it | An empty key or value, or one that does not percent-decode, reaches no receiver. |
+| It is past 180 entries, 4096 bytes for one entry, or 8192 bytes in total | The limits the OpenTelemetry SDK applies on both sides. W3C asks only for a minimum: 64 entries and 8192 bytes in total, with no limit for one entry. |
+
+n8n forwards every other entry as it arrived, byte for byte: the HTTP server rejects a header
+value that n8n could not send again, and a stricter check would only drop entries the receiving
+parser reads anyway. When n8n drops an entry it logs one warning for the header, with counts
+only and no entry content.
+
+**Outbound.** `ExecutionLevelTracer` parses the saved string into an OpenTelemetry `Baggage`
+when the workflow span starts, and drops the `n8n.` entries a second time. The webhook keeps
+them out of the row; this keeps them off the wire even if a row holds one. The parsed entries
+are written back in W3C form, so a percent-encoded value can come back normalized — what goes
+out is the same entries, not always the same bytes.
+
+**Persistence.** The result is saved in `tracingContext.baggage` on the execution: once when
+the row is created, then again at the start of each segment. A queue-mode worker and a resume
+after a Wait node read that row, so they send the same baggage. `OTEL_PROPAGATORS` is read
+later, when the headers go out, so a row saved under `OTEL_PROPAGATORS=tracecontext` holds
+baggage that nothing sends. The public API does not return it.
+
+**Nested runs.** A sub-workflow and an error workflow read the parent's saved context, so they
+send the caller baggage as the parent does. Both handle the run the caller started, and both
+already keep the parent's `traceparent`, so a downstream service would otherwise see the trace
+without the entries that explain it.
 
 ### Start marker spans
 

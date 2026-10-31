@@ -12,7 +12,7 @@ import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from '../ote
 import type { TracingContext } from '../tracing-context';
 import { OtelTestProvider } from './support/otel-test-provider';
 
-import { TRACING_OFF } from '@/observability/swappable-pipeline';
+import { DEFAULT_OUTBOUND_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
@@ -1020,6 +1020,186 @@ describe('ExecutionLevelTracer', () => {
 				mode: 'webhook',
 				isRetry: false,
 			});
+		});
+	});
+
+	describe('caller baggage', () => {
+		const node = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+		const withBaggage = { ...inboundTracingContext, baggage: 'tenant=acme' };
+
+		const end = (target: ExecutionLevelTracer, executionId: string) =>
+			target.endWorkflow({ executionId, status: 'success', mode: 'webhook', isRetry: false });
+
+		const inject = (
+			target: ExecutionLevelTracer,
+			executionId: string,
+			nodeName?: string,
+			propagator = DEFAULT_OUTBOUND_PROPAGATOR,
+		) => {
+			const headers: Record<string, string> = {};
+			withGlobalPropagator(propagator, () => {
+				target.injectTraceHeaders(executionId, nodeName, headers);
+			});
+			return headers;
+		};
+
+		it('sends the caller baggage on node and workflow requests', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({ executionId: 'exec-bag', node });
+
+			const nodeHeaders = inject(tracer, 'exec-bag', node.name);
+			const workflowHeaders = inject(tracer, 'exec-bag');
+			end(tracer, 'exec-bag');
+
+			expect(nodeHeaders).toEqual({ traceparent: expect.any(String), baggage: 'tenant=acme' });
+			expect(workflowHeaders.baggage).toBe('tenant=acme');
+		});
+
+		it('sends the caller baggage when the webhook sent no traceparent', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-root',
+				tracingContext: { baggage: 'tenant=acme' },
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-root');
+			end(tracer, 'exec-bag-root');
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('sends no baggage when the execution has none', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-none',
+				tracingContext: inboundTracingContext,
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-none');
+			end(tracer, 'exec-bag-none');
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+
+		it('sends no baggage when the propagator does not carry it', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-plain',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-plain', undefined, new W3CTraceContextPropagator());
+			end(tracer, 'exec-bag-plain');
+
+			expect(headers.traceparent).toBeDefined();
+			expect(headers).not.toHaveProperty('baggage');
+		});
+
+		it('sends no headers when outbound headers are off', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-off',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-off', undefined, TRACING_OFF.propagator);
+			end(tracer, 'exec-bag-off');
+
+			expect(headers).toEqual({});
+		});
+
+		it('saves the caller baggage, so a resumed segment sends it again', () => {
+			const saved = tracer.startWorkflow({
+				executionId: 'exec-bag-resume',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			end(tracer, 'exec-bag-resume');
+
+			expect(saved.baggage).toBe('tenant=acme');
+
+			const resaved = tracer.startWorkflow({
+				executionId: 'exec-bag-resume',
+				tracingContext: saved,
+				linkTo: saved,
+				workflow: defaultWorkflow,
+			});
+			const headers = inject(tracer, 'exec-bag-resume');
+			end(tracer, 'exec-bag-resume');
+
+			expect(resaved.baggage).toBe('tenant=acme');
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('keeps the caller baggage off the context that agent runs use', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-ctx',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({ executionId: 'exec-bag-ctx', node });
+
+			const ctx = tracer.getActiveContext('exec-bag-ctx', node.name);
+			end(tracer, 'exec-bag-ctx');
+
+			expect(ctx).toBeDefined();
+			expect(propagation.getBaggage(ctx!)).toBeUndefined();
+		});
+
+		it.each([
+			['a reserved key', 'tenant=acme,n8n.execution.id=forged'],
+			['a percent-encoded reserved key', 'tenant=acme,n8n%2Eexecution%2Eid=forged'],
+			['a reserved key in another case', 'tenant=acme,N8N.Execution.Id=forged'],
+		])('sends no entry that n8n owns, given %s', (_name, header) => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-forged',
+				tracingContext: { ...inboundTracingContext, baggage: header },
+				workflow: defaultWorkflow,
+			});
+
+			const headers = inject(tracer, 'exec-bag-forged');
+			end(tracer, 'exec-bag-forged');
+
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('saves no entry that n8n owns, so a resumed segment cannot send one', () => {
+			const saved = tracer.startWorkflow({
+				executionId: 'exec-bag-forged-save',
+				tracingContext: { ...inboundTracingContext, baggage: 'n8n.execution.id=forged' },
+				workflow: defaultWorkflow,
+			});
+			end(tracer, 'exec-bag-forged-save');
+
+			expect(saved.baggage).toBeUndefined();
+		});
+
+		it('does not add caller baggage to span attributes', () => {
+			tracer.startWorkflow({
+				executionId: 'exec-bag-attrs',
+				tracingContext: withBaggage,
+				workflow: defaultWorkflow,
+			});
+			tracer.startNode({ executionId: 'exec-bag-attrs', node });
+			tracer.endNode({
+				executionId: 'exec-bag-attrs',
+				node,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			end(tracer, 'exec-bag-attrs');
+
+			const spans = otel.getFinishedSpans();
+			expect(spans).toHaveLength(2);
+			for (const span of spans) {
+				expect(span.attributes).not.toHaveProperty('tenant');
+			}
 		});
 	});
 

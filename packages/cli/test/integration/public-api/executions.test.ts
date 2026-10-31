@@ -207,6 +207,25 @@ describe('GET /executions/:id', () => {
 		expect(withData.body.tracingContext).toBeNull();
 	});
 
+	test('should not return the stored caller baggage', async () => {
+		const traceparent = createTraceparent();
+		const workflow = await createWorkflow({}, owner);
+		const execution = await createExecution(
+			{
+				finished: true,
+				status: 'success',
+				mode: 'webhook',
+				tracingContext: { traceparent, baggage: 'tenant=acme' },
+			},
+			workflow,
+		);
+
+		const response = await authOwnerAgent.get(`/executions/${execution.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.tracingContext).toEqual({ traceparent });
+	});
+
 	test('owner should be able to read executions of other users', async () => {
 		const workflow = await createWorkflow({}, user1);
 		const execution = await createSuccessfulExecution(workflow);
