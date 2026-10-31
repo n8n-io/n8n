@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import { type Logger, ModuleRegistry } from '@n8n/backend-common';
 import {
 	createWorkflowWithHistory,
 	testDb,
@@ -41,6 +41,7 @@ import {
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	type WorkflowPublishGuardProxy,
+	WorkflowVersionedSettings,
 } from '@n8n/backend-services';
 import { Telemetry } from '@/telemetry';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -144,6 +145,7 @@ beforeAll(async () => {
 		Container.get(ErrorWorkflowValidationService), // errorWorkflowValidationService
 		Container.get(RestrictedNodeTypesProviderProxy), // restrictedNodeTypesProvider
 		mock(),
+		Container.get(WorkflowVersionedSettings), // workflowVersionedSettings
 	);
 });
 
@@ -1778,5 +1780,182 @@ describe('version-scoped settings in workflow history', () => {
 		const archived = await workflowService.archive(owner, workflow.id);
 
 		expect(await versionSettings(archived!.versionId)).toEqual({ engineType: 'v2' });
+	});
+});
+
+describe('version-scoped settings on save', () => {
+	const versionSettings = async (versionId: string) =>
+		(await Container.get(WorkflowHistoryRepository).findOneByOrFail({ versionId })).settings;
+
+	const settingsUpdate = (settings: WorkflowEntity['settings']) =>
+		Object.assign(workflowRepository.create(), { settings });
+
+	describe('with the engine-v2 module', () => {
+		beforeEach(() => {
+			vi.spyOn(Container.get(ModuleRegistry), 'isActive').mockImplementation(
+				(name) => name === 'engine-v2',
+			);
+		});
+
+		test('saves an engine change as a new draft version and keeps the published version', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+			const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			expect(updated.settings).toEqual(expect.objectContaining({ engineType: 'v2' }));
+			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+			expect(activateSpy).not.toHaveBeenCalled();
+		});
+
+		test('republishes the published version on a live settings change, as before', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+			const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v1', timezone: 'Europe/Berlin' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).toBe(workflow.versionId);
+			expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
+				versionId: workflow.activeVersionId,
+				source: 'ui',
+				publishHistory: 'none',
+			});
+		});
+
+		test('saves a new draft version and republishes the published version when the engine and a live setting change', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+			const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2', timezone: 'Europe/Berlin' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
+				versionId: workflow.activeVersionId,
+				source: 'ui',
+				publishHistory: 'none',
+			});
+		});
+
+		test('restores the engine of the restored version', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+			const v2Version = await createWorkflowHistoryItem(workflow.id, {
+				settings: { engineType: 'v2' },
+			});
+
+			const updated = await workflowService.update(
+				owner,
+				Object.assign(workflowRepository.create(), {
+					nodes: v2Version.nodes,
+					connections: v2Version.connections,
+				}),
+				workflow.id,
+				{ forceSave: true, restoredFromVersionId: v2Version.versionId },
+			);
+
+			expect(updated.versionId).not.toBe(workflow.versionId);
+			expect(updated.activeVersionId).toBe(workflow.activeVersionId);
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v2');
+			expect(await versionSettings(updated.versionId)).toEqual({ engineType: 'v2' });
+		});
+
+		test('clears the draft engine when the restored version has none', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+			const versionWithoutEngine = await createWorkflowHistoryItem(workflow.id, {
+				settings: null,
+			});
+
+			const updated = await workflowService.update(
+				owner,
+				Object.assign(workflowRepository.create(), {
+					nodes: versionWithoutEngine.nodes,
+					connections: versionWithoutEngine.connections,
+				}),
+				workflow.id,
+				{ forceSave: true, restoredFromVersionId: versionWithoutEngine.versionId },
+			);
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBeUndefined();
+			expect(await versionSettings(updated.versionId)).toBeNull();
+		});
+
+		test('rejects a restore of a version that is not in the history of the workflow', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({}, owner);
+
+			await expect(
+				workflowService.update(owner, settingsUpdate({}), workflow.id, {
+					forceSave: true,
+					restoredFromVersionId: uuid(),
+				}),
+			).rejects.toThrow("The version to restore is not in this workflow's history.");
+		});
+	});
+
+	describe('without the engine-v2 module', () => {
+		test('applies an engine change to the published version at once, as before', async () => {
+			const owner = await createOwner();
+			const workflow = await createActiveWorkflow({ settings: { engineType: 'v1' } }, owner);
+			const activateSpy = vi.spyOn(workflowService, 'activateWorkflow');
+
+			const updated = await workflowService.update(
+				owner,
+				settingsUpdate({ engineType: 'v2' }),
+				workflow.id,
+				{ forceSave: true },
+			);
+
+			expect(updated.versionId).toBe(workflow.versionId);
+			expect(activateSpy).toHaveBeenCalledWith(owner, workflow.id, {
+				versionId: workflow.activeVersionId,
+				source: 'ui',
+				publishHistory: 'none',
+			});
+		});
+
+		test('keeps the draft engine on a restore', async () => {
+			const owner = await createOwner();
+			const workflow = await createWorkflowWithHistory({ settings: { engineType: 'v2' } }, owner);
+			const v1Version = await createWorkflowHistoryItem(workflow.id, {
+				settings: { engineType: 'v1' },
+			});
+
+			await workflowService.update(
+				owner,
+				Object.assign(workflowRepository.create(), {
+					nodes: v1Version.nodes,
+					connections: v1Version.connections,
+				}),
+				workflow.id,
+				{ forceSave: true, restoredFromVersionId: v1Version.versionId },
+			);
+
+			const saved = await workflowRepository.findOneByOrFail({ id: workflow.id });
+			expect(saved.settings?.engineType).toBe('v2');
+		});
 	});
 });
