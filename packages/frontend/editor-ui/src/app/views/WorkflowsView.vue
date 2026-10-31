@@ -13,6 +13,12 @@ import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vu
 import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import WorkflowsListGuides from '@/app/components/WorkflowsListGuides.vue';
+import {
+	LIST_SPRING,
+	animateSpring,
+	springToCssEasing,
+	type SpringAnimation,
+} from '@/app/utils/spring';
 import WorkflowsListRowSkeleton from '@/app/components/WorkflowsListRowSkeleton.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import { useAutoScrollOnDrag } from '@/app/composables/useAutoScrollOnDrag';
@@ -671,6 +677,87 @@ const childResourcesByFolderId = computed<Record<string, Resource[]>>(() => {
 const isExpandedFolder = (resource: Resource) =>
 	resource.resourceType === 'folder' && expandedFolderIds.value.has(resource.id);
 
+/**
+ * Rows that an expanded folder shows. The open animation uses this before the children load.
+ * A folder shows only the first page of its children.
+ */
+const getExpectedChildRows = (folder: FolderResource) =>
+	Math.min(folder.workflowCount + folder.subFolderCount, pageSize.value);
+
+const isFolderLoadingChildren = (folderId: string) =>
+	loadingFolderIds.value.has(folderId) && !folderChildren.value[folderId];
+
+// Open and close animation of folder children
+const prefersReducedMotion = () =>
+	window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
+
+// The running spring of each folder. A new toggle continues from it. The key is the folder,
+// not the element, because Vue replaces a leaving element when the folder opens again.
+const folderHeightSprings = new Map<string, SpringAnimation>();
+
+const animateHeight = (
+	el: HTMLElement,
+	from: number,
+	to: number,
+	done: () => void,
+	{ resetAfter }: { resetAfter: boolean },
+) => {
+	const folderId = el.dataset.folderId ?? '';
+	// Continue from the position and velocity of an interrupted animation
+	const running = folderHeightSprings.get(folderId);
+	const start = running?.getState() ?? { position: from, velocity: 0 };
+	running?.cancel();
+
+	if (prefersReducedMotion() || (start.position === to && start.velocity === 0)) {
+		folderHeightSprings.delete(folderId);
+		done();
+		return;
+	}
+
+	el.style.overflow = 'hidden';
+	const spring = animateSpring({
+		from: start.position,
+		to,
+		velocity: start.velocity,
+		// A slight overshoot past 0 would show as a negative height, so clamp it
+		onUpdate: (height) => {
+			el.style.height = `${Math.max(height, 0)}px`;
+		},
+		onComplete: () => {
+			folderHeightSprings.delete(folderId);
+			// A leaving element is removed next, so resetting it would flash its full height
+			if (resetAfter) {
+				el.style.height = '';
+				el.style.overflow = '';
+			}
+			done();
+		},
+	});
+	folderHeightSprings.set(folderId, spring);
+};
+
+// The chevron rotation uses the same spring as a CSS easing
+const listSpringEasing = springToCssEasing(LIST_SPRING);
+const listSpringStyle = {
+	'--workflows-list--spring-easing': listSpringEasing.easing,
+	'--workflows-list--spring-duration': `${listSpringEasing.durationMs}ms`,
+};
+
+/** Opens to the height of the expected rows. The children may still be loading. */
+const onFolderChildrenEnter = (el: Element, done: () => void) => {
+	if (!(el instanceof HTMLElement)) return done();
+	const header = el.previousElementSibling;
+	const rowHeight = header instanceof HTMLElement ? header.offsetHeight : 0;
+	const expectedRows = Number(el.dataset.expectedRows ?? 0);
+	animateHeight(el, 0, expectedRows * rowHeight, done, { resetAfter: true });
+};
+
+/** Closes from the measured height, because open subfolders make it taller than expected */
+const onFolderChildrenLeave = (el: Element, done: () => void) => {
+	if (!(el instanceof HTMLElement)) return done();
+	animateHeight(el, el.offsetHeight, 0, done, { resetAfter: false });
+};
+
 // Reusable templates render the list as a tree. A tree node can render its children.
 const [DefineListRow, ReuseListRow] = createReusableTemplate<{ data: Resource }>();
 const [DefineListNode, ReuseListNode] = createReusableTemplate<{ data: Resource }>();
@@ -898,6 +985,8 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+	folderHeightSprings.forEach((spring) => spring.cancel());
+	folderHeightSprings.clear();
 	promotionEventBus.off('applied', onPromotionApplied);
 	workflowListEventBus.off('resource-moved', fetchWorkflows);
 	workflowListEventBus.off('workflow-duplicated', fetchWorkflows);
@@ -2589,6 +2678,7 @@ const onNameSubmit = async (name: string) => {
 		v-else
 		ref="resourcesListLayout"
 		:class="$style['workflows-list']"
+		:style="listSpringStyle"
 		v-model:filters="filters"
 		filters-in-header
 		infinite-scroll
@@ -2906,10 +2996,10 @@ const onNameSubmit = async (name: string) => {
 					<WorkflowsListGuides v-bind="rowGuidesById.get((data as WorkflowResource).id)" />
 				</Draggable>
 			</DefineListRow>
-			<!-- An expanded folder is a group: a sticky header row, then its children -->
+			<!-- A folder is a group: a sticky header row, then its children when expanded -->
 			<DefineListNode v-slot="{ data }">
 				<div
-					v-if="isExpandedFolder(data)"
+					v-if="data.resourceType === 'folder'"
 					:class="$style['folder-group']"
 					:style="rowStyleById.get(data.id)"
 					data-test-id="workflows-list-folder-group"
@@ -2917,11 +3007,25 @@ const onNameSubmit = async (name: string) => {
 					<div :class="$style['folder-group-header']">
 						<ReuseListRow :data="data" />
 					</div>
-					<ReuseListNode
-						v-for="child in childResourcesByFolderId[data.id] ?? []"
-						:key="`${child.resourceType}-${child.id}`"
-						:data="child"
-					/>
+					<Transition :css="false" @enter="onFolderChildrenEnter" @leave="onFolderChildrenLeave">
+						<div
+							v-if="isExpandedFolder(data)"
+							:data-folder-id="data.id"
+							:data-expected-rows="getExpectedChildRows(data as FolderResource)"
+							data-test-id="workflows-list-folder-children"
+						>
+							<WorkflowsListRowSkeleton
+								v-if="isFolderLoadingChildren(data.id)"
+								:rows="getExpectedChildRows(data as FolderResource)"
+								:style="{ '--list-row--depth': (rowGuidesById.get(data.id)?.depth ?? 0) + 1 }"
+							/>
+							<ReuseListNode
+								v-for="child in childResourcesByFolderId[data.id] ?? []"
+								:key="`${child.resourceType}-${child.id}`"
+								:data="child"
+							/>
+						</div>
+					</Transition>
 				</div>
 				<ReuseListRow v-else :data="data" />
 			</DefineListNode>

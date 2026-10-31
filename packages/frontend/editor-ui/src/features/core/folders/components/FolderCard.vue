@@ -281,8 +281,9 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 					<N8nIcon v-if="loading" icon="spinner" size="small" spin />
 					<N8nIcon
 						v-else-if="hasChildren"
-						:icon="expanded ? 'chevron-down' : 'chevron-right'"
+						icon="chevron-right"
 						size="small"
+						:class="{ [$style['row-chevron']]: true, [$style['row-chevron--expanded']]: expanded }"
 					/>
 				</span>
 				<N8nIcon
@@ -548,6 +549,20 @@ const onBreadcrumbItemClick = async (item: PathItem) => {
 
 .row-icon {
 	@include workflows-list.row-icon;
+}
+
+.row-chevron {
+	// The list view sets the spring easing, so the chevron moves with the folder animation
+	transition: transform var(--workflows-list--spring-duration, var(--duration--snappy))
+		var(--workflows-list--spring-easing, var(--easing--ease-out));
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+	}
+}
+
+.row-chevron--expanded {
+	transform: rotate(90deg);
 }
 
 .row-title {
