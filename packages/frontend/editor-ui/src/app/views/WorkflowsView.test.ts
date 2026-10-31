@@ -26,6 +26,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
 import { useEmptyStateDetection } from '@/features/workflows/readyToRun/composables/useEmptyStateDetection';
 import { useAgentListStore } from '@/features/agents/agentList.store';
+import { useTypeAvailabilityPoliciesStore } from '@n8n/frontend-module-type-availability-policies';
 
 vi.mock('@/features/collaboration/projects/projects.api');
 vi.mock('@n8n/rest-api-client/api/users');
@@ -430,6 +431,116 @@ describe('WorkflowsView', () => {
 			renderComponent({ pinia });
 			await waitAllPromises();
 			await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
+		});
+
+		describe("won't execute", () => {
+			beforeEach(() => {
+				mockedStore(useTypeAvailabilityPoliciesStore).isEnabled = true;
+				settingsStore.isFoldersFeatureEnabled = true;
+				workflowsListStore.totalWorkflowCount = 8;
+			});
+
+			it('should send the causes from the URL and search across all folders', async () => {
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({
+						executionBlockedBy: ['restrictedNode'],
+						parentFolderId: undefined,
+					}),
+					false,
+					expect.any(Boolean),
+				);
+			});
+
+			it('should scope the filter to the current folder when inside a folder', async () => {
+				await router.replace({
+					path: '/project-1/folders/folder-1',
+					query: { executionBlockedBy: 'restrictedNode' },
+				});
+
+				renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({
+						executionBlockedBy: ['restrictedNode'],
+						parentFolderId: 'folder-1',
+					}),
+					false,
+					expect.any(Boolean),
+				);
+			});
+
+			it('should drop unknown causes from the URL', async () => {
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode,unknown' } });
+
+				renderComponent({ pinia });
+				await waitAllPromises();
+
+				await waitFor(() =>
+					expect(router.currentRoute.value.query).toStrictEqual({
+						executionBlockedBy: 'restrictedNode',
+					}),
+				);
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({ executionBlockedBy: ['restrictedNode'] }),
+					false,
+					expect.any(Boolean),
+				);
+			});
+
+			it('should ignore the filter when the policies module is off', async () => {
+				mockedStore(useTypeAvailabilityPoliciesStore).isEnabled = false;
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				const { queryByTestId } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				await waitFor(() => expect(router.currentRoute.value.query).toStrictEqual({}));
+				expect(workflowsListStore.fetchWorkflowsPage).toHaveBeenCalledWith(
+					expect.any(String),
+					expect.any(Number),
+					expect.any(Number),
+					expect.any(String),
+					expect.objectContaining({ executionBlockedBy: undefined }),
+					expect.any(Boolean),
+					expect.any(Boolean),
+				);
+				expect(queryByTestId('wont-execute-callout')).not.toBeInTheDocument();
+			});
+
+			it('should show the count in the callout and clear the filter from it', async () => {
+				await router.replace({ query: { executionBlockedBy: 'restrictedNode' } });
+
+				const { getByTestId, queryByTestId } = renderComponent({ pinia });
+				await waitAllPromises();
+
+				expect(getByTestId('wont-execute-callout')).toHaveTextContent(
+					"8 workflows won't execute: restricted node",
+				);
+
+				await userEvent.click(getByTestId('wont-execute-callout-clear'));
+				await waitAllPromises();
+
+				expect(router.currentRoute.value.query).toStrictEqual({});
+				expect(queryByTestId('wont-execute-callout')).not.toBeInTheDocument();
+			});
 		});
 
 		it('should not replace the route when the query does not change', async () => {
