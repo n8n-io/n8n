@@ -219,6 +219,26 @@ describe('memoryManagement', () => {
 	});
 
 	describe('cleanupOrphanedMessages', () => {
+		// Messages created by a different copy of @langchain/core (e.g. duplicated in the
+		// packaged image) share the same shape but have distinct class identities, so
+		// instanceof checks miss them while duck-typed guards still recognize them.
+		const createForeignToolMessage = (toolCallId: string): ToolMessage =>
+			({
+				content: 'Result',
+				tool_call_id: toolCallId,
+				name: 'tool',
+				getType: () => 'tool',
+				_getType: () => 'tool',
+			}) as unknown as ToolMessage;
+
+		const createForeignAIMessage = (...toolCallIds: string[]): AIMessage =>
+			({
+				content: 'Calling tool',
+				tool_calls: toolCallIds.map((id) => ({ id, name: 'tool', args: {}, type: 'tool_call' as const })),
+				getType: () => 'ai',
+				_getType: () => 'ai',
+			}) as unknown as AIMessage;
+
 		it('should return empty array when all messages are orphans', () => {
 			const chatHistory = [
 				new ToolMessage({ content: 'Result', tool_call_id: 'id-1', name: 'tool' }),
@@ -389,6 +409,54 @@ describe('memoryManagement', () => {
 			expect(result).toHaveLength(2);
 			expect(result[0]).toBeInstanceOf(HumanMessage);
 			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should remove orphaned foreign-copy ToolMessages at start despite different class identity', () => {
+			const chatHistory = [
+				createForeignToolMessage('id-1'),
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+		});
+
+		it('should remove orphaned foreign-copy AIMessage with tool_calls at end despite different class identity', () => {
+			const chatHistory = [new HumanMessage('Question'), createForeignAIMessage('call-1')];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+		});
+
+		it('should remove trailing foreign-copy ToolMessages without preceding AI tool call', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				new AIMessage('Answer'),
+				createForeignToolMessage('id-1'),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(2);
+			expect(result[0]).toBeInstanceOf(HumanMessage);
+			expect(result[1]).toBeInstanceOf(AIMessage);
+		});
+
+		it('should preserve complete foreign-copy tool call pair at end', () => {
+			const chatHistory = [
+				new HumanMessage('Question'),
+				createForeignAIMessage('call-1'),
+				createForeignToolMessage('call-1'),
+			];
+
+			const result = cleanupOrphanedMessages(chatHistory);
+
+			expect(result).toHaveLength(3);
 		});
 	});
 
