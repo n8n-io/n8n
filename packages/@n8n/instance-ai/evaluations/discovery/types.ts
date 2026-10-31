@@ -86,6 +86,8 @@ export interface DiscoveryTestCase {
 	instanceState?: DiscoveryInstanceState;
 	/** Answers for the tools listed; every other suspension is approved. */
 	confirmations?: DiscoveryConfirmations;
+	/** Workflows and data tables the stub instance holds before the turn. */
+	seed?: Extract<CaseSeed, { mode: 'inline' }>;
 	/** Pass condition. At least one expectation key is required. */
 	expectedToolInvocations: ExpectedToolInvocations;
 	/** Free-form note explaining what regression this scenario protects against. */
