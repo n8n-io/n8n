@@ -7,6 +7,9 @@ import type { Result } from '@n8n/utils/result';
  */
 export const EXECUTION_CHANNEL_TOPICS = ['responses', 'lifecycle'] as const;
 
+/** The largest frame that the endpoints publish. Every transport must carry it. */
+export const MAX_FRAME_BYTES = 5 * 1024 * 1024;
+
 export type ExecutionChannelTopic = (typeof EXECUTION_CHANNEL_TOPICS)[number];
 
 export type UnsubscribeFromExecutionChannel = () => void;
@@ -31,10 +34,11 @@ export interface ExecutionChannelSubscriber {
 }
 
 /**
- * The frame to publish. A failed result still has a frame, so the codec can
- * replace a message that it cannot deliver with one that it can.
+ * The frame to publish. A failed result can still have a frame, so the codec
+ * can replace a message that it cannot deliver with one that it can. Without a
+ * frame, the sender publishes nothing.
  */
-export type FrameResult = { ok: true; frame: string } | { ok: false; frame: string; error: Error };
+export type FrameResult = { ok: true; frame: string } | { ok: false; frame?: string; error: Error };
 
 /** Converts the messages of one topic to frames and back. */
 export interface ExecutionChannelCodec<T> {
