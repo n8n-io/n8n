@@ -1,3 +1,4 @@
+import { isRecord } from '@n8n/utils/is-record';
 import type { JSONSchema7, JSONSchema7Definition } from 'json-schema';
 
 /**
@@ -20,6 +21,58 @@ export const fixSchema = (schema: JSONSchema7): JSONSchema7 => {
 	}
 	return schema;
 };
+
+const SUBSCHEMA_KEYWORDS = [
+	'additionalItems',
+	'additionalProperties',
+	'allOf',
+	'anyOf',
+	'contains',
+	'else',
+	'if',
+	'items',
+	'not',
+	'oneOf',
+	'prefixItems',
+	'propertyNames',
+	'then',
+	'unevaluatedItems',
+	'unevaluatedProperties',
+];
+
+const SUBSCHEMA_MAP_KEYWORDS = [
+	'$defs',
+	'definitions',
+	'dependentSchemas',
+	'patternProperties',
+	'properties',
+];
+
+export function addStringTypeToPropertyNames(schema: JSONSchema7): JSONSchema7 {
+	const copy = structuredClone(schema);
+	setPropertyNamesType(copy);
+	return copy;
+}
+
+function setPropertyNamesType(schema: unknown): void {
+	if (Array.isArray(schema)) {
+		schema.forEach(setPropertyNamesType);
+		return;
+	}
+	if (!isRecord(schema)) return;
+
+	if (isRecord(schema.propertyNames) && schema.propertyNames.type === undefined) {
+		schema.propertyNames.type = 'string';
+	}
+
+	for (const [keyword, value] of Object.entries(schema)) {
+		if (SUBSCHEMA_KEYWORDS.includes(keyword)) {
+			setPropertyNamesType(value);
+		} else if (SUBSCHEMA_MAP_KEYWORDS.includes(keyword) && isRecord(value)) {
+			Object.values(value).forEach(setPropertyNamesType);
+		}
+	}
+}
 
 /**
  * Recursively set `additionalProperties: false` on every object in a JSON
