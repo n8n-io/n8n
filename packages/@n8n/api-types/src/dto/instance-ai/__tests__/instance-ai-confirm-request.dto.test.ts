@@ -121,6 +121,21 @@ describe('InstanceAiConfirmRequestDto', () => {
 			['mcpConnect (connected)', { kind: 'mcpConnect', approved: true, connectedSlugs: ['brave'] }],
 			['mcpConnect (skipped)', { kind: 'mcpConnect', approved: false, connectedSlugs: [] }],
 			['mcpConnect (minimal)', { kind: 'mcpConnect', approved: false }],
+			[
+				'appBlueprint with build instructions',
+				{
+					kind: 'appBlueprint',
+					approved: true,
+					blueprint: {
+						name: 'Planner',
+						namespace: 'planner',
+						visibility: 'project',
+						description: 'Plan weekly tasks.',
+						theme: 'both',
+						additionalInstructions: 'Use compact cards.',
+					},
+				},
+			],
 		];
 
 		test.each(cases)('%s', (_label, payload) => {
