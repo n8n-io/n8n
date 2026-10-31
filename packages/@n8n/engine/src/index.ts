@@ -9,12 +9,15 @@ export {
 	InvalidActionTokenError,
 	InvalidIdentityTokenError,
 	mintActionToken,
+	mintApprovalCallback,
 	mintIdentityToken,
 	mintResumeToken,
+	mintStepBoundResumeToken,
+	parseApprovalCallback,
 	SharedSecretIdentityVerifier,
 	verifyActionToken,
 } from './auth';
-export type { AuthenticatedCaller, ActionScope, IdentityVerifier } from './auth';
+export type { AuthenticatedCaller, ActionScope, ApprovalDecision, IdentityVerifier } from './auth';
 
 export type {
 	CancelExecutionResponse,
@@ -29,6 +32,7 @@ export type {
 	ExecutionListItem,
 	ResolveStepRequest,
 	ResolveStepResponse,
+	ResumeLocateRequest,
 	ResumeTargetRequest,
 	ResumeTargetResponse,
 } from './server';

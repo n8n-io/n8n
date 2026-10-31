@@ -1,12 +1,23 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
-import { verifyResumeToken } from '../auth/resume-token';
+import { verifyResumeToken, type ResumeTokenClaims } from '../auth/resume-token';
 import type { StepMessage, WorkQueue } from '../queue';
 import { ExecutionNotFoundError, type ExecutionStore } from './execution-store';
-import { isLiveExecutionStatus, type ExecutionStatus, type StepSlots } from './execution.types';
+import {
+	isLiveExecutionStatus,
+	isSettledStatus,
+	type ExecutionStatus,
+	type ResumeBinding,
+	type StepSlots,
+} from './execution.types';
 import { StepNotFoundError, type StepRecord, type StepStore } from './step-store';
 
-export type ResumeRejection = 'invalid_token' | 'not_found' | 'not_waiting' | 'ambiguous';
+export type ResumeRejection =
+	| 'invalid_token'
+	| 'not_found'
+	| 'not_waiting'
+	| 'ambiguous'
+	| 'step_bound_only';
 
 export class ResumeRejectedError extends Error {
 	constructor(readonly code: ResumeRejection) {
@@ -19,6 +30,12 @@ export class ResumeRejectedError extends Error {
 export interface ResumeTarget {
 	stepId: string;
 	nodeId: string;
+}
+
+/** The execution of a resume request, and the wait that its token can end, if any. */
+export interface ResumeLocation {
+	executionId: string;
+	target: ResumeTarget | null;
 }
 
 /**
@@ -39,9 +56,25 @@ const DEFAULT_RESUME_HOLD: ResumeHold = { attempts: 10, delayMs: 100 };
  */
 const isLive = (status: ExecutionStatus) => status === 'queued' || isLiveExecutionStatus(status);
 
-/** A waiting step that an execution-bound token can resume, the only kind this service verifies. */
-const acceptsRequest = ({ status, waitDeclaration }: StepRecord) =>
-	status === 'waiting' && waitDeclaration?.resumeBinding === 'execution';
+const waitsFor =
+	(binding: ResumeBinding) =>
+	({ status, waitDeclaration }: StepRecord) =>
+		status === 'waiting' && waitDeclaration?.resumeBinding === binding;
+
+/** The waits that each kind of token can end (token record, decision 4). */
+const BINDING_OF_KIND: Record<ResumeTokenClaims['kind'], ResumeBinding> = {
+	'execution-bound': 'execution',
+	'step-bound': 'step',
+	'approval-callback': 'step',
+};
+
+const idOf = (claims: ResumeTokenClaims) =>
+	claims.kind === 'execution-bound' ? claims.executionId : claims.stepId;
+
+const namesStep = (claims: ResumeTokenClaims, step: StepRecord) =>
+	claims.kind === 'execution-bound'
+		? claims.executionId === step.executionId
+		: claims.stepId === step.id;
 
 /**
  * Accepts resume requests (ADR-20260902-steps-declare-waits, decision 5).
@@ -50,7 +83,7 @@ const acceptsRequest = ({ status, waitDeclaration }: StepRecord) =>
  * know which node waits before that code runs, and the request must be
  * authorized before any node code runs.
  *
- * 1. `locate` verifies the token and names the waiting step.
+ * 1. `locate` or `locateByToken` verifies the token and names the waiting step.
  * 2. `resolve` verifies the token against that step and ends its wait with the
  *    outputs that the resume method produced.
  */
@@ -70,43 +103,105 @@ export class ResumeRequestService {
 	 * A request can arrive before the step writes its wait. While the execution
 	 * is live, this retries for a short time.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, or `ambiguous`
-	 * when a live execution has two execution-bound waits.
+	 * @throws {ResumeRejectedError} `invalid_token`, `not_found`, `ambiguous`
+	 * when a live execution has two execution-bound waits, or `step_bound_only`
+	 * when the hold runs out and the execution has a step-bound wait.
 	 */
 	async locate(executionId: string, token: string): Promise<ResumeTarget | null> {
-		if (!verifyResumeToken(this.secret, token, executionId)) {
+		const claims = verifyResumeToken(this.secret, token);
+		if (claims?.kind !== 'execution-bound' || claims.executionId !== executionId) {
+			throw new ResumeRejectedError('invalid_token');
+		}
+		return await this.locateExecutionBoundWait(executionId);
+	}
+
+	/**
+	 * Verifies the token and returns the wait it can end, for every kind of
+	 * token. The kind of the token decides whether `id` names an execution or a
+	 * step. An execution-bound token gets the answer of `locate`.
+	 *
+	 * @throws {ResumeRejectedError} `invalid_token` when the token does not
+	 * name `id`, or a step-bound token binds another path and query; else as
+	 * `locate`, and `not_found` for a step that does not exist.
+	 */
+	async locateByToken(id: string, token: string, pathAndQuery?: string): Promise<ResumeLocation> {
+		const claims = verifyResumeToken(this.secret, token);
+		if (!claims || idOf(claims) !== id) throw new ResumeRejectedError('invalid_token');
+		// One literal string, never rebuilt from parsed values: two different
+		// queries can parse to the same values.
+		if (claims.kind === 'step-bound' && pathAndQuery !== claims.binding) {
 			throw new ResumeRejectedError('invalid_token');
 		}
 
+		if (claims.kind === 'execution-bound') {
+			return { executionId: id, target: await this.locateExecutionBoundWait(id) };
+		}
+		return await this.locateStepBoundWait(id);
+	}
+
+	private async locateExecutionBoundWait(executionId: string): Promise<ResumeTarget | null> {
+		let stepBoundOnly = false;
 		for (let attempt = 0; attempt < this.hold.attempts; attempt++) {
 			if (attempt > 0) await sleep(this.hold.delayMs);
 			const [status, waits] = await Promise.all([
 				this.loadStatus(executionId),
-				this.loadExecutionBoundWaits(executionId),
+				this.stepStore.loadWaitingSteps(executionId),
 			]);
 			// An execution ends before its waits are cancelled, so its status decides first.
 			if (!isLive(status)) return null;
-			if (waits.length > 1) throw new ResumeRejectedError('ambiguous');
-			if (waits[0]) return { stepId: waits[0].id, nodeId: waits[0].nodeId };
+			const executionBound = waits.filter(waitsFor('execution'));
+			if (executionBound.length > 1) throw new ResumeRejectedError('ambiguous');
+			if (executionBound[0]) {
+				return { stepId: executionBound[0].id, nodeId: executionBound[0].nodeId };
+			}
+			stepBoundOnly = waits.some(waitsFor('step'));
 		}
-		// TODO(CET-522): when the only wait is step bound, say to use the step's own resume URL.
+		// Holds first, because another branch can still reach an execution-bound
+		// wait. The token is valid for this execution, so the caller may learn why.
+		if (stepBoundOnly) throw new ResumeRejectedError('step_bound_only');
 		return null;
+	}
+
+	/**
+	 * The node sends its URL or button while its step runs, and the step waits
+	 * only after the node returns. A request can arrive in between: hold as
+	 * `locate` does. A settled step never waits again, because a loop runs its
+	 * next iteration as a new step.
+	 */
+	private async locateStepBoundWait(stepId: string): Promise<ResumeLocation> {
+		for (let attempt = 1; ; attempt++) {
+			const step = await this.loadStep(stepId, 'not_found');
+			const live = isLive(await this.loadStatus(step.executionId));
+			if (live && waitsFor('step')(step)) {
+				return { executionId: step.executionId, target: { stepId: step.id, nodeId: step.nodeId } };
+			}
+			if (!live || isSettledStatus(step.status) || attempt >= this.hold.attempts) {
+				return { executionId: step.executionId, target: null };
+			}
+			await sleep(this.hold.delayMs);
+		}
 	}
 
 	/**
 	 * Ends the wait of `stepId` with `outputs`, and announces the step. The
 	 * worker that claims it emits the outputs. A second wait does not refuse
-	 * the request: `locate` chose the step while it was the only one.
+	 * the request: `locate` chose the step while it was the only one. The
+	 * binding of a step-bound token is not compared here: `locateByToken`
+	 * compared it with the request.
 	 *
-	 * @throws {ResumeRejectedError} `invalid_token`, or `not_waiting` when the
-	 * step does not wait for a request (any more) or its execution ended.
+	 * @throws {ResumeRejectedError} `invalid_token` when the token names
+	 * neither the step nor its execution, or `not_waiting` when the step does
+	 * not wait (any more) for a request of the token's kind, or its execution
+	 * ended.
 	 */
 	async resolve(stepId: string, token: string, outputs: StepSlots): Promise<StepRecord> {
-		const step = await this.loadStep(stepId);
-		if (!verifyResumeToken(this.secret, token, step.executionId)) {
-			throw new ResumeRejectedError('invalid_token');
+		// As a bad token, so a caller cannot learn whether a step id exists.
+		const step = await this.loadStep(stepId, 'invalid_token');
+		const claims = verifyResumeToken(this.secret, token);
+		if (!claims || !namesStep(claims, step)) throw new ResumeRejectedError('invalid_token');
+		if (!waitsFor(BINDING_OF_KIND[claims.kind])(step)) {
+			throw new ResumeRejectedError('not_waiting');
 		}
-		if (!acceptsRequest(step)) throw new ResumeRejectedError('not_waiting');
 		if (!isLive(await this.loadStatus(step.executionId))) {
 			throw new ResumeRejectedError('not_waiting');
 		}
@@ -125,10 +220,6 @@ export class ResumeRequestService {
 		return step;
 	}
 
-	private async loadExecutionBoundWaits(executionId: string): Promise<StepRecord[]> {
-		return (await this.stepStore.loadWaitingSteps(executionId)).filter(acceptsRequest);
-	}
-
 	private async loadStatus(executionId: string): Promise<ExecutionStatus> {
 		try {
 			// TODO(CET-488): load only the status.
@@ -139,12 +230,11 @@ export class ResumeRequestService {
 		}
 	}
 
-	private async loadStep(stepId: string): Promise<StepRecord> {
+	private async loadStep(stepId: string, ifMissing: ResumeRejection): Promise<StepRecord> {
 		try {
 			return await this.stepStore.loadStep(stepId);
 		} catch (error) {
-			// As a bad token, so a caller cannot learn whether a step id exists.
-			if (error instanceof StepNotFoundError) throw new ResumeRejectedError('invalid_token');
+			if (error instanceof StepNotFoundError) throw new ResumeRejectedError(ifMissing);
 			throw error;
 		}
 	}
