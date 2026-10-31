@@ -532,10 +532,25 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	 * stamps its own). Unlike {@link beginDispatch} it is not fenced on the marker
 	 * being null: the scheduler is at-least-once, so this only records that the effect
 	 * happened, letting the reaper complete rather than redeliver the occurrence.
+	 * The same transaction stamps the job's `lastDispatchedAt`, which outlives the row.
 	 */
 	async markDispatched(claim: HostedClaimedRef): Promise<number> {
-		return await this.runGuardedUpdate(claim, {
-			dispatchedAt: () => dbNowLiteral(this.isPostgres),
+		return await this.manager.transaction(async (tx) => {
+			const rowsAffected = await this.runGuardedUpdate(
+				claim,
+				{ dispatchedAt: () => dbNowLiteral(this.isPostgres) },
+				tx,
+			);
+			if (rowsAffected > 0) {
+				const placeholder = this.isPostgres ? '$1' : '?';
+				await tx.query(
+					`UPDATE ${this.jobTableName}
+					    SET "lastDispatchedAt" = ${dbNowLiteral(this.isPostgres)}
+					  WHERE "id" = (SELECT "jobId" FROM ${this.tableName} WHERE "id" = ${placeholder})`,
+					[claim.id],
+				);
+			}
+			return rowsAffected;
 		});
 	}
 
@@ -770,10 +785,12 @@ export class ScheduledTaskRepository extends Repository<ScheduledTask> {
 	private async runGuardedUpdate(
 		claim: HostedClaimedRef,
 		values: QueryDeepPartialEntity<ScheduledTask>,
+		manager: EntityManager = this.manager,
 	): Promise<number> {
 		// Object criteria (not a raw where string) so TypeORM quotes the camelCase
 		// `claimedBy`/`leaseEpoch` columns correctly on Postgres.
-		const result = await this.update(
+		const result = await manager.update(
+			ScheduledTask,
 			{
 				id: claim.id,
 				status: ScheduledTaskStatus.Running,
