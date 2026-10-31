@@ -3,7 +3,7 @@
  * the lockfile at the base ref with the working tree. See `lockfileImpact` in
  * `@n8n/test-impact`.
  */
-import { lockfileImpact } from '@n8n/test-impact';
+import { directDependenciesChanged, lockfileImpact } from '@n8n/test-impact';
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -39,8 +39,10 @@ function packageName(root: string, dir: string): string | undefined {
  * Names of the workspace packages whose resolved dependencies differ between
  * the lockfile at `baseRef` and the working tree. Null when the change cannot be
  * attributed to packages: a read or parse failure, a change to pnpm itself or to
- * lockfile settings, or a change to the root package's dependencies. Any package
- * can resolve the root's dependencies through the root `node_modules`.
+ * lockfile settings, or a change to a direct dependency of the root package.
+ * Any package can resolve the root's direct dependencies through the root
+ * `node_modules` (knip's `unlisted` rule rejects such imports, but tooling can
+ * still load them). The root's transitive dependencies are not reachable there.
  */
 export function readLockfileImpact(baseRef: string): string[] | null {
 	try {
@@ -58,8 +60,17 @@ export function readLockfileImpact(baseRef: string): string[] | null {
 		const after = parseDocuments(readFileSync(lockPath, 'utf8'));
 		if (!before || !after) return null;
 		const dirs = lockfileImpact(before, after, UNIT_SECTIONS);
-		if (!dirs || dirs.includes('.')) return null;
-		return dirs.map((dir) => packageName(root, dir)).filter((name) => name !== undefined);
+		if (!dirs) return null;
+		if (
+			dirs.includes('.') &&
+			directDependenciesChanged(before, after, '.', UNIT_SECTIONS.ownSections)
+		) {
+			return null;
+		}
+		return dirs
+			.filter((dir) => dir !== '.')
+			.map((dir) => packageName(root, dir))
+			.filter((name) => name !== undefined);
 	} catch {
 		return null;
 	}
