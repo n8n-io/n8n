@@ -1,4 +1,4 @@
-import { parseIncomingMessage } from '@n8n/backend-network';
+import { bufferToString, isCharsetSupported, parseIncomingMessage } from '@n8n/backend-network';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { Request, RequestHandler } from 'express';
@@ -9,7 +9,7 @@ import { type Readable } from 'stream';
 import { Parser as XmlParser } from 'xml2js';
 import { createGunzip, createInflate } from 'zlib';
 
-import { BadRequestError, UnprocessableRequestError } from '@n8n/errors';
+import { BadRequestError, UnprocessableRequestError, UserError } from '@n8n/errors';
 
 // One parser per request: xml2js keeps parse state on the instance, and async
 // mode spreads large bodies over several ticks.
@@ -32,6 +32,44 @@ const payloadSizeMax = Container.get(GlobalConfig).endpoints.payloadSizeMax;
  * decoded character covers every declared charset.
  */
 const stripBom = (text: string) => (text.charCodeAt(0) === 0xfeff ? text.slice(1) : text);
+
+const usesUtf8Escapes = (charset: string) =>
+	/^(utf(8|16|32)(le|be)?|ucs[24])$/.test(charset.toLowerCase().replace(/[^\da-z]/g, ''));
+
+const hexValue = (byte: number) => {
+	if (byte >= 0x30 && byte <= 0x39) return byte - 0x30;
+	const lower = byte | 0x20;
+	return lower >= 0x61 && lower <= 0x66 ? lower - 0x57 : -1;
+};
+
+const percentDecode = (component: string) => {
+	const bytes = Buffer.from(component, 'latin1');
+	let length = 0;
+	for (let i = 0; i < bytes.length; i++) {
+		const high = bytes[i] === 0x25 ? hexValue(bytes[i + 1]) : -1;
+		const low = high === -1 ? -1 : hexValue(bytes[i + 2]);
+		if (low === -1) {
+			bytes[length++] = bytes[i];
+		} else {
+			bytes[length++] = (high << 4) | low;
+			i += 2;
+		}
+	}
+	return bytes.subarray(0, length);
+};
+
+const parseForm = (body: Buffer, charset: string) => {
+	if (usesUtf8Escapes(charset)) {
+		return parseQueryString(stripBom(bufferToString(body, charset)), undefined, undefined, {
+			maxKeys: 1000,
+		});
+	}
+	if (!isCharsetSupported(charset)) throw new UserError(`Unknown charset: ${charset}`);
+	return parseQueryString(body.toString('latin1'), undefined, undefined, {
+		maxKeys: 1000,
+		decodeURIComponent: (component) => bufferToString(percentDecode(component), charset),
+	});
+};
 
 const isClientAbortError = (error: unknown): boolean =>
 	error instanceof Error &&
@@ -97,16 +135,14 @@ export const parseBody = async (req: Request) => {
 		try {
 			if (contentType === 'application/json') {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = jsonParse(stripBom(rawBody.toString(encoding)));
+				req.body = jsonParse(stripBom(bufferToString(rawBody, encoding)));
 			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				req.body = await createXmlParser().parseStringPromise(rawBody.toString(encoding));
+				req.body = await createXmlParser().parseStringPromise(bufferToString(rawBody, encoding));
 			} else if (contentType === 'application/x-www-form-urlencoded') {
-				req.body = parseQueryString(stripBom(rawBody.toString(encoding)), undefined, undefined, {
-					maxKeys: 1000,
-				});
+				req.body = parseForm(rawBody, encoding);
 			} else if (contentType === 'text/plain') {
-				req.body = rawBody.toString(encoding);
+				req.body = bufferToString(rawBody, encoding);
 			}
 		} catch (error) {
 			throw new UnprocessableRequestError('Failed to parse request body', (error as Error).message);
