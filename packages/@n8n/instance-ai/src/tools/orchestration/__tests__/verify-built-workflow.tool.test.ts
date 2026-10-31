@@ -768,7 +768,7 @@ describe('workflow_builder_verify_built_workflow tool', () => {
 			shouldEdit: false,
 			reason: 'verify_budget_exhausted',
 		});
-		expect(result.error).toContain('workflow_builder_executions(action="run")');
+		expect(result.error).toContain('run_workflow');
 		expect(ctx.domainContext.executionService.run).not.toHaveBeenCalled();
 		expect(updateBuildOutcome).not.toHaveBeenCalled();
 	});

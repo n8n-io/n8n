@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { computed, inject, nextTick, onMounted, ref, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nCallout, N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nCallout,
+	N8nIcon,
+	N8nIconButton,
+	N8nLink,
+	N8nText,
+} from '@n8n/design-system';
 import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME } from '@n8n/api-types';
 import { isAwaitingCard } from '@/features/ai/shared/agentsChat/n8nChatInteraction';
 import { useI18n } from '@n8n/i18n';
-import { useSessionStorage } from '@vueuse/core';
+import { useResizeObserver, useSessionStorage } from '@vueuse/core';
 import { TIME } from '@/app/constants/durations';
+import type { RouteLocationRaw } from 'vue-router';
 import {
 	DISPLAY_GROUP_KIND,
 	isAssistantGroup,
@@ -40,12 +48,13 @@ import AgentChatMessageAttachments from './AgentChatMessageAttachments.vue';
 import AgentChatToolSteps from './AgentChatToolSteps.vue';
 import AgentChatRetryError from './AgentChatRetryError.vue';
 import AgentMarkdownChunk from './AgentMarkdownChunk.vue';
+import AgentChatTaskSummary from './AgentChatTaskSummary.vue';
 import AgentTypingIndicator from './AgentTypingIndicator.vue';
 import AgentBudgetNoticeCard from './AgentBudgetNoticeCard.vue';
 import InteractiveCard from './interactive/InteractiveCard.vue';
 import type { AgentFixWithAssistantFailure, AgentSendToAssistantEvent } from '../types';
 import { looksLikeAgentChangeRequest } from '../utils/agent-change-request';
-import { buildAgentPlanDisplayGroups } from '../utils/agent-plan';
+import { buildAgentPlanDisplayGroups, getTaskSummaryGroupIds } from '../utils/agent-plan';
 import { isRetryableChatError } from '../utils/errors';
 import { isSameLocalDay, useChatDividerTimestamp } from '../utils/relative-time';
 import {
@@ -71,6 +80,10 @@ const props = defineProps<{
 	budgetIncreasePending?: boolean;
 	retryMessageId?: string;
 	retryDisabled?: boolean;
+	taskTraceRoute?: RouteLocationRaw;
+	preparingSummary?: boolean;
+	/** The results were not summarized in time. */
+	summaryMissing?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -86,6 +99,8 @@ const emit = defineEmits<{
 }>();
 
 defineSlots<{
+	/** Temporary status at the end of the transcript. */
+	status?: () => unknown;
 	/** Host actions for a finished agent reply, next to the default copy action. */
 	'message-actions'?: (props: { message: ChatMessage; executionId?: string }) => unknown;
 }>();
@@ -194,10 +209,12 @@ function getMessageRenderItems(message: ChatMessage): MessageRenderItem[] {
 const interactionExtensions = inject(AGENTS_CHAT_INTERACTION_EXTENSIONS, undefined);
 
 const scrollRef = useTemplateRef<HTMLDivElement>('scrollRef');
+const statusRef = useTemplateRef<HTMLDivElement>('statusRef');
 
 /** True when the bubble of `message` shows something besides host events. */
 function hasBubbleContent(message: ChatMessage): boolean {
 	return !!(
+		message.stopReport ||
 		message.content.trim() ||
 		message.renderParts?.length ||
 		message.toolCalls?.length ||
@@ -218,9 +235,12 @@ function hasBubbleContent(message: ChatMessage): boolean {
  */
 const visibleMessages = computed(() => {
 	if (!props.messages.some((message) => message.hostEvents?.length)) return props.messages;
+
 	const extensions = interactionExtensions?.value ?? [];
+
 	return props.messages.flatMap((message) => {
 		if (!message.hostEvents?.length) return [message];
+
 		const live =
 			message.status === CHAT_MESSAGE_STATUS.STREAMING ||
 			message.status === CHAT_MESSAGE_STATUS.AWAITING_USER;
@@ -232,17 +252,29 @@ const visibleMessages = computed(() => {
 						return renderer.placement !== HOST_EVENT_PLACEMENT.TRANSIENT || live;
 					})
 				: [];
+
 		if (hostEvents.length === message.hostEvents.length) return [message];
+
 		const keep =
 			hostEvents.length > 0 ||
 			hasBubbleContent(message) ||
 			!!message.backgroundJobSignal ||
+			!!message.stopReport ||
 			message.status === CHAT_MESSAGE_STATUS.STREAMING;
+
 		return keep ? [{ ...message, hostEvents: hostEvents.length ? hostEvents : undefined }] : [];
 	});
 });
 
 const displayGroups = computed(() => buildAgentPlanDisplayGroups(visibleMessages.value));
+const taskSummaryGroupIds = computed(() =>
+	getTaskSummaryGroupIds(visibleMessages.value, displayGroups.value),
+);
+const tailSummaryId = computed(() => {
+	const last = displayGroups.value.at(-1);
+
+	return last && taskSummaryGroupIds.value.has(last.id) ? last.id : undefined;
+});
 
 interface GroupToolCalls {
 	/** Calls that render as default tool steps. */
@@ -288,9 +320,12 @@ const retryErrorMessageId = computed(() => {
 	return props.retryMessageId && isRetryableChatError(message) ? message?.id : undefined;
 });
 
-const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [] };
+const EMPTY_HOST_EVENT_ITEMS: AgentsChatHostEventItems = { start: [], end: [], thinking: [] };
 
-/** Host event components of each assistant group. `transient` events show only before text. */
+/**
+ * Host event components of each assistant group. `transient` events show only
+ * before text. `thinking` events need the thinking block of the group.
+ */
 const hostEventItems = computed(() => {
 	const itemsByGroupId = new Map<string, AgentsChatHostEventItems>();
 	const extensions = interactionExtensions?.value ?? [];
@@ -298,10 +333,12 @@ const hostEventItems = computed(() => {
 		switch (group.kind) {
 			case DISPLAY_GROUP_KIND.TOOL_RUN: {
 				if (!group.hostEvents) break;
-				const showTransient = !group.finalMessage?.content.trim();
 				itemsByGroupId.set(
 					group.id,
-					getHostEventItems(group.hostEvents, extensions, showTransient),
+					getHostEventItems(group.hostEvents, extensions, {
+						showTransient: !group.finalMessage?.content.trim(),
+						hasThinkingBlock: group.thinkingSegments.length > 0,
+					}),
 				);
 				break;
 			}
@@ -309,8 +346,13 @@ const hostEventItems = computed(() => {
 				const { message } = group;
 				if (!message.hostEvents) break;
 				const sources = appendHostEventSources([], message);
-				const showTransient = !message.content.trim();
-				itemsByGroupId.set(group.id, getHostEventItems(sources, extensions, showTransient));
+				itemsByGroupId.set(
+					group.id,
+					getHostEventItems(sources, extensions, {
+						showTransient: !message.content.trim(),
+						hasThinkingBlock: group.thinkingSegments.length > 0,
+					}),
+				);
 				break;
 			}
 			case DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL:
@@ -637,6 +679,10 @@ watch(
 
 watch(() => props.messagingState, autoScrollIfSticky, { flush: 'post' });
 
+watch(() => props.preparingSummary, autoScrollIfSticky, { flush: 'post' });
+
+useResizeObserver(statusRef, autoScrollIfSticky);
+
 // Content within the last message grew (streaming text, tool calls, thinking,
 // host events). Only follow the stream down if the user is still near the
 // bottom — otherwise we yank them away from whatever they scrolled up to read.
@@ -673,7 +719,12 @@ watch(
 				v-if="group.kind === DISPLAY_GROUP_KIND.BACKGROUND_JOB_SIGNAL"
 				:class="[$style.message, $style.assistant]"
 			>
-				<AgentChatBackgroundJobSignal :class="$style.content" :signal="group.signal" />
+				<AgentChatBackgroundJobSignal
+					:class="$style.content"
+					:signal="group.signal"
+					:project-id="projectId"
+					:agent-id="agentId"
+				/>
 			</div>
 			<div
 				v-else-if="group.kind === DISPLAY_GROUP_KIND.TOOL_RUN"
@@ -723,8 +774,20 @@ watch(
 							"
 						/>
 					</div>
+					<AgentChatTaskSummary
+						v-if="taskSummaryGroupIds.has(group.id)"
+						:content="group.finalMessage?.content"
+						:preparing="group.active || (!!preparingSummary && group.id === tailSummaryId)"
+						:trace-route="taskTraceRoute"
+						:retryable-error="isRetryableChatError(group.finalMessage)"
+						:retry-message-id="
+							group.finalMessage?.id === retryErrorMessageId ? retryMessageId : undefined
+						"
+						:retry-disabled="retryDisabled"
+						@retry="emit('retry', $event)"
+					/>
 					<AgentChatRetryError
-						v-if="group.finalMessage && isRetryableChatError(group.finalMessage)"
+						v-else-if="group.finalMessage && isRetryableChatError(group.finalMessage)"
 						:message="group.finalMessage.content"
 						:retry-message-id="
 							group.finalMessage.id === retryErrorMessageId ? retryMessageId : undefined
@@ -764,6 +827,7 @@ watch(
 						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
 						test-id="agent-chat-thinking-block"
 					>
+						<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
 						<AiReasoningBlock
 							v-for="segment in group.thinkingSegments"
 							:key="segment.id"
@@ -800,6 +864,7 @@ watch(
 					<AgentTypingIndicator
 						v-if="
 							group.id === streamingGroupId &&
+							!taskSummaryGroupIds.has(group.id) &&
 							!group.finalMessage?.content &&
 							!group.toolCalls.length &&
 							!group.thinkingSegments.length
@@ -865,11 +930,55 @@ watch(
 					>
 						{{ group.message.author.name }}
 					</N8nText>
+					<AgentChatTaskSummary
+						v-if="taskSummaryGroupIds.has(group.id)"
+						:content="group.message.content"
+						:preparing="
+							group.message.status === CHAT_MESSAGE_STATUS.STREAMING ||
+							(!!preparingSummary && group.id === tailSummaryId)
+						"
+						:trace-route="taskTraceRoute"
+						:retryable-error="isRetryableChatError(group.message)"
+						:retry-message-id="
+							group.message.id === retryErrorMessageId ? retryMessageId : undefined
+						"
+						:retry-disabled="retryDisabled"
+						@retry="emit('retry', $event)"
+					/>
 					<div
-						v-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
+						v-else-if="group.message.role === CHAT_MESSAGE_ROLE.USER && group.message.content"
 						:class="[$style.chatMessage, $style.chatMessageUser]"
 					>
 						{{ group.message.content }}
+					</div>
+					<div
+						v-else-if="group.message.stopReport"
+						:class="$style.stopReply"
+						data-testid="agent-chat-stop-reply"
+					>
+						<template
+							v-if="
+								group.message.content.trim() ||
+								group.message.status !== CHAT_MESSAGE_STATUS.STREAMING
+							"
+						>
+							<div :class="[$style.chatMessage, $style.markdownContent, $style.stopReplyText]">
+								<AgentMarkdownChunk
+									v-if="group.message.content.trim()"
+									:source="group.message.content"
+								/>
+								<p v-else>{{ i18n.baseText('agents.chat.tasks.inline.reportFailed') }}</p>
+							</div>
+							<N8nLink
+								v-if="taskTraceRoute"
+								:to="taskTraceRoute"
+								theme="text"
+								size="small"
+								underline
+							>
+								{{ i18n.baseText('agents.chat.plan.viewTrace') }}
+							</N8nLink>
+						</template>
 					</div>
 					<template v-else>
 						<AgentChatRetryError
@@ -907,15 +1016,15 @@ watch(
 								/>
 							</div>
 						</template>
-						<AgentBudgetNoticeCard
-							v-for="notice in group.message.budgetNotices ?? []"
-							:key="notice.id"
-							:code="notice.code"
-							:can-increase="canIncreaseForNotice(notice)"
-							:pending="budgetIncreasePending"
-							@increase="emit('increase-budget', $event)"
-						/>
 					</template>
+					<AgentBudgetNoticeCard
+						v-for="notice in group.message.budgetNotices ?? []"
+						:key="notice.id"
+						:code="notice.code"
+						:can-increase="canIncreaseForNotice(notice)"
+						:pending="budgetIncreasePending"
+						@increase="emit('increase-budget', $event)"
+					/>
 					<AgentChatHostEvents :items="getGroupHostEventItems(group.id).end" />
 					<N8nCallout
 						v-if="group.id === changeRequestGroupId"
@@ -959,6 +1068,7 @@ watch(
 						:duration-sec="getThinkingDurationSec(group.thinkingSegments)"
 						test-id="agent-chat-thinking-block"
 					>
+						<AgentChatHostEvents :items="getGroupHostEventItems(group.id).thinking" />
 						<AiReasoningBlock
 							v-for="segment in group.thinkingSegments"
 							:key="segment.id"
@@ -998,6 +1108,7 @@ watch(
 					<AgentTypingIndicator
 						v-if="
 							group.message.role === CHAT_MESSAGE_ROLE.ASSISTANT &&
+							!taskSummaryGroupIds.has(group.id) &&
 							group.message.status === CHAT_MESSAGE_STATUS.STREAMING &&
 							!group.message.content &&
 							!group.message.toolCalls?.length &&
@@ -1009,10 +1120,19 @@ watch(
 			</div>
 		</template>
 
-		<div v-if="messagingState === 'waitingFirstChunk'" :class="$style.message">
+		<div v-if="(preparingSummary || summaryMissing) && !tailSummaryId" :class="$style.message">
+			<AgentChatTaskSummary :preparing="!!preparingSummary" :trace-route="taskTraceRoute" />
+		</div>
+		<div
+			v-else-if="messagingState === 'waitingFirstChunk' && !tailSummaryId"
+			:class="$style.message"
+		>
 			<div :class="$style.content">
 				<AgentTypingIndicator :class="$style.typingIndicator" />
 			</div>
+		</div>
+		<div v-if="$slots.status" ref="statusRef" :class="$style.message">
+			<slot name="status" />
 		</div>
 	</div>
 </template>
@@ -1115,6 +1235,21 @@ watch(
 /* Hugs its label instead of stretching with the row above it. */
 .changeRequestAction {
 	align-self: flex-start;
+}
+
+.stopReply {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: baseline;
+	gap: var(--spacing--sm);
+}
+
+.stopReplyText {
+	min-width: 0;
+
+	> p {
+		margin: 0;
+	}
 }
 
 .chatMessage {

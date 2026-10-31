@@ -31,6 +31,7 @@ function makeExecutionStore(overrides: Partial<ExecutionStore> = {}): ExecutionS
 		loadExecution: vi
 			.fn()
 			.mockResolvedValue({ ...execution, status: 'cancelled', finishedAt: new Date() }),
+		loadExecutionStatus: vi.fn(),
 		transitionStatus: vi.fn(),
 		finishExecution: vi.fn(),
 		cancelExecution: vi

@@ -4,6 +4,7 @@ import { createTeamProject, mockLogger, testDb, testModules } from '@n8n/backend
 import { TransactionRunner, type User, type WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ConflictError } from '@n8n/errors';
+import { DataSource } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -20,6 +21,7 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { NodeToolAiGatewayService } from '@/modules/agents/json-config/node-tool-ai-gateway.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { createSkill } from '@/modules/skills/testing';
 import { AgentSkillRepository } from '@/modules/agents/repositories/agent-skill.repository';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
@@ -66,7 +68,7 @@ describe('AgentRepository', () => {
 	}
 
 	async function createHistory(agentId: string, versionId: string) {
-		await agentHistoryRepo.insert({
+		await Container.get(DataSource).getRepository(AgentHistory).insert({
 			versionId,
 			agentId,
 			author: 'test',
@@ -93,7 +95,7 @@ describe('AgentRepository', () => {
 
 	afterEach(async () => {
 		vi.restoreAllMocks();
-		await agentHistoryRepo.delete({});
+		await Container.get(DataSource).getRepository(AgentHistory).delete({});
 		await agentRepo.delete({});
 	});
 
@@ -240,7 +242,11 @@ describe('AgentRepository', () => {
 			});
 			expect(created.configHash).toBe(getAgentConfigHash(created.config));
 			expect(
-				await agentHistoryRepo.findByVersionAndAgentId(created.agent.versionId!, created.agent.id),
+				await agentHistoryRepo.findByVersionAndAgentId(
+					created.agent.versionId!,
+					created.agent.id,
+					{},
+				),
 			).toMatchObject({ schema: { instructions: 'Help users' } });
 			expect(
 				await Container.get(AgentSkillRepository).findPinnedSkillIds(created.agent.versionId!),
@@ -340,7 +346,9 @@ describe('AgentRepository', () => {
 				schema: { name: 'Updated agent', tasks: [] },
 			});
 			expect(await taskRepo.findByAgentId(agent.id)).toEqual([]);
-			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
+			expect(
+				await Container.get(DataSource).getRepository(AgentHistory).countBy({ agentId: agent.id }),
+			).toBe(1);
 			const repeated = await service.updateConfig(
 				agent.id,
 				projectId,
@@ -352,7 +360,9 @@ describe('AgentRepository', () => {
 				},
 			);
 			expect(repeated.versionId).toBe(saved.versionId);
-			expect(await agentHistoryRepo.countBy({ agentId: agent.id })).toBe(1);
+			expect(
+				await Container.get(DataSource).getRepository(AgentHistory).countBy({ agentId: agent.id }),
+			).toBe(1);
 			expect(completion.configurationSaved).toHaveBeenCalled();
 		});
 
@@ -598,28 +608,34 @@ describe('AgentRepository', () => {
 			expect(agent.integrations).toEqual([]);
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
 			const firstVersion = uuid();
-			await agentHistoryRepo.saveVersion({
-				versionId: firstVersion,
-				agentId: agent.id,
-				schema: agent.schema
-					? { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] }
-					: null,
-				tools: {},
-				publishedBy: 'test',
-			});
+			await agentHistoryRepo.saveVersion(
+				{
+					versionId: firstVersion,
+					agentId: agent.id,
+					schema: agent.schema
+						? { ...agent.schema, integrations: [{ type: 'n8n_chat', credentialId: '' }] }
+						: null,
+					tools: {},
+					publishedBy: 'test',
+				},
+				{},
+			);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
 			await agentRepo.update({ id: agent.id }, { integrations: [] });
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(true);
 
 			const secondVersion = uuid();
-			await agentHistoryRepo.saveVersion({
-				versionId: secondVersion,
-				agentId: agent.id,
-				schema: agent.schema,
-				tools: {},
-				publishedBy: 'test',
-			});
+			await agentHistoryRepo.saveVersion(
+				{
+					versionId: secondVersion,
+					agentId: agent.id,
+					schema: agent.schema,
+					tools: {},
+					publishedBy: 'test',
+				},
+				{},
+			);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: secondVersion });
 			expect(await agentRepo.isN8nChatPublished(agent.id, projectId)).toBe(false);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: firstVersion });
@@ -811,13 +827,16 @@ describe('AgentRepository', () => {
 		it('refuses the write when a publication landed after the read', async () => {
 			const agent = await createAgent({ versionId: 'version-1', activeVersionId: null });
 			// A concurrent publish claims the current draft as the live version.
-			await agentHistoryRepo.saveVersion({
-				versionId: 'version-1',
-				agentId: agent.id,
-				schema: agent.schema,
-				tools: null,
-				publishedBy: 'Someone Else',
-			});
+			await agentHistoryRepo.saveVersion(
+				{
+					versionId: 'version-1',
+					agentId: agent.id,
+					schema: agent.schema,
+					tools: null,
+					publishedBy: 'Someone Else',
+				},
+				{},
+			);
 			await agentRepo.update({ id: agent.id }, { activeVersionId: 'version-1' });
 
 			const written = await agentRepo.updateIntegrations(
@@ -1059,13 +1078,15 @@ describe('AgentRepository', () => {
 		): Promise<Agent> {
 			const versionId = uuid();
 			const agent = await createAgent(overrides);
-			await agentHistoryRepo.save({
-				versionId,
-				agentId: agent.id,
-				author: 'test',
-				schema: storedAgentConfig(publishedSchema(snapshotIntegrations)),
-				tools: null,
-			});
+			await Container.get(DataSource)
+				.getRepository(AgentHistory)
+				.save({
+					versionId,
+					agentId: agent.id,
+					author: 'test',
+					schema: storedAgentConfig(publishedSchema(snapshotIntegrations)),
+					tools: null,
+				});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
 			return (await agentRepo.findById(agent.id)) as Agent;
 		}
@@ -1226,18 +1247,20 @@ describe('AgentRepository', () => {
 		): Promise<Agent> {
 			const versionId = uuid();
 			const agent = await createAgent(overrides);
-			await agentHistoryRepo.save({
-				versionId,
-				agentId: agent.id,
-				author: 'test',
-				schema: {
-					name: 'Published',
-					model: 'm',
-					instructions: 'i',
-					integrations: snapshotIntegrations,
-				},
-				tools: null,
-			});
+			await Container.get(DataSource)
+				.getRepository(AgentHistory)
+				.save({
+					versionId,
+					agentId: agent.id,
+					author: 'test',
+					schema: {
+						name: 'Published',
+						model: 'm',
+						instructions: 'i',
+						integrations: snapshotIntegrations,
+					},
+					tools: null,
+				});
 			await agentRepo.update({ id: agent.id }, { activeVersionId: versionId });
 			return (await agentRepo.findById(agent.id)) as Agent;
 		}

@@ -27,6 +27,7 @@ import {
 import { Container } from '@n8n/di';
 import { ConflictError, ForbiddenError } from '@n8n/errors';
 import { TELEMETRY_EVENT } from '@n8n/telemetry';
+import { DataSource } from '@n8n/typeorm';
 import { ExecuteWorkflowTrigger } from 'n8n-nodes-base/nodes/ExecuteWorkflow/ExecuteWorkflowTrigger/ExecuteWorkflowTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
 
@@ -42,11 +43,13 @@ import { AgentTaskService } from '@/modules/agents/agent-task.service';
 import { AgentUpdateBroadcaster } from '@/modules/agents/agent-update-broadcaster';
 import { ChatIntegrationService } from '@/modules/agents/integrations/chat-integration.service';
 import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentTaskRepository } from '@/modules/agents/repositories/agent-task.repository';
 import { AgentTaskSnapshotRepository } from '@/modules/agents/repositories/agent-task-snapshot.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
 import {
 	createSkill,
+	deleteAllSkills,
 	deleteSkill,
 	findLatestSkillVersion,
 	findSkill,
@@ -151,6 +154,8 @@ beforeAll(async () => {
 
 beforeEach(async () => {
 	await agents.delete({});
+	// Skills belong to projects and outlive their Agents.
+	await deleteAllSkills();
 	await testDb.truncate([
 		'WorkflowEntity',
 		'WorkflowHistory',
@@ -267,10 +272,9 @@ async function importSelected(
 	);
 }
 
+/** The fixture gives each Agent one skill, `<agent id>_skill`. */
 async function skillIdsOf(agentId: string) {
-	const ids = await findSkillIds();
-	const skills = await Promise.all(ids.map(async (id) => await findSkill(id)));
-	return skills.filter((skill) => skill?.agentId === agentId).map((skill) => skill?.id);
+	return (await findSkillIds()).filter((id) => id === `${agentId}_skill`);
 }
 
 async function planFor(input: AgentPackageFixture, overrides: Partial<ResolvedImportRequest> = {}) {
@@ -396,8 +400,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(importedSkills.skillRefs).toEqual(first.config!.skills);
 	expect(Object.values(importedSkills.skills)).toEqual([packageSkill(input).skill]);
 	expect(await findSkill(`${first.id}_skill`)).toMatchObject({
-		projectId: null,
-		agentId: saved.id,
+		projectId: project.id,
 		source: 'import',
 		createdById: owner.id,
 	});
@@ -437,7 +440,7 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 			},
 		],
 	});
-	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
+	expect(await Container.get(DataSource).getRepository(AgentHistory).count()).toBe(2);
 	expect(observed).toHaveBeenCalledTimes(2);
 	expect(runtimes.clearRuntimes).not.toHaveBeenCalled();
 	expect(broadcaster.notify).toHaveBeenCalled();
@@ -464,12 +467,12 @@ it('applies selected Agents with complete bodies, cycles, workflow bindings and 
 	expect(input).toEqual(original);
 });
 
-it.each(['project', 'agent'] as const)(
+it.each(['project', 'instance'] as const)(
 	'reports a skill ID owned by another %s in the preview without replacing its content',
 	async (scope) => {
 		const input = fixture();
 		input.manifest.agents.splice(1);
-		await agents.save({ id: 'other-agent', name: 'Other', projectId: project.id });
+		const elsewhere = await createTeamProject('Elsewhere', owner);
 		const body = {
 			name: 'Existing skill',
 			description: 'Keep this skill.',
@@ -477,9 +480,7 @@ it.each(['project', 'agent'] as const)(
 		};
 		await createSkill({
 			id: 'support_source_skill',
-			...(scope === 'project'
-				? { projectId: project.id, agentId: null }
-				: { projectId: null, agentId: 'other-agent' }),
+			projectId: scope === 'project' ? elsewhere.id : null,
 			createdById: owner.id,
 			content: body,
 		});
@@ -505,7 +506,6 @@ it.each(['project', 'agent'] as const)(
 function shareSkill(input: AgentPackageFixture, scope: 'project' | 'instance') {
 	const skill = packageSkill(input);
 	skill.scope = scope;
-	delete skill.agentId;
 	source(input, 1).config!.skills = [{ type: 'skill', id: skill.id }];
 	return skill;
 }
@@ -518,7 +518,6 @@ it.each(['project', 'instance'] as const)(
 		await importSelected(input);
 		expect(await findSkill(skill.id)).toMatchObject({
 			projectId: scope === 'project' ? project.id : null,
-			agentId: null,
 			source: 'import',
 		});
 		expect(await findLatestSkillVersion(skill.id)).toMatchObject({
@@ -546,7 +545,7 @@ it('saves a changed project skill as a new version unless the Agents are skipped
 	});
 	telemetry.track.mockClear();
 	await importSelected(input);
-	expect(await findSkill(skill.id)).toMatchObject({ projectId: project.id, agentId: null });
+	expect(await findSkill(skill.id)).toMatchObject({ projectId: project.id });
 	expect(await findLatestSkillVersion(skill.id)).toMatchObject({
 		version: 2,
 		instructions: 'Changed instructions',
@@ -566,7 +565,6 @@ it('fails the Agent save when a kept skill was deleted after planning', async ()
 	input.manifest.agents.splice(1);
 	const skill = packageSkill(input);
 	skill.scope = 'project';
-	delete skill.agentId;
 	await createSkill({
 		id: skill.id,
 		projectId: project.id,
@@ -609,7 +607,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	const initial = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
 	telemetry.track.mockClear();
 	const [task] = await tasks.findByAgentId(initial.id);
-	const history = Container.get(AgentHistoryRepository);
+	const history = Container.get(DataSource).getRepository(AgentHistory);
 	const skillRefs = Container.get(AgentSkillRefsService);
 	const initialSkills = await skillRefs.readDraft(initial, {});
 	await agents.update(initial.id, { activeVersionId: initial.versionId });
@@ -618,11 +616,13 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 	skill.skill.references = [];
 	first.tasks[`${first.id}_task`].objective = 'Promoted task objective';
 	const promoted = (await importSelected(input)).scopes[0].imported.agentOutcomes[0].agent;
+	// The project skill save raises the revision of the Agent, and the Agent save once more.
 	expect(await agents.findById(initial.id)).toMatchObject({
 		versionId: promoted.versionId,
-		revision: initial.revision + 1,
+		revision: initial.revision + 2,
 	});
-	expect(await history.count()).toBe(2);
+	// The project skill save captures a version of the Agent that follows it.
+	expect(await history.count()).toBe(3);
 	expect(
 		await Container.get(AgentTaskSnapshotRepository).findByVersionId(promoted.versionId!),
 	).toMatchObject([{ taskId: task.id, objective: 'Promoted task objective' }]);
@@ -677,7 +677,7 @@ it('reuses destination IDs, replaces removed content, skips writes and preserves
 		{ id: task.id, objective: 'Updated objective' },
 	]);
 	expect(await tasks.count()).toBe(1);
-	expect(await history.count()).toBe(4);
+	expect(await history.count()).toBe(5);
 	expect(await skillRefs.readVersion({ versionId: initial.versionId! }, {})).toEqual(initialSkills);
 	expect(schedule).not.toHaveBeenCalled();
 	const before = await agents.findById(initial.id);
@@ -754,7 +754,7 @@ it('applies and publishes a project package after authorized project creation', 
 		{ state: 'published' },
 		{ state: 'published' },
 	]);
-	expect(await Container.get(AgentHistoryRepository).count()).toBe(2);
+	expect(await Container.get(DataSource).getRepository(AgentHistory).count()).toBe(2);
 });
 
 it('publishes workflows before an Agent cycle and snapshots the committed definitions', async () => {
@@ -791,6 +791,7 @@ it('publishes workflows before an Agent cycle and snapshots the committed defini
 			await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
 				applied.versionId!,
 				applied.id,
+				{},
 			),
 		).toMatchObject({
 			tools: applied.tools,
@@ -864,7 +865,7 @@ it('keeps source version semantics and skips publication for skipped Agents', as
 		publishing: { state: 'unchanged' },
 	});
 	expect(await agents.findById(published.id)).toEqual(before);
-	expect(await Container.get(AgentHistoryRepository).count()).toBe(5);
+	expect(await Container.get(DataSource).getRepository(AgentHistory).count()).toBe(5);
 	expect(Container.get(AgentTaskService).requestReconcile).toHaveBeenCalledTimes(2);
 	input.files[`${input.manifest.agents[0].target}/agent-metadata.json`] = {
 		versionId: 'draft-version',
@@ -1095,6 +1096,10 @@ it.each(['publish', 'unpublish'] as const)(
 				'agent:update',
 				'agent:publish',
 				'agent:unpublish',
+				// The package skills belong to the project.
+				'projectSkill:read',
+				'projectSkill:create',
+				'projectSkill:update',
 			],
 			{ roleType: 'project' },
 		);
@@ -1217,7 +1222,6 @@ it.each(['create', 'update'] as const)(
 		const beforeTasks = await tasks.findByAgentId('research_source');
 		const skillRefs = Container.get(AgentSkillRefsService);
 		const beforeSkills = await skillRefs.readDraft({ id: 'research_source' }, {});
-		const beforeSkillIds = await skillIdsOf('research_source');
 		const original = structuredClone(plan.agentPlan);
 		const replace = tasks.replaceForAgent.bind(tasks);
 		vi.spyOn(tasks, 'replaceForAgent').mockImplementation(async (...args) => {
@@ -1230,7 +1234,8 @@ it.each(['create', 'update'] as const)(
 		expect(await agents.findById('research_source')).toEqual(beforeAgent);
 		expect(await tasks.findByAgentId('research_source')).toEqual(beforeTasks);
 		expect(await skillRefs.readDraft({ id: 'research_source' }, {})).toEqual(beforeSkills);
-		expect(await skillIdsOf('research_source')).toEqual(beforeSkillIds);
+		// The project skills are written before the Agents, so the rollback keeps them.
+		expect(await skillIdsOf('research_source')).toEqual(['research_source_skill']);
 		expect(await agents.findById('support_source')).toMatchObject({
 			schema: { instructions: 'Keep this earlier save.' },
 		});
@@ -1277,7 +1282,11 @@ it('keeps a concurrent publication when applying a draft import', async () => {
 	});
 	expect(current.versionId).not.toBe(saved.versionId);
 	expect(
-		await Container.get(AgentHistoryRepository).findByVersionAndAgentId(saved.versionId!, saved.id),
+		await Container.get(AgentHistoryRepository).findByVersionAndAgentId(
+			saved.versionId!,
+			saved.id,
+			{},
+		),
 	).toMatchObject({ schema: saved.schema, tools: saved.tools });
 });
 
@@ -1301,7 +1310,17 @@ it.each(['create', 'update'] as const)(
 		if (action === 'update') await importSelected(input);
 		const member = await createMember();
 		const allowed = await createCustomRoleWithScopeSlugs(
-			['agent:import', 'agent:read', 'agent:create', 'agent:update', 'workflow:import'],
+			[
+				'agent:import',
+				'agent:read',
+				'agent:create',
+				'agent:update',
+				'workflow:import',
+				// The package skills belong to the project.
+				'projectSkill:read',
+				'projectSkill:create',
+				'projectSkill:update',
+			],
 			{ roleType: 'project' },
 		);
 		await linkUserToProject(member, project, allowed.slug);

@@ -315,16 +315,26 @@ export class ExecutionRecorder {
 	) {
 		this.startTime = startedAt.getTime();
 		this.registry = registry ?? new Map();
+
 		if (backgroundJobSignal) {
 			this.timeline.push({
 				type: 'background-task-signal',
 				timestamp: this.startTime,
 				signal: {
-					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status }) => ({
+					...(backgroundJobSignal.isFinal ? { isFinal: true } : {}),
+					tasks: backgroundJobSignal.tasks.map(({ id, title, kind, status, files }) => ({
 						id,
 						title: scrubSecretsInText(title),
 						kind,
 						status,
+						...(files?.length
+							? {
+									files: files.map((file) => ({
+										...file,
+										fileName: scrubSecretsInText(file.fileName),
+									})),
+								}
+							: {}),
 					})),
 				},
 			});

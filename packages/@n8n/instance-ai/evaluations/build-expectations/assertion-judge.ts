@@ -21,9 +21,28 @@ export const expectationResultSchema = z.object({
 			// written first can disagree with the reason that follows it.
 			reason: z.string(),
 			pass: z.boolean(),
+			applicable: z.boolean().optional(),
 		}),
 	),
 });
+
+type JudgeVerdict = Omit<z.infer<typeof expectationResultSchema>['results'][number], 'index'>;
+
+function toResult(expectation: string, verdict: JudgeVerdict | undefined): BuildExpectationResult {
+	if (!verdict) {
+		return { expectation, pass: false, reason: 'no verdict returned', incomplete: true };
+	}
+	// A not-applicable expectation has no verdict, so it stays out of the pass rate.
+	if (verdict.applicable === false) {
+		return {
+			expectation,
+			pass: false,
+			reason: `not applicable: ${verdict.reason}`,
+			incomplete: true,
+		};
+	}
+	return { expectation, pass: verdict.pass, reason: verdict.reason };
+}
 
 const MAX_VERIFY_ATTEMPTS = 2;
 const VERIFY_ATTEMPT_TIMEOUT_MS = 120_000;
@@ -87,26 +106,21 @@ export async function judgeExpectations(
 		}
 
 		const parsed = expectationResultSchema.safeParse(result.structuredOutput);
-		const byIndex = new Map<number, { pass: boolean; reason: string }>();
+		const byIndex = new Map<number, JudgeVerdict>();
 		if (parsed.success) {
-			for (const entry of parsed.data.results) {
+			for (const { index, ...verdict } of parsed.data.results) {
 				// Schema validated the types; the index must still be an in-range integer.
 				// A fractional index leaves byIndex short, so the attempt retries instead of
 				// silently returning "no verdict" for real expectations.
-				if (Number.isInteger(entry.index) && entry.index >= 0 && entry.index < assertions.length) {
-					byIndex.set(entry.index, { pass: entry.pass, reason: entry.reason });
+				if (Number.isInteger(index) && index >= 0 && index < assertions.length) {
+					byIndex.set(index, verdict);
 				}
 			}
 		}
 
 		if (byIndex.size > 0) {
 			// Omitted expectations are marked `incomplete` (not a genuine fail).
-			return assertions.map((expectation, i) => {
-				const verdict = byIndex.get(i);
-				return verdict
-					? { expectation, pass: verdict.pass, reason: verdict.reason }
-					: { expectation, pass: false, reason: 'no verdict returned', incomplete: true };
-			});
+			return assertions.map((expectation, i) => toResult(expectation, byIndex.get(i)));
 		}
 
 		console.warn(

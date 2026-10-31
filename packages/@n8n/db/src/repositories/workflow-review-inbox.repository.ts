@@ -10,7 +10,7 @@ import {
 	WorkflowReviewRequest,
 	type WorkflowReviewRequestState,
 } from '../entities/workflow-review-request.ee';
-import { TransactionRunner } from '../services/transaction';
+import { type OperationContext, TransactionRunner } from '../services/transaction';
 
 export type WorkflowReviewInboxBoundary =
 	| { mode: 'beforeTime'; updatedAt: Date }
@@ -172,15 +172,28 @@ function applyCategoryFilter(
 	});
 }
 
-@Service()
-export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReviewRequest> {
+class WorkflowReviewInboxTable extends BaseRepository<WorkflowReviewRequest> {
 	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
 		super(WorkflowReviewRequest, dataSource.manager, transactionRunner);
 	}
+}
 
-	async findRequests(options: FindInboxRequestsOptions): Promise<WorkflowReviewRequest[]> {
+@Service()
+export class WorkflowReviewInboxRepository {
+	private readonly table: WorkflowReviewInboxTable;
+
+	constructor(dataSource: DataSource, transactionRunner: TransactionRunner) {
+		this.table = new WorkflowReviewInboxTable(dataSource, transactionRunner);
+	}
+
+	async findRequests(
+		options: FindInboxRequestsOptions,
+		ctx: OperationContext,
+	): Promise<WorkflowReviewRequest[]> {
 		const { visibility, state, category, limit, boundary } = options;
-		const queryBuilder = this.createQueryBuilder('review')
+		const queryBuilder = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
 			.orderBy('review.updatedAt', 'DESC')
 			.addOrderBy('review.id', 'ASC');
 
@@ -205,8 +218,13 @@ export class WorkflowReviewInboxRepository extends BaseRepository<WorkflowReview
 		return await queryBuilder.getMany();
 	}
 
-	async countRequestsByState(visibility: InboxVisibility): Promise<InboxStateCounts> {
-		const queryBuilder = this.createQueryBuilder('review')
+	async countRequestsByState(
+		visibility: InboxVisibility,
+		ctx: OperationContext,
+	): Promise<InboxStateCounts> {
+		const queryBuilder = this.table
+			.managerFor(ctx)
+			.createQueryBuilder(WorkflowReviewRequest, 'review')
 			.select('review.state', 'state')
 			.addSelect('COUNT(*)', 'count')
 			.groupBy('review.state');

@@ -10,8 +10,8 @@ import {
 } from '../self-healing';
 import { SELF_HEALING_PROMPT } from '../self-healing/self-healing.prompt';
 import { createToolRegistryFromTools, toolRegistryValues } from '../tool-registry';
-import { createDataTablesTool } from '../tools/data-tables.tool';
-import { createExecutionsTool } from '../tools/executions.tool';
+import { createDataTableTools } from '../tools/data-tables.tool';
+import { createExecutionTools } from '../tools/executions.tool';
 import { createN8nDocsTool } from '../tools/n8n-docs.tool';
 import { createGetNodeTypesTool, createSearchNodesTool } from '../tools/nodes.tool';
 import { createResearchTool } from '../tools/research.tool';
@@ -54,13 +54,12 @@ function createSelfHealingTools(
 			allowedActions: ['get', 'get-as-code'],
 			sourceGuidance: SOURCE_GUIDANCE,
 		}),
-		createExecutionsTool(context, {
+		...createExecutionTools(context, {
 			allowedActions: ['list', 'get', 'debug', 'get-node-output', 'get-resolved-node-parameters'],
-			description: 'Read execution status, diagnostics, node output, and resolved parameters.',
 		}),
-		createDataTablesTool(context, {
+		...createDataTableTools(context, {
 			allowedActions: ['list', 'schema', 'query'],
-			description: 'Read data tables and their schemas. Use targeted queries with a small limit.',
+			skillGuidance: false,
 		}),
 		createSearchNodesTool(context),
 		createGetNodeTypesTool(context),

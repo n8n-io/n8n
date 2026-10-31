@@ -323,7 +323,7 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		return new Map([...agentsBySkill].map(([skillId, agents]) => [skillId, agents.size]));
 	}
 
-	/** Name and project of each agent, keyed by agent id. An agent skill takes its project from them. */
+	/** Name and project of each agent, keyed by agent id. */
 	async findAgents(
 		agentIds: string[],
 		ctx: OperationContext = {},
@@ -340,20 +340,6 @@ export class AgentSkillRepository extends BaseRepository<AgentSkillDependency> {
 		return new Map(
 			agents.filter(isProjectAgent).map(({ id, name, projectId }) => [id, { name, projectId }]),
 		);
-	}
-
-	/** Ids of the agents in these projects. Their agent skills belong to these projects. */
-	async findAgentIdsInProjects(
-		projectIds: string[],
-		ctx: OperationContext = {},
-	): Promise<string[]> {
-		const manager = this.managerFor(ctx);
-		const agents = await inChunks(
-			projectIds,
-			async (chunk) =>
-				await manager.find(Agent, { where: { projectId: In(chunk) }, select: ['id'] }),
-		);
-		return agents.map((agent) => agent.id);
 	}
 
 	/** The skill version each of these published agent versions pins, keyed by agent version. */

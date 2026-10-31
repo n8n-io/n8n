@@ -153,6 +153,7 @@ describe('PreferencesTable', () => {
 		authors.forEach((author) => {
 			expect(author).toHaveTextContent('Jane Doe');
 			expect(author).toHaveTextContent('jane@acme.com');
+			expect(within(author).queryByTestId('user-avatar')).not.toBeInTheDocument();
 		});
 		expect(within(authors[0]).queryByTestId('preference-source')).not.toBeInTheDocument();
 		expect(within(authors[1]).getByTestId('preference-source')).toHaveTextContent('n8n assistant');

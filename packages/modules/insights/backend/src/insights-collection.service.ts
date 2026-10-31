@@ -1,51 +1,20 @@
 import { Logger } from '@n8n/backend-common';
-import { isBillableExecution, sumNodeTimeSavedMinutes } from '@n8n/backend-services';
+import {
+	computeTimeSavedMinutes,
+	isBillableExecution,
+	isInsightsProduction,
+	toLedgerFact,
+} from '@n8n/backend-services';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
-import type { ExecutionStatus, WorkflowExecuteMode } from 'n8n-workflow';
 
 import { InsightsMetadata } from './insights-metadata.entity';
 import { InsightsRaw } from './insights-raw.entity';
 import { InsightsMetadataRepository } from './insights-metadata.repository';
 import { InsightsRawRepository } from './insights-raw.repository';
 import { InsightsConfig } from './insights.config';
-
-const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
-	success: false,
-	crashed: false,
-	error: false,
-
-	canceled: true,
-	new: true,
-	running: true,
-	unknown: true,
-	waiting: true,
-};
-
-const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
-	cli: false,
-	error: false,
-	retry: false,
-	trigger: false,
-	webhook: false,
-	evaluation: false,
-
-	// sub workflows
-	integrated: true,
-
-	// error workflows
-	internal: true,
-
-	manual: true,
-
-	// n8n Chat hub messages
-	chat: true,
-
-	// Agent executions
-	agent: true,
-};
 
 const MIN_RUNTIME = 0;
 
@@ -149,18 +118,12 @@ export class InsightsCollectionService {
 			return;
 		}
 
-		if (shouldSkipStatus[ctx.runData.status] || shouldSkipMode[ctx.runData.mode]) {
+		const fact = toLedgerFact(ctx.runData, ctx.source);
+		if (!isInsightsProduction(fact)) {
 			return;
 		}
 
-		// Instance AI verification runs mimic the trigger's execution mode, so a
-		// schedule/form/webhook-triggered workflow would otherwise report them as
-		// production runs. They are test runs on the user's behalf — skip them.
-		if (ctx.source === 'instance_ai') {
-			return;
-		}
-
-		const status = ctx.runData.status === 'success' ? 'success' : 'failure';
+		const status = fact.outcome === 'success' ? 'success' : 'failure';
 
 		const commonWorkflowData = {
 			workflowId: ctx.workflow.id,
@@ -175,7 +138,7 @@ export class InsightsCollectionService {
 			value: 1,
 		});
 
-		if (isBillableExecution(ctx.runData, ctx.source)) {
+		if (isBillableExecution(fact)) {
 			this.bufferedInsights.add({
 				...commonWorkflowData,
 				type: 'billable',
@@ -197,16 +160,18 @@ export class InsightsCollectionService {
 			});
 		}
 
-		// time saved event (error workflows are operational, not productive work)
-		if (status === 'success' && ctx.runData.mode !== 'error') {
-			const finalTimeSaved = this.calculateTimeSaved(ctx);
-			if (finalTimeSaved !== undefined) {
-				this.bufferedInsights.add({
-					...commonWorkflowData,
-					type: 'time_saved_min',
-					value: finalTimeSaved,
-				});
-			}
+		const timeSaved = computeTimeSavedMinutes({
+			fact,
+			settings: ctx.workflow.settings,
+			nodeTimeSavedMinutes: ctx.runData.nodeTimeSavedMinutes,
+			runData: ctx.runData.data.resultData?.runData,
+		});
+		if (timeSaved !== undefined) {
+			this.bufferedInsights.add({
+				...commonWorkflowData,
+				type: 'time_saved_min',
+				value: timeSaved,
+			});
 		}
 
 		if (!this.isAsynchronouslySavingInsights) {
@@ -343,23 +308,5 @@ export class InsightsCollectionService {
 		// Add the flush promise to the set of flushes in progress for shutdown await
 		this.flushesInProgress.add(flushPromise);
 		await flushPromise;
-	}
-
-	/**
-	 * Calculate the final time saved value by extracting SavedTime node metadata
-	 * and combining it with workflow settings based on the node's behavior.
-	 */
-	private calculateTimeSaved(ctx: WorkflowExecuteAfterContext): number {
-		const workflowTimeSaved = ctx.workflow.settings?.timeSavedPerExecution;
-
-		// backwards compatibility for legacy workflows with no time saved mode
-		if (ctx.workflow.settings?.timeSavedMode !== 'dynamic') {
-			return workflowTimeSaved ?? 0;
-		}
-
-		return (
-			ctx.runData.nodeTimeSavedMinutes ??
-			sumNodeTimeSavedMinutes(ctx.runData.data.resultData?.runData)
-		);
 	}
 }
