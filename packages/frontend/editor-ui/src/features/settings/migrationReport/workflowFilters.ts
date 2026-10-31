@@ -22,6 +22,7 @@ export interface WorkflowFilters {
 	owner: OwnerFilter;
 	project: ProjectFilter;
 	state: StateFilter;
+	showArchived: boolean;
 }
 
 export const DEFAULT_WORKFLOW_FILTERS: WorkflowFilters = {
@@ -32,6 +33,7 @@ export const DEFAULT_WORKFLOW_FILTERS: WorkflowFilters = {
 	owner: 'any',
 	project: 'any',
 	state: 'any',
+	showArchived: false,
 };
 
 export const UNASSIGNED_OWNER = 'unassigned';
@@ -109,6 +111,7 @@ export function matchesWorkflowFilters(
 		matchesExecutions(workflow.numberOfExecutions, filters.executions) &&
 		(filters.published === 'any' || workflow.active === (filters.published === 'published')) &&
 		matchesOwner(workflow, filters.owner) &&
-		matchesProject(workflow, filters.project)
+		matchesProject(workflow, filters.project) &&
+		(filters.showArchived || !workflow.isArchived)
 	);
 }

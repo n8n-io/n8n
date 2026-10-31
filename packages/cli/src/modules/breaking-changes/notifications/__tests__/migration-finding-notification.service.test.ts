@@ -48,6 +48,7 @@ function finding(
 			name: `Flow ${workflowId}`,
 			activeVersionId: null,
 			updatedAt: new Date(),
+			isArchived: false,
 		},
 	};
 }
