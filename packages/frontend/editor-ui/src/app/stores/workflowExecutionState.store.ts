@@ -168,9 +168,7 @@ export function useWorkflowExecutionStateStore(id: WorkflowDocumentId) {
 		 * isolated per workflow document. Read purely via Vue reactivity; it is
 		 * intentionally not wired into the change-event mechanism below.
 		 */
-		const executingNode = useExecutingNode({
-			engineType: () => documentStore.settings.engineType,
-		});
+		const executingNode = useExecutingNode();
 		const activeAgentCapabilityCalls = shallowReactive(
 			new Map<
 				string,

@@ -1387,7 +1387,7 @@ describe('workflowExecutionState.store', () => {
 			executionStateStore.setSelectedTriggerNodeName('Trigger');
 			executionStateStore.setCurrentWorkflowExecutions([makeExecutionSummary({ id: '1' })]);
 			executionStateStore.setLastSuccessfulExecutionId('last-1');
-			executionStateStore.executingNode.addExecutingNode('Node', 0);
+			executionStateStore.executingNode.addExecutingNode('Node', '1', 0);
 
 			executionStateStore.resetExecutionState();
 
@@ -1454,7 +1454,7 @@ describe('workflowExecutionState.store', () => {
 				createWorkflowDocumentId('wf-1'),
 			);
 
-			workflowExecutionStateStore.executingNode.addExecutingNode('Node A', 0);
+			workflowExecutionStateStore.executingNode.addExecutingNode('Node A', '1', 0);
 
 			expect(workflowExecutionStateStore.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(workflowExecutionStateStore.executingNode.lastAddedExecutingNode).toBe('Node A');
@@ -1464,7 +1464,7 @@ describe('workflowExecutionState.store', () => {
 			const a = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-a'));
 			const b = useWorkflowExecutionStateStore(createWorkflowDocumentId('wf-b'));
 
-			a.executingNode.addExecutingNode('Node A', 0);
+			a.executingNode.addExecutingNode('Node A', '1', 0);
 
 			expect(a.executingNode.isNodeExecuting('Node A')).toBe(true);
 			expect(b.executingNode.isNodeExecuting('Node A')).toBe(false);
@@ -1497,8 +1497,8 @@ describe('workflowExecutionState.store', () => {
 				parameters: {},
 			});
 
-			executionStateStore.executingNode.addExecutingNode('Node A', 0);
-			executionStateStore.executingNode.addExecutingNode('Node B', 1);
+			executionStateStore.executingNode.addExecutingNode('Node A', '1', 0);
+			executionStateStore.executingNode.addExecutingNode('Node B', '1', 1);
 
 			expect(executionStateStore.executingNode.isNodeExecuting('Node A')).toBe(false);
 			expect(executionStateStore.executingNode.isNodeExecuting('Node B')).toBe(true);
@@ -1507,7 +1507,9 @@ describe('workflowExecutionState.store', () => {
 			expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
 		});
 
-		describe('by engine type', () => {
+		describe('by execution ID', () => {
+			const V2_ID = '019a3b2c-4d5e-7f60-8a1b-2c3d4e5f6a7b';
+
 			function setUpTwoNodes(engineType: 'v1' | 'v2') {
 				const id = createWorkflowDocumentId(`wf-engine-${engineType}`);
 				const documentStore = useWorkflowDocumentStore(id);
@@ -1531,11 +1533,11 @@ describe('workflowExecutionState.store', () => {
 				return executionStateStore;
 			}
 
-			it('shows every running node as executing on engine v2', () => {
+			it('shows every running node as executing for an engine v2 execution ID', () => {
 				const executionStateStore = setUpTwoNodes('v2');
 
-				executionStateStore.executingNode.addExecutingNode('Node A', 0, 0);
-				executionStateStore.executingNode.addExecutingNode('Node B', 1, 1);
+				executionStateStore.executingNode.addExecutingNode('Node A', V2_ID, 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', V2_ID, 1, 1);
 
 				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(true);
 				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
@@ -1546,15 +1548,15 @@ describe('workflowExecutionState.store', () => {
 				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
 			});
 
-			it('shows "waiting for next" only on the node that finished last on engine v2', () => {
+			it('shows "waiting for next" only on the node that finished last for an engine v2 execution ID', () => {
 				const executionStateStore = setUpTwoNodes('v2');
-				useExecutionDataStore(createExecutionDataId('exec-1')).setExecution(
-					makeExecution({ id: 'exec-1', status: 'running', finished: false }),
+				useExecutionDataStore(createExecutionDataId(V2_ID)).setExecution(
+					makeExecution({ id: V2_ID, status: 'running', finished: false }),
 				);
-				executionStateStore.setActiveExecutionId('exec-1');
+				executionStateStore.setActiveExecutionId(V2_ID);
 
-				executionStateStore.executingNode.addExecutingNode('Node B', 0, 0);
-				executionStateStore.executingNode.addExecutingNode('Node A', 1, 1);
+				executionStateStore.executingNode.addExecutingNode('Node B', V2_ID, 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node A', V2_ID, 1, 1);
 				executionStateStore.executingNode.removeExecutingNode('Node A', 1);
 				executionStateStore.executingNode.removeExecutingNode('Node B', 0);
 
@@ -1564,11 +1566,31 @@ describe('workflowExecutionState.store', () => {
 				expect(executionStateStore.executionWaitingForNextByNodeId.get('b-id')?.value).toBe(true);
 			});
 
-			it('shows only the latest node as executing on engine v1', () => {
+			it('shows only the latest node as executing for a numeric execution ID', () => {
 				const executionStateStore = setUpTwoNodes('v1');
 
-				executionStateStore.executingNode.addExecutingNode('Node A', 0, 0);
-				executionStateStore.executingNode.addExecutingNode('Node B', 1, 1);
+				executionStateStore.executingNode.addExecutingNode('Node A', '1', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', '1', 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows every running node for an engine v2 execution ID when the setting is v1', () => {
+				const executionStateStore = setUpTwoNodes('v1');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', V2_ID, 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', V2_ID, 1, 1);
+
+				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(true);
+				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
+			});
+
+			it('shows only the latest node for a numeric execution ID when the setting is v2', () => {
+				const executionStateStore = setUpTwoNodes('v2');
+
+				executionStateStore.executingNode.addExecutingNode('Node A', '1', 0, 0);
+				executionStateStore.executingNode.addExecutingNode('Node B', '1', 1, 1);
 
 				expect(executionStateStore.executionRunningByNodeId.get('a-id')?.value).toBe(false);
 				expect(executionStateStore.executionRunningByNodeId.get('b-id')?.value).toBe(true);
