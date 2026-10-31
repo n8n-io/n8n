@@ -344,7 +344,7 @@ export class Grist implements INodeType {
 					}
 
 					if (filter?.filterProperties.length) {
-						const parsed = parseFilterProperties(filter.filterProperties);
+						const parsed = parseFilterProperties.call(this, filter.filterProperties);
 						qs.filter = JSON.stringify(parsed);
 					}
 
