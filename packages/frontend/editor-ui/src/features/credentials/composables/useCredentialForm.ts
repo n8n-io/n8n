@@ -33,7 +33,6 @@ import {
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useUsersStore } from '@n8n/stores/users.store';
-import { useCredentialTypeRestriction } from '@n8n/frontend-module-type-availability-policies';
 
 import { probeCredential } from '../credentials.api';
 import { useCredentialsStore } from '../credentials.store';
@@ -312,12 +311,7 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 			/^https?:\/\//i.test(credentialData.value.testUrl),
 	);
 
-	const { restriction: credentialTypeRestriction, isRestricted: isCredentialTypeRestricted } =
-		useCredentialTypeRestriction(() => credentialTypeName.value);
-
 	const isCredentialTestable = computed(() => {
-		if (isCredentialTypeRestricted.value) return false;
-
 		if (isOAuthType.value || !requiredPropertiesFilled.value) return false;
 
 		if (isTemplatedAuthProbeable.value) return true;
@@ -700,8 +694,6 @@ export function useCredentialForm(options: UseCredentialFormOptions) {
 		credentialProperties,
 		requiredPropertiesFilled,
 		isCredentialTestable,
-		isCredentialTypeRestricted,
-		credentialTypeRestriction,
 		credentialPermissions,
 		canUseCustomOAuth,
 		// helpers

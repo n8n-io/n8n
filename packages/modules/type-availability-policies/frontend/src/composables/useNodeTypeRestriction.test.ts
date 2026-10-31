@@ -4,7 +4,7 @@ import { ref } from 'vue';
 
 import {
 	describeAgentToolRestriction,
-	describeCredentialTypeRestriction,
+	describeTypeRestriction,
 	describeRestrictedNodeTypes,
 	describeNodeTypeRestriction,
 	getCredentialTypeRestriction,
@@ -294,18 +294,18 @@ describe('useCredentialTypeRestriction', () => {
 	it('describes the restriction for each scope', () => {
 		mockPolicyProject({ type: 'team' });
 
-		expect(describeCredentialTypeRestriction('OpenAI', { scope: 'instance' })).toBe(
+		expect(describeTypeRestriction('credential', 'OpenAI', { scope: 'instance' })).toBe(
 			"OpenAI credentials are restricted on this instance. Workflows can't use them.",
 		);
-		expect(describeCredentialTypeRestriction('OpenAI', { scope: 'project' })).toBe(
+		expect(describeTypeRestriction('credential', 'OpenAI', { scope: 'project' })).toBe(
 			"OpenAI credentials are restricted in this project. Workflows can't use them.",
 		);
 		expect(
-			describeCredentialTypeRestriction('OpenAI', { scope: 'instance', optInAvailable: true }),
+			describeTypeRestriction('credential', 'OpenAI', { scope: 'instance', optInAvailable: true }),
 		).toBe(
 			"OpenAI credentials need approval in this project. Workflows can't use them until a project admin allows it.",
 		);
-		expect(describeCredentialTypeRestriction('OpenAI', null)).toBe(
+		expect(describeTypeRestriction('credential', 'OpenAI', null)).toBe(
 			"OpenAI credentials are restricted. Workflows can't use them.",
 		);
 	});

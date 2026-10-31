@@ -2844,12 +2844,12 @@ describe('CredentialEdit - restricted credential types', () => {
 		properties: [{ displayName: 'API Key', name: 'apiKey', type: 'string', default: '' }],
 	};
 
-	const setup = (modalState: Record<string, unknown> = {}) => {
+	const setup = () => {
 		const pinia = createTestingPinia({
 			initialState: {
 				[STORES.UI]: {
 					modalStateById: {
-						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, showAuthSelector: false, ...modalState },
+						[CREDENTIAL_EDIT_MODAL_KEY]: { open: true, showAuthSelector: false },
 					},
 				},
 				[STORES.SETTINGS]: {
@@ -2872,12 +2872,6 @@ describe('CredentialEdit - restricted credential types', () => {
 		credentialsStore.getNewCredentialName.mockResolvedValue('OpenAI account');
 		return { pinia, credentialsStore };
 	};
-
-	const renderRestricted = (pinia: ReturnType<typeof createTestingPinia>) =>
-		renderComponent({
-			props: { activeId: RESTRICTED_TYPE.name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
-			pinia,
-		});
 
 	it('explains the restriction when an existing credential is opened', async () => {
 		const { pinia, credentialsStore } = setup();
@@ -2909,8 +2903,11 @@ describe('CredentialEdit - restricted credential types', () => {
 		const { pinia } = setup();
 		mockRestrictedCredentialTypes({});
 
-		const { queryByTestId, findByTestId } = renderRestricted(pinia);
-		await findByTestId('credential-save-button');
+		const { queryByTestId, findByTestId } = renderComponent({
+			props: { activeId: RESTRICTED_TYPE.name, modalName: CREDENTIAL_EDIT_MODAL_KEY, mode: 'new' },
+			pinia,
+		});
+		await findByTestId('node-credentials-config-container');
 
 		expect(queryByTestId('restricted-credential-callout')).not.toBeInTheDocument();
 	});

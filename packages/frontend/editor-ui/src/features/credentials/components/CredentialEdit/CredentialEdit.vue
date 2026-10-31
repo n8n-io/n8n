@@ -83,7 +83,8 @@ import TypeToConfirmDialog from './TypeToConfirmDialog.vue';
 import { useQuickConnect } from '../../quickConnect/composables/useQuickConnect';
 import { useCredentialForm } from '../../composables/useCredentialForm';
 import {
-	RestrictedCredentialCallout,
+	RestrictedTypeCallout,
+	useCredentialTypeRestriction,
 	useTypeAvailabilityPoliciesStore,
 } from '@n8n/frontend-module-type-availability-policies';
 import type { CredentialModeOption } from './CredentialModeSelector.vue';
@@ -191,12 +192,6 @@ const hasUnsavedChanges = ref(false);
 const credentialDescription = ref('');
 const isSaved = ref(false);
 const loading = ref(false);
-
-/**
- * Resolves once the policy store holds this project's verdicts. Until then it reports every
- * type as available, so anything that reads a restriction has to wait for this first.
- */
-const policyVerdictsReady = ref<Promise<void>>(Promise.resolve());
 const savedCredentialNeedsLoad = ref(false);
 let closeAfterSave = false;
 const hasUserSpecifiedName = ref(false);
@@ -304,8 +299,6 @@ const {
 	credentialProperties,
 	requiredPropertiesFilled,
 	isCredentialTestable,
-	isCredentialTypeRestricted,
-	credentialTypeRestriction,
 	credentialPermissions,
 	usesExternalSecrets,
 	homeProject,
@@ -558,8 +551,6 @@ onMounted(async () => {
 					// if the credential contains required fields.
 					showValidationWarning.value = true;
 				} else {
-					// A restricted type is not testable, and that verdict arrives over the network.
-					await policyVerdictsReady.value;
 					await retestCredential();
 				}
 			}
@@ -849,11 +840,13 @@ const typeAvailabilityPoliciesStore = useTypeAvailabilityPoliciesStore();
 watch(
 	() => homeProject.value?.id,
 	(projectId) => {
-		if (!projectId) return;
-
-		policyVerdictsReady.value = typeAvailabilityPoliciesStore.fetchForProject(projectId);
+		if (projectId) void typeAvailabilityPoliciesStore.fetchForProject(projectId);
 	},
 	{ immediate: true },
+);
+
+const { restriction: credentialTypeRestriction } = useCredentialTypeRestriction(
+	() => credentialTypeName.value,
 );
 
 function scrollToTop() {
@@ -1768,9 +1761,10 @@ const { width } = useElementSize(credNameRef);
 										</N8nButton>
 									</template>
 								</N8nCallout>
-								<RestrictedCredentialCallout
-									v-if="isCredentialTypeRestricted && credentialType"
-									:credential-type-name="credentialType.displayName"
+								<RestrictedTypeCallout
+									v-if="credentialTypeRestriction"
+									surface="credential"
+									:type-name="credentialType.displayName"
 									:restriction="credentialTypeRestriction"
 								/>
 								<CredentialConfig

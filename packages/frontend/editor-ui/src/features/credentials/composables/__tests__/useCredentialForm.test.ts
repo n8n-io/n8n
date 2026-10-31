@@ -15,7 +15,6 @@ import { useCredentialsStore } from '../../credentials.store';
 import type { ICredentialsDecryptedResponse } from '../../credentials.types';
 import { useCredentialForm } from '../useCredentialForm';
 import { probeCredential } from '../../credentials.api';
-import { mockRestrictedCredentialTypes } from '@n8n/frontend-module-type-availability-policies/__tests__/mocks';
 
 vi.mock('@n8n/composables/useToast', () => ({
 	useToast: () => ({ showError: vi.fn(), showMessage: vi.fn() }),
@@ -416,16 +415,6 @@ describe('useCredentialForm', () => {
 			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
 			await form.initialize();
 
-			expect(form.isCredentialTestable.value).toBe(false);
-		});
-
-		it('is not testable when a policy restricts the credential type', async () => {
-			stubStoreTestable(true);
-			mockRestrictedCredentialTypes({ httpBasicAuth: 'instance' });
-			const form = useCredentialForm({ mode: 'new', activeId: 'httpBasicAuth' });
-			await form.initialize();
-
-			expect(form.isCredentialTypeRestricted.value).toBe(true);
 			expect(form.isCredentialTestable.value).toBe(false);
 		});
 	});

@@ -175,57 +175,70 @@ export function getRestrictionMessage(
 	return verdict?.scope ?? 'generic';
 }
 
-const AGENT_TOOL_DESCRIPTION_KEY: Record<RestrictionMessage, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
-	project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
-	optIn: 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn',
-	generic: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
+export type RestrictedCalloutSurface = 'tool' | 'credential';
+
+const CALLOUT_COPY: Record<
+	RestrictedCalloutSurface,
+	{ keys: Record<RestrictionMessage, BaseTextKey>; interpolationKey: string }
+> = {
+	tool: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedNode.agentTool.instance',
+			project: 'typeAvailabilityPolicies.restrictedNode.agentTool.project',
+			optIn: 'typeAvailabilityPolicies.restrictedNode.agentTool.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedNode.agentTool.generic',
+		},
+		interpolationKey: 'nodeType',
+	},
+	credential: {
+		keys: {
+			instance: 'typeAvailabilityPolicies.restrictedCredentialType.callout.instance',
+			project: 'typeAvailabilityPolicies.restrictedCredentialType.callout.project',
+			optIn: 'typeAvailabilityPolicies.restrictedCredentialType.callout.optIn',
+			generic: 'typeAvailabilityPolicies.restrictedCredentialType.callout.generic',
+		},
+		interpolationKey: 'credentialType',
+	},
 };
+
+export function describeTypeRestriction(
+	surface: RestrictedCalloutSurface,
+	typeName: string,
+	verdict: OptionalVerdict,
+): string {
+	const { keys, interpolationKey } = CALLOUT_COPY[surface];
+	return useI18n().baseText(keys[getRestrictionMessage(verdict)], {
+		interpolate: { [interpolationKey]: typeName },
+	});
+}
 
 export function describeAgentToolRestriction(
 	nodeTypeName: string,
 	verdict: OptionalVerdict,
 ): string {
-	return useI18n().baseText(AGENT_TOOL_DESCRIPTION_KEY[getRestrictionMessage(verdict)], {
-		interpolate: { nodeType: nodeTypeName },
+	return describeTypeRestriction('tool', nodeTypeName, verdict);
+}
+
+function useTypeRestriction<T extends TypeRestriction>(
+	type: MaybeRefOrGetter<string | null | undefined>,
+	lookup: (type: string) => T | null,
+) {
+	const restriction = computed(() => {
+		const name = toValue(type);
+		return name ? lookup(name) : null;
 	});
+
+	return { restriction, isRestricted: computed(() => restriction.value !== null) };
 }
 
 export function useNodeTypeRestriction(nodeType: MaybeRefOrGetter<string | null | undefined>) {
-	const restriction = computed(() => {
-		const type = toValue(nodeType);
-		return type ? getNodeTypeRestriction(type) : null;
-	});
+	const { restriction, isRestricted } = useTypeRestriction(nodeType, getNodeTypeRestriction);
 
-	const isRestricted = computed(() => restriction.value !== null);
-	const restrictionScope = computed(() => restriction.value?.scope);
-
-	return { restriction, isRestricted, restrictionScope };
-}
-
-const CREDENTIAL_CALLOUT_KEY: Record<RestrictionMessage, BaseTextKey> = {
-	instance: 'typeAvailabilityPolicies.restrictedCredentialType.callout.instance',
-	project: 'typeAvailabilityPolicies.restrictedCredentialType.callout.project',
-	optIn: 'typeAvailabilityPolicies.restrictedCredentialType.callout.optIn',
-	generic: 'typeAvailabilityPolicies.restrictedCredentialType.callout.generic',
-};
-
-export function describeCredentialTypeRestriction(
-	credentialTypeName: string,
-	verdict: OptionalVerdict,
-): string {
-	return useI18n().baseText(CREDENTIAL_CALLOUT_KEY[getRestrictionMessage(verdict)], {
-		interpolate: { credentialType: credentialTypeName },
-	});
+	return { restriction, isRestricted, restrictionScope: computed(() => restriction.value?.scope) };
 }
 
 export function useCredentialTypeRestriction(
 	credentialType: MaybeRefOrGetter<string | null | undefined>,
 ) {
-	const restriction = computed(() => {
-		const type = toValue(credentialType);
-		return type ? getCredentialTypeRestriction(type) : null;
-	});
-
-	return { restriction, isRestricted: computed(() => restriction.value !== null) };
+	return useTypeRestriction(credentialType, getCredentialTypeRestriction);
 }
