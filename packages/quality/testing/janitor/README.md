@@ -240,6 +240,11 @@ next push), and scoped packages run the scoped task (`test:unit:changed`). A
 package without a scoped task runs the full task. If the dry run fails, the job
 runs the scoped task (or the full task) for all its packages, as before.
 
+The full task never runs with `--only`: with it, turbo leaves dependency tasks
+out of the hash, and a change in a dependency would replay a stale result. Only
+a job with a scoped task skips packages. A job without one (backend unit,
+backend integration, DB) replays or runs every package, as it did before.
+
 ```bash
 janitor test-run --full-task=test:unit --scoped-task=test:unit:changed \
   --filter=n8n --only --summarize -- --shard=1/2

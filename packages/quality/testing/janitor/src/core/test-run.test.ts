@@ -67,22 +67,61 @@ describe('test-run', () => {
 
 		expect(runTestRun(args, d)).toBe(0);
 
-		// Dry runs keep the job's filters but drop --summarize.
+		// Dry runs keep the job's filters but drop --summarize. The full task never
+		// gets --only: without dependency tasks, turbo's hash misses dependency changes.
 		expect(dryRun).toHaveBeenCalledWith(
 			'test:unit',
-			['--only'],
+			[],
 			['--filter=!./packages/frontend/**'],
 			['--shard=1/2'],
 		);
 		expect(run.mock.calls).toEqual([
 			[
 				'test:unit',
-				['--only', '--summarize'],
+				['--summarize'],
 				['--filter=hit', '--filter=miss', '--filter=noScopedTask'],
 				['--shard=1/2'],
 			],
 			['test:unit:changed', ['--only', '--summarize'], ['--filter=scoped'], ['--shard=1/2']],
 		]);
+	});
+
+	it('runs a package that janitor would skip when the job has no scoped task', () => {
+		const { run, deps: d } = deps(
+			{ skipped: { kind: 'skip', reason: 'No changed files in package' } },
+			{ 'test:unit': [task('skipped', 'test:unit')] },
+		);
+
+		runTestRun(parseTestRunArgs(['--full-task=test:unit', '--filter=!n8n']), d);
+
+		expect(run.mock.calls).toEqual([['test:unit', [], ['--filter=skipped'], []]]);
+	});
+
+	it('runs the scoped batch after a failed full batch and reports the failure', () => {
+		const { run, deps: d } = deps(
+			{
+				miss: { kind: 'full', reason: 'Sink package changed' },
+				scoped: { kind: 'scoped', files: ['packages/scoped/src/a.ts'] },
+			},
+			{
+				'test:unit': [task('miss', 'test:unit'), task('scoped', 'test:unit')],
+				'test:unit:changed': [task('scoped', 'test:unit:changed')],
+			},
+		);
+		run.mockImplementation((t) => (t === 'test:unit' ? 1 : 0));
+
+		expect(runTestRun(args, d)).toBe(1);
+		expect(run).toHaveBeenCalledTimes(2);
+
+		run.mockImplementation((t) => (t === 'test:unit' ? 0 : 1));
+		expect(runTestRun(args, d)).toBe(1);
+	});
+
+	it('fails when no named package defines the full task', () => {
+		const { run, deps: d } = deps({}, { 'test:unit': [] });
+
+		expect(runTestRun(parseTestRunArgs(['--full-task=test:unit', '--filter=n8n']), d)).toBe(1);
+		expect(run).not.toHaveBeenCalled();
 	});
 
 	it('runs the job unplanned when the dry run fails', () => {
@@ -91,8 +130,9 @@ describe('test-run', () => {
 			throw new Error('turbo failed');
 		});
 
-		runTestRun(args, d);
+		d.run.mockReturnValue(1);
 
+		expect(runTestRun(args, d)).toBe(1);
 		expect(run.mock.calls).toEqual([
 			[
 				'test:unit:changed',
