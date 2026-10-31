@@ -1,4 +1,4 @@
-import type { ApplyCheckResult, PromotionDirection, PromotionPreview } from '@n8n/api-types';
+import type { PromotionDirection, PromotionPreview } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { ResponseError } from '@n8n/rest-api-client';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -11,6 +11,7 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { getPromoteErrorMessage } from '../promoteErrorMessage';
 import { promoteProjectSelection } from '../promotions.api';
 import { PROMOTION_PREVIEW_VIEWS } from '../promotions.constants';
+import type { ApplyCheckResult } from '../promotions.types';
 import { applyProjectSelection, continueApplyProjectSelection } from '../promotionsSettings.api';
 import { usePromotionOutcome } from './usePromotionOutcome';
 
@@ -18,10 +19,12 @@ export type OperationRequest = {
 	workflowIds: string[];
 	/** True when the selection imports a data table change that removes values. */
 	confirmDestructiveChanges: boolean;
+	/** Promote only. When it is missing, the backend generates the message. */
+	commitMessage?: string;
 };
 
 /** Why the page reloaded the preview after an apply that wrote nothing. */
-type OperationNotice = 'sourceChanged' | 'newBlockers';
+type OperationNotice = 'sourceChanged' | 'instanceChanged' | 'newBlockers';
 
 type OperationError = {
 	message: string;
@@ -81,14 +84,14 @@ export function usePromotionOperation(
 					},
 				)
 			: await message.confirm(
-					i18n.baseText('promotions.modal.incoming.confirmSelected.message'),
-					i18n.baseText('promotions.modal.incoming.confirmSelected.title'),
+					i18n.baseText('promotions.operation.incoming.confirmSelected.message'),
+					i18n.baseText('promotions.operation.incoming.confirmSelected.title'),
 					{
 						type: 'warning',
 						confirmButtonText: i18n.baseText(
-							'promotions.modal.incoming.confirmSelected.confirmButtonText',
+							'promotions.operation.incoming.confirmSelected.confirmButtonText',
 						),
-						cancelButtonText: i18n.baseText('promotions.modal.close'),
+						cancelButtonText: i18n.baseText('promotions.operation.close'),
 					},
 				);
 		return answer === MODAL_CONFIRM;
@@ -103,26 +106,30 @@ export function usePromotionOperation(
 		});
 	}
 
-	async function promote({ workflowIds }: OperationRequest) {
+	async function promote({ workflowIds, commitMessage }: OperationRequest) {
 		const result = await promoteProjectSelection(rootStore.publicApiContext, projectId.value, {
 			workflowIds,
+			...(commitMessage && { commitMessage }),
 		});
 		outcome.showPromoted(projectId.value, result);
 		await leave();
 	}
 
 	async function apply(request: OperationRequest, source: ApplyCheckResult) {
-		// Apply the commit that the page shows. A branch that moved since is reported, not applied.
-		const expectedSource = { environmentId: source.environmentId, ...source.git };
+		// Apply what the page shows. A branch or an instance that changed since is reported, not applied.
+		const expected = {
+			expectedSource: { environmentId: source.environmentId, ...source.git },
+			expectedPreviewRevision: preview.value?.revision,
+		};
 		const result = request.confirmDestructiveChanges
 			? await continueApplyProjectSelection(rootStore.publicApiContext, projectId.value, {
 					workflowIds: request.workflowIds,
-					expectedSource,
+					...expected,
 					confirmDestructiveChanges: true,
 				})
 			: await applyProjectSelection(rootStore.publicApiContext, projectId.value, {
 					workflowIds: request.workflowIds,
-					expectedSource,
+					...expected,
 				});
 		if (result.status === 'applied') {
 			outcome.showApplied(result);
@@ -131,7 +138,12 @@ export function usePromotionOperation(
 			return;
 		}
 		// Nothing was written. The reloaded preview and check show what changed.
-		notice.value = result.status === 'source-changed' ? 'sourceChanged' : 'newBlockers';
+		const notices = {
+			'source-changed': 'sourceChanged',
+			'preview-changed': 'instanceChanged',
+			blocked: 'newBlockers',
+		} as const;
+		notice.value = notices[result.status];
 		await refresh();
 	}
 

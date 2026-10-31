@@ -78,6 +78,18 @@ describe('Execution Metadata functions', () => {
 		});
 	});
 
+	test('setWorkflowExecutionMetadata should convert booleans to strings', () => {
+		const { metadata, executionData } = createExecutionDataWithMetadata();
+
+		setWorkflowExecutionMetadata(executionData, 'test1', true);
+		setWorkflowExecutionMetadata(executionData, 'test2', false);
+
+		expect(metadata).toEqual({
+			test1: 'true',
+			test2: 'false',
+		});
+	});
+
 	test('setAllWorkflowExecutionMetadata should not convert values to strings and should set other values correctly', () => {
 		const { metadata, executionData } = createExecutionDataWithMetadata();
 

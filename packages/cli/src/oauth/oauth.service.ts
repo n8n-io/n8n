@@ -21,7 +21,13 @@ import Csrf from 'csrf';
 import type { Request, Response } from 'express';
 import { Credentials, Cipher } from 'n8n-core';
 import type { ICredentialDataDecryptedObject, IWorkflowExecuteAdditionalData } from 'n8n-workflow';
-import { jsonParse, OperationalError, UnexpectedError, UserError } from 'n8n-workflow';
+import {
+	jsonParse,
+	MANAGED_VERSION_KEY,
+	OperationalError,
+	UnexpectedError,
+	UserError,
+} from 'n8n-workflow';
 
 import {
 	GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE,
@@ -47,6 +53,7 @@ import {
 import {
 	oAuthAuthorizationServerMetadataSchema,
 	dynamicClientRegistrationResponseSchema,
+	type OAuthAuthorizationServerMetadata,
 } from '@/controllers/oauth/oauth2-dynamic-client-registration.schema';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
@@ -90,6 +97,11 @@ export type OauthFlowState = {
 	codeVerifier?: string;
 	/** OAuth1 request-token secret, needed to sign the access-token request in the callback. */
 	oauthTokenSecret?: string;
+	/**
+	 * Version of the managed app that the authorization URL was built with. The callback
+	 * uses the same app and stores this version. Not set for a user-owned app.
+	 */
+	managedVersion?: number;
 };
 
 const OAUTH_FLOW_CACHE_PREFIX = 'oauth:flow:';
@@ -380,8 +392,9 @@ export class OauthService {
 	protected async getDecryptedDataForAuthUri(
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
 	) {
-		return await this.getDecryptedData(credential, additionalData, false);
+		return await this.getDecryptedData(credential, additionalData, false, managedVersion);
 	}
 
 	/**
@@ -398,6 +411,7 @@ export class OauthService {
 		credential: ICredentialsDb,
 		additionalData: IWorkflowExecuteAdditionalData,
 		raw: boolean,
+		managedVersion?: number,
 	) {
 		return await this.credentialsHelper.getDecrypted(
 			additionalData,
@@ -406,6 +420,8 @@ export class OauthService {
 			'internal',
 			undefined,
 			raw,
+			undefined,
+			{ managedVersion },
 		);
 	}
 
@@ -413,6 +429,7 @@ export class OauthService {
 		credential: ICredentialsDb,
 		decryptedData: ICredentialDataDecryptedObject,
 		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
 	) {
 		return (await this.credentialsHelper.applyDefaultsAndOverwrites(
 			additionalData,
@@ -421,6 +438,7 @@ export class OauthService {
 			'internal',
 			undefined,
 			undefined,
+			managedVersion,
 		)) as unknown as T;
 	}
 
@@ -563,17 +581,17 @@ export class OauthService {
 			}
 		}
 
-		// Dynamic credentials: skip user-ownership check since the credential may be shared,
-		// but validate userId when both the state and the caller carry an n8n user identity
-		// (prevents CSRF-state reuse across users in the browser-initiated OAuth flow).
-		// When the flow was initiated externally (e.g. via dynamic-credentials.controller),
-		// the state has no userId and the check is skipped.
+		// Dynamic credentials: the credential may be shared, so there is no per-user
+		// ownership check. But a userId in the state means an n8n user started the flow
+		// (editor connect, chat-hub, or a user-bound short link), and the callback must
+		// run as that same user. This stops a completion from another browser binding the
+		// provider tokens to the initiator. The legitimate surfaces all carry that
+		// session, so a sessionless completion is the attack. The static-callback skip
+		// flag does not relax this: a dynamic flow that cannot carry the session uses
+		// N8N_OAUTH_BROWSER_BINDING instead. Externally started flows (external-subject
+		// resolvers) carry no userId and keep the unauthenticated path.
 		if (decryptedState.origin === 'dynamic-credential') {
-			if (
-				req.user?.id !== undefined &&
-				decryptedState.userId !== undefined &&
-				decryptedState.userId !== req.user.id
-			) {
+			if (decryptedState.userId !== undefined && decryptedState.userId !== req.user?.id) {
 				throw new AuthError('Unauthorized');
 			}
 			return [
@@ -634,6 +652,14 @@ export class OauthService {
 			throw new NotFoundError(RESPONSE_ERROR_MESSAGES.NO_CREDENTIAL);
 		}
 
+		// The flow state pins the managed app that the authorization URL used, so it is
+		// read before the credential data is resolved.
+		const flowState = await this.consumeOauthFlowState(state.token);
+
+		if (!flowState || !this.verifyCsrfState(flowState, state)) {
+			throw new UnexpectedError('The OAuth callback state is invalid!');
+		}
+
 		// The state holds the verified starter; the callback request may carry no user at all.
 		const additionalData = await this.getAdditionalData(csrfUserId(state));
 		const decryptedDataOriginal = await this.getDecryptedDataForCallback(
@@ -645,15 +671,31 @@ export class OauthService {
 			credential,
 			decryptedDataOriginal,
 			additionalData,
+			flowState.managedVersion,
 		);
 
-		const flowState = await this.consumeOauthFlowState(state.token);
-
-		if (!flowState || !this.verifyCsrfState(flowState, state)) {
-			throw new UnexpectedError('The OAuth callback state is invalid!');
-		}
-
 		return [credential, decryptedDataOriginal, oauthCredentials, state, flowState];
+	}
+
+	/**
+	 * The stored token data that a new token can build on, for providers that omit fields such as
+	 * `refresh_token` on a repeat grant. The data belongs to one app, so it is kept only when the
+	 * new connection uses that same app. After a change of app or version the connection is fresh.
+	 */
+	getCarriedOverTokenData(
+		credentialType: string,
+		storedData: ICredentialDataDecryptedObject,
+		managedVersion: number | undefined,
+	): Record<string, unknown> {
+		const { oauthTokenData } = storedData;
+		if (!isRecord(oauthTokenData)) return {};
+
+		const storedVersion = this.credentialsHelper.getBoundVersion(credentialType, storedData);
+		if (storedVersion !== managedVersion) return {};
+
+		// The version is set again from the flow state, so an old one must not survive.
+		const { [MANAGED_VERSION_KEY]: _version, ...tokenData } = oauthTokenData;
+		return tokenData;
 	}
 
 	renderCallbackError(res: Response, message: string, reason?: string) {
@@ -702,9 +744,57 @@ export class OauthService {
 		return causes.length ? causes.join(': ') : undefined;
 	}
 
+	/**
+	 * The OAuth credentials of an existing connection. A managed app is the one that the
+	 * credential stores.
+	 */
 	async getOAuthCredentials<T>(credential: CredentialsEntity, userId?: string): Promise<T> {
 		const additionalData = await this.getAdditionalData(userId);
-		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(credential, additionalData);
+		const decryptedData = await this.loadCredentialData(credential, additionalData);
+
+		return await this.applyDefaultsAndOverwrites<T>(credential, decryptedData, additionalData);
+	}
+
+	/**
+	 * The OAuth credentials for a new connection. A managed app is the default one, also when
+	 * the credential is connected to another one. `managedVersion` is the version of that app,
+	 * or `undefined` for a user-owned app. Store it with the tokens.
+	 */
+	async getNewConnectionCredentials<T>(
+		credential: CredentialsEntity,
+		userId?: string,
+	): Promise<{ oauthCredentials: T; managedVersion?: number }> {
+		const additionalData = await this.getAdditionalData(userId);
+
+		// The stored data has no overwrite applied. Whether the credential uses a managed app
+		// follows from its own client fields, which an overwrite would fill.
+		const storedData = await this.getDecryptedDataForCallback(credential, additionalData);
+		const managedVersion = this.credentialsHelper.getNewConnectionVersion(
+			credential.type,
+			storedData,
+		);
+
+		const decryptedData = await this.loadCredentialData(credential, additionalData, managedVersion);
+		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
+			credential,
+			decryptedData,
+			additionalData,
+			managedVersion,
+		);
+
+		return { oauthCredentials, managedVersion };
+	}
+
+	private async loadCredentialData(
+		credential: CredentialsEntity,
+		additionalData: IWorkflowExecuteAdditionalData,
+		managedVersion?: number,
+	) {
+		const decryptedDataOriginal = await this.getDecryptedDataForAuthUri(
+			credential,
+			additionalData,
+			managedVersion,
+		);
 
 		// At some point in the past we saved hidden scopes to credentials (but shouldn't)
 		// Delete scope before applying defaults to make sure new scopes are present on reconnect
@@ -724,13 +814,7 @@ export class OauthService {
 			delete decryptedDataOriginal.scope;
 		}
 
-		const oauthCredentials = await this.applyDefaultsAndOverwrites<T>(
-			credential,
-			decryptedDataOriginal,
-			additionalData,
-		);
-
-		return oauthCredentials;
+		return decryptedDataOriginal;
 	}
 
 	private credentialIsAccessibleToProject(credential: CredentialsEntity, projectId: string) {
@@ -1072,8 +1156,11 @@ export class OauthService {
 	): Promise<string> {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
-		const oauthCredentials: OAuth2CredentialData =
-			await this.getOAuthCredentials<OAuth2CredentialData>(credential, csrfUserId(csrfData));
+		const { oauthCredentials, managedVersion } =
+			await this.getNewConnectionCredentials<OAuth2CredentialData>(
+				credential,
+				csrfUserId(csrfData),
+			);
 
 		const toUpdate: ICredentialDataDecryptedObject = {};
 		const toDelete: string[] = [];
@@ -1097,7 +1184,7 @@ export class OauthService {
 		}
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
-			await this.performDynamicClientRegistration(
+			await this.registerClient(
 				oauthCredentials,
 				authorizationServerUrl!,
 				toUpdate,
@@ -1123,7 +1210,7 @@ export class OauthService {
 
 		await this.externalHooks.run('oauth2.authenticate', [oAuthOptions]);
 
-		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData };
+		const flowState: OauthFlowState = { csrfSecret, stateData: csrfData, managedVersion };
 		if (this.shouldUsePkce(oauthCredentials)) {
 			const { code_verifier, code_challenge } = await pkceChallenge();
 			oAuthOptions.query = {
@@ -1153,7 +1240,11 @@ export class OauthService {
 		return returnUri.toString();
 	}
 
-	private async performDynamicClientRegistration(
+	/**
+	 * Registers n8n as a client of the authorization server. Uses a client ID metadata
+	 * document (CIMD) when possible, else dynamic client registration (DCR).
+	 */
+	private async registerClient(
 		oauthCredentials: OAuth2CredentialData,
 		authorizationServerUrl: string,
 		toUpdate: ICredentialDataDecryptedObject,
@@ -1218,8 +1309,9 @@ export class OauthService {
 			);
 		}
 
+		const metadata = metadataValidation.data;
 		const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
-			metadataValidation.data;
+			metadata;
 		// Prefer the scopes advertised by the protected resource (RFC 9728) over the
 		// authorization server's scopes_supported (RFC 8414). Some servers only
 		// advertise the required scopes on the protected resource document.
@@ -1232,10 +1324,31 @@ export class OauthService {
 		oauthCredentials.scope = scope ?? '';
 		toUpdate.scope = scope ?? '';
 
+		const clientMetadataUrl = this.selectClientMetadataUrl(metadata, oauthCredentials);
+		if (clientMetadataUrl) {
+			// With CIMD the metadata document URL is the client ID, so no registration request is sent.
+			this.applyDcrManagedFields(oauthCredentials, toUpdate, toDelete, {
+				authUrl: authorization_endpoint,
+				accessTokenUrl: token_endpoint,
+				grantType: 'pkce',
+				authentication: undefined,
+				usePkce: true,
+				clientId: clientMetadataUrl,
+				clientSecret: undefined,
+			});
+			return;
+		}
+
+		if (!registration_endpoint) {
+			throw new BadRequestError(
+				'The OAuth2 server does not support automatic client registration. Turn off "Register Client Automatically" and enter a client ID.',
+			);
+		}
+
 		const { grantType, authentication, usePkce } = this.selectGrantTypeAndAuthenticationMethod(
-			metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
-			metadataValidation.data.token_endpoint_auth_methods_supported ?? [],
-			metadataValidation.data.code_challenge_methods_supported ?? [],
+			metadata.grant_types_supported ?? ['authorization_code', 'implicit'],
+			metadata.token_endpoint_auth_methods_supported ?? [],
+			metadata.code_challenge_methods_supported ?? [],
 		);
 		const { grant_types, token_endpoint_auth_method } = this.mapGrantTypeAndAuthenticationMethod(
 			grantType,
@@ -1283,6 +1396,66 @@ export class OauthService {
 		});
 	}
 
+	/**
+	 * Returns the client metadata document URL to use as the client ID, or `undefined`
+	 * when CIMD is off or not possible. CIMD needs server support, `S256` PKCE and public
+	 * clients. Credentials with JWE need DCR to register their keys.
+	 */
+	private selectClientMetadataUrl(
+		metadata: OAuthAuthorizationServerMetadata,
+		oauthCredentials: OAuth2CredentialData,
+	): string | undefined {
+		if (!this.globalConfig.auth.oauthCimdEnabled || oauthCredentials.jweEnabled === true) return;
+
+		const authMethods = metadata.token_endpoint_auth_methods_supported ?? [];
+		const isSupported =
+			metadata.client_id_metadata_document_supported === true &&
+			(metadata.code_challenge_methods_supported ?? []).includes('S256') &&
+			(authMethods.length === 0 || authMethods.includes('none')) &&
+			(metadata.grant_types_supported ?? ['authorization_code']).includes('authorization_code');
+		if (!isSupported) return;
+
+		const clientMetadataUrl = this.getClientMetadataUrl();
+		// The spec requires an HTTPS URL with a path. Fall back to DCR, for example on a local instance.
+		const url = URL.canParse(clientMetadataUrl) ? new URL(clientMetadataUrl) : undefined;
+		if (url?.protocol !== 'https:' || url.pathname === '/') {
+			this.logger.warn(
+				'Client ID metadata document URL is not an HTTPS URL with a path, using DCR instead',
+				{
+					clientMetadataUrl,
+				},
+			);
+			return;
+		}
+
+		return clientMetadataUrl;
+	}
+
+	/** URL of the client ID metadata document that n8n sends as its client ID. */
+	private getClientMetadataUrl(): string {
+		return (
+			this.globalConfig.auth.oauthClientMetadataUrl ||
+			`${this.getBaseUrl(OauthVersion.V2)}/client-metadata.json`
+		);
+	}
+
+	/** Client ID metadata document that this instance serves. */
+	getClientMetadataDocument() {
+		if (!this.globalConfig.auth.oauthCimdEnabled) {
+			throw new NotFoundError('Client ID metadata document is not enabled');
+		}
+		const baseUrl = this.getBaseUrl(OauthVersion.V2);
+		return {
+			client_id: `${baseUrl}/client-metadata.json`,
+			client_name: 'n8n',
+			client_uri: 'https://n8n.io/',
+			redirect_uris: [`${baseUrl}/callback`],
+			grant_types: ['authorization_code', 'refresh_token'],
+			response_types: ['code'],
+			token_endpoint_auth_method: 'none',
+		};
+	}
+
 	/** Clears the fields the authorization server did not grant. */
 	private applyDcrManagedFields(
 		oauthCredentials: OAuth2CredentialData,
@@ -1311,8 +1484,11 @@ export class OauthService {
 	): Promise<string> {
 		this.applyBrowserBindingIfEnabled(csrfData, req, res);
 
-		const oauthCredentials: OAuth1CredentialData =
-			await this.getOAuthCredentials<OAuth1CredentialData>(credential, csrfUserId(csrfData));
+		const { oauthCredentials, managedVersion } =
+			await this.getNewConnectionCredentials<OAuth1CredentialData>(
+				credential,
+				csrfUserId(csrfData),
+			);
 
 		this.validateOAuthUrlOrThrow(oauthCredentials.authUrl ?? '');
 		this.validateOAuthUrlOrThrow(oauthCredentials.requestTokenUrl ?? '');
@@ -1385,6 +1561,7 @@ export class OauthService {
 			csrfSecret,
 			stateData: csrfData,
 			oauthTokenSecret: responseJson.oauth_token_secret ?? '',
+			managedVersion,
 		});
 
 		this.logger.debug('OAuth1 authorization url created for credential', {
@@ -1466,7 +1643,12 @@ export class OauthService {
 			authorizationUri: credential.authUrl ?? '',
 			authentication: credential.authentication ?? 'header',
 			redirectUri: `${this.getBaseUrl(OauthVersion.V2)}/callback`,
-			scopes: split(credential.scope ?? 'openid', ','),
+			// With automatic registration the scope comes from discovery. When the server
+			// advertises none, the MCP spec omits the parameter.
+			scopes:
+				credential.useDynamicClientRegistration && !credential.scope
+					? undefined
+					: split(credential.scope ?? 'openid', ','),
 			scopesSeparator: credential.scope?.includes(',') ? ',' : ' ',
 			resource: credential.resource,
 			ignoreSSLIssues: credential.ignoreSSLIssues ?? false,

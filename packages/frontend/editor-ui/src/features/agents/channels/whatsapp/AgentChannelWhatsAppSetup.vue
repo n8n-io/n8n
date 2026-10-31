@@ -19,6 +19,7 @@ import {
 } from '@/features/credentials/credentials.store';
 import { TIME } from '@/app/constants';
 import { getWhatsAppVerifyToken } from '../../composables/useAgentApi';
+import { useAgentTelemetry } from '../../composables/useAgentTelemetry';
 import AgentIntegrationCredentialConnection from '../../components/AgentIntegrationCredentialConnection.vue';
 import type { AgentCredentialOption } from '../../components/AgentCredentialSelect.vue';
 import AgentChannelWhatsAppIdentityCard from './AgentChannelWhatsAppIdentityCard.vue';
@@ -42,7 +43,6 @@ const props = withDefaults(
 		credentialsLoading?: boolean;
 		loading?: boolean;
 		connected?: boolean;
-		isPublished?: boolean;
 		errorMessage?: string;
 		errorIsConflict?: boolean;
 		savedSettings?: AgentWhatsAppIntegrationSettings;
@@ -57,7 +57,6 @@ const props = withDefaults(
 		credentialsLoading: false,
 		loading: false,
 		connected: false,
-		isPublished: true,
 		errorMessage: '',
 		errorIsConflict: false,
 		savedSettings: undefined,
@@ -76,6 +75,7 @@ const emit = defineEmits<{
 const i18n = useI18n();
 const rootStore = useRootStore();
 const toast = useToast();
+const agentTelemetry = useAgentTelemetry();
 
 const META_APP_DASHBOARD_URL = 'https://developers.facebook.com/apps';
 
@@ -142,7 +142,36 @@ const profile = computed(() =>
 	credentialCheck.value?.status === 'ok' ? credentialCheck.value.profile : null,
 );
 
-async function runCredentialCheck() {
+type CredentialCheckFailure = Extract<CredentialCheckResult, { status: 'failed' }>['reason'];
+
+/** The names the warehouse knows the reasons by, apart from how the view words them. */
+const CHECK_FAILURE_REASON = {
+	incomplete: 'incomplete',
+	temporaryToken: 'temporary_token',
+	mismatch: 'mismatch',
+	unreachable: 'unreachable',
+	notFound: 'not_found',
+} as const satisfies Record<CredentialCheckFailure, string>;
+
+/** Only the setup is measured: the settings check the credential again on every open. */
+function trackCredentialCheck(
+	trigger: 'auto' | 'recheck',
+	result: CredentialCheckResult,
+	// Set when the check never reached Meta. The result then shows `unreachable` anyway.
+	notReached?: 'request_failed' | 'save_failed',
+) {
+	if (props.mode !== 'setup') return;
+	agentTelemetry.trackCheckedWhatsAppCredential({
+		agentId: props.agentId,
+		trigger,
+		status: result.status,
+		...(result.status === 'failed'
+			? { reason: notReached ?? CHECK_FAILURE_REASON[result.reason] }
+			: {}),
+	});
+}
+
+async function runCredentialCheck(trigger: 'auto' | 'recheck' = 'auto') {
 	const request = ++latestCheck;
 	const id = credentialId.value;
 	// A result for the credential just replaced says nothing about this one.
@@ -159,6 +188,7 @@ async function runCredentialCheck() {
 			if (request !== latestCheck || unmounted) return;
 			checking.value = false;
 			credentialCheck.value = { status: 'failed', reason: 'unreachable' };
+			trackCredentialCheck(trigger, credentialCheck.value, 'save_failed');
 			toast.showError(error, i18n.baseText('agents.channels.modal.saveChannelError'));
 			return;
 		}
@@ -168,6 +198,9 @@ async function runCredentialCheck() {
 	}
 
 	let result: CredentialCheckResult;
+	// Shown as unreachable, but kept apart in telemetry: a failed request to n8n says
+	// nothing about whether Meta accepts the credential.
+	let notReached: 'request_failed' | undefined;
 	try {
 		result = await checkWhatsAppCredential(
 			rootStore.restApiContext,
@@ -178,13 +211,15 @@ async function runCredentialCheck() {
 	} catch (error) {
 		const notFound = error instanceof ResponseError && error.httpStatusCode === 404;
 		result = { status: 'failed', reason: notFound ? 'notFound' : 'unreachable' };
+		notReached = notFound ? undefined : 'request_failed';
 	}
 	if (request !== latestCheck) return;
 	credentialCheck.value = result;
 	checking.value = false;
+	trackCredentialCheck(trigger, result, notReached);
 }
 
-watch(credentialId, runCredentialCheck, { immediate: true });
+watch(credentialId, () => runCredentialCheck(), { immediate: true });
 
 // Saving the picked credential keeps its ID, so the watch above does not see the edit.
 // Pinia removes this listener when the component unmounts.
@@ -316,17 +351,6 @@ onBeforeUnmount(() => {
 
 const ready = computed(() => credentialVerified.value && webhookVerified.value && !props.connected);
 
-const connectBlockedHint = computed(() => {
-	if (props.connected || ready.value) return '';
-	if (!credentialVerified.value && !webhookVerified.value) {
-		return i18n.baseText('agents.channels.whatsapp.setup.connect.needsBoth');
-	}
-	if (!webhookVerified.value) {
-		return i18n.baseText('agents.channels.whatsapp.setup.connect.needsWebhook');
-	}
-	return i18n.baseText('agents.channels.whatsapp.setup.connect.needsCredential');
-});
-
 // A conflict is about the credential itself, so it stays in step 2.
 const showConnectError = computed(
 	() => Boolean(props.errorMessage) && !props.errorIsConflict && !props.connected,
@@ -356,7 +380,6 @@ const steps = computed(() => [
 	{
 		id: 'connect',
 		title: i18n.baseText('agents.channels.whatsapp.setup.connect.title'),
-		description: i18n.baseText('agents.channels.whatsapp.setup.connect.description'),
 	},
 ]);
 
@@ -403,8 +426,6 @@ async function afterSave() {
 	toast.showMessage({
 		type: 'success',
 		title: i18n.baseText('agents.channels.whatsapp.setup.connect.connected'),
-		// An unpublished agent does not answer yet, so the try-it hint needs this.
-		...(props.isPublished ? {} : { message: i18n.baseText('agents.channels.setup.publishNotice') }),
 	});
 }
 
@@ -427,6 +448,9 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							size="medium"
 							icon="meta"
 							data-testid="whatsapp-meta-dashboard-link"
+							@click="
+								agentTelemetry.trackClickedWhatsAppLink({ agentId, target: 'meta_dashboard' })
+							"
 						>
 							{{ i18n.baseText('agents.channels.whatsapp.setup.createApp.button') }}
 						</N8nButton>
@@ -479,7 +503,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 										variant="ghost"
 										size="small"
 										data-testid="whatsapp-credential-recheck"
-										@click="runCredentialCheck"
+										@click="runCredentialCheck('recheck')"
 									>
 										{{ i18n.baseText('agents.channels.whatsapp.setup.credential.recheck') }}
 									</N8nButton>
@@ -555,7 +579,7 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							{{ i18n.baseText('agents.channels.whatsapp.setup.verify.verified') }}
 						</N8nText>
 						<N8nText
-							v-else
+							v-else-if="credentialId"
 							size="small"
 							:class="[$style.hint, $style.verified]"
 							data-testid="whatsapp-webhook-waiting"
@@ -574,14 +598,6 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							show-connect
 							@connect="emit('connect')"
 						/>
-						<N8nText
-							v-if="connectBlockedHint"
-							:class="$style.hint"
-							size="small"
-							data-testid="whatsapp-connect-blocked"
-						>
-							{{ connectBlockedHint }}
-						</N8nText>
 						<!-- Connect errors otherwise land in step 2, far from this button. -->
 						<N8nText
 							v-if="showConnectError"
@@ -590,14 +606,6 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 							data-testid="whatsapp-connect-error"
 						>
 							{{ errorMessage }}
-						</N8nText>
-						<N8nText
-							v-if="connected && !isPublished"
-							:class="$style.hint"
-							size="small"
-							data-testid="whatsapp-publish-notice"
-						>
-							{{ i18n.baseText('agents.channels.setup.publishNotice') }}
 						</N8nText>
 					</div>
 				</div>
@@ -621,6 +629,9 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 					:personalisation="personalisation"
 					:ready="credentialVerified"
 					show-manager-link
+					@open-manager="
+						agentTelemetry.trackClickedWhatsAppLink({ agentId, target: 'whatsapp_manager' })
+					"
 				/>
 				<N8nText
 					v-if="credentialProblem"
@@ -640,21 +651,13 @@ defineExpose({ credentialId, currentSettings, validationError: null, afterSave }
 				rel="noopener noreferrer"
 				size="small"
 				data-testid="whatsapp-find-meta-app"
+				@click="agentTelemetry.trackClickedWhatsAppLink({ agentId, target: 'meta_app' })"
 			>
 				<span :class="$style.linkContent">
 					{{ i18n.baseText('agents.channels.whatsapp.settings.findMetaApp') }}
 					<N8nIcon icon="arrow-up-right" size="xsmall" />
 				</span>
 			</N8nLink>
-
-			<N8nText
-				v-if="connected && !isPublished"
-				:class="$style.hint"
-				size="small"
-				data-testid="whatsapp-publish-notice"
-			>
-				{{ i18n.baseText('agents.channels.setup.publishNotice') }}
-			</N8nText>
 		</div>
 	</div>
 </template>

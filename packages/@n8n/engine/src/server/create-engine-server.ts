@@ -2,9 +2,14 @@ import express, { type Application } from 'express';
 
 import { createAuthenticationMiddleware } from '../auth/authenticate';
 import type { IdentityVerifier } from '../auth/identity.types';
-import type { CancelExecutionService, ExecutionQueryService } from '../execution';
+import type {
+	CancelExecutionService,
+	ExecutionQueryService,
+	ResumeRequestService,
+} from '../execution';
 import type { StartExecutionService } from '../execution/start-execution.service';
 import type { EngineLogger } from '../logging';
+import { createStepExecutionsRouter } from './routes/resume-requests';
 import { createWorkflowExecutionsRouter } from './routes/workflow-executions';
 
 /**
@@ -19,6 +24,12 @@ export interface EngineServerDeps {
 	startExecution: StartExecutionService;
 	cancelExecution: CancelExecutionService;
 	executionQuery: ExecutionQueryService;
+	/**
+	 * Absent when the host gives no resume secret. Both resume routes then
+	 * answer 501. Optional until a later decision says where the secret comes
+	 * from and whether the engine refuses to start without it.
+	 */
+	resumeRequests?: ResumeRequestService;
 	identityVerifier: IdentityVerifier;
 	/** Where the engine writes its own messages. Defaults to the console. */
 	logger?: EngineLogger;
@@ -37,6 +48,7 @@ export function createEngineServer(deps: EngineServerDeps): { app: Application }
 	app.use('/api', createAuthenticationMiddleware(deps.identityVerifier, deps.logger));
 	app.use('/api', express.json({ limit: MAX_BODY_SIZE }));
 	app.use('/api/workflow-executions', createWorkflowExecutionsRouter(deps));
+	app.use('/api/step-executions', createStepExecutionsRouter(deps.resumeRequests));
 
 	return { app };
 }

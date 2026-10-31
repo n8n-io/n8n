@@ -275,7 +275,7 @@ defineExpose({ highlightFirstItem, focusTrigger });
 					<template #activator>
 						<N8nIconButton
 							variant="ghost"
-							icon="ellipsis-vertical"
+							icon="ellipsis"
 							:disabled="props.actionsDisabled || item.disabled"
 							:aria-label="props.actionButtonLabel"
 						/>

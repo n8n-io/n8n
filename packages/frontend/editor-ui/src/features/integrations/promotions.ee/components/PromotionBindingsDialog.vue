@@ -10,14 +10,15 @@ import {
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
+	N8nText,
 } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type { PromotionBindingConflict, PromotionBindingConsumer } from '@n8n/api-types';
 import { usePromotionBindings } from '../composables/usePromotionBindings';
+import { usePromotionPreviewLabels } from '../composables/usePromotionPreviewLabels';
 import type {
 	AppliedResult,
 	BlockedApplyResult,
-	ContinueTarget,
 	CreatedPromotionBinding,
 	CreatePromotionBinding,
 	MissingPromotionBinding,
@@ -28,22 +29,22 @@ const props = defineProps<{
 	open: boolean;
 	blockedResult: BlockedApplyResult;
 	createBinding: CreatePromotionBinding;
-	continueWith: ContinueTarget;
 }>();
 
 const emit = defineEmits<{
 	'update:open': [value: boolean];
 	applied: [result: AppliedResult];
-	'preflight-updated': [preflight: BlockedApplyResult['preflight']];
+	'check-updated': [check: BlockedApplyResult['check']];
 	'source-changed': [result: SourceChangedResult];
 	'close-requested': [resources: CreatedPromotionBinding[]];
 }>();
 
 const i18n = useI18n();
+const { moveDetail } = usePromotionPreviewLabels();
 const title = useTemplateRef<HTMLElement>('title');
 const bindings = usePromotionBindings();
 const {
-	preflight,
+	check,
 	groups,
 	destructiveChanges,
 	projectDeletions,
@@ -63,15 +64,15 @@ const {
 watch(
 	() => props.open,
 	(open) => {
-		if (open) bindings.start(props.blockedResult, props.continueWith);
+		if (open) bindings.start(props.blockedResult);
 		else bindings.end();
 	},
 	{ immediate: true },
 );
 watch(
-	preflight,
+	check,
 	(value) => {
-		if (value) emit('preflight-updated', value);
+		if (value) emit('check-updated', value);
 	},
 	{ immediate: true, flush: 'sync' },
 );
@@ -170,6 +171,37 @@ function destinationScope(binding: MissingPromotionBinding) {
 		: binding.scope.project.name;
 }
 
+type HardConflict = (typeof hardConflicts.value)[number];
+
+function conflictTitle(conflict: HardConflict) {
+	if (conflict.code === 'moved') return conflict.name;
+	if (conflict.kind === 'project') return conflict.project.name;
+	if (conflict.kind === 'workflow') {
+		return conflict.consumers
+			.flatMap(({ workflows }) => workflows.map(({ name }) => name))
+			.join(', ');
+	}
+	if (conflict.kind === 'data-table' || conflict.kind === 'tag') {
+		// An import-wide issue, such as a disabled module, names no table or tag.
+		const type = conflict.kind === 'tag' ? 'tag' : 'dataTable';
+		return (
+			conflict.name ?? conflict.id ?? i18n.baseText(`promotions.preview.blockers.type.${type}`)
+		);
+	}
+	return conflict.name;
+}
+
+function conflictDetail(conflict: HardConflict) {
+	if (conflict.code === 'moved') return moveDetail(conflict.kind, conflict);
+	return i18n.baseText(`promotions.bindings.conflicts.${conflict.code}`);
+}
+
+function conflictUsers(conflict: HardConflict) {
+	if (conflict.code === 'moved') return '';
+	if (conflict.kind !== 'project') return consumerNames(conflict.consumers);
+	return 'workflows' in conflict ? conflict.workflows.map(({ name }) => name).join(', ') : '';
+}
+
 function consumerNames(consumers: PromotionBindingConsumer[]) {
 	return consumers
 		.map((consumer) =>
@@ -197,7 +229,7 @@ async function create(key: string, event: MouseEvent) {
 }
 
 async function continueApply() {
-	const result = await bindings.continueApply();
+	const result = await bindings.continueInstanceApply();
 	if (result?.status === 'applied') {
 		emit('applied', result);
 		emit('update:open', false);
@@ -256,10 +288,10 @@ async function continueApply() {
 						{{ i18n.baseText(`promotions.bindings.error.${error.kind}`) }}
 						<p v-if="errorDetail">{{ errorDetail }}</p>
 					</N8nCallout>
-					<section v-if="preflight?.accessRequirements.length" :class="$style.notices">
+					<section v-if="check?.accessRequirements.length" :class="$style.notices">
 						<h3>{{ i18n.baseText('promotions.bindings.access.title') }}</h3>
 						<N8nCallout
-							v-for="item in preflight.accessRequirements"
+							v-for="item in check.accessRequirements"
 							:key="item.sourceId"
 							theme="warning"
 						>
@@ -271,10 +303,9 @@ async function continueApply() {
 					<section v-if="hardConflicts.length" :class="$style.notices">
 						<h3>{{ i18n.baseText('promotions.bindings.conflicts.title') }}</h3>
 						<N8nCallout v-for="(item, index) in hardConflicts" :key="index" theme="warning">
-							<strong>{{ item.kind === 'project' ? item.project.name : item.name }}</strong>
-							<p>{{ i18n.baseText(`promotions.bindings.conflicts.${item.code}`) }}</p>
-							<p v-if="item.kind !== 'project'">{{ consumerNames(item.consumers) }}</p>
-							<p v-else>{{ item.workflows.map((workflow) => workflow.name).join(', ') }}</p>
+							<strong>{{ conflictTitle(item) }}</strong>
+							<p>{{ conflictDetail(item) }}</p>
+							<p>{{ conflictUsers(item) }}</p>
 						</N8nCallout>
 					</section>
 					<p v-if="mode === 'blocked'">
@@ -387,10 +418,13 @@ async function continueApply() {
 														@click="create(row.key, $event)"
 													/>
 												</div>
-												<div :class="$style.scope">{{ destinationScope(row.binding) }}</div>
+												<N8nText tag="div" size="small" color="text-light" :class="$style.scope">
+													{{ destinationScope(row.binding) }}
+												</N8nText>
 											</td>
 											<td aria-live="polite">
-												<span
+												<N8nText
+													size="medium"
 													:class="[
 														$style.status,
 														row.status === 'resolved' ? $style.resolved : $style.pending,
@@ -401,7 +435,7 @@ async function continueApply() {
 														size="small"
 													/>
 													{{ i18n.baseText(`promotions.bindings.status.${row.status}`) }}
-												</span>
+												</N8nText>
 											</td>
 										</tr>
 									</tbody>
@@ -409,9 +443,9 @@ async function continueApply() {
 							</div>
 						</section>
 					</section>
-					<section v-if="preflight?.warnings.length" :class="$style.notices">
+					<section v-if="check?.warnings.length" :class="$style.notices">
 						<h3>{{ i18n.baseText('promotions.bindings.warnings.title') }}</h3>
-						<N8nCallout v-for="(item, index) in preflight.warnings" :key="index" theme="info">
+						<N8nCallout v-for="(item, index) in check.warnings" :key="index" theme="info">
 							{{
 								i18n.baseText('promotions.bindings.warnings.variableShadowed', {
 									interpolate: { name: item.name },
@@ -427,14 +461,20 @@ async function continueApply() {
 			</form>
 		</N8nDialogBody>
 		<N8nDialogFooter :class="$style.actions">
-			<span v-if="mode === 'bindings'" :class="$style.count" role="status">
+			<N8nText
+				v-if="mode === 'bindings'"
+				size="small"
+				color="text-base"
+				:class="$style.count"
+				role="status"
+			>
 				{{
 					i18n.baseText('promotions.bindings.unresolvedCount', {
 						adjustToNumber: unresolvedCount,
 						interpolate: { count: unresolvedCount },
 					})
 				}}
-			</span>
+			</N8nText>
 			<N8nButton
 				type="button"
 				:variant="mode === 'blocked' ? 'solid' : 'outline'"
@@ -538,8 +578,8 @@ async function continueApply() {
 		padding: var(--spacing--2xs) var(--spacing--xs);
 		background: var(--background--subtle);
 		color: var(--text-color--subtle);
-		font-size: var(--font-size--3xs);
-		font-weight: var(--font-weight--regular);
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--medium);
 	}
 
 	th,
@@ -605,14 +645,8 @@ async function continueApply() {
 
 .scope {
 	margin-top: var(--spacing--4xs);
-	color: var(--text-color--subtler);
-	font-size: var(--font-size--3xs);
 }
 
-.status {
-	font-size: var(--font-size--3xs);
-	line-height: var(--line-height--xl);
-}
 .pending {
 	color: var(--text-color--warning);
 }
@@ -639,7 +673,5 @@ async function continueApply() {
 .count {
 	margin-right: auto;
 	align-self: center;
-	color: var(--text-color--subtle);
-	font-size: var(--font-size--3xs);
 }
 </style>

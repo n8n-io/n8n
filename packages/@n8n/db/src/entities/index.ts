@@ -78,7 +78,10 @@ import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
-import { User } from './user';
+import { Person } from './person';
+import { ServiceAccount } from './service-account';
+import { ServiceAccountDetails } from './service-account-details';
+import { User, type UserKind } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
 import {
@@ -117,6 +120,10 @@ import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
+	type UserKind,
 	ActivityEvent,
 	activityEventCategories,
 	activityResourceTypes,
@@ -256,6 +263,9 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	Person,
+	ServiceAccount,
+	ServiceAccountDetails,
 	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,

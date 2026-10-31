@@ -40,7 +40,9 @@ vi.mock('@n8n/composables/useToast', () => ({
 vi.mock('@/features/credentials/credentials.api');
 
 const confirm = vi.hoisted(() => vi.fn());
-vi.mock('@/app/composables/useMessage', () => ({ useMessage: () => ({ confirm }) }));
+vi.mock('../../composables/useAgentConfirmationModal', () => ({
+	useAgentConfirmationModal: () => ({ openAgentConfirmationModal: confirm }),
+}));
 
 vi.mock('./api', () => ({
 	checkTeamsCredential: vi.fn(),
@@ -578,9 +580,9 @@ describe('AgentChannelTeamsSetup', () => {
 			expect(emitted()['update:modelValue']?.at(-1)).toEqual(['cred-1']);
 		});
 
-		it('keeps the credential of a connected channel when the restart is cancelled', async () => {
+		it.each(['cancel', 'close'])('keeps the connected credential on %s', async (result) => {
 			withBot();
-			confirm.mockResolvedValue('cancel');
+			confirm.mockResolvedValue(result);
 			// A listener makes the model controlled, as under v-model in the hosts.
 			const connected = {
 				savedCredentialId: 'cred-1',

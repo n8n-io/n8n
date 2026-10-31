@@ -49,7 +49,7 @@ jobs:
     # release-publish.yml caller so docker-build-push.yml runs with the permissions
     # (its own per-job blocks + repo defaults) and org secrets it already relies on.
     # Capping here risks starving its sub-jobs (SLSA/attestation/scan/push).
-    uses: ./.github/workflows/docker-build-push.yml # zizmor: ignore[excessive-permissions,secrets-inherit]
+    uses: ./.github/workflows/docker-build-push.yml
     with:
       ref: '3.x'
       n8n_version: 'v3-nightly'

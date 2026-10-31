@@ -131,7 +131,7 @@ describe('CredentialSharing.ee', () => {
 		} as unknown as ReturnType<typeof useI18n>);
 
 		// Mock store methods
-		vi.spyOn(usersStore, 'fetchUsers').mockResolvedValue();
+		vi.spyOn(usersStore, 'fetchUsers').mockResolvedValue([]);
 		vi.spyOn(projectsStore, 'getAllProjects').mockResolvedValue();
 		vi.spyOn(projectsStore, 'searchShareableProjects').mockResolvedValue({
 			count: testProjects.length,

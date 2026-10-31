@@ -1,26 +1,51 @@
+import type { UpdatePromotionEnvironmentDto } from '@n8n/api-types';
+import { EventService } from '@n8n/backend-services';
 import { testDb } from '@n8n/backend-test-utils';
-import type { User } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, type User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import nock from 'nock';
+import type { MockInstance } from 'vitest';
 import { v7 as uuidv7 } from 'uuid';
 
 import { PromotionEnvironmentRepository } from '@/modules/promotions.ee/database/repositories/promotion-environment.repository';
 import { PromotionProviderRepository } from '@/modules/promotions.ee/database/repositories/promotion-provider.repository';
 import { PromotionReviewRepository } from '@/modules/promotions.ee/database/repositories/promotion-review.repository';
 import { PromotionRunRepository } from '@/modules/promotions.ee/database/repositories/promotion-run.repository';
+import { insertTokenProvider } from '@/modules/promotions.ee/__tests__/utils/promotion-fixtures';
+import { storePromotionRemote } from '@/modules/promotions.ee/git-hosts/git-host-remote';
 import { PromotionEnvironmentResolver } from '@/modules/promotions.ee/promotion-environment.resolver';
+import { PromotionEnvironmentsService } from '@/modules/promotions.ee/promotion-environments.service';
 import { PromotionReviewsService } from '@/modules/promotions.ee/promotion-reviews.service';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '@test-integration/db/users';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { createAdmin, createMember, createOwner, createUser } from '@test-integration/db/users';
 import { setupTestServer } from '@test-integration/utils';
 
 const baseUrl = 'https://gitlab.example.com';
 const token = 'review-token';
 const projectId = 7;
+const headSha = 'a'.repeat(40);
+
+type MergeRequestAnswer = {
+	state: string;
+	detailed_merge_status?: string;
+	source_branch?: string;
+	has_conflicts?: boolean;
+};
 
 /** A merge request, or the HTTP status GitLab answers with. Unknown iids answer 404. */
-type GitLabAnswer =
-	| { state: string; detailed_merge_status?: string; source_branch?: string }
-	| number;
+type GitLabAnswer = MergeRequestAnswer | number;
+
+const mergeRequest = (iid: number, answer: MergeRequestAnswer) => ({
+	iid,
+	project_id: projectId,
+	web_url: `${baseUrl}/platform/workflows/-/merge_requests/${iid}`,
+	title: `Promotion ${iid}`,
+	description: 'Opened by n8n',
+	source_branch: `n8n-promotion/${iid}`,
+	target_branch: 'main',
+	sha: headSha,
+	...answer,
+});
 
 /** Answers like GitLab and returns the iids it was asked for, in call order. */
 function gitlab(answers: Record<number, GitLabAnswer>, { delayMs = 0 } = {}) {
@@ -36,27 +61,73 @@ function gitlab(answers: Record<number, GitLabAnswer>, { delayMs = 0 } = {}) {
 			const answer = answers[iid];
 			if (answer === undefined) return [404, { message: '404 Not found' }];
 			if (typeof answer === 'number') return [answer, {}];
-			return [
-				200,
-				{
-					iid,
-					project_id: projectId,
-					web_url: `${baseUrl}/platform/workflows/-/merge_requests/${iid}`,
-					title: `Promotion ${iid}`,
-					description: 'Opened by n8n',
-					source_branch: `n8n-promotion/${iid}`,
-					target_branch: 'main',
-					...answer,
-				},
-			];
+			return [200, mergeRequest(iid, answer)];
+		});
+	return calls;
+}
+
+type GitLabWrites = {
+	approve?: number[];
+	/** `reset` drops the connection, so n8n never sees the answer. */
+	merge?: Array<number | 'reset'>;
+	mergeDelayMs?: number;
+	beforeMerge?: () => Promise<void>;
+};
+
+/**
+ * Answers the approve, merge, and note calls for one merge request with the next answer
+ * in each list, and returns the calls with their bodies, in call order.
+ */
+function gitlabWrites(
+	iid: number,
+	{
+		approve = [201],
+		merge = [200],
+		mergeDelayMs = 0,
+		beforeMerge = async () => {},
+	}: GitLabWrites = {},
+) {
+	const calls: Array<[string, unknown]> = [];
+	const path = `/api/v4/projects/${projectId}/merge_requests/${iid}`;
+	// The last answer repeats.
+	const next = <T>(answers: T[]) => (answers.length > 1 ? answers.splice(0, 1) : answers)[0];
+	const answer = (status: number, ok: object): [number, object] =>
+		status < 300 ? [status, ok] : [status, { message: `${status} refused` }];
+	nock(baseUrl)
+		.persist()
+		.matchHeader('PRIVATE-TOKEN', token)
+		.post(`${path}/approve`)
+		.reply((_uri, body) => {
+			calls.push(['approve', body]);
+			return answer(next(approve), {});
+		})
+		.put(`${path}/merge`)
+		.delay(mergeDelayMs)
+		.reply((_uri, body, respond) => {
+			calls.push(['merge', body]);
+			const status = next(merge);
+			void beforeMerge()
+				.then(() =>
+					status === 'reset'
+						? // nock drops the reply when it gets an error.
+							respond(Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' }), [200])
+						: respond(null, answer(status, mergeRequest(iid, { state: 'merged' }))),
+				)
+				.catch((error: unknown) => respond(error as Error, [500]));
+		})
+		.post(`${path}/notes`)
+		.reply((_uri, body) => {
+			calls.push(['note', body]);
+			return [201, {}];
 		});
 	return calls;
 }
 
 describe('Promotion reviews in the Inbox', () => {
 	const testServer = setupTestServer({
-		endpointGroups: ['publicApi'],
-		enabledFeatures: ['feat:gitConnections'],
+		reuseServer: true,
+		endpointGroups: ['promotions'],
+		enabledFeatures: ['feat:promotions'],
 		modules: ['inbox', 'promotions'],
 	});
 	let owner: User;
@@ -88,71 +159,136 @@ describe('Promotion reviews in the Inbox', () => {
 	}
 
 	async function createEnvironment(
-		provider: object,
-		target: { name: string; scope: string; remoteUrl: string },
+		provider: Parameters<typeof insertTokenProvider>[0],
+		target: { name: string; scope: 'instance' | 'projects'; remoteUrl: string },
 	) {
-		const agent = testServer.publicApiAgentFor(owner);
-		const created = await agent.post('/promotions/providers').send(provider);
-		expect(created.status, JSON.stringify(created.body)).toBe(201);
-		const environment = await agent.post('/promotions/environments').send({
+		// Provider validation has separate API tests. Inbox tests need stored fixtures.
+		const created = await insertTokenProvider(provider);
+		const environment = await Container.get(PromotionEnvironmentRepository).insertEnvironment({
 			name: target.name,
 			scope: target.scope,
-			providerId: created.body.provider.id,
-			remote: { schemaVersion: 1, remoteUrl: target.remoteUrl },
+			providerId: created.id,
+			// Stored like the API stores it: a repository path for a Git host.
+			remote: storePromotionRemote(created, { schemaVersion: 1, remoteUrl: target.remoteUrl }),
 			direction: 'promote',
 			settings: { schemaVersion: 1, baseBranchName: 'main', createBranchOnPromotion: true },
 		});
-		expect(environment.status, JSON.stringify(environment.body)).toBe(201);
-		return environment.body.id as string;
+		return environment.id;
 	}
 
 	/** A plain Git provider has no host API, so its reviews report no_connection. */
 	const createGitEnvironment = async (name: string) =>
 		await createEnvironment(
-			{ name, type: 'git', auth: { authType: 'token', username: 'u', password: 'p' } },
+			{ name, type: 'git' },
 			{ name, scope: 'projects', remoteUrl: `https://example.com/org/${name}.git` },
 		);
 
-	const inbox = async (user: User, query: Record<string, string>) =>
-		await testServer.authAgentFor(user).get('/inbox').query(query);
+	const inbox = async (user: User, query: Record<string, string>) => {
+		const response = await testServer.authAgentFor(user).get('/inbox').query(query);
+		expect(response.status, response.text).toBe(200);
+		return response;
+	};
+
+	const approve = async (user: User, reviewId: string, headCommitSha = headSha) =>
+		await testServer
+			.authAgentFor(user)
+			.post(`/promotions/reviews/${reviewId}/approve`)
+			.send({ headCommitSha });
+
+	const approvedById = async (reviewId: string) =>
+		(await reviewRepository.findOneByOrFail({ id: reviewId })).approvedById;
 
 	beforeAll(async () => {
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+		Container.get(SourceControlPreferencesService).sourceControlPreferences = {
+			environmentsVersion: 'v2',
+		};
 		reviewRepository = Container.get(PromotionReviewRepository);
 	});
 
-	afterAll(() => {
-		delete process.env.N8N_ENV_FEAT_PROMOTIONS;
+	let emitSpy: MockInstance | undefined;
+
+	afterEach(() => {
+		emitSpy?.mockRestore();
 	});
 
 	beforeEach(async () => {
 		testServer.license.reset();
+		emitSpy = vi.spyOn(Container.get(EventService), 'emit');
 		await Container.get(PromotionRunRepository).delete({});
 		await reviewRepository.delete({});
 		await Container.get(PromotionEnvironmentRepository).delete({});
 		await Container.get(PromotionProviderRepository).delete({});
 		await testDb.truncate(['User']);
-		owner = await createOwnerWithApiKey();
-
-		const validation = nock(baseUrl)
-			.get('/api/v4/user')
-			.reply(200, { id: 1 })
-			.get('/api/v4/projects')
-			.query(true)
-			.reply(200, []);
+		owner = await createOwner();
 		environmentId = await createEnvironment(
-			{
-				name: 'GitLab',
-				type: 'gitlab',
-				auth: { authType: 'token', password: token },
-				config: { schemaVersion: 1, baseUrl },
-			},
+			{ name: 'GitLab', type: 'gitlab', password: token, config: { schemaVersion: 1, baseUrl } },
 			{ name: 'To production', scope: 'instance', remoteUrl: `${baseUrl}/platform/workflows.git` },
 		);
-		validation.done();
 	});
 
 	afterEach(() => nock.cleanAll());
+
+	describe('when an admin changes the environment', () => {
+		const stateOf = async (reviewId: string) =>
+			(await reviewRepository.findOneByOrFail({ id: reviewId })).state;
+
+		// The public API tests cover the endpoints. These tests need only the service.
+		const environments = () => Container.get(PromotionEnvironmentsService);
+
+		it('closes the open reviews of a deleted environment and keeps the merged ones', async () => {
+			const open = await insertReview(1);
+			const merged = await insertReview(2);
+			await reviewRepository.update({ id: merged }, { state: 'merged' });
+
+			await environments().delete(environmentId, owner);
+
+			expect(await stateOf(open)).toBe('closed');
+			expect(await stateOf(merged)).toBe('merged');
+		});
+
+		it.each<{
+			change: string;
+			expected: string;
+			update: () => Promise<UpdatePromotionEnvironmentDto>;
+		}>([
+			{ change: 'a rename', expected: 'open', update: async () => ({ name: 'Renamed' }) },
+			{
+				// Another base URL can name the same host, so only the repository decides.
+				change: 'another GitLab provider for the same repository',
+				expected: 'open',
+				update: async () => ({
+					providerId: (
+						await insertTokenProvider({
+							name: 'GitLab alias',
+							type: 'gitlab',
+							password: token,
+							config: { schemaVersion: 1, baseUrl: 'https://gitlab-alias.example.com' },
+						})
+					).id,
+				}),
+			},
+			{
+				change: 'another repository',
+				expected: 'closed',
+				update: async () => ({
+					remote: { schemaVersion: 1, remoteUrl: `${baseUrl}/platform/other.git` },
+				}),
+			},
+			{
+				change: 'a plain Git provider',
+				expected: 'closed',
+				update: async () => ({
+					providerId: (await insertTokenProvider({ name: 'Plain', type: 'git' })).id,
+				}),
+			},
+		])('after $change, the open review is $expected', async ({ expected, update }) => {
+			const review = await insertReview(1);
+
+			await environments().update(environmentId, await update(), owner);
+
+			expect(await stateOf(review)).toBe(expected);
+		});
+	});
 
 	it('lists the review opened by the promotion write path for its environment', async () => {
 		const branchName = 'n8n-promotion/1';
@@ -214,7 +350,7 @@ describe('Promotion reviews in the Inbox', () => {
 		]);
 	});
 
-	it('syncs from any tab, keeps reviews GitLab did not answer for, and ignores a merge request from another branch', async () => {
+	it('syncs from any tab, keeps reviews GitLab did not answer for, closes reviews without a GitLab environment, and ignores a merge request from another branch', async () => {
 		const opened = await insertReview(1);
 		const changesRequested = await insertReview(2);
 		const merged = await insertReview(3);
@@ -241,14 +377,24 @@ describe('Promotion reviews in the Inbox', () => {
 		const open = await inbox(owner, { state: 'open', category: 'waiting' });
 
 		expect(closedList.status, JSON.stringify(closedList.body)).toBe(200);
-		expect(closedList.body.data.data).toHaveLength(2);
+		expect(closedList.body.data.data).toHaveLength(4);
 		expect(closedList.body.data.data).toEqual(
 			expect.arrayContaining([
 				expect.objectContaining({ id: merged, state: 'closed', reviewState: 'merged' }),
 				expect.objectContaining({ id: closed, state: 'closed', reviewState: 'closed' }),
+				expect.objectContaining({
+					id: plainGit,
+					reviewState: 'closed',
+					remoteError: 'no_connection',
+				}),
+				expect.objectContaining({
+					id: deleted,
+					reviewState: 'closed',
+					remoteError: 'no_connection',
+				}),
 			]),
 		);
-		expect(open.body.data.data).toHaveLength(8);
+		expect(open.body.data.data).toHaveLength(6);
 		expect(open.body.data.data).toEqual(
 			expect.arrayContaining([
 				{
@@ -256,6 +402,7 @@ describe('Promotion reviews in the Inbox', () => {
 					id: opened,
 					state: 'open',
 					reviewState: 'open',
+					reviewType: 'gitlab',
 					title: 'Promotion 1',
 					webUrl: `${baseUrl}/platform/workflows/-/merge_requests/1`,
 					branchName: 'n8n-promotion/1',
@@ -263,6 +410,9 @@ describe('Promotion reviews in the Inbox', () => {
 					requester: expect.objectContaining({ id: owner.id }),
 					approver: null,
 					remoteError: null,
+					headCommitSha: headSha,
+					runCommitSha: 'c'.repeat(40),
+					hasConflicts: false,
 					createdAt: expect.any(String),
 					updatedAt: expect.any(String),
 				},
@@ -282,8 +432,6 @@ describe('Promotion reviews in the Inbox', () => {
 					title: null,
 					remoteError: 'not_found',
 				}),
-				expect.objectContaining({ id: plainGit, remoteError: 'no_connection' }),
-				expect.objectContaining({ id: deleted, remoteError: 'no_connection' }),
 			]),
 		);
 		expect(JSON.stringify([open.body, closedList.body])).not.toContain(token);
@@ -330,10 +478,10 @@ describe('Promotion reviews in the Inbox', () => {
 		expect(calls.slice(callsForFirstPage)).toEqual([1]);
 	});
 
-	it('hides promotion reviews from a member and while the rollout flag is off', async () => {
+	it('hides promotion reviews from a member and on environments v1', async () => {
 		await insertReview(1);
 		gitlab({ 1: { state: 'opened' } });
-		const member = await createMemberWithApiKey();
+		const member = await createMember();
 
 		const asMember = await inbox(member, { state: 'open', category: 'waiting' });
 		expect(asMember.body.data.data).toEqual([]);
@@ -342,13 +490,205 @@ describe('Promotion reviews in the Inbox', () => {
 			closed: 0,
 		});
 
-		process.env.N8N_ENV_FEAT_PROMOTIONS = 'false';
+		const preferences = Container.get(SourceControlPreferencesService);
+		preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
 		try {
-			const flagOff = await inbox(owner, { state: 'open', category: 'waiting' });
-			expect(flagOff.body.data.data).toEqual([]);
-			expect(flagOff.body.data.disabledSources).toContain('promotion_review');
+			const onV1 = await inbox(owner, { state: 'open', category: 'waiting' });
+			expect(onV1.body.data.data).toEqual([]);
+			expect(onV1.body.data.disabledSources).toContain('promotion_review');
 		} finally {
-			process.env.N8N_ENV_FEAT_PROMOTIONS = 'true';
+			preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
 		}
+	});
+
+	describe('approve and merge', () => {
+		it('approves and merges the head the admin saw, names the admin in a note, and closes the review', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+			const writes = gitlabWrites(1);
+			const admin = await createAdmin();
+
+			const [row] = (await inbox(admin, { state: 'open', category: 'waiting' })).body.data.data;
+			const response = await approve(admin, reviewId, row.headCommitSha);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(writes).toEqual([
+				['approve', { sha: headSha }],
+				['merge', { sha: headSha, should_remove_source_branch: true }],
+				['note', { body: `Approved and merged in n8n by ${admin.firstName} ${admin.lastName}.` }],
+			]);
+			const merged = expect.objectContaining({
+				id: reviewId,
+				state: 'closed',
+				reviewState: 'merged',
+				approver: expect.objectContaining({ id: admin.id }),
+			});
+			expect(response.body.data).toEqual(merged);
+			expect((await inbox(admin, { state: 'closed' })).body.data.data).toEqual([merged]);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-approved',
+				expect.objectContaining({
+					reviewId,
+					reviewType: 'gitlab',
+					outcome: 'merged',
+					durationMs: expect.any(Number),
+				}),
+			);
+		});
+
+		it('refuses a member and an instance on environments v1 without a GitLab write', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+			const writes = gitlabWrites(1);
+
+			expect((await approve(await createMember(), reviewId)).status).toBe(403);
+			const preferences = Container.get(SourceControlPreferencesService);
+			preferences.sourceControlPreferences = { environmentsVersion: 'v1' };
+			try {
+				expect((await approve(await createAdmin(), reviewId)).status).toBe(403);
+			} finally {
+				preferences.sourceControlPreferences = { environmentsVersion: 'v2' };
+			}
+			expect(writes).toEqual([]);
+		});
+
+		it.each([
+			['changes are requested', { detailed_merge_status: 'requested_changes' }, headSha, 409],
+			['the merge request has conflicts', { has_conflicts: true }, headSha, 409],
+			['GitLab has a newer head', {}, 'b'.repeat(40), 409],
+			['the merge request comes from another branch', { source_branch: 'other' }, headSha, 404],
+		])('answers without a GitLab write when %s', async (_case, answer, sha, status) => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened', ...answer } });
+			const writes = gitlabWrites(1);
+
+			expect((await approve(await createAdmin(), reviewId, sha)).status).toBe(status);
+			expect(writes).toEqual([]);
+			expect(emitSpy).toHaveBeenCalledWith(
+				'promotion-review-approved',
+				expect.objectContaining({
+					reviewId,
+					outcome: 'failed',
+					failureKind: 'user',
+				}),
+			);
+			expect(await approvedById(reviewId)).toBeNull();
+		});
+
+		it('lets one of two admins approve at the same time', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+			const writes = gitlabWrites(1, { mergeDelayMs: 300 });
+			const [first, second] = [await createAdmin(), await createAdmin()];
+
+			const responses = await Promise.all([approve(first, reviewId), approve(second, reviewId)]);
+
+			expect(responses.map(({ status }) => status).toSorted()).toEqual([200, 409]);
+			expect(writes.filter(([call]) => call === 'merge')).toHaveLength(1);
+		});
+
+		it('releases the claim when GitLab refuses the merge, so the admin can retry', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+			// The second approval fails because GitLab already counts the first one.
+			const writes = gitlabWrites(1, { approve: [201, 401], merge: [405, 200] });
+			const admin = await createUser({ role: GLOBAL_ADMIN_ROLE, firstName: '', lastName: '' });
+
+			const refused = await approve(admin, reviewId);
+			expect(refused.status).toBe(400);
+			expect(refused.body.message).toContain("GitLab can't merge this merge request now.");
+			expect(JSON.stringify(refused.body)).not.toContain(token);
+			expect(await approvedById(reviewId)).toBeNull();
+
+			expect((await approve(admin, reviewId)).status).toBe(200);
+			expect(writes.map(([call]) => call)).toEqual([
+				'approve',
+				'merge',
+				'approve',
+				'merge',
+				'note',
+			]);
+			expect(writes.at(-1)).toEqual(['note', { body: 'Approved and merged in n8n.' }]);
+		});
+
+		it('answers Merged when an Inbox sync records the merge first', async () => {
+			const reviewId = await insertReview(1);
+			gitlab({ 1: { state: 'opened' } });
+			gitlabWrites(1, {
+				beforeMerge: async () => {
+					await reviewRepository.update({ id: reviewId }, { state: 'merged' });
+				},
+			});
+
+			const response = await approve(await createAdmin(), reviewId);
+
+			expect(response.body.data).toMatchObject({ state: 'closed', reviewState: 'merged' });
+		});
+
+		it('finishes the approval when GitLab merged but its answer was lost', async () => {
+			const reviewId = await insertReview(1);
+			const answers: Record<number, GitLabAnswer> = { 1: { state: 'opened' } };
+			gitlab(answers);
+			const writes = gitlabWrites(1, {
+				merge: ['reset'],
+				beforeMerge: async () => {
+					answers[1] = { state: 'merged' };
+				},
+			});
+			const admin = await createAdmin();
+
+			const response = await approve(admin, reviewId);
+
+			expect(response.status, JSON.stringify(response.body)).toBe(200);
+			expect(response.body.data).toMatchObject({
+				reviewState: 'merged',
+				approver: expect.objectContaining({ id: admin.id }),
+			});
+			expect(writes.at(-1)?.[0]).toBe('note');
+		});
+
+		it('keeps the claim, and shows no approver, when GitLab does not confirm the merge', async () => {
+			const reviewId = await insertReview(1);
+			const answers: Record<number, GitLabAnswer> = { 1: { state: 'opened' } };
+			gitlab(answers);
+			gitlabWrites(1, {
+				merge: ['reset'],
+				beforeMerge: async () => {
+					answers[1] = 503;
+				},
+			});
+			const admin = await createAdmin();
+
+			const response = await approve(admin, reviewId);
+
+			expect(response.status).toBe(503);
+			expect(response.body.message).toContain("GitLab didn't confirm the merge");
+			expect(await approvedById(reviewId)).toBe(admin.id);
+			answers[1] = { state: 'opened' };
+			expect((await approve(await createAdmin(), reviewId)).status).toBe(409);
+			const [row] = (await inbox(admin, { state: 'open', category: 'waiting' })).body.data.data;
+			expect(row).toMatchObject({ id: reviewId, approver: null });
+		});
+
+		it('lets an admin take a claim older than two minutes', async () => {
+			const stale = await insertReview(1);
+			const live = await insertReview(2);
+			const other = await createAdmin();
+			const claimedAgo = async (reviewId: string, ms: number) =>
+				await reviewRepository.update(
+					{ id: reviewId },
+					{ approvedById: other.id, approvedAt: new Date(Date.now() - ms) },
+				);
+			await claimedAgo(stale, 3 * 60_000);
+			await claimedAgo(live, 30_000);
+			gitlab({ 1: { state: 'opened' }, 2: { state: 'opened' } });
+			gitlabWrites(1);
+			gitlabWrites(2);
+			const admin = await createAdmin();
+
+			expect((await approve(admin, stale)).status).toBe(200);
+			expect((await approve(admin, live)).status).toBe(409);
+			expect(await approvedById(live)).toBe(other.id);
+		});
 	});
 });

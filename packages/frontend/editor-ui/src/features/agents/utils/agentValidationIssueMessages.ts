@@ -11,6 +11,7 @@ const GENERIC_ISSUE_KEYS: Record<AgentConfigValidationIssue['code'], BaseTextKey
 	incompatible_credential: 'agents.builder.validation.issue.incompatibleCredential' as BaseTextKey,
 	missing_reference: 'agents.builder.validation.issue.missingReference' as BaseTextKey,
 	incompatible_reference: 'agents.builder.validation.issue.incompatibleReference' as BaseTextKey,
+	restricted_node_type: 'agents.builder.validation.issue.restrictedNodeType' as BaseTextKey,
 };
 
 const SPECIFIC_ISSUE_KEYS: Record<string, BaseTextKey> = {
@@ -39,6 +40,8 @@ const REASON_SPECIFIC_KEYS: Record<string, BaseTextKey> = {
 	no_supported_trigger:
 		'agents.builder.validation.issue.tool.workflow.noSupportedTrigger' as BaseTextKey,
 	not_published: 'agents.builder.validation.issue.tool.workflow.notPublished' as BaseTextKey,
+	restricted_by_inline_tool:
+		'agents.builder.validation.issue.restrictedByInlineTool' as BaseTextKey,
 };
 
 export function resolveAgentValidationIssueMessageKey(

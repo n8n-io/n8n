@@ -672,23 +672,35 @@ export function createScheduler(deps: SchedulerDeps): Scheduler & SchedulerPasse
 			},
 			{
 				onError: (error) => {
-					emit('error', 'Scheduler pass failed; retrying on its next tick', {
-						pass,
-						error: described(error),
-					});
+					emit(
+						'error',
+						`Scheduler pass "${pass}" failed; retrying on its next tick: ${described(error)}`,
+						{
+							pass,
+							error: described(error),
+						},
+					);
 				},
 				onTimeout: ({ timeoutMs }) => {
-					emit('error', 'Scheduler pass timed out and was abandoned; retrying on its next tick', {
-						pass,
-						timeoutMs,
-					});
+					emit(
+						'error',
+						`Scheduler pass "${pass}" timed out after ${timeoutMs}ms and was abandoned; retrying on its next tick`,
+						{
+							pass,
+							timeoutMs,
+						},
+					);
 				},
 				onSkippedTick: ({ inFlight, limit }) => {
-					emit('warn', 'Scheduler pass tick dropped; in-flight passes at the concurrency limit', {
-						pass,
-						inFlight,
-						limit,
-					});
+					emit(
+						'warn',
+						`Scheduler pass "${pass}" tick dropped; ${inFlight} of ${limit} passes in flight at the concurrency limit`,
+						{
+							pass,
+							inFlight,
+							limit,
+						},
+					);
 				},
 			},
 		);

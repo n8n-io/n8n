@@ -1,6 +1,8 @@
 import {
 	CreateSkillDto,
 	ListSkillsQueryDto,
+	ListSkillAgentsQueryDto,
+	SKILL_AGENTS_MAX_PAGE_SIZE,
 	SaveSkillDto,
 	SkillNewNameQueryDto,
 	SKILLS_MAX_PAGE_SIZE,
@@ -31,6 +33,10 @@ describe('ListSkillsQueryDto', () => {
 		expect(ListSkillsQueryDto.safeParse({ take }).success).toBe(false);
 	});
 
+	it('leaves the sort unset when the client sends none', () => {
+		expect(ListSkillsQueryDto.parse({}).sortBy).toBeUndefined();
+	});
+
 	it('parses the project an agent attaches skills for', () => {
 		expect(ListSkillsQueryDto.parse({ attachableTo: 'p1' })).toMatchObject({ attachableTo: 'p1' });
 	});
@@ -38,20 +44,74 @@ describe('ListSkillsQueryDto', () => {
 	it.each(['team', 'user'])('rejects the unknown scope %s', (scope) => {
 		expect(ListSkillsQueryDto.safeParse({ scope }).success).toBe(false);
 	});
+
+	it('parses the agent and creator filters', () => {
+		const createdById = '0b4c2f4e-8f2e-4d6a-9c1b-3f6f7a2d9e10';
+		expect(ListSkillsQueryDto.parse({ agentId: 'V1StGXR8_Z5jdHi6', createdById })).toMatchObject({
+			agentId: 'V1StGXR8_Z5jdHi6',
+			createdById,
+		});
+	});
+
+	it('rejects an agent id longer than an id', () => {
+		expect(ListSkillsQueryDto.safeParse({ agentId: 'x'.repeat(37) }).success).toBe(false);
+	});
+
+	it.each(['not-a-uuid', 'u1', ''])(
+		'rejects the creator id "%s", which is not a UUID',
+		(createdById) => {
+			expect(ListSkillsQueryDto.safeParse({ createdById }).success).toBe(false);
+		},
+	);
+
+	it.each(['name:asc', 'name:desc', 'updatedAt:asc', 'updatedAt:desc'])(
+		'parses the sort %s',
+		(sortBy) => {
+			expect(ListSkillsQueryDto.parse({ sortBy }).sortBy).toBe(sortBy);
+		},
+	);
+
+	it.each(['createdAt:desc', 'name', 'name:up', 'scope:asc'])(
+		'rejects the unknown sort %s',
+		(sortBy) => {
+			expect(ListSkillsQueryDto.safeParse({ sortBy }).success).toBe(false);
+		},
+	);
+});
+
+describe('ListSkillAgentsQueryDto', () => {
+	it('defaults take to the page limit and caps it there', () => {
+		expect(ListSkillAgentsQueryDto.parse({})).toEqual({ take: SKILL_AGENTS_MAX_PAGE_SIZE });
+		expect(ListSkillAgentsQueryDto.parse({ take: '500' }).take).toBe(SKILL_AGENTS_MAX_PAGE_SIZE);
+	});
+
+	it('parses the search and a smaller take', () => {
+		expect(ListSkillAgentsQueryDto.parse({ search: ' bot ', take: '5' })).toEqual({
+			search: 'bot',
+			take: 5,
+		});
+	});
+
+	it.each(['0', '-1', 'abc'])('rejects take "%s"', (take) => {
+		expect(ListSkillAgentsQueryDto.safeParse({ take }).success).toBe(false);
+	});
 });
 
 describe('CreateSkillDto', () => {
 	const skill = { name: 'Brand voice', description: 'How we write', instructions: 'Be brief.' };
 
-	it.each([
-		[{ scope: 'project', projectId: 'p1' }],
-		[{ scope: 'agent', agentId: 'a1' }],
-		[{ scope: 'instance' }],
-	])('accepts %o', (target) => {
-		expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
+	it.each([[{ scope: 'project', projectId: 'p1' }], [{ scope: 'instance' }]])(
+		'accepts %o',
+		(target) => {
+			expect(CreateSkillDto.safeParse({ ...target, skill }).success).toBe(true);
+		},
+	);
+
+	it('rejects the agent scope', () => {
+		expect(CreateSkillDto.safeParse({ scope: 'agent', skill }).success).toBe(false);
 	});
 
-	it('rejects allowed tools, which hub skills ignore', () => {
+	it('rejects allowed tools, which skills ignore', () => {
 		expect(
 			CreateSkillDto.safeParse({
 				scope: 'instance',
@@ -69,6 +129,10 @@ describe('CreateSkillDto', () => {
 });
 
 describe('SaveSkillDto', () => {
+	it('does not default availability on an unrelated save', () => {
+		expect(SaveSkillDto.parse({ baseSkillHash: 'h1' })).not.toHaveProperty('availableToAssistant');
+	});
+
 	it('accepts changed fields with the base hash', () => {
 		expect(SaveSkillDto.safeParse({ instructions: 'Be brief.', baseSkillHash: 'h1' }).success).toBe(
 			true,

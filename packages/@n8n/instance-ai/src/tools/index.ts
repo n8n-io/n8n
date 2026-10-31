@@ -1,11 +1,21 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/consistent-type-imports */
 import type { BuiltTool } from '@n8n/agents';
+import {
+	DATA_TABLE_TOOL_ACTIONS,
+	DATA_TABLE_TOOL_NAME_BY_ACTION,
+	EXECUTION_TOOL_ACTIONS,
+	EXECUTION_TOOL_NAME_BY_ACTION,
+	WORKFLOW_TOOL_NAME_BY_ACTION,
+	WORKSPACE_TOOL_NAME_BY_ACTION,
+} from '@n8n/api-types';
 
 import { isParseableAttachment } from '../parsers/structured-file-parser';
 import { createToolRegistry } from '../tool-registry';
 import type { InstanceAiContext, InstanceAiToolRegistry, OrchestrationContext } from '../types';
 import { resolveAgentBuilderTarget } from './orchestration/agent-target-binding';
 import { DOMAIN_TOOL_IDS, ORCHESTRATION_TOOL_IDS } from './tool-ids';
+import { getSupportedWorkflowActions } from './workflows/workflow-tool-actions';
+import { getSupportedWorkspaceActions } from './workspace-tool-actions';
 
 const lazyMod = <T>(loader: () => T): (() => T) => {
 	let cached: T | undefined;
@@ -20,6 +30,9 @@ const loadCredentialsTool = lazyMod(
 );
 const loadConversationHistoryTool = lazyMod(
 	() => require('./conversation-history.tool') as typeof import('./conversation-history.tool'),
+);
+const loadAppsTool = lazyMod(
+	() => require('./apps/apps.tool') as typeof import('./apps/apps.tool'),
 );
 const loadDataTablesTool = lazyMod(
 	() => require('./data-tables.tool') as typeof import('./data-tables.tool'),
@@ -60,13 +73,6 @@ const loadAgentBuilderTools = lazyMod(
 const loadGetSessionTool = lazyMod(
 	() =>
 		require('./orchestration/get-session.tool') as typeof import('./orchestration/get-session.tool'),
-);
-const loadCompleteCheckpointTool = lazyMod(
-	() =>
-		require('./orchestration/complete-checkpoint.tool') as typeof import('./orchestration/complete-checkpoint.tool'),
-);
-const loadPlanTool = lazyMod(
-	() => require('./orchestration/plan.tool') as typeof import('./orchestration/plan.tool'),
 );
 const loadReportVerificationVerdictTool = lazyMod(
 	() =>
@@ -110,21 +116,68 @@ function getOrchestratorDomainToolFactories(
 	context: InstanceAiContext,
 ): Array<[string, DomainToolFactory]> {
 	const tools: Array<[string, DomainToolFactory]> = [
-		[DOMAIN_TOOL_IDS.WORKFLOWS, () => loadWorkflowsTool().createWorkflowsTool(context)],
-		[DOMAIN_TOOL_IDS.EXECUTIONS, () => loadExecutionsTool().createExecutionsTool(context)],
-		[DOMAIN_TOOL_IDS.CREDENTIALS, () => loadCredentialsTool().createCredentialsTool(context)],
-		[DOMAIN_TOOL_IDS.DATA_TABLES, () => loadDataTablesTool().createDataTablesTool(context)],
-		[DOMAIN_TOOL_IDS.WORKSPACE, () => loadWorkspaceTool().createWorkspaceTool(context)],
+		...getSupportedWorkflowActions(context).map((action): [string, DomainToolFactory] => [
+			WORKFLOW_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkflowsTool().createWorkflowTool(context, action),
+		]),
+		...EXECUTION_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			EXECUTION_TOOL_NAME_BY_ACTION[action],
+			() => loadExecutionsTool().createExecutionTool(context, action),
+		]),
+		[
+			DOMAIN_TOOL_IDS.LIST_CREDENTIALS,
+			() => loadCredentialsTool().createListCredentialsTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.SEARCH_CREDENTIAL_TYPES,
+			() => loadCredentialsTool().createSearchCredentialTypesTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.SETUP_CREDENTIALS,
+			() => loadCredentialsTool().createSetupCredentialsTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.TEST_CREDENTIAL,
+			() => loadCredentialsTool().createTestCredentialTool(context),
+		],
+		[
+			DOMAIN_TOOL_IDS.DELETE_CREDENTIAL,
+			() => loadCredentialsTool().createDeleteCredentialTool(context),
+		],
+		...DATA_TABLE_TOOL_ACTIONS.map((action): [string, DomainToolFactory] => [
+			DATA_TABLE_TOOL_NAME_BY_ACTION[action],
+			() => loadDataTablesTool().createDataTableTool(context, action),
+		]),
+		...getSupportedWorkspaceActions(context).map((action): [string, DomainToolFactory] => [
+			WORKSPACE_TOOL_NAME_BY_ACTION[action],
+			() => loadWorkspaceTool().createWorkspaceActionTool(context, action),
+		]),
 		[DOMAIN_TOOL_IDS.RESEARCH, () => loadResearchTool().createResearchTool(context)],
 		[DOMAIN_TOOL_IDS.N8N_DOCS, () => loadN8nDocsTool().createN8nDocsTool(context)],
-		[DOMAIN_TOOL_IDS.NODES, () => loadNodesTool().createNodesTool(context)],
-		[DOMAIN_TOOL_IDS.SEARCH_MODELS, () => loadSearchModelsTool().createSearchModelsTool()],
+		[DOMAIN_TOOL_IDS.SEARCH_NODES, () => loadNodesTool().createSearchNodesTool(context)],
+		[DOMAIN_TOOL_IDS.GET_NODE_TYPES, () => loadNodesTool().createGetNodeTypesTool(context)],
+		[
+			DOMAIN_TOOL_IDS.GET_NODE_PARAMETER_OPTIONS,
+			() => loadNodesTool().createGetNodeParameterOptionsTool(context),
+		],
+		[DOMAIN_TOOL_IDS.EXECUTE_NODE, () => loadNodesTool().createExecuteNodeTool(context)],
+		[
+			DOMAIN_TOOL_IDS.SEARCH_MODELS,
+			() => loadSearchModelsTool().createSearchModelsTool(context.modelFetch ?? fetch),
+		],
 		[DOMAIN_TOOL_IDS.ASK_USER, () => loadAskUserTool().createAskUserTool()],
 		[
 			DOMAIN_TOOL_IDS.BUILD_WORKFLOW,
 			() => loadBuildWorkflowTool().createBuildWorkflowTool(context),
 		],
 	];
+
+	if (context.credentialDescriptionsEnabled === true) {
+		tools.push([
+			DOMAIN_TOOL_IDS.UPDATE_CREDENTIAL_DESCRIPTION,
+			() => loadCredentialsTool().createUpdateCredentialDescriptionTool(context),
+		]);
+	}
 
 	// Onboarding threads only: the tool ends the flow the host seeded, and the frontend restores
 	// the chat chrome when it sees the call.
@@ -196,6 +249,10 @@ function getOrchestratorDomainToolFactories(
 		tools.push([DOMAIN_TOOL_IDS.SKILLS, () => loadSkillsTool().createSkillsTool(context)]);
 	}
 
+	if (context.appService) {
+		tools.push([DOMAIN_TOOL_IDS.APPS, () => loadAppsTool().createAppsTool(context)]);
+	}
+
 	if (context.currentUserAttachments?.some(isParseableAttachment)) {
 		tools.push([
 			DOMAIN_TOOL_IDS.PARSE_FILE,
@@ -221,19 +278,15 @@ export function createOrchestratorDomainTools(context: InstanceAiContext): Insta
 }
 
 /**
- * Creates orchestration-only tools (task planning, task control).
+ * Creates orchestration-only tools (task control, verification).
  * These tools are given to the orchestrator agent but never to sub-agents.
  */
 export function createOrchestrationTools(context: OrchestrationContext): InstanceAiToolRegistry {
 	const tools: Array<[string, BuiltTool]> = [];
-	tools.push([ORCHESTRATION_TOOL_IDS.CREATE_TASKS, loadPlanTool().createPlanTool(context)]);
-	tools.push(
-		[ORCHESTRATION_TOOL_IDS.TASK_CONTROL, loadTaskControlTool().createTaskControlTool(context)],
-		[
-			ORCHESTRATION_TOOL_IDS.COMPLETE_CHECKPOINT,
-			loadCompleteCheckpointTool().createCompleteCheckpointTool(context),
-		],
-	);
+	tools.push([
+		ORCHESTRATION_TOOL_IDS.TASK_CONTROL,
+		loadTaskControlTool().createTaskControlTool(context),
+	]);
 
 	if (context.workflowTaskService) {
 		tools.push([

@@ -37,11 +37,38 @@ vi.mock('@n8n/utils/event-bus', () => ({
 	createEventBus: () => mockEventBus,
 }));
 
+const isPromotionsEnabled = ref(false);
+
+vi.mock('@/features/shared/promotions/usePromotionsEnabled', () => ({
+	usePromotionsEnabled: () => ({ isEnabled: isPromotionsEnabled }),
+}));
+
 describe('useWorkflowDiffRouting', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		mockUiStore.modalsById = {};
 		mockRoute.value = { query: {} };
+		isPromotionsEnabled.value = false;
+	});
+
+	it('does not open the v1 push modal from the query while the instance uses Environments v2', () => {
+		isPromotionsEnabled.value = true;
+		mockRoute.value = { query: { sourceControl: 'push' } };
+
+		useWorkflowDiffRouting();
+
+		expect(mockUiStore.openModalWithData).not.toHaveBeenCalled();
+	});
+
+	it('closes an open v1 modal when the instance switches to Environments v2', async () => {
+		mockRoute.value = { query: { sourceControl: 'push' } };
+		useWorkflowDiffRouting();
+		mockUiStore.modalsById[SOURCE_CONTROL_PUSH_MODAL_KEY] = { open: true };
+
+		isPromotionsEnabled.value = true;
+		await nextTick();
+
+		expect(mockUiStore.closeModal).toHaveBeenCalledWith(SOURCE_CONTROL_PUSH_MODAL_KEY);
 	});
 
 	describe('initialization', () => {

@@ -176,29 +176,35 @@ shell imports.
 
 ## The descriptor contract
 
-`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares twelve
+`FrontendModuleDescription` (`@n8n/frontend-module-sdk/src/types/descriptor.ts`) declares the
 extension surfaces. The shell connects them at three different levels. Read the difference before
 you use a surface.
 
 ### Live — the shell registers these, and a reader shows them
 
-| Field                   | Register function              | Reader                                   |
-| ----------------------- | ------------------------------ | ---------------------------------------- |
-| `routes`                | `registerModuleRoutes`         | vue-router                               |
-| `projectTabs`           | `registerModuleProjectTabs`    | `ProjectHeader`                          |
-| `resources`             | `registerModuleResources`      | `ResourcesListLayout`                    |
-| `modals`                | `registerModuleModals`         | `DynamicModalLoader`                     |
-| `adHocModalKeyPrefixes` | `registerModuleModals`         | `modalRegistry` (keys minted at runtime) |
-| `settingsPages`         | `registerModuleSettingsPages`  | `SettingsSidebar`                        |
-| `pushHandlers`          | `registerModulePushHandlers`   | `useModulePushDispatcher`, in `App.vue`  |
+| Field                   | Register function               | Reader                                   |
+| ----------------------- | ------------------------------- | ---------------------------------------- |
+| `routes`                | `registerModuleRoutes`          | vue-router                               |
+| `projectTabs`           | `registerModuleProjectTabs`     | `ProjectHeader`                          |
+| `resources`             | `registerModuleResources`       | `ResourcesListLayout`                    |
+| `modals`                | `registerModuleModals`          | `DynamicModalLoader`                     |
+| `adHocModalKeyPrefixes` | `registerModuleModals`          | `modalRegistry` (keys minted at runtime) |
+| `settingsPages`         | `registerModuleSettingsPages`   | `SettingsSidebar`                        |
+| `pushHandlers`          | `registerModulePushHandlers`    | `useModulePushDispatcher`, in `App.vue`  |
+| `parameterInputs`       | `registerModuleParameterInputs` | `ParameterInput`, `ParameterInputFull`   |
 
 ### Position of a settings link
 
-Each item in `settingsPages` accepts an optional integer `order`. The sidebar sorts the shell links
-and the module links together, from low to high. The shell links use 10, 20, 30, and so on. Pick a
-number between two shell links to put your link between them. A link without `order` goes last. Two
-links with the same `order` keep their registration order. The `order` field is not part of
-`IMenuItem`.
+The settings sidebar lists its links under headings: Personal, People & access, AI, Integrations,
+Security, Operations and Billing.
+
+Each item in `settingsPages` accepts an optional `section` (`'personal' | 'people' | 'ai' |
+'integrations' | 'security' | 'operations' | 'billing'`) and an optional integer `order`. The
+sidebar groups the shell links and the module links by `section`, then sorts each group from low to
+high `order`. The shell links use 10, 20, 30, and so on inside each section. Pick a number between
+two shell links of your section to put your link between them. A link without `order` goes last in
+its section. Two links with the same `order` keep their registration order. A link without
+`section` is listed before the first heading. Neither field is part of `IMenuItem`.
 
 All the register functions are in `editor-ui/src/app/moduleInitializer/moduleInitializer.ts`.
 `main.ts` registers `routes` before the mount. `app/init/index.ts` registers the other surfaces
@@ -221,11 +227,44 @@ composables. The registry keeps your `commands` array, but the command bar never
 The SDK exports the types. No file in the shell reads them. A value that you set does nothing: no
 error, no warning, no behaviour.
 
+`runDataDisplayModes` is also types-only for now. The shell support lands with **CAP-327**. See
+[Run data display modes](#run-data-display-modes) for the contract.
+
 Do not use `commands` or the four types-only fields yet. **CAT-3685** tracks the remaining work.
 The descriptor that the CLI writes repeats this split in a comment, so you see it as you write.
 
 **Note:** this is the most common cause of lost time for a new module author. The type accepts
 your `commands` array, and no component draws it.
+
+### Run data display modes
+
+A display mode is a view of run data in the NDV input and output panes and in the Logs panel, next
+to Table, JSON and Schema. A module adds one with `runDataDisplayModes`:
+
+```ts
+runDataDisplayModes: [
+	{
+		id: 'chart',
+		label: () => i18n.baseText('chart.displayMode'),
+		icon: 'chart-column-decreasing',
+		component: async () => await import('./ChartView.vue'),
+		canRender: ({ data, pane }) => pane === 'output' && data.length > 0,
+	},
+],
+```
+
+- `id` is also the saved display mode and the telemetry `view` value. Do not change it after a
+  release. The ids in `BUILT_IN_DISPLAY_MODES` are reserved.
+- `canRender` decides if the select offers the mode. It gets all items of the selected run, not
+  filtered by search. It must be synchronous and cheap, because it runs on every data change.
+- `autoSelect: true` makes the output pane select the mode when the node opens or finishes a run,
+  if `canRender` is true.
+- `supports.search: true` shows the search field. Without it, the search field is hidden and
+  `search` is always `''`.
+
+The component gets `RunDataDisplayModeProps`: `data`, `node`, `pane`, `runIndex`, `outputIndex`,
+`search` and `compact`. `data` is never paginated, so a component that can get many items must
+handle that itself. Pinned data needs no code: `data` holds the pinned items when the node has them.
 
 ### Route names are yours, and a check guards them
 

@@ -3,7 +3,7 @@ import { UserRepository } from '@n8n/db';
 import { Redactable } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase, JsonValue } from 'n8n-workflow';
+import type { JsonValue } from 'n8n-workflow';
 
 import { EventMessageGeneric } from '@/eventbus/event-message-classes/event-message-generic';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -355,32 +355,21 @@ export class LogStreamingEventRelay extends EventRelay {
 	private workflowPreExecute({
 		data,
 		executionId,
+		userId,
 		mode,
 		projectId,
 		projectName,
 	}: RelayEventMap['workflow-pre-execute']) {
-		const payload =
-			'executionData' in data
-				? {
-						executionId,
-						userId: data.userId,
-						workflowId: data.workflowData.id,
-						isManual: data.executionMode === 'manual',
-						mode,
-						workflowName: data.workflowData.name,
-						projectId: data.projectId ?? projectId,
-						projectName: data.projectName ?? projectName,
-					}
-				: {
-						executionId,
-						userId: undefined,
-						workflowId: (data as IWorkflowBase).id,
-						isManual: false,
-						mode,
-						workflowName: (data as IWorkflowBase).name,
-						projectId,
-						projectName,
-					};
+		const payload = {
+			executionId,
+			userId,
+			workflowId: data.id,
+			isManual: mode === 'manual',
+			mode,
+			workflowName: data.name,
+			projectId,
+			projectName,
+		};
 
 		void this.eventBus.sendWorkflowEvent({
 			eventName: 'n8n.workflow.started',
@@ -554,10 +543,12 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region User
 
 	@Redactable()
-	private userDeleted({ user }: RelayEventMap['user-deleted']) {
+	private userDeleted({ user, source, targetUserId }: RelayEventMap['user-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.user.deleted',
-			payload: user,
+			// A system deletion has no acting user, so name the system and the
+			// deleted user.
+			payload: user ?? { userId: null, source, targetUserId },
 		});
 	}
 
@@ -1627,26 +1618,38 @@ export class LogStreamingEventRelay extends EventRelay {
 	// #region Trusted sources
 
 	@Redactable()
-	private trustedSourceCreated({ user, ...rest }: RelayEventMap['trusted-source-created']) {
+	private trustedSourceCreated({
+		user,
+		sourceId,
+		issuer,
+	}: RelayEventMap['trusted-source-created']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.created',
-			payload: { ...user, ...rest },
+			payload: { ...user, sourceId, issuer },
 		});
 	}
 
 	@Redactable()
-	private trustedSourceUpdated({ user, ...rest }: RelayEventMap['trusted-source-updated']) {
+	private trustedSourceUpdated({
+		user,
+		sourceId,
+		issuer,
+	}: RelayEventMap['trusted-source-updated']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.updated',
-			payload: { ...user, ...rest },
+			payload: { ...user, sourceId, issuer },
 		});
 	}
 
 	@Redactable()
-	private trustedSourceDeleted({ user, ...rest }: RelayEventMap['trusted-source-deleted']) {
+	private trustedSourceDeleted({
+		user,
+		sourceId,
+		issuer,
+	}: RelayEventMap['trusted-source-deleted']) {
 		void this.eventBus.sendAuditEvent({
 			eventName: 'n8n.audit.trusted-source.deleted',
-			payload: { ...user, ...rest },
+			payload: { ...user, sourceId, issuer },
 		});
 	}
 

@@ -2,6 +2,7 @@ import type {
 	ExecutionViewStore,
 	ExecutionView,
 	ExecutionWithStepsView,
+	ExecutionListFilter,
 	ExecutionListQuery,
 } from './execution-view-store';
 
@@ -46,5 +47,16 @@ export class ExecutionQueryService {
 	 */
 	async getExecutionWithSteps(id: string): Promise<ExecutionWithStepsView> {
 		return await this.viewStore.loadExecutionWithStepsView(id);
+	}
+
+	/**
+	 * The newest execution matching `filter` and every step of it, or
+	 * `undefined` when none matches. One query, so a caller that wants the
+	 * latest run's data does not list first and read second.
+	 */
+	async findLatestExecutionWithSteps(
+		filter: ExecutionListFilter,
+	): Promise<ExecutionWithStepsView | undefined> {
+		return await this.viewStore.loadLatestExecutionWithStepsView(filter);
 	}
 }

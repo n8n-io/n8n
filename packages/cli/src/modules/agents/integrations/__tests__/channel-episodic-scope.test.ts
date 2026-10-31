@@ -1,18 +1,19 @@
 import type { Logger } from '@n8n/backend-common';
 import type { OutboundHttp } from '@n8n/backend-network';
 import type { UrlService } from '@n8n/backend-services';
-import type { UserRepository } from '@n8n/db';
+import type { PersonRepository } from '@n8n/db';
 import type { InstanceSettings } from 'n8n-core';
 import { mock } from 'vitest-mock-extended';
 
 import type { AgentRepository } from '../../repositories/agent.repository';
 import type { ChannelRateLimitGuard } from '../channel-rate-limit.guard';
 import { DiscordIntegration } from '../platforms/discord/discord-integration';
-import { LinearIntegration } from '../platforms/linear/linear-integration';
 import { N8nChatIntegration } from '../platforms/n8n-chat/n8n-chat-integration';
 import { TeamsIntegration } from '../platforms/teams/teams-integration';
 import { TelegramIntegration } from '../platforms/telegram/telegram-integration';
 import { WhatsAppIntegration } from '../platforms/whatsapp/whatsapp-integration';
+import type { WhatsAppOptionPagesStore } from '../platforms/whatsapp/whatsapp-option-pages.store';
+import type { WhatsAppSetupTelemetryService } from '../platforms/whatsapp/whatsapp-setup-telemetry.service';
 import type { WhatsAppWebhookVerificationStore } from '../platforms/whatsapp/whatsapp-webhook-verification.store';
 
 describe('channel episodic memory policy', () => {
@@ -43,14 +44,16 @@ describe('channel episodic memory policy', () => {
 					instanceSettings,
 					mock<ChannelRateLimitGuard>(),
 					mock<WhatsAppWebhookVerificationStore>(),
+					outboundHttp,
+					mock<WhatsAppOptionPagesStore>(),
+					mock<WhatsAppSetupTelemetryService>(),
 				),
 		],
 		[
 			'Discord',
 			() => new DiscordIntegration(logger, instanceSettings, agentRepository, outboundHttp),
 		],
-		['Linear', () => new LinearIntegration(logger, outboundHttp)],
-		['n8n Chat', () => new N8nChatIntegration(mock<UserRepository>())],
+		['n8n Chat', () => new N8nChatIntegration(mock<PersonRepository>())],
 	])('%s returns no episodic scope', (_name, create) => {
 		expect(create().resolveEpisodicScope()).toBeNull();
 	});

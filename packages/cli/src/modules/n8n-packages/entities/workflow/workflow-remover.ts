@@ -5,6 +5,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { removesUnpackagedWorkflows } from '../folder/folder-conflict-policy';
+import { withPlannedParents } from '../planned-placements';
 import type { WorkflowPlanItem } from './workflow-import.types';
 import type {
 	RemovableWorkflow,
@@ -60,9 +61,13 @@ export class WorkflowRemover {
 		);
 		if (placements.length === 0) return nothingToRemove;
 
+		// Folder removal runs after the workflow writes, so occupancy follows the planned moves.
+		// Candidates keep their current placement: a moved workflow is an update, so it is retained.
+		const settled = withPlannedParents(placements, plannedWorkflowParents(request.workflowItems));
+
 		const candidates = candidatesFor(placements, request);
 		if (candidates.length === 0) {
-			return { ...nothingToRemove, occupiedFolderIds: occupiedBy(placements) };
+			return { ...nothingToRemove, occupiedFolderIds: occupiedBy(settled) };
 		}
 
 		const removable = await this.workflowFinderService.findWorkflowIdsWithScopeForUser(
@@ -81,7 +86,7 @@ export class WorkflowRemover {
 				.filter(({ id }) => !removable.has(id))
 				.map(({ id, name }) => ({ workflowId: id, name, projectId: context.projectId })),
 			deletionPolicy: request.deletionPolicy,
-			occupiedFolderIds: occupiedBy(placements.filter(({ id }) => !removedIds.has(id))),
+			occupiedFolderIds: occupiedBy(settled.filter(({ id }) => !removedIds.has(id))),
 		};
 	}
 
@@ -191,6 +196,17 @@ export class WorkflowRemover {
 			throw error;
 		}
 	}
+}
+
+/** Existing workflow id -> the folder a planned update moves it to (`null` is the project root). */
+function plannedWorkflowParents(items: WorkflowPlanItem[]): Map<string, string | null> {
+	const parents = new Map<string, string | null>();
+	for (const item of items) {
+		if (item.action === 'update' && item.moveToFolderId !== undefined) {
+			parents.set(item.existing.id, item.moveToFolderId);
+		}
+	}
+	return parents;
 }
 
 /** Folders holding at least one of the given workflows. */

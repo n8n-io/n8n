@@ -6,27 +6,30 @@
 // for post-run verification.
 // ---------------------------------------------------------------------------
 
-import type {
-	InstanceAiHandoffContext,
-	InstanceAiSendMessageRequest,
-	AgentConfigResponse,
-	InstanceAiBuildMode,
-	InstanceAiConfirmRequest,
-	InstanceAiRichMessagesResponse,
-	InstanceAiEvalAgentExecutionResult,
-	InstanceAiEvalExecutionResult,
-	InstanceAiRunDebugResponse,
-	InstanceAiEvalThreadMemoryResponse,
-	InstanceAiThreadDebugRunsResponse,
-	InstanceAiThreadStatusResponse,
-	InstanceAiEvalSeedAgent,
-	InstanceAiEvalSeedDataTable,
-	InstanceAiEvalSeedFolder,
-	InstanceAiEvalSeedWorkflow,
-	InstanceAiResourceAttachment,
-	AgentJsonConfig,
-	AgentSkill,
-	EvaluationConfigDto,
+import {
+	type InstanceAiHandoffContext,
+	type InstanceAiSendMessageRequest,
+	type AgentConfigResponse,
+	type InstanceAiBuildMode,
+	type InstanceAiConfirmRequest,
+	type InstanceAiRichMessagesResponse,
+	type InstanceAiEvalAgentExecutionResult,
+	type InstanceAiEvalExecutionResult,
+	type InstanceAiRunDebugResponse,
+	type InstanceAiEvalThreadMemoryResponse,
+	type InstanceAiThreadDebugRunsResponse,
+	type InstanceAiThreadStatusResponse,
+	type InstanceAiEvalSeedAgent,
+	type InstanceAiEvalSeedDataTable,
+	type InstanceAiEvalSeedFolder,
+	type InstanceAiEvalSeedWorkflow,
+	type InstanceAiResourceAttachment,
+	type AgentJsonConfig,
+	type AgentSkill,
+	type EvaluationConfigDto,
+	instanceAiEvalFailedExecutionEnvelopeSchema,
+	type InstanceAiEvalFailedExecutionEnvelope,
+	type ProjectIcon,
 } from '@n8n/api-types';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { Agent, setGlobalDispatcher } from 'undici';
@@ -72,6 +75,14 @@ const InvitedUsersEnvelope = z.object({
 });
 
 // -- Conversation seeding response shapes -------------------------------------
+
+const ExportExecutionEnvelope = z.object({
+	data: z.object({ envelope: instanceAiEvalFailedExecutionEnvelopeSchema }),
+});
+
+const RestoreExecutionEnvelope = z.object({
+	data: z.object({ ok: z.literal(true), executionId: z.string().min(1) }),
+});
 
 const RestoreThreadEnvelope = z.object({
 	data: z.object({
@@ -872,6 +883,29 @@ export class N8nClient {
 	}
 
 	/**
+	 * Expose workflows to MCP. MCP tools skip a workflow whose `availableInMCP`
+	 * is off, and a restored seed workflow starts with it off.
+	 * PATCH /rest/mcp/workflows/toggle-access
+	 */
+	async setWorkflowsAvailableInMcp(workflowIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/workflows/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, workflowIds },
+		});
+	}
+
+	/**
+	 * Expose Agents to MCP, for the same reason as workflows.
+	 * PATCH /rest/mcp/agents/toggle-access
+	 */
+	async setAgentsAvailableInMcp(agentIds: string[]): Promise<void> {
+		await this.fetch('/rest/mcp/agents/toggle-access', {
+			method: 'PATCH',
+			body: { availableInMCP: true, agentIds },
+		});
+	}
+
+	/**
 	 * Delete a credential by ID.
 	 * DELETE /rest/credentials/:id
 	 */
@@ -1033,6 +1067,31 @@ export class N8nClient {
 		return restored;
 	}
 
+	/** Export one failed execution of the thread's project as a portable envelope. */
+	async exportExecution(
+		threadId: string,
+		executionId: string,
+	): Promise<{ envelope: InstanceAiEvalFailedExecutionEnvelope }> {
+		const result = await this.fetch('/rest/instance-ai/eval/export-execution', {
+			method: 'POST',
+			body: { threadId, executionId },
+		});
+		return ExportExecutionEnvelope.parse(result).data;
+	}
+
+	/** Restore an exported failed execution onto a seeded workflow; returns the new execution id. */
+	async restoreExecution(
+		threadId: string,
+		workflowId: string,
+		envelope: InstanceAiEvalFailedExecutionEnvelope,
+	): Promise<{ executionId: string }> {
+		const result = await this.fetch('/rest/instance-ai/eval/restore-execution', {
+			method: 'POST',
+			body: { threadId, workflowId, envelope },
+		});
+		return RestoreExecutionEnvelope.parse(result).data;
+	}
+
 	/**
 	 * Reset an existing data table's rows to exactly `rows` (clear-then-insert),
 	 * for the per-scenario row seeding of a case that pre-created its tables
@@ -1079,9 +1138,22 @@ export class N8nClient {
 	}
 
 	/**
-	 * Create a team project. Used to seed the extra projects a project-scope case
-	 * needs: a second project the eval user can see but whose writes are barred,
-	 * so `isCurrentProject` has something to distinguish the bound project from.
+	 * Whether the license allows team projects (`quota:maxTeamProjects` is not 0).
+	 * GET /rest/settings
+	 */
+	async canCreateTeamProjects(): Promise<boolean> {
+		const result = (await this.fetch('/rest/settings')) as {
+			data?: { enterprise?: { projects?: { team?: { limit?: number } } } };
+		};
+		const limit = result.data?.enterprise?.projects?.team?.limit;
+		return limit !== undefined && limit !== 0;
+	}
+
+	/**
+	 * Create a team project. Used for a build's own project, and to seed the extra
+	 * projects a project-scope case needs: a second project the eval user can see
+	 * but whose writes are barred, so `isCurrentProject` has something to
+	 * distinguish the bound project from.
 	 *
 	 * Team projects are licensed AND quota'd (`@Licensed('feat:projectRole:admin')`
 	 * plus `quota:maxTeamProjects`, which defaults to 0), so this fails on an
@@ -1090,11 +1162,11 @@ export class N8nClient {
 	 * against a project list it never saw, and pass for the wrong reason.
 	 * POST /rest/projects
 	 */
-	async createTeamProject(name: string): Promise<{ id: string; name: string }> {
+	async createTeamProject(name: string, icon?: ProjectIcon): Promise<{ id: string; name: string }> {
 		try {
 			const result = (await this.fetch('/rest/projects', {
 				method: 'POST',
-				body: { name },
+				body: { name, ...(icon ? { icon } : {}) },
 			})) as { data?: { id?: string; name?: string } };
 			const id = result.data?.id;
 			if (!id) {
@@ -1104,7 +1176,7 @@ export class N8nClient {
 		} catch (error: unknown) {
 			if (error instanceof N8nApiError && (error.status === 403 || error.status === 400)) {
 				throw new Error(
-					`Could not create the seed project "${name}" (${String(error.status)}): team projects are licensed ` +
+					`Could not create the team project "${name}" (${String(error.status)}): team projects are licensed ` +
 						'and quota-limited, and `quota:maxTeamProjects` defaults to 0.\n' +
 						'  - CI/real instance: needs N8N_LICENSE_ACTIVATION_KEY + N8N_LICENSE_CERT.\n' +
 						'  - Local run with E2E_TESTS=true: /rest/e2e/reset stubs the license to ALL-FALSE, so a real ' +
@@ -1124,13 +1196,27 @@ export class N8nClient {
 	 * are filtered out — they're never seeded and must never be deleted.
 	 * GET /rest/projects
 	 */
-	async listTeamProjects(): Promise<Array<{ id: string; name: string }>> {
+	async listTeamProjects(): Promise<
+		Array<{ id: string; name: string; icon?: ProjectIcon | null }>
+	> {
 		const result = (await this.fetch('/rest/projects')) as {
-			data?: Array<{ id?: string; name?: string; type?: string }>;
+			data?: Array<{ id?: string; name?: string; type?: string; icon?: ProjectIcon | null }>;
 		};
-		return (result.data ?? []).flatMap(({ id, name, type }) =>
-			type === 'team' && id !== undefined && name !== undefined ? [{ id, name }] : [],
+		return (result.data ?? []).flatMap(({ id, name, type, icon }) =>
+			type === 'team' && id !== undefined && name !== undefined ? [{ id, name, icon }] : [],
 		);
+	}
+
+	/**
+	 * Let a user see a team project without writing to it. An MCP build acts as its
+	 * own member, who sees no team project the owner did not share.
+	 * POST /rest/projects/:projectId/users
+	 */
+	async addProjectViewer(projectId: string, userId: string): Promise<void> {
+		await this.fetch(`/rest/projects/${projectId}/users`, {
+			method: 'POST',
+			body: { relations: [{ userId, role: 'project:viewer' }] },
+		});
 	}
 
 	/**
@@ -1289,8 +1375,8 @@ export class N8nClient {
 	 * sub-nodes actually run instead of being short-circuited by pin data;
 	 * pass `pinNodes` to keep specific roots on the pinned baseline (e.g. for
 	 * A/B comparison). Gated server-side behind the
-	 * `085_eval_vendor_sdk_interception` PostHog flag. Data Table reads of
-	 * `seededDataTableIds` run live instead of pinned.
+	 * `085_eval_vendor_sdk_interception` PostHog flag. The server keeps the rows of
+	 * `seededDataTableIds` and fills every other Data Table the workflow uses.
 	 */
 	async executeWithLlmMock(
 		workflowId: string,

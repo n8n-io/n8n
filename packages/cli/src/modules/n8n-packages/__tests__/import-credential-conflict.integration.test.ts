@@ -743,7 +743,7 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 			user: owner,
 			projectId: project.id,
 			credentialConflictPolicy: 'overwrite' as const,
-			workflowConflictPolicy: 'new-version' as const,
+			conflictPolicy: 'new-version' as const,
 			packageBuffer: await workflowPackage(credential, {
 				name: 'Renamed',
 				data: { accessToken: EXPRESSION },
@@ -822,7 +822,7 @@ describe('credentialConflictPolicy=overwrite writes', () => {
 			user: owner,
 			projectId: project.id,
 			credentialConflictPolicy: 'overwrite' as const,
-			workflowConflictPolicy: 'new-version' as const,
+			conflictPolicy: 'new-version' as const,
 			packageBuffer: await workflowPackage(credential, {
 				name: 'Renamed',
 				data: { accessToken: EXPRESSION },

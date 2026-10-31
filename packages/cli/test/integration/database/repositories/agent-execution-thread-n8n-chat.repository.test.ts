@@ -1,10 +1,11 @@
 import { createTeamProject, testDb, testModules } from '@n8n/backend-test-utils';
 import { Container } from '@n8n/di';
+import { DataSource, type Repository } from '@n8n/typeorm';
 import { v4 as uuid } from 'uuid';
 
 import type { Agent } from '@/modules/agents/entities/agent.entity';
 import type { AgentExecutionThread } from '@/modules/agents/entities/agent-execution-thread.entity';
-import { AgentHistoryRepository } from '@/modules/agents/repositories/agent-history.repository';
+import { AgentHistory } from '@/modules/agents/entities/agent-history.entity';
 import { AgentExecutionThreadRepository } from '@/modules/agents/repositories/agent-execution-thread.repository';
 import { AgentExecutionRepository } from '@/modules/agents/repositories/agent-execution.repository';
 import { AgentRepository } from '@/modules/agents/repositories/agent.repository';
@@ -19,7 +20,7 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 	let threadRepo: AgentExecutionThreadRepository;
 	let executionRepo: AgentExecutionRepository;
 	let agentRepo: AgentRepository;
-	let agentHistoryRepo: AgentHistoryRepository;
+	let agentHistoryRepo: Repository<AgentHistory>;
 	let projectId: string;
 	let agentId: string;
 
@@ -29,7 +30,7 @@ describe('AgentExecutionThreadRepository n8n Chat queries', () => {
 		threadRepo = Container.get(AgentExecutionThreadRepository);
 		executionRepo = Container.get(AgentExecutionRepository);
 		agentRepo = Container.get(AgentRepository);
-		agentHistoryRepo = Container.get(AgentHistoryRepository);
+		agentHistoryRepo = Container.get(DataSource).getRepository(AgentHistory);
 	});
 
 	beforeEach(async () => {

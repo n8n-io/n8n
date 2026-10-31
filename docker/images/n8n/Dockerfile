@@ -54,6 +54,8 @@ ARG IMAGE_DESCRIPTION="Workflow Automation Tool"
 ENV NODE_ENV=production
 ENV N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE}
 ENV SHELL=/bin/sh
+# Restrict GraphicsMagick to its commonly used coder set.
+ENV MAGICK_CODER_STABILITY=PRIMARY
 
 WORKDIR /home/node
 
@@ -74,6 +76,14 @@ COPY --from=native-builder /build/node_modules/@confluentinc/kafka-javascript/bu
 # The base image keeps node in /usr/bin and has no /usr/local/bin.
 RUN set -e; \
     N8N=/usr/local/lib/node_modules/n8n; \
+    for coder in msl mvg pcd svg url; do \
+        rm -f \
+            /usr/lib/GraphicsMagick-*/modules-*/coders/$coder.la \
+            /usr/lib/GraphicsMagick-*/modules-*/coders/$coder.so; \
+    done; \
+    ! find /usr/lib/GraphicsMagick-* -path '*/coders/*' \
+        \( -name 'msl.*' -o -name 'mvg.*' -o -name 'pcd.*' -o -name 'svg.*' -o -name 'url.*' \) \
+        -print -quit | grep -q .; \
     kafka=$(echo "$N8N"/node_modules/.pnpm/@confluentinc+kafka-javascript@*/node_modules/@confluentinc/kafka-javascript); \
     install -D /tmp/confluent-kafka-javascript.node "$kafka/build/Release/confluent-kafka-javascript.node"; \
     rm -rf "$N8N"/node_modules/.pnpm/isolated-vm@*/node_modules/isolated-vm/prebuilds; \

@@ -4,6 +4,7 @@ import type {
 	PromotionReviewRemoteError,
 	PromotionReviewState,
 	PromotionReviewSummary,
+	PromotionReviewType,
 } from './dto/promotions/promotion-review.dto';
 import type { WorkflowReviewInboxItem } from './dto/workflow-reviews/list-workflow-review-inbox.dto';
 import type { SelfHealingResultDetail } from './self-healing-results';
@@ -40,6 +41,8 @@ export type InboxPromotionReviewItem = {
 	id: string;
 	state: InboxState;
 	reviewState: PromotionReviewState;
+	/** The Git host of the review, such as GitLab. */
+	reviewType: PromotionReviewType;
 	title: string | null;
 	webUrl: string | null;
 	branchName: string | null;
@@ -47,6 +50,11 @@ export type InboxPromotionReviewItem = {
 	requester: PromotionReviewSummary['createdBy'];
 	approver: PromotionReviewSummary['approvedBy'];
 	remoteError: PromotionReviewRemoteError | null;
+	/** The merge request head on the host. It differs from runCommitSha after a push on the host. */
+	headCommitSha: string | null;
+	/** The commit n8n pushed in the newest run. */
+	runCommitSha: string | null;
+	hasConflicts: boolean;
 	createdAt: string;
 	updatedAt: string;
 };

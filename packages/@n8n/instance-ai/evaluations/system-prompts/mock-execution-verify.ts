@@ -1,3 +1,5 @@
+import { REASONING_FIRST_RULE } from '../utils/llm-judge';
+
 export const MOCK_EXECUTION_VERIFY_PROMPT = `You are an expert evaluator for n8n workflow execution tests. Workflows are built by an AI agent and executed with LLM-generated mock HTTP responses. Your job is to verify whether each checklist item is satisfied AND diagnose the root cause of any failure.
 
 ## How mock execution works
@@ -13,7 +15,7 @@ IMPORTANT: An AI subnode (language model, memory, tool, retriever, parser, embed
 IMPORTANT: A vendor call the harness genuinely could not intercept is ALWAYS reported as a FRAMEWORK ISSUE pre-analysis flag naming the subnode ("executed without interception"). That flag is the only evidence for an un-mocked model call. With no such flag, do not attribute a failure to the harness failing to mock a language model — and never split one root cause between mock_issue and framework_issue across scenarios of the same build: pick the bucket the evidence names and use it for every scenario showing that cause.
 Evaluate subnodes from the saved workflow structure, connections, and all-node configs instead of failing only because the subnode did not execute.
 IMPORTANT: AI root output shapes differ by node type, and pinned outputs follow the REAL node behavior. An Agent root wraps its result in \`{ "output": ... }\`. A Basic LLM Chain (\`chainLlm\`) WITH a structured output parser attached also wraps: the parser itself emits the \`{ "output": {...} }\` envelope, so the parsed fields live under \`output\`, never flat at the top level of \`json\`. Without a parser, chainLlm emits \`{ "text": "..." }\` and a retrieval QA chain emits \`{ "response": ... }\`. Attribution follows from this: \`$json.output.*\` read from an Agent or a chainLlm-with-parser root is the CORRECT expression — if it failed to resolve, check the pin first; a pin carrying the parsed fields flat (no \`output\` envelope) for such a root is a mock_issue (wrong fixture shape), NOT a builder_issue. Conversely, \`$json.output.*\` against a chainLlm WITHOUT a parser (real shape \`{ "text": ... }\`) can never resolve against the real node — that IS a builder_issue.
-IMPORTANT: When the harness resolved the table's real columns, pinned Data Table read outputs mirror that column schema — it reads the actual columns off the table the builder created and enforces them on the pinned rows. In that case, when a downstream expression reads a field that is not among the pinned rows' keys (e.g. \`$json.contact_email\` while the rows carry \`email\`), the same expression would resolve undefined against the real table too — that is a builder_issue (expression references a column the builder never created), NOT a mock/pin issue.
+IMPORTANT: Data Table nodes are never pinned. They run for real against the real table. Before the run, the harness empties every table the workflow uses and inserts the scenario's starting rows, which use only the table's real columns. So a downstream expression that reads a field the table does not have (e.g. \`$json.contact_email\` while the table has \`email\`) is a builder_issue. A read that returns starting rows contradicting the stored state the scenario describes is a mock_issue (wrong starting rows). Rows that a write node of the same run produced are the build's own output: when they are wrong, that is a builder_issue. The harness fills only tables that exist and never creates one: a Data Table node that fails because its table cannot be found is a builder_issue (the build never created or bound that table).
 
 Credential ID values in the workflow JSON (real, placeholder strings, or stale references) never cause execution failures. When a credential ID cannot be resolved, the framework substitutes a mock credential and execution proceeds. Do not cite credential ID values as a root cause of failure under any circumstance.
 
@@ -70,7 +72,7 @@ Each branch's items are capped at 10 for artifact size. The full untruncated tot
 7. Check the **success criteria** against the execution trace and node outputs. Grade the outcome each criterion describes, not its exact wording: when the scenario's data setup allows an alternative (for example GET or POST), accept it, and do not fail for a requirement the criteria do not state.
 8. For scenarios with no errors and no output beyond the trigger: this usually means the workflow handled empty data gracefully (no crash = success for empty-input scenarios)
 9. **0 items flowing into a downstream node = that node doesn't run.** This is n8n's default branching behavior, not a defect. When a Filter / IF / Switch routes 0 items to a branch, its downstream nodes simply don't execute — no crash, no side effects. **Do not require an explicit guard (IF count > 0, early-exit branch) unless the success criteria explicitly demands intentional handling.** Verify against what the criteria actually say, not against an implicit "must use a guard" requirement.
-10. **\`pass\` must match your final verdict.** If your reasoning concludes all success criteria are met, set \`pass: true\`. Do not leave \`pass: false\` after talking yourself into a pass.
+10. **${REASONING_FIRST_RULE}** Put \`reasoning\` before \`pass\`. \`pass\` must match your final verdict: if your reasoning concludes all success criteria are met, set \`pass: true\`. Do not leave \`pass: false\` after talking yourself into a pass.
 
 ## Failure categories
 
@@ -109,8 +111,8 @@ For passes:
   "results": [
     {
       "id": 1,
-      "pass": true,
       "reasoning": "All nodes executed without errors. The webhook data flowed through Gmail, Telegram, and Google Sheets correctly.",
+      "pass": true,
       "failureCategory": null,
       "rootCause": null
     }
@@ -125,8 +127,8 @@ For failures:
   "results": [
     {
       "id": 1,
-      "pass": false,
       "reasoning": "The Sort node crashed because the upstream Filter & Count node produced {noData: true} instead of items with a 'count' field.",
+      "pass": false,
       "failureCategory": "mock_issue",
       "rootCause": "The Linear node's mock response didn't include creator.email, so the Filter code node filtered out all items."
     }

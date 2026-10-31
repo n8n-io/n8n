@@ -54,6 +54,37 @@ describe('executeTeamsContextQuery', () => {
 			);
 		});
 
+		it('returns and follows the Graph continuation URL', async () => {
+			const nextCursor = `${GRAPH}/users?$skiptoken=page2`;
+			const { run, get } = setup({
+				[`${GRAPH}/users?`]: { value: [alice], '@odata.nextLink': nextCursor },
+			});
+			await expect(run('search_users', { query: 'Alice', limit: 1 })).resolves.toMatchObject({
+				nextCursor,
+			});
+			await run('search_users', { query: 'Alice', limit: 1, cursor: nextCursor });
+			expect(get.mock.calls[1][0]).toBe(nextCursor);
+		});
+
+		it.each([
+			'not-a-url',
+			'https://example.com/v1.0/users',
+			`${GRAPH}/groups`,
+			'https://user:password@graph.microsoft.com/v1.0/users',
+		])('rejects an unrelated continuation URL: %s', async (cursor) => {
+			const { run, get } = setup({});
+			await expect(run('search_users', { query: 'Alice', cursor })).rejects.toThrow(
+				'cursor is invalid',
+			);
+			expect(get).not.toHaveBeenCalled();
+		});
+
+		it('requires a name or email before searching users', async () => {
+			const { run, get } = setup({});
+			await expect(run('search_users', {})).rejects.toThrow('Provide query or email');
+			expect(get).not.toHaveBeenCalled();
+		});
+
 		it('treats a query with an @ as an email address', async () => {
 			const { run, get } = setup({ [`${GRAPH}/users?`]: { value: [alice] } });
 
@@ -147,6 +178,27 @@ describe('executeTeamsContextQuery', () => {
 				],
 				resultCount: 1,
 			});
+		});
+
+		it('does not request channels after cancellation while listing teams', async () => {
+			const { chat, get } = setup(routes);
+			const controller = new AbortController();
+			const reason = new Error('Stopped by the caller');
+			get.mockImplementationOnce(async () => {
+				controller.abort(reason);
+				return { data: routes[`${GRAPH}/teams?`] };
+			});
+
+			await expect(
+				executeTeamsContextQuery({
+					chat,
+					query: 'search_channels',
+					input: { query: 'general' },
+					abortSignal: controller.signal,
+				}),
+			).rejects.toBe(reason);
+			expect(get).toHaveBeenCalledTimes(1);
+			expect(get).toHaveBeenCalledWith(expect.any(String), { signal: controller.signal });
 		});
 
 		it('returns every team that has a matching channel', async () => {

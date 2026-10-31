@@ -81,7 +81,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	async getById(id: string): Promise<TrustedSource | undefined> {
 		return await this.cacheService.get(idKey(id), {
 			ttl: CACHE_TTL,
-			refreshFn: async () => await this.load(await this.trustedSourceRepository.findById(id)),
+			refreshFn: async () => await this.load(await this.trustedSourceRepository.findById(id, {})),
 		});
 	}
 
@@ -89,7 +89,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return await this.cacheService.get(issuerKey(issuer), {
 			ttl: CACHE_TTL,
 			refreshFn: async () =>
-				await this.load(await this.trustedSourceRepository.findByIssuer(issuer)),
+				await this.load(await this.trustedSourceRepository.findByIssuer(issuer, {})),
 		});
 	}
 
@@ -107,13 +107,42 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return all.filter((source) => source.config.surfaces[surface] !== undefined);
 	}
 
+	/** Uncached: the status as the database holds it now, for a run that holds the lease. */
+	async getStatus(id: string): Promise<TrustedSourceStatus | undefined> {
+		return (await this.trustedSourceRepository.findById(id, {}))?.status;
+	}
+
+	/**
+	 * `true` for the one caller that stamps the row; the database decides between instances. A
+	 * snapshot that already carries the stamp skips the write, so the steady state costs no query.
+	 * A snapshot cached before the column existed has no stamp either way, hence the truthy check.
+	 */
+	async recordFirstAuthentication(source: TrustedSource): Promise<boolean> {
+		if (source.firstAuthenticatedAt) return false;
+		const first = await this.trustedSourceRepository.markFirstAuthenticated(source.id, {});
+		// Win or loss, the snapshot is stale: the next read must carry the stamp to short-circuit.
+		// The stamp is committed; a failed invalidation must not hide the win from the caller.
+		try {
+			await this.invalidateCache(source);
+		} catch (error) {
+			this.logger.warn('First authentication stamped but the cache could not be invalidated', {
+				id: source.id,
+				error,
+			});
+		}
+		return first;
+	}
+
 	/** Sources due for discovery, most urgent first; not cached, the task reads it once a minute. */
 	async listDue(limit: number): Promise<TrustedSource[]> {
-		const rows = await this.trustedSourceRepository.findDue({
-			errorRetrySeconds: ERROR_RETRY_SECONDS,
-			healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
-			limit,
-		});
+		const rows = await this.trustedSourceRepository.findDue(
+			{
+				errorRetrySeconds: ERROR_RETRY_SECONDS,
+				healthyRefreshSeconds: HEALTHY_REFRESH_SECONDS,
+				limit,
+			},
+			{},
+		);
 		const sources = await Promise.all(rows.map(async (row) => await this.load(row)));
 		return sources.filter((source): source is TrustedSource => source !== undefined);
 	}
@@ -125,6 +154,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			source.id,
 			token,
 			DISCOVERY_LEASE_SECONDS,
+			{},
 		);
 		if (!claimed) return null;
 		await this.invalidateCache(source);
@@ -138,12 +168,28 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		result: DiscoveryResult,
 	): Promise<boolean> {
 		// Metadata is never cleared: an error keeps the last good documents readable.
-		const recorded = await this.trustedSourceRepository.recordDiscovery(source.id, token, {
-			status: result.status,
-			lastError: result.lastError,
-			...(result.metadata && { metadata: JSON.stringify(result.metadata) }),
-		});
-		if (recorded) await this.invalidateCache(source);
+		const recorded = await this.trustedSourceRepository.recordDiscovery(
+			source.id,
+			token,
+			{
+				status: result.status,
+				lastError: result.lastError,
+				...(result.metadata && { metadata: JSON.stringify(result.metadata) }),
+			},
+			{},
+		);
+		// The write is committed at this point. A failed invalidation leaves stale reads for at most
+		// CACHE_TTL; it must not turn the write into a failure for the caller.
+		if (recorded) {
+			try {
+				await this.invalidateCache(source);
+			} catch (error) {
+				this.logger.warn('Discovery result written but the cache could not be invalidated', {
+					id: source.id,
+					error,
+				});
+			}
+		}
 		return recorded;
 	}
 
@@ -151,18 +197,21 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		// Persist the parsed, migrated output, not the raw input: stored rows hold the latest version
 		// with defaults filled in, so a later default change must not alter them.
 		const config = migrateToLatest(trustedSourceConfigSchemaFor('admin').parse(input.config));
-		const row = await this.trustedSourceRepository.insertRow({
-			name: input.name,
-			issuer: input.issuer,
-			type: config.authentication.type,
-			managedBy: 'admin',
-			status: 'unchecked',
-			lastError: null,
-			lastCheckedAt: null,
-			configVersion: config.version,
-			config: await this.cipher.encryptV2(config),
-			metadata: null,
-		});
+		const row = await this.trustedSourceRepository.insertRow(
+			{
+				name: input.name,
+				issuer: input.issuer,
+				type: config.authentication.type,
+				managedBy: 'admin',
+				status: 'unchecked',
+				lastError: null,
+				lastCheckedAt: null,
+				configVersion: config.version,
+				config: await this.cipher.encryptV2(config),
+				metadata: null,
+			},
+			{},
+		);
 		await this.invalidateCache(row);
 		return this.toRuntime(row, config);
 	}
@@ -207,7 +256,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 
 	async delete(id: string): Promise<void> {
 		const row = await this.loadAdminRow(id, 'delete');
-		await this.trustedSourceRepository.deleteById(id); // identities go with it via FK cascade
+		await this.trustedSourceRepository.deleteById(id, {}); // identities go with it via FK cascade
 		await this.invalidateCache(row);
 	}
 
@@ -218,50 +267,58 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	 */
 	async seedSystemSource(input: SeedSystemSourceInput): Promise<SeedSystemSourceOutcome> {
 		const { id, name, issuer } = input;
-		const existing = await this.trustedSourceRepository.findById(id);
+		const existing = await this.trustedSourceRepository.findById(id, {});
 
 		if (!existing) {
 			const config = migrateToLatest(trustedSourceConfigSchemaFor('system').parse(input.config));
-			await this.trustedSourceRepository.insertIfAbsent({
-				id,
-				name,
-				issuer,
-				type: config.authentication.type,
-				managedBy: 'system',
-				status: 'unchecked',
-				lastError: null,
-				lastCheckedAt: null,
-				configVersion: config.version,
-				config: await this.cipher.encryptV2(config),
-				metadata: null,
-			});
+			await this.trustedSourceRepository.insertIfAbsent(
+				{
+					id,
+					name,
+					issuer,
+					type: config.authentication.type,
+					managedBy: 'system',
+					status: 'unchecked',
+					lastError: null,
+					lastCheckedAt: null,
+					configVersion: config.version,
+					config: await this.cipher.encryptV2(config),
+					metadata: null,
+				},
+				{},
+			);
 			// `orIgnore` also drops the insert when an admin row holds the name or the issuer.
-			if (!(await this.trustedSourceRepository.findById(id))) return 'conflict';
+			if (!(await this.trustedSourceRepository.findById(id, {}))) return 'conflict';
 			await this.invalidateCache({ id, issuer });
 			return 'inserted';
 		}
 
 		// Only a direct database write can put an admin row under the reserved id.
 		if (existing.managedBy !== 'system') return 'conflict';
+		await this.ensureAppsSurface(existing);
 		if (existing.issuer === issuer) return 'unchanged';
 
 		// Another seeder can move the issuer first; then the row holding it is this one.
-		const holder = await this.trustedSourceRepository.findByIssuer(issuer);
+		const holder = await this.trustedSourceRepository.findByIssuer(issuer, {});
 		if (holder) return holder.id === id ? 'unchanged' : 'conflict';
 
 		try {
 			// The keys do not change, so the source stays usable. Discovery fetches the metadata for the
 			// new issuer on its next run. A run that started before the move loses its lease.
-			await this.trustedSourceRepository.updateById(id, {
-				issuer,
-				lastCheckedAt: null,
-				discoveryClaimToken: null,
-				discoveryClaimedAt: null,
-			});
+			await this.trustedSourceRepository.updateById(
+				id,
+				{
+					issuer,
+					lastCheckedAt: null,
+					discoveryClaimToken: null,
+					discoveryClaimedAt: null,
+				},
+				{},
+			);
 		} catch (error) {
 			// Another row can take the issuer between the check and the update. A conflict must not
 			// stop the boot, so classify it by reading the issuer again.
-			const winner = await this.trustedSourceRepository.findByIssuer(issuer);
+			const winner = await this.trustedSourceRepository.findByIssuer(issuer, {});
 			if (!winner) throw error;
 			return winner.id === id ? 'unchanged' : 'conflict';
 		}
@@ -269,8 +326,23 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 		return 'issuer-updated';
 	}
 
+	private async ensureAppsSurface(source: TrustedSourceEntity): Promise<void> {
+		const config = trustedSourceConfigSchemaFor('system').parse(
+			jsonParse<unknown>(await this.cipher.decryptV2(source.config)),
+		);
+		if (config.surfaces.apps === undefined) {
+			config.surfaces.apps = {};
+			await this.trustedSourceRepository.updateById(
+				source.id,
+				{ config: await this.cipher.encryptV2(config) },
+				{},
+			);
+			await this.invalidateCache(source);
+		}
+	}
+
 	private async loadAdminRow(id: string, action: 'update' | 'delete') {
-		const row = await this.trustedSourceRepository.findById(id);
+		const row = await this.trustedSourceRepository.findById(id, {});
 		if (!row) throw new NotFoundError(`Trusted source "${id}" not found`);
 		if (row.managedBy === 'system') throw new SystemTrustedSourceModificationError(action);
 		return row;
@@ -306,7 +378,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 	}
 
 	private async loadAll(): Promise<TrustedSource[]> {
-		const rows = await this.trustedSourceRepository.findAll();
+		const rows = await this.trustedSourceRepository.findAll({});
 		const sources = await Promise.all(rows.map(async (row) => await this.load(row)));
 		return sources.filter((source): source is TrustedSource => source !== undefined);
 	}
@@ -321,6 +393,7 @@ export class TrustedSourceDbStore extends TrustedSourceStore {
 			status: row.status,
 			lastError: row.lastError,
 			lastCheckedAt: row.lastCheckedAt?.toISOString() ?? null,
+			firstAuthenticatedAt: row.firstAuthenticatedAt?.toISOString() ?? null,
 			createdAt: row.createdAt.toISOString(),
 			updatedAt: row.updatedAt.toISOString(),
 			config,

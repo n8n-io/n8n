@@ -188,9 +188,10 @@ export class WorkflowFinderService {
 		workflowIds: string[],
 		user: AuthPrincipal & Pick<User, 'id'>,
 		scopes: Scope[],
+		projectId?: string,
 	): Promise<Set<string>> {
 		if (workflowIds.length === 0) return new Set();
-		const where = await this.findAllWhere(user, scopes);
+		const where = await this.findAllWhere(user, scopes, undefined, projectId);
 
 		const found = new Set<string>();
 		for (const chunk of chunkIds(workflowIds)) {

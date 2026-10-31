@@ -2,11 +2,24 @@ import type { PromotionDirection, PromotionResource } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 
 import { isBlocking, type Blocker } from '../promotionOperation';
+import type { ApplyCheckResult } from '../promotions.types';
+import { isContainer } from '../promotionPreview.tree';
 
 /** Apply keeps these resources as they are on the instance. It does not create them. */
 const KEPT_BY_APPLY = new Set<PromotionResource['type']>(['credential', 'variable']);
 
-/** The labels that the tree rows and the change cards share, so both say the same. */
+const MOVED_DETAIL = {
+	workflow: {
+		existing: 'promotions.preview.blockers.movedWorkflow',
+		newProject: 'promotions.preview.blockers.movedWorkflow.newProject',
+	},
+	folder: {
+		existing: 'promotions.preview.blockers.movedFolder',
+		newProject: 'promotions.preview.blockers.movedFolder.newProject',
+	},
+} as const;
+
+/** Labels for change details and blockers in the promotion preview. */
 export function usePromotionPreviewLabels() {
 	const i18n = useI18n();
 
@@ -40,7 +53,7 @@ export function usePromotionPreviewLabels() {
 		}
 	}
 
-	/** Why the resource stops Apply. `undefined` when it does not. */
+	/** Why the resource stops the operation. `undefined` when it does not. */
 	function blockerMessage(
 		resource: PromotionResource,
 		blockers: readonly Blocker[] = [],
@@ -48,8 +61,18 @@ export function usePromotionPreviewLabels() {
 		const blocking = blockers.filter(isBlocking);
 		if (blocking.length === 0) return undefined;
 		if (resource.type === 'workflow') {
-			if (blocking.every(({ kind }) => kind === 'location')) {
-				return i18n.baseText('promotions.preview.blockers.workflowLocation');
+			if (resource.movedToProject) {
+				return i18n.baseText('promotions.preview.marker.movedOut', {
+					interpolate: {
+						project:
+							resource.movedToProject.name ?? i18n.baseText('promotions.preview.personalProject'),
+					},
+				});
+			}
+			if (resource.movedFromProject) {
+				return i18n.baseText('promotions.preview.marker.movedIn', {
+					interpolate: { project: resource.movedFromProject.name },
+				});
 			}
 			return i18n.baseText('promotions.preview.marker.workflow', {
 				adjustToNumber: blocking.length,
@@ -57,7 +80,9 @@ export function usePromotionPreviewLabels() {
 			});
 		}
 		const [first] = blocking;
-		if (first.kind === 'location') return i18n.baseText('promotions.preview.folder.moveConflict');
+		if (first.kind === 'moved' && resource.type === 'folder') {
+			return i18n.baseText('promotions.preview.marker.movedFolder');
+		}
 		const count = new Set(blocking.flatMap(({ workflowKeys }) => workflowKeys)).size;
 		const options = { adjustToNumber: count, interpolate: { count: String(count) } };
 		if (first.kind === 'access') return i18n.baseText('promotions.preview.marker.access', options);
@@ -70,5 +95,27 @@ export function usePromotionPreviewLabels() {
 		return i18n.baseText('promotions.preview.marker.conflict', options);
 	}
 
-	return { changeLabel, blockerMessage };
+	/** The checkbox of a project or folder selects the workflows inside it. */
+	function selectLabel(resource: PromotionResource): string {
+		const interpolate = { name: resource.name };
+		return isContainer(resource)
+			? i18n.baseText('promotions.preview.selectContainer', { interpolate })
+			: i18n.baseText('promotions.preview.select', { interpolate });
+	}
+
+	/** Names both projects of a move between projects, and how to fix it. */
+	function moveDetail(
+		type: keyof typeof MOVED_DETAIL,
+		move: ApplyCheckResult['movedWorkflows'][number],
+	): string {
+		return i18n.baseText(MOVED_DETAIL[type][move.projectExists ? 'existing' : 'newProject'], {
+			interpolate: {
+				project: move.project.name,
+				instanceProject:
+					move.instanceProject.name ?? i18n.baseText('promotions.preview.personalProject'),
+			},
+		});
+	}
+
+	return { changeLabel, blockerMessage, selectLabel, moveDetail };
 }

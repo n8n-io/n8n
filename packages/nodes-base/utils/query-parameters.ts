@@ -17,6 +17,10 @@ export function isScalarValue(value: unknown): value is QueryParameterScalar {
 	);
 }
 
+export function isScalarMatchValue(value: unknown): value is Exclude<QueryParameterScalar, null> {
+	return value !== null && isScalarValue(value);
+}
+
 function parseQueryParameters(
 	rawParameters: unknown,
 	node: INode,
@@ -69,6 +73,7 @@ function parseQueryParameters(
  * it can neither turn into an operator nor shadow a reserved object property such as `constructor`,
  * and it must not collide with another field name in the same object, so it cannot replace a clause
  * the author wrote.
+ *
  */
 export function parseAndResolveQueryParameters(
 	query: string,
@@ -76,11 +81,39 @@ export function parseAndResolveQueryParameters(
 	node: INode,
 	itemIndex: number,
 	label = 'Query',
+	{
+		rejectNull = false,
+		escapeDollarStrings = false,
+		escapeDollarStringsInFields = [],
+		preserveDollarStringsInFields = [],
+	}: {
+		rejectNull?: boolean;
+		escapeDollarStrings?: boolean;
+		escapeDollarStringsInFields?: string[];
+		preserveDollarStringsInFields?: string[];
+	} = {},
 ): unknown {
 	const parsedQuery = jsonParse<unknown>(query, {
 		errorMessage: `Invalid JSON in '${label}'`,
 	});
 	const parameters = parseQueryParameters(rawParameters, node, itemIndex, label);
+
+	if (rejectNull) {
+		const nullParameter = parameters.findIndex(
+			(parameter) => parameter === null || (Array.isArray(parameter) && parameter.includes(null)),
+		);
+
+		if (nullParameter !== -1) {
+			throw new NodeOperationError(
+				node,
+				`${label} parameter ${nullParameter + 1} must not be null`,
+				{
+					itemIndex,
+					description: 'A null value also matches items where the field is missing',
+				},
+			);
+		}
+	}
 
 	if (parameters.length === 0) return parsedQuery;
 
@@ -123,13 +156,28 @@ export function parseAndResolveQueryParameters(
 		return value;
 	};
 
-	const resolveValue = (value: unknown): unknown => {
+	const escapeString = (value: QueryParameterScalar): unknown =>
+		typeof value === 'string' && value.startsWith('$') ? { $literal: value } : value;
+
+	const bindValue = (value: QueryParameter, shouldEscapeDollarStrings: boolean): unknown => {
+		if (!shouldEscapeDollarStrings) return value;
+		return Array.isArray(value) ? value.map(escapeString) : escapeString(value);
+	};
+
+	const resolveValue = (
+		value: unknown,
+		shouldEscapeDollarStrings = escapeDollarStrings,
+	): unknown => {
 		if (typeof value === 'string') {
 			const match = PLACEHOLDER.exec(value);
-			return match ? takeParameter(value, Number(match[1]) - 1) : value;
+			return match
+				? bindValue(takeParameter(value, Number(match[1]) - 1), shouldEscapeDollarStrings)
+				: value;
 		}
 
-		if (Array.isArray(value)) return value.map(resolveValue);
+		if (Array.isArray(value)) {
+			return value.map((entry) => resolveValue(entry, shouldEscapeDollarStrings));
+		}
 
 		if (value !== null && typeof value === 'object') {
 			const seenKeys = new Set<string>();
@@ -153,7 +201,15 @@ export function parseAndResolveQueryParameters(
 					}
 
 					seenKeys.add(resolvedKey);
-					return [resolvedKey, resolveValue(entry)];
+					return [
+						resolvedKey,
+						resolveValue(
+							entry,
+							preserveDollarStringsInFields.includes(resolvedKey)
+								? false
+								: shouldEscapeDollarStrings || escapeDollarStringsInFields.includes(resolvedKey),
+						),
+					];
 				}),
 			);
 		}
