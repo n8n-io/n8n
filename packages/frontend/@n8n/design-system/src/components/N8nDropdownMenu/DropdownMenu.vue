@@ -131,15 +131,71 @@ const focusExternalTarget = (allowClosed = false) => {
 	props.externalFocusTarget.focus({ preventScroll: true });
 };
 
-const focusTrigger = () => {
+const resolveTriggerElement = (): HTMLElement | null => {
 	const root: unknown = triggerRef.value?.$el;
 	const trigger = root instanceof CharacterData ? root.nextElementSibling : root;
-	if (!(trigger instanceof HTMLElement)) return;
+	return trigger instanceof HTMLElement ? trigger : null;
+};
+
+const focusTrigger = () => {
+	const trigger = resolveTriggerElement();
+	if (!trigger) return;
 	const focusTarget =
 		trigger.querySelector<HTMLElement>('button, [href], input, select, textarea, [tabindex]') ??
 		(trigger.matches('button, [href], input, select, textarea, [tabindex]') ? trigger : undefined);
 	focusTarget?.focus();
 };
+
+// A trailing menu sits outside the listbox option. Tab must close it and
+// focus that option, or the arrow keys stop moving through the list.
+const findListboxOption = (): HTMLElement | null => {
+	const trigger = resolveTriggerElement();
+	const option = trigger
+		?.closest('[data-test-id="listbox-item"]')
+		?.querySelector('[role="option"]');
+	return option instanceof HTMLElement ? option : null;
+};
+
+const isEventInOpenMenu = (target: EventTarget | null): boolean => {
+	if (!(target instanceof Node)) return false;
+	const trigger = resolveTriggerElement();
+	if (trigger?.contains(target)) return true;
+	const content = contentRef.value?.$el;
+	if (content instanceof Node && content.contains(target)) return true;
+	if (!(target instanceof Element)) return false;
+	const menu = target.closest('[role="menu"]');
+	return menu?.id === contentId.value;
+};
+
+watch([internalOpen, isExternalSearchMode], ([open, externalMode], _previous, onCleanup) => {
+	if (!open || externalMode) return;
+
+	const onKeyDown = (event: KeyboardEvent) => {
+		if (event.key !== 'Tab') return;
+		if (!isEventInOpenMenu(event.target)) return;
+		const option = findListboxOption();
+		if (!option) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+		suppressNextCloseAutoFocus = true;
+		close();
+		// The menu focuses its trigger after close. Focus the option after
+		// that, or the next arrow key never reaches the list.
+		window.setTimeout(() => {
+			window.setTimeout(() => {
+				if (!option.isConnected) return;
+				const list = option.closest('[data-test-id="listbox"]');
+				list?.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+				option.dispatchEvent(new PointerEvent('pointermove', { bubbles: true }));
+				option.focus();
+			}, 0);
+		}, 0);
+	};
+
+	document.addEventListener('keydown', onKeyDown, true);
+	onCleanup(() => document.removeEventListener('keydown', onKeyDown, true));
+});
 
 const syncExternalActiveDescendant = () => {
 	const target = props.externalFocusTarget;
