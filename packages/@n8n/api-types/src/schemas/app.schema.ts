@@ -13,6 +13,10 @@ export const appNamespaceSchema = z
 		'Use lowercase letters, numbers, and single hyphens between them.',
 	);
 
+export const appVersionNameSchema = z.string().trim().min(1).max(128);
+
+export const appVersionDescriptionSchema = z.string().trim().max(2000);
+
 export const appVisibilitySchema = z.enum(['public', 'project', 'instance']);
 export type AppVisibility = z.infer<typeof appVisibilitySchema>;
 
@@ -37,6 +41,7 @@ export const appVersionSchema = z.object({
 	id: z.string().uuid(),
 	appId: appSchema.shape.id,
 	label: z.string().max(255).nullable(),
+	description: z.string().nullable(),
 	sourceArtifactId: z.number().int().positive(),
 	bundleArtifactId: z.number().int().positive().nullable(),
 	buildStatus: appBuildStatusSchema,

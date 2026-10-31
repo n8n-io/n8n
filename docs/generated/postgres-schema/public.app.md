@@ -69,6 +69,7 @@ erDiagram
   timestamp_3__with_time_zone buildStatusUpdatedAt
   integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
+  text description
   uuid id
   varchar_255_ label
   integer sourceArtifactId FK

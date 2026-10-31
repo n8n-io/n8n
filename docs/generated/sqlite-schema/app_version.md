@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "app_version" ("id" varchar PRIMARY KEY NOT NULL, "appId" varchar NOT NULL, "label" varchar(255), "sourceArtifactId" integer NOT NULL, "bundleArtifactId" integer, "buildAttempts" integer NOT NULL DEFAULT (0), "buildStatus" varchar(16) NOT NULL DEFAULT ('queued'), "buildStatusUpdatedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_app_version_buildStatus" CHECK ("buildStatus" IN ('queued', 'running', 'succeeded', 'failed')), CONSTRAINT "FK_e9aeab5b1db8dc77708231ae44e" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9f1db6f02f5a0d1ae2f2b41a327" FOREIGN KEY ("sourceArtifactId") REFERENCES "app_artifact" ("id") ON DELETE RESTRICT, CONSTRAINT "FK_2ab536cbf97d71bad59517afee5" FOREIGN KEY ("bundleArtifactId") REFERENCES "app_artifact" ("id") ON DELETE SET NULL)
+CREATE TABLE "app_version" ("id" varchar PRIMARY KEY NOT NULL, "appId" varchar NOT NULL, "label" varchar(255), "sourceArtifactId" integer NOT NULL, "bundleArtifactId" integer, "buildAttempts" integer NOT NULL DEFAULT (0), "buildStatus" varchar(16) NOT NULL DEFAULT ('queued'), "buildStatusUpdatedAt" datetime(3), "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "description" TEXT, CONSTRAINT "CHK_app_version_buildStatus" CHECK ("buildStatus" IN ('queued', 'running', 'succeeded', 'failed')), CONSTRAINT "FK_e9aeab5b1db8dc77708231ae44e" FOREIGN KEY ("appId") REFERENCES "app" ("id") ON DELETE CASCADE, CONSTRAINT "FK_9f1db6f02f5a0d1ae2f2b41a327" FOREIGN KEY ("sourceArtifactId") REFERENCES "app_artifact" ("id") ON DELETE RESTRICT, CONSTRAINT "FK_2ab536cbf97d71bad59517afee5" FOREIGN KEY ("bundleArtifactId") REFERENCES "app_artifact" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -21,6 +21,7 @@ CREATE TABLE "app_version" ("id" varchar PRIMARY KEY NOT NULL, "appId" varchar N
 | buildStatusUpdatedAt | datetime(3) |  | true |  |  |  |
 | bundleArtifactId | INTEGER |  | true |  | [app_artifact](app_artifact.md) |  |
 | createdAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
+| description | TEXT |  | true |  |  |  |
 | id | varchar |  | false | [app](app.md) |  |  |
 | label | varchar(255) |  | true |  |  |  |
 | sourceArtifactId | INTEGER |  | false |  | [app_artifact](app_artifact.md) |  |
@@ -64,6 +65,7 @@ erDiagram
   datetime_3_ buildStatusUpdatedAt
   INTEGER bundleArtifactId FK
   datetime_3_ createdAt
+  TEXT description
   varchar id PK
   varchar_255_ label
   INTEGER sourceArtifactId FK

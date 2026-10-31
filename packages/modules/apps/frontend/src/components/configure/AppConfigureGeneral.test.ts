@@ -6,8 +6,7 @@ import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
 
 import { updateApp } from '../../apps.api';
-import type { AppVersions } from '../../composables/useAppVersions';
-import AppConfigureTabBasics from './AppConfigureTabBasics.vue';
+import AppConfigureGeneral from './AppConfigureGeneral.vue';
 
 vi.mock('../../apps.api');
 
@@ -32,8 +31,8 @@ const app = (name = 'Expense tracker', overrides: Partial<AppResponse> = {}): Ap
 	updatedAt: '2026-10-02T10:00:00.000Z',
 });
 
-const renderComponent = createComponentRenderer(AppConfigureTabBasics, {
-	props: { app: app(), versions: {} as AppVersions },
+const renderComponent = createComponentRenderer(AppConfigureGeneral, {
+	props: { app: app() },
 });
 
 function providePermissions(scopes: Scope[], readOnly = false) {
@@ -43,7 +42,7 @@ function providePermissions(scopes: Scope[], readOnly = false) {
 	});
 }
 
-describe('AppConfigureTabBasics', () => {
+describe('AppConfigureGeneral', () => {
 	afterEach(() => {
 		capabilityRegistry.clear();
 		vi.clearAllMocks();

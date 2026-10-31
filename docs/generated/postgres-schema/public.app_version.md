@@ -10,6 +10,7 @@
 | buildStatusUpdatedAt | timestamp(3) with time zone |  | true |  |  |  |
 | bundleArtifactId | integer |  | true |  | [public.app_artifact](public.app_artifact.md) |  |
 | createdAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
+| description | text |  | true |  |  |  |
 | id | uuid |  | false | [public.app](public.app.md) |  |  |
 | label | varchar(255) |  | true |  |  |  |
 | sourceArtifactId | integer |  | false |  | [public.app_artifact](public.app_artifact.md) |  |
@@ -59,6 +60,7 @@ erDiagram
   timestamp_3__with_time_zone buildStatusUpdatedAt
   integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
+  text description
   uuid id
   varchar_255_ label
   integer sourceArtifactId FK

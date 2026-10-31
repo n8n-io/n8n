@@ -54,7 +54,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.annotation_tag_entity](public.annotation_tag_entity.md) | 4 |  | BASE TABLE |
 | [public.app](public.app.md) | 9 |  | BASE TABLE |
 | [public.app_artifact](public.app_artifact.md) | 8 |  | BASE TABLE |
-| [public.app_version](public.app_version.md) | 10 |  | BASE TABLE |
+| [public.app_version](public.app_version.md) | 11 |  | BASE TABLE |
 | [public.auth_identity](public.auth_identity.md) | 5 |  | BASE TABLE |
 | [public.auth_provider_sync_history](public.auth_provider_sync_history.md) | 11 |  | BASE TABLE |
 | [public.binary_data](public.binary_data.md) | 9 |  | BASE TABLE |
@@ -1003,6 +1003,7 @@ erDiagram
   timestamp_3__with_time_zone buildStatusUpdatedAt
   integer bundleArtifactId FK
   timestamp_3__with_time_zone createdAt
+  text description
   uuid id
   varchar_255_ label
   integer sourceArtifactId FK

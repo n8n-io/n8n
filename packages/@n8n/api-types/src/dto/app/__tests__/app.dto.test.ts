@@ -78,11 +78,39 @@ describe('app DTOs', () => {
 		expect(appVersionSchema.shape.appId.safeParse(app.projectId).success).toBe(false);
 	});
 
+	const versionId = '11111111-1111-4111-8111-111111111111';
+
 	it('requires an explicit version UUID for publication', () => {
-		expect(PublishAppDto.safeParse({}).success).toBe(false);
-		expect(PublishAppDto.safeParse({ versionId: 'latest' }).success).toBe(false);
+		expect(PublishAppDto.safeParse({ label: 'v1' }).success).toBe(false);
+		expect(PublishAppDto.safeParse({ versionId: 'latest', label: 'v1' }).success).toBe(false);
+		expect(PublishAppDto.safeParse({ versionId, label: 'v1' }).success).toBe(true);
+	});
+
+	it('requires a version name of at most 128 characters for publication', () => {
+		expect(PublishAppDto.parse({ versionId, label: '  Launch  ' }).label).toBe('Launch');
+		expect(PublishAppDto.safeParse({ versionId }).success).toBe(false);
+		expect(PublishAppDto.safeParse({ versionId, label: ' ' }).success).toBe(false);
+		expect(PublishAppDto.safeParse({ versionId, label: 'a'.repeat(129) }).success).toBe(false);
+	});
+
+	it('accepts an optional description and visibility for publication', () => {
+		const dto = PublishAppDto.parse({
+			versionId,
+			label: 'v1',
+			description: ' Adds charts ',
+			visibility: 'public',
+		});
+		expect(dto).toEqual({
+			versionId,
+			label: 'v1',
+			description: 'Adds charts',
+			visibility: 'public',
+		});
+		expect(PublishAppDto.safeParse({ versionId, label: 'v1', visibility: 'none' }).success).toBe(
+			false,
+		);
 		expect(
-			PublishAppDto.safeParse({ versionId: '11111111-1111-4111-8111-111111111111' }).success,
-		).toBe(true);
+			PublishAppDto.safeParse({ versionId, label: 'v1', description: 'a'.repeat(2001) }).success,
+		).toBe(false);
 	});
 });
