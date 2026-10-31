@@ -370,6 +370,7 @@ export class AgentChatController {
 		@Param('agentId') agentId: string,
 		@Param('threadId') threadId: string,
 		@Param('executionId') executionId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		await this.requireProductionChat(agentId, req.params.projectId);
 		await this.requireProductionThread(threadId, req.params.projectId, agentId, req.user.id);
@@ -381,6 +382,7 @@ export class AgentChatController {
 				executionId,
 				userId: req.user.id,
 				surface: 'n8n-chat',
+				...(payload.scope ? { scope: payload.scope } : {}),
 			}),
 		};
 	}
@@ -392,6 +394,7 @@ export class AgentChatController {
 		_res: Response,
 		@Param('agentId') agentId: string,
 		@Param('runId') runId: string,
+		@Query payload: AgentChatCancelDto = {},
 	) {
 		await this.requireProductionChat(agentId, req.params.projectId);
 		return {
@@ -399,6 +402,7 @@ export class AgentChatController {
 				agentId,
 				runId,
 				resourceId: productionChatMemoryResourceId(req.user.id),
+				...(payload.scope === 'foreground' ? { cancelBackgroundJobs: false } : {}),
 			}),
 		};
 	}
@@ -867,6 +871,68 @@ export class AgentChatController {
 			async (onQueued) =>
 				await this.taskCancellation.request(req.params.threadId, payload.planId, onQueued),
 		);
+	}
+
+	/** n8n Chat counterpart of `requireTaskThread`. */
+	private async requireProductionTaskThread(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	) {
+		const { projectId, agentId, threadId } = req.params;
+
+		await this.requireProductionChat(agentId, projectId);
+		await this.requireProductionThread(threadId, projectId, agentId, req.user.id);
+
+		if (!this.agentsConfig.backgroundTasksEnabled && !this.agentsConfig.planToolsEnabled)
+			throw new BadRequestError('Background tasks are not enabled');
+	}
+
+	@Post('/:agentId/n8n-chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async cancelProductionTasks(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		_res: Response,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<AgentTaskCancellationState> {
+		await this.requireProductionTaskThread(req);
+
+		return await this.taskCancellation.request(
+			req.params.threadId,
+			payload.planId,
+			undefined,
+			'n8n-chat',
+		);
+	}
+
+	@Post('/:agentId/n8n-chat/:threadId/task-cancellation/stream')
+	@ProjectScope('agent:execute')
+	async streamProductionTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+		res: FlushableResponse,
+		@Body payload: AgentTaskCancellationDto,
+	): Promise<void> {
+		await this.requireProductionTaskThread(req);
+
+		await this.chatRelay.relayQueuedStop(
+			res,
+			req.params.threadId,
+			async (onQueued) =>
+				await this.taskCancellation.request(
+					req.params.threadId,
+					payload.planId,
+					onQueued,
+					'n8n-chat',
+				),
+		);
+	}
+
+	@Get('/:agentId/n8n-chat/:threadId/task-cancellation')
+	@ProjectScope('agent:execute')
+	async getProductionTaskCancellation(
+		req: AuthenticatedRequest<{ projectId: string; agentId: string; threadId: string }>,
+	): Promise<AgentTaskCancellationState | null> {
+		await this.requireProductionTaskThread(req);
+
+		return await this.taskCancellation.state(req.params.threadId);
 	}
 
 	@Get('/:agentId/n8n-chat/:threadId/plan')

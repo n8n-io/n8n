@@ -18,8 +18,8 @@ import { AgentExecutionThreadRepository } from './repositories/agent-execution-t
 import { AgentExecutionRepository } from './repositories/agent-execution.repository';
 import { AgentMessageQueueRepository } from './repositories/agent-message-queue.repository';
 import { AgentPlanRepository } from './repositories/agent-plan.repository';
-import type { AgentTaskStop } from './types/agent-task-stop';
-import { draftChatMemoryResourceId } from './utils/agent-memory-scope';
+import type { AgentTaskStop, AgentTaskStopSurface } from './types/agent-task-stop';
+import { chatSurfaceMemoryResourceId } from './utils/agent-thread-access';
 
 type ThreadTaskStop = AgentTaskStop & { threadId: string };
 
@@ -44,6 +44,7 @@ export class AgentTaskCancellationService {
 		threadId: string,
 		planId: string | null,
 		onQueued?: (queueId: string) => void,
+		surface: AgentTaskStopSurface = 'preview',
 	): Promise<AgentTaskCancellationState> {
 		return await this.locks.withLease(
 			LockNamespace.KNOWN_LOCKS,
@@ -55,6 +56,7 @@ export class AgentTaskCancellationService {
 					threadId,
 					planId,
 					signal,
+					surface,
 					onQueued,
 				);
 
@@ -63,8 +65,8 @@ export class AgentTaskCancellationService {
 				signal.throwIfAborted();
 				this.updates.notifyQueueUpdated(threadId);
 
-				const foregroundFailures = await this.requestForegroundStop(thread, stop);
-				const backgroundFailures = await this.requestBackgroundStops(thread, stop, signal);
+				const foregroundFailures = await this.requestForegroundStop(thread, stop, surface);
+				const backgroundFailures = await this.requestBackgroundStops(thread, stop, surface, signal);
 
 				signal.throwIfAborted();
 
@@ -126,6 +128,7 @@ export class AgentTaskCancellationService {
 		threadId: string,
 		planId: string | null,
 		signal: AbortSignal,
+		surface: AgentTaskStopSurface,
 		onQueued?: (queueId: string) => void,
 	) {
 		return await this.txRunner.run({}, async (ctx) => {
@@ -172,6 +175,7 @@ export class AgentTaskCancellationService {
 							: '',
 					].join('\n'),
 					ctx,
+					surface,
 				);
 
 				onQueued?.(report.id);
@@ -184,6 +188,7 @@ export class AgentTaskCancellationService {
 	private async requestForegroundStop(
 		thread: AgentExecutionThread,
 		stop: ThreadTaskStop,
+		surface: AgentTaskStopSurface,
 	): Promise<AgentTaskStopFailure[]> {
 		const { threadId } = stop;
 		const failures: AgentTaskStopFailure[] = [];
@@ -203,7 +208,7 @@ export class AgentTaskCancellationService {
 					executionId: execution.id,
 					userId: thread.ownerId,
 					scope: 'foreground',
-					surface: 'preview',
+					surface,
 				});
 
 				if (!cancelled) failures.push({ jobId: execution.id, title: 'Current response' });
@@ -218,6 +223,7 @@ export class AgentTaskCancellationService {
 	private async requestBackgroundStops(
 		thread: AgentExecutionThread,
 		stop: ThreadTaskStop,
+		surface: AgentTaskStopSurface,
 		signal: AbortSignal,
 	): Promise<AgentTaskStopFailure[]> {
 		const { threadId } = stop;
@@ -236,7 +242,7 @@ export class AgentTaskCancellationService {
 		if (thread.ownerId)
 			scopes.set(threadId, {
 				agentId: thread.agentId,
-				resourceId: draftChatMemoryResourceId(thread.ownerId),
+				resourceId: chatSurfaceMemoryResourceId(surface, thread.ownerId),
 			});
 
 		for (const [parentThreadId, scope] of scopes) {
