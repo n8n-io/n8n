@@ -18,7 +18,12 @@ import { DataSource, EntityManager, In, type EntityMetadata } from '@n8n/typeorm
 import { readdir, readFile } from 'fs/promises';
 import { Cipher } from 'n8n-core';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
-import { type INode, type INodeCredentialsDetails, type IWorkflowBase } from 'n8n-workflow';
+import {
+	pickVersionedSettings,
+	type INode,
+	type INodeCredentialsDetails,
+	type IWorkflowBase,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
@@ -297,6 +302,7 @@ export class ImportService {
 					connections: workflow.connections,
 					nodeGroups: workflow.nodeGroups,
 					authors: 'import',
+					settings: pickVersionedSettings(workflow.settings),
 					name: versionMetadata?.name ?? null,
 					description: versionMetadata?.description ?? null,
 				});
