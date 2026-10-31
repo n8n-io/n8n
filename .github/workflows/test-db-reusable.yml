@@ -48,6 +48,9 @@ jobs:
       COVERAGE_SCOPE: ${{ inputs.changed-files != '' && 'changed-files' || 'all' }}
       CHANGED_FILES: ${{ inputs.changed-files }}
       LOCKFILE_IMPACTED_PACKAGES: ${{ inputs.lockfile-impacted-packages }}
+      # A change to how this workflow runs the suites is not part of turbo's hash,
+      # so it must not replay a cached result.
+      TURBO_FORCE: ${{ contains(inputs.changed-files, '.github/workflows/test-db-reusable.yml') || contains(inputs.changed-files, '.github/scripts/db-test-matrix.mjs') }}
     steps:
       - uses: useblacksmith/checkout@bcec731f1eb1367240608d1c889a75b96db6ec53 # v1.5.0
         with:
