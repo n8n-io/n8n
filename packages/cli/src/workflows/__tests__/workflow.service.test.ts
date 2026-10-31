@@ -150,6 +150,7 @@ describe('WorkflowService', () => {
 				restrictedNodeTypesProviderMock, // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -536,6 +537,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 
 			vi.clearAllMocks();
@@ -1713,6 +1715,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 
 			// Bypass validation internals
@@ -2477,6 +2480,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -2622,6 +2626,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -2936,6 +2941,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3114,6 +3120,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3305,6 +3312,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3412,6 +3420,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 		});
 
@@ -3522,6 +3531,7 @@ describe('WorkflowService', () => {
 				mock(), // restrictedNodeTypesProvider
 				mock(),
 				mock(), // workflowVersionedSettings
+				mock(), // engineCheckService
 			);
 
 			vi.mocked(WorkflowHelpers.removeDefaultValues).mockImplementation((settings) => settings);

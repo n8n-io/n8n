@@ -68,6 +68,7 @@ import {
 	type ErrorWorkflowProblem,
 } from './error-workflow-validation.service';
 import { DeprecatedNodesValidationService } from './deprecated-nodes-validation.service';
+import { EngineCheckService } from './engine-check/engine-check.service';
 import { WorkflowPublicationNotifier } from './publication/workflow-publication-notifier';
 import { WorkflowPublicationStatusService } from './publication/workflow-publication-status.service';
 import { NodeGroupRulesFlagGate } from './node-group-rules-flag-gate';
@@ -84,6 +85,7 @@ import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { WorkflowActivationBadRequestError } from '@/errors/response-errors/workflow-activation-bad-request.error';
 import { WorkflowDeactivationBadRequestError } from '@/errors/response-errors/workflow-deactivation-bad-request.error';
+import { WorkflowEngineCheckFailedError } from '@/errors/response-errors/workflow-engine-check-failed.error';
 import { WorkflowPublishForbiddenError } from '@/errors/response-errors/workflow-publish-forbidden.error';
 import { WorkflowValidationError } from '@/errors/response-errors/workflow-validation.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
@@ -210,6 +212,7 @@ export class WorkflowService {
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
 		private readonly workflowVersionedSettings: WorkflowVersionedSettings,
+		private readonly engineCheckService: EngineCheckService,
 	) {}
 
 	/**
@@ -1294,6 +1297,9 @@ export class WorkflowService {
 		if (this.globalConfig.workflows.useWorkflowPublicationService) {
 			this._validateTriggerNodeIds(workflowId, versionToActivate);
 		}
+		if (versionIdToActivate !== previousActiveVersionId) {
+			await this._checkEngine(versionToActivate);
+		}
 
 		// The candidate below shares this array with the version row, and the hook may
 		// mutate it in place, so snapshot what will actually be registered.
@@ -2085,6 +2091,24 @@ export class WorkflowService {
 				error: validation.error,
 			});
 			throw new WorkflowValidationError(validation.error ?? 'Workflow validation failed');
+		}
+	}
+
+	/**
+	 * The version decides the engine, not the draft settings. A version that is
+	 * already live passed this check when it was published.
+	 */
+	private async _checkEngine(version: WorkflowHistory) {
+		if (!this.workflowVersionedSettings.isEnabled()) return;
+
+		const engineType = version.settings?.engineType ?? 'v1';
+		const result = await this.engineCheckService.check(version, engineType);
+		if (!result.ok) {
+			throw new WorkflowEngineCheckFailedError({
+				engineType,
+				versionId: version.versionId,
+				reasons: result.reasons,
+			});
 		}
 	}
 
