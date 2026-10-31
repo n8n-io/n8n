@@ -22,7 +22,7 @@ export function dbNowLiteral(isPostgres: boolean): string {
 export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 	const rounded = Math.round(ms);
 	if (isPostgres) {
-		return `CURRENT_TIMESTAMP(3) + (${rounded} || ' milliseconds')::interval`;
+		return `CURRENT_TIMESTAMP(3) + (${rounded} * INTERVAL '1 millisecond')`;
 	}
 	const seconds = rounded / 1000;
 	return `STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW', '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
@@ -38,7 +38,7 @@ export function dbNowPlusMsLiteral(isPostgres: boolean, ms: number): string {
 export function columnPlusMsLiteral(isPostgres: boolean, columnExpr: string, ms: number): string {
 	const rounded = Math.round(ms);
 	if (isPostgres) {
-		return `${columnExpr} + (${rounded} || ' milliseconds')::interval`;
+		return `${columnExpr} + (${rounded} * INTERVAL '1 millisecond')`;
 	}
 	const seconds = rounded / 1000;
 	return `STRFTIME('%Y-%m-%d %H:%M:%f', ${columnExpr}, '${seconds < 0 ? '' : '+'}${seconds} seconds')`;
@@ -58,7 +58,7 @@ export function columnOrNowPlusMsLiteral(
 ): string {
 	const rounded = Math.round(ms);
 	if (isPostgres) {
-		return `GREATEST(${columnExpr}, CURRENT_TIMESTAMP(3)) + (${rounded} || ' milliseconds')::interval`;
+		return `GREATEST(${columnExpr}, CURRENT_TIMESTAMP(3)) + (${rounded} * INTERVAL '1 millisecond')`;
 	}
 	const seconds = rounded / 1000;
 	// SQLite's `%Y-%m-%d %H:%M:%f` is fixed-width and zero-padded, so a lexical MAX
