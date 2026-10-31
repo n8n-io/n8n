@@ -23,6 +23,7 @@ import type clientOAuth1 from 'oauth-1.0a';
 
 import type { AbstractServer } from '@/abstract-server';
 import type { Config } from '@/config';
+import type { OtelConfigureHookApi } from '@/modules/otel/otel-configure-hook';
 import type { WorkflowHookContextService } from '@/workflow-hook-context.service';
 
 type Repositories = {
@@ -92,6 +93,8 @@ type ExternalHooksMap = {
 	'oauth2.authenticate': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.callback': [oAuthOptions: ClientOAuth2Options];
 	'oauth2.dynamicClientRegistration': [registerPayload: { redirect_uris: string[] }];
+
+	'otel.configure': [api: OtelConfigureHookApi];
 
 	'tag.beforeCreate': [tag: TagEntity];
 	'tag.afterCreate': [tag: TagEntity];

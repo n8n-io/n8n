@@ -9,20 +9,24 @@ import { toExecutionIdentity } from '../execution-identity';
 import { ExecutionLevelTracer } from '../execution-level-tracer';
 import type { StartWorkflowParams } from '../execution-level-tracer.types';
 import { type CustomAttributePrefixes, OtelCustomAttributesConfig } from '../otel.config';
+import { OtelConfigureHook } from '../otel-configure-hook';
 import type { TracingContext } from '../tracing-context';
 import { OtelTestProvider } from './support/otel-test-provider';
 
-import { TRACING_OFF } from '@/observability/swappable-pipeline';
+import { OUTBOUND_HEADERS_PROPAGATOR, TRACING_OFF } from '@/observability/swappable-pipeline';
 
 describe('ExecutionLevelTracer', () => {
 	let otel: OtelTestProvider;
 	let tracer: ExecutionLevelTracer;
 	const logger = mock<Logger>();
 
-	const makeTracer = ({ prefixes }: { prefixes?: CustomAttributePrefixes } = {}) => {
+	const makeTracer = ({
+		prefixes,
+		configureHook = new OtelConfigureHook(logger),
+	}: { prefixes?: CustomAttributePrefixes; configureHook?: OtelConfigureHook } = {}) => {
 		const customAttributesConfig = new OtelCustomAttributesConfig();
 		if (prefixes) customAttributesConfig.prefixes = prefixes;
-		return new ExecutionLevelTracer(logger, customAttributesConfig);
+		return new ExecutionLevelTracer(logger, customAttributesConfig, configureHook);
 	};
 
 	const withGlobalPropagator = (propagator: TextMapPropagator, run: () => void) => {
@@ -867,6 +871,7 @@ describe('ExecutionLevelTracer', () => {
 
 			expect(headers.traceparent).toBeDefined();
 			expect(headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
+			expect(headers).not.toHaveProperty('baggage');
 
 			tracer.endNode({
 				executionId: 'exec-10',
@@ -876,6 +881,46 @@ describe('ExecutionLevelTracer', () => {
 			});
 			tracer.endWorkflow({
 				executionId: 'exec-10',
+				status: 'success',
+				mode: 'manual',
+				isRetry: false,
+			});
+		});
+
+		it('should write a baggage header from the node span attributes next to traceparent', () => {
+			const baggageMapper = vi.fn((attrs: Record<string, unknown>) => ({
+				'project.id': String(attrs['n8n.project.id']),
+			}));
+			const configureHook = new OtelConfigureHook(logger);
+			configureHook.api.registerOutboundBaggageMapper(baggageMapper);
+			const baggageTracer = makeTracer({ configureHook });
+			baggageTracer.startWorkflow({
+				executionId: 'exec-baggage',
+				workflow: defaultWorkflow,
+				project: { id: 'project-1' },
+			});
+			const httpNode = { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 };
+			baggageTracer.startNode({ executionId: 'exec-baggage', node: httpNode });
+
+			const headers: Record<string, string> = {};
+			withGlobalPropagator(OUTBOUND_HEADERS_PROPAGATOR, () => {
+				baggageTracer.injectTraceHeaders('exec-baggage', 'HTTP', headers);
+			});
+
+			expect(headers.traceparent).toMatch(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/);
+			expect(headers.baggage).toBe('project.id=project-1');
+			expect(baggageMapper).toHaveBeenCalledWith(
+				expect.objectContaining({ 'n8n.project.id': 'project-1', 'n8n.node.name': 'HTTP' }),
+			);
+
+			baggageTracer.endNode({
+				executionId: 'exec-baggage',
+				node: httpNode,
+				inputItemCount: 1,
+				outputItemCount: 1,
+			});
+			baggageTracer.endWorkflow({
+				executionId: 'exec-baggage',
 				status: 'success',
 				mode: 'manual',
 				isRetry: false,
