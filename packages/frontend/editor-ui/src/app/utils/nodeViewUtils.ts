@@ -15,9 +15,10 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeTypeDescription,
+	NodeConnectionType,
 	NodeHint,
 } from 'n8n-workflow';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type { ViewportBoundaries } from '@/features/workflows/canvas/canvas.types';
 import {
@@ -651,4 +652,26 @@ export function calculateNodeSize(
 	}
 
 	return { width: DEFAULT_NODE_SIZE[0] * widthScale, height };
+}
+
+/**
+ * Returns the size of a default-rendered node from its port types, with the rule
+ * of the canvas node: a non-main output makes it a configuration node, and only
+ * non-main inputs count as ports for a configurable node.
+ */
+export function getNodeSizeFromPorts(
+	inputTypes: NodeConnectionType[],
+	outputTypes: NodeConnectionType[],
+): { width: number; height: number } {
+	const isMain = (type: NodeConnectionType) => type === NodeConnectionTypes.Main;
+	const nonMainInputCount = inputTypes.filter((type) => !isMain(type)).length;
+
+	return calculateNodeSize(
+		outputTypes.some((type) => !isMain(type)),
+		nonMainInputCount > 0,
+		inputTypes.filter(isMain).length,
+		outputTypes.filter(isMain).length,
+		nonMainInputCount,
+		false,
+	);
 }

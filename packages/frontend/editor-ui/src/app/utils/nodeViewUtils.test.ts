@@ -13,6 +13,7 @@ import {
 	snapPositionToGrid,
 	snapToGrid,
 	calculateNodeSize,
+	getNodeSizeFromPorts,
 	GRID_SIZE,
 	NODE_X_SPACING,
 	HORIZONTAL_NODE_STEP,
@@ -21,7 +22,7 @@ import {
 } from './nodeViewUtils';
 import type { INode, INodeTypeDescription, INodeExecutionData, Workflow } from 'n8n-workflow';
 import type { INodeUi, XYPosition } from '@/Interface';
-import { NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeHelpers, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { mock, type MockProxy } from 'vitest-mock-extended';
@@ -583,6 +584,48 @@ describe('calculateNodeSize', () => {
 		// maxVerticalHandles = max(0,0,1) = 1
 		// height = 96 + (1 - 2) * 32 = 96 + 0 = 96
 		expect(calculateNodeSize(false, false, 0, 0, 0, false).height).toBe(96);
+	});
+});
+
+describe('getNodeSizeFromPorts', () => {
+	const { Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever } =
+		NodeConnectionTypes;
+
+	it('should return the default size for a node with main ports only', () => {
+		expect(getNodeSizeFromPorts([Main], [Main])).toEqual({ width: 96, height: 96 });
+	});
+
+	it('should return the configurable size for an AI Agent', () => {
+		expect(getNodeSizeFromPorts([Main, AiLanguageModel, AiMemory, AiTool], [Main])).toEqual({
+			width: 224,
+			height: 96,
+		});
+	});
+
+	it('should make a configurable node wider for each non-main input above four', () => {
+		expect(
+			getNodeSizeFromPorts(
+				[Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever],
+				[Main],
+			),
+		).toEqual({ width: 272, height: 96 });
+	});
+
+	it('should make a node taller for four main inputs', () => {
+		expect(getNodeSizeFromPorts([Main, Main, Main, Main], [Main])).toEqual({
+			width: 96,
+			height: 160,
+		});
+	});
+
+	it('should return the configurable configuration size for a HITL tool', () => {
+		expect(getNodeSizeFromPorts([AiTool], [AiTool])).toEqual({ width: 240, height: 80 });
+	});
+
+	it('should not count non-main outputs as ports for an AI Agent Tool with an output parser', () => {
+		expect(
+			getNodeSizeFromPorts([AiLanguageModel, AiMemory, AiTool, AiOutputParser], [AiTool]),
+		).toEqual({ width: 240, height: 80 });
 	});
 });
 

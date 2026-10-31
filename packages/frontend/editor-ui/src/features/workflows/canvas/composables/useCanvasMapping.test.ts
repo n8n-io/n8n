@@ -338,6 +338,44 @@ describe('useCanvasMapping — node display sizes', () => {
 			height: 224,
 		});
 	});
+
+	it('does not count the output of an AI Agent Tool as a port', () => {
+		const agentTool = createTestNode({
+			id: 'agent-tool',
+			name: 'AI Agent Tool',
+			type: '@n8n/n8n-nodes-langchain.agentTool',
+		}) as INodeUi;
+		const rd = createEmptyCanvasRenderData();
+		const render: CanvasNodeData['render'] = {
+			type: CanvasNodeRenderType.Default,
+			options: { configurable: true, configuration: true },
+		};
+		rd.renderTypeByNodeId.set(
+			agentTool.id,
+			computed(() => render),
+		);
+		rd.nodeInputsByNodeId.set(
+			agentTool.id,
+			computed(() => [
+				{ type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+				{ type: NodeConnectionTypes.AiMemory, index: 0 },
+				{ type: NodeConnectionTypes.AiTool, index: 0 },
+				{ type: NodeConnectionTypes.AiOutputParser, index: 0 },
+			]),
+		);
+		rd.nodeOutputsByNodeId.set(
+			agentTool.id,
+			computed(() => [{ type: NodeConnectionTypes.AiTool, index: 0 }]),
+		);
+
+		const { nodeDisplaySizeById } = useCanvasMapping({
+			nodes: ref([agentTool]),
+			connections: ref({}),
+			renderData: shallowRef(rd),
+		});
+
+		expect(nodeDisplaySizeById.value[agentTool.id]).toEqual({ width: 240, height: 80 });
+	});
 });
 
 describe('useCanvasMapping — getNodeExecutionSnapshot', () => {

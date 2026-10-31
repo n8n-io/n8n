@@ -1,7 +1,9 @@
 import {
 	checkOverlap,
+	computeNodeDisplaySize,
 	createCanvasConnectionHandleString,
 	createCanvasConnectionId,
+	createEmptyCanvasRenderData,
 	insertSpacersBetweenEndpoints,
 	mapCanvasConnectionToLegacyConnection,
 	mapLegacyConnectionsToCanvasConnections,
@@ -10,7 +12,12 @@ import {
 	resolveCanonicalConnection,
 	shouldIgnoreCanvasShortcut,
 } from './canvas.utils';
-import type { IConnection, IConnections, INodeTypeDescription } from 'n8n-workflow';
+import type {
+	IConnection,
+	IConnections,
+	INodeTypeDescription,
+	NodeConnectionType,
+} from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { CanvasConnection } from './canvas.types';
 import { CANVAS_NODE_GROUP_OUTPUT_HANDLE, CanvasConnectionMode } from './canvas.types';
@@ -18,6 +25,8 @@ import type { INodeUi } from '@/Interface';
 import type { Connection } from '@vue-flow/core';
 import { createTestNode } from '@/__tests__/mocks';
 import { NODE_MIN_INPUT_ITEMS_COUNT } from '@/app/constants';
+import { getNodeSizeFromPorts } from '@/app/utils/nodeViewUtils';
+import { computed } from 'vue';
 
 vi.mock('uuid', () => ({
 	v4: vi.fn(() => 'mock-uuid'),
@@ -1142,5 +1151,51 @@ describe(shouldIgnoreCanvasShortcut, () => {
 		div.classList.add('ignore-key-press-canvas');
 
 		expect(shouldIgnoreCanvasShortcut(div)).toEqual(true);
+	});
+});
+
+describe('computeNodeDisplaySize', () => {
+	const { Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever } =
+		NodeConnectionTypes;
+
+	function displaySize(inputTypes: NodeConnectionType[], outputTypes: NodeConnectionType[]) {
+		const toPorts = (types: NodeConnectionType[]) => types.map((type, index) => ({ type, index }));
+		const renderData = createEmptyCanvasRenderData();
+		renderData.nodeInputsByNodeId.set(
+			'node',
+			computed(() => toPorts(inputTypes)),
+		);
+		renderData.nodeOutputsByNodeId.set(
+			'node',
+			computed(() => toPorts(outputTypes)),
+		);
+		const options = {
+			configuration: outputTypes.some((type) => type !== Main),
+			configurable: inputTypes.some((type) => type !== Main),
+			trigger: false,
+		};
+
+		return computeNodeDisplaySize('node', options, renderData, false);
+	}
+
+	it.each<[string, NodeConnectionType[], NodeConnectionType[]]>([
+		['a default node', [Main], [Main]],
+		['an AI Agent', [Main, AiLanguageModel, AiMemory, AiTool], [Main]],
+		[
+			'a node with five ports',
+			[Main, AiLanguageModel, AiMemory, AiTool, AiOutputParser, AiRetriever],
+			[Main],
+		],
+		['a node with four main inputs', [Main, Main, Main, Main], [Main]],
+		['a HITL tool', [AiTool], [AiTool]],
+		[
+			'an AI Agent Tool with an output parser',
+			[AiLanguageModel, AiMemory, AiTool, AiOutputParser],
+			[AiTool],
+		],
+	])('should give the same size as getNodeSizeFromPorts for %s', (_, inputTypes, outputTypes) => {
+		expect(displaySize(inputTypes, outputTypes)).toEqual(
+			getNodeSizeFromPorts(inputTypes, outputTypes),
+		);
 	});
 });
