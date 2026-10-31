@@ -70,6 +70,7 @@ import {
 import { AgentWorkspaceService } from './agent-workspace.service';
 import type { AgentRuntimeInstrumentation } from './evaluation/agent-evaluation.contracts';
 import { ChatIntegrationRegistry } from './integrations/agent-chat-integration';
+import { buildFileUploadGuidance } from './integrations/integration-tool-descriptions';
 import {
 	createIntegrationActionTool,
 	createIntegrationContextTool,
@@ -95,6 +96,7 @@ import { createN8nDelegateSubAgentTool } from './sub-agents/delegate-sub-agent-t
 import { SubAgentRunner } from './sub-agents/sub-agent-runner';
 import { buildToolRegistry, type ReferencedToolKind, type ToolRegistry } from './tool-registry';
 import { AGENT_PLAN_TOOL_NAMES } from './plans/agent-plan.schema';
+import { BACKGROUND_JOBS_TOOL_NAME } from './background/background-job-messages';
 import { createGetEnvironmentTool, GET_ENVIRONMENT_TOOL_NAME } from './tools/environment-tool';
 import {
 	createMarkSessionFailedTool,
@@ -1056,7 +1058,8 @@ export class AgentRuntimeReconstructionService {
 				RECALL_MEMORY_TOOL_NAME,
 				FLAG_MEMORY_TOOL_NAME,
 				...Object.values(AGENT_PLAN_TOOL_NAMES),
-				'resume_background_jobs',
+				// Only top-level runs with background tasks get these tools.
+				...(params.backgroundTasksEnabled ? [BACKGROUND_JOBS_TOOL_NAME] : []),
 			],
 		});
 
@@ -1156,7 +1159,7 @@ export class AgentRuntimeReconstructionService {
 	}
 
 	private async attachIntegrationTools(params: RuntimeDependencies): Promise<void> {
-		const { agent, agentId, integrationType, credentialIntegrations } = params;
+		const { agent, agentId, projectId, integrationType, credentialIntegrations } = params;
 		const includeN8nChat = integrationType === N8N_CHAT_INTEGRATION_TYPE;
 		if (credentialIntegrations.length === 0 && !includeN8nChat) return;
 		const integrationRegistry = Container.get(ChatIntegrationRegistry);
@@ -1175,7 +1178,9 @@ export class AgentRuntimeReconstructionService {
 
 		for (const descriptor of descriptors) {
 			agent.tool(createIntegrationContextTool({ descriptor, queryExecutor }));
-			agent.tool(createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor }));
+			agent.tool(
+				createIntegrationActionTool({ descriptor, messageContextStore, actionExecutor, projectId }),
+			);
 		}
 	}
 
@@ -1195,7 +1200,17 @@ export class AgentRuntimeReconstructionService {
 					contextQueries: integrationDef?.contextQueries,
 					actions: integrationDef?.actions,
 					contextToolGuidance: integrationDef?.contextToolGuidance,
-					actionToolGuidance: integrationDef?.actionToolGuidance,
+					actionToolGuidance: [
+						...(integrationDef?.actionToolGuidance ?? []),
+						...(integrationDef?.fileUploadLimits
+							? [
+									buildFileUploadGuidance(
+										integrationDef.fileUploadLimits,
+										!integrationDef.disableStreaming,
+									),
+								]
+							: []),
+					],
 				};
 			},
 		);
@@ -1263,10 +1278,9 @@ export class AgentRuntimeReconstructionService {
 			const rootSessionCapUsd = sessionCap !== undefined && sessionCap > 0 ? sessionCap : undefined;
 			runBackgroundSubAgent = await this.attachBackgroundJobTools({
 				...delegationParams,
+				// Same condition as the plan tools: a run with plans can link background jobs to them.
 				planTasksEnabled:
-					params.previewChat === true &&
-					params.allowPlanTools !== false &&
-					Container.get(AgentsConfig).planToolsEnabled,
+					params.allowPlanTools !== false && Container.get(AgentsConfig).planToolsEnabled,
 				...(parentWorkspaceHandle !== undefined ? { parentWorkspaceHandle } : {}),
 				...(rootSessionCapUsd !== undefined ? { rootSessionCapUsd } : {}),
 			});
@@ -1426,12 +1440,9 @@ export class AgentRuntimeReconstructionService {
 			abortSignal,
 			...runContext
 		} = params;
-		const {
-			createBackgroundSubAgentHandler,
-			createCheckBackgroundJobsTool,
-			createCancelBackgroundJobTool,
-			createResumeBackgroundJobsTool,
-		} = await import('./background/background-job-tools.js');
+		const { createBackgroundSubAgentHandler, createBackgroundJobsTool } = await import(
+			'./background/background-job-tools.js'
+		);
 		const { AgentBackgroundJobService } = await import(
 			'./background/agent-background-job.service.js'
 		);
@@ -1441,10 +1452,8 @@ export class AgentRuntimeReconstructionService {
 		throwIfAborted(abortSignal);
 		const jobService = Container.get(AgentBackgroundJobService);
 
-		agent.tool(createCheckBackgroundJobsTool(jobService));
-		agent.tool(createCancelBackgroundJobTool(jobService));
 		agent.tool(
-			createResumeBackgroundJobsTool({
+			createBackgroundJobsTool({
 				jobService,
 				backgroundRunner: Container.get(SubAgentBackgroundRunner),
 				projectId,
@@ -1453,7 +1462,7 @@ export class AgentRuntimeReconstructionService {
 			}),
 		);
 
-		this.logger.debug('Injected background job tools', { agentId: parentAgentId });
+		this.logger.debug('Injected background jobs tool', { agentId: parentAgentId });
 
 		return createBackgroundSubAgentHandler({
 			planTasksEnabled,

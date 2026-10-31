@@ -56,6 +56,7 @@ import {
 import type { AssistantTurnRuntime } from '../turn-setup/assistant-turn-runtime';
 import { AssistantEventSink } from './assistant-event-sink';
 import { createThreadTemporaryWorkflowMarkers } from './assistant-temporary-workflow-markers';
+import { AssistantThreadTabsService } from './assistant-thread-tabs.service';
 import { AssistantTurnTracer, type AssistantTurnTrace } from './assistant-turn-trace';
 import {
 	ASSISTANT_AGENT_ID,
@@ -119,6 +120,7 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 		private readonly turnInput: AssistantTurnInputBuilder,
 		private readonly agentFactory: AssistantAgentFactory,
 		private readonly tracer: AssistantTurnTracer,
+		private readonly threadTabs: AssistantThreadTabsService,
 	) {
 		this.logger = logger.scoped('instance-ai');
 		this.aiConfig = globalConfig.ai;
@@ -359,6 +361,18 @@ export class AssistantAgentProvider implements SystemAgentProvider<AssistantSand
 			},
 			sessionGrants: turn.sessionGrants,
 			onDomainAccessTracker: () => {},
+			// The chat shows the tab of a changed artifact only while a browser shows the
+			// turn. Storing it here also covers a closed browser tab.
+			onArtifactChanged: async (artifact) => {
+				try {
+					await this.threadTabs.showArtifactTab(turn.memory, turn.thread.id, artifact);
+				} catch (error) {
+					this.logger.warn('Failed to show an Assistant artifact tab', {
+						threadId: turn.thread.id,
+						error: getErrorMessage(error),
+					});
+				}
+			},
 			readSetupItemsSnapshots: async () => [],
 			sandbox: {
 				resolveConfig: async () =>

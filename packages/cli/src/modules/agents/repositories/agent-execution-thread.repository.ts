@@ -631,6 +631,11 @@ export class AgentExecutionThreadRepository extends BaseRepository<AgentExecutio
 		return chain;
 	}
 
+	async findProjectId(threadId: string): Promise<string | null> {
+		const thread = await this.findOne({ select: ['projectId'], where: { id: threadId } });
+		return thread?.projectId ?? null;
+	}
+
 	/** Bump updatedAt to now so the thread sorts to top of the list. */
 	async bumpUpdatedAt(threadId: string, ctx: OperationContext = {}): Promise<void> {
 		await this.managerFor(ctx).update(AgentExecutionThread, threadId, { updatedAt: new Date() });

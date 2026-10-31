@@ -81,8 +81,8 @@ export function buildWorkflowTestRequestBlock(workflowId: string): string {
 		'Load post-build-flow. Inspect the current <workflow-setup-state> for this workflow and read its saved configuration with get_workflow_as_code.',
 		'Do not call setup_workflow for this precheck: it announces setup and ends the turn. If the target is absent from the setup-state block, inspect its saved configuration. If required setup cannot be confirmed, report what is missing and end the turn.',
 		'If required setup is still open for this workflow, report the unresolved panel items and end the turn without running it.',
-		'Use workflow_builder_executions(action="run") with this workflowId and suitable trigger input. Do not change publication state to test it.',
-		'Read the execution output and summarize the result in chat. If it fails, use workflow_builder_executions(action="debug"), fix the same workflow when possible, and report what remains unresolved.',
+		'Use run_workflow with this workflowId and suitable trigger input. Do not change publication state to test it.',
+		'Read the execution output and summarize the result in chat. If it fails, use debug_execution, fix the same workflow when possible, and report what remains unresolved.',
 		'Do not open the setup trigger-test wizard or substitute an earlier mocked verification result for this test.',
 		WORKFLOW_TEST_REQUEST_CLOSE_TAG,
 	].join('\n');

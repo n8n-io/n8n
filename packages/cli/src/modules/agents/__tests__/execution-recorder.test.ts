@@ -89,7 +89,7 @@ describe('ExecutionRecorder', () => {
 		},
 	);
 
-	it('scrubs titles in the initial signal', () => {
+	it('scrubs titles and file names in the initial signal', () => {
 		const recorder = new ExecutionRecorder(undefined, undefined, {
 			tasks: [
 				{
@@ -97,19 +97,32 @@ describe('ExecutionRecorder', () => {
 					title: 'Check api_key=example-value',
 					kind: 'subagent',
 					status: 'completed',
+					files: [
+						{
+							fileId: 'f-1',
+							fileName: 'api_key=example-value',
+							mimeType: 'text/plain',
+							sizeBytes: 9,
+						},
+					],
 				},
 			],
 		});
 		expect(recorder.getMessageRecord().timeline[0]).toMatchObject({
-			signal: { tasks: [{ title: 'Check [REDACTED]' }] },
+			signal: {
+				tasks: [{ title: 'Check [REDACTED]', files: [{ fileId: 'f-1', fileName: '[REDACTED]' }] }],
+			},
 		});
 	});
 
 	it('keeps the initial background signal in snapshots and final storage', () => {
 		const onSnapshot = vi.fn();
+		const file = { fileId: 'f-1', fileName: 'chart.png', mimeType: 'image/png', sizeBytes: 9 };
 		const recorder = new ExecutionRecorder(undefined, onSnapshot, {
 			isFinal: true,
-			tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+			tasks: [
+				{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed', files: [file] },
+			],
 		});
 		const initial = structuredClone(recorder.getMessageRecord().timeline);
 
@@ -119,7 +132,15 @@ describe('ExecutionRecorder', () => {
 				timestamp: recorder.startedAt.getTime(),
 				signal: {
 					isFinal: true,
-					tasks: [{ id: 'job-1', title: 'Research', kind: 'subagent', status: 'completed' }],
+					tasks: [
+						{
+							id: 'job-1',
+							title: 'Research',
+							kind: 'subagent',
+							status: 'completed',
+							files: [file],
+						},
+					],
 				},
 			},
 		]);

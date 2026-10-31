@@ -302,7 +302,7 @@ describe('ActiveExecutions', () => {
 					deployment: { type: 'default' },
 				}),
 				mock<License>(),
-				new ProductionHold(),
+				new ProductionHold(mock<EventService>()),
 			);
 			return service;
 		};

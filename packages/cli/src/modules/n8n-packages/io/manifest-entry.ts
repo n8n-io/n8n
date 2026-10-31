@@ -38,7 +38,10 @@ export const PACKAGE_ENTITY_LAYOUT = {
 } as const satisfies Record<ManifestEntityCollection, { directory: string; fileName: string }>;
 
 // Hyphens delimit the slug and ID in exported directory names.
-const SAFE_ID = /^[A-Za-z0-9_]+$/;
+// Unsafe ID characters become uppercase .XX UTF-8 byte escapes.
+// Promotions decode these paths from Git, so keep the format stable.
+const UNSAFE_ID_CHARACTER = /[^A-Za-z0-9_]/gu;
+const ESCAPED_ID_BYTES = /(?:\.[0-9A-F]{2})+/g;
 
 // Keep generated entity directory names within the common 255-character filesystem limit.
 const MAX_PATH_SEGMENT_LENGTH = 255;
@@ -92,18 +95,38 @@ export function agentMetadataFilePath(target: string): string {
 	return `${target}/agent-metadata.json`;
 }
 
+function encodeIdSegment(id: string): string {
+	return id.replace(UNSAFE_ID_CHARACTER, (character) =>
+		Buffer.from(character).toString('hex').toUpperCase().replace(/../g, '.$&'),
+	);
+}
+
+export function entityIdOfSegment(segment: string): string {
+	return segment
+		.slice(segment.lastIndexOf('-') + 1)
+		.replace(ESCAPED_ID_BYTES, (escaped) =>
+			Buffer.from(escaped.replace(/\./g, ''), 'hex').toString(),
+		);
+}
+
 /**
  * Skill IDs follow the skill ref ID rule, which allows hyphens. No reader takes a skill ID
  * from its path: import reads it from the manifest, and promotions carry no skills.
  */
-function isSafeId(collection: ManifestEntityCollection, id: string): boolean {
-	if (collection === 'skills') return skillIdSchema.safeParse(id).success;
-	return SAFE_ID.test(id);
-}
-
-function allowedIdCharacters(collection: ManifestEntityCollection): string {
-	if (collection === 'skills') return 'letters, digits, underscores, and hyphens';
-	return 'letters, digits, and underscores';
+function idPathSegment(
+	collection: ManifestEntityCollection,
+	entity: { id: string; name: string },
+): string {
+	if (collection !== 'skills') return encodeIdSegment(entity.id);
+	if (!skillIdSchema.safeParse(entity.id).success) {
+		throw new PackageExportBlockedError(
+			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
+			{
+				description: `Id "${entity.id}" may contain only letters, digits, underscores, and hyphens.`,
+			},
+		);
+	}
+	return entity.id;
 }
 
 export function createManifestEntry(
@@ -111,17 +134,8 @@ export function createManifestEntry(
 	baseDir: string,
 	entity: { id: string; name: string },
 ): ManifestEntry {
-	if (!isSafeId(collection, entity.id)) {
-		throw new PackageExportBlockedError(
-			`${collection} entry "${entity.name}" has an id that cannot be used as a path segment. Export aborted.`,
-			{
-				description: `Id "${entity.id}" may contain only ${allowedIdCharacters(collection)}.`,
-			},
-		);
-	}
-
 	const slug = generateSlug(entity.name, FALLBACK_SLUGS[collection]);
-	const pathSegment = `${slug}-${entity.id}`;
+	const pathSegment = `${slug}-${idPathSegment(collection, entity)}`;
 	if (pathSegment.length > MAX_PATH_SEGMENT_LENGTH) {
 		throw new PackageExportBlockedError(
 			`${collection} entry "${entity.name}" creates a path segment longer than ${MAX_PATH_SEGMENT_LENGTH} characters. Shorten the entity name and retry the export.`,

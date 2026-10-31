@@ -714,7 +714,6 @@ function summarizeToolCallArgs(toolName: string, args: unknown): string {
 				requests.map((c: unknown) => (isRecord(c) ? str(c.credentialType) : '')).join(', '),
 			);
 		}
-		case DOMAIN_TOOL_IDS.DATA_TABLES:
 		case DOMAIN_TOOL_IDS.NODES:
 			return trunc(str(a.action));
 		default:

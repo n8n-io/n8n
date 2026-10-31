@@ -310,7 +310,6 @@ erDiagram
   varchar_36_ workflowId FK
 }
 "public.skill" {
-  varchar_36_ agentId FK
   boolean availableToAssistant
   boolean availableToMCP
   timestamp_3__with_time_zone createdAt

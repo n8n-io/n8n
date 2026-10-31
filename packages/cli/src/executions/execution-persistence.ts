@@ -759,32 +759,20 @@ export class ExecutionPersistence {
 		const maxBatches = await this.maxBulkDeletionBatches();
 
 		for (let batch = 0; batch < maxBatches; batch++) {
-			const executions = await this.executionRepository.find({
-				select: ['id', 'workflowId', 'storedAt'],
-				where: { workflowId },
-				take: ExecutionPersistence.bulkDeletionBatchSize,
-				withDeleted: true, // sweep soft-deleted executions too, or they'd be left to the FK cascade
-			});
-
-			if (executions.length === 0) return;
-
-			await this.hardDelete(
-				executions.map((execution) => ({
-					executionId: execution.id,
-					workflowId: execution.workflowId,
-					storedAt: execution.storedAt,
-				})),
+			// Soft-deleted executions are swept too, or they'd be left to the FK cascade.
+			const targets = await this.executionRepository.findForDeletionByWorkflowId(
+				workflowId,
+				ExecutionPersistence.bulkDeletionBatchSize,
 			);
+
+			if (targets.length === 0) return;
+
+			await this.hardDelete(targets);
 		}
 
 		// The loop may have converged exactly on its last allowed batch - only
 		// fail if executions actually remain.
-		const remaining = await this.executionRepository.find({
-			select: ['id'],
-			where: { workflowId },
-			take: 1,
-			withDeleted: true,
-		});
+		const remaining = await this.executionRepository.findForDeletionByWorkflowId(workflowId, 1);
 		if (remaining.length === 0) return;
 
 		throw new UnexpectedError(

@@ -27,6 +27,7 @@ import { useI18n } from '@n8n/i18n';
 import {
 	type AgentChatQueueItem,
 	type AgentBuilderOpenSuspension,
+	type AgentSseEvent,
 	type ProviderAttachmentCapabilities,
 	APPROVAL_TOOL_NAME,
 	WAIT_TOOL_NAME,
@@ -192,6 +193,8 @@ const emit = defineEmits<{
 	'message-accepted': [
 		payload: { text: string; files: File[]; clientContext?: Record<string, unknown> },
 	];
+	/** Each event of the chat stream, as received. A host can keep them for a debug export. */
+	'stream-event': [event: AgentSseEvent];
 }>();
 
 defineSlots<{
@@ -277,6 +280,7 @@ const {
 	onAgentUnavailable: () => emit('agent-unavailable'),
 	budgetCards: props.budgetCards,
 	interactionExtensions: props.interactionExtensions,
+	onStreamEvent: (event) => emit('stream-event', event),
 });
 
 provide(
@@ -292,6 +296,7 @@ provide(AGENT_ATTACHMENT_URL_KEY, (attachmentId) =>
 		props.agentId,
 		attachmentId,
 		props.channel,
+		props.continueSessionId,
 	),
 );
 

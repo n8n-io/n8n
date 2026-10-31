@@ -19,7 +19,7 @@ const columns = [
 	{
 		name: 'listedAt',
 		postgres: 'timestamptz(3)',
-		sqlite: 'datetime',
+		sqlite: 'datetime(3)',
 		comment: 'When n8n read the last skill listing. NULL before the first listing',
 	},
 	{

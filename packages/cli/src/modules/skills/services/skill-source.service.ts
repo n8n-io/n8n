@@ -1,6 +1,4 @@
 import {
-	AGENT_SKILL_NAME_MAX_LENGTH,
-	agentSkillSchema,
 	type AgentSkill,
 	type AddSkillSourceSkillsDto,
 	type SkillSourceListItem,
@@ -26,7 +24,6 @@ import { ConflictError, ForbiddenError, NotFoundError, UnexpectedError } from '@
 import { getErrorMessage } from '@n8n/utils/errors/get-error-message';
 import { generateNanoId } from '@n8n/utils/generate-nano-id';
 import { v7 as uuidv7 } from 'uuid';
-import { z } from 'zod';
 
 import type {
 	SkillSourceConnection,
@@ -53,7 +50,12 @@ import {
 	type SkillSourceLocator,
 	type SkillSourceListing,
 } from '../sources/skill-source-client';
-import { contentToAgentSkill, toSkillContent, type SkillTarget } from '../utils/skill-content';
+import {
+	contentToAgentSkill,
+	importableSkillSchema,
+	toSkillContent,
+	type SkillTarget,
+} from '../utils/skill-content';
 import { skillContentHash } from '../utils/skill-content-hash';
 import { skillPreview } from '../utils/skill-preview';
 import { SkillAccessService } from './skill-access.service';
@@ -69,14 +71,6 @@ import { SkillsTelemetry, type SkillSourceTelemetryReason } from './skills-telem
 const FETCH_CONCURRENCY = 8;
 /** A check for new skills lists a source at most once in this time, to spare its rate limit. */
 const NEW_SKILLS_CHECK_INTERVAL_MS = 15 * 60 * 1000;
-
-/**
- * What an imported skill must be. Skills ignore `allowedTools`, as a create does. The name is
- * trimmed as a create stores it, so the name checks and the baseline hash match the stored skill.
- */
-const importableSkillSchema = agentSkillSchema
-	.omit({ allowedTools: true })
-	.extend({ name: z.string().trim().min(1).max(AGENT_SKILL_NAME_MAX_LENGTH) });
 
 type ScopeType = 'global' | 'team' | 'personal';
 
@@ -270,7 +264,6 @@ export class SkillSourceService {
 		});
 		const names = await this.skillRepository.findLatestNamesInTarget({
 			projectId: stored.projectId,
-			agentId: null,
 		});
 		const project = stored.projectId
 			? (await this.skillRepository.findProjects([stored.projectId])).get(stored.projectId)
@@ -306,7 +299,7 @@ export class SkillSourceService {
 		const { response } = await this.importSkills(
 			user,
 			await this.connectedSource(user, stored),
-			{ projectId: stored.projectId, agentId: null },
+			{ projectId: stored.projectId },
 			scopeType,
 			{ skillKeys: payload.skillKeys, reviewedSkillKeys: payload.reviewedSkillKeys ?? [] },
 			sourceId,
@@ -439,10 +432,12 @@ export class SkillSourceService {
 		const imported: SkillSourceConnectResponse['imported'] = [];
 		let skippedFiles = 0;
 		let needsReview = 0;
+		const access = source.auth?.credentialId ? 'credential' : 'public';
 		const track = async (status: 'success' | 'failure', reason?: SkillSourceTelemetryReason) =>
 			await this.skillsTelemetry.importedFromSource(
 				{
 					provider: source.type,
+					access,
 					scope_type: scopeType,
 					first_or_more: existingSourceId ? 'more' : 'first',
 					selected: keys.length,
@@ -508,6 +503,8 @@ export class SkillSourceService {
 								projectId: target.projectId,
 								credentialId: source.auth?.credentialId ?? null,
 								createdById: user.id,
+								// The check fetches nothing while the source stays at this revision.
+								probeCursor: discovered.revision ?? null,
 							},
 							ctx,
 						);
@@ -587,6 +584,7 @@ export class SkillSourceService {
 			imported.map(({ skillId }) => ({ id: skillId, ...target })),
 			source.type,
 			'sync',
+			{ source_provider: source.type, source_access: access },
 		);
 		return { response: { sourceId, imported, failed }, warning: warningOf(discovered) };
 	}

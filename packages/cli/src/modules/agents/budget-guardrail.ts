@@ -43,7 +43,7 @@ export class AgentSpendLedger implements SpendLedger {
 	async add(callId: string, entries: SpendEntry[]): Promise<SpendTotal[]> {
 		await this.flushPending();
 		try {
-			return await this.budgetSpendRepository.applySpend(callId, entries);
+			return await this.budgetSpendRepository.applySpend(callId, entries, {});
 		} catch (error) {
 			this.logger.warn('Failed to record budget spend; buffered the call for a later retry', {
 				callId,
@@ -57,7 +57,7 @@ export class AgentSpendLedger implements SpendLedger {
 	async read(key: string): Promise<number> {
 		await this.flushPending();
 		try {
-			const stored = await this.budgetSpendRepository.readTotal(key);
+			const stored = await this.budgetSpendRepository.readTotal(key, {});
 			return stored + this.bufferedTotalFor(key);
 		} catch (error) {
 			this.logger.warn('Failed to read budget spend; using the buffered totals', {
@@ -76,7 +76,7 @@ export class AgentSpendLedger implements SpendLedger {
 	private async flushPending(): Promise<void> {
 		for (const [callId, entries] of this.pending) {
 			try {
-				await this.budgetSpendRepository.applySpend(callId, entries);
+				await this.budgetSpendRepository.applySpend(callId, entries, {});
 			} catch {
 				return;
 			}

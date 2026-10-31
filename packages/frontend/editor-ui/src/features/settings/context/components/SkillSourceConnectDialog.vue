@@ -206,7 +206,7 @@ const selectedScope = computed(() => {
 	if (source && 'scope' in source) {
 		return {
 			value: scope.value,
-			...scopeDisplay({ ...source, agentName: null }),
+			...scopeDisplay(source),
 		};
 	}
 	return props.scopeOptions.find((option) => option.value === scope.value);

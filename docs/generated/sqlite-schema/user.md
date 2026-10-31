@@ -489,7 +489,6 @@ erDiagram
   varchar userId PK
 }
 "skill" {
-  varchar_36_ agentId FK
   boolean availableToAssistant
   boolean availableToMCP
   datetime_3_ createdAt
@@ -507,7 +506,7 @@ erDiagram
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
   varchar_32_ lastErrorReason
-  datetime listedAt
+  datetime_3_ listedAt
   TEXT listedRefKeys
   varchar_255_ listedRevision
   TEXT locator

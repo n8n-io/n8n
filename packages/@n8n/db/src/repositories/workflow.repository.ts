@@ -101,6 +101,17 @@ export function agentToolReferenceWhere(
 	return where;
 }
 
+/** The fields the migration report scan rules and the report read. */
+const MIGRATION_SCAN_FIELDS: Array<keyof WorkflowEntity> = [
+	'id',
+	'name',
+	'active',
+	'activeVersionId',
+	'versionId',
+	'nodes',
+	'updatedAt',
+];
+
 @Service()
 export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 	constructor(
@@ -709,6 +720,27 @@ export class WorkflowRepository extends BaseRepository<WorkflowEntity> {
 		});
 
 		return workflows.map(({ id }) => id);
+	}
+
+	/**
+	 * One page of workflows for the migration report scan, keyset-paged like `getIdsAfter`.
+	 * It returns only the fields the scan rules and the report read.
+	 */
+	async findMigrationScanPage(
+		afterId: string | undefined,
+		take: number,
+	): Promise<WorkflowEntity[]> {
+		return await this.find({
+			select: MIGRATION_SCAN_FIELDS,
+			where: afterId === undefined ? {} : { id: MoreThan(afterId) },
+			take,
+			order: { id: 'ASC' },
+		});
+	}
+
+	/** One workflow with the fields of `findMigrationScanPage`, for a re-check after a save. */
+	async findMigrationScanWorkflow(workflowId: string): Promise<WorkflowEntity | null> {
+		return await this.findOne({ select: MIGRATION_SCAN_FIELDS, where: { id: workflowId } });
 	}
 
 	/** The subset of `workflowIds` that still exists, in no particular order. */

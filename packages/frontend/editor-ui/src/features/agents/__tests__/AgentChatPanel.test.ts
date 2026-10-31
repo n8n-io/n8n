@@ -10,6 +10,7 @@ import { APPROVAL_TOOL_NAME, N8N_CHAT_ACTION_TOOL_NAME, WAIT_TOOL_NAME } from '@
 import type {
 	AgentChatQueueItem,
 	AgentBackgroundJobDto,
+	AgentSseEvent,
 	ProviderAttachmentCapabilities,
 } from '@n8n/api-types';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
@@ -119,6 +120,7 @@ vi.mock('@n8n/stores/useRootStore', () => ({
 }));
 let onHistoryLoaded: ((count: number) => void) | undefined;
 let onAgentUnavailable: (() => void) | undefined;
+let onStreamEvent: ((event: AgentSseEvent) => void) | undefined;
 let streamInteractionExtensions: readonly AgentsChatInteractionExtension[] | undefined;
 
 const fatalErrorMock = ref<{ missing: string[] } | null>(null);
@@ -337,10 +339,12 @@ vi.mock('../composables/useAgentChatStream', () => ({
 		channel?: { value: 'chat' | 'n8n-chat' };
 		onHistoryLoaded: (count: number) => void;
 		onAgentUnavailable?: () => void;
+		onStreamEvent?: (event: AgentSseEvent) => void;
 		interactionExtensions?: readonly AgentsChatInteractionExtension[];
 	}) => {
 		onHistoryLoaded = options.onHistoryLoaded;
 		onAgentUnavailable = options.onAgentUnavailable;
+		onStreamEvent = options.onStreamEvent;
 		streamInteractionExtensions = options.interactionExtensions;
 		return {
 			capabilities: computed(() => {
@@ -4253,6 +4257,15 @@ describe('AgentChatPanel', () => {
 		onAgentUnavailable?.();
 
 		expect(wrapper.emitted('agent-unavailable')).toHaveLength(1);
+	});
+
+	it('emits each stream event for the host', () => {
+		const wrapper = mountPanel();
+		const event: AgentSseEvent = { type: 'text-delta', id: 't1', delta: 'Hi' };
+
+		onStreamEvent?.(event);
+
+		expect(wrapper.emitted('stream-event')).toEqual([[event]]);
 	});
 
 	describe('host extension API', () => {

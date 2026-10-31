@@ -618,6 +618,22 @@ export class ExecutionRepository extends BaseRepository<ExecutionEntity> {
 		});
 	}
 
+	/** Deletion targets of a workflow, soft-deleted ones included. */
+	async findForDeletionByWorkflowId(workflowId: string, limit: number) {
+		const executions = await this.createQueryBuilder('execution')
+			.withDeleted()
+			.select(['execution.id', 'execution.workflowId', 'execution.storedAt'])
+			.where('execution.workflowId = :workflowId', { workflowId })
+			.limit(limit)
+			.getMany();
+
+		return executions.map(({ id, workflowId, storedAt }) => ({
+			executionId: id,
+			workflowId,
+			storedAt,
+		}));
+	}
+
 	async findExecutionsToDelete({
 		filters,
 		accessibleWorkflowIds,
