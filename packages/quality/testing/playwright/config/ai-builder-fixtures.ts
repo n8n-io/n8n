@@ -8,7 +8,7 @@ import type { TestRequirements } from '../Types';
 export const workflowBuilderEnabledRequirements: TestRequirements = {
 	config: {
 		settings: {
-			aiAssistant: { enabled: true, setup: true, cloudUbbEnabled: false },
+			aiAssistant: { enabled: true, setup: true },
 			aiBuilder: { enabled: true, setup: true },
 		},
 		moduleSettings: INSTANCE_AI_DISABLED,
