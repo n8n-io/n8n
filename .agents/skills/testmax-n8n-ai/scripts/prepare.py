@@ -68,7 +68,7 @@ def main():
 		sys.exit(1)
 
 	try:
-		settings = client.request('GET', '/rest/instance-ai/settings')
+		settings = client.request('GET', '/rest/assistant/settings')
 		status['instanceAiEnabled'] = bool(settings.get('enabled'))
 	except Exception:
 		status['instanceAiEnabled'] = False

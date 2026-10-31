@@ -75,6 +75,7 @@ vi.mock('../self-healing/self-healing-investigation.service', () => ({
 	SelfHealingInvestigationService: vi.fn(),
 }));
 vi.mock('../instance-ai.controller', () => ({}));
+vi.mock('../assistant.controller', () => ({}));
 vi.mock('../mcp/instance-ai-mcp-connection.controller', () => ({}));
 vi.mock('../self-healing/self-healing-configurations.controller', () => {
 	loadConfigurationController();
