@@ -12,14 +12,14 @@ import type {
 	FindLatestExecutionRequest,
 	ResolveStepRequest,
 	ResolveStepResponse,
-	ResumeTargetRequest,
+	ResumeLocateRequest,
 	ResumeTargetResponse,
 	StartExecutionRequest,
 	StartExecutionResult,
 	SearchExecutionsRequest,
 	SearchExecutionsResponse,
 } from '@n8n/engine';
-import { mintIdentityToken } from '@n8n/engine';
+import { mintIdentityToken, parseApprovalCallback } from '@n8n/engine';
 import { InstanceSettings } from 'n8n-core';
 import { OperationalError } from 'n8n-workflow';
 import { z } from 'zod';
@@ -184,14 +184,12 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 		return { cancelled: true, finishedAt: new Date(finishedAt) };
 	}
 
-	async locateResumeTarget(
-		id: ExecutionIdV2,
-		request: ResumeTargetRequest,
-	): Promise<ResumeOutcome<ResumeTargetResponse>> {
-		return await this.postResume<ResumeTargetResponse>(
-			`/api/workflow-executions/${encodeURIComponent(id)}/resume-target`,
-			request,
-		);
+	async locateResume(request: ResumeLocateRequest): Promise<ResumeOutcome<ResumeTargetResponse>> {
+		return await this.postResume<ResumeTargetResponse>('/api/resume-requests/locate', request);
+	}
+
+	readApprovalCallback(reference: string): string | undefined {
+		return parseApprovalCallback(reference)?.stepId;
 	}
 
 	async resolveStep(
@@ -206,7 +204,7 @@ export class EngineDataPlaneClient implements EngineDataPlaneProvider {
 
 	private async postResume<T>(
 		url: string,
-		body: ResumeTargetRequest | ResolveStepRequest,
+		body: ResumeLocateRequest | ResolveStepRequest,
 	): Promise<ResumeOutcome<T>> {
 		const response = await this.http.request<T | EngineErrorResponse>({
 			url,
