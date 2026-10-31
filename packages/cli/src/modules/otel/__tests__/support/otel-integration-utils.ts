@@ -59,6 +59,10 @@ export async function initOtelTestEnvironment() {
 	await testModules.loadModules(['otel']);
 	await testDb.init();
 
+	const config = Container.get(OtelConfig);
+	config.includeNodeSpans = true;
+	config.injectOutbound = true;
+
 	await Container.get(OtelSettingsService).loadSettings();
 	await Container.get(ModuleRegistry).initModules('main');
 	Container.get(LicenseState).setLicenseProvider({
@@ -79,10 +83,6 @@ export async function initOtelTestEnvironment() {
 	await utils.initBinaryDataService();
 
 	Container.get(InstanceSettings).markAsLeader();
-
-	const config = Container.get(OtelConfig);
-	config.includeNodeSpans = true;
-	config.injectOutbound = true;
 
 	propagation.setGlobalPropagator(DEFAULT_OUTBOUND_PROPAGATOR);
 
