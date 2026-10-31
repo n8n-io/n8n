@@ -127,18 +127,19 @@ async function fixture(resultKind: 'fix_ready' | 'needs_you' = 'fix_ready') {
 	const act = async (
 		action: WorkflowSuggestionAppliedVersion['action'] | 'discard',
 		actor = user,
-	): Promise<WorkflowSuggestionProposalDetail & { publishError?: string }> => {
+	): Promise<
+		WorkflowSuggestionProposalDetail &
+			Omit<Awaited<ReturnType<WorkflowSuggestionActionsService['apply']>>, 'suggestions'>
+	> => {
 		if (action === 'discard') {
 			await actions.discardPending(actor, project.id, [suggestion]);
 			return await suggestionService.getProposal(actor, project.id, workflow.id, suggestion.id);
 		}
-		const { suggestions: proposals, publishError } = await actions.apply(
-			actor,
-			project.id,
-			[suggestion],
-			action,
-		);
-		return { ...proposals[0], publishError };
+		const {
+			suggestions: [proposal],
+			...publication
+		} = await actions.apply(actor, project.id, [suggestion], action);
+		return { ...proposal, ...publication };
 	};
 	return { user, workflow, original, project, graph, suggestion, act };
 }
@@ -753,6 +754,7 @@ it('keeps the fix applied when the normal publication guard rejects it', async (
 		closedReason: 'applied',
 		publishError: 'An open review blocks publication.',
 	});
+	expect(detail).not.toHaveProperty('restorationError');
 	expect(saved.versionId).toBe(detail.appliedVersion?.versionId);
 	expect(saved.activeVersionId).toBe(original.activeVersionId);
 	expect(notify).toHaveBeenCalledExactlyOnceWith(original.id, user.id);

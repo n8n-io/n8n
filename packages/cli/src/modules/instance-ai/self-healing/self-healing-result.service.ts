@@ -315,7 +315,7 @@ export class SelfHealingResultService {
 		if (suggestions.length === 0 || !allowedOutcomes.includes(result.outcome)) {
 			throw new ConflictError("This fix isn't ready to apply. Review the report for next steps.");
 		}
-		const { suggestions: proposals, publishError } = await this.actions.apply(
+		const { suggestions: proposals, ...publication } = await this.actions.apply(
 			reviewer,
 			projectId,
 			suggestions,
@@ -330,7 +330,7 @@ export class SelfHealingResultService {
 		);
 		return {
 			...this.toDetail(result, proposals, execution),
-			...(publishError !== undefined ? { publishError } : {}),
+			...publication,
 		};
 	}
 

@@ -341,7 +341,7 @@ can review results with current edit access to the triggering workflow and every
 workflow. Approval also requires publish access. Approval accepts only Fix ready results. Apply
 accepts Fix ready and Needs attention results that have a suggestion. Apply and approval save every
 suggestion of the result in one transaction. Approval then requests publication of each saved
-workflow and stops at the first request error. Reviewer filtering applies to Inbox lists, counts, details,
+workflow, sub-workflows first. Reviewer filtering applies to Inbox lists, counts, details,
 and actions. Each action resolves its suggestions from the result and returns the updated review.
 The detail lists the suggestions with the triggering workflow first.
 Send the editor client ID in `push-ref` for Apply actions.
@@ -362,9 +362,13 @@ Dismissal leaves automatically closed Could not fix results unchanged and return
 A dismissal recorded before automatic closure still returns `dismissed`.
 Already applied, discarded, or outdated suggestions keep their existing closure.
 Apply uses the existing suggestion action service. An applied result stays applied if publication
-returns an error. `publishError` describes that request only. The response includes the workflow
-ID and the recorded applied version of each suggestion. Open the normal editor for publication status
-and recovery.
+returns an error. After the first publication request error, approval stops. For a result with
+more than one suggestion, it requests the previous published version of each workflow whose active
+version is still the applied version. The first restoration request error stops restoration.
+`publishError` describes the first error. `restorationError` describes the restoration request
+that returned an error. The response
+includes the workflow ID and the recorded applied version of each suggestion. Open the normal editor
+for publication status and recovery.
 
 Continuation applies a suggestion to the workflow draft, or dismisses a result without one.
 It opens the destination only when the result becomes `applied` or `dismissed`.

@@ -67,6 +67,14 @@ export type SelfHealingResultDetail = SelfHealingResultContent & {
 };
 
 export type SelfHealingResultActionResponse = SelfHealingResultDetail & {
-	/** This request error does not establish whether the saved version is live. */
+	/**
+	 * The first publication request error. Request errors do not establish which versions are live.
+	 */
 	publishError?: string;
+	/**
+	 * The first restoration request error. After `publishError`, for a result with more than one
+	 * workflow, n8n requested the previous published version of each workflow with an active applied
+	 * version, and stopped at the first restoration request error.
+	 */
+	restorationError?: { workflowId: string; error: string };
 };

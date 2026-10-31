@@ -3,7 +3,13 @@ import type {
 	WorkflowSuggestionProposalDetail,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { TransactionRunner, WorkflowEntity, type OperationContext, type User } from '@n8n/db';
+import {
+	TransactionRunner,
+	WorkflowEntity,
+	WorkflowRepository,
+	type OperationContext,
+	type User,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { ConflictError, ForbiddenError, NotFoundError } from '@n8n/errors';
 import { ensureError } from '@n8n/utils/errors/ensure-error';
@@ -14,6 +20,7 @@ import { calculateWorkflowChecksum } from 'n8n-workflow';
 import { CollaborationService } from '@/collaboration/collaboration.service';
 import { userHasScopes } from '@/permissions.ee/check-access';
 import { WorkflowPublicationStatusService } from '@/workflows/publication/workflow-publication-status.service';
+import { sortSubWorkflowsFirst } from '@/workflows/sub-workflow-order';
 import { WorkflowService, type PreparedWorkflowUpdate } from '@/workflows/workflow.service';
 
 import type { WorkflowSuggestion } from './database/workflow-suggestion.entity';
@@ -31,10 +38,13 @@ type AppliedMember = {
 
 type ApplyResult = { status: 'applied'; saved: AppliedMember[] } | { status: 'outdated' };
 
-type GroupActionResult = {
-	suggestions: WorkflowSuggestionProposalDetail[];
-	/** A publish request error does not establish whether the versions are live. */
+type PublicationRequestResult = {
 	publishError?: string;
+	restorationError?: { workflowId: string; error: string };
+};
+
+type GroupActionResult = PublicationRequestResult & {
+	suggestions: WorkflowSuggestionProposalDetail[];
 };
 
 @Service()
@@ -43,6 +53,7 @@ export class WorkflowSuggestionActionsService {
 		private readonly service: WorkflowSuggestionService,
 		private readonly suggestions: WorkflowSuggestionRepository,
 		private readonly workflows: WorkflowService,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly collaboration: CollaborationService,
 		private readonly publication: WorkflowPublicationStatusService,
 		private readonly txRunner: TransactionRunner,
@@ -69,22 +80,10 @@ export class WorkflowSuggestionActionsService {
 			}),
 		);
 		const result = await this.applyGroup(user, projectId, group, action, clientId);
-		let publishError: string | undefined;
+		let publication: PublicationRequestResult = {};
 		if (result.status === 'applied') {
 			if (action === 'approve-and-publish') {
-				try {
-					for (const { suggestion, version } of result.saved) {
-						await this.publishAppliedVersion(
-							user,
-							suggestion.workflowId,
-							version,
-							clientId ?? suggestion.id,
-						);
-					}
-				} catch (error) {
-					// Apply is committed. The editor owns publication status and recovery.
-					publishError = ensureError(error).message;
-				}
+				publication = await this.publishGroup(user, result.saved, clientId);
 			}
 			for (const { workflowId } of group) await this.notifyEditors(workflowId, user.id);
 		}
@@ -92,7 +91,7 @@ export class WorkflowSuggestionActionsService {
 		for (const { id, workflowId } of group) {
 			suggestions.push(await this.service.getProposal(user, projectId, workflowId, id));
 		}
-		return { suggestions, ...(publishError !== undefined ? { publishError } : {}) };
+		return { suggestions, ...publication };
 	}
 
 	// Result dismissal joins this write so the result and its suggestions commit together.
@@ -264,17 +263,67 @@ export class WorkflowSuggestionActionsService {
 		}
 	}
 
-	private async publishAppliedVersion(
+	// Apply is committed. The editor owns publication status and later recovery.
+	private async publishGroup(
 		user: User,
-		workflowId: string,
-		version: WorkflowSuggestionAppliedVersion,
-		clientId: string,
+		saved: AppliedMember[],
+		clientId: string | undefined,
+	): Promise<PublicationRequestResult> {
+		const { ordered } = sortSubWorkflowsFirst(saved, ({ workflow }) => workflow);
+		try {
+			for (const { suggestion, version } of ordered) {
+				await this.requestPublication(
+					user,
+					suggestion,
+					clientId,
+					version.versionId,
+					version.checksum,
+				);
+			}
+			return {};
+		} catch (error) {
+			const publishError = ensureError(error).message;
+			if (saved.length === 1) return { publishError };
+
+			for (const { suggestion, version } of ordered.toReversed()) {
+				try {
+					const current = await this.workflowRepository.findByIdInContext(
+						suggestion.workflowId,
+						{},
+					);
+					if (current?.activeVersionId !== version.versionId) continue;
+					await this.requestPublication(
+						user,
+						suggestion,
+						clientId,
+						suggestion.expectedBaseline.publishedVersionId,
+					);
+				} catch (restorationError) {
+					return {
+						publishError,
+						restorationError: {
+							workflowId: suggestion.workflowId,
+							error: ensureError(restorationError).message,
+						},
+					};
+				}
+			}
+			return { publishError };
+		}
+	}
+
+	private async requestPublication(
+		user: User,
+		{ id, workflowId }: WorkflowSuggestion,
+		clientId: string | undefined,
+		versionId: string,
+		expectedChecksum?: string,
 	) {
 		const publisher = await this.service.requireEditor(user.id, workflowId);
-		await this.collaboration.validateWriteLock(publisher.id, clientId, workflowId, 'publish');
+		await this.collaboration.validateWriteLock(publisher.id, clientId ?? id, workflowId, 'publish');
 		await this.workflows.activateWorkflow(publisher, workflowId, {
-			versionId: version.versionId,
-			expectedChecksum: version.checksum,
+			versionId,
+			expectedChecksum,
 			source: 'n8n-ai',
 		});
 	}

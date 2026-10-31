@@ -29,6 +29,7 @@ import { Container } from '@n8n/di';
 import { ConflictError, NotFoundError } from '@n8n/errors';
 import { DataSource } from '@n8n/typeorm';
 import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
+import type { INode } from 'n8n-workflow';
 import { randomUUID } from 'node:crypto';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -202,16 +203,30 @@ async function fixture(
 	return { ...prepared, result, suggestionId: suggestion?.id, url, getDetail };
 }
 
-async function addGroupMember({
-	user,
-	project,
-	result,
-}: Pick<Awaited<ReturnType<typeof fixture>>, 'user' | 'project' | 'result'>) {
-	const workflow = await createPublishedWorkflow(project);
+async function addGroupMember(
+	{
+		user,
+		project,
+		result,
+	}: Pick<Awaited<ReturnType<typeof fixture>>, 'user' | 'project' | 'result'>,
+	{ id, calls }: { id?: string; calls?: string } = {},
+) {
+	const workflow = await createPublishedWorkflow(project, id ? { id } : {});
 	const baseline = await suggestionService.captureBaseline(workflow.id, user.id);
+	const call: INode = {
+		id: randomUUID(),
+		name: 'Call sub-workflow',
+		type: 'n8n-nodes-base.executeWorkflow',
+		typeVersion: 1.2,
+		position: [400, 200],
+		parameters: { workflowId: { __rl: true, mode: 'id', value: calls } },
+	};
 	const prepared = await suggestionService.prepareSuggestion(baseline, {
 		graph: {
-			nodes: workflow.nodes.map((node) => ({ ...node, position: [200, 200] as [number, number] })),
+			nodes: [
+				...workflow.nodes.map((node) => ({ ...node, position: [200, 200] as [number, number] })),
+				...(calls ? [call] : []),
+			],
 			connections: workflow.connections,
 		},
 		explanation: 'Fix the sub-workflow.',
@@ -1267,9 +1282,18 @@ it('does not report Apply when reconciliation finds an outdated proposal', async
 });
 
 describe('suggestion groups', () => {
-	async function groupFixture() {
+	// A caller member calls the triggering workflow and sorts first or last in workflow ID order.
+	async function groupFixture(caller?: 'first' | 'last') {
 		const context = await fixture('fix_ready', true, { inTeamProject: true });
-		const member = await addGroupMember(context);
+		const member = await addGroupMember(
+			context,
+			caller
+				? {
+						id: `${caller === 'first' ? '00000000' : 'zzzzzzzz'}${randomUUID().slice(0, 8)}`,
+						calls: context.original.id,
+					}
+				: {},
+		);
 		const members = [context.suggestionId!, member.suggestion.id];
 		const states = async () =>
 			await Promise.all(
@@ -1410,6 +1434,170 @@ describe('suggestion groups', () => {
 			expect(await read()).toEqual(saved);
 		},
 	);
+
+	it('publishes sub-workflows before the workflows that call them', async () => {
+		const { user, project, original, member, result } = await groupFixture('first');
+		const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
+
+		const detail = await service.act(
+			user,
+			project.id,
+			original.id,
+			result.id,
+			'approve-and-publish',
+		);
+
+		expect(detail).not.toHaveProperty('publishError');
+		expect(publish.mock.calls.map(([, workflowId]) => workflowId)).toEqual([
+			original.id,
+			member.workflow.id,
+		]);
+	});
+
+	it('publishes workflows in a call cycle in workflow ID order', async () => {
+		const { user, project, original, member, result, suggestionId } = await groupFixture('first');
+		const { payload } = await suggestions.findOneByOrFail({ id: suggestionId });
+		const call = (await suggestions.findOneByOrFail({ id: member.suggestion.id })).payload.candidate
+			.nodes[1];
+		const callMember = {
+			...call,
+			parameters: { workflowId: { __rl: true, mode: 'id', value: member.workflow.id } },
+		};
+		await suggestions.update(suggestionId!, {
+			payload: {
+				...payload,
+				candidate: { ...payload.candidate, nodes: [...payload.candidate.nodes, callMember] },
+			} as never,
+		});
+		const publish = vi.spyOn(Container.get(WorkflowService), 'activateWorkflow');
+
+		const detail = await service.act(
+			user,
+			project.id,
+			original.id,
+			result.id,
+			'approve-and-publish',
+		);
+
+		expect(detail).not.toHaveProperty('publishError');
+		expect(publish.mock.calls.map(([, workflowId]) => workflowId)).toEqual([
+			member.workflow.id,
+			original.id,
+		]);
+	});
+
+	it('requests the previous version of active workflows in reverse order after a publication request error', async () => {
+		const { user, project, original, member, result, states } = await groupFixture('last');
+		const workflowService = Container.get(WorkflowService);
+		const activate = workflowService.activateWorkflow.bind(workflowService);
+		const publish = vi
+			.spyOn(workflowService, 'activateWorkflow')
+			.mockImplementationOnce(activate)
+			.mockImplementationOnce(async (...args) => {
+				await activate(...args);
+				throw new Error('Publication failed.');
+			});
+
+		const detail = await service.act(
+			user,
+			project.id,
+			original.id,
+			result.id,
+			'approve-and-publish',
+		);
+
+		expect(detail).toMatchObject({
+			reviewState: 'applied',
+			publishError: 'Publication failed.',
+		});
+		expect(detail).not.toHaveProperty('restorationError');
+		const applied = detail.suggestions.map(({ appliedVersion }) => appliedVersion?.versionId);
+		expect(
+			publish.mock.calls.map(([, workflowId, options]) => [workflowId, options?.versionId]),
+		).toEqual([
+			[original.id, applied[0]],
+			[member.workflow.id, applied[1]],
+			[member.workflow.id, member.workflow.activeVersionId],
+			[original.id, original.activeVersionId],
+		]);
+		expect(await states()).toEqual([
+			{ state: 'closed', closedReason: 'applied' },
+			{ state: 'closed', closedReason: 'applied' },
+		]);
+		expect(
+			await Container.get(WorkflowPublicationOutboxRepository).findInFlightByWorkflowId(
+				original.id,
+			),
+		).toMatchObject({ publishedVersionId: original.activeVersionId });
+	});
+
+	it('stops restoration at the first restoration request error', async () => {
+		const { user, project, original, member, result } = await groupFixture('last');
+		const workflowService = Container.get(WorkflowService);
+		const activate = workflowService.activateWorkflow.bind(workflowService);
+		const publish = vi
+			.spyOn(workflowService, 'activateWorkflow')
+			.mockImplementationOnce(activate)
+			.mockImplementationOnce(async (...args) => {
+				await activate(...args);
+				throw new Error('Publication failed.');
+			})
+			.mockRejectedValueOnce(new Error('Restoration failed.'));
+
+		const detail = await service.act(
+			user,
+			project.id,
+			original.id,
+			result.id,
+			'approve-and-publish',
+		);
+
+		expect(detail).toMatchObject({
+			publishError: 'Publication failed.',
+			restorationError: { workflowId: member.workflow.id, error: 'Restoration failed.' },
+		});
+		const applied = detail.suggestions.map(({ appliedVersion }) => appliedVersion?.versionId);
+		expect(
+			publish.mock.calls.map(([, workflowId, options]) => [workflowId, options?.versionId]),
+		).toEqual([
+			[original.id, applied[0]],
+			[member.workflow.id, applied[1]],
+			[member.workflow.id, member.workflow.activeVersionId],
+		]);
+		const active = await Promise.all(
+			[original, member.workflow].map(
+				async ({ id }) => (await workflows.findOneByOrFail({ id })).activeVersionId,
+			),
+		);
+		expect(active).toEqual(applied);
+	});
+
+	it('does not restore workflows whose applied version is not active', async () => {
+		const { user, project, original, member, result } = await groupFixture('last');
+		const publish = vi
+			.spyOn(Container.get(WorkflowService), 'activateWorkflow')
+			.mockRejectedValueOnce(new Error('Publication failed.'));
+
+		const detail = await service.act(
+			user,
+			project.id,
+			original.id,
+			result.id,
+			'approve-and-publish',
+		);
+
+		expect(detail).toMatchObject({ publishError: 'Publication failed.' });
+		expect(detail).not.toHaveProperty('restorationError');
+		expect(
+			publish.mock.calls.map(([, workflowId, options]) => [workflowId, options?.versionId]),
+		).toEqual([[original.id, detail.suggestions[0].appliedVersion?.versionId]]);
+		const active = await Promise.all(
+			[original, member.workflow].map(
+				async ({ id }) => (await workflows.findOneByOrFail({ id })).activeVersionId,
+			),
+		);
+		expect(active).toEqual([original.activeVersionId, member.workflow.activeVersionId]);
+	});
 
 	it('saves nothing when a later suggestion cannot close', async () => {
 		const { user, project, original, member, result, states } = await groupFixture();
