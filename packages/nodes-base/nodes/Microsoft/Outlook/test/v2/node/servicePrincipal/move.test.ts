@@ -20,7 +20,7 @@ describe('Test MicrosoftOutlookV2, Service Principal => message:move', () => {
 				'/v1.0/users/user%40example.com/messages/AAMkADlhOTA0MTc5LWVtsg5OABGAAAA-message-id=/move',
 				{ destinationId: 'AAMkADlhOTA0MTc5LWVtsg5OAAuAAAA-folder-id=' },
 			)
-			.reply(200, {});
+			.reply(201, { id: 'AAMkADlhOTA0MTc5LWVtsg5OABGAAAA-moved-message-id=' });
 	});
 
 	new NodeTestHarness().setupTests({
