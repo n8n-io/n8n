@@ -9,6 +9,7 @@ import {
 	deleteSystemAgentThread,
 	getSystemAgentThread,
 	listSystemAgentThreads,
+	renameSystemAgentThread,
 } from '@/features/agents/composables/useAgentApi';
 
 import {
@@ -16,6 +17,15 @@ import {
 	forgetAssistantAgentThread,
 	rememberAssistantAgentThread,
 } from './assistantAgentThreads';
+
+/** The thread with its title from a rename in this session, if any. */
+export function withRenamedTitle(
+	thread: SystemAgentThreadSummary,
+	renamedTitles: ReadonlyMap<string, string>,
+): SystemAgentThreadSummary {
+	const title = renamedTitles.get(thread.id);
+	return title === undefined ? thread : { ...thread, title };
+}
 
 /** How many Assistant agent threads the sidebar's recent chats load. */
 export const ASSISTANT_AGENT_RECENT_THREADS_LIMIT = 10;
@@ -39,12 +49,17 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 	const openedThreads = ref<SystemAgentThreadSummary[]>([]);
 	/** Ids deleted in this session, so every mounted list filters the row out. */
 	const deletedThreadIds = ref<Set<string>>(new Set());
+	/**
+	 * Titles renamed in this session, so every mounted list shows the new title. A
+	 * response that a rename overtook can still hold the old title.
+	 */
+	const renamedTitles = ref<Map<string, string>>(new Map());
 	const threadsById = computed(
 		() =>
 			new Map(
 				[...openedThreads.value, ...recentThreads.value]
 					.filter((thread) => !deletedThreadIds.value.has(thread.id))
-					.map((thread) => [thread.id, thread]),
+					.map((thread) => [thread.id, withRenamedTitle(thread, renamedTitles.value)]),
 			),
 	);
 	/** Every known thread, newest `updatedAt` first. */
@@ -113,16 +128,38 @@ export const useAssistantAgentThreadsStore = defineStore('assistantAgentThreads'
 		return true;
 	}
 
+	// The latest rename of each thread. Only it can restore the old title.
+	const renameVersions = new Map<string, number>();
+
+	/** Shows the new title at once, and restores the old one when the request fails. */
+	async function renameThread(threadId: string, title: string): Promise<void> {
+		const previous = renamedTitles.value.get(threadId);
+		const version = (renameVersions.get(threadId) ?? 0) + 1;
+		renameVersions.set(threadId, version);
+		renamedTitles.value.set(threadId, title);
+		try {
+			await renameSystemAgentThread(rootStore.restApiContext, ASSISTANT_AGENT_ID, threadId, title);
+		} catch (error) {
+			if (renameVersions.get(threadId) === version) {
+				if (previous === undefined) renamedTitles.value.delete(threadId);
+				else renamedTitles.value.set(threadId, previous);
+			}
+			throw error;
+		}
+	}
+
 	return {
 		recentThreads,
 		openedThreads,
 		threadsById,
 		knownThreads,
 		deletedThreadIds,
+		renamedTitles,
 		remember,
 		fetchRecent,
 		addOpenedThread,
 		loadThread,
 		deleteThread,
+		renameThread,
 	};
 });

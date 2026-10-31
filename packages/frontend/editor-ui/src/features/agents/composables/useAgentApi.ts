@@ -1085,6 +1085,21 @@ export const listSystemAgentThreads = async (
 		},
 	);
 
+/** Renames one of the user's own threads with a system agent. */
+export const renameSystemAgentThread = async (
+	context: IRestApiContext,
+	agentId: string,
+	threadId: string,
+	title: string,
+): Promise<void> => {
+	await makeRestApiRequest(
+		context,
+		'PATCH',
+		`/agents/system/${encodeURIComponent(agentId)}/threads/${encodeURIComponent(threadId)}`,
+		{ title },
+	);
+};
+
 /** Deletes one of the user's own threads with a system agent. */
 export const deleteSystemAgentThread = async (
 	context: IRestApiContext,
