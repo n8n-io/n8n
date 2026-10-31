@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
 import N8nMenuItem from './MenuItem.vue';
+import N8nText from '../N8nText/Text.vue';
 import type { IMenuItem } from '../../types';
 
 const meta = {
@@ -15,7 +16,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'A navigation menu item used in sidebars and menus. Supports icons, badges, disabled state, and compact (icon-only) mode.',
+					'A navigation menu item used in sidebars and menus. Supports icons, badges, disabled state, compact (icon-only) mode, and a label slot that replaces the text.',
 			},
 			source: { type: 'dynamic' },
 		},
@@ -154,5 +155,28 @@ export const WithChildren: Story = {
 				{ id: 'users', label: 'Users' },
 			],
 		} satisfies IMenuItem,
+	},
+};
+
+export const CustomLabel: Story = {
+	render: (args) => ({
+		components: { N8nMenuItem, N8nText },
+		setup() {
+			return { args };
+		},
+		template: `
+			<N8nMenuItem v-bind="args">
+				<template #label>
+					<span style="display: flex; flex-direction: column; min-width: 0;">
+						<N8nText bold size="small" color="text-dark">Version 3</N8nText>
+						<N8nText size="small" color="text-base">Alex, Oct 28 at 09:14</N8nText>
+					</span>
+				</template>
+			</N8nMenuItem>
+		`,
+	}),
+	args: {
+		item: { id: 'v3', label: 'Version 3' },
+		active: true,
 	},
 };
