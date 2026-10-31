@@ -4,6 +4,7 @@ import { ref } from 'vue';
 
 import {
 	describeAgentToolRestriction,
+	describeCredentialTypeRestriction,
 	describeRestrictedNodeTypes,
 	describeNodeTypeRestriction,
 	getCredentialTypeRestriction,
@@ -11,6 +12,7 @@ import {
 	getRestrictionContact,
 	isNodeTypeRestricted,
 	resolveRestrictionContact,
+	useCredentialTypeRestriction,
 	useNodeTypeRestriction,
 } from './useNodeTypeRestriction';
 import { mockPolicyProject } from '../__tests__/mocks';
@@ -249,5 +251,62 @@ describe('useNodeTypeRestriction', () => {
 		const { restriction } = useNodeTypeRestriction(ref('n8n-nodes-base.slack'));
 
 		expect(restriction.value?.optInAvailable).toBe(true);
+	});
+});
+
+describe('useCredentialTypeRestriction', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia());
+	});
+
+	it('reports the verdict and scope of a restricted credential type', () => {
+		mockRestrictions({}, { openAiApi: 'instance' });
+
+		const { restriction, isRestricted } = useCredentialTypeRestriction(ref('openAiApi'));
+
+		expect(isRestricted.value).toBe(true);
+		expect(restriction.value?.name).toBe('openAiApi');
+		expect(restriction.value?.scope).toBe('instance');
+	});
+
+	it('follows the type it is given', () => {
+		mockRestrictions({}, { openAiApi: 'instance' });
+		const type = ref<string | null>('slackApi');
+
+		const { isRestricted } = useCredentialTypeRestriction(type);
+		expect(isRestricted.value).toBe(false);
+
+		type.value = 'openAiApi';
+		expect(isRestricted.value).toBe(true);
+
+		type.value = null;
+		expect(isRestricted.value).toBe(false);
+	});
+
+	it('reads the credential kind, not the node kind', () => {
+		mockRestrictions({ openAiApi: 'instance' }, {});
+
+		const { isRestricted } = useCredentialTypeRestriction(ref('openAiApi'));
+
+		expect(isRestricted.value).toBe(false);
+	});
+
+	it('describes the restriction for each scope', () => {
+		mockPolicyProject({ type: 'team' });
+
+		expect(describeCredentialTypeRestriction('OpenAI', { scope: 'instance' })).toBe(
+			"OpenAI credentials are restricted on this instance. Workflows can't use them.",
+		);
+		expect(describeCredentialTypeRestriction('OpenAI', { scope: 'project' })).toBe(
+			"OpenAI credentials are restricted in this project. Workflows can't use them.",
+		);
+		expect(
+			describeCredentialTypeRestriction('OpenAI', { scope: 'instance', optInAvailable: true }),
+		).toBe(
+			"OpenAI credentials need approval in this project. Workflows can't use them until a project admin allows it.",
+		);
+		expect(describeCredentialTypeRestriction('OpenAI', null)).toBe(
+			"OpenAI credentials are restricted. Workflows can't use them.",
+		);
 	});
 });

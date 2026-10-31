@@ -15,6 +15,7 @@ export {
 	getRestrictionMessage,
 	getViolationVerdict,
 	isNodeTypeRestricted,
+	useCredentialTypeRestriction,
 	useNodeTypeRestriction,
 	useRestrictionContact,
 	type RestrictionMessage,
@@ -29,6 +30,7 @@ export {
 export { default as RestrictedNodePopover } from './components/RestrictedNodePopover.vue';
 export { default as RestrictedNodePanel } from './components/RestrictedNodePanel.vue';
 export { default as RestrictedToolCallout } from './components/RestrictedToolCallout.vue';
+export { default as RestrictedCredentialCallout } from './components/RestrictedCredentialCallout.vue';
 export { default as RestrictedSubWorkflowCallout } from './components/RestrictedSubWorkflowCallout.vue';
 export { default as ContactAdminModal } from './components/ContactAdminModal.vue';
 export { getPolicyViolations } from './policy-violations/policyViolations';
