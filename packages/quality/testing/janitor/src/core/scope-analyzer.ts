@@ -8,6 +8,7 @@ import { existsSync } from 'node:fs';
 import { isAbsolute, relative, resolve } from 'node:path';
 
 import { matchesGlobalTrigger, matchesSinkPackage } from './global-triggers.js';
+import { LOCKFILE } from './read-lockfile-impact.js';
 import { toPosix } from './path-utils.js';
 
 // Bailout patterns are centralised here (vs the original DEVP-194 spec's
@@ -56,6 +57,10 @@ export interface ComputeScopeOptions {
 	 *  `workflow`, `core`, `vitest-config`): those packages and their transitive
 	 *  dependents. `null`/undefined = no signal → a sink change runs full. */
 	sinkAffectedPackages?: string[] | null;
+	/** Packages whose resolved dependencies changed in pnpm-lock.yaml (from
+	 *  `janitor lockfile-impact`). `null`/undefined = no signal → a lockfile
+	 *  change runs full everywhere. */
+	lockfileImpactedPackages?: string[] | null;
 }
 
 export type ScopeResult =
@@ -73,9 +78,24 @@ export function computeScope(options: ComputeScopeOptions): ScopeResult {
 	// the package as affected, but the in-package filter below would otherwise
 	// SKIP it because the trigger file lives outside the package — a silent
 	// false green.
-	const globalTrigger = options.changedFiles.find(matchesGlobalTrigger);
+	// With a lockfile impact signal, a lockfile change forces RUN_FULL only in
+	// the packages whose resolved dependencies changed. `vitest related` cannot
+	// see a dependency change, so those packages run full even with their own
+	// changes to scope.
+	const lockfileImpact = options.lockfileImpactedPackages;
+	const globalTrigger = options.changedFiles.find(
+		(file) => matchesGlobalTrigger(file) && !(file === LOCKFILE && lockfileImpact),
+	);
 	if (globalTrigger) {
 		return { kind: 'full', reason: 'Global trigger changed', trigger: globalTrigger };
+	}
+	if (
+		lockfileImpact &&
+		options.packageName &&
+		options.changedFiles.includes(LOCKFILE) &&
+		lockfileImpact.includes(options.packageName)
+	) {
+		return { kind: 'full', reason: 'Lockfile changed its dependencies', trigger: LOCKFILE };
 	}
 
 	// A sink package change (@n8n/db, workflow, core, vitest-config) forces

@@ -202,6 +202,25 @@ describe('computeScope', () => {
 			).toEqual({ kind: 'scoped', files: ['packages/frontend/editor-ui/src/a.ts'] });
 		});
 
+		it('a lockfile change forces full only in the packages whose dependencies it changed', () => {
+			const rootDir = makePackageDir('packages/cli');
+			const options = {
+				packageDir: 'packages/cli',
+				rootDir,
+				packageName: 'n8n',
+				changedFiles: ['pnpm-lock.yaml', 'packages/cli/src/a.ts'],
+			};
+			expect(computeScope({ ...options, lockfileImpactedPackages: ['n8n'] })).toMatchObject({
+				kind: 'full',
+				trigger: 'pnpm-lock.yaml',
+			});
+			expect(computeScope({ ...options, lockfileImpactedPackages: ['other'] })).toEqual({
+				kind: 'scoped',
+				files: ['packages/cli/src/a.ts'],
+			});
+			expect(computeScope({ ...options, lockfileImpactedPackages: null }).kind).toBe('full');
+		});
+
 		it('does NOT treat a per-package package.json as a global trigger', () => {
 			const rootDir = makePackageDir('packages/cli');
 			const result = computeScope({

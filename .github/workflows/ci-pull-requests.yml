@@ -44,6 +44,7 @@ jobs:
       merge_base: ${{ steps.ci-filter.outputs.merge-base }}
       db_test_matrix: ${{ steps.generate-db-test-matrix.outputs.db_test_matrix }}
       affected_packages: ${{ steps.affected-packages.outputs.list }}
+      lockfile_impact: ${{ steps.affected-packages.outputs.lockfile-impact }}
       changed_files: ${{ steps.ci-filter.outputs.changed-files }}
       currents_record_key: ${{ secrets.CURRENTS_RECORD_KEY != '' && 'present' || '' }}
     steps:
@@ -280,8 +281,13 @@ jobs:
         if: fromJSON(steps.ci-filter.outputs.results).unit
         env:
           CHANGED_FILES: ${{ steps.ci-filter.outputs.changed-files }}
+          MERGE_BASE: ${{ steps.ci-filter.outputs.merge-base }}
         run: |
-          PACKAGES=$(node packages/quality/testing/janitor/dist/cli.js affected-packages | tr '\n' ' ' | sed 's/ *$//')
+          JANITOR=packages/quality/testing/janitor/dist/cli.js
+          LOCKFILE_IMPACT=$(node "$JANITOR" lockfile-impact "--base=$MERGE_BASE")
+          echo "Lockfile impact: $LOCKFILE_IMPACT"
+          echo "lockfile-impact=$LOCKFILE_IMPACT" >> "$GITHUB_OUTPUT"
+          PACKAGES=$(LOCKFILE_IMPACTED_PACKAGES="$LOCKFILE_IMPACT" node "$JANITOR" affected-packages | tr '\n' ' ' | sed 's/ *$//')
           echo "Affected packages: $PACKAGES"
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
@@ -319,6 +325,7 @@ jobs:
       testRetries: ${{ github.event_name == 'merge_group' && 2 || 0 }}
       affectedPackages: ${{ needs.install-and-build.outputs.affected_packages }}
       changedFiles: ${{ needs.install-and-build.outputs.changed_files }}
+      lockfileImpactedPackages: ${{ needs.install-and-build.outputs.lockfile_impact }}
     secrets: inherit
 
   typecheck:
