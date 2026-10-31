@@ -346,6 +346,35 @@ describe('Compression Node - Decompress Operation', () => {
 			expect(result[0][0].binary?.file_1).toBeDefined();
 			expect(boundedGunzip).toHaveBeenCalledTimes(2);
 		});
+
+		it.each([
+			{ typeVersion: 1.1, expectedFileName: 'sales.csv' },
+			{ typeVersion: 1.2, expectedFileName: 'sales.2026-10.csv' },
+		])(
+			'should name the output file $expectedFileName on version $typeVersion',
+			async ({ typeVersion, expectedFileName }) => {
+				mockExecuteFunctions.getNode.mockReturnValue({ ...mockNode, typeVersion });
+				vi.mocked(mockExecuteFunctions.helpers.assertBinaryData).mockReturnValue({
+					data: 'base64data',
+					mimeType: 'application/gzip',
+					fileName: 'sales.2026-10.csv.gz',
+					fileExtension: 'gz',
+				});
+				vi.mocked(mockExecuteFunctions.helpers.getBinaryDataBuffer).mockResolvedValue(
+					Buffer.from('mock gzip data'),
+				);
+				mockBoundedGunzip(Buffer.from('a,b'));
+				vi.mocked(mockExecuteFunctions.helpers.prepareBinaryData).mockResolvedValue({
+					data: 'YSxi',
+					mimeType: 'text/csv',
+				} as IBinaryData);
+
+				const result = await compression.execute.call(mockExecuteFunctions);
+
+				expect(result[0][0].binary?.file_0?.fileName).toBe(expectedFileName);
+				expect(result[0][0].binary?.file_0?.fileExtension).toBe('csv');
+			},
+		);
 	});
 
 	describe('Tar Decompression', () => {
