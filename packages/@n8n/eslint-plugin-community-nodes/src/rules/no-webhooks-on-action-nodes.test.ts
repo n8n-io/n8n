@@ -34,9 +34,15 @@ const webhookHandler = `async webhook() {
 
 function createNodeCode({
 	group = "['input']",
+	nodeDescription = "'A test node'",
 	description = '',
 	members = '',
-}: { group?: string; description?: string; members?: string } = {}): string {
+}: {
+	group?: string;
+	nodeDescription?: string;
+	description?: string;
+	members?: string;
+} = {}): string {
 	return `
 export class TestNode extends Node {
 	description = {
@@ -44,7 +50,7 @@ export class TestNode extends Node {
 		name: 'testNode',
 		group: ${group},
 		version: 1,
-		description: 'A test node',
+		description: ${nodeDescription},
 		defaults: { name: 'Test Node' },
 		inputs: ['main'],
 		outputs: ['main'],
@@ -137,6 +143,9 @@ describe.each([
 	it.each([
 		"this.evaluateExpression('{{ $execution.resumeUrl }}', 0)",
 		"this.evaluateExpression('{{ $execution . resumeUrl }}', 0)",
+		"this.evaluateExpression('={{ $execution.resumeUrl }}', 0)",
+		"this.evaluateExpression('{{ $execution.id }} {{ $execution.resumeUrl }}', 0)",
+		"this.evaluateExpression('{{\\n $execution.resumeUrl\\n }}', 0)",
 		'this.evaluateExpression(`{{ $execution.resumeUrl }}`, 0)',
 		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
 		'this.evaluateExpression(`{{ $execution.resumeUrl }}${suffix}`, 0)',
@@ -156,6 +165,18 @@ describe.each([
 		});
 
 		expect(lint(code)).toEqual([expect.objectContaining({ ruleId, severity: 2, message })]);
+	});
+
+	it.each([
+		"'Uses $execution.resumeUrl'",
+		'`Uses $execution.resumeUrl`',
+		// eslint-disable-next-line n8n-local-rules/no-interpolation-in-regular-string
+		'`Uses $execution.resumeUrl ${suffix}`',
+		"'{{ $execution.id }} uses $execution.resumeUrl'",
+		"'Uses $execution.resumeUrl in {{ $execution.id }}'",
+		"'Uses {{ $execution.resumeUrl'",
+	])('accepts description text without a resume URL expression: %s', (nodeDescription) => {
+		expect(lint(createNodeCode({ nodeDescription }))).toEqual([]);
 	});
 
 	it.each([

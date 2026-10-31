@@ -32,6 +32,10 @@ export const NoWebhooksOnActionNodesRule = createRule({
 
 		const actionNodes = new WeakSet<TSESTree.ClassDeclaration>();
 		const resumeUrlPattern = /\$execution\s*\.\s*resumeUrl\b/;
+		const hasResumeUrlExpression = (value: string) =>
+			[...value.matchAll(/\{\{[\s\S]*?\}\}/g)].some(([expression]) =>
+				resumeUrlPattern.test(expression),
+			);
 		const reportResumeUrl = (node: TSESTree.Node) => {
 			const containingClass = context.sourceCode
 				.getAncestors(node)
@@ -85,12 +89,12 @@ export const NoWebhooksOnActionNodesRule = createRule({
 				}
 			},
 			Literal(node) {
-				if (typeof node.value === 'string' && resumeUrlPattern.test(node.value)) {
+				if (typeof node.value === 'string' && hasResumeUrlExpression(node.value)) {
 					reportResumeUrl(node);
 				}
 			},
 			TemplateElement(node) {
-				if (resumeUrlPattern.test(node.value.cooked ?? node.value.raw)) {
+				if (hasResumeUrlExpression(node.value.cooked ?? node.value.raw)) {
 					reportResumeUrl(node);
 				}
 			},
