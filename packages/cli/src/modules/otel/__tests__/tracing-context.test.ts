@@ -1,8 +1,39 @@
 import type { Logger } from '@n8n/backend-common';
 import type { ExecutionRepository } from '@n8n/db';
+import { propagation } from '@opentelemetry/api';
+import {
+	CompositePropagator,
+	W3CBaggagePropagator,
+	W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import { mock } from 'vitest-mock-extended';
 
-import { TraceContextService } from '../tracing-context';
+import { extractTracingContext, TraceContextService } from '../tracing-context';
+
+describe('extractTracingContext', () => {
+	const traceparent = '00-abcdef1234567890abcdef1234567890-1234567890abcdef-01';
+
+	beforeAll(() => {
+		propagation.setGlobalPropagator(
+			new CompositePropagator({
+				propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+			}),
+		);
+	});
+
+	afterAll(() => propagation.disable());
+
+	it('should read the headers through the global propagator', () => {
+		expect(extractTracingContext({ traceparent, baggage: 'tenant=acme' })).toEqual({
+			traceparent,
+			baggage: 'tenant=acme',
+		});
+	});
+
+	it('should drop a malformed traceparent', () => {
+		expect(extractTracingContext({ traceparent: 'not-a-traceparent' })).toBeUndefined();
+	});
+});
 
 describe('TraceContextService', () => {
 	describe('persist', () => {

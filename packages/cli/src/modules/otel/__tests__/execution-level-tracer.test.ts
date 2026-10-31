@@ -1,7 +1,12 @@
 import type { Logger } from '@n8n/backend-common';
 import type { TextMapPropagator, Tracer } from '@opentelemetry/api';
 import { context, propagation, SpanStatusCode, trace } from '@opentelemetry/api';
-import { hrTimeToMilliseconds, W3CTraceContextPropagator } from '@opentelemetry/core';
+import {
+	CompositePropagator,
+	hrTimeToMilliseconds,
+	W3CBaggagePropagator,
+	W3CTraceContextPropagator,
+} from '@opentelemetry/core';
 import type { ExecutionStatus } from 'n8n-workflow';
 import { mock } from 'vitest-mock-extended';
 
@@ -1070,6 +1075,44 @@ describe('ExecutionLevelTracer', () => {
 
 			expect(persisted?.traceparent).toMatch(traceparentPattern);
 			expect(headers).toEqual({ 'sentry-trace': 'foreign' });
+		});
+
+		it('should keep caller baggage in the execution row and send it on node requests', () => {
+			const traceAndBaggage = new CompositePropagator({
+				propagators: [new W3CTraceContextPropagator(), new W3CBaggagePropagator()],
+			});
+			const headers: Record<string, string> = {};
+			let persisted: TracingContext | undefined;
+
+			withGlobalPropagator(traceAndBaggage, () => {
+				persisted = tracer.startWorkflow({
+					executionId: 'exec-baggage',
+					tracingContext: { ...inboundTracingContext, baggage: 'tenant=acme' },
+					workflow: defaultWorkflow,
+				});
+				tracer.startNode({
+					executionId: 'exec-baggage',
+					node: { id: 'n1', name: 'HTTP', type: 'test', typeVersion: 1 },
+				});
+				tracer.injectTraceHeaders('exec-baggage', 'HTTP', headers);
+			});
+
+			expect(persisted?.baggage).toBe('tenant=acme');
+			expect(headers.baggage).toBe('tenant=acme');
+		});
+
+		it('should build the active context from the execution, not from the caller context', () => {
+			tracer.startWorkflow({ executionId: 'exec-isolated', workflow: defaultWorkflow });
+			const callerContext = propagation.setBaggage(
+				context.active(),
+				propagation.createBaggage({ leaked: { value: 'yes' } }),
+			);
+
+			const activeContext = context.with(callerContext, () =>
+				tracer.getActiveContext('exec-isolated'),
+			);
+
+			expect(propagation.getBaggage(activeContext!)).toBeUndefined();
 		});
 	});
 
