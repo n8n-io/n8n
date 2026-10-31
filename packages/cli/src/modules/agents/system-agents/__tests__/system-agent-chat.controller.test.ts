@@ -14,6 +14,7 @@ import { AgentTurnAlreadyRunningError } from '../../agent-turn-already-running.e
 import type { AgentChatAttachment } from '../../entities/agent-chat-attachment.entity';
 import type { AgentExecutionThread } from '../../entities/agent-execution-thread.entity';
 import type { N8NCheckpointStorage } from '../../integrations/n8n-checkpoint-storage';
+import type { N8nMemory } from '../../integrations/n8n-memory';
 import { SystemAgentChatController } from '../system-agent-chat.controller';
 import type { SystemAgentExecutionService } from '../system-agent-execution.service';
 
@@ -33,6 +34,8 @@ function setup() {
 	const orchestrator = mock<AgentExecutionOrchestratorService>();
 	const attachments = mock<AgentChatAttachmentService>();
 	const checkpointStorage = mock<N8NCheckpointStorage>();
+	const memory = mock<N8nMemory>();
+	memory.getThreadsMetadata.mockResolvedValue(new Map());
 	systemAgents.getUsableThread.mockResolvedValue(thread);
 	systemAgents.findUsableThread.mockResolvedValue(thread);
 	systemAgents.resourceIdFor.mockImplementation(({ id }) => `system-chat:${id}`);
@@ -45,6 +48,7 @@ function setup() {
 		orchestrator,
 		checkpointStorage,
 		attachments,
+		memory,
 	);
 	return {
 		controller,
@@ -55,6 +59,7 @@ function setup() {
 		orchestrator,
 		checkpointStorage,
 		attachments,
+		memory,
 	};
 }
 
@@ -244,21 +249,33 @@ describe('SystemAgentChatController', () => {
 			}) as AgentExecutionThread;
 
 		it('lists a page of the threads of the user with the agent as summaries', async () => {
-			const { controller, systemAgents } = setup();
+			const { controller, systemAgents, memory } = setup();
 			systemAgents.listThreads.mockResolvedValue({
-				threads: [listed('thread-1', '2026-10-19T10:00:00.000Z')],
+				threads: [
+					listed('thread-1', '2026-10-19T10:00:00.000Z'),
+					listed('thread-2', '2026-10-19T09:00:00.000Z'),
+				],
 				hasMore: false,
 			});
+			memory.getThreadsMetadata.mockResolvedValue(new Map([['thread-1', { emoji: '🤖' }]]));
 
 			const result = await listThreads(controller, AGENT_ID, { limit: '5' });
 
 			expect(systemAgents.listThreads).toHaveBeenCalledWith(AGENT_ID, user, { limit: 5 });
+			expect(memory.getThreadsMetadata).toHaveBeenCalledWith(['thread-1', 'thread-2']);
 			expect(result).toEqual({
 				data: [
 					{
 						id: 'thread-1',
 						title: 'Chat thread-1',
 						updatedAt: '2026-10-19T10:00:00.000Z',
+						projectId: 'project-1',
+						metadata: { emoji: '🤖' },
+					},
+					{
+						id: 'thread-2',
+						title: 'Chat thread-2',
+						updatedAt: '2026-10-19T09:00:00.000Z',
 						projectId: 'project-1',
 					},
 				],
@@ -317,7 +334,8 @@ describe('SystemAgentChatController', () => {
 
 	describe('getThread', () => {
 		it('returns a usable thread of the user as a summary', async () => {
-			const { controller, systemAgents } = setup();
+			const { controller, systemAgents, memory } = setup();
+			memory.getThreadsMetadata.mockResolvedValue(new Map([['thread-1', { emoji: '🤖' }]]));
 			systemAgents.getUsableThread.mockResolvedValue({
 				...thread,
 				title: 'First chat',
@@ -334,6 +352,7 @@ describe('SystemAgentChatController', () => {
 				title: 'First chat',
 				updatedAt: '2026-10-19T10:00:00.000Z',
 				projectId: 'project-1',
+				metadata: { emoji: '🤖' },
 			});
 		});
 
