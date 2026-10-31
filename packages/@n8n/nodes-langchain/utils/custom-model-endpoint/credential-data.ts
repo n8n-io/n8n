@@ -3,12 +3,17 @@ import { normalizeEndpoint } from '../normalizeEndpoint';
 
 export type CustomModelEndpointCredentialData = {
 	url?: string;
-	authentication?: 'bearer' | 'header' | 'basic' | 'none';
+	authentication?: 'bearer' | 'header' | 'basic' | 'oauth2' | 'none';
 	apiKey?: string;
 	authHeaderName?: string;
 	authHeaderPrefix?: string;
 	username?: string;
 	password?: string;
+	tokenUrl?: string;
+	clientId?: string;
+	clientSecret?: string;
+	scope?: string;
+	sendCredentialsIn?: 'header' | 'body';
 	gatewayHeaders?: { headers?: Array<{ name?: string; value?: string }> };
 };
 
@@ -27,6 +32,15 @@ function readLoginMethod(data: CustomModelEndpointCredentialData): LoginMethod {
 				username: data.username?.trim() ?? '',
 				// A password may start or end with a space on purpose
 				password: data.password ?? '',
+			};
+		case 'oauth2':
+			return {
+				type: 'oauth2',
+				tokenUrl: data.tokenUrl?.trim() ?? '',
+				clientId: data.clientId?.trim() ?? '',
+				clientSecret: data.clientSecret ?? '',
+				scope: data.scope?.trim() ?? '',
+				sendCredentialsIn: data.sendCredentialsIn ?? 'header',
 			};
 		case 'none':
 			return { type: 'none' };
