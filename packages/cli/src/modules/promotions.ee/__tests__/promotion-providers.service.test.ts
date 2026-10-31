@@ -10,6 +10,8 @@ import type { PromotionProvider } from '../database/entities/promotion-provider.
 import type { PromotionEnvironmentRepository } from '../database/repositories/promotion-environment.repository';
 import type { PromotionProviderRepository } from '../database/repositories/promotion-provider.repository';
 import type { GitHostClients } from '../git-hosts/git-host-clients';
+import type { GitHostClient } from '../git-hosts/git-host.types';
+import type { PromotionCheckoutCleanupService } from '../promotion-checkout-cleanup.service';
 import { PromotionProvidersService } from '../promotion-providers.service';
 import type { PromotionsGitService } from '../promotions-git.service';
 
@@ -19,6 +21,8 @@ describe('PromotionProvidersService', () => {
 	const gitService = mock<PromotionsGitService>();
 	const cipher = mock<Cipher>();
 	const eventService = mock<EventService>();
+	const gitHosts = mock<GitHostClients>();
+	const checkoutCleanup = mock<PromotionCheckoutCleanupService>();
 	const actor = mock<User>({ id: 'user-1' });
 
 	const service = new PromotionProvidersService(
@@ -26,8 +30,9 @@ describe('PromotionProvidersService', () => {
 		environmentRepository,
 		gitService,
 		cipher,
-		mock<GitHostClients>(),
+		gitHosts,
 		eventService,
+		checkoutCleanup,
 	);
 
 	const sshProvider = (): PromotionProvider =>
@@ -68,6 +73,7 @@ describe('PromotionProvidersService', () => {
 		cipher.decryptV2.mockImplementation(async (value) => value.replace(/^enc:/, ''));
 		gitService.generateSshKeyPair.mockResolvedValue({ publicKey: 'PUB', privateKey: 'PRIV' });
 		providerRepository.updateProviderIfUnchanged.mockResolvedValue(true);
+		gitHosts.clientFor.mockReturnValue(mock<GitHostClient>());
 	});
 
 	describe('create', () => {
@@ -285,6 +291,75 @@ describe('PromotionProvidersService', () => {
 				service.update('missing', { name: 'x' } as UpdatePromotionProviderDto, actor),
 			).rejects.toThrow(NotFoundError);
 			expect(eventService.emit).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('checkout reset on update', () => {
+		const gitlabProvider = (): PromotionProvider =>
+			({
+				id: 'prov3',
+				name: 'GitLab',
+				type: 'gitlab',
+				authType: 'token',
+				config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com' },
+				auth: 'enc:{"schemaVersion":1,"username":"oauth2","password":"old"}',
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}) as PromotionProvider;
+
+		const tokenAuth = { authType: 'token', password: 'new' } as const;
+
+		beforeEach(() => {
+			providerRepository.findById.mockResolvedValue(gitlabProvider());
+		});
+
+		it('resets the checkouts of the provider after the host URL changes', async () => {
+			await service.update(
+				'prov3',
+				{
+					config: { schemaVersion: 1, baseUrl: 'https://gitlab.other.example.com' },
+					auth: tokenAuth,
+				},
+				actor,
+			);
+
+			expect(checkoutCleanup.resetCheckoutsForHostChange).toHaveBeenCalledWith('prov3');
+			expect(
+				checkoutCleanup.resetCheckoutsForHostChange.mock.invocationCallOrder[0],
+			).toBeGreaterThan(providerRepository.updateProviderIfUnchanged.mock.invocationCallOrder[0]);
+		});
+
+		it.each<{ change: string; input: UpdatePromotionProviderDto }>([
+			{ change: 'only the name changes', input: { name: 'Renamed' } },
+			{ change: 'only the credentials change', input: { auth: tokenAuth } },
+			{
+				change: 'the request sends the current host URL again',
+				input: {
+					config: { schemaVersion: 1, baseUrl: 'https://gitlab.example.com/' },
+					auth: tokenAuth,
+				},
+			},
+		])('resets no checkout when $change', async ({ input }) => {
+			await service.update('prov3', input, actor);
+
+			expect(checkoutCleanup.resetCheckoutsForHostChange).not.toHaveBeenCalled();
+		});
+
+		it('resets no checkout when the update loses a race', async () => {
+			providerRepository.updateProviderIfUnchanged.mockResolvedValueOnce(false);
+
+			await expect(
+				service.update(
+					'prov3',
+					{
+						config: { schemaVersion: 1, baseUrl: 'https://gitlab.other.example.com' },
+						auth: tokenAuth,
+					},
+					actor,
+				),
+			).rejects.toThrow(ConflictError);
+
+			expect(checkoutCleanup.resetCheckoutsForHostChange).not.toHaveBeenCalled();
 		});
 	});
 
