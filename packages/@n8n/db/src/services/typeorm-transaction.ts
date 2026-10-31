@@ -9,7 +9,7 @@ import { Transaction, TransactionRunner } from './transaction';
 /**
  * TypeORM implementation of the {@link Transaction} port. Wraps the active
  * `EntityManager` in a hard-private field; the only way to read it back is
- * {@link TypeOrmTransaction.getEntityManager}, which only the repository layer calls.
+ * {@link TypeOrmTransaction.getEntityManager}, which only {@link entityManagerOf} calls.
  */
 export class TypeOrmTransaction extends Transaction {
 	readonly #manager: EntityManager;
@@ -22,6 +22,17 @@ export class TypeOrmTransaction extends Transaction {
 	getEntityManager(): EntityManager {
 		return this.#manager;
 	}
+}
+
+/**
+ * The single seam that unwraps a transaction handle. Internal to `@n8n/db`: not exported from
+ * the package. Its callers are `BaseRepository.managerFor` and `withSavepoint`.
+ */
+export function entityManagerOf(trx: Transaction): EntityManager {
+	if (!(trx instanceof TypeOrmTransaction)) {
+		throw new UnexpectedError('Transaction was not created by the TypeORM runner');
+	}
+	return trx.getEntityManager();
 }
 
 /** TypeORM implementation of the {@link TransactionRunner} port. */
