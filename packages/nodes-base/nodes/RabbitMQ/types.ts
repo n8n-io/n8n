@@ -43,6 +43,7 @@ export type TriggerOptions = Options & {
 		| 'executionFinishesSuccessfully'
 		| 'immediately'
 		| 'laterMessageNode';
+	nackRequeue: boolean,
 	parallelMessages: number;
 	binding: {
 		bindings: Binding[];
