@@ -6,7 +6,11 @@ const rateLimit = z.coerce.number().int().nonnegative().max(Number.MAX_SAFE_INTE
 
 @Config
 export class AppsConfig {
-	/** Parent URL for app subdomains, for example https://apps.example.com. Include the public scheme and optional port. Set this value when you enable the apps module. */
+	/** Serve apps and previews under the instance URL instead of a separate domain. This temporary mode removes origin isolation between apps and the n8n editor. */
+	@Env('N8N_APPS_UNSAFE_SAME_ORIGIN')
+	unsafeSameOrigin: boolean = false;
+
+	/** Parent URL for app subdomains, for example https://apps.example.com. Include the public scheme and optional port. Set this value when you serve apps on separate subdomains. */
 	@Env('N8N_APPS_BASE_URL')
 	baseUrl: string = '';
 

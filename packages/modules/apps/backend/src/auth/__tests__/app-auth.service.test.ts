@@ -1,5 +1,6 @@
 import { UrlService } from '@n8n/backend-services';
 import { OAuth2FlowProxy } from '@n8n/backend-services/auth';
+import { GlobalConfig } from '@n8n/config';
 import { ResourceAdmission, type ProtectedResource } from '@n8n/inbound-auth';
 import type { SecurityContext } from '@n8n/permissions';
 import type { Response } from 'express';
@@ -10,6 +11,7 @@ import { AppAuthService, type AppRequest } from '../app-auth.service';
 import { AppProtectedResource } from '../app-protected-resource';
 import type { App } from '../../app.entity';
 import { AppRepository } from '../../app.repository';
+import { AppsConfig } from '../../apps.config';
 import { AppHostService } from '../../serving/app-host.service';
 
 const issuer = 'https://n8n.example.net';
@@ -17,7 +19,7 @@ const state = 'opaque.State_~-1';
 const flowCookieName = `__Host-n8n-app-flow-${createHash('sha256').update(state).digest('hex')}`;
 const appId = '11111111-1111-4111-8111-111111111111';
 
-function setup(visibility: App['visibility'] = 'project') {
+function setup(visibility: App['visibility'] = 'project', sameOrigin = false) {
 	const app = mock<App>({
 		id: appId,
 		namespace: 'sales',
@@ -26,11 +28,12 @@ function setup(visibility: App['visibility'] = 'project') {
 	});
 	const apps = mock<AppRepository>();
 	apps.findByNamespace.mockResolvedValue(app);
-	const hosts = mock<AppHostService>({
-		baseUrl: new URL('https://apps.example.com'),
-		namespace: () => 'sales',
-		callbackUrl: () => `https://sales.apps.example.com/_n8n/auth/${appId}/callback`,
-	});
+	apps.findById.mockResolvedValue(app);
+	const hosts = new AppHostService(
+		mock<AppsConfig>({ baseUrl: 'https://apps.example.com', unsafeSameOrigin: sameOrigin }),
+		mock<GlobalConfig>({ deployment: mock({ type: 'default' }) }),
+		mock<UrlService>({ getInstanceBaseUrl: () => issuer, getWebhookBaseUrl: () => issuer }),
+	);
 	const resources = mock<AppProtectedResource>();
 	resources.forApp.mockReturnValue(mock<ProtectedResource>());
 	const flow = mock<OAuth2FlowProxy>();
@@ -55,7 +58,8 @@ function setup(visibility: App['visibility'] = 'project') {
 	const req = mock<AppRequest>({
 		method: 'GET',
 		path: '/',
-		originalUrl: '/orders/123',
+		originalUrl: `${sameOrigin ? `/apps/${appId}` : ''}/orders/123`,
+		headers: { host: sameOrigin ? 'n8n.example.net' : 'sales.apps.example.com' },
 		cookies: {},
 	});
 	req.query = { code: 'code', state, iss: issuer };
@@ -66,6 +70,60 @@ function setup(visibility: App['visibility'] = 'project') {
 }
 
 describe('AppAuthService', () => {
+	it('signs in on the app path and keeps its session separate from other apps', async () => {
+		const { service, app, apps, req, res, admission, flow } = setup('project', true);
+		const root = `/apps/${appId}/`;
+		const callbackUrl = `${issuer}${root}_n8n/auth/${appId}/callback`;
+		req.get.mockReturnValue('navigate');
+		admission.admitBearer.mockResolvedValueOnce({
+			ok: false,
+			reason: 'no-credential',
+			advertised: mock(),
+		});
+
+		await service.authenticate(req, res, vi.fn());
+
+		expect(res.redirect).toHaveBeenCalledWith(
+			`${issuer}${root}_n8n/auth/${appId}/login?returnTo=${encodeURIComponent(`${root}orders/123`)}`,
+		);
+		await service.begin(app, `${root}orders/123`, res);
+		expect(flow.begin).toHaveBeenCalledWith(
+			callbackUrl,
+			expect.objectContaining({ returnPath: `${root}orders/123` }),
+		);
+		const [name, nonce] = res.cookie.mock.calls[0];
+		req.cookies = { [name]: nonce };
+		await service.complete(req, res, appId);
+		const sessionName = `__Host-n8n-app-${appId}-session`;
+		expect(res.cookie).toHaveBeenLastCalledWith(sessionName, 'app-token', expect.anything());
+		expect(res.redirect).toHaveBeenLastCalledWith(`${root}orders/123`);
+		req.cookies = { [sessionName]: 'app-token', '__Host-n8n-app-session': 'another-token' };
+		const next = vi.fn();
+		await service.authenticate(req, res, next);
+		expect(admission.admitBearer).toHaveBeenLastCalledWith(
+			expect.anything(),
+			expect.objectContaining({ url: callbackUrl }),
+			'app-token',
+		);
+		expect(next).toHaveBeenCalledOnce();
+		expect(apps.findByNamespace).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		'/',
+		'/home/apps',
+		'/apps/other/',
+		'\\\\other.example',
+		`/apps/${appId}/_n8n/auth/login`,
+	])('keeps same-origin sign-in returns within the app: %s', async (returnPath) => {
+		const { service, app, res, flow } = setup('project', true);
+		await service.begin(app, returnPath, res);
+		expect(flow.begin).toHaveBeenCalledWith(
+			expect.any(String),
+			expect.objectContaining({ returnPath: `/apps/${appId}/` }),
+		);
+	});
+
 	it('serves public apps without an authentication lookup', async () => {
 		const { service, req, res, admission } = setup('public');
 		const next = vi.fn();
