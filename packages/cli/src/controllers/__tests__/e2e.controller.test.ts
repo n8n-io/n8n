@@ -1,4 +1,10 @@
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import type { Profiler } from 'node:inspector';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { mock } from 'vitest-mock-extended';
+
+import type { License } from '@/license';
 
 import { E2EController } from '../e2e.controller';
 
@@ -8,62 +14,65 @@ vi.mock('@/constants', async (importOriginal) => ({
 	inE2ETests: true,
 }));
 
-const indexCoverage = (scripts: Profiler.ScriptCoverage[]) =>
-	E2EController['indexCoverage'](scripts);
-const deltaCoverage = (scripts: Profiler.ScriptCoverage[], baseline: Map<string, number>) =>
-	E2EController['deltaCoverage'](scripts, baseline);
+type CoverageResponse = { result?: Profiler.ScriptCoverage[]; boot?: Profiler.ScriptCoverage[] };
 
-// The shape V8 reports for `class Repo { findA() {} findB() {} findC() {} }`:
-// a module range that contains one range for each method.
-const script = (
-	url: string,
-	counts: { module: number; findA: number; findB: number; findC: number },
-): Profiler.ScriptCoverage => ({
-	scriptId: url,
-	url,
-	functions: [
-		{
-			functionName: '',
-			isBlockCoverage: true,
-			ranges: [{ startOffset: 0, endOffset: 120, count: counts.module }],
-		},
-		...(['findA', 'findB', 'findC'] as const).map((name, i) => ({
-			functionName: name,
-			isBlockCoverage: true,
-			ranges: [{ startOffset: 15 + i * 26, endOffset: 38 + i * 26, count: counts[name] }],
-		})),
-	],
-});
-
-const countsOf = (coverage: Profiler.ScriptCoverage) =>
-	Object.fromEntries(
-		coverage.functions.map((fn) => [fn.functionName || 'module', fn.ranges[0].count]),
+const createController = () =>
+	new (E2EController as unknown as new (...args: unknown[]) => E2EController)(
+		mock<License>(),
+		...Array.from({ length: 16 }, () => mock()),
 	);
 
-describe('E2EController coverage delta', () => {
-	it('keeps functions that did not run in a script that loaded during the window', () => {
-		const baseline = indexCoverage([]);
-		const after = [script('file:///lazy.js', { module: 1, findA: 1, findB: 0, findC: 0 })];
+// A named function so it can be found in the V8 coverage by name.
+function coverageProbe() {
+	return 1;
+}
 
-		const [lazy] = deltaCoverage(after, baseline);
+const probeCount = (scripts: Profiler.ScriptCoverage[] = []) =>
+	scripts
+		.flatMap((script) => script.functions)
+		.filter((fn) => fn.functionName === 'coverageProbe')
+		.reduce((sum, fn) => sum + fn.ranges[0].count, 0);
 
-		expect(countsOf(lazy)).toEqual({ module: 1, findA: 1, findB: 0, findC: 0 });
+describe('E2EController per-spec backend coverage', () => {
+	it('credits a function to each spec that runs it, not only to the first', async () => {
+		const controller = createController();
+
+		const boot: CoverageResponse = await controller.startCoverage();
+		coverageProbe();
+		const firstSpec: CoverageResponse = await controller.takeCoverage();
+
+		const second: CoverageResponse = await controller.startCoverage();
+		coverageProbe();
+		coverageProbe();
+		const secondSpec: CoverageResponse = await controller.takeCoverage();
+
+		expect(probeCount(firstSpec.result)).toBe(1);
+		expect(probeCount(secondSpec.result)).toBe(2);
+		expect(boot.boot).toBeDefined();
+		expect(second.boot).toBeUndefined();
 	});
 
-	it('reports only the calls made since the baseline', () => {
-		const baseline = indexCoverage([
-			script('file:///eager.js', { module: 1, findA: 0, findB: 3, findC: 0 }),
-		]);
-		const after = [script('file:///eager.js', { module: 1, findA: 2, findB: 3, findC: 0 })];
+	it('writes every window to the NODE_V8_COVERAGE folder so the shard total stays complete', async () => {
+		const dir = mkdtempSync(join(tmpdir(), 'e2e-coverage-'));
+		vi.stubEnv('NODE_V8_COVERAGE', dir);
+		try {
+			const controller = createController();
+			await controller.startCoverage();
+			coverageProbe();
+			await controller.takeCoverage();
+			coverageProbe();
+			await controller.startCoverage();
+			coverageProbe();
+			await controller.takeCoverage();
 
-		const [eager] = deltaCoverage(after, baseline);
-
-		expect(countsOf(eager)).toEqual({ module: 0, findA: 2, findB: 0, findC: 0 });
-	});
-
-	it('omits scripts that ran no code since the baseline', () => {
-		const before = [script('file:///idle.js', { module: 1, findA: 4, findB: 0, findC: 0 })];
-
-		expect(deltaCoverage(before, indexCoverage(before))).toEqual([]);
+			const total = readdirSync(dir).reduce((sum, file) => {
+				const { result } = JSON.parse(readFileSync(join(dir, file), 'utf8')) as CoverageResponse;
+				return sum + probeCount(result);
+			}, 0);
+			expect(total).toBe(3);
+		} finally {
+			vi.unstubAllEnvs();
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });

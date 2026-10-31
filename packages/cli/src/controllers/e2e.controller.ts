@@ -405,92 +405,82 @@ export class E2EController {
 	// E2E impact map (today the map is frontend-only). Test-only: the whole
 	// controller hard-exits outside E2E (see top of file).
 	//
-	// Uses `Profiler.getBestEffortCoverage` (NON-draining) + a server-side
-	// baseline/delta so it never resets the global V8 counters — the shard-level
-	// `NODE_V8_COVERAGE` exit dump (the Codecov report path) is left untouched.
+	// Each start and take calls `Profiler.takePreciseCoverage`, which returns the
+	// call counts since the previous take and resets them. Best-effort coverage
+	// is not usable here: it reports 0 or 1 for each function, so only the first
+	// spec in a container got credit for code that every spec runs.
+	//
+	// The reset is process-wide, so the `NODE_V8_COVERAGE` exit dump keeps only
+	// the counts after the last take. To keep the shard total (the Codecov path)
+	// complete, every window is also written to the `NODE_V8_COVERAGE` folder.
 	//
 	// REQUIRES the coverage run to be single-worker (it is — coverage project
 	// runs `--workers=1`). Precise coverage is process-global, so the start→take
 	// window is only attributable to one spec when specs don't run concurrently.
 	private coverageSession?: nodeInspectorPromises.Session;
 
-	private coverageBaseline = new Map<string, number>();
+	private coverageWindows = 0;
 
-	private async ensureCoverageSession(): Promise<nodeInspectorPromises.Session> {
+	/** Return the counts since the previous take, or since boot on the first call. */
+	private async takeCoverageWindow(): Promise<{
+		boot: boolean;
+		result: Profiler.ScriptCoverage[];
+	}> {
+		const boot = !this.coverageSession;
 		if (!this.coverageSession) {
 			const inspector = require('node:inspector/promises') as typeof nodeInspectorPromises;
 			this.coverageSession = new inspector.Session();
 			this.coverageSession.connect();
-			// `enable` only — NODE_V8_COVERAGE already turned precise coverage on at
-			// boot. We never call start/takePreciseCoverage (those reset the global
-			// counters and would empty the shard exit dump).
 			await this.coverageSession.post('Profiler.enable');
+			// Same mode as NODE_V8_COVERAGE, so the counts since boot are kept.
+			await this.coverageSession.post('Profiler.startPreciseCoverage', {
+				callCount: true,
+				detailed: true,
+			});
 		}
-		return this.coverageSession;
-	}
-
-	private static coverageKey(
-		url: string,
-		fn: Profiler.FunctionCoverage,
-		range: Profiler.CoverageRange,
-	): string {
-		return `${url} ${fn.functionName} ${fn.ranges[0]?.startOffset ?? 0} ${range.startOffset}-${range.endOffset}`;
-	}
-
-	private static indexCoverage(scripts: Profiler.ScriptCoverage[]): Map<string, number> {
-		const index = new Map<string, number>();
-		for (const script of scripts) {
-			for (const fn of script.functions) {
-				for (const range of fn.ranges) {
-					index.set(E2EController.coverageKey(script.url, fn, range), range.count);
-				}
-			}
-		}
-		return index;
+		const { result } = await this.coverageSession.post('Profiler.takePreciseCoverage');
+		const window = E2EController.scriptsThatRan(result);
+		await this.writeCoverageWindow(window);
+		return { boot, result: window };
 	}
 
 	/**
-	 * Return each script that ran code since the baseline, with every range count
-	 * replaced by its increase. Keep the zero-count functions: V8 ranges nest, so
-	 * a reader treats a missing function as covered by its enclosing range.
+	 * Keep each script that ran code in the window. Keep its zero-count
+	 * functions: V8 ranges nest, so a reader treats a missing function as
+	 * covered by its enclosing range.
 	 */
-	private static deltaCoverage(
-		scripts: Profiler.ScriptCoverage[],
-		baseline: Map<string, number>,
-	): Profiler.ScriptCoverage[] {
-		const delta: Profiler.ScriptCoverage[] = [];
-		for (const script of scripts) {
-			let ran = false;
-			const functions = script.functions.map((fn) => ({
-				...fn,
-				ranges: fn.ranges.map((range) => {
-					const before = baseline.get(E2EController.coverageKey(script.url, fn, range)) ?? 0;
-					const count = Math.max(0, range.count - before);
-					if (count > 0) ran = true;
-					return { ...range, count };
-				}),
-			}));
-			if (ran) delta.push({ ...script, functions });
-		}
-		return delta;
+	private static scriptsThatRan(scripts: Profiler.ScriptCoverage[]): Profiler.ScriptCoverage[] {
+		return scripts.filter((script) =>
+			script.functions.some((fn) => fn.ranges.some((range) => range.count > 0)),
+		);
 	}
 
-	/** Test-only: mark the start of a spec's backend-coverage window. */
+	private async writeCoverageWindow(result: Profiler.ScriptCoverage[]) {
+		const dir = process.env.NODE_V8_COVERAGE;
+		if (!dir || result.length === 0) return;
+		const fs = require('node:fs') as typeof nodeFs;
+		// The timestamp keeps names unique when a restarted process reuses the pid.
+		const file = `${dir}/window-${process.pid}-${Date.now()}-${++this.coverageWindows}.json`;
+		await fs.promises.writeFile(file, JSON.stringify({ result }));
+	}
+
+	/**
+	 * Test-only: mark the start of a spec's backend-coverage window. The first
+	 * call returns the code that ran at boot, which every spec depends on.
+	 */
 	@Post('/coverage/start', { skipAuth: true })
 	async startCoverage() {
-		const session = await this.ensureCoverageSession();
-		const { result } = await session.post('Profiler.getBestEffortCoverage');
-		this.coverageBaseline = E2EController.indexCoverage(result);
-		return { success: true };
+		const { boot, result } = await this.takeCoverageWindow();
+		return boot ? { success: true, boot: result } : { success: true };
 	}
 
 	/** Test-only: return the V8 coverage executed since `start` (this spec's
-	 * delta), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
+	 * window), as raw `ScriptCoverage[]` for the coverage emitter to resolve. */
 	@Post('/coverage/take', { skipAuth: true })
 	async takeCoverage() {
 		if (!this.coverageSession) return { success: false, result: [] };
-		const { result } = await this.coverageSession.post('Profiler.getBestEffortCoverage');
-		return { success: true, result: E2EController.deltaCoverage(result, this.coverageBaseline) };
+		const { result } = await this.takeCoverageWindow();
+		return { success: true, result };
 	}
 
 	/**
