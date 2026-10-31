@@ -4,7 +4,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
-import { In, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
+import { In, IsNull, LessThan, LessThanOrEqual, MoreThanOrEqual, And, Not } from '@n8n/typeorm';
 import { DateUtils } from '@n8n/typeorm/util/DateUtils';
 import type { IRunExecutionData, IWorkflowBase } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
@@ -547,6 +547,21 @@ describe('ExecutionRepository', () => {
 				ExecutionEntity,
 				{ id: In(executionIds) },
 				expect.objectContaining({ status: 'canceled', waitTill: null }),
+			);
+		});
+	});
+
+	describe('softDeleteByIds', () => {
+		test('should set `deletedAt` only on executions that are not soft-deleted yet', async () => {
+			const executionIds = ['1', '2'];
+			const deletedAt = new Date('2026-01-01T00:00:00.000Z');
+
+			await executionRepository.softDeleteByIds(executionIds, deletedAt);
+
+			expect(entityManager.update).toHaveBeenCalledWith(
+				ExecutionEntity,
+				{ id: In(executionIds), deletedAt: IsNull() },
+				{ deletedAt },
 			);
 		});
 	});

@@ -687,8 +687,7 @@ export class ExecutionPersistence {
 	 */
 	async deleteInFlightExecution(target: DeletionTarget, outcome: InFlightExecutionOutcome) {
 		if (this.executionsConfig.pruneData) {
-			const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
-			const deletedAt = new Date(Date.now() - bufferMs);
+			const deletedAt = this.prunableDeletedAt();
 			const { affected } = await this.executionRepository.update(
 				this.buildEntityWhereCondition(target.executionId, { requireNotCanceled: true }),
 				{
@@ -708,15 +707,27 @@ export class ExecutionPersistence {
 	async hardDelete(target: DeletionTarget | DeletionTarget[]) {
 		const targets = Array.isArray(target) ? target : [target];
 		if (targets.length === 0) return;
+		const executionIds = targets.map((t) => t.executionId);
 
-		// Binaries first. A failure leaves the payload and the rows, so the execution stays openable.
+		// Hide the rows first, so a failure below leaves them for the next prune, not visible without data.
+		// Pruning off: nothing removes hidden rows, so they stay visible and the user can delete them again.
+		if (this.executionsConfig.pruneData) {
+			await this.executionRepository.softDeleteByIds(executionIds, this.prunableDeletedAt());
+		}
+		// Binaries next. A failure leaves the payload and the rows.
 		await this.binaryDataService.deleteMany(
 			targets.map((t) => ({ type: 'execution' as const, ...t })),
 		);
-		// Payload next. A failure leaves the rows, so the next run retries them.
+		// Payload next. A failure leaves the rows.
 		await this.jsonStore.delete(this.toBlobRefs(targets));
 
-		await this.executionRepository.deleteByIds(targets.map((t) => t.executionId));
+		await this.executionRepository.deleteByIds(executionIds);
+	}
+
+	/** Backdated past the hard-delete buffer, so the next pruning hard-delete run picks the row up. */
+	private prunableDeletedAt() {
+		const bufferMs = this.executionsConfig.pruneDataHardDeleteBuffer * Time.hours.toMilliseconds;
+		return new Date(Date.now() - bufferMs);
 	}
 
 	/** Resolve and remove one execution together with every storage-backed payload it owns. */

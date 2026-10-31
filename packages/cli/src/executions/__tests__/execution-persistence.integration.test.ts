@@ -3,6 +3,7 @@ import { ExecutionsConfig } from '@n8n/config';
 import { ExecutionDataRepository, ExecutionRepository } from '@n8n/db';
 import type { IExecutionResponse } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { StorageConfig } from 'n8n-core';
 import { createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { DbStore } from '@/executions/execution-data/db-store';
@@ -296,6 +297,59 @@ describe('ExecutionPersistence', () => {
 				withDeleted: true,
 			});
 			expect(row).toBeNull();
+		});
+	});
+
+	describe('hardDelete', () => {
+		const storageConfig = Container.get(StorageConfig);
+		const originalMode = storageConfig.mode;
+
+		afterEach(() => {
+			storageConfig.mode = originalMode;
+			vi.restoreAllMocks();
+		});
+
+		it('should hide the execution from reads and queue it for pruning when the row delete fails after the payload is gone', async () => {
+			storageConfig.mode = 'filesystem';
+			const executionPersistence = Container.get(ExecutionPersistence);
+			const executionRepo = Container.get(ExecutionRepository);
+			const reportSpy = vi.spyOn(executionRepo, 'reportInvalidExecutions');
+			const workflow = await createWorkflow({ settings: { executionOrder: 'v1' } });
+			const createSuccess = async () =>
+				await executionPersistence.create({
+					workflowId: workflow.id,
+					data: createEmptyRunExecutionData(),
+					workflowData: workflow,
+					mode: 'manual',
+					status: 'success',
+					finished: true,
+				});
+			const olderId = await createSuccess();
+			const newestId = await createSuccess();
+			vi.spyOn(executionRepo, 'deleteByIds').mockRejectedValueOnce(new Error('db timeout'));
+
+			await expect(
+				executionPersistence.hardDelete({
+					workflowId: workflow.id,
+					executionId: newestId,
+					storedAt: 'fs',
+				}),
+			).rejects.toThrow('db timeout');
+
+			const lastSuccessful = await executionPersistence.findMultipleExecutions(
+				{
+					select: ['id', 'workflowId'],
+					where: { workflowId: workflow.id, status: 'success' },
+					order: { id: 'DESC' },
+					take: 1,
+				},
+				{ includeData: true, unflattenData: true },
+			);
+			expect(lastSuccessful.map((e) => e.id)).toEqual([olderId]);
+			expect(reportSpy).not.toHaveBeenCalled();
+
+			const prunable = await executionRepo.findSoftDeletedExecutions();
+			expect(prunable.map((ref) => ref.executionId)).toEqual([newestId]);
 		});
 	});
 
