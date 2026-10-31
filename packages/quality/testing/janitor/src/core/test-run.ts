@@ -11,6 +11,13 @@
  *
  * A package that has no scoped task runs the full task: it must never skip
  * tests that a scoped run would have run.
+ *
+ * Two rules keep a replay honest:
+ * - The full task never runs with `--only`. With `--only`, turbo leaves the
+ *   dependency tasks out of the hash, so a change in a dependency would replay
+ *   a stale result.
+ * - Only a job with a scoped task skips packages. A job without one ran every
+ *   package before, and some tests read files outside every package.
  */
 import { spawnSync } from 'node:child_process';
 
@@ -71,12 +78,16 @@ export function planTestRun(
 	fullTasks: DryRunTask[],
 	scopedPackages: ReadonlySet<string>,
 	decide: (task: DryRunTask) => ScopeResult,
+	allowSkip: boolean,
 ): PlannedPackage[] {
 	return fullTasks.map((task) => {
 		if (task.cache.status === 'HIT') {
 			return { name: task.package, decision: 'cached', reason: 'turbo cache hit' };
 		}
 		const scope = decide(task);
+		if (scope.kind === 'skip' && !allowSkip) {
+			return { name: task.package, decision: 'full', reason: 'Job has no scoped task' };
+		}
 		if (scope.kind === 'skip')
 			return { name: task.package, decision: 'skip', reason: scope.reason };
 		if (scope.kind === 'full')
@@ -108,24 +119,34 @@ export interface TestRunDeps {
 
 const isSummarize = (flag: string) => flag === '--summarize' || flag.startsWith('--summarize=');
 
+/** A filter that names one package, not a glob, path or exclusion. */
+const isPackageName = (filter: string) => /^--filter=[^!.*][^*]*$/.test(filter);
+
 export function runTestRun(args: TestRunArgs, deps: TestRunDeps): number {
+	const fullFlags = args.turboFlags.filter((flag) => flag !== '--only');
 	// A dry run writes no summary; keep `--summarize` for the real runs only.
-	const dryFlags = args.turboFlags.filter((flag) => !isSummarize(flag));
+	const dry = (flags: string[]) => flags.filter((flag) => !isSummarize(flag));
 	let plan: PlannedPackage[];
 	try {
 		const fullTasks = tasksFor(
 			args.fullTask,
-			deps.dryRun(args.fullTask, dryFlags, args.filters, args.taskArgs),
+			deps.dryRun(args.fullTask, dry(fullFlags), args.filters, args.taskArgs),
 		);
+		if (fullTasks.length === 0 && args.filters.length > 0 && args.filters.every(isPackageName)) {
+			deps.log(
+				`[janitor:test-run] no package in ${args.filters.join(' ')} defines ${args.fullTask}`,
+			);
+			return 1;
+		}
 		const scopedPackages = new Set(
 			args.scopedTask
 				? tasksFor(
 						args.scopedTask,
-						deps.dryRun(args.scopedTask, dryFlags, args.filters, args.taskArgs),
+						deps.dryRun(args.scopedTask, dry(args.turboFlags), args.filters, args.taskArgs),
 					).map((t) => t.package)
 				: [],
 		);
-		plan = planTestRun(fullTasks, scopedPackages, deps.decide);
+		plan = planTestRun(fullTasks, scopedPackages, deps.decide, args.scopedTask !== undefined);
 	} catch (error) {
 		// Without a plan, run what the job ran before: the scoped task if it has
 		// one (janitor still scopes each package), else the full task.
@@ -139,14 +160,13 @@ export function runTestRun(args: TestRunArgs, deps: TestRunDeps): number {
 	const full = byName(['cached', 'full']);
 	const scoped = byName(['scoped']);
 
-	let exitCode = 0;
-	if (full.length > 0) {
-		exitCode ||= deps.run(args.fullTask, args.turboFlags, full, args.taskArgs);
-	}
-	if (scoped.length > 0 && args.scopedTask) {
-		exitCode ||= deps.run(args.scopedTask, args.turboFlags, scoped, args.taskArgs);
-	}
-	return exitCode;
+	// Run both batches even when the first fails, like one `turbo run --continue`.
+	const fullExit = full.length > 0 ? deps.run(args.fullTask, fullFlags, full, args.taskArgs) : 0;
+	const scopedExit =
+		scoped.length > 0 && args.scopedTask
+			? deps.run(args.scopedTask, args.turboFlags, scoped, args.taskArgs)
+			: 0;
+	return fullExit || scopedExit;
 }
 
 function turboArgs(task: string, flags: string[], filters: string[], taskArgs: string[]) {
