@@ -73,6 +73,24 @@ function partitionFiles(filesCsv) {
 	return { internal, external };
 }
 
+/** Only executable app source can have V8 E2E coverage. */
+function isCoverageWarningSource(file) {
+	const sourcePath =
+		/^packages\/(?:(?:cli|core|workflow)\/src|nodes-base\/(?:nodes|credentials|utils)|@n8n\/[^/]+\/(?:src|nodes|credentials|utils)|frontend\/(?:editor-ui|@n8n\/[^/]+)\/src|modules\/[^/]+\/frontend\/src)\//;
+	const toolingPackage =
+		/^packages\/(?:@n8n\/(?:backend-test-utils|create-node|(?:eslint|oxlint|stylelint|typescript|vitest)-config|eslint-plugin-community-nodes|module-cli|node-cli)|frontend\/@n8n\/(?:frontend-vite-config|storybook))\//;
+	return (
+		sourcePath.test(file) &&
+		!toolingPackage.test(file) &&
+		/\.(?:[cm]?[jt]sx?|vue)$/.test(file) &&
+		!/(?:^|\/)(?:__tests__|__mocks__|__fixtures__|tests?|fixtures|dist|node_modules)\//.test(
+			file,
+		) &&
+		!/\.(?:test|spec|stories)\./.test(file) &&
+		!/\.d\.[cm]?ts$/.test(file)
+	);
+}
+
 /**
  * Query the V8 coverage map for specs affected by app-source changes.
  *
@@ -103,13 +121,13 @@ function selectV8Specs(externalFiles, base) {
 				reason: parsed.failOpen ?? `forced broad by: ${(parsed.unmapped ?? []).join(', ')}`,
 			};
 		}
-		// Coverage-gap alarm: changes with no E2E that verifies them aren't run
-		// (unit + the sanity spec are the net) — but surface the gap, don't hide it.
-		if (parsed.uncovered?.length) {
-			const sample = parsed.uncovered.slice(0, 5).join(', ');
-			const more = parsed.uncovered.length > 5 ? `, +${parsed.uncovered.length - 5} more` : '';
+		// Filter only the warning. Keep the selector's full uncovered list in its JSON output.
+		const uncoveredSource = (parsed.uncovered ?? []).filter(isCoverageWarningSource);
+		if (uncoveredSource.length) {
+			const sample = uncoveredSource.slice(0, 5).join(', ');
+			const more = uncoveredSource.length > 5 ? `, +${uncoveredSource.length - 5} more` : '';
 			console.error(
-				`  ⚠ ${parsed.uncovered.length} changed file(s) have no E2E coverage — not run, relying on unit + sanity: ${sample}${more}`,
+				`  ⚠ ${uncoveredSource.length} changed file(s) have no E2E coverage — not run, relying on unit + sanity: ${sample}${more}`,
 			);
 		}
 		return { broad: false, specs: new Set(parsed.specs ?? []) };
