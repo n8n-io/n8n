@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
 	instanceAiReady: { value: true },
+	settings: { isAssistantAgentEnabled: false },
 	routerPush: vi.fn(),
 	syncThread: vi.fn(),
 	updateThreadMetadata: vi.fn(),
@@ -39,6 +40,9 @@ vi.mock('../instanceAi.store', () => ({
 		getOrCreateRuntime: mocks.getOrCreateRuntime,
 	}),
 }));
+vi.mock('../instanceAiSettings.store', () => ({
+	useInstanceAiSettingsStore: () => mocks.settings,
+}));
 vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	useProjectsStore: () => ({
 		personalProject: { id: 'personal-1' },
@@ -46,6 +50,11 @@ vi.mock('@/features/collaboration/projects/projects.store', () => ({
 	}),
 }));
 
+import {
+	forgetAssistantAgentThread,
+	getAssistantAgentLaunch,
+	knownAssistantThreadRuntime,
+} from '../assistantAgent/assistantAgentThreads';
 import {
 	buildInstanceAiAgentPreviewHandoffContext,
 	buildInstanceAiCredentialHandoffContext,
@@ -62,6 +71,7 @@ import {
 	getPendingHandoffContext,
 	getPendingWorkflowAttachment,
 	provisionContextOnlyThread,
+	provisionLaunchedThread,
 	provisionSubjectThread,
 	provisionWorkflowThread,
 	stashPendingAgentAttachment,
@@ -78,7 +88,9 @@ describe('useInstanceAiHandoff', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		localStorage.clear();
+		forgetAssistantAgentThread('thread-1');
 		mocks.instanceAiReady.value = true;
+		mocks.settings.isAssistantAgentEnabled = false;
 		mocks.syncThread.mockResolvedValue(undefined);
 		mocks.updateThreadMetadata.mockResolvedValue(undefined);
 		mocks.deleteThread.mockResolvedValue(true);
@@ -735,6 +747,138 @@ describe('useInstanceAiHandoff', () => {
 			expect(opened).toBe(false);
 			expect(mocks.syncThread).not.toHaveBeenCalled();
 			expect(mocks.routerPush).toHaveBeenCalledWith({ name: 'InstanceAi' });
+		});
+	});
+	describe('with the Assistant agent flag on', () => {
+		const runtimeOf = (threadId: string) =>
+			knownAssistantThreadRuntime(threadId, {
+				assistantAgentEnabled: true,
+				isAssistantThread: () => false,
+			});
+
+		beforeEach(() => {
+			mocks.settings.isAssistantAgentEnabled = true;
+		});
+
+		it('provisions a launched thread without creating it on the current runtime', async () => {
+			const threadId = await provisionLaunchedThread(
+				'project-1',
+				{
+					message: 'Adjust template 42',
+					authorship: { kind: 'prefill', prefillType: 'template_adjustment' },
+				},
+				{ source: 'website-template', origin: 'external', sourceContext: { templateId: '42' } },
+			);
+
+			expect(threadId).toBe('thread-1');
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(getAssistantAgentLaunch('thread-1')).toEqual({
+				projectId: 'project-1',
+				source: 'website-template',
+				origin: 'external',
+				templateId: '42',
+			});
+			expect(consumePendingFirstMessage('thread-1')?.message).toBe('Adjust template 42');
+		});
+
+		it('opens a thread that a new tab finds on the Assistant agent', async () => {
+			await provisionWorkflowThread(
+				'project-1',
+				{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+				{ source: 'workflow_list_auto', origin: 'internal' },
+			);
+			// A new tab has no in-memory state, only localStorage.
+			forgetAssistantAgentThread('thread-1');
+
+			expect(runtimeOf('thread-1')).toEqual({ kind: 'assistant-agent', projectId: 'project-1' });
+			expect(getPendingWorkflowAttachment('thread-1')?.id).toBe('wf-1');
+			expect(consumePendingRedirectLanding('thread-1')).toBe(false);
+		});
+
+		it('stashes the opening message for the thread view instead of sending it', async () => {
+			const prepare = vi.fn();
+
+			const outcome = await useInstanceAiHandoff().startThread(
+				'project-1',
+				'The execution failed.',
+				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
+				{ source: 'node_error_view', origin: 'internal' },
+				[{ type: 'workflow', id: 'wf-1' }],
+				prepare,
+			);
+
+			expect(outcome).toBe('started');
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
+			expect(mocks.sendMessage).not.toHaveBeenCalled();
+			expect(prepare).not.toHaveBeenCalled();
+			expect(mocks.routerPush).toHaveBeenCalledWith({
+				name: 'InstanceAiThread',
+				params: { threadId: 'thread-1' },
+			});
+			expect(consumePendingFirstMessage('thread-1')).toMatchObject({
+				message: 'The execution failed.',
+				attachments: [{ type: 'workflow', id: 'wf-1' }],
+			});
+		});
+
+		it('drops the launch when the navigation to the thread fails', async () => {
+			mocks.routerPush.mockResolvedValueOnce(new Error('Navigation aborted'));
+
+			const outcome = await useInstanceAiHandoff().startThread(
+				'project-1',
+				'The execution failed.',
+				{ kind: 'prefill', prefillType: 'handoff_execution_error' },
+				{ source: 'node_error_view', origin: 'internal' },
+			);
+
+			expect(outcome).toBe('failed');
+			expect(getAssistantAgentLaunch('thread-1')).toBeUndefined();
+			expect(consumePendingFirstMessage('thread-1')).toBeNull();
+			expect(runtimeOf('thread-1')).toBeUndefined();
+		});
+
+		it('opens a workflow thread without seeding a current-runtime thread', async () => {
+			const prepare = vi.fn();
+
+			const opened = await useInstanceAiHandoff().openWorkflowThread(
+				'project-1',
+				{ type: 'workflow', id: 'wf-1', name: 'My Workflow' },
+				{ source: 'canvas_action_button', origin: 'internal' },
+				prepare,
+			);
+
+			expect(opened).toBe(true);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(prepare).not.toHaveBeenCalled();
+			expect(getPendingWorkflowAttachment('thread-1')?.id).toBe('wf-1');
+		});
+
+		it('opens a thread with a composer draft', async () => {
+			const opened = await useInstanceAiHandoff().openThreadWithDraft(
+				'project-1',
+				{ text: 'Suggest my preferences', prefillType: 'preferences_suggestion' },
+				{ source: 'preferences_empty_state', origin: 'internal' },
+			);
+
+			expect(opened).toBe(true);
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(getAssistantAgentLaunch('thread-1')?.source).toBe('preferences_empty_state');
+			expect(getPendingComposerDraft('thread-1')?.text).toBe('Suggest my preferences');
+		});
+
+		it('opens a draft thread for canvas nodes without seeding a current-runtime thread', async () => {
+			const threadId = await useInstanceAiHandoff().openThreadForDraft({
+				id: 'wf-1',
+				name: 'My Workflow',
+				snapshot: { id: 'wf-1', name: 'My Workflow' } as never,
+			});
+
+			expect(threadId).toBe('thread-1');
+			expect(mocks.syncThread).not.toHaveBeenCalled();
+			expect(mocks.getOrCreateRuntime).not.toHaveBeenCalled();
+			expect(getAssistantAgentLaunch('thread-1')?.source).toBe('canvas_action_button');
+			expect(getPendingWorkflowAttachment('thread-1')?.id).toBe('wf-1');
 		});
 	});
 });
