@@ -99,6 +99,22 @@ class RedisConfig {
 	@Env('QUEUE_BULL_REDIS_CLUSTER_NODES')
 	clusterNodes: string = '';
 
+	/** Redis Sentinel nodes, as comma-separated list of `{host}:{port}` pairs. Takes effect only if `QUEUE_BULL_REDIS_CLUSTER_NODES` is unset. @example 'sentinel-1:26379,sentinel-2:26379' */
+	@Env('QUEUE_BULL_REDIS_SENTINEL_NODES')
+	sentinelNodes: string = '';
+
+	/** Name of the Redis master group monitored by Sentinel. Required if Sentinel nodes are set. @example 'mymaster' */
+	@Env('QUEUE_BULL_REDIS_SENTINEL_MASTER_NAME')
+	sentinelMasterName: string = '';
+
+	/** Password to authenticate with the Sentinel nodes themselves. If unset, no auth is sent to Sentinel nodes. */
+	@Env('QUEUE_BULL_REDIS_SENTINEL_PASSWORD')
+	sentinelPassword: string = '';
+
+	/** Whether to connect to the Sentinel nodes over TLS. Uses the same TLS settings as `QUEUE_BULL_REDIS_TLS_*`. */
+	@Env('QUEUE_BULL_REDIS_SENTINEL_TLS')
+	sentinelTls: boolean = false;
+
 	/** Whether to enable TLS on Redis connections. */
 	@Env('QUEUE_BULL_REDIS_TLS')
 	tls: boolean = false;
