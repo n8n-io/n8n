@@ -31,6 +31,7 @@ const listItem: SkillListItem = {
 	agentName: null,
 	availableToAssistant: false,
 	source: 'ui',
+	sourceId: null,
 	createdBy: { id: 'user-2', email: 'someone@example.com', firstName: 'Some', lastName: 'One' },
 	latestVersion: 2,
 	usedByAgents: 1,

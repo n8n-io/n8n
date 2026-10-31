@@ -11,9 +11,13 @@
 | identityKey | varchar(255) |  | false |  |  | Source type, host, owner and repository in lower case, e.g. "github:github.com/acme/skills". The duplicate rules compare it |
 | lastCheckedAt | timestamp(3) with time zone |  | true |  |  | End of the last check. NULL before the first check |
 | lastErrorReason | varchar(32) |  | true |  |  | Reason code of the last failed check, e.g. "rate_limited". NULL after a success |
+| listedAt | timestamp(3) with time zone |  | true |  |  | When n8n read the last skill listing. NULL before the first listing |
+| listedRefKeys | json |  | true |  |  | Keys of the remote refs in the last skill listing. NULL before the first listing |
+| listedRevision | varchar(255) |  | true |  |  | Source revision of the last skill listing, e.g. a commit SHA. NULL before the first |
 | locator | json |  | false |  |  | Where the skills are, as the client parsed it from the link. Opaque to the core |
 | probeCursor | text |  | true |  |  | Opaque value of the last change probe, e.g. a commit SHA. NULL before the first check |
 | projectId | varchar(36) |  | true |  | [public.project](public.project.md) | The scope: a team or personal project. NULL = Global |
+| seenRefKeys | json |  | true |  |  | Keys of the remote refs that the user last saw in the import picker. Other refs count as new skills |
 | status | varchar(32) | 'connected'::character varying | false |  |  | Health of the source, set by the last check |
 | type | varchar(16) |  | false |  |  | Source type, "github". Selects the client |
 | updatedAt | timestamp(3) with time zone | CURRENT_TIMESTAMP(3) | false |  |  |  |
@@ -62,9 +66,13 @@ erDiagram
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
   varchar_32_ lastErrorReason
+  timestamp_3__with_time_zone listedAt
+  json listedRefKeys
+  varchar_255_ listedRevision
   json locator
   text probeCursor
   varchar_36_ projectId FK
+  json seenRefKeys
   varchar_32_ status
   varchar_16_ type
   timestamp_3__with_time_zone updatedAt

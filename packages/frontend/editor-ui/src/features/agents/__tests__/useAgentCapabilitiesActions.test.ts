@@ -635,6 +635,7 @@ describe('useAgentCapabilitiesActions — skill refs', () => {
 			agentId: null,
 			agentName: null,
 			source: 'ui',
+			sourceId: null,
 			createdBy: null,
 			latestVersion: 1,
 			availableToAssistant: false,

@@ -13,6 +13,7 @@ const discoverSource = vi.fn();
 const connectSource = vi.fn();
 const sourceCredentials = vi.fn();
 const sourceRepositories = vi.fn();
+const checkSource = vi.fn();
 
 vi.mock('./skills.api', () => ({
 	getSkills: async (...args: unknown[]) => await list(...args),
@@ -22,6 +23,7 @@ vi.mock('./skills.api', () => ({
 	connectSkillSource: async (...args: unknown[]) => await connectSource(...args),
 	getSkillSourceCredentials: async (...args: unknown[]) => await sourceCredentials(...args),
 	getSkillSourceRepositories: async (...args: unknown[]) => await sourceRepositories(...args),
+	checkSkillSource: async (...args: unknown[]) => await checkSource(...args),
 }));
 
 function deferred<T>() {
@@ -105,6 +107,19 @@ describe('useSkillsStore', () => {
 
 		expect(await store.discoverSource(payload)).toBe(answer);
 		expect(discoverSource).toHaveBeenCalledWith(useRootStore().restApiContext, payload);
+	});
+
+	it('keeps the new skill count of each source it checks', async () => {
+		checkSource
+			.mockResolvedValueOnce({ newSkillCount: 3 })
+			.mockResolvedValueOnce({ newSkillCount: 0 });
+		const store = useSkillsStore();
+
+		await store.checkSourceForNewSkills('src-1');
+		await store.checkSourceForNewSkills('src-2');
+
+		expect(checkSource).toHaveBeenCalledWith(useRootStore().restApiContext, 'src-1');
+		expect(store.newSkillCounts).toEqual({ 'src-1': 3, 'src-2': 0 });
 	});
 
 	it('connects a GitHub link with the REST context', async () => {

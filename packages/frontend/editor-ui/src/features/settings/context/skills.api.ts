@@ -2,6 +2,7 @@ import type {
 	ConnectSkillSourceDto,
 	AddSkillSourceSkillsDto,
 	SkillSourceListItem,
+	SkillSourceNewSkills,
 	SkillSourceMoreDiscovery,
 	CreateSkillDto,
 	DiscoverSkillSourceDto,
@@ -37,6 +38,10 @@ export type SkillListQuery = {
 	agentId?: string;
 	createdById?: string;
 	sortBy?: SkillSortOption;
+	/** `source` sorts the rows by source, so the table can group them. */
+	groupBy?: 'source';
+	/** Comma-separated ids of the folded sources. Each one counts as one row of the page. */
+	collapsedSourceIds?: string;
 };
 
 export async function getSkills(
@@ -185,6 +190,23 @@ export async function discoverMoreSkills(
 		'POST',
 		`${SOURCES_ENDPOINT}/${sourceId}/discover`,
 	);
+}
+
+/** Deletes a source with no skills left. */
+/** Counts the skills that a source gained since the user last saw its import picker. */
+export async function checkSkillSource(
+	context: IRestApiContext,
+	sourceId: string,
+): Promise<SkillSourceNewSkills> {
+	return await makeRestApiRequest<SkillSourceNewSkills>(
+		context,
+		'POST',
+		`${SOURCES_ENDPOINT}/${sourceId}/check`,
+	);
+}
+
+export async function deleteSkillSource(context: IRestApiContext, sourceId: string): Promise<void> {
+	await makeRestApiRequest(context, 'DELETE', `${SOURCES_ENDPOINT}/${sourceId}`);
 }
 
 export async function addSourceSkills(

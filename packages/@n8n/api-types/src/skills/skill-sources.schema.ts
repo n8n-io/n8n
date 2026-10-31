@@ -152,7 +152,22 @@ export type SkillScanResult = { verdict: SkillScanVerdict; findings: SkillScanFi
 /** A display group. It does not change the identity or content of a skill. */
 export type SkillSourceGroup = { id: string; name: string };
 
-export type ExternalSkillPlugin = { name: string; manifestPath: string };
+export type ExternalSkillPlugin = {
+	name: string;
+	manifestPath: string;
+	/** A web link to the repository of the plugin. Absent when the entry has no http(s) link. */
+	url?: string;
+};
+
+/** One file of a skill as the import keeps it, so a reviewer can read the full skill. */
+export type SkillPreviewFile = {
+	/** `SKILL.md`, or the path of a reference file. */
+	path: string;
+	/** The text. Each hidden character shows as a marker such as `⟦U+200B⟧`, as in the snippets. */
+	text: string;
+	/** In SKILL.md: the line where the instructions start, so a finding in them maps to the file. */
+	instructionsLine?: number;
+};
 
 /** One skill in the picker. */
 export type DiscoveredSkill = {
@@ -165,6 +180,10 @@ export type DiscoveredSkill = {
 	description: string | null;
 	/** Files that the import leaves out, such as scripts. */
 	skippedFiles: string[];
+	/** The files that the import keeps. Empty when n8n cannot read the skill. */
+	previewFiles: SkillPreviewFile[];
+	/** True when the skill is too large to show in full. `previewFiles` then lists only the first files. */
+	previewTruncated?: boolean;
 	/** The chosen scope already has a skill with this name. */
 	nameTaken: boolean;
 	error: { reason: SkillSourceReason; message: string } | null;
@@ -186,6 +205,12 @@ export type SkillSourceDiscovery = {
 	truncated: boolean;
 	/** Skills that n8n did not list, as they are deeper in the source than n8n looks (`too_deep`). */
 	tooDeep?: number;
+};
+
+/** The skills that a source has gained since the user last saw its import picker. */
+export type SkillSourceNewSkills = {
+	/** Skills in the source that the user has not seen in the picker and has not imported. */
+	newSkillCount: number;
 };
 
 export type SkillSourceConnectResponse = {
@@ -243,6 +268,8 @@ export type SkillSourceListItem = SkillSourceSummary & {
 	projectType: 'personal' | 'team' | null;
 	skillCount: number;
 	canAddSkills: boolean;
+	/** True when no skill is left in the source and the user may delete it. */
+	canDelete: boolean;
 };
 
 /** Remaining remote skills and the fixed destination for Add more. */

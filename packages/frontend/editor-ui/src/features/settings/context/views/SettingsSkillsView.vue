@@ -11,6 +11,7 @@ import {
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillSourceListItem,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { useTelemetry } from '@n8n/composables/useTelemetry';
@@ -30,7 +31,6 @@ import {
 	N8nSettingsLayout,
 	N8nSettingsPageHeader,
 	N8nText,
-	N8nTabs,
 } from '@n8n/design-system';
 import type { ActionDropdownItem, TableOptions } from '@n8n/design-system';
 
@@ -59,7 +59,6 @@ import type {
 import SkillSourceConnectDialog, {
 	type SkillSourceConnected,
 } from '../components/SkillSourceConnectDialog.vue';
-import SkillSources from '../components/SkillSources.vue';
 import SkillsTable from '../components/SkillsTable.vue';
 import { useSkillSyncFlag } from '../composables/useSkillSyncFlag';
 import { CONTEXT_DEFAULT_SORT_BY, SKILLS_DEFAULT_PAGE_SIZE } from '../context.constants';
@@ -111,12 +110,6 @@ const { failedSkillReason } = useSkillSourceReasons();
 const skillSyncEnabled = useSkillSyncFlag();
 const connectOpen = ref(false);
 const connectSourceId = ref<string>();
-const selectedTab = ref(route.query.tab === 'sources' ? 'sources' : 'skills');
-const showingSources = computed(() => skillSyncEnabled.value && selectedTab.value === 'sources');
-const tabs = computed(() => [
-	{ value: 'skills', label: i18n.baseText('settings.context.skills.title') },
-	{ value: 'sources', label: i18n.baseText('settings.context.sources.title') },
-]);
 
 function openAddMore(sourceId: string) {
 	connectSourceId.value = sourceId;
@@ -189,7 +182,91 @@ function listQuery(page: number, itemsPerPage: number): SkillListQuery {
 		...(agentId ? { agentId } : {}),
 		...(createdById ? { createdById } : {}),
 		...(sortBy ? { sortBy } : {}),
+		// Sources group the rows, so the rows of each source come together.
+		...(skillSyncEnabled.value ? { groupBy: 'source' as const } : {}),
+		// A folded source counts as one row, so the pages hold what the table shows.
+		...(skillSyncEnabled.value && collapsedSourceIds.value.length > 0
+			? { collapsedSourceIds: collapsedSourceIds.value.join(',') }
+			: {}),
 	};
+}
+
+/** The sources that the user folded, for this visit. */
+const collapsedSourceIds = ref<string[]>([]);
+
+/** Folds or unfolds a source. The page reloads, as a folded source changes how many rows each page holds. */
+async function onToggleSource(sourceId: string) {
+	collapsedSourceIds.value = collapsedSourceIds.value.includes(sourceId)
+		? collapsedSourceIds.value.filter((id) => id !== sourceId)
+		: [...collapsedSourceIds.value, sourceId];
+	await load();
+}
+
+/** The sources group the table. Without any, the table shows no group rows. */
+const tableSources = computed(() =>
+	skillSyncEnabled.value && skillsStore.sources.length > 0 ? skillsStore.sources : undefined,
+);
+
+/**
+ * Sources with no skills have no rows to head, so they come after the last row. A search or
+ * a filter hides them, as they match nothing.
+ */
+const emptySources = computed<SkillSourceListItem[]>(() => {
+	if (!tableSources.value || !hasLoaded.value || loadFailed.value || loadedFiltered.value) {
+		return [];
+	}
+	const { page = 0, itemsPerPage = SKILLS_DEFAULT_PAGE_SIZE } = tableOptions.value;
+	const lastPage = Math.max(0, Math.ceil(skillsStore.count / itemsPerPage) - 1);
+	if (page < lastPage) return [];
+	return tableSources.value.filter((source) => source.skillCount === 0);
+});
+
+/** The counts and the delete rule of a source change with its skills, so it reloads with them. */
+async function loadSources() {
+	if (!skillSyncEnabled.value) return;
+	try {
+		await skillsStore.fetchSources();
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.sources.error'));
+		return;
+	}
+	void checkForNewSkills();
+}
+
+/**
+ * Asks each source the user can add to for skills it gained since the user last saw its
+ * picker. The table does not wait for it, and a failed check only leaves the count out.
+ */
+async function checkForNewSkills() {
+	await Promise.allSettled(
+		skillsStore.sources
+			.filter((source) => source.canAddSkills)
+			.map(async (source) => await skillsStore.checkSourceForNewSkills(source.id)),
+	);
+}
+
+/** Asks first, as a deleted source cannot come back. The user can connect the repository again. */
+async function onDeleteSource(source: SkillSourceListItem) {
+	const repo = source.label;
+	const confirmed = await message.confirm(
+		i18n.baseText('settings.context.sources.delete.confirm.message', { interpolate: { repo } }),
+		i18n.baseText('settings.context.sources.delete.confirm.title', { interpolate: { repo } }),
+		{
+			confirmButtonText: i18n.baseText('settings.context.sources.delete'),
+			cancelButtonText: i18n.baseText('generic.cancel'),
+		},
+	);
+	if (confirmed !== MODAL_CONFIRM) return;
+	try {
+		await skillsStore.deleteSource(source.id);
+	} catch (error) {
+		showError(error, i18n.baseText('settings.context.sources.delete.error'));
+		return;
+	}
+	showMessage({
+		title: i18n.baseText('settings.context.sources.delete.success', { interpolate: { repo } }),
+		type: 'success',
+	});
 }
 
 /**
@@ -464,14 +541,7 @@ async function onSourceConnected({ response, sourceLabel, scopeLabel }: SkillSou
 		});
 	}
 	void loadCreators();
-	await load();
-	if (showingSources.value) {
-		try {
-			await skillsStore.fetchSources();
-		} catch (error) {
-			showError(error, i18n.baseText('settings.context.sources.error'));
-		}
-	}
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -696,7 +766,7 @@ async function onDelete(skill: Pick<SkillListItem, 'id'>, onDeleted?: () => void
 	}
 	// The deleted skill may have been the last one of its creator.
 	void loadCreators();
-	await load();
+	await Promise.all([load(), loadSources()]);
 }
 
 /**
@@ -731,7 +801,7 @@ async function onStopSyncing(skill: SkillListItem, onStopped?: () => void) {
 		title: i18n.baseText('settings.context.skills.stopSyncing.success', { interpolate: { name } }),
 		type: 'success',
 	});
-	await load();
+	await Promise.all([load(), loadSources()]);
 }
 
 async function goBack() {
@@ -742,7 +812,7 @@ onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.context.skills.title'));
 	// The filter options are not needed for the first page or the deep links below.
 	void loadFilterOptions();
-	await Promise.all([load(), projectsStore.getMyProjects().catch(() => undefined)]);
+	await Promise.all([load(), loadSources(), projectsStore.getMyProjects().catch(() => undefined)]);
 	// Once for the visit, not once for each page. A failed load reports nothing, so a zero
 	// here is an empty list and never a broken one.
 	if (!loadFailed.value) {
@@ -774,20 +844,7 @@ onMounted(async () => {
 			:show-docs-link="false"
 		/>
 
-		<N8nTabs
-			v-if="skillSyncEnabled"
-			v-model="selectedTab"
-			:options="tabs"
-			variant="modern"
-			data-test-id="skill-source-tabs"
-		/>
-		<SkillSources
-			v-if="showingSources"
-			:can-connect="scopeOptions.length > 0"
-			@add-more="openAddMore"
-			@connect="onCreateMenuSelect('github')"
-		/>
-		<div v-else :class="$style.toolbar">
+		<div :class="$style.toolbar">
 			<N8nInput
 				v-model="search"
 				:class="$style.search"
@@ -907,12 +964,16 @@ onMounted(async () => {
 		</div>
 
 		<SkillsTable
-			v-if="!showingSources"
 			v-model:table-options="tableOptions"
 			:skills="skillsStore.skills"
 			:items-length="skillsStore.count"
 			:loading="showLoading"
-			:show-empty="emptyState !== 'none'"
+			:show-empty="emptyState !== 'none' && emptySources.length === 0"
+			:sources="tableSources"
+			:empty-sources="emptySources"
+			:new-skill-counts="skillsStore.newSkillCounts"
+			:collapsed-source-ids="collapsedSourceIds"
+			:collapsed-sources="skillsStore.collapsedSources"
 			:show-assistant-availability="assistantSkillsEnabled"
 			:show-mcp-availability="mcpSkillsEnabled"
 			@open="openEditModal($event)"
@@ -921,6 +982,9 @@ onMounted(async () => {
 			@download="onDownload"
 			@stop-syncing="onStopSyncing($event)"
 			@delete="onDelete"
+			@add-more="openAddMore"
+			@toggle-source="onToggleSource"
+			@delete-source="onDeleteSource"
 			@update:options="onOptionsUpdate"
 		>
 			<template #empty>

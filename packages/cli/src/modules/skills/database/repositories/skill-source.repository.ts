@@ -90,6 +90,10 @@ export class SkillSourceRepository {
 					probeCursor: null,
 					lastCheckedAt: new Date(),
 					lastErrorReason: null,
+					listedRevision: null,
+					listedRefKeys: null,
+					listedAt: null,
+					seenRefKeys: null,
 				}),
 			);
 		} catch (error) {
@@ -170,6 +174,34 @@ export class SkillSourceRepository {
 		return links.map((link) => link.remoteRef);
 	}
 
+	/** Saves the skills that a listing of the source found, at its revision. */
+	async saveListing(
+		sourceId: string,
+		listing: { revision: string | null; refKeys: string[]; listedAt: Date },
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.sources.managerFor(ctx).update(
+			SkillSourceConnection,
+			{ id: sourceId },
+			{
+				listedRevision: listing.revision,
+				listedRefKeys: listing.refKeys,
+				listedAt: listing.listedAt,
+			},
+		);
+	}
+
+	/** Saves the skills that the user saw in the import picker, so they no longer count as new. */
+	async saveSeenRefKeys(
+		sourceId: string,
+		refKeys: string[],
+		ctx: OperationContext = {},
+	): Promise<void> {
+		await this.sources
+			.managerFor(ctx)
+			.update(SkillSourceConnection, { id: sourceId }, { seenRefKeys: refKeys });
+	}
+
 	/** Serializes imports of one source before they check its links. */
 	async lockForImport(id: string, ctx: OperationContext): Promise<SkillSourceConnection | null> {
 		if (!ctx.trx) throw new UnexpectedError('Source row locks need a transaction');
@@ -180,6 +212,22 @@ export class SkillSourceRepository {
 				? { lock: { mode: 'pessimistic_write' as const } }
 				: {}),
 		});
+	}
+
+	/**
+	 * Deletes a source that no skill links to. It locks the row as an import does, so an import
+	 * cannot add a link between the count and the delete.
+	 */
+	async deleteIfEmpty(
+		id: string,
+		ctx: OperationContext,
+	): Promise<'deleted' | 'not_found' | 'has_skills'> {
+		const source = await this.lockForImport(id, ctx);
+		if (!source) return 'not_found';
+		const links = await this.links.managerFor(ctx).countBy(SkillSourceLink, { sourceId: id });
+		if (links > 0) return 'has_skills';
+		await this.sources.managerFor(ctx).delete(SkillSourceConnection, { id });
+		return 'deleted';
 	}
 
 	/** The source of a synced skill, in one query. Null for a skill without a source. */
@@ -213,17 +261,21 @@ export class SkillSourceRepository {
 	}
 
 	/** The skills among `skillIds` that are synced skills. */
-	async findLinkedSkillIds(skillIds: string[], ctx: OperationContext = {}): Promise<Set<string>> {
+	/** The source of each synced skill among `skillIds`, by skill id. */
+	async findSourceIdsBySkill(
+		skillIds: string[],
+		ctx: OperationContext = {},
+	): Promise<Map<string, string>> {
 		const manager = this.links.managerFor(ctx);
-		const linked = new Set<string>();
+		const sources = new Map<string, string>();
 		for (const chunk of chunkIds(skillIds)) {
 			const links = await manager.find(SkillSourceLink, {
-				select: ['skillId'],
+				select: ['skillId', 'sourceId'],
 				where: { skillId: In(chunk) },
 			});
-			for (const { skillId } of links) linked.add(skillId);
+			for (const { skillId, sourceId } of links) sources.set(skillId, sourceId);
 		}
-		return linked;
+		return sources;
 	}
 
 	async findLinkBySkillId(

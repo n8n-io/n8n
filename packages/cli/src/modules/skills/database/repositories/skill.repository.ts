@@ -22,6 +22,7 @@ import type {
 	ResolvedSkillRow,
 	SkillTarget,
 } from '../../utils/skill-content';
+import { SkillSourceConnection } from '../entities/skill-source-connection.entity';
 import { SkillSourceLink } from '../entities/skill-source-link.entity';
 import { SkillFile } from '../entities/skill-file.entity';
 import { SkillVersion } from '../entities/skill-version.entity';
@@ -51,6 +52,8 @@ export type SkillVisibility = {
 /** Narrows the visible skills of `findVisiblePage` and cuts one page. */
 export type SkillListFilter = {
 	sourceId?: string;
+	/** Only the skills that no source syncs. */
+	withoutSource?: boolean;
 	scope?: 'project' | 'agent' | 'instance';
 	/** The skills of this project and of its agents. */
 	project?: { id: string; agentIds: string[] };
@@ -63,9 +66,14 @@ export type SkillListFilter = {
 	availableToMCP?: boolean;
 	/** Most recently changed first when absent. */
 	sort?: SkillListSort;
+	/** Skills that no source syncs first, then each source by repository. `sort` applies in each group. */
+	groupBySource?: boolean;
 	skip: number;
 	take?: number;
 };
+
+/** The part of `SkillListFilter` that decides which skills match, without the order and the page. */
+export type SkillMatchFilter = Omit<SkillListFilter, 'groupBySource' | 'skip' | 'take'>;
 
 /** Name sorts by the latest version, without case. */
 export type SkillListSort = { by: 'name' | 'updatedAt'; order: 'ASC' | 'DESC' };
@@ -100,8 +108,63 @@ export class SkillRepository {
 		filter: SkillListFilter,
 		ctx: OperationContext = {},
 	): Promise<{ skills: Skill[]; count: number }> {
-		const query = this.visibleQuery(visibility, filter, ctx);
+		const query = this.filteredQuery(visibility, filter, ctx);
 		if (!query) return { skills: [], count: 0 };
+		const sortExpression = filter.sort?.by === 'name' ? 'LOWER(latest.name)' : 'skill.updatedAt';
+		const order = filter.sort?.order ?? 'DESC';
+		if (filter.groupBySource) {
+			query
+				.leftJoin(SkillSourceLink, 'groupLink', 'groupLink.skillId = skill.id')
+				.leftJoin(SkillSourceConnection, 'groupSource', 'groupSource.id = groupLink.sourceId')
+				.orderBy('CASE WHEN groupLink.sourceId IS NULL THEN 0 ELSE 1 END', 'ASC')
+				.addOrderBy('groupSource.identityKey', 'ASC')
+				// Two sources of one repository in two scopes stay apart.
+				.addOrderBy('groupLink.sourceId', 'ASC')
+				.addOrderBy(sortExpression, order);
+		} else {
+			query.orderBy(sortExpression, order);
+		}
+		// The id breaks ties, so a skill never shows on two pages or on none.
+		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
+		if (filter.take !== undefined) query.limit(filter.take);
+		const [skills, count] = await query.getManyAndCount();
+		return { skills, count };
+	}
+
+	/**
+	 * How many visible skills match the filter in each source group, in the order of
+	 * `groupBySource`: the skills that no source syncs first (`sourceId` null), then each
+	 * source by repository. A group with no match is left out.
+	 */
+	async findSourceGroupSizes(
+		visibility: SkillVisibility,
+		filter: SkillMatchFilter,
+		ctx: OperationContext = {},
+	): Promise<Array<{ sourceId: string | null; count: number }>> {
+		const query = this.filteredQuery(visibility, filter, ctx);
+		if (!query) return [];
+		const rows = await query
+			.leftJoin(SkillSourceLink, 'groupLink', 'groupLink.skillId = skill.id')
+			.leftJoin(SkillSourceConnection, 'groupSource', 'groupSource.id = groupLink.sourceId')
+			.select('groupLink.sourceId', 'sourceId')
+			.addSelect('COUNT(*)', 'count')
+			.groupBy('groupLink.sourceId')
+			.addGroupBy('groupSource.identityKey')
+			.orderBy('CASE WHEN groupLink.sourceId IS NULL THEN 0 ELSE 1 END', 'ASC')
+			.addOrderBy('groupSource.identityKey', 'ASC')
+			.addOrderBy('groupLink.sourceId', 'ASC')
+			.getRawMany<{ sourceId: string | null; count: string | number }>();
+		return rows.map((row) => ({ sourceId: row.sourceId ?? null, count: Number(row.count) }));
+	}
+
+	/** The visible skills that match the filter, without an order or a page cut. */
+	private filteredQuery(
+		visibility: SkillVisibility,
+		filter: SkillMatchFilter,
+		ctx: OperationContext,
+	) {
+		const query = this.visibleQuery(visibility, filter, ctx);
+		if (!query) return null;
 		if (filter.project) {
 			const { id, agentIds: projectAgentIds } = filter.project;
 			query.andWhere(
@@ -130,6 +193,11 @@ export class SkillRepository {
 				{ sourceId: filter.sourceId },
 			);
 		}
+		if (filter.withoutSource) {
+			query
+				.leftJoin(SkillSourceLink, 'noSourceLink', 'noSourceLink.skillId = skill.id')
+				.andWhere('noSourceLink.skillId IS NULL');
+		}
 		if (filter.createdById !== undefined) {
 			query.andWhere('skill.createdById = :createdById', { createdById: filter.createdById });
 		}
@@ -138,8 +206,7 @@ export class SkillRepository {
 				availableToMCP: filter.availableToMCP,
 			});
 		}
-		const sortByName = filter.sort?.by === 'name';
-		if (filter.search || sortByName) {
+		if (filter.search || filter.sort?.by === 'name') {
 			query.innerJoin(SkillVersion, 'latest', 'latest.skillId = skill.id').andWhere((qb) => {
 				const highest = qb
 					.subQuery()
@@ -160,13 +227,7 @@ export class SkillRepository {
 				{ search: `%${escapeLike(filter.search.toLowerCase())}%` },
 			);
 		}
-		const order = filter.sort?.order ?? 'DESC';
-		query.orderBy(sortByName ? 'LOWER(latest.name)' : 'skill.updatedAt', order);
-		// The id breaks ties, so a skill never shows on two pages or on none.
-		query.addOrderBy('skill.id', 'ASC').offset(filter.skip);
-		if (filter.take !== undefined) query.limit(filter.take);
-		const [skills, count] = await query.getManyAndCount();
-		return { skills, count };
+		return query;
 	}
 
 	/** The distinct creators of the skills the user may see, for the creator filter. */

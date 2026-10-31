@@ -193,11 +193,64 @@ describe('SkillService user actions', () => {
 					scope: 'project',
 					project: { id: 'project-1', agentIds: ['agent-1'] },
 					search: 'rules',
+					groupBySource: false,
 					skip: 10,
 					take: 5,
 				},
 			);
 			expect(result.count).toBe(3);
+		});
+
+		it('counts a folded source as one row and reads only the slices on the page', async () => {
+			const SOURCE_A = '01a1914f-7e04-70ac-840d-64eb6af0baf2';
+			const SOURCE_B = '01a19174-d817-75dd-a803-e011ae3f55c2';
+			// Unsynced skills take rows 0 to 2, folded A row 3, and B rows 4 and 5.
+			repository.findSourceGroupSizes.mockResolvedValue([
+				{ sourceId: null, count: 3 },
+				{ sourceId: SOURCE_A, count: 5 },
+				{ sourceId: SOURCE_B, count: 2 },
+			]);
+			repository.findVisiblePage.mockImplementation(async (_visibility, filter) => ({
+				skills: filter.withoutSource ? [skill('skill_c')] : [skill('skill_a')],
+				count: 0,
+			}));
+
+			const result = await service.list(
+				user,
+				query({ groupBy: 'source', collapsedSourceIds: [SOURCE_A], skip: 2, take: 3 }),
+			);
+
+			expect(result.count).toBe(6);
+			expect(result.data.map((item) => item.id)).toEqual(['skill_c', 'skill_a']);
+			expect(result.collapsedSources).toEqual([{ sourceId: SOURCE_A, index: 1, skillCount: 5 }]);
+			expect(repository.findVisiblePage).toHaveBeenCalledTimes(2);
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ withoutSource: true, skip: 2, take: 1 }),
+			);
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ sourceId: SOURCE_B, skip: 0, take: 1 }),
+			);
+		});
+
+		it('ignores folded sources without the source grouping', async () => {
+			const result = await service.list(
+				user,
+				query({ collapsedSourceIds: ['01a1914f-7e04-70ac-840d-64eb6af0baf2'] }),
+			);
+
+			expect(repository.findSourceGroupSizes).not.toHaveBeenCalled();
+			expect(result.collapsedSources).toBeUndefined();
+		});
+
+		it('asks the repository to group by source', async () => {
+			await service.list(user, query({ groupBy: 'source' }));
+
+			expect(repository.findVisiblePage).toHaveBeenCalledWith(
+				expect.anything(),
+				expect.objectContaining({ groupBySource: true }),
+			);
 		});
 
 		it('passes the creator filter and the sort to the repository', async () => {
@@ -391,6 +444,7 @@ describe('SkillService user actions', () => {
 				agentId: null,
 				agentName: null,
 				source: 'ui',
+				sourceId: null,
 				createdBy: null,
 				latestVersion: 2,
 				usedByAgents: 2,
@@ -430,12 +484,18 @@ describe('SkillService user actions', () => {
 		])('offers Stop syncing only for $case', async ({ on, linked, update, can }) => {
 			visible = [skill('skill_a', { projectId: 'project-1' })];
 			skillSyncGate.isEnabled.mockResolvedValue(on);
-			links.findLinkedSkillIds.mockResolvedValue(new Set(linked ? ['skill_a'] : []));
+			links.findSourceIdsBySkill.mockResolvedValue(
+				new Map(linked ? [['skill_a', 'source-1']] : []),
+			);
 			accessCheck.mockImplementation(async (_user, op) => () => op === 'update' && update);
 
 			const [item] = (await service.list(user, query())).data;
 
-			expect(item).toMatchObject({ canStopSyncing: can, canEdit: update && !linked });
+			expect(item).toMatchObject({
+				canStopSyncing: can,
+				canEdit: update && !linked,
+				sourceId: linked ? 'source-1' : null,
+			});
 		});
 
 		it('describes an agent skill with its agent and the project of the agent', async () => {

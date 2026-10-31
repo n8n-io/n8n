@@ -29,6 +29,26 @@ export function isPluginManifest(path: string): boolean {
 	);
 }
 
+const GITHUB_SHORTHAND = /^[\w.-]+\/[\w.-]+$/;
+
+/**
+ * The web link of a marketplace entry in another repository, for the picker to show. Only
+ * http(s) links come out, so a `git@` or `file://` source gets no link.
+ */
+function externalPluginUrl(source: Record<string, unknown>): string | undefined {
+	const text = (key: string) => (typeof source[key] === 'string' ? source[key].trim() : '');
+	const location = source.source === 'github' ? text('repo') : text('url');
+	const repository = GITHUB_SHORTHAND.test(location)
+		? `https://github.com/${location}`
+		: /^https?:\/\/[^\s]+$/i.test(location)
+			? location.replace(/\.git$/i, '')
+			: undefined;
+	if (!repository) return undefined;
+	const path = source.source === 'git-subdir' ? text('path').replace(/^\.?\/+/, '') : '';
+	if (!path || !/^https:\/\/github\.com\//i.test(repository)) return repository;
+	return `${repository}/tree/${encodeURIComponent(text('ref') || 'HEAD')}/${path}`;
+}
+
 /** Paths stay inside the manifest's root. A manifest cannot widen the pasted folder. */
 function localPath(root: string, path: string): string | undefined {
 	if (!path || path.startsWith('/') || /[\\:*?]|\p{Cc}/u.test(path)) return undefined;
@@ -122,7 +142,8 @@ export function discoverPluginGroups(
 				typeof source.source === 'string' &&
 				['github', 'url', 'git-subdir'].includes(source.source)
 			) {
-				externalPlugins.push({ name, manifestPath: manifest });
+				const url = externalPluginUrl(source);
+				externalPlugins.push({ name, manifestPath: manifest, ...(url ? { url } : {}) });
 				continue;
 			}
 			const path =

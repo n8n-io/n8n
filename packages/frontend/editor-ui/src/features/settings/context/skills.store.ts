@@ -6,6 +6,7 @@ import type {
 	DiscoverSkillSourceDto,
 	SaveSkillDto,
 	SkillDetail,
+	SkillListCollapsedSource,
 	SkillListItem,
 	SkillSaveResponse,
 	SkillSourceConnectResponse,
@@ -26,7 +27,11 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 	const rootStore = useRootStore();
 
 	const skills = ref<SkillListItem[]>([]);
+	/** The folded sources on the page, each one row in place of its skills. */
+	const collapsedSources = ref<SkillListCollapsedSource[]>([]);
 	const sources = ref<SkillSourceListItem[]>([]);
+	/** The skills that each source gained since the user last saw its import picker, by source id. */
+	const newSkillCounts = ref<Record<string, number>>({});
 	const count = ref(0);
 	const loading = ref(false);
 
@@ -40,6 +45,7 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 			const response = await api.getSkills(rootStore.restApiContext, query);
 			if (read === latestRead) {
 				skills.value = response.data;
+				collapsedSources.value = response.collapsedSources ?? [];
 				count.value = response.count;
 			}
 			return response;
@@ -117,16 +123,6 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return result;
 	}
 
-	/** Reads source details without replacing the main skills table. */
-	async function fetchSourceSkills(sourceId: string, skip: number, take: number) {
-		return await api.getSkills(rootStore.restApiContext, {
-			sourceId,
-			skip,
-			take,
-			sortBy: 'name:asc',
-		});
-	}
-
 	async function discoverMore(sourceId: string) {
 		return await api.discoverMoreSkills(rootStore.restApiContext, sourceId);
 	}
@@ -135,13 +131,29 @@ export const useSkillsStore = defineStore('contextSkills', () => {
 		return await api.addSourceSkills(rootStore.restApiContext, sourceId, payload);
 	}
 
+	/** Asks the server how many skills the source gained. The server lists the source at most every few minutes. */
+	async function checkSourceForNewSkills(sourceId: string) {
+		const { newSkillCount } = await api.checkSkillSource(rootStore.restApiContext, sourceId);
+		newSkillCounts.value = { ...newSkillCounts.value, [sourceId]: newSkillCount };
+		return newSkillCount;
+	}
+
+	/** Deletes a source with no skills left, and drops it from the list. */
+	async function deleteSource(sourceId: string) {
+		await api.deleteSkillSource(rootStore.restApiContext, sourceId);
+		sources.value = sources.value.filter((source) => source.id !== sourceId);
+	}
+
 	return {
 		sources,
+		newSkillCounts,
 		fetchSources,
-		fetchSourceSkills,
+		checkSourceForNewSkills,
 		discoverMore,
 		addSourceSkills,
+		deleteSource,
 		skills,
+		collapsedSources,
 		count,
 		loading,
 		fetchSkills,

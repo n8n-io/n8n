@@ -56,6 +56,7 @@ function discovered(overrides: Partial<DiscoveredSkill> = {}): DiscoveredSkill {
 		name: 'brand-voice',
 		description: 'Write clear customer-facing copy.',
 		skippedFiles: [],
+		previewFiles: [],
 		nameTaken: false,
 		error: null,
 		check: { verdict: 'pass', findings: [] },
@@ -333,12 +334,12 @@ describe('SkillSourceConnectDialog', () => {
 		{
 			where: 'global' as const,
 			scope: 'Global',
-			text: 'acme/skills is already connected in Global. Every project can use its skills.',
+			text: 'skills already connected, select another repository',
 		},
 		{
 			where: 'scope' as const,
 			scope: 'Marketing',
-			text: 'acme/skills is already connected in Marketing.',
+			text: 'skills already connected, select another repository',
 		},
 	])('blocks a source already connected in $where', async ({ where, scope, text }) => {
 		skillsStore.discoverSource.mockResolvedValue(

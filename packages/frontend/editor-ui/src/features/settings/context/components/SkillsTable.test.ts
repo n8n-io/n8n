@@ -3,6 +3,7 @@ import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import type { SkillDetail, SkillListItem } from '@n8n/api-types';
 import { STORES } from '@n8n/stores';
+import { useUsersStore } from '@n8n/stores/users.store';
 import userEvent from '@testing-library/user-event';
 import { waitFor, within } from '@testing-library/vue';
 
@@ -34,6 +35,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		agentId: null,
 		agentName: null,
 		source: 'ui',
+		sourceId: null,
 		createdBy: null,
 		latestVersion: 1,
 		availableToAssistant: false,
@@ -131,6 +133,17 @@ describe('SkillsTable', () => {
 		expect(cell).toHaveTextContent('Ada Lovelace');
 		expect(cell).toHaveTextContent('ada@example.com');
 		expect(within(cell).queryByTestId('user-avatar')).not.toBeInTheDocument();
+	});
+
+	it('marks the current user as the creator with "(you)"', () => {
+		mockedStore(useUsersStore).currentUserId = 'u1';
+		const { getByTestId } = render([
+			skill({
+				createdBy: { id: 'u1', email: 'ada@example.com', firstName: 'Ada', lastName: 'Lovelace' },
+			}),
+		]);
+
+		expect(getByTestId('skill-created-by')).toHaveTextContent('Ada Lovelace (you)');
 	});
 
 	it('shows a dash when the creator is gone', () => {

@@ -22,6 +22,8 @@ import {
 	SkillRepository,
 	type SkillVisibility,
 } from '../../database/repositories/skill.repository';
+import { SkillSourceConnection } from '../../database/entities/skill-source-connection.entity';
+import { SkillSourceLink } from '../../database/entities/skill-source-link.entity';
 import { Skill } from '../../database/entities/skill.entity';
 import { AssistantSkillsFlagGate } from '../../services/assistant-skills-flag-gate';
 import { SkillRuntimeService } from '../../services/skill-runtime.service';
@@ -100,6 +102,8 @@ describe('SkillRepository', () => {
 		// Agent rows cascade to their history, pins and dependency rows.
 		await agents.delete({});
 		await skills.deleteAll();
+		await Container.get(DataSource).manager.delete(SkillSourceLink, {});
+		await Container.get(DataSource).manager.delete(SkillSourceConnection, {});
 	});
 
 	afterAll(async () => {
@@ -718,6 +722,65 @@ describe('SkillRepository', () => {
 
 			expect(ids(asc)).toEqual([first, second]);
 			expect(ids(byDefault)).toEqual([second, first]);
+		});
+
+		it('groups by source: unsynced skills first, then each source by repository', async () => {
+			const manager = Container.get(DataSource).manager;
+			const source = async (identityKey: string) => {
+				const id = randomUUID();
+				await manager.insert(SkillSourceConnection, {
+					id,
+					type: 'github',
+					locator: {},
+					identityKey,
+					projectId: null,
+				});
+				return id;
+			};
+			const link = async (skillId: string, sourceId: string) =>
+				await manager.insert(SkillSourceLink, {
+					skillId,
+					sourceId,
+					remoteRef: {},
+					baseRevision: 'rev',
+					baseContentHash: 'hash',
+					skippedFiles: [],
+				});
+			const zebra = await source('github:github.com/acme/zebra');
+			const alpha = await source('github:github.com/acme/alpha');
+			const zebraSkill = await createSkill();
+			const alphaOld = await createSkill();
+			const alphaNew = await createSkill();
+			const plainName = 'Plain unsynced skill';
+			const plain = await createSkill({}, content({ name: plainName }));
+			await link(zebraSkill, zebra);
+			await link(alphaOld, alpha);
+			await link(alphaNew, alpha);
+			await updateSkillRow(alphaOld, { updatedAt: new Date('2026-01-01T00:00:00.000Z') });
+			await updateSkillRow(alphaNew, { updatedAt: new Date('2026-02-01T00:00:00.000Z') });
+			const visibility = { projectIds: [], agentIds: [] };
+
+			const page = await skills.findVisiblePage(visibility, { skip: 0, groupBySource: true });
+			const second = await skills.findVisiblePage(visibility, {
+				skip: 1,
+				take: 2,
+				groupBySource: true,
+			});
+
+			expect(ids(page)).toEqual([plain, alphaNew, alphaOld, zebraSkill]);
+			expect(ids(second)).toEqual([alphaNew, alphaOld]);
+			expect(second.count).toBe(4);
+			expect(await skills.findSourceGroupSizes(visibility, {})).toEqual([
+				{ sourceId: null, count: 1 },
+				{ sourceId: alpha, count: 2 },
+				{ sourceId: zebra, count: 1 },
+			]);
+			expect(
+				await skills.findSourceGroupSizes(visibility, { search: plainName.toLowerCase() }),
+			).toEqual([{ sourceId: null, count: 1 }]);
+			expect(
+				ids(await skills.findVisiblePage(visibility, { skip: 0, withoutSource: true })),
+			).toEqual([plain]);
 		});
 
 		it('cuts the page with skip and take, and answers past the end with the full count', async () => {

@@ -146,7 +146,7 @@ Auto-generated from the SQLite migrations in @n8n/db. Do not edit by hand.
 | [shared_workflow](shared_workflow.md) | 5 |  | table |
 | [skill](skill.md) | 9 |  | table |
 | [skill_file](skill_file.md) | 5 |  | table |
-| [skill_source](skill_source.md) | 13 |  | table |
+| [skill_source](skill_source.md) | 17 |  | table |
 | [skill_source_link](skill_source_link.md) | 14 |  | table |
 | [skill_version](skill_version.md) | 12 |  | table |
 | [tag_entity](tag_entity.md) | 4 |  | table |
@@ -1871,9 +1871,13 @@ erDiagram
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
   varchar_32_ lastErrorReason
+  datetime listedAt
+  TEXT listedRefKeys
+  varchar_255_ listedRevision
   TEXT locator
   TEXT probeCursor
   varchar_36_ projectId FK
+  TEXT seenRefKeys
   varchar_32_ status
   varchar_16_ type
   datetime_3_ updatedAt

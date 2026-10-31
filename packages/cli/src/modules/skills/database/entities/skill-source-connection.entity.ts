@@ -57,4 +57,19 @@ export class SkillSourceConnection extends WithTimestamps {
 	/** The check task reads the Skill Sync flag of this user. */
 	@Column({ type: 'uuid', nullable: true })
 	createdById: string | null;
+
+	/** Source revision of the last skill listing. Separate from `probeCursor`, which the update check owns. */
+	@Column({ type: 'varchar', length: 255, nullable: true })
+	listedRevision: string | null;
+
+	/** Keys of the remote refs in the last skill listing. */
+	@JsonColumn({ nullable: true })
+	listedRefKeys: string[] | null;
+
+	@DateTimeColumn({ nullable: true })
+	listedAt: Date | null;
+
+	/** Keys of the remote refs that the user last saw in the import picker. Other refs are new skills. */
+	@JsonColumn({ nullable: true })
+	seenRefKeys: string[] | null;
 }

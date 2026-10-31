@@ -1,6 +1,11 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { SkillListItem } from '@n8n/api-types';
+import { computed, useCssModule } from 'vue';
+import type {
+	SkillListCollapsedSource,
+	SkillListItem,
+	SkillSourceListItem,
+	SkillUserDto,
+} from '@n8n/api-types';
 import {
 	N8nActionToggle,
 	N8nBadge,
@@ -8,7 +13,6 @@ import {
 	N8nIcon,
 	N8nText,
 	N8nTooltip,
-	N8nUserInfo,
 } from '@n8n/design-system';
 import type { IconName, TableHeader, TableOptions } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
@@ -41,6 +45,19 @@ const props = defineProps<{
 	/** The table renders its cover row whenever the slot exists, so the slot is withheld. */
 	showEmpty?: boolean;
 	showMcpAvailability?: boolean;
+	/**
+	 * The connected sources. When set, the rows group by source: the rows must arrive sorted
+	 * by source, as `groupBy: 'source'` sorts them.
+	 */
+	sources?: SkillSourceListItem[];
+	/** Sources with no skills, after the last row. They have no rows to head. */
+	emptySources?: SkillSourceListItem[];
+	/** The skills that each source gained since the user last saw its import picker, by source id. */
+	newSkillCounts?: Record<string, number>;
+	/** The sources that the user folded. */
+	collapsedSourceIds?: string[];
+	/** The folded sources on this page, each one row in place of its skills, as the server cut it. */
+	collapsedSources?: SkillListCollapsedSource[];
 }>();
 
 const emit = defineEmits<{
@@ -50,6 +67,9 @@ const emit = defineEmits<{
 	download: [skill: SkillListItem];
 	stopSyncing: [skill: SkillListItem];
 	delete: [skill: SkillListItem];
+	addMore: [sourceId: string];
+	toggleSource: [sourceId: string];
+	deleteSource: [source: SkillSourceListItem];
 	'update:options': [payload: TableOptions];
 }>();
 
@@ -119,6 +139,113 @@ function onAction(skill: SkillListItem, action: SkillAction) {
 	else emit('delete', skill);
 }
 
+const sourcesById = computed(
+	() => new Map((props.sources ?? []).map((source) => [source.id, source])),
+);
+
+/** The group of a row: its source. Skills that no source syncs get no group row. */
+function groupOf(skill: SkillListItem): string | undefined {
+	return skill.sourceId ?? undefined;
+}
+
+const $style = useCssModule();
+
+/**
+ * The sources that the user folded. The server leaves out their skills and counts each one
+ * as a row. Until it answers, the table hides the rows of a source that the user just folded.
+ */
+const collapsed = computed(() => new Set(props.collapsedSourceIds ?? []));
+
+const emptySourceIds = computed(() => new Set((props.emptySources ?? []).map(({ id }) => id)));
+
+/** A source with no skills has nothing to fold. */
+function canFold(sourceId: string): boolean {
+	return !emptySourceIds.value.has(sourceId);
+}
+
+function toggleCollapsed(sourceId: string) {
+	if (canFold(sourceId)) emit('toggleSource', sourceId);
+}
+
+function groupRowProps(sourceId: string) {
+	return { class: canFold(sourceId) ? $style.groupRowFoldable : undefined };
+}
+
+type SourceAction = 'add' | 'open' | 'delete';
+
+function sourceActions(source: SkillSourceListItem) {
+	const items: Array<{ value: SourceAction; label: string; icon: IconName }> = [];
+	if (source.canAddSkills) {
+		items.push({
+			value: 'add',
+			label: i18n.baseText('settings.context.skills.more.title'),
+			icon: 'plus',
+		});
+	}
+	items.push({
+		value: 'open',
+		label: i18n.baseText('settings.context.sources.openGithub'),
+		icon: 'external-link',
+	});
+	// Only a source with no skills left can go. Its skills would keep it otherwise.
+	if (source.canDelete) {
+		items.push({
+			value: 'delete',
+			label: i18n.baseText('settings.context.sources.delete'),
+			icon: 'trash-2',
+		});
+	}
+	return items;
+}
+
+function onSourceAction(sourceId: string, action: string) {
+	const source = sourcesById.value.get(sourceId);
+	if (!source) return;
+	if (action === 'add') emit('addMore', source.id);
+	else if (action === 'delete') emit('deleteSource', source);
+	else window.open(source.webUrl, '_blank', 'noopener,noreferrer');
+}
+
+/** `owner/repo · branch`, as the import dialog names a source. */
+function sourceName(sourceId: string): string {
+	const source = sourcesById.value.get(sourceId);
+	if (!source) return i18n.baseText('settings.context.skills.group.unknownSource');
+	return [source.label, source.ref].filter(Boolean).join(' · ');
+}
+
+function skillCount(sourceId: string): string {
+	const count = sourcesById.value.get(sourceId)?.skillCount ?? 0;
+	return i18n.baseText('settings.context.skills.count', {
+		interpolate: { count },
+		adjustToNumber: count,
+	});
+}
+
+/** A synced skill sits under the group row of its source. */
+function isNested(skill: SkillListItem): boolean {
+	return !!props.sources && !!skill.sourceId;
+}
+
+/** Folded sources sit where the server put them. Empty sources come after the last row. */
+const extraGroups = computed(() => [
+	...(props.collapsedSources ?? []).map(({ sourceId, index }) => ({ group: sourceId, index })),
+	...(props.emptySources ?? []).map(({ id }) => ({ group: id, index: props.skills.length })),
+]);
+
+/** The whole group row folds its source. */
+function onGroupClick(_event: MouseEvent, { group }: { group: string }) {
+	toggleCollapsed(group);
+}
+
+/** The name of the creator, with "(you)" for the current user. */
+function creatorName(creator: SkillUserDto): string {
+	const name =
+		[creator.firstName, creator.lastName].filter(Boolean).join(' ') || creator.email || '';
+	return creator.id === usersStore.currentUserId
+		? `${name} ${i18n.baseText('settings.context.skills.createdBy.you')}`
+		: name;
+}
+
 function onRowClick(_event: MouseEvent, payload: { item: SkillListItem }) {
 	emit('open', payload.item);
 }
@@ -178,15 +305,107 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			:loading="props.loading"
 			:page-sizes="PREFERENCES_PAGE_SIZES"
 			:row-props="{ class: $style.row }"
+			:group-by="props.sources ? groupOf : undefined"
+			:extra-groups="extraGroups"
+			:collapsed-groups="props.collapsedSourceIds ?? []"
+			:group-row-props="groupRowProps"
 			@update:options="emit('update:options', $event)"
 			@click:row="onRowClick"
+			@click:group="onGroupClick"
 		>
 			<template v-if="props.showEmpty" #cover>
 				<slot name="empty" />
 			</template>
 
+			<!-- A source heads its rows. The scope and the actions sit in their own columns. -->
+			<template #[`group.name`]="{ group }">
+				<div :class="$style.group" data-test-id="skill-group-header">
+					<button
+						v-if="canFold(group)"
+						type="button"
+						:class="$style.groupToggle"
+						:aria-expanded="!collapsed.has(group)"
+						:aria-label="sourceName(group)"
+						data-test-id="skill-group-toggle"
+						@click.stop="toggleCollapsed(group)"
+					>
+						<N8nIcon
+							:icon="collapsed.has(group) ? 'chevron-right' : 'chevron-down'"
+							size="small"
+							color="text-light"
+						/>
+					</button>
+					<span v-else :class="$style.groupToggleSpace" />
+					<N8nIcon icon="git-branch" size="small" color="text-light" />
+					<N8nText
+						size="small"
+						color="text-light"
+						:class="$style.groupName"
+						data-test-id="skill-group-title"
+					>
+						{{ sourceName(group) }}
+					</N8nText>
+					<!-- Only a source with no skills shows a count. A count that comes and goes on fold
+					     would move the row. -->
+					<N8nText
+						v-if="sourcesById.has(group) && !canFold(group)"
+						size="small"
+						color="text-light"
+						:class="$style.groupCount"
+						data-test-id="skill-group-count"
+					>
+						· {{ skillCount(group) }}
+					</N8nText>
+				</div>
+			</template>
+
+			<template #[`group.scope`]="{ group }">
+				<SkillScopeBadge
+					v-if="sourcesById.get(group)"
+					:skill="{ ...sourcesById.get(group)!, agentName: null }"
+				/>
+			</template>
+
+			<!-- The new skills sit in the empty Agents cell, so the late answer moves nothing. -->
+			<template #[`group.usedByAgents`]="{ group }">
+				<button
+					v-if="(props.newSkillCounts?.[group] ?? 0) > 0 && sourcesById.get(group)?.canAddSkills"
+					type="button"
+					:class="$style.newSkills"
+					:title="i18n.baseText('settings.context.skills.more.title')"
+					data-test-id="skill-group-new-skills"
+					@click.stop="emit('addMore', group)"
+				>
+					{{
+						i18n.baseText('settings.context.skills.group.newSkills', {
+							interpolate: { count: props.newSkillCounts?.[group] ?? 0 },
+							adjustToNumber: props.newSkillCounts?.[group] ?? 0,
+						})
+					}}
+				</button>
+			</template>
+
+			<!-- The creator cell sets the height of a skill row. A hidden copy keeps the group row
+			     as tall, so the rows keep one rhythm. -->
+			<template #[`group.createdBy`]>
+				<div :class="[$style.creator, $style.heightSpacer]" aria-hidden="true">
+					<N8nText size="small">-</N8nText>
+					<N8nText size="small">-</N8nText>
+				</div>
+			</template>
+
+			<template #[`group.actions`]="{ group }">
+				<div v-if="sourcesById.has(group)" :class="$style.actions" @click.stop>
+					<N8nActionToggle
+						:actions="sourceActions(sourcesById.get(group)!)"
+						:data-test-id="`skill-source-menu-${group}`"
+						@action="(action: string) => onSourceAction(group, action)"
+					/>
+				</div>
+			</template>
+
 			<template #[`item.name`]="{ item }">
-				<div :class="$style.skillCell">
+				<div :class="[$style.skillCell, isNested(item) && $style.skillCellNested]">
 					<div :class="$style.skillTitle">
 						<N8nText size="medium" color="text-dark" data-test-id="skill-name">
 							{{ item.name }}
@@ -228,7 +447,8 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 			</template>
 
 			<template #[`item.scope`]="{ item }">
-				<SkillScopeBadge :skill="item" />
+				<!-- A synced skill has the scope of its source, which its group row shows. -->
+				<SkillScopeBadge v-if="!isNested(item)" :skill="item" />
 			</template>
 
 			<template #[`item.usedByAgents`]="{ item }">
@@ -237,13 +457,17 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 			<template #[`item.createdBy`]="{ item }">
 				<div v-if="item.createdBy" :class="$style.creator" data-test-id="skill-created-by">
-					<N8nUserInfo
-						:first-name="item.createdBy.firstName"
-						:last-name="item.createdBy.lastName"
-						:email="item.createdBy.email"
-						:is-current-user="item.createdBy.id === usersStore.currentUserId"
-						hide-avatar
-					/>
+					<N8nText size="small" color="text-dark" :class="$style.creatorText">
+						{{ creatorName(item.createdBy) }}
+					</N8nText>
+					<N8nText
+						v-if="item.createdBy.email"
+						size="small"
+						color="text-light"
+						:class="$style.creatorText"
+					>
+						{{ item.createdBy.email }}
+					</N8nText>
 				</div>
 				<N8nText v-else size="small" color="text-light" data-test-id="skill-created-by-none">
 					—
@@ -277,9 +501,27 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 	min-width: 0;
 }
 
+/* The name lines up with the source name: past the chevron and the branch icon, which are
+   --spacing--xs wide, each with a --spacing--3xs gap. */
+.skillCellNested {
+	padding-inline-start: calc(2 * (var(--spacing--xs) + var(--spacing--3xs)));
+}
+
 .creator {
+	display: flex;
+	flex-direction: column;
 	padding-block: var(--spacing--2xs);
 	min-width: 0;
+}
+
+.creatorText {
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+/* The whole row of a source folds it. A source with no skills has nothing to fold. */
+.groupRowFoldable {
+	cursor: pointer;
 }
 
 .skillTitle {
@@ -302,5 +544,72 @@ const headers = computed<Array<TableHeader<SkillListItem>>>(() => [
 
 .row {
 	cursor: pointer;
+}
+
+.group {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	min-width: 0;
+}
+
+.groupToggle {
+	display: flex;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width, 2px) solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius);
+	}
+}
+
+/* An empty source has no rows to fold, so its name keeps the place of the chevron. */
+.groupToggleSpace {
+	width: var(--spacing--xs);
+	flex-shrink: 0;
+}
+
+.newSkills {
+	max-width: 100%;
+	padding: 0;
+	overflow: hidden;
+	border: 0;
+	background: transparent;
+	color: var(--color--primary);
+	font-size: var(--font-size--2xs);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	cursor: pointer;
+
+	&:hover {
+		text-decoration: underline;
+	}
+
+	&:focus-visible {
+		outline: var(--focus--border-width, 2px) solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius);
+	}
+}
+
+.heightSpacer {
+	visibility: hidden;
+}
+
+.groupName {
+	min-width: 0;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* A long source name gives way first, so the count stays whole on the same line. */
+.groupCount {
+	flex-shrink: 0;
+	white-space: nowrap;
 }
 </style>

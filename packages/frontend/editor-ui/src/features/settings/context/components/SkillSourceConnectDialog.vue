@@ -4,6 +4,8 @@ import type {
 	SkillScanFinding,
 	SkillScanLocation,
 	SkillScanPart,
+	SkillScanSeverity,
+	SkillPreviewFile,
 	SkillSourceConnectResponse,
 	SkillSourceCredentialOption,
 	SkillSourceDiscovery,
@@ -12,6 +14,7 @@ import type {
 } from '@n8n/api-types';
 import { computed, ref, watch } from 'vue';
 import { useI18n, type BaseTextKey } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 import { useToast } from '@n8n/composables/useToast';
 import {
 	N8nButton,
@@ -25,14 +28,21 @@ import {
 	N8nDialogHeader,
 	N8nDialogTitle,
 	N8nIcon,
-	N8nInput,
 	N8nInputLabel,
+	N8nLink,
 	N8nSelect2,
 	N8nTabs,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import type { ComboboxItem, IconOrEmoji, SelectItem, TabOptions } from '@n8n/design-system';
+import type {
+	ComboboxItem,
+	IconColor,
+	IconName,
+	IconOrEmoji,
+	SelectItem,
+	TabOptions,
+} from '@n8n/design-system';
 import { getResourcePermissions } from '@n8n/permissions';
 import { ResponseError } from '@n8n/rest-api-client';
 
@@ -80,10 +90,20 @@ type TokenCredentialType = (typeof TOKEN_CREDENTIAL_TYPES)[number];
 
 /** The options of the credential select that open the credential modal instead of picking. */
 const NEW_CREDENTIAL_PREFIX = '__new__:';
-/** The select cannot hold an empty value, so "None, the repository is public" uses this one. */
+/** The select cannot hold an empty value, so "None" uses this one. */
 const NO_CREDENTIAL = '__none__';
 
-type Mode = 'account' | 'url';
+/** The repository field takes a typed link too. `github.com/…` without a protocol gets one. */
+function asLink(text: string): string | null {
+	const value = text.trim();
+	if (/^https?:\/\//i.test(value)) return value;
+	if (/^(www\.)?github\.com\//i.test(value)) return `https://${value}`;
+	return null;
+}
+
+function repositoryKey(repository: SkillSourceRepositoryOption): string {
+	return `${repository.owner}/${repository.name}`;
+}
 
 const i18n = useI18n();
 const { showError } = useToast();
@@ -93,8 +113,6 @@ const projectsStore = useProjectsStore();
 const uiStore = useUIStore();
 
 const step = ref<'repository' | 'choose'>('repository');
-const mode = ref<Mode>('account');
-const url = ref('');
 const scope = ref('');
 const discovering = ref(false);
 const connecting = ref(false);
@@ -107,7 +125,7 @@ const selected = ref<string[]>([]);
 /** The link and credential that the shown discovery read, which connect sends again. */
 const discovered = ref<{ url: string; credentialId?: string } | null>(null);
 
-/** `''` is "None, the repository is public", which only the link mode offers. */
+/** `''` is "None": n8n reads a public repository without a credential. */
 const credentialId = ref('');
 const credentials = ref<SkillSourceCredentialOption[]>([]);
 const credentialsLoading = ref(false);
@@ -117,14 +135,18 @@ const createdCredential = ref<{ id: string; scopeLabel: string } | null>(null);
 const repositories = ref<SkillSourceRepositoryOption[]>([]);
 const repositoriesTruncated = ref(false);
 const repositoriesLoading = ref(false);
-const owner = ref('');
-const repositoryName = ref('');
+/** The `owner/name` of a listed repository, or a link that the user typed or pasted. */
+const repository = ref('');
+/** The text in the repository field, so a typed link can show as an option. */
+const repositorySearch = ref('');
 
 /** "I have reviewed the warnings", for the picked skills that need review. */
 const reviewed = ref(false);
 /** The picker tab, and the skill that the preview shows. */
 const activeTab = ref<PickerTab>('review');
 const previewKey = ref<string | null>(null);
+/** The plugin groups that the user folded in the picker. */
+const collapsedGroups = ref(new Set<string>());
 /** Counts the reads of a link, so the answer of a read from before a close is dropped. */
 let discoverRun = 0;
 let credentialsRun = 0;
@@ -135,8 +157,8 @@ function resetRepositories() {
 	repositories.value = [];
 	repositoriesTruncated.value = false;
 	repositoriesLoading.value = false;
-	owner.value = '';
-	repositoryName.value = '';
+	// A typed link does not depend on the list, so it stays.
+	if (!asLink(repository.value)) repository.value = '';
 }
 
 watch(
@@ -148,8 +170,6 @@ watch(
 		credentialsRun += 1;
 		discovering.value = false;
 		step.value = 'repository';
-		mode.value = 'account';
-		url.value = '';
 		scope.value = props.scopeOptions[0]?.value ?? '';
 		linkError.value = '';
 		discovery.value = null;
@@ -159,18 +179,21 @@ watch(
 		credentials.value = [];
 		credentialsLoading.value = false;
 		createdCredential.value = null;
+		repository.value = '';
+		repositorySearch.value = '';
 		resetRepositories();
 		reviewed.value = false;
 		previewKey.value = null;
+		collapsedGroups.value = new Set();
 		if (sourceId) void openMore(sourceId);
 		else void loadCredentials();
 	},
 	{ immediate: true },
 );
 
-// A new link, scope, credential or repository needs a new read, so the old answer and its
+// A new scope, credential or repository needs a new read, so the old answer and its
 // messages go.
-watch([url, scope, credentialId, owner, repositoryName, mode], () => {
+watch([scope, credentialId, repository], () => {
 	// Add more keeps the scope of its source, which it sets itself.
 	if (activeSourceId.value) return;
 	linkError.value = '';
@@ -217,7 +240,9 @@ function discoverErrorText(
 	return reasonText(reason, link, { withCredential: !!credentialId.value });
 }
 
+/** Only an empty list needs to say which credentials the scope can use. */
 const credentialHint = computed(() => {
+	if (credentialsLoading.value || credentials.value.length > 0) return '';
 	const option = selectedScope.value;
 	if (!option || option.value === 'instance') {
 		return i18n.baseText('settings.context.skills.connect.credential.hint.instance');
@@ -279,8 +304,8 @@ async function loadCredentials(select?: string) {
 		if (select && ids.includes(select)) {
 			credentialId.value = select;
 		} else if (!ids.includes(credentialId.value)) {
-			// The account mode needs a credential, so it starts on the first one, as the prototype.
-			credentialId.value = mode.value === 'account' ? (ids[0] ?? '') : '';
+			// The first credential lists the repositories at once. "None" is the fallback.
+			credentialId.value = ids[0] ?? '';
 		}
 	} catch (error) {
 		if (run !== credentialsRun) return;
@@ -295,7 +320,7 @@ async function loadCredentials(select?: string) {
 async function loadRepositories() {
 	resetRepositories();
 	const id = credentialId.value;
-	if (mode.value !== 'account' || step.value !== 'repository' || !id) return;
+	if (step.value !== 'repository' || !id) return;
 	const requestedScope = scope.value;
 	const run = repositoriesRun;
 	repositoriesLoading.value = true;
@@ -319,70 +344,66 @@ async function loadRepositories() {
 	}
 }
 
-// The account mode lists the repositories of the chosen credential.
-watch([credentialId, scope, mode, step], (next, previous) => {
-	const nextStep = next[3];
-	const prevStep = previous[3];
-	// Going back from the skills to the repository keeps the owner and repository.
+// The repository field lists the repositories of the chosen credential.
+watch([credentialId, scope, step], (next, previous) => {
+	const nextStep = next[2];
+	const prevStep = previous[2];
+	// Going back from the skills to the repository keeps the repository.
 	if (nextStep === 'choose' || (prevStep === 'choose' && nextStep === 'repository')) return;
 	void loadRepositories();
 });
 
-const owners = computed(() => [
-	...new Set(repositories.value.map((repository) => repository.owner)),
-]);
-
-const ownerItems = computed<ComboboxItem[]>(() =>
-	owners.value.map((name) => ({ value: name, label: name })),
-);
-
-const ownerRepositories = computed(() =>
-	repositories.value.filter((repository) => repository.owner === owner.value),
-);
-
-const repositoryItems = computed<ComboboxItem[]>(() =>
-	ownerRepositories.value.map((repository) => ({
-		value: repository.name,
-		label: repository.name,
-	})),
-);
-
-function isPrivateRepository(name: string): boolean {
-	return ownerRepositories.value.some(
-		(repository) => repository.name === name && repository.private,
-	);
-}
-
-function comboboxValue(value: unknown): string {
-	return typeof value === 'string' ? value : '';
-}
-
 const selectedRepository = computed(() =>
-	ownerRepositories.value.find((repository) => repository.name === repositoryName.value),
+	repositories.value.find((option) => repositoryKey(option) === repository.value),
 );
 
-function onOwnerChange(value: string) {
-	owner.value = value;
-	repositoryName.value = '';
-}
+/** A typed link, and a link picked before, show as the first option of the list. */
+const repositoryItems = computed<ComboboxItem[]>(() => {
+	const links = new Set<string>();
+	const typed = asLink(repositorySearch.value);
+	if (typed) links.add(typed);
+	if (!selectedRepository.value && asLink(repository.value)) links.add(repository.value);
+	return [
+		...[...links].map((link) => ({ value: link, label: link, icon: 'link' as const })),
+		...repositories.value.map((option) => ({
+			value: repositoryKey(option),
+			label: repositoryKey(option),
+		})),
+	];
+});
 
-/** The link that discover reads: the pasted one, or the one of the picked repository. */
-const sourceUrl = computed(() =>
-	mode.value === 'url' ? url.value.trim() : (selectedRepository.value?.url ?? ''),
+const repositoryPlaceholder = computed(() =>
+	credentialId.value
+		? i18n.baseText('settings.context.skills.connect.repository.placeholder')
+		: i18n.baseText('settings.context.skills.connect.repository.placeholder.link'),
 );
 
-const modeTabs = computed<Array<TabOptions<Mode>>>(() => [
-	{ label: i18n.baseText('settings.context.skills.connect.tab.github'), value: 'account' },
-	{ label: i18n.baseText('settings.context.skills.connect.tab.url'), value: 'url' },
-]);
-
-/** Both tabs share the scope and the credential. Only the GitHub tab needs a credential. */
-function onModeChange(next: Mode) {
-	mode.value = next;
-	if (next === 'account' && !credentialId.value) {
-		credentialId.value = credentials.value[0]?.id ?? '';
+const repositoryEmptyText = computed(() => {
+	if (!credentialId.value) {
+		return i18n.baseText('settings.context.skills.connect.repository.noCredential');
 	}
+	return repositories.value.length === 0
+		? i18n.baseText('settings.context.skills.connect.repository.empty')
+		: i18n.baseText('settings.context.skills.connect.repository.noMatch');
+});
+
+function isPrivateRepository(key: string): boolean {
+	return repositories.value.some((option) => repositoryKey(option) === key && option.private);
 }
+
+/** A typed link is the value at once, so the user can go to Next without a pick. */
+function onRepositorySearch(term: string) {
+	repositorySearch.value = term;
+	const link = asLink(term);
+	if (link) repository.value = link;
+}
+
+function onRepositoryChange(value: unknown) {
+	repository.value = typeof value === 'string' ? value : '';
+}
+
+/** The link that discover reads: the one of the picked repository, or the typed one. */
+const sourceUrl = computed(() => selectedRepository.value?.url ?? asLink(repository.value) ?? '');
 
 const scopeItems = computed<SelectItem[]>(() =>
 	props.scopeOptions.map((option) => ({
@@ -400,23 +421,16 @@ function onScopeChange(value: string) {
 }
 
 const credentialItems = computed<SelectItem[]>(() => [
-	...(mode.value === 'url'
-		? [
-				{
-					value: NO_CREDENTIAL,
-					label: i18n.baseText('settings.context.skills.connect.credential.none'),
-				},
-			]
-		: []),
+	{
+		value: NO_CREDENTIAL,
+		label: i18n.baseText('settings.context.skills.connect.credential.none'),
+	},
 	...credentials.value.map((credential) => ({ value: credential.id, label: credential.name })),
 	...(newCredentialOptions.value.length > 0 ? [{ type: 'separator' as const }] : []),
 	...newCredentialOptions.value,
 ]);
 
-const credentialSelectValue = computed(() => {
-	if (credentialId.value) return credentialId.value;
-	return mode.value === 'url' ? NO_CREDENTIAL : undefined;
-});
+const credentialSelectValue = computed(() => credentialId.value || NO_CREDENTIAL);
 
 const credentialModalOpen = computed(
 	() => uiStore.isModalActiveById?.[CREDENTIAL_EDIT_MODAL_KEY] ?? false,
@@ -469,15 +483,6 @@ const duplicate = computed(() =>
 const duplicateMessage = computed(() => {
 	const dup = duplicate.value;
 	const repo = discovery.value?.source.label ?? '';
-	if (dup.kind === 'blocked') {
-		return dup.where === 'global'
-			? i18n.baseText('settings.context.skills.connect.duplicate.global', {
-					interpolate: { repo },
-				})
-			: i18n.baseText('settings.context.skills.connect.duplicate.scope', {
-					interpolate: { repo, scope: selectedScope.value?.label ?? '' },
-				});
-	}
 	if (dup.kind === 'warning') {
 		return i18n.baseText('settings.context.skills.connect.duplicate.warning', {
 			interpolate: { repo, projects: dup.projects.map((project) => project.name).join(', ') },
@@ -488,13 +493,18 @@ const duplicateMessage = computed(() => {
 
 const isBlocked = computed(() => duplicate.value.kind === 'blocked');
 
+/** A repository that is already connected is an error of the repository field. */
+const repositoryError = computed(() => {
+	if (!isBlocked.value) return '';
+	// The label is `owner/name`, and the field names the repository only.
+	const label = discovery.value?.source.label ?? '';
+	return i18n.baseText('settings.context.skills.connect.duplicate.blocked', {
+		interpolate: { repo: label.split('/').pop() ?? label },
+	});
+});
+
 const canGoNext = computed(
-	() =>
-		!!sourceUrl.value &&
-		!!scope.value &&
-		(mode.value === 'url' || !!credentialId.value) &&
-		!discovering.value &&
-		!isBlocked.value,
+	() => !!sourceUrl.value && !!scope.value && !discovering.value && !isBlocked.value,
 );
 
 function isSelectable(skill: DiscoveredSkill): boolean {
@@ -755,20 +765,26 @@ const pickerTabs = computed<Array<TabOptions<PickerTab>>>(() =>
 	})),
 );
 
-/** The preview key of the plugins that live in other repositories. No skill has this key. */
-const EXTERNAL_PLUGINS_KEY = '__external_plugins__';
-
+/** Marketplace entries in other repositories. n8n cannot import them, so the picker only names them. */
 const externalPlugins = computed(() => discovery.value?.externalPlugins ?? []);
 
-/**
- * A new tab previews its first skill, so the preview is never empty when a tab has skills. A
- * source with no skills of its own previews its external plugins instead.
- */
+/** One entry for each name. The picker links a name to its repository when the entry has a link. */
+const externalPluginLinks = computed(() => [
+	...new Map(externalPlugins.value.map((plugin) => [plugin.name, plugin])).values(),
+]);
+
+/** A repository with no skills of its own, only entries that point to other repositories. */
+const onlyExternalPlugins = computed(
+	() =>
+		!activeSourceId.value &&
+		(discovery.value?.skills.length ?? 0) === 0 &&
+		externalPlugins.value.length > 0,
+);
+
+/** A new tab previews its first skill, so the preview is never empty when a tab has skills. */
 function selectTab(tab: PickerTab) {
 	activeTab.value = tab;
-	previewKey.value =
-		skillsByTab.value[tab][0]?.key ??
-		(externalPlugins.value.length > 0 ? EXTERNAL_PLUGINS_KEY : null);
+	previewKey.value = skillsByTab.value[tab][0]?.key ?? null;
 }
 
 const previewSkill = computed(
@@ -821,6 +837,21 @@ function groupState(group: SkillGroup): { checked: boolean; indeterminate: boole
 		checked: picked > 0 && picked === keys.length,
 		indeterminate: picked > 0 && picked < keys.length,
 	};
+}
+
+/** "Other skills" has no plugin id, so it gets its own key. */
+function groupKey(group: SkillGroup): string {
+	return group.id || '__other__';
+}
+
+function isGroupCollapsed(group: SkillGroup): boolean {
+	return collapsedGroups.value.has(groupKey(group));
+}
+
+function toggleGroupCollapse(group: SkillGroup) {
+	const next = new Set(collapsedGroups.value);
+	if (!next.delete(groupKey(group))) next.add(groupKey(group));
+	collapsedGroups.value = next;
 }
 
 /** Picks every skill of the group, or none when all are already picked. */
@@ -897,6 +928,178 @@ function snippetRows(location: SkillScanLocation) {
 	);
 }
 
+/** The marked text of a finding, as its snippet shows it. */
+function snippetMatch(location: SkillScanLocation): string {
+	const row = location.snippet.find(({ line }) => line === location.line);
+	return row?.text.slice(location.start, location.end) ?? '';
+}
+
+/** Where a finding is in the full view. `start` is -1 when only the line is known. */
+type FindingPlace = { file: string; line: number; start: number; end: number };
+
+/**
+ * The line of a finding in its preview file. The instructions and the reference files keep the
+ * line numbers of the finding. The name, description and frontmatter have numbers of their own,
+ * so the marked text finds their line in the frontmatter of SKILL.md.
+ */
+function placeFinding(
+	finding: SkillScanFinding,
+	file: SkillPreviewFile | undefined,
+	lines: string[],
+): FindingPlace | null {
+	const location = finding.location;
+	if (!location || !file) return null;
+	const match = snippetMatch(location);
+	let line = location.line;
+	if (location.part === 'instructions' && file.instructionsLine) {
+		line = file.instructionsLine + location.line - 1;
+	} else if (location.part) {
+		const headerEnd = (file.instructionsLine ?? lines.length + 1) - 1;
+		const index = match ? lines.slice(0, headerEnd).findIndex((text) => text.includes(match)) : -1;
+		if (index < 0) return null;
+		line = index + 1;
+	}
+	const text = lines[line - 1];
+	if (text === undefined) return null;
+	// A long snippet line is cut, so its offsets can differ from the full line.
+	const start =
+		text.slice(location.start, location.end) === match
+			? location.start
+			: match
+				? text.indexOf(match)
+				: -1;
+	return start < 0
+		? { file: file.path, line, start: -1, end: -1 }
+		: { file: file.path, line, start, end: start + match.length };
+}
+
+type PreviewSegment = { text: string; finding?: number };
+type PreviewRow = {
+	line: number;
+	segments: PreviewSegment[];
+	/** The indexes in `previewFindings` of the findings on this line, most severe first. */
+	findings: number[];
+	severity?: SkillScanSeverity;
+};
+
+/** One line, split so the template can mark each finding in it. Marks that overlap are dropped. */
+function previewRow(text: string, line: number, places: Array<[number, FindingPlace]>): PreviewRow {
+	const findings = places.map(([index]) => index);
+	const marks = places
+		.filter(([, place]) => place.end > place.start)
+		.sort(([, left], [, right]) => left.start - right.start);
+	const segments: PreviewSegment[] = [];
+	let at = 0;
+	for (const [index, { start, end }] of marks) {
+		if (start < at) continue;
+		if (start > at) segments.push({ text: text.slice(at, start) });
+		segments.push({ text: text.slice(start, end), finding: index });
+		at = end;
+	}
+	if (at < text.length || segments.length === 0) segments.push({ text: text.slice(at) });
+	const first = findings[0];
+	return {
+		line,
+		segments,
+		findings,
+		...(first !== undefined ? { severity: previewFindings.value[first].severity } : {}),
+	};
+}
+
+/** The full files of the previewed skill, with the line of each finding marked. */
+const previewView = computed(() => {
+	const files = previewSkill.value?.previewFiles ?? [];
+	const linesOf = new Map(files.map((file) => [file.path, file.text.split('\n')]));
+	const places = previewFindings.value.map((finding) =>
+		placeFinding(
+			finding,
+			files.find(({ path }) => path === finding.file),
+			linesOf.get(finding.file ?? '') ?? [],
+		),
+	);
+	const byLine = new Map<string, Array<[number, FindingPlace]>>();
+	places.forEach((place, index) => {
+		if (!place) return;
+		const key = lineKey(place.file, place.line);
+		byLine.set(key, [...(byLine.get(key) ?? []), [index, place]]);
+	});
+	return {
+		places,
+		files: files.map((file) => ({
+			path: file.path,
+			rows: (linesOf.get(file.path) ?? []).map((text, index) =>
+				previewRow(text, index + 1, byLine.get(lineKey(file.path, index + 1)) ?? []),
+			),
+		})),
+	};
+});
+
+function lineKey(file: string, line: number): string {
+	return `${file}:${line}`;
+}
+
+/** The finding that the user points at, in the list of findings or in the full view. */
+const activeFinding = ref<number | null>(null);
+const previewRef = ref<HTMLElement | null>(null);
+
+watch(previewKey, () => {
+	activeFinding.value = null;
+	if (previewRef.value) previewRef.value.scrollTop = 0;
+});
+
+/** Scrolls the full view to the line of a finding. */
+function goToFinding(index: number) {
+	const place = previewView.value.places[index];
+	if (!place) return;
+	const key = lineKey(place.file, place.line);
+	const rows = previewRef.value?.querySelectorAll<HTMLElement>('[data-line-key]') ?? [];
+	const row = [...rows].find((element) => element.dataset.lineKey === key);
+	row?.scrollIntoView?.({ block: 'center', behavior: 'smooth' });
+	activeFinding.value = index;
+}
+
+type SkillStatusKind = 'error' | 'warning' | 'info' | 'success';
+
+/** The status icons of a list row. The icon repeats the colour, so it does not rely on colour alone. */
+const STATUS_ICONS = {
+	error: { icon: 'circle-x', color: 'danger' },
+	warning: { icon: 'triangle-alert', color: 'warning' },
+	info: { icon: 'circle-alert', color: 'text-base' },
+	success: { icon: 'circle-check', color: 'success' },
+} satisfies Record<SkillStatusKind, { icon: IconName; color: IconColor }>;
+
+const STATUS_LABELS = {
+	error: 'settings.context.skills.connect.status.error',
+	warning: 'settings.context.skills.connect.status.warning',
+	info: 'settings.context.skills.connect.status.info',
+	success: 'settings.context.skills.connect.status.success',
+} satisfies Record<SkillStatusKind, BaseTextKey>;
+
+const STATUS_OF_SEVERITY = {
+	blocked: 'error',
+	needs_review: 'warning',
+	info: 'info',
+} as const satisfies Record<SkillScanSeverity, SkillStatusKind>;
+
+/** One icon for each severity in the skill, most severe first, with the number of findings. */
+function skillStatuses(skill: DiscoveredSkill): Array<{ kind: SkillStatusKind; count: number }> {
+	if (skill.nameTaken) return [{ kind: 'error', count: 1 }];
+	const counts = new Map<SkillStatusKind, number>();
+	for (const finding of skill.check?.findings ?? []) {
+		const kind = STATUS_OF_SEVERITY[finding.severity];
+		counts.set(kind, (counts.get(kind) ?? 0) + 1);
+	}
+	if (counts.size === 0) return [{ kind: skill.error ? 'error' : 'success', count: 1 }];
+	return (['error', 'warning', 'info'] as const).flatMap((kind) => {
+		const count = counts.get(kind);
+		return count ? [{ kind, count }] : [];
+	});
+}
+
+function statusLabel(kind: SkillStatusKind, count: number): string {
+	return i18n.baseText(STATUS_LABELS[kind], { interpolate: { count }, adjustToNumber: count });
+}
+
 /** The reason line of a row that cannot come in. */
 function unavailableReason(skill: DiscoveredSkill): string {
 	if (skill.nameTaken) return nameTakenReason(skill);
@@ -915,7 +1118,7 @@ function unavailableReason(skill: DiscoveredSkill): string {
 		@update:open="onOpenChange"
 		@interact-outside="onInteractOutside"
 	>
-		<N8nDialogHeader :class="$style.headerWithTabs">
+		<N8nDialogHeader :class="step === 'choose' && $style.headerWithTabs">
 			<div :class="$style.headerMain">
 				<N8nDialogTitle>{{ title }}</N8nDialogTitle>
 				<template v-if="step === 'choose' && discovery">
@@ -945,18 +1148,11 @@ function unavailableReason(skill: DiscoveredSkill): string {
 					<N8nDialogDescription :class="$style.description">
 						{{ i18n.baseText('settings.context.skills.connect.start.description') }}
 					</N8nDialogDescription>
-					<N8nTabs
-						:model-value="mode"
-						:options="modeTabs"
-						:class="$style.tabs"
-						data-test-id="skill-source-mode-tabs"
-						@update:model-value="onModeChange"
-					/>
 				</template>
 			</div>
 		</N8nDialogHeader>
 
-		<N8nDialogBody v-if="step === 'repository'" :class="[$style.body, $style.bodyWithTabs]">
+		<N8nDialogBody v-if="step === 'repository'" :class="$style.body">
 			<N8nCallout
 				v-if="createdCredential && createdCredential.id === credentialId"
 				theme="success"
@@ -1000,114 +1196,83 @@ function unavailableReason(skill: DiscoveredSkill): string {
 						@update:model-value="onCredentialSelect(String($event ?? ''))"
 					/>
 				</N8nInputLabel>
-				<N8nText size="small" color="text-light" data-test-id="skill-source-credential-hint">
+				<N8nText
+					v-if="credentialHint"
+					size="small"
+					color="text-light"
+					data-test-id="skill-source-credential-hint"
+				>
 					{{ credentialHint }}
 				</N8nText>
 			</div>
-			<!-- Both panels share one grid cell, so the dialog keeps the height of the taller tab. -->
-			<div :class="$style.panels">
-				<div
-					:class="[$style.panel, mode !== 'account' && $style.panelHidden]"
-					data-test-id="skill-source-panel-account"
+			<div :class="$style.field">
+				<N8nInputLabel
+					:label="i18n.baseText('settings.context.skills.connect.repository.label')"
+					color="text-dark"
 				>
-					<div :class="$style.field">
-						<N8nInputLabel
-							:label="i18n.baseText('settings.context.skills.connect.owner.label')"
-							color="text-dark"
-						>
-							<N8nCombobox2
-								:model-value="owner || undefined"
-								:items="ownerItems"
-								size="large"
-								:loading="repositoriesLoading"
-								:disabled="!credentialId"
-								:placeholder="i18n.baseText('settings.context.skills.connect.owner.placeholder')"
-								:empty-text="i18n.baseText('settings.context.skills.connect.repository.empty')"
-								data-test-id="skill-source-owner-select"
-								@update:model-value="onOwnerChange(comboboxValue($event))"
+					<N8nCombobox2
+						:model-value="repository || undefined"
+						:items="repositoryItems"
+						size="large"
+						clearable
+						:loading="repositoriesLoading"
+						:placeholder="repositoryPlaceholder"
+						:empty-text="repositoryEmptyText"
+						:class="repositoryError && $style.inputInvalid"
+						:aria-invalid="repositoryError ? 'true' : undefined"
+						:aria-errormessage="repositoryError ? 'skill-source-repository-error' : undefined"
+						data-test-id="skill-source-repository-select"
+						@update:model-value="onRepositoryChange"
+						@update:search-term="onRepositorySearch"
+					>
+						<template #item-trailing="{ item }">
+							<N8nIcon
+								v-if="isPrivateRepository(item.value)"
+								icon="lock"
+								size="small"
+								:title="i18n.baseText('settings.context.skills.connect.repository.private')"
 							/>
-						</N8nInputLabel>
-					</div>
-					<div :class="$style.field">
-						<N8nInputLabel
-							:label="i18n.baseText('settings.context.skills.connect.repository.label')"
-							color="text-dark"
-						>
-							<N8nCombobox2
-								:model-value="repositoryName || undefined"
-								:items="repositoryItems"
-								size="large"
-								:disabled="!owner"
-								:placeholder="
-									i18n.baseText('settings.context.skills.connect.repository.placeholder')
-								"
-								data-test-id="skill-source-repository-select"
-								@update:model-value="repositoryName = comboboxValue($event)"
-							>
-								<template #item-trailing="{ item }">
-									<N8nIcon
-										v-if="isPrivateRepository(item.value)"
-										icon="lock"
-										size="small"
-										:title="i18n.baseText('settings.context.skills.connect.repository.private')"
-									/>
-								</template>
-							</N8nCombobox2>
-						</N8nInputLabel>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('settings.context.skills.connect.repository.hint') }}
-						</N8nText>
-						<N8nText
-							v-if="repositoriesTruncated"
-							size="small"
-							color="text-light"
-							data-test-id="skill-source-repositories-truncated"
-						>
-							{{ i18n.baseText('settings.context.skills.connect.repository.truncated') }}
-						</N8nText>
-					</div>
-				</div>
-				<div
-					:class="[$style.panel, mode !== 'url' && $style.panelHidden]"
-					data-test-id="skill-source-panel-url"
+						</template>
+					</N8nCombobox2>
+				</N8nInputLabel>
+				<!-- The error takes the place of the hint, so the field shows one line under it. -->
+				<N8nText
+					v-if="repositoryError"
+					id="skill-source-repository-error"
+					size="small"
+					color="danger"
+					data-test-id="skill-source-duplicate"
 				>
-					<div :class="$style.field">
-						<N8nInputLabel
-							:label="i18n.baseText('settings.context.skills.connect.url.label')"
-							color="text-dark"
+					{{ repositoryError }}
+					<template v-if="duplicate.kind === 'blocked' && duplicate.sourceId">
+						<span aria-hidden="true">·</span>
+						<button
+							type="button"
+							:class="$style.inlineAction"
+							data-test-id="skill-source-duplicate-add-more"
+							@click="openMore(duplicate.sourceId)"
 						>
-							<N8nInput
-								v-model="url"
-								size="large"
-								:placeholder="i18n.baseText('settings.context.skills.connect.url.placeholder')"
-								data-test-id="skill-source-url-input"
-								@keydown.enter="canGoNext && onNext()"
-							/>
-						</N8nInputLabel>
-						<N8nText size="small" color="text-light">
-							{{ i18n.baseText('settings.context.skills.connect.url.hint') }}
-						</N8nText>
-					</div>
-				</div>
+							{{ i18n.baseText('settings.context.skills.more.title') }}
+						</button>
+					</template>
+				</N8nText>
+				<N8nText v-else size="small" color="text-light">
+					{{ i18n.baseText('settings.context.skills.connect.repository.hint') }}
+				</N8nText>
+				<N8nText
+					v-if="repositoriesTruncated"
+					size="small"
+					color="text-light"
+					data-test-id="skill-source-repositories-truncated"
+				>
+					{{ i18n.baseText('settings.context.skills.connect.repository.truncated') }}
+				</N8nText>
 			</div>
 			<N8nCallout v-if="linkError" theme="danger" data-test-id="skill-source-link-error">
 				{{ linkError }}
 			</N8nCallout>
-			<N8nCallout
-				v-if="duplicateMessage"
-				:theme="isBlocked ? 'danger' : 'warning'"
-				data-test-id="skill-source-duplicate"
-			>
+			<N8nCallout v-if="duplicateMessage" theme="warning" data-test-id="skill-source-duplicate">
 				{{ duplicateMessage }}
-				<template v-if="duplicate.kind === 'blocked' && duplicate.sourceId" #trailingContent>
-					<N8nButton
-						variant="outline"
-						size="small"
-						:label="i18n.baseText('settings.context.skills.more.title')"
-						data-test-id="skill-source-duplicate-add-more"
-						@click="openMore(duplicate.sourceId)"
-					/>
-				</template>
 			</N8nCallout>
 		</N8nDialogBody>
 
@@ -1175,37 +1340,74 @@ function unavailableReason(skill: DiscoveredSkill): string {
 						data-test-id="skill-source-no-skills"
 					>
 						<N8nText size="small" color="text-light">
-							{{
-								i18n.baseText(
-									!activeSourceId
-										? 'settings.context.skills.connect.noLocalSkills'
-										: discovery.truncated || discovery.tooDeep
-											? 'settings.context.skills.more.emptyLimited'
-											: 'settings.context.skills.more.empty',
-								)
-							}}
+							<I18nT
+								v-if="onlyExternalPlugins"
+								keypath="settings.context.skills.connect.externalPlugins.only"
+								scope="global"
+							>
+								<template #names>
+									<template v-for="(plugin, index) in externalPluginLinks" :key="plugin.name">
+										<template v-if="index > 0">, </template>
+										<N8nLink
+											v-if="plugin.url"
+											:to="plugin.url"
+											new-window
+											size="small"
+											theme="text"
+											data-test-id="skill-source-external-plugin-link"
+											>{{ plugin.name }}</N8nLink
+										>
+										<template v-else>{{ plugin.name }}</template>
+									</template>
+								</template>
+							</I18nT>
+							<template v-else>
+								{{
+									i18n.baseText(
+										!activeSourceId
+											? 'settings.context.skills.connect.noLocalSkills'
+											: discovery.truncated || discovery.tooDeep
+												? 'settings.context.skills.more.emptyLimited'
+												: 'settings.context.skills.more.empty',
+									)
+								}}
+							</template>
 						</N8nText>
 					</li>
-					<template v-for="group in tabGroups" :key="group.id || '__other__'">
-						<!-- One checkbox picks every skill of the plugin. -->
+					<template v-for="group in tabGroups" :key="groupKey(group)">
+						<!-- The same group row as the source control push modal: one checkbox picks every
+						     skill of the plugin, and the name folds the group. -->
 						<li v-if="group.name" :class="$style.groupHeader" data-test-id="skill-source-group">
 							<N8nCheckbox
-								v-if="selectableKeys(group).length > 0"
 								:model-value="groupState(group).checked"
 								:indeterminate="groupState(group).indeterminate"
+								:disabled="selectableKeys(group).length === 0"
 								:aria-label="group.name"
 								data-test-id="skill-source-group-checkbox"
 								@update:model-value="toggleGroup(group)"
 							/>
-							<N8nIcon v-else icon="layers" size="small" color="text-light" />
-							<N8nText size="small" bold>{{ group.name }}</N8nText>
-							<N8nText size="small" color="text-light">{{ group.skills.length }}</N8nText>
+							<button
+								type="button"
+								:class="$style.groupToggle"
+								:aria-expanded="!isGroupCollapsed(group)"
+								data-test-id="skill-source-group-toggle"
+								@click="toggleGroupCollapse(group)"
+							>
+								<N8nIcon icon="folder" color="text-light" size="small" />
+								<N8nText tag="span" color="text-light">{{ group.name }}</N8nText>
+								<N8nIcon
+									:icon="isGroupCollapsed(group) ? 'chevron-right' : 'chevron-down'"
+									color="text-light"
+									size="small"
+								/>
+							</button>
 						</li>
 						<li
-							v-for="item in group.skills"
+							v-for="item in isGroupCollapsed(group) ? [] : group.skills"
 							:key="item.key"
 							:class="[
 								$style.item,
+								group.name && $style.itemIndented,
 								previewKey === item.key && $style.itemActive,
 								!isSelectable(item) && $style.disabled,
 							]"
@@ -1247,37 +1449,36 @@ function unavailableReason(skill: DiscoveredSkill): string {
 									{{ unavailableReason(item) }}
 								</N8nText>
 							</div>
+							<span :class="$style.statuses" data-test-id="skill-source-skill-status">
+								<span
+									v-for="status in skillStatuses(item)"
+									:key="status.kind"
+									:class="$style.status"
+									role="img"
+									:aria-label="statusLabel(status.kind, status.count)"
+									:title="statusLabel(status.kind, status.count)"
+									:data-test-id="`skill-source-skill-status-${status.kind}`"
+								>
+									<N8nIcon
+										:icon="STATUS_ICONS[status.kind].icon"
+										:color="STATUS_ICONS[status.kind].color"
+										size="small"
+									/>
+									<N8nText
+										v-if="status.count > 1"
+										size="small"
+										:color="STATUS_ICONS[status.kind].color"
+										aria-hidden="true"
+									>
+										{{ status.count }}
+									</N8nText>
+								</span>
+							</span>
 						</li>
 					</template>
-					<!-- Plugins that live in other repositories: one row, the preview lists them. -->
-					<li
-						v-if="externalPlugins.length > 0"
-						:class="[
-							$style.item,
-							$style.externalRow,
-							previewKey === EXTERNAL_PLUGINS_KEY && $style.itemActive,
-						]"
-						role="button"
-						tabindex="0"
-						:aria-pressed="previewKey === EXTERNAL_PLUGINS_KEY"
-						data-test-id="skill-source-external-plugins"
-						@click="previewKey = EXTERNAL_PLUGINS_KEY"
-						@keydown.enter.self.prevent="previewKey = EXTERNAL_PLUGINS_KEY"
-						@keydown.space.self.prevent="previewKey = EXTERNAL_PLUGINS_KEY"
-					>
-						<N8nIcon icon="external-link" size="small" color="text-light" />
-						<N8nText size="small" color="text-light">
-							{{
-								i18n.baseText('settings.context.skills.connect.externalPlugins.count', {
-									interpolate: { count: externalPlugins.length },
-									adjustToNumber: externalPlugins.length,
-								})
-							}}
-						</N8nText>
-					</li>
 				</ul>
 
-				<section :class="$style.preview" data-test-id="skill-source-preview">
+				<section ref="previewRef" :class="$style.preview" data-test-id="skill-source-preview">
 					<template v-if="previewSkill">
 						<!-- The highlighted row names the skill, so the preview names only its folder. -->
 						<div :class="$style.previewHeader">
@@ -1321,7 +1522,42 @@ function unavailableReason(skill: DiscoveredSkill): string {
 								:class="$style.finding"
 								data-test-id="skill-source-preview-finding"
 							>
+								<!-- A finding with a line in the full view goes to that line. -->
+								<div
+									v-if="previewView.places[index]"
+									:class="[$style.findingLink, activeFinding === index && $style.findingActive]"
+									role="button"
+									tabindex="0"
+									data-test-id="skill-source-preview-finding-link"
+									@click="goToFinding(index)"
+									@keydown.enter.prevent="goToFinding(index)"
+									@keydown.space.prevent="goToFinding(index)"
+									@mouseenter="activeFinding = index"
+									@mouseleave="activeFinding = null"
+									@focus="activeFinding = index"
+									@blur="activeFinding = null"
+								>
+									<N8nCallout
+										:theme="SEVERITY_CALLOUTS[finding.severity].theme"
+										:icon="SEVERITY_CALLOUTS[finding.severity].icon"
+										icon-size="small"
+										slim
+										data-test-id="skill-source-preview-finding-callout"
+									>
+										{{ findingTitle(finding) }}
+										<template #trailingContent>
+											<N8nText size="small" color="text-light" :class="$style.findingLine">
+												{{
+													i18n.baseText('settings.context.skills.connect.preview.line', {
+														interpolate: { line: previewView.places[index]?.line ?? 0 },
+													})
+												}}
+											</N8nText>
+										</template>
+									</N8nCallout>
+								</div>
 								<N8nCallout
+									v-else
 									:theme="SEVERITY_CALLOUTS[finding.severity].theme"
 									:icon="SEVERITY_CALLOUTS[finding.severity].icon"
 									icon-size="small"
@@ -1334,7 +1570,8 @@ function unavailableReason(skill: DiscoveredSkill): string {
 								<N8nText v-if="!finding.location" size="small" color="text-base">
 									{{ finding.detail }}
 								</N8nText>
-								<pre v-else :class="$style.snippet"><code><span
+								<!-- A finding that the full view cannot show keeps its snippet. -->
+								<pre v-else-if="!previewView.places[index]" :class="$style.snippet"><code><span
 									v-for="row in snippetRows(finding.location)"
 									:key="row.line"
 									:class="[
@@ -1350,6 +1587,46 @@ function unavailableReason(skill: DiscoveredSkill): string {
 								>{{ row.match }}</mark>{{ row.after }}</span></span></code></pre>
 							</li>
 						</ul>
+						<!-- The full skill, so the user reviews more than the findings. -->
+						<div
+							v-for="file in previewView.files"
+							:key="file.path"
+							:class="$style.file"
+							data-test-id="skill-source-preview-file"
+						>
+							<div :class="$style.fileHeader">
+								<N8nIcon icon="file-text" size="small" color="text-light" />
+								<N8nText size="small" bold color="text-base">{{ file.path }}</N8nText>
+							</div>
+							<pre :class="[$style.snippet, $style.fileBody]"><code><span
+								v-for="row in file.rows"
+								:key="row.line"
+								:data-line-key="lineKey(file.path, row.line)"
+								:class="[
+									$style.snippetLine,
+									row.severity && [$style.snippetLineMatch, $style[`line-${row.severity}`]],
+									activeFinding !== null && row.findings.includes(activeFinding) && $style.lineActive,
+								]"
+								@mouseenter="activeFinding = row.findings[0] ?? null"
+								@mouseleave="activeFinding = null"
+							><span :class="$style.lineNumber">{{ row.line }}</span><span :class="$style.lineText"><template
+								v-for="(segment, segmentIndex) in row.segments"
+								:key="segmentIndex"
+							><mark
+								v-if="segment.finding !== undefined"
+								:class="[$style.mark, $style[`mark-${previewFindings[segment.finding].severity}`]]"
+								:title="findingTitle(previewFindings[segment.finding])"
+							>{{ segment.text }}</mark><template v-else>{{ segment.text }}</template></template></span></span></code></pre>
+						</div>
+						<N8nCallout
+							v-if="previewSkill.previewTruncated"
+							theme="info"
+							icon-size="small"
+							slim
+							data-test-id="skill-source-preview-truncated"
+						>
+							{{ i18n.baseText('settings.context.skills.connect.preview.truncated') }}
+						</N8nCallout>
 						<div
 							v-if="previewSkill.skippedFiles.length > 0"
 							:class="$style.skipped"
@@ -1368,35 +1645,39 @@ function unavailableReason(skill: DiscoveredSkill): string {
 							</ul>
 						</div>
 					</template>
-					<template v-else-if="previewKey === EXTERNAL_PLUGINS_KEY">
-						<div :class="$style.previewHeader">
-							<div :class="$style.previewPath">
-								<N8nIcon icon="external-link" size="medium" color="text-light" />
-								<N8nText size="medium" color="text-light">
-									{{ i18n.baseText('settings.context.skills.connect.externalPlugins') }}
-								</N8nText>
-							</div>
-						</div>
-						<N8nCallout theme="info" icon-size="small" slim>
-							{{ i18n.baseText('settings.context.skills.connect.externalPluginHint') }}.
-						</N8nCallout>
-						<ul :class="$style.externalList" data-test-id="skill-source-external-plugin-list">
-							<li
-								v-for="(plugin, index) in externalPlugins"
-								:key="`${plugin.manifestPath}:${index}`"
-							>
-								<N8nText size="small" bold>{{ plugin.name }}</N8nText>
-								<N8nText size="small" color="text-light" :class="$style.mono">
-									{{ plugin.manifestPath }}
-								</N8nText>
-							</li>
-						</ul>
-					</template>
-					<N8nText v-else size="small" color="text-light">
+					<N8nText v-else-if="!onlyExternalPlugins" size="small" color="text-light">
 						{{ i18n.baseText('settings.context.skills.connect.preview.empty') }}
 					</N8nText>
 				</section>
 			</div>
+			<N8nText
+				v-if="externalPlugins.length > 0 && !onlyExternalPlugins"
+				size="small"
+				color="text-light"
+				data-test-id="skill-source-external-plugins"
+			>
+				<I18nT
+					keypath="settings.context.skills.connect.externalPlugins.count"
+					:plural="externalPluginLinks.length"
+					scope="global"
+				>
+					<template #names>
+						<template v-for="(plugin, index) in externalPluginLinks" :key="plugin.name">
+							<template v-if="index > 0">, </template>
+							<N8nLink
+								v-if="plugin.url"
+								:to="plugin.url"
+								new-window
+								size="small"
+								theme="text"
+								data-test-id="skill-source-external-plugin-link"
+								>{{ plugin.name }}</N8nLink
+							>
+							<template v-else>{{ plugin.name }}</template>
+						</template>
+					</template>
+				</I18nT>
+			</N8nText>
 			<N8nText
 				v-if="discovery.truncated"
 				size="small"
@@ -1501,28 +1782,35 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	margin: 0;
 }
 
+/* A link-styled action inside an error line. */
+.inlineAction {
+	padding: 0;
+	border: 0;
+	background: transparent;
+	color: inherit;
+	font: inherit;
+	text-decoration: underline;
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width, 2px) solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius);
+	}
+}
+
+/* The class lands on the field box. It is doubled so it wins over the border of the field. */
+.inputInvalid.inputInvalid {
+	--input--border-color: var(--color--danger);
+	--input--border-color--hover: var(--color--danger);
+}
+
 .tabs {
 	margin-top: var(--spacing--2xs);
 }
 
 .bodyWithTabs {
 	padding-block-start: var(--n8n-dialog-region--padding, var(--spacing--md));
-}
-
-.panels {
-	display: grid;
-}
-
-.panel {
-	grid-area: 1 / 1;
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-}
-
-/* Keeps its space in the grid, but cannot be seen, focused or read. */
-.panelHidden {
-	visibility: hidden;
 }
 
 .source {
@@ -1582,6 +1870,11 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	}
 }
 
+/* A skill in a plugin sits one step in from its group row. */
+.itemIndented {
+	padding-left: var(--spacing--xl);
+}
+
 /* The active row takes the colour of the preview, so the row and its preview read as one. */
 .itemActive,
 .itemActive:hover {
@@ -1603,6 +1896,21 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	flex-direction: column;
 	gap: var(--spacing--5xs);
 	min-width: 0;
+}
+
+/* One icon for each severity, at the end of the row. */
+.statuses {
+	display: flex;
+	flex-shrink: 0;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding-top: var(--spacing--5xs);
+}
+
+.status {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--5xs);
 }
 
 .clamp {
@@ -1667,6 +1975,56 @@ function unavailableReason(skill: DiscoveredSkill): string {
 		padding-top: var(--spacing--sm);
 		border-top: var(--border);
 	}
+}
+
+/* A finding with a line in the full view. Pointing at it marks its line. */
+.findingLink {
+	border-radius: var(--radius);
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width, 2px) solid var(--color--primary);
+		outline-offset: 2px;
+	}
+}
+
+.findingActive {
+	box-shadow: 0 0 0 1px var(--border-color--stronger);
+}
+
+.findingLine {
+	white-space: nowrap;
+}
+
+.file {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+	padding-top: var(--spacing--xs);
+	border-top: var(--border);
+}
+
+.fileHeader {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.fileBody {
+	padding-block: 0;
+}
+
+/* The line of the finding that the user points at, in the list or in the full view. */
+.lineActive {
+	box-shadow: inset 2px 0 0 var(--text-color--subtler);
+}
+
+.line-needs_review.lineActive {
+	box-shadow: inset 2px 0 0 var(--callout--icon-color--warning);
+}
+
+.line-blocked.lineActive {
+	box-shadow: inset 2px 0 0 var(--callout--icon-color--danger);
 }
 
 .snippet {
@@ -1762,13 +2120,25 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	}
 }
 
-.listEmpty {
-	padding: var(--spacing--sm);
+.groupToggle {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+	padding: 0;
+	border: 0;
+	background: transparent;
+	font: inherit;
+	cursor: pointer;
+
+	&:focus-visible {
+		outline: var(--focus--border-width, 2px) solid var(--color--primary);
+		outline-offset: 2px;
+		border-radius: var(--radius);
+	}
 }
 
-.externalRow {
-	align-items: center;
-	border-top: var(--border);
+.listEmpty {
+	padding: var(--spacing--sm);
 }
 
 .skipped {
@@ -1784,26 +2154,6 @@ function unavailableReason(skill: DiscoveredSkill): string {
 	font-family: var(--font-family--monospace);
 	font-size: var(--font-size--2xs);
 	color: var(--text-color--subtle);
-	overflow-wrap: anywhere;
-}
-
-.externalList {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
-	margin: 0;
-	padding: 0;
-	list-style: none;
-
-	li {
-		display: flex;
-		flex-direction: column;
-		gap: var(--spacing--5xs);
-	}
-}
-
-.mono {
-	font-family: var(--font-family--monospace);
 	overflow-wrap: anywhere;
 }
 

@@ -3,6 +3,7 @@ import {
 	type SkillSourceConnectResponse,
 	type SkillSourceDiscovery,
 	type SkillSourceMoreDiscovery,
+	type SkillSourceNewSkills,
 	type SkillSourceListItem,
 	type SkillListResponse,
 } from '@n8n/api-types';
@@ -847,6 +848,74 @@ describe('SkillSourceController', () => {
 			await owner.get('/skill-sources').expect(404);
 			await more(owner, 'missing', 404);
 			await owner.post('/skill-sources/missing/skills').send({}).expect(404);
+		});
+	});
+
+	describe('new skills', () => {
+		const check = async (agent: SuperAgentTest, id: string, status = 200) =>
+			(await agent.post(`/skill-sources/${id}/check`).send().expect(status))
+				.body as Body<SkillSourceNewSkills>;
+		const more = async (agent: SuperAgentTest, id: string) =>
+			await agent.post(`/skill-sources/${id}/discover`).send().expect(200);
+		/** Moves the last listing past the check interval, so the next check lists the source again. */
+		const ageListing = async (id: string) =>
+			await Container.get(DataSource).manager.update(
+				SkillSourceConnection,
+				{ id },
+				{ listedAt: new Date(Date.now() - 60 * 60 * 1000) },
+			);
+		async function connectPdf(
+			agent = owner,
+			scope: Record<string, unknown> = { scope: 'instance' },
+		) {
+			const { data } = await discover(agent, { url: REPO, ...scope });
+			return (await connect(agent, { url: REPO, ...scope, skillKeys: keysOf(data, ['pdf']) })).data;
+		}
+
+		it('counts no skill as new after an import, as the picker showed them all', async () => {
+			const { sourceId } = await connectPdf();
+			await ageListing(sourceId);
+
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 0 });
+		});
+
+		it('counts a skill that the source gained, until the user opens Add more skills', async () => {
+			const { sourceId } = await connectPdf();
+			github.push('acme/skills', { ...FILES, 'skills/xlsx/SKILL.md': skillMd('xlsx') });
+			await ageListing(sourceId);
+
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 1 });
+
+			await more(owner, sourceId);
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 0 });
+		});
+
+		it('lists the source again only after the check interval', async () => {
+			const { sourceId } = await connectPdf();
+			github.push('acme/skills', { ...FILES, 'skills/xlsx/SKILL.md': skillMd('xlsx') });
+
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 0 });
+			await ageListing(sourceId);
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 1 });
+		});
+
+		it('takes the current skills as seen for a source that has no listing yet', async () => {
+			const { sourceId } = await connectPdf();
+			github.push('acme/skills', { ...FILES, 'skills/xlsx/SKILL.md': skillMd('xlsx') });
+			await Container.get(DataSource).manager.update(
+				SkillSourceConnection,
+				{ id: sourceId },
+				{ listedRevision: null, listedRefKeys: null, listedAt: null, seenRefKeys: null },
+			);
+
+			expect((await check(owner, sourceId)).data).toEqual({ newSkillCount: 0 });
+		});
+
+		it('refuses a user who cannot add skills to the source', async () => {
+			const { sourceId } = await connectPdf(editor, { scope: 'project', projectId: team.id });
+
+			await check(viewer, sourceId, 403);
+			await check(member, sourceId, 404);
 		});
 	});
 

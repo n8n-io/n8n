@@ -168,9 +168,13 @@ erDiagram
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
   varchar_32_ lastErrorReason
+  timestamp_3__with_time_zone listedAt
+  json listedRefKeys
+  varchar_255_ listedRevision
   json locator
   text probeCursor
   varchar_36_ projectId FK
+  json seenRefKeys
   varchar_32_ status
   varchar_16_ type
   timestamp_3__with_time_zone updatedAt

@@ -63,6 +63,8 @@ export type SkillListItem = {
 	agentId: string | null;
 	agentName: string | null;
 	source: SkillSource;
+	/** The connected source of a synced skill. Null for a skill that no source syncs. */
+	sourceId: string | null;
 	/** Null when the creator is unknown or the user no longer exists. */
 	createdBy: SkillUserDto | null;
 	/** Number of the latest version, the one following agents run. */
@@ -79,9 +81,21 @@ export type SkillListItem = {
 	updatedAt: string;
 };
 
+/** A folded source: one row of the page in place of its skills. */
+export type SkillListCollapsedSource = {
+	sourceId: string;
+	/** Where its row goes in `data`: before the skill at this index, or last for `data.length`. */
+	index: number;
+	/** The skills of the source that match the filters, which its row stands for. */
+	skillCount: number;
+};
+
 export type SkillListResponse = {
+	/** The rows of all pages. With `collapsedSourceIds`, each folded source counts as one row. */
 	count: number;
 	data: SkillListItem[];
+	/** The folded sources on this page. Only with `groupBy: 'source'` and `collapsedSourceIds`. */
+	collapsedSources?: SkillListCollapsedSource[];
 };
 
 /** The agents that use a skill, limited to the agents the caller may read. */
@@ -182,6 +196,20 @@ export class ListSkillsQueryDto extends Z.class({
 			message: `sortBy must be one of: ${SKILLS_SORT_OPTIONS.join(', ')}`,
 		})
 		.optional(),
+	/**
+	 * `source` puts the skills that no source syncs first, then the skills of each source, by
+	 * repository. `sortBy` sorts the skills in each group.
+	 */
+	groupBy: z.enum(['source']).optional(),
+	/**
+	 * Comma-separated ids of sources that the user folded. With `groupBy: 'source'`, each one is
+	 * a single row of the page in place of its skills.
+	 */
+	collapsedSourceIds: z
+		.string()
+		.optional()
+		.transform((value) => (value ? value.split(',') : undefined))
+		.pipe(z.array(z.string().uuid()).max(SKILLS_MAX_PAGE_SIZE).optional()),
 }) {}
 
 export const SKILL_AGENTS_MAX_PAGE_SIZE = 50;

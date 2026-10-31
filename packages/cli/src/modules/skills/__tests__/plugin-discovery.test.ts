@@ -169,9 +169,33 @@ describe('plugin grouping', () => {
 		);
 		expect(result.groups).toEqual([]);
 		expect(result.externalPlugins).toEqual([
-			{ name: 'external', manifestPath: '.claude-plugin/marketplace.json' },
-			{ name: 'remote-folder', manifestPath: '.claude-plugin/marketplace.json' },
+			{
+				name: 'external',
+				manifestPath: '.claude-plugin/marketplace.json',
+				url: 'https://github.com/acme/external',
+			},
+			{
+				name: 'remote-folder',
+				manifestPath: '.claude-plugin/marketplace.json',
+				url: 'https://example.com/repo',
+			},
 		]);
+	});
+
+	it.each([
+		[{ source: 'url', url: 'https://gitlab.com/acme/tools.git' }, 'https://gitlab.com/acme/tools'],
+		[
+			{ source: 'git-subdir', url: 'acme/monorepo', path: 'tools/formatter', ref: 'v2' },
+			'https://github.com/acme/monorepo/tree/v2/tools/formatter',
+		],
+		[{ source: 'url', url: 'git@github.com:acme/tools.git' }, undefined],
+		[{ source: 'github', repo: 'javascript:alert(1)' }, undefined],
+	])('links an external entry to its repository: %j', (source, url) => {
+		const [plugin] = discover(
+			{ '.claude-plugin/marketplace.json': { plugins: [{ name: 'x', source }] } },
+			[],
+		).externalPlugins;
+		expect(plugin.url).toBe(url);
 	});
 
 	it.each([

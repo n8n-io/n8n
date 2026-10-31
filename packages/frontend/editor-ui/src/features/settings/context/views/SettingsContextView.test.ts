@@ -1,5 +1,3 @@
-import { SKILL_SYNC_FLAG } from '@n8n/api-types';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
@@ -55,29 +53,18 @@ describe('SettingsContextView', () => {
 		expect(getByText('Preview')).toBeInTheDocument();
 	});
 
-	it('opens the source tab when skills and Skill Sync are enabled', async () => {
-		flags.skills = true;
-		mockedStore(usePostHog).isFeatureEnabled.mockImplementation(
-			(flag) => String(flag) === SKILL_SYNC_FLAG,
-		);
-		const view = renderView();
-		await userEvent.click(view.getByTestId('settings-context-sources-row'));
-		expect(push).toHaveBeenCalledWith({ name: 'SettingsContextSkills', query: { tab: 'sources' } });
-	});
-
-	it('lists Preferences, Skills and Sources', () => {
-		const { getByTestId } = renderView();
+	it('lists Preferences and Skills, with sources inside Skills', () => {
+		const { getByTestId, queryByTestId } = renderView();
 
 		expect(getByTestId('settings-context-preferences-row')).toBeInTheDocument();
 		expect(getByTestId('settings-context-skills-row')).toBeInTheDocument();
-		expect(getByTestId('settings-context-sources-row')).toBeInTheDocument();
+		expect(queryByTestId('settings-context-sources-row')).not.toBeInTheDocument();
 	});
 
-	it('marks Skills and Sources as unavailable while the agents module is off', () => {
+	it('marks Skills as unavailable while the agents module is off', () => {
 		const { getByTestId } = renderView();
 
 		expect(getByTestId('settings-context-skills-row')).toHaveTextContent('Coming soon');
-		expect(getByTestId('settings-context-sources-row')).toHaveTextContent('Coming soon');
 	});
 
 	it.each([

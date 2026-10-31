@@ -10,6 +10,7 @@ import {
 	type SkillAgentOption,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillListCollapsedSource,
 	type SkillListResponse,
 	type SkillNewNameQueryDto,
 	type SkillNewNameResponse,
@@ -33,6 +34,7 @@ import { SkillSourceRepository } from '../database/repositories/skill-source.rep
 import {
 	SkillRepository,
 	type SkillListSort,
+	type SkillMatchFilter,
 	type SkillVisibility,
 } from '../database/repositories/skill.repository';
 import { SkillNameTakenError } from '../errors/skill-name-taken.error';
@@ -169,7 +171,7 @@ export class SkillService {
 			query.projectId && projectAgentIds
 				? { id: query.projectId, agentIds: projectAgentIds }
 				: undefined;
-		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+		const match: SkillMatchFilter = {
 			sourceId: query.sourceId,
 			scope: query.scope,
 			project,
@@ -178,10 +180,68 @@ export class SkillService {
 			createdById: query.createdById,
 			search: query.search,
 			sort: query.sortBy && LIST_SORTS[query.sortBy],
+		};
+		const collapsed = query.groupBy === 'source' ? (query.collapsedSourceIds ?? []) : [];
+		if (collapsed.length > 0) {
+			const page = await this.findPageWithCollapsedSources(
+				visibility,
+				match,
+				new Set(collapsed),
+				query.skip,
+				query.take,
+			);
+			return {
+				count: page.count,
+				data: await this.toListItems(user, page.skills),
+				collapsedSources: page.collapsedSources,
+			};
+		}
+		const { skills, count } = await this.skillRepository.findVisiblePage(visibility, {
+			...match,
+			groupBySource: query.groupBy === 'source',
 			skip: query.skip,
 			take: query.take,
 		});
 		return { count, data: await this.toListItems(user, skills) };
+	}
+
+	/**
+	 * One page of the source groups, where each folded source is one row in place of its
+	 * skills. The group sizes decide which groups the page cuts, and each open group on the
+	 * page reads only its own slice. So the page reads at most one query for each group on it.
+	 */
+	private async findPageWithCollapsedSources(
+		visibility: SkillVisibility,
+		match: SkillMatchFilter,
+		collapsed: Set<string>,
+		skip: number,
+		take: number | undefined,
+	): Promise<{ skills: Skill[]; count: number; collapsedSources: SkillListCollapsedSource[] }> {
+		const groups = await this.skillRepository.findSourceGroupSizes(visibility, match);
+		const pageEnd = take === undefined ? Number.POSITIVE_INFINITY : skip + take;
+		const skills: Skill[] = [];
+		const collapsedSources: SkillListCollapsedSource[] = [];
+		let position = 0;
+		for (const { sourceId, count } of groups) {
+			const folded = sourceId !== null && collapsed.has(sourceId);
+			const start = position;
+			position += folded ? 1 : count;
+			if (position <= skip || start >= pageEnd) continue;
+			if (folded) {
+				collapsedSources.push({ sourceId, index: skills.length, skillCount: count });
+				continue;
+			}
+			const from = Math.max(skip, start) - start;
+			const to = Math.min(pageEnd, position) - start;
+			const slice = await this.skillRepository.findVisiblePage(visibility, {
+				...match,
+				...(sourceId === null ? { withoutSource: true } : { sourceId }),
+				skip: from,
+				take: to - from,
+			});
+			skills.push(...slice.skills);
+		}
+		return { skills, count: position, collapsedSources };
 	}
 
 	/** The users who created a skill that the user may see, for the creator filter. */
@@ -835,7 +895,7 @@ export class SkillService {
 				this.findCreators(skills.flatMap((skill) => skill.createdById ?? [])),
 				this.skillAccess.accessCheck(user, 'update'),
 				this.skillAccess.accessCheck(user, 'delete'),
-				this.sourceRepository.findLinkedSkillIds(ids),
+				this.sourceRepository.findSourceIdsBySkill(ids),
 				this.skillSyncFlagGate.isEnabled(user),
 			]);
 		const items: SkillListItem[] = [];
@@ -854,6 +914,7 @@ export class SkillService {
 				agentId: skill.agentId,
 				agentName: skill.agentId ? (agents.get(skill.agentId)?.name ?? null) : null,
 				source: skill.source,
+				sourceId: synced.get(skill.id) ?? null,
 				createdBy: skill.createdById ? (creators.get(skill.createdById) ?? null) : null,
 				latestVersion: summary.version,
 				usedByAgents: usage.get(skill.id) ?? 0,

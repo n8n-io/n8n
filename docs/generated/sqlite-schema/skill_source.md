@@ -6,7 +6,7 @@
 <summary><strong>Table Definition</strong></summary>
 
 ```sql
-CREATE TABLE "skill_source" ("id" varchar PRIMARY KEY NOT NULL, "type" varchar(16) NOT NULL, "locator" text NOT NULL, "identityKey" varchar(255) NOT NULL, "projectId" varchar(36), "credentialId" varchar(36), "status" varchar(32) NOT NULL DEFAULT ('connected'), "probeCursor" text, "lastCheckedAt" datetime(3), "lastErrorReason" varchar(32), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), CONSTRAINT "CHK_skill_source_status" CHECK ("status" IN ('connected', 'credential_expired', 'unreachable', 'delayed')), CONSTRAINT "FK_172d2de74bff36e50fef736a5e8" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_b3474e16029bf15a015e3f3a8d6" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE SET NULL, CONSTRAINT "FK_1c91a0839e34c1b48610160761e" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
+CREATE TABLE "skill_source" ("id" varchar PRIMARY KEY NOT NULL, "type" varchar(16) NOT NULL, "locator" text NOT NULL, "identityKey" varchar(255) NOT NULL, "projectId" varchar(36), "credentialId" varchar(36), "status" varchar(32) NOT NULL DEFAULT ('connected'), "probeCursor" text, "lastCheckedAt" datetime(3), "lastErrorReason" varchar(32), "createdById" varchar, "createdAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "updatedAt" datetime(3) NOT NULL DEFAULT (STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW')), "listedRevision" varchar(255), "listedRefKeys" text, "listedAt" datetime, "seenRefKeys" text, CONSTRAINT "CHK_skill_source_status" CHECK ("status" IN ('connected', 'credential_expired', 'unreachable', 'delayed')), CONSTRAINT "FK_172d2de74bff36e50fef736a5e8" FOREIGN KEY ("projectId") REFERENCES "project" ("id") ON DELETE CASCADE, CONSTRAINT "FK_b3474e16029bf15a015e3f3a8d6" FOREIGN KEY ("credentialId") REFERENCES "credentials_entity" ("id") ON DELETE SET NULL, CONSTRAINT "FK_1c91a0839e34c1b48610160761e" FOREIGN KEY ("createdById") REFERENCES "user" ("id") ON DELETE SET NULL)
 ```
 
 </details>
@@ -22,9 +22,13 @@ CREATE TABLE "skill_source" ("id" varchar PRIMARY KEY NOT NULL, "type" varchar(1
 | identityKey | varchar(255) |  | false |  |  |  |
 | lastCheckedAt | datetime(3) |  | true |  |  |  |
 | lastErrorReason | varchar(32) |  | true |  |  |  |
+| listedAt | datetime |  | true |  |  |  |
+| listedRefKeys | TEXT |  | true |  |  |  |
+| listedRevision | varchar(255) |  | true |  |  |  |
 | locator | TEXT |  | false |  |  |  |
 | probeCursor | TEXT |  | true |  |  |  |
 | projectId | varchar(36) |  | true |  | [project](project.md) |  |
+| seenRefKeys | TEXT |  | true |  |  |  |
 | status | varchar(32) | 'connected' | false |  |  |  |
 | type | varchar(16) |  | false |  |  |  |
 | updatedAt | datetime(3) | STRFTIME('%Y-%m-%d %H:%M:%f', 'NOW') | false |  |  |  |
@@ -67,9 +71,13 @@ erDiagram
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
   varchar_32_ lastErrorReason
+  datetime listedAt
+  TEXT listedRefKeys
+  varchar_255_ listedRevision
   TEXT locator
   TEXT probeCursor
   varchar_36_ projectId FK
+  TEXT seenRefKeys
   varchar_32_ status
   varchar_16_ type
   datetime_3_ updatedAt

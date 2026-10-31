@@ -507,9 +507,13 @@ erDiagram
   varchar_255_ identityKey
   datetime_3_ lastCheckedAt
   varchar_32_ lastErrorReason
+  datetime listedAt
+  TEXT listedRefKeys
+  varchar_255_ listedRevision
   TEXT locator
   TEXT probeCursor
   varchar_36_ projectId FK
+  TEXT seenRefKeys
   varchar_32_ status
   varchar_16_ type
   datetime_3_ updatedAt

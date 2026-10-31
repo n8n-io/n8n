@@ -471,6 +471,11 @@ function locateKey(key: string, value: unknown): SkillScanLocation {
 	return locate({ part: 'frontmatter', text: `${key}: ${JSON.stringify(value)}` }, 0, key.length);
 }
 
+/** Shows each hidden character of a text as a marker, as the snippets do. Line breaks stay. */
+export function showHidden(text: string): string {
+	return escapeHidden(text, 0, 0).text;
+}
+
 /** Shows each hidden character as a marker such as `\u27e6U+200B\u27e7`, and moves the mark with it. */
 function escapeHidden(line: string, start: number, end: number): MarkedLine {
 	let text = '';

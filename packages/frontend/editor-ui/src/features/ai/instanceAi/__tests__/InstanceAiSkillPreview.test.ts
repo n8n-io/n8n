@@ -18,6 +18,7 @@ const detail: SkillDetail = {
 	agentId: null,
 	agentName: null,
 	source: 'assistant',
+	sourceId: null,
 	createdBy: null,
 	latestVersion: 2,
 	usedByAgents: 0,

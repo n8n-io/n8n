@@ -237,6 +237,10 @@ export class GitHubSkillSourceClient extends SkillSourceClient {
 		};
 	}
 
+	async currentRevision(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<string> {
+		return await this.head(readLocator(locator), auth);
+	}
+
 	async fetchLatest(
 		locator: SkillSourceLocator,
 		ref: RemoteSkillRef,

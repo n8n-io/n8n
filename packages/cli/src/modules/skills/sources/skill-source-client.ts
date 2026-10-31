@@ -173,6 +173,13 @@ export abstract class SkillSourceClient {
 	): Promise<SkillSourceListing>;
 
 	/**
+	 * The current revision of the whole source, such as the commit of a branch, with one cheap
+	 * request. Equal revisions mean that `discover` lists the same skills. A client without it
+	 * makes the core list the source each time.
+	 */
+	currentRevision?(locator: SkillSourceLocator, auth?: SkillSourceAuth): Promise<string>;
+
+	/**
 	 * The current content of one skill. Throws `SkillSourceNotFoundError` when it is gone.
 	 * With `revision` from `discover`, the client may read the skill at that revision, so the
 	 * fetches of one import read the same state of the source without asking for it again.

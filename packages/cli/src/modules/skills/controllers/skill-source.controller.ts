@@ -6,7 +6,7 @@ import {
 	ListSkillSourceRepositoriesQueryDto,
 } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { Body, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
+import { Body, Delete, Get, Middleware, Param, Post, Query, RestController } from '@n8n/decorators';
 import type { NextFunction, Response } from 'express';
 
 import { SkillSourceService } from '../services/skill-source.service';
@@ -86,6 +86,12 @@ export class SkillSourceController {
 		return await this.skillSourceService.discoverMore(req.user, sourceId);
 	}
 
+	/** Counts the skills that the source gained since the user last saw its import picker. */
+	@Post('/:sourceId/check')
+	async check(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		return await this.skillSourceService.checkNewSkills(req.user, sourceId);
+	}
+
 	@Post('/:sourceId/skills')
 	async addSkills(
 		req: AuthenticatedRequest,
@@ -100,6 +106,12 @@ export class SkillSourceController {
 	 * Stop syncing one skill: it becomes a normal skill that n8n can edit, and keeps its
 	 * versions. It cannot be undone.
 	 */
+	/** Deletes a source with no skills left. The service checks the scope of the source. */
+	@Delete('/:sourceId')
+	async delete(req: AuthenticatedRequest, _res: Response, @Param('sourceId') sourceId: string) {
+		await this.skillSourceService.deleteEmpty(req.user, sourceId);
+	}
+
 	@Post('/skills/:skillId/stop-syncing')
 	async stopSyncing(req: AuthenticatedRequest, _res: Response, @Param('skillId') skillId: string) {
 		await this.skillSyncService.stopSyncing(req.user, skillId);

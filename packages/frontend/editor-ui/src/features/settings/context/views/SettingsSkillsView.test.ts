@@ -7,6 +7,7 @@ import {
 	SKILL_SYNC_FLAG,
 	type SkillDetail,
 	type SkillListItem,
+	type SkillSourceListItem,
 	type SkillUserDto,
 } from '@n8n/api-types';
 import { ResponseError } from '@n8n/rest-api-client';
@@ -66,6 +67,7 @@ function skill(overrides: Partial<SkillListItem> = {}): SkillListItem {
 		agentId: null,
 		agentName: null,
 		source: 'ui',
+		sourceId: null,
 		createdBy: null,
 		latestVersion: 1,
 		availableToAssistant: false,
@@ -1071,31 +1073,234 @@ describe('SettingsSkillsView', () => {
 			expect(await findByTestId('connect-dialog-stub')).toBeInTheDocument();
 		});
 
-		it('opens the Sources tab from a deep link and passes its source to Add more', async () => {
-			enableSkillSync();
-			routeQuery.tab = 'sources';
-			const sourceStub = {
-				emits: ['addMore'],
-				template: `<button data-test-id="source-add-more" @click="$emit('addMore', 'src-1')" />`,
+		function source(overrides: Partial<SkillSourceListItem> = {}): SkillSourceListItem {
+			return {
+				id: 'src-1',
+				type: 'github',
+				label: 'acme/skills',
+				ref: 'main',
+				path: '',
+				webUrl: 'https://github.com/acme/skills',
+				scope: 'instance',
+				projectId: null,
+				projectName: null,
+				projectType: null,
+				skillCount: 1,
+				canAddSkills: true,
+				canDelete: false,
+				...overrides,
 			};
-			const view = renderView({
-				global: {
-					stubs: { SkillSources: sourceStub, SkillSourceConnectDialog: ConnectDialogStub },
-				},
+		}
+
+		it('heads the rows of each source, and opens Add more from it', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source()];
+				return skillsStore.sources;
 			});
-			await userEvent.click(view.getByTestId('source-add-more'));
+			skillsStore.skills = [
+				skill({ id: 's1', name: 'manual-skill' }),
+				skill({ id: 's2', name: 'synced-skill', sourceId: 'src-1', source: 'github' }),
+			];
+			skillsStore.count = 2;
+			const view = renderWithDialogStub();
+
+			await waitFor(() =>
+				expect(
+					view.getAllByTestId('skill-group-title').map((title) => title.textContent?.trim()),
+				).toEqual(['acme/skills · main']),
+			);
+			// Only a source with no skills shows a count.
+			expect(view.queryByTestId('skill-group-count')).not.toBeInTheDocument();
+			// A synced skill has the scope of its source, so only its group row shows the scope.
+			const syncedRow = view.getByText('synced-skill').closest('tr')!;
+			const manualRow = view.getByText('manual-skill').closest('tr')!;
+			expect(within(syncedRow).queryByTestId('skill-scope-badge')).not.toBeInTheDocument();
+			expect(within(manualRow).getByTestId('skill-scope-badge')).toBeInTheDocument();
+			expect(
+				within(view.getByTestId('data-table-group-row')).getByTestId('skill-scope-badge'),
+			).toBeInTheDocument();
+			expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+				expect.objectContaining({ groupBy: 'source' }),
+			);
+			expect(view.queryByTestId('skill-source-tabs')).not.toBeInTheDocument();
+
+			await userEvent.click(view.getByTestId('skill-source-menu-src-1').querySelector('button')!);
+			await userEvent.click(await view.findByText('Add more skills'));
 			expect(view.getByTestId('connect-dialog-stub')).toHaveAttribute('data-source-id', 'src-1');
+
 			skillsStore.fetchSources.mockClear();
 			await userEvent.click(view.getByTestId('connect-dialog-done'));
 			await waitFor(() => expect(skillsStore.fetchSources).toHaveBeenCalled());
 		});
 
-		it('does not open Sources from a deep link while the flag is off', () => {
-			routeQuery.tab = 'sources';
+		it('lists a source with no skills after the last row, and deletes it after a confirm', async () => {
+			enableSkillSync();
+			const empty = source({ id: 'src-2', label: 'acme/old', skillCount: 0, canDelete: true });
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [empty];
+				return skillsStore.sources;
+			});
+			skillsStore.deleteSource.mockResolvedValue(undefined);
 			const view = renderWithDialogStub();
-			expect(view.queryByTestId('skill-sources')).not.toBeInTheDocument();
-			expect(view.queryByTestId('skill-source-tabs')).not.toBeInTheDocument();
+
+			const row = await view.findByTestId('data-table-group-row');
+			expect(row).toHaveTextContent('acme/old · main');
+			expect(within(row).getByTestId('skill-group-count')).toHaveTextContent('0 skills');
+			expect(within(row).queryByTestId('skill-group-toggle')).not.toBeInTheDocument();
+			expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+
+			await userEvent.click(
+				within(row).getByTestId('skill-source-menu-src-2').querySelector('button')!,
+			);
+			await userEvent.click(await view.findByText('Delete source'));
+
+			await waitFor(() => expect(skillsStore.deleteSource).toHaveBeenCalledWith('src-2'));
+			expect(confirmMock).toHaveBeenCalled();
+		});
+
+		it('folds a source from the chevron or the whole row, without a count', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source({ skillCount: 1 })];
+				return skillsStore.sources;
+			});
+			skillsStore.skills = [
+				skill({ id: 's2', name: 'synced-skill', sourceId: 'src-1', source: 'github' }),
+			];
+			skillsStore.count = 1;
+			const view = renderWithDialogStub();
+
+			const toggle = await view.findByTestId('skill-group-toggle');
+			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+			await userEvent.click(toggle);
+
+			expect(toggle).toHaveAttribute('aria-expanded', 'false');
+			expect(view.queryByTestId('skill-group-count')).not.toBeInTheDocument();
+			expect(view.queryByText('synced-skill')).not.toBeInTheDocument();
+
+			// The whole group row unfolds the source too, not only the chevron.
+			await userEvent.click(view.getByTestId('skill-group-title'));
+			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+			expect(view.getByText('synced-skill')).toBeInTheDocument();
+			expect(view.queryByTestId('skill-group-count')).not.toBeInTheDocument();
+
+			// The source menu opens without folding the source.
+			await userEvent.click(view.getByTestId('skill-source-menu-src-1').querySelector('button')!);
+			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		});
+
+		it('asks the server to count a folded source as one row', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source()];
+				return skillsStore.sources;
+			});
+			skillsStore.skills = [
+				skill({ id: 's2', name: 'synced-skill', sourceId: 'src-1', source: 'github' }),
+			];
+			skillsStore.count = 1;
+			const view = renderWithDialogStub();
+			await userEvent.click(await view.findByTestId('skill-group-toggle'));
+
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.objectContaining({ groupBy: 'source', collapsedSourceIds: 'src-1' }),
+				),
+			);
+
+			await userEvent.click(view.getByTestId('skill-group-toggle'));
+			await waitFor(() =>
+				expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith(
+					expect.not.objectContaining({ collapsedSourceIds: expect.anything() }),
+				),
+			);
+		});
+
+		it('shows a source that the server folded as its row alone, in its place', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source(), source({ id: 'src-2', label: 'acme/other' })];
+				return skillsStore.sources;
+			});
+			// The server folded src-1 before the skills of src-2.
+			skillsStore.skills = [
+				skill({ id: 's3', name: 'other-skill', sourceId: 'src-2', source: 'github' }),
+			];
+			skillsStore.collapsedSources = [{ sourceId: 'src-1', index: 0, skillCount: 4 }];
+			skillsStore.count = 2;
+			const view = renderWithDialogStub();
+
+			await waitFor(() =>
+				expect(
+					view.getAllByTestId('skill-group-title').map((title) => title.textContent?.trim()),
+				).toEqual(['acme/skills · main', 'acme/other · main']),
+			);
+			expect(view.queryByTestId('skills-empty-state')).not.toBeInTheDocument();
+		});
+
+		it('checks each source for new skills, and opens Add more from the count', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [
+					source(),
+					source({ id: 'src-3', label: 'acme/read', canAddSkills: false }),
+				];
+				return skillsStore.sources;
+			});
+			skillsStore.checkSourceForNewSkills.mockImplementation(async (id: string) => {
+				skillsStore.newSkillCounts = { ...skillsStore.newSkillCounts, [id]: 2 };
+				return 2;
+			});
+			skillsStore.skills = [
+				skill({ id: 's2', name: 'synced-skill', sourceId: 'src-1', source: 'github' }),
+			];
+			skillsStore.count = 1;
+			const view = renderWithDialogStub();
+
+			const link = await view.findByTestId('skill-group-new-skills');
+			expect(link).toHaveTextContent('2 new skills');
+			// A source the user cannot add to has nothing to offer, so n8n does not check it.
+			expect(skillsStore.checkSourceForNewSkills).toHaveBeenCalledTimes(1);
+			expect(skillsStore.checkSourceForNewSkills).toHaveBeenCalledWith('src-1');
+
+			const toggle = view.getByTestId('skill-group-toggle');
+			await userEvent.click(link);
+			expect(view.getByTestId('connect-dialog-stub')).toHaveAttribute('data-source-id', 'src-1');
+			// The link does not fold the source.
+			expect(toggle).toHaveAttribute('aria-expanded', 'true');
+		});
+
+		it('shows the table when a check for new skills fails', async () => {
+			enableSkillSync();
+			skillsStore.fetchSources.mockImplementation(async () => {
+				skillsStore.sources = [source()];
+				return skillsStore.sources;
+			});
+			skillsStore.checkSourceForNewSkills.mockRejectedValue(new Error('rate limited'));
+			skillsStore.skills = [
+				skill({ id: 's2', name: 'synced-skill', sourceId: 'src-1', source: 'github' }),
+			];
+			skillsStore.count = 1;
+			const view = renderWithDialogStub();
+
+			await waitFor(() => expect(skillsStore.checkSourceForNewSkills).toHaveBeenCalled());
+			expect(view.getByText('synced-skill')).toBeInTheDocument();
+			expect(view.queryByTestId('skill-group-new-skills')).not.toBeInTheDocument();
+			expect(showErrorMock).not.toHaveBeenCalled();
+		});
+
+		it('shows no group rows and reads no sources while the flag is off', async () => {
+			skillsStore.skills = [skill()];
+			skillsStore.count = 1;
+			const view = renderWithDialogStub();
+			await new Promise(process.nextTick);
+
+			expect(view.queryByTestId('skill-group-header')).not.toBeInTheDocument();
 			expect(skillsStore.fetchSources).not.toHaveBeenCalled();
+			expect(skillsStore.fetchSkills).toHaveBeenCalledWith(
+				expect.not.objectContaining({ groupBy: 'source' }),
+			);
 		});
 
 		it('reloads the list and names the imported and failed skills', async () => {

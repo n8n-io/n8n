@@ -146,7 +146,7 @@ Auto-generated from the PostgreSQL migrations in @n8n/db. Do not edit by hand.
 | [public.shared_workflow](public.shared_workflow.md) | 5 |  | BASE TABLE |
 | [public.skill](public.skill.md) | 9 |  | BASE TABLE |
 | [public.skill_file](public.skill_file.md) | 5 |  | BASE TABLE |
-| [public.skill_source](public.skill_source.md) | 13 |  | BASE TABLE |
+| [public.skill_source](public.skill_source.md) | 17 |  | BASE TABLE |
 | [public.skill_source_link](public.skill_source_link.md) | 14 |  | BASE TABLE |
 | [public.skill_version](public.skill_version.md) | 12 |  | BASE TABLE |
 | [public.tag_entity](public.tag_entity.md) | 4 |  | BASE TABLE |
@@ -1885,9 +1885,13 @@ erDiagram
   varchar_255_ identityKey
   timestamp_3__with_time_zone lastCheckedAt
   varchar_32_ lastErrorReason
+  timestamp_3__with_time_zone listedAt
+  json listedRefKeys
+  varchar_255_ listedRevision
   json locator
   text probeCursor
   varchar_36_ projectId FK
+  json seenRefKeys
   varchar_32_ status
   varchar_16_ type
   timestamp_3__with_time_zone updatedAt
