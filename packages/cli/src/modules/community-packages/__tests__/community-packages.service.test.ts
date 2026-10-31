@@ -528,7 +528,7 @@ describe('CommunityPackagesService', () => {
 			).rejects.toThrow('The specified package could not be loaded');
 
 			expect(rename).toHaveBeenNthCalledWith(1, testBlockPackageDir, backupDirectory);
-			expect(rename).toHaveBeenNthCalledWith(2, backupDirectory, testBlockPackageDir);
+			expect(rename).toHaveBeenNthCalledWith(3, backupDirectory, testBlockPackageDir);
 		});
 
 		test('should restore the previous package.json dependency version when an update fails', async () => {
@@ -588,7 +588,7 @@ describe('CommunityPackagesService', () => {
 			).rejects.toThrow('The specified package could not be loaded');
 
 			expect(writeFile).toHaveBeenNthCalledWith(
-				3,
+				4,
 				path.join(nodesDownloadDir, 'package.json'),
 				JSON.stringify(
 					{
@@ -638,7 +638,7 @@ describe('CommunityPackagesService', () => {
 			).rejects.toThrow('download failed');
 
 			expect(rename).toHaveBeenNthCalledWith(1, testBlockPackageDir, backupDirectory);
-			expect(rename).toHaveBeenNthCalledWith(2, backupDirectory, testBlockPackageDir);
+			expect(rename).toHaveBeenCalledWith(backupDirectory, testBlockPackageDir);
 			expect(loadNodesAndCredentials.loadPackage).not.toHaveBeenCalled();
 			expect(loadNodesAndCredentials.unloadPackage).not.toHaveBeenCalled();
 		});
@@ -659,7 +659,7 @@ describe('CommunityPackagesService', () => {
 				),
 			).rejects.toThrow();
 
-			expect(rename).toHaveBeenNthCalledWith(2, backupDirectory, testBlockPackageDir);
+			expect(rename).toHaveBeenCalledWith(backupDirectory, testBlockPackageDir);
 			expect(installedPackageRepository.replaceInstalledPackageWithNodes).not.toHaveBeenCalled();
 		});
 
@@ -765,16 +765,22 @@ describe('CommunityPackagesService', () => {
 						private: true,
 						dependencies: { [PACKAGE_NAME]: '1.0.0' },
 					}),
+				)
+				.mockResolvedValueOnce(
+					JSON.stringify({
+						name: 'installed-nodes',
+						private: true,
+						dependencies: { [PACKAGE_NAME]: '1.0.0' },
+					}),
 				);
 
 			await expect(communityPackagesService.installPackage(PACKAGE_NAME)).rejects.toThrow(
 				'The specified package could not be loaded',
 			);
 
-			// Nothing to back up, so cleanup only deletes — no rename.
-			expect(rename).not.toHaveBeenCalled();
-			expect(writeFile).toHaveBeenNthCalledWith(
-				3,
+			// Nothing to back up, so the only rename is the atomic completion marker.
+			expect(rename).toHaveBeenCalledTimes(1);
+			expect(writeFile).toHaveBeenCalledWith(
 				path.join(nodesDownloadDir, 'package.json'),
 				JSON.stringify({ name: 'installed-nodes', private: true, dependencies: {} }, null, 2),
 				'utf-8',
@@ -909,16 +915,12 @@ describe('CommunityPackagesService', () => {
 			);
 
 			// ASSERT:
-			// Only the pre-download backup rename — success needs no restore.
-			expect(rename).toHaveBeenCalledTimes(1);
+			// The package backup and atomic completion-marker rename; success needs no restore.
+			expect(rename).toHaveBeenCalledTimes(2);
 			expect(rename).toHaveBeenCalledWith(testBlockPackageDir, backupDirectory);
 
-			expect(rm).toHaveBeenCalledTimes(2);
-			expect(rm).toHaveBeenNthCalledWith(
-				1,
-				path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'),
-			);
-			expect(rm).toHaveBeenNthCalledWith(2, backupDirectory, {
+			expect(rm).toHaveBeenCalledWith(path.join(nodesDownloadDir, 'n8n-nodes-test-latest.tgz'));
+			expect(rm).toHaveBeenCalledWith(backupDirectory, {
 				recursive: true,
 				force: true,
 				maxRetries: 3,
@@ -1043,7 +1045,7 @@ describe('CommunityPackagesService', () => {
 			);
 
 			expect(rm).not.toHaveBeenCalledWith(testBlockDownloadDir);
-			expect(rm).toHaveBeenCalledTimes(1);
+			expect(rm).toHaveBeenCalledTimes(2);
 			expect(rm).toHaveBeenCalledWith(backupDirectory, {
 				recursive: true,
 				force: true,
@@ -1352,6 +1354,7 @@ describe('CommunityPackagesService', () => {
 				{} as InstalledPackages,
 			);
 			vi.mocked(getCommunityNodeTypes).mockResolvedValue([]);
+			vi.mocked(readFile).mockRejectedValue(new Error('ENOENT'));
 		});
 
 		test('should not attempt to reinstall when no packages are missing', async () => {
@@ -1420,6 +1423,47 @@ describe('CommunityPackagesService', () => {
 			expect(logger.info).toHaveBeenCalledWith(
 				'Packages reinstalled successfully. Resuming regular initialization.',
 			);
+		});
+
+		test('should load a completed shared-volume install during restart without reinstalling it', async () => {
+			const installedPackages = [installedPackage1];
+			const ledgerPath = path.join(nodesDownloadDir, 'package.json');
+			const markerPath = path.join(
+				nodesDownloadDir,
+				'node_modules',
+				'package-1',
+				'.n8n-install-complete',
+			);
+
+			installedPackageRepository.find.mockResolvedValue(installedPackages);
+			loadNodesAndCredentials.isKnownNode.mockReturnValue(false);
+			loadNodesAndCredentials.loadPackage.mockResolvedValue(mock<PackageDirectoryLoader>());
+			config.reinstallMissing = true;
+			vi.mocked(readFile).mockImplementation(async (filePath) => {
+				if (filePath === markerPath) return '1.0.0';
+
+				return JSON.stringify(
+					filePath === ledgerPath
+						? {
+								name: 'installed-nodes',
+								private: true,
+								dependencies: { 'package-1': '1.0.0' },
+							}
+						: {
+								name: 'package-1',
+								version: '1.0.0',
+								n8n: { n8nNodesApiVersion: N8N_NODES_API_VERSION },
+							},
+				);
+			});
+
+			await communityPackagesService.checkForMissingPackages();
+
+			expect(communityPackagesService.installPackage).not.toHaveBeenCalled();
+			expect(loadNodesAndCredentials.loadPackage).toHaveBeenCalledWith('package-1');
+			expect(writeFile).not.toHaveBeenCalled();
+			expect(rename).not.toHaveBeenCalled();
+			expect(rm).not.toHaveBeenCalled();
 		});
 
 		test('should not reinstall a package the startup guard skipped as incompatible', async () => {
