@@ -550,6 +550,159 @@ describe('Microsoft Outlook Trigger GenericFunctions', () => {
 				});
 			});
 
+			describe('sender domain filter', () => {
+				const fromAddress = (id: string, address: string) => ({
+					id,
+					from: { emailAddress: { address } },
+					receivedDateTime: '2023-01-01T12:00:00Z',
+				});
+				const messages = [
+					fromAddress('exact', 'alice@example.com'),
+					fromAddress('subdomain', 'bob@mail.example.com'),
+					fromAddress('uppercase', 'carol@EXAMPLE.COM'),
+					fromAddress('lookalike', 'dave@notexample.com'),
+					fromAddress('other', 'erin@other.com'),
+					{ id: 'no-sender', receivedDateTime: '2023-01-01T12:00:00Z' },
+				];
+				const withParams = (filters: IDataObject, output = 'raw', fields: string[] = []) => {
+					mockPollFunctions.getNodeParameter.mockImplementation(
+						(paramName: string, defaultValue?: any) => {
+							const params: Record<string, any> = { filters, options: {}, output, fields };
+							return params[paramName] ?? defaultValue;
+						},
+					);
+				};
+
+				describe('trigger mode', () => {
+					beforeEach(() => {
+						mockPollFunctions.getMode.mockReturnValue('trigger');
+						(microsoftApiRequest as Mock).mockResolvedValue({ value: messages });
+					});
+
+					it('should emit only messages from the domain and its subdomains', async () => {
+						withParams({ senderDomain: ' Example.com ' });
+
+						const { items } = await getPollResponse.call(
+							mockPollFunctions,
+							pollStartDate,
+							pollEndDate,
+						);
+
+						expect(items.map((item) => item.json.id)).toEqual(['exact', 'subdomain', 'uppercase']);
+					});
+
+					it.each(['@example.com', '*.example.com'])(
+						'should match the domain when it is written as %s',
+						async (senderDomain) => {
+							withParams({ senderDomain });
+
+							const { items } = await getPollResponse.call(
+								mockPollFunctions,
+								pollStartDate,
+								pollEndDate,
+							);
+
+							expect(items.map((item) => item.json.id)).toEqual([
+								'exact',
+								'subdomain',
+								'uppercase',
+							]);
+						},
+					);
+
+					it('should not pass senderDomain to prepareFilterString', async () => {
+						withParams({ senderDomain: 'example.com', hasAttachments: true });
+
+						await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+						expect(prepareFilterString).toHaveBeenCalledWith({
+							filters: { hasAttachments: true },
+						});
+					});
+
+					it('should return the poll end date as cursor when no message matches', async () => {
+						withParams({ senderDomain: 'unknown.com' });
+
+						const { items, cursor } = await getPollResponse.call(
+							mockPollFunctions,
+							pollStartDate,
+							pollEndDate,
+						);
+
+						expect(items).toEqual([]);
+						expect(cursor).toBe(pollEndDate);
+					});
+
+					it('should select from for the match and leave it out of the output', async () => {
+						withParams({ senderDomain: 'example.com' }, 'fields', ['id']);
+
+						const { items } = await getPollResponse.call(
+							mockPollFunctions,
+							pollStartDate,
+							pollEndDate,
+						);
+
+						expect((microsoftApiRequest as Mock).mock.calls[0][4].$select).toBe(
+							'id,receivedDateTime,from',
+						);
+						expect(items.map((item) => item.json)).toEqual([
+							{ id: 'exact' },
+							{ id: 'subdomain' },
+							{ id: 'uppercase' },
+						]);
+					});
+				});
+
+				describe('manual mode', () => {
+					beforeEach(() => {
+						mockPollFunctions.getMode.mockReturnValue('manual');
+					});
+
+					it('should read a page and return the newest message from the domain', async () => {
+						withParams({ senderDomain: 'example.com' });
+						// Graph returns the page newest first, as $orderby requests.
+						(microsoftApiRequest as Mock).mockResolvedValue({
+							value: [
+								{
+									...fromAddress('newest', 'erin@other.com'),
+									receivedDateTime: '2023-01-01T12:02:00Z',
+								},
+								{
+									...fromAddress('newest-match', 'alice@example.com'),
+									receivedDateTime: '2023-01-01T12:01:00Z',
+								},
+								{
+									...fromAddress('older-match', 'bob@example.com'),
+									receivedDateTime: '2023-01-01T12:00:00Z',
+								},
+							],
+						});
+
+						const { items } = await getPollResponse.call(
+							mockPollFunctions,
+							pollStartDate,
+							pollEndDate,
+						);
+
+						const qs = (microsoftApiRequest as Mock).mock.calls[0][4];
+						expect(qs.$top).toBe(100);
+						expect(qs.$orderby).toBe('receivedDateTime desc');
+						expect(items.map((item) => [item.json.id, item.json.receivedDateTime])).toEqual([
+							['newest-match', '2023-01-01T12:01:00Z'],
+						]);
+					});
+
+					it('should keep reading a single message when no sender domain is set', async () => {
+						withParams({});
+						(microsoftApiRequest as Mock).mockResolvedValue({ value: messages });
+
+						await getPollResponse.call(mockPollFunctions, pollStartDate, pollEndDate);
+
+						expect((microsoftApiRequest as Mock).mock.calls[0][4].$top).toBe(1);
+					});
+				});
+			});
+
 			describe('capped scheduled polls', () => {
 				const at = (seconds: number) => new Date(Date.UTC(2023, 0, 1, 0, 0, seconds)).toISOString();
 				const pageOf = (folder: string, times: number[], more: boolean) => ({
