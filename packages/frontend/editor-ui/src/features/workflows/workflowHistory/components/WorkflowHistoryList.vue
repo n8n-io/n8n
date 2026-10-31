@@ -193,12 +193,14 @@ const pruneTimeDisplay = computed(() => {
 				data-test-id="workflow-history-group-header"
 				@click="toggleGroup(entry.groupId)"
 			>
-				<N8nIcon
-					:class="[$style.groupTimelineColumn, $style.groupChevron]"
-					:icon="expandedGroups.has(entry.groupId) ? 'chevron-down' : 'chevron-right'"
-					size="small"
-				/>
-				<N8nText color="text-base" size="small">
+				<span :class="$style.groupTimelineColumn">
+					<N8nIcon
+						:class="$style.groupChevron"
+						:icon="expandedGroups.has(entry.groupId) ? 'chevron-down' : 'chevron-right'"
+						size="small"
+					/>
+				</span>
+				<N8nText color="text-base" size="small" :class="$style.groupLabel">
 					{{
 						i18n.baseText('workflowHistory.group.unnamedVersions', {
 							adjustToNumber: entry.count,
@@ -296,19 +298,33 @@ const pruneTimeDisplay = computed(() => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--3xs);
+	padding: 0 var(--spacing--3xs);
 	margin-top: var(--spacing--lg);
 	cursor: pointer;
 	position: relative;
 
-	// Line segment in the gap above this item (not for first item)
-	&:not(:first-child)::before {
-		@include timeline-gap-line;
+	// The gap above the header. The timeline line spans it.
+	--timeline-gap: var(--spacing--lg);
+
+	&:first-child {
+		--timeline-gap: 0;
 	}
 }
 
 .groupTimelineColumn {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	align-self: stretch;
+	position: relative;
+	width: var(--spacing--lg);
 	min-width: var(--spacing--lg);
+
+	@include timeline-line;
+}
+
+.groupLabel {
+	padding: var(--spacing--2xs) 0;
 }
 
 .groupChevron {

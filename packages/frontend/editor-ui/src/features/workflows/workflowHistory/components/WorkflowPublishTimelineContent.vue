@@ -10,6 +10,7 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 import { useWorkflowHistoryStore } from '../workflowHistory.store';
 import { formatTimestamp, generateVersionLabelFromId } from '../utils';
 import WorkflowHistoryPublishedTooltip from './WorkflowHistoryPublishedTooltip.vue';
+import WorkflowVersionEngineBadge from './WorkflowVersionEngineBadge.vue';
 import type { WorkflowHistoryVersionStatus } from '../types';
 
 /** Brief unpublished gaps shorter than this are version-change artefacts, not real deactivations */
@@ -54,6 +55,7 @@ type TimelineEntry = {
 	isClickable: boolean;
 	isSelected: boolean;
 	isDeletedVersion: boolean;
+	settings: PublishTimelineEvent['settings'];
 	title: string;
 	durationLabel: string;
 	shortDate: string;
@@ -151,6 +153,7 @@ const buildEntry = (
 		isClickable: status === 'published' && !!versionId,
 		isSelected: !!versionId && versionId === props.selectedVersionId,
 		isDeletedVersion: status === 'published' && !versionId,
+		settings: event.settings,
 		title: titleFor(event),
 		durationLabel: i18n.baseText(durationKey, {
 			interpolate: { duration: formatPublicationDuration(startedAt, endedAt ?? new Date()) },
@@ -306,7 +309,8 @@ onBeforeUnmount(() => {
 							<span
 								:class="[
 									$style.timelineLine,
-									idx === 0 && entry.status !== 'published' && $style.timelineLineHidden,
+									$style.timelineLineAbove,
+									idx === 0 && $style.timelineLineHidden,
 								]"
 							/>
 							<span v-if="entry.status === 'unpublished'" :class="$style.timelineMarker">
@@ -317,6 +321,13 @@ onBeforeUnmount(() => {
 								:class="[
 									$style.timelineDot,
 									entry.isLatest ? $style.dotPublished : $style.dotPastPublished,
+								]"
+							/>
+							<span
+								:class="[
+									$style.timelineLine,
+									$style.timelineLineBelow,
+									idx === entries.length - 1 && $style.timelineLineHidden,
 								]"
 							/>
 						</div>
@@ -336,6 +347,10 @@ onBeforeUnmount(() => {
 									>
 										{{ entry.title }}
 									</N8nText>
+									<WorkflowVersionEngineBadge
+										v-if="entry.status === 'published' && !entry.isDeletedVersion"
+										:settings="entry.settings"
+									/>
 									<N8nTooltip
 										v-if="entry.isDeletedVersion"
 										placement="top"
@@ -417,9 +432,12 @@ onBeforeUnmount(() => {
 }
 
 .timelineItem {
+	// The vertical padding of the item. The timeline line spans it.
+	--timeline-item-padding: var(--spacing--xs);
+
 	display: flex;
 	gap: var(--spacing--xs);
-	padding: var(--spacing--xs) var(--spacing--2xs);
+	padding: var(--timeline-item-padding) var(--spacing--2xs);
 	border-radius: var(--radius);
 
 	&.timelineItemClickable {
@@ -443,7 +461,7 @@ onBeforeUnmount(() => {
 	align-items: center;
 	flex-shrink: 0;
 	width: 11px;
-	padding-bottom: 3px;
+	position: relative;
 }
 
 .timelineDot {
@@ -471,10 +489,23 @@ onBeforeUnmount(() => {
 }
 
 .timelineLine {
-	flex: 1;
-	width: 1px;
-	min-height: var(--spacing--2xs);
+	width: var(--border-width);
 	background-color: var(--color--foreground);
+
+	// Runs up through the item's top padding, to meet the line of the item above.
+	&.timelineLineAbove {
+		flex: 1;
+		margin-top: calc(-1 * var(--timeline-item-padding));
+	}
+
+	// Runs down through the item's bottom padding, to meet the line of the item below.
+	&.timelineLineBelow {
+		position: absolute;
+		top: 100%;
+		left: 50%;
+		height: var(--timeline-item-padding);
+		transform: translateX(-50%);
+	}
 
 	&.timelineLineHidden {
 		visibility: hidden;

@@ -1,16 +1,21 @@
 // Shared timeline styles for workflow history components
 
-@mixin timeline-line-style {
-	width: var(--border-width);
-	background-color: var(--color--foreground);
-}
+// Draws the timeline line through the full height of a row's timeline column,
+// plus the gap above the row. The consumer sets `--timeline-gap` to that gap.
+@mixin timeline-line {
+	&::before {
+		content: '';
+		position: absolute;
+		left: 50%;
+		top: calc(-1 * var(--timeline-gap));
+		bottom: 0;
+		width: var(--border-width);
+		transform: translateX(-50%);
+		background-color: var(--color--foreground);
+	}
 
-@mixin timeline-gap-line {
-	@include timeline-line-style;
-
-	content: '';
-	position: absolute;
-	left: 17.5px;
-	bottom: 100%;
-	height: var(--spacing--lg);
+	// Keep the status dot above the line.
+	> * {
+		position: relative;
+	}
 }
