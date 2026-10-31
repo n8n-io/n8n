@@ -1,11 +1,14 @@
 import type { DataSource } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import request from 'supertest';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AllowAllAdmittance } from '../../admittance';
 import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import type { EngineStores } from '../../database';
+import { StepReadyHandler, StepSettledHandler } from '../../execution';
 import { BatchingLifecycleEventPublisher } from '../../lifecycle-events';
+import { InMemoryWorkQueue } from '../../queue';
 import { noopExecutionResponseSender } from '../../response-channel';
 import { createEngineRuntime } from '../create-engine-runtime';
 
@@ -117,5 +120,58 @@ describe('createEngineRuntime', () => {
 		engine.start();
 
 		await expect(engine.stop()).resolves.toBeUndefined();
+	});
+
+	it.each([
+		{ stepConcurrency: undefined, orchestrationConcurrency: undefined, steps: 1, settlements: 1 },
+		{ stepConcurrency: 2, orchestrationConcurrency: 3, steps: 2, settlements: 3 },
+	])('bounds the queues independently: %j', async (options) => {
+		const queues: Array<InMemoryWorkQueue<unknown>> = [];
+		const start = InMemoryWorkQueue.prototype.start;
+		vi.spyOn(InMemoryWorkQueue.prototype, 'start').mockImplementation(function (
+			this: InMemoryWorkQueue<unknown>,
+			handler,
+		) {
+			queues.push(this);
+			start.call(this, handler);
+		});
+		const release = createDeferredPromise();
+		const ready = vi
+			.spyOn(StepReadyHandler.prototype, 'handle')
+			.mockImplementation(async () => await release.promise);
+		const settled = vi
+			.spyOn(StepSettledHandler.prototype, 'handle')
+			.mockImplementation(async () => await release.promise);
+		const engine = createEngineRuntime({
+			dataSource: fakeDataSource(),
+			admittance: new AllowAllAdmittance(),
+			identityVerifier,
+			responseSender,
+			stepConcurrency: options.stepConcurrency,
+			orchestrationConcurrency: options.orchestrationConcurrency,
+		});
+		engine.start();
+		const [orchestrationQueue, stepQueue] = queues;
+
+		try {
+			for (let n = 0; n < 4; n++) {
+				await stepQueue.publish({ type: 'step:ready', executionId: 'exec-1', stepId: `step-${n}` });
+			}
+			// All step slots stay occupied while settlements use their own capacity.
+			for (let n = 0; n < 4; n++) {
+				await orchestrationQueue.publish({
+					type: 'step:settled',
+					executionId: 'exec-1',
+					stepId: `step-${n}`,
+				});
+			}
+
+			expect(ready).toHaveBeenCalledTimes(options.steps);
+			expect(settled).toHaveBeenCalledTimes(options.settlements);
+		} finally {
+			const stopped = engine.stop();
+			release.resolve();
+			await stopped;
+		}
 	});
 });

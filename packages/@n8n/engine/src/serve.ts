@@ -32,6 +32,8 @@ async function main(): Promise<void> {
 		admittance: new AllowAllAdmittance(),
 		identityVerifier: new SharedSecretIdentityVerifier(config.authSecret),
 		logger,
+		stepConcurrency: config.stepConcurrency,
+		orchestrationConcurrency: config.orchestrationConcurrency,
 		// Nothing in this process waits for a response: the caller reads the run
 		// over the API instead.
 		responseSender: noopExecutionResponseSender,

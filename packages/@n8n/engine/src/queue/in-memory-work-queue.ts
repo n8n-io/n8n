@@ -1,18 +1,26 @@
+import { UnexpectedError } from '../common';
 import { createConsoleLogger, type EngineLogger } from '../logging';
 import type { WorkQueue } from './work-queue.types';
 
 /**
  * In-memory `WorkQueue`. When a handler is registered it dispatches messages
- * sequentially on a microtask.
+ * on microtasks, up to the configured number of in-flight handlers.
  */
 export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
-	constructor(private readonly logger: EngineLogger = createConsoleLogger()) {}
+	constructor(
+		private readonly logger: EngineLogger = createConsoleLogger(),
+		private readonly concurrency = 1,
+	) {
+		if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+			throw new UnexpectedError('Work queue concurrency must be a positive safe integer');
+		}
+	}
 
 	private pending: TMessage[] = [];
 
 	private handler: ((message: TMessage) => Promise<void>) | undefined;
 
-	private dispatching = false;
+	private inFlight = 0;
 
 	private idleWaiters: Array<() => void> = [];
 
@@ -31,38 +39,42 @@ export class InMemoryWorkQueue<TMessage> implements WorkQueue<TMessage> {
 		this.handler = undefined;
 		// Only in-flight work is awaited; anything still queued has no consumer to
 		// dispatch it, so waiting on it would never return.
-		if (!this.dispatching) return;
+		if (this.inFlight === 0) return;
 		await new Promise<void>((resolve) => this.idleWaiters.push(resolve));
 	}
 
 	/**
-	 * Starts dispatching unless it is already running, there is no consumer, or
-	 * there is nothing queued. Safe to call on every publish.
+	 * Fills free slots in publish order. Each completion can refill its own slot.
 	 */
 	private startDispatchLoop(): void {
-		if (this.dispatching || !this.handler || this.pending.length === 0) return;
-		this.dispatching = true;
-		this.dispatchPending().catch((error: unknown) => {
-			this.logger.error('work queue dispatch failed', { error });
-		});
+		while (this.handler && this.pending.length > 0 && this.inFlight < this.concurrency) {
+			const [message] = this.pending.splice(0, 1);
+			this.inFlight += 1;
+			this.dispatchMessage(message, this.handler).catch((error: unknown) => {
+				this.logger.error('work queue dispatch failed', { error });
+			});
+		}
 	}
 
-	private async dispatchPending(): Promise<void> {
+	private async dispatchMessage(
+		message: TMessage,
+		handler: (message: TMessage) => Promise<void>,
+	): Promise<void> {
+		// Reserve the slot before calling user code, including synchronous throws.
+		await Promise.resolve();
 		try {
-			while (this.handler && this.pending.length > 0) {
-				const [message] = this.pending.splice(0, 1);
-				try {
-					await this.handler(message);
-				} catch (error) {
-					// Contained per message: a failed one must not strand those behind it.
-					this.logger.error('work queue handler failed', { error });
-				}
-			}
+			await handler(message);
+		} catch (error) {
+			// A failed message must not strand those behind it.
+			this.logger.error('work queue handler failed', { error });
 		} finally {
-			this.dispatching = false;
-			const waiters = this.idleWaiters;
-			this.idleWaiters = [];
-			for (const resolve of waiters) resolve();
+			this.inFlight -= 1;
+			this.startDispatchLoop();
+			if (this.inFlight === 0) {
+				const waiters = this.idleWaiters;
+				this.idleWaiters = [];
+				for (const resolve of waiters) resolve();
+			}
 		}
 	}
 }

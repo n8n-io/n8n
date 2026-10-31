@@ -1,4 +1,5 @@
 import type { DataSource } from '@n8n/typeorm';
+import { createDeferredPromise } from '@n8n/utils/promise/deferred-promise';
 import { PostgreSqlContainer, type StartedPostgreSqlContainer } from '@testcontainers/postgresql';
 import postgresVersions from 'n8n-containers/postgres-versions.json';
 import request from 'supertest';
@@ -9,6 +10,7 @@ import { mintIdentityToken, SharedSecretIdentityVerifier } from '../../auth';
 import {
 	createDataSource,
 	createStores,
+	type EngineStores,
 	WorkflowExecution,
 	WorkflowStepExecution,
 } from '../../database';
@@ -68,6 +70,9 @@ describe('step execution (integration)', () => {
 			seededSteps,
 			lifecycleEventCallback,
 			waitSweepIntervalMs,
+			stepConcurrency,
+			orchestrationConcurrency,
+			configureStores,
 			resolveOn = 'finish',
 			finishCount = 1,
 		}: {
@@ -76,6 +81,9 @@ describe('step execution (integration)', () => {
 			seededSteps?: SeededSteps;
 			lifecycleEventCallback?: LifecycleEventCallback;
 			waitSweepIntervalMs?: number;
+			stepConcurrency?: number;
+			orchestrationConcurrency?: number;
+			configureStores?: (stores: EngineStores) => void;
 			/**
 			 * Which write means the engine has gone quiet. An execution that
 			 * suspends and stays suspended never finishes, so those cases wait on
@@ -98,8 +106,12 @@ describe('step execution (integration)', () => {
 			identityVerifier: new SharedSecretIdentityVerifier(secret),
 			responseSender: noopExecutionResponseSender,
 			waitSweepIntervalMs,
+			stepConcurrency,
+			orchestrationConcurrency,
 			// also how the test reaches the stores the runtime owns
-			externalDependencies: ({ executionStore, stepStore }) => {
+			externalDependencies: (stores) => {
+				const { executionStore, stepStore } = stores;
+				configureStores?.(stores);
 				const finishExecution = executionStore.finishExecution.bind(executionStore);
 				let finished = 0;
 				vi.spyOn(executionStore, 'finishExecution').mockImplementation(async (id, status) => {
@@ -336,7 +348,7 @@ describe('step execution (integration)', () => {
 		expect(steps.find(({ nodeId }) => nodeId === 'node-b')?.status).toBe('completed');
 	});
 
-	it('cancels a waiting step when a sibling branch fails', async () => {
+	it.each([1, 5, 10])('cancels a waiting sibling at concurrency %s', async (concurrency) => {
 		// The trigger fans out. A suspends, then B throws, which fails the whole
 		// execution. A must not survive as a live row: nothing would ever resume a
 		// request-only wait, and the sweep would run a deadline wait inside a
@@ -362,13 +374,23 @@ describe('step execution (integration)', () => {
 			execute: async (request) => {
 				await Promise.resolve();
 				if (request.node.id === 'node-a') return { wait };
+				if (concurrency > 1) {
+					await vi.waitFor(async () => {
+						const sibling = await dataSource.getRepository(WorkflowStepExecution).findOne({
+							where: { executionId: request.context.executionId, nodeId: 'node-a' },
+						});
+						expect(sibling?.status).toBe('waiting');
+					});
+				}
 				throw new Error('node blew up');
 			},
 		};
 
-		const { execution, steps } = await runWorkflow(executor, [{}], {
+		const { execution, steps, events } = await runWorkflow(executor, [{}], {
 			workflowId: 'wf-wait-cancelled',
 			graph: forkGraph,
+			stepConcurrency: concurrency,
+			orchestrationConcurrency: concurrency,
 		});
 
 		expect(execution.status).toBe('failed');
@@ -378,6 +400,7 @@ describe('step execution (integration)', () => {
 		expect(waiting?.status).toBe('cancelled');
 		// the declaration stays on the row as a record of what it was waiting for
 		expect(waiting?.waitDeclaration).toEqual(wait);
+		expect(events.filter(({ type }) => type === 'execution:failed')).toHaveLength(1);
 	});
 
 	it('runs the execution to completion even when every status batch is refused', async () => {
@@ -516,7 +539,7 @@ describe('step execution (integration)', () => {
 		expect(b!.createdAt.getTime()).toBeGreaterThanOrEqual(a!.updatedAt.getTime());
 	});
 
-	it('runs a fan-in once, with each input slot fed by its branch', async () => {
+	it.each([1, 5, 10])('runs a fan-in once with handler concurrency %s', async (concurrency) => {
 		const diamondGraph: WorkflowGraph = {
 			nodes: [
 				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
@@ -535,14 +558,41 @@ describe('step execution (integration)', () => {
 		const executor: IStepExecutor = {
 			execute: async (request) => {
 				requests.push(request);
-				await Promise.resolve();
+				if (concurrency > 1 && request.node.id !== 'node-m') {
+					// Both branches must enter the executor before either can settle.
+					await vi.waitFor(() => expect(requests).toHaveLength(2));
+				}
 				return { outputs: [[{ json: { ran: request.node.id } }]] };
 			},
 		};
 
-		const { execution } = await runWorkflow(executor, [{ body: { name: 'ada' } }], {
+		let planning = 0;
+		let planned = 0;
+		const bothPlanning = createDeferredPromise();
+		const bothPlanned = createDeferredPromise();
+		const { execution, steps, events } = await runWorkflow(executor, [{ body: { name: 'ada' } }], {
 			workflowId: 'wf-diamond',
 			graph: diamondGraph,
+			stepConcurrency: concurrency,
+			orchestrationConcurrency: concurrency,
+			configureStores: ({ stepStore }) => {
+				if (concurrency === 1) return;
+				const load = stepStore.loadStepSummariesByKeys.bind(stepStore);
+				vi.spyOn(stepStore, 'loadStepSummariesByKeys').mockImplementation(async (id, keys) => {
+					const plansMerge =
+						keys.some(({ nodeId }) => nodeId === 'node-m') &&
+						keys.some(({ nodeId }) => nodeId === 'node-a');
+					if (!plansMerge) return await load(id, keys);
+					// Both settlements enter planning before either reads the branches.
+					if (++planning === 2) bothPlanning.resolve();
+					await bothPlanning.promise;
+					const rows = await load(id, keys);
+					// Both planners see the merge absent before either inserts it.
+					if (++planned === 2) bothPlanned.resolve();
+					await bothPlanned.promise;
+					return rows;
+				});
+			},
 		});
 
 		// the merge ran exactly once, after both branches, one slot per branch
@@ -552,6 +602,53 @@ describe('step execution (integration)', () => {
 
 		expect(execution.status).toBe('completed');
 		expect(execution.finishedAt).toBeInstanceOf(Date);
+		expect(steps).toHaveLength(4);
+		expect(events.filter(({ type }) => type === 'execution:completed')).toHaveLength(1);
+		if (concurrency > 1) expect(planned).toBe(2);
+	});
+
+	it.each([5, 10])('announces one outcome at concurrency %s', async (concurrency) => {
+		const forkGraph: WorkflowGraph = {
+			nodes: [
+				{ id: 'trigger', name: 'Webhook', type: 'trigger' },
+				{ id: 'node-a', name: 'A', type: 'v1-node' },
+				{ id: 'node-b', name: 'B', type: 'v1-node' },
+			],
+			edges: [
+				{ from: 'trigger', to: 'node-a', outputIndex: 0, inputIndex: 0 },
+				{ from: 'trigger', to: 'node-b', outputIndex: 0, inputIndex: 0 },
+			],
+		};
+		let checking = 0;
+		const bothChecking = createDeferredPromise();
+		const { execution, steps, events } = await runWorkflow(
+			{
+				execute: async () => {
+					await Promise.resolve();
+					return { outputs: [{}] };
+				},
+			},
+			[{}],
+			{
+				graph: forkGraph,
+				stepConcurrency: concurrency,
+				orchestrationConcurrency: concurrency,
+				configureStores: ({ stepStore }) => {
+					const count = stepStore.countSettledSteps.bind(stepStore);
+					vi.spyOn(stepStore, 'countSettledSteps').mockImplementation(async (id) => {
+						// Both terminal handlers see every step settled and try to finish.
+						if (++checking === 2) bothChecking.resolve();
+						await bothChecking.promise;
+						return await count(id);
+					});
+				},
+			},
+		);
+
+		expect(checking).toBe(2);
+		expect(execution.status).toBe('completed');
+		expect(steps.map(({ status }) => status)).toEqual(['completed', 'completed', 'completed']);
+		expect(events.filter(({ type }) => type === 'execution:completed')).toHaveLength(1);
 	});
 
 	it('settles a conditional diamond: dead chain skipped, merge runs on the live side', async () => {
@@ -718,10 +815,9 @@ describe('step execution (integration)', () => {
 		]);
 		const stepId = created.find(({ nodeId }) => nodeId === 'node-a')!.id;
 
-		// Delivered twice, both awaited — the CAS is what makes the second a no-op.
+		// Concurrent deliveries must still produce one claim and one execution.
 		const event = { type: 'step:ready', executionId, stepId } as const;
-		await handler.handle(event);
-		await handler.handle(event);
+		await Promise.all([handler.handle(event), handler.handle(event)]);
 
 		expect(execute).toHaveBeenCalledTimes(1);
 		const step = await dataSource

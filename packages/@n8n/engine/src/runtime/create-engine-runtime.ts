@@ -58,6 +58,10 @@ export interface EngineRuntimeOptions {
 	resumeSecret?: string;
 	/** How often to fire waits whose deadline has passed. Defaults to a minute. */
 	waitSweepIntervalMs?: number;
+	/** Maximum in-flight step handlers per process. Defaults to 1 for this spike. */
+	stepConcurrency?: number;
+	/** Maximum in-flight orchestration handlers per process. Defaults to 1 for this spike. */
+	orchestrationConcurrency?: number;
 }
 
 /** A built engine, ready for a host to serve. */
@@ -87,6 +91,8 @@ export function createEngineRuntime({
 	externalDependencies,
 	resumeSecret: givenResumeSecret,
 	waitSweepIntervalMs,
+	stepConcurrency = 1,
+	orchestrationConcurrency = 1,
 }: EngineRuntimeOptions): EngineRuntime {
 	// An empty value is how an unset environment variable usually arrives.
 	const resumeSecret = givenResumeSecret || undefined;
@@ -98,8 +104,11 @@ export function createEngineRuntime({
 		);
 	}
 
-	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(logger);
-	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger);
+	const orchestrationQueue = new InMemoryWorkQueue<OrchestrationMessage>(
+		logger,
+		orchestrationConcurrency,
+	);
+	const stepQueue = new InMemoryWorkQueue<StepMessage>(logger, stepConcurrency);
 	const { executionStore, stepStore, executionViewStore } = createStores(dataSource);
 	// Built once, not per handler: the factory must not run twice.
 	const dependencies =

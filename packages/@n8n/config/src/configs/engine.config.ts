@@ -73,6 +73,21 @@ export class EngineConfig {
 	databaseUrl: string = '';
 
 	/**
+	 * Maximum number of step handlers that engine v2 runs at the same time in each
+	 * data plane process. Use a positive integer. Set to 1 for serial step execution.
+	 */
+	@Env('N8N_ENGINE_STEP_CONCURRENCY', positiveIntSchema.max(Number.MAX_SAFE_INTEGER))
+	stepConcurrency: number = 1;
+
+	/**
+	 * Maximum number of execution start and step settlement handlers that engine v2
+	 * runs at the same time in each data plane process. Use a positive integer.
+	 * This limit is separate from the step handler limit.
+	 */
+	@Env('N8N_ENGINE_ORCHESTRATION_CONCURRENCY', positiveIntSchema.max(Number.MAX_SAFE_INTEGER))
+	orchestrationConcurrency: number = 1;
+
+	/**
 	 * Shared secret the control plane signs its identity token with and the engine
 	 * verifies against. Both planes must hold the same value.
 	 *

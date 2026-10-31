@@ -79,6 +79,42 @@ describe('EngineConfig', () => {
 		expect(Container.get(EngineConfig).mode).toBe('in-process');
 	});
 
+	it('should keep handler concurrency serial by default', () => {
+		const config = Container.get(EngineConfig);
+
+		expect(config.stepConcurrency).toBe(1);
+		expect(config.orchestrationConcurrency).toBe(1);
+	});
+
+	it('should read independent handler concurrency limits', () => {
+		process.env.N8N_ENGINE_STEP_CONCURRENCY = '5';
+		process.env.N8N_ENGINE_ORCHESTRATION_CONCURRENCY = '10';
+
+		const config = Container.get(EngineConfig);
+
+		expect(config.stepConcurrency).toBe(5);
+		expect(config.orchestrationConcurrency).toBe(10);
+	});
+
+	it.each(['0', '-1', '1.5', 'NaN', 'Infinity', '9007199254740992'])(
+		'should reject invalid handler concurrency %s and use the defaults',
+		(value) => {
+			process.env.N8N_ENGINE_STEP_CONCURRENCY = value;
+			process.env.N8N_ENGINE_ORCHESTRATION_CONCURRENCY = value;
+
+			const config = Container.get(EngineConfig);
+
+			expect(config.stepConcurrency).toBe(1);
+			expect(config.orchestrationConcurrency).toBe(1);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_ENGINE_STEP_CONCURRENCY'),
+			);
+			expect(consoleWarnMock).toHaveBeenCalledWith(
+				expect.stringContaining('N8N_ENGINE_ORCHESTRATION_CONCURRENCY'),
+			);
+		},
+	);
+
 	it('should read the remote mode', () => {
 		process.env.N8N_ENGINE_MODE = 'remote';
 
