@@ -8,6 +8,7 @@ import type {
 import { LicenseState, Logger } from '@n8n/backend-common';
 import {
 	EventService,
+	ProjectScopeService,
 	RoleService,
 	RestrictedNodeTypesProviderProxy,
 	WorkflowMutationHooksProxy,
@@ -205,6 +206,7 @@ export class WorkflowService {
 		private readonly errorWorkflowValidationService: ErrorWorkflowValidationService,
 		private readonly restrictedNodeTypesProvider: RestrictedNodeTypesProviderProxy,
 		private readonly deprecatedNodesValidationService: DeprecatedNodesValidationService,
+		private readonly projectScopeService: ProjectScopeService,
 	) {}
 
 	/**
@@ -324,11 +326,15 @@ export class WorkflowService {
 
 		// Use the new subquery-based repository methods
 		if (includeFolders) {
+			// `null` means global access, so the folder half stays unrestricted.
+			const folderProjectIds = await this.projectScopeService.getProjectIds(user, ['folder:list']);
+
 			[workflowsAndFolders, count] =
 				await this.workflowRepository.getWorkflowsAndFoldersWithCountWithSharingSubquery(
 					user,
 					sharingOptions,
 					listOptions,
+					folderProjectIds ?? undefined,
 				);
 
 			workflows = workflowsAndFolders.filter((wf) => wf.resource === 'workflow');
