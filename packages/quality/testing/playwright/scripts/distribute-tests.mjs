@@ -76,7 +76,7 @@ function partitionFiles(filesCsv) {
 /** Only executable app source can have V8 E2E coverage. */
 function isCoverageWarningSource(file) {
 	const sourcePath =
-		/^packages\/(?:(?:cli|core|workflow)\/src|nodes-base\/(?:nodes|credentials|utils)|@n8n\/[^/]+\/(?:src|nodes|credentials|utils)|frontend\/(?:editor-ui|@n8n\/[^/]+)\/src)\//;
+		/^packages\/(?:(?:cli|core|workflow)\/src|nodes-base\/(?:nodes|credentials|utils)|@n8n\/[^/]+\/(?:src|nodes|credentials|utils)|frontend\/(?:editor-ui|@n8n\/[^/]+)\/src|modules\/[^/]+\/frontend\/src)\//;
 	const toolingPackage =
 		/^packages\/(?:@n8n\/(?:backend-test-utils|create-node|(?:eslint|oxlint|stylelint|typescript|vitest)-config|eslint-plugin-community-nodes|module-cli|node-cli)|frontend\/@n8n\/(?:frontend-vite-config|storybook))\//;
 	return (

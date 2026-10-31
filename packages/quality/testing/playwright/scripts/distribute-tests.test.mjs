@@ -31,6 +31,13 @@ const NON_APP_FILES = [
 	'packages/@n8n/backend-test-utils/src/index.ts',
 	'packages/frontend/@n8n/storybook/src/main.ts',
 	'packages/frontend/@n8n/frontend-vite-config/src/index.ts',
+	'packages/modules/inbox/frontend/src/components/InboxList.test.ts',
+	'packages/modules/inbox/frontend/src/components/InboxList.spec.vue',
+	'packages/modules/inbox/frontend/src/__tests__/helpers.ts',
+	'packages/modules/inbox/frontend/src/components/InboxList.stories.ts',
+	'packages/modules/inbox/frontend/src/types.d.ts',
+	'packages/modules/inbox/frontend/vitest.config.ts',
+	'packages/modules/inbox/frontend/scripts/build.mjs',
 	'scripts/build.mjs',
 	'.github/scripts/check.ts',
 ];
@@ -46,6 +53,7 @@ describe('E2E coverage warning', () => {
 
 	beforeEach(() => {
 		vi.resetModules();
+		execFileSync.mockReset();
 		process.argv = [
 			'node',
 			'distribute-tests.mjs',
@@ -75,6 +83,18 @@ describe('E2E coverage warning', () => {
 
 		expect(stderr).toHaveBeenCalledWith(
 			`  ⚠ 5 changed file(s) have no E2E coverage — not run, relying on unit + sanity: ${appFiles.join(', ')}`,
+		);
+	});
+
+	it.each([
+		'packages/modules/inbox/frontend/src/components/InboxList.vue',
+		'packages/modules/insights/frontend/src/index.ts',
+	])('warns for uncovered frontend module source: %s', async (file) => {
+		process.argv[process.argv.length - 1] = `--files=${file}`;
+		await distribute({ mode: 'scoped', specs: [], uncovered: [...NON_APP_FILES, file] });
+
+		expect(stderr).toHaveBeenCalledWith(
+			`  ⚠ 1 changed file(s) have no E2E coverage — not run, relying on unit + sanity: ${file}`,
 		);
 	});
 
@@ -120,6 +140,12 @@ describe('E2E coverage warning', () => {
 
 		await import('./select-affected-e2e.mjs');
 
+		expect(execFileSync).toHaveBeenCalledTimes(1);
+		expect(execFileSync).toHaveBeenCalledWith(
+			'node',
+			expect.arrayContaining(['select', `--changed-files=${selection.uncovered.join(',')}`]),
+			{ encoding: 'utf-8' },
+		);
 		expect(stdout).toHaveBeenCalledWith(output);
 	});
 });
