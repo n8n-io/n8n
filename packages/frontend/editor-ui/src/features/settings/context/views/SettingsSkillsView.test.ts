@@ -427,6 +427,34 @@ describe('SettingsSkillsView', () => {
 		);
 	});
 
+	it('clears the pinned agent when all filters are reset', async () => {
+		const view = renderView();
+		await new Promise(process.nextTick);
+		await pickFilter(view, 'skills-filter-agent', 'Support bot');
+
+		skillsStore.fetchAgents.mockResolvedValue([{ id: 'agent-2', name: 'Sales bot' }]);
+		vi.useFakeTimers({ shouldAdvanceTime: true });
+		await userEvent.type(
+			within(view.getByTestId('skills-filter-agent')).getByRole('combobox'),
+			'sal',
+		);
+		await vi.runAllTimersAsync();
+		vi.useRealTimers();
+
+		await userEvent.click(view.getByText('Reset all'));
+		await waitFor(() =>
+			expect(skillsStore.fetchSkills).toHaveBeenLastCalledWith({
+				skip: 0,
+				take: 10,
+				sortBy: 'updatedAt:desc',
+			}),
+		);
+
+		await userEvent.click(view.getByTestId('resources-list-filters-trigger'));
+		const items = await getDropdownItems(await view.findByTestId('skills-filter-agent'));
+		expect([...items].map((item) => item.textContent?.trim())).toEqual(['Sales bot']);
+	});
+
 	it('still loads the list when the filter options fail to load', async () => {
 		skillsStore.fetchAgents.mockRejectedValue(new Error('offline'));
 		skillsStore.fetchCreators.mockRejectedValue(new Error('offline'));
